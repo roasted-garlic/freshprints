@@ -1116,6 +1116,26 @@ input reasoning entirely, since `signed` is the default).
   treat `internal-unsigned` as a permanent replacement for signing; it exists specifically because
   today's distribution is internal-only.
 
+### macOS arm64 packaging (Studio 1.0.4+)
+
+Studio releases build **Windows and Mac from the same production SHA** via
+`.github/workflows/studio-release.yml`:
+
+| Job | Runner | Artifacts |
+|-----|--------|-----------|
+| `build-windows` | `windows-latest` | `Fresh Prints-Windows-{version}-Setup.exe`, `.blockmap`, `latest.yml` |
+| `build-macos` | `macos-latest` | `Fresh Prints-Mac-{version}-Installer.dmg`, `.zip`, `latest-mac.yml` |
+| `finalize-release` | `ubuntu-latest` | Attaches **both** platform sets to one **draft** GitHub Release; fails if either platform or SHA diverges |
+
+- **Architecture:** Apple Silicon **arm64 only** for 1.0.4. Intel x64 / universal are deferred.
+- **Updater:** Mac auto-update requires the **ZIP** + `latest-mac.yml` (DMG is for manual install). Windows continues to use `latest.yml`.
+- **Signing:** Mac 1.0.4 is **internal-unsigned** only (`CSC_IDENTITY_AUTO_DISCOVERY=false`, no Apple Developer ID / notarization). Selecting `distribution_mode: signed` on a stable run fails the Mac job until a future Apple credential phase.
+- **Gatekeeper:** Unsigned Mac builds may be blocked. Internal staff: right-click → Open, or Privacy & Security allow — see `docs/workflow/reviews/2026-08-12-studio-1.0.4-macos-smoke-checklist.md`.
+- **Environment bake:** Both platform jobs call `apps/studio/scripts/write-studio-release-env.mjs` with the same stable fail-closed rules (`fresh-prints-prod`, Algolia `Z1FVCM5QUX` / `portal_catalog_ready_prod`, search-only key).
+- **sharp:** Packaged Mac apps verify `sharp` loads via `verify-packaged-mac-sharp.mjs` in CI (`asarUnpack` for `sharp` / `@img`).
+- **Publication:** Finalize creates/updates a **draft** only. Publishing remains a separate human checkpoint after **Windows + Mac** smoke.
+- **Same-SHA rule:** Finalize refuses mixed Windows/Mac SHAs. Rebuild both platforms after any production merge that changes packaging source; do not publish a Windows-only draft from an older SHA as final 1.0.4.
+
 Never commit signing material (certificates, passwords, base64 PFX data) to the repository — CI
 encrypted secrets only, for the `signed` path.
 

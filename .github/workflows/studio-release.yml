@@ -1,7 +1,14 @@
 name: Studio release
 
 # Manual trigger only. Never runs on push/PR — stable publication requires a human to press
-# "Run workflow" (or push an approved tag) with an explicit prerelease/stable choice.
+# "Run workflow" with an explicit prerelease/stable choice, then separately publish the draft.
+#
+# Topology (Studio 1.0.4+):
+#   build-windows  → Windows NSIS + latest.yml (publish never)
+#   build-macos    → Mac arm64 DMG+ZIP + latest-mac.yml (publish never)
+#   finalize-release → single draft GitHub Release attaching BOTH platform assets
+# Concurrent electron-builder GitHub publish from two jobs is intentionally avoided
+# (platform jobs use --publish never; finalize attaches assets once).
 on:
   workflow_dispatch:
     inputs:
@@ -17,7 +24,7 @@ on:
           - stable
         default: prerelease
       distribution_mode:
-        description: "Stable distribution mode (ignored for prerelease, which always builds unsigned): 'signed' requires Windows signing credentials and is intended for any public/external distribution; 'internal-unsigned' is an explicit, owner-approved exception for internal-only staff installs and produces an unsigned executable"
+        description: "Stable distribution mode (ignored for prerelease, which always builds unsigned): 'signed' requires Windows signing credentials for Windows artifacts and is intended for public/external Windows distribution; Mac Studio 1.0.4 is internal-unsigned only (Gatekeeper friction expected; Apple Developer ID / notarization deferred). 'internal-unsigned' is an explicit, owner-approved exception for internal-only staff installs on both platforms."
         required: true
         type: choice
         options:
@@ -28,13 +35,16 @@ on:
 permissions:
   contents: write
 
+env:
+  STUDIO_NODE_VERSION: "20"
+
 jobs:
-  build-and-release:
-    # Stable releases may only be cut from production — this is a hard gate, not a UI suggestion.
-    # electron-builder itself also never auto-publishes a stable channel from this workflow: the
-    # publish step below only runs `--publish always`, and GitHub Release "prerelease" flag is set
-    # explicitly per release_type, so a non-production ref can only ever produce a prerelease.
+  build-windows:
+    name: build-windows
     runs-on: windows-latest
+    outputs:
+      build_sha: ${{ steps.record_sha.outputs.build_sha }}
+      studio_version: ${{ steps.record_sha.outputs.studio_version }}
     steps:
       - name: Guard stable release ref
         if: ${{ inputs.release_type == 'stable' }}
@@ -60,17 +70,20 @@ jobs:
             exit 1
           fi
 
+      - name: Record build SHA and Studio version
+        id: record_sha
+        shell: bash
+        run: |
+          echo "build_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "studio_version=$(node -p "require('./apps/studio/package.json').version")" >> "$GITHUB_OUTPUT"
+
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: ${{ env.STUDIO_NODE_VERSION }}
 
       - name: Install root dependencies
         run: npm ci
 
-      # functions/ is intentionally not a root npm workspace (see root package.json's
-      # "workspaces": ["apps/*", "packages/*"]) and has its own package.json + package-lock.json.
-      # Root `npm ci` never installs its dependency tree, so `npm --prefix functions run build`
-      # would otherwise fail to resolve firebase-functions and everything that depends on it.
       - name: Install Functions dependencies
         run: npm ci --prefix functions
 
@@ -83,18 +96,10 @@ jobs:
             echo "FRESH_PRINTS_UPDATE_CHANNEL=prerelease" >> "$GITHUB_ENV"
           fi
 
-      # apps/studio/electron/generated/packagedBuildConfig.ts is gitignored and produced only by
-      # this script. studioUpdateChannel.ts (and its test) import it directly, so it must exist
-      # before the updater tests below run on a clean checkout — this step must stay between
-      # "Set Studio release channel env" (which provides FRESH_PRINTS_UPDATE_CHANNEL) and
-      # "Run tests" (which imports the generated file transitively).
       - name: Generate Studio packaged build config
         working-directory: apps/studio
         run: node scripts/generate-packaged-build-config.mjs
 
-      # Separate steps on purpose: the Windows runner default shell is PowerShell, which does
-      # not fail-fast across multiple external commands in one `run:` block. A prior combined
-      # step let `npm run lint` exit non-zero while the job continued to package and draft.
       - name: Lint
         run: npm run lint
 
@@ -107,8 +112,7 @@ jobs:
       - name: Studio updater unit tests
         run: npx tsx --test packages/shared/src/studioUpdate/studioUpdateStateTransitions.test.ts packages/shared/src/studioUpdate/studioUpdateErrorMapping.test.ts apps/studio/electron/ipc/studioUpdate/studioUpdateChannel.test.ts apps/studio/electron/ipc/studioUpdate/studioUpdateIpcChannels.test.ts apps/studio/scripts/generate-packaged-build-config.test.ts
 
-      - name: Configure Studio Firebase environment
-        shell: pwsh
+      - name: Configure Studio Firebase + Algolia environment
         working-directory: apps/studio
         env:
           RELEASE_TYPE: ${{ inputs.release_type }}
@@ -130,106 +134,7 @@ jobs:
           PROD_ALGOLIA_APP_ID: ${{ secrets.PROD_ALGOLIA_APP_ID }}
           PROD_ALGOLIA_SEARCH_API_KEY: ${{ secrets.PROD_ALGOLIA_SEARCH_API_KEY }}
           PROD_ALGOLIA_INDEX_NAME: ${{ secrets.PROD_ALGOLIA_INDEX_NAME }}
-        run: |
-          # Studio reads its Firebase project from apps/studio/.env.local (Vite env file,
-          # gitignored) at build time — see src/renderer/src/config/env.ts's
-          # validateFirebaseEnv(). A fresh GitHub Actions checkout never has this file, and
-          # without it Vite still builds "successfully" but bakes in empty config, which throws
-          # at Studio's actual runtime launch rather than failing the build. This step writes the
-          # correct project's config explicitly rather than letting the build silently proceed
-          # with nothing.
-          #
-          # Stable Studio packages also require search-only Algolia env (same production index as
-          # Portal). Never write Admin Algolia keys into Studio.
-          if ($env:RELEASE_TYPE -eq "stable") {
-            $apiKey = $env:PROD_FIREBASE_API_KEY
-            $authDomain = $env:PROD_FIREBASE_AUTH_DOMAIN
-            $projectId = $env:PROD_FIREBASE_PROJECT_ID
-            $storageBucket = $env:PROD_FIREBASE_STORAGE_BUCKET
-            $senderId = $env:PROD_FIREBASE_MESSAGING_SENDER_ID
-            $appId = $env:PROD_FIREBASE_APP_ID
-            $missingLabel = "PROD_FIREBASE_*"
-            $algoliaAppId = $env:PROD_ALGOLIA_APP_ID
-            $algoliaSearchKey = $env:PROD_ALGOLIA_SEARCH_API_KEY
-            $algoliaIndexName = $env:PROD_ALGOLIA_INDEX_NAME
-            $algoliaMissingLabel = "PROD_ALGOLIA_*"
-            $requireAlgolia = $true
-          } else {
-            $apiKey = $env:DEV_FIREBASE_API_KEY
-            $authDomain = $env:DEV_FIREBASE_AUTH_DOMAIN
-            $projectId = $env:DEV_FIREBASE_PROJECT_ID
-            $storageBucket = $env:DEV_FIREBASE_STORAGE_BUCKET
-            $senderId = $env:DEV_FIREBASE_MESSAGING_SENDER_ID
-            $appId = $env:DEV_FIREBASE_APP_ID
-            $missingLabel = "DEV_FIREBASE_*"
-            $algoliaAppId = $env:DEV_ALGOLIA_APP_ID
-            $algoliaSearchKey = $env:DEV_ALGOLIA_SEARCH_API_KEY
-            $algoliaIndexName = $env:DEV_ALGOLIA_INDEX_NAME
-            $algoliaMissingLabel = "DEV_ALGOLIA_*"
-            $requireAlgolia = $false
-          }
-
-          $values = @($apiKey, $authDomain, $projectId, $storageBucket, $senderId, $appId)
-          $missingCount = ($values | Where-Object { [string]::IsNullOrWhiteSpace($_) }).Count
-          if ($missingCount -gt 0) {
-            Write-Error "Missing one or more $missingLabel repository secrets. Refusing to build Studio with an incomplete or empty Firebase configuration."
-            exit 1
-          }
-
-          if ($env:RELEASE_TYPE -eq "stable") {
-            if ($projectId -ne "fresh-prints-prod") {
-              Write-Error "Stable Studio releases must target Firebase project fresh-prints-prod. Got: $projectId"
-              exit 1
-            }
-          }
-
-          $envLines = @(
-            "VITE_FIREBASE_API_KEY=$apiKey"
-            "VITE_FIREBASE_AUTH_DOMAIN=$authDomain"
-            "VITE_FIREBASE_PROJECT_ID=$projectId"
-            "VITE_FIREBASE_STORAGE_BUCKET=$storageBucket"
-            "VITE_FIREBASE_MESSAGING_SENDER_ID=$senderId"
-            "VITE_FIREBASE_APP_ID=$appId"
-          )
-
-          $algoliaValues = @($algoliaAppId, $algoliaSearchKey, $algoliaIndexName)
-          $algoliaMissingCount = ($algoliaValues | Where-Object { [string]::IsNullOrWhiteSpace($_) }).Count
-          if ($requireAlgolia -and $algoliaMissingCount -gt 0) {
-            Write-Error "Missing one or more $algoliaMissingLabel repository secrets (search-only). Refusing to build a stable Studio package without production Algolia search configuration."
-            exit 1
-          }
-
-          if ($algoliaMissingCount -eq 0) {
-            if ($env:RELEASE_TYPE -eq "stable") {
-              if ($algoliaAppId -ne "Z1FVCM5QUX") {
-                Write-Error "Stable Studio Algolia app id must be Z1FVCM5QUX. Got a non-matching value (not printed)."
-                exit 1
-              }
-              if ($algoliaIndexName -ne "portal_catalog_ready_prod") {
-                Write-Error "Stable Studio Algolia index must be portal_catalog_ready_prod. Got: $algoliaIndexName"
-                exit 1
-              }
-            }
-            if ($algoliaIndexName -match '_dev$' -or $algoliaIndexName -eq "portal_catalog_ready_dev") {
-              if ($env:RELEASE_TYPE -eq "stable") {
-                Write-Error "Stable Studio packages must not use a DEV Algolia index ($algoliaIndexName)."
-                exit 1
-              }
-            }
-            $envLines += @(
-              "VITE_USE_ALGOLIA_CATALOG_SEARCH=true"
-              "VITE_ALGOLIA_APP_ID=$algoliaAppId"
-              "VITE_ALGOLIA_SEARCH_API_KEY=$algoliaSearchKey"
-              "VITE_ALGOLIA_INDEX_NAME=$algoliaIndexName"
-            )
-            Write-Host "Studio Algolia search-only environment configured for index: $algoliaIndexName (app id present; key not printed)"
-          } elseif ($env:RELEASE_TYPE -ne "stable") {
-            Write-Host "No DEV Algolia secrets configured; prerelease Studio will fail closed for managed catalog search (expected unless DEV_ALGOLIA_* secrets are set)."
-          }
-
-          $envLines -join "`n" | Set-Content -Path ".env.local" -Encoding utf8
-
-          Write-Host "Studio Firebase environment configured for project: $projectId"
+        run: node scripts/write-studio-release-env.mjs
 
       - name: Configure optional Windows signing
         shell: pwsh
@@ -242,8 +147,6 @@ jobs:
           $hasLink = -not [string]::IsNullOrWhiteSpace($env:WINDOWS_CSC_LINK_SECRET)
           $hasPassword = -not [string]::IsNullOrWhiteSpace($env:WINDOWS_CSC_KEY_PASSWORD_SECRET)
 
-          # A half-configured secret pair is always an error, in every release type and
-          # distribution mode — never silently treated as "no signing configured".
           if ($hasLink -xor $hasPassword) {
             Write-Error "Windows signing configuration is incomplete: both WINDOWS_CSC_LINK and WINDOWS_CSC_KEY_PASSWORD secrets must be set together, or neither."
             exit 1
@@ -263,90 +166,338 @@ jobs:
             exit 0
           }
 
-          # Stable, no signing secrets configured — distribution_mode decides the outcome.
-          # 'signed' (the default) always fails closed here, same as before this change existed.
-          # 'internal-unsigned' is an explicit, owner-approved exception for internal-only staff
-          # distribution — never the default, never silent, and never available to prerelease.
           if ($env:DISTRIBUTION_MODE -eq "internal-unsigned") {
-            Write-Warning "INTERNAL-UNSIGNED STABLE BUILD: this installer is NOT code-signed and is approved only for internal, owner-controlled staff distribution. It is NOT suitable for public release and will trigger Windows SmartScreen warnings on install. Do not share this build outside the approved internal GitHub Release."
+            Write-Warning "INTERNAL-UNSIGNED STABLE BUILD (Windows): this installer is NOT code-signed and is approved only for internal, owner-controlled staff distribution. It is NOT suitable for public release and will trigger Windows SmartScreen warnings on install."
             exit 0
           }
 
-          Write-Error "Stable Studio releases require Windows signing credentials (WINDOWS_CSC_LINK + WINDOWS_CSC_KEY_PASSWORD secrets), or explicit selection of distribution_mode: internal-unsigned for an owner-approved internal-only exception."
+          Write-Error "Stable Studio Windows releases require Windows signing credentials (WINDOWS_CSC_LINK + WINDOWS_CSC_KEY_PASSWORD secrets), or explicit selection of distribution_mode: internal-unsigned for an owner-approved internal-only exception."
           exit 1
 
-      - name: Build Studio (Windows NSIS + updater metadata)
+      - name: Build Studio (Windows NSIS + updater metadata, no publish)
         working-directory: apps/studio
-        env:
-          # WIN_CSC_LINK / WIN_CSC_KEY_PASSWORD are set above via $GITHUB_ENV only when both
-          # signing secrets are genuinely present — never defined as empty strings here. An empty
-          # CSC_LINK/WIN_CSC_LINK causes electron-builder to try to resolve it as a certificate
-          # file path and fail ("not a file"), so these must be entirely absent for unsigned
-          # prerelease builds, not merely blank.
-          #
-          # electron-builder's own publish step (not `gh`) uses GH_TOKEN to upload release assets.
-          # Never printed or logged; scoped to this job's environment only.
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          npm run build -- --publish always
+        run: npm run build -- --win --x64 --publish never
 
-      # electron-builder 24.x createRelease() omits target_commitish, so GitHub defaults the draft
-      # to the repository default branch (development) even when actions/checkout built from a
-      # production SHA. GITHUB_SHA on workflow_dispatch is also the workflow-file branch tip, not
-      # the checkout ref — always pin from `git rev-parse HEAD` after checkout.
-      - name: Pin draft release target_commitish to build SHA
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          SHA="$(git rev-parse HEAD)"
-          VERSION="$(node -p "require('./apps/studio/package.json').version")"
-          TAG="v${VERSION}"
-          RELEASE_ID="$(gh api "repos/${{ github.repository }}/releases" --paginate \
-            --jq ".[] | select(.draft == true and (.tag_name == \"$TAG\" or .tag_name == \"$VERSION\")) | .id" \
-            | head -n1)"
-          if [ -z "$RELEASE_ID" ]; then
-            echo "::error::No draft GitHub Release found for tag $TAG / $VERSION after electron-builder publish."
-            exit 1
-          fi
-          BEFORE="$(gh api "repos/${{ github.repository }}/releases/${RELEASE_ID}" --jq '.target_commitish')"
-          echo "Draft release id=${RELEASE_ID} tag=${TAG} previous target_commitish=${BEFORE}"
-          gh api --method PATCH "repos/${{ github.repository }}/releases/${RELEASE_ID}" \
-            -f target_commitish="$SHA" \
-            --jq '{id, tag_name, draft, target_commitish}'
-          AFTER="$(gh api "repos/${{ github.repository }}/releases/${RELEASE_ID}" --jq '.target_commitish')"
-          if [ "$AFTER" != "$SHA" ]; then
-            echo "::error::Failed to pin target_commitish. expected=${SHA} actual=${AFTER}"
-            exit 1
-          fi
-          echo "Pinned draft release target_commitish to checked-out build SHA ${SHA}"
-
-      - name: Compute installer SHA-256
+      - name: Verify Windows release artifacts
         shell: bash
         working-directory: apps/studio/release
         run: |
+          set -euo pipefail
           version_dir=$(ls -d */ | head -n1)
           cd "$version_dir"
-          installer=$(ls *Setup*.exe)
-          sha256sum "$installer" | tee sha256.txt
+          installer=$(ls *Windows*-Setup.exe | head -n1)
+          test -f "$installer"
+          test -f "${installer}.blockmap"
+          test -f latest.yml
+          sha256sum "$installer" | tee sha256-windows.txt
+          echo "Windows artifacts OK in $version_dir"
 
-      - name: Upload build evidence
+      - name: Upload Windows package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: studio-windows-${{ github.run_id }}
+          path: |
+            apps/studio/release/**
+          retention-days: 14
+          if-no-files-found: error
+
+  build-macos:
+    name: build-macos
+    runs-on: macos-latest
+    outputs:
+      build_sha: ${{ steps.record_sha.outputs.build_sha }}
+      studio_version: ${{ steps.record_sha.outputs.studio_version }}
+    steps:
+      - name: Guard stable release ref
+        if: ${{ inputs.release_type == 'stable' }}
+        shell: bash
+        run: |
+          if [ "${{ inputs.ref }}" != "production" ] && [[ ! "${{ inputs.ref }}" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Stable releases may only be built from the production branch or an exact production commit SHA. Got: ${{ inputs.ref }}"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+
+      - name: Verify ref is reachable from production (stable only)
+        if: ${{ inputs.release_type == 'stable' }}
+        shell: bash
+        run: |
+          git fetch origin production --depth=1000
+          if ! git merge-base --is-ancestor HEAD origin/production; then
+            echo "::error::The requested ref is not part of production history. Refusing to publish a stable release from it."
+            exit 1
+          fi
+
+      - name: Record build SHA and Studio version
+        id: record_sha
+        shell: bash
+        run: |
+          echo "build_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "studio_version=$(node -p "require('./apps/studio/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.STUDIO_NODE_VERSION }}
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install Functions dependencies
+        run: npm ci --prefix functions
+
+      - name: Set Studio release channel env
+        shell: bash
+        run: |
+          if [ "${{ inputs.release_type }}" = "stable" ]; then
+            echo "FRESH_PRINTS_UPDATE_CHANNEL=stable" >> "$GITHUB_ENV"
+          else
+            echo "FRESH_PRINTS_UPDATE_CHANNEL=prerelease" >> "$GITHUB_ENV"
+          fi
+
+      - name: Generate Studio packaged build config
+        working-directory: apps/studio
+        run: node scripts/generate-packaged-build-config.mjs
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build Functions
+        run: npm --prefix functions run build
+
+      - name: Typecheck Portal
+        run: npm run typecheck --workspace @fresh-prints/portal
+
+      - name: Studio updater unit tests
+        run: npx tsx --test packages/shared/src/studioUpdate/studioUpdateStateTransitions.test.ts packages/shared/src/studioUpdate/studioUpdateErrorMapping.test.ts apps/studio/electron/ipc/studioUpdate/studioUpdateChannel.test.ts apps/studio/electron/ipc/studioUpdate/studioUpdateIpcChannels.test.ts apps/studio/scripts/generate-packaged-build-config.test.ts
+
+      - name: Configure Studio Firebase + Algolia environment
+        working-directory: apps/studio
+        env:
+          RELEASE_TYPE: ${{ inputs.release_type }}
+          DEV_FIREBASE_API_KEY: ${{ secrets.DEV_FIREBASE_API_KEY }}
+          DEV_FIREBASE_AUTH_DOMAIN: ${{ secrets.DEV_FIREBASE_AUTH_DOMAIN }}
+          DEV_FIREBASE_PROJECT_ID: ${{ secrets.DEV_FIREBASE_PROJECT_ID }}
+          DEV_FIREBASE_STORAGE_BUCKET: ${{ secrets.DEV_FIREBASE_STORAGE_BUCKET }}
+          DEV_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.DEV_FIREBASE_MESSAGING_SENDER_ID }}
+          DEV_FIREBASE_APP_ID: ${{ secrets.DEV_FIREBASE_APP_ID }}
+          PROD_FIREBASE_API_KEY: ${{ secrets.PROD_FIREBASE_API_KEY }}
+          PROD_FIREBASE_AUTH_DOMAIN: ${{ secrets.PROD_FIREBASE_AUTH_DOMAIN }}
+          PROD_FIREBASE_PROJECT_ID: ${{ secrets.PROD_FIREBASE_PROJECT_ID }}
+          PROD_FIREBASE_STORAGE_BUCKET: ${{ secrets.PROD_FIREBASE_STORAGE_BUCKET }}
+          PROD_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.PROD_FIREBASE_MESSAGING_SENDER_ID }}
+          PROD_FIREBASE_APP_ID: ${{ secrets.PROD_FIREBASE_APP_ID }}
+          DEV_ALGOLIA_APP_ID: ${{ secrets.DEV_ALGOLIA_APP_ID }}
+          DEV_ALGOLIA_SEARCH_API_KEY: ${{ secrets.DEV_ALGOLIA_SEARCH_API_KEY }}
+          DEV_ALGOLIA_INDEX_NAME: ${{ secrets.DEV_ALGOLIA_INDEX_NAME }}
+          PROD_ALGOLIA_APP_ID: ${{ secrets.PROD_ALGOLIA_APP_ID }}
+          PROD_ALGOLIA_SEARCH_API_KEY: ${{ secrets.PROD_ALGOLIA_SEARCH_API_KEY }}
+          PROD_ALGOLIA_INDEX_NAME: ${{ secrets.PROD_ALGOLIA_INDEX_NAME }}
+        run: node scripts/write-studio-release-env.mjs
+
+      - name: Configure Mac unsigned distribution policy
+        shell: bash
+        env:
+          RELEASE_TYPE: ${{ inputs.release_type }}
+          DISTRIBUTION_MODE: ${{ inputs.distribution_mode }}
+        run: |
+          set -euo pipefail
+          # Never auto-discover Apple signing identities for Studio 1.0.4 Mac (unsigned internal).
+          echo "CSC_IDENTITY_AUTO_DISCOVERY=false" >> "$GITHUB_ENV"
+          if [ "$RELEASE_TYPE" != "stable" ]; then
+            echo "Building unsigned Mac prerelease (Apple Developer ID / notarization not configured)."
+            exit 0
+          fi
+          if [ "$DISTRIBUTION_MODE" = "internal-unsigned" ]; then
+            echo "::warning::INTERNAL-UNSIGNED STABLE BUILD (Mac arm64): this DMG/ZIP is NOT Developer ID signed and is NOT notarized. Gatekeeper may block launch until the owner uses the approved internal open procedure (right-click Open / clear quarantine). Not suitable for public distribution."
+            exit 0
+          fi
+          echo "::error::Stable Studio Mac releases for 1.0.4 require distribution_mode: internal-unsigned (Apple signing/notarization is deferred). Do not select signed for Mac until a future Apple credential phase."
+          exit 1
+
+      - name: Build Studio (Mac arm64 DMG+ZIP + updater metadata, no publish)
+        working-directory: apps/studio
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npm run build -- --mac --arm64 --publish never
+
+      - name: Verify Mac release artifacts and packaged sharp
+        shell: bash
+        working-directory: apps/studio/release
+        run: |
+          set -euo pipefail
+          version_dir=$(ls -d */ | head -n1)
+          cd "$version_dir"
+          dmg=$(ls *Mac*-Installer.dmg | head -n1)
+          zip=$(ls *Mac*-Installer.zip | head -n1)
+          test -f "$dmg"
+          test -f "$zip"
+          test -f latest-mac.yml
+          shasum -a 256 "$dmg" "$zip" | tee sha256-macos.txt
+          # Unpack ZIP to locate .app for sharp verification (DMG mount is heavier in CI).
+          unzip -q "$zip" -d unpacked-mac
+          app_path=$(find unpacked-mac -maxdepth 3 -name "*.app" -type d | head -n1)
+          test -n "$app_path"
+          node ../../../scripts/verify-packaged-mac-sharp.mjs "$app_path"
+          echo "Mac artifacts + packaged sharp OK in $version_dir"
+
+      - name: Upload Mac package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: studio-macos-${{ github.run_id }}
+          path: |
+            apps/studio/release/**
+          retention-days: 14
+          if-no-files-found: error
+
+  finalize-release:
+    name: finalize-release
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail closed if platform SHAs diverge
+        shell: bash
+        run: |
+          set -euo pipefail
+          WIN_SHA="${{ needs.build-windows.outputs.build_sha }}"
+          MAC_SHA="${{ needs.build-macos.outputs.build_sha }}"
+          WIN_VER="${{ needs.build-windows.outputs.studio_version }}"
+          MAC_VER="${{ needs.build-macos.outputs.studio_version }}"
+          echo "windows_sha=$WIN_SHA mac_sha=$MAC_SHA"
+          echo "windows_version=$WIN_VER mac_version=$MAC_VER"
+          if [ -z "$WIN_SHA" ] || [ -z "$MAC_SHA" ]; then
+            echo "::error::Missing build SHA outputs from platform jobs."
+            exit 1
+          fi
+          if [ "$WIN_SHA" != "$MAC_SHA" ]; then
+            echo "::error::Windows and Mac builds resolved different SHAs. Refusing to finalize a mixed-SHA release."
+            exit 1
+          fi
+          if [ "$WIN_VER" != "$MAC_VER" ]; then
+            echo "::error::Windows and Mac Studio package.json versions differ ($WIN_VER vs $MAC_VER)."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.build-windows.outputs.build_sha }}
+          fetch-depth: 0
+
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: studio-windows-${{ github.run_id }}
+          path: artifacts/windows
+
+      - name: Download Mac artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: studio-macos-${{ github.run_id }}
+          path: artifacts/macos
+
+      - name: Verify required dual-platform assets and create draft release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TYPE: ${{ inputs.release_type }}
+          BUILD_SHA: ${{ needs.build-windows.outputs.build_sha }}
+          VERSION: ${{ needs.build-windows.outputs.studio_version }}
+        run: |
+          set -euo pipefail
+          WIN_DIR=$(find artifacts/windows -type d -name "$VERSION" | head -n1)
+          MAC_DIR=$(find artifacts/macos -type d -name "$VERSION" | head -n1)
+          test -n "$WIN_DIR"
+          test -n "$MAC_DIR"
+
+          WIN_EXE=$(find "$WIN_DIR" -maxdepth 1 -name '*Windows*-Setup.exe' | head -n1)
+          WIN_BLOCKMAP=$(find "$WIN_DIR" -maxdepth 1 -name '*Windows*-Setup.exe.blockmap' | head -n1)
+          WIN_YML=$(find "$WIN_DIR" -maxdepth 1 -name 'latest.yml' | head -n1)
+          MAC_DMG=$(find "$MAC_DIR" -maxdepth 1 -name '*Mac*-Installer.dmg' | head -n1)
+          MAC_ZIP=$(find "$MAC_DIR" -maxdepth 1 -name '*Mac*-Installer.zip' | head -n1)
+          MAC_YML=$(find "$MAC_DIR" -maxdepth 1 -name 'latest-mac.yml' | head -n1)
+
+          for f in "$WIN_EXE" "$WIN_BLOCKMAP" "$WIN_YML" "$MAC_DMG" "$MAC_ZIP" "$MAC_YML"; do
+            if [ -z "$f" ] || [ ! -f "$f" ]; then
+              echo "::error::Missing required dual-platform release asset: $f"
+              exit 1
+            fi
+          done
+
+          TAG="v${VERSION}"
+          # Only reuse a draft that already targets this exact build SHA and uses the stable tag
+          # naming (vX.Y.Z). Do NOT match Windows-only historical drafts by release name alone
+          # (e.g. draft 369361779 / untagged-* for 1.0.4 must remain untouched/superseded).
+          RELEASE_ID="$(gh api "repos/${{ github.repository }}/releases" --paginate \
+            --jq ".[] | select(.draft == true and .target_commitish == \"$BUILD_SHA\" and (.tag_name == \"$TAG\" or .tag_name == \"$VERSION\")) | .id" \
+            | head -n1 || true)"
+
+          if [ -z "$RELEASE_ID" ]; then
+            PRERELEASE_FLAG="false"
+            if [ "$RELEASE_TYPE" = "prerelease" ]; then
+              PRERELEASE_FLAG="true"
+            fi
+            RELEASE_ID="$(gh api --method POST "repos/${{ github.repository }}/releases" \
+              -f tag_name="$TAG" \
+              -f name="$VERSION" \
+              -f target_commitish="$BUILD_SHA" \
+              -F draft=true \
+              -F prerelease="$PRERELEASE_FLAG" \
+              -f body="Fresh Prints Studio ${VERSION} (Windows + Mac arm64). DRAFT — do not publish until dual-platform smoke passes." \
+              --jq '.id')"
+          fi
+
+          RELEASE_META="$(gh api "repos/${{ github.repository }}/releases/${RELEASE_ID}")"
+          AFTER="$(echo "$RELEASE_META" | jq -r '.target_commitish')"
+          DRAFT="$(echo "$RELEASE_META" | jq -r '.draft')"
+          UPLOAD_TAG="$(echo "$RELEASE_META" | jq -r '.tag_name')"
+          if [ "$AFTER" != "$BUILD_SHA" ]; then
+            echo "::error::Failed to pin draft target_commitish. expected=${BUILD_SHA} actual=${AFTER}"
+            exit 1
+          fi
+          if [ "$DRAFT" != "true" ]; then
+            echo "::error::Release ${RELEASE_ID} is not draft=true. Refusing to attach assets to a non-draft release."
+            exit 1
+          fi
+
+          # Upload/replace assets onto the single draft. --clobber allows reruns.
+          gh release upload "$UPLOAD_TAG" \
+            "$WIN_EXE" "$WIN_BLOCKMAP" "$WIN_YML" \
+            "$MAC_DMG" "$MAC_ZIP" "$MAC_YML" \
+            --clobber --repo "${{ github.repository }}"
+
+          # Confirm all six required names are present on the draft.
+          ASSETS_JSON="$(gh api "repos/${{ github.repository }}/releases/${RELEASE_ID}/assets")"
+          echo "$ASSETS_JSON" | jq -r '.[].name' | tee draft-asset-names.txt
+          for required in \
+            "$(basename "$WIN_EXE")" \
+            "$(basename "$WIN_BLOCKMAP")" \
+            "latest.yml" \
+            "$(basename "$MAC_DMG")" \
+            "$(basename "$MAC_ZIP")" \
+            "latest-mac.yml"
+          do
+            if ! grep -Fxq "$required" draft-asset-names.txt; then
+              echo "::error::Draft release missing required asset after upload: $required"
+              exit 1
+            fi
+          done
+
+          echo "FINALIZE_OK release_id=${RELEASE_ID} tag=${TAG} sha=${BUILD_SHA} draft=true"
+          echo "This workflow does NOT publish the release. Owner publication remains a separate human checkpoint."
+
+      - name: Upload combined evidence
         uses: actions/upload-artifact@v4
         with:
           name: studio-release-evidence-${{ github.run_id }}
           path: |
-            apps/studio/release/*/latest*.yml
-            apps/studio/release/*/*.blockmap
-            apps/studio/release/*/sha256.txt
+            artifacts/windows/**/latest.yml
+            artifacts/windows/**/*.blockmap
+            artifacts/windows/**/sha256*.txt
+            artifacts/macos/**/latest-mac.yml
+            artifacts/macos/**/sha256*.txt
+            draft-asset-names.txt
           retention-days: 90
-
-  # electron-builder's GitHub publisher (invoked above with `--publish always`) creates the
-  # release as a DRAFT. It does NOT reliably mark the draft as a "Pre-release" on its own —
-  # confirmed against a real run (2026-08-02, beta.2): the draft was created but the "Set as a
-  # pre-release" checkbox was not automatically checked, requiring the owner to manually select
-  # it before publishing. Marking a release as prerelease and publishing it (moving it out of
-  # Draft) are both currently manual human checkpoints in the GitHub UI for every release this
-  # workflow produces, stable or prerelease — this workflow does not automate either step. No
-  # release, stable or prerelease, becomes publicly visible/downloadable to update feeds without
-  # that separate human action.
+          if-no-files-found: warn
