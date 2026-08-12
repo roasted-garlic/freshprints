@@ -15,17 +15,17 @@ describe("AI review permissions", () => {
     assert.equal(permissionService.canOverrideAiReview(activeOwner), true);
   });
 
-  it("helpers can view and skip but not manage AI review", () => {
+  it("helpers can view, edit, and manage operational AI review", () => {
     assert.equal(permissionService.canViewAiReview(activeHelper), true);
     assert.equal(permissionService.canSkipAiReview(activeHelper), true);
-    assert.equal(permissionService.canEditAiReviewInbox(activeHelper), false);
-    assert.equal(permissionService.canManageAiReview(activeHelper), false);
-    assert.equal(permissionService.canApproveAiReview(activeHelper), false);
+    assert.equal(permissionService.canEditAiReviewInbox(activeHelper), true);
+    assert.equal(permissionService.canManageAiReview(activeHelper), true);
+    assert.equal(permissionService.canApproveAiReview(activeHelper), true);
   });
 
-  it("F/G. helpers cannot approve catalog designs; owner/admin can", () => {
-    assert.equal(permissionService.canApproveDesignForCatalog(activeHelper), false);
-    assert.equal(permissionService.canRejectDesignFromCatalog(activeHelper), false);
+  it("F/G. helpers can approve catalog designs; owner/admin can", () => {
+    assert.equal(permissionService.canApproveDesignForCatalog(activeHelper), true);
+    assert.equal(permissionService.canRejectDesignFromCatalog(activeHelper), true);
     assert.equal(permissionService.canApproveDesignForCatalog(activeOwner), true);
     assert.equal(permissionService.canRejectDesignFromCatalog(activeAdmin), true);
   });

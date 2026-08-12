@@ -208,7 +208,15 @@ export function DesignLibraryPage() {
 
   const browsingArchived = selectionModeActive ? false : includeArchived;
   const trimmedSearch = searchQuery.trim();
-  const managedSearchActive = trimmedSearch.length > 0 && !browsingArchived;
+  const managedCategoryId =
+    categoryFilter === ALL_FILTER_VALUE ? undefined : categoryFilter;
+  // Managed Algolia owns text search and/or tag/category filters on ready catalog.
+  // needsCompanion-only stays Firestore browse + client post-filter (B1).
+  const managedSearchActive =
+    !browsingArchived &&
+    (trimmedSearch.length > 0 ||
+      selectedTags.length > 0 ||
+      Boolean(managedCategoryId));
 
   // The design LIST is always bounded-Firestore-authoritative (Amendment 1).
   // Phase 1A: display taxonomy is Firestore-backed via useGeneratedDesignLibraryTaxonomy.
@@ -265,7 +273,7 @@ export function DesignLibraryPage() {
     total: managedSearchTotal,
   } = useDesignLibraryManagedSearch({
     catalogTags,
-    categoryId: categoryFilter === ALL_FILTER_VALUE ? undefined : categoryFilter,
+    categoryId: managedCategoryId,
     enabled: managedSearchActive,
     needsCompanion: needsCompanionFilter,
     searchQuery: trimmedSearch,
@@ -961,12 +969,21 @@ export function DesignLibraryPage() {
       </section>
 
       <DesignLibraryTagFilterModal
+        algoliaFacetContext={
+          browsingArchived
+            ? null
+            : {
+                categoryId: managedCategoryId,
+                searchQuery: trimmedSearch,
+              }
+        }
         baseDesigns={categoryFilteredDesigns}
         catalogTags={catalogTags}
         isOpen={isTagFilterModalOpen}
         onApply={setSelectedTags}
         onClose={() => setIsTagFilterModalOpen(false)}
         selectedTags={selectedTags}
+        useAlgoliaFacets={!browsingArchived}
       />
 
       <DesignDetailsModal

@@ -19,6 +19,7 @@ export type PermissionKey =
   | "managePrintRequestItems"
   | "viewUpcomingShows"
   | "manageUpcomingShows"
+  | "manageShowQueueSettings"
   | "importWhatnotShows"
   | "openDevTools"
   | "manageGuestCustomers"

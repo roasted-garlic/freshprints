@@ -199,7 +199,32 @@ Cursor MCP token (`BREVO_MCP_TOKEN`).
 
 **Settings AI playground:** Owner/admin users can call `testAiEnrichmentPlayground` from `/settings` for one-off text + image tests. The callable validates model, prompt length, and image type/size; keeps the Gemini call server-side; does not write to `designs`; and fails safely if `GEMINI_API_KEY` is missing.
 
-As of ADR-FP-039/ADR-FP-040 / ADR-FP-113, **AI Processing is a single playground-style call** (prompt version `catalog-enrich-v26`): the saved Settings prompt template is sent with `{{excluded_tags}}` replaced server-side (approved category/tag context is resolved server-side, not injected into the prompt). The model is asked for catalog fields (`description`, a raw `category` candidate, `title`, up to 8 tag candidates, plus transient `readableTextLines` / `centralSubject` used only for title finalization and not persisted on `aiSuggestions`) plus optional complete `suggestedNewTags` objects when no approved tag name or alias is relevant enough, and the default prompt requires full-image text inspection, exact readable-text inclusion in the description, and **complete text-dominant titles** that agree with that wording (contractionsions preserved; description-prose openings rejected; incomplete titles may be completed server-side from structured readable lines or guarded description wording — never the first description sentence). It does **not** send `response_format: { type: "json_object" }`; the server extracts JSON tolerantly (`extractJsonObject`, handling fenced/prose-wrapped output). One normal call per success — no empty-output retry and no quality retry; only the 429/5xx network retry remains. Server-side normalization resolves AI tags against approved global `tags` documents by name/alias, persists matches to `aiSuggestions.tags`, and stores unmatched tokens or valid nonmatching `suggestedNewTags` as `aiSuggestions.suggestedNewTags` for owner/admin review. AI never creates approved tag documents. Category resolution runs server-side after tag resolution (`catalogThemeCategoryResolver.ts`), using the raw model category candidate only as one scoring signal alongside title/description/visible text/matched tags — never persisted directly. The server-side image input keeps `detail: "high"` for both catalog enrichment and the Settings playground. Empty `message.content` responses still log usage and surface a clean `failed` state (`vision_empty_output`) for manual re-run.
+As of ADR-FP-039/ADR-FP-040 / ADR-FP-113 / **ADR-FP-123 (D8-A)**, **AI Processing is a single playground-style call** (prompt version `catalog-enrich-v26`): the saved Settings prompt template is sent with `{{excluded_tags}}` replaced server-side (approved category/tag context is resolved server-side, not injected into the prompt). The model is asked for catalog fields (`description`, a raw `category` candidate, `title`, up to 8 tag candidates, plus transient `readableTextLines` / `centralSubject` used only for title finalization and not persisted on `aiSuggestions`) plus optional complete `suggestedNewTags` objects when no approved tag name or alias is relevant enough, and the default prompt requires full-image text inspection, exact readable-text inclusion in the description, and **complete text-dominant titles** that agree with that wording (contractionsions preserved; description-prose openings rejected; incomplete titles may be completed server-side from structured readable lines or guarded description wording — never the first description sentence). It does **not** send `response_format: { type: "json_object" }`; the server extracts JSON tolerantly (`extractJsonObject`, handling fenced/prose-wrapped output). One normal call per success — no empty-output retry and no quality retry; only the 429/5xx network retry remains. Server-side normalization resolves AI tags against approved global `tags` documents by name/alias, persists matches to `aiSuggestions.tags`, and stores unmatched tokens or valid nonmatching `suggestedNewTags` as `aiSuggestions.suggestedNewTags` for staff review. **D8-A:** existing human/catalog `designs.tags` do **not** consume the 8-tag AI allowance — the pipeline excludes covered concepts (exact + alias) before/after resolve and again after rerank, never removes human tags to satisfy the ceiling, and does not write `designs.tags` in `markAiSuccess`. Category resolution uses existing assigned tags ∪ new AI tags. AI never creates approved tag documents. The server-side image input keeps `detail: "high"` for both catalog enrichment and the Settings playground. Empty `message.content` responses still log usage and surface a clean `failed` state (`vision_empty_output`) for manual re-run.
+
+### Studio Design Library Algolia facets (2026-08-12)
+
+Studio ready-catalog tag modal counts use search-only Algolia `tagFacetKeys` facets (`hitsPerPage: 0`), mirroring Portal. Empty-query + tag/category filters share the managed Algolia result path for Load More. **No Algolia index-settings mutation.** Missing Algolia env fails closed. Archived browse stays page-local (ready index cannot answer).
+
+### Studio Imports batch limits (documentation — Workstream C)
+
+Authoritative constants: `packages/shared/src/constants/import/batchImportLimits.constants.ts` (+ `MAX_SINGLE_PNG_SIZE_BYTES` in `importValidation.constants.ts`). **Do not copy Portal customer-upload limits into Studio.**
+
+| Limit | Value |
+|-------|-------|
+| Max PNGs processed per batch | **500** (`MAX_BATCH_FILES`) |
+| Folder recursion depth | **12** |
+| Folder scan entry ceiling | **10,000** |
+| Folder ZIP archives per batch | **50** |
+| ZIP compressed size | **~2.1 GiB** (`floor(2.1 × 1024³)`) |
+| ZIP entries scanned | **2,000** |
+| Cumulative extracted bytes | **10 GiB** |
+| Compression ratio guard | **100:1** |
+| Nested ZIP depth | **3** |
+| Single PNG size | **150 MB** |
+| PNG validation concurrency | **1** |
+| Upload concurrency | **2** |
+| AI enqueue | **1 sequential** (ADR-FP-014) |
+| Archive handling | Disk-streamed (`yauzl` lazyEntries); malformed individual ZIP does not destroy the whole batch |
 
 ---
 
@@ -228,10 +253,10 @@ As of ADR-FP-039/ADR-FP-040 / ADR-FP-113, **AI Processing is a single playground
 | `archiveStaleRejectedDesigns` | Callable | Owner/admin: soft-archive `status: rejected` designs older than 7 days (`dryRun` supported; ADR-FP-086) |
 | `purgeIdleCustomerUploadFullSize` | Callable | Owner/admin: purge request-upload source+production after show done/idle 14d; keep thumb/preview (`dryRun` supported; ADR-FP-086) |
 | `purgePromotedDonationFullSize` | Callable | Owner/admin: purge donation upload source+production 14d after promote; keep thumb/preview (`dryRun` supported; ADR-FP-086) |
-| `promoteCustomerUploadToAiReview` | Callable | Studio staff (owner/admin): promote ready upload → design `imported` + enqueue AI |
+| `promoteCustomerUploadToAiReview` | Callable | Studio staff (owner/admin/**helper**): promote ready upload → design `imported` + enqueue AI |
 | `excludeCustomerUploadFromCatalog` | Callable | Studio staff: mark upload excluded (keeps request artwork + production assets) |
 | `restoreCustomerUploadCatalogEligibility` | Callable | Studio staff: reverse exclusion → `pending_staff_review` |
-| `retryCustomerUploadProcessing` | Callable | Studio staff (owner/admin): retry eligible technical failures |
+| `retryCustomerUploadProcessing` | Callable | Studio staff (owner/admin/**helper**): retry eligible technical failures |
 | `cleanupAbandonedCustomerUploads` | Callable | Owner/admin: mark stale open batches abandoned; fail unfinished uploads; delete orphan **source** objects only (`dryRun` supported) |
 | `purgeArchivedDesignAssets` | Callable | Owner: archive-first purge of design originals + previews (keep thumbnail; ADR-FP-084) |
 | `getPortalShowPrintProgress` | Callable | Portal: show print progress for customer |

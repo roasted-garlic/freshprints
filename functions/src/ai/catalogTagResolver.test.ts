@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import type { CatalogTag } from "../../../packages/shared/src/types/catalogTag.types";
-import { resolveAiCatalogTags } from "./catalogTagResolver";
+import {
+  filterCandidatesExcludingAssigned,
+  resolveAiCatalogTags,
+  subtractAssignedFromAiTagSuggestions,
+} from "./catalogTagResolver";
 
 function createCatalogTag(input: Partial<CatalogTag> & Pick<CatalogTag, "name">): CatalogTag {
   return {
@@ -659,5 +663,62 @@ describe("catalogTagResolver — suggested-tags last-resort gate", () => {
     assert.equal(result.tags.length, 3);
     assert.equal(result.allMatchesAreWeak, false, "named0 was later confirmed by a strong exact match");
     assert.equal(result.suggestedNewTags.length, 0);
+  });
+});
+
+describe("D8-A assigned tag reconciliation", () => {
+  it("subtracts exact and alias-equivalent assigned tags from AI output", () => {
+    const approvedTags = [
+      createCatalogTag({ name: "cow", aliases: ["cattle", "bovine"] }),
+      createCatalogTag({ name: "summer", aliases: ["beach"] }),
+      createCatalogTag({ name: "music", aliases: [] }),
+    ];
+
+    const reconciled = subtractAssignedFromAiTagSuggestions({
+      approvedTags,
+      assignedTags: ["Cow"],
+      tags: ["cow", "summer", "music"],
+      suggestedNewTags: [
+        { name: "cattle", aliases: [], preferredWhen: "x", reason: "y", source: "ai" },
+        { name: "neon", aliases: [], preferredWhen: "x", reason: "y", source: "ai" },
+      ],
+    });
+
+    assert.deepEqual(reconciled.assignedCanonicalNames, ["cow"]);
+    assert.deepEqual(reconciled.tags, ["summer", "music"]);
+    assert.deepEqual(
+      reconciled.suggestedNewTags.map((tag) => tag.name),
+      ["neon"],
+    );
+  });
+
+  it("filters candidates so the 8-slot allowance stays for additional tags", () => {
+    const approvedTags = [
+      createCatalogTag({ name: "cow", aliases: ["cattle"] }),
+      createCatalogTag({ name: "a" }),
+      createCatalogTag({ name: "b" }),
+      createCatalogTag({ name: "c" }),
+      createCatalogTag({ name: "d" }),
+      createCatalogTag({ name: "e" }),
+      createCatalogTag({ name: "f" }),
+      createCatalogTag({ name: "g" }),
+      createCatalogTag({ name: "h" }),
+      createCatalogTag({ name: "i" }),
+    ];
+
+    const filtered = filterCandidatesExcludingAssigned({
+      approvedTags,
+      assignedTags: ["cow"],
+      candidates: ["cattle", "a", "b", "c", "d", "e", "f", "g", "h", "i"],
+    });
+
+    const resolved = resolveAiCatalogTags({
+      approvedTags,
+      candidates: filtered,
+      maxApprovedTags: 8,
+    });
+
+    assert.ok(!resolved.tags.includes("cow"));
+    assert.equal(resolved.tags.length, 8);
   });
 });

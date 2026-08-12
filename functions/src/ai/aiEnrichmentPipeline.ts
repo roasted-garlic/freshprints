@@ -25,7 +25,9 @@ import {
 } from "./catalogTitleRules";
 import { SIMPLE_ENRICHMENT_MAX_TAGS } from "./aiEnrichmentConfig";
 import {
+  filterCandidatesExcludingAssigned,
   resolveAiCatalogTags,
+  subtractAssignedFromAiTagSuggestions,
   type ResolveAiCatalogTagsResult,
 } from "./catalogTagResolver";
 import { resolveThemeCategory } from "./catalogThemeCategoryResolver";
@@ -120,6 +122,28 @@ interface DesignRecord {
   aiProcessingStage?: string;
   aiReviewStatus?: string;
   status?: string;
+  /** Authoritative human/catalog tags (canonical lowercase names). */
+  tags?: string[];
+}
+
+function applyAssignedTagReconciliation(input: {
+  approvedTags: Parameters<typeof subtractAssignedFromAiTagSuggestions>[0]["approvedTags"];
+  assignedTags: readonly string[] | undefined;
+  tags: string[];
+  suggestedNewTags?: SuggestedNewTag[];
+}): { assignedCanonicalNames: string[]; tags: string[]; suggestedNewTags: SuggestedNewTag[] | undefined } {
+  const reconciled = subtractAssignedFromAiTagSuggestions({
+    approvedTags: input.approvedTags,
+    assignedTags: input.assignedTags,
+    tags: input.tags,
+    suggestedNewTags: input.suggestedNewTags,
+  });
+  return {
+    assignedCanonicalNames: reconciled.assignedCanonicalNames,
+    tags: reconciled.tags,
+    suggestedNewTags:
+      reconciled.suggestedNewTags.length > 0 ? reconciled.suggestedNewTags : undefined,
+  };
 }
 
 async function downloadPreviewBytes(previewPath: string): Promise<Buffer> {
@@ -300,22 +324,44 @@ async function runAiEnrichmentPipelineInternal(
     // Prefer the raw (untokenized) model tags so multi-word approved names and aliases
     // (e.g. "rock and roll") resolve before falling back to suggestions. suggestions.tags is
     // already tokenized into single words, so it is only a fallback when rawTags is absent.
+    // D8-A: existing designs.tags do not consume the 8-tag AI allowance — exclude covered
+    // candidates before resolve, then subtract again after resolve/rerank.
+    const existingDesignTags = Array.isArray(data.tags) ? data.tags : [];
+    const candidatesForResolve = filterCandidatesExcludingAssigned({
+      approvedTags,
+      assignedTags: existingDesignTags,
+      candidates: result.analysis.rawTags ?? suggestions.tags,
+    });
     const resolvedTags = resolveAiCatalogTags({
       approvedTags,
-      candidates: result.analysis.rawTags ?? suggestions.tags,
+      candidates: candidatesForResolve,
       maxApprovedTags: SIMPLE_ENRICHMENT_MAX_TAGS,
       suggestedNewTags: suggestions.suggestedNewTags,
       suggestedNewTagsPolicy: enrichmentSettings.suggestedNewTagsPolicy,
     });
-    suggestions.tags = resolvedTags.tags;
-    suggestions.suggestedNewTags =
-      resolvedTags.suggestedNewTags.length > 0 ? resolvedTags.suggestedNewTags : undefined;
+    const afterResolve = applyAssignedTagReconciliation({
+      approvedTags,
+      assignedTags: existingDesignTags,
+      tags: resolvedTags.tags,
+      suggestedNewTags: resolvedTags.suggestedNewTags,
+    });
+    suggestions.tags = afterResolve.tags;
+    suggestions.suggestedNewTags = afterResolve.suggestedNewTags;
+    const assignedCanonicalNames = afterResolve.assignedCanonicalNames;
 
-    const rerankWillRun = shouldRunTagRerank(enrichmentSettings.tagRerankMode, resolvedTags);
-    const authorWillRun = shouldRunSuggestionAuthor(enrichmentSettings.suggestionAuthorMode, resolvedTags);
+    const rerankWillRun = shouldRunTagRerank(enrichmentSettings.tagRerankMode, {
+      ...resolvedTags,
+      tags: suggestions.tags ?? [],
+      suggestedNewTags: suggestions.suggestedNewTags ?? [],
+    });
+    const authorWillRun = shouldRunSuggestionAuthor(enrichmentSettings.suggestionAuthorMode, {
+      ...resolvedTags,
+      tags: suggestions.tags ?? [],
+      suggestedNewTags: suggestions.suggestedNewTags ?? [],
+    });
 
-    // Candidate names about to become suggestions — already gated by suggestedNewTagsPolicy.
-    const suggestionCandidateNames = resolvedTags.suggestedNewTags.map((tag) => tag.name);
+    // Candidate names about to become suggestions — already gated by suggestedNewTagsPolicy + D8-A.
+    const suggestionCandidateNames = (suggestions.suggestedNewTags ?? []).map((tag) => tag.name);
 
     if (!authorWillRun || suggestionCandidateNames.length === 0) {
       suggestions.suggestionAuthorStatus = "skipped";
@@ -353,9 +399,17 @@ async function runAiEnrichmentPipelineInternal(
           );
 
           suggestions.suggestedNewTags = mergeAuthoredSuggestions(
-            resolvedTags.suggestedNewTags,
+            suggestions.suggestedNewTags ?? [],
             authorResult.suggestions,
           );
+          const afterAuthor = applyAssignedTagReconciliation({
+            approvedTags,
+            assignedTags: existingDesignTags,
+            tags: suggestions.tags ?? [],
+            suggestedNewTags: suggestions.suggestedNewTags,
+          });
+          suggestions.tags = afterAuthor.tags;
+          suggestions.suggestedNewTags = afterAuthor.suggestedNewTags;
           suggestions.suggestionAuthorStatus = "succeeded";
           suggestions.suggestionAuthorPromptTokens = authorResult.promptTokens;
           suggestions.suggestionAuthorCompletionTokens = authorResult.completionTokens;
@@ -390,7 +444,7 @@ async function runAiEnrichmentPipelineInternal(
           title: suggestions.title,
           description: suggestions.description,
           visibleText: result.analysis.visibleText,
-          matchedTags: suggestions.tags,
+          matchedTags: [...new Set([...assignedCanonicalNames, ...(suggestions.tags ?? [])])],
           approvedCategories: categories.categories,
         },
         categories.idsByName,
@@ -453,7 +507,7 @@ async function runAiEnrichmentPipelineInternal(
           // succeeded at all; an empty array just means the model didn't author usable suggestions,
           // which still leaves the server-template fallback in place via mergeAuthoredSuggestions.
           suggestions.suggestedNewTags = mergeAuthoredSuggestions(
-            resolvedTags.suggestedNewTags,
+            suggestions.suggestedNewTags ?? [],
             rerankResult.authoredSuggestions ?? [],
           );
           suggestions.suggestionAuthorStatus = "succeeded";
@@ -473,6 +527,18 @@ async function runAiEnrichmentPipelineInternal(
           });
         }
 
+        // D8-A: subtract assigned tags again after rerank (shortlist can reintroduce them).
+        {
+          const afterRerank = applyAssignedTagReconciliation({
+            approvedTags,
+            assignedTags: existingDesignTags,
+            tags: suggestions.tags ?? [],
+            suggestedNewTags: suggestions.suggestedNewTags,
+          });
+          suggestions.tags = afterRerank.tags;
+          suggestions.suggestedNewTags = afterRerank.suggestedNewTags;
+        }
+
         // uncoveredConcepts may only ever feed suggestedNewTags generation — never a direct final
         // tag. Re-run the resolver once with uncoveredConcepts appended as additional candidates so
         // any genuinely new concept is offered to staff as a normalized, safe suggestion (or dropped
@@ -481,17 +547,26 @@ async function runAiEnrichmentPipelineInternal(
         // AI-authored quality from the merge above) so a fresh uncovered-concept re-run does not
         // clobber that upgrade for candidates unaffected by the new concepts.
         if (rerankResult.uncoveredConcepts.length > 0) {
+          const uncoveredCandidates = filterCandidatesExcludingAssigned({
+            approvedTags,
+            assignedTags: existingDesignTags,
+            candidates: [...(result.analysis.rawTags ?? []), ...rerankResult.uncoveredConcepts],
+          });
           const withUncoveredConcepts = resolveAiCatalogTags({
             approvedTags,
-            candidates: [...(result.analysis.rawTags ?? []), ...rerankResult.uncoveredConcepts],
+            candidates: uncoveredCandidates,
             maxApprovedTags: SIMPLE_ENRICHMENT_MAX_TAGS,
             suggestedNewTags: suggestions.suggestedNewTags,
             suggestedNewTagsPolicy: enrichmentSettings.suggestedNewTagsPolicy,
           });
-          suggestions.suggestedNewTags =
-            withUncoveredConcepts.suggestedNewTags.length > 0
-              ? withUncoveredConcepts.suggestedNewTags
-              : undefined;
+          const afterUncovered = applyAssignedTagReconciliation({
+            approvedTags,
+            assignedTags: existingDesignTags,
+            tags: suggestions.tags ?? [],
+            suggestedNewTags: withUncoveredConcepts.suggestedNewTags,
+          });
+          suggestions.tags = afterUncovered.tags;
+          suggestions.suggestedNewTags = afterUncovered.suggestedNewTags;
         }
       } catch (error) {
         const reason = error instanceof TagRerankError ? error.reason : "network_error";
@@ -530,7 +605,7 @@ async function runAiEnrichmentPipelineInternal(
         title: suggestions.title,
         description: suggestions.description,
         visibleText: result.analysis.visibleText,
-        matchedTags: suggestions.tags,
+        matchedTags: [...new Set([...assignedCanonicalNames, ...(suggestions.tags ?? [])])],
         approvedCategories: categories.categories,
       },
       categories.idsByName,
