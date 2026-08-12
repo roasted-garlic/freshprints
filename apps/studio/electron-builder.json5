@@ -56,13 +56,16 @@
     ],
     // electron-builder converts PNG → ICNS on macOS runners from the approved brand asset.
     "icon": "icon.png",
-    "artifactName": "${productName}-Mac-${version}-Installer.${ext}",
+    // Use hyphenated Fresh-Prints-* names (not "${productName}-...") so GitHub Release
+    // assets match latest.yml / latest-mac.yml paths. Spaced productName filenames become
+    // Fresh.Prints-* under `gh release upload`, which breaks updater downloads.
+    "artifactName": "Fresh-Prints-Mac-${version}-Installer.${ext}",
     "category": "public.app-category.business",
     // Internal-unsigned Mac builds intentionally omit identity/notarization for Studio 1.0.4.
     "identity": null
   },
   "dmg": {
-    "artifactName": "${productName}-Mac-${version}-Installer.${ext}"
+    "artifactName": "Fresh-Prints-Mac-${version}-Installer.${ext}"
   },
   "win": {
     "icon": "icon.ico",
@@ -74,7 +77,7 @@
         ]
       }
     ],
-    "artifactName": "${productName}-Windows-${version}-Setup.${ext}"
+    "artifactName": "Fresh-Prints-Windows-${version}-Setup.${ext}"
   },
   "nsis": {
     "oneClick": false,

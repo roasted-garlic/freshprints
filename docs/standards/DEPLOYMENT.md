@@ -1123,8 +1123,8 @@ Studio releases build **Windows and Mac from the same production SHA** via
 
 | Job | Runner | Artifacts |
 |-----|--------|-----------|
-| `build-windows` | `windows-latest` | `Fresh Prints-Windows-{version}-Setup.exe`, `.blockmap`, `latest.yml` |
-| `build-macos` | `macos-latest` | `Fresh Prints-Mac-{version}-Installer.dmg`, `.zip`, `latest-mac.yml` |
+| `build-windows` | `windows-latest` | `Fresh-Prints-Windows-{version}-Setup.exe`, `.blockmap`, `latest.yml` |
+| `build-macos` | `macos-latest` | `Fresh-Prints-Mac-{version}-Installer.dmg`, `.zip`, `latest-mac.yml` |
 | `finalize-release` | `ubuntu-latest` | Attaches **both** platform sets to one **draft** GitHub Release; fails if either platform or SHA diverges |
 
 - **Architecture:** Apple Silicon **arm64 only** for 1.0.4. Intel x64 / universal are deferred.

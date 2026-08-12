@@ -150,8 +150,17 @@ test("electron-builder Windows NSIS x64 target remains", () => {
   assert.match(builderSource, /Windows-\$\{version\}-Setup/);
 });
 
-test("Mac artifact naming uses Fresh Prints Mac Installer convention", () => {
-  assert.match(builderSource, /Mac-\$\{version\}-Installer/);
+test("Mac artifact naming uses Fresh-Prints Mac Installer convention", () => {
+  assert.match(builderSource, /Fresh-Prints-Mac-\$\{version\}-Installer/);
+});
+
+test("Windows artifact naming uses Fresh-Prints Setup convention", () => {
+  assert.match(builderSource, /Fresh-Prints-Windows-\$\{version\}-Setup/);
+});
+
+test("finalize stages hyphenated asset names before gh release upload", () => {
+  assert.match(workflowSource, /sed 's\/ \/-\/g'/);
+  assert.match(workflowSource, /Fresh\.Prints-\*/);
 });
 
 test("packaged Mac sharp verifier script exists and is referenced by workflow", () => {

@@ -463,22 +463,52 @@ jobs:
             exit 1
           fi
 
-          # Upload/replace assets onto the single draft. --clobber allows reruns.
+          # Stage uploads under hyphenated names that match electron-builder latest.yml paths
+          # and the established Fresh-Prints-* GitHub asset convention. Never upload spaced
+          # "${productName}-..." filenames — GitHub turns spaces into dots (Fresh.Prints-*).
+          UPLOAD_DIR="$(mktemp -d)"
+          stage_asset() {
+            local src="$1"
+            local name
+            name="$(basename "$src" | sed 's/ /-/g')"
+            cp "$src" "$UPLOAD_DIR/$name"
+            echo "$name"
+          }
+          WIN_EXE_NAME="$(stage_asset "$WIN_EXE")"
+          WIN_BLOCKMAP_NAME="$(stage_asset "$WIN_BLOCKMAP")"
+          WIN_YML_NAME="$(stage_asset "$WIN_YML")"
+          MAC_DMG_NAME="$(stage_asset "$MAC_DMG")"
+          MAC_ZIP_NAME="$(stage_asset "$MAC_ZIP")"
+          MAC_YML_NAME="$(stage_asset "$MAC_YML")"
+
+          # Drop any prior mismatched assets on this same-SHA draft (e.g. Fresh.Prints-* from
+          # an earlier finalize attempt) so --clobber cannot leave updater-breaking orphans.
+          EXISTING_ASSETS="$(gh api "repos/${{ github.repository }}/releases/${RELEASE_ID}/assets")"
+          echo "$EXISTING_ASSETS" | jq -r '.[].id' | while read -r asset_id; do
+            if [ -n "$asset_id" ] && [ "$asset_id" != "null" ]; then
+              gh api --method DELETE "repos/${{ github.repository }}/releases/assets/${asset_id}" >/dev/null
+            fi
+          done
+
           gh release upload "$UPLOAD_TAG" \
-            "$WIN_EXE" "$WIN_BLOCKMAP" "$WIN_YML" \
-            "$MAC_DMG" "$MAC_ZIP" "$MAC_YML" \
+            "$UPLOAD_DIR/$WIN_EXE_NAME" \
+            "$UPLOAD_DIR/$WIN_BLOCKMAP_NAME" \
+            "$UPLOAD_DIR/$WIN_YML_NAME" \
+            "$UPLOAD_DIR/$MAC_DMG_NAME" \
+            "$UPLOAD_DIR/$MAC_ZIP_NAME" \
+            "$UPLOAD_DIR/$MAC_YML_NAME" \
             --clobber --repo "${{ github.repository }}"
 
           # Confirm all six required names are present on the draft.
           ASSETS_JSON="$(gh api "repos/${{ github.repository }}/releases/${RELEASE_ID}/assets")"
           echo "$ASSETS_JSON" | jq -r '.[].name' | tee draft-asset-names.txt
           for required in \
-            "$(basename "$WIN_EXE")" \
-            "$(basename "$WIN_BLOCKMAP")" \
-            "latest.yml" \
-            "$(basename "$MAC_DMG")" \
-            "$(basename "$MAC_ZIP")" \
-            "latest-mac.yml"
+            "$WIN_EXE_NAME" \
+            "$WIN_BLOCKMAP_NAME" \
+            "$WIN_YML_NAME" \
+            "$MAC_DMG_NAME" \
+            "$MAC_ZIP_NAME" \
+            "$MAC_YML_NAME"
           do
             if ! grep -Fxq "$required" draft-asset-names.txt; then
               echo "::error::Draft release missing required asset after upload: $required"
