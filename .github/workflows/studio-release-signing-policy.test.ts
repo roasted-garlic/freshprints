@@ -155,7 +155,11 @@ test("Mac artifact naming uses Fresh Prints Mac Installer convention", () => {
 });
 
 test("packaged Mac sharp verifier script exists and is referenced by workflow", () => {
-  assert.match(workflowSource, /verify-packaged-mac-sharp\.mjs/);
+  // From apps/studio/release/<version>/ the script is ../../scripts/...
+  assert.match(
+    workflowSource,
+    /node \.\.\/\.\.\/scripts\/verify-packaged-mac-sharp\.mjs/,
+  );
   const verifier = readFileSync(
     path.join(__dirname, "../../apps/studio/scripts/verify-packaged-mac-sharp.mjs"),
     "utf8",

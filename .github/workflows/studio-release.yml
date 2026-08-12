@@ -341,7 +341,8 @@ jobs:
           unzip -q "$zip" -d unpacked-mac
           app_path=$(find unpacked-mac -maxdepth 3 -name "*.app" -type d | head -n1)
           test -n "$app_path"
-          node ../../../scripts/verify-packaged-mac-sharp.mjs "$app_path"
+          # CWD is apps/studio/release/<version>/ → script lives at apps/studio/scripts/
+          node ../../scripts/verify-packaged-mac-sharp.mjs "$app_path"
           echo "Mac artifacts + packaged sharp OK in $version_dir"
 
       - name: Upload Mac package artifacts
