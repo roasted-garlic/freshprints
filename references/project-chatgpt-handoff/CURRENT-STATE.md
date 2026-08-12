@@ -1,22 +1,20 @@
 # Fresh Prints - Current State Snapshot
 
-## 2026-08-11 — PROD PROMOTION PLAN READY (await owner phrase)
+## 2026-08-12 — Studio 1.0.4 Mac x64+arm64 — STOP for PR #64 merge
 
-**Frozen product candidate:** `qa/prefinal-a-h-dev` @ `3b7a978f324d3c133ead8707ffc51454a20e1f5d` (pushed; product tree clean at freeze)
+| Item | Value |
+|------|-------|
+| Branch head | `adf5eebaa70f080d0266129c3e90d8488996b7ab` |
+| PR | https://github.com/roasted-garlic/freshprints/pull/64 — **open, unmerged** |
+| Validation CI | https://github.com/roasted-garlic/freshprints/actions/runs/31621714795 — **success** |
+| Architecture | Mac **x64 + arm64**, internal-unsigned |
+| Pre-merge release mutation | **None** (`VALIDATION_ONLY_NO_RELEASE_MUTATION=1`) |
 
-| Ref | SHA |
-|-----|-----|
-| production | `913329caefa5cf5041b269da1e5192424d0b95c6` |
-| development | `cd33108506932acb7adc8550c6131c5c8748defa` |
-| candidate | `3b7a978f324d3c133ead8707ffc51454a20e1f5d` |
+### Owner next
+1. Merge PR #64 into `production`
+2. Then authorize post-merge stable dual-platform draft rebuild (not yet)
+3. Do **not** publish Studio 1.0.4 yet
+4. Accidental drafts for cleanup decision: `369384310`, `369391358` (plus leave `369361779` unpublished)
 
-**Plan:** `docs/workflow/plans/2026-08-11-prefinal-a-h-production-promotion-plan.md`  
-**Formal Review:** **approved_with_changes** — `docs/workflow/reviews/2026-08-11-prefinal-a-h-production-promotion-plan-review.md`
-
-### Next owner phrase (does not auto-run)
-
-```
-APPROVE PROD PROMOTE PREFLIGHT: PREFINAL A-H + TRACK B
-```
-
-Still separately gated afterward: Track A APPLY, Studio 1.0.3, domain cutover.
+### Recommended command after merge auth
+`Continue Workflow`
