@@ -23,7 +23,7 @@
 | DEV backend deploy (dev project) | done earlier this phase |
 | Owner DEV QA | **PASS** 2026-08-12 |
 | Focused automated gates | **pass** (see test report) |
-| PR to `production` | open / pending (see return block) |
+| PR to `production` | **#62 open** — https://github.com/roasted-garlic/freshprints/pull/62 |
 | Production Rules / Functions deploy | **blocked** — needs owner phrase |
 | Studio 1.0.4 package / publish | **blocked** — after backend deploy confirmed |
 
