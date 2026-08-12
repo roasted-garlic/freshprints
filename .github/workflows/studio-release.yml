@@ -621,21 +621,31 @@ jobs:
           fi
 
           TAG="v${VERSION}"
-          # Only reuse a draft that already targets this exact build SHA and uses the stable tag
-          # naming (vX.Y.Z). Do NOT match Windows-only historical drafts by release name alone
-          # (e.g. draft 369361779 / untagged-* for 1.0.4 must remain untouched/superseded).
+          SHORT_SHA="$(echo "$BUILD_SHA" | cut -c1-7)"
+          # Prefer an existing draft already pinned to this exact build SHA (any tag).
+          # Do NOT match historical drafts by tag/name alone (369361779 / accidental branch drafts).
           RELEASE_ID="$(gh api "repos/${{ github.repository }}/releases" --paginate \
-            --jq ".[] | select(.draft == true and .target_commitish == \"$BUILD_SHA\" and (.tag_name == \"$TAG\" or .tag_name == \"$VERSION\")) | .id" \
+            --jq ".[] | select(.draft == true and .target_commitish == \"$BUILD_SHA\") | .id" \
             | head -n1 || true)"
 
           if [ -z "$RELEASE_ID" ]; then
+            # Avoid tag collisions with older drafts that still claim tag_name=vX.Y.Z.
+            # `gh release upload <tag>` is ambiguous when multiple drafts share a tag_name;
+            # we upload by release ID below, but creation still needs a unique tag_name.
+            TAG_IN_USE="$(gh api "repos/${{ github.repository }}/releases" --paginate \
+              --jq ".[] | select(.tag_name == \"$TAG\") | .id" | head -n1 || true)"
+            CREATE_TAG="$TAG"
+            if [ -n "$TAG_IN_USE" ]; then
+              CREATE_TAG="${TAG}-${SHORT_SHA}"
+              echo "::warning::Tag ${TAG} already used by release ${TAG_IN_USE}; creating draft with unique tag ${CREATE_TAG} (name remains ${VERSION})."
+            fi
             RELEASE_ID="$(gh api --method POST "repos/${{ github.repository }}/releases" \
-              -f tag_name="$TAG" \
+              -f tag_name="$CREATE_TAG" \
               -f name="$VERSION" \
               -f target_commitish="$BUILD_SHA" \
               -F draft=true \
               -F prerelease=false \
-              -f body="Fresh Prints Studio ${VERSION} (Windows + Mac x64 + Mac arm64). DRAFT — do not publish until dual-platform smoke passes." \
+              -f body="Fresh Prints Studio ${VERSION} (Windows + Mac x64 + Mac arm64). DRAFT — do not publish until dual-platform smoke passes. Build ${BUILD_SHA}." \
               --jq '.id')"
           fi
 
@@ -643,12 +653,17 @@ jobs:
           AFTER="$(echo "$RELEASE_META" | jq -r '.target_commitish')"
           DRAFT="$(echo "$RELEASE_META" | jq -r '.draft')"
           UPLOAD_TAG="$(echo "$RELEASE_META" | jq -r '.tag_name')"
+          UPLOAD_URL="$(echo "$RELEASE_META" | jq -r '.upload_url' | sed 's/{?name,label}//')"
           if [ "$AFTER" != "$BUILD_SHA" ]; then
             echo "::error::Failed to pin draft target_commitish. expected=${BUILD_SHA} actual=${AFTER}"
             exit 1
           fi
           if [ "$DRAFT" != "true" ]; then
             echo "::error::Release ${RELEASE_ID} is not draft=true. Refusing to attach assets to a non-draft release."
+            exit 1
+          fi
+          if [ -z "$UPLOAD_URL" ] || [ "$UPLOAD_URL" = "null" ]; then
+            echo "::error::Missing upload_url for release ${RELEASE_ID}"
             exit 1
           fi
 
@@ -660,12 +675,35 @@ jobs:
             fi
           done < <(echo "$EXISTING_ASSETS" | jq -r '.[].id')
 
-          gh release upload "$UPLOAD_TAG" \
-            "$WIN_EXE" "$WIN_BLOCKMAP" "$WIN_YML" \
-            "$MAC_ARM64_DMG" "$MAC_ARM64_ZIP" \
-            "$MAC_X64_DMG" "$MAC_X64_ZIP" \
-            "$MAC_YML" \
-            --clobber --repo "${{ github.repository }}"
+          # Upload by release ID / upload_url — NEVER by ambiguous shared tag_name (v1.0.4
+          # collisions previously attached assets to the wrong draft).
+          upload_release_asset() {
+            local file="$1"
+            local name
+            name="$(basename "$file")"
+            echo "Uploading ${name} -> release_id=${RELEASE_ID}"
+            HTTP_CODE=$(curl -sS -o /tmp/gh-asset-upload.json -w "%{http_code}" \
+              -X POST \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Content-Type: application/octet-stream" \
+              --data-binary @"${file}" \
+              "${UPLOAD_URL}?name=${name}")
+            if [ "$HTTP_CODE" != "201" ] && [ "$HTTP_CODE" != "200" ]; then
+              echo "::error::Asset upload failed for ${name} http=${HTTP_CODE}"
+              cat /tmp/gh-asset-upload.json || true
+              exit 1
+            fi
+          }
+
+          upload_release_asset "$WIN_EXE"
+          upload_release_asset "$WIN_BLOCKMAP"
+          upload_release_asset "$WIN_YML"
+          upload_release_asset "$MAC_ARM64_DMG"
+          upload_release_asset "$MAC_ARM64_ZIP"
+          upload_release_asset "$MAC_X64_DMG"
+          upload_release_asset "$MAC_X64_ZIP"
+          upload_release_asset "$MAC_YML"
 
           ASSETS_JSON="$(gh api "repos/${{ github.repository }}/releases/${RELEASE_ID}/assets")"
           echo "$ASSETS_JSON" | jq -r '.[].name' | tee draft-asset-names.txt
@@ -674,9 +712,13 @@ jobs:
               echo "::error::Draft release missing required asset after upload: $required"
               exit 1
             fi
+            if [[ "$required" == Fresh.Prints-* ]] || [[ "$required" == *" "* ]]; then
+              echo "::error::Rejecting legacy/spaced asset name on draft: $required"
+              exit 1
+            fi
           done < canonical-asset-names.txt
 
-          echo "FINALIZE_OK release_id=${RELEASE_ID} tag=${TAG} sha=${BUILD_SHA} draft=true"
+          echo "FINALIZE_OK release_id=${RELEASE_ID} tag=${UPLOAD_TAG} sha=${BUILD_SHA} draft=true"
           echo "This workflow does NOT publish the release. Owner publication remains a separate human checkpoint."
 
       - name: Upload combined evidence
