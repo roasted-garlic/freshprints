@@ -124,7 +124,7 @@ describe("caller wiring — attach ≠ pending, donate = pending, queue + alloca
       /applyCustomerUploadStaffReviewTransitionInTransaction\(\s*transaction,/,
     );
     const txBlock = queueSource.match(
-      /await adminDb\.runTransaction\(async \(transaction\) => \{[\s\S]*?\n    \}\);/,
+      /await adminDb\.runTransaction\(async \(transaction\) => \{[\s\S]*?\n {4}\}\);/,
     )?.[0];
     assert.ok(txBlock, "queue transaction block must exist");
     assert.match(
