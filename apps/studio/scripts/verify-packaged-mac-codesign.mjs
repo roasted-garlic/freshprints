@@ -10,7 +10,7 @@
  *
  * Never prints secrets. Requires macOS (codesign).
  */
-import { execFileSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -39,55 +39,50 @@ if (!fs.existsSync(codeResources)) {
 }
 console.log(`PACKAGED_CODERESOURCES_OK=${codeResources}`);
 
-try {
-  execFileSync("codesign", ["-v", "-vvv", "--strict", "--deep", appPath], {
+function runCodesign(args) {
+  const result = spawnSync("codesign", args, {
     encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
+    maxBuffer: 10 * 1024 * 1024,
   });
-  console.log("PACKAGED_CODESIGN_VERIFY_OK=1");
-} catch (err) {
-  const stderr = err && err.stderr ? String(err.stderr) : String(err);
+  // codesign often writes informational output to stderr even on success.
+  const combined = `${result.stdout || ""}${result.stderr || ""}`;
+  return { status: result.status ?? 1, output: combined, error: result.error };
+}
+
+const verify = runCodesign(["-v", "-vvv", "--strict", "--deep", appPath]);
+if (verify.status !== 0) {
   console.error("codesign --strict --deep failed:");
-  console.error(stderr);
+  console.error(verify.output || verify.error);
+  process.exit(1);
+}
+console.log("PACKAGED_CODESIGN_VERIFY_OK=1");
+
+const display = runCodesign(["-d", "-vvv", appPath]);
+if (display.status !== 0 && !display.output) {
+  console.error("codesign -d -vvv failed to produce display output");
+  console.error(display.error || "");
   process.exit(1);
 }
 
-let display = "";
-try {
-  display = execFileSync("codesign", ["-d", "-vvv", appPath], {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-  });
-} catch (err) {
-  // codesign -d writes details to stderr on success on some macOS versions
-  display = err && err.stderr ? String(err.stderr) : "";
-  if (!display) {
-    console.error("codesign -d -vvv failed to produce display output");
-    process.exit(1);
-  }
-}
-
-// Log non-secret identity evidence
-const lines = display.split(/\r?\n/).filter((line) =>
-  /^(Authority|TeamIdentifier|Signature|Identifier|Format|Flags|Runtime Version)=/.test(line) ||
-  line.includes("Signature=") ||
-  line.includes("Authority=") ||
-  line.includes("TeamIdentifier=") ||
-  line.includes("Flags="),
+const text = display.output;
+const interesting = text.split(/\r?\n/).filter((line) =>
+  /Authority|TeamIdentifier|Signature|Identifier|Format|Flags|CodeDirectory|Runtime Version|flags=/i.test(
+    line,
+  ),
 );
-for (const line of lines.slice(0, 40)) {
+for (const line of interesting.slice(0, 40)) {
   console.log(`CODESIGN_DISPLAY: ${line}`);
 }
 
-const lower = display.toLowerCase();
+const lower = text.toLowerCase();
 const looksAdhoc =
   lower.includes("signature=adhoc") ||
-  lower.includes("flags=0x2(adhoc)") ||
-  /\bflags=0x[0-9a-f]*2\(adhoc\)/i.test(display) ||
   lower.includes("authority=adhoc") ||
-  (lower.includes("teamidentifier=not set") && lower.includes("signature=adhoc"));
+  /\bflags=[^\n]*adhoc/i.test(text) ||
+  /\(adhoc\)/i.test(text) ||
+  /flags=0x[0-9a-f]*2\b/i.test(text);
 
-const looksDeveloperId = /developer id application:/i.test(display);
+const looksDeveloperId = /developer id application:/i.test(text);
 
 if (expectedMode === "adhoc") {
   if (looksDeveloperId) {
@@ -95,8 +90,10 @@ if (expectedMode === "adhoc") {
     process.exit(1);
   }
   if (!looksAdhoc) {
-    console.error("Expected ad-hoc signature evidence in codesign -d output (Signature=adhoc / Authority=adhoc)");
-    console.error(display.split(/\r?\n/).slice(0, 30).join("\n"));
+    console.error(
+      "Expected ad-hoc signature evidence in codesign -d output (Signature=adhoc / Authority=adhoc / flags adhoc)",
+    );
+    console.error(text.split(/\r?\n/).slice(0, 40).join("\n"));
     process.exit(1);
   }
   console.log("PACKAGED_CODESIGN_IDENTITY_OK=adhoc");
