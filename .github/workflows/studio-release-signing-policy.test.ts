@@ -33,9 +33,17 @@ test("Windows job runs on windows-latest and Mac job on macos-latest", () => {
 test("Mac packaging builds arm64 and x64 with publish never; Windows keeps NSIS publish never", () => {
   assert.match(workflowSource, /for ARCH in arm64 x64/);
   assert.match(workflowSource, /electron-builder --mac "--\$\{ARCH\}" --publish never/);
-  assert.match(workflowSource, /--win --x64 --publish never/);
+  assert.match(workflowSource, /electron-builder --win --x64 --publish never/);
   assert.doesNotMatch(workflowSource, /--publish always/);
 });
+
+test("Windows packaging retries electron-builder after flaky nsis-resources downloads", () => {
+  assert.match(workflowSource, /nsis-resources-3\.4\.1/);
+  assert.match(workflowSource, /electron-builder Windows attempt/);
+  assert.match(workflowSource, /\$maxAttempts = 3/);
+  assert.match(workflowSource, /curl\.exe -fsSL --retry 8/);
+});
+
 
 test("finalize requires Windows + Mac x64 + Mac arm64 canonical assets", () => {
   assert.match(workflowSource, /Fresh-Prints-Windows-\$\{VERSION\}-Setup\.exe/);

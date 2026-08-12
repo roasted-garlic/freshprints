@@ -180,7 +180,77 @@ jobs:
 
       - name: Build Studio (Windows NSIS + updater metadata, no publish)
         working-directory: apps/studio
-        run: npm run build -- --win --x64 --publish never
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          # Compile once, then retry packaging only. Windows CI has intermittently failed with:
+          #   Get ".../nsis-resources-3.4.1.7z": EOF
+          #   ERR_ELECTRON_BUILDER_CANNOT_EXECUTE
+          # while already building Fresh-Prints-Windows-*-Setup.exe (not a naming/config regression).
+          node scripts/generate-packaged-build-config.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npx tsc
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npx vite build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $cacheRoot = Join-Path $env:LOCALAPPDATA "electron-builder\Cache\nsis"
+          New-Item -ItemType Directory -Force -Path $cacheRoot | Out-Null
+          $prefetch = @(
+            @{
+              File = "nsis-3.0.4.1.7z"
+              Url  = "https://github.com/electron-userland/electron-builder-binaries/releases/download/nsis-3.0.4.1/nsis-3.0.4.1.7z"
+              Dir  = "nsis-3.0.4.1"
+            },
+            @{
+              File = "nsis-resources-3.4.1.7z"
+              Url  = "https://github.com/electron-userland/electron-builder-binaries/releases/download/nsis-resources-3.4.1/nsis-resources-3.4.1.7z"
+              Dir  = "nsis-resources-3.4.1"
+            }
+          )
+          $sevenZip = @(
+            "${env:ProgramFiles}\7-Zip\7z.exe",
+            "${env:ProgramFiles(x86)}\7-Zip\7z.exe"
+          ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+          foreach ($asset in $prefetch) {
+            $destDir = Join-Path $cacheRoot $asset.Dir
+            if (Test-Path $destDir) {
+              Write-Host "NSIS cache hit: $($asset.Dir)"
+              continue
+            }
+            $archive = Join-Path $cacheRoot $asset.File
+            Write-Host "Prefetching $($asset.File) with curl retries"
+            & curl.exe -fsSL --retry 8 --retry-all-errors --retry-delay 5 -o $archive $asset.Url
+            if ($LASTEXITCODE -ne 0) {
+              Write-Warning "Prefetch download failed for $($asset.File); electron-builder retry loop may still succeed"
+              continue
+            }
+            New-Item -ItemType Directory -Force -Path $destDir | Out-Null
+            if ($sevenZip) {
+              & $sevenZip x -y "-o$destDir" $archive | Out-Host
+            } else {
+              # Fallback: leave archive for electron-builder; also try tar if the runner can read 7z.
+              Write-Host "7-Zip not found; leaving archive at $archive for electron-builder download cache"
+            }
+          }
+
+          $attempt = 0
+          $maxAttempts = 3
+          while ($attempt -lt $maxAttempts) {
+            $attempt++
+            Write-Host "electron-builder Windows attempt $attempt of $maxAttempts"
+            npx electron-builder --win --x64 --publish never
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "electron-builder Windows OK on attempt $attempt"
+              exit 0
+            }
+            Write-Warning "electron-builder Windows failed on attempt $attempt (exit=$LASTEXITCODE)"
+            if ($attempt -ge $maxAttempts) {
+              Write-Error "electron-builder Windows failed after $maxAttempts attempts (often nsis-resources download EOF)"
+              exit 1
+            }
+            Start-Sleep -Seconds (20 * $attempt)
+          }
 
       - name: Verify Windows release artifacts
         shell: bash
