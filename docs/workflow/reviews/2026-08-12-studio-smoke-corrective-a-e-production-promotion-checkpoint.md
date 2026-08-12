@@ -8,9 +8,10 @@
 | Do not publish Studio 1.0.4 yet | **yes** |
 | Branch | `hotfix/studio-smoke-corrective-a-e` |
 | Implementation (product) SHA | `13e0af88f843571e3f49eae07899c38a23c90fd4` |
-| Branch tip (docs included) | see latest HEAD after QA commits |
-| Base | `origin/production` |
+| Branch tip (docs included) | `1b35aca9218270ef908b41cc280a1bb80daf6ae1` |
+| Base | `origin/production` (`15c6492322157bf972168635787c8244898bfd9e`) |
 | Target PR base | `production` |
+| PR | https://github.com/roasted-garlic/freshprints/pull/62 |
 
 ---
 
