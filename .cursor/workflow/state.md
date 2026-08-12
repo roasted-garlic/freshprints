@@ -1,27 +1,31 @@
 # Current Goal
-Prefinal A–H + Track B production promote preflight **complete**; **awaiting owner merge of PR #57**. STOP before Storage Rules deploy.
+Studio 1.0.4 macOS **x64 + arm64** release support — amend PR #64; non-mutating CI validation; STOP before merge.
 
 Current Mode: managed-phase
-Current Phase: **implement** (Git promote) — human merge required
+Current Phase: **implement** → **test** (non-mutating CI) → human merge checkpoint
 DONE: **no**
-Last Completed Step: Opened production PR #57; agent merge blocked by Cursor production-merge hook
+Last Completed Step: Dual-arch Mac packaging + validation-only finalize gate + naming fix committed pending push/CI
 Plan Status: complete
-Review Status: approved_with_changes
-Implementation Status: **awaiting_owner_merge**
-Human Checkpoint Required: **yes**
-Human Checkpoint Reason: Owner must merge https://github.com/roasted-garlic/freshprints/pull/57 into `production` (protected/Cursor-blocked for agent)
-Blocked: **no** (waiting on owner merge, not a plan failure)
+Review Status: approved_with_changes (owner architecture amendment: x64+arm64; no pre-merge release mutation)
+Implementation Status: **awaiting_non_mutating_ci**
+Human Checkpoint Required: **yes** (after CI green — merge only; plus later accidental-draft cleanup)
+Human Checkpoint Reason: Owner must merge PR #64 into production after CI green. Do not publish Studio 1.0.4. Do not mutate draft 369361779. Report accidental draft 369384310 for owner cleanup decision.
+Blocked: **no**
 
-Allowed Actions: read docs; await merge; after merge verify tips / reconcile development when authorized
-Forbidden Actions: Storage Rules/Functions/App Hosting/index deploys; Track A dry-run/APPLY; Studio 1.0.3; Algolia mutate; DNS; force-push; bypass merge protections
+Allowed Actions: push branch; dispatch **prerelease/validation-only** studio-release; update PR/docs/reviews/state; await merge
+Forbidden Actions: merge to production; stable release dispatch; publish Studio 1.0.4; mutate/delete drafts without owner checkpoint; Firebase/App Hosting/Algolia/DNS; Apple credentials
 
-Next Required Step: Owner merges PR #57 → then agent (or Continue Workflow) verifies production tip + reconciles `development` → then await `APPROVE PROD DEPLOY: STORAGE RULES STATIC-OG`
+Next Required Step: Push amendment → run prerelease (validation-only) CI → confirm no release mutation → Implementation Review final → STOP for owner merge of PR #64
 
 ## Artifacts
-- Checkpoint: `docs/workflow/reviews/2026-08-11-prefinal-a-h-production-promote-preflight-checkpoint.md`
-- PR: https://github.com/roasted-garlic/freshprints/pull/57
-- Frozen product: `3b7a978f324d3c133ead8707ffc51454a20e1f5d`
+- Plan: `docs/workflow/plans/2026-08-12-studio-1.0.4-macos-release-support-plan.md`
+- Formal Review: `docs/workflow/reviews/2026-08-12-studio-1.0.4-macos-release-support-plan-review.md`
+- Implementation Review: `docs/workflow/reviews/2026-08-12-studio-1.0.4-macos-release-support-implementation-review.md`
+- Mac smoke checklist: `docs/workflow/reviews/2026-08-12-studio-1.0.4-macos-smoke-checklist.md`
+- Branch: `release/studio-1.0.4-macos-support`
+- Base production SHA: `662b5ef7fde11cd2795201e2f14275cc15e74d55`
+- PR: https://github.com/roasted-garlic/freshprints/pull/64
 
 ## Decision Log
-- 2026-08-11: Owner `APPROVE PROD PROMOTE PREFLIGHT: PREFINAL A-H + TRACK B`
-- 2026-08-11: Preflight PASS (docs whitespace-only diff-check note). PR #57 opened. Merge not completed by agent (Cursor hook). No Firebase/App Hosting/APPLY.
+- 2026-08-12: Owner `APPROVE IMPLEMENT` — initially arm64-only + internal-unsigned
+- 2026-08-12: Owner amendment — **x64 + arm64**; stop release retries; **no GitHub Release mutation before production merge**; fix finalize naming; Big Sur Intel required

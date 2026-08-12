@@ -9,8 +9,9 @@
   // Default npmRebuild runs `npm install --production` scoped to apps/studio, but npm
   // workspaces hoist all deps to the repo root (apps/studio has no local node_modules), so that
   // step prunes/corrupts the root tree instead. `sharp` (the only native dep) is externalized
-  // from the Vite bundle already; Mac/Windows CI runners install the matching platform binary
-  // via `npm ci` before packaging, so no native rebuild is needed at package time.
+  // from the Vite bundle already; Mac CI installs the matching darwin-${arch} sharp binary via
+  // prepare-sharp-for-darwin-arch.mjs before each arch package, so no native rebuild is needed
+  // at package time.
   "npmRebuild": false,
   "asar": true,
   // sharp ships platform-native `.node` binaries that must be loadable outside the asar archive.
@@ -39,33 +40,38 @@
     "dist-electron"
   ],
   "mac": {
-    // First Studio Mac release is Apple Silicon only. Intel x64 / universal are deferred.
+    // Studio 1.0.4 ships native Intel (x64) and Apple Silicon (arm64) packages.
+    // Universal is deferred; separate artifacts + merged latest-mac.yml keep updater arch-safe.
     "target": [
       {
         "target": "dmg",
         "arch": [
+          "x64",
           "arm64"
         ]
       },
       {
         "target": "zip",
         "arch": [
+          "x64",
           "arm64"
         ]
       }
     ],
     // electron-builder converts PNG → ICNS on macOS runners from the approved brand asset.
     "icon": "icon.png",
-    // Use hyphenated Fresh-Prints-* names (not "${productName}-...") so GitHub Release
-    // assets match latest.yml / latest-mac.yml paths. Spaced productName filenames become
-    // Fresh.Prints-* under `gh release upload`, which breaks updater downloads.
-    "artifactName": "Fresh-Prints-Mac-${version}-Installer.${ext}",
+    // Space-free, arch-explicit names so GitHub Release assets match updater paths exactly
+    // (spaced "${productName}-..." becomes Fresh.Prints-* under `gh release upload`).
+    "artifactName": "Fresh-Prints-Mac-${arch}-${version}-Installer.${ext}",
     "category": "public.app-category.business",
+    // Electron 30 supports macOS 10.15+; pin Big Sur floor for the owner's Intel Mac (11.7.11).
+    // Do not raise above Big Sur without an explicit owner decision.
+    "minimumSystemVersion": "11.0",
     // Internal-unsigned Mac builds intentionally omit identity/notarization for Studio 1.0.4.
     "identity": null
   },
   "dmg": {
-    "artifactName": "Fresh-Prints-Mac-${version}-Installer.${ext}"
+    "artifactName": "Fresh-Prints-Mac-${arch}-${version}-Installer.${ext}"
   },
   "win": {
     "icon": "icon.ico",
@@ -90,6 +96,6 @@
     "target": [
       "AppImage"
     ],
-    "artifactName": "${productName}-Linux-${version}.${ext}"
+    "artifactName": "Fresh-Prints-Linux-${version}.${ext}"
   }
 }

@@ -1,22 +1,26 @@
 name: Studio release
 
 # Manual trigger only. Never runs on push/PR — stable publication requires a human to press
-# "Run workflow" with an explicit prerelease/stable choice, then separately publish the draft.
+# "Run workflow" with an explicit stable choice against production, then separately publish the draft.
 #
 # Topology (Studio 1.0.4+):
 #   build-windows  → Windows NSIS + latest.yml (publish never)
-#   build-macos    → Mac arm64 DMG+ZIP + latest-mac.yml (publish never)
-#   finalize-release → single draft GitHub Release attaching BOTH platform assets
-# Concurrent electron-builder GitHub publish from two jobs is intentionally avoided
-# (platform jobs use --publish never; finalize attaches assets once).
+#   build-macos    → Mac x64 + arm64 DMG+ZIP (publish never), merged latest-mac.yml
+#   finalize-release →
+#     - ALWAYS verifies dual-platform + dual-arch artifacts (same SHA)
+#     - Mutates a GitHub Release DRAFT ONLY when release_type=stable AND the built SHA is
+#       reachable from origin/production (post-merge). Branch/prerelease runs are validation-only
+#       and must never create or mutate releases.
+# Concurrent electron-builder GitHub publish from platform jobs is intentionally avoided
+# (platform jobs use --publish never; finalize attaches assets once, stable only).
 on:
   workflow_dispatch:
     inputs:
       ref:
-        description: "Git ref to build from (branch, tag, or commit SHA)"
+        description: "Git ref to build from (branch, tag, or commit SHA). Branch refs are validation-only (no GitHub Release mutation)."
         required: true
       release_type:
-        description: "Release type"
+        description: "prerelease = packaging validation only (never mutates GitHub Releases). stable = may create/update a DRAFT only when the built SHA is on production."
         required: true
         type: choice
         options:
@@ -110,7 +114,7 @@ jobs:
         run: npm run typecheck --workspace @fresh-prints/portal
 
       - name: Studio updater unit tests
-        run: npx tsx --test packages/shared/src/studioUpdate/studioUpdateStateTransitions.test.ts packages/shared/src/studioUpdate/studioUpdateErrorMapping.test.ts apps/studio/electron/ipc/studioUpdate/studioUpdateChannel.test.ts apps/studio/electron/ipc/studioUpdate/studioUpdateIpcChannels.test.ts apps/studio/scripts/generate-packaged-build-config.test.ts
+        run: npx tsx --test packages/shared/src/studioUpdate/studioUpdateStateTransitions.test.ts packages/shared/src/studioUpdate/studioUpdateErrorMapping.test.ts apps/studio/electron/ipc/studioUpdate/studioUpdateChannel.test.ts apps/studio/electron/ipc/studioUpdate/studioUpdateIpcChannels.test.ts apps/studio/scripts/generate-packaged-build-config.test.ts apps/studio/scripts/merge-latest-mac-yml.test.ts
 
       - name: Configure Studio Firebase + Algolia environment
         working-directory: apps/studio
@@ -184,13 +188,24 @@ jobs:
         run: |
           set -euo pipefail
           version_dir=$(ls -d */ | head -n1)
+          VERSION=$(basename "$version_dir")
           cd "$version_dir"
-          installer=$(ls *Windows*-Setup.exe | head -n1)
+          installer="Fresh-Prints-Windows-${VERSION}-Setup.exe"
           test -f "$installer"
           test -f "${installer}.blockmap"
           test -f latest.yml
+          if grep -q ' ' <<<"$installer"; then
+            echo "::error::Windows installer name must not contain spaces (GitHub Release turns spaces into dots)."
+            exit 1
+          fi
+          # latest.yml path must match the on-disk installer name exactly.
+          yml_path=$(node -e "const t=require('fs').readFileSync('latest.yml','utf8'); const m=t.match(/^path:\\s*(.+)$/m); process.stdout.write(m?m[1].trim():'')")
+          if [ "$yml_path" != "$installer" ]; then
+            echo "::error::latest.yml path '$yml_path' does not match installer '$installer'"
+            exit 1
+          fi
           sha256sum "$installer" | tee sha256-windows.txt
-          echo "Windows artifacts OK in $version_dir"
+          echo "Windows artifacts OK: $installer"
 
       - name: Upload Windows package artifacts
         uses: actions/upload-artifact@v4
@@ -272,7 +287,7 @@ jobs:
         run: npm run typecheck --workspace @fresh-prints/portal
 
       - name: Studio updater unit tests
-        run: npx tsx --test packages/shared/src/studioUpdate/studioUpdateStateTransitions.test.ts packages/shared/src/studioUpdate/studioUpdateErrorMapping.test.ts apps/studio/electron/ipc/studioUpdate/studioUpdateChannel.test.ts apps/studio/electron/ipc/studioUpdate/studioUpdateIpcChannels.test.ts apps/studio/scripts/generate-packaged-build-config.test.ts
+        run: npx tsx --test packages/shared/src/studioUpdate/studioUpdateStateTransitions.test.ts packages/shared/src/studioUpdate/studioUpdateErrorMapping.test.ts apps/studio/electron/ipc/studioUpdate/studioUpdateChannel.test.ts apps/studio/electron/ipc/studioUpdate/studioUpdateIpcChannels.test.ts apps/studio/scripts/generate-packaged-build-config.test.ts apps/studio/scripts/merge-latest-mac-yml.test.ts
 
       - name: Configure Studio Firebase + Algolia environment
         working-directory: apps/studio
@@ -308,42 +323,92 @@ jobs:
           # Never auto-discover Apple signing identities for Studio 1.0.4 Mac (unsigned internal).
           echo "CSC_IDENTITY_AUTO_DISCOVERY=false" >> "$GITHUB_ENV"
           if [ "$RELEASE_TYPE" != "stable" ]; then
-            echo "Building unsigned Mac prerelease (Apple Developer ID / notarization not configured)."
+            echo "Building unsigned Mac prerelease/validation (Apple Developer ID / notarization not configured)."
             exit 0
           fi
           if [ "$DISTRIBUTION_MODE" = "internal-unsigned" ]; then
-            echo "::warning::INTERNAL-UNSIGNED STABLE BUILD (Mac arm64): this DMG/ZIP is NOT Developer ID signed and is NOT notarized. Gatekeeper may block launch until the owner uses the approved internal open procedure (right-click Open / clear quarantine). Not suitable for public distribution."
+            echo "::warning::INTERNAL-UNSIGNED STABLE BUILD (Mac x64+arm64): DMG/ZIP are NOT Developer ID signed and NOT notarized. Gatekeeper may block launch until the owner uses the approved internal open procedure (right-click Open / clear quarantine). Not suitable for public distribution."
             exit 0
           fi
           echo "::error::Stable Studio Mac releases for 1.0.4 require distribution_mode: internal-unsigned (Apple signing/notarization is deferred). Do not select signed for Mac until a future Apple credential phase."
           exit 1
 
-      - name: Build Studio (Mac arm64 DMG+ZIP + updater metadata, no publish)
+      - name: Build Studio renderer/main once
+        working-directory: apps/studio
+        run: |
+          set -euo pipefail
+          # Produce dist/ + dist-electron/ without packaging so each arch package reuses the same build.
+          node scripts/generate-packaged-build-config.mjs
+          npx tsc
+          npx vite build
+
+      - name: Package Mac arm64 + x64 (native per-arch sharp) and merge updater metadata
+        shell: bash
         working-directory: apps/studio
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
-        run: npm run build -- --mac --arm64 --publish never
-
-      - name: Verify Mac release artifacts and packaged sharp
-        shell: bash
-        working-directory: apps/studio/release
         run: |
           set -euo pipefail
-          version_dir=$(ls -d */ | head -n1)
-          cd "$version_dir"
-          dmg=$(ls *Mac*-Installer.dmg | head -n1)
-          zip=$(ls *Mac*-Installer.zip | head -n1)
-          test -f "$dmg"
-          test -f "$zip"
-          test -f latest-mac.yml
-          shasum -a 256 "$dmg" "$zip" | tee sha256-macos.txt
-          # Unpack ZIP to locate .app for sharp verification (DMG mount is heavier in CI).
-          unzip -q "$zip" -d unpacked-mac
-          app_path=$(find unpacked-mac -maxdepth 3 -name "*.app" -type d | head -n1)
-          test -n "$app_path"
-          # CWD is apps/studio/release/<version>/ → script lives at apps/studio/scripts/
-          node ../../scripts/verify-packaged-mac-sharp.mjs "$app_path"
-          echo "Mac artifacts + packaged sharp OK in $version_dir"
+          VERSION=$(node -p "require('./package.json').version")
+          OUT_ROOT="release/${VERSION}"
+          STAGING="release-staging"
+          mkdir -p "$STAGING/arm64" "$STAGING/x64"
+          HOST_ARCH=$(uname -m)
+          echo "macos-latest host_arch=${HOST_ARCH} (GitHub macos-latest is currently arm64; x64 is cross-packaged)"
+
+          for ARCH in arm64 x64; do
+            echo "::group::Prepare sharp + package Mac ${ARCH}"
+            node scripts/prepare-sharp-for-darwin-arch.mjs "$ARCH"
+            npx electron-builder --mac "--${ARCH}" --publish never
+            DMG="Fresh-Prints-Mac-${ARCH}-${VERSION}-Installer.dmg"
+            ZIP="Fresh-Prints-Mac-${ARCH}-${VERSION}-Installer.zip"
+            test -f "${OUT_ROOT}/${DMG}"
+            test -f "${OUT_ROOT}/${ZIP}"
+            test -f "${OUT_ROOT}/latest-mac.yml"
+            if grep -q ' ' <<<"$DMG$ZIP"; then
+              echo "::error::Mac artifact names must not contain spaces"
+              exit 1
+            fi
+            cp "${OUT_ROOT}/${DMG}" "${OUT_ROOT}/${ZIP}" "${OUT_ROOT}/latest-mac.yml" "$STAGING/${ARCH}/"
+            # Per-arch sharp + Electron arch proof
+            rm -rf "$STAGING/${ARCH}/unpacked"
+            unzip -q "${OUT_ROOT}/${ZIP}" -d "$STAGING/${ARCH}/unpacked"
+            APP_PATH=$(find "$STAGING/${ARCH}/unpacked" -maxdepth 3 -name "*.app" -type d | head -n1)
+            test -n "$APP_PATH"
+            node scripts/verify-packaged-mac-sharp.mjs "$APP_PATH" "$ARCH"
+            # Big Sur floor recorded in Info.plist
+            PLIST="$APP_PATH/Contents/Info.plist"
+            if [ -f "$PLIST" ]; then
+              MIN_VER=$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$PLIST" 2>/dev/null || true)
+              echo "LSMinimumSystemVersion=${MIN_VER:-unknown} for ${ARCH}"
+              case "${MIN_VER}" in
+                11.*|10.15*|10.14*|10.13*) ;;
+                "")
+                  echo "::warning::LSMinimumSystemVersion missing from Info.plist for ${ARCH}"
+                  ;;
+                12.*|13.*|14.*|15.*)
+                  echo "::error::minimumSystemVersion ${MIN_VER} is above Big Sur; Intel Big Sur 11.7.11 must remain supported"
+                  exit 1
+                  ;;
+              esac
+            fi
+            shasum -a 256 "${OUT_ROOT}/${DMG}" "${OUT_ROOT}/${ZIP}" | tee "$STAGING/${ARCH}/sha256-macos-${ARCH}.txt"
+            echo "::endgroup::"
+          done
+
+          node scripts/merge-latest-mac-yml.mjs \
+            "$STAGING/arm64/latest-mac.yml" \
+            "$STAGING/x64/latest-mac.yml" \
+            "$OUT_ROOT/latest-mac.yml"
+          cp "$OUT_ROOT/latest-mac.yml" "$STAGING/latest-mac.yml"
+
+          # Stage canonical artifacts into release dir (exact names, no spaces).
+          cp "$STAGING/arm64/"*.dmg "$STAGING/arm64/"*.zip "$OUT_ROOT/"
+          cp "$STAGING/x64/"*.dmg "$STAGING/x64/"*.zip "$OUT_ROOT/"
+          cp "$STAGING/arm64/"sha256-macos-arm64.txt "$STAGING/x64/"sha256-macos-x64.txt "$OUT_ROOT/"
+
+          echo "Mac dual-arch package OK version=${VERSION}"
+          ls -la "$OUT_ROOT"
 
       - name: Upload Mac package artifacts
         uses: actions/upload-artifact@v4
@@ -351,6 +416,7 @@ jobs:
           name: studio-macos-${{ github.run_id }}
           path: |
             apps/studio/release/**
+            apps/studio/release-staging/**
           retention-days: 14
           if-no-files-found: error
 
@@ -381,6 +447,10 @@ jobs:
             echo "::error::Windows and Mac Studio package.json versions differ ($WIN_VER vs $MAC_VER)."
             exit 1
           fi
+          if [ "$WIN_VER" != "1.0.4" ]; then
+            echo "::error::Expected Studio version 1.0.4 for this release workflow amendment. Got: $WIN_VER"
+            exit 1
+          fi
 
       - uses: actions/checkout@v4
         with:
@@ -399,7 +469,7 @@ jobs:
           name: studio-macos-${{ github.run_id }}
           path: artifacts/macos
 
-      - name: Verify required dual-platform assets and create draft release
+      - name: Verify required dual-platform assets (and draft only when stable+production)
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -413,19 +483,72 @@ jobs:
           test -n "$WIN_DIR"
           test -n "$MAC_DIR"
 
-          WIN_EXE=$(find "$WIN_DIR" -maxdepth 1 -name '*Windows*-Setup.exe' | head -n1)
-          WIN_BLOCKMAP=$(find "$WIN_DIR" -maxdepth 1 -name '*Windows*-Setup.exe.blockmap' | head -n1)
-          WIN_YML=$(find "$WIN_DIR" -maxdepth 1 -name 'latest.yml' | head -n1)
-          MAC_DMG=$(find "$MAC_DIR" -maxdepth 1 -name '*Mac*-Installer.dmg' | head -n1)
-          MAC_ZIP=$(find "$MAC_DIR" -maxdepth 1 -name '*Mac*-Installer.zip' | head -n1)
-          MAC_YML=$(find "$MAC_DIR" -maxdepth 1 -name 'latest-mac.yml' | head -n1)
+          # Canonical, space-free names — do not wildcard-match Fresh.Prints-* mistakes.
+          WIN_EXE="$WIN_DIR/Fresh-Prints-Windows-${VERSION}-Setup.exe"
+          WIN_BLOCKMAP="$WIN_DIR/Fresh-Prints-Windows-${VERSION}-Setup.exe.blockmap"
+          WIN_YML="$WIN_DIR/latest.yml"
+          MAC_ARM64_DMG="$MAC_DIR/Fresh-Prints-Mac-arm64-${VERSION}-Installer.dmg"
+          MAC_ARM64_ZIP="$MAC_DIR/Fresh-Prints-Mac-arm64-${VERSION}-Installer.zip"
+          MAC_X64_DMG="$MAC_DIR/Fresh-Prints-Mac-x64-${VERSION}-Installer.dmg"
+          MAC_X64_ZIP="$MAC_DIR/Fresh-Prints-Mac-x64-${VERSION}-Installer.zip"
+          MAC_YML="$MAC_DIR/latest-mac.yml"
 
-          for f in "$WIN_EXE" "$WIN_BLOCKMAP" "$WIN_YML" "$MAC_DMG" "$MAC_ZIP" "$MAC_YML"; do
-            if [ -z "$f" ] || [ ! -f "$f" ]; then
+          REQUIRED=(
+            "$WIN_EXE" "$WIN_BLOCKMAP" "$WIN_YML"
+            "$MAC_ARM64_DMG" "$MAC_ARM64_ZIP"
+            "$MAC_X64_DMG" "$MAC_X64_ZIP"
+            "$MAC_YML"
+          )
+          for f in "${REQUIRED[@]}"; do
+            if [ ! -f "$f" ]; then
               echo "::error::Missing required dual-platform release asset: $f"
               exit 1
             fi
+            base="$(basename "$f")"
+            if [[ "$base" == *" "* ]]; then
+              echo "::error::Asset name contains spaces (unsafe for GitHub Releases): $base"
+              exit 1
+            fi
+            if [[ "$base" == Fresh.Prints-* ]]; then
+              echo "::error::Rejecting GitHub-normalized dotted product name: $base"
+              exit 1
+            fi
           done
+
+          # Updater metadata must reference arch-explicit Mac ZIP names and the Windows exe.
+          grep -F "Fresh-Prints-Windows-${VERSION}-Setup.exe" "$WIN_YML"
+          grep -F "Fresh-Prints-Mac-arm64-${VERSION}-Installer.zip" "$MAC_YML"
+          grep -F "Fresh-Prints-Mac-x64-${VERSION}-Installer.zip" "$MAC_YML"
+          if grep -E 'Fresh Prints-|Fresh\.Prints-' "$WIN_YML" "$MAC_YML"; then
+            echo "::error::Updater metadata still references spaced or dotted Fresh Prints names"
+            exit 1
+          fi
+
+          printf '%s\n' \
+            "Fresh-Prints-Windows-${VERSION}-Setup.exe" \
+            "Fresh-Prints-Windows-${VERSION}-Setup.exe.blockmap" \
+            "latest.yml" \
+            "Fresh-Prints-Mac-arm64-${VERSION}-Installer.dmg" \
+            "Fresh-Prints-Mac-arm64-${VERSION}-Installer.zip" \
+            "Fresh-Prints-Mac-x64-${VERSION}-Installer.dmg" \
+            "Fresh-Prints-Mac-x64-${VERSION}-Installer.zip" \
+            "latest-mac.yml" \
+            | tee canonical-asset-names.txt
+
+          echo "ARTIFACT_VERIFY_OK sha=${BUILD_SHA} version=${VERSION}"
+
+          # Hard gate: non-stable runs are validation-only and must never mutate GitHub Releases.
+          if [ "$RELEASE_TYPE" != "stable" ]; then
+            echo "VALIDATION_ONLY: release_type=${RELEASE_TYPE} — skipping GitHub Release create/upload/mutate"
+            echo "VALIDATION_ONLY_NO_RELEASE_MUTATION=1" | tee validation-mode.txt
+            exit 0
+          fi
+
+          git fetch origin production --depth=1000
+          if ! git merge-base --is-ancestor "$BUILD_SHA" origin/production; then
+            echo "::error::Stable finalize requires BUILD_SHA to be reachable from origin/production. Refusing GitHub Release mutation for ${BUILD_SHA}."
+            exit 1
+          fi
 
           TAG="v${VERSION}"
           # Only reuse a draft that already targets this exact build SHA and uses the stable tag
@@ -436,17 +559,13 @@ jobs:
             | head -n1 || true)"
 
           if [ -z "$RELEASE_ID" ]; then
-            PRERELEASE_FLAG="false"
-            if [ "$RELEASE_TYPE" = "prerelease" ]; then
-              PRERELEASE_FLAG="true"
-            fi
             RELEASE_ID="$(gh api --method POST "repos/${{ github.repository }}/releases" \
               -f tag_name="$TAG" \
               -f name="$VERSION" \
               -f target_commitish="$BUILD_SHA" \
               -F draft=true \
-              -F prerelease="$PRERELEASE_FLAG" \
-              -f body="Fresh Prints Studio ${VERSION} (Windows + Mac arm64). DRAFT — do not publish until dual-platform smoke passes." \
+              -F prerelease=false \
+              -f body="Fresh Prints Studio ${VERSION} (Windows + Mac x64 + Mac arm64). DRAFT — do not publish until dual-platform smoke passes." \
               --jq '.id')"
           fi
 
@@ -463,58 +582,29 @@ jobs:
             exit 1
           fi
 
-          # Stage uploads under hyphenated names that match electron-builder latest.yml paths
-          # and the established Fresh-Prints-* GitHub asset convention. Never upload spaced
-          # "${productName}-..." filenames — GitHub turns spaces into dots (Fresh.Prints-*).
-          UPLOAD_DIR="$(mktemp -d)"
-          stage_asset() {
-            local src="$1"
-            local name
-            name="$(basename "$src" | sed 's/ /-/g')"
-            cp "$src" "$UPLOAD_DIR/$name"
-            echo "$name"
-          }
-          WIN_EXE_NAME="$(stage_asset "$WIN_EXE")"
-          WIN_BLOCKMAP_NAME="$(stage_asset "$WIN_BLOCKMAP")"
-          WIN_YML_NAME="$(stage_asset "$WIN_YML")"
-          MAC_DMG_NAME="$(stage_asset "$MAC_DMG")"
-          MAC_ZIP_NAME="$(stage_asset "$MAC_ZIP")"
-          MAC_YML_NAME="$(stage_asset "$MAC_YML")"
-
-          # Drop any prior mismatched assets on this same-SHA draft (e.g. Fresh.Prints-* from
-          # an earlier finalize attempt) so --clobber cannot leave updater-breaking orphans.
+          # Replace prior assets on this same-SHA draft only (never touch other drafts).
           EXISTING_ASSETS="$(gh api "repos/${{ github.repository }}/releases/${RELEASE_ID}/assets")"
-          echo "$EXISTING_ASSETS" | jq -r '.[].id' | while read -r asset_id; do
+          while read -r asset_id; do
             if [ -n "$asset_id" ] && [ "$asset_id" != "null" ]; then
               gh api --method DELETE "repos/${{ github.repository }}/releases/assets/${asset_id}" >/dev/null
             fi
-          done
+          done < <(echo "$EXISTING_ASSETS" | jq -r '.[].id')
 
           gh release upload "$UPLOAD_TAG" \
-            "$UPLOAD_DIR/$WIN_EXE_NAME" \
-            "$UPLOAD_DIR/$WIN_BLOCKMAP_NAME" \
-            "$UPLOAD_DIR/$WIN_YML_NAME" \
-            "$UPLOAD_DIR/$MAC_DMG_NAME" \
-            "$UPLOAD_DIR/$MAC_ZIP_NAME" \
-            "$UPLOAD_DIR/$MAC_YML_NAME" \
+            "$WIN_EXE" "$WIN_BLOCKMAP" "$WIN_YML" \
+            "$MAC_ARM64_DMG" "$MAC_ARM64_ZIP" \
+            "$MAC_X64_DMG" "$MAC_X64_ZIP" \
+            "$MAC_YML" \
             --clobber --repo "${{ github.repository }}"
 
-          # Confirm all six required names are present on the draft.
           ASSETS_JSON="$(gh api "repos/${{ github.repository }}/releases/${RELEASE_ID}/assets")"
           echo "$ASSETS_JSON" | jq -r '.[].name' | tee draft-asset-names.txt
-          for required in \
-            "$WIN_EXE_NAME" \
-            "$WIN_BLOCKMAP_NAME" \
-            "$WIN_YML_NAME" \
-            "$MAC_DMG_NAME" \
-            "$MAC_ZIP_NAME" \
-            "$MAC_YML_NAME"
-          do
+          while read -r required; do
             if ! grep -Fxq "$required" draft-asset-names.txt; then
               echo "::error::Draft release missing required asset after upload: $required"
               exit 1
             fi
-          done
+          done < canonical-asset-names.txt
 
           echo "FINALIZE_OK release_id=${RELEASE_ID} tag=${TAG} sha=${BUILD_SHA} draft=true"
           echo "This workflow does NOT publish the release. Owner publication remains a separate human checkpoint."
@@ -529,6 +619,8 @@ jobs:
             artifacts/windows/**/sha256*.txt
             artifacts/macos/**/latest-mac.yml
             artifacts/macos/**/sha256*.txt
+            canonical-asset-names.txt
             draft-asset-names.txt
+            validation-mode.txt
           retention-days: 90
           if-no-files-found: warn

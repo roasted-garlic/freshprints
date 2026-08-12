@@ -30,23 +30,53 @@ test("Windows job runs on windows-latest and Mac job on macos-latest", () => {
   assert.match(workflowSource, /build-macos:[\s\S]*?runs-on:\s*macos-latest/);
 });
 
-test("Mac packaging is arm64 with publish never; Windows keeps NSIS publish never", () => {
-  assert.match(workflowSource, /--mac --arm64 --publish never/);
+test("Mac packaging builds arm64 and x64 with publish never; Windows keeps NSIS publish never", () => {
+  assert.match(workflowSource, /for ARCH in arm64 x64/);
+  assert.match(workflowSource, /electron-builder --mac "--\$\{ARCH\}" --publish never/);
   assert.match(workflowSource, /--win --x64 --publish never/);
   assert.doesNotMatch(workflowSource, /--publish always/);
 });
 
-test("finalize requires Windows exe/blockmap/latest.yml and Mac dmg/zip/latest-mac.yml", () => {
+test("finalize requires Windows + Mac x64 + Mac arm64 canonical assets", () => {
+  assert.match(workflowSource, /Fresh-Prints-Windows-\$\{VERSION\}-Setup\.exe/);
+  assert.match(workflowSource, /Fresh-Prints-Mac-arm64-\$\{VERSION\}-Installer\.dmg/);
+  assert.match(workflowSource, /Fresh-Prints-Mac-arm64-\$\{VERSION\}-Installer\.zip/);
+  assert.match(workflowSource, /Fresh-Prints-Mac-x64-\$\{VERSION\}-Installer\.dmg/);
+  assert.match(workflowSource, /Fresh-Prints-Mac-x64-\$\{VERSION\}-Installer\.zip/);
   assert.match(workflowSource, /latest\.yml/);
   assert.match(workflowSource, /latest-mac\.yml/);
-  assert.match(workflowSource, /\*Windows\*-Setup\.exe/);
-  assert.match(workflowSource, /\*Mac\*-Installer\.dmg/);
-  assert.match(workflowSource, /\*Mac\*-Installer\.zip/);
-  assert.match(workflowSource, /Missing required dual-platform release asset/);
+});
+
+test("finalize naming regression: rejects spaced and Fresh.Prints dotted names", () => {
+  assert.match(workflowSource, /Fresh\.Prints-\*/);
+  assert.match(workflowSource, /Asset name contains spaces/);
+  assert.match(workflowSource, /must not contain spaces/);
+  assert.match(builderSource, /Fresh-Prints-Windows-\$\{version\}-Setup/);
+  assert.match(builderSource, /Fresh-Prints-Mac-\$\{arch\}-\$\{version\}-Installer/);
+  assert.doesNotMatch(builderSource, /\$\{productName\}-Windows/);
+  assert.doesNotMatch(builderSource, /\$\{productName\}-Mac/);
 });
 
 test("finalize fails closed when platform SHAs diverge", () => {
   assert.match(workflowSource, /Windows and Mac builds resolved different SHAs/);
+});
+
+test("non-stable finalize is validation-only and cannot mutate GitHub Releases", () => {
+  assert.match(workflowSource, /VALIDATION_ONLY: release_type=/);
+  assert.match(workflowSource, /VALIDATION_ONLY_NO_RELEASE_MUTATION=1/);
+  // Mutation path must be gated behind stable.
+  const mutateIdx = workflowSource.indexOf('gh api --method POST "repos/${{ github.repository }}/releases"');
+  const validationIdx = workflowSource.indexOf("VALIDATION_ONLY_NO_RELEASE_MUTATION=1");
+  assert.ok(mutateIdx > 0 && validationIdx > 0);
+  assert.ok(validationIdx < mutateIdx, "validation gate must precede release POST");
+  assert.match(workflowSource, /if \[ "\$RELEASE_TYPE" != "stable" \]/);
+});
+
+test("stable finalize additionally requires BUILD_SHA on production", () => {
+  assert.match(
+    workflowSource,
+    /Stable finalize requires BUILD_SHA to be reachable from origin\/production/,
+  );
 });
 
 test("stable Mac rejects signed distribution_mode until Apple credential phase", () => {
@@ -70,6 +100,17 @@ test("workflow does not auto-publish (draft-only finalize)", () => {
 test("stable production reachability guards remain on both platform jobs", () => {
   const guards = workflowSource.match(/git merge-base --is-ancestor HEAD origin\/production/g) || [];
   assert.equal(guards.length, 2);
+});
+
+test("Mac Big Sur floor is pinned and must not rise above 11.x in packaging gate", () => {
+  assert.match(builderSource, /"minimumSystemVersion":\s*"11\.0"/);
+  assert.match(workflowSource, /minimumSystemVersion .* is above Big Sur/);
+});
+
+test("packaged Mac sharp verifier proves each arch independently", () => {
+  assert.match(workflowSource, /verify-packaged-mac-sharp\.mjs "\$APP_PATH" "\$ARCH"/);
+  assert.match(workflowSource, /prepare-sharp-for-darwin-arch\.mjs/);
+  assert.match(workflowSource, /merge-latest-mac-yml\.mjs/);
 });
 
 type DecisionResult =
@@ -109,7 +150,7 @@ test("stable + signed + missing signing credentials fails (Windows)", () => {
 });
 
 test("stable + signed + complete signing credentials reaches the packaging gate (Windows)", () => {
-  assert.equal(decideWindowsSigning("fake-cert", "fake-password", "stable", "signed"), "signed");
+  assert.equal(decideWindowsSigning("link", "pw", "stable", "signed"), "signed");
 });
 
 test("stable + internal-unsigned + missing signing credentials is allowed (Windows)", () => {
@@ -121,7 +162,7 @@ test("stable + internal-unsigned + missing signing credentials is allowed (Windo
 
 test("stable + internal-unsigned + partial signing config still fails closed (Windows)", () => {
   assert.equal(
-    decideWindowsSigning("fake-cert", "", "stable", "internal-unsigned"),
+    decideWindowsSigning("link-only", "", "stable", "internal-unsigned"),
     "fail-incomplete",
   );
 });
@@ -134,12 +175,11 @@ test("prerelease ignores distribution_mode and always builds unsigned (Windows)"
   assert.equal(decideWindowsSigning("", "", "prerelease", "signed"), "unsigned-prerelease");
 });
 
-test("electron-builder Mac is arm64-only with dmg+zip and sharp asarUnpack", () => {
+test("electron-builder Mac is x64+arm64 with dmg+zip and sharp asarUnpack", () => {
   const macBlock = builderSource.slice(builderSource.indexOf('"mac":'), builderSource.indexOf('"win":'));
   assert.match(macBlock, /"target":\s*"dmg"/);
   assert.match(macBlock, /"target":\s*"zip"/);
-  assert.match(macBlock, /"arch":\s*\[\s*"arm64"\s*\]/);
-  assert.doesNotMatch(macBlock, /"x64"/);
+  assert.match(macBlock, /"arch":\s*\[[\s\S]*"x64"[\s\S]*"arm64"/);
   assert.match(builderSource, /asarUnpack/);
   assert.match(builderSource, /node_modules\/sharp/);
   assert.match(macBlock, /"identity":\s*null/);
@@ -147,32 +187,5 @@ test("electron-builder Mac is arm64-only with dmg+zip and sharp asarUnpack", () 
 
 test("electron-builder Windows NSIS x64 target remains", () => {
   assert.match(builderSource, /"target":\s*"nsis"/);
-  assert.match(builderSource, /Windows-\$\{version\}-Setup/);
-});
-
-test("Mac artifact naming uses Fresh-Prints Mac Installer convention", () => {
-  assert.match(builderSource, /Fresh-Prints-Mac-\$\{version\}-Installer/);
-});
-
-test("Windows artifact naming uses Fresh-Prints Setup convention", () => {
   assert.match(builderSource, /Fresh-Prints-Windows-\$\{version\}-Setup/);
-});
-
-test("finalize stages hyphenated asset names before gh release upload", () => {
-  assert.match(workflowSource, /sed 's\/ \/-\/g'/);
-  assert.match(workflowSource, /Fresh\.Prints-\*/);
-});
-
-test("packaged Mac sharp verifier script exists and is referenced by workflow", () => {
-  // From apps/studio/release/<version>/ the script is ../../scripts/...
-  assert.match(
-    workflowSource,
-    /node \.\.\/\.\.\/scripts\/verify-packaged-mac-sharp\.mjs/,
-  );
-  const verifier = readFileSync(
-    path.join(__dirname, "../../apps/studio/scripts/verify-packaged-mac-sharp.mjs"),
-    "utf8",
-  );
-  assert.match(verifier, /ELECTRON_RUN_AS_NODE/);
-  assert.match(verifier, /require\('sharp'\)/);
 });
