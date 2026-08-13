@@ -114,6 +114,7 @@ export {
   cancelPortalAccountDeletionRequest,
 } from "./requestPortalAccountDeletion";
 export { purgeArchivedDesignAssets } from "./purgeArchivedDesignAssets";
+export { deleteEligibleUnapprovedDesign } from "./deleteEligibleUnapprovedDesign";
 export { archiveStaleRejectedDesigns } from "./archiveStaleRejectedDesigns";
 export { purgeIdleCustomerUploadFullSize } from "./purgeIdleCustomerUploadFullSize";
 export { purgePromotedDonationFullSize } from "./purgePromotedDonationFullSize";

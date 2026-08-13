@@ -3,7 +3,19 @@ import type { AiProcessingStage } from "@fresh-prints/shared/types/ai/aiProcessi
 import { formatAiReviewStatusLabel } from "../../designs/utils/aiReviewDisplay";
 import { resolveDesignAiReviewDisplay } from "../../designs/utils/aiReviewState";
 
-export type AiProcessingOutputStatus = "waiting" | "not_generated" | "failed" | "ready";
+export type AiProcessingOutputStatus =
+  | "waiting"
+  | "not_generated"
+  | "derivatives_incomplete"
+  | "failed"
+  | "ready";
+
+/** True when thumbnail and preview paths required for AI/preview are both present. */
+export function designHasRequiredDerivatives(design: Design): boolean {
+  const thumbnailPath = design.thumbnailPath?.trim() ?? "";
+  const previewPath = design.previewPath?.trim() ?? "";
+  return thumbnailPath.length > 0 && previewPath.length > 0;
+}
 
 export type ProcessingPipelineStepState = "complete" | "active" | "pending" | "failed";
 
@@ -176,6 +188,15 @@ export function resolveAiProcessingOutputStatus(design: Design): AiProcessingOut
     return "waiting";
   }
 
+  // CASE 1 / P4 visibility: empty derivative paths must not look like healthy WAITING FOR AI.
+  // Prefer existing persisted fields over a new lifecycle status.
+  if (
+    (design.status === "imported" || design.status === "processing") &&
+    !designHasRequiredDerivatives(design)
+  ) {
+    return "derivatives_incomplete";
+  }
+
   if (design.status === "processing") {
     return "waiting";
   }
@@ -221,6 +242,14 @@ export function getAiProcessingOutputMessage(
     return design?.aiSuggestions?.errorMessage ?? "AI processing failed. Complete metadata manually.";
   }
 
+  if (status === "derivatives_incomplete") {
+    return (
+      "Derivative processing did not complete. Thumbnail and preview are missing, so automatic AI " +
+      "did not start. Start AI cannot run until derivatives succeed — re-import the artwork, or " +
+      "use owner safe-delete for unapproved failed imports."
+    );
+  }
+
   if (status === "ready") {
     return "AI suggestions are ready for review.";
   }
@@ -238,6 +267,10 @@ export function getAiProcessingOutputMessage(
 
 export function getProcessingTabBadgeLabel(design: Design): string {
   const status = resolveAiProcessingOutputStatus(design);
+
+  if (status === "derivatives_incomplete") {
+    return "Derivatives incomplete";
+  }
 
   if (status === "not_generated") {
     return "Waiting for AI";

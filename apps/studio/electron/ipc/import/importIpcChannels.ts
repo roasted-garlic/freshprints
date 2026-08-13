@@ -30,6 +30,10 @@ export const IMPORT_BATCH_JOB_ERROR = "fresh-prints:import:batch-job-error" as c
 export const IMPORT_VERIFY_DERIVATIVE_GENERATION =
   "fresh-prints:import:verify-derivative-generation" as const;
 
+/** Dev-only — derivative locus stage trail → main-process JSONL sink */
+export const IMPORT_LOG_DERIVATIVE_LOCUS_DIAG =
+  "fresh-prints:import:log-derivative-locus-diag" as const;
+
 export const IMPORT_IPC_CHANNELS = {
   SELECT_SINGLE_PNG: IMPORT_SELECT_SINGLE_PNG,
   VALIDATE_SELECTED_PNG: IMPORT_VALIDATE_SELECTED_PNG,
@@ -46,6 +50,7 @@ export const IMPORT_IPC_CHANNELS = {
 
 export const DEV_IMPORT_IPC_CHANNELS = {
   VERIFY_DERIVATIVE_GENERATION: IMPORT_VERIFY_DERIVATIVE_GENERATION,
+  LOG_DERIVATIVE_LOCUS_DIAG: IMPORT_LOG_DERIVATIVE_LOCUS_DIAG,
 } as const;
 
 export const IMPORT_IPC_EVENT_CHANNELS = {

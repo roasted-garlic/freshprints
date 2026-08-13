@@ -29,20 +29,30 @@ if (rawChannel !== "prerelease" && rawChannel !== "stable" && rawChannel !== und
   process.exit(1);
 }
 
+const diagnosticBuild =
+  process.env.STUDIO_DIAGNOSTIC_BUILD === "1" ||
+  process.env.STUDIO_DIAGNOSTIC_BUILD === "true" ||
+  process.env.FP_DERIVATIVE_LOCUS_DIAG === "1" ||
+  process.env.FP_DERIVATIVE_LOCUS_DIAG === "true";
+
 await mkdir(outDir, { recursive: true });
 
 await writeFile(
   outFile,
   `// GENERATED FILE — do not edit by hand. Produced by
 // apps/studio/scripts/generate-packaged-build-config.mjs at build time from the
-// FRESH_PRINTS_UPDATE_CHANNEL environment variable available ONLY during the build itself (not at
-// application runtime). This value is then compiled into the packaged main-process bundle, so the
-// installed application never depends on any environment variable being present when it launches.
+// FRESH_PRINTS_UPDATE_CHANNEL / STUDIO_DIAGNOSTIC_BUILD environment variables available ONLY
+// during the build itself (not at application runtime). These values are then compiled into the
+// packaged main-process bundle, so the installed application never depends on any environment
+// variable being present when it launches.
 export const PACKAGED_UPDATE_CHANNEL: "stable" | "prerelease" = ${JSON.stringify(channel)};
+
+/** When true, packaged Studio retains derivative-locus JSONL diagnostics (DEV evidence builds only). */
+export const PACKAGED_DERIVATIVE_LOCUS_DIAG: boolean = ${diagnosticBuild ? "true" : "false"};
 `,
   "utf8",
 );
 
 console.log(
-  `[generate-packaged-build-config] Wrote packaged update channel "${channel}" to ${path.relative(studioRoot, outFile)}`,
+  `[generate-packaged-build-config] Wrote packaged update channel "${channel}", derivativeLocusDiag=${diagnosticBuild} to ${path.relative(studioRoot, outFile)}`,
 );

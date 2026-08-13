@@ -1,20 +1,25 @@
 # Fresh Prints - Current State Snapshot
 
-## 2026-08-12 — Studio 1.0.4 Mac x64+arm64 — STOP for PR #64 merge
+## 2026-08-13 — P4 implement complete (STOP before DEV deploy)
 
 | Item | Value |
 |------|-------|
-| Branch head | `adf5eebaa70f080d0266129c3e90d8488996b7ab` |
-| PR | https://github.com/roasted-garlic/freshprints/pull/64 — **open, unmerged** |
-| Validation CI | https://github.com/roasted-garlic/freshprints/actions/runs/31621714795 — **success** |
-| Architecture | Mac **x64 + arm64**, internal-unsigned |
-| Pre-merge release mutation | **None** (`VALIDATION_ONLY_NO_RELEASE_MUTATION=1`) |
+| Classification | **P4** (proven) → **fixed in source** (uncommitted) |
+| Branch | `fix/studio-1.0.4-ai-preview-cleanup-corrective` |
+| Baseline HEAD | `c6e9235614b6816a98a71f998b47bd7fe18c371f` |
+| Fix | `designDerivativeCompletionUpdate()` Firestore Rules fast path |
+| Visibility | `derivatives_incomplete` AI Processing state from missing paths |
+| Option B | `deleteEligibleUnapprovedDesign` owner Admin callable + Design Library UI |
+| Implementation Review | `docs/workflow/reviews/2026-08-13-studio-1.0.4-p4-derivative-completion-implementation-review.md` |
+| Draft 369614747 | Untouched |
+| Deploy | **STOP** — awaiting owner DEV auth |
+
+### Tests
+- `npm run test:rules` → 124 pass
+- Focused Studio/shared/Functions unit tests → 47 pass
+- Studio `tsc --noEmit`, Functions `build`, `lint`, `git diff --check` → pass
 
 ### Owner next
-1. Merge PR #64 into `production`
-2. Then authorize post-merge stable dual-platform draft rebuild (not yet)
-3. Do **not** publish Studio 1.0.4 yet
-4. Accidental drafts for cleanup decision: `369384310`, `369391358` (plus leave `369361779` unpublished)
-
-### Recommended command after merge auth
-`Continue Workflow`
+1. Commit implement work when ready
+2. Authorize DEV deploy: `firestore:rules` + `functions:deleteEligibleUnapprovedDesign` only
+3. Run owner DEV QA checklist in Implementation Review

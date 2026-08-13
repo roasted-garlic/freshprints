@@ -204,6 +204,8 @@ export function AiReviewWorkspace({
     autoAdvance && (queueRunState === "running" || queueRunState === "pausing");
   const isSelectedDesignProcessing =
     resolveAiProcessingOutputStatus(selectedDesign) === "waiting";
+  const isSelectedDerivativesIncomplete =
+    resolveAiProcessingOutputStatus(selectedDesign) === "derivatives_incomplete";
   const showIdleProcessingHint =
     activeTab === "processing" &&
     !canRetryProcessing &&
@@ -211,7 +213,8 @@ export function AiReviewWorkspace({
     !canStartAutoQueue &&
     queueRunState === "idle" &&
     !isQueueBusy &&
-    !isSelectedDesignProcessing;
+    !isSelectedDesignProcessing &&
+    !isSelectedDerivativesIncomplete;
 
   return (
     <div className="ai-review-workspace" ref={workspaceTopRef}>
@@ -407,6 +410,14 @@ export function AiReviewWorkspace({
                         {autoAdvance
                           ? "Use Start AI to process the queue one design at a time."
                           : "Select a design and click Process image with AI to begin."}
+                      </p>
+                    ) : null}
+
+                    {isSelectedDerivativesIncomplete ? (
+                      <p className="ai-review-actions-hint" role="status">
+                        Derivatives are incomplete for this design. Start AI is unavailable until
+                        thumbnail and preview processing succeeds — re-import the artwork or use
+                        owner safe-delete for unapproved failed imports.
                       </p>
                     ) : null}
                   </div>
