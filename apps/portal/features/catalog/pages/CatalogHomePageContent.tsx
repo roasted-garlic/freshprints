@@ -7,7 +7,6 @@ import {
   CATALOG_DISCOVERY_MODES,
   getCatalogDiscoveryModeLabel,
   rankCatalogDiscoveryDesigns,
-  selectTopPopularCategoryRails,
   takeCatalogDiscoveryRail,
   type CatalogDiscoveryMode,
 } from '@fresh-prints/shared/utils/catalogDiscoveryRanking';
@@ -66,7 +65,8 @@ export function CatalogHomePageContent() {
   });
 
   const { categories } = useCatalogCategories();
-  const { designs, error, isLoading, readyLibraryCount } = useCatalogHomeDesigns();
+  const { designs, categoryRails: hydratedCategoryRails, error, isLoading, readyLibraryCount } =
+    useCatalogHomeDesigns(categories);
 
   const discoveryRails = useMemo(
     () =>
@@ -85,14 +85,14 @@ export function CatalogHomePageContent() {
 
   const categoryRails = useMemo(
     () =>
-      selectTopPopularCategoryRails(designs, categories).map((rail) => ({
+      hydratedCategoryRails.map((rail) => ({
         key: `category:${rail.categoryId}`,
         title: rail.name,
         designs: rail.designs,
         discover: undefined as CatalogDiscoveryMode | undefined,
         categoryId: rail.categoryId,
       })),
-    [categories, designs],
+    [hydratedCategoryRails],
   );
 
   const homeRails = useMemo(() => [...discoveryRails, ...categoryRails], [categoryRails, discoveryRails]);

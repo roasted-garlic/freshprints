@@ -70,6 +70,8 @@ function serializeCatalogPageCacheKey(listQuery: CatalogDesignListQuery): string
     limitCount: listQuery.limitCount ?? DEFAULT_CATALOG_PAGE_SIZE,
     sortField: listQuery.sortField ?? 'readyAt',
     tag: listQuery.tag ?? null,
+    minFavoriteCount: listQuery.minFavoriteCount ?? null,
+    requireLastAddedToShowAt: listQuery.requireLastAddedToShowAt === true,
   });
 }
 
@@ -320,6 +322,16 @@ function buildDesignFilterConstraints(listQuery: CatalogDesignListQuery): QueryC
     constraints.push(where('createdAt', '>=', Timestamp.fromMillis(listQuery.createdAfterMs)));
   }
 
+  // Most Liked: shared ranking requires favoriteCount > 0 (explicit; not inferred from sortField).
+  if (typeof listQuery.minFavoriteCount === 'number' && listQuery.minFavoriteCount > 0) {
+    constraints.push(where('favoriteCount', '>', listQuery.minFavoriteCount - 1));
+  }
+
+  // Recently Requested: require lastAddedToShowAt present (align list + count + hasMore).
+  if (listQuery.requireLastAddedToShowAt === true) {
+    constraints.push(where('lastAddedToShowAt', '>', Timestamp.fromMillis(0)));
+  }
+
   return constraints;
 }
 
@@ -456,6 +468,14 @@ async function listReadyDesignsPageByClientSortedMembership(
   const pageSize = listQuery.limitCount ?? DEFAULT_CATALOG_PAGE_SIZE;
   const membership: CatalogDesign[] = [];
   let membershipCursor: CatalogDesignListQuery['cursor'] | undefined;
+  // Keep Discover eligibility on membership pages. When an inequality filter is present,
+  // order by that field so Firestore accepts the query (cannot orderBy createdAt alone).
+  const membershipSortField: CatalogDesignSortField =
+    listQuery.requireLastAddedToShowAt === true
+      ? 'lastAddedToShowAt'
+      : typeof listQuery.minFavoriteCount === 'number' && listQuery.minFavoriteCount > 0
+        ? 'favoriteCount'
+        : 'createdAt';
 
   while (membership.length < CLIENT_SORT_MEMBERSHIP_CAP) {
     const membershipPage = await queryReadyDesignsPageFromFirestore(
@@ -463,9 +483,11 @@ async function listReadyDesignsPageByClientSortedMembership(
         categoryId: listQuery.categoryId,
         tag: listQuery.tag,
         search: listQuery.search,
-        // Membership fetch must not carry readyAfterMs / metric orderBy / browse cursor.
+        minFavoriteCount: listQuery.minFavoriteCount,
+        requireLastAddedToShowAt: listQuery.requireLastAddedToShowAt,
+        // Membership fetch must not carry readyAfterMs / browse cursor from the outer page.
         limitCount: Math.min(48, CLIENT_SORT_MEMBERSHIP_CAP - membership.length),
-        sortField: 'createdAt',
+        sortField: membershipSortField,
         cursor: membershipCursor,
       },
       'catalogService.listReadyDesignsPage.clientSortedMembership',
@@ -568,6 +590,10 @@ function catalogListTraceMetadata(
     listQuery.tag?.trim() ? 'tags array-contains {tag}' : '',
     typeof listQuery.readyAfterMs === 'number' ? 'readyAt>={timestamp}' : '',
     typeof listQuery.createdAfterMs === 'number' ? 'createdAt>={timestamp}' : '',
+    typeof listQuery.minFavoriteCount === 'number' && listQuery.minFavoriteCount > 0
+      ? 'favoriteCount>{min}'
+      : '',
+    listQuery.requireLastAddedToShowAt === true ? 'lastAddedToShowAt>{epoch}' : '',
   ].filter(Boolean);
 
   return {
@@ -790,14 +816,22 @@ export const catalogService = {
     return this.getReadyDesignsByIds(ids);
   },
 
-  /** Exact count of ready designs matching category / primary tag / new-this-week bounds. */
+  /** Exact count of ready designs matching category / primary tag / new-this-week / metric eligibility. */
   async countReadyDesigns(listQuery: CatalogDesignListQuery = {}): Promise<number> {
     const constraints: QueryConstraint[] = [...buildDesignFilterConstraints(listQuery)];
-    // NTW (readyAt inequality): mirror list orderBy so getCountFromServer uses existing
-    // status + readyAt DESC composites (ASC-only implicit order would miss those indexes).
+    // Inequality filters: mirror list orderBy so getCountFromServer uses existing DESC composites.
     const usesReadyAtInequality = typeof listQuery.readyAfterMs === 'number';
+    const usesFavoriteCountInequality =
+      typeof listQuery.minFavoriteCount === 'number' && listQuery.minFavoriteCount > 0;
+    const usesLastAddedToShowAtInequality = listQuery.requireLastAddedToShowAt === true;
     if (usesReadyAtInequality) {
       constraints.push(orderBy('readyAt', 'desc'));
+      constraints.push(orderBy('__name__', 'desc'));
+    } else if (usesFavoriteCountInequality) {
+      constraints.push(orderBy('favoriteCount', 'desc'));
+      constraints.push(orderBy('__name__', 'desc'));
+    } else if (usesLastAddedToShowAtInequality) {
+      constraints.push(orderBy('lastAddedToShowAt', 'desc'));
       constraints.push(orderBy('__name__', 'desc'));
     }
 
@@ -805,10 +839,17 @@ export const catalogService = {
       collection(getPortalDb(), PORTAL_FIRESTORE_COLLECTIONS.designs),
       ...constraints,
     );
+    const countOrderBy = usesReadyAtInequality
+      ? (['readyAt:desc', '__name__:desc'] as const)
+      : usesFavoriteCountInequality
+        ? (['favoriteCount:desc', '__name__:desc'] as const)
+        : usesLastAddedToShowAtInequality
+          ? (['lastAddedToShowAt:desc', '__name__:desc'] as const)
+          : undefined;
     const traceMetadata = {
       ...catalogListTraceMetadata(listQuery, 'catalogService.countReadyDesigns'),
       limit: undefined,
-      orderBy: usesReadyAtInequality ? (['readyAt:desc', '__name__:desc'] as const) : undefined,
+      orderBy: countOrderBy,
     };
     traceFirestoreOneShotStart('getCountFromServer', traceMetadata);
     const snapshot = await getCountFromServer(countQuery);

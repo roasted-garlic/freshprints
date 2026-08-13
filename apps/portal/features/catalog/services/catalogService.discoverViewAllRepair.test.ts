@@ -158,4 +158,9 @@ describe('Discover View All repair helpers (Popular + category ready-order)', ()
     assert.match(service, /!listQuery\.skipClientSortRepair/);
     assert.match(service, /home merges pools and client-ranks/);
   });
+
+  it('membership repair preserves metric eligibility flags', () => {
+    assert.match(service, /minFavoriteCount: listQuery\.minFavoriteCount/);
+    assert.match(service, /requireLastAddedToShowAt: listQuery\.requireLastAddedToShowAt/);
+  });
 });
