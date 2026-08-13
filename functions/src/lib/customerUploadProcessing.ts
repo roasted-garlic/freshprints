@@ -24,12 +24,11 @@ import {
   resolveImportUpscaleTargetPx,
 } from "../../../packages/shared/src/utils/printSizeMath";
 import { buildImageQualitySizingMetadata } from "../../../packages/shared/src/utils/imageQualitySizingPolicy";
+import { CUSTOMER_UPLOAD_MIN_TRIM_SHRINK_RATIO } from "../../../packages/shared/src/utils/customerUploadTransparency";
 import {
-  assessMeaningfulTransparency,
-  CUSTOMER_UPLOAD_MIN_TRANSPARENT_PIXEL_RATIO,
-  CUSTOMER_UPLOAD_MIN_TRIM_SHRINK_RATIO,
-  CUSTOMER_UPLOAD_TRANSPARENT_ALPHA_MAX,
-} from "../../../packages/shared/src/utils/customerUploadTransparency";
+  MEANINGFUL_TRANSPARENCY_DECODE_MAX_INPUT_PIXELS,
+  measureMeaningfulTransparency,
+} from "../../../packages/shared/src/utils/meaningfulTransparencyMeasurement";
 
 import { storageObjectPath } from "./storageObjectPath";
 import { getSharp } from "./lazySharp";
@@ -47,8 +46,10 @@ export { storageObjectPath };
  * memory-safe ceiling; the actual product-level ceiling
  * (`CUSTOMER_UPLOAD_MAX_DIMENSION_PX`/`CUSTOMER_UPLOAD_MAX_TOTAL_PIXELS`) is enforced afterward,
  * against post-trim dimensions, by `processCustomerUploadImageBytes` itself.
+ *
+ * Shared with Studio import via `MEANINGFUL_TRANSPARENCY_DECODE_MAX_INPUT_PIXELS`.
  */
-export const CUSTOMER_UPLOAD_DECODE_MAX_INPUT_PIXELS = 0x3fff * 0x3fff;
+export const CUSTOMER_UPLOAD_DECODE_MAX_INPUT_PIXELS = MEANINGFUL_TRANSPARENCY_DECODE_MAX_INPUT_PIXELS;
 
 export interface CustomerUploadProcessingSuccess {
   ok: true;
@@ -190,59 +191,6 @@ function detectFormatAllowingJpeg(
 function isAnimated(metadata: Metadata): boolean {
   const pages = metadata.pages ?? 1;
   return pages > 1;
-}
-
-async function countTransparentPixelsSampled(
-  input: Buffer,
-  sourceWidth: number,
-  sourceHeight: number,
-): Promise<{ hasAlpha: boolean; transparentPixelCount: number; sampleWidth: number; sampleHeight: number }> {
-  const maxSide = Math.max(sourceWidth, sourceHeight);
-  const sampleMax = 800;
-  let pipeline = getSharp()(input, { failOn: "error" }).ensureAlpha();
-  if (maxSide > sampleMax) {
-    pipeline = pipeline.resize({
-      width: sourceWidth >= sourceHeight ? sampleMax : undefined,
-      height: sourceHeight > sourceWidth ? sampleMax : undefined,
-      fit: "inside",
-      withoutEnlargement: true,
-    });
-  }
-
-  const { data, info } = await pipeline.raw().toBuffer({ resolveWithObject: true });
-  if (info.channels < 4) {
-    return {
-      hasAlpha: false,
-      transparentPixelCount: 0,
-      sampleWidth: info.width,
-      sampleHeight: info.height,
-    };
-  }
-
-  const earlyExitCount = Math.ceil(
-    info.width * info.height * CUSTOMER_UPLOAD_MIN_TRANSPARENT_PIXEL_RATIO,
-  );
-  let transparentPixelCount = 0;
-  for (let i = 3; i < data.length; i += info.channels) {
-    if (data[i] < CUSTOMER_UPLOAD_TRANSPARENT_ALPHA_MAX) {
-      transparentPixelCount += 1;
-      if (transparentPixelCount >= earlyExitCount) {
-        return {
-          hasAlpha: true,
-          transparentPixelCount,
-          sampleWidth: info.width,
-          sampleHeight: info.height,
-        };
-      }
-    }
-  }
-
-  return {
-    hasAlpha: true,
-    transparentPixelCount,
-    sampleWidth: info.width,
-    sampleHeight: info.height,
-  };
 }
 
 /**
@@ -658,73 +606,16 @@ export async function processCustomerUploadImageBytes(
   await stageTimer.enter("checking_transparency");
 
   const hasAlphaMeta = Boolean(metadata.hasAlpha);
-  let trimmedProbe: Awaited<ReturnType<typeof trimTransparentEdges>> | null = null;
-  let transparency = assessMeaningfulTransparency({
-    hasAlphaChannel: hasAlphaMeta,
-    widthPx: sourceWidthPx,
-    heightPx: sourceHeightPx,
-    transparentPixelCount: 0,
+  const transparency = await measureMeaningfulTransparency(getSharp(), sourceBytes, {
+    decodeMaxInputPixels: CUSTOMER_UPLOAD_DECODE_MAX_INPUT_PIXELS,
+    skipQualityGates,
   });
 
-  // Fast path: sample alpha on a downscaled copy (avoids full-resolution raw decode).
-  if (hasAlphaMeta && !skipQualityGates) {
-    try {
-      const sample = await countTransparentPixelsSampled(
-        sourceBytes,
-        sourceWidthPx,
-        sourceHeightPx,
-      );
-      transparency = assessMeaningfulTransparency({
-        hasAlphaChannel: sample.hasAlpha || hasAlphaMeta,
-        widthPx: sample.sampleWidth,
-        heightPx: sample.sampleHeight,
-        transparentPixelCount: sample.transparentPixelCount,
-      });
-    } catch {
+  if (!transparency.passed && !skipQualityGates) {
+    if (transparency.failureCode === "transparency_check_failed") {
       return fail("transparency_check_failed", "Could not validate image transparency.");
     }
-  }
-
-  // Only run the expensive full trim when sampling did not already prove transparency. This is
-  // still validation, not production trimming, so it deliberately stays inside the
-  // checking_transparency stage rather than entering "trimming" — otherwise a rejected upload
-  // could show "Trimming transparent edges…" moments before being rejected.
-  if (!transparency.passed && !skipQualityGates) {
-    try {
-      trimmedProbe = await trimTransparentEdges(sourceBytes, sourceWidthPx, sourceHeightPx);
-    } catch {
-      return fail("transparency_check_failed", "Could not validate image transparency.");
-    }
-
-    const trimShrinkRatioWidth =
-      trimmedProbe.originalWidth > 0
-        ? (trimmedProbe.originalWidth - trimmedProbe.width) / trimmedProbe.originalWidth
-        : 0;
-    const trimShrinkRatioHeight =
-      trimmedProbe.originalHeight > 0
-        ? (trimmedProbe.originalHeight - trimmedProbe.height) / trimmedProbe.originalHeight
-        : 0;
-
-    transparency = assessMeaningfulTransparency({
-      hasAlphaChannel: hasAlphaMeta || trimmedProbe.wasTrimmed,
-      widthPx: sourceWidthPx,
-      heightPx: sourceHeightPx,
-      transparentPixelCount: 0,
-      trimShrinkRatioWidth,
-      trimShrinkRatioHeight,
-    });
-  }
-
-  if (!transparency.passed && !skipQualityGates) {
     return fail("background_not_transparent", "Background is not transparent.");
-  }
-
-  if (skipQualityGates && !transparency.passed) {
-    // Staff art may be opaque; treat as passed for persistence without failing the ingest.
-    transparency = {
-      passed: true,
-      transparentPixelRatio: transparency.transparentPixelRatio,
-    };
   }
 
   let productionBase: Buffer;
@@ -733,12 +624,7 @@ export async function processCustomerUploadImageBytes(
   let wasTrimmed = false;
   let productionReusedSource = false;
 
-  if (trimmedProbe?.wasTrimmed) {
-    productionBase = trimmedProbe.bytes;
-    productionWidth = trimmedProbe.width;
-    productionHeight = trimmedProbe.height;
-    wasTrimmed = true;
-  } else if (sourceFormat === "png" && hasAlphaMeta) {
+  if (sourceFormat === "png" && hasAlphaMeta) {
     // Transparent PNG: probe for empty margins; full trim only when needed; else keep source bytes.
     const needsTrim = await probeNeedsTransparentEdgeTrim(
       sourceBytes,

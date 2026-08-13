@@ -24,17 +24,22 @@ import {
   formatPrintSizeTerribleMessage,
 } from "@fresh-prints/shared/utils/importPrintSizeMessages";
 import { formatPngSizeLimitExceededMessage } from "@fresh-prints/shared/utils/importLimitMessages";
+import { evaluateImportPngMeaningfulTransparency } from "../../services/import/importMeaningfulTransparencyCheck";
 import { trimImportImageIfNeeded } from "../../services/import/trimImportImage";
 import { upscaleImportImageIfNeeded } from "../../services/import/upscaleImportImage";
 import { getFileExtension, getFileName, hasAllowedExtension } from "./importPathUtils";
 import { parsePngMetadata } from "./pngParser";
 import { cacheCorrectedImportBytes } from "./correctedImportBytesCache";
 import { buildImageQualitySizingMetadata } from "@fresh-prints/shared/utils/imageQualitySizingPolicy";
+import type { ImportFileRejectionReasonCode } from "@fresh-prints/shared/types/import/batchImport.types";
 
 export class PngValidationError extends Error {
-  constructor(message: string) {
+  readonly reasonCode?: ImportFileRejectionReasonCode;
+
+  constructor(message: string, reasonCode?: ImportFileRejectionReasonCode) {
     super(message);
     this.name = "PngValidationError";
+    this.reasonCode = reasonCode;
   }
 }
 
@@ -166,6 +171,17 @@ export async function validatePngFile(filePath: string): Promise<ValidateSelecte
 
   const fileBuffer = await readFile(filePath);
   const metadata = parsePngMetadata(fileBuffer);
+
+  // Meaningful transparency on source bytes — before trim/upscale/Storage/design/AI.
+  const transparency = await evaluateImportPngMeaningfulTransparency(fileBuffer);
+  if (!transparency.ok) {
+    throw new PngValidationError(
+      transparency.message,
+      transparency.reasonCode === "TRANSPARENCY_CHECK_FAILED"
+        ? "VALIDATION_ERROR"
+        : "BACKGROUND_NOT_TRANSPARENT",
+    );
+  }
 
   const trimResult = await trimImportImageIfNeeded(fileBuffer);
 
