@@ -47,3 +47,9 @@ build/
 
 # Reference material and external-AI handoff package (not app code)
 references/
+
+.tools/
+
+
+.hotfix-studio-launch-proof.txt
+

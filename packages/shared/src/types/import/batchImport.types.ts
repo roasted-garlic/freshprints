@@ -62,7 +62,8 @@ export type ImportFileRejectionReasonCode =
   | "ZIP_EXTRACTED_SIZE_EXCEEDED"
   | "DPI_TOO_LOW"
   | "DIMENSION_OUT_OF_BOUNDS"
-  | "PRINT_SIZE_INSUFFICIENT";
+  | "PRINT_SIZE_INSUFFICIENT"
+  | "BACKGROUND_NOT_TRANSPARENT";
 
 export interface ImportFileRejection {
   reasonCode: ImportFileRejectionReasonCode;
