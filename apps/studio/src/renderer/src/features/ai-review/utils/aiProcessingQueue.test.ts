@@ -22,6 +22,7 @@ function createDesign(overrides: Partial<Design> = {}): Design {
     status: "imported",
     originalPath: "/originals/design-1.png",
     thumbnailPath: "/thumbnails/design-1.webp",
+    previewPath: "/previews/design-1.webp",
     uploadedBy: "user-1",
     queueCount: 0,
     aiProcessed: false,
@@ -41,6 +42,14 @@ describe("aiProcessingQueueEligibility", () => {
 
     assert.equal(resolveAiProcessingOutputStatus(design), "not_generated");
     assert.equal(isDesignAwaitingAiStart(design), true);
+    assert.equal(isDesignAiProcessingInProgress(design), false);
+  });
+
+  it("does not treat missing-derivative imports as awaiting AI start", () => {
+    const design = createDesign({ thumbnailPath: "", previewPath: undefined });
+
+    assert.equal(resolveAiProcessingOutputStatus(design), "derivatives_incomplete");
+    assert.equal(isDesignAwaitingAiStart(design), false);
     assert.equal(isDesignAiProcessingInProgress(design), false);
   });
 

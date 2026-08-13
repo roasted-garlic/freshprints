@@ -25,6 +25,7 @@ function createDesign(overrides: Partial<Design> = {}): Design {
     status: "imported",
     originalPath: "/originals/design-1.png",
     thumbnailPath: "/thumbnails/design-1.webp",
+    previewPath: "/previews/design-1.webp",
     uploadedBy: "user-1",
     queueCount: 0,
     aiProcessed: false,
@@ -149,6 +150,19 @@ describe("aiProcessingOutput", () => {
     assert.equal(
       resolveAiProcessingOutputStatus(createDesign({ aiReviewStatus: "needs_review" })),
       "not_generated",
+    );
+  });
+
+  it("returns derivatives_incomplete when imported design lacks thumb/preview paths", () => {
+    assert.equal(
+      resolveAiProcessingOutputStatus(
+        createDesign({ thumbnailPath: "", previewPath: undefined, aiReviewStatus: "pending" }),
+      ),
+      "derivatives_incomplete",
+    );
+    assert.match(
+      getAiProcessingOutputMessage("derivatives_incomplete"),
+      /derivative processing did not complete/i,
     );
   });
 

@@ -31,6 +31,7 @@ export type PermissionKey =
   | "manageAiReview"
   | "wipeOperationalTestData"
   | "purgeArchivedDesignAssets"
+  | "deleteEligibleUnapprovedDesigns"
   | "submitCustomerRequests"
   | "viewOwnCustomerRequests";
 

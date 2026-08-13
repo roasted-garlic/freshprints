@@ -1,61 +1,51 @@
 ## Current Goal
-phase-9-custom-request-results-and-routing-remediation
+studio-1.0.4-ai-processing-preview-cleanup-corrective
 
 ## Current Mode
 managed-phase
 
 ## Phase
-signoff — PR opened; awaiting owner merge authorization
+test / implementation-review complete — STOP before DEV deploy
 
 ## Plan Status
-complete — Discover/catalog only (scope corrected 2026-08-13)
+complete
 
 ## Review Status
-final Implementation Review approved (Discover-only)
+approved_with_changes (Formal) + approved_with_notes (Implementation Review)
 
 ## Implementation Status
-complete — Discover-only; committed on branch
+complete (uncommitted on branch)
 
 ## Test Status
-passed_with_notes — focused catalog 78 pass; owner Discover QA PASS
+passed
 
 ## Signoff Status
-pending — PR open; merge requires separate owner authorization
+pending — blocked on DEV deploy auth + DEV QA
 
 ## Human Checkpoint Required
 yes
 
 ## Human Checkpoint Reason
-PR created. Await owner merge authorization. Do not merge/deploy without explicit auth.
+Authorize DEV deploy of firestore:rules + functions:deleteEligibleUnapprovedDesign only; then owner DEV QA. No production mutation.
 
 ## Allowed Actions
-Await owner merge authorization; report CI; read docs
+Read docs; prepare deploy commands; await owner auth; record feedback
 
 ## Forbidden Actions
-Merge PR; production deploy; Functions/Rules/indexes/Algolia/Studio draft mutation
+DEV/prod deploy without owner auth; draft 369614747; prod fixture cleanup; speculative Sharp/IPC fixes
 
 ## Next Required Step
-Await owner AUTHORIZE MERGE (or equivalent)
+Owner: commit (optional) then authorize DEV deploy matrix in Implementation Review
 
 ## DONE
 no
 
-## Last Completed Step
-Committed Discover-only diff; created PR against production
-
-## Authoritative Production SHA (at PR open)
-975f6400262a86600c4662f39480c6f55e20b0c1
-
-## Implementation Branch
-fix/phase9-results-and-discover-remediation
-
-## Scope Correction
-docs/workflow/reviews/2026-08-13-phase-9-discover-only-scope-correction.md
-
-## Final Implementation Review
-docs/workflow/reviews/2026-08-13-phase-9-discover-only-final-implementation-review.md
-
 ## Decision Log
-- 2026-08-13 — Owner CREATE PR for Discover-only corrective against production.
-- 2026-08-13 — origin/production still 975f640; no rebase required.
-- 2026-08-13 — Etsy/Assisted excluded from commit; Phase 9 Etsy work retired for this goal.
+- 2026-08-13 — Owner: CONTINUE WORKFLOW IMPLEMENT P4 + FAILURE VISIBILITY (+ Option B after)
+- 2026-08-13 — Implement complete: designDerivativeCompletionUpdate + visibility + Option B; Implementation Review approved_with_notes; STOP before DEV deploy
+
+## Artifacts
+- Plan: docs/workflow/plans/2026-08-13-studio-1.0.4-ai-processing-preview-cleanup-corrective-plan.md
+- Formal Review: docs/workflow/reviews/2026-08-13-studio-1.0.4-ai-processing-preview-cleanup-corrective-review.md
+- P4 checkpoint: docs/workflow/reviews/2026-08-13-studio-1.0.4-packaged-dev-diagnostic-ui-results-p4.md
+- Implementation Review: docs/workflow/reviews/2026-08-13-studio-1.0.4-p4-derivative-completion-implementation-review.md
