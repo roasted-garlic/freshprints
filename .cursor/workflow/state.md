@@ -1,32 +1,61 @@
-# Current Goal
-Studio 1.0.4 macOS **x64 + arm64** release support — implementation + non-mutating CI **PASS**; **await owner merge of PR #64**.
+## Current Goal
+phase-9-custom-request-results-and-routing-remediation
 
-Current Mode: managed-phase
-Current Phase: **implement complete** → human merge checkpoint
-DONE: **no**
-Last Completed Step: Validation CI run 31621714795 success (Windows + Mac x64/arm64 + validation-only finalize); Implementation Review approved_with_notes
-Plan Status: complete
-Review Status: approved_with_changes
-Implementation Status: **complete_awaiting_owner_merge**
-Human Checkpoint Required: **yes**
-Human Checkpoint Reason: Owner must merge https://github.com/roasted-garlic/freshprints/pull/64 into `production`. Do not publish Studio 1.0.4. Do not run stable release until after merge. Do not mutate draft 369361779.
-Blocked: **no**
+## Current Mode
+managed-phase
 
-Allowed Actions: read docs; await merge authorization; after merge verify tip / run stable draft only when owner authorizes
-Forbidden Actions: merge to production without owner phrase; publish Studio 1.0.4; stable release without post-merge auth; Firebase/App Hosting/Algolia/DNS; auto-delete drafts
+## Phase
+signoff — PR opened; awaiting owner merge authorization
 
-Next Required Step: **STOP — await owner merge of PR #64** (then Continue Workflow for post-merge stable draft rebuild)
+## Plan Status
+complete — Discover/catalog only (scope corrected 2026-08-13)
 
-## Artifacts
-- Plan: `docs/workflow/plans/2026-08-12-studio-1.0.4-macos-release-support-plan.md`
-- Formal Review: `docs/workflow/reviews/2026-08-12-studio-1.0.4-macos-release-support-plan-review.md`
-- Implementation Review: `docs/workflow/reviews/2026-08-12-studio-1.0.4-macos-release-support-implementation-review.md`
-- Mac smoke checklist: `docs/workflow/reviews/2026-08-12-studio-1.0.4-macos-smoke-checklist.md`
-- Branch: `release/studio-1.0.4-macos-support` @ `adf5eebaa70f080d0266129c3e90d8488996b7ab`
-- Base production SHA: `662b5ef7fde11cd2795201e2f14275cc15e74d55`
-- PR: https://github.com/roasted-garlic/freshprints/pull/64
-- Validation CI: https://github.com/roasted-garlic/freshprints/actions/runs/31621714795
+## Review Status
+final Implementation Review approved (Discover-only)
+
+## Implementation Status
+complete — Discover-only; committed on branch
+
+## Test Status
+passed_with_notes — focused catalog 78 pass; owner Discover QA PASS
+
+## Signoff Status
+pending — PR open; merge requires separate owner authorization
+
+## Human Checkpoint Required
+yes
+
+## Human Checkpoint Reason
+PR created. Await owner merge authorization. Do not merge/deploy without explicit auth.
+
+## Allowed Actions
+Await owner merge authorization; report CI; read docs
+
+## Forbidden Actions
+Merge PR; production deploy; Functions/Rules/indexes/Algolia/Studio draft mutation
+
+## Next Required Step
+Await owner AUTHORIZE MERGE (or equivalent)
+
+## DONE
+no
+
+## Last Completed Step
+Committed Discover-only diff; created PR against production
+
+## Authoritative Production SHA (at PR open)
+975f6400262a86600c4662f39480c6f55e20b0c1
+
+## Implementation Branch
+fix/phase9-results-and-discover-remediation
+
+## Scope Correction
+docs/workflow/reviews/2026-08-13-phase-9-discover-only-scope-correction.md
+
+## Final Implementation Review
+docs/workflow/reviews/2026-08-13-phase-9-discover-only-final-implementation-review.md
 
 ## Decision Log
-- 2026-08-12: Owner `APPROVE IMPLEMENT` — then amended to **x64 + arm64** + no pre-merge release mutation
-- 2026-08-12: Validation CI green; agent STOP before merge
+- 2026-08-13 — Owner CREATE PR for Discover-only corrective against production.
+- 2026-08-13 — origin/production still 975f640; no rebase required.
+- 2026-08-13 — Etsy/Assisted excluded from commit; Phase 9 Etsy work retired for this goal.

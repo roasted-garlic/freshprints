@@ -20,13 +20,15 @@ describe('countReadyDesigns NTW index alignment (TD-031 corrective)', () => {
     assert.match(countBlock, /buildDesignFilterConstraints/);
   });
 
-  it('B: orderBy alignment is gated on readyAfterMs (not forced onto all counts)', () => {
+  it('B: inequality orderBy is gated (NTW / metric eligibility — not forced onto all counts)', () => {
     assert.match(
       countBlock,
       /usesReadyAtInequality[\s\S]*orderBy\('readyAt', 'desc'\)/,
     );
-    // Equality-only counts still start from filter constraints only when flag is false.
-    assert.match(countBlock, /usesReadyAtInequality \? \(\['readyAt:desc'/);
+    assert.match(countBlock, /usesFavoriteCountInequality/);
+    assert.match(countBlock, /usesLastAddedToShowAtInequality/);
+    // Equality-only counts still omit orderBy when no inequality flags apply.
+    assert.match(countBlock, /usesReadyAtInequality[\s\S]*countOrderBy/);
   });
 
   it('production indexes remain readyAt DESC (no speculative ASC index in this corrective)', () => {

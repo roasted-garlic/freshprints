@@ -134,6 +134,81 @@ test('ordinary browse and metric Discover modes do not set readyAfterMs', () => 
   );
 });
 
+test('Most Liked and Recently Requested set explicit eligibility flags', () => {
+  const mostLiked = buildServerListQuery({ discoveryMode: 'mostLiked', selectedTags: [] });
+  assert.equal(mostLiked.minFavoriteCount, 1);
+  assert.equal(mostLiked.requireLastAddedToShowAt, undefined);
+
+  const recent = buildServerListQuery({ discoveryMode: 'recent', selectedTags: [] });
+  assert.equal(recent.requireLastAddedToShowAt, true);
+  assert.equal(recent.minFavoriteCount, undefined);
+
+  const popular = buildServerListQuery({ discoveryMode: 'popular', selectedTags: [] });
+  assert.equal(popular.minFavoriteCount, undefined);
+  assert.equal(popular.requireLastAddedToShowAt, undefined);
+
+  const ntw = buildServerListQuery({ discoveryMode: 'new', selectedTags: [] });
+  assert.equal(ntw.minFavoriteCount, undefined);
+  assert.equal(ntw.requireLastAddedToShowAt, undefined);
+});
+
+test('Recently Requested: 2 eligible with matching aggregate → hasMore false (no Load more)', () => {
+  const loaded = designsFromIds(['r1', 'r2']);
+  const reconciled = reconcilePagingWithAggregateCount({
+    loadedDesigns: loaded,
+    listHasMore: false,
+    listNextCursor: undefined,
+    aggregateTotal: 2,
+    sortField: 'lastAddedToShowAt',
+  });
+  assert.equal(reconciled.hasMore, false);
+  assert.equal(reconciled.nextCursor, undefined);
+  assert.equal(reconciled.isFullyHydrated, true);
+
+  const badge = resolveOrdinaryMatchingCount({
+    countAuthority: { status: 'resolved', total: 2 },
+    loadedCount: 2,
+    isFullyHydrated: true,
+  });
+  assert.equal(badge, 2);
+});
+
+test('Recently Requested: inflated all-ready aggregate still forced hasMore before eligibility fix pattern', () => {
+  // Documents the bug class: when aggregate (all ready) exceeds eligible loaded set,
+  // reconcile would force hasMore. After eligibility-scoped counts, aggregate matches loaded.
+  const loaded = designsFromIds(['r1', 'r2']);
+  const buggy = reconcilePagingWithAggregateCount({
+    loadedDesigns: loaded,
+    listHasMore: false,
+    listNextCursor: undefined,
+    aggregateTotal: 366,
+    sortField: 'lastAddedToShowAt',
+  });
+  assert.equal(buggy.hasMore, true);
+
+  const fixed = reconcilePagingWithAggregateCount({
+    loadedDesigns: loaded,
+    listHasMore: false,
+    listNextCursor: undefined,
+    aggregateTotal: 2,
+    sortField: 'lastAddedToShowAt',
+  });
+  assert.equal(fixed.hasMore, false);
+});
+
+test('Recently Requested multi-page: first page of 40 with aggregate 45 keeps hasMore', () => {
+  const page1 = designsFromIds(Array.from({ length: PAGE_SIZE }, (_, i) => `r${i + 1}`));
+  const reconciled = reconcilePagingWithAggregateCount({
+    loadedDesigns: page1,
+    listHasMore: true,
+    listNextCursor: { designId: 'r40', sortValue: page1[39]!.readyAtMs! },
+    aggregateTotal: 45,
+    sortField: 'lastAddedToShowAt',
+  });
+  assert.equal(reconciled.hasMore, true);
+  assert.ok(reconciled.nextCursor);
+});
+
 test('A: 45-result NTW — badge authority is 45 while first page is 40', () => {
   const page1 = designsFromIds(Array.from({ length: PAGE_SIZE }, (_, i) => `d${i + 1}`));
   assert.equal(page1.length, 40);
@@ -423,13 +498,27 @@ test('J containment: Home rails still use listHomeDiscoveryPool; placeholder cou
   const source = readFileSync('apps/portal/features/catalog/hooks/useCatalogDesigns.ts', 'utf8');
   const homeStart = source.indexOf('export function useCatalogHomeDesigns');
   const homeEnd = source.indexOf('export function useFilteredCatalogDesigns');
-  const homeBlock = source.slice(homeStart, homeEnd >= 0 ? homeEnd : homeStart + 2500);
+  const homeBlock = source.slice(homeStart, homeEnd >= 0 ? homeEnd : homeStart + 4500);
   assert.match(homeBlock, /listHomeDiscoveryPool/);
   assert.match(homeBlock, /fetchReadyDesignCountWithRetry/);
   assert.match(homeBlock, /countReadyDesigns/);
   assert.match(homeBlock, /readyLibraryCount/);
   // Aggregate failure must not advertise pool length.
   assert.match(homeBlock, /Never fall back to hydrated home-pool length/);
+  // Category rails: select from pool then hydrate via bounded category list.
+  assert.match(homeBlock, /selectTopPopularCategoryRails/);
+  assert.match(homeBlock, /listReadyDesignsPageWithSortFallback/);
+  assert.match(homeBlock, /CATALOG_DISCOVERY_RAIL_LIMIT/);
+});
+
+test('CatalogHomePageContent consumes hydrated category rails (not pool-only designs)', () => {
+  const page = readFileSync(
+    'apps/portal/features/catalog/pages/CatalogHomePageContent.tsx',
+    'utf8',
+  );
+  assert.match(page, /hydratedCategoryRails|categoryRails:/);
+  assert.match(page, /useCatalogHomeDesigns\(categories\)/);
+  assert.doesNotMatch(page, /selectTopPopularCategoryRails\(designs/);
 });
 
 test('Discover search placeholder uses aggregate readyLibraryCount, never designs.length', () => {
