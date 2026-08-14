@@ -1,5 +1,19 @@
 # Recent Completed Work
 
+## 2026-08-13 - Studio 1.0.4 P4 PUBLISHED; repository consolidation closeout (local)
+
+| Item | Status |
+|------|--------|
+| Production tip / PRODUCTION_BEFORE | `e59205d7eccf0991e9a8a9b7be266cfeff831158` (PR #70) — **immutable this closeout** |
+| Prod Firebase | `firestore:rules` + `deleteEligibleUnapprovedDesign` **DEPLOYED** |
+| Release | **370305556** published — tag `v1.0.4-e59205d` |
+| Dual-platform smoke | **PASS** (Windows + Mac arm64 + Mac x64) |
+| Draft 369614747 | Historical anomaly — **do not restore** |
+| Prod fixtures (8) | **Already gone** (verified; APPLY idempotent) |
+| Closeout | Local merge prod→dev on `closeout/prod-into-development` (`2414c21`) + docs evidence cherry-picks — **push pending** |
+| Phase 9 | **Parked** |
+| Domain cutover | **Gated** |
+
 ## 2026-08-13 - Studio 1.0.4 P4 AI preview cleanup corrective — DEV QA PASS (development integration)
 
 Managed goal `studio-1.0.4-ai-processing-preview-cleanup-corrective`.
@@ -12,9 +26,9 @@ Managed goal `studio-1.0.4-ai-processing-preview-cleanup-corrective`.
 | Corrective HEAD | `9414aed4a5fefbd266648e3601e61af8ef363e10` |
 | Owner DEV QA | **PASS** (pipeline + permanent delete + immediate list remove + banner OFF) |
 | DEV deploy | `firestore:rules` + `functions:deleteEligibleUnapprovedDesign` on `fresh-prints-dev` |
-| Production | **NOT YET PROMOTED** |
-| Draft 369614747 | Untouched (failed-smoke evidence only; do not reuse) |
-| Prod fixtures | Untouched |
+| Production | **PROMOTED** via PR #70 @ `e59205d7` (see publish banner above) |
+| Draft 369614747 | Historical anomaly / failed-smoke evidence — do not restore |
+| Prod fixtures | Already gone (verified) |
 
 Checkpoints: `docs/workflow/reviews/2026-08-13-studio-1.0.4-p4-dev-qa-checkpoint.md`, `docs/workflow/reviews/2026-08-13-studio-1.0.4-option-b-ui-discoverability-checkpoint.md`
 

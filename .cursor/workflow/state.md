@@ -1,52 +1,70 @@
 ## Current Goal
-studio-1.0.4-ai-processing-preview-cleanup-corrective
+repository-consolidation-closeout (Studio 1.0.4 P4 release lineage into development)
 
 ## Current Mode
 managed-phase
 
 ## Phase
-await development PR merge — then clean production promotion branch
+repository consolidation closeout — production lineage merged into development (local branch; push pending)
 
 ## Plan Status
-complete
+n/a — operational closeout
 
 ## Review Status
-approved_with_notes
+n/a
 
 ## Implementation Status
-complete — corrective frozen + integrated on integrate branch
+complete — Studio 1.0.4 P4 published; prod Firebase deployed; fixtures verified gone; reconciling git lineages
 
 ## Test Status
-passed_with_notes — focused 37; rules 124; studio tsc; functions build; lint 0
+passed_with_notes — owner dual-platform smoke PASS on release 370305556; fixture cleanup verify idempotent
 
 ## Signoff Status
-pending — development PR merge + production promote + Firebase + NEW 1.0.4 draft
+pending — finish repo consolidation (push/PR to development when authorized); Phase 9 parked; domain cutover gated
 
 ## Human Checkpoint Required
 yes
 
 ## Human Checkpoint Reason
-1) Create/merge PR integrate → development (gh CLI unavailable in agent shell). 2) Authorize clean production promotion branch (not broad development→production). 3) Later: prod Firebase + NEW draft. Draft 369614747 untouched.
+Closeout in progress: do not push yet until overnight steps complete. PRODUCTION_BEFORE must remain `e59205d7`. Domain cutover still requires `APPROVE MYPRINTREQUEST.COM CUTOVER`. Phase 9 remains parked.
 
 ## Allowed Actions
-Await human PR merge; prepare clean production branch when authorized; record decisions
+Local git reconcile on closeout branch; docs truth updates; ancestry checks. STOP before push to development/production unless explicitly authorized.
 
 ## Forbidden Actions
-Force push; direct push to development/production; production Firebase deploy; mutate draft 369614747; prod fixture cleanup; bake diagnostic flags
+Force push; reset/rewrite `production`; push to `production`; mutate published release artifacts; reopen Phase 9 without explicit start; domain cutover without phrase
 
 ## Next Required Step
-Owner/ChatGPT: open+merge PR integrate/studio-1.0.4-corrective-into-development → development; then authorize clean production promotion from origin/production + corrective commits only
+Local reconcile complete (merge `2414c21` + docs evidence cherry-picks). Await authorization to push/PR `closeout/prod-into-development` → `development`. Do not touch `production` (`e59205d7`).
 
 ## DONE
 no
 
-## Key SHAs
-| Ref | SHA |
-|-----|-----|
-| Corrective HEAD | `9414aed4a5fefbd266648e3601e61af8ef363e10` |
-| Starting origin/development | `0605c6c156450e71886c839c16b4a548af7877fc` |
-| Integration tip (pushed) | `803879e` + audit commit (see HEAD after push) |
-| Worktree | `C:\coding\fresh-prints-wt-dev-studio104-integrate` |
+## Decision Log
+| Date | Decision |
+|------|----------|
+| 2026-08-13 | PR #69 merged corrective into development @ `2119d415`. |
+| 2026-08-13 | PR #70 merged clean promote to production @ `e59205d7eccf0991e9a8a9b7be266cfeff831158`. |
+| 2026-08-13 | Production Firebase COMPLETE: `firestore:rules` + `deleteEligibleUnapprovedDesign` on `fresh-prints-prod` from `e59205d7`. |
+| 2026-08-13 | NEW dual-platform release **370305556** (`v1.0.4-e59205d`, commitish `e59205d7`) built; owner smoke **PASS**; **published**. |
+| 2026-08-13 | Historical draft **369614747** anomaly (failed-smoke evidence / absence) — do not restore. |
+| 2026-08-13 | Prod smoke fixtures allowlist check: all 8 **already gone**; APPLY idempotent skips + post-verify. |
+| 2026-08-13 | Overnight closeout: reconcile `origin/production` into development lineage; **PRODUCTION_BEFORE stays `e59205d7`**. Phase 9 parked; domain cutover gated. |
 
-## Artifacts
-- `docs/workflow/reviews/2026-08-13-studio-1.0.4-corrective-development-integration-and-prod-audit.md`
+## Facts
+| Item | Value |
+|------|-------|
+| Owner DEV QA | **PASS** |
+| Development baseline (pre-merge) | `2119d4154c2c2e98cffa17d184012cc136cb3437` |
+| Production tip / PRODUCTION_BEFORE | `e59205d7eccf0991e9a8a9b7be266cfeff831158` (**immutable this closeout**) |
+| Production Firebase Rules | **DEPLOYED** to `fresh-prints-prod` |
+| `deleteEligibleUnapprovedDesign` | **DEPLOYED** to `fresh-prints-prod` |
+| Studio 1.0.4 release | **370305556** published — tag `v1.0.4-e59205d` |
+| Owner dual-platform smoke | **PASS** (Windows + Mac arm64 + Mac x64) |
+| Draft 369614747 | Historical anomaly / failed-smoke evidence — **do not restore** |
+| Production fixtures (8 smoke) | **Already gone** (verified; cleanup APPLY idempotent) |
+| Closeout branch | `closeout/prod-into-development` @ `C:\coding\fresh-prints-wt-closeout-reconcile` |
+| Merge commit (prod→dev lineage) | `2414c21110acc656f51e2fdef92031b2a98dcdab` |
+| Phase 9 | **Parked** |
+| Domain cutover | **Gated** until `APPROVE MYPRINTREQUEST.COM CUTOVER` |
+

@@ -185,9 +185,23 @@ Each contributor's clone must run this once. Contains no secret or credential. W
 Windows (the hook is a POSIX shell script executed by the `sh.exe` bundled with Git for Windows,
 the same mechanism Git uses for all hook scripts on Windows).
 
+### Local checkout policy (development-first)
+
+`development` is the default local working branch for every ordinary session.
+
+1. After clone, after pulling, and after any temporary inspection of `production` (or another
+   release tip), switch back to `development` before continuing work:
+   `git switch development` (or `git checkout development`).
+2. Do not leave a long-lived local checkout on `production` for feature work, docs edits, or
+   day-to-day agent sessions.
+3. Inspecting `origin/production` for ancestry, release SHAs, or diff gates is fine; committing or
+   pushing from a `production` checkout is not part of ordinary workflow (promotion is PR-only).
+4. Worktrees used for release packaging or production-only verification should be named and
+   disposed of as such; the primary repo working tree remains on `development`.
+
 ### Development workflow
 
-1. Start all ordinary work on `development`.
+1. Start all ordinary work on `development` (see local checkout policy above).
 2. Test normal work against `fresh-prints-dev`.
 3. Commit and push ongoing work to `origin/development`.
 4. Do not perform ordinary feature work on `production`.
