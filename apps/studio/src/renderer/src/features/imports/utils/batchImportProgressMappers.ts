@@ -51,7 +51,8 @@ export function buildUploadWarning(report: {
 
   if (report.summary.derivativeFailedCount > 0) {
     messages.push(
-      `${report.summary.derivativeFailedCount} design(s) were imported without completed derivatives.`,
+      `${report.summary.derivativeFailedCount} design(s) were imported (original saved) but derivative ` +
+        `processing failed — automatic AI did not start for those designs.`,
     );
   }
 

@@ -239,14 +239,21 @@ export function postponeStudioUpdate(): StudioUpdateState {
 }
 
 export function startPeriodicStudioUpdateChecks(): void {
-  if (!isUpdateCapable() || periodicCheckTimer) {
-    return;
-  }
+  // Diagnostic packaged builds must not poll GitHub release feeds (avoids touching draft 369614747).
+  void import("../../generated/packagedBuildConfig").then(({ PACKAGED_DERIVATIVE_LOCUS_DIAG }) => {
+    if (PACKAGED_DERIVATIVE_LOCUS_DIAG) {
+      return;
+    }
 
-  void checkForStudioUpdate();
-  periodicCheckTimer = setInterval(() => {
+    if (!isUpdateCapable() || periodicCheckTimer) {
+      return;
+    }
+
     void checkForStudioUpdate();
-  }, CHECK_INTERVAL_MS);
+    periodicCheckTimer = setInterval(() => {
+      void checkForStudioUpdate();
+    }, CHECK_INTERVAL_MS);
+  });
 }
 
 export function stopPeriodicStudioUpdateChecks(): void {

@@ -160,7 +160,7 @@ export const showQueueSettingsService = {
       gangSheetLabelFontSizePx?: number;
     },
   ): Promise<ShowQueueSettings> {
-    if (!permissionService.canManageUpcomingShows(caller)) {
+    if (!permissionService.canManageShowQueueSettings(caller)) {
       throw new Error("You do not have permission to manage Show Queue settings.");
     }
 

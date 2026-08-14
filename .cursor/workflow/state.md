@@ -1,28 +1,67 @@
-# Current Goal
-Prefinal A–H + Track B **Git promote complete** (PR #57 merged). Permanent `development` reconciled. **STOP** before Storage Rules deploy.
+## Current Goal
+studio-1.0.4-ai-processing-preview-cleanup-corrective
 
-Current Mode: managed-phase
-Current Phase: **implement** (Git done) → await Storage Rules phrase
-DONE: **no**
-Last Completed Step: Verified `origin/production` @ `c3a61bf` contains freeze `3b7a978`; reconciled `development`
-Plan Status: complete
-Review Status: approved_with_changes
-Implementation Status: **git_complete** — Firebase deploys not started
-Human Checkpoint Required: **yes**
-Human Checkpoint Reason: Await `APPROVE PROD DEPLOY: STORAGE RULES STATIC-OG` before any Firebase deploy
-Blocked: **no**
+## Current Mode
+managed-phase
 
-Allowed Actions: read docs; await Storage Rules phrase; record decision log
-Forbidden Actions: Storage Rules/Functions/App Hosting/index deploys; Track A dry-run/APPLY; Studio 1.0.3; Algolia mutate; DNS
+## Phase
+development integrated — production promotion audit / PR next
 
-Next Required Step: Owner `APPROVE PROD DEPLOY: STORAGE RULES STATIC-OG`
+## Plan Status
+complete
 
-## Artifacts
-- Production merge: PR #57 → `c3a61bfe244b091e2d71bb58d6633b7e57ab67b2`
-- Frozen product: `3b7a978f324d3c133ead8707ffc51454a20e1f5d` (product tree == production tip)
-- Checkpoint: `docs/workflow/reviews/2026-08-11-prefinal-a-h-production-promote-preflight-checkpoint.md`
+## Review Status
+approved_with_notes
+
+## Implementation Status
+complete — integrated into development lineage (pending origin/development merge via PR)
+
+## Test Status
+passed_with_notes — owner DEV QA PASS; automated suite after integration
+
+## Signoff Status
+pending — production promote + scoped Firebase deploy + NEW Studio 1.0.4 draft (not draft 369614747)
+
+## Human Checkpoint Required
+yes
+
+## Human Checkpoint Reason
+Authorize production PR merge and separately authorize production Firebase deploy after development lands on origin.
+
+## Allowed Actions
+Push integration branch; open/merge PR into development; produce production diff audit; prepare protected production PR handoff. STOP before production merge/Firebase deploy unless separately authorized.
+
+## Forbidden Actions
+Force push; history rewrite; production merge without auth; production Firebase deploy without auth; mutate draft 369614747; prod fixture cleanup; bake diagnostic flags into release
+
+## Next Required Step
+Land integration PR on origin/development → production diff audit → protected production PR (STOP before merge/deploy)
+
+## DONE
+no
 
 ## Decision Log
-- 2026-08-11: Owner `APPROVE PROD PROMOTE PREFLIGHT: PREFINAL A-H + TRACK B` → PR #57
-- 2026-08-11: Owner `PR 57 MERGED` — production tip `c3a61bf` verified contains freeze `3b7a978`; product tree match
-- 2026-08-11: `development` merge `4225eb9` (Option B; docs-only conflicts) → push; **STOP** for Storage Rules phrase
+- 2026-08-13 — Owner DEV QA PASS (P4 pipeline, Option B delete, instant list remove, diagnostic banner OFF)
+- 2026-08-13 — Promote development-first (not direct corrective → production)
+- 2026-08-13 — Corrective frozen @ `9414aed`; direct merge into local `development` blocked by hook — use integration branch + PR
+
+## Facts (authoritative after development integration)
+| Item | Value |
+|------|-------|
+| Managed goal | `studio-1.0.4-ai-processing-preview-cleanup-corrective` |
+| Root cause | Firestore Rules P4 authorization gap on derivative path persistence |
+| Corrective | Narrow `designDerivativeCompletionUpdate` Rules fast path |
+| Owner DEV QA | **PASS** |
+| Permanent owner-only safe delete | Implemented; DEV QA PASS |
+| Instant list reconciliation after delete | PASS |
+| Diagnostic banner | OFF for normal build (`VITE_FP_DERIVATIVE_LOCUS_DIAG` / bake flags unset) |
+| DEV deployed | `firestore:rules` + `functions:deleteEligibleUnapprovedDesign` on `fresh-prints-dev` |
+| Corrective HEAD | `9414aed4a5fefbd266648e3601e61af8ef363e10` |
+| Draft 369614747 | Failed-smoke evidence only; unpublished; untouched; must not reuse |
+| Production | **NOT YET PROMOTED** for this corrective |
+| Production fixtures | Untouched |
+
+## Artifacts
+- `docs/workflow/reviews/2026-08-13-studio-1.0.4-p4-dev-qa-checkpoint.md`
+- `docs/workflow/reviews/2026-08-13-studio-1.0.4-option-b-ui-discoverability-checkpoint.md`
+- `docs/workflow/reviews/2026-08-13-studio-1.0.4-p4-derivative-completion-implementation-review.md`

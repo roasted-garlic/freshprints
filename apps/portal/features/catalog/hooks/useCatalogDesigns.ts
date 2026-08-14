@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
+  CATALOG_DISCOVERY_RAIL_LIMIT,
   CATALOG_NEW_THIS_WEEK_DAYS,
+  selectTopPopularCategoryRails,
   type CatalogDiscoveryMode,
 } from '@fresh-prints/shared/utils/catalogDiscoveryRanking';
 import {
@@ -193,6 +195,8 @@ export function buildServerListQuery(options: UseCatalogDesignsQuery): CatalogDe
         : undefined,
     sortField,
     tag: primaryTag,
+    ...(discoveryMode === 'mostLiked' ? { minFavoriteCount: 1 } : {}),
+    ...(discoveryMode === 'recent' ? { requireLastAddedToShowAt: true } : {}),
   };
 }
 
@@ -203,6 +207,8 @@ function serializeServerListQuery(listQuery: CatalogDesignListQuery): string {
     readyAfterMs: listQuery.readyAfterMs ?? null,
     sortField: listQuery.sortField ?? 'readyAt',
     tag: listQuery.tag ?? null,
+    minFavoriteCount: listQuery.minFavoriteCount ?? null,
+    requireLastAddedToShowAt: listQuery.requireLastAddedToShowAt === true,
   });
 }
 
@@ -620,18 +626,35 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
  * Discover home: bounded rail pool plus independent complete ready-library count.
  * Never treat `designs.length` as library membership — pool is intentionally capped
  * (`listHomeDiscoveryPool` / `HOME_DISCOVERY_POOL_PAGE_SIZE`).
+ *
+ * Category rails: select from the Home pool (popularity / max 3 / min 3), then hydrate
+ * each selected category from the bounded ready-category list (≤25) so rails are not
+ * limited to pool coincidence.
  */
-export function useCatalogHomeDesigns(): {
+export function useCatalogHomeDesigns(categories: CatalogCategory[] = []): {
   designs: CatalogDesign[];
+  categoryRails: Array<{
+    categoryId: string;
+    name: string;
+    designs: CatalogDesign[];
+  }>;
   error: string | null;
   isLoading: boolean;
   /** Authoritative ready membership total; null while pending or if aggregate fails. */
   readyLibraryCount: number | null;
 } {
   const [designs, setDesigns] = useState<CatalogDesign[]>([]);
+  const [categoryRails, setCategoryRails] = useState<
+    Array<{ categoryId: string; name: string; designs: CatalogDesign[] }>
+  >([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [readyLibraryCount, setReadyLibraryCount] = useState<number | null>(null);
+
+  const categoriesKey = useMemo(
+    () => categories.map((category) => `${category.id}:${category.name}`).join('|'),
+    [categories],
+  );
 
   useEffect(() => {
     let isCancelled = false;
@@ -642,14 +665,50 @@ export function useCatalogHomeDesigns(): {
 
       try {
         const nextDesigns = await catalogService.listHomeDiscoveryPool();
+        if (isCancelled) {
+          return;
+        }
+        setDesigns(nextDesigns);
+
+        const selected = selectTopPopularCategoryRails(nextDesigns, categories);
+        if (selected.length === 0) {
+          setCategoryRails([]);
+          return;
+        }
+
+        const hydrated = await Promise.all(
+          selected.map(async (rail) => {
+            try {
+              const page = await catalogService.listReadyDesignsPageWithSortFallback({
+                categoryId: rail.categoryId,
+                limitCount: CATALOG_DISCOVERY_RAIL_LIMIT,
+                sortField: 'createdAt',
+                skipClientSortRepair: true,
+              });
+              return {
+                categoryId: rail.categoryId,
+                name: rail.name,
+                designs: page.designs.slice(0, CATALOG_DISCOVERY_RAIL_LIMIT),
+              };
+            } catch {
+              // Fall back to pool-sliced rail if a category hydrate fails.
+              return {
+                categoryId: rail.categoryId,
+                name: rail.name,
+                designs: rail.designs,
+              };
+            }
+          }),
+        );
 
         if (!isCancelled) {
-          setDesigns(nextDesigns);
+          setCategoryRails(hydrated.filter((rail) => rail.designs.length > 0));
         }
       } catch (loadError) {
         if (!isCancelled) {
           setError(toFriendlyCatalogError(loadError));
           setDesigns([]);
+          setCategoryRails([]);
         }
       } finally {
         if (!isCancelled) {
@@ -680,9 +739,11 @@ export function useCatalogHomeDesigns(): {
     return () => {
       isCancelled = true;
     };
-  }, []);
+    // categoriesKey captures category id/name identity without depending on array identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional stable key
+  }, [categoriesKey]);
 
-  return { designs, error, isLoading, readyLibraryCount };
+  return { designs, categoryRails, error, isLoading, readyLibraryCount };
 }
 
 /** Discover search field placeholder — aggregate count only; never home-pool length. */

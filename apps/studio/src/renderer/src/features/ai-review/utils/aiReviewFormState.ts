@@ -42,8 +42,16 @@ export function createAiReviewDraftFromDesign(design: Design): AiReviewDraftForm
   const suggestedDescription = suggestions?.description?.trim();
   const suggestedCategoryId = suggestions?.categoryId?.trim();
   const suggestedTags = suggestions?.tags?.filter((tag) => tag.trim()) ?? [];
+  // D8-A human-first union: existing designs.tags first, then genuinely new AI suggestions.
   const rawTags =
-    hasAiSeed && suggestedTags.length > 0 ? suggestedTags : design.tags;
+    hasAiSeed && suggestedTags.length > 0
+      ? [
+          ...new Set([
+            ...design.tags.map((tag) => tag.trim()).filter(Boolean),
+            ...suggestedTags,
+          ]),
+        ]
+      : design.tags;
   const { tagsInput, tagsAdjustmentNote } = buildSanitizedTagsInput(rawTags);
 
   return {

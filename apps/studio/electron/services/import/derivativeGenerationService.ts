@@ -14,6 +14,7 @@ import type {
 import { derivativeConcurrencyQueue } from "./derivativeConcurrencyQueue";
 import { encodeWebpDerivative } from "./encodeWebpDerivative";
 import { validateDerivativeGenerationRequest } from "./derivativePngValidation";
+import { logDerivativeLocusDiag } from "./derivativeLocusDiagnostic";
 import { loadSharpModule } from "./loadSharpModule";
 
 function mapUnexpectedFailure(error: unknown): DerivativeGenerationFailure {
@@ -45,6 +46,11 @@ async function generateDerivativesFromValidatedInput(
 
   try {
     sharpModule = await loadSharpModule();
+    logDerivativeLocusDiag({
+      stage: "main.sharp.loaded",
+      fileName: request.fileName,
+      ok: true,
+    });
   } catch (error) {
     if (isDerivativeGenerationFailure(error)) {
       return { success: false, error };
@@ -61,8 +67,24 @@ async function generateDerivativesFromValidatedInput(
   });
 
   if (!thumbnailResult.success) {
+    logDerivativeLocusDiag({
+      stage: "main.thumbnail.fail",
+      fileName: request.fileName,
+      ok: false,
+      detail: {
+        code: thumbnailResult.error.code,
+        message: thumbnailResult.error.message,
+      },
+    });
     return thumbnailResult;
   }
+
+  logDerivativeLocusDiag({
+    stage: "main.thumbnail.success",
+    fileName: request.fileName,
+    ok: true,
+    detail: { byteLength: thumbnailResult.data.byteLength },
+  });
 
   const previewResult = await encodeWebpDerivative(sharpModule, inputBuffer, {
     label: "Preview",
@@ -72,8 +94,24 @@ async function generateDerivativesFromValidatedInput(
   });
 
   if (!previewResult.success) {
+    logDerivativeLocusDiag({
+      stage: "main.preview.fail",
+      fileName: request.fileName,
+      ok: false,
+      detail: {
+        code: previewResult.error.code,
+        message: previewResult.error.message,
+      },
+    });
     return previewResult;
   }
+
+  logDerivativeLocusDiag({
+    stage: "main.preview.success",
+    fileName: request.fileName,
+    ok: true,
+    detail: { byteLength: previewResult.data.byteLength },
+  });
 
   return {
     success: true,

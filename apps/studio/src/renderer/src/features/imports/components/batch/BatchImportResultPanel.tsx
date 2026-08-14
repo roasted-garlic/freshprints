@@ -49,7 +49,8 @@ function buildNonValidationWarningMessage(
 
   if (summary.derivativeFailedCount > 0) {
     messages.push(
-      `${summary.derivativeFailedCount} design(s) were imported without completed derivatives.`,
+      `${summary.derivativeFailedCount} design(s) were imported (original saved) but derivative ` +
+        `processing failed — automatic AI did not start for those designs.`,
     );
   }
 
@@ -139,9 +140,11 @@ export function BatchImportResultPanel({
             background so you can keep importing. Open AI Processing anytime to watch progress.
           </p>
         ) : hasDerivativeFailures ? (
-          <p className="auth-message auth-message-warning">
-            Batch upload finished with partial derivative success. Designs with complete
-            derivatives start AI in the background; incomplete ones stay on Processing until fixed.
+          <p className="auth-message auth-message-warning" role="status">
+            Partial success: originals were imported, but the processing pipeline did not complete
+            for every design. Automatic AI starts only for designs with completed derivatives.
+            Failed designs will show as Derivatives incomplete in AI Processing — not ordinary
+            Waiting for AI.
           </p>
         ) : (
           <p className="auth-message auth-message-success">
@@ -228,8 +231,12 @@ export function BatchImportResultPanel({
       ) : null}
 
       {derivativeFailureFiles.length > 0 ? (
-        <div className="batch-import-failed-list">
-          <h4>Derivative failures</h4>
+        <div className="batch-import-failed-list" role="status">
+          <h4>Derivative / processing failures</h4>
+          <p className="batch-import-summary-help">
+            Artwork was imported, but thumbnail/preview processing failed and automatic AI did not
+            start. See each error below.
+          </p>
           <ul>
             {derivativeFailureFiles.map((file) => (
               <li key={`${file.fileName}-derivative`}>

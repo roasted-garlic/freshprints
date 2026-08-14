@@ -342,3 +342,54 @@ export function computeFacetedTagsForDraftSelection(params: {
 
   return sortFacetedTagsByCatalogStatus(faceted, catalogTagLookup);
 }
+
+/**
+ * Map Algolia `tagFacetKeys` name/count options into modal FacetedTag rows.
+ * Excludes canonical halftone (dock toggle). Keeps draft-selected tags visible.
+ */
+export function buildFacetedTagsFromAlgoliaOptions(params: {
+  catalogTags?: CatalogTag[];
+  draftSelectedTags: string[];
+  facetOptions: readonly { name: string; count: number }[];
+  tagSearchQuery?: string;
+}): FacetedTag[] {
+  const { catalogTags, draftSelectedTags, facetOptions, tagSearchQuery } = params;
+  const catalogTagLookup = buildCatalogTagLookup(catalogTags);
+  const normalizedSearch = tagSearchQuery?.trim().toLowerCase() ?? "";
+  const countByName = new Map<string, number>();
+
+  for (const option of facetOptions) {
+    const name = option.name.trim();
+    if (!name || isCanonicalHalftoneTag(name)) {
+      continue;
+    }
+    countByName.set(name, (countByName.get(name) ?? 0) + option.count);
+  }
+
+  for (const selected of draftSelectedTags) {
+    if (isCanonicalHalftoneTag(selected)) {
+      continue;
+    }
+    if (!countByName.has(selected)) {
+      countByName.set(selected, 0);
+    }
+  }
+
+  const faceted: FacetedTag[] = [];
+  for (const [tag, count] of countByName.entries()) {
+    const isSelected = draftSelectedTags.includes(tag);
+    if (count === 0 && !isSelected) {
+      continue;
+    }
+    if (
+      normalizedSearch &&
+      !isSelected &&
+      !tagMatchesCatalogSearch(tag, normalizedSearch, catalogTagLookup)
+    ) {
+      continue;
+    }
+    faceted.push({ tag, count, isSelected });
+  }
+
+  return sortFacetedTagsByCatalogStatus(faceted, catalogTagLookup);
+}

@@ -57,6 +57,7 @@ import {
   type PendingCrossTabSelection,
 } from "../utils/aiReviewInboxSelection";
 import {
+  reconcileSuccessfulHardDelete,
   reconcileSuccessfulInboxManualAction,
   recoverFailedInboxManualAction,
   type AiReviewInboxManualAction,
@@ -93,6 +94,7 @@ export function useAiReviewInbox(
     isLoadingMore,
     loadMoreDesigns,
     reloadDesigns,
+    removeDesignFromList,
   } = useDesigns(listQuery);
   // Approved-tag display/autocomplete for normal review needs only id/name/aliases/status — the
   // generated client-safe taxonomy covers that with zero Firestore reads. The previous
@@ -1005,6 +1007,32 @@ export function useAiReviewInbox(
     [applyDesignPatch, filters.tab, reloadDesigns, selectedIndex, user],
   );
 
+  const reconcileAfterHardDeleteSuccess = useCallback(
+    (designId: string) => {
+      const indexInList = designsRef.current.findIndex((design) => design.id === designId);
+      reconcileSuccessfulHardDelete({
+        designId,
+        sourceTab: filters.tab,
+        selectedIndex: indexInList >= 0 ? indexInList : selectedIndex,
+        deps: {
+          clearLiveDesign: () => {
+            liveDesignRef.current = null;
+            setLiveDesign(null);
+          },
+          setPendingAdvanceIndex: (index) => {
+            pendingAdvanceIndexRef.current = index;
+          },
+          removeDesignFromList,
+          onInboxCountsDelta: (deltas) => {
+            optionsRef.current?.onInboxCountsDelta?.(deltas);
+          },
+        },
+      });
+      setReviewScrollNonce((current) => current + 1);
+    },
+    [filters.tab, removeDesignFromList, selectedIndex],
+  );
+
   const runRejectedTabNavigationAction = useCallback(
     async (input: { action: () => Promise<void>; targetTab: AiReviewInboxTab }) => {
       if (!user || !selectedDesign) {
@@ -1242,6 +1270,7 @@ export function useAiReviewInbox(
     pendingRerun,
     queueListRef,
     reloadDesigns,
+    reconcileAfterHardDeleteSuccess,
     requestSelectDesign,
     reviewScrollNonce,
     selectedDesign,

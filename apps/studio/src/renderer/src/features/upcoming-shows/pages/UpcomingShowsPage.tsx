@@ -268,11 +268,15 @@ export function UpcomingShowsPage() {
                     },
                   ]
                 : []),
-              {
-                icon: <Settings aria-hidden="true" size={16} strokeWidth={2} />,
-                label: "Settings",
-                onClick: openSettingsModal,
-              },
+              ...(permissionService.canManageShowQueueSettings(user)
+                ? [
+                    {
+                      icon: <Settings aria-hidden="true" size={16} strokeWidth={2} />,
+                      label: "Settings",
+                      onClick: openSettingsModal,
+                    },
+                  ]
+                : []),
             ]
           : null,
         primaryAction: permissionService.canManageUpcomingShows(user)
@@ -728,7 +732,7 @@ export function UpcomingShowsPage() {
 
     if (
       !user ||
-      !permissionService.canManageUpcomingShows(user) ||
+      !permissionService.canManageShowQueueSettings(user) ||
       !isWhatnotBaseUrlValid ||
       !isPortalCutoffHoursValid ||
       !isGangSheetWidthValid ||

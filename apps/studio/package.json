@@ -1,7 +1,7 @@
 {
   "name": "@fresh-prints/studio",
   "private": true,
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Fresh Prints Studio (Electron + Vite)",
   "author": "Fresh Prints",
   "type": "module",
@@ -20,7 +20,7 @@
     "@typescript-eslint/parser": "^7.1.1",
     "@vitejs/plugin-react": "^4.2.1",
     "electron": "^30.0.1",
-    "electron-builder": "^24.13.3",
+    "electron-builder": "26.15.7",
     "eslint": "^8.57.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",

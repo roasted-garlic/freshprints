@@ -73,6 +73,8 @@ export function AiReviewQueueList({
           const isSelected = design.id === selectedDesignId;
           const queueLabel = getQueueDesignLabel(design);
           const hasFailedAi = resolveAiProcessingOutputStatus(design) === "failed";
+          const hasIncompleteDerivatives =
+            resolveAiProcessingOutputStatus(design) === "derivatives_incomplete";
 
           return (
             <li key={design.id} role="presentation">
@@ -94,6 +96,9 @@ export function AiReviewQueueList({
                     catalogPath={design.thumbnailPath}
                     className="ai-review-queue-thumb"
                     decorative
+                    fallbackLabel={
+                      hasIncompleteDerivatives ? "Derivatives incomplete" : "Preview Pending"
+                    }
                     imageFit="cover"
                   />
                 </div>

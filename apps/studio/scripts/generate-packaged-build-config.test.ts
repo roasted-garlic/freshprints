@@ -47,6 +47,16 @@ test("defaults to stable when FRESH_PRINTS_UPDATE_CHANNEL is unset", () => {
   const result = runGeneratorInTempDir({ FRESH_PRINTS_UPDATE_CHANNEL: undefined });
   assert.equal(result.status, 0);
   assert.match(result.outFileContents ?? "", /PACKAGED_UPDATE_CHANNEL.*=\s*"stable"/);
+  assert.match(result.outFileContents ?? "", /PACKAGED_DERIVATIVE_LOCUS_DIAG:\s*boolean\s*=\s*false/);
+});
+
+test("bakes derivative locus diag when STUDIO_DIAGNOSTIC_BUILD=1", () => {
+  const result = runGeneratorInTempDir({
+    FRESH_PRINTS_UPDATE_CHANNEL: "stable",
+    STUDIO_DIAGNOSTIC_BUILD: "1",
+  });
+  assert.equal(result.status, 0);
+  assert.match(result.outFileContents ?? "", /PACKAGED_DERIVATIVE_LOCUS_DIAG:\s*boolean\s*=\s*true/);
 });
 
 test("selects prerelease on the exact opt-in value", () => {

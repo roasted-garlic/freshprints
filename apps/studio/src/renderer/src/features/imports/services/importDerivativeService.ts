@@ -9,6 +9,10 @@ import type { DesignAuthoritySnapshot } from "../../designs/types/design.types";
 import { designDerivativeStorageService } from "../../designs/services/designDerivativeStorageService";
 import { designReadyService } from "../../designs/services/designReadyService";
 import { designService } from "../../designs/services/designService";
+import {
+  logDerivativeLocusDiag,
+  sanitizeFirebaseError,
+} from "../../../shared/utils/derivativeLocusDiagnostic";
 
 const DERIVATIVE_CLEANUP_WARNING =
   "Uploaded derivative files could not be fully removed from Firebase Storage. Contact an administrator to avoid leaving orphan files.";
@@ -35,7 +39,19 @@ function collectDerivativeCleanupWarning(
 async function revertDesignToImported(caller: User, designId: string): Promise<void> {
   try {
     await designService.updateDesign(caller, designId, { status: "imported" }, { allowStatusChange: true });
+    logDerivativeLocusDiag({
+      stage: "rollback.revert_imported",
+      designId,
+      ok: true,
+    });
   } catch (error) {
+    const sanitized = sanitizeFirebaseError(error);
+    logDerivativeLocusDiag({
+      stage: "rollback.revert_imported",
+      designId,
+      ok: false,
+      detail: { code: sanitized.code, message: sanitized.message },
+    });
     console.error(`Failed to revert design ${designId} to imported after derivative failure:`, error);
   }
 }
@@ -43,8 +59,26 @@ async function revertDesignToImported(caller: User, designId: string): Promise<v
 async function rollbackUploadedDerivatives(designId: string): Promise<string | null> {
   try {
     const deleteResult = await designDerivativeStorageService.deleteDesignDerivatives(designId);
+    logDerivativeLocusDiag({
+      stage: "rollback.delete_derivatives",
+      designId,
+      ok: deleteResult.thumbnail.deleted || deleteResult.preview.deleted,
+      detail: {
+        thumbnailDeleted: deleteResult.thumbnail.deleted,
+        previewDeleted: deleteResult.preview.deleted,
+        thumbnailWarning: deleteResult.thumbnail.warning ?? null,
+        previewWarning: deleteResult.preview.warning ?? null,
+      },
+    });
     return collectDerivativeCleanupWarning(deleteResult);
   } catch (error) {
+    const sanitized = sanitizeFirebaseError(error);
+    logDerivativeLocusDiag({
+      stage: "rollback.delete_derivatives",
+      designId,
+      ok: false,
+      detail: { code: sanitized.code, message: sanitized.message },
+    });
     console.error(`Failed to delete derivative files for design ${designId}:`, error);
     return DERIVATIVE_CLEANUP_WARNING;
   }
@@ -84,18 +118,53 @@ export const importDerivativeService = {
     const thumbnailPath = getThumbnailStoragePath(designId);
     const previewPath = getPreviewStoragePath(designId);
 
+    logDerivativeLocusDiag({
+      stage: "pipeline.mark_processing.start",
+      designId,
+      detail: {
+        thumbnailCtor: thumbnailBytes?.constructor?.name ?? "missing",
+        thumbnailByteLength: thumbnailBytes?.byteLength ?? 0,
+        thumbnailIsUint8Array: thumbnailBytes instanceof Uint8Array,
+        previewCtor: previewBytes?.constructor?.name ?? "missing",
+        previewByteLength: previewBytes?.byteLength ?? 0,
+        previewIsUint8Array: previewBytes instanceof Uint8Array,
+      },
+    });
+
     try {
       await designReadyService.markDesignProcessing(caller, designId, knownAuthority);
+      logDerivativeLocusDiag({ stage: "pipeline.mark_processing.pass", designId, ok: true });
     } catch (error) {
+      const sanitized = sanitizeFirebaseError(error);
+      logDerivativeLocusDiag({
+        stage: "pipeline.mark_processing.fail",
+        designId,
+        ok: false,
+        detail: { code: sanitized.code, message: sanitized.message },
+      });
       return {
         success: false,
         message: getErrorMessage(error, "Unable to mark the design as processing."),
       };
     }
 
+    logDerivativeLocusDiag({ stage: "pipeline.upload_thumbnail.start", designId });
     try {
       await designDerivativeStorageService.uploadThumbnailWebp(designId, thumbnailBytes);
+      logDerivativeLocusDiag({ stage: "pipeline.upload_thumbnail.pass", designId, ok: true });
     } catch (error) {
+      const sanitized = sanitizeFirebaseError(error);
+      logDerivativeLocusDiag({
+        stage: "pipeline.upload_thumbnail.fail",
+        designId,
+        ok: false,
+        detail: { code: sanitized.code, message: sanitized.message },
+      });
+      logDerivativeLocusDiag({
+        stage: "rollback.invoked",
+        designId,
+        detail: { reason: "upload_thumbnail" },
+      });
       await revertDesignToImported(caller, designId);
       return {
         success: false,
@@ -103,9 +172,23 @@ export const importDerivativeService = {
       };
     }
 
+    logDerivativeLocusDiag({ stage: "pipeline.upload_preview.start", designId });
     try {
       await designDerivativeStorageService.uploadPreviewWebp(designId, previewBytes);
+      logDerivativeLocusDiag({ stage: "pipeline.upload_preview.pass", designId, ok: true });
     } catch (error) {
+      const sanitized = sanitizeFirebaseError(error);
+      logDerivativeLocusDiag({
+        stage: "pipeline.upload_preview.fail",
+        designId,
+        ok: false,
+        detail: { code: sanitized.code, message: sanitized.message },
+      });
+      logDerivativeLocusDiag({
+        stage: "rollback.invoked",
+        designId,
+        detail: { reason: "upload_preview" },
+      });
       const cleanupWarning = await rollbackDerivativesAndRevert(caller, designId, true);
       return {
         success: false,
@@ -114,6 +197,7 @@ export const importDerivativeService = {
       };
     }
 
+    logDerivativeLocusDiag({ stage: "pipeline.mark_derivatives_complete.start", designId });
     try {
       // I4 retained: fresh authority read inside markDesignDerivativesComplete after Storage.
       await designReadyService.markDesignDerivativesComplete(caller, designId, {
@@ -121,7 +205,24 @@ export const importDerivativeService = {
         thumbnailPath,
         previewPath,
       });
+      logDerivativeLocusDiag({
+        stage: "pipeline.mark_derivatives_complete.pass",
+        designId,
+        ok: true,
+      });
     } catch (error) {
+      const sanitized = sanitizeFirebaseError(error);
+      logDerivativeLocusDiag({
+        stage: "pipeline.mark_derivatives_complete.fail",
+        designId,
+        ok: false,
+        detail: { code: sanitized.code, message: sanitized.message },
+      });
+      logDerivativeLocusDiag({
+        stage: "rollback.invoked",
+        designId,
+        detail: { reason: "mark_derivatives_complete" },
+      });
       const cleanupWarning = await rollbackDerivativesAndRevert(caller, designId, true);
       return {
         success: false,

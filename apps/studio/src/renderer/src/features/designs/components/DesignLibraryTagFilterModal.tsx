@@ -6,35 +6,54 @@ import { Checkbox } from "../../../shared/components/Checkbox";
 import { ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
 import { TextInput } from "../../../shared/components/TextInput";
 import {
+  buildFacetedTagsFromAlgoliaOptions,
   computeFacetedTagsForDraftSelection,
   countVisibleSelectedTags,
   sortTagsAlphabetically,
+  type FacetedTag,
 } from "../utils/designLibrarySearch";
 import type { CatalogTag } from "../types/catalogTag.types";
 import type { Design } from "../types/design.types";
+import {
+  studioAlgoliaCatalogSearchService,
+  type StudioAlgoliaTagFacetOption,
+} from "../services/studioAlgoliaCatalogSearchService";
 import { DesignLibraryModal } from "./DesignLibraryModal";
 
 interface DesignLibraryTagFilterModalProps {
-  /** Designs after every non-tag filter (catalog scope, search, category). */
+  /** Designs after every non-tag filter (catalog scope, search, category). Used when Algolia facets are off. */
   baseDesigns: Design[];
   catalogTags?: CatalogTag[];
+  /** Ready-catalog managed facet context (search + category). Tag draft narrows live. */
+  algoliaFacetContext?: {
+    categoryId?: string;
+    searchQuery: string;
+  } | null;
   isOpen: boolean;
   onApply: (selectedTags: string[]) => void;
   onClose: () => void;
   selectedTags: string[];
+  /** When true, counts come from Algolia `tagFacetKeys` (complete ready scope). */
+  useAlgoliaFacets?: boolean;
 }
 
 export function DesignLibraryTagFilterModal({
   baseDesigns,
   catalogTags,
+  algoliaFacetContext = null,
   isOpen,
   onApply,
   onClose,
   selectedTags,
+  useAlgoliaFacets = false,
 }: DesignLibraryTagFilterModalProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [draftSelectedTags, setDraftSelectedTags] = useState<string[]>(selectedTags);
+  const [algoliaOptions, setAlgoliaOptions] = useState<StudioAlgoliaTagFacetOption[] | null>(null);
+  const [algoliaError, setAlgoliaError] = useState<string | null>(null);
+  const [isAlgoliaLoading, setIsAlgoliaLoading] = useState(false);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const requestGenerationRef = useRef(0);
 
   useEffect(() => {
     if (!isOpen) {
@@ -45,9 +64,65 @@ export function DesignLibraryTagFilterModal({
     setDraftSelectedTags(selectedTags);
   }, [isOpen, selectedTags]);
 
-  // Live faceting: recomputes from the current DRAFT selection on every toggle, so the
-  // visible list and counts narrow immediately as the user checks/unchecks tags.
-  const facetedTags = useMemo(
+  useEffect(() => {
+    if (!isOpen || !useAlgoliaFacets) {
+      setAlgoliaOptions(null);
+      setAlgoliaError(null);
+      setIsAlgoliaLoading(false);
+      return;
+    }
+
+    if (!studioAlgoliaCatalogSearchService.isConfigured()) {
+      setAlgoliaOptions(null);
+      setAlgoliaError(
+        "Catalog search is not configured. Add Studio Algolia search-only environment variables.",
+      );
+      setIsAlgoliaLoading(false);
+      return;
+    }
+
+    const generation = ++requestGenerationRef.current;
+    let cancelled = false;
+    setIsAlgoliaLoading(true);
+    setAlgoliaError(null);
+
+    void studioAlgoliaCatalogSearchService
+      .listNarrowedTagFacets({
+        categoryId: algoliaFacetContext?.categoryId,
+        search: algoliaFacetContext?.searchQuery ?? "",
+        selectedTags: draftSelectedTags,
+      })
+      .then((options) => {
+        if (cancelled || generation !== requestGenerationRef.current) return;
+        setAlgoliaOptions(options);
+      })
+      .catch((loadError) => {
+        if (cancelled || generation !== requestGenerationRef.current) return;
+        setAlgoliaOptions(null);
+        setAlgoliaError(
+          loadError instanceof Error
+            ? loadError.message
+            : "Unable to load catalog tag counts. Please try again.",
+        );
+      })
+      .finally(() => {
+        if (!cancelled && generation === requestGenerationRef.current) {
+          setIsAlgoliaLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    algoliaFacetContext?.categoryId,
+    algoliaFacetContext?.searchQuery,
+    draftSelectedTags,
+    isOpen,
+    useAlgoliaFacets,
+  ]);
+
+  const clientFacetedTags = useMemo(
     () =>
       computeFacetedTagsForDraftSelection({
         baseDesigns,
@@ -58,11 +133,45 @@ export function DesignLibraryTagFilterModal({
     [baseDesigns, catalogTags, draftSelectedTags, searchQuery],
   );
 
-  // Whether any tags exist at all for the current non-tag filters (ignoring search).
-  const hasAnyTags = useMemo(
-    () => computeFacetedTagsForDraftSelection({ baseDesigns, catalogTags, draftSelectedTags }).length > 0,
-    [baseDesigns, catalogTags, draftSelectedTags],
-  );
+  const algoliaFacetedTags = useMemo((): FacetedTag[] => {
+    if (!algoliaOptions) {
+      return [];
+    }
+    return buildFacetedTagsFromAlgoliaOptions({
+      catalogTags,
+      draftSelectedTags,
+      facetOptions: algoliaOptions,
+      tagSearchQuery: searchQuery,
+    });
+  }, [algoliaOptions, catalogTags, draftSelectedTags, searchQuery]);
+
+  const facetedTags = useAlgoliaFacets ? algoliaFacetedTags : clientFacetedTags;
+
+  const hasAnyTags = useMemo(() => {
+    if (useAlgoliaFacets) {
+      if (algoliaError) return false;
+      if (!algoliaOptions) return isAlgoliaLoading;
+      return (
+        buildFacetedTagsFromAlgoliaOptions({
+          catalogTags,
+          draftSelectedTags,
+          facetOptions: algoliaOptions,
+        }).length > 0
+      );
+    }
+    return (
+      computeFacetedTagsForDraftSelection({ baseDesigns, catalogTags, draftSelectedTags }).length >
+      0
+    );
+  }, [
+    algoliaError,
+    algoliaOptions,
+    baseDesigns,
+    catalogTags,
+    draftSelectedTags,
+    isAlgoliaLoading,
+    useAlgoliaFacets,
+  ]);
 
   const toggleTag = (tag: string) => {
     const isSelected = draftSelectedTags.includes(tag);
@@ -101,11 +210,15 @@ export function DesignLibraryTagFilterModal({
     return null;
   }
 
-  const emptyMessage = !hasAnyTags
-    ? "No additional matching tags"
-    : facetedTags.length === 0
-      ? "No tags match your search."
-      : null;
+  const emptyMessage = algoliaError
+    ? algoliaError
+    : isAlgoliaLoading && useAlgoliaFacets && !algoliaOptions
+      ? "Loading tag counts…"
+      : !hasAnyTags
+        ? "No additional matching tags"
+        : facetedTags.length === 0
+          ? "No tags match your search."
+          : null;
 
   const visibleDraftTagCount = countVisibleSelectedTags(draftSelectedTags);
 

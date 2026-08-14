@@ -1,9 +1,14 @@
 import { useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
+import { isDeleteEligibleUnapprovedDesignStatus } from "@fresh-prints/shared/utils/deleteEligibleUnapprovedDesignValidation";
+
 import { ConfirmLeaveDialog } from "../../../shared/components/ConfirmLeaveDialog";
 import type { SelectOption } from "../../../shared/components/Select";
 import { useShellHeaderConfig } from "../../../shared/hooks/useShellHeaderConfig";
+import { DeleteEligibleUnapprovedDesignDialog } from "../../designs/components/DeleteEligibleUnapprovedDesignDialog";
+import { useDeleteEligibleUnapprovedDesign } from "../../designs/hooks/useDeleteEligibleUnapprovedDesign";
+import type { Design } from "../../designs/types/design.types";
 import { useGeneratedDesignLibraryTaxonomy } from "../../designs/hooks/useGeneratedDesignLibraryTaxonomy";
 import {
   AI_PROCESSING_PAGE_DESCRIPTION,
@@ -33,6 +38,15 @@ function AiReviewPageContent() {
   const [isInputFocused, setIsInputFocused] = useState(false);
   const filters = useMemo(() => parseAiReviewInboxFilters(searchParams), [searchParams]);
   const canManageProcessingSettings = permissionService.canManageSettings(user);
+  const canDeleteEligibleUnapprovedDesigns =
+    permissionService.canDeleteEligibleUnapprovedDesigns(user);
+  const {
+    clearError: clearHardDeleteError,
+    deleteDesigns: hardDeleteDesigns,
+    error: hardDeleteError,
+    isSubmitting: isHardDeleting,
+  } = useDeleteEligibleUnapprovedDesign();
+  const [designToHardDelete, setDesignToHardDelete] = useState<Design | null>(null);
 
   // Read-only, active-only filter dropdown data — reuses the same zero-Firestore-read generated
   // client-safe taxonomy snapshot the Design Library already consumes (Wave C amendment,
@@ -79,6 +93,51 @@ function AiReviewPageContent() {
   );
 
   useShellHeaderConfig(shellHeaderConfig);
+
+  const canPermanentlyDeleteSelected = Boolean(
+    canDeleteEligibleUnapprovedDesigns &&
+      (filters.tab === "processing" ||
+        filters.tab === "needs_review" ||
+        filters.tab === "rejected") &&
+      inbox.selectedDesign &&
+      isDeleteEligibleUnapprovedDesignStatus(inbox.selectedDesign.status),
+  );
+
+  const handleOpenPermanentDelete = useCallback(() => {
+    if (!inbox.selectedDesign || !canPermanentlyDeleteSelected) {
+      return;
+    }
+    clearHardDeleteError();
+    setDesignToHardDelete(inbox.selectedDesign);
+  }, [canPermanentlyDeleteSelected, clearHardDeleteError, inbox.selectedDesign]);
+
+  const handleConfirmPermanentDelete = useCallback(
+    async (input: { confirmationPhrase: string }) => {
+      if (!designToHardDelete) {
+        return;
+      }
+
+      try {
+        const result = await hardDeleteDesigns({
+          designIds: [designToHardDelete.id],
+          confirmationPhrase: input.confirmationPhrase,
+        });
+
+        setDesignToHardDelete(null);
+
+        if (result.failedCount > 0 && result.deletedCount === 0) {
+          return;
+        }
+
+        // Local remove + advance immediately. Do not await reloadDesigns — that clears the list
+        // into a possible stale 15s page-cache hit and makes deletes appear delayed.
+        inbox.reconcileAfterHardDeleteSuccess(designToHardDelete.id);
+      } catch {
+        // Error surfaced via hardDeleteError on the dialog.
+      }
+    },
+    [designToHardDelete, hardDeleteDesigns, inbox],
+  );
 
   useAiReviewKeyboardShortcuts({
     canApprove: inbox.canApprove,
@@ -174,6 +233,7 @@ function AiReviewPageContent() {
             canStopAutoQueue={inbox.processingQueue.canStopAutoQueue}
             canProcessSelected={inbox.processingQueue.canProcessSelected}
             canArchive={inbox.canArchive}
+            canPermanentlyDelete={canPermanentlyDeleteSelected}
             canReopen={inbox.canReopen}
             canReject={inbox.canReject}
             canRerun={inbox.canRerun}
@@ -205,6 +265,7 @@ function AiReviewPageContent() {
             onPrevious={() => inbox.selectRelative(-1)}
             onProcessSelectedDesign={() => void inbox.processingQueue.processSelectedDesign()}
             onArchive={() => void inbox.archiveSelected()}
+            onPermanentlyDelete={handleOpenPermanentDelete}
             onReject={() => void inbox.rejectSelected()}
             onReopen={() => void inbox.reopenSelected()}
             onRerun={() => void inbox.rerunSelected()}
@@ -240,6 +301,18 @@ function AiReviewPageContent() {
         onCancel={inbox.cancelPendingSelection}
         onConfirm={inbox.confirmPendingRerun}
         title="Send back to Processing?"
+      />
+
+      <DeleteEligibleUnapprovedDesignDialog
+        designs={designToHardDelete ? [designToHardDelete] : []}
+        error={hardDeleteError}
+        isOpen={designToHardDelete !== null}
+        isSubmitting={isHardDeleting}
+        onCancel={() => {
+          clearHardDeleteError();
+          setDesignToHardDelete(null);
+        }}
+        onConfirm={handleConfirmPermanentDelete}
       />
     </section>
   );

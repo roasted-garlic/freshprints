@@ -1,5 +1,23 @@
 # Recent Completed Work
 
+## 2026-08-13 - Studio 1.0.4 P4 AI preview cleanup corrective — DEV QA PASS (development integration)
+
+Managed goal `studio-1.0.4-ai-processing-preview-cleanup-corrective`.
+
+**Root cause:** Firestore Rules P4 authorization gap on derivative path persistence.
+**Corrective:** Narrow `designDerivativeCompletionUpdate` Rules fast path; derivative failure visibility; auto-AI handoff guard; Option B owner-only `deleteEligibleUnapprovedDesign` + Studio UX; instant list reconcile after delete; diagnostic banner OFF by default.
+
+| Item | Status |
+|------|--------|
+| Corrective HEAD | `9414aed4a5fefbd266648e3601e61af8ef363e10` |
+| Owner DEV QA | **PASS** (pipeline + permanent delete + immediate list remove + banner OFF) |
+| DEV deploy | `firestore:rules` + `functions:deleteEligibleUnapprovedDesign` on `fresh-prints-dev` |
+| Production | **NOT YET PROMOTED** |
+| Draft 369614747 | Untouched (failed-smoke evidence only; do not reuse) |
+| Prod fixtures | Untouched |
+
+Checkpoints: `docs/workflow/reviews/2026-08-13-studio-1.0.4-p4-dev-qa-checkpoint.md`, `docs/workflow/reviews/2026-08-13-studio-1.0.4-option-b-ui-discoverability-checkpoint.md`
+
 ## 2026-08-11 - Prefinal A–H + Track B Git promote to production (PR #57)
 
 Owner **`PR 57 MERGED`**. Production tip `c3a61bf` contains freeze `3b7a978`.

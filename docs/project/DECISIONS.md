@@ -2399,25 +2399,51 @@ Recommended trigger (locked):
 
 | Field | Value |
 |-------|-------|
-| Date | 2026-07-14 |
+| Date | 2026-07-14 (amended 2026-08-12) |
 | Status | accepted |
 
 **Context**
 
-Helpers are remote staff who import designs, tag, and build print plans. Owner asked to tighten three Studio capabilities that helpers previously shared with owner/admin via coarse staff permissions.
+Helpers are remote staff who import designs, tag, and build print plans. Owner asked to tighten three Studio capabilities that helpers previously shared with owner/admin via coarse staff permissions. A later production-smoke corrective (Workstream E) further splits Show Queue **settings** from operational Show Queue manage and expands helper AI Review / promote operational capabilities.
 
 **Decision**
 
-1. Helpers keep `canArchiveDesigns` and Show Queue manage (`canManageUpcomingShows`: Add show, Settings, edits).
-2. Staff-assisted Whatnot **Import Shows** requires `canImportWhatnotShows` (owner/admin). UI hides the button; hook + `fromAssistedImport` upserts + assisted-import settings writes fail closed.
-3. Dev Tools sidebar (dev Electron) requires `canOpenDevTools` (**owner only**). Admin and helper do not see the link.
-4. Design restore requires `canRestoreDesigns` (owner/admin); archive remains all staff.
-5. Enforcement is UI + `permissionService` / feature services. Firestore design/show updates remain staff-wide until a future role-scoped rules or Functions phase (same pattern as category/tag helper restrictions).
+1. Helpers keep `canArchiveDesigns` and Show Queue **operational** manage (`canManageUpcomingShows`: Add show, edits).
+2. Show Queue **Settings** requires `canManageShowQueueSettings` (**owner/admin only**). UI hides Settings; `showQueueSettingsService.updateSettings` fail-closed; Firestore `settings/showQueue` writes are owner/admin.
+3. Staff-assisted Whatnot **Import Shows** requires `canImportWhatnotShows` (owner/admin). UI hides the button; hook + `fromAssistedImport` upserts + assisted-import settings writes fail closed.
+4. Dev Tools sidebar (dev Electron) requires `canOpenDevTools` (**owner only**). Admin and helper do not see the link.
+5. Design restore requires `canRestoreDesigns` (owner/admin); archive remains all staff.
+6. Operational AI Review / catalog approve / promote-retry / rerun are active staff including helper (see ADR-FP-123). Taxonomy, users, Settings, Assisted Creation mutate remain owner/admin (ADR-FP-088 unchanged).
 
 **Consequences**
 
 - Helpers cannot reverse their own archives without owner/admin.
-- Helpers can still create shows manually, including Whatnot URLs, but cannot run the assisted import window.
+- Helpers can still create shows manually, including Whatnot URLs, but cannot run the assisted import window or change Show Queue settings.
+- Helper ≠ Admin.
+
+---
+
+### ADR-FP-123: Helper operational image-processing + D8-A AI tag allowance
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-12 |
+| Status | accepted |
+
+**Context**
+
+Studio 1.0.3 production smoke: helpers could view AI Review but not process artwork; AI enrichment re-suggested already-assigned human tags because `designs.tags` were omitted from the pipeline and AI Review seeded Final Catalog from `aiSuggestions.tags` alone.
+
+**Decision**
+
+1. **Helper = operational artwork processor/reviewer**, not administrator. Expand `canApproveDesignForCatalog` / `canManageAiReview` (and dependents promote/retry/rerun/edit) to active staff including helper. Keep users, settings, taxonomy approve, Whatnot import, restore, delete-eligible upload, Dev Tools, Assisted Creation mutate owner/admin (or owner-only).
+2. **Show Queue settings** gated by `canManageShowQueueSettings` (OA) + Firestore Rules tighten.
+3. **D8-A:** Human `designs.tags` do **not** consume `SIMPLE_ENRICHMENT_MAX_TAGS` (8). The 8 slots are additional AI-resolved tags. Deterministic server subtract (canonical + alias) after resolve and after rerank; strip covered `suggestedNewTags`; category uses existing ∪ new; AI Review form uses human-first union. Design-level tag max remains **20**.
+
+**Consequences**
+
+- Functions (promote/enqueue/reset) and Rules (`settings/showQueue`) must ship with Studio permission UI — not Studio-only.
+- ADR-FP-088 Assisted Creation helper read-only remains unchanged.
 
 ---
 

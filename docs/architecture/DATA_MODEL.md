@@ -649,7 +649,9 @@ Service-layer normalization rules:
 * Lowercase for storage and search
 * Dedupe before write
 * Reject empty strings
-* Maximum 20 tags per design
+* Maximum 20 tags per design (design-level catalog max; unchanged by AI D8-A)
+
+**AI enrichment (ADR-FP-123 / D8-A):** `SIMPLE_ENRICHMENT_MAX_TAGS = 8` means up to **8 additional** AI-resolved suggestions. Existing human/catalog `designs.tags` do **not** consume that allowance and are never removed merely to satisfy the AI ceiling. Pipeline writes `aiSuggestions` only — it does not mutate `designs.tags` on success. AI Review Final Catalog seeds with a human-first union of existing tags + new AI suggestions.
 * Maximum 40 characters per tag
 
 **AI suggestions (2026-06-29):** Cloud Function `normalizeAiTags` persists **single-word** tags only — filtered against merged tag exclusions and generic production/meta tags. Titles: `Black Text` / `White Text` suffix only when `aiAnalysis.textOnlyArtwork === true`. Provider prompt `catalog-enrich-openai-v16` reinforces observed-image-first extraction and stricter anti-invention OCR rules (deploy required for production). Staff may edit tags in Needs Review before approve.

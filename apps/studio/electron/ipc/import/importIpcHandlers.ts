@@ -9,7 +9,7 @@ import {
 } from "./batchImportRequestValidation";
 import { cancelBatchImportJob } from "./cancelBatchImportJob";
 import { finishBatchImportJob } from "./finishBatchImportJob";
-import { IMPORT_IPC_CHANNELS } from "./importIpcChannels";
+import { IMPORT_IPC_CHANNELS, IMPORT_LOG_DERIVATIVE_LOCUS_DIAG } from "./importIpcChannels";
 import {
   markBatchDiscoveryRunning,
   getBatchImportSession,
@@ -36,6 +36,12 @@ import { selectSinglePngFile } from "./selectSinglePngFile";
 import { registerDevDerivativeVerificationIpc } from "./verifyDerivativeGenerationIpc";
 import { ImportLimitExceededError } from "@fresh-prints/shared/errors/importLimitErrors";
 import { ZipExtractionError } from "../../services/import/zipExtractionErrors";
+import {
+  getDerivativeLocusDiagSinkPath,
+  isDerivativeLocusDiagEnabled,
+  logDerivativeLocusDiag,
+} from "../../services/import/derivativeLocusDiagnostic";
+import { PACKAGED_DERIVATIVE_LOCUS_DIAG } from "../../generated/packagedBuildConfig";
 
 function validateFilePathInput(filePath: unknown, requireValidated = false) {
   if (typeof filePath !== "string") {
@@ -375,7 +381,47 @@ export function registerImportIpcHandlers(): void {
     return importIpcSuccess(result);
   });
 
-  if (!app.isPackaged) {
-    registerDevDerivativeVerificationIpc();
+  if (!app.isPackaged || PACKAGED_DERIVATIVE_LOCUS_DIAG || isDerivativeLocusDiagEnabled()) {
+    if (!app.isPackaged) {
+      registerDevDerivativeVerificationIpc();
+    }
+
+    if (isDerivativeLocusDiagEnabled()) {
+      ipcMain.handle(IMPORT_LOG_DERIVATIVE_LOCUS_DIAG, async (_event, payload: unknown) => {
+        if (!payload || typeof payload !== "object") {
+          return importIpcSuccess({ logged: false });
+        }
+
+        const record = payload as {
+          stage?: unknown;
+          designId?: unknown;
+          fileName?: unknown;
+          jobId?: unknown;
+          ok?: unknown;
+          detail?: unknown;
+        };
+
+        if (typeof record.stage !== "string" || !record.stage.trim()) {
+          return importIpcSuccess({ logged: false });
+        }
+
+        logDerivativeLocusDiag({
+          stage: record.stage,
+          designId: typeof record.designId === "string" ? record.designId : undefined,
+          fileName: typeof record.fileName === "string" ? record.fileName : undefined,
+          jobId: typeof record.jobId === "string" ? record.jobId : undefined,
+          ok: typeof record.ok === "boolean" ? record.ok : undefined,
+          detail:
+            record.detail && typeof record.detail === "object"
+              ? (record.detail as Record<string, string | number | boolean | null | undefined>)
+              : undefined,
+        });
+
+        return importIpcSuccess({
+          logged: true,
+          sinkPath: getDerivativeLocusDiagSinkPath(),
+        });
+      });
+    }
   }
 }
