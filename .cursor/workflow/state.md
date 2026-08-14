@@ -5,7 +5,7 @@ studio-1.0.4-ai-processing-preview-cleanup-corrective
 managed-phase
 
 ## Phase
-promote via development — freeze corrective then integrate
+production promotion prepared — protected PR pending; no merge/deploy yet
 
 ## Plan Status
 complete
@@ -14,36 +14,41 @@ complete
 approved_with_notes
 
 ## Implementation Status
-complete — freezing post-5e0b072 QA corrections onto corrective branch
+complete — clean promote branch from production + cherry-picks of approved corrective commits
 
 ## Test Status
-passed_with_notes — owner DEV QA PASS
+passed_with_notes — owner DEV QA PASS; production-branch verification in progress / recorded in promotion checkpoint
 
 ## Signoff Status
-pending — development integration then production promotion
+pending — production PR merge → Firebase deploy → NEW Studio 1.0.4 draft + smoke (not draft 369614747)
 
 ## Human Checkpoint Required
-no
+yes
 
 ## Human Checkpoint Reason
-—
+Authorize protected production PR merge, then separately authorize production Firebase deploy. Draft 369614747 and prod fixtures remain untouched.
 
 ## Allowed Actions
-Commit/push corrective; create clean development worktree; merge into development; update handoff; push development; produce prod diff audit and PR handoff. STOP before production merge/deploy.
+Push promote branch; prepare production PR handoff. STOP before production merge, Firebase deploy, fixture cleanup, Studio rebuild, draft creation, publish.
 
 ## Forbidden Actions
-Use dirty C:\coding\fresh-prints for integration; force push; history rewrite; production merge; production Firebase deploy; mutate draft 369614747; prod fixture cleanup; commit probes/diagnostic JSON/secrets
+Force push; push to production; merge production; production Firebase deploy; mutate draft 369614747; prod fixture cleanup; bake diagnostic flags; broad development→production merge
 
 ## Next Required Step
-Freeze corrective HEAD → push → integrate into origin/development
+Owner/ChatGPT: open+merge protected PR promote/studio-1.0.4-p4-corrective → production
 
 ## DONE
 no
 
-## Decision Log
-- 2026-08-13 — Owner DEV QA PASS (P4 pipeline, Option B delete, instant list remove, diagnostic banner OFF)
-- 2026-08-13 — Promote development-first (not direct corrective → production)
-
-## Artifacts
-- docs/workflow/reviews/2026-08-13-studio-1.0.4-p4-dev-qa-checkpoint.md
-- docs/workflow/reviews/2026-08-13-studio-1.0.4-option-b-ui-discoverability-checkpoint.md
+## Facts
+| Item | Value |
+|------|-------|
+| Owner DEV QA | **PASS** |
+| Development integration | **COMPLETE** via PR #69 @ `2119d4154c2c2e98cffa17d184012cc136cb3437` |
+| Production baseline | `c6e9235614b6816a98a71f998b47bd7fe18c371f` |
+| Promote branch | `promote/studio-1.0.4-p4-corrective` |
+| Source commits | `5e0b072` + `9414aed` (cherry-picked) |
+| Production Firebase deploy | **PENDING** |
+| NEW Studio 1.0.4 release | **PENDING** (do not reuse draft 369614747) |
+| Draft 369614747 | Failed-smoke evidence; unpublished; untouched |
+| Production fixtures | Untouched |
