@@ -1,5 +1,7 @@
 # Fresh Prints Roadmap
 
+> 2026-08-13: **Studio 1.0.4 P4 AI preview cleanup corrective — DEV QA PASS** — Managed goal `studio-1.0.4-ai-processing-preview-cleanup-corrective`. Root cause: Rules P4 auth gap on derivative path persistence. Corrective: narrow derivative completion Rules fast path + Option B owner safe-delete + Processing Delete UX + instant list reconcile; diagnostic banner OFF. DEV: Rules + `deleteEligibleUnapprovedDesign` on `fresh-prints-dev`. **Production NOT YET PROMOTED.** Draft `369614747` untouched (do not reuse). Next: land on `development` → protected production PR → separately authorized prod Rules/Function → NEW 1.0.4 dual-platform draft + smokes. Checkpoints: `docs/workflow/reviews/2026-08-13-studio-1.0.4-p4-dev-qa-checkpoint.md`, `docs/workflow/reviews/2026-08-13-studio-1.0.4-option-b-ui-discoverability-checkpoint.md`.
+>
 > 2026-08-11: **Track B Static OG letterbox DEV PASS** — Owner `DEV STATIC OG LETTERBOX QA: PASS`. Signoff **approved_with_notes**: `docs/workflow/reviews/2026-08-11-prod-legacy-pending-and-og-static-letterbox-signoff.md`. Track A prod APPLY still gated. Prefinal A–H promote / Studio 1.0.3 / permanent `development` merge still owner-gated.
 >
 > 2026-08-11: **Prefinal A–H DEV QA COMPLETE** — Owner `DEV A-H QA: PASS`. Signoff **approved_with_notes**: `docs/workflow/reviews/2026-08-11-prefinal-a-h-development-qa-signoff.md`. Branch `qa/prefinal-a-h-dev` (+ QA amendments).

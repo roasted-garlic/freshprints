@@ -128,6 +128,16 @@ export interface CatalogDesignListQuery {
    * Catalog View All must leave this unset so Popular / category ready-order repair runs.
    */
   skipClientSortRepair?: boolean;
+  /**
+   * Most Liked membership: require favoriteCount greater than this threshold
+   * (portal uses `1` → `favoriteCount > 0`). Explicit so membership repair cannot drop it.
+   */
+  minFavoriteCount?: number;
+  /**
+   * Recently Requested membership: require `lastAddedToShowAt` present
+   * (`lastAddedToShowAt > epoch`). Explicit so count/list/hasMore stay aligned.
+   */
+  requireLastAddedToShowAt?: boolean;
 }
 
 export interface CatalogDesignListPage {

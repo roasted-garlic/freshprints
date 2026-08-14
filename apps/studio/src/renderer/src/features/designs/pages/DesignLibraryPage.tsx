@@ -21,6 +21,7 @@ import { DesignLibraryFilterControls } from "../components/DesignLibraryFilterCo
 import { DesignLibraryTagFilterModal } from "../components/DesignLibraryTagFilterModal";
 import { EditDesignModal } from "../components/EditDesignModal";
 import { PurgeArchivedDesignAssetsDialog } from "../components/PurgeArchivedDesignAssetsDialog";
+import { DeleteEligibleUnapprovedDesignDialog } from "../components/DeleteEligibleUnapprovedDesignDialog";
 import { TagManagementModal } from "../components/TagManagementModal";
 import {
   buildCatalogDesignListQuery,
@@ -37,6 +38,7 @@ import { useDesignLibraryManagedSearch } from "../hooks/useDesignLibraryManagedS
 import { useDesigns } from "../hooks/useDesigns";
 import { useGeneratedDesignLibraryTaxonomy } from "../hooks/useGeneratedDesignLibraryTaxonomy";
 import { usePurgeArchivedDesignAssets } from "../hooks/usePurgeArchivedDesignAssets";
+import { useDeleteEligibleUnapprovedDesign } from "../hooks/useDeleteEligibleUnapprovedDesign";
 import { useRestoreDesign } from "../hooks/useRestoreDesign";
 import { designService } from "../services/designService";
 import { findDesignIdsOnActiveShowQueue } from "../services/purgeArchivedDesignAssetsService";
@@ -75,6 +77,8 @@ export function DesignLibraryPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const canPurgeArchivedDesignAssets = permissionService.canPurgeArchivedDesignAssets(user);
+  const canDeleteEligibleUnapprovedDesigns =
+    permissionService.canDeleteEligibleUnapprovedDesigns(user);
 
   const filters = useMemo(() => parseDesignLibraryUrlFilters(searchParams), [searchParams]);
   const selectionModeActive = filters.mode === "request-selection";
@@ -99,8 +103,10 @@ export function DesignLibraryPage() {
   const [editingDesign, setEditingDesign] = useState<Design | null>(null);
   const [designToArchive, setDesignToArchive] = useState<Design | null>(null);
   const [designsToPurge, setDesignsToPurge] = useState<Design[]>([]);
+  const [designsToHardDelete, setDesignsToHardDelete] = useState<Design[]>([]);
   const [activeQueueDesignIds, setActiveQueueDesignIds] = useState<string[]>([]);
   const [selectedPurgeIds, setSelectedPurgeIds] = useState<string[]>([]);
+  const [selectedHardDeleteIds, setSelectedHardDeleteIds] = useState<string[]>([]);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [isTagManagementModalOpen, setIsTagManagementModalOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -179,7 +185,9 @@ export function DesignLibraryPage() {
     setEditingDesign(null);
     setDesignToArchive(null);
     setDesignsToPurge([]);
+    setDesignsToHardDelete([]);
     setSelectedPurgeIds([]);
+    setSelectedHardDeleteIds([]);
     setIsCategoryModalOpen(false);
     setIsTagManagementModalOpen(false);
     setIsTagFilterModalOpen(false);
@@ -191,6 +199,13 @@ export function DesignLibraryPage() {
     if (!includeArchived || selectionModeActive) {
       setSelectedPurgeIds([]);
       setDesignsToPurge([]);
+    }
+  }, [includeArchived, selectionModeActive]);
+
+  useEffect(() => {
+    if (includeArchived || selectionModeActive) {
+      setSelectedHardDeleteIds([]);
+      setDesignsToHardDelete([]);
     }
   }, [includeArchived, selectionModeActive]);
 
@@ -208,7 +223,15 @@ export function DesignLibraryPage() {
 
   const browsingArchived = selectionModeActive ? false : includeArchived;
   const trimmedSearch = searchQuery.trim();
-  const managedSearchActive = trimmedSearch.length > 0 && !browsingArchived;
+  const managedCategoryId =
+    categoryFilter === ALL_FILTER_VALUE ? undefined : categoryFilter;
+  // Managed Algolia owns text search and/or tag/category filters on ready catalog.
+  // needsCompanion-only stays Firestore browse + client post-filter (B1).
+  const managedSearchActive =
+    !browsingArchived &&
+    (trimmedSearch.length > 0 ||
+      selectedTags.length > 0 ||
+      Boolean(managedCategoryId));
 
   // The design LIST is always bounded-Firestore-authoritative (Amendment 1).
   // Phase 1A: display taxonomy is Firestore-backed via useGeneratedDesignLibraryTaxonomy.
@@ -249,6 +272,7 @@ export function DesignLibraryPage() {
     loadMoreDesigns,
     reloadDesigns,
     applyDesignPatch,
+    removeDesignFromList,
   } = useDesigns(listQuery, {
     enabled: firestoreLoadPolicy.loadReadyDesignPage && !managedSearchActive,
   });
@@ -265,7 +289,7 @@ export function DesignLibraryPage() {
     total: managedSearchTotal,
   } = useDesignLibraryManagedSearch({
     catalogTags,
-    categoryId: categoryFilter === ALL_FILTER_VALUE ? undefined : categoryFilter,
+    categoryId: managedCategoryId,
     enabled: managedSearchActive,
     needsCompanion: needsCompanionFilter,
     searchQuery: trimmedSearch,
@@ -309,6 +333,12 @@ export function DesignLibraryPage() {
     isSubmitting: isPurging,
     purgeDesigns,
   } = usePurgeArchivedDesignAssets();
+  const {
+    clearError: clearHardDeleteError,
+    deleteDesigns: hardDeleteDesigns,
+    error: hardDeleteError,
+    isSubmitting: isHardDeleting,
+  } = useDeleteEligibleUnapprovedDesign();
 
   const categoryNameById = useMemo(
     () => new Map(categories.map((category) => [category.id, category.name])),
@@ -584,6 +614,22 @@ export function DesignLibraryPage() {
     );
   }, []);
 
+  const toggleHardDeleteSelection = useCallback((design: Design) => {
+    if (
+      design.status !== "imported" &&
+      design.status !== "processing" &&
+      design.status !== "rejected"
+    ) {
+      return;
+    }
+
+    setSelectedHardDeleteIds((current) =>
+      current.includes(design.id)
+        ? current.filter((id) => id !== design.id)
+        : [...current, design.id],
+    );
+  }, []);
+
   const openPurgeDesigns = useCallback(
     async (candidates: Design[]) => {
       const purgeable = candidates.filter(
@@ -663,6 +709,83 @@ export function DesignLibraryPage() {
       }
     },
     [applyDesignPatch, designsToPurge, purgeDesigns, refreshCatalog, showSuccessMessage],
+  );
+
+  const openHardDeleteDesigns = useCallback(
+    (candidates: Design[]) => {
+      const eligible = candidates.filter(
+        (design) =>
+          design.status === "imported" ||
+          design.status === "processing" ||
+          design.status === "rejected",
+      );
+
+      if (eligible.length === 0) {
+        return;
+      }
+
+      clearHardDeleteError();
+      setSuccessMessage(null);
+      setActionError(null);
+      setSelectedDesign(null);
+      setDesignsToHardDelete(eligible);
+    },
+    [clearHardDeleteError],
+  );
+
+  const handleHardDeleteConfirm = useCallback(
+    async (input: { confirmationPhrase: string }) => {
+      if (designsToHardDelete.length === 0) {
+        return;
+      }
+
+      try {
+        const result = await hardDeleteDesigns({
+          designIds: designsToHardDelete.map((design) => design.id),
+          confirmationPhrase: input.confirmationPhrase,
+        });
+
+        setDesignsToHardDelete([]);
+        setSelectedHardDeleteIds((current) =>
+          current.filter((id) => !designsToHardDelete.some((design) => design.id === id)),
+        );
+
+        for (const entry of result.results) {
+          if (entry.status === "deleted" || entry.status === "skipped_already_deleted") {
+            removeDesignFromList(entry.designId);
+          }
+        }
+
+        await refreshCatalog();
+
+        if (result.failedCount > 0 && result.deletedCount === 0) {
+          setActionError(
+            result.results.find((entry) => entry.error)?.error ??
+              "Unable to permanently delete the selected designs.",
+          );
+          return;
+        }
+
+        const parts = [
+          result.deletedCount > 0
+            ? `Permanently deleted ${result.deletedCount} design${result.deletedCount === 1 ? "" : "s"}.`
+            : null,
+          result.skippedCount > 0 ? `${result.skippedCount} already deleted.` : null,
+          result.failedCount > 0 ? `${result.failedCount} failed.` : null,
+        ].filter(Boolean);
+
+        showSuccessMessage(parts.join(" ") || "Delete complete.");
+      } catch {
+        // Error handled in hook.
+      }
+    },
+    [
+      designsToHardDelete,
+      hardDeleteDesigns,
+      refreshCatalog,
+      removeDesignFromList,
+      showSuccessMessage,
+    ],
   );
 
   const selectionRequestSelection = useMemo(() => {
@@ -889,6 +1012,34 @@ export function DesignLibraryPage() {
                     </Button>
                   </>
                 ) : null}
+                {!includeArchived &&
+                !selectionModeActive &&
+                canDeleteEligibleUnapprovedDesigns &&
+                selectedHardDeleteIds.length > 0 ? (
+                  <>
+                    <Button
+                      onClick={() => setSelectedHardDeleteIds([])}
+                      size="sm"
+                      variant="ghost"
+                    >
+                      Deselect all
+                    </Button>
+                    <Button
+                      className="button-leading-icon"
+                      onClick={() => {
+                        const selected = filteredDesigns.filter((design) =>
+                          selectedHardDeleteIds.includes(design.id),
+                        );
+                        openHardDeleteDesigns(selected);
+                      }}
+                      size="sm"
+                      variant="danger"
+                    >
+                      <Trash2 aria-hidden="true" size={14} strokeWidth={2} />
+                      Permanently delete ({selectedHardDeleteIds.length})
+                    </Button>
+                  </>
+                ) : null}
                 {hasActiveFilters ? (
                   <Button onClick={clearFilters} size="sm" variant="ghost">
                     Clear filters
@@ -945,7 +1096,14 @@ export function DesignLibraryPage() {
                     isSelected: (designId) => selectedPurgeIds.includes(designId),
                     onToggle: togglePurgeSelection,
                   }
-                : undefined
+                : !includeArchived &&
+                    !selectionModeActive &&
+                    canDeleteEligibleUnapprovedDesigns
+                  ? {
+                      isSelected: (designId) => selectedHardDeleteIds.includes(designId),
+                      onToggle: toggleHardDeleteSelection,
+                    }
+                  : undefined
             }
             requestSelection={selectionRequestSelection}
           />
@@ -961,12 +1119,21 @@ export function DesignLibraryPage() {
       </section>
 
       <DesignLibraryTagFilterModal
+        algoliaFacetContext={
+          browsingArchived
+            ? null
+            : {
+                categoryId: managedCategoryId,
+                searchQuery: trimmedSearch,
+              }
+        }
         baseDesigns={categoryFilteredDesigns}
         catalogTags={catalogTags}
         isOpen={isTagFilterModalOpen}
         onApply={setSelectedTags}
         onClose={() => setIsTagFilterModalOpen(false)}
         selectedTags={selectedTags}
+        useAlgoliaFacets={!browsingArchived}
       />
 
       <DesignDetailsModal
@@ -1031,6 +1198,18 @@ export function DesignLibraryPage() {
           setActiveQueueDesignIds([]);
         }}
         onConfirm={handlePurgeConfirm}
+      />
+
+      <DeleteEligibleUnapprovedDesignDialog
+        designs={designsToHardDelete}
+        error={hardDeleteError}
+        isOpen={designsToHardDelete.length > 0}
+        isSubmitting={isHardDeleting}
+        onCancel={() => {
+          clearHardDeleteError();
+          setDesignsToHardDelete([]);
+        }}
+        onConfirm={handleHardDeleteConfirm}
       />
     </main>
   );

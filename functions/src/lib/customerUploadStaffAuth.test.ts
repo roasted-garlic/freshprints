@@ -37,10 +37,19 @@ describe("customerUploadStaffAuth", () => {
     );
   });
 
-  it("assertCanPromoteOrRetryCustomerUpload is owner/admin only", () => {
+  it("assertCanPromoteOrRetryCustomerUpload allows active staff including helper", () => {
     assert.doesNotThrow(() => assertCanPromoteOrRetryCustomerUpload(caller({ role: "owner" })));
     assert.doesNotThrow(() => assertCanPromoteOrRetryCustomerUpload(caller({ role: "admin" })));
-    assert.throws(() => assertCanPromoteOrRetryCustomerUpload(caller({ role: "helper" })));
+    assert.doesNotThrow(() => assertCanPromoteOrRetryCustomerUpload(caller({ role: "helper" })));
+    assert.throws(
+      () => assertCanPromoteOrRetryCustomerUpload(caller({ role: "helper", isActive: false })),
+      (error: unknown) =>
+        error instanceof Error && /permission|staff/i.test(String((error as { message?: string }).message)),
+    );
+    assert.throws(
+      () => assertCanPromoteOrRetryCustomerUpload(caller({ role: "customer" as never })),
+      /permission|staff/i,
+    );
   });
 
   it("assertCanDeleteCustomerUpload allows owner/admin and denies helper/inactive callers", () => {

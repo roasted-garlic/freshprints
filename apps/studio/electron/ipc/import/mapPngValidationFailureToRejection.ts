@@ -9,6 +9,13 @@ export function mapPngValidationFailureToRejection(
   const fileName = getFileName(filePath);
 
   if (error instanceof PngValidationError) {
+    if (error.reasonCode) {
+      return {
+        reasonCode: error.reasonCode,
+        message: error.message,
+      };
+    }
+
     if (error.message.includes("maximum allowed size")) {
       return {
         reasonCode: "FILE_TOO_LARGE",

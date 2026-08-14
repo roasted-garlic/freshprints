@@ -1,6 +1,7 @@
 import { aiEnrichmentEnqueueService } from "../../ai-review/services/aiEnrichmentEnqueueService";
 import { logPipelineEvent } from "../../../shared/utils/pipelineLog";
 import { traceAiQueueEvent } from "../../../config/aiQueueTraceClient";
+import { logDerivativeLocusDiag } from "../../../shared/utils/derivativeLocusDiagnostic";
 
 /**
  * Session-scoped sequential AI enqueue for Studio import.
@@ -108,6 +109,11 @@ export function enqueueImportedDesignsForBackgroundAi(designIds: readonly string
   logPipelineEvent("import.ai_background.queued", {
     added,
     pending: pendingDesignIds.length,
+  });
+  logDerivativeLocusDiag({
+    stage: "auto_ai.callback.queued",
+    ok: true,
+    detail: { added, pending: pendingDesignIds.length },
   });
 
   void pumpBackgroundAiQueue();

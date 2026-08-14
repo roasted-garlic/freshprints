@@ -169,6 +169,7 @@ function invokeImportChannel<T>(
 
 function invokeDevImportChannel<T>(
   channel: (typeof DEV_IMPORT_IPC_CHANNELS)[keyof typeof DEV_IMPORT_IPC_CHANNELS],
+  payload?: unknown,
 ): Promise<ImportIpcResult<T>> {
   if (!isAllowedDevImportIpcChannel(channel)) {
     return Promise.resolve({
@@ -180,7 +181,7 @@ function invokeDevImportChannel<T>(
     });
   }
 
-  return ipcRenderer.invoke(channel) as Promise<ImportIpcResult<T>>;
+  return ipcRenderer.invoke(channel, payload) as Promise<ImportIpcResult<T>>;
 }
 
 function invokeInboxAlertChannel<T>(
@@ -557,6 +558,21 @@ contextBridge.exposeInMainWorld("freshPrints", {
     verifyDerivativeGeneration(): Promise<ImportIpcResult<DerivativeGenerationVerificationResult>> {
       return invokeDevImportChannel<DerivativeGenerationVerificationResult>(
         DEV_IMPORT_IPC_CHANNELS.VERIFY_DERIVATIVE_GENERATION,
+      );
+    },
+
+    /** Dev-only — append sanitized derivative-locus stage event to main JSONL sink */
+    logDerivativeLocusDiag(event: {
+      stage: string;
+      designId?: string;
+      fileName?: string;
+      jobId?: string;
+      ok?: boolean;
+      detail?: Record<string, string | number | boolean | null | undefined>;
+    }): Promise<ImportIpcResult<{ logged: boolean; sinkPath?: string | null }>> {
+      return invokeDevImportChannel<{ logged: boolean; sinkPath?: string | null }>(
+        DEV_IMPORT_IPC_CHANNELS.LOG_DERIVATIVE_LOCUS_DIAG,
+        event,
       );
     },
   },

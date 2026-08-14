@@ -8,6 +8,7 @@ import {
 } from "@fresh-prints/shared/constants/design/designStoragePaths";
 import { assertValidDerivativeWebpUploadBytes } from "@fresh-prints/shared/utils/derivativeWebpValidation";
 import { storage } from "../../../config/firebase";
+import { sanitizeFirebaseError } from "../../../shared/utils/derivativeLocusDiagnostic";
 import type {
   DeleteDesignDerivativesResult,
   DerivativeDeleteOutcome,
@@ -71,7 +72,10 @@ async function uploadDerivativeWebp(
       contentType: DERIVATIVE_WEBP_CONTENT_TYPE,
     });
   } catch (error) {
-    throw new Error(getStorageUploadErrorMessage(error));
+    const sanitized = sanitizeFirebaseError(error);
+    const wrapped = new Error(getStorageUploadErrorMessage(error));
+    (wrapped as Error & { firebaseCode?: string | null }).firebaseCode = sanitized.code;
+    throw wrapped;
   }
 
   return { catalogPath };

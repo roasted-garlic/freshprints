@@ -6,6 +6,20 @@ import type { Design } from "../types/design.types";
 import { designService } from "./designService";
 import { isStudioAlgoliaCatalogConfigured } from "./studioAlgoliaCatalogFlags";
 import { getStudioAlgoliaIndexName, getStudioAlgoliaSearchClient } from "./studioAlgoliaClient";
+import {
+  buildStudioAlgoliaFacetSearchParams,
+  hasStudioAlgoliaFacetConstraints,
+  mergeStudioAlgoliaTagFacetDistribution,
+  type StudioAlgoliaFacetQueryOptions,
+  type StudioAlgoliaTagFacetOption,
+} from "./studioAlgoliaCatalogFacets";
+
+export type { StudioAlgoliaFacetQueryOptions, StudioAlgoliaTagFacetOption };
+export {
+  buildStudioAlgoliaFacetSearchParams,
+  hasStudioAlgoliaFacetConstraints,
+  mergeStudioAlgoliaTagFacetDistribution,
+};
 
 export interface StudioAlgoliaSearchPageOptions {
   categoryId?: string;
@@ -86,5 +100,52 @@ export const studioAlgoliaCatalogSearchService = {
       hitCount: ids.length,
       total: typeof response.nbHits === "number" ? response.nbHits : designs.length,
     };
+  },
+
+  async listTagFacets(): Promise<StudioAlgoliaTagFacetOption[]> {
+    if (!isStudioAlgoliaCatalogConfigured()) {
+      throw new Error(
+        "Catalog search is not configured. Add Studio Algolia search-only environment variables.",
+      );
+    }
+
+    const client = getStudioAlgoliaSearchClient();
+    const indexName = getStudioAlgoliaIndexName();
+    const response = await client.searchSingleIndex({
+      indexName,
+      searchParams: buildStudioAlgoliaFacetSearchParams({}),
+    });
+    return mergeStudioAlgoliaTagFacetDistribution(
+      response.facets?.tagFacetKeys as Record<string, number> | undefined,
+    );
+  },
+
+  /**
+   * Tag facets refined by the same constraints as managed catalog search
+   * (q + tag AND + category). With no constraints, equivalent to `listTagFacets()`.
+   */
+  async listNarrowedTagFacets(
+    options: StudioAlgoliaFacetQueryOptions = {},
+  ): Promise<StudioAlgoliaTagFacetOption[]> {
+    if (!isStudioAlgoliaCatalogConfigured()) {
+      throw new Error(
+        "Catalog search is not configured. Add Studio Algolia search-only environment variables.",
+      );
+    }
+
+    if (!hasStudioAlgoliaFacetConstraints(options)) {
+      return studioAlgoliaCatalogSearchService.listTagFacets();
+    }
+
+    const client = getStudioAlgoliaSearchClient();
+    const indexName = getStudioAlgoliaIndexName();
+    const response = await client.searchSingleIndex({
+      indexName,
+      searchParams: buildStudioAlgoliaFacetSearchParams(options),
+    });
+
+    return mergeStudioAlgoliaTagFacetDistribution(
+      response.facets?.tagFacetKeys as Record<string, number> | undefined,
+    );
   },
 };

@@ -619,3 +619,158 @@ export function resolveAiCatalogTags({
     unmatchedCandidateCount: unmatchedCandidates.size,
   };
 }
+
+/**
+ * Map persisted `designs.tags` tokens to approved canonical names (exact + alias).
+ * Unknown tokens that are not in taxonomy are kept as normalized lowercase names so they
+ * still suppress exact AI duplicates of staff-assigned freeform values.
+ */
+export function resolveAssignedCanonicalTagNames(
+  approvedTags: CatalogTag[],
+  assignedTags: readonly string[] | undefined,
+): string[] {
+  const { lookup, aliasLookup } = buildApprovedTagLookup(approvedTags);
+  const result: string[] = [];
+  const seen = new Set<string>();
+
+  for (const raw of assignedTags ?? []) {
+    const normalized = normalizeTagCandidate(raw);
+    if (!normalized) {
+      continue;
+    }
+
+    const canonical =
+      lookup.get(normalized) ??
+      aliasLookup.get(normalizeForAliasMatch(raw)) ??
+      normalized;
+
+    if (!seen.has(canonical)) {
+      seen.add(canonical);
+      result.push(canonical);
+    }
+  }
+
+  return result;
+}
+
+function buildAssignedCoverageKeys(
+  approvedTags: CatalogTag[],
+  assignedCanonicalNames: readonly string[],
+): Set<string> {
+  const keys = new Set<string>();
+  const byCanonicalName = new Map<string, CatalogTag>();
+
+  for (const tag of approvedTags) {
+    if (tag.status !== "approved") {
+      continue;
+    }
+    byCanonicalName.set(tag.name, tag);
+  }
+
+  for (const canonical of assignedCanonicalNames) {
+    keys.add(normalizeTagCandidate(canonical));
+    keys.add(normalizeForAliasMatch(canonical));
+
+    const tag = byCanonicalName.get(canonical);
+    if (!tag) {
+      continue;
+    }
+
+    for (const alias of tag.aliases) {
+      keys.add(normalizeTagCandidate(alias));
+      keys.add(normalizeForAliasMatch(alias));
+    }
+  }
+
+  return keys;
+}
+
+function isCoveredByAssignedKeys(value: string, coverageKeys: Set<string>): boolean {
+  const normalized = normalizeTagCandidate(value);
+  if (!normalized) {
+    return false;
+  }
+  if (coverageKeys.has(normalized) || coverageKeys.has(normalizeForAliasMatch(value))) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Deterministic D8-A reconciliation: drop AI tags / suggestedNewTags already covered by
+ * assigned `designs.tags` (canonical name or alias-equivalent). Does not send taxonomy to Gemini.
+ */
+export function subtractAssignedFromAiTagSuggestions(input: {
+  approvedTags: CatalogTag[];
+  assignedTags: readonly string[] | undefined;
+  tags: readonly string[];
+  suggestedNewTags?: readonly SuggestedNewTag[];
+}): {
+  assignedCanonicalNames: string[];
+  suggestedNewTags: SuggestedNewTag[];
+  tags: string[];
+} {
+  const assignedCanonicalNames = resolveAssignedCanonicalTagNames(
+    input.approvedTags,
+    input.assignedTags,
+  );
+  const coverageKeys = buildAssignedCoverageKeys(input.approvedTags, assignedCanonicalNames);
+  const assignedCanonicalSet = new Set(assignedCanonicalNames);
+  const { lookup, aliasLookup } = buildApprovedTagLookup(input.approvedTags);
+
+  const tags = input.tags.filter((tag) => {
+    const normalized = normalizeTagCandidate(tag);
+    const canonical =
+      lookup.get(normalized) ??
+      aliasLookup.get(normalizeForAliasMatch(tag)) ??
+      normalized;
+    if (assignedCanonicalSet.has(canonical)) {
+      return false;
+    }
+    return !isCoveredByAssignedKeys(tag, coverageKeys);
+  });
+
+  const suggestedNewTags = (input.suggestedNewTags ?? []).filter((suggestion) => {
+    if (isCoveredByAssignedKeys(suggestion.name, coverageKeys)) {
+      return false;
+    }
+    for (const alias of suggestion.aliases ?? []) {
+      if (isCoveredByAssignedKeys(alias, coverageKeys)) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  return { assignedCanonicalNames, suggestedNewTags, tags };
+}
+
+/** Filter raw AI candidates so the 8-slot allowance is reserved for genuinely new tags. */
+export function filterCandidatesExcludingAssigned(input: {
+  approvedTags: CatalogTag[];
+  assignedTags: readonly string[] | undefined;
+  candidates: readonly string[] | undefined;
+}): string[] {
+  const assignedCanonicalNames = resolveAssignedCanonicalTagNames(
+    input.approvedTags,
+    input.assignedTags,
+  );
+  const coverageKeys = buildAssignedCoverageKeys(input.approvedTags, assignedCanonicalNames);
+  const { lookup, aliasLookup } = buildApprovedTagLookup(input.approvedTags);
+  const assignedCanonicalSet = new Set(assignedCanonicalNames);
+
+  return (input.candidates ?? []).filter((candidate) => {
+    const normalized = normalizeTagCandidate(candidate);
+    if (!normalized) {
+      return false;
+    }
+    const canonical =
+      lookup.get(normalized) ??
+      aliasLookup.get(normalizeForAliasMatch(candidate)) ??
+      normalized;
+    if (assignedCanonicalSet.has(canonical)) {
+      return false;
+    }
+    return !isCoveredByAssignedKeys(candidate, coverageKeys);
+  });
+}

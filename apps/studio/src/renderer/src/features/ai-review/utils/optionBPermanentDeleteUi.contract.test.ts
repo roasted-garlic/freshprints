@@ -1,0 +1,87 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { describe, it } from "node:test";
+
+function read(path: string): string {
+  return readFileSync(path, "utf8");
+}
+
+describe("Option B permanent delete UI surfaces", () => {
+  it("exposes Delete overflow menu on Processing / Needs Review / Rejected for owners", () => {
+    const workspace = read(
+      "apps/studio/src/renderer/src/features/ai-review/components/AiReviewWorkspace.tsx",
+    );
+    assert.match(workspace, /canPermanentlyDelete/);
+    assert.match(workspace, /onPermanentlyDelete/);
+    assert.match(workspace, /DangerOverflowMenu/);
+    assert.match(workspace, /label:\s*"Delete"/);
+    assert.match(workspace, /ai-review-preview-overflow-menu/);
+    assert.doesNotMatch(workspace, />\s*Permanently delete\s*</);
+
+    const page = read("apps/studio/src/renderer/src/features/ai-review/pages/AiReviewPage.tsx");
+    assert.match(page, /DeleteEligibleUnapprovedDesignDialog/);
+    assert.match(page, /canDeleteEligibleUnapprovedDesigns/);
+    assert.match(page, /isDeleteEligibleUnapprovedDesignStatus/);
+    assert.match(page, /hardDeleteDesigns/);
+    assert.match(page, /reconcileAfterHardDeleteSuccess/);
+    assert.doesNotMatch(page, /await inbox\.reloadDesigns/);
+    assert.match(page, /filters\.tab === "processing"/);
+    assert.match(page, /filters\.tab === "needs_review"/);
+    assert.match(page, /filters\.tab === "rejected"/);
+  });
+
+  it("also exposes Design Library owner selection path (non-archived)", () => {
+    const library = read(
+      "apps/studio/src/renderer/src/features/designs/pages/DesignLibraryPage.tsx",
+    );
+    assert.match(library, /Permanently delete \(/);
+    assert.match(library, /!includeArchived/);
+    assert.match(library, /canDeleteEligibleUnapprovedDesigns/);
+  });
+
+  it("does not add a separate delete callable — reuses deleteEligibleUnapprovedDesign", () => {
+    const service = read(
+      "apps/studio/src/renderer/src/features/designs/services/deleteEligibleUnapprovedDesignService.ts",
+    );
+    assert.match(service, /"deleteEligibleUnapprovedDesign"/);
+    const page = read("apps/studio/src/renderer/src/features/ai-review/pages/AiReviewPage.tsx");
+    assert.match(page, /useDeleteEligibleUnapprovedDesign/);
+  });
+});
+
+describe("diagnostic-build release cleanliness", () => {
+  it("renderer diagnostic flag is OFF unless VITE_FP_DERIVATIVE_LOCUS_DIAG=1", () => {
+    const source = read(
+      "apps/studio/src/renderer/src/shared/utils/derivativeLocusDiagnostic.ts",
+    );
+    assert.doesNotMatch(source, /import\.meta\.env\.DEV/);
+    assert.match(source, /VITE_FP_DERIVATIVE_LOCUS_DIAG === "1"/);
+  });
+
+  it("electron diagnostic flag does not auto-enable on unpackaged local runs", () => {
+    const source = read(
+      "apps/studio/electron/services/import/derivativeLocusDiagnostic.ts",
+    );
+    assert.doesNotMatch(source, /!app\.isPackaged/);
+    assert.match(source, /PACKAGED_DERIVATIVE_LOCUS_DIAG/);
+    assert.match(source, /FP_DERIVATIVE_LOCUS_DIAG/);
+  });
+
+  it("diagnostic banner only renders when diagnostic flag is enabled", () => {
+    const gate = read(
+      "apps/studio/src/renderer/src/shared/components/DiagnosticProjectGate.tsx",
+    );
+    assert.match(gate, /DIAGNOSTIC BUILD/);
+    assert.match(gate, /isDerivativeLocusDiagEnabled\(\)/);
+    assert.match(gate, /diagnostic \? \(/);
+  });
+
+  it("packaged build config defaults PACKAGED_DERIVATIVE_LOCUS_DIAG to false", () => {
+    const script = read("apps/studio/scripts/generate-packaged-build-config.mjs");
+    assert.match(script, /STUDIO_DIAGNOSTIC_BUILD/);
+    assert.match(
+      script,
+      /PACKAGED_DERIVATIVE_LOCUS_DIAG: boolean = \$\{diagnosticBuild \? "true" : "false"\}/,
+    );
+  });
+});

@@ -20,6 +20,10 @@ import { ImportOrchestrationError } from "./importOrchestrationError";
 import { importUploadService } from "./importUploadService";
 import type { UploadCancelToken } from "../utils/uploadCancelToken";
 import { logPipelineEvent } from "../../../shared/utils/pipelineLog";
+import {
+  logDerivativeLocusDiag,
+  webpMagicHex12,
+} from "../../../shared/utils/derivativeLocusDiagnostic";
 
 export interface SinglePngUploadOutcome {
   uploadResult: ImportOriginalUploadResult;
@@ -147,11 +151,52 @@ export async function importValidatedPngFile(
     : await importDesktopService.readSelectedPngFileBytesWithDerivatives(validationResult.filePath);
 
   if (!readResult.success) {
+    logDerivativeLocusDiag({
+      stage: "ipc.read.fail",
+      fileName: validationResult.fileName,
+      jobId: options?.jobId,
+      ok: false,
+      detail: { message: readResult.error.message },
+    });
     return {
       status: "failed",
       message: readResult.error.message,
     };
   }
+
+  const derivativesPresent = Boolean(readResult.data.derivatives);
+  const derivativeErrorPresent = Boolean(readResult.data.derivativeError);
+  logDerivativeLocusDiag({
+    stage: "ipc.read.return",
+    fileName: validationResult.fileName,
+    jobId: options?.jobId,
+    ok: true,
+    detail: {
+      derivativesPresent,
+      derivativeErrorPresent,
+      thumbnailCtor: readResult.data.derivatives?.thumbnailBytes?.constructor?.name ?? null,
+      thumbnailByteLength: readResult.data.derivatives?.thumbnailBytes?.byteLength ?? null,
+      thumbnailIsUint8Array:
+        readResult.data.derivatives?.thumbnailBytes instanceof Uint8Array,
+      thumbnailIsView: readResult.data.derivatives?.thumbnailBytes
+        ? ArrayBuffer.isView(readResult.data.derivatives.thumbnailBytes)
+        : null,
+      thumbnailMagicHex12: webpMagicHex12(readResult.data.derivatives?.thumbnailBytes),
+      previewCtor: readResult.data.derivatives?.previewBytes?.constructor?.name ?? null,
+      previewByteLength: readResult.data.derivatives?.previewBytes?.byteLength ?? null,
+      previewIsUint8Array: readResult.data.derivatives?.previewBytes instanceof Uint8Array,
+      previewIsView: readResult.data.derivatives?.previewBytes
+        ? ArrayBuffer.isView(readResult.data.derivatives.previewBytes)
+        : null,
+      previewMagicHex12: webpMagicHex12(readResult.data.derivatives?.previewBytes),
+      derivativeErrorCode:
+        readResult.data.derivativeError &&
+        typeof readResult.data.derivativeError === "object" &&
+        "code" in readResult.data.derivativeError
+          ? String((readResult.data.derivativeError as { code: string }).code)
+          : null,
+    },
+  });
 
   // Owner QA Amendment 3, Failure 2: byte-limit normalization may have proportionally downscaled
   // the final output. Recalculate stored print size from the pixels actually persisted, so the
@@ -259,6 +304,20 @@ export async function importValidatedPngFile(
       ? formatDerivativeGenerationError(derivativeGenerationError)
       : "Derivative generation did not return thumbnail and preview bytes.";
 
+    logDerivativeLocusDiag({
+      stage: "final.pipeline",
+      designId: design.id,
+      fileName: validationResult.fileName,
+      jobId: options?.jobId,
+      ok: false,
+      detail: {
+        pipelineSuccess: false,
+        derivativeStatus: "failed",
+        derivativeError,
+        aiCallbackInvoked: false,
+      },
+    });
+
     return {
       status: "success",
       importSuccess: true,
@@ -282,6 +341,19 @@ export async function importValidatedPngFile(
   });
 
   if (!pipelineOutcome.success) {
+    logDerivativeLocusDiag({
+      stage: "final.pipeline",
+      designId: design.id,
+      fileName: validationResult.fileName,
+      jobId: options?.jobId,
+      ok: false,
+      detail: {
+        pipelineSuccess: false,
+        derivativeStatus: "failed",
+        derivativeError: pipelineOutcome.message,
+        aiCallbackInvoked: false,
+      },
+    });
     return {
       status: "success",
       importSuccess: true,
@@ -299,6 +371,20 @@ export async function importValidatedPngFile(
   }
 
   logPipelineEvent("import.derivatives.completed", { designId: design.id });
+  logDerivativeLocusDiag({
+    stage: "final.pipeline",
+    designId: design.id,
+    fileName: validationResult.fileName,
+    jobId: options?.jobId,
+    ok: true,
+    detail: {
+      pipelineSuccess: true,
+      derivativeStatus: "ready",
+      thumbnailPath: pipelineOutcome.thumbnailPath,
+      previewPath: pipelineOutcome.previewPath,
+      aiCallbackInvoked: "deferred_to_batch_hook",
+    },
+  });
 
   return {
     status: "success",

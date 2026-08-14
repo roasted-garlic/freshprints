@@ -19,6 +19,7 @@ export type PermissionKey =
   | "managePrintRequestItems"
   | "viewUpcomingShows"
   | "manageUpcomingShows"
+  | "manageShowQueueSettings"
   | "importWhatnotShows"
   | "openDevTools"
   | "manageGuestCustomers"
@@ -30,6 +31,7 @@ export type PermissionKey =
   | "manageAiReview"
   | "wipeOperationalTestData"
   | "purgeArchivedDesignAssets"
+  | "deleteEligibleUnapprovedDesigns"
   | "submitCustomerRequests"
   | "viewOwnCustomerRequests";
 
