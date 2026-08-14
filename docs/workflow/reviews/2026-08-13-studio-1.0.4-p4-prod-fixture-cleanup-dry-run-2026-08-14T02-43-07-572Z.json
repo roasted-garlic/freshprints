@@ -1,0 +1,209 @@
+{
+  "generatedAt": "2026-08-14T02:43:07.572Z",
+  "projectId": "fresh-prints-prod",
+  "mode": "DRY_RUN",
+  "allowlist": [
+    {
+      "id": "qT7Mnxo0IRABj92io3jF",
+      "expectedTitle": "grace"
+    },
+    {
+      "id": "XTa3CyMGDDGiOhXfmXA2",
+      "expectedTitle": "faithoverfeartimothy"
+    },
+    {
+      "id": "U3FCUbWEQGKJ3HEHXc0z",
+      "expectedTitle": "jesus the way 1"
+    },
+    {
+      "id": "lSygK6mUYT8lCz87ykKK",
+      "expectedTitle": "GraffitiJesusPNG"
+    },
+    {
+      "id": "apMfj3bI4kLt50rjM0Ff",
+      "expectedTitle": "jesus the way"
+    },
+    {
+      "id": "09wKlenmbdbKkdvd8Mph",
+      "expectedTitle": "jesusmysavior"
+    },
+    {
+      "id": "YgOYS3awViwDZCIL50Cz",
+      "expectedTitle": "prayer"
+    },
+    {
+      "id": "DjStnvXeV6gahnnaBxox",
+      "expectedTitle": "faithoverfeartimothy"
+    }
+  ],
+  "rows": [
+    {
+      "designId": "qT7Mnxo0IRABj92io3jF",
+      "expectedTitle": "grace",
+      "exists": false,
+      "title": null,
+      "status": null,
+      "aiProcessingStage": null,
+      "eligible": false,
+      "alreadyDeleted": true,
+      "stopBeforeApply": false,
+      "stopReason": null,
+      "reasons": [
+        "already_deleted"
+      ],
+      "storage": {
+        "original": false,
+        "thumbnail": false,
+        "preview": false
+      }
+    },
+    {
+      "designId": "XTa3CyMGDDGiOhXfmXA2",
+      "expectedTitle": "faithoverfeartimothy",
+      "exists": false,
+      "title": null,
+      "status": null,
+      "aiProcessingStage": null,
+      "eligible": false,
+      "alreadyDeleted": true,
+      "stopBeforeApply": false,
+      "stopReason": null,
+      "reasons": [
+        "already_deleted"
+      ],
+      "storage": {
+        "original": false,
+        "thumbnail": false,
+        "preview": false
+      }
+    },
+    {
+      "designId": "U3FCUbWEQGKJ3HEHXc0z",
+      "expectedTitle": "jesus the way 1",
+      "exists": false,
+      "title": null,
+      "status": null,
+      "aiProcessingStage": null,
+      "eligible": false,
+      "alreadyDeleted": true,
+      "stopBeforeApply": false,
+      "stopReason": null,
+      "reasons": [
+        "already_deleted"
+      ],
+      "storage": {
+        "original": false,
+        "thumbnail": false,
+        "preview": false
+      }
+    },
+    {
+      "designId": "lSygK6mUYT8lCz87ykKK",
+      "expectedTitle": "GraffitiJesusPNG",
+      "exists": false,
+      "title": null,
+      "status": null,
+      "aiProcessingStage": null,
+      "eligible": false,
+      "alreadyDeleted": true,
+      "stopBeforeApply": false,
+      "stopReason": null,
+      "reasons": [
+        "already_deleted"
+      ],
+      "storage": {
+        "original": false,
+        "thumbnail": false,
+        "preview": false
+      }
+    },
+    {
+      "designId": "apMfj3bI4kLt50rjM0Ff",
+      "expectedTitle": "jesus the way",
+      "exists": false,
+      "title": null,
+      "status": null,
+      "aiProcessingStage": null,
+      "eligible": false,
+      "alreadyDeleted": true,
+      "stopBeforeApply": false,
+      "stopReason": null,
+      "reasons": [
+        "already_deleted"
+      ],
+      "storage": {
+        "original": false,
+        "thumbnail": false,
+        "preview": false
+      }
+    },
+    {
+      "designId": "09wKlenmbdbKkdvd8Mph",
+      "expectedTitle": "jesusmysavior",
+      "exists": false,
+      "title": null,
+      "status": null,
+      "aiProcessingStage": null,
+      "eligible": false,
+      "alreadyDeleted": true,
+      "stopBeforeApply": false,
+      "stopReason": null,
+      "reasons": [
+        "already_deleted"
+      ],
+      "storage": {
+        "original": false,
+        "thumbnail": false,
+        "preview": false
+      }
+    },
+    {
+      "designId": "YgOYS3awViwDZCIL50Cz",
+      "expectedTitle": "prayer",
+      "exists": false,
+      "title": null,
+      "status": null,
+      "aiProcessingStage": null,
+      "eligible": false,
+      "alreadyDeleted": true,
+      "stopBeforeApply": false,
+      "stopReason": null,
+      "reasons": [
+        "already_deleted"
+      ],
+      "storage": {
+        "original": false,
+        "thumbnail": false,
+        "preview": false
+      }
+    },
+    {
+      "designId": "DjStnvXeV6gahnnaBxox",
+      "expectedTitle": "faithoverfeartimothy",
+      "exists": false,
+      "title": null,
+      "status": null,
+      "aiProcessingStage": null,
+      "eligible": false,
+      "alreadyDeleted": true,
+      "stopBeforeApply": false,
+      "stopReason": null,
+      "reasons": [
+        "already_deleted"
+      ],
+      "storage": {
+        "original": false,
+        "thumbnail": false,
+        "preview": false
+      }
+    }
+  ],
+  "summary": {
+    "total": 8,
+    "exists": 0,
+    "alreadyDeleted": 8,
+    "eligible": 0,
+    "stopBeforeApply": 0,
+    "ineligibleNonStop": 0
+  }
+}
