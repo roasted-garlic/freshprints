@@ -53,3 +53,5 @@ no — residual cleanup in progress
 - 2026-08-13 — Safety archive `C:\coding\_freshprints_cleanup_safety\20260813-222344`
 - 2026-08-13 — Pre-correction tip `ddbfffb` (signoff residuals docs); residual closeout correcting stale intermediate SHAs
 - PRODUCTION_BEFORE = `e59205d7eccf0991e9a8a9b7be266cfeff831158`
+- Residual docs tip pinned: `2fb7c509372aca20fdd3ed7b74330577ad4fcc97`
+
