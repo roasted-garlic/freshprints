@@ -1,54 +1,53 @@
 ## Current Goal
-studio-1.0.4-ai-processing-preview-cleanup-corrective
+studio-design-library-archive-restore-reconciliation
 
 ## Current Mode
 managed-phase
 
 ## Phase
-production promotion prepared — protected PR pending; no merge/deploy yet
+production promotion — PR open; await owner merge
 
 ## Plan Status
 complete
 
 ## Review Status
-approved_with_notes
+approved_with_changes (Formal); Implementation Review approved_with_notes (final package)
 
 ## Implementation Status
-complete — clean promote branch from production + cherry-picks of approved corrective commits
+complete
 
 ## Test Status
-passed_with_notes — owner DEV QA PASS; production-branch verification in progress / recorded in promotion checkpoint
+passed_with_notes — final verification PASS; Rules emulator NOT RUN (Java missing)
 
 ## Signoff Status
-pending — production PR merge → Firebase deploy → NEW Studio 1.0.4 draft + smoke (not draft 369614747)
+approved_with_notes — owner overall QA PASS; production promotion remaining
 
 ## Human Checkpoint Required
 yes
 
 ## Human Checkpoint Reason
-Authorize protected production PR merge, then separately authorize production Firebase deploy. Draft 369614747 and prod fixtures remain untouched.
+PR #74 `development` → `production` is open. Owner must review Files Changed (includes accumulated development docs/scripts beyond this goal; no Portal app / Functions src / Storage Rules) and merge when acceptable. Do not deploy production Firebase until after merge + explicit deploy phrase.
 
 ## Allowed Actions
-Push promote branch; prepare production PR handoff. STOP before production merge, Firebase deploy, fixture cleanup, Studio rebuild, draft creation, publish.
+Record PR merge; after merge pin production SHA; await deploy approval phrase; no force-push
 
 ## Forbidden Actions
-Force push; push to production; merge production; production Firebase deploy; mutate draft 369614747; prod fixture cleanup; bake diagnostic flags; broad development→production merge
+Direct push to production; force-push; reset production; merge without owner review of accumulated delta; Functions/Storage/Hosting/Portal deploy; Phase 9 worktree changes
 
 ## Next Required Step
-Owner/ChatGPT: open+merge protected PR promote/studio-1.0.4-p4-corrective → production
+Owner review + merge https://github.com/roasted-garlic/freshprints/pull/74 — then reply `APPROVE PROD FIRESTORE RULES AND INDEXES DEPLOY FOR DESIGN LIBRARY CORRECTIVE`
 
 ## DONE
 no
 
-## Facts
-| Item | Value |
-|------|-------|
-| Owner DEV QA | **PASS** |
-| Development integration | **COMPLETE** via PR #69 @ `2119d4154c2c2e98cffa17d184012cc136cb3437` |
-| Production baseline | `c6e9235614b6816a98a71f998b47bd7fe18c371f` |
-| Promote branch | `promote/studio-1.0.4-p4-corrective` |
-| Source commits | `5e0b072` + `9414aed` (cherry-picked) |
-| Production Firebase deploy | **PENDING** |
-| NEW Studio 1.0.4 release | **PENDING** (do not reuse draft 369614747) |
-| Draft 369614747 | Failed-smoke evidence; unpublished; untouched |
-| Production fixtures | Untouched |
+## Development
+- SHA: `beac954810649efef8fbdd2c3a99f67595c2b73b`
+- Pushed to `origin/development`
+
+## Production preflight
+- Pre-merge production tip: `e59205d7eccf0991e9a8a9b7be266cfeff831158`
+- PR: #74 open
+- Product scope OK; incidental docs/scripts from prior development closeouts also in three-dot diff (called out in PR body)
+
+## Decision Log
+- 2026-08-14: Owner overall QA PASS; development Signoff; pushed beac954; opened PR #74; STOP for owner merge

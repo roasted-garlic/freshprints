@@ -52,6 +52,8 @@ import { mergeDesignDocumentDataAfterWrite } from "../utils/designDocumentAfterW
 import { mapDesignAiFields } from "../utils/designAiFieldsMapper";
 import { isOperationalDesignStatus, resolveRestoreStatus } from "../utils/designArchiveRestore";
 import { sortDesignsForListQuery } from "../utils/sortDesignsForListQuery";
+import { buildDesignListPageHasMore } from "../utils/designListPageHasMore";
+import { getDesignListQueryCacheKey } from "../utils/designListQueryIdentity";
 
 const DEFAULT_LIST_LIMIT = 100;
 export const DESIGN_LIST_PAGE_SIZE = DEFAULT_LIST_LIMIT;
@@ -98,26 +100,7 @@ const designDocumentCache = createBoundedAsyncCache<Design>({
 });
 
 function getDesignQueryCacheKey(listQuery: DesignListQuery = {}): string {
-  const normalizedStatus =
-    listQuery.statusIn?.length === 1 ? listQuery.statusIn[0] : listQuery.status;
-  const normalizedStatusIn =
-    listQuery.statusIn && listQuery.statusIn.length > 1
-      ? [...listQuery.statusIn].sort()
-      : undefined;
-
-  return JSON.stringify({
-    aiReviewStatus: listQuery.aiReviewStatus,
-    categoryId: listQuery.categoryId,
-    cursor: listQuery.cursor
-      ? [listQuery.cursor.designId, listQuery.cursor.sortMillis]
-      : undefined,
-    limitCount: listQuery.limitCount ?? DEFAULT_LIST_LIMIT,
-    sortDirection: listQuery.sortDirection ?? "desc",
-    sortField: listQuery.sortField ?? "updatedAt",
-    status: normalizedStatus,
-    statusIn: normalizedStatusIn,
-    tag: listQuery.tag?.trim().toLowerCase(),
-  });
+  return getDesignListQueryCacheKey(listQuery, { defaultLimitCount: DEFAULT_LIST_LIMIT });
 }
 
 function invalidateDesignReadCaches(designId?: string): void {
@@ -172,6 +155,10 @@ function buildDesignFilterConstraints(listQuery: DesignListQuery = {}): QueryCon
     constraints.push(where("aiReviewStatus", "==", listQuery.aiReviewStatus));
   }
 
+  if (listQuery.companionSetIncomplete === true) {
+    constraints.push(where("companionSetIncomplete", "==", true));
+  }
+
   return constraints;
 }
 
@@ -200,7 +187,7 @@ function buildDesignListPage(
   pageSize: number,
   sortField: DesignListSortField = "updatedAt",
 ): DesignListPage {
-  const hasMore = designs.length > pageSize;
+  const hasMore = buildDesignListPageHasMore(designs.length, pageSize);
   const pageDesigns = hasMore ? designs.slice(0, pageSize) : designs;
   const lastDesign = pageDesigns.at(-1);
 
@@ -510,6 +497,7 @@ function designListTraceMetadata(
     listQuery.aiReviewStatus ? `aiReviewStatus==${listQuery.aiReviewStatus}` : "",
     listQuery.categoryId ? "categoryId=={categoryId}" : "",
     listQuery.tag ? "tags array-contains {tag}" : "",
+    listQuery.companionSetIncomplete === true ? "companionSetIncomplete==true" : "",
   ].filter(Boolean);
   const sortField = listQuery.sortField ?? "updatedAt";
   const sortDirection = listQuery.sortDirection ?? "desc";

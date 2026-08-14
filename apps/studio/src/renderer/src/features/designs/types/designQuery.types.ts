@@ -20,6 +20,11 @@ export interface DesignListCursor {
 export interface DesignListQuery {
   aiReviewStatus?: AiReviewStatus;
   categoryId?: string;
+  /**
+   * When true, restrict to designs needing a companion (`companionSetIncomplete == true`).
+   * Used by Design Library Needs Companion Firestore browse so pagination `hasMore` is authoritative.
+   */
+  companionSetIncomplete?: boolean;
   cursor?: DesignListCursor;
   limitCount?: number;
   /** Single status equality — used by AI Review and legacy callers */

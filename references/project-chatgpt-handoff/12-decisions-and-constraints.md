@@ -2,6 +2,15 @@
 
 > Full log: `docs/project/DECISIONS.md` — newest ADRs first.
 
+## Repository workflow (2026-08-13 closeout)
+
+| Constraint | Rule |
+|------------|------|
+| Default branch for work | **`development`** (development-first local checkout; see `docs/standards/DEPLOYMENT.md`) |
+| Production tip pin (Studio 1.0.4 P4) | `e59205d7eccf0991e9a8a9b7be266cfeff831158` — do not push/reset during this closeout window |
+| Promotion | PR into `production` only; never force-push protected branches |
+| Cleanup | Prefer archive + prove redundancy before worktree/branch delete; never `git clean -fdx` |
+
 ## Platform (immutable without ADR revision)
 
 | Decision | Rule |

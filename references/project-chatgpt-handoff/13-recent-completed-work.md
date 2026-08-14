@@ -1,5 +1,93 @@
 # Recent Completed Work
 
+## 2026-08-14 - Studio Design Library archive / restore / companion (DEV Signoff; prod promotion next)
+
+| Item | Status |
+|------|--------|
+| Goal | `studio-design-library-archive-restore-reconciliation` |
+| Owner QA | **PASS** — A/B/C/D (D1/D2 corrective included) |
+| DEV deploy | `firestore:rules` + `firestore:indexes` → `fresh-prints-dev` |
+| Signoff | `docs/workflow/reviews/2026-08-14-studio-design-library-archive-restore-reconciliation-signoff.md` (**approved_with_notes**) |
+| Window | Studio min 1656×1032 |
+| Production | Promotion gated (PR → Rules/indexes only → Studio 1.0.4 SHA-tagged release → smoke) |
+| Out of scope | Portal, Functions, Storage, Phase 9, Algolia B3 |
+
+## 2026-08-14 - Studio development white-screen recovery (env-only)
+
+| Item | Status |
+|------|--------|
+| Goal | `studio-dev-recovery-white-screen` |
+| Root cause | Missing gitignored `apps/studio/.env.local` → fatal `VITE_FIREBASE_API_KEY` throw |
+| Fix | Restored Studio (+ Portal) `.env.local` from Phase 9 Portal mapping (`fresh-prints-dev`); **no app source changes** |
+| Known-good baseline | `e59205d7…` / release `370305556` — Studio tree matched; production untouched |
+| Owner manual | **PASS** |
+| Signoff | `docs/workflow/reviews/2026-08-14-studio-dev-recovery-white-screen-signoff.md` |
+| Next | Design Library corrective (above) |
+
+## 2026-08-13 - Repository consolidation residual closeout (docs + cleanup)
+
+| Item | Status |
+|------|--------|
+| PRODUCTION_BEFORE = AFTER | `e59205d7eccf0991e9a8a9b7be266cfeff831158` |
+| Reconciliation complete before residual docs | PR #71 / #72 / #73; pre-correction tip `ddbfffb7e1906b79acfcd40e1336ecc31ef9fd0c` |
+| Current development HEAD after residual documentation correction | See CURRENT-STATE / signoff (authoritative: `origin/development`) |
+| Main checkout | `C:\coding\fresh-prints` → `development` tracking `origin/development` |
+| Safety archive | `C:\coding\_freshprints_cleanup_safety\20260813-222344` — preserved |
+| Tag `v1.0.4-e59205d` / release 370305556 | **Intact** / GitHub Latest |
+| Residual cleanup | Worktrees / orphans / obsolete remotes — this follow-up |
+| Phase 9 | **Parked** (KEEP worktree) |
+| Signoff | `docs/workflow/reviews/2026-08-13-repository-consolidation-development-sync-and-cleanup-signoff.md` |
+
+## 2026-08-13 - Repository consolidation closeout STEPS 6–14 (historical)
+
+| Item | Status |
+|------|--------|
+| PRODUCTION_BEFORE = AFTER | `e59205d7eccf0991e9a8a9b7be266cfeff831158` |
+| Development (at STEPS 6–14 write) | Intermediate tip later superseded — see residual closeout above |
+| Main checkout | `development` tracking `origin/development` |
+| Safety archive | `C:\coding\_freshprints_cleanup_safety\20260813-222344` |
+| Tag `v1.0.4-e59205d` | **Intact** @ `e59205d7` |
+| Phase 9 | **Parked** (KEEP worktree) |
+| Signoff | `docs/workflow/reviews/2026-08-13-repository-consolidation-development-sync-and-cleanup-signoff.md` |
+
+## 2026-08-13 - Studio 1.0.4 P4 PUBLISHED; repository consolidation closeout (STEPS 3–5)
+
+| Item | Status |
+|------|--------|
+| Production tip / PRODUCTION_BEFORE | `e59205d7eccf0991e9a8a9b7be266cfeff831158` (PR #70) — **immutable this closeout** |
+| Prod Firebase | `firestore:rules` + `deleteEligibleUnapprovedDesign` **DEPLOYED** |
+| Release | **370305556** published — tag `v1.0.4-e59205d` |
+| Dual-platform smoke | **PASS** (Windows + Mac arm64 + Mac x64) |
+| Draft 369614747 | Historical anomaly — **do not restore** |
+| Prod fixtures (8) | **Already gone** (verified; APPLY idempotent) |
+| Closeout STEPS 3–5 | PR #71 merged prod lineage into development; PR #72 docs state |
+| Phase 9 | **Parked** |
+| Domain cutover | **Gated** |
+
+## 2026-08-13 - Studio 1.0.4 P4 AI preview cleanup corrective — DEV QA PASS (development integration)
+
+Managed goal `studio-1.0.4-ai-processing-preview-cleanup-corrective`.
+
+**Root cause:** Firestore Rules P4 authorization gap on derivative path persistence.
+**Corrective:** Narrow `designDerivativeCompletionUpdate` Rules fast path; derivative failure visibility; auto-AI handoff guard; Option B owner-only `deleteEligibleUnapprovedDesign` + Studio UX; instant list reconcile after delete; diagnostic banner OFF by default.
+
+| Item | Status |
+|------|--------|
+| Corrective HEAD | `9414aed4a5fefbd266648e3601e61af8ef363e10` |
+| Owner DEV QA | **PASS** (pipeline + permanent delete + immediate list remove + banner OFF) |
+| DEV deploy | `firestore:rules` + `functions:deleteEligibleUnapprovedDesign` on `fresh-prints-dev` |
+| Production | **PROMOTED** via PR #70 @ `e59205d7` (see publish banner above) |
+| Draft 369614747 | Historical anomaly / failed-smoke evidence — do not restore |
+| Prod fixtures | Already gone (verified) |
+
+Checkpoints: `docs/workflow/reviews/2026-08-13-studio-1.0.4-p4-dev-qa-checkpoint.md`, `docs/workflow/reviews/2026-08-13-studio-1.0.4-option-b-ui-discoverability-checkpoint.md`
+
+## 2026-08-11 - Prefinal A–H + Track B Git promote to production (PR #57)
+
+Owner **`PR 57 MERGED`**. Production tip `c3a61bf` contains freeze `3b7a978`.
+Storage Rules / Functions / App Hosting / Track A APPLY / Studio 1.0.3 **not** done.
+Checkpoint: `docs/workflow/reviews/2026-08-11-prefinal-a-h-production-promote-preflight-checkpoint.md`
+
 ## 2026-08-11 - Legacy Pending tooling + Global OG Static letterbox DEV COMPLETE
 
 Owner **`DEV STATIC OG LETTERBOX QA: PASS`**. Signoff **approved_with_notes**.
@@ -10,7 +98,18 @@ Signoff: `docs/workflow/reviews/2026-08-11-prod-legacy-pending-and-og-static-let
 
 Owner **`DEV A-H QA: PASS`**. Signoff **approved_with_notes**.
 Branch `qa/prefinal-a-h-dev` integrated A–H + DEV deploy; QA amendments during testing.
-Production still blocked. Signoff: `docs/workflow/reviews/2026-08-11-prefinal-a-h-development-qa-signoff.md`
+Signoff: `docs/workflow/reviews/2026-08-11-prefinal-a-h-development-qa-signoff.md`
+
+## 2026-08-10 - Prelaunch companion + censored PRODUCTION PROMOTE COMPLETE
+
+Owner **`PROD COMPANION CENSORED PROMOTE SMOKE: PASS`**. Signoff **approved**.
+Production promotion **COMPLETE**. Studio **v1.0.2** published; production source includes
+`b6e67be1b7fe02a69cd31077a203ee9102611ca5`. LIVE: Rules, indexes, `getPortalGlobalOpenGraph`,
+Portal App Hosting. Workflow **DONE**.
+`myprintrequest.com` cutover **NOT** performed (still awaits `APPROVE MYPRINTREQUEST.COM CUTOVER`).
+Algolia untouched.
+Signoff: `docs/workflow/reviews/2026-08-10-prelaunch-companion-censored-promote-signoff.md`
+Smoke: `docs/workflow/reviews/2026-08-10-prelaunch-companion-censored-promote-smoke-checklist.md`
 
 ## 2026-08-10 - Prelaunch companion + censored DEV COMPLETE (prod promote gated)
 

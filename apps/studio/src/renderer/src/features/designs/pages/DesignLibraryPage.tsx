@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ArrowLeft, FolderCog, Save, Tags, Trash2, X } from "lucide-react";
-import { Timestamp } from "firebase/firestore";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { withFirebaseTraceAction } from "@fresh-prints/shared/utils/firestoreUsageTrace";
@@ -21,7 +20,6 @@ import { DesignLibraryFilterControls } from "../components/DesignLibraryFilterCo
 import { DesignLibraryTagFilterModal } from "../components/DesignLibraryTagFilterModal";
 import { EditDesignModal } from "../components/EditDesignModal";
 import { PurgeArchivedDesignAssetsDialog } from "../components/PurgeArchivedDesignAssetsDialog";
-import { DeleteEligibleUnapprovedDesignDialog } from "../components/DeleteEligibleUnapprovedDesignDialog";
 import { TagManagementModal } from "../components/TagManagementModal";
 import {
   buildCatalogDesignListQuery,
@@ -38,7 +36,6 @@ import { useDesignLibraryManagedSearch } from "../hooks/useDesignLibraryManagedS
 import { useDesigns } from "../hooks/useDesigns";
 import { useGeneratedDesignLibraryTaxonomy } from "../hooks/useGeneratedDesignLibraryTaxonomy";
 import { usePurgeArchivedDesignAssets } from "../hooks/usePurgeArchivedDesignAssets";
-import { useDeleteEligibleUnapprovedDesign } from "../hooks/useDeleteEligibleUnapprovedDesign";
 import { useRestoreDesign } from "../hooks/useRestoreDesign";
 import { designService } from "../services/designService";
 import { findDesignIdsOnActiveShowQueue } from "../services/purgeArchivedDesignAssetsService";
@@ -77,8 +74,6 @@ export function DesignLibraryPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const canPurgeArchivedDesignAssets = permissionService.canPurgeArchivedDesignAssets(user);
-  const canDeleteEligibleUnapprovedDesigns =
-    permissionService.canDeleteEligibleUnapprovedDesigns(user);
 
   const filters = useMemo(() => parseDesignLibraryUrlFilters(searchParams), [searchParams]);
   const selectionModeActive = filters.mode === "request-selection";
@@ -103,10 +98,8 @@ export function DesignLibraryPage() {
   const [editingDesign, setEditingDesign] = useState<Design | null>(null);
   const [designToArchive, setDesignToArchive] = useState<Design | null>(null);
   const [designsToPurge, setDesignsToPurge] = useState<Design[]>([]);
-  const [designsToHardDelete, setDesignsToHardDelete] = useState<Design[]>([]);
   const [activeQueueDesignIds, setActiveQueueDesignIds] = useState<string[]>([]);
   const [selectedPurgeIds, setSelectedPurgeIds] = useState<string[]>([]);
-  const [selectedHardDeleteIds, setSelectedHardDeleteIds] = useState<string[]>([]);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [isTagManagementModalOpen, setIsTagManagementModalOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -185,9 +178,7 @@ export function DesignLibraryPage() {
     setEditingDesign(null);
     setDesignToArchive(null);
     setDesignsToPurge([]);
-    setDesignsToHardDelete([]);
     setSelectedPurgeIds([]);
-    setSelectedHardDeleteIds([]);
     setIsCategoryModalOpen(false);
     setIsTagManagementModalOpen(false);
     setIsTagFilterModalOpen(false);
@@ -202,23 +193,21 @@ export function DesignLibraryPage() {
     }
   }, [includeArchived, selectionModeActive]);
 
-  useEffect(() => {
-    if (includeArchived || selectionModeActive) {
-      setSelectedHardDeleteIds([]);
-      setDesignsToHardDelete([]);
-    }
-  }, [includeArchived, selectionModeActive]);
-
   // The query intentionally omits `tags`: tag filtering is fully client-side (AND + live
   // faceting), so we load the whole category/archived scope once and facet in memory.
+  // Needs Companion (Firestore browse only): server-filter companionSetIncomplete so hasMore
+  // matches visible companion results. Managed Algolia + Needs Companion remains client-filtered
+  // (follow-up; out of this phase).
   const listQuery = useMemo(
     () =>
       buildCatalogDesignListQuery({
         archived: selectionModeActive ? false : includeArchived,
         categoryId: undefined,
+        companionSetIncomplete:
+          !selectionModeActive && !includeArchived && needsCompanionFilter ? true : undefined,
         tags: [],
       }),
-    [includeArchived, selectionModeActive],
+    [includeArchived, needsCompanionFilter, selectionModeActive],
   );
 
   const browsingArchived = selectionModeActive ? false : includeArchived;
@@ -226,7 +215,7 @@ export function DesignLibraryPage() {
   const managedCategoryId =
     categoryFilter === ALL_FILTER_VALUE ? undefined : categoryFilter;
   // Managed Algolia owns text search and/or tag/category filters on ready catalog.
-  // needsCompanion-only stays Firestore browse + client post-filter (B1).
+  // needsCompanion-only uses Firestore browse with server companionSetIncomplete filter.
   const managedSearchActive =
     !browsingArchived &&
     (trimmedSearch.length > 0 ||
@@ -326,19 +315,13 @@ export function DesignLibraryPage() {
     error: archiveError,
     isSubmitting: isArchiving,
   } = useArchiveDesign();
-  const { restoreDesign } = useRestoreDesign();
+  const { restoreDesign, error: restoreError, clearError: clearRestoreError } = useRestoreDesign();
   const {
     clearError: clearPurgeError,
     error: purgeError,
     isSubmitting: isPurging,
     purgeDesigns,
   } = usePurgeArchivedDesignAssets();
-  const {
-    clearError: clearHardDeleteError,
-    deleteDesigns: hardDeleteDesigns,
-    error: hardDeleteError,
-    isSubmitting: isHardDeleting,
-  } = useDeleteEligibleUnapprovedDesign();
 
   const categoryNameById = useMemo(
     () => new Map(categories.map((category) => [category.id, category.name])),
@@ -578,15 +561,21 @@ export function DesignLibraryPage() {
   const handleRestoreDesign = useCallback(
     async (design: Design) => {
       try {
+        clearRestoreError();
+        setActionError(null);
         await restoreDesign(design.id);
         setSelectedDesign(null);
-        await refreshCatalog();
+        // Local reconcile while browsing Archived — do not refresh into a stale page cache.
+        removeDesignFromList(design.id);
+        setLibraryTotal((current) => (current === null ? null : Math.max(0, current - 1)));
         showSuccessMessage(`${design.title} restored successfully.`);
-      } catch {
-        // Error handled in hook.
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Unable to restore the design. Please try again.";
+        setActionError(message);
       }
     },
-    [refreshCatalog, restoreDesign, showSuccessMessage],
+    [clearRestoreError, removeDesignFromList, restoreDesign, showSuccessMessage],
   );
 
   const handleArchiveConfirm = useCallback(async () => {
@@ -608,22 +597,6 @@ export function DesignLibraryPage() {
 
   const togglePurgeSelection = useCallback((design: Design) => {
     setSelectedPurgeIds((current) =>
-      current.includes(design.id)
-        ? current.filter((id) => id !== design.id)
-        : [...current, design.id],
-    );
-  }, []);
-
-  const toggleHardDeleteSelection = useCallback((design: Design) => {
-    if (
-      design.status !== "imported" &&
-      design.status !== "processing" &&
-      design.status !== "rejected"
-    ) {
-      return;
-    }
-
-    setSelectedHardDeleteIds((current) =>
       current.includes(design.id)
         ? current.filter((id) => id !== design.id)
         : [...current, design.id],
@@ -673,10 +646,12 @@ export function DesignLibraryPage() {
           confirmationPhrase: input.confirmationPhrase,
         });
 
-        const purgedAt = Timestamp.now();
+        const reconciledIds: string[] = [];
         for (const entry of result.results) {
           if (entry.status === "purged" || entry.status === "skipped_already_purged") {
-            applyDesignPatch(entry.designId, { assetsPurgedAt: purgedAt });
+            // Prefer list removal + cache invalidation over refresh into a stale 15s page cache.
+            removeDesignFromList(entry.designId);
+            reconciledIds.push(entry.designId);
           }
         }
 
@@ -685,7 +660,12 @@ export function DesignLibraryPage() {
         setSelectedPurgeIds((current) =>
           current.filter((id) => !designsToPurge.some((design) => design.id === id)),
         );
-        await refreshCatalog();
+
+        if (reconciledIds.length > 0) {
+          setLibraryTotal((current) =>
+            current === null ? null : Math.max(0, current - reconciledIds.length),
+          );
+        }
 
         if (result.failedCount > 0 && result.purgedCount === 0) {
           setActionError(
@@ -708,84 +688,7 @@ export function DesignLibraryPage() {
         // Error handled in hook.
       }
     },
-    [applyDesignPatch, designsToPurge, purgeDesigns, refreshCatalog, showSuccessMessage],
-  );
-
-  const openHardDeleteDesigns = useCallback(
-    (candidates: Design[]) => {
-      const eligible = candidates.filter(
-        (design) =>
-          design.status === "imported" ||
-          design.status === "processing" ||
-          design.status === "rejected",
-      );
-
-      if (eligible.length === 0) {
-        return;
-      }
-
-      clearHardDeleteError();
-      setSuccessMessage(null);
-      setActionError(null);
-      setSelectedDesign(null);
-      setDesignsToHardDelete(eligible);
-    },
-    [clearHardDeleteError],
-  );
-
-  const handleHardDeleteConfirm = useCallback(
-    async (input: { confirmationPhrase: string }) => {
-      if (designsToHardDelete.length === 0) {
-        return;
-      }
-
-      try {
-        const result = await hardDeleteDesigns({
-          designIds: designsToHardDelete.map((design) => design.id),
-          confirmationPhrase: input.confirmationPhrase,
-        });
-
-        setDesignsToHardDelete([]);
-        setSelectedHardDeleteIds((current) =>
-          current.filter((id) => !designsToHardDelete.some((design) => design.id === id)),
-        );
-
-        for (const entry of result.results) {
-          if (entry.status === "deleted" || entry.status === "skipped_already_deleted") {
-            removeDesignFromList(entry.designId);
-          }
-        }
-
-        await refreshCatalog();
-
-        if (result.failedCount > 0 && result.deletedCount === 0) {
-          setActionError(
-            result.results.find((entry) => entry.error)?.error ??
-              "Unable to permanently delete the selected designs.",
-          );
-          return;
-        }
-
-        const parts = [
-          result.deletedCount > 0
-            ? `Permanently deleted ${result.deletedCount} design${result.deletedCount === 1 ? "" : "s"}.`
-            : null,
-          result.skippedCount > 0 ? `${result.skippedCount} already deleted.` : null,
-          result.failedCount > 0 ? `${result.failedCount} failed.` : null,
-        ].filter(Boolean);
-
-        showSuccessMessage(parts.join(" ") || "Delete complete.");
-      } catch {
-        // Error handled in hook.
-      }
-    },
-    [
-      designsToHardDelete,
-      hardDeleteDesigns,
-      refreshCatalog,
-      removeDesignFromList,
-      showSuccessMessage,
-    ],
+    [designsToPurge, purgeDesigns, removeDesignFromList, showSuccessMessage],
   );
 
   const selectionRequestSelection = useMemo(() => {
@@ -935,9 +838,9 @@ export function DesignLibraryPage() {
         <DismissibleSuccessAlert message={successMessage} onDismiss={dismissSuccessMessage} />
       ) : null}
 
-      {actionError ? (
+      {actionError || restoreError ? (
         <p className="auth-message auth-message-error" role="alert">
-          {actionError}
+          {actionError ?? restoreError}
         </p>
       ) : null}
 
@@ -1012,34 +915,6 @@ export function DesignLibraryPage() {
                     </Button>
                   </>
                 ) : null}
-                {!includeArchived &&
-                !selectionModeActive &&
-                canDeleteEligibleUnapprovedDesigns &&
-                selectedHardDeleteIds.length > 0 ? (
-                  <>
-                    <Button
-                      onClick={() => setSelectedHardDeleteIds([])}
-                      size="sm"
-                      variant="ghost"
-                    >
-                      Deselect all
-                    </Button>
-                    <Button
-                      className="button-leading-icon"
-                      onClick={() => {
-                        const selected = filteredDesigns.filter((design) =>
-                          selectedHardDeleteIds.includes(design.id),
-                        );
-                        openHardDeleteDesigns(selected);
-                      }}
-                      size="sm"
-                      variant="danger"
-                    >
-                      <Trash2 aria-hidden="true" size={14} strokeWidth={2} />
-                      Permanently delete ({selectedHardDeleteIds.length})
-                    </Button>
-                  </>
-                ) : null}
                 {hasActiveFilters ? (
                   <Button onClick={clearFilters} size="sm" variant="ghost">
                     Clear filters
@@ -1096,14 +971,7 @@ export function DesignLibraryPage() {
                     isSelected: (designId) => selectedPurgeIds.includes(designId),
                     onToggle: togglePurgeSelection,
                   }
-                : !includeArchived &&
-                    !selectionModeActive &&
-                    canDeleteEligibleUnapprovedDesigns
-                  ? {
-                      isSelected: (designId) => selectedHardDeleteIds.includes(designId),
-                      onToggle: toggleHardDeleteSelection,
-                    }
-                  : undefined
+                : undefined
             }
             requestSelection={selectionRequestSelection}
           />
@@ -1198,18 +1066,6 @@ export function DesignLibraryPage() {
           setActiveQueueDesignIds([]);
         }}
         onConfirm={handlePurgeConfirm}
-      />
-
-      <DeleteEligibleUnapprovedDesignDialog
-        designs={designsToHardDelete}
-        error={hardDeleteError}
-        isOpen={designsToHardDelete.length > 0}
-        isSubmitting={isHardDeleting}
-        onCancel={() => {
-          clearHardDeleteError();
-          setDesignsToHardDelete([]);
-        }}
-        onConfirm={handleHardDeleteConfirm}
       />
     </main>
   );

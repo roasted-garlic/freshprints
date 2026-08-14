@@ -1,6 +1,6 @@
 /** Minimum window size when not maximized. Adjust after using the viewport debug overlay (Ctrl+Shift+V). */
-export const STUDIO_MIN_WINDOW_WIDTH = 1420;
-export const STUDIO_MIN_WINDOW_HEIGHT = 888;
+export const STUDIO_MIN_WINDOW_WIDTH = 1656;
+export const STUDIO_MIN_WINDOW_HEIGHT = 1032;
 
 const ABSOLUTE_MIN_WINDOW_WIDTH = 640;
 const ABSOLUTE_MIN_WINDOW_HEIGHT = 480;

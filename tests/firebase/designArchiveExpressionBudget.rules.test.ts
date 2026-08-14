@@ -7,7 +7,7 @@ import {
   initializeTestEnvironment,
   type RulesTestEnvironment,
 } from "@firebase/rules-unit-testing";
-import { doc, setDoc, updateDoc, Timestamp, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, updateDoc, Timestamp, serverTimestamp, deleteField } from "firebase/firestore";
 
 /**
  * Studio 1.0.4 smoke Defect B: soft-archive of enrichment-heavy rejected designs.
@@ -109,6 +109,17 @@ function archivePayload(actorUid: string, previousStatus: string) {
     previousStatus,
     archivedAt: serverTimestamp(),
     archivedBy: actorUid,
+    updatedAt: serverTimestamp(),
+    updatedBy: actorUid,
+  };
+}
+
+function restorePayload(actorUid: string, status: string) {
+  return {
+    status,
+    previousStatus: deleteField(),
+    archivedAt: deleteField(),
+    archivedBy: deleteField(),
     updatedAt: serverTimestamp(),
     updatedBy: actorUid,
   };
@@ -246,16 +257,48 @@ describe("design soft-archive fast path (expression budget)", () => {
       }),
     );
     const db = environment.authenticatedContext(HELPER).firestore();
-    await assertFails(
-      updateDoc(doc(db, "designs", DESIGN), {
-        status: "rejected",
-        previousStatus: null,
-        archivedAt: null,
-        archivedBy: null,
-        updatedAt: serverTimestamp(),
-        updatedBy: HELPER,
+    await assertFails(updateDoc(doc(db, "designs", DESIGN), restorePayload(HELPER, "rejected")));
+  });
+
+  it("enrichment-heavy archived → rejected ALLOW for owner (restore fast path)", async () => {
+    await seedUsersAndDesign(
+      baseRejectedDesign({
+        status: "archived",
+        previousStatus: "rejected",
+        archivedAt: Timestamp.now(),
+        archivedBy: OWNER,
       }),
     );
+    const db = environment.authenticatedContext(OWNER).firestore();
+    await assertSucceeds(updateDoc(doc(db, "designs", DESIGN), restorePayload(OWNER, "rejected")));
+  });
+
+  it("enrichment-heavy archived → ready ALLOW for owner when previousStatus is ready", async () => {
+    await seedUsersAndDesign(
+      baseRejectedDesign({
+        status: "archived",
+        previousStatus: "ready",
+        aiReviewStatus: "approved",
+        readyAt: Timestamp.now(),
+        archivedAt: Timestamp.now(),
+        archivedBy: OWNER,
+      }),
+    );
+    const db = environment.authenticatedContext(OWNER).firestore();
+    await assertSucceeds(updateDoc(doc(db, "designs", DESIGN), restorePayload(OWNER, "ready")));
+  });
+
+  it("DENY restore when status does not match previousStatus", async () => {
+    await seedUsersAndDesign(
+      baseRejectedDesign({
+        status: "archived",
+        previousStatus: "rejected",
+        archivedAt: Timestamp.now(),
+        archivedBy: OWNER,
+      }),
+    );
+    const db = environment.authenticatedContext(OWNER).firestore();
+    await assertFails(updateDoc(doc(db, "designs", DESIGN), restorePayload(OWNER, "ready")));
   });
 });
 
@@ -292,5 +335,48 @@ describe("pre-corrective archive deny (rules without designArchiveStatusOnlyUpda
     });
     const db = legacyEnvironment.authenticatedContext(OWNER).firestore();
     await assertFails(updateDoc(doc(db, "designs", DESIGN), archivePayload(OWNER, "rejected")));
+  });
+});
+
+describe("pre-corrective restore deny (rules without designRestoreStatusOnlyUpdate)", () => {
+  let legacyRestoreEnvironment: RulesTestEnvironment;
+
+  before(async () => {
+    const rulesPath = resolve(process.cwd(), "firestore.rules");
+    let rules = readFileSync(rulesPath, "utf8");
+    rules = rules.replace(
+      /\|\|\s*designRestoreStatusOnlyUpdate\(\)/g,
+      "|| false /* restore fast path removed for regression */",
+    );
+    legacyRestoreEnvironment = await initializeTestEnvironment({
+      projectId: "demo-fresh-prints-design-restore-legacy",
+      firestore: { host: "127.0.0.1", port: 8080, rules },
+    });
+  });
+
+  after(async () => {
+    await legacyRestoreEnvironment.cleanup();
+  });
+
+  beforeEach(async () => {
+    await legacyRestoreEnvironment.clearFirestore();
+  });
+
+  it("enrichment-heavy archived → rejected DENY without restore fast path", async () => {
+    await legacyRestoreEnvironment.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, "users", OWNER), { role: "owner", isActive: true });
+      await setDoc(
+        doc(db, "designs", DESIGN),
+        baseRejectedDesign({
+          status: "archived",
+          previousStatus: "rejected",
+          archivedAt: Timestamp.now(),
+          archivedBy: OWNER,
+        }),
+      );
+    });
+    const db = legacyRestoreEnvironment.authenticatedContext(OWNER).firestore();
+    await assertFails(updateDoc(doc(db, "designs", DESIGN), restorePayload(OWNER, "rejected")));
   });
 });

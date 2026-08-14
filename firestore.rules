@@ -373,6 +373,41 @@ service cloud.firestore {
         && request.resource.data.get("assetsPurgedBy", null) == resource.data.get("assetsPurgedBy", null);
     }
 
+    // Fast path for soft-restore (`designService.restoreDesign`). Mirrors archive: without this
+    // branch, enrichment-heavy archived → operational status hits the expression budget and
+    // denies as permission-denied. Owner/admin only (matches permissionService.canRestoreDesigns).
+    // Archive audit fields must be deleted (absent on request.resource); purge markers immutable.
+    function designRestoreStatusOnlyUpdate() {
+      return isOwnerOrAdmin()
+        && resource.data.status == "archived"
+        && request.resource.data.status in ["imported", "processing", "ready", "rejected"]
+        && (
+          (!("previousStatus" in resource.data) || resource.data.previousStatus == null)
+            ? request.resource.data.status == "imported"
+            : request.resource.data.status == resource.data.previousStatus
+        )
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly([
+            "status",
+            "previousStatus",
+            "archivedAt",
+            "archivedBy",
+            "updatedAt",
+            "updatedBy"
+          ])
+        && !("previousStatus" in request.resource.data)
+        && !("archivedAt" in request.resource.data)
+        && !("archivedBy" in request.resource.data)
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.uploadedBy == resource.data.uploadedBy
+        && (!("createdBy" in resource.data) || request.resource.data.createdBy == resource.data.createdBy)
+        && (!("createdAt" in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.get("assetsPurgedAt", null) == resource.data.get("assetsPurgedAt", null)
+        && request.resource.data.get("assetsPurgedBy", null) == resource.data.get("assetsPurgedBy", null);
+    }
+
     // Fast path for Studio import derivative completion
     // (`designReadyService.markDesignDerivativesComplete` → `designService.updateDesign`).
     // Without this branch, processing→imported + canonical thumbnailPath/previewPath falls through
@@ -1223,18 +1258,19 @@ service cloud.firestore {
         && !("assetsPurgedBy" in request.resource.data);
 
       // Narrow metadata fast paths first (short-circuit) — companion denorm, then catalog
-      // metadata/Placement (tags/title/Halftone draft/etc.), then soft-archive, then import
-      // derivative completion (processing|imported → imported + canonical paths), then catalog
-      // approval status transitions. Archive MUST stay before approval so enrichment-heavy
-      // rejected→archived never pays the approval allowlist diff() or full validator.
-      // Derivative completion MUST stay before approval so processing→imported + paths never
-      // pays the approval allowlist / full validator (Studio 1.0.4 P4).
+      // metadata/Placement (tags/title/Halftone draft/etc.), then soft-archive, then soft-restore,
+      // then import derivative completion (processing|imported → imported + canonical paths), then
+      // catalog approval status transitions. Archive/restore MUST stay before approval so
+      // enrichment-heavy status-only writes never pay the approval allowlist diff() or full
+      // validator. Derivative completion MUST stay before approval so processing→imported + paths
+      // never pays the approval allowlist / full validator (Studio 1.0.4 P4).
       // Approval path MUST stay after the status-unchanged fast paths and must fail on
       // `status !=` first so non-approval writes do not pay its diff().
       allow update: if isStaff() && (
         companionDenormOnlyUpdate()
         || catalogMetadataOnlyUpdate()
         || designArchiveStatusOnlyUpdate()
+        || designRestoreStatusOnlyUpdate()
         || designDerivativeCompletionUpdate()
         || catalogApprovalStatusOnlyUpdate()
         || (

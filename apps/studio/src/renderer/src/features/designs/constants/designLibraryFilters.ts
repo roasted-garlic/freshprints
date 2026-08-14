@@ -192,9 +192,12 @@ export const DESIGN_LIBRARY_DEFAULT_SORT_DIRECTION: DesignListSortDirection = "d
 export function buildCatalogDesignListQuery(options: {
   archived: boolean;
   categoryId?: string;
+  /** Firestore Needs Companion browse — omit for Algolia-managed / non-companion paths */
+  companionSetIncomplete?: boolean;
   tags: string[];
 }): {
   categoryId?: string;
+  companionSetIncomplete?: boolean;
   sortDirection: DesignListSortDirection;
   sortField: DesignListSortField;
   statusIn: DesignStatus[];
@@ -202,6 +205,9 @@ export function buildCatalogDesignListQuery(options: {
 } {
   return {
     categoryId: options.categoryId,
+    ...(options.companionSetIncomplete === true
+      ? { companionSetIncomplete: true as const }
+      : {}),
     sortDirection: DESIGN_LIBRARY_DEFAULT_SORT_DIRECTION,
     sortField: options.archived
       ? DESIGN_LIBRARY_ARCHIVED_SORT_FIELD

@@ -39,6 +39,26 @@ describe("buildCatalogDesignListQuery", () => {
     assert.equal(query.categoryId, "cat-1");
     assert.equal(query.tag, "summer");
     assert.deepEqual(query.statusIn, ["archived"]);
+    assert.equal(query.companionSetIncomplete, undefined);
+  });
+
+  it("adds companionSetIncomplete only when requested for Needs Companion Firestore browse", () => {
+    const withCompanion = buildCatalogDesignListQuery({
+      archived: false,
+      companionSetIncomplete: true,
+      tags: [],
+    });
+    assert.equal(withCompanion.companionSetIncomplete, true);
+    assert.deepEqual(withCompanion.statusIn, ["ready"]);
+    // Intended Companion browse ordering matches ready Design Library (readyAt), not createdAt.
+    assert.equal(withCompanion.sortField, "readyAt");
+
+    const without = buildCatalogDesignListQuery({
+      archived: false,
+      companionSetIncomplete: false,
+      tags: [],
+    });
+    assert.equal(without.companionSetIncomplete, undefined);
   });
 });
 

@@ -1,29 +1,41 @@
 # Fresh Prints - Current State Snapshot
 
-## 2026-08-13 — Studio 1.0.4 P4 corrective: clean production promotion prepared
+## 2026-08-14 — Studio Design Library archive/restore/companion (promotion in progress)
 
 | Item | Value |
 |------|-------|
-| Managed goal | `studio-1.0.4-ai-processing-preview-cleanup-corrective` |
-| Root cause | Firestore Rules P4 authorization gap on derivative path persistence |
-| Corrective | Narrow derivative completion Rules fast path + failure visibility + auto-AI guard + Option B owner safe-delete + Processing Delete UX + instant list reconcile; diagnostic banner OFF by default |
-| Owner DEV QA | **PASS** |
-| Development | **COMPLETE** — PR #69 merged @ `2119d4154c2c2e98cffa17d184012cc136cb3437` |
-| Approved source commits | `5e0b072faab46e07a7011278e2c903f7513e77fa`, `9414aed4a5fefbd266648e3601e61af8ef363e10` |
-| Production baseline | `c6e9235614b6816a98a71f998b47bd7fe18c371f` |
-| Promote branch | `promote/studio-1.0.4-p4-corrective` (cherry-picks only; excludes unrelated development paths) |
-| Production promotion | **PREPARED / PENDING** protected PR — not merged |
-| Production Firebase | **PENDING** (`firestore:rules` + `functions:deleteEligibleUnapprovedDesign`) |
-| NEW Studio 1.0.4 dual-platform draft | **PENDING** after backend promote — do **not** reuse `369614747` |
-| Draft `369614747` | Failed-smoke evidence only; unpublished; untouched |
-| Production fixtures (8 smoke) | Untouched |
+| Managed goal | `studio-design-library-archive-restore-reconciliation` |
+| Development Signoff | **approved_with_notes** — `docs/workflow/reviews/2026-08-14-studio-design-library-archive-restore-reconciliation-signoff.md` |
+| Owner DEV QA | **PASS** (A/B/C/D incl. D1/D2) |
+| Main checkout | `C:\coding\fresh-prints` → **`development`** → `origin/development` |
+| Production tip (pre-promotion) | `e59205d7eccf0991e9a8a9b7be266cfeff831158` until PR merges |
+| Phase 9 | **PARKED** — `C:\coding\fresh-prints-wt-phase9-remediation` untouched |
+| DEV Firebase | Rules + indexes deployed to `fresh-prints-dev` |
+| Production Firebase | **Not yet** — await PR merge + `APPROVE PROD FIRESTORE RULES AND INDEXES DEPLOY FOR DESIGN LIBRARY CORRECTIVE` |
+| Scope | Studio Design Library + Rules/indexes + window 1656×1032 only — no Portal/Functions/Storage/Phase 9/Algolia B3 |
 
-### Diagnostic release cleanliness
-Normal builds must **not** show the DIAGNOSTIC BUILD banner. Opt-in only via `VITE_FP_DERIVATIVE_LOCUS_DIAG=1` / intentional bake; default `PACKAGED_DERIVATIVE_LOCUS_DIAG=false`.
+### Owner QA record
+- A PASS — ready hard-delete checkboxes removed
+- B PASS — archived purge reconciles immediately
+- C PASS after DEV Rules deploy
+- D PASS after D1/D2 Companion identity corrective
+- Overall PASS
 
-### Next
-1. Protected PR → `production`
-2. Separately authorized prod Firebase deploy
-3. NEW 1.0.4 dual-platform draft + Windows/Mac smokes
-4. Explicit publish authorization
-5. Separate owner checkpoint for fixture cleanup after corrected Studio + Function exist
+### Prior same-day
+- `studio-dev-recovery-white-screen` — Signoff approved (env-only; do not reopen)
+
+### Policy
+- Work only in `C:\coding\fresh-prints`
+- No force-push / production reset / Phase 9 worktree changes
+- Production promotion via protected PR only
+
+---
+
+## 2026-08-13 — Repository consolidation residual closeout (historical)
+
+| Item | Value |
+|------|-------|
+| Production tip | `e59205d7eccf0991e9a8a9b7be266cfeff831158` |
+| Studio 1.0.4 release | **370305556** — tag `v1.0.4-e59205d` |
+| Phase 9 | **PARKED** |
+| Signoff | `docs/workflow/reviews/2026-08-13-repository-consolidation-development-sync-and-cleanup-signoff.md` |
