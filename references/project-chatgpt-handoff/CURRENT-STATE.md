@@ -1,41 +1,41 @@
 # Fresh Prints - Current State Snapshot
 
-## 2026-08-13 — Repository consolidation residual closeout
+## 2026-08-14 — Studio Design Library archive/restore/companion (promotion in progress)
 
 | Item | Value |
 |------|-------|
-| Managed goal | `repository-consolidation-development-sync-and-cleanup` |
-| Main checkout | `C:\coding\fresh-prints` → branch **`development`**, upstream **`origin/development`** |
-| Production tip / PRODUCTION_BEFORE=AFTER | `e59205d7eccf0991e9a8a9b7be266cfeff831158` — **unchanged** |
-| Ancestry | `origin/production` **is ancestor** of `origin/development` |
-| Repository reconciliation (product + P4 evidence) | Completed via PR **#71** / **#72** / **#73** before this documentation-only residual follow-up |
-| Pre-correction development tip | `ddbfffb7e1906b79acfcd40e1336ecc31ef9fd0c` (sync + prior closeout signoff docs) |
-| Current development HEAD after residual documentation correction | `50777d6a273198355b58c948569d2138fbb0fd46` (docs series tip; trust `origin/development` if HEAD advances) |
-| Studio 1.0.4 release | **370305556** published — tag `v1.0.4-e59205d` — GitHub **Latest** — source `e59205d7…` |
-| Prod Firebase corrective | **DEPLOYED** (`firestore:rules` + `deleteEligibleUnapprovedDesign`) |
-| Dual-platform smoke | **PASS** |
-| Fixtures (8) | **Already gone** (idempotent cleanup verified) |
-| Historical draft `369614747` | Missing before final publication — anomaly only; **do not restore** |
-| Safety archive | `C:\coding\_freshprints_cleanup_safety\20260813-222344` — **preserve** |
-| Phase 9 | **PARKED** — worktree `C:\coding\fresh-prints-wt-phase9-remediation` **KEEP** until explicit remount |
-| Domain cutover | **Gated** until `APPROVE MYPRINTREQUEST.COM CUTOVER` |
+| Managed goal | `studio-design-library-archive-restore-reconciliation` |
+| Development Signoff | **approved_with_notes** — `docs/workflow/reviews/2026-08-14-studio-design-library-archive-restore-reconciliation-signoff.md` |
+| Owner DEV QA | **PASS** (A/B/C/D incl. D1/D2) |
+| Main checkout | `C:\coding\fresh-prints` → **`development`** → `origin/development` |
+| Production tip (pre-promotion) | `e59205d7eccf0991e9a8a9b7be266cfeff831158` until PR merges |
+| Phase 9 | **PARKED** — `C:\coding\fresh-prints-wt-phase9-remediation` untouched |
+| DEV Firebase | Rules + indexes deployed to `fresh-prints-dev` |
+| Production Firebase | **Not yet** — await PR merge + `APPROVE PROD FIRESTORE RULES AND INDEXES DEPLOY FOR DESIGN LIBRARY CORRECTIVE` |
+| Scope | Studio Design Library + Rules/indexes + window 1656×1032 only — no Portal/Functions/Storage/Phase 9/Algolia B3 |
+
+### Owner QA record
+- A PASS — ready hard-delete checkboxes removed
+- B PASS — archived purge reconciles immediately
+- C PASS after DEV Rules deploy
+- D PASS after D1/D2 Companion identity corrective
+- Overall PASS
+
+### Prior same-day
+- `studio-dev-recovery-white-screen` — Signoff approved (env-only; do not reopen)
 
 ### Policy
-- **Development-first:** ordinary work on `development` at `C:\coding\fresh-prints`; do not leave long-lived checkout on `production`.
-- Worktrees require a stated isolation reason and must be removed at signoff.
-- Do **not** push/reset `production` or force-push shared history.
-- Do **not** restore draft `369614747`.
-- Do **not** `git clean -fdx` or force-push.
+- Work only in `C:\coding\fresh-prints`
+- No force-push / production reset / Phase 9 worktree changes
+- Production promotion via protected PR only
 
-### Done (reconciliation)
-1. PR #71 — production lineage into development
-2. PR #72 — workflow-state follow-up
-3. PR #73 — closeout docs/evidence
-4. Main checkout aligned to `development` after safety archive
-5. Tag `v1.0.4-e59205d` verified; release **370305556** Latest
+---
 
-### Residual closeout (this follow-up)
-- Correct stale intermediate SHAs in handoff/signoff/state
-- Remove SAFE obsolete registered worktrees (not Phase 9)
-- Remove proven-redundant orphan folders
-- Delete proven-redundant remote branches (`__noop__`, Studio 1.0.4 docs/promote debris)
+## 2026-08-13 — Repository consolidation residual closeout (historical)
+
+| Item | Value |
+|------|-------|
+| Production tip | `e59205d7eccf0991e9a8a9b7be266cfeff831158` |
+| Studio 1.0.4 release | **370305556** — tag `v1.0.4-e59205d` |
+| Phase 9 | **PARKED** |
+| Signoff | `docs/workflow/reviews/2026-08-13-repository-consolidation-development-sync-and-cleanup-signoff.md` |

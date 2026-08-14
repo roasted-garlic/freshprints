@@ -15,6 +15,7 @@ import { permissionService } from "../../permissions/services/permissionService"
 import { designService } from "../services/designService";
 import type { Design } from "../types/design.types";
 import type { DesignListCursor, DesignListQuery } from "../types/designQuery.types";
+import { serializeDesignListQueryKey } from "../utils/designListQueryIdentity";
 import { sortDesignsForListQuery } from "../utils/sortDesignsForListQuery";
 
 interface DesignsState {
@@ -54,19 +55,6 @@ const initialState: DesignsState = {
   nextCursor: undefined,
 };
 
-function serializeDesignListQuery(listQuery: DesignListQuery): string {
-  return JSON.stringify({
-    aiReviewStatus: listQuery.aiReviewStatus,
-    categoryId: listQuery.categoryId,
-    limitCount: listQuery.limitCount,
-    sortDirection: listQuery.sortDirection,
-    sortField: listQuery.sortField,
-    status: listQuery.status,
-    statusIn: listQuery.statusIn,
-    tag: listQuery.tag,
-  });
-}
-
 export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptions) {
   const { user } = useAuth();
   const [state, setState] = useState<DesignsState>(initialState);
@@ -78,7 +66,7 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
   const designsMirrorRef = useRef<Design[]>(state.designs);
   designsMirrorRef.current = state.designs;
   const nextCursorRef = useRef<DesignListCursor | undefined>(undefined);
-  const listQueryKey = useMemo(() => serializeDesignListQuery(listQuery), [listQuery]);
+  const listQueryKey = useMemo(() => serializeDesignListQueryKey(listQuery), [listQuery]);
   const listQueryKeyRef = useRef(listQueryKey);
   const listQueryRef = useRef(listQuery);
   listQueryKeyRef.current = listQueryKey;

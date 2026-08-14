@@ -1,5 +1,29 @@
 # Recent Completed Work
 
+## 2026-08-14 - Studio Design Library archive / restore / companion (DEV Signoff; prod promotion next)
+
+| Item | Status |
+|------|--------|
+| Goal | `studio-design-library-archive-restore-reconciliation` |
+| Owner QA | **PASS** — A/B/C/D (D1/D2 corrective included) |
+| DEV deploy | `firestore:rules` + `firestore:indexes` → `fresh-prints-dev` |
+| Signoff | `docs/workflow/reviews/2026-08-14-studio-design-library-archive-restore-reconciliation-signoff.md` (**approved_with_notes**) |
+| Window | Studio min 1656×1032 |
+| Production | Promotion gated (PR → Rules/indexes only → Studio 1.0.4 SHA-tagged release → smoke) |
+| Out of scope | Portal, Functions, Storage, Phase 9, Algolia B3 |
+
+## 2026-08-14 - Studio development white-screen recovery (env-only)
+
+| Item | Status |
+|------|--------|
+| Goal | `studio-dev-recovery-white-screen` |
+| Root cause | Missing gitignored `apps/studio/.env.local` → fatal `VITE_FIREBASE_API_KEY` throw |
+| Fix | Restored Studio (+ Portal) `.env.local` from Phase 9 Portal mapping (`fresh-prints-dev`); **no app source changes** |
+| Known-good baseline | `e59205d7…` / release `370305556` — Studio tree matched; production untouched |
+| Owner manual | **PASS** |
+| Signoff | `docs/workflow/reviews/2026-08-14-studio-dev-recovery-white-screen-signoff.md` |
+| Next | Design Library corrective (above) |
+
 ## 2026-08-13 - Repository consolidation residual closeout (docs + cleanup)
 
 | Item | Status |

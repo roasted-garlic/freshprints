@@ -30,13 +30,28 @@ describe("Option B permanent delete UI surfaces", () => {
     assert.match(page, /filters\.tab === "rejected"/);
   });
 
-  it("also exposes Design Library owner selection path (non-archived)", () => {
+  it("does not expose Design Library ready-browse hard-delete selection chrome", () => {
     const library = read(
       "apps/studio/src/renderer/src/features/designs/pages/DesignLibraryPage.tsx",
     );
-    assert.match(library, /Permanently delete \(/);
-    assert.match(library, /!includeArchived/);
-    assert.match(library, /canDeleteEligibleUnapprovedDesigns/);
+    assert.doesNotMatch(library, /Permanently delete \(/);
+    assert.doesNotMatch(library, /selectedHardDeleteIds/);
+    assert.doesNotMatch(library, /canDeleteEligibleUnapprovedDesigns/);
+    // Archived purge checkboxes remain intentional.
+    assert.match(library, /canPurgeArchivedDesignAssets/);
+    assert.match(library, /selectedPurgeIds/);
+  });
+
+  it("keeps Print Request request-selection on DesignSelectionCard path", () => {
+    const library = read(
+      "apps/studio/src/renderer/src/features/designs/pages/DesignLibraryPage.tsx",
+    );
+    assert.match(library, /selectionModeActive/);
+    assert.match(library, /requestSelection=\{selectionRequestSelection\}/);
+    assert.doesNotMatch(
+      library,
+      /!includeArchived[\s\S]*canDeleteEligibleUnapprovedDesigns[\s\S]*purgeSelection/,
+    );
   });
 
   it("does not add a separate delete callable — reuses deleteEligibleUnapprovedDesign", () => {

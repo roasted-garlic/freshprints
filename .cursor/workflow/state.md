@@ -1,55 +1,61 @@
 ## Current Goal
-repository-consolidation-development-sync-and-cleanup
+studio-design-library-archive-restore-reconciliation
 
 ## Current Mode
 managed-phase
 
 ## Phase
-Residual closeout — docs complete; registered worktrees reduced to main+Phase9; remote/orphan deletes hook-blocked
+production promotion — development Signoff complete; protected PR + prod deploy/release gated
 
 ## Plan Status
-n/a — operational closeout
+complete
 
 ## Review Status
-n/a
+approved_with_changes (Formal); Implementation Review approved_with_notes (final package)
 
 ## Implementation Status
-complete_with_notes
-
-- `origin/production` = `e59205d7eccf0991e9a8a9b7be266cfeff831158` (unchanged)
-- Pre-correction development tip = `ddbfffb7e1906b79acfcd40e1336ecc31ef9fd0c`
-- Current development HEAD after residual documentation correction series = `50777d6a273198355b58c948569d2138fbb0fd46`
-- production is ancestor of development
-- Registered worktrees: main + Phase 9 only
-- Remote branch deletes + orphan folder `rmdir` blocked by Cursor hooks → owner commands in signoff
+complete
 
 ## Test Status
-n/a for residual docs/housekeeping (prior closeout tests recorded)
+passed_with_notes — final verification PASS; Rules emulator NOT RUN (Java missing)
 
 ## Signoff Status
-approved_with_notes — `docs/workflow/reviews/2026-08-13-repository-consolidation-development-sync-and-cleanup-signoff.md`
+approved_with_notes — owner overall QA PASS; production promotion remaining
 
 ## Human Checkpoint Required
 yes
 
 ## Human Checkpoint Reason
-Cursor hooks blocked: (1) orphan folder recursive delete, (2) `git push origin --delete` / GitHub API ref delete for obsolete remotes. Owner must run those when ready. Phase 9 KEEP.
+Development delivery signed off. Next: merge protected PR `development` → `production`, then approve production Firestore Rules/indexes deploy, then Studio release from exact production SHA, then production smoke.
 
 ## Allowed Actions
-Read docs; owner residual remote/orphan deletes; Phase 9 only with explicit remount phrase
+Create/push development commit; open production promotion PR; record merge/deploy/release results after owner approvals
 
 ## Forbidden Actions
-firebase deploy; push/reset production; force-push; git clean -fdx/-x; product/runtime changes; restore draft 369614747; domain cutover without `APPROVE MYPRINTREQUEST.COM CUTOVER`
+Direct push to production; force-push; reset production; Functions/Storage/Hosting/Portal deploy; Phase 9 worktree changes; invent Studio version
 
 ## Next Required Step
-Owner: delete obsolete remotes + orphan folders per residual report; then idle or Phase 9 remount
+Owner merge of production promotion PR (or approve merge if agent-assisted); then phrase below for Firebase prod deploy
 
 ## DONE
-yes — residual docs + registered worktree cleanup done; remote/orphan residue NEEDS_REVIEW (hooks)
+no — awaiting production smoke PASS
+
+## Owner QA (final)
+- A PASS
+- B PASS
+- C PASS after DEV Rules deploy
+- D PASS after D1/D2 corrective
+- Owner overall QA PASS
+
+## DEV Deploy Record
+- `firebase deploy --only firestore:rules,firestore:indexes --project fresh-prints-dev` → Deploy complete
+- Production untouched until promotion sequence
+
+## Production gates (remaining)
+1. Protected PR merge → pin production SHA
+2. `APPROVE PROD FIRESTORE RULES AND INDEXES DEPLOY FOR DESIGN LIBRARY CORRECTIVE`
+3. Studio production release from exact production SHA (package version remains 1.0.4 per workflow convention)
+4. Owner production smoke checklist (10 items)
 
 ## Decision Log
-- 2026-08-13 — PR #71 / #72 / #73 reconciliation
-- 2026-08-13 — Residual docs: `0d117b4` → `2fb7c50` → `50777d6`
-- 2026-08-13 — Deregistered SAFE docs worktrees; registry now main + Phase 9
-- 2026-08-13 — Local obsolete closeout/docs/fix/promote/integrate branches deleted
-- PRODUCTION_BEFORE/AFTER = `e59205d7eccf0991e9a8a9b7be266cfeff831158`
+- 2026-08-14: Owner overall QA PASS recorded; development Signoff approved_with_notes
