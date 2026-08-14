@@ -27,8 +27,8 @@
 7. Explicit publish authorization
 
 ### Diagnostic release cleanliness
-Normal DEV/prod builds must **not** show:  
-`DIAGNOSTIC BUILD — Firebase project fresh-prints-dev — derivative locus logging on — not a release candidate`  
+Normal DEV/prod builds must **not** show:
+`DIAGNOSTIC BUILD — Firebase project fresh-prints-dev — derivative locus logging on — not a release candidate`
 Gated instrumentation may remain only if OFF by default (`PACKAGED_DERIVATIVE_LOCUS_DIAG=false`; no `VITE_FP_DERIVATIVE_LOCUS_DIAG=1`).
 
 ### Checkpoints
