@@ -92,8 +92,12 @@ export function validateDeleteEligibleUnapprovedDesignRequest(
   return { ok: true, designIds };
 }
 
-/** Explicit allowlist — unknown/future statuses denied. */
-export const DELETE_ELIGIBLE_UNAPPROVED_DESIGN_STATUSES = ["imported", "processing"] as const;
+/** Explicit allowlist — ready/archived/unknown denied; unapproved inbox statuses only. */
+export const DELETE_ELIGIBLE_UNAPPROVED_DESIGN_STATUSES = [
+  "imported",
+  "processing",
+  "rejected",
+] as const;
 
 export type DeleteEligibleUnapprovedDesignStatus =
   (typeof DELETE_ELIGIBLE_UNAPPROVED_DESIGN_STATUSES)[number];

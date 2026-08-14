@@ -116,8 +116,8 @@ export function DeleteEligibleUnapprovedDesignDialog({
 
           {ineligible.length > 0 ? (
             <p className="auth-message auth-message-error" role="alert">
-              {ineligible.length} selected design(s) are not eligible (status must be imported or
-              processing). Remove them from the selection first.
+              {ineligible.length} selected design(s) are not eligible (status must be imported,
+              processing, or rejected). Remove them from the selection first.
             </p>
           ) : null}
 

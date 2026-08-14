@@ -46,11 +46,11 @@ describe("validateDeleteEligibleUnapprovedDesignRequest", () => {
 });
 
 describe("delete eligible status / AI stage guards", () => {
-  it("allows only imported and processing", () => {
+  it("allows only imported, processing, and rejected", () => {
     assert.equal(isDeleteEligibleUnapprovedDesignStatus("imported"), true);
     assert.equal(isDeleteEligibleUnapprovedDesignStatus("processing"), true);
+    assert.equal(isDeleteEligibleUnapprovedDesignStatus("rejected"), true);
     assert.equal(isDeleteEligibleUnapprovedDesignStatus("ready"), false);
-    assert.equal(isDeleteEligibleUnapprovedDesignStatus("rejected"), false);
     assert.equal(isDeleteEligibleUnapprovedDesignStatus("archived"), false);
     assert.equal(isDeleteEligibleUnapprovedDesignStatus("queued"), false);
     assert.equal(isDeleteEligibleUnapprovedDesignStatus("future_status"), false);

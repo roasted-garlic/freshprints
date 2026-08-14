@@ -272,6 +272,34 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
     await loadDesigns();
   }, [loadDesigns]);
 
+  /**
+   * Immediately drop a design from the local list (hard delete / permanent remove).
+   * Invalidates the 15s page/count caches and bumps generation so an in-flight or stale
+   * reload cannot reinsert the deleted id before Firestore catches up.
+   */
+  const removeDesignFromList = useCallback((designId: string): boolean => {
+    designService.invalidateReadCaches(designId);
+
+    const designsAtRemoveTime = designsMirrorRef.current;
+    const willRemove = designsAtRemoveTime.some((design) => design.id === designId);
+
+    if (!willRemove) {
+      return false;
+    }
+
+    generationRef.current += 1;
+
+    setState((currentState) => {
+      const nextDesigns = currentState.designs.filter((design) => design.id !== designId);
+      if (nextDesigns.length === currentState.designs.length) {
+        return currentState;
+      }
+      return { ...currentState, designs: nextDesigns };
+    });
+
+    return true;
+  }, []);
+
   const applyDesignPatch = useCallback((designId: string, patch: Partial<Design>) => {
     // Diagnostic only (Owner QA Amendment 6): read the current list from a ref rather than from
     // inside the setState updater. A setState updater must stay pure — React StrictMode
@@ -348,5 +376,6 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
     hasTerminalAiProcessingLedgerEntry,
     loadMoreDesigns,
     reloadDesigns,
+    removeDesignFromList,
   };
 }

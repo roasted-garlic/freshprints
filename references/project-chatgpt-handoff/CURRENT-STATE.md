@@ -1,25 +1,19 @@
 # Fresh Prints - Current State Snapshot
 
-## 2026-08-13 — P4 implement complete (STOP before DEV deploy)
+## 2026-08-13 — P4 owner DEV QA PASS; ready to commit + promote
 
 | Item | Value |
 |------|-------|
-| Classification | **P4** (proven) → **fixed in source** (uncommitted) |
+| Frozen commit | `5e0b072` (P4 Rules + Option B backend + failure visibility) |
 | Branch | `fix/studio-1.0.4-ai-preview-cleanup-corrective` |
-| Baseline HEAD | `c6e9235614b6816a98a71f998b47bd7fe18c371f` |
-| Fix | `designDerivativeCompletionUpdate()` Firestore Rules fast path |
-| Visibility | `derivatives_incomplete` AI Processing state from missing paths |
-| Option B | `deleteEligibleUnapprovedDesign` owner Admin callable + Design Library UI |
-| Implementation Review | `docs/workflow/reviews/2026-08-13-studio-1.0.4-p4-derivative-completion-implementation-review.md` |
+| Uncommitted | Option B AI Processing Delete UI, immediate list remove, diagnostic default-off, rejected allowlist |
+| DEV Rules | Deployed `fresh-prints-dev` |
+| DEV Function | `deleteEligibleUnapprovedDesign` on `fresh-prints-dev` (incl. rejected) |
+| Owner QA | **PASS** (pipeline + Option B delete + list refresh + banner off) |
+| Production | Untouched — needs explicit promote |
 | Draft 369614747 | Untouched |
-| Deploy | **STOP** — awaiting owner DEV auth |
+| Next | Commit product fixes → PR → DEV verify → PROD Rules/Function/Studio when owner approves |
 
-### Tests
-- `npm run test:rules` → 124 pass
-- Focused Studio/shared/Functions unit tests → 47 pass
-- Studio `tsc --noEmit`, Functions `build`, `lint`, `git diff --check` → pass
-
-### Owner next
-1. Commit implement work when ready
-2. Authorize DEV deploy: `firestore:rules` + `functions:deleteEligibleUnapprovedDesign` only
-3. Run owner DEV QA checklist in Implementation Review
+Checkpoints:
+- `docs/workflow/reviews/2026-08-13-studio-1.0.4-p4-dev-qa-checkpoint.md`
+- `docs/workflow/reviews/2026-08-13-studio-1.0.4-option-b-ui-discoverability-checkpoint.md`
