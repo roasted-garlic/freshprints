@@ -1,53 +1,47 @@
 ## Current Goal
-studio-design-library-archive-restore-reconciliation
+studio-1.0.5-release-version-bump
 
 ## Current Mode
 managed-phase
 
 ## Phase
-production promotion — PR open; await owner merge
+production promotion PR open — STOP before merge
 
 ## Plan Status
-complete
+complete — docs/workflow/plans/2026-08-14-studio-1.0.5-release-version-bump-plan.md
 
 ## Review Status
-approved_with_changes (Formal); Implementation Review approved_with_notes (final package)
+approved
 
 ## Implementation Status
-complete
+complete — Studio 1.0.5 metadata only
 
 ## Test Status
-passed_with_notes — final verification PASS; Rules emulator NOT RUN (Java missing)
+passed — typecheck/build/lint/diff-check; local electron-builder emitted `release/1.0.5/`
 
 ## Signoff Status
-approved_with_notes — owner overall QA PASS; production promotion remaining
+pending — await PR merge + 1.0.5 release dispatch
 
 ## Human Checkpoint Required
 yes
 
 ## Human Checkpoint Reason
-PR #74 `development` → `production` is open. Owner must review Files Changed (includes accumulated development docs/scripts beyond this goal; no Portal app / Functions src / Storage Rules) and merge when acceptable. Do not deploy production Firebase until after merge + explicit deploy phrase.
+Protected PR development → production for Studio 1.0.5 version bump is prepared. Owner must review and merge. Do not merge from agent without explicit request. No Firebase deploy for this bump.
 
 ## Allowed Actions
-Record PR merge; after merge pin production SHA; await deploy approval phrase; no force-push
+Record PR merge; after merge dispatch Studio 1.0.5 stable release (owner or approved path)
 
 ## Forbidden Actions
-Direct push to production; force-push; reset production; merge without owner review of accumulated delta; Functions/Storage/Hosting/Portal deploy; Phase 9 worktree changes
+Merge without owner; Firebase deploy; product code changes; force-push; Phase 9
 
 ## Next Required Step
-Owner review + merge https://github.com/roasted-garlic/freshprints/pull/74 — then reply `APPROVE PROD FIRESTORE RULES AND INDEXES DEPLOY FOR DESIGN LIBRARY CORRECTIVE`
+Owner merge production promotion PR for 1.0.5 version bump
 
 ## DONE
 no
 
-## Development
-- SHA: `beac954810649efef8fbdd2c3a99f67595c2b73b`
-- Pushed to `origin/development`
-
-## Production preflight
-- Pre-merge production tip: `e59205d7eccf0991e9a8a9b7be266cfeff831158`
-- PR: #74 open
-- Product scope OK; incidental docs/scripts from prior development closeouts also in three-dot diff (called out in PR body)
+## Parent goal
+studio-design-library-archive-restore-reconciliation — prod Rules/indexes COMPLETE; Companion indexes READY; 1.0.5 bump enables update detection for corrected build
 
 ## Decision Log
-- 2026-08-14: Owner overall QA PASS; development Signoff; pushed beac954; opened PR #74; STOP for owner merge
+- 2026-08-14: 1.0.4→1.0.5 metadata bump; workflow gate updated; STOP before PR merge
