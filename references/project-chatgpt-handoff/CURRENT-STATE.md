@@ -10,7 +10,7 @@
 | Ancestry | `origin/production` **is ancestor** of `origin/development` |
 | Repository reconciliation (product + P4 evidence) | Completed via PR **#71** / **#72** / **#73** before this documentation-only residual follow-up |
 | Pre-correction development tip | `ddbfffb7e1906b79acfcd40e1336ecc31ef9fd0c` (sync + prior closeout signoff docs) |
-| Current development HEAD after residual documentation correction | _(set to this commit’s SHA after push — see Decision Log / signoff)_ |
+| Current development HEAD after residual documentation correction | _0d117b4773564759ef7e3e8e8a8b1a52750c20e8_ |
 | Studio 1.0.4 release | **370305556** published — tag `v1.0.4-e59205d` — GitHub **Latest** — source `e59205d7…` |
 | Prod Firebase corrective | **DEPLOYED** (`firestore:rules` + `deleteEligibleUnapprovedDesign`) |
 | Dual-platform smoke | **PASS** |

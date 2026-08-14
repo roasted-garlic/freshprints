@@ -8,7 +8,7 @@
 | Status | **approved_with_notes** (residual cleanup follow-up) |
 | Production pin | `e59205d7eccf0991e9a8a9b7be266cfeff831158` (BEFORE = AFTER) |
 | Pre-correction development tip | `ddbfffb7e1906b79acfcd40e1336ecc31ef9fd0c` (PR #71–73 + prior signoff docs) |
-| Current development HEAD after residual documentation correction | _(pinned after docs push)_ |
+| Current development HEAD after residual documentation correction | 0d117b4773564759ef7e3e8e8a8b1a52750c20e8 |
 | Safety archive | `C:\coding\_freshprints_cleanup_safety\20260813-222344` |
 
 ---
