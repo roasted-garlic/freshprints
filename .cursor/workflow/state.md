@@ -5,7 +5,7 @@ studio-design-library-archive-restore-reconciliation
 managed-phase
 
 ## Phase
-production promotion — development Signoff complete; protected PR + prod deploy/release gated
+production promotion — PR open; await owner merge
 
 ## Plan Status
 complete
@@ -26,36 +26,28 @@ approved_with_notes — owner overall QA PASS; production promotion remaining
 yes
 
 ## Human Checkpoint Reason
-Development delivery signed off. Next: merge protected PR `development` → `production`, then approve production Firestore Rules/indexes deploy, then Studio release from exact production SHA, then production smoke.
+PR #74 `development` → `production` is open. Owner must review Files Changed (includes accumulated development docs/scripts beyond this goal; no Portal app / Functions src / Storage Rules) and merge when acceptable. Do not deploy production Firebase until after merge + explicit deploy phrase.
 
 ## Allowed Actions
-Create/push development commit; open production promotion PR; record merge/deploy/release results after owner approvals
+Record PR merge; after merge pin production SHA; await deploy approval phrase; no force-push
 
 ## Forbidden Actions
-Direct push to production; force-push; reset production; Functions/Storage/Hosting/Portal deploy; Phase 9 worktree changes; invent Studio version
+Direct push to production; force-push; reset production; merge without owner review of accumulated delta; Functions/Storage/Hosting/Portal deploy; Phase 9 worktree changes
 
 ## Next Required Step
-Owner merge of production promotion PR (or approve merge if agent-assisted); then phrase below for Firebase prod deploy
+Owner review + merge https://github.com/roasted-garlic/freshprints/pull/74 — then reply `APPROVE PROD FIRESTORE RULES AND INDEXES DEPLOY FOR DESIGN LIBRARY CORRECTIVE`
 
 ## DONE
-no — awaiting production smoke PASS
+no
 
-## Owner QA (final)
-- A PASS
-- B PASS
-- C PASS after DEV Rules deploy
-- D PASS after D1/D2 corrective
-- Owner overall QA PASS
+## Development
+- SHA: `beac954810649efef8fbdd2c3a99f67595c2b73b`
+- Pushed to `origin/development`
 
-## DEV Deploy Record
-- `firebase deploy --only firestore:rules,firestore:indexes --project fresh-prints-dev` → Deploy complete
-- Production untouched until promotion sequence
-
-## Production gates (remaining)
-1. Protected PR merge → pin production SHA
-2. `APPROVE PROD FIRESTORE RULES AND INDEXES DEPLOY FOR DESIGN LIBRARY CORRECTIVE`
-3. Studio production release from exact production SHA (package version remains 1.0.4 per workflow convention)
-4. Owner production smoke checklist (10 items)
+## Production preflight
+- Pre-merge production tip: `e59205d7eccf0991e9a8a9b7be266cfeff831158`
+- PR: #74 open
+- Product scope OK; incidental docs/scripts from prior development closeouts also in three-dot diff (called out in PR body)
 
 ## Decision Log
-- 2026-08-14: Owner overall QA PASS recorded; development Signoff approved_with_notes
+- 2026-08-14: Owner overall QA PASS; development Signoff; pushed beac954; opened PR #74; STOP for owner merge
