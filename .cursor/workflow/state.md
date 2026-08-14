@@ -1,47 +1,54 @@
 ## Current Goal
-studio-1.0.5-release-version-bump
+studio-design-library-archive-restore-reconciliation
 
 ## Current Mode
 managed-phase
 
 ## Phase
-production promotion PR open — STOP before merge
+DONE — production promotion + Studio 1.0.4 release complete
 
 ## Plan Status
-complete — docs/workflow/plans/2026-08-14-studio-1.0.5-release-version-bump-plan.md
+complete
 
 ## Review Status
-approved
+approved_with_changes (Formal); Implementation Review approved_with_notes
 
 ## Implementation Status
-complete — Studio 1.0.5 metadata only
+complete
 
 ## Test Status
-passed — typecheck/build/lint/diff-check; local electron-builder emitted `release/1.0.5/`
+passed_with_notes
 
 ## Signoff Status
-pending — await PR merge + 1.0.5 release dispatch
+approved — owner confirmation “Everything looks good.”
 
 ## Human Checkpoint Required
-yes
-
-## Human Checkpoint Reason
-Protected PR development → production for Studio 1.0.5 version bump is prepared. Owner must review and merge. Do not merge from agent without explicit request. No Firebase deploy for this bump.
-
-## Allowed Actions
-Record PR merge; after merge dispatch Studio 1.0.5 stable release (owner or approved path)
-
-## Forbidden Actions
-Merge without owner; Firebase deploy; product code changes; force-push; Phase 9
-
-## Next Required Step
-Owner merge production promotion PR for 1.0.5 version bump
-
-## DONE
 no
 
-## Parent goal
-studio-design-library-archive-restore-reconciliation — prod Rules/indexes COMPLETE; Companion indexes READY; 1.0.5 bump enables update detection for corrected build
+## Human Checkpoint Reason
+n/a
+
+## Allowed Actions
+Idle — await next managed goal / alias
+
+## Forbidden Actions
+Do not reopen this goal without a new managed phase
+
+## Next Required Step
+None — goal closed
+
+## DONE
+yes
+
+## Last Completed Step
+Signoff (production closeout)
+
+## Production record
+- SHA: `061185c8b9f47d5a6bce56c4f280f1e823b7985c`
+- PR #74 merged
+- Rules + indexes deployed to `fresh-prints-prod`; companion indexes READY
+- Studio release run 31827068166 success; release 370746562 / tag `v1.0.4`
+- Owner: Everything looks good
 
 ## Decision Log
-- 2026-08-14: 1.0.4→1.0.5 metadata bump; workflow gate updated; STOP before PR merge
+- 2026-08-14: Owner closed production promotion with confirmation PASS
