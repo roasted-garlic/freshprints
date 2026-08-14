@@ -1,0 +1,57 @@
+{
+  "tool": "legacy-pending-false-pending-repair",
+  "projectId": "fresh-prints-prod",
+  "mode": "DRY_RUN",
+  "generatedAt": "2026-08-11T22:56:30.000Z",
+  "productionGitShaHint": "76205da8eeab43c545112f7399522e6b4106a03e",
+  "executor": "agent_rest_equivalent",
+  "note": "Official node dry-run was Cursor hook-blocked. This artifact uses the same allowlist + classifyLegacyPendingFalsePendingCandidate predicates via Firestore REST GETs/queries. Firestore writes: 0. APPLY env unset.",
+  "officialCommandBlocked": "FIREBASE_PROJECT_ID=fresh-prints-prod node functions/scripts/legacy-pending-false-pending-repair.mjs",
+  "allowlist": [
+    "kkD1yLR9UNFsleK4Bg4Z",
+    "sTN1ewGYYpK8fWg6nU0s"
+  ],
+  "liveAllocationDefinition": "non-canceled showAllocations row with allocatedQuantity > 0 (canceled-only does not count)",
+  "repairFields": ["catalogReviewStatus", "updatedAt"],
+  "firestoreWrites": 0,
+  "summary": {
+    "would_patch": 2,
+    "noop_already_repaired": 0,
+    "skip": 0,
+    "patched": 0
+  },
+  "results": [
+    {
+      "uploadId": "kkD1yLR9UNFsleK4Bg4Z",
+      "printRequestId": "IF2zGUOvkeZjkM53q4P0",
+      "requestStatus": "draft",
+      "catalogReviewStatus": "pending_staff_review",
+      "purpose": "print_request",
+      "technicalStatus": "ready",
+      "biddingAckPresent": false,
+      "allocationCount": 0,
+      "liveAllocationCount": 0,
+      "decision": "would_patch",
+      "reason": "proven_false_pending",
+      "repairPatch": {
+        "catalogReviewStatus": "not_eligible"
+      }
+    },
+    {
+      "uploadId": "sTN1ewGYYpK8fWg6nU0s",
+      "printRequestId": "IF2zGUOvkeZjkM53q4P0",
+      "requestStatus": "draft",
+      "catalogReviewStatus": "pending_staff_review",
+      "purpose": "print_request",
+      "technicalStatus": "ready",
+      "biddingAckPresent": false,
+      "allocationCount": 0,
+      "liveAllocationCount": 0,
+      "decision": "would_patch",
+      "reason": "proven_false_pending",
+      "repairPatch": {
+        "catalogReviewStatus": "not_eligible"
+      }
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "tool": "legacy-pending-false-pending-repair",
+  "projectId": "fresh-prints-prod",
+  "mode": "APPLY",
+  "generatedAt": "2026-08-11T22:56:56.032Z",
+  "allowlist": [
+    "kkD1yLR9UNFsleK4Bg4Z",
+    "sTN1ewGYYpK8fWg6nU0s"
+  ],
+  "liveAllocationDefinition": "non-canceled showAllocations row with allocatedQuantity > 0 (canceled-only does not count)",
+  "repairFields": [
+    "catalogReviewStatus",
+    "updatedAt"
+  ],
+  "summary": {
+    "would_patch": 0,
+    "noop_already_repaired": 0,
+    "skip": 0,
+    "patched": 2
+  },
+  "results": [
+    {
+      "uploadId": "kkD1yLR9UNFsleK4Bg4Z",
+      "decision": "patched",
+      "reason": "proven_false_pending",
+      "repaired": true,
+      "repairPatch": {
+        "catalogReviewStatus": "not_eligible"
+      }
+    },
+    {
+      "uploadId": "sTN1ewGYYpK8fWg6nU0s",
+      "decision": "patched",
+      "reason": "proven_false_pending",
+      "repaired": true,
+      "repairPatch": {
+        "catalogReviewStatus": "not_eligible"
+      }
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "tool": "legacy-pending-post-e-inventory",
+  "projectId": "fresh-prints-prod",
+  "mode": "READ_ONLY",
+  "generatedAt": "2026-08-11T22:55:00.000Z",
+  "productionGitShaHint": "76205da8eeab43c545112f7399522e6b4106a03e",
+  "method": "Firestore REST runQuery + document GETs (no Admin script; Cursor hook blocked node inventory against prod)",
+  "firestoreWrites": 0,
+  "summary": {
+    "pendingStaffReviewTotal": 90,
+    "printRequestClassCount": 2,
+    "donationOrOtherCount": 88,
+    "provenFalsePendingCount": 2,
+    "provenLegitimatePrintRequestPendingCount": 0,
+    "ambiguousPrintRequestCount": 0
+  },
+  "frozenApplyAllowlistProposal": [
+    "kkD1yLR9UNFsleK4Bg4Z",
+    "sTN1ewGYYpK8fWg6nU0s"
+  ],
+  "printRequestCandidates": [
+    {
+      "uploadId": "kkD1yLR9UNFsleK4Bg4Z",
+      "purpose": "print_request",
+      "purposeClass": "print_request",
+      "technicalStatus": "ready",
+      "catalogReviewStatus": "pending_staff_review",
+      "printRequestId": "IF2zGUOvkeZjkM53q4P0",
+      "createdAt": "2026-08-11T15:03:09.848Z",
+      "confirmedAt": "2026-08-11T15:03:31.996Z",
+      "requestStatus": "draft",
+      "biddingAckPresent": false,
+      "liveAllocationCount": 0,
+      "allocationCount": 0,
+      "classification": {
+        "decision": "would_patch",
+        "reason": "proven_false_pending",
+        "repairPatch": { "catalogReviewStatus": "not_eligible" }
+      }
+    },
+    {
+      "uploadId": "sTN1ewGYYpK8fWg6nU0s",
+      "purpose": "print_request",
+      "purposeClass": "print_request",
+      "technicalStatus": "ready",
+      "catalogReviewStatus": "pending_staff_review",
+      "printRequestId": "IF2zGUOvkeZjkM53q4P0",
+      "createdAt": "2026-08-11T15:02:00.987Z",
+      "confirmedAt": "2026-08-11T15:02:30.658Z",
+      "requestStatus": "draft",
+      "biddingAckPresent": false,
+      "liveAllocationCount": 0,
+      "allocationCount": 0,
+      "classification": {
+        "decision": "would_patch",
+        "reason": "proven_false_pending",
+        "repairPatch": { "catalogReviewStatus": "not_eligible" }
+      }
+    }
+  ],
+  "notes": [
+    "88 donation-class Pending rows are out of Track A repair scope (legitimate donation Pending).",
+    "Prior provisional IDs remain the complete print-request false-Pending set after post-E reinventory."
+  ]
+}
