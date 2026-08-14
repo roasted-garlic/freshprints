@@ -35,7 +35,7 @@ Local git reconcile on closeout branch; docs truth updates; ancestry checks. STO
 Force push; reset/rewrite `production`; push to `production`; mutate published release artifacts; reopen Phase 9 without explicit start; domain cutover without phrase
 
 ## Next Required Step
-Complete overnight closeout reconcile (cherry-pick unique docs evidence if needed), then await authorization to push/PR `closeout/prod-into-development` → `development`
+Local reconcile complete (merge `2414c21` + docs evidence cherry-picks). Await authorization to push/PR `closeout/prod-into-development` → `development`. Do not touch `production` (`e59205d7`).
 
 ## DONE
 no
@@ -64,6 +64,7 @@ no
 | Draft 369614747 | Historical anomaly / failed-smoke evidence — **do not restore** |
 | Production fixtures (8 smoke) | **Already gone** (verified; cleanup APPLY idempotent) |
 | Closeout branch | `closeout/prod-into-development` @ `C:\coding\fresh-prints-wt-closeout-reconcile` |
+| Merge commit (prod→dev lineage) | `2414c21110acc656f51e2fdef92031b2a98dcdab` |
 | Phase 9 | **Parked** |
 | Domain cutover | **Gated** until `APPROVE MYPRINTREQUEST.COM CUTOVER` |
 

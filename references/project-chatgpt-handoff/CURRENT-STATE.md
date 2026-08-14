@@ -30,8 +30,8 @@ Normal builds must **not** show the DIAGNOSTIC BUILD banner. Opt-in only via `VI
 5. ~~Fixture cleanup verify~~ **DONE** — already gone / idempotent
 
 ### Next
-1. Finish overnight git consolidation (merge production → development lineage + unique docs evidence)
-2. Authorize push/PR of closeout branch → `development` when ready
+1. ~~Local merge production → development lineage + unique docs evidence~~ **DONE** (merge `2414c21`; push still pending)
+2. Authorize push/PR of `closeout/prod-into-development` → `development` when ready
 3. Keep Phase 9 parked; keep domain cutover gated
 
 ### Safety
