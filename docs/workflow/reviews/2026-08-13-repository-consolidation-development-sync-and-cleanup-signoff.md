@@ -8,7 +8,7 @@
 | Status | **approved_with_notes** (residual cleanup follow-up) |
 | Production pin | `e59205d7eccf0991e9a8a9b7be266cfeff831158` (BEFORE = AFTER) |
 | Pre-correction development tip | `ddbfffb7e1906b79acfcd40e1336ecc31ef9fd0c` (PR #71–73 + prior signoff docs) |
-| Current development HEAD after residual documentation correction | 2fb7c509372aca20fdd3ed7b74330577ad4fcc97 |
+| Current development HEAD after residual documentation correction | `50777d6a273198355b58c948569d2138fbb0fd46` (docs series tip; trust `origin/development` if HEAD advances) |
 | Safety archive | `C:\coding\_freshprints_cleanup_safety\20260813-222344` |
 
 ---
@@ -52,17 +52,39 @@ Studio 1.0.4 P4 release lineage is on `development` via PR #71; workflow-state v
 
 Only intentional functional delta vs production after merge: `functions/scripts/studio-104-prod-smoke-fixture-cleanup.mjs` (class **B** ops script). Apps/portal/shared/runtime functions/rules/workflows match production release behavior.
 
-## Residuals (this follow-up)
+## Residuals (this follow-up) — status
 
-| Path | Class | Action |
+| Path | Class | Result |
 |------|-------|--------|
 | `C:\coding\fresh-prints` | KEEP | Main development checkout |
-| `...\wt-phase9-remediation` | KEEP | Unique Phase 9 commit `3af6c05` + dirty WIP |
-| `...\wt-prod-ae-deploy` | SAFE_TO_REMOVE (reverify) | Fixture cleanup docs on development |
-| `...\wt-prod-deploy-studio104-p4` | SAFE_TO_REMOVE (reverify) | Firebase deploy record on development |
-| `...\wt-promote-studio104-p4` | SAFE_TO_REMOVE (reverify) | Promote docs on development |
-| Orphan deregistered dirs | SAFE if reverified | See residual closeout report |
-| Obsolete remotes listed in overnight report | SAFE if reverified | Including `__noop__`, P4 docs/promote, `closeout/final-signoff-residuals` |
+| `...\wt-phase9-remediation` | KEEP | Unique Phase 9 commit `3af6c05` + dirty WIP — **preserved** |
+| Docs worktrees (`prod-ae-deploy`, `prod-deploy`, `promote`) | SAFE | **Deregistered** from `git worktree list` (folder delete left orphans; hooks blocked `rmdir`) |
+| Orphan deregistered dirs under `C:\coding\fresh-prints*` | SAFE / hook-blocked | Still on disk — owner `rmdir /s /q` when ready |
+| Obsolete remotes | SAFE / hook-blocked | Still on `origin` — owner `git push origin --delete …` |
+| Local closeout/docs/fix/promote/integrate branches | SAFE | **Deleted locally** |
+
+### Owner commands still needed (hooks blocked agent)
+
+```powershell
+# Orphans (deregistered; archived under _freshprints_cleanup_safety\20260813-222344)
+foreach ($p in @(
+  'fresh-prints-og','fresh-prints-portal','fresh-prints-quota',
+  'fresh-prints-wt-closeout-reconcile','fresh-prints-wt-dev-studio104-integrate',
+  'fresh-prints-wt-lint-regex','fresh-prints-wt-mac-sign-104','fresh-prints-wt-macos-104',
+  'fresh-prints-wt-smoke-ab','fresh-prints-wt-smoke-ae','fresh-prints-wt-studio-103',
+  'fresh-prints-wt-studio104-corrective','fresh-prints-wt-docs-firebase-record',
+  'fresh-prints-wt-docs-promote-record','fresh-prints-wt-prod-ae-deploy'
+)) { if (Test-Path "C:\coding\$p") { cmd /c "rmdir /s /q C:\coding\$p" } }
+
+# Remotes (evidence on development; no open PRs)
+git -C C:\coding\fresh-prints push origin --delete __noop__
+git -C C:\coding\fresh-prints push origin --delete fix/studio-1.0.4-ai-preview-cleanup-corrective
+git -C C:\coding\fresh-prints push origin --delete docs/studio-1.0.4-p4-new-dual-platform-draft-checkpoint
+git -C C:\coding\fresh-prints push origin --delete docs/studio-1.0.4-p4-prod-firebase-deploy-record
+git -C C:\coding\fresh-prints push origin --delete docs/studio-1.0.4-p4-prod-fixture-cleanup
+git -C C:\coding\fresh-prints push origin --delete promote/studio-1.0.4-p4-corrective
+git -C C:\coding\fresh-prints push origin --delete closeout/final-signoff-residuals
+```
 
 ## Approvals
 
