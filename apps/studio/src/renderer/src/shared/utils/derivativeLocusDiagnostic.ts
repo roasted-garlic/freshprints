@@ -2,13 +2,10 @@ type DiagDetail = Record<string, string | number | boolean | null | undefined>;
 
 /**
  * Renderer-side stage trail for derivative-locus diagnostics.
- * Enabled in Vite DEV, or when VITE_FP_DERIVATIVE_LOCUS_DIAG=1 is baked into a diagnostic package.
+ * Disabled by default. Enable only with intentional VITE_FP_DERIVATIVE_LOCUS_DIAG=1
+ * (diagnostic packages). Must never auto-enable on ordinary Vite DEV or production builds.
  */
 export function isDerivativeLocusDiagEnabled(): boolean {
-  if (import.meta.env.DEV) {
-    return true;
-  }
-
   return import.meta.env.VITE_FP_DERIVATIVE_LOCUS_DIAG === "1";
 }
 

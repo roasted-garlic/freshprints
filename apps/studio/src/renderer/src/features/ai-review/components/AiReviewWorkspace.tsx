@@ -2,6 +2,7 @@ import { Settings } from "lucide-react";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "../../../shared/components/Button";
+import { DangerOverflowMenu } from "../../../shared/components/DangerOverflowMenu";
 import { LoadingSpinner } from "../../../shared/components/LoadingSpinner";
 import { Toggle } from "../../../shared/components/Toggle";
 import { ArtworkBackgroundPreviewControl } from "../../designs/components/ArtworkBackgroundPreviewControl";
@@ -38,6 +39,7 @@ interface AiReviewWorkspaceProps {
   canStopAutoQueue: boolean;
   canProcessSelected: boolean;
   canArchive: boolean;
+  canPermanentlyDelete: boolean;
   canReopen: boolean;
   canReject: boolean;
   canRerun: boolean;
@@ -67,6 +69,7 @@ interface AiReviewWorkspaceProps {
   onPrevious: () => void;
   onProcessSelectedDesign: () => void;
   onArchive: () => void;
+  onPermanentlyDelete: () => void;
   onReject: () => void;
   onReopen: () => void;
   onRerun: () => void;
@@ -101,6 +104,7 @@ export function AiReviewWorkspace({
   canStopAutoQueue,
   canProcessSelected,
   canArchive,
+  canPermanentlyDelete,
   canReopen,
   canReject,
   canRerun,
@@ -126,6 +130,7 @@ export function AiReviewWorkspace({
   onPrevious,
   onProcessSelectedDesign,
   onArchive,
+  onPermanentlyDelete,
   onReject,
   onReopen,
   onRerun,
@@ -219,6 +224,21 @@ export function AiReviewWorkspace({
   return (
     <div className="ai-review-workspace" ref={workspaceTopRef}>
       <section aria-label="Design preview" className="ai-review-workspace-preview">
+        {canPermanentlyDelete ? (
+          <div className="ai-review-preview-overflow-menu">
+            <DangerOverflowMenu
+              ariaLabel="Design actions"
+              disabled={isActionLoading}
+              items={[
+                {
+                  id: "permanent-delete",
+                  label: "Delete",
+                  onSelect: onPermanentlyDelete,
+                },
+              ]}
+            />
+          </div>
+        ) : null}
         {canSaveArtworkBackground ? (
           <div className="ai-review-preview-bg-control">
             <ArtworkBackgroundPreviewControl

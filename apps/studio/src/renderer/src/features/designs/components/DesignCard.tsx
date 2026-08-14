@@ -25,7 +25,7 @@ export function DesignCard({
       {canSelectForPurge && onTogglePurgeSelection ? (
         <label className="design-card-purge-select">
           <input
-            aria-label={`Select ${design.title} for image delete`}
+            aria-label={`Select ${design.title} for permanent delete`}
             checked={isSelectedForPurge}
             onChange={() => onTogglePurgeSelection(design)}
             onClick={(event) => event.stopPropagation()}

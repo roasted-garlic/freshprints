@@ -5,47 +5,45 @@ studio-1.0.4-ai-processing-preview-cleanup-corrective
 managed-phase
 
 ## Phase
-test / implementation-review complete — STOP before DEV deploy
+promote via development — freeze corrective then integrate
 
 ## Plan Status
 complete
 
 ## Review Status
-approved_with_changes (Formal) + approved_with_notes (Implementation Review)
+approved_with_notes
 
 ## Implementation Status
-complete (uncommitted on branch)
+complete — freezing post-5e0b072 QA corrections onto corrective branch
 
 ## Test Status
-passed
+passed_with_notes — owner DEV QA PASS
 
 ## Signoff Status
-pending — blocked on DEV deploy auth + DEV QA
+pending — development integration then production promotion
 
 ## Human Checkpoint Required
-yes
+no
 
 ## Human Checkpoint Reason
-Authorize DEV deploy of firestore:rules + functions:deleteEligibleUnapprovedDesign only; then owner DEV QA. No production mutation.
+—
 
 ## Allowed Actions
-Read docs; prepare deploy commands; await owner auth; record feedback
+Commit/push corrective; create clean development worktree; merge into development; update handoff; push development; produce prod diff audit and PR handoff. STOP before production merge/deploy.
 
 ## Forbidden Actions
-DEV/prod deploy without owner auth; draft 369614747; prod fixture cleanup; speculative Sharp/IPC fixes
+Use dirty C:\coding\fresh-prints for integration; force push; history rewrite; production merge; production Firebase deploy; mutate draft 369614747; prod fixture cleanup; commit probes/diagnostic JSON/secrets
 
 ## Next Required Step
-Owner: commit (optional) then authorize DEV deploy matrix in Implementation Review
+Freeze corrective HEAD → push → integrate into origin/development
 
 ## DONE
 no
 
 ## Decision Log
-- 2026-08-13 — Owner: CONTINUE WORKFLOW IMPLEMENT P4 + FAILURE VISIBILITY (+ Option B after)
-- 2026-08-13 — Implement complete: designDerivativeCompletionUpdate + visibility + Option B; Implementation Review approved_with_notes; STOP before DEV deploy
+- 2026-08-13 — Owner DEV QA PASS (P4 pipeline, Option B delete, instant list remove, diagnostic banner OFF)
+- 2026-08-13 — Promote development-first (not direct corrective → production)
 
 ## Artifacts
-- Plan: docs/workflow/plans/2026-08-13-studio-1.0.4-ai-processing-preview-cleanup-corrective-plan.md
-- Formal Review: docs/workflow/reviews/2026-08-13-studio-1.0.4-ai-processing-preview-cleanup-corrective-review.md
-- P4 checkpoint: docs/workflow/reviews/2026-08-13-studio-1.0.4-packaged-dev-diagnostic-ui-results-p4.md
-- Implementation Review: docs/workflow/reviews/2026-08-13-studio-1.0.4-p4-derivative-completion-implementation-review.md
+- docs/workflow/reviews/2026-08-13-studio-1.0.4-p4-dev-qa-checkpoint.md
+- docs/workflow/reviews/2026-08-13-studio-1.0.4-option-b-ui-discoverability-checkpoint.md

@@ -272,6 +272,7 @@ export function DesignLibraryPage() {
     loadMoreDesigns,
     reloadDesigns,
     applyDesignPatch,
+    removeDesignFromList,
   } = useDesigns(listQuery, {
     enabled: firestoreLoadPolicy.loadReadyDesignPage && !managedSearchActive,
   });
@@ -614,7 +615,11 @@ export function DesignLibraryPage() {
   }, []);
 
   const toggleHardDeleteSelection = useCallback((design: Design) => {
-    if (design.status !== "imported" && design.status !== "processing") {
+    if (
+      design.status !== "imported" &&
+      design.status !== "processing" &&
+      design.status !== "rejected"
+    ) {
       return;
     }
 
@@ -709,7 +714,10 @@ export function DesignLibraryPage() {
   const openHardDeleteDesigns = useCallback(
     (candidates: Design[]) => {
       const eligible = candidates.filter(
-        (design) => design.status === "imported" || design.status === "processing",
+        (design) =>
+          design.status === "imported" ||
+          design.status === "processing" ||
+          design.status === "rejected",
       );
 
       if (eligible.length === 0) {
@@ -741,6 +749,13 @@ export function DesignLibraryPage() {
         setSelectedHardDeleteIds((current) =>
           current.filter((id) => !designsToHardDelete.some((design) => design.id === id)),
         );
+
+        for (const entry of result.results) {
+          if (entry.status === "deleted" || entry.status === "skipped_already_deleted") {
+            removeDesignFromList(entry.designId);
+          }
+        }
+
         await refreshCatalog();
 
         if (result.failedCount > 0 && result.deletedCount === 0) {
@@ -764,7 +779,13 @@ export function DesignLibraryPage() {
         // Error handled in hook.
       }
     },
-    [designsToHardDelete, hardDeleteDesigns, refreshCatalog, showSuccessMessage],
+    [
+      designsToHardDelete,
+      hardDeleteDesigns,
+      refreshCatalog,
+      removeDesignFromList,
+      showSuccessMessage,
+    ],
   );
 
   const selectionRequestSelection = useMemo(() => {

@@ -30,7 +30,6 @@ export function isDerivativeLocusDiagEnabled(): boolean {
 
   enabled =
     PACKAGED_DERIVATIVE_LOCUS_DIAG ||
-    !app.isPackaged ||
     process.env.FP_DERIVATIVE_LOCUS_DIAG === "1" ||
     process.env.FP_DERIVATIVE_LOCUS_DIAG === "true";
 
