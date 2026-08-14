@@ -1,15 +1,28 @@
 # Recent Completed Work
 
-## 2026-08-13 - Repository consolidation closeout STEPS 6–14
+## 2026-08-13 - Repository consolidation residual closeout (docs + cleanup)
 
 | Item | Status |
 |------|--------|
 | PRODUCTION_BEFORE = AFTER | `e59205d7eccf0991e9a8a9b7be266cfeff831158` |
-| Development | `a912879` (PR #71 prod→dev + PR #72 state follow-up) |
+| Reconciliation complete before residual docs | PR #71 / #72 / #73; pre-correction tip `ddbfffb7e1906b79acfcd40e1336ecc31ef9fd0c` |
+| Current development HEAD after residual documentation correction | See CURRENT-STATE / signoff (authoritative: `origin/development`) |
+| Main checkout | `C:\coding\fresh-prints` → `development` tracking `origin/development` |
+| Safety archive | `C:\coding\_freshprints_cleanup_safety\20260813-222344` — preserved |
+| Tag `v1.0.4-e59205d` / release 370305556 | **Intact** / GitHub Latest |
+| Residual cleanup | Worktrees / orphans / obsolete remotes — this follow-up |
+| Phase 9 | **Parked** (KEEP worktree) |
+| Signoff | `docs/workflow/reviews/2026-08-13-repository-consolidation-development-sync-and-cleanup-signoff.md` |
+
+## 2026-08-13 - Repository consolidation closeout STEPS 6–14 (historical)
+
+| Item | Status |
+|------|--------|
+| PRODUCTION_BEFORE = AFTER | `e59205d7eccf0991e9a8a9b7be266cfeff831158` |
+| Development (at STEPS 6–14 write) | Intermediate tip later superseded — see residual closeout above |
 | Main checkout | `development` tracking `origin/development` |
 | Safety archive | `C:\coding\_freshprints_cleanup_safety\20260813-222344` |
 | Tag `v1.0.4-e59205d` | **Intact** @ `e59205d7` |
-| Worktree/branch delete | **Blocked by Cursor hooks** — NEEDS_REVIEW list in signoff |
 | Phase 9 | **Parked** (KEEP worktree) |
 | Signoff | `docs/workflow/reviews/2026-08-13-repository-consolidation-development-sync-and-cleanup-signoff.md` |
 
