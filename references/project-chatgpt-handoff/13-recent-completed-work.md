@@ -1,6 +1,19 @@
 # Recent Completed Work
 
-## 2026-08-13 - Studio 1.0.4 P4 PUBLISHED; repository consolidation closeout (local)
+## 2026-08-13 - Repository consolidation closeout STEPS 6–14
+
+| Item | Status |
+|------|--------|
+| PRODUCTION_BEFORE = AFTER | `e59205d7eccf0991e9a8a9b7be266cfeff831158` |
+| Development | `a912879` (PR #71 prod→dev + PR #72 state follow-up) |
+| Main checkout | `development` tracking `origin/development` |
+| Safety archive | `C:\coding\_freshprints_cleanup_safety\20260813-222344` |
+| Tag `v1.0.4-e59205d` | **Intact** @ `e59205d7` |
+| Worktree/branch delete | **Blocked by Cursor hooks** — NEEDS_REVIEW list in signoff |
+| Phase 9 | **Parked** (KEEP worktree) |
+| Signoff | `docs/workflow/reviews/2026-08-13-repository-consolidation-development-sync-and-cleanup-signoff.md` |
+
+## 2026-08-13 - Studio 1.0.4 P4 PUBLISHED; repository consolidation closeout (STEPS 3–5)
 
 | Item | Status |
 |------|--------|
@@ -10,7 +23,7 @@
 | Dual-platform smoke | **PASS** (Windows + Mac arm64 + Mac x64) |
 | Draft 369614747 | Historical anomaly — **do not restore** |
 | Prod fixtures (8) | **Already gone** (verified; APPLY idempotent) |
-| Closeout | Local merge prod→dev on `closeout/prod-into-development` (`2414c21`) + docs evidence cherry-picks — **push pending** |
+| Closeout STEPS 3–5 | PR #71 merged prod lineage into development; PR #72 docs state |
 | Phase 9 | **Parked** |
 | Domain cutover | **Gated** |
 
