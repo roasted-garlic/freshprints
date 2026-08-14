@@ -373,6 +373,53 @@ service cloud.firestore {
         && request.resource.data.get("assetsPurgedBy", null) == resource.data.get("assetsPurgedBy", null);
     }
 
+    // Fast path for Studio import derivative completion
+    // (`designReadyService.markDesignDerivativesComplete` → `designService.updateDesign`).
+    // Without this branch, processing→imported + canonical thumbnailPath/previewPath falls through
+    // approval allowlist + full `designRequiredFieldsValid` and denies as permission-denied on
+    // enrichment-heavy / import-shaped docs (Studio 1.0.4 P4 / CASE 1).
+    // Source status must be imported or processing; target status must be imported; only path +
+    // audit fields (optional createdBy heal) may change; originalPath and unrelated fields immutable.
+    // Purged designs cannot repopulate derivative paths through this path.
+    function designDerivativeCompletionUpdate() {
+      return resource.data.status in ["imported", "processing"]
+        && request.resource.data.status == "imported"
+        && !("assetsPurgedAt" in resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly([
+            "status",
+            "thumbnailPath",
+            "previewPath",
+            "updatedAt",
+            "updatedBy",
+            "createdBy"
+          ])
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.uploadedBy == resource.data.uploadedBy
+        && request.resource.data.originalPath == resource.data.originalPath
+        && (!("createdAt" in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
+        && (
+          !("createdBy" in resource.data)
+          || request.resource.data.createdBy == resource.data.createdBy
+        )
+        && (
+          ("createdBy" in resource.data)
+          || !("createdBy" in request.resource.data)
+          || (
+            request.resource.data.createdBy is string
+            && request.resource.data.createdBy.size() > 0
+          )
+        )
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.thumbnailPath is string
+        && request.resource.data.thumbnailPath == "/thumbnails/" + request.resource.data.id + ".webp"
+        && request.resource.data.previewPath is string
+        && request.resource.data.previewPath == "/previews/" + request.resource.data.id + ".webp"
+        && request.resource.data.get("assetsPurgedAt", null) == resource.data.get("assetsPurgedAt", null)
+        && request.resource.data.get("assetsPurgedBy", null) == resource.data.get("assetsPurgedBy", null);
+    }
+
     // Owner purge sets these via Admin SDK only — clients must not forge purge state.
     function clientDesignPurgeFieldsUnchanged() {
       return request.resource.data.get("assetsPurgedAt", null) == resource.data.get("assetsPurgedAt", null)
@@ -1176,15 +1223,19 @@ service cloud.firestore {
         && !("assetsPurgedBy" in request.resource.data);
 
       // Narrow metadata fast paths first (short-circuit) — companion denorm, then catalog
-      // metadata/Placement (tags/title/Halftone draft/etc.), then soft-archive, then catalog
+      // metadata/Placement (tags/title/Halftone draft/etc.), then soft-archive, then import
+      // derivative completion (processing|imported → imported + canonical paths), then catalog
       // approval status transitions. Archive MUST stay before approval so enrichment-heavy
       // rejected→archived never pays the approval allowlist diff() or full validator.
+      // Derivative completion MUST stay before approval so processing→imported + paths never
+      // pays the approval allowlist / full validator (Studio 1.0.4 P4).
       // Approval path MUST stay after the status-unchanged fast paths and must fail on
       // `status !=` first so non-approval writes do not pay its diff().
       allow update: if isStaff() && (
         companionDenormOnlyUpdate()
         || catalogMetadataOnlyUpdate()
         || designArchiveStatusOnlyUpdate()
+        || designDerivativeCompletionUpdate()
         || catalogApprovalStatusOnlyUpdate()
         || (
           designRequiredFieldsValid(request.resource.data)

@@ -1,61 +1,54 @@
 ## Current Goal
-phase-9-custom-request-results-and-routing-remediation
+studio-1.0.4-ai-processing-preview-cleanup-corrective
 
 ## Current Mode
 managed-phase
 
 ## Phase
-signoff — PR opened; awaiting owner merge authorization
+production promotion prepared — protected PR pending; no merge/deploy yet
 
 ## Plan Status
-complete — Discover/catalog only (scope corrected 2026-08-13)
+complete
 
 ## Review Status
-final Implementation Review approved (Discover-only)
+approved_with_notes
 
 ## Implementation Status
-complete — Discover-only; committed on branch
+complete — clean promote branch from production + cherry-picks of approved corrective commits
 
 ## Test Status
-passed_with_notes — focused catalog 78 pass; owner Discover QA PASS
+passed_with_notes — owner DEV QA PASS; production-branch verification in progress / recorded in promotion checkpoint
 
 ## Signoff Status
-pending — PR open; merge requires separate owner authorization
+pending — production PR merge → Firebase deploy → NEW Studio 1.0.4 draft + smoke (not draft 369614747)
 
 ## Human Checkpoint Required
 yes
 
 ## Human Checkpoint Reason
-PR created. Await owner merge authorization. Do not merge/deploy without explicit auth.
+Authorize protected production PR merge, then separately authorize production Firebase deploy. Draft 369614747 and prod fixtures remain untouched.
 
 ## Allowed Actions
-Await owner merge authorization; report CI; read docs
+Push promote branch; prepare production PR handoff. STOP before production merge, Firebase deploy, fixture cleanup, Studio rebuild, draft creation, publish.
 
 ## Forbidden Actions
-Merge PR; production deploy; Functions/Rules/indexes/Algolia/Studio draft mutation
+Force push; push to production; merge production; production Firebase deploy; mutate draft 369614747; prod fixture cleanup; bake diagnostic flags; broad development→production merge
 
 ## Next Required Step
-Await owner AUTHORIZE MERGE (or equivalent)
+Owner/ChatGPT: open+merge protected PR promote/studio-1.0.4-p4-corrective → production
 
 ## DONE
 no
 
-## Last Completed Step
-Committed Discover-only diff; created PR against production
-
-## Authoritative Production SHA (at PR open)
-975f6400262a86600c4662f39480c6f55e20b0c1
-
-## Implementation Branch
-fix/phase9-results-and-discover-remediation
-
-## Scope Correction
-docs/workflow/reviews/2026-08-13-phase-9-discover-only-scope-correction.md
-
-## Final Implementation Review
-docs/workflow/reviews/2026-08-13-phase-9-discover-only-final-implementation-review.md
-
-## Decision Log
-- 2026-08-13 — Owner CREATE PR for Discover-only corrective against production.
-- 2026-08-13 — origin/production still 975f640; no rebase required.
-- 2026-08-13 — Etsy/Assisted excluded from commit; Phase 9 Etsy work retired for this goal.
+## Facts
+| Item | Value |
+|------|-------|
+| Owner DEV QA | **PASS** |
+| Development integration | **COMPLETE** via PR #69 @ `2119d4154c2c2e98cffa17d184012cc136cb3437` |
+| Production baseline | `c6e9235614b6816a98a71f998b47bd7fe18c371f` |
+| Promote branch | `promote/studio-1.0.4-p4-corrective` |
+| Source commits | `5e0b072` + `9414aed` (cherry-picked) |
+| Production Firebase deploy | **PENDING** |
+| NEW Studio 1.0.4 release | **PENDING** (do not reuse draft 369614747) |
+| Draft 369614747 | Failed-smoke evidence; unpublished; untouched |
+| Production fixtures | Untouched |

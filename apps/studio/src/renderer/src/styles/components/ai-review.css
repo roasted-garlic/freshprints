@@ -320,6 +320,13 @@
   z-index: 2;
 }
 
+.ai-review-preview-overflow-menu {
+  position: absolute;
+  left: var(--space-4);
+  top: var(--space-4);
+  z-index: 2;
+}
+
 .ai-review-preview-stage {
   align-items: center;
   aspect-ratio: 1;

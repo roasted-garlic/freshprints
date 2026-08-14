@@ -114,6 +114,45 @@ export function reconcileSuccessfulInboxManualAction(input: {
   );
 }
 
+export interface SuccessfulHardDeleteReconcileDeps {
+  clearLiveDesign: () => void;
+  onInboxCountsDelta?: (deltas: AiReviewTabCountDeltas) => void;
+  removeDesignFromList: (designId: string) => void;
+  setPendingAdvanceIndex: (index: number) => void;
+}
+
+/** Local tab badge delta after Option B hard delete from an AI Review inbox tab. */
+export function computeHardDeleteCountDeltas(
+  sourceTab: AiReviewInboxTab,
+): AiReviewTabCountDeltas {
+  if (
+    sourceTab === "processing" ||
+    sourceTab === "needs_review" ||
+    sourceTab === "rejected"
+  ) {
+    return { [sourceTab]: -1 };
+  }
+
+  return {};
+}
+
+/**
+ * Option B happy path: remove the deleted id from the local inbox list immediately,
+ * clear live selection state, advance to the next row, and adjust the tab badge.
+ * Does not call reloadDesigns (avoids clearing the list into a stale 15s page-cache hit).
+ */
+export function reconcileSuccessfulHardDelete(input: {
+  deps: SuccessfulHardDeleteReconcileDeps;
+  designId: string;
+  selectedIndex: number;
+  sourceTab: AiReviewInboxTab;
+}): void {
+  input.deps.clearLiveDesign();
+  input.deps.setPendingAdvanceIndex(input.selectedIndex);
+  input.deps.removeDesignFromList(input.designId);
+  input.deps.onInboxCountsDelta?.(computeHardDeleteCountDeltas(input.sourceTab));
+}
+
 export interface FailedInboxManualActionRecoverDeps {
   clearPendingAdvance: () => void;
   onQueueChanged?: () => void;

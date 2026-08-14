@@ -6,7 +6,9 @@ import {
   applyAiReviewTabCountDeltas,
   buildAiReviewInboxLocalDesignPatch,
   computeAiReviewInboxActionCountDeltas,
+  computeHardDeleteCountDeltas,
   designLeavesCurrentInboxTab,
+  reconcileSuccessfulHardDelete,
   reconcileSuccessfulInboxManualAction,
   recoverFailedInboxManualAction,
   simulateLocalNeedsReviewApprovals,
@@ -230,5 +232,45 @@ describe("simulateLocalNeedsReviewApprovals (45-design P0 budget fixture)", () =
     assert.deepEqual(result.remainingIds, []);
     assert.equal(result.listReloadCallCount, 0);
     assert.equal(result.countRefreshCallCount, 0);
+  });
+});
+
+describe("reconcileSuccessfulHardDelete", () => {
+  it("removes locally, advances selection index, and decrements the source tab badge", () => {
+    const removed: string[] = [];
+    let pendingAdvance: number | null = null;
+    let liveCleared = false;
+    let deltas: Record<string, number> | null = null;
+
+    reconcileSuccessfulHardDelete({
+      designId: "design-a",
+      selectedIndex: 0,
+      sourceTab: "processing",
+      deps: {
+        clearLiveDesign: () => {
+          liveCleared = true;
+        },
+        setPendingAdvanceIndex: (index) => {
+          pendingAdvance = index;
+        },
+        removeDesignFromList: (designId) => {
+          removed.push(designId);
+        },
+        onInboxCountsDelta: (next) => {
+          deltas = next as Record<string, number>;
+        },
+      },
+    });
+
+    assert.deepEqual(removed, ["design-a"]);
+    assert.equal(pendingAdvance, 0);
+    assert.equal(liveCleared, true);
+    assert.deepEqual(deltas, { processing: -1 });
+  });
+
+  it("computeHardDeleteCountDeltas covers processing / needs_review / rejected", () => {
+    assert.deepEqual(computeHardDeleteCountDeltas("processing"), { processing: -1 });
+    assert.deepEqual(computeHardDeleteCountDeltas("needs_review"), { needs_review: -1 });
+    assert.deepEqual(computeHardDeleteCountDeltas("rejected"), { rejected: -1 });
   });
 });

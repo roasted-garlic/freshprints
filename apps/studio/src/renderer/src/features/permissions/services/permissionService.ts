@@ -172,6 +172,11 @@ export const permissionService = {
     return isOwner(user);
   },
 
+  /** Owner-only hard-delete of eligible unapproved (imported/processing) designs. */
+  canDeleteEligibleUnapprovedDesigns(user: UserLike) {
+    return isOwner(user);
+  },
+
   /** Owner-only product tombstone for customers (Auth disable + retain history). */
   canTombstoneCustomerAccount(user: UserLike) {
     return isOwner(user);
@@ -391,6 +396,8 @@ export const permissionService = {
         return this.canWipeOperationalTestData(user);
       case "purgeArchivedDesignAssets":
         return this.canPurgeArchivedDesignAssets(user);
+      case "deleteEligibleUnapprovedDesigns":
+        return this.canDeleteEligibleUnapprovedDesigns(user);
       case "manageDesigns":
         return this.canManageDesigns(user);
       case "viewDesigns":
