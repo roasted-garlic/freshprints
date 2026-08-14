@@ -1,43 +1,40 @@
 # Fresh Prints - Current State Snapshot
 
-## 2026-08-13 — Studio 1.0.4 P4 corrective integrated toward development
+## 2026-08-13 — Studio 1.0.4 published; repository consolidation closeout in progress
 
 | Item | Value |
 |------|-------|
-| Managed goal | `studio-1.0.4-ai-processing-preview-cleanup-corrective` |
-| Root cause | Firestore Rules P4 authorization gap on derivative path persistence (`processing→imported` + canonical thumb/preview fell through expensive `designRequiredFieldsValid`) |
-| Corrective | Narrow derivative completion Rules fast path + failure visibility + auto-AI handoff guard + Option B owner-only safe delete |
-| Corrective branch | `fix/studio-1.0.4-ai-preview-cleanup-corrective` |
-| Corrective HEAD | `9414aed4a5fefbd266648e3601e61af8ef363e10` (includes post-`5e0b072` QA UX: Processing Delete, instant list remove, diag OFF) |
-| Prior frozen product commit | `5e0b072faab46e07a7011278e2c903f7513e77fa` |
-| Owner DEV QA | **PASS** — import→derivatives→auto AI; permanent delete; immediate list remove; diagnostic banner OFF |
-| DEV Firebase | `firestore:rules` + `functions:deleteEligibleUnapprovedDesign` deployed on **`fresh-prints-dev`** |
-| Development | Integration branch `integrate/studio-1.0.4-corrective-into-development` (from `origin/development` @ `0605c6c`) — land via PR (direct push to `development` blocked) |
-| Production | **NOT YET PROMOTED** for this corrective |
-| Production fixtures (8 smoke) | Untouched — separate owner checkpoint after prod Function + corrected Studio |
-| Draft `369614747` | Failed-smoke evidence only; **unpublished**; **untouched**; must **not** reuse — NEW dual-platform 1.0.4 draft required after prod |
-
-### Required next phase
-1. Land corrective on `origin/development`
-2. Production promotion diff audit
-3. Protected production PR (development lineage or clean promotion branch if unrelated drift)
-4. Separately authorized production Firebase: `firestore:rules` + `functions:deleteEligibleUnapprovedDesign`
-5. NEW Studio 1.0.4 dual-platform draft (not 369614747)
-6. Windows + Mac arm64 + Mac x64 Big Sur smoke
-7. Explicit publish authorization
+| Managed goal | `repository-consolidation-closeout` (post Studio 1.0.4 P4) |
+| Root cause (corrective) | Firestore Rules P4 authorization gap on derivative path persistence |
+| Corrective | Narrow derivative completion Rules fast path + failure visibility + auto-AI guard + Option B owner safe-delete + Processing Delete UX + instant list reconcile; diagnostic banner OFF by default |
+| Owner DEV QA | **PASS** |
+| Development (pre-reconcile) | PR #69 @ `2119d4154c2c2e98cffa17d184012cc136cb3437` |
+| Production tip / PRODUCTION_BEFORE | `e59205d7eccf0991e9a8a9b7be266cfeff831158` (PR #70) — **must not push/reset** |
+| Production Firebase | **DEPLOYED** to `fresh-prints-prod`: `firestore:rules` + `functions:deleteEligibleUnapprovedDesign` |
+| Studio 1.0.4 release | **370305556** **published** — tag `v1.0.4-e59205d`, commitish `e59205d7` |
+| Owner dual-platform smoke | **PASS** (Windows + Mac arm64 + Mac x64) |
+| Draft `369614747` | Historical anomaly / failed-smoke evidence — **do not restore** |
+| Production fixtures (8 smoke) | **Already gone** (verified; cleanup APPLY idempotent) |
+| Current work | Reconcile production lineage into development (`closeout/prod-into-development`) — **local only; push pending** |
+| Phase 9 | **Parked** |
+| Domain cutover | **Gated** until `APPROVE MYPRINTREQUEST.COM CUTOVER` |
 
 ### Diagnostic release cleanliness
-Normal DEV/prod builds must **not** show:
-`DIAGNOSTIC BUILD — Firebase project fresh-prints-dev — derivative locus logging on — not a release candidate`
-Gated instrumentation may remain only if OFF by default (`PACKAGED_DERIVATIVE_LOCUS_DIAG=false`; no `VITE_FP_DERIVATIVE_LOCUS_DIAG=1`).
+Normal builds must **not** show the DIAGNOSTIC BUILD banner. Opt-in only via `VITE_FP_DERIVATIVE_LOCUS_DIAG=1` / intentional bake; default `PACKAGED_DERIVATIVE_LOCUS_DIAG=false`.
 
-### Checkpoints
-- `docs/workflow/reviews/2026-08-13-studio-1.0.4-p4-dev-qa-checkpoint.md`
-- `docs/workflow/reviews/2026-08-13-studio-1.0.4-option-b-ui-discoverability-checkpoint.md`
-- `docs/workflow/reviews/2026-08-13-studio-1.0.4-p4-derivative-completion-implementation-review.md`
+### Done
+1. ~~Protected PR → `production`~~ **DONE** (PR #70 @ `e59205d7`)
+2. ~~Prod Firebase deploy~~ **DONE**
+3. ~~NEW 1.0.4 dual-platform draft + smokes~~ **DONE** — release `370305556`; smoke **PASS**
+4. ~~Publish~~ **DONE** — `370305556` / `v1.0.4-e59205d`
+5. ~~Fixture cleanup verify~~ **DONE** — already gone / idempotent
 
----
+### Next
+1. Finish overnight git consolidation (merge production → development lineage + unique docs evidence)
+2. Authorize push/PR of closeout branch → `development` when ready
+3. Keep Phase 9 parked; keep domain cutover gated
 
-## Prior: 2026-08-11 — Prefinal A–H + Track B Git promote (historical)
-
-PR #57 merged to production; Storage Rules phrase was the prior Firebase gate. Superseded for current active work by the Studio 1.0.4 P4 corrective above — production Storage Rules / Track A remain separately gated historical items, not this corrective’s deploy matrix.
+### Safety
+- Do **not** push/reset `production` — PRODUCTION_BEFORE stays `e59205d7`
+- Do **not** restore draft `369614747`
+- Do **not** reopen Phase 9 or domain cutover without explicit owner phrases
