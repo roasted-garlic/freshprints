@@ -8,25 +8,33 @@
 | Formal Review | docs/workflow/reviews/2026-08-14-studio-design-library-archive-restore-reconciliation-review.md |
 | Implementation Review | docs/workflow/reviews/2026-08-14-studio-design-library-archive-restore-reconciliation-implementation-review.md |
 | Test report | docs/workflow/reviews/2026-08-14-studio-design-library-archive-restore-reconciliation-test-report.md |
-| Final status | **approved_with_notes** |
+| Final status | **approved** |
 
 ---
 
 ## Summary
 
-Managed goal `studio-design-library-archive-restore-reconciliation` delivered and owner-validated on DEV.
+Managed goal `studio-design-library-archive-restore-reconciliation` **complete** — DEV QA PASS, production promoted, Rules/indexes live, Studio **1.0.4** published from production SHA, owner confirmed **Everything looks good.**
 
 | Defect | Result |
 |--------|--------|
 | A — ready-browse hard-delete checkboxes removed | **PASS** |
 | B — archived Delete images/purge immediate reconcile | **PASS** |
-| C — Restore archived designs | **PASS** after DEV Rules deploy |
+| C — Restore archived designs | **PASS** after Rules deploy |
 | D — Needs Companion Load More / filter (incl. D1/D2 corrective) | **PASS** after Companion query/cache identity fix |
-| Owner overall QA | **PASS** |
+| Owner overall / production confirmation | **PASS** |
 
 Also included: owner-approved Studio default window minimum **1656×1032**.
 
-Production promotion (protected PR → `fresh-prints-prod` Rules/indexes → Studio release → smoke) remains human-gated after this Signoff of development delivery.
+### Production closeout (2026-08-14)
+
+| Item | Value |
+|------|--------|
+| Production SHA | `061185c8b9f47d5a6bce56c4f280f1e823b7985c` (PR #74) |
+| Prod Firebase | `firestore:rules` + `firestore:indexes` → `fresh-prints-prod` — Deploy complete |
+| Companion indexes | both **READY** (readyAt + createdAt composites) |
+| Studio workflow | [31827068166](https://github.com/roasted-garlic/freshprints/actions/runs/31827068166) — success / `stable` / `internal-unsigned` |
+| Release | **370746562** / tag [`v1.0.4`](https://github.com/roasted-garlic/freshprints/releases/tag/v1.0.4) @ `061185c…` |
 
 ---
 
@@ -98,7 +106,7 @@ Production promotion (protected PR → `fresh-prints-prod` Rules/indexes → Stu
 | Test | Result | Approved by |
 |------|--------|-------------|
 | Owner DEV QA (A/B/C/D + D1/D2) | **PASS** | owner |
-| Production smoke | pending | — |
+| Production promotion / release confirmation | **PASS** (“Everything looks good.”) | owner |
 
 ---
 
@@ -107,10 +115,10 @@ Production promotion (protected PR → `fresh-prints-prod` Rules/indexes → Stu
 |----------|--------|------|-------|
 | Owner DEV QA | obtained | 2026-08-14 | Overall PASS |
 | DEV Rules/indexes deploy | obtained | 2026-08-14 | fresh-prints-dev |
-| Production PR merge | pending | | Protected PR workflow |
-| Production Rules/indexes deploy | pending | | Phrase required |
-| Production Studio release | pending | | Exact production SHA |
-| Production smoke | pending | | Checklist in state |
+| Production PR merge | obtained | 2026-08-14 | PR #74 → `061185c…` |
+| Production Rules/indexes deploy | obtained | 2026-08-14 | Owner deploy complete |
+| Production Studio release | obtained | 2026-08-14 | Run 31827068166; release 370746562 / `v1.0.4` |
+| Production confirmation | obtained | 2026-08-14 | “Everything looks good.” |
 
 ---
 
@@ -126,31 +134,25 @@ Production promotion (protected PR → `fresh-prints-prod` Rules/indexes → Stu
 ---
 
 ## Deferred Items (Roadmap)
-- Production promotion PR merge
-- Production `firestore:rules` + `firestore:indexes` only
-- Production Studio package from exact production SHA
-- Production owner smoke
 - Companion Algolia B3 (explicitly out of scope)
 
 ---
 
 ## Open Blockers
-- [x] None for development delivery
-- [ ] Production promotion sequence (human-gated)
+- [x] None
 
 ---
 
 ## Verdict
 
-**approved_with_notes** — Owner overall QA PASS on DEV; final source verified; Rules emulator not run (Java missing); production promotion/deploy/release/smoke remain separate human checkpoints.
+**approved** — DEV QA PASS; production SHA `061185c…`; Rules/indexes live with companion indexes READY; Studio 1.0.4 published (370746562 / `v1.0.4`); owner confirmed everything looks good. Rules emulator still not run locally (Java missing) — non-blocking after live DEV/prod validation.
 
 ---
 
 ## Workflow Complete
-- [x] `.cursor/workflow/state.md` updated
+- [x] `.cursor/workflow/state.md` updated with `DONE: yes`
+- [x] `ROADMAP.md` updated
 - [x] `references/project-chatgpt-handoff/CURRENT-STATE.md` updated
 - [x] `references/project-chatgpt-handoff/13-recent-completed-work.md` updated
-- [ ] Full `DONE: yes` deferred until production smoke PASS (same managed goal continues through promotion)
 
-**Recommended next action for user:** Merge production promotion PR when ready, then reply  
-`APPROVE PROD FIRESTORE RULES AND INDEXES DEPLOY FOR DESIGN LIBRARY CORRECTIVE`
+**Recommended next action for user:** None for this goal — start a new managed phase when ready.

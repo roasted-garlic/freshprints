@@ -136,7 +136,12 @@ export const aiReviewInboxService = {
   async rerunAiFromInbox(
     caller: User,
     designId: string,
-  ): Promise<void> {
+  ): Promise<{
+    aiReviewStatus: "pending";
+    designId: string;
+    reset: true;
+    status: "imported";
+  }> {
     if (!permissionService.canRerunAiSuggestions(caller)) {
       throw new Error("You do not have permission to re-run AI suggestions.");
     }
@@ -156,5 +161,7 @@ export const aiReviewInboxService = {
     if (!result.reset) {
       throw new Error("AI processing could not be reset. Please try again.");
     }
+
+    return result;
   },
 };

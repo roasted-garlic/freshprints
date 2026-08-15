@@ -137,6 +137,147 @@ export function computeHardDeleteCountDeltas(
 }
 
 /**
+ * Local tab-count adjustments after a successful Reprocess / reset-for-Processing.
+ * Source tab loses the design; Processing gains it. Staff remain on the source tab.
+ */
+export function computeReprocessToProcessingCountDeltas(
+  sourceTab: AiReviewInboxTab,
+): AiReviewTabCountDeltas {
+  if (sourceTab === "needs_review") {
+    return { needs_review: -1, processing: 1 };
+  }
+
+  if (sourceTab === "rejected") {
+    return { rejected: -1, processing: 1 };
+  }
+
+  return {};
+}
+
+/**
+ * Authoritative local membership patch from `resetAiEnrichmentForProcessing` result.
+ * Do not invent statuses beyond the typed callable response.
+ */
+export function buildDesignPatchFromResetForProcessingResult(result: {
+  aiReviewStatus: "pending";
+  status: "imported";
+}): Pick<Design, "aiReviewStatus" | "status"> {
+  return {
+    aiReviewStatus: result.aiReviewStatus,
+    status: result.status,
+  };
+}
+
+export interface SuccessfulReprocessReconcileDeps {
+  applyDesignPatch: (designId: string, patch: Partial<Design>) => void;
+  clearLiveDesign: () => void;
+  invalidateReadCaches: (designId: string) => void;
+  onInboxCountsDelta?: (deltas: AiReviewTabCountDeltas) => void;
+  /** Must NOT be called on the happy path — injected so tests can spy. */
+  onNavigateToTab?: (tab: AiReviewInboxTab, designId: string) => void;
+  /** Must NOT be called on the happy path — injected so tests can spy. */
+  onQueueChanged?: () => void;
+  /** Must NOT be called on the happy path — injected so tests can spy. */
+  reloadDesigns?: () => Promise<void>;
+  setPendingAdvanceIndex: (index: number) => void;
+}
+
+/**
+ * Reprocess happy path: patch from server reset result, advance selection on the current tab,
+ * adjust badges locally. Deliberately does not reload lists or navigate to Processing.
+ */
+export function reconcileSuccessfulReprocess(input: {
+  deps: SuccessfulReprocessReconcileDeps;
+  designId: string;
+  resetResult: { aiReviewStatus: "pending"; status: "imported" };
+  selectedIndex: number;
+  sourceTab: AiReviewInboxTab;
+}): void {
+  input.deps.invalidateReadCaches(input.designId);
+  input.deps.clearLiveDesign();
+  input.deps.setPendingAdvanceIndex(input.selectedIndex);
+  input.deps.applyDesignPatch(
+    input.designId,
+    buildDesignPatchFromResetForProcessingResult(input.resetResult),
+  );
+  input.deps.onInboxCountsDelta?.(computeReprocessToProcessingCountDeltas(input.sourceTab));
+}
+
+/**
+ * Simulate N successful Needs Review reprocesses using the real reconcile helper + selection
+ * advance. Injected reload/navigate spies prove the happy path never leaves the source tab.
+ */
+export function simulateLocalNeedsReviewReprocesses(designIds: string[]): {
+  remainingIds: string[];
+  selectionSequence: Array<string | null>;
+  listReloadCallCount: number;
+  navigateCallCount: number;
+  countRefreshCallCount: number;
+  applyPatchCount: number;
+  needsReviewDeltaSum: number;
+  processingDeltaSum: number;
+} {
+  let remainingIds = [...designIds];
+  let selectedIndex = remainingIds.length > 0 ? 0 : -1;
+  const selectionSequence: Array<string | null> = [];
+  let listReloadCallCount = 0;
+  let navigateCallCount = 0;
+  let countRefreshCallCount = 0;
+  let applyPatchCount = 0;
+  let needsReviewDeltaSum = 0;
+  let processingDeltaSum = 0;
+
+  while (remainingIds.length > 0 && selectedIndex >= 0) {
+    const removedId = remainingIds[selectedIndex]!;
+    const removedIndex = selectedIndex;
+
+    reconcileSuccessfulReprocess({
+      designId: removedId,
+      resetResult: { aiReviewStatus: "pending", status: "imported" },
+      sourceTab: "needs_review",
+      selectedIndex: removedIndex,
+      deps: {
+        clearLiveDesign: () => undefined,
+        setPendingAdvanceIndex: () => undefined,
+        invalidateReadCaches: () => undefined,
+        applyDesignPatch: () => {
+          applyPatchCount += 1;
+        },
+        onInboxCountsDelta: (deltas) => {
+          needsReviewDeltaSum += deltas.needs_review ?? 0;
+          processingDeltaSum += deltas.processing ?? 0;
+        },
+        reloadDesigns: async () => {
+          listReloadCallCount += 1;
+        },
+        onQueueChanged: () => {
+          countRefreshCallCount += 1;
+        },
+        onNavigateToTab: () => {
+          navigateCallCount += 1;
+        },
+      },
+    });
+
+    remainingIds = remainingIds.filter((_, index) => index !== removedIndex);
+    const nextIndex = resolveAdvanceIndexAfterInboxRemoval(remainingIds.length, removedIndex);
+    selectedIndex = nextIndex ?? -1;
+    selectionSequence.push(selectedIndex >= 0 ? remainingIds[selectedIndex]! : null);
+  }
+
+  return {
+    remainingIds,
+    selectionSequence,
+    listReloadCallCount,
+    navigateCallCount,
+    countRefreshCallCount,
+    applyPatchCount,
+    needsReviewDeltaSum,
+    processingDeltaSum,
+  };
+}
+
+/**
  * Option B happy path: remove the deleted id from the local inbox list immediately,
  * clear live selection state, advance to the next row, and adjust the tab badge.
  * Does not call reloadDesigns (avoids clearing the list into a stale 15s page-cache hit).

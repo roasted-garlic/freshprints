@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { designDocumentSubscriptionService } from "../../designs/services/designDocumentSubscriptionService";
 import { catalogTagService } from "../../designs/services/catalogTagService";
+import { designService } from "../../designs/services/designService";
 import { useGeneratedDesignLibraryTaxonomy } from "../../designs/hooks/useGeneratedDesignLibraryTaxonomy";
 import type { CreateCatalogTagInput } from "../../designs/types/catalogTag.types";
 import { permissionService } from "../../permissions/services/permissionService";
@@ -48,7 +49,6 @@ import {
   resolveIsPinnedNeedsReviewDesign,
   resolvePendingCrossTabDesign,
   resolveRejectedReopenTargetTab,
-  resolveRejectedRerunTargetTab,
   resolveFreshestInboxDesign,
   shouldPrependPinnedDesignToInbox,
   shouldRetainCrossTabSelection,
@@ -59,6 +59,7 @@ import {
 import {
   reconcileSuccessfulHardDelete,
   reconcileSuccessfulInboxManualAction,
+  reconcileSuccessfulReprocess,
   recoverFailedInboxManualAction,
   type AiReviewInboxManualAction,
   type AiReviewTabCountDeltas,
@@ -810,27 +811,36 @@ export function useAiReviewInbox(
     setActionError(null);
 
     try {
-      await aiReviewInboxService.rerunAiFromInbox(user, designId);
+      const resetResult = await aiReviewInboxService.rerunAiFromInbox(user, designId);
       // Clear any prior terminal-leave ledger entry so this design may legitimately reappear as
-      // pending in Processing after the confirmation reload.
+      // pending when the staff member later opens Processing.
       clearTerminalAiProcessingLedgerEntry(designId);
-      pendingCrossTabSelectionRef.current = { tab: resolveRejectedRerunTargetTab(), designId };
-      setSelectedDesignId(designId);
       setDraftForm(null);
       setBaselineForm(null);
-      setLiveDesign(null);
-      // Reconcile the Processing list and its count deterministically, rather than relying
-      // solely on tab navigation's own side-effect refetch (a real navigation happens to
-      // trigger a fresh listDesignsPage call, which previously masked this gap — but a design
-      // whose reprocessing completes without the user changing tabs, or whose completion lands
-      // between this reset and the navigation, could leave the Processing list/count stale
-      // until an unrelated remount). See the matching reloadDesigns -> onQueueChanged sequence
-      // in runInboxAction above (post-launch-catalog-and-processing-stability, Workstream D).
-      await reloadDesigns();
-      options?.onQueueChanged?.();
-      options?.onNavigateToTab?.(resolveRejectedRerunTargetTab(), designId);
+      // Stay on the current Needs Review / Rejected tab: patch-primary local reconcile (no list
+      // reload, no Processing navigation). Stale page-cache hits must not reinsert the design.
+      reconcileSuccessfulReprocess({
+        designId,
+        resetResult,
+        sourceTab: filters.tab,
+        selectedIndex,
+        deps: {
+          clearLiveDesign: () => {
+            setLiveDesign(null);
+          },
+          setPendingAdvanceIndex: (index) => {
+            pendingAdvanceIndexRef.current = index;
+          },
+          applyDesignPatch,
+          invalidateReadCaches: (id) => {
+            designService.invalidateReadCaches(id);
+          },
+          onInboxCountsDelta: (deltas) => {
+            optionsRef.current?.onInboxCountsDelta?.(deltas);
+          },
+        },
+      });
     } catch (rerunError) {
-      pendingCrossTabSelectionRef.current = null;
       setActionError(
         rerunError instanceof Error
           ? rerunError.message
@@ -841,12 +851,13 @@ export function useAiReviewInbox(
       setIsActionLoading(false);
     }
   }, [
+    applyDesignPatch,
     canRerunAiSuggestions,
     canRerunSelected,
     clearTerminalAiProcessingLedgerEntry,
-    options,
-    reloadDesigns,
+    filters.tab,
     selectedDesign,
+    selectedIndex,
     user,
   ]);
 

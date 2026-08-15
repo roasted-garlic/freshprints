@@ -1,53 +1,61 @@
 ## Current Goal
-studio-design-library-archive-restore-reconciliation
+studio-ai-review-reprocess-local-reconciliation
 
 ## Current Mode
 managed-phase
 
 ## Phase
-production promotion — PR open; await owner merge
+DONE — Signoff approved; STOP at PR #75 merge checkpoint
 
 ## Plan Status
 complete
 
 ## Review Status
-approved_with_changes (Formal); Implementation Review approved_with_notes (final package)
+approved
 
 ## Implementation Status
 complete
 
 ## Test Status
-passed_with_notes — final verification PASS; Rules emulator NOT RUN (Java missing)
+passed — owner manual QA PASS
 
 ## Signoff Status
-approved_with_notes — owner overall QA PASS; production promotion remaining
+approved
 
 ## Human Checkpoint Required
 yes
 
 ## Human Checkpoint Reason
-PR #74 `development` → `production` is open. Owner must review Files Changed (includes accumulated development docs/scripts beyond this goal; no Portal app / Functions src / Storage Rules) and merge when acceptable. Do not deploy production Firebase until after merge + explicit deploy phrase.
+Protected production merge: owner must (1) push development if still behind, (2) merge PR #75, (3) dispatch Studio 1.0.5. Agent must not merge/dispatch.
 
 ## Allowed Actions
-Record PR merge; after merge pin production SHA; await deploy approval phrase; no force-push
+Report merge-ready state; wait for owner
 
 ## Forbidden Actions
-Direct push to production; force-push; reset production; merge without owner review of accumulated delta; Functions/Storage/Hosting/Portal deploy; Phase 9 worktree changes
+Merge PR #75; push production; dispatch Studio 1.0.5; Firebase/Portal mutations; force push; history rewrite
 
 ## Next Required Step
-Owner review + merge https://github.com/roasted-garlic/freshprints/pull/74 — then reply `APPROVE PROD FIRESTORE RULES AND INDEXES DEPLOY FOR DESIGN LIBRARY CORRECTIVE`
+Owner runs: `git push origin development` (if needed), confirms PR #75 checks, merges PR #75, then dispatches Studio 1.0.5
 
 ## DONE
-no
+yes
 
-## Development
-- SHA: `beac954810649efef8fbdd2c3a99f67595c2b73b`
-- Pushed to `origin/development`
+## Local development HEAD
+a0f0082da0ef45e0a1303463e16bf847c2d8547d
 
-## Production preflight
-- Pre-merge production tip: `e59205d7eccf0991e9a8a9b7be266cfeff831158`
-- PR: #74 open
-- Product scope OK; incidental docs/scripts from prior development closeouts also in three-dot diff (called out in PR body)
+## Implementation commit contained
+81613fa5bb76e30858d5e98c32f5131524ca2838 — yes (ancestor)
+
+## origin/development (last fetch)
+0e3b9ae852f7d13d9808619965910affc85ec54a — **behind local by 3 commits**; push hook-blocked
+
+## PR #75
+- base: production @ 061185c8…
+- head (remote): development @ 0e3b9ae… until owner push
+- title updated to Studio 1.0.5 AI Review reprocess corrective
 
 ## Decision Log
-- 2026-08-14: Owner overall QA PASS; development Signoff; pushed beac954; opened PR #74; STOP for owner merge
+- 2026-08-14: Owner manual QA PASS; Signoff approved
+- 2026-08-14: FF-merged feature branch into local development @ 6453190
+- 2026-08-14: `git push origin development` blocked by safety hook — owner must push
+- 2026-08-14: STOP before merging PR #75
