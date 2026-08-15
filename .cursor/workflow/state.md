@@ -5,7 +5,7 @@ studio-mac-autoupdate-signing-and-searchable-category-picker
 managed-phase
 
 ## Phase
-implement — C+D implemented; Implementation Review complete; awaiting owner DEV QA
+implement — C+D implemented; DEV deploy complete; awaiting owner DEV QA
 
 ## Plan Status
 amended — C+D reviewed
@@ -16,10 +16,10 @@ C+D amendment: approved_with_changes
 C+D implementation review: approved_with_notes
 
 ## Implementation Status
-partial — B + A1 + C + D complete; A2 credential-gated
+partial — B + A1 + C + D complete; A2 credential-gated; DEV rules/functions/indexes deployed for QA
 
 ## Test Status
-passed_with_notes — focused automated green; Studio tsc + Functions build green; Rules emulator blocked (no Java); owner DEV QA pending for B/C/D
+passed_with_notes — automated green locally; DEV backend updated 2026-08-15; owner DEV QA pending for B/C/D
 
 ## Signoff Status
 not_started
@@ -28,7 +28,7 @@ not_started
 yes
 
 ## Human Checkpoint Reason
-(1) Owner DEV QA for C+D (and B if still pending). (2) Authorize DEV deploy of Rules/Functions/indexes before live QA if not present. (3) A2 Apple cert + MAC_CSC_*. (4) No production promote/publish.
+(1) Owner DEV QA for C+D (and B if still pending) using checklist. (2) Confirm new Firestore index Enabled in Console if complete+next fails. (3) A2 Apple cert + MAC_CSC_*. (4) No production promote/publish.
 
 ## Allowed Actions
 Owner QA recording; docs; A2 only after Apple secrets checkpoint; Test phase after QA
@@ -37,13 +37,13 @@ Owner QA recording; docs; A2 only after Apple secrets checkpoint; Test phase aft
 Production Rules/Functions/indexes deploy; Studio publish; Apple secret configuration without owner; reopen A/B scope; synthetic whatnotShowId
 
 ## Next Required Step
-Owner DEV QA for C+D (authorize DEV deploy first if needed) — then `Continue Workflow` for Test
+Owner DEV QA for C+D — then `Continue Workflow` for Test
 
 ## DONE
 no
 
 ## Last Completed Step
-C+D Implement + Implementation Review (approved_with_notes)
+Authorized DEV deploy: rules + indexes + Staff Gang Sheet functions → fresh-prints-dev (2026-08-15)
 
 ## Plan
 docs/workflow/plans/2026-08-14-studio-mac-autoupdate-signing-and-searchable-category-picker-plan.md
@@ -59,6 +59,9 @@ docs/workflow/reviews/2026-08-14-studio-mac-autoupdate-signing-and-searchable-ca
 
 ## Implementation Review (C+D)
 docs/workflow/reviews/2026-08-15-studio-1.0.6-workstreams-c-d-implementation-review.md
+
+## DEV Deploy Record
+docs/workflow/reviews/2026-08-15-studio-1.0.6-staff-gang-sheet-dev-deploy-record.md
 
 ## Owner QA checklist (B)
 docs/workflow/reviews/2026-08-14-studio-searchable-category-picker-owner-qa-checklist.md
@@ -76,7 +79,8 @@ Studio 1.0.6
 - 2026-08-14: A/B Review approved_with_changes; B+A1 implemented; A2 gated
 - 2026-08-14: Plan amended with C+D
 - 2026-08-14: C+D Review **approved_with_changes**
-- 2026-08-15: C+D Implement complete; callable required for complete+next; index required for open-lane query; Implementation Review **approved_with_notes**
+- 2026-08-15: C+D Implement complete; Implementation Review **approved_with_notes**
+- 2026-08-15: Owner authorized DEV deploy; rules+indexes+4 functions deployed to **fresh-prints-dev** only (exit 0)
 
 ## Prior Goal (preserved, closed)
 - Goal: `studio-ai-review-reprocess-local-reconciliation`
