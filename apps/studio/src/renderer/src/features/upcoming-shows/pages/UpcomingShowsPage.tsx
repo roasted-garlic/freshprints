@@ -75,6 +75,11 @@ import { canAllocateOriginToShowSource } from "@fresh-prints/shared/utils/staffG
 import { useTeamUsers } from "../../users/hooks/useTeamUsers";
 import { filterTeamUsers } from "../../users/utils/teamUserSearch";
 import {
+  canEnableAddRequestAction,
+  decideQuerySurfaceSync,
+  type ShowQueueSurface,
+} from "../utils/showQueueSurfaceSelection";
+import {
   buildShowQueuePrintRequestOptions,
   resolveShowQueuePrintRequestLinkTab,
 } from "../utils/showQueuePrintRequestSources";
@@ -110,7 +115,6 @@ const DEFAULT_CREATE_SHOW_FORM: CreateShowFormState = {
 
 const DEFAULT_WHATNOT_SHOW_BASE_URL = "https://www.whatnot.com/user/funkyfreshprints/shows";
 
-type ShowQueueSurface = "shows" | "staff_gang_sheets";
 type StaffGangSheetListTab = "current" | "history";
 
 function isCurrentStaffGangSheetProductionStatus(status: string): boolean {
@@ -380,15 +384,26 @@ export function UpcomingShowsPage() {
       if (!showFromQuery) {
         // Unknown id after load — fall through to default selection.
       } else {
-        const nextSurface: ShowQueueSurface = isStaffGangSheetShow(showFromQuery)
-          ? "staff_gang_sheets"
-          : "shows";
-        if (nextSurface !== queueSurface) {
-          setQueueSurface(nextSurface);
+        const surfaceDecision = decideQuerySurfaceSync({
+          queueSurface,
+          queryShowSource: showFromQuery.source,
+          hasHydratedFromQuery: hasHydratedFromQueryRef.current,
+        });
+
+        if (surfaceDecision.action === "set_surface") {
+          setQueueSurface(surfaceDecision.surface);
           return;
         }
 
-        if (nextSurface === "staff_gang_sheets") {
+        if (surfaceDecision.action === "clear_incompatible_query") {
+          // Keep the user's explicit Shows | Staff Gang Sheets choice; drop the stale URL show.
+          setSelectedShowId(null);
+          updateSelectedShowPath(null);
+          hasHydratedFromQueryRef.current = true;
+          return;
+        }
+
+        if (queueSurface === "staff_gang_sheets") {
           const nextStaffTab: StaffGangSheetListTab = isCurrentStaffGangSheetProductionStatus(
             showFromQuery.productionStatus,
           )
@@ -421,24 +436,19 @@ export function UpcomingShowsPage() {
       return;
     }
 
-    // Plan Section 29.4: a still-existing selected show can silently drop out of the ACTIVE tab's
-    // visible list purely because its schedule-tab classification changed (e.g. its scheduled start
-    // time passed "now" between a Finish action and this effect's own post-Finish refresh) — not
-    // because the owner navigated away from it. Auto-switching the tab to wherever that show now
-    // lives preserves the owner's view of it (and any in-progress retry warning/state keyed on its
-    // id) instead of silently falling back to a different show. This mirrors the query-param path
-    // above (lines 307-312), which already does exactly this when arriving via a direct link;
-    // this extends the same behavior to the general case.
-    const reclassifiedTab = resolveScheduleTabForStillExistingSelection(
-      shows,
-      selectedShowId,
-      activeScheduleTab,
-      new Date(),
-    );
-    if (reclassifiedTab) {
-      hasHydratedFromQueryRef.current = true;
-      setActiveScheduleTab(reclassifiedTab);
-      return;
+    // Only auto-switch Upcoming/Past for Whatnot Shows — never rewrite Staff Gang Sheets surface.
+    if (queueSurface === "shows") {
+      const reclassifiedTab = resolveScheduleTabForStillExistingSelection(
+        shows,
+        selectedShowId,
+        activeScheduleTab,
+        new Date(),
+      );
+      if (reclassifiedTab) {
+        hasHydratedFromQueryRef.current = true;
+        setActiveScheduleTab(reclassifiedTab);
+        return;
+      }
     }
 
     hasHydratedFromQueryRef.current = true;
@@ -534,6 +544,12 @@ export function UpcomingShowsPage() {
     );
   }, [selectedShow]);
   const canAddPrintRequestToSelectedShow = selectedShowAllocationBlockReason === null;
+  const canShowAddRequestAction = canEnableAddRequestAction({
+    isStaffGangSheet: isSelectedStaffGangSheet,
+    canManageUpcomingShows: Boolean(user && permissionService.canManageUpcomingShows(user)),
+    canManageStaffGangSheet: canManageSelectedStaffGangSheet,
+    allocationBlocked: !canAddPrintRequestToSelectedShow,
+  });
   const lastManualImportAt = useMemo(() => {
     const showImportAt = selectedShow?.lastSeenInAssistedImportAt;
     const latestImportAt = showQueueSettings.settings.lastWhatnotAssistedImportAt;
@@ -930,14 +946,14 @@ export function UpcomingShowsPage() {
   }
 
   const openAddRequestModal = useCallback(() => {
-    if (!canAddPrintRequestToSelectedShow) {
+    if (!canShowAddRequestAction) {
       return;
     }
 
     setActionError(null);
     setAddRequestId("");
     setIsAddRequestModalOpen(true);
-  }, [canAddPrintRequestToSelectedShow]);
+  }, [canShowAddRequestAction]);
 
   const closeAddRequestModal = useCallback(() => {
     setIsAddRequestModalOpen(false);
@@ -1021,6 +1037,8 @@ export function UpcomingShowsPage() {
                   setQueueSurface(surface.id);
                   setSelectedShowId(null);
                   setActionError(null);
+                  // Clear URL selection so a Whatnot show id cannot force the surface back.
+                  updateSelectedShowPath(null);
                 }}
                 type="button"
               >
@@ -1123,8 +1141,14 @@ export function UpcomingShowsPage() {
           ) : !selectedShow ? (
             <Card className="print-requests-card print-requests-empty-card">
               <EmptyState
-                message="Select a show from the queue or add a new one."
-                title="No show selected"
+                message={
+                  queueSurface === "staff_gang_sheets"
+                    ? "Select a Staff Gang Sheet from the list, or create one if none exist yet."
+                    : "Select a show from the queue or add a new one."
+                }
+                title={
+                  queueSurface === "staff_gang_sheets" ? "No Staff Gang Sheet selected" : "No show selected"
+                }
               />
             </Card>
           ) : (
@@ -1146,8 +1170,27 @@ export function UpcomingShowsPage() {
                       </p>
                     )}
                   </div>
-                  {permissionService.canManageUpcomingShows(user) ? (
+                  {(isSelectedStaffGangSheet
+                    ? canManageSelectedStaffGangSheet
+                    : permissionService.canManageUpcomingShows(user)) ? (
                     <div className="print-requests-detail-actions show-detail-header-actions">
+                      <Button
+                        className="button-leading-icon"
+                        disabled={!canShowAddRequestAction}
+                        onClick={openAddRequestModal}
+                        size="sm"
+                        title={
+                          selectedShowAllocationBlockReason
+                            ? formatShowAllocationBlockedMessage(selectedShowAllocationBlockReason)
+                            : isSelectedStaffGangSheet && !canManageSelectedStaffGangSheet
+                              ? "You can only add requests to Staff Gang Sheets assigned to you."
+                              : undefined
+                        }
+                        variant="secondary"
+                      >
+                        <Plus aria-hidden="true" size={16} strokeWidth={2} />
+                        Add Request
+                      </Button>
                       <div className="export-menu-shell" ref={exportMenuRef}>
                         <Button
                           aria-controls="export-menu"
@@ -1520,10 +1563,7 @@ export function UpcomingShowsPage() {
                 <div className="print-requests-section-header">
                   <p className="eyebrow">Attached print requests</p>
                   <Button
-                    disabled={
-                      !canAddPrintRequestToSelectedShow ||
-                      !permissionService.canManageUpcomingShows(user)
-                    }
+                    disabled={!canShowAddRequestAction}
                     onClick={openAddRequestModal}
                     size="sm"
                     title={
@@ -1533,7 +1573,7 @@ export function UpcomingShowsPage() {
                     }
                     variant="secondary"
                   >
-                    + Add Print Request
+                    Add Request
                   </Button>
                 </div>
 
@@ -1893,7 +1933,11 @@ export function UpcomingShowsPage() {
             <ModalHeader>
               <div>
                 <p className="eyebrow">Attach request</p>
-                <h3 id="show-add-request-title">Add print request to show</h3>
+                <h3 id="show-add-request-title">
+                  {isSelectedStaffGangSheet
+                    ? "Add print request to Staff Gang Sheet"
+                    : "Add print request to show"}
+                </h3>
               </div>
               <button
                 aria-label="Close add print request"
@@ -1943,8 +1987,15 @@ export function UpcomingShowsPage() {
           fixedShowId={selectedShow.id}
           items={addRequestItems}
           onAdded={async () => {
-            setSuccessMessage("Print request added to show.");
+            setSuccessMessage(
+              isSelectedStaffGangSheet
+                ? "Print request added to Staff Gang Sheet."
+                : "Print request added to show.",
+            );
             setSuccessAlertSeed((current) => current + 1);
+            if (isSelectedStaffGangSheet) {
+              setQueueSurface("staff_gang_sheets");
+            }
             await Promise.all([reloadUpcomingShows(), reloadAllocations()]);
           }}
           onClose={closeAddRequestModal}
