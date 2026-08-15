@@ -77,6 +77,9 @@ export function DesignFormFields({
         name="categoryId"
         onChange={(event) => onChange("categoryId", event.target.value)}
         options={categoryOptions}
+        searchEmptyMessage="No categories found"
+        searchPlaceholder="Search categories..."
+        searchable
         value={formValues.categoryId}
       />
 

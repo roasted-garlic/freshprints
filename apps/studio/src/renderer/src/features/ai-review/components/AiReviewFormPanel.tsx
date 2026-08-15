@@ -95,6 +95,9 @@ export function AiReviewFormPanel({
         onChange={(event) => onChange("categoryId", event.target.value)}
         onFocus={handleFocus}
         options={selectOptions}
+        searchEmptyMessage="No categories found"
+        searchPlaceholder="Search categories..."
+        searchable
         value={draftForm.categoryId}
       />
 

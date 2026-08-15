@@ -1,5 +1,28 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-14 — Studio Mac auto-update signing + searchable category picker — IMPLEMENT SLICE
+
+| Item | Value |
+|------|-------|
+| Managed goal | `studio-mac-autoupdate-signing-and-searchable-category-picker` |
+| Branch | `feature/studio-1.0.6-mac-signing-and-searchable-category` |
+| Phase | **Implement authorized slice complete** — Implementation Review `approved_with_notes` |
+| Studio version | **`1.0.6`** (package.json + finalize pin); Mac still ad-hoc until A2 |
+| Workstream B | Searchable Category — **ready for owner DEV QA** |
+| Workstream A1 | Install-phase updater error UX — **implemented / tested** |
+| Workstream A2 | Developer ID signing — **blocked on Apple cert + `MAC_CSC_*` secrets** |
+| Notarization | **Deferred** (unless secrets ready at A2 checkpoint) |
+| QA checklist | `docs/workflow/reviews/2026-08-14-studio-searchable-category-picker-owner-qa-checklist.md` |
+| Impl review | `docs/workflow/reviews/2026-08-14-studio-mac-autoupdate-signing-and-searchable-category-picker-implementation-review.md` |
+| Next | Owner DEV QA → Apple signing checkpoint → A2 |
+| Phase 9 | **PARKED** |
+
+---
+
+## 2026-08-15 — Studio AI Review reprocess local reconciliation — CLOSED
+
+---
+
 ## 2026-08-15 — Studio AI Review reprocess local reconciliation — CLOSED
 
 | Item | Value |

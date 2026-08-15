@@ -57,3 +57,42 @@ test("handles a non-Error thrown value safely", () => {
   assert.equal(safe.category, "unavailable");
   assert.equal(typeof safe.message, "string");
 });
+
+test("install context maps signature-domain failures to install-failed without leaking raw text", () => {
+  const rawError = Object.assign(
+    new Error(
+      "Code signature at URL file:///Users/secret/Fresh Prints.app/ did not pass validation",
+    ),
+    { domain: "SQRLCodeSignatureErrorDomain", code: "1" },
+  );
+
+  const safe = toSafeStudioUpdateError(rawError, "install");
+
+  assert.equal(safe.category, "install-failed");
+  assert.equal(
+    safe.message,
+    "The update downloaded but could not be installed. Please install the latest Fresh Prints version manually or try again later.",
+  );
+  assert.equal(safe.logHint, "SQRLCodeSignatureErrorDomain");
+  assert.ok(!JSON.stringify(safe).includes("Fresh Prints.app"));
+  assert.ok(!JSON.stringify(safe).includes("file://"));
+  assert.ok(!JSON.stringify(safe).includes("validation"));
+});
+
+test("unknown install failure still uses install-failed copy (not unavailable / check-failed)", () => {
+  const rawError = new Error("totally opaque squirrel staging failure with /secret/path");
+  const safe = toSafeStudioUpdateError(rawError, "install");
+
+  assert.equal(safe.category, "install-failed");
+  assert.match(safe.message, /could not be installed/i);
+  assert.equal(safe.logHint, "unknown");
+  assert.ok(!JSON.stringify(safe).includes("secret"));
+  assert.ok(!JSON.stringify(safe).includes("squirrel"));
+});
+
+test("install HTTP errors still use install-failed (not check-failed)", () => {
+  const rawError = Object.assign(new Error("body"), { statusCode: 500 });
+  const safe = toSafeStudioUpdateError(rawError, "install");
+  assert.equal(safe.category, "install-failed");
+  assert.equal(safe.logHint, "HTTP_500");
+});
