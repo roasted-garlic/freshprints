@@ -1,16 +1,16 @@
 # Recent Completed Work
 
-## 2026-08-14 - Studio AI Review reprocess local reconciliation — SIGNOFF APPROVED
+## 2026-08-15 - Studio AI Review reprocess local reconciliation — CLOSED
 
 | Item | Status |
 |------|--------|
 | Goal | `studio-ai-review-reprocess-local-reconciliation` — **DONE** |
 | Implementation | `81613fa5bb76e30858d5e98c32f5131524ca2838` |
-| Owner manual QA | **PASS** |
-| Fix | Stay-on-tab Reprocess: patch-primary local reconcile from `resetAiEnrichmentForProcessing`; no auto-navigate; no happy-path list reload |
-| ADR | ADR-FP-027 amended (Reprocess navigation removed; Reopen unchanged) |
+| Owner manual QA | **PASS**; owner confirmed fixed |
+| Fix | Stay-on-tab Reprocess with patch-primary local reconcile; no auto-navigate to Processing |
 | Signoff | **approved** — `docs/workflow/reviews/2026-08-14-studio-ai-review-reprocess-local-reconciliation-signoff.md` |
-| Promotion | Studio **1.0.5** via PR #75 — merge **owner-gated** |
+| Production | PR **#75** merged @ `da5304e…` |
+| Studio | [`v1.0.5`](https://github.com/roasted-garlic/freshprints/releases/tag/v1.0.5) — run [31857034677](https://github.com/roasted-garlic/freshprints/actions/runs/31857034677) |
 | Out of scope held | Portal, Functions, Rules, indexes, Storage, Algolia, Phase 9 |
 
 ## 2026-08-14 - Studio Design Library archive / restore / companion — CLOSED

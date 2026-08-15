@@ -1,5 +1,7 @@
 # Fresh Prints Roadmap
 
+> 2026-08-15: **Studio AI Review reprocess local reconciliation — CLOSED** — Goal `studio-ai-review-reprocess-local-reconciliation` **DONE**. Owner QA **PASS**; Signoff **approved**. PR **#75** merged; Studio [`v1.0.5`](https://github.com/roasted-garlic/freshprints/releases/tag/v1.0.5) published (run 31857034677) @ `da5304e…`. Stay-on-tab Reprocess with immediate local reconcile. Signoff: `docs/workflow/reviews/2026-08-14-studio-ai-review-reprocess-local-reconciliation-signoff.md`.
+>
 > 2026-08-14: **Studio AI Review reprocess local reconciliation — SIGNOFF APPROVED** — Goal `studio-ai-review-reprocess-local-reconciliation` **DONE**. Stay-on-tab Reprocess with immediate local membership/count/selection reconcile; ADR-FP-027 amended. Implementation `81613fa5…`. Owner manual QA **PASS**. Signoff **approved**: `docs/workflow/reviews/2026-08-14-studio-ai-review-reprocess-local-reconciliation-signoff.md`. Next: owner merge PR #75 (Studio **1.0.5**); no Firebase/Portal this phase.
 >
 > 2026-08-14: **Studio Design Library archive/restore/companion — CLOSED** — Goal `studio-design-library-archive-restore-reconciliation` **DONE**. Prod SHA `061185c…` (PR #74); Rules+indexes on `fresh-prints-prod` (companion indexes READY); Studio release **370746562** / `v1.0.4` (run 31827068166, internal-unsigned). Owner: Everything looks good. Signoff **approved**: `docs/workflow/reviews/2026-08-14-studio-design-library-archive-restore-reconciliation-signoff.md`.
