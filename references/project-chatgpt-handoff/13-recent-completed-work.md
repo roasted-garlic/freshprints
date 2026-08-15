@@ -1,5 +1,19 @@
 # Recent Completed Work
 
+## 2026-08-15 - Studio 1.0.6 managed goal — SIGNOFF approved_with_notes (release dispatch gated)
+
+| Item | Status |
+|------|--------|
+| Goal | `studio-mac-autoupdate-signing-and-searchable-category-picker` — **product DONE** |
+| Delivered | A1 updater install error UX; B searchable Category; C-SHARED Internal Gang Sheets (+ prod backend); D AI Review thumbnail bg sync |
+| A2 | **DECLINED indefinitely** (ADR-FP-136) — no paid Apple Program / `MAC_CSC_*` / notarization |
+| Test | **passed_with_notes** @ `0951075` (148 focused tests + typecheck/lint/vite/functions) |
+| Signoff | **approved_with_notes** — `docs/workflow/reviews/2026-08-15-studio-1.0.6-managed-goal-signoff.md` |
+| Release source | Production **`9f945f3`** (contains candidate; Windows + Mac x64 + Mac arm64; Mac `internal-unsigned`) |
+| Mac / Windows | Mac manual install; Mac auto-update install unsupported; Windows auto-update unchanged |
+| Next | Owner: `AUTHORIZE STUDIO 1.0.6 RELEASE DISPATCH: STABLE INTERNAL-UNSIGNED FROM PRODUCTION 9f945f3` — **STOP before dispatch** |
+| Out of scope held | A2; Firebase/App Hosting/DNS/Portal in release phrase; Phase 9 |
+
 ## 2026-08-15 - Studio AI Review reprocess local reconciliation — CLOSED
 
 | Item | Status |

@@ -2,6 +2,12 @@
 
 > Full log: `docs/project/DECISIONS.md` — newest ADRs first.
 
+## Studio packaging / Mac (2026-08-15)
+
+| ADR | Rule |
+|-----|------|
+| ADR-FP-136 | A2 Developer ID **declined indefinitely** — no paid Apple Developer Program, no `MAC_CSC_*`, no notarization. Mac remains ad-hoc / `internal-unsigned`; auto-update **install** unsupported. Windows updater unchanged. Revisit only by future explicit owner decision. |
+
 ## Repository workflow (2026-08-13 closeout)
 
 | Constraint | Rule |

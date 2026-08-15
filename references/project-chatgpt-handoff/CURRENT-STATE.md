@@ -1,5 +1,43 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-15 — Studio 1.0.6 managed goal SIGNOFF — approved_with_notes (STOP before dispatch)
+
+| Item | Value |
+|------|-------|
+| Managed goal | `studio-mac-autoupdate-signing-and-searchable-category-picker` — **product DONE** |
+| Target | Studio **1.0.6** |
+| Signoff | **approved_with_notes** — `docs/workflow/reviews/2026-08-15-studio-1.0.6-managed-goal-signoff.md` |
+| Test | **passed_with_notes** @ `0951075` — `docs/workflow/reviews/2026-08-15-studio-1.0.6-release-readiness-test-report.md` |
+| Release source | **`9f945f3`** (`origin/production`; contains tested candidate; product tree match) |
+| A2 | **DECLINED indefinitely** — ADR-FP-136 |
+| Mac | Ad-hoc / `internal-unsigned`; manual install supported; auto-update **install** unsupported |
+| Windows | Automatic updates unchanged / supported |
+| Next | Owner phrase → release dispatch only (draft). **No** Firebase/Portal/DNS/A2/publish in that phrase |
+| Owner phrase | `AUTHORIZE STUDIO 1.0.6 RELEASE DISPATCH: STABLE INTERNAL-UNSIGNED FROM PRODUCTION 9f945f3` |
+| Forbidden | Dispatch without phrase; reopen A2; claim Mac auto-update install fixed |
+| Phase 9 | **PARKED** |
+
+---
+
+## 2026-08-15 — Studio 1.0.6 FreshForge Test — passed_with_notes (A2 declined)
+
+| Item | Value |
+|------|-------|
+| Managed goal | `studio-mac-autoupdate-signing-and-searchable-category-picker` |
+| Target | Studio **1.0.6** |
+| Phase | **Signoff next** (Test complete) |
+| Candidate SHA | `095107549069cddc18a754fa17f83047fe718472` (`origin/development`) |
+| Production tip | `9f945f3` (PR #77; contains candidate; C-SHARED backend complete) |
+| A2 | **DECLINED indefinitely** — ADR-FP-136; no paid Apple Program / `MAC_CSC_*` / notarization |
+| Mac | Ad-hoc / `internal-unsigned`; auto-update **install** unsupported (open) |
+| Windows | Automatic updates unchanged / supported |
+| Test | `docs/workflow/reviews/2026-08-15-studio-1.0.6-release-readiness-test-report.md` → **passed_with_notes** |
+| Automated | typecheck/lint/vite/functions + 148 focused tests exit 0 |
+| Next | `Continue Workflow` → **Signoff only** |
+| Forbidden | Dispatch/publish without Signoff + owner release phrase; reopen A2 |
+
+---
+
 ## 2026-08-15 — Studio 1.0.6 C-SHARED Implement — Implementation Review approved_with_notes
 
 | Item | Value |

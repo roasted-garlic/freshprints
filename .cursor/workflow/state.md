@@ -5,62 +5,67 @@ studio-mac-autoupdate-signing-and-searchable-category-picker
 managed-phase
 
 ## Phase
-production-promotion — feature→development PR open; STOP before production mutation
+DONE (product Signoff) — awaiting owner release dispatch authorization
 
 ## Plan Status
-complete — C-SHARED amendment (parent plan still covers A2)
+complete
 
 ## Review Status
-C-SHARED signoff: approved_with_notes
+complete (A2-declined amendment approved_with_changes; prior workstream reviews complete)
 
 ## Implementation Status
-partial — B + A1 + C + D + C-SHARED signed off @ `0451bc4` (+ docs record); A2 credential-gated
+complete (A1, B, C-SHARED, D); A2 will not run
 
 ## Test Status
-passed_with_notes — C-SHARED FreshForge Test 2026-08-15
+passed_with_notes — docs/workflow/reviews/2026-08-15-studio-1.0.6-release-readiness-test-report.md
 
 ## Signoff Status
-approved_with_notes — C-SHARED
+approved_with_notes — docs/workflow/reviews/2026-08-15-studio-1.0.6-managed-goal-signoff.md
 
 ## Human Checkpoint Required
 yes
 
 ## Human Checkpoint Reason
-(1) Merge PR **#76** feature→development (agent `gh pr merge` blocked by Cursor hook; PR is OPEN/MERGEABLE). (2) After #76 merges: open/merge development→production only with owner phrase. (3) Firebase prod allowlist deploy only with same authorization. (4) Studio 1.0.6 publish HELD for A2. **No production mutation performed.**
+Studio 1.0.6 product Signoff complete. Owner must authorize release dispatch before any GitHub Actions Studio release run. Phrase: `AUTHORIZE STUDIO 1.0.6 RELEASE DISPATCH: STABLE INTERNAL-UNSIGNED FROM PRODUCTION 9f945f3`. Does not authorize Firebase/App Hosting/DNS/Portal/secrets/A2/publish.
 
 ## Allowed Actions
-Docs; wait for owner merge of #76; after #76: create development→production PR (do not merge without phrase)
+Docs commit to development; wait for owner release phrase; after phrase — release dispatch only as authorized
 
 ## Forbidden Actions
-Merge to production; Firebase prod deploy; Studio 1.0.6 dispatch/publish; force-push; App Hosting rollout
+Dispatch/publish without owner phrase; A2 / Apple secrets / notarization; Squirrel bypass; Firebase/Portal/DNS unless separately authorized; reopen product scope
 
 ## Next Required Step
-Owner merge https://github.com/roasted-garlic/freshprints/pull/76 → then `Continue Workflow` to open development→production PR → stop for `APPROVE PROD C-SHARED BACKEND PROMOTION: RULES+INDEXES+FUNCTIONS ALLOWLIST`
+Owner replies with release authorization phrase (below). Optional: docs-only commit of workflow artifacts to `development` before dispatch. **STOP before** dispatch/publish until phrase.
 
 ## DONE
-no
+yes — managed goal product Signoff closed; release dispatch is a separate owner gate
 
 ## Last Completed Step
-Signed-off tip committed `0451bc4`; feature→development PR #76 opened (merge pending owner)
+FreshForge Signoff — Studio 1.0.6 managed goal (2026-08-15) — approved_with_notes
 
-## Signed-off tip
-`0451bc4` chore(studio): capture signed-off 1.0.6 C-SHARED state
+## Signoff
+docs/workflow/reviews/2026-08-15-studio-1.0.6-managed-goal-signoff.md
 
-## Feature → development PR
-https://github.com/roasted-garlic/freshprints/pull/76
+## Test Report
+docs/workflow/reviews/2026-08-15-studio-1.0.6-release-readiness-test-report.md
 
-## Production remains
-`origin/production` = `da5304e` (unchanged)
+## Tested candidate SHA
+095107549069cddc18a754fa17f83047fe718472
 
-## Commit / classification record
-docs/workflow/reviews/2026-08-15-studio-1.0.6-c-shared-signed-off-commit-record.md
+## Release source SHA
+9f945f3c2435f1e6939e250c435ca5e4dc503201 (production; contains candidate; tree match)
 
-## Branch
-feature/studio-1.0.6-mac-signing-and-searchable-category
+## A2 disposition
+DECLINED indefinitely — ADR-FP-136
+
+## Owner release phrase
+AUTHORIZE STUDIO 1.0.6 RELEASE DISPATCH: STABLE INTERNAL-UNSIGNED FROM PRODUCTION 9f945f3
 
 ## Target release
-Studio 1.0.6 (publish held for A2)
+Studio 1.0.6 draft via stable + internal-unsigned (Mac ad-hoc/manual; Windows auto-update OK)
 
 ## Decision Log
-- 2026-08-15: Committed signed-off tip `0451bc4`; dirty-tree audit — no unrelated files; PR #76 → development OPEN/MERGEABLE; production merge/deploy STOP
-- 2026-08-15: C-SHARED Signoff approved_with_notes; prod promotion preflight complete
+- 2026-08-15: Signoff approved_with_notes; release gated on owner phrase; no dispatch performed
+- 2026-08-15: FreshForge Test passed_with_notes @ 0951075
+- 2026-08-15: Owner declined A2 / paid Apple Program (ADR-FP-136)
+- 2026-08-15: C-SHARED production backend complete
