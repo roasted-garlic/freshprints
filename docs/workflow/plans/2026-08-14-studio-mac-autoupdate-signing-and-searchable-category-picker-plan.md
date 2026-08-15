@@ -1,14 +1,15 @@
-# Plan: Studio Mac auto-update signing + searchable category picker
+# Plan: Studio 1.0.6 — Mac signing, searchable categories, Staff Gang Sheets, AI Review thumb sync
 
 | Field | Value |
 |-------|-------|
 | Date | 2026-08-14 |
 | Author | Agent |
-| Status | approved_with_changes |
+| Amended | **2026-08-14** — Workstreams **C** (Staff Gang Sheets) + **D** (AI Review left-rail background preview sync); **2026-08-15** Implement C+D |
+| Status | **implemented_pending_qa** (C+D); A/B bound by prior `approved_with_changes` |
 | Workflow | managed-phase |
 | Goal id | `studio-mac-autoupdate-signing-and-searchable-category-picker` |
-| Related | docs/workflow/reviews/2026-08-14-studio-mac-autoupdate-signing-and-searchable-category-picker-review.md |
-| Target release | **Next Studio release after production `v1.0.5`** — recommend bump `apps/studio/package.json` → **`1.0.6`** (owner confirms; do not invent alternate numbers) |
+| Related | A/B review + C+D amendment review + C+D implementation review |
+| Target release | Studio **`1.0.6`** |
 | Impact classification | Studio app + release infrastructure only (not FreshForge starter surface) |
 
 ---
@@ -58,6 +59,18 @@ Phase alignment: post-release Studio corrective + Studio staff usability refinem
 - Preserve scroll/browse; keyboard usability
 - Small shared UI change (extend existing `Select` or thin category wrapper)
 - Focused unit/component tests
+
+**Workstream C** (amendment)
+
+- Staff Gang Sheets via extended `upcomingShows` + reused `showAllocations`
+- Show Queue UI tab + Portal/Rules/Functions isolation
+- Completion + idempotent next-cycle callable
+- Focused Rules/unit/contract tests
+
+**Workstream D** (amendment)
+
+- AI Review left-rail thumbnail background sync from existing `artworkBackgroundHex`
+- Renderer-only; no backend refetch
 
 ### Out of Scope
 
@@ -498,28 +511,459 @@ Either order is acceptable if A is blocked on credentials; **do not block B on A
 
 ---
 
+---
+
+# WORKSTREAM C — Staff Gang Sheets (Plan amendment)
+
+## C0. Architecture discovery (exact paths)
+
+### Canonical model
+
+| Concern | Exact path |
+|---------|------------|
+| `UpcomingShow` type | `packages/shared/src/types/upcomingShow/upcomingShow.types.ts` |
+| Enums (`UpcomingShowSource`, `ShowProductionStatus`, …) | `packages/shared/src/types/upcomingShow/upcomingShow.enums.ts` |
+| `ShowAllocation` type | `packages/shared/src/types/showAllocation/showAllocation.types.ts` |
+| Capacity (`maxTotalQuantity` undefined = **unlimited**) | `packages/shared/src/utils/showCapacity.ts` |
+| Allocation eligibility | `packages/shared/src/utils/showAllocationEligibility.ts` |
+| Schedule tab / past-show rules | `packages/shared/src/utils/showScheduleGrouping.ts` |
+| DATA_MODEL | `docs/architecture/DATA_MODEL.md` |
+
+**Confirmed:** Phase 7 uses **`upcomingShows` as the print run**. No parallel live print-run collection. **`UpcomingShowSource` today is only `"whatnot"`**. No `kind` field exists — **`source` is the existing discriminator**.
+
+**Capacity:** `assessShowCapacity` already treats `maxTotalQuantity === undefined` as unlimited (`isFull: false`). Staff Gang Sheets must **omit** `maxTotalQuantity` — **never** fake `999999` / `MAX_SAFE_INTEGER`.
+
+**Schedule:** Shows **without** `scheduledStartAt` classify as **upcoming** (`getShowScheduleTab`) — suitable for Staff Gang Sheets.
+
+### Studio Show Queue UI
+
+| Concern | Exact path |
+|---------|------------|
+| Route `/show-queue` | `apps/studio/src/renderer/src/routes/AppRoutes.tsx` |
+| Master-detail page | `apps/studio/src/renderer/src/features/upcoming-shows/pages/UpcomingShowsPage.tsx` |
+| Add to show modal | `apps/studio/src/renderer/src/features/print-requests/components/AddToShowModal.tsx` |
+| Show service (allocations + completion) | `apps/studio/src/renderer/src/features/upcoming-shows/services/upcomingShowService.ts` |
+| List/detail hooks | `…/hooks/useUpcomingShows.ts`, `useShowAllocations.ts`, `useExportShowZip.ts`, `useExportGangSheetPng.ts`, `useShowProductionTimer.ts` |
+| Gang builder page | `apps/studio/src/renderer/src/features/gang-sheets/pages/GangSheetBuilderPage.tsx` |
+| Export main process | `apps/studio/electron/services/export/exportShowZip.ts`, `exportGangSheetPng.ts` |
+| Permissions | `apps/studio/src/renderer/src/features/permissions/services/permissionService.ts` (`canViewUpcomingShows` / `canManageUpcomingShows` = **all staff**; settings/import = owner/admin) |
+
+**No separate Show detail page** — detail is the right panel of `UpcomingShowsPage`.
+
+### Portal / Functions isolation points
+
+| Concern | Exact path |
+|---------|------------|
+| List allocatable shows | `functions/src/listPortalAllocatableShows.ts` |
+| Queue request to show | `functions/src/queuePortalPrintRequestToShow.ts` (+ validation lib) |
+| Calendar visibility helper | `functions/src/lib/portalCalendarShowVisibility.ts` |
+| Portal progress / schedules | `functions/src/getPortalShowPrintProgress.ts`, `getPortalPrintRequestShowSchedules.ts` |
+| Portal picker service | `apps/portal/features/print-requests/services/portalShowSelectionService.ts` |
+| Portal modal | `apps/portal/features/print-requests/components/PortalQueueToShowModal.tsx` |
+| Recently Requested trigger | `functions/src/onShowAllocationCreated.ts` |
+| Rules | `firestore.rules` (`upcomingShows` ~1590; `showAllocations` ~1793; `upcomingShowRequiredFieldsValid` requires non-empty `whatnotShowId` + allowlisted keys) |
+| Indexes | `firestore.indexes.json` (showAllocations composites; no upcomingShows composite today) |
+
+### Print request origins (for eligibility)
+
+`PrintRequestOrigin` = `studio_internal` | `studio_customer` | `portal_customer` (`packages/shared/src/types/printRequest/printRequest.types.ts`).
+
+---
+
+## C1. Collection decision
+
+| Proposal | Verdict |
+|----------|---------|
+| New `staffGangSheets` / parallel allocations | **Rejected** — duplicates Phase 7; unjustified |
+| Extend `upcomingShows` + reuse `showAllocations` | **Required preferred path** |
+
+**Why reuse works:** production lifecycle, allocations, ZIP/gang export, timer, and Studio master-detail already key off `upcomingShowId`. Discriminator + Portal/Rules filters are sufficient.
+
+---
+
+## C2. Minimum new persisted fields
+
+Prefer expanding existing `source` (already the discriminator) rather than inventing a parallel `kind`.
+
+### Required type / enum changes
+
+| Field | Change |
+|-------|--------|
+| `UpcomingShowSource` | Expand from `"whatnot"` → `"whatnot" \| "staff_gang_sheet"` |
+| `source` | Discriminator on every Staff Gang Sheet document |
+
+### Required new fields on `UpcomingShow` (staff_gang_sheet only)
+
+| Field | Purpose | Why not reuse alone |
+|-------|---------|---------------------|
+| `assignedStaffUserId: string` | Lane owner (helper). Authorization + “exactly one open cycle per lane” | `createdBy` alone is unsafe if owner/admin completes/creates on behalf of the helper |
+| `staffGangSheetCycleNumber: number` | Deterministic labels: “Staff Gang Sheet #N” + unique synthetic identity | Title alone is not durable for idempotent next-cycle creation |
+
+### Reused fields (no duplicates)
+
+| Field | Staff Gang Sheet usage |
+|-------|------------------------|
+| `productionStatus` | `open` → `printing` (optional) → `completed` / history; **never** drive to `full` via capacity |
+| `maxTotalQuantity` | **Omit / leave undefined** (true unlimited) |
+| `maxQuantityOverridden` | Keep `false`; hide override UI |
+| `allocatedQuantity` | Existing denormalized sum |
+| `title` | Display “Staff Gang Sheet #{n}” |
+| `scheduledStartAt` | **Omit** (stays “upcoming” for schedule helpers) |
+| `whatnotShowId` | **Source-conditional optional (C+D Review binding):** required only when `source === "whatnot"`; **omit** when `source === "staff_gang_sheet"` — **do not** fabricate synthetic Whatnot IDs |
+| `whatnotUrl` / Whatnot sync fields | Omit / idle defaults; hide in UI |
+| `status` / `syncStatus` | Inert non-Whatnot defaults (`scheduled` / `idle`); hide Whatnot health chrome |
+| `isArchived`, timer fields, `createdBy`/`updatedBy`/timestamps | Unchanged semantics |
+| `showAllocations.*` | Unchanged allocation schema |
+
+### Rules / allowlist
+
+`upcomingShowRequiredFieldsValid` **must** be amended to:
+
+1. Allow `assignedStaffUserId`, `staffGangSheetCycleNumber` on allowlist
+2. Validate `source == "staff_gang_sheet"` with required assignment + cycle fields and **no** required `whatnotShowId`
+3. Keep Whatnot path requiring real non-empty `whatnotShowId` unchanged
+4. Enforce immutability of `source`, `assignedStaffUserId`, `staffGangSheetCycleNumber` after create
+5. **Helper assignment enforcement in Rules** (C+D Review): helpers may only write Staff cycles where `assignedStaffUserId == request.auth.uid`; owner/admin unrestricted for Staff; Whatnot staff writes unchanged in spirit
+
+### Indexes
+
+Studio `listUpcomingShows` is a full-collection fetch with client-side sort — Staff tab history may filter that list in memory (**no speculative history index**).
+
+**C+D Review-approved composite only if implement uses this open-lane uniqueness query (e.g. in complete+next TX):**
+
+```
+upcomingShows: source ASC + assignedStaffUserId ASC + productionStatus ASC
+```
+
+Query shape: `source == staff_gang_sheet` AND `assignedStaffUserId == <uid>` AND `productionStatus == open`.
+
+Do not add further composites without a real additional query.
+
+---
+
+## C3. Exact files expected to change (C)
+
+| Area | Paths |
+|------|-------|
+| Shared types/enums/utils | `upcomingShow.types.ts`, `upcomingShow.enums.ts`; capacity/eligibility/schedule helpers as needed; possibly small `isStaffGangSheetShow()` helper |
+| Studio service | `upcomingShowService.ts` (create lane cycle, complete+next, list filters, allocate capacity bypass already via undefined max) |
+| Studio UI | `UpcomingShowsPage.tsx` (+ CSS); tabs **Shows** / **Staff Gang Sheets**; conditional hide Whatnot/capacity chrome; labels |
+| Add-to-show | `AddToShowModal.tsx` — only list eligible Staff cycles when targeting Staff; skip capacity split/override for `staff_gang_sheet` |
+| Permissions | `permissionService.ts` + `permission.types.ts` — assignment-aware Staff Gang Sheet capabilities (no hardcoded UID/email) |
+| Rules | `firestore.rules` |
+| Indexes | `firestore.indexes.json` |
+| Functions | `listPortalAllocatableShows.ts`, `queuePortalPrintRequestToShow.ts` (+ validation), `portalCalendarShowVisibility.ts`, `onShowAllocationCreated.ts` (skip Recently Requested bump for staff gang sheet shows), any show-id customer callables |
+| Docs | `DATA_MODEL.md`, `DECISIONS.md` (ADR), `BACKEND.md` if needed |
+| Tests | Shared capacity/eligibility; Rules tests; Functions unit tests; Studio service/UI contract tests |
+
+**Not expected:** new exporter; new Portal UI; new `staffGangSheets` collection.
+
+---
+
+## C4. Reuse vs new (scope minimization)
+
+| Piece | Reuse? | Why |
+|-------|--------|-----|
+| `upcomingShows` | Yes | Canonical production batch |
+| `showAllocations` | Yes | Authoritative allocations |
+| `upcomingShowService.allocatePrintRequestItem` | Yes | Same integrity; capacity path already unlimited when max undefined |
+| ZIP / gang PNG export | Yes | Consumes allocations by show id |
+| `markShowPrintingFinished` / completion reconciliation | Yes, with staff-specific next-cycle step |
+| `UpcomingShowsPage` master-detail | Yes, with tab + conditional chrome |
+| `AddToShowModal` | Yes, with filtered targets + no capacity UX |
+| New collection/service/exporter | **No** unless Review finds Rules/identity impossible — not expected |
+
+---
+
+## C5. Capacity / allocation behavior
+
+1. Create Staff cycles with **`maxTotalQuantity` omitted**.
+2. Never auto-set `productionStatus: "full"` for `staff_gang_sheet`.
+3. Hide capacity, remaining, override, and split-due-to-capacity UI for Staff.
+4. Preserve non-capacity allocation validation (item identity, permissions, non-canceled targets, etc.).
+5. Normal Whatnot shows unchanged.
+
+---
+
+## C6. Permission model
+
+**Existing:** `canManageUpcomingShows` = all active staff (helpers included). Settings/Whatnot import remain owner/admin.
+
+**Proposed minimum:**
+
+| Capability | Behavior |
+|------------|----------|
+| Owner / admin | View/manage **all** Staff Gang Sheet lanes; create/assign lanes; complete any cycle |
+| Helper | View/manage **only** cycles where `assignedStaffUserId === currentUser.id`; add requests; export; mark complete on own open cycle |
+| Customer | Never |
+
+Implement via `permissionService` methods (e.g. `canViewStaffGangSheets`, `canManageStaffGangSheet(show)`) — **no** scattered `role ===` checks; **no** hardcoded person identity in source.
+
+**Product decision (narrow):** Who may **create/assign** a new helper lane?
+
+- **Recommendation:** owner/admin only create/assign `assignedStaffUserId`; helpers operate the assigned open cycle.
+- Confirm in Review if every helper auto-gets a lane vs explicit assignment.
+
+---
+
+## C7. Portal isolation strategy (hard)
+
+Defense in depth — **not** CSS hide:
+
+1. **Callables:** `listPortalAllocatableShows`, `queuePortalPrintRequestToShow`, progress/schedule readers — **exclude/reject** `source === "staff_gang_sheet"` (and synthetic ids) even if a customer knows the document id.
+2. **Calendar helper:** `shouldIncludePortalCalendarShow` must never surface Staff cycles (omit schedule + explicit source filter when reading Admin list).
+3. **Rules:** Customers already cannot client-read `upcomingShows`; keep that. Ensure Staff docs remain staff-only.
+4. **Recently Requested:** `onShowAllocationCreated` must **not** increment design popularity when parent show `source === "staff_gang_sheet"` (load show in TX or denormalize a safe flag — prefer reading show `source`).
+5. **Portal UI:** No Staff cycles in picker DTOs.
+
+Whatnot Portal Add to Show remains unchanged.
+
+---
+
+## C8. Request eligibility recommendation
+
+**C+D Review binding:**
+
+| Origin | Decision |
+|--------|----------|
+| `studio_internal` | **ALLOW** |
+| `studio_customer` | **ALLOW** — Studio “Staff Created” requests (staff-controlled) |
+| `portal_customer` | **DENY** |
+
+Do **not** invent a new request-origin type. Portal callables must still reject Staff show IDs.
+
+---
+
+## C9. Completion + auto-cycle design
+
+1. Staff clicks **Mark Complete** on open cycle N (reuse existing finish/complete path where possible).
+2. In a **single Firestore transaction** (Studio service and/or trusted callable — prefer transaction in existing service layer; escalate to callable if Rules cannot express atomicity):
+   - Assert cycle N is still `open`/`printing` (not already completed)
+   - Set cycle N → `completed` (+ existing finish audit fields)
+   - Assert **no other** open cycle exists for same `assignedStaffUserId` + `source=staff_gang_sheet`
+   - Create cycle N+1 `open` with same `assignedStaffUserId`, `staffGangSheetCycleNumber: N+1`, synthetic `whatnotShowId`, unlimited capacity
+3. Idempotency: second click / retry sees N already completed and N+1 present → no-op success
+4. Exactly one open cycle per assigned lane (Rules + TX enforce)
+
+**Do not** implement next-cycle as an unguarded React `addDoc`.
+
+History: completed cycles remain queryable via existing `productionStatus` filters / Staff tab history UI.
+
+---
+
+## C10. Export reuse
+
+Reuse `useExportShowZip` / `useExportGangSheetPng` / Electron export services unchanged for allocation consumption. Only branch filenames/labels if they assume Whatnot title/URL. Physical sheet splitting remains existing exporter behavior (unlimited **allocation** capacity ≠ one infinite PNG).
+
+---
+
+## C11. Studio UX
+
+Within Show Queue (`UpcomingShowsPage`):
+
+- Tabs (or equivalent): **Shows** | **Staff Gang Sheets**
+- Staff copy: “Staff Gang Sheet #N”, OPEN, request/print counts, Add Request, Export, Mark Complete
+- Hide: Whatnot URL/ID, schedule chrome when unused, capacity / available / override / split messaging
+- Reuse components with conditional sections — avoid wholesale clones
+
+---
+
+## C12. Workstream C acceptance criteria
+
+- [ ] Reuses `upcomingShows` (no parallel collection)
+- [ ] Reuses `showAllocations`
+- [ ] Discriminator via expanded `source: staff_gang_sheet` (+ assignment/cycle fields)
+- [ ] No fake numeric capacity; Whatnot capacity unchanged
+- [ ] Unlimited from capacity perspective; no capacity/split/override UI for Staff
+- [ ] Normal allocation integrity preserved
+- [ ] Assigned helper + owner/admin authorization via permissionService
+- [ ] Customers/Portal never see Staff cycles; callables reject IDs
+- [ ] Whatnot-specific fields hidden/renamed in Staff UI
+- [ ] Existing gang-sheet/ZIP export reused
+- [ ] Mark Complete preserves history; auto-creates next open cycle
+- [ ] Completion/next-cycle idempotent; one open cycle per lane
+- [ ] No parallel Print Request production state; designs never queued/printed
+- [ ] Whatnot Show Queue does not regress
+
+---
+
+## C13. Migrations / indexes / rules
+
+| Change | Notes |
+|--------|-------|
+| Rules | Allowlist + validators for `staff_gang_sheet`; Portal isolation unchanged-or-strengthened |
+| Indexes | Add composites for Staff lane queries |
+| Data migration | None required for existing Whatnot docs; Staff cycles created going forward |
+| Functions deploy | Required for Portal filters + Recently Requested guard before production use |
+
+---
+
+## C14. Risks (C)
+
+| Risk | Severity | Mitigation |
+|------|----------|------------|
+| Accidentally listing Staff shows in Portal | High | Multi-layer filters + callable reject + tests |
+| Recently Requested polluted by Staff allocations | Medium | Skip bump when show source is staff_gang_sheet |
+| Synthetic `whatnotShowId` confuses Whatnot import | Medium | Prefix reserved; import upsert only `source=whatnot` |
+| Helper authorization too broad/narrow | Medium | Assignment field + Review decision on lane creation |
+| Completion race creates two open cycles | High | Transaction + uniqueness assert |
+| Schedule/past helpers regress Whatnot | Medium | Staff omits `scheduledStartAt`; keep Whatnot paths unchanged |
+
+---
+
+## C15. Human checkpoints (C)
+
+- [ ] Review approval of this C+D amendment
+- [ ] Confirm lane assignment model (owner/admin assigns vs auto-per-helper)
+- [ ] Confirm request origins allowed (`studio_internal` only vs + `studio_customer`)
+- [ ] Confirm customer-upload allocation side effects on Staff cycles
+- [ ] Production Rules/Functions deploy before relying on Portal isolation in prod
+- [ ] Manual Studio QA for Staff tab + Whatnot regression
+
+---
+
+# WORKSTREAM D — AI Review left-rail background preview sync (Plan amendment)
+
+## D0. Architecture discovery (exact paths)
+
+| Concern | Exact path |
+|---------|------------|
+| Page | `apps/studio/src/renderer/src/features/ai-review/pages/AiReviewPage.tsx` |
+| Workspace (main preview) | `apps/studio/src/renderer/src/features/ai-review/components/AiReviewWorkspace.tsx` |
+| Left list | `apps/studio/src/renderer/src/features/ai-review/components/AiReviewQueueList.tsx` |
+| Thumb component | `apps/studio/src/renderer/src/features/designs/components/DesignThumbnailPanel.tsx` |
+| Preview mat control (immediate save) | `apps/studio/src/renderer/src/features/designs/components/ArtworkBackgroundPreviewControl.tsx` |
+| Form mat fields | `apps/studio/src/renderer/src/features/designs/components/ArtworkBackgroundFields.tsx` |
+| Inbox state | `apps/studio/src/renderer/src/features/ai-review/hooks/useAiReviewInbox.ts` (`draftForm`, `liveDesign`) |
+| Resolve helpers | `apps/studio/src/renderer/src/features/designs/utils/designFormMapper.ts` (`resolveFormArtworkBackgroundHex`, …) |
+| Shared constants | `packages/shared/src/constants/design/artworkBackground.constants.ts` |
+| Persisted field | `designs.artworkBackgroundHex` |
+
+**Root cause:** Main preview passes `artworkBackgroundHex={previewArtworkBackgroundHex}` into `DesignThumbnailPanel`. Left list mounts `DesignThumbnailPanel` **without** that prop → theme default mat only.
+
+**Persistence unchanged:** `artworkBackgroundHex` on the design; draft uses preset + custom hex. Preview control already saves and updates `liveDesign` in memory.
+
+---
+
+## D1. Proposed minimal change
+
+1. Resolve the **selected** design’s effective mat the same way the workspace does (draft preferred → else design).
+2. Pass into `AiReviewQueueList`:
+   - `selectedDesignId`
+   - `selectedArtworkBackgroundHex` (resolved)
+   - and/or per-row `design.artworkBackgroundHex` for non-selected rows (optional polish; selected sync is required)
+3. `AiReviewQueueList` → `DesignThumbnailPanel artworkBackgroundHex={…}` for the matching row.
+4. **No** list refetch, taxonomy reload, derivative generation, or new API.
+
+---
+
+## D2. Exact files expected to change (D)
+
+| Path | Change |
+|------|--------|
+| `AiReviewQueueList.tsx` | Accept/pass mat hex props |
+| `AiReviewPage.tsx` and/or `AiReviewWorkspace.tsx` | Wire resolved selected hex into list |
+| Focused tests | Contract/unit: selected row updates; others unchanged |
+| Optional CSS | Only if thumb needs existing `--color-artwork-preview-bg` tweak (prefer none) |
+
+**Out of scope unless free via shared helper:** Design Library grid, Portal thumbs.
+
+---
+
+## D3. Workstream D acceptance criteria
+
+- [ ] Main preview background selection unchanged
+- [ ] Changing selected background immediately updates that design’s left thumb
+- [ ] No refresh/navigation required
+- [ ] Only matching row updates; others unchanged
+- [ ] Same effective color as main preview
+- [ ] Switching designs preserves per-design behavior per existing save semantics
+- [ ] No new derivatives / artwork mutation / Firestore list refetch / new API
+- [ ] Persistence semantics unchanged
+- [ ] AI Review navigation tabs do not regress
+
+---
+
+## D4. Tests (D)
+
+Automated:
+
+- Selected hex prop reaches queue thumb
+- Successive color changes
+- Unrelated rows unchanged
+- Switch selection restores correct per-design mats (draft vs persisted)
+
+Manual QA (owner):
+
+1. Open AI Review → select transparent design  
+2. Note left thumb → change background → main + left update immediately to same color  
+3. Select another design → independent  
+4. Return to first → correct per current save behavior  
+
+---
+
+## D5. Risks (D)
+
+| Risk | Severity | Mitigation |
+|------|----------|------------|
+| Draft vs saved mismatch on non-selected rows | Low | Selected uses draft resolve; others use `design.artworkBackgroundHex` |
+| Over-scoping Library thumbs | Low | Explicit out of scope |
+
+---
+
+## Combined 1.0.6 sequencing (amended)
+
+1. **B** — owner DEV QA (may proceed independently)  
+2. **D** — after C+D Review approval (small renderer; low risk)  
+3. **C** — after C+D Review approval + product decisions (assignment / request origins)  
+4. **A2** — Apple credential checkpoint (unchanged gate)  
+5. Combined Test → Signoff → promote/publish gates unchanged  
+
+A1 remains done. Do not block B QA on C/D Review.
+
+---
+
 ## Open Questions
 
-- [ ] Owner confirms next Studio version number (**recommend `1.0.6`** after `1.0.5`)
-- [ ] Notarization **same release** vs **immediate follow-up** (recommendation above)
-- [ ] Mac-prefixed secret names vs reusing generic `CSC_*` (recommendation: `MAC_CSC_*`)
-- [ ] Whether Design Library **filter** category dropdown should also become searchable (default **no** unless owner expands)
+### A/B (prior — partially resolved)
+
+- [x] Studio version **1.0.6** (review-bound; package pinned in implement slice)
+- [ ] Notarization same-release vs follow-up at A2 checkpoint
+- [x] `MAC_CSC_*` naming
+- [x] Design Library filter Category searchable — **no**
+
+### C (new)
+
+- [ ] Owner/admin-only lane assignment vs auto-create per helper
+- [ ] Allow `studio_customer` requests on Staff cycles, or `studio_internal` only?
+- [ ] Should Staff catalog allocations affect Recently Requested? (**Plan default: no**)
+- [ ] Customer-upload allocations on Staff cycles: allow / block / allow-without intake transition?
+
+### D (new)
+
+- [ ] None blocking — proceed after Review unless inspection during implement finds prop-wiring conflict
 
 ---
 
 ## Approval
 
-- Review doc: docs/workflow/reviews/2026-08-14-studio-mac-autoupdate-signing-and-searchable-category-picker-review.md
-- Verdict: **approved_with_changes** (2026-08-14)
+### A/B (unchanged)
 
-Binding implement constraints from review: Studio **1.0.6** pin; notarization only if secrets ready else defer; Mac CI dual path (prerelease without Apple secrets; stable signed fail-closed); searchable Category only on edit + AI Review; `MAC_CSC_*` naming; B may proceed before Apple secrets; ad-hoc bridge docs required.
+- Review doc: docs/workflow/reviews/2026-08-14-studio-mac-autoupdate-signing-and-searchable-category-picker-review.md
+- Verdict: **approved_with_changes** (2026-08-14) — **still binding**
+
+### C+D amendment
+
+- Review doc: **pending**
+- Verdict: **pending** — **do not implement C or D until Review**
 
 ---
 
-## Next FreshForge command after Review
+## Next FreshForge command after this Plan amendment
 
 ```text
 Continue Workflow
 ```
 
-→ **Implement** approved scope + required changes. Stop for Apple cert/GitHub Mac secret human checkpoint before signed Mac packaging CI depends on those secrets.
+→ **Review** the C+D amendment only (preserve A/B bindings).  
+**STOP** — no C/D implementation in this step. Owner may still reply to B DEV QA independently.
