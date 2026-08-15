@@ -1,18 +1,17 @@
 # Fresh Prints - Current State Snapshot
 
-## 2026-08-14 — Studio AI Review reprocess local reconciliation — IN PROGRESS
+## 2026-08-14 — Studio AI Review reprocess local reconciliation — SIGNOFF APPROVED
 
 | Item | Value |
 |------|-------|
-| Managed goal | `studio-ai-review-reprocess-local-reconciliation` |
-| Branch | `fix/studio-ai-review-reprocess-local-reconciliation` |
-| Phase | Test — **pending_manual** (owner QA) |
-| Formal Review | **approved** |
-| Implementation | complete — stay-on-tab patch-primary Reprocess |
-| Automated checks | focused tests / typecheck / build:studio / lint / `git diff --check` — all exit 0 |
-| Manual checkpoint | `docs/workflow/reviews/2026-08-14-studio-ai-review-reprocess-local-reconciliation-manual-checkpoint.md` |
-| Production / Firebase | **Not** part of this corrective |
-| Prior goal | `studio-design-library-archive-restore-reconciliation` remains **DONE** (not mixed) |
+| Managed goal | `studio-ai-review-reprocess-local-reconciliation` — **DONE** (Signoff approved) |
+| Implementation commit | `81613fa5bb76e30858d5e98c32f5131524ca2838` |
+| Owner manual QA | **PASS** |
+| Signoff | **approved** — `docs/workflow/reviews/2026-08-14-studio-ai-review-reprocess-local-reconciliation-signoff.md` |
+| Behavior | Reprocess stays on Needs Review/Rejected; immediate local membership/count/selection reconcile; no auto-navigate to Processing |
+| Studio release path | PR **#75** `development` → `production` (Studio **1.0.5**) — **merge owner-gated** |
+| Production / Firebase | **Not mutated** this phase |
+| Prior Design Library goal | Remains **CLOSED** / separate |
 
 ---
 
@@ -28,7 +27,6 @@
 | Prod Firebase | Rules + indexes on `fresh-prints-prod`; companion indexes **READY** |
 | Owner | Everything looks good |
 | Phase 9 | **PARKED** — untouched |
-| Main checkout | `C:\coding\fresh-prints` → `development` (feature work on fix branch) |
 
 ---
 

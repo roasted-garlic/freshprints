@@ -1,16 +1,29 @@
 # Recent Completed Work
 
-## 2026-08-14 - Studio Design Library archive / restore / companion (DEV Signoff; prod promotion next)
+## 2026-08-14 - Studio AI Review reprocess local reconciliation — SIGNOFF APPROVED
 
 | Item | Status |
 |------|--------|
-| Goal | `studio-design-library-archive-restore-reconciliation` |
-| Owner QA | **PASS** — A/B/C/D (D1/D2 corrective included) |
-| DEV deploy | `firestore:rules` + `firestore:indexes` → `fresh-prints-dev` |
-| Signoff | `docs/workflow/reviews/2026-08-14-studio-design-library-archive-restore-reconciliation-signoff.md` (**approved_with_notes**) |
-| Window | Studio min 1656×1032 |
-| Production | Promotion gated (PR → Rules/indexes only → Studio 1.0.4 SHA-tagged release → smoke) |
-| Out of scope | Portal, Functions, Storage, Phase 9, Algolia B3 |
+| Goal | `studio-ai-review-reprocess-local-reconciliation` — **DONE** |
+| Implementation | `81613fa5bb76e30858d5e98c32f5131524ca2838` |
+| Owner manual QA | **PASS** |
+| Fix | Stay-on-tab Reprocess: patch-primary local reconcile from `resetAiEnrichmentForProcessing`; no auto-navigate; no happy-path list reload |
+| ADR | ADR-FP-027 amended (Reprocess navigation removed; Reopen unchanged) |
+| Signoff | **approved** — `docs/workflow/reviews/2026-08-14-studio-ai-review-reprocess-local-reconciliation-signoff.md` |
+| Promotion | Studio **1.0.5** via PR #75 — merge **owner-gated** |
+| Out of scope held | Portal, Functions, Rules, indexes, Storage, Algolia, Phase 9 |
+
+## 2026-08-14 - Studio Design Library archive / restore / companion — CLOSED
+
+| Item | Status |
+|------|--------|
+| Goal | `studio-design-library-archive-restore-reconciliation` — **DONE** |
+| Owner | DEV QA PASS + production confirmation “Everything looks good.” |
+| Production SHA | `061185c8b9f47d5a6bce56c4f280f1e823b7985c` (PR #74) |
+| Prod Firebase | Rules + indexes on `fresh-prints-prod`; companion indexes READY |
+| Studio | Release **370746562** / tag `v1.0.4` @ `061185c…`; run 31827068166 |
+| Signoff | **approved** — `docs/workflow/reviews/2026-08-14-studio-design-library-archive-restore-reconciliation-signoff.md` |
+| Out of scope held | Portal, Functions, Storage, Phase 9, Algolia B3 |
 
 ## 2026-08-14 - Studio development white-screen recovery (env-only)
 

@@ -5,65 +5,49 @@ studio-ai-review-reprocess-local-reconciliation
 managed-phase
 
 ## Phase
-test — pending_manual
+DONE — Signoff approved; awaiting PR #75 production merge (owner-gated)
 
 ## Plan Status
 complete
 
 ## Review Status
-approved (Formal); Implementation Review approved pending owner QA
+approved (Formal); Implementation Review approved
 
 ## Implementation Status
 complete
 
 ## Test Status
-pending_manual
+passed — owner manual QA PASS
 
 ## Signoff Status
-not_started
+approved
 
 ## Human Checkpoint Required
 yes
 
 ## Human Checkpoint Reason
-Owner manual QA for Needs Review / Rejected Reprocess stay-on-tab fluidity (see manual checkpoint doc)
+Protected production merge checkpoint: merge PR #75 (development → production) and Studio 1.0.5 dispatch remain owner-gated. Do not merge/dispatch in-agent.
 
 ## Allowed Actions
-Await owner PASS/FAIL/PASS WITH NOTES; record feedback; read docs
+Integrate tested commits to development; push development (if allowed); audit/update PR #75 metadata; report merge-ready state
 
 ## Forbidden Actions
-Signoff without manual QA; production deploy; Functions/Rules; expand scope; mix unrelated 1.0.5 release-bump files
+Merge PR #75; push production; dispatch Studio 1.0.5; Firebase/Portal/Rules/Functions changes; rewrite history; force push
 
 ## Next Required Step
-Await owner reply on docs/workflow/reviews/2026-08-14-studio-ai-review-reprocess-local-reconciliation-manual-checkpoint.md
+Owner merges PR #75 when ready, then dispatches Studio 1.0.5
 
 ## DONE
-no
+yes
 
 ## Last Completed Step
-Automated Test phase complete; Implementation Review approved; stopped for owner manual QA
+Signoff approved after owner manual QA PASS
 
-## Plan
-docs/workflow/plans/2026-08-14-studio-ai-review-reprocess-local-reconciliation-plan.md
+## Implementation commit
+81613fa5bb76e30858d5e98c32f5131524ca2838
 
-## Formal Review
-docs/workflow/reviews/2026-08-14-studio-ai-review-reprocess-local-reconciliation-review.md
-
-## Test Report
-docs/workflow/reviews/2026-08-14-studio-ai-review-reprocess-local-reconciliation-test-report.md
-
-## Manual Checkpoint
-docs/workflow/reviews/2026-08-14-studio-ai-review-reprocess-local-reconciliation-manual-checkpoint.md
-
-## Implementation Review
-docs/workflow/reviews/2026-08-14-studio-ai-review-reprocess-local-reconciliation-implementation-review.md
-
-## Automated verification (2026-08-14)
-- Focused AI Review tests: 81 pass, exit 0
-- `npx tsc --noEmit` (apps/studio): exit 0
-- `npm run build:studio`: exit 0
-- `npm run lint`: exit 0
-- `git diff --check`: exit 0
+## Signoff
+docs/workflow/reviews/2026-08-14-studio-ai-review-reprocess-local-reconciliation-signoff.md
 
 ## Prior Goal (preserved, closed)
 - Goal: `studio-design-library-archive-restore-reconciliation`
@@ -72,5 +56,6 @@ docs/workflow/reviews/2026-08-14-studio-ai-review-reprocess-local-reconciliation
 
 ## Decision Log
 - 2026-08-14: Started separate corrective (Design Library goal already closed; not mixed)
-- 2026-08-14: Plan complete; Formal Review **approved**
-- 2026-08-14: Implementation complete; automated tests passed; human checkpoint for owner QA
+- 2026-08-14: Plan complete; Formal Review approved; implementation complete
+- 2026-08-14: Owner manual QA **PASS**
+- 2026-08-14: Signoff **approved**; stop at PR #75 merge checkpoint

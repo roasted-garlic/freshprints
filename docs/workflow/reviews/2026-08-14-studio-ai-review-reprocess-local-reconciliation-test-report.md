@@ -6,13 +6,13 @@
 | Tester | Test Agent |
 | Plan | docs/workflow/plans/2026-08-14-studio-ai-review-reprocess-local-reconciliation-plan.md |
 | Review | docs/workflow/reviews/2026-08-14-studio-ai-review-reprocess-local-reconciliation-review.md |
-| Overall | **pending_manual** (automated checks passed) |
+| Overall | **passed** |
 
 ---
 
 ## Summary
 
-Focused AI Review reconciliation tests (81), Studio typecheck, Studio build, lint, and `git diff --check` all passed. Owner manual QA on Needs Review / Rejected reprocess fluidity is required before signoff.
+Focused AI Review reconciliation tests (81), Studio typecheck, Studio build, lint, and `git diff --check` all passed. Owner manual QA on Needs Review / Rejected reprocess fluidity: **PASS** (2026-08-14).
 
 ---
 
@@ -49,10 +49,10 @@ None.
 
 | Test | Status | Notes |
 |------|--------|-------|
-| Needs Review sequential reprocess | pending | See manual checkpoint |
-| Rejected sequential reprocess | pending | See manual checkpoint |
-| Failed reprocess leaves design | pending | See manual checkpoint |
-| Manual Processing visit shows designs | pending | See manual checkpoint |
+| Needs Review sequential reprocess | **PASS** | Owner 2026-08-14 |
+| Rejected sequential reprocess | **PASS** | Owner 2026-08-14 |
+| Failed reprocess leaves design | **PASS** | Owner 2026-08-14 |
+| Manual Processing visit shows designs | **PASS** | Owner 2026-08-14 |
 
 Manual test instructions: `docs/workflow/reviews/2026-08-14-studio-ai-review-reprocess-local-reconciliation-manual-checkpoint.md`
 
@@ -68,7 +68,7 @@ Manual test instructions: `docs/workflow/reviews/2026-08-14-studio-ai-review-rep
 ## Signoff Readiness
 
 - [x] All required automated checks pass OR failures documented
-- [ ] Manual tests complete OR checkpoint pending
-- [ ] Ready for signoff phase
+- [x] Manual tests complete OR checkpoint pending
+- [x] Ready for signoff phase
 
-**Next step:** manual-test-checkpoint
+**Next step:** signoff
