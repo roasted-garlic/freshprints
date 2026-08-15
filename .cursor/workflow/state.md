@@ -5,19 +5,21 @@ studio-mac-autoupdate-signing-and-searchable-category-picker
 managed-phase
 
 ## Phase
-implement — authorized slice complete; Implementation Review done
+implement — C+D implemented; Implementation Review complete; awaiting owner DEV QA
 
 ## Plan Status
-complete
+amended — C+D reviewed
 
 ## Review Status
-approved_with_changes
+A/B: approved_with_changes (binding)
+C+D amendment: approved_with_changes
+C+D implementation review: approved_with_notes
 
 ## Implementation Status
-partial — Workstream B + A1 complete; A2 blocked on Apple credentials
+partial — B + A1 + C + D complete; A2 credential-gated
 
 ## Test Status
-passed_with_notes — automated slice green; owner DEV QA pending; A2 not verified
+passed_with_notes — focused automated green; Studio tsc + Functions build green; Rules emulator blocked (no Java); owner DEV QA pending for B/C/D
 
 ## Signoff Status
 not_started
@@ -26,45 +28,55 @@ not_started
 yes
 
 ## Human Checkpoint Reason
-(1) Owner DEV QA for searchable categories. (2) Apple Developer ID certificate + GitHub MAC_CSC_LINK / MAC_CSC_KEY_PASSWORD (notarization secrets if same-release) before A2 packaging. No production promote / stable publish.
+(1) Owner DEV QA for C+D (and B if still pending). (2) Authorize DEV deploy of Rules/Functions/indexes before live QA if not present. (3) A2 Apple cert + MAC_CSC_*. (4) No production promote/publish.
 
 ## Allowed Actions
-Owner DEV QA; docs; wait for Apple credential checkpoint; do not claim A2 verified
+Owner QA recording; docs; A2 only after Apple secrets checkpoint; Test phase after QA
 
 ## Forbidden Actions
-Create/expose Apple or GitHub signing secrets without owner; production promote; stable publish; disable Squirrel validation; A2 signed packaging verification without credentials
+Production Rules/Functions/indexes deploy; Studio publish; Apple secret configuration without owner; reopen A/B scope; synthetic whatnotShowId
 
 ## Next Required Step
-Await owner DEV QA (`PASS` / `FAIL` / `PASS WITH NOTES`) on searchable categories; then Apple signing credential checkpoint for A2
+Owner DEV QA for C+D (authorize DEV deploy first if needed) — then `Continue Workflow` for Test
 
 ## DONE
 no
 
 ## Last Completed Step
-Authorized implement + Implementation Review (B + A1); Studio 1.0.6 version pin; A2 deferred
+C+D Implement + Implementation Review (approved_with_notes)
 
 ## Plan
 docs/workflow/plans/2026-08-14-studio-mac-autoupdate-signing-and-searchable-category-picker-plan.md
 
-## Review
+## Review (A/B binding)
 docs/workflow/reviews/2026-08-14-studio-mac-autoupdate-signing-and-searchable-category-picker-review.md
 
-## Implementation Review
+## Review (C+D amendment)
+docs/workflow/reviews/2026-08-14-studio-1.0.6-workstreams-c-d-plan-amendment-review.md
+
+## Implementation Review (A1/B slice)
 docs/workflow/reviews/2026-08-14-studio-mac-autoupdate-signing-and-searchable-category-picker-implementation-review.md
 
-## Owner QA checklist
+## Implementation Review (C+D)
+docs/workflow/reviews/2026-08-15-studio-1.0.6-workstreams-c-d-implementation-review.md
+
+## Owner QA checklist (B)
 docs/workflow/reviews/2026-08-14-studio-searchable-category-picker-owner-qa-checklist.md
+
+## Owner QA checklist (C+D)
+docs/workflow/reviews/2026-08-15-studio-1.0.6-workstreams-c-d-owner-qa-checklist.md
 
 ## Branch
 feature/studio-1.0.6-mac-signing-and-searchable-category
 
 ## Target release
-Studio 1.0.6 (package + finalize pin); Mac still ad-hoc until A2
+Studio 1.0.6
 
 ## Decision Log
-- 2026-08-14: Plan complete; Review approved_with_changes
-- 2026-08-14: Implement B + A1; version 1.0.6; A2 blocked on credentials; notarization deferred
-- 2026-08-15: Prior goal studio-ai-review-reprocess-local-reconciliation CLOSED (Studio 1.0.5)
+- 2026-08-14: A/B Review approved_with_changes; B+A1 implemented; A2 gated
+- 2026-08-14: Plan amended with C+D
+- 2026-08-14: C+D Review **approved_with_changes**
+- 2026-08-15: C+D Implement complete; callable required for complete+next; index required for open-lane query; Implementation Review **approved_with_notes**
 
 ## Prior Goal (preserved, closed)
 - Goal: `studio-ai-review-reprocess-local-reconciliation`

@@ -30,6 +30,8 @@ import {
   type SplitPickerQuantities,
 } from "@fresh-prints/shared/utils/printRequestSplitAllocation";
 import type { PrintRequest, PrintRequestItem } from "@fresh-prints/shared/types/printRequest/printRequest.types";
+import { canAllocateOriginToShowSource } from "@fresh-prints/shared/utils/staffGangSheet";
+import { isStaffGangSheetShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
 
 interface AddToShowModalProps {
   printRequest: PrintRequest;
@@ -112,8 +114,16 @@ export function AddToShowModal({
 
   const allocatableShows = useMemo(() => {
     const now = new Date();
-    return filterShowsAvailableForAllocation(shows, now).filter((show) =>
-      canAcceptNewShowAllocations(
+    return filterShowsAvailableForAllocation(shows, now).filter((show) => {
+      if (
+        !canAllocateOriginToShowSource({
+          source: show.source,
+          requestOrigin: printRequest.requestOrigin,
+        })
+      ) {
+        return false;
+      }
+      return canAcceptNewShowAllocations(
         {
           scheduledStartAt: show.scheduledStartAt,
           productionStatus: show.productionStatus,
@@ -121,9 +131,9 @@ export function AddToShowModal({
           allocatedQuantity: show.allocatedQuantity,
         },
         now,
-      ),
-    );
-  }, [shows]);
+      );
+    });
+  }, [printRequest.requestOrigin, shows]);
 
   const calendarShows = useMemo(() => {
     const now = new Date();
@@ -131,6 +141,10 @@ export function AddToShowModal({
 
     return shows.filter((show) => {
       if (show.isArchived === true) {
+        return false;
+      }
+      // Staff Gang Sheets are Studio-only production lanes — never on the Portal-style calendar picker.
+      if (isStaffGangSheetShow(show)) {
         return false;
       }
       if (show.productionStatus === "canceled" || show.productionStatus === "archived") {

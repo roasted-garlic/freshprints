@@ -4,6 +4,42 @@
 
 ---
 
+### ADR-FP-134: Staff Gang Sheets reuse Show Queue with source-conditional Whatnot fields
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-15 |
+| Status | accepted (Implement — Studio 1.0.6 Workstream C) |
+| Related | Plan `2026-08-14-studio-mac-autoupdate-signing-and-searchable-category-picker-plan.md` |
+
+**Context**
+
+Staff need helper-assigned unlimited production lanes that feel distinct from Whatnot shows but
+must not become a second production system. Portal customers must never allocate to these lanes,
+and popularity/Recently Requested must not count Staff Gang Sheet allocations.
+
+**Decision**
+
+1. Extend `UpcomingShowSource` with `staff_gang_sheet` on the existing `upcomingShows` collection;
+   reuse `showAllocations` and Show Queue export/timer infrastructure.
+2. `whatnotShowId` is source-conditional: required for `whatnot`, omitted for `staff_gang_sheet`
+   (no synthetic Whatnot IDs). Staff lanes add only `assignedStaffUserId` + `staffGangSheetCycleNumber`
+   and omit `maxTotalQuantity` (existing undefined = unlimited).
+3. Allocation origins: allow `studio_internal` + `studio_customer`; deny `portal_customer`.
+4. Create/assign owner/admin only in Rules; assigned helpers may mutate only their lane.
+   Complete+next uses trusted callable `completeStaffGangSheetAndOpenNext` because helpers cannot
+   create the next cycle under create/assign Rules.
+5. Portal list/queue callables exclude/reject `staff_gang_sheet`; Recently Requested bump skips
+   Staff parent shows.
+
+**Consequences**
+
+- Composite index `source + assignedStaffUserId + productionStatus` required for open-lane uniqueness
+  query inside the complete callable.
+- Whatnot behavior remains unchanged when `source === "whatnot"`.
+
+---
+
 ### ADR-FP-133: Companion designs are pairwise (non-transitive) links, replacing transitive sets
 
 | Field | Value |

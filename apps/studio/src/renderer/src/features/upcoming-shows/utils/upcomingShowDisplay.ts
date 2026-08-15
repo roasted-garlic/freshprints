@@ -39,7 +39,10 @@ export function getUpcomingShowSyncStatusBadgeVariant(syncStatus: UpcomingShowSy
 }
 
 export function formatUpcomingShowTitle(show: UpcomingShow): string {
-  return show.title?.trim() || `Whatnot show ${show.whatnotShowId}`;
+  if (show.source === "staff_gang_sheet") {
+    return show.title?.trim() || `Staff Gang Sheet #${show.staffGangSheetCycleNumber ?? "?"}`;
+  }
+  return show.title?.trim() || `Whatnot show ${show.whatnotShowId ?? "unknown"}`;
 }
 
 export function formatUpcomingShowTimestampLabel(value: { toDate: () => Date } | undefined): string {

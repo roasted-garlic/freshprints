@@ -7,13 +7,14 @@ export interface PortalCalendarVisibilityShow {
 }
 
 export function shouldIncludePortalCalendarShow(input: {
-  show: PortalCalendarVisibilityShow;
+  show: PortalCalendarVisibilityShow & { source?: string };
   allocatableIds: ReadonlySet<string>;
   pastCutoffUpcomingIds: ReadonlySet<string>;
   now: Date;
   pastWindowStart: Date;
 }): boolean {
   const { show } = input;
+  if (show.source === "staff_gang_sheet") return false;
   if (input.allocatableIds.has(show.id) || input.pastCutoffUpcomingIds.has(show.id)) return true;
   if (show.productionStatus === "completed" || show.productionStatus === "fully_printed") return true;
   if (!show.scheduledStartAt) return false;

@@ -11,7 +11,8 @@ const SHOW_ALLOWED = new Set([
   "syncError", "lastSyncedAt", "lastSeenAt", "sourceBaseUrlSnapshot",
   "lastSeenInAssistedImportAt", "notes", "isArchived", "productionStatus", "maxTotalQuantity",
   "maxQuantityOverridden", "allocatedQuantity", "accumulatedPrintMs", "activePrintStartedAt",
-  "printStartedAt", "printPausedAt", "printFinishedAt", "printFinishedBy", "createdBy", "updatedBy",
+  "printStartedAt", "printPausedAt", "printFinishedAt", "printFinishedBy", "assignedStaffUserId",
+  "staffGangSheetCycleNumber", "createdBy", "updatedBy",
   "createdAt", "updatedAt",
 ]);
 const ALLOCATION_ALLOWED = new Set([
@@ -22,7 +23,7 @@ const ALLOCATION_ALLOWED = new Set([
   "queuedBy", "printedAt", "printedBy", "completedAt", "completedBy", "canceledAt", "canceledBy",
   "createdAt", "updatedAt",
 ]);
-const SHOW_SOURCES = ["whatnot"];
+const SHOW_SOURCES = ["whatnot", "staff_gang_sheet"];
 const SHOW_STATUSES = ["scheduled", "rescheduled", "live", "completed", "canceled", "missing_upstream", "archived"];
 const SYNC_STATUSES = ["idle", "syncing", "succeeded", "failed"];
 const PRODUCTION_STATUSES = ["open", "full", "printing", "fully_printed", "completed", "archived", "canceled"];
@@ -31,9 +32,28 @@ const ALLOCATION_STATUSES = ["pending", "queued", "in_progress", "printed", "don
 type RawDocument = Record<string, unknown>;
 
 export function diagnoseUpcomingShowForTimer(data: RawDocument): TimerParserDiagnostic {
+  const source = typeof data.source === "string" ? data.source : "";
+  const isStaffGangSheet = source === "staff_gang_sheet";
   const checks: Array<[string, boolean]> = [
-    ["source", typeof data.source === "string" && SHOW_SOURCES.includes(data.source)],
-    ["whatnotShowId", typeof data.whatnotShowId === "string"],
+    ["source", SHOW_SOURCES.includes(source)],
+    [
+      "whatnotShowId",
+      isStaffGangSheet
+        ? data.whatnotShowId === undefined || data.whatnotShowId === null
+        : typeof data.whatnotShowId === "string",
+    ],
+    [
+      "assignedStaffUserId",
+      !isStaffGangSheet ||
+        (typeof data.assignedStaffUserId === "string" && Boolean(data.assignedStaffUserId.trim())),
+    ],
+    [
+      "staffGangSheetCycleNumber",
+      !isStaffGangSheet ||
+        (typeof data.staffGangSheetCycleNumber === "number" &&
+          Number.isInteger(data.staffGangSheetCycleNumber) &&
+          data.staffGangSheetCycleNumber >= 1),
+    ],
     ["status", typeof data.status === "string" && SHOW_STATUSES.includes(data.status)],
     ["syncStatus", typeof data.syncStatus === "string" && SYNC_STATUSES.includes(data.syncStatus)],
     ["isArchived", typeof data.isArchived === "boolean"],

@@ -48,6 +48,8 @@ import type {
   UpcomingShowSyncStatus,
 } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.enums";
 import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
+import { isStaffGangSheetShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
+import { canAllocateOriginToShowSource, formatStaffGangSheetTitle } from "@fresh-prints/shared/utils/staffGangSheet";
 import type { ShowAllocationStatus } from "@fresh-prints/shared/types/showAllocation/showAllocation.enums";
 import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/showAllocation.types";
 import { findMatchingUpcomingShow } from "../utils/upcomingShowUpsert";
@@ -70,6 +72,7 @@ import {
   planWhatnotImportExistingShowUpdate,
   type WhatnotImportUpdateInput,
 } from "../utils/whatnotShowImportUpdate";
+import { callTracedFunction } from "../../../config/tracedCallable";
 
 function hashShowIdForPostFinishVerification(showId: string): string {
   let hash = 2166136261;
@@ -101,6 +104,19 @@ export interface CreateUpcomingShowInput {
   sourceBaseUrlSnapshot?: string;
   /** True when this create/update came from a staff-confirmed assisted import, not a manual paste. */
   fromAssistedImport?: boolean;
+}
+
+export interface CreateStaffGangSheetLaneInput {
+  assignedStaffUserId: string;
+  /** Defaults to 1 for a new lane. */
+  staffGangSheetCycleNumber?: number;
+}
+
+export interface CompleteStaffGangSheetResult {
+  completedShowId: string;
+  nextShowId: string;
+  nextCycleNumber: number;
+  alreadyCompleted: boolean;
 }
 
 export interface UpdateUpcomingShowInput {
@@ -153,6 +169,8 @@ interface UpcomingShowDocumentData extends DocumentData {
   printPausedAt?: unknown;
   printFinishedAt?: unknown;
   printFinishedBy?: unknown;
+  assignedStaffUserId?: unknown;
+  staffGangSheetCycleNumber?: unknown;
   createdBy?: unknown;
   updatedBy?: unknown;
   createdAt?: unknown;
@@ -192,7 +210,7 @@ export interface ShowAllocationDocumentData extends DocumentData {
   updatedAt?: unknown;
 }
 
-const VALID_SOURCES: UpcomingShowSource[] = ["whatnot"];
+const VALID_SOURCES: UpcomingShowSource[] = ["whatnot", "staff_gang_sheet"];
 const VALID_STATUSES: UpcomingShowStatus[] = [
   "scheduled",
   "rescheduled",
@@ -261,7 +279,6 @@ function mapUpcomingShowData(showId: string, data: UpcomingShowDocumentData): Up
 
   if (
     !isUpcomingShowSource(data.source) ||
-    typeof data.whatnotShowId !== "string" ||
     !isUpcomingShowStatus(data.status) ||
     !isUpcomingShowSyncStatus(data.syncStatus) ||
     typeof data.isArchived !== "boolean" ||
@@ -274,10 +291,8 @@ function mapUpcomingShowData(showId: string, data: UpcomingShowDocumentData): Up
     throw new Error("An upcoming show record is incomplete.");
   }
 
-  return {
+  const base = {
     id: showId,
-    source: data.source,
-    whatnotShowId: data.whatnotShowId,
     whatnotUrl: typeof data.whatnotUrl === "string" ? data.whatnotUrl : undefined,
     title: typeof data.title === "string" ? data.title : undefined,
     scheduledStartAt: mapFirestoreTimestamp(data.scheduledStartAt),
@@ -304,6 +319,43 @@ function mapUpcomingShowData(showId: string, data: UpcomingShowDocumentData): Up
     updatedBy: typeof data.updatedBy === "string" ? data.updatedBy : undefined,
     createdAt,
     updatedAt,
+  };
+
+  if (data.source === "staff_gang_sheet") {
+    if (typeof data.whatnotShowId === "string" && data.whatnotShowId.trim()) {
+      throw new Error("Staff Gang Sheet records must not include a Whatnot show ID.");
+    }
+    if (typeof data.maxTotalQuantity === "number") {
+      throw new Error("Staff Gang Sheet records must not set maxTotalQuantity.");
+    }
+    if (
+      typeof data.assignedStaffUserId !== "string" ||
+      !data.assignedStaffUserId.trim() ||
+      typeof data.staffGangSheetCycleNumber !== "number" ||
+      !Number.isInteger(data.staffGangSheetCycleNumber) ||
+      data.staffGangSheetCycleNumber < 1
+    ) {
+      throw new Error("Staff Gang Sheet assignment fields are incomplete.");
+    }
+
+    return {
+      ...base,
+      source: "staff_gang_sheet",
+      assignedStaffUserId: data.assignedStaffUserId,
+      staffGangSheetCycleNumber: data.staffGangSheetCycleNumber,
+      title: base.title ?? formatStaffGangSheetTitle(data.staffGangSheetCycleNumber),
+      maxTotalQuantity: undefined,
+    };
+  }
+
+  if (typeof data.whatnotShowId !== "string" || !data.whatnotShowId.trim()) {
+    throw new Error("An upcoming show record is incomplete.");
+  }
+
+  return {
+    ...base,
+    source: "whatnot",
+    whatnotShowId: data.whatnotShowId,
   };
 }
 
@@ -642,6 +694,10 @@ export const upcomingShowService = {
       throw new Error("You do not have permission to manage upcoming shows.");
     }
 
+    if (input.source === "staff_gang_sheet") {
+      throw new Error("Use createStaffGangSheetLane to create Staff Gang Sheets.");
+    }
+
     if (input.fromAssistedImport && !permissionService.canImportWhatnotShows(caller)) {
       throw new Error("You do not have permission to import shows from Whatnot.");
     }
@@ -721,6 +777,107 @@ export const upcomingShowService = {
     });
 
     return this.getUpcomingShowById(caller, showRef.id);
+  },
+
+  /**
+   * Owner/admin: create the initial Staff Gang Sheet lane for a helper (cycle #1 by default).
+   * Omits whatnotShowId and maxTotalQuantity (unlimited capacity).
+   */
+  async createStaffGangSheetLane(
+    caller: User,
+    input: CreateStaffGangSheetLaneInput,
+  ): Promise<UpcomingShow> {
+    if (!permissionService.canCreateStaffGangSheetLane(caller)) {
+      throw new Error("Only owners and admins can create Staff Gang Sheet lanes.");
+    }
+
+    const assignedStaffUserId = input.assignedStaffUserId.trim();
+    if (!assignedStaffUserId) {
+      throw new Error("Select a staff member to assign this lane to.");
+    }
+
+    const cycleNumber = input.staffGangSheetCycleNumber ?? 1;
+    if (!Number.isInteger(cycleNumber) || cycleNumber < 1) {
+      throw new Error("Staff Gang Sheet cycle number must be a positive integer.");
+    }
+
+    const existingShows = await this.listUpcomingShows(caller);
+    const openLane = existingShows.find(
+      (show) =>
+        isStaffGangSheetShow(show) &&
+        show.assignedStaffUserId === assignedStaffUserId &&
+        (show.productionStatus === "open" ||
+          show.productionStatus === "full" ||
+          show.productionStatus === "printing"),
+    );
+    if (openLane) {
+      throw new Error(
+        `This staff member already has an open Staff Gang Sheet (${formatStaffGangSheetTitle(openLane.staffGangSheetCycleNumber ?? 1)}).`,
+      );
+    }
+
+    const showRef = doc(firestoreCollectionService.getUpcomingShowsCollection());
+    const title = formatStaffGangSheetTitle(cycleNumber);
+    const createPayload = withoutUndefinedFields({
+      source: "staff_gang_sheet" as const,
+      title,
+      status: "scheduled" as const,
+      syncStatus: "idle" as const,
+      isArchived: false,
+      productionStatus: "open" as const,
+      maxQuantityOverridden: false,
+      allocatedQuantity: 0,
+      accumulatedPrintMs: 0,
+      assignedStaffUserId,
+      staffGangSheetCycleNumber: cycleNumber,
+      createdBy: caller.id,
+      updatedBy: caller.id,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
+    assertNoUndefinedFirestoreFields(createPayload, "Staff Gang Sheet create payload");
+    await runTracedWrite("setDoc", () => setDoc(showRef, createPayload), {
+      app: "studio",
+      collection: "upcomingShows",
+      documentPathPattern: "upcomingShows/{upcomingShowId}",
+      source: "upcomingShowService.createStaffGangSheetLane",
+    });
+
+    return this.getUpcomingShowById(caller, showRef.id);
+  },
+
+  /**
+   * Completes the current Staff Gang Sheet and opens the next cycle for the same assignee.
+   * Uses a trusted callable so helpers can advance their own lane without Rules create rights.
+   */
+  async completeStaffGangSheetAndOpenNext(
+    caller: User,
+    upcomingShowId: string,
+  ): Promise<CompleteStaffGangSheetResult> {
+    if (!permissionService.canManageUpcomingShows(caller)) {
+      throw new Error("You do not have permission to manage Staff Gang Sheets.");
+    }
+
+    const show = await this.getUpcomingShowById(caller, upcomingShowId);
+    if (!isStaffGangSheetShow(show)) {
+      throw new Error("Only Staff Gang Sheets can be completed with auto-cycle.");
+    }
+    if (!permissionService.canManageStaffGangSheetShow(caller, show)) {
+      throw new Error("You can only complete Staff Gang Sheets assigned to you.");
+    }
+
+    try {
+      return await callTracedFunction<{ upcomingShowId: string }, CompleteStaffGangSheetResult>(
+        "completeStaffGangSheetAndOpenNext",
+        { source: "upcomingShowService.completeStaffGangSheetAndOpenNext" },
+      )({ upcomingShowId });
+    } catch (error) {
+      if (error instanceof Error && error.message.trim()) {
+        throw error;
+      }
+      throw new Error("Unable to complete this Staff Gang Sheet. Please try again.");
+    }
   },
 
   async updateUpcomingShowFromWhatnotImport(
@@ -993,6 +1150,19 @@ export const upcomingShowService = {
       printRequestService.listPrintRequestItems(caller, input.printRequestId),
       this.listShowAllocations(caller, upcomingShowId),
     ]);
+
+    if (isStaffGangSheetShow(show) && !permissionService.canManageStaffGangSheetShow(caller, show)) {
+      throw new Error("You can only add requests to Staff Gang Sheets assigned to you.");
+    }
+
+    if (
+      !canAllocateOriginToShowSource({
+        source: show.source,
+        requestOrigin: printRequest.requestOrigin,
+      })
+    ) {
+      throw new Error("Portal customer requests cannot be added to Staff Gang Sheets.");
+    }
 
     const requestItem = requestItems.find((item) => item.id === input.printRequestItemId);
 

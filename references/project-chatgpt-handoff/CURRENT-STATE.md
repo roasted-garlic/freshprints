@@ -1,5 +1,52 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-15 — Studio 1.0.6 C+D Implement — Implementation Review approved_with_notes
+
+| Item | Value |
+|------|-------|
+| Managed goal | `studio-mac-autoupdate-signing-and-searchable-category-picker` |
+| Branch | `feature/studio-1.0.6-mac-signing-and-searchable-category` |
+| C+D Implement | Staff Gang Sheets + AI Review left-rail background sync |
+| Impl review | `docs/workflow/reviews/2026-08-15-studio-1.0.6-workstreams-c-d-implementation-review.md` → **approved_with_notes** |
+| Callable | `completeStaffGangSheetAndOpenNext` (required — helper create blocked by Rules) |
+| Index | `upcomingShows` source+assignedStaffUserId+productionStatus (not deployed) |
+| Next | Owner DEV QA (authorize DEV Rules/Functions/indexes first if needed); A2 still credential-gated |
+| Signoff | **not** complete |
+| Phase 9 | **PARKED** |
+
+---
+
+## 2026-08-14 — Studio 1.0.6 C+D Review — approved_with_changes
+
+| Item | Value |
+|------|-------|
+| Managed goal | `studio-mac-autoupdate-signing-and-searchable-category-picker` |
+| C+D Review | `docs/workflow/reviews/2026-08-14-studio-1.0.6-workstreams-c-d-plan-amendment-review.md` |
+| Verdict | **approved_with_changes** |
+| Key C decisions | Optional `whatnotShowId` (no synthetic); ALLOW `studio_internal`+`studio_customer`; DENY `portal_customer`; Rules assignment; service TX; open-lane index only if queried |
+| D | Approved — wire `artworkBackgroundHex` into left queue thumbs |
+| A/B | Prior bindings unchanged |
+| Next | `Continue Workflow` → Implement C/D (A2 still credential-gated; B DEV QA independent) |
+| Phase 9 | **PARKED** |
+
+---
+
+## 2026-08-14 — Studio 1.0.6 Plan amended (C+D) — REVIEW PENDING
+
+| Item | Value |
+|------|-------|
+| Managed goal | `studio-mac-autoupdate-signing-and-searchable-category-picker` |
+| Plan | Amended: `docs/workflow/plans/2026-08-14-studio-mac-autoupdate-signing-and-searchable-category-picker-plan.md` |
+| Target | Studio **1.0.6** (unchanged) |
+| A | Mac signing — A1 done; A2 credential-gated; prior Review binding |
+| B | Searchable Category — implemented; owner DEV QA pending |
+| C | **Staff Gang Sheets** — Plan amendment only; reuse `upcomingShows`+`showAllocations`; Review required |
+| D | **AI Review left-rail background sync** — Plan amendment only; renderer prop wiring; Review required |
+| Next | `Continue Workflow` → Review C+D amendment (do not implement C/D yet) |
+| Phase 9 | **PARKED** |
+
+---
+
 ## 2026-08-14 — Studio Mac auto-update signing + searchable category picker — IMPLEMENT SLICE
 
 | Item | Value |

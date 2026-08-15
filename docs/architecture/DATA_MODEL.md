@@ -1619,7 +1619,7 @@ upcomingShows/{upcomingShowId}
 ## Upcoming Show Interface
 
 ```ts
-export type UpcomingShowSource = "whatnot";
+export type UpcomingShowSource = "whatnot" | "staff_gang_sheet";
 
 /** Whatnot schedule/source status — never mixed with production completion. */
 export type UpcomingShowStatus =
@@ -1646,7 +1646,11 @@ export type ShowProductionStatus =
 export interface UpcomingShow {
   id: string;
   source: UpcomingShowSource;
-  whatnotShowId: string;
+  /**
+   * Required when `source === "whatnot"`.
+   * Omitted when `source === "staff_gang_sheet"` (never fabricate Whatnot IDs).
+   */
+  whatnotShowId?: string;
   whatnotUrl?: string;
   title?: string;
   scheduledStartAt?: Timestamp;
@@ -1658,14 +1662,19 @@ export interface UpcomingShow {
   notes?: string;
   isArchived: boolean;
 
-  /** A Whatnot show is the print run — this is the only production entity for Phase 7. */
+  /** A Whatnot show / Staff Gang Sheet is the print run — this is the only production entity. */
   productionStatus: ShowProductionStatus;
-  /** Staff-set capacity. Undefined means no cap is enforced. */
+  /** Staff-set capacity. Undefined means no cap is enforced. Staff Gang Sheets omit this. */
   maxTotalQuantity?: number;
   /** True when staff used the danger override to exceed `maxTotalQuantity`. Portal customers may never set this. */
   maxQuantityOverridden: boolean;
   /** Sum of `allocatedQuantity` across all non-canceled `showAllocations` for this show. Denormalized for list/detail display. */
   allocatedQuantity: number;
+
+  /** Staff Gang Sheet only: assigned helper/staff UID. */
+  assignedStaffUserId?: string;
+  /** Staff Gang Sheet only: 1-based cycle number ("Staff Gang Sheet #N"). */
+  staffGangSheetCycleNumber?: number;
 
   /** Show Queue production timer (Option B — staff Start/Pause/Resume/Mark finished; export does not start the timer). */
   accumulatedPrintMs: number;
@@ -1682,7 +1691,9 @@ export interface UpcomingShow {
 }
 ```
 
-Upsert rule: match existing records by `source + whatnotShowId`; update mutable upstream fields
+> **Studio 1.0.6 — Staff Gang Sheets:** `source` may be `staff_gang_sheet`. Those lanes reuse `upcomingShows` + `showAllocations`, omit `whatnotShowId` and `maxTotalQuantity` (unlimited), require `assignedStaffUserId` + `staffGangSheetCycleNumber`, deny Portal allocation, and skip Recently Requested popularity bumps. Create/assign is owner/admin; assigned helpers manage only their lane (Rules + complete callable).
+
+Upsert rule: match existing **Whatnot** records by `source + whatnotShowId`; update mutable upstream fields
 (`title`, `whatnotUrl`, `scheduledStartAt`, `lastSeenAt`) on a match instead of creating a duplicate.
 Local-only fields (`status`, `syncStatus`, `notes`, `isArchived`, `productionStatus`, capacity fields)
 are never overwritten by an upsert. Records are never auto-deleted; a show that disappears upstream

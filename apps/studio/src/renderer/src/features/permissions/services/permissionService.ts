@@ -298,6 +298,31 @@ export const permissionService = {
     return hasActiveRole(user, ["owner", "admin"]);
   },
 
+  /** Owner/admin: create and assign a Staff Gang Sheet lane. */
+  canCreateStaffGangSheetLane(user: UserLike) {
+    return hasActiveRole(user, ["owner", "admin"]);
+  },
+
+  /**
+   * Owner/admin: any Staff Gang Sheet. Assigned helper: own lane only.
+   * Rules remain the security boundary for assignment.
+   */
+  canManageStaffGangSheetShow(
+    user: UserLike,
+    show: { source: string; assignedStaffUserId?: string },
+  ) {
+    if (!isStaff(user)) {
+      return false;
+    }
+    if (show.source !== "staff_gang_sheet") {
+      return false;
+    }
+    if (hasActiveRole(user, ["owner", "admin"])) {
+      return true;
+    }
+    return Boolean(user?.id && show.assignedStaffUserId === user.id);
+  },
+
   /** Dev Electron sidebar action to open Chromium DevTools. Owner-only. */
   canOpenDevTools(user: UserLike) {
     return isOwner(user);
@@ -430,6 +455,10 @@ export const permissionService = {
         return this.canManageShowQueueSettings(user);
       case "importWhatnotShows":
         return this.canImportWhatnotShows(user);
+      case "createStaffGangSheetLane":
+        return this.canCreateStaffGangSheetLane(user);
+      case "manageStaffGangSheetLane":
+        return this.canManageUpcomingShows(user);
       case "openDevTools":
         return this.canOpenDevTools(user);
       case "manageGuestCustomers":

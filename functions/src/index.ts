@@ -22,6 +22,7 @@ export { getPortalShowPrintProgress } from "./getPortalShowPrintProgress";
 export { getPortalPrintRequestShowSchedules } from "./getPortalPrintRequestShowSchedules";
 export { listPortalAllocatableShows } from "./listPortalAllocatableShows";
 export { queuePortalPrintRequestToShow } from "./queuePortalPrintRequestToShow";
+export { completeStaffGangSheetAndOpenNext } from "./completeStaffGangSheetAndOpenNext";
 export { removePortalPrintRequestItem } from "./removePortalPrintRequestItem";
 export { updatePortalPrintRequestItemQuantity } from "./updatePortalPrintRequestItemQuantity";
 export { createTeamUser } from "./createTeamUser";

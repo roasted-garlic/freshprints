@@ -989,7 +989,7 @@ service cloud.firestore {
     }
 
     function isValidUpcomingShowSource(source) {
-      return source in ["whatnot"];
+      return source in ["whatnot", "staff_gang_sheet"];
     }
 
     function isValidUpcomingShowStatus(status) {
@@ -1004,7 +1004,37 @@ service cloud.firestore {
       return status in ["open", "full", "printing", "fully_printed", "completed", "archived", "canceled"];
     }
 
-    function upcomingShowRequiredFieldsValid(data) {
+    function upcomingShowCommonFieldsValid(data) {
+      return isOptionalString(data, "whatnotUrl")
+        && isOptionalString(data, "title")
+        && isOptionalTimestamp(data, "scheduledStartAt")
+        && isValidUpcomingShowStatus(data.status)
+        && isValidUpcomingShowSyncStatus(data.syncStatus)
+        && isOptionalString(data, "syncError")
+        && isOptionalTimestamp(data, "lastSyncedAt")
+        && isOptionalTimestamp(data, "lastSeenAt")
+        && isOptionalString(data, "sourceBaseUrlSnapshot")
+        && isOptionalTimestamp(data, "lastSeenInAssistedImportAt")
+        && isOptionalString(data, "notes")
+        && data.isArchived is bool
+        && isValidShowProductionStatus(data.productionStatus)
+        && data.maxQuantityOverridden is bool
+        && data.allocatedQuantity is number
+        && data.allocatedQuantity >= 0
+        && isOptionalNumber(data, "accumulatedPrintMs")
+        && (!("accumulatedPrintMs" in data) || data.accumulatedPrintMs >= 0)
+        && isOptionalTimestamp(data, "activePrintStartedAt")
+        && isOptionalTimestamp(data, "printStartedAt")
+        && isOptionalTimestamp(data, "printPausedAt")
+        && isOptionalTimestamp(data, "printFinishedAt")
+        && isOptionalString(data, "printFinishedBy")
+        && isOptionalString(data, "createdBy")
+        && isOptionalString(data, "updatedBy")
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function whatnotUpcomingShowFieldsValid(data) {
       return data.keys().hasOnly([
           "source",
           "whatnotShowId",
@@ -1035,37 +1065,82 @@ service cloud.firestore {
           "createdAt",
           "updatedAt"
         ])
-        && isValidUpcomingShowSource(data.source)
+        && data.source == "whatnot"
         && data.whatnotShowId is string
         && data.whatnotShowId.size() > 0
-        && isOptionalString(data, "whatnotUrl")
-        && isOptionalString(data, "title")
-        && isOptionalTimestamp(data, "scheduledStartAt")
-        && isValidUpcomingShowStatus(data.status)
-        && isValidUpcomingShowSyncStatus(data.syncStatus)
-        && isOptionalString(data, "syncError")
-        && isOptionalTimestamp(data, "lastSyncedAt")
-        && isOptionalTimestamp(data, "lastSeenAt")
-        && isOptionalString(data, "sourceBaseUrlSnapshot")
-        && isOptionalTimestamp(data, "lastSeenInAssistedImportAt")
-        && isOptionalString(data, "notes")
-        && data.isArchived is bool
-        && isValidShowProductionStatus(data.productionStatus)
         && isOptionalNumber(data, "maxTotalQuantity")
-        && data.maxQuantityOverridden is bool
-        && data.allocatedQuantity is number
-        && data.allocatedQuantity >= 0
-        && isOptionalNumber(data, "accumulatedPrintMs")
-        && (!("accumulatedPrintMs" in data) || data.accumulatedPrintMs >= 0)
-        && isOptionalTimestamp(data, "activePrintStartedAt")
-        && isOptionalTimestamp(data, "printStartedAt")
-        && isOptionalTimestamp(data, "printPausedAt")
-        && isOptionalTimestamp(data, "printFinishedAt")
-        && isOptionalString(data, "printFinishedBy")
-        && isOptionalString(data, "createdBy")
-        && isOptionalString(data, "updatedBy")
-        && data.createdAt is timestamp
-        && data.updatedAt is timestamp;
+        && upcomingShowCommonFieldsValid(data);
+    }
+
+    function staffGangSheetUpcomingShowFieldsValid(data) {
+      return data.keys().hasOnly([
+          "source",
+          "whatnotUrl",
+          "title",
+          "scheduledStartAt",
+          "status",
+          "syncStatus",
+          "syncError",
+          "lastSyncedAt",
+          "lastSeenAt",
+          "sourceBaseUrlSnapshot",
+          "lastSeenInAssistedImportAt",
+          "notes",
+          "isArchived",
+          "productionStatus",
+          "maxQuantityOverridden",
+          "allocatedQuantity",
+          "accumulatedPrintMs",
+          "activePrintStartedAt",
+          "printStartedAt",
+          "printPausedAt",
+          "printFinishedAt",
+          "printFinishedBy",
+          "assignedStaffUserId",
+          "staffGangSheetCycleNumber",
+          "createdBy",
+          "updatedBy",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.source == "staff_gang_sheet"
+        && !("whatnotShowId" in data)
+        && !("maxTotalQuantity" in data)
+        && data.assignedStaffUserId is string
+        && data.assignedStaffUserId.size() > 0
+        && data.staffGangSheetCycleNumber is number
+        && data.staffGangSheetCycleNumber == int(data.staffGangSheetCycleNumber)
+        && data.staffGangSheetCycleNumber >= 1
+        && upcomingShowCommonFieldsValid(data);
+    }
+
+    function upcomingShowRequiredFieldsValid(data) {
+      return isValidUpcomingShowSource(data.source)
+        && (
+          whatnotUpcomingShowFieldsValid(data)
+          || staffGangSheetUpcomingShowFieldsValid(data)
+        );
+    }
+
+    function staffCanCreateUpcomingShow() {
+      return request.resource.data.source == "whatnot"
+        ? isStaff()
+        : isOwnerOrAdmin();
+    }
+
+    function staffCanUpdateUpcomingShow() {
+      return request.resource.data.source == "whatnot"
+        ? isStaff()
+        : (
+          isOwnerOrAdmin()
+          || (
+            isStaff()
+            && resource.data.source == "staff_gang_sheet"
+            && resource.data.assignedStaffUserId == request.auth.uid
+            && request.resource.data.assignedStaffUserId == resource.data.assignedStaffUserId
+            && request.resource.data.staffGangSheetCycleNumber == resource.data.staffGangSheetCycleNumber
+          )
+        );
     }
 
     function showProductionStatusTransitionValid() {
@@ -1076,6 +1151,12 @@ service cloud.firestore {
         )
         || (
           resource.data.productionStatus == "printing"
+          && request.resource.data.productionStatus == "completed"
+        )
+        || (
+          // Staff Gang Sheet Mark Complete may finish an open/full lane without a separate Start.
+          resource.data.source == "staff_gang_sheet"
+          && resource.data.productionStatus in ["open", "full"]
           && request.resource.data.productionStatus == "completed"
         );
     }
@@ -1590,22 +1671,34 @@ service cloud.firestore {
     match /upcomingShows/{upcomingShowId} {
       allow read: if isStaff();
 
-      allow create: if isStaff()
+      // Staff Gang Sheet create/assign is owner/admin only. Helpers advance cycles via trusted callable.
+      allow create: if staffCanCreateUpcomingShow()
         && upcomingShowRequiredFieldsValid(request.resource.data)
         && request.resource.data.updatedBy == request.auth.uid;
 
       allow update: if (
-          isStaff()
+          staffCanUpdateUpcomingShow()
           && upcomingShowRequiredFieldsValid(request.resource.data)
           && request.resource.data.source == resource.data.source
-          && request.resource.data.whatnotShowId == resource.data.whatnotShowId
+          && (
+            resource.data.source == "whatnot"
+              ? request.resource.data.whatnotShowId == resource.data.whatnotShowId
+              : (
+                request.resource.data.assignedStaffUserId == resource.data.assignedStaffUserId
+                && request.resource.data.staffGangSheetCycleNumber == resource.data.staffGangSheetCycleNumber
+              )
+          )
           && (!("createdBy" in resource.data) || request.resource.data.createdBy == resource.data.createdBy)
           && request.resource.data.createdAt == resource.data.createdAt
           && request.resource.data.updatedBy == request.auth.uid
         )
         || staffCanUpdateShowProductionTimerOnLegacyDocument();
 
-      allow delete: if isStaff();
+      allow delete: if isOwnerOrAdmin()
+        || (
+          isStaff()
+          && resource.data.source == "whatnot"
+        );
     }
 
     function isValidGangSheetStatus(status) {
