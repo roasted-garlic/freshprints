@@ -215,6 +215,27 @@ describe("Show Queue print-request sources", () => {
     );
   });
 
+  it("excludes requests that are already fully allocated even when not yet printed", () => {
+    const requests = [request("queued-full", "queued")];
+    assert.deepEqual(
+      buildShowQueuePrintRequestOptions({
+        requests,
+        summariesByRequestId: {
+          "queued-full": { totalQuantity: 6, uniqueDesignCount: 1 },
+        },
+        allocationTotalsByRequestId: {
+          "queued-full": {
+            totalAllocatedQuantity: 6,
+            totalInProgressQuantity: 0,
+            totalPrintedQuantity: 0,
+          },
+        },
+        requestIdsAlreadyOnShow: new Set(),
+      }).map((option) => option.value),
+      [""],
+    );
+  });
+
   it("advances only sources with a cursor-backed next page", async () => {
     const loaded: string[] = [];
     await loadMoreShowQueuePrintRequestSources([

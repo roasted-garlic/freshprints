@@ -54,6 +54,7 @@ function pastCalendarWindowStart(now: Date): Date {
 
 interface InternalAllocatableShow {
   id: string;
+  source?: string;
   scheduledStartAt: { toDate: () => Date } | undefined;
   scheduledStartAtIso: string | null;
   productionStatus: ShowProductionStatus;
@@ -88,6 +89,10 @@ export const listPortalAllocatableShows = onCall(async (request): Promise<ListPo
         return [];
       }
 
+      if (data.source === "staff_gang_sheet") {
+        return [];
+      }
+
       if (data.productionStatus === "canceled" || data.productionStatus === "archived") {
         return [];
       }
@@ -100,6 +105,7 @@ export const listPortalAllocatableShows = onCall(async (request): Promise<ListPo
       return [
         {
           id: showDoc.id,
+          source: typeof data.source === "string" ? data.source : undefined,
           scheduledStartAt,
           scheduledStartAtIso,
           productionStatus: resolveProductionStatus(data.productionStatus),

@@ -38,3 +38,29 @@ test("quitAndInstall is only called from restartAndInstallStudioUpdate, not from
     "quitAndInstall should be called from exactly one place: the explicit user-triggered restartAndInstallStudioUpdate",
   );
 });
+
+test("global updater error handler uses sticky activeErrorContext (not hard-coded check)", () => {
+  assert.match(source, /handleUpdaterError\(error,\s*activeErrorContext\)/);
+  assert.doesNotMatch(
+    source,
+    /updater\.on\("error",\s*\(error\)\s*=>\s*\{\s*handleUpdaterError\(error,\s*"check"\)/,
+  );
+});
+
+test("restartAndInstall sets install context before quitAndInstall and does not reset it in that function", () => {
+  const start = source.indexOf("export function restartAndInstallStudioUpdate");
+  const end = source.indexOf("export function postponeStudioUpdate");
+  assert.ok(start >= 0 && end > start);
+  const restartFn = source.slice(start, end);
+  const quitIdx = restartFn.indexOf("autoUpdater.quitAndInstall(true, true)");
+  assert.ok(quitIdx > 0);
+  const beforeQuit = restartFn.slice(0, quitIdx);
+  const afterQuit = restartFn.slice(quitIdx);
+  assert.match(beforeQuit, /activeErrorContext\s*=\s*"install"/);
+  assert.doesNotMatch(afterQuit, /activeErrorContext\s*=/);
+});
+
+test("check and download paths set their own activeErrorContext", () => {
+  assert.match(source, /activeErrorContext\s*=\s*"check"/);
+  assert.match(source, /activeErrorContext\s*=\s*"download"/);
+});

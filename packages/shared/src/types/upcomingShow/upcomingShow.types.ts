@@ -7,10 +7,19 @@ import type {
   UpcomingShowSyncStatus,
 } from "./upcomingShow.enums";
 
+/**
+ * Combined Whatnot show / Staff Gang Sheet production lane.
+ * Source-conditional fields:
+ * - `whatnot`: `whatnotShowId` required; Staff fields absent
+ * - `staff_gang_sheet`: `staffGangSheetCycleNumber` required; shared by Studio staff
+ *   (no assignee). `whatnotShowId` and `maxTotalQuantity` omitted.
+ *   Legacy DEV docs may still carry optional `assignedStaffUserId` (ignored).
+ */
 export interface UpcomingShow {
   id: string;
   source: UpcomingShowSource;
-  whatnotShowId: string;
+  /** Required when source === "whatnot"; omitted for staff_gang_sheet. */
+  whatnotShowId?: string;
   whatnotUrl?: string;
   title?: string;
   scheduledStartAt?: Timestamp;
@@ -26,14 +35,29 @@ export interface UpcomingShow {
   notes?: string;
   isArchived: boolean;
 
-  /** A Whatnot show is the print run — this is the only production entity for Phase 7. */
+  /** A show / Staff Gang Sheet is the print run — this is the only production entity. */
   productionStatus: ShowProductionStatus;
-  /** Staff-set capacity. Undefined means no cap is enforced. */
+  /** Staff-set capacity. Undefined means no cap is enforced (Staff Gang Sheets omit this). */
   maxTotalQuantity?: number;
   /** True when staff used the danger override to exceed `maxTotalQuantity`. Portal customers may never set this. */
   maxQuantityOverridden: boolean;
   /** Sum of `allocatedQuantity` across all non-canceled `showAllocations` for this show. Denormalized for list/detail display. */
   allocatedQuantity: number;
+
+  /**
+   * Legacy DEV-only optional field from the superseded assigned-lane model.
+   * Shared Staff Gang Sheets do not require or write this.
+   */
+  assignedStaffUserId?: string;
+  /** Staff Gang Sheet: 1-based cycle number shown as "Internal Gang Sheet #N". */
+  staffGangSheetCycleNumber?: number;
+
+  /**
+   * Optional: set when staff successfully generates gang sheet PNG(s) for this show / Internal Gangsheet.
+   * Not required to Mark Complete or Mark finished.
+   */
+  gangSheetGeneratedAt?: Timestamp;
+  gangSheetGeneratedBy?: string;
 
   /** Elapsed print time in milliseconds, excluding any active unpaused segment. */
   accumulatedPrintMs: number;
@@ -51,4 +75,23 @@ export interface UpcomingShow {
   updatedBy?: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+}
+
+export function isStaffGangSheetShow(show: {
+  source: UpcomingShowSource;
+}): boolean {
+  return show.source === "staff_gang_sheet";
+}
+
+export function isWhatnotUpcomingShow(show: {
+  source: UpcomingShowSource;
+}): boolean {
+  return show.source === "whatnot";
+}
+
+/** True when staff has successfully generated a gang sheet for this production lane. */
+export function hasShowGangSheetBeenGenerated(show: {
+  gangSheetGeneratedAt?: Timestamp | null;
+}): boolean {
+  return show.gangSheetGeneratedAt != null;
 }

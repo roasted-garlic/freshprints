@@ -48,6 +48,8 @@ export function DesignFormFields({
 
   function handleHalftoneChange(checked: boolean) {
     onChange("tagsInput", formatTagsInput(syncHalftoneTagInList(parsedTags, checked)));
+    onChange("artworkBackgroundPreset", checked ? "lightBlack" : "grey");
+    onChange("artworkBackgroundCustomHex", "");
   }
 
   return (
@@ -77,6 +79,9 @@ export function DesignFormFields({
         name="categoryId"
         onChange={(event) => onChange("categoryId", event.target.value)}
         options={categoryOptions}
+        searchEmptyMessage="No categories found"
+        searchPlaceholder="Search categories..."
+        searchable
         value={formValues.categoryId}
       />
 

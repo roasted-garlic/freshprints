@@ -22,6 +22,8 @@ interface AiReviewQueueListProps {
   listRef: RefObject<HTMLDivElement | null>;
   onLoadMore: () => void;
   onSelectDesign: (designId: string) => void;
+  /** Effective mat hex for the selected design (same resolve path as main preview). */
+  selectedArtworkBackgroundHex?: string;
   selectedDesignId: string | null;
 }
 
@@ -44,6 +46,7 @@ export function AiReviewQueueList({
   listRef,
   onLoadMore,
   onSelectDesign,
+  selectedArtworkBackgroundHex,
   selectedDesignId,
 }: AiReviewQueueListProps) {
   if (isLoading) {
@@ -93,6 +96,11 @@ export function AiReviewQueueList({
                 <div className="ai-review-queue-item-media">
                   <DesignThumbnailPanel
                     alt=""
+                    artworkBackgroundHex={
+                      isSelected
+                        ? selectedArtworkBackgroundHex ?? design.artworkBackgroundHex
+                        : design.artworkBackgroundHex
+                    }
                     catalogPath={design.thumbnailPath}
                     className="ai-review-queue-thumb"
                     decorative

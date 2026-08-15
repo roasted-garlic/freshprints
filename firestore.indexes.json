@@ -1333,7 +1333,21 @@
           "order": "DESCENDING"
         }
       ]
-    }
+    },
+      {
+        "collectionGroup": "upcomingShows",
+        "queryScope": "COLLECTION",
+        "fields": [
+          {
+            "fieldPath": "source",
+            "order": "ASCENDING"
+          },
+          {
+            "fieldPath": "productionStatus",
+            "order": "ASCENDING"
+          }
+        ]
+      }
   ],
   "fieldOverrides": []
 }

@@ -17,6 +17,7 @@ import {
   canStartDownload,
 } from "@fresh-prints/shared/studioUpdate/studioUpdateStateTransitions";
 import { toSafeStudioUpdateError } from "@fresh-prints/shared/studioUpdate/studioUpdateErrorMapping";
+import type { StudioUpdateErrorContext } from "@fresh-prints/shared/studioUpdate/studioUpdateErrorMapping";
 import { normalizeStudioReleaseNotes } from "@fresh-prints/shared/studioUpdate/studioUpdateReleaseNotes";
 import { resolveStudioUpdateChannel } from "./studioUpdateChannel";
 import { STUDIO_UPDATE_STATE_CHANGED } from "./studioUpdateIpcChannels";
@@ -30,6 +31,12 @@ let subscribers: Set<WebContents> = new Set();
 let autoUpdater: AutoUpdaterLike | null = null;
 let periodicCheckTimer: ReturnType<typeof setInterval> | null = null;
 let hasPendingDownloadedUpdate = false;
+/**
+ * Tracks which updater phase owns subsequent async `error` events.
+ * Intentionally NOT cleared immediately after quitAndInstall — Squirrel.Mac may emit
+ * signature/install failures asynchronously after staging begins.
+ */
+let activeErrorContext: StudioUpdateErrorContext = "check";
 
 function createInitialState(): StudioUpdateState {
   return {
@@ -63,7 +70,7 @@ function isUpdateCapable(): boolean {
   return app.isPackaged;
 }
 
-function handleUpdaterError(error: unknown, context: "check" | "download"): void {
+function handleUpdaterError(error: unknown, context: StudioUpdateErrorContext): void {
   const safeError = toSafeStudioUpdateError(error, context);
   // Only the safe, fixed category/status hint is ever logged — never the raw error object, which
   // (per electron-updater's GitHubProvider) can carry full HTTP response bodies, headers, or
@@ -137,7 +144,9 @@ async function getAutoUpdater(): Promise<AutoUpdaterLike | null> {
   });
 
   updater.on("error", (error) => {
-    handleUpdaterError(error, "check");
+    // Use the sticky phase context — do not hard-code "check". Install/Squirrel failures
+    // arrive here asynchronously after quitAndInstall while activeErrorContext === "install".
+    handleUpdaterError(error, activeErrorContext);
   });
 
   autoUpdater = updater;
@@ -171,6 +180,7 @@ export async function checkForStudioUpdate(): Promise<StudioUpdateState> {
 
   isCheckInFlight = true;
   try {
+    activeErrorContext = "check";
     const updater = await getAutoUpdater();
     if (!updater) {
       setState(applyUpdateNotAvailable(state));
@@ -201,6 +211,7 @@ export async function downloadStudioUpdate(): Promise<StudioUpdateState> {
 
   isDownloadInFlight = true;
   try {
+    activeErrorContext = "download";
     const updater = await getAutoUpdater();
     if (!updater) {
       return state;
@@ -229,6 +240,10 @@ export function restartAndInstallStudioUpdate(): { willRestart: boolean } {
   // applies only to this automatic-update path; the manually downloaded first-time installer is
   // launched by the user directly (not through this code) and keeps its normal oneClick:false
   // assisted wizard — see apps/studio/electron-builder.json5, unchanged by this.
+  //
+  // Sticky install context: Squirrel.Mac may emit code-signature errors asynchronously after
+  // quitAndInstall begins staging. Do not reset activeErrorContext back to "check" here.
+  activeErrorContext = "install";
   autoUpdater.quitAndInstall(true, true);
   return { willRestart: true };
 }
@@ -272,6 +287,7 @@ export function __resetStudioUpdateStateForTests(channel?: StudioUpdateChannel):
   subscribers = new Set();
   autoUpdater = null;
   hasPendingDownloadedUpdate = false;
+  activeErrorContext = "check";
   isCheckInFlight = false;
   isDownloadInFlight = false;
   stopPeriodicStudioUpdateChecks();

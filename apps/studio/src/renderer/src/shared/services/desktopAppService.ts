@@ -101,13 +101,17 @@ export const whatnotImportDesktopService = {
       throw new Error("Importing Whatnot shows requires the Fresh Prints desktop app.");
     }
 
-    const existingShowSummaries: WhatnotExistingShowSummary[] = existingShows.map((show) => ({
-      id: show.id,
-      whatnotShowId: show.whatnotShowId,
-      title: show.title,
-      whatnotUrl: show.whatnotUrl,
-      scheduledStartAtMs: show.scheduledStartAt?.toDate().getTime(),
-    }));
+    const existingShowSummaries: WhatnotExistingShowSummary[] = existingShows
+      .filter((show): show is UpcomingShow & { source: "whatnot"; whatnotShowId: string } =>
+        show.source === "whatnot" && typeof show.whatnotShowId === "string" && Boolean(show.whatnotShowId.trim()),
+      )
+      .map((show) => ({
+        id: show.id,
+        whatnotShowId: show.whatnotShowId,
+        title: show.title,
+        whatnotUrl: show.whatnotUrl,
+        scheduledStartAtMs: show.scheduledStartAt?.toDate().getTime(),
+      }));
 
     const result = await window.freshPrints.whatnotImport.openImportWindow(baseUrl, existingShowSummaries);
 

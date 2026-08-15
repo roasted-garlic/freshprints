@@ -155,6 +155,10 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
       validationStage = "show-not-allocatable";
       throw failedPrecondition("This show is no longer available.");
     }
+    if (showData.source === "staff_gang_sheet") {
+      validationStage = "show-not-allocatable";
+      throw failedPrecondition("This show is not available for Portal queuing.");
+    }
 
     validationStage = "request-items-and-existing-allocation";
     const [itemsSnap, allocationsSnap] = await Promise.all([

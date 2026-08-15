@@ -47,9 +47,17 @@ export function buildShowQueuePrintRequestOptions(input: {
           totalInProgressQuantity: 0,
           totalPrintedQuantity: 0,
         };
+        const totalRequestedQuantity = summary?.totalQuantity ?? 0;
+        // Nothing left to attach anywhere (fully queued / printed).
+        if (
+          totalRequestedQuantity > 0 &&
+          totals.totalAllocatedQuantity >= totalRequestedQuantity
+        ) {
+          return false;
+        }
         return !isPrintRequestFullyPrinted({
           status: request.status,
-          totalRequestedQuantity: summary?.totalQuantity ?? 0,
+          totalRequestedQuantity,
           totalAllocatedQuantity: totals.totalAllocatedQuantity,
           totalInProgressQuantity: totals.totalInProgressQuantity,
           totalPrintedQuantity: totals.totalPrintedQuantity,

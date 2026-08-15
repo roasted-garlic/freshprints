@@ -41,6 +41,7 @@ import type {
   PrintRequestItem,
   PrintRequestOrigin,
 } from "@fresh-prints/shared/types/printRequest/printRequest.types";
+import type { PrintRequestListTab } from "@fresh-prints/shared/utils/printRequestListGrouping";
 import { requireValidCustomerUsername } from "@fresh-prints/shared/utils/customerUsername";
 import { isPrintRequestOrigin } from "@fresh-prints/shared/utils/printRequestOrigin";
 import {
@@ -147,6 +148,7 @@ interface PrintRequestDocumentData extends DocumentData {
   requestOrigin?: unknown;
   status?: unknown;
   itemCount?: unknown;
+  queueTab?: unknown;
   requestSequenceNumber?: unknown;
   customerUsernameSnapshot?: unknown;
   customerDisplayNameSnapshot?: unknown;
@@ -204,6 +206,10 @@ function resolveRequiredTimestamp(value: unknown): Timestamp | undefined {
   return mapFirestoreTimestamp(value);
 }
 
+function isPrintRequestListTab(value: unknown): value is PrintRequestListTab {
+  return value === "working" || value === "queued" || value === "printing" || value === "printed";
+}
+
 function mapPrintRequestData(printRequestId: string, data: PrintRequestDocumentData): PrintRequest {
   const createdAt = resolveRequiredTimestamp(data.createdAt);
   const updatedAt = resolveRequiredTimestamp(data.updatedAt);
@@ -228,6 +234,7 @@ function mapPrintRequestData(printRequestId: string, data: PrintRequestDocumentD
     requestOrigin: isPrintRequestOrigin(data.requestOrigin) ? data.requestOrigin : undefined,
     status: data.status as PrintRequest["status"],
     itemCount: data.itemCount,
+    queueTab: isPrintRequestListTab(data.queueTab) ? data.queueTab : undefined,
     requestSequenceNumber:
       typeof data.requestSequenceNumber === "number" ? data.requestSequenceNumber : undefined,
     customerUsernameSnapshot:
@@ -390,6 +397,9 @@ function buildPrintRequestPayload(
     isInternal,
     status: "draft" as const,
     itemCount: 0,
+    // New carts belong on Working until items/allocations move them; list queries filter by
+    // queueTab, so omitting this makes fresh requests vanish after remount.
+    queueTab: "working" as const,
     requestSequenceNumber: input.requestSequenceNumber,
     requestOrigin: input.requestOrigin ?? (isInternal ? "studio_internal" : "studio_customer"),
     customerUsernameSnapshot: input.customerUsernameSnapshot,

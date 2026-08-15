@@ -261,6 +261,18 @@ export function useExportGangSheetPng() {
           generated: ipcResult.data,
           lastSavedPaths: [],
         });
+
+        try {
+          await upcomingShowService.recordGangSheetGenerated(user, show.id);
+        } catch (persistError) {
+          setState((current) => ({
+            ...current,
+            error: formatError(
+              persistError,
+              "Gang sheets generated locally, but the show could not be marked as generated. Try Generate again.",
+            ),
+          }));
+        }
       } catch (error) {
         isBusyRef.current = false;
         setState({

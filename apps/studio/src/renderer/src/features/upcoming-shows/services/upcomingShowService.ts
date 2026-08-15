@@ -48,6 +48,15 @@ import type {
   UpcomingShowSyncStatus,
 } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.enums";
 import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
+import { isStaffGangSheetShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
+import {
+  canAllocateOriginToShowSource,
+  DEFAULT_INTERNAL_GANG_SHEET_MAX_TOTAL_QUANTITY,
+  formatStaffGangSheetTitle,
+  isStaffGangSheetActiveProductionStatus,
+  resolveInternalGangSheetMaxTotalQuantity,
+  resolveNextStaffGangSheetCycleNumber,
+} from "@fresh-prints/shared/utils/staffGangSheet";
 import type { ShowAllocationStatus } from "@fresh-prints/shared/types/showAllocation/showAllocation.enums";
 import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/showAllocation.types";
 import { findMatchingUpcomingShow } from "../utils/upcomingShowUpsert";
@@ -70,6 +79,67 @@ import {
   planWhatnotImportExistingShowUpdate,
   type WhatnotImportUpdateInput,
 } from "../utils/whatnotShowImportUpdate";
+import { callTracedFunction } from "../../../config/tracedCallable";
+import { FirebaseError } from "firebase/app";
+
+function isGenericFirebaseCallableMessage(message: string): boolean {
+  return new Set([
+    "internal",
+    "INTERNAL",
+    "unknown",
+    "unavailable",
+    "failed-precondition",
+    "invalid-argument",
+    "permission-denied",
+    "not-found",
+  ]).has(message.trim());
+}
+
+/** Callable missing/crashing — fall back to Rules-allowed client create for initial sheet. */
+function shouldFallbackToClientStaffGangSheetCreate(error: unknown): boolean {
+  if (!(error instanceof FirebaseError)) {
+    const message = error instanceof Error ? error.message.trim().toLowerCase() : "";
+    return message === "internal" || message.includes("not-found");
+  }
+  return (
+    error.code === "functions/not-found" ||
+    error.code === "functions/unavailable" ||
+    error.code === "functions/internal" ||
+    (error.code === "functions/failed-precondition" &&
+      /index/i.test(error.message ?? ""))
+  );
+}
+
+function toStaffGangSheetCreateError(error: unknown): Error {
+  if (error instanceof FirebaseError) {
+    const message = error.message?.trim() ?? "";
+    if (message && !isGenericFirebaseCallableMessage(message)) {
+      return new Error(message);
+    }
+    switch (error.code) {
+      case "functions/permission-denied":
+        return new Error(
+          "You do not have permission to create Internal Gang Sheets. Active Studio staff (owner, admin, or helper) can create them after Rules are deployed.",
+        );
+      case "functions/unauthenticated":
+        return new Error("You must be signed in to create an Internal Gang Sheet.");
+      case "functions/failed-precondition":
+        return new Error(
+          message && !isGenericFirebaseCallableMessage(message)
+            ? message
+            : "Unable to create Internal Gang Sheet. An active sheet may already exist.",
+        );
+      default:
+        return new Error(
+          "Unable to create Internal Gang Sheet. Confirm DEV Functions are deployed (createInitialStaffGangSheet), then try again.",
+        );
+    }
+  }
+  if (error instanceof Error && error.message.trim()) {
+    return error;
+  }
+  return new Error("Unable to create Internal Gang Sheet. Please try again.");
+}
 
 function hashShowIdForPostFinishVerification(showId: string): string {
   let hash = 2166136261;
@@ -101,6 +171,18 @@ export interface CreateUpcomingShowInput {
   sourceBaseUrlSnapshot?: string;
   /** True when this create/update came from a staff-confirmed assisted import, not a manual paste. */
   fromAssistedImport?: boolean;
+}
+
+export interface CreateStaffGangSheetLaneInput {
+  /** Defaults to 1 for the initial shared Internal Gang Sheet. */
+  staffGangSheetCycleNumber?: number;
+}
+
+export interface CompleteStaffGangSheetResult {
+  completedShowId: string;
+  nextShowId: string;
+  nextCycleNumber: number;
+  alreadyCompleted: boolean;
 }
 
 export interface UpdateUpcomingShowInput {
@@ -153,6 +235,10 @@ interface UpcomingShowDocumentData extends DocumentData {
   printPausedAt?: unknown;
   printFinishedAt?: unknown;
   printFinishedBy?: unknown;
+  gangSheetGeneratedAt?: unknown;
+  gangSheetGeneratedBy?: unknown;
+  assignedStaffUserId?: unknown;
+  staffGangSheetCycleNumber?: unknown;
   createdBy?: unknown;
   updatedBy?: unknown;
   createdAt?: unknown;
@@ -192,7 +278,7 @@ export interface ShowAllocationDocumentData extends DocumentData {
   updatedAt?: unknown;
 }
 
-const VALID_SOURCES: UpcomingShowSource[] = ["whatnot"];
+const VALID_SOURCES: UpcomingShowSource[] = ["whatnot", "staff_gang_sheet"];
 const VALID_STATUSES: UpcomingShowStatus[] = [
   "scheduled",
   "rescheduled",
@@ -261,7 +347,6 @@ function mapUpcomingShowData(showId: string, data: UpcomingShowDocumentData): Up
 
   if (
     !isUpcomingShowSource(data.source) ||
-    typeof data.whatnotShowId !== "string" ||
     !isUpcomingShowStatus(data.status) ||
     !isUpcomingShowSyncStatus(data.syncStatus) ||
     typeof data.isArchived !== "boolean" ||
@@ -274,10 +359,8 @@ function mapUpcomingShowData(showId: string, data: UpcomingShowDocumentData): Up
     throw new Error("An upcoming show record is incomplete.");
   }
 
-  return {
+  const base = {
     id: showId,
-    source: data.source,
-    whatnotShowId: data.whatnotShowId,
     whatnotUrl: typeof data.whatnotUrl === "string" ? data.whatnotUrl : undefined,
     title: typeof data.title === "string" ? data.title : undefined,
     scheduledStartAt: mapFirestoreTimestamp(data.scheduledStartAt),
@@ -300,10 +383,50 @@ function mapUpcomingShowData(showId: string, data: UpcomingShowDocumentData): Up
     printPausedAt: mapFirestoreTimestamp(data.printPausedAt),
     printFinishedAt: mapFirestoreTimestamp(data.printFinishedAt),
     printFinishedBy: typeof data.printFinishedBy === "string" ? data.printFinishedBy : undefined,
+    gangSheetGeneratedAt: mapFirestoreTimestamp(data.gangSheetGeneratedAt),
+    gangSheetGeneratedBy: typeof data.gangSheetGeneratedBy === "string" ? data.gangSheetGeneratedBy : undefined,
     createdBy: typeof data.createdBy === "string" ? data.createdBy : undefined,
     updatedBy: typeof data.updatedBy === "string" ? data.updatedBy : undefined,
     createdAt,
     updatedAt,
+  };
+
+  if (data.source === "staff_gang_sheet") {
+    if (typeof data.whatnotShowId === "string" && data.whatnotShowId.trim()) {
+      throw new Error("Internal Gang Sheet records must not include a Whatnot show ID.");
+    }
+    if (
+      typeof data.staffGangSheetCycleNumber !== "number" ||
+      !Number.isInteger(data.staffGangSheetCycleNumber) ||
+      data.staffGangSheetCycleNumber < 1
+    ) {
+      throw new Error("Internal Gang Sheet cycle fields are incomplete.");
+    }
+
+    return {
+      ...base,
+      source: "staff_gang_sheet",
+      // Legacy DEV assignee may still exist; shared model ignores it for auth/uniqueness.
+      assignedStaffUserId:
+        typeof data.assignedStaffUserId === "string" && data.assignedStaffUserId.trim()
+          ? data.assignedStaffUserId
+          : undefined,
+      staffGangSheetCycleNumber: data.staffGangSheetCycleNumber,
+      title: base.title ?? formatStaffGangSheetTitle(data.staffGangSheetCycleNumber),
+      maxTotalQuantity: resolveInternalGangSheetMaxTotalQuantity(
+        typeof data.maxTotalQuantity === "number" ? data.maxTotalQuantity : undefined,
+      ),
+    };
+  }
+
+  if (typeof data.whatnotShowId !== "string" || !data.whatnotShowId.trim()) {
+    throw new Error("An upcoming show record is incomplete.");
+  }
+
+  return {
+    ...base,
+    source: "whatnot",
+    whatnotShowId: data.whatnotShowId,
   };
 }
 
@@ -642,6 +765,10 @@ export const upcomingShowService = {
       throw new Error("You do not have permission to manage upcoming shows.");
     }
 
+    if (input.source === "staff_gang_sheet") {
+      throw new Error("Use createStaffGangSheetLane to create Internal Gang Sheets.");
+    }
+
     if (input.fromAssistedImport && !permissionService.canImportWhatnotShows(caller)) {
       throw new Error("You do not have permission to import shows from Whatnot.");
     }
@@ -723,6 +850,154 @@ export const upcomingShowService = {
     return this.getUpcomingShowById(caller, showRef.id);
   },
 
+  /**
+   * Any active Studio staff: create a shared Internal Gang Sheet when none is active.
+   * Cycle number is computed as max(existing)+1. Prefers the trusted callable; falls back to a
+   * Rules-allowed client write when the callable is missing/unavailable.
+   */
+  async createStaffGangSheetLane(
+    caller: User,
+    input: CreateStaffGangSheetLaneInput = {},
+  ): Promise<UpcomingShow> {
+    if (!permissionService.canCreateStaffGangSheetLane(caller)) {
+      throw new Error("You do not have permission to create Internal Gang Sheets.");
+    }
+
+    const requestedCycle = input.staffGangSheetCycleNumber;
+    if (
+      requestedCycle !== undefined &&
+      (!Number.isInteger(requestedCycle) || requestedCycle < 1)
+    ) {
+      throw new Error("Internal Gang Sheet cycle number must be a positive integer.");
+    }
+
+    try {
+      const result = await callTracedFunction<
+        { staffGangSheetCycleNumber?: number },
+        { showId: string; cycleNumber: number }
+      >(
+        "createInitialStaffGangSheet",
+        { source: "upcomingShowService.createStaffGangSheetLane" },
+      )(
+        requestedCycle !== undefined
+          ? { staffGangSheetCycleNumber: requestedCycle }
+          : {},
+      );
+      return this.getUpcomingShowById(caller, result.showId);
+    } catch (error) {
+      if (!shouldFallbackToClientStaffGangSheetCreate(error)) {
+        throw toStaffGangSheetCreateError(error);
+      }
+      return this.createStaffGangSheetLaneViaClientSdk(caller, requestedCycle);
+    }
+  },
+
+  /**
+   * Client-SDK create when the callable is unavailable.
+   * Refuses when an active sheet exists; otherwise opens max(existing)+1 (or requested if higher).
+   */
+  async createStaffGangSheetLaneViaClientSdk(
+    caller: User,
+    requestedCycleNumber?: number,
+  ): Promise<UpcomingShow> {
+    const collectionRef = firestoreCollectionService.getUpcomingShowsCollection();
+    const existingSnap = await getDocs(query(collectionRef, where("source", "==", "staff_gang_sheet")));
+    const activeExisting = existingSnap.docs.find((docSnap) => {
+      const productionStatus = (docSnap.data() as UpcomingShowDocumentData).productionStatus;
+      return isStaffGangSheetActiveProductionStatus(
+        typeof productionStatus === "string" ? productionStatus : null,
+      );
+    });
+    if (activeExisting) {
+      const rawCycle = activeExisting.data().staffGangSheetCycleNumber;
+      const existingCycle = typeof rawCycle === "number" ? rawCycle : 1;
+      throw new Error(
+        `An active Internal Gang Sheet already exists (${formatStaffGangSheetTitle(existingCycle)}). Complete it before creating another.`,
+      );
+    }
+
+    const computedNext = resolveNextStaffGangSheetCycleNumber(
+      existingSnap.docs.map((docSnap) => {
+        const cycle = (docSnap.data() as UpcomingShowDocumentData).staffGangSheetCycleNumber;
+        return typeof cycle === "number" ? cycle : null;
+      }),
+    );
+    const cycleNumber =
+      typeof requestedCycleNumber === "number" && requestedCycleNumber > computedNext
+        ? requestedCycleNumber
+        : computedNext;
+
+    const showRef = doc(collectionRef);
+    const payload = withoutUndefinedFields({
+      source: "staff_gang_sheet" as const,
+      title: formatStaffGangSheetTitle(cycleNumber),
+      status: "scheduled" as const,
+      syncStatus: "idle" as const,
+      isArchived: false,
+      productionStatus: "open" as const,
+      maxQuantityOverridden: false,
+      maxTotalQuantity: DEFAULT_INTERNAL_GANG_SHEET_MAX_TOTAL_QUANTITY,
+      allocatedQuantity: 0,
+      accumulatedPrintMs: 0,
+      staffGangSheetCycleNumber: cycleNumber,
+      createdBy: caller.id,
+      updatedBy: caller.id,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    assertNoUndefinedFirestoreFields(payload, "Internal Gang Sheet create payload");
+    try {
+      await runTracedWrite("setDoc", () => setDoc(showRef, payload), {
+        app: "studio",
+        collection: "upcomingShows",
+        documentPathPattern: "upcomingShows/{upcomingShowId}",
+        source: "upcomingShowService.createStaffGangSheetLaneViaClientSdk",
+      });
+    } catch (error) {
+      if (error instanceof FirebaseError && error.code === "permission-denied") {
+        throw new Error(
+          "Missing or insufficient permissions to create Internal Gang Sheets. Deploy the latest Firestore Rules to DEV (staff create allowed), then try again.",
+        );
+      }
+      throw error;
+    }
+
+    return this.getUpcomingShowById(caller, showRef.id);
+  },
+
+  /**
+   * Completes the current shared Internal Gang Sheet and opens the next shared cycle.
+   * Uses a trusted callable so helpers can advance the shared sheet without Rules create rights.
+   */
+  async completeStaffGangSheetAndOpenNext(
+    caller: User,
+    upcomingShowId: string,
+  ): Promise<CompleteStaffGangSheetResult> {
+    if (!permissionService.canManageUpcomingShows(caller)) {
+      throw new Error("You do not have permission to manage Internal Gang Sheets.");
+    }
+
+    const show = await this.getUpcomingShowById(caller, upcomingShowId);
+    if (!isStaffGangSheetShow(show)) {
+      throw new Error("Only Internal Gang Sheets can be completed with auto-cycle.");
+    }
+    if (!permissionService.canManageStaffGangSheetShow(caller, show)) {
+      throw new Error("You do not have permission to complete this Internal Gang Sheet.");
+    }
+
+    try {
+      return await callTracedFunction<{ upcomingShowId: string }, CompleteStaffGangSheetResult>(
+        "completeStaffGangSheetAndOpenNext",
+        { source: "upcomingShowService.completeStaffGangSheetAndOpenNext" },
+      )({ upcomingShowId });
+    } catch (error) {
+      if (error instanceof Error && error.message.trim()) {
+        throw error;
+      }
+      throw new Error("Unable to complete this Internal Gang Sheet. Please try again.");
+    }
+  },
+
   async updateUpcomingShowFromWhatnotImport(
     caller: User,
     input: WhatnotImportUpdateInput,
@@ -797,6 +1072,41 @@ export const upcomingShowService = {
       documentPathPattern: "upcomingShows/{upcomingShowId}",
       source: "upcomingShowService.updateUpcomingShow",
     });
+
+    return this.getUpcomingShowById(caller, upcomingShowId);
+  },
+
+  /**
+   * Records that staff successfully generated gang sheet PNG(s) for this show / Internal Gangsheet.
+   * Optional telemetry only — Mark Complete / Mark finished do not require generation.
+   */
+  async recordGangSheetGenerated(caller: User, upcomingShowId: string): Promise<UpcomingShow> {
+    if (!permissionService.canManageUpcomingShows(caller)) {
+      throw new Error("You do not have permission to manage upcoming shows.");
+    }
+
+    const showRef = doc(firestoreCollectionService.getUpcomingShowsCollection(), upcomingShowId);
+    const snapshot = await getDoc(showRef);
+    if (!snapshot.exists()) {
+      throw new Error("Upcoming show not found.");
+    }
+
+    await runTracedWrite(
+      "updateDoc",
+      () =>
+        updateDoc(showRef, {
+          gangSheetGeneratedAt: serverTimestamp(),
+          gangSheetGeneratedBy: caller.id,
+          updatedBy: caller.id,
+          updatedAt: serverTimestamp(),
+        }),
+      {
+        app: "studio",
+        collection: "upcomingShows",
+        documentPathPattern: "upcomingShows/{upcomingShowId}",
+        source: "upcomingShowService.recordGangSheetGenerated",
+      },
+    );
 
     return this.getUpcomingShowById(caller, upcomingShowId);
   },
@@ -994,6 +1304,22 @@ export const upcomingShowService = {
       this.listShowAllocations(caller, upcomingShowId),
     ]);
 
+    if (isStaffGangSheetShow(show) && !permissionService.canManageStaffGangSheetShow(caller, show)) {
+      throw new Error("You can only add requests to Internal Gang Sheets assigned to you.");
+    }
+
+    if (
+      !canAllocateOriginToShowSource({
+        source: show.source,
+        requestOrigin: printRequest.requestOrigin,
+        isInternal: printRequest.isInternal,
+      })
+    ) {
+      throw new Error(
+        "Only Internal print requests can be added to Internal Gangsheets.",
+      );
+    }
+
     const requestItem = requestItems.find((item) => item.id === input.printRequestItemId);
 
     if (!requestItem) {
@@ -1097,6 +1423,11 @@ export const upcomingShowService = {
     if (printRequest.status === "draft" || printRequest.status === "editing") {
       await printRequestService.updatePrintRequest(caller, printRequest.id, { status: "active" });
     }
+
+    await this.syncPrintRequestQueueTabBestEffort(
+      printRequest.id,
+      "upcomingShowService.allocatePrintRequestItem",
+    );
 
     const createdSnapshot = await getDoc(allocationRef);
     return mapShowAllocationData(createdSnapshot.id, createdSnapshot.data() as ShowAllocationDocumentData);
@@ -1801,6 +2132,10 @@ export const upcomingShowService = {
     });
     await this.recalculateShowAllocatedQuantity(caller, allocation.upcomingShowId);
     await this.markPrintRequestEditingIfNoActiveAllocations(caller, allocation.printRequestId);
+    await this.syncPrintRequestQueueTabBestEffort(
+      allocation.printRequestId,
+      "upcomingShowService.removeShowAllocation",
+    );
   },
 
   /**
@@ -1842,6 +2177,38 @@ export const upcomingShowService = {
 
     await this.recalculateShowAllocatedQuantity(caller, upcomingShowId);
     await this.markPrintRequestEditingIfNoActiveAllocations(caller, printRequestId);
+    await this.syncPrintRequestQueueTabBestEffort(
+      printRequestId,
+      "upcomingShowService.removeShowAllocationsForRequest",
+    );
+  },
+
+  /**
+   * Force-persist `queueTab` after allocate/remove so Print Requests tabs update without waiting
+   * on trigger delivery. Retries once; failures are swallowed — the Firestore trigger remains backup.
+   */
+  async syncPrintRequestQueueTabBestEffort(printRequestId: string, source: string): Promise<string | null> {
+    const invoke = callTracedFunction<{ printRequestId: string }, { queueTab: string | null }>(
+      "syncPrintRequestQueueTab",
+      { source },
+    );
+
+    try {
+      const result = await invoke({ printRequestId });
+      return result.queueTab;
+    } catch (firstError) {
+      try {
+        const result = await invoke({ printRequestId });
+        return result.queueTab;
+      } catch (secondError) {
+        console.warn(
+          `[${source}] syncPrintRequestQueueTab failed; trigger backup will reconcile.`,
+          firstError,
+          secondError,
+        );
+        return null;
+      }
+    }
   },
 
   /**

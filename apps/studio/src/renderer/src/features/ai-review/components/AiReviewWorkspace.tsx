@@ -303,7 +303,18 @@ export function AiReviewWorkspace({
               design={selectedDesign}
               draftForm={draftForm}
               onChange={onUpdateDraftField}
-              onHalftoneChange={(value) => onUpdateDraftField("markAsHalftone", value)}
+              onHalftoneChange={(value) => {
+                onUpdateDraftField("markAsHalftone", value);
+                const artworkBackground = {
+                  artworkBackgroundPreset: value ? ("lightBlack" as const) : ("grey" as const),
+                  artworkBackgroundCustomHex: "",
+                };
+                onUpdateDraftField("artworkBackgroundPreset", artworkBackground.artworkBackgroundPreset);
+                onUpdateDraftField("artworkBackgroundCustomHex", artworkBackground.artworkBackgroundCustomHex);
+                if (canSaveArtworkBackground) {
+                  onSaveArtworkBackground(artworkBackground);
+                }
+              }}
               onInputFocusChange={onInputFocusChange}
             />
           ) : null}
