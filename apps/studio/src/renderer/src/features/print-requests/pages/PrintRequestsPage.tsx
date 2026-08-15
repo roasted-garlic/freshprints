@@ -19,6 +19,7 @@ import { useShellHeaderConfig } from "../../../shared/hooks/useShellHeaderConfig
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
 import { printRequestService, type UpdatePrintRequestItemInput } from "../services/printRequestService";
+import { clearPrintRequestsPageCache } from "../services/printRequestsPageReadCache";
 import { usePrintRequestDetails } from "../hooks/usePrintRequestDetails";
 import { usePrintRequests } from "../hooks/usePrintRequests";
 import { useReadyDesignsForSelection } from "../hooks/useReadyDesignsForSelection";
@@ -316,6 +317,7 @@ export function PrintRequestsPage() {
   const [isRequestDetailExpanded, setIsRequestDetailExpanded] = useState(false);
   const [successAlertSeed, setSuccessAlertSeed] = useState(0);
   const [isAddToShowModalOpen, setIsAddToShowModalOpen] = useState(false);
+  const [addToShowDestination, setAddToShowDestination] = useState<"shows" | "staff_gang_sheet">("shows");
   const [selectedRequestAllocations, setSelectedRequestAllocations] = useState<ShowAllocation[]>([]);
   const [isConfirmingShowQueueRemoval, setIsConfirmingShowQueueRemoval] = useState(false);
   const [isRemovingFromShowQueue, setIsRemovingFromShowQueue] = useState(false);
@@ -431,20 +433,31 @@ export function PrintRequestsPage() {
     setActionError(null);
 
     try {
+      const requestId = visibleSelectedRequest.id;
       for (const group of selectedRequestShowGroups) {
-        await upcomingShowService.removeShowAllocationsForRequest(user, group.upcomingShowId, visibleSelectedRequest.id);
+        await upcomingShowService.removeShowAllocationsForRequest(user, group.upcomingShowId, requestId);
       }
 
       setIsConfirmingShowQueueRemoval(false);
-      const requestId = visibleSelectedRequest.id;
-      await reloadAllAllocationData({ silent: true });
+      // List tabs key off persisted queueTab (detail badges already flip from live allocations).
+      // Clear remount cache, patch locally, then route to Working so the tab effect reloads fresh.
+      clearPrintRequestsPageCache();
+      patchRequestLocally(requestId, { queueTab: "working", status: "editing" });
       commitPrintRequestsRoute({ requestId, tab: "working" });
+      await reloadAllAllocationData({ silent: true });
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Unable to remove this request from the show queue.");
     } finally {
       setIsRemovingFromShowQueue(false);
     }
-  }, [commitPrintRequestsRoute, reloadAllAllocationData, selectedRequestShowGroups, user, visibleSelectedRequest]);
+  }, [
+    commitPrintRequestsRoute,
+    patchRequestLocally,
+    reloadAllAllocationData,
+    selectedRequestShowGroups,
+    user,
+    visibleSelectedRequest,
+  ]);
 
   const resetCreateRequestForm = useCallback(() => {
     setCreateRequestForm(DEFAULT_REQUEST_FORM);
@@ -472,15 +485,24 @@ export function PrintRequestsPage() {
     setActionError(null);
   }, [resetCreateRequestForm]);
 
-  /** After Add to Show, reload persisted allocation state before committing the canonical route. */
+  /** After Add to Show / Internal Gangsheet, reload so queueTab Working→Queued is visible. */
   const handleAddedToShow = useCallback(async () => {
     const requestId = visibleSelectedRequest?.id;
 
-    await reloadAllAllocationData({ silent: true });
+    clearPrintRequestsPageCache();
+    await Promise.all([
+      reloadAllAllocationData({ silent: true }),
+      reloadPrintRequests({ silent: true }),
+    ]);
     if (requestId) {
       commitPrintRequestsRoute({ requestId, tab: "queued" });
     }
-  }, [commitPrintRequestsRoute, reloadAllAllocationData, visibleSelectedRequest?.id]);
+  }, [
+    commitPrintRequestsRoute,
+    reloadAllAllocationData,
+    reloadPrintRequests,
+    visibleSelectedRequest?.id,
+  ]);
 
   useShellHeaderConfig(
     useMemo(
@@ -1047,9 +1069,11 @@ export function PrintRequestsPage() {
                 message={
                   listSearchQuery.trim()
                     ? "No print requests match this search in the current tab."
-                    : activeListTab === "working" && workingTriageFilter !== "all"
-                      ? "No requests in this Working filter. Try Stale, Empty, or All."
-                      : "No print requests in this tab yet."
+                    : activeListTab === "working" && workingTriageFilter === "active"
+                      ? "No Active carts here. New empty carts are under Empty; older unused carts under Stale. Or choose All."
+                      : activeListTab === "working" && workingTriageFilter !== "all"
+                        ? "No requests in this Working filter. Try Stale, Empty, or All."
+                        : "No print requests in this tab yet."
                 }
                 title="Nothing here yet"
               />
@@ -1114,7 +1138,10 @@ export function PrintRequestsPage() {
             <div className="print-requests-page-actions">
               <Button
                 disabled={requestItems.length === 0}
-                onClick={() => setIsAddToShowModalOpen(true)}
+                onClick={() => {
+                  setAddToShowDestination("shows");
+                  setIsAddToShowModalOpen(true);
+                }}
                 title={
                   requestItems.length === 0
                     ? "Add designs to this request before adding it to a show."
@@ -1122,7 +1149,23 @@ export function PrintRequestsPage() {
                 }
                 type="button"
               >
-                Add to Show / Gang Sheet
+                Add to Show
+              </Button>
+              <Button
+                disabled={requestItems.length === 0}
+                onClick={() => {
+                  setAddToShowDestination("staff_gang_sheet");
+                  setIsAddToShowModalOpen(true);
+                }}
+                title={
+                  requestItems.length === 0
+                    ? "Add designs to this request before adding it to an Internal Gangsheet."
+                    : undefined
+                }
+                type="button"
+                variant="secondary"
+              >
+                Add to Internal Gangsheet
               </Button>
             </div>
           ) : null}
@@ -1563,6 +1606,7 @@ export function PrintRequestsPage() {
 
       {isAddToShowModalOpen && visibleSelectedRequest ? (
         <AddToShowModal
+          destinationMode={addToShowDestination}
           designById={designById}
           items={requestItems}
           onAdded={handleAddedToShow}

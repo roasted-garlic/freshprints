@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { Button } from "../../../shared/components/Button";
 import { LoadingSpinner } from "../../../shared/components/LoadingSpinner";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
+import { Select } from "../../../shared/components/Select";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { upcomingShowService } from "../../upcoming-shows/services/upcomingShowService";
 import { useUpcomingShows } from "../../upcoming-shows/hooks/useUpcomingShows";
@@ -16,6 +17,11 @@ import "@fresh-prints/show-picker/show-picker.css";
 import type { Design } from "../../designs/types/design.types";
 import { SplitDesignPickerModal } from "./SplitDesignPickerModal";
 import { assessShowCapacity, planAllocationSplit } from "@fresh-prints/shared/utils/showCapacity";
+import {
+  formatShowCapacitySlotLabel,
+  getCapacityFillLevel,
+  getShowCapacityPercent,
+} from "@fresh-prints/shared/utils/showCapacityDisplay";
 import {
   canAcceptNewShowAllocations,
   formatShowAllocationBlockedMessage,
@@ -39,6 +45,11 @@ interface AddToShowModalProps {
   designById?: Map<string, Design>;
   /** When set, locks the flow to this show and hides the show picker (used from Show Detail). */
   fixedShowId?: string;
+  /**
+   * When set (and not fixedShowId), locks destination to Shows calendar or Internal Gang Sheet
+   * without a tabbed picker. Print Requests uses separate buttons for each mode.
+   */
+  destinationMode?: StudioDestinationTab;
   onClose: () => void;
   onAdded: () => void | Promise<void>;
 }
@@ -92,6 +103,7 @@ export function AddToShowModal({
   items,
   designById,
   fixedShowId,
+  destinationMode,
   onClose,
   onAdded,
 }: AddToShowModalProps) {
@@ -99,7 +111,9 @@ export function AddToShowModal({
   const { shows, isLoading: isShowsLoading } = useUpcomingShows();
   const [legs, setLegs] = useState<AllocationLeg[]>([]);
   const [selectedShowId, setSelectedShowId] = useState<string>(fixedShowId ?? "");
-  const [destinationTab, setDestinationTab] = useState<StudioDestinationTab>("shows");
+  const [destinationTab, setDestinationTab] = useState<StudioDestinationTab>(
+    destinationMode ?? "shows",
+  );
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -115,29 +129,57 @@ export function AddToShowModal({
     setActionError(null);
   }, [selectedShowId]);
 
-  const openStaffGangSheet = useMemo(
+  const openStaffGangSheets = useMemo(
     () =>
-      shows.find(
-        (show) =>
-          isStaffGangSheetShow(show) &&
-          show.isArchived !== true &&
-          isStaffGangSheetActiveProductionStatus(show.productionStatus),
-      ) ?? null,
+      shows
+        .filter(
+          (show) =>
+            isStaffGangSheetShow(show) &&
+            show.isArchived !== true &&
+            isStaffGangSheetActiveProductionStatus(show.productionStatus),
+        )
+        .sort(
+          (left, right) =>
+            (left.staffGangSheetCycleNumber ?? 0) - (right.staffGangSheetCycleNumber ?? 0),
+        ),
     [shows],
   );
+  const openStaffGangSheetOptions = useMemo(
+    () =>
+      openStaffGangSheets.map((show) => ({
+        label: formatStaffGangSheetTitle(show.staffGangSheetCycleNumber ?? 1),
+        value: show.id,
+      })),
+    [openStaffGangSheets],
+  );
+  const openStaffGangSheet =
+    openStaffGangSheets.find((show) => show.id === selectedShowId) ??
+    openStaffGangSheets[0] ??
+    null;
 
-  const isStaffDestination = !fixedShowId && destinationTab === "staff_gang_sheet";
+  const isStaffDestination =
+    Boolean(destinationMode === "staff_gang_sheet") ||
+    (!fixedShowId && !destinationMode && destinationTab === "staff_gang_sheet");
   const isRequestEligibleForStaff = canAllocateOriginToShowSource({
     source: "staff_gang_sheet",
     requestOrigin: printRequest.requestOrigin,
+    isInternal: printRequest.isInternal,
   });
+  const showDestinationTabs = !fixedShowId && !destinationMode;
 
   useEffect(() => {
-    if (fixedShowId || destinationTab !== "staff_gang_sheet") {
+    if (fixedShowId || (destinationMode !== "staff_gang_sheet" && destinationTab !== "staff_gang_sheet")) {
       return;
     }
-    setSelectedShowId(openStaffGangSheet?.id ?? "");
-  }, [destinationTab, fixedShowId, openStaffGangSheet?.id]);
+    if (openStaffGangSheets.length === 0) {
+      setSelectedShowId("");
+      return;
+    }
+    const stillValid = openStaffGangSheets.some((show) => show.id === selectedShowId);
+    if (!stillValid) {
+      setSelectedShowId(openStaffGangSheets[0]!.id);
+    }
+  }, [destinationMode, destinationTab, fixedShowId, openStaffGangSheets, selectedShowId]);
 
   const allocatableShows = useMemo(() => {
     const now = new Date();
@@ -146,6 +188,7 @@ export function AddToShowModal({
         !canAllocateOriginToShowSource({
           source: show.source,
           requestOrigin: printRequest.requestOrigin,
+          isInternal: printRequest.isInternal,
         })
       ) {
         return false;
@@ -160,7 +203,7 @@ export function AddToShowModal({
         now,
       );
     });
-  }, [printRequest.requestOrigin, shows]);
+  }, [printRequest.isInternal, printRequest.requestOrigin, shows]);
 
   const calendarShows = useMemo(() => {
     const now = new Date();
@@ -170,7 +213,7 @@ export function AddToShowModal({
       if (show.isArchived === true) {
         return false;
       }
-      // Staff Gang Sheets are Studio-only production lanes — never on the Portal-style calendar picker.
+      // Internal Gang Sheets are Studio-only production lanes — never on the Portal-style calendar picker.
       if (isStaffGangSheetShow(show)) {
         return false;
       }
@@ -287,7 +330,7 @@ export function AddToShowModal({
     return Boolean(show && isStaffGangSheetShow(show));
   }, [selectedShowId, shows]);
   const splitPlan =
-    selectedShowIsStaff || !selectedCapacity
+    !selectedCapacity
       ? null
       : planAllocationSplit({
           requestedQuantity: remainingTotalQuantity,
@@ -362,9 +405,16 @@ export function AddToShowModal({
    */
   const canConfirmFullFitDirectly = Boolean(
     selectedShowId &&
-      allocatableShows.some((show) => show.id === selectedShowId) &&
       !needsDecision &&
-      !isPickerOpen,
+      !isPickerOpen &&
+      (allocatableShows.some((show) => show.id === selectedShowId) ||
+        (isStaffDestination &&
+          isRequestEligibleForStaff &&
+          openStaffGangSheet?.id === selectedShowId) ||
+        (Boolean(fixedShowId) &&
+          selectedShowIsStaff &&
+          isRequestEligibleForStaff &&
+          selectedShowId === fixedShowId)),
   );
 
   const handleConfirm = useCallback(async () => {
@@ -469,11 +519,23 @@ export function AddToShowModal({
       <Modal aria-labelledby="add-to-show-title" className="modal-panel modal-panel-lg" role="dialog">
         <ModalHeader>
           <div>
-            <p className="eyebrow">{fixedShowId ? "Add to show" : "Add to show / gang sheet"}</p>
+            <p className="eyebrow">
+              {fixedShowId
+                ? "Add to show"
+                : destinationMode === "staff_gang_sheet"
+                  ? "Add to Internal Gangsheet"
+                  : destinationMode === "shows"
+                    ? "Add to show"
+                    : "Add to show / gang sheet"}
+            </p>
             <h3 id="add-to-show-title">
               {fixedShowId
                 ? `Add "${printRequest.name}" to a show`
-                : `Add "${printRequest.name}" to a show or Staff Gang Sheet`}
+                : destinationMode === "staff_gang_sheet"
+                  ? `Add "${printRequest.name}" to Internal Gangsheet`
+                  : destinationMode === "shows"
+                    ? `Add "${printRequest.name}" to a show`
+                    : `Add "${printRequest.name}" to a show or Internal Gangsheet`}
             </h3>
           </div>
           <button
@@ -549,7 +611,7 @@ export function AddToShowModal({
             </p>
           ) : (
             <>
-              {!fixedShowId ? (
+              {showDestinationTabs ? (
                 <div className="print-requests-tab-bar" role="tablist" aria-label="Destination">
                   <button
                     aria-selected={destinationTab === "shows"}
@@ -576,7 +638,7 @@ export function AddToShowModal({
                     role="tab"
                     type="button"
                   >
-                    Staff Gang Sheet
+                    Internal Gangsheet
                   </button>
                 </div>
               ) : null}
@@ -584,19 +646,77 @@ export function AddToShowModal({
               {isStaffDestination ? (
                 !isRequestEligibleForStaff ? (
                   <p className="print-requests-modal-hint">
-                    Staff Gang Sheets accept studio_internal print requests only.
+                    Only Internal print requests can be added to Internal Gangsheets.
                   </p>
-                ) : !openStaffGangSheet ? (
-                  <p className="print-requests-modal-hint">No open Staff Gang Sheet</p>
+                ) : openStaffGangSheets.length === 0 ? (
+                  <p className="print-requests-modal-hint">No open Internal Gangsheet</p>
                 ) : (
-                  <div className="print-requests-modal-hint">
-                    <p>
-                      <strong>
-                        {formatStaffGangSheetTitle(openStaffGangSheet.staffGangSheetCycleNumber ?? 1)}
-                      </strong>
-                    </p>
-                    <p>Unlimited capacity · no calendar or split required.</p>
-                  </div>
+                  <>
+                    {openStaffGangSheets.length > 1 ? (
+                      <Select
+                        label="Internal Gangsheet"
+                        name="staffGangSheetId"
+                        onChange={(event) => {
+                          setSelectedShowId(event.target.value);
+                          setLegs([]);
+                        }}
+                        options={openStaffGangSheetOptions}
+                        value={selectedShowId}
+                      />
+                    ) : (
+                      <div className="print-requests-modal-hint">
+                        <p>
+                          <strong>
+                            {formatStaffGangSheetTitle(openStaffGangSheet?.staffGangSheetCycleNumber ?? 1)}
+                          </strong>
+                        </p>
+                      </div>
+                    )}
+                    {selectedCapacity ? (
+                      <div
+                        className={`show-capacity-card print-requests-modal-capacity${
+                          selectedCapacity.isOverCapacity
+                            ? " is-over-capacity"
+                            : selectedCapacity.isFull
+                              ? " is-full"
+                              : ""
+                        }`}
+                      >
+                        <div className="show-capacity-bar-track">
+                          <div
+                            className={`show-capacity-bar-fill${
+                              getCapacityFillLevel(getShowCapacityPercent(selectedCapacity))
+                                ? ` is-${getCapacityFillLevel(getShowCapacityPercent(selectedCapacity))}`
+                                : ""
+                            }`}
+                            style={{
+                              width: `${Math.min(100, getShowCapacityPercent(selectedCapacity) ?? 0)}%`,
+                            }}
+                          />
+                        </div>
+                        <div className="show-capacity-summary">
+                          <span>{formatShowCapacitySlotLabel(selectedCapacity)}</span>
+                        </div>
+                      </div>
+                    ) : null}
+                    {!isBusy && needsDecision ? (
+                      <div className="show-allocation-decision">
+                        <p className="show-allocation-decision-message">
+                          {isSelectedShowFull
+                            ? SHOW_QUEUE_FULL_MESSAGE
+                            : formatSplitNeededWarning({
+                                fittingQuantity: splitPlan?.fittingQuantity ?? 0,
+                                totalQuantity: remainingTotalQuantity,
+                              })}
+                        </p>
+                        {isSelectedShowFull ? null : (
+                          <Button onClick={() => setIsPickerOpen(true)} type="button" variant="secondary">
+                            Choose designs for this sheet
+                          </Button>
+                        )}
+                      </div>
+                    ) : null}
+                  </>
                 )
               ) : allocatableShows.filter((show) => !isStaffGangSheetShow(show)).length === 0 &&
                 calendarShows.length === 0 ? (
@@ -670,7 +790,11 @@ export function AddToShowModal({
             Cancel
           </Button>
           <Button disabled={isConfirmDisabled} onClick={() => void handleConfirm()} type="button">
-            {isBusy ? "Adding..." : "Add to show"}
+            {isBusy
+              ? "Adding..."
+              : isStaffDestination || selectedShowIsStaff
+                ? "Add to Internal Gangsheet"
+                : "Add to show"}
           </Button>
         </ModalFooter>
       </Modal>

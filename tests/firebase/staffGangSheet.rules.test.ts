@@ -94,7 +94,7 @@ describe("Staff Gang Sheet firestore rules", () => {
     await assertSucceeds(setDoc(doc(owner, "upcomingShows", "sgs-1"), staffGangSheet()));
   });
 
-  it("denies Staff Gang Sheet create that includes assignee, whatnotShowId, or maxTotalQuantity", async () => {
+  it("denies Staff Gang Sheet create that includes assignee or whatnotShowId", async () => {
     const owner = environment.authenticatedContext(OWNER_UID).firestore();
     await assertFails(
       setDoc(
@@ -108,20 +108,18 @@ describe("Staff Gang Sheet firestore rules", () => {
         staffGangSheet({ whatnotShowId: "fake" }),
       ),
     );
-    await assertFails(
-      setDoc(
-        doc(owner, "upcomingShows", "sgs-bad-cap"),
-        staffGangSheet({ maxTotalQuantity: 100 }),
-      ),
-    );
   });
 
-  it("denies helper create of Staff Gang Sheet", async () => {
+  it("allows helper to create shared Staff Gang Sheet", async () => {
     const helper = environment.authenticatedContext(HELPER_A).firestore();
-    await assertFails(
+    await assertSucceeds(
       setDoc(
         doc(helper, "upcomingShows", "sgs-helper-create"),
-        staffGangSheet({ updatedBy: HELPER_A, createdBy: HELPER_A }),
+        staffGangSheet({
+          maxTotalQuantity: 200,
+          updatedBy: HELPER_A,
+          createdBy: HELPER_A,
+        }),
       ),
     );
   });

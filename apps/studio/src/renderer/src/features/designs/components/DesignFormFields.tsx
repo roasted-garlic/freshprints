@@ -48,6 +48,8 @@ export function DesignFormFields({
 
   function handleHalftoneChange(checked: boolean) {
     onChange("tagsInput", formatTagsInput(syncHalftoneTagInList(parsedTags, checked)));
+    onChange("artworkBackgroundPreset", checked ? "lightBlack" : "grey");
+    onChange("artworkBackgroundCustomHex", "");
   }
 
   return (

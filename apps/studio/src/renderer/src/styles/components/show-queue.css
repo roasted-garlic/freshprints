@@ -798,7 +798,7 @@
   font-size: var(--font-size-sm);
   line-height: 1.45;
   margin: 0;
-  padding: 0 var(--space-4) var(--space-2);
+  padding: var(--space-3) var(--space-4) var(--space-2);
 }
 
 @media (max-width: 720px) {
@@ -845,6 +845,24 @@
 
 .gang-sheet-preview-row .print-requests-modal-hint {
   margin: 0.15rem 0 0;
+}
+
+.create-internal-gang-sheet-modal {
+  max-width: min(42rem, calc(100vw - 2 * var(--space-6)));
+  width: min(42rem, calc(100vw - 2 * var(--space-6)));
+}
+
+.create-internal-gang-sheet-modal .modal-header,
+.create-internal-gang-sheet-modal .modal-body,
+.create-internal-gang-sheet-modal .modal-footer {
+  padding-left: var(--space-6);
+  padding-right: var(--space-6);
+}
+
+.create-internal-gang-sheet-modal .print-requests-modal-form,
+.create-internal-gang-sheet-modal .print-requests-modal-hint {
+  max-width: none;
+  width: 100%;
 }
 
 .export-show-progress {

@@ -17,7 +17,11 @@ test("complete callable enforces shared active uniqueness and idempotent open su
   assert.match(source, /STAFF_GANG_SHEET_ACTIVE_PRODUCTION_STATUSES/);
   assert.match(source, /loadActiveStaffGangSheetsExcluding/);
   assert.match(source, /alreadyCompleted: true/);
-  assert.match(source, /multiple open Staff Gang Sheets exist/);
+  assert.match(source, /multiple open Internal Gang Sheets exist/);
+  assert.match(
+    source,
+    /Add at least one print request to this Internal Gangsheet before marking it complete/,
+  );
 });
 
 test("complete callable allows any staff caller (no assignee gate)", () => {

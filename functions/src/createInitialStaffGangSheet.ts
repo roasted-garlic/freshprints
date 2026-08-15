@@ -1,17 +1,18 @@
 import { FieldValue } from "firebase-admin/firestore";
-import { onCall } from "firebase-functions/v2/https";
+import { HttpsError, onCall } from "firebase-functions/v2/https";
 
 import {
+  DEFAULT_INTERNAL_GANG_SHEET_MAX_TOTAL_QUANTITY,
   formatStaffGangSheetTitle,
-  STAFF_GANG_SHEET_ACTIVE_PRODUCTION_STATUSES,
+  isStaffGangSheetActiveProductionStatus,
+  resolveNextStaffGangSheetCycleNumber,
 } from "../../packages/shared/src/utils/staffGangSheet";
 
-import { loadCallerProfile } from "./lib/caller";
+import { loadCallerProfile, assertStaffCaller } from "./lib/caller";
 import { adminDb } from "./lib/admin";
 import {
   failedPrecondition,
   internal,
-  permissionDenied,
   unauthenticated,
 } from "./lib/errors";
 
@@ -21,18 +22,19 @@ export interface CreateInitialStaffGangSheetResponse {
 }
 
 function mapHttpsError(error: unknown): never {
-  if (error instanceof Error && "code" in error) {
+  if (error instanceof HttpsError) {
     throw error;
   }
   if (error instanceof Error) {
     throw internal(error.message);
   }
-  throw internal("Unable to create Staff Gang Sheet right now.");
+  throw internal("Unable to create Internal Gang Sheet right now.");
 }
 
 /**
- * Owner/admin: create the initial shared Staff Gang Sheet (#1 by default) with
- * transactional uniqueness across open/full/printing Staff sheets.
+ * Staff: create a shared Internal Gang Sheet when none is active.
+ * Cycle number is always max(existing)+1 (never reuses #1 after history exists).
+ * Uniqueness: at most one open/full/printing Staff sheet.
  */
 export const createInitialStaffGangSheet = onCall(
   async (request): Promise<CreateInitialStaffGangSheetResponse> => {
@@ -42,36 +44,28 @@ export const createInitialStaffGangSheet = onCall(
 
     try {
       const caller = await loadCallerProfile(request.auth.uid);
-      if (caller.role !== "owner" && caller.role !== "admin") {
-        throw permissionDenied("Only owners and admins can create Staff Gang Sheets.");
-      }
-
-      const cycleNumber =
-        typeof request.data?.staffGangSheetCycleNumber === "number"
-          ? request.data.staffGangSheetCycleNumber
-          : 1;
-      if (!Number.isInteger(cycleNumber) || cycleNumber < 1) {
-        throw failedPrecondition("Staff Gang Sheet cycle number must be a positive integer.");
-      }
+      assertStaffCaller(caller);
 
       return await adminDb.runTransaction(async (transaction) => {
-        for (const productionStatus of STAFF_GANG_SHEET_ACTIVE_PRODUCTION_STATUSES) {
-          const activeQuery = adminDb
-            .collection("upcomingShows")
-            .where("source", "==", "staff_gang_sheet")
-            .where("productionStatus", "==", productionStatus);
-          const activeSnap = await transaction.get(activeQuery);
-          if (!activeSnap.empty) {
-            const existing = activeSnap.docs[0]!;
-            const existingCycle =
-              typeof existing.data().staffGangSheetCycleNumber === "number"
-                ? existing.data().staffGangSheetCycleNumber
-                : 1;
-            throw failedPrecondition(
-              `An active Staff Gang Sheet already exists (${formatStaffGangSheetTitle(existingCycle)}). Complete it before creating another.`,
-            );
-          }
+        const staffQuery = adminDb.collection("upcomingShows").where("source", "==", "staff_gang_sheet");
+        const staffSnap = await transaction.get(staffQuery);
+
+        const activeExisting = staffSnap.docs.find((docSnap) =>
+          isStaffGangSheetActiveProductionStatus(docSnap.data().productionStatus),
+        );
+        if (activeExisting) {
+          const existingCycle =
+            typeof activeExisting.data().staffGangSheetCycleNumber === "number"
+              ? activeExisting.data().staffGangSheetCycleNumber
+              : 1;
+          throw failedPrecondition(
+            `An active Internal Gang Sheet already exists (${formatStaffGangSheetTitle(existingCycle)}). Complete it before creating another.`,
+          );
         }
+
+        const cycleNumber = resolveNextStaffGangSheetCycleNumber(
+          staffSnap.docs.map((docSnap) => docSnap.data().staffGangSheetCycleNumber),
+        );
 
         const showRef = adminDb.collection("upcomingShows").doc();
         const now = FieldValue.serverTimestamp();
@@ -83,6 +77,7 @@ export const createInitialStaffGangSheet = onCall(
           isArchived: false,
           productionStatus: "open",
           maxQuantityOverridden: false,
+          maxTotalQuantity: DEFAULT_INTERNAL_GANG_SHEET_MAX_TOTAL_QUANTITY,
           allocatedQuantity: 0,
           accumulatedPrintMs: 0,
           staffGangSheetCycleNumber: cycleNumber,

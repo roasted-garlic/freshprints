@@ -126,6 +126,7 @@ export {
 } from "./purgeExpiredAssistedCreationProofs";
 export { onPrintRequestItemCreated } from "./onPrintRequestItemCreated";
 export { onShowAllocationCreated } from "./onShowAllocationCreated";
+export { syncPrintRequestQueueTab } from "./syncPrintRequestQueueTab";
 export {
   onPrintRequestItemQueueTabInputWritten,
   onShowAllocationQueueTabInputWritten,

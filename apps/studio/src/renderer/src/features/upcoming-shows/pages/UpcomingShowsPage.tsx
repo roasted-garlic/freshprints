@@ -19,6 +19,7 @@ import { useShellHeaderConfig } from "../../../shared/hooks/useShellHeaderConfig
 import { desktopAppService } from "../../../shared/services/desktopAppService";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
+import { clearPrintRequestsPageCache } from "../../print-requests/services/printRequestsPageReadCache";
 import { upcomingShowService } from "../services/upcomingShowService";
 import { UpcomingShowDeletionDialog } from "../components/UpcomingShowDeletionDialog";
 import { useUpcomingShows } from "../hooks/useUpcomingShows";
@@ -73,6 +74,8 @@ import { canRemoveRequestFromShow } from "@fresh-prints/shared/utils/showQueueEd
 import { isStaffGangSheetShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
 import {
   canAllocateOriginToShowSource,
+  formatStaffGangSheetTitle,
+  resolveNextStaffGangSheetCycleNumber,
 } from "@fresh-prints/shared/utils/staffGangSheet";
 import {
   canEnableAddRequestAction,
@@ -96,7 +99,7 @@ import { getShowAllocationStatusBadgeVariant } from "../utils/showAllocationDisp
 import {
   UPCOMING_SHOW_ID_QUERY_PARAM,
   UPCOMING_SHOW_REQUEST_ID_QUERY_PARAM,
-  getUpcomingShowsPath,
+  getShowQueueSurfacePath,
 } from "../constants/upcomingShowRoutes";
 
 interface CreateShowFormState {
@@ -122,10 +125,22 @@ function isCurrentStaffGangSheetProductionStatus(status: string): boolean {
 }
 
 function formatWriteErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Unable to complete the requested write.";
+  if (error instanceof Error && error.message.trim()) {
+    const message = error.message.trim();
+    if (/^internal$/i.test(message)) {
+      return "Server error while saving. If you just purged DEV data, reload Studio and try again — create will fall back if Functions are not redeployed yet.";
+    }
+    return message;
+  }
+  return "Unable to complete the requested write.";
 }
 
-export function UpcomingShowsPage() {
+interface UpcomingShowsPageProps {
+  /** Dedicated Show Queue vs Internal Sheets routes — no surface tabs. */
+  lockedSurface?: ShowQueueSurface;
+}
+
+export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPageProps) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
@@ -179,10 +194,13 @@ export function UpcomingShowsPage() {
 
   const [confirmingRemoveRequestId, setConfirmingRemoveRequestId] = useState<string | null>(null);
   const [activeScheduleTab, setActiveScheduleTab] = useState<ShowScheduleTab>("upcoming");
-  const [queueSurface, setQueueSurface] = useState<ShowQueueSurface>("shows");
+  const queueSurface = lockedSurface;
   const [staffListTab, setStaffListTab] = useState<StaffGangSheetListTab>("current");
   const [isCreateStaffLaneModalOpen, setIsCreateStaffLaneModalOpen] = useState(false);
   const [isCompletingStaffGangSheet, setIsCompletingStaffGangSheet] = useState(false);
+  const [completeConfirmKind, setCompleteConfirmKind] = useState<"staff_complete" | "show_finished" | null>(
+    null,
+  );
   const hasHydratedFromQueryRef = useRef(false);
 
   const selectedShowIdParam = searchParams.get(UPCOMING_SHOW_ID_QUERY_PARAM);
@@ -195,14 +213,14 @@ export function UpcomingShowsPage() {
   const updateSelectedShowPath = useCallback(
     (showId: string | null, requestId?: string | null) => {
       navigate(
-        getUpcomingShowsPath({
+        getShowQueueSurfacePath(lockedSurface, {
           showId: showId ?? undefined,
           requestId: requestId === undefined ? highlightedRequestIdParam ?? undefined : requestId ?? undefined,
         }),
         { replace: true },
       );
     },
-    [highlightedRequestIdParam, navigate],
+    [highlightedRequestIdParam, lockedSurface, navigate],
   );
 
   const openCreateModal = useCallback(() => {
@@ -266,6 +284,25 @@ export function UpcomingShowsPage() {
 
   const effectiveWhatnotBaseUrl = showQueueSettings.settings.whatnotShowBaseUrl ?? DEFAULT_WHATNOT_SHOW_BASE_URL;
 
+  const staffSurfaceShows = useMemo(
+    () => shows.filter((show) => isStaffGangSheetShow(show)),
+    [shows],
+  );
+  const hasActiveStaffGangSheet = useMemo(
+    () =>
+      staffSurfaceShows.some((show) => isCurrentStaffGangSheetProductionStatus(show.productionStatus)),
+    [staffSurfaceShows],
+  );
+  const nextStaffGangSheetCycleNumber = useMemo(
+    () =>
+      resolveNextStaffGangSheetCycleNumber(
+        staffSurfaceShows.map((show) => show.staffGangSheetCycleNumber),
+      ),
+    [staffSurfaceShows],
+  );
+  const canCreateStaffGangSheet =
+    permissionService.canCreateStaffGangSheetLane(user) && !hasActiveStaffGangSheet;
+
   const { openImportWindow: openWhatnotImportWindowRequest } = whatnotImport;
   const openWhatnotImportWindow = useCallback(() => {
     setActionError(null);
@@ -275,7 +312,7 @@ export function UpcomingShowsPage() {
   useShellHeaderConfig(
     useMemo(
       () => ({
-        title: "Show Queue",
+        title: queueSurface === "staff_gang_sheets" ? "Internal Sheets" : "Show Queue",
         actions:
           queueSurface === "shows" && permissionService.canManageUpcomingShows(user)
             ? [
@@ -306,10 +343,10 @@ export function UpcomingShowsPage() {
                 label: "Add show",
                 onClick: openCreateModal,
               }
-            : queueSurface === "staff_gang_sheets" && permissionService.canCreateStaffGangSheetLane(user)
+            : queueSurface === "staff_gang_sheets" && canCreateStaffGangSheet
               ? {
                   icon: <Plus aria-hidden="true" size={16} strokeWidth={2} />,
-                  label: "Create Staff Gang Sheet",
+                  label: "Create Internal Gang Sheet",
                   onClick: () => {
                     setActionError(null);
                     setIsCreateStaffLaneModalOpen(true);
@@ -317,7 +354,14 @@ export function UpcomingShowsPage() {
                 }
               : null,
       }),
-      [openCreateModal, openWhatnotImportWindow, openSettingsModal, queueSurface, user],
+      [
+        canCreateStaffGangSheet,
+        openCreateModal,
+        openWhatnotImportWindow,
+        openSettingsModal,
+        queueSurface,
+        user,
+      ],
     ),
   );
 
@@ -371,12 +415,22 @@ export function UpcomingShowsPage() {
         });
 
         if (surfaceDecision.action === "set_surface") {
-          setQueueSurface(surfaceDecision.surface);
+          // Dedicated routes own each surface — send deep links to the matching page.
+          if (surfaceDecision.surface !== lockedSurface) {
+            navigate(
+              getShowQueueSurfacePath(surfaceDecision.surface, {
+                showId: selectedShowIdParam ?? undefined,
+                requestId: highlightedRequestIdParam ?? undefined,
+              }),
+              { replace: true },
+            );
+            return;
+          }
           return;
         }
 
         if (surfaceDecision.action === "clear_incompatible_query") {
-          // Keep the user's explicit Shows | Staff Gang Sheets choice; drop the stale URL show.
+          // Keep the user's explicit Shows | Internal Gang Sheets choice; drop the stale URL show.
           setSelectedShowId(null);
           updateSelectedShowPath(null);
           hasHydratedFromQueryRef.current = true;
@@ -416,7 +470,7 @@ export function UpcomingShowsPage() {
       return;
     }
 
-    // Only auto-switch Upcoming/Past for Whatnot Shows — never rewrite Staff Gang Sheets surface.
+    // Only auto-switch Upcoming/Past for Whatnot Shows — never rewrite Internal Gang Sheets surface.
     if (queueSurface === "shows") {
       const reclassifiedTab = resolveScheduleTabForStillExistingSelection(
         shows,
@@ -448,6 +502,8 @@ export function UpcomingShowsPage() {
     activeScheduleTab,
     highlightedRequestIdParam,
     isLoading,
+    lockedSurface,
+    navigate,
     queueSurface,
     selectedShowId,
     selectedShowIdParam,
@@ -481,6 +537,18 @@ export function UpcomingShowsPage() {
       updateSelectedShowPath(nextSelectedShowId, null);
     },
     [showsByScheduleTab, updateSelectedShowPath],
+  );
+
+  const handleStaffListTabChange = useCallback(
+    (tab: StaffGangSheetListTab) => {
+      const nextSelectedShowId = resolveVisibleShowSelection(staffShowsByListTab[tab], null);
+
+      setStaffListTab(tab);
+      setSelectedShowId(nextSelectedShowId);
+      // Keep the URL show on the same list tab so hydration cannot snap Current ↔ History.
+      updateSelectedShowPath(nextSelectedShowId, null);
+    },
+    [staffShowsByListTab, updateSelectedShowPath],
   );
 
   const handleSelectShow = useCallback(
@@ -958,9 +1026,13 @@ export function UpcomingShowsPage() {
       return options;
     }
     // Preserve placeholder (value ""); filter eligible studio_internal only — no isInternal inference.
+    // Also drop anything already attached to this sheet (defensive; builder already excludes).
     return options.filter((option) => {
       if (option.value === "") {
         return true;
+      }
+      if (printRequestIdsAlreadyOnSelectedShow.has(option.value)) {
+        return false;
       }
       const request = requests.find((candidate) => candidate.id === option.value);
       if (!request) {
@@ -969,6 +1041,7 @@ export function UpcomingShowsPage() {
       return canAllocateOriginToShowSource({
         source: selectedShow.source,
         requestOrigin: request.requestOrigin,
+        isInternal: request.isInternal,
       });
     });
   }, [
@@ -985,7 +1058,7 @@ export function UpcomingShowsPage() {
     }
     const eligibleCount = requestOptions.filter((option) => option.value !== "").length;
     return eligibleCount === 0
-      ? "No eligible internal print requests. Staff Gang Sheets accept studio_internal requests only."
+      ? "No eligible Internal print requests. Only Internal requests can be added to Internal Gangsheets."
       : null;
   }, [requestOptions, selectedShow]);
 
@@ -998,6 +1071,8 @@ export function UpcomingShowsPage() {
       setActionError(null);
       await upcomingShowService.removeShowAllocationsForRequest(user, selectedShow.id, printRequestId);
       setConfirmingRemoveRequestId(null);
+      // Print Requests list is query/`queueTab`-cached; clear so Queued→Working is fresh on return.
+      clearPrintRequestsPageCache();
       await Promise.all([reloadUpcomingShows(), reloadAllocations()]);
     } catch (error) {
       setActionError(formatWriteErrorMessage(error));
@@ -1018,38 +1093,12 @@ export function UpcomingShowsPage() {
       <div className="print-requests-layout upcoming-shows-layout">
         <aside className="print-requests-rail">
           <div className="print-requests-tab-bar">
-            {(
-              [
-                { id: "shows" as const, label: "Shows" },
-                { id: "staff_gang_sheets" as const, label: "Staff Gang Sheets" },
-              ] as const
-            ).map((surface) => (
-              <button
-                className={`print-requests-tab-button${queueSurface === surface.id ? " is-active" : ""}`}
-                key={surface.id}
-                onClick={() => {
-                  setQueueSurface(surface.id);
-                  setSelectedShowId(null);
-                  setActionError(null);
-                  // Clear URL selection so a Whatnot show id cannot force the surface back.
-                  updateSelectedShowPath(null);
-                }}
-                type="button"
-              >
-                {surface.label}
-              </button>
-            ))}
-          </div>
-          <div className="print-requests-tab-bar">
             {queueSurface === "staff_gang_sheets"
               ? (["current", "history"] as const).map((tab) => (
                   <button
                     className={`print-requests-tab-button${staffListTab === tab ? " is-active" : ""}`}
                     key={tab}
-                    onClick={() => {
-                      setStaffListTab(tab);
-                      setSelectedShowId(null);
-                    }}
+                    onClick={() => handleStaffListTabChange(tab)}
                     type="button"
                   >
                     {tab === "current" ? "Current" : "History"} ({staffShowsByListTab[tab].length})
@@ -1075,10 +1124,10 @@ export function UpcomingShowsPage() {
               <EmptyState
                 message={
                   queueSurface === "staff_gang_sheets"
-                    ? "Create a shared Staff Gang Sheet to start internal production."
+                    ? "Create a shared Internal Gang Sheet to start internal production."
                     : "Add the first Whatnot show to start tracking the schedule and production."
                 }
-                title={queueSurface === "staff_gang_sheets" ? "No Staff Gang Sheets yet" : "No shows yet"}
+                title={queueSurface === "staff_gang_sheets" ? "No Internal Gang Sheets yet" : "No shows yet"}
               />
             ) : (
               visibleShows.map((show) => {
@@ -1117,7 +1166,7 @@ export function UpcomingShowsPage() {
                       {queueSurface === "staff_gang_sheets"
                         ? isStaffGangSheetShow(show)
                           ? `Shared · Cycle ${show.staffGangSheetCycleNumber}`
-                          : "Staff Gang Sheet"
+                          : "Internal Gang Sheet"
                         : formatUpcomingShowTimestampLabel(show.scheduledStartAt)}
                     </p>
                   </button>
@@ -1137,11 +1186,11 @@ export function UpcomingShowsPage() {
               <EmptyState
                 message={
                   queueSurface === "staff_gang_sheets"
-                    ? "Select a Staff Gang Sheet from the list, or create one if none exist yet."
+                    ? "Select an Internal Gang Sheet from the list, or create one if none exist yet."
                     : "Select a show from the queue or add a new one."
                 }
                 title={
-                  queueSurface === "staff_gang_sheets" ? "No Staff Gang Sheet selected" : "No show selected"
+                  queueSurface === "staff_gang_sheets" ? "No Internal Gang Sheet selected" : "No show selected"
                 }
               />
             </Card>
@@ -1150,7 +1199,7 @@ export function UpcomingShowsPage() {
               <Card className="print-requests-card print-requests-detail-card">
                 <div className="print-requests-detail-header show-detail-header">
                   <div className="print-requests-detail-copy">
-                    <p className="eyebrow">{isSelectedStaffGangSheet ? "Staff Gang Sheet" : "Show detail"}</p>
+                    <p className="eyebrow">{isSelectedStaffGangSheet ? "Internal Gang Sheet" : "Show detail"}</p>
                     <h2>{formatUpcomingShowTitle(selectedShow)}</h2>
                     {isSelectedStaffGangSheet ? (
                       <p className="print-requests-detail-timestamps">
@@ -1168,23 +1217,23 @@ export function UpcomingShowsPage() {
                     ? canManageSelectedStaffGangSheet
                     : permissionService.canManageUpcomingShows(user)) ? (
                     <div className="print-requests-detail-actions show-detail-header-actions">
-                      <Button
-                        className="button-leading-icon"
-                        disabled={!canShowAddRequestAction}
-                        onClick={openAddRequestModal}
-                        size="sm"
-                        title={
-                          selectedShowAllocationBlockReason
-                            ? formatShowAllocationBlockedMessage(selectedShowAllocationBlockReason)
-                            : isSelectedStaffGangSheet && !canManageSelectedStaffGangSheet
-                              ? "You do not have permission to add requests to this Staff Gang Sheet."
+                      {!isSelectedStaffGangSheet ? (
+                        <Button
+                          className="button-leading-icon"
+                          disabled={!canShowAddRequestAction}
+                          onClick={openAddRequestModal}
+                          size="sm"
+                          title={
+                            selectedShowAllocationBlockReason
+                              ? formatShowAllocationBlockedMessage(selectedShowAllocationBlockReason)
                               : undefined
-                        }
-                        variant="secondary"
-                      >
-                        <Plus aria-hidden="true" size={16} strokeWidth={2} />
-                        Add Request
-                      </Button>
+                          }
+                          variant="secondary"
+                        >
+                          <Plus aria-hidden="true" size={16} strokeWidth={2} />
+                          Add Request
+                        </Button>
+                      ) : null}
                       <div className="export-menu-shell" ref={exportMenuRef}>
                         <Button
                           aria-controls="export-menu"
@@ -1261,37 +1310,14 @@ export function UpcomingShowsPage() {
                       canManageSelectedStaffGangSheet &&
                       isCurrentStaffGangSheetProductionStatus(selectedShow.productionStatus) ? (
                         <Button
-                          disabled={isCompletingStaffGangSheet}
-                          onClick={() => {
-                            if (!user || !selectedShow) {
-                              return;
-                            }
-                            void (async () => {
-                              try {
-                                setActionError(null);
-                                setIsCompletingStaffGangSheet(true);
-                                const result = await upcomingShowService.completeStaffGangSheetAndOpenNext(
-                                  user,
-                                  selectedShow.id,
-                                );
-                                setSuccessMessage(
-                                  result.alreadyCompleted
-                                    ? `Already completed — opened Staff Gang Sheet #${result.nextCycleNumber}.`
-                                    : `Completed. Opened Staff Gang Sheet #${result.nextCycleNumber}.`,
-                                );
-                                setSuccessAlertSeed((current) => current + 1);
-                                await reloadUpcomingShows();
-                                setSelectedShowId(result.nextShowId);
-                                setStaffListTab("current");
-                                updateSelectedShowPath(result.nextShowId, null);
-                              } catch (error) {
-                                setActionError(formatWriteErrorMessage(error));
-                              } finally {
-                                setIsCompletingStaffGangSheet(false);
-                              }
-                            })();
-                          }}
+                          disabled={isCompletingStaffGangSheet || !hasActiveAllocationsForSelectedShow}
+                          onClick={() => setCompleteConfirmKind("staff_complete")}
                           size="sm"
+                          title={
+                            hasActiveAllocationsForSelectedShow
+                              ? undefined
+                              : "Add at least one print request before marking complete."
+                          }
                           variant="primary"
                         >
                           Mark Complete
@@ -1416,9 +1442,16 @@ export function UpcomingShowsPage() {
                         ) : null}
                         {productionTimer.canMarkFinished ? (
                           <Button
-                            disabled={productionTimer.isActionPending}
-                            onClick={() => void productionTimer.markFinished()}
+                            disabled={
+                              productionTimer.isActionPending || !hasActiveAllocationsForSelectedShow
+                            }
+                            onClick={() => setCompleteConfirmKind("show_finished")}
                             size="sm"
+                            title={
+                              hasActiveAllocationsForSelectedShow
+                                ? undefined
+                                : "Add at least one print request before marking finished."
+                            }
                             variant="secondary"
                           >
                             Mark finished
@@ -1507,7 +1540,6 @@ export function UpcomingShowsPage() {
                 ) : null}
               </Card>
 
-              {!isSelectedStaffGangSheet ? (
               <Card
                 className={`print-requests-card show-capacity-card${
                   capacity?.isOverCapacity ? " is-over-capacity" : capacity?.isFull ? " is-full" : ""
@@ -1516,10 +1548,17 @@ export function UpcomingShowsPage() {
                 <div className="print-requests-section-header">
                   <p className="eyebrow">Capacity</p>
                   <Button
-                    disabled={isSelectedShowPast || !permissionService.canManageUpcomingShows(user)}
+                    disabled={
+                      (!isSelectedStaffGangSheet && isSelectedShowPast) ||
+                      !permissionService.canManageUpcomingShows(user)
+                    }
                     onClick={openMaxQuantityModal}
                     size="sm"
-                    title={isSelectedShowPast ? PAST_SHOW_READ_ONLY_MESSAGE : undefined}
+                    title={
+                      !isSelectedStaffGangSheet && isSelectedShowPast
+                        ? PAST_SHOW_READ_ONLY_MESSAGE
+                        : undefined
+                    }
                     variant="secondary"
                   >
                     Set max quantity
@@ -1551,26 +1590,29 @@ export function UpcomingShowsPage() {
                   </>
                 ) : null}
               </Card>
-              ) : null}
 
               <Card className="print-requests-card">
                 <div className="print-requests-section-header">
                   <p className="eyebrow">Attached print requests</p>
-                  {!isSelectedStaffGangSheet ? (
-                    <Button
-                      disabled={!canShowAddRequestAction}
-                      onClick={openAddRequestModal}
-                      size="sm"
-                      title={
-                        selectedShowAllocationBlockReason
-                          ? formatShowAllocationBlockedMessage(selectedShowAllocationBlockReason)
+                  <Button
+                    className={isSelectedStaffGangSheet ? "button-leading-icon" : undefined}
+                    disabled={!canShowAddRequestAction}
+                    onClick={openAddRequestModal}
+                    size="sm"
+                    title={
+                      selectedShowAllocationBlockReason
+                        ? formatShowAllocationBlockedMessage(selectedShowAllocationBlockReason)
+                        : isSelectedStaffGangSheet && !canManageSelectedStaffGangSheet
+                          ? "You do not have permission to add requests to this Internal Gang Sheet."
                           : undefined
-                      }
-                      variant="secondary"
-                    >
-                      Add Request
-                    </Button>
-                  ) : null}
+                    }
+                    variant="secondary"
+                  >
+                    {isSelectedStaffGangSheet ? (
+                      <Plus aria-hidden="true" size={16} strokeWidth={2} />
+                    ) : null}
+                    Add Request
+                  </Button>
                 </div>
 
                 {requestGroups.length === 0 ? (
@@ -1757,16 +1799,16 @@ export function UpcomingShowsPage() {
         <div className="modal-overlay modal-overlay-blur">
           <Modal
             aria-labelledby="create-staff-gang-sheet-title"
-            className="modal-panel modal-panel-sm"
+            className="modal-panel modal-panel-lg create-internal-gang-sheet-modal"
             role="dialog"
           >
             <ModalHeader>
               <div>
-                <p className="eyebrow">Staff Gang Sheets</p>
-                <h3 id="create-staff-gang-sheet-title">Create Staff Gang Sheet</h3>
+                <p className="eyebrow">Internal Gang Sheets</p>
+                <h3 id="create-staff-gang-sheet-title">Create Internal Gang Sheet</h3>
               </div>
               <button
-                aria-label="Close create Staff Gang Sheet"
+                aria-label="Close Create Internal Gang Sheet"
                 className="icon-button icon-button-md icon-button-ghost"
                 onClick={() => {
                   setIsCreateStaffLaneModalOpen(false);
@@ -1789,12 +1831,13 @@ export function UpcomingShowsPage() {
                   void (async () => {
                     try {
                       setActionError(null);
-                      const created = await upcomingShowService.createStaffGangSheetLane(user, {});
+                      const created = await upcomingShowService.createStaffGangSheetLane(user, {
+                        staffGangSheetCycleNumber: nextStaffGangSheetCycleNumber,
+                      });
                       setIsCreateStaffLaneModalOpen(false);
                       setSuccessMessage(`Created ${formatUpcomingShowTitle(created)}.`);
                       setSuccessAlertSeed((current) => current + 1);
                       await reloadUpcomingShows();
-                      setQueueSurface("staff_gang_sheets");
                       setStaffListTab("current");
                       setSelectedShowId(created.id);
                       updateSelectedShowPath(created.id, null);
@@ -1805,8 +1848,9 @@ export function UpcomingShowsPage() {
                 }}
               >
                 <p className="print-requests-modal-hint">
-                  Creates shared Staff Gang Sheet #1 with unlimited queue capacity for Studio staff.
-                  No Whatnot information or capacity limit is required.
+                  Creates shared {formatStaffGangSheetTitle(nextStaffGangSheetCycleNumber)} with
+                  capacity 200 (editable) for Studio staff. No Whatnot information is required. After
+                  this sheet is open, use Mark Complete to open the next cycle automatically.
                 </p>
                 {actionError ? (
                   <p className="auth-message auth-message-error" role="alert">
@@ -1826,7 +1870,7 @@ export function UpcomingShowsPage() {
                 Cancel
               </Button>
               <Button form="create-staff-gang-sheet-form" type="submit">
-                Create Staff Gang Sheet
+                Create Internal Gang Sheet
               </Button>
             </ModalFooter>
           </Modal>
@@ -1906,7 +1950,7 @@ export function UpcomingShowsPage() {
                 <p className="eyebrow">Attach request</p>
                 <h3 id="show-add-request-title">
                   {isSelectedStaffGangSheet
-                    ? "Add print request to Staff Gang Sheet"
+                    ? "Add print request to Internal Gang Sheet"
                     : "Add print request to show"}
                 </h3>
               </div>
@@ -1963,13 +2007,10 @@ export function UpcomingShowsPage() {
           onAdded={async () => {
             setSuccessMessage(
               isSelectedStaffGangSheet
-                ? "Print request added to Staff Gang Sheet."
+                ? "Print request added to Internal Gang Sheet."
                 : "Print request added to show.",
             );
             setSuccessAlertSeed((current) => current + 1);
-            if (isSelectedStaffGangSheet) {
-              setQueueSurface("staff_gang_sheets");
-            }
             await Promise.all([reloadUpcomingShows(), reloadAllocations()]);
           }}
           onClose={closeAddRequestModal}
@@ -2276,6 +2317,102 @@ export function UpcomingShowsPage() {
           <Card className="print-requests-card print-requests-loading-card">
             <LoadingSpinner label="Importing shows" />
           </Card>
+        </div>
+      ) : null}
+
+      {completeConfirmKind && selectedShow ? (
+        <div className="modal-overlay modal-overlay-blur">
+          <Modal
+            aria-labelledby="complete-show-confirm-title"
+            className="modal-panel modal-panel-md"
+            role="dialog"
+          >
+            <ModalHeader>
+              <div>
+                <p className="eyebrow">
+                  {completeConfirmKind === "staff_complete" ? "Mark complete" : "Mark finished"}
+                </p>
+                <h3 id="complete-show-confirm-title">
+                  {completeConfirmKind === "staff_complete"
+                    ? `Mark "${formatUpcomingShowTitle(selectedShow)}" complete?`
+                    : `Mark "${formatUpcomingShowTitle(selectedShow)}" finished?`}
+                </h3>
+              </div>
+              <button
+                aria-label="Close confirmation"
+                className="icon-button icon-button-md icon-button-ghost"
+                disabled={isCompletingStaffGangSheet || productionTimer.isActionPending}
+                onClick={() => setCompleteConfirmKind(null)}
+                type="button"
+              >
+                <X aria-hidden="true" size={18} strokeWidth={2.2} />
+              </button>
+            </ModalHeader>
+            <ModalBody>
+              <p className="print-requests-modal-hint">
+                {completeConfirmKind === "staff_complete"
+                  ? "This closes the current Internal Gangsheet and opens the next one. Attached print requests stay on the completed sheet."
+                  : "This marks the show as finished for production. You can still review attached requests afterward."}
+              </p>
+            </ModalBody>
+            <ModalFooter>
+              <Button
+                disabled={isCompletingStaffGangSheet || productionTimer.isActionPending}
+                onClick={() => setCompleteConfirmKind(null)}
+                variant="ghost"
+              >
+                Cancel
+              </Button>
+              <Button
+                disabled={isCompletingStaffGangSheet || productionTimer.isActionPending}
+                onClick={() => {
+                  if (completeConfirmKind === "show_finished") {
+                    setCompleteConfirmKind(null);
+                    void productionTimer.markFinished();
+                    return;
+                  }
+                  if (!user || !selectedShow) {
+                    return;
+                  }
+                  void (async () => {
+                    try {
+                      setActionError(null);
+                      setIsCompletingStaffGangSheet(true);
+                      const result = await upcomingShowService.completeStaffGangSheetAndOpenNext(
+                        user,
+                        selectedShow.id,
+                      );
+                      setCompleteConfirmKind(null);
+                      setSuccessMessage(
+                        result.alreadyCompleted
+                          ? `Already completed — opened Internal Gang Sheet #${result.nextCycleNumber}.`
+                          : `Completed. Opened Internal Gang Sheet #${result.nextCycleNumber}.`,
+                      );
+                      setSuccessAlertSeed((current) => current + 1);
+                      await reloadUpcomingShows();
+                      setSelectedShowId(result.nextShowId);
+                      setStaffListTab("current");
+                      updateSelectedShowPath(result.nextShowId, null);
+                    } catch (error) {
+                      setActionError(formatWriteErrorMessage(error));
+                    } finally {
+                      setIsCompletingStaffGangSheet(false);
+                    }
+                  })();
+                }}
+                type="button"
+                variant="primary"
+              >
+                {completeConfirmKind === "staff_complete"
+                  ? isCompletingStaffGangSheet
+                    ? "Completing…"
+                    : "Mark Complete"
+                  : productionTimer.isActionPending
+                    ? "Finishing…"
+                    : "Mark finished"}
+              </Button>
+            </ModalFooter>
+          </Modal>
         </div>
       ) : null}
 

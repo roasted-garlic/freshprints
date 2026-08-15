@@ -14,10 +14,11 @@ describe("permissionService Staff Gang Sheet capabilities", () => {
     source: "staff_gang_sheet",
   };
 
-  it("allows owner/admin to create the initial shared Staff Gang Sheet", () => {
+  it("allows owner/admin/helper to create the initial shared Staff Gang Sheet", () => {
     assert.equal(permissionService.canCreateStaffGangSheetLane(owner), true);
     assert.equal(permissionService.canCreateStaffGangSheetLane(admin), true);
-    assert.equal(permissionService.canCreateStaffGangSheetLane(helperA), false);
+    assert.equal(permissionService.canCreateStaffGangSheetLane(helperA), true);
+    assert.equal(permissionService.canCreateStaffGangSheetLane(customer), false);
   });
 
   it("allows any staff to manage the shared Staff Gang Sheet", () => {

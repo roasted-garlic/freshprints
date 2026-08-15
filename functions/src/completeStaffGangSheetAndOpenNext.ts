@@ -1,7 +1,8 @@
 import { FieldValue, type QueryDocumentSnapshot, type Transaction } from "firebase-admin/firestore";
-import { onCall } from "firebase-functions/v2/https";
+import { HttpsError, onCall } from "firebase-functions/v2/https";
 
 import {
+  DEFAULT_INTERNAL_GANG_SHEET_MAX_TOTAL_QUANTITY,
   formatStaffGangSheetTitle,
   STAFF_GANG_SHEET_ACTIVE_PRODUCTION_STATUSES,
 } from "../../packages/shared/src/utils/staffGangSheet";
@@ -27,13 +28,13 @@ export interface CompleteStaffGangSheetAndOpenNextResponse {
 }
 
 function mapHttpsError(error: unknown): never {
-  if (error instanceof Error && "code" in error) {
+  if (error instanceof HttpsError) {
     throw error;
   }
   if (error instanceof Error) {
     throw internal(error.message);
   }
-  throw internal("Unable to complete Staff Gang Sheet right now.");
+  throw internal("Unable to complete Internal Gang Sheet right now.");
 }
 
 async function loadActiveStaffGangSheetsExcluding(
@@ -57,8 +58,8 @@ async function loadActiveStaffGangSheetsExcluding(
 }
 
 /**
- * Completes a shared Staff Gang Sheet cycle and opens N+1 (no assignee).
- * Trusted callable: Rules keep Staff Gang Sheet create owner/admin-only, so helpers
+ * Completes a shared Internal Gang Sheet cycle and opens N+1 (no assignee).
+ * Trusted callable: Rules keep Internal Gang Sheet create owner/admin-only, so helpers
  * cannot create the next cycle via the client SDK.
  */
 export const completeStaffGangSheetAndOpenNext = onCall(
@@ -74,7 +75,7 @@ export const completeStaffGangSheetAndOpenNext = onCall(
       const upcomingShowId =
         typeof request.data?.upcomingShowId === "string" ? request.data.upcomingShowId.trim() : "";
       if (!upcomingShowId) {
-        throw invalidArgument("A Staff Gang Sheet ID is required.");
+        throw invalidArgument("An Internal Gang Sheet ID is required.");
       }
 
       const showRef = adminDb.collection("upcomingShows").doc(upcomingShowId);
@@ -82,19 +83,27 @@ export const completeStaffGangSheetAndOpenNext = onCall(
       return await adminDb.runTransaction(async (transaction) => {
         const showSnap = await transaction.get(showRef);
         if (!showSnap.exists) {
-          throw invalidArgument("Staff Gang Sheet not found.");
+          throw invalidArgument("Internal Gang Sheet not found.");
         }
 
         const data = showSnap.data()!;
         if (data.source !== "staff_gang_sheet") {
-          throw failedPrecondition("Only Staff Gang Sheets can be completed with auto-cycle.");
+          throw failedPrecondition("Only Internal Gang Sheets can be completed with auto-cycle.");
         }
 
         const cycleNumber =
           typeof data.staffGangSheetCycleNumber === "number" ? data.staffGangSheetCycleNumber : NaN;
 
         if (!Number.isInteger(cycleNumber) || cycleNumber < 1) {
-          throw failedPrecondition("Staff Gang Sheet cycle fields are incomplete.");
+          throw failedPrecondition("Internal Gang Sheet cycle fields are incomplete.");
+        }
+
+        const allocatedQuantity =
+          typeof data.allocatedQuantity === "number" ? data.allocatedQuantity : 0;
+        if (allocatedQuantity <= 0 && data.productionStatus !== "completed") {
+          throw failedPrecondition(
+            "Add at least one print request to this Internal Gangsheet before marking it complete.",
+          );
         }
 
         const openSuccessorQuery = adminDb
@@ -121,8 +130,8 @@ export const completeStaffGangSheetAndOpenNext = onCall(
           }
           throw failedPrecondition(
             openSuccessors.length === 0
-              ? "This Staff Gang Sheet is already completed, but no open successor was found."
-              : "This Staff Gang Sheet is already completed, but multiple open Staff Gang Sheets exist. Resolve the extras before retrying.",
+              ? "This Internal Gang Sheet is already completed, but no open successor was found."
+              : "This Internal Gang Sheet is already completed, but multiple open Internal Gang Sheets exist. Resolve the extras before retrying.",
           );
         }
 
@@ -131,13 +140,13 @@ export const completeStaffGangSheetAndOpenNext = onCall(
           data.productionStatus !== "full" &&
           data.productionStatus !== "printing"
         ) {
-          throw failedPrecondition("This Staff Gang Sheet cannot be completed in its current state.");
+          throw failedPrecondition("This Internal Gang Sheet cannot be completed in its current state.");
         }
 
         const otherActive = await loadActiveStaffGangSheetsExcluding(transaction, upcomingShowId);
         if (otherActive.length > 0) {
           throw failedPrecondition(
-            "Another active Staff Gang Sheet already exists. Resolve it before completing this one.",
+            "Another active Internal Gang Sheet already exists. Resolve it before completing this one.",
           );
         }
 
@@ -170,6 +179,7 @@ export const completeStaffGangSheetAndOpenNext = onCall(
           isArchived: false,
           productionStatus: "open",
           maxQuantityOverridden: false,
+          maxTotalQuantity: DEFAULT_INTERNAL_GANG_SHEET_MAX_TOTAL_QUANTITY,
           allocatedQuantity: 0,
           accumulatedPrintMs: 0,
           staffGangSheetCycleNumber: nextCycleNumber,

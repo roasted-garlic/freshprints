@@ -7,6 +7,7 @@ import {
   ClipboardList,
   DatabaseZap,
   Images,
+  Layers,
   LogOut,
   MessageSquare,
   Settings,
@@ -82,6 +83,13 @@ const sidebarItems: SidebarRouteItem[] = [
     icon: Clapperboard,
     label: "Show Queue",
     to: "/show-queue",
+    permission: "viewUpcomingShows",
+  },
+  {
+    kind: "route",
+    icon: Layers,
+    label: "Internal Sheets",
+    to: "/internal-gang-sheets",
     permission: "viewUpcomingShows",
   },
   {

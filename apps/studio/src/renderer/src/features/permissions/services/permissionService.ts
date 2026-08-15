@@ -298,9 +298,9 @@ export const permissionService = {
     return hasActiveRole(user, ["owner", "admin"]);
   },
 
-  /** Owner/admin: create the initial shared Staff Gang Sheet. */
+  /** Any active Studio staff may create the initial shared Internal Gang Sheet. */
   canCreateStaffGangSheetLane(user: UserLike) {
-    return hasActiveRole(user, ["owner", "admin"]);
+    return hasActiveRole(user, ["owner", "admin", "helper"]);
   },
 
   /**

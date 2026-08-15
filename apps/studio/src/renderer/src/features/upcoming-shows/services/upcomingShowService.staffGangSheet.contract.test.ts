@@ -10,21 +10,30 @@ const createStart = serviceSource.indexOf("async createStaffGangSheetLane(");
 const completeStart = serviceSource.indexOf("async completeStaffGangSheetAndOpenNext(");
 const createSlice = serviceSource.slice(createStart, completeStart);
 
-test("Staff Gang Sheet create uses trusted callable and omits assignee write", () => {
+test("Internal Gang Sheet create uses trusted callable with client SDK fallback; omits assignee", () => {
   assert.ok(createStart >= 0);
   assert.ok(completeStart > createStart);
   assert.match(createSlice, /createInitialStaffGangSheet/);
   assert.match(createSlice, /callTracedFunction/);
+  assert.match(createSlice, /createStaffGangSheetLaneViaClientSdk/);
+  assert.match(createSlice, /shouldFallbackToClientStaffGangSheetCreate/);
   assert.doesNotMatch(createSlice, /assignedStaffUserId:/);
-  assert.doesNotMatch(createSlice, /setDoc\(/);
 });
 
 test("allocatePrintRequestItem enforces Staff origin allowlist", () => {
   assert.match(serviceSource, /canAllocateOriginToShowSource/);
-  assert.match(serviceSource, /Only studio_internal print requests can be added to Staff Gang Sheets/);
+  assert.match(serviceSource, /Only Internal print requests can be added to Internal Gangsheets/);
 });
 
-test("complete+next uses trusted callable (helper create blocked by Rules)", () => {
+test("allocate and remove sync queueTab after mutation", () => {
+  assert.match(serviceSource, /syncPrintRequestQueueTabBestEffort/);
+  assert.match(serviceSource, /upcomingShowService\.allocatePrintRequestItem/);
+  assert.match(serviceSource, /upcomingShowService\.removeShowAllocationsForRequest/);
+  assert.match(serviceSource, /upcomingShowService\.removeShowAllocation/);
+  assert.match(serviceSource, /trigger backup will reconcile/);
+});
+
+test("complete+next uses trusted callable", () => {
   assert.match(serviceSource, /completeStaffGangSheetAndOpenNext/);
   assert.match(serviceSource, /callTracedFunction/);
 });

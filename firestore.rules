@@ -1028,6 +1028,8 @@ service cloud.firestore {
         && isOptionalTimestamp(data, "printPausedAt")
         && isOptionalTimestamp(data, "printFinishedAt")
         && isOptionalString(data, "printFinishedBy")
+        && isOptionalTimestamp(data, "gangSheetGeneratedAt")
+        && isOptionalString(data, "gangSheetGeneratedBy")
         && isOptionalString(data, "createdBy")
         && isOptionalString(data, "updatedBy")
         && data.createdAt is timestamp
@@ -1060,6 +1062,8 @@ service cloud.firestore {
           "printPausedAt",
           "printFinishedAt",
           "printFinishedBy",
+          "gangSheetGeneratedAt",
+          "gangSheetGeneratedBy",
           "createdBy",
           "updatedBy",
           "createdAt",
@@ -1088,6 +1092,7 @@ service cloud.firestore {
           "notes",
           "isArchived",
           "productionStatus",
+          "maxTotalQuantity",
           "maxQuantityOverridden",
           "allocatedQuantity",
           "accumulatedPrintMs",
@@ -1096,6 +1101,8 @@ service cloud.firestore {
           "printPausedAt",
           "printFinishedAt",
           "printFinishedBy",
+          "gangSheetGeneratedAt",
+          "gangSheetGeneratedBy",
           "assignedStaffUserId",
           "staffGangSheetCycleNumber",
           "createdBy",
@@ -1105,7 +1112,7 @@ service cloud.firestore {
         ])
         && data.source == "staff_gang_sheet"
         && !("whatnotShowId" in data)
-        && !("maxTotalQuantity" in data)
+        && isOptionalNumber(data, "maxTotalQuantity")
         && (
           !("assignedStaffUserId" in data)
           || (
@@ -1128,9 +1135,9 @@ service cloud.firestore {
     }
 
     function staffCanCreateUpcomingShow() {
-      return request.resource.data.source == "whatnot"
-        ? isStaff()
-        : isOwnerOrAdmin();
+      // Whatnot shows and Internal Gang Sheets: any active Studio staff may create.
+      // Uniqueness for Internal sheets is enforced in createInitialStaffGangSheet / client create.
+      return isStaff();
     }
 
     function staffCanUpdateUpcomingShow() {
@@ -1674,7 +1681,8 @@ service cloud.firestore {
     match /upcomingShows/{upcomingShowId} {
       allow read: if isStaff();
 
-      // Staff Gang Sheet create is owner/admin only. Helpers advance cycles via trusted callable.
+      // Whatnot and Internal Gang Sheets: any active Studio staff may create.
+      // Internal uniqueness is enforced in createInitialStaffGangSheet / client create.
       allow create: if staffCanCreateUpcomingShow()
         && upcomingShowRequiredFieldsValid(request.resource.data)
         && request.resource.data.updatedBy == request.auth.uid

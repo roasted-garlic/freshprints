@@ -11,19 +11,26 @@ const pageSource = readFileSync(
   "utf8",
 );
 
-test("Studio Print Requests label is Add to Show / Gang Sheet", () => {
-  assert.match(pageSource, /Add to Show \/ Gang Sheet/);
+test("Studio Print Requests splits Add to Show and Add to Internal Gangsheet", () => {
+  assert.match(pageSource, /Add to Show/);
+  assert.match(pageSource, /Add to Internal Gangsheet/);
+  assert.doesNotMatch(pageSource, /Add to Show \/ Gang Sheet/);
+  assert.match(pageSource, /destinationMode=\{addToShowDestination\}/);
 });
 
-test("AddToShowModal exposes Shows | Staff Gang Sheet destinations when not fixed", () => {
-  assert.match(modalSource, /StudioDestinationTab/);
-  assert.match(modalSource, /Staff Gang Sheet/);
-  assert.match(modalSource, /No open Staff Gang Sheet/);
-  assert.match(modalSource, /destinationTab === "shows"/);
+test("AddToShowModal locks destination via destinationMode without requiring tabs", () => {
+  assert.match(modalSource, /destinationMode\?:/);
+  assert.match(modalSource, /showDestinationTabs/);
+  assert.match(modalSource, /Internal Gangsheet/);
+  assert.match(modalSource, /No open Internal Gangsheet/);
+  assert.match(modalSource, /openStaffGangSheets/);
+  assert.match(modalSource, /canConfirmFullFitDirectly/);
+  assert.match(modalSource, /isInternal: printRequest\.isInternal/);
+  assert.match(modalSource, /formatShowCapacitySlotLabel/);
 });
 
-test("AddToShowModal Staff tab does not auto-create and skips capacity split UI", () => {
+test("AddToShowModal Staff destination does not auto-create and shows capacity UI", () => {
   assert.doesNotMatch(modalSource, /createStaffGangSheetLane/);
   assert.match(modalSource, /isStaffDestination/);
-  assert.match(modalSource, /Unlimited capacity/);
+  assert.match(modalSource, /formatShowCapacitySlotLabel/);
 });

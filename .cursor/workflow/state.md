@@ -5,69 +5,74 @@ studio-mac-autoupdate-signing-and-searchable-category-picker
 managed-phase
 
 ## Phase
-implement — C-SHARED complete; Implementation Review approved_with_notes; awaiting owner DEV redeploy + QA
+production-promotion — commit + development PR; STOP before production mutation
 
 ## Plan Status
-complete — C-SHARED amendment
+complete — C-SHARED amendment (parent plan still covers A2)
 
 ## Review Status
-A/B: approved_with_changes (binding)
-C+D amendment: approved_with_changes (historical)
-C-SHARED plan review: approved_with_changes
-C-SHARED implementation review: approved_with_notes
+A/B / C+D / C-SHARED reviews + signoff: approved_with_notes (C-SHARED)
 
 ## Implementation Status
-partial — B + A1 + C + D + C corrective + **C-SHARED**; A2 credential-gated
+partial — B + A1 + C + D + C-SHARED signed off; A2 credential-gated; prod promotion in progress
 
 ## Test Status
-not_started for FreshForge Test phase — focused C-SHARED automated checks green; owner DEV QA pending after redeploy
+passed_with_notes — C-SHARED FreshForge Test 2026-08-15
 
 ## Signoff Status
-not_started
+approved_with_notes — C-SHARED
 
 ## Human Checkpoint Required
 yes
 
 ## Human Checkpoint Reason
-(1) Owner-authorize DEV redeploy: Rules + indexes + Functions (`createInitialStaffGangSheet`, `completeStaffGangSheetAndOpenNext`). (2) Optional DEV fixture cleanup if multiple active Staff sheets. (3) Owner DEV QA checklist. (4) A2 Apple/`MAC_CSC_*`. (5) No FreshForge Test until C-SHARED QA PASS. (6) No production.
+Signed-off dirty tree audited and being committed → feature→development PR. **STOP before** merging development→production and before any fresh-prints-prod Firebase deploy / Studio 1.0.6 publish. Authorization phrase required for production mutation.
 
 ## Allowed Actions
-Owner authorize DEV deploy; owner QA recording; docs; A2 only after Apple secrets checkpoint
+Commit signed-off tree; PR feature→development; merge to development if protected workflow allows; open development→production PR (do not merge); docs
 
 ## Forbidden Actions
-FreshForge Test until C-SHARED QA PASS; Production deploy; Studio publish; DEV deploy without owner authorize; mutate DEV fixtures without owner authorize; reopen B/D
+Merge to production; Firebase prod deploy; Studio 1.0.6 dispatch/publish; force-push; App Hosting rollout; reopen C-SHARED/B/D/A1
 
 ## Next Required Step
-Owner-authorized DEV redeploy → owner DEV QA (`docs/workflow/reviews/2026-08-15-studio-1.0.6-workstream-c-shared-owner-qa-checklist.md`) → then `Continue Workflow` for Test only after C PASS
+After feature→development merge: open development→production PR; STOP for owner phrase `APPROVE PROD C-SHARED BACKEND PROMOTION: RULES+INDEXES+FUNCTIONS ALLOWLIST`
 
 ## DONE
 no
 
 ## Last Completed Step
-C-SHARED Implement + Implementation Review approved_with_notes
+Dirty-tree audit complete — all paths classified as release-belonging; no unexplained files
+
+## Dirty-tree classification (2026-08-15)
+All dirty paths belong to categories 1–3. None in category 4 (unrelated/generated/local-only).
+
+### 1 — C-SHARED correctives
+Studio Internal Sheets / Print Requests / queueTab / Add modal / permissions / Rules / Functions (create/complete/sync/queueTab) / shared staffGangSheet / rules tests / DATA_MODEL / QA checklist updates / CSS helpers / export persist generatedAt / display rename
+
+### 2 — Already-approved A1/B/D / 1.0.6 release-branch UX
+AiReviewWorkspace + DesignFormFields Halftone→lightBlack artwork background (pre-QA UI tweak recorded in Decision Log)
+
+### 3 — Workflow/docs for completed work
+state.md, ROADMAP, DECISIONS, signoff, test report, production preflight
+
+### 4 — Unrelated
+(none)
 
 ## Plan
 docs/workflow/plans/2026-08-14-studio-mac-autoupdate-signing-and-searchable-category-picker-plan.md
 
-## Review (C-SHARED)
-docs/workflow/reviews/2026-08-15-studio-1.0.6-workstream-c-shared-staff-gang-sheets-plan-review.md
+## Signoff (C-SHARED)
+docs/workflow/reviews/2026-08-15-studio-1.0.6-workstream-c-shared-signoff.md
 
-## Implementation Review (C-SHARED)
-docs/workflow/reviews/2026-08-15-studio-1.0.6-workstream-c-shared-implementation-review.md
-
-## Owner QA checklist (C-SHARED)
-docs/workflow/reviews/2026-08-15-studio-1.0.6-workstream-c-shared-owner-qa-checklist.md
+## Production promotion preflight
+docs/workflow/reviews/2026-08-15-studio-1.0.6-c-shared-production-promotion-preflight.md
 
 ## Branch
 feature/studio-1.0.6-mac-signing-and-searchable-category
 
 ## Target release
-Studio 1.0.6
+Studio 1.0.6 (publish held for A2)
 
 ## Decision Log
-- 2026-08-15: C-SHARED Formal Review approved_with_changes
-- 2026-08-15: C-SHARED Implement — shared Staff sheets, studio_internal only, modal tabs, createInitialStaffGangSheet callable, narrowed complete callable, Rules/index updates; Impl Review approved_with_notes
-
-## Prior Goal (preserved, closed)
-- Goal: `studio-ai-review-reprocess-local-reconciliation`
-- Status: DONE — Studio 1.0.5 / PR #75
+- 2026-08-15: Dirty-tree audit — all paths release-belonging; commit signed-off C-SHARED tip for promotion
+- 2026-08-15: C-SHARED prod promotion preflight STOP; Signoff approved_with_notes; owner QA PASS

@@ -49,8 +49,15 @@ export interface UpcomingShow {
    * Shared Staff Gang Sheets do not require or write this.
    */
   assignedStaffUserId?: string;
-  /** Staff Gang Sheet: 1-based cycle number shown as "Staff Gang Sheet #N". */
+  /** Staff Gang Sheet: 1-based cycle number shown as "Internal Gang Sheet #N". */
   staffGangSheetCycleNumber?: number;
+
+  /**
+   * Optional: set when staff successfully generates gang sheet PNG(s) for this show / Internal Gangsheet.
+   * Not required to Mark Complete or Mark finished.
+   */
+  gangSheetGeneratedAt?: Timestamp;
+  gangSheetGeneratedBy?: string;
 
   /** Elapsed print time in milliseconds, excluding any active unpaused segment. */
   accumulatedPrintMs: number;
@@ -80,4 +87,11 @@ export function isWhatnotUpcomingShow(show: {
   source: UpcomingShowSource;
 }): boolean {
   return show.source === "whatnot";
+}
+
+/** True when staff has successfully generated a gang sheet for this production lane. */
+export function hasShowGangSheetBeenGenerated(show: {
+  gangSheetGeneratedAt?: Timestamp | null;
+}): boolean {
+  return show.gangSheetGeneratedAt != null;
 }

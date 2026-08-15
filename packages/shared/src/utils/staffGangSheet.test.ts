@@ -7,6 +7,8 @@ import {
   isPortalAllocatableShowSource,
   isStaffGangSheetActiveProductionStatus,
   isStaffGangSheetSource,
+  resolveInternalGangSheetMaxTotalQuantity,
+  resolveNextStaffGangSheetCycleNumber,
 } from "./staffGangSheet";
 
 test("isStaffGangSheetSource recognizes only staff_gang_sheet", () => {
@@ -20,13 +22,29 @@ test("Portal allocatable source excludes staff_gang_sheet", () => {
   assert.equal(isPortalAllocatableShowSource("staff_gang_sheet"), false);
 });
 
-test("Staff Gang Sheet origin allowlist: studio_internal only", () => {
+test("Internal Gang Sheet origin allowlist: studio_internal or isInternal", () => {
   assert.equal(
     canAllocateOriginToShowSource({ source: "staff_gang_sheet", requestOrigin: "studio_internal" }),
     true,
   );
   assert.equal(
+    canAllocateOriginToShowSource({
+      source: "staff_gang_sheet",
+      requestOrigin: undefined,
+      isInternal: true,
+    }),
+    true,
+  );
+  assert.equal(
     canAllocateOriginToShowSource({ source: "staff_gang_sheet", requestOrigin: "studio_customer" }),
+    false,
+  );
+  assert.equal(
+    canAllocateOriginToShowSource({
+      source: "staff_gang_sheet",
+      requestOrigin: "studio_customer",
+      isInternal: true,
+    }),
     false,
   );
   assert.equal(
@@ -51,14 +69,6 @@ test("Staff Gang Sheet origin allowlist: studio_internal only", () => {
   );
 });
 
-test("Staff Gang Sheet eligibility does not infer from isInternal (origin must be persisted)", () => {
-  // Missing origin is denied even if a caller might also know isInternal elsewhere.
-  assert.equal(
-    canAllocateOriginToShowSource({ source: "staff_gang_sheet", requestOrigin: undefined }),
-    false,
-  );
-});
-
 test("active Staff production statuses cover open/full/printing only", () => {
   assert.equal(isStaffGangSheetActiveProductionStatus("open"), true);
   assert.equal(isStaffGangSheetActiveProductionStatus("full"), true);
@@ -68,6 +78,19 @@ test("active Staff production statuses cover open/full/printing only", () => {
 });
 
 test("formatStaffGangSheetTitle uses cycle number", () => {
-  assert.equal(formatStaffGangSheetTitle(1), "Staff Gang Sheet #1");
-  assert.equal(formatStaffGangSheetTitle(4), "Staff Gang Sheet #4");
+  assert.equal(formatStaffGangSheetTitle(1), "Internal Gang Sheet #1");
+  assert.equal(formatStaffGangSheetTitle(4), "Internal Gang Sheet #4");
+});
+
+test("resolveNextStaffGangSheetCycleNumber advances past history", () => {
+  assert.equal(resolveNextStaffGangSheetCycleNumber([]), 1);
+  assert.equal(resolveNextStaffGangSheetCycleNumber([1]), 2);
+  assert.equal(resolveNextStaffGangSheetCycleNumber([1, 3, 2]), 4);
+  assert.equal(resolveNextStaffGangSheetCycleNumber([undefined, null, 5]), 6);
+});
+
+test("resolveInternalGangSheetMaxTotalQuantity defaults to 200", () => {
+  assert.equal(resolveInternalGangSheetMaxTotalQuantity(undefined), 200);
+  assert.equal(resolveInternalGangSheetMaxTotalQuantity(null), 200);
+  assert.equal(resolveInternalGangSheetMaxTotalQuantity(150), 150);
 });
