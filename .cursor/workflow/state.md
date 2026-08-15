@@ -1,61 +1,66 @@
 ## Current Goal
-studio-ai-review-reprocess-local-reconciliation
+studio-mac-autoupdate-signing-and-searchable-category-picker
 
 ## Current Mode
 managed-phase
 
 ## Phase
-DONE — Signoff approved; STOP at PR #75 merge checkpoint
+production-promotion — feature→development PR open; STOP before production mutation
 
 ## Plan Status
-complete
+complete — C-SHARED amendment (parent plan still covers A2)
 
 ## Review Status
-approved
+C-SHARED signoff: approved_with_notes
 
 ## Implementation Status
-complete
+partial — B + A1 + C + D + C-SHARED signed off @ `0451bc4` (+ docs record); A2 credential-gated
 
 ## Test Status
-passed — owner manual QA PASS
+passed_with_notes — C-SHARED FreshForge Test 2026-08-15
 
 ## Signoff Status
-approved
+approved_with_notes — C-SHARED
 
 ## Human Checkpoint Required
 yes
 
 ## Human Checkpoint Reason
-Protected production merge: owner must (1) push development if still behind, (2) merge PR #75, (3) dispatch Studio 1.0.5. Agent must not merge/dispatch.
+(1) Merge PR **#76** feature→development (agent `gh pr merge` blocked by Cursor hook; PR is OPEN/MERGEABLE). (2) After #76 merges: open/merge development→production only with owner phrase. (3) Firebase prod allowlist deploy only with same authorization. (4) Studio 1.0.6 publish HELD for A2. **No production mutation performed.**
 
 ## Allowed Actions
-Report merge-ready state; wait for owner
+Docs; wait for owner merge of #76; after #76: create development→production PR (do not merge without phrase)
 
 ## Forbidden Actions
-Merge PR #75; push production; dispatch Studio 1.0.5; Firebase/Portal mutations; force push; history rewrite
+Merge to production; Firebase prod deploy; Studio 1.0.6 dispatch/publish; force-push; App Hosting rollout
 
 ## Next Required Step
-Owner runs: `git push origin development` (if needed), confirms PR #75 checks, merges PR #75, then dispatches Studio 1.0.5
+Owner merge https://github.com/roasted-garlic/freshprints/pull/76 → then `Continue Workflow` to open development→production PR → stop for `APPROVE PROD C-SHARED BACKEND PROMOTION: RULES+INDEXES+FUNCTIONS ALLOWLIST`
 
 ## DONE
-yes
+no
 
-## Local development HEAD
-a0f0082da0ef45e0a1303463e16bf847c2d8547d
+## Last Completed Step
+Signed-off tip committed `0451bc4`; feature→development PR #76 opened (merge pending owner)
 
-## Implementation commit contained
-81613fa5bb76e30858d5e98c32f5131524ca2838 — yes (ancestor)
+## Signed-off tip
+`0451bc4` chore(studio): capture signed-off 1.0.6 C-SHARED state
 
-## origin/development (last fetch)
-0e3b9ae852f7d13d9808619965910affc85ec54a — **behind local by 3 commits**; push hook-blocked
+## Feature → development PR
+https://github.com/roasted-garlic/freshprints/pull/76
 
-## PR #75
-- base: production @ 061185c8…
-- head (remote): development @ 0e3b9ae… until owner push
-- title updated to Studio 1.0.5 AI Review reprocess corrective
+## Production remains
+`origin/production` = `da5304e` (unchanged)
+
+## Commit / classification record
+docs/workflow/reviews/2026-08-15-studio-1.0.6-c-shared-signed-off-commit-record.md
+
+## Branch
+feature/studio-1.0.6-mac-signing-and-searchable-category
+
+## Target release
+Studio 1.0.6 (publish held for A2)
 
 ## Decision Log
-- 2026-08-14: Owner manual QA PASS; Signoff approved
-- 2026-08-14: FF-merged feature branch into local development @ 6453190
-- 2026-08-14: `git push origin development` blocked by safety hook — owner must push
-- 2026-08-14: STOP before merging PR #75
+- 2026-08-15: Committed signed-off tip `0451bc4`; dirty-tree audit — no unrelated files; PR #76 → development OPEN/MERGEABLE; production merge/deploy STOP
+- 2026-08-15: C-SHARED Signoff approved_with_notes; prod promotion preflight complete

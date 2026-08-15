@@ -22,6 +22,8 @@ export { getPortalShowPrintProgress } from "./getPortalShowPrintProgress";
 export { getPortalPrintRequestShowSchedules } from "./getPortalPrintRequestShowSchedules";
 export { listPortalAllocatableShows } from "./listPortalAllocatableShows";
 export { queuePortalPrintRequestToShow } from "./queuePortalPrintRequestToShow";
+export { completeStaffGangSheetAndOpenNext } from "./completeStaffGangSheetAndOpenNext";
+export { createInitialStaffGangSheet } from "./createInitialStaffGangSheet";
 export { removePortalPrintRequestItem } from "./removePortalPrintRequestItem";
 export { updatePortalPrintRequestItemQuantity } from "./updatePortalPrintRequestItemQuantity";
 export { createTeamUser } from "./createTeamUser";
@@ -124,6 +126,7 @@ export {
 } from "./purgeExpiredAssistedCreationProofs";
 export { onPrintRequestItemCreated } from "./onPrintRequestItemCreated";
 export { onShowAllocationCreated } from "./onShowAllocationCreated";
+export { syncPrintRequestQueueTab } from "./syncPrintRequestQueueTab";
 export {
   onPrintRequestItemQueueTabInputWritten,
   onShowAllocationQueueTabInputWritten,

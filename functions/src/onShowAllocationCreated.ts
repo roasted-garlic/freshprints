@@ -44,6 +44,12 @@ export const onShowAllocationCreated = onDocumentCreated(
       return;
     }
 
+    // Staff Gang Sheet allocations must not bump customer-facing Recently Requested / popularity.
+    const showSnap = await adminDb.collection("upcomingShows").doc(upcomingShowId).get();
+    if (showSnap.data()?.source === "staff_gang_sheet") {
+      return;
+    }
+
     if (
       !shouldIncrementDesignRequestCount({
         sourceType: data.sourceType,

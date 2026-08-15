@@ -11,6 +11,10 @@ import { useDeleteEligibleUnapprovedDesign } from "../../designs/hooks/useDelete
 import type { Design } from "../../designs/types/design.types";
 import { useGeneratedDesignLibraryTaxonomy } from "../../designs/hooks/useGeneratedDesignLibraryTaxonomy";
 import {
+  mapArtworkBackgroundToForm,
+  resolveFormArtworkBackgroundHex,
+} from "../../designs/utils/designFormMapper";
+import {
   AI_PROCESSING_PAGE_DESCRIPTION,
   AI_PROCESSING_PAGE_TITLE,
   AI_REVIEW_INBOX_TABS,
@@ -83,6 +87,32 @@ function AiReviewPageContent() {
     // Amendment 9 P0: successful approve/reject/archive adjust badges locally (no 3× count).
     onInboxCountsDelta: (deltas) => tabCounts.applyCountsDelta(deltas),
   });
+
+  const selectedArtworkBackgroundHex = useMemo(() => {
+    const draftForm = inbox.draftForm;
+    const selectedDesign = inbox.selectedDesign;
+    if (draftForm) {
+      return resolveFormArtworkBackgroundHex({
+        title: "",
+        description: "",
+        categoryId: "",
+        tagsInput: "",
+        artworkBackgroundPreset: draftForm.artworkBackgroundPreset,
+        artworkBackgroundCustomHex: draftForm.artworkBackgroundCustomHex,
+      });
+    }
+    if (selectedDesign) {
+      const mapped = mapArtworkBackgroundToForm(selectedDesign);
+      return resolveFormArtworkBackgroundHex({
+        title: "",
+        description: "",
+        categoryId: "",
+        tagsInput: "",
+        ...mapped,
+      });
+    }
+    return undefined;
+  }, [inbox.draftForm, inbox.selectedDesign]);
 
   const shellHeaderConfig = useMemo(
     () => ({
@@ -215,6 +245,7 @@ function AiReviewPageContent() {
             listRef={inbox.queueListRef}
             onLoadMore={inbox.loadMoreDesigns}
             onSelectDesign={inbox.requestSelectDesign}
+            selectedArtworkBackgroundHex={selectedArtworkBackgroundHex}
             selectedDesignId={inbox.selectedDesign?.id ?? null}
           />
         </aside>

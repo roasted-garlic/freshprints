@@ -7,11 +7,15 @@
 
 .print-requests-page-actions {
   display: flex;
-  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  justify-content: stretch;
+  width: 100%;
 }
 
 .print-requests-page-actions .button {
-  flex: 1 1 auto;
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .print-requests-layout {

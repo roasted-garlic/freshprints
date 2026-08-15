@@ -4,6 +4,7 @@ import type {
 } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.enums";
 import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
 import { formatShowDateTimeLabel } from "@fresh-prints/shared/utils/showDateTimeDisplay";
+import { formatStaffGangSheetTitle } from "@fresh-prints/shared/utils/staffGangSheet";
 import { isPastScheduledShow } from "./groupShowsByUpcomingPast";
 
 export function getUpcomingShowStatusBadgeVariant(status: UpcomingShowStatus) {
@@ -39,7 +40,14 @@ export function getUpcomingShowSyncStatusBadgeVariant(syncStatus: UpcomingShowSy
 }
 
 export function formatUpcomingShowTitle(show: UpcomingShow): string {
-  return show.title?.trim() || `Whatnot show ${show.whatnotShowId}`;
+  if (show.source === "staff_gang_sheet") {
+    // Prefer cycle-based label so legacy stored "Staff Gang Sheet #N" titles display as Internal.
+    if (typeof show.staffGangSheetCycleNumber === "number") {
+      return formatStaffGangSheetTitle(show.staffGangSheetCycleNumber);
+    }
+    return show.title?.trim() || "Internal Gang Sheet";
+  }
+  return show.title?.trim() || `Whatnot show ${show.whatnotShowId ?? "unknown"}`;
 }
 
 export function formatUpcomingShowTimestampLabel(value: { toDate: () => Date } | undefined): string {

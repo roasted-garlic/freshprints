@@ -10,9 +10,15 @@ export function findMatchingUpcomingShow(
   shows: UpcomingShow[],
   key: UpcomingShowUpsertKey,
 ): UpcomingShow | undefined {
+  if (key.source !== "whatnot") {
+    return undefined;
+  }
+
   const whatnotShowId = key.whatnotShowId.trim();
 
-  return shows.find((show) => show.source === key.source && show.whatnotShowId === whatnotShowId);
+  return shows.find(
+    (show) => show.source === "whatnot" && show.whatnotShowId === whatnotShowId,
+  );
 }
 
 export interface UpcomingShowUpsertFields {

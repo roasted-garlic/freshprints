@@ -5,12 +5,15 @@
  * bodies and `e.stack` into thrown error messages) to a short, safe, user-facing string.
  *
  * This never inspects or forwards the original error's message text — only a small set of
- * structural signals (HTTP status code, a known error `code`, or none of those) are used to pick
- * a fixed, pre-written message. No part of the original error ever reaches the renderer.
+ * structural signals (HTTP status code, a known error `code`, domain, or none of those) are used
+ * to pick a fixed, pre-written message. No part of the original error ever reaches the renderer.
  */
+export type StudioUpdateErrorContext = "check" | "download" | "install";
+
 export type StudioUpdateErrorCategory =
   | "check-failed"
   | "download-failed"
+  | "install-failed"
   | "network-unavailable"
   | "no-published-releases"
   | "unavailable";
@@ -22,6 +25,9 @@ export interface SafeStudioUpdateError {
   /** Non-sensitive diagnostic hint safe to log (e.g. an HTTP status code or error code). */
   logHint: string;
 }
+
+const INSTALL_FAILED_MESSAGE =
+  "The update downloaded but could not be installed. Please install the latest Fresh Prints version manually or try again later.";
 
 function extractHttpStatusCode(error: unknown): number | null {
   if (error && typeof error === "object" && "statusCode" in error) {
@@ -39,6 +45,15 @@ function extractErrorCode(error: unknown): string | null {
   return null;
 }
 
+/** Structural macOS / Squirrel domain when present — never reads error.message. */
+function extractErrorDomain(error: unknown): string | null {
+  if (error && typeof error === "object" && "domain" in error) {
+    const domain = (error as { domain: unknown }).domain;
+    return typeof domain === "string" ? domain : null;
+  }
+  return null;
+}
+
 const NETWORK_ERROR_CODES = new Set([
   "ENOTFOUND",
   "ECONNREFUSED",
@@ -47,12 +62,15 @@ const NETWORK_ERROR_CODES = new Set([
   "EAI_AGAIN",
 ]);
 
+const INSTALL_SIGNATURE_DOMAINS = new Set(["SQRLCodeSignatureErrorDomain"]);
+
 export function toSafeStudioUpdateError(
   error: unknown,
-  context: "check" | "download",
+  context: StudioUpdateErrorContext,
 ): SafeStudioUpdateError {
   const statusCode = extractHttpStatusCode(error);
   const code = extractErrorCode(error);
+  const domain = extractErrorDomain(error);
 
   if (code === "ERR_UPDATER_NO_PUBLISHED_VERSIONS" || code === "ERR_UPDATER_LATEST_VERSION_NOT_FOUND") {
     return {
@@ -68,6 +86,21 @@ export function toSafeStudioUpdateError(
       message:
         "Studio couldn't reach the update server. Check your connection and try again later.",
       logHint: code,
+    };
+  }
+
+  if (context === "install") {
+    const logHint =
+      (domain && INSTALL_SIGNATURE_DOMAINS.has(domain) ? domain : null) ??
+      code ??
+      domain ??
+      (typeof statusCode === "number" ? `HTTP_${statusCode}` : null) ??
+      "unknown";
+
+    return {
+      category: "install-failed",
+      message: INSTALL_FAILED_MESSAGE,
+      logHint,
     };
   }
 

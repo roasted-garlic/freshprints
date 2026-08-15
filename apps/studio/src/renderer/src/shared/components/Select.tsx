@@ -4,6 +4,7 @@ import {
   useEffect,
   useId,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type ChangeEvent,
@@ -12,6 +13,8 @@ import {
   type SelectHTMLAttributes,
 } from "react";
 import { createPortal } from "react-dom";
+
+import { filterSelectOptionsByLabel } from "./selectOptionFilter";
 
 /** Matches the CSS max-height for .form-select-menu — used to decide whether the menu should open upward. */
 const SELECT_MENU_ESTIMATED_HEIGHT_PX = 256;
@@ -28,6 +31,12 @@ interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, "onC
   name: string;
   onChange?: SelectHTMLAttributes<HTMLSelectElement>["onChange"];
   options: SelectOption[];
+  /** When true, open menu includes a local search field. Default false. */
+  searchable?: boolean;
+  /** Placeholder for the searchable input. Only used when searchable. */
+  searchPlaceholder?: string;
+  /** Quiet empty state when a search matches nothing. Only used when searchable. */
+  searchEmptyMessage?: string;
 }
 
 interface MenuPosition {
@@ -73,13 +82,20 @@ export function Select({
   onChange,
   options,
   required,
+  searchable = false,
+  searchPlaceholder = "Search...",
+  searchEmptyMessage = "No options found",
   value,
 }: SelectProps) {
   const selectId = id ?? name;
   const listboxId = useId();
+  const searchInputId = useId();
   const shellRef = useRef<HTMLDivElement>(null);
-  const menuRef = useRef<HTMLUListElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [opensUpward, setOpensUpward] = useState(false);
   const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
@@ -89,9 +105,15 @@ export function Select({
   const resolvedIndex = selectedIndex >= 0 ? selectedIndex : 0;
   const selectedOption = options[resolvedIndex];
 
+  const visibleOptions = useMemo(
+    () => (searchable ? filterSelectOptionsByLabel(options, searchQuery) : options),
+    [options, searchable, searchQuery],
+  );
+
   const closeMenu = useCallback(() => {
     setIsOpen(false);
     setMenuPosition(null);
+    setSearchQuery("");
   }, []);
 
   const updateMenuPosition = useCallback(() => {
@@ -111,6 +133,7 @@ export function Select({
     }
 
     updateMenuPosition();
+    setSearchQuery("");
     setHighlightedIndex(resolvedIndex);
     setIsOpen(true);
   }, [disabled, options.length, resolvedIndex, updateMenuPosition]);
@@ -131,7 +154,7 @@ export function Select({
 
   const selectOption = useCallback(
     (index: number) => {
-      const option = options[index];
+      const option = visibleOptions[index];
 
       if (!option) {
         return;
@@ -143,7 +166,7 @@ export function Select({
       emitChange(option.value);
       closeMenu();
     },
-    [closeMenu, emitChange, options],
+    [closeMenu, emitChange, visibleOptions],
   );
 
   useLayoutEffect(() => {
@@ -153,6 +176,14 @@ export function Select({
 
     updateMenuPosition();
   }, [isOpen, updateMenuPosition]);
+
+  useEffect(() => {
+    if (!isOpen || !searchable) {
+      return;
+    }
+
+    searchInputRef.current?.focus();
+  }, [isOpen, searchable]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -184,6 +215,36 @@ export function Select({
     };
   }, [closeMenu, isOpen, updateMenuPosition]);
 
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    if (visibleOptions.length === 0) {
+      setHighlightedIndex(0);
+      return;
+    }
+
+    setHighlightedIndex((currentIndex) => Math.min(currentIndex, visibleOptions.length - 1));
+  }, [isOpen, visibleOptions.length]);
+
+  function moveHighlight(delta: number) {
+    if (visibleOptions.length === 0) {
+      return;
+    }
+
+    setHighlightedIndex((currentIndex) => {
+      const nextIndex = currentIndex + delta;
+      if (nextIndex < 0) {
+        return 0;
+      }
+      if (nextIndex > visibleOptions.length - 1) {
+        return visibleOptions.length - 1;
+      }
+      return nextIndex;
+    });
+  }
+
   function handleTriggerKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
     if (disabled) {
       return;
@@ -197,7 +258,7 @@ export function Select({
           return;
         }
 
-        setHighlightedIndex((currentIndex) => Math.min(currentIndex + 1, options.length - 1));
+        moveHighlight(1);
         return;
       case "ArrowUp":
         event.preventDefault();
@@ -206,7 +267,7 @@ export function Select({
           return;
         }
 
-        setHighlightedIndex((currentIndex) => Math.max(currentIndex - 1, 0));
+        moveHighlight(-1);
         return;
       case "Enter":
       case " ":
@@ -223,7 +284,7 @@ export function Select({
         closeMenu();
         return;
       case "Home":
-        if (!isOpen) {
+        if (!isOpen || visibleOptions.length === 0) {
           return;
         }
 
@@ -231,12 +292,49 @@ export function Select({
         setHighlightedIndex(0);
         return;
       case "End":
-        if (!isOpen) {
+        if (!isOpen || visibleOptions.length === 0) {
           return;
         }
 
         event.preventDefault();
-        setHighlightedIndex(options.length - 1);
+        setHighlightedIndex(visibleOptions.length - 1);
+        return;
+      default:
+        return;
+    }
+  }
+
+  function handleSearchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    switch (event.key) {
+      case "ArrowDown":
+        event.preventDefault();
+        moveHighlight(1);
+        return;
+      case "ArrowUp":
+        event.preventDefault();
+        moveHighlight(-1);
+        return;
+      case "Enter":
+        event.preventDefault();
+        selectOption(highlightedIndex);
+        return;
+      case "Escape":
+        event.preventDefault();
+        closeMenu();
+        return;
+      case "Home":
+        if (visibleOptions.length === 0) {
+          return;
+        }
+        event.preventDefault();
+        setHighlightedIndex(0);
+        return;
+      case "End":
+        if (visibleOptions.length === 0) {
+          return;
+        }
+        event.preventDefault();
+        setHighlightedIndex(visibleOptions.length - 1);
         return;
       default:
         return;
@@ -261,40 +359,75 @@ export function Select({
 
   const menu =
     isOpen && menuPosition ? (
-      <ul
-        aria-labelledby={selectId}
+      <div
         className={`form-select-menu form-select-menu--portal${
           opensUpward ? " form-select-menu--upward" : ""
-        }`}
-        id={listboxId}
+        }${searchable ? " form-select-menu--searchable" : ""}`}
         ref={menuRef}
-        role="listbox"
         style={menuStyle}
       >
-        {options.map((option, index) => {
-          const isSelected = option.value === selectedValue;
-          const isHighlighted = index === highlightedIndex;
+        {searchable ? (
+          <div className="form-select-search-wrap">
+            <label className="visually-hidden" htmlFor={searchInputId}>
+              {searchPlaceholder}
+            </label>
+            <input
+              aria-autocomplete="list"
+              aria-controls={listboxId}
+              autoComplete="off"
+              className="form-select-search"
+              id={searchInputId}
+              onChange={(event) => {
+                setSearchQuery(event.target.value);
+                setHighlightedIndex(0);
+              }}
+              onKeyDown={handleSearchKeyDown}
+              placeholder={searchPlaceholder}
+              ref={searchInputRef}
+              type="search"
+              value={searchQuery}
+            />
+          </div>
+        ) : null}
 
-          return (
-            <li
-              key={option.value}
-              aria-selected={isSelected}
-              aria-disabled={option.disabled || undefined}
-              className={`form-select-option${isSelected ? " is-selected" : ""}${
-                isHighlighted ? " is-highlighted" : ""
-              }${option.disabled ? " is-disabled" : ""}`}
-              onKeyDown={(event) => handleOptionKeyDown(event, index)}
-              onMouseEnter={() => setHighlightedIndex(index)}
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={() => selectOption(index)}
-              role="option"
-              tabIndex={-1}
-            >
-              <span className="form-select-option-label">{option.label}</span>
+        <ul
+          aria-labelledby={selectId}
+          className="form-select-options"
+          id={listboxId}
+          ref={listRef}
+          role="listbox"
+        >
+          {visibleOptions.length === 0 ? (
+            <li className="form-select-empty" role="presentation">
+              {searchEmptyMessage}
             </li>
-          );
-        })}
-      </ul>
+          ) : (
+            visibleOptions.map((option, index) => {
+              const isSelected = option.value === selectedValue;
+              const isHighlighted = index === highlightedIndex;
+
+              return (
+                <li
+                  key={`${option.value}::${option.label}`}
+                  aria-selected={isSelected}
+                  aria-disabled={option.disabled || undefined}
+                  className={`form-select-option${isSelected ? " is-selected" : ""}${
+                    isHighlighted ? " is-highlighted" : ""
+                  }${option.disabled ? " is-disabled" : ""}`}
+                  onKeyDown={(event) => handleOptionKeyDown(event, index)}
+                  onMouseEnter={() => setHighlightedIndex(index)}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => selectOption(index)}
+                  role="option"
+                  tabIndex={-1}
+                >
+                  <span className="form-select-option-label">{option.label}</span>
+                </li>
+              );
+            })
+          )}
+        </ul>
+      </div>
     ) : null;
 
   return (

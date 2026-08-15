@@ -86,7 +86,15 @@ export function AppRoutes() {
             path="/show-queue"
             element={
               <ProtectedRoute permission="viewUpcomingShows">
-                <UpcomingShowsPage />
+                <UpcomingShowsPage lockedSurface="shows" />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/internal-gang-sheets"
+            element={
+              <ProtectedRoute permission="viewUpcomingShows">
+                <UpcomingShowsPage lockedSurface="staff_gang_sheets" />
               </ProtectedRoute>
             }
           />

@@ -1619,7 +1619,7 @@ upcomingShows/{upcomingShowId}
 ## Upcoming Show Interface
 
 ```ts
-export type UpcomingShowSource = "whatnot";
+export type UpcomingShowSource = "whatnot" | "staff_gang_sheet";
 
 /** Whatnot schedule/source status — never mixed with production completion. */
 export type UpcomingShowStatus =
@@ -1646,7 +1646,11 @@ export type ShowProductionStatus =
 export interface UpcomingShow {
   id: string;
   source: UpcomingShowSource;
-  whatnotShowId: string;
+  /**
+   * Required when `source === "whatnot"`.
+   * Omitted when `source === "staff_gang_sheet"` (never fabricate Whatnot IDs).
+   */
+  whatnotShowId?: string;
   whatnotUrl?: string;
   title?: string;
   scheduledStartAt?: Timestamp;
@@ -1658,14 +1662,28 @@ export interface UpcomingShow {
   notes?: string;
   isArchived: boolean;
 
-  /** A Whatnot show is the print run — this is the only production entity for Phase 7. */
+  /** A Whatnot show / Staff Gang Sheet is the print run — this is the only production entity. */
   productionStatus: ShowProductionStatus;
-  /** Staff-set capacity. Undefined means no cap is enforced. */
+  /**
+   * Staff-set capacity. Whatnot: undefined means no cap until set.
+   * Internal Gang Sheets default to 200 (`DEFAULT_INTERNAL_GANG_SHEET_MAX_TOTAL_QUANTITY`).
+   */
   maxTotalQuantity?: number;
   /** True when staff used the danger override to exceed `maxTotalQuantity`. Portal customers may never set this. */
   maxQuantityOverridden: boolean;
   /** Sum of `allocatedQuantity` across all non-canceled `showAllocations` for this show. Denormalized for list/detail display. */
   allocatedQuantity: number;
+
+  /** Legacy DEV-only optional assignee from the superseded assigned-lane model (ignored). */
+  assignedStaffUserId?: string;
+  /** Staff Gang Sheet only: 1-based cycle number ("Internal Gang Sheet #N"). */
+  staffGangSheetCycleNumber?: number;
+  /**
+   * Optional: set when staff successfully generates gang sheet PNG(s).
+   * Not required to Mark Complete (Internal) or Mark finished (Whatnot).
+   */
+  gangSheetGeneratedAt?: Timestamp;
+  gangSheetGeneratedBy?: string;
 
   /** Show Queue production timer (Option B — staff Start/Pause/Resume/Mark finished; export does not start the timer). */
   accumulatedPrintMs: number;
@@ -1682,7 +1700,9 @@ export interface UpcomingShow {
 }
 ```
 
-Upsert rule: match existing records by `source + whatnotShowId`; update mutable upstream fields
+> **Studio 1.0.6 — Staff Gang Sheets (shared):** `source` may be `staff_gang_sheet`. Those sheets reuse `upcomingShows` + `showAllocations`, omit `whatnotShowId`, default `maxTotalQuantity` to **200** (editable), require `staffGangSheetCycleNumber`, and do **not** require `assignedStaffUserId` (shared by Studio staff). Exactly one active shared sheet (`open`/`full`/`printing`) is allowed. Eligibility is `requestOrigin === "studio_internal"` or legacy `isInternal === true` (customer origins denied). Deny Portal allocation; skip Recently Requested popularity bumps. Any active Studio staff may create when **no** active sheet exists (cycle = max(existing)+1); while one is open, **Mark Complete** opens the next cycle. Add-to-Internal can pick among multiple actives if they exist (legacy/recovery). Studio Print Requests use separate **Add to Show** / **Add to Internal Gangsheet** actions; Internal Sheets live on their own nav route.
+
+Upsert rule: match existing **Whatnot** records by `source + whatnotShowId`; update mutable upstream fields
 (`title`, `whatnotUrl`, `scheduledStartAt`, `lastSeenAt`) on a match instead of creating a duplicate.
 Local-only fields (`status`, `syncStatus`, `notes`, `isArchived`, `productionStatus`, capacity fields)
 are never overwritten by an upsert. Records are never auto-deleted; a show that disappears upstream

@@ -1,7 +1,9 @@
 export const UPCOMING_SHOW_ID_QUERY_PARAM = "showId";
 export const UPCOMING_SHOW_REQUEST_ID_QUERY_PARAM = "requestId";
 
-export function getUpcomingShowsPath(options?: {
+export type ShowQueueRouteSurface = "shows" | "staff_gang_sheets";
+
+function buildShowQueueSearch(options?: {
   showId?: string;
   requestId?: string;
 }): string {
@@ -9,7 +11,7 @@ export function getUpcomingShowsPath(options?: {
   const requestId = options?.requestId?.trim();
 
   if (!showId && !requestId) {
-    return "/show-queue";
+    return "";
   }
 
   const searchParams = new URLSearchParams();
@@ -19,5 +21,28 @@ export function getUpcomingShowsPath(options?: {
   if (requestId) {
     searchParams.set(UPCOMING_SHOW_REQUEST_ID_QUERY_PARAM, requestId);
   }
-  return `/show-queue?${searchParams.toString()}`;
+  return `?${searchParams.toString()}`;
+}
+
+export function getUpcomingShowsPath(options?: {
+  showId?: string;
+  requestId?: string;
+}): string {
+  return `/show-queue${buildShowQueueSearch(options)}`;
+}
+
+export function getInternalGangSheetsPath(options?: {
+  showId?: string;
+  requestId?: string;
+}): string {
+  return `/internal-gang-sheets${buildShowQueueSearch(options)}`;
+}
+
+export function getShowQueueSurfacePath(
+  surface: ShowQueueRouteSurface,
+  options?: { showId?: string; requestId?: string },
+): string {
+  return surface === "staff_gang_sheets"
+    ? getInternalGangSheetsPath(options)
+    : getUpcomingShowsPath(options);
 }

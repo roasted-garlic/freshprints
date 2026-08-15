@@ -298,6 +298,22 @@ export const permissionService = {
     return hasActiveRole(user, ["owner", "admin"]);
   },
 
+  /** Any active Studio staff may create the initial shared Internal Gang Sheet. */
+  canCreateStaffGangSheetLane(user: UserLike) {
+    return hasActiveRole(user, ["owner", "admin", "helper"]);
+  },
+
+  /**
+   * Any active Studio staff may manage the shared Staff Gang Sheet.
+   * Rules remain the security boundary for create/update.
+   */
+  canManageStaffGangSheetShow(user: UserLike, show: { source: string }) {
+    if (!isStaff(user)) {
+      return false;
+    }
+    return show.source === "staff_gang_sheet";
+  },
+
   /** Dev Electron sidebar action to open Chromium DevTools. Owner-only. */
   canOpenDevTools(user: UserLike) {
     return isOwner(user);
@@ -430,6 +446,10 @@ export const permissionService = {
         return this.canManageShowQueueSettings(user);
       case "importWhatnotShows":
         return this.canImportWhatnotShows(user);
+      case "createStaffGangSheetLane":
+        return this.canCreateStaffGangSheetLane(user);
+      case "manageStaffGangSheetLane":
+        return this.canManageUpcomingShows(user);
       case "openDevTools":
         return this.canOpenDevTools(user);
       case "manageGuestCustomers":

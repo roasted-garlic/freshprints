@@ -130,4 +130,17 @@ Studio AI Review **Reprocess / Re-run AI** from Needs Review and Rejected now re
 - [x] `references/project-chatgpt-handoff/CURRENT-STATE.md` updated
 - [x] `references/project-chatgpt-handoff/13-recent-completed-work.md` updated
 
-**Recommended next action for user:** After development integration + PR #75 audit, merge PR #75 when ready, then dispatch Studio 1.0.5 (owner-gated).
+**Recommended next action for user:**
+Goal closed in production: PR #75 merged; Studio `v1.0.5` published. No further action for this corrective.
+
+---
+
+## Production closeout (2026-08-15)
+
+| Item | Value |
+|------|-------|
+| Owner confirmation | Fixed |
+| PR #75 | **merged** |
+| Production tip | `da5304e8634315ab8be99dedfe6cca18213d067a` |
+| Studio release | [`v1.0.5`](https://github.com/roasted-garlic/freshprints/releases/tag/v1.0.5) |
+| Workflow | [31857034677](https://github.com/roasted-garlic/freshprints/actions/runs/31857034677) success |

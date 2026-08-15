@@ -31,17 +31,13 @@ describe("upcoming show upsert matching", () => {
     assert.equal(match?.id, "show-1");
   });
 
-  it("does not match a show with the same whatnotShowId but a different source", () => {
+  it("does not match Staff Gang Sheet keys (Whatnot upsert only)", () => {
     const shows = [buildShow({ id: "show-1", whatnotShowId: "wn-100" })];
 
-    const match = findMatchingUpcomingShow(
-      shows,
-      { source: "whatnot", whatnotShowId: "wn-100" },
-    );
-
-    assert.equal(match?.id, "show-1");
-
-    const noMatch = findMatchingUpcomingShow([], { source: "whatnot", whatnotShowId: "wn-100" });
+    const noMatch = findMatchingUpcomingShow(shows, {
+      source: "staff_gang_sheet",
+      whatnotShowId: "wn-100",
+    });
     assert.equal(noMatch, undefined);
   });
 

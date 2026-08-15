@@ -293,12 +293,30 @@ export function usePrintRequests(activeTab: PrintRequestListTab) {
   );
 
   const patchRequestLocally = useCallback((printRequestId: string, patch: Partial<PrintRequest>) => {
-    setState((current) => ({
-      ...current,
-      requests: current.requests.map((request) =>
-        request.id === printRequestId ? { ...request, ...patch } : request,
-      ),
-    }));
+    setState((current) => {
+      const previous = current.requests.find((request) => request.id === printRequestId);
+      const nextQueueTab = patch.queueTab;
+      const previousQueueTab = previous?.queueTab;
+      const shouldMoveTabCount =
+        previous &&
+        nextQueueTab &&
+        previousQueueTab &&
+        nextQueueTab !== previousQueueTab;
+
+      return {
+        ...current,
+        requests: current.requests.map((request) =>
+          request.id === printRequestId ? { ...request, ...patch } : request,
+        ),
+        countsByTab: shouldMoveTabCount
+          ? {
+              ...current.countsByTab,
+              [previousQueueTab]: Math.max(0, current.countsByTab[previousQueueTab] - 1),
+              [nextQueueTab]: current.countsByTab[nextQueueTab] + 1,
+            }
+          : current.countsByTab,
+      };
+    });
   }, []);
 
   const patchSummaryLocally = useCallback(

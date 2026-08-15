@@ -21,6 +21,8 @@ export type PermissionKey =
   | "manageUpcomingShows"
   | "manageShowQueueSettings"
   | "importWhatnotShows"
+  | "createStaffGangSheetLane"
+  | "manageStaffGangSheetLane"
   | "openDevTools"
   | "manageGuestCustomers"
   | "manageCustomers"

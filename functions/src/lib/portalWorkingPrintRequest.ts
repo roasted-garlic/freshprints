@@ -114,6 +114,7 @@ async function createPrintRequestDoc(
     requestOrigin: "portal_customer",
     status: "draft",
     itemCount: 0,
+    queueTab: "working",
     requestSequenceNumber: nextSequence,
     customerUsernameSnapshot: username,
     customerDisplayNameSnapshot: customer.displayName,
