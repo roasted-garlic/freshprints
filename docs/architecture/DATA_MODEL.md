@@ -1671,7 +1671,7 @@ export interface UpcomingShow {
   /** Sum of `allocatedQuantity` across all non-canceled `showAllocations` for this show. Denormalized for list/detail display. */
   allocatedQuantity: number;
 
-  /** Staff Gang Sheet only: assigned helper/staff UID. */
+  /** Legacy DEV-only optional assignee from the superseded assigned-lane model (ignored). */
   assignedStaffUserId?: string;
   /** Staff Gang Sheet only: 1-based cycle number ("Staff Gang Sheet #N"). */
   staffGangSheetCycleNumber?: number;
@@ -1691,7 +1691,7 @@ export interface UpcomingShow {
 }
 ```
 
-> **Studio 1.0.6 — Staff Gang Sheets:** `source` may be `staff_gang_sheet`. Those lanes reuse `upcomingShows` + `showAllocations`, omit `whatnotShowId` and `maxTotalQuantity` (unlimited), require `assignedStaffUserId` + `staffGangSheetCycleNumber`, deny Portal allocation, and skip Recently Requested popularity bumps. Create/assign is owner/admin; assigned helpers manage only their lane (Rules + complete callable).
+> **Studio 1.0.6 — Staff Gang Sheets (shared):** `source` may be `staff_gang_sheet`. Those sheets reuse `upcomingShows` + `showAllocations`, omit `whatnotShowId` and `maxTotalQuantity` (unlimited), require `staffGangSheetCycleNumber`, and do **not** require `assignedStaffUserId` (shared by Studio staff). Exactly one active shared sheet (`open`/`full`/`printing`) is allowed. Eligibility is persisted `requestOrigin === "studio_internal"` only (no `isInternal` inference). Deny Portal allocation; skip Recently Requested popularity bumps. Owner/admin manually creates the initial sheet; any staff may manage; helpers advance cycles via `completeStaffGangSheetAndOpenNext`.
 
 Upsert rule: match existing **Whatnot** records by `source + whatnotShowId`; update mutable upstream fields
 (`title`, `whatnotUrl`, `scheduledStartAt`, `lastSeenAt`) on a match instead of creating a duplicate.

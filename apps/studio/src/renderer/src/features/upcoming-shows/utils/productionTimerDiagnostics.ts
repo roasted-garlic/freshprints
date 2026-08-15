@@ -44,8 +44,8 @@ export function diagnoseUpcomingShowForTimer(data: RawDocument): TimerParserDiag
     ],
     [
       "assignedStaffUserId",
-      !isStaffGangSheet ||
-        (typeof data.assignedStaffUserId === "string" && Boolean(data.assignedStaffUserId.trim())),
+      // Shared Staff Gang Sheets do not require assignee; leftover DEV field is optional.
+      true,
     ],
     [
       "staffGangSheetCycleNumber",

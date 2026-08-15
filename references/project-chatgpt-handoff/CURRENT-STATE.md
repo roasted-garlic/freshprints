@@ -1,5 +1,57 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-15 — Studio 1.0.6 C-SHARED Implement — Implementation Review approved_with_notes
+
+| Item | Value |
+|------|-------|
+| Managed goal | `studio-mac-autoupdate-signing-and-searchable-category-picker` |
+| Branch | `feature/studio-1.0.6-mac-signing-and-searchable-category` |
+| Target | Studio **1.0.6** |
+| C-SHARED | Shared Staff Gang Sheets implemented under Formal Review bindings |
+| Impl review | `docs/workflow/reviews/2026-08-15-studio-1.0.6-workstream-c-shared-implementation-review.md` → **approved_with_notes** |
+| Owner QA | `docs/workflow/reviews/2026-08-15-studio-1.0.6-workstream-c-shared-owner-qa-checklist.md` |
+| Next | Owner-authorize DEV Rules/indexes/Functions redeploy → owner DEV QA → Test only after PASS |
+| New callable | `createInitialStaffGangSheet` |
+| Updated callable | `completeStaffGangSheetAndOpenNext` (shared N→N+1) |
+| Forbidden | Test/Deploy without gates; production; reopen B/D |
+| A2 | Still credential-gated |
+| Phase 9 | **PARKED** |
+
+---
+
+## 2026-08-15 — Studio 1.0.6 C-SHARED Formal Review — approved_with_changes
+
+| Item | Value |
+|------|-------|
+| Managed goal | `studio-mac-autoupdate-signing-and-searchable-category-picker` |
+| Branch | `feature/studio-1.0.6-mac-signing-and-searchable-category` |
+| Target | Studio **1.0.6** |
+| Review | `docs/workflow/reviews/2026-08-15-studio-1.0.6-workstream-c-shared-staff-gang-sheets-plan-review.md` |
+| Verdict | **approved_with_changes** |
+| Next | `Continue Workflow` → **Implement** C-SHARED only (apply Review bindings) |
+| Forbidden | Test/Deploy until implement + owner gates; reopen B/D; production |
+| A2 | Still credential-gated |
+| Phase 9 | **PARKED** |
+
+---
+
+## 2026-08-15 — Studio 1.0.6 Workstream C — Shared Staff Gang Sheets Plan amendment
+
+| Item | Value |
+|------|-------|
+| Managed goal | `studio-mac-autoupdate-signing-and-searchable-category-picker` |
+| Branch | `feature/studio-1.0.6-mac-signing-and-searchable-category` |
+| Target | Studio **1.0.6** |
+| Phase | **Plan amendment complete** — Formal **Review required** before implement |
+| Plan | `docs/workflow/plans/2026-08-14-studio-mac-autoupdate-signing-and-searchable-category-picker-plan.md` (sections **C-SHARED-***) |
+| C correction | Shared Staff Gang Sheets (no `assignedStaffUserId`); Studio label **Add to Show / Gang Sheet**; modal tabs Shows \| Staff Gang Sheet; eligibility **`studio_internal` only**; one Add Request; hide Staff timer **and** countdown; keep `upcomingShows`/`showAllocations` architecture |
+| Next | `Continue Workflow` → **Review** C-SHARED amendment |
+| Forbidden | Implement / Test / Deploy until Review approves |
+| A2 | Still credential-gated (Apple + `MAC_CSC_*`) |
+| Phase 9 | **PARKED** |
+
+---
+
 ## 2026-08-15 — Studio 1.0.6 C+D Implement — Implementation Review approved_with_notes
 
 | Item | Value |

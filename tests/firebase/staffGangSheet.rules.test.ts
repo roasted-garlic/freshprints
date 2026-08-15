@@ -1,5 +1,5 @@
 /**
- * Staff Gang Sheet Rules — source-conditional create/update and helper assignment isolation.
+ * Staff Gang Sheet Rules — shared sheet create/update and Portal isolation.
  */
 import { after, before, beforeEach, describe, it } from "node:test";
 import { readFileSync } from "node:fs";
@@ -48,7 +48,6 @@ function staffGangSheet(overrides: Record<string, unknown> = {}) {
     productionStatus: "open",
     maxQuantityOverridden: false,
     allocatedQuantity: 0,
-    assignedStaffUserId: HELPER_A,
     staffGangSheetCycleNumber: 1,
     createdBy: OWNER_UID,
     updatedBy: OWNER_UID,
@@ -90,13 +89,19 @@ describe("Staff Gang Sheet firestore rules", () => {
     );
   });
 
-  it("allows owner to create Staff Gang Sheet without whatnotShowId", async () => {
+  it("allows owner to create shared Staff Gang Sheet without assignee or whatnotShowId", async () => {
     const owner = environment.authenticatedContext(OWNER_UID).firestore();
     await assertSucceeds(setDoc(doc(owner, "upcomingShows", "sgs-1"), staffGangSheet()));
   });
 
-  it("denies Staff Gang Sheet create that includes whatnotShowId or maxTotalQuantity", async () => {
+  it("denies Staff Gang Sheet create that includes assignee, whatnotShowId, or maxTotalQuantity", async () => {
     const owner = environment.authenticatedContext(OWNER_UID).firestore();
+    await assertFails(
+      setDoc(
+        doc(owner, "upcomingShows", "sgs-bad-assignee"),
+        staffGangSheet({ assignedStaffUserId: HELPER_A }),
+      ),
+    );
     await assertFails(
       setDoc(
         doc(owner, "upcomingShows", "sgs-bad-id"),
@@ -111,7 +116,7 @@ describe("Staff Gang Sheet firestore rules", () => {
     );
   });
 
-  it("denies helper create of Staff Gang Sheet (create/assign owner/admin only)", async () => {
+  it("denies helper create of Staff Gang Sheet", async () => {
     const helper = environment.authenticatedContext(HELPER_A).firestore();
     await assertFails(
       setDoc(
@@ -121,7 +126,7 @@ describe("Staff Gang Sheet firestore rules", () => {
     );
   });
 
-  it("allows assigned helper to update own Staff Gang Sheet but not reassign", async () => {
+  it("allows any helper to update the shared Staff Gang Sheet but not change cycle", async () => {
     await environment.withSecurityRulesDisabled(async (context) => {
       await setDoc(doc(context.firestore(), "upcomingShows", "sgs-1"), staffGangSheet());
     });
@@ -135,25 +140,19 @@ describe("Staff Gang Sheet firestore rules", () => {
       }),
     );
 
-    await assertFails(
-      updateDoc(doc(helperA, "upcomingShows", "sgs-1"), {
-        assignedStaffUserId: HELPER_B,
-        updatedBy: HELPER_A,
-        updatedAt: Timestamp.now(),
-      }),
-    );
-  });
-
-  it("denies helper update of another helper Staff Gang Sheet", async () => {
-    await environment.withSecurityRulesDisabled(async (context) => {
-      await setDoc(doc(context.firestore(), "upcomingShows", "sgs-1"), staffGangSheet());
-    });
-
     const helperB = environment.authenticatedContext(HELPER_B).firestore();
-    await assertFails(
+    await assertSucceeds(
       updateDoc(doc(helperB, "upcomingShows", "sgs-1"), {
         allocatedQuantity: 3,
         updatedBy: HELPER_B,
+        updatedAt: Timestamp.now(),
+      }),
+    );
+
+    await assertFails(
+      updateDoc(doc(helperA, "upcomingShows", "sgs-1"), {
+        staffGangSheetCycleNumber: 2,
+        updatedBy: HELPER_A,
         updatedAt: Timestamp.now(),
       }),
     );
@@ -170,7 +169,6 @@ describe("Staff Gang Sheet firestore rules", () => {
     await assertFails(
       updateDoc(doc(owner, "upcomingShows", "wn-1"), {
         source: "staff_gang_sheet",
-        assignedStaffUserId: HELPER_A,
         staffGangSheetCycleNumber: 1,
         updatedBy: OWNER_UID,
         updatedAt: Timestamp.now(),

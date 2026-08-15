@@ -1,14 +1,30 @@
 import type { PrintRequestOrigin } from "../types/printRequest/printRequest.types";
+import type { ShowProductionStatus } from "../types/upcomingShow/upcomingShow.enums";
 import type { UpcomingShowSource } from "../types/upcomingShow/upcomingShow.enums";
 
-/** Origins allowed when allocating into a Staff Gang Sheet lane. */
+/** Origins allowed when allocating into a Staff Gang Sheet (strict; no isInternal inference). */
 export const STAFF_GANG_SHEET_ALLOWED_ORIGINS: ReadonlySet<PrintRequestOrigin> = new Set([
   "studio_internal",
-  "studio_customer",
 ]);
+
+/** Production statuses that count as the single shared active Staff Gang Sheet. */
+export const STAFF_GANG_SHEET_ACTIVE_PRODUCTION_STATUSES: readonly ShowProductionStatus[] = [
+  "open",
+  "full",
+  "printing",
+] as const;
 
 export function isStaffGangSheetSource(source: UpcomingShowSource | string | null | undefined): boolean {
   return source === "staff_gang_sheet";
+}
+
+export function isStaffGangSheetActiveProductionStatus(
+  status: ShowProductionStatus | string | null | undefined,
+): boolean {
+  return (
+    typeof status === "string" &&
+    (STAFF_GANG_SHEET_ACTIVE_PRODUCTION_STATUSES as readonly string[]).includes(status)
+  );
 }
 
 /**
@@ -23,7 +39,8 @@ export function isPortalAllocatableShowSource(
 
 /**
  * Whether a Print Request origin may be allocated onto a show of the given source.
- * Whatnot lanes keep existing origin-agnostic Studio behavior; Staff lanes deny portal_customer.
+ * Whatnot keeps origin-agnostic Studio behavior.
+ * Staff requires persisted `requestOrigin === "studio_internal"` only (no isInternal inference).
  */
 export function canAllocateOriginToShowSource(input: {
   source: UpcomingShowSource | string | null | undefined;
@@ -33,10 +50,7 @@ export function canAllocateOriginToShowSource(input: {
     return true;
   }
 
-  return (
-    typeof input.requestOrigin === "string" &&
-    STAFF_GANG_SHEET_ALLOWED_ORIGINS.has(input.requestOrigin as PrintRequestOrigin)
-  );
+  return input.requestOrigin === "studio_internal";
 }
 
 export function formatStaffGangSheetTitle(cycleNumber: number): string {

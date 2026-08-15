@@ -11,8 +11,9 @@ import type {
  * Combined Whatnot show / Staff Gang Sheet production lane.
  * Source-conditional fields:
  * - `whatnot`: `whatnotShowId` required; Staff fields absent
- * - `staff_gang_sheet`: `assignedStaffUserId` + `staffGangSheetCycleNumber` required;
- *   `whatnotShowId` and `maxTotalQuantity` omitted
+ * - `staff_gang_sheet`: `staffGangSheetCycleNumber` required; shared by Studio staff
+ *   (no assignee). `whatnotShowId` and `maxTotalQuantity` omitted.
+ *   Legacy DEV docs may still carry optional `assignedStaffUserId` (ignored).
  */
 export interface UpcomingShow {
   id: string;
@@ -43,7 +44,10 @@ export interface UpcomingShow {
   /** Sum of `allocatedQuantity` across all non-canceled `showAllocations` for this show. Denormalized for list/detail display. */
   allocatedQuantity: number;
 
-  /** Staff Gang Sheet: assigned helper/staff UID. */
+  /**
+   * Legacy DEV-only optional field from the superseded assigned-lane model.
+   * Shared Staff Gang Sheets do not require or write this.
+   */
   assignedStaffUserId?: string;
   /** Staff Gang Sheet: 1-based cycle number shown as "Staff Gang Sheet #N". */
   staffGangSheetCycleNumber?: number;

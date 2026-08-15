@@ -1122,7 +1122,7 @@ export function PrintRequestsPage() {
                 }
                 type="button"
               >
-                Add to Show
+                Add to Show / Gang Sheet
               </Button>
             </div>
           ) : null}

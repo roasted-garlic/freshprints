@@ -30,7 +30,7 @@ import {
   type SplitPickerQuantities,
 } from "@fresh-prints/shared/utils/printRequestSplitAllocation";
 import type { PrintRequest, PrintRequestItem } from "@fresh-prints/shared/types/printRequest/printRequest.types";
-import { canAllocateOriginToShowSource } from "@fresh-prints/shared/utils/staffGangSheet";
+import { canAllocateOriginToShowSource, formatStaffGangSheetTitle, isStaffGangSheetActiveProductionStatus } from "@fresh-prints/shared/utils/staffGangSheet";
 import { isStaffGangSheetShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
 
 interface AddToShowModalProps {
@@ -42,6 +42,8 @@ interface AddToShowModalProps {
   onClose: () => void;
   onAdded: () => void | Promise<void>;
 }
+
+type StudioDestinationTab = "shows" | "staff_gang_sheet";
 
 interface AllocationLeg {
   showId: string;
@@ -97,6 +99,7 @@ export function AddToShowModal({
   const { shows, isLoading: isShowsLoading } = useUpcomingShows();
   const [legs, setLegs] = useState<AllocationLeg[]>([]);
   const [selectedShowId, setSelectedShowId] = useState<string>(fixedShowId ?? "");
+  const [destinationTab, setDestinationTab] = useState<StudioDestinationTab>("shows");
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -111,6 +114,30 @@ export function AddToShowModal({
     setIsPickerOpen(false);
     setActionError(null);
   }, [selectedShowId]);
+
+  const openStaffGangSheet = useMemo(
+    () =>
+      shows.find(
+        (show) =>
+          isStaffGangSheetShow(show) &&
+          show.isArchived !== true &&
+          isStaffGangSheetActiveProductionStatus(show.productionStatus),
+      ) ?? null,
+    [shows],
+  );
+
+  const isStaffDestination = !fixedShowId && destinationTab === "staff_gang_sheet";
+  const isRequestEligibleForStaff = canAllocateOriginToShowSource({
+    source: "staff_gang_sheet",
+    requestOrigin: printRequest.requestOrigin,
+  });
+
+  useEffect(() => {
+    if (fixedShowId || destinationTab !== "staff_gang_sheet") {
+      return;
+    }
+    setSelectedShowId(openStaffGangSheet?.id ?? "");
+  }, [destinationTab, fixedShowId, openStaffGangSheet?.id]);
 
   const allocatableShows = useMemo(() => {
     const now = new Date();
@@ -255,9 +282,17 @@ export function AddToShowModal({
   );
 
   const selectedCapacity = selectedShowId ? capacityByShowId.get(selectedShowId) : undefined;
-  const splitPlan = selectedCapacity
-    ? planAllocationSplit({ requestedQuantity: remainingTotalQuantity, remainingCapacity: selectedCapacity.remainingQuantity })
-    : null;
+  const selectedShowIsStaff = useMemo(() => {
+    const show = shows.find((candidate) => candidate.id === selectedShowId);
+    return Boolean(show && isStaffGangSheetShow(show));
+  }, [selectedShowId, shows]);
+  const splitPlan =
+    selectedShowIsStaff || !selectedCapacity
+      ? null
+      : planAllocationSplit({
+          requestedQuantity: remainingTotalQuantity,
+          remainingCapacity: selectedCapacity.remainingQuantity,
+        });
   const needsDecision = Boolean(splitPlan && !splitPlan.fitsEntirely);
   /**
    * When the selected show has zero remaining capacity (already full or over capacity), there is
@@ -306,7 +341,13 @@ export function AddToShowModal({
   const getShowLabel = useCallback(
     (showId: string) => {
       const show = shows.find((candidate) => candidate.id === showId);
-      return show ? formatShowDateTimeLabel(show.scheduledStartAt?.toDate() ?? new Date()) : showId;
+      if (!show) {
+        return showId;
+      }
+      if (isStaffGangSheetShow(show)) {
+        return formatStaffGangSheetTitle(show.staffGangSheetCycleNumber ?? 1);
+      }
+      return formatShowDateTimeLabel(show.scheduledStartAt?.toDate() ?? new Date());
     },
     [shows],
   );
@@ -420,6 +461,7 @@ export function AddToShowModal({
   const isConfirmDisabled =
     fixedShowIsBlocked ||
     isBusy ||
+    (isStaffDestination && (!isRequestEligibleForStaff || !openStaffGangSheet)) ||
     (legs.length === 0 && !(canConfirmFullFitDirectly && remainingItems.length > 0));
 
   return (
@@ -427,8 +469,12 @@ export function AddToShowModal({
       <Modal aria-labelledby="add-to-show-title" className="modal-panel modal-panel-lg" role="dialog">
         <ModalHeader>
           <div>
-            <p className="eyebrow">Add to show</p>
-            <h3 id="add-to-show-title">Add "{printRequest.name}" to a show</h3>
+            <p className="eyebrow">{fixedShowId ? "Add to show" : "Add to show / gang sheet"}</p>
+            <h3 id="add-to-show-title">
+              {fixedShowId
+                ? `Add "${printRequest.name}" to a show`
+                : `Add "${printRequest.name}" to a show or Staff Gang Sheet`}
+            </h3>
           </div>
           <button
             aria-label="Close add to show"
@@ -497,61 +543,119 @@ export function AddToShowModal({
             <p className="print-requests-modal-hint">Every print in this request has been assigned to a show.</p>
           ) : isShowsLoading ? (
             <LoadingSpinner label="Loading shows" />
-          ) : allocatableShows.length === 0 ? (
-            <p className="print-requests-modal-hint">
-              {shows.length === 0
-                ? "Add a show in the Show Queue before attaching print requests."
-                : "No upcoming shows are available. Past shows cannot accept new print requests."}
-            </p>
           ) : fixedShowIsBlocked ? (
             <p className="auth-message auth-message-error" role="alert">
               {formatShowAllocationBlockedMessage(fixedShowBlockReason)}
             </p>
           ) : (
             <>
-              {!isBusy && shouldShowRemainingWording(legs.length) ? (
-                <p className="print-requests-modal-hint">
-                  {remainingTotalQuantity} print{remainingTotalQuantity === 1 ? "" : "s"} still need a show.
-                </p>
-              ) : null}
-              {fixedShowId ? null : (
-                <ShowPicker
-                  onSelect={isBusy ? () => undefined : setSelectedShowId}
-                  options={showPickerOptions}
-                  selectedId={selectedShowId || null}
-                />
-              )}
-
-              {!isBusy && selectedShowId && !needsDecision && shouldShowRemainingWording(legs.length) ? (
-                <Button onClick={handleAddLegForFullRemainder} type="button" variant="secondary">
-                  Add remaining {remainingTotalQuantity} print{remainingTotalQuantity === 1 ? "" : "s"} to this
-                  show
-                </Button>
-              ) : null}
-
-              {!isBusy && selectedShowId && needsDecision ? (
-                <div className="show-allocation-decision">
-                  <p className="show-allocation-decision-message">
-                    {isSelectedShowFull
-                      ? SHOW_QUEUE_FULL_MESSAGE
-                      : formatSplitNeededWarning({
-                          fittingQuantity: splitPlan?.fittingQuantity ?? 0,
-                          totalQuantity: remainingTotalQuantity,
-                        })}
-                  </p>
-                  {isSelectedShowFull ? (
-                    <p className="print-requests-modal-hint">
-                      Choose a different show that still has capacity.
-                    </p>
-                  ) : (
-                    <div className="show-allocation-decision-actions">
-                      <Button onClick={() => setIsPickerOpen(true)} type="button" variant="secondary">
-                        Choose designs for this show
-                      </Button>
-                    </div>
-                  )}
+              {!fixedShowId ? (
+                <div className="print-requests-tab-bar" role="tablist" aria-label="Destination">
+                  <button
+                    aria-selected={destinationTab === "shows"}
+                    className={`print-requests-tab-button${destinationTab === "shows" ? " is-active" : ""}`}
+                    disabled={isBusy}
+                    onClick={() => {
+                      setDestinationTab("shows");
+                      setSelectedShowId("");
+                      setLegs([]);
+                    }}
+                    role="tab"
+                    type="button"
+                  >
+                    Shows
+                  </button>
+                  <button
+                    aria-selected={destinationTab === "staff_gang_sheet"}
+                    className={`print-requests-tab-button${destinationTab === "staff_gang_sheet" ? " is-active" : ""}`}
+                    disabled={isBusy}
+                    onClick={() => {
+                      setDestinationTab("staff_gang_sheet");
+                      setLegs([]);
+                    }}
+                    role="tab"
+                    type="button"
+                  >
+                    Staff Gang Sheet
+                  </button>
                 </div>
               ) : null}
+
+              {isStaffDestination ? (
+                !isRequestEligibleForStaff ? (
+                  <p className="print-requests-modal-hint">
+                    Staff Gang Sheets accept studio_internal print requests only.
+                  </p>
+                ) : !openStaffGangSheet ? (
+                  <p className="print-requests-modal-hint">No open Staff Gang Sheet</p>
+                ) : (
+                  <div className="print-requests-modal-hint">
+                    <p>
+                      <strong>
+                        {formatStaffGangSheetTitle(openStaffGangSheet.staffGangSheetCycleNumber ?? 1)}
+                      </strong>
+                    </p>
+                    <p>Unlimited capacity · no calendar or split required.</p>
+                  </div>
+                )
+              ) : allocatableShows.filter((show) => !isStaffGangSheetShow(show)).length === 0 &&
+                calendarShows.length === 0 ? (
+                <p className="print-requests-modal-hint">
+                  {shows.filter((show) => !isStaffGangSheetShow(show)).length === 0
+                    ? "Add a show in the Show Queue before attaching print requests."
+                    : "No upcoming shows are available. Past shows cannot accept new print requests."}
+                </p>
+              ) : (
+                <>
+                  {!isBusy && shouldShowRemainingWording(legs.length) ? (
+                    <p className="print-requests-modal-hint">
+                      {remainingTotalQuantity} print{remainingTotalQuantity === 1 ? "" : "s"} still need a
+                      show.
+                    </p>
+                  ) : null}
+                  {fixedShowId ? null : (
+                    <ShowPicker
+                      onSelect={isBusy ? () => undefined : setSelectedShowId}
+                      options={showPickerOptions}
+                      selectedId={selectedShowId || null}
+                    />
+                  )}
+
+                  {!isBusy &&
+                  selectedShowId &&
+                  !needsDecision &&
+                  shouldShowRemainingWording(legs.length) ? (
+                    <Button onClick={handleAddLegForFullRemainder} type="button" variant="secondary">
+                      Add remaining {remainingTotalQuantity} print
+                      {remainingTotalQuantity === 1 ? "" : "s"} to this show
+                    </Button>
+                  ) : null}
+
+                  {!isBusy && selectedShowId && needsDecision ? (
+                    <div className="show-allocation-decision">
+                      <p className="show-allocation-decision-message">
+                        {isSelectedShowFull
+                          ? SHOW_QUEUE_FULL_MESSAGE
+                          : formatSplitNeededWarning({
+                              fittingQuantity: splitPlan?.fittingQuantity ?? 0,
+                              totalQuantity: remainingTotalQuantity,
+                            })}
+                      </p>
+                      {isSelectedShowFull ? (
+                        <p className="print-requests-modal-hint">
+                          Choose a different show that still has capacity.
+                        </p>
+                      ) : (
+                        <div className="show-allocation-decision-actions">
+                          <Button onClick={() => setIsPickerOpen(true)} type="button" variant="secondary">
+                            Choose designs for this show
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
+                </>
+              )}
             </>
           )}
 

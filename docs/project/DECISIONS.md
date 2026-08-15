@@ -4,12 +4,46 @@
 
 ---
 
+### ADR-FP-135: Staff Gang Sheets are shared (no assignee) with studio_internal-only eligibility
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-15 |
+| Status | accepted (Implement — Studio 1.0.6 C-SHARED) |
+| Related | Supersedes assignment/origin portions of ADR-FP-134; Formal Review `2026-08-15-studio-1.0.6-workstream-c-shared-staff-gang-sheets-plan-review.md` |
+
+**Context**
+
+The first Staff Gang Sheet ship used per-helper assigned lanes and allowed `studio_customer`.
+Owner correction: sheets must be shared by Studio staff, accept only persisted `studio_internal`
+requests, integrate into Studio Add to Show, and hide Staff timer/countdown — still on
+`upcomingShows` + `showAllocations`.
+
+**Decision**
+
+1. No `assignedStaffUserId` on create/next-cycle; legacy DEV field may remain ignored.
+2. At most one active shared Staff sheet (`open`/`full`/`printing`); create uses trusted
+   callable `createInitialStaffGangSheet` (Admin TX); `completeStaffGangSheetAndOpenNext`
+   creates unassigned N+1 with TX + idempotency.
+3. Eligibility: `requestOrigin === "studio_internal"` only; deny customer origins and missing
+   origin; no `isInternal` inference.
+4. Owner/admin create initial sheet; any staff manage; Studio modal Adds Shows | Staff Gang Sheet;
+   Portal unchanged; Recently Requested skip retained.
+5. Index: `source + productionStatus` (remove assignee composite).
+
+**Consequences**
+
+- DEV may need owner cleanup if multiple active assigned lanes pre-exist.
+- Rules/Functions/index DEV redeploy required after implement.
+
+---
+
 ### ADR-FP-134: Staff Gang Sheets reuse Show Queue with source-conditional Whatnot fields
 
 | Field | Value |
 |-------|-------|
 | Date | 2026-08-15 |
-| Status | accepted (Implement — Studio 1.0.6 Workstream C) |
+| Status | superseded in part by ADR-FP-135 (shared sheets / origins); architecture reuse still stands |
 | Related | Plan `2026-08-14-studio-mac-autoupdate-signing-and-searchable-category-picker-plan.md` |
 
 **Context**

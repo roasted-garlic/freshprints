@@ -8,21 +8,22 @@ describe("permissionService Staff Gang Sheet capabilities", () => {
   const admin = { id: "admin-1", role: "admin" as const, isActive: true };
   const helperA = { id: "helper-a", role: "helper" as const, isActive: true };
   const helperB = { id: "helper-b", role: "helper" as const, isActive: true };
+  const customer = { id: "cust-1", role: "customer" as const, isActive: true };
 
-  const assignedShow = {
+  const sharedShow = {
     source: "staff_gang_sheet",
-    assignedStaffUserId: "helper-a",
   };
 
-  it("allows owner/admin to create Staff Gang Sheet lanes", () => {
+  it("allows owner/admin to create the initial shared Staff Gang Sheet", () => {
     assert.equal(permissionService.canCreateStaffGangSheetLane(owner), true);
     assert.equal(permissionService.canCreateStaffGangSheetLane(admin), true);
     assert.equal(permissionService.canCreateStaffGangSheetLane(helperA), false);
   });
 
-  it("restricts helper manage to assigned lane only", () => {
-    assert.equal(permissionService.canManageStaffGangSheetShow(owner, assignedShow), true);
-    assert.equal(permissionService.canManageStaffGangSheetShow(helperA, assignedShow), true);
-    assert.equal(permissionService.canManageStaffGangSheetShow(helperB, assignedShow), false);
+  it("allows any staff to manage the shared Staff Gang Sheet", () => {
+    assert.equal(permissionService.canManageStaffGangSheetShow(owner, sharedShow), true);
+    assert.equal(permissionService.canManageStaffGangSheetShow(helperA, sharedShow), true);
+    assert.equal(permissionService.canManageStaffGangSheetShow(helperB, sharedShow), true);
+    assert.equal(permissionService.canManageStaffGangSheetShow(customer, sharedShow), false);
   });
 });

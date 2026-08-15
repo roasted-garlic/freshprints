@@ -1,7 +1,10 @@
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldValue, type QueryDocumentSnapshot, type Transaction } from "firebase-admin/firestore";
 import { onCall } from "firebase-functions/v2/https";
 
-import { formatStaffGangSheetTitle } from "../../packages/shared/src/utils/staffGangSheet";
+import {
+  formatStaffGangSheetTitle,
+  STAFF_GANG_SHEET_ACTIVE_PRODUCTION_STATUSES,
+} from "../../packages/shared/src/utils/staffGangSheet";
 
 import { loadCallerProfile, assertStaffCaller } from "./lib/caller";
 import { adminDb } from "./lib/admin";
@@ -9,7 +12,6 @@ import {
   failedPrecondition,
   internal,
   invalidArgument,
-  permissionDenied,
   unauthenticated,
 } from "./lib/errors";
 
@@ -34,9 +36,29 @@ function mapHttpsError(error: unknown): never {
   throw internal("Unable to complete Staff Gang Sheet right now.");
 }
 
+async function loadActiveStaffGangSheetsExcluding(
+  transaction: Transaction,
+  excludeShowId: string,
+): Promise<QueryDocumentSnapshot[]> {
+  const activeDocs: QueryDocumentSnapshot[] = [];
+  for (const productionStatus of STAFF_GANG_SHEET_ACTIVE_PRODUCTION_STATUSES) {
+    const activeQuery = adminDb
+      .collection("upcomingShows")
+      .where("source", "==", "staff_gang_sheet")
+      .where("productionStatus", "==", productionStatus);
+    const snap = await transaction.get(activeQuery);
+    for (const docSnap of snap.docs) {
+      if (docSnap.id !== excludeShowId) {
+        activeDocs.push(docSnap);
+      }
+    }
+  }
+  return activeDocs;
+}
+
 /**
- * Completes a Staff Gang Sheet cycle and opens N+1 for the same assignee.
- * Trusted callable: Rules keep Staff Gang Sheet create/assign owner/admin-only, so helpers
+ * Completes a shared Staff Gang Sheet cycle and opens N+1 (no assignee).
+ * Trusted callable: Rules keep Staff Gang Sheet create owner/admin-only, so helpers
  * cannot create the next cycle via the client SDK.
  */
 export const completeStaffGangSheetAndOpenNext = onCall(
@@ -68,33 +90,24 @@ export const completeStaffGangSheetAndOpenNext = onCall(
           throw failedPrecondition("Only Staff Gang Sheets can be completed with auto-cycle.");
         }
 
-        const assignedStaffUserId =
-          typeof data.assignedStaffUserId === "string" ? data.assignedStaffUserId.trim() : "";
         const cycleNumber =
           typeof data.staffGangSheetCycleNumber === "number" ? data.staffGangSheetCycleNumber : NaN;
 
-        if (!assignedStaffUserId || !Number.isInteger(cycleNumber) || cycleNumber < 1) {
-          throw failedPrecondition("Staff Gang Sheet assignment fields are incomplete.");
+        if (!Number.isInteger(cycleNumber) || cycleNumber < 1) {
+          throw failedPrecondition("Staff Gang Sheet cycle fields are incomplete.");
         }
 
-        const isOwnerOrAdmin = caller.role === "owner" || caller.role === "admin";
-        if (!isOwnerOrAdmin && assignedStaffUserId !== caller.id) {
-          throw permissionDenied("You can only complete Staff Gang Sheets assigned to you.");
-        }
-
-        const openLaneQuery = adminDb
+        const openSuccessorQuery = adminDb
           .collection("upcomingShows")
           .where("source", "==", "staff_gang_sheet")
-          .where("assignedStaffUserId", "==", assignedStaffUserId)
           .where("productionStatus", "==", "open");
-
-        const openLaneSnap = await transaction.get(openLaneQuery);
-        const openLanes = openLaneSnap.docs.filter((docSnap) => docSnap.id !== upcomingShowId);
+        const openSuccessorSnap = await transaction.get(openSuccessorQuery);
+        const openSuccessors = openSuccessorSnap.docs.filter((docSnap) => docSnap.id !== upcomingShowId);
 
         // Idempotent retry: current already completed and exactly one open successor exists.
         if (data.productionStatus === "completed") {
-          if (openLanes.length === 1) {
-            const next = openLanes[0]!;
+          if (openSuccessors.length === 1) {
+            const next = openSuccessors[0]!;
             const nextCycle =
               typeof next.data().staffGangSheetCycleNumber === "number"
                 ? next.data().staffGangSheetCycleNumber
@@ -107,7 +120,9 @@ export const completeStaffGangSheetAndOpenNext = onCall(
             };
           }
           throw failedPrecondition(
-            "This Staff Gang Sheet is already completed, but the next open cycle could not be resolved.",
+            openSuccessors.length === 0
+              ? "This Staff Gang Sheet is already completed, but no open successor was found."
+              : "This Staff Gang Sheet is already completed, but multiple open Staff Gang Sheets exist. Resolve the extras before retrying.",
           );
         }
 
@@ -119,9 +134,10 @@ export const completeStaffGangSheetAndOpenNext = onCall(
           throw failedPrecondition("This Staff Gang Sheet cannot be completed in its current state.");
         }
 
-        if (openLanes.length > 0) {
+        const otherActive = await loadActiveStaffGangSheetsExcluding(transaction, upcomingShowId);
+        if (otherActive.length > 0) {
           throw failedPrecondition(
-            "Another open Staff Gang Sheet already exists for this assignee. Resolve it before completing.",
+            "Another active Staff Gang Sheet already exists. Resolve it before completing this one.",
           );
         }
 
@@ -140,12 +156,12 @@ export const completeStaffGangSheetAndOpenNext = onCall(
         };
 
         if (data.productionStatus === "printing" && typeof data.accumulatedPrintMs === "number") {
-          // Fold active segment if present (best-effort; Admin TX may not have client clock fold).
           completedUpdate.accumulatedPrintMs = data.accumulatedPrintMs;
         }
 
         transaction.update(showRef, completedUpdate);
 
+        // Shared next cycle — do not write assignedStaffUserId.
         transaction.set(nextRef, {
           source: "staff_gang_sheet",
           title: formatStaffGangSheetTitle(nextCycleNumber),
@@ -156,7 +172,6 @@ export const completeStaffGangSheetAndOpenNext = onCall(
           maxQuantityOverridden: false,
           allocatedQuantity: 0,
           accumulatedPrintMs: 0,
-          assignedStaffUserId,
           staffGangSheetCycleNumber: nextCycleNumber,
           createdBy: caller.id,
           updatedBy: caller.id,

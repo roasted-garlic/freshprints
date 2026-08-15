@@ -49,7 +49,10 @@ import type {
 } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.enums";
 import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
 import { isStaffGangSheetShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
-import { canAllocateOriginToShowSource, formatStaffGangSheetTitle } from "@fresh-prints/shared/utils/staffGangSheet";
+import {
+  canAllocateOriginToShowSource,
+  formatStaffGangSheetTitle,
+} from "@fresh-prints/shared/utils/staffGangSheet";
 import type { ShowAllocationStatus } from "@fresh-prints/shared/types/showAllocation/showAllocation.enums";
 import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/showAllocation.types";
 import { findMatchingUpcomingShow } from "../utils/upcomingShowUpsert";
@@ -107,8 +110,7 @@ export interface CreateUpcomingShowInput {
 }
 
 export interface CreateStaffGangSheetLaneInput {
-  assignedStaffUserId: string;
-  /** Defaults to 1 for a new lane. */
+  /** Defaults to 1 for the initial shared Staff Gang Sheet. */
   staffGangSheetCycleNumber?: number;
 }
 
@@ -329,19 +331,21 @@ function mapUpcomingShowData(showId: string, data: UpcomingShowDocumentData): Up
       throw new Error("Staff Gang Sheet records must not set maxTotalQuantity.");
     }
     if (
-      typeof data.assignedStaffUserId !== "string" ||
-      !data.assignedStaffUserId.trim() ||
       typeof data.staffGangSheetCycleNumber !== "number" ||
       !Number.isInteger(data.staffGangSheetCycleNumber) ||
       data.staffGangSheetCycleNumber < 1
     ) {
-      throw new Error("Staff Gang Sheet assignment fields are incomplete.");
+      throw new Error("Staff Gang Sheet cycle fields are incomplete.");
     }
 
     return {
       ...base,
       source: "staff_gang_sheet",
-      assignedStaffUserId: data.assignedStaffUserId,
+      // Legacy DEV assignee may still exist; shared model ignores it for auth/uniqueness.
+      assignedStaffUserId:
+        typeof data.assignedStaffUserId === "string" && data.assignedStaffUserId.trim()
+          ? data.assignedStaffUserId
+          : undefined,
       staffGangSheetCycleNumber: data.staffGangSheetCycleNumber,
       title: base.title ?? formatStaffGangSheetTitle(data.staffGangSheetCycleNumber),
       maxTotalQuantity: undefined,
@@ -780,20 +784,16 @@ export const upcomingShowService = {
   },
 
   /**
-   * Owner/admin: create the initial Staff Gang Sheet lane for a helper (cycle #1 by default).
-   * Omits whatnotShowId and maxTotalQuantity (unlimited capacity).
+   * Owner/admin: create the initial shared Staff Gang Sheet (cycle #1 by default).
+   * Omits whatnotShowId, maxTotalQuantity, and assignedStaffUserId.
+   * Uniqueness is enforced in the trusted callable (Admin TX) — client SDK TX cannot query.
    */
   async createStaffGangSheetLane(
     caller: User,
-    input: CreateStaffGangSheetLaneInput,
+    input: CreateStaffGangSheetLaneInput = {},
   ): Promise<UpcomingShow> {
     if (!permissionService.canCreateStaffGangSheetLane(caller)) {
-      throw new Error("Only owners and admins can create Staff Gang Sheet lanes.");
-    }
-
-    const assignedStaffUserId = input.assignedStaffUserId.trim();
-    if (!assignedStaffUserId) {
-      throw new Error("Select a staff member to assign this lane to.");
+      throw new Error("Only owners and admins can create Staff Gang Sheets.");
     }
 
     const cycleNumber = input.staffGangSheetCycleNumber ?? 1;
@@ -801,55 +801,26 @@ export const upcomingShowService = {
       throw new Error("Staff Gang Sheet cycle number must be a positive integer.");
     }
 
-    const existingShows = await this.listUpcomingShows(caller);
-    const openLane = existingShows.find(
-      (show) =>
-        isStaffGangSheetShow(show) &&
-        show.assignedStaffUserId === assignedStaffUserId &&
-        (show.productionStatus === "open" ||
-          show.productionStatus === "full" ||
-          show.productionStatus === "printing"),
-    );
-    if (openLane) {
-      throw new Error(
-        `This staff member already has an open Staff Gang Sheet (${formatStaffGangSheetTitle(openLane.staffGangSheetCycleNumber ?? 1)}).`,
-      );
+    try {
+      const result = await callTracedFunction<
+        { staffGangSheetCycleNumber?: number },
+        { showId: string; cycleNumber: number }
+      >(
+        "createInitialStaffGangSheet",
+        { source: "upcomingShowService.createStaffGangSheetLane" },
+      )({ staffGangSheetCycleNumber: cycleNumber });
+      return this.getUpcomingShowById(caller, result.showId);
+    } catch (error) {
+      if (error instanceof Error && error.message.trim()) {
+        throw error;
+      }
+      throw new Error("Unable to create Staff Gang Sheet. Please try again.");
     }
-
-    const showRef = doc(firestoreCollectionService.getUpcomingShowsCollection());
-    const title = formatStaffGangSheetTitle(cycleNumber);
-    const createPayload = withoutUndefinedFields({
-      source: "staff_gang_sheet" as const,
-      title,
-      status: "scheduled" as const,
-      syncStatus: "idle" as const,
-      isArchived: false,
-      productionStatus: "open" as const,
-      maxQuantityOverridden: false,
-      allocatedQuantity: 0,
-      accumulatedPrintMs: 0,
-      assignedStaffUserId,
-      staffGangSheetCycleNumber: cycleNumber,
-      createdBy: caller.id,
-      updatedBy: caller.id,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-
-    assertNoUndefinedFirestoreFields(createPayload, "Staff Gang Sheet create payload");
-    await runTracedWrite("setDoc", () => setDoc(showRef, createPayload), {
-      app: "studio",
-      collection: "upcomingShows",
-      documentPathPattern: "upcomingShows/{upcomingShowId}",
-      source: "upcomingShowService.createStaffGangSheetLane",
-    });
-
-    return this.getUpcomingShowById(caller, showRef.id);
   },
 
   /**
-   * Completes the current Staff Gang Sheet and opens the next cycle for the same assignee.
-   * Uses a trusted callable so helpers can advance their own lane without Rules create rights.
+   * Completes the current shared Staff Gang Sheet and opens the next shared cycle.
+   * Uses a trusted callable so helpers can advance the shared sheet without Rules create rights.
    */
   async completeStaffGangSheetAndOpenNext(
     caller: User,
@@ -864,7 +835,7 @@ export const upcomingShowService = {
       throw new Error("Only Staff Gang Sheets can be completed with auto-cycle.");
     }
     if (!permissionService.canManageStaffGangSheetShow(caller, show)) {
-      throw new Error("You can only complete Staff Gang Sheets assigned to you.");
+      throw new Error("You do not have permission to complete this Staff Gang Sheet.");
     }
 
     try {
@@ -1161,7 +1132,9 @@ export const upcomingShowService = {
         requestOrigin: printRequest.requestOrigin,
       })
     ) {
-      throw new Error("Portal customer requests cannot be added to Staff Gang Sheets.");
+      throw new Error(
+        "Only studio_internal print requests can be added to Staff Gang Sheets.",
+      );
     }
 
     const requestItem = requestItems.find((item) => item.id === input.printRequestItemId);

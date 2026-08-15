@@ -1106,8 +1106,13 @@ service cloud.firestore {
         && data.source == "staff_gang_sheet"
         && !("whatnotShowId" in data)
         && !("maxTotalQuantity" in data)
-        && data.assignedStaffUserId is string
-        && data.assignedStaffUserId.size() > 0
+        && (
+          !("assignedStaffUserId" in data)
+          || (
+            data.assignedStaffUserId is string
+            && data.assignedStaffUserId.size() > 0
+          )
+        )
         && data.staffGangSheetCycleNumber is number
         && data.staffGangSheetCycleNumber == int(data.staffGangSheetCycleNumber)
         && data.staffGangSheetCycleNumber >= 1
@@ -1136,8 +1141,6 @@ service cloud.firestore {
           || (
             isStaff()
             && resource.data.source == "staff_gang_sheet"
-            && resource.data.assignedStaffUserId == request.auth.uid
-            && request.resource.data.assignedStaffUserId == resource.data.assignedStaffUserId
             && request.resource.data.staffGangSheetCycleNumber == resource.data.staffGangSheetCycleNumber
           )
         );
@@ -1671,10 +1674,14 @@ service cloud.firestore {
     match /upcomingShows/{upcomingShowId} {
       allow read: if isStaff();
 
-      // Staff Gang Sheet create/assign is owner/admin only. Helpers advance cycles via trusted callable.
+      // Staff Gang Sheet create is owner/admin only. Helpers advance cycles via trusted callable.
       allow create: if staffCanCreateUpcomingShow()
         && upcomingShowRequiredFieldsValid(request.resource.data)
-        && request.resource.data.updatedBy == request.auth.uid;
+        && request.resource.data.updatedBy == request.auth.uid
+        && (
+          request.resource.data.source != "staff_gang_sheet"
+          || !("assignedStaffUserId" in request.resource.data)
+        );
 
       allow update: if (
           staffCanUpdateUpcomingShow()
@@ -1684,8 +1691,12 @@ service cloud.firestore {
             resource.data.source == "whatnot"
               ? request.resource.data.whatnotShowId == resource.data.whatnotShowId
               : (
-                request.resource.data.assignedStaffUserId == resource.data.assignedStaffUserId
-                && request.resource.data.staffGangSheetCycleNumber == resource.data.staffGangSheetCycleNumber
+                request.resource.data.staffGangSheetCycleNumber == resource.data.staffGangSheetCycleNumber
+                && (
+                  !("assignedStaffUserId" in resource.data)
+                    ? !("assignedStaffUserId" in request.resource.data)
+                    : request.resource.data.assignedStaffUserId == resource.data.assignedStaffUserId
+                )
               )
           )
           && (!("createdBy" in resource.data) || request.resource.data.createdBy == resource.data.createdBy)

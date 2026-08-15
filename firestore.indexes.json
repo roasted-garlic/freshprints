@@ -1334,24 +1334,20 @@
         }
       ]
     },
-    {
-      "collectionGroup": "upcomingShows",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "source",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "assignedStaffUserId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "productionStatus",
-          "order": "ASCENDING"
-        }
-      ]
-    }
+      {
+        "collectionGroup": "upcomingShows",
+        "queryScope": "COLLECTION",
+        "fields": [
+          {
+            "fieldPath": "source",
+            "order": "ASCENDING"
+          },
+          {
+            "fieldPath": "productionStatus",
+            "order": "ASCENDING"
+          }
+        ]
+      }
   ],
   "fieldOverrides": []
 }

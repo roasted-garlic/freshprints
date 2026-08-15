@@ -4,13 +4,14 @@
 |-------|-------|
 | Date | 2026-08-14 |
 | Author | Agent |
-| Amended | **2026-08-14** — Workstreams **C** (Staff Gang Sheets) + **D** (AI Review left-rail background preview sync); **2026-08-15** Implement C+D |
-| Status | **implemented_pending_qa** (C+D); A/B bound by prior `approved_with_changes` |
+| Amended | **2026-08-14** — C+D; **2026-08-15** Implement C+D + C corrective; **2026-08-15** Workstream **C shared Staff Gang Sheets** product-flow amendment (this doc) |
+| Status | **plan_amended_pending_review** — C shared-sheet amendment; **do not implement until Review approves**; A/B + D prior bindings unchanged; A2 still credential-gated |
 | Workflow | managed-phase |
 | Goal id | `studio-mac-autoupdate-signing-and-searchable-category-picker` |
-| Related | A/B review + C+D amendment review + C+D implementation review |
+| Related | A/B review; C+D amendment review; C+D impl review; C corrective impl review; this C shared-sheet amendment → **formal Review required** |
 | Target release | Studio **`1.0.6`** |
-| Impact classification | Studio app + release infrastructure only (not FreshForge starter surface) |
+| Branch | `feature/studio-1.0.6-mac-signing-and-searchable-category` |
+| Impact classification | Studio app + Firebase Rules/Functions/indexes (DEV) only (not FreshForge starter surface) |
 
 ---
 
@@ -515,6 +516,326 @@ Either order is acceptable if A is blocked on credentials; **do not block B on A
 
 # WORKSTREAM C — Staff Gang Sheets (Plan amendment)
 
+> **SUPERSEDING AMENDMENT (2026-08-15) — Shared Staff Gang Sheets**  
+> Sections **C-SHARED-*** below replace the prior **assignment / lane / dual-origin** product model.  
+> Keep the implemented architecture: `upcomingShows` + `showAllocations` + Show Queue + export + Portal isolation + complete→next.  
+> **Do not implement until Formal Review approves this amendment.**  
+> Historical C0–C15 below remain as discovery context; where they conflict with **C-SHARED-***, **C-SHARED-*** wins.
+
+---
+
+## C-SHARED-0. Amendment goal (narrow product-flow correction)
+
+Keep current Staff Gang Sheet architecture, but:
+
+1. Make Staff Gang Sheets **shared** by authorized Studio staff (no assignee).
+2. Fix Show Queue **Add Request** eligibility / empty list.
+3. Keep **one** Add Request control; remove Staff timer **and** countdown UI.
+4. Let Studio Print Requests use existing Add to Show flow with a **Staff Gang Sheet** destination tab.
+5. Restrict Staff destinations to **`studio_internal` only**.
+
+Not a rewrite. Not a new collection. Designs still never become queued/printed.
+
+---
+
+## C-SHARED-1. Architecture preserved (exact)
+
+| Piece | Path / behavior | Keep? |
+|-------|-----------------|-------|
+| Collection | `upcomingShows` with `source: "staff_gang_sheet"` | Yes |
+| Allocations | `showAllocations` via `upcomingShowService.allocatePrintRequestItem` | Yes |
+| Show Queue UI | `apps/studio/.../upcoming-shows/pages/UpcomingShowsPage.tsx` — tabs **Shows \| Staff Gang Sheets** | Yes |
+| Capacity | Omit `maxTotalQuantity` → unlimited via `assessShowCapacity` | Yes |
+| Export | `useExportShowZip` / `useExportGangSheetPng` + Electron exporters | Yes |
+| Completion | Callable `functions/src/completeStaffGangSheetAndOpenNext.ts` + Studio wrapper | Yes (narrow to shared) |
+| Portal isolation | `listPortalAllocatableShows`, `queuePortalPrintRequestToShow`, calendar visibility, Rules | Yes |
+| Recently Requested | `onShowAllocationCreated` skip for staff source | Yes |
+| Helpers | `packages/shared/src/utils/staffGangSheet.ts` | Yes (tighten origins; drop assignment semantics) |
+| Corrective surface selection | `showQueueSurfaceSelection.ts` (URL must not flip Staff → Shows) | Yes |
+
+**Do not add** another collection, allocation model, or Staff-specific request DB.
+
+---
+
+## C-SHARED-2. Current Studio Add to Show flow (discovered)
+
+| Surface | Path | Label today | Modal |
+|---------|------|-------------|-------|
+| Studio Print Requests | `apps/studio/.../print-requests/pages/PrintRequestsPage.tsx` (~1115–1126) | **`Add to Show`** | Opens `AddToShowModal` |
+| Studio Add modal | `apps/studio/.../print-requests/components/AddToShowModal.tsx` | — | Loads `useUpcomingShows`, builds calendar via `@fresh-prints/show-picker` |
+| Show Queue Add Request | `UpcomingShowsPage.tsx` → same `AddToShowModal` with `fixedShowId` | **`Add Request`** (header + Attached section) | Fixed-show path |
+| Portal | `apps/portal/.../PortalQueueToShowModal.tsx` + callables | Portal copy (“add … to a show’s print run”) — **not** the Studio button string | **Must not** gain Staff tab or Studio label |
+
+**Amendment C3:** Studio Print Requests button only → **`Add to Show / Gang Sheet`**. Portal copy unchanged. Do **not** rename a shared component that would change Portal.
+
+---
+
+## C-SHARED-3. Modal / picker architecture (discovered + narrow extension)
+
+| Layer | Path | Role today |
+|-------|------|------------|
+| Modal | `AddToShowModal.tsx` | Legs, capacity split, override, celebration; hosts picker |
+| Shared calendar | `packages/show-picker` (`ShowPicker`, `buildShowPickerOptions`) | Date-grouped calendar + capacity bars |
+| Studio calendar input | `AddToShowModal` `calendarShows` | **Already excludes** `isStaffGangSheetShow` (line ~146–148) |
+| Studio allocatable filter | `allocatableShows` | Includes origin gate via `canAllocateOriginToShowSource` |
+
+**Gap:** Staff sheets are stripped from the calendar, so Studio Print Request → Add to Show **cannot** target a Staff Gang Sheet today. Show Queue `fixedShowId` path still can.
+
+**Narrow Studio-only extension (preferred):**
+
+1. Inside `AddToShowModal` only (Studio), when **not** `fixedShowId`, add destination tabs: **Shows** | **Staff Gang Sheet**.
+2. **Shows tab:** existing `ShowPicker` + capacity/split/Whatnot behavior unchanged.
+3. **Staff Gang Sheet tab:** no calendar; show the single current open Staff sheet (or “No open Staff Gang Sheet”); confirm allocates remaining quantity with **no** capacity/split/override UX.
+4. Do **not** auto-create a Staff sheet from this modal.
+5. Portal never mounts this modal / these tabs.
+6. Prefer **not** teaching generic `ShowPicker` about Staff tabs unless Review finds duplication unavoidable — keep Staff destination UI local to Studio `AddToShowModal`.
+
+---
+
+## C-SHARED-4. Revised minimum Staff Gang Sheet schema
+
+| Field | Status |
+|-------|--------|
+| `source: "staff_gang_sheet"` | **KEEP** (required) |
+| `staffGangSheetCycleNumber: number` | **KEEP** (required, ≥ 1) |
+| `whatnotShowId` | **ABSENT** |
+| `maxTotalQuantity` | **ABSENT** (unlimited) |
+| `assignedStaffUserId` | **REMOVE / no longer required** — stop writing; stop Rules/type requirements; tolerate legacy DEV docs with leftover field until optional cleanup |
+| Ownership replacement | **None** — shared staff lane |
+
+Types: `packages/shared/src/types/upcomingShow/upcomingShow.types.ts` (+ enums).  
+Rules: `staffGangSheetUpcomingShowFieldsValid` — drop assignee string requirement; create still owner/admin.
+
+---
+
+## C-SHARED-5. Assignment-related code / query / UI to remove
+
+| Area | Exact path | Change |
+|------|------------|--------|
+| Create lane service | `upcomingShowService.createStaffGangSheetLane` | No assignee input; uniqueness = **one open shared Staff sheet** globally (any open/full/printing staff source), not per helper |
+| Create modal UI | `UpcomingShowsPage.tsx` create-staff modal (~1760+) | Remove staff search + Assign Select; create #1 with confirm only |
+| Permissions | `permissionService.canManageStaffGangSheetShow` | Any active staff for `source === staff_gang_sheet` (remove `assignedStaffUserId === user.id`) |
+| Helper lane filter | `UpcomingShowsPage` (~341) | Remove “my assigned lane” filtering |
+| Rules update | `firestore.rules` `staffCanUpdateUpcomingShow` | Allow `isStaff()` on staff sheets with immutable `source` + `staffGangSheetCycleNumber`; drop assignee equality gate |
+| Rules create validator | `staffGangSheetUpcomingShowFieldsValid` | Drop required `assignedStaffUserId` |
+| Callable | `completeStaffGangSheetAndOpenNext.ts` | Shared N → N+1; no assignee on next; open-lane query by `source` + `productionStatus` |
+| Index | `firestore.indexes.json` | Remove `source + assignedStaffUserId + productionStatus`; add `source + productionStatus` **only if** callable/service queries that pair |
+| Copy | List/detail “Assigned lane / Assigned · Cycle” | Replace with shared cycle copy (e.g. Cycle N / Staff Gang Sheet #N) |
+| Tests | `permissionService.staffGangSheet.test.ts`, `tests/firebase/staffGangSheet.rules.test.ts`, callable tests | Rewrite for shared model |
+
+---
+
+## C-SHARED-6. Why Add Request currently returns no requests (root cause)
+
+**Source path (reused, correct):**
+
+- `useShowQueuePrintRequests` → merges `usePrintRequests("working"|"queued"|"printing")`
+- `buildShowQueuePrintRequestOptions` → excludes already-on-show + fully printed
+- Staff post-filter in `UpcomingShowsPage` `requestOptions` (~970–989):
+
+```ts
+canAllocateOriginToShowSource({ source: selectedShow.source, requestOrigin: request.requestOrigin })
+```
+
+**Root causes (compound):**
+
+1. **Strict `requestOrigin` membership** — `canAllocateOriginToShowSource` returns **false** when `requestOrigin` is missing/undefined. Legacy / partially backfilled docs that only have `isInternal: true` never match the allowlist → **all rows dropped**.
+2. **Placeholder option dropped** — `{ label: "Choose a request", value: "" }` fails `requests.find` → filter removes it → Select looks **completely empty** (not “no eligible requests”).
+3. **Prior product allowlist** included `studio_customer`; owner QA may still see empty if the loaded pages are mostly `portal_customer` or origin-less docs.
+4. **Not a missing Staff query** — do not invent a new collection; fix filter + empty-state UX. Optionally resolve effective origin consistently with badge logic (`requestOrigin` else `isInternal` → treat as `studio_internal`) — **Review must confirm** whether inferred internal is allowed; preferred binding for this amendment: **persisted `requestOrigin === "studio_internal"` only**, with clear empty copy when none.
+
+**Also confirmed product gap:** Print Request calendar path cannot pick Staff sheets today (`calendarShows` excludes them) — separate from Show Queue empty Select, addressed by C-SHARED-3.
+
+---
+
+## C-SHARED-7. Revised internal-request query / filter
+
+| Rule | Value |
+|------|-------|
+| ALLOW | `requestOrigin === "studio_internal"` |
+| DENY | `studio_customer`, `portal_customer`, missing/other |
+| Apply to | (1) Studio Add to Show / Gang Sheet → Staff tab (2) Show Queue Staff → Add Request options (3) service allocate guard already via `canAllocateOriginToShowSource` |
+
+Update `STAFF_GANG_SHEET_ALLOWED_ORIGINS` in `packages/shared/src/utils/staffGangSheet.ts` to **`studio_internal` only**.
+
+Keep using `buildShowQueuePrintRequestOptions` + origin filter; preserve placeholder option when filtering Staff options.
+
+---
+
+## C-SHARED-8. Studio-only Shows | Staff Gang Sheet picker-tab design
+
+| Tab | Behavior |
+|-----|----------|
+| **Shows** | Existing `ShowPicker` calendar, capacity, split, Whatnot — no regressions |
+| **Staff Gang Sheet** | Display current open shared Staff sheet; allocate eligible `studio_internal` request; no calendar; no capacity/split; if none → “No open Staff Gang Sheet”; create only from Show Queue |
+
+Studio-only. Portal: no tab.
+
+---
+
+## C-SHARED-9. One Add Request button design
+
+Today: **two** identical controls in `UpcomingShowsPage` — detail header (~1177) **and** Attached print requests section (~1565).
+
+**Keep one:** prefer the **detail header** action (same row as Export / Mark Complete — current Show Queue action hierarchy).  
+**Remove:** section-header duplicate for Staff (and optionally Whatnot for consistency — prefer remove Staff duplicate only if Review wants zero Whatnot churn; recommendation: **remove the Attached-section button for both** surfaces so hierarchy stays one primary Add Request).
+
+Completed Staff sheets: `canShowAddRequestAction` false (existing allocation block + completed status).
+
+---
+
+## C-SHARED-10. Timer + countdown removal (Staff only)
+
+| Concern | Path | Staff (`source == staff_gang_sheet`) | Whatnot |
+|---------|------|--------------------------------------|---------|
+| Production timer card | `UpcomingShowsPage.tsx` ~1334–1460 (`show-production-timer-*`, `useShowProductionTimer`) | **Hide entire card** — currently gated only by `canManageUpcomingShows` (Staff incorrectly sees timer) | Unchanged |
+| Timer ↔ Mark Complete | Staff **Mark Complete** uses `completeStaffGangSheetAndOpenNext` (~1279), **not** `productionTimer.markFinished` | Completion **not** coupled to timer start; safe to hide timer | Timer finish path unchanged |
+| Schedule / “time until show” | List subtitle uses cycle copy; detail hides Whatnot schedule facts for Staff already | Ensure **no** countdown / starts-in / days-hours-minutes / past-show timer copy for Staff | Keep scheduled labels + timer past-show messaging |
+| Portal cutoff countdown | `packages/show-picker` `getCutoffMeta` / `showQueueCutoff.ts` | Studio `AddToShowModal` does **not** pass cutoff meta today; Staff tab must not add countdown | Portal unchanged |
+
+**Explicit:** suppress **both** production timer and any schedule-countdown messaging for Staff — do not assume hiding one removes the other.
+
+Lifecycle for Staff: **OPEN → Mark Complete → COMPLETED** (reuse `productionStatus`; no new status model).
+
+---
+
+## C-SHARED-11. Permission changes
+
+| Capability | Behavior |
+|------------|----------|
+| Owner / admin | Create initial shared Staff #1; manage all; complete |
+| Helper | Use shared open Staff sheet (add/export/complete) per existing Staff Show Queue capability — **no** own-lane assignment |
+| Customer / Portal | No access |
+
+Express via `permissionService` (narrow `canManageStaffGangSheetShow` / create methods). Do not scatter role checks. Do not weaken Portal Rules.
+
+Callable auth: any staff may complete shared open sheet (not assignee-only).
+
+---
+
+## C-SHARED-12. Completion callable changes
+
+Reuse `completeStaffGangSheetAndOpenNext`:
+
+- Complete current shared #N → create shared #N+1 **without** `assignedStaffUserId`
+- Open uniqueness: query `source == staff_gang_sheet` AND `productionStatus == open` (exclude self) — at most one open successor
+- Keep TX safety + idempotent retry when already completed + one open next
+- Do **not** create a replacement callable
+
+---
+
+## C-SHARED-13. Index changes
+
+| Index | Action |
+|-------|--------|
+| `upcomingShows`: `source` + `assignedStaffUserId` + `productionStatus` | **Remove** from `firestore.indexes.json` (obsolete) |
+| `upcomingShows`: `source` + `productionStatus` | **Add only if** callable/service uses that composite query (expected for open-lane uniqueness) |
+| Speculative indexes | **Do not add** |
+
+Production does not yet have Staff feature. After implement: **DEV** index redeploy required. Document in deploy record; no Plan-time deploy.
+
+---
+
+## C-SHARED-14. DEV data reconciliation (do not mutate during Plan)
+
+| Need | Notes |
+|------|-------|
+| Docs with `assignedStaffUserId` | Extra field OK temporarily if Rules stop requiring it; reads should ignore |
+| Preferred cleanup (human-authorized later) | Complete/recreate shared #1 **or** FieldValue.delete assignee on next write; optional one-time DEV script — **not** during Plan |
+| Multiple open assigned lanes | May violate new “one open shared” invariant — owner may need to complete extras before create |
+| Index | Drop old composite after code no longer queries it |
+
+---
+
+## C-SHARED-15. Exact files expected to change (this amendment)
+
+| Area | Paths |
+|------|-------|
+| Shared | `packages/shared/src/utils/staffGangSheet.ts` (+ tests); `upcomingShow.types.ts` docs/fields; possibly `productionTimerDiagnostics.ts` |
+| Studio service | `upcomingShowService.ts` create/complete/allocate permission paths |
+| Studio UI | `UpcomingShowsPage.tsx` (+ CSS if needed); create modal; timer/countdown suppress; one Add Request; shared copy |
+| Studio Print Requests | `PrintRequestsPage.tsx` label only |
+| Add to Show | `AddToShowModal.tsx` — destination tabs Shows \| Staff Gang Sheet |
+| Permissions | `permissionService.ts` + `permissionService.staffGangSheet.test.ts` |
+| Functions | `completeStaffGangSheetAndOpenNext.ts` (+ tests) |
+| Rules | `firestore.rules` + `tests/firebase/staffGangSheet.rules.test.ts` |
+| Indexes | `firestore.indexes.json` |
+| Docs | `DATA_MODEL.md`, `DECISIONS.md` (ADR update), this plan |
+| Focused tests | Origin filter; modal tabs; permissions; callable shared next; UI one-button / no timer |
+
+**Unchanged unless regression found:** Portal components, ZIP/gang exporters, Recently Requested skip (already staff-aware), Whatnot create/timer.
+
+---
+
+## C-SHARED-16. Revised acceptance criteria (Workstream C)
+
+- [ ] Existing Staff Gang Sheet architecture reused (`upcomingShows` + `showAllocations`)
+- [ ] Manual initial Staff Gang Sheet creation remains (Show Queue; no auto-create from Add modal)
+- [ ] Creating Staff Gang Sheet requires **no** staff assignment / no assignee picker
+- [ ] Staff Gang Sheets are shared by authorized Studio staff
+- [ ] `assignedStaffUserId` removed / not required for Staff documents
+- [ ] Studio Print Request action says **Add to Show / Gang Sheet**
+- [ ] Portal still does **not** use that Studio label / has no Staff tab
+- [ ] Studio Add to Show modal contains **Shows** + **Staff Gang Sheet** destinations
+- [ ] Shows destination preserves existing calendar / capacity / split
+- [ ] Staff destination shows current open Staff sheet (or clear empty message)
+- [ ] Staff destination invisible in Portal
+- [ ] Staff accepts **`studio_internal` only**; denies `studio_customer` + `portal_customer`
+- [ ] Show Queue has exactly **ONE** Add Request action for Staff
+- [ ] Add Request lists eligible internals (not empty when eligible docs exist)
+- [ ] Allocation continues through `showAllocations`; unlimited capacity preserved
+- [ ] Staff detail has **no** production timer and **no** show countdown / time-until-show UI
+- [ ] Mark Complete still works; completing #N creates shared #N+1; history retained; idempotent
+- [ ] ZIP/gang export continues; Portal isolation + Recently Requested skip intact
+- [ ] Ordinary Whatnot Shows do not regress (timer, countdown/schedule, capacity, Portal)
+
+---
+
+## C-SHARED-17. Test plan (focused)
+
+Automated:
+
+- Shared create without assignee; uniqueness one open Staff sheet
+- Helper/owner/admin can manage shared sheet; customer cannot
+- `STAFF_GANG_SHEET_ALLOWED_ORIGINS` = internal only; customer origins denied
+- Add Request option builder keeps placeholder; filters origins correctly
+- Studio label vs Portal isolation (unit/contract)
+- AddToShowModal destination tabs: Shows calendar unchanged; Staff tab open/empty; no Staff tab when Portal (N/A mount)
+- Completion creates unassigned next; idempotency
+- Rules: staff update without assignee; create owner/admin; Portal reject staff IDs
+- Timer/countdown not rendered for staff source (component contract / render test where practical)
+- Portal isolation + Recently Requested regression tests remain green
+- Whatnot timer/capacity paths untouched
+
+Manual DEV QA (after Review + implement + authorized DEV redeploy):
+
+- Create shared #1; add internal from Print Request Staff tab; Add Request list populated; one button; no timer/countdown; Mark Complete → #2; Portal cannot see Staff; Whatnot unaffected
+
+---
+
+## C-SHARED-18. Human checkpoints (this amendment)
+
+| Checkpoint | When | Plan action |
+|------------|------|-------------|
+| Formal Review of this C-SHARED amendment | **Before implement** | Required |
+| DEV Rules / Functions / index redeploy | After implement | Owner authorize; not during Plan |
+| DEV Staff fixture cleanup (assignee fields / extra open lanes) | If create blocked by legacy opens | Owner; not during Plan |
+| Production promote | Later release gate | Forbidden now |
+| A2 Apple signing / `MAC_CSC_*` | Separate Workstream A | Still blocked; unchanged |
+
+---
+
+## C-SHARED-19. FreshForge next command
+
+After this Plan amendment is saved:
+
+**`Continue Workflow`** → **Review** this Workstream C shared-sheet amendment  
+(or explicit **Review** / `Run Phase` while phase is Review).
+
+**Do not** Implement / Test / Deploy until Review status is `approved` or `approved_with_changes`.
+
+---
+
 ## C0. Architecture discovery (exact paths)
 
 ### Canonical model
@@ -770,18 +1091,20 @@ Within Show Queue (`UpcomingShowsPage`):
 
 ## C12. Workstream C acceptance criteria
 
+> **Superseded by C-SHARED-16** (shared Staff Gang Sheets amendment, 2026-08-15). Historical checklist below is archival only.
+
 - [ ] Reuses `upcomingShows` (no parallel collection)
 - [ ] Reuses `showAllocations`
-- [ ] Discriminator via expanded `source: staff_gang_sheet` (+ assignment/cycle fields)
+- [ ] Discriminator via expanded `source: staff_gang_sheet` (+ cycle fields; **no** assignee)
 - [ ] No fake numeric capacity; Whatnot capacity unchanged
 - [ ] Unlimited from capacity perspective; no capacity/split/override UI for Staff
 - [ ] Normal allocation integrity preserved
-- [ ] Assigned helper + owner/admin authorization via permissionService
+- [ ] Shared staff + owner/admin authorization via permissionService
 - [ ] Customers/Portal never see Staff cycles; callables reject IDs
-- [ ] Whatnot-specific fields hidden/renamed in Staff UI
+- [ ] Whatnot-specific fields / timer / countdown hidden in Staff UI
 - [ ] Existing gang-sheet/ZIP export reused
-- [ ] Mark Complete preserves history; auto-creates next open cycle
-- [ ] Completion/next-cycle idempotent; one open cycle per lane
+- [ ] Mark Complete preserves history; auto-creates next **shared** open cycle
+- [ ] Completion/next-cycle idempotent; one open shared Staff sheet
 - [ ] No parallel Print Request production state; designs never queued/printed
 - [ ] Whatnot Show Queue does not regress
 
@@ -791,10 +1114,10 @@ Within Show Queue (`UpcomingShowsPage`):
 
 | Change | Notes |
 |--------|-------|
-| Rules | Allowlist + validators for `staff_gang_sheet`; Portal isolation unchanged-or-strengthened |
-| Indexes | Add composites for Staff lane queries |
-| Data migration | None required for existing Whatnot docs; Staff cycles created going forward |
-| Functions deploy | Required for Portal filters + Recently Requested guard before production use |
+| Rules | Shared staff validators; drop assignee requirement; Portal isolation unchanged-or-strengthened |
+| Indexes | Replace assignee composite with `source` + `productionStatus` if queried |
+| Data migration | No production Staff data; optional DEV assignee cleanup (human) |
+| Functions deploy | Required for callable + Portal filters before production use |
 
 ---
 
@@ -804,21 +1127,26 @@ Within Show Queue (`UpcomingShowsPage`):
 |------|----------|------------|
 | Accidentally listing Staff shows in Portal | High | Multi-layer filters + callable reject + tests |
 | Recently Requested polluted by Staff allocations | Medium | Skip bump when show source is staff_gang_sheet |
-| Synthetic `whatnotShowId` confuses Whatnot import | Medium | Prefix reserved; import upsert only `source=whatnot` |
-| Helper authorization too broad/narrow | Medium | Assignment field + Review decision on lane creation |
-| Completion race creates two open cycles | High | Transaction + uniqueness assert |
+| Synthetic `whatnotShowId` confuses Whatnot import | Medium | No synthetic IDs; import upsert only `source=whatnot` |
+| Helper authorization too broad/narrow | Medium | Shared staff capability via permissionService + Rules |
+| Completion race creates two open cycles | High | Transaction + uniqueness assert on shared open query |
 | Schedule/past helpers regress Whatnot | Medium | Staff omits `scheduledStartAt`; keep Whatnot paths unchanged |
+| Empty Add Request list | High | Fix origin filter + placeholder; `studio_internal` only |
 
 ---
 
 ## C15. Human checkpoints (C)
 
-- [ ] Review approval of this C+D amendment
-- [ ] Confirm lane assignment model (owner/admin assigns vs auto-per-helper)
-- [ ] Confirm request origins allowed (`studio_internal` only vs + `studio_customer`)
-- [ ] Confirm customer-upload allocation side effects on Staff cycles
-- [ ] Production Rules/Functions deploy before relying on Portal isolation in prod
+> Prefer **C-SHARED-18**. Historical list updated:
+
+- [ ] Formal Review approval of **C-SHARED** amendment before implement
+- [x] Lane assignment model — **resolved: shared, no assignee**
+- [x] Request origins — **resolved: `studio_internal` only**
+- [ ] DEV Rules/Functions/index redeploy after implement (owner authorize)
+- [ ] Optional DEV fixture cleanup for assignee / multiple open lanes
+- [ ] Production Rules/Functions deploy before prod reliance
 - [ ] Manual Studio QA for Staff tab + Whatnot regression
+- [ ] A2 Apple signing remains separately blocked
 
 ---
 
@@ -913,13 +1241,14 @@ Manual QA (owner):
 
 ## Combined 1.0.6 sequencing (amended)
 
-1. **B** — owner DEV QA (may proceed independently)  
-2. **D** — after C+D Review approval (small renderer; low risk)  
-3. **C** — after C+D Review approval + product decisions (assignment / request origins)  
-4. **A2** — Apple credential checkpoint (unchanged gate)  
-5. Combined Test → Signoff → promote/publish gates unchanged  
+Current state (2026-08-15):
 
-A1 remains done. Do not block B QA on C/D Review.
+1. **B** — **implemented**; owner DEV QA **PASS**  
+2. **D** — **implemented**; owner DEV QA **PASS** (not pending Review)  
+3. **C** — prior Staff Gang Sheet implementation + corrective exist; **C-SHARED** product-flow amendment is **Plan-amended**, awaiting **Formal Review** (then Implement → authorized DEV deploy as required → owner QA). Do **not** treat C as waiting on the historical C+D Review.  
+4. **A1** — done  
+5. **A2** — Apple credential-gated (`MAC_CSC_*` / Developer ID) — **unchanged**  
+6. **Combined Test → Signoff → promote/publish** — only after revised C (C-SHARED) is implemented, DEV-deployed as required, and owner QA passes; preserve prior A/B/D bindings  
 
 ---
 
@@ -932,16 +1261,22 @@ A1 remains done. Do not block B QA on C/D Review.
 - [x] `MAC_CSC_*` naming
 - [x] Design Library filter Category searchable — **no**
 
-### C (new)
+### C (C-SHARED binding — resolved)
 
-- [ ] Owner/admin-only lane assignment vs auto-create per helper
-- [ ] Allow `studio_customer` requests on Staff cycles, or `studio_internal` only?
-- [ ] Should Staff catalog allocations affect Recently Requested? (**Plan default: no**)
-- [ ] Customer-upload allocations on Staff cycles: allow / block / allow-without intake transition?
+Obsolete assignment / dual-origin open questions are **closed**. Binding decisions:
 
-### D (new)
+- [x] Staff Gang Sheets are **shared** by authorized Studio staff — **no assignee** / no `assignedStaffUserId` requirement
+- [x] Manual initial creation remains (owner/admin creates #1 from Show Queue; no auto-create on first allocation or from Add modal)
+- [x] Eligibility: **`studio_internal` only**
+- [x] **`studio_customer` denied**
+- [x] **`portal_customer` denied**
+- [x] Staff allocations do **not** affect Recently Requested
 
-- [ ] None blocking — proceed after Review unless inspection during implement finds prop-wiring conflict
+No new unresolved C product questions from this amendment.
+
+### D (closed)
+
+- [x] Implemented; owner DEV QA **PASS** — **not** pending Review; do not reopen
 
 ---
 
@@ -952,10 +1287,18 @@ A1 remains done. Do not block B QA on C/D Review.
 - Review doc: docs/workflow/reviews/2026-08-14-studio-mac-autoupdate-signing-and-searchable-category-picker-review.md
 - Verdict: **approved_with_changes** (2026-08-14) — **still binding**
 
-### C+D amendment
+### C+D amendment (historical — completed)
 
-- Review doc: **pending**
-- Verdict: **pending** — **do not implement C or D until Review**
+- Review doc: `docs/workflow/reviews/2026-08-14-studio-1.0.6-workstreams-c-d-plan-amendment-review.md`
+- Verdict: **approved_with_changes** (historical)
+- C+D Implement + impl reviews + C corrective: completed history (see workflow state / review docs)
+- **D:** closed for Review purposes — implemented + owner QA PASS; **do not reopen**
+
+### C-SHARED amendment (current)
+
+- Plan: **amended** (sections **C-SHARED-*** in this document)
+- Formal Review: **pending**
+- Implementation: **blocked** until Review status is `approved` or `approved_with_changes`
 
 ---
 
@@ -965,5 +1308,5 @@ A1 remains done. Do not block B QA on C/D Review.
 Continue Workflow
 ```
 
-→ **Review** the C+D amendment only (preserve A/B bindings).  
-**STOP** — no C/D implementation in this step. Owner may still reply to B DEV QA independently.
+→ **Formal Review of the C-SHARED amendment ONLY** (preserve all prior A/B/D bindings).  
+**STOP** — no C-SHARED implementation, Test, or Deploy in this step. Do not reopen B or D. A2 remains Apple credential-gated.

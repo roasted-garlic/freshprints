@@ -71,9 +71,9 @@ import {
 } from "@fresh-prints/shared/utils/showCapacityDisplay";
 import { canRemoveRequestFromShow } from "@fresh-prints/shared/utils/showQueueEditability";
 import { isStaffGangSheetShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
-import { canAllocateOriginToShowSource } from "@fresh-prints/shared/utils/staffGangSheet";
-import { useTeamUsers } from "../../users/hooks/useTeamUsers";
-import { filterTeamUsers } from "../../users/utils/teamUserSearch";
+import {
+  canAllocateOriginToShowSource,
+} from "@fresh-prints/shared/utils/staffGangSheet";
 import {
   canEnableAddRequestAction,
   decideQuerySurfaceSync,
@@ -182,11 +182,8 @@ export function UpcomingShowsPage() {
   const [queueSurface, setQueueSurface] = useState<ShowQueueSurface>("shows");
   const [staffListTab, setStaffListTab] = useState<StaffGangSheetListTab>("current");
   const [isCreateStaffLaneModalOpen, setIsCreateStaffLaneModalOpen] = useState(false);
-  const [staffAssigneeQuery, setStaffAssigneeQuery] = useState("");
-  const [selectedAssigneeUserId, setSelectedAssigneeUserId] = useState("");
   const [isCompletingStaffGangSheet, setIsCompletingStaffGangSheet] = useState(false);
   const hasHydratedFromQueryRef = useRef(false);
-  const { users: teamUsers } = useTeamUsers();
 
   const selectedShowIdParam = searchParams.get(UPCOMING_SHOW_ID_QUERY_PARAM);
   const highlightedRequestIdParam = searchParams.get(UPCOMING_SHOW_REQUEST_ID_QUERY_PARAM)?.trim() || null;
@@ -315,8 +312,6 @@ export function UpcomingShowsPage() {
                   label: "Create Staff Gang Sheet",
                   onClick: () => {
                     setActionError(null);
-                    setStaffAssigneeQuery("");
-                    setSelectedAssigneeUserId("");
                     setIsCreateStaffLaneModalOpen(true);
                   },
                 }
@@ -327,20 +322,10 @@ export function UpcomingShowsPage() {
   );
 
   const surfaceShows = useMemo(() => {
-    const filtered = shows.filter((show) =>
+    return shows.filter((show) =>
       queueSurface === "staff_gang_sheets" ? isStaffGangSheetShow(show) : show.source === "whatnot",
     );
-    if (queueSurface !== "staff_gang_sheets" || !user) {
-      return filtered;
-    }
-    if (permissionService.canCreateStaffGangSheetLane(user)) {
-      return filtered;
-    }
-    // Helpers only see their assigned Staff Gang Sheet lanes.
-    return filtered.filter(
-      (show) => isStaffGangSheetShow(show) && show.assignedStaffUserId === user.id,
-    );
-  }, [queueSurface, shows, user]);
+  }, [queueSurface, shows]);
 
   const showsByScheduleTab = useMemo(() => {
     const now = new Date();
@@ -367,11 +352,6 @@ export function UpcomingShowsPage() {
     queueSurface === "staff_gang_sheets"
       ? staffShowsByListTab[staffListTab]
       : showsByScheduleTab[activeScheduleTab];
-
-  const assigneeOptions = useMemo(
-    () => filterTeamUsers(teamUsers, staffAssigneeQuery).filter((candidate) => candidate.isActive),
-    [staffAssigneeQuery, teamUsers],
-  );
 
   useEffect(() => {
     if (isLoading) {
@@ -977,7 +957,11 @@ export function UpcomingShowsPage() {
     if (!selectedShow || !isStaffGangSheetShow(selectedShow)) {
       return options;
     }
+    // Preserve placeholder (value ""); filter eligible studio_internal only — no isInternal inference.
     return options.filter((option) => {
+      if (option.value === "") {
+        return true;
+      }
       const request = requests.find((candidate) => candidate.id === option.value);
       if (!request) {
         return false;
@@ -994,6 +978,16 @@ export function UpcomingShowsPage() {
     selectedShow,
     summariesByRequestId,
   ]);
+
+  const staffAddRequestEmptyMessage = useMemo(() => {
+    if (!selectedShow || !isStaffGangSheetShow(selectedShow)) {
+      return null;
+    }
+    const eligibleCount = requestOptions.filter((option) => option.value !== "").length;
+    return eligibleCount === 0
+      ? "No eligible internal print requests. Staff Gang Sheets accept studio_internal requests only."
+      : null;
+  }, [requestOptions, selectedShow]);
 
   async function handleRemoveRequestFromShow(printRequestId: string) {
     if (!user || !selectedShow || !permissionService.canManageUpcomingShows(user)) {
@@ -1081,7 +1075,7 @@ export function UpcomingShowsPage() {
               <EmptyState
                 message={
                   queueSurface === "staff_gang_sheets"
-                    ? "Create a Staff Gang Sheet lane and assign it to a helper to start production."
+                    ? "Create a shared Staff Gang Sheet to start internal production."
                     : "Add the first Whatnot show to start tracking the schedule and production."
                 }
                 title={queueSurface === "staff_gang_sheets" ? "No Staff Gang Sheets yet" : "No shows yet"}
@@ -1122,7 +1116,7 @@ export function UpcomingShowsPage() {
                     <p className="print-requests-request-card-subtitle">
                       {queueSurface === "staff_gang_sheets"
                         ? isStaffGangSheetShow(show)
-                          ? `Assigned lane · Cycle ${show.staffGangSheetCycleNumber}`
+                          ? `Shared · Cycle ${show.staffGangSheetCycleNumber}`
                           : "Staff Gang Sheet"
                         : formatUpcomingShowTimestampLabel(show.scheduledStartAt)}
                     </p>
@@ -1161,7 +1155,7 @@ export function UpcomingShowsPage() {
                     {isSelectedStaffGangSheet ? (
                       <p className="print-requests-detail-timestamps">
                         {isStaffGangSheetShow(selectedShow)
-                          ? `Assigned · Cycle ${selectedShow.staffGangSheetCycleNumber}`
+                          ? `Shared · Cycle ${selectedShow.staffGangSheetCycleNumber}`
                           : null}
                       </p>
                     ) : (
@@ -1183,7 +1177,7 @@ export function UpcomingShowsPage() {
                           selectedShowAllocationBlockReason
                             ? formatShowAllocationBlockedMessage(selectedShowAllocationBlockReason)
                             : isSelectedStaffGangSheet && !canManageSelectedStaffGangSheet
-                              ? "You can only add requests to Staff Gang Sheets assigned to you."
+                              ? "You do not have permission to add requests to this Staff Gang Sheet."
                               : undefined
                         }
                         variant="secondary"
@@ -1331,7 +1325,7 @@ export function UpcomingShowsPage() {
                   ) : null}
                 </div>
 
-                {permissionService.canManageUpcomingShows(user) ? (
+                {!isSelectedStaffGangSheet && permissionService.canManageUpcomingShows(user) ? (
                   <Card
                     className={[
                       "show-production-timer-card",
@@ -1562,19 +1556,21 @@ export function UpcomingShowsPage() {
               <Card className="print-requests-card">
                 <div className="print-requests-section-header">
                   <p className="eyebrow">Attached print requests</p>
-                  <Button
-                    disabled={!canShowAddRequestAction}
-                    onClick={openAddRequestModal}
-                    size="sm"
-                    title={
-                      selectedShowAllocationBlockReason
-                        ? formatShowAllocationBlockedMessage(selectedShowAllocationBlockReason)
-                        : undefined
-                    }
-                    variant="secondary"
-                  >
-                    Add Request
-                  </Button>
+                  {!isSelectedStaffGangSheet ? (
+                    <Button
+                      disabled={!canShowAddRequestAction}
+                      onClick={openAddRequestModal}
+                      size="sm"
+                      title={
+                        selectedShowAllocationBlockReason
+                          ? formatShowAllocationBlockedMessage(selectedShowAllocationBlockReason)
+                          : undefined
+                      }
+                      variant="secondary"
+                    >
+                      Add Request
+                    </Button>
+                  ) : null}
                 </div>
 
                 {requestGroups.length === 0 ? (
@@ -1787,15 +1783,13 @@ export function UpcomingShowsPage() {
                 id="create-staff-gang-sheet-form"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  if (!user || !selectedAssigneeUserId) {
+                  if (!user) {
                     return;
                   }
                   void (async () => {
                     try {
                       setActionError(null);
-                      const created = await upcomingShowService.createStaffGangSheetLane(user, {
-                        assignedStaffUserId: selectedAssigneeUserId,
-                      });
+                      const created = await upcomingShowService.createStaffGangSheetLane(user, {});
                       setIsCreateStaffLaneModalOpen(false);
                       setSuccessMessage(`Created ${formatUpcomingShowTitle(created)}.`);
                       setSuccessAlertSeed((current) => current + 1);
@@ -1810,28 +1804,9 @@ export function UpcomingShowsPage() {
                   })();
                 }}
               >
-                <TextInput
-                  label="Find staff member"
-                  name="staffAssigneeQuery"
-                  onChange={(event) => setStaffAssigneeQuery(event.target.value)}
-                  placeholder="Search by name or email"
-                  value={staffAssigneeQuery}
-                />
-                <Select
-                  label="Assign to"
-                  name="assignedStaffUserId"
-                  onChange={(event) => setSelectedAssigneeUserId(event.target.value)}
-                  options={[
-                    { label: "Choose a staff member", value: "" },
-                    ...assigneeOptions.map((candidate) => ({
-                      label: `${candidate.displayName} (${candidate.role})`,
-                      value: candidate.id,
-                    })),
-                  ]}
-                  value={selectedAssigneeUserId}
-                />
                 <p className="print-requests-modal-hint">
-                  Creates Staff Gang Sheet #1 with unlimited queue capacity for the assigned helper.
+                  Creates shared Staff Gang Sheet #1 with unlimited queue capacity for Studio staff.
+                  No Whatnot information or capacity limit is required.
                 </p>
                 {actionError ? (
                   <p className="auth-message auth-message-error" role="alert">
@@ -1850,12 +1825,8 @@ export function UpcomingShowsPage() {
               >
                 Cancel
               </Button>
-              <Button
-                disabled={!selectedAssigneeUserId}
-                form="create-staff-gang-sheet-form"
-                type="submit"
-              >
-                Create lane
+              <Button form="create-staff-gang-sheet-form" type="submit">
+                Create Staff Gang Sheet
               </Button>
             </ModalFooter>
           </Modal>
@@ -1956,6 +1927,9 @@ export function UpcomingShowsPage() {
                 options={requestOptions}
                 value={addRequestId}
               />
+              {staffAddRequestEmptyMessage ? (
+                <p className="print-requests-modal-hint">{staffAddRequestEmptyMessage}</p>
+              ) : null}
               {hasMoreShowQueueRequests ? (
                 <Button
                   disabled={isLoadingMoreShowQueueRequests}

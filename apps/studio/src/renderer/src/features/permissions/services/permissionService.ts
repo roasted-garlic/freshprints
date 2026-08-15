@@ -298,29 +298,20 @@ export const permissionService = {
     return hasActiveRole(user, ["owner", "admin"]);
   },
 
-  /** Owner/admin: create and assign a Staff Gang Sheet lane. */
+  /** Owner/admin: create the initial shared Staff Gang Sheet. */
   canCreateStaffGangSheetLane(user: UserLike) {
     return hasActiveRole(user, ["owner", "admin"]);
   },
 
   /**
-   * Owner/admin: any Staff Gang Sheet. Assigned helper: own lane only.
-   * Rules remain the security boundary for assignment.
+   * Any active Studio staff may manage the shared Staff Gang Sheet.
+   * Rules remain the security boundary for create/update.
    */
-  canManageStaffGangSheetShow(
-    user: UserLike,
-    show: { source: string; assignedStaffUserId?: string },
-  ) {
+  canManageStaffGangSheetShow(user: UserLike, show: { source: string }) {
     if (!isStaff(user)) {
       return false;
     }
-    if (show.source !== "staff_gang_sheet") {
-      return false;
-    }
-    if (hasActiveRole(user, ["owner", "admin"])) {
-      return true;
-    }
-    return Boolean(user?.id && show.assignedStaffUserId === user.id);
+    return show.source === "staff_gang_sheet";
   },
 
   /** Dev Electron sidebar action to open Chromium DevTools. Owner-only. */
