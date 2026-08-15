@@ -8,20 +8,20 @@ function read(relativePath: string): string {
 
 /**
  * Regression coverage for the AI Processing reconciliation defect
- * (post-launch-catalog-and-processing-stability, Workstream D).
+ * (post-launch-catalog-and-processing-stability, Workstream D) and the 2026-08-14
+ * stay-on-tab reprocess local reconciliation corrective.
  *
- * Two compounding bugs, both fixed here:
- * 1. executeRerunToProcessing relied solely on tab navigation's own
- *    side-effect refetch to reconcile the Processing list/count, instead
- *    of calling reloadDesigns()/onQueueChanged() deterministically the
- *    same way every other inbox action in this file does.
+ * Historical Workstream D fixed two compounding bugs:
+ * 1. executeRerunToProcessing previously relied solely on tab navigation's own
+ *    side-effect refetch (later: reloadDesigns + navigate). That navigate/reload
+ *    contract is superseded: success must patch-primary reconcile on the source tab.
  * 2. enqueueDesign treated a benign, server-confirmed "already reached
  *    its desired terminal state" outcome (reason: "already_terminal") the
  *    same as a genuine failure, throwing "This design is no longer
  *    eligible for automatic AI enqueue." even after a successful run.
  */
-describe("AI Processing reconciliation — reprocess deterministically reloads before navigating", () => {
-  it("executeRerunToProcessing calls reloadDesigns() and onQueueChanged() before onNavigateToTab (authoritative Processing recovery order)", () => {
+describe("AI Processing reconciliation — reprocess stays on source tab with local patch", () => {
+  it("executeRerunToProcessing reconciles via reconcileSuccessfulReprocess and does not navigate or reload", () => {
     const source = read(
       "apps/studio/src/renderer/src/features/ai-review/hooks/useAiReviewInbox.ts",
     );
@@ -31,21 +31,15 @@ describe("AI Processing reconciliation — reprocess deterministically reloads b
       source.indexOf("const requestRerunAiSuggestions = useCallback("),
     );
 
-    assert.match(rerunBlock, /await reloadDesigns\(\);/);
-
-    const reloadIndex = rerunBlock.indexOf("await reloadDesigns();");
-    const queueChangedIndex = rerunBlock.indexOf("options?.onQueueChanged?.();");
-    const navigateIndex = rerunBlock.indexOf("options?.onNavigateToTab?.(");
-
-    assert.ok(reloadIndex > -1 && queueChangedIndex > -1 && navigateIndex > -1);
-    assert.ok(
-      reloadIndex < queueChangedIndex && queueChangedIndex < navigateIndex,
-      "reloadDesigns must run, then onQueueChanged, before tab navigation — not rely on " +
-        "navigation's own refetch to reconcile the Processing list/count",
-    );
+    assert.match(rerunBlock, /reconcileSuccessfulReprocess\(/);
+    assert.match(rerunBlock, /clearTerminalAiProcessingLedgerEntry\(designId\)/);
+    assert.doesNotMatch(rerunBlock, /onNavigateToTab/);
+    assert.doesNotMatch(rerunBlock, /reloadDesigns/);
+    assert.doesNotMatch(rerunBlock, /pendingCrossTabSelectionRef/);
+    assert.doesNotMatch(rerunBlock, /onQueueChanged/);
   });
 
-  it("reloadDesigns is a real dependency of executeRerunToProcessing's useCallback, not accidentally stale-closed", () => {
+  it("applyDesignPatch and filters.tab are real dependencies of executeRerunToProcessing", () => {
     const source = read(
       "apps/studio/src/renderer/src/features/ai-review/hooks/useAiReviewInbox.ts",
     );
@@ -55,7 +49,10 @@ describe("AI Processing reconciliation — reprocess deterministically reloads b
     );
     const depsMatch = rerunBlock.match(/\}, \[([^\]]*)\]\);/);
     assert.ok(depsMatch, "expected to find the useCallback dependency array");
-    assert.match(depsMatch![1]!, /reloadDesigns/);
+    assert.match(depsMatch![1]!, /applyDesignPatch/);
+    assert.match(depsMatch![1]!, /filters\.tab/);
+    assert.match(depsMatch![1]!, /selectedIndex/);
+    assert.doesNotMatch(depsMatch![1]!, /reloadDesigns/);
   });
 });
 

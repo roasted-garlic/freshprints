@@ -4834,9 +4834,11 @@ and review-tab re-runs now reset the design back to Processing.
 | Field | Value |
 |-------|-------|
 | Date | 2026-06-25 |
-| Status | accepted |
+| Status | accepted (amended 2026-08-14) |
 
-**Decision:** **Reopen for Review** on Rejected navigates to Needs Review with the same `designId` selected. **Re-run AI Suggestions** on Rejected navigates to Processing with the same design selected. Handoff uses `pendingCrossTabSelectionRef` so tab-change effects do not reset selection to the first queue item.
+**Decision:** **Reopen for Review** on Rejected navigates to Needs Review with the same `designId` selected. Handoff uses `pendingCrossTabSelectionRef` so tab-change effects do not reset selection to the first queue item.
+
+**Amendment (2026-08-14 — `studio-ai-review-reprocess-local-reconciliation`):** **Reprocess / Re-run AI** from Needs Review or Rejected returns the design to Processing membership but **does not** navigate to Processing and **does not** follow/select the design on Processing. Staff remain on the current source tab; the source list reconciles immediately from the authoritative `resetAiEnrichmentForProcessing` result so additional designs can be sent back one-by-one. Staff may open Processing manually when ready.
 
 ---
 

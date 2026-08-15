@@ -40,8 +40,8 @@ describe("AI Processing monotonic reconciliation wiring (Approach C)", () => {
     assert.match(rerunBlock, /clearTerminalAiProcessingLedgerEntry\(designId\)/);
     assert.ok(
       rerunBlock.indexOf("clearTerminalAiProcessingLedgerEntry(designId)") <
-        rerunBlock.indexOf("await reloadDesigns()"),
-      "ledger must clear before the confirmation reload",
+        rerunBlock.indexOf("reconcileSuccessfulReprocess("),
+      "ledger must clear before the local pending membership patch",
     );
 
     const retryBlock = source.slice(

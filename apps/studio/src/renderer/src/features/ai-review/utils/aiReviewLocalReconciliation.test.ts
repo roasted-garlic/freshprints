@@ -5,13 +5,17 @@ import type { Design } from "../../designs/types/design.types";
 import {
   applyAiReviewTabCountDeltas,
   buildAiReviewInboxLocalDesignPatch,
+  buildDesignPatchFromResetForProcessingResult,
   computeAiReviewInboxActionCountDeltas,
   computeHardDeleteCountDeltas,
+  computeReprocessToProcessingCountDeltas,
   designLeavesCurrentInboxTab,
   reconcileSuccessfulHardDelete,
   reconcileSuccessfulInboxManualAction,
+  reconcileSuccessfulReprocess,
   recoverFailedInboxManualAction,
   simulateLocalNeedsReviewApprovals,
+  simulateLocalNeedsReviewReprocesses,
 } from "./aiReviewLocalReconciliation";
 import { designMatchesInboxTab } from "./aiReviewInboxEligibility";
 
@@ -272,5 +276,94 @@ describe("reconcileSuccessfulHardDelete", () => {
     assert.deepEqual(computeHardDeleteCountDeltas("processing"), { processing: -1 });
     assert.deepEqual(computeHardDeleteCountDeltas("needs_review"), { needs_review: -1 });
     assert.deepEqual(computeHardDeleteCountDeltas("rejected"), { rejected: -1 });
+  });
+});
+
+describe("reprocess to Processing local reconciliation", () => {
+  it("moves Needs Review / Rejected counts into Processing", () => {
+    assert.deepEqual(computeReprocessToProcessingCountDeltas("needs_review"), {
+      needs_review: -1,
+      processing: 1,
+    });
+    assert.deepEqual(computeReprocessToProcessingCountDeltas("rejected"), {
+      rejected: -1,
+      processing: 1,
+    });
+    assert.deepEqual(computeReprocessToProcessingCountDeltas("processing"), {});
+  });
+
+  it("builds patch only from reset callable fields and leaves source tab", () => {
+    const patch = buildDesignPatchFromResetForProcessingResult({
+      aiReviewStatus: "pending",
+      status: "imported",
+    });
+    const local = { ...createDesign({ status: "rejected", aiReviewStatus: "needs_review" }), ...patch };
+    assert.equal(designMatchesInboxTab(local, "needs_review"), false);
+    assert.equal(designMatchesInboxTab(local, "rejected"), false);
+    assert.equal(designMatchesInboxTab(local, "processing"), true);
+  });
+
+  it("happy path never reloads or navigates and advances A→B→C→none", () => {
+    const result = simulateLocalNeedsReviewReprocesses(["a", "b", "c"]);
+    assert.deepEqual(result.remainingIds, []);
+    assert.deepEqual(result.selectionSequence, ["b", "c", null]);
+    assert.equal(result.listReloadCallCount, 0);
+    assert.equal(result.navigateCallCount, 0);
+    assert.equal(result.countRefreshCallCount, 0);
+    assert.equal(result.applyPatchCount, 3);
+    assert.equal(result.needsReviewDeltaSum, -3);
+    assert.equal(result.processingDeltaSum, 3);
+  });
+
+  it("reconcileSuccessfulReprocess invalidates caches, patches, and deltas without reload/navigate", async () => {
+    const invalidated: string[] = [];
+    let patched: { id: string; patch: Partial<Design> } | null = null;
+    let deltas: Record<string, number> | null = null;
+    let pendingAdvance: number | null = null;
+    let reloadCalls = 0;
+    let navigateCalls = 0;
+    let queueChangedCalls = 0;
+
+    reconcileSuccessfulReprocess({
+      designId: "design-a",
+      resetResult: { aiReviewStatus: "pending", status: "imported" },
+      sourceTab: "rejected",
+      selectedIndex: 2,
+      deps: {
+        clearLiveDesign: () => undefined,
+        setPendingAdvanceIndex: (index) => {
+          pendingAdvance = index;
+        },
+        invalidateReadCaches: (id) => {
+          invalidated.push(id);
+        },
+        applyDesignPatch: (id, patch) => {
+          patched = { id, patch };
+        },
+        onInboxCountsDelta: (next) => {
+          deltas = next as Record<string, number>;
+        },
+        reloadDesigns: async () => {
+          reloadCalls += 1;
+        },
+        onQueueChanged: () => {
+          queueChangedCalls += 1;
+        },
+        onNavigateToTab: () => {
+          navigateCalls += 1;
+        },
+      },
+    });
+
+    assert.deepEqual(invalidated, ["design-a"]);
+    assert.equal(pendingAdvance, 2);
+    assert.deepEqual(patched, {
+      id: "design-a",
+      patch: { aiReviewStatus: "pending", status: "imported" },
+    });
+    assert.deepEqual(deltas, { rejected: -1, processing: 1 });
+    assert.equal(reloadCalls, 0);
+    assert.equal(navigateCalls, 0);
+    assert.equal(queueChangedCalls, 0);
   });
 });

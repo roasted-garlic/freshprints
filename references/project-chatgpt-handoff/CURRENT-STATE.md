@@ -1,33 +1,34 @@
 # Fresh Prints - Current State Snapshot
 
-## 2026-08-14 — Studio Design Library archive/restore/companion (promotion in progress)
+## 2026-08-14 — Studio AI Review reprocess local reconciliation — IN PROGRESS
 
 | Item | Value |
 |------|-------|
-| Managed goal | `studio-design-library-archive-restore-reconciliation` |
-| Development Signoff | **approved_with_notes** — `docs/workflow/reviews/2026-08-14-studio-design-library-archive-restore-reconciliation-signoff.md` |
-| Owner DEV QA | **PASS** (A/B/C/D incl. D1/D2) |
-| Main checkout | `C:\coding\fresh-prints` → **`development`** → `origin/development` |
-| Production tip (pre-promotion) | `e59205d7eccf0991e9a8a9b7be266cfeff831158` until PR merges |
-| Phase 9 | **PARKED** — `C:\coding\fresh-prints-wt-phase9-remediation` untouched |
-| DEV Firebase | Rules + indexes deployed to `fresh-prints-dev` |
-| Production Firebase | **Not yet** — await PR merge + `APPROVE PROD FIRESTORE RULES AND INDEXES DEPLOY FOR DESIGN LIBRARY CORRECTIVE` |
-| Scope | Studio Design Library + Rules/indexes + window 1656×1032 only — no Portal/Functions/Storage/Phase 9/Algolia B3 |
+| Managed goal | `studio-ai-review-reprocess-local-reconciliation` |
+| Branch | `fix/studio-ai-review-reprocess-local-reconciliation` |
+| Phase | Test — **pending_manual** (owner QA) |
+| Formal Review | **approved** |
+| Implementation | complete — stay-on-tab patch-primary Reprocess |
+| Automated checks | focused tests / typecheck / build:studio / lint / `git diff --check` — all exit 0 |
+| Manual checkpoint | `docs/workflow/reviews/2026-08-14-studio-ai-review-reprocess-local-reconciliation-manual-checkpoint.md` |
+| Production / Firebase | **Not** part of this corrective |
+| Prior goal | `studio-design-library-archive-restore-reconciliation` remains **DONE** (not mixed) |
 
-### Owner QA record
-- A PASS — ready hard-delete checkboxes removed
-- B PASS — archived purge reconciles immediately
-- C PASS after DEV Rules deploy
-- D PASS after D1/D2 Companion identity corrective
-- Overall PASS
+---
 
-### Prior same-day
-- `studio-dev-recovery-white-screen` — Signoff approved (env-only; do not reopen)
+## 2026-08-14 — Studio Design Library archive/restore/companion — CLOSED
 
-### Policy
-- Work only in `C:\coding\fresh-prints`
-- No force-push / production reset / Phase 9 worktree changes
-- Production promotion via protected PR only
+| Item | Value |
+|------|-------|
+| Managed goal | `studio-design-library-archive-restore-reconciliation` — **DONE** |
+| Signoff | **approved** — `docs/workflow/reviews/2026-08-14-studio-design-library-archive-restore-reconciliation-signoff.md` |
+| Production SHA | `061185c8b9f47d5a6bce56c4f280f1e823b7985c` |
+| Studio release | **370746562** / [`v1.0.4`](https://github.com/roasted-garlic/freshprints/releases/tag/v1.0.4) @ `061185c…` |
+| Workflow | [31827068166](https://github.com/roasted-garlic/freshprints/actions/runs/31827068166) success (`stable` / `internal-unsigned`) |
+| Prod Firebase | Rules + indexes on `fresh-prints-prod`; companion indexes **READY** |
+| Owner | Everything looks good |
+| Phase 9 | **PARKED** — untouched |
+| Main checkout | `C:\coding\fresh-prints` → `development` (feature work on fix branch) |
 
 ---
 
@@ -35,7 +36,6 @@
 
 | Item | Value |
 |------|-------|
-| Production tip | `e59205d7eccf0991e9a8a9b7be266cfeff831158` |
-| Studio 1.0.4 release | **370305556** — tag `v1.0.4-e59205d` |
+| Prior production tip | `e59205d7…` / release `370305556` / `v1.0.4-e59205d` (superseded for Latest by new `v1.0.4` @ `061185c`) |
 | Phase 9 | **PARKED** |
 | Signoff | `docs/workflow/reviews/2026-08-13-repository-consolidation-development-sync-and-cleanup-signoff.md` |
