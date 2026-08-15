@@ -5,13 +5,13 @@ studio-ai-review-reprocess-local-reconciliation
 managed-phase
 
 ## Phase
-DONE — Signoff approved; awaiting PR #75 production merge (owner-gated)
+DONE — Signoff approved; STOP at PR #75 merge checkpoint
 
 ## Plan Status
 complete
 
 ## Review Status
-approved (Formal); Implementation Review approved
+approved
 
 ## Implementation Status
 complete
@@ -26,36 +26,36 @@ approved
 yes
 
 ## Human Checkpoint Reason
-Protected production merge checkpoint: merge PR #75 (development → production) and Studio 1.0.5 dispatch remain owner-gated. Do not merge/dispatch in-agent.
+Protected production merge: owner must (1) push development if still behind, (2) merge PR #75, (3) dispatch Studio 1.0.5. Agent must not merge/dispatch.
 
 ## Allowed Actions
-Integrate tested commits to development; push development (if allowed); audit/update PR #75 metadata; report merge-ready state
+Report merge-ready state; wait for owner
 
 ## Forbidden Actions
-Merge PR #75; push production; dispatch Studio 1.0.5; Firebase/Portal/Rules/Functions changes; rewrite history; force push
+Merge PR #75; push production; dispatch Studio 1.0.5; Firebase/Portal mutations; force push; history rewrite
 
 ## Next Required Step
-Owner merges PR #75 when ready, then dispatches Studio 1.0.5
+Owner runs: `git push origin development` (if needed), confirms PR #75 checks, merges PR #75, then dispatches Studio 1.0.5
 
 ## DONE
 yes
 
-## Last Completed Step
-Signoff approved after owner manual QA PASS
+## Local development HEAD
+6453190a7db386b0637c80a42ddabb8bbbb470d8
 
-## Implementation commit
-81613fa5bb76e30858d5e98c32f5131524ca2838
+## Implementation commit contained
+81613fa5bb76e30858d5e98c32f5131524ca2838 — yes (ancestor)
 
-## Signoff
-docs/workflow/reviews/2026-08-14-studio-ai-review-reprocess-local-reconciliation-signoff.md
+## origin/development (last fetch)
+0e3b9ae852f7d13d9808619965910affc85ec54a — **behind local**; push hook-blocked
 
-## Prior Goal (preserved, closed)
-- Goal: `studio-design-library-archive-restore-reconciliation`
-- Status: DONE / signoff approved
-- Production SHA: `061185c8b9f47d5a6bce56c4f280f1e823b7985c`
+## PR #75
+- base: production @ 061185c8…
+- head (remote): development @ 0e3b9ae… until owner push
+- title updated to Studio 1.0.5 AI Review reprocess corrective
 
 ## Decision Log
-- 2026-08-14: Started separate corrective (Design Library goal already closed; not mixed)
-- 2026-08-14: Plan complete; Formal Review approved; implementation complete
-- 2026-08-14: Owner manual QA **PASS**
-- 2026-08-14: Signoff **approved**; stop at PR #75 merge checkpoint
+- 2026-08-14: Owner manual QA PASS; Signoff approved
+- 2026-08-14: FF-merged feature branch into local development @ 6453190
+- 2026-08-14: `git push origin development` blocked by safety hook — owner must push
+- 2026-08-14: STOP before merging PR #75

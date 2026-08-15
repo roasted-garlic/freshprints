@@ -10,6 +10,8 @@
 | Signoff | **approved** — `docs/workflow/reviews/2026-08-14-studio-ai-review-reprocess-local-reconciliation-signoff.md` |
 | Behavior | Reprocess stays on Needs Review/Rejected; immediate local membership/count/selection reconcile; no auto-navigate to Processing |
 | Studio release path | PR **#75** `development` → `production` (Studio **1.0.5**) — **merge owner-gated** |
+| Local development HEAD | `6453190a7db386b0637c80a42ddabb8bbbb470d8` (contains `81613fa5…`) |
+| origin/development | Still `0e3b9ae…` until owner runs `git push origin development` (agent push hook-blocked) |
 | Production / Firebase | **Not mutated** this phase |
 | Prior Design Library goal | Remains **CLOSED** / separate |
 
