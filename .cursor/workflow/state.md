@@ -5,16 +5,16 @@ studio-mac-autoupdate-signing-and-searchable-category-picker
 managed-phase
 
 ## Phase
-production-promotion — commit + development PR; STOP before production mutation
+production-promotion — feature→development PR open; STOP before production mutation
 
 ## Plan Status
 complete — C-SHARED amendment (parent plan still covers A2)
 
 ## Review Status
-A/B / C+D / C-SHARED reviews + signoff: approved_with_notes (C-SHARED)
+C-SHARED signoff: approved_with_notes
 
 ## Implementation Status
-partial — B + A1 + C + D + C-SHARED signed off; A2 credential-gated; prod promotion in progress
+partial — B + A1 + C + D + C-SHARED signed off @ `0451bc4` (+ docs record); A2 credential-gated
 
 ## Test Status
 passed_with_notes — C-SHARED FreshForge Test 2026-08-15
@@ -26,46 +26,34 @@ approved_with_notes — C-SHARED
 yes
 
 ## Human Checkpoint Reason
-Signed-off dirty tree audited and being committed → feature→development PR. **STOP before** merging development→production and before any fresh-prints-prod Firebase deploy / Studio 1.0.6 publish. Authorization phrase required for production mutation.
+(1) Merge PR **#76** feature→development (agent `gh pr merge` blocked by Cursor hook; PR is OPEN/MERGEABLE). (2) After #76 merges: open/merge development→production only with owner phrase. (3) Firebase prod allowlist deploy only with same authorization. (4) Studio 1.0.6 publish HELD for A2. **No production mutation performed.**
 
 ## Allowed Actions
-Commit signed-off tree; PR feature→development; merge to development if protected workflow allows; open development→production PR (do not merge); docs
+Docs; wait for owner merge of #76; after #76: create development→production PR (do not merge without phrase)
 
 ## Forbidden Actions
-Merge to production; Firebase prod deploy; Studio 1.0.6 dispatch/publish; force-push; App Hosting rollout; reopen C-SHARED/B/D/A1
+Merge to production; Firebase prod deploy; Studio 1.0.6 dispatch/publish; force-push; App Hosting rollout
 
 ## Next Required Step
-After feature→development merge: open development→production PR; STOP for owner phrase `APPROVE PROD C-SHARED BACKEND PROMOTION: RULES+INDEXES+FUNCTIONS ALLOWLIST`
+Owner merge https://github.com/roasted-garlic/freshprints/pull/76 → then `Continue Workflow` to open development→production PR → stop for `APPROVE PROD C-SHARED BACKEND PROMOTION: RULES+INDEXES+FUNCTIONS ALLOWLIST`
 
 ## DONE
 no
 
 ## Last Completed Step
-Dirty-tree audit complete — all paths classified as release-belonging; no unexplained files
+Signed-off tip committed `0451bc4`; feature→development PR #76 opened (merge pending owner)
 
-## Dirty-tree classification (2026-08-15)
-All dirty paths belong to categories 1–3. None in category 4 (unrelated/generated/local-only).
+## Signed-off tip
+`0451bc4` chore(studio): capture signed-off 1.0.6 C-SHARED state
 
-### 1 — C-SHARED correctives
-Studio Internal Sheets / Print Requests / queueTab / Add modal / permissions / Rules / Functions (create/complete/sync/queueTab) / shared staffGangSheet / rules tests / DATA_MODEL / QA checklist updates / CSS helpers / export persist generatedAt / display rename
+## Feature → development PR
+https://github.com/roasted-garlic/freshprints/pull/76
 
-### 2 — Already-approved A1/B/D / 1.0.6 release-branch UX
-AiReviewWorkspace + DesignFormFields Halftone→lightBlack artwork background (pre-QA UI tweak recorded in Decision Log)
+## Production remains
+`origin/production` = `da5304e` (unchanged)
 
-### 3 — Workflow/docs for completed work
-state.md, ROADMAP, DECISIONS, signoff, test report, production preflight
-
-### 4 — Unrelated
-(none)
-
-## Plan
-docs/workflow/plans/2026-08-14-studio-mac-autoupdate-signing-and-searchable-category-picker-plan.md
-
-## Signoff (C-SHARED)
-docs/workflow/reviews/2026-08-15-studio-1.0.6-workstream-c-shared-signoff.md
-
-## Production promotion preflight
-docs/workflow/reviews/2026-08-15-studio-1.0.6-c-shared-production-promotion-preflight.md
+## Commit / classification record
+docs/workflow/reviews/2026-08-15-studio-1.0.6-c-shared-signed-off-commit-record.md
 
 ## Branch
 feature/studio-1.0.6-mac-signing-and-searchable-category
@@ -74,5 +62,5 @@ feature/studio-1.0.6-mac-signing-and-searchable-category
 Studio 1.0.6 (publish held for A2)
 
 ## Decision Log
-- 2026-08-15: Dirty-tree audit — all paths release-belonging; commit signed-off C-SHARED tip for promotion
-- 2026-08-15: C-SHARED prod promotion preflight STOP; Signoff approved_with_notes; owner QA PASS
+- 2026-08-15: Committed signed-off tip `0451bc4`; dirty-tree audit — no unrelated files; PR #76 → development OPEN/MERGEABLE; production merge/deploy STOP
+- 2026-08-15: C-SHARED Signoff approved_with_notes; prod promotion preflight complete
