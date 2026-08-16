@@ -1,71 +1,72 @@
 ## Current Goal
-studio-mac-autoupdate-signing-and-searchable-category-picker
+studio-1.0.7-helper-update-access
 
 ## Current Mode
 managed-phase
 
 ## Phase
-DONE (product Signoff) — awaiting owner release dispatch authorization
+signoff — complete
 
 ## Plan Status
 complete
 
 ## Review Status
-complete (A2-declined amendment approved_with_changes; prior workstream reviews complete)
+approved_with_changes
 
 ## Implementation Status
-complete (A1, B, C-SHARED, D); A2 will not run
+complete
 
 ## Test Status
-passed_with_notes — docs/workflow/reviews/2026-08-15-studio-1.0.6-release-readiness-test-report.md
+passed
 
 ## Signoff Status
-approved_with_notes — docs/workflow/reviews/2026-08-15-studio-1.0.6-managed-goal-signoff.md
+approved
 
 ## Human Checkpoint Required
-yes
+no
 
 ## Human Checkpoint Reason
-Studio 1.0.6 product Signoff complete. Owner must authorize release dispatch before any GitHub Actions Studio release run. Phrase: `AUTHORIZE STUDIO 1.0.6 RELEASE DISPATCH: STABLE INTERNAL-UNSIGNED FROM PRODUCTION 9f945f3`. Does not authorize Firebase/App Hosting/DNS/Portal/secrets/A2/publish.
+—
 
 ## Allowed Actions
-Docs commit to development; wait for owner release phrase; after phrase — release dispatch only as authorized
+Idle / next managed goal; 1.0.7 release only with separate owner phrases
 
 ## Forbidden Actions
-Dispatch/publish without owner phrase; A2 / Apple secrets / notarization; Squirrel bypass; Firebase/Portal/DNS unless separately authorized; reopen product scope
+Touch published v1.0.6; reopen A2; silent release without owner authorization phrases
 
 ## Next Required Step
-Owner replies with release authorization phrase (below). Optional: docs-only commit of workflow artifacts to `development` before dispatch. **STOP before** dispatch/publish until phrase.
+Managed goal **DONE**. When ready: commit/merge 1.0.7 product tree, then owner-authorized Studio **1.0.7** release dispatch/publish (separate from this Signoff).
 
 ## DONE
-yes — managed goal product Signoff closed; release dispatch is a separate owner gate
+yes
 
 ## Last Completed Step
-FreshForge Signoff — Studio 1.0.6 managed goal (2026-08-15) — approved_with_notes
+Signoff approved (2026-08-15) — owner DEV QA PASS
 
-## Signoff
-docs/workflow/reviews/2026-08-15-studio-1.0.6-managed-goal-signoff.md
+## Plan
+docs/workflow/plans/2026-08-15-studio-1.0.7-helper-update-access-plan.md
+
+## Review
+docs/workflow/reviews/2026-08-15-studio-1.0.7-helper-update-access-plan-review.md
+
+## Implementation Review
+docs/workflow/reviews/2026-08-15-studio-1.0.7-helper-update-access-implementation-review.md
 
 ## Test Report
-docs/workflow/reviews/2026-08-15-studio-1.0.6-release-readiness-test-report.md
+docs/workflow/reviews/2026-08-15-studio-1.0.7-helper-update-access-test-report.md
 
-## Tested candidate SHA
-095107549069cddc18a754fa17f83047fe718472
+## Manual Checkpoint
+docs/workflow/reviews/2026-08-15-studio-1.0.7-helper-update-access-manual-checkpoint.md — PASS
 
-## Release source SHA
-9f945f3c2435f1e6939e250c435ca5e4dc503201 (production; contains candidate; tree match)
+## Signoff
+docs/workflow/reviews/2026-08-15-studio-1.0.7-helper-update-access-signoff.md
 
-## A2 disposition
-DECLINED indefinitely — ADR-FP-136
-
-## Owner release phrase
-AUTHORIZE STUDIO 1.0.6 RELEASE DISPATCH: STABLE INTERNAL-UNSIGNED FROM PRODUCTION 9f945f3
-
-## Target release
-Studio 1.0.6 draft via stable + internal-unsigned (Mac ad-hoc/manual; Windows auto-update OK)
+## Target
+Studio 1.0.7
 
 ## Decision Log
-- 2026-08-15: Signoff approved_with_notes; release gated on owner phrase; no dispatch performed
-- 2026-08-15: FreshForge Test passed_with_notes @ 0951075
-- 2026-08-15: Owner declined A2 / paid Apple Program (ADR-FP-136)
-- 2026-08-15: C-SHARED production backend complete
+- 2026-08-15: Owner DEV QA **PASS**; Test → passed; Signoff **approved**; goal DONE
+- 2026-08-15: Test automated pass; pending_manual for Helper/Settings DEV QA
+- 2026-08-15: Implement complete — footer Studio Updates via canAccessDesktopApp; thin StudioUpdatesModal; pins 1.0.7; modal width → lg
+- 2026-08-15: Formal Review approved_with_changes
+- 2026-08-15: Plan ready_for_review

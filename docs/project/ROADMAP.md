@@ -1,6 +1,12 @@
 # Fresh Prints Roadmap
 
-> 2026-08-15: **Studio 1.0.6 managed goal SIGNOFF approved_with_notes** — A1/B/C-SHARED/D complete; A2 **DECLINED** (ADR-FP-136). Test `passed_with_notes` @ `0951075`; release source **`9f945f3`**. Signoff: `docs/workflow/reviews/2026-08-15-studio-1.0.6-managed-goal-signoff.md`. **STOP before release dispatch** until owner phrase: `AUTHORIZE STUDIO 1.0.6 RELEASE DISPATCH: STABLE INTERNAL-UNSIGNED FROM PRODUCTION 9f945f3`. Mac auto-update install remains unsupported; Windows updater unchanged.
+> 2026-08-15: **Studio 1.0.7 helper update access — SIGNOFF approved** — Goal `studio-1.0.7-helper-update-access` **DONE**. Helpers open existing updater via sidebar footer modal (`canAccessDesktopApp`); Settings stays `manageSettings`-only; version pins **1.0.7**. Owner DEV QA **PASS**. Signoff: `docs/workflow/reviews/2026-08-15-studio-1.0.7-helper-update-access-signoff.md`. Release dispatch/publish still separate owner phrases. Published **v1.0.6** untouched. Phase 9 **PARKED**.
+
+> 2026-08-15: **Studio 1.0.6 PUBLISHED — managed goal CLOSED** — [`v1.0.6`](https://github.com/roasted-garlic/freshprints/releases/tag/v1.0.6) / release **371157683** @ `9f945f3` / run [31908117273](https://github.com/roasted-garlic/freshprints/actions/runs/31908117273). Smoke: Windows + Mac arm64 + Mac x64 PASS. A2 declined (ADR-FP-136); Mac auto-update install unsupported; Windows auto-update OK. Record: `docs/workflow/reviews/2026-08-15-studio-1.0.6-published-record.md`. Signoff: `docs/workflow/reviews/2026-08-15-studio-1.0.6-managed-goal-signoff.md`.
+>
+> 2026-08-15: **Studio 1.0.6 DRAFT build SUCCESS — smoke pending** — Run [`31908117273`](https://github.com/roasted-garlic/freshprints/actions/runs/31908117273) @ `9f945f3` / `stable` / `internal-unsigned` / **1.0.6**. *(Superseded by PUBLISHED banner above.)*
+>
+> 2026-08-15: **Studio 1.0.6 managed goal SIGNOFF approved_with_notes** — A1/B/C-SHARED/D complete; A2 **DECLINED** (ADR-FP-136). Test `passed_with_notes` @ `0951075`; release source **`9f945f3`**. Signoff: `docs/workflow/reviews/2026-08-15-studio-1.0.6-managed-goal-signoff.md`. Dispatch authorized and executed by owner. Mac auto-update install remains unsupported; Windows updater unchanged.
 >
 > 2026-08-15: **Studio 1.0.6 A2 Developer ID DECLINED** — Owner will not enroll in paid Apple Developer Program. No `MAC_CSC_*` / notarization. Mac remains ad-hoc/manual-install; Mac auto-update **install** unsupported (limitation open). Windows updater unchanged. A1 install-failed → manual copy ships as-is. 1.0.6 may proceed to Test/Signoff/release prep **without A2**. ADR-FP-136. Amendment: `docs/workflow/plans/2026-08-15-studio-1.0.6-a2-declined-release-without-apple-program-plan-amendment.md`. Review: approved_with_changes.
 >

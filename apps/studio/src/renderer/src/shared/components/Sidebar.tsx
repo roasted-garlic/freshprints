@@ -10,6 +10,7 @@ import {
   Layers,
   LogOut,
   MessageSquare,
+  RefreshCw,
   Settings,
   Sparkles,
   FolderInput,
@@ -34,6 +35,7 @@ import { useUploadActivity } from "../hooks/useUploadActivity";
 import { desktopAppService } from "../services/desktopAppService";
 import { isElectronDesktop } from "../utils/isElectronDesktop";
 import { AppLogo } from "./AppLogo";
+import { StudioUpdatesModal } from "../../features/settings/components/StudioUpdatesModal";
 import { useStudioBrandLogoSettings } from "../../features/settings/hooks/useStudioBrandLogoSettings";
 import { Badge } from "./Badge";
 import { formatTeamUserRoleLabel, getTeamUserRoleBadgeVariant } from "../../features/users/utils/teamUserRoleDisplay";
@@ -177,7 +179,9 @@ export function Sidebar() {
   const [isIndicatorVisible, setIsIndicatorVisible] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(() => getStoredSidebarCollapsed());
   const [isOpeningDevTools, setIsOpeningDevTools] = useState(false);
+  const [isStudioUpdatesOpen, setIsStudioUpdatesOpen] = useState(false);
   const { isOpen: isDrawerOpen, close: closeDrawer } = useSidebarDrawer();
+  const canAccessStudioUpdates = permissionService.canAccessDesktopApp(user);
   const { isUploadActive, requestLeaveConfirmation } = useUploadActivity();
   const staffInbox = useStaffInboxContext();
   const pendingUploadCounts = usePendingCustomerUploadCounts();
@@ -477,6 +481,18 @@ export function Sidebar() {
           </div>
         ) : null}
 
+        {canAccessStudioUpdates ? (
+          <button
+            className="sidebar-sign-out"
+            onClick={() => setIsStudioUpdatesOpen(true)}
+            title={isCollapsed ? "Studio Updates" : undefined}
+            type="button"
+          >
+            <RefreshCw aria-hidden="true" size={16} strokeWidth={2} />
+            {!isCollapsed ? <span>Studio Updates</span> : null}
+          </button>
+        ) : null}
+
         <button
           className="sidebar-sign-out"
           disabled={isAuthActionLoading}
@@ -501,6 +517,8 @@ export function Sidebar() {
           )}
         </button>
       </div>
+
+      <StudioUpdatesModal isOpen={isStudioUpdatesOpen} onClose={() => setIsStudioUpdatesOpen(false)} />
     </aside>
   );
 }
