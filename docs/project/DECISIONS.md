@@ -4,6 +4,40 @@
 
 ---
 
+### ADR-FP-136: Studio Mac Developer ID (A2) declined — no paid Apple Developer Program for 1.0.6+
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-15 |
+| Status | accepted |
+| Related | Plan amendment `2026-08-15-studio-1.0.6-a2-declined-release-without-apple-program-plan-amendment.md`; Review `2026-08-15-studio-1.0.6-a2-declined-release-without-apple-program-plan-review.md`; supersedes A2 credential-gated path in prior 1.0.6 plan |
+
+**Context**
+
+Mac automatic update install fails under ad-hoc signing (Squirrel.Mac). Workstream A2 proposed
+Developer ID Application signing via paid Apple Developer Program + `MAC_CSC_*` GitHub secrets.
+Owner declined enrollment and recurring Apple Developer Program fees.
+
+**Decision**
+
+1. **A2 Developer ID signing is declined / deferred indefinitely** for Studio 1.0.6 and ongoing
+   releases until a future explicit owner decision.
+2. Do **not** configure `MAC_CSC_LINK`, `MAC_CSC_KEY_PASSWORD`, or notarization credentials.
+3. Mac packages remain **ad-hoc** / `internal-unsigned`; Mac auto-update **install** remains
+   **unsupported** (limitation stays open — not marked fixed).
+4. **Windows** automatic updates remain unchanged and supported.
+5. Ship with existing **A1** install-failed Settings copy directing manual install; no Squirrel
+   bypass, Gatekeeper disable, self-signed production cert, or fake Team ID.
+6. Optional future: Mac-only proactive “manual download” Settings UX requires a separate plan.
+
+**Consequences**
+
+- Studio 1.0.6 may proceed to Test/Signoff/release without A2 as a blocker.
+- Staff Mac installs use manual DMG/Open Anyway; Settings may still download then fail install
+  with safe manual-install guidance.
+
+---
+
 ### ADR-FP-135: Staff Gang Sheets are shared (no assignee) with studio_internal-only eligibility
 
 | Field | Value |

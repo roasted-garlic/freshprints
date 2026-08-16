@@ -1,5 +1,42 @@
 # Recent Completed Work
 
+## 2026-08-15 - Studio 1.0.7 helper update access — SIGNOFF approved / DONE
+
+| Item | Status |
+|------|--------|
+| Goal | `studio-1.0.7-helper-update-access` — **DONE** |
+| Delivered | Helpers (desktop staff) open existing Studio updater via sidebar footer modal; no `manageSettings` / Settings exposure |
+| Gate | `permissionService.canAccessDesktopApp(user)` |
+| Pins | Studio package + release workflow/tests → **1.0.7** |
+| Test / Signoff | **passed** / **approved** |
+| Owner QA | **PASS** |
+| Signoff | `docs/workflow/reviews/2026-08-15-studio-1.0.7-helper-update-access-signoff.md` |
+| Release | Not dispatched yet — separate owner phrases |
+| Held | Published **v1.0.6** untouched; A2 declined; Phase 9 parked |
+
+## 2026-08-15 - Studio 1.0.6 — PUBLISHED / managed goal CLOSED
+
+| Item | Status |
+|------|--------|
+| Goal | `studio-mac-autoupdate-signing-and-searchable-category-picker` — **DONE** |
+| Delivered | A1 updater install error UX; B searchable Category; C-SHARED Internal Gang Sheets (+ prod backend); D AI Review thumbnail bg sync |
+| A2 | **DECLINED indefinitely** (ADR-FP-136) |
+| Test / Signoff | `passed_with_notes` / `approved_with_notes` |
+| Release | [`v1.0.6`](https://github.com/roasted-garlic/freshprints/releases/tag/v1.0.6) — **371157683** @ `9f945f3` |
+| Workflow | [31908117273](https://github.com/roasted-garlic/freshprints/actions/runs/31908117273) SUCCESS |
+| Smoke | Windows PASS (auto-update); Mac arm64 + x64 PASS |
+| Mac / Windows | Mac manual DMG; Mac auto-update install unsupported; Windows auto-update OK |
+| Record | `docs/workflow/reviews/2026-08-15-studio-1.0.6-published-record.md` |
+| Out of scope held | A2 revisit; Phase 9 |
+
+## 2026-08-15 - Studio 1.0.6 managed goal — SIGNOFF approved_with_notes (release dispatch gated)
+
+| Item | Status |
+|------|--------|
+| Goal | `studio-mac-autoupdate-signing-and-searchable-category-picker` — product Signoff (superseded by PUBLISHED above) |
+| Signoff | **approved_with_notes** — `docs/workflow/reviews/2026-08-15-studio-1.0.6-managed-goal-signoff.md` |
+| Release source | Production **`9f945f3`** |
+
 ## 2026-08-15 - Studio AI Review reprocess local reconciliation — CLOSED
 
 | Item | Status |
