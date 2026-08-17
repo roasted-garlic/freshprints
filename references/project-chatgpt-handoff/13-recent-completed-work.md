@@ -1,5 +1,18 @@
 # Recent Completed Work
 
+## 2026-08-16 - TD-030 share/Details qty parity — SIGNOFF / CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `portal-details-share-add-to-request-quantity-parity` — **DONE** |
+| Signoff | **approved** |
+| Owner QA | `DEV TD-030 QA: PASS` |
+| Fix | `/share/design/{id}` reuses `CatalogRequestQuantityControls` + existing Working Request add/qty/remove |
+| TD-030 | **resolved** |
+| Production | Promotion PR for owner pre-merge audit — **no merge / no App Hosting** yet |
+| Later phrase | `AUTHORIZE PROD APP HOSTING ROLLOUT: TD-030 QTY PARITY` |
+| Signoff | `docs/workflow/reviews/2026-08-16-portal-details-share-add-to-request-quantity-parity-signoff.md` |
+
 ## 2026-08-15 - Studio 1.0.7 helper update access — SIGNOFF approved / DONE
 
 | Item | Status |

@@ -1,17 +1,17 @@
 ## Current Goal
-studio-1.0.7-helper-update-access
+portal-details-share-add-to-request-quantity-parity
 
 ## Current Mode
 managed-phase
 
 ## Phase
-release-preparation — PR opened; STOP before production merge
+complete — SIGNOFF approved; production PR pending owner pre-merge audit
 
 ## Plan Status
 complete
 
 ## Review Status
-approved_with_changes
+approved
 
 ## Implementation Status
 complete
@@ -26,37 +26,54 @@ approved
 yes
 
 ## Human Checkpoint Reason
-Await owner phrase to merge development → production PR #78 (Studio 1.0.7)
+Owner pre-merge diff audit of TD-030 production PR. Do not merge. Do not App Hosting.
 
 ## Allowed Actions
-Await merge authorization; answer clarifying questions; update release-prep docs
+Answer questions; update checkpoint with PR audit fields; wait for owner merge authorization
 
 ## Forbidden Actions
-Merge production without owner phrase; Studio release dispatch; GitHub publish; Firebase/backend; touch v1.0.6; reopen A2
+Merge PR to production; App Hosting rollout; reopen cutover; include unrelated development work
 
 ## Next Required Step
-Owner reply: `APPROVE PROD PR MERGE: STUDIO 1.0.7 HELPER UPDATE ACCESS` — then merge PR #78 only. Release dispatch remains separate.
+Owner independent pre-merge audit. After merge (owner-only), await `AUTHORIZE PROD APP HOSTING ROLLOUT: TD-030 QTY PARITY`.
 
 ## DONE
-no — product Signoff done; production promotion / release not complete
+yes
+
+## Blocked
+no
 
 ## Last Completed Step
-Release Preparation: committed + pushed development; opened PR #78 (2026-08-15)
+Signoff approved; production promotion PR opened (no merge) — 2026-08-16
+
+## Plan
+docs/workflow/plans/2026-08-16-portal-details-share-add-to-request-quantity-parity-plan.md
+
+## Review
+docs/workflow/reviews/2026-08-16-portal-details-share-add-to-request-quantity-parity-review.md
+
+## Implementation Review
+docs/workflow/reviews/2026-08-16-portal-details-share-add-to-request-quantity-parity-implementation-review.md
+
+## Test report
+docs/workflow/reviews/2026-08-16-portal-details-share-add-to-request-quantity-parity-test-report.md
+
+## DEV QA checkpoint
+docs/workflow/reviews/2026-08-16-portal-details-share-add-to-request-quantity-parity-dev-qa-checkpoint.md
 
 ## Signoff
-docs/workflow/reviews/2026-08-15-studio-1.0.7-helper-update-access-signoff.md
+docs/workflow/reviews/2026-08-16-portal-details-share-add-to-request-quantity-parity-signoff.md
 
-## Release Preparation Record
-docs/workflow/reviews/2026-08-15-studio-1.0.7-helper-update-access-release-preparation-record.md
-
-## Production PR
-https://github.com/roasted-garlic/freshprints/pull/78
-
-## Local / remote SHAs
-- Local HEAD / origin/development: 7687354e8264970b11d9b065309d3c403cf5ffd2
-- origin/production (base): 9f945f3c2435f1e6939e250c435ca5e4dc503201
-- v1.0.6 tag: 9f945f3c2435f1e6939e250c435ca5e4dc503201 (untouched)
+## Prod PR checkpoint
+docs/workflow/reviews/2026-08-16-portal-details-share-add-to-request-quantity-parity-prod-pr-checkpoint.md
 
 ## Decision Log
-- 2026-08-15: Release prep — commit 7687354 pushed; PR #78 opened; STOP before merge
-- 2026-08-15: Owner DEV QA PASS; Signoff approved
+- 2026-08-16: Signoff **approved**; `DEV TD-030 QA: PASS`; TD-030 resolved; production PR opened — STOP for owner pre-merge audit; no App Hosting
+- 2026-08-16: DEV data repair — archived `XlqFwbSoO0ZlAXMiDk8N` (`studio_customer`)
+- 2026-08-16: `DEV TD-030 DISCOVER DISCRIMINATOR: FAILS SAME WAY`
+- 2026-08-16: `DEV TD-030 QA: FAIL` then repaired and retested PASS
+- 2026-08-16: Formal Review **approved**; Implementation Review **approved**
+- 2026-08-16: `myprintrequest-com-cutover` CLOSED; cutover not reopened
+
+## Cutover (CLOSED — do not reopen)
+docs/workflow/reviews/2026-08-16-myprintrequest-com-cutover-signoff.md

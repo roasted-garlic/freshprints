@@ -16,6 +16,7 @@ import { CatalogArtworkBackgroundPreviewPicker } from '../components/CatalogArtw
 import { CatalogDesignShareButton } from '../components/CatalogDesignShareButton';
 import { CatalogDesignIssueReportModal } from '../components/CatalogDesignIssueReportModal';
 import { CatalogPreviewLightbox } from '../components/CatalogPreviewLightbox';
+import { CatalogRequestQuantityControls } from '../components/CatalogRequestQuantityControls';
 import { CatalogThumbnailPanel } from '../components/CatalogThumbnailPanel';
 import { useCatalogDerivativeUrl } from '../hooks/useCatalogDerivativeUrl';
 import { usePortalCensoredDesignText } from '../utils/portalCensoredDesignText';
@@ -143,8 +144,15 @@ export function ShareDesignPortalPageContent({
   const previewPath = design?.previewPath ?? design?.thumbnailPath;
   const { url: previewUrl } = useCatalogDerivativeUrl(previewPath, design?.updatedAtMs);
   const designDefaultBgHex = resolveArtworkBackgroundHex(design?.artworkBackgroundHex);
+  const currentRequestQuantity =
+    design === null
+      ? 0
+      : (currentRequestAggregates.primaryQuantityByDesignId[design.id] ??
+        currentRequestAggregates.quantityByDesignId[design.id] ??
+        0);
   const isInCurrentRequest =
     design !== null && (currentRequestAggregates.quantityByDesignId[design.id] ?? 0) > 0;
+  const showQuantityControls = Boolean(isAuthenticated && isInCurrentRequest && design);
   const requestFullLabel =
     !addDesignFlow.canAddPrints &&
     addDesignFlow.exhaustedStatusText &&
@@ -287,7 +295,23 @@ export function ShareDesignPortalPageContent({
               {requestFullLabel ? (
                 <p className="design-details-request-full-label is-request-full">{requestFullLabel}</p>
               ) : null}
-              {isAuthenticated ? (
+              {showQuantityControls && design ? (
+                <CatalogRequestQuantityControls
+                  canAddPrints={addDesignFlow.canAddPrints}
+                  className="design-details-qty-controls design-selection-card-qty-controls portal-request-item-stepper portal-card-input-shell"
+                  designId={design.id}
+                  designTitle={visibleTitle}
+                  disabled={addDesignFlow.isAdding || addDesignFlow.isEnsuringWorkingRequest}
+                  exhaustedTitle={
+                    !addDesignFlow.canAddPrints && addDesignFlow.exhaustedStatusText
+                      ? addDesignFlow.exhaustedStatusText
+                      : undefined
+                  }
+                  onQuantityChange={addDesignFlow.setQuantity}
+                  onRemove={addDesignFlow.removeDesign}
+                  quantity={currentRequestQuantity > 0 ? currentRequestQuantity : 1}
+                />
+              ) : isAuthenticated ? (
                 <button
                   className="portal-button portal-button-primary portal-button-sm portal-button-leading-icon design-details-add-btn"
                   disabled={!design || addDesignFlow.isAdding || addDesignFlow.isEnsuringWorkingRequest || !addDesignFlow.canAddPrints}
