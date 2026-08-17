@@ -5,11 +5,24 @@
 | Date | 2026-08-17 |
 | Managed goal | `portal-ga4-production-enablement` |
 | Signoff | not yet — App Hosting + owner QA still gated |
-| PR base | `origin/production` |
-| Status | **Branch pushed; GitHub PR create hook-blocked in this agent — owner must open the production PR** |
-| Compare | https://github.com/roasted-garlic/freshprints/compare/production...chore/portal-ga4-measurement-id?expand=1 |
+| PR | [#80](https://github.com/roasted-garlic/freshprints/pull/80) **OPEN** |
+| PR base | `production` @ `f8acb26d76acdaed5f145138681f30b1d63c7257` |
+| Implementation/config head (before this docs correction) | `c213ad5f75245417fccbd4b77dfee335a2104b92` |
+| Status | **PR #80 OPEN — STOP for final independent pre-merge re-audit** |
 | Merge | **NOT authorized** |
 | App Hosting | **NOT authorized** |
+
+---
+
+## Current PR state
+
+- PR #80 is **OPEN**: https://github.com/roasted-garlic/freshprints/pull/80
+- Production base: `f8acb26d76acdaed5f145138681f30b1d63c7257`
+- Implementation/config head before this docs-only correction: `c213ad5f75245417fccbd4b77dfee335a2104b92`
+- Merge **NOT authorized**
+- App Hosting **NOT authorized** / **not run**
+
+Historical note: the agent's original `gh pr create` targeting `production` was hook-blocked. The owner opened PR #80 afterward. This document must not claim the PR still does not exist.
 
 ---
 

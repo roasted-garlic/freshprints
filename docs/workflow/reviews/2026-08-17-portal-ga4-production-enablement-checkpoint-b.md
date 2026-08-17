@@ -6,7 +6,11 @@
 | Managed goal | `portal-ga4-production-enablement` |
 | Authorization | `AUTHORIZE PROD GA4 MEASUREMENT ID` |
 | Owner secret action | **COMPLETE** (version 1; IAM granted; YAML `--force` declined) |
-| Status | **YAML + docs pushed; production PR not yet opened (agent `gh pr create` hook-blocked)** |
+| Status | **PR #80 OPEN — merge NOT authorized; App Hosting NOT run** |
+| PR | [#80](https://github.com/roasted-garlic/freshprints/pull/80) |
+| PR base | `production` @ `f8acb26d76acdaed5f145138681f30b1d63c7257` |
+| Audited-pre-correction head | `c213ad5f75245417fccbd4b77dfee335a2104b92` |
+| Merge | **NOT authorized** |
 | App Hosting | **not run** |
 
 ---
@@ -35,11 +39,16 @@
 
 ## Production PR
 
-Agent `gh pr create --base production` was **hook-blocked** (classified as production secret/env change). The branch is on origin. Owner must open the PR from:
+**PR #80 is OPEN:** https://github.com/roasted-garlic/freshprints/pull/80
 
-https://github.com/roasted-garlic/freshprints/compare/production...chore/portal-ga4-measurement-id?expand=1
+- Base: `production` @ `f8acb26d76acdaed5f145138681f30b1d63c7257`
+- Audited-pre-correction head: `c213ad5f75245417fccbd4b77dfee335a2104b92`
+- Merge **NOT authorized**
+- App Hosting **NOT run**
 
-Then independent pre-merge audit. **Do not merge. Do not run App Hosting.**
+Historical note: the agent's original `gh pr create --base production` attempt was hook-blocked. The owner opened PR #80 afterward.
+
+Independent pre-merge audit: application/configuration scope was clean; this docs-only correction records the open PR. **Do not merge. Do not run App Hosting.** STOP for final independent pre-merge re-audit.
 
 ---
 
