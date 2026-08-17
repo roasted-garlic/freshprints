@@ -699,6 +699,7 @@ Required secrets (each secret ID matches the env var name; `BUILD` + `RUNTIME` a
 | `NEXT_PUBLIC_FIREBASE_APP_ID` | Web app ID |
 | `NEXT_PUBLIC_FIREBASE_VAPID_KEY` | Web Push VAPID key |
 | `NEXT_PUBLIC_PORTAL_ORIGIN` | Canonical origin (`https://myprintrequest.com`) |
+| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | GA4 Measurement ID (public-by-design). Secret Manager + `apphosting.yaml` mapping (`BUILD` + `RUNTIME`). **Do not commit the `G-` value.** Live collection still requires an authorized App Hosting rollout. |
 
 Create or update (values from `.env.production.local` — never paste into chat/logs):
 
