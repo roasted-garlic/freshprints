@@ -12,7 +12,7 @@ runConfig:
 #   firebase apphosting:secrets:grantaccess <SECRET_NAME> --backend fresh-prints-portal --project fresh-prints-prod
 # Source of truth for local production builds: gitignored apps/portal/.env.production.local
 # NEXT_PUBLIC_* are browser-exposed by design (not cryptographic secrets).
-# NEXT_PUBLIC_GA_MEASUREMENT_ID is deliberately omitted — GA4 go-live is a separate checkpoint.
+# NEXT_PUBLIC_GA_MEASUREMENT_ID value lives in Secret Manager (never commit the G- id).
 env:
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
     secret: NEXT_PUBLIC_FIREBASE_API_KEY
@@ -51,6 +51,11 @@ env:
       - RUNTIME
   - variable: NEXT_PUBLIC_PORTAL_ORIGIN
     secret: NEXT_PUBLIC_PORTAL_ORIGIN
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_GA_MEASUREMENT_ID
+    secret: NEXT_PUBLIC_GA_MEASUREMENT_ID
     availability:
       - BUILD
       - RUNTIME
