@@ -1,79 +1,84 @@
 ## Current Goal
-portal-details-share-add-to-request-quantity-parity
+(none — idle)
 
 ## Current Mode
 managed-phase
 
 ## Phase
-complete — SIGNOFF approved; production PR pending owner pre-merge audit
+complete — SIGNOFF approved
 
 ## Plan Status
 complete
 
 ## Review Status
-approved
+approved_with_changes
 
 ## Implementation Status
 complete
 
 ## Test Status
-passed
+passed_with_notes
 
 ## Signoff Status
 approved
 
-## Human Checkpoint Required
-yes
-
-## Human Checkpoint Reason
-Owner pre-merge diff audit of TD-030 production PR. Do not merge. Do not App Hosting.
-
-## Allowed Actions
-Answer questions; update checkpoint with PR audit fields; wait for owner merge authorization
-
-## Forbidden Actions
-Merge PR to production; App Hosting rollout; reopen cutover; include unrelated development work
-
-## Next Required Step
-Owner independent pre-merge audit. After merge (owner-only), await `AUTHORIZE PROD APP HOSTING ROLLOUT: TD-030 QTY PARITY`.
-
 ## DONE
 yes
 
-## Blocked
+## Human Checkpoint Required
 no
 
+## Human Checkpoint Reason
+—
+
+## Allowed Actions
+Idle; answer questions; start a new managed goal only when the owner names one
+
+## Forbidden Actions
+Reopen cutover; unpark Phase 9 without a new goal; Functions/Rules/indexes/Algolia/Auth/DNS; rewrite analytics; GTM/Ads; Enhanced Measurement ON
+
+## Next Required Step
+Idle.
+
 ## Last Completed Step
-Signoff approved; production promotion PR opened (no merge) — 2026-08-16
+Docs closeout for `portal-ga4-production-enablement` — 2026-08-17
 
 ## Plan
-docs/workflow/plans/2026-08-16-portal-details-share-add-to-request-quantity-parity-plan.md
+docs/workflow/plans/2026-08-17-portal-ga4-production-enablement-plan.md
 
 ## Review
-docs/workflow/reviews/2026-08-16-portal-details-share-add-to-request-quantity-parity-review.md
-
-## Implementation Review
-docs/workflow/reviews/2026-08-16-portal-details-share-add-to-request-quantity-parity-implementation-review.md
+docs/workflow/reviews/2026-08-17-portal-ga4-production-enablement-review.md
 
 ## Test report
-docs/workflow/reviews/2026-08-16-portal-details-share-add-to-request-quantity-parity-test-report.md
-
-## DEV QA checkpoint
-docs/workflow/reviews/2026-08-16-portal-details-share-add-to-request-quantity-parity-dev-qa-checkpoint.md
+docs/workflow/reviews/2026-08-17-portal-ga4-production-enablement-test-report.md
 
 ## Signoff
-docs/workflow/reviews/2026-08-16-portal-details-share-add-to-request-quantity-parity-signoff.md
+docs/workflow/reviews/2026-08-17-portal-ga4-production-enablement-signoff.md
 
-## Prod PR checkpoint
-docs/workflow/reviews/2026-08-16-portal-details-share-add-to-request-quantity-parity-prod-pr-checkpoint.md
+## Rollout record
+docs/workflow/reviews/2026-08-17-portal-ga4-production-enablement-app-hosting-rollout-record.md
+
+## Checkpoint D
+docs/workflow/reviews/2026-08-17-portal-ga4-production-enablement-checkpoint-d.md
+
+## Production tip
+124c6fa4ad3c86defa8fd61c578b3efeaf6609bb
+
+## Live App Hosting
+fresh-prints-portal-build-2026-08-17-002 @ 100% / 124c6fa4ad3c86defa8fd61c578b3efeaf6609bb
+
+## Rollback target
+f8acb26d76acdaed5f145138681f30b1d63c7257 / fresh-prints-portal-build-2026-08-17-001
 
 ## Decision Log
-- 2026-08-16: Signoff **approved**; `DEV TD-030 QA: PASS`; TD-030 resolved; production PR opened — STOP for owner pre-merge audit; no App Hosting
-- 2026-08-16: DEV data repair — archived `XlqFwbSoO0ZlAXMiDk8N` (`studio_customer`)
-- 2026-08-16: `DEV TD-030 DISCOVER DISCRIMINATOR: FAILS SAME WAY`
-- 2026-08-16: `DEV TD-030 QA: FAIL` then repaired and retested PASS
-- 2026-08-16: Formal Review **approved**; Implementation Review **approved**
-- 2026-08-16: `myprintrequest-com-cutover` CLOSED; cutover not reopened
+- 2026-08-17: Docs closeout on development-side path; workflow IDLE
+- 2026-08-17: Owner `PROD GA4 QA: PASS` — Signoff **approved**; goal CLOSED
+- 2026-08-17: LIVE `build-2026-08-17-002` @ 100% serving `124c6fa`
+- 2026-08-17: `GA4 STREAM READY` — Enhanced Measurement fully OFF
+- 2026-08-17: `DECISION 7: SATISFIED`
 
 ## Cutover (CLOSED — do not reopen)
 docs/workflow/reviews/2026-08-16-myprintrequest-com-cutover-signoff.md
+
+## Phase 9
+PARKED

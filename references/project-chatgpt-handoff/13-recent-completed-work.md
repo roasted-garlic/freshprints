@@ -1,5 +1,25 @@
 # Recent Completed Work
 
+## 2026-08-17 - Portal GA4 production enablement — SIGNED OFF / CLOSED
+
+| Item | Status |
+|------|--------|
+| Goal | `portal-ga4-production-enablement` — **CLOSED** |
+| Signoff | **approved** |
+| Owner QA | `PROD GA4 QA: PASS` |
+| PR | #80 **merged** |
+| Production source | `124c6fa4ad3c86defa8fd61c578b3efeaf6609bb` |
+| Live App Hosting | `fresh-prints-portal-build-2026-08-17-002` @ **100%** |
+| Canonical | `https://myprintrequest.com` |
+| Analytics implementation | unchanged (enablement only) |
+| Enablement | `NEXT_PUBLIC_GA_MEASUREMENT_ID` Secret Manager + `apphosting.yaml` (`BUILD` + `RUNTIME`) |
+| Enhanced Measurement | fully OFF |
+| Cutover | CLOSED |
+| Phase 9 | PARKED |
+| Workflow | IDLE |
+| Rollback (historical) | `fresh-prints-portal-build-2026-08-17-001` / `f8acb26` |
+| Signoff | `docs/workflow/reviews/2026-08-17-portal-ga4-production-enablement-signoff.md` |
+
 ## 2026-08-16 - TD-030 share/Details qty parity — SIGNOFF / CLOSED (DEV)
 
 | Item | Status |

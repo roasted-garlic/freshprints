@@ -1,5 +1,7 @@
 # Fresh Prints Roadmap
 
+> 2026-08-17: **Portal GA4 production enablement — SIGNED OFF / CLOSED** — Goal `portal-ga4-production-enablement` **DONE**. Signoff **approved**. Owner `PROD GA4 QA: PASS`. PR **#80** merged. Production source `124c6fa4ad3c86defa8fd61c578b3efeaf6609bb`. Live App Hosting **`fresh-prints-portal-build-2026-08-17-002` @ 100%**. Canonical `https://myprintrequest.com`. Analytics implementation unchanged; enablement via `NEXT_PUBLIC_GA_MEASUREMENT_ID` Secret Manager + `apphosting.yaml` (`BUILD` + `RUNTIME`). Enhanced Measurement **fully OFF**. Cutover **CLOSED**. Phase 9 **PARKED**. Workflow **IDLE**. Rollback historical target: `fresh-prints-portal-build-2026-08-17-001` / `f8acb26`. Signoff: `docs/workflow/reviews/2026-08-17-portal-ga4-production-enablement-signoff.md`. Record: `docs/workflow/reviews/2026-08-17-portal-ga4-production-enablement-app-hosting-rollout-record.md`.
+
 > 2026-08-16: **TD-030 qty parity — SIGNOFF approved (DEV)** — Goal `portal-details-share-add-to-request-quantity-parity` **DONE**. Share `/share/design/{id}` reuses Working Request quantity controls. Owner `DEV TD-030 QA: PASS`. TD-030 **resolved**. Production promotion PR pending owner pre-merge audit — **no merge / no App Hosting** until authorized. Later phrase: `AUTHORIZE PROD APP HOSTING ROLLOUT: TD-030 QTY PARITY`. Signoff: `docs/workflow/reviews/2026-08-16-portal-details-share-add-to-request-quantity-parity-signoff.md`.
 
 > 2026-08-15: **Studio 1.0.7 helper update access — SIGNOFF approved** — Goal `studio-1.0.7-helper-update-access` **DONE**. Helpers open existing updater via sidebar footer modal (`canAccessDesktopApp`); Settings stays `manageSettings`-only; version pins **1.0.7**. Owner DEV QA **PASS**. Signoff: `docs/workflow/reviews/2026-08-15-studio-1.0.7-helper-update-access-signoff.md`. Release dispatch/publish still separate owner phrases. Published **v1.0.6** untouched. Phase 9 **PARKED**.
@@ -202,7 +204,7 @@ Current Goal:
 | 2 | `portal-how-to-faq` - FAQ and How To (Studio Settings CMS + Portal `/help`) | **Done** (2026-07-23, approved_with_notes) |
 | 3 | `firestore-usage-efficiency-wave-c` — idle-read containment + snapshots | **Done** (2026-07-27, PASS WITH NOTES; owner PASS) |
 | 4 | `studio-inbox-default-landing` — Studio home opens Inbox | **Done** (2026-07-23, approved; owner PASS) |
-| 5 | `portal-google-analytics` — GA4 on Portal | **Done** (2026-07-27, signed off PASS — inert architecture merged, no real Measurement ID/GA4 property configured) |
+| 5 | `portal-google-analytics` — GA4 on Portal | **Done** (architecture 2026-07-27; **production enablement CLOSED 2026-08-17** — `portal-ga4-production-enablement`, PR #80 / `124c6fa` / `build-2026-08-17-002` @ 100%, owner `PROD GA4 QA: PASS`) |
 | 6 | `portal-print-request-prelaunch-stability` — complete Studio/Portal request lifecycle and pre-launch reconciliation hardening | **Done** (2026-07-29, approved; owner QA v18 PASS) |
 | 7 | `studio-test-data-print-limit-wipe-audit` — relabel obsolete daily-counter wipe as truthful legacy cleanup | **Done** (2026-07-29, approved; owner PASS) |
 | 8 | `preproduction-static-analysis-cleanup` — resolve documented TypeScript/lint baseline | **Done** (2026-07-29, approved; owner QA not required) |
@@ -215,7 +217,9 @@ Current Goal:
 
 **Small Managed Items Backlog:** #5–**#14** **Done** (2026-07-21). See [Small Managed Items Backlog](#small-managed-items-backlog-2026-07-18) below.
 
-**Active managed goal:** Goal #13 — prelaunch companion/censored **production promote signed off** (2026-08-10; `PROD COMPANION CENSORED PROMOTE SMOKE: PASS`; Studio v1.0.2). Placement-default **DEFERRED**. Stage 2 smoke **PASS** / **READY FOR CUSTOMERS** on hosted.app; cutover still awaits `APPROVE MYPRINTREQUEST.COM CUTOVER`.
+**Active managed goal:** none (**IDLE**). Last closed: `portal-ga4-production-enablement` (2026-08-17; Signoff approved; `PROD GA4 QA: PASS`; live `build-2026-08-17-002` @ `124c6fa`). Cutover remains **CLOSED** (do not reopen). Phase 9 remains **PARKED**. Historical Goal #13 row below is not an open DNS task.
+
+**Prior note (superseded for current workflow):** Goal #13 — prelaunch companion/censored **production promote signed off** (2026-08-10; `PROD COMPANION CENSORED PROMOTE SMOKE: PASS`; Studio v1.0.2). Placement-default **DEFERRED**. Stage 2 smoke **PASS** / **READY FOR CUSTOMERS** on hosted.app; cutover still awaits `APPROVE MYPRINTREQUEST.COM CUTOVER`.
 `production-studio-assisted-library-design-search-empty` **signed off** (owner Studio QA **PASS**).
 Tag-removal / resize / branding / registration remain signed off. Custom-domain cutover deferred until phrase.
 Stage 1 complete; Class D closed. Algolia prod enable complete.
