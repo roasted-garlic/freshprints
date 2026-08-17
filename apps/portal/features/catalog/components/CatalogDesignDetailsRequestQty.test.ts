@@ -86,3 +86,43 @@ describe('CatalogDesignDetailsModal Current Request qty parity', () => {
     assert.doesNotMatch(modal, /onSnapshot|getDoc|subscribe/);
   });
 });
+
+describe('ShareDesignPortalPageContent Current Request qty parity', () => {
+  const share = read('apps/portal/features/catalog/pages/ShareDesignPortalPageContent.tsx');
+  const sharePage = read('apps/portal/app/(app)/share/design/[id]/page.tsx');
+
+  it('reuses CatalogRequestQuantityControls when the design is already in the Working Request', () => {
+    assert.match(share, /showQuantityControls/);
+    assert.match(share, /<CatalogRequestQuantityControls/);
+    assert.match(share, /addDesignFlow\.setQuantity/);
+    assert.match(share, /addDesignFlow\.removeDesign/);
+    assert.match(share, /primaryQuantityByDesignId/);
+    assert.match(share, /quantityByDesignId/);
+    assert.match(
+      share,
+      /showQuantityControls && design \?[\s\S]*CatalogRequestQuantityControls[\s\S]*: isAuthenticated \?/,
+    );
+  });
+
+  it('keeps Add to request for authenticated users when the design is not in the request', () => {
+    assert.match(share, /Add to request/);
+    assert.match(share, /addDesignFlow\.addDesign/);
+  });
+
+  it('keeps the guest Sign-in CTA and does not expose qty controls without auth', () => {
+    assert.match(share, /Sign in to add to a request/);
+    assert.match(share, /showQuantityControls = Boolean\(isAuthenticated && isInCurrentRequest && design\)/);
+  });
+
+  it('does not add a Firestore listener or extra getDoc on the share client page', () => {
+    assert.doesNotMatch(share, /onSnapshot|getDoc|subscribe/);
+  });
+
+  it('leaves SSR metadata / OG generateMetadata on the share route unchanged', () => {
+    assert.match(sharePage, /export async function generateMetadata/);
+    assert.match(sharePage, /loadPortalDesignShareMeta/);
+    assert.match(sharePage, /buildPortalDesignShareMetadata/);
+    assert.match(sharePage, /dynamic = 'force-dynamic'/);
+    assert.doesNotMatch(sharePage, /CatalogRequestQuantityControls/);
+  });
+});

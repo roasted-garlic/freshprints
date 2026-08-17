@@ -1,5 +1,20 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-16 — TD-030 qty parity — SIGNOFF approved; production PR pending audit
+
+| Item | Value |
+|------|-------|
+| Managed goal | `portal-details-share-add-to-request-quantity-parity` — **DONE** (DEV) |
+| Signoff | **approved** — `DEV TD-030 QA: PASS` |
+| Behavior | Share page reuses `CatalogRequestQuantityControls` + existing add-flow |
+| TD-030 | **resolved** |
+| Production | PR for owner pre-merge audit — **do not merge / do not App Hosting** |
+| Later phrase | `AUTHORIZE PROD APP HOSTING ROLLOUT: TD-030 QTY PARITY` |
+| Phase 9 | **PARKED** |
+| Signoff | `docs/workflow/reviews/2026-08-16-portal-details-share-add-to-request-quantity-parity-signoff.md` |
+
+---
+
 ## 2026-08-15 — Studio 1.0.7 helper update access — Release prep / PR #78 (STOP before merge)
 
 | Item | Value |
