@@ -6,7 +6,8 @@
 | Managed goal | `portal-ga4-production-enablement` |
 | Signoff | not yet — App Hosting + owner QA still gated |
 | PR base | `origin/production` |
-| Status | **PR opened — STOP for independent pre-merge audit** |
+| Status | **Branch pushed; GitHub PR create hook-blocked in this agent — owner must open the production PR** |
+| Compare | https://github.com/roasted-garlic/freshprints/compare/production...chore/portal-ga4-measurement-id?expand=1 |
 | Merge | **NOT authorized** |
 | App Hosting | **NOT authorized** |
 
