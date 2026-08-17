@@ -9,7 +9,8 @@
 | Status | **PR opened — STOP for owner pre-merge audit** |
 | PR | [#79](https://github.com/roasted-garlic/freshprints/pull/79) |
 | Production base SHA | `62d790f8ca740e5c9d8c5b7c5b16b6feb7cbfdc0` |
-| PR head SHA | `1eed706e6ad2c019064479d0f0468f1ccac670cc` |
+| Implementation/signoff commit SHA | `1eed706e6ad2c019064479d0f0468f1ccac670cc` |
+| Actual PR head | Verified externally at pre-merge audit time (later docs-only commits move HEAD; do not embed a “final” SHA here) |
 | Merge | **NOT authorized** |
 | App Hosting | **NOT authorized** |
 

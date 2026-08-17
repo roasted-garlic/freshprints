@@ -5,14 +5,14 @@
 | Date | 2026-08-16 |
 | Tester | Test Agent |
 | Plan | docs/workflow/plans/2026-08-16-portal-details-share-add-to-request-quantity-parity-plan.md |
-| Implementation | `ShareDesignPortalPageContent.tsx` + `CatalogDesignDetailsRequestQty.test.ts` (uncommitted on `development`) |
+| Implementation | `ShareDesignPortalPageContent.tsx` + `CatalogDesignDetailsRequestQty.test.ts` (PR #79 / `fix/td-030-share-qty-parity`) |
 | Overall | **passed** |
 
 ---
 
 ## Summary
 
-Automated Portal checks for this goal passed. Owner DEV QA FAIL + Discover discriminator confirmed non-portal Working Request. DEV data repair archived `XlqFwbSoO0ZlAXMiDk8N`. Awaiting owner QA retest. No signoff; no production deploy.
+Automated Portal checks for this goal passed. Initial owner DEV QA failed because the DEV customer’s continuable Working Request was `studio_customer` (not Portal-editable). DEV data repair archived `XlqFwbSoO0ZlAXMiDk8N`. Owner retest returned `DEV TD-030 QA: PASS`. Signoff is **approved**. Production has not been deployed.
 
 ---
 
@@ -57,14 +57,13 @@ Manual test instructions: see checkpoint.
 
 ## Recommendations
 
-- Close TD-030 only after both Design Details and `/share/design/{id}` pass owner QA.
-- Do not treat live `myprintrequest.com` as updated until a later App Hosting rollout.
+- Live `myprintrequest.com` still has the original share CTA until a later App Hosting rollout (after owner merge of PR #79 + `AUTHORIZE PROD APP HOSTING ROLLOUT: TD-030 QTY PARITY`).
 
 ---
 
 ## Signoff Readiness
 - [x] All required automated checks pass OR failures documented
-- [x] Manual tests complete OR checkpoint pending
-- [x] Ready for signoff phase
+- [x] Manual tests complete
+- [x] Signoff **approved**
 
-**Next step:** signoff complete; production PR pending owner pre-merge audit
+**Next step:** owner pre-merge audit of PR #79; no App Hosting until authorized
