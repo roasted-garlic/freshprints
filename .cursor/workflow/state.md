@@ -1,29 +1,29 @@
 ## Current Goal
-(none — idle)
+repository-development-first-reconciliation
 
 ## Current Mode
 managed-phase
 
 ## Phase
-complete — SIGNOFF approved
+implement
 
 ## Plan Status
-complete
+pending
 
 ## Review Status
-approved_with_changes
+pending
 
 ## Implementation Status
-complete
+in_progress
 
 ## Test Status
-passed_with_notes
+pending
 
 ## Signoff Status
-approved
+pending
 
 ## DONE
-yes
+no
 
 ## Human Checkpoint Required
 no
@@ -32,53 +32,43 @@ no
 —
 
 ## Allowed Actions
-Idle; answer questions; start a new managed goal only when the owner names one
+Reconcile development with origin/production in place; document development-first Git policy; preserve classified dirty work in stash; delete only proven-redundant closeout branch/worktree; push development; open development→production docs/policy sync PR
 
 ## Forbidden Actions
-Reopen cutover; unpark Phase 9 without a new goal; Functions/Rules/indexes/Algolia/Auth/DNS; rewrite analytics; GTM/Ads; Enhanced Measurement ON
+reset --hard; git clean; drop/clear stash; force-push; push to production; merge production PR; App Hosting rollout; create feature/fix/docs branches or new worktrees; start portal-design-engagement-analytics implementation; mix product analytics into this reconciliation
 
 ## Next Required Step
-Idle.
+Finish merge conflict resolution, durable policy docs, push development, open sync PR, then STOP for independent PR audit / owner authorization
 
 ## Last Completed Step
-Docs closeout for `portal-ga4-production-enablement` — 2026-08-17
+Fast-forwarded local development to origin/development `3d44cea`; merging origin/production `cb006bd` — 2026-08-18
 
-## Plan
-docs/workflow/plans/2026-08-17-portal-ga4-production-enablement-plan.md
-
-## Review
-docs/workflow/reviews/2026-08-17-portal-ga4-production-enablement-review.md
-
-## Test report
-docs/workflow/reviews/2026-08-17-portal-ga4-production-enablement-test-report.md
-
-## Signoff
-docs/workflow/reviews/2026-08-17-portal-ga4-production-enablement-signoff.md
-
-## Rollout record
-docs/workflow/reviews/2026-08-17-portal-ga4-production-enablement-app-hosting-rollout-record.md
-
-## Checkpoint D
-docs/workflow/reviews/2026-08-17-portal-ga4-production-enablement-checkpoint-d.md
-
-## Production tip
-124c6fa4ad3c86defa8fd61c578b3efeaf6609bb
+## Live production (unchanged by this merge)
+cb006bd5a21580cccf89d6c1d13d31f07633c51f
 
 ## Live App Hosting
-fresh-prints-portal-build-2026-08-17-002 @ 100% / 124c6fa4ad3c86defa8fd61c578b3efeaf6609bb
+fresh-prints-portal-build-2026-08-18-001 @ 100%
 
-## Rollback target
-f8acb26d76acdaed5f145138681f30b1d63c7257 / fresh-prints-portal-build-2026-08-17-001
+## Rollback
+fresh-prints-portal-build-2026-08-17-002 @ 124c6fa4ad3c86defa8fd61c578b3efeaf6609bb
 
-## Decision Log
-- 2026-08-17: Docs closeout on development-side path; workflow IDLE
-- 2026-08-17: Owner `PROD GA4 QA: PASS` — Signoff **approved**; goal CLOSED
-- 2026-08-17: LIVE `build-2026-08-17-002` @ 100% serving `124c6fa`
-- 2026-08-17: `GA4 STREAM READY` — Enhanced Measurement fully OFF
-- 2026-08-17: `DECISION 7: SATISFIED`
+## Preserve stash
+stash@{0}: repository-development-first-reconciliation: preserve dirty main checkout 2026-08-18
+stash@{1}: On development: td030-wip-leave-unrelated (protected; do not drop)
 
-## Cutover (CLOSED — do not reopen)
+## Cutover (CLOSED)
 docs/workflow/reviews/2026-08-16-myprintrequest-com-cutover-signoff.md
 
 ## Phase 9
 PARKED
+
+## portal-tag-alias-search-discoverability
+QUEUED ONLY, not activated
+
+## portal-ga4-event-transmission-corrective
+CLOSED — PR #81 merged; PROD GA4 TRANSPORT QA PASS
+
+## Decision Log
+- 2026-08-18: Owner adopted development-first Git workflow (no per-goal branches/worktrees unless explicitly requested)
+- 2026-08-17: Production Signoff approved — portal-ga4-event-transmission-corrective — live `build-2026-08-18-001` @ `cb006bd`
+- 2026-08-17: Docs closeout `3d44cea` on development (GA4 enablement)
