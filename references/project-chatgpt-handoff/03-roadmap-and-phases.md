@@ -1,5 +1,7 @@
 # Roadmap and Phases
 
+> 2026-08-17: **Portal GA4 production enablement CLOSED** — Signoff **approved**; owner `PROD GA4 QA: PASS`; PR **#80** merged; production `124c6fa`; live `fresh-prints-portal-build-2026-08-17-002` @ 100% on `https://myprintrequest.com`. Analytics implementation unchanged. Enablement via `NEXT_PUBLIC_GA_MEASUREMENT_ID` Secret Manager mapping. Enhanced Measurement fully OFF. Cutover **CLOSED**. Phase 9 **PARKED**. Workflow **IDLE**.
+
 > 2026-08-10: Prelaunch companion/censored **production promote COMPLETE** — owner
 > `PROD COMPANION CENSORED PROMOTE SMOKE: PASS`; Studio v1.0.2 @ `b6e67be…`; Rules/indexes/
 > `getPortalGlobalOpenGraph`/App Hosting LIVE. Goal #13 remains Active only for deferred

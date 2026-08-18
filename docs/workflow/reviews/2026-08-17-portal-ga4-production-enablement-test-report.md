@@ -54,21 +54,18 @@ None in the approved verification set after the worktree build with gitignored `
 | Secret exists + version 1 + IAM | pass | Read-only `gcloud` (no secret value printed) |
 | YAML mapping | pass | BUILD + RUNTIME |
 | Literal Measurement ID in Git | pass | owner-supplied `G-` value absent from branch diff |
-| Owner DebugView QA | pending | Checkpoint D after App Hosting |
+| Owner DebugView QA | **PASS** | Checkpoint D; owner `PROD GA4 QA: PASS` |
 
 ---
 
-## Recommendations
+## Closeout
 
-- Do not merge until independent pre-merge audit + owner merge phrase.
-- App Hosting remains a later checkpoint.
+Production App Hosting `fresh-prints-portal-build-2026-08-17-002` is LIVE at 100% serving `124c6fa`. Owner `PROD GA4 QA: PASS`. Goal signed off / closed.
 
 ---
 
 ## Signoff Readiness
 
 - [x] Required automated checks pass (with build-environment note)
-- [ ] Manual production GA4 QA pending Checkpoint D
-- [ ] Signoff after live rollout + owner `PROD GA4 QA`
-
-**Next step:** production PR (no merge) → owner audit → merge phrase → Checkpoint C App Hosting
+- [x] Manual production GA4 QA PASS
+- [x] Signoff after live rollout + owner `PROD GA4 QA`

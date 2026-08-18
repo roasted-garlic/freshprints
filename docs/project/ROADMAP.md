@@ -1,7 +1,8 @@
 # Fresh Prints Roadmap
 
-> 2026-08-17: **Portal GA4 event transmission corrective — PR #81 OPEN / UNMERGED** — Goal `portal-ga4-event-transmission-corrective`. Bootstrap `gtag('js', new Date())` in the Portal GA stub. Implement/Test Signoff **approved**; owner **DEV transport QA: PASS**. Independent application/package audit **PASS**. Docs-only current-state correction pending independent re-audit before merge authorization. **No App Hosting rollout yet.** Live production remains `124c6fa` / `fresh-prints-portal-build-2026-08-17-002`. Production QA after rollout must prove `g/collect`, not tag detection. Signoff: `docs/workflow/reviews/2026-08-17-portal-ga4-event-transmission-corrective-signoff.md`. PR: https://github.com/roasted-garlic/freshprints/pull/81
+> 2026-08-17: **Portal GA4 event transmission corrective — PRODUCTION LIVE / CLOSED** — Goal `portal-ga4-event-transmission-corrective` **DONE**. PR **#81** merged @ `cb006bd5a21580cccf89d6c1d13d31f07633c51f`. Live App Hosting **`fresh-prints-portal-build-2026-08-18-001` @ 100%**. Owner `PROD GA4 TRANSPORT QA: PASS`. Bootstrap `gtag('js', new Date())` in the Portal GA stub. Collection proven via `g/collect` (tag detection alone is insufficient). Canonical `https://myprintrequest.com`. Rollback: `fresh-prints-portal-build-2026-08-17-002` / `124c6fa`. Cutover **CLOSED**. Phase 9 **PARKED**. Signoff: `docs/workflow/reviews/2026-08-17-portal-ga4-event-transmission-corrective-production-signoff.md`. Record: `docs/workflow/reviews/2026-08-17-portal-ga4-event-transmission-corrective-app-hosting-rollout-record.md`.
 >
+> 2026-08-17: **Portal GA4 production enablement — SIGNED OFF / CLOSED** (historical; collection conclusion superseded by the transmission corrective above) — Goal `portal-ga4-production-enablement` **DONE**. PR **#80** merged @ `124c6fa`. Live at that time: **`fresh-prints-portal-build-2026-08-17-002`**. Enablement via `NEXT_PUBLIC_GA_MEASUREMENT_ID` Secret Manager + `apphosting.yaml`. Enhanced Measurement **fully OFF**. Signoff: `docs/workflow/reviews/2026-08-17-portal-ga4-production-enablement-signoff.md`.
 > 2026-08-16: **TD-030 qty parity — SIGNOFF approved (DEV)** — Goal `portal-details-share-add-to-request-quantity-parity` **DONE**. Share `/share/design/{id}` reuses Working Request quantity controls. Owner `DEV TD-030 QA: PASS`. TD-030 **resolved**. Production promotion PR pending owner pre-merge audit — **no merge / no App Hosting** until authorized. Later phrase: `AUTHORIZE PROD APP HOSTING ROLLOUT: TD-030 QTY PARITY`. Signoff: `docs/workflow/reviews/2026-08-16-portal-details-share-add-to-request-quantity-parity-signoff.md`.
 
 > 2026-08-15: **Studio 1.0.7 helper update access — SIGNOFF approved** — Goal `studio-1.0.7-helper-update-access` **DONE**. Helpers open existing updater via sidebar footer modal (`canAccessDesktopApp`); Settings stays `manageSettings`-only; version pins **1.0.7**. Owner DEV QA **PASS**. Signoff: `docs/workflow/reviews/2026-08-15-studio-1.0.7-helper-update-access-signoff.md`. Release dispatch/publish still separate owner phrases. Published **v1.0.6** untouched. Phase 9 **PARKED**.
@@ -204,7 +205,7 @@ Current Goal:
 | 2 | `portal-how-to-faq` - FAQ and How To (Studio Settings CMS + Portal `/help`) | **Done** (2026-07-23, approved_with_notes) |
 | 3 | `firestore-usage-efficiency-wave-c` — idle-read containment + snapshots | **Done** (2026-07-27, PASS WITH NOTES; owner PASS) |
 | 4 | `studio-inbox-default-landing` — Studio home opens Inbox | **Done** (2026-07-23, approved; owner PASS) |
-| 5 | `portal-google-analytics` — GA4 on Portal | **Done** (2026-07-27, signed off PASS — inert architecture merged, no real Measurement ID/GA4 property configured) |
+| 5 | `portal-google-analytics` — GA4 on Portal | **Done** (architecture 2026-07-27; enablement PR #80 / `124c6fa`; **transmission corrective LIVE 2026-08-17** — PR **#81** / `cb006bd` / `build-2026-08-18-001`, owner `PROD GA4 TRANSPORT QA: PASS`) |
 | 6 | `portal-print-request-prelaunch-stability` — complete Studio/Portal request lifecycle and pre-launch reconciliation hardening | **Done** (2026-07-29, approved; owner QA v18 PASS) |
 | 7 | `studio-test-data-print-limit-wipe-audit` — relabel obsolete daily-counter wipe as truthful legacy cleanup | **Done** (2026-07-29, approved; owner PASS) |
 | 8 | `preproduction-static-analysis-cleanup` — resolve documented TypeScript/lint baseline | **Done** (2026-07-29, approved; owner QA not required) |
@@ -217,7 +218,9 @@ Current Goal:
 
 **Small Managed Items Backlog:** #5–**#14** **Done** (2026-07-21). See [Small Managed Items Backlog](#small-managed-items-backlog-2026-07-18) below.
 
-**Active managed goal:** Goal #13 — prelaunch companion/censored **production promote signed off** (2026-08-10; `PROD COMPANION CENSORED PROMOTE SMOKE: PASS`; Studio v1.0.2). Placement-default **DEFERRED**. Stage 2 smoke **PASS** / **READY FOR CUSTOMERS** on hosted.app; cutover still awaits `APPROVE MYPRINTREQUEST.COM CUTOVER`.
+**Active managed goal:** none (**IDLE**). Last closed: `portal-ga4-production-enablement` (2026-08-17; Signoff approved; `PROD GA4 QA: PASS`; live `build-2026-08-17-002` @ `124c6fa`). Cutover remains **CLOSED** (do not reopen). Phase 9 remains **PARKED**. Historical Goal #13 row below is not an open DNS task.
+
+**Prior note (superseded for current workflow):** Goal #13 — prelaunch companion/censored **production promote signed off** (2026-08-10; `PROD COMPANION CENSORED PROMOTE SMOKE: PASS`; Studio v1.0.2). Placement-default **DEFERRED**. Stage 2 smoke **PASS** / **READY FOR CUSTOMERS** on hosted.app; cutover still awaits `APPROVE MYPRINTREQUEST.COM CUTOVER`.
 `production-studio-assisted-library-design-search-empty` **signed off** (owner Studio QA **PASS**).
 Tag-removal / resize / branding / registration remain signed off. Custom-domain cutover deferred until phrase.
 Stage 1 complete; Class D closed. Algolia prod enable complete.

@@ -1,5 +1,55 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-18 — Repository development-first reconciliation — sync PR pending
+
+| Item | Value |
+|------|-------|
+| Managed goal | `repository-development-first-reconciliation` |
+| Status | **STOP** — independent `development` → `production` PR audit / owner merge authorization |
+| Checkout | `C:\coding\fresh-prints` on **`development`** |
+| Policy | ADR-FP-137 — no per-goal branches/worktrees unless owner requests one |
+| Analytics feature | `portal-design-engagement-analytics` **not started** until this PR merges |
+| Live App Hosting (unchanged) | `fresh-prints-portal-build-2026-08-18-001` @ `cb006bd` |
+| Phase 9 | **PARKED** |
+| Cutover | **CLOSED** |
+
+---
+
+## 2026-08-17 — Portal GA4 event transmission corrective — PRODUCTION LIVE / CLOSED
+
+| Item | Value |
+|------|-------|
+| Managed goal | `portal-ga4-event-transmission-corrective` — **DONE** |
+| Signoff | **approved** — `PROD GA4 TRANSPORT QA: PASS` |
+| Production | PR **#81** merged @ `cb006bd` |
+| App Hosting | **`fresh-prints-portal-build-2026-08-18-001`** @ **100%** |
+
+---
+
+## 2026-08-17 — Portal GA4 production enablement — SIGNED OFF / CLOSED
+
+*(Collection conclusion superseded by the transmission corrective above.)*
+
+| Item | Value |
+|------|-------|
+| Managed goal | `portal-ga4-production-enablement` — **CLOSED** |
+| Signoff | **approved** |
+| Owner QA | `PROD GA4 QA: PASS` |
+| PR | [#80](https://github.com/roasted-garlic/freshprints/pull/80) **merged** |
+| Production source | `124c6fa4ad3c86defa8fd61c578b3efeaf6609bb` |
+| Live App Hosting | `fresh-prints-portal-build-2026-08-17-002` @ **100%** |
+| Canonical | `https://myprintrequest.com` |
+| Analytics implementation | **unchanged** (production enablement only) |
+| Enablement | `NEXT_PUBLIC_GA_MEASUREMENT_ID` Secret Manager + `apphosting.yaml` (`BUILD` + `RUNTIME`) |
+| Enhanced Measurement | **fully OFF** |
+| Cutover | **CLOSED** |
+| Phase 9 | **PARKED** |
+| Workflow | **IDLE** |
+| Rollback (historical) | `fresh-prints-portal-build-2026-08-17-001` / `f8acb26` |
+| Signoff | `docs/workflow/reviews/2026-08-17-portal-ga4-production-enablement-signoff.md` |
+
+---
+
 ## 2026-08-16 — TD-030 qty parity — SIGNOFF approved; production PR pending audit
 
 | Item | Value |

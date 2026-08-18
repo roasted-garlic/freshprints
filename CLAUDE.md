@@ -16,6 +16,10 @@ For **external AI without repo access** (ChatGPT, etc.), use the removable hando
 
 If `Human Checkpoint Required: yes`, `Blocked: yes`, or `DONE: yes` — follow state before starting new work.
 
+### Repository checkout
+
+Work in the existing `C:\coding\fresh-prints` checkout on **`development`**. Do not create a new feature/fix/docs branch, worktree, or replacement checkout unless the owner explicitly requests one. Promote to production only by reviewed PR. See `docs/AI_RULES.md` and `docs/standards/DEPLOYMENT.md`.
+
 ---
 
 ## Mandatory Workflow
