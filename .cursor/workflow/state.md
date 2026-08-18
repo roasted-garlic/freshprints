@@ -5,10 +5,13 @@ portal-ga4-event-transmission-corrective
 managed-phase
 
 ## Phase
-pre-production-package
+production-pr-pre-merge-audit
 
 ## Plan Status
 complete
+
+## Formal Review
+approved_with_changes
 
 ## Review Status
 approved_with_changes
@@ -19,29 +22,35 @@ complete
 ## Test Status
 passed
 
+## DEV transport QA
+PASS
+
 ## Signoff Status
 approved
 
+## Implement/Test Signoff
+approved
+
 ## DONE
-yes — Implement/Test Signoff; production PR not created
+no — production PR open; merge and App Hosting not authorized
 
 ## Human Checkpoint Required
 yes
 
 ## Human Checkpoint Reason
-Owner authorization required before creating the production PR from clean branch `fix/portal-ga4-event-transmission`
+Independent re-audit of PR #81 after docs-only correction, then owner merge authorization.
 
 ## Allowed Actions
-Read-only package audit; wait for owner authorization to create production PR
+docs-only correction to the two current-state files; push correction to PR branch; read-only re-audit
 
 ## Forbidden Actions
-create production PR without owner authorization; merge; deploy; App Hosting; Secret Manager; GA4 console prod changes; dirty-checkout cleanup; commit local TEST Measurement ID
+merge; App Hosting rollout; production deploy; Secret Manager; GA4 console production changes; unrelated cleanup
 
 ## Next Required Step
-Owner authorization to create production PR → independent PR diff audit → owner merge authorization
+push docs-only correction → independent re-audit → owner merge authorization
 
 ## Last Completed Step
-Clean production-candidate package on `fix/portal-ga4-event-transmission` based on `origin/production` @ `124c6fa` — 2026-08-17
+PR #81 created OPEN/UNMERGED; independent application/package audit PASS; docs-only current-state correction — 2026-08-17
 
 ## Test Report
 docs/workflow/reviews/2026-08-17-portal-ga4-event-transmission-corrective-test-report.md
@@ -49,11 +58,19 @@ docs/workflow/reviews/2026-08-17-portal-ga4-event-transmission-corrective-test-r
 ## Signoff
 docs/workflow/reviews/2026-08-17-portal-ga4-event-transmission-corrective-signoff.md
 
-## Production tip (pre-fix live)
-124c6fa4ad3c86defa8fd61c578b3efeaf6609bb
-
 ## Production PR
-NOT CREATED
+#81 OPEN / UNMERGED
+https://github.com/roasted-garlic/freshprints/pull/81
+
+## PR base
+production @ 124c6fa4ad3c86defa8fd61c578b3efeaf6609bb
+
+## PR head before this docs correction
+54ea53a46965ae59554c83f8f3dbdd0b46b031c2
+
+## Independent PR audit
+application/package scope PASS
+docs-only current-state correction required before final merge authorization
 
 ## Plan
 docs/workflow/plans/2026-08-17-portal-ga4-event-transmission-corrective-plan.md
