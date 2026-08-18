@@ -6,12 +6,14 @@
 | Goal | `repository-development-first-reconciliation` |
 | PR | https://github.com/roasted-garlic/freshprints/pull/82 |
 | Base | `production` @ `cb006bd5a21580cccf89d6c1d13d31f07633c51f` |
-| Head | `development` @ `de99f865e5bd991a7c15b8e0f03b01114a2daf44` |
+| Head | `development` @ `de99f865e5bd991a7c15b8e0f03b01114a2daf44` (**pre-checkpoint implementation head** — committing this checkpoint and later state closeout commits advanced the PR) |
 | Status | **STOP** — independent pre-merge audit, then owner merge authorization |
 
 ---
 
-## Commits not in production
+## Commits present before checkpoint/state closeout commits
+
+These three were the promotion delta at the **pre-checkpoint implementation head** `de99f86`. They are **not** the complete current PR list.
 
 | SHA | Subject |
 |-----|---------|
