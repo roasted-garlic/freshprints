@@ -438,7 +438,12 @@ export function CurrentRequestDrawer() {
       >
         <header className="current-request-drawer-header">
           <div className="current-request-drawer-heading">
-            <h2 id="current-request-drawer-title">Current Request</h2>
+            <div className="current-request-drawer-heading-row">
+              <h2 id="current-request-drawer-title">Current Request</h2>
+              {workingRequest && !isEmpty ? (
+                <span className="current-request-drawer-status-pill">Needs a show</span>
+              ) : null}
+            </div>
             <p className="current-request-drawer-summary">
               {distinctDesignCount} {distinctDesignCount === 1 ? 'design' : 'designs'} ·{' '}
               {totalPrintQuantity} {totalPrintQuantity === 1 ? 'print' : 'prints'}
@@ -672,25 +677,32 @@ export function CurrentRequestDrawer() {
                 Browse designs
               </Link>
             </div>
-          ) : reviewHref ? (
-            <Link
-              className="portal-button portal-button-primary"
-              href={reviewHref}
-              onClick={closeCurrentRequestDrawer}
-            >
-              Review Request
-            </Link>
           ) : (
-            <button
-              aria-busy={isPreparingReview || undefined}
-              aria-label={isPreparingReview ? 'Preparing request' : 'Review Request'}
-              className="portal-button portal-button-primary"
-              disabled={isPreparingReview}
-              onClick={handleReviewWhileCreating}
-              type="button"
-            >
-              {isPreparingReview ? 'Preparing request…' : 'Review Request'}
-            </button>
+            <>
+              <p className="current-request-drawer-next-step">
+                Next step: review your request, then add it to a show.
+              </p>
+              {reviewHref ? (
+                <Link
+                  className="portal-button portal-button-primary"
+                  href={reviewHref}
+                  onClick={closeCurrentRequestDrawer}
+                >
+                  Review & Add to Show
+                </Link>
+              ) : (
+                <button
+                  aria-busy={isPreparingReview || undefined}
+                  aria-label={isPreparingReview ? 'Preparing request' : 'Review & Add to Show'}
+                  className="portal-button portal-button-primary"
+                  disabled={isPreparingReview}
+                  onClick={handleReviewWhileCreating}
+                  type="button"
+                >
+                  {isPreparingReview ? 'Preparing request…' : 'Review & Add to Show'}
+                </button>
+              )}
+            </>
           )}
         </footer>
       </aside>

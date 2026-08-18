@@ -1,5 +1,17 @@
 # Recent Completed Work
 
+## 2026-08-18 - Portal Add to Show Unmissable — SIGNOFF / CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `portal-add-to-show-unmissable` — **DONE** |
+| Signoff | **approved** |
+| Owner QA | `DEV ADD TO SHOW UNMISSABLE QA: PASS` |
+| Delivered | Drawer **Review & Add to Show** + next-step helper + **Needs a show**; review header **Add Request to Whatnot Show** (opens picker); Upload/Browse removed from review header only |
+| Backend | Unchanged (ADR-FP-066) |
+| Production | Later `development` → `production` PR; no App Hosting this signoff |
+| Signoff | `docs/workflow/reviews/2026-08-18-portal-add-to-show-unmissable-signoff.md` |
+
 ## 2026-08-17 - Portal GA4 production enablement — SIGNED OFF / CLOSED
 
 | Item | Status |

@@ -577,6 +577,17 @@
   min-width: 0;
 }
 
+.portal-request-detail-show-hint {
+  display: grid;
+  gap: 0.2rem;
+  margin-top: var(--space-2);
+  max-width: 36rem;
+}
+
+.portal-request-detail-show-hint .portal-muted {
+  font-size: var(--font-size-sm);
+}
+
 .portal-request-detail-title-row {
   align-items: center;
   display: flex;
@@ -1182,10 +1193,29 @@
   width: 100%;
 }
 
-@media (min-width: 40rem) {
+.portal-request-detail-show-cta {
+  font-size: 0.9375rem;
+  justify-content: center;
+  min-height: 2.875rem;
+  padding: 0.85rem 1.25rem;
+  width: 100%;
+}
+
+@media (min-width: 48rem) {
+  .portal-request-detail-header {
+    align-items: center;
+  }
+
   .portal-request-detail-header-actions {
+    flex: 0 0 auto;
     flex-direction: row;
     justify-content: flex-end;
+    width: auto;
+  }
+
+  .portal-request-detail-show-cta {
+    min-width: 20rem;
+    white-space: nowrap;
     width: auto;
   }
 }

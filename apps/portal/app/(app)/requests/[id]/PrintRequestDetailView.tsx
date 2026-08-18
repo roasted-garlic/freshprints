@@ -396,61 +396,28 @@ export default function PrintRequestDetailView() {
               <span className="portal-request-detail-meta-pill">{printCountLabel}</span>
             </div>
           </div>
+          {isEditable && hasAttachedDesigns ? (
+            <div className="portal-request-detail-show-hint">
+              <p className="portal-muted">
+                When your request is ready, add it to a show to have your prints included.
+              </p>
+              <p className="portal-muted">
+                Final step: choose the show you want this request added to.
+              </p>
+            </div>
+          ) : null}
         </div>
 
         {canQueueToShow ? (
           <div className="portal-request-detail-header-actions">
-            <Link
-              className="portal-button portal-button-secondary portal-button-leading-icon portal-request-detail-add-button"
-              href={buildRequestArtworkHref({
-                requestId: printRequest.id,
-                from: returnFrom ?? 'library',
-                returnTo: `/requests/${printRequest.id}${
-                  searchParams.toString() ? `?${searchParams.toString()}` : ''
-                }`,
-              })}
-            >
-              <ImagePlusIcon />
-              Upload Designs
-            </Link>
-            <Link
-              className="portal-button portal-button-secondary portal-button-leading-icon portal-request-detail-add-button"
-              href={buildCatalogLibraryHref()}
-            >
-              <LibraryIcon />
-              Browse Design Library
-            </Link>
             <button
-              className="portal-button portal-button-primary portal-button-leading-icon"
+              className="portal-button portal-button-primary portal-button-leading-icon portal-request-detail-show-cta"
               onClick={() => setIsQueueModalOpen(true)}
               type="button"
             >
               <CalendarPlusIcon />
-              Add Request to Show
+              Add Request to Whatnot Show
             </button>
-          </div>
-        ) : isEditable && hasAttachedDesigns ? (
-          <div className="portal-request-detail-header-actions">
-            <Link
-              className="portal-button portal-button-secondary portal-button-leading-icon portal-request-detail-add-button"
-              href={buildRequestArtworkHref({
-                requestId: printRequest.id,
-                from: returnFrom ?? 'library',
-                returnTo: `/requests/${printRequest.id}${
-                  searchParams.toString() ? `?${searchParams.toString()}` : ''
-                }`,
-              })}
-            >
-              <ImagePlusIcon />
-              Upload Designs
-            </Link>
-            <Link
-              className="portal-button portal-button-primary portal-button-leading-icon portal-request-detail-add-button"
-              href={buildCatalogLibraryHref()}
-            >
-              <LibraryIcon />
-              Browse Design Library
-            </Link>
           </div>
         ) : null}
       </header>

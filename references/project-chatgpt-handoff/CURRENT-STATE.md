@@ -1,88 +1,43 @@
 # Fresh Prints - Current State Snapshot
 
-## 2026-08-18 — Repository development-first reconciliation — sync PR pending
+## 2026-08-18 — Portal Add to Show Unmissable — SIGNOFF APPROVED (DEV)
+
+| Item | Value |
+|------|-------|
+| Managed goal | `portal-add-to-show-unmissable` — **DONE** |
+| Signoff | **approved** |
+| Owner QA | `DEV ADD TO SHOW UNMISSABLE QA: PASS` |
+| Checkout | `C:\coding\fresh-prints` on **`development`** (uncommitted until owner commits) |
+| Behavior | Drawer **Review & Add to Show** + helper + **Needs a show**; review header **Add Request to Whatnot Show**; no Upload/Browse in review header |
+| Backend | Unchanged (ADR-FP-066) |
+| Production | Later `development` → `production` PR; no App Hosting this signoff |
+| Analytics | `portal-design-engagement-analytics` still queued separately |
+| Phase 9 | **PARKED** |
+| Cutover | **CLOSED** |
+| Signoff | `docs/workflow/reviews/2026-08-18-portal-add-to-show-unmissable-signoff.md` |
+
+---
+
+## 2026-08-18 — Repository development-first reconciliation — CLOSED
 
 | Item | Value |
 |------|-------|
 | Managed goal | `repository-development-first-reconciliation` |
-| Status | **STOP** — independent `development` → `production` PR audit / owner merge authorization |
-| Checkout | `C:\coding\fresh-prints` on **`development`** |
+| Status | **DONE** — PR **#82** merged |
+| `origin/development` / `origin/production` | `60f0086` (merge commit) |
 | Policy | ADR-FP-137 — no per-goal branches/worktrees unless owner requests one |
-| Analytics feature | `portal-design-engagement-analytics` **not started** until this PR merges |
 | Live App Hosting (unchanged) | `fresh-prints-portal-build-2026-08-18-001` @ `cb006bd` |
-| Phase 9 | **PARKED** |
-| Cutover | **CLOSED** |
 
 ---
 
-## 2026-08-17 — Portal GA4 event transmission corrective — PRODUCTION LIVE / CLOSED
+## Live production (unchanged by this signoff)
 
 | Item | Value |
 |------|-------|
-| Managed goal | `portal-ga4-event-transmission-corrective` — **DONE** |
-| Signoff | **approved** — `PROD GA4 TRANSPORT QA: PASS` |
-| Production | PR **#81** merged @ `cb006bd` |
-| App Hosting | **`fresh-prints-portal-build-2026-08-18-001`** @ **100%** |
-
----
-
-## 2026-08-17 — Portal GA4 production enablement — SIGNED OFF / CLOSED
-
-*(Collection conclusion superseded by the transmission corrective above.)*
-
-| Item | Value |
-|------|-------|
-| Managed goal | `portal-ga4-production-enablement` — **CLOSED** |
-| Signoff | **approved** |
-| Owner QA | `PROD GA4 QA: PASS` |
-| PR | [#80](https://github.com/roasted-garlic/freshprints/pull/80) **merged** |
-| Production source | `124c6fa4ad3c86defa8fd61c578b3efeaf6609bb` |
-| Live App Hosting | `fresh-prints-portal-build-2026-08-17-002` @ **100%** |
+| App Hosting | `fresh-prints-portal-build-2026-08-18-001` @ 100% |
+| Source | `cb006bd` (GA4 transmission corrective) |
 | Canonical | `https://myprintrequest.com` |
-| Analytics implementation | **unchanged** (production enablement only) |
-| Enablement | `NEXT_PUBLIC_GA_MEASUREMENT_ID` Secret Manager + `apphosting.yaml` (`BUILD` + `RUNTIME`) |
-| Enhanced Measurement | **fully OFF** |
+| Queued next product | `portal-design-engagement-analytics` (not started) |
+| Phase 9 | **PARKED** |
 | Cutover | **CLOSED** |
-| Phase 9 | **PARKED** |
-| Workflow | **IDLE** |
-| Rollback (historical) | `fresh-prints-portal-build-2026-08-17-001` / `f8acb26` |
-| Signoff | `docs/workflow/reviews/2026-08-17-portal-ga4-production-enablement-signoff.md` |
 
----
-
-## 2026-08-16 — TD-030 qty parity — SIGNOFF approved; production PR pending audit
-
-| Item | Value |
-|------|-------|
-| Managed goal | `portal-details-share-add-to-request-quantity-parity` — **DONE** (DEV) |
-| Signoff | **approved** — `DEV TD-030 QA: PASS` |
-| Behavior | Share page reuses `CatalogRequestQuantityControls` + existing add-flow |
-| TD-030 | **resolved** |
-| Production | PR for owner pre-merge audit — **do not merge / do not App Hosting** |
-| Later phrase | `AUTHORIZE PROD APP HOSTING ROLLOUT: TD-030 QTY PARITY` |
-| Phase 9 | **PARKED** |
-| Signoff | `docs/workflow/reviews/2026-08-16-portal-details-share-add-to-request-quantity-parity-signoff.md` |
-
----
-
-## 2026-08-15 — Studio 1.0.7 helper update access — Release prep / PR #78 (STOP before merge)
-
-| Item | Value |
-|------|-------|
-| Managed goal | `studio-1.0.7-helper-update-access` — Signoff **approved**; production promotion **pending merge** |
-| Target | Studio **1.0.7** |
-| Local / `origin/development` | `7687354…` tip may advance with docs follow-up — verify `git rev-parse origin/development` |
-| Production base | `9f945f3c2435f1e6939e250c435ca5e4dc503201` |
-| PR | [#78](https://github.com/roasted-garlic/freshprints/pull/78) `development` → `production` |
-| Merge phrase | `APPROVE PROD PR MERGE: STUDIO 1.0.7 HELPER UPDATE ACCESS` |
-| Forbidden | Merge without phrase; release dispatch/publish; touch **v1.0.6**; A2; backend |
-| Phase 9 | **PARKED** |
-
----
-
-## 2026-08-15 — Studio 1.0.6 PUBLISHED — managed goal CLOSED
-
-| Item | Value |
-|------|-------|
-| Studio release | [`v1.0.6`](https://github.com/roasted-garlic/freshprints/releases/tag/v1.0.6) @ `9f945f3` |
-| Phase 9 | **PARKED** |

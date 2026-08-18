@@ -33,14 +33,14 @@ On the request page: set quantity + print size (default ~10″ wide)
   - Soft warning if 200–299 DPI
   - HARD BLOCK save if < 200 DPI (ADR-FP-075)
     ↓
-When ready → Add to show → pick allocatable upcoming show
+When ready → review Current Request → **Add Request to Whatnot Show** → pick allocatable upcoming show
     ↓
 Request moves toward Queued / Printing / Printed (derived from show allocations + timer)
 ```
 
 ### Customer-facing copy (catalog)
 
-Short explainer (collapsed by default): a print request is the customer’s list for Fresh Prints to print — Design Library designs, their own uploads, or both. Steps: start/continue → add designs/uploads + sizes → choose a show.
+Short explainer (collapsed by default): a print request is the customer’s list for Fresh Prints to print — Design Library designs, their own uploads, or both. Steps: add designs/uploads + sizes → review Current Request → choose a show. Drawer CTA is **Review & Add to Show**; reviewing is not the final action.
 
 ### Rules customers feel
 
