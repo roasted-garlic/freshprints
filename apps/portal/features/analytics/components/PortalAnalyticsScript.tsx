@@ -9,11 +9,14 @@ import type { PortalAnalyticsConfig } from '../types/portalAnalytics.types'
  * per this repo's convention of unit-testing extracted logic rather than rendered
  * JSX) to prove it contains no `gtag('config'` / `gtag('set'` call of any kind — all
  * sequencing logic lives in `usePortalAnalyticsController` (Plan Section 4/5/7), never
- * here. This component's only responsibility beyond loading the scripts is reporting
- * readiness via `onReady`, never initiating `config`/page-view decisions itself.
+ * here. The stub enqueues the standard `gtag('js', new Date())` bootstrap only — not
+ * `config`, `event`, or route-aware calls. Sequencing logic lives in
+ * `usePortalAnalyticsController` (Plan Section 4/5/7), never here. This component's
+ * only responsibility beyond loading the scripts is reporting readiness via `onReady`,
+ * never initiating `config`/page-view decisions itself.
  */
 export const PORTAL_GA4_STUB_SCRIPT =
-  'window.dataLayer = window.dataLayer || []; function gtag(){window.dataLayer.push(arguments);} window.gtag = gtag;'
+  "window.dataLayer = window.dataLayer || []; function gtag(){window.dataLayer.push(arguments);} window.gtag = gtag; gtag('js', new Date());"
 
 export function buildPortalGa4LoaderSrc(measurementId: string): string {
   return `https://www.googletagmanager.com/gtag/js?id=${measurementId}`
