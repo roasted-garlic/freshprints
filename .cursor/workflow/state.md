@@ -37,17 +37,24 @@ Read-only PR audit support; answer questions; wait for owner merge authorization
 ## Forbidden Actions
 merge the sync PR; App Hosting rollout; push to production; force-push; drop/clear stash; start portal-design-engagement-analytics implementation; create new branches or worktrees
 
-## Next Required Step
-Independent PR audit → owner merge authorization. After merge: ff local development to origin/production merge commit, then start portal-design-engagement-analytics on development.
-
-## Last Completed Step
-Merged origin/production into development; documented ADR-FP-137 development-first Git policy — 2026-08-18
-
 ## Plan
 docs/workflow/plans/2026-08-18-repository-development-first-reconciliation-plan.md
 
 ## Review
 docs/workflow/reviews/2026-08-18-repository-development-first-reconciliation-review.md
+
+## Production PR
+#82 OPEN / UNMERGED
+https://github.com/roasted-garlic/freshprints/pull/82
+
+## PR checkpoint
+docs/workflow/reviews/2026-08-18-repository-development-first-reconciliation-prod-pr-checkpoint.md
+
+## Next Required Step
+Independent PR audit of #82 → owner merge authorization. After merge: ff local development to the production merge commit, then start portal-design-engagement-analytics on development.
+
+## Last Completed Step
+Opened development→production sync PR #82 @ `8facfac` — 2026-08-18
 
 ## Live production (pre-sync-PR)
 cb006bd5a21580cccf89d6c1d13d31f07633c51f
