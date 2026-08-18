@@ -14,9 +14,23 @@ describe('PORTAL_GA4_STUB_SCRIPT', () => {
     assert.ok(!PORTAL_GA4_STUB_SCRIPT.includes('gtag("set"'))
   })
 
-  it('only defines dataLayer and the gtag stub function', () => {
+  it('defines dataLayer, the gtag stub function, and the standard js bootstrap', () => {
     assert.ok(PORTAL_GA4_STUB_SCRIPT.includes('window.dataLayer'))
     assert.ok(PORTAL_GA4_STUB_SCRIPT.includes('function gtag('))
+    assert.ok(PORTAL_GA4_STUB_SCRIPT.includes("gtag('js'"))
+    assert.ok(PORTAL_GA4_STUB_SCRIPT.includes('new Date()'))
+  })
+
+  it('enqueues js bootstrap immediately after assigning window.gtag (before controller config/event)', () => {
+    const gtagAssignIndex = PORTAL_GA4_STUB_SCRIPT.indexOf('window.gtag = gtag')
+    const jsBootstrapIndex = PORTAL_GA4_STUB_SCRIPT.indexOf("gtag('js'")
+    assert.ok(gtagAssignIndex >= 0)
+    assert.ok(jsBootstrapIndex > gtagAssignIndex)
+  })
+
+  it('contains exactly one js bootstrap call', () => {
+    const matches = PORTAL_GA4_STUB_SCRIPT.match(/gtag\(['"]js['"]/g)
+    assert.equal(matches?.length, 1)
   })
 })
 
@@ -39,11 +53,13 @@ describe('thin-component guarantee (regression, per required correction)', () =>
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/(^|[^:])\/\/.*$/gm, '$1')
 
-  it('the component source contains no gtag("config"/"set", ...) call, route sanitization, or identity logic', () => {
+  it('the component source contains no gtag("config"/"set"/"event", ...) call, route sanitization, or identity logic', () => {
     assert.ok(!codeOnly.includes("gtag('config'"))
     assert.ok(!codeOnly.includes('gtag("config"'))
     assert.ok(!codeOnly.includes("gtag('set'"))
     assert.ok(!codeOnly.includes('gtag("set"'))
+    assert.ok(!codeOnly.includes("gtag('event'"))
+    assert.ok(!codeOnly.includes('gtag("event"'))
     assert.ok(!codeOnly.includes('buildSanitizedAnalyticsPageDescriptor'))
     assert.ok(!codeOnly.includes('buildNavigationIdentity'))
     assert.ok(!codeOnly.includes('navigationIdentityKey'))

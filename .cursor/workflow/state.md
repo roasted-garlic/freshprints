@@ -1,17 +1,20 @@
 ## Current Goal
-portal-details-share-add-to-request-quantity-parity
+portal-ga4-event-transmission-corrective
 
 ## Current Mode
 managed-phase
 
 ## Phase
-complete — SIGNOFF approved; production PR pending owner pre-merge audit
+production-pr-pre-merge-audit
 
 ## Plan Status
 complete
 
+## Formal Review
+approved_with_changes
+
 ## Review Status
-approved
+approved_with_changes
 
 ## Implementation Status
 complete
@@ -19,61 +22,67 @@ complete
 ## Test Status
 passed
 
+## DEV transport QA
+PASS
+
 ## Signoff Status
 approved
+
+## Implement/Test Signoff
+approved
+
+## DONE
+no — production PR open; merge and App Hosting not authorized
 
 ## Human Checkpoint Required
 yes
 
 ## Human Checkpoint Reason
-Owner pre-merge diff audit of TD-030 production PR. Do not merge. Do not App Hosting.
+Independent re-audit of PR #81 after docs-only correction, then owner merge authorization.
 
 ## Allowed Actions
-Answer questions; update checkpoint with PR audit fields; wait for owner merge authorization
+docs-only correction to the two current-state files; push correction to PR branch; read-only re-audit
 
 ## Forbidden Actions
-Merge PR to production; App Hosting rollout; reopen cutover; include unrelated development work
+merge; App Hosting rollout; production deploy; Secret Manager; GA4 console production changes; unrelated cleanup
 
 ## Next Required Step
-Owner independent pre-merge audit. After merge (owner-only), await `AUTHORIZE PROD APP HOSTING ROLLOUT: TD-030 QTY PARITY`.
-
-## DONE
-yes
-
-## Blocked
-no
+push docs-only correction → independent re-audit → owner merge authorization
 
 ## Last Completed Step
-Signoff approved; production promotion PR opened (no merge) — 2026-08-16
+PR #81 created OPEN/UNMERGED; independent application/package audit PASS; docs-only current-state correction — 2026-08-17
 
-## Plan
-docs/workflow/plans/2026-08-16-portal-details-share-add-to-request-quantity-parity-plan.md
-
-## Review
-docs/workflow/reviews/2026-08-16-portal-details-share-add-to-request-quantity-parity-review.md
-
-## Implementation Review
-docs/workflow/reviews/2026-08-16-portal-details-share-add-to-request-quantity-parity-implementation-review.md
-
-## Test report
-docs/workflow/reviews/2026-08-16-portal-details-share-add-to-request-quantity-parity-test-report.md
-
-## DEV QA checkpoint
-docs/workflow/reviews/2026-08-16-portal-details-share-add-to-request-quantity-parity-dev-qa-checkpoint.md
+## Test Report
+docs/workflow/reviews/2026-08-17-portal-ga4-event-transmission-corrective-test-report.md
 
 ## Signoff
-docs/workflow/reviews/2026-08-16-portal-details-share-add-to-request-quantity-parity-signoff.md
+docs/workflow/reviews/2026-08-17-portal-ga4-event-transmission-corrective-signoff.md
 
-## Prod PR checkpoint
-docs/workflow/reviews/2026-08-16-portal-details-share-add-to-request-quantity-parity-prod-pr-checkpoint.md
+## Production PR
+#81 OPEN / UNMERGED
+https://github.com/roasted-garlic/freshprints/pull/81
 
-## Decision Log
-- 2026-08-16: Signoff **approved**; `DEV TD-030 QA: PASS`; TD-030 resolved; production PR opened — STOP for owner pre-merge audit; no App Hosting
-- 2026-08-16: DEV data repair — archived `XlqFwbSoO0ZlAXMiDk8N` (`studio_customer`)
-- 2026-08-16: `DEV TD-030 DISCOVER DISCRIMINATOR: FAILS SAME WAY`
-- 2026-08-16: `DEV TD-030 QA: FAIL` then repaired and retested PASS
-- 2026-08-16: Formal Review **approved**; Implementation Review **approved**
-- 2026-08-16: `myprintrequest-com-cutover` CLOSED; cutover not reopened
+## PR base
+production @ 124c6fa4ad3c86defa8fd61c578b3efeaf6609bb
 
-## Cutover (CLOSED — do not reopen)
+## PR head before this docs correction
+54ea53a46965ae59554c83f8f3dbdd0b46b031c2
+
+## Independent PR audit
+application/package scope PASS
+docs-only current-state correction required before final merge authorization
+
+## Plan
+docs/workflow/plans/2026-08-17-portal-ga4-event-transmission-corrective-plan.md
+
+## Live App Hosting (unchanged)
+fresh-prints-portal-build-2026-08-17-002 @ 100%
+
+## Cutover (CLOSED)
 docs/workflow/reviews/2026-08-16-myprintrequest-com-cutover-signoff.md
+
+## Phase 9
+PARKED
+
+## portal-tag-alias-search-discoverability
+QUEUED ONLY, not activated
