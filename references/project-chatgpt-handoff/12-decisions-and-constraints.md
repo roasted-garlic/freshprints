@@ -8,12 +8,25 @@
 |-----|------|
 | ADR-FP-136 | A2 Developer ID **declined indefinitely** — no paid Apple Developer Program, no `MAC_CSC_*`, no notarization. Mac remains ad-hoc / `internal-unsigned`; auto-update **install** unsupported. Windows updater unchanged. Revisit only by future explicit owner decision. |
 
+## Repository workflow (2026-08-18 — ADR-FP-137)
+
+| Constraint | Rule |
+|------------|------|
+| Checkout | Existing `C:\coding\fresh-prints` only |
+| Working branch | **`development`** |
+| Per-goal branches / worktrees | **Do not create** unless the owner explicitly requests one |
+| FreshForge phases | Plan, Review, Implement, Test, DEV QA, Signoff on `development` |
+| Promotion | PR `development` → `production` only; never direct push; never force-push protected branches |
+| Deploys | App Hosting / production rollouts remain separate human checkpoints after merge |
+
+Full ADR: `docs/project/DECISIONS.md` (ADR-FP-137). Details: `docs/standards/DEPLOYMENT.md`.
+
 ## Repository workflow (2026-08-13 closeout)
 
 | Constraint | Rule |
 |------------|------|
-| Default branch for work | **`development`** (development-first local checkout; see `docs/standards/DEPLOYMENT.md`) |
-| Production tip pin (Studio 1.0.4 P4) | `e59205d7eccf0991e9a8a9b7be266cfeff831158` — do not push/reset during this closeout window |
+| Default branch for work | **`development`** (superseded in detail by ADR-FP-137 above) |
+| Production tip pin (Studio 1.0.4 P4) | Historical closeout pin — do not reuse as current production tip |
 | Promotion | PR into `production` only; never force-push protected branches |
 | Cleanup | Prefer archive + prove redundancy before worktree/branch delete; never `git clean -fdx` |
 

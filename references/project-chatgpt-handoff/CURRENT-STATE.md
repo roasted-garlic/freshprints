@@ -1,6 +1,34 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-18 — Repository development-first reconciliation — sync PR pending
+
+| Item | Value |
+|------|-------|
+| Managed goal | `repository-development-first-reconciliation` |
+| Status | **STOP** — independent `development` → `production` PR audit / owner merge authorization |
+| Checkout | `C:\coding\fresh-prints` on **`development`** |
+| Policy | ADR-FP-137 — no per-goal branches/worktrees unless owner requests one |
+| Analytics feature | `portal-design-engagement-analytics` **not started** until this PR merges |
+| Live App Hosting (unchanged) | `fresh-prints-portal-build-2026-08-18-001` @ `cb006bd` |
+| Phase 9 | **PARKED** |
+| Cutover | **CLOSED** |
+
+---
+
+## 2026-08-17 — Portal GA4 event transmission corrective — PRODUCTION LIVE / CLOSED
+
+| Item | Value |
+|------|-------|
+| Managed goal | `portal-ga4-event-transmission-corrective` — **DONE** |
+| Signoff | **approved** — `PROD GA4 TRANSPORT QA: PASS` |
+| Production | PR **#81** merged @ `cb006bd` |
+| App Hosting | **`fresh-prints-portal-build-2026-08-18-001`** @ **100%** |
+
+---
+
 ## 2026-08-17 — Portal GA4 production enablement — SIGNED OFF / CLOSED
+
+*(Collection conclusion superseded by the transmission corrective above.)*
 
 | Item | Value |
 |------|-------|

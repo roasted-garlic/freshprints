@@ -5,16 +5,16 @@ repository-development-first-reconciliation
 managed-phase
 
 ## Phase
-implement
+signoff
 
 ## Plan Status
-pending
+complete
 
 ## Review Status
-pending
+approved
 
 ## Implementation Status
-in_progress
+complete
 
 ## Test Status
 pending
@@ -26,24 +26,30 @@ pending
 no
 
 ## Human Checkpoint Required
-no
+yes
 
 ## Human Checkpoint Reason
-—
+Independent development→production PR audit, then owner merge authorization. Agent cannot `git push origin --delete` (FreshForge shell guard). Do not start portal-design-engagement-analytics until this PR is merged and local development is synced to the merge commit.
 
 ## Allowed Actions
-Reconcile development with origin/production in place; document development-first Git policy; preserve classified dirty work in stash; delete only proven-redundant closeout branch/worktree; push development; open development→production docs/policy sync PR
+Read-only PR audit support; answer questions; wait for owner merge authorization
 
 ## Forbidden Actions
-reset --hard; git clean; drop/clear stash; force-push; push to production; merge production PR; App Hosting rollout; create feature/fix/docs branches or new worktrees; start portal-design-engagement-analytics implementation; mix product analytics into this reconciliation
+merge the sync PR; App Hosting rollout; push to production; force-push; drop/clear stash; start portal-design-engagement-analytics implementation; create new branches or worktrees
 
 ## Next Required Step
-Finish merge conflict resolution, durable policy docs, push development, open sync PR, then STOP for independent PR audit / owner authorization
+Independent PR audit → owner merge authorization. After merge: ff local development to origin/production merge commit, then start portal-design-engagement-analytics on development.
 
 ## Last Completed Step
-Fast-forwarded local development to origin/development `3d44cea`; merging origin/production `cb006bd` — 2026-08-18
+Merged origin/production into development; documented ADR-FP-137 development-first Git policy — 2026-08-18
 
-## Live production (unchanged by this merge)
+## Plan
+docs/workflow/plans/2026-08-18-repository-development-first-reconciliation-plan.md
+
+## Review
+docs/workflow/reviews/2026-08-18-repository-development-first-reconciliation-review.md
+
+## Live production (pre-sync-PR)
 cb006bd5a21580cccf89d6c1d13d31f07633c51f
 
 ## Live App Hosting
@@ -68,7 +74,9 @@ QUEUED ONLY, not activated
 ## portal-ga4-event-transmission-corrective
 CLOSED — PR #81 merged; PROD GA4 TRANSPORT QA PASS
 
+## portal-design-engagement-analytics
+NOT STARTED — blocked until this reconciliation PR merges
+
 ## Decision Log
-- 2026-08-18: Owner adopted development-first Git workflow (no per-goal branches/worktrees unless explicitly requested)
+- 2026-08-18: ADR-FP-137 accepted — development-first Git workflow
 - 2026-08-17: Production Signoff approved — portal-ga4-event-transmission-corrective — live `build-2026-08-18-001` @ `cb006bd`
-- 2026-08-17: Docs closeout `3d44cea` on development (GA4 enablement)

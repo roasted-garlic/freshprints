@@ -4,6 +4,36 @@
 
 ---
 
+### ADR-FP-137: Development-first Git workflow — no per-goal branches or worktrees
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-18 |
+| Status | accepted |
+| Related | `docs/standards/DEPLOYMENT.md` Branch Model; `docs/AI_RULES.md` Repository checkout; owner workflow decision `repository-development-first-reconciliation` |
+
+**Context**
+
+The owner is the sole developer. Repeated short-lived `feature/*`, `fix/*`, `docs/*`, and `chore/*` branches plus extra Git worktrees created cleanup residue (example: stale `docs/portal-ga4-enablement-closeout` after its work reached `development`). Isolation through many local branches is not needed.
+
+**Decision**
+
+1. Normal development work happens directly on `C:\coding\fresh-prints` branch `development`.
+2. Plan, Review, Implement, Test, DEV QA, and Signoff all occur on `development`.
+3. Do **not** create per-goal branches, new worktrees, or replacement checkouts unless the owner explicitly requests one.
+4. Promote to production only by reviewed PR: `development` → `production`. Independent pre-merge audit, then owner merge authorization.
+5. Never push directly to `production`. Never force-push protected branches.
+6. Production deploys / App Hosting rollouts remain separate human checkpoints after merge.
+7. A temporary branch/worktree may be proposed only if direct work on `development` is genuinely unsafe or technically impossible. Do not create one automatically.
+
+**Consequences**
+
+- Agents must not open a new implementation branch at the start of a managed goal.
+- Stale short-lived branches should be deleted only after redundancy is proven.
+- `docs/standards/DEPLOYMENT.md` remains the detailed Git/release source of truth; `docs/AI_RULES.md` carries the session-start rule.
+
+---
+
 ### ADR-FP-136: Studio Mac Developer ID (A2) declined — no paid Apple Developer Program for 1.0.6+
 
 | Field | Value |

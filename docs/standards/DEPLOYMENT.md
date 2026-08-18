@@ -185,9 +185,21 @@ Each contributor's clone must run this once. Contains no secret or credential. W
 Windows (the hook is a POSIX shell script executed by the `sh.exe` bundled with Git for Windows,
 the same mechanism Git uses for all hook scripts on Windows).
 
-### Local checkout policy (development-first)
+### Local checkout policy (development-first) — owner decision 2026-08-18 (ADR-FP-137)
 
-`development` is the default local working branch for every ordinary session.
+The owner is the sole developer. Normal work uses **one** checkout and **one** working branch.
+
+| Rule | Required behavior |
+|------|-------------------|
+| Checkout | `C:\coding\fresh-prints` only |
+| Branch | `development` |
+| Per-goal branches | **Do not** create `feature/*`, `fix/*`, `docs/*`, `chore/*`, or other temporary implementation branches unless the owner **explicitly** requests one |
+| Worktrees | **Do not** create a new Git worktree or replacement checkout unless the owner **explicitly** requests one |
+| FreshForge phases | Plan, Review, Implement, Test, DEV QA, and Signoff all occur on `development` |
+| Production | Promote only by reviewed PR: `development` → `production`. Never push directly to `production`. Never force-push protected branches |
+| Deploys | App Hosting / production rollouts remain separate human checkpoints after merge |
+
+A temporary branch or worktree may be **proposed** only when working directly on `development` is genuinely unsafe or technically impossible. Do not create one automatically. Explain the reason and ask the owner first.
 
 1. After clone, after pulling, and after any temporary inspection of `production` (or another
    release tip), switch back to `development` before continuing work:
@@ -196,15 +208,16 @@ the same mechanism Git uses for all hook scripts on Windows).
    day-to-day agent sessions.
 3. Inspecting `origin/production` for ancestry, release SHAs, or diff gates is fine; committing or
    pushing from a `production` checkout is not part of ordinary workflow (promotion is PR-only).
-4. Worktrees used for release packaging or production-only verification should be named and
-   disposed of as such; the primary repo working tree remains on `development`.
+4. Existing leftover worktrees from older goals are not a license to create new ones. Do not add
+   more unless the owner asks.
 
 ### Development workflow
 
-1. Start all ordinary work on `development` (see local checkout policy above).
-2. Test normal work against `fresh-prints-dev`.
+1. Start all ordinary work on `development` in `C:\coding\fresh-prints` (see local checkout policy above).
+2. Test normal work against `fresh-prints-dev` / localhost. Portal DEV QA does not require App Hosting.
 3. Commit and push ongoing work to `origin/development`.
 4. Do not perform ordinary feature work on `production`.
+5. Do not open a new implementation branch for each managed goal.
 
 ### Production release workflow (promotion via pull request, not direct push)
 
@@ -228,12 +241,19 @@ above blocks this by default; the pull-request path is the only intended promoti
 
 ### Hotfix workflow
 
-1. Create a temporary hotfix branch from `production`.
-2. Make and test the smallest necessary fix.
-3. Merge the hotfix into `production`.
-4. Deploy and verify.
-5. Merge the same hotfix into `development`.
-6. Delete the temporary hotfix branch after both merges.
+Prefer fixing on `development` and promoting with the normal reviewed PR, even for urgent bugs,
+unless that is genuinely unsafe (for example a production-only emergency that cannot wait for
+current development-line work).
+
+If a temporary hotfix branch is truly required:
+
+1. **Ask the owner first.** Do not create the branch automatically.
+2. Create it from `production` only after explicit owner authorization.
+3. Make and test the smallest necessary fix.
+4. Promote with a reviewed PR into `production` (never a direct push).
+5. Deploy and verify only after the standing production rollout checkpoint.
+6. Merge the same hotfix into `development` if it is not already there.
+7. Delete the temporary hotfix branch after both sides are updated.
 
 ### Firebase branch and project separation
 

@@ -1,38 +1,42 @@
 {
   "version": 1,
-  "_comment": "Conservative starter hooks for the AI development workflow. Adapt paths and events to your Cursor version. See Cursor Settings > Hooks and the create-hook skill docs.",
+  "_comment": "FreshForge workflow hooks for Fresh Prints. Deterministic shell guard distinguishes ordinary development Git operations from actual production/destructive actions.",
   "hooks": {
     "sessionStart": [
       {
-        "_comment": "Inject workflow context at session start so the agent reads state before acting.",
+        "_comment": "Inject FreshForge workflow context at session start.",
         "type": "prompt",
-        "prompt": "You are working in a repo with AppForge managed AI workflow. Recognize command aliases (see .cursor/workflow/command-aliases.md): e.g. 'Intake' or 'Existing Project' starts intake; 'Bootstrap' starts new project; 'Continue Workflow' continues managed phase. Before making changes: 1) Read AGENTS.md. 2) Read docs/AI_RULES.md. 3) Read .cursor/workflow/state.md. 4) If Human Checkpoint Required is yes, STOP and ask the user only for that checkpoint—do not implement, deploy, or migrate. 5) If Blocked is yes, STOP and explain the blocker. 6) If DONE is yes, do not start new implementation unless the user starts a new workflow or uses a workflow alias. 7) Follow Allowed Actions and Forbidden Actions in state. 8) Follow Plan → Review → Implement → Test → Signoff gates. Never force production deploys, database migrations, or destructive actions.",
+        "prompt": "You are working in the Fresh Prints repo under the FreshForge managed workflow. Recognize command aliases in .cursor/workflow/command-aliases.md. Before making changes: 1) Read AGENTS.md. 2) Read docs/AI_RULES.md. 3) Read .cursor/workflow/state.md. 4) Respect Plan → Review → Implement → Test → Signoff. 5) If Human Checkpoint Required is yes, STOP and ask only for that checkpoint. 6) If Blocked is yes, STOP and explain the blocker. 7) If DONE is yes, do not start new implementation unless the owner starts a new managed goal or workflow alias. 8) Follow Allowed Actions and Forbidden Actions in workflow state. 9) Production deploys, production merges, secrets, migrations, and destructive operations remain human checkpoints. 10) A normal push to a non-production branch or creation/editing of a PR is NOT itself a production deploy.",
         "timeout": 15
       }
     ],
+
     "beforeShellExecution": [
       {
-        "_comment": "Flag potentially destructive or production-related shell commands for user review. Adjust regex matchers for your stack.",
-        "type": "prompt",
-        "prompt": "Review this shell command for the managed workflow repo. DENY or ASK if the command appears to: deploy to production; run database migrations against production; delete or truncate data; modify production secrets or env; force-push git; or run irreversible infra changes. ALLOW read-only inspection (ls, cat, git status, git diff, git log, test/lint/typecheck/build in local dev). Command input: $ARGUMENTS",
-        "timeout": 20,
-        "failClosed": true
+        "_comment": "Hard safety boundary for dangerous Git, production, secret, migration, publication, and destructive operations. Routine shell commands bypass this hook entirely.",
+        "type": "command",
+        "command": "node .cursor/hooks/freshforge-shell-guard.cjs",
+        "matcher": "git.*(push|reset|clean|branch|worktree|stash|restore|checkout)|gh.*(pr\\s+merge|api|release\\s+create)|firebase.*(deploy|apphosting:rollouts:create|apphosting:secrets:)|gcloud.*secrets|npm\\s+publish|pnpm\\s+publish|yarn\\s+publish|Remove-Item|rm\\s+-|rmdir\\s+/s|migrate|migration|db\\s+push",
+        "failClosed": true,
+        "timeout": 20
       }
     ],
+
     "subagentStop": [
       {
-        "_comment": "Optional: chain workflow continuation when subagents complete. Set loop_limit low to avoid runaway loops. Remove or disable if not using Task/subagents.",
+        "_comment": "Suggest only the next safe FreshForge step when a subagent completes.",
         "type": "prompt",
-        "prompt": "A subagent just finished. Read .cursor/workflow/state.md. If Human Checkpoint Required is yes, Blocked is yes, or DONE is yes, return empty followup (no followup_message). Otherwise, if Next Required Step is clearly defined and safe, you may suggest continuing that step only—never skip Plan → Review → Implement → Test → Signoff gates.",
+        "prompt": "A subagent just finished. Read .cursor/workflow/state.md. If Human Checkpoint Required is yes, Blocked is yes, or DONE is yes, return empty followup with no followup_message. Otherwise, if Next Required Step is clearly defined and safe, suggest continuing that step only. Never skip Plan → Review → Implement → Test → Signoff. Never automatically merge production, deploy production, mutate secrets, run migrations, or perform destructive cleanup.",
         "loop_limit": 2,
         "timeout": 15
       }
     ],
+
     "stop": [
       {
-        "_comment": "Optional session-end reminder. Disable if too noisy.",
+        "_comment": "Session-end workflow-state reminder.",
         "type": "prompt",
-        "prompt": "Before ending: confirm .cursor/workflow/state.md reflects the last completed step, Tests Run if tests were executed, and Human Checkpoint Required if waiting on the user. Do not start new scope.",
+        "prompt": "Before ending, confirm .cursor/workflow/state.md reflects the last completed FreshForge step, tests run, current branch/worktree where relevant, and Human Checkpoint Required if waiting on the owner. Do not start new scope. Keep production merge, production rollout, secrets, migrations, and destructive actions as explicit owner checkpoints.",
         "loop_limit": 1,
         "timeout": 10
       }

@@ -12,6 +12,20 @@ No implementation should be performed without following these documents.
 
 ---
 
+# Repository checkout (development-first)
+
+Use the existing `C:\coding\fresh-prints` checkout on **`development`** for normal development work.
+
+Do **not** create new `feature/*`, `fix/*`, `docs/*`, `chore/*`, or other temporary implementation branches, alternate Git worktrees, or replacement checkouts unless the owner **explicitly** requests one.
+
+Plan, Review, Implement, Test, DEV QA, and Signoff happen on `development`.
+
+Promote to `production` only by reviewed PR (`development` → `production`). Never push directly to `production`. Never force-push protected branches. App Hosting / production deploys remain separate human checkpoints after merge.
+
+Details: `docs/standards/DEPLOYMENT.md` (Branch Model) and ADR-FP-137 in `docs/project/DECISIONS.md`.
+
+---
+
 # Required Reading Order
 
 Before writing code, modifying code, generating plans, or creating documentation, read the following files in order:
@@ -149,6 +163,19 @@ Source of truth for:
 * Milestones
 * Feature sequencing
 * Future planning
+
+---
+
+## DEPLOYMENT.md
+
+Path: `docs/standards/DEPLOYMENT.md`
+
+Source of truth for:
+
+* Git branch model (`development` / `production`)
+* Local checkout policy (development-first; no per-goal branches or worktrees unless the owner requests one)
+* Production promotion via reviewed PR
+* Hosting, environments, and release process
 
 ---
 
