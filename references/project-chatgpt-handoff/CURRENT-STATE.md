@@ -10,8 +10,9 @@
 | Final contract | Amendment 2: `Modal:` / `Share:` page titles; public catalog IDs in path/`content_id` (ADR-FP-138) |
 | Automated tests | Analytics suite **109/109**; Portal typecheck; touched ESLint; **`build:portal` pass** |
 | Checkout | `C:\coding\fresh-prints` on **`development`** |
-| Batched PR | Together with `portal-add-to-show-unmissable` — `development` → `production` |
-| Merge / App Hosting | **Not authorized** — awaiting independent pre-merge audit |
+| Batched PR | **#83** `development` → `production` — https://github.com/roasted-garlic/freshprints/pull/83 |
+| Analytics commit | ``7350bc42e206c0aa000768e3595f06406433a26b`` |
+| Merge / App Hosting | **Not authorized** — **AWAITING INDEPENDENT PRE-MERGE AUDIT** |
 | Live App Hosting | Unchanged: `fresh-prints-portal-build-2026-08-18-001` @ `cb006bd` |
 | Phase 9 | **PARKED** |
 | Tag-alias | QUEUED ONLY |
