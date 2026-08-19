@@ -1,8 +1,8 @@
 ## Current Goal
-portal-design-engagement-analytics
+none (idle)
 
 ## Current Mode
-managed-phase
+idle
 
 ## Phase
 signoff
@@ -26,46 +26,29 @@ approved
 yes
 
 ## Human Checkpoint Required
-yes
+no
 
 ## Human Checkpoint Reason
-Independent pre-merge audit of development → production PR. Do not merge. Do not deploy App Hosting.
+none
 
 ## Allowed Actions
-Wait for independent pre-merge audit; read docs; answer questions
+read docs; wait for next owner goal
 
 ## Forbidden Actions
-merge production PR; App Hosting rollout; Measurement ID in git; weaken host gate; Phase 9; tag-alias; create branches or worktrees; pop stashes; force-push; direct-push production
+Functions/Rules/indexes deploy; secret changes; DNS; Algolia; Auth; Phase 9; tag-alias unless owner activates; create branches or worktrees; pop stashes; force-push; direct-push production
 
-## Plan
-docs/workflow/plans/2026-08-18-portal-design-engagement-analytics-plan.md
+## Production Signoff
+docs/workflow/reviews/2026-08-18-portal-pr-83-production-signoff.md
 
-## Review
-docs/workflow/reviews/2026-08-18-portal-design-engagement-analytics-review.md
+## Rollout record
+docs/workflow/reviews/2026-08-18-portal-pr-83-app-hosting-rollout-record.md
 
-## Amendment 1 Review
-docs/workflow/reviews/2026-08-18-portal-design-engagement-analytics-amendment-1-review.md
-
-## Amendment 2 Review
-docs/workflow/reviews/2026-08-18-portal-design-engagement-analytics-amendment-2-review.md
-
-## Signoff
+## DEV Signoffs
+docs/workflow/reviews/2026-08-18-portal-add-to-show-unmissable-signoff.md
 docs/workflow/reviews/2026-08-18-portal-design-engagement-analytics-signoff.md
 
 ## Owner public-ID decision
 ADR-FP-138
-
-## Test Report
-docs/workflow/reviews/2026-08-18-portal-design-engagement-analytics-test-report.md
-
-## Human Checkpoint
-docs/workflow/reviews/2026-08-18-portal-design-engagement-analytics-dev-qa-checkpoint.md
-
-## Show-clarity commit
-5d042696ddbc7bce2bc40675e5cae82124e5dc04
-
-## Show-clarity follow-up
-3fe17d8644524afb973e4ce294764405dda95deb
 
 ## Preserve stash
 stash@{0}: repository-development-first-reconciliation: preserve dirty main checkout 2026-08-18
@@ -74,11 +57,14 @@ stash@{1}: On development: td030-wip-leave-unrelated (protected; do not drop)
 ## Production PR
 https://github.com/roasted-garlic/freshprints/pull/83
 
-## Analytics commit
-7350bc42e206c0aa000768e3595f06406433a26b
+## Production merge
+99b230333efd9a4892f8c4a30ccf72008baf2246
 
 ## Last Completed Step
-Analytics Signoff **approved**. Analytics commit ``7350bc42e206c0aa000768e3595f06406433a26b`` pushed. Production PR **#83** opened. **AWAITING INDEPENDENT PRE-MERGE AUDIT.** Do not merge. Do not deploy App Hosting.
+Production Signoff **approved**. Owner `PROD PR 83 QA: PASS`. LIVE `fresh-prints-portal-build-2026-08-19-001` @ `99b2303` **100%**. Both Portal goals CLOSED/LIVE.
+
+## Next Required Step
+IDLE. Do not start Phase 9. `portal-tag-alias-search-discoverability` remains queued only.
 
 ## Tests Run
 - npx tsx --test (portal analytics suite) exit 0 — 109/109
@@ -87,12 +73,13 @@ Analytics Signoff **approved**. Analytics commit ``7350bc42e206c0aa000768e3595f0
 - npm run build:portal exit 0
 - git diff --check exit 0
 - live g/collect: owner `DEV DESIGN ENGAGEMENT ANALYTICS QA: PASS`
-
-## Next Required Step
-AWAITING INDEPENDENT PRE-MERGE AUDIT of the development → production PR. Do not merge. Do not deploy App Hosting.
+- production QA: owner `PROD PR 83 QA: PASS`
 
 ## portal-add-to-show-unmissable
-DONE — 5d042696ddbc7bce2bc40675e5cae82124e5dc04; layout follow-up 3fe17d8644524afb973e4ce294764405dda95deb; batched in the same production PR
+CLOSED/LIVE — 5d042696ddbc7bce2bc40675e5cae82124e5dc04; layout follow-up 3fe17d8644524afb973e4ce294764405dda95deb; production `99b2303`
+
+## portal-design-engagement-analytics
+CLOSED/LIVE — 7350bc42e206c0aa000768e3595f06406433a26b; production `99b2303`
 
 ## portal-tag-alias-search-discoverability
 QUEUED ONLY, not activated
@@ -104,6 +91,9 @@ PARKED
 docs/workflow/reviews/2026-08-16-myprintrequest-com-cutover-signoff.md
 
 ## Live App Hosting
+fresh-prints-portal-build-2026-08-19-001 @ 99b230333efd9a4892f8c4a30ccf72008baf2246
+
+## Rollback
 fresh-prints-portal-build-2026-08-18-001 @ cb006bd5a21580cccf89d6c1d13d31f07633c51f
 
 ## Decision Log
@@ -114,4 +104,6 @@ fresh-prints-portal-build-2026-08-18-001 @ cb006bd5a21580cccf89d6c1d13d31f07633c
 - 2026-08-18: Stopped Portal next-dev; `npm run build:portal` exit 0. Classified leftover show-clarity dirty files as owner-approved layout (B); committed `3fe17d86` and pushed. Analytics remains uncommitted.
 - 2026-08-18: Owner requested Amendment 2 (Modal:/Share: prefixes + public catalog design IDs). Formal Review **approved**. ADR-FP-138 recorded. Implemented. Automated Test 109/109.
 - 2026-08-18: Owner `DEV DESIGN ENGAGEMENT ANALYTICS QA: PASS` (Amendment 2 transport). QA checkpoint resolved.
-- 2026-08-18: Owner authorized Signoff → commit analytics → push development → one development → production PR. Signoff **approved**. Analytics commit ``7350bc42e206c0aa000768e3595f06406433a26b``. PR **#83** opened. App Hosting not authorized. Merge not authorized. **AWAITING INDEPENDENT PRE-MERGE AUDIT.**
+- 2026-08-18: PR **#83** merged @ `99b2303`. Owner authorized App Hosting. Preflight PASS. Agent create hook-blocked (same as prior prod rollouts). Awaiting owner-local `apphosting:rollouts:create` then Continue Workflow.
+- 2026-08-18: Owner-local create succeeded. LIVE `fresh-prints-portal-build-2026-08-19-001` @ `99b2303` **100%**. Infrastructure smoke PASS. **AWAITING OWNER PRODUCTION QA.**
+- 2026-08-18: Owner `PROD PR 83 QA: PASS`. Production Signoff **approved**. Both goals CLOSED/LIVE. Workflow IDLE.
