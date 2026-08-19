@@ -15,6 +15,10 @@
 
 Portal Current Request and request-review copy now make it obvious that building a request is not the end of the flow. Customers review the request, then add it to a Whatnot show. Show picker, callable queue path, and request lifecycle are unchanged (ADR-FP-066). Owner DEV QA: `DEV ADD TO SHOW UNMISSABLE QA: PASS`.
 
+Original signed-off commit: `5d042696ddbc7bce2bc40675e5cae82124e5dc04`.
+
+**Follow-up (2026-08-18, still this goal, not analytics):** After that commit, the owner asked to move “Final step: choose the show you want this request added to.” under the review CTA and keep it on one centered line. That layout is `3fe17d8644524afb973e4ce294764405dda95deb` (`fix(portal): finalize add-to-show review layout`). Original goal history is preserved.
+
 ---
 
 ## Changes Delivered
@@ -89,7 +93,7 @@ Portal Current Request and request-review copy now make it obvious that building
 
 | Item | Severity | Mitigation / follow-up |
 |------|----------|------------------------|
-| Work still uncommitted on `development` | Low | Owner may commit when ready |
+| Follow-up layout commit after original signoff | Low | Recorded as `3fe17d86`; original `5d042696` unchanged |
 | Production still on prior App Hosting build | Low | Separate promotion PR; no App Hosting this signoff |
 | Header CTA opens picker (does not immediately queue) | Low | Accepted by owner; modal **Add to show** remains the queue action |
 
