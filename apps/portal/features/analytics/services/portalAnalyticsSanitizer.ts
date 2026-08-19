@@ -2,6 +2,7 @@ import type {
   PortalAnalyticsNavigationIdentity,
   PortalAnalyticsPageDescriptor,
 } from '../types/portalAnalytics.types'
+import { buildPortalDesignSharePath } from '../../catalog/utils/portalDesignShareUrls'
 
 /** One fixed route pattern this sanitizer knows how to template. */
 type RouteRule = {
@@ -124,4 +125,56 @@ export function buildNavigationIdentity(
 /** Collapses a navigation identity into one comparable string for a `useRef` guard. */
 export function navigationIdentityKey(identity: PortalAnalyticsNavigationIdentity): string {
   return `${identity.rawPathname}?${identity.normalizedApprovedQuery}`
+}
+
+export function isPortalShareDesignPathname(pathname: string): boolean {
+  return /^\/share\/design\/[^/]+$/.test(pathname)
+}
+
+/** Virtual content-path prefix for Design Details modal views. Not a real Portal route. */
+export const CATALOG_DESIGN_MODAL_VIRTUAL_PATH_PREFIX = '/catalog/design'
+
+export function buildCatalogDesignModalVirtualPath(approvedDesignId: string): string {
+  return `${CATALOG_DESIGN_MODAL_VIRTUAL_PATH_PREFIX}/${encodeURIComponent(approvedDesignId)}`
+}
+
+/**
+ * Analytics-only descriptor for an intentional Design Details open.
+ * Interpolates only an already-approved public catalog design ID.
+ */
+export function buildCatalogDesignModalPageDescriptor(input: {
+  title: string
+  designId: string
+  origin: string
+  parentPathname: string
+  parentSearchParams: URLSearchParams
+}): PortalAnalyticsPageDescriptor {
+  const parent = buildSanitizedAnalyticsPageDescriptor({
+    pathname: input.parentPathname,
+    searchParams: input.parentSearchParams,
+    previousSanitizedPath: null,
+    origin: input.origin,
+  })
+  const path = buildCatalogDesignModalVirtualPath(input.designId)
+  return {
+    path,
+    title: input.title,
+    location: `${input.origin}${path}`,
+    referrer: parent.path,
+  }
+}
+
+export function buildResolvedShareDesignPageOverride(input: {
+  title: string
+  designId: string
+  origin: string
+  referrer: string | undefined
+}): PortalAnalyticsPageDescriptor {
+  const path = buildPortalDesignSharePath(input.designId)
+  return {
+    path,
+    title: input.title,
+    location: `${input.origin}${path}`,
+    referrer: input.referrer,
+  }
 }

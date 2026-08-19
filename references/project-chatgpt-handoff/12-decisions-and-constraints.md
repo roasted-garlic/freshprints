@@ -2,6 +2,17 @@
 
 > Full log: `docs/project/DECISIONS.md` — newest ADRs first.
 
+## Analytics identifiers (2026-08-18 — ADR-FP-138)
+
+| Constraint | Rule |
+|------------|------|
+| Allowed | PUBLIC catalog design ID after successful public-catalog resolve |
+| Allowed locations | Modal virtual path/location; valid share path/location; `design_view` `content_id` |
+| Still prohibited | Request / customer / auth / upload / assisted IDs, email, username, filename |
+| Sanitizer | `/requests/:id` and unresolved `/share/design/:id` stay templated |
+
+Full ADR: `docs/project/DECISIONS.md` (ADR-FP-138).
+
 ## Studio packaging / Mac (2026-08-15)
 
 | ADR | Rule |

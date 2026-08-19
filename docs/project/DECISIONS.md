@@ -4,6 +4,34 @@
 
 ---
 
+### ADR-FP-138: Public catalog design IDs permitted in Portal design-engagement analytics
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-18 |
+| Status | accepted |
+| Related | Goal `portal-design-engagement-analytics` Amendment 2; plan `docs/workflow/plans/2026-08-18-portal-design-engagement-analytics-plan.md`; review `docs/workflow/reviews/2026-08-18-portal-design-engagement-analytics-amendment-2-review.md` |
+
+**Context**
+
+Amendment 1 put public catalog titles into GA4 standard Page Title reporting via a virtual modal `page_view`, but paths still used the literal `:id` placeholder. Titles can collide or change. The owner needs GA4 Page Path reports to identify the exact public catalog record **and** whether it was viewed in the Design Details modal or on a share page.
+
+**Decision**
+
+1. PUBLIC catalog design IDs **may** be transmitted to GA4 for design-engagement analytics **only** when bound to a successfully resolved public catalog design.
+2. Allowed locations: modal virtual `page_path` / `page_location`, valid public share `page_path` / `page_location`, and `design_view` `content_id`.
+3. Use the existing share/catalog ID convention (`isValidPortalDesignShareId` / `encodeURIComponent`). Do not invent an analytics-only identifier.
+4. Invalid/not-found share pages must **not** promote an arbitrary route parameter as a public catalog identity.
+5. This does **not** allow request IDs, show allocation IDs, customer upload IDs, customer IDs, auth UIDs, assisted-creation IDs, email, username, filename, or private artwork metadata. `/requests/:id` and other sanitizer templates stay. Do not change the sanitizer from “IDs prohibited” to “IDs allowed.”
+6. Surface prefixes (`Modal: ` / `Share: `) belong on `page_title` only. Canonical `design_title` stays unprefixed.
+
+**Consequences**
+
+- GA4 Page Title and Page Path can distinguish modal vs share views of the same public catalog design without a second report.
+- Production promotion of this analytics change remains a later human checkpoint. This ADR is the owner product/security decision for the identifier exception itself.
+
+---
+
 ### ADR-FP-137: Development-first Git workflow — no per-goal branches or worktrees
 
 | Field | Value |

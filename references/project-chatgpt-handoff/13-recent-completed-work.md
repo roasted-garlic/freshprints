@@ -1,5 +1,18 @@
 # Recent Completed Work
 
+## 2026-08-18 - Portal Design Engagement Analytics — SIGNOFF / CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `portal-design-engagement-analytics` — **DONE** |
+| Signoff | **approved** |
+| Owner QA | `DEV DESIGN ENGAGEMENT ANALYTICS QA: PASS` |
+| Final contract | Amendment 2: `Modal: {title}` / `Share: {title}` page titles; `/catalog/design/{id}` and `/share/design/{id}` with **public catalog IDs** (ADR-FP-138); `design_view` with `design_title` / `design_surface` / `content_id` |
+| Privacy | Request/customer/auth/upload IDs still sanitized; `/requests/:id` unchanged |
+| Automated | Analytics suite **109/109**; Portal typecheck; ESLint; `build:portal` |
+| Production | Batched `development` → `production` PR with add-to-show; **no merge / no App Hosting** until audit + authorization |
+| Signoff | `docs/workflow/reviews/2026-08-18-portal-design-engagement-analytics-signoff.md` |
+
 ## 2026-08-18 - Portal Add to Show Unmissable — SIGNOFF / CLOSED (DEV)
 
 | Item | Status |

@@ -53,6 +53,12 @@ Auth provider changes, relaxing rules, new public sensitive endpoints, secret ro
 - Model calls only from Cloud Functions  
 - Validate AI output before persist  
 
+## Portal analytics identifiers
+
+- Default: sanitizer templates dynamic IDs (`/requests/:id`) and drops `q` / `returnTo`.
+- Owner exception (ADR-FP-138): PUBLIC catalog design IDs only, after successful resolve, on design `page_path` / `page_location` / `design_view.content_id`.
+- Invalid share stays `/share/design/:id` with no `content_id`.
+
 ## Incident posture
 
 Fail closed; log risks in `RISK_REGISTER.md`; ADRs in `DECISIONS.md`.

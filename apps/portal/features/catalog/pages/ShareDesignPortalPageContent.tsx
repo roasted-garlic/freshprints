@@ -5,6 +5,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { resolveArtworkBackgroundHex } from '@fresh-prints/shared/constants/design/artworkBackground.constants';
 
+import {
+  usePortalAnalyticsStreamReady,
+  useRegisterShareAnalyticsDesign,
+} from '../../analytics/context/PortalAnalyticsShareTitleContext';
+import { trackDesignView } from '../../analytics/services/portalAnalyticsService';
 import { useAuth } from '../../auth/context/AuthContext';
 import { redirectToPortalLogin } from '../../auth/utils/requirePortalLogin';
 import { buildPortalDesignSharePath, isValidPortalDesignShareId } from '../utils/portalDesignShareUrls';
@@ -42,6 +47,26 @@ export function ShareDesignPortalPageContent({
 }: ShareDesignPortalPageContentProps) {
   const router = useRouter();
   const { isAuthenticated, isInitialBootstrap } = useAuth();
+  useRegisterShareAnalyticsDesign({
+    title: initialMeta?.title,
+    designId: initialMeta?.designId,
+  });
+  const streamReady = usePortalAnalyticsStreamReady();
+  const shareDesignViewKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const title = initialMeta?.title;
+    const contentId = initialMeta?.designId;
+    if (!streamReady || !title || !contentId) {
+      return;
+    }
+    if (shareDesignViewKeyRef.current === contentId) {
+      return;
+    }
+    if (trackDesignView({ title, surface: 'share_page', contentId })) {
+      shareDesignViewKeyRef.current = contentId;
+    }
+  }, [initialMeta?.designId, initialMeta?.title, streamReady]);
   const { categories } = useCatalogCategories();
   const {
     continuableRequests,

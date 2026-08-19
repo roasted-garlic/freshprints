@@ -59,6 +59,7 @@ print-limit counters** cleanup for retired, unenforced Cap A documents.
 | Image quality sizing (`image-quality-v2`, ≤6× toward 12″) | ✅ Live (dev) — ADR-FP-080 |
 | Progress tabs (Working / Queued / Printing / Printed) | ✅ Live |
 | Add request to show (callable + calendar) | ✅ Live — Portal cutoff hours before start (ADR-FP-103); review header CTA **Add Request to Whatnot Show** opens picker |
+| Design engagement analytics (GA4) | ✅ Repo (DEV) — modal/share `page_view` + `design_view`; public catalog IDs only (ADR-FP-138); production App Hosting rollout gated |
 | Assisted Creation brief + submitted-only updates | ✅ Live (dev) |
 | Assisted proof / revision / approval lifecycle | ✅ Live (dev) — owner QA `PASS` |
 | Production App Hosting | ⏸ Human approval |

@@ -7,6 +7,7 @@ import { setFirestoreUsageTraceContext } from '@fresh-prints/shared/utils/firest
 
 import { AuthProvider } from '../features/auth/context/AuthProvider';
 import { PortalAnalyticsBoundary } from '../features/analytics/components/PortalAnalyticsBoundary';
+import { PortalAnalyticsShareTitleProvider } from '../features/analytics/context/PortalAnalyticsShareTitleContext';
 import type { PortalAnalyticsConfig } from '../features/analytics/types/portalAnalytics.types';
 import { ExplicitContentPreferenceProvider } from '../features/catalog/context/ExplicitContentPreferenceProvider';
 import { FirebaseDebugPanelMount } from '../features/firebase-debug/components/FirebaseDebugPanelMount';
@@ -59,10 +60,12 @@ export function Providers({
     <ThemeProvider>
       <ExplicitContentPreferenceProvider>
         <AuthProvider>
-          {showFloatingThemeToggle ? <PortalChrome /> : null}
-          {children}
-          <FirebaseDebugPanelMount />
-          <PortalAnalyticsBoundary config={analyticsConfig} />
+          <PortalAnalyticsShareTitleProvider>
+            {showFloatingThemeToggle ? <PortalChrome /> : null}
+            {children}
+            <FirebaseDebugPanelMount />
+            <PortalAnalyticsBoundary config={analyticsConfig} />
+          </PortalAnalyticsShareTitleProvider>
         </AuthProvider>
       </ExplicitContentPreferenceProvider>
     </ThemeProvider>

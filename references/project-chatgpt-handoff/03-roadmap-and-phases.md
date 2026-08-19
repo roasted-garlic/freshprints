@@ -1,6 +1,8 @@
 # Roadmap and Phases
 
-> 2026-08-18: **Portal Add to Show Unmissable CLOSED (DEV)** — Signoff **approved**; owner `DEV ADD TO SHOW UNMISSABLE QA: PASS`. Copy/presentation only on Current Request + request review. Production PR later. `portal-design-engagement-analytics` remains queued.
+> 2026-08-18: **Portal Design Engagement Analytics CLOSED (DEV)** — Signoff **approved**; owner `DEV DESIGN ENGAGEMENT ANALYTICS QA: PASS`. Amendment 2 GA4 titles/IDs (ADR-FP-138). Batched production PR with add-to-show. No App Hosting this signoff. Phase 9 PARKED.
+
+> 2026-08-18: **Portal Add to Show Unmissable CLOSED (DEV)** — Signoff **approved**; owner `DEV ADD TO SHOW UNMISSABLE QA: PASS`. Copy/presentation only on Current Request + request review. Batched production PR with analytics.
 
 > 2026-08-17: **Portal GA4 production enablement CLOSED** — Signoff **approved**; owner `PROD GA4 QA: PASS`; PR **#80** merged; production `124c6fa`; live `fresh-prints-portal-build-2026-08-17-002` @ 100% on `https://myprintrequest.com`. Analytics implementation unchanged. Enablement via `NEXT_PUBLIC_GA_MEASUREMENT_ID` Secret Manager mapping. Enhanced Measurement fully OFF. Cutover **CLOSED**. Phase 9 **PARKED**. Workflow **IDLE**.
 
