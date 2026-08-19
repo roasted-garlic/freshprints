@@ -1201,15 +1201,20 @@
   width: 100%;
 }
 
+.portal-request-detail-show-cta-hint {
+  font-size: var(--font-size-sm);
+  margin: 0;
+  text-align: center;
+}
+
 @media (min-width: 48rem) {
   .portal-request-detail-header {
-    align-items: center;
+    align-items: flex-start;
   }
 
   .portal-request-detail-header-actions {
+    align-items: center;
     flex: 0 0 auto;
-    flex-direction: row;
-    justify-content: flex-end;
     width: auto;
   }
 
@@ -1217,6 +1222,10 @@
     min-width: 20rem;
     white-space: nowrap;
     width: auto;
+  }
+
+  .portal-request-detail-show-cta-hint {
+    white-space: nowrap;
   }
 }
 

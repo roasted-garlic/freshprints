@@ -57,7 +57,7 @@ describe('Current Request add-to-show copy', () => {
     );
     assert.match(
       detailSource,
-      /Final step: choose the show you want this request added to\./,
+      /portal-request-detail-show-cta-hint[\s\S]*Final step: choose the show you want this request added to\./,
     );
   });
 
@@ -75,6 +75,10 @@ describe('Current Request add-to-show copy', () => {
     assert.equal(/Upload Designs/.test(headerMatch[0]), false);
     assert.equal(/Browse Design Library/.test(headerMatch[0]), false);
     assert.match(headerMatch[0], /Add Request to Whatnot Show/);
+    assert.match(
+      headerMatch[0],
+      /Add Request to Whatnot Show[\s\S]*Final step: choose the show you want this request added to\./,
+    );
   });
 
   it('modal submit still performs add-to-show', () => {

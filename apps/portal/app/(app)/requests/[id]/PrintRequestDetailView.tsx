@@ -401,9 +401,6 @@ export default function PrintRequestDetailView() {
               <p className="portal-muted">
                 When your request is ready, add it to a show to have your prints included.
               </p>
-              <p className="portal-muted">
-                Final step: choose the show you want this request added to.
-              </p>
             </div>
           ) : null}
         </div>
@@ -418,6 +415,9 @@ export default function PrintRequestDetailView() {
               <CalendarPlusIcon />
               Add Request to Whatnot Show
             </button>
+            <p className="portal-muted portal-request-detail-show-cta-hint">
+              Final step: choose the show you want this request added to.
+            </p>
           </div>
         ) : null}
       </header>
