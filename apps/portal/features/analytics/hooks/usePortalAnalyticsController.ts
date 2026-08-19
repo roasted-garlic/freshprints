@@ -6,11 +6,21 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import {
   buildNavigationIdentity,
   buildSanitizedAnalyticsPageDescriptor,
+  buildResolvedShareDesignPageOverride,
+  isPortalShareDesignPathname,
   navigationIdentityKey,
 } from '../services/portalAnalyticsSanitizer'
 import * as portalAnalyticsService from '../services/portalAnalyticsService'
 
-import type { PortalAnalyticsConfig } from '../types/portalAnalytics.types'
+import {
+  useMarkPortalAnalyticsStreamReady,
+  usePortalShareAnalyticsReadiness,
+} from '../context/PortalAnalyticsShareTitleContext'
+import { formatPublicCatalogDesignPageTitle } from '../services/approvePublicCatalogDesignTitle'
+import type {
+  PortalAnalyticsConfig,
+  PortalShareAnalyticsReadiness,
+} from '../types/portalAnalytics.types'
 
 const EXCLUDED_ROUTE = '/firebase-debug'
 
@@ -54,16 +64,22 @@ export function runPortalAnalyticsControllerTick(input: {
   pathname: string
   searchParams: URLSearchParams
   origin: string
+  shareReadiness?: PortalShareAnalyticsReadiness
   service?: Pick<
     typeof portalAnalyticsService,
     'initializeStream' | 'updatePageContext' | 'trackPageView'
   >
 }): void {
   const { state, config, scriptReady, pathname, searchParams, origin } = input
+  const shareReadiness = input.shareReadiness ?? { kind: 'idle' }
   const service = input.service ?? portalAnalyticsService
 
   if (!config.enabled || !config.measurementId) return
   if (pathname === EXCLUDED_ROUTE) return
+
+  if (isPortalShareDesignPathname(pathname) && shareReadiness.kind === 'idle') {
+    return
+  }
 
   if (!state.initialized) {
     // Never attempt initialization until the script/stub is actually ready — doing so
@@ -71,12 +87,17 @@ export function runPortalAnalyticsControllerTick(input: {
     // the initial configuration and page view.
     if (!scriptReady) return
 
-    const descriptor = buildSanitizedAnalyticsPageDescriptor({
+    const descriptor = applyShareDesignOverride(
+      buildSanitizedAnalyticsPageDescriptor({
+        pathname,
+        searchParams,
+        previousSanitizedPath: null,
+        origin,
+      }),
       pathname,
-      searchParams,
-      previousSanitizedPath: null,
+      shareReadiness,
       origin,
-    })
+    )
 
     const initialized = service.initializeStream({
       measurementId: config.measurementId,
@@ -100,12 +121,17 @@ export function runPortalAnalyticsControllerTick(input: {
   const identityKey = navigationIdentityKey(identity)
   if (identityKey === state.lastIdentityKey) return
 
-  const descriptor = buildSanitizedAnalyticsPageDescriptor({
+  const descriptor = applyShareDesignOverride(
+    buildSanitizedAnalyticsPageDescriptor({
+      pathname,
+      searchParams,
+      previousSanitizedPath: state.previousSanitizedPath,
+      origin,
+    }),
     pathname,
-    searchParams,
-    previousSanitizedPath: state.previousSanitizedPath,
+    shareReadiness,
     origin,
-  })
+  )
 
   service.updatePageContext({ measurementId: config.measurementId, descriptor })
   service.trackPageView(descriptor)
@@ -114,9 +140,28 @@ export function runPortalAnalyticsControllerTick(input: {
   state.previousSanitizedPath = descriptor.path
 }
 
+function applyShareDesignOverride(
+  descriptor: ReturnType<typeof buildSanitizedAnalyticsPageDescriptor>,
+  pathname: string,
+  shareReadiness: PortalShareAnalyticsReadiness,
+  origin: string,
+) {
+  if (!isPortalShareDesignPathname(pathname) || shareReadiness.kind !== 'ready') {
+    return descriptor
+  }
+  return buildResolvedShareDesignPageOverride({
+    title: formatPublicCatalogDesignPageTitle('share_page', shareReadiness.title),
+    designId: shareReadiness.designId,
+    origin,
+    referrer: descriptor.referrer,
+  })
+}
+
 /**
- * The single authoritative owner of the Portal analytics lifecycle (Plan Section 5).
- * Mounted once, at the root, inside `PortalAnalyticsBoundary`'s `<Suspense>` boundary.
+ * The single authoritative owner of Portal **route/navigation** analytics
+ * (Plan Section 5). Modal virtual design page views are owned separately by
+ * `trackCatalogDesignModalView` (Amendment 1). Mounted once, at the root, inside
+ * `PortalAnalyticsBoundary`'s `<Suspense>` boundary.
  *
  * `scriptReady` is a boolean signal (owned by `PortalAnalyticsBoundary`, sourced from
  * `next/script`'s `onReady` callback on the GA stub script) proving `window.gtag`
@@ -128,7 +173,10 @@ export function usePortalAnalyticsController(
 ): void {
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const shareReadiness = usePortalShareAnalyticsReadiness()
+  const markStreamReady = useMarkPortalAnalyticsStreamReady()
   const stateRef = useRef<PortalAnalyticsControllerState>(createInitialControllerState())
+  const searchKey = searchParams.toString()
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -139,7 +187,20 @@ export function usePortalAnalyticsController(
       pathname,
       searchParams,
       origin: window.location.origin,
+      shareReadiness,
     })
+    if (stateRef.current.initialized) {
+      markStreamReady()
+    }
+    // searchParams is read inside the effect; searchKey is the stable identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, searchParams.toString(), config.enabled, config.measurementId, scriptReady])
+  }, [
+    pathname,
+    searchKey,
+    config.enabled,
+    config.measurementId,
+    scriptReady,
+    shareReadiness,
+    markStreamReady,
+  ])
 }

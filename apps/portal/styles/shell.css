@@ -2139,6 +2139,14 @@ a.portal-sidebar-sign-out:hover {
   min-width: 0;
 }
 
+.current-request-drawer-heading-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  min-width: 0;
+}
+
 .current-request-drawer-heading h2 {
   color: var(--color-text-primary);
   font-size: 1.25rem;
@@ -2146,6 +2154,20 @@ a.portal-sidebar-sign-out:hover {
   letter-spacing: -0.02em;
   line-height: 1.2;
   margin: 0;
+}
+
+.current-request-drawer-status-pill {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.3;
+  padding: 0.15rem 0.55rem;
+  white-space: nowrap;
 }
 
 .current-request-drawer-subtitle {
@@ -2563,6 +2585,14 @@ a.portal-sidebar-sign-out:hover {
 .current-request-drawer-footer .portal-button {
   justify-content: center;
   width: 100%;
+}
+
+.current-request-drawer-next-step {
+  color: var(--color-text-secondary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.4;
+  margin: 0;
 }
 
 .current-request-drawer-empty-actions {

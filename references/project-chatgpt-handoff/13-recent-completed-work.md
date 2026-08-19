@@ -1,5 +1,30 @@
 # Recent Completed Work
 
+## 2026-08-18 - Portal Design Engagement Analytics — SIGNOFF / CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `portal-design-engagement-analytics` — **DONE** |
+| Signoff | **approved** |
+| Owner QA | `DEV DESIGN ENGAGEMENT ANALYTICS QA: PASS` |
+| Final contract | Amendment 2: `Modal: {title}` / `Share: {title}` page titles; `/catalog/design/{id}` and `/share/design/{id}` with **public catalog IDs** (ADR-FP-138); `design_view` with `design_title` / `design_surface` / `content_id` |
+| Privacy | Request/customer/auth/upload IDs still sanitized; `/requests/:id` unchanged |
+| Automated | Analytics suite **109/109**; Portal typecheck; ESLint; `build:portal` |
+| Production | PR **#83** `development` → `production` — **no merge / no App Hosting** until independent pre-merge audit + owner merge authorization |
+| Signoff | `docs/workflow/reviews/2026-08-18-portal-design-engagement-analytics-signoff.md` |
+
+## 2026-08-18 - Portal Add to Show Unmissable — SIGNOFF / CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `portal-add-to-show-unmissable` — **DONE** |
+| Signoff | **approved** |
+| Owner QA | `DEV ADD TO SHOW UNMISSABLE QA: PASS` |
+| Delivered | Drawer **Review & Add to Show** + next-step helper + **Needs a show**; review header **Add Request to Whatnot Show** (opens picker); Upload/Browse removed from review header only |
+| Backend | Unchanged (ADR-FP-066) |
+| Production | Later `development` → `production` PR; no App Hosting this signoff |
+| Signoff | `docs/workflow/reviews/2026-08-18-portal-add-to-show-unmissable-signoff.md` |
+
 ## 2026-08-17 - Portal GA4 production enablement — SIGNED OFF / CLOSED
 
 | Item | Status |

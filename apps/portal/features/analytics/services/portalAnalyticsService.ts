@@ -1,4 +1,13 @@
-import type { PortalAnalyticsPageDescriptor } from '../types/portalAnalytics.types'
+import type {
+  PortalAnalyticsPageDescriptor,
+  PortalDesignViewSurface,
+} from '../types/portalAnalytics.types'
+import { approvePublicCatalogDesignId } from './approvePublicCatalogDesignId'
+import {
+  approvePublicCatalogDesignTitle,
+  formatPublicCatalogDesignPageTitle,
+} from './approvePublicCatalogDesignTitle'
+import { buildCatalogDesignModalPageDescriptor } from './portalAnalyticsSanitizer'
 
 function descriptorToPageParams(
   descriptor: PortalAnalyticsPageDescriptor,
@@ -64,4 +73,53 @@ export function trackPageView(descriptor: PortalAnalyticsPageDescriptor): boolea
     ...(descriptor.referrer ? { page_referrer: descriptor.referrer } : {}),
   })
   return true
+}
+
+/**
+ * Narrow typed design-engagement event. Allowed params: design_title,
+ * design_surface, content_id (approved public catalog design ID only).
+ */
+export function trackDesignView(input: {
+  title: unknown
+  surface: PortalDesignViewSurface
+  contentId: unknown
+}): boolean {
+  if (typeof window === 'undefined' || typeof window.gtag !== 'function') return false
+  if (input.surface !== 'modal' && input.surface !== 'share_page') return false
+  const title = approvePublicCatalogDesignTitle(input.title)
+  const contentId = approvePublicCatalogDesignId(input.contentId)
+  if (!title || !contentId) return false
+  window.gtag('event', 'design_view', {
+    design_title: title,
+    design_surface: input.surface,
+    content_id: contentId,
+  })
+  return true
+}
+
+/**
+ * Amendment 1/2: one virtual design page_view + one modal design_view.
+ * Does not update the GA stream config and does not go through the navigation controller.
+ */
+export function trackCatalogDesignModalView(input: {
+  title: unknown
+  designId: unknown
+  origin: string
+  parentPathname: string
+  parentSearchParams: URLSearchParams
+}): boolean {
+  if (typeof window === 'undefined' || typeof window.gtag !== 'function') return false
+  const title = approvePublicCatalogDesignTitle(input.title)
+  const designId = approvePublicCatalogDesignId(input.designId)
+  if (!title || !designId) return false
+  const descriptor = buildCatalogDesignModalPageDescriptor({
+    title: formatPublicCatalogDesignPageTitle('modal', title),
+    designId,
+    origin: input.origin,
+    parentPathname: input.parentPathname,
+    parentSearchParams: input.parentSearchParams,
+  })
+  const pageViewSent = trackPageView(descriptor)
+  const designViewSent = trackDesignView({ title, surface: 'modal', contentId: designId })
+  return pageViewSent && designViewSent
 }

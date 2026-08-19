@@ -6,7 +6,7 @@ import {
   runPortalAnalyticsControllerTick,
 } from './usePortalAnalyticsController.ts'
 
-import type { PortalAnalyticsConfig } from '../types/portalAnalytics.types'
+import type { PortalAnalyticsConfig, PortalShareAnalyticsReadiness } from '../types/portalAnalytics.types'
 
 const ORIGIN = 'https://myprintrequest.com'
 const ENABLED_CONFIG: PortalAnalyticsConfig = { enabled: true, measurementId: 'G-TEST' }
@@ -48,7 +48,11 @@ function tick(
   service: ReturnType<typeof fakeService>,
   pathname: string,
   query = '',
-  options?: { config?: PortalAnalyticsConfig; scriptReady?: boolean },
+  options?: {
+    config?: PortalAnalyticsConfig
+    scriptReady?: boolean
+    shareReadiness?: PortalShareAnalyticsReadiness
+  },
 ) {
   runPortalAnalyticsControllerTick({
     state,
@@ -57,6 +61,7 @@ function tick(
     pathname,
     searchParams: new URLSearchParams(query),
     origin: ORIGIN,
+    shareReadiness: options?.shareReadiness,
     service,
   })
 }
@@ -265,9 +270,15 @@ describe('runPortalAnalyticsControllerTick — navigation identity (unchanged be
   it('a different dynamic design ID under the same template DOES fire', () => {
     const state = createInitialControllerState()
     const service = fakeService()
-    tick(state, service, '/share/design/abc123')
-    tick(state, service, '/share/design/xyz789')
+    tick(state, service, '/share/design/abc123', '', {
+      shareReadiness: { kind: 'ready', title: 'Public Catalog Title', designId: 'abc123' },
+    })
+    tick(state, service, '/share/design/xyz789', '', {
+      shareReadiness: { kind: 'ready', title: 'Public Catalog Title', designId: 'xyz789' },
+    })
     assert.equal(service.calls.trackPageView.length, 2)
+    const second = service.calls.trackPageView[1][0] as { path: string }
+    assert.equal(second.path, '/share/design/xyz789')
   })
 
   it('a different allowlisted categorical value DOES fire', () => {
@@ -284,5 +295,73 @@ describe('runPortalAnalyticsControllerTick — navigation identity (unchanged be
     tick(state, service, '/requests', 'tab=working&from=discover')
     tick(state, service, '/requests', 'from=discover&tab=working')
     assert.equal(service.calls.trackPageView.length, 1)
+  })
+})
+
+describe('runPortalAnalyticsControllerTick — share title wait', () => {
+  it('does not emit page_view while the share title is still idle', () => {
+    const state = createInitialControllerState()
+    const service = fakeService()
+    tick(state, service, '/share/design/abc123')
+    assert.equal(service.calls.trackPageView.length, 0)
+    assert.equal(state.initialized, false)
+  })
+
+  it('emits exactly one page_view with Share: title and the approved public catalog id', () => {
+    const state = createInitialControllerState()
+    const service = fakeService()
+    tick(state, service, '/share/design/abc123')
+    tick(state, service, '/share/design/abc123', '', {
+      shareReadiness: { kind: 'ready', title: 'Public Catalog Title', designId: 'abc123' },
+    })
+    tick(state, service, '/share/design/abc123', '', {
+      shareReadiness: { kind: 'ready', title: 'Public Catalog Title', designId: 'abc123' },
+    })
+    assert.equal(service.calls.initializeStream.length, 1)
+    assert.equal(service.calls.trackPageView.length, 1)
+    const descriptor = service.calls.trackPageView[0][0] as {
+      path: string
+      title: string
+      location: string
+    }
+    assert.equal(descriptor.path, '/share/design/abc123')
+    assert.equal(descriptor.title, 'Share: Public Catalog Title')
+    assert.equal(descriptor.location, `${ORIGIN}/share/design/abc123`)
+  })
+
+  it('does not promote an arbitrary share route parameter as the public catalog id', () => {
+    const state = createInitialControllerState()
+    const service = fakeService()
+    tick(state, service, '/share/design/not-the-catalog-id', '', {
+      shareReadiness: {
+        kind: 'ready',
+        title: 'Alpha Male',
+        designId: 'abc123xyz',
+      },
+    })
+    const descriptor = service.calls.trackPageView[0][0] as {
+      path: string
+      title: string
+      location: string
+    }
+    assert.equal(descriptor.path, '/share/design/abc123xyz')
+    assert.equal(descriptor.title, 'Share: Alpha Male')
+    assert.equal(descriptor.location.includes('not-the-catalog-id'), false)
+  })
+
+  it('unresolved share keeps the sanitizer Shared Design title and still one page_view', () => {
+    const state = createInitialControllerState()
+    const service = fakeService()
+    tick(state, service, '/share/design/abc123', '', { shareReadiness: { kind: 'unresolved' } })
+    assert.equal(service.calls.trackPageView.length, 1)
+    const descriptor = service.calls.trackPageView[0][0] as {
+      title: string
+      path: string
+      location: string
+    }
+    assert.equal(descriptor.title, 'Shared Design')
+    assert.equal(descriptor.path, '/share/design/:id')
+    assert.equal(descriptor.location.includes('abc123'), false)
+    assert.equal(descriptor.title.includes('Share:'), false)
   })
 })

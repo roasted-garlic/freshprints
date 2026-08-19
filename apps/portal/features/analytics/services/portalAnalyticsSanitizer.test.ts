@@ -2,8 +2,11 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
 import {
+  buildCatalogDesignModalPageDescriptor,
   buildNavigationIdentity,
+  buildResolvedShareDesignPageOverride,
   buildSanitizedAnalyticsPageDescriptor,
+  isPortalShareDesignPathname,
   navigationIdentityKey,
 } from './portalAnalyticsSanitizer.ts'
 
@@ -54,7 +57,7 @@ describe('buildSanitizedAnalyticsPageDescriptor — route templating', () => {
     assert.ok(!d2.location.includes('another-real-id-2'))
   })
 
-  it('never sends a real design ID for two different designs', () => {
+  it('never sends a real design ID from the default sanitizer (override is separate)', () => {
     const d1 = descriptor('/share/design/design-real-id-alpha')
     const d2 = descriptor('/share/design/design-real-id-beta')
     assert.equal(d1.path, '/share/design/:id')
@@ -215,5 +218,58 @@ describe('buildNavigationIdentity / navigationIdentityKey', () => {
       buildNavigationIdentity('/catalog', new URLSearchParams('category=idB')),
     )
     assert.equal(k1, k2)
+  })
+})
+
+describe('isPortalShareDesignPathname', () => {
+  it('matches share design routes only', () => {
+    assert.equal(isPortalShareDesignPathname('/share/design/abc123'), true)
+    assert.equal(isPortalShareDesignPathname('/catalog'), false)
+    assert.equal(isPortalShareDesignPathname('/share/design'), false)
+  })
+})
+
+describe('buildCatalogDesignModalPageDescriptor', () => {
+  it('uses the approved public catalog id in the virtual path and prefixed title', () => {
+    const approvedId = 'abc123xyz'
+    const parentRouteId = 'notTheCatalogId'
+    const built = buildCatalogDesignModalPageDescriptor({
+      title: 'Modal: School Is Important But Fishing Is Importanter',
+      designId: approvedId,
+      origin: ORIGIN,
+      parentPathname: `/share/design/${parentRouteId}`,
+      parentSearchParams: new URLSearchParams(
+        `q=secret&returnTo=/requests/reqId99`,
+      ),
+    })
+    assert.equal(built.path, `/catalog/design/${approvedId}`)
+    assert.equal(built.title, 'Modal: School Is Important But Fishing Is Importanter')
+    assert.equal(built.location, `${ORIGIN}/catalog/design/${approvedId}`)
+    assert.equal(built.referrer, '/share/design/:id')
+    assert.equal(built.location.includes(parentRouteId), false)
+    assert.equal(JSON.stringify(built).includes('q='), false)
+    assert.equal(JSON.stringify(built).includes('returnTo'), false)
+    assert.equal(JSON.stringify(built).includes('reqId99'), false)
+  })
+
+  it('does not treat /catalog/design/:id as a physical Portal route', () => {
+    const physical = descriptor('/catalog/design/firestoreDesignIdAbc123')
+    assert.equal(physical.path, '/other')
+    assert.equal(physical.title, 'Page')
+  })
+})
+
+describe('buildResolvedShareDesignPageOverride', () => {
+  it('uses the approved public catalog id, not an arbitrary route parameter', () => {
+    const built = buildResolvedShareDesignPageOverride({
+      title: 'Share: Alpha Male',
+      designId: 'def456xyz',
+      origin: ORIGIN,
+      referrer: '/catalog',
+    })
+    assert.equal(built.path, '/share/design/def456xyz')
+    assert.equal(built.location, `${ORIGIN}/share/design/def456xyz`)
+    assert.equal(built.title, 'Share: Alpha Male')
+    assert.equal(built.referrer, '/catalog')
   })
 })

@@ -981,6 +981,18 @@ Protect:
 
 Only expose data necessary for customer workflows.
 
+## Portal analytics identifiers
+
+Portal GA4 remains fail-closed: the sanitizer templates dynamic routes (for example `/requests/:id`) and drops `q`, `returnTo`, and other non-allowlisted query parameters.
+
+**Owner-approved exception (ADR-FP-138):** a PUBLIC catalog design ID may be sent to GA4 **only** when it belongs to a successfully resolved public catalog design, and **only** on:
+
+* virtual Design Details modal `page_path` / `page_location`
+* valid public share-page `page_path` / `page_location`
+* `design_view` `content_id`
+
+Do **not** send request IDs, customer IDs, auth UIDs, customer upload IDs, assisted-creation IDs, email, username, filename, or private artwork metadata. Do not treat an arbitrary share-route parameter as a public catalog identity.
+
 ---
 
 # Internal Notes Security

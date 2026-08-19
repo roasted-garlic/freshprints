@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { resolveArtworkBackgroundHex } from '@fresh-prints/shared/constants/design/artworkBackground.constants';
 
+import { useCatalogDesignViewAnalytics } from '../../analytics/hooks/useCatalogDesignViewAnalytics';
 import { useAuth } from '../../auth/context/AuthContext';
 import { redirectToPortalLogin } from '../../auth/utils/requirePortalLogin';
 import { CatalogFavoriteButton } from '../../favorites/components/CatalogFavoriteButton';
@@ -111,6 +112,11 @@ export function CatalogDesignDetailsModal({
   const showGuestSignInCta = !onAddToRequest && !isAuthenticated;
   const { companionDesigns, error: companionError, isLoading: isLoadingCompanions } =
     useCatalogReadyCompanionDesigns(design?.companionDesignIds, design?.id);
+  useCatalogDesignViewAnalytics({
+    isOpen,
+    designId: design?.id ?? null,
+    title: design?.title,
+  });
   const { title: displayTitle, description: displayDescription } = usePortalCensoredDesignText(
     design ?? { title: '', description: '', isExplicitContent: false },
     { sessionRevealed },

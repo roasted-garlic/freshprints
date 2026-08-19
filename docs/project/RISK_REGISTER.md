@@ -12,6 +12,7 @@
 | R-004 | Doc drift after rapid Phase 3 delivery | Medium | Medium | Intake + managed phase doc updates; ROADMAP header discipline | Team | mitigated |
 | R-005 | Native `sharp` module build failures on new dev machines | Medium | Medium | Document in `docs/workflow/setup/electron-security-setup.md` | Team | open |
 | R-006 | Secrets in local `.env.local` — must never commit | High | Low | `.gitignore` covers `.env.local`; pre-push review | Team | monitored |
+| R-019 | Public catalog design IDs in GA4 design-engagement hits (page path/location + `content_id`) | Low | High (intentional) | Narrow exception only after successful public-catalog resolve (ADR-FP-138); sanitizer still templates `/requests/:id` and other private IDs; invalid share stays `:id` | Owner | accepted |
 | R-007 | Public Portal artwork uploads (abuse, ZIP bombs, private art leakage) | High | Medium | ADR-FP-073; server finalize; customer limits + daily caps; rules before UI; SVG deferred; no public derivative reads for unapproved uploads; abandoned cleanup callable (source orphans only); wipe target `customerUploads` on allowlisted dev | Team | open |
 | R-008 | Dual assets after promote (upload production + design originals) | Low | Medium | Documented; request print uses upload path; catalog uses design paths; wipe designs ≠ wipe uploads | Team | accepted |
 | R-009 | Upload `catalogReviewStatus` stays `sent_to_ai_review` after design approve/reject | Low | High | By design (ADR-FP-073); outcome on `designs`; intake shows promotedDesignId | Team | accepted |
@@ -63,6 +64,7 @@ open, CORS fix confirmed working; dynamic tag-facet narrowing implemented, pendi
 
 | Date | Summary |
 |------|---------|
+| 2026-08-18 | R-019 accepted — PUBLIC catalog design IDs in GA4 design-engagement analytics only (ADR-FP-138); sanitizer still templates private IDs |
 | 2026-08-08 | R-018 closed — prod readyAt backfill 46/46; NTW QA PASS WITH NOTES; TD-031 opened for Discover View All count badge (40 vs 45) |
 | 2026-08-08 | TD-031 closed — Discover View All pagination + NTW count badge live on `build-2026-08-08-004`; owner `DISCOVER VIEW ALL PAGINATION QA: PASS` |
 | 2026-07-31 | R-017 closed — catch-up published generation 9; owner Portal QA PASS; signoff approved |
