@@ -14,6 +14,10 @@ import {
   calculateLockedWidthFromHeight,
   formatPrintRequestItemSizeLabel,
 } from "@fresh-prints/shared/utils/printRequestItemSizing";
+import {
+  resolvePrintRequestItemPersistenceHealth,
+  type PrintRequestItemPersistenceHealth,
+} from "@fresh-prints/shared/utils/printRequestItemPersistenceHealth";
 import type { UpdatePrintRequestItemInput } from "../services/printRequestService";
 import { resolvePrintRequestItemArtworkBackground } from "../utils/resolvePrintRequestItemArtworkBackground";
 
@@ -42,24 +46,22 @@ interface PrintRequestItemCardProps {
     message?: string,
     retry?: () => Promise<void>,
   ) => void;
+  onPersistenceHealthChange?: (itemId: string, health: PrintRequestItemPersistenceHealth) => void;
+  onRegisterFlush?: (itemId: string, flush: (() => Promise<boolean>) | null) => void;
   /** When true, hides edit/remove/duplicate controls because the request is locked while queued to a show. */
   readOnly?: boolean;
 }
 
-function resolveInitialWidth(
-  item: PrintRequestItem,
-  design?: Design,
-  upload?: PrintRequestItemUploadSummary | null,
-): number {
-  return item.printWidthInches ?? design?.printWidthInches ?? upload?.printWidthInches ?? 1;
+function resolveInitialWidth(item: PrintRequestItem): number {
+  return typeof item.printWidthInches === "number" && item.printWidthInches > 0
+    ? item.printWidthInches
+    : Number.NaN;
 }
 
-function resolveInitialHeight(
-  item: PrintRequestItem,
-  design?: Design,
-  upload?: PrintRequestItemUploadSummary | null,
-): number {
-  return item.printHeightInches ?? design?.printHeightInches ?? upload?.printHeightInches ?? 1;
+function resolveInitialHeight(item: PrintRequestItem): number {
+  return typeof item.printHeightInches === "number" && item.printHeightInches > 0
+    ? item.printHeightInches
+    : Number.NaN;
 }
 
 function resolveAspectPixels(
@@ -130,6 +132,8 @@ export function PrintRequestItemCard({
   onDuplicate,
   onUpdate,
   onAutosaveStateChange,
+  onPersistenceHealthChange,
+  onRegisterFlush,
   readOnly,
 }: PrintRequestItemCardProps) {
   const isUploadItem = item.sourceType === "customer_upload" || Boolean(item.customerUploadId);
@@ -147,10 +151,10 @@ export function PrintRequestItemCard({
   const artworkBackgroundHex = resolvePrintRequestItemArtworkBackground(design);
   const [quantityInput, setQuantityInput] = useState(String(item.quantity));
   const [printWidthInput, setPrintWidthInput] = useState(
-    formatEditableNumber(resolveInitialWidth(item, design, upload)),
+    formatEditableNumber(resolveInitialWidth(item)),
   );
   const [printHeightInput, setPrintHeightInput] = useState(
-    formatEditableNumber(resolveInitialHeight(item, design, upload)),
+    formatEditableNumber(resolveInitialHeight(item)),
   );
   const [isConfirmingRemove, setIsConfirmingRemove] = useState(false);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
@@ -158,18 +162,20 @@ export function PrintRequestItemCard({
   const lastSavedSignatureRef = useRef(
     buildItemSignature(
       item.quantity,
-      resolveInitialWidth(item, design, upload),
-      resolveInitialHeight(item, design, upload),
+      resolveInitialWidth(item),
+      resolveInitialHeight(item),
     ),
   );
-  const saveDraftRef = useRef<() => Promise<void>>(async () => undefined);
+  const saveDraftRef = useRef<() => Promise<boolean>>(async () => false);
   const saveDebounceRef = useRef<number | null>(null);
   const saveInFlightRef = useRef(false);
   const saveQueuedRef = useRef(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isFailed, setIsFailed] = useState(false);
 
   useEffect(() => {
-    const nextWidth = resolveInitialWidth(item, design, upload);
-    const nextHeight = resolveInitialHeight(item, design, upload);
+    const nextWidth = resolveInitialWidth(item);
+    const nextHeight = resolveInitialHeight(item);
     const incomingSignature = buildItemSignature(item.quantity, nextWidth, nextHeight);
 
     if (incomingSignature === lastSavedSignatureRef.current) {
@@ -275,13 +281,14 @@ export function PrintRequestItemCard({
     }
   }
 
-  const saveDraft = useCallback(async () => {
+  const saveDraft = useCallback(async (): Promise<boolean> => {
     if (
       parsedQuantity === null ||
       parsedPrintWidthInches === null ||
-      parsedPrintHeightInches === null
+      parsedPrintHeightInches === null ||
+      !canSave
     ) {
-      return;
+      return false;
     }
 
     const draftSignature = buildItemSignature(
@@ -291,15 +298,17 @@ export function PrintRequestItemCard({
     );
 
     if (draftSignature === lastSavedSignatureRef.current) {
-      return;
+      return true;
     }
 
     if (saveInFlightRef.current) {
       saveQueuedRef.current = true;
-      return;
+      return false;
     }
 
     saveInFlightRef.current = true;
+    setIsSaving(true);
+    setIsFailed(false);
     onAutosaveStateChange("saving");
 
     try {
@@ -309,12 +318,19 @@ export function PrintRequestItemCard({
         printHeightInches: parsedPrintHeightInches,
       });
       lastSavedSignatureRef.current = draftSignature;
+      setIsFailed(false);
       onAutosaveStateChange("saved");
+      return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to save item changes.";
-      onAutosaveStateChange("failed", message, () => saveDraftRef.current());
+      setIsFailed(true);
+      onAutosaveStateChange("failed", message, async () => {
+        await saveDraftRef.current();
+      });
+      return false;
     } finally {
       saveInFlightRef.current = false;
+      setIsSaving(false);
 
       if (saveQueuedRef.current) {
         saveQueuedRef.current = false;
@@ -322,6 +338,7 @@ export function PrintRequestItemCard({
       }
     }
   }, [
+    canSave,
     item,
     onAutosaveStateChange,
     onUpdate,
@@ -333,6 +350,32 @@ export function PrintRequestItemCard({
   useEffect(() => {
     saveDraftRef.current = saveDraft;
   }, [saveDraft]);
+
+  useEffect(() => {
+    onRegisterFlush?.(item.id, () => saveDraftRef.current());
+    return () => {
+      onRegisterFlush?.(item.id, null);
+    };
+  }, [item.id, onRegisterFlush]);
+
+  const isDirty =
+    buildItemSignature(
+      parsedQuantity ?? Number.NaN,
+      parsedPrintWidthInches ?? Number.NaN,
+      parsedPrintHeightInches ?? Number.NaN,
+    ) !== lastSavedSignatureRef.current;
+
+  const persistenceHealth = resolvePrintRequestItemPersistenceHealth({
+    isOptimistic: false,
+    isSaving,
+    isFailed,
+    isDirty,
+    canSave,
+  });
+
+  useEffect(() => {
+    onPersistenceHealthChange?.(item.id, persistenceHealth);
+  }, [item.id, onPersistenceHealthChange, persistenceHealth]);
 
   const hasUnsavedDraft = useCallback(() => {
     const draftSignature = buildItemSignature(

@@ -1,39 +1,60 @@
 # Fresh Prints - Current State Snapshot
 
-## 2026-08-18 — Portal Design Engagement Analytics — SIGNOFF APPROVED (DEV)
+## 2026-08-21 — studio-print-request-customer-internal-list-split — SIGNOFF APPROVED (DEV) / CLOSED
 
 | Item | Value |
 |-------|-------|
-| Managed goal | `portal-design-engagement-analytics` — **DONE** |
-| Signoff | **approved** — `docs/workflow/reviews/2026-08-18-portal-design-engagement-analytics-signoff.md` |
-| Owner QA | `DEV DESIGN ENGAGEMENT ANALYTICS QA: PASS` |
-| Final contract | Amendment 2: `Modal:` / `Share:` page titles; public catalog IDs in path/`content_id` (ADR-FP-138) |
-| Automated tests | Analytics suite **109/109**; Portal typecheck; touched ESLint; **`build:portal` pass** |
-| Checkout | `C:\coding\fresh-prints` on **`development`** |
-| Batched PR | **#83** `development` → `production` — https://github.com/roasted-garlic/freshprints/pull/83 |
-| Analytics commit | ``7350bc42e206c0aa000768e3595f06406433a26b`` |
-| Merge / App Hosting | **Not authorized** — **AWAITING INDEPENDENT PRE-MERGE AUDIT** |
-| Live App Hosting | Unchanged: `fresh-prints-portal-build-2026-08-18-001` @ `cb006bd` |
+| Managed goal | `studio-print-request-customer-internal-list-split` — **CLOSED (DEV)** |
+| Signoff | **approved** — `docs/workflow/reviews/2026-08-21-studio-print-request-customer-internal-list-split-signoff.md` |
+| Owner QA | Studio list-split QA **`PASS`** |
+| Checkout | `C:\coding\fresh-prints` on **`development`** @ **`bdadd30`** |
+| Delivered | Studio `/print-requests` Customer vs Internal lists via `isInternal`; default Customer Requests; lifecycle tabs preserved; Users-page kind switcher; DEV index `isInternal + queueTab + updatedAt + __name__` (ADR-FP-140) |
+| Production | **Not** promoted. Index is `fresh-prints-dev` only. No Studio/Portal/Functions/Rules release. |
+| Workflow | **IDLE** |
 | Phase 9 | **PARKED** |
 | Tag-alias | QUEUED ONLY |
 
 ---
 
-## 2026-08-18 — Portal Add to Show Unmissable — SIGNOFF APPROVED (DEV)
+## 2026-08-20 — print-request-shared-sizing-and-queue-integrity — SIGNOFF APPROVED (DEV) / CLOSED
 
 | Item | Value |
 |-------|-------|
-| Managed goal | `portal-add-to-show-unmissable` — **DONE** |
-| Commit | **`5d042696ddbc7bce2bc40675e5cae82124e5dc04`** on `development` (pushed); layout follow-up **`3fe17d8644524afb973e4ce294764405dda95deb`** |
-| Owner QA | `DEV ADD TO SHOW UNMISSABLE QA: PASS` |
-| Production | Same batched PR as analytics; no App Hosting this signoff |
+| Managed goal | `print-request-shared-sizing-and-queue-integrity` — **CLOSED (DEV)** |
+| Signoff | **approved** — `docs/workflow/reviews/2026-08-20-print-request-shared-sizing-and-queue-integrity-signoff.md` |
+| Owner QA | Combined DEV QA **`PASS`** |
+| Checkout | `C:\coding\fresh-prints` on **`development`** @ **`4865c2b`** |
+| Delivered | Manual save 200 DPI + 22″; persist/queue barriers; export requested inches; Past+Printing Finish + Mark Complete (ADR-FP-139); Studio Add Designs item-id save |
+| Production | **Not** promoted. No Functions/Portal/Studio release in this push. |
+| Workflow | **IDLE** |
+| Phase 9 | **PARKED** |
+| Tag-alias | QUEUED ONLY |
 
 ---
 
-## Live production (unchanged until merge + App Hosting)
+## 2026-08-18 — PR #83 Portal add-to-show + design analytics — PRODUCTION LIVE / CLOSED
 
 | Item | Value |
 |-------|-------|
-| App Hosting | `fresh-prints-portal-build-2026-08-18-001` @ 100% |
-| Source | `cb006bd` (GA4 transmission corrective) |
+| Goals | `portal-add-to-show-unmissable` + `portal-design-engagement-analytics` — **CLOSED/LIVE** |
+| Production Signoff | **approved** — `docs/workflow/reviews/2026-08-18-portal-pr-83-production-signoff.md` |
+| Owner QA | `PROD PR 83 QA: PASS` |
+| Production source | `99b230333efd9a4892f8c4a30ccf72008baf2246` (PR **#83**) |
+| App Hosting | **`fresh-prints-portal-build-2026-08-19-001`** @ **100%** |
 | Canonical | `https://myprintrequest.com` |
+| Rollback | `fresh-prints-portal-build-2026-08-18-001` @ `cb006bd` |
+| Workflow | **IDLE** |
+| Phase 9 | **PARKED** |
+| Tag-alias | QUEUED ONLY |
+| Record | `docs/workflow/reviews/2026-08-18-portal-pr-83-app-hosting-rollout-record.md` |
+
+---
+
+## Live production
+
+| Item | Value |
+|-------|-------|
+| App Hosting | `fresh-prints-portal-build-2026-08-19-001` @ 100% |
+| Source | `99b230333efd9a4892f8c4a30ccf72008baf2246` (PR #83) |
+| Canonical | `https://myprintrequest.com` |
+| Rollback | `fresh-prints-portal-build-2026-08-18-001` @ `cb006bd` |

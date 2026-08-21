@@ -2,6 +2,40 @@
 
 > Full log: `docs/project/DECISIONS.md` — newest ADRs first.
 
+## Studio Print Requests lists (2026-08-21 — ADR-FP-140)
+
+| Constraint | Rule |
+|------------|------|
+| Discriminator | Persisted `printRequests.isInternal` — not names or `requestOrigin` |
+| Customer list | `isInternal == false` (Studio + Portal customers) |
+| Internal list | `isInternal == true` |
+| Default | Customer Requests |
+| Index (DEV) | `isInternal + queueTab + updatedAt DESC + __name__ DESC` on `fresh-prints-dev` |
+| Out of scope | Show Queue still sees both kinds; no production index this goal |
+
+Full ADR: `docs/project/DECISIONS.md` (ADR-FP-140).
+
+## Print Request manual sizing (2026-08-20 — ADR-FP-075 / ADR-FP-080)
+
+| Constraint | Rule |
+|------------|------|
+| Manual save | ≥200 effective DPI and ≤22″ on either side |
+| 200–299 DPI | Warn and allow |
+| ADR-FP-080 approved-max | Processing and **initial** requested size only — not a later save ceiling |
+| Studio Add Designs | Existing items kept by request item ID; default size only for new items |
+
+Full ADRs: `docs/project/DECISIONS.md` (ADR-FP-075, ADR-FP-080).
+
+## Past Printing Finish (2026-08-20 — ADR-FP-139)
+
+| Constraint | Rule |
+|------------|------|
+| Trigger | Whatnot show is Past (`scheduledStartAt <= now`) and still `printing` |
+| Path | Existing `markShowPrintingFinished` (auto + **Mark Complete**) |
+| Excluded | Staff Gang Sheets; `open` / canceled / archived / already completed |
+
+Full ADR: `docs/project/DECISIONS.md` (ADR-FP-139).
+
 ## Analytics identifiers (2026-08-18 — ADR-FP-138)
 
 | Constraint | Rule |

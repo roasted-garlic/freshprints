@@ -1070,8 +1070,8 @@ Adjust quantity and requested size in the request detail item UI; edits autosave
   10 inches, that smaller width is preserved. Height is calculated proportionally from pixel aspect
   ratio, and extreme aspect ratios are initialized to the largest proportional size that keeps both
   requested sides at or below 22 inches.
-* Standard Print Request item saves are blocked above 22 inches on either axis or below 72 DPI.
-* Requested sizes from 72-299 DPI warn but may be saved; 300+ DPI saves without warning.
+* Standard Print Request item saves are blocked above 22 inches on either axis or below 200 DPI.
+* Requested sizes from 200-299 DPI warn but may be saved; 300+ DPI saves without warning.
 * Requested-size DPI feedback is still calculated and displayed when a requested size is over
   22 inches, as long as source pixel dimensions and requested inch dimensions are valid. The
   over-22 Custom Request guidance remains the save-blocking error.
@@ -1082,6 +1082,7 @@ Adjust quantity and requested size in the request detail item UI; edits autosave
 * Catalog design print dimensions and image files are not mutated when a design is added to a
   Print Request or when a request item is resized.
 * Same-design items with different requested sizes persist as separate `printRequestItems`.
+* Studio Design Library **Add designs** creates items only for newly selected catalog designs. Existing request items keep their item IDs, requested size, quantity, and notes. Catalog designs already on the request appear selected; another copy at a different size uses **Duplicate**.
 * Duplicate item creation updates the current request detail list dynamically and creates a separate `printRequestItems` document.
 * Item display ordering is stable: `sortOrder` when present, then `createdAt`, then document ID. Existing items without `sortOrder` remain visible.
 * Design lifecycle status remains catalog-only; Print Requests must not write `queued`, `printed`, `pending`, or `done` to `designs.status`.
@@ -1269,8 +1270,7 @@ Print Requests do not persist a queue/print status field. `derivePrintRequestQue
 request's show allocations, so the badge shown on the Print Requests page is always consistent with
 allocation records and never drifts out of sync from a second field.
 
-The Print Requests page groups requests into **Working** / **Queued** / **Printed** tabs, derived the
-same way (`shared/utils/printRequestListGrouping.ts`'s `derivePrintRequestListTab()`): a request with
+The Print Requests page first splits requests into **Customer Requests** and **Internal Requests** using persisted `isInternal` (not the request name). Default view is Customer Requests. Within each kind, requests are grouped into **Working** / **Queued** / **Printing** / **Printed** tabs from the server-maintained `queueTab` mirror (`shared/utils/printRequestListGrouping.ts`'s `derivePrintRequestListTab()`): a request with
 no active allocations is Working, any active allocation makes it Queued, and fully printed/completed
 makes it Printed. Selecting a tab and selecting a request are kept in sync
 (`shared/utils/printRequestTabSelection.ts`'s `resolveSelectedRequestIdForTab()` and

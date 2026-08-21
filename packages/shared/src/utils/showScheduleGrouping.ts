@@ -41,6 +41,23 @@ export function isPastScheduledShow(show: ShowWithScheduledStart, now: Date): bo
   return getShowScheduleTab(show, now) === "past";
 }
 
+export interface ShowWithProductionSource extends ShowWithScheduledStart {
+  source?: string | null;
+  productionStatus?: string | null;
+}
+
+/**
+ * Whatnot show that Studio still treats as Printing after the authoritative Past boundary.
+ * Staff Gang Sheets are excluded — they use a different Current/History lifecycle.
+ */
+export function isStalePastPrintingWhatnotShow(show: ShowWithProductionSource, now: Date): boolean {
+  return (
+    show.source === "whatnot" &&
+    show.productionStatus === "printing" &&
+    isPastScheduledShow(show, now)
+  );
+}
+
 /** Past-tab shows may be reviewed or finished, but printing cannot be started after the scheduled time. */
 export function canStartShowPrinting(show: ShowWithScheduledStart, now: Date): boolean {
   return !isPastScheduledShow(show, now);

@@ -8,8 +8,8 @@ import { rotateRectByCardinalDegrees, type RectInches } from "@fresh-prints/shar
 import { overlapsAnyOtherItem } from "@fresh-prints/shared/utils/gangSheetLayoutCollision";
 import type { GangSheet, GangSheetItem } from "@fresh-prints/shared/types/gangSheet/gangSheet.types";
 import type { GangSheetShowAsset } from "./useGangSheetShowAssets";
+import { resolveQueuedPrintInches } from "@fresh-prints/shared/utils/printRequestQueuedInches";
 
-const DEFAULT_PLACED_WIDTH_INCHES = 3;
 const PLACEMENT_SEARCH_STEP_INCHES = 0.5;
 
 type ItemTransform = Pick<
@@ -151,16 +151,22 @@ export function useGangSheetBuilder(upcomingShowId: string | null) {
         return;
       }
 
-      const widthInches =
-        asset.allocation.printWidthInches ??
-        asset.upload?.printWidthInches ??
-        DEFAULT_PLACED_WIDTH_INCHES;
-      const pixelWidth = asset.design?.width ?? asset.upload?.widthPx ?? null;
-      const pixelHeight = asset.design?.height ?? asset.upload?.heightPx ?? null;
-      const heightInches =
-        asset.allocation.printHeightInches ??
-        asset.upload?.printHeightInches ??
-        (pixelWidth && pixelHeight ? widthInches * (pixelHeight / pixelWidth) : widthInches);
+      let widthInches: number;
+      let heightInches: number;
+      try {
+        const requested = resolveQueuedPrintInches({
+          allocationWidthInches: asset.allocation.printWidthInches,
+          allocationHeightInches: asset.allocation.printHeightInches,
+        });
+        widthInches = requested.printWidthInches;
+        heightInches = requested.printHeightInches;
+      } catch (error) {
+        setState((current) => ({
+          ...current,
+          error: error instanceof Error ? error.message : "This queued item is missing requested print size.",
+        }));
+        return;
+      }
 
       const origin = findNonOverlappingOrigin(
         widthInches,

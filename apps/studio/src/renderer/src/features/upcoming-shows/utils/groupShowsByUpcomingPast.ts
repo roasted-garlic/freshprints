@@ -6,6 +6,7 @@ export {
   filterShowsByScheduleTab,
   getShowScheduleTab,
   isPastScheduledShow,
+  isStalePastPrintingWhatnotShow,
   PAST_SHOW_READ_ONLY_MESSAGE,
   resolveScheduleTabForStillExistingSelection,
   resolveVisibleShowSelection,

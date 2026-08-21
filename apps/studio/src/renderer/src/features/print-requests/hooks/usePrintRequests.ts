@@ -18,8 +18,14 @@ import { derivePrintRequestsListLoading } from "../utils/derivePrintRequestsList
 import type { PrintRequestListTab } from "@fresh-prints/shared/utils/printRequestListGrouping";
 import type { PrintRequest } from "@fresh-prints/shared/types/printRequest/printRequest.types";
 import type { Customer } from "@fresh-prints/shared/types/customer/customer.types";
+import {
+  printRequestListKindFromIsInternal,
+  type PrintRequestListKind,
+} from "../constants/printRequestRoutes";
 
 const COUNTABLE_TABS: readonly PrintRequestListTab[] = ["working", "queued", "printing", "printed"];
+
+type LoadedListKind = PrintRequestListKind | "all";
 
 interface PrintRequestsState {
   requests: PrintRequest[];
@@ -52,46 +58,56 @@ interface LoadPrintRequestsOptions {
   silent?: boolean;
 }
 
-export function usePrintRequests(activeTab: PrintRequestListTab) {
+function listKindKey(isInternal: boolean | undefined): LoadedListKind {
+  return typeof isInternal === "boolean" ? printRequestListKindFromIsInternal(isInternal) : "all";
+}
+
+/**
+ * `isInternal` is required for the Studio Print Requests page (Customer vs Internal lists).
+ * Omit it for Show Queue, which must still see both request kinds for a given `queueTab`.
+ */
+export function usePrintRequests(activeTab: PrintRequestListTab, isInternal?: boolean) {
   const { user } = useAuth();
   const [state, setState] = useState<PrintRequestsState>(initialState);
   const cursorRef = useRef<PrintRequestListCursor | undefined>(undefined);
   const requestGenerationRef = useRef(0);
-  // `ensureRequestsLoaded` is async and can resolve after `activeTab` has since changed (the user
-  // switched tabs while the fetch was in flight). Its merge must be guarded against whatever tab is
-  // ACTUALLY active at the moment `setState` runs, not the tab captured when the fetch started —
-  // a plain closure over the `activeTab` parameter would still admit a now-mismatched request,
-  // since the guard would compare it against the (also stale) tab it was originally fetched for.
   const activeTabRef = useRef(activeTab);
+  const activeIsInternalRef = useRef(isInternal);
+  const activeKind = listKindKey(isInternal);
   useEffect(() => {
     activeTabRef.current = activeTab;
   }, [activeTab]);
-  // Tracks which tab `state` actually reflects, updated only when `loadFirstPage` completes (success
-  // or the `!user`/permission-denied reset). `loadFirstPage`'s own reset runs inside a `useEffect`,
-  // which React only runs AFTER the render where `activeTab` changed has already committed and
-  // painted — so on that first render, `state` still holds the PREVIOUS tab's `requests` and
-  // `isLoading: false`. Comparing `loadedTabRef.current` against the live `activeTab` argument during
-  // render (a read, never a write, so this is safe during render) lets the hook report an accurate
-  // "still loading" status for that transitional render too, closing the gap that otherwise let a
-  // stale tab's list render under the new tab's label with no spinner masking it.
+  useEffect(() => {
+    activeIsInternalRef.current = isInternal;
+  }, [isInternal]);
   const loadedTabRef = useRef<PrintRequestListTab | null>(null);
-  const isLoading = derivePrintRequestsListLoading(state.isLoading, loadedTabRef.current, activeTab);
+  const loadedKindRef = useRef<LoadedListKind | null>(null);
+  const isLoading = derivePrintRequestsListLoading(
+    state.isLoading,
+    loadedTabRef.current,
+    activeTab,
+    loadedKindRef.current,
+    activeKind,
+  );
 
   const loadCounts = useCallback(async (): Promise<Record<PrintRequestListTab, number>> => {
     if (!user) {
       return initialState.countsByTab;
     }
-    const cacheKeyBase = `counts`;
+    const cacheKeyBase = `counts:${listKindKey(isInternal)}`;
     const entries = await Promise.all(
       COUNTABLE_TABS.map(async (tab) => {
         const count = await loadPrintRequestsPageCached(user.id, `${cacheKeyBase}:${tab}`, () =>
-          printRequestService.countPrintRequests(user, { queueTab: tab }),
+          printRequestService.countPrintRequests(user, {
+            queueTab: tab,
+            ...(typeof isInternal === "boolean" ? { isInternal } : {}),
+          }),
         );
         return [tab, count] as const;
       }),
     );
     return Object.fromEntries(entries) as Record<PrintRequestListTab, number>;
-  }, [user]);
+  }, [isInternal, user]);
 
   const hydratePage = useCallback(
     async (requests: PrintRequest[]) => {
@@ -128,6 +144,7 @@ export function usePrintRequests(activeTab: PrintRequestListTab) {
     async (options?: LoadPrintRequestsOptions) => {
       if (!user || !permissionService.canViewPrintRequests(user)) {
         loadedTabRef.current = activeTab;
+        loadedKindRef.current = activeKind;
         setState({ ...initialState, isLoading: false });
         return;
       }
@@ -142,10 +159,11 @@ export function usePrintRequests(activeTab: PrintRequestListTab) {
       try {
         const [countsByTab, page] = await Promise.all([
           loadCounts(),
-          loadPrintRequestsPageCached(user.id, `list:${activeTab}:page-1`, () =>
+          loadPrintRequestsPageCached(user.id, `list:${activeKind}:${activeTab}:page-1`, () =>
             printRequestService.listPrintRequestsPage(user, {
               queueTab: activeTab,
               limitCount: PRINT_REQUEST_LIST_PAGE_SIZE,
+              ...(typeof isInternal === "boolean" ? { isInternal } : {}),
             }),
           ),
         ]);
@@ -158,6 +176,7 @@ export function usePrintRequests(activeTab: PrintRequestListTab) {
         }
         cursorRef.current = page.nextCursor;
         loadedTabRef.current = activeTab;
+        loadedKindRef.current = activeKind;
         setState({
           requests: page.requests,
           ...hydrated,
@@ -172,6 +191,7 @@ export function usePrintRequests(activeTab: PrintRequestListTab) {
           return;
         }
         loadedTabRef.current = activeTab;
+        loadedKindRef.current = activeKind;
         setState((current) => ({
           ...current,
           error: error instanceof Error ? error.message : "Unable to load print requests.",
@@ -179,7 +199,7 @@ export function usePrintRequests(activeTab: PrintRequestListTab) {
         }));
       }
     },
-    [activeTab, hydratePage, loadCounts, user],
+    [activeKind, activeTab, hydratePage, isInternal, loadCounts, user],
   );
 
   useEffect(() => {
@@ -198,6 +218,7 @@ export function usePrintRequests(activeTab: PrintRequestListTab) {
         queueTab: activeTab,
         limitCount: PRINT_REQUEST_LIST_PAGE_SIZE,
         cursor: cursorRef.current,
+        ...(typeof isInternal === "boolean" ? { isInternal } : {}),
       });
       if (generation !== requestGenerationRef.current) {
         return;
@@ -228,7 +249,7 @@ export function usePrintRequests(activeTab: PrintRequestListTab) {
         isLoadingMore: false,
       }));
     }
-  }, [activeTab, hydratePage, user]);
+  }, [activeTab, hydratePage, isInternal, user]);
 
   const reloadPrintRequests = useCallback(
     async (options?: LoadPrintRequestsOptions) => {
@@ -262,7 +283,12 @@ export function usePrintRequests(activeTab: PrintRequestListTab) {
       const hydrated = await hydratePage(found);
       setState((current) => ({
         ...current,
-        requests: mergePrintRequestsById(current.requests, found, activeTabRef.current),
+        requests: mergePrintRequestsById(
+          current.requests,
+          found,
+          activeTabRef.current,
+          activeIsInternalRef.current,
+        ),
         summariesByRequestId: { ...current.summariesByRequestId, ...hydrated.summariesByRequestId },
         allocationTotalsByRequestId: {
           ...current.allocationTotalsByRequestId,
@@ -279,10 +305,6 @@ export function usePrintRequests(activeTab: PrintRequestListTab) {
     [ensureRequestsLoaded],
   );
 
-  // An explicit "Refresh"/tab-change action still performs a full authoritative
-  // `reloadPrintRequests()`. Successful mutations reconcile the visible page locally instead
-  // (Wave C hydration remediation, 2026-07-25 — extends the 2026-07-24 delete/archive pattern to
-  // every mutation on this page).
   const reconcileDeletedOrArchivedRequest = useCallback(
     (printRequestId: string, outcome: "deleted" | "archived") => {
       setState((current) =>
@@ -329,13 +351,12 @@ export function usePrintRequests(activeTab: PrintRequestListTab) {
     [],
   );
 
-  // A brand-new request is always Working/Empty — only insert the row (and increment the exact
-  // Working count) when the currently loaded tab actually IS Working; the guard lives here, not
-  // in the caller, so a future call site cannot silently corrupt another tab's exact count
-  // (independent-review finding, Wave C hydration remediation pass 5, 2026-07-25).
   const insertCreatedRequestLocally = useCallback(
     (request: PrintRequest) => {
       if (activeTab !== "working") {
+        return;
+      }
+      if (typeof isInternal === "boolean" && request.isInternal !== isInternal) {
         return;
       }
       setState((current) => ({
@@ -344,7 +365,7 @@ export function usePrintRequests(activeTab: PrintRequestListTab) {
         countsByTab: { ...current.countsByTab, working: current.countsByTab.working + 1 },
       }));
     },
-    [activeTab],
+    [activeTab, isInternal],
   );
 
   return {

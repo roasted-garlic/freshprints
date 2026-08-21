@@ -148,10 +148,16 @@ describe("print request item sizing", () => {
 
     assert.equal(atFloor.canSave, true);
     assert.equal(atFloor.qualityLabel, "Good");
-    assert.match(atFloor.warningMessage ?? "", /below 300 DPI/);
+    assert.equal(
+      atFloor.warningMessage,
+      "Requested size is below 300 DPI. It can be printed, but quality may be reduced.",
+    );
     assert.equal(good.canSave, true);
     assert.equal(good.qualityLabel, "Good");
-    assert.match(good.warningMessage ?? "", /below 300 DPI/);
+    assert.equal(
+      good.warningMessage,
+      "Requested size is below 300 DPI. It can be printed, but quality may be reduced.",
+    );
   });
 
   it("allows requested sizes at 300 DPI without warning", () => {

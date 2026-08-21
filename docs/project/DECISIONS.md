@@ -4,6 +4,59 @@
 
 ---
 
+### ADR-FP-140: Studio Print Requests lists split by `isInternal`
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-21 |
+| Status | accepted |
+| Related | Goal `studio-print-request-customer-internal-list-split` |
+
+**Context**
+
+Studio `/print-requests` mixed customer and internal Print Requests in one `queueTab` list. Staff needed separate Customer Requests and Internal Requests views without changing lifecycle, Portal, or Show Queue attach rules.
+
+**Decision**
+
+1. Discriminator is persisted `printRequests.isInternal` (`true` = Internal Requests, `false` = Customer Requests including `studio_customer` and `portal_customer`). Do not use request names or `requestOrigin` as the list split.
+2. Default `/print-requests` to Customer Requests. Keep existing Working / Queued / Printing / Printed tabs and Working triage inside each kind.
+3. List and count queries filter `isInternal` + `queueTab` with `updatedAt DESC, __name__ DESC` pagination. That pair requires composite index `isInternal ASC, queueTab ASC, updatedAt DESC, __name__ DESC`.
+4. Show Queue continues to load both kinds (omit `isInternal` on those `usePrintRequests` calls).
+5. No schema migration, backfill, Rules, Functions, or production index deploy in this goal.
+
+**Consequences**
+
+- Documents missing `isInternal` are omitted by equality queries and will not appear in either list.
+- Index deploy is environment-specific; production remains a later owner checkpoint.
+
+---
+
+### ADR-FP-139: Past Printing shows must Finish through the normal completion workflow
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-20 |
+| Status | accepted |
+| Related | Goal `print-request-shared-sizing-and-queue-integrity` Amendment 1 |
+
+**Context**
+
+Studio classifies Whatnot shows as Upcoming vs Past from `scheduledStartAt` vs now (`getShowScheduleTab`). That grouping never mutated `productionStatus`. Finish was hidden when Past (`canMarkFinished` required not-Past), so a show could stay `printing` with a live timer after it moved to the Past tab.
+
+**Decision**
+
+1. When a Show Queue Whatnot entry has crossed the application's authoritative Upcoming-to-Past time boundary (`scheduledStartAt.getTime() <= now.getTime()`), a stale production state of `printing` (including paused) must be reconciled through `upcomingShowService.markShowPrintingFinished`.
+2. Staff also have a manual **Mark Complete** recovery action for any Past show that remains Printing. It uses the same Finish path, permission, and confirmation pattern.
+3. Do not invent a second Past definition. Do not patch only the PRINTING badge. Do not auto-complete `open`, `full`, `canceled`, `archived`, `completed`, or Staff Gang Sheets.
+4. Closed-app recovery runs on the next Show Queue load/reconciliation. A new scheduled Cloud Function is not part of this decision.
+
+**Consequences**
+
+- Finish is idempotent for already-completed shows so automatic and manual callers can race safely.
+- Production data repair of already-stuck shows happens through this product path after Studio rollout, not by console edits.
+
+---
+
 ### ADR-FP-138: Public catalog design IDs permitted in Portal design-engagement analytics
 
 | Field | Value |
@@ -2727,7 +2780,7 @@ Portal customers need a faster sign-up path via Google while retaining email/pas
 | Field | Value |
 |-------|-------|
 | Date | 2026-07-13 |
-| Status | accepted (amended 2026-07-13 — automatic detection removed; upscale ceiling 6×) |
+| Status | accepted (amended 2026-08-20 — approved-max is not a manual save ceiling) |
 
 **Context**
 
@@ -2740,7 +2793,7 @@ Embedded DPI metadata is unreliable for print quality. Imports previously upscal
 3. **If the target cannot be reached within 6×:** upscale once by at most 6× and use the smaller resulting approved maximum (`TARGET_NOT_REACHED_UPSCALE_CAPPED`).
 4. **Extended upscale visibility:** applied factors **above 2×** are marked `EXTENDED_UPSCALE` (and Studio import soft-quality warning) for staff visibility only — do **not** block customer upload, donation, request attachment, or printing.
 5. **Request default:** normal print-request default remains **10″** (`DEFAULT_PRINT_REQUEST_WIDTH_INCHES` / `PREFERRED_PRINT_WIDTH_INCHES`). Do not conflate request defaults with the automated production upscale target.
-6. **Approved max:** `min(qualityWidth, 15″, maxWidthByHeight@16.5″)`; request defaults to min(10″, approved max); platform 22″ cap and 200 DPI save floor (ADR-FP-075) remain additional layers.
+6. **Approved max:** `min(qualityWidth, 15″, maxWidthByHeight@16.5″)` applies to **processing and initial requested size** (`resolveInitialPrintRequestItemSize`). It is **not** an additional hard ceiling on later manual Print Request sizing. Manual saves remain ADR-FP-075 (≥200 effective DPI) plus the 22″ standard cap.
 7. **Supersedes** uncapped “upscale floor = 15″” behavior from ADR-FP-077; 15″ remains the **approved maximum width** envelope, not the upscale target.
 8. **No automatic halftone detection:** do not analyze pixels or AI output to classify, suggest, preselect, or prompt for halftone. Do not spend processing time on automatic detection. Historical `halftoneDetection` fields may remain unread for compatibility; stop writing new detector metadata (no destructive migration without separate approval).
 9. **Human confirmation only:**
@@ -2884,6 +2937,7 @@ Standard Print Request sizing previously allowed saves down to 72 effective DPI 
 2. 200–299 DPI may still save with a soft warning; 300+ saves without warning.
 3. Catalog **import** may still accept assets down to the import floor (`MIN_ACCEPTABLE_EFFECTIVE_DPI = 72`); that does not authorize sub-200 request sizes.
 4. Initial requested size (`resolveInitialPrintRequestItemSize`) also clamps so defaults stay at or above 200 DPI when possible.
+5. ADR-FP-080 image-quality-v2 approved-max envelopes are **not** an additional save ceiling on later manual sizing. Manual validity is ≥200 DPI and ≤22″ only.
 
 **Consequences**
 

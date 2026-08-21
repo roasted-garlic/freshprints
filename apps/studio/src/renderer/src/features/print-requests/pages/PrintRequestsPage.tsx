@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { ExternalLink, ImagePlus, Plus, RefreshCw, Search, X } from "lucide-react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
@@ -44,17 +44,26 @@ import {
 } from "@fresh-prints/shared/utils/printRequestWorkingTriage";
 import { groupAllocationsByShow } from "@fresh-prints/shared/utils/groupAllocationsByShow";
 import { canRemoveRequestFromShow } from "@fresh-prints/shared/utils/showQueueEditability";
+import {
+  summarizePrintRequestPersistenceHealth,
+  type PrintRequestItemPersistenceHealth,
+} from "@fresh-prints/shared/utils/printRequestItemPersistenceHealth";
 import { getPrintRequestQueueStateBadgeLabel, getPrintRequestQueueStateBadgeVariant } from "../utils/printRequestQueueBadge";
 import { filterPrintRequestsByListSearch } from "../utils/printRequestListSearch";
 import { filterPrintRequestsByActiveTab } from "../utils/filterPrintRequestsByActiveTab";
+import { filterPrintRequestsByRequestKind } from "../utils/filterPrintRequestsByRequestKind";
 import {
   PRINT_REQUEST_ID_QUERY_PARAM,
+  PRINT_REQUEST_KIND_QUERY_PARAM,
   PRINT_REQUEST_TAB_QUERY_PARAM,
   PRINT_REQUEST_WORKING_FILTER_QUERY_PARAM,
   getPrintRequestsPath,
+  isInternalFromPrintRequestListKind,
   isPrintRequestRouteTab,
   isPrintRequestWorkingFilter,
+  printRequestListKindFromIsInternal,
   resolveCanonicalPrintRequestsRoute,
+  resolvePrintRequestListKind,
   resolveWorkingFilterClick,
   shouldReplacePrintRequestsPath,
 } from "../constants/printRequestRoutes";
@@ -204,8 +213,11 @@ export function PrintRequestsPage() {
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const tabParam = searchParams.get(PRINT_REQUEST_TAB_QUERY_PARAM);
+  const kindParam = searchParams.get(PRINT_REQUEST_KIND_QUERY_PARAM);
   const selectedRequestIdParam = searchParams.get(PRINT_REQUEST_ID_QUERY_PARAM);
   const workingFilterParam = searchParams.get(PRINT_REQUEST_WORKING_FILTER_QUERY_PARAM);
+  const activeListKind = resolvePrintRequestListKind(kindParam);
+  const activeIsInternal = isInternalFromPrintRequestListKind(activeListKind);
   const activeListTab: PrintRequestListTab = isPrintRequestRouteTab(tabParam)
     ? tabParam
     : "working";
@@ -216,20 +228,23 @@ export function PrintRequestsPage() {
     (
       options: {
         requestId?: string;
+        kind?: typeof activeListKind;
         tab: PrintRequestListTab;
         workingFilter?: PrintRequestWorkingTriageFilter;
       },
       history: "push" | "replace" = "replace",
     ) => {
-      const target = getPrintRequestsPath(options);
+      const next = { ...options, kind: options.kind ?? activeListKind };
+      const target = getPrintRequestsPath(next);
       const current = `${location.pathname}${location.search}`;
       if (!shouldReplacePrintRequestsPath(
         {
           requestId: selectedRequestIdParam,
+          kind: kindParam,
           tab: tabParam,
           workingFilter: workingFilterParam,
         },
-        options,
+        next,
       ) && current === target) {
         return;
       }
@@ -237,6 +252,8 @@ export function PrintRequestsPage() {
       navigate(target, { replace: history === "replace" });
     },
     [
+      activeListKind,
+      kindParam,
       location.pathname,
       location.search,
       navigate,
@@ -264,7 +281,7 @@ export function PrintRequestsPage() {
     reloadPrintRequests,
     requests,
     summariesByRequestId,
-  } = usePrintRequests(activeListTab);
+  } = usePrintRequests(activeListTab, activeIsInternal);
 
   // Deep-linked/selected requests outside the currently loaded page are fetched by direct ID —
   // never by widening the page query (Wave C hydration remediation, 2026-07-25).
@@ -309,6 +326,11 @@ export function PrintRequestsPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [autosaveState, setAutosaveState] = useState<AutosaveState>({ status: "idle" });
+  const [itemPersistenceHealth, setItemPersistenceHealth] = useState<
+    Record<string, PrintRequestItemPersistenceHealth>
+  >({});
+  const itemFlushersRef = useRef(new Map<string, () => Promise<boolean>>());
+  const [isFlushingQueue, setIsFlushingQueue] = useState(false);
   const [requestNotesDraft, setRequestNotesDraft] = useState("");
   const [internalBaseNameDraft, setInternalBaseNameDraft] = useState("internal");
   const [isSavingRequestDetail, setIsSavingRequestDetail] = useState(false);
@@ -443,7 +465,7 @@ export function PrintRequestsPage() {
       // Clear remount cache, patch locally, then route to Working so the tab effect reloads fresh.
       clearPrintRequestsPageCache();
       patchRequestLocally(requestId, { queueTab: "working", status: "editing" });
-      commitPrintRequestsRoute({ requestId, tab: "working" });
+      commitPrintRequestsRoute({ requestId, kind: activeListKind, tab: "working" });
       await reloadAllAllocationData({ silent: true });
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Unable to remove this request from the show queue.");
@@ -457,6 +479,7 @@ export function PrintRequestsPage() {
     selectedRequestShowGroups,
     user,
     visibleSelectedRequest,
+    activeListKind,
   ]);
 
   const resetCreateRequestForm = useCallback(() => {
@@ -495,9 +518,10 @@ export function PrintRequestsPage() {
       reloadPrintRequests({ silent: true }),
     ]);
     if (requestId) {
-      commitPrintRequestsRoute({ requestId, tab: "queued" });
+      commitPrintRequestsRoute({ requestId, kind: activeListKind, tab: "queued" });
     }
   }, [
+    activeListKind,
     commitPrintRequestsRoute,
     reloadAllAllocationData,
     reloadPrintRequests,
@@ -570,10 +594,11 @@ export function PrintRequestsPage() {
   // 2026-08-04).
   const activeTabRequests = useMemo(
     () =>
-      filterPrintRequestsByActiveTab(requests, activeListTab).filter((request) =>
-        isPrintRequestIncludedInListTabs(request.status),
-      ),
-    [activeListTab, requests],
+      filterPrintRequestsByRequestKind(
+        filterPrintRequestsByActiveTab(requests, activeListTab),
+        activeIsInternal,
+      ).filter((request) => isPrintRequestIncludedInListTabs(request.status)),
+    [activeIsInternal, activeListTab, requests],
   );
 
   const workingRequestsByFilter = useMemo(() => {
@@ -630,12 +655,21 @@ export function PrintRequestsPage() {
   // A deep-linked/selected request outside the currently loaded page is never treated as
   // "route-illegal" — `ensureRequestLoaded` (above) fetches it directly by ID, and once loaded it
   // participates in `eligibleRequestIds` like any other loaded row.
+  const selectedRequestKindMatches =
+    !selectedRequestId ||
+    (isLoadedSelectedRequest &&
+      selectedRequest !== null &&
+      printRequestListKindFromIsInternal(selectedRequest.isInternal) === activeListKind);
+  const detailsPendingForSelection =
+    Boolean(selectedRequestId) && !isLoadedSelectedRequest && !requestDetails.error;
+
   const canonicalRoute = useMemo(
     () =>
       resolveCanonicalPrintRequestsRoute({
-        dataReady: !isRequestsLoading,
+        dataReady: !isRequestsLoading && !detailsPendingForSelection && selectedRequestKindMatches,
         eligibleRequestIds: routeEligibleRequests.map((request) => request.id),
         requestedRequestId: selectedRequestIdParam,
+        requestedKind: kindParam,
         requestedTab: tabParam,
         requestedWorkingFilter: workingFilterParam,
         requestsByTab: {
@@ -648,13 +682,48 @@ export function PrintRequestsPage() {
     [
       activeListTab,
       activeTabRequests,
+      detailsPendingForSelection,
       isRequestsLoading,
+      kindParam,
       routeEligibleRequests,
       selectedRequestIdParam,
+      selectedRequestKindMatches,
       tabParam,
       workingFilterParam,
     ],
   );
+
+  useEffect(() => {
+    if (!selectedRequestId || !isLoadedSelectedRequest || !selectedRequest) {
+      return;
+    }
+    const requestKind = printRequestListKindFromIsInternal(selectedRequest.isInternal);
+    if (requestKind === activeListKind) {
+      return;
+    }
+    const queuedTab = selectedRequest.queueTab ?? null;
+    const requestTab = isPrintRequestRouteTab(queuedTab) ? queuedTab : activeListTab;
+    commitPrintRequestsRoute({
+      kind: requestKind,
+      tab: requestTab,
+      requestId: selectedRequest.id,
+      workingFilter:
+        requestTab === "working"
+          ? resolvePrintRequestWorkingTriageBucket({
+              itemCount: selectedRequest.itemCount,
+              updatedAtMillis: selectedRequest.updatedAt.toMillis(),
+              nowMs: Date.now(),
+            })
+          : undefined,
+    });
+  }, [
+    activeListKind,
+    activeListTab,
+    commitPrintRequestsRoute,
+    isLoadedSelectedRequest,
+    selectedRequest,
+    selectedRequestId,
+  ]);
 
   /** The only effect allowed to normalize the Print Requests URL. */
   useEffect(() => {
@@ -719,8 +788,54 @@ export function PrintRequestsPage() {
     setAutosaveState({ status, message, retry });
   }, []);
 
+  const handlePersistenceHealthChange = useCallback(
+    (itemId: string, health: PrintRequestItemPersistenceHealth) => {
+      setItemPersistenceHealth((current) =>
+        current[itemId] === health ? current : { ...current, [itemId]: health },
+      );
+    },
+    [],
+  );
+
+  const handleRegisterFlush = useCallback((itemId: string, flush: (() => Promise<boolean>) | null) => {
+    if (flush) {
+      itemFlushersRef.current.set(itemId, flush);
+      return;
+    }
+    itemFlushersRef.current.delete(itemId);
+  }, []);
+
+  const persistenceSummary = summarizePrintRequestPersistenceHealth(itemPersistenceHealth);
+
+  async function openAddToShow(destination: "shows" | "staff_gang_sheet") {
+    if (requestItems.length === 0) {
+      return;
+    }
+    if (!persistenceSummary.canOpenQueue) {
+      setActionError(persistenceSummary.blockReason);
+      return;
+    }
+    if (persistenceSummary.needsFlush) {
+      setIsFlushingQueue(true);
+      try {
+        const results = await Promise.all(
+          [...itemFlushersRef.current.values()].map((flush) => flush()),
+        );
+        if (results.some((ok) => !ok)) {
+          setActionError("Save item sizes before adding this request to a show.");
+          return;
+        }
+      } finally {
+        setIsFlushingQueue(false);
+      }
+    }
+    setAddToShowDestination(destination);
+    setIsAddToShowModalOpen(true);
+  }
+
   useEffect(() => {
     setAutosaveState({ status: "idle" });
+    setItemPersistenceHealth({});
   }, [selectedRequestId]);
 
   useEffect(() => {
@@ -772,11 +887,15 @@ export function PrintRequestsPage() {
       // A brand-new request is always Working/Empty (no items, no allocations yet) — insert it
       // locally instead of reloading the list, and select it directly (Wave C hydration
       // remediation, 2026-07-25).
-      if (activeListTab === "working") {
+      const createdKind = printRequestListKindFromIsInternal(result.isInternal);
+      if (createdKind !== activeListKind) {
+        clearPrintRequestsPageCache();
+      } else if (activeListTab === "working") {
         insertCreatedRequestLocally(result);
       }
       commitPrintRequestsRoute({
         requestId: result.id,
+        kind: createdKind,
         tab: "working",
         workingFilter: "empty",
       });
@@ -979,7 +1098,37 @@ export function PrintRequestsPage() {
 
       <div className="print-requests-layout">
         <aside className="print-requests-rail">
-          <div className="print-requests-tab-bar">
+          <div className="print-requests-kind-switch">
+            <div aria-label="Request type" className="print-requests-kind-tab-bar" role="tablist">
+              {(
+                [
+                  { kind: "customer" as const, label: "Customer Requests" },
+                  { kind: "internal" as const, label: "Internal Requests" },
+                ] as const
+              ).map(({ kind, label }) => (
+                <button
+                  aria-selected={activeListKind === kind}
+                  className={`print-requests-kind-tab-button${activeListKind === kind ? " is-active" : ""}`}
+                  key={kind}
+                  onClick={() => {
+                    if (kind === activeListKind) {
+                      return;
+                    }
+                    commitPrintRequestsRoute({
+                      kind,
+                      tab: activeListTab,
+                      workingFilter: activeListTab === "working" ? workingTriageFilter : undefined,
+                    });
+                  }}
+                  role="tab"
+                  type="button"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div aria-label="Request status" className="print-requests-tab-bar" role="tablist">
             {(["working", "queued", "printing", "printed"] as const).map((tab) => (
               <button
                 className={`print-requests-tab-button${activeListTab === tab ? " is-active" : ""}`}
@@ -997,6 +1146,7 @@ export function PrintRequestsPage() {
                     routeEligibleRequests.some((request) => request.id === selectedRequestId);
 
                   commitPrintRequestsRoute({
+                    kind: activeListKind,
                     tab,
                     workingFilter: tab === "working" ? workingTriageFilter : undefined,
                     requestId: selectionStillInTab ? (selectedRequestId ?? undefined) : undefined,
@@ -1044,6 +1194,7 @@ export function PrintRequestsPage() {
                           destinationRequestIds: workingRequestsByFilter[filter].map(
                             (request) => request.id,
                           ),
+                          kind: activeListKind,
                         }),
                         "push",
                       );
@@ -1092,6 +1243,7 @@ export function PrintRequestsPage() {
                     key={request.id}
                     onClick={() => commitPrintRequestsRoute({
                       requestId: request.id,
+                      kind: activeListKind,
                       tab: activeListTab,
                       workingFilter:
                         activeListTab === "working" ? workingTriageFilter : undefined,
@@ -1137,30 +1289,32 @@ export function PrintRequestsPage() {
           {visibleSelectedRequest && !isSelectedRequestDetailLocked ? (
             <div className="print-requests-page-actions">
               <Button
-                disabled={requestItems.length === 0}
-                onClick={() => {
-                  setAddToShowDestination("shows");
-                  setIsAddToShowModalOpen(true);
-                }}
+                disabled={
+                  requestItems.length === 0 ||
+                  !persistenceSummary.canOpenQueue ||
+                  isFlushingQueue
+                }
+                onClick={() => void openAddToShow("shows")}
                 title={
                   requestItems.length === 0
                     ? "Add designs to this request before adding it to a show."
-                    : undefined
+                    : persistenceSummary.blockReason ?? undefined
                 }
                 type="button"
               >
                 Add to Show
               </Button>
               <Button
-                disabled={requestItems.length === 0}
-                onClick={() => {
-                  setAddToShowDestination("staff_gang_sheet");
-                  setIsAddToShowModalOpen(true);
-                }}
+                disabled={
+                  requestItems.length === 0 ||
+                  !persistenceSummary.canOpenQueue ||
+                  isFlushingQueue
+                }
+                onClick={() => void openAddToShow("staff_gang_sheet")}
                 title={
                   requestItems.length === 0
                     ? "Add designs to this request before adding it to an Internal Gangsheet."
-                    : undefined
+                    : persistenceSummary.blockReason ?? undefined
                 }
                 type="button"
                 variant="secondary"
@@ -1438,6 +1592,8 @@ export function PrintRequestsPage() {
                           item={item}
                           key={item.id}
                           onAutosaveStateChange={updateAutosaveState}
+                          onPersistenceHealthChange={handlePersistenceHealthChange}
+                          onRegisterFlush={handleRegisterFlush}
                           onDuplicate={handleDuplicateItem}
                           onRemove={handleRemoveItem}
                           onUpdate={handleUpdateItem}
@@ -1624,6 +1780,7 @@ export function PrintRequestsPage() {
           setSuccessAlertSeed((current) => current + 1);
           reconcileDeletedOrArchivedRequest(printRequestId, outcome);
           commitPrintRequestsRoute({
+            kind: activeListKind,
             tab: activeListTab,
             workingFilter: activeListTab === "working" ? workingTriageFilter : undefined,
           });

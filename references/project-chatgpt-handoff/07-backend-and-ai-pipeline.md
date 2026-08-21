@@ -11,6 +11,8 @@
 
 No custom REST API for core ops. Business logic in app services + Cloud Functions.
 
+`queuePortalPrintRequestToShow` (source, 2026-08-20) asserts the same 200 DPI + 22″ Print Request size policy before queueing. **Not deployed** until an approved Functions release.
+
 Deploy target for current work: **`fresh-prints-prod`** is live under Goal #13; still require explicit
 owner phrases for production deploys / catch-up / Stage 2 / domain.
 

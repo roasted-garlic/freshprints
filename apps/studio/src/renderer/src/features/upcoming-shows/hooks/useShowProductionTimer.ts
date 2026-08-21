@@ -26,6 +26,7 @@ import type {
 interface UseShowProductionTimerOptions {
   show: UpcomingShow | null;
   hasActiveAllocations: boolean;
+  now?: Date;
   onShowUpdated?: () => void | Promise<void>;
 }
 
@@ -75,6 +76,7 @@ function logRetrySessionTransition(input: {
 export function useShowProductionTimer({
   show,
   hasActiveAllocations,
+  now,
   onShowUpdated,
 }: UseShowProductionTimerOptions) {
   const { user } = useAuth();
@@ -246,7 +248,7 @@ export function useShowProductionTimer({
 
   const formattedElapsed = formatPrintElapsed(elapsedMs);
 
-  const isPastScheduledShow = show ? isShowPastScheduled(show, new Date()) : false;
+  const isPastScheduledShow = show ? isShowPastScheduled(show, now ?? new Date()) : false;
   const canStart = Boolean(
     show &&
       hasActiveAllocations &&
@@ -255,7 +257,7 @@ export function useShowProductionTimer({
   );
   const canPause = Boolean(show && isPrinting && !isPaused && !isPastScheduledShow);
   const canResume = Boolean(show && isPaused && !isPastScheduledShow);
-  const canMarkFinished = Boolean(show && isPrinting && !isPastScheduledShow);
+  const canMarkFinished = Boolean(show && isPrinting);
 
   const runAction = useCallback(
     async (

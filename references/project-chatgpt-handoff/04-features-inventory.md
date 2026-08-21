@@ -15,12 +15,13 @@ ZIP/folder import; PNG validation; trim + upscale (ADR-FP-080 ≤6× toward 12�
 Processing / Needs Review / Rejected tabs; suggestions panel; approve/reject/skip; re-run AI; keyboard shortcuts; settings-driven model + tag exclusions; staff Halftone toggle (human-only; AI never auto-enables).
 
 ### Print Requests (`/print-requests`)
-Internal + customer requests; item qty/size autosave; DPI quality feedback; duplicate same design for other sizes; Design Library selection mode.
+Internal + customer requests in **separate lists** (Customer Requests default; Internal Requests via `isInternal`, ADR-FP-140); item qty/size autosave; DPI quality feedback; **manual save ≥200 DPI and ≤22″** (approved-max is initial/processing only); duplicate same design for other sizes; Design Library selection mode adds **new** catalog designs only (existing items keep ID/size/quantity).
 
 ### Show Queue (`/show-queue`)
 Upcoming/Past shows; capacity; attach requests; Working/Queued/Printing/Printed; Whatnot assisted
 import; zip export @ 300 DPI; auto-nested gang sheet PNG; Start/Pause/Resume/Finish production
-timer; terminal request reconciliation and completed locking; calendar picker; **Portal add-to-show
+timer; **Past + Printing Whatnot shows Finish automatically (or Mark Complete)** (ADR-FP-139);
+terminal request reconciliation and completed locking; calendar picker; **Portal add-to-show
 cutoff hours** setting (`portalQueueCutoffHoursBeforeStart`, ADR-FP-103). Owner QA v18 passed the
 full Studio lifecycle and dynamic Portal Printed state on 2026-07-29. Manual gang-sheet builder
 deferred.
@@ -51,7 +52,7 @@ print-limit counters** cleanup for retired, unenforced Cap A documents.
 | Start / continue print request | ✅ Live (one working request — ADR-FP-071) |
 | Selection mode: add library designs with quantities | ✅ Live |
 | **Upload artwork** (modal; PNG/WebP/folder/ZIP) | ✅ Live (dev) — `/requests/artwork`; optional halftone checkbox (ADR-FP-080) |
-| Persistent Current Request / basket drawer | ✅ Live (dev) — hidden for guests; filled CTA **Review & Add to Show** + **Needs a show** |
+| Persistent Current Request / basket drawer | ✅ Live — hidden for guests; filled CTA **Review & Add to Show** + **Needs a show** |
 | Donate designs (`/donate`) | ✅ Live (dev) — ADR-FP-078; guest donate in repo (Anonymous Auth) — cloud deploy deferred |
 | Confirm ownership (required) + library permission (optional, default on) | ✅ Live |
 | Attach ready uploads to working request | ✅ Live |
@@ -59,7 +60,7 @@ print-limit counters** cleanup for retired, unenforced Cap A documents.
 | Image quality sizing (`image-quality-v2`, ≤6× toward 12″) | ✅ Live (dev) — ADR-FP-080 |
 | Progress tabs (Working / Queued / Printing / Printed) | ✅ Live |
 | Add request to show (callable + calendar) | ✅ Live — Portal cutoff hours before start (ADR-FP-103); review header CTA **Add Request to Whatnot Show** opens picker |
-| Design engagement analytics (GA4) | ✅ Repo (DEV) — modal/share `page_view` + `design_view`; public catalog IDs only (ADR-FP-138); production App Hosting rollout gated |
+| Design engagement analytics (GA4) | ✅ Live — modal/share `page_view` + `design_view`; public catalog IDs only (ADR-FP-138) |
 | Assisted Creation brief + submitted-only updates | ✅ Live (dev) |
 | Assisted proof / revision / approval lifecycle | ✅ Live (dev) — owner QA `PASS` |
 | Production App Hosting | ⏸ Human approval |

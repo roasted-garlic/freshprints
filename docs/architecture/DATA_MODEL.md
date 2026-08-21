@@ -1146,9 +1146,10 @@ Standard Print Request item sizing rules:
 * Effective DPI is calculated before applying the 22-inch standard-size save block when dimensions
   are otherwise valid, so oversized requested sizes can still show accurate DPI feedback while
   remaining unsaved.
-* Saves below 72 DPI are blocked.
-* 72-299 DPI saves are allowed with a warning.
+* Saves below 200 DPI are blocked.
+* 200-299 DPI saves are allowed with a warning.
 * 300+ DPI saves are allowed without warning.
+* ADR-FP-080 approved-max envelopes clamp initial/default size and processing; they do not hard-block later manual sizes that stay ≥200 DPI and ≤22″.
 * Standard Print Request item cards show contained thumbnails in the existing card footprint and
   can open an enlarged preview from `previewPath`, falling back to `thumbnailPath`. Preview behavior
   does not mutate catalog dimensions, request dimensions, image files, thumbnails, previews, or
@@ -1642,6 +1643,13 @@ export type ShowProductionStatus =
   | "completed"
   | "archived"
   | "canceled";
+
+/**
+ * Upcoming vs Past is display grouping from scheduledStartAt vs now (getShowScheduleTab).
+ * Equality is Past. A Whatnot show that is Past while productionStatus is still printing
+ * (including paused) must Finish through markShowPrintingFinished — automatic on Show Queue
+ * load/tick, plus manual Mark Complete. Past is not a production status.
+ */
 
 export interface UpcomingShow {
   id: string;
@@ -2376,6 +2384,8 @@ customerRequests.status
 printRequests.status + updatedAt
 printRequests.customerId + updatedAt
 printRequests.isInternal + updatedAt
+printRequests.queueTab + updatedAt + __name__
+printRequests.isInternal + queueTab + updatedAt + __name__
 printRequestItems.printRequestId
 printRequestItems.printRequestId + status
 customers.isGuest + displayName
@@ -2397,6 +2407,8 @@ Phase 6 Print Request query hardening defines the currently supported server-sid
 printRequests.status + updatedAt
 printRequests.customerId + updatedAt
 printRequests.isInternal + updatedAt
+printRequests.queueTab + updatedAt + __name__
+printRequests.isInternal + queueTab + updatedAt + __name__
 printRequestItems.printRequestId + updatedAt
 printRequestItems.printRequestId + status + updatedAt
 customers.isGuest + displayName
@@ -2405,7 +2417,8 @@ customers.isGuest + displayName
 Username reservations and request counters use document IDs and direct document reads/writes; no
 additional composite indexes are required for those paths.
 
-The unfiltered request list is ordered by `updatedAt` descending. Request item details and card
+The unfiltered request list is ordered by `updatedAt` descending. Studio Print Requests list pages
+filter by `isInternal` + `queueTab` with `updatedAt`/`__name__` pagination (ADR-FP-140). Request item details and card
 summaries query `printRequestItems` by `printRequestId`; item display ordering is handled
 client-side for `sortOrder` compatibility, and summaries are loaded only for the request IDs
 currently displayed. Customer reads are ordered by `displayName` and may filter by `isGuest`.

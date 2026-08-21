@@ -122,7 +122,7 @@ describe("buildCurrentRequestAggregates", () => {
 });
 
 describe("assessCurrentRequestItemAttention", () => {
-  it("flags dpi below minimum and oversized vs approved max", () => {
+  it("flags dpi below minimum and does not treat ADR-FP-080 envelope oversize as unsavable", () => {
     const below = assessCurrentRequestItemAttention(
       item({
         id: "1",
@@ -135,8 +135,7 @@ describe("assessCurrentRequestItemAttention", () => {
     );
     assert.ok(below.includes("dpi_below_minimum"));
 
-    // 1000px → ~3.33″ approved max @ 300 DPI. 4″ is ~250 DPI ("good") but exceeds approved max,
-    // so attention still flags as dpi_below_minimum (not saveable). Soft dpi_warning only when canSave.
+    // 1000px → ~3.33″ approved max @ 300 DPI. 4″ is ~250 DPI and is now saveable (200 DPI + 22″).
     const overApprovedMax = assessCurrentRequestItemAttention(
       item({
         id: "2",
@@ -147,7 +146,7 @@ describe("assessCurrentRequestItemAttention", () => {
         pixelHeight: 1000,
       }),
     );
-    assert.ok(overApprovedMax.includes("dpi_below_minimum"));
+    assert.equal(overApprovedMax.includes("dpi_below_minimum"), false);
   });
 
   it("flags upload processing and failed", () => {
@@ -206,8 +205,7 @@ describe("assessCurrentRequestItemAttention", () => {
   });
 
   it("never emits soft dpi_warning for Stash attention (queueable soft DPI is not attention)", () => {
-    // Over approved-max used to be able to land in “good” quality while !canSave —
-    // chrome must use dpi_below_minimum (or nothing), never soft dpi_warning.
+    // 4″ at 1000px is 250 DPI ("good") and saveable; Stash chrome must not flag it.
     const overApprovedMax = assessCurrentRequestItemAttention(
       item({
         id: "soft-path",

@@ -28,14 +28,16 @@ import type {
 } from '@fresh-prints/shared/types/printRequest/createPortalPrintRequest.types';
 import type { PrintRequest, PrintRequestItem } from '@fresh-prints/shared/types/printRequest/printRequest.types';
 import type { ShowAllocationStatus } from '@fresh-prints/shared/types/showAllocation/showAllocation.enums';
+import { CUSTOMER_UPLOAD_COLLECTIONS } from '@fresh-prints/shared/constants/customerUpload/customerUploadCollections.constants';
 import {
   formatPrintRequestItemSizeLabel,
-  MAX_STANDARD_PRINT_REQUEST_SIZE_INCHES,
+  requireSavablePrintRequestItemSize,
   resolveInitialPrintRequestItemSize,
 } from '@fresh-prints/shared/utils/printRequestItemSizing';
 import { isPortalContinuablePrintRequestStatus } from '@fresh-prints/shared/utils/portalPrintRequestListTabs';
 import { resolveCatalogAddAction } from '@fresh-prints/shared/utils/currentRequestAggregates';
 
+import { PORTAL_FIRESTORE_COLLECTIONS } from '../../../lib/firebase/collections';
 import { getPortalAuth, getPortalDb } from '../../../lib/firebase/client';
 import { callTracedFunction } from '../../../lib/firebase/tracedCallable';
 import { resolveDesignDocumentTimestamps } from '../../firebase/utils/mapFirestoreTimestamp';
@@ -240,6 +242,44 @@ function mapPrintRequestItem(itemId: string, data: PrintRequestItemDocumentData)
 
 export function printRequestItemHasCustomerUpload(item: Pick<PrintRequestItem, 'sourceType' | 'customerUploadId'>): boolean {
   return item.sourceType === 'customer_upload' || Boolean(item.customerUploadId);
+}
+
+async function loadProductionPixelsForItem(item: PrintRequestItem): Promise<{
+  pixelWidth: number;
+  pixelHeight: number;
+}> {
+  if (printRequestItemHasCustomerUpload(item) && item.customerUploadId) {
+    const snapshot = await getDoc(
+      doc(getPortalDb(), CUSTOMER_UPLOAD_COLLECTIONS.customerUploads, item.customerUploadId),
+    );
+    const data = snapshot.data() as { widthPx?: unknown; heightPx?: unknown } | undefined;
+    if (
+      typeof data?.widthPx === 'number' &&
+      data.widthPx > 0 &&
+      typeof data.heightPx === 'number' &&
+      data.heightPx > 0
+    ) {
+      return { pixelWidth: data.widthPx, pixelHeight: data.heightPx };
+    }
+    throw new Error('Design pixel dimensions are required to validate requested size.');
+  }
+
+  if (item.designId) {
+    const snapshot = await getDoc(
+      doc(getPortalDb(), PORTAL_FIRESTORE_COLLECTIONS.designs, item.designId),
+    );
+    const data = snapshot.data() as { width?: unknown; height?: unknown } | undefined;
+    if (
+      typeof data?.width === 'number' &&
+      data.width > 0 &&
+      typeof data.height === 'number' &&
+      data.height > 0
+    ) {
+      return { pixelWidth: data.width, pixelHeight: data.height };
+    }
+  }
+
+  throw new Error('Design pixel dimensions are required to validate requested size.');
 }
 
 function resolveNextSortOrder(items: PrintRequestItem[]): number {
@@ -858,14 +898,13 @@ export const portalPrintRequestService = {
       throw new Error('Requested print size must be greater than 0 inches.');
     }
 
-    if (
-      nextWidth > MAX_STANDARD_PRINT_REQUEST_SIZE_INCHES ||
-      nextHeight > MAX_STANDARD_PRINT_REQUEST_SIZE_INCHES
-    ) {
-      throw new Error(
-        `Requested standard print sizes cannot exceed ${MAX_STANDARD_PRINT_REQUEST_SIZE_INCHES} inches. Use a Custom Request for this item.`,
-      );
-    }
+    const pixels = await loadProductionPixelsForItem(current);
+    requireSavablePrintRequestItemSize({
+      pixelWidth: pixels.pixelWidth,
+      pixelHeight: pixels.pixelHeight,
+      printWidthInches: nextWidth,
+      printHeightInches: nextHeight,
+    });
 
     // Quantity changes charge/refund Cap A via callable; size-only updates stay client-side.
     // The callable's response carries the server-authoritative (transaction-clamped) quantity,

@@ -33,6 +33,7 @@
 
 - Named list, not an order (no payment/shipping fields).
 - Portal: **one working** request per customer until queued to a show (ADR-FP-071).
+- Studio `/print-requests` splits **Customer** (`isInternal == false`) vs **Internal** (`isInternal == true`) before Working / Queued / Printing / Printed (ADR-FP-140).
 - Tabs (Working / Queued / Printing / Printed) are largely **derived** from allocations + production timer.
 
 ## Print Request Item (dual source)

@@ -52,6 +52,7 @@ import {
 import {
   assessPrintRequestItemSize,
   formatPrintRequestItemSizeLabel,
+  requireSavablePrintRequestItemSize,
   resolveInitialPrintRequestItemSize,
 } from "@fresh-prints/shared/utils/printRequestItemSizing";
 import {
@@ -73,6 +74,7 @@ import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/s
 import { ShowCompletionReconciliationRemediationError } from "../../upcoming-shows/utils/showCompletionReconciliation";
 import { diagnosePrintRequestForCompletion } from "../utils/printRequestCompletionDiagnostics";
 import { buildPrintRequestCompletionPayload } from "../utils/printRequestCompletionPayload";
+import { planPrintRequestDesignSelectionWrites } from "../utils/planPrintRequestDesignSelectionWrites";
 
 export type ShowReconciliationReadSource = "default" | "server";
 
@@ -133,6 +135,7 @@ export interface UpdatePrintRequestItemInput {
 export interface PrintRequestDesignSelectionInput {
   designId: string;
   quantity: number;
+  existingItemId?: string;
 }
 
 export interface PrintRequestWithItems {
@@ -464,6 +467,64 @@ function resolveRequestedItemSize(
   };
 }
 
+export async function assertPersistedPrintRequestItemSize(
+  caller: User,
+  item: PrintRequestItem,
+): Promise<{ printWidthInches: number; printHeightInches: number }> {
+  const printWidthInches = item.printWidthInches;
+  const printHeightInches = item.printHeightInches;
+  if (
+    typeof printWidthInches !== "number" ||
+    typeof printHeightInches !== "number" ||
+    !Number.isFinite(printWidthInches) ||
+    !Number.isFinite(printHeightInches) ||
+    printWidthInches <= 0 ||
+    printHeightInches <= 0
+  ) {
+    throw new Error("This print request item is missing a requested print size.");
+  }
+
+  let pixelWidth: number;
+  let pixelHeight: number;
+
+  if (item.sourceType === "customer_upload" || item.customerUploadId) {
+    if (!item.customerUploadId) {
+      throw new Error("Design pixel dimensions are required to validate requested size.");
+    }
+    const { customerUploadReadService } = await import(
+      "../../customer-uploads/services/customerUploadReadService"
+    );
+    const upload = await customerUploadReadService.getUploadById(caller, item.customerUploadId);
+    if (
+      typeof upload?.widthPx !== "number" ||
+      typeof upload.heightPx !== "number" ||
+      upload.widthPx <= 0 ||
+      upload.heightPx <= 0
+    ) {
+      throw new Error("Design pixel dimensions are required to validate requested size.");
+    }
+    pixelWidth = upload.widthPx;
+    pixelHeight = upload.heightPx;
+  } else {
+    if (!item.designId) {
+      throw new Error("Design pixel dimensions are required to validate requested size.");
+    }
+    const design = await designService.getDesignById(caller, item.designId);
+    const pixels = resolveDesignPixelDimensions(design);
+    pixelWidth = pixels.pixelWidth;
+    pixelHeight = pixels.pixelHeight;
+  }
+
+  requireSavablePrintRequestItemSize({
+    pixelWidth,
+    pixelHeight,
+    printWidthInches,
+    printHeightInches,
+  });
+
+  return { printWidthInches, printHeightInches };
+}
+
 async function loadPrintableDesign(caller: User, designId: string) {
   const design = await designService.getDesignById(caller, designId);
 
@@ -574,10 +635,6 @@ async function createCustomerPrintRequestInTransaction(
   return requestRef;
 }
 
-function requestedSizesMatch(left: PrintRequestItem, right: { printWidthInches: number; printHeightInches: number }) {
-  return left.printWidthInches === right.printWidthInches && left.printHeightInches === right.printHeightInches;
-}
-
 export const printRequestService = {
   /**
    * Server-paginated request list — bounded to `PRINT_REQUEST_LIST_PAGE_SIZE` (+1 peek to detect
@@ -624,7 +681,8 @@ export const printRequestService = {
 
   /**
    * Exact tab/filter count with zero document hydration — `getCountFromServer` against the same
-   * indexed `queueTab`/`status`/`customerId`/`isInternal` filter the list page uses. Never load
+   * indexed `queueTab`/`status`/`customerId`/`isInternal` filter, including the Studio list's
+   * indexed `isInternal` + `queueTab` pair. Never load request documents merely to count them.
    * request documents merely to count them.
    */
   async countPrintRequests(
@@ -1577,6 +1635,7 @@ export const printRequestService = {
       .map((selection) => ({
         designId: selection.designId.trim(),
         quantity: Number(selection.quantity),
+        existingItemId: selection.existingItemId?.trim() || undefined,
       }))
       .filter((selection) => selection.designId.length > 0);
 
@@ -1584,27 +1643,21 @@ export const printRequestService = {
       return;
     }
 
-    await this.getPrintRequestById(caller, printRequestId);
-    const currentItems = await this.listPrintRequestItems(caller, printRequestId);
-
     for (const selection of normalizedSelections) {
       if (!Number.isFinite(selection.quantity) || selection.quantity < 1) {
         throw new Error("Quantity must be at least 1.");
       }
+    }
 
-      const design = await loadPrintableDesign(caller, selection.designId);
-      const requestedSize = resolveRequestedItemSize(design, {});
-      const existingItem = currentItems.find(
-        (item) => item.designId === selection.designId && requestedSizesMatch(item, requestedSize),
-      );
+    await this.getPrintRequestById(caller, printRequestId);
+    const currentItems = await this.listPrintRequestItems(caller, printRequestId);
+    const plannedWrites = planPrintRequestDesignSelectionWrites(normalizedSelections, currentItems);
 
-      if (existingItem) {
-        if (existingItem.quantity !== selection.quantity) {
-          await this.updatePrintRequestItem(caller, existingItem.id, {
-            quantity: selection.quantity,
-          });
-        }
-
+    for (const write of plannedWrites) {
+      if (write.kind === "update_quantity") {
+        await this.updatePrintRequestItem(caller, write.itemId, {
+          quantity: write.quantity,
+        });
         continue;
       }
 
@@ -1615,8 +1668,8 @@ export const printRequestService = {
         caller,
         printRequestId,
         {
-          designId: selection.designId,
-          quantity: selection.quantity,
+          designId: write.designId,
+          quantity: write.quantity,
         },
         { existingItems: currentItems },
       );

@@ -17,6 +17,10 @@ import { CopyIcon, TrashIcon } from '../../shared/components/PortalIcons';
 import { isOptimisticPrintRequestItemId } from '../utils/optimisticPrintRequestItemId';
 import { shouldAcceptIncomingItemProp } from '../utils/itemPropSyncGuard';
 import { resolveSavedDraftReconciliation } from './resolveSavedDraftReconciliation';
+import {
+  resolvePrintRequestItemPersistenceHealth,
+  type PrintRequestItemPersistenceHealth,
+} from '@fresh-prints/shared/utils/printRequestItemPersistenceHealth';
 
 interface PortalPrintRequestItemDesign {
   id: string;
@@ -83,6 +87,8 @@ interface PortalPrintRequestItemCardProps {
     message?: string,
     retry?: () => Promise<void>,
   ) => void;
+  onPersistenceHealthChange?: (itemId: string, health: PrintRequestItemPersistenceHealth) => void;
+  onRegisterFlush?: (itemId: string, flush: (() => Promise<boolean>) | null) => void;
 }
 
 function resolveAspectPixels(
@@ -97,32 +103,19 @@ function resolveAspectPixels(
     return { width: upload.widthPx, height: upload.heightPx };
   }
 
-  if (
-    typeof upload?.printWidthInches === 'number' &&
-    typeof upload.printHeightInches === 'number' &&
-    upload.printWidthInches > 0 &&
-    upload.printHeightInches > 0
-  ) {
-    return { width: upload.printWidthInches, height: upload.printHeightInches };
-  }
-
   return null;
 }
 
-function resolveInitialWidth(
-  item: PrintRequestItem,
-  design?: PortalPrintRequestItemDesign | null,
-  upload?: PortalPrintRequestItemUpload | null,
-): number {
-  return item.printWidthInches ?? design?.printWidthInches ?? upload?.printWidthInches ?? 1;
+function resolveInitialWidth(item: PrintRequestItem): number {
+  return typeof item.printWidthInches === 'number' && item.printWidthInches > 0
+    ? item.printWidthInches
+    : Number.NaN;
 }
 
-function resolveInitialHeight(
-  item: PrintRequestItem,
-  design?: PortalPrintRequestItemDesign | null,
-  upload?: PortalPrintRequestItemUpload | null,
-): number {
-  return item.printHeightInches ?? design?.printHeightInches ?? upload?.printHeightInches ?? 1;
+function resolveInitialHeight(item: PrintRequestItem): number {
+  return typeof item.printHeightInches === 'number' && item.printHeightInches > 0
+    ? item.printHeightInches
+    : Number.NaN;
 }
 
 function formatEditableNumber(value: number): string {
@@ -186,6 +179,8 @@ export function PortalPrintRequestItemCard({
   quantityResetKey = 0,
   onUpdate,
   onAutosaveStateChange,
+  onPersistenceHealthChange,
+  onRegisterFlush,
 }: PortalPrintRequestItemCardProps) {
   const blockedStatusText = exhaustedStatusText;
   const isUploadItem =
@@ -221,18 +216,18 @@ export function PortalPrintRequestItemCard({
     setQuantityInputState(value);
   }
   const [printWidthInput, setPrintWidthInput] = useState(
-    formatEditableNumber(resolveInitialWidth(item, design, upload)),
+    formatEditableNumber(resolveInitialWidth(item)),
   );
   const [printHeightInput, setPrintHeightInput] = useState(
-    formatEditableNumber(resolveInitialHeight(item, design, upload)),
+    formatEditableNumber(resolveInitialHeight(item)),
   );
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const { url: previewUrl } = useCatalogDerivativeUrl(previewPath, design?.updatedAtMs);
   const lastSavedSignatureRef = useRef(
     buildItemSignature(
       item.quantity,
-      resolveInitialWidth(item, design, upload),
-      resolveInitialHeight(item, design, upload),
+      resolveInitialWidth(item),
+      resolveInitialHeight(item),
     ),
   );
   /**
@@ -245,14 +240,16 @@ export function PortalPrintRequestItemCard({
    * edit" (Plan Section 19.2 item 2 / 19.1 second contributing cause).
    */
   const lastAcceptedUpdatedAtMsRef = useRef(resolveItemUpdatedAtMs(item));
-  const saveDraftRef = useRef<() => Promise<void>>(async () => undefined);
+  const saveDraftRef = useRef<() => Promise<boolean>>(async () => false);
   const saveDebounceRef = useRef<number | null>(null);
   const saveInFlightRef = useRef(false);
   const saveQueuedRef = useRef(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isFailed, setIsFailed] = useState(false);
 
   useEffect(() => {
-    const nextWidth = resolveInitialWidth(item, design, upload);
-    const nextHeight = resolveInitialHeight(item, design, upload);
+    const nextWidth = resolveInitialWidth(item);
+    const nextHeight = resolveInitialHeight(item);
     const incomingSignature = buildItemSignature(item.quantity, nextWidth, nextHeight);
 
     // A signature mismatch alone doesn't prove this is a genuinely newer external change — a
@@ -349,9 +346,9 @@ export function PortalPrintRequestItemCard({
     }, 300);
   }
 
-  const saveDraft = useCallback(async () => {
+  const saveDraft = useCallback(async (): Promise<boolean> => {
     if (isOptimisticPrintRequestItemId(item.id)) {
-      return;
+      return false;
     }
 
     if (
@@ -360,7 +357,7 @@ export function PortalPrintRequestItemCard({
       parsedPrintHeightInches === null ||
       !canSave
     ) {
-      return;
+      return false;
     }
 
     const draftSignature = buildItemSignature(
@@ -370,12 +367,12 @@ export function PortalPrintRequestItemCard({
     );
 
     if (draftSignature === lastSavedSignatureRef.current) {
-      return;
+      return true;
     }
 
     if (saveInFlightRef.current) {
       saveQueuedRef.current = true;
-      return;
+      return false;
     }
 
     // The exact quantity-input string THIS invocation is submitting (Plan Section 22.2, Amendment
@@ -385,6 +382,8 @@ export function PortalPrintRequestItemCard({
     const submittedQuantityInput = quantityInput;
 
     saveInFlightRef.current = true;
+    setIsSaving(true);
+    setIsFailed(false);
     onAutosaveStateChange('saving');
 
     try {
@@ -436,12 +435,19 @@ export function PortalPrintRequestItemCard({
       // prop will carry a real server updatedAt newer than whatever this card last accepted
       // before this save, so a stale-reload rejection here does not create a new stuck state).
       lastAcceptedUpdatedAtMsRef.current = Date.now();
+      setIsFailed(false);
       onAutosaveStateChange('saved');
+      return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to save item changes.';
-      onAutosaveStateChange('failed', message, () => saveDraftRef.current());
+      setIsFailed(true);
+      onAutosaveStateChange('failed', message, async () => {
+        await saveDraftRef.current();
+      });
+      return false;
     } finally {
       saveInFlightRef.current = false;
+      setIsSaving(false);
 
       if (saveQueuedRef.current) {
         saveQueuedRef.current = false;
@@ -462,6 +468,32 @@ export function PortalPrintRequestItemCard({
   useEffect(() => {
     saveDraftRef.current = saveDraft;
   }, [saveDraft]);
+
+  useEffect(() => {
+    onRegisterFlush?.(item.id, () => saveDraftRef.current());
+    return () => {
+      onRegisterFlush?.(item.id, null);
+    };
+  }, [item.id, onRegisterFlush]);
+
+  const isDirty =
+    buildItemSignature(
+      parsedQuantity ?? Number.NaN,
+      parsedPrintWidthInches ?? Number.NaN,
+      parsedPrintHeightInches ?? Number.NaN,
+    ) !== lastSavedSignatureRef.current;
+
+  const persistenceHealth = resolvePrintRequestItemPersistenceHealth({
+    isOptimistic: isOptimisticItem,
+    isSaving,
+    isFailed,
+    isDirty,
+    canSave,
+  });
+
+  useEffect(() => {
+    onPersistenceHealthChange?.(item.id, persistenceHealth);
+  }, [item.id, onPersistenceHealthChange, persistenceHealth]);
 
   useEffect(() => {
     const wasOptimistic = wasOptimisticRef.current;

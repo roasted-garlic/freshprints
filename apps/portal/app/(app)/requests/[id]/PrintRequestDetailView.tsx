@@ -17,6 +17,10 @@ import {
 import { formatPortalCustomerShowScheduleLabel } from '@fresh-prints/shared/utils/portalCustomerShowSchedule';
 import { sumPrintRequestItemQuantities } from '@fresh-prints/shared/utils/portalShowQueueCapacity';
 import {
+  summarizePrintRequestPersistenceHealth,
+  type PrintRequestItemPersistenceHealth,
+} from '@fresh-prints/shared/utils/printRequestItemPersistenceHealth';
+import {
   sumAllocatedQuantityByItemId,
   sumRemainingUnallocatedQuantity,
 } from '@fresh-prints/shared/utils/portalShowQueueFit';
@@ -89,6 +93,11 @@ export default function PrintRequestDetailView() {
   const printRequestId = params.id;
   const [actionError, setActionError] = useState<string | null>(null);
   const [autosaveState, setAutosaveState] = useState<AutosaveState>({ status: 'idle' });
+  const [itemPersistenceHealth, setItemPersistenceHealth] = useState<
+    Record<string, PrintRequestItemPersistenceHealth>
+  >({});
+  const itemFlushersRef = useRef(new Map<string, () => Promise<boolean>>());
+  const [isFlushingQueue, setIsFlushingQueue] = useState(false);
   const [unallocatedQuantity, setUnallocatedQuantity] = useState(0);
   const [isQueueModalOpen, setIsQueueModalOpen] = useState(false);
   const [itemPendingRemoval, setItemPendingRemoval] = useState<PrintRequestItem | null>(null);
@@ -180,8 +189,28 @@ export default function PrintRequestDetailView() {
     [],
   );
 
+  const handlePersistenceHealthChange = useCallback(
+    (itemId: string, health: PrintRequestItemPersistenceHealth) => {
+      setItemPersistenceHealth((current) =>
+        current[itemId] === health ? current : { ...current, [itemId]: health },
+      );
+    },
+    [],
+  );
+
+  const handleRegisterFlush = useCallback((itemId: string, flush: (() => Promise<boolean>) | null) => {
+    if (flush) {
+      itemFlushersRef.current.set(itemId, flush);
+      return;
+    }
+    itemFlushersRef.current.delete(itemId);
+  }, []);
+
+  const persistenceSummary = summarizePrintRequestPersistenceHealth(itemPersistenceHealth);
+
   useEffect(() => {
     setAutosaveState({ status: 'idle' });
+    setItemPersistenceHealth({});
   }, [printRequestId]);
 
   useEffect(() => {
@@ -372,7 +401,31 @@ export default function PrintRequestDetailView() {
 
   const designCountLabel = `${printRequest.itemCount} design${printRequest.itemCount === 1 ? '' : 's'}`;
   const printCountLabel = `${totalPrintCount} print${totalPrintCount === 1 ? '' : 's'}`;
-  const canQueueToShow = isEditable && items.length > 0 && unallocatedQuantity > 0;
+  const canShowQueueCta = isEditable && items.length > 0 && unallocatedQuantity > 0;
+  const canQueueToShow =
+    canShowQueueCta && persistenceSummary.canOpenQueue && !isFlushingQueue;
+
+  async function handleOpenQueueModal() {
+    if (!persistenceSummary.canOpenQueue) {
+      setActionError(persistenceSummary.blockReason);
+      return;
+    }
+    if (persistenceSummary.needsFlush) {
+      setIsFlushingQueue(true);
+      try {
+        const results = await Promise.all(
+          [...itemFlushersRef.current.values()].map((flush) => flush()),
+        );
+        if (results.some((ok) => !ok)) {
+          setActionError('Save item sizes before adding this request to a show.');
+          return;
+        }
+      } finally {
+        setIsFlushingQueue(false);
+      }
+    }
+    setIsQueueModalOpen(true);
+  }
 
   return (
     <main className="portal-page portal-request-detail-page">
@@ -405,19 +458,26 @@ export default function PrintRequestDetailView() {
           ) : null}
         </div>
 
-        {canQueueToShow ? (
+        {canShowQueueCta ? (
           <div className="portal-request-detail-header-actions">
             <button
               className="portal-button portal-button-primary portal-button-leading-icon portal-request-detail-show-cta"
-              onClick={() => setIsQueueModalOpen(true)}
+              disabled={!canQueueToShow}
+              onClick={() => void handleOpenQueueModal()}
               type="button"
             >
               <CalendarPlusIcon />
               Add Request to Whatnot Show
             </button>
-            <p className="portal-muted portal-request-detail-show-cta-hint">
-              Final step: choose the show you want this request added to.
-            </p>
+            {!persistenceSummary.canOpenQueue && persistenceSummary.blockReason ? (
+              <p className="portal-muted portal-request-detail-show-cta-hint" role="status">
+                {persistenceSummary.blockReason}
+              </p>
+            ) : (
+              <p className="portal-muted portal-request-detail-show-cta-hint">
+                Final step: choose the show you want this request added to.
+              </p>
+            )}
           </div>
         ) : null}
       </header>
@@ -542,6 +602,8 @@ export default function PrintRequestDetailView() {
                 onRemove={(nextItem) => setItemPendingRemoval(nextItem)}
                 onUpdate={handleUpdateItem}
                 onAutosaveStateChange={updateAutosaveState}
+                onPersistenceHealthChange={handlePersistenceHealthChange}
+                onRegisterFlush={handleRegisterFlush}
                 quantityResetKey={quantityResetKeys[item.id] ?? 0}
                 readOnly={!isEditable}
               />
