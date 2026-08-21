@@ -7,9 +7,9 @@
 | Managed goal | `print-request-shared-sizing-and-queue-integrity` — **CLOSED (DEV)** |
 | Signoff | **approved** — `docs/workflow/reviews/2026-08-20-print-request-shared-sizing-and-queue-integrity-signoff.md` |
 | Owner QA | Combined DEV QA **`PASS`** |
-| Checkout | `C:\coding\fresh-prints` on **`development`** (**uncommitted**) |
+| Checkout | `C:\coding\fresh-prints` on **`development`** @ **`4865c2b`** |
 | Delivered | Manual save 200 DPI + 22″; persist/queue barriers; export requested inches; Past+Printing Finish + Mark Complete (ADR-FP-139); Studio Add Designs item-id save |
-| Production | **Not** promoted. Functions deploy later. |
+| Production | **Not** promoted. No Functions/Portal/Studio release in this push. |
 | Workflow | **IDLE** |
 | Phase 9 | **PARKED** |
 | Tag-alias | QUEUED ONLY |

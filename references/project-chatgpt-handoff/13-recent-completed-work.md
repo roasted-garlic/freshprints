@@ -8,8 +8,8 @@
 | Signoff | **approved** |
 | Owner QA | Combined DEV QA **`PASS`** |
 | Delivered | Manual Print Request save is **≥200 DPI + ≤22″** only (ADR-FP-075 / ADR-FP-080: approved-max is init/processing, not a later ceiling); persist/queue barriers; export uses requested inches; Past+Printing Whatnot Finish + **Mark Complete** (ADR-FP-139); Studio **Add designs** preserves existing items by ID (no default-size replay) |
-| Checkout | `development`, **uncommitted** |
-| Production | Not promoted. Functions deploy for Portal queue size assert is later. |
+| Checkout | `development` @ **`4865c2b`** |
+| Production | Not promoted. No Functions/Portal/Studio release in this push. |
 | Signoff | `docs/workflow/reviews/2026-08-20-print-request-shared-sizing-and-queue-integrity-signoff.md` |
 
 ## 2026-08-18 - PR #83 Portal add-to-show + design engagement analytics — PRODUCTION LIVE / CLOSED

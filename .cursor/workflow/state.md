@@ -56,7 +56,7 @@ docs/workflow/reviews/2026-08-20-print-request-shared-sizing-and-queue-integrity
 docs/workflow/reviews/2026-08-20-print-request-shared-sizing-and-queue-integrity-amendment-2-review.md
 
 ## Checkout
-C:\coding\fresh-prints on development @ 1b967fd610300904dcfe0a390ed9766d012f22ca
+C:\coding\fresh-prints on development @ 4865c2b
 
 ## Production Signoff
 docs/workflow/reviews/2026-08-18-portal-pr-83-production-signoff.md
@@ -107,7 +107,7 @@ CLOSED/LIVE — 5d042696ddbc7bce2bc40675e5cae82124e5dc04; layout follow-up 3fe17
 CLOSED/LIVE — 7350bc42e206c0aa000768e3595f06406433a26b; production `99b2303`
 
 ## print-request-shared-sizing-and-queue-integrity
-CLOSED (DEV) — uncommitted on `development`; signoff `docs/workflow/reviews/2026-08-20-print-request-shared-sizing-and-queue-integrity-signoff.md`
+CLOSED (DEV) — `4865c2b` on `development`; signoff `docs/workflow/reviews/2026-08-20-print-request-shared-sizing-and-queue-integrity-signoff.md`
 
 ## portal-tag-alias-search-discoverability
 QUEUED ONLY, not activated
@@ -125,7 +125,7 @@ fresh-prints-portal-build-2026-08-19-001 @ 99b230333efd9a4892f8c4a30ccf72008baf2
 fresh-prints-portal-build-2026-08-18-001 @ cb006bd5a21580cccf89d6c1d13d31f07633c51f
 
 ## Decision Log
-- 2026-08-20: Owner combined DEV QA `PASS`. Signoff **approved**. Goal CLOSED (DEV). Uncommitted on `development`. No production.
+- 2026-08-20: Committed and pushed `4865c2b` to `development`. No production promotion, Functions deploy, Portal deploy, or Studio release.
 - 2026-08-20: Owner `Continue Workflow`. Amendment 2 Implement complete (item-id Add Designs save). Automated Test passed. STOP for combined owner QA. No commit, no production.
 - 2026-08-20: Owner Amendment 2 (Add Designs duplicates resized items at default size). Investigation complete. Plan + Formal Review **approved**. STOP before Implement. Parent sizing + Amendment 1 preserved.
 - 2026-08-20: Owner requested 200–299 DPI warning copy: "It can be printed, but quality may be reduced." Applied in shared assess. Still awaiting owner QA.
