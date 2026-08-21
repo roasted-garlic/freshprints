@@ -30,14 +30,23 @@ describe("Studio Algolia catalog search containment", () => {
     const hook = read(
       "apps/studio/src/renderer/src/features/designs/hooks/useDesignLibraryManagedSearch.ts",
     );
+    const exactId = read(
+      "apps/studio/src/renderer/src/features/designs/utils/designLibraryExactIdSearch.ts",
+    );
     assert.match(page, /useDesignLibraryManagedSearch/);
     assert.match(page, /countDesigns/);
+    assert.match(page, /fetchVisibleExactIdDesign/);
     assert.doesNotMatch(page, /loadAll:\s*true/);
     assert.doesNotMatch(page, /useGeneratedReadyDesigns/);
     assert.doesNotMatch(hook, /loadAll:\s*true/);
     assert.doesNotMatch(hook, /onSnapshot/);
     assert.match(hook, /isStudioAlgoliaCatalogConfigured/);
+    assert.match(hook, /deriveManagedCatalogHasMore/);
     assert.match(hook, /Catalog search is not configured/);
+    assert.match(exactId, /loadByIds/);
+    assert.doesNotMatch(exactId, /getDocs\(/);
+    assert.doesNotMatch(exactId, /loadAll/);
+    assert.doesNotMatch(exactId, /designService/);
   });
 
   it("designService exposes ordered getDesignsByIds without collection scan", () => {

@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import { createPortal } from "react-dom";
 
 import { Modal, ModalBody, ModalHeader } from "../../../shared/components/Modal";
 import { StudioUpdatesSettingsSection } from "./StudioUpdatesSettingsSection";
@@ -11,19 +12,24 @@ interface StudioUpdatesModalProps {
 /**
  * Thin shell so desktop staff (including Helpers without manageSettings) can open the
  * existing Studio updater UI without entering Settings.
+ *
+ * Portaled to document.body so sidebar isolation/overflow cannot trap or clip the overlay.
  */
 export function StudioUpdatesModal({ isOpen, onClose }: StudioUpdatesModalProps) {
-  if (!isOpen) {
+  if (!isOpen || typeof document === "undefined") {
     return null;
   }
 
-  return (
-    <div className="modal-overlay modal-overlay-blur" onClick={onClose}>
+  return createPortal(
+    <div
+      className="modal-overlay modal-overlay-blur studio-updates-modal-overlay"
+      onClick={onClose}
+    >
       <div onClick={(event) => event.stopPropagation()} role="presentation">
         <Modal
           aria-labelledby="studio-updates-modal-title"
           aria-modal="true"
-          className="modal-panel modal-panel-lg"
+          className="studio-updates-modal-panel"
           role="dialog"
         >
           <ModalHeader>
@@ -44,6 +50,7 @@ export function StudioUpdatesModal({ isOpen, onClose }: StudioUpdatesModalProps)
           </ModalBody>
         </Modal>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

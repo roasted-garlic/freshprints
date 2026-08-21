@@ -192,6 +192,7 @@ export function TagChipInput({
     setRejectionHint(added ? null : `A design can have at most ${MAX_DESIGN_TAGS} tags.`);
     setInputValue("");
     setActiveSuggestionIndex(0);
+    setIsSuggestionsOpen(false);
   }
 
   function removeTag(tagToRemove: string) {

@@ -1,5 +1,7 @@
 # Roadmap and Phases
 
+> 2026-08-21: **Studio updater / design ID search / tag picker polish CLOSED (DEV)** — Signoff **approved**; owner `AL PASS`. Body-portaled Studio Updates; full design-ID search; Load more hides on short pages; tag picker closes after select. Studio version not bumped. Workflow **IDLE**. Phase 9 PARKED. Parked Print Request production promotion unchanged (Gate D LIVE).
+>
 > 2026-08-21: **Studio Print Request Customer vs Internal list split CLOSED (DEV)** — Signoff **approved**; owner Studio QA `PASS`. Discriminator `isInternal`; default Customer Requests; DEV index only (ADR-FP-140). `development` @ `bdadd30`. Production index/Studio release later. Workflow **IDLE**. Phase 9 PARKED.
 
 > 2026-08-20: **Print Request shared sizing and queue integrity CLOSED (DEV)** — Signoff **approved**; owner combined QA `PASS`. Manual save 200 DPI + 22″; Past+Printing Finish (ADR-FP-139); Studio Add Designs item-id save. Uncommitted on `development`. Production/Functions deploy later. Workflow **IDLE**. Phase 9 PARKED.

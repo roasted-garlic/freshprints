@@ -6,7 +6,7 @@
 Login/logout, profile bootstrap, protected routes via permissions.
 
 ### Design Library (`/designs`)
-Approved catalog grid; search; category + tag filters; archive toggle; details/edit; request-selection mode for staff print requests; print-size / DPI display; default list **newest uploads first** (`createdAt` desc); Design details modal **full-res Download** of Storage original.
+Approved catalog grid; search (including paste of a full Firestore design ID); category + tag filters; archive toggle; details/edit; request-selection mode for staff print requests; print-size / DPI display; default list **newest uploads first** (`createdAt` desc); Design details modal **full-res Download** of Storage original. **Load more** only when another catalog page exists.
 
 ### Imports (`/imports`)
 ZIP/folder import; PNG validation; trim + upscale (ADR-FP-080 ≤6× toward 12″); thumbnails/previews; Storage upload; AI enqueue; batch progress. No import-time halftone interrupt.
@@ -34,6 +34,8 @@ Assisted inbox with stage tabs, request details, audited start/cancel/reject/res
 
 ### Users / Settings / Dev
 Team users + customer records; AI enrichment settings; show-queue settings; dashboard scaffold;
+sidebar footer **Studio Updates** (desktop staff, including Helpers) is an application-level overlay;
+approved-tag pickers close after a suggestion is selected;
 **Brand logos** (owner upload Studio/Portal full+collapsed PNGs + display sizes — ADR-FP-114;
 soft-deployed fresh-prints-dev); owner/dev-only **Test Data Reset**, including truthful **Legacy
 print-limit counters** cleanup for retired, unenforced Cap A documents.

@@ -1348,3 +1348,22 @@
   gap: var(--space-2);
   grid-template-columns: 1fr 1fr;
 }
+
+.studio-updates-modal-overlay {
+  z-index: calc(var(--z-lightbox) + 10);
+}
+
+.modal-panel.studio-updates-modal-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  max-height: min(90vh, calc(100vh - (2 * var(--space-6))));
+  max-width: min(42rem, calc(100vw - (2 * var(--space-6))));
+  overflow-x: hidden;
+  width: min(42rem, calc(100vw - (2 * var(--space-6))));
+}
+
+.modal-panel.studio-updates-modal-panel > .modal-body {
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}

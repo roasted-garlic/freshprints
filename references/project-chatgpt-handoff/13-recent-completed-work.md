@@ -1,6 +1,19 @@
 # Recent Completed Work
 
+## 2026-08-21 - Studio updater / design ID search / tag picker polish — SIGNOFF / CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `studio-updater-design-id-search-tag-picker-polish` — **DONE (DEV)** |
+| Signoff | **approved** |
+| Owner QA | `AL PASS` (all pass; after Load-more fix) |
+| Delivered | Studio Updates body portal + scoped width; Design Library full-ID hydrate (`getDesignsByIds`); Load more hidden on short pages; tag suggestions close after pick |
+| Checkout | `development` @ `eaf52e7` (polish uncommitted) |
+| Production | Not promoted. Studio version not bumped. |
+| Signoff | `docs/workflow/reviews/2026-08-21-studio-updater-design-id-search-tag-picker-polish-signoff.md` |
+
 ## 2026-08-21 - Studio Print Request Customer vs Internal lists — SIGNOFF / CLOSED (DEV)
+
 
 | Item | Status |
 |------|--------|
