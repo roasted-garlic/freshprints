@@ -475,7 +475,10 @@ Import/thumbnail/preview steps are **not** shown in staff UI.
 | `--z-sticky` | `10` | Sticky table headers, top nav |
 | `--z-dropdown` | `20` | Menus, popovers |
 | `--z-modal` | `30` | Modals and overlays |
+| `--z-lightbox` | `40` | Artwork lightbox, print-request autosave chrome |
 | `--z-toast` | `40` | Toast notifications |
+
+Studio Updates is portaled to `document.body` (sidebar isolation would trap a local overlay). That overlay uses a scoped class (`studio-updates-modal-overlay`) at `calc(var(--z-lightbox) + 10)` so Show Queue and lightbox chrome cannot paint over it. Do not raise global `--z-modal` for this, and do not widen shared `.modal-panel-lg`.
 
 ---
 

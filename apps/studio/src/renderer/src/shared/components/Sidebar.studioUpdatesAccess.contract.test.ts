@@ -55,6 +55,10 @@ test("Settings route remains ProtectedRoute manageSettings", () => {
 test("StudioUpdatesModal reuses StudioUpdatesSettingsSection without updater IPC imports", () => {
   assert.match(modalSource, /StudioUpdatesSettingsSection/);
   assert.match(modalSource, /modal-overlay/);
+  assert.match(modalSource, /createPortal/);
+  assert.match(modalSource, /document\.body/);
+  assert.match(modalSource, /studio-updates-modal-overlay/);
+  assert.match(modalSource, /studio-updates-modal-panel/);
   assert.match(modalSource, /role="dialog"/);
   const importLines = modalSource
     .split(/\r?\n/)

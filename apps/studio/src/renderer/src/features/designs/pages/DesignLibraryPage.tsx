@@ -45,6 +45,11 @@ import {
   resolveDesignLibraryCountLabelMode,
 } from "../utils/designLibraryCountLabel";
 import {
+  fetchVisibleExactIdDesign,
+  looksLikeDesignDocumentId,
+  mergeExactIdDesign,
+} from "../utils/designLibraryExactIdSearch";
+import {
   buildCategoryFilterOptions,
   countVisibleSelectedTags,
   filterDesignsByCategory,
@@ -286,6 +291,48 @@ export function DesignLibraryPage() {
     user,
   });
 
+  const [exactIdDesign, setExactIdDesign] = useState<Design | null>(null);
+  useEffect(() => {
+    if (!user || managedSearchActive || !looksLikeDesignDocumentId(trimmedSearch)) {
+      setExactIdDesign(null);
+      return;
+    }
+
+    let cancelled = false;
+    void fetchVisibleExactIdDesign(
+      user,
+      trimmedSearch,
+      {
+        browsingArchived: includeArchived && !selectionModeActive,
+        categoryId: managedCategoryId,
+        selectedTags,
+      },
+      (caller, ids) => designService.getDesignsByIds(caller, ids),
+    )
+      .then((design) => {
+        if (!cancelled) {
+          setExactIdDesign(design);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setExactIdDesign(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    includeArchived,
+    managedCategoryId,
+    managedSearchActive,
+    selectionModeActive,
+    selectedTags,
+    trimmedSearch,
+    user,
+  ]);
+
   const [libraryTotal, setLibraryTotal] = useState<number | null>(null);
   useEffect(() => {
     if (!user || managedSearchActive) {
@@ -340,10 +387,13 @@ export function DesignLibraryPage() {
 
   const searchMatchedDesigns = useMemo(
     () =>
-      managedSearchActive
-        ? managedSearchDesigns
-        : filterDesignsBySearch(visibleDesigns, searchQuery),
-    [managedSearchDesigns, managedSearchActive, searchQuery, visibleDesigns],
+      mergeExactIdDesign(
+        managedSearchActive
+          ? managedSearchDesigns
+          : filterDesignsBySearch(visibleDesigns, searchQuery),
+        managedSearchActive ? null : exactIdDesign,
+      ),
+    [exactIdDesign, managedSearchActive, managedSearchDesigns, searchQuery, visibleDesigns],
   );
   const categoryFilteredDesigns = useMemo(
     () =>
