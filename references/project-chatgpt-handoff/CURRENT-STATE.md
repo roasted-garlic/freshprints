@@ -7,7 +7,7 @@
 | Managed goal | `studio-updater-design-id-search-tag-picker-polish` — **CLOSED (DEV)** |
 | Signoff | **approved** — `docs/workflow/reviews/2026-08-21-studio-updater-design-id-search-tag-picker-polish-signoff.md` |
 | Owner QA | `AL PASS` (all pass) |
-| Checkout | `C:\coding\fresh-prints` on **`development`** @ `eaf52e7` (polish uncommitted) |
+| Checkout | `C:\coding\fresh-prints` on **`development`** @ **`445ab13`** |
 | Delivered | Studio Updates portals to `document.body` with updater-only width; Design Library full document-ID hydrate via `getDesignsByIds`; Load more hidden on short Algolia pages; approved-tag suggestions close after pick |
 | Production | **Not** promoted by this goal. Studio version **not** bumped (published remains **1.0.7**). |
 | Workflow | **IDLE** |

@@ -8,7 +8,7 @@
 | Signoff | **approved** |
 | Owner QA | `AL PASS` (all pass; after Load-more fix) |
 | Delivered | Studio Updates body portal + scoped width; Design Library full-ID hydrate (`getDesignsByIds`); Load more hidden on short pages; tag suggestions close after pick |
-| Checkout | `development` @ `eaf52e7` (polish uncommitted) |
+| Checkout | `development` @ **`445ab13`** |
 | Production | Not promoted. Studio version not bumped. |
 | Signoff | `docs/workflow/reviews/2026-08-21-studio-updater-design-id-search-tag-picker-polish-signoff.md` |
 

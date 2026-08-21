@@ -50,7 +50,7 @@ docs/workflow/reviews/2026-08-21-studio-updater-design-id-search-tag-picker-poli
 docs/workflow/reviews/2026-08-21-studio-updater-design-id-search-tag-picker-polish-signoff.md
 
 ## Checkout
-C:\coding\fresh-prints on development @ eaf52e7 (polish uncommitted)
+C:\coding\fresh-prints on development @ 445ab13
 
 ## origin/development
 eaf52e7265c9dbc3f1a82782380f9b899ebbe9a7
@@ -59,10 +59,10 @@ eaf52e7265c9dbc3f1a82782380f9b899ebbe9a7
 7716d4a97f83c2dbe5602fb3e149875d6d7f38c9
 
 ## Last Completed Step
-Signoff **approved**. Owner `AL PASS`. Goal DONE.
+Committed `445ab13` on `development`. Goal CLOSED (DEV). Studio version not bumped.
 
 ## Next Required Step
-Idle. Commit polish when ready. Do not bump Studio version unless owner starts a release goal. Parked Print Request promotion still awaits Portal QA and/or `APPROVE STUDIO VERSION`.
+Idle. Do not bump Studio version unless owner starts a release goal. Parked Print Request promotion still awaits Portal QA and/or `APPROVE STUDIO VERSION`.
 
 ## Phase 9
 PARKED
@@ -75,3 +75,4 @@ promote-print-request-correctives-to-production — Gate D LIVE (`fresh-prints-p
 - 2026-08-21: Implemented portal overlay, bounded exact-ID search, tag-picker close.
 - 2026-08-21: Owner QA FAIL — ID search (1 result) still showed Load more. Fixed via `deriveManagedCatalogHasMore`.
 - 2026-08-21: Owner `AL PASS` (all pass). Signoff **approved**. Studio version not bumped.
+- 2026-08-21: Committed `445ab13` on `development`.
