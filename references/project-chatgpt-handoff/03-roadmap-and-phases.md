@@ -1,5 +1,11 @@
 # Roadmap and Phases
 
+> 2026-08-21: **Studio GitHub Latest + final-copy gates CLOSED** — Signoff **approved**. Publish helper after `APPROVE STUDIO PUBLISH`. 1.0.8 not edited. Workflow **IDLE**. Phase 9 PARKED.
+>
+> 2026-08-21: **Studio 1.0.8 PUBLISHED** — Signoff **approved_with_notes**. [`v1.0.8`](https://github.com/roasted-garlic/freshprints/releases/tag/v1.0.8) @ `3210190`. Windows updater live. Mac unsigned/manual. Portal still `7716d4a`. Workflow **IDLE**. Phase 9 PARKED.
+>
+> 2026-08-21: **Studio polish Git promotion CLOSED** — PR **#85** @ `97d6d49`. Git-only. Portal live still `7716d4a`. Studio published **1.0.7**. Workflow **IDLE**. Phase 9 PARKED.
+>
 > 2026-08-21: **Studio updater / design ID search / tag picker polish CLOSED (DEV)** — Signoff **approved**; owner `AL PASS`. Body-portaled Studio Updates; full design-ID search; Load more hides on short pages; tag picker closes after select. Studio version not bumped. Workflow **IDLE**. Phase 9 PARKED. Parked Print Request production promotion unchanged (Gate D LIVE).
 >
 > 2026-08-21: **Studio Print Request Customer vs Internal list split CLOSED (DEV)** — Signoff **approved**; owner Studio QA `PASS`. Discriminator `isInternal`; default Customer Requests; DEV index only (ADR-FP-140). `development` @ `bdadd30`. Production index/Studio release later. Workflow **IDLE**. Phase 9 PARKED.

@@ -116,6 +116,9 @@ test("shared env writer is used on both platform jobs", () => {
 test("workflow does not auto-publish (draft-only finalize)", () => {
   assert.match(workflowSource, /does NOT publish the release/);
   assert.match(workflowSource, /draft=true/);
+  assert.match(workflowSource, /studio-github-release-copy\.mjs draft/);
+  assert.doesNotMatch(workflowSource, /make_latest/);
+  assert.doesNotMatch(workflowSource, /publish-studio-stable-github-release/);
 });
 
 test("stable production reachability guards remain on both platform jobs", () => {

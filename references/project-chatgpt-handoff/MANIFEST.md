@@ -22,7 +22,7 @@
 
 **Total: 18 files** (limit: 25)
 
-**Last full package refresh:** 2026-07-13 (Your Stash polish signoff); partial refresh 2026-08-21 (`studio-updater-design-id-search-tag-picker-polish` DEV signoff: CURRENT-STATE, 13, 03, 04)
+**Last full package refresh:** 2026-07-13 (Your Stash polish signoff); partial refresh 2026-08-21 (Studio Latest/final-copy gates: CURRENT-STATE, 13, 03, MANIFEST)
 
 ---
 

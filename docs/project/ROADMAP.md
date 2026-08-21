@@ -1,5 +1,15 @@
 # Fresh Prints Roadmap
 
+> 2026-08-21: **Studio GitHub Latest + final-copy gates CLOSED** — Goal `studio-release-latest-and-final-copy-gates` **DONE**. Signoff **approved**. Publish helper sets Latest + final copy after `APPROVE STUDIO PUBLISH`. Finalize still draft-only. 1.0.8 not edited. Signoff: `docs/workflow/reviews/2026-08-21-studio-release-latest-and-final-copy-gates-signoff.md`. Phase 9 **PARKED**.
+>
+> 2026-08-21: **Studio 1.0.8 PUBLISHED** — Goal `studio-1.0.8-release-preparation` **DONE**. [`v1.0.8`](https://github.com/roasted-garlic/freshprints/releases/tag/v1.0.8) / release **374575547** @ `32101904b29476e514d0f9a9e8fd5c5b508a7d14` / run [32508917638](https://github.com/roasted-garlic/freshprints/actions/runs/32508917638). Smoke: Windows + Mac arm64 + Mac x64 PASS. A2 declined (ADR-FP-136); Mac auto-update install unsupported; Windows auto-update OK. Signoff: `docs/workflow/reviews/2026-08-21-studio-1.0.8-release-preparation-signoff.md`. Live Portal still `fresh-prints-portal-build-2026-08-21-001` @ `7716d4a`. Phase 9 **PARKED**.
+>
+> 2026-08-21: **Studio 1.0.8 draft smoke PASS** — Goal `studio-1.0.8-release-preparation`. Run [`32508917638`](https://github.com/roasted-garlic/freshprints/actions/runs/32508917638) **SUCCESS**. Draft **`374575547`**. Owner Windows + Mac arm64 + Mac x64 **PASS**. Publish not started. Published **1.0.7** unchanged. Phase 9 **PARKED**.
+>
+> 2026-08-21: **Studio 1.0.8 dispatch in progress** — Goal `studio-1.0.8-release-preparation`. Run [`32508917638`](https://github.com/roasted-garlic/freshprints/actions/runs/32508917638) `stable` / `internal-unsigned` from `32101904b29476e514d0f9a9e8fd5c5b508a7d14`. Draft only; publish not authorized. Published **1.0.7** unchanged. Phase 9 **PARKED**.
+>
+> 2026-08-21: **Studio 1.0.8 pins on production** — Goal `studio-1.0.8-release-preparation`. PR **#86** merged @ `32101904b29476e514d0f9a9e8fd5c5b508a7d14`. Version **1.0.8**. Product baseline `97d6d49`. Published **1.0.7** unchanged until dispatch/publish. Live Portal still `fresh-prints-portal-build-2026-08-21-001` @ `7716d4a`. Phase 9 **PARKED**.
+>
 > 2026-08-21: **Studio 1.0.8 pins implemented on development** — Goal `studio-1.0.8-release-preparation`. Version pins **1.0.7 → 1.0.8** (`package.json`, `studio-release.yml`, signing-policy test). Product baseline remains `97d6d49`. Published **1.0.7** unchanged until later dispatch/publish. Production PR / dispatch not started. Phase 9 **PARKED**.
 >
 > 2026-08-21: **Studio polish Git promotion CLOSED** — Goal `promote-studio-updater-design-id-search-tag-picker-polish-to-production` **DONE**. PR **#85** merged @ `97d6d49dd5e2c8cad64ae38b9f883334f56e2f76`. Git-only. Live Portal still `fresh-prints-portal-build-2026-08-21-001` @ `7716d4a`. Published Studio remains **1.0.7**. Signoff: `docs/workflow/reviews/2026-08-21-promote-studio-updater-design-id-search-tag-picker-polish-to-production-signoff.md`. Phase 9 **PARKED**.

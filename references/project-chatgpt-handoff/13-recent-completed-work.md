@@ -1,6 +1,41 @@
 # Recent Completed Work
 
+## 2026-08-21 - Studio GitHub Latest + final-copy gates — SIGNOFF / CLOSED
+
+| Item | Status |
+|------|--------|
+| Goal | `studio-release-latest-and-final-copy-gates` — **DONE** |
+| Signoff | **approved** |
+| Delivered | Draft-only finalize; owner-gated publish helper sets final copy + GitHub Latest and verifies `/releases/latest` |
+| Not done | No 1.0.8 PATCH; no new Studio version |
+| Signoff | `docs/workflow/reviews/2026-08-21-studio-release-latest-and-final-copy-gates-signoff.md` |
+
+## 2026-08-21 - Studio 1.0.8 PUBLISHED — SIGNOFF / CLOSED
+
+| Item | Status |
+|------|--------|
+| Goal | `studio-1.0.8-release-preparation` — **DONE** |
+| Signoff | **approved_with_notes** |
+| Release | [`v1.0.8`](https://github.com/roasted-garlic/freshprints/releases/tag/v1.0.8) / **374575547** @ `3210190` |
+| Smoke | Windows + Mac arm64 + Mac x64 **PASS** |
+| Includes vs 1.0.7 | Print Request list-split/sizing (PR #84 Git); Updates overlay, full-ID search, Load more hide, tag close (PR #85) |
+| Not done | App Hosting; A2 Mac signing |
+| Signoff | `docs/workflow/reviews/2026-08-21-studio-1.0.8-release-preparation-signoff.md` |
+
+## 2026-08-21 - Promote Studio polish to production — SIGNOFF / CLOSED (Git)
+
+| Item | Status |
+|------|--------|
+| Goal | `promote-studio-updater-design-id-search-tag-picker-polish-to-production` — **DONE** |
+| Signoff | **approved_with_notes** |
+| PR | #85 **merged** @ `97d6d49dd5e2c8cad64ae38b9f883334f56e2f76` |
+| Delivered | Production Git has Studio Updates overlay, full-ID search, short-page Load more hide, tag close-after-select |
+| Not done | App Hosting, Functions, indexes, Studio version/publish |
+| Published Studio | still **1.0.7** |
+| Signoff | `docs/workflow/reviews/2026-08-21-promote-studio-updater-design-id-search-tag-picker-polish-to-production-signoff.md` |
+
 ## 2026-08-21 - Studio updater / design ID search / tag picker polish — SIGNOFF / CLOSED (DEV)
+
 
 | Item | Status |
 |------|--------|

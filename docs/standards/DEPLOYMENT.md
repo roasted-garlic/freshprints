@@ -1175,9 +1175,35 @@ Canonical Mac filenames (space-free, arch-explicit):
 - **Environment bake:** Both platform jobs call `apps/studio/scripts/write-studio-release-env.mjs` with the same stable fail-closed rules (`fresh-prints-prod`, Algolia `Z1FVCM5QUX` / `portal_catalog_ready_prod`, search-only key).
 - **sharp:** Each Mac arch installs matching `darwin-${arch}` sharp before package and verifies load + native path via `verify-packaged-mac-sharp.mjs` (`asarUnpack` for `sharp` / `@img`).
 - **Minimum OS:** `minimumSystemVersion: 11.0` (Big Sur). Do not raise above Big Sur without an owner decision. Electron 30 supports macOS 10.15+.
-- **Publication:** Finalize creates/updates a **draft** only after production merge (`stable`). Publishing remains a separate human checkpoint after **Windows + Mac x64 + Mac arm64** smoke (Mac = manual install path).
+- **Publication:** Finalize creates/updates a **draft** only after production merge (`stable`). Draft copy may include a `DRAFT — do not publish…` warning. Publishing remains a separate human checkpoint after **Windows + Mac x64 + Mac arm64** smoke (Mac = manual install path) and owner `APPROVE STUDIO PUBLISH: X.Y.Z`.
 - **Same-SHA rule:** Finalize refuses mixed Windows/Mac SHAs. Rebuild all platforms after any production merge that changes packaging source; do not publish a Windows-only draft from an older SHA as final.
 - **Pre-merge validation:** Dispatch `release_type=prerelease` (or any non-stable) from a branch to package and verify without creating/mutating GitHub Releases.
+
+### Stable publish helper (2026-08-21)
+
+Do **not** publish with `gh api -X PATCH … -f draft=false` alone. That leaves draft warning copy and may skip GitHub **Latest**.
+
+After owner `APPROVE STUDIO PUBLISH: X.Y.Z` and Windows + Mac arm64 + Mac x64 smoke **PASS**:
+
+```bash
+node .github/scripts/publish-studio-stable-github-release.mjs \
+  --release-id <id> \
+  --version X.Y.Z \
+  --sha <40-character-build-sha>
+```
+
+The helper PATCHes `draft=false`, `make_latest=true`, and **final** release copy (version, platforms, source SHA, Windows auto-update, Mac `internal-unsigned` / manual DMG). It then fail-closed verifies:
+
+| Check | Required |
+|-------|----------|
+| `draft` | `false` |
+| `name` / version | `X.Y.Z` |
+| `target_commitish` | exact build SHA |
+| asset count | **8** |
+| GitHub Latest | `GET /releases/latest` `id` equals this release |
+| body | no `DRAFT` / `do not publish` (or equivalent) |
+
+A stable Studio release is **not** signoff-complete until that checklist is recorded. Raw PATCH or GitHub UI “publish draft” without Latest + final copy is insufficient.
 
 Never commit signing material (certificates, passwords, base64 PFX data) to the repository — CI
 encrypted secrets only, for the Windows `signed` path (and any future Mac Developer ID path if owner revisits).
@@ -1218,6 +1244,7 @@ Report under `docs/workflow/reviews/`.
 
 | Date | Summary |
 |------|---------|
+| 2026-08-21 | Stable Studio publish helper: GitHub Latest + final release copy; draft-only finalize unchanged |
 | 2026-07-08 | Phase 8 closeout — Portal App Hosting, build commands, Portal functions deploy note |
 | 2026-07-16 | Provider-neutral Resend invitations + proof-ready outbox; selective dev deploy checkpoint |
 | 2026-06-24 | Git artifact cleanup; Storage deploy commands; packaging icon note |
