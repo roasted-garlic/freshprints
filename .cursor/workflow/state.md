@@ -29,10 +29,10 @@ no
 yes
 
 ## Human Checkpoint Reason
-1.0.8 pins implemented and tests passed. STOP before production PR. Await `APPROVE CREATE PRODUCTION PR: studio-1.0.8-release-preparation`.
+1.0.8 pins committed on development as `3fcd2b7`. STOP before production PR. Await `APPROVE CREATE PRODUCTION PR: studio-1.0.8-release-preparation`.
 
 ## Allowed Actions
-read docs; commit/push development pin commit if not yet pushed; wait for production PR phrase
+read docs; wait for production PR phrase
 
 ## Forbidden Actions
 create/merge production PR; dispatch/publish Studio release; App Hosting/Functions/Rules/index deploys; Phase 9; new worktrees/branches; force-push; direct-push production
@@ -47,19 +47,19 @@ docs/workflow/reviews/2026-08-21-studio-1.0.8-release-preparation-review.md
 docs/workflow/reviews/2026-08-21-studio-1.0.8-release-preparation-test-report.md
 
 ## Checkout
-C:\coding\fresh-prints on development @ 82acfad
+C:\coding\fresh-prints on development @ 3fcd2b7
 
 ## origin/development
-82acfadb57392c7f56e1f0c3ff4d85c0bb4a85e8
+pending push of 3fcd2b7
 
 ## origin/production
 97d6d49dd5e2c8cad64ae38b9f883334f56e2f76
 
 ## Last Completed Step
-1.0.8 pins implemented. Automated checks **passed**.
+Committed `3fcd2b7` — 1.0.8 version pins. Tests **passed**.
 
 ## Next Required Step
-Commit + push development, then await `APPROVE CREATE PRODUCTION PR: studio-1.0.8-release-preparation`
+Push `development`, then await `APPROVE CREATE PRODUCTION PR: studio-1.0.8-release-preparation`
 
 ## Phase 9
 PARKED
@@ -68,4 +68,4 @@ PARKED
 promote-print-request-correctives-to-production — Gate D LIVE. Not reopened.
 
 ## Decision Log
-- 2026-08-21: Owner `APPROVE IMPLEMENT: studio-1.0.8-release-preparation`. Pins 1.0.8. Tests passed (signing-policy 27, tsc, lint, vite).
+- 2026-08-21: Owner `APPROVE IMPLEMENT: studio-1.0.8-release-preparation`. Pins 1.0.8. Tests passed. Commit `3fcd2b7`.
