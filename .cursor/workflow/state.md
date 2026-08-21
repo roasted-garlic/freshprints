@@ -1,11 +1,11 @@
 ## Current Goal
-studio-1.0.8-release-preparation
+studio-release-latest-and-final-copy-gates
 
 ## Current Mode
 managed-phase
 
 ## Phase
-test
+signoff
 
 ## Plan Status
 complete
@@ -20,46 +20,37 @@ complete
 passed
 
 ## Signoff Status
-pending
+approved
 
 ## DONE
-no
-
-## Human Checkpoint Required
 yes
 
-## Human Checkpoint Reason
-1.0.8 pins committed on development as `3fcd2b7`. STOP before production PR. Await `APPROVE CREATE PRODUCTION PR: studio-1.0.8-release-preparation`.
+## Human Checkpoint Required
+no
 
 ## Allowed Actions
-read docs; wait for production PR phrase
+read docs; idle until next owner goal
 
 ## Forbidden Actions
-create/merge production PR; dispatch/publish Studio release; App Hosting/Functions/Rules/index deploys; Phase 9; new worktrees/branches; force-push; direct-push production
+publish GitHub Releases without `APPROVE STUDIO PUBLISH` + publish helper; App Hosting/Functions/Rules/index deploys without a new owner phrase; Phase 9; force-push; direct-push production; new worktrees/branches
 
 ## Plan
-docs/workflow/plans/2026-08-21-studio-1.0.8-release-preparation-plan.md
+docs/workflow/plans/2026-08-21-studio-release-latest-and-final-copy-gates-plan.md
 
 ## Review
-docs/workflow/reviews/2026-08-21-studio-1.0.8-release-preparation-review.md
+docs/workflow/reviews/2026-08-21-studio-release-latest-and-final-copy-gates-review.md
 
 ## Test Report
-docs/workflow/reviews/2026-08-21-studio-1.0.8-release-preparation-test-report.md
+docs/workflow/reviews/2026-08-21-studio-release-latest-and-final-copy-gates-test-report.md
 
-## Checkout
-C:\coding\fresh-prints on development @ 3fcd2b7
-
-## origin/development
-pending push of 3fcd2b7
-
-## origin/production
-97d6d49dd5e2c8cad64ae38b9f883334f56e2f76
+## Signoff
+docs/workflow/reviews/2026-08-21-studio-release-latest-and-final-copy-gates-signoff.md
 
 ## Last Completed Step
-Committed `3fcd2b7` — 1.0.8 version pins. Tests **passed**.
+Signoff **approved**. Latest + final-copy gates shipped. 1.0.8 not edited.
 
 ## Next Required Step
-Push `development`, then await `APPROVE CREATE PRODUCTION PR: studio-1.0.8-release-preparation`
+Idle. Future Studio publish: `APPROVE STUDIO PUBLISH: X.Y.Z` then the publish helper.
 
 ## Phase 9
 PARKED
@@ -68,4 +59,4 @@ PARKED
 promote-print-request-correctives-to-production — Gate D LIVE. Not reopened.
 
 ## Decision Log
-- 2026-08-21: Owner `APPROVE IMPLEMENT: studio-1.0.8-release-preparation`. Pins 1.0.8. Tests passed. Commit `3fcd2b7`.
+- 2026-08-21: Owner `APPROVE IMPLEMENT`. Tests 36/36 + lint. Signoff **approved**. No live GitHub publish.

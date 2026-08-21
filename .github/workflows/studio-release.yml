@@ -530,6 +530,10 @@ jobs:
           ref: ${{ needs.build-windows.outputs.build_sha }}
           fetch-depth: 0
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.STUDIO_NODE_VERSION }}
+
       - name: Download Windows artifacts
         uses: actions/download-artifact@v4
         with:
@@ -625,6 +629,7 @@ jobs:
 
           TAG="v${VERSION}"
           SHORT_SHA="$(echo "$BUILD_SHA" | cut -c1-7)"
+          DRAFT_BODY="$(node .github/scripts/studio-github-release-copy.mjs draft "$VERSION" "$BUILD_SHA")"
           # Prefer an existing draft already pinned to this exact build SHA (any tag).
           # Do NOT match historical drafts by tag/name alone (369361779 / accidental branch drafts).
           RELEASE_ID="$(gh api "repos/${{ github.repository }}/releases" --paginate \
@@ -648,9 +653,15 @@ jobs:
               -f target_commitish="$BUILD_SHA" \
               -F draft=true \
               -F prerelease=false \
-              -f body="Fresh Prints Studio ${VERSION} (Windows + Mac x64 + Mac arm64). DRAFT — do not publish until dual-platform smoke passes. Build ${BUILD_SHA}." \
+              -f body="$DRAFT_BODY" \
               --jq '.id')"
           fi
+
+          # Keep draft warning on reused same-SHA drafts. Do not publish or mark Latest here.
+          gh api --method PATCH "repos/${{ github.repository }}/releases/${RELEASE_ID}" \
+            -F draft=true \
+            -f body="$DRAFT_BODY" \
+            >/dev/null
 
           RELEASE_META="$(gh api "repos/${{ github.repository }}/releases/${RELEASE_ID}")"
           AFTER="$(echo "$RELEASE_META" | jq -r '.target_commitish')"
