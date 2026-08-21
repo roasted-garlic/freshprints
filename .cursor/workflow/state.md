@@ -44,7 +44,7 @@ docs/workflow/plans/2026-08-20-studio-print-request-customer-internal-list-split
 docs/workflow/reviews/2026-08-20-studio-print-request-customer-internal-list-split-review.md
 
 ## Checkout
-C:\coding\fresh-prints on development @ 4865c2b
+C:\coding\fresh-prints on development @ bdadd30
 
 ## Production Signoff
 docs/workflow/reviews/2026-08-18-portal-pr-83-production-signoff.md
@@ -78,10 +78,10 @@ docs/workflow/reviews/2026-08-21-studio-print-request-customer-internal-list-spl
 docs/workflow/reviews/2026-08-21-studio-print-request-customer-internal-list-split-signoff.md
 
 ## Last Completed Step
-Signoff approved. Goal `studio-print-request-customer-internal-list-split` CLOSED (DEV). Owner Studio QA `PASS`.
+Committed `bdadd30` on `development`. Goal CLOSED (DEV). No production.
 
 ## Next Required Step
-IDLE. Await next owner goal. Commit on `development` when requested. Production index / Studio release later.
+IDLE. Await next owner goal. Production index / Studio release later.
 
 ## Tests Run
 2026-08-21: list-split unit 50 pass; sizing+Add Designs 38 pass; Studio `tsc --noEmit` 0; `npm run lint` 0; `firebase deploy --only firestore:indexes --project fresh-prints-dev` 0. Owner QA `PASS`.
@@ -96,7 +96,7 @@ CLOSED/LIVE — 7350bc42e206c0aa000768e3595f06406433a26b; production `99b2303`
 CLOSED (DEV) — `4865c2b` on `development`; signoff `docs/workflow/reviews/2026-08-20-print-request-shared-sizing-and-queue-integrity-signoff.md`
 
 ## studio-print-request-customer-internal-list-split
-CLOSED (DEV) — uncommitted on `development`; signoff `docs/workflow/reviews/2026-08-21-studio-print-request-customer-internal-list-split-signoff.md`; owner QA `PASS`
+CLOSED (DEV) — `bdadd30` on `development`; signoff `docs/workflow/reviews/2026-08-21-studio-print-request-customer-internal-list-split-signoff.md`; owner QA `PASS`
 
 ## portal-tag-alias-search-discoverability
 QUEUED ONLY, not activated
@@ -113,8 +113,7 @@ fresh-prints-portal-build-2026-08-19-001 @ 99b230333efd9a4892f8c4a30ccf72008baf2
 ## Rollback
 fresh-prints-portal-build-2026-08-18-001 @ cb006bd5a21580cccf89d6c1d13d31f07633c51f
 
-## Decision Log
-- 2026-08-21: Owner Studio QA `PASS`. Signoff **approved**. Goal `studio-print-request-customer-internal-list-split` CLOSED (DEV). No production. IDLE.
+- 2026-08-21: Committed and pushed `bdadd30` to `development`. No production promotion, production index, or Studio release.
 - 2026-08-21: Owner QA visual: Customer/Internal kind switcher restyled to match Users page Staff/Customers segmented control. Lifecycle pills unchanged. Checkpoint still open for remaining list-split QA.
 - 2026-08-21: Implement complete. Automated Test passed. Composite index deployed to `fresh-prints-dev` only. STOP for owner Studio QA. No production.
 - 2026-08-21: Owner `APPROVE IMPLEMENT: studio-print-request-customer-internal-list-split` and `APPROVE DEV INDEX` for `isInternal + queueTab + updatedAt DESC + __name__ DESC` on `fresh-prints-dev` only. No known missing-`isInternal` docs; do not scan/backfill. If count query is unserved or missing-field records appear, STOP. No production.

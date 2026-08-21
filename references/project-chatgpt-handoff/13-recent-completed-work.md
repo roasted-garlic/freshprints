@@ -8,7 +8,7 @@
 | Signoff | **approved** |
 | Owner QA | Studio QA **`PASS`** |
 | Delivered | Studio `/print-requests` splits Customer vs Internal on persisted `isInternal` (default Customer Requests); lifecycle tabs/search/create/Show Queue unchanged; kind switcher matches Users page; DEV composite index only (ADR-FP-140) |
-| Checkout | `development` @ **`4865c2b`** (this goal **uncommitted**) |
+| Checkout | `development` @ **`bdadd30`** |
 | Production | Not promoted. Production index / Studio release later. |
 | Signoff | `docs/workflow/reviews/2026-08-21-studio-print-request-customer-internal-list-split-signoff.md` |
 

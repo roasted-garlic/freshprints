@@ -7,7 +7,7 @@
 | Managed goal | `studio-print-request-customer-internal-list-split` — **CLOSED (DEV)** |
 | Signoff | **approved** — `docs/workflow/reviews/2026-08-21-studio-print-request-customer-internal-list-split-signoff.md` |
 | Owner QA | Studio list-split QA **`PASS`** |
-| Checkout | `C:\coding\fresh-prints` on **`development`** @ **`4865c2b`** (this goal **uncommitted**) |
+| Checkout | `C:\coding\fresh-prints` on **`development`** @ **`bdadd30`** |
 | Delivered | Studio `/print-requests` Customer vs Internal lists via `isInternal`; default Customer Requests; lifecycle tabs preserved; Users-page kind switcher; DEV index `isInternal + queueTab + updatedAt + __name__` (ADR-FP-140) |
 | Production | **Not** promoted. Index is `fresh-prints-dev` only. No Studio/Portal/Functions/Rules release. |
 | Workflow | **IDLE** |
