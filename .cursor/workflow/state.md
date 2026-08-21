@@ -1,11 +1,11 @@
 ## Current Goal
-studio-updater-design-id-search-tag-picker-polish
+studio-1.0.8-release-preparation
 
 ## Current Mode
 managed-phase
 
 ## Phase
-signoff
+test
 
 ## Plan Status
 complete
@@ -20,59 +20,52 @@ complete
 passed
 
 ## Signoff Status
-approved
+pending
 
 ## DONE
-yes
-
-## Human Checkpoint Required
 no
 
+## Human Checkpoint Required
+yes
+
+## Human Checkpoint Reason
+1.0.8 pins committed on development as `3fcd2b7`. STOP before production PR. Await `APPROVE CREATE PRODUCTION PR: studio-1.0.8-release-preparation`.
+
 ## Allowed Actions
-read docs; idle until next owner goal
+read docs; wait for production PR phrase
 
 ## Forbidden Actions
-Studio version bump/publish without a new owner phrase; production PR; Portal/Functions/Rules/index deploys; Phase 9; reopen parked Print Request promotion without owner instruction; new worktrees/branches; force-push; direct-push production
+create/merge production PR; dispatch/publish Studio release; App Hosting/Functions/Rules/index deploys; Phase 9; new worktrees/branches; force-push; direct-push production
 
 ## Plan
-docs/workflow/plans/2026-08-21-studio-updater-design-id-search-tag-picker-polish-plan.md
+docs/workflow/plans/2026-08-21-studio-1.0.8-release-preparation-plan.md
 
 ## Review
-docs/workflow/reviews/2026-08-21-studio-updater-design-id-search-tag-picker-polish-review.md
+docs/workflow/reviews/2026-08-21-studio-1.0.8-release-preparation-review.md
 
 ## Test Report
-docs/workflow/reviews/2026-08-21-studio-updater-design-id-search-tag-picker-polish-test-report.md
-
-## Manual Checkpoint
-docs/workflow/reviews/2026-08-21-studio-updater-design-id-search-tag-picker-polish-manual-checkpoint.md
-
-## Signoff
-docs/workflow/reviews/2026-08-21-studio-updater-design-id-search-tag-picker-polish-signoff.md
+docs/workflow/reviews/2026-08-21-studio-1.0.8-release-preparation-test-report.md
 
 ## Checkout
-C:\coding\fresh-prints on development @ 445ab13
+C:\coding\fresh-prints on development @ 3fcd2b7
 
 ## origin/development
-eaf52e7265c9dbc3f1a82782380f9b899ebbe9a7
+pending push of 3fcd2b7
 
 ## origin/production
-7716d4a97f83c2dbe5602fb3e149875d6d7f38c9
+97d6d49dd5e2c8cad64ae38b9f883334f56e2f76
 
 ## Last Completed Step
-Committed `445ab13` on `development`. Goal CLOSED (DEV). Studio version not bumped.
+Committed `3fcd2b7` — 1.0.8 version pins. Tests **passed**.
 
 ## Next Required Step
-Idle. Do not bump Studio version unless owner starts a release goal. Parked Print Request promotion still awaits Portal QA and/or `APPROVE STUDIO VERSION`.
+Push `development`, then await `APPROVE CREATE PRODUCTION PR: studio-1.0.8-release-preparation`
 
 ## Phase 9
 PARKED
 
 ## Paused Goal
-promote-print-request-correctives-to-production — Gate D LIVE (`fresh-prints-portal-build-2026-08-21-001` @ `7716d4a` 100%). Awaiting owner Portal QA and/or `APPROVE STUDIO VERSION`. Not reopened by this signoff.
+promote-print-request-correctives-to-production — Gate D LIVE. Not reopened.
 
 ## Decision Log
-- 2026-08-21: Owner `APPROVE IMPLEMENT: studio-updater-design-id-search-tag-picker-polish`.
-- 2026-08-21: Implemented portal overlay, bounded exact-ID search, tag-picker close.
-- 2026-08-21: Owner QA FAIL — ID search (1 result) still showed Load more. Fixed via `deriveManagedCatalogHasMore`.
-- 2026-08-21: Owner `AL PASS` (all pass). Signoff **approved**. Studio version not bumped.
-- 2026-08-21: Committed `445ab13` on `development`.
+- 2026-08-21: Owner `APPROVE IMPLEMENT: studio-1.0.8-release-preparation`. Pins 1.0.8. Tests passed. Commit `3fcd2b7`.
