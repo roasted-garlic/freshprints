@@ -47,10 +47,10 @@ docs/workflow/reviews/2026-08-21-studio-release-latest-and-final-copy-gates-test
 docs/workflow/reviews/2026-08-21-studio-release-latest-and-final-copy-gates-signoff.md
 
 ## Last Completed Step
-Signoff **approved**. Latest + final-copy gates shipped. 1.0.8 not edited.
+Residual signed-off workflow artifacts committed on development. Paused Print Request promotion records included (Gate D LIVE, Portal QA pending). No production PR. 1.0.8 not edited.
 
 ## Next Required Step
-Idle. Future Studio publish: `APPROVE STUDIO PUBLISH: X.Y.Z` then the publish helper.
+Idle. Do not create a production PR until the owner asks. Future Studio publish: `APPROVE STUDIO PUBLISH: X.Y.Z` then the publish helper.
 
 ## Phase 9
 PARKED
@@ -59,4 +59,5 @@ PARKED
 promote-print-request-correctives-to-production — Gate D LIVE. Not reopened.
 
 ## Decision Log
+- 2026-08-21: Residual closeout on development — Print Request promotion records (paused Gate D), Studio polish PR #85 signoff artifacts, Studio 1.0.8 publish records. No 1.0.8 mutation. No production PR.
 - 2026-08-21: Owner `APPROVE IMPLEMENT`. Tests 36/36 + lint. Signoff **approved**. No live GitHub publish.

@@ -1,5 +1,7 @@
 # Features Inventory
 
+> 2026-08-21: Studio **1.0.8** is the published desktop release (Windows updater + Mac unsigned DMGs). Includes Customer/Internal Print Requests, Updates overlay, full-ID search, Load more hide, tag close-after-select.
+
 ## Fresh Prints Studio
 
 ### Authentication
