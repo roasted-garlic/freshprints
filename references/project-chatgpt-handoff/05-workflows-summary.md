@@ -31,7 +31,8 @@ Attach ready uploads to the working print request
     ↓
 On the request page: set quantity + print size (default ~10″ wide)
   - Soft warning if 200–299 DPI
-  - HARD BLOCK save if < 200 DPI (ADR-FP-075)
+  - HARD BLOCK save if < 200 DPI or either side > 22″ (ADR-FP-075)
+  - ADR-FP-080 approved-max is **not** a later manual-save ceiling
     ↓
 Current Request drawer: **Review & Add to Show** (non-empty working request also shows **Needs a show**)
     ↓
@@ -94,8 +95,9 @@ Two independent lifecycles on the upload: `technicalStatus` (processing quality)
 /print-requests → create internal or customer request
     ↓
 Add approved catalog designs via Design Library selection mode
+  (existing request items are preserved; only newly selected designs are created)
     ↓
-Edit qty/size (same DPI floor as Portal: ≥ 200 to save)
+Edit qty/size (same DPI floor as Portal: ≥ 200 to save, ≤ 22″)
     ↓
 Attach to Show Queue / upcoming show
 ```
@@ -114,6 +116,7 @@ Production timer → Printing tab for customers
 Export zip (300 DPI) and/or auto-nested gang sheet PNGs
     ↓
 Finish → terminal allocations + exact request completion
+    (Past + Printing Whatnot shows also Finish automatically or via Mark Complete — ADR-FP-139)
     ↓
 Studio locks/places completed requests; Portal shows Printed
 ```

@@ -48,10 +48,11 @@ describe("print request oversized selection initialization", () => {
       defaultPrintWidthInches: 30,
     });
 
-    // 22″ height would be 5.5″ wide (~182 DPI); clamp further to the 200 DPI floor → 5″ × 20″.
+    // 22″ height would be 5.5″ wide (~182 DPI). 200 DPI floor is 5″ × 20″, then ADR-FP-080
+    // approved-max (~3.33″ at 300 DPI) still clamps the initial default.
     assert.deepEqual(result, {
-      printWidthInches: 5,
-      printHeightInches: 20,
+      printWidthInches: 3.33,
+      printHeightInches: 13.32,
     });
     assert.equal(
       assessPrintRequestItemSize({

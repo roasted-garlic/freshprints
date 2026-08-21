@@ -25,6 +25,7 @@ import { UpcomingShowDeletionDialog } from "../components/UpcomingShowDeletionDi
 import { useUpcomingShows } from "../hooks/useUpcomingShows";
 import { useShowAllocations } from "../hooks/useShowAllocations";
 import { useShowProductionTimer } from "../hooks/useShowProductionTimer";
+import { useStalePastPrintingShowReconciliation } from "../hooks/useStalePastPrintingShowReconciliation";
 import { useShowQueueSettings } from "../hooks/useShowQueueSettings";
 import {
   DEFAULT_GANG_SHEET_GUTTER_INCHES,
@@ -371,13 +372,40 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
     );
   }, [queueSurface, shows]);
 
-  const showsByScheduleTab = useMemo(() => {
-    const now = new Date();
-    return {
-      upcoming: filterShowsByScheduleTab(surfaceShows, "upcoming", now),
-      past: filterShowsByScheduleTab(surfaceShows, "past", now),
+  const hasPrintingWhatnotShow = useMemo(
+    () =>
+      surfaceShows.some(
+        (show) => show.source === "whatnot" && show.productionStatus === "printing",
+      ),
+    [surfaceShows],
+  );
+  const [scheduleNow, setScheduleNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const tick = () => setScheduleNow(new Date());
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        tick();
+      }
     };
-  }, [surfaceShows]);
+    window.addEventListener("focus", tick);
+    document.addEventListener("visibilitychange", onVisibility);
+    const intervalId = hasPrintingWhatnotShow ? window.setInterval(tick, 1000) : undefined;
+    return () => {
+      window.removeEventListener("focus", tick);
+      document.removeEventListener("visibilitychange", onVisibility);
+      if (intervalId !== undefined) {
+        window.clearInterval(intervalId);
+      }
+    };
+  }, [hasPrintingWhatnotShow]);
+
+  const showsByScheduleTab = useMemo(() => {
+    return {
+      upcoming: filterShowsByScheduleTab(surfaceShows, "upcoming", scheduleNow),
+      past: filterShowsByScheduleTab(surfaceShows, "past", scheduleNow),
+    };
+  }, [scheduleNow, surfaceShows]);
 
   const staffShowsByListTab = useMemo(() => {
     const current: typeof surfaceShows = [];
@@ -573,9 +601,9 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
   const isSelectedShowPast = useMemo(
     () =>
       selectedShow && !isStaffGangSheetShow(selectedShow)
-        ? isPastScheduledShow(selectedShow, new Date())
+        ? isPastScheduledShow(selectedShow, scheduleNow)
         : false,
-    [selectedShow],
+    [scheduleNow, selectedShow],
   );
   const selectedShowAllocationBlockReason = useMemo(() => {
     if (!selectedShow) {
@@ -588,9 +616,9 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
         maxTotalQuantity: selectedShow.maxTotalQuantity,
         allocatedQuantity: selectedShow.allocatedQuantity,
       },
-      new Date(),
+      scheduleNow,
     );
-  }, [selectedShow]);
+  }, [scheduleNow, selectedShow]);
   const canAddPrintRequestToSelectedShow = selectedShowAllocationBlockReason === null;
   const canShowAddRequestAction = canEnableAddRequestAction({
     isStaffGangSheet: isSelectedStaffGangSheet,
@@ -666,8 +694,10 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
   const productionTimer = useShowProductionTimer({
     show: selectedShow,
     hasActiveAllocations: hasActiveAllocationsForSelectedShow,
+    now: scheduleNow,
     onShowUpdated: handleProductionTimerUpdated,
   });
+  const stalePrintingReconciliation = useStalePastPrintingShowReconciliation(surfaceShows, scheduleNow);
 
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportMultiplyByQuantity, setExportMultiplyByQuantity] = useState(false);
@@ -1454,7 +1484,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                             }
                             variant="secondary"
                           >
-                            Mark finished
+                            Mark {productionTimer.isPastScheduledShow ? "Complete" : "finished"}
                           </Button>
                         ) : null}
                       </div>
@@ -1463,6 +1493,10 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                     {productionTimer.actionError ? (
                       <p className="print-requests-error show-production-timer-error" role="alert">
                         {productionTimer.actionError}
+                      </p>
+                    ) : stalePrintingReconciliation.error ? (
+                      <p className="print-requests-error show-production-timer-error" role="alert">
+                        {stalePrintingReconciliation.error}
                       </p>
                     ) : null}
                     {productionTimer.reconciliationRetryUiState !== "none" ? (
@@ -2330,12 +2364,16 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
             <ModalHeader>
               <div>
                 <p className="eyebrow">
-                  {completeConfirmKind === "staff_complete" ? "Mark complete" : "Mark finished"}
+                  {completeConfirmKind === "staff_complete" || productionTimer.isPastScheduledShow
+                    ? "Mark complete"
+                    : "Mark finished"}
                 </p>
                 <h3 id="complete-show-confirm-title">
                   {completeConfirmKind === "staff_complete"
                     ? `Mark "${formatUpcomingShowTitle(selectedShow)}" complete?`
-                    : `Mark "${formatUpcomingShowTitle(selectedShow)}" finished?`}
+                    : productionTimer.isPastScheduledShow
+                      ? `Mark "${formatUpcomingShowTitle(selectedShow)}" complete?`
+                      : `Mark "${formatUpcomingShowTitle(selectedShow)}" finished?`}
                 </h3>
               </div>
               <button
@@ -2409,7 +2447,9 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                     : "Mark Complete"
                   : productionTimer.isActionPending
                     ? "Finishing…"
-                    : "Mark finished"}
+                    : productionTimer.isPastScheduledShow
+                      ? "Mark Complete"
+                      : "Mark finished"}
               </Button>
             </ModalFooter>
           </Modal>

@@ -9,15 +9,11 @@ import type {
   PrintRequest,
   PrintRequestItem,
 } from "@fresh-prints/shared/types/printRequest/printRequest.types";
-import { isCatalogDesignPrintRequestItem } from "@fresh-prints/shared/utils/printRequestItemSource";
-
-interface SelectedDesignSelection {
-  quantity: number;
-  existingItemId?: string;
-  isExisting: boolean;
-}
-
-type SelectionState = Record<string, SelectedDesignSelection>;
+import {
+  buildDesignSelectionSavePayload,
+  buildSelectionStateFromRequestItems,
+  type SelectionState,
+} from "../utils/planPrintRequestDesignSelectionWrites";
 
 interface UsePrintRequestSelectionModeResult {
   error: string | null;
@@ -34,24 +30,6 @@ interface UsePrintRequestSelectionModeResult {
   removeDesign: (designId: string) => Promise<void>;
   saveSelections: () => Promise<void>;
   setQuantity: (designId: string, quantity: number) => void;
-}
-
-export function buildSelectionStateFromRequestItems(items: PrintRequestItem[]) {
-  const nextState: SelectionState = {};
-
-  for (const item of items) {
-    if (!isCatalogDesignPrintRequestItem(item) || !item.designId) {
-      continue;
-    }
-
-    nextState[item.designId] = {
-      quantity: item.quantity,
-      existingItemId: item.id,
-      isExisting: true,
-    };
-  }
-
-  return nextState;
 }
 
 function buildSelectionSignature(items: PrintRequestItem[]): string {
@@ -222,10 +200,7 @@ export function usePrintRequestSelectionMode(printRequestId: string | null): Use
       await printRequestService.savePrintRequestDesignSelections(
         user,
         printRequestId,
-        Object.entries(selectedDesigns).map(([designId, selection]) => ({
-          designId,
-          quantity: selection.quantity,
-        })),
+        buildDesignSelectionSavePayload(selectedDesigns),
       );
 
       await reloadPrintRequest();

@@ -275,45 +275,8 @@ export function assessPrintRequestItemSize(input: PrintRequestItemSizeInput): Pr
     };
   }
 
-  const approvedMaxWidth = resolveApprovedMaxWidthInches(input);
-  if (approvedMaxWidth !== null && input.printWidthInches > approvedMaxWidth + 1e-9) {
-    let approvedMaxHeight: number;
-    if (
-      typeof input.approvedMaxPrintHeightInches === "number" &&
-      Number.isFinite(input.approvedMaxPrintHeightInches) &&
-      input.approvedMaxPrintHeightInches > 0
-    ) {
-      approvedMaxHeight = roundInches(input.approvedMaxPrintHeightInches);
-    } else {
-      try {
-        approvedMaxHeight = calculateLockedHeightFromWidth(
-          input.pixelWidth,
-          input.pixelHeight,
-          approvedMaxWidth,
-        );
-      } catch {
-        return {
-          effectiveDpi: dpiResult.effectiveDpi,
-          qualityLevel,
-          qualityLabel,
-          canSave: false,
-          errorMessage: `Maximum print size for this artwork is ${approvedMaxWidth}″ wide. Larger sizes are disabled because they would require stretching the image beyond its approved quality limit.`,
-        };
-      }
-    }
-
-    return {
-      effectiveDpi: dpiResult.effectiveDpi,
-      qualityLevel,
-      qualityLabel,
-      canSave: false,
-      errorMessage: formatApprovedMaxPrintSizeMessage(
-        approvedMaxWidth,
-        approvedMaxHeight,
-        Boolean(input.wasUpscaled),
-      ),
-    };
-  }
+  // Manual sizing is ADR-FP-075 (200 DPI floor) + 22″ cap only. ADR-FP-080 approved-max
+  // envelopes clamp initial/default size and processing — they must not hard-block saves.
 
   if (qualityLevel === "below_minimum") {
     return {
@@ -331,7 +294,7 @@ export function assessPrintRequestItemSize(input: PrintRequestItemSizeInput): Pr
       qualityLevel,
       qualityLabel,
       canSave: true,
-      warningMessage: "Requested size is below 300 DPI. It can be saved, but print quality may be reduced.",
+      warningMessage: "Requested size is below 300 DPI. It can be printed, but quality may be reduced.",
     };
   }
 
@@ -341,6 +304,16 @@ export function assessPrintRequestItemSize(input: PrintRequestItemSizeInput): Pr
     qualityLabel,
     canSave: true,
   };
+}
+
+export function requireSavablePrintRequestItemSize(
+  input: PrintRequestItemSizeInput,
+): PrintRequestItemSizeAssessment {
+  const assessment = assessPrintRequestItemSize(input);
+  if (!assessment.canSave) {
+    throw new Error(assessment.errorMessage ?? "Requested print size is not valid.");
+  }
+  return assessment;
 }
 
 export function formatPrintRequestItemSizeLabel(printWidthInches: number, printHeightInches: number): string {

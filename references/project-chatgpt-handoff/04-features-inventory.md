@@ -15,12 +15,13 @@ ZIP/folder import; PNG validation; trim + upscale (ADR-FP-080 ≤6× toward 12�
 Processing / Needs Review / Rejected tabs; suggestions panel; approve/reject/skip; re-run AI; keyboard shortcuts; settings-driven model + tag exclusions; staff Halftone toggle (human-only; AI never auto-enables).
 
 ### Print Requests (`/print-requests`)
-Internal + customer requests; item qty/size autosave; DPI quality feedback; duplicate same design for other sizes; Design Library selection mode.
+Internal + customer requests; item qty/size autosave; DPI quality feedback; **manual save ≥200 DPI and ≤22″** (approved-max is initial/processing only); duplicate same design for other sizes; Design Library selection mode adds **new** catalog designs only (existing items keep ID/size/quantity).
 
 ### Show Queue (`/show-queue`)
 Upcoming/Past shows; capacity; attach requests; Working/Queued/Printing/Printed; Whatnot assisted
 import; zip export @ 300 DPI; auto-nested gang sheet PNG; Start/Pause/Resume/Finish production
-timer; terminal request reconciliation and completed locking; calendar picker; **Portal add-to-show
+timer; **Past + Printing Whatnot shows Finish automatically (or Mark Complete)** (ADR-FP-139);
+terminal request reconciliation and completed locking; calendar picker; **Portal add-to-show
 cutoff hours** setting (`portalQueueCutoffHoursBeforeStart`, ADR-FP-103). Owner QA v18 passed the
 full Studio lifecycle and dynamic Portal Printed state on 2026-07-29. Manual gang-sheet builder
 deferred.

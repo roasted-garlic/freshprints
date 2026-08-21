@@ -1,5 +1,21 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-20 — print-request-shared-sizing-and-queue-integrity — SIGNOFF APPROVED (DEV) / CLOSED
+
+| Item | Value |
+|-------|-------|
+| Managed goal | `print-request-shared-sizing-and-queue-integrity` — **CLOSED (DEV)** |
+| Signoff | **approved** — `docs/workflow/reviews/2026-08-20-print-request-shared-sizing-and-queue-integrity-signoff.md` |
+| Owner QA | Combined DEV QA **`PASS`** |
+| Checkout | `C:\coding\fresh-prints` on **`development`** (**uncommitted**) |
+| Delivered | Manual save 200 DPI + 22″; persist/queue barriers; export requested inches; Past+Printing Finish + Mark Complete (ADR-FP-139); Studio Add Designs item-id save |
+| Production | **Not** promoted. Functions deploy later. |
+| Workflow | **IDLE** |
+| Phase 9 | **PARKED** |
+| Tag-alias | QUEUED ONLY |
+
+---
+
 ## 2026-08-18 — PR #83 Portal add-to-show + design analytics — PRODUCTION LIVE / CLOSED
 
 | Item | Value |

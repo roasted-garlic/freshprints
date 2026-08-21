@@ -9,6 +9,7 @@ import {
   filterShowsByScheduleTab,
   getShowScheduleTab,
   isPastScheduledShow,
+  isStalePastPrintingWhatnotShow,
   resolveScheduleTabForStillExistingSelection,
   resolveVisibleShowSelection,
 } from "./showScheduleGrouping";
@@ -198,6 +199,66 @@ describe("resolveScheduleTabForStillExistingSelection (Plan Section 29.4)", () =
       resolveScheduleTabForStillExistingSelection(shows, "show-1", "upcoming", now),
       null,
       "no reclassification occurred, so this must be a no-op regardless of navigation history",
+    );
+  });
+});
+
+describe("isStalePastPrintingWhatnotShow", () => {
+  const now = new Date("2026-07-05T12:00:00Z");
+
+  it("is false for an upcoming Printing Whatnot show", () => {
+    const show = buildShow({
+      productionStatus: "printing",
+      scheduledStartAt: timestamp("2026-07-05T12:00:01Z"),
+    });
+    assert.equal(isStalePastPrintingWhatnotShow(show, now), false);
+  });
+
+  it("is true at the exact Past boundary when still Printing", () => {
+    const show = buildShow({
+      productionStatus: "printing",
+      scheduledStartAt: timestamp("2026-07-05T12:00:00Z"),
+    });
+    assert.equal(isStalePastPrintingWhatnotShow(show, now), true);
+  });
+
+  it("is false for Past Open, completed, canceled, archived, and Staff Gang Sheets", () => {
+    const past = timestamp("2026-07-05T11:00:00Z");
+    assert.equal(
+      isStalePastPrintingWhatnotShow(buildShow({ productionStatus: "open", scheduledStartAt: past }), now),
+      false,
+    );
+    assert.equal(
+      isStalePastPrintingWhatnotShow(
+        buildShow({ productionStatus: "completed", scheduledStartAt: past }),
+        now,
+      ),
+      false,
+    );
+    assert.equal(
+      isStalePastPrintingWhatnotShow(
+        buildShow({ productionStatus: "canceled", scheduledStartAt: past }),
+        now,
+      ),
+      false,
+    );
+    assert.equal(
+      isStalePastPrintingWhatnotShow(
+        buildShow({ productionStatus: "archived", scheduledStartAt: past }),
+        now,
+      ),
+      false,
+    );
+    assert.equal(
+      isStalePastPrintingWhatnotShow(
+        buildShow({
+          source: "staff_gang_sheet",
+          productionStatus: "printing",
+          scheduledStartAt: past,
+        }),
+        now,
+      ),
+      false,
     );
   });
 });

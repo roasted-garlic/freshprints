@@ -11,6 +11,7 @@ import {
   setDoc,
   updateDoc,
   where,
+  runTransaction,
   writeBatch,
   type DocumentData,
   type Unsubscribe,
@@ -39,7 +40,7 @@ import {
 import { canRemoveRequestFromShow } from "@fresh-prints/shared/utils/showQueueEditability";
 import { computeElapsedPrintMs } from "@fresh-prints/shared/utils/showPrintTimer";
 import { buildShowAllocationSourceFields } from "@fresh-prints/shared/utils/showAllocationSourceFields";
-import { printRequestService } from "../../print-requests/services/printRequestService";
+import { printRequestService, assertPersistedPrintRequestItemSize } from "../../print-requests/services/printRequestService";
 import type { ShowReconciliationReadSource } from "../../print-requests/services/printRequestService";
 import type {
   ShowProductionStatus,
@@ -75,6 +76,7 @@ import {
 import { showQueueSettingsService } from "./showQueueSettingsService";
 import { ProductionDiagnosticWarningDeduper } from "../utils/productionDiagnosticWarningDeduper";
 import { reconcileShowCompletionWithCommittedVerification } from "../utils/postFinishCommittedVerification";
+import { resolveShowFinishMutationPlan } from "../utils/showFinishMutationPlan";
 import {
   planWhatnotImportExistingShowUpdate,
   type WhatnotImportUpdateInput,
@@ -1326,6 +1328,8 @@ export const upcomingShowService = {
       throw new Error("Print request item not found.");
     }
 
+    const requestedSize = await assertPersistedPrintRequestItemSize(caller, requestItem);
+
     const now = new Date();
     const blockReason = getShowAllocationBlockReason(
       {
@@ -1371,8 +1375,8 @@ export const upcomingShowService = {
         customerUploadId: requestItem.customerUploadId,
         titleSnapshot: requestItem.titleSnapshot,
         quantity: requestItem.quantity,
-        printWidthInches: requestItem.printWidthInches,
-        printHeightInches: requestItem.printHeightInches,
+        printWidthInches: requestedSize.printWidthInches,
+        printHeightInches: requestedSize.printHeightInches,
         sizeLabel: requestItem.sizeLabel,
       },
     });
@@ -1885,7 +1889,8 @@ export const upcomingShowService = {
       );
     }
 
-    if (show.productionStatus !== "printing") {
+    const finishPlan = resolveShowFinishMutationPlan(show.productionStatus);
+    if (finishPlan === "reject") {
       throw new Error("Start printing on this show before marking it finished.");
     }
 
@@ -1894,7 +1899,7 @@ export const upcomingShowService = {
         allocation.status !== "canceled" && FINISHABLE_ALLOCATION_STATUSES.includes(allocation.status),
     );
 
-    if (allocationsToFinish.length === 0) {
+    if (finishPlan === "mutate" && allocationsToFinish.length === 0) {
       throw new Error("There are no active allocations to finish on this show.");
     }
 
@@ -1904,94 +1909,123 @@ export const upcomingShowService = {
       nowMs: Date.now(),
     });
 
-    const batch = writeBatch(db);
-    const operationManifest = {
-      actionName: "finish",
-      phase: "mutation",
-      projectId: db.app.options.projectId ?? "unknown-project",
-      staffRole: caller.role,
-      isActive: caller.isActive,
-      showId: upcomingShowId,
-      operationCount: allocationsToFinish.length + 1,
-      operations: [
-        {
-          operationIndex: 1,
-          type: "update",
-          pathTemplate: "upcomingShows/{upcomingShowId}",
-          documentId: upcomingShowId,
-          changedFields: ["productionStatus", "accumulatedPrintMs", "activePrintStartedAt", "printPausedAt",
-            "printFinishedAt", "printFinishedBy", "updatedBy", "updatedAt"],
-          existingProductionStatus: show.productionStatus,
-          proposedProductionStatus: "completed",
-          parserStatus: showDiagnostic.parserStatus,
-          missingRequiredFields: showDiagnostic.missingRequiredFields,
-          legacyExtraFields: showDiagnostic.legacyExtraFields,
-        },
-        ...allocationsToFinish.map(({ allocation, diagnostic }, index) => ({
-          operationIndex: index + 2,
-          type: "update",
-          pathTemplate: "showAllocations/{showAllocationId}",
-          documentId: allocation.id,
-          changedFields: ["status", "completedAt", "completedBy", "updatedBy", "updatedAt"],
-          existingProductionStatus: allocation.status,
-          proposedProductionStatus: "done",
-          parserStatus: diagnostic.parserStatus,
-          missingRequiredFields: diagnostic.missingRequiredFields,
-          legacyExtraFields: diagnostic.legacyExtraFields,
-        })),
-      ],
-    } as const;
-    if (import.meta.env.DEV) {
-      console.info("[upcomingShowService] production timer operation manifest", operationManifest);
-    }
+    let didMutateShow = finishPlan === "mutate";
+    if (finishPlan === "mutate") {
+      const operationManifest = {
+        actionName: "finish",
+        phase: "mutation",
+        projectId: db.app.options.projectId ?? "unknown-project",
+        staffRole: caller.role,
+        isActive: caller.isActive,
+        showId: upcomingShowId,
+        operationCount: allocationsToFinish.length + 1,
+        operations: [
+          {
+            operationIndex: 1,
+            type: "update",
+            pathTemplate: "upcomingShows/{upcomingShowId}",
+            documentId: upcomingShowId,
+            changedFields: ["productionStatus", "accumulatedPrintMs", "activePrintStartedAt", "printPausedAt",
+              "printFinishedAt", "printFinishedBy", "updatedBy", "updatedAt"],
+            existingProductionStatus: show.productionStatus,
+            proposedProductionStatus: "completed",
+            parserStatus: showDiagnostic.parserStatus,
+            missingRequiredFields: showDiagnostic.missingRequiredFields,
+            legacyExtraFields: showDiagnostic.legacyExtraFields,
+          },
+          ...allocationsToFinish.map(({ allocation, diagnostic }, index) => ({
+            operationIndex: index + 2,
+            type: "update",
+            pathTemplate: "showAllocations/{showAllocationId}",
+            documentId: allocation.id,
+            changedFields: ["status", "completedAt", "completedBy", "updatedBy", "updatedAt"],
+            existingProductionStatus: allocation.status,
+            proposedProductionStatus: "done",
+            parserStatus: diagnostic.parserStatus,
+            missingRequiredFields: diagnostic.missingRequiredFields,
+            legacyExtraFields: diagnostic.legacyExtraFields,
+          })),
+        ],
+      } as const;
+      if (import.meta.env.DEV) {
+        console.info("[upcomingShowService] production timer operation manifest", operationManifest);
+      }
 
-    batch.update(showRef, {
-      productionStatus: "completed",
-      accumulatedPrintMs: foldedMs,
-      activePrintStartedAt: deleteField(),
-      printPausedAt: deleteField(),
-      printFinishedAt: serverTimestamp(),
-      printFinishedBy: caller.id,
-      updatedBy: caller.id,
-      updatedAt: serverTimestamp(),
-    });
+      try {
+        didMutateShow = await runTracedWrite(
+          "runTransaction",
+          () =>
+            runTransaction(db, async (transaction) => {
+              const latestSnapshot = await transaction.get(showRef);
+              if (!latestSnapshot.exists()) {
+                throw new Error("Upcoming show not found.");
+              }
+              const latestShow = mapUpcomingShowData(
+                latestSnapshot.id,
+                latestSnapshot.data() as UpcomingShowDocumentData,
+              );
+              const latestPlan = resolveShowFinishMutationPlan(latestShow.productionStatus);
+              if (latestPlan === "already_terminal") {
+                return false;
+              }
+              if (latestPlan !== "mutate") {
+                throw new Error("Start printing on this show before marking it finished.");
+              }
+
+              transaction.update(showRef, {
+                productionStatus: "completed",
+                accumulatedPrintMs: foldedMs,
+                activePrintStartedAt: deleteField(),
+                printPausedAt: deleteField(),
+                printFinishedAt: serverTimestamp(),
+                printFinishedBy: caller.id,
+                updatedBy: caller.id,
+                updatedAt: serverTimestamp(),
+              });
+
+              for (const { allocation } of allocationsToFinish) {
+                transaction.update(
+                  doc(firestoreCollectionService.getShowAllocationsCollection(), allocation.id),
+                  {
+                    status: "done",
+                    completedAt: serverTimestamp(),
+                    completedBy: caller.id,
+                    updatedBy: caller.id,
+                    updatedAt: serverTimestamp(),
+                  },
+                );
+              }
+
+              return true;
+            }),
+          {
+            app: "studio",
+            collection: "upcomingShows",
+            documentPathPattern: "upcomingShows/{upcomingShowId}",
+            source: "upcomingShowService.markShowPrintingFinished",
+          },
+          { writeCount: allocationsToFinish.length + 1 },
+        );
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.error("[upcomingShowService] production timer operation denied", {
+            ...operationManifest,
+            firebaseErrorCode:
+              error && typeof error === "object" && "code" in error
+                ? String((error as { code: unknown }).code)
+                : "unknown",
+          });
+        }
+        throw error;
+      }
+    }
 
     const affectedPrintRequestIds = new Set<string>();
-
-    for (const { allocation } of allocationsToFinish) {
+    const requestIdSource = didMutateShow
+      ? allocationsToFinish
+      : allocationRecords.filter(({ allocation }) => allocation.status !== "canceled");
+    for (const { allocation } of requestIdSource) {
       affectedPrintRequestIds.add(allocation.printRequestId);
-      batch.update(doc(firestoreCollectionService.getShowAllocationsCollection(), allocation.id), {
-        status: "done",
-        completedAt: serverTimestamp(),
-        completedBy: caller.id,
-        updatedBy: caller.id,
-        updatedAt: serverTimestamp(),
-      });
-    }
-
-    try {
-      await runTracedWrite(
-        "writeBatch",
-        () => batch.commit(),
-        {
-          app: "studio",
-          collection: "upcomingShows",
-          documentPathPattern: "upcomingShows/{upcomingShowId}",
-          source: "upcomingShowService.markShowPrintingFinished",
-        },
-        { writeCount: allocationsToFinish.length + 1 },
-      );
-    } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error("[upcomingShowService] production timer operation denied", {
-          ...operationManifest,
-          firebaseErrorCode:
-            error && typeof error === "object" && "code" in error
-              ? String((error as { code: unknown }).code)
-              : "unknown",
-        });
-      }
-      throw error;
     }
 
     // Plan Section 32 (Amendment 14) — Amendment 13 repeated the same default-source reads and could

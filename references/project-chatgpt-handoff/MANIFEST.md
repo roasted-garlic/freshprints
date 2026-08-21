@@ -22,7 +22,7 @@
 
 **Total: 18 files** (limit: 25)
 
-**Last full package refresh:** 2026-07-13 (Your Stash polish signoff); partial refresh 2026-07-22 (`brand-logo-uploads` signoff: CURRENT-STATE, 13, 03, 04, 07, 12)
+**Last full package refresh:** 2026-07-13 (Your Stash polish signoff); partial refresh 2026-08-20 (`print-request-shared-sizing-and-queue-integrity` DEV signoff: CURRENT-STATE, 13, 03, 04, 05, 07, 12)
 
 ---
 

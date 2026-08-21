@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { ExternalLink, ImagePlus, Plus, RefreshCw, Search, X } from "lucide-react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
@@ -44,6 +44,10 @@ import {
 } from "@fresh-prints/shared/utils/printRequestWorkingTriage";
 import { groupAllocationsByShow } from "@fresh-prints/shared/utils/groupAllocationsByShow";
 import { canRemoveRequestFromShow } from "@fresh-prints/shared/utils/showQueueEditability";
+import {
+  summarizePrintRequestPersistenceHealth,
+  type PrintRequestItemPersistenceHealth,
+} from "@fresh-prints/shared/utils/printRequestItemPersistenceHealth";
 import { getPrintRequestQueueStateBadgeLabel, getPrintRequestQueueStateBadgeVariant } from "../utils/printRequestQueueBadge";
 import { filterPrintRequestsByListSearch } from "../utils/printRequestListSearch";
 import { filterPrintRequestsByActiveTab } from "../utils/filterPrintRequestsByActiveTab";
@@ -309,6 +313,11 @@ export function PrintRequestsPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [autosaveState, setAutosaveState] = useState<AutosaveState>({ status: "idle" });
+  const [itemPersistenceHealth, setItemPersistenceHealth] = useState<
+    Record<string, PrintRequestItemPersistenceHealth>
+  >({});
+  const itemFlushersRef = useRef(new Map<string, () => Promise<boolean>>());
+  const [isFlushingQueue, setIsFlushingQueue] = useState(false);
   const [requestNotesDraft, setRequestNotesDraft] = useState("");
   const [internalBaseNameDraft, setInternalBaseNameDraft] = useState("internal");
   const [isSavingRequestDetail, setIsSavingRequestDetail] = useState(false);
@@ -719,8 +728,54 @@ export function PrintRequestsPage() {
     setAutosaveState({ status, message, retry });
   }, []);
 
+  const handlePersistenceHealthChange = useCallback(
+    (itemId: string, health: PrintRequestItemPersistenceHealth) => {
+      setItemPersistenceHealth((current) =>
+        current[itemId] === health ? current : { ...current, [itemId]: health },
+      );
+    },
+    [],
+  );
+
+  const handleRegisterFlush = useCallback((itemId: string, flush: (() => Promise<boolean>) | null) => {
+    if (flush) {
+      itemFlushersRef.current.set(itemId, flush);
+      return;
+    }
+    itemFlushersRef.current.delete(itemId);
+  }, []);
+
+  const persistenceSummary = summarizePrintRequestPersistenceHealth(itemPersistenceHealth);
+
+  async function openAddToShow(destination: "shows" | "staff_gang_sheet") {
+    if (requestItems.length === 0) {
+      return;
+    }
+    if (!persistenceSummary.canOpenQueue) {
+      setActionError(persistenceSummary.blockReason);
+      return;
+    }
+    if (persistenceSummary.needsFlush) {
+      setIsFlushingQueue(true);
+      try {
+        const results = await Promise.all(
+          [...itemFlushersRef.current.values()].map((flush) => flush()),
+        );
+        if (results.some((ok) => !ok)) {
+          setActionError("Save item sizes before adding this request to a show.");
+          return;
+        }
+      } finally {
+        setIsFlushingQueue(false);
+      }
+    }
+    setAddToShowDestination(destination);
+    setIsAddToShowModalOpen(true);
+  }
+
   useEffect(() => {
     setAutosaveState({ status: "idle" });
+    setItemPersistenceHealth({});
   }, [selectedRequestId]);
 
   useEffect(() => {
@@ -1137,30 +1192,32 @@ export function PrintRequestsPage() {
           {visibleSelectedRequest && !isSelectedRequestDetailLocked ? (
             <div className="print-requests-page-actions">
               <Button
-                disabled={requestItems.length === 0}
-                onClick={() => {
-                  setAddToShowDestination("shows");
-                  setIsAddToShowModalOpen(true);
-                }}
+                disabled={
+                  requestItems.length === 0 ||
+                  !persistenceSummary.canOpenQueue ||
+                  isFlushingQueue
+                }
+                onClick={() => void openAddToShow("shows")}
                 title={
                   requestItems.length === 0
                     ? "Add designs to this request before adding it to a show."
-                    : undefined
+                    : persistenceSummary.blockReason ?? undefined
                 }
                 type="button"
               >
                 Add to Show
               </Button>
               <Button
-                disabled={requestItems.length === 0}
-                onClick={() => {
-                  setAddToShowDestination("staff_gang_sheet");
-                  setIsAddToShowModalOpen(true);
-                }}
+                disabled={
+                  requestItems.length === 0 ||
+                  !persistenceSummary.canOpenQueue ||
+                  isFlushingQueue
+                }
+                onClick={() => void openAddToShow("staff_gang_sheet")}
                 title={
                   requestItems.length === 0
                     ? "Add designs to this request before adding it to an Internal Gangsheet."
-                    : undefined
+                    : persistenceSummary.blockReason ?? undefined
                 }
                 type="button"
                 variant="secondary"
@@ -1438,6 +1495,8 @@ export function PrintRequestsPage() {
                           item={item}
                           key={item.id}
                           onAutosaveStateChange={updateAutosaveState}
+                          onPersistenceHealthChange={handlePersistenceHealthChange}
+                          onRegisterFlush={handleRegisterFlush}
                           onDuplicate={handleDuplicateItem}
                           onRemove={handleRemoveItem}
                           onUpdate={handleUpdateItem}

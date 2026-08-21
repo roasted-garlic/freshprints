@@ -46,6 +46,7 @@ import { loadPortalQueueCutoffHours } from "./lib/loadPortalQueueCutoffHours";
 import { loadPrintRequestLimitSettings } from "./lib/loadPrintRequestLimitSettings";
 import { requirePortalCustomer } from "./lib/portalCustomer";
 import { applyCustomerUploadStaffReviewTransitionInTransaction } from "./lib/customerUploadCatalogConfirmation";
+import { assertQueuePrintRequestItemSize } from "./lib/assertQueuePrintRequestItemSize";
 import { validateQueuePortalPrintRequestToShowRequest } from "./lib/queuePortalPrintRequestToShowValidation";
 import { getPortalQueueTransactionBlockReason } from "./lib/portalQueueTransactionEligibility";
 
@@ -409,6 +410,48 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
 
       if (!item.designId) {
         throw invalidArgument("Print request item data is incomplete.");
+      }
+    }
+
+    const catalogDesignIds = [
+      ...new Set(
+        queueLines
+          .filter((line) => line.item.sourceType !== "customer_upload")
+          .map((line) => line.item.designId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+    const designSnaps = await Promise.all(
+      catalogDesignIds.map((id) => adminDb.collection("designs").doc(id).get()),
+    );
+    const designById = new Map(
+      designSnaps.map((snap) => [snap.id, snap.exists ? snap.data() : null] as const),
+    );
+
+    for (const line of queueLines) {
+      const item = line.item;
+      let pixelWidth: number | undefined;
+      let pixelHeight: number | undefined;
+      if (item.sourceType === "customer_upload") {
+        const upload = item.customerUploadId ? uploadById.get(item.customerUploadId) : null;
+        pixelWidth = typeof upload?.widthPx === "number" ? upload.widthPx : undefined;
+        pixelHeight = typeof upload?.heightPx === "number" ? upload.heightPx : undefined;
+      } else {
+        const design = item.designId ? designById.get(item.designId) : null;
+        pixelWidth = typeof design?.width === "number" ? design.width : undefined;
+        pixelHeight = typeof design?.height === "number" ? design.height : undefined;
+      }
+      try {
+        const assessed = assertQueuePrintRequestItemSize({
+          printWidthInches: item.printWidthInches,
+          printHeightInches: item.printHeightInches,
+          pixelWidth,
+          pixelHeight,
+        });
+        item.printWidthInches = assessed.printWidthInches;
+        item.printHeightInches = assessed.printHeightInches;
+      } catch (error) {
+        throw invalidArgument(error instanceof Error ? error.message : "Requested print size is not valid.");
       }
     }
 

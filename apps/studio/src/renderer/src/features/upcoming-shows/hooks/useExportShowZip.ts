@@ -11,14 +11,13 @@ import {
   computeExportTargetPixelSize,
 } from "@fresh-prints/shared/utils/showExportFilename";
 import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
+import { resolveQueuedPrintInches } from "@fresh-prints/shared/utils/printRequestQueuedInches";
 import type {
   ExportShowZipRequest,
   ExportShowZipResult,
   ShowExportImageRequest,
   ShowExportProgressEvent,
 } from "@fresh-prints/shared/types/export/showExportIpc.types";
-
-const DEFAULT_EXPORT_WIDTH_INCHES = 3;
 
 interface ExportShowZipState {
   isExporting: boolean;
@@ -106,14 +105,10 @@ export function useExportShowZip() {
               continue;
             }
 
-            const printWidthInches =
-              allocation.printWidthInches ?? upload.printWidthInches ?? DEFAULT_EXPORT_WIDTH_INCHES;
-            const printHeightInches =
-              allocation.printHeightInches ??
-              upload.printHeightInches ??
-              (upload.widthPx && upload.heightPx
-                ? printWidthInches * (upload.heightPx / upload.widthPx)
-                : printWidthInches);
+            const { printWidthInches, printHeightInches } = resolveQueuedPrintInches({
+              allocationWidthInches: allocation.printWidthInches,
+              allocationHeightInches: allocation.printHeightInches,
+            });
 
             const { targetWidthPx, targetHeightPx } = computeExportTargetPixelSize(
               printWidthInches,
@@ -163,14 +158,10 @@ export function useExportShowZip() {
             continue;
           }
 
-          const printWidthInches =
-            allocation.printWidthInches ?? design.printWidthInches ?? DEFAULT_EXPORT_WIDTH_INCHES;
-          const printHeightInches =
-            allocation.printHeightInches ??
-            design.printHeightInches ??
-            (design.width && design.height
-              ? printWidthInches * (design.height / design.width)
-              : printWidthInches);
+          const { printWidthInches, printHeightInches } = resolveQueuedPrintInches({
+            allocationWidthInches: allocation.printWidthInches,
+            allocationHeightInches: allocation.printHeightInches,
+          });
 
           const { targetWidthPx, targetHeightPx } = computeExportTargetPixelSize(
             printWidthInches,
