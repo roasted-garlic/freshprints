@@ -15,7 +15,7 @@ ZIP/folder import; PNG validation; trim + upscale (ADR-FP-080 ≤6× toward 12�
 Processing / Needs Review / Rejected tabs; suggestions panel; approve/reject/skip; re-run AI; keyboard shortcuts; settings-driven model + tag exclusions; staff Halftone toggle (human-only; AI never auto-enables).
 
 ### Print Requests (`/print-requests`)
-Internal + customer requests; item qty/size autosave; DPI quality feedback; **manual save ≥200 DPI and ≤22″** (approved-max is initial/processing only); duplicate same design for other sizes; Design Library selection mode adds **new** catalog designs only (existing items keep ID/size/quantity).
+Internal + customer requests in **separate lists** (Customer Requests default; Internal Requests via `isInternal`, ADR-FP-140); item qty/size autosave; DPI quality feedback; **manual save ≥200 DPI and ≤22″** (approved-max is initial/processing only); duplicate same design for other sizes; Design Library selection mode adds **new** catalog designs only (existing items keep ID/size/quantity).
 
 ### Show Queue (`/show-queue`)
 Upcoming/Past shows; capacity; attach requests; Working/Queued/Printing/Printed; Whatnot assisted

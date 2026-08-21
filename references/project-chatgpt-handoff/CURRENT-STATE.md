@@ -1,5 +1,21 @@
 # Fresh Prints - Current State Snapshot
 
+## 2026-08-21 — studio-print-request-customer-internal-list-split — SIGNOFF APPROVED (DEV) / CLOSED
+
+| Item | Value |
+|-------|-------|
+| Managed goal | `studio-print-request-customer-internal-list-split` — **CLOSED (DEV)** |
+| Signoff | **approved** — `docs/workflow/reviews/2026-08-21-studio-print-request-customer-internal-list-split-signoff.md` |
+| Owner QA | Studio list-split QA **`PASS`** |
+| Checkout | `C:\coding\fresh-prints` on **`development`** @ **`4865c2b`** (this goal **uncommitted**) |
+| Delivered | Studio `/print-requests` Customer vs Internal lists via `isInternal`; default Customer Requests; lifecycle tabs preserved; Users-page kind switcher; DEV index `isInternal + queueTab + updatedAt + __name__` (ADR-FP-140) |
+| Production | **Not** promoted. Index is `fresh-prints-dev` only. No Studio/Portal/Functions/Rules release. |
+| Workflow | **IDLE** |
+| Phase 9 | **PARKED** |
+| Tag-alias | QUEUED ONLY |
+
+---
+
 ## 2026-08-20 — print-request-shared-sizing-and-queue-integrity — SIGNOFF APPROVED (DEV) / CLOSED
 
 | Item | Value |
@@ -31,33 +47,6 @@
 | Phase 9 | **PARKED** |
 | Tag-alias | QUEUED ONLY |
 | Record | `docs/workflow/reviews/2026-08-18-portal-pr-83-app-hosting-rollout-record.md` |
-
----
-
-## 2026-08-18 — Portal Design Engagement Analytics — SIGNOFF APPROVED (DEV)
-
-| Item | Value |
-|-------|-------|
-| Managed goal | `portal-design-engagement-analytics` — **CLOSED/LIVE** |
-| Signoff | DEV **approved**; production **approved** |
-| Owner QA | DEV `DEV DESIGN ENGAGEMENT ANALYTICS QA: PASS`; prod `PROD PR 83 QA: PASS` |
-| Final contract | Amendment 2: `Modal:` / `Share:` page titles; public catalog IDs in path/`content_id` (ADR-FP-138) |
-| Checkout | `C:\coding\fresh-prints` on **`development`** |
-| Analytics commit | ``7350bc42e206c0aa000768e3595f06406433a26b`` |
-| Production | LIVE `fresh-prints-portal-build-2026-08-19-001` @ `99b2303` **100%** |
-| Phase 9 | **PARKED** |
-| Tag-alias | QUEUED ONLY |
-
----
-
-## 2026-08-18 — Portal Add to Show Unmissable — SIGNOFF APPROVED (DEV)
-
-| Item | Value |
-|-------|-------|
-| Managed goal | `portal-add-to-show-unmissable` — **CLOSED/LIVE** |
-| Commit | **`5d042696ddbc7bce2bc40675e5cae82124e5dc04`**; layout follow-up **`3fe17d8644524afb973e4ce294764405dda95deb`** |
-| Owner QA | DEV `DEV ADD TO SHOW UNMISSABLE QA: PASS`; prod `PROD PR 83 QA: PASS` |
-| Production | Batched in PR **#83**; App Hosting LIVE |
 
 ---
 

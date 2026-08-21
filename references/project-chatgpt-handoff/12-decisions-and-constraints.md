@@ -2,6 +2,19 @@
 
 > Full log: `docs/project/DECISIONS.md` — newest ADRs first.
 
+## Studio Print Requests lists (2026-08-21 — ADR-FP-140)
+
+| Constraint | Rule |
+|------------|------|
+| Discriminator | Persisted `printRequests.isInternal` — not names or `requestOrigin` |
+| Customer list | `isInternal == false` (Studio + Portal customers) |
+| Internal list | `isInternal == true` |
+| Default | Customer Requests |
+| Index (DEV) | `isInternal + queueTab + updatedAt DESC + __name__ DESC` on `fresh-prints-dev` |
+| Out of scope | Show Queue still sees both kinds; no production index this goal |
+
+Full ADR: `docs/project/DECISIONS.md` (ADR-FP-140).
+
 ## Print Request manual sizing (2026-08-20 — ADR-FP-075 / ADR-FP-080)
 
 | Constraint | Rule |

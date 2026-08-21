@@ -1270,8 +1270,7 @@ Print Requests do not persist a queue/print status field. `derivePrintRequestQue
 request's show allocations, so the badge shown on the Print Requests page is always consistent with
 allocation records and never drifts out of sync from a second field.
 
-The Print Requests page groups requests into **Working** / **Queued** / **Printed** tabs, derived the
-same way (`shared/utils/printRequestListGrouping.ts`'s `derivePrintRequestListTab()`): a request with
+The Print Requests page first splits requests into **Customer Requests** and **Internal Requests** using persisted `isInternal` (not the request name). Default view is Customer Requests. Within each kind, requests are grouped into **Working** / **Queued** / **Printing** / **Printed** tabs from the server-maintained `queueTab` mirror (`shared/utils/printRequestListGrouping.ts`'s `derivePrintRequestListTab()`): a request with
 no active allocations is Working, any active allocation makes it Queued, and fully printed/completed
 makes it Printed. Selecting a tab and selecting a request are kept in sync
 (`shared/utils/printRequestTabSelection.ts`'s `resolveSelectedRequestIdForTab()` and

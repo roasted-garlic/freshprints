@@ -42,7 +42,7 @@ import { useWhatnotShowImport, type WhatnotShowImportSummary } from "../hooks/us
 import { useShowQueuePrintRequests } from "../hooks/useShowQueuePrintRequests";
 import { usePrintRequestAllocationTotals } from "../../print-requests/hooks/usePrintRequestAllocationTotals";
 import { usePrintRequestDetails } from "../../print-requests/hooks/usePrintRequestDetails";
-import { getPrintRequestsPath } from "../../print-requests/constants/printRequestRoutes";
+import { getPrintRequestsPath, printRequestListKindFromIsInternal } from "../../print-requests/constants/printRequestRoutes";
 import { AddToShowModal } from "../../print-requests/components/AddToShowModal";
 import { ExportShowConfirmModal } from "../components/ExportShowConfirmModal";
 import { ExportGangSheetConfirmModal } from "../components/ExportGangSheetConfirmModal";
@@ -1682,6 +1682,9 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                       const printRequestHref = getPrintRequestsPath({
                         tab: requestTab,
                         requestId: group.printRequestId,
+                        kind: matchedRequest
+                          ? printRequestListKindFromIsInternal(matchedRequest.isInternal)
+                          : undefined,
                       });
 
                       return (

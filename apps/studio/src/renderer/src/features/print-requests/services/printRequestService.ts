@@ -681,7 +681,8 @@ export const printRequestService = {
 
   /**
    * Exact tab/filter count with zero document hydration — `getCountFromServer` against the same
-   * indexed `queueTab`/`status`/`customerId`/`isInternal` filter the list page uses. Never load
+   * indexed `queueTab`/`status`/`customerId`/`isInternal` filter, including the Studio list's
+   * indexed `isInternal` + `queueTab` pair. Never load request documents merely to count them.
    * request documents merely to count them.
    */
   async countPrintRequests(

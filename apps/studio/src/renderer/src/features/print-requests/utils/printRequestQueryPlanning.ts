@@ -61,10 +61,25 @@ function countDefinedRequestFilters(options: PrintRequestListQueryOptions): numb
   ).length;
 }
 
+function isIndexedPrintRequestListFilterCombination(options: PrintRequestListQueryOptions): boolean {
+  const definedCount = countDefinedRequestFilters(options);
+  if (definedCount <= 1) {
+    return true;
+  }
+
+  return (
+    definedCount === 2 &&
+    options.isInternal !== undefined &&
+    options.queueTab !== undefined &&
+    options.status === undefined &&
+    options.customerId === undefined
+  );
+}
+
 export function buildPrintRequestListQueryPlan(
   options: PrintRequestListQueryOptions = {},
 ): PrintRequestQueryPlan {
-  if (countDefinedRequestFilters(options) > 1) {
+  if (!isIndexedPrintRequestListFilterCombination(options)) {
     throw new Error("Only one print request list filter can be combined with updatedAt ordering in this phase.");
   }
 

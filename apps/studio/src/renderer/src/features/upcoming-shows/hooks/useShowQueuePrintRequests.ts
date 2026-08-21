@@ -8,6 +8,7 @@ import {
 } from "../utils/showQueuePrintRequestSources";
 
 export function useShowQueuePrintRequests(attachedRequestIds: string[]) {
+  // Intentionally omit `isInternal` so Show Queue still loads both customer and internal requests.
   const working = usePrintRequests("working");
   const queued = usePrintRequests("queued");
   const printing = usePrintRequests("printing");

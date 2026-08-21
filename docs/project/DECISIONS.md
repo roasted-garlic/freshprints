@@ -4,6 +4,33 @@
 
 ---
 
+### ADR-FP-140: Studio Print Requests lists split by `isInternal`
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-21 |
+| Status | accepted |
+| Related | Goal `studio-print-request-customer-internal-list-split` |
+
+**Context**
+
+Studio `/print-requests` mixed customer and internal Print Requests in one `queueTab` list. Staff needed separate Customer Requests and Internal Requests views without changing lifecycle, Portal, or Show Queue attach rules.
+
+**Decision**
+
+1. Discriminator is persisted `printRequests.isInternal` (`true` = Internal Requests, `false` = Customer Requests including `studio_customer` and `portal_customer`). Do not use request names or `requestOrigin` as the list split.
+2. Default `/print-requests` to Customer Requests. Keep existing Working / Queued / Printing / Printed tabs and Working triage inside each kind.
+3. List and count queries filter `isInternal` + `queueTab` with `updatedAt DESC, __name__ DESC` pagination. That pair requires composite index `isInternal ASC, queueTab ASC, updatedAt DESC, __name__ DESC`.
+4. Show Queue continues to load both kinds (omit `isInternal` on those `usePrintRequests` calls).
+5. No schema migration, backfill, Rules, Functions, or production index deploy in this goal.
+
+**Consequences**
+
+- Documents missing `isInternal` are omitted by equality queries and will not appear in either list.
+- Index deploy is environment-specific; production remains a later owner checkpoint.
+
+---
+
 ### ADR-FP-139: Past Printing shows must Finish through the normal completion workflow
 
 | Field | Value |

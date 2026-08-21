@@ -1,5 +1,17 @@
 # Recent Completed Work
 
+## 2026-08-21 - Studio Print Request Customer vs Internal lists — SIGNOFF / CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `studio-print-request-customer-internal-list-split` — **DONE (DEV)** |
+| Signoff | **approved** |
+| Owner QA | Studio QA **`PASS`** |
+| Delivered | Studio `/print-requests` splits Customer vs Internal on persisted `isInternal` (default Customer Requests); lifecycle tabs/search/create/Show Queue unchanged; kind switcher matches Users page; DEV composite index only (ADR-FP-140) |
+| Checkout | `development` @ **`4865c2b`** (this goal **uncommitted**) |
+| Production | Not promoted. Production index / Studio release later. |
+| Signoff | `docs/workflow/reviews/2026-08-21-studio-print-request-customer-internal-list-split-signoff.md` |
+
 ## 2026-08-20 - Print Request shared sizing and queue integrity — SIGNOFF / CLOSED (DEV)
 
 | Item | Status |

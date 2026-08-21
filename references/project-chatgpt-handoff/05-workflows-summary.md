@@ -92,14 +92,16 @@ Two independent lifecycles on the upload: `technicalStatus` (processing quality)
 ## D. Staff print-request flow (Studio)
 
 ```
-/print-requests → create internal or customer request
+/print-requests → Customer Requests (default) or Internal Requests (`isInternal`, ADR-FP-140)
+    ↓
+Create internal or customer request (lands in matching list, Working / Empty)
     ↓
 Add approved catalog designs via Design Library selection mode
   (existing request items are preserved; only newly selected designs are created)
     ↓
 Edit qty/size (same DPI floor as Portal: ≥ 200 to save, ≤ 22″)
     ↓
-Attach to Show Queue / upcoming show
+Attach to Show Queue / upcoming show (both kinds still attachable)
 ```
 
 ---

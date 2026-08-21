@@ -941,6 +941,28 @@
       ]
     },
     {
+      "collectionGroup": "printRequests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "isInternal",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "queueTab",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updatedAt",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "showAllocations",
       "queryScope": "COLLECTION",
       "fields": [

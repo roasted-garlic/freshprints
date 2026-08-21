@@ -2384,6 +2384,8 @@ customerRequests.status
 printRequests.status + updatedAt
 printRequests.customerId + updatedAt
 printRequests.isInternal + updatedAt
+printRequests.queueTab + updatedAt + __name__
+printRequests.isInternal + queueTab + updatedAt + __name__
 printRequestItems.printRequestId
 printRequestItems.printRequestId + status
 customers.isGuest + displayName
@@ -2405,6 +2407,8 @@ Phase 6 Print Request query hardening defines the currently supported server-sid
 printRequests.status + updatedAt
 printRequests.customerId + updatedAt
 printRequests.isInternal + updatedAt
+printRequests.queueTab + updatedAt + __name__
+printRequests.isInternal + queueTab + updatedAt + __name__
 printRequestItems.printRequestId + updatedAt
 printRequestItems.printRequestId + status + updatedAt
 customers.isGuest + displayName
@@ -2413,7 +2417,8 @@ customers.isGuest + displayName
 Username reservations and request counters use document IDs and direct document reads/writes; no
 additional composite indexes are required for those paths.
 
-The unfiltered request list is ordered by `updatedAt` descending. Request item details and card
+The unfiltered request list is ordered by `updatedAt` descending. Studio Print Requests list pages
+filter by `isInternal` + `queueTab` with `updatedAt`/`__name__` pagination (ADR-FP-140). Request item details and card
 summaries query `printRequestItems` by `printRequestId`; item display ordering is handled
 client-side for `sortOrder` compatibility, and summaries are loaded only for the request IDs
 currently displayed. Customer reads are ordered by `displayName` and may filter by `isGuest`.

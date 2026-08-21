@@ -5,6 +5,7 @@ import {
   PRINT_REQUEST_LIST_TABS,
   getPrintRequestsPath,
   resolveCanonicalPrintRequestsRoute,
+  resolvePrintRequestListKind,
   resolveWorkingFilterClick,
   shouldReplacePrintRequestsPath,
   type PrintRequestRouteTab,
@@ -22,11 +23,13 @@ describe("Print Requests route normalization", () => {
         shouldReplacePrintRequestsPath(
           {
             requestId: `${tab}-request`,
+            kind: null,
             tab,
             workingFilter: tab === "working" ? "active" : null,
           },
           {
             requestId: `${tab}-request`,
+            kind: "customer",
             tab,
             workingFilter: tab === "working" ? "active" : undefined,
           },
@@ -37,10 +40,11 @@ describe("Print Requests route normalization", () => {
         shouldReplacePrintRequestsPath(
           {
             requestId: null,
+            kind: null,
             tab,
             workingFilter: tab === "working" ? "active" : null,
           },
-          { tab, workingFilter: tab === "working" ? "active" : undefined },
+          { kind: "customer", tab, workingFilter: tab === "working" ? "active" : undefined },
         ),
         false,
       );
@@ -50,10 +54,12 @@ describe("Print Requests route normalization", () => {
   it("performs exactly one replacement for every real tab transition across five cycles", () => {
     let current: {
       requestId: string | null;
+      kind: string | null;
       tab: PrintRequestRouteTab;
       workingFilter: string | null;
     } = {
       requestId: "working-request",
+      kind: null,
       tab: "working",
       workingFilter: "active",
     };
@@ -63,6 +69,7 @@ describe("Print Requests route normalization", () => {
       for (const tab of ["queued", "printing", "printed", "working"] as const) {
         const next = {
           requestId: `${tab}-request`,
+          kind: "customer" as const,
           tab,
           workingFilter: tab === "working" ? "active" as const : undefined,
         };
@@ -70,6 +77,7 @@ describe("Print Requests route normalization", () => {
           replacements += 1;
           current = {
             requestId: next.requestId,
+            kind: next.kind,
             tab: next.tab,
             workingFilter: next.workingFilter ?? null,
           };
@@ -101,11 +109,13 @@ describe("Print Requests route normalization", () => {
         shouldReplacePrintRequestsPath(
           {
             requestId: search.get("requestId"),
+            kind: search.get("kind"),
             tab: search.get("tab"),
             workingFilter: search.get("workingFilter"),
           },
           {
             requestId: destination.requestId ?? undefined,
+            kind: "customer",
             tab: destination.tab,
           },
         ),
@@ -121,6 +131,7 @@ describe("Print Requests route normalization", () => {
         dataReady: false,
         eligibleRequestIds: [],
         requestedRequestId: "request-1",
+        requestedKind: null,
         requestedTab: "working",
         requestedWorkingFilter: "active",
         requestsByTab: empty,
@@ -139,11 +150,12 @@ describe("Print Requests route normalization", () => {
         dataReady: true,
         eligibleRequestIds: ["request-1"],
         requestedRequestId: "request-1",
+        requestedKind: null,
         requestedTab: "working",
         requestedWorkingFilter: "active",
         requestsByTab: loaded,
       }),
-      { requestId: "request-1", tab: "working", workingFilter: "active" },
+      { requestId: "request-1", kind: "customer", tab: "working", workingFilter: "active" },
     );
 
     loaded.working = [];
@@ -153,11 +165,12 @@ describe("Print Requests route normalization", () => {
         dataReady: true,
         eligibleRequestIds: [],
         requestedRequestId: "request-1",
+        requestedKind: null,
         requestedTab: "working",
         requestedWorkingFilter: "active",
         requestsByTab: loaded,
       }),
-      { tab: "working", workingFilter: "active" },
+      { kind: "customer", tab: "working", workingFilter: "active" },
     );
   });
 
@@ -172,25 +185,27 @@ describe("Print Requests route normalization", () => {
       dataReady: true,
       eligibleRequestIds: ["working-1"],
       requestedRequestId: "stale",
+      requestedKind: null,
       requestedTab: "working",
       requestedWorkingFilter: "active",
       requestsByTab,
     });
     assert.deepEqual(populated, {
       requestId: "working-1",
+      kind: "customer",
       tab: "working",
       workingFilter: "active",
     });
     assert.equal(
       shouldReplacePrintRequestsPath(
-        { requestId: "stale", tab: "working", workingFilter: "active" },
+        { requestId: "stale", kind: null, tab: "working", workingFilter: "active" },
         populated!,
       ),
       true,
     );
     assert.equal(
       shouldReplacePrintRequestsPath(
-        { requestId: "working-1", tab: "working", workingFilter: "active" },
+        { requestId: "working-1", kind: null, tab: "working", workingFilter: "active" },
         populated!,
       ),
       false,
@@ -201,11 +216,12 @@ describe("Print Requests route normalization", () => {
         dataReady: true,
         eligibleRequestIds: [],
         requestedRequestId: null,
+        requestedKind: null,
         requestedTab: "queued",
         requestedWorkingFilter: null,
         requestsByTab,
       }),
-      { tab: "queued" },
+      { kind: "customer", tab: "queued" },
     );
   });
 
@@ -233,6 +249,7 @@ describe("Print Requests route normalization", () => {
             currentRequestId,
             destinationFilter,
             destinationRequestIds: requestsByFilter[destinationFilter],
+            kind: "customer",
           });
           const expectedRequestId =
             currentRequestId && requestsByFilter[destinationFilter].includes(currentRequestId as never)
@@ -241,6 +258,7 @@ describe("Print Requests route normalization", () => {
 
           assert.deepEqual(next, {
             ...(expectedRequestId ? { requestId: expectedRequestId } : {}),
+            kind: "customer",
             tab: "working",
             workingFilter: destinationFilter,
           });
@@ -248,6 +266,7 @@ describe("Print Requests route normalization", () => {
             shouldReplacePrintRequestsPath(
               {
                 requestId: next.requestId ?? null,
+                kind: "customer",
                 tab: next.tab,
                 workingFilter: next.workingFilter ?? null,
               },
@@ -267,6 +286,7 @@ describe("Print Requests route normalization", () => {
           dataReady: true,
           eligibleRequestIds: [],
           requestedRequestId: "not-visible",
+          requestedKind: null,
           requestedTab: "working",
           requestedWorkingFilter: workingFilter,
           requestsByTab: {
@@ -276,7 +296,7 @@ describe("Print Requests route normalization", () => {
             printed: [],
           },
         }),
-        { tab: "working", workingFilter },
+        { kind: "customer", tab: "working", workingFilter },
       );
     }
   });
@@ -301,12 +321,14 @@ describe("Print Requests route normalization", () => {
       const resolved = resolveCanonicalPrintRequestsRoute({
         dataReady: true,
         requestedRequestId: "empty-1",
+        requestedKind: null,
         requestedTab: "working",
         requestedWorkingFilter: destination.workingFilter,
         requestsByTab,
         eligibleRequestIds: destination.eligibleRequestIds,
       });
       assert.equal(resolved?.workingFilter, destination.workingFilter);
+      assert.equal(resolved?.kind, "customer");
       assert.equal(
         resolved?.requestId,
         destination.eligibleRequestIds.includes("empty-1")
@@ -343,14 +365,42 @@ describe("Print Requests route normalization", () => {
       currentRequestId: "request-1",
       destinationFilter: "empty",
       destinationRequestIds: [],
+      kind: "internal",
     });
-    assert.deepEqual(afterFirstItem, { tab: "working", workingFilter: "empty" });
+    assert.deepEqual(afterFirstItem, {
+      kind: "internal",
+      tab: "working",
+      workingFilter: "empty",
+    });
 
     const afterLastItemRemoved = resolveWorkingFilterClick({
       currentRequestId: "request-1",
       destinationFilter: "active",
       destinationRequestIds: [],
+      kind: "customer",
     });
-    assert.deepEqual(afterLastItemRemoved, { tab: "working", workingFilter: "active" });
+    assert.deepEqual(afterLastItemRemoved, {
+      kind: "customer",
+      tab: "working",
+      workingFilter: "active",
+    });
+  });
+
+  it("defaults omitted kind to customer and preserves kind=internal in the path", () => {
+    assert.equal(resolvePrintRequestListKind(null), "customer");
+    assert.equal(resolvePrintRequestListKind("customer"), "customer");
+    assert.equal(resolvePrintRequestListKind("internal"), "internal");
+    assert.equal(getPrintRequestsPath({ tab: "working" }), "/print-requests?tab=working&workingFilter=active");
+    assert.match(
+      getPrintRequestsPath({ kind: "internal", tab: "working", requestId: "req-1" }),
+      /kind=internal/,
+    );
+    assert.equal(
+      shouldReplacePrintRequestsPath(
+        { requestId: "req-1", kind: null, tab: "working", workingFilter: "active" },
+        { requestId: "req-1", kind: "internal", tab: "working", workingFilter: "active" },
+      ),
+      true,
+    );
   });
 });

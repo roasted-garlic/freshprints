@@ -65,6 +65,23 @@ describe("print request query planning", () => {
     ]);
   });
 
+  it("plans the indexed isInternal + queueTab pair used by Studio Customer/Internal lists", () => {
+    assert.deepEqual(
+      buildPrintRequestListQueryPlan({ isInternal: false, queueTab: "working" }).filters,
+      [
+        { field: "isInternal", operator: "==", value: false },
+        { field: "queueTab", operator: "==", value: "working" },
+      ],
+    );
+    assert.deepEqual(
+      buildPrintRequestListQueryPlan({ isInternal: true, queueTab: "queued" }).filters,
+      [
+        { field: "isInternal", operator: "==", value: true },
+        { field: "queueTab", operator: "==", value: "queued" },
+      ],
+    );
+  });
+
   it("rejects unindexed request filter combinations", () => {
     assert.throws(
       () => buildPrintRequestListQueryPlan({ status: "active", customerId: "customer-1" }),
@@ -72,6 +89,10 @@ describe("print request query planning", () => {
     );
     assert.throws(
       () => buildPrintRequestListQueryPlan({ queueTab: "working", customerId: "customer-1" }),
+      /Only one print request list filter/,
+    );
+    assert.throws(
+      () => buildPrintRequestListQueryPlan({ isInternal: true, status: "active" }),
       /Only one print request list filter/,
     );
   });
