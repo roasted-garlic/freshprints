@@ -49,6 +49,8 @@ interface UseAddDesignToRequestFlowOptions {
   }) => Promise<void>;
   /** Working-items-only sync for qty mutations (avoids full list flash). */
   reloadWorkingItems: (options?: { silent?: boolean; printRequestId?: string }) => Promise<void>;
+  /** Where to send guests who must sign in before adding a design (defaults to catalog deep link). */
+  loginReturnTo?: string;
 }
 
 type DesiredPrimaryQty = number; // 0 = remove all catalog lines for the design
@@ -143,6 +145,7 @@ function readPrimaryQuantity(items: PrintRequestItem[], designId: string): numbe
  */
 export function useAddDesignToRequestFlow({
   continuableRequests,
+  loginReturnTo,
   onBeforeNavigate,
   refreshRequests,
   reloadWorkingItems,
@@ -183,9 +186,10 @@ export function useAddDesignToRequestFlow({
       userRef: firebaseUserRef,
       routerRef,
       designId,
+      returnTo: loginReturnTo,
       redirect: redirectToPortalLogin,
     });
-  }, []);
+  }, [loginReturnTo]);
 
   /**
    * Non-blocking companion suggestion — never auto-added. Failures are swallowed since this

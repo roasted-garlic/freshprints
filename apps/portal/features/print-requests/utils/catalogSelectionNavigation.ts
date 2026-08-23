@@ -104,6 +104,7 @@ export function buildCatalogLibraryHref(options?: {
   discover?: CatalogDiscoveryMode | null;
   search?: string | null;
   categoryId?: string | null;
+  showId?: string | null;
 }): string {
   const params = new URLSearchParams();
 
@@ -114,6 +115,10 @@ export function buildCatalogLibraryHref(options?: {
 
   if (options?.discover) {
     params.set('discover', options.discover);
+  }
+
+  if (options?.showId?.trim()) {
+    params.set('show', options.showId.trim());
   }
 
   if (options?.search?.trim()) {
@@ -135,6 +140,7 @@ export function buildCatalogHref(options?: {
   discover?: CatalogDiscoveryMode | null;
   search?: string | null;
   categoryId?: string | null;
+  showId?: string | null;
 }): string {
   return buildCatalogLibraryHref(options);
 }

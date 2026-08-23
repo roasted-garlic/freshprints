@@ -4,6 +4,57 @@
 
 ---
 
+### ADR-FP-142: Public Show Designs browse with login-gated mutations
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-22 |
+| Status | accepted |
+| Related | Goal `customer-request-show-discovery-and-search-correctives` (WS4) |
+
+**Context**
+
+Customers wanted a show calendar and per-show design lineup without staff intervention. Private customer-upload artwork must never appear in public browse.
+
+**Decision**
+
+1. Portal **Show Designs** (`/shows`) is **public**, matching Design Library guest browse patterns.
+2. Trusted callables `listPortalPublicShows` and `listPortalShowCatalogDesigns` return catalog-only DTOs (no `printRequestId`, `customerId`, or upload identifiers).
+3. Add to Request, quantity changes, and other request mutations use the existing login gate (`useAddDesignToRequestFlow`).
+
+**Consequences**
+
+- Callable responses must stay catalog-scoped; Security review required if allocation queries broaden.
+- DEV Functions deploy required before manual QA.
+
+---
+
+### ADR-FP-141: Customer Print Request → Internal conversion semantics
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-22 |
+| Status | accepted |
+| Related | Goal `customer-request-show-discovery-and-search-correctives` (WS1) |
+
+**Context**
+
+Staff sometimes need to continue a customer request as internal production work without recycling the customer's CR sequence or mislabeling the original as printed.
+
+**Decision**
+
+1. Callable `convertCustomerPrintRequestToInternal` creates a **new** internal request (IR sequence) and copies items; it does **not** flip `isInternal` on the original.
+2. Original customer request is archived with `closureKind: converted_to_internal` and linkage IDs; Portal shows **Converted to Internal Request · Closed** in the **Printed** tab.
+3. Pending/queued show allocations may be auto-canceled only after explicit staff confirmation listing affected shows; any `in_progress` or later allocation **blocks** conversion.
+4. Closure fields are written by Admin SDK only; Firestore Rules prevent client spoofing.
+
+**Consequences**
+
+- Customers can start a new CR### immediately after conversion.
+- E2E path: Convert → Internal gang sheet → Mark Complete → Internal Printed.
+
+---
+
 ### ADR-FP-140: Studio Print Requests lists split by `isInternal`
 
 | Field | Value |

@@ -12,6 +12,7 @@ import {
   getPortalReturnToFromSearch,
   resolvePortalPostAuthPath,
 } from '../utils/portalReturnUrl';
+import { buildPortalRegisterHref } from '../utils/requirePortalLogin';
 import { LogInIcon } from '../../shared/components/PortalIcons';
 import { AuthBusyOverlay } from './AuthBusyOverlay';
 import { GoogleAuthButton } from './GoogleAuthButton';
@@ -106,6 +107,11 @@ export function LoginForm() {
     isSubmitting ||
     isAuthActionLoading ||
     (bootstrapStatus === 'loading-profile' && Boolean(firebaseUser));
+
+  const registerHref =
+    typeof window !== 'undefined'
+      ? buildPortalRegisterHref(getPortalReturnToFromSearch(window.location.search))
+      : '/register';
 
   return (
     <div className="portal-auth-stack portal-auth-stack-compact">
@@ -205,7 +211,7 @@ export function LoginForm() {
       ) : null}
 
       <p className="portal-auth-footer">
-        New here? <Link href="/register">Signup</Link>
+        New here? <Link href={registerHref}>Signup</Link>
       </p>
 
       {isBusy ? (

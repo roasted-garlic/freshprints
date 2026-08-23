@@ -1,4 +1,5 @@
 import type { CatalogDesign } from '../types/catalog.types';
+import { catalogSearchTokensMatch } from '@fresh-prints/shared/utils/catalogSearchNormalization';
 
 /** Canonical design tag synced by staff Halftone confirmation (ADR-FP-080). */
 export const CANONICAL_HALFTONE_TAG = 'halftone';
@@ -50,7 +51,7 @@ export function buildApprovedCatalogTagOptions(
 
   return sortCatalogTags(approvedTags.map((tag) => tag.name))
     .filter((tag) => !isCanonicalHalftoneTag(tag))
-    .filter((tag) => !normalizedSearch || tag.toLowerCase().includes(normalizedSearch))
+    .filter((tag) => !normalizedSearch || catalogSearchTokensMatch(tag, normalizedSearch))
     .map((tag) => ({
       tag,
       count: countByName.get(tag),
@@ -69,9 +70,10 @@ export function filterCatalogDesignsBySearch(
   }
 
   return designs.filter((design) => {
-    const titleMatches = design.title.toLowerCase().includes(normalizedQuery);
-    const descriptionMatches = design.description?.toLowerCase().includes(normalizedQuery) ?? false;
-    const tagMatches = design.tags.some((tag) => tag.includes(normalizedQuery));
+    const titleMatches = catalogSearchTokensMatch(design.title, normalizedQuery);
+    const descriptionMatches =
+      design.description != null && catalogSearchTokensMatch(design.description, normalizedQuery);
+    const tagMatches = design.tags.some((tag) => catalogSearchTokensMatch(tag, normalizedQuery));
 
     return titleMatches || descriptionMatches || tagMatches;
   });
@@ -125,7 +127,7 @@ export function buildCatalogTagOptions(
 
   return sortCatalogTags([...tagCounts.keys()])
     .filter((tag) => !isCanonicalHalftoneTag(tag))
-    .filter((tag) => !normalizedSearch || tag.includes(normalizedSearch))
+    .filter((tag) => !normalizedSearch || catalogSearchTokensMatch(tag, normalizedSearch))
     .map((tag) => ({
       tag,
       count: tagCounts.get(tag) ?? 0,

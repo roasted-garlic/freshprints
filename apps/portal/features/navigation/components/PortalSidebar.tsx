@@ -8,7 +8,6 @@ import {
   ChevronRight,
   CircleHelp,
   ExternalLink,
-  HeartHandshake,
   LogIn,
   LogOut,
   User,
@@ -17,7 +16,7 @@ import {
 import { FRESH_PRINTS_WHATNOT_PROFILE_URL } from '@fresh-prints/shared/constants/portal/portalExternalLinks.constants';
 import { resolvePortalDisplayName, getProfileInitials } from '../../account/utils/profileDisplay';
 import { useAuth } from '../../auth/context/AuthContext';
-import { buildPortalLoginHref } from '../../auth/utils/requirePortalLogin';
+import { buildPortalLoginHrefForPath } from '../../auth/utils/requirePortalLogin';
 import { PortalLogo } from '../../brand/components/PortalLogo';
 import { usePortalBrandLogoSettings } from '../../brand/hooks/usePortalBrandLogoSettings';
 import { CATALOG_HOME_PATH } from '../../print-requests/utils/catalogSelectionNavigation';
@@ -50,6 +49,8 @@ export function PortalSidebar() {
   const username = customer?.username;
   const isAccountActive = isPortalAccountRoute(pathname);
   const showCollapsed = isCollapsed && isDesktop;
+  const hideThemeToggle =
+    pathname === '/shows' || pathname.startsWith('/shows/');
   // Desktop: always show mid-line edge tab. Mobile: only while drawer is open.
   const showEdgeTab = isDesktop || isDrawerOpen;
   const edgeTabExpands = isDesktop && isCollapsed;
@@ -172,20 +173,6 @@ export function PortalSidebar() {
           <div className="portal-sidebar-spacer" />
 
           <div className="portal-sidebar-footer">
-            <a
-              className="portal-sidebar-whatnot-link"
-              href={FRESH_PRINTS_WHATNOT_PROFILE_URL}
-              onClick={closeDrawer}
-              rel="noopener noreferrer"
-              target="_blank"
-              title="Follow on Whatnot"
-            >
-              <span className="portal-sidebar-whatnot-link-main">
-                <ExternalLink aria-hidden size={18} strokeWidth={1.75} />
-                <span className="portal-sidebar-whatnot-link-label">Follow on Whatnot</span>
-              </span>
-            </a>
-
             <Link
               aria-current={pathname === '/help' || pathname.startsWith('/help/') ? 'page' : undefined}
               className={`portal-sidebar-help-link${
@@ -196,34 +183,34 @@ export function PortalSidebar() {
               title="Help"
             >
               <span className="portal-sidebar-help-link-main">
-                <CircleHelp aria-hidden size={18} strokeWidth={1.75} />
+                <CircleHelp
+                  aria-hidden
+                  className="portal-sidebar-help-icon"
+                  size={18}
+                  strokeWidth={1.75}
+                />
                 <span className="portal-sidebar-help-link-label">Help</span>
               </span>
             </Link>
 
-            <Link
-              aria-current={pathname === '/donate' || pathname.startsWith('/donate/') ? 'page' : undefined}
-              className={`portal-sidebar-donate-link${
-                pathname === '/donate' || pathname.startsWith('/donate/') ? ' is-active' : ''
-              }`}
-              href={
-                pathname === '/donate' || pathname.startsWith('/donate/')
-                  ? '/donate'
-                  : `/donate?returnTo=${encodeURIComponent(pathname)}`
-              }
+            <a
+              className="portal-sidebar-whatnot-link"
+              href={FRESH_PRINTS_WHATNOT_PROFILE_URL}
               onClick={closeDrawer}
-              title="Donate Designs"
+              rel="noopener noreferrer"
+              target="_blank"
+              title="Follow on Whatnot"
             >
-              <span className="portal-sidebar-donate-link-main">
-                <HeartHandshake
+              <span className="portal-sidebar-whatnot-link-main">
+                <ExternalLink
                   aria-hidden
-                  className="portal-sidebar-donate-icon"
+                  className="portal-sidebar-whatnot-icon"
                   size={18}
                   strokeWidth={1.75}
                 />
-                <span className="portal-sidebar-donate-link-label">Donate Designs</span>
+                <span className="portal-sidebar-whatnot-link-label">Follow on Whatnot</span>
               </span>
-            </Link>
+            </a>
 
             {isAuthenticated ? (
               showCollapsed ? (
@@ -266,7 +253,7 @@ export function PortalSidebar() {
             ) : null}
 
             <div className="portal-sidebar-footer-actions">
-              <ThemeToggle compact />
+              {hideThemeToggle ? null : <ThemeToggle compact />}
               {isAuthenticated ? (
                 <button
                   aria-label="Sign out"
@@ -285,7 +272,7 @@ export function PortalSidebar() {
                 <Link
                   aria-label="Login / Signup"
                   className="portal-sidebar-sign-out"
-                  href={buildPortalLoginHref()}
+                  href={buildPortalLoginHrefForPath(pathname)}
                   onClick={closeDrawer}
                   title="Login / Signup"
                 >

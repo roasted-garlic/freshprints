@@ -113,6 +113,22 @@ export const backfillPrintRequestQueueTab = onCall(
         })),
       });
 
+      if (nextQueueTab === null) {
+        if (requestData.queueTab !== undefined) {
+          updated += 1;
+          if (!dryRun) {
+            batch.update(requestDoc.ref, {
+              queueTab: FieldValue.delete(),
+              updatedAt: FieldValue.serverTimestamp(),
+            });
+            batchWrites += 1;
+          }
+        } else {
+          alreadyCorrect += 1;
+        }
+        continue;
+      }
+
       if (requestData.queueTab === nextQueueTab) {
         alreadyCorrect += 1;
         continue;

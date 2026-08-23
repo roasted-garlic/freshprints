@@ -7,6 +7,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PrintRequestItem } from '@fresh-prints/shared/types/printRequest/printRequest.types';
 import { derivePrintRequestListTab } from '@fresh-prints/shared/utils/printRequestListGrouping';
 import {
+  resolvePortalPrintRequestProgressLabel,
+} from '@fresh-prints/shared/utils/printRequestConversion';
+import {
   type PortalPrintRequestListTab,
 } from '@fresh-prints/shared/utils/portalPrintRequestListTabs';
 import {
@@ -442,7 +445,11 @@ export default function PrintRequestDetailView() {
             <div className="portal-request-detail-meta-pills">
               {!isEditable ? (
                 <span className="portal-request-detail-meta-pill">
-                  {getStatusLabel(printRequest.status)}
+                  {resolvePortalPrintRequestProgressLabel({
+                    closureKind: printRequest.closureKind,
+                    status: printRequest.status,
+                    defaultLabel: getStatusLabel(printRequest.status),
+                  })}
                 </span>
               ) : null}
               <span className="portal-request-detail-meta-pill">{designCountLabel}</span>

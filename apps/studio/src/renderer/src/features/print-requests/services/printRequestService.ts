@@ -158,6 +158,11 @@ interface PrintRequestDocumentData extends DocumentData {
   internalBaseName?: unknown;
   nameFormatVersion?: unknown;
   notes?: unknown;
+  closureKind?: unknown;
+  convertedToInternalRequestId?: unknown;
+  convertedFromCustomerRequestId?: unknown;
+  convertedAt?: unknown;
+  convertedBy?: unknown;
   createdBy?: unknown;
   updatedBy?: unknown;
   createdAt?: unknown;
@@ -250,6 +255,15 @@ function mapPrintRequestData(printRequestId: string, data: PrintRequestDocumentD
         ? data.nameFormatVersion
         : undefined,
     notes: typeof data.notes === "string" ? data.notes : undefined,
+    closureKind: data.closureKind === "converted_to_internal" ? data.closureKind : undefined,
+    convertedToInternalRequestId:
+      typeof data.convertedToInternalRequestId === "string"
+        ? data.convertedToInternalRequestId
+        : undefined,
+    convertedFromCustomerRequestId:
+      typeof data.convertedFromCustomerRequestId === "string"
+        ? data.convertedFromCustomerRequestId
+        : undefined,
     createdBy: data.createdBy,
     updatedBy: data.updatedBy,
     createdAt,

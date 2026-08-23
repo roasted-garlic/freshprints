@@ -2,6 +2,7 @@ import type { Category } from "../types/category.types";
 import type { AiReviewStatus } from "../types/aiReview.types";
 import type { CatalogTag } from "../types/catalogTag.types";
 import type { Design } from "../types/design.types";
+import { catalogSearchTokensMatch } from "@fresh-prints/shared/utils/catalogSearchNormalization";
 import { resolveDesignAiReviewDisplay } from "./aiReviewState";
 
 /** Canonical design tag synced by staff Halftone confirmation (ADR-FP-080). */
@@ -52,15 +53,16 @@ export function designMatchesSearchQuery(
   }
 
   const idMatches = design.id.toLowerCase().includes(normalizedQuery);
-  const titleMatches = design.title.toLowerCase().includes(normalizedQuery);
-  const descriptionMatches = design.description?.toLowerCase().includes(normalizedQuery) ?? false;
+  const titleMatches = catalogSearchTokensMatch(design.title, normalizedQuery);
+  const descriptionMatches =
+    design.description != null && catalogSearchTokensMatch(design.description, normalizedQuery);
 
   if (idMatches || titleMatches || descriptionMatches) {
     return true;
   }
 
   if (catalogTags.length === 0) {
-    return design.tags.some((tag) => tag.includes(normalizedQuery));
+    return design.tags.some((tag) => catalogSearchTokensMatch(tag, normalizedQuery));
   }
 
   const catalogTagLookup = buildCatalogTagLookup(catalogTags);
@@ -133,7 +135,7 @@ export function filterTagsBySearch(availableTags: string[], searchQuery: string)
   }
 
   return sortTagsAlphabetically(
-    availableTags.filter((tag) => tag.includes(normalizedQuery)),
+    availableTags.filter((tag) => catalogSearchTokensMatch(tag, normalizedQuery)),
   );
 }
 
@@ -176,13 +178,13 @@ function tagMatchesCatalogSearch(
   const catalogTag = catalogTagLookup.get(normalizedTag);
 
   if (!catalogTag) {
-    return false;
+    return catalogSearchTokensMatch(tag, normalizedSearch);
   }
 
   return (
-    catalogTag.name.toLowerCase().includes(normalizedSearch) ||
-    catalogTag.aliases.some((alias) => alias.toLowerCase().includes(normalizedSearch)) ||
-    catalogTag.preferredWhen.toLowerCase().includes(normalizedSearch)
+    catalogSearchTokensMatch(catalogTag.name, normalizedSearch) ||
+    catalogTag.aliases.some((alias) => catalogSearchTokensMatch(alias, normalizedSearch)) ||
+    catalogSearchTokensMatch(catalogTag.preferredWhen, normalizedSearch)
   );
 }
 

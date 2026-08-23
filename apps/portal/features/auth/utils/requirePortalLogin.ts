@@ -19,6 +19,31 @@ export function buildPortalLoginHref(returnTo?: string | null): string {
 }
 
 /**
+ * Prefer an explicit app path (e.g. from `usePathname()`) for SSR-safe login links in the shell.
+ */
+export function buildPortalLoginHrefForPath(pathname: string | null | undefined): string {
+  return buildPortalLoginHref(pathname?.trim() ? pathname : '/');
+}
+
+/** Build `/register?returnTo=…` for guest signup CTAs. */
+export function buildPortalRegisterHref(returnTo?: string | null): string {
+  const target =
+    returnTo != null && returnTo.trim()
+      ? returnTo
+      : typeof window !== 'undefined'
+        ? getCurrentPortalPath(window.location)
+        : '/';
+  return buildPortalAuthHref('/register', target);
+}
+
+/**
+ * Prefer an explicit app path (e.g. from `usePathname()`) for SSR-safe register links in the shell.
+ */
+export function buildPortalRegisterHrefForPath(pathname: string | null | undefined): string {
+  return buildPortalRegisterHref(pathname?.trim() ? pathname : '/');
+}
+
+/**
  * Interstitial explaining login is required before authenticated features.
  * Prefer in-shell guest overlay for `(app)` gated routes; keep for bookmarks / deep links.
  */

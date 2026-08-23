@@ -8,6 +8,8 @@ export type PrintRequestOrigin =
   | "studio_customer"
   | "portal_customer";
 
+export type PrintRequestClosureKind = "converted_to_internal";
+
 /**
  * Provenance of a print request line item.
  * Missing `sourceType` on legacy docs means `catalog_design`.
@@ -50,6 +52,12 @@ export interface PrintRequest {
     version: string;
     upcomingShowId: string;
   };
+  /** Terminal closure reason when a request is closed without being printed. */
+  closureKind?: PrintRequestClosureKind;
+  convertedToInternalRequestId?: string;
+  convertedFromCustomerRequestId?: string;
+  convertedAt?: Timestamp;
+  convertedBy?: string;
   createdBy: string;
   updatedBy: string;
   createdAt: Timestamp;

@@ -1,63 +1,64 @@
 ## Current Goal
-studio-release-latest-and-final-copy-gates
+our-shows-page-ux-and-print-request-actions
 
 ## Current Mode
 managed-phase
 
 ## Phase
-signoff
+test
 
 ## Plan Status
 complete
 
 ## Review Status
-approved
+approved_with_changes
 
 ## Implementation Status
 complete
 
 ## Test Status
-passed
+passed_with_notes
 
 ## Signoff Status
-approved
+not_started
 
 ## DONE
-yes
-
-## Human Checkpoint Required
 no
 
+## Human Checkpoint Required
+yes
+
+## Human Checkpoint Reason
+Manual UI review of Portal Our Shows browse calendar + Studio CR/IR action placement.
+
 ## Allowed Actions
-read docs; idle until next owner goal
+record owner manual QA results; minor copy/CSS tweaks within scope; prepare signoff after PASS
 
 ## Forbidden Actions
-publish GitHub Releases without `APPROVE STUDIO PUBLISH` + publish helper; App Hosting/Functions/Rules/index deploys without a new owner phrase; Phase 9; force-push; direct-push production; new worktrees/branches
+production deploy; production Firebase mutation; App Hosting rollout; Studio publish/release; expand into allocation ShowPicker redesign
 
 ## Plan
-docs/workflow/plans/2026-08-21-studio-release-latest-and-final-copy-gates-plan.md
+docs/workflow/plans/2026-08-23-our-shows-page-ux-and-print-request-actions-plan.md
 
 ## Review
-docs/workflow/reviews/2026-08-21-studio-release-latest-and-final-copy-gates-review.md
+docs/workflow/reviews/2026-08-23-our-shows-page-ux-and-print-request-actions-review.md
 
 ## Test Report
-docs/workflow/reviews/2026-08-21-studio-release-latest-and-final-copy-gates-test-report.md
+docs/workflow/reviews/2026-08-23-our-shows-page-ux-and-print-request-actions-test-report.md
 
 ## Signoff
-docs/workflow/reviews/2026-08-21-studio-release-latest-and-final-copy-gates-signoff.md
+(pending)
 
 ## Last Completed Step
-Residual signed-off workflow artifacts committed on development. Paused Print Request promotion records included (Gate D LIVE, Portal QA pending). No production PR. 1.0.8 not edited.
+Refined Our Shows calendar: compact sizing, timing fill + capacity border legend, direct day-cell navigation (multi-show picker modal), removed bottom slot panel.
 
 ## Next Required Step
-Idle. Do not create a production PR until the owner asks. Future Studio publish: `APPROVE STUDIO PUBLISH: X.Y.Z` then the publish helper.
+Owner manual DEV QA of refined Portal /shows calendar on desktop + mobile.
 
 ## Phase 9
 PARKED
 
-## Paused Goal
-promote-print-request-correctives-to-production — Gate D LIVE. Not reopened.
-
 ## Decision Log
-- 2026-08-21: Residual closeout on development — Print Request promotion records (paused Gate D), Studio polish PR #85 signoff artifacts, Studio 1.0.8 publish records. No 1.0.8 mutation. No production PR.
-- 2026-08-21: Owner `APPROVE IMPLEMENT`. Tests 36/36 + lint. Signoff **approved**. No live GitHub publish.
+- 2026-08-23: Implemented Portal-local OurShowsCalendar (not shared ShowPicker allocation UI).
+- 2026-08-23: Studio gates Add to Show vs Add to Internal Gangsheet by request isInternal; Convert moved to Edit-adjacent overflow.
+- 2026-08-23: Automated typecheck portal + studio pass; manual UI checkpoint required.

@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Menu } from 'lucide-react';
 
 import { useAuth } from '../../auth/context/AuthContext';
-import { buildPortalLoginHref } from '../../auth/utils/requirePortalLogin';
+import { buildPortalLoginHrefForPath } from '../../auth/utils/requirePortalLogin';
 import { PortalLogo } from '../../brand/components/PortalLogo';
 import { usePortalBrandLogoSettings } from '../../brand/hooks/usePortalBrandLogoSettings';
 import { LogInIcon, ShoppingBagIcon } from '../../shared/components/PortalIcons';
@@ -14,6 +15,7 @@ import { usePortalPrintRequests } from '../../print-requests/context/PortalPrint
 import { usePortalDrawer } from '../context/PortalDrawerContext';
 
 export function PortalAppHeader() {
+  const pathname = usePathname();
   const { isAuthenticated } = useAuth();
   const { openNav } = usePortalDrawer();
   const { currentRequestAggregates, openCurrentRequestDrawer } = usePortalPrintRequests();
@@ -54,7 +56,7 @@ export function PortalAppHeader() {
         {!isAuthenticated ? (
           <Link
             className="portal-button portal-button-secondary portal-button-sm portal-button-leading-icon portal-app-header-guest-login"
-            href={buildPortalLoginHref()}
+            href={buildPortalLoginHrefForPath(pathname)}
           >
             <LogInIcon size={14} />
             Login / Signup

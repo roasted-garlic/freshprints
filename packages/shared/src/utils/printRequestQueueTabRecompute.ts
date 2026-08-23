@@ -22,7 +22,11 @@ export function computePrintRequestQueueTab(input: {
   status: PrintRequestStatus;
   items: PrintRequestQueueTabRecomputeItem[];
   allocations: PrintRequestQueueTabRecomputeAllocation[];
-}): PrintRequestListTab {
+}): PrintRequestListTab | null {
+  if (input.status === "archived") {
+    return null;
+  }
+
   const totalRequestedQuantity = input.items.reduce(
     (sum, item) => sum + (Number.isFinite(item.quantity) ? item.quantity : 0),
     0,

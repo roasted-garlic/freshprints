@@ -1,6 +1,6 @@
 import { REQUEST_ARTWORK_PATH, buildRequestArtworkHref, CATALOG_HOME_PATH } from '../../print-requests/utils/catalogSelectionNavigation';
 
-export type PortalNavItemId = 'library' | 'customDesigns' | 'upload';
+export type PortalNavItemId = 'library' | 'showDesigns' | 'customDesigns' | 'upload' | 'donate';
 
 export interface PortalNavItem {
   id: PortalNavItemId;
@@ -12,11 +12,13 @@ export const PORTAL_ACCOUNT_HREF = '/dashboard';
 /** Favorites live on Account; kept for dashboard / deep links. */
 export const PORTAL_FAVORITES_HREF = '/favorites';
 
-/** Primary sidebar order: Browse Designs → Upload Designs → Custom Designs. Favorites live on Account. */
+/** Primary sidebar order: Browse → Upload → Custom → Donate → Upcoming Shows. Favorites live on Account. */
 export const portalNavItems: PortalNavItem[] = [
   { id: 'library', href: '/catalog', label: 'Browse Designs' },
   { id: 'upload', href: REQUEST_ARTWORK_PATH, label: 'Upload Designs' },
   { id: 'customDesigns', href: '/custom-designs', label: 'Custom Designs' },
+  { id: 'donate', href: '/donate', label: 'Donate Designs' },
+  { id: 'showDesigns', href: '/shows', label: 'Upcoming Shows' },
 ];
 
 export function isPortalAccountRoute(pathname: string): boolean {
@@ -32,6 +34,10 @@ export function resolveActivePortalNavItem(pathname: string): PortalNavItemId | 
     return 'library';
   }
 
+  if (pathname === '/shows' || pathname.startsWith('/shows/')) {
+    return 'showDesigns';
+  }
+
   if (pathname === '/custom-designs' || pathname.startsWith('/custom-designs/')) {
     return 'customDesigns';
   }
@@ -40,10 +46,21 @@ export function resolveActivePortalNavItem(pathname: string): PortalNavItemId | 
     return 'upload';
   }
 
+  if (pathname === '/donate' || pathname.startsWith('/donate/')) {
+    return 'donate';
+  }
+
   return null;
 }
 
 export function resolvePortalNavHref(item: PortalNavItem, pathname: string): string {
+  if (item.id === 'donate') {
+    if (pathname === '/donate' || pathname.startsWith('/donate/')) {
+      return '/donate';
+    }
+    return `/donate?returnTo=${encodeURIComponent(pathname)}`;
+  }
+
   if (item.id !== 'upload') {
     return item.href;
   }

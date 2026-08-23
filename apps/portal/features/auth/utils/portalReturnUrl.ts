@@ -65,7 +65,7 @@ export function getPortalReturnToFromSearch(search: string): string {
 }
 
 export function buildPortalAuthHref(
-  route: '/login' | '/login-required' | '/complete-profile',
+  route: '/login' | '/login-required' | '/complete-profile' | '/register',
   returnTo: string,
 ): string {
   const safeReturnTo = getSafePortalReturnTo(returnTo);

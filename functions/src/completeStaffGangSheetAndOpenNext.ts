@@ -15,6 +15,10 @@ import {
   invalidArgument,
   unauthenticated,
 } from "./lib/errors";
+import {
+  finishShowAllocationsInTransaction,
+  reconcilePrintRequestsAfterShowFinish,
+} from "./lib/staffGangSheetShowFinishReconciliation";
 
 export interface CompleteStaffGangSheetAndOpenNextRequest {
   upcomingShowId: string;
@@ -80,7 +84,7 @@ export const completeStaffGangSheetAndOpenNext = onCall(
 
       const showRef = adminDb.collection("upcomingShows").doc(upcomingShowId);
 
-      return await adminDb.runTransaction(async (transaction) => {
+      const { response, printRequestIds } = await adminDb.runTransaction(async (transaction) => {
         const showSnap = await transaction.get(showRef);
         if (!showSnap.exists) {
           throw invalidArgument("Internal Gang Sheet not found.");
@@ -121,11 +125,18 @@ export const completeStaffGangSheetAndOpenNext = onCall(
               typeof next.data().staffGangSheetCycleNumber === "number"
                 ? next.data().staffGangSheetCycleNumber
                 : cycleNumber + 1;
+            const affectedPrintRequestIds = await finishShowAllocationsInTransaction(transaction, {
+              upcomingShowId,
+              actorId: caller.id,
+            });
             return {
-              completedShowId: upcomingShowId,
-              nextShowId: next.id,
-              nextCycleNumber: nextCycle,
-              alreadyCompleted: true,
+              response: {
+                completedShowId: upcomingShowId,
+                nextShowId: next.id,
+                nextCycleNumber: nextCycle,
+                alreadyCompleted: true,
+              },
+              printRequestIds: affectedPrintRequestIds,
             };
           }
           throw failedPrecondition(
@@ -153,6 +164,12 @@ export const completeStaffGangSheetAndOpenNext = onCall(
         const nextCycleNumber = cycleNumber + 1;
         const nextRef = adminDb.collection("upcomingShows").doc();
         const now = FieldValue.serverTimestamp();
+
+        // Reads (allocations) must finish before any writes in the same transaction.
+        const affectedPrintRequestIds = await finishShowAllocationsInTransaction(transaction, {
+          upcomingShowId,
+          actorId: caller.id,
+        });
 
         const completedUpdate: Record<string, unknown> = {
           productionStatus: "completed",
@@ -190,12 +207,19 @@ export const completeStaffGangSheetAndOpenNext = onCall(
         });
 
         return {
-          completedShowId: upcomingShowId,
-          nextShowId: nextRef.id,
-          nextCycleNumber,
-          alreadyCompleted: false,
+          response: {
+            completedShowId: upcomingShowId,
+            nextShowId: nextRef.id,
+            nextCycleNumber,
+            alreadyCompleted: false,
+          },
+          printRequestIds: affectedPrintRequestIds,
         };
       });
+
+      await reconcilePrintRequestsAfterShowFinish(printRequestIds, caller.id);
+
+      return response;
     } catch (error) {
       mapHttpsError(error);
     }

@@ -87,6 +87,17 @@ describe("computePrintRequestQueueTab", () => {
     );
   });
 
+  it("returns null for archived requests so they drop out of queueTab counts", () => {
+    assert.equal(
+      computePrintRequestQueueTab({
+        status: "archived",
+        items: [{ quantity: 2 }],
+        allocations: [],
+      }),
+      null,
+    );
+  });
+
   it("treats non-finite quantities as zero without throwing", () => {
     assert.equal(
       computePrintRequestQueueTab({

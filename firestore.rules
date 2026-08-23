@@ -789,6 +789,11 @@ service cloud.firestore {
           "nameFormatVersion",
           "notes",
           "showQueueBiddingAcknowledgment",
+          "closureKind",
+          "convertedToInternalRequestId",
+          "convertedFromCustomerRequestId",
+          "convertedAt",
+          "convertedBy",
           "createdBy",
           "updatedBy",
           "createdAt",
@@ -815,6 +820,11 @@ service cloud.firestore {
         && isOptionalString(data, "notes")
         && (!("showQueueBiddingAcknowledgment" in data)
           || isValidShowQueueBiddingAcknowledgment(data.showQueueBiddingAcknowledgment))
+        && (!("closureKind" in data) || data.closureKind == "converted_to_internal")
+        && isOptionalString(data, "convertedToInternalRequestId")
+        && isOptionalString(data, "convertedFromCustomerRequestId")
+        && isOptionalTimestamp(data, "convertedAt")
+        && isOptionalString(data, "convertedBy")
         && data.createdBy is string
         && data.updatedBy is string
         && data.createdAt is timestamp
@@ -834,7 +844,12 @@ service cloud.firestore {
       return request.resource.data.status != "completed"
         && (resource.data.status != "completed" || request.resource.data.status == "archived")
         && optionalFieldUnchanged("queueTab")
-        && optionalFieldUnchanged("showQueueBiddingAcknowledgment");
+        && optionalFieldUnchanged("showQueueBiddingAcknowledgment")
+        && optionalFieldUnchanged("closureKind")
+        && optionalFieldUnchanged("convertedToInternalRequestId")
+        && optionalFieldUnchanged("convertedFromCustomerRequestId")
+        && optionalFieldUnchanged("convertedAt")
+        && optionalFieldUnchanged("convertedBy");
     }
 
     function isCatalogPrintRequestItem(data) {

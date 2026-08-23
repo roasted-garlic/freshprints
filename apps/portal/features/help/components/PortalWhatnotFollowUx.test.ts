@@ -33,14 +33,14 @@ describe('usePortalHelpContent required FAQ merge', () => {
 })
 
 describe('PortalSidebar Whatnot link', () => {
-  it('places Follow on Whatnot above Help as a safe external link', () => {
+  it('places Follow on Whatnot below Help as a safe external link', () => {
     const source = readFileSync(
       path.join(__dirname, '../../navigation/components/PortalSidebar.tsx'),
       'utf8',
     )
-    const whatnotIndex = source.indexOf('portal-sidebar-whatnot-link')
     const helpIndex = source.indexOf('portal-sidebar-help-link')
-    assert.ok(whatnotIndex >= 0 && helpIndex > whatnotIndex)
+    const whatnotIndex = source.indexOf('portal-sidebar-whatnot-link')
+    assert.ok(helpIndex >= 0 && whatnotIndex > helpIndex)
     assert.match(source, /FRESH_PRINTS_WHATNOT_PROFILE_URL/)
     assert.match(source, /href=\{FRESH_PRINTS_WHATNOT_PROFILE_URL\}/)
     assert.equal(FRESH_PRINTS_WHATNOT_PROFILE_URL, 'https://www.whatnot.com/user/funkyfreshprints')

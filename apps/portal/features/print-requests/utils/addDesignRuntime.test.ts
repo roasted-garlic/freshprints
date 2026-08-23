@@ -24,6 +24,19 @@ describe("add-design current runtime dependencies", () => {
     );
     assert.deepEqual(redirects, ["latest-router:/catalog?designId=design%201"]);
 
+    redirects.length = 0;
+    assert.equal(
+      requireCurrentSignedIn({
+        userRef: { current: null },
+        routerRef,
+        designId: "design 1",
+        returnTo: "/shows/show-123",
+        redirect: (router, returnTo) => redirects.push(`${router}:${returnTo}`),
+      }),
+      false,
+    );
+    assert.deepEqual(redirects, ["latest-router:/shows/show-123"]);
+
     userRef.current = { uid: "latest-user" };
     assert.equal(
       requireCurrentSignedIn({

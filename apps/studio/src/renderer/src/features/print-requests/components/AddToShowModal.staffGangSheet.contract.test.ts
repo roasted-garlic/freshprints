@@ -33,4 +33,7 @@ test("AddToShowModal Staff destination does not auto-create and shows capacity U
   assert.doesNotMatch(modalSource, /createStaffGangSheetLane/);
   assert.match(modalSource, /isStaffDestination/);
   assert.match(modalSource, /formatShowCapacitySlotLabel/);
+  assert.match(modalSource, /AnimatedShowCapacityBar/);
+  assert.match(modalSource, /staffCapacityPresentation/);
+  assert.match(modalSource, /savePendingByShowId/);
 });

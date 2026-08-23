@@ -90,6 +90,52 @@ function sumLegQuantities(leg: AllocationLeg): number {
   return Object.values(leg.quantitiesByItemId).reduce((sum, quantity) => sum + quantity, 0);
 }
 
+function AnimatedShowCapacityBar({
+  animatePending,
+  committedPercent,
+  fillLevel,
+  projectedPercent,
+}: {
+  animatePending: boolean;
+  committedPercent: number;
+  fillLevel: ReturnType<typeof getCapacityFillLevel>;
+  projectedPercent: number;
+}) {
+  const hasPendingPreview = animatePending && projectedPercent > committedPercent;
+  const [displayPercent, setDisplayPercent] = useState(committedPercent);
+
+  useEffect(() => {
+    if (!hasPendingPreview) {
+      setDisplayPercent(projectedPercent);
+      return;
+    }
+
+    setDisplayPercent(committedPercent);
+    let secondFrameId = 0;
+    const firstFrameId = window.requestAnimationFrame(() => {
+      secondFrameId = window.requestAnimationFrame(() => {
+        setDisplayPercent(projectedPercent);
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(firstFrameId);
+      window.cancelAnimationFrame(secondFrameId);
+    };
+  }, [committedPercent, hasPendingPreview, projectedPercent]);
+
+  const percent = hasPendingPreview ? displayPercent : projectedPercent;
+
+  return (
+    <div className="show-capacity-bar-track">
+      <div
+        className={`show-capacity-bar-fill${fillLevel ? ` is-${fillLevel}` : ""}`}
+        style={{ width: `${Math.min(100, percent)}%` }}
+      />
+    </div>
+  );
+}
+
 function aggregateLegQuantitiesByShowId(legs: AllocationLeg[]): Map<string, number> {
   const byShowId = new Map<string, number>();
   for (const leg of legs) {
@@ -276,8 +322,15 @@ export function AddToShowModal({
   );
 
   const capacityByShowId = useMemo(() => {
+    const showsForCapacity = new Map(allocatableShows.map((show) => [show.id, show] as const));
+    for (const show of openStaffGangSheets) {
+      if (!showsForCapacity.has(show.id)) {
+        showsForCapacity.set(show.id, show);
+      }
+    }
+
     const map = new Map<string, ReturnType<typeof assessShowCapacity>>();
-    for (const show of allocatableShows) {
+    for (const show of showsForCapacity.values()) {
       const legQuantityForShow = legs
         .filter((leg) => leg.showId === show.id)
         .reduce((sum, leg) => sum + Object.values(leg.quantitiesByItemId).reduce((legSum, q) => legSum + q, 0), 0);
@@ -290,7 +343,7 @@ export function AddToShowModal({
       );
     }
     return map;
-  }, [allocatableShows, legs]);
+  }, [allocatableShows, legs, openStaffGangSheets]);
 
   const showPickerOptions = useMemo(
     () =>
@@ -325,6 +378,58 @@ export function AddToShowModal({
   );
 
   const selectedCapacity = selectedShowId ? capacityByShowId.get(selectedShowId) : undefined;
+  const staffCapacityPresentation = useMemo(() => {
+    if (!isStaffDestination || !openStaffGangSheet) {
+      return null;
+    }
+
+    const legQuantityForShow = legs
+      .filter((leg) => leg.showId === openStaffGangSheet.id)
+      .reduce((sum, leg) => sum + sumLegQuantities(leg), 0);
+    const baseline =
+      allocatedBaselineByShowId?.get(openStaffGangSheet.id) ?? openStaffGangSheet.allocatedQuantity;
+    const pendingSave = savePendingByShowId?.get(openStaffGangSheet.id) ?? 0;
+
+    let committedAllocated: number;
+    let projectedAllocated: number;
+    let animatePending = false;
+
+    if (isCelebratingSave) {
+      committedAllocated = baseline;
+      projectedAllocated = baseline + pendingSave;
+      animatePending = pendingSave > 0;
+    } else if (isSubmitting) {
+      committedAllocated = baseline;
+      projectedAllocated = baseline;
+    } else {
+      committedAllocated = openStaffGangSheet.allocatedQuantity + legQuantityForShow;
+      projectedAllocated = committedAllocated;
+    }
+
+    const committed = assessShowCapacity({
+      maxTotalQuantity: openStaffGangSheet.maxTotalQuantity,
+      allocatedQuantity: committedAllocated,
+    });
+    const projected = assessShowCapacity({
+      maxTotalQuantity: openStaffGangSheet.maxTotalQuantity,
+      allocatedQuantity: projectedAllocated,
+    });
+
+    return {
+      animatePending,
+      committed,
+      projected,
+      title: formatStaffGangSheetTitle(openStaffGangSheet.staffGangSheetCycleNumber ?? 1),
+    };
+  }, [
+    allocatedBaselineByShowId,
+    isCelebratingSave,
+    isStaffDestination,
+    isSubmitting,
+    legs,
+    openStaffGangSheet,
+    savePendingByShowId,
+  ]);
   const selectedShowIsStaff = useMemo(() => {
     const show = shows.find((candidate) => candidate.id === selectedShowId);
     return Boolean(show && isStaffGangSheetShow(show));
@@ -451,7 +556,10 @@ export function AddToShowModal({
     setActionError(null);
     setProgress(steps.length > 0 ? { stepIndex: 0, stepTotal: steps.length, showLabel: "", itemLabel: "" } : null);
     setAllocatedBaselineByShowId(
-      new Map(allocatableShows.map((show) => [show.id, show.allocatedQuantity] as const)),
+      new Map([
+        ...allocatableShows.map((show) => [show.id, show.allocatedQuantity] as const),
+        ...openStaffGangSheets.map((show) => [show.id, show.allocatedQuantity] as const),
+      ]),
     );
 
     try {
@@ -500,6 +608,7 @@ export function AddToShowModal({
     legs,
     onAdded,
     onClose,
+    openStaffGangSheets,
     printRequest.id,
     remainingItems,
     selectedShowId,
@@ -513,6 +622,28 @@ export function AddToShowModal({
     isBusy ||
     (isStaffDestination && (!isRequestEligibleForStaff || !openStaffGangSheet)) ||
     (legs.length === 0 && !(canConfirmFullFitDirectly && remainingItems.length > 0));
+
+  const staffGangSheetCapacityCard = staffCapacityPresentation ? (
+    <div
+      className={`show-capacity-card print-requests-modal-capacity${
+        staffCapacityPresentation.projected.isOverCapacity
+          ? " is-over-capacity"
+          : staffCapacityPresentation.projected.isFull
+            ? " is-full"
+            : ""
+      }`}
+    >
+      <AnimatedShowCapacityBar
+        animatePending={staffCapacityPresentation.animatePending}
+        committedPercent={getShowCapacityPercent(staffCapacityPresentation.committed) ?? 0}
+        fillLevel={getCapacityFillLevel(getShowCapacityPercent(staffCapacityPresentation.projected))}
+        projectedPercent={getShowCapacityPercent(staffCapacityPresentation.projected) ?? 0}
+      />
+      <div className="show-capacity-summary">
+        <span>{formatShowCapacitySlotLabel(staffCapacityPresentation.projected)}</span>
+      </div>
+    </div>
+  ) : null;
 
   return (
     <div className="modal-overlay modal-overlay-blur">
@@ -579,6 +710,16 @@ export function AddToShowModal({
             </p>
           )}
 
+          {isBusy && isStaffDestination && staffCapacityPresentation ? (
+            <div className="print-requests-modal-hint">
+              <p>
+                <strong>{staffCapacityPresentation.title}</strong>
+              </p>
+            </div>
+          ) : null}
+
+          {isBusy && isStaffDestination ? staffGangSheetCapacityCard : null}
+
           {!isBusy && legs.length > 0 ? (
             <div className="show-allocation-plan-list">
               {legs.map((leg, index) => {
@@ -644,7 +785,7 @@ export function AddToShowModal({
               ) : null}
 
               {isStaffDestination ? (
-                !isRequestEligibleForStaff ? (
+                isBusy ? null : !isRequestEligibleForStaff ? (
                   <p className="print-requests-modal-hint">
                     Only Internal print requests can be added to Internal Gangsheets.
                   </p>
@@ -666,39 +807,11 @@ export function AddToShowModal({
                     ) : (
                       <div className="print-requests-modal-hint">
                         <p>
-                          <strong>
-                            {formatStaffGangSheetTitle(openStaffGangSheet?.staffGangSheetCycleNumber ?? 1)}
-                          </strong>
+                          <strong>{staffCapacityPresentation?.title ?? formatStaffGangSheetTitle(openStaffGangSheet?.staffGangSheetCycleNumber ?? 1)}</strong>
                         </p>
                       </div>
                     )}
-                    {selectedCapacity ? (
-                      <div
-                        className={`show-capacity-card print-requests-modal-capacity${
-                          selectedCapacity.isOverCapacity
-                            ? " is-over-capacity"
-                            : selectedCapacity.isFull
-                              ? " is-full"
-                              : ""
-                        }`}
-                      >
-                        <div className="show-capacity-bar-track">
-                          <div
-                            className={`show-capacity-bar-fill${
-                              getCapacityFillLevel(getShowCapacityPercent(selectedCapacity))
-                                ? ` is-${getCapacityFillLevel(getShowCapacityPercent(selectedCapacity))}`
-                                : ""
-                            }`}
-                            style={{
-                              width: `${Math.min(100, getShowCapacityPercent(selectedCapacity) ?? 0)}%`,
-                            }}
-                          />
-                        </div>
-                        <div className="show-capacity-summary">
-                          <span>{formatShowCapacitySlotLabel(selectedCapacity)}</span>
-                        </div>
-                      </div>
-                    ) : null}
+                    {!isBusy ? staffGangSheetCapacityCard : null}
                     {!isBusy && needsDecision ? (
                       <div className="show-allocation-decision">
                         <p className="show-allocation-decision-message">

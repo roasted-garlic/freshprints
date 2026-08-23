@@ -40,6 +40,7 @@ import type { CatalogDesign } from '../types/catalog.types';
 import { usePortalPrintRequests } from '../../print-requests/context/PortalPrintRequestContext';
 import { useAddDesignToRequestFlow } from '../../print-requests/hooks/useAddDesignToRequestFlow';
 import { usePortalPrintRequestSelectionMode } from '../../print-requests/hooks/usePortalPrintRequestSelectionMode';
+import { useCatalogShowDesigns } from '../../show-designs/hooks/useCatalogShowDesigns';
 import {
   buildCatalogLibraryHref,
   buildCatalogSelectionHref,
@@ -68,6 +69,8 @@ export function CatalogPageContent() {
   const selectionRequestId = selectionModeActive ? searchParams.get('requestId') : null;
   const seedDesignId = selectionModeActive ? searchParams.get('seedDesignId') : null;
   const discoveryMode = parseCatalogDiscoveryMode(searchParams.get('discover'));
+  const showId = searchParams.get('show');
+  const showDesignLibraryView = Boolean(showId || discoveryMode === 'showsThisWeek');
   const initialSearch = searchParams.get('q') ?? '';
   const initialCategory = searchParams.get('category') ?? '';
   const appliedSeedDesignIdRef = useRef<string | null>(null);
@@ -150,6 +153,22 @@ export function CatalogPageContent() {
 
   const { categories } = useCatalogCategories();
   const { tags: approvedTags, error: approvedTagsError } = useCatalogTags();
+  const catalogDesignsState = useCatalogDesigns({
+    categoryId: categoryFilter || undefined,
+    discoveryMode: showDesignLibraryView ? null : discoveryMode,
+    searchQuery: debouncedSearchQuery,
+    selectedTags,
+  });
+
+  const showDesignsState = useCatalogShowDesigns({
+    categoryId: categoryFilter || undefined,
+    enabled: showDesignLibraryView,
+    searchQuery: debouncedSearchQuery,
+    selectedTags,
+    showId,
+    showsThisWeek: discoveryMode === 'showsThisWeek',
+  });
+
   const {
     catalogDesigns,
     designs: displayedDesigns,
@@ -161,20 +180,21 @@ export function CatalogPageContent() {
     isLoadingMore,
     loadMoreDesigns,
     matchingCount,
-  } = useCatalogDesigns({
-    categoryId: categoryFilter || undefined,
-    discoveryMode,
-    searchQuery: debouncedSearchQuery,
-    selectedTags,
-  });
+  } = showDesignLibraryView ? showDesignsState : catalogDesignsState;
 
   const categoryOptions = useCatalogCategoryOptions(categories);
   const activeCategoryName =
     categories.find((category) => category.id === categoryFilter)?.name ?? null;
-  const curatedLibraryView = Boolean(discoveryMode || categoryFilter);
+  const curatedLibraryView = Boolean(discoveryMode || categoryFilter || showDesignLibraryView);
+  const showLibraryTitle = showDesignLibraryView ? showDesignsState.title : null;
+  const showLibrarySubtitle = showDesignLibraryView ? showDesignsState.subtitle : null;
 
   const hasActiveFilters = Boolean(
-    searchQuery.trim() || categoryFilter || selectedTags.length > 0 || discoveryMode,
+    searchQuery.trim() ||
+      categoryFilter ||
+      selectedTags.length > 0 ||
+      discoveryMode ||
+      showDesignLibraryView,
   );
 
   const designCountLabel =
@@ -413,14 +433,18 @@ export function CatalogPageContent() {
               Discover
             </button>
             <h1>
-              {discoveryMode
-                ? getCatalogDiscoveryModeLabel(discoveryMode)
-                : (activeCategoryName ?? 'Design Library')}
+              {showLibraryTitle
+                ? showLibraryTitle
+                : discoveryMode
+                  ? getCatalogDiscoveryModeLabel(discoveryMode)
+                  : (activeCategoryName ?? 'Design Library')}
             </h1>
             <p className="portal-muted portal-catalog-topbar-subtitle">
-              {curatedLibraryView
-                ? 'Search and filters still apply to this list.'
-                : 'Search and filter through our full design catalog'}
+              {showLibrarySubtitle
+                ? showLibrarySubtitle
+                : curatedLibraryView
+                  ? 'Search and filters still apply to this list.'
+                  : 'Search and filter through our full design catalog'}
             </p>
           </div>
         </header>

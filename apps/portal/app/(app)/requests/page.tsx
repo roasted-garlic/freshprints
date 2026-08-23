@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 
 import { derivePrintRequestQueueState } from '@fresh-prints/shared/utils/printRequestQueueState';
 import { getPrintRequestProgressLabel } from '@fresh-prints/shared/utils/printRequestProgressDisplay';
+import { resolvePortalPrintRequestProgressLabel } from '@fresh-prints/shared/utils/printRequestConversion';
 import { buildPortalCustomerShowScheduleCardSummary } from '@fresh-prints/shared/utils/portalCustomerShowSchedule';
 import {
   PORTAL_PRINT_REQUEST_LIST_TAB_PARAM,
@@ -177,14 +178,18 @@ export default function RequestsPage() {
                   totalInProgressQuantity: 0,
                   totalPrintedQuantity: 0,
                 };
-                const progressLabel = getPrintRequestProgressLabel(
-                  derivePrintRequestQueueState({
-                    totalRequestedQuantity: summary.totalQuantity,
-                    totalAllocatedQuantity: allocationTotals.totalAllocatedQuantity,
-                    totalInProgressQuantity: allocationTotals.totalInProgressQuantity,
-                    totalPrintedQuantity: allocationTotals.totalPrintedQuantity,
-                  }),
-                );
+                const progressLabel = resolvePortalPrintRequestProgressLabel({
+                  closureKind: request.closureKind,
+                  status: request.status,
+                  defaultLabel: getPrintRequestProgressLabel(
+                    derivePrintRequestQueueState({
+                      totalRequestedQuantity: summary.totalQuantity,
+                      totalAllocatedQuantity: allocationTotals.totalAllocatedQuantity,
+                      totalInProgressQuantity: allocationTotals.totalInProgressQuantity,
+                      totalPrintedQuantity: allocationTotals.totalPrintedQuantity,
+                    }),
+                  ),
+                });
                 const scheduleLine = buildPortalCustomerShowScheduleCardSummary(
                   schedulesByRequestId[request.id] ?? [],
                 ).line;
