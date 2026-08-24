@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useMemo, useState, type ReactNode } from 'react';
 
 import {
   CATALOG_DISCOVERY_MODES,
@@ -34,6 +34,11 @@ import {
   useCatalogHomeDesigns,
 } from '../hooks/useCatalogDesigns';
 import { usePortalShowHomeRails } from '../../show-designs/hooks/usePortalShowHomeRails';
+import type { PortalShowHomeRailSlot } from '../../show-designs/hooks/usePortalShowHomeRails';
+import {
+  designsForShowHomeRailPresentation,
+  type PortalShowHomeRail,
+} from '../../show-designs/services/portalShowDiscoveryContent';
 import { useCatalogDesignDeepLink } from '../hooks/useCatalogDesignDeepLink';
 
 interface CatalogHomeRailSection {
@@ -43,6 +48,50 @@ interface CatalogHomeRailSection {
   key: string;
   showId?: string;
   title: string;
+}
+
+const NEXT_SHOW_LOADING_TITLE = 'Next Show';
+const THIS_WEEK_LOADING_TITLE = 'Added to Shows This Week';
+
+function CatalogDiscoveryRailLoadingSection({
+  message,
+  title,
+}: {
+  message: string;
+  title: string;
+}) {
+  return (
+    <section aria-busy="true" aria-label={title} className="catalog-discovery-section">
+      <header className="catalog-discovery-section-header">
+        <h2 className="catalog-discovery-section-title">{title}</h2>
+      </header>
+      <div className="design-library-loading-state">{message}</div>
+    </section>
+  );
+}
+
+function CatalogDiscoveryRailErrorSection({ error, title }: { error: string; title: string }) {
+  return (
+    <section aria-label={title} className="catalog-discovery-section">
+      <header className="catalog-discovery-section-header">
+        <h2 className="catalog-discovery-section-title">{title}</h2>
+      </header>
+      <p className="portal-error" role="alert">
+        {error}
+      </p>
+    </section>
+  );
+}
+
+function showHomeRailToSection(rail: PortalShowHomeRail): CatalogHomeRailSection {
+  return {
+    categoryId: undefined,
+    designs: designsForShowHomeRailPresentation(rail),
+    discover: rail.viewAllDiscover,
+    key: rail.key,
+    showId: rail.viewAllShowId,
+    title: rail.title,
+  };
 }
 
 export function CatalogHomePageContent() {
@@ -77,11 +126,7 @@ export function CatalogHomePageContent() {
   const { categories } = useCatalogCategories();
   const { designs, categoryRails: hydratedCategoryRails, error, isLoading, readyLibraryCount } =
     useCatalogHomeDesigns(categories);
-  const {
-    error: showRailsError,
-    isLoading: isShowRailsLoading,
-    rails: showHomeRails,
-  } = usePortalShowHomeRails();
+  const { nextShow, thisWeek } = usePortalShowHomeRails();
 
   const discoveryRails = useMemo(
     (): CatalogHomeRailSection[] =>
@@ -109,22 +154,26 @@ export function CatalogHomePageContent() {
     [hydratedCategoryRails],
   );
 
-  const homeRails = useMemo((): CatalogHomeRailSection[] => {
-    const discovery = [...discoveryRails];
-    const showRails: CatalogHomeRailSection[] = showHomeRails.map((rail) => ({
-      categoryId: undefined,
-      designs: rail.designs,
-      discover: rail.viewAllDiscover,
-      key: rail.key,
-      showId: rail.viewAllShowId,
-      title: rail.title,
-    }));
-    const newIndex = discovery.findIndex((section) => section.discover === 'new');
-    const insertAt = newIndex >= 0 ? newIndex + 1 : 0;
-    discovery.splice(insertAt, 0, ...showRails);
+  const { discoveryAfterShow, discoveryBeforeShow } = useMemo(() => {
+    const newIndex = discoveryRails.findIndex((section) => section.discover === 'new');
+    if (newIndex < 0) {
+      return {
+        discoveryBeforeShow: [] as CatalogHomeRailSection[],
+        discoveryAfterShow: discoveryRails,
+      };
+    }
 
-    return [...discovery, ...categoryRails];
-  }, [categoryRails, discoveryRails, showHomeRails]);
+    return {
+      discoveryBeforeShow: discoveryRails.slice(0, newIndex + 1),
+      discoveryAfterShow: discoveryRails.slice(newIndex + 1),
+    };
+  }, [discoveryRails]);
+
+  const hasCatalogRails = discoveryRails.length > 0 || categoryRails.length > 0;
+  const hasShowRailContent = Boolean(nextShow.rail || thisWeek.rail);
+  const hasShowRailPending = nextShow.isLoading || thisWeek.isLoading;
+  const showDiscoverEmpty =
+    !isLoading && !hasCatalogRails && !hasShowRailContent && !hasShowRailPending;
 
   const pageBusy = isCreating;
 
@@ -134,8 +183,6 @@ export function CatalogHomePageContent() {
     categoryId?: string;
     showId?: string;
   }) {
-    // Soft nav can keep the discover page's scroll offset on mobile; force top
-    // before push so the filtered library never opens mid-page.
     window.scrollTo(0, 0);
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
@@ -155,6 +202,84 @@ export function CatalogHomePageContent() {
     event.preventDefault();
     const query = landingSearch.trim();
     openLibrary({ search: query || undefined });
+  }
+
+  function renderRailSection(section: CatalogHomeRailSection) {
+    return (
+      <CatalogDiscoveryCarousel
+        key={section.key}
+        onViewAll={() =>
+          openLibrary({
+            discover: section.discover,
+            categoryId: section.categoryId,
+            showId: section.showId,
+          })
+        }
+        title={section.title}
+      >
+        {section.designs.map((design, index) => {
+          const quantity =
+            currentRequestAggregates.primaryQuantityByDesignId[design.id] ??
+            currentRequestAggregates.quantityByDesignId[design.id] ??
+            0;
+          const isSelected = (currentRequestAggregates.quantityByDesignId[design.id] ?? 0) > 0;
+
+          return (
+            <div className="catalog-discovery-rail-item" key={design.id}>
+              <CatalogSelectionCard
+                canAddPrints={addDesignFlow.canAddPrints}
+                design={design}
+                disabled={addDesignFlow.addingDesignId === design.id}
+                exhaustedHelperText={addDesignFlow.exhaustedHelperText}
+                exhaustedStatusText={addDesignFlow.exhaustedStatusText}
+                hasMatchingDesigns={designHasMatchingDesignsHint(design)}
+                isSelected={isSelected}
+                onAdd={isAuthenticated ? addDesignFlow.addDesign : undefined}
+                onOpenDetails={openDesignDetails}
+                onQuantityChange={isAuthenticated ? addDesignFlow.setQuantity : undefined}
+                onRemove={isAuthenticated ? addDesignFlow.removeDesign : undefined}
+                prioritizeLoading={index < CATALOG_FIRST_VIEWPORT_EAGER_COUNT}
+                quantity={quantity > 0 ? quantity : 1}
+              />
+            </div>
+          );
+        })}
+      </CatalogDiscoveryCarousel>
+    );
+  }
+
+  function renderShowRailSlot(
+    slot: PortalShowHomeRailSlot,
+    options: {
+      loadingMessage: string;
+      loadingTitle: string;
+    },
+  ): ReactNode {
+    if (slot.isLoading) {
+      return (
+        <CatalogDiscoveryRailLoadingSection
+          key={options.loadingTitle}
+          message={options.loadingMessage}
+          title={options.loadingTitle}
+        />
+      );
+    }
+
+    if (slot.error) {
+      return (
+        <CatalogDiscoveryRailErrorSection
+          key={options.loadingTitle}
+          error={slot.error}
+          title={slot.rail?.title ?? options.loadingTitle}
+        />
+      );
+    }
+
+    if (!slot.rail) {
+      return null;
+    }
+
+    return renderRailSection(showHomeRailToSection(slot.rail));
   }
 
   const searchPlaceholder = buildDiscoverSearchPlaceholder(readyLibraryCount);
@@ -217,9 +342,9 @@ export function CatalogHomePageContent() {
         </div>
       </header>
 
-      {error || showRailsError ? (
+      {error ? (
         <p className="portal-error" role="alert">
-          {error ?? showRailsError}
+          {error}
         </p>
       ) : null}
 
@@ -240,9 +365,9 @@ export function CatalogHomePageContent() {
         />
       ) : null}
 
-      {isLoading || isShowRailsLoading ? (
+      {isLoading ? (
         <div className="design-library-loading-state">Loading designs…</div>
-      ) : homeRails.length === 0 ? (
+      ) : showDiscoverEmpty ? (
         <div className="design-library-empty-state">
           <p className="portal-eyebrow">Designs</p>
           <h3>No designs yet</h3>
@@ -257,47 +382,17 @@ export function CatalogHomePageContent() {
         </div>
       ) : (
         <div className="catalog-discovery-home">
-          {homeRails.map((section) => (
-            <CatalogDiscoveryCarousel
-              key={section.key}
-              onViewAll={() =>
-                openLibrary({
-                  discover: section.discover,
-                  categoryId: section.categoryId,
-                  showId: section.showId,
-                })
-              }
-              title={section.title}
-            >
-              {section.designs.map((design, index) => {
-                const quantity =
-                  currentRequestAggregates.primaryQuantityByDesignId[design.id] ??
-                  currentRequestAggregates.quantityByDesignId[design.id] ??
-                  0;
-                const isSelected = (currentRequestAggregates.quantityByDesignId[design.id] ?? 0) > 0;
-
-                return (
-                  <div className="catalog-discovery-rail-item" key={design.id}>
-                    <CatalogSelectionCard
-                      canAddPrints={addDesignFlow.canAddPrints}
-                      design={design}
-                      disabled={addDesignFlow.addingDesignId === design.id}
-                      exhaustedHelperText={addDesignFlow.exhaustedHelperText}
-                      exhaustedStatusText={addDesignFlow.exhaustedStatusText}
-                      hasMatchingDesigns={designHasMatchingDesignsHint(design)}
-                      isSelected={isSelected}
-                      onAdd={isAuthenticated ? addDesignFlow.addDesign : undefined}
-                      onOpenDetails={openDesignDetails}
-                      onQuantityChange={isAuthenticated ? addDesignFlow.setQuantity : undefined}
-                      onRemove={isAuthenticated ? addDesignFlow.removeDesign : undefined}
-                      prioritizeLoading={index < CATALOG_FIRST_VIEWPORT_EAGER_COUNT}
-                      quantity={quantity > 0 ? quantity : 1}
-                    />
-                  </div>
-                );
-              })}
-            </CatalogDiscoveryCarousel>
-          ))}
+          {discoveryBeforeShow.map((section) => renderRailSection(section))}
+          {renderShowRailSlot(nextShow, {
+            loadingMessage: 'Loading Next Show designs…',
+            loadingTitle: NEXT_SHOW_LOADING_TITLE,
+          })}
+          {renderShowRailSlot(thisWeek, {
+            loadingMessage: "Loading this week's designs…",
+            loadingTitle: THIS_WEEK_LOADING_TITLE,
+          })}
+          {discoveryAfterShow.map((section) => renderRailSection(section))}
+          {categoryRails.map((section) => renderRailSection(section))}
         </div>
       )}
 

@@ -1,6 +1,10 @@
 # Fresh Prints Roadmap
 
-> 2026-08-24: **Portal Upcoming Shows theme toggle — SIGNOFF approved (DEV)** — Goal `portal-shows-theme-toggle-sidebar` **DONE**. Sidebar footer sun/moon restored on `/shows`; floating header toggle removed. Owner local `PASS`. Production PR + App Hosting next (owner-requested). Signoff: `docs/workflow/reviews/2026-08-24-portal-shows-theme-toggle-sidebar-signoff.md`. Parent promote Gate F still parked. Phase 9 **PARKED**.
+> 2026-08-24: **Portal Discover show-rail loading + order polish — SIGNOFF approved (DEV)** — Goal `portal-discover-show-rails-loading-and-order-polish` **DONE**. Independent Next Show / This Week Discover loading; compact This Week rail presentation reversed; View All canonical order unchanged. Owner `OWNER DEV QA: PASS`. Production untouched. Signoff: `docs/workflow/reviews/2026-08-24-portal-discover-show-rails-loading-and-order-polish-signoff.md`. Phase 9 **PARKED**.
+>
+> 2026-08-24: **Production promote Portal + Studio 1.0.9 — CLOSED** — Goal `production-promote-portal-and-studio-2026-08-23` **DONE**. PR **#88** @ `94a1ed0`; PR **#89** hotfix @ `f35c96d`. Gate D Firebase live. Portal **`build-2026-08-24-002`**. Studio **1.0.9** published release **375869566** / run [32754684436](https://github.com/roasted-garlic/freshprints/actions/runs/32754684436). Signoff: `docs/workflow/reviews/2026-08-24-production-promote-portal-and-studio-signoff.md`. Phase 9 **PARKED**.
+>
+> 2026-08-24: **Portal Upcoming Shows theme toggle — SIGNOFF approved (DEV)** — Goal `portal-shows-theme-toggle-sidebar` **DONE**. Sidebar footer sun/moon restored on `/shows`; floating header toggle removed. Owner local `PASS`. Promoted in PR **#89** + App Hosting hotfix. Signoff: `docs/workflow/reviews/2026-08-24-portal-shows-theme-toggle-sidebar-signoff.md`. Phase 9 **PARKED**.
 >
 > 2026-08-23: **Studio workflow organization + grouped gang sheet — SIGNOFF approved (DEV)** — Goal `studio-workflow-organization-and-grouped-gang-sheet` **DONE**. WS1–WS5 owner `OWNER DEV QA: PASS`. Efficiency path regression-safe; Standard/Grouped caches coexist; no Firebase / Portal deploy / Studio release. Signoff: `docs/workflow/reviews/2026-08-23-studio-workflow-organization-and-grouped-gang-sheet-signoff.md`. Phase 9 **PARKED**.
 >

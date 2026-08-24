@@ -22,7 +22,7 @@
 
 **Total: 18 files** (limit: 25)
 
-**Last full package refresh:** 2026-07-13 (Your Stash polish signoff); partial refresh **2026-08-24** (Upcoming Shows theme-toggle signoff + production promote Gates C–E: CURRENT-STATE, 03, 04, 05, 06, 07, 12, 13, MANIFEST)
+**Last full package refresh:** 2026-07-13 (Your Stash polish signoff); partial refresh **2026-08-24** (Discover show-rail loading polish signoff + prior production promote / theme-toggle updates: CURRENT-STATE, 03, 04, 13, MANIFEST)
 
 ---
 

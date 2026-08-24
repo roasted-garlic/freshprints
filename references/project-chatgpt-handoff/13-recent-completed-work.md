@@ -1,5 +1,30 @@
 # Recent Completed Work
 
+## 2026-08-24 - Portal Discover show-rail loading + order polish — SIGNOFF / CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `portal-discover-show-rails-loading-and-order-polish` — **DONE (DEV)** |
+| Signoff | **approved** |
+| Owner QA | `OWNER DEV QA: PASS` |
+| Delivered | Discover catalog rails no longer blocked on show-rail load; Next Show + This Week independent localized loading; compact This Week rail presentation reversed; View All canonical order unchanged; non-mutating presentation helper |
+| Production | **untouched** — DEV/source signoff only |
+| ADR-FP-142 | unchanged — public show browse only; no customer-upload exposure |
+| Signoff | `docs/workflow/reviews/2026-08-24-portal-discover-show-rails-loading-and-order-polish-signoff.md` |
+
+## 2026-08-24 - Production promote Portal + Studio 1.0.9 — CLOSED
+
+| Item | Status |
+|------|--------|
+| Goal | `production-promote-portal-and-studio-2026-08-23` — **DONE** |
+| Gate C | PR **#88** @ `94a1ed0` |
+| Gate D | Firebase Rules + 4 Functions live |
+| Gate E | Portal **`build-2026-08-24-002`** @ `f35c96d` (includes PR **#89** hotfix) |
+| Gate F | Studio **1.0.9** published — release **375869566** / run [32754684436](https://github.com/roasted-garlic/freshprints/actions/runs/32754684436) |
+| Owner smoke | Windows + Mac x64 + arm64 **PASS** |
+| Prior Studio | **1.0.8** preserved |
+| Signoff | `docs/workflow/reviews/2026-08-24-production-promote-portal-and-studio-signoff.md` |
+
 ## 2026-08-24 - Portal Upcoming Shows theme toggle — SIGNOFF / CLOSED (DEV)
 
 | Item | Status |
@@ -8,33 +33,8 @@
 | Signoff | **approved** |
 | Owner QA | local visual `PASS` |
 | Delivered | `/shows` + `/shows/[id]` sidebar footer theme toggle; floating `PortalChrome` hidden on those routes (`isPortalAppShellRoute`) |
-| Not done in this goal | Production merge / App Hosting (owner requested immediately after signoff) |
+| Promoted | PR **#89** merged + App Hosting hotfix `build-2026-08-24-002` |
 | Signoff | `docs/workflow/reviews/2026-08-24-portal-shows-theme-toggle-sidebar-signoff.md` |
-
-## 2026-08-24 - Production promote Portal + Studio — IN PROGRESS (Gates C+D+E LIVE)
-
-| Item | Status |
-|------|--------|
-| Goal | `production-promote-portal-and-studio-2026-08-23` — **IN PROGRESS** |
-| Gate C | **MERGED** — PR **#88** @ **`94a1ed0009deab775d8b0c60be44ca931c0ad291`** |
-| Gate D | **VERIFIED COMPLETE** — Rules + 4 Functions on `fresh-prints-prod` |
-| Gate E | **LIVE** — `fresh-prints-portal-build-2026-08-24-001` @ **`94a1ed0`** **100%**; smoke PASS WITH NOTES |
-| Rollback | `fresh-prints-portal-build-2026-08-21-001` @ `7716d4a` |
-| Gate F | Studio 1.0.9 draft/publish — parked until Upcoming Shows chrome hotfix is live |
-| Published Studio | still **1.0.8** |
-| Records | Gate E rollout `docs/workflow/reviews/2026-08-24-production-promote-portal-and-studio-gate-e-app-hosting-rollout-record.md` |
-
-
-| Item | Status |
-|------|--------|
-| Goal | `production-promote-portal-and-studio-2026-08-23` — **IN PROGRESS** |
-| Gate C | **MERGED** — PR **#88** @ **`94a1ed0009deab775d8b0c60be44ca931c0ad291`** |
-| Gate D | **VERIFIED COMPLETE** — Rules + 4 Functions on `fresh-prints-prod` |
-| Gate E | **LIVE** — `fresh-prints-portal-build-2026-08-24-001` @ **`94a1ed0`** **100%**; smoke PASS WITH NOTES |
-| Rollback | `fresh-prints-portal-build-2026-08-21-001` @ `7716d4a` |
-| Gate F | Studio 1.0.9 draft/publish — not started (await Portal QA) |
-| Published Studio | still **1.0.8** |
-| Records | Gate E rollout `docs/workflow/reviews/2026-08-24-production-promote-portal-and-studio-gate-e-app-hosting-rollout-record.md` |
 
 ## 2026-08-23 - Studio workflow organization + grouped gang sheet — SIGNOFF / CLOSED (DEV)
 
