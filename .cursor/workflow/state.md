@@ -29,54 +29,35 @@ no
 yes
 
 ## Human Checkpoint Reason
-Gate C MERGED and post-merge verified. Awaiting owner authorization for Gate D production Firebase deploy. No App Hosting or Studio release yet.
+Gate D: owner authorized production Firebase deploy, but agent CLI is blocked by FreshForge shell guard. Owner must run the exact scoped firebase deploy locally, then continue post-deploy verification.
 
 ## Allowed Actions
-read docs; answer owner questions; prepare Gate D checkpoint text; deploy Firebase only after owner phrase
+read docs; prepare post-deploy verification after owner runs deploy; update Gate D record when deploy output confirmed
 
 ## Forbidden Actions
-Firebase deploy without phrase; App Hosting rollout; Studio dispatch/publish; force-push; Phase 9; deploy from development
+broad/alternate Firebase deploy methods; App Hosting; Studio dispatch/publish; force-push; Phase 9
 
 ## Plan
 docs/workflow/plans/2026-08-23-production-promote-portal-and-studio-plan.md
 
-## Review
-docs/workflow/reviews/2026-08-23-production-promote-portal-and-studio-review.md
-
-## Test Report
-docs/workflow/reviews/2026-08-23-production-promote-portal-and-studio-gate-b-test-report.md
-
-## PR Checkpoint
-docs/workflow/reviews/2026-08-23-production-promote-portal-and-studio-pr-checkpoint.md
-
 ## Gate C Merge Record
 docs/workflow/reviews/2026-08-23-production-promote-portal-and-studio-gate-c-merge-record.md
 
-## Signoff
-(n/a — production Signoff later)
-
-## Production PR
-#88 — https://github.com/roasted-garlic/freshprints/pull/88 (**MERGED**)
-
-## Production Merge SHA
-94a1ed0009deab775d8b0c60be44ca931c0ad291
-
-## Development Tip
-00f0d2d1b3fd1d2acd63042b0d9dbd2a04c3fac1
+## Gate D Checkpoint
+docs/workflow/reviews/2026-08-24-production-promote-portal-and-studio-gate-d-firebase-checkpoint.md
 
 ## Gate D Source SHA
 94a1ed0009deab775d8b0c60be44ca931c0ad291
 
 ## Last Completed Step
-Gate C post-merge verification complete. Production tip `94a1ed0` tree-identical to RC `00f0d2d`. STOP before Gate D.
+Gate D pre-deploy verification passed. Agent deploy blocked. Awaiting owner local CLI.
 
 ## Next Required Step
-Await owner: `APPROVE PRODUCTION FIREBASE DEPLOY: production-promote-portal-and-studio-2026-08-23`
+Owner runs exact scoped firebase deploy on fresh-prints-prod. Then CONTINUE GATE D POST-DEPLOY for verification. STOP before Gate E until Gate D verified.
 
 ## Phase 9
 PARKED
 
 ## Decision Log
-- 2026-08-23: Gate B RC + PR #88 opened MERGEABLE/CLEAN.
-- 2026-08-23: Owner merge phrase received; agent merge blocked by shell guard.
-- 2026-08-24: Owner merged PR #88 @ `94a1ed0009deab775d8b0c60be44ca931c0ad291` (parents `27b0b4f` + `00f0d2d`). Post-merge verified; trees identical; Gate D allowlist unchanged. No Firebase/App Hosting/Studio. STOP at Gate D checkpoint.
+- 2026-08-24: Gate C MERGED @ 94a1ed0.
+- 2026-08-24: Owner `APPROVE PRODUCTION FIREBASE DEPLOY`. Pre-deploy: functions/rules tree == 94a1ed0; functions build exit 0. Agent `firebase deploy` blocked by shell guard. Exact command recorded for owner CLI.
