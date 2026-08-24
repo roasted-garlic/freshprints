@@ -663,7 +663,7 @@ export function useExportGangSheetPng() {
         // Background refresh failures must not clear a successful in-session generate.
       }
     },
-    [applyCacheStatus, user],
+    [user],
   );
 
   const prepareGangSheetModal = useCallback(

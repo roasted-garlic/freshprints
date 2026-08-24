@@ -52,12 +52,14 @@ describe("findNextUpcomingShowWithDesigns", () => {
 });
 
 describe("findShowsThisWeekWithDesigns", () => {
-  const now = new Date("2026-08-23T18:00:00.000Z");
+  // Mid-week so "in-week + upcoming" fixtures stay inside Mon–Sun after `now`.
+  const now = new Date("2026-08-19T18:00:00.000Z");
 
   it("returns only upcoming shows in the current local week that have designs", () => {
     const week = getLocalWeekRange(now);
-    const inWeek = new Date(week.start);
-    inWeek.setDate(inWeek.getDate() + 1);
+    const inWeek = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    assert.ok(inWeek.getTime() > now.getTime());
+    assert.ok(inWeek.getTime() <= week.end.getTime());
 
     const shows = [
       show({
@@ -74,6 +76,11 @@ describe("findShowsThisWeekWithDesigns", () => {
         id: "no-designs",
         scheduledStartAt: inWeek.toISOString(),
         uniquePublicCatalogDesignCount: 0,
+      }),
+      show({
+        id: "earlier-this-week",
+        scheduledStartAt: new Date(week.start.getTime() + 12 * 60 * 60 * 1000).toISOString(),
+        uniquePublicCatalogDesignCount: 2,
       }),
     ];
 

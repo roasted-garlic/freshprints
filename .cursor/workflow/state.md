@@ -1,74 +1,82 @@
 ## Current Goal
-(none — idle)
+production-promote-portal-and-studio-2026-08-23
 
 ## Current Mode
-idle
+managed-phase
 
 ## Phase
-idle
+test
 
 ## Plan Status
-n/a
+complete
 
 ## Review Status
-n/a
+approved_with_changes
 
 ## Implementation Status
-n/a
+complete
 
 ## Test Status
-n/a
+passed_with_notes
 
 ## Signoff Status
-approved
+not_started
 
 ## DONE
-yes
-
-## Human Checkpoint Required
 no
 
+## Human Checkpoint Required
+yes
+
 ## Human Checkpoint Reason
-(none)
+Gate B complete on development. Await owner authorization to open/merge the production PR (development → production). No Firebase, App Hosting, or Studio release mutations authorized.
 
 ## Allowed Actions
-await next managed goal / owner command
+read docs; answer owner questions; create production PR only after owner phrase (do not merge until merge phrase)
 
 ## Forbidden Actions
-production deploy; DEV/production Firebase deploy; Studio release/publish; scope work without a new plan+review
+merge to production without phrase; production Firebase deploy; App Hosting rollout; Studio dispatch/publish; force-push; Phase 9
 
 ## Plan
-docs/workflow/plans/2026-08-23-studio-workflow-organization-and-grouped-gang-sheet-plan.md
+docs/workflow/plans/2026-08-23-production-promote-portal-and-studio-plan.md
 
 ## Review
-docs/workflow/reviews/2026-08-23-studio-workflow-organization-and-grouped-gang-sheet-review.md
+docs/workflow/reviews/2026-08-23-production-promote-portal-and-studio-review.md
 
 ## Test Report
-docs/workflow/reviews/2026-08-23-studio-workflow-organization-and-grouped-gang-sheet-test-report.md
+docs/workflow/reviews/2026-08-23-production-promote-portal-and-studio-gate-b-test-report.md
 
 ## Signoff
-docs/workflow/reviews/2026-08-23-studio-workflow-organization-and-grouped-gang-sheet-signoff.md
+(n/a — production Signoff later)
+
+## Retrospective DEV Signoffs
+- docs/workflow/reviews/2026-08-22-customer-request-show-discovery-and-search-correctives-signoff.md (approved)
+- docs/workflow/reviews/2026-08-23-our-shows-page-ux-and-print-request-actions-signoff.md (approved)
 
 ## Tests Run
-- Final: `cd apps/studio && npx tsc --noEmit` (exit 0)
-- Final: `npx tsx --test` expanded WS1–WS5 + search + IPC suite (100 pass / 0 fail)
-- Owner DEV QA: PASS (WS1–WS5)
+Gate B suite — see Gate B test report (lint, typechecks, Functions build, Portal build, Studio vite+electron-builder 1.0.9, 114 unit + 27 signing-policy)
 
 ## Last Completed Step
-Signoff approved for `studio-workflow-organization-and-grouped-gang-sheet` (2026-08-23). FreshForge IDLE.
+Gate B verified; RC committed/pushed to development. STOP at production PR checkpoint.
 
 ## Next Required Step
-Await next managed goal from owner.
+Await owner: `APPROVE PRODUCTION PR: production-promote-portal-and-studio-2026-08-23` — then open (and only merge after any separate merge phrase if required).
 
 ## Phase 9
 PARKED
 
 ## Baseline Commit
-7dfd7ee
+54357435e978359b180a2201aa207831dd927411
+
+## Production Tip (verified)
+27b0b4fb691c081ea1167f863f5fc45224a9c651
+
+## Release Candidate Tip
+(filled after push)
 
 ## Decision Log
-- 2026-08-23: New managed goal opened on clean development @ 7dfd7ee. Prior goal our-shows-page-ux signoff still open separately.
-- 2026-08-23: Plan + Formal Review complete. No Firebase deploy authorized for this goal. Portal show Functions deploy remains separate.
-- 2026-08-23: Owner approved implementation with risk-mitigation amendments (WS1–WS5). Implementation complete.
-- 2026-08-23: Automated tests passed; manual Studio QA checkpoint required before signoff.
-- 2026-08-23: Owner `OWNER DEV QA: PASS` (WS1–WS5). Final verification 100 unit tests + Studio tsc. Signoff **approved**. No Firebase/Portal/production/Studio release. Workflow → IDLE.
+- 2026-08-23: Prior goal `studio-workflow-organization-and-grouped-gang-sheet` signed off @ `5435743`; FreshForge was IDLE.
+- 2026-08-23: New managed goal `production-promote-portal-and-studio-2026-08-23` opened. Verified development tip `5435743`, production tip `27b0b4f` (PR #87), published Studio v1.0.8 @ `32101904`, last recorded live Portal build-2026-08-21-001 @ `7716d4a`.
+- 2026-08-23: Inventory = 2 commits (`7dfd7ee`, `5435743`). Class E: missing formal Signoffs for show-discovery + Our Shows. Formal Review approved_with_changes. ChatGPT handoff package missing on disk (gitignored references/) — Gate G must recreate/update. STOP — no production mutation.
+- 2026-08-23: Owner `APPROVE PRODUCTION RELEASE PLAN` + `CONFIRM DEV SIGNOFF FOR PROMOTION` for show-discovery + Our Shows. Retrospective DEV Signoffs recorded. Gate B authorized (1.0.9 pin + verification only).
+- 2026-08-23: Gate B complete — Studio 1.0.9 pinned; verification passed_with_notes (discovery test + lint fixes). STOP at production PR checkpoint.

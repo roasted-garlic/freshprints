@@ -6,7 +6,7 @@ import { Button } from "../../../shared/components/Button";
 import { ErrorState } from "../../../shared/components/ErrorState";
 import { LoadingSpinner } from "../../../shared/components/LoadingSpinner";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
-import { getGangSheetLayoutModeOption, GANG_SHEET_LAYOUT_MODE_OPTIONS } from "./GangSheetLayoutModeMenu";
+import { getGangSheetLayoutModeOption, GANG_SHEET_LAYOUT_MODE_OPTIONS } from "../utils/gangSheetLayoutModeOptions";
 import { formatUpcomingShowTitle } from "../utils/upcomingShowDisplay";
 import { formatInchesForFilename } from "@fresh-prints/shared/utils/showExportFilename";
 import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
