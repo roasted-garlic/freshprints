@@ -72,7 +72,7 @@ PARKED
 27b0b4fb691c081ea1167f863f5fc45224a9c651
 
 ## Release Candidate Tip
-237b28db90e45b31548e6c091203b5e9435de09b
+953ab105653770138acef7f726d3323f38dfa70a
 
 ## Decision Log
 - 2026-08-23: Prior goal `studio-workflow-organization-and-grouped-gang-sheet` signed off @ `5435743`; FreshForge was IDLE.
