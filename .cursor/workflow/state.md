@@ -80,7 +80,13 @@ fresh-prints-portal-build-2026-08-21-001 @ 7716d4a97f83c2dbe5602fb3e149875d6d7f3
 Signoff approved. Owner requested commit/push/PR/merge/rollout.
 
 ## Next Required Step
-Commit on development, push, open production PR, then merge + App Hosting (owner CLI if hook-blocked).
+Owner: merge PR **#89** (`gh pr merge 89 --merge`), then App Hosting rollout of the production merge SHA. Agent merge and prod rollout are FreshForge hook-blocked.
+
+## Production PR
+https://github.com/roasted-garlic/freshprints/pull/89
+
+## Development SHA
+8146eefdcebf1cb875810dc66dafd11f1a51de4b
 
 ## Phase 9
 PARKED
