@@ -2,6 +2,38 @@
 
 > Full log: `docs/project/DECISIONS.md` — newest ADRs first.
 
+## Grouped gang sheets (2026-08-23 — ADR-FP-143)
+
+| Constraint | Rule |
+|------------|------|
+| Default | Legacy **efficiency / Standard** when `layoutMode` omitted |
+| Grouped mode | Explicit `layoutMode: "grouped_by_customer"` + `grouping` on images |
+| Cache | Separate fingerprints; Standard and Grouped coexist on disk |
+| Labels | `whatnot_MM-DD-YYYY_grouped-gang-sheet`; section headings + `-Continued` |
+
+Full ADR: `docs/project/DECISIONS.md` (ADR-FP-143).
+
+## Public Our Shows (2026-08-22 — ADR-FP-142)
+
+| Constraint | Rule |
+|------------|------|
+| Browse | Public `/shows` calendar + galleries (catalog designs only) |
+| Mutations | Login-gated (Add to Request, qty, etc.) |
+| Privacy | Never expose private customer-upload artwork in public DTOs |
+
+Full ADR: `docs/project/DECISIONS.md` (ADR-FP-142).
+
+## Customer → Internal conversion (2026-08-22 — ADR-FP-141)
+
+| Constraint | Rule |
+|------------|------|
+| Callable | Creates **new** internal request; does not flip `isInternal` on original |
+| Original | Archived with `closureKind: converted_to_internal` + linkage fields |
+| Allocations | Pending/queued cancel only after confirm; `in_progress+` **blocks** |
+| Rules | Closure fields Admin/callable-only |
+
+Full ADR: `docs/project/DECISIONS.md` (ADR-FP-141).
+
 ## Studio Print Requests lists (2026-08-21 — ADR-FP-140)
 
 | Constraint | Rule |

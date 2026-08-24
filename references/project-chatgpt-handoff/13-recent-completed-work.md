@@ -1,5 +1,75 @@
 # Recent Completed Work
 
+## 2026-08-24 - Portal Upcoming Shows theme toggle — SIGNOFF / CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `portal-shows-theme-toggle-sidebar` — **DONE (DEV)** |
+| Signoff | **approved** |
+| Owner QA | local visual `PASS` |
+| Delivered | `/shows` + `/shows/[id]` sidebar footer theme toggle; floating `PortalChrome` hidden on those routes (`isPortalAppShellRoute`) |
+| Not done in this goal | Production merge / App Hosting (owner requested immediately after signoff) |
+| Signoff | `docs/workflow/reviews/2026-08-24-portal-shows-theme-toggle-sidebar-signoff.md` |
+
+## 2026-08-24 - Production promote Portal + Studio — IN PROGRESS (Gates C+D+E LIVE)
+
+| Item | Status |
+|------|--------|
+| Goal | `production-promote-portal-and-studio-2026-08-23` — **IN PROGRESS** |
+| Gate C | **MERGED** — PR **#88** @ **`94a1ed0009deab775d8b0c60be44ca931c0ad291`** |
+| Gate D | **VERIFIED COMPLETE** — Rules + 4 Functions on `fresh-prints-prod` |
+| Gate E | **LIVE** — `fresh-prints-portal-build-2026-08-24-001` @ **`94a1ed0`** **100%**; smoke PASS WITH NOTES |
+| Rollback | `fresh-prints-portal-build-2026-08-21-001` @ `7716d4a` |
+| Gate F | Studio 1.0.9 draft/publish — parked until Upcoming Shows chrome hotfix is live |
+| Published Studio | still **1.0.8** |
+| Records | Gate E rollout `docs/workflow/reviews/2026-08-24-production-promote-portal-and-studio-gate-e-app-hosting-rollout-record.md` |
+
+
+| Item | Status |
+|------|--------|
+| Goal | `production-promote-portal-and-studio-2026-08-23` — **IN PROGRESS** |
+| Gate C | **MERGED** — PR **#88** @ **`94a1ed0009deab775d8b0c60be44ca931c0ad291`** |
+| Gate D | **VERIFIED COMPLETE** — Rules + 4 Functions on `fresh-prints-prod` |
+| Gate E | **LIVE** — `fresh-prints-portal-build-2026-08-24-001` @ **`94a1ed0`** **100%**; smoke PASS WITH NOTES |
+| Rollback | `fresh-prints-portal-build-2026-08-21-001` @ `7716d4a` |
+| Gate F | Studio 1.0.9 draft/publish — not started (await Portal QA) |
+| Published Studio | still **1.0.8** |
+| Records | Gate E rollout `docs/workflow/reviews/2026-08-24-production-promote-portal-and-studio-gate-e-app-hosting-rollout-record.md` |
+
+## 2026-08-23 - Studio workflow organization + grouped gang sheet — SIGNOFF / CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `studio-workflow-organization-and-grouped-gang-sheet` — **DONE (DEV)** |
+| Signoff | **approved** |
+| Owner QA | `OWNER DEV QA: PASS` (WS1–WS5) |
+| Delivered | Print Requests by show; Normalized Files modal scroll; Needs Review search; Design Library scroll-on-save; Standard + **Grouped** gang sheets (ADR-FP-143); efficiency path regression-safe |
+| Checkout | Promoted in PR #88 (`5435743` on development lineage) |
+| Not done in that goal | Firebase / Portal / Studio release |
+| Signoff | `docs/workflow/reviews/2026-08-23-studio-workflow-organization-and-grouped-gang-sheet-signoff.md` |
+
+## 2026-08-23 - Our Shows page UX + print-request actions — SIGNOFF / CLOSED (DEV, retrospective)
+
+| Item | Status |
+|------|--------|
+| Goal | `our-shows-page-ux-and-print-request-actions` — **DONE (DEV)** |
+| Signoff | **approved** (retrospective during production promote) |
+| Delivered | Sidebar **Our Shows**; calendar/gallery polish; Studio Customer **Add to Show** vs Internal **Add to Internal Gangsheet**; Convert under ⋯ |
+| Product commit | Included in `7dfd7ee` batch |
+| Signoff | `docs/workflow/reviews/2026-08-23-our-shows-page-ux-and-print-request-actions-signoff.md` |
+
+## 2026-08-22 - Customer Request, Show Discovery & Search Correctives — SIGNOFF / CLOSED (DEV, retrospective)
+
+| Item | Status |
+|------|--------|
+| Goal | `customer-request-show-discovery-and-search-correctives` — **DONE (DEV)** |
+| Signoff | **approved** (retrospective; owner `CONFIRM DEV SIGNOFF FOR PROMOTION`) |
+| Owner accept | Conversion, gang-sheet completion reconciliation, username UX, public Our Shows, show callables, Discover rails, auth return-to, search normalization |
+| DEV Firebase | Rules + 4 Functions on `fresh-prints-dev` (2026-08-22) |
+| ADRs | ADR-FP-141 (conversion), ADR-FP-142 (public shows) |
+| Product commit | `7dfd7ee054b1126c70e8f6d94830ff1751c9e029` |
+| Signoff | `docs/workflow/reviews/2026-08-22-customer-request-show-discovery-and-search-correctives-signoff.md` |
+
 ## 2026-08-21 - Studio GitHub Latest + final-copy gates — SIGNOFF / CLOSED
 
 | Item | Status |

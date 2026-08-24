@@ -49,8 +49,6 @@ export function PortalSidebar() {
   const username = customer?.username;
   const isAccountActive = isPortalAccountRoute(pathname);
   const showCollapsed = isCollapsed && isDesktop;
-  const hideThemeToggle =
-    pathname === '/shows' || pathname.startsWith('/shows/');
   // Desktop: always show mid-line edge tab. Mobile: only while drawer is open.
   const showEdgeTab = isDesktop || isDrawerOpen;
   const edgeTabExpands = isDesktop && isCollapsed;
@@ -253,7 +251,7 @@ export function PortalSidebar() {
             ) : null}
 
             <div className="portal-sidebar-footer-actions">
-              {hideThemeToggle ? null : <ThemeToggle compact />}
+              <ThemeToggle compact />
               {isAuthenticated ? (
                 <button
                   aria-label="Sign out"

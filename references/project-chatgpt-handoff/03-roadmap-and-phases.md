@@ -1,5 +1,13 @@
 # Roadmap and Phases
 
+> 2026-08-24: **Portal Upcoming Shows theme toggle CLOSED (DEV)** — Signoff **approved**; owner local `PASS`. Sidebar theme toggle restored on `/shows`. Production PR + App Hosting next. Parent promote Gate F parked. Phase 9 PARKED.
+>
+> 2026-08-24: **Production promote Portal + Studio — IN PROGRESS** — Goal `production-promote-portal-and-studio-2026-08-23`. Gate C **MERGED** PR **#88** @ `94a1ed0`. Studio **1.0.9** pinned on Git (not published). Gate D Firebase **VERIFIED COMPLETE**. Gate E App Hosting **LIVE** `build-2026-08-24-001`. Published Studio still **1.0.8**. Phase 9 **PARKED**.
+>
+> 2026-08-23: **Studio workflow organization + grouped gang sheet CLOSED (DEV)** — Signoff **approved**; owner `OWNER DEV QA: PASS`. Grouped gang sheets (ADR-FP-143); Print Requests by show; Needs Review search; Design Library scroll. Promoted in PR #88. Phase 9 PARKED.
+>
+> 2026-08-22/23: **Show discovery / conversion / search CLOSED (DEV)** — Retrospective Signoffs **approved**. Our Shows public browse (ADR-FP-142); Customer→Internal conversion (ADR-FP-141); search normalization; Discover rails. Promoted in PR #88. Phase 9 PARKED.
+>
 > 2026-08-21: **Studio GitHub Latest + final-copy gates CLOSED** — Signoff **approved**. Publish helper after `APPROVE STUDIO PUBLISH`. 1.0.8 not edited. Workflow **IDLE**. Phase 9 PARKED.
 >
 > 2026-08-21: **Studio 1.0.8 PUBLISHED** — Signoff **approved_with_notes**. [`v1.0.8`](https://github.com/roasted-garlic/freshprints/releases/tag/v1.0.8) @ `3210190`. Windows updater live. Mac unsigned/manual. Portal still `7716d4a`. Workflow **IDLE**. Phase 9 PARKED.
@@ -73,7 +81,10 @@ coordinated or worked in parallel where their product/security boundaries allow 
 `docs/workflow/plans/2026-07-29-customer-upload-oversized-image-normalization-and-processing-performance-plan.md`
 for the originally-recommended coordination-structure rationale.
 
-**Active managed goal:** none (idle). Last closed:
+**Active managed goal (2026-08-24):** `production-promote-portal-and-studio-2026-08-23` — Gate C
+done; Gate D Firebase pending owner CLI; Gates E/F (App Hosting + Studio 1.0.9) not started.
+
+Historical note (2026-07-29 idle snapshot below is outdated for “active goal”): last closed then was
 `assisted-creation-reference-image-mb-limit-increase` (Goal #10 — **approved**, 2026-07-29; signoff
 `docs/workflow/reviews/2026-07-29-assisted-creation-reference-image-mb-limit-increase-signoff.md`).
 No migration or Storage cleanup occurred; production untouched throughout. Exact next queued: Goal
