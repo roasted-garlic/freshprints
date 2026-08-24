@@ -8,8 +8,8 @@
  *   node .github/scripts/publish-studio-stable-github-release.mjs \
  *     --release-id <id> --version X.Y.Z --sha <40-char> [--repo owner/name]
  *
- * Sets draft=false, make_latest=true, and final published copy. Verifies
- * /releases/latest. Does not rename assets or mutate binaries.
+ * Sets tag_name=vX.Y.Z, draft=false, make_latest=true, and final published copy.
+ * Verifies /releases/latest and canonical tag. Does not rename assets or mutate binaries.
  */
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -19,6 +19,7 @@ import {
   assertPublishedCopy,
   assertVersionAndSha,
   buildPublishPatch,
+  stableReleaseTag,
 } from "./studio-github-release-copy.mjs";
 
 export { buildPublishPatch, REQUIRED_STABLE_ASSET_COUNT };
@@ -71,6 +72,12 @@ export function verifyPublishedRelease({
   }
   if (published.name !== expectedVersion) {
     throw new Error(`Published release name mismatch: ${published.name} vs ${expectedVersion}`);
+  }
+  const expectedTag = stableReleaseTag(expectedVersion);
+  if (published.tag_name !== expectedTag) {
+    throw new Error(
+      `Published tag_name mismatch: ${published.tag_name ?? "missing"} vs ${expectedTag}`,
+    );
   }
   const assetCount = Array.isArray(published.assets) ? published.assets.length : 0;
   if (assetCount !== REQUIRED_STABLE_ASSET_COUNT) {

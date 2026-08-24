@@ -1192,16 +1192,20 @@ node .github/scripts/publish-studio-stable-github-release.mjs \
   --sha <40-character-build-sha>
 ```
 
-The helper PATCHes `draft=false`, `make_latest=true`, and **final** release copy (version, platforms, source SHA, Windows auto-update, Mac `internal-unsigned` / manual DMG). It then fail-closed verifies:
+The helper PATCHes `tag_name=vX.Y.Z`, `draft=false`, `make_latest=true`, and **final** release copy (version, platforms, source SHA, Windows auto-update, Mac `internal-unsigned` / manual DMG). It then fail-closed verifies:
 
 | Check | Required |
 |-------|----------|
 | `draft` | `false` |
 | `name` / version | `X.Y.Z` |
+| `tag_name` | **`vX.Y.Z`** (not `untagged-*`; publish helper sets this on release) |
 | `target_commitish` | exact build SHA |
 | asset count | **8** |
 | GitHub Latest | `GET /releases/latest` `id` equals this release |
+| release URL | `https://github.com/roasted-garlic/freshprints/releases/tag/vX.Y.Z` resolves |
 | body | no `DRAFT` / `do not publish` (or equivalent) |
+
+**Draft finalize note (2026-08-24):** If GitHub assigns an `untagged-*` slug during draft create, `studio-release.yml` normalizes the draft to `vX.Y.Z-SHORT_SHA`. The publish helper still sets **`vX.Y.Z`** on release. If a published stable release ever ships with a non-`vX.Y.Z` tag, use owner-gated in-place retag (see `docs/workflow/reviews/2026-08-24-studio-1.0.9-release-tag-retag-record.md`).
 
 A stable Studio release is **not** signoff-complete until that checklist is recorded. Raw PATCH or GitHub UI “publish draft” without Latest + final copy is insufficient.
 

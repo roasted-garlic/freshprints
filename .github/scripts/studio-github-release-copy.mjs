@@ -55,8 +55,17 @@ export function assertPublishedCopy(body) {
   }
 }
 
+/** Canonical git tag for a published stable Studio release (e.g. 1.0.9 → v1.0.9). */
+export function stableReleaseTag(version) {
+  if (typeof version !== "string" || !version.trim()) {
+    throw new Error("Studio version is required");
+  }
+  return `v${version.trim()}`;
+}
+
 export function buildPublishPatch(version, sha) {
   return {
+    tag_name: stableReleaseTag(version),
     draft: false,
     make_latest: "true",
     prerelease: false,

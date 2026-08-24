@@ -640,12 +640,14 @@ jobs:
             # Avoid tag collisions with older drafts that still claim tag_name=vX.Y.Z.
             # `gh release upload <tag>` is ambiguous when multiple drafts share a tag_name;
             # we upload by release ID below, but creation still needs a unique tag_name.
+            # Collisions: exact tag_name match OR another release already named VERSION
+            # (GitHub may assign untagged-* slugs when vX.Y.Z is implicitly reserved).
             TAG_IN_USE="$(gh api "repos/${{ github.repository }}/releases" --paginate \
-              --jq ".[] | select(.tag_name == \"$TAG\") | .id" | head -n1 || true)"
+              --jq ".[] | select(.tag_name == \"$TAG\" or .name == \"$VERSION\") | .id" | head -n1 || true)"
             CREATE_TAG="$TAG"
             if [ -n "$TAG_IN_USE" ]; then
               CREATE_TAG="${TAG}-${SHORT_SHA}"
-              echo "::warning::Tag ${TAG} already used by release ${TAG_IN_USE}; creating draft with unique tag ${CREATE_TAG} (name remains ${VERSION})."
+              echo "::warning::Tag ${TAG} or release name ${VERSION} already used by release ${TAG_IN_USE}; creating draft with unique tag ${CREATE_TAG} (name remains ${VERSION})."
             fi
             RELEASE_ID="$(gh api --method POST "repos/${{ github.repository }}/releases" \
               -f tag_name="$CREATE_TAG" \
@@ -668,6 +670,23 @@ jobs:
           DRAFT="$(echo "$RELEASE_META" | jq -r '.draft')"
           UPLOAD_TAG="$(echo "$RELEASE_META" | jq -r '.tag_name')"
           UPLOAD_URL="$(echo "$RELEASE_META" | jq -r '.upload_url' | sed 's/{?name,label}//')"
+          # GitHub sometimes assigns untagged-* even when POST requested vX.Y.Z. Normalize draft
+          # to vX.Y.Z-SHORT_SHA so publish helper can retag to vX.Y.Z without ambiguity.
+          if [[ "$UPLOAD_TAG" == untagged-* ]]; then
+            NORMALIZED_TAG="${TAG}-${SHORT_SHA}"
+            echo "::warning::GitHub assigned temporary tag ${UPLOAD_TAG}; normalizing draft to ${NORMALIZED_TAG} (publish helper sets ${TAG} on release)."
+            gh api --method PATCH "repos/${{ github.repository }}/releases/${RELEASE_ID}" \
+              -f tag_name="$NORMALIZED_TAG" \
+              -F draft=true \
+              >/dev/null
+            RELEASE_META="$(gh api "repos/${{ github.repository }}/releases/${RELEASE_ID}")"
+            UPLOAD_TAG="$(echo "$RELEASE_META" | jq -r '.tag_name')"
+            UPLOAD_URL="$(echo "$RELEASE_META" | jq -r '.upload_url' | sed 's/{?name,label}//')"
+            if [[ "$UPLOAD_TAG" == untagged-* ]]; then
+              echo "::error::Failed to normalize draft tag from ${UPLOAD_TAG}. Refusing to finalize."
+              exit 1
+            fi
+          fi
           if [ "$AFTER" != "$BUILD_SHA" ]; then
             echo "::error::Failed to pin draft target_commitish. expected=${BUILD_SHA} actual=${AFTER}"
             exit 1
