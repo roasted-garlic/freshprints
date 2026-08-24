@@ -6,14 +6,17 @@ export function requireCurrentSignedIn<TUser, TRouter>(input: {
   userRef: CurrentRef<TUser | null>;
   routerRef: CurrentRef<TRouter>;
   designId?: string;
+  returnTo?: string;
   redirect: (router: TRouter, returnTo?: string) => void;
 }): boolean {
   if (input.userRef.current) {
     return true;
   }
-  const returnTo = input.designId
-    ? `/catalog?designId=${encodeURIComponent(input.designId)}`
-    : undefined;
+  const returnTo =
+    input.returnTo ??
+    (input.designId
+      ? `/catalog?designId=${encodeURIComponent(input.designId)}`
+      : undefined);
   input.redirect(input.routerRef.current, returnTo);
   return false;
 }

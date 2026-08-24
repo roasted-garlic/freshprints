@@ -16,6 +16,10 @@ export function isPortalPublicBrowsePath(pathname: string | null | undefined): b
     return true;
   }
 
+  if (pathname === '/shows' || pathname.startsWith('/shows/')) {
+    return true;
+  }
+
   if (pathname === '/help' || pathname.startsWith('/help/')) {
     return true;
   }

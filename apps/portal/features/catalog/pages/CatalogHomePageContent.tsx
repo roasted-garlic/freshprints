@@ -33,7 +33,17 @@ import {
   CATALOG_FIRST_VIEWPORT_EAGER_COUNT,
   useCatalogHomeDesigns,
 } from '../hooks/useCatalogDesigns';
+import { usePortalShowHomeRails } from '../../show-designs/hooks/usePortalShowHomeRails';
 import { useCatalogDesignDeepLink } from '../hooks/useCatalogDesignDeepLink';
+
+interface CatalogHomeRailSection {
+  categoryId?: string;
+  designs: CatalogDesign[];
+  discover?: CatalogDiscoveryMode;
+  key: string;
+  showId?: string;
+  title: string;
+}
 
 export function CatalogHomePageContent() {
   const router = useRouter();
@@ -67,35 +77,54 @@ export function CatalogHomePageContent() {
   const { categories } = useCatalogCategories();
   const { designs, categoryRails: hydratedCategoryRails, error, isLoading, readyLibraryCount } =
     useCatalogHomeDesigns(categories);
+  const {
+    error: showRailsError,
+    isLoading: isShowRailsLoading,
+    rails: showHomeRails,
+  } = usePortalShowHomeRails();
 
   const discoveryRails = useMemo(
-    () =>
+    (): CatalogHomeRailSection[] =>
       CATALOG_DISCOVERY_MODES.map((mode) => {
         const ranked = rankCatalogDiscoveryDesigns(designs, mode);
         return {
           key: `mode:${mode}`,
           title: getCatalogDiscoveryModeLabel(mode),
           designs: takeCatalogDiscoveryRail(ranked),
-          discover: mode as CatalogDiscoveryMode,
-          categoryId: undefined as string | undefined,
+          discover: mode,
+          categoryId: undefined,
         };
       }).filter((section) => section.designs.length > 0),
     [designs],
   );
 
   const categoryRails = useMemo(
-    () =>
+    (): CatalogHomeRailSection[] =>
       hydratedCategoryRails.map((rail) => ({
         key: `category:${rail.categoryId}`,
         title: rail.name,
         designs: rail.designs,
-        discover: undefined as CatalogDiscoveryMode | undefined,
         categoryId: rail.categoryId,
       })),
     [hydratedCategoryRails],
   );
 
-  const homeRails = useMemo(() => [...discoveryRails, ...categoryRails], [categoryRails, discoveryRails]);
+  const homeRails = useMemo((): CatalogHomeRailSection[] => {
+    const discovery = [...discoveryRails];
+    const showRails: CatalogHomeRailSection[] = showHomeRails.map((rail) => ({
+      categoryId: undefined,
+      designs: rail.designs,
+      discover: rail.viewAllDiscover,
+      key: rail.key,
+      showId: rail.viewAllShowId,
+      title: rail.title,
+    }));
+    const newIndex = discovery.findIndex((section) => section.discover === 'new');
+    const insertAt = newIndex >= 0 ? newIndex + 1 : 0;
+    discovery.splice(insertAt, 0, ...showRails);
+
+    return [...discovery, ...categoryRails];
+  }, [categoryRails, discoveryRails, showHomeRails]);
 
   const pageBusy = isCreating;
 
@@ -103,6 +132,7 @@ export function CatalogHomePageContent() {
     discover?: CatalogDiscoveryMode;
     search?: string;
     categoryId?: string;
+    showId?: string;
   }) {
     // Soft nav can keep the discover page's scroll offset on mobile; force top
     // before push so the filtered library never opens mid-page.
@@ -115,6 +145,7 @@ export function CatalogHomePageContent() {
         discover: options?.discover ?? null,
         search: options?.search ?? null,
         categoryId: options?.categoryId ?? null,
+        showId: options?.showId ?? null,
       }),
       { scroll: true },
     );
@@ -186,9 +217,9 @@ export function CatalogHomePageContent() {
         </div>
       </header>
 
-      {error ? (
+      {error || showRailsError ? (
         <p className="portal-error" role="alert">
-          {error}
+          {error ?? showRailsError}
         </p>
       ) : null}
 
@@ -209,7 +240,7 @@ export function CatalogHomePageContent() {
         />
       ) : null}
 
-      {isLoading ? (
+      {isLoading || isShowRailsLoading ? (
         <div className="design-library-loading-state">Loading designs…</div>
       ) : homeRails.length === 0 ? (
         <div className="design-library-empty-state">
@@ -233,6 +264,7 @@ export function CatalogHomePageContent() {
                 openLibrary({
                   discover: section.discover,
                   categoryId: section.categoryId,
+                  showId: section.showId,
                 })
               }
               title={section.title}

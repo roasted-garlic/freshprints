@@ -13,6 +13,7 @@ import '../styles/etsy-recommendations.css'
 import '../styles/assisted-creation.css'
 import '../styles/help.css'
 import '../styles/shell.css'
+import '../styles/our-shows.css'
 
 /** Refresh global OG settings / hourly library image without force-dynamic on every page. */
 export const revalidate = 3600

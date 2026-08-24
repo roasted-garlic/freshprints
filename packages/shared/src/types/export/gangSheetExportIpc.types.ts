@@ -1,5 +1,16 @@
 import type { ShowExportImageWarning } from "./showExportIpc.types";
 
+export type GangSheetLayoutMode = "efficiency" | "grouped_by_customer";
+
+export interface GangSheetExportImageGrouping {
+  printRequestId: string;
+  requestName: string;
+  customerId?: string;
+  customerUsernameSnapshot?: string;
+  internalBaseName?: string;
+  isInternal: boolean;
+}
+
 /** One design to place on the gang sheet, repeated `quantity` times during nesting. */
 export interface GangSheetExportImageRequest {
   allocationId: string;
@@ -8,6 +19,8 @@ export interface GangSheetExportImageRequest {
   targetHeightPx: number;
   fileName: string;
   quantity: number;
+  /** Present for grouped-by-customer layout mode only. */
+  grouping?: GangSheetExportImageGrouping;
 }
 
 export interface ExportGangSheetPngRequest {
@@ -23,6 +36,8 @@ export interface ExportGangSheetPngRequest {
   maxSheetLengthInches: number;
   /** Sheet label text font size in pixels. */
   labelFontSizePx: number;
+  /** Omitted or `efficiency` preserves the legacy auto-nested exporter. */
+  layoutMode?: GangSheetLayoutMode;
   images: GangSheetExportImageRequest[];
 }
 

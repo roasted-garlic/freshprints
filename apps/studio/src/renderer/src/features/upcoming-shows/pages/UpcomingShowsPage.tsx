@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
-import { ChevronDown, Download, ExternalLink, Pause, Play, Plus, Settings, Upload, WandSparkles, X } from "lucide-react";
+import { ChevronDown, Download, ExternalLink, Pause, Play, Plus, Settings, Upload, X } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { Badge } from "../../../shared/components/Badge";
@@ -46,8 +46,9 @@ import { getPrintRequestsPath, printRequestListKindFromIsInternal } from "../../
 import { AddToShowModal } from "../../print-requests/components/AddToShowModal";
 import { ExportShowConfirmModal } from "../components/ExportShowConfirmModal";
 import { ExportGangSheetConfirmModal } from "../components/ExportGangSheetConfirmModal";
+import { GangSheetLayoutModeMenu } from "../components/GangSheetLayoutModeMenu";
 import { useExportShowZip } from "../hooks/useExportShowZip";
-import { useExportGangSheetPng } from "../hooks/useExportGangSheetPng";
+import { useExportGangSheetPng, type GangSheetSheetCountPreview } from "../hooks/useExportGangSheetPng";
 import { groupAllocationsByRequest } from "../utils/groupAllocationsByRequest";
 import {
   formatShowAllocationBlockedMessage,
@@ -88,6 +89,7 @@ import {
   resolveShowQueuePrintRequestLinkTab,
 } from "../utils/showQueuePrintRequestSources";
 import { refreshSelectedShowGangSheetCache } from "../utils/gangSheetCacheRefresh";
+import type { GangSheetLayoutMode } from "@fresh-prints/shared/types/export/gangSheetExportIpc.types";
 import { parseDateTimeInputToTimestamp } from "../utils/upcomingShowDateTimeInput";
 import {
   formatUpcomingShowTimestampLabel,
@@ -762,10 +764,17 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
   }, [exportMultiplyByQuantity, exportShowZipState, selectedShow]);
 
   const [isExportGangSheetModalOpen, setIsExportGangSheetModalOpen] = useState(false);
+  const [gangSheetModalLayoutMode, setGangSheetModalLayoutMode] =
+    useState<GangSheetLayoutMode>("efficiency");
+  const [gangSheetSheetCountPreview, setGangSheetSheetCountPreview] =
+    useState<GangSheetSheetCountPreview | null>(null);
+  const [isPreparingGangSheetModal, setIsPreparingGangSheetModal] = useState(false);
+  const gangSheetModalPrepareIdRef = useRef(0);
   const exportGangSheetPngState = useExportGangSheetPng();
   const {
     clearCacheForShow: clearGangSheetCacheForShow,
-    hasGeneratedCache: hasGeneratedGangSheetCache,
+    prepareGangSheetModal: prepareGangSheetModalData,
+    hydrateCacheForLayoutMode: hydrateGangSheetCacheForLayoutMode,
     refreshCacheStatus: refreshGangSheetCacheStatus,
     reset: resetGangSheetExport,
   } = exportGangSheetPngState;
@@ -795,6 +804,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
   useEffect(() => {
     void refreshSelectedShowGangSheetCache({
       show: selectedShow,
+      selectedShowId,
       isPast: isSelectedShowPast,
       settings: gangSheetLayoutSettings,
       reset: resetGangSheetExport,
@@ -808,37 +818,102 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
     refreshGangSheetCacheStatus,
     resetGangSheetExport,
     selectedShow,
+    selectedShowId,
   ]);
 
-  const openExportGangSheetModal = useCallback(() => {
-    if (isSelectedShowPast || !selectedShow) {
-      return;
-    }
-
-    void (async () => {
-      // Ensure cache status is loaded before opening so Export skips the generate prompt.
-      if (!hasGeneratedGangSheetCache) {
-        await refreshGangSheetCacheStatus(selectedShow, gangSheetLayoutSettings);
+  const openExportGangSheetModal = useCallback(
+    (layoutMode: GangSheetLayoutMode) => {
+      if (isSelectedShowPast || !selectedShow) {
+        return;
       }
+
+      const prepareId = gangSheetModalPrepareIdRef.current + 1;
+      gangSheetModalPrepareIdRef.current = prepareId;
+
+      setGangSheetModalLayoutMode(layoutMode);
+      setGangSheetSheetCountPreview(null);
+      setIsPreparingGangSheetModal(true);
       setIsExportGangSheetModalOpen(true);
-    })();
-  }, [
-    gangSheetLayoutSettings,
-    hasGeneratedGangSheetCache,
-    isSelectedShowPast,
-    refreshGangSheetCacheStatus,
-    selectedShow,
-  ]);
+
+      void prepareGangSheetModalData(selectedShow, gangSheetLayoutSettings, layoutMode)
+        .then((result) => {
+          if (prepareId !== gangSheetModalPrepareIdRef.current) {
+            return;
+          }
+
+          if (result.error) {
+            setGangSheetSheetCountPreview(null);
+            return;
+          }
+
+          setGangSheetSheetCountPreview(result.preview);
+        })
+        .finally(() => {
+          if (prepareId === gangSheetModalPrepareIdRef.current) {
+            setIsPreparingGangSheetModal(false);
+          }
+        });
+    },
+    [gangSheetLayoutSettings, isSelectedShowPast, prepareGangSheetModalData, selectedShow],
+  );
+
+  const handleGangSheetLayoutModeChange = useCallback(
+    (layoutMode: GangSheetLayoutMode) => {
+      if (layoutMode === gangSheetModalLayoutMode) {
+        return;
+      }
+
+      if (!selectedShow) {
+        setGangSheetModalLayoutMode(layoutMode);
+        return;
+      }
+
+      if (exportGangSheetPngState.hasGeneratedCacheForMode(layoutMode)) {
+        setGangSheetModalLayoutMode(layoutMode);
+        return;
+      }
+
+      const prepareId = gangSheetModalPrepareIdRef.current + 1;
+      gangSheetModalPrepareIdRef.current = prepareId;
+      setIsPreparingGangSheetModal(true);
+      setGangSheetModalLayoutMode(layoutMode);
+
+      void hydrateGangSheetCacheForLayoutMode(selectedShow, gangSheetLayoutSettings, layoutMode).finally(() => {
+        if (prepareId === gangSheetModalPrepareIdRef.current) {
+          setIsPreparingGangSheetModal(false);
+        }
+      });
+    },
+    [
+      exportGangSheetPngState,
+      gangSheetLayoutSettings,
+      gangSheetModalLayoutMode,
+      hydrateGangSheetCacheForLayoutMode,
+      selectedShow,
+    ],
+  );
 
   const closeExportGangSheetModal = useCallback(() => {
+    gangSheetModalPrepareIdRef.current += 1;
     setIsExportGangSheetModalOpen(false);
+    setGangSheetSheetCountPreview(null);
+    setIsPreparingGangSheetModal(false);
   }, []);
 
   const handleGenerateGangSheet = useCallback(() => {
     if (selectedShow) {
-      void exportGangSheetPngState.generateGangSheet(selectedShow, gangSheetLayoutSettings);
+      void exportGangSheetPngState.generateGangSheet(
+        selectedShow,
+        gangSheetLayoutSettings,
+        gangSheetModalLayoutMode,
+      );
     }
-  }, [exportGangSheetPngState, gangSheetLayoutSettings, selectedShow]);
+  }, [
+    exportGangSheetPngState,
+    gangSheetLayoutSettings,
+    gangSheetModalLayoutMode,
+    selectedShow,
+  ]);
 
   const handleExportCachedGangSheets = useCallback(() => {
     void exportGangSheetPngState.exportCachedGangSheets();
@@ -1247,23 +1322,6 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                     ? canManageSelectedStaffGangSheet
                     : permissionService.canManageUpcomingShows(user)) ? (
                     <div className="print-requests-detail-actions show-detail-header-actions">
-                      {!isSelectedStaffGangSheet ? (
-                        <Button
-                          className="button-leading-icon"
-                          disabled={!canShowAddRequestAction}
-                          onClick={openAddRequestModal}
-                          size="sm"
-                          title={
-                            selectedShowAllocationBlockReason
-                              ? formatShowAllocationBlockedMessage(selectedShowAllocationBlockReason)
-                              : undefined
-                          }
-                          variant="secondary"
-                        >
-                          <Plus aria-hidden="true" size={16} strokeWidth={2} />
-                          Add Request
-                        </Button>
-                      ) : null}
                       <div className="export-menu-shell" ref={exportMenuRef}>
                         <Button
                           aria-controls="export-menu"
@@ -1313,14 +1371,12 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                         ) : null}
                       </div>
 
-                      <Button
-                        className="button-leading-icon"
+                      <GangSheetLayoutModeMenu
                         disabled={isSelectedShowPast || !hasActiveAllocationsForSelectedShow}
-                        onClick={openExportGangSheetModal}
-                        size="sm"
-                        variant={
-                          exportGangSheetPngState.hasGeneratedCache ? "secondary" : "success-outline"
-                        }
+                        isBusy={exportGangSheetPngState.isGenerating}
+                        label="Generate"
+                        menuId="gang-sheet-generate-menu"
+                        onSelect={openExportGangSheetModal}
                         title={
                           isSelectedShowPast
                             ? PAST_SHOW_READ_ONLY_MESSAGE
@@ -1328,14 +1384,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                               ? undefined
                               : "Add a print request to this show before exporting."
                         }
-                      >
-                        {exportGangSheetPngState.hasGeneratedCache ? (
-                          <Download aria-hidden="true" size={16} strokeWidth={2} />
-                        ) : (
-                          <WandSparkles aria-hidden="true" size={16} strokeWidth={2} />
-                        )}
-                        {exportGangSheetPngState.hasGeneratedCache ? "Export Gang Sheet" : "Generate"}
-                      </Button>
+                      />
                       {isSelectedStaffGangSheet &&
                       canManageSelectedStaffGangSheet &&
                       isCurrentStaffGangSheetProductionStatus(selectedShow.productionStatus) ? (
@@ -2073,14 +2122,21 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
           error={exportGangSheetPngState.error}
           gangSheetWidthInches={gangSheetLayoutSettings.sheetWidthInches}
           generated={exportGangSheetPngState.generated}
+          hasGeneratedForLayout={exportGangSheetPngState.hasGeneratedCacheForMode(
+            gangSheetModalLayoutMode,
+          )}
+          layoutMode={gangSheetModalLayoutMode}
           isExporting={exportGangSheetPngState.isExporting}
           isGenerating={exportGangSheetPngState.isGenerating}
+          isPreparing={isPreparingGangSheetModal}
           lastSavedPaths={exportGangSheetPngState.lastSavedPaths}
           onClose={closeExportGangSheetModal}
           onDownloadSheet={(sheetIndex) => void exportGangSheetPngState.downloadCachedSheet(sheetIndex)}
           onExport={handleExportCachedGangSheets}
           onGenerate={handleGenerateGangSheet}
+          onLayoutModeChange={handleGangSheetLayoutModeChange}
           progress={exportGangSheetPngState.progress}
+          sheetCountPreview={gangSheetSheetCountPreview}
           sheets={exportGangSheetPngState.sheets}
           show={selectedShow}
           warnings={exportGangSheetPngState.warnings}

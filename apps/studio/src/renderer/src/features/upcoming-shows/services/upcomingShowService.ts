@@ -345,7 +345,9 @@ export interface ShowTimerActionResult {
 
 function mapUpcomingShowData(showId: string, data: UpcomingShowDocumentData): UpcomingShow {
   const createdAt = mapFirestoreTimestamp(data.createdAt);
-  const updatedAt = mapFirestoreTimestamp(data.updatedAt);
+  // After updateDoc with serverTimestamp(), an immediate snapshot can still carry a pending
+  // sentinel for updatedAt. Fall back to createdAt so telemetry writes do not drop the show.
+  const updatedAt = mapFirestoreTimestamp(data.updatedAt) ?? createdAt;
 
   if (
     !isUpcomingShowSource(data.source) ||
@@ -1081,8 +1083,10 @@ export const upcomingShowService = {
   /**
    * Records that staff successfully generated gang sheet PNG(s) for this show / Internal Gangsheet.
    * Optional telemetry only — Mark Complete / Mark finished do not require generation.
+   * Does not re-read/map the show after write: an immediate getDoc can still see pending
+   * `serverTimestamp()` sentinels and falsely throw "record is incomplete."
    */
-  async recordGangSheetGenerated(caller: User, upcomingShowId: string): Promise<UpcomingShow> {
+  async recordGangSheetGenerated(caller: User, upcomingShowId: string): Promise<void> {
     if (!permissionService.canManageUpcomingShows(caller)) {
       throw new Error("You do not have permission to manage upcoming shows.");
     }
@@ -1099,8 +1103,9 @@ export const upcomingShowService = {
         updateDoc(showRef, {
           gangSheetGeneratedAt: serverTimestamp(),
           gangSheetGeneratedBy: caller.id,
+          // Intentionally omit updatedAt — a pending serverTimestamp sentinel on that required
+          // field was making live show mapping throw "incomplete" and wipe the generate UI.
           updatedBy: caller.id,
-          updatedAt: serverTimestamp(),
         }),
       {
         app: "studio",
@@ -1109,8 +1114,6 @@ export const upcomingShowService = {
         source: "upcomingShowService.recordGangSheetGenerated",
       },
     );
-
-    return this.getUpcomingShowById(caller, upcomingShowId);
   },
 
   /**

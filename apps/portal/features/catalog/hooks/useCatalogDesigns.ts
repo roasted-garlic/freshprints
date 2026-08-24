@@ -443,11 +443,11 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
     useOrdinaryFirestore,
   ]);
 
-  // Managed search (Algolia) already applied q/tags/category — do not re-filter
-  // client-side (would discard legitimate Algolia token matches that fail naive substring checks).
+  // Managed search (Algolia) applies q/tags/category server-side. Apply normalized search
+  // post-filter so case/separator behavior matches Firestore browse and Studio.
   const filteredDesigns = useFilteredCatalogDesigns({
     designs: allDesigns,
-    search: isManagedSearchQuery ? '' : (options.searchQuery ?? ''),
+    search: options.searchQuery?.trim() ? (options.searchQuery ?? '') : '',
     categoryId: isManagedSearchQuery ? undefined : options.categoryId,
     selectedTags: isManagedSearchQuery ? [] : options.selectedTags,
   });

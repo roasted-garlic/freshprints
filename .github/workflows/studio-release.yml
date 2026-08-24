@@ -401,7 +401,7 @@ jobs:
             echo "::warning::INTERNAL-UNSIGNED STABLE BUILD (Mac x64+arm64): packages are ad-hoc signed (structurally valid) but NOT Developer ID signed and NOT notarized. Gatekeeper will treat them as unverified — use Open Anyway / right-click Open. Do NOT clear quarantine as the product fix. Not suitable for public distribution."
             exit 0
           fi
-          echo "::error::Stable Studio Mac releases for 1.0.8 still require distribution_mode: internal-unsigned until Apple Developer ID secrets (MAC_CSC_LINK + MAC_CSC_KEY_PASSWORD) are configured (Workstream A2 gated). Do not select signed for Mac until that credential checkpoint completes."
+          echo "::error::Stable Studio Mac releases for 1.0.9 still require distribution_mode: internal-unsigned until Apple Developer ID secrets (MAC_CSC_LINK + MAC_CSC_KEY_PASSWORD) are configured (Workstream A2 gated). Do not select signed for Mac until that credential checkpoint completes."
           exit 1
 
       - name: Build Studio renderer/main once
@@ -520,8 +520,8 @@ jobs:
             echo "::error::Windows and Mac Studio package.json versions differ ($WIN_VER vs $MAC_VER)."
             exit 1
           fi
-          if [ "$WIN_VER" != "1.0.8" ]; then
-            echo "::error::Expected Studio version 1.0.8 for this release workflow. Got: $WIN_VER"
+          if [ "$WIN_VER" != "1.0.9" ]; then
+            echo "::error::Expected Studio version 1.0.9 for this release workflow. Got: $WIN_VER"
             exit 1
           fi
 

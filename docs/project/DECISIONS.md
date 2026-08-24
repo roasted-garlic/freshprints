@@ -4,6 +4,86 @@
 
 ---
 
+### ADR-FP-143: Studio grouped gang sheet export mode
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-23 |
+| Status | accepted |
+| Related | Goal `studio-workflow-organization-and-grouped-gang-sheet` (WS5) |
+
+**Context**
+
+Show Queue gang sheet generation already nests allocations for sheet efficiency. Production staff also need sheets grouped by customer/request with section labels, without changing the existing efficiency exporter or cache behavior.
+
+**Decision**
+
+1. Keep the legacy efficiency layout as the default when `layoutMode` is omitted.
+2. Add an explicit `layoutMode: "grouped_by_customer"` IPC path with a separate compositor and planner (`planGroupedGangSheetLayout` / `composeGroupedGangSheetSheets`).
+3. Resolve production group keys as `customerId` → `customerUsernameSnapshot` → internal `internalBaseName` → `printRequestId`.
+4. Load print request metadata once per export; attach `grouping` on image requests for grouped mode; IPC validation must preserve `layoutMode` and `grouping` (do not rebuild the request object without them).
+5. Include `layoutMode` in gang sheet cache fingerprints only for grouped exports so efficiency cache keys stay unchanged.
+6. Persist Standard and Grouped caches in separate fingerprint folders (replace only the fingerprint being written — do not wipe the sibling layout).
+7. Grouped base names / on-sheet labels use `whatnot_MM-DD-YYYY_grouped-gang-sheet`; section headings are request names (comma-joined) with `-Continued` on spillover sheets; section label font matches sheet label size.
+8. Surface Standard vs Grouped in one Generate dropdown + modal layout picker; estimated sheet counts are informational.
+
+**Consequences**
+
+- Two layout modes in Studio; regression contract tests guard efficiency ordering and fingerprints.
+- Owner DEV QA (2026-08-23) PASS for WS5 including coexistence and naming.
+---
+
+### ADR-FP-142: Public Show Designs browse with login-gated mutations
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-22 |
+| Status | accepted |
+| Related | Goal `customer-request-show-discovery-and-search-correctives` (WS4) |
+
+**Context**
+
+Customers wanted a show calendar and per-show design lineup without staff intervention. Private customer-upload artwork must never appear in public browse.
+
+**Decision**
+
+1. Portal **Show Designs** (`/shows`) is **public**, matching Design Library guest browse patterns.
+2. Trusted callables `listPortalPublicShows` and `listPortalShowCatalogDesigns` return catalog-only DTOs (no `printRequestId`, `customerId`, or upload identifiers).
+3. Add to Request, quantity changes, and other request mutations use the existing login gate (`useAddDesignToRequestFlow`).
+
+**Consequences**
+
+- Callable responses must stay catalog-scoped; Security review required if allocation queries broaden.
+- DEV Functions deploy required before manual QA.
+
+---
+
+### ADR-FP-141: Customer Print Request → Internal conversion semantics
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-22 |
+| Status | accepted |
+| Related | Goal `customer-request-show-discovery-and-search-correctives` (WS1) |
+
+**Context**
+
+Staff sometimes need to continue a customer request as internal production work without recycling the customer's CR sequence or mislabeling the original as printed.
+
+**Decision**
+
+1. Callable `convertCustomerPrintRequestToInternal` creates a **new** internal request (IR sequence) and copies items; it does **not** flip `isInternal` on the original.
+2. Original customer request is archived with `closureKind: converted_to_internal` and linkage IDs; Portal shows **Converted to Internal Request · Closed** in the **Printed** tab.
+3. Pending/queued show allocations may be auto-canceled only after explicit staff confirmation listing affected shows; any `in_progress` or later allocation **blocks** conversion.
+4. Closure fields are written by Admin SDK only; Firestore Rules prevent client spoofing.
+
+**Consequences**
+
+- Customers can start a new CR### immediately after conversion.
+- E2E path: Convert → Internal gang sheet → Mark Complete → Internal Printed.
+
+---
+
 ### ADR-FP-140: Studio Print Requests lists split by `isInternal`
 
 | Field | Value |

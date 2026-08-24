@@ -49,6 +49,11 @@ export function groupPortalPrintRequestsByListTab(input: {
   };
 
   for (const request of input.requests) {
+    if (request.closureKind === "converted_to_internal") {
+      grouped.printed.push(request);
+      continue;
+    }
+
     const summary = input.summariesByRequestId[request.id] ?? { totalQuantity: 0, uniqueDesignCount: 0 };
     const allocationTotals = input.allocationTotalsByRequestId[request.id] ?? {
       totalAllocatedQuantity: 0,

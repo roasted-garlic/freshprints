@@ -71,6 +71,10 @@ import {
 } from "../utils/printRequestQueryPlanning";
 import { buildPrintRequestAllocationTotalsByRequestId } from "@fresh-prints/shared/utils/showAllocationTotals";
 import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/showAllocation.types";
+import {
+  mapShowAllocationData,
+  type ShowAllocationDocumentData,
+} from "../../upcoming-shows/services/upcomingShowService";
 import { ShowCompletionReconciliationRemediationError } from "../../upcoming-shows/utils/showCompletionReconciliation";
 import { diagnosePrintRequestForCompletion } from "../utils/printRequestCompletionDiagnostics";
 import { buildPrintRequestCompletionPayload } from "../utils/printRequestCompletionPayload";
@@ -158,6 +162,11 @@ interface PrintRequestDocumentData extends DocumentData {
   internalBaseName?: unknown;
   nameFormatVersion?: unknown;
   notes?: unknown;
+  closureKind?: unknown;
+  convertedToInternalRequestId?: unknown;
+  convertedFromCustomerRequestId?: unknown;
+  convertedAt?: unknown;
+  convertedBy?: unknown;
   createdBy?: unknown;
   updatedBy?: unknown;
   createdAt?: unknown;
@@ -250,6 +259,15 @@ function mapPrintRequestData(printRequestId: string, data: PrintRequestDocumentD
         ? data.nameFormatVersion
         : undefined,
     notes: typeof data.notes === "string" ? data.notes : undefined,
+    closureKind: data.closureKind === "converted_to_internal" ? data.closureKind : undefined,
+    convertedToInternalRequestId:
+      typeof data.convertedToInternalRequestId === "string"
+        ? data.convertedToInternalRequestId
+        : undefined,
+    convertedFromCustomerRequestId:
+      typeof data.convertedFromCustomerRequestId === "string"
+        ? data.convertedFromCustomerRequestId
+        : undefined,
     createdBy: data.createdBy,
     updatedBy: data.updatedBy,
     createdAt,
@@ -803,6 +821,65 @@ export const printRequestService = {
     );
 
     return buildPrintRequestAllocationTotalsByRequestId(allocations);
+  },
+
+  /**
+   * Active allocation rows scoped to the given request IDs (chunked `in` queries, cap 10) —
+   * returns full `ShowAllocation` documents for show grouping on the Print Requests list page.
+   * Canceled allocations are excluded server-side in the mapper/filter pass.
+   */
+  async listActiveShowAllocationsForRequests(
+    caller: User,
+    printRequestIds: string[],
+  ): Promise<ShowAllocation[]> {
+    if (!permissionService.canViewPrintRequests(caller)) {
+      return [];
+    }
+
+    const uniqueIds = [...new Set(printRequestIds.map((id) => id.trim()).filter(Boolean))];
+    if (uniqueIds.length === 0) {
+      return [];
+    }
+
+    const chunks: string[][] = [];
+    for (let index = 0; index < uniqueIds.length; index += 10) {
+      chunks.push(uniqueIds.slice(index, index + 10));
+    }
+
+    traceFirestoreOneShotStart("getDocs", "showAllocations:activeByRequestIds-chunked");
+    const chunkSnapshots = await Promise.all(
+      chunks.map((chunk) =>
+        getDocs(
+          query(
+            firestoreCollectionService.getShowAllocationsCollection(),
+            where("printRequestId", "in", chunk),
+          ),
+        ),
+      ),
+    );
+    traceFirestoreOneShotComplete(
+      "getDocs",
+      "showAllocations:activeByRequestIds-chunked",
+      chunkSnapshots.reduce((total, snapshot) => total + snapshot.size, 0),
+    );
+
+    return chunkSnapshots.flatMap((snapshot) =>
+      snapshot.docs.flatMap((allocationDoc) => {
+        try {
+          const allocation = mapShowAllocationData(
+            allocationDoc.id,
+            allocationDoc.data() as ShowAllocationDocumentData,
+          );
+          return allocation.status === "canceled" ? [] : [allocation];
+        } catch (error) {
+          console.warn(
+            `[printRequestService] Skipping incomplete show allocation ${allocationDoc.id}:`,
+            error instanceof Error ? error.message : error,
+          );
+          return [];
+        }
+      }),
+    );
   },
 
   async listPrintRequestItemSummariesForRequests(

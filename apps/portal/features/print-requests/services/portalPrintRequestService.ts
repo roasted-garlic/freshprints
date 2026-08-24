@@ -174,6 +174,12 @@ function mapPrintRequest(printRequestId: string, data: PrintRequestDocumentData)
     status: data.status as PrintRequest['status'],
     itemCount: data.itemCount,
     notes: typeof data.notes === 'string' ? data.notes : undefined,
+    closureKind:
+      data.closureKind === 'converted_to_internal' ? data.closureKind : undefined,
+    convertedToInternalRequestId:
+      typeof data.convertedToInternalRequestId === 'string'
+        ? data.convertedToInternalRequestId
+        : undefined,
     createdBy: data.createdBy,
     updatedBy: data.updatedBy,
     createdAt,

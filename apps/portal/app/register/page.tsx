@@ -5,6 +5,7 @@ import { PortalAuthBrandLogo } from '../../features/brand/components/PortalAuthB
 import { loadPortalGlobalSocialMeta } from '../../features/brand/portalGlobalSocialMetaService';
 import { buildPortalPageMetadata } from '../../features/brand/portalSiteMeta';
 import { RegisterForm } from '../../features/auth/components/RegisterForm';
+import { RedirectAuthenticatedFromAuthPages } from '../../features/auth/components/RedirectAuthenticatedFromAuthPages';
 import { CATALOG_HOME_PATH } from '../../features/print-requests/utils/catalogSelectionNavigation';
 
 export const revalidate = 3600;
@@ -27,6 +28,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default function RegisterPage() {
   return (
     <main className="portal-shell portal-shell-narrow portal-shell-auth portal-login-required">
+      <RedirectAuthenticatedFromAuthPages />
       <div className="portal-auth-card portal-login-required-card">
         <div className="portal-auth-brand portal-auth-card-brand portal-login-required-brand">
           <PortalAuthBrandLogo />

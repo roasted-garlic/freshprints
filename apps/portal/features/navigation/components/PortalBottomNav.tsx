@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { User } from 'lucide-react';
 
 import { useAuth } from '../../auth/context/AuthContext';
-import { buildPortalLoginHref } from '../../auth/utils/requirePortalLogin';
+import { buildPortalLoginHrefForPath } from '../../auth/utils/requirePortalLogin';
 import { usePortalPrintRequests } from '../../print-requests/context/PortalPrintRequestContext';
 import { ShoppingBagIcon } from '../../shared/components/PortalIcons';
 import {
@@ -83,7 +83,7 @@ export function PortalBottomNav() {
                 <span>Account</span>
               </Link>
             ) : (
-              <Link className="portal-bottom-nav-link" href={buildPortalLoginHref()}>
+              <Link className="portal-bottom-nav-link" href={buildPortalLoginHrefForPath(pathname)}>
                 <User aria-hidden size={20} strokeWidth={1.75} />
                 <span>Login / Signup</span>
               </Link>

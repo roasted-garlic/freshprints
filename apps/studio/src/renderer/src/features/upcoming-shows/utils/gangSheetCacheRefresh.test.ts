@@ -17,6 +17,20 @@ describe("selected-show gang-sheet cache refresh", () => {
     assert.deepEqual(calls, ["reset"]);
   });
 
+  it("does not reset when show is briefly null but a selection id remains", async () => {
+    const calls: string[] = [];
+    await refreshSelectedShowGangSheetCache({
+      show: null,
+      selectedShowId: "still-selected",
+      isPast: false,
+      settings: "settings",
+      reset: () => calls.push("reset"),
+      clearForShow: async (id) => calls.push(`clear:${id}`),
+      refresh: async (show) => calls.push(`refresh:${show.id}`),
+    });
+    assert.deepEqual(calls, []);
+  });
+
   it("clears only the selected historical show", async () => {
     const calls: string[] = [];
     await refreshSelectedShowGangSheetCache({

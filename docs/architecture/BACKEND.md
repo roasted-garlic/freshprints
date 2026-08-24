@@ -261,6 +261,9 @@ Authoritative constants: `packages/shared/src/constants/import/batchImportLimits
 | `purgeArchivedDesignAssets` | Callable | Owner: archive-first purge of design originals + previews (keep thumbnail; ADR-FP-084) |
 | `getPortalShowPrintProgress` | Callable | Portal: show print progress for customer |
 | `listPortalAllocatableShows` | Callable | Portal: list upcoming shows + `customerAllocatedQuantity` (usage per show under `L`); includes past-cutoff shows as non-allocatable with cutoff meta; returns `portalQueueCutoffHoursBeforeStart` (ADR-FP-103) |
+| `listPortalPublicShows` | Callable | Portal: **public** (no auth) calendar of upcoming shows with unique ready **catalog** design counts per show; no customer PII or upload identifiers |
+| `listPortalShowCatalogDesigns` | Callable | Portal: **public** (no auth) ready catalog designs allocated to a show; guests may browse; request mutations remain login-gated |
+| `convertCustomerPrintRequestToInternal` | Callable | Studio staff: convert eligible customer request → new internal request; archive source with `closureKind`; optional cancel pending/queued allocations after confirm; blocks `in_progress`+ allocations |
 | `queuePortalPrintRequestToShow` | Callable | Portal: allocate **entire** Continuable request to **one** show atomically or reject; multiple separate requests may accumulate on the same show up to limit `L` (ADR-FP-122); rejects past Portal queue cutoff; rejects stale `selections`; no remainder; bidding ack + version (ADR-FP-102 / ADR-FP-103 / ADR-FP-122) |
 | `submitEtsyRecommendationRequest` | Callable | Portal: create/replace one active Etsy recommendation request; returns website search URL |
 | `searchEtsyRecommendations` | Callable | Portal: Open API listing search for an owned active request (`ETSY_X_API_KEY`); persists `lastApiSearch` |

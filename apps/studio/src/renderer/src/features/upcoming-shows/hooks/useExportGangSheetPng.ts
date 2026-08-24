@@ -6,6 +6,8 @@ import { upcomingShowService } from "../services/upcomingShowService";
 import { designService } from "../../designs/services/designService";
 import { designDerivativeUrlService } from "../../designs/services/designDerivativeUrlService";
 import { buildGangSheetCacheFingerprint } from "@fresh-prints/shared/utils/gangSheetCacheFingerprint";
+import { planEfficiencyGangSheetLayout } from "@fresh-prints/shared/utils/gangSheetEfficiencyLayout";
+import { planGroupedGangSheetLayout } from "@fresh-prints/shared/utils/gangSheetGroupedLayout";
 import {
   buildGangSheetBaseFileName,
   computeExportTargetPixelSize,
@@ -16,12 +18,17 @@ import { resolveQueuedPrintInches } from "@fresh-prints/shared/utils/printReques
 import type {
   CachedGangSheetSheetMeta,
   ExportGangSheetPngRequest,
+  GangSheetLayoutMode,
   GenerateGangSheetPngRequest,
   GenerateGangSheetPngResult,
   GangSheetExportImageRequest,
   GangSheetExportProgressEvent,
 } from "@fresh-prints/shared/types/export/gangSheetExportIpc.types";
 import type { ShowExportImageWarning } from "@fresh-prints/shared/types/export/showExportIpc.types";
+import { printRequestService } from "../../print-requests/services/printRequestService";
+import type { PrintRequest } from "@fresh-prints/shared/types/printRequest/printRequest.types";
+
+const GANG_SHEET_EXPORT_DPI = 300;
 
 export interface GangSheetLayoutSettings {
   sheetWidthInches: number;
@@ -38,6 +45,7 @@ interface GangSheetGenerateState {
   error: string | null;
   progress: GangSheetExportProgressEvent | null;
   generated: GenerateGangSheetPngResult | null;
+  cachedLayoutMode: GangSheetLayoutMode | null;
   lastSavedPaths: string[];
 }
 
@@ -47,11 +55,182 @@ const initialState: GangSheetGenerateState = {
   error: null,
   progress: null,
   generated: null,
+  cachedLayoutMode: null,
   lastSavedPaths: [],
 };
 
 function formatError(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
+}
+
+function resolveLayoutModeForFingerprint(
+  show: UpcomingShow,
+  layoutSettings: GangSheetLayoutSettings,
+  imageRequests: GangSheetExportImageRequest[],
+  fingerprint: string,
+): GangSheetLayoutMode | null {
+  for (const mode of ["efficiency", "grouped_by_customer"] as const) {
+    const layoutRequest = buildLayoutRequest(show, layoutSettings, imageRequests, mode);
+    if (buildGangSheetCacheFingerprint(layoutRequest) === fingerprint) {
+      return mode;
+    }
+  }
+
+  return null;
+}
+
+function buildGroupingMetadata(
+  allocation: { printRequestId: string; requestNameSnapshot?: string },
+  printRequest: PrintRequest | null,
+) {
+  if (!printRequest) {
+    return {
+      printRequestId: allocation.printRequestId,
+      requestName: allocation.requestNameSnapshot ?? allocation.printRequestId,
+      isInternal: false,
+    };
+  }
+
+  return {
+    printRequestId: printRequest.id,
+    requestName: printRequest.name,
+    customerId: printRequest.customerId,
+    customerUsernameSnapshot: printRequest.customerUsernameSnapshot,
+    internalBaseName: printRequest.internalBaseName,
+    isInternal: printRequest.isInternal,
+  };
+}
+
+export interface GangSheetSheetCountPreview {
+  efficiencySheets: number;
+  groupedSheets: number;
+}
+
+function estimateSheetCountsFromRequests(
+  imageRequests: GangSheetExportImageRequest[],
+  layoutSettings: GangSheetLayoutSettings,
+): GangSheetSheetCountPreview {
+  const sheetWidthPx = Math.round(layoutSettings.sheetWidthInches * GANG_SHEET_EXPORT_DPI);
+  const spacingPx = {
+    sideMarginPx: Math.round(layoutSettings.sideMarginInches * GANG_SHEET_EXPORT_DPI),
+    topBottomMarginPx: Math.round(layoutSettings.topBottomMarginInches * GANG_SHEET_EXPORT_DPI),
+    gutterPx: Math.round(layoutSettings.gutterInches * GANG_SHEET_EXPORT_DPI),
+  };
+  const maxSheetHeightPx = Math.round(layoutSettings.maxSheetLengthInches * GANG_SHEET_EXPORT_DPI);
+
+  const efficiency = planEfficiencyGangSheetLayout({
+    images: imageRequests.map((image) => ({
+      allocationId: image.allocationId,
+      quantity: image.quantity,
+      widthPx: image.targetWidthPx,
+      heightPx: image.targetHeightPx,
+    })),
+    sheetWidthPx,
+    spacingPx,
+    maxSheetHeightPx,
+  });
+
+  const grouped = planGroupedGangSheetLayout({
+    images: imageRequests
+      .filter((image) => image.grouping)
+      .map((image) => ({
+        allocationId: image.allocationId,
+        printRequestId: image.grouping!.printRequestId,
+        requestName: image.grouping!.requestName,
+        customerId: image.grouping!.customerId,
+        customerUsernameSnapshot: image.grouping!.customerUsernameSnapshot,
+        internalBaseName: image.grouping!.internalBaseName,
+        isInternal: image.grouping!.isInternal,
+        quantity: image.quantity,
+        widthPx: image.targetWidthPx,
+        heightPx: image.targetHeightPx,
+      })),
+    sheetWidthPx,
+    spacingPx,
+    maxSheetHeightPx,
+    sheetLabelFontSizePx: layoutSettings.labelFontSizePx,
+  });
+
+  return {
+    efficiencySheets: efficiency.sheetCount,
+    groupedSheets: grouped.sheetCount,
+  };
+}
+
+async function applyGangSheetCacheFromImageRequests(input: {
+  show: UpcomingShow;
+  layoutSettings: GangSheetLayoutSettings;
+  imageRequests: GangSheetExportImageRequest[];
+  preferredLayoutMode?: GangSheetLayoutMode;
+  /** When false with preferredLayoutMode, do not apply the other layout's cache under the wrong tab. */
+  allowFallbackToOtherMode?: boolean;
+  onApply: (
+    showId: string,
+    fingerprint: string,
+    layoutMode: GangSheetLayoutMode,
+    status: {
+      sheets: CachedGangSheetSheetMeta[];
+      placedImageCount: number;
+      skippedImageCount: number;
+      totalByteSize: number;
+      warnings: ShowExportImageWarning[];
+    },
+  ) => void;
+  onMissingCache: () => void;
+  onStaleCache: () => void;
+}): Promise<void> {
+  const modesToCheck: GangSheetLayoutMode[] = input.preferredLayoutMode
+    ? input.allowFallbackToOtherMode === false
+      ? [input.preferredLayoutMode]
+      : [
+          input.preferredLayoutMode,
+          input.preferredLayoutMode === "grouped_by_customer" ? "efficiency" : "grouped_by_customer",
+        ]
+    : ["grouped_by_customer", "efficiency"];
+
+  for (const layoutMode of modesToCheck) {
+    const fingerprint = buildGangSheetCacheFingerprint(
+      buildLayoutRequest(input.show, input.layoutSettings, input.imageRequests, layoutMode),
+    );
+    const statusResult = await window.freshPrints.export.getGangSheetCacheStatus({
+      showId: input.show.id,
+      fingerprint,
+    });
+
+    if (statusResult.success && statusResult.data.ready && statusResult.data.fingerprint === fingerprint) {
+      input.onApply(input.show.id, fingerprint, layoutMode, statusResult.data);
+      return;
+    }
+  }
+
+  // Fall back to a disk peek so leftover folders with unexpected names still surface when possible.
+  if (input.allowFallbackToOtherMode === false) {
+    input.onMissingCache();
+    return;
+  }
+
+  const peekResult = await window.freshPrints.export.getGangSheetCacheStatus({
+    showId: input.show.id,
+  });
+
+  if (!peekResult.success || !peekResult.data.ready || !peekResult.data.fingerprint) {
+    input.onMissingCache();
+    return;
+  }
+
+  const cachedLayoutMode = resolveLayoutModeForFingerprint(
+    input.show,
+    input.layoutSettings,
+    input.imageRequests,
+    peekResult.data.fingerprint,
+  );
+
+  if (!cachedLayoutMode) {
+    input.onStaleCache();
+    return;
+  }
+
+  input.onApply(input.show.id, peekResult.data.fingerprint, cachedLayoutMode, peekResult.data);
 }
 
 async function buildImageRequests(
@@ -64,6 +243,21 @@ async function buildImageRequests(
   if (activeAllocations.length === 0) {
     return { imageRequests: [], error: "This show has no active allocations to export." };
   }
+
+  const uniqueRequestIds = [...new Set(activeAllocations.map((allocation) => allocation.printRequestId))];
+  const printRequestEntries = await Promise.all(
+    uniqueRequestIds.map(async (printRequestId) => {
+      try {
+        const printRequest = await printRequestService.getPrintRequestById(user, printRequestId);
+        return [printRequestId, printRequest] as const;
+      } catch {
+        return [printRequestId, null] as const;
+      }
+    }),
+  );
+  const printRequestsById = new Map(
+    printRequestEntries.filter((entry): entry is readonly [string, PrintRequest] => entry[1] !== null),
+  );
 
   const imageRequests: GangSheetExportImageRequest[] = [];
 
@@ -112,6 +306,7 @@ async function buildImageRequests(
         targetHeightPx,
         fileName: upload.originalFilename ?? allocation.designTitleSnapshot ?? "upload",
         quantity: allocation.allocatedQuantity,
+        grouping: buildGroupingMetadata(allocation, printRequestsById.get(allocation.printRequestId) ?? null),
       });
       continue;
     }
@@ -156,6 +351,7 @@ async function buildImageRequests(
       targetHeightPx,
       fileName: design.title ?? allocation.designTitleSnapshot ?? "design",
       quantity: allocation.allocatedQuantity,
+      grouping: buildGroupingMetadata(allocation, printRequestsById.get(allocation.printRequestId) ?? null),
     });
   }
 
@@ -170,16 +366,18 @@ function buildLayoutRequest(
   show: UpcomingShow,
   layoutSettings: GangSheetLayoutSettings,
   imageRequests: GangSheetExportImageRequest[],
+  layoutMode: GangSheetLayoutMode = "efficiency",
 ): ExportGangSheetPngRequest {
   const scheduledStartAt = show.scheduledStartAt?.toDate() ?? new Date();
   return {
-    baseFileName: buildGangSheetBaseFileName(scheduledStartAt),
+    baseFileName: buildGangSheetBaseFileName(scheduledStartAt, layoutMode),
     sheetWidthInches: layoutSettings.sheetWidthInches,
     sideMarginInches: layoutSettings.sideMarginInches,
     topBottomMarginInches: layoutSettings.topBottomMarginInches,
     gutterInches: layoutSettings.gutterInches,
     maxSheetLengthInches: layoutSettings.maxSheetLengthInches,
     labelFontSizePx: layoutSettings.labelFontSizePx,
+    ...(layoutMode === "grouped_by_customer" ? { layoutMode } : {}),
     images: imageRequests,
   };
 }
@@ -189,6 +387,7 @@ export function useExportGangSheetPng() {
   const [state, setState] = useState<GangSheetGenerateState>(initialState);
   const isBusyRef = useRef(false);
   const refreshRequestIdRef = useRef(0);
+  const modalPrepareRequestIdRef = useRef(0);
 
   useEffect(() => {
     return window.freshPrints.export.onGangSheetExportProgress((event) => {
@@ -201,21 +400,27 @@ export function useExportGangSheetPng() {
   }, []);
 
   const generateGangSheet = useCallback(
-    async (show: UpcomingShow, layoutSettings: GangSheetLayoutSettings) => {
+    async (
+      show: UpcomingShow,
+      layoutSettings: GangSheetLayoutSettings,
+      layoutMode: GangSheetLayoutMode = "efficiency",
+    ) => {
       if (!user || !permissionService.canManageUpcomingShows(user)) {
         return;
       }
 
       refreshRequestIdRef.current += 1;
+      modalPrepareRequestIdRef.current += 1;
       isBusyRef.current = true;
-      setState({
+      setState((current) => ({
+        ...current,
         isGenerating: true,
         isExporting: false,
         error: null,
         progress: null,
         generated: null,
         lastSavedPaths: [],
-      });
+      }));
 
       try {
         const { imageRequests, error } = await buildImageRequests(user, show);
@@ -225,7 +430,7 @@ export function useExportGangSheetPng() {
           return;
         }
 
-        const layoutRequest = buildLayoutRequest(show, layoutSettings, imageRequests);
+        const layoutRequest = buildLayoutRequest(show, layoutSettings, imageRequests, layoutMode);
         const request: GenerateGangSheetPngRequest = {
           ...layoutRequest,
           showId: show.id,
@@ -250,19 +455,18 @@ export function useExportGangSheetPng() {
           error: null,
           progress: null,
           generated: ipcResult.data,
+          cachedLayoutMode: layoutMode,
           lastSavedPaths: [],
         });
 
+        // Telemetry only — never surface as a generation failure after sheets are cached.
         try {
           await upcomingShowService.recordGangSheetGenerated(user, show.id);
         } catch (persistError) {
-          setState((current) => ({
-            ...current,
-            error: formatError(
-              persistError,
-              "Gang sheets generated locally, but the show could not be marked as generated. Try Generate again.",
-            ),
-          }));
+          console.warn(
+            "[useExportGangSheetPng] Gang sheets generated, but show telemetry could not be recorded:",
+            persistError,
+          );
         }
       } catch (error) {
         isBusyRef.current = false;
@@ -347,13 +551,18 @@ export function useExportGangSheetPng() {
   }, []);
 
   const applyCacheStatus = useCallback(
-    (showId: string, fingerprint: string, status: {
+    (
+      showId: string,
+      fingerprint: string,
+      layoutMode: GangSheetLayoutMode,
+      status: {
       sheets: CachedGangSheetSheetMeta[];
       placedImageCount: number;
       skippedImageCount: number;
       totalByteSize: number;
       warnings: ShowExportImageWarning[];
-    }) => {
+    },
+    ) => {
       setState({
         isGenerating: false,
         isExporting: false,
@@ -368,6 +577,7 @@ export function useExportGangSheetPng() {
           totalByteSize: status.totalByteSize,
           warnings: status.warnings,
         },
+        cachedLayoutMode: layoutMode,
         lastSavedPaths: [],
       });
     },
@@ -391,64 +601,205 @@ export function useExportGangSheetPng() {
       });
 
       try {
-        // Fast disk peek — no Firestore allocation/design fetch — so Export shows without a Generate flash.
-        const peekResult = await window.freshPrints.export.getGangSheetCacheStatus({
-          showId: show.id,
-        });
-
-        if (refreshId !== refreshRequestIdRef.current) {
-          return;
-        }
-
-        if (peekResult.success && peekResult.data.ready && peekResult.data.fingerprint) {
-          applyCacheStatus(show.id, peekResult.data.fingerprint, peekResult.data);
-        } else {
-          setState((current) =>
-            current.generated?.showId === show.id && !current.isGenerating ? initialState : current,
-          );
-        }
-
-        // Confirm the peeked cache still matches current allocations + layout settings.
         const { imageRequests, error } = await buildImageRequests(user, show);
         if (refreshId !== refreshRequestIdRef.current) {
           return;
         }
 
         if (error || imageRequests.length === 0) {
-          setState(initialState);
+          // Do not clear an in-session generate if a background refresh cannot rebuild image requests.
           return;
         }
 
-        const layoutRequest = buildLayoutRequest(show, layoutSettings, imageRequests);
-        const fingerprint = buildGangSheetCacheFingerprint(layoutRequest);
+        await applyGangSheetCacheFromImageRequests({
+          show,
+          layoutSettings,
+          imageRequests,
+          onApply: (showId, fingerprint, layoutMode, status) => {
+            if (refreshId !== refreshRequestIdRef.current) {
+              return;
+            }
+            setState((current) => {
+              // Do not replace an in-session generate with a different layout mode found on disk
+              // (e.g. leftover Standard cache peek winning over a just-finished Grouped generate).
+              if (
+                current.generated?.showId === showId &&
+                current.generated.sheets.length > 0 &&
+                current.cachedLayoutMode != null &&
+                current.cachedLayoutMode !== layoutMode
+              ) {
+                return current;
+              }
 
-        if (peekResult.success && peekResult.data.ready && peekResult.data.fingerprint === fingerprint) {
-          // Peek already applied the correct cache.
-          return;
-        }
-
-        const statusResult = await window.freshPrints.export.getGangSheetCacheStatus({
-          showId: show.id,
-          fingerprint,
+              return {
+                isGenerating: false,
+                isExporting: false,
+                error: null,
+                progress: null,
+                generated: {
+                  showId,
+                  fingerprint,
+                  sheets: status.sheets,
+                  placedImageCount: status.placedImageCount,
+                  skippedImageCount: status.skippedImageCount,
+                  totalByteSize: status.totalByteSize,
+                  warnings: status.warnings,
+                },
+                cachedLayoutMode: layoutMode,
+                lastSavedPaths: [],
+              };
+            });
+          },
+          onMissingCache: () => {
+            // Never wipe in-memory generate results. Disk peek can lag or briefly miss right after
+            // a successful generate; clearing here sent users back to the empty Generate screen.
+          },
+          onStaleCache: () => {
+            // Keep local results for this show. A fingerprint mismatch during a background refresh
+            // must not discard sheets the user just generated in this session.
+          },
         });
-
-        if (refreshId !== refreshRequestIdRef.current) {
-          return;
-        }
-
-        if (!statusResult.success || !statusResult.data.ready || !statusResult.data.fingerprint) {
-          setState(initialState);
-          return;
-        }
-
-        applyCacheStatus(show.id, statusResult.data.fingerprint, statusResult.data);
       } catch {
-        if (refreshId === refreshRequestIdRef.current) {
-          setState(initialState);
-        }
+        // Background refresh failures must not clear a successful in-session generate.
       }
     },
+    [user],
+  );
+
+  const prepareGangSheetModal = useCallback(
+    async (
+      show: UpcomingShow,
+      layoutSettings: GangSheetLayoutSettings,
+      preferredLayoutMode?: GangSheetLayoutMode,
+    ): Promise<{ preview: GangSheetSheetCountPreview | null; error: string | null }> => {
+      if (!user || !permissionService.canManageUpcomingShows(user)) {
+        return { preview: null, error: null };
+      }
+
+      const prepareSessionId = ++modalPrepareRequestIdRef.current;
+
+      const { imageRequests, error } = await buildImageRequests(user, show);
+      if (prepareSessionId !== modalPrepareRequestIdRef.current) {
+        return { preview: null, error: null };
+      }
+
+      if (error) {
+        return { preview: null, error };
+      }
+
+      if (imageRequests.length === 0) {
+        return { preview: null, error: "No exportable images were found for this show's allocations." };
+      }
+
+      await applyGangSheetCacheFromImageRequests({
+        show,
+        layoutSettings,
+        imageRequests,
+        preferredLayoutMode,
+        allowFallbackToOtherMode: false,
+        onApply: (showId, fingerprint, layoutMode, status) => {
+          if (prepareSessionId !== modalPrepareRequestIdRef.current) {
+            return;
+          }
+          applyCacheStatus(showId, fingerprint, layoutMode, status);
+        },
+        onMissingCache: () => {
+          if (prepareSessionId !== modalPrepareRequestIdRef.current) {
+            return;
+          }
+          setState((current) => ({
+            ...current,
+            generated: null,
+            cachedLayoutMode: null,
+            error: null,
+            progress: null,
+          }));
+        },
+        onStaleCache: () => {
+          if (prepareSessionId !== modalPrepareRequestIdRef.current) {
+            return;
+          }
+          setState((current) => ({
+            ...current,
+            generated: null,
+            cachedLayoutMode: null,
+            error: null,
+            progress: null,
+          }));
+        },
+      });
+
+      if (prepareSessionId !== modalPrepareRequestIdRef.current) {
+        return { preview: null, error: null };
+      }
+
+      return {
+        preview: estimateSheetCountsFromRequests(imageRequests, layoutSettings),
+        error: null,
+      };
+    },
     [applyCacheStatus, user],
+  );
+
+  const hydrateCacheForLayoutMode = useCallback(
+    async (
+      show: UpcomingShow,
+      layoutSettings: GangSheetLayoutSettings,
+      layoutMode: GangSheetLayoutMode,
+    ): Promise<void> => {
+      if (!user || !permissionService.canManageUpcomingShows(user)) {
+        return;
+      }
+
+      if (state.cachedLayoutMode === layoutMode && state.generated?.sheets.length) {
+        return;
+      }
+
+      const hydrateId = ++modalPrepareRequestIdRef.current;
+      const { imageRequests, error } = await buildImageRequests(user, show);
+      if (hydrateId !== modalPrepareRequestIdRef.current || error || imageRequests.length === 0) {
+        return;
+      }
+
+      await applyGangSheetCacheFromImageRequests({
+        show,
+        layoutSettings,
+        imageRequests,
+        preferredLayoutMode: layoutMode,
+        allowFallbackToOtherMode: false,
+        onApply: (showId, fingerprint, appliedMode, status) => {
+          if (hydrateId !== modalPrepareRequestIdRef.current) {
+            return;
+          }
+          applyCacheStatus(showId, fingerprint, appliedMode, status);
+        },
+        onMissingCache: () => {
+          if (hydrateId !== modalPrepareRequestIdRef.current) {
+            return;
+          }
+          setState((current) => ({
+            ...current,
+            generated: null,
+            cachedLayoutMode: null,
+            error: null,
+            progress: null,
+          }));
+        },
+        onStaleCache: () => {
+          if (hydrateId !== modalPrepareRequestIdRef.current) {
+            return;
+          }
+          setState((current) => ({
+            ...current,
+            generated: null,
+            cachedLayoutMode: null,
+            error: null,
+            progress: null,
+          }));
+        },
+      });
+    },
+    [applyCacheStatus, state.cachedLayoutMode, state.generated?.sheets.length, user],
   );
 
   const reset = useCallback(() => {
@@ -464,11 +815,16 @@ export function useExportGangSheetPng() {
     error: state.error,
     progress: state.progress,
     generated: state.generated,
+    cachedLayoutMode: state.cachedLayoutMode,
     sheets: state.generated?.sheets ?? ([] as CachedGangSheetSheetMeta[]),
     warnings: state.generated?.warnings ?? ([] as ShowExportImageWarning[]),
     lastSavedPaths: state.lastSavedPaths,
     hasGeneratedCache: Boolean(state.generated),
+    hasGeneratedCacheForMode: (layoutMode: GangSheetLayoutMode) =>
+      Boolean(state.generated?.sheets.length) && state.cachedLayoutMode === layoutMode,
     generateGangSheet,
+    prepareGangSheetModal,
+    hydrateCacheForLayoutMode,
     exportCachedGangSheets,
     downloadCachedSheet,
     clearCacheForShow,

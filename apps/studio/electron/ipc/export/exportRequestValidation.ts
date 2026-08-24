@@ -88,6 +88,30 @@ export function validateExportShowZipRequest(payload: unknown) {
   return { request: request as ExportShowZipRequest };
 }
 
+function isValidGangSheetImageGrouping(value: unknown): boolean {
+  if (value === undefined) {
+    return true;
+  }
+
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const grouping = value as Partial<GangSheetExportImageRequest["grouping"]>;
+  if (!grouping) {
+    return false;
+  }
+
+  return (
+    isNonEmptyString(grouping.printRequestId) &&
+    isNonEmptyString(grouping.requestName) &&
+    typeof grouping.isInternal === "boolean" &&
+    (grouping.customerId === undefined || isNonEmptyString(grouping.customerId)) &&
+    (grouping.customerUsernameSnapshot === undefined || typeof grouping.customerUsernameSnapshot === "string") &&
+    (grouping.internalBaseName === undefined || typeof grouping.internalBaseName === "string")
+  );
+}
+
 function isValidGangSheetImageRequest(value: unknown): value is GangSheetExportImageRequest {
   if (!value || typeof value !== "object") {
     return false;
@@ -101,8 +125,13 @@ function isValidGangSheetImageRequest(value: unknown): value is GangSheetExportI
     isPositiveInteger(image.targetWidthPx) &&
     isPositiveInteger(image.targetHeightPx) &&
     isNonEmptyString(image.fileName) &&
-    isPositiveInteger(image.quantity)
+    isPositiveInteger(image.quantity) &&
+    isValidGangSheetImageGrouping(image.grouping)
   );
+}
+
+function isValidGangSheetLayoutMode(value: unknown): value is NonNullable<ExportGangSheetPngRequest["layoutMode"]> {
+  return value === undefined || value === "efficiency" || value === "grouped_by_customer";
 }
 
 export function validateExportGangSheetPngRequest(payload: unknown) {
@@ -136,12 +165,30 @@ export function validateExportGangSheetPngRequest(payload: unknown) {
     return { error: importIpcFailure("INVALID_INPUT", "A positive label font size in pixels is required.") };
   }
 
+  if (!isValidGangSheetLayoutMode(request.layoutMode)) {
+    return {
+      error: importIpcFailure(
+        "INVALID_INPUT",
+        'layoutMode must be omitted, "efficiency", or "grouped_by_customer".',
+      ),
+    };
+  }
+
   if (!Array.isArray(request.images) || request.images.length === 0) {
     return { error: importIpcFailure("INVALID_INPUT", "At least one image is required to export.") };
   }
 
   if (!request.images.every(isValidGangSheetImageRequest)) {
     return { error: importIpcFailure("INVALID_INPUT", "One or more gang sheet image entries are invalid.") };
+  }
+
+  if (request.layoutMode === "grouped_by_customer" && request.images.some((image) => !image.grouping)) {
+    return {
+      error: importIpcFailure(
+        "INVALID_INPUT",
+        "Grouped gang sheet generation requires grouping metadata on every image.",
+      ),
+    };
   }
 
   return { request: request as ExportGangSheetPngRequest };
@@ -175,6 +222,7 @@ export function validateGenerateGangSheetPngRequest(
       gutterInches: exportRequest.gutterInches,
       maxSheetLengthInches: exportRequest.maxSheetLengthInches,
       labelFontSizePx: exportRequest.labelFontSizePx,
+      ...(exportRequest.layoutMode === "grouped_by_customer" ? { layoutMode: exportRequest.layoutMode } : {}),
       images: exportRequest.images,
       showId: request.showId.trim(),
     },

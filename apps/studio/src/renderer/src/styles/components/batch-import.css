@@ -203,9 +203,12 @@
 
 .batch-import-normalized-card-grid {
   display: grid;
-  gap: var(--space-2);
-  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--space-1);
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
   margin: var(--space-3) 0 0;
+  max-height: 24rem;
+  overflow-y: auto;
+  padding-right: var(--space-1);
 }
 
 .batch-import-normalized-card {
@@ -213,8 +216,8 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   display: grid;
-  gap: var(--space-1);
-  padding: var(--space-3);
+  gap: 0.15rem;
+  padding: var(--space-2);
 }
 
 .batch-import-normalized-card dt {
@@ -232,13 +235,19 @@
 }
 
 .batch-import-detail-modal {
+  display: flex;
+  flex-direction: column;
+  max-height: min(90vh, 42rem);
   max-width: min(calc(100vw - var(--space-6) - var(--space-6)), 42rem);
   width: 100%;
 }
 
 .batch-import-detail-modal .modal-body {
   display: grid;
+  flex: 1;
   gap: var(--space-3);
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .batch-import-file-lists {

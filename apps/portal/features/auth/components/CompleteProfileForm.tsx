@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 
 import { PORTAL_BIDDING_ACKNOWLEDGMENT_VERSION } from '@fresh-prints/shared/constants/portal/portalBiddingAcknowledgment.constants';
+import { normalizeCustomerUsername } from '@fresh-prints/shared/utils/customerUsername';
 import { buildPortalBiddingAcknowledgmentSignupCopy } from '@fresh-prints/shared/utils/portalBiddingAcknowledgmentCopy';
 
 import { useAuth } from '../context/AuthContext';
@@ -16,6 +17,7 @@ import {
 import { buildPortalAuthHref, getPortalReturnToFromSearch, resolvePortalPostAuthPath } from '../utils/portalReturnUrl';
 import { UserPlusIcon } from '../../shared/components/PortalIcons';
 import { PortalBiddingAcknowledgmentModal } from '../../shared/components/PortalBiddingAcknowledgmentModal';
+import { PortalUsernameField, validatePortalUsernameInput } from './PortalUsernameField';
 import { AuthBusyOverlay } from './AuthBusyOverlay';
 
 const SETUP_PROGRESS_MESSAGES = [
@@ -108,8 +110,15 @@ export function CompleteProfileForm() {
       return;
     }
 
+    const usernameError = validatePortalUsernameInput(nextUsername);
+    if (usernameError) {
+      setLocalError(usernameError);
+      return;
+    }
+
+    const normalizedUsername = normalizeCustomerUsername(nextUsername);
     setUsername(nextUsername);
-    setPendingProfile({ displayName: nextDisplayName, username: nextUsername });
+    setPendingProfile({ displayName: nextDisplayName, username: normalizedUsername });
   }
 
   async function runCompleteProfile(profile: PendingProfile) {
@@ -208,21 +217,7 @@ export function CompleteProfileForm() {
           />
         </label>
 
-        <label className="portal-field">
-          <span>Username</span>
-          <input
-            autoComplete="username"
-            disabled={!formInteractive}
-            name="username"
-            onChange={(event) => setUsername(event.target.value)}
-            pattern="[a-z0-9][a-z0-9_-]{1,30}[a-z0-9]"
-            required
-            spellCheck={false}
-            type="text"
-            value={username}
-          />
-          <span className="portal-field-hint">Lowercase letters, numbers, underscores, or hyphens.</span>
-        </label>
+        <PortalUsernameField disabled={!formInteractive} onChange={setUsername} value={username} />
 
         {showTerminalFailure ? <p className="portal-form-error">{displayError}</p> : null}
 

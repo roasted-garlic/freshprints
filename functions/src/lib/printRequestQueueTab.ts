@@ -36,6 +36,16 @@ export async function recomputeAndPersistQueueTab(printRequestId: string): Promi
     })),
   });
 
+  if (nextQueueTab === null) {
+    if (requestData.queueTab !== undefined) {
+      await requestRef.update({
+        queueTab: FieldValue.delete(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
+    return null;
+  }
+
   if (requestData.queueTab === nextQueueTab) {
     return nextQueueTab;
   }

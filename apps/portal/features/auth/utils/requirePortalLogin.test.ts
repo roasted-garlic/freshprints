@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 
 import {
   buildPortalLoginHref,
+  buildPortalLoginHrefForPath,
   buildPortalLoginRequiredHref,
   redirectToPortalLogin,
   redirectToPortalLoginRequired,
@@ -26,6 +27,13 @@ describe('requirePortalLogin', () => {
   it('falls back to home when returnTo is empty', () => {
     assert.equal(buildPortalLoginHref(''), '/login');
     assert.equal(buildPortalLoginHref('   '), '/login');
+  });
+
+  it('builds SSR-safe login href from explicit pathname', () => {
+    assert.equal(
+      buildPortalLoginHrefForPath('/shows/Lq2RL43xhDoILyPMuL6u'),
+      '/login?returnTo=%2Fshows%2FLq2RL43xhDoILyPMuL6u',
+    );
   });
 
   it('pushes login and returns true for early-return callers', () => {

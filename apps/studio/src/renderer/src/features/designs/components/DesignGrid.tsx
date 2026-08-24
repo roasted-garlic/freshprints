@@ -92,7 +92,7 @@ export function DesignGrid({
         const selection = requestSelection?.getSelection(design.id);
 
         return (
-          <div key={design.id} role="listitem">
+          <div data-design-id={design.id} key={design.id} role="listitem">
             {requestSelection ? (
               <DesignSelectionCard
                 design={design}

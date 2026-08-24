@@ -69,5 +69,16 @@ describe('portalReturnUrl', () => {
       '/catalog?designId=Ab2dBnwdAmWG6ivXpzIC',
     );
     assert.equal(resolvePortalPostAuthPath('/catalog?designId=abc'), '/catalog?designId=abc');
+    assert.equal(
+      resolvePortalPostAuthPath('/shows/Lq2RL43xhDoILyPMuL6u'),
+      '/shows/Lq2RL43xhDoILyPMuL6u',
+    );
+  });
+
+  it('builds register auth href with returnTo', () => {
+    assert.equal(
+      buildPortalAuthHref('/register', '/shows/show-123'),
+      '/register?returnTo=%2Fshows%2Fshow-123',
+    );
   });
 });

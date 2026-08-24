@@ -1040,6 +1040,12 @@ export interface PrintRequest {
     version: string;
     upcomingShowId: string;
   };
+  /** Terminal closure when staff converts a customer request to internal (callable-only writes). */
+  closureKind?: "converted_to_internal";
+  convertedToInternalRequestId?: string;
+  convertedFromCustomerRequestId?: string;
+  convertedAt?: Timestamp;
+  convertedBy?: string;
   createdBy: string;
   updatedBy: string;
   createdAt: Timestamp;
@@ -1064,6 +1070,8 @@ when the request has a usable locked sequence; the persisted `name` is then re-d
 `internalBaseName` and `requestSequenceNumber`. Existing legacy names such as `sarahsmith-0001`
 and `internal-0001` remain readable. No migration or backfill is required for legacy request names.
 The standard Print Request detail page does not edit request status.
+
+**Customer → Internal conversion (2026-08-22):** Staff callable `convertCustomerPrintRequestToInternal` archives the customer request (`status: archived`, `closureKind: converted_to_internal`) and creates a new internal request with copied items. Linkage fields `convertedToInternalRequestId` / `convertedFromCustomerRequestId` preserve audit trail. Portal lists converted customer requests under the **Printed** tab with label **Converted to Internal Request · Closed** (not ordinary printed copy). Closure fields are Admin SDK / callable only — Firestore Rules block client mutation.
 
 `requestOrigin` stores how the request was created. New Studio internal requests write
 `studio_internal`; new staff-created Studio customer requests write `studio_customer`;

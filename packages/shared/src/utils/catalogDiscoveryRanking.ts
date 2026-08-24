@@ -1,5 +1,5 @@
 /** Discovery mode keys for Portal Design Library (URL `discover=`). Phase 10 may swap ranking only. */
-export type CatalogDiscoveryMode = "new" | "popular" | "mostLiked" | "recent";
+export type CatalogDiscoveryMode = "new" | "popular" | "mostLiked" | "recent" | "showsThisWeek";
 
 export const CATALOG_DISCOVERY_MODES: readonly CatalogDiscoveryMode[] = [
   "new",
@@ -54,7 +54,13 @@ export interface CatalogPopularCategoryRail<T extends CatalogDiscoveryDesign> {
 }
 
 export function parseCatalogDiscoveryMode(value: string | null | undefined): CatalogDiscoveryMode | null {
-  if (value === "new" || value === "popular" || value === "mostLiked" || value === "recent") {
+  if (
+    value === "new" ||
+    value === "popular" ||
+    value === "mostLiked" ||
+    value === "recent" ||
+    value === "showsThisWeek"
+  ) {
     return value;
   }
 
@@ -71,6 +77,8 @@ export function getCatalogDiscoveryModeLabel(mode: CatalogDiscoveryMode): string
       return "Most Liked";
     case "recent":
       return "Recently Requested";
+    case "showsThisWeek":
+      return "Added to Shows This Week";
   }
 }
 
@@ -205,6 +213,8 @@ export function rankCatalogDiscoveryDesigns<T extends CatalogDiscoveryDesign>(
       return rankMostLiked(designs);
     case "recent":
       return rankRecentlyRequested(designs);
+    case "showsThisWeek":
+      return [];
   }
 }
 

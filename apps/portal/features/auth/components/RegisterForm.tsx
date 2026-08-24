@@ -5,13 +5,20 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useId, useMemo, useState, type FormEvent } from 'react';
 
 import { PORTAL_BIDDING_ACKNOWLEDGMENT_VERSION } from '@fresh-prints/shared/constants/portal/portalBiddingAcknowledgment.constants';
+import { normalizeCustomerUsername } from '@fresh-prints/shared/utils/customerUsername';
 import { buildPortalBiddingAcknowledgmentSignupCopy } from '@fresh-prints/shared/utils/portalBiddingAcknowledgmentCopy';
 
 import { useAuth } from '../context/AuthContext';
 import { portalAuthService } from '../services/authService';
 import { needsPortalCustomerProfileCompletion } from '../types/auth.types';
-import { UserPlusIcon } from '../../shared/components/PortalIcons';
+import {
+  buildPortalAuthHref,
+  getPortalReturnToFromSearch,
+  resolvePortalPostAuthPath,
+} from '../utils/portalReturnUrl';
 import { PortalBiddingAcknowledgmentModal } from '../../shared/components/PortalBiddingAcknowledgmentModal';
+import { UserPlusIcon } from '../../shared/components/PortalIcons';
+import { PortalUsernameField, validatePortalUsernameInput } from './PortalUsernameField';
 import { AuthBusyOverlay } from './AuthBusyOverlay';
 import { GoogleAuthButton } from './GoogleAuthButton';
 
@@ -59,13 +66,16 @@ export function RegisterForm() {
   }, [error, localError]);
 
   useEffect(() => {
+    const returnTo = resolvePortalPostAuthPath(
+      getPortalReturnToFromSearch(window.location.search),
+    );
     if (isAuthenticated) {
-      router.replace('/');
+      router.replace(returnTo);
       return;
     }
 
     if (needsPortalCustomerProfileCompletion(bootstrapStatus)) {
-      router.replace('/complete-profile');
+      router.replace(buildPortalAuthHref('/complete-profile', returnTo));
     }
   }, [bootstrapStatus, isAuthenticated, router]);
 
@@ -85,7 +95,18 @@ export function RegisterForm() {
       return;
     }
 
-    setPendingRegistration({ email, password, displayName, username });
+    const usernameError = validatePortalUsernameInput(username);
+    if (usernameError) {
+      setLocalError(usernameError);
+      return;
+    }
+
+    setPendingRegistration({
+      email,
+      password,
+      displayName,
+      username: normalizeCustomerUsername(username),
+    });
   }
 
   async function handleAcknowledgeAndRegister() {
@@ -114,6 +135,11 @@ export function RegisterForm() {
     isSubmitting ||
     isAuthActionLoading ||
     (bootstrapStatus === 'loading-profile' && Boolean(firebaseUser));
+
+  const loginHref =
+    typeof window !== 'undefined'
+      ? buildPortalAuthHref('/login', getPortalReturnToFromSearch(window.location.search))
+      : '/login';
 
   return (
     <div className="portal-auth-stack portal-auth-stack-compact">
@@ -153,18 +179,7 @@ export function RegisterForm() {
             <input autoComplete="name" name="displayName" required type="text" />
           </label>
 
-          <label className="portal-field">
-            <span>Username</span>
-            <input
-              autoComplete="username"
-              name="username"
-              pattern="[a-z0-9][a-z0-9_-]{1,30}[a-z0-9]"
-              required
-              spellCheck={false}
-              type="text"
-            />
-            <span className="portal-field-hint">Lowercase letters, numbers, underscores, or hyphens.</span>
-          </label>
+          <PortalUsernameField />
 
           <label className="portal-field">
             <span>Email</span>
@@ -201,7 +216,7 @@ export function RegisterForm() {
       ) : null}
 
       <p className="portal-auth-footer">
-        Already have an account? <Link href="/login">Login</Link>
+        Already have an account? <Link href={loginHref}>Login</Link>
       </p>
 
       <PortalBiddingAcknowledgmentModal

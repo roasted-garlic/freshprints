@@ -1,9 +1,11 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { isDeleteEligibleUnapprovedDesignStatus } from "@fresh-prints/shared/utils/deleteEligibleUnapprovedDesignValidation";
 
 import { ConfirmLeaveDialog } from "../../../shared/components/ConfirmLeaveDialog";
+import { Button } from "../../../shared/components/Button";
+import { GlobalSearchField } from "../../../shared/components/GlobalSearchField";
 import type { SelectOption } from "../../../shared/components/Select";
 import { useShellHeaderConfig } from "../../../shared/hooks/useShellHeaderConfig";
 import { DeleteEligibleUnapprovedDesignDialog } from "../../designs/components/DeleteEligibleUnapprovedDesignDialog";
@@ -34,13 +36,22 @@ import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
 import { useAiEnrichmentSettings } from "../../settings/hooks/useAiEnrichmentSettings";
 import { useAiReviewMainPanelHeight } from "../hooks/useAiReviewMainPanelHeight";
-import type { AiReviewInboxTab } from "../types/aiReviewInbox.types";
+import type { AiReviewInboxFilters, AiReviewInboxTab } from "../types/aiReviewInbox.types";
+import { shouldShowNeedsReviewSearchNoResults } from "../utils/aiReviewNeedsReviewSearch";
 
 function AiReviewPageContent() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [isInputFocused, setIsInputFocused] = useState(false);
+  const [needsReviewSearchQuery, setNeedsReviewSearchQuery] = useState("");
   const filters = useMemo(() => parseAiReviewInboxFilters(searchParams), [searchParams]);
+  const inboxFilters = useMemo<AiReviewInboxFilters>(
+    () => ({
+      ...filters,
+      searchQuery: filters.tab === "needs_review" ? needsReviewSearchQuery : undefined,
+    }),
+    [filters, needsReviewSearchQuery],
+  );
   const canManageProcessingSettings = permissionService.canManageSettings(user);
   const canDeleteEligibleUnapprovedDesigns =
     permissionService.canDeleteEligibleUnapprovedDesigns(user);
@@ -79,13 +90,26 @@ function AiReviewPageContent() {
     [setSearchParams],
   );
 
-  const inbox = useAiReviewInbox(filters, {
+  const inbox = useAiReviewInbox(inboxFilters, {
     defaultVisionModelId: enrichmentSettings.visionModelId,
     onNavigateToTab: handleNavigateToTab,
     // Processing / background queue still refreshes authoritative counts.
     onQueueChanged: () => void tabCounts.reloadCounts(),
     // Amendment 9 P0: successful approve/reject/archive adjust badges locally (no 3× count).
     onInboxCountsDelta: (deltas) => tabCounts.applyCountsDelta(deltas),
+    needsReviewTotalCount: tabCounts.counts.needs_review,
+  });
+
+  useEffect(() => {
+    if (filters.tab !== "needs_review" && needsReviewSearchQuery) {
+      setNeedsReviewSearchQuery("");
+    }
+  }, [filters.tab, needsReviewSearchQuery]);
+
+  const showNeedsReviewSearchNoResults = shouldShowNeedsReviewSearchNoResults({
+    searchQuery: inboxFilters.searchQuery,
+    filteredCount: inbox.designs.length,
+    canSearchMore: inbox.searchHydration?.canSearchMore ?? false,
   });
 
   const selectedArtworkBackgroundHex = useMemo(() => {
@@ -236,17 +260,52 @@ function AiReviewPageContent() {
             ))}
           </div>
 
+          {filters.tab === "needs_review" ? (
+            <div className="ai-review-needs-review-search">
+              <GlobalSearchField
+                clearable
+                onChange={setNeedsReviewSearchQuery}
+                placeholder="Search title, tags, id…"
+                value={needsReviewSearchQuery}
+              />
+              {inbox.searchHydration ? (
+                <div className="ai-review-search-status">
+                  <span>
+                    Found {inbox.searchHydration.foundCount} of {inbox.searchHydration.totalCount ?? "…"}
+                    {inbox.searchHydration.canSearchMore
+                      ? ` · searched ${inbox.searchHydration.searchedCount} of ${inbox.searchHydration.totalCount ?? "…"}`
+                      : null}
+                  </span>
+                  {inbox.searchHydration.canSearchMore ? (
+                    <Button
+                      disabled={inbox.isLoadingMore}
+                      onClick={inbox.searchHydration.searchMore}
+                      size="sm"
+                      type="button"
+                      variant="secondary"
+                    >
+                      {inbox.searchHydration.isSearching ? "Searching…" : "Search more"}
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           <AiReviewQueueList
             activeTab={filters.tab}
             designs={inbox.designs}
             hasMore={inbox.hasMore}
             isLoading={inbox.isLoading}
             isLoadingMore={inbox.isLoadingMore}
+            isSearchHydrating={inbox.searchHydration?.isSearching ?? false}
             listRef={inbox.queueListRef}
             onLoadMore={inbox.loadMoreDesigns}
             onSelectDesign={inbox.requestSelectDesign}
+            searchActive={Boolean(inboxFilters.searchQuery?.trim())}
             selectedArtworkBackgroundHex={selectedArtworkBackgroundHex}
             selectedDesignId={inbox.selectedDesign?.id ?? null}
+            showSearchNoResults={showNeedsReviewSearchNoResults}
           />
         </aside>
 

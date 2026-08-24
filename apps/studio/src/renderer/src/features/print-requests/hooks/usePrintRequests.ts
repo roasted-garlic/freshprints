@@ -10,6 +10,7 @@ import {
 } from "../services/printRequestService";
 import {
   clearPrintRequestsPageCache,
+  invalidatePrintRequestsPageCache,
   loadPrintRequestsPageCached,
 } from "../services/printRequestsPageReadCache";
 import { reconcileDeletedOrArchivedRequest as reconcileDeletedOrArchivedRequestInState } from "../utils/reconcileDeletedOrArchivedRequest";
@@ -17,13 +18,39 @@ import { mergePrintRequestsById } from "../utils/mergePrintRequestsById";
 import { derivePrintRequestsListLoading } from "../utils/derivePrintRequestsListLoading";
 import type { PrintRequestListTab } from "@fresh-prints/shared/utils/printRequestListGrouping";
 import type { PrintRequest } from "@fresh-prints/shared/types/printRequest/printRequest.types";
+import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/showAllocation.types";
+import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
 import type { Customer } from "@fresh-prints/shared/types/customer/customer.types";
 import {
   printRequestListKindFromIsInternal,
   type PrintRequestListKind,
 } from "../constants/printRequestRoutes";
+import { upcomingShowService } from "../../upcoming-shows/services/upcomingShowService";
 
 const COUNTABLE_TABS: readonly PrintRequestListTab[] = ["working", "queued", "printing", "printed"];
+
+function buildAllocationsByRequestId(allocations: ShowAllocation[]): Record<string, ShowAllocation[]> {
+  const grouped: Record<string, ShowAllocation[]> = {};
+
+  for (const allocation of allocations) {
+    if (allocation.status === "canceled") {
+      continue;
+    }
+
+    grouped[allocation.printRequestId] ??= [];
+    grouped[allocation.printRequestId]!.push(allocation);
+  }
+
+  return grouped;
+}
+
+function buildAllocationCacheKey(requestIds: string[]): string {
+  return `allocations:${[...new Set(requestIds)].sort().join(",")}`;
+}
+
+function buildShowCacheKey(showIds: string[]): string {
+  return `shows:${[...new Set(showIds)].sort().join(",")}`;
+}
 
 type LoadedListKind = PrintRequestListKind | "all";
 
@@ -34,6 +61,8 @@ interface PrintRequestsState {
     string,
     { totalAllocatedQuantity: number; totalInProgressQuantity: number; totalPrintedQuantity: number }
   >;
+  allocationsByRequestId: Record<string, ShowAllocation[]>;
+  showsById: Record<string, UpcomingShow>;
   customersById: Record<string, Customer>;
   countsByTab: Record<PrintRequestListTab, number>;
   hasMore: boolean;
@@ -46,6 +75,8 @@ const initialState: PrintRequestsState = {
   requests: [],
   summariesByRequestId: {},
   allocationTotalsByRequestId: {},
+  allocationsByRequestId: {},
+  showsById: {},
   customersById: {},
   countsByTab: { working: 0, queued: 0, printing: 0, printed: 0 },
   hasMore: false,
@@ -82,6 +113,9 @@ export function usePrintRequests(activeTab: PrintRequestListTab, isInternal?: bo
   }, [isInternal]);
   const loadedTabRef = useRef<PrintRequestListTab | null>(null);
   const loadedKindRef = useRef<LoadedListKind | null>(null);
+  const showsCacheRef = useRef<Record<string, UpcomingShow>>({});
+  const requestsRef = useRef<PrintRequest[]>(initialState.requests);
+  requestsRef.current = state.requests;
   const isLoading = derivePrintRequestsListLoading(
     state.isLoading,
     loadedTabRef.current,
@@ -112,33 +146,110 @@ export function usePrintRequests(activeTab: PrintRequestListTab, isInternal?: bo
   const hydratePage = useCallback(
     async (requests: PrintRequest[]) => {
       if (!user) {
-        return { summariesByRequestId: {}, allocationTotalsByRequestId: {}, customersById: {} };
+        return {
+          summariesByRequestId: {},
+          allocationTotalsByRequestId: {},
+          allocationsByRequestId: {},
+          showsById: {},
+          customersById: {},
+        };
       }
-      const requestIds = requests.map((request) => request.id);
-      const customerIds = requests
-        .filter((request) => !request.isInternal && request.customerId)
-        .map((request) => request.customerId as string);
 
-      const [summariesByRequestId, allocationTotalsByRequestId, customers] = await Promise.all([
-        requestIds.length > 0
-          ? printRequestService.listPrintRequestItemSummariesForRequests(user, requestIds)
-          : Promise.resolve({}),
-        requestIds.length > 0
-          ? printRequestService.listAllocationTotalsForRequests(user, requestIds)
-          : Promise.resolve({}),
-        customerIds.length > 0
-          ? printRequestService.listCustomersByIds(user, customerIds)
-          : Promise.resolve([]),
-      ]);
+      const requestIds = [...new Set(requests.map((request) => request.id))];
+      const customerIds = [
+        ...new Set(
+          requests
+            .filter((request) => !request.isInternal && request.customerId)
+            .map((request) => request.customerId as string),
+        ),
+      ];
+
+      const [summariesByRequestId, allocationTotalsByRequestId, activeAllocations, customers] =
+        await Promise.all([
+          requestIds.length > 0
+            ? printRequestService.listPrintRequestItemSummariesForRequests(user, requestIds)
+            : Promise.resolve({}),
+          requestIds.length > 0
+            ? printRequestService.listAllocationTotalsForRequests(user, requestIds)
+            : Promise.resolve({}),
+          requestIds.length > 0
+            ? loadPrintRequestsPageCached(user.id, buildAllocationCacheKey(requestIds), () =>
+                printRequestService.listActiveShowAllocationsForRequests(user, requestIds),
+              )
+            : Promise.resolve([]),
+          customerIds.length > 0
+            ? printRequestService.listCustomersByIds(user, customerIds)
+            : Promise.resolve([]),
+        ]);
+
+      const allocationsByRequestId = buildAllocationsByRequestId(activeAllocations);
+      const showIds = [
+        ...new Set(activeAllocations.map((allocation) => allocation.upcomingShowId).filter(Boolean)),
+      ];
+      const missingShowIds = showIds.filter((showId) => !showsCacheRef.current[showId]);
+      if (missingShowIds.length > 0) {
+        const loadedShows = await loadPrintRequestsPageCached(
+          user.id,
+          buildShowCacheKey(missingShowIds),
+          () => upcomingShowService.getUpcomingShowsByIds(user, missingShowIds),
+        );
+        for (const show of loadedShows) {
+          showsCacheRef.current[show.id] = show;
+        }
+      }
+
+      const showsById = Object.fromEntries(
+        showIds.map((showId) => [showId, showsCacheRef.current[showId]]).filter((entry) => entry[1]),
+      ) as Record<string, UpcomingShow>;
 
       return {
         summariesByRequestId,
         allocationTotalsByRequestId,
+        allocationsByRequestId,
+        showsById,
         customersById: Object.fromEntries(customers.map((customer) => [customer.id, customer])),
       };
     },
     [user],
   );
+
+  const invalidateAllocationHydrationCache = useCallback(() => {
+    if (!user) {
+      return;
+    }
+
+    invalidatePrintRequestsPageCache(user.id, "allocations:");
+    invalidatePrintRequestsPageCache(user.id, "shows:");
+  }, [user]);
+
+  const refreshAllocationHydration = useCallback(async () => {
+    if (!user) {
+      return;
+    }
+
+    invalidateAllocationHydrationCache();
+    const loadedRequests = requestsRef.current;
+    if (loadedRequests.length === 0) {
+      return;
+    }
+
+    const hydrated = await hydratePage(loadedRequests);
+    setState((current) => ({
+      ...current,
+      allocationsByRequestId: {
+        ...current.allocationsByRequestId,
+        ...hydrated.allocationsByRequestId,
+      },
+      showsById: {
+        ...current.showsById,
+        ...hydrated.showsById,
+      },
+      allocationTotalsByRequestId: {
+        ...current.allocationTotalsByRequestId,
+        ...hydrated.allocationTotalsByRequestId,
+      },
+    }));
+  }, [hydratePage, invalidateAllocationHydrationCache, user]);
 
   const loadFirstPage = useCallback(
     async (options?: LoadPrintRequestsOptions) => {
@@ -235,6 +346,11 @@ export function usePrintRequests(activeTab: PrintRequestListTab, isInternal?: bo
           ...current.allocationTotalsByRequestId,
           ...hydrated.allocationTotalsByRequestId,
         },
+        allocationsByRequestId: {
+          ...current.allocationsByRequestId,
+          ...hydrated.allocationsByRequestId,
+        },
+        showsById: { ...current.showsById, ...hydrated.showsById },
         customersById: { ...current.customersById, ...hydrated.customersById },
         countsByTab: current.countsByTab,
         hasMore: page.hasMore,
@@ -254,12 +370,13 @@ export function usePrintRequests(activeTab: PrintRequestListTab, isInternal?: bo
   const reloadPrintRequests = useCallback(
     async (options?: LoadPrintRequestsOptions) => {
       if (user) {
+        invalidateAllocationHydrationCache();
         clearPrintRequestsPageCache();
       }
       cursorRef.current = undefined;
       await loadFirstPage(options);
     },
-    [loadFirstPage, user],
+    [invalidateAllocationHydrationCache, loadFirstPage, user],
   );
 
   /**
@@ -294,6 +411,11 @@ export function usePrintRequests(activeTab: PrintRequestListTab, isInternal?: bo
           ...current.allocationTotalsByRequestId,
           ...hydrated.allocationTotalsByRequestId,
         },
+        allocationsByRequestId: {
+          ...current.allocationsByRequestId,
+          ...hydrated.allocationsByRequestId,
+        },
+        showsById: { ...current.showsById, ...hydrated.showsById },
         customersById: { ...current.customersById, ...hydrated.customersById },
       }));
     },
@@ -372,6 +494,7 @@ export function usePrintRequests(activeTab: PrintRequestListTab, isInternal?: bo
     ...state,
     isLoading,
     reloadPrintRequests,
+    refreshAllocationHydration,
     loadMore,
     ensureRequestsLoaded,
     ensureRequestLoaded,

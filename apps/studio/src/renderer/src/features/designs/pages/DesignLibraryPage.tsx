@@ -111,6 +111,8 @@ export function DesignLibraryPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   /** Skip one URL write-back after applying searchParams → local state (prevents archive toggle loop). */
   const urlSyncGenerationRef = useRef(0);
+  const catalogScrollRef = useRef<HTMLDivElement | null>(null);
+  const pendingScrollDesignIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     const legacyRedirectPath = getLegacyDesignLibraryRedirectPath(searchParams);
@@ -279,7 +281,6 @@ export function DesignLibraryPage() {
     isLoading: managedSearchIsLoading,
     isLoadingMore: managedSearchIsLoadingMore,
     loadMore: managedSearchLoadMore,
-    reload: reloadManagedSearch,
     total: managedSearchTotal,
   } = useDesignLibraryManagedSearch({
     catalogTags,
@@ -566,27 +567,37 @@ export function DesignLibraryPage() {
 
   const handleDesignUpdated = useCallback(async (updated: Design) => {
     await withFirebaseTraceAction("Save design", async () => {
-      // Firestore is the save target and, since useDesigns is now the unconditional design-list
-      // source, also the immediate read authority — patch the local list from the just-saved
-      // authoritative document so the edit is visible without waiting on a full reload.
       applyDesignPatch(updated.id, updated);
-      // Managed Algolia results are independent of useDesigns — drop/patch immediately from the
-      // saved document (tag alias aware), then refetch so the list converges after index sync.
       if (managedSearchActive) {
         applyManagedSearchPatch(updated);
-        reloadManagedSearch();
       }
-      await refreshCatalog();
+      pendingScrollDesignIdRef.current = updated.id;
+      setEditingDesign(null);
       showSuccessMessage("Design updated successfully.");
     });
   }, [
     applyDesignPatch,
     applyManagedSearchPatch,
     managedSearchActive,
-    refreshCatalog,
-    reloadManagedSearch,
     showSuccessMessage,
   ]);
+
+  useEffect(() => {
+    const designId = pendingScrollDesignIdRef.current;
+    if (!designId) {
+      return;
+    }
+
+    pendingScrollDesignIdRef.current = null;
+    const frame = window.requestAnimationFrame(() => {
+      const target = catalogScrollRef.current?.querySelector<HTMLElement>(
+        `[data-design-id="${CSS.escape(designId)}"]`,
+      );
+      target?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [filteredDesigns]);
 
   const handleCategoriesUpdated = useCallback(async () => {
     await refreshCatalog();
@@ -1008,7 +1019,7 @@ export function DesignLibraryPage() {
           ) : null}
         </div>
 
-        <div className="design-library-catalog-scroll">
+        <div className="design-library-catalog-scroll" ref={catalogScrollRef}>
           <DesignGrid
             catalogView={effectiveCatalogView}
             designs={filteredDesigns}

@@ -18,6 +18,7 @@ import { Badge } from "../../../shared/components/Badge";
 import { useShellHeaderConfig } from "../../../shared/hooks/useShellHeaderConfig";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
+import { convertCustomerPrintRequestService } from "../services/convertCustomerPrintRequestService";
 import { printRequestService, type UpdatePrintRequestItemInput } from "../services/printRequestService";
 import { clearPrintRequestsPageCache } from "../services/printRequestsPageReadCache";
 import { usePrintRequestDetails } from "../hooks/usePrintRequestDetails";
@@ -32,6 +33,7 @@ import { formatCustomerUsernameForDisplay } from "@fresh-prints/shared/utils/for
 import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/showAllocation.types";
 import { formatInternalPrintRequestName } from "@fresh-prints/shared/utils/printRequestNaming";
 import { getPrintRequestOriginBadgeLabel } from "@fresh-prints/shared/utils/printRequestOrigin";
+import { evaluateCustomerPrintRequestConversionEligibility } from "@fresh-prints/shared/utils/printRequestConversion";
 import { getPrintRequestTabHelperCopy } from "@fresh-prints/shared/staffInbox/printRequestTabHelperCopy";
 import { derivePrintRequestQueueState, isPrintRequestFullyPrinted } from "@fresh-prints/shared/utils/printRequestQueueState";
 import type { PrintRequestListTab } from "@fresh-prints/shared/utils/printRequestListGrouping";
@@ -43,6 +45,10 @@ import {
   type PrintRequestWorkingTriageFilter,
 } from "@fresh-prints/shared/utils/printRequestWorkingTriage";
 import { groupAllocationsByShow } from "@fresh-prints/shared/utils/groupAllocationsByShow";
+import {
+  groupPrintRequestsByShow,
+  UNASSIGNED_SHOW_SECTION_KEY,
+} from "@fresh-prints/shared/utils/groupPrintRequestsByShow";
 import { canRemoveRequestFromShow } from "@fresh-prints/shared/utils/showQueueEditability";
 import {
   summarizePrintRequestPersistenceHealth,
@@ -70,7 +76,7 @@ import {
 import { getDesignLibraryPath } from "../../designs/constants/designLibraryFilters";
 import { upcomingShowService } from "../../upcoming-shows/services/upcomingShowService";
 import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
-import { formatUpcomingShowTitle } from "../../upcoming-shows/utils/upcomingShowDisplay";
+import { formatUpcomingShowTitle, formatUpcomingShowTimestampLabel } from "../../upcoming-shows/utils/upcomingShowDisplay";
 import { formatShowDateTimeLabel } from "@fresh-prints/shared/utils/showDateTimeDisplay";
 import { getUpcomingShowsPath } from "../../upcoming-shows/constants/upcomingShowRoutes";
 
@@ -266,6 +272,7 @@ export function PrintRequestsPage() {
 
   const {
     allocationTotalsByRequestId,
+    allocationsByRequestId,
     countsByTab,
     customersById,
     ensureRequestLoaded,
@@ -278,8 +285,10 @@ export function PrintRequestsPage() {
     patchRequestLocally,
     patchSummaryLocally,
     reconcileDeletedOrArchivedRequest,
+    refreshAllocationHydration,
     reloadPrintRequests,
     requests,
+    showsById,
     summariesByRequestId,
   } = usePrintRequests(activeListTab, activeIsInternal);
 
@@ -345,6 +354,9 @@ export function PrintRequestsPage() {
   const [isRemovingFromShowQueue, setIsRemovingFromShowQueue] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isDeletionDialogOpen, setIsDeletionDialogOpen] = useState(false);
+  const [isConvertConfirmOpen, setIsConvertConfirmOpen] = useState(false);
+  const [isConvertingRequest, setIsConvertingRequest] = useState(false);
+  const [convertError, setConvertError] = useState<string | null>(null);
 
   const reloadSelectedRequestAllocations = useCallback(async () => {
     if (!user || !visibleSelectedRequest) {
@@ -397,6 +409,88 @@ export function PrintRequestsPage() {
    * request is queued to has started printing or further along, removal must go through an admin
    * correction instead of this normal remove-from-here flow.
    */
+  
+  const conversionEligibility = useMemo(() => {
+    if (!visibleSelectedRequest || visibleSelectedRequest.isInternal) {
+      return null;
+    }
+
+    const linkedShowsPrinting = selectedRequestShowGroups.some((group) => {
+      const show = selectedRequestShowsById.get(group.upcomingShowId);
+      return show?.productionStatus === "printing";
+    });
+
+    return evaluateCustomerPrintRequestConversionEligibility({
+      isInternal: visibleSelectedRequest.isInternal,
+      requestOrigin: visibleSelectedRequest.requestOrigin,
+      closureKind: visibleSelectedRequest.closureKind,
+      status: visibleSelectedRequest.status,
+      allocations: selectedRequestAllocations.map((allocation) => ({
+        id: allocation.id,
+        upcomingShowId: allocation.upcomingShowId,
+        status: allocation.status,
+        allocatedQuantity: allocation.allocatedQuantity,
+        requestNameSnapshot: allocation.requestNameSnapshot,
+      })),
+      linkedShowsPrinting,
+    });
+  }, [
+    selectedRequestAllocations,
+    selectedRequestShowGroups,
+    selectedRequestShowsById,
+    visibleSelectedRequest,
+  ]);
+
+  const handleConvertToInternal = useCallback(async () => {
+    if (!visibleSelectedRequest || !conversionEligibility?.eligible) {
+      return;
+    }
+
+    setIsConvertingRequest(true);
+    setConvertError(null);
+
+    try {
+      const result = await convertCustomerPrintRequestService.convertCustomerPrintRequestToInternal({
+        printRequestId: visibleSelectedRequest.id,
+        internalBaseName:
+          visibleSelectedRequest.customerUsernameSnapshot ??
+          visibleSelectedRequest.internalBaseName ??
+          "internal",
+        confirmCancelAllocations: conversionEligibility.cancelableAllocations.length > 0,
+      });
+
+      setIsConvertConfirmOpen(false);
+      setSuccessMessage(
+        result.alreadyConverted
+          ? `Request already converted to ${result.internalRequestName}.`
+          : `Converted to internal request ${result.internalRequestName}.`,
+      );
+      reconcileDeletedOrArchivedRequest(visibleSelectedRequest.id, "archived");
+      if (user) {
+        clearPrintRequestsPageCache();
+      }
+      await reloadPrintRequests({ silent: true });
+      navigate(
+        getPrintRequestsPath({
+          kind: "internal",
+          tab: "working",
+          requestId: result.internalRequestId,
+        }),
+      );
+    } catch (error) {
+      setConvertError(error instanceof Error ? error.message : "Unable to convert this request.");
+    } finally {
+      setIsConvertingRequest(false);
+    }
+  }, [
+    conversionEligibility,
+    navigate,
+    reconcileDeletedOrArchivedRequest,
+    reloadPrintRequests,
+    user,
+    visibleSelectedRequest,
+  ]);
+
   const canRemoveSelectedRequestFromShowQueue = selectedRequestShowGroups.every((group) => {
     const show = selectedRequestShowsById.get(group.upcomingShowId);
     return !show || canRemoveRequestFromShow(show.productionStatus);
@@ -466,7 +560,10 @@ export function PrintRequestsPage() {
       clearPrintRequestsPageCache();
       patchRequestLocally(requestId, { queueTab: "working", status: "editing" });
       commitPrintRequestsRoute({ requestId, kind: activeListKind, tab: "working" });
-      await reloadAllAllocationData({ silent: true });
+      await Promise.all([
+        refreshAllocationHydration(),
+        reloadAllAllocationData({ silent: true }),
+      ]);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Unable to remove this request from the show queue.");
     } finally {
@@ -476,6 +573,7 @@ export function PrintRequestsPage() {
     commitPrintRequestsRoute,
     patchRequestLocally,
     reloadAllAllocationData,
+    refreshAllocationHydration,
     selectedRequestShowGroups,
     user,
     visibleSelectedRequest,
@@ -651,6 +749,16 @@ export function PrintRequestsPage() {
     listSearchQuery,
     routeEligibleRequests,
   ]);
+
+  const visibleRequestSections = useMemo(
+    () =>
+      groupPrintRequestsByShow({
+        requests: visibleRequests,
+        allocationsByRequestId,
+        showsById,
+      }),
+    [allocationsByRequestId, showsById, visibleRequests],
+  );
 
   // A deep-linked/selected request outside the currently loaded page is never treated as
   // "route-illegal" — `ensureRequestLoaded` (above) fetches it directly by ID, and once loaded it
@@ -1229,12 +1337,22 @@ export function PrintRequestsPage() {
                 title="Nothing here yet"
               />
             ) : (
-              visibleRequests.map((request) => {
+              visibleRequestSections.map((section) => (
+                <div className="print-requests-show-section" key={section.sectionKey}>
+                  <div className="print-requests-show-section-header">
+                    {section.sectionKey === UNASSIGNED_SHOW_SECTION_KEY
+                      ? "Unassigned"
+                      : section.show
+                        ? `${formatUpcomingShowTitle(section.show)} · ${formatUpcomingShowTimestampLabel(section.show.scheduledStartAt)}`
+                        : "Show"}
+                  </div>
+                  {section.requests.map((request) => {
                 const isSelected = request.id === selectedRequestId;
                 const requestSummary = summariesByRequestId[request.id] ?? {
                   totalQuantity: 0,
                   uniqueDesignCount: 0,
                 };
+                const extraShowCount = section.extraShowCountByRequestId[request.id] ?? 0;
 
                 return (
                   <button
@@ -1261,6 +1379,12 @@ export function PrintRequestsPage() {
                       {request.isInternal
                         ? request.notes?.trim() || "No notes"
                         : getPrintRequestCustomerLabel(request, customersByIdMap)}
+                      {extraShowCount > 0 ? (
+                        <span className="print-requests-request-card-extra-shows">
+                          {" "}
+                          +{extraShowCount} more show{extraShowCount === 1 ? "" : "s"}
+                        </span>
+                      ) : null}
                     </p>
                     <div className="print-requests-request-card-counts">
                       <span>{formatDesignCountLabel(requestSummary.uniqueDesignCount)}</span>
@@ -1268,7 +1392,9 @@ export function PrintRequestsPage() {
                     </div>
                   </button>
                 );
-              })
+                  })}
+                </div>
+              ))
             )}
             {!isLoading && hasMoreRequests && !listSearchQuery.trim() ? (
               <Button
@@ -1288,39 +1414,42 @@ export function PrintRequestsPage() {
         <section className="print-requests-main">
           {visibleSelectedRequest && !isSelectedRequestDetailLocked ? (
             <div className="print-requests-page-actions">
-              <Button
-                disabled={
-                  requestItems.length === 0 ||
-                  !persistenceSummary.canOpenQueue ||
-                  isFlushingQueue
-                }
-                onClick={() => void openAddToShow("shows")}
-                title={
-                  requestItems.length === 0
-                    ? "Add designs to this request before adding it to a show."
-                    : persistenceSummary.blockReason ?? undefined
-                }
-                type="button"
-              >
-                Add to Show
-              </Button>
-              <Button
-                disabled={
-                  requestItems.length === 0 ||
-                  !persistenceSummary.canOpenQueue ||
-                  isFlushingQueue
-                }
-                onClick={() => void openAddToShow("staff_gang_sheet")}
-                title={
-                  requestItems.length === 0
-                    ? "Add designs to this request before adding it to an Internal Gangsheet."
-                    : persistenceSummary.blockReason ?? undefined
-                }
-                type="button"
-                variant="secondary"
-              >
-                Add to Internal Gangsheet
-              </Button>
+              {!visibleSelectedRequest.isInternal ? (
+                <Button
+                  disabled={
+                    requestItems.length === 0 ||
+                    !persistenceSummary.canOpenQueue ||
+                    isFlushingQueue
+                  }
+                  onClick={() => void openAddToShow("shows")}
+                  title={
+                    requestItems.length === 0
+                      ? "Add designs to this request before adding it to a show."
+                      : persistenceSummary.blockReason ?? undefined
+                  }
+                  type="button"
+                >
+                  Add to Show
+                </Button>
+              ) : (
+                <Button
+                  disabled={
+                    requestItems.length === 0 ||
+                    !persistenceSummary.canOpenQueue ||
+                    isFlushingQueue
+                  }
+                  onClick={() => void openAddToShow("staff_gang_sheet")}
+                  title={
+                    requestItems.length === 0
+                      ? "Add designs to this request before adding it to an Internal Gangsheet."
+                      : persistenceSummary.blockReason ?? undefined
+                  }
+                  type="button"
+                  variant="secondary"
+                >
+                  Add to Internal Gangsheet
+                </Button>
+              )}
             </div>
           ) : null}
 
@@ -1514,19 +1643,48 @@ export function PrintRequestsPage() {
                         >
                           Edit
                         </Button>
-                        {permissionService.canDeleteEligiblePrintRequest(user) &&
-                        visibleSelectedRequest.status !== "archived" ? (
-                          <DangerOverflowMenu
-                            ariaLabel="Print request destructive actions"
-                            items={[
-                              {
-                                id: "delete-or-archive",
-                                label: "Delete or archive…",
-                                onSelect: () => setIsDeletionDialogOpen(true),
+                        {(() => {
+                          const overflowItems: Array<{
+                            id: string;
+                            label: string;
+                            onSelect: () => void;
+                            danger?: boolean;
+                            disabled?: boolean;
+                          }> = [];
+
+                          if (!visibleSelectedRequest.isInternal && conversionEligibility?.eligible) {
+                            overflowItems.push({
+                              id: "convert-to-internal",
+                              label: isConvertingRequest
+                                ? "Converting..."
+                                : "Convert to Internal Request",
+                              danger: false,
+                              disabled: isConvertingRequest,
+                              onSelect: () => {
+                                setConvertError(null);
+                                setIsConvertConfirmOpen(true);
                               },
-                            ]}
-                          />
-                        ) : null}
+                            });
+                          }
+
+                          if (
+                            permissionService.canDeleteEligiblePrintRequest(user) &&
+                            visibleSelectedRequest.status !== "archived"
+                          ) {
+                            overflowItems.push({
+                              id: "delete-or-archive",
+                              label: "Delete or archive...",
+                              onSelect: () => setIsDeletionDialogOpen(true),
+                            });
+                          }
+
+                          return overflowItems.length > 0 ? (
+                            <DangerOverflowMenu
+                              ariaLabel="Print request more actions"
+                              items={overflowItems}
+                            />
+                          ) : null;
+                        })()}
                       </>
                     )}
                   </div>
@@ -1769,6 +1927,72 @@ export function PrintRequestsPage() {
           onClose={() => setIsAddToShowModalOpen(false)}
           printRequest={visibleSelectedRequest}
         />
+      ) : null}
+
+      
+      {isConvertConfirmOpen ? (
+        <div className="modal-overlay modal-overlay-blur">
+          <Modal
+            aria-labelledby="print-request-convert-title"
+            className="modal-panel modal-panel-md"
+            role="dialog"
+          >
+            <ModalHeader>
+              <div>
+                <p className="eyebrow">Customer request</p>
+                <h3 id="print-request-convert-title">Convert to Internal Request</h3>
+              </div>
+              <button
+                aria-label="Close convert confirmation"
+                className="icon-button icon-button-md icon-button-ghost"
+                disabled={isConvertingRequest}
+                onClick={() => setIsConvertConfirmOpen(false)}
+                type="button"
+              >
+                <X aria-hidden="true" size={18} strokeWidth={2.2} />
+              </button>
+            </ModalHeader>
+            <ModalBody>
+              <p>
+                This closes the customer request in Portal history as converted and creates a new
+                internal request with the same items.
+              </p>
+              {conversionEligibility && conversionEligibility.cancelableAllocations.length > 0 ? (
+                <div className="print-requests-modal-helper">
+                  <p className="print-requests-modal-hint">
+                    The following show allocations will be canceled:
+                  </p>
+                  <ul>
+                    {conversionEligibility.cancelableAllocations.map((allocation) => (
+                      <li key={allocation.id}>
+                        {allocation.requestNameSnapshot ?? allocation.upcomingShowId} — {allocation.status} — qty{' '}
+                        {allocation.allocatedQuantity}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {convertError ? <p className="auth-message auth-message-error">{convertError}</p> : null}
+            </ModalBody>
+            <ModalFooter>
+              <Button
+                disabled={isConvertingRequest}
+                onClick={() => setIsConvertConfirmOpen(false)}
+                type="button"
+                variant="secondary"
+              >
+                Cancel
+              </Button>
+              <Button
+                disabled={isConvertingRequest}
+                onClick={() => void handleConvertToInternal()}
+                type="button"
+              >
+                {isConvertingRequest ? "Converting..." : "Convert"}
+              </Button>
+            </ModalFooter>
+          </Modal>
+        </div>
       ) : null}
 
       <PrintRequestDeletionDialog

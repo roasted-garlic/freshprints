@@ -44,6 +44,14 @@ describe("buildGangSheetBaseFileName", () => {
     const date = new Date(2026, 6, 6, 14, 0);
     assert.equal(buildGangSheetBaseFileName(date), "whatnot_07-06-2026_gang-sheet");
   });
+
+  it("inserts grouped into the base name for grouped_by_customer layout", () => {
+    const date = new Date(2026, 6, 6, 14, 0);
+    assert.equal(
+      buildGangSheetBaseFileName(date, "grouped_by_customer"),
+      "whatnot_07-06-2026_grouped-gang-sheet",
+    );
+  });
 });
 
 describe("buildGangSheetFilename", () => {
