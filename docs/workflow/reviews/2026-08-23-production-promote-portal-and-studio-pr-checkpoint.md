@@ -5,7 +5,7 @@
 | Date | 2026-08-23 |
 | Status | **AWAITING OWNER APPROVAL** — do not open/merge until phrase |
 | Base | `production` @ `27b0b4fb691c081ea1167f863f5fc45224a9c651` |
-| Head | `development` @ `953ab105653770138acef7f726d3323f38dfa70a` |
+| Head | `development` @ `5b86f181328164d07224d7bb00b1b5216f8601f8` |
 
 ---
 
@@ -17,6 +17,7 @@
 | `5435743` | feat(studio): organize workflow UX and add grouped gang sheets |
 | `237b28d` | chore(release): pin Studio 1.0.9 and finish Gate B verification |
 | `953ab10` | docs(workflow): record Gate B RC tip and PR gate checkpoint |
+| `5b86f18` | docs(workflow): point PR checkpoint at development tip |
 
 ## Includes
 
@@ -36,7 +37,7 @@
 
 - Title: `Promote Portal show discovery + Studio 1.0.9 release candidate`
 - Base: `production`
-- Head: `development` (`953ab10`)
+- Head: `development` (`5b86f18`)
 
 ## Owner phrase required before agent opens PR
 
