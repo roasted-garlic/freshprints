@@ -2,12 +2,12 @@
 
 | Field | Value |
 |-------|-------|
-| Date | 2026-08-23 |
-| Status | **MERGE PENDING** — owner must merge on GitHub (agent CLI blocked) |
+| Date | 2026-08-24 |
+| Status | **MERGED** — post-merge verification complete |
 | PR | **#88** — https://github.com/roasted-garlic/freshprints/pull/88 |
-| Pre-merge head | `d760a74e6cccdbf53cf9265092ca4aafe3f4c481` |
-| Base | `production` @ `27b0b4fb691c081ea1167f863f5fc45224a9c651` |
-| Mergeable at verify | **MERGEABLE** / `clean` |
+| Production merge SHA | **`94a1ed0009deab775d8b0c60be44ca931c0ad291`** |
+| Merged PR head | `00f0d2d1b3fd1d2acd63042b0d9dbd2a04c3fac1` |
+| Prior production tip | `27b0b4fb691c081ea1167f863f5fc45224a9c651` |
 
 ---
 
@@ -15,15 +15,18 @@
 
 | Phrase | Status |
 |--------|--------|
-| `APPROVE PRODUCTION PR: production-promote-portal-and-studio-2026-08-23` | received — PR opened |
-| `APPROVE PRODUCTION MERGE: production-promote-portal-and-studio-2026-08-23` | received — merge pending on GitHub |
+| `APPROVE PRODUCTION PR: …` | received — PR opened |
+| `APPROVE PRODUCTION MERGE: …` | received — merged on GitHub |
+| Post-merge verification | complete 2026-08-24 |
 
 ## Merge record
 
-See `docs/workflow/reviews/2026-08-23-production-promote-portal-and-studio-gate-c-merge-record.md`
+`docs/workflow/reviews/2026-08-23-production-promote-portal-and-studio-gate-c-merge-record.md`
 
-## Next (after GitHub merge confirmed)
+## Next (Gate D — not started)
 
 ```text
 APPROVE PRODUCTION FIREBASE DEPLOY: production-promote-portal-and-studio-2026-08-23
 ```
+
+Deploy from production SHA `94a1ed0…` only. Do not deploy from `development`.

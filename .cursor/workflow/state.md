@@ -1,78 +1,100 @@
 ## Current Goal
-production-promote-portal-and-studio-2026-08-23
+portal-shows-theme-toggle-sidebar
 
 ## Current Mode
 managed-phase
 
 ## Phase
-test
+signoff
 
 ## Plan Status
 complete
 
 ## Review Status
-approved_with_changes
+approved
 
 ## Implementation Status
 complete
 
 ## Test Status
-passed_with_notes
+passed
 
 ## Signoff Status
-not_started
+approved
 
 ## DONE
-no
-
-## Human Checkpoint Required
 yes
 
+## Human Checkpoint Required
+no
+
 ## Human Checkpoint Reason
-Gate C: PR #88 merge authorized but agent `gh pr merge` blocked by FreshForge shell guard. Owner must merge PR #88 on GitHub, then confirm production merge SHA before Gate D.
+n/a — owner visual PASS recorded. Production merge + App Hosting requested by owner; agent will attempt; FreshForge shell guard may require owner CLI.
 
 ## Allowed Actions
-read docs; verify post-merge ancestry after owner merges on GitHub; update Gate C records when merge SHA confirmed
+commit; push development; create PR to production; attempt merge and App Hosting if owner-authorized
 
 ## Forbidden Actions
-agent gh pr merge (blocked); production Firebase deploy; App Hosting rollout; Studio dispatch/publish; force-push; Phase 9
+force-push; Firebase Functions/Rules; Studio dispatch; secrets; DNS
 
 ## Plan
-docs/workflow/plans/2026-08-23-production-promote-portal-and-studio-plan.md
+docs/workflow/plans/2026-08-24-portal-shows-theme-toggle-sidebar-plan.md
 
 ## Review
-docs/workflow/reviews/2026-08-23-production-promote-portal-and-studio-review.md
+docs/workflow/reviews/2026-08-24-portal-shows-theme-toggle-sidebar-review.md
 
 ## Test Report
-docs/workflow/reviews/2026-08-23-production-promote-portal-and-studio-gate-b-test-report.md
+docs/workflow/reviews/2026-08-24-portal-shows-theme-toggle-sidebar-test-report.md
 
-## PR Checkpoint
-docs/workflow/reviews/2026-08-23-production-promote-portal-and-studio-pr-checkpoint.md
-
-## Gate C Merge Record
-docs/workflow/reviews/2026-08-23-production-promote-portal-and-studio-gate-c-merge-record.md
+## Manual Checkpoint
+docs/workflow/reviews/2026-08-24-portal-shows-theme-toggle-sidebar-manual-checkpoint.md
 
 ## Signoff
-(n/a — production Signoff later)
+docs/workflow/reviews/2026-08-24-portal-shows-theme-toggle-sidebar-signoff.md
 
-## Production PR
-#88 — https://github.com/roasted-garlic/freshprints/pull/88 (OPEN — merge pending)
+## Parked Parent Goal
+production-promote-portal-and-studio-2026-08-23 — Gate E LIVE (`build-2026-08-24-001` @ 94a1ed0); Gate F parked until this hotfix is live on App Hosting
 
-## Pre-merge Head
-d760a74e6cccdbf53cf9265092ca4aafe3f4c481
+## Live Portal Build
+fresh-prints-portal-build-2026-08-24-001
 
-## Production Tip (pre-merge)
-27b0b4fb691c081ea1167f863f5fc45224a9c651
+## Rollback Portal Build
+fresh-prints-portal-build-2026-08-21-001 @ 7716d4a97f83c2dbe5602fb3e149875d6d7f38c9
+
+## Files Created
+- apps/portal/features/navigation/utils/isPortalAppShellRoute.ts
+- apps/portal/features/navigation/utils/isPortalAppShellRoute.test.ts
+
+## Files Modified
+- apps/portal/app/providers.tsx
+- apps/portal/features/navigation/components/PortalSidebar.tsx
+
+## Tests Run
+- npx tsx --test apps/portal/features/navigation/utils/isPortalAppShellRoute.test.ts (exit 0, 3/3)
+- npm run typecheck --workspace @fresh-prints/portal (exit 0)
+- npx eslint [touched files] (exit 0)
+- curl localhost:3100/shows — no .portal-chrome; /login still has .portal-chrome
+- Owner visual QA PASS
 
 ## Last Completed Step
-Pre-merge verification passed. Owner merge phrase received. Agent merge blocked — awaiting GitHub merge.
+Signoff approved. Owner requested commit/push/PR/merge/rollout.
 
 ## Next Required Step
-Owner merges PR #88 on GitHub. Then Gate D phrase: `APPROVE PRODUCTION FIREBASE DEPLOY: production-promote-portal-and-studio-2026-08-23`
+Owner: merge PR **#89** (`gh pr merge 89 --merge`), then App Hosting rollout of the production merge SHA. Agent merge and prod rollout are FreshForge hook-blocked.
+
+## Production PR
+https://github.com/roasted-garlic/freshprints/pull/89
+
+## Development SHA
+8146eefdcebf1cb875810dc66dafd11f1a51de4b
 
 ## Phase 9
 PARKED
 
 ## Decision Log
-- 2026-08-23: Gate B RC `f85be8b` (+ docs `d760a74`). PR #88 opened MERGEABLE/CLEAN.
-- 2026-08-23: Owner `APPROVE PRODUCTION MERGE`. Pre-merge head `d760a74` verified docs-only delta. `gh pr merge` blocked by shell guard. STOP — owner GitHub merge required.
+- 2026-08-24: Gate C MERGED @ 94a1ed0 (parent promote).
+- 2026-08-24: Gate D VERIFIED COMPLETE on fresh-prints-prod (parent promote).
+- 2026-08-24: Owner APPROVE PRODUCTION APP HOSTING ROLLOUT. Live build-2026-08-24-001 @ 94a1ed0 100%. Smoke PASS WITH NOTES (hyphen search).
+- 2026-08-24: Owner reported /shows theme selector in top-right header and missing from sidebar. Parked parent Gate F. Started goal `portal-shows-theme-toggle-sidebar`.
+- 2026-08-24: Plan approved; implemented helper + sidebar restore. Automated checks passed. Awaiting visual QA.
+- 2026-08-24: Owner visual QA PASS. Signoff approved. Owner requested commit, push, PR, merge, and App Hosting rollout.

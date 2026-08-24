@@ -1,5 +1,7 @@
 # Fresh Prints Roadmap
 
+> 2026-08-24: **Portal Upcoming Shows theme toggle — SIGNOFF approved (DEV)** — Goal `portal-shows-theme-toggle-sidebar` **DONE**. Sidebar footer sun/moon restored on `/shows`; floating header toggle removed. Owner local `PASS`. Production PR + App Hosting next (owner-requested). Signoff: `docs/workflow/reviews/2026-08-24-portal-shows-theme-toggle-sidebar-signoff.md`. Parent promote Gate F still parked. Phase 9 **PARKED**.
+>
 > 2026-08-23: **Studio workflow organization + grouped gang sheet — SIGNOFF approved (DEV)** — Goal `studio-workflow-organization-and-grouped-gang-sheet` **DONE**. WS1–WS5 owner `OWNER DEV QA: PASS`. Efficiency path regression-safe; Standard/Grouped caches coexist; no Firebase / Portal deploy / Studio release. Signoff: `docs/workflow/reviews/2026-08-23-studio-workflow-organization-and-grouped-gang-sheet-signoff.md`. Phase 9 **PARKED**.
 >
 > 2026-08-21: **Studio GitHub Latest + final-copy gates CLOSED** — Goal `studio-release-latest-and-final-copy-gates` **DONE**. Signoff **approved**. Publish helper sets Latest + final copy after `APPROVE STUDIO PUBLISH`. Finalize still draft-only. 1.0.8 not edited. Signoff: `docs/workflow/reviews/2026-08-21-studio-release-latest-and-final-copy-gates-signoff.md`. Phase 9 **PARKED**.

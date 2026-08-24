@@ -11,25 +11,9 @@ import { PortalAnalyticsShareTitleProvider } from '../features/analytics/context
 import type { PortalAnalyticsConfig } from '../features/analytics/types/portalAnalytics.types';
 import { ExplicitContentPreferenceProvider } from '../features/catalog/context/ExplicitContentPreferenceProvider';
 import { FirebaseDebugPanelMount } from '../features/firebase-debug/components/FirebaseDebugPanelMount';
+import { isPortalAppShellRoute } from '../features/navigation/utils/isPortalAppShellRoute';
 import { PortalChrome } from '../features/theme/components/PortalChrome';
 import { ThemeProvider } from '../features/theme/context/ThemeProvider';
-
-/** Routes that render PortalAppShell (sidebar theme toggle) — hide floating PortalChrome. */
-function isAuthenticatedAppRoute(pathname: string): boolean {
-  return (
-    pathname === '/' ||
-    pathname.startsWith('/dashboard') ||
-    pathname.startsWith('/catalog') ||
-    pathname.startsWith('/share/design') ||
-    pathname.startsWith('/help') ||
-    pathname.startsWith('/favorites') ||
-    pathname.startsWith('/requests') ||
-    pathname.startsWith('/donate') ||
-    pathname.startsWith('/account') ||
-    pathname.startsWith('/custom-designs') ||
-    pathname.startsWith('/custom-request')
-  );
-}
 
 export function Providers({
   children,
@@ -39,7 +23,7 @@ export function Providers({
   analyticsConfig: PortalAnalyticsConfig;
 }) {
   const pathname = usePathname();
-  const showFloatingThemeToggle = !isAuthenticatedAppRoute(pathname);
+  const showFloatingThemeToggle = !isPortalAppShellRoute(pathname);
 
   useEffect(() => {
     if (pathname !== '/firebase-debug') {

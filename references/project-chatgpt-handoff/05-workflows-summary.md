@@ -7,9 +7,9 @@
 ## A. Customer print-request flow (Portal) — CURRENT
 
 ```
-Sign in as customer (Portal)
+Sign in as customer (Portal)  OR  browse as guest
     ↓
-Browse Discover / Design Library (approved designs only)
+Browse Discover / Design Library / **Our Shows** (public calendar + show galleries)
     ↓
 Start a print request  OR  Continue the single open “working” request
     (ADR-FP-071: only one working request per customer)
@@ -39,6 +39,8 @@ Current Request drawer: **Review & Add to Show** (non-empty working request also
 When ready → review Current Request → **Add Request to Whatnot Show** → pick allocatable upcoming show
     ↓
 Request moves toward Queued / Printing / Printed (derived from show allocations + timer)
+
+Guest note: Our Shows + Design Library browse are public; Add to Request / mutations use login gate (ADR-FP-142).
 ```
 
 ### Customer-facing copy (catalog)
@@ -94,6 +96,8 @@ Two independent lifecycles on the upload: `technicalStatus` (processing quality)
 ```
 /print-requests → Customer Requests (default) or Internal Requests (`isInternal`, ADR-FP-140)
     ↓
+Lists grouped by primary upcoming show (+N more; Unassigned last)
+    ↓
 Create internal or customer request (lands in matching list, Working / Empty)
     ↓
 Add approved catalog designs via Design Library selection mode
@@ -101,7 +105,14 @@ Add approved catalog designs via Design Library selection mode
     ↓
 Edit qty/size (same DPI floor as Portal: ≥ 200 to save, ≤ 22″)
     ↓
+Customer: **Add to Show**  |  Internal: **Add to Internal Gangsheet**
+  Convert Customer → Internal via ⋯ (ADR-FP-141; blocks if in_progress allocations)
+    ↓
 Attach to Show Queue / upcoming show (both kinds still attachable)
+    ↓
+Show Queue Generate: **Standard** or **Grouped by customer** gang sheets (ADR-FP-143)
+    ↓
+Internal Gang Sheet Mark Complete → reconciles eligible internals to Printed
 ```
 
 ---
@@ -115,10 +126,11 @@ Attach print requests / allocations
     ↓
 Production timer → Printing tab for customers
     ↓
-Export zip (300 DPI) and/or auto-nested gang sheet PNGs
+Export zip (300 DPI) and/or gang sheet PNGs (**Standard** efficiency or **Grouped by customer** — ADR-FP-143)
     ↓
 Finish → terminal allocations + exact request completion
-    (Past + Printing Whatnot shows also Finish automatically or via Mark Complete — ADR-FP-139)
+    (Past + Printing Whatnot shows also Finish automatically or via Mark Complete — ADR-FP-139;
+     Internal Gang Sheet Mark Complete reconciles eligible Internal requests to Printed)
     ↓
 Studio locks/places completed requests; Portal shows Printed
 ```

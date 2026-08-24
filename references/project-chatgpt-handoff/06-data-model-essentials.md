@@ -35,6 +35,7 @@
 - Portal: **one working** request per customer until queued to a show (ADR-FP-071).
 - Studio `/print-requests` splits **Customer** (`isInternal == false`) vs **Internal** (`isInternal == true`) before Working / Queued / Printing / Printed (ADR-FP-140).
 - Tabs (Working / Queued / Printing / Printed) are largely **derived** from allocations + production timer.
+- **Conversion (ADR-FP-141):** Customer → Internal creates a **new** IR request; original archives with `closureKind: converted_to_internal` + linkage fields (`convertedToInternalRequestId`, `convertedFromCustomerRequestId`, `convertedAt`, `convertedBy`). Portal Printed tab shows **Converted to Internal Request · Closed**. Closure fields are Admin/callable-only (Rules block client spoofing).
 
 ## Print Request Item (dual source)
 
@@ -68,6 +69,10 @@ After staff promote → creates/links a `designs` doc and existing AI enqueue; r
 ## Show allocations
 
 Link `printRequest` / `printRequestItem` quantities to an `upcomingShow`. Source-aware resolvers support catalog originals **and** customer-upload production paths for export/gang sheets.
+
+### Public show browse DTOs (ADR-FP-142)
+
+`listPortalPublicShows` / `listPortalShowCatalogDesigns` return catalog-only summaries (no `printRequestId`, `customerId`, or private upload identifiers).
 
 ## Assisted Creation
 

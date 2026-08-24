@@ -2,90 +2,82 @@
 
 | Field | Value |
 |-------|-------|
-| Date | 2026-08-23 |
+| Date | 2026-08-24 |
 | PR | **#88** — https://github.com/roasted-garlic/freshprints/pull/88 |
-| Owner merge authorization | `APPROVE PRODUCTION MERGE: production-promote-portal-and-studio-2026-08-23` (received) |
-| Status | **MERGE PENDING** — agent `gh pr merge` blocked by FreshForge shell guard; owner must merge via GitHub UI |
+| Owner merge authorization | `APPROVE PRODUCTION MERGE: production-promote-portal-and-studio-2026-08-23` |
+| Status | **MERGED** — post-merge verification complete |
 
 ---
 
-## Pre-merge verification (passed)
+## Merge result
+
+| Field | Value |
+|-------|-------|
+| Production merge SHA | **`94a1ed0009deab775d8b0c60be44ca931c0ad291`** |
+| Merge parents | `27b0b4fb691c081ea1167f863f5fc45224a9c651` (prior production) + `00f0d2d1b3fd1d2acd63042b0d9dbd2a04c3fac1` (PR head / RC tip) |
+| Subject | Merge pull request #88 from roasted-garlic/development |
+| Method | Owner GitHub merge (agent `gh pr merge` was shell-guard blocked) |
+| Force-push / direct production push | **None** |
+
+---
+
+## Pre-merge verification (historical)
 
 | Check | Result |
 |-------|--------|
-| PR base | `production` @ `27b0b4fb691c081ea1167f863f5fc45224a9c651` |
-| PR head | `development` @ `d760a74e6cccdbf53cf9265092ca4aafe3f4c481` |
-| Mergeable | **MERGEABLE** / `clean` |
-| Working tree (local) | clean |
-| Local branch | `development` |
-| `origin/development` | `d760a74e6cccdbf53cf9265092ca4aafe3f4c481` |
+| PR base | `production` @ `27b0b4f…` |
+| PR head at final merge | `00f0d2d1b3fd1d2acd63042b0d9dbd2a04c3fac1` |
+| Mergeable at open/verify | MERGEABLE / clean |
 
-### Pre-merge head SHA (recorded)
-
-`d760a74e6cccdbf53cf9265092ca4aafe3f4c481`
-
-### Post-open head scope check
-
-Commit `d760a74` touches **only**:
-
-- `.cursor/workflow/state.md`
-- `docs/workflow/reviews/2026-08-23-production-promote-portal-and-studio-pr-checkpoint.md`
-
-**No new runtime/product changes** beyond approved Gate B release scope (`f85be8b` product tip + workflow docs).
-
-### Approved inventory (`production..development` at pre-merge head)
-
-| SHA | Subject |
-|-----|---------|
-| `7dfd7ee` | feat(portal): ship Upcoming Shows, discover rails, and show browsing UX |
-| `5435743` | feat(studio): organize workflow UX and add grouped gang sheets |
-| `237b28d` | chore(release): pin Studio 1.0.9 and finish Gate B verification |
-| `953ab10` | docs(workflow): record Gate B RC tip and PR gate checkpoint |
-| `5b86f18` | docs(workflow): point PR checkpoint at development tip |
-| `f85be8b` | docs(workflow): sync Gate B RC tip to current development HEAD |
-| `d760a74` | docs(workflow): record opened PR 88 at Gate B tip |
+Post-open docs commits (`d760a74`, `00f0d2d`) were workflow-only; no unexpected runtime product delta beyond approved Gate B scope.
 
 ---
 
-## Merge attempt
+## Post-merge verification (2026-08-24)
 
-| Attempt | Result |
-|---------|--------|
-| `gh pr merge 88 --merge` | **Blocked** — FreshForge shell guard: production merges require owner execution via GitHub (not agent CLI) |
+| Check | Result |
+|-------|--------|
+| `git fetch origin` | done |
+| `origin/production` | **`94a1ed0009deab775d8b0c60be44ca931c0ad291`** (matches owner-reported SHA) |
+| RC `00f0d2d` ancestor of production | **yes** |
+| Tree equality `00f0d2d^{tree}` == `94a1ed0^{tree}` | **yes** (`17637698e4411079fe508738b582fd0c2a0ce733`) |
+| Studio version on production | **1.0.9** |
+| Gate D Functions present on production tip | `completeStaffGangSheetAndOpenNext`, `convertCustomerPrintRequestToInternal`, `listPortalPublicShows`, `listPortalShowCatalogDesigns` |
+| `firestore.rules` on production tip | present |
+| Unexpected product files beyond RC | **none** (empty tree diff RC ↔ merge) |
 
-No force-push or direct push to `production` was attempted.
+### Development sync (ADR-FP-137)
 
----
+| Check | Result |
+|-------|--------|
+| Local / `origin/development` tip | `00f0d2d1b3fd1d2acd63042b0d9dbd2a04c3fac1` |
+| Working tree | clean |
+| Content / tree vs production | **identical** to production merge tree |
+| Git ancestry: production merge commit ⊂ development | **no** — expected with GitHub merge commits; historical production-only merge commits remain on `production` first-parent history |
+| Back-merge `origin/production` → `development` | **not required** by ADR-FP-137 (trees already match; no force-push / rewrite) |
 
-## Owner action required
-
-Merge **PR #88** on GitHub: https://github.com/roasted-garlic/freshprints/pull/88
-
-Use **Create a merge commit** (normal protected-branch PR flow).
-
-After merge, reply with production merge SHA or re-run Gate C verification step so records can be completed before Gate D.
-
----
-
-## Post-merge verification (pending)
-
-- [ ] `origin/production` contains approved release candidate
-- [ ] Record exact production merge SHA
-- [ ] `origin/development` contains `origin/production` (development ⊇ production)
-- [ ] No force-push occurred
+Gate D deploys from **production** SHA only — tree identity is sufficient.
 
 ---
 
-## Next gate
+## Gate D source (confirmed)
 
-After merge is confirmed on GitHub:
-
-```text
-APPROVE PRODUCTION FIREBASE DEPLOY: production-promote-portal-and-studio-2026-08-23
-```
-
-Scoped command (Gate D — do not run until authorized):
+| Item | Value |
+|------|-------|
+| Exact production source SHA | **`94a1ed0009deab775d8b0c60be44ca931c0ad291`** |
+| Project | `fresh-prints-prod` |
+| Allowlist command (unchanged) | see below |
 
 ```bash
 firebase deploy --only firestore:rules,functions:completeStaffGangSheetAndOpenNext,functions:convertCustomerPrintRequestToInternal,functions:listPortalPublicShows,functions:listPortalShowCatalogDesigns --project fresh-prints-prod
+```
+
+**Not executed** in this pass.
+
+---
+
+## Next human phrase
+
+```text
+APPROVE PRODUCTION FIREBASE DEPLOY: production-promote-portal-and-studio-2026-08-23
 ```

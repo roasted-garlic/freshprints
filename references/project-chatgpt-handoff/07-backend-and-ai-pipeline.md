@@ -11,17 +11,21 @@
 
 No custom REST API for core ops. Business logic in app services + Cloud Functions.
 
-`queuePortalPrintRequestToShow` (source, 2026-08-20) asserts the same 200 DPI + 22″ Print Request size policy before queueing. **Not deployed** until an approved Functions release.
+`queuePortalPrintRequestToShow` asserts the same 200 DPI + 22″ Print Request size policy before queueing.
 
-Deploy target for current work: **`fresh-prints-prod`** is live under Goal #13; still require explicit
-owner phrases for production deploys / catch-up / Stage 2 / domain.
+Deploy target: **`fresh-prints-prod`** is live under Goal #13; still require explicit owner phrases for
+production deploys / App Hosting / Studio publish.
 
-### Generated catalog publication recovery (ADR-FP-120 amendment, 2026-07-31)
+### Public shows + conversion (2026-08-22/24 — ADR-FP-141 / ADR-FP-142)
 
-- Tag/category edits remain full `index-filter` republishes of `generated/portal-catalog/**`
-- Transient Storage/`FetchError` retries + catch-up loop (no lease-busy abandon of higher `requestedGeneration`)
-- Owner/admin callable `retryPortalCatalogPublication` drains dirty watermark without bumping generation
-- Production catch-up published portal-catalog generation **9**; slice signed off (owner QA PASS)
+| Callable | Purpose | Prod status |
+|----------|---------|-------------|
+| `listPortalPublicShows` | Public Our Shows calendar | On production Git; **Gate D deploy pending** |
+| `listPortalShowCatalogDesigns` | Public per-show catalog gallery | On production Git; **Gate D deploy pending** |
+| `convertCustomerPrintRequestToInternal` | Customer → Internal conversion | On production Git; **Gate D deploy pending** |
+| `completeStaffGangSheetAndOpenNext` | Finish sheet + reconcile Internal Printed | Updated on production Git; **Gate D update pending** |
+
+Also deploys matching **Firestore Rules** for conversion closure fields (client spoofing blocked).
 
 ### Brand logos (ADR-FP-114)
 
