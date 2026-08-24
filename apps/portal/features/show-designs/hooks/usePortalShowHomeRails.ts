@@ -3,32 +3,47 @@
 import { useEffect, useState } from 'react';
 
 import type { PortalShowHomeRail } from '../services/portalShowDiscoveryContent';
-import { loadPortalShowHomeRails } from '../services/portalShowDiscoveryContent';
+import {
+  loadPortalNextShowRail,
+  loadPortalShowsThisWeekRail,
+} from '../services/portalShowDiscoveryContent';
 
-export function usePortalShowHomeRails() {
-  const [rails, setRails] = useState<PortalShowHomeRail[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export interface PortalShowHomeRailSlot {
+  error: string | null;
+  isLoading: boolean;
+  rail: PortalShowHomeRail | null;
+}
+
+const EMPTY_SLOT: PortalShowHomeRailSlot = {
+  error: null,
+  isLoading: true,
+  rail: null,
+};
+
+export function usePortalShowHomeRails(): {
+  nextShow: PortalShowHomeRailSlot;
+  thisWeek: PortalShowHomeRailSlot;
+} {
+  const [nextShow, setNextShow] = useState<PortalShowHomeRailSlot>(EMPTY_SLOT);
+  const [thisWeek, setThisWeek] = useState<PortalShowHomeRailSlot>(EMPTY_SLOT);
 
   useEffect(() => {
     let cancelled = false;
 
     void (async () => {
-      setIsLoading(true);
-      setError(null);
+      setNextShow({ error: null, isLoading: true, rail: null });
       try {
-        const nextRails = await loadPortalShowHomeRails();
+        const rail = await loadPortalNextShowRail();
         if (!cancelled) {
-          setRails(nextRails);
+          setNextShow({ error: null, isLoading: false, rail });
         }
       } catch (loadError) {
         if (!cancelled) {
-          setError(loadError instanceof Error ? loadError.message : 'Unable to load show designs.');
-          setRails([]);
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
+          setNextShow({
+            error: loadError instanceof Error ? loadError.message : 'Unable to load Next Show designs.',
+            isLoading: false,
+            rail: null,
+          });
         }
       }
     })();
@@ -38,5 +53,31 @@ export function usePortalShowHomeRails() {
     };
   }, []);
 
-  return { error, isLoading, rails };
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      setThisWeek({ error: null, isLoading: true, rail: null });
+      try {
+        const rail = await loadPortalShowsThisWeekRail();
+        if (!cancelled) {
+          setThisWeek({ error: null, isLoading: false, rail });
+        }
+      } catch (loadError) {
+        if (!cancelled) {
+          setThisWeek({
+            error: loadError instanceof Error ? loadError.message : 'Unable to load this week\'s designs.',
+            isLoading: false,
+            rail: null,
+          });
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return { nextShow, thisWeek };
 }

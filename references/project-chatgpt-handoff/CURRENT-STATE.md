@@ -1,40 +1,30 @@
 # Fresh Prints - Current State Snapshot
 
-## 2026-08-24 — Upcoming Shows theme toggle (DEV SIGNOFF; production promote next)
+## 2026-08-24 — FreshForge IDLE
 
 | Item | Value |
 |------|-------|
-| Managed goal | `portal-shows-theme-toggle-sidebar` — **DONE (DEV)** |
-| Signoff | **approved** — owner local visual `PASS` |
-| Delivered | `/shows` and `/shows/[id]` use sidebar theme toggle; floating header toggle removed |
-| Signoff doc | `docs/workflow/reviews/2026-08-24-portal-shows-theme-toggle-sidebar-signoff.md` |
+| Last completed goal | `portal-discover-show-rails-loading-and-order-polish` — **DONE (DEV)** |
 | Phase 9 | **PARKED** |
+| FreshForge | **IDLE** |
 
-### Live production (until hotfix App Hosting)
+### Live production
 
 | Item | Value |
 |------|-------|
-| Git `production` | **`94a1ed0009deab775d8b0c60be44ca931c0ad291`** (PR #88) until hotfix PR merges |
-| App Hosting | **`fresh-prints-portal-build-2026-08-24-001`** @ 100% — still has header toggle on `/shows` |
+| Git `production` | **`f35c96dda23ce83f99f75ab3f942c5edfcfcfdd2`** |
+| App Hosting | **`fresh-prints-portal-build-2026-08-24-002`** @ **100%** |
 | Canonical | `https://myprintrequest.com` |
-| Rollback | `fresh-prints-portal-build-2026-08-21-001` @ `7716d4a` |
-| Published Studio | **1.0.8** (1.0.9 pinned; Gate F not started) |
+| Published Studio | **1.0.9** — release **375869566** @ tag **`v1.0.9`** · https://github.com/roasted-garlic/freshprints/releases/tag/v1.0.9 |
+| Prior Studio rollback | **1.0.8** — **374575547** @ `v1.0.8` |
 
-### Owner next
+### Signoff
 
-1. Merge `development` → `production` PR for this chrome hotfix (if agent merge is hook-blocked)
-2. App Hosting rollout of the merge SHA (if agent create is hook-blocked):
-   `firebase apphosting:rollouts:create fresh-prints-portal --project fresh-prints-prod --git-commit <MERGE_SHA> --force --non-interactive`
-3. Confirm `/shows` on `https://myprintrequest.com` uses the sidebar toggle
-4. Parent Gate F still parked:
-   `AUTHORIZE STUDIO 1.0.9 RELEASE DISPATCH: STABLE INTERNAL-UNSIGNED FROM PRODUCTION 94a1ed0009deab775d8b0c60be44ca931c0ad291`
-   (SHA will change after this hotfix merge — use the new production tip)
+`docs/workflow/reviews/2026-08-24-portal-discover-show-rails-loading-and-order-polish-signoff.md`
 
----
+### Latest DEV delivery (not yet production-promoted)
 
-## Parked parent
-
-`production-promote-portal-and-studio-2026-08-23` — Gates C+D+E LIVE; Gate F parked until this chrome hotfix is live.
+Portal Discover show-rail loading isolation + This Week compact-rail presentation order polish — independent Next Show / This Week loading; View All canonical order unchanged; ADR-FP-142 intact.
 
 ---
 
@@ -42,6 +32,5 @@
 
 | Item | Value |
 |------|-------|
-| Mode | managed-phase |
-| Goal | `portal-shows-theme-toggle-sidebar` **DONE** (DEV) |
-| Human checkpoint | production merge + App Hosting if shell guard blocks the agent |
+| Mode | **idle** |
+| Active goal | *(none)* |

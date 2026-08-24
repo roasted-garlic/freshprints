@@ -1,26 +1,26 @@
 ## Current Goal
-portal-shows-theme-toggle-sidebar
+(none — FreshForge IDLE)
 
 ## Current Mode
-managed-phase
+idle
 
 ## Phase
-signoff
+(none)
 
 ## Plan Status
-complete
+(none)
 
 ## Review Status
-approved
+(none)
 
 ## Implementation Status
-complete
+(none)
 
 ## Test Status
-passed
+(none)
 
 ## Signoff Status
-approved
+(none)
 
 ## DONE
 yes
@@ -28,73 +28,23 @@ yes
 ## Human Checkpoint Required
 no
 
-## Human Checkpoint Reason
-n/a — owner visual PASS recorded. Production merge + App Hosting requested by owner; agent will attempt; FreshForge shell guard may require owner CLI.
+## Last Completed Goal
+portal-discover-show-rails-loading-and-order-polish
 
-## Allowed Actions
-commit; push development; create PR to production; attempt merge and App Hosting if owner-authorized
+## Last Completed Signoff
+docs/workflow/reviews/2026-08-24-portal-discover-show-rails-loading-and-order-polish-signoff.md
 
-## Forbidden Actions
-force-push; Firebase Functions/Rules; Studio dispatch; secrets; DNS
-
-## Plan
-docs/workflow/plans/2026-08-24-portal-shows-theme-toggle-sidebar-plan.md
-
-## Review
-docs/workflow/reviews/2026-08-24-portal-shows-theme-toggle-sidebar-review.md
-
-## Test Report
-docs/workflow/reviews/2026-08-24-portal-shows-theme-toggle-sidebar-test-report.md
-
-## Manual Checkpoint
-docs/workflow/reviews/2026-08-24-portal-shows-theme-toggle-sidebar-manual-checkpoint.md
-
-## Signoff
-docs/workflow/reviews/2026-08-24-portal-shows-theme-toggle-sidebar-signoff.md
-
-## Parked Parent Goal
-production-promote-portal-and-studio-2026-08-23 — Gate E LIVE (`build-2026-08-24-001` @ 94a1ed0); Gate F parked until this hotfix is live on App Hosting
-
-## Live Portal Build
-fresh-prints-portal-build-2026-08-24-001
-
-## Rollback Portal Build
-fresh-prints-portal-build-2026-08-21-001 @ 7716d4a97f83c2dbe5602fb3e149875d6d7f38c9
-
-## Files Created
-- apps/portal/features/navigation/utils/isPortalAppShellRoute.ts
-- apps/portal/features/navigation/utils/isPortalAppShellRoute.test.ts
-
-## Files Modified
-- apps/portal/app/providers.tsx
-- apps/portal/features/navigation/components/PortalSidebar.tsx
-
-## Tests Run
-- npx tsx --test apps/portal/features/navigation/utils/isPortalAppShellRoute.test.ts (exit 0, 3/3)
-- npm run typecheck --workspace @fresh-prints/portal (exit 0)
-- npx eslint [touched files] (exit 0)
-- curl localhost:3100/shows — no .portal-chrome; /login still has .portal-chrome
-- Owner visual QA PASS
-
-## Last Completed Step
-Signoff approved. Owner requested commit/push/PR/merge/rollout.
-
-## Next Required Step
-Owner: merge PR **#89** (`gh pr merge 89 --merge`), then App Hosting rollout of the production merge SHA. Agent merge and prod rollout are FreshForge hook-blocked.
-
-## Production PR
-https://github.com/roasted-garlic/freshprints/pull/89
-
-## Development SHA
-8146eefdcebf1cb875810dc66dafd11f1a51de4b
+## Production Snapshot (2026-08-24)
+- Git production: f35c96dda23ce83f99f75ab3f942c5edfcfcfdd2
+- Portal App Hosting: fresh-prints-portal-build-2026-08-24-002 @ 100%
+- Published Studio: 1.0.9 @ v1.0.9 (release 375869566, GitHub Latest)
+- Prior Studio rollback: 1.0.8 (374575547, v1.0.8)
 
 ## Phase 9
 PARKED
 
 ## Decision Log
-- 2026-08-24: Gate C MERGED @ 94a1ed0 (parent promote).
-- 2026-08-24: Gate D VERIFIED COMPLETE on fresh-prints-prod (parent promote).
-- 2026-08-24: Owner APPROVE PRODUCTION APP HOSTING ROLLOUT. Live build-2026-08-24-001 @ 94a1ed0 100%. Smoke PASS WITH NOTES (hyphen search).
-- 2026-08-24: Owner reported /shows theme selector in top-right header and missing from sidebar. Parked parent Gate F. Started goal `portal-shows-theme-toggle-sidebar`.
-- 2026-08-24: Plan approved; implemented helper + sidebar restore. Automated checks passed. Awaiting visual QA.
-- 2026-08-24: Owner visual QA PASS. Signoff approved. Owner requested commit, push, PR, merge, and App Hosting rollout.
+- 2026-08-24: portal-discover-show-rails-loading-and-order-polish **DONE**. Signoff **approved**; owner DEV QA PASS. Discover show rails load independently; This Week compact rail presentation reversed; View All unchanged. Production untouched. FreshForge IDLE.
+- 2026-08-24: Owner DEV QA PASS for portal-discover-show-rails-loading-and-order-polish.
+- 2026-08-24: Implementation complete; automated tests pass (11/11, typecheck, lint, build).
+- 2026-08-24: Owner APPROVE IMPLEMENTATION for portal-discover-show-rails-loading-and-order-polish.

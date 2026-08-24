@@ -1,5 +1,7 @@
 # Roadmap and Phases
 
+> 2026-08-24: **Portal Discover show-rail loading + order polish CLOSED (DEV)** — Goal `portal-discover-show-rails-loading-and-order-polish` **DONE**. Signoff **approved**; owner `OWNER DEV QA: PASS`. Independent Next Show / This Week loading on Discover; compact This Week rail presentation reversed; View All unchanged. Production untouched. Phase 9 **PARKED**. FreshForge **IDLE**.
+>
 > 2026-08-24: **Portal Upcoming Shows theme toggle CLOSED (DEV)** — Signoff **approved**; owner local `PASS`. Sidebar theme toggle restored on `/shows`. Production PR + App Hosting next. Parent promote Gate F parked. Phase 9 PARKED.
 >
 > 2026-08-24: **Production promote Portal + Studio — IN PROGRESS** — Goal `production-promote-portal-and-studio-2026-08-23`. Gate C **MERGED** PR **#88** @ `94a1ed0`. Studio **1.0.9** pinned on Git (not published). Gate D Firebase **VERIFIED COMPLETE**. Gate E App Hosting **LIVE** `build-2026-08-24-001`. Published Studio still **1.0.8**. Phase 9 **PARKED**.

@@ -32,50 +32,65 @@ function takeRailDesigns(designs: readonly CatalogDesign[]): CatalogDesign[] {
 export interface PortalShowHomeRail {
   designs: CatalogDesign[];
   key: string;
+  reversePresentationOrder?: boolean;
   showId?: string;
   title: string;
   viewAllDiscover?: 'showsThisWeek';
   viewAllShowId?: string;
 }
 
-export async function loadPortalShowHomeRails(): Promise<PortalShowHomeRail[]> {
+export function designsForShowHomeRailPresentation(rail: PortalShowHomeRail): CatalogDesign[] {
+  return rail.reversePresentationOrder ? [...rail.designs].reverse() : rail.designs;
+}
+
+export async function loadPortalNextShowRail(): Promise<PortalShowHomeRail | null> {
   const { shows } = await portalShowDesignsService.listPublicShows();
   const now = new Date();
-  const rails: PortalShowHomeRail[] = [];
 
   const nextShow = findNextUpcomingShowWithDesigns(shows, now);
-  if (nextShow) {
-    const designs = takeRailDesigns(
-      await hydrateShowDesigns([nextShow.id]),
-    );
-    if (designs.length > 0) {
-      const scheduledAt = nextShow.scheduledStartAt
-        ? formatShowDateTimeLabel(new Date(nextShow.scheduledStartAt))
-        : 'Upcoming show';
-      rails.push({
-        key: `show:${nextShow.id}`,
-        title: `Next Show — ${scheduledAt}`,
-        designs,
-        showId: nextShow.id,
-        viewAllShowId: nextShow.id,
-      });
-    }
+  if (!nextShow) {
+    return null;
   }
+
+  const designs = takeRailDesigns(await hydrateShowDesigns([nextShow.id]));
+  if (designs.length === 0) {
+    return null;
+  }
+
+  const scheduledAt = nextShow.scheduledStartAt
+    ? formatShowDateTimeLabel(new Date(nextShow.scheduledStartAt))
+    : 'Upcoming show';
+
+  return {
+    key: `show:${nextShow.id}`,
+    title: `Next Show — ${scheduledAt}`,
+    designs,
+    showId: nextShow.id,
+    viewAllShowId: nextShow.id,
+  };
+}
+
+export async function loadPortalShowsThisWeekRail(): Promise<PortalShowHomeRail | null> {
+  const { shows } = await portalShowDesignsService.listPublicShows();
+  const now = new Date();
 
   const weekShows = findShowsThisWeekWithDesigns(shows, now);
-  if (weekShows.length > 0) {
-    const designs = takeRailDesigns(await hydrateShowDesigns(weekShows.map((entry) => entry.id)));
-    if (designs.length > 0) {
-      rails.push({
-        key: 'shows-this-week',
-        title: 'Added to Shows This Week',
-        designs,
-        viewAllDiscover: 'showsThisWeek',
-      });
-    }
+  if (weekShows.length === 0) {
+    return null;
   }
 
-  return rails;
+  const designs = takeRailDesigns(await hydrateShowDesigns(weekShows.map((entry) => entry.id)));
+  if (designs.length === 0) {
+    return null;
+  }
+
+  return {
+    key: 'shows-this-week',
+    title: 'Added to Shows This Week',
+    designs,
+    reversePresentationOrder: true,
+    viewAllDiscover: 'showsThisWeek',
+  };
 }
 
 export async function loadCatalogShowDesigns(input: {
