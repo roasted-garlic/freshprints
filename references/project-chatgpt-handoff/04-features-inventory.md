@@ -52,7 +52,7 @@ print-limit counters** cleanup for retired, unenforced Cap A documents.
 | **Public browse (guest)** | ✅ Live — catalog/home without sign-in (ADR-FP-106) |
 | Guest auth overlay (gated routes) | ✅ Live — in-shell dimmed overlay; Sign in / Register / Browse designs |
 | Catalog Discover + Design Library | ✅ Live — default browse `createdAt` desc; **case/separator-insensitive search** |
-| Discover show rails | ✅ Live — Next Show + This Week design rails; **DEV polish (2026-08-24):** independent per-rail loading on Discover; compact This Week rail presentation reversed; View All canonical order unchanged |
+| Discover show rails | ✅ **Live on App Hosting `build-2026-08-24-003`** — Next Show + This Week design rails; independent per-rail loading on Discover; compact This Week rail presentation reversed; View All canonical order unchanged |
 | **Our Shows** (`/shows`) | ✅ Live on App Hosting (`build-2026-08-24-001`) — public calendar + per-show catalog gallery (ADR-FP-142); private uploads never exposed. Theme toggle belongs in **sidebar footer** (hotfix on `development`; production chrome follow-up) |
 | Collapsible “How print requests work” hint | ✅ Live |
 | Start / continue print request | ✅ Live (one working request — ADR-FP-071) |

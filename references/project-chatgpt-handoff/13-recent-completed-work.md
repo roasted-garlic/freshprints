@@ -1,16 +1,20 @@
 # Recent Completed Work
 
-## 2026-08-24 - Portal Discover show-rail loading + order polish — SIGNOFF / CLOSED (DEV)
+## 2026-08-24 - Portal Discover show-rail loading + order polish — CLOSED / LIVE
 
 | Item | Status |
 |------|--------|
-| Goal | `portal-discover-show-rails-loading-and-order-polish` — **DONE (DEV)** |
+| Goal | `portal-discover-show-rails-loading-and-order-polish` — **DONE (LIVE)** |
 | Signoff | **approved** |
-| Owner QA | `OWNER DEV QA: PASS` |
-| Delivered | Discover catalog rails no longer blocked on show-rail load; Next Show + This Week independent localized loading; compact This Week rail presentation reversed; View All canonical order unchanged; non-mutating presentation helper |
-| Production | **untouched** — DEV/source signoff only |
-| ADR-FP-142 | unchanged — public show browse only; no customer-upload exposure |
+| Owner DEV QA | `OWNER DEV QA: PASS` |
+| Owner prod smoke | **`PROD SMOKE: PASS WITH NOTES`** — transient stale client-chunk on View All immediately post-rollout; hard refresh cleared; no code fix |
+| Git production | **`36165096f09bef6817adb5b11d496dbb1502b34b`** (PR **#90**) |
+| App Hosting | **`fresh-prints-portal-build-2026-08-24-003`** @ 100% |
+| Rollback | `build-2026-08-24-002` @ `f35c96d` |
+| Delivered | Discover catalog rails no longer blocked on show-rail load; Next Show + This Week independent localized loading; compact This Week rail presentation reversed; View All canonical order unchanged |
+| ADR-FP-142 | unchanged |
 | Signoff | `docs/workflow/reviews/2026-08-24-portal-discover-show-rails-loading-and-order-polish-signoff.md` |
+| Rollout | `docs/workflow/reviews/2026-08-24-portal-discover-show-rails-loading-and-order-polish-app-hosting-rollout-record.md` |
 
 ## 2026-08-24 - Production promote Portal + Studio 1.0.9 — CLOSED
 
