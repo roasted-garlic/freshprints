@@ -23,9 +23,18 @@ export function buildExportZipFilename(scheduledStartAt: Date): string {
  * Builds the gang sheet's base name (no extension, no sheet numbering) from the show's scheduled
  * date/time. Sheet count isn't known until after nesting completes, so callers append numbering
  * (via `buildGangSheetFilename`/`buildGangSheetSheetLabel`) once the real count is known.
+ * Grouped layouts insert `grouped-` so filenames and on-sheet labels are visually distinct.
  */
-export function buildGangSheetBaseFileName(scheduledStartAt: Date): string {
-  return `whatnot_${formatExportZipDateTime(scheduledStartAt)}_gang-sheet`;
+export function buildGangSheetBaseFileName(
+  scheduledStartAt: Date,
+  layoutMode: "efficiency" | "grouped_by_customer" = "efficiency",
+): string {
+  const dateSegment = formatExportZipDateTime(scheduledStartAt);
+  if (layoutMode === "grouped_by_customer") {
+    return `whatnot_${dateSegment}_grouped-gang-sheet`;
+  }
+
+  return `whatnot_${dateSegment}_gang-sheet`;
 }
 
 /**

@@ -1,4 +1,5 @@
 import type { CatalogDesign } from '../types/catalog.types';
+import { catalogDesignTextMatchesSearch } from '@fresh-prints/shared/utils/catalogDesignTextSearch';
 import { catalogSearchTokensMatch } from '@fresh-prints/shared/utils/catalogSearchNormalization';
 
 /** Canonical design tag synced by staff Halftone confirmation (ADR-FP-080). */
@@ -69,14 +70,16 @@ export function filterCatalogDesignsBySearch(
     return designs;
   }
 
-  return designs.filter((design) => {
-    const titleMatches = catalogSearchTokensMatch(design.title, normalizedQuery);
-    const descriptionMatches =
-      design.description != null && catalogSearchTokensMatch(design.description, normalizedQuery);
-    const tagMatches = design.tags.some((tag) => catalogSearchTokensMatch(tag, normalizedQuery));
-
-    return titleMatches || descriptionMatches || tagMatches;
-  });
+  return designs.filter((design) =>
+    catalogDesignTextMatchesSearch(
+      {
+        title: design.title,
+        description: design.description,
+        tags: design.tags,
+      },
+      normalizedQuery,
+    ),
+  );
 }
 
 export function filterCatalogDesignsByCategory(

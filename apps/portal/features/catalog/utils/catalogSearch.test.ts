@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
+import { CATALOG_SUMMER_SEARCH_PARITY_FIXTURES } from '@fresh-prints/shared/utils/catalogDesignTextSearch';
+
 import {
   buildApprovedCatalogTagOptions,
   buildCatalogTagOptions,
@@ -51,6 +53,18 @@ describe('filterCatalogDesignsBySearch', () => {
     assert.deepEqual(filterCatalogDesignsBySearch(designs, 'nature').map((design) => design.id), [
       'design-2',
     ]);
+  });
+
+  it('matches summer progressive substring parity with Studio Design Library', () => {
+    for (const fixture of CATALOG_SUMMER_SEARCH_PARITY_FIXTURES) {
+      const designs = [createDesign({ id: fixture.title, title: fixture.title })];
+      const result = filterCatalogDesignsBySearch(designs, fixture.query);
+      assert.equal(
+        result.length > 0,
+        fixture.expect,
+        `title=${fixture.title} query=${fixture.query}`,
+      );
+    }
   });
 });
 

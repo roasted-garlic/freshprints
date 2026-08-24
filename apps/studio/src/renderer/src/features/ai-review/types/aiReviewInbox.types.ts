@@ -5,6 +5,7 @@ export type AiReviewInboxTab = "processing" | "needs_review" | "rejected";
 
 export interface AiReviewInboxFilters {
   tab: AiReviewInboxTab;
+  searchQuery?: string;
 }
 
 export interface AiReviewDraftForm {

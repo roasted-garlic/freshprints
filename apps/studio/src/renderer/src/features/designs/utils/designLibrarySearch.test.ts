@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import { CATALOG_SUMMER_SEARCH_PARITY_FIXTURES } from "@fresh-prints/shared/utils/catalogDesignTextSearch";
+
 import type { CatalogTag } from "../types/catalogTag.types";
 import type { Category } from "../types/category.types";
 import type { Design } from "../types/design.types";
@@ -92,6 +94,43 @@ describe("filterDesignsBySearch", () => {
   it("matches design ids", () => {
     const result = filterDesignsBySearch(designs, "design-1");
     assert.equal(result.length, 1);
+  });
+
+  it("matches AI suggestion fields shown in the Needs Review queue", () => {
+    const result = filterDesignsBySearch(
+      [
+        createDesign({
+          id: "summerween",
+          title: "import-batch-001",
+          aiSuggestions: { title: "I Freaking Love Summerween Can I..." },
+        }),
+      ],
+      "sum",
+    );
+
+    assert.equal(result.length, 1);
+    assert.equal(result[0]?.id, "summerween");
+  });
+
+  it("matches summer progressive substring parity with Portal Catalog", () => {
+    for (const fixture of CATALOG_SUMMER_SEARCH_PARITY_FIXTURES) {
+      const result = filterDesignsBySearch(
+        [
+          createDesign({
+            id: fixture.title,
+            title: fixture.title,
+            tags: [],
+            description: undefined,
+          }),
+        ],
+        fixture.query,
+      );
+      assert.equal(
+        result.length > 0,
+        fixture.expect,
+        `title=${fixture.title} query=${fixture.query}`,
+      );
+    }
   });
 
   it("matches tag aliases when catalog tags are provided", () => {

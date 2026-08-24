@@ -2,8 +2,43 @@ import type { Category } from "../types/category.types";
 import type { AiReviewStatus } from "../types/aiReview.types";
 import type { CatalogTag } from "../types/catalogTag.types";
 import type { Design } from "../types/design.types";
-import { catalogSearchTokensMatch } from "@fresh-prints/shared/utils/catalogSearchNormalization";
+import {
+  catalogSearchTagLabelMatch,
+  catalogSearchTokensMatch,
+} from "@fresh-prints/shared/utils/catalogSearchNormalization";
+import { catalogDesignTextMatchesSearch } from "@fresh-prints/shared/utils/catalogDesignTextSearch";
 import { resolveDesignAiReviewDisplay } from "./aiReviewState";
+
+function resolveDesignSearchableTitle(design: Design): string {
+  const suggestionTitle = design.aiSuggestions?.title?.trim();
+  if (suggestionTitle) {
+    return suggestionTitle;
+  }
+
+  return design.title?.trim() ?? "";
+}
+
+function resolveDesignSearchableDescription(design: Design): string | null {
+  const suggestionDescription = design.aiSuggestions?.description?.trim();
+  if (suggestionDescription) {
+    return suggestionDescription;
+  }
+
+  return design.description ?? null;
+}
+
+function resolveDesignSearchableTags(design: Design): string[] {
+  const tags = [...(design.tags ?? [])];
+
+  for (const tag of design.aiSuggestions?.tags ?? []) {
+    const trimmed = tag.trim();
+    if (trimmed && !tags.includes(trimmed)) {
+      tags.push(trimmed);
+    }
+  }
+
+  return tags;
+}
 
 /** Canonical design tag synced by staff Halftone confirmation (ADR-FP-080). */
 export const CANONICAL_HALFTONE_TAG = "halftone";
@@ -52,21 +87,24 @@ export function designMatchesSearchQuery(
     return true;
   }
 
-  const idMatches = design.id.toLowerCase().includes(normalizedQuery);
-  const titleMatches = catalogSearchTokensMatch(design.title, normalizedQuery);
-  const descriptionMatches =
-    design.description != null && catalogSearchTokensMatch(design.description, normalizedQuery);
+  const searchableTags = resolveDesignSearchableTags(design);
+  const coreFields = {
+    id: design.id,
+    title: resolveDesignSearchableTitle(design),
+    description: resolveDesignSearchableDescription(design),
+    tags: catalogTags.length === 0 ? searchableTags : [],
+  };
 
-  if (idMatches || titleMatches || descriptionMatches) {
+  if (catalogDesignTextMatchesSearch(coreFields, normalizedQuery)) {
     return true;
   }
 
   if (catalogTags.length === 0) {
-    return design.tags.some((tag) => catalogSearchTokensMatch(tag, normalizedQuery));
+    return false;
   }
 
   const catalogTagLookup = buildCatalogTagLookup(catalogTags);
-  return design.tags.some((tag) => tagMatchesCatalogSearch(tag, normalizedQuery, catalogTagLookup));
+  return searchableTags.some((tag) => tagMatchesCatalogSearch(tag, normalizedQuery, catalogTagLookup));
 }
 
 export function filterDesignsBySearch(
@@ -135,7 +173,7 @@ export function filterTagsBySearch(availableTags: string[], searchQuery: string)
   }
 
   return sortTagsAlphabetically(
-    availableTags.filter((tag) => catalogSearchTokensMatch(tag, normalizedQuery)),
+    availableTags.filter((tag) => catalogSearchTagLabelMatch(tag, searchQuery)),
   );
 }
 
@@ -160,6 +198,35 @@ function buildCatalogTagLookup(catalogTags: readonly CatalogTag[] = []): Map<str
   return lookup;
 }
 
+function tagLabelMatchesCatalogSearch(label: string, normalizedSearch: string): boolean {
+  if (!normalizedSearch) {
+    return true;
+  }
+
+  return catalogSearchTagLabelMatch(label, normalizedSearch);
+}
+
+function facetTagMatchesCatalogSearch(
+  tag: string,
+  normalizedSearch: string,
+  catalogTagLookup: Map<string, CatalogTag>,
+): boolean {
+  if (tagLabelMatchesCatalogSearch(tag, normalizedSearch)) {
+    return true;
+  }
+
+  const catalogTag = catalogTagLookup.get(normalizeTagLookupValue(tag));
+  if (!catalogTag) {
+    return false;
+  }
+
+  return (
+    tagLabelMatchesCatalogSearch(catalogTag.name, normalizedSearch) ||
+    catalogTag.aliases.some((alias) => tagLabelMatchesCatalogSearch(alias, normalizedSearch)) ||
+    catalogSearchTokensMatch(catalogTag.preferredWhen, normalizedSearch)
+  );
+}
+
 function tagMatchesCatalogSearch(
   tag: string,
   normalizedSearch: string,
@@ -171,7 +238,7 @@ function tagMatchesCatalogSearch(
 
   const normalizedTag = normalizeTagLookupValue(tag);
 
-  if (normalizedTag.includes(normalizedSearch)) {
+  if (catalogSearchTokensMatch(tag, normalizedSearch)) {
     return true;
   }
 
@@ -334,7 +401,7 @@ export function computeFacetedTagsForDraftSelection(params: {
     if (
       normalizedSearch &&
       !isSelected &&
-      !tagMatchesCatalogSearch(tag, normalizedSearch, catalogTagLookup)
+      !facetTagMatchesCatalogSearch(tag, normalizedSearch, catalogTagLookup)
     ) {
       continue;
     }
@@ -386,7 +453,7 @@ export function buildFacetedTagsFromAlgoliaOptions(params: {
     if (
       normalizedSearch &&
       !isSelected &&
-      !tagMatchesCatalogSearch(tag, normalizedSearch, catalogTagLookup)
+      !facetTagMatchesCatalogSearch(tag, normalizedSearch, catalogTagLookup)
     ) {
       continue;
     }

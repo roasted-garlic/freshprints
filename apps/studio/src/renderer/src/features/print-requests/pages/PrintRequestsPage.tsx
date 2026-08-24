@@ -45,6 +45,10 @@ import {
   type PrintRequestWorkingTriageFilter,
 } from "@fresh-prints/shared/utils/printRequestWorkingTriage";
 import { groupAllocationsByShow } from "@fresh-prints/shared/utils/groupAllocationsByShow";
+import {
+  groupPrintRequestsByShow,
+  UNASSIGNED_SHOW_SECTION_KEY,
+} from "@fresh-prints/shared/utils/groupPrintRequestsByShow";
 import { canRemoveRequestFromShow } from "@fresh-prints/shared/utils/showQueueEditability";
 import {
   summarizePrintRequestPersistenceHealth,
@@ -72,7 +76,7 @@ import {
 import { getDesignLibraryPath } from "../../designs/constants/designLibraryFilters";
 import { upcomingShowService } from "../../upcoming-shows/services/upcomingShowService";
 import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
-import { formatUpcomingShowTitle } from "../../upcoming-shows/utils/upcomingShowDisplay";
+import { formatUpcomingShowTitle, formatUpcomingShowTimestampLabel } from "../../upcoming-shows/utils/upcomingShowDisplay";
 import { formatShowDateTimeLabel } from "@fresh-prints/shared/utils/showDateTimeDisplay";
 import { getUpcomingShowsPath } from "../../upcoming-shows/constants/upcomingShowRoutes";
 
@@ -268,6 +272,7 @@ export function PrintRequestsPage() {
 
   const {
     allocationTotalsByRequestId,
+    allocationsByRequestId,
     countsByTab,
     customersById,
     ensureRequestLoaded,
@@ -280,8 +285,10 @@ export function PrintRequestsPage() {
     patchRequestLocally,
     patchSummaryLocally,
     reconcileDeletedOrArchivedRequest,
+    refreshAllocationHydration,
     reloadPrintRequests,
     requests,
+    showsById,
     summariesByRequestId,
   } = usePrintRequests(activeListTab, activeIsInternal);
 
@@ -553,7 +560,10 @@ export function PrintRequestsPage() {
       clearPrintRequestsPageCache();
       patchRequestLocally(requestId, { queueTab: "working", status: "editing" });
       commitPrintRequestsRoute({ requestId, kind: activeListKind, tab: "working" });
-      await reloadAllAllocationData({ silent: true });
+      await Promise.all([
+        refreshAllocationHydration(),
+        reloadAllAllocationData({ silent: true }),
+      ]);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Unable to remove this request from the show queue.");
     } finally {
@@ -563,6 +573,7 @@ export function PrintRequestsPage() {
     commitPrintRequestsRoute,
     patchRequestLocally,
     reloadAllAllocationData,
+    refreshAllocationHydration,
     selectedRequestShowGroups,
     user,
     visibleSelectedRequest,
@@ -738,6 +749,16 @@ export function PrintRequestsPage() {
     listSearchQuery,
     routeEligibleRequests,
   ]);
+
+  const visibleRequestSections = useMemo(
+    () =>
+      groupPrintRequestsByShow({
+        requests: visibleRequests,
+        allocationsByRequestId,
+        showsById,
+      }),
+    [allocationsByRequestId, showsById, visibleRequests],
+  );
 
   // A deep-linked/selected request outside the currently loaded page is never treated as
   // "route-illegal" — `ensureRequestLoaded` (above) fetches it directly by ID, and once loaded it
@@ -1316,12 +1337,22 @@ export function PrintRequestsPage() {
                 title="Nothing here yet"
               />
             ) : (
-              visibleRequests.map((request) => {
+              visibleRequestSections.map((section) => (
+                <div className="print-requests-show-section" key={section.sectionKey}>
+                  <div className="print-requests-show-section-header">
+                    {section.sectionKey === UNASSIGNED_SHOW_SECTION_KEY
+                      ? "Unassigned"
+                      : section.show
+                        ? `${formatUpcomingShowTitle(section.show)} · ${formatUpcomingShowTimestampLabel(section.show.scheduledStartAt)}`
+                        : "Show"}
+                  </div>
+                  {section.requests.map((request) => {
                 const isSelected = request.id === selectedRequestId;
                 const requestSummary = summariesByRequestId[request.id] ?? {
                   totalQuantity: 0,
                   uniqueDesignCount: 0,
                 };
+                const extraShowCount = section.extraShowCountByRequestId[request.id] ?? 0;
 
                 return (
                   <button
@@ -1348,6 +1379,12 @@ export function PrintRequestsPage() {
                       {request.isInternal
                         ? request.notes?.trim() || "No notes"
                         : getPrintRequestCustomerLabel(request, customersByIdMap)}
+                      {extraShowCount > 0 ? (
+                        <span className="print-requests-request-card-extra-shows">
+                          {" "}
+                          +{extraShowCount} more show{extraShowCount === 1 ? "" : "s"}
+                        </span>
+                      ) : null}
                     </p>
                     <div className="print-requests-request-card-counts">
                       <span>{formatDesignCountLabel(requestSummary.uniqueDesignCount)}</span>
@@ -1355,7 +1392,9 @@ export function PrintRequestsPage() {
                     </div>
                   </button>
                 );
-              })
+                  })}
+                </div>
+              ))
             )}
             {!isLoading && hasMoreRequests && !listSearchQuery.trim() ? (
               <Button

@@ -94,6 +94,35 @@ describe("buildGangSheetCacheFingerprint", () => {
 
     assert.notEqual(baseline, changed);
   });
+
+  it("ignores omitted layoutMode so efficiency fingerprints stay stable", () => {
+    const efficiency = buildGangSheetCacheFingerprint(sampleRequest());
+    const explicitEfficiency = buildGangSheetCacheFingerprint(
+      sampleRequest({ layoutMode: "efficiency" }),
+    );
+
+    assert.equal(efficiency, explicitEfficiency);
+  });
+
+  it("changes when grouped layout mode is selected", () => {
+    const efficiency = buildGangSheetCacheFingerprint(sampleRequest());
+    const grouped = buildGangSheetCacheFingerprint(
+      sampleRequest({
+        layoutMode: "grouped_by_customer",
+        images: sampleRequest().images.map((image) => ({
+          ...image,
+          grouping: {
+            printRequestId: "req-1",
+            requestName: "alice-IR001",
+            customerUsernameSnapshot: "alice",
+            isInternal: false,
+          },
+        })),
+      }),
+    );
+
+    assert.notEqual(efficiency, grouped);
+  });
 });
 
 describe("sanitizeGangSheetCacheShowId", () => {

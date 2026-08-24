@@ -863,6 +863,60 @@
   gap: var(--space-3);
 }
 
+.gang-sheet-layout-mode-picker {
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: 1fr 1fr;
+  margin-bottom: var(--space-4);
+}
+
+.gang-sheet-layout-mode-option {
+  align-items: flex-start;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  text-align: left;
+}
+
+.gang-sheet-layout-mode-option:hover,
+.gang-sheet-layout-mode-option:focus-visible {
+  background: var(--color-bg-tertiary);
+  border-color: var(--color-border-strong);
+  outline: none;
+}
+
+.gang-sheet-layout-mode-option.is-selected {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-accent);
+}
+
+.gang-sheet-layout-mode-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.gang-sheet-modal-preparing {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
+  text-align: center;
+}
+
+.export-gang-sheet-modal.modal-panel {
+  max-width: min(44rem, calc(100vw - 2 * var(--space-6)));
+  width: min(44rem, calc(100vw - 2 * var(--space-6)));
+}
+
 .gang-sheet-preview-list {
   display: flex;
   flex-direction: column;
@@ -882,8 +936,20 @@
   padding: var(--space-3);
 }
 
+.gang-sheet-preview-row > div:first-child {
+  min-width: 0;
+  overflow: hidden;
+}
+
 .gang-sheet-preview-row .print-requests-modal-hint {
   margin: 0.15rem 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gang-sheet-preview-row > .button {
+  flex-shrink: 0;
 }
 
 .create-internal-gang-sheet-modal {

@@ -44,6 +44,11 @@ export async function clearGangSheetCacheForShow(showId: string): Promise<void> 
   await rm(showDir, { recursive: true, force: true });
 }
 
+/** Removes only one layout fingerprint folder so Standard and Grouped caches can coexist. */
+export async function clearGangSheetCacheForFingerprint(showId: string, fingerprint: string): Promise<void> {
+  await rm(resolveGangSheetCacheDir(showId, fingerprint), { recursive: true, force: true });
+}
+
 /** Removes every cached generate/export folder under `userData/gang-sheet-cache`. */
 export async function clearAllGangSheetCaches(): Promise<void> {
   await rm(resolveCacheRoot(), { recursive: true, force: true });
@@ -59,7 +64,8 @@ export async function writeGangSheetCache(input: {
 }): Promise<GenerateGangSheetPngResult> {
   const { request, fingerprint, sheets, placedImageCount, skippedImageCount, warnings } = input;
 
-  await clearGangSheetCacheForShow(request.showId);
+  // Replace only this layout's fingerprint folder — keep the other layout mode's cache intact.
+  await clearGangSheetCacheForFingerprint(request.showId, fingerprint);
 
   const cacheDir = resolveGangSheetCacheDir(request.showId, fingerprint);
   await mkdir(cacheDir, { recursive: true });

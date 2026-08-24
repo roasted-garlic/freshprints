@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { WandSparkles, X } from "lucide-react";
 
+import type { GangSheetLayoutMode } from "@fresh-prints/shared/types/export/gangSheetExportIpc.types";
 import { Button } from "../../../shared/components/Button";
 import { ErrorState } from "../../../shared/components/ErrorState";
+import { LoadingSpinner } from "../../../shared/components/LoadingSpinner";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
+import { getGangSheetLayoutModeOption, GANG_SHEET_LAYOUT_MODE_OPTIONS } from "./GangSheetLayoutModeMenu";
 import { formatUpcomingShowTitle } from "../utils/upcomingShowDisplay";
 import { formatInchesForFilename } from "@fresh-prints/shared/utils/showExportFilename";
 import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
@@ -14,6 +17,7 @@ import type {
   GenerateGangSheetPngResult,
 } from "@fresh-prints/shared/types/export/gangSheetExportIpc.types";
 import type { ShowExportImageWarning } from "@fresh-prints/shared/types/export/showExportIpc.types";
+import type { GangSheetSheetCountPreview } from "../hooks/useExportGangSheetPng";
 
 interface ExportGangSheetConfirmModalProps {
   show: UpcomingShow;
@@ -26,9 +30,14 @@ interface ExportGangSheetConfirmModalProps {
   warnings: ShowExportImageWarning[];
   lastSavedPaths: string[];
   progress: GangSheetExportProgressEvent | null;
+  sheetCountPreview: GangSheetSheetCountPreview | null;
+  isPreparing: boolean;
+  layoutMode: GangSheetLayoutMode;
+  hasGeneratedForLayout: boolean;
   onGenerate: () => void;
   onExport: () => void;
   onDownloadSheet: (sheetIndex: number) => void;
+  onLayoutModeChange: (mode: GangSheetLayoutMode) => void;
   onClose: () => void;
 }
 
@@ -95,6 +104,17 @@ function formatTotalLength(totalInches: number): string {
   return `${inchesLabel}″ total (${feetLabel} ft)`;
 }
 
+function estimatedSheetCount(
+  preview: GangSheetSheetCountPreview | null,
+  layoutMode: GangSheetLayoutMode,
+): number | null {
+  if (!preview) {
+    return null;
+  }
+
+  return layoutMode === "grouped_by_customer" ? preview.groupedSheets : preview.efficiencySheets;
+}
+
 export function ExportGangSheetConfirmModal({
   show,
   gangSheetWidthInches,
@@ -106,13 +126,19 @@ export function ExportGangSheetConfirmModal({
   warnings,
   lastSavedPaths,
   progress,
+  sheetCountPreview,
+  isPreparing,
+  layoutMode,
+  hasGeneratedForLayout,
   onGenerate,
   onExport,
   onDownloadSheet,
+  onLayoutModeChange,
   onClose,
 }: ExportGangSheetConfirmModalProps) {
-  const isBusy = isGenerating || isExporting;
-  const hasGenerated = Boolean(generated) && sheets.length > 0;
+  const isBusy = isGenerating || isExporting || isPreparing;
+  const hasGenerated = hasGeneratedForLayout && Boolean(generated) && sheets.length > 0;
+  const layoutOption = getGangSheetLayoutModeOption(layoutMode);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const generateStartedAtRef = useRef<number | null>(null);
   const compositingStartedAtRef = useRef<number | null>(null);
@@ -123,6 +149,7 @@ export function ExportGangSheetConfirmModal({
     () => sheets.reduce((sum, sheet) => sum + sheet.lengthInches, 0),
     [sheets],
   );
+  const estimatedSheets = estimatedSheetCount(sheetCountPreview, layoutMode);
 
   useEffect(() => {
     if (!isGenerating) {
@@ -188,18 +215,23 @@ export function ExportGangSheetConfirmModal({
 
   return (
     <div className="modal-overlay modal-overlay-blur">
-      <Modal aria-labelledby="export-gang-sheet-title" className="modal-panel" role="dialog">
+      <Modal
+            aria-labelledby="export-gang-sheet-title"
+            className="modal-panel export-gang-sheet-modal"
+            role="dialog"
+          >
         <ModalHeader>
           <div>
             <p className="eyebrow">Gang sheets</p>
             <h3 id="export-gang-sheet-title">
-              {hasGenerated ? "Export" : "Generate"} Gang Sheets — "{formatUpcomingShowTitle(show)}"
+              {hasGenerated ? "Export" : "Generate"} {layoutOption.titlePhrase} — "
+              {formatUpcomingShowTitle(show)}"
             </h3>
           </div>
           <button
             aria-label="Close gang sheet dialog"
             className="icon-button icon-button-md icon-button-ghost"
-            disabled={isBusy}
+            disabled={isGenerating || isExporting}
             onClick={onClose}
             type="button"
           >
@@ -208,6 +240,29 @@ export function ExportGangSheetConfirmModal({
         </ModalHeader>
         <ModalBody>
           {error ? <ErrorState message={error} title="Gang sheet action failed" /> : null}
+
+          {!isGenerating ? (
+            <div
+              aria-label="Gang sheet layout"
+              className="gang-sheet-layout-mode-picker"
+              role="radiogroup"
+            >
+              {GANG_SHEET_LAYOUT_MODE_OPTIONS.map((option) => (
+                <button
+                  aria-checked={layoutMode === option.mode}
+                  className={`gang-sheet-layout-mode-option${layoutMode === option.mode ? " is-selected" : ""}`}
+                  disabled={isBusy}
+                  key={option.mode}
+                  onClick={() => onLayoutModeChange(option.mode)}
+                  role="radio"
+                  type="button"
+                >
+                  <span>{option.label}</span>
+                  <span className="export-menu-option-hint">{option.hint}</span>
+                </button>
+              ))}
+            </div>
+          ) : null}
 
           {isGenerating ? (
             <div className="export-show-progress">
@@ -238,6 +293,14 @@ export function ExportGangSheetConfirmModal({
                   style={{ width: `${progressPercent}%` }}
                 />
               </div>
+            </div>
+          ) : isPreparing ? (
+            <div className="gang-sheet-modal-preparing">
+              <LoadingSpinner />
+              <p className="export-show-progress-label">Loading gang sheets…</p>
+              <p className="print-requests-modal-hint">
+                Checking for a cached layout for this option. This usually only takes a moment.
+              </p>
             </div>
           ) : hasGenerated && generated ? (
             <div className="export-show-result">
@@ -298,23 +361,30 @@ export function ExportGangSheetConfirmModal({
               ) : null}
             </div>
           ) : (
-            <p className="print-requests-modal-hint">
-              Generate downloads each allocated design at the size set during the print request stage
-              (300 DPI), nests every copy onto one or more {gangSheetWidthInches}" wide transparent
-              gang sheet PNGs, and stores them in a local cache on this computer. You can then
-              preview each sheet&apos;s length, download individually, or export all. Designs too
-              wide for the sheet are skipped and reported as warnings.
-            </p>
+            <>
+              <p>{layoutOption.modalSummary}</p>
+              <p className="print-requests-modal-hint">
+                Choose Standard or Grouped by customer above, then generate. Designs are downloaded at
+                print-request size (300 DPI) and nested onto {gangSheetWidthInches}" wide transparent PNGs,
+                then cached on this computer. Designs too wide for the sheet are skipped and listed as
+                warnings.
+              </p>
+              {estimatedSheets !== null ? (
+                <p className="print-requests-modal-hint">
+                  Estimated sheets for this layout: {estimatedSheets}. Count is informational only.
+                </p>
+              ) : null}
+            </>
           )}
         </ModalBody>
         <ModalFooter>
-          <Button disabled={isBusy} onClick={onClose} size="sm" variant="secondary">
+          <Button disabled={isGenerating || isExporting} onClick={onClose} size="sm" variant="secondary">
             Close
           </Button>
           {hasGenerated ? (
             <>
               <Button disabled={isBusy} onClick={onGenerate} size="sm" variant="secondary">
-                Regenerate
+                {isGenerating ? "Regenerating..." : "Regenerate"}
               </Button>
               <Button disabled={isBusy} onClick={onExport} size="sm" variant="primary">
                 {isExporting ? "Exporting..." : "Export gang sheets"}

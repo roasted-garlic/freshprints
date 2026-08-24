@@ -1,3 +1,4 @@
+import { composeGroupedGangSheetSheets } from "./composeGroupedGangSheetSheets";
 import { downloadAndResizeExportImage } from "./downloadAndResizeExportImage";
 import {
   clearAllGangSheetCaches,
@@ -93,6 +94,10 @@ export async function generateGangSheetPng(
   let imageIndex = 0;
   let placementId = 0;
   const resizedImageGroups: ResizedImage[][] = [];
+  const resizedByAllocationId = new Map<
+    string,
+    Array<ResizedImage & { allocationId: string }>
+  >();
 
   for (const image of request.images) {
     const downloadResult = await downloadAndResizeExportImage(
@@ -133,13 +138,13 @@ export async function generateGangSheetPng(
       });
     }
 
-    resizedImageGroups.push(group);
-  }
-
-  const resizedImages: ResizedImage[] = interleaveGroups(resizedImageGroups);
-
-  if (resizedImages.length === 0) {
-    throw new AllGangSheetImagesFailedError();
+    if (group.length > 0) {
+      resizedImageGroups.push(group);
+      resizedByAllocationId.set(
+        image.allocationId,
+        group.map((entry) => ({ ...entry, allocationId: image.allocationId })),
+      );
+    }
   }
 
   const sheetWidthPx = Math.round(request.sheetWidthInches * EXPORT_DPI);
@@ -149,6 +154,55 @@ export async function generateGangSheetPng(
     gutterPx: Math.round(request.gutterInches * EXPORT_DPI),
   };
   const maxSheetHeightPx = Math.round(request.maxSheetLengthInches * EXPORT_DPI);
+
+  if (request.layoutMode === "grouped_by_customer") {
+    onProgress({ fileName: request.baseFileName, imageIndex: imageTotal, imageTotal, step: "nesting" });
+
+    const composedSheets = await composeGroupedGangSheetSheets({
+      request,
+      resizedByAllocationId,
+      sheetWidthPx,
+      spacingPx,
+      maxSheetHeightPx,
+      warnings,
+      onProgress: (sheetIndex, sheetTotal) => {
+        onProgress({
+          fileName: request.baseFileName,
+          imageIndex: imageTotal,
+          imageTotal,
+          step: "compositing",
+          sheetIndex,
+          sheetTotal,
+        });
+      },
+    });
+
+    if (composedSheets.length === 0) {
+      throw new AllGangSheetImagesFailedError();
+    }
+
+    const fingerprint = fingerprintForRequest(request);
+    const placedImageCount = [...resizedByAllocationId.values()].reduce(
+      (sum, group) => sum + group.length,
+      0,
+    );
+
+    return writeGangSheetCache({
+      request,
+      fingerprint,
+      sheets: composedSheets,
+      placedImageCount,
+      skippedImageCount: warnings.filter((warning) => warning.reason !== "upscaled").length,
+      warnings,
+    });
+  }
+
+  const resizedImages: ResizedImage[] = interleaveGroups(resizedImageGroups);
+
+  if (resizedImages.length === 0) {
+    throw new AllGangSheetImagesFailedError();
+  }
+
   const nestableBoxes: NestableBox[] = resizedImages.map((image) => ({
     id: image.id,
     widthPx: image.widthPx,

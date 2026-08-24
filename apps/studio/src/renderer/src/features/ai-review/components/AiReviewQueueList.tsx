@@ -19,12 +19,15 @@ interface AiReviewQueueListProps {
   hasMore: boolean;
   isLoading: boolean;
   isLoadingMore: boolean;
+  isSearchHydrating?: boolean;
   listRef: RefObject<HTMLDivElement | null>;
   onLoadMore: () => void;
   onSelectDesign: (designId: string) => void;
+  searchActive?: boolean;
   /** Effective mat hex for the selected design (same resolve path as main preview). */
   selectedArtworkBackgroundHex?: string;
   selectedDesignId: string | null;
+  showSearchNoResults?: boolean;
 }
 
 function formatImportedDate(design: Design): string {
@@ -43,11 +46,14 @@ export function AiReviewQueueList({
   hasMore,
   isLoading,
   isLoadingMore,
+  isSearchHydrating = false,
   listRef,
   onLoadMore,
   onSelectDesign,
+  searchActive = false,
   selectedArtworkBackgroundHex,
   selectedDesignId,
+  showSearchNoResults = false,
 }: AiReviewQueueListProps) {
   if (isLoading) {
     return (
@@ -58,7 +64,25 @@ export function AiReviewQueueList({
   }
 
   if (designs.length === 0) {
-    const emptyState = getAiReviewEmptyState(activeTab);
+    if (searchActive && !showSearchNoResults) {
+      return (
+        <div className="ai-review-queue-empty">
+          <p className="ai-review-queue-empty-title">
+            {isSearchHydrating ? "Searching designs…" : "Still searching…"}
+          </p>
+          <p className="ai-review-queue-empty-copy">
+            More designs are being loaded before showing no-results.
+          </p>
+        </div>
+      );
+    }
+
+    const emptyState = searchActive
+      ? {
+          title: "No matching designs",
+          copy: "No Needs Review designs match this search in the loaded results.",
+        }
+      : getAiReviewEmptyState(activeTab);
 
     return (
       <div className="ai-review-queue-empty">

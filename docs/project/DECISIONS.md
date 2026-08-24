@@ -4,6 +4,35 @@
 
 ---
 
+### ADR-FP-143: Studio grouped gang sheet export mode
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-23 |
+| Status | accepted |
+| Related | Goal `studio-workflow-organization-and-grouped-gang-sheet` (WS5) |
+
+**Context**
+
+Show Queue gang sheet generation already nests allocations for sheet efficiency. Production staff also need sheets grouped by customer/request with section labels, without changing the existing efficiency exporter or cache behavior.
+
+**Decision**
+
+1. Keep the legacy efficiency layout as the default when `layoutMode` is omitted.
+2. Add an explicit `layoutMode: "grouped_by_customer"` IPC path with a separate compositor and planner (`planGroupedGangSheetLayout` / `composeGroupedGangSheetSheets`).
+3. Resolve production group keys as `customerId` → `customerUsernameSnapshot` → internal `internalBaseName` → `printRequestId`.
+4. Load print request metadata once per export; attach `grouping` on image requests for grouped mode; IPC validation must preserve `layoutMode` and `grouping` (do not rebuild the request object without them).
+5. Include `layoutMode` in gang sheet cache fingerprints only for grouped exports so efficiency cache keys stay unchanged.
+6. Persist Standard and Grouped caches in separate fingerprint folders (replace only the fingerprint being written — do not wipe the sibling layout).
+7. Grouped base names / on-sheet labels use `whatnot_MM-DD-YYYY_grouped-gang-sheet`; section headings are request names (comma-joined) with `-Continued` on spillover sheets; section label font matches sheet label size.
+8. Surface Standard vs Grouped in one Generate dropdown + modal layout picker; estimated sheet counts are informational.
+
+**Consequences**
+
+- Two layout modes in Studio; regression contract tests guard efficiency ordering and fingerprints.
+- Owner DEV QA (2026-08-23) PASS for WS5 including coexistence and naming.
+---
+
 ### ADR-FP-142: Public Show Designs browse with login-gated mutations
 
 | Field | Value |

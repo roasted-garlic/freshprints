@@ -4,6 +4,7 @@ import { useAuth } from "../../auth/hooks/useAuth";
 import { designDocumentSubscriptionService } from "../../designs/services/designDocumentSubscriptionService";
 import { catalogTagService } from "../../designs/services/catalogTagService";
 import { designService } from "../../designs/services/designService";
+import { useDesigns } from "../../designs/hooks/useDesigns";
 import { useGeneratedDesignLibraryTaxonomy } from "../../designs/hooks/useGeneratedDesignLibraryTaxonomy";
 import type { CreateCatalogTagInput } from "../../designs/types/catalogTag.types";
 import { permissionService } from "../../permissions/services/permissionService";
@@ -31,7 +32,14 @@ import {
   isDesignRetryableInProcessing,
 } from "../utils/aiReviewInboxEligibility";
 import { filterDesignsByAiReviewStatus } from "../../designs/utils/designLibrarySearch";
-import { useDesigns } from "../../designs/hooks/useDesigns";
+import {
+  NEEDS_REVIEW_SEARCH_HYDRATION_CAP,
+  filterNeedsReviewDesignsBySearch,
+  isNeedsReviewSearchActive,
+  resolveNeedsReviewHydrationTarget,
+  resolveNeedsReviewSearchHydrationState,
+  shouldAutoLoadNeedsReviewSearch,
+} from "../utils/aiReviewNeedsReviewSearch";
 import { traceAiQueueEvent } from "../../../config/aiQueueTraceClient";
 import {
   getActiveBackgroundAiDesignId,
@@ -72,6 +80,8 @@ export interface UseAiReviewInboxOptions {
   onQueueChanged?: () => void;
   /** Amendment 9 P0: local count deltas after successful approve/reject/archive. */
   onInboxCountsDelta?: (deltas: AiReviewTabCountDeltas) => void;
+  /** Exact Needs Review tab count for search hydration status. */
+  needsReviewTotalCount?: number | null;
 }
 
 export interface PendingSelectionChange {
@@ -84,6 +94,8 @@ export function useAiReviewInbox(
 ) {
   const { user } = useAuth();
   const listQuery = useMemo(() => buildAiReviewInboxListQuery(filters), [filters]);
+  const needsReviewSearchActive =
+    filters.tab === "needs_review" && isNeedsReviewSearchActive(filters.searchQuery);
   const {
     applyDesignPatch,
     clearTerminalAiProcessingLedgerEntry,
@@ -96,7 +108,10 @@ export function useAiReviewInbox(
     loadMoreDesigns,
     reloadDesigns,
     removeDesignFromList,
-  } = useDesigns(listQuery);
+  } = useDesigns(listQuery, {
+    loadAll: needsReviewSearchActive,
+    maxLoadAll: NEEDS_REVIEW_SEARCH_HYDRATION_CAP,
+  });
   // Approved-tag display/autocomplete for normal review needs only id/name/aliases/status — the
   // generated client-safe taxonomy covers that with zero Firestore reads. The previous
   // `useCatalogTags({ includeArchived: true })` paged the entire ~1,122-doc tag corpus on every
@@ -199,7 +214,32 @@ export function useAiReviewInbox(
 
     return sorted.map((design, index) => (index === liveIndex ? liveDesign : design));
   }, [filters.tab, isPinnedNeedsReviewDesign, liveDesign, rawDesigns]);
-  designsRef.current = designs;
+
+  const tabMatchedDesigns = useMemo(() => {
+    let filtered = rawDesigns.filter((design) => designMatchesInboxTab(design, filters.tab));
+
+    if (filters.tab === "processing") {
+      filtered = filterDesignsByAiReviewStatus(filtered, "pending");
+    }
+
+    return filtered;
+  }, [filters.tab, rawDesigns]);
+
+  const visibleDesigns = useMemo(() => {
+    if (filters.tab !== "needs_review" || !isNeedsReviewSearchActive(filters.searchQuery)) {
+      return designs;
+    }
+
+    return sortInboxDesigns(
+      filterNeedsReviewDesignsBySearch(
+        tabMatchedDesigns,
+        filters.searchQuery ?? "",
+        generatedTaxonomy.tags,
+      ),
+      filters.tab,
+    );
+  }, [designs, filters.searchQuery, filters.tab, generatedTaxonomy.tags, tabMatchedDesigns]);
+  designsRef.current = visibleDesigns;
 
   const [draftForm, setDraftForm] = useState<AiReviewDraftForm | null>(null);
   const [baselineForm, setBaselineForm] = useState<AiReviewDraftForm | null>(null);
@@ -209,14 +249,91 @@ export function useAiReviewInbox(
   const [isSendingBackToProcessing, setIsSendingBackToProcessing] = useState(false);
   /** Amendment 9 P0 scroll correction: bump only after successful approve/reject/archive. */
   const [reviewScrollNonce, setReviewScrollNonce] = useState(0);
+  const [needsReviewHydrationTarget, setNeedsReviewHydrationTarget] = useState(
+    NEEDS_REVIEW_SEARCH_HYDRATION_CAP,
+  );
+
+  useEffect(() => {
+    if (filters.tab !== "needs_review" || !isNeedsReviewSearchActive(filters.searchQuery)) {
+      setNeedsReviewHydrationTarget(NEEDS_REVIEW_SEARCH_HYDRATION_CAP);
+    }
+  }, [filters.searchQuery, filters.tab]);
 
   const canManageCatalog = Boolean(user && permissionService.canEditAiReviewInbox(user));
   const canApprove = Boolean(user && permissionService.canApproveDesignForCatalog(user));
   const canReject = Boolean(user && permissionService.canRejectDesignFromCatalog(user));
   const canApproveSuggestedTags = Boolean(user && permissionService.canApproveSuggestedTags(user));
 
+  const needsReviewHydratedCount =
+    filters.tab === "needs_review" ? tabMatchedDesigns.length : 0;
+
+  const searchHydrationBase = useMemo(() => {
+    if (filters.tab !== "needs_review" || !isNeedsReviewSearchActive(filters.searchQuery)) {
+      return null;
+    }
+
+    const isSearchingHydration = isLoading || isLoadingMore;
+
+    return resolveNeedsReviewSearchHydrationState({
+      searchQuery: filters.searchQuery,
+      hydratedCount: needsReviewHydratedCount,
+      filteredCount: visibleDesigns.length,
+      totalCount: options?.needsReviewTotalCount ?? null,
+      hasMore: isSearchingHydration ? true : hasMore,
+      hydrationTarget: needsReviewHydrationTarget,
+      isLoadingMore: isSearchingHydration,
+    });
+  }, [
+    filters.searchQuery,
+    filters.tab,
+    hasMore,
+    isLoading,
+    isLoadingMore,
+    needsReviewHydratedCount,
+    needsReviewHydrationTarget,
+    options?.needsReviewTotalCount,
+    visibleDesigns.length,
+  ]);
+
+  const searchMore = useCallback(() => {
+    setNeedsReviewHydrationTarget((current) =>
+      resolveNeedsReviewHydrationTarget({ currentTarget: current, allowBeyondInitialCap: true }),
+    );
+  }, []);
+
+  const searchHydration = searchHydrationBase
+    ? { ...searchHydrationBase, searchMore }
+    : null;
+
+  useEffect(() => {
+    if (
+      needsReviewSearchActive ||
+      !shouldAutoLoadNeedsReviewSearch({
+        searchQuery: filters.searchQuery,
+        loadedCount: needsReviewHydratedCount,
+        hydrationTarget: needsReviewHydrationTarget,
+        hasMore,
+        isLoading,
+        isLoadingMore,
+      })
+    ) {
+      return;
+    }
+
+    loadMoreDesigns();
+  }, [
+    filters.searchQuery,
+    hasMore,
+    isLoading,
+    isLoadingMore,
+    loadMoreDesigns,
+    needsReviewHydratedCount,
+    needsReviewHydrationTarget,
+    needsReviewSearchActive,
+  ]);
+
   const selectedDesign = useMemo(() => {
-    const listDesign = designs.find((design) => design.id === selectedDesignId) ?? null;
+    const listDesign = visibleDesigns.find((design) => design.id === selectedDesignId) ?? null;
 
     if (
       shouldUseLiveDesignForSelection({
@@ -233,7 +350,7 @@ export function useAiReviewInbox(
     }
 
     return listDesign;
-  }, [designs, filters.tab, isPinnedNeedsReviewDesign, liveDesign, selectedDesignId]);
+  }, [filters.tab, isPinnedNeedsReviewDesign, liveDesign, selectedDesignId, visibleDesigns]);
 
   const canEditSelected = Boolean(
     canManageCatalog && canEditCatalogInInbox(filters.tab) && selectedDesign,
@@ -279,8 +396,8 @@ export function useAiReviewInbox(
   );
 
   const selectedIndex = useMemo(
-    () => (selectedDesignId ? designs.findIndex((design) => design.id === selectedDesignId) : -1),
-    [designs, selectedDesignId],
+    () => (selectedDesignId ? visibleDesigns.findIndex((design) => design.id === selectedDesignId) : -1),
+    [selectedDesignId, visibleDesigns],
   );
 
   // Owner QA Amendment 6 derived/render-state probe. Answers, per render where the derived
@@ -881,18 +998,18 @@ export function useAiReviewInbox(
 
   const selectRelative = useCallback(
     (offset: number) => {
-      if (selectedIndex < 0 || designs.length === 0) {
+      if (selectedIndex < 0 || visibleDesigns.length === 0) {
         return;
       }
 
-      const nextIndex = Math.min(Math.max(selectedIndex + offset, 0), designs.length - 1);
-      const nextDesign = designs[nextIndex];
+      const nextIndex = Math.min(Math.max(selectedIndex + offset, 0), visibleDesigns.length - 1);
+      const nextDesign = visibleDesigns[nextIndex];
 
       if (nextDesign) {
         requestSelectDesign(nextDesign.id);
       }
     },
-    [designs, requestSelectDesign, selectedIndex],
+    [requestSelectDesign, selectedIndex, visibleDesigns],
   );
 
   const updateDraftField = useCallback(
@@ -1263,7 +1380,7 @@ export function useAiReviewInbox(
     cancelPendingSelection,
     confirmPendingRerun,
     confirmDiscardPendingSelection,
-    designs,
+    designs: visibleDesigns,
     draftForm,
     error,
     filters,
@@ -1284,6 +1401,7 @@ export function useAiReviewInbox(
     reconcileAfterHardDeleteSuccess,
     requestSelectDesign,
     reviewScrollNonce,
+    searchHydration,
     selectedDesign,
     selectedIndex,
     selectRelative,

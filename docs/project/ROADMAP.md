@@ -1,5 +1,7 @@
 # Fresh Prints Roadmap
 
+> 2026-08-23: **Studio workflow organization + grouped gang sheet — SIGNOFF approved (DEV)** — Goal `studio-workflow-organization-and-grouped-gang-sheet` **DONE**. WS1–WS5 owner `OWNER DEV QA: PASS`. Efficiency path regression-safe; Standard/Grouped caches coexist; no Firebase / Portal deploy / Studio release. Signoff: `docs/workflow/reviews/2026-08-23-studio-workflow-organization-and-grouped-gang-sheet-signoff.md`. Phase 9 **PARKED**.
+>
 > 2026-08-21: **Studio GitHub Latest + final-copy gates CLOSED** — Goal `studio-release-latest-and-final-copy-gates` **DONE**. Signoff **approved**. Publish helper sets Latest + final copy after `APPROVE STUDIO PUBLISH`. Finalize still draft-only. 1.0.8 not edited. Signoff: `docs/workflow/reviews/2026-08-21-studio-release-latest-and-final-copy-gates-signoff.md`. Phase 9 **PARKED**.
 >
 > 2026-08-21: **Studio 1.0.8 PUBLISHED** — Goal `studio-1.0.8-release-preparation` **DONE**. [`v1.0.8`](https://github.com/roasted-garlic/freshprints/releases/tag/v1.0.8) / release **374575547** @ `32101904b29476e514d0f9a9e8fd5c5b508a7d14` / run [32508917638](https://github.com/roasted-garlic/freshprints/actions/runs/32508917638). Smoke: Windows + Mac arm64 + Mac x64 PASS. A2 declined (ADR-FP-136); Mac auto-update install unsupported; Windows auto-update OK. Signoff: `docs/workflow/reviews/2026-08-21-studio-1.0.8-release-preparation-signoff.md`. Live Portal still `fresh-prints-portal-build-2026-08-21-001` @ `7716d4a`. Phase 9 **PARKED**.
