@@ -72,11 +72,11 @@ PARKED
 27b0b4fb691c081ea1167f863f5fc45224a9c651
 
 ## Release Candidate Tip
-(filled after push)
+237b28db90e45b31548e6c091203b5e9435de09b
 
 ## Decision Log
 - 2026-08-23: Prior goal `studio-workflow-organization-and-grouped-gang-sheet` signed off @ `5435743`; FreshForge was IDLE.
 - 2026-08-23: New managed goal `production-promote-portal-and-studio-2026-08-23` opened. Verified development tip `5435743`, production tip `27b0b4f` (PR #87), published Studio v1.0.8 @ `32101904`, last recorded live Portal build-2026-08-21-001 @ `7716d4a`.
 - 2026-08-23: Inventory = 2 commits (`7dfd7ee`, `5435743`). Class E: missing formal Signoffs for show-discovery + Our Shows. Formal Review approved_with_changes. ChatGPT handoff package missing on disk (gitignored references/) — Gate G must recreate/update. STOP — no production mutation.
 - 2026-08-23: Owner `APPROVE PRODUCTION RELEASE PLAN` + `CONFIRM DEV SIGNOFF FOR PROMOTION` for show-discovery + Our Shows. Retrospective DEV Signoffs recorded. Gate B authorized (1.0.9 pin + verification only).
-- 2026-08-23: Gate B complete — Studio 1.0.9 pinned; verification passed_with_notes (discovery test + lint fixes). STOP at production PR checkpoint.
+- 2026-08-23: Gate B complete — Studio 1.0.9 pinned; verification passed_with_notes (discovery test + lint fixes). RC `237b28d` pushed to development. STOP at production PR checkpoint.
