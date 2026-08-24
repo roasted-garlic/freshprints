@@ -3,13 +3,31 @@
 | Field | Value |
 |-------|-------|
 | Date | 2026-08-23 |
-| Status | **AWAITING OWNER APPROVAL** — do not open/merge until phrase |
+| Status | **OPEN** — awaiting merge authorization |
+| PR | **#88** — https://github.com/roasted-garlic/freshprints/pull/88 |
+| Title | Promote Portal show discovery + Studio 1.0.9 release candidate |
 | Base | `production` @ `27b0b4fb691c081ea1167f863f5fc45224a9c651` |
-| Head | `development` @ `5b86f181328164d07224d7bb00b1b5216f8601f8` |
+| Head at open | `development` @ `f85be8bacc4f361e682f5654dd48db0de625111f` |
+| Mergeable | **MERGEABLE** / `CLEAN` |
+| Checks | none reported on `development` at open |
 
 ---
 
-## Pre-merge inventory (`production..development`)
+## Pre-open confirmations (2026-08-23)
+
+| Check | Result |
+|-------|--------|
+| Working tree clean | yes (before local checkpoint fill) |
+| Branch | `development` |
+| `origin/development` | `f85be8bacc4f361e682f5654dd48db0de625111f` |
+| `origin/production` | `27b0b4fb691c081ea1167f863f5fc45224a9c651` |
+| Scope | Only approved release commits below |
+
+Owner phrase `APPROVE PRODUCTION PR: production-promote-portal-and-studio-2026-08-23` opens the PR only — **not** merge.
+
+---
+
+## Final inventory (`production..development` at open)
 
 | SHA | Subject |
 |-----|---------|
@@ -18,6 +36,7 @@
 | `237b28d` | chore(release): pin Studio 1.0.9 and finish Gate B verification |
 | `953ab10` | docs(workflow): record Gate B RC tip and PR gate checkpoint |
 | `5b86f18` | docs(workflow): point PR checkpoint at development tip |
+| `f85be8b` | docs(workflow): sync Gate B RC tip to current development HEAD |
 
 ## Includes
 
@@ -32,17 +51,10 @@
 - App Hosting rollout
 - Studio draft/publish
 - Phase 9
+- Merge of this PR (separate phrase required)
 
-## Proposed PR
-
-- Title: `Promote Portal show discovery + Studio 1.0.9 release candidate`
-- Base: `production`
-- Head: `development` (`5b86f18`)
-
-## Owner phrase required before agent opens PR
+## Merge phrase (next)
 
 ```text
-APPROVE PRODUCTION PR: production-promote-portal-and-studio-2026-08-23
+APPROVE PRODUCTION MERGE: production-promote-portal-and-studio-2026-08-23
 ```
-
-After PR is open, merge still requires the standing production merge checkpoint / owner merge authorization if enforced separately.
