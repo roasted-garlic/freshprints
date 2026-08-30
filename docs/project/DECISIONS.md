@@ -3278,6 +3278,14 @@ Embedded DPI metadata is unreliable for print quality. Imports previously upscal
 - Functions deploy required for Portal finalize in shared environments so the 6× ceiling is live.
 - Production deploy remains a separate owner checkpoint.
 
+**Amendment (2026-08-30 — print-request sizing / legacy enhance goal)**
+
+1. **Automated upscale target** raised from **12″** to **15″** (`AUTOMATED_UPSCALE_TARGET_WIDTH_INCHES`); policy version **`image-quality-v3`** for newly processed assets (forward-only).
+2. **Print Request initial default** raised to **11″** (`STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES`) when pixels support ≥200 effective DPI at that width; stale ~10″ normalization envelopes no longer clamp eligible defaults.
+3. **Manual staff legacy enhancement:** one additional successful upscale pass allowed (`upscalePassCount` max **2** total) via Studio `enhancePrintRequestArtwork` callable; **cumulative ≤6×** from preserved native source; catalog designs only in V1.
+4. **`MAX_UPSCALE_PASSES = 1`** unchanged for automated import — manual second pass is an explicit exception, not a global pass-count increase.
+5. **`PREFERRED_PRINT_WIDTH_INCHES` / `DEFAULT_PRINT_REQUEST_WIDTH_INCHES`** remain **10″** for import messaging and `resolveDefaultPrintRequestSizeInches` — distinct from the 11″ Print Request initializer.
+
 ---
 
 ### ADR-FP-079: Working-tab triage, rail search, and soft-archive clear

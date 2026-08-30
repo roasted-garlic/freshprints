@@ -7,7 +7,7 @@ import {
 } from "@fresh-prints/shared/utils/printRequestItemSizing";
 
 describe("print request oversized selection initialization", () => {
-  it("initializes an oversized catalog width to a standard 10 inch requested width", () => {
+  it("initializes an oversized catalog width to a standard 11 inch requested width", () => {
     const result = resolveInitialPrintRequestItemSize({
       pixelWidth: 3000,
       pixelHeight: 3500,
@@ -15,8 +15,8 @@ describe("print request oversized selection initialization", () => {
     });
 
     assert.deepEqual(result, {
-      printWidthInches: 10,
-      printHeightInches: 11.67,
+      printWidthInches: 11,
+      printHeightInches: 12.83,
     });
     assert.equal(
       assessPrintRequestItemSize({
@@ -72,8 +72,8 @@ describe("print request oversized selection initialization", () => {
     });
 
     assert.deepEqual(result, {
-      printWidthInches: 10,
-      printHeightInches: 2.5,
+      printWidthInches: 11,
+      printHeightInches: 2.75,
     });
     assert.equal(
       assessPrintRequestItemSize({
@@ -92,8 +92,8 @@ describe("print request oversized selection initialization", () => {
     });
 
     assert.deepEqual(result, {
-      printWidthInches: 10,
-      printHeightInches: 5,
+      printWidthInches: 11,
+      printHeightInches: 5.5,
     });
   });
 

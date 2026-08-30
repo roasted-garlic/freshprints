@@ -1,6 +1,6 @@
 # Roadmap and Phases
 
-> 2026-08-30: **Print Request 11″ + 15″ upscale + legacy enhance — NEXT (planning)** — Goal `print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale`. Plan + Formal Review **approved_with_changes**; implement **not started**. Before Smart Profiling. Production **NOT AUTHORIZED**.
+> 2026-08-30: **Print Request 11″ + 15″ upscale + legacy enhance — IMPLEMENT COMPLETE (local)** — Goal `print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale`. Implement + Test + Implementation Review **complete** on `development`; **STOP before DEV Firebase deploy**. Before Smart Profiling. Production **NOT AUTHORIZED**.
 >
 > 2026-08-30: **Customer Identity WS1–WS4 — COMPLETE (DEV)** — WS4 signoff **approved**; owner DEV QA **PASS**. Production / Studio / Portal hosting **not authorized**. FreshForge active on sizing goal.
 >
@@ -69,7 +69,7 @@
 |---|------|--------|
 | 1 | Customer Identity WS1–WS4 | **DONE on DEV** |
 | 2 | Show Queue recovery + DEV fixture | **DONE on DEV** |
-| 3 | Print Request 11″ default + 15″ upscale + legacy enhance | **NEXT — Plan/Review complete; implement pending** |
+| 3 | Print Request 11″ default + 15″ upscale + legacy enhance | **Implement complete locally — DEV deploy + QA pending** |
 | 4 | Smart Profiling completion / tag retirement | **After #3** |
 | 5 | Coordinated production promotion | **Later — not authorized** |
 

@@ -73,7 +73,10 @@ export interface Design {
   sourceCustomerUploadId?: string;
   wasUpscaled?: boolean;
   upscaleFactor?: number;
-  upscalePassCount?: 0 | 1;
+  upscalePassCount?: 0 | 1 | 2;
+  /** Native production pixels before any upscale pass (provenance). */
+  nativeProductionWidthPx?: number;
+  nativeProductionHeightPx?: number;
   approvedMaxPrintWidthInches?: number;
   approvedMaxPrintHeightInches?: number;
   sizingPolicyVersion?: string;

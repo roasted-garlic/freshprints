@@ -2210,11 +2210,13 @@ export function PrintRequestsPage() {
                           item={item}
                           key={item.id}
                           onAutosaveStateChange={updateAutosaveState}
+                          onDesignArtworkEnhanced={reloadReadyDesigns}
                           onPersistenceHealthChange={handlePersistenceHealthChange}
                           onRegisterFlush={handleRegisterFlush}
                           onDuplicate={handleDuplicateItem}
                           onRemove={handleRemoveItem}
                           onUpdate={handleUpdateItem}
+                          printRequestId={selectedRequestId ?? ""}
                           readOnly={isSelectedRequestDetailLocked}
                           standardPrintSizesSettings={standardPrintSizesSettings}
                           upload={upload}

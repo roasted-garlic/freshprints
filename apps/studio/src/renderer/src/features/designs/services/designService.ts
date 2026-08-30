@@ -341,7 +341,13 @@ function mapDesignDocument(designId: string, data: DesignDocumentData): Design {
     wasUpscaled: typeof data.wasUpscaled === "boolean" ? data.wasUpscaled : undefined,
     upscaleFactor: typeof data.upscaleFactor === "number" ? data.upscaleFactor : undefined,
     upscalePassCount:
-      data.upscalePassCount === 0 || data.upscalePassCount === 1 ? data.upscalePassCount : undefined,
+      data.upscalePassCount === 0 || data.upscalePassCount === 1 || data.upscalePassCount === 2
+        ? data.upscalePassCount
+        : undefined,
+    nativeProductionWidthPx:
+      typeof data.nativeProductionWidthPx === "number" ? data.nativeProductionWidthPx : undefined,
+    nativeProductionHeightPx:
+      typeof data.nativeProductionHeightPx === "number" ? data.nativeProductionHeightPx : undefined,
     approvedMaxPrintWidthInches:
       typeof data.approvedMaxPrintWidthInches === "number"
         ? data.approvedMaxPrintWidthInches

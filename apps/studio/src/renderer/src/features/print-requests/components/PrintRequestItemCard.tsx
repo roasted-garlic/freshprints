@@ -21,7 +21,12 @@ import {
   resolvePrintRequestItemPersistenceHealth,
   type PrintRequestItemPersistenceHealth,
 } from "@fresh-prints/shared/utils/printRequestItemPersistenceHealth";
+import {
+  resolveManualArtworkEnhanceDecision,
+  shouldOfferManualArtworkEnhanceAction,
+} from "@fresh-prints/shared/utils/manualArtworkEnhance";
 import type { UpdatePrintRequestItemInput } from "../services/printRequestService";
+import { enhancePrintRequestArtworkService } from "../services/enhancePrintRequestArtworkService";
 import { resolvePrintRequestItemArtworkBackground } from "../utils/resolvePrintRequestItemArtworkBackground";
 import {
   StandardPrintSizesModal,
@@ -43,6 +48,7 @@ export interface PrintRequestItemUploadSummary {
 }
 
 interface PrintRequestItemCardProps {
+  printRequestId: string;
   design?: Design;
   upload?: PrintRequestItemUploadSummary | null;
   item: PrintRequestItem;
@@ -59,6 +65,7 @@ interface PrintRequestItemCardProps {
   standardPrintSizesSettings: StandardPrintSizesSettings;
   /** When true, hides edit/remove/duplicate controls because the request is locked while queued to a show. */
   readOnly?: boolean;
+  onDesignArtworkEnhanced?: () => void | Promise<void>;
 }
 
 function resolveInitialWidth(item: PrintRequestItem): number {
@@ -140,6 +147,7 @@ function buildItemSignature(
 }
 
 export function PrintRequestItemCard({
+  printRequestId,
   design,
   upload = null,
   item,
@@ -151,6 +159,7 @@ export function PrintRequestItemCard({
   onRegisterFlush,
   readOnly,
   standardPrintSizesSettings,
+  onDesignArtworkEnhanced,
 }: PrintRequestItemCardProps) {
   const isUploadItem = item.sourceType === "customer_upload" || Boolean(item.customerUploadId);
   const sourcePill = resolvePrintRequestItemSourcePill({
@@ -197,6 +206,10 @@ export function PrintRequestItemCard({
   const saveQueuedRef = useRef(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isFailed, setIsFailed] = useState(false);
+  const [isEnhancing, setIsEnhancing] = useState(false);
+  const [enhanceMessage, setEnhanceMessage] = useState<string | null>(null);
+  const [enhanceError, setEnhanceError] = useState<string | null>(null);
+  const [isConfirmingCatalogEnhance, setIsConfirmingCatalogEnhance] = useState(false);
 
   useEffect(() => {
     const nextWidth = resolveInitialWidth(item);
@@ -252,6 +265,69 @@ export function PrintRequestItemCard({
     ? `print-requests-item-quality is-${sizeAssessment.qualityLevel}`
     : "print-requests-item-quality is-unavailable";
   const canSave = (sizeAssessment?.canSave ?? true) && parsedQuantity !== null;
+
+  const enhanceDecision = useMemo(() => {
+    if (!design || !aspectPixels || isUploadItem) {
+      return null;
+    }
+
+    return resolveManualArtworkEnhanceDecision({
+      currentWidthPx: aspectPixels.width,
+      currentHeightPx: aspectPixels.height,
+      upscalePassCount: design.upscalePassCount,
+      upscaleFactor: design.upscaleFactor,
+      nativeSourceWidthPx: design.nativeProductionWidthPx,
+      nativeSourceHeightPx: design.nativeProductionHeightPx,
+    });
+  }, [aspectPixels, design, isUploadItem]);
+
+  const showEnhanceAction =
+    enhanceDecision &&
+    shouldOfferManualArtworkEnhanceAction({
+      effectiveDpi: sizeAssessment?.effectiveDpi ?? 0,
+      enhanceDecision,
+    });
+
+  const showEnhanceWhenBlocked =
+    enhanceDecision?.status === "enhance" &&
+    sizeAssessment?.qualityLevel === "below_minimum";
+
+  async function handleEnhanceArtwork() {
+    if (!design || !printRequestId || isEnhancing) {
+      return;
+    }
+
+    if (!isConfirmingCatalogEnhance) {
+      setIsConfirmingCatalogEnhance(true);
+      return;
+    }
+
+    setIsEnhancing(true);
+    setEnhanceError(null);
+    setEnhanceMessage(null);
+
+    try {
+      const result = await enhancePrintRequestArtworkService.enhancePrintRequestArtwork({
+        printRequestId,
+        itemId: item.id,
+        confirmCatalogEnhance: true,
+      });
+
+      if (result.resultCode === "already_sufficient") {
+        setEnhanceMessage(result.message ?? "Artwork already meets the enhancement target.");
+      } else if (result.resultCode === "in_progress") {
+        setEnhanceMessage(result.message ?? "Enhancement is already in progress.");
+      } else {
+        setEnhanceMessage(result.message ?? "Artwork enhanced successfully.");
+        await onDesignArtworkEnhanced?.();
+      }
+      setIsConfirmingCatalogEnhance(false);
+    } catch (error) {
+      setEnhanceError(error instanceof Error ? error.message : "Unable to enhance artwork.");
+    } finally {
+      setIsEnhancing(false);
+    }
+  }
 
   useEffect(() => {
     return () => {
@@ -634,6 +710,58 @@ export function PrintRequestItemCard({
               <p className="auth-message auth-message-warning print-requests-item-field-error" role="status">
                 {sizeAssessment.warningMessage}
               </p>
+            ) : null}
+
+            {enhanceError ? (
+              <p className="auth-message auth-message-error print-requests-item-field-error" role="alert">
+                {enhanceError}
+              </p>
+            ) : enhanceMessage ? (
+              <p className="auth-message auth-message-success print-requests-item-field-error" role="status">
+                {enhanceMessage}
+              </p>
+            ) : null}
+
+            {showEnhanceAction || showEnhanceWhenBlocked ? (
+              <div className="print-requests-item-enhance-row">
+                {isConfirmingCatalogEnhance ? (
+                  <>
+                    <p className="print-requests-item-enhance-confirm-copy" role="status">
+                      Enhancing updates this catalog design for all future print requests.
+                    </p>
+                    <div className="print-requests-item-enhance-actions">
+                      <Button
+                        disabled={isEnhancing}
+                        onClick={() => void handleEnhanceArtwork()}
+                        size="sm"
+                        type="button"
+                        variant="primary"
+                      >
+                        {isEnhancing ? "Enhancing…" : "Confirm enhance"}
+                      </Button>
+                      <Button
+                        disabled={isEnhancing}
+                        onClick={() => setIsConfirmingCatalogEnhance(false)}
+                        size="sm"
+                        type="button"
+                        variant="ghost"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <Button
+                    disabled={isEnhancing}
+                    onClick={() => void handleEnhanceArtwork()}
+                    size="sm"
+                    type="button"
+                    variant="secondary"
+                  >
+                    Upscale artwork
+                  </Button>
+                )}
+              </div>
             ) : null}
 
             <div className="print-requests-item-editor-actions">

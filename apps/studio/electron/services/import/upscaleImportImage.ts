@@ -19,7 +19,7 @@ export interface UpscaleImportImageResult {
 
 /**
  * Upscales a PNG once under the shared image-quality policy (ADR-FP-080):
- * aspect-locked ~12″ target, ≤6.0×, never downsample. Returns original bytes
+ * aspect-locked ~15″ target, ≤6.0×, never downsample. Returns original bytes
  * when no upscale is needed.
  */
 export async function upscaleImportImageIfNeeded(

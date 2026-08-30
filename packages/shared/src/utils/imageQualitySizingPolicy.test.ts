@@ -18,7 +18,7 @@ import {
 } from "./imageQualitySizingPolicy";
 
 describe("resolveAspectLockedTargetInches (automated upscale target)", () => {
-  it("uses 12in width for square artwork", () => {
+  it("uses 15in width for square artwork", () => {
     const result = resolveAspectLockedTargetInches(3000, 3000);
     assert.equal(result.targetWidthInches, AUTOMATED_UPSCALE_TARGET_WIDTH_INCHES);
     assert.equal(result.targetHeightInches, AUTOMATED_UPSCALE_TARGET_WIDTH_INCHES);
@@ -71,24 +71,24 @@ describe("resolveControlledUpscale", () => {
     assert.equal(decision.upscalePassCount, 0);
   });
 
-  it("does not upscale a native 13in square (already above 12in target)", () => {
-    const px = 13 * TARGET_PRINT_DPI;
+  it("does not upscale a native 16in square (already above 15in target)", () => {
+    const px = 16 * TARGET_PRINT_DPI;
     const decision = resolveControlledUpscale(px, px);
     assert.equal(decision.wasUpscaled, false);
     assert.equal(decision.targetWidthPx, null);
   });
 
-  it("upscales a 6in square once at 2× toward 12in (not extended)", () => {
+  it("upscales a 6in square once at 2.5× toward 15in (not extended)", () => {
     const px = 6 * TARGET_PRINT_DPI;
     const decision = resolveControlledUpscale(px, px);
     assert.equal(decision.wasUpscaled, true);
     assert.equal(decision.upscalePassCount, 1);
-    assert.equal(decision.upscaleFactor, 2);
-    assert.equal(decision.targetWidthPx, 12 * TARGET_PRINT_DPI);
-    assert.equal(decision.sizingWarningCode, undefined);
+    assert.equal(decision.upscaleFactor, 2.5);
+    assert.equal(decision.targetWidthPx, 15 * TARGET_PRINT_DPI);
+    assert.equal(decision.sizingWarningCode, "EXTENDED_UPSCALE");
   });
 
-  it("caps a 300px-wide image at 6× (~6in), never reaches 12in", () => {
+  it("caps a 300px-wide image at 6× (~6in), never reaches 15in", () => {
     const decision = resolveControlledUpscale(300, 300);
     assert.equal(decision.wasUpscaled, true);
     assert.equal(decision.upscalePassCount, 1);
@@ -103,22 +103,22 @@ describe("resolveControlledUpscale", () => {
     assert.equal(meta.approvedMaxPrintWidthInches, 6);
   });
 
-  it("Achy Breaky regression: 641×597 → ~5.62× to ~12×11.18, one pass", () => {
+  it("Achy Breaky regression: 641×597 → capped at 6× toward 15in envelope, one pass", () => {
     const decision = resolveControlledUpscale(641, 597);
     assert.equal(decision.wasUpscaled, true);
     assert.equal(decision.upscalePassCount, 1);
-    assert.ok(decision.upscaleFactor > 5.6 && decision.upscaleFactor < 5.65);
-    assert.equal(decision.targetWidthPx, 3600);
-    assert.equal(decision.targetHeightPx, 3353);
-    assert.equal(decision.sizingWarningCode, "EXTENDED_UPSCALE");
+    assert.equal(decision.upscaleFactor, 6);
+    assert.equal(decision.targetWidthPx, 3846);
+    assert.equal(decision.targetHeightPx, 3582);
+    assert.equal(decision.sizingWarningCode, "TARGET_NOT_REACHED_UPSCALE_CAPPED");
 
     const meta = buildImageQualitySizingMetadata(
       decision.targetWidthPx!,
       decision.targetHeightPx!,
       decision,
     );
-    assert.ok(Math.abs(meta.approvedMaxPrintWidthInches - 12) < 0.02);
-    assert.ok(Math.abs(meta.approvedMaxPrintHeightInches - 11.18) < 0.02);
+    assert.ok(Math.abs(meta.approvedMaxPrintWidthInches - 12.82) < 0.05);
+    assert.ok(Math.abs(meta.approvedMaxPrintHeightInches - 11.94) < 0.05);
 
     const requestDefault = resolveDefaultPrintRequestSizeInches(
       decision.targetWidthPx!,
@@ -128,22 +128,22 @@ describe("resolveControlledUpscale", () => {
     assert.ok(Math.abs(requestDefault.targetHeightInches - 9.31) < 0.02);
   });
 
-  it("Best Christmas (~9.11×8.44) upscales ~1.32× toward 12in", () => {
+  it("Best Christmas (~9.11×8.44) upscales toward 15in", () => {
     const w = 2733;
     const h = 2531;
     const decision = resolveControlledUpscale(w, h);
     assert.equal(decision.wasUpscaled, true);
     assert.equal(decision.upscalePassCount, 1);
-    assert.ok(decision.upscaleFactor > 1.3 && decision.upscaleFactor < 1.35);
-    assert.ok(decision.targetWidthPx !== null && decision.targetWidthPx! >= 3590);
-    assert.ok(decision.targetWidthPx! <= 3610);
+    assert.ok(decision.upscaleFactor > 1.6 && decision.upscaleFactor < 1.7);
+    assert.ok(decision.targetWidthPx !== null && decision.targetWidthPx! >= 4490);
+    assert.ok(decision.targetWidthPx! <= 4510);
     const meta = buildImageQualitySizingMetadata(
       decision.targetWidthPx!,
       decision.targetHeightPx!,
       decision,
     );
-    assert.ok(Math.abs(meta.approvedMaxPrintWidthInches - 12) < 0.05);
-    assert.ok(Math.abs(meta.approvedMaxPrintHeightInches - 11.11) < 0.05);
+    assert.ok(Math.abs(meta.approvedMaxPrintWidthInches - 15) < 0.05);
+    assert.ok(Math.abs(meta.approvedMaxPrintHeightInches - 13.89) < 0.08);
     const requestDefault = resolveDefaultPrintRequestSizeInches(
       decision.targetWidthPx!,
       decision.targetHeightPx!,
@@ -161,8 +161,8 @@ describe("resolveControlledUpscale", () => {
     assert.ok(Math.abs(decision.nativeWidthAt300 - 9.22) < 0.02);
   });
 
-  it("skips upscale when within 5% of 12in target", () => {
-    const px = Math.round(11.5 * TARGET_PRINT_DPI);
+  it("skips upscale when within 5% of 15in target", () => {
+    const px = Math.round(14.4 * TARGET_PRINT_DPI);
     const decision = resolveControlledUpscale(px, px);
     assert.equal(decision.wasUpscaled, false);
     assert.equal(decision.sizingWarningCode, "NEAR_TARGET_SKIPPED");

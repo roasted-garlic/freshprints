@@ -41,9 +41,11 @@ export interface ControlledUpscaleDecision {
   aspectLockedTarget: AspectLockedTargetInches;
 }
 
+export type PersistedArtworkUpscalePassCount = 0 | 1 | 2;
+
 export interface ImageQualitySizingMetadata extends ApprovedMaxPrintSize {
   wasUpscaled: boolean;
-  upscalePassCount: 0 | 1;
+  upscalePassCount: PersistedArtworkUpscalePassCount;
   upscaleFactor: number;
   sizingPolicyVersion: typeof IMAGE_QUALITY_SIZING_POLICY_VERSION;
   sizingWarningCode?: ImageQualitySizingWarningCode;
@@ -275,8 +277,8 @@ export function buildImageQualitySizingMetadata(
   productionHeightPx: number,
   upscale: Pick<
     ControlledUpscaleDecision,
-    "wasUpscaled" | "upscalePassCount" | "upscaleFactor" | "sizingWarningCode"
-  >,
+    "wasUpscaled" | "upscaleFactor" | "sizingWarningCode"
+  > & { upscalePassCount: PersistedArtworkUpscalePassCount },
 ): ImageQualitySizingMetadata {
   const approved = calculateApprovedMaxPrintSize(productionWidthPx, productionHeightPx);
   return {

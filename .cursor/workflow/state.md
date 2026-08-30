@@ -3,21 +3,21 @@
 | Field | Value |
 |-------|-------|
 | Status | **ACTIVE** |
-| DONE | **no** (sizing goal — plan/review complete, implement pending) |
+| DONE | **no** (sizing goal — implement/test complete; deploy QA pending) |
 | Prior goal | `customer-account-identity-management-ws4-customer-activity-and-deep-linking` — **DONE** |
 | Active goal | `print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale` |
-| Phase | **review complete — STOP for owner approval** |
+| Phase | **test complete — STOP before DEV deploy** |
 | Plan Status | **complete** |
-| Review Status | **approved_with_changes** |
-| Implementation Status | **not started** |
-| Test Status | **n/a** (pre-implement) |
+| Review Status | **approved_with_changes** (owner acknowledged 2026-08-30) |
+| Implementation Status | **complete** |
+| Test Status | **passed_with_notes** |
 | Signoff Status | **n/a** |
 | Human Checkpoint Required | **no** |
 | Blocked | **no** |
 | Production | **NOT AUTHORIZED** |
 | Studio release | **NOT AUTHORIZED** |
 | Last updated | 2026-08-30 |
-| Last Completed Step | WS4 signoff + handoff refresh |
+| Last Completed Step | Sizing/upscale Git checkpoint (pending push) |
 
 ---
 
@@ -52,32 +52,35 @@
 |----------|------|
 | Plan | `docs/workflow/plans/2026-08-30-print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale-plan.md` |
 | Formal Review | `docs/workflow/reviews/2026-08-30-print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale-review.md` |
+| Test report | `docs/workflow/reviews/2026-08-30-print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale-test-report.md` |
+| Implementation review | `docs/workflow/reviews/2026-08-30-print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale-implementation-review.md` |
 
 ---
 
 ## Allowed Actions
 
-- Owner acknowledges Formal Review for sizing goal
-- Read docs; prepare implement phase after owner approval
-- Handoff maintenance
+- Owner authorize DEV Firebase deploy for `enhancePrintRequestArtwork`
+- Owner manual DEV QA
+- Signoff after QA pass
 
 ## Forbidden Actions
 
-- Implement sizing/upscale goal until owner approves review
+- DEV/production Firebase deploy without owner authorization
 - Smart Profiling work
 - Production deploy / Studio publish / Portal deploy
 - Customer identity production promotion
 
 ## Next Required Step
 
-**Owner:** Acknowledge Formal Review (`approved_with_changes`) for `print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale`, resolve `[NEEDS OWNER DECISION]` items, then authorize **Implement** phase.
+**Owner:** Authorize DEV Firebase deploy (`enhancePrintRequestArtwork` callable) and run manual QA checklist (implementation review doc).
 
 ---
 
 ## Decision Log
 
 - 2026-08-30: WS4 Owner DEV QA **PASS** → signoff **approved**; Customer Identity WS1–WS4 **complete on DEV**; production untouched.
-- 2026-08-30: Handoff package refreshed (`references/project-chatgpt-handoff/`).
+- 2026-08-30: DEV checkpoint `ecec8fc` pushed to `origin/development`.
+- 2026-08-30: Owner approved Formal Review + resolved all three sizing decisions → **implement complete**; tests **passed_with_notes**; **STOP before DEV Firebase deploy**.
 - 2026-08-30: Sizing/upscale goal Plan + Formal Review **approved_with_changes** — **STOP** before implement.
 - 2026-08-30: Roadmap sequencing — sizing goal **before** Smart Profiling (owner).
 - 2026-08-30: Show Queue Did Not Print recovery — owner DEV QA **PASS**; signoff **approved**.

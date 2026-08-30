@@ -1,13 +1,14 @@
 import {
   MIN_PRINT_REQUEST_EFFECTIVE_DPI,
   PRINT_INCHES_DECIMAL_PLACES,
+  STANDARD_PRINT_WIDTH_INCHES,
   TARGET_PRINT_DPI,
 } from "../constants/printSize.constants";
 import { deriveApprovedMaxPrintSizeFromPixels } from "./imageQualitySizingPolicy";
 import { calculateEffectiveDpi } from "./printSizeMath";
 
 export const MAX_STANDARD_PRINT_REQUEST_SIZE_INCHES = 22;
-export const STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES = 10;
+export const STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES = 11;
 
 export type PrintRequestItemDpiQualityLevel = "optimal" | "good" | "minimum" | "below_minimum";
 
@@ -169,14 +170,30 @@ export function resolveInitialPrintRequestItemSize(
   const maxWidthForMinDpi = roundInches(input.pixelWidth / MIN_PRINT_REQUEST_EFFECTIVE_DPI);
   const approvedMaxWidth = resolveApprovedMaxWidthInches(input);
 
+  // Small-format art keeps its native/source width. Otherwise use the standard 11″ target
+  // rather than legacy import-normalized width (often ~10″) as a physical-size cap.
+  const baselineWidthInches =
+    sourceWidth <= STANDARD_PRINT_WIDTH_INCHES
+      ? sourceWidth
+      : STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES;
+
+  // Ignore stale approved-max envelopes when pixels safely support the standard default.
+  let approvedMaxForClamp = approvedMaxWidth;
+  if (
+    approvedMaxForClamp !== null &&
+    approvedMaxForClamp < baselineWidthInches &&
+    maxWidthForMinDpi >= baselineWidthInches
+  ) {
+    approvedMaxForClamp = null;
+  }
+
   const printWidthInches = roundInches(
     Math.min(
-      sourceWidth,
-      STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES,
+      baselineWidthInches,
       MAX_STANDARD_PRINT_REQUEST_SIZE_INCHES,
       maxWidthForStandardHeight,
       maxWidthForMinDpi,
-      ...(approvedMaxWidth !== null ? [approvedMaxWidth] : []),
+      ...(approvedMaxForClamp !== null ? [approvedMaxForClamp] : []),
     ),
   );
 

@@ -72,7 +72,7 @@ export interface CustomerUploadProcessingSuccess {
   preNormalizationWidthPx: number;
   preNormalizationHeightPx: number;
   upscaleFactor: number;
-  upscalePassCount: 0 | 1;
+  upscalePassCount: 0 | 1 | 2;
   approvedMaxPrintWidthInches: number;
   approvedMaxPrintHeightInches: number;
   sizingPolicyVersion: string;
@@ -390,7 +390,7 @@ async function upscaleIfNeeded(
   height: number;
   wasUpscaled: boolean;
   upscaleFactor: number;
-  upscalePassCount: 0 | 1;
+  upscalePassCount: 0 | 1 | 2;
   sizingWarningCode?: string;
 }> {
   const decision = resolveImportUpscaleDecision(width, height);
