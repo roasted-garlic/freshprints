@@ -482,13 +482,17 @@ function resolveDesignPixelDimensions(design: Awaited<ReturnType<typeof designSe
   return { pixelWidth: design.width, pixelHeight: design.height };
 }
 
-function resolveDefaultRequestedSize(design: Awaited<ReturnType<typeof designService.getDesignById>>) {
+function resolveDefaultRequestedSize(
+  design: Awaited<ReturnType<typeof designService.getDesignById>>,
+  printRequestDefaultWidthInches?: number,
+) {
   const { pixelWidth, pixelHeight } = resolveDesignPixelDimensions(design);
 
   return resolveInitialPrintRequestItemSize({
     pixelWidth,
     pixelHeight,
     defaultPrintWidthInches: design.printWidthInches,
+    printRequestDefaultWidthInches,
   });
 }
 
@@ -496,13 +500,14 @@ function resolveRequestedItemSize(
   design: Awaited<ReturnType<typeof designService.getDesignById>>,
   input: { printWidthInches?: number; printHeightInches?: number },
   current?: Pick<PrintRequestItem, "printWidthInches" | "printHeightInches">,
+  printRequestDefaultWidthInches?: number,
 ) {
   const fallbackSize = current?.printWidthInches && current.printHeightInches
     ? {
         printWidthInches: current.printWidthInches,
         printHeightInches: current.printHeightInches,
       }
-    : resolveDefaultRequestedSize(design);
+    : resolveDefaultRequestedSize(design, printRequestDefaultWidthInches);
   const printWidthInches = input.printWidthInches ?? fallbackSize.printWidthInches;
   const printHeightInches = input.printHeightInches ?? fallbackSize.printHeightInches;
   const { pixelWidth, pixelHeight } = resolveDesignPixelDimensions(design);
@@ -1644,7 +1649,7 @@ export const printRequestService = {
     caller: User,
     printRequestId: string,
     input: CreatePrintRequestItemInput,
-    options?: { existingItems?: PrintRequestItem[] },
+    options?: { existingItems?: PrintRequestItem[]; printRequestDefaultWidthInches?: number },
   ): Promise<PrintRequestItem> {
     if (!permissionService.canManagePrintRequestItems(caller)) {
       throw new Error("You do not have permission to add print request items.");
@@ -1750,7 +1755,12 @@ export const printRequestService = {
     }
 
     const design = await loadPrintableDesign(caller, designId!);
-    const requestedSize = resolveRequestedItemSize(design, input);
+    const requestedSize = resolveRequestedItemSize(
+      design,
+      input,
+      undefined,
+      options?.printRequestDefaultWidthInches,
+    );
     const payload = withoutUndefinedFields({
       id: itemRef.id,
       printRequestId,
@@ -2124,6 +2134,7 @@ export const printRequestService = {
     caller: User,
     printRequestId: string,
     selections: PrintRequestDesignSelectionInput[],
+    options?: { printRequestDefaultWidthInches?: number },
   ): Promise<void> {
     if (!permissionService.canManagePrintRequestItems(caller)) {
       throw new Error("You do not have permission to manage print request items.");
@@ -2169,7 +2180,10 @@ export const printRequestService = {
           designId: write.designId,
           quantity: write.quantity,
         },
-        { existingItems: currentItems },
+        {
+          existingItems: currentItems,
+          printRequestDefaultWidthInches: options?.printRequestDefaultWidthInches,
+        },
       );
       currentItems.push(created);
     }

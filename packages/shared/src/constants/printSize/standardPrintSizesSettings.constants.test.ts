@@ -213,3 +213,29 @@ test("printInchesMatchAtPresetPrecision rounds consistently", () => {
 test("Left Chest Adult 3XL width matches approved table", () => {
   assert.equal(findPreset("left_chest.adult.3xl")?.widthInches, 4.25);
 });
+
+test("resolveStandardPrintSizesSettings reads defaultPrintRequestWidthInches when valid", () => {
+  const resolved = resolveStandardPrintSizesSettings({
+    defaultPrintRequestWidthInches: 10.5,
+    placements: DEFAULT_STANDARD_PRINT_SIZES_SETTINGS.placements,
+  });
+  assert.equal(resolved.defaultPrintRequestWidthInches, 10.5);
+});
+
+test("parseStandardPrintSizesSettingsInput rejects invalid defaultPrintRequestWidthInches", () => {
+  const invalid = parseStandardPrintSizesSettingsInput({
+    defaultPrintRequestWidthInches: 0,
+    placements: DEFAULT_STANDARD_PRINT_SIZES_SETTINGS.placements,
+  });
+  assert.equal(invalid, null);
+});
+
+test("parseStandardPrintSizesSettingsInput round-trips decimal default width", () => {
+  const parsed = parseStandardPrintSizesSettingsInput({
+    version: 1,
+    defaultPrintRequestWidthInches: 11.5,
+    placements: DEFAULT_STANDARD_PRINT_SIZES_SETTINGS.placements,
+  });
+  assert.ok(parsed);
+  assert.equal(parsed?.defaultPrintRequestWidthInches, 11.5);
+});

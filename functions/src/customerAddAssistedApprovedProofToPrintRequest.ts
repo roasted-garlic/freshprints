@@ -24,7 +24,7 @@ import type { AssistedCreationProof } from "../../packages/shared/src/types/assi
 import { CUSTOMER_UPLOAD_TERMS_VERSION } from "../../packages/shared/src/types/customerUpload/customerUpload.types";
 import { evaluateAssistedApprovedProofAddToRequest } from "../../packages/shared/src/utils/assistedCreationApprovedProofAddToRequest";
 import { formatFileSize } from "../../packages/shared/src/utils/formatFileSize";
-import { resolveInitialPrintRequestItemSize } from "../../packages/shared/src/utils/printRequestItemSizing";
+import { resolveInitialPrintRequestItemSize, resolvePrintRequestDefaultWidthInches } from "../../packages/shared/src/utils/printRequestItemSizing";
 
 import { adminDb, adminStorage } from "./lib/admin";
 import {
@@ -49,6 +49,7 @@ import {
 import { buildCatalogIntakeConfirmationPatch } from "./lib/customerUploadCatalogConfirmation";
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
 import { loadPrintRequestLimitSettings } from "./lib/loadPrintRequestLimitSettings";
+import { loadStandardPrintSizesSettings } from "./lib/loadStandardPrintSizesSettings";
 import { requirePortalCustomer, type PortalCustomerContext } from "./lib/portalCustomer";
 import { assertWorkingRequestAllowsPrintAdds } from "./lib/printRequestWorkingRequestMax";
 import { resolveOrCreateWorkingPrintRequestInTransaction } from "./lib/portalWorkingPrintRequest";
@@ -65,14 +66,17 @@ function mapHttpsError(error: unknown): never {
   throw internal("Unable to add this design to your request right now.");
 }
 
-function resolveAttachPrintSize(upload: {
+function resolveAttachPrintSize(
+  upload: {
   widthPx?: unknown;
   heightPx?: unknown;
   printWidthInches?: unknown;
   printHeightInches?: unknown;
   approvedMaxPrintWidthInches?: unknown;
   approvedMaxPrintHeightInches?: unknown;
-}): { printWidthInches?: number; printHeightInches?: number } {
+},
+  printRequestDefaultWidthInches?: number,
+): { printWidthInches?: number; printHeightInches?: number } {
   const widthPx = typeof upload.widthPx === "number" ? upload.widthPx : null;
   const heightPx = typeof upload.heightPx === "number" ? upload.heightPx : null;
   const defaultPrintWidthInches =
@@ -84,6 +88,7 @@ function resolveAttachPrintSize(upload: {
         pixelWidth: widthPx,
         pixelHeight: heightPx,
         defaultPrintWidthInches,
+        printRequestDefaultWidthInches,
         approvedMaxPrintWidthInches:
           typeof upload.approvedMaxPrintWidthInches === "number"
             ? upload.approvedMaxPrintWidthInches
@@ -194,8 +199,14 @@ export const customerAddAssistedApprovedProofToPrintRequest = onCall(
       const portalCustomer = await requirePortalCustomer(request.auth.uid);
       const payload = validateRequest(request.data);
       const customerUid = request.auth.uid;
-      const settings = await loadPrintRequestLimitSettings();
-      const maxPerRequest = settings.maxQuantityPerPrintRequest;
+      const [limitSettings, standardPrintSizesSettings] = await Promise.all([
+        loadPrintRequestLimitSettings(),
+        loadStandardPrintSizesSettings(),
+      ]);
+      const printRequestDefaultWidthInches = resolvePrintRequestDefaultWidthInches(
+        standardPrintSizesSettings,
+      );
+      const maxPerRequest = limitSettings.maxQuantityPerPrintRequest;
       const assistedRef = adminDb.collection(ASSISTED_CREATION_COLLECTION).doc(payload.requestId);
 
       const assistedSnap = await assistedRef.get();
@@ -274,6 +285,7 @@ export const customerAddAssistedApprovedProofToPrintRequest = onCall(
             catalogUseAcknowledged: payload.catalogUseAcknowledged,
             uploadSnap,
             maxPerRequest,
+            printRequestDefaultWidthInches,
           });
         }
 
@@ -358,7 +370,7 @@ export const customerAddAssistedApprovedProofToPrintRequest = onCall(
         printHeightInches: processed.printHeightInches,
         approvedMaxPrintWidthInches: processed.approvedMaxPrintWidthInches,
         approvedMaxPrintHeightInches: processed.approvedMaxPrintHeightInches,
-      });
+      }, printRequestDefaultWidthInches);
 
       let printRequestId = "";
       let printRequestItemId = "";
@@ -562,6 +574,7 @@ async function ensureIngestOnWorkingRequest(input: {
   catalogUseAcknowledged: boolean;
   uploadSnap: DocumentSnapshot;
   maxPerRequest: number;
+  printRequestDefaultWidthInches: number;
 }): Promise<CustomerAddAssistedApprovedProofToPrintRequestResponse> {
   const {
     portalCustomer,
@@ -571,6 +584,7 @@ async function ensureIngestOnWorkingRequest(input: {
     catalogUseAcknowledged,
     uploadSnap,
     maxPerRequest,
+    printRequestDefaultWidthInches,
   } = input;
 
   const upload = uploadSnap.data() ?? {};
@@ -687,7 +701,7 @@ async function ensureIngestOnWorkingRequest(input: {
       typeof upload.originalFilename === "string" && upload.originalFilename.trim()
         ? upload.originalFilename.trim()
         : input.uploadTitleFallback;
-    const printSize = resolveAttachPrintSize(upload);
+    const printSize = resolveAttachPrintSize(upload, printRequestDefaultWidthInches);
 
     assertWorkingRequestAllowsPrintAdds({
       currentPrintCount,

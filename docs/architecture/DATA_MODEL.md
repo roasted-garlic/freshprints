@@ -1201,6 +1201,17 @@ export interface PrintRequestItem {
 }
 ```
 
+**Proposed (2026-08-30 amendment — not implemented):** Interactive upscale toggle per item:
+
+- `artworkEnhanceMode?: 'baseline' | 'enhanced'` — absent ≡ baseline OFF
+- `preEnhancePrintWidthInches?`, `preEnhancePrintHeightInches?` — captured on first successful ON; restored on OFF
+
+**Proposed (2026-08-30 — configurable default width):** On `settings/standardPrintSizes` (`StandardPrintSizesSettings`):
+
+- `defaultPrintRequestWidthInches?: number` — global operational default for **new** item init only; fallback 11″ when absent; owner-writable via `updateStandardPrintSizesSettings`; signed-in read (Portal presets + default).
+
+Asset documents (`designs`, `customerUploads`) gain additive interactive-derivative path + provenance fields; see plan amendment. Callable-only writes for toggle mode. No migration — legacy items default OFF.
+
 **Source model (ADR-FP-073):** Catalog-backed items remain the default. Sub-phase C attaches upload-backed items via Admin callable (`confirmCustomerUploadsAndAttachToRequest`) with `sourceType: customer_upload`, non-empty `customerUploadId`, and **no `designId` field**. Client create of print request items remains catalog/`designId`+ready only. Sub-phase D makes show/gang/export resolvers source-aware. Do not increment `designs.requestCount` for customer-upload-only items. Until D, `queuePortalPrintRequestToShow` fail-closes if any item is upload-backed.
 
 Standard Print Request item sizing rules:

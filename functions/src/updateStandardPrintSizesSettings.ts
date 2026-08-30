@@ -31,6 +31,9 @@ export const updateStandardPrintSizesSettings = onCall(
     await adminDb.collection("settings").doc(STANDARD_PRINT_SIZES_SETTINGS_DOC_ID).set({
       version: parsed.version,
       placements: parsed.placements,
+      ...(parsed.defaultPrintRequestWidthInches !== undefined
+        ? { defaultPrintRequestWidthInches: parsed.defaultPrintRequestWidthInches }
+        : {}),
       updatedBy: request.auth.uid,
       updatedAt: FieldValue.serverTimestamp(),
     });

@@ -10,12 +10,33 @@ import { calculateEffectiveDpi } from "./printSizeMath";
 export const MAX_STANDARD_PRINT_REQUEST_SIZE_INCHES = 22;
 export const STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES = 11;
 
+export function isValidPrintRequestDefaultWidthInches(value: unknown): value is number {
+  return (
+    typeof value === "number" &&
+    Number.isFinite(value) &&
+    value > 0 &&
+    value <= MAX_STANDARD_PRINT_REQUEST_SIZE_INCHES
+  );
+}
+
+export function resolvePrintRequestDefaultWidthInches(
+  settings?: { defaultPrintRequestWidthInches?: number } | null,
+): number {
+  const raw = settings?.defaultPrintRequestWidthInches;
+  if (isValidPrintRequestDefaultWidthInches(raw)) {
+    return roundInches(raw);
+  }
+  return STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES;
+}
+
 export type PrintRequestItemDpiQualityLevel = "optimal" | "good" | "minimum" | "below_minimum";
 
 export interface InitialPrintRequestItemSizeInput {
   pixelWidth: number;
   pixelHeight: number;
   defaultPrintWidthInches?: number;
+  /** Studio/Portal runtime default from settings/standardPrintSizes (snapshot-at-create). */
+  printRequestDefaultWidthInches?: number;
   /** Per-asset approved max width (ADR-FP-080). Derived from pixels when omitted. */
   approvedMaxPrintWidthInches?: number;
   approvedMaxPrintHeightInches?: number;
@@ -170,12 +191,16 @@ export function resolveInitialPrintRequestItemSize(
   const maxWidthForMinDpi = roundInches(input.pixelWidth / MIN_PRINT_REQUEST_EFFECTIVE_DPI);
   const approvedMaxWidth = resolveApprovedMaxWidthInches(input);
 
-  // Small-format art keeps its native/source width. Otherwise use the standard 11″ target
-  // rather than legacy import-normalized width (often ~10″) as a physical-size cap.
+  const configuredDefaultWidthInches = resolvePrintRequestDefaultWidthInches({
+    defaultPrintRequestWidthInches: input.printRequestDefaultWidthInches,
+  });
+
+  // Small-format art keeps its native/source width. Otherwise use the configured runtime
+  // default (fallback 11″) rather than legacy import-normalized width (often ~10″).
   const baselineWidthInches =
     sourceWidth <= STANDARD_PRINT_WIDTH_INCHES
       ? sourceWidth
-      : STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES;
+      : configuredDefaultWidthInches;
 
   // Ignore stale approved-max envelopes when pixels safely support the standard default.
   let approvedMaxForClamp = approvedMaxWidth;

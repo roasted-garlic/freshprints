@@ -10,7 +10,12 @@ import {
   type StandardPrintSizePlacementConfig,
   type StandardPrintSizePresetKey,
   type StandardPrintSizesSettings,
-} from "@fresh-prints/shared/constants/printSize/standardPrintSizesSettings.constants";import { Button } from "../../../shared/components/Button";
+} from "@fresh-prints/shared/constants/printSize/standardPrintSizesSettings.constants";
+import {
+  resolvePrintRequestDefaultWidthInches,
+  STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES,
+} from "@fresh-prints/shared/utils/printRequestItemSizing";
+import { Button } from "../../../shared/components/Button";
 import { Checkbox } from "../../../shared/components/Checkbox";
 import { useStandardPrintSizesSettings } from "../hooks/useStandardPrintSizesSettings";
 
@@ -51,6 +56,7 @@ function parsePresetWidthInput(value: string): number | null {
 function cloneSettings(settings: StandardPrintSizesSettings): StandardPrintSizesSettings {
   return {
     version: settings.version,
+    defaultPrintRequestWidthInches: settings.defaultPrintRequestWidthInches,
     placements: settings.placements.map((placement) => ({
       ...placement,
       groups: placement.groups.map((group) => ({
@@ -127,6 +133,77 @@ export function StandardPrintSizesSettingsSection() {
       </header>
 
       <div className="settings-form-grid">
+        <fieldset className="settings-quota-fieldset standard-print-sizes-default-width">
+          <legend>Default Print Request Width</legend>
+          <p className="settings-section-description">
+            Used for new items added to Print Requests. Existing items are not resized when this
+            value changes.
+          </p>
+          <label className="standard-print-sizes-settings-preset-row" htmlFor="default-print-request-width">
+            <span className="standard-print-sizes-settings-preset-label">Width (inches)</span>
+            <div className="print-requests-item-stepper">
+              <button
+                aria-label="Decrease default print request width"
+                className="print-requests-item-stepper-button"
+                disabled={isSaving}
+                onClick={() =>
+                  setDraft((current) => ({
+                    ...current,
+                    defaultPrintRequestWidthInches: stepPresetWidth(
+                      resolvePrintRequestDefaultWidthInches(current),
+                      -STANDARD_PRINT_SIZE_WIDTH_STEP_INCHES,
+                    ),
+                  }))
+                }
+                type="button"
+              >
+                <Minus aria-hidden size={14} strokeWidth={2} />
+              </button>
+              <input
+                aria-label="Default print request width in inches"
+                className="print-requests-number-input print-requests-item-stepper-input"
+                disabled={isSaving}
+                id="default-print-request-width"
+                inputMode="decimal"
+                name="default-print-request-width"
+                onChange={(event) => {
+                  const nextWidth = parsePresetWidthInput(event.target.value);
+                  if (nextWidth === null) {
+                    return;
+                  }
+                  setDraft((current) => ({
+                    ...current,
+                    defaultPrintRequestWidthInches: nextWidth,
+                  }));
+                }}
+                onFocus={(event) => event.currentTarget.select()}
+                type="text"
+                value={resolvePrintRequestDefaultWidthInches(draft)}
+              />
+              <button
+                aria-label="Increase default print request width"
+                className="print-requests-item-stepper-button"
+                disabled={isSaving}
+                onClick={() =>
+                  setDraft((current) => ({
+                    ...current,
+                    defaultPrintRequestWidthInches: stepPresetWidth(
+                      resolvePrintRequestDefaultWidthInches(current),
+                      STANDARD_PRINT_SIZE_WIDTH_STEP_INCHES,
+                    ),
+                  }))
+                }
+                type="button"
+              >
+                <Plus aria-hidden size={14} strokeWidth={2} />
+              </button>
+            </div>
+          </label>
+          <p className="settings-section-description">
+            Fallback when unset: {STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES} inches.
+          </p>
+        </fieldset>
+
         <div className="standard-print-sizes-settings-grid">
           {draft.placements.map((placement) => (
             <article

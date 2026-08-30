@@ -4,7 +4,8 @@ import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { CUSTOMER_UPLOAD_COLLECTIONS } from "../../packages/shared/src/constants/customerUpload/customerUploadCollections.constants";
 import type { ConfirmCustomerUploadsAndAttachToRequestResponse } from "../../packages/shared/src/types/customerUpload/confirmCustomerUploadAttach.types";
 import { CUSTOMER_UPLOAD_TERMS_VERSION } from "../../packages/shared/src/types/customerUpload/customerUpload.types";
-import { resolveInitialPrintRequestItemSize } from "../../packages/shared/src/utils/printRequestItemSizing";
+import { resolveInitialPrintRequestItemSize, resolvePrintRequestDefaultWidthInches } from "../../packages/shared/src/utils/printRequestItemSizing";
+
 import { resolveCustomerUploadPurpose } from "../../packages/shared/src/utils/customerUploadPurpose";
 
 import { adminDb } from "./lib/admin";
@@ -19,6 +20,7 @@ import {
 } from "./lib/errors";
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
 import { loadPrintRequestLimitSettings } from "./lib/loadPrintRequestLimitSettings";
+import { loadStandardPrintSizesSettings } from "./lib/loadStandardPrintSizesSettings";
 import { requirePortalCustomer } from "./lib/portalCustomer";
 import { assertWorkingRequestAllowsPrintAdds } from "./lib/printRequestWorkingRequestMax";
 import { resolveOrCreateWorkingPrintRequestInTransaction } from "./lib/portalWorkingPrintRequest";
@@ -34,7 +36,10 @@ function mapHttpsError(error: unknown): never {
   throw internal("Unable to attach uploads right now.");
 }
 
-function resolveAttachPrintSize(upload: Record<string, unknown>): {
+function resolveAttachPrintSize(
+  upload: Record<string, unknown>,
+  printRequestDefaultWidthInches?: number,
+): {
   printWidthInches?: number;
   printHeightInches?: number;
 } {
@@ -49,6 +54,7 @@ function resolveAttachPrintSize(upload: Record<string, unknown>): {
         pixelWidth: widthPx,
         pixelHeight: heightPx,
         defaultPrintWidthInches,
+        printRequestDefaultWidthInches,
         approvedMaxPrintWidthInches:
           typeof upload.approvedMaxPrintWidthInches === "number"
             ? upload.approvedMaxPrintWidthInches
@@ -131,8 +137,14 @@ export const confirmCustomerUploadsAndAttachToRequest = onCall(
       const attachedItemIds: string[] = [];
       const reusedItemIds: string[] = [];
       let printRequestId = "";
-      const settings = await loadPrintRequestLimitSettings();
-      const maxPerRequest = settings.maxQuantityPerPrintRequest;
+      const [limitSettings, standardPrintSizesSettings] = await Promise.all([
+        loadPrintRequestLimitSettings(),
+        loadStandardPrintSizesSettings(),
+      ]);
+      const printRequestDefaultWidthInches = resolvePrintRequestDefaultWidthInches(
+        standardPrintSizesSettings,
+      );
+      const maxPerRequest = limitSettings.maxQuantityPerPrintRequest;
 
       await adminDb.runTransaction(async (tx) => {
         const resolved = await resolveOrCreateWorkingPrintRequestInTransaction(tx, {
@@ -228,7 +240,7 @@ export const confirmCustomerUploadsAndAttachToRequest = onCall(
             typeof upload.originalFilename === "string" && upload.originalFilename.trim()
               ? upload.originalFilename.trim()
               : "Uploaded artwork";
-          const printSize = resolveAttachPrintSize(upload);
+          const printSize = resolveAttachPrintSize(upload, printRequestDefaultWidthInches);
 
           tx.set(
             itemRef,

@@ -5,6 +5,9 @@ import {
   assessPrintRequestItemSize,
   calculateLockedHeightFromWidth,
   calculateLockedWidthFromHeight,
+  resolveInitialPrintRequestItemSize,
+  resolvePrintRequestDefaultWidthInches,
+  STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES,
 } from "./printRequestItemSizing";
 
 describe("assessPrintRequestItemSize", () => {
@@ -145,5 +148,78 @@ describe("assessPrintRequestItemSize", () => {
     const widthFromHeight = calculateLockedWidthFromHeight(pixelWidth, pixelHeight, heightFromWidth);
     assert.equal(heightFromWidth, 21.1);
     assert.equal(widthFromHeight, 14);
+  });
+});
+
+describe("resolvePrintRequestDefaultWidthInches", () => {
+  it("falls back to 11 inches when setting is absent", () => {
+    assert.equal(resolvePrintRequestDefaultWidthInches({}), 11);
+    assert.equal(resolvePrintRequestDefaultWidthInches(undefined), 11);
+    assert.equal(STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES, 11);
+  });
+
+  it("resolves 10.5, 11, and 11.5 when valid", () => {
+    assert.equal(
+      resolvePrintRequestDefaultWidthInches({ defaultPrintRequestWidthInches: 10.5 }),
+      10.5,
+    );
+    assert.equal(
+      resolvePrintRequestDefaultWidthInches({ defaultPrintRequestWidthInches: 11 }),
+      11,
+    );
+    assert.equal(
+      resolvePrintRequestDefaultWidthInches({ defaultPrintRequestWidthInches: 11.5 }),
+      11.5,
+    );
+  });
+
+  it("falls back when persisted value is invalid", () => {
+    assert.equal(
+      resolvePrintRequestDefaultWidthInches({ defaultPrintRequestWidthInches: -1 }),
+      11,
+    );
+    assert.equal(
+      resolvePrintRequestDefaultWidthInches({ defaultPrintRequestWidthInches: 99 }),
+      11,
+    );
+  });
+});
+
+describe("resolveInitialPrintRequestItemSize runtime default", () => {
+  const legacyDesign = {
+    pixelWidth: 3600,
+    pixelHeight: 1800,
+    defaultPrintWidthInches: 10,
+  };
+
+  it("uses configured runtime default instead of hardcoded 11 only as fallback", () => {
+    const atDefault = resolveInitialPrintRequestItemSize({
+      ...legacyDesign,
+      printRequestDefaultWidthInches: 11,
+    });
+    const atTenFive = resolveInitialPrintRequestItemSize({
+      ...legacyDesign,
+      printRequestDefaultWidthInches: 10.5,
+    });
+    assert.equal(atDefault.printWidthInches, 11);
+    assert.equal(atTenFive.printWidthInches, 10.5);
+  });
+
+  it("does not force invalid sizes when runtime default exceeds DPI safety", () => {
+    const size = resolveInitialPrintRequestItemSize({
+      pixelWidth: 2000,
+      pixelHeight: 2000,
+      defaultPrintWidthInches: 10,
+      printRequestDefaultWidthInches: 11.5,
+    });
+    assert.ok(size.printWidthInches < 11.5);
+    const assessment = assessPrintRequestItemSize({
+      pixelWidth: 2000,
+      pixelHeight: 2000,
+      printWidthInches: size.printWidthInches,
+      printHeightInches: size.printHeightInches,
+    });
+    assert.equal(assessment.canSave, true);
+    assert.ok(assessment.effectiveDpi >= 200);
   });
 });

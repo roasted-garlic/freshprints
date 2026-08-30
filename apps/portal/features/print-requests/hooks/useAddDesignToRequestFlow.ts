@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { PrintRequest } from '@fresh-prints/shared/types/printRequest/printRequest.types';
 import type { PrintRequestItem } from '@fresh-prints/shared/types/printRequest/printRequest.types';
@@ -11,6 +11,7 @@ import { clampItemQuantityToWorkingRequestMax } from '@fresh-prints/shared/utils
 import {
   formatPrintRequestItemSizeLabel,
   resolveInitialPrintRequestItemSize,
+  resolvePrintRequestDefaultWidthInches,
 } from '@fresh-prints/shared/utils/printRequestItemSizing';
 
 import { useAuth } from '../../auth/context/AuthContext';
@@ -19,6 +20,7 @@ import { catalogService } from '../../catalog/services/catalogService';
 import type { CatalogDesign } from '../../catalog/types/catalog.types';
 import { usePortalToast } from '../../shared/context/PortalToastContext';
 import { usePortalPrintRequests } from '../context/PortalPrintRequestContext';
+import { usePortalStandardPrintSizes } from './usePortalStandardPrintSizes';
 import { portalPrintRequestService } from '../services/portalPrintRequestService';
 import { excludeDesignsInWorkingItems } from '../utils/companionSuggestionWorkingItemsFilter';
 import { mapPortalPrintRequestCallableError } from '../utils/mapPortalPrintRequestCallableError';
@@ -73,7 +75,10 @@ function toSeedDesignSummary(design: CatalogDesign) {
   };
 }
 
-function resolveOptimisticPrintSize(design: CatalogDesign): {
+function resolveOptimisticPrintSize(
+  design: CatalogDesign,
+  printRequestDefaultWidthInches?: number,
+): {
   printWidthInches: number;
   printHeightInches: number;
   sizeLabel: string;
@@ -91,6 +96,7 @@ function resolveOptimisticPrintSize(design: CatalogDesign): {
       pixelWidth: design.width,
       pixelHeight: design.height,
       defaultPrintWidthInches: design.printWidthInches,
+      printRequestDefaultWidthInches,
     });
     return {
       printWidthInches: size.printWidthInches,
@@ -153,6 +159,11 @@ export function useAddDesignToRequestFlow({
 }: UseAddDesignToRequestFlowOptions) {
   const router = useRouter();
   const { firebaseUser } = useAuth();
+  const { settings: standardPrintSizesSettings } = usePortalStandardPrintSizes();
+  const printRequestDefaultWidthInches = useMemo(
+    () => resolvePrintRequestDefaultWidthInches(standardPrintSizesSettings),
+    [standardPrintSizesSettings],
+  );
   const { showSuccess } = usePortalToast();
   const {
     ensureDesignSummaries,
@@ -340,7 +351,9 @@ export function useAddDesignToRequestFlow({
           toMillis: () => nowMs,
         } as PrintRequestItem['createdAt'];
 
-        const optimisticSize = catalogDesign ? resolveOptimisticPrintSize(catalogDesign) : null;
+        const optimisticSize = catalogDesign
+          ? resolveOptimisticPrintSize(catalogDesign, printRequestDefaultWidthInches)
+          : null;
 
         const optimisticItem: PrintRequestItem = {
           id: `optimistic:${designId}`,
@@ -365,7 +378,7 @@ export function useAddDesignToRequestFlow({
         return [optimisticItem, ...items];
       });
     },
-    [patchItemsAndSnapshot],
+    [patchItemsAndSnapshot, printRequestDefaultWidthInches],
   );
 
   const flushDesiredQuantity = useCallback(

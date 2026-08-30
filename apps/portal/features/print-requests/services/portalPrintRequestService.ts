@@ -1013,6 +1013,7 @@ export const portalPrintRequestService = {
     printRequestId: string;
     userId: string;
     selections: Array<{ designId: string; quantity: number }>;
+    printRequestDefaultWidthInches?: number;
   }): Promise<void> {
     const normalizedSelections = input.selections
       .map((selection) => ({
@@ -1072,6 +1073,7 @@ export const portalPrintRequestService = {
         pixelWidth: design.width,
         pixelHeight: design.height,
         defaultPrintWidthInches: design.printWidthInches,
+        printRequestDefaultWidthInches: input.printRequestDefaultWidthInches,
       });
       const existingItem = currentItems.find(
         (item) => item.designId === selection.designId && requestedSizesMatch(item, requestedSize),

@@ -3286,6 +3286,18 @@ Embedded DPI metadata is unreliable for print quality. Imports previously upscal
 4. **`MAX_UPSCALE_PASSES = 1`** unchanged for automated import — manual second pass is an explicit exception, not a global pass-count increase.
 5. **`PREFERRED_PRINT_WIDTH_INCHES` / `DEFAULT_PRINT_REQUEST_WIDTH_INCHES`** remain **10″** for import messaging and `resolveDefaultPrintRequestSizeInches` — distinct from the 11″ Print Request initializer.
 
+**Pending amendment (2026-08-30 — owner correction, not yet implemented):**
+
+1. **Interactive enhancement** becomes a **per-asset one-time non-destructive derivative** + **per-request-item ON/OFF toggle** (baseline preserved); supersedes destructive overwrite in `enhancePrintRequestArtworkCore`.
+2. **No customer usage quota** on interactive enhancement; security via auth, idempotency, and per-asset processing lock only.
+3. **Studio + Portal**; **`catalog_design` + `customer_upload`**; interactive target is **request-driven** (~300 DPI at selected print size), not fixed 15″.
+4. **Cumulative ≤6× from native** remains authoritative; `wasUpscaled` alone does not imply ineligibility.
+5. Implement only after Formal Review amendment passes — see review amendment.
+
+**Pending amendment (2026-08-30 — WS-CONFIG-DEFAULT, not yet implemented):**
+
+1. **Print Request default width** becomes a persisted Studio setting (`settings/standardPrintSizes.defaultPrintRequestWidthInches`, initial value 11″), snapshot-at-create for new items only; `STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES` remains fallback when setting absent.
+
 ---
 
 ### ADR-FP-079: Working-tab triage, rail search, and soft-archive clear

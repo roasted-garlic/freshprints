@@ -50,6 +50,8 @@ export interface StandardPrintSizePlacementConfig {
 export interface StandardPrintSizesSettings {
   version: 1;
   placements: StandardPrintSizePlacementConfig[];
+  /** Runtime default width for new generic Print Request items (snapshot-at-create). */
+  defaultPrintRequestWidthInches?: number;
   updatedAt?: unknown;
   updatedBy?: string;
 }
@@ -443,6 +445,10 @@ function isValidPresetWidth(value: unknown): value is number {
   );
 }
 
+export function isValidDefaultPrintRequestWidthInches(value: unknown): value is number {
+  return isValidPresetWidth(value) && value > 0;
+}
+
 function resolvePreset(raw: unknown, fallback: StandardPrintSizePreset): StandardPrintSizePreset {
   if (!raw || typeof raw !== "object") {
     return fallback;
@@ -543,6 +549,9 @@ export function resolveStandardPrintSizesSettings(value: unknown): StandardPrint
     resolvePlacement(rawPlacementsById.get(fallbackPlacement.id), fallbackPlacement),
   );
   const settings: StandardPrintSizesSettings = { version: 1, placements };
+  if (isValidDefaultPrintRequestWidthInches(data.defaultPrintRequestWidthInches)) {
+    settings.defaultPrintRequestWidthInches = roundInches(data.defaultPrintRequestWidthInches);
+  }
   if (data.updatedAt !== undefined) {
     settings.updatedAt = data.updatedAt;
   }
@@ -706,6 +715,14 @@ function validateRawStandardPrintSizesSettingsInput(value: unknown): boolean {
         }
       }
     }
+  }
+  const defaultWidth = (value as Record<string, unknown>).defaultPrintRequestWidthInches;
+  if (
+    defaultWidth !== undefined &&
+    defaultWidth !== null &&
+    !isValidDefaultPrintRequestWidthInches(defaultWidth)
+  ) {
+    return false;
   }
   return true;
 }

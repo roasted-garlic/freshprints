@@ -10,14 +10,10 @@
 |------|-------|
 | Status | **ACTIVE** |
 | Active goal | `print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale` |
-| Phase | **Implement + Test + Implementation Review complete — STOP before DEV Firebase deploy** |
-| Review | **approved_with_changes** (owner acknowledged 2026-08-30) |
-| Implementation | **complete locally — not yet DEV deployed** |
-| Test | **passed_with_notes** |
-| Production | **NOT AUTHORIZED** |
-| Studio publish | **NOT AUTHORIZED** |
-| Portal App Hosting | **NOT AUTHORIZED** |
-| Human checkpoint | **no** (awaiting owner DEV deploy authorization + manual QA) |
+| Phase | **Amendment review — WS-CONFIG-DEFAULT + WS-TOGGLE** |
+| Implementation | **not started** (WS-CONFIG-DEFAULT first) |
+| Owner DEV QA | **FAIL** |
+| Human checkpoint | **yes** — acknowledge review; then `APPROVE DEPLOY` after WS-CONFIG-DEFAULT |
 | Workflow state | `.cursor/workflow/state.md` |
 
 ---
@@ -41,17 +37,19 @@ Signoff: `docs/workflow/reviews/2026-08-30-customer-account-identity-management-
 
 | Item | Shipped in repo (local `development`) |
 |------|---------------------------------------|
-| Print Request initial default width | **11″** (`STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES`) |
+| Print Request initial default width | **11″ fallback constant** → becoming **configurable** `settings/standardPrintSizes.defaultPrintRequestWidthInches` (snapshot-at-create) |
 | Automated import/upload upscale target | **15″** (`AUTOMATED_UPSCALE_TARGET_WIDTH_INCHES`, policy `image-quality-v3`) |
-| Legacy catalog enhance | **Studio staff callable** `enhancePrintRequestArtwork` + **Upscale artwork** UI |
+| Legacy catalog enhance | **In flux** — current one-way staff callable overwrites baseline; owner direction: **per-asset toggle** (non-destructive), Studio + Portal, catalog + upload, **no customer quota** |
 | Pass semantics | Automated max **1** pass; staff manual max **2** total; cumulative **≤6×** from native |
 | Gang sheet two-up | Two **11″** @ 300 DPI fit on 23″ roll (tested) |
 
-**Not yet on DEV Firebase:** callable + customer-upload Functions still on prior bundle until scoped redeploy.
+**DEV Firebase (2026-08-30):** `enhancePrintRequestArtwork` created; `finalizeCustomerUpload`, `finalizeCustomerUploadZip`, `retryCustomerUploadProcessing` updated on `fresh-prints-dev`. Assisted-creation proof Function **not** redeployed (out of scope).
 
-**Studio/Electron:** catalog import 15″ target + 11″ PR defaults require **local Studio reload** (Electron main process).
+**Studio/Electron:** restart `npm run dev:studio` before QA — catalog import 15″ runs in Electron main process.
 
-**Portal:** 11″ sizing defaults apply via shared package on **localhost Portal reload**; no customer upscale trigger in V1.
+**Portal:** Portal 11″ FAIL 1 — **hold deploy (Option B)** until WS-CONFIG-DEFAULT (runtime setting in callables). Toggle + configurable default — **not implemented**.
+
+**Owner QA (2026-08-30):** **FAIL** — amendments complete; implementation not started.
 
 Artifacts:
 
@@ -113,4 +111,4 @@ Recent DEV goals are **not** on production.
 
 ## Next workflow step
 
-Owner authorizes **scoped DEV Firebase deploy** (see implementation review deploy matrix) + manual DEV QA → signoff.
+Owner manual DEV QA on `fresh-prints-dev` → signoff on PASS. Restart Studio before catalog-import QA.
