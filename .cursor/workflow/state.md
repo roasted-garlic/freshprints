@@ -17,7 +17,7 @@
 | Production | **NOT AUTHORIZED** |
 | Studio release | **NOT AUTHORIZED** |
 | Last updated | 2026-08-30 |
-| Last Completed Step | Sizing/upscale Git checkpoint (pending push) |
+| Last Completed Step | Sizing/upscale Git checkpoint `878439e` pushed to `origin/development` |
 
 ---
 
@@ -80,7 +80,7 @@
 
 - 2026-08-30: WS4 Owner DEV QA **PASS** → signoff **approved**; Customer Identity WS1–WS4 **complete on DEV**; production untouched.
 - 2026-08-30: DEV checkpoint `ecec8fc` pushed to `origin/development`.
-- 2026-08-30: Owner approved Formal Review + resolved all three sizing decisions → **implement complete**; tests **passed_with_notes**; **STOP before DEV Firebase deploy**.
+- 2026-08-30: Sizing/upscale implementation commit `878439e` pushed to `origin/development`; **STOP before DEV Firebase deploy**.
 - 2026-08-30: Sizing/upscale goal Plan + Formal Review **approved_with_changes** — **STOP** before implement.
 - 2026-08-30: Roadmap sequencing — sizing goal **before** Smart Profiling (owner).
 - 2026-08-30: Show Queue Did Not Print recovery — owner DEV QA **PASS**; signoff **approved**.
