@@ -23,7 +23,7 @@ export function buildGangSheetCacheFingerprint(request: ExportGangSheetPngReques
     gutterInches: request.gutterInches,
     maxSheetLengthInches: request.maxSheetLengthInches,
     labelFontSizePx: request.labelFontSizePx,
-    ...(request.layoutMode === "grouped_by_customer" ? { layoutMode: request.layoutMode } : {}),
+    ...(request.layoutMode && request.layoutMode !== "efficiency" ? { layoutMode: request.layoutMode } : {}),
     images,
   });
 

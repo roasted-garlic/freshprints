@@ -1,6 +1,7 @@
 import { FieldValue, type DocumentSnapshot, type Transaction } from "firebase-admin/firestore";
 
 import { CUSTOMER_UPLOAD_COLLECTIONS } from "../../../packages/shared/src/constants/customerUpload/customerUploadCollections.constants";
+import { isCustomerUploadEligibleForCatalogIntake } from "../../../packages/shared/src/utils/customerUploadCatalogIntakeEligibility";
 
 import { adminDb } from "./admin";
 
@@ -37,7 +38,16 @@ export function buildCatalogIntakeConfirmationPatch(input: {
 /** Only `not_eligible` advances to Studio Pending; other statuses are one-way no-ops. */
 export function shouldAdvanceCustomerUploadToStaffReview(
   catalogReviewStatus: unknown,
+  catalogUseAcknowledged?: unknown,
 ): boolean {
+  if (
+    !isCustomerUploadEligibleForCatalogIntake({
+      catalogUseAcknowledged:
+        typeof catalogUseAcknowledged === "boolean" ? catalogUseAcknowledged : null,
+    })
+  ) {
+    return false;
+  }
   return catalogReviewStatus === "not_eligible";
 }
 
@@ -65,8 +75,13 @@ export function applyCustomerUploadStaffReviewTransitionInTransaction(
   if (!uploadSnap.exists) {
     return "missing";
   }
-  const status = uploadSnap.data()?.catalogReviewStatus;
-  if (!shouldAdvanceCustomerUploadToStaffReview(status)) {
+  const data = uploadSnap.data() ?? {};
+  if (
+    !shouldAdvanceCustomerUploadToStaffReview(
+      data.catalogReviewStatus,
+      data.catalogUseAcknowledged,
+    )
+  ) {
     return "noop";
   }
   transaction.update(

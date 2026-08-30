@@ -68,6 +68,11 @@ describe("shouldAdvanceCustomerUploadToStaffReview — idempotent show-allocatio
     assert.equal(shouldAdvanceCustomerUploadToStaffReview(null), false);
   });
 
+  it("does not advance when the customer declined Design Library permission", () => {
+    assert.equal(shouldAdvanceCustomerUploadToStaffReview("not_eligible", false), false);
+    assert.equal(shouldAdvanceCustomerUploadToStaffReview("not_eligible", true), true);
+  });
+
   it("transition patch sets pending_staff_review without creating designs", () => {
     const patch = buildCustomerUploadStaffReviewTransitionPatch("NOW" as never);
     assert.deepEqual(patch, {

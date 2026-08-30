@@ -1,6 +1,6 @@
 import type { ShowExportImageWarning } from "./showExportIpc.types";
 
-export type GangSheetLayoutMode = "efficiency" | "grouped_by_customer";
+export type GangSheetLayoutMode = "efficiency" | "grouped_by_customer" | "customer_grouped_continuous";
 
 export interface GangSheetExportImageGrouping {
   printRequestId: string;

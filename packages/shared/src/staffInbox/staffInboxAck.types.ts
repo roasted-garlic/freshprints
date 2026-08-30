@@ -1,9 +1,8 @@
 import type { PrintRequestListTab } from "../utils/printRequestListGrouping";
 import type { StaffInboxItemKind } from "./staffInbox.types";
 
-/** Firestore `staffInboxAcks` document (per staff user Done history). */
+/** Firestore `staffInboxAcks` document (shared team Done state). */
 export interface StaffInboxAckDocument {
-  userId: string;
   itemId: string;
   kind: StaffInboxItemKind;
   title: string;
@@ -13,15 +12,22 @@ export interface StaffInboxAckDocument {
   printRequestTab?: PrintRequestListTab;
   /** Original alert time (millis). */
   occurredAtMillis: number;
-  /** Who marked Done (optional on legacy acks). */
-  acknowledgedByUserId?: string;
+  /** Staff member who marked Done. */
+  acknowledgedByUserId: string;
   acknowledgedByDisplayName?: string;
 }
 
 /**
- * Deterministic doc id: `{userId}__{itemId with ':' → '_'}`.
+ * Deterministic doc id: `{itemId with ':' → '_'}`.
  * `itemId` is also stored on the document for exact matching.
+ *
+ * Legacy per-user ids (`{userId}__{encodedItemId}`) are migrated away on read.
  */
-export function buildStaffInboxAckDocId(userId: string, itemId: string): string {
-  return `${userId}__${itemId.split(":").join("_")}`;
+export function buildStaffInboxAckDocId(itemId: string): string {
+  return itemId.split(":").join("_");
+}
+
+export function isLegacyStaffInboxAckDocId(docId: string, itemId: string): boolean {
+  const canonicalId = buildStaffInboxAckDocId(itemId);
+  return docId !== canonicalId && docId.endsWith(`__${canonicalId}`);
 }

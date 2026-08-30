@@ -5,8 +5,12 @@ import type { StaffInboxCompletedItem, StaffInboxItem } from "@fresh-prints/shar
 
 import { EmptyState } from "../../../shared/components/EmptyState";
 import { ErrorState } from "../../../shared/components/ErrorState";
+import { Button } from "../../../shared/components/Button";
+import { useAuth } from "../../auth/hooks/useAuth";
+import { permissionService } from "../../permissions/services/permissionService";
 import { useShellHeaderConfig } from "../../../shared/hooks/useShellHeaderConfig";
 import { StaffInboxAlertSettingsModal } from "../components/StaffInboxAlertSettingsModal";
+import { DeleteStaffInboxAlertsConfirmModal } from "../components/DeleteStaffInboxAlertsConfirmModal";
 import { StaffInboxDesignEditHost } from "../components/StaffInboxDesignEditHost";
 import { useResolvedDesignIssueReports } from "../hooks/useResolvedDesignIssueReports";
 import { StaffInboxItemRow } from "../components/StaffInboxItemRow";
@@ -27,6 +31,10 @@ function toResolvedInboxItem(report: DesignIssueReport): StaffInboxCompletedItem
 }
 
 export function StaffInboxPage() {
+  const { user } = useAuth();
+  const canDeleteCompletedAlerts = Boolean(
+    user && permissionService.canDeleteStaffInboxCompletedAlerts(user),
+  );
   const {
     reports: historyResolvedReports,
     isLoading: isLoadingResolvedReports,
@@ -37,6 +45,7 @@ export function StaffInboxPage() {
   const {
     acknowledgeItem,
     completedItems,
+    deleteCompletedAlerts,
     error,
     isItemHighlighted,
     openItem,
@@ -47,6 +56,8 @@ export function StaffInboxPage() {
   const [activeTab, setActiveTab] = useState<InboxPageTab>("open");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [editDesignId, setEditDesignId] = useState<string | null>(null);
+  const [selectedCompletedIds, setSelectedCompletedIds] = useState<Set<string>>(() => new Set());
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<string[] | null>(null);
 
   const openSettings = useCallback(() => {
     setIsSettingsOpen(true);
@@ -128,6 +139,80 @@ export function StaffInboxPage() {
     queueCompletedItems.length === 0 &&
     doneDesignReportItems.length === 0 &&
     !isLoadingResolvedReports;
+
+  const allQueueCompletedSelected =
+    queueCompletedItems.length > 0 &&
+    queueCompletedItems.every((item) => selectedCompletedIds.has(item.id));
+
+  const toggleCompletedSelection = useCallback((itemId: string) => {
+    setSelectedCompletedIds((current) => {
+      const next = new Set(current);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAllCompleted = useCallback(() => {
+    setSelectedCompletedIds((current) => {
+      if (allQueueCompletedSelected) {
+        return new Set();
+      }
+      return new Set(queueCompletedItems.map((item) => item.id));
+    });
+  }, [allQueueCompletedSelected, queueCompletedItems]);
+
+  const handleDeleteSelectedCompleted = useCallback(() => {
+    if (selectedCompletedIds.size === 0) {
+      return;
+    }
+
+    setPendingDeleteIds([...selectedCompletedIds]);
+  }, [selectedCompletedIds]);
+
+  const handleDeleteCompleted = useCallback((itemId: string) => {
+    setPendingDeleteIds([itemId]);
+  }, []);
+
+  const pendingDeleteItems = useMemo(() => {
+    if (!pendingDeleteIds?.length) {
+      return [];
+    }
+
+    const pendingIdSet = new Set(pendingDeleteIds);
+    return queueCompletedItems.filter((item) => pendingIdSet.has(item.id));
+  }, [pendingDeleteIds, queueCompletedItems]);
+
+  const closeDeleteConfirmModal = useCallback(() => {
+    setPendingDeleteIds(null);
+  }, []);
+
+  const confirmDeleteCompleted = useCallback(() => {
+    if (!pendingDeleteIds?.length) {
+      return;
+    }
+
+    deleteCompletedAlerts(pendingDeleteIds);
+    setSelectedCompletedIds((current) => {
+      const next = new Set(current);
+      for (const itemId of pendingDeleteIds) {
+        next.delete(itemId);
+      }
+      return next;
+    });
+    setPendingDeleteIds(null);
+  }, [deleteCompletedAlerts, pendingDeleteIds]);
+
+  useEffect(() => {
+    setSelectedCompletedIds((current) => {
+      const validIds = new Set(queueCompletedItems.map((item) => item.id));
+      const next = new Set([...current].filter((itemId) => validIds.has(itemId)));
+      return next.size === current.size ? current : next;
+    });
+  }, [queueCompletedItems]);
 
   return (
     <main className="page-layout page-layout-shell staff-inbox-page">
@@ -217,20 +302,60 @@ export function StaffInboxPage() {
               {queueCompletedItems.length > 0 ? (
                 <section className="staff-inbox-done-section" aria-label="Completed inbox alerts">
                   <header className="staff-inbox-done-section-header">
-                    <h2>Completed alerts</h2>
-                    <p>Queue and show-full items you marked done.</p>
+                    <div>
+                      <h2>Completed alerts</h2>
+                      <p>Queue and show-full items marked done by any staff member.</p>
+                    </div>
                   </header>
-                  <ul className="staff-inbox-item-list staff-inbox-page-list">
-                    {queueCompletedItems.map((item) => (
-                      <StaffInboxItemRow
-                        isCompleted
-                        item={item}
-                        key={item.id}
-                        onOpen={handleOpenItem}
-                        onRestore={restoreItem}
-                      />
-                    ))}
-                  </ul>
+                  {canDeleteCompletedAlerts ? (
+                    <div className="staff-inbox-done-list-block">
+                      <div className="staff-inbox-done-select-row">
+                        <label className="staff-inbox-done-select-all staff-inbox-item-check">
+                          <input
+                            aria-label="Select all completed alerts"
+                            checked={allQueueCompletedSelected}
+                            onChange={toggleSelectAllCompleted}
+                            type="checkbox"
+                          />
+                          <span className="staff-inbox-done-select-all-label">Select all</span>
+                        </label>
+                        <Button
+                          disabled={selectedCompletedIds.size === 0}
+                          onClick={handleDeleteSelectedCompleted}
+                          variant="danger"
+                        >
+                          Delete selected ({selectedCompletedIds.size})
+                        </Button>
+                      </div>
+                      <ul className="staff-inbox-item-list staff-inbox-page-list">
+                        {queueCompletedItems.map((item) => (
+                          <StaffInboxItemRow
+                            isCompleted
+                            isSelectable={canDeleteCompletedAlerts}
+                            isSelected={selectedCompletedIds.has(item.id)}
+                            item={item}
+                            key={item.id}
+                            onDelete={canDeleteCompletedAlerts ? handleDeleteCompleted : undefined}
+                            onOpen={handleOpenItem}
+                            onRestore={restoreItem}
+                            onToggleSelect={canDeleteCompletedAlerts ? toggleCompletedSelection : undefined}
+                          />
+                        ))}
+                      </ul>
+                    </div>
+                  ) : (
+                    <ul className="staff-inbox-item-list staff-inbox-page-list">
+                      {queueCompletedItems.map((item) => (
+                        <StaffInboxItemRow
+                          isCompleted
+                          item={item}
+                          key={item.id}
+                          onOpen={handleOpenItem}
+                          onRestore={restoreItem}
+                        />
+                      ))}
+                    </ul>
+                  )}
                 </section>
               ) : null}
             </>
@@ -239,6 +364,12 @@ export function StaffInboxPage() {
       )}
 
       <StaffInboxAlertSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      <DeleteStaffInboxAlertsConfirmModal
+        isOpen={pendingDeleteItems.length > 0}
+        items={pendingDeleteItems}
+        onCancel={closeDeleteConfirmModal}
+        onConfirm={confirmDeleteCompleted}
+      />
       <StaffInboxDesignEditHost designId={editDesignId} onClose={() => setEditDesignId(null)} />
     </main>
   );

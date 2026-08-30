@@ -292,6 +292,13 @@ export interface Design {
   artworkBackgroundHex?: string;
 
   /**
+   * Provenance for how `artworkBackgroundHex` was set (2026-08-25 import bg/halftone).
+   * Display-only; never treat as halftone evidence.
+   * `import_override` | `import_halftone_default` | `code_auto` | `staff_manual`.
+   */
+  artworkBackgroundSource?: "import_override" | "import_halftone_default" | "code_auto" | "staff_manual";
+
+  /**
    * Optional staff-managed artwork garment placement (display label "Placement", 2026-08-10).
    * Missing → "Unspecified". Allowlisted values only (`front`, `back`, `front_back`, `pocket`,
    * `sleeve`); unknown/legacy strings map to undefined on read — no migration/backfill. Edited
@@ -500,7 +507,11 @@ Acceptance thresholds (enforced at import validation; updated Phase 3D Step 3 co
 
 ### AI review foundation (Phase 3D Step 5)
 
-AI review state is **separate** from operational `status`. A design is not catalog-ready until AI review approves it and a future workflow promotes `status` to `ready`.
+AI review state is **separate** from operational `status`. A design is not catalog-ready until AI review is approved **and** `status` is `ready`.
+
+**Default path:** Staff approve via `catalogApprovalService.approveDesignForCatalog`.
+
+**ADR-FP-144 exception (Slice 4+):** When Catalog Processing Mode is `autonomous` **and** `catalogAutonomousLiveEnabled` is true, the enrichment pipeline may set `status: ready` + `aiReviewStatus: approved` with `aiReviewedBy: system:catalog-autonomy` for designs that pass the evidence-based automation policy. Live Autonomous remains owner-gated per environment and is **not** enabled by implementing Slice 4.
 
 | Field | Type | Purpose |
 | --- | --- | --- |
@@ -535,7 +546,14 @@ AI enrichment writes versioned fields on `designs/{id}`:
 | `aiProcessingStage` | enum | Cloud Function | Live pipeline stage for Processing Status UI |
 | `aiRequestedVisionModelId` | string | Cloud Function callable | Transient one-off AI re-run override while queued/in flight |
 | `aiSuggestions` | object | Cloud Function | AI catalog suggestions (separate from approved fields) |
-| `aiAnalysis` | object | Cloud Function | Rich analysis metadata for future features |
+| `aiAnalysis` | object | Cloud Function | Rich analysis metadata (includes optional shadow halftone assessment) |
+| `smartProfile` | object | Cloud Function + owner/admin callable | Versioned Smart Profile / search intelligence (`smart-profile-v1`); shadow automation in Slice 2; **Slice 3** indexes public-safe dimensions into Algolia (search + Smart Filters). Provenance includes automation fields and **Slice 6 corrective** staff edit metadata (`staffEditedDimensionKeys`, `staffEditedAt`, `staffEditedBy`). |
+| `smartProfileAiSnapshot` | object | Cloud Function only | Last raw AI-generated dimension lists before staff merge; used for per-dimension Reset to AI. Staff/client cannot write. |
+
+**Catalog search permanence (Slice 3):** `title` and `description` are permanent core catalog search inputs (title is a top Algolia searchable attribute; description is included in flattened `searchText`). They are **not** “legacy.” Legacy migration refers to approved-tag / `tagFacetKeys` / tag-derived corpus only — future tag retirement must not remove or de-prioritize title/description search.
+| `importBatchId` | string | Studio import | Optional batch job id (folder/ZIP/multi-PNG) |
+| `importSourceFileName` | string | Studio import | Original source filename at import |
+| `importRelativePath` | string | Studio import | Optional relative path within batch manifest |
 
 ```ts
 export type AiProcessingStage =
@@ -583,13 +601,13 @@ export interface DesignAiAnalysis {
 }
 ```
 
-**Re-run AI Suggestions:** Needs Review or Rejected calls `resetAiEnrichmentForProcessing`. Design returns to `status: imported`, `aiReviewStatus: pending`; prior `aiSuggestions` and `aiAnalysis` are **deleted**. Studio keeps staff on the current Needs Review or Rejected tab and reconciles the source list immediately; staff open the Processing tab manually to run the next AI pass (no suggestion versioning in Phase 5B).
+**Re-run AI Suggestions:** Needs Review or Rejected calls `resetAiEnrichmentForProcessing`. Design returns to `status: imported`, `aiReviewStatus: pending`; prior `aiSuggestions`, `aiAnalysis`, and `smartProfile` are **deleted**. Studio keeps staff on the current Needs Review or Rejected tab and reconciles the source list immediately; staff open the Processing tab manually to run the next AI pass (no suggestion versioning in Phase 5B).
 
 **Reopen for review (rejected):** `status: imported`, `aiReviewStatus: needs_review`; preserves existing `aiSuggestions` / `aiAnalysis`; does not enqueue AI.
 
 **One-off processing override (2026-06-29):** AI Processing may send `visionModelIdOverride` and `reasoningEffortOverride` on processing requests. The callable validates them against server allowlists, writes transient `aiRequestedVisionModelId` / `aiRequestedReasoningEffort`, the pipeline prefers those values for the current run, and success/failure cleanup deletes the fields. This does not mutate `settings/aiEnrichment`.
 
-**Writes:** Cloud Function only for `aiSuggestions`, `aiAnalysis`, and `aiProcessingStage`. Client rules block mutations.
+**Writes:** Cloud Function only for `aiSuggestions`, `aiAnalysis`, `smartProfile`, and `aiProcessingStage`. Client rules block mutations.
 
 ### AI suggestions (Phase 5 — planned)
 
@@ -925,7 +943,48 @@ export interface Customer {
   deletedBy?: string;
   deletionSource?: "studio_owner" | "portal_request";
 
+  /**
+   * Reversible owner disable (ADR-FP-150). Distinct from tombstone. History and
+   * username reservation preserved; Auth disabled until restore.
+   */
+  isDisabled?: boolean;
+  disabledAt?: Timestamp;
+  disabledBy?: string;
+  disabledReason?: string;
+
+  /** Short-lived lock during destructive identity operations (Admin SDK only). */
+  identityOperationLock?: {
+    kind: "hard_delete" | "disable" | "merge" | "username_transfer";
+    lockedAt: Timestamp;
+    lockedBy: string;
+    previewChecksum?: string;
+  };
+
+  /** WS3 merge tombstone fields (ADR-FP-154). */
+  isMerged?: boolean;
+  mergedIntoCustomerId?: string;
+  mergedAt?: Timestamp;
+  mergedBy?: string;
+  /** Survivor-only: source customer IDs merged into this account (WS4 alias queries). */
+  mergedSourceCustomerIds?: string[];
+
   usernameUpdatedAt?: Timestamp;
+  /** Support/audit only — append-only, max 10 entries (Admin SDK). Not exposed in Portal UI. */
+  usernameHistory?: Array<{ username: string; changedAt: Timestamp }>;
+  /** Resumable identity snapshot propagation state (Admin SDK only). */
+  identitySnapshotPropagation?: {
+    status: "idle" | "in_progress" | "completed" | "failed";
+    targetUsername: string;
+    targetDisplayName: string;
+    stage?: "printRequests" | "designIssueReports";
+    printRequestCursor?: string | null;
+    designIssueReportCursor?: string | null;
+    printRequestsUpdated: number;
+    designIssueReportsUpdated: number;
+    startedAt: Timestamp;
+    updatedAt: Timestamp;
+    lastError?: string;
+  };
 
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -1026,6 +1085,10 @@ export interface PrintRequest {
   requestSequenceNumber?: number;
   customerUsernameSnapshot?: string;
   customerDisplayNameSnapshot?: string;
+  /** Write-once username at first identity propagation after profile change (ADR-FP-148). */
+  customerUsernameAtCreationSnapshot?: string;
+  /** Write-once display name at first identity propagation after profile change (ADR-FP-148). */
+  customerDisplayNameAtCreationSnapshot?: string;
   internalBaseName?: string;
   nameFormatVersion?: "legacy-v1" | "cr-ir-v1";
   notes?: string;
@@ -1117,6 +1180,8 @@ export interface PrintRequestItem {
   printWidthInches?: number;
   printHeightInches?: number;
   sizeLabel?: string;
+  /** Optional preset key from Standard Print Sizes settings (target width only). */
+  standardSizePresetKey?: string;
   sortOrder?: number;
   notes?: string;
   status: PrintRequestItemStatus;
@@ -1237,10 +1302,13 @@ Finalize and Studio import persist sizing fields (policy `image-quality-v2`): `u
 | Field | Purpose |
 |-------|---------|
 | `halftoneSubmitterResponse` | Customer optional Yes/No evidence (`value`, `respondedAt`, `respondedBy`). Does not add catalog tags. |
-| `halftoneStaffDecision` | Explicit staff boolean (`true`/`false`), including overrides; copied to `designs` on promote; authoritative for AI Review toggle and tag sync on approve. |
+| `halftoneStaffDecision` | Explicit staff boolean (`true`/`false`), including overrides; copied to `designs` on promote; authoritative for AI Review toggle and tag sync on approve. Import batch “All halftones” writes this at create time (staff authority; ADR-FP-080). |
+| `halftoneDecisionSource` | Optional provenance: `import_batch` \| `ai_review` \| `intake` \| `customer`. |
 | `halftoneDetection` | **Deprecated / historical only.** May exist on older docs; do not write new detector metadata; UI and processing ignore it. |
 
-Portal always offers an optional “This artwork is a halftone design.” control (default off). Studio import does not interrupt for halftone. Intake and AI Review use the green Halftone toggle (staff → customer yes → off). Approve with toggle on adds canonical `"halftone"` tag; off removes it.
+Portal always offers an optional “This artwork is a halftone design.” control (default off). Studio **batch** import may set staff halftone via session “All halftones” (not inferred from dark background). Intake and AI Review use the green Halftone toggle (staff → customer yes → off). Approve with toggle on adds canonical `"halftone"` tag; off removes it.
+
+**Artwork background vs halftone:** `artworkBackgroundHex` / `artworkBackgroundSource` are display mats only. Dark mat (`#2c2d2d`) does **not** imply or set halftone. Import precedence: explicit background override → all-halftone dark default → code-auto detector → default light (omit field).
 
 ---
 
@@ -1628,7 +1696,7 @@ upcomingShows/{upcomingShowId}
 ## Upcoming Show Interface
 
 ```ts
-export type UpcomingShowSource = "whatnot" | "staff_gang_sheet";
+export type UpcomingShowSource = "whatnot" | "staff_gang_sheet" | "dev_fixture";
 
 /** Whatnot schedule/source status — never mixed with production completion. */
 export type UpcomingShowStatus =
@@ -1664,10 +1732,12 @@ export interface UpcomingShow {
   source: UpcomingShowSource;
   /**
    * Required when `source === "whatnot"`.
-   * Omitted when `source === "staff_gang_sheet"` (never fabricate Whatnot IDs).
+   * Omitted when `source === "staff_gang_sheet"` or `source === "dev_fixture"` (never fabricate Whatnot IDs).
    */
   whatnotShowId?: string;
   whatnotUrl?: string;
+  /** Present when `source === "dev_fixture"`; literal `DEV-OVERRIDE` sentinel — not a Whatnot identity. */
+  devFixtureSentinel?: "DEV-OVERRIDE";
   title?: string;
   scheduledStartAt?: Timestamp;
   status: UpcomingShowStatus;
@@ -1709,6 +1779,13 @@ export interface UpcomingShow {
   printFinishedAt?: Timestamp;
   printFinishedBy?: string;
 
+  /** Past-show remediation audit (ADR-FP-149). Optional; backward compatible. */
+  productionResolutionKind?: "empty_closure" | "fulfilled_confirmed" | "unfulfilled_release" | "owner_override";
+  productionResolvedAt?: Timestamp;
+  productionResolvedBy?: string;
+  /** Owner Force Completed reason; max 500 characters, trimmed, no control chars. */
+  productionOverrideReason?: string;
+
   createdBy?: string;
   updatedBy?: string;
   createdAt: Timestamp;
@@ -1717,6 +1794,8 @@ export interface UpcomingShow {
 ```
 
 > **Studio 1.0.6 — Staff Gang Sheets (shared):** `source` may be `staff_gang_sheet`. Those sheets reuse `upcomingShows` + `showAllocations`, omit `whatnotShowId`, default `maxTotalQuantity` to **200** (editable), require `staffGangSheetCycleNumber`, and do **not** require `assignedStaffUserId` (shared by Studio staff). Exactly one active shared sheet (`open`/`full`/`printing`) is allowed. Eligibility is `requestOrigin === "studio_internal"` or legacy `isInternal === true` (customer origins denied). Deny Portal allocation; skip Recently Requested popularity bumps. Any active Studio staff may create when **no** active sheet exists (cycle = max(existing)+1); while one is open, **Mark Complete** opens the next cycle. Add-to-Internal can pick among multiple actives if they exist (legacy/recovery). Studio Print Requests use separate **Add to Show** / **Add to Internal Gangsheet** actions; Internal Sheets live on their own nav route.
+
+> **DEV fixture shows (`fresh-prints-dev` only):** `source === "dev_fixture"` records are created/updated only through the trusted callable `upsertDevFixtureShow` (Admin SDK). Client Firestore rules deny client **create** of `dev_fixture`. They persist `devFixtureSentinel: "DEV-OVERRIDE"` and **never** persist `whatnotShowId` or `whatnotUrl`. Studio Show Queue treats them like other queue-surface shows for allocation lifecycle; Whatnot assisted import matching excludes them (`source === "whatnot"` filter only).
 
 Upsert rule: match existing **Whatnot** records by `source + whatnotShowId`; update mutable upstream fields
 (`title`, `whatnotUrl`, `scheduledStartAt`, `lastSeenAt`) on a match instead of creating a duplicate.
@@ -1893,14 +1972,30 @@ export interface AppSettings {
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `visionModelId` | string | One of server allowlist: `gpt-5.4-nano-2026-03-17` (default), `gpt-5-nano-2025-08-07`, `gpt-5.4-mini-2026-03-17` |
-| `reasoningEffort` | string | One of `none`, `minimal`, `low`, `medium`, `high`; default `medium`; server may retry with `low` for request-path compatibility only |
-| `promptTemplate` | string | Owner/admin-editable AI Processing prompt template. Must contain `{{approved_categories}}`, `{{approved_tags}}`, and `{{excluded_tags}}`; default asks for `description`, one approved `category`, `title`, up to 8 approved tag names, strict visible-text extraction in the description, and complete `suggestedNewTags` objects when approved tags are not relevant enough |
-| `additionalTagExclusions` | string[] | Optional owner/admin tags merged with `BASE_AI_TAG_EXCLUSIONS` (lowercase single words, max 50) |
+| `visionModelId` | string | One of server allowlist (see BACKEND) |
+| `promptTemplate` | string | Owner/admin-editable AI Processing prompt template |
+| `tagRerankPromptTemplate` | string | Optional tag rerank prompt |
+| `additionalTagExclusions` | string[] | Optional owner/admin tags merged with base exclusions |
+| `tagRerankMode` / `suggestionAuthorMode` / `suggestedNewTagsPolicy` | string | Pipeline policy knobs |
+| `catalogWorkflowMode` | `manual` \| `shadow` \| `autonomous` | Slice 4 Catalog Processing Mode; absent/invalid → **manual** |
+| `catalogAutonomousLiveEnabled` | boolean | Slice 4 live publication gate; default **false** |
+| `catalogAutonomousLiveEnabledAt` / `By` | Timestamp / string | Audit when live gate enabled |
 | `updatedAt` | Timestamp | Last change |
-| `updatedBy` | string | UID of owner/admin who saved |
+| `updatedBy` | string | UID of last updater |
 
-**Permissions:** Staff may read (AI Processing label). Writes only via callable `updateAiEnrichmentSettings` (owner/admin). No API keys in this document.
+**Permissions:** Staff may read (AI Processing label). Model/prompt/tag fields: callable `updateAiEnrichmentSettings` (owner/admin). Catalog Processing Mode + live Autonomous: callable `updateCatalogWorkflowMode` (**owner-only**). No API keys in this document.
+
+### `settings/catalogAutomationHealth` (Slice 4)
+
+Lightweight Automation Health counters (`analyzed`, `wouldAutoApprove`, `actuallyAutoApproved`, verifier metrics, `routedNeedsReview`, `categoryGap`, etc.). Staff read; Admin SDK write only.
+
+### `catalogReprocessJobs` (Slice 4 control plane; Slice 5 AI Review execution)
+
+Durable Catalog Reprocessing jobs. Client write denied; **owner** read for progress. Started via owner callables with typed confirmation. Soft pause; one active job per `(projectId, targetType)`.
+
+**Slice 5 (`ai_review_queue`):** Start enabled when `CATALOG_REPROCESS_AI_REVIEW_QUEUE_ENABLED`. Server Start requires Catalog Processing Mode **shadow** and `catalogAutonomousLiveEnabled === false`. Eligibility: `status == imported` AND `aiReviewStatus == needs_review`. Worker clears AI blobs (including `smartProfile` / `aiReviewNotes`) with reset-equivalent semantics, preserves B/D human fields (title, tags, artwork background, halftone, companions, etc.), runs the live enrichment pipeline (`catalog-enrich-v30` + `smart-profile-normalizer-v4`) in **queue** mode, and records per-design outcomes under `catalogReprocessJobs/{jobId}/outcomes/{designId}`. Shadow success must remain `imported` + `needs_review`; lifecycle anomalies soft-pause the job.
+
+**Slice 6 (`ready_catalog`) — implemented; Start gate still `CATALOG_REPROCESS_READY_CATALOG_ENABLED = false` until owner unlock after DEV deploy:** Eligibility: `status == ready` AND `aiReviewStatus == approved`. Worker uses **Ready-safe staging** (`buildReadyCatalogReprocessAiStageUpdate`) — never writes `imported`, `pending`, or `needs_review`; preserves `aiReviewed*`, `readyAt`, root title/description/categoryId/tags, and `aiReviewNotes`; does **not** delete `smartProfile` before enrich (atomic replace on success). Pipeline runs in **`ready_backfill`** mode: success sets `aiProcessingStage: ready_for_review` while keeping `status: ready` and `aiReviewStatus: approved`; failure sets `aiProcessingStage: failed` without demoting lifecycle. Catalog Processing Mode records Shadow automation provenance only — **no** `publishReady` / Autonomous lifecycle mutation. Outcomes track `remainedReady`, `preservationViolations` (on `ready_lifecycle_violation`), and optional bounded `canaryDesignIds` → job `boundedDesignIds`. Algolia: Smart Profile index-field changes on `status: ready` upsert via existing sync; any non-ready write deletes index object (P0 violation). Terminal success stage: **`ready_for_review`** (same as queue pipeline success stage; does not change operational `status`).
 
 **Per-design audit:** `designs.aiSuggestions.model` records the resolved model used for each enrichment run, including one-off AI Processing overrides. `aiSuggestions.tags` are filtered server-side against base + additional exclusions and resolved against approved tag names/aliases.
 
@@ -2165,6 +2260,40 @@ cannot introduce Firestore path separators.
 
 All client reads and writes are denied. No backfill, destructive migration, or composite index is
 required.
+
+---
+
+# Customer Activity Events (identity audit evidence)
+
+Append-only audit trail for customer identity operations. **Not** lifecycle source-of-truth — canonical state remains on `customers`, `printRequests`, and other domain entities.
+
+```txt
+customerActivityEvents/{eventId}
+```
+
+```ts
+export interface CustomerActivityEvent {
+  customerId: string;
+  eventType:
+    | "account.username_changed"
+    | "account.username_transferred"
+    | "account.duplicate_resolution_previewed"
+    | "account.disabled"
+    | "account.restored"
+    | "account.hard_delete_previewed"
+    | "account.hard_delete_applied";
+  occurredAt: Timestamp;
+  actorUid: string;
+  actorRole: "owner" | "admin" | "system";
+  derivation: "live" | "reconstructed";
+  result?: "success" | "blocked" | "already_done" | "failed";
+  metadata?: Record<string, unknown>; // no secrets; may include previewChecksum
+}
+```
+
+Writes: Admin SDK / trusted callables only. Staff read.
+
+Short-lived `customerIdentityOperationPreviews/{previewId}` docs support single-use identity Apply validation (operations: `hard_delete`, `duplicate_resolution`; no client access). WS2 duplicate resolution stores source/survivor ids, desired username, verification mode, checksum, and 15-minute expiry.
 
 ---
 

@@ -10,7 +10,9 @@ import { useUploadActivity } from "../../../shared/hooks/useUploadActivity";
 import { enqueueImportedDesignsForBackgroundAi } from "../services/importAiBackgroundQueue";
 import { importBatchOrchestrationService } from "../services/importBatchOrchestrationService";
 import { importDesktopService } from "../services/importDesktopService";
-import type { UseBatchImportReturn, UseBatchImportState } from "../types/batchImportHook.types";
+import type { UseBatchImportOptions, UseBatchImportReturn, UseBatchImportState } from "../types/batchImportHook.types";
+import { BATCH_IMPORT_INITIAL_STATE } from "../constants/batchImportInitialState";
+import { IMPORT_SESSION_DEFAULT_SETTINGS } from "../constants/importSessionSettings";
 import { UploadCancelToken } from "../utils/uploadCancelToken";
 import {
   buildTruncatedDiscoveryWarning,
@@ -19,19 +21,10 @@ import {
   mapUploadProgressToHookProgress,
 } from "../utils/batchImportProgressMappers";
 import { getValidatedManifestFiles } from "../utils/batchImportDisplay";
+import type { ImportItemBackgroundOverride } from "@fresh-prints/shared/utils/resolveImportArtworkBackgroundDecision";
+import type { ImportItemHalftoneOverride } from "@fresh-prints/shared/utils/resolveImportArtworkBackgroundDecision";
 
-const initialState: UseBatchImportState = {
-  phase: "idle",
-  isBusy: false,
-  jobId: null,
-  sourceType: null,
-  discoveryResult: null,
-  uploadReport: null,
-  error: null,
-  warning: null,
-  progress: null,
-  excludedFilePaths: [],
-};
+const initialState = BATCH_IMPORT_INITIAL_STATE;
 
 /**
  * A batch session is "active" (holds a main-process session that must be cleaned up before
@@ -58,10 +51,12 @@ async function finishBatchJobSafely(jobId: string): Promise<void> {
   }
 }
 
-export function useBatchImport(): UseBatchImportReturn {
+export function useBatchImport(options: UseBatchImportOptions = {}): UseBatchImportReturn {
   const { user } = useAuth();
   const [state, setState] = useState<UseBatchImportState>(initialState);
   const { setUploadActive, registerCancelHandler } = useUploadActivity();
+  const getSessionSettingsRef = useRef(options.getSessionSettings);
+  getSessionSettingsRef.current = options.getSessionSettings;
 
   const activeJobIdRef = useRef<string | null>(null);
   const operationIdRef = useRef(0);
@@ -291,11 +286,21 @@ export function useBatchImport(): UseBatchImportReturn {
 
     const runUploadAndCleanup = async (): Promise<void> => {
       try {
+        const sessionSettings =
+          getSessionSettingsRef.current?.() ?? IMPORT_SESSION_DEFAULT_SETTINGS;
         const report = await importBatchOrchestrationService.runBatchUpload({
           caller: user,
           discovery: discoveryResult,
           excludedFilePaths: new Set(state.excludedFilePaths),
           cancelToken,
+          halftoneMode: sessionSettings.halftoneMode,
+          backgroundMode: sessionSettings.backgroundMode,
+          itemBackgroundOverridesByPath: new Map(
+            Object.entries(state.itemBackgroundOverrides),
+          ),
+          itemHalftoneOverridesByPath: new Map(
+            Object.entries(state.itemHalftoneOverrides),
+          ),
           onDesignPipelineSuccess: (designId) => {
             if (!isCurrentOperation(operationId)) {
               return;
@@ -370,9 +375,52 @@ export function useBatchImport(): UseBatchImportReturn {
     isCurrentOperation,
     state.discoveryResult,
     state.excludedFilePaths,
+    state.itemBackgroundOverrides,
+    state.itemHalftoneOverrides,
     state.phase,
     user,
   ]);
+
+  const setItemBackgroundOverride = useCallback(
+    (filePath: string, value: ImportItemBackgroundOverride) => {
+      setState((current) => ({
+        ...current,
+        itemBackgroundOverrides: {
+          ...current.itemBackgroundOverrides,
+          [filePath]: value,
+        },
+      }));
+    },
+    [],
+  );
+
+  const setItemHalftoneOverride = useCallback(
+    (filePath: string, value: ImportItemHalftoneOverride) => {
+      setState((current) => ({
+        ...current,
+        itemHalftoneOverrides: {
+          ...current.itemHalftoneOverrides,
+          [filePath]: value,
+        },
+      }));
+    },
+    [],
+  );
+
+  const recordSuggestDarkForFile = useCallback((filePath: string, suggestDark: boolean) => {
+    setState((current) => {
+      if (current.suggestDarkByPath[filePath] === suggestDark) {
+        return current;
+      }
+      return {
+        ...current,
+        suggestDarkByPath: {
+          ...current.suggestDarkByPath,
+          [filePath]: suggestDark,
+        },
+      };
+    });
+  }, []);
 
   const toggleFileIncluded = useCallback((filePath: string) => {
     setState((current) => {
@@ -501,5 +549,8 @@ export function useBatchImport(): UseBatchImportReturn {
     toggleFileIncluded,
     includeAllValidatedFiles,
     excludeAllValidatedFiles,
+    setItemBackgroundOverride,
+    setItemHalftoneOverride,
+    recordSuggestDarkForFile,
   };
 }

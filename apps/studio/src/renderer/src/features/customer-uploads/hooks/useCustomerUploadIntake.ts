@@ -25,6 +25,7 @@ import {
   buildPurposeScopedIntakeQuery,
   buildStatusScopedCatalogReviewQuery,
   CUSTOMER_UPLOAD_INTAKE_ENRICH_CONCURRENCY,
+  filterCatalogIntakeEligibleDocs,
   filterLegacyMissingPurposeDocs,
   mergeIntakeDocsByCreatedAtDesc,
   runWithConcurrencyLimit,
@@ -41,6 +42,10 @@ type EnrichmentCacheEntry = {
   customerDisplayName: string;
   printRequestName: string | null;
   printRequestStatus: string | null;
+  printRequestQueueTab: string | null;
+  printRequestIsInternal: boolean | null;
+  printRequestItemCount: number | null;
+  printRequestUpdatedAtMs: number | null;
   previewUrl: string | null;
 };
 
@@ -91,6 +96,10 @@ function buildShellRow(
     printRequestId: asString(data.printRequestId),
     printRequestName: enrichment?.printRequestName ?? null,
     printRequestStatus: enrichment?.printRequestStatus ?? null,
+    printRequestQueueTab: enrichment?.printRequestQueueTab ?? null,
+    printRequestIsInternal: enrichment?.printRequestIsInternal ?? null,
+    printRequestItemCount: enrichment?.printRequestItemCount ?? null,
+    printRequestUpdatedAtMs: enrichment?.printRequestUpdatedAtMs ?? null,
     showAssignmentLabel: null,
     originalFilename: asString(data.originalFilename) ?? "Uploaded artwork",
     sourceFormat: (asString(data.sourceFormat) as CustomerUploadIntakeRow["sourceFormat"]) ?? null,
@@ -179,6 +188,10 @@ export function useCustomerUploadIntake(options?: {
               customerDisplayName: enrichment.customerDisplayName,
               printRequestName: enrichment.printRequestName,
               printRequestStatus: enrichment.printRequestStatus,
+              printRequestQueueTab: enrichment.printRequestQueueTab,
+              printRequestIsInternal: enrichment.printRequestIsInternal,
+              printRequestItemCount: enrichment.printRequestItemCount,
+              printRequestUpdatedAtMs: enrichment.printRequestUpdatedAtMs,
               previewUrl: enrichment.previewUrl,
             }
           : row,
@@ -247,7 +260,11 @@ export function useCustomerUploadIntake(options?: {
       }
 
       const merged = mergeIntakeDocsByCreatedAtDesc(primarySnap, legacySnap);
-      const shellRows = merged.map((docSnap) =>
+      const intakeDocs =
+        filter === "pending_staff_review"
+          ? filterCatalogIntakeEligibleDocs(merged)
+          : merged;
+      const shellRows = intakeDocs.map((docSnap) =>
         buildShellRow(docSnap, enrichmentCacheRef.current.get(docSnap.id) ?? null),
       );
 
@@ -261,7 +278,7 @@ export function useCustomerUploadIntake(options?: {
       setIsInitialLoading(false);
 
       const generation = ++enrichGenerationRef.current;
-      void enrichDocsProgressively(merged, generation);
+      void enrichDocsProgressively(intakeDocs, generation);
     };
 
     const primaryQuery = buildPurposeScopedIntakeQuery(db, {

@@ -21,6 +21,10 @@ import type {
   TagRerankMode,
 } from "@fresh-prints/shared/constants/aiEnrichment.constants";
 import {
+  DEFAULT_CATALOG_WORKFLOW_MODE,
+  type CatalogWorkflowMode,
+} from "@fresh-prints/shared/constants/catalogWorkflowMode.constants";
+import {
   aiEnrichmentSettingsService,
   resolveClientAdditionalTagExclusions,
   resolveClientAiTagRerankPromptTemplate,
@@ -36,6 +40,8 @@ interface UseAiEnrichmentSettingsResult {
   promptTemplate: string;
   tagRerankPromptTemplate: string;
   saveError: string | null;
+  catalogWorkflowMode: CatalogWorkflowMode;
+  catalogAutonomousLiveEnabled: boolean;
   saveSettings: (input: {
     visionModelId: string;
     promptTemplate: string;
@@ -67,6 +73,10 @@ export function useAiEnrichmentSettings(): UseAiEnrichmentSettingsResult {
   const [suggestedNewTagsPolicy, setSuggestedNewTagsPolicy] = useState<SuggestedNewTagsPolicy>(
     DEFAULT_SUGGESTED_NEW_TAGS_POLICY,
   );
+  const [catalogWorkflowMode, setCatalogWorkflowMode] = useState<CatalogWorkflowMode>(
+    DEFAULT_CATALOG_WORKFLOW_MODE,
+  );
+  const [catalogAutonomousLiveEnabled, setCatalogAutonomousLiveEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -86,6 +96,8 @@ export function useAiEnrichmentSettings(): UseAiEnrichmentSettingsResult {
         setTagRerankMode(settings.tagRerankMode);
         setSuggestionAuthorMode(settings.suggestionAuthorMode);
         setSuggestedNewTagsPolicy(settings.suggestedNewTagsPolicy);
+        setCatalogWorkflowMode(settings.catalogWorkflowMode);
+        setCatalogAutonomousLiveEnabled(settings.catalogAutonomousLiveEnabled);
         setIsLoading(false);
       },
       (message) => {
@@ -98,6 +110,8 @@ export function useAiEnrichmentSettings(): UseAiEnrichmentSettingsResult {
         setTagRerankMode(DEFAULT_TAG_RERANK_MODE);
         setSuggestionAuthorMode(DEFAULT_SUGGESTION_AUTHOR_MODE);
         setSuggestedNewTagsPolicy(DEFAULT_SUGGESTED_NEW_TAGS_POLICY);
+        setCatalogWorkflowMode(DEFAULT_CATALOG_WORKFLOW_MODE);
+        setCatalogAutonomousLiveEnabled(false);
         setIsLoading(false);
       },
     );
@@ -159,6 +173,8 @@ export function useAiEnrichmentSettings(): UseAiEnrichmentSettingsResult {
     promptTemplate,
     tagRerankPromptTemplate,
     saveError,
+    catalogWorkflowMode,
+    catalogAutonomousLiveEnabled,
     saveSettings,
     suggestionAuthorMode,
     suggestedNewTagsPolicy,

@@ -85,4 +85,17 @@ export interface RunBatchImportUploadInput {
   /** Fired when a file finishes import with derivatives ready (not awaited; AI enqueue is sequential elsewhere). */
   onDesignPipelineSuccess?: (designId: string) => void;
   cancelToken?: import("../utils/uploadCancelToken").UploadCancelToken;
+  /** Session-scoped; defaults normal / auto. */
+  halftoneMode?: import("@fresh-prints/shared/types/design/artworkBackgroundSource.types").ImportHalftoneMode;
+  backgroundMode?: import("@fresh-prints/shared/types/design/artworkBackgroundSource.types").ImportArtworkBackgroundMode;
+  /** Per-file quick picker overrides keyed by absolute file path. */
+  itemBackgroundOverridesByPath?: ReadonlyMap<
+    string,
+    import("@fresh-prints/shared/utils/resolveImportArtworkBackgroundDecision").ImportItemBackgroundOverride
+  >;
+  /** Per-file halftone overrides keyed by absolute file path. */
+  itemHalftoneOverridesByPath?: ReadonlyMap<
+    string,
+    import("@fresh-prints/shared/utils/resolveImportArtworkBackgroundDecision").ImportItemHalftoneOverride
+  >;
 }

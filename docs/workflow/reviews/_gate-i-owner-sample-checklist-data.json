@@ -1,0 +1,2208 @@
+{
+  "jobId": "zFzAwEIwCXFWC8dce0f4",
+  "projectId": "fresh-prints-dev",
+  "generatedAt": "2026-08-26T04:24:23.304Z",
+  "composition": {
+    "wouldAutoApprove": 12,
+    "verifierUnresolved": 10,
+    "categoryGap": 1,
+    "diversity": 2,
+    "uniqueDesignIds": 25
+  },
+  "diversityCoverage": [
+    "adult-theme",
+    "animal",
+    "cannabis",
+    "category-ambiguity",
+    "faith-inspirational",
+    "holiday",
+    "humor-sarcasm",
+    "people-character",
+    "profession-group",
+    "sparse-minimal",
+    "specific-subject-identity",
+    "text-heavy",
+    "visually-complex"
+  ],
+  "categoryGapDesignId": "mw5eiufjMAuOZPnOiMiP",
+  "availableCounts": {
+    "wouldAutoApprove": 113,
+    "verifierUnresolved": 91,
+    "categoryGap": 1
+  },
+  "sample": [
+    {
+      "designId": "0EHBrGD4wXNLnNNKij4N",
+      "sampleStratum": "would-auto-approve",
+      "outcomeStratumDetail": {
+        "wouldAutoApprove": true,
+        "verifierOutcome": "skipped",
+        "hardBlocked": false,
+        "categoryGap": false
+      },
+      "studioContext": {
+        "title": "2601895693 Spread The Hope Find The Cure Fight Cancer In All Colors Shirt, Colorful Ribbon Dandelion Cancer Awareness Shirt, Can",
+        "description": "The design features the text \"Spread the Hope\", \"find the Cure\", and \"Fight Cancer In All Colors\". The main visual elements are two dandelion-like structures with numerous colorful awareness ribbons instead of seeds, and two bees with small hearts.",
+        "categoryId": "AcCIuOx3J0EQhe66dSv6",
+        "categoryName": "Awareness & Causes",
+        "thumbnailPath": "/thumbnails/0EHBrGD4wXNLnNNKij4N.webp",
+        "previewPath": "/previews/0EHBrGD4wXNLnNNKij4N.webp",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "automation": {
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "category_alternatives_present",
+          "shadow_would_auto_approve"
+        ],
+        "verifierInvoked": false,
+        "verifierOutcome": "skipped",
+        "wouldAutoApprove": true,
+        "hardBlocked": false
+      },
+      "smartProfileSummary": {
+        "subjects": [
+          "bee"
+        ],
+        "themes": [
+          "hope",
+          "positivity",
+          "awareness",
+          "motivation",
+          "inspiration"
+        ],
+        "interests": [
+          "cancer"
+        ],
+        "professionsGroups": [],
+        "occasions": [],
+        "places": [],
+        "visibleText": [
+          "Spread",
+          "the Hope",
+          "find",
+          "the Cure",
+          "Fight Cancer In All Colors"
+        ],
+        "searchConcepts": [
+          "cancer awareness month",
+          "cancer support",
+          "fight against cancer",
+          "cancer warrior",
+          "dandelion seeds of hope",
+          "spread kindness",
+          "bee kind"
+        ],
+        "styles": [
+          "illustration",
+          "graphic",
+          "decorative"
+        ],
+        "colors": [
+          "white",
+          "black",
+          "blue",
+          "pink",
+          "red",
+          "purple",
+          "green",
+          "yellow",
+          "orange",
+          "teal",
+          "brown",
+          "rainbow"
+        ]
+      },
+      "provenance": {
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3"
+      },
+      "diversityTags": [
+        "text-heavy",
+        "visually-complex",
+        "category-ambiguity"
+      ],
+      "ownerVerdict": null,
+      "ownerNotes": null
+    },
+    {
+      "designId": "1Ws0T9fivryest6IUSbt",
+      "sampleStratum": "would-auto-approve",
+      "outcomeStratumDetail": {
+        "wouldAutoApprove": true,
+        "verifierOutcome": "skipped",
+        "hardBlocked": false,
+        "categoryGap": false
+      },
+      "studioContext": {
+        "title": "just_hit_it",
+        "description": "The design features the Nike swoosh logo filled with cannabis leaves in various shades of green, with the text \"JUST HIT IT\" below in bold green letters.",
+        "categoryId": "tj0HemRh2RuYLfI7N6nO",
+        "categoryName": "Funny & Sarcastic",
+        "thumbnailPath": "/thumbnails/1Ws0T9fivryest6IUSbt.webp",
+        "previewPath": "/previews/1Ws0T9fivryest6IUSbt.webp",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "automation": {
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "category_alternatives_present",
+          "shadow_would_auto_approve"
+        ],
+        "verifierInvoked": false,
+        "verifierOutcome": "skipped",
+        "wouldAutoApprove": true,
+        "hardBlocked": false
+      },
+      "smartProfileSummary": {
+        "subjects": [],
+        "themes": [
+          "humor",
+          "cannabis culture",
+          "parody"
+        ],
+        "interests": [
+          "cannabis",
+          "weed"
+        ],
+        "professionsGroups": [],
+        "occasions": [],
+        "places": [],
+        "visibleText": [
+          "JUST HIT IT"
+        ],
+        "searchConcepts": [
+          "just do it parody",
+          "cannabis logo design",
+          "marijuana humor",
+          "weed parody",
+          "legal weed slogan",
+          "stoner humor"
+        ],
+        "styles": [
+          "graphic",
+          "illustration"
+        ],
+        "colors": [
+          "green",
+          "grey"
+        ]
+      },
+      "provenance": {
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3"
+      },
+      "diversityTags": [
+        "text-heavy",
+        "humor-sarcasm",
+        "cannabis",
+        "category-ambiguity"
+      ],
+      "ownerVerdict": null,
+      "ownerNotes": null
+    },
+    {
+      "designId": "20fv9qb9gRLSB66nS3xp",
+      "sampleStratum": "would-auto-approve",
+      "outcomeStratumDetail": {
+        "wouldAutoApprove": true,
+        "verifierOutcome": "skipped",
+        "hardBlocked": false,
+        "categoryGap": false
+      },
+      "studioContext": {
+        "title": "JesusSavesISpendDistressed",
+        "description": "The design features the phrases \"jesus saves.\" and \"I spend.\" in a distressed, blue, serif font. The text is arranged in two lines, with \"jesus saves.\" in a larger, bolder font at the top and \"I spend.\" in a smaller, italicized font below and to the right.",
+        "categoryId": "3KUsuaV9qIh88kIPF38T",
+        "categoryName": "Faith & Inspirational",
+        "thumbnailPath": "/thumbnails/20fv9qb9gRLSB66nS3xp.webp",
+        "previewPath": "/previews/20fv9qb9gRLSB66nS3xp.webp",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "automation": {
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "shadow_would_auto_approve"
+        ],
+        "verifierInvoked": false,
+        "verifierOutcome": "skipped",
+        "wouldAutoApprove": true,
+        "hardBlocked": false
+      },
+      "smartProfileSummary": {
+        "subjects": [],
+        "themes": [
+          "faith",
+          "inspirational",
+          "religious"
+        ],
+        "interests": [
+          "christianity"
+        ],
+        "professionsGroups": [],
+        "occasions": [],
+        "places": [],
+        "visibleText": [
+          "jesus saves.",
+          "I spend."
+        ],
+        "searchConcepts": [
+          "jesus saves",
+          "religious quote",
+          "christian saying",
+          "faith-based",
+          "scripture inspired"
+        ],
+        "styles": [
+          "distressed",
+          "graphic"
+        ],
+        "colors": [
+          "blue",
+          "gray"
+        ]
+      },
+      "provenance": {
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3"
+      },
+      "diversityTags": [
+        "text-heavy",
+        "faith-inspirational"
+      ],
+      "ownerVerdict": null,
+      "ownerNotes": null
+    },
+    {
+      "designId": "2Nj95YLaLk6763oTrRZw",
+      "sampleStratum": "would-auto-approve",
+      "outcomeStratumDetail": {
+        "wouldAutoApprove": true,
+        "verifierOutcome": "skipped",
+        "hardBlocked": false,
+        "categoryGap": false
+      },
+      "studioContext": {
+        "title": "dfdsfdsf",
+        "description": "The word \"GIGI\" is displayed in decorative letters filled with a floral pattern and light blue stripes. It is adorned with a string of pearls and features Mickey Mouse, Minnie Mouse, Daisy Duck, Donald Duck, and Goofy surrounding the letters. The colors are pastel and vibrant.",
+        "categoryId": "Sn9nmGJvFlIRO4DnFnIB",
+        "categoryName": "Pop Culture & Characters",
+        "thumbnailPath": "/thumbnails/2Nj95YLaLk6763oTrRZw.webp",
+        "previewPath": "/previews/2Nj95YLaLk6763oTrRZw.webp",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "automation": {
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "shadow_would_auto_approve"
+        ],
+        "verifierInvoked": false,
+        "verifierOutcome": "skipped",
+        "wouldAutoApprove": true,
+        "hardBlocked": false
+      },
+      "smartProfileSummary": {
+        "subjects": [
+          "donald goofy",
+          "Mickey Mouse",
+          "Minnie Mouse",
+          "Daisy Duck",
+          "Donald Duck",
+          "Goofy"
+        ],
+        "themes": [
+          "family",
+          "grandmother"
+        ],
+        "interests": [
+          "Disney"
+        ],
+        "professionsGroups": [],
+        "occasions": [],
+        "places": [],
+        "visibleText": [
+          "GIGI"
+        ],
+        "searchConcepts": [
+          "Gigi gift",
+          "Disney family",
+          "Grandma gift"
+        ],
+        "styles": [
+          "decorative",
+          "floral"
+        ],
+        "colors": [
+          "blue",
+          "pink",
+          "white",
+          "orange",
+          "yellow",
+          "green",
+          "brown",
+          "black",
+          "red"
+        ]
+      },
+      "provenance": {
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3"
+      },
+      "diversityTags": [
+        "text-heavy",
+        "animal",
+        "visually-complex",
+        "specific-subject-identity"
+      ],
+      "ownerVerdict": null,
+      "ownerNotes": null
+    },
+    {
+      "designId": "2g9IrxIiuOGrUbZio4Qn",
+      "sampleStratum": "would-auto-approve",
+      "outcomeStratumDetail": {
+        "wouldAutoApprove": true,
+        "verifierOutcome": "skipped",
+        "hardBlocked": false,
+        "categoryGap": false
+      },
+      "studioContext": {
+        "title": "2 (12)",
+        "description": "A vibrant pink flamingo stands among tropical leaves and flowers including hibiscus and birds of paradise. The background features vertical blue stripes and small bubbles. The flamingo has multi-colored feathers.",
+        "categoryId": "aqDBTE9a8D2R7hBwzSVD",
+        "categoryName": "Floral & Nature",
+        "thumbnailPath": "/thumbnails/2g9IrxIiuOGrUbZio4Qn.webp",
+        "previewPath": "/previews/2g9IrxIiuOGrUbZio4Qn.webp",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "automation": {
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "shadow_would_auto_approve"
+        ],
+        "verifierInvoked": false,
+        "verifierOutcome": "skipped",
+        "wouldAutoApprove": true,
+        "hardBlocked": false
+      },
+      "smartProfileSummary": {
+        "subjects": [
+          "flamingo"
+        ],
+        "themes": [
+          "tropical",
+          "nature",
+          "summer"
+        ],
+        "interests": [
+          "nature",
+          "summer",
+          "beach"
+        ],
+        "professionsGroups": [],
+        "occasions": [
+          "summer"
+        ],
+        "places": [
+          "beach"
+        ],
+        "visibleText": [],
+        "searchConcepts": [
+          "tropical bird",
+          "exotic bird",
+          "summer vibes",
+          "vacation",
+          "island life",
+          "floral design",
+          "botanical art"
+        ],
+        "styles": [
+          "illustration",
+          "graphic",
+          "decorative"
+        ],
+        "colors": [
+          "pink",
+          "blue",
+          "green",
+          "yellow",
+          "white",
+          "black"
+        ]
+      },
+      "provenance": {
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3"
+      },
+      "diversityTags": [
+        "animal",
+        "sparse-minimal"
+      ],
+      "ownerVerdict": null,
+      "ownerNotes": null
+    },
+    {
+      "designId": "2iLdJzuKCON3U2VJ6w0o",
+      "sampleStratum": "would-auto-approve",
+      "outcomeStratumDetail": {
+        "wouldAutoApprove": true,
+        "verifierOutcome": "skipped",
+        "hardBlocked": false,
+        "categoryGap": false
+      },
+      "studioContext": {
+        "title": "friend3",
+        "description": "A cartoon duck wearing a hat, sunglasses, and a tropical shirt sits on a yellow inflatable ring while holding a green cocktail. Ice cubes and water splashes surround the duck.",
+        "categoryId": "qhGPaAHPOOmPe7PvQvi0",
+        "categoryName": "Animals",
+        "thumbnailPath": "/thumbnails/2iLdJzuKCON3U2VJ6w0o.webp",
+        "previewPath": "/previews/2iLdJzuKCON3U2VJ6w0o.webp",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "automation": {
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "shadow_would_auto_approve"
+        ],
+        "verifierInvoked": false,
+        "verifierOutcome": "skipped",
+        "wouldAutoApprove": true,
+        "hardBlocked": false
+      },
+      "smartProfileSummary": {
+        "subjects": [
+          "duck"
+        ],
+        "themes": [
+          "summer",
+          "vacation",
+          "relaxation",
+          "fun"
+        ],
+        "interests": [
+          "summer",
+          "vacation",
+          "animals",
+          "pets"
+        ],
+        "professionsGroups": [],
+        "occasions": [
+          "summer"
+        ],
+        "places": [],
+        "visibleText": [],
+        "searchConcepts": [
+          "summer duck",
+          "tropical duck",
+          "beach duck",
+          "pool duck",
+          "duck vacation",
+          "duck with drink",
+          "summer vibes",
+          "holiday duck",
+          "cartoon animal",
+          "funny duck"
+        ],
+        "styles": [
+          "cartoon",
+          "illustration",
+          "graphic"
+        ],
+        "colors": [
+          "yellow",
+          "blue",
+          "green",
+          "orange",
+          "brown",
+          "white",
+          "black"
+        ]
+      },
+      "provenance": {
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3"
+      },
+      "diversityTags": [
+        "animal",
+        "holiday",
+        "humor-sarcasm",
+        "visually-complex",
+        "sparse-minimal"
+      ],
+      "ownerVerdict": null,
+      "ownerNotes": null
+    },
+    {
+      "designId": "3QNubh7l7WahljYYfgYe",
+      "sampleStratum": "would-auto-approve",
+      "outcomeStratumDetail": {
+        "wouldAutoApprove": true,
+        "verifierOutcome": "skipped",
+        "hardBlocked": false,
+        "categoryGap": false
+      },
+      "studioContext": {
+        "title": "hotter-than-a-hoochie-coochie-png",
+        "description": "Hotter Than A Hoochie Coochie is written in bright yellow and pink lettering with a yellow outline, over a cool green alligator wearing pink sunglasses, relaxing on an orange and pink inner tube in blue water. Pink stars and yellow accents surround the text.",
+        "categoryId": "tj0HemRh2RuYLfI7N6nO",
+        "categoryName": "Funny & Sarcastic",
+        "thumbnailPath": "/thumbnails/3QNubh7l7WahljYYfgYe.webp",
+        "previewPath": "/previews/3QNubh7l7WahljYYfgYe.webp",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "automation": {
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "shadow_would_auto_approve"
+        ],
+        "verifierInvoked": false,
+        "verifierOutcome": "skipped",
+        "wouldAutoApprove": true,
+        "hardBlocked": false
+      },
+      "smartProfileSummary": {
+        "subjects": [
+          "coochie alligator",
+          "alligator"
+        ],
+        "themes": [
+          "humor",
+          "attitude",
+          "summer",
+          "sarcasm"
+        ],
+        "interests": [
+          "summer",
+          "humor"
+        ],
+        "professionsGroups": [],
+        "occasions": [
+          "summer"
+        ],
+        "places": [],
+        "visibleText": [
+          "HOTTER",
+          "THAN A HOOCHIE",
+          "COOCHIE"
+        ],
+        "searchConcepts": [
+          "alligator",
+          "summer heat",
+          "funny saying",
+          "pool float",
+          "sunglasses alligator",
+          "Florida vibe",
+          "quirky quote",
+          "heat wave",
+          "summer vacation",
+          "summertime fun"
+        ],
+        "styles": [
+          "graphic",
+          "illustration",
+          "decorative"
+        ],
+        "colors": [
+          "yellow",
+          "pink",
+          "green",
+          "orange",
+          "blue"
+        ]
+      },
+      "provenance": {
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3"
+      },
+      "diversityTags": [
+        "text-heavy",
+        "humor-sarcasm",
+        "visually-complex",
+        "specific-subject-identity"
+      ],
+      "ownerVerdict": null,
+      "ownerNotes": null
+    },
+    {
+      "designId": "4rG1uHbmqBtOevnDFon6",
+      "sampleStratum": "would-auto-approve",
+      "outcomeStratumDetail": {
+        "wouldAutoApprove": true,
+        "verifierOutcome": "skipped",
+        "hardBlocked": false,
+        "categoryGap": false
+      },
+      "studioContext": {
+        "title": "OR 05052025 VTN Basic Human Rights Are Not Radical Anti Trump",
+        "description": "The design features the text \"BASIC HUMAN RIGHTS ARE NOT 'RADICAL'\" in a circular arrangement around stylized pink flowers with orange centers and coral-colored foliage. The overall color palette includes teal, pink, coral, and orange.",
+        "categoryId": "AcCIuOx3J0EQhe66dSv6",
+        "categoryName": "Awareness & Causes",
+        "thumbnailPath": "/thumbnails/4rG1uHbmqBtOevnDFon6.webp",
+        "previewPath": "/previews/4rG1uHbmqBtOevnDFon6.webp",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "automation": {
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "shadow_would_auto_approve"
+        ],
+        "verifierInvoked": false,
+        "verifierOutcome": "skipped",
+        "wouldAutoApprove": true,
+        "hardBlocked": false
+      },
+      "smartProfileSummary": {
+        "subjects": [],
+        "themes": [
+          "activism",
+          "social justice",
+          "empowerment"
+        ],
+        "interests": [
+          "activism"
+        ],
+        "professionsGroups": [],
+        "occasions": [],
+        "places": [],
+        "visibleText": [
+          "BASIC HUMAN RIGHTS",
+          "ARE NOT \"RADICAL\""
+        ],
+        "searchConcepts": [
+          "basic rights",
+          "human dignity",
+          "social change",
+          "political statement",
+          "quote about rights"
+        ],
+        "styles": [
+          "graphic",
+          "illustration",
+          "decorative"
+        ],
+        "colors": [
+          "teal",
+          "pink",
+          "coral",
+          "orange"
+        ]
+      },
+      "provenance": {
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3"
+      },
+      "diversityTags": [
+        "text-heavy",
+        "people-character"
+      ],
+      "ownerVerdict": null,
+      "ownerNotes": null
+    },
+    {
+      "designId": "51Oz02NfLY8vTruauW56",
+      "sampleStratum": "would-auto-approve",
+      "outcomeStratumDetail": {
+        "wouldAutoApprove": true,
+        "verifierOutcome": "skipped",
+        "hardBlocked": false,
+        "categoryGap": false
+      },
+      "studioContext": {
+        "title": "K8qTSKz59kk14WmuNs3F",
+        "description": "A black and white illustration of Frankenstein's monster blowing on a dandelion, scattering its seeds. The artwork features a highly detailed, sketchy style.",
+        "categoryId": "Iu6YZYL4aiuAtXG6H9bI",
+        "categoryName": "Holiday & Seasonal",
+        "thumbnailPath": "/thumbnails/51Oz02NfLY8vTruauW56.webp",
+        "previewPath": "/previews/51Oz02NfLY8vTruauW56.webp",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "automation": {
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "category_alternatives_present",
+          "shadow_would_auto_approve"
+        ],
+        "verifierInvoked": false,
+        "verifierOutcome": "skipped",
+        "wouldAutoApprove": true,
+        "hardBlocked": false
+      },
+      "smartProfileSummary": {
+        "subjects": [
+          "Frankenstein's monster"
+        ],
+        "themes": [
+          "Halloween",
+          "whimsical",
+          "humor",
+          "spooky"
+        ],
+        "interests": [
+          "halloween",
+          "horror movies"
+        ],
+        "professionsGroups": [],
+        "occasions": [
+          "Halloween"
+        ],
+        "places": [],
+        "visibleText": [],
+        "searchConcepts": [
+          "Frankenstein monster",
+          "monster blowing dandelion",
+          "Halloween monster",
+          "spooky dandelion",
+          "horror dandelion",
+          "whimsical Halloween",
+          "creature art",
+          "horror art"
+        ],
+        "styles": [
+          "illustration",
+          "sketch",
+          "distressed",
+          "drawing"
+        ],
+        "colors": [
+          "white",
+          "black"
+        ]
+      },
+      "provenance": {
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3"
+      },
+      "diversityTags": [
+        "holiday",
+        "humor-sarcasm",
+        "sparse-minimal",
+        "category-ambiguity",
+        "specific-subject-identity"
+      ],
+      "ownerVerdict": null,
+      "ownerNotes": null
+    },
+    {
+      "designId": "5Jype5Zc1b13XXSci5Kn",
+      "sampleStratum": "would-auto-approve",
+      "outcomeStratumDetail": {
+        "wouldAutoApprove": true,
+        "verifierOutcome": "skipped",
+        "hardBlocked": false,
+        "categoryGap": false
+      },
+      "studioContext": {
+        "title": "327 Miniature Schnauzer",
+        "description": "A schnauzer dog sits among a bouquet of pink, yellow, and orange flowers. A small pink flower is perched on its head.",
+        "categoryId": "qhGPaAHPOOmPe7PvQvi0",
+        "categoryName": "Animals",
+        "thumbnailPath": "/thumbnails/5Jype5Zc1b13XXSci5Kn.webp",
+        "previewPath": "/previews/5Jype5Zc1b13XXSci5Kn.webp",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "automation": {
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "shadow_would_auto_approve"
+        ],
+        "verifierInvoked": false,
+        "verifierOutcome": "skipped",
+        "wouldAutoApprove": true,
+        "hardBlocked": false
+      },
+      "smartProfileSummary": {
+        "subjects": [
+          "schnauzer dog",
+          "dog"
+        ],
+        "themes": [
+          "nature",
+          "animals"
+        ],
+        "interests": [
+          "animals",
+          "pets",
+          "dogs"
+        ],
+        "professionsGroups": [],
+        "occasions": [],
+        "places": [],
+        "visibleText": [],
+        "searchConcepts": [
+          "dog breeds",
+          "cute schnauzer",
+          "schnauzer art",
+          "dog with flowers",
+          "floral dog",
+          "dog portrait"
+        ],
+        "styles": [
+          "illustration",
+          "detailed",
+          "decorative"
+        ],
+        "colors": [
+          "black",
+          "white",
+          "gray",
+          "pink",
+          "yellow",
+          "orange",
+          "green"
+        ]
+      },
+      "provenance": {
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3"
+      },
+      "diversityTags": [
+        "animal",
+        "people-character",
+        "visually-complex",
+        "specific-subject-identity"
+      ],
+      "ownerVerdict": null,
+      "ownerNotes": null
+    },
+    {
+      "designId": "5NVU91SMRiecLkZqdrN8",
+      "sampleStratum": "would-auto-approve",
+      "outcomeStratumDetail": {
+        "wouldAutoApprove": true,
+        "verifierOutcome": "skipped",
+        "hardBlocked": false,
+        "categoryGap": false
+      },
+      "studioContext": {
+        "title": "(8)",
+        "description": "An open book unfolds into a vibrant fantasy landscape filled with large mushrooms, colorful flowers, and a castle nestled in a glowing, ethereal light.",
+        "categoryId": "aqDBTE9a8D2R7hBwzSVD",
+        "categoryName": "Floral & Nature",
+        "thumbnailPath": "/thumbnails/5NVU91SMRiecLkZqdrN8.webp",
+        "previewPath": "/previews/5NVU91SMRiecLkZqdrN8.webp",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "automation": {
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "shadow_would_auto_approve"
+        ],
+        "verifierInvoked": false,
+        "verifierOutcome": "skipped",
+        "wouldAutoApprove": true,
+        "hardBlocked": false
+      },
+      "smartProfileSummary": {
+        "subjects": [],
+        "themes": [
+          "fantasy",
+          "nature",
+          "storytelling",
+          "imagination"
+        ],
+        "interests": [
+          "reading",
+          "nature",
+          "fantasy"
+        ],
+        "professionsGroups": [],
+        "occasions": [],
+        "places": [
+          "fantasy landscape"
+        ],
+        "visibleText": [],
+        "searchConcepts": [
+          "magical book",
+          "story book",
+          "fantasy world",
+          "mushroom forest",
+          "enchanted forest",
+          "fairy tale book",
+          "adventure book"
+        ],
+        "styles": [
+          "illustration",
+          "fantasy art",
+          "decorative",
+          "watercolor"
+        ],
+        "colors": [
+          "purple",
+          "pink",
+          "blue",
+          "green",
+          "brown",
+          "white",
+          "yellow"
+        ]
+      },
+      "provenance": {
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3"
+      },
+      "diversityTags": [
+        "visually-complex",
+        "sparse-minimal"
+      ],
+      "ownerVerdict": null,
+      "ownerNotes": null
+    },
+    {
+      "designId": "6zKWIvQyvwH5M19bCeYW",
+      "sampleStratum": "would-auto-approve",
+      "outcomeStratumDetail": {
+        "wouldAutoApprove": true,
+        "verifierOutcome": "skipped",
+        "hardBlocked": false,
+        "categoryGap": false
+      },
+      "studioContext": {
+        "title": "That sounds (2)",
+        "description": "The design features a skeleton wearing sunglasses and a bandana, holding a drink. Text reads \"THAT SOUNDS LIKE MY HUSBAND'S PROBLEM\". Graphics include roses, lightning bolts, stars, and a checkered pattern. Colors are pink, white, teal, and black.",
+        "categoryId": "tj0HemRh2RuYLfI7N6nO",
+        "categoryName": "Funny & Sarcastic",
+        "thumbnailPath": "/thumbnails/6zKWIvQyvwH5M19bCeYW.webp",
+        "previewPath": "/previews/6zKWIvQyvwH5M19bCeYW.webp",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "automation": {
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "shadow_would_auto_approve"
+        ],
+        "verifierInvoked": false,
+        "verifierOutcome": "skipped",
+        "wouldAutoApprove": true,
+        "hardBlocked": false
+      },
+      "smartProfileSummary": {
+        "subjects": [
+          "problem skeleton",
+          "skeleton"
+        ],
+        "themes": [
+          "humor",
+          "sarcasm",
+          "attitude",
+          "problem"
+        ],
+        "interests": [],
+        "professionsGroups": [],
+        "occasions": [],
+        "places": [],
+        "visibleText": [
+          "THAT SOUNDS LIKE",
+          "MY",
+          "HUSBAND'S",
+          "PROBLEM"
+        ],
+        "searchConcepts": [
+          "skeleton humor",
+          "wife problem",
+          "drink lover",
+          "funny saying",
+          "badass skeleton"
+        ],
+        "styles": [
+          "graphic",
+          "distressed"
+        ],
+        "colors": [
+          "white",
+          "pink",
+          "teal",
+          "black"
+        ]
+      },
+      "provenance": {
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3"
+      },
+      "diversityTags": [
+        "text-heavy",
+        "humor-sarcasm",
+        "visually-complex",
+        "specific-subject-identity"
+      ],
+      "ownerVerdict": null,
+      "ownerNotes": null
+    },
+    {
+      "designId": "03cbj1cIFH7Bavt38XBX",
+      "sampleStratum": "verifier-unresolved",
+      "outcomeStratumDetail": {
+        "wouldAutoApprove": false,
+        "verifierOutcome": "unresolved",
+        "hardBlocked": true,
+        "categoryGap": false
+      },
+      "studioContext": {
+        "title": "(4)",
+        "description": "A watercolor illustration of a man in a black hat and suit, mid-dance pose, with splashes of red and blue watercolor paint. The figure appears to be inspired by Michael Jackson.",
+        "categoryId": "Sn9nmGJvFlIRO4DnFnIB",
+        "categoryName": "Pop Culture & Characters",
+        "thumbnailPath": "/thumbnails/03cbj1cIFH7Bavt38XBX.webp",
+        "previewPath": "/previews/03cbj1cIFH7Bavt38XBX.webp",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "automation": {
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "structured_evidence_gap:subjects:person",
+          "verifier_unresolved"
+        ],
+        "verifierInvoked": true,
+        "verifierOutcome": "unresolved",
+        "wouldAutoApprove": false,
+        "hardBlocked": true
+      },
+      "smartProfileSummary": {
+        "subjects": [
+          "person"
+        ],
+        "themes": [
+          "dancing",
+          "music",
+          "iconic pose"
+        ],
+        "interests": [
+          "music",
+          "dancing"
+        ],
+        "professionsGroups": [],
+        "occasions": [],
+        "places": [],
+        "visibleText": [],
+        "searchConcepts": [
+          "Michael Jackson inspired",
+          "dancing icon",
+          "pop music legend",
+          "famous dancer"
+        ],
+        "styles": [
+          "watercolor",
+          "illustration",
+          "splatter"
+        ],
+        "colors": [
+          "black",
+          "red",
+          "blue",
+          "white"
+        ]
+      },
+      "provenance": {
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3"
+      },
+      "diversityTags": [
+        "people-character",
+        "sparse-minimal"
+      ],
+      "ownerVerdict": null,
+      "ownerNotes": null
+    },
+    {
+      "designId": "1eOWMVHDvRKY0kwYWQet",
+      "sampleStratum": "verifier-unresolved",
+      "outcomeStratumDetail": {
+        "wouldAutoApprove": false,
+        "verifierOutcome": "unresolved",
+        "hardBlocked": true,
+        "categoryGap": false
+      },
+      "studioContext": {
+        "title": "FD_M_CT58_PNG",
+        "description": "The word FATHER is spelled out vertically with different Star Wars characters and scenes filling the letters. To the right, in capital letters, is HERO, preceded by traits like HARDWORKING, FUNNY, WISE, STRONG, BRAVE, ADVENTUROUS, FEARLESS, LOVING, PROTECTOR. Various Star Wars ships and droids are scattered around the text.",
+        "categoryId": "Sn9nmGJvFlIRO4DnFnIB",
+        "categoryName": "Pop Culture & Characters",
+        "thumbnailPath": "/thumbnails/1eOWMVHDvRKY0kwYWQet.webp",
+        "previewPath": "/previews/1eOWMVHDvRKY0kwYWQet.webp",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "automation": {
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "structured_evidence_gap:subjects:bb-8",
+          "structured_evidence_gap:subjects:at-at walker",
+          "structured_evidence_gap:subjects:millennium falcon",
+          "structured_evidence_gap:subjects:r2-d2",
+          "structured_evidence_gap:subjects:x-wing fighter",
+          "structured_evidence_gap:subjects:tie fighter",
+          "structured_evidence_gap:subjects:darth vader",
+          "verifier_unresolved"
+        ],
+        "verifierInvoked": true,
+        "verifierOutcome": "unresolved",
+        "wouldAutoApprove": false,
+        "hardBlocked": true
+      },
+      "smartProfileSummary": {
+        "subjects": [
+          "BB-8",
+          "AT-AT walker",
+          "Millennium Falcon",
+          "R2-D2",
+          "X-wing fighter",
+          "TIE fighter",
+          "Darth Vader"
+        ],
+        "themes": [
+          "family",
+          "Fatherhood",
+          "heroism",
+          "Star Wars"
+        ],
+        "interests": [
+          "Star Wars",
+          "movies",
+          "sci-fi",
+          "space"
+        ],
+        "professionsGroups": [],
+        "occasions": [
+          "Father's Day"
+        ],
+        "places": [
+          "Space"
+        ],
+        "visibleText": [
+          "FATHER",
+          "HARDWORKING",
+          "FUNNY",
+          "WISE",
+          "STRONG",
+          "BRAVE",
+          "ADVENTUROUS",
+          "FEARLESS",
+          "LOVING",
+          "PROTECTOR",
+          "HERO"
+        ],
+        "searchConcepts": [
+          "father superhero",
+          "dad hero",
+          "star wars dad",
+          "father's day gift",
+          "hero dad"
+        ],
+        "styles": [
+          "cartoon",
+          "illustration",
+          "graphic"
+        ],
+        "colors": [
+          "white",
+          "black",
+          "orange",
+          "yellow",
+          "green",
+          "red",
+          "blue",
+          "gray"
+        ]
+      },
+      "provenance": {
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3"
+      },
+      "diversityTags": [
+        "text-heavy",
+        "humor-sarcasm",
+        "visually-complex",
+        "specific-subject-identity"
+      ],
+      "ownerVerdict": null,
+      "ownerNotes": null
+    },
+    {
+      "designId": "1scpUhx0KriTBC1IfFIW",
+      "sampleStratum": "verifier-unresolved",
+      "outcomeStratumDetail": {
+        "wouldAutoApprove": false,
+        "verifierOutcome": "unresolved",
+        "hardBlocked": true,
+        "categoryGap": false
+      },
+      "studioContext": {
+        "title": "PNG 4",
+        "description": "This design features a skeleton taking a bath with a toaster in the bathtub. The text reads \"LIVE, LAUGH\" and \"TOASTER BATH\" with colorful stars and sparkles surrounding the scene. The colors are vibrant, with blues, pinks, and purples dominating.",
+        "categoryId": "tj0HemRh2RuYLfI7N6nO",
+        "categoryName": "Funny & Sarcastic",
+        "thumbnailPath": "/thumbnails/1scpUhx0KriTBC1IfFIW.webp",
+        "previewPath": "/previews/1scpUhx0KriTBC1IfFIW.webp",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "automation": {
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "structured_evidence_gap:objects:bubbles",
+          "verifier_unresolved"
+        ],
+        "verifierInvoked": true,
+        "verifierOutcome": "unresolved",
+        "wouldAutoApprove": false,
+        "hardBlocked": true
+      },
+      "smartProfileSummary": {
+        "subjects": [
+          "bath skeleton",
+          "skeleton"
+        ],
+        "themes": [
+          "humor",
+          "sarcasm",
+          "dark humor",
+          "quirky"
+        ],
+        "interests": [],
+        "professionsGroups": [],
+        "occasions": [],
+        "places": [],
+        "visibleText": [
+          "LIVE, LAUGH",
+          "TOASTER BATH"
+        ],
+        "searchConcepts": [
+          "skeleton in bathtub",
+          "toaster bath joke",
+          "live laugh love parody",
+          "funny skeleton",
+          "dark humor humor"
+        ],
+        "styles": [
+          "graphic",
+          "illustration",
+          "decorative",
+          "cartoon"
+        ],
+        "colors": [
+          "blue",
+          "pink",
+          "purple",
+          "white",
+          "yellow",
+          "black"
+        ]
+      },
+      "provenance": {
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3"
+      },
+      "diversityTags": [
+        "text-heavy",
+        "humor-sarcasm",
+        "visually-complex",
+        "specific-subject-identity"
+      ],
+      "ownerVerdict": null,
+      "ownerNotes": null
+    },
+    {
+      "designId": "2sgtK8BS0Cj8vlyPBmhm",
+      "sampleStratum": "verifier-unresolved",
+      "outcomeStratumDetail": {
+        "wouldAutoApprove": false,
+        "verifierOutcome": "unresolved",
+        "hardBlocked": true,
+        "categoryGap": false
+      },
+      "studioContext": {
+        "title": "Healthcare Hero Peace Love Scrubs Healthcare Worker Groovy T-Shirt",
+        "description": "The design features the words PEACE LOVE SCRUBS in large, groovy, retro lettering in orange and cream, with the smaller text HEALTHCARE HERO below it. Decorative elements include a peace sign, daisies, hearts, and stethoscopes.",
+        "categoryId": "lUNc6pjkJ99WdBAGbrCF",
+        "categoryName": "Occupations",
+        "thumbnailPath": "/thumbnails/2sgtK8BS0Cj8vlyPBmhm.webp",
+        "previewPath": "/previews/2sgtK8BS0Cj8vlyPBmhm.webp",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "automation": {
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "structured_evidence_gap:objects:daisy",
+          "verifier_unresolved"
+        ],
+        "verifierInvoked": true,
+        "verifierOutcome": "unresolved",
+        "wouldAutoApprove": false,
+        "hardBlocked": true
+      },
+      "smartProfileSummary": {
+        "subjects": [],
+        "themes": [
+          "peace",
+          "love",
+          "healthcare",
+          "nursing"
+        ],
+        "interests": [
+          "nursing",
+          "medical",
+          "healthcare"
+        ],
+        "professionsGroups": [
+          "nurses",
+          "healthcare professionals"
+        ],
+        "occasions": [],
+        "places": [],
+        "visibleText": [
+          "PEACE",
+          "LOVE",
+          "SCRUBS",
+          "HEALTHCARE HERO"
+        ],
+        "searchConcepts": [
+          "nurse humor",
+          "healthcare worker appreciation",
+          "hippie nurse",
+          "medical professional gift"
+        ],
+        "styles": [
+          "groovy",
+          "retro",
+          "decorative"
+        ],
+        "colors": [
+          "orange",
+          "cream",
+          "teal",
+          "red",
+          "yellow",
+          "black"
+        ]
+      },
+      "provenance": {
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3"
+      },
+      "diversityTags": [
+        "text-heavy",
+        "profession-group",
+        "humor-sarcasm",
+        "visually-complex"
+      ],
+      "ownerVerdict": null,
+      "ownerNotes": null
+    },
+    {
+      "designId": "6fBRl87jaXyYYGlhapS9",
+      "sampleStratum": "verifier-unresolved",
+      "outcomeStratumDetail": {
+        "wouldAutoApprove": false,
+        "verifierOutcome": "unresolved",
+        "hardBlocked": true,
+        "categoryGap": false
+      },
+      "studioContext": {
+        "title": "1 (52)",
+        "description": "This design features the text \"LOONEY TUNES\" in yellow with a black outline, set against a collage of six cartoon characters: Bugs Bunny, Sylvester the Cat, Taz, Pepé Le Pew, Tweety Bird, and Daffy Duck. The characters are presented in individual color-blocked frames.",
+        "categoryId": "Sn9nmGJvFlIRO4DnFnIB",
+        "categoryName": "Pop Culture & Characters",
+        "thumbnailPath": "/thumbnails/6fBRl87jaXyYYGlhapS9.webp",
+        "previewPath": "/previews/6fBRl87jaXyYYGlhapS9.webp",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "automation": {
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "structured_evidence_gap:subjects:rabbit",
+          "structured_evidence_gap:subjects:skunk",
+          "verifier_unresolved"
+        ],
+        "verifierInvoked": true,
+        "verifierOutcome": "unresolved",
+        "wouldAutoApprove": false,
+        "hardBlocked": true
+      },
+      "smartProfileSummary": {
+        "subjects": [
+          "Bugs Bunny",
+          "Sylvester the Cat",
+          "Taz",
+          "Pepé Le Pew",
+          "Tweety Bird",
+          "Daffy Duck",
+          "rabbit",
+          "cat",
+          "skunk",
+          "bird",
+          "duck"
+        ],
+        "themes": [
+          "classic cartoons",
+          "animation"
+        ],
+        "interests": [
+          "cartoons",
+          "animation"
+        ],
+        "professionsGroups": [],
+        "occasions": [],
+        "places": [],
+        "visibleText": [
+          "LOONEY",
+          "TUNES"
+        ],
+        "searchConcepts": [
+          "Looney Tunes characters",
+          "classic cartoon characters",
+          "vintage cartoons",
+          "animation characters"
+        ],
+        "styles": [
+          "cartoon",
+          "graphic"
+        ],
+        "colors": [
+          "yellow",
+          "black",
+          "white",
+          "blue",
+          "orange",
+          "green",
+          "red"
+        ]
+      },
+      "provenance": {
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3"
+      },
+      "diversityTags": [
+        "text-heavy",
+        "animal",
+        "visually-complex",
+        "specific-subject-identity"
+      ],
+      "ownerVerdict": null,
+      "ownerNotes": null
+    },
+    {
+      "designId": "7BjqFQIhkavo80sv5kCp",
+      "sampleStratum": "verifier-unresolved",
+      "outcomeStratumDetail": {
+        "wouldAutoApprove": false,
+        "verifierOutcome": "unresolved",
+        "hardBlocked": true,
+        "categoryGap": false
+      },
+      "studioContext": {
+        "title": "4-01",
+        "description": "The design features the word \"Aries\" in large, decorative black lettering. Below \"Aries\" are the words \"Lively\" and \"Versatile\" to the left, and \"Passionate\", \"Courageous\", \"Positive\", and \"Adventurous\" to the right, with a black silhouette of a ram in the center. Small stars and diamond shapes are scattered around the text and ram.",
+        "categoryId": "Sn9nmGJvFlIRO4DnFnIB",
+        "categoryName": "Pop Culture & Characters",
+        "thumbnailPath": "/thumbnails/7BjqFQIhkavo80sv5kCp.webp",
+        "previewPath": "/previews/7BjqFQIhkavo80sv5kCp.webp",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "automation": {
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "structured_evidence_gap:subjects:silhouette ram",
+          "verifier_unresolved"
+        ],
+        "verifierInvoked": true,
+        "verifierOutcome": "unresolved",
+        "wouldAutoApprove": false,
+        "hardBlocked": true
+      },
+      "smartProfileSummary": {
+        "subjects": [
+          "silhouette ram",
+          "ram"
+        ],
+        "themes": [
+          "astrology",
+          "zodiac traits"
+        ],
+        "interests": [
+          "astrology"
+        ],
+        "professionsGroups": [],
+        "occasions": [],
+        "places": [],
+        "visibleText": [
+          "Aries",
+          "Lively",
+          "Versatile",
+          "Passionate",
+          "Courageous",
+          "Positive",
+          "Adventurous"
+        ],
+        "searchConcepts": [
+          "zodiac sign",
+          "aries traits",
+          "horoscope sign",
+          "western astrology",
+          "personality traits",
+          "ram zodiac",
+          "astrology graphic"
+        ],
+        "styles": [
+          "decorative",
+          "graphic"
+        ],
+        "colors": [
+          "black"
+        ]
+      },
+      "provenance": {
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3"
+      },
+      "diversityTags": [
+        "text-heavy",
+        "visually-complex",
+        "specific-subject-identity"
+      ],
+      "ownerVerdict": null,
+      "ownerNotes": null
+    },
+    {
+      "designId": "7bVlWMFwxECdfHH8VNPB",
+      "sampleStratum": "verifier-unresolved",
+      "outcomeStratumDetail": {
+        "wouldAutoApprove": false,
+        "verifierOutcome": "unresolved",
+        "hardBlocked": true,
+        "categoryGap": false
+      },
+      "studioContext": {
+        "title": "F Caw F-03",
+        "description": "The text F-CAW-F is displayed above a black raven with its wings spread and mouth open. The illustration is in a graphic, distressed style.",
+        "categoryId": "qhGPaAHPOOmPe7PvQvi0",
+        "categoryName": "Animals",
+        "thumbnailPath": "/thumbnails/7bVlWMFwxECdfHH8VNPB.webp",
+        "previewPath": "/previews/7bVlWMFwxECdfHH8VNPB.webp",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "automation": {
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "structured_evidence_gap:subjects:bird",
+          "verifier_unresolved"
+        ],
+        "verifierInvoked": true,
+        "verifierOutcome": "unresolved",
+        "wouldAutoApprove": false,
+        "hardBlocked": true
+      },
+      "smartProfileSummary": {
+        "subjects": [
+          "f-caw-f raven",
+          "raven",
+          "bird"
+        ],
+        "themes": [
+          "humor",
+          "animal humor",
+          "attitude"
+        ],
+        "interests": [
+          "animals",
+          "pets"
+        ],
+        "professionsGroups": [],
+        "occasions": [],
+        "places": [],
+        "visibleText": [
+          "F-CAW-F"
+        ],
+        "searchConcepts": [
+          "caw",
+          "onomatopoeia",
+          "bird caw",
+          "raven caw",
+          "funny bird",
+          "statement bird"
+        ],
+        "styles": [
+          "graphic",
+          "distressed",
+          "illustration"
+        ],
+        "colors": [
+          "black",
+          "gray"
+        ]
+      },
+      "provenance": {
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3"
+      },
+      "diversityTags": [
+        "text-heavy",
+        "animal",
+        "humor-sarcasm",
+        "visually-complex",
+        "specific-subject-identity"
+      ],
+      "ownerVerdict": null,
+      "ownerNotes": null
+    },
+    {
+      "designId": "8m0KgJEel8kLpYlmZpFb",
+      "sampleStratum": "verifier-unresolved",
+      "outcomeStratumDetail": {
+        "wouldAutoApprove": false,
+        "verifierOutcome": "unresolved",
+        "hardBlocked": true,
+        "categoryGap": false
+      },
+      "studioContext": {
+        "title": "KJ3IAtTpYNodxY3MGu6f",
+        "description": "A black and white illustration featuring a girl with braided hair and two cartoonish animal companions. The girl is smiling with her chin resting on her hands, looking upwards. To her left is a furry creature with wide eyes, and to her right is a dog-like creature with floppy ears, both also looking upwards with expressive faces.",
+        "categoryId": "qhGPaAHPOOmPe7PvQvi0",
+        "categoryName": "Animals",
+        "thumbnailPath": "/thumbnails/8m0KgJEel8kLpYlmZpFb.webp",
+        "previewPath": "/previews/8m0KgJEel8kLpYlmZpFb.webp",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "automation": {
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "structured_evidence_gap:objects:bow",
+          "verifier_unresolved"
+        ],
+        "verifierInvoked": true,
+        "verifierOutcome": "unresolved",
+        "wouldAutoApprove": false,
+        "hardBlocked": true
+      },
+      "smartProfileSummary": {
+        "subjects": [
+          "furry creature",
+          "dog-like creature",
+          "girl",
+          "dog",
+          "creature"
+        ],
+        "themes": [
+          "friendship",
+          "whimsical",
+          "animal humor"
+        ],
+        "interests": [
+          "animals",
+          "pets"
+        ],
+        "professionsGroups": [],
+        "occasions": [],
+        "places": [],
+        "visibleText": [],
+        "searchConcepts": [
+          "cartoon animals",
+          "dog and girl illustration",
+          "three cartoon characters",
+          "whimsical animal art",
+          "funny animal friends",
+          "expressive cartoon faces",
+          "friends looking up"
+        ],
+        "styles": [
+          "illustration",
+          "cartoon",
+          "drawing",
+          "sketch",
+          "distressed",
+          "graphic",
+          "monochromatic"
+        ],
+        "colors": [
+          "white",
+          "black"
+        ]
+      },
+      "provenance": {
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3"
+      },
+      "diversityTags": [
+        "animal",
+        "humor-sarcasm",
+        "people-character",
+        "visually-complex",
+        "specific-subject-identity"
+      ],
+      "ownerVerdict": null,
+      "ownerNotes": null
+    },
+    {
+      "designId": "96v0PKuDVdDqYa8fLxS3",
+      "sampleStratum": "verifier-unresolved",
+      "outcomeStratumDetail": {
+        "wouldAutoApprove": false,
+        "verifierOutcome": "unresolved",
+        "hardBlocked": true,
+        "categoryGap": false
+      },
+      "studioContext": {
+        "title": "MuAFmSRyQOyX76gH1tdn",
+        "description": "A black goose stands in grass, surrounded by a laurel wreath. The design reads \"PORCH GOOSE EST. 1983 SOCIAL CLUB GOTTA GO DRESS MY GOOSE\". The colors are black, white, green, and orange.",
+        "categoryId": "qhGPaAHPOOmPe7PvQvi0",
+        "categoryName": "Animals",
+        "thumbnailPath": "/thumbnails/96v0PKuDVdDqYa8fLxS3.webp",
+        "previewPath": "/previews/96v0PKuDVdDqYa8fLxS3.webp",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "automation": {
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "structured_evidence_gap:subjects:dress goose",
+          "structured_evidence_gap:objects:flowers",
+          "structured_evidence_gap:objects:stars",
+          "verifier_unresolved"
+        ],
+        "verifierInvoked": true,
+        "verifierOutcome": "unresolved",
+        "wouldAutoApprove": false,
+        "hardBlocked": true
+      },
+      "smartProfileSummary": {
+        "subjects": [
+          "porch goose",
+          "dress goose",
+          "goose"
+        ],
+        "themes": [
+          "humor",
+          "animal humor",
+          "country life",
+          "quirky"
+        ],
+        "interests": [
+          "animals",
+          "pets",
+          "country life"
+        ],
+        "professionsGroups": [],
+        "occasions": [],
+        "places": [],
+        "visibleText": [
+          "PORCH GOOSE",
+          "EST. 1983",
+          "Social Club",
+          "GOTTA GO DRESS MY GOOSE"
+        ],
+        "searchConcepts": [
+          "funny goose shirt",
+          "goose lover gift",
+          "porch decor",
+          "social club",
+          "country style",
+          "animal graphic",
+          "vintage style",
+          "grass and flowers",
+          "ornamental wreath"
+        ],
+        "styles": [
+          "illustration",
+          "vintage",
+          "decorative",
+          "graphic"
+        ],
+        "colors": [
+          "black",
+          "white",
+          "green",
+          "orange"
+        ]
+      },
+      "provenance": {
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3"
+      },
+      "diversityTags": [
+        "text-heavy",
+        "animal",
+        "humor-sarcasm",
+        "visually-complex",
+        "specific-subject-identity"
+      ],
+      "ownerVerdict": null,
+      "ownerNotes": null
+    },
+    {
+      "designId": "9bR7JWSWwv94Ofb7byC3",
+      "sampleStratum": "verifier-unresolved",
+      "outcomeStratumDetail": {
+        "wouldAutoApprove": false,
+        "verifierOutcome": "unresolved",
+        "hardBlocked": true,
+        "categoryGap": false
+      },
+      "studioContext": {
+        "title": "(33)",
+        "description": "A sequined, rhinestone-covered glove holds a crystal-encrusted microphone. The signature \"Michael Jackson\" is scripted below. The design is primarily silver and grey.",
+        "categoryId": "Sn9nmGJvFlIRO4DnFnIB",
+        "categoryName": "Pop Culture & Characters",
+        "thumbnailPath": "/thumbnails/9bR7JWSWwv94Ofb7byC3.webp",
+        "previewPath": "/previews/9bR7JWSWwv94Ofb7byC3.webp",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "automation": {
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "structured_evidence_gap:subjects:person",
+          "verifier_unresolved"
+        ],
+        "verifierInvoked": true,
+        "verifierOutcome": "unresolved",
+        "wouldAutoApprove": false,
+        "hardBlocked": true
+      },
+      "smartProfileSummary": {
+        "subjects": [
+          "person"
+        ],
+        "themes": [
+          "music",
+          "performance",
+          "iconic"
+        ],
+        "interests": [
+          "music",
+          "pop music"
+        ],
+        "professionsGroups": [
+          "musicians"
+        ],
+        "occasions": [],
+        "places": [],
+        "visibleText": [
+          "Michael Jackson"
+        ],
+        "searchConcepts": [
+          "Michael Jackson glove",
+          "sequin glove",
+          "crystal microphone",
+          "King of Pop merchandise",
+          "music memorabilia"
+        ],
+        "styles": [
+          "decorative",
+          "graphic"
+        ],
+        "colors": [
+          "silver",
+          "gray",
+          "white"
+        ]
+      },
+      "provenance": {
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3"
+      },
+      "diversityTags": [
+        "text-heavy",
+        "profession-group",
+        "people-character"
+      ],
+      "ownerVerdict": null,
+      "ownerNotes": null
+    },
+    {
+      "designId": "mw5eiufjMAuOZPnOiMiP",
+      "sampleStratum": "category-gap",
+      "outcomeStratumDetail": {
+        "wouldAutoApprove": false,
+        "verifierOutcome": "unresolved",
+        "hardBlocked": true,
+        "categoryGap": true
+      },
+      "studioContext": {
+        "title": "dRTOFbh1IE7TrNvL7wSN",
+        "description": "The design features the name Jimothy in a distressed, script font at the top. Below it is a detailed illustration of a raccoon walking in a forest landscape with a cityscape, including the Space Needle, in the background. The bottom reads \"SEATTLE, WASHINGTON\" in a distressed, sans-serif font. The artwork is in white",
+        "categoryId": null,
+        "categoryName": null,
+        "thumbnailPath": "/thumbnails/mw5eiufjMAuOZPnOiMiP.webp",
+        "previewPath": "/previews/mw5eiufjMAuOZPnOiMiP.webp",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "automation": {
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "category_unresolved",
+          "structured_evidence_gap:objects:trees",
+          "verifier_unresolved"
+        ],
+        "verifierInvoked": true,
+        "verifierOutcome": "unresolved",
+        "wouldAutoApprove": false,
+        "hardBlocked": true
+      },
+      "smartProfileSummary": {
+        "subjects": [
+          "raccoon"
+        ],
+        "themes": [
+          "nature",
+          "city",
+          "travel"
+        ],
+        "interests": [
+          "animals",
+          "nature",
+          "travel",
+          "US Cities"
+        ],
+        "professionsGroups": [],
+        "occasions": [],
+        "places": [
+          "Seattle",
+          "Washington"
+        ],
+        "visibleText": [
+          "Jimothy",
+          "SEATTLE, WASHINGTON"
+        ],
+        "searchConcepts": [
+          "Jimothy",
+          "Seattle Washington",
+          "Seattle travel",
+          "PNW",
+          "Pacific Northwest",
+          "raccoon illustration",
+          "city skyline",
+          "nature art",
+          "wildlife art",
+          "tourist shirt"
+        ],
+        "styles": [
+          "distressed",
+          "illustration",
+          "graphic",
+          "line art",
+          "detailed"
+        ],
+        "colors": [
+          "white",
+          "gray"
+        ]
+      },
+      "provenance": {
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3"
+      },
+      "diversityTags": [
+        "text-heavy",
+        "people-character",
+        "visually-complex",
+        "category-ambiguity"
+      ],
+      "ownerVerdict": null,
+      "ownerNotes": null
+    },
+    {
+      "designId": "RM2efpWulaku0MYyNJPt",
+      "sampleStratum": "diversity",
+      "outcomeStratumDetail": {
+        "wouldAutoApprove": true,
+        "verifierOutcome": "skipped",
+        "hardBlocked": false,
+        "categoryGap": false
+      },
+      "studioContext": {
+        "title": "freddy",
+        "description": "An illustrated man in a hat, sunglasses, and Hawaiian shirt sits on a yellow duck-shaped pool float, holding a martini glass with a garnish. He is wearing shorts and flip-flops. The style is a colorful, detailed illustration with a slightly gritty aesthetic.",
+        "categoryId": "Iu6YZYL4aiuAtXG6H9bI",
+        "categoryName": "Holiday & Seasonal",
+        "thumbnailPath": "/thumbnails/RM2efpWulaku0MYyNJPt.webp",
+        "previewPath": "/previews/RM2efpWulaku0MYyNJPt.webp",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "automation": {
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "category_alternatives_present",
+          "shadow_would_auto_approve"
+        ],
+        "verifierInvoked": false,
+        "verifierOutcome": "skipped",
+        "wouldAutoApprove": true,
+        "hardBlocked": false
+      },
+      "smartProfileSummary": {
+        "subjects": [
+          "illustrated man",
+          "man"
+        ],
+        "themes": [
+          "summer",
+          "vacation",
+          "relaxation",
+          "humor"
+        ],
+        "interests": [
+          "summer",
+          "travel",
+          "alcohol"
+        ],
+        "professionsGroups": [],
+        "occasions": [
+          "summer"
+        ],
+        "places": [
+          "pool"
+        ],
+        "visibleText": [],
+        "searchConcepts": [
+          "man on duck float",
+          "drinking on vacation",
+          "summer relaxation",
+          "pool party",
+          "funny vacation",
+          "man with martini"
+        ],
+        "styles": [
+          "illustration",
+          "detailed",
+          "graphic",
+          "drawing"
+        ],
+        "colors": [
+          "yellow",
+          "white",
+          "gray",
+          "green",
+          "black",
+          "blue",
+          "red"
+        ]
+      },
+      "provenance": {
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3"
+      },
+      "diversityTags": [
+        "animal",
+        "humor-sarcasm",
+        "adult-theme",
+        "people-character",
+        "visually-complex",
+        "category-ambiguity",
+        "specific-subject-identity"
+      ],
+      "ownerVerdict": null,
+      "ownerNotes": null
+    },
+    {
+      "designId": "LSYQkCI1bFLODzYArrNR",
+      "sampleStratum": "diversity",
+      "outcomeStratumDetail": {
+        "wouldAutoApprove": true,
+        "verifierOutcome": "skipped",
+        "hardBlocked": false,
+        "categoryGap": false
+      },
+      "studioContext": {
+        "title": "monkeypeace",
+        "description": "A detailed illustration of a chimpanzee wearing a flower crown, sunglasses, and a bandana, smoking a joint. The monkey is leaning on a large, colorful tie-dye peace sign with vines and flowers. Smoke billows from the joint.",
+        "categoryId": "tj0HemRh2RuYLfI7N6nO",
+        "categoryName": "Funny & Sarcastic",
+        "thumbnailPath": "/thumbnails/LSYQkCI1bFLODzYArrNR.webp",
+        "previewPath": "/previews/LSYQkCI1bFLODzYArrNR.webp",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "automation": {
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "shadow_would_auto_approve"
+        ],
+        "verifierInvoked": false,
+        "verifierOutcome": "skipped",
+        "wouldAutoApprove": true,
+        "hardBlocked": false
+      },
+      "smartProfileSummary": {
+        "subjects": [
+          "chimpanzee"
+        ],
+        "themes": [
+          "counterculture",
+          "humor",
+          "peace",
+          "animal humor",
+          "cannabis culture"
+        ],
+        "interests": [
+          "cannabis",
+          "weed",
+          "marijuana",
+          "counterculture",
+          "smoking"
+        ],
+        "professionsGroups": [],
+        "occasions": [],
+        "places": [],
+        "visibleText": [],
+        "searchConcepts": [
+          "hippie monkey",
+          "monkey smoking weed",
+          "peace and love",
+          "psychedelic monkey",
+          "funny animal",
+          "stoner monkey",
+          "70s vibe",
+          "counterculture symbol"
+        ],
+        "styles": [
+          "illustration",
+          "detailed",
+          "tie-dye",
+          "psychedelic"
+        ],
+        "colors": [
+          "brown",
+          "green",
+          "purple",
+          "orange",
+          "yellow",
+          "pink",
+          "white",
+          "black"
+        ]
+      },
+      "provenance": {
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3"
+      },
+      "diversityTags": [
+        "animal",
+        "humor-sarcasm",
+        "cannabis",
+        "adult-theme",
+        "visually-complex",
+        "sparse-minimal"
+      ],
+      "ownerVerdict": null,
+      "ownerNotes": null
+    }
+  ]
+}

@@ -25,6 +25,7 @@ import {
   parseAiReviewInboxFilters,
 } from "../constants/aiReviewInboxConstants";
 import { AiReviewErrorBoundary } from "../components/AiReviewErrorBoundary";
+import { AiReviewInboxSortToggle } from "../components/AiReviewInboxSortToggle";
 import { AiReviewQueueList } from "../components/AiReviewQueueList";
 import { AiReviewQueueStats } from "../components/AiReviewQueueStats";
 import { AiReviewQueryErrorPanel } from "../components/AiReviewQueryErrorPanel";
@@ -37,6 +38,7 @@ import { permissionService } from "../../permissions/services/permissionService"
 import { useAiEnrichmentSettings } from "../../settings/hooks/useAiEnrichmentSettings";
 import { useAiReviewMainPanelHeight } from "../hooks/useAiReviewMainPanelHeight";
 import type { AiReviewInboxFilters, AiReviewInboxTab } from "../types/aiReviewInbox.types";
+import { resolveAiReviewInboxSortOrder } from "../utils/aiReviewInboxSort";
 import { shouldShowNeedsReviewSearchNoResults } from "../utils/aiReviewNeedsReviewSearch";
 
 function AiReviewPageContent() {
@@ -85,9 +87,11 @@ function AiReviewPageContent() {
 
   const handleNavigateToTab = useCallback(
     (tab: AiReviewInboxTab) => {
-      setSearchParams(buildAiReviewInboxSearchParams({ tab }), { replace: true });
+      setSearchParams(buildAiReviewInboxSearchParams({ tab, sortOrder: filters.sortOrder }), {
+        replace: true,
+      });
     },
-    [setSearchParams],
+    [filters.sortOrder, setSearchParams],
   );
 
   const inbox = useAiReviewInbox(inboxFilters, {
@@ -205,7 +209,19 @@ function AiReviewPageContent() {
   });
 
   function handleTabChange(tab: AiReviewInboxTab) {
-    setSearchParams(buildAiReviewInboxSearchParams({ tab }), { replace: true });
+    setSearchParams(buildAiReviewInboxSearchParams({ tab, sortOrder: filters.sortOrder }), {
+      replace: true,
+    });
+  }
+
+  const resolvedSortOrder = resolveAiReviewInboxSortOrder(filters.tab, filters.sortOrder);
+
+  function handleSortToggle() {
+    const nextSortOrder = resolvedSortOrder === "newest" ? "oldest" : "newest";
+    setSearchParams(
+      buildAiReviewInboxSearchParams({ tab: filters.tab, sortOrder: nextSortOrder }),
+      { replace: true },
+    );
   }
 
   return (
@@ -215,6 +231,16 @@ function AiReviewPageContent() {
         {!enrichmentSettings.isLoading ? (
           <p className="ai-review-vision-model-label">
             Active vision model: <span>{enrichmentSettings.visionModelLabel}</span>
+            {" · "}
+            <span>
+              Catalog Processing:{" "}
+              {enrichmentSettings.catalogWorkflowMode === "manual"
+                ? "Manual Review"
+                : enrichmentSettings.catalogWorkflowMode === "shadow"
+                  ? "Shadow Automation"
+                  : "Autonomous"}
+              {enrichmentSettings.catalogAutonomousLiveEnabled ? " (live ON)" : " (live OFF)"}
+            </span>
           </p>
         ) : null}
       </header>
@@ -260,34 +286,45 @@ function AiReviewPageContent() {
             ))}
           </div>
 
-          {filters.tab === "needs_review" ? (
-            <div className="ai-review-needs-review-search">
-              <GlobalSearchField
-                clearable
-                onChange={setNeedsReviewSearchQuery}
-                placeholder="Search title, tags, id…"
-                value={needsReviewSearchQuery}
-              />
-              {inbox.searchHydration ? (
-                <div className="ai-review-search-status">
-                  <span>
-                    Found {inbox.searchHydration.foundCount} of {inbox.searchHydration.totalCount ?? "…"}
-                    {inbox.searchHydration.canSearchMore
-                      ? ` · searched ${inbox.searchHydration.searchedCount} of ${inbox.searchHydration.totalCount ?? "…"}`
-                      : null}
-                  </span>
-                  {inbox.searchHydration.canSearchMore ? (
-                    <Button
-                      disabled={inbox.isLoadingMore}
-                      onClick={inbox.searchHydration.searchMore}
-                      size="sm"
-                      type="button"
-                      variant="secondary"
-                    >
-                      {inbox.searchHydration.isSearching ? "Searching…" : "Search more"}
-                    </Button>
-                  ) : null}
-                </div>
+          <div
+            className={[
+              "ai-review-queue-toolbar",
+              filters.tab === "needs_review" ? "" : "ai-review-queue-toolbar--sort-only",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          >
+            {filters.tab === "needs_review" ? (
+              <div className="ai-review-queue-toolbar-search">
+                <GlobalSearchField
+                  clearable
+                  onChange={setNeedsReviewSearchQuery}
+                  placeholder="Search title, tags, id…"
+                  value={needsReviewSearchQuery}
+                />
+              </div>
+            ) : null}
+            <AiReviewInboxSortToggle onToggle={handleSortToggle} sortOrder={resolvedSortOrder} />
+          </div>
+
+          {filters.tab === "needs_review" && inbox.searchHydration ? (
+            <div className="ai-review-search-status">
+              <span>
+                Found {inbox.searchHydration.foundCount} of {inbox.searchHydration.totalCount ?? "…"}
+                {inbox.searchHydration.canSearchMore
+                  ? ` · searched ${inbox.searchHydration.searchedCount} of ${inbox.searchHydration.totalCount ?? "…"}`
+                  : null}
+              </span>
+              {inbox.searchHydration.canSearchMore ? (
+                <Button
+                  disabled={inbox.isLoadingMore}
+                  onClick={inbox.searchHydration.searchMore}
+                  size="sm"
+                  type="button"
+                  variant="secondary"
+                >
+                  {inbox.searchHydration.isSearching ? "Searching…" : "Search more"}
+                </Button>
               ) : null}
             </div>
           ) : null}
@@ -335,6 +372,7 @@ function AiReviewPageContent() {
             draftForm={inbox.draftForm}
             isActionLoading={inbox.isActionLoading}
             isSavingArtworkBackground={inbox.isSavingArtworkBackground}
+            isSavingHalftone={inbox.isSavingHalftone}
             isAutoQueueRunning={inbox.processingQueue.isAutoQueueRunning}
             isQueueBusy={inbox.processingQueue.isQueueBusy}
             isOptimisticEnqueue={
@@ -361,6 +399,9 @@ function AiReviewPageContent() {
             onRerun={() => void inbox.rerunSelected()}
             onRetryProcessing={() => void inbox.retryProcessingSelected()}
             onSaveArtworkBackground={(values) => void inbox.saveArtworkBackground(values)}
+            onSaveHalftoneStaffDecision={(markAsHalftone) =>
+              void inbox.saveHalftoneStaffDecision(markAsHalftone)
+            }
             onApplyProcessingSettings={inbox.processingQueue.applySessionSettings}
             onClearProcessingSettings={inbox.processingQueue.clearSessionSettings}
             onStartAutoQueue={inbox.processingQueue.startAutoQueue}

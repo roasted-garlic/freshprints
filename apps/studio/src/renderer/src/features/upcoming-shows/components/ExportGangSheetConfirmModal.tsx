@@ -112,7 +112,15 @@ function estimatedSheetCount(
     return null;
   }
 
-  return layoutMode === "grouped_by_customer" ? preview.groupedSheets : preview.efficiencySheets;
+  if (layoutMode === "grouped_by_customer") {
+    return preview.groupedSheets;
+  }
+
+  if (layoutMode === "customer_grouped_continuous") {
+    return preview.continuousGroupedSheets;
+  }
+
+  return preview.efficiencySheets;
 }
 
 export function ExportGangSheetConfirmModal({
@@ -310,30 +318,32 @@ export function ExportGangSheetConfirmModal({
                 {sheets.length === 1 ? "" : "s"} · {formatByteSize(generated.totalByteSize)}
               </p>
               <p className="print-requests-modal-hint">{formatTotalLength(totalLengthInches)}</p>
-              <ul className="gang-sheet-preview-list">
-                {sheets.map((sheet) => (
-                  <li className="gang-sheet-preview-row" key={sheet.fileName}>
-                    <div>
-                      <strong>
-                        Sheet {sheet.sheetIndex} of {sheet.sheetTotal}
-                      </strong>
-                      <p className="print-requests-modal-hint">
-                        Length {formatInchesForFilename(sheet.lengthInches)}″ ·{" "}
-                        {formatByteSize(sheet.byteSize)}
-                      </p>
-                      <p className="print-requests-modal-hint">{sheet.fileName}</p>
-                    </div>
-                    <Button
-                      disabled={isBusy}
-                      onClick={() => onDownloadSheet(sheet.sheetIndex)}
-                      size="sm"
-                      variant="secondary"
-                    >
-                      Download
-                    </Button>
-                  </li>
-                ))}
-              </ul>
+              <div className="gang-sheet-preview-list-scroll">
+                <ul className="gang-sheet-preview-list">
+                  {sheets.map((sheet) => (
+                    <li className="gang-sheet-preview-row" key={sheet.fileName}>
+                      <div>
+                        <strong>
+                          Sheet {sheet.sheetIndex} of {sheet.sheetTotal}
+                        </strong>
+                        <p className="print-requests-modal-hint">
+                          Length {formatInchesForFilename(sheet.lengthInches)}″ ·{" "}
+                          {formatByteSize(sheet.byteSize)}
+                        </p>
+                        <p className="print-requests-modal-hint">{sheet.fileName}</p>
+                      </div>
+                      <Button
+                        disabled={isBusy}
+                        onClick={() => onDownloadSheet(sheet.sheetIndex)}
+                        size="sm"
+                        variant="secondary"
+                      >
+                        Download
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
               {lastSavedPaths.length > 0 ? (
                 <div>
                   <p>Exported {lastSavedPaths.length} file{lastSavedPaths.length === 1 ? "" : "s"}:</p>

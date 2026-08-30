@@ -7,7 +7,8 @@ import { designService } from "../../designs/services/designService";
 import { designDerivativeUrlService } from "../../designs/services/designDerivativeUrlService";
 import { buildGangSheetCacheFingerprint } from "@fresh-prints/shared/utils/gangSheetCacheFingerprint";
 import { planEfficiencyGangSheetLayout } from "@fresh-prints/shared/utils/gangSheetEfficiencyLayout";
-import { planGroupedGangSheetLayout } from "@fresh-prints/shared/utils/gangSheetGroupedLayout";
+import { planContinuousCustomerGroupedGangSheetLayout } from "@fresh-prints/shared/utils/gangSheetContinuousCustomerGroupedLayout";
+import { planSheetPerCustomerGangSheetLayout } from "@fresh-prints/shared/utils/gangSheetGroupedLayout";
 import {
   buildGangSheetBaseFileName,
   computeExportTargetPixelSize,
@@ -27,6 +28,10 @@ import type {
 import type { ShowExportImageWarning } from "@fresh-prints/shared/types/export/showExportIpc.types";
 import { printRequestService } from "../../print-requests/services/printRequestService";
 import type { PrintRequest } from "@fresh-prints/shared/types/printRequest/printRequest.types";
+import {
+  filterShowExportAllocations,
+  shouldUseHistoricalShowExportAllocations,
+} from "../utils/showExportEligibility";
 
 const GANG_SHEET_EXPORT_DPI = 300;
 
@@ -69,7 +74,7 @@ function resolveLayoutModeForFingerprint(
   imageRequests: GangSheetExportImageRequest[],
   fingerprint: string,
 ): GangSheetLayoutMode | null {
-  for (const mode of ["efficiency", "grouped_by_customer"] as const) {
+  for (const mode of ["efficiency", "grouped_by_customer", "customer_grouped_continuous"] as const) {
     const layoutRequest = buildLayoutRequest(show, layoutSettings, imageRequests, mode);
     if (buildGangSheetCacheFingerprint(layoutRequest) === fingerprint) {
       return mode;
@@ -103,7 +108,10 @@ function buildGroupingMetadata(
 
 export interface GangSheetSheetCountPreview {
   efficiencySheets: number;
+  /** Sheet per Customer (`grouped_by_customer`). */
   groupedSheets: number;
+  /** Grouped by Customer continuous (`customer_grouped_continuous`). */
+  continuousGroupedSheets: number;
 }
 
 function estimateSheetCountsFromRequests(
@@ -130,21 +138,31 @@ function estimateSheetCountsFromRequests(
     maxSheetHeightPx,
   });
 
-  const grouped = planGroupedGangSheetLayout({
-    images: imageRequests
-      .filter((image) => image.grouping)
-      .map((image) => ({
-        allocationId: image.allocationId,
-        printRequestId: image.grouping!.printRequestId,
-        requestName: image.grouping!.requestName,
-        customerId: image.grouping!.customerId,
-        customerUsernameSnapshot: image.grouping!.customerUsernameSnapshot,
-        internalBaseName: image.grouping!.internalBaseName,
-        isInternal: image.grouping!.isInternal,
-        quantity: image.quantity,
-        widthPx: image.targetWidthPx,
-        heightPx: image.targetHeightPx,
-      })),
+  const groupedImages = imageRequests
+    .filter((image) => image.grouping)
+    .map((image) => ({
+      allocationId: image.allocationId,
+      printRequestId: image.grouping!.printRequestId,
+      requestName: image.grouping!.requestName,
+      customerId: image.grouping!.customerId,
+      customerUsernameSnapshot: image.grouping!.customerUsernameSnapshot,
+      internalBaseName: image.grouping!.internalBaseName,
+      isInternal: image.grouping!.isInternal,
+      quantity: image.quantity,
+      widthPx: image.targetWidthPx,
+      heightPx: image.targetHeightPx,
+    }));
+
+  const grouped = planSheetPerCustomerGangSheetLayout({
+    images: groupedImages,
+    sheetWidthPx,
+    spacingPx,
+    maxSheetHeightPx,
+    sheetLabelFontSizePx: layoutSettings.labelFontSizePx,
+  });
+
+  const continuousGrouped = planContinuousCustomerGroupedGangSheetLayout({
+    images: groupedImages,
     sheetWidthPx,
     spacingPx,
     maxSheetHeightPx,
@@ -154,6 +172,7 @@ function estimateSheetCountsFromRequests(
   return {
     efficiencySheets: efficiency.sheetCount,
     groupedSheets: grouped.sheetCount,
+    continuousGroupedSheets: continuousGrouped.sheetCount,
   };
 }
 
@@ -179,14 +198,19 @@ async function applyGangSheetCacheFromImageRequests(input: {
   onMissingCache: () => void;
   onStaleCache: () => void;
 }): Promise<void> {
+  const allLayoutModes: GangSheetLayoutMode[] = [
+    "efficiency",
+    "grouped_by_customer",
+    "customer_grouped_continuous",
+  ];
   const modesToCheck: GangSheetLayoutMode[] = input.preferredLayoutMode
     ? input.allowFallbackToOtherMode === false
       ? [input.preferredLayoutMode]
       : [
           input.preferredLayoutMode,
-          input.preferredLayoutMode === "grouped_by_customer" ? "efficiency" : "grouped_by_customer",
+          ...allLayoutModes.filter((mode) => mode !== input.preferredLayoutMode),
         ]
-    : ["grouped_by_customer", "efficiency"];
+    : ["customer_grouped_continuous", "grouped_by_customer", "efficiency"];
 
   for (const layoutMode of modesToCheck) {
     const fingerprint = buildGangSheetCacheFingerprint(
@@ -238,10 +262,18 @@ async function buildImageRequests(
   show: UpcomingShow,
 ): Promise<{ imageRequests: GangSheetExportImageRequest[]; error: string | null }> {
   const allocations = await upcomingShowService.listShowAllocations(user, show.id);
-  const activeAllocations = allocations.filter((allocation) => allocation.status !== "canceled");
+  const useHistoricalPastExport = shouldUseHistoricalShowExportAllocations(show);
+  const activeAllocations = filterShowExportAllocations(allocations, {
+    useHistoricalPastExport,
+  });
 
   if (activeAllocations.length === 0) {
-    return { imageRequests: [], error: "This show has no active allocations to export." };
+    return {
+      imageRequests: [],
+      error: useHistoricalPastExport
+        ? "This show has no attached print requests to export."
+        : "This show has no active allocations to export.",
+    };
   }
 
   const uniqueRequestIds = [...new Set(activeAllocations.map((allocation) => allocation.printRequestId))];
@@ -377,7 +409,7 @@ function buildLayoutRequest(
     gutterInches: layoutSettings.gutterInches,
     maxSheetLengthInches: layoutSettings.maxSheetLengthInches,
     labelFontSizePx: layoutSettings.labelFontSizePx,
-    ...(layoutMode === "grouped_by_customer" ? { layoutMode } : {}),
+    ...(layoutMode !== "efficiency" ? { layoutMode } : {}),
     images: imageRequests,
   };
 }

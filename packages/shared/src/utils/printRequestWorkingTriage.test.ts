@@ -3,10 +3,12 @@ import { describe, it } from "node:test";
 
 import {
   getPrintRequestWorkingStaleCutoffMs,
+  getPrintRequestWorkingTriageLabel,
   isEmptyWorkingPrintRequestEligibleForAutoArchive,
   isPrintRequestIncludedInListTabs,
   matchesPrintRequestWorkingTriageFilter,
   PRINT_REQUEST_WORKING_STALE_AFTER_DAYS,
+  PRINT_REQUEST_WORKING_TRIAGE_FILTERS,
   resolvePrintRequestWorkingTriageBucket,
 } from "./printRequestWorkingTriage";
 
@@ -73,5 +75,23 @@ describe("printRequestWorkingTriage", () => {
       getPrintRequestWorkingStaleCutoffMs(nowMs, 14),
       nowMs - 14 * 24 * 60 * 60 * 1000,
     );
+  });
+
+  it("lists needs_requeue last in filter order", () => {
+    assert.equal(
+      PRINT_REQUEST_WORKING_TRIAGE_FILTERS[PRINT_REQUEST_WORKING_TRIAGE_FILTERS.length - 1],
+      "needs_requeue",
+    );
+    assert.equal(getPrintRequestWorkingTriageLabel("needs_requeue"), "Needs Re-queue");
+    assert.equal(
+      resolvePrintRequestWorkingTriageBucket({
+        itemCount: 2,
+        updatedAtMillis: staleMs,
+        needsStaffRequeueAt: { toMillis: () => staleMs },
+        nowMs,
+      }),
+      "needs_requeue",
+    );
+    assert.equal(matchesPrintRequestWorkingTriageFilter("needs_requeue", "needs_requeue"), true);
   });
 });

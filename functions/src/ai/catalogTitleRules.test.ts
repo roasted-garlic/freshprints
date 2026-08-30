@@ -22,8 +22,8 @@ import {
 } from "./catalogTitleRules";
 
 describe("catalogTitleRules", () => {
-  it("uses prompt version v26", () => {
-    assert.equal(CATALOG_ENRICHMENT_PROMPT_VERSION, "catalog-enrich-v26");
+  it("uses prompt version v28", () => {
+    assert.equal(CATALOG_ENRICHMENT_PROMPT_VERSION, "catalog-enrich-v30");
   });
 
   it("keeps the JSON contract, OCR, canvas, and description rules in the trimmed prompt", () => {

@@ -14,6 +14,7 @@ import {
   sanitizeCatalogDescription,
 } from "./catalogTitleRules";
 import { filterUnsupportedHalloweenTags } from "./halloweenTagGuard";
+import { parseHalftoneShadowAssessment } from "./smartProfileBuilder";
 
 export interface SimpleCatalogEnrichmentParsed {
   category: string;
@@ -35,6 +36,22 @@ export interface SimpleCatalogEnrichmentParsed {
    * them against approved names and aliases before falling back to suggestions.
    */
   rawTags: string[];
+  /** Smart Profile dimensions from v27+ prompt (optional for backward-compatible parses). */
+  subjects?: string[];
+  objects?: string[];
+  styles?: string[];
+  themes?: string[];
+  interests?: string[];
+  professionsGroups?: string[];
+  occasions?: string[];
+  places?: string[];
+  colors?: string[];
+  visibleText?: string[];
+  searchConcepts?: string[];
+  categoryAlternatives?: Array<{ name: string; reason?: string }>;
+  categoryGapNote?: string;
+  halftoneShadowLikelihood?: string;
+  halftoneShadowEvidence?: string;
 }
 
 /**
@@ -100,6 +117,79 @@ function normalizeReadableTextLines(value: unknown): string[] | undefined {
     .slice(0, 12);
 
   return lines.length > 0 ? lines : undefined;
+}
+
+function normalizeStringArray(value: unknown, maxItems = 24): string[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const result: string[] = [];
+  const seen = new Set<string>();
+
+  for (const item of value) {
+    if (typeof item !== "string") {
+      continue;
+    }
+
+    const normalized = item.trim().replace(/\s+/g, " ");
+    if (!normalized) {
+      continue;
+    }
+
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    result.push(normalized);
+
+    if (result.length >= maxItems) {
+      break;
+    }
+  }
+
+  return result.length > 0 ? result : undefined;
+}
+
+function normalizeCategoryAlternativesRaw(
+  value: unknown,
+): Array<{ name: string; reason?: string }> | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const result: Array<{ name: string; reason?: string }> = [];
+
+  for (const item of value) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      continue;
+    }
+
+    const record = item as Record<string, unknown>;
+    const name =
+      typeof record.name === "string"
+        ? record.name.trim()
+        : typeof record.categoryName === "string"
+          ? record.categoryName.trim()
+          : "";
+
+    if (!name) {
+      continue;
+    }
+
+    result.push({
+      name,
+      reason: typeof record.reason === "string" ? record.reason.trim() || undefined : undefined,
+    });
+
+    if (result.length >= 3) {
+      break;
+    }
+  }
+
+  return result.length > 0 ? result : undefined;
 }
 
 function assertRequiredField(value: string, fieldName: string): void {
@@ -259,6 +349,21 @@ export function normalizeSimpleCatalogEnrichment(
     rawTags: guardedRawTags,
     readableTextLines: normalizeReadableTextLines(raw.readableTextLines),
     centralSubject: coerceString(raw.centralSubject) || undefined,
+    subjects: normalizeStringArray(raw.subjects),
+    objects: normalizeStringArray(raw.objects),
+    styles: normalizeStringArray(raw.styles),
+    themes: normalizeStringArray(raw.themes),
+    interests: normalizeStringArray(raw.interests),
+    professionsGroups: normalizeStringArray(raw.professionsGroups),
+    occasions: normalizeStringArray(raw.occasions),
+    places: normalizeStringArray(raw.places),
+    colors: normalizeStringArray(raw.colors),
+    visibleText: normalizeStringArray(raw.visibleText, 12),
+    searchConcepts: normalizeStringArray(raw.searchConcepts, 24),
+    categoryAlternatives: normalizeCategoryAlternativesRaw(raw.categoryAlternatives),
+    categoryGapNote: coerceString(raw.categoryGapNote) || undefined,
+    halftoneShadowLikelihood: coerceString(raw.halftoneShadowLikelihood) || undefined,
+    halftoneShadowEvidence: coerceString(raw.halftoneShadowEvidence) || undefined,
   };
 }
 
@@ -321,6 +426,25 @@ export function buildSimpleCatalogEnrichmentResult(input: {
   const analysis: DesignAiAnalysis = {
     rawCategory: parsed.category || undefined,
     rawTags: parsed.rawTags.length > 0 ? parsed.rawTags : undefined,
+    halftoneShadowAssessment: parseHalftoneShadowAssessment(parsed),
+    smartProfileEnrichmentParse: {
+      subjects: parsed.subjects,
+      objects: parsed.objects,
+      styles: parsed.styles,
+      themes: parsed.themes,
+      interests: parsed.interests,
+      professionsGroups: parsed.professionsGroups,
+      occasions: parsed.occasions,
+      places: parsed.places,
+      colors: parsed.colors,
+      visibleText: parsed.visibleText,
+      searchConcepts: parsed.searchConcepts,
+      readableTextLines: parsed.readableTextLines,
+      categoryAlternatives: parsed.categoryAlternatives,
+      categoryGapNote: parsed.categoryGapNote,
+      halftoneShadowLikelihood: parsed.halftoneShadowLikelihood,
+      halftoneShadowEvidence: parsed.halftoneShadowEvidence,
+    },
   };
 
   return { suggestions, analysis };

@@ -6,12 +6,16 @@ import type {
 
 import { callTracedFunction } from '../../../lib/firebase/tracedCallable';
 
+import { readPortalPublicShowsCached } from './portalPublicShowsReadCache';
+
 export const portalShowDesignsService = {
   async listPublicShows(): Promise<ListPortalPublicShowsResponse> {
-    return callTracedFunction<Record<string, never>, ListPortalPublicShowsResponse>(
-      'listPortalPublicShows',
-      { source: 'portalShowDesignsService.listPublicShows' },
-    )({});
+    return readPortalPublicShowsCached(() =>
+      callTracedFunction<Record<string, never>, ListPortalPublicShowsResponse>(
+        'listPortalPublicShows',
+        { source: 'portalShowDesignsService.listPublicShows' },
+      )({}),
+    );
   },
 
   async listShowCatalogDesigns(

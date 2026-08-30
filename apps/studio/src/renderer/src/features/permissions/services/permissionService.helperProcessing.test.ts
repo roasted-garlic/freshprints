@@ -45,7 +45,16 @@ describe("helper operational image-processing permissions", () => {
     assert.equal(permissionService.canImportWhatnotShows(activeHelper), false);
   });
 
-  it("helper remains non-admin for users/settings/taxonomy/restore/delete-upload/devtools", () => {
+  it("helper can access Settings for Studio updates only, not administrative settings tabs", () => {
+    assert.equal(permissionService.isHelper(activeHelper), true);
+    assert.equal(permissionService.canAccessSettingsPage(activeHelper), true);
+    assert.equal(permissionService.canManageSettings(activeHelper), false);
+    assert.equal(permissionService.canViewAdministrativeSettings(activeHelper), false);
+    assert.equal(permissionService.hasPermission(activeHelper, "accessSettingsPage"), true);
+    assert.equal(permissionService.hasPermission(activeHelper, "manageSettings"), false);
+  });
+
+  it("helper remains non-admin for users/taxonomy/restore/delete-upload/devtools", () => {
     assert.equal(permissionService.canManageUsers(activeHelper), false);
     assert.equal(permissionService.canManageRoles(activeHelper), false);
     assert.equal(permissionService.canManageSettings(activeHelper), false);

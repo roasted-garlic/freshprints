@@ -82,6 +82,33 @@ export function filterCatalogDesignsBySearch(
   );
 }
 
+/**
+ * Client post-filters after catalog load.
+ *
+ * When Algolia managed search already applied `q` / tags / category, do **not** re-apply
+ * title/description/tags search — that drops Smart Profile hits (searchConcepts, themes, …)
+ * that are not present in legacy design text (Slice 3 DEV QA FAIL).
+ */
+export function resolveManagedSearchClientFilters(options: {
+  isManagedSearchQuery: boolean;
+  searchQuery?: string;
+  categoryId?: string;
+  selectedTags: string[];
+}): {
+  search: string;
+  categoryId: string | undefined;
+  selectedTags: string[];
+} {
+  if (options.isManagedSearchQuery) {
+    return { search: '', categoryId: undefined, selectedTags: [] };
+  }
+  return {
+    search: options.searchQuery?.trim() ? (options.searchQuery ?? '') : '',
+    categoryId: options.categoryId,
+    selectedTags: options.selectedTags,
+  };
+}
+
 export function filterCatalogDesignsByCategory(
   designs: CatalogDesign[],
   categoryId?: string,

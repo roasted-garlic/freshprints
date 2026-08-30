@@ -27,6 +27,12 @@ import {
   resolveAuthActionLoadingAfterBootstrap,
   resolveBootstrapStatusAfterProvisionFailure,
 } from '../utils/completeProfileLoadingOwnership';
+import { PORTAL_AUTH_BOOTSTRAP_TIMEOUT_MS } from '../constants/portalAuthBootstrap';
+import {
+  PORTAL_ACCOUNT_CLOSED_MESSAGE,
+  PORTAL_ACCOUNT_DISABLED_MESSAGE,
+  PORTAL_ACCOUNT_INACTIVE_MESSAGE,
+} from '../constants/portalAuthBlockedMessages';
 import {
   CompleteProfileInProgressError,
   type CompleteProfileStage,
@@ -95,7 +101,7 @@ async function loadPortalSession(firebaseUser: FirebaseUser): Promise<PortalAuth
   const user = await userProfileService.getUserProfile(firebaseUser.uid);
 
   if (!user.isActive) {
-    return getBlockedState(firebaseUser, 'inactive', 'This account is inactive. Contact support.');
+    return getBlockedState(firebaseUser, 'inactive', PORTAL_ACCOUNT_INACTIVE_MESSAGE);
   }
 
   if (user.role !== 'customer') {
@@ -113,12 +119,42 @@ async function loadPortalSession(firebaseUser: FirebaseUser): Promise<PortalAuth
     return getBlockedState(firebaseUser, 'missing-customer', null);
   }
 
+  if (customer.isDeleted === true) {
+    return getBlockedState(firebaseUser, 'inactive', PORTAL_ACCOUNT_CLOSED_MESSAGE);
+  }
+
+  if (customer.isDisabled === true) {
+    return getBlockedState(firebaseUser, 'inactive', PORTAL_ACCOUNT_DISABLED_MESSAGE);
+  }
+
   return getReadyState(firebaseUser, user, customer);
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [authState, setAuthState] = useState<PortalAuthState>(initialAuthState);
   const registrationInProgressRef = useRef(false);
+  const pendingLoginErrorRef = useRef<string | null>(null);
+
+  const finalizeBlockedLogin = useCallback(async (message: string) => {
+    pendingLoginErrorRef.current = message;
+    try {
+      await portalAuthService.logout();
+    } catch {
+      setAuthState(
+        completeInitialBootstrap({
+          firebaseUser: null,
+          user: null,
+          customer: null,
+          bootstrapStatus: 'unauthenticated',
+          isInitialBootstrap: false,
+          isAuthActionLoading: false,
+          isAuthenticated: false,
+          error: message,
+        }),
+      );
+      pendingLoginErrorRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     let isCurrentSubscription = true;
@@ -152,6 +188,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         if (!firebaseUser) {
           registrationInProgressRef.current = false;
+          const pendingLoginError = pendingLoginErrorRef.current;
+          pendingLoginErrorRef.current = null;
           setAuthState((currentState) =>
             completeInitialBootstrap({
               firebaseUser: null,
@@ -161,7 +199,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
               isInitialBootstrap: currentState.isInitialBootstrap,
               isAuthActionLoading: false,
               isAuthenticated: false,
-              error: null,
+              error: pendingLoginError,
             }),
           );
           return;
@@ -216,10 +254,46 @@ export function AuthProvider({ children }: AuthProviderProps) {
           error: null,
         }));
 
+        const bootstrapTimeoutId = window.setTimeout(() => {
+          if (!isCurrentSubscription) {
+            return;
+          }
+
+          setAuthState((currentState) => {
+            if (
+              currentState.firebaseUser?.uid !== firebaseUser.uid ||
+              currentState.bootstrapStatus !== 'loading-profile'
+            ) {
+              return currentState;
+            }
+
+            const timedOut = getBlockedState(
+              firebaseUser,
+              'error',
+              'Signing in is taking longer than expected. Refresh and try again, or contact support if this continues.',
+            );
+
+            return {
+              ...timedOut,
+              isAuthActionLoading: false,
+            };
+          });
+        }, PORTAL_AUTH_BOOTSTRAP_TIMEOUT_MS);
+
         void loadPortalSession(firebaseUser)
-          .then((nextState) => {
+          .then(async (nextState) => {
             if (!isCurrentSubscription) {
               return;
+            }
+
+            if (
+              nextState.bootstrapStatus === 'inactive' ||
+              nextState.bootstrapStatus === 'staff-account'
+            ) {
+              if (nextState.error) {
+                await finalizeBlockedLogin(nextState.error);
+                return;
+              }
             }
 
             setAuthState({
@@ -253,6 +327,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 blocked.bootstrapStatus,
               ),
             });
+          })
+          .finally(() => {
+            window.clearTimeout(bootstrapTimeoutId);
           });
       });
     });
@@ -261,7 +338,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       isCurrentSubscription = false;
       unsubscribe();
     };
-  }, []);
+  }, [finalizeBlockedLogin]);
 
   const login = useCallback(async (credentials: LoginCredentials) => {
     setAuthState((currentState) => ({
@@ -592,6 +669,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return;
       }
 
+      if (customer.isDeleted === true) {
+        await finalizeBlockedLogin(PORTAL_ACCOUNT_CLOSED_MESSAGE);
+        return;
+      }
+
+      if (customer.isDisabled === true) {
+        await finalizeBlockedLogin(PORTAL_ACCOUNT_DISABLED_MESSAGE);
+        return;
+      }
+
       setAuthState((currentState) =>
         currentState.firebaseUser?.uid === firebaseUser.uid && currentState.user
           ? {
@@ -603,7 +690,69 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } catch {
       // Keep the last known profile if a background refresh fails.
     }
-  }, []);
+  }, [finalizeBlockedLogin]);
+
+  useEffect(() => {
+    const firebaseUser = authState.firebaseUser;
+    if (!authState.isAuthenticated || !firebaseUser) {
+      return;
+    }
+
+    let hasTerminatedSession = false;
+    const terminateSession = (message: string) => {
+      if (hasTerminatedSession) {
+        return;
+      }
+      hasTerminatedSession = true;
+      void finalizeBlockedLogin(message);
+    };
+
+    const unsubscribeUser = userProfileService.subscribeToUserProfile(
+      firebaseUser.uid,
+      (profile) => {
+        if (!profile.isActive) {
+          terminateSession(
+            authState.customer?.isDeleted === true
+              ? PORTAL_ACCOUNT_CLOSED_MESSAGE
+              : PORTAL_ACCOUNT_DISABLED_MESSAGE,
+          );
+        }
+      },
+    );
+
+    const unsubscribeCustomer = customerProfileService.subscribeToCustomerByUserId(
+      firebaseUser.uid,
+      (customer) => {
+        if (!customer) {
+          return;
+        }
+
+        if (customer.isDeleted === true) {
+          terminateSession(PORTAL_ACCOUNT_CLOSED_MESSAGE);
+          return;
+        }
+
+        if (customer.isDisabled === true) {
+          terminateSession(PORTAL_ACCOUNT_DISABLED_MESSAGE);
+          return;
+        }
+
+        setAuthState((currentState) =>
+          currentState.firebaseUser?.uid === firebaseUser.uid && currentState.isAuthenticated
+            ? {
+                ...currentState,
+                customer,
+              }
+            : currentState,
+        );
+      },
+    );
+
+    return () => {
+      unsubscribeUser();
+      unsubscribeCustomer();
+    };
+  }, [authState.firebaseUser, authState.isAuthenticated, authState.customer?.isDeleted, finalizeBlockedLogin]);
 
   const value = useMemo<PortalAuthContextValue>(
     () => ({

@@ -1,5 +1,147 @@
 # Recent Completed Work
 
+## 2026-08-30 - Customer Account Identity WS4 — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `customer-account-identity-management-ws4-customer-activity-and-deep-linking` — **DONE** |
+| Signoff | **approved** |
+| Owner DEV QA | **PASS** — 9 scenarios incl. Did Not Print → requeue |
+| Delivered | Print Request History cards + lazy details; Account Activity (collapsed); deep links; merged-customer history |
+| Program | **WS1–WS4 complete on DEV** |
+| Production | **NOT AUTHORIZED** |
+| Signoff | `docs/workflow/reviews/2026-08-30-customer-account-identity-management-ws4-signoff.md` |
+
+## 2026-08-30 - Show Queue Did Not Print requeue recovery — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `show-queue-needs-attention-did-not-print-recovery` — **DONE** |
+| Owner DEV QA | **PASS** |
+| Delivered | Move unprinted to another show; Release-only → Needs Re-queue; `requeuedFromAllocationId`; Owner Edit Show scoped enabler |
+| Signoff | `docs/workflow/reviews/2026-08-30-show-queue-needs-attention-did-not-print-recovery-signoff.md` |
+
+## 2026-08-29 - Show Queue DEV fixture + allocation permission repair — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `show-queue-dev-override-and-allocation-permission-repair` — **DONE** |
+| Delivered | `DEV-OVERRIDE` / `dev_fixture`; allocation Rules allowlist repair; Needs Attention for fixtures |
+| Signoff | `docs/workflow/reviews/2026-08-29-show-queue-dev-override-and-allocation-permission-repair-signoff.md` |
+
+## 2026-08-29 - Print Request Standard Size presets — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `print-request-standard-size-presets` — **DONE** |
+| Delivered | Standard Sizes settings + modal (Adult/Youth/Toddler/Infant + Hat); v1 width table |
+| Signoff | `docs/workflow/reviews/2026-08-29-print-request-standard-size-presets-signoff.md` |
+
+## 2026-08-29 - Customer Account Identity WS3 — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `customer-account-identity-management-ws3-full-account-merge` — **DONE** |
+| Delivered | Merge Accounts wizard; `mergedSourceCustomerIds`; survivor-only history |
+| Signoff | `docs/workflow/reviews/2026-08-29-customer-account-identity-management-ws3-signoff.md` |
+
+## 2026-08-29 - Customer Account Identity WS2 — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `customer-account-identity-management-ws2-duplicate-resolution` — **DONE** |
+| Delivered | Transfer Username; `previewDuplicateAccountResolution` / `transferCustomerUsername` |
+| Signoff | `docs/workflow/reviews/2026-08-29-customer-account-identity-management-ws2-signoff.md` |
+
+## 2026-08-28 - Customer Account Identity Management — WS1 — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `customer-account-identity-management-and-audit` — **WS1 DONE** |
+| Signoff | **approved** |
+| Owner DEV QA | **PASS** — correctives #1–#5 |
+| Delivered | Reversible disable/restore; hard-delete preview/apply (dev-gated); Change Username UX; Active/Disabled/Closed directory tabs; Portal disabled-login + session invalidation; Portal-editable PR contract; Studio duplicate-CR guard; `customerActivityEvents` |
+| DEV deploy | Identity callables + Rules + 3 Portal working-request Functions + `printRequests` index on `fresh-prints-dev` |
+| WS2–WS4 | **NOT STARTED** |
+| Production / Studio / Portal hosting | Untouched — not authorized |
+| Signoff | `docs/workflow/reviews/2026-08-28-customer-account-identity-management-ws1-signoff.md` |
+
+## 2026-08-28 - Show Queue past-show failsafe + owner override — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `show-queue-past-show-failsafe-and-owner-override` — **DONE (DEV)** |
+| Signoff | **approved_with_notes** |
+| Owner DEV QA | **PASS** — recovery flows, tab navigation, Portal loading polish |
+| DEV Functions | `previewShowProductionRecovery`, `applyShowProductionRecovery` on `fresh-prints-dev` |
+| Delivered | Needs Attention tab; staff remediation (close empty / fulfilled / release); owner override v1; ADR-FP-149; ADR-FP-071 guard; recovery dialogs |
+| Session corrective | Show Queue / Internal Sheets tab URL sync; Portal Discover/Shows cache; Add to Show modal prefetch + split loading |
+| Production | Untouched — recovery callables + Studio publish not authorized |
+| Signoff | `docs/workflow/reviews/2026-08-28-show-queue-past-show-failsafe-and-owner-override-signoff.md` |
+| DEV deploy | `docs/workflow/reviews/2026-08-27-show-queue-past-show-failsafe-dev-deploy.md` |
+
+## 2026-08-27 - Show Queue gang-sheet three-mode refinement — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `show-queue-gang-sheet-three-mode-refinement` — **DONE (DEV)** |
+| Signoff | **approved** |
+| Owner DEV QA | **PASS** |
+| Delivered | Three modal modes: Standard · Grouped by Customer (`customer_grouped_continuous`) · Sheet per Customer (`grouped_by_customer`); continuous planner + compositor; preview/export parity; pairwise cache fingerprints |
+| Tests | 50 targeted gang-sheet tests **PASS** |
+| Production | Untouched — no Studio publish |
+| Signoff | `docs/workflow/reviews/2026-08-27-show-queue-gang-sheet-three-mode-refinement-signoff.md` |
+
+## 2026-08-27 - Portal customer username change — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `portal-customer-username-change` — **DONE (DEV)** |
+| Signoff | **approved** |
+| Owner QA | *"This is working exactly how we want it to."* + closeout *"Everything so far is working good."* |
+| Delivered | Portal Account Settings profile edit; `updatePortalCustomerProfile`; shared `applyCustomerProfileUpdate`; 30-day username cooldown; identity snapshot propagation; Studio/Portal historical `@new · was @old` labels |
+| Production | Deferred |
+| Signoff | `docs/workflow/reviews/2026-08-27-portal-customer-username-change-signoff.md` |
+
+## 2026-08-27 - Smart Catalog Intelligence Slice 6 — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `smart-catalog-intelligence-unattended-enrichment` — **Slice 6 DONE (DEV)** |
+| Signoff | **approved_with_notes** |
+| Owner closeout | **PASS** — *"Everything so far is working good."* |
+| Pipeline | **catalog-enrich-v30** + **smart-profile-normalizer-v4** |
+| Ready Catalog | Gate unlocked; Preview + canary + full Ready backfill on `fresh-prints-dev` |
+| Smart Profile | Visibility/editing + local Design Library reconciliation corrective |
+| Runtime | Shadow; Autonomous OFF; production untouched |
+| Signoff | `docs/workflow/reviews/2026-08-26-smart-catalog-intelligence-slice-6-signoff.md` |
+
+## 2026-08-26 - Smart Catalog Intelligence Slice 5 — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `smart-catalog-intelligence-unattended-enrichment` — **Slice 5 DONE (DEV)** |
+| Signoff | **approved_with_notes** |
+| Pipeline | **catalog-enrich-v30** + **smart-profile-normalizer-v4** |
+| Gate H | 204/204 AI Review Queue reprocess; all `imported` + `needs_review` |
+| Gate I → corrective | Material Floral & Nature FP fixed (`category_dominant_intent_conflict`); subject anti-glue |
+| Mini QA | **PASS WITH NOTES** (10 targeted designs) |
+| Runtime | Shadow; Autonomous OFF; Ready Catalog locked; production untouched |
+| Next | Slice 6 Plan only with **separate** owner authorization |
+| Signoff | `docs/workflow/reviews/2026-08-26-smart-catalog-intelligence-slice-5-signoff.md` |
+
+## 2026-08-25 - Smart Catalog Intelligence Slice 4 — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `smart-catalog-intelligence-unattended-enrichment` — **Slice 4 DONE (DEV)** |
+| Signoff | **approved_with_notes** |
+| Owner QA | **PASS WITH NOTES** |
+| Deploy | `fresh-prints-dev` only (Functions allowlist + rules + index) |
+| Notes | Profiler quality + import background/halftone planned next; **blocks Slice 5** |
+| Signoff | `docs/workflow/reviews/2026-08-25-smart-catalog-intelligence-slice-4-signoff.md` |
+| Next plan | `docs/workflow/plans/2026-08-25-smart-profile-quality-canonicalization-and-import-background-plan.md` |
+
 ## 2026-08-24 - Portal Discover show-rail loading + order polish — CLOSED / LIVE
 
 | Item | Status |

@@ -22,14 +22,38 @@ import { buildDiscoverySummaryHelpText } from "@fresh-prints/shared/utils/batchD
 import { BatchImportFileList } from "./BatchImportFileList";
 
 interface BatchImportDiscoverySummaryProps {
+  backgroundMode: import("@fresh-prints/shared/types/design/artworkBackgroundSource.types").ImportArtworkBackgroundMode;
   canUpload: boolean;
   discoveryResult: BatchDiscoveryCompleteEvent;
   excludedFilePaths: ReadonlySet<string>;
+  halftoneMode: import("@fresh-prints/shared/types/design/artworkBackgroundSource.types").ImportHalftoneMode;
   isBusy: boolean;
+  itemBackgroundOverrides: Readonly<
+    Record<
+      string,
+      import("@fresh-prints/shared/utils/resolveImportArtworkBackgroundDecision").ImportItemBackgroundOverride
+    >
+  >;
+  itemHalftoneOverrides: Readonly<
+    Record<
+      string,
+      import("@fresh-prints/shared/utils/resolveImportArtworkBackgroundDecision").ImportItemHalftoneOverride
+    >
+  >;
   onExcludeAllValidatedFiles: () => void;
   onIncludeAllValidatedFiles: () => void;
+  onItemBackgroundOverrideChange: (
+    filePath: string,
+    value: import("@fresh-prints/shared/utils/resolveImportArtworkBackgroundDecision").ImportItemBackgroundOverride,
+  ) => void;
+  onItemHalftoneOverrideChange: (
+    filePath: string,
+    value: import("@fresh-prints/shared/utils/resolveImportArtworkBackgroundDecision").ImportItemHalftoneOverride,
+  ) => void;
+  onSuggestDarkDetected: (filePath: string, suggestDark: boolean) => void;
   onToggleFileIncluded: (filePath: string) => void;
   onUpload: () => void;
+  suggestDarkByPath: Readonly<Record<string, boolean>>;
   warning: string | null;
 }
 
@@ -129,14 +153,22 @@ function BatchDetailModal({
 }
 
 export function BatchImportDiscoverySummary({
+  backgroundMode,
   canUpload,
   discoveryResult,
   excludedFilePaths,
+  halftoneMode,
   isBusy,
+  itemBackgroundOverrides,
+  itemHalftoneOverrides,
   onExcludeAllValidatedFiles,
   onIncludeAllValidatedFiles,
+  onItemBackgroundOverrideChange,
+  onItemHalftoneOverrideChange,
+  onSuggestDarkDetected,
   onToggleFileIncluded,
   onUpload,
+  suggestDarkByPath,
   warning,
 }: BatchImportDiscoverySummaryProps) {
   const validatedFiles = getValidatedManifestFiles(discoveryResult);
@@ -294,12 +326,20 @@ export function BatchImportDiscoverySummary({
             ) : null}
           </div>
           <BatchImportFileList
+            backgroundMode={backgroundMode}
             emptyMessage="No validated PNG files were found."
             excludedFilePaths={excludedFilePaths}
             files={validatedFiles}
+            halftoneMode={halftoneMode}
+            itemBackgroundOverrides={itemBackgroundOverrides}
+            itemHalftoneOverrides={itemHalftoneOverrides}
             jobId={discoveryResult.jobId}
             omittedWarningCodes={OMITTED_VALIDATED_ROW_WARNING_CODES}
+            onItemBackgroundOverrideChange={onItemBackgroundOverrideChange}
+            onItemHalftoneOverrideChange={onItemHalftoneOverrideChange}
+            onSuggestDarkDetected={onSuggestDarkDetected}
             onToggleFileIncluded={onToggleFileIncluded}
+            suggestDarkByPath={suggestDarkByPath}
             title=""
             variant="validated"
           />

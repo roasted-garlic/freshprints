@@ -78,6 +78,7 @@ describe("expandOperationalWipePlan", () => {
     assert.deepEqual(plan.deleteCollections, [
       "staffInboxAcks",
       "staffInboxAlertDeliveries",
+      "staffInboxSuppressions",
       "gangSheetItems",
       "gangSheets",
       "showAllocations",

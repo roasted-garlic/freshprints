@@ -17,7 +17,11 @@ import { PortalSocialMetaSettingsSection } from "../components/PortalSocialMetaS
 import { PortalHelpSettingsSection } from "../components/PortalHelpSettingsSection";
 import { BrandLogoSettingsSection } from "../components/BrandLogoSettingsSection";
 import { PrintRequestLimitSettingsSection } from "../components/PrintRequestLimitSettingsSection";
+import { StandardPrintSizesSettingsSection } from "../components/StandardPrintSizesSettingsSection";
 import { StudioUpdatesSettingsSection } from "../components/StudioUpdatesSettingsSection";
+import { CatalogProcessingModeSettingsSection } from "../components/CatalogProcessingModeSettingsSection";
+import { CatalogReprocessingSettingsSection } from "../components/CatalogReprocessingSettingsSection";
+import { AutomationHealthSettingsSection } from "../components/AutomationHealthSettingsSection";
 import {
   AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER,
   AI_ENRICHMENT_APPROVED_CATEGORY_NAMES_PLACEHOLDER,
@@ -48,6 +52,7 @@ import {
   useAiEnrichmentSettings,
 } from "../hooks/useAiEnrichmentSettings";
 import { formatAiPlaygroundOutput } from "../utils/aiPlaygroundOutputFormatter";
+import { HelperSettingsPage } from "./HelperSettingsPage";
 
 /**
  * Tolerantly extract a JSON object from raw model output that may include a fenced code block
@@ -113,6 +118,7 @@ type SettingsPageTabId =
   | "emailProviders"
   | "uploadQuotas"
   | "printRequestLimits"
+  | "standardPrintSizes"
   | "socialSharing"
   | "faqHowTo"
   | "brandLogos"
@@ -126,10 +132,31 @@ interface SettingsPageTab {
 
 export function SettingsPage() {
   const { user } = useAuth();
+
+  if (permissionService.isHelper(user)) {
+    return <HelperSettingsPage />;
+  }
+
+  if (!permissionService.canManageSettings(user)) {
+    return <HelperSettingsPage />;
+  }
+
+  return <ManageableSettingsPage />;
+}
+
+function ManageableSettingsPage() {
+  const { user } = useAuth();
+
+  if (permissionService.isHelper(user)) {
+    return <HelperSettingsPage />;
+  }
+
   const isOwner = permissionService.isOwner(user);
   const canManageSettings = permissionService.canManageSettings(user);
+  const canViewAdministrativeSettings = permissionService.canViewAdministrativeSettings(user);
   const canManageEmailProviders = permissionService.canManageEmailProviders(user);
   const canManageCustomerUploadQuotas = permissionService.canManageCustomerUploadQuotas(user);
+  const canManageStandardPrintSizes = permissionService.canManageStandardPrintSizes(user);
   const settingsTabs = useMemo((): SettingsPageTab[] => {
     const tabs: SettingsPageTab[] = [];
 
@@ -142,24 +169,34 @@ export function SettingsPage() {
       tabs.push({ id: "printRequestLimits", label: "Print request limits" });
     }
 
+    if (canManageStandardPrintSizes) {
+      tabs.push({ id: "standardPrintSizes", label: "Standard Print Sizes" });
+    }
+
     if (isOwner) {
       tabs.push({ id: "socialSharing", label: "Social sharing" });
       tabs.push({ id: "brandLogos", label: "Brand logos" });
     }
 
-    if (canManageSettings) {
+    if (canViewAdministrativeSettings) {
       tabs.push({ id: "faqHowTo", label: "FAQ and How To" });
+      tabs.push({ id: "aiEnrichment", label: "AI Enrichment" });
     }
 
-    tabs.push({ id: "aiEnrichment", label: "AI Enrichment" });
     tabs.push({ id: "studioUpdates", label: "Studio updates" });
     return tabs;
-  }, [canManageCustomerUploadQuotas, canManageEmailProviders, canManageSettings, isOwner]);
+  }, [
+    canManageCustomerUploadQuotas,
+    canManageEmailProviders,
+    canManageStandardPrintSizes,
+    canViewAdministrativeSettings,
+    isOwner,
+  ]);
   const [activeTab, setActiveTab] = useState<SettingsPageTabId | null>(null);
   const resolvedTab: SettingsPageTabId =
     activeTab && settingsTabs.some((tab) => tab.id === activeTab)
       ? activeTab
-      : (settingsTabs[0]?.id ?? "aiEnrichment");
+      : (settingsTabs[0]?.id ?? "studioUpdates");
   const {
     additionalTagExclusions,
     error,
@@ -173,6 +210,8 @@ export function SettingsPage() {
     suggestedNewTagsPolicy,
     tagRerankMode,
     visionModelId,
+    catalogWorkflowMode,
+    catalogAutonomousLiveEnabled,
   } = useAiEnrichmentSettings();
   const playground = useAiEnrichmentPlayground();
   const { resetPlayground } = playground;
@@ -523,6 +562,17 @@ export function SettingsPage() {
         </div>
       ) : null}
 
+      {resolvedTab === "standardPrintSizes" && canManageStandardPrintSizes ? (
+        <div
+          aria-labelledby="settings-tab-standardPrintSizes"
+          className="settings-page-tab-panel"
+          id="settings-tab-panel-standardPrintSizes"
+          role="tabpanel"
+        >
+          <StandardPrintSizesSettingsSection />
+        </div>
+      ) : null}
+
       {resolvedTab === "socialSharing" && isOwner ? (
         <div
           aria-labelledby="settings-tab-socialSharing"
@@ -534,7 +584,7 @@ export function SettingsPage() {
         </div>
       ) : null}
 
-      {resolvedTab === "faqHowTo" && canManageSettings ? (
+      {resolvedTab === "faqHowTo" && canViewAdministrativeSettings ? (
         <div
           aria-labelledby="settings-tab-faqHowTo"
           className="settings-page-tab-panel"
@@ -556,7 +606,7 @@ export function SettingsPage() {
         </div>
       ) : null}
 
-      {resolvedTab === "aiEnrichment" ? (
+      {resolvedTab === "aiEnrichment" && canViewAdministrativeSettings ? (
         <div
           aria-labelledby="settings-tab-aiEnrichment"
           className="settings-page-tab-panel"
@@ -754,6 +804,21 @@ export function SettingsPage() {
               </div>
             )}
           </section>
+
+          <CatalogProcessingModeSettingsSection
+            catalogAutonomousLiveEnabled={catalogAutonomousLiveEnabled}
+            catalogWorkflowMode={catalogWorkflowMode}
+            isLoading={isLoading}
+          />
+          <CatalogReprocessingSettingsSection
+            catalogAutonomousLiveEnabled={catalogAutonomousLiveEnabled}
+            catalogWorkflowMode={catalogWorkflowMode}
+          />
+          <AutomationHealthSettingsSection
+            catalogAutonomousLiveEnabled={catalogAutonomousLiveEnabled}
+            catalogWorkflowMode={catalogWorkflowMode}
+            isLoading={isLoading}
+          />
         </div>
       ) : null}
 

@@ -251,28 +251,10 @@ export function AddToShowModal({
     });
   }, [printRequest.isInternal, printRequest.requestOrigin, shows]);
 
-  const calendarShows = useMemo(() => {
-    const now = new Date();
-    const pastWindowStart = new Date(now.getFullYear(), now.getMonth() - 2, 1);
-
-    return shows.filter((show) => {
-      if (show.isArchived === true) {
-        return false;
-      }
-      // Internal Gang Sheets are Studio-only production lanes — never on the Portal-style calendar picker.
-      if (isStaffGangSheetShow(show)) {
-        return false;
-      }
-      if (show.productionStatus === "canceled" || show.productionStatus === "archived") {
-        return false;
-      }
-      if (!isPastScheduledShow(show, now)) {
-        return true;
-      }
-      const scheduled = show.scheduledStartAt?.toDate();
-      return scheduled ? scheduled.getTime() >= pastWindowStart.getTime() : false;
-    });
-  }, [shows]);
+  const calendarShows = useMemo(
+    () => allocatableShows.filter((show) => !isStaffGangSheetShow(show)),
+    [allocatableShows],
+  );
 
   const fixedShowBlockReason = useMemo(() => {
     if (!fixedShowId) {
@@ -831,8 +813,7 @@ export function AddToShowModal({
                     ) : null}
                   </>
                 )
-              ) : allocatableShows.filter((show) => !isStaffGangSheetShow(show)).length === 0 &&
-                calendarShows.length === 0 ? (
+              ) : allocatableShows.filter((show) => !isStaffGangSheetShow(show)).length === 0 ? (
                 <p className="print-requests-modal-hint">
                   {shows.filter((show) => !isStaffGangSheetShow(show)).length === 0
                     ? "Add a show in the Show Queue before attaching print requests."

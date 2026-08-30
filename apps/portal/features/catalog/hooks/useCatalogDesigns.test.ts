@@ -70,7 +70,7 @@ test('permits bounded Firestore ordinary browse for unfiltered, category, single
   );
 });
 
-test('keeps search and multi-tag off the ordinary Firestore path until Phase 1B', () => {
+test('keeps search, multi-tag, and smart filters off the ordinary Firestore path', () => {
   assert.equal(
     allowsBoundedCatalogFirestoreFallback({ searchQuery: 'best', selectedTags: [] }),
     false,
@@ -84,6 +84,13 @@ test('keeps search and multi-tag off the ordinary Firestore path until Phase 1B'
       categoryId: 'category-a',
       searchQuery: 'logo',
       selectedTags: [],
+    }),
+    false,
+  );
+  assert.equal(
+    allowsBoundedCatalogFirestoreFallback({
+      selectedTags: [],
+      smartFilters: { subjects: ['cow'] },
     }),
     false,
   );

@@ -25,10 +25,10 @@ describe("remediation r2 contracts", () => {
     );
   });
 
-  it("builds stable per-user sound delivery ids", () => {
+  it("builds stable team-wide sound delivery ids", () => {
     assert.equal(
-      buildStaffInboxAlertDeliveryDocId("userA", "portal_queued:req1:show1"),
-      "userA__portal_queued_req1_show1",
+      buildStaffInboxAlertDeliveryDocId("portal_queued:req1:show1"),
+      "portal_queued_req1_show1",
     );
   });
 });

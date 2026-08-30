@@ -1,5 +1,122 @@
 # Backend and AI Pipeline
 
+## Customer identity management — WS1–WS4 (DEV — complete 2026-08-30)
+
+| Item | Value |
+|------|--------|
+| Program | **WS1–WS4 DONE on `fresh-prints-dev`** |
+| WS4 signoff | `docs/workflow/reviews/2026-08-30-customer-account-identity-management-ws4-signoff.md` |
+| Production | **NOT authorized** |
+
+### WS2 — Transfer Username (owner)
+
+| Callable | Purpose |
+|----------|---------|
+| `previewDuplicateAccountResolution` | Verified duplicate preview |
+| `transferCustomerUsername` | Username transfer between verified duplicates |
+
+### WS3 — Merge Accounts (owner)
+
+| Callable | Purpose |
+|----------|---------|
+| `previewCustomerAccountMerge` | Merge preview + checksum |
+| `applyCustomerAccountMerge` | Resumable merge job |
+| `getCustomerAccountMergeStatus` | Job status |
+
+Job collection: `customerMergeJobs/{jobId}` (staged checkpoints).
+
+### WS4 — Customer activity (Studio read paths)
+
+No new Functions required for MVP — Studio services query `printRequests`, `showAllocations`, `customerActivityEvents` with `resolveLogicalCustomerIds` for merged survivors.
+
+### Account lifecycle callables (owner) — WS1
+
+| Callable | Role | Deploy (DEV) |
+|----------|------|--------------|
+| `disableCustomerAccount` | Reversible disable — Auth disabled, `users.isActive=false`, history + username preserved | Yes |
+| `restoreCustomerAccount` | Re-enable — clears disable fields, Auth enabled, `users.isActive=true` | Yes |
+| `previewHardDeleteCustomerAccount` | History-free delete preview + checksum (single-use) | Yes |
+| `hardDeleteCustomerAccount` | History-free Apply — identity/bootstrap only; **Apply gated to `fresh-prints-dev`** (ADR-FP-151) | Yes |
+| `updateCustomer` | Staff username/displayName + resumable `propagateCustomerIdentitySnapshots` | Yes (corrective #1) |
+| `tombstoneCustomerAccount` | Close Account Permanently — unchanged ADR-FP-115 semantics | Pre-existing |
+
+**Distinctions (do not merge):**
+
+- **Disable** — reversible; Auth disabled; all history kept; username reserved (ADR-FP-150).
+- **Close / tombstone** — one-way in normal product flow; `isDeleted`; history kept; username **permanently reserved** (ADR-FP-115).
+- **Hard delete** — only when eligibility proves **no** meaningful history; removes Auth + identity docs; **releases** username (ADR-FP-151); Apply dev-gated in WS1.
+
+Portal gate: `requirePortalCustomer` rejects disabled and tombstoned customers. Mid-session disable: client listeners sign out before Firestore `callerIsActive()` denial.
+
+**Audit:** append-only `customerActivityEvents` (staff read via Rules); not lifecycle source of truth.
+
+**Rules (DEV):** `customerRequiredFieldsValid` WS1 field whitelist; `customerActivityEvents` / preview collection rules — deployed with WS1 + corrective #1 records.
+
+### Portal working-request callables (corrective #4 DEV deploy)
+
+These three import `functions/src/lib/portalWorkingPrintRequest.ts` and resolve/create **Portal-editable** continuable requests only (`portal_customer`, not internal):
+
+| Callable | WS1 behavior |
+|----------|----------------|
+| `createPortalPrintRequest` | `createWorkingPrintRequestInTransaction` — legacy `studio_customer` drafts do **not** block Portal create |
+| `confirmCustomerUploadsAndAttachToRequest` | `resolveOrCreateWorkingPrintRequestInTransaction` |
+| `customerAddAssistedApprovedProofToPrintRequest` | same resolver |
+
+**Not redeployed in corrective #4** (unchanged bundle; inline origin guards only):
+
+- `addPortalCatalogDesignToPrintRequest`
+- `updatePortalPrintRequestItemQuantity`
+- `removePortalPrintRequestItem`
+- `duplicatePortalPrintRequestItem`
+
+### Firestore index (DEV — Studio customer picker)
+
+Composite on `printRequests` for `listCustomerIdsWithContinuableCustomerRequests`:
+
+| Field | Order |
+|-------|-------|
+| `status` | ASC |
+| `isInternal` | ASC |
+| `__name__` | ASC (Firestore-generated suffix) |
+
+Query: `status in [draft, editing]` + `isInternal == false`. Index ID on dev: `CICAgNi6rIIK` (deploy record in corrective #4 dev deploy doc). **Production:** not deployed.
+
+### Portal customer profile (prior — DEV 2026-08-27)
+
+| Callable | Purpose |
+|----------|---------|
+| `updatePortalCustomerProfile` | Self-service display name + username (30-day cooldown) |
+| `updateCustomer` | Staff path via shared `applyCustomerProfileUpdate` + propagation worker |
+
+Identity snapshots propagate resumably to `printRequests` and `designIssueReports`. Propagation updates snapshot fields only — not `name`, `requestOrigin`, `isInternal`, or `customerId`.
+
+---
+
+## Show Queue recovery + DEV fixtures (DEV — 2026-08-30)
+
+| Callable | Purpose |
+|----------|---------|
+| `previewShowProductionRecovery` | Preview Did Not Print / recovery actions incl. `requeue_unfulfilled` |
+| `applyShowProductionRecovery` | Trusted apply (move / release-only) |
+| `upsertDevFixtureShow` | DEV-only fixture show create/update (`fresh-prints-dev` gate) |
+
+**Production:** NOT authorized. Recovery extends ADR-FP-149 patterns (ADR-FP-156).
+
+---
+
+## Smart Catalog enrichment (DEV — 2026-08-27)
+
+| Item | Value |
+|------|--------|
+| Prompt | **catalog-enrich-v30** |
+| Normalizer | **smart-profile-normalizer-v4** |
+| Mode | **shadow** (Needs Review lifecycle preserved) |
+| Live Autonomous | **OFF** (`catalogAutonomousLiveEnabled=false`) |
+| Ready Catalog reprocess | **Unlocked on DEV** — Slice 6 complete; full Ready backfill done |
+| Smart Profile UI | Owner/admin editing + Design Library local reconciliation (Slice 6 corrective) |
+| Slice 6 | Signed off **approved_with_notes** on `fresh-prints-dev` (2026-08-27) |
+| Production enrichment | Untouched |
+
 ## Firebase stack
 
 | Service | Use |
@@ -88,8 +205,11 @@ Limits (shared constants): 100 files/batch, 80 MB/image (`CUSTOMER_UPLOAD_MAX_SI
 
 | Callable | Role |
 |----------|------|
-| `createPortalPrintRequest` | Start customer request (one working) |
-| `duplicatePortalPrintRequestItem` | Duplicate line for another size |
+| `createPortalPrintRequest` | Start customer request (one Portal-editable working request; ADR-FP-071) |
+| `confirmCustomerUploadsAndAttachToRequest` | Attach uploads via Portal-editable working-request resolver |
+| `customerAddAssistedApprovedProofToPrintRequest` | Assisted proof attach via same resolver |
+| `addPortalCatalogDesignToPrintRequest` | Add catalog design (inline `portal_customer` / `isInternal` guard; not in corrective #4 deploy) |
+| `updatePortalPrintRequestItemQuantity` / `removePortalPrintRequestItem` / `duplicatePortalPrintRequestItem` | Item mutations (inline origin guards; not in corrective #4 deploy) |
 | `listPortalAllocatableShows` | Shows customer may join |
 | `queuePortalPrintRequestToShow` | Attach full request to one show (no override / no re-queue) |
 | `getPortalShowPrintProgress` | Progress for Printing tab |

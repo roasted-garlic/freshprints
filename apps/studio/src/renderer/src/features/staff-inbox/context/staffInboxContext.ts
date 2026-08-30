@@ -29,6 +29,7 @@ export interface StaffInboxContextValue {
   closePanel: () => void;
   acknowledgeItem: (item: StaffInboxItem) => void;
   restoreItem: (itemId: string) => void;
+  deleteCompletedAlerts: (itemIds: string[]) => void;
   dismissToast: (toastId: string) => void;
   openItem: (item: StaffInboxItem) => void;
   isItemHighlighted: (itemId: string) => boolean;

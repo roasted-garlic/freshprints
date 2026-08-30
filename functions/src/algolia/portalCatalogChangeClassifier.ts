@@ -1,4 +1,5 @@
 import type { PortalCatalogCard } from "../../../packages/shared/src/catalog-snapshots/catalogSnapshot.types";
+import { projectSmartProfileForAlgoliaIndex } from "../../../packages/shared/src/catalog-search/portalCatalogAlgoliaRecord";
 
 export type PortalCatalogChangeClassification =
   | "card-only"
@@ -76,14 +77,31 @@ function isEitherSideReady(
   return before?.status === PUBLISHED_STATUS || after?.status === PUBLISHED_STATUS;
 }
 
-function indexFilterFieldsChanged(
+/**
+ * Smart Profile index projection — search/facet fields only.
+ * Provenance-only churn (shadow automation, validationWarnings) does not sync.
+ */
+function smartProfileIndexFieldsChanged(
   before: Record<string, unknown> | undefined,
   after: Record<string, unknown> | undefined,
 ): boolean {
   return (
+    stableJson(projectSmartProfileForAlgoliaIndex(before?.smartProfile)) !==
+    stableJson(projectSmartProfileForAlgoliaIndex(after?.smartProfile))
+  );
+}
+
+function indexFilterFieldsChanged(
+  before: Record<string, unknown> | undefined,
+  after: Record<string, unknown> | undefined,
+): boolean {
+  if (
     stableJson(project(before, INDEX_FILTER_FIELDS)) !==
     stableJson(project(after, INDEX_FILTER_FIELDS))
-  );
+  ) {
+    return true;
+  }
+  return smartProfileIndexFieldsChanged(before, after);
 }
 
 /**

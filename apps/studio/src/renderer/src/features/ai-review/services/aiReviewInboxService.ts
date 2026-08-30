@@ -133,6 +133,36 @@ export const aiReviewInboxService = {
     });
   },
 
+  /**
+   * Persist staff halftone decision immediately (Processing preview control).
+   * Couples preview mat to halftone like Needs Review approve prep.
+   */
+  async updateHalftoneFromInbox(
+    caller: User,
+    design: Design,
+    markAsHalftone: boolean,
+  ): Promise<Design> {
+    if (!permissionService.canEditDesigns(caller)) {
+      throw new Error("You do not have permission to update halftone.");
+    }
+
+    const tags = syncHalftoneTagInList(design.tags, markAsHalftone);
+    const artworkBackgroundHex = buildArtworkBackgroundUpdateValue({
+      artworkBackgroundPreset: markAsHalftone ? "lightBlack" : "grey",
+      artworkBackgroundCustomHex: "",
+    });
+
+    return designService.updateDesign(caller, design.id, {
+      tags,
+      artworkBackgroundHex: artworkBackgroundHex ?? null,
+      halftoneStaffDecision: {
+        value: markAsHalftone,
+        decidedBy: caller.id,
+        isExplicitOverride: true,
+      },
+    });
+  },
+
   async rerunAiFromInbox(
     caller: User,
     designId: string,

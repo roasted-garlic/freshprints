@@ -18,6 +18,10 @@ import type {
   ShowExportImageRequest,
   ShowExportProgressEvent,
 } from "@fresh-prints/shared/types/export/showExportIpc.types";
+import {
+  filterShowExportAllocations,
+  shouldUseHistoricalShowExportAllocations,
+} from "../utils/showExportEligibility";
 
 interface ExportShowZipState {
   isExporting: boolean;
@@ -63,13 +67,18 @@ export function useExportShowZip() {
 
       try {
         const allocations = await upcomingShowService.listShowAllocations(user, show.id);
-        const activeAllocations = allocations.filter((allocation) => allocation.status !== "canceled");
+        const useHistoricalPastExport = shouldUseHistoricalShowExportAllocations(show);
+        const activeAllocations = filterShowExportAllocations(allocations, {
+          useHistoricalPastExport,
+        });
 
         if (activeAllocations.length === 0) {
           isExportingRef.current = false;
           setState({
             isExporting: false,
-            error: "This show has no active allocations to export.",
+            error: useHistoricalPastExport
+              ? "This show has no attached print requests to export."
+              : "This show has no active allocations to export.",
             result: null,
             progress: null,
           });

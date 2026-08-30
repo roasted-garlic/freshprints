@@ -8,6 +8,7 @@ import type { Category } from "../types/category.types";
 import type { Design } from "../types/design.types";
 import {
   buildCategoryFilterOptions,
+  buildCategoryFilterOptionsFromFacetIds,
   buildFacetedTagsFromAlgoliaOptions,
   collectUniqueDesignTags,
   collectUsedCategoryIds,
@@ -309,6 +310,42 @@ describe("buildCategoryFilterOptions", () => {
       { label: "Camp", value: "camp" },
       { label: "Greek", value: "greek" },
     ]);
+  });
+});
+
+describe("buildCategoryFilterOptionsFromFacetIds", () => {
+  it("narrows to Algolia facet category ids and keeps selected", () => {
+    const options = buildCategoryFilterOptionsFromFacetIds({
+      allOptionValue: "__all__",
+      categories: [
+        createCategory({ id: "occupations", name: "Occupations" }),
+        createCategory({ id: "funny", name: "Funny & Sarcastic" }),
+        createCategory({ id: "animals", name: "Animals" }),
+      ],
+      facetCategoryIds: ["occupations", "funny"],
+      selectedCategoryId: "occupations",
+    });
+    assert.deepEqual(options, [
+      { label: "All categories", value: "__all__" },
+      { label: "Occupations", value: "occupations" },
+      { label: "Funny & Sarcastic", value: "funny" },
+    ]);
+  });
+
+  it("keeps selected category when not in facet set so user can switch away", () => {
+    const options = buildCategoryFilterOptionsFromFacetIds({
+      allOptionValue: "__all__",
+      categories: [
+        createCategory({ id: "occupations", name: "Occupations" }),
+        createCategory({ id: "funny", name: "Funny & Sarcastic" }),
+      ],
+      facetCategoryIds: ["funny"],
+      selectedCategoryId: "occupations",
+    });
+    assert.deepEqual(
+      options.map((option) => option.value),
+      ["__all__", "occupations", "funny"],
+    );
   });
 });
 

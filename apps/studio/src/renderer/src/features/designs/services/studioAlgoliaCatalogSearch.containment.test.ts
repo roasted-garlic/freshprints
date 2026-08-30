@@ -17,10 +17,16 @@ describe("Studio Algolia catalog search containment", () => {
     assert.match(flags, /VITE_ALGOLIA_SEARCH_API_KEY/);
     assert.match(flags, /VITE_ALGOLIA_APP_ID/);
     assert.match(flags, /VITE_ALGOLIA_INDEX_NAME/);
+    assert.match(flags, /VITE_USE_SMART_FILTERS/);
+    assert.match(flags, /studioSmartFiltersEnabled/);
     assert.doesNotMatch(flags, /ALGOLIA_ADMIN|adminApiKey|ADMIN_API_KEY/);
     assert.doesNotMatch(service, /ALGOLIA_ADMIN|adminApiKey|ADMIN_API_KEY|setSettings/);
     assert.match(service, /withPortalCatalogAlgoliaExactTokenSearchParams/);
     assert.match(service, /getDesignsByIds/);
+    assert.match(service, /smartFilters/);
+    assert.match(service, /listNarrowedSmartFacets/);
+    assert.match(service, /listNarrowedCategoryFacets/);
+    assert.match(service, /buildStudioAlgoliaCategoryFacetSearchParams/);
   });
 
   it("Design Library managed search fails closed without loadAll or snapshots", () => {
@@ -43,6 +49,17 @@ describe("Studio Algolia catalog search containment", () => {
     assert.match(hook, /isStudioAlgoliaCatalogConfigured/);
     assert.match(hook, /deriveManagedCatalogHasMore/);
     assert.match(hook, /Catalog search is not configured/);
+    assert.match(hook, /Do \*\*not\*\* re-apply title\/tag text search on Algolia hits/);
+    assert.match(hook, /designMatchesSmartFilters\(design, smartFilters\)/);
+    // Algolia hit lists must not be re-filtered by title/tag text search (Smart Profile recall).
+    assert.doesNotMatch(
+      hook,
+      /const algoliaKept = page\.designs\.filter\(\s*\(design\) =>\s*designMatchesSearchQuery/,
+    );
+    assert.doesNotMatch(
+      hook,
+      /const filtered = page\.designs\.filter\(\s*\(design\) =>\s*designMatchesSearchQuery/,
+    );
     assert.match(exactId, /loadByIds/);
     assert.doesNotMatch(exactId, /getDocs\(/);
     assert.doesNotMatch(exactId, /loadAll/);

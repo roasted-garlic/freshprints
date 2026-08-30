@@ -146,7 +146,6 @@ export const createCustomerWithPortalInvite = onCall(
               signupSource: "studio",
               totalPrintRequests: 0,
               nextPrintRequestSequence: 1,
-              usernameUpdatedAt: timestamp,
               createdAt: timestamp,
               updatedAt: timestamp,
             }),

@@ -1,3 +1,4 @@
+export { upsertDevFixtureShow } from "./upsertDevFixtureShow";
 export { addPortalCatalogDesignToPrintRequest } from "./addPortalCatalogDesignToPrintRequest";
 export { cleanupAbandonedCustomerUploads } from "./cleanupAbandonedCustomerUploads";
 export { archiveStaleWorkingPrintRequests } from "./archiveStaleWorkingPrintRequests";
@@ -32,6 +33,7 @@ export { updatePortalPrintRequestItemQuantity } from "./updatePortalPrintRequest
 export { createTeamUser } from "./createTeamUser";
 export { registerCustomer } from "./registerCustomer";
 export { updateCustomer } from "./updateCustomer";
+export { updatePortalCustomerProfile } from "./updatePortalCustomerProfile";
 export { updateTeamUser } from "./updateTeamUser";
 export { submitEtsyRecommendationRequest } from "./submitEtsyRecommendationRequest";
 export { searchEtsyRecommendations } from "./searchEtsyRecommendations";
@@ -70,9 +72,27 @@ export { resetAiEnrichmentForProcessing } from "./resetAiEnrichmentForProcessing
 export { testAiEnrichmentPlayground } from "./testAiEnrichmentPlayground";
 export { testAiEnrichmentTagRerank } from "./testAiEnrichmentTagRerank";
 export { updateAiEnrichmentSettings } from "./updateAiEnrichmentSettings";
+export {
+  refreshSmartProfileVocabSnapshotCallable,
+  refreshSmartProfileVocabSnapshotScheduled,
+} from "./ai/refreshSmartProfileVocabSnapshot";
+export { updateCatalogWorkflowMode } from "./updateCatalogWorkflowMode";
+export {
+  previewCatalogReprocessJob,
+  startCatalogReprocessJob,
+  pauseCatalogReprocessJob,
+  resumeCatalogReprocessJob,
+  retryCatalogReprocessJobFailures,
+} from "./catalogReprocess/catalogReprocessCallables";
+export { onCatalogReprocessJobWritten } from "./catalogReprocess/onCatalogReprocessJobWritten";
+export {
+  updateDesignSmartProfileDimensions,
+} from "./designs/updateDesignSmartProfileDimensions";
+export { resetDesignSmartProfileDimension } from "./designs/resetDesignSmartProfileDimension";
 export { updateEmailProviderSettings } from "./updateEmailProviderSettings";
 export { updateCustomerUploadQuotaSettings } from "./updateCustomerUploadQuotaSettings";
 export { updatePrintRequestLimitSettings } from "./updatePrintRequestLimitSettings";
+export { updateStandardPrintSizesSettings } from "./updateStandardPrintSizesSettings";
 export { updatePortalSocialMetaSettings } from "./updatePortalSocialMetaSettings";
 export { updatePortalHelpSettings } from "./updatePortalHelpSettings";
 export { finalizeBrandLogoSlot } from "./finalizeBrandLogoSlot";
@@ -87,6 +107,16 @@ export {
   tombstoneCustomerAccount,
 } from "./tombstoneCustomerAccount";
 export {
+  previewHardDeleteCustomerAccount,
+  hardDeleteCustomerAccount,
+} from "./hardDeleteCustomerAccount";
+export { disableCustomerAccount, restoreCustomerAccount } from "./disableCustomerAccount";
+export { previewDuplicateAccountResolution } from "./previewDuplicateAccountResolution";
+export { transferCustomerUsername } from "./transferCustomerUsername";
+export { previewCustomerAccountMerge } from "./previewCustomerAccountMerge";
+export { applyCustomerAccountMerge } from "./applyCustomerAccountMerge";
+export { getCustomerAccountMergeStatus } from "./getCustomerAccountMergeStatus";
+export {
   previewPrintRequestDeletion,
   deleteEligiblePrintRequest,
   archivePrintRequest,
@@ -95,6 +125,10 @@ export {
   previewUpcomingShowDeletion,
   deleteEligibleUpcomingShow,
 } from "./deleteEligibleUpcomingShow";
+export {
+  previewShowProductionRecovery,
+  applyShowProductionRecovery,
+} from "./previewShowProductionRecovery";
 export {
   previewCustomerUploadDeletion,
   deleteEligibleCustomerUpload,
@@ -134,6 +168,7 @@ export {
   onPrintRequestItemQueueTabInputWritten,
   onShowAllocationQueueTabInputWritten,
 } from "./onPrintRequestQueueTabInputsWritten";
+export { onPrintRequestStatusQueueTabInputWritten } from "./onPrintRequestStatusQueueTabInputWritten";
 export { backfillPrintRequestQueueTab } from "./backfillPrintRequestQueueTab";
 export {
   onCustomerFavoriteCreated,

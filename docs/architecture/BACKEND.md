@@ -38,8 +38,11 @@ Fresh Prints uses **Firebase** as the primary backend platform for authenticatio
 | Portal account self-service (2026-07-20) | Password reset + verify-before-update email + deletion **request** callables (`syncPortalAccountEmail`, `requestPortalAccountDeletion`, `cancelPortalAccountDeletionRequest`). ADR-FP-104. |
 | Owner single-user delete (legacy) | Callable `ownerDeleteUser` remains **quarantined** (no Studio UI). Product path is `tombstoneCustomerAccount` (Users page). |
 | Customer account tombstone (2026-07-22) | Studio Users → `previewCustomerAccountDeletion` / `tombstoneCustomerAccount`. Auth disable; retain identity + username reservation + all print requests. Owner only. |
+| Customer identity WS1 (2026-08-28) | `previewHardDeleteCustomerAccount` / `hardDeleteCustomerAccount` (owner; history-free only; Apply dev-gated). `disableCustomerAccount` / `restoreCustomerAccount` (owner; reversible). Append-only `customerActivityEvents` for forensic audit. |
+| Customer identity WS2 (2026-08-29) | `previewDuplicateAccountResolution` / `transferCustomerUsername` (owner-only). Atomic username transfer from duplicate source to survivor + source placeholder + disable source. Preview uses `customerIdentityOperationPreviews` operation `duplicate_resolution` (15-minute TTL, checksum). ADR-FP-153. |
 | Eligible print request delete/archive | `previewPrintRequestDeletion` / `deleteEligiblePrintRequest` / `archivePrintRequest` — staff; server dependency recheck. |
-| Eligible upcoming show delete | `previewUpcomingShowDeletion` / `deleteEligibleUpcomingShow` — staff; empty upcoming only. |
+| Eligible upcoming show delete | `previewUpcomingShowDeletion` / `deleteEligibleUpcomingShow` — owner; empty upcoming only. |
+| Show production recovery (2026-08-27) | `previewShowProductionRecovery` / `applyShowProductionRecovery` — staff (`close_empty`, `mark_fulfilled`, `release_unfulfilled`); owner-only `force_completed`. Admin SDK reconciliation; ADR-FP-149. |
 | Eligible customer upload delete | `previewCustomerUploadDeletion` / `deleteEligibleCustomerUpload` — owner/admin only; request-item and promoted-design blockers; authoritative schema-owned path validation; retry-safe Storage cleanup and upload-specific batch-reference cleanup server-side. Successful hard delete of a charged `catalog_donation` decrements today’s `finalizeImageCountDonation` once in the same Firestore transaction (Cap L / print-request day counters unchanged). |
 | Portal customer own-upload delete (F3) | `previewPortalCustomerUploadDeletion` / `deletePortalCustomerUpload` — signed-in caller only when `customerUploads.customerUid == auth.uid`; reuses the same blockers + Storage-first / retain-on-failure + donation day refund contract as staff delete. Does **not** use staff `assertCanDeleteCustomerUpload`. |
 | Category/tag archive guards | `previewCategoryArchive` / `archiveCategoryWithGuards` / `previewTagArchive` / `archiveTagWithGuards` — owner/admin; block while designs reference. |
@@ -186,6 +189,14 @@ target remains on Test Data Reset. Print-request / queue rejects may include str
 `WORKING_REQUEST_PRINT_LIMIT` (request over `L`), `SHOW_CUSTOMER_LIMIT` / `SHOW_CAPACITY` /
 `SHOW_ALLOCATION_BLOCKED` (`failed-precondition` on queue). Stale queue clients sending `selections`
 are rejected with soft-reload copy. Upload quota Settings remain ADR-FP-095 (enforcement narrowed as above).
+`settings/standardPrintSizes` holds owner-configured Standard Print Size preset target widths
+(structural placements/groups/presets; width-only semantics). **Fresh Prints Standard Size Defaults v1**
+(2026-08-29 corrective) defines seven placements (including **Pocket**), individual garment-size presets,
+and forward-compatible read merge via `resolveStandardPrintSizesSettings`. Owners replace saved DEV/prod
+values explicitly via Settings **Reset to Defaults → Save** (no background migration). Studio owners edit via callable
+`updateStandardPrintSizesSettings`; Portal and Studio subscribe read-only. Preset apply on a print
+request item persists optional `printRequestItems.standardSizePresetKey` alongside derived
+`printWidthInches` / `printHeightInches` / formatted `sizeLabel`.
 Product Brevo uses Secret Manager `BREVO_API_KEY` — never the
 Cursor MCP token (`BREVO_MCP_TOKEN`).
 
@@ -234,6 +245,8 @@ Authoritative constants: `packages/shared/src/constants/import/batchImportLimits
 |----------|---------|---------|
 | `createTeamUser` | Callable | Create team user + invitation flow |
 | `registerCustomer` | Callable | Customer self-registration — provisions `users/{uid}` + `customers/{id}` + username reservation after Firebase Auth signup. Requires `biddingAcknowledgmentAccepted` + version; writes `portalBiddingAcknowledgments.signup`. |
+| `updatePortalCustomerProfile` | Callable | Portal customer self-service: update own `displayName` + `username` with 30-day username cooldown, reservation swap, Auth displayName sync, and resumable identity snapshot propagation (ADR-FP-148). |
+| `updateCustomer` | Callable | Studio staff: update customer profile fields (including email for Portal-linked customers); shares canonical profile txn + propagation with Portal path; staff bypass username cooldown. |
 | `updateTeamUser` | Callable | Update team user fields |
 | `createPortalPrintRequest` | Callable | Portal: create the customer's one working print request |
 | `createCustomerUploadBatch` | Callable | Portal: create customer artwork upload batch + source/ZIP paths (ADR-FP-073) |
@@ -297,6 +310,9 @@ Authoritative constants: `packages/shared/src/constants/import/batchImportLimits
 | `enqueueAiEnrichment` | Callable | Run imported design through direct AI processing |
 | `resetAiEnrichmentForProcessing` | Callable | Return Needs Review or Rejected design to Processing for a staff-started re-run |
 | `updateAiEnrichmentSettings` | Callable | Owner/admin: set team vision model, prompt template, and tag exclusions |
+| `updateCatalogWorkflowMode` | Callable | **Owner-only:** Catalog Processing Mode + live Autonomous gate (`ENABLE AUTONOMOUS`) |
+| `previewCatalogReprocessJob` / `startCatalogReprocessJob` / `pauseCatalogReprocessJob` / `resumeCatalogReprocessJob` / `retryCatalogReprocessJobFailures` | Callable | **Owner-only:** Catalog Reprocessing. Slice 5: `ai_review_queue` Start (Shadow + live OFF; phrase `REPROCESS AI REVIEW QUEUE`). Slice 6: `ready_catalog` Start path implemented — Shadow + live OFF; phrase `REPROCESS READY CATALOG`; optional `canaryDesignIds` → job `boundedDesignIds`. **Gate `CATALOG_REPROCESS_READY_CATALOG_ENABLED` still false** until owner unlock after deploy. Preview returns target inventory (queue notes density; Ready tag-density + v30/v4 counts). |
+| `onCatalogReprocessJobWritten` | Firestore trigger | Durable worker; executes `ai_review_queue` (queue mode) and `ready_catalog` (`ready_backfill` + Ready-safe staging). Uses `GEMINI_API_KEY`. |
 | `testAiEnrichmentPlayground` | Callable | Owner/admin: run one-off image + prompt test against the allowlisted Gemini models |
 | `onDesignAiEnrichmentQueued` | Firestore update | Legacy compatibility trigger; live Processing flow should use direct callable execution |
 
@@ -397,6 +413,21 @@ default** when public search-only env vars are present (`NEXT_PUBLIC_ALGOLIA_APP
 sync/reconcile use Secret Manager admin key (`ALGOLIA_ADMIN_API_KEY` via
 `functions/src/algolia/algoliaSecrets.ts` — **not** shared `lib/secrets`). Index records are
 not an authorization boundary.
+
+**Slice 3 Smart Profile search (2026-08-24):** Ready-index records may include public-safe Smart
+Profile fields. Searchable attribute order: title → structured identity/intent → searchConcepts →
+visibleText → objects → legacy `searchText`/`tagFacetKeys`. Customer Smart Filters (flagged
+`NEXT_PUBLIC_USE_SMART_FILTERS` / `VITE_USE_SMART_FILTERS`, default **off**): subjects, styles,
+themes, interests, professionsGroups, occasions, places, colors. Objects/searchConcepts/visibleText
+are search-only. Classifier syncs search-relevant `smartProfile` changes on ready designs;
+provenance-only churn does not. Legacy tags coexist.
+
+**Slice 6 Smart Profile staff edit (2026-08-26):** Owner/admin callables
+`updateDesignSmartProfileDimensions` and `resetDesignSmartProfileDimension` patch dimension lists on
+Ready+approved designs with existing Smart Profile. Client rules deny direct `smartProfile` writes.
+Ready backfill merges AI output with preserved staff-edited dimensions; `smartProfileAiSnapshot`
+records raw AI output on every enrichment success. Algolia upsert follows existing classifier on
+`smartProfile` dimension changes.
 
 **Studio Design Library managed search (2026-08-10):** Studio ready-catalog text search may use the
 **same environment-specific Algolia index** as Portal via search-only Vite env:

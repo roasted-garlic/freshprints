@@ -42,29 +42,42 @@ export function isPortalAllocatableShowSource(
 
 /**
  * Whether a Print Request may be allocated onto a show of the given source.
- * Whatnot keeps origin-agnostic Studio behavior.
- * Internal Gang Sheets accept studio_internal origin, or legacy Studio internal docs
- * marked `isInternal` without a conflicting customer origin.
+ * - Internal Gang Sheets: studio_internal (or legacy isInternal) only.
+ * - Customer shows (Whatnot, DEV fixture): customer origins only — never Internal requests.
  */
 export function canAllocateOriginToShowSource(input: {
   source: UpcomingShowSource | string | null | undefined;
   requestOrigin: PrintRequestOrigin | string | null | undefined;
   isInternal?: boolean;
 }): boolean {
-  if (!isStaffGangSheetSource(input.source)) {
-    return true;
+  if (isStaffGangSheetSource(input.source)) {
+    if (input.requestOrigin === "studio_customer" || input.requestOrigin === "portal_customer") {
+      return false;
+    }
+
+    if (input.requestOrigin === "studio_internal") {
+      return true;
+    }
+
+    // Legacy / badge-visible Internal requests may only have isInternal set.
+    return input.isInternal === true;
   }
 
-  if (input.requestOrigin === "studio_customer" || input.requestOrigin === "portal_customer") {
+  // Customer-facing shows never accept Internal requests (including CR→IR conversions).
+  if (input.isInternal === true) {
     return false;
   }
 
   if (input.requestOrigin === "studio_internal") {
+    return false;
+  }
+
+  if (input.requestOrigin === "studio_customer" || input.requestOrigin === "portal_customer") {
     return true;
   }
 
-  // Legacy / badge-visible Internal requests may only have isInternal set.
-  return input.isInternal === true;
+  // Legacy customer docs without requestOrigin remain eligible when not marked internal.
+  return true;
 }
 
 export function formatStaffGangSheetTitle(cycleNumber: number): string {

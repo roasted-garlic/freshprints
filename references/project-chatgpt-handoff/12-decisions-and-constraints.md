@@ -2,16 +2,141 @@
 
 > Full log: `docs/project/DECISIONS.md` — newest ADRs first.
 
-## Grouped gang sheets (2026-08-23 — ADR-FP-143)
+## Roadmap sequencing (2026-08-30 — not an ADR)
+
+Print Request **11″ default + 15″ upscale + legacy enhance** is intentionally scheduled **before** remaining Smart Profiling / legacy tag-retirement work. Production promotion remains separately gated.
+
+---
+
+## Customer identity program — WS1–WS4 complete (DEV — 2026-08-30)
+
+| Workstream | ADR / signoff | Status |
+|------------|---------------|--------|
+| WS1 Identity foundations | ADR-FP-150, ADR-FP-151, ADR-FP-148 | **DONE** |
+| WS2 Transfer Username | ADR-FP-153 | **DONE** |
+| WS3 Full Account Merge | ADR-FP-154 | **DONE** |
+| WS4 Customer Activity + Deep Linking | *(no separate ADR — UI/read model)* | **DONE** |
+
+**Production / coordinated identity promotion: NOT AUTHORIZED.**
+
+### ADR-FP-156: Did Not Print bulk requeue + Needs Re-queue
+
+Show Queue recovery: `requeue_unfulfilled`, `requeuedFromAllocationId` lineage, `needsStaffRequeue*` markers, Working `needs_requeue` triage filter.
+
+### ADR-FP-155: DEV-only Show Queue fixture shows
+
+`DEV-OVERRIDE` sentinel; `source: dev_fixture`; callable `upsertDevFixtureShow`; excluded from Whatnot sync.
+
+### ADR-FP-154: Owner-authorized full customer account merge (WS3)
+
+Resumable `customerMergeJobs`; survivor canonical; `mergedSourceCustomerIds`; source tombstone.
+
+### ADR-FP-153: Owner-authorized verified duplicate username transfer (WS2)
+
+`previewDuplicateAccountResolution` / `transferCustomerUsername`; distinct from merge.
+
+### ADR-FP-151: History-free customer hard delete (dev-gated)
+
+### ADR-FP-150: Reversible customer account disable
+
+**Note:** ADR-FP-152 does **not** exist in `docs/project/DECISIONS.md` as of 2026-08-30.
+
+---
+
+## Customer identity — WS1 detail (2026-08-28)
+
+### Account states (product distinctions)
+
+| State | ADR / source | Reversible? | Username | History |
+|-------|--------------|-------------|----------|---------|
+| **Active** | — | — | Reserved while account exists | Full |
+| **Disabled** | ADR-FP-150 | Yes — `restoreCustomerAccount` | Reserved | Full |
+| **Closed / tombstoned** | ADR-FP-115 | No via normal Studio Re-enable | **Permanently reserved** | Full |
+| **Hard deleted** | ADR-FP-151 | N/A | **Released** (history-free only) | Identity removed; business history must be absent |
+
+**Disable Account** ≠ **Close Account Permanently** ≠ **Delete Account Permanently**.
+
+### ADR-FP-150: Reversible customer account disable
+
+| Constraint | Rule |
+|------------|------|
+| Fields | `customers.isDisabled`, `disabledAt`, `disabledBy`, `disabledReason?` |
+| Callables | `disableCustomerAccount` / `restoreCustomerAccount` (owner) |
+| Auth | Disable/enable Firebase Auth; `users.isActive` false/true |
+| History | All print/upload history + `customerUsernames` preserved |
+| Tombstone | `isDeleted` accounts cannot use disable/restore |
+
+### ADR-FP-151: History-free customer hard delete (dev-gated)
+
+| Constraint | Rule |
+|------------|------|
+| Callables | `previewHardDeleteCustomerAccount` + `hardDeleteCustomerAccount` (owner) |
+| Eligibility | Fail closed — meaningful history blockers prevent Apply |
+| Apply scope | Identity/bootstrap only — never cascades print graph |
+| DEV gate | Apply on **`fresh-prints-dev` only** until explicit production authorization |
+| Username | Released on successful history-free delete |
+| Audit | `customerActivityEvents` preview/apply records |
+
+### ADR-FP-115: Tombstone (Close Account Permanently) — unchanged by WS1
+
+| Constraint | Rule |
+|------------|------|
+| Semantics | `isDeleted`; Auth **disable** (not delete); history retained |
+| Username | `customerUsernames` **not** released |
+| UI | Closed customers — no Re-enable/Restore in normal flow |
+
+### ADR-FP-148: Portal identity self-service + snapshot propagation
+
+| Constraint | Rule |
+|------------|------|
+| Portal | `updatePortalCustomerProfile` — 30-day username cooldown |
+| Propagation | Snapshot fields on `printRequests` / `designIssueReports` — resumable worker |
+| Immutable | `printRequests.name` never updated; `requestOrigin`, `isInternal`, `customerId` unchanged by username propagation |
+
+### ADR-FP-071 + WS1 Portal editability (current behavior — no separate ADR)
+
+| Constraint | Rule |
+|------------|------|
+| One working request | Per Portal customer among **Portal-editable** continuable requests |
+| Portal-editable | `status` draft\|editing + `requestOrigin == portal_customer` + `isInternal != true` |
+| `studio_customer` | Customer-owned Studio request — **not** Portal-editable |
+| `studio_internal` | Internal requests — not customer Portal path |
+| Legacy duplicates | Explicit Portal selection when multiple Portal-editable drafts exist; mutations target selection |
+| Studio guard (WS1) | Do not create a second continuable Customer CR; exclude customers with open CR from picker — **new** duplicates blocked; legacy data not auto-repaired |
+
+### Deferred (master plan — superseded)
+
+- ~~WS2 duplicate resolution~~ — **DONE** (ADR-FP-153)
+- ~~WS3 full account merge~~ — **DONE** (ADR-FP-154)
+- ~~WS4 customer activity cards~~ — **DONE** (2026-08-30 signoff)
+
+---
+
+## Gate I corrective (2026-08-26 — ADR-FP-145)
+
+| Constraint | Rule |
+|------------|------|
+| Prompt / normalizer | **catalog-enrich-v30** / **smart-profile-normalizer-v4** |
+| Subjects | Anti-glue; preserve genuine specificity; no curated allowlist |
+| Category | Decision-layer `category_dominant_intent_conflict` (resolver governance unchanged) |
+| Subject gaps | Remain **hard** |
+| Object soft-lane | Deferred except `daisy`↔`daisies` |
+| Live Autonomous / Ready Catalog / prod | Separately gated; Slice 5 closed without enabling them |
+
+Full ADR: `docs/project/DECISIONS.md` (ADR-FP-145).
+
+## Grouped gang sheets (2026-08-23 — ADR-FP-143; three-mode extension 2026-08-27)
 
 | Constraint | Rule |
 |------------|------|
 | Default | Legacy **efficiency / Standard** when `layoutMode` omitted |
-| Grouped mode | Explicit `layoutMode: "grouped_by_customer"` + `grouping` on images |
-| Cache | Separate fingerprints; Standard and Grouped coexist on disk |
-| Labels | `whatnot_MM-DD-YYYY_grouped-gang-sheet`; section headings + `-Continued` |
+| Sheet per Customer | `layoutMode: "grouped_by_customer"` — one physical sheet per customer nest segment; `whatnot_MM-DD-YYYY_grouped-gang-sheet` |
+| Grouped by Customer | `layoutMode: "customer_grouped_continuous"` — continuous multi-customer sheets; `whatnot_MM-DD-YYYY_grouped-continuous-gang-sheet` |
+| Grouping key | `customerId` → username snapshot → `internalBaseName` → `printRequestId` |
+| Cache | Pairwise distinct fingerprints; do not cross-hydrate modes in modal |
+| Labels | Section headings comma-join CR names; `-Continued` on spillover |
 
-Full ADR: `docs/project/DECISIONS.md` (ADR-FP-143).
+Full ADR + follow-up: `docs/project/DECISIONS.md` (ADR-FP-143).
 
 ## Public Our Shows (2026-08-22 — ADR-FP-142)
 
@@ -135,7 +260,7 @@ Full ADR: `docs/project/DECISIONS.md` (ADR-FP-137). Details: `docs/standards/DEP
 
 | ADR | Summary |
 |-----|---------|
-| ADR-FP-071 | **One working print request** per Portal customer |
+| ADR-FP-071 | **One working print request** per Portal customer (among Portal-editable continuable requests; `studio_customer` drafts are not Portal-editable — WS1 DEV 2026-08-28) |
 | ADR-FP-106 | **Public browse** + login-gated actions; guest overlay; guest catalog donate via Anonymous Auth + `guest` attribution (rules/Functions/Auth deploy human-gated) |
 | ADR-FP-107 | Recently Requested = `lastAddedToShowAt` via `onShowAllocationCreated` (soft-deployed fresh-prints-dev 2026-07-21) |
 | ADR-FP-103 | Portal add-to-show **cutoff hours** before show start (Studio Show Queue setting; Functions enforce; Studio staff exempt) |

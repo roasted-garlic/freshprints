@@ -17,15 +17,18 @@ interface DesignLibraryFilterControlsProps {
   onArchivedChange?: (checked: boolean) => void;
   onHalftoneFilterChange?: (on: boolean) => void;
   onNeedsCompanionFilterChange?: (on: boolean) => void;
+  onOpenSmartFilters?: () => void;
   onOpenTags: () => void;
   onSearchChange: (value: string) => void;
   searchQuery: string;
   searchPlaceholder?: string;
+  selectedSmartFilterCount?: number;
   selectedTagCount: number;
+  showSmartFilters?: boolean;
 }
 
 /**
- * Presentational filter controls (search, category, tags, optional Halftone).
+ * Presentational filter controls (search, category, tags, optional Smart Filters / Halftone).
  * Renders UI only — all state lives in the page so the fixed dock and URL filters stay in sync.
  */
 export function DesignLibraryFilterControls({
@@ -39,11 +42,14 @@ export function DesignLibraryFilterControls({
   onCategoryChange,
   onHalftoneFilterChange,
   onNeedsCompanionFilterChange,
+  onOpenSmartFilters,
   onOpenTags,
   onSearchChange,
   searchQuery,
   searchPlaceholder = "Search catalog...",
+  selectedSmartFilterCount = 0,
   selectedTagCount,
+  showSmartFilters = false,
 }: DesignLibraryFilterControlsProps) {
   return (
     <div className="design-library-filter-controls">
@@ -89,6 +95,19 @@ export function DesignLibraryFilterControls({
         Tags
         {selectedTagCount > 0 ? ` (${selectedTagCount})` : ""}
       </Button>
+
+      {showSmartFilters && onOpenSmartFilters ? (
+        <Button
+          className="button-leading-icon"
+          onClick={onOpenSmartFilters}
+          size="sm"
+          variant="secondary"
+        >
+          <ListFilter aria-hidden="true" size={16} strokeWidth={2} />
+          Smart Filters
+          {selectedSmartFilterCount > 0 ? ` (${selectedSmartFilterCount})` : ""}
+        </Button>
+      ) : null}
 
       {showArchivedToggle && onArchivedChange ? (
         <Toggle

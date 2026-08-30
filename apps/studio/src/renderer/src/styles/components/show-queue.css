@@ -1023,3 +1023,139 @@
   font-size: var(--font-size-xs);
   overflow-wrap: anywhere;
 }
+
+.show-needs-attention-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.show-needs-attention-panel h3 {
+  margin: 0;
+}
+
+.show-needs-attention-facts {
+  color: var(--color-text-secondary);
+  display: flex;
+  flex-direction: column;
+  font-size: var(--font-size-sm);
+  gap: var(--space-1);
+  list-style: disc;
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.show-needs-attention-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.show-production-recovery-modal .modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.show-production-recovery-header h2 {
+  margin: 0;
+}
+
+.show-recovery-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.show-recovery-preview-facts {
+  margin: 0;
+}
+
+.show-recovery-warning {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.show-recovery-notes {
+  color: var(--color-text-secondary);
+  display: flex;
+  flex-direction: column;
+  font-size: var(--font-size-sm);
+  gap: var(--space-1);
+  list-style: disc;
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.show-recovery-request-effects ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+}
+
+.show-recovery-request-other-shows {
+  color: var(--color-text-muted);
+}
+
+.show-recovery-deploy-notice {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  margin: 0;
+}
+
+.show-recovery-action-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.show-did-not-print-destination-field {
+  max-width: 100%;
+}
+
+.show-did-not-print-modal .modal-subtitle {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  margin: var(--space-2) 0 0;
+}
+
+.show-did-not-print-secondary {
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+  padding-top: var(--space-3);
+}
+
+.show-did-not-print-secondary-title {
+  margin: 0;
+}
+
+.show-did-not-print-secondary-copy {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+  margin: 0;
+  max-width: 52rem;
+}
+
+.show-did-not-print-secondary .button {
+  align-self: flex-start;
+}
+
+.show-did-not-print-checksum {
+  font-family: var(--font-family-mono, monospace);
+  font-size: var(--font-size-xs);
+  overflow-wrap: anywhere;
+}
+
+.show-did-not-print-requeue-lines ul {
+  margin-top: var(--space-2);
+}

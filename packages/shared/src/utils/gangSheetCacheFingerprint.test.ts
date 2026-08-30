@@ -123,6 +123,35 @@ describe("buildGangSheetCacheFingerprint", () => {
 
     assert.notEqual(efficiency, grouped);
   });
+
+  it("distinguishes sheet-per-customer and continuous grouped fingerprints", () => {
+    const groupedImages = sampleRequest().images.map((image) => ({
+      ...image,
+      grouping: {
+        printRequestId: "req-1",
+        requestName: "alice-IR001",
+        customerUsernameSnapshot: "alice",
+        isInternal: false,
+      },
+    }));
+
+    const sheetPerCustomer = buildGangSheetCacheFingerprint(
+      sampleRequest({
+        layoutMode: "grouped_by_customer",
+        baseFileName: "whatnot_07-10-2026_grouped-gang-sheet",
+        images: groupedImages,
+      }),
+    );
+    const continuousGrouped = buildGangSheetCacheFingerprint(
+      sampleRequest({
+        layoutMode: "customer_grouped_continuous",
+        baseFileName: "whatnot_07-10-2026_grouped-continuous-gang-sheet",
+        images: groupedImages,
+      }),
+    );
+
+    assert.notEqual(sheetPerCustomer, continuousGrouped);
+  });
 });
 
 describe("sanitizeGangSheetCacheShowId", () => {

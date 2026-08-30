@@ -1,5 +1,5 @@
-import { X } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { Check, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Badge } from "../../../shared/components/Badge";
 import { Button } from "../../../shared/components/Button";
@@ -21,8 +21,10 @@ interface CompanionLinkPickerModalProps {
   candidateDesigns?: Design[];
   currentDesign: Design;
   isOpen?: boolean;
+  isSubmitting?: boolean;
+  error?: string | null;
   onClose: () => void;
-  onSelect: (design: Design) => void;
+  onConfirm: (designs: Design[]) => void | Promise<void>;
 }
 
 /** Ready catalog scope, loaded in full so search/sort/exclusion can run client-side. */
@@ -42,10 +44,13 @@ export function CompanionLinkPickerModal({
   candidateDesigns,
   currentDesign,
   isOpen = true,
+  isSubmitting = false,
+  error = null,
   onClose,
-  onSelect,
+  onConfirm,
 }: CompanionLinkPickerModalProps) {
   const [query, setQuery] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const shouldLoadCandidates = candidateDesigns === undefined;
   const {
@@ -73,6 +78,33 @@ export function CompanionLinkPickerModal({
     return [...searched].sort(compareDesignsForCompanionLinkPicker);
   }, [eligibleDesigns, query]);
 
+  const selectedDesigns = useMemo(
+    () =>
+      [...eligibleDesigns]
+        .filter((candidate) => selectedIds.has(candidate.id))
+        .sort(compareDesignsForCompanionLinkPicker),
+    [eligibleDesigns, selectedIds],
+  );
+
+  useEffect(() => {
+    if (!isOpen) {
+      setQuery("");
+      setSelectedIds(new Set());
+    }
+  }, [isOpen]);
+
+  function toggleSelected(designId: string): void {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(designId)) {
+        next.delete(designId);
+      } else {
+        next.add(designId);
+      }
+      return next;
+    });
+  }
+
   function handleClearSearch() {
     setQuery("");
     window.requestAnimationFrame(() => {
@@ -89,10 +121,11 @@ export function CompanionLinkPickerModal({
       <ModalHeader>
         <div>
           <p className="eyebrow">{currentDesign.title}</p>
-          <h2 id="companion-link-picker-title">Link a companion design</h2>
+          <h2 id="companion-link-picker-title">Link companion designs</h2>
           <p className="design-library-tag-filter-description">
-            Search the Design Library and pick a design to link as a companion. Designs already
-            waiting for a companion are shown first.
+            Search the Design Library and select one or more designs to link as companions. Selected
+            designs are linked to this design and to each other so any member can see the full set
+            (for example, color variants). Designs already waiting for a companion are shown first.
           </p>
         </div>
         <button
@@ -142,39 +175,67 @@ export function CompanionLinkPickerModal({
           </p>
         ) : null}
 
+        {error ? (
+          <p className="auth-message auth-message-error" role="alert">
+            {error}
+          </p>
+        ) : null}
+
         <ul aria-label="Eligible companion designs" className="design-companion-picker-list">
-          {visibleDesigns.map((candidate) => (
-            <li key={candidate.id}>
-              <button
-                className="design-companion-picker-row"
-                onClick={() => onSelect(candidate)}
-                type="button"
-              >
-                <DesignThumbnailPanel
-                  alt=""
-                  artworkBackgroundHex={candidate.artworkBackgroundHex}
-                  catalogPath={candidate.thumbnailPath}
-                  className="design-companion-picker-thumb"
-                  decorative
-                  imageFit="cover"
-                />
-                <span className="design-companion-picker-body">
-                  <span className="design-companion-picker-title">
-                    {candidate.title || "Untitled design"}
+          {visibleDesigns.map((candidate) => {
+            const isSelected = selectedIds.has(candidate.id);
+
+            return (
+              <li key={candidate.id}>
+                <button
+                  aria-pressed={isSelected}
+                  className={`design-companion-picker-row${isSelected ? " is-selected" : ""}`}
+                  disabled={isSubmitting}
+                  onClick={() => toggleSelected(candidate.id)}
+                  type="button"
+                >
+                  <DesignThumbnailPanel
+                    alt=""
+                    artworkBackgroundHex={candidate.artworkBackgroundHex}
+                    catalogPath={candidate.thumbnailPath}
+                    className="design-companion-picker-thumb"
+                    decorative
+                    imageFit="cover"
+                  />
+                  <span className="design-companion-picker-body">
+                    <span className="design-companion-picker-title">
+                      {candidate.title || "Untitled design"}
+                    </span>
+                    {candidate.companionSetIncomplete ? (
+                      <Badge variant="warning">Needs Companion</Badge>
+                    ) : null}
                   </span>
-                  {candidate.companionSetIncomplete ? (
-                    <Badge variant="warning">Needs Companion</Badge>
+                  {isSelected ? (
+                    <span aria-hidden="true" className="design-companion-picker-check">
+                      <Check size={18} strokeWidth={2.4} />
+                    </span>
                   ) : null}
-                </span>
-              </button>
-            </li>
-          ))}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       </ModalBody>
 
       <ModalFooter>
-        <Button onClick={onClose} type="button" variant="secondary">
+        <Button disabled={isSubmitting} onClick={onClose} type="button" variant="secondary">
           Cancel
+        </Button>
+        <Button
+          disabled={isSubmitting || selectedDesigns.length === 0}
+          onClick={() => void onConfirm(selectedDesigns)}
+          type="button"
+        >
+          {isSubmitting
+            ? "Linking…"
+            : selectedDesigns.length === 0
+              ? "Link companions"
+              : `Link ${selectedDesigns.length} companion${selectedDesigns.length === 1 ? "" : "s"}`}
         </Button>
       </ModalFooter>
     </DesignLibraryModal>

@@ -1,18 +1,65 @@
 import type { Firestore } from "firebase-admin/firestore";
 
 import type { PortalShowCatalogDesignCard } from "../../../packages/shared/src/types/portal/listPortalShowCatalogDesigns.types";
+import {
+  isCatalogDesignShowAllocation,
+  isCustomerUploadShowAllocation,
+} from "../../../packages/shared/src/utils/portalShowDesignVisibility";
 
-const CATALOG_UPLOAD_SOURCE_TYPES = new Set(["customer_upload"]);
-
+/** @deprecated Use isCatalogDesignShowAllocation from shared portalShowDesignVisibility. */
 export function isCatalogDesignAllocation(data: Record<string, unknown>): boolean {
-  const sourceType = typeof data.sourceType === "string" ? data.sourceType : "catalog_design";
-  if (CATALOG_UPLOAD_SOURCE_TYPES.has(sourceType)) {
-    return false;
+  return isCatalogDesignShowAllocation({
+    sourceType: typeof data.sourceType === "string" ? data.sourceType : undefined,
+    customerUploadId: typeof data.customerUploadId === "string" ? data.customerUploadId : undefined,
+    designId: typeof data.designId === "string" ? data.designId : undefined,
+  });
+}
+
+function collectCatalogDesignIdFromAllocation(data: Record<string, unknown>): string | null {
+  if (data.status === "canceled") {
+    return null;
   }
-  if (typeof data.customerUploadId === "string" && data.customerUploadId.trim()) {
-    return false;
+
+  if (
+    isCustomerUploadShowAllocation({
+      sourceType: typeof data.sourceType === "string" ? data.sourceType : undefined,
+      customerUploadId: typeof data.customerUploadId === "string" ? data.customerUploadId : undefined,
+    })
+  ) {
+    return null;
   }
-  return typeof data.designId === "string" && data.designId.trim().length > 0;
+
+  if (
+    !isCatalogDesignShowAllocation({
+      sourceType: typeof data.sourceType === "string" ? data.sourceType : undefined,
+      customerUploadId: typeof data.customerUploadId === "string" ? data.customerUploadId : undefined,
+      designId: typeof data.designId === "string" ? data.designId : undefined,
+    })
+  ) {
+    return null;
+  }
+
+  const designId = typeof data.designId === "string" ? data.designId.trim() : "";
+  return designId || null;
+}
+
+function collectCustomerUploadIdFromAllocation(data: Record<string, unknown>): string | null {
+  if (data.status === "canceled") {
+    return null;
+  }
+
+  if (
+    !isCustomerUploadShowAllocation({
+      sourceType: typeof data.sourceType === "string" ? data.sourceType : undefined,
+      customerUploadId: typeof data.customerUploadId === "string" ? data.customerUploadId : undefined,
+    })
+  ) {
+    return null;
+  }
+
+  const customerUploadId =
+    typeof data.customerUploadId === "string" ? data.customerUploadId.trim() : "";
+  return customerUploadId || null;
 }
 
 export async function countUniquePublicCatalogDesignsByShowId(
@@ -25,6 +72,7 @@ export async function countUniquePublicCatalogDesignsByShowId(
   }
 
   const designIdsByShow = new Map<string, Set<string>>();
+  const uploadIdsByShow = new Map<string, Set<string>>();
 
   for (let index = 0; index < showIds.length; index += 30) {
     const chunk = showIds.slice(index, index + 30);
@@ -35,13 +83,21 @@ export async function countUniquePublicCatalogDesignsByShowId(
 
     for (const docSnap of snap.docs) {
       const data = docSnap.data();
-      if (data.status === "canceled" || !isCatalogDesignAllocation(data)) {
+      const showId = typeof data.upcomingShowId === "string" ? data.upcomingShowId : "";
+      if (!showId) {
         continue;
       }
 
-      const showId = typeof data.upcomingShowId === "string" ? data.upcomingShowId : "";
-      const designId = typeof data.designId === "string" ? data.designId : "";
-      if (!showId || !designId) {
+      const uploadId = collectCustomerUploadIdFromAllocation(data);
+      if (uploadId) {
+        const set = uploadIdsByShow.get(showId) ?? new Set<string>();
+        set.add(uploadId);
+        uploadIdsByShow.set(showId, set);
+        continue;
+      }
+
+      const designId = collectCatalogDesignIdFromAllocation(data);
+      if (!designId) {
         continue;
       }
 
@@ -68,13 +124,18 @@ export async function countUniquePublicCatalogDesignsByShowId(
     }
   }
 
-  for (const [showId, designIds] of designIdsByShow.entries()) {
-    let count = 0;
+  const allShowIds = new Set([...designIdsByShow.keys(), ...uploadIdsByShow.keys()]);
+  for (const showId of allShowIds) {
+    const designIds = designIdsByShow.get(showId) ?? new Set<string>();
+    const uploadIds = uploadIdsByShow.get(showId) ?? new Set<string>();
+
+    let count = uploadIds.size;
     for (const designId of designIds) {
       if (readyDesignIds.has(designId)) {
         count += 1;
       }
     }
+
     counts.set(showId, count);
   }
 
@@ -94,14 +155,11 @@ export async function listPublicCatalogDesignCardsForShow(
   const seen = new Set<string>();
 
   for (const docSnap of allocationsSnap.docs) {
-    const data = docSnap.data();
-    if (data.status === "canceled" || !isCatalogDesignAllocation(data)) {
-      continue;
-    }
-    const designId = typeof data.designId === "string" ? data.designId : "";
+    const designId = collectCatalogDesignIdFromAllocation(docSnap.data());
     if (!designId || seen.has(designId)) {
       continue;
     }
+
     seen.add(designId);
     orderedDesignIds.push(designId);
   }

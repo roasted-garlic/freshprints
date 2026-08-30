@@ -1122,7 +1122,11 @@ export const catalogService = {
    */
   async listNarrowedApprovedTags(
     selectedTags: string[],
-    options: { search?: string; categoryId?: string } = {},
+    options: {
+      search?: string;
+      categoryId?: string;
+      smartFilters?: import('./portalAlgoliaCatalogSearchService').PortalSmartFilters;
+    } = {},
   ): Promise<CatalogTagOption[]> {
     const { isPortalAlgoliaCatalogConfigured } = await import('./portalAlgoliaCatalogFlags');
     if (!isPortalAlgoliaCatalogConfigured()) {
@@ -1135,6 +1139,7 @@ export const catalogService = {
       selectedTags,
       search: options.search,
       categoryId: options.categoryId,
+      smartFilters: options.smartFilters,
     });
   },
 };

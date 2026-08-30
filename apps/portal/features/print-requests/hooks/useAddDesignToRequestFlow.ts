@@ -23,6 +23,7 @@ import { portalPrintRequestService } from '../services/portalPrintRequestService
 import { excludeDesignsInWorkingItems } from '../utils/companionSuggestionWorkingItemsFilter';
 import { mapPortalPrintRequestCallableError } from '../utils/mapPortalPrintRequestCallableError';
 import { resolveAddDesignToRequestBranch } from '../utils/resolveAddDesignToRequestBranch';
+import { resolvePortalWorkingRequestBranch } from '../utils/resolvePortalWorkingRequestBranch';
 import {
   announceCurrentDesignAdded,
   requireCurrentSignedIn,
@@ -159,7 +160,10 @@ export function useAddDesignToRequestFlow({
     isEnsuringWorkingRequest,
     patchWorkingItems,
     pendingWorkingRequestId,
+    portalEditableContinuableRequests,
     seedDesignSummary,
+    setSelectedWorkingRequestId,
+    selectedWorkingRequestId,
     workingItems,
     workingRequestLimit,
   } = usePortalPrintRequests();
@@ -273,14 +277,12 @@ export function useAddDesignToRequestFlow({
   const isBusy = busyDesignId !== null || isEnsuringWorkingRequest;
 
   const resolveBranch = useCallback(() => {
-    const knownIds =
-      continuableRequests.length > 0
-        ? continuableRequests.map((request) => request.id)
-        : pendingWorkingRequestId
-          ? [pendingWorkingRequestId]
-          : [];
-    return resolveAddDesignToRequestBranch(knownIds);
-  }, [continuableRequests, pendingWorkingRequestId]);
+    return resolvePortalWorkingRequestBranch({
+      portalEditableRequestIds: portalEditableContinuableRequests.map((request) => request.id),
+      pendingWorkingRequestId,
+      selectedWorkingRequestId,
+    });
+  }, [portalEditableContinuableRequests, pendingWorkingRequestId, selectedWorkingRequestId]);
 
   const resetTransientState = useCallback(() => {
     for (const timer of flushTimersRef.current.values()) {
@@ -896,6 +898,7 @@ export function useAddDesignToRequestFlow({
       setBusyDesignId(design.id);
       setActionError(null);
       setIsPickerOpen(false);
+      setSelectedWorkingRequestId(printRequestId);
 
       void portalPrintRequestService
         .addOrIncrementCatalogDesign({
@@ -929,6 +932,7 @@ export function useAddDesignToRequestFlow({
       refreshCompanionSuggestionAfterAdd,
       refreshRequests,
       requireSignedIn,
+      setSelectedWorkingRequestId,
     ],
   );
 
@@ -936,6 +940,8 @@ export function useAddDesignToRequestFlow({
     actionError,
     addingDesignId: busyDesignId,
     addDesign,
+    /** Portal-editable continuable requests for the picker modal. */
+    pickerContinuableRequests: portalEditableContinuableRequests,
     /** Non-announcing add for the open companion suggestion modal — trims that suggestion in place. */
     addDesignFromCompanionSuggestion,
     adjustQuantity,

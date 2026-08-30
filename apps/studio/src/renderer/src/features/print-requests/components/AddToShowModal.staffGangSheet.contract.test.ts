@@ -37,3 +37,8 @@ test("AddToShowModal Staff destination does not auto-create and shows capacity U
   assert.match(modalSource, /staffCapacityPresentation/);
   assert.match(modalSource, /savePendingByShowId/);
 });
+
+test("AddToShowModal calendar lists only open allocatable shows", () => {
+  assert.match(modalSource, /const calendarShows = useMemo\(\s*\(\) => allocatableShows\.filter/);
+  assert.doesNotMatch(modalSource, /pastWindowStart/);
+});

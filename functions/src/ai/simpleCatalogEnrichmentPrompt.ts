@@ -4,9 +4,12 @@ import {
   AI_ENRICHMENT_APPROVED_TAGS_PLACEHOLDER,
   AI_ENRICHMENT_APPROVED_TAG_NAMES_PLACEHOLDER,
   AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER,
+  AI_ENRICHMENT_SMART_PROFILE_VOCAB_PLACEHOLDER,
   DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
 } from "../../../packages/shared/src/constants/aiEnrichment.constants";
 import type { CatalogTag } from "../../../packages/shared/src/types/catalogTag.types";
+import { formatSmartProfileVocabPromptSection } from "../../../packages/shared/src/utils/smartProfileVocab";
+import type { SmartProfileVocabLists } from "../../../packages/shared/src/utils/smartProfileVocab";
 import type { AiEnrichmentCategoryOption } from "./providers/AiEnrichmentProvider";
 
 /**
@@ -148,6 +151,8 @@ export function buildSimpleCatalogEnrichmentUserPrompt(input: {
   approvedTagNames: readonly string[];
   effectiveTagExclusions: readonly string[];
   promptTemplate?: string;
+  /** Bounded auto-derived vocab — never approved tags; empty OK. */
+  smartProfileVocab?: SmartProfileVocabLists;
 }): string {
   const { approvedCategoryNames, approvedTagNames, approvedCategories, approvedTags, effectiveTagExclusions } = input;
   const promptTemplate = input.promptTemplate ?? DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE;
@@ -156,6 +161,7 @@ export function buildSimpleCatalogEnrichmentUserPrompt(input: {
   const approvedTagContext = formatTagContext(approvedTags, approvedTagNames);
   const approvedTagNamesOnly = formatTagNamesOnly(approvedTags, approvedTagNames);
   const excludedTags = formatExclusionList(effectiveTagExclusions);
+  const smartProfileVocab = formatSmartProfileVocabPromptSection(input.smartProfileVocab);
   const template = promptTemplate.trim() || DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE;
   return template
     .split(AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER)
@@ -167,5 +173,7 @@ export function buildSimpleCatalogEnrichmentUserPrompt(input: {
     .split(AI_ENRICHMENT_APPROVED_TAG_NAMES_PLACEHOLDER)
     .join(approvedTagNamesOnly)
     .split(AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER)
-    .join(excludedTags);
+    .join(excludedTags)
+    .split(AI_ENRICHMENT_SMART_PROFILE_VOCAB_PLACEHOLDER)
+    .join(smartProfileVocab);
 }

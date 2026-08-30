@@ -67,6 +67,26 @@ test("Internal Gang Sheet origin allowlist: studio_internal or isInternal", () =
     canAllocateOriginToShowSource({ source: "whatnot", requestOrigin: "portal_customer" }),
     true,
   );
+  assert.equal(
+    canAllocateOriginToShowSource({ source: "whatnot", requestOrigin: "studio_customer" }),
+    true,
+  );
+  assert.equal(
+    canAllocateOriginToShowSource({
+      source: "whatnot",
+      requestOrigin: "studio_internal",
+      isInternal: true,
+    }),
+    false,
+  );
+  assert.equal(
+    canAllocateOriginToShowSource({
+      source: "dev_fixture",
+      requestOrigin: undefined,
+      isInternal: true,
+    }),
+    false,
+  );
 });
 
 test("active Staff production statuses cover open/full/printing only", () => {

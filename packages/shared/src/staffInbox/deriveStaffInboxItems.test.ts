@@ -123,6 +123,27 @@ describe("deriveStaffInboxItems", () => {
     assert.equal(items.length, 0);
   });
 
+  it("hides owner-suppressed items", () => {
+    const itemId = buildStaffInboxItemId("portal_queued", "req-1", "show-1");
+    const items = deriveStaffInboxItems({
+      portalAllocations: [
+        {
+          printRequestId: "req-1",
+          upcomingShowId: "show-1",
+          requestNameSnapshot: "CR-jane-1",
+          status: "pending",
+          createdAtMillis: 100,
+        },
+      ],
+      acknowledgedItemIds: new Set(),
+      suppressedItemIds: new Set([itemId]),
+      showTitleById: { "show-1": "Friday Vinyl" },
+      shows: [baseShow],
+    });
+
+    assert.equal(items.length, 0);
+  });
+
   it("derives badge counts from open items", () => {
     const items = deriveStaffInboxItems({
       portalAllocations: [

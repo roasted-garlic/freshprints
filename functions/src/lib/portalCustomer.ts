@@ -42,6 +42,10 @@ export async function requirePortalCustomer(userId: string): Promise<PortalCusto
     throw permissionDenied("This customer account has been deleted and can no longer sign in or create activity.");
   }
 
+  if (customer.data.isDisabled === true) {
+    throw permissionDenied("This customer account is disabled and cannot sign in or create activity.");
+  }
+
   const username = typeof customer.data.username === "string" ? customer.data.username.trim() : "";
   const displayName =
     typeof customer.data.displayName === "string" ? customer.data.displayName : "Customer";

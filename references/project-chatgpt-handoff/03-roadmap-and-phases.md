@@ -1,5 +1,27 @@
 # Roadmap and Phases
 
+> 2026-08-30: **Print Request 11″ + 15″ upscale + legacy enhance — NEXT (planning)** — Goal `print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale`. Plan + Formal Review **approved_with_changes**; implement **not started**. Before Smart Profiling. Production **NOT AUTHORIZED**.
+>
+> 2026-08-30: **Customer Identity WS1–WS4 — COMPLETE (DEV)** — WS4 signoff **approved**; owner DEV QA **PASS**. Production / Studio / Portal hosting **not authorized**. FreshForge active on sizing goal.
+>
+> 2026-08-30: **Show Queue Did Not Print recovery — CLOSED (DEV)** — Move-to-another-show + Release-only → Needs Re-queue; DEV fixture repair; Owner Edit Show scoped enabler. Signoff approved.
+>
+> 2026-08-28: **Customer Account Identity Management — WS1 CLOSED (DEV)** — *(superseded by WS1–WS4 complete banner above)*
+
+> 2026-08-28: **Show Queue past-show failsafe CLOSED (DEV)** — Goal `show-queue-past-show-failsafe-and-owner-override` **DONE**. Signoff **approved_with_notes**; owner DEV QA **PASS**. Recovery callables on `fresh-prints-dev`; production / Studio publish not authorized. FreshForge **IDLE**. Phase 9 **PARKED**.
+
+> 2026-08-27: **Show Queue past-show failsafe — PLAN + REVIEW (STOP)** — *(superseded by 2026-08-28 signoff banner above)*
+
+> 2026-08-27: **Show Queue gang-sheet three-mode refinement CLOSED (DEV)** — Signoff **approved**; owner DEV QA **PASS**. FreshForge **IDLE** until next goal. No Studio publish / production.
+
+> 2026-08-27: **Show Queue gang-sheet three-mode refinement — IMPLEMENT COMPLETE (DEV)** — Goal implemented; owner DEV QA pending. **No production / Studio publish.**
+
+> 2026-08-27: **Portal customer username change CLOSED (DEV)** — Signoff **approved**; self-service profile + cooldown on `fresh-prints-dev`. Production deferred.
+
+> 2026-08-27: **Smart Catalog Intelligence Slice 6 CLOSED (DEV)** — Signoff **approved_with_notes**; Ready Catalog backfill + Smart Profile visibility on `fresh-prints-dev`. Shadow ON; Autonomous OFF; production untouched.
+
+> 2026-08-26: **Smart Catalog Intelligence — Slice 5 SIGNOFF approved_with_notes (DEV)** — **Slice 5 DONE**. AI Review Queue reprocess + Shadow calibration + Gate I corrective (v30/v4). Ready Catalog locked; Autonomous OFF; production untouched. Signoff: `docs/workflow/reviews/2026-08-26-smart-catalog-intelligence-slice-5-signoff.md`. Phase 9 **PARKED**.
+
 > 2026-08-24: **Portal Discover show-rail loading + order polish CLOSED (DEV)** — Goal `portal-discover-show-rails-loading-and-order-polish` **DONE**. Signoff **approved**; owner `OWNER DEV QA: PASS`. Independent Next Show / This Week loading on Discover; compact This Week rail presentation reversed; View All unchanged. Production untouched. Phase 9 **PARKED**. FreshForge **IDLE**.
 >
 > 2026-08-24: **Portal Upcoming Shows theme toggle CLOSED (DEV)** — Signoff **approved**; owner local `PASS`. Sidebar theme toggle restored on `/shows`. Production PR + App Hosting next. Parent promote Gate F parked. Phase 9 PARKED.
@@ -41,7 +63,19 @@
 
 > Align all work with the current phase / active managed goal. Do not jump ahead.
 
-## Current status (2026-07-31)
+## Immediate sequence (2026-08-30)
+
+| # | Goal | Status |
+|---|------|--------|
+| 1 | Customer Identity WS1–WS4 | **DONE on DEV** |
+| 2 | Show Queue recovery + DEV fixture | **DONE on DEV** |
+| 3 | Print Request 11″ default + 15″ upscale + legacy enhance | **NEXT — Plan/Review complete; implement pending** |
+| 4 | Smart Profiling completion / tag retirement | **After #3** |
+| 5 | Coordinated production promotion | **Later — not authorized** |
+
+---
+
+## Current status (2026-08-30)
 
 | Item | Status |
 |------|--------|

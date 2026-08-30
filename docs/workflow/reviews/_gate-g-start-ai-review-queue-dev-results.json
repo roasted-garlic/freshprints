@@ -1,0 +1,33 @@
+{
+  "projectId": "fresh-prints-dev",
+  "startedAt": "2026-08-26T04:04:35.188Z",
+  "recheck": {
+    "projectId": "fresh-prints-dev",
+    "catalogWorkflowMode": "shadow",
+    "catalogAutonomousLiveEnabled": false,
+    "activeJobId": null,
+    "readyCatalogEnabledConstant": false
+  },
+  "startResponse": {
+    "jobId": "zFzAwEIwCXFWC8dce0f4",
+    "dryRun": false,
+    "targetType": "ai_review_queue",
+    "totalEligible": 204,
+    "status": "pending"
+  },
+  "jobDocument": {
+    "jobId": "zFzAwEIwCXFWC8dce0f4",
+    "status": "pending",
+    "targetType": "ai_review_queue",
+    "totalEligible": 204,
+    "promptVersion": "catalog-enrich-v29",
+    "normalizerVersion": "smart-profile-normalizer-v3",
+    "pipelineVersion": "catalog-enrich-v29+smart-profile-normalizer-v3",
+    "catalogWorkflowModeSnapshot": "shadow",
+    "autonomousLiveEnabledSnapshot": false,
+    "createdBy": "vy2gbEsbRQVVru27Qx0cK3eJyLE2",
+    "createdAt": "2026-08-26T04:04:31.779Z",
+    "environment": "dev",
+    "dryRun": false
+  }
+}

@@ -1,50 +1,83 @@
-## Current Goal
-(none — FreshForge IDLE)
+## FreshForge State
 
-## Current Mode
-idle
+| Field | Value |
+|-------|-------|
+| Status | **ACTIVE** |
+| DONE | **no** (sizing goal — plan/review complete, implement pending) |
+| Prior goal | `customer-account-identity-management-ws4-customer-activity-and-deep-linking` — **DONE** |
+| Active goal | `print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale` |
+| Phase | **review complete — STOP for owner approval** |
+| Plan Status | **complete** |
+| Review Status | **approved_with_changes** |
+| Implementation Status | **not started** |
+| Test Status | **n/a** (pre-implement) |
+| Signoff Status | **n/a** |
+| Human Checkpoint Required | **no** |
+| Blocked | **no** |
+| Production | **NOT AUTHORIZED** |
+| Studio release | **NOT AUTHORIZED** |
+| Last updated | 2026-08-30 |
+| Last Completed Step | WS4 signoff + handoff refresh |
 
-## Phase
-(none)
+---
 
-## Plan Status
-(none)
+## Customer Identity Program (DEV)
 
-## Review Status
-(none)
+| Workstream | Status |
+|------------|--------|
+| WS1 Identity foundations | **DONE** |
+| WS2 Transfer Username | **DONE** |
+| WS3 Full Account Merge | **DONE** |
+| WS4 Customer Activity + Deep Linking | **DONE** (Owner DEV QA PASS 2026-08-30) |
 
-## Implementation Status
-(none)
+**Program complete on DEV.** Production promotion **NOT AUTHORIZED.**
 
-## Test Status
-(none)
+---
 
-## Signoff Status
-(none)
+## Phase artifacts — WS4 (closed)
 
-## DONE
-yes
+| Artifact | Path |
+|----------|------|
+| Plan | `docs/workflow/plans/2026-08-29-customer-account-identity-management-ws4-customer-activity-and-deep-linking-plan.md` |
+| Review | `docs/workflow/reviews/2026-08-29-customer-account-identity-management-ws4-customer-activity-and-deep-linking-review.md` |
+| Implementation review | `docs/workflow/reviews/2026-08-29-customer-account-identity-management-ws4-implementation-review.md` |
+| Test report | `docs/workflow/reviews/2026-08-30-customer-account-identity-management-ws4-test-report.md` |
+| Signoff | `docs/workflow/reviews/2026-08-30-customer-account-identity-management-ws4-signoff.md` |
 
-## Human Checkpoint Required
-no
+---
 
-## Last Completed Goal
-portal-discover-show-rails-loading-and-order-polish
+## Phase artifacts — Sizing / upscale (active — STOP)
 
-## Last Completed Signoff
-docs/workflow/reviews/2026-08-24-portal-discover-show-rails-loading-and-order-polish-signoff.md
+| Artifact | Path |
+|----------|------|
+| Plan | `docs/workflow/plans/2026-08-30-print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale-plan.md` |
+| Formal Review | `docs/workflow/reviews/2026-08-30-print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale-review.md` |
 
-## Production Snapshot (2026-08-24)
-- Git production: 36165096f09bef6817adb5b11d496dbb1502b34b
-- Portal App Hosting: fresh-prints-portal-build-2026-08-24-003 @ 100%
-- Portal rollback: fresh-prints-portal-build-2026-08-24-002 @ f35c96d
-- Published Studio: 1.0.9 @ v1.0.9 (release 375869566, GitHub Latest)
-- Prior Studio rollback: 1.0.8 (374575547, v1.0.8)
+---
 
-## Phase 9
-PARKED
+## Allowed Actions
+
+- Owner acknowledges Formal Review for sizing goal
+- Read docs; prepare implement phase after owner approval
+- Handoff maintenance
+
+## Forbidden Actions
+
+- Implement sizing/upscale goal until owner approves review
+- Smart Profiling work
+- Production deploy / Studio publish / Portal deploy
+- Customer identity production promotion
+
+## Next Required Step
+
+**Owner:** Acknowledge Formal Review (`approved_with_changes`) for `print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale`, resolve `[NEEDS OWNER DECISION]` items, then authorize **Implement** phase.
+
+---
 
 ## Decision Log
-- 2026-08-24: portal-discover-show-rails-loading-and-order-polish **PRODUCTION LIVE**. App Hosting `build-2026-08-24-003` @ `36165096` @ 100%. Owner `PROD SMOKE: PASS WITH NOTES` — transient stale client-chunk on View All after rollout; hard refresh resolved; no code fix. Rollout record: docs/workflow/reviews/2026-08-24-portal-discover-show-rails-loading-and-order-polish-app-hosting-rollout-record.md
-- 2026-08-24: portal-discover-show-rails-loading-and-order-polish **DONE**. DEV signoff approved; owner DEV QA PASS. PR #90 merged to production.
-- 2026-08-24: Owner APPROVE IMPLEMENTATION / PROD APP HOSTING ROLLOUT for portal-discover-show-rails-loading-and-order-polish.
+
+- 2026-08-30: WS4 Owner DEV QA **PASS** → signoff **approved**; Customer Identity WS1–WS4 **complete on DEV**; production untouched.
+- 2026-08-30: Handoff package refreshed (`references/project-chatgpt-handoff/`).
+- 2026-08-30: Sizing/upscale goal Plan + Formal Review **approved_with_changes** — **STOP** before implement.
+- 2026-08-30: Roadmap sequencing — sizing goal **before** Smart Profiling (owner).
+- 2026-08-30: Show Queue Did Not Print recovery — owner DEV QA **PASS**; signoff **approved**.

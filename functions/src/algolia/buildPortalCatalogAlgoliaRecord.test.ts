@@ -55,9 +55,80 @@ describe('buildPortalCatalogAlgoliaRecord', () => {
     assert.deepEqual(record!.tagIds, ['tag-cat', 'tag-dog']);
     assert.ok(record!.tagFacetKeys.includes('tag-cat::Cat'));
     assert.equal(record!.readyAtMs, 1_700_000_000_000);
-    assert.deepEqual(Object.keys(record!).sort(), [...PORTAL_CATALOG_ALGOLIA_ALLOWED_FIELDS].sort());
+    for (const key of Object.keys(record!)) {
+      assert.ok(
+        (PORTAL_CATALOG_ALGOLIA_ALLOWED_FIELDS as readonly string[]).includes(key),
+        `unexpected Algolia field: ${key}`,
+      );
+    }
     assert.equal('aiReviewNotes' in record!, false);
     assert.equal('staffNotes' in record!, false);
+    assert.equal(record!.subjects, undefined);
+  });
+
+  it('maps Smart Profile search/facet fields and omits empty dimensions', () => {
+    const record = buildPortalCatalogAlgoliaRecord({
+      designId: 'd-sp',
+      data: {
+        status: 'ready',
+        title: 'Highland Cow With Bow',
+        categoryId: 'cat-1',
+        tags: ['tag-cat'],
+        readyAt: { toMillis: () => 2 },
+        smartProfile: {
+          subjects: ['cow', 'Highland Cow', 'cow'],
+          objects: ['bow'],
+          styles: ['cartoon'],
+          themes: ['cute'],
+          interests: [],
+          searchConcepts: ['Scottish cow', 'fluffy cow'],
+          visibleText: ['  '],
+          provenance: {
+            version: 'smart-profile-v1',
+            automationDecision: 'shadow',
+            validationWarnings: ['ignore-me-for-index'],
+          },
+        },
+      },
+      tagsById,
+      categoriesById,
+    });
+
+    assert.ok(record);
+    assert.deepEqual(record!.subjects, ['cow', 'Highland Cow']);
+    assert.deepEqual(record!.objects, ['bow']);
+    assert.deepEqual(record!.styles, ['cartoon']);
+    assert.deepEqual(record!.searchConcepts, ['Scottish cow', 'fluffy cow']);
+    assert.equal(record!.interests, undefined);
+    assert.equal(record!.visibleText, undefined);
+    assert.equal(record!.smartProfileVersion, 'smart-profile-v1');
+    assert.equal('automationDecision' in record!, false);
+    assert.ok(
+      Buffer.byteLength(JSON.stringify(record!), 'utf8') < 10_000,
+      'record exceeds soft Algolia size budget',
+    );
+  });
+
+  it('keeps legacy-only ready designs searchable without Smart Profile', () => {
+    const record = buildPortalCatalogAlgoliaRecord({
+      designId: 'd-legacy',
+      data: {
+        status: 'ready',
+        title: 'Legacy Only',
+        description: 'No smart profile',
+        categoryId: 'cat-1',
+        tags: ['tag-dog'],
+        readyAt: { toMillis: () => 3 },
+      },
+      tagsById,
+      categoriesById,
+    });
+
+    assert.ok(record);
+    assert.match(record!.searchText, /Legacy Only/);
+    assert.match(record!.searchText, /Dog/);
+    assert.equal(record!.subjects, undefined);
+    assert.equal(record!.searchConcepts, undefined);
   });
 
   it('resolves multi-word design.tags names via taxonomy name key (not only slug id)', () => {

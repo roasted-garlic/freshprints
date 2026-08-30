@@ -456,8 +456,60 @@
 }
 
 .staff-inbox-done-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.staff-inbox-done-section-header > div {
   display: grid;
   gap: 0.2rem;
+}
+
+.staff-inbox-done-toolbar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.staff-inbox-done-list-block {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.staff-inbox-done-select-row {
+  align-items: center;
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+  padding-left: var(--space-3);
+  padding-right: var(--space-3);
+}
+
+.staff-inbox-done-select-all {
+  align-items: center;
+  color: var(--color-text-secondary);
+  display: inline-flex;
+  font-size: var(--font-size-sm);
+  gap: var(--space-2);
+}
+
+.staff-inbox-done-select-all-label {
+  line-height: 1.2;
+}
+
+.staff-inbox-delete-confirm-list {
+  color: var(--color-text-secondary);
+  display: grid;
+  font-size: var(--font-size-sm);
+  gap: 0.35rem;
+  margin: var(--space-3) 0 0;
+  max-height: 12rem;
+  overflow: auto;
+  padding-left: 1.1rem;
 }
 
 .staff-inbox-done-section-header h2 {

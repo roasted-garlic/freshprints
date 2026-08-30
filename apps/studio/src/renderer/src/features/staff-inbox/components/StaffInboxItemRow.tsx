@@ -10,10 +10,14 @@ interface StaffInboxItemRowProps {
   compact?: boolean;
   isCompleted?: boolean;
   isHighlighted?: boolean;
+  isSelectable?: boolean;
+  isSelected?: boolean;
   item: StaffInboxItem | StaffInboxCompletedItem;
   onAcknowledge?: (item: StaffInboxItem) => void;
+  onDelete?: (itemId: string) => void;
   onOpen: (item: StaffInboxItem) => void;
   onRestore?: (itemId: string) => void;
+  onToggleSelect?: (itemId: string) => void;
 }
 
 function formatInboxTimestamp(value: number): string {
@@ -32,10 +36,14 @@ export function StaffInboxItemRow({
   compact = false,
   isCompleted = false,
   isHighlighted = false,
+  isSelectable = false,
+  isSelected = false,
   item,
   onAcknowledge,
+  onDelete,
   onOpen,
   onRestore,
+  onToggleSelect,
 }: StaffInboxItemRowProps) {
   const acknowledgedAtMillis = isCompletedItem(item) ? item.acknowledgedAtMillis : undefined;
   const acknowledgedByDisplayName = isCompletedItem(item)
@@ -57,6 +65,16 @@ export function StaffInboxItemRow({
             <input
               aria-label={isDesignReport ? `Mark ${item.title} resolved` : `Mark ${item.title} done`}
               onChange={() => onAcknowledge?.(item)}
+              type="checkbox"
+            />
+          </label>
+        ) : null}
+        {isCompleted && isSelectable && onToggleSelect ? (
+          <label className="staff-inbox-item-check">
+            <input
+              aria-label={`Select ${item.title}`}
+              checked={isSelected}
+              onChange={() => onToggleSelect(item.id)}
               type="checkbox"
             />
           </label>
@@ -109,6 +127,11 @@ export function StaffInboxItemRow({
           {isCompleted && onRestore ? (
             <Button onClick={() => onRestore(item.id)} variant="secondary">
               Restore
+            </Button>
+          ) : null}
+          {isCompleted && onDelete ? (
+            <Button onClick={() => onDelete(item.id)} variant="danger">
+              Delete
             </Button>
           ) : null}
           {!isCompleted && isDesignReport && onAcknowledge ? <Button onClick={() => onAcknowledge(item)} variant="primary">Mark Resolved</Button> : null}

@@ -242,7 +242,7 @@ before running `npm run test:rules`.
 
 | Date | Summary |
 |------|---------|
-| 2026-07-29 | Test Data Reset: relabeled obsolete Cap A data as optional Legacy print-limit counters cleanup; active limit `L`, customer room, and show capacity are unaffected |
+| 2026-08-29 | Added `tests/firebase/showQueueAllocation.rules.test.ts` for Show Queue allocation sequence + DEV fixture create denial |
 | 2026-07-23 | `npm run test:rules` requires Java 21+ (Firebase CLI 15.x); documented user-scoped portable-JDK setup with no admin rights |
 | 2026-07-21 | Test Data Reset: AI Processing selective designs wipe preset/target |
 | 2026-07-18 | Test Data Reset presets + short labels; Custom/Etsy wipe expand side leftovers (incl. overlays) |

@@ -74,6 +74,19 @@ describe("Show Queue print-request sources", () => {
     ]);
   });
 
+  it("merges printed-tab requests attached to completed shows", () => {
+    const printedRequest = request("printed-request", "printed", "completed");
+
+    const merged = mergeShowQueuePrintRequestSources([
+      source("working", []),
+      source("queued", []),
+      source("printing", []),
+      source("printed", [printedRequest]),
+    ]);
+
+    assert.deepEqual(merged.requests.map((entry) => entry.id), ["printed-request"]);
+  });
+
   it("does not admit a request into a source whose tab disagrees with the request's own queueTab", () => {
     // Regression for the wrong-tab list-contamination defect: an attached request whose real
     // queueTab is "queued" was force-loaded (by ID) into the "working" source, which — before this

@@ -8,6 +8,7 @@ import { sumPrintRequestItemQuantities } from '@fresh-prints/shared/utils/portal
 import { clampItemQuantityToWorkingRequestMax } from '@fresh-prints/shared/utils/printRequestWorkingRequestMax';
 import { resolveDuplicateInsertBeforeSortOrder } from '@fresh-prints/shared/utils/printRequestItemDisplayOrder';
 import { formatPrintRequestItemSizeLabel } from '@fresh-prints/shared/utils/printRequestItemSizing';
+import { isPortalEditablePrintRequest } from '@fresh-prints/shared/utils/portalPrintRequestEditability';
 
 import { useAuth } from '../../auth/context/AuthContext';
 import {
@@ -289,7 +290,12 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
   const updateItem = useCallback(
     async (
       itemId: string,
-      input: { quantity: number; printWidthInches: number; printHeightInches: number },
+      input: {
+        quantity: number;
+        printWidthInches: number;
+        printHeightInches: number;
+        standardSizePresetKey?: string | null;
+      },
     ): Promise<{ quantity: number }> => {
       if (!printRequestId || !firebaseUser) {
         throw new Error('Unable to update item.');
@@ -347,6 +353,10 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
                 printWidthInches: input.printWidthInches,
                 printHeightInches: input.printHeightInches,
                 sizeLabel,
+                standardSizePresetKey:
+                  input.standardSizePresetKey === null
+                    ? undefined
+                    : input.standardSizePresetKey ?? item.standardSizePresetKey,
               }
             : item,
         );
@@ -383,6 +393,7 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
           quantity: hasKnownLimit ? optimisticQuantity : Math.max(1, Math.floor(input.quantity)),
           printWidthInches: input.printWidthInches,
           printHeightInches: input.printHeightInches,
+          standardSizePresetKey: input.standardSizePresetKey,
         });
         // Root Cause 2 (Plan Section 20.2/20.4): commit the server's authoritative accepted
         // quantity, not the client's optimistic guess — closes the "displayed 7, server capped it
@@ -632,8 +643,7 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
     ],
   );
 
-  const isEditable =
-    printRequest?.status === 'draft' || printRequest?.status === 'editing';
+  const isEditable = printRequest ? isPortalEditablePrintRequest(printRequest) : false;
   const reconcileQueued = useCallback(() => {
     // Queue success is a locally-known transition, not an external change: the callable response
     // already carries the authoritative outcome. Clear the working-transition flags synchronously

@@ -5,6 +5,7 @@ import { isMissingCustomerUploadPurpose } from "@fresh-prints/shared/utils/custo
 
 import {
   CUSTOMER_UPLOAD_INTAKE_PAGE_SIZE,
+  filterCatalogIntakeEligibleDocs,
   filterLegacyMissingPurposeDocs,
   mergeIntakeDocsByCreatedAtDesc,
   runWithConcurrencyLimit,
@@ -26,6 +27,18 @@ test("isMissingCustomerUploadPurpose covers blank legacy purpose fields", () => 
   assert.equal(isMissingCustomerUploadPurpose(""), true);
   assert.equal(isMissingCustomerUploadPurpose("print_request"), false);
   assert.equal(isMissingCustomerUploadPurpose("catalog_donation"), false);
+});
+
+test("filterCatalogIntakeEligibleDocs removes customer-declined library permission uploads", () => {
+  const docs = [
+    { id: "allowed", data: () => ({ catalogUseAcknowledged: true }) },
+    { id: "denied", data: () => ({ catalogUseAcknowledged: false }) },
+    { id: "legacy", data: () => ({}) },
+  ];
+  assert.deepEqual(
+    filterCatalogIntakeEligibleDocs(docs).map((item) => item.id),
+    ["allowed", "legacy"],
+  );
 });
 
 test("filterLegacyMissingPurposeDocs keeps only purpose-absent docs", () => {

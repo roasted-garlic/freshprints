@@ -18,6 +18,7 @@ import { Badge } from "../../../shared/components/Badge";
 import { useShellHeaderConfig } from "../../../shared/hooks/useShellHeaderConfig";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
+import { isActiveCustomerAccount } from "../../users/utils/customerDirectoryVisibility";
 import { convertCustomerPrintRequestService } from "../services/convertCustomerPrintRequestService";
 import { printRequestService, type UpdatePrintRequestItemInput } from "../services/printRequestService";
 import { clearPrintRequestsPageCache } from "../services/printRequestsPageReadCache";
@@ -25,18 +26,22 @@ import { usePrintRequestDetails } from "../hooks/usePrintRequestDetails";
 import { usePrintRequests } from "../hooks/usePrintRequests";
 import { useReadyDesignsForSelection } from "../hooks/useReadyDesignsForSelection";
 import { PrintRequestItemCard } from "../components/PrintRequestItemCard";
+import { useStandardPrintSizesSettings } from "../../settings/hooks/useStandardPrintSizesSettings";
 import { AddToShowModal } from "../components/AddToShowModal";
+import { TransferPrintRequestToShowModal } from "../components/TransferPrintRequestToShowModal";
+import { formatPrintRequestShowTransferActionLabel, resolvePrintRequestShowTransferMode } from "@fresh-prints/shared/utils/printRequestShowTransfer";
 import { PrintRequestDeletionDialog } from "../components/PrintRequestDeletionDialog";
 import type { PrintRequest, PrintRequestItem } from "@fresh-prints/shared/types/printRequest/printRequest.types";
 import type { Customer } from "@fresh-prints/shared/types/customer/customer.types";
+import { formatCustomerIdentityLabel } from "@fresh-prints/shared/utils/formatCustomerIdentityLabel";
 import { formatCustomerUsernameForDisplay } from "@fresh-prints/shared/utils/formatCustomerUsernameForDisplay";
 import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/showAllocation.types";
 import { formatInternalPrintRequestName } from "@fresh-prints/shared/utils/printRequestNaming";
 import { getPrintRequestOriginBadgeLabel } from "@fresh-prints/shared/utils/printRequestOrigin";
-import { evaluateCustomerPrintRequestConversionEligibility } from "@fresh-prints/shared/utils/printRequestConversion";
+import { evaluateCustomerPrintRequestConversionEligibility, isPrintRequestConvertedToInternal } from "@fresh-prints/shared/utils/printRequestConversion";
 import { getPrintRequestTabHelperCopy } from "@fresh-prints/shared/staffInbox/printRequestTabHelperCopy";
 import { derivePrintRequestQueueState, isPrintRequestFullyPrinted } from "@fresh-prints/shared/utils/printRequestQueueState";
-import type { PrintRequestListTab } from "@fresh-prints/shared/utils/printRequestListGrouping";
+import { derivePrintRequestListTab, type PrintRequestListTab } from "@fresh-prints/shared/utils/printRequestListGrouping";
 import {
   getPrintRequestWorkingTriageLabel,
   isPrintRequestIncludedInListTabs,
@@ -48,13 +53,27 @@ import { groupAllocationsByShow } from "@fresh-prints/shared/utils/groupAllocati
 import {
   groupPrintRequestsByShow,
   UNASSIGNED_SHOW_SECTION_KEY,
+  type PrintRequestShowSection,
 } from "@fresh-prints/shared/utils/groupPrintRequestsByShow";
+import { assessShowCapacity } from "@fresh-prints/shared/utils/showCapacity";
+import {
+  formatShowCapacitySlotLabel,
+  getCapacityFillLevel,
+  getShowCapacityPercent,
+} from "@fresh-prints/shared/utils/showCapacityDisplay";
+import { resolveShowDisplayAllocatedQuantity } from "@fresh-prints/shared/utils/showDisplayAllocatedQuantity";
 import { canRemoveRequestFromShow } from "@fresh-prints/shared/utils/showQueueEditability";
 import {
   summarizePrintRequestPersistenceHealth,
   type PrintRequestItemPersistenceHealth,
 } from "@fresh-prints/shared/utils/printRequestItemPersistenceHealth";
 import { getPrintRequestQueueStateBadgeLabel, getPrintRequestQueueStateBadgeVariant } from "../utils/printRequestQueueBadge";
+import {
+  getPrintRequestRequeueBadgeLabel,
+  getPrintRequestRequeueBadgeTitle,
+  getPrintRequestRequeueBadgeVariant,
+  shouldShowPrintRequestRequeueBadge,
+} from "../utils/printRequestRequeueBadge";
 import { filterPrintRequestsByListSearch } from "../utils/printRequestListSearch";
 import { filterPrintRequestsByActiveTab } from "../utils/filterPrintRequestsByActiveTab";
 import { filterPrintRequestsByRequestKind } from "../utils/filterPrintRequestsByRequestKind";
@@ -64,21 +83,26 @@ import {
   PRINT_REQUEST_TAB_QUERY_PARAM,
   PRINT_REQUEST_WORKING_FILTER_QUERY_PARAM,
   getPrintRequestsPath,
+  buildPrintRequestNavigationDeepLinkPath,
+  getPrintRequestListTabsForKind,
   isInternalFromPrintRequestListKind,
   isPrintRequestRouteTab,
   isPrintRequestWorkingFilter,
+  normalizePrintRequestListTabForKind,
   printRequestListKindFromIsInternal,
   resolveCanonicalPrintRequestsRoute,
   resolvePrintRequestListKind,
   resolveWorkingFilterClick,
   shouldReplacePrintRequestsPath,
+  type PrintRequestRouteTab,
+  type PrintRequestRouteTriageRequest,
 } from "../constants/printRequestRoutes";
 import { getDesignLibraryPath } from "../../designs/constants/designLibraryFilters";
 import { upcomingShowService } from "../../upcoming-shows/services/upcomingShowService";
 import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
 import { formatUpcomingShowTitle, formatUpcomingShowTimestampLabel } from "../../upcoming-shows/utils/upcomingShowDisplay";
 import { formatShowDateTimeLabel } from "@fresh-prints/shared/utils/showDateTimeDisplay";
-import { getUpcomingShowsPath } from "../../upcoming-shows/constants/upcomingShowRoutes";
+import { buildShowQueueDeepLinkPath } from "../../upcoming-shows/utils/buildShowQueueDeepLinkPath";
 
 type CustomerMode = "internal" | "customer";
 
@@ -131,17 +155,24 @@ function getPrintRequestCustomerLabel(
 
   if (printRequest.customerId) {
     const customer = customersById.get(printRequest.customerId);
-    if (!customer) {
-      return (
-        printRequest.customerUsernameSnapshot
-          ? formatCustomerUsernameForDisplay(printRequest.customerUsernameSnapshot)
-          : printRequest.customerId
-      );
-    }
-    const username = formatCustomerUsernameForDisplay(customer.username, {
-      isDeleted: customer.isDeleted === true,
+    const usernameLabel = formatCustomerIdentityLabel({
+      currentUsername: printRequest.customerUsernameSnapshot ?? customer?.username,
+      usernameAtCreation: printRequest.customerUsernameAtCreationSnapshot,
+      currentDisplayName: printRequest.customerDisplayNameSnapshot ?? customer?.displayName,
     });
-    return `${customer.displayName} (${username})`;
+
+    if (!customer) {
+      return usernameLabel;
+    }
+
+    if (customer.isDeleted === true) {
+      const deletedUsername = formatCustomerUsernameForDisplay(customer.username, {
+        isDeleted: true,
+      });
+      return `${customer.displayName} (${deletedUsername})`;
+    }
+
+    return usernameLabel;
   }
 
   return "Unassigned";
@@ -181,6 +212,34 @@ function formatTotalQuantityLabel(quantity: number): string {
   return `${quantity} total qty`;
 }
 
+function resolveSectionShowCapacity(
+  section: PrintRequestShowSection<{ id: string; scheduledStartAt?: unknown; allocatedQuantity?: number; maxTotalQuantity?: number }>,
+  allocationsByRequestId: Readonly<Record<string, readonly ShowAllocation[]>>,
+) {
+  if (!section.show) {
+    return null;
+  }
+
+  const sectionAllocations = section.requests.flatMap((request) =>
+    (allocationsByRequestId[request.id] ?? []).filter(
+      (allocation) => allocation.upcomingShowId === section.show!.id,
+    ),
+  );
+  const allocatedQuantity = resolveShowDisplayAllocatedQuantity({
+    show: section.show,
+    allocations: sectionAllocations,
+  });
+
+  if (allocatedQuantity <= 0 && section.show.allocatedQuantity === 0) {
+    return null;
+  }
+
+  return assessShowCapacity({
+    maxTotalQuantity: section.show.maxTotalQuantity,
+    allocatedQuantity,
+  });
+}
+
 function hasUsableRequestSequence(printRequest: PrintRequest): boolean {
   return Number.isInteger(printRequest.requestSequenceNumber) && (printRequest.requestSequenceNumber ?? 0) >= 1;
 }
@@ -218,15 +277,18 @@ export function PrintRequestsPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
+  const { settings: standardPrintSizesSettings } = useStandardPrintSizesSettings();
   const tabParam = searchParams.get(PRINT_REQUEST_TAB_QUERY_PARAM);
   const kindParam = searchParams.get(PRINT_REQUEST_KIND_QUERY_PARAM);
   const selectedRequestIdParam = searchParams.get(PRINT_REQUEST_ID_QUERY_PARAM);
   const workingFilterParam = searchParams.get(PRINT_REQUEST_WORKING_FILTER_QUERY_PARAM);
   const activeListKind = resolvePrintRequestListKind(kindParam);
   const activeIsInternal = isInternalFromPrintRequestListKind(activeListKind);
-  const activeListTab: PrintRequestListTab = isPrintRequestRouteTab(tabParam)
-    ? tabParam
-    : "working";
+  const activeListTab: PrintRequestListTab = normalizePrintRequestListTabForKind(
+    isPrintRequestRouteTab(tabParam) ? tabParam : "working",
+    activeListKind,
+  );
+  const visibleStatusTabs = getPrintRequestListTabsForKind(activeListKind);
   const workingTriageFilter: PrintRequestWorkingTriageFilter =
     isPrintRequestWorkingFilter(workingFilterParam) ? workingFilterParam : "active";
   const selectedRequestId = selectedRequestIdParam;
@@ -268,7 +330,21 @@ export function PrintRequestsPage() {
       workingFilterParam,
     ],
   );
+
+  useEffect(() => {
+    if (!activeIsInternal || tabParam !== "printing") {
+      return;
+    }
+
+    commitPrintRequestsRoute({
+      kind: activeListKind,
+      tab: "printed",
+      requestId: selectedRequestId ?? undefined,
+    });
+  }, [activeIsInternal, activeListKind, commitPrintRequestsRoute, selectedRequestId, tabParam]);
+
   const [listSearchQuery, setListSearchQuery] = useState("");
+  const previousSelectedRequestIdRef = useRef<string | null | undefined>(undefined);
 
   const {
     allocationTotalsByRequestId,
@@ -303,6 +379,9 @@ export function PrintRequestsPage() {
   // Full customer directory is only needed for the "create request for a customer" picker —
   // loaded lazily when that form is actually shown, never on page mount.
   const [customerDirectory, setCustomerDirectory] = useState<Customer[]>([]);
+  const [customerIdsWithContinuableRequest, setCustomerIdsWithContinuableRequest] = useState<
+    Set<string>
+  >(new Set());
   const [isCustomerDirectoryLoading, setIsCustomerDirectoryLoading] = useState(false);
 
   const requestDetails = usePrintRequestDetails(selectedRequestId);
@@ -332,6 +411,30 @@ export function PrintRequestsPage() {
   const replaceSelectedRequest = requestDetails.replacePrintRequest;
   const visibleSelectedRequest = isRequestLoading ? null : selectedRequest;
 
+  useEffect(() => {
+    if (!visibleSelectedRequest || visibleSelectedRequest.isInternal) {
+      return;
+    }
+
+    const internalRequestId = visibleSelectedRequest.convertedToInternalRequestId?.trim();
+    if (
+      !isPrintRequestConvertedToInternal(visibleSelectedRequest.closureKind) ||
+      !internalRequestId ||
+      selectedRequestId !== visibleSelectedRequest.id
+    ) {
+      return;
+    }
+
+    navigate(
+      buildPrintRequestNavigationDeepLinkPath({
+        id: visibleSelectedRequest.id,
+        closureKind: visibleSelectedRequest.closureKind,
+        convertedToInternalRequestId: internalRequestId,
+      }).path,
+      { replace: true },
+    );
+  }, [navigate, selectedRequestId, visibleSelectedRequest]);
+
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [autosaveState, setAutosaveState] = useState<AutosaveState>({ status: "idle" });
@@ -347,6 +450,7 @@ export function PrintRequestsPage() {
   const [createRequestForm, setCreateRequestForm] = useState<PrintRequestFormState>(DEFAULT_REQUEST_FORM);
   const [isRequestDetailExpanded, setIsRequestDetailExpanded] = useState(false);
   const [successAlertSeed, setSuccessAlertSeed] = useState(0);
+  const [isRepairingQueueTab, setIsRepairingQueueTab] = useState(false);
   const [isAddToShowModalOpen, setIsAddToShowModalOpen] = useState(false);
   const [addToShowDestination, setAddToShowDestination] = useState<"shows" | "staff_gang_sheet">("shows");
   const [selectedRequestAllocations, setSelectedRequestAllocations] = useState<ShowAllocation[]>([]);
@@ -357,6 +461,10 @@ export function PrintRequestsPage() {
   const [isConvertConfirmOpen, setIsConvertConfirmOpen] = useState(false);
   const [isConvertingRequest, setIsConvertingRequest] = useState(false);
   const [convertError, setConvertError] = useState<string | null>(null);
+  const [transferShowContext, setTransferShowContext] = useState<{
+    sourceShowId: string;
+    transferQuantity: number;
+  } | null>(null);
 
   const reloadSelectedRequestAllocations = useCallback(async () => {
     if (!user || !visibleSelectedRequest) {
@@ -589,14 +697,17 @@ export function PrintRequestsPage() {
     setSuccessMessage(null);
     resetCreateRequestForm();
     setIsCreateModalOpen(true);
-    // Lazy full customer directory load — only needed once the create form's "customer" picker
-    // is actually shown, never on page mount (Wave C hydration remediation, 2026-07-25).
-    if (user && customerDirectory.length === 0) {
-      setIsCustomerDirectoryLoading(true);
+    if (user) {
       void printRequestService
-        .listCustomers(user)
-        .then(setCustomerDirectory)
-        .finally(() => setIsCustomerDirectoryLoading(false));
+        .listCustomerIdsWithContinuableCustomerRequests(user)
+        .then((customerIds) => setCustomerIdsWithContinuableRequest(new Set(customerIds)));
+      if (customerDirectory.length === 0) {
+        setIsCustomerDirectoryLoading(true);
+        void printRequestService
+          .listCustomers(user)
+          .then(setCustomerDirectory)
+          .finally(() => setIsCustomerDirectoryLoading(false));
+      }
     }
   }, [customerDirectory.length, resetCreateRequestForm, user]);
 
@@ -671,13 +782,15 @@ export function PrintRequestsPage() {
     () =>
       customerDirectory
         .filter((customer) => !customer.isGuest)
+        .filter((customer) => isActiveCustomerAccount(customer))
+        .filter((customer) => !customerIdsWithContinuableRequest.has(customer.id))
         .map((customer) => ({
           label: customer.username
             ? `${customer.displayName} (${customer.username})`
             : `${customer.displayName} (needs username)`,
           value: customer.id,
         })),
-    [customerDirectory],
+    [customerDirectory, customerIdsWithContinuableRequest],
   );
 
   // `requests` already IS the current tab's bounded, server-filtered page (filtered by the
@@ -701,6 +814,7 @@ export function PrintRequestsPage() {
 
   const workingRequestsByFilter = useMemo(() => {
     const grouped: Record<PrintRequestWorkingTriageFilter, PrintRequest[]> = {
+      needs_requeue: [],
       active: [],
       stale: [],
       empty: [],
@@ -714,6 +828,7 @@ export function PrintRequestsPage() {
       const bucket = resolvePrintRequestWorkingTriageBucket({
         itemCount: request.itemCount,
         updatedAtMillis: request.updatedAt.toMillis(),
+        needsStaffRequeueAt: request.needsStaffRequeueAt,
         nowMs,
       });
       grouped[bucket].push(request);
@@ -728,6 +843,7 @@ export function PrintRequestsPage() {
   // via `getCountFromServer`.
   const workingTriageCounts = useMemo(
     () => ({
+      needs_requeue: workingRequestsByFilter.needs_requeue.length,
       active: workingRequestsByFilter.active.length,
       stale: workingRequestsByFilter.stale.length,
       empty: workingRequestsByFilter.empty.length,
@@ -771,6 +887,62 @@ export function PrintRequestsPage() {
   const detailsPendingForSelection =
     Boolean(selectedRequestId) && !isLoadedSelectedRequest && !requestDetails.error;
 
+  const routeTriageRequests = useMemo(() => {
+    const toTriageRequest = (request: PrintRequest): PrintRequestRouteTriageRequest => {
+      const authoritative =
+        selectedRequestId === request.id && selectedRequest ? selectedRequest : request;
+
+      return {
+        id: authoritative.id,
+        itemCount: authoritative.itemCount,
+        updatedAtMillis: authoritative.updatedAt.toMillis(),
+        needsStaffRequeueAt: authoritative.needsStaffRequeueAt,
+      };
+    };
+
+    const buckets: Record<PrintRequestRouteTab, PrintRequestRouteTriageRequest[]> = {
+      working: activeListTab === "working" ? activeTabRequests.map(toTriageRequest) : [],
+      queued: activeListTab === "queued" ? activeTabRequests.map(toTriageRequest) : [],
+      printing: activeListTab === "printing" ? activeTabRequests.map(toTriageRequest) : [],
+      printed: activeListTab === "printed" ? activeTabRequests.map(toTriageRequest) : [],
+    };
+
+    if (selectedRequestId && isLoadedSelectedRequest && selectedRequest?.queueTab) {
+      const hintTab = isPrintRequestRouteTab(selectedRequest.queueTab)
+        ? normalizePrintRequestListTabForKind(selectedRequest.queueTab, activeListKind)
+        : null;
+      if (hintTab) {
+        const hint = toTriageRequest(selectedRequest);
+        if (!buckets[hintTab].some((request) => request.id === hint.id)) {
+          buckets[hintTab] = [...buckets[hintTab], hint];
+        }
+      }
+    }
+
+    return buckets;
+  }, [
+    activeListKind,
+    activeListTab,
+    activeTabRequests,
+    isLoadedSelectedRequest,
+    selectedRequest,
+    selectedRequestId,
+  ]);
+
+  const loadedRequestHint = useMemo(() => {
+    if (!selectedRequestId || !isLoadedSelectedRequest || !selectedRequest) {
+      return null;
+    }
+
+    return {
+      id: selectedRequest.id,
+      queueTab: selectedRequest.queueTab,
+      itemCount: selectedRequest.itemCount,
+      updatedAtMillis: selectedRequest.updatedAt.toMillis(),
+      needsStaffRequeueAt: selectedRequest.needsStaffRequeueAt,
+    };
+  }, [isLoadedSelectedRequest, selectedRequest, selectedRequestId]);
+
   const canonicalRoute = useMemo(
     () =>
       resolveCanonicalPrintRequestsRoute({
@@ -780,20 +952,16 @@ export function PrintRequestsPage() {
         requestedKind: kindParam,
         requestedTab: tabParam,
         requestedWorkingFilter: workingFilterParam,
-        requestsByTab: {
-          working: activeListTab === "working" ? activeTabRequests : [],
-          queued: activeListTab === "queued" ? activeTabRequests : [],
-          printing: activeListTab === "printing" ? activeTabRequests : [],
-          printed: activeListTab === "printed" ? activeTabRequests : [],
-        },
+        requestsByTab: routeTriageRequests,
+        loadedRequestHint,
       }),
     [
-      activeListTab,
-      activeTabRequests,
       detailsPendingForSelection,
       isRequestsLoading,
       kindParam,
+      loadedRequestHint,
       routeEligibleRequests,
+      routeTriageRequests,
       selectedRequestIdParam,
       selectedRequestKindMatches,
       tabParam,
@@ -805,21 +973,59 @@ export function PrintRequestsPage() {
     if (!selectedRequestId || !isLoadedSelectedRequest || !selectedRequest) {
       return;
     }
-    const requestKind = printRequestListKindFromIsInternal(selectedRequest.isInternal);
-    if (requestKind === activeListKind) {
+
+    const listRow = activeTabRequests.find((request) => request.id === selectedRequestId);
+    if (!listRow) {
       return;
     }
-    const queuedTab = selectedRequest.queueTab ?? null;
-    const requestTab = isPrintRequestRouteTab(queuedTab) ? queuedTab : activeListTab;
+
+    if (
+      listRow.itemCount === selectedRequest.itemCount &&
+      listRow.updatedAt.toMillis() === selectedRequest.updatedAt.toMillis()
+    ) {
+      return;
+    }
+
+    patchRequestLocally(selectedRequestId, {
+      itemCount: selectedRequest.itemCount,
+      updatedAt: selectedRequest.updatedAt,
+    });
+  }, [
+    activeTabRequests,
+    isLoadedSelectedRequest,
+    patchRequestLocally,
+    selectedRequest,
+    selectedRequestId,
+  ]);
+
+  useEffect(() => {
+    if (!selectedRequestId || !isLoadedSelectedRequest || !selectedRequest) {
+      return;
+    }
+
+    const requestKind = printRequestListKindFromIsInternal(selectedRequest.isInternal);
+    const requestTab =
+      selectedRequest.queueTab && isPrintRequestRouteTab(selectedRequest.queueTab)
+        ? normalizePrintRequestListTabForKind(selectedRequest.queueTab, requestKind)
+        : null;
+    const kindMismatch = requestKind !== activeListKind;
+    const tabMismatch = requestTab !== null && requestTab !== activeListTab;
+
+    if (!kindMismatch && !tabMismatch) {
+      return;
+    }
+
+    const targetTab = requestTab ?? activeListTab;
     commitPrintRequestsRoute({
       kind: requestKind,
-      tab: requestTab,
+      tab: targetTab,
       requestId: selectedRequest.id,
       workingFilter:
-        requestTab === "working"
+        targetTab === "working"
           ? resolvePrintRequestWorkingTriageBucket({
               itemCount: selectedRequest.itemCount,
               updatedAtMillis: selectedRequest.updatedAt.toMillis(),
+              needsStaffRequeueAt: selectedRequest.needsStaffRequeueAt,
               nowMs: Date.now(),
             })
           : undefined,
@@ -842,6 +1048,14 @@ export function PrintRequestsPage() {
 
   /** Reveal a valid routed selection hidden only by local search; never change its route filter. */
   useEffect(() => {
+    const selectionChanged =
+      previousSelectedRequestIdRef.current !== selectedRequestId;
+    previousSelectedRequestIdRef.current = selectedRequestId;
+
+    if (!selectionChanged) {
+      return;
+    }
+
     if (
       !selectedRequestId ||
       isRequestsLoading ||
@@ -1179,7 +1393,163 @@ export function PrintRequestsPage() {
         totalPrintedQuantity: allocationTotalsByRequestId[visibleSelectedRequest.id]?.totalPrintedQuantity ?? 0,
       })
     : false;
+  const selectedRequestDerivedListTab = visibleSelectedRequest
+    ? derivePrintRequestListTab({
+        status: visibleSelectedRequest.status,
+        totalRequestedQuantity: requestItems.reduce((sum, item) => sum + item.quantity, 0),
+        totalAllocatedQuantity: allocationTotalsByRequestId[visibleSelectedRequest.id]?.totalAllocatedQuantity ?? 0,
+        totalInProgressQuantity: allocationTotalsByRequestId[visibleSelectedRequest.id]?.totalInProgressQuantity ?? 0,
+        totalPrintedQuantity: allocationTotalsByRequestId[visibleSelectedRequest.id]?.totalPrintedQuantity ?? 0,
+      })
+    : null;
+  const selectedRequestConvertedInternalId =
+    visibleSelectedRequest &&
+    !visibleSelectedRequest.isInternal &&
+    isPrintRequestConvertedToInternal(visibleSelectedRequest.closureKind)
+      ? visibleSelectedRequest.convertedToInternalRequestId?.trim() || null
+      : null;
+  const convertedInternalDeepLinkPath = selectedRequestConvertedInternalId
+    ? buildPrintRequestNavigationDeepLinkPath({
+        id: visibleSelectedRequest!.id,
+        closureKind: visibleSelectedRequest!.closureKind,
+        convertedToInternalRequestId: selectedRequestConvertedInternalId,
+        queueTab: visibleSelectedRequest!.queueTab,
+        itemCount: visibleSelectedRequest!.itemCount,
+        updatedAtMillis: visibleSelectedRequest!.updatedAt?.toMillis?.() ?? 0,
+        needsStaffRequeueAt: visibleSelectedRequest!.needsStaffRequeueAt,
+      }).path
+    : null;
+  const selectedRequestRepairTargetTab = selectedRequestDerivedListTab
+    ? normalizePrintRequestListTabForKind(selectedRequestDerivedListTab, activeListKind)
+    : null;
+  const canRepairQueueTab = Boolean(
+    user &&
+      permissionService.canManagePrintRequests(user) &&
+      visibleSelectedRequest &&
+      !selectedRequestConvertedInternalId &&
+      selectedRequestRepairTargetTab &&
+      (visibleSelectedRequest.queueTab !== selectedRequestDerivedListTab ||
+        normalizePrintRequestListTabForKind(activeListTab, activeListKind) !== selectedRequestRepairTargetTab),
+  );
+
+  const handleRepairQueueTab = useCallback(async () => {
+    if (!user || !visibleSelectedRequest || !selectedRequestDerivedListTab) {
+      return;
+    }
+
+    const repairTargetTab = normalizePrintRequestListTabForKind(
+      selectedRequestDerivedListTab,
+      activeListKind,
+    );
+
+    try {
+      setIsRepairingQueueTab(true);
+      setActionError(null);
+      const nextTab = await printRequestService.syncPrintRequestQueueTab(user, visibleSelectedRequest.id);
+      const resolvedTab = nextTab ?? selectedRequestDerivedListTab;
+
+      patchRequestLocally(visibleSelectedRequest.id, { queueTab: resolvedTab });
+
+      if (normalizePrintRequestListTabForKind(activeListTab, activeListKind) !== repairTargetTab) {
+        commitPrintRequestsRoute({
+          kind: activeListKind,
+          requestId: visibleSelectedRequest.id,
+          tab: repairTargetTab,
+        });
+      }
+
+      clearPrintRequestsPageCache();
+      await reloadPrintRequests({ silent: true });
+
+      setSuccessMessage(`Moved ${visibleSelectedRequest.name} to the ${repairTargetTab} tab.`);
+      setSuccessAlertSeed((current) => current + 1);
+    } catch (error) {
+      setActionError(formatWriteErrorMessage(error));
+    } finally {
+      setIsRepairingQueueTab(false);
+    }
+  }, [
+    activeListKind,
+    activeListTab,
+    commitPrintRequestsRoute,
+    patchRequestLocally,
+    reloadPrintRequests,
+    selectedRequestDerivedListTab,
+    user,
+    visibleSelectedRequest,
+  ]);
+
   const isSelectedRequestDetailLocked = isSelectedRequestQueueLocked || isSelectedRequestFullyPrinted;
+  const canViewUpcomingShows = user ? permissionService.canViewUpcomingShows(user) : false;
+
+  function renderSelectedRequestShowQueueLinks(includeTransferActions: boolean) {
+    if (!visibleSelectedRequest || selectedRequestShowGroups.length === 0) {
+      return null;
+    }
+
+    return selectedRequestShowGroups.map((group) => {
+      const show = selectedRequestShowsById.get(group.upcomingShowId);
+      const groupQuantity = group.allocations.reduce(
+        (sum, allocation) => sum + allocation.allocatedQuantity,
+        0,
+      );
+      const showTitle = show ? formatUpcomingShowTitle(show) : "Show";
+      const showDateLabel = show?.scheduledStartAt
+        ? formatShowDateTimeLabel(show.scheduledStartAt.toDate())
+        : "Not scheduled";
+      const transferMode = show ? resolvePrintRequestShowTransferMode(show) : "move";
+      const showQueuePath = buildShowQueueDeepLinkPath({
+        showId: group.upcomingShowId,
+        printRequestId: visibleSelectedRequest.id,
+        show,
+      });
+
+      const link = (
+        <Link
+          className="print-requests-show-queue-pill"
+          title={showTitle}
+          to={showQueuePath}
+        >
+          <span>{groupQuantity} qty</span>
+          <span>&middot;</span>
+          <span>{showDateLabel}</span>
+          <ExternalLink aria-hidden="true" size={12} strokeWidth={2.2} />
+        </Link>
+      );
+
+      if (!includeTransferActions) {
+        return (
+          <div className="print-requests-show-queue-group" key={group.upcomingShowId}>
+            {link}
+          </div>
+        );
+      }
+
+      return (
+        <div className="print-requests-show-queue-group" key={group.upcomingShowId}>
+          {link}
+          {show ? (
+            <DangerOverflowMenu
+              ariaLabel={`Actions for ${showTitle}`}
+              items={[
+                {
+                  id: "transfer",
+                  danger: false,
+                  label: formatPrintRequestShowTransferActionLabel(transferMode),
+                  onSelect: () =>
+                    setTransferShowContext({
+                      sourceShowId: group.upcomingShowId,
+                      transferQuantity: groupQuantity,
+                    }),
+                },
+              ]}
+            />
+          ) : null}
+        </div>
+      );
+    });
+  }
+
   const requestNamePreview = visibleSelectedRequest
     ? getRequestNamePreview(visibleSelectedRequest, internalBaseNameDraft)
     : "";
@@ -1237,7 +1607,7 @@ export function PrintRequestsPage() {
             </div>
           </div>
           <div aria-label="Request status" className="print-requests-tab-bar" role="tablist">
-            {(["working", "queued", "printing", "printed"] as const).map((tab) => (
+            {visibleStatusTabs.map((tab) => (
               <button
                 className={`print-requests-tab-button${activeListTab === tab ? " is-active" : ""}`}
                 key={tab}
@@ -1273,7 +1643,9 @@ export function PrintRequestsPage() {
               </button>
             ))}
           </div>
-          <p className="print-requests-tab-helper">{getPrintRequestTabHelperCopy(activeListTab)}</p>
+          <p className="print-requests-tab-helper">
+            {getPrintRequestTabHelperCopy(activeListTab, { isInternal: activeIsInternal })}
+          </p>
           <div className="print-requests-rail-controls">
             <label className="print-requests-rail-search">
               <span className="visually-hidden">Search print requests</span>
@@ -1328,7 +1700,9 @@ export function PrintRequestsPage() {
                 message={
                   listSearchQuery.trim()
                     ? "No print requests match this search in the current tab."
-                    : activeListTab === "working" && workingTriageFilter === "active"
+                    : activeListTab === "working" && workingTriageFilter === "needs_requeue"
+                      ? "No requests need staff re-queue in this filter."
+                      : activeListTab === "working" && workingTriageFilter === "active"
                       ? "No Active carts here. New empty carts are under Empty; older unused carts under Stale. Or choose All."
                       : activeListTab === "working" && workingTriageFilter !== "all"
                         ? "No requests in this Working filter. Try Stale, Empty, or All."
@@ -1337,15 +1711,55 @@ export function PrintRequestsPage() {
                 title="Nothing here yet"
               />
             ) : (
-              visibleRequestSections.map((section) => (
+              visibleRequestSections.map((section) => {
+                const sectionCapacity = resolveSectionShowCapacity(section, allocationsByRequestId);
+
+                return (
                 <div className="print-requests-show-section" key={section.sectionKey}>
-                  <div className="print-requests-show-section-header">
-                    {section.sectionKey === UNASSIGNED_SHOW_SECTION_KEY
-                      ? "Unassigned"
-                      : section.show
-                        ? `${formatUpcomingShowTitle(section.show)} · ${formatUpcomingShowTimestampLabel(section.show.scheduledStartAt)}`
-                        : "Show"}
-                  </div>
+                  {section.sectionKey === UNASSIGNED_SHOW_SECTION_KEY || !section.show || !canViewUpcomingShows ? (
+                    <div className="print-requests-show-section-header">
+                      {section.sectionKey === UNASSIGNED_SHOW_SECTION_KEY
+                        ? "Unassigned"
+                        : section.show
+                          ? `${formatUpcomingShowTitle(section.show)} · ${formatUpcomingShowTimestampLabel(section.show.scheduledStartAt)}`
+                          : "Show"}
+                    </div>
+                  ) : (
+                    <Link
+                      className="print-requests-show-section-header print-requests-show-section-header-link"
+                      title={`Open ${formatUpcomingShowTitle(section.show)} in Show Queue`}
+                      to={buildShowQueueDeepLinkPath({
+                        showId: section.show.id,
+                        printRequestId: section.requests[0]?.id ?? "",
+                        show: section.show,
+                      })}
+                    >
+                      <span>
+                        {formatUpcomingShowTitle(section.show)} ·{" "}
+                        {formatUpcomingShowTimestampLabel(section.show.scheduledStartAt)}
+                      </span>
+                      <ExternalLink aria-hidden="true" size={12} strokeWidth={2.2} />
+                    </Link>
+                  )}
+                  {sectionCapacity ? (
+                    <div className="print-requests-show-section-capacity">
+                      <div className="show-capacity-bar-track">
+                        <div
+                          className={`show-capacity-bar-fill${
+                            getCapacityFillLevel(getShowCapacityPercent(sectionCapacity))
+                              ? ` is-${getCapacityFillLevel(getShowCapacityPercent(sectionCapacity))}`
+                              : ""
+                          }`}
+                          style={{
+                            width: `${Math.min(100, getShowCapacityPercent(sectionCapacity) ?? 0)}%`,
+                          }}
+                        />
+                      </div>
+                      <div className="show-capacity-summary">
+                        <span>{formatShowCapacitySlotLabel(sectionCapacity)}</span>
+                      </div>
+                    </div>
+                  ) : null}
                   {section.requests.map((request) => {
                 const isSelected = request.id === selectedRequestId;
                 const requestSummary = summariesByRequestId[request.id] ?? {
@@ -1371,6 +1785,14 @@ export function PrintRequestsPage() {
                     <div className="print-requests-request-card-title-row">
                       <strong>{request.name}</strong>
                       <div className="print-requests-request-card-badges">
+                        {shouldShowPrintRequestRequeueBadge(request) ? (
+                          <Badge
+                            title={getPrintRequestRequeueBadgeTitle(request)}
+                            variant={getPrintRequestRequeueBadgeVariant()}
+                          >
+                            {getPrintRequestRequeueBadgeLabel()}
+                          </Badge>
+                        ) : null}
                         <Badge variant="default">{getPrintRequestOriginBadgeLabel(request)}</Badge>
                         <Badge variant={getStatusBadgeVariant(request.status)}>{request.status}</Badge>
                       </div>
@@ -1394,7 +1816,8 @@ export function PrintRequestsPage() {
                 );
                   })}
                 </div>
-              ))
+                );
+              })
             )}
             {!isLoading && hasMoreRequests && !listSearchQuery.trim() ? (
               <Button
@@ -1479,6 +1902,14 @@ export function PrintRequestsPage() {
                   </div>
                   <div className="print-requests-detail-actions">
                     <div className="print-requests-detail-badges">
+                      {shouldShowPrintRequestRequeueBadge(visibleSelectedRequest) ? (
+                        <Badge
+                          title={getPrintRequestRequeueBadgeTitle(visibleSelectedRequest)}
+                          variant={getPrintRequestRequeueBadgeVariant()}
+                        >
+                          {getPrintRequestRequeueBadgeLabel()}
+                        </Badge>
+                      ) : null}
                       <Badge variant="default">
                         {getPrintRequestOriginBadgeLabel(visibleSelectedRequest)}
                       </Badge>
@@ -1493,6 +1924,52 @@ export function PrintRequestsPage() {
                     </div>
                   </div>
                 </div>
+
+                {selectedRequestConvertedInternalId && convertedInternalDeepLinkPath ? (
+                  <div className="print-requests-queue-tab-repair">
+                    <p className="print-requests-modal-hint">
+                      This customer request was converted to an internal request. Open the internal
+                      request to continue working with it.
+                    </p>
+                    <Button
+                      onClick={() => navigate(convertedInternalDeepLinkPath)}
+                      type="button"
+                      variant="warning"
+                    >
+                      Open internal request
+                    </Button>
+                  </div>
+                ) : null}
+
+                {canRepairQueueTab && selectedRequestRepairTargetTab ? (
+                  <div className="print-requests-queue-tab-repair">
+                    <p className="print-requests-modal-hint">
+                      {visibleSelectedRequest.queueTab !== selectedRequestDerivedListTab ? (
+                        <>
+                          This request belongs in the <strong>{selectedRequestRepairTargetTab}</strong> tab but is
+                          still listed under <strong>{visibleSelectedRequest.queueTab ?? "unknown"}</strong>.
+                        </>
+                      ) : (
+                        <>
+                          This request belongs in the <strong>{selectedRequestRepairTargetTab}</strong> tab but you are
+                          viewing the <strong>{activeListTab}</strong> tab.
+                        </>
+                      )}
+                    </p>
+                    <Button
+                      disabled={isRepairingQueueTab}
+                      onClick={() => {
+                        void handleRepairQueueTab();
+                      }}
+                      type="button"
+                      variant="warning"
+                    >
+                      {isRepairingQueueTab
+                        ? "Moving…"
+                        : `Move to ${selectedRequestRepairTargetTab} tab`}
+                    </Button>
+                  </div>
+                ) : null}
 
                 {isRequestDetailExpanded ? (
                   <div className="print-requests-detail-form">
@@ -1551,9 +2028,18 @@ export function PrintRequestsPage() {
                 ) : (
                   <div className="print-requests-detail-actions">
                     {isSelectedRequestFullyPrinted ? (
-                      <p className="print-requests-modal-hint">
-                        This request has been fully printed and cannot be edited.
-                      </p>
+                      <div className="print-requests-show-queue-lock">
+                        <p className="print-requests-modal-hint">
+                          This request has been fully printed and cannot be edited.
+                        </p>
+                        {canViewUpcomingShows && selectedRequestShowGroups.length > 0 ? (
+                          <div className="print-requests-show-queue-row">
+                            <div className="print-requests-show-queue-links">
+                              {renderSelectedRequestShowQueueLinks(false)}
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
                     ) : isSelectedRequestQueueLocked ? (
                       <div className="print-requests-show-queue-lock">
                         <p className="print-requests-modal-hint">
@@ -1561,34 +2047,7 @@ export function PrintRequestsPage() {
                         </p>
                         <div className="print-requests-show-queue-row">
                           <div className="print-requests-show-queue-links">
-                            {selectedRequestShowGroups.map((group) => {
-                              const show = selectedRequestShowsById.get(group.upcomingShowId);
-                              const groupQuantity = group.allocations.reduce(
-                                (sum, allocation) => sum + allocation.allocatedQuantity,
-                                0,
-                              );
-                              const showTitle = show ? formatUpcomingShowTitle(show) : "Show";
-                              const showDateLabel = show?.scheduledStartAt
-                                ? formatShowDateTimeLabel(show.scheduledStartAt.toDate())
-                                : "Not scheduled";
-
-                              return (
-                                <Link
-                                  className="print-requests-show-queue-pill"
-                                  key={group.upcomingShowId}
-                                  title={showTitle}
-                                  to={getUpcomingShowsPath({
-                                    showId: group.upcomingShowId,
-                                    requestId: visibleSelectedRequest?.id,
-                                  })}
-                                >
-                                  <span>{groupQuantity} qty</span>
-                                  <span>&middot;</span>
-                                  <span>{showDateLabel}</span>
-                                  <ExternalLink aria-hidden="true" size={12} strokeWidth={2.2} />
-                                </Link>
-                              );
-                            })}
+                            {renderSelectedRequestShowQueueLinks(true)}
                           </div>
                           {!canRemoveSelectedRequestFromShowQueue ? (
                             <p className="print-requests-modal-hint">
@@ -1735,6 +2194,7 @@ export function PrintRequestsPage() {
                             approvedMaxPrintWidthInches: uploadDoc.approvedMaxPrintWidthInches,
                             approvedMaxPrintHeightInches: uploadDoc.approvedMaxPrintHeightInches,
                             wasUpscaled: uploadDoc.wasUpscaled,
+                            fromAssistedCreation: Boolean(uploadDoc.assistedCreationRequestId),
                           }
                         : item.titleSnapshot
                           ? {
@@ -1756,6 +2216,7 @@ export function PrintRequestsPage() {
                           onRemove={handleRemoveItem}
                           onUpdate={handleUpdateItem}
                           readOnly={isSelectedRequestDetailLocked}
+                          standardPrintSizesSettings={standardPrintSizesSettings}
                           upload={upload}
                         />
                       );
@@ -1928,6 +2389,32 @@ export function PrintRequestsPage() {
           printRequest={visibleSelectedRequest}
         />
       ) : null}
+
+      {transferShowContext && visibleSelectedRequest ? (() => {
+        const sourceShow = selectedRequestShowsById.get(transferShowContext.sourceShowId);
+        if (!sourceShow) {
+          return null;
+        }
+
+        return (
+          <TransferPrintRequestToShowModal
+            onClose={() => setTransferShowContext(null)}
+            onTransferred={async ({ mode }) => {
+              setTransferShowContext(null);
+              setSuccessMessage(
+                mode === "copy"
+                  ? "Request copied to the selected show."
+                  : "Request moved to the selected show.",
+              );
+              setSuccessAlertSeed((current) => current + 1);
+              await reloadAllAllocationData();
+            }}
+            printRequest={visibleSelectedRequest}
+            sourceShow={sourceShow}
+            transferQuantity={transferShowContext.transferQuantity}
+          />
+        );
+      })() : null}
 
       
       {isConvertConfirmOpen ? (

@@ -110,7 +110,7 @@ Email / Password — Portal customers and Studio staff
 Google — Portal customers only (ADR-FP-081)
 ```
 
-Portal customers may reset password and change email via Firebase Auth client APIs when a password provider is present (verify-before-update for email; profile sync via Admin callable). Google-only accounts cannot change sign-in email in-app (tied to Google; least-resistance path is a new account). Account **deletion from the customer** is request-only (`accountDeletionRequests`). Studio owners fulfill via `tombstoneCustomerAccount` (Auth **disable**, retain identity/username/history — ADR-FP-115). Destructive cascade `ownerDeleteUser` is quarantined and not exposed in Studio UI.
+Portal customers may reset password and change email via Firebase Auth client APIs when a password provider is present (verify-before-update for email; profile sync via Admin callable). Google-only accounts cannot change sign-in email in-app (tied to Google; least-resistance path is a new account). **Username and display name** self-service uses callable `updatePortalCustomerProfile` only (self-only; 30-day username cooldown; no direct client writes to `customerUsernames` or propagated snapshots). `usernameHistory` is support/audit only and is not returned in Portal UI. Account **deletion from the customer** is request-only (`accountDeletionRequests`). Studio owners fulfill via `tombstoneCustomerAccount` (Auth **disable**, retain identity/username/history — ADR-FP-115). Destructive cascade `ownerDeleteUser` is quarantined and not exposed in Studio UI.
 
 Studio staff login and Studio customer invites must not expose Google. Additional providers require approval.
 
@@ -166,6 +166,7 @@ Owners can:
 * Manage requests
 * Access audit logs
 * Use **Test Data Reset** (`/test-data-reset`) in **development Studio builds only**, and only when connected to the allowlisted Firebase project (`fresh-prints-dev`), via `wipeOperationalTestData` — owner role required; never for production project IDs; never exposed in production Studio builds
+* Apply **Force Completed** show production override (`applyShowProductionRecovery` with `force_completed`) — requires bounded reason; reconciles allocations/requests via Admin SDK (ADR-FP-149)
 
 Owners have full platform access.
 

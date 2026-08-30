@@ -1,3 +1,4 @@
+import { composeContinuousCustomerGroupedGangSheetSheets } from "./composeContinuousCustomerGroupedGangSheetSheets";
 import { composeGroupedGangSheetSheets } from "./composeGroupedGangSheetSheets";
 import { downloadAndResizeExportImage } from "./downloadAndResizeExportImage";
 import {
@@ -155,10 +156,15 @@ export async function generateGangSheetPng(
   };
   const maxSheetHeightPx = Math.round(request.maxSheetLengthInches * EXPORT_DPI);
 
-  if (request.layoutMode === "grouped_by_customer") {
+  if (request.layoutMode === "grouped_by_customer" || request.layoutMode === "customer_grouped_continuous") {
     onProgress({ fileName: request.baseFileName, imageIndex: imageTotal, imageTotal, step: "nesting" });
 
-    const composedSheets = await composeGroupedGangSheetSheets({
+    const composeGroupedSheets =
+      request.layoutMode === "grouped_by_customer"
+        ? composeGroupedGangSheetSheets
+        : composeContinuousCustomerGroupedGangSheetSheets;
+
+    const composedSheets = await composeGroupedSheets({
       request,
       resizedByAllocationId,
       sheetWidthPx,

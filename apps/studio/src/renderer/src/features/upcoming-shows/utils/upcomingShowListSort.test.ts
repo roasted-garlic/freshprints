@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
-import { sortUpcomingShowsForDisplay } from "./upcomingShowListSort";
+import { sortPastShowsForDisplay, sortUpcomingShowsForDisplay } from "./upcomingShowListSort";
 
 function buildShow(overrides: Partial<UpcomingShow> = {}): UpcomingShow {
   return {
@@ -63,5 +63,25 @@ describe("sortUpcomingShowsForDisplay", () => {
     const result = sortUpcomingShowsForDisplay([showB, showA]);
 
     assert.deepEqual(result.map((show) => show.id), ["show-a", "show-b"]);
+  });
+});
+
+describe("sortPastShowsForDisplay", () => {
+  it("sorts shows with a schedule descending by scheduledStartAt", () => {
+    const later = buildShow({ id: "later", scheduledStartAt: timestamp("2026-09-01T00:00:00Z") });
+    const earlier = buildShow({ id: "earlier", scheduledStartAt: timestamp("2026-08-01T00:00:00Z") });
+
+    const result = sortPastShowsForDisplay([earlier, later]);
+
+    assert.deepEqual(result.map((show) => show.id), ["later", "earlier"]);
+  });
+
+  it("sorts shows missing a schedule after all scheduled shows", () => {
+    const scheduled = buildShow({ id: "scheduled", scheduledStartAt: timestamp("2026-08-01T00:00:00Z") });
+    const unscheduled = buildShow({ id: "unscheduled", scheduledStartAt: undefined });
+
+    const result = sortPastShowsForDisplay([unscheduled, scheduled]);
+
+    assert.deepEqual(result.map((show) => show.id), ["scheduled", "unscheduled"]);
   });
 });

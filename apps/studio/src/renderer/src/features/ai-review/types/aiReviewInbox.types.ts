@@ -3,9 +3,13 @@ import type { ArtworkBackgroundPreset } from "../../designs/types/designForm.typ
 
 export type AiReviewInboxTab = "processing" | "needs_review" | "rejected";
 
+/** Queue list order — processing uses createdAt; review tabs use updatedAt. */
+export type AiReviewInboxSortOrder = "newest" | "oldest";
+
 export interface AiReviewInboxFilters {
   tab: AiReviewInboxTab;
   searchQuery?: string;
+  sortOrder?: AiReviewInboxSortOrder;
 }
 
 export interface AiReviewDraftForm {

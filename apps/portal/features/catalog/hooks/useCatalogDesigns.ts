@@ -14,7 +14,12 @@ import {
   getDesignSortValue,
 } from '../services/catalogService';
 import { isPortalAlgoliaCatalogConfigured } from '../services/portalAlgoliaCatalogFlags';
-import { portalAlgoliaCatalogSearchService } from '../services/portalAlgoliaCatalogSearchService';
+import {
+  hasSelectedSmartFilters,
+  portalAlgoliaCatalogSearchService,
+  serializeSmartFilters,
+  type PortalSmartFilters,
+} from '../services/portalAlgoliaCatalogSearchService';
 import type {
   CatalogCategory,
   CatalogDesign,
@@ -27,12 +32,15 @@ import {
   filterCatalogDesignsBySearch,
   filterCatalogDesignsByTags,
   getPrimaryCatalogQueryTag,
+  resolveManagedSearchClientFilters,
 } from '../utils/catalogSearch';
 import { catalogNeedsFullClientHydrate } from '../utils/catalogNeedsFullClientHydrate';
 
 export interface UseCatalogDesignsQuery {
   categoryId?: string;
   selectedTags: string[];
+  /** Slice 3 Smart Filters — any selection requires Algolia managed search. */
+  smartFilters?: PortalSmartFilters;
   discoveryMode?: CatalogDiscoveryMode | null;
   pageSize?: number;
   searchQuery?: string;
@@ -227,12 +235,13 @@ function toFriendlyCatalogError(error: unknown): string {
  * Phase 1A ordinary browse gate: unfiltered, category, single-tag, and discovery sorts use
  * bounded Firestore without requiring generated assets or Algolia.
  *
- * Search and multi-tag use Stage 1b managed search (Algolia) when configured.
+ * Search, multi-tag, and Smart Filters use Stage 1b managed search (Algolia) when configured.
  */
 export function allowsBoundedCatalogFirestoreFallback(options: UseCatalogDesignsQuery): boolean {
   const hasSearch = Boolean(options.searchQuery?.trim());
   const isMultiTag = options.selectedTags.length > 1;
-  return !hasSearch && !isMultiTag;
+  const hasSmart = hasSelectedSmartFilters(options.smartFilters);
+  return !hasSearch && !isMultiTag && !hasSmart;
 }
 
 function requiresManagedSearchPath(options: UseCatalogDesignsQuery): boolean {
@@ -279,6 +288,11 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
     () => (selectedTagsKey ? selectedTagsKey.split('\0') : []),
     [selectedTagsKey],
   );
+  const smartFiltersKey = useMemo(
+    () => serializeSmartFilters(options.smartFilters),
+    [options.smartFilters],
+  );
+  const smartFiltersForSearch = options.smartFilters;
 
   const needsFullHydrate = catalogNeedsFullClientHydrate({
     searchQuery: options.searchQuery,
@@ -327,7 +341,12 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
               const algoliaPage = await portalAlgoliaCatalogSearchService.listMatchingDesigns(
                 options.searchQuery ?? '',
                 selectedTagsForAssets,
-                { categoryId: options.categoryId, limit: pageSize, offset: 0 },
+                {
+                  categoryId: options.categoryId,
+                  limit: pageSize,
+                  offset: 0,
+                  smartFilters: smartFiltersForSearch,
+                },
               );
               if (isCancelled || generation !== hydrateGenerationRef.current) return;
               const nextOffset = algoliaPage.hitCount;
@@ -436,6 +455,8 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
     pageSize,
     selectedTagsForAssets,
     selectedTagsKey,
+    smartFiltersForSearch,
+    smartFiltersKey,
     serverListQuery,
     serverListQueryKey,
     useAlgoliaSearch,
@@ -443,18 +464,24 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
     useOrdinaryFirestore,
   ]);
 
-  // Managed search (Algolia) applies q/tags/category server-side. Apply normalized search
-  // post-filter so case/separator behavior matches Firestore browse and Studio.
+  // Managed search (Algolia) already applied q/tags/category — skip client re-filter so
+  // Smart Profile matches are not dropped by title/description/tags-only search.
+  const clientFilters = resolveManagedSearchClientFilters({
+    isManagedSearchQuery,
+    searchQuery: options.searchQuery,
+    categoryId: options.categoryId,
+    selectedTags: options.selectedTags,
+  });
   const filteredDesigns = useFilteredCatalogDesigns({
     designs: allDesigns,
-    search: options.searchQuery?.trim() ? (options.searchQuery ?? '') : '',
-    categoryId: isManagedSearchQuery ? undefined : options.categoryId,
-    selectedTags: isManagedSearchQuery ? [] : options.selectedTags,
+    search: clientFilters.search,
+    categoryId: clientFilters.categoryId,
+    selectedTags: clientFilters.selectedTags,
   });
 
   useEffect(() => {
     setVisibleCount(pageSize);
-  }, [options.searchQuery, pageSize, selectedTagsKey, serverListQueryKey]);
+  }, [options.searchQuery, pageSize, selectedTagsKey, smartFiltersKey, serverListQueryKey]);
 
   const visibleDesigns = useMemo(
     () => filteredDesigns.slice(0, visibleCount),
@@ -511,6 +538,7 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
                   categoryId: options.categoryId,
                   limit: pageSize,
                   offset: requestOffset,
+                  smartFilters: smartFiltersForSearch,
                 },
               );
               const nextOffset = requestOffset + page.hitCount;
@@ -603,6 +631,7 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
     options.searchQuery,
     pageSize,
     selectedTagsForAssets,
+    smartFiltersForSearch,
     serverHasMore,
     serverListQuery,
     useAlgoliaSearch,

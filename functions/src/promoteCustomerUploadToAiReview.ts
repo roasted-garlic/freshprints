@@ -8,6 +8,7 @@ import {
   getThumbnailStoragePath,
 } from "../../packages/shared/src/constants/design/designStoragePaths";
 import type { PromoteCustomerUploadToAiReviewResponse } from "../../packages/shared/src/types/customerUpload/customerUploadStaffActions.types";
+import { isCustomerUploadEligibleForCatalogIntake } from "../../packages/shared/src/utils/customerUploadCatalogIntakeEligibility";
 
 import { adminDb, adminStorage } from "./lib/admin";
 import { assertStaffCaller, loadCallerProfile } from "./lib/caller";
@@ -127,6 +128,11 @@ export const promoteCustomerUploadToAiReview = onCall(
       }
       if (upload.ownershipConfirmed !== true) {
         throw failedPrecondition("Customer ownership confirmation is required before promotion.");
+      }
+      if (!isCustomerUploadEligibleForCatalogIntake(upload)) {
+        throw failedPrecondition(
+          "Customer declined Design Library permission; this upload is print-request only.",
+        );
       }
       if (upload.catalogReviewStatus !== "pending_staff_review") {
         throw failedPrecondition("Only uploads pending staff review can be promoted.");

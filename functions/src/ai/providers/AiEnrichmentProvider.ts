@@ -1,5 +1,6 @@
 import type { DesignAiAnalysis, DesignAiSuggestions } from "../../../../packages/shared/src/types/ai/aiProcessing.types";
 import type { CatalogTag } from "../../../../packages/shared/src/types/catalogTag.types";
+import type { SmartProfileVocabLists } from "../../../../packages/shared/src/utils/smartProfileVocab";
 
 export interface AiEnrichmentCategoryOption {
   id: string;
@@ -21,6 +22,8 @@ export interface AiEnrichmentInput {
   approvedTagNames: string[];
   categoryIdsByName: Record<string, string>;
   effectiveTagExclusions: string[];
+  /** Bounded auto-derived Smart Profile vocab for prompt inject + post-gen canonicalize. */
+  smartProfileVocab?: SmartProfileVocabLists;
 }
 
 export interface AiEnrichmentResult {

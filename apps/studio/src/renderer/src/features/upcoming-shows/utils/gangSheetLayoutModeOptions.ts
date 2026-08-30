@@ -8,7 +8,7 @@ export const GANG_SHEET_LAYOUT_MODE_OPTIONS: Array<{
   titlePhrase: string;
 }> = [
   {
-    hint: "One show heading on each sheet; all designs nested together.",
+    hint: "Pack all artwork for maximum sheet efficiency.",
     label: "Standard",
     modalSummary:
       "Creates gang sheet PNGs with every allocated design on them. Each sheet has one heading at the top — the show name.",
@@ -16,10 +16,18 @@ export const GANG_SHEET_LAYOUT_MODE_OPTIONS: Array<{
     titlePhrase: "gang sheets",
   },
   {
-    hint: "Show heading plus a heading for each customer's print requests.",
-    label: "Grouped by customer",
+    hint: "Keep each customer's requests together while allowing multiple customers to share a sheet.",
+    label: "Grouped by Customer",
     modalSummary:
-      "Same show heading on each sheet, plus an additional heading for each customer's print requests. Keeps each customer's designs together so you can find them quickly while prepping for the show.",
+      "Same show heading on each sheet, plus a heading for each customer's print requests. Multiple customers can share one physical sheet when space allows.",
+    mode: "customer_grouped_continuous",
+    titlePhrase: "grouped continuous gang sheets",
+  },
+  {
+    hint: "Create a separate gang-sheet set for each customer.",
+    label: "Sheet per Customer",
+    modalSummary:
+      "Same show heading on each sheet, plus a heading for each customer's print requests. Each customer starts a new physical sheet set.",
     mode: "grouped_by_customer",
     titlePhrase: "grouped gang sheets",
   },

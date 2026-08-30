@@ -118,7 +118,7 @@ export function AppRoutes() {
           <Route
             path="/settings"
             element={
-              <ProtectedRoute permission="manageSettings">
+              <ProtectedRoute permission="accessSettingsPage">
                 <SettingsPage />
               </ProtectedRoute>
             }

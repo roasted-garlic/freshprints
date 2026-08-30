@@ -24,8 +24,8 @@ function hasTrailingTitlePunctuation(rawTitle: string): boolean {
   return TRAILING_TITLE_PUNCTUATION.test(rawTitle.trim());
 }
 
-export const CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-v26";
-export const DEVELOPMENT_CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-dev-v26";
+export const CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-v30";
+export const DEVELOPMENT_CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-dev-v30";
 
 /**
  * Prompt version for the optional text-only tag reranker second call. Independent of

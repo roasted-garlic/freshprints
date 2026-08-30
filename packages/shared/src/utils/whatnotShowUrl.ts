@@ -1,11 +1,18 @@
 const WHATNOT_LIVE_SHOW_ID_PATTERN = /\/live\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:[/?#]|$)/i;
 
+/** Exact sentinel for DEV fixture shows — not a Whatnot URL. */
+export const DEV_OVERRIDE_SHOW_URL_SENTINEL = "DEV-OVERRIDE";
+
 /** Studio always attributes Whatnot links with this source. The customer Portal will use a different value. */
 const STUDIO_REFERRING_SOURCE = "fpStudio";
 
 export interface ParsedWhatnotShowUrl {
   whatnotShowId: string;
   whatnotUrl: string;
+}
+
+export function isDevOverrideShowUrlSentinel(rawInput: string): boolean {
+  return rawInput.trim() === DEV_OVERRIDE_SHOW_URL_SENTINEL;
 }
 
 /**
@@ -20,7 +27,7 @@ export interface ParsedWhatnotShowUrl {
 export function parseWhatnotShowUrl(rawInput: string): ParsedWhatnotShowUrl | undefined {
   const trimmedUrl = rawInput.trim();
 
-  if (!trimmedUrl) {
+  if (!trimmedUrl || isDevOverrideShowUrlSentinel(trimmedUrl)) {
     return undefined;
   }
 

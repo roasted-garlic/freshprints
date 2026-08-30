@@ -126,6 +126,29 @@ function mapAiAnalysis(value: unknown): DesignAiAnalysis | undefined {
       typeof data.trademarkWarning === "string" ? data.trademarkWarning : undefined,
     overallConfidence:
       typeof data.overallConfidence === "number" ? data.overallConfidence : undefined,
+    halftoneShadowAssessment: mapHalftoneShadowAssessment(data.halftoneShadowAssessment),
+  };
+}
+
+function mapHalftoneShadowAssessment(
+  value: unknown,
+): DesignAiAnalysis["halftoneShadowAssessment"] {
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+  const likelihood = record.likelihood;
+
+  return {
+    likelihood:
+      likelihood === "none" ||
+      likelihood === "possible" ||
+      likelihood === "likely" ||
+      likelihood === "unknown"
+        ? likelihood
+        : undefined,
+    evidence: typeof record.evidence === "string" ? record.evidence : undefined,
   };
 }
 

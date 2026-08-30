@@ -57,10 +57,30 @@ describe('Stage 1b Algolia portal catalog wiring', () => {
     const source = readFileSync(join(catalogRoot, 'hooks/useCatalogDesigns.ts'), 'utf8');
     assert.match(source, /managedSearchNextOffset/);
     assert.match(source, /hitCount/);
+    assert.match(source, /resolveManagedSearchClientFilters/);
+    assert.match(source, /already applied q\/tags\/category/);
+  });
+
+  it('catalog.css hides Filters trigger on desktop with specificity over portal-button-sm', () => {
+    const css = readFileSync(join(process.cwd(), 'apps/portal/styles/catalog.css'), 'utf8');
+    assert.match(css, /\.design-library-open-filters-button\.portal-button-sm\s*\{[^}]*display:\s*none/s);
     assert.match(
-      source,
-      /Managed search \(Algolia\) already applied q\/tags\/category|Managed search \(Algolia\/generated\) already applied/,
+      css,
+      /@media \(max-width: 47\.99rem\)[\s\S]*?\.design-library-open-filters-button\.portal-button-sm\s*\{[^}]*display:\s*inline-flex/s,
     );
+  });
+
+  it('CatalogPageContent uses Algolia-narrowed category options', () => {
+    const source = readFileSync(join(catalogRoot, 'pages/CatalogPageContent.tsx'), 'utf8');
+    assert.match(source, /useNarrowedCatalogCategoryOptions/);
+    assert.match(source, /listNarrowedCategoryFacets|useNarrowedCatalogCategoryOptions/);
+    const service = readFileSync(
+      join(catalogRoot, 'services/portalAlgoliaCatalogSearchService.ts'),
+      'utf8',
+    );
+    assert.match(service, /buildPortalAlgoliaCategoryFacetSearchParams/);
+    assert.match(service, /listNarrowedCategoryFacets/);
+    assert.match(service, /Intentionally omit categoryId filter/);
   });
 
   it('Stage 4: generated asset service is retired stub (no Storage fetch API surface for callers)', () => {

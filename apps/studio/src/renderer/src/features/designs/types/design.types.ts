@@ -2,6 +2,11 @@ import type { Timestamp } from "firebase/firestore";
 
 import type { PrintSizeSource } from "@fresh-prints/shared/types/printSize/printSize.types";
 import type { DesignAiAnalysis, DesignAiSuggestions, AiProcessingStage } from "@fresh-prints/shared/types/ai/aiProcessing.types";
+import type { DesignSmartProfile, SmartProfileDimensionLists } from "@fresh-prints/shared/types/catalog/smartProfile.types";
+import type {
+  ArtworkBackgroundSource,
+  HalftoneDecisionSource,
+} from "@fresh-prints/shared/types/design/artworkBackgroundSource.types";
 import type { ArtworkPlacement } from "@fresh-prints/shared/constants/design/artworkPlacement.constants";
 import type { AiReviewStatus } from "./aiReview.types";
 import type { DesignStatus } from "./designStatus.types";
@@ -24,6 +29,11 @@ export interface Design {
    * Missing → Portal/Studio artwork grey `#e5e7eb`.
    */
   artworkBackgroundHex?: string;
+  /**
+   * How `artworkBackgroundHex` was established (import override, code auto, staff edit, …).
+   * Display provenance only — not a semantic/halftone signal.
+   */
+  artworkBackgroundSource?: ArtworkBackgroundSource;
   /**
    * Optional staff-managed artwork garment placement (display label "Placement").
    * Missing → Unspecified. Allowlisted values only; unknown/legacy strings map to undefined on
@@ -71,6 +81,8 @@ export interface Design {
   halftoneDetection?: import("@fresh-prints/shared/types/halftone/halftone.types").HalftoneDetectionPersisted;
   halftoneSubmitterResponse?: import("@fresh-prints/shared/types/halftone/halftone.types").HalftoneSubmitterResponsePersisted;
   halftoneStaffDecision?: import("@fresh-prints/shared/types/halftone/halftone.types").HalftoneStaffDecisionPersisted;
+  /** Provenance for staff/import/intake halftone decisions when known. */
+  halftoneDecisionSource?: HalftoneDecisionSource;
   /**
    * @deprecated Legacy transitive `companionSets/{id}` pointer, replaced 2026-08-09 by pairwise
    * `companionDesignIds`. No longer written for new links; healed (deleted) on the next pairwise
@@ -144,6 +156,16 @@ export interface Design {
   aiSuggestions?: DesignAiSuggestions;
   /** Rich AI analysis metadata for future features. */
   aiAnalysis?: DesignAiAnalysis;
+  /** Versioned Smart Profile / search intelligence (Functions-owned generation). */
+  smartProfile?: DesignSmartProfile;
+  /** Last raw AI dimension snapshot before staff merge (Functions-owned). */
+  smartProfileAiSnapshot?: SmartProfileDimensionLists;
+  /** Batch import job id when design was created from a folder/ZIP/multi-PNG batch. */
+  importBatchId?: string;
+  /** Original source filename at import (audit/context only). */
+  importSourceFileName?: string;
+  /** Relative path within folder/ZIP when available. */
+  importRelativePath?: string;
   createdBy: string;
   updatedBy: string;
   createdAt: Timestamp;
@@ -185,10 +207,20 @@ export interface CreateDesignInput {
   approvedMaxPrintHeightInches?: number;
   sizingPolicyVersion?: string;
   sizingWarningCode?: string;
+  /**
+   * Optional mat (`#rrggbb`). Omit / do not pass grey default — missing means display grey.
+   */
+  artworkBackgroundHex?: string;
+  artworkBackgroundSource?: ArtworkBackgroundSource;
   halftoneDetection?: import("@fresh-prints/shared/types/halftone/halftone.types").HalftoneDetectionPersisted;
+  halftoneStaffDecision?: import("@fresh-prints/shared/types/halftone/halftone.types").HalftoneStaffDecisionPersisted;
+  halftoneDecisionSource?: HalftoneDecisionSource;
   aiReviewStatus?: AiReviewStatus;
   aiProcessed?: boolean;
   aiReviewed?: boolean;
+  importBatchId?: string;
+  importSourceFileName?: string;
+  importRelativePath?: string;
 }
 
 export type UpdateDesignInput = Partial<
@@ -218,8 +250,11 @@ export type UpdateDesignInput = Partial<
 > & {
   /**
    * Set a normalized `#rrggbb`, or `null` / `""` to clear (default grey).
+   * Staff writes also set `artworkBackgroundSource` to `staff_manual`.
    */
   artworkBackgroundHex?: string | null;
+  artworkBackgroundSource?: ArtworkBackgroundSource | null;
+  halftoneDecisionSource?: HalftoneDecisionSource | null;
   /**
    * Set an allowlisted placement, or `null` to clear (Unspecified).
    */

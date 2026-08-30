@@ -24,9 +24,41 @@ import { getPortalAuth } from '../../../lib/firebase/client';
 import { mapPortalPrintRequestCallableError } from '../utils/mapPortalPrintRequestCallableError';
 import { sharePortalPrintRequestScheduleLoad } from './portalPrintRequestScheduleLoadOwner';
 import { sharePortalShowQueueSubmission } from './portalShowQueueSubmissionOwner';
+import {
+  readPortalAllocatableShowsCached,
+} from './portalAllocatableShowsReadCache';
 
 function mapCallableError(error: unknown): Error {
   return mapPortalPrintRequestCallableError(error);
+}
+
+async function loadAllocatableShowsFromCallable(): Promise<{
+  shows: PortalAllocatableShow[];
+  portalQueueCutoffHoursBeforeStart: number;
+}> {
+  const result = await callTracedFunction<Record<string, never>, ListPortalAllocatableShowsResponse>(
+    'listPortalAllocatableShows',
+    { source: 'portalShowSelectionService.listAllocatableShows' },
+  )({});
+  return {
+    shows: result.shows,
+    portalQueueCutoffHoursBeforeStart:
+      typeof result.portalQueueCutoffHoursBeforeStart === 'number'
+        ? result.portalQueueCutoffHoursBeforeStart
+        : DEFAULT_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START,
+  };
+}
+
+export async function prefetchPortalAllocatableShows(): Promise<void> {
+  if (!getPortalAuth().currentUser) {
+    return;
+  }
+
+  try {
+    await readPortalAllocatableShowsCached(loadAllocatableShowsFromCallable);
+  } catch {
+    // Prefetch is best-effort; the modal surfaces errors on explicit open.
+  }
 }
 
 type ScheduleBatchLoader = (
@@ -74,17 +106,7 @@ export const portalShowSelectionService = {
     portalQueueCutoffHoursBeforeStart: number;
   }> {
     try {
-      const result = await callTracedFunction<Record<string, never>, ListPortalAllocatableShowsResponse>(
-        'listPortalAllocatableShows',
-        { source: 'portalShowSelectionService.listAllocatableShows' },
-      )({});
-      return {
-        shows: result.shows,
-        portalQueueCutoffHoursBeforeStart:
-          typeof result.portalQueueCutoffHoursBeforeStart === 'number'
-            ? result.portalQueueCutoffHoursBeforeStart
-            : DEFAULT_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START,
-      };
+      return await readPortalAllocatableShowsCached(loadAllocatableShowsFromCallable);
     } catch (error) {
       throw mapCallableError(error);
     }

@@ -5,6 +5,7 @@ import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../../shared/comp
 
 interface ImportPreviewLightboxProps {
   alt: string;
+  backgroundCssHex?: string;
   isOpen: boolean;
   onClose: () => void;
   previewDataUrl: string | null;
@@ -13,6 +14,7 @@ interface ImportPreviewLightboxProps {
 
 export function ImportPreviewLightbox({
   alt,
+  backgroundCssHex,
   isOpen,
   onClose,
   previewDataUrl,
@@ -42,8 +44,16 @@ export function ImportPreviewLightbox({
         </ModalHeader>
 
         <ModalBody>
-          <div className="import-preview-lightbox-stage">
-            <img alt={alt} className="import-preview-lightbox-image" src={previewDataUrl} />
+          <div
+            className="import-preview-lightbox-stage"
+            style={backgroundCssHex ? { background: backgroundCssHex } : undefined}
+          >
+            <img
+              alt={alt}
+              className="import-preview-lightbox-image"
+              src={previewDataUrl}
+              style={backgroundCssHex ? { background: backgroundCssHex } : undefined}
+            />
           </div>
         </ModalBody>
 

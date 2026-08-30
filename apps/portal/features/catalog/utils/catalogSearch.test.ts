@@ -11,6 +11,7 @@ import {
   filterCatalogDesignsBySearch,
   filterCatalogDesignsByTags,
   getPrimaryCatalogQueryTag,
+  resolveManagedSearchClientFilters,
   selectedTagsIncludeHalftone,
   setHalftoneInSelectedTags,
   visibleSelectedTags,
@@ -30,6 +31,52 @@ function createDesign(overrides: Partial<CatalogDesign> = {}): CatalogDesign {
     ...overrides,
   };
 }
+
+describe('resolveManagedSearchClientFilters', () => {
+  it('clears search/category/tags when Algolia managed search already applied q', () => {
+    assert.deepEqual(
+      resolveManagedSearchClientFilters({
+        isManagedSearchQuery: true,
+        searchQuery: 'Scottish cow',
+        categoryId: 'cat-1',
+        selectedTags: ['ocean'],
+      }),
+      { search: '', categoryId: undefined, selectedTags: [] },
+    );
+  });
+
+  it('preserves browse post-filters when not on managed search', () => {
+    assert.deepEqual(
+      resolveManagedSearchClientFilters({
+        isManagedSearchQuery: false,
+        searchQuery: 'summer',
+        categoryId: 'cat-1',
+        selectedTags: ['ocean'],
+      }),
+      { search: 'summer', categoryId: 'cat-1', selectedTags: ['ocean'] },
+    );
+  });
+
+  it('does not drop Smart Profile hits that fail title-only search', () => {
+    const highland = createDesign({
+      id: 'yJm2VBRvecPNjx79aSnK',
+      title: 'Highland Cow With Bow',
+      tags: [],
+    });
+    const query = 'Scottish cow';
+    assert.equal(
+      filterCatalogDesignsBySearch([highland], query).length,
+      0,
+      'legacy title filter alone would hide Algolia Smart Profile matches',
+    );
+    const client = resolveManagedSearchClientFilters({
+      isManagedSearchQuery: true,
+      searchQuery: query,
+      selectedTags: [],
+    });
+    assert.deepEqual(filterCatalogDesignsBySearch([highland], client.search), [highland]);
+  });
+});
 
 describe('filterCatalogDesignsBySearch', () => {
   it('returns all designs when search is empty', () => {

@@ -69,4 +69,15 @@ describe("parseWhatnotShowUrl", () => {
   it("returns undefined for malformed URLs", () => {
     assert.equal(parseWhatnotShowUrl("not a url at all"), undefined);
   });
+
+  it("returns undefined for the DEV-OVERRIDE sentinel", () => {
+    assert.equal(parseWhatnotShowUrl("DEV-OVERRIDE"), undefined);
+    assert.equal(parseWhatnotShowUrl("  DEV-OVERRIDE  "), undefined);
+  });
+
+  it("does not treat partial DEV override tokens as valid", () => {
+    assert.equal(parseWhatnotShowUrl("DEV"), undefined);
+    assert.equal(parseWhatnotShowUrl("OVERRIDE"), undefined);
+    assert.equal(parseWhatnotShowUrl("DEV-OVERRIDE-1"), undefined);
+  });
 });

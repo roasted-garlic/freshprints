@@ -1,5 +1,9 @@
 import type { DesignListQuery } from "../../designs/types/designQuery.types";
-import type { AiReviewInboxFilters, AiReviewInboxTab } from "../types/aiReviewInbox.types";
+import type { AiReviewInboxFilters, AiReviewInboxSortOrder, AiReviewInboxTab } from "../types/aiReviewInbox.types";
+import {
+  getAiReviewInboxSortField,
+  resolveAiReviewInboxSortDirection,
+} from "../utils/aiReviewInboxSort";
 
 export const AI_PROCESSING_PAGE_TITLE = "AI Processing";
 export const AI_PROCESSING_PAGE_DESCRIPTION =
@@ -11,7 +15,7 @@ export const AI_REVIEW_TAB_QUERY_PARAM = "tab";
 export const AI_REVIEW_SEARCH_QUERY_PARAM = "search";
 /** @deprecated Legacy URL params — stripped on load */
 export const AI_REVIEW_CATEGORY_QUERY_PARAM = "category";
-/** @deprecated Legacy URL params — stripped on load */
+/** URL param: `newest` | `oldest` queue sort (applies on every tab). */
 export const AI_REVIEW_SORT_QUERY_PARAM = "sort";
 
 export const AI_REVIEW_INBOX_TABS: readonly { id: AiReviewInboxTab; label: string }[] = [
@@ -32,9 +36,18 @@ export function parseAiReviewInboxTab(value: string | null): AiReviewInboxTab {
   return DEFAULT_AI_REVIEW_INBOX_FILTERS.tab;
 }
 
+export function parseAiReviewInboxSortOrder(value: string | null): AiReviewInboxSortOrder | undefined {
+  if (value === "newest" || value === "oldest") {
+    return value;
+  }
+
+  return undefined;
+}
+
 export function parseAiReviewInboxFilters(searchParams: URLSearchParams): AiReviewInboxFilters {
   return {
     tab: parseAiReviewInboxTab(searchParams.get(AI_REVIEW_TAB_QUERY_PARAM)),
+    sortOrder: parseAiReviewInboxSortOrder(searchParams.get(AI_REVIEW_SORT_QUERY_PARAM)),
   };
 }
 
@@ -43,6 +56,10 @@ export function buildAiReviewInboxSearchParams(filters: AiReviewInboxFilters): U
 
   if (filters.tab !== DEFAULT_AI_REVIEW_INBOX_FILTERS.tab) {
     searchParams.set(AI_REVIEW_TAB_QUERY_PARAM, filters.tab);
+  }
+
+  if (filters.sortOrder) {
+    searchParams.set(AI_REVIEW_SORT_QUERY_PARAM, filters.sortOrder);
   }
 
   return searchParams;
@@ -88,8 +105,8 @@ export function getAiReviewTabDescription(tab: AiReviewInboxTab): string {
 
 export function buildAiReviewInboxListQuery(filters: AiReviewInboxFilters): DesignListQuery {
   const baseQuery: DesignListQuery = {
-    sortDirection: "desc",
-    sortField: "updatedAt",
+    sortDirection: resolveAiReviewInboxSortDirection(filters.tab, filters.sortOrder),
+    sortField: getAiReviewInboxSortField(filters.tab),
   };
 
   switch (filters.tab) {

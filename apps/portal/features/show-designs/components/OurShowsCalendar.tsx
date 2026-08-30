@@ -23,6 +23,7 @@ import {
   type OurShowsCapacityBorder,
   type OurShowsTiming,
 } from '../utils/ourShowsLifecycle';
+import { SHOW_DESIGN_COUNT_DISCLAIMER } from '../utils/showDesignCountDisclaimer';
 
 interface OurShowsCalendarProps {
   onOpenShow: (showId: string) => void;
@@ -225,6 +226,7 @@ export function OurShowsCalendar({ onOpenShow, shows }: OurShowsCalendarProps) {
           <p className="our-shows-calendar-hint portal-muted">
             Tap a highlighted day to browse the designs on that show.
           </p>
+          <p className="our-shows-count-disclaimer">{SHOW_DESIGN_COUNT_DISCLAIMER}</p>
         </div>
 
         <div aria-label="Calendar legend" className="our-shows-calendar-legend">

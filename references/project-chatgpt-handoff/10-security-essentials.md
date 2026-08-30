@@ -59,6 +59,22 @@ Auth provider changes, relaxing rules, new public sensitive endpoints, secret ro
 - Owner exception (ADR-FP-138): PUBLIC catalog design IDs only, after successful resolve, on design `page_path` / `page_location` / `design_view.content_id`.
 - Invalid share stays `/share/design/:id` with no `content_id`.
 
+## Customer identity (WS1–WS4 DEV)
+
+- Disable / restore / tombstone / hard-delete / merge / transfer — **owner-only callables**
+- Merge and transfer use confirmation phrases + preview checksums
+- Hard delete Apply gated to `fresh-prints-dev` until production authorization
+- Portal cannot invoke staff identity or recovery operations
+
+## Show Queue recovery (DEV)
+
+- `previewShowProductionRecovery` / `applyShowProductionRecovery` — trusted server boundary; customers cannot invoke
+- `upsertDevFixtureShow` — **fresh-prints-dev** project gate + staff auth; not available in production
+
+## Owner Edit Show (scoped DEV enabler)
+
+- Owner-only metadata mutation on eligible shows; not a customer/Portal path
+
 ## Incident posture
 
 Fail closed; log risks in `RISK_REGISTER.md`; ADRs in `DECISIONS.md`.

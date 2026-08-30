@@ -41,6 +41,10 @@ import {
   normalizeArtworkBackgroundHex,
 } from "@fresh-prints/shared/constants/design/artworkBackground.constants";
 import { parseArtworkPlacement } from "@fresh-prints/shared/constants/design/artworkPlacement.constants";
+import {
+  isArtworkBackgroundSource,
+  isHalftoneDecisionSource,
+} from "@fresh-prints/shared/types/design/artworkBackgroundSource.types";
 import { isCanonicalDesignStoragePath } from "../constants/designStoragePaths";
 import type { CreateDesignInput, Design, DesignAuthoritySnapshot, UpdateDesignInput } from "../types/design.types";
 import type { AiReviewStateUpdate, CatalogApprovalUpdate } from "../types/aiReview.types";
@@ -215,6 +219,7 @@ interface DesignDocumentData {
   thumbnailPath?: unknown;
   previewPath?: unknown;
   artworkBackgroundHex?: unknown;
+  artworkBackgroundSource?: unknown;
   artworkPlacement?: unknown;
   width?: unknown;
   height?: unknown;
@@ -237,6 +242,7 @@ interface DesignDocumentData {
   halftoneDetection?: unknown;
   halftoneSubmitterResponse?: unknown;
   halftoneStaffDecision?: unknown;
+  halftoneDecisionSource?: unknown;
   companionSetId?: unknown;
   companionDesignIds?: unknown;
   companionSetIncomplete?: unknown;
@@ -257,6 +263,11 @@ interface DesignDocumentData {
   aiProcessingStage?: unknown;
   aiSuggestions?: unknown;
   aiAnalysis?: unknown;
+  smartProfile?: unknown;
+  smartProfileAiSnapshot?: unknown;
+  importBatchId?: unknown;
+  importSourceFileName?: unknown;
+  importRelativePath?: unknown;
   createdBy?: unknown;
   updatedBy?: unknown;
   createdAt?: unknown;
@@ -301,6 +312,9 @@ function mapDesignDocument(designId: string, data: DesignDocumentData): Design {
     previewPath: typeof data.previewPath === "string" ? data.previewPath : undefined,
     artworkBackgroundHex:
       typeof data.artworkBackgroundHex === "string" ? data.artworkBackgroundHex : undefined,
+    artworkBackgroundSource: isArtworkBackgroundSource(data.artworkBackgroundSource)
+      ? data.artworkBackgroundSource
+      : undefined,
     artworkPlacement: parseArtworkPlacement(data.artworkPlacement),
     width: typeof data.width === "number" ? data.width : undefined,
     height: typeof data.height === "number" ? data.height : undefined,
@@ -352,6 +366,9 @@ function mapDesignDocument(designId: string, data: DesignDocumentData): Design {
       data.halftoneStaffDecision && typeof data.halftoneStaffDecision === "object"
         ? (data.halftoneStaffDecision as Design["halftoneStaffDecision"])
         : undefined,
+    halftoneDecisionSource: isHalftoneDecisionSource(data.halftoneDecisionSource)
+      ? data.halftoneDecisionSource
+      : undefined,
     companionSetId: typeof data.companionSetId === "string" ? data.companionSetId : undefined,
     companionDesignIds: Array.isArray(data.companionDesignIds)
       ? data.companionDesignIds.filter((id): id is string => typeof id === "string")
@@ -380,6 +397,19 @@ function mapDesignDocument(designId: string, data: DesignDocumentData): Design {
     aiReviewConfidence:
       typeof data.aiReviewConfidence === "number" ? data.aiReviewConfidence : undefined,
     ...mapDesignAiFields(data as Record<string, unknown>),
+    smartProfile:
+      data.smartProfile && typeof data.smartProfile === "object"
+        ? (data.smartProfile as Design["smartProfile"])
+        : undefined,
+    smartProfileAiSnapshot:
+      data.smartProfileAiSnapshot && typeof data.smartProfileAiSnapshot === "object"
+        ? (data.smartProfileAiSnapshot as Design["smartProfileAiSnapshot"])
+        : undefined,
+    importBatchId: typeof data.importBatchId === "string" ? data.importBatchId : undefined,
+    importSourceFileName:
+      typeof data.importSourceFileName === "string" ? data.importSourceFileName : undefined,
+    importRelativePath:
+      typeof data.importRelativePath === "string" ? data.importRelativePath : undefined,
     createdBy: typeof data.createdBy === "string" ? data.createdBy : data.uploadedBy,
     updatedBy:
       typeof data.updatedBy === "string"
@@ -913,7 +943,31 @@ export const designService = {
       approvedMaxPrintHeightInches: input.approvedMaxPrintHeightInches,
       sizingPolicyVersion: input.sizingPolicyVersion,
       sizingWarningCode: input.sizingWarningCode,
+      artworkBackgroundHex: (() => {
+        const normalized = normalizeArtworkBackgroundHex(input.artworkBackgroundHex);
+        if (!normalized || isDefaultArtworkBackgroundHex(normalized)) {
+          return undefined;
+        }
+        return normalized;
+      })(),
+      artworkBackgroundSource: isArtworkBackgroundSource(input.artworkBackgroundSource)
+        ? input.artworkBackgroundSource
+        : undefined,
       halftoneDetection: input.halftoneDetection,
+      halftoneStaffDecision: input.halftoneStaffDecision
+        ? {
+            value: input.halftoneStaffDecision.value,
+            decidedBy: input.halftoneStaffDecision.decidedBy ?? caller.id,
+            isExplicitOverride: input.halftoneStaffDecision.isExplicitOverride ?? true,
+            decidedAt: serverTimestamp(),
+          }
+        : undefined,
+      halftoneDecisionSource: isHalftoneDecisionSource(input.halftoneDecisionSource)
+        ? input.halftoneDecisionSource
+        : undefined,
+      importBatchId: input.importBatchId?.trim() || undefined,
+      importSourceFileName: input.importSourceFileName?.trim() || undefined,
+      importRelativePath: input.importRelativePath?.trim() || undefined,
       queueCount: 0,
       aiProcessed: input.aiProcessed ?? false,
       aiReviewed: input.aiReviewed ?? false,
@@ -1012,6 +1066,14 @@ export const designService = {
       };
     }
 
+    if (input.halftoneDecisionSource !== undefined) {
+      if (input.halftoneDecisionSource === null) {
+        updatePayload.halftoneDecisionSource = deleteField();
+      } else if (isHalftoneDecisionSource(input.halftoneDecisionSource)) {
+        updatePayload.halftoneDecisionSource = input.halftoneDecisionSource;
+      }
+    }
+
     if (input.isExplicitContent !== undefined) {
       updatePayload.isExplicitContent = input.isExplicitContent;
     }
@@ -1051,6 +1113,22 @@ export const designService = {
         updatePayload.artworkBackgroundHex = isDefaultArtworkBackgroundHex(normalized)
           ? deleteField()
           : normalized;
+      }
+
+      if (input.artworkBackgroundSource !== undefined) {
+        if (input.artworkBackgroundSource === null) {
+          updatePayload.artworkBackgroundSource = deleteField();
+        } else if (isArtworkBackgroundSource(input.artworkBackgroundSource)) {
+          updatePayload.artworkBackgroundSource = input.artworkBackgroundSource;
+        }
+      } else {
+        updatePayload.artworkBackgroundSource = "staff_manual";
+      }
+    } else if (input.artworkBackgroundSource !== undefined) {
+      if (input.artworkBackgroundSource === null) {
+        updatePayload.artworkBackgroundSource = deleteField();
+      } else if (isArtworkBackgroundSource(input.artworkBackgroundSource)) {
+        updatePayload.artworkBackgroundSource = input.artworkBackgroundSource;
       }
     }
 

@@ -28,6 +28,7 @@ import { staffInboxSubscriptionService } from "../services/staffInboxSubscriptio
 import { formatStaffInboxFirestoreError } from "../utils/formatStaffInboxFirestoreError";
 import { getStaffInboxItemNavigationPath } from "../utils/staffInboxNavigation";
 import { designIssueReportService } from "../services/designIssueReportService";
+import { staffInboxSuppressionService } from "../services/staffInboxSuppressionService";
 
 const HIGHLIGHT_DURATION_MS = 8_000;
 /** Wide enough that queue-add + show-full Firestore emits coalesce into one sound. */
@@ -83,6 +84,7 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
   const isEnabled = Boolean(user && permissionService.canViewPrintRequests(user));
 
   const [acknowledgedItemIds, setAcknowledgedItemIds] = useState<Set<string>>(() => new Set());
+  const [suppressedItemIds, setSuppressedItemIds] = useState<Set<string>>(() => new Set());
   const [completedItems, setCompletedItems] = useState<StaffInboxCompletedItem[]>([]);
   const [ackRecords, setAckRecords] = useState<StaffInboxAckRecord[]>([]);
   const [subscriptionSnapshot, setSubscriptionSnapshot] = useState(EMPTY_SUBSCRIPTION_SNAPSHOT);
@@ -94,6 +96,7 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
   const [pendingResolvedReportIds, setPendingResolvedReportIds] = useState<Set<string>>(() => new Set());
 
   const acknowledgedItemIdsRef = useRef(acknowledgedItemIds);
+  const suppressedItemIdsRef = useRef(suppressedItemIds);
   const ackRecordsRef = useRef(ackRecords);
   const showSnapshotsRef = useRef<StaffInboxShowSnapshot[]>([]);
   const showTitleByIdRef = useRef<Record<string, string>>({});
@@ -118,6 +121,10 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
   useEffect(() => {
     acknowledgedItemIdsRef.current = acknowledgedItemIds;
   }, [acknowledgedItemIds]);
+
+  useEffect(() => {
+    suppressedItemIdsRef.current = suppressedItemIds;
+  }, [suppressedItemIds]);
 
   useEffect(() => {
     ackRecordsRef.current = ackRecords;
@@ -145,6 +152,7 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
   useEffect(() => {
     if (!user?.id || !isEnabled) {
       setAcknowledgedItemIds(new Set());
+      setSuppressedItemIds(new Set());
       setCompletedItems([]);
       setAckRecords([]);
       previousAckCountRef.current = null;
@@ -158,10 +166,11 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
       void staffInboxAckService.migrateLegacyLocalStorage(user.id).catch(() => {
         // Subscription still works; legacy rows may retry on next session.
       });
+      void staffInboxAckService.migrateLegacyPerUserAcksToShared().catch(() => undefined);
+      void staffInboxAlertDeliveryService.migrateLegacyPerUserDeliveriesToShared().catch(() => undefined);
     }
 
     const unsubscribe = staffInboxAckService.subscribe(
-      user.id,
       (records) => {
         const previousCount = previousAckCountRef.current;
         previousAckCountRef.current = records.length;
@@ -193,6 +202,24 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
   }, [isEnabled, user?.id]);
 
   useEffect(() => {
+    if (!isEnabled) {
+      setSuppressedItemIds(new Set());
+      return;
+    }
+
+    const unsubscribe = staffInboxSuppressionService.subscribe(
+      (records) => {
+        setSuppressedItemIds(new Set(records.map((record) => record.itemId)));
+      },
+      (message) => {
+        setWarning(formatStaffInboxFirestoreError(message));
+      },
+    );
+
+    return unsubscribe;
+  }, [isEnabled]);
+
+  useEffect(() => {
     if (!user?.id || showSnapshots.length === 0) {
       return;
     }
@@ -202,7 +229,7 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
     );
 
     void staffInboxAckService
-      .pruneResolvedShowQueueFull(user.id, ackRecordsRef.current, fullShowIds)
+      .pruneResolvedShowQueueFull(ackRecordsRef.current, fullShowIds)
       .catch(() => {
         // Snapshot subscription remains source of truth.
       });
@@ -280,6 +307,13 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
         return;
       }
 
+      if (
+        acknowledgedItemIdsRef.current.has(alert.itemId) ||
+        suppressedItemIdsRef.current.has(alert.itemId)
+      ) {
+        return;
+      }
+
       pendingAlertsRef.current.push(alert);
 
       if (alertFlushTimeoutRef.current) {
@@ -308,6 +342,7 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
       const openItems = deriveStaffInboxItems({
         portalAllocations: snapshot.portalAllocations,
         acknowledgedItemIds: acknowledgedItemIdsRef.current,
+        suppressedItemIds: suppressedItemIdsRef.current,
         showTitleById: showTitleByIdRef.current,
         shows: showSnapshotsRef.current,
       });
@@ -441,7 +476,6 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
     }
 
     const unsubscribe = staffInboxAlertDeliveryService.subscribe(
-      user.id,
       (deliveries) => {
         soundDeliveredItemIdsRef.current = new Set(deliveries.map((entry) => entry.itemId));
         deliveriesHydratedRef.current = true;
@@ -469,6 +503,7 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
       const existing = deriveStaffInboxItems({
         portalAllocations: subscriptionSnapshot.portalAllocations,
         acknowledgedItemIds,
+        suppressedItemIds,
         showTitleById,
         shows: showSnapshots,
       });
@@ -489,6 +524,7 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
       pendingResolvedReportIds,
       showSnapshots,
       showTitleById,
+      suppressedItemIds,
       subscriptionSnapshot.designIssueReports,
       subscriptionSnapshot.portalAllocations,
     ],
@@ -648,24 +684,61 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
     [clearItemHighlight, user],
   );
 
-  const restoreItem = useCallback(
-    (itemId: string) => {
-      if (!user?.id || itemId.startsWith("design_issue_report:")) {
+  const restoreItem = useCallback((itemId: string) => {
+    if (itemId.startsWith("design_issue_report:")) {
+      return;
+    }
+
+    setAcknowledgedItemIds((current) => {
+      const next = new Set(current);
+      next.delete(itemId);
+      return next;
+    });
+    setCompletedItems((current) => current.filter((entry) => entry.id !== itemId));
+
+    void staffInboxAckService.restore(itemId).catch(() => {
+      setWarning("Unable to restore inbox item. Check your connection and try again.");
+    });
+  }, []);
+
+  const deleteCompletedAlerts = useCallback(
+    (itemIds: string[]) => {
+      if (!user?.id || itemIds.length === 0) {
         return;
       }
 
+      const queueItemIds = itemIds.filter((itemId) => !itemId.startsWith("design_issue_report:"));
+
+      if (queueItemIds.length === 0) {
+        return;
+      }
+
+      const deletedIds = new Set(queueItemIds);
+      setCompletedItems((current) => current.filter((entry) => !deletedIds.has(entry.id)));
       setAcknowledgedItemIds((current) => {
         const next = new Set(current);
-        next.delete(itemId);
+        for (const itemId of queueItemIds) {
+          next.delete(itemId);
+        }
         return next;
       });
-      setCompletedItems((current) => current.filter((entry) => entry.id !== itemId));
+      setSuppressedItemIds((current) => {
+        const next = new Set(current);
+        for (const itemId of queueItemIds) {
+          next.add(itemId);
+        }
+        return next;
+      });
 
-      void staffInboxAckService.restore(user.id, itemId).catch(() => {
-        setWarning("Unable to restore inbox item. Check your connection and try again.");
+      const displayName = user.displayName?.trim() || undefined;
+      void Promise.all([
+        staffInboxAckService.deleteAcks(queueItemIds),
+        staffInboxSuppressionService.suppressItems(user.id, queueItemIds, { displayName }),
+      ]).catch(() => {
+        setWarning("Unable to delete completed inbox alerts. Check your connection and try again.");
       });
     },
-    [user?.id],
+    [user],
   );
 
   useEffect(() => {
@@ -721,6 +794,7 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
       closePanel,
       acknowledgeItem,
       restoreItem,
+      deleteCompletedAlerts,
       dismissToast,
       openItem,
       isItemHighlighted,
@@ -730,6 +804,7 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
       badgeCounts,
       closePanel,
       completedItems,
+      deleteCompletedAlerts,
       dismissToast,
       error,
       isEnabled,

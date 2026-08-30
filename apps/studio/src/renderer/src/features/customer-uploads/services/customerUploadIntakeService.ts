@@ -38,6 +38,10 @@ export interface CustomerUploadIntakeRow {
   printRequestId: string | null;
   printRequestName: string | null;
   printRequestStatus: string | null;
+  printRequestQueueTab: string | null;
+  printRequestIsInternal: boolean | null;
+  printRequestItemCount: number | null;
+  printRequestUpdatedAtMs: number | null;
   showAssignmentLabel: string | null;
   originalFilename: string;
   sourceFormat: CustomerUploadSourceFormat | null;
@@ -122,6 +126,10 @@ export const customerUploadIntakeService = {
     customerDisplayName: string;
     printRequestName: string | null;
     printRequestStatus: string | null;
+    printRequestQueueTab: string | null;
+    printRequestIsInternal: boolean | null;
+    printRequestItemCount: number | null;
+    printRequestUpdatedAtMs: number | null;
     previewUrl: string | null;
   }> {
     const resolveCustomer = async (): Promise<string> => {
@@ -143,18 +151,44 @@ export const customerUploadIntakeService = {
     const resolvePrintRequest = async (): Promise<{
       printRequestName: string | null;
       printRequestStatus: string | null;
+      printRequestQueueTab: string | null;
+      printRequestIsInternal: boolean | null;
+      printRequestItemCount: number | null;
+      printRequestUpdatedAtMs: number | null;
     }> => {
       if (!input.printRequestId) {
-        return { printRequestName: null, printRequestStatus: null };
+        return {
+          printRequestName: null,
+          printRequestStatus: null,
+          printRequestQueueTab: null,
+          printRequestIsInternal: null,
+          printRequestItemCount: null,
+          printRequestUpdatedAtMs: null,
+        };
       }
       const requestSnap = await getDoc(doc(db, "printRequests", input.printRequestId));
       if (!requestSnap.exists()) {
-        return { printRequestName: null, printRequestStatus: null };
+        return {
+          printRequestName: null,
+          printRequestStatus: null,
+          printRequestQueueTab: null,
+          printRequestIsInternal: null,
+          printRequestItemCount: null,
+          printRequestUpdatedAtMs: null,
+        };
       }
       const request = requestSnap.data();
       return {
         printRequestName: asString(request.name),
         printRequestStatus: asString(request.status),
+        printRequestQueueTab: asString(request.queueTab),
+        printRequestIsInternal:
+          typeof request.isInternal === "boolean" ? request.isInternal : null,
+        printRequestItemCount:
+          typeof request.itemCount === "number" && Number.isFinite(request.itemCount)
+            ? request.itemCount
+            : null,
+        printRequestUpdatedAtMs: timestampMs(request.updatedAt),
       };
     };
 
@@ -168,6 +202,10 @@ export const customerUploadIntakeService = {
       customerDisplayName,
       printRequestName: printRequest.printRequestName,
       printRequestStatus: printRequest.printRequestStatus,
+      printRequestQueueTab: printRequest.printRequestQueueTab,
+      printRequestIsInternal: printRequest.printRequestIsInternal,
+      printRequestItemCount: printRequest.printRequestItemCount,
+      printRequestUpdatedAtMs: printRequest.printRequestUpdatedAtMs,
       previewUrl,
     };
   },

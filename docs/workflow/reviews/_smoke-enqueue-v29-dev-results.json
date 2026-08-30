@@ -1,0 +1,83 @@
+{
+  "projectId": "fresh-prints-dev",
+  "startedAt": "2026-08-26T03:05:57.534Z",
+  "catalogWorkflowMode": "shadow",
+  "catalogAutonomousLiveEnabled": false,
+  "fixtures": [
+    {
+      "id": "yJm2VBRvecPNjx79aSnK",
+      "label": "Highland",
+      "outcome": "smoked_and_restored",
+      "callableData": {
+        "designId": "yJm2VBRvecPNjx79aSnK",
+        "queued": true,
+        "completed": true,
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "afterEnrichment": {
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3",
+        "subjects": [
+          "highland cow",
+          "cow"
+        ],
+        "automationDecision": "shadow",
+        "catalogWorkflowMode": "shadow"
+      },
+      "checks": {
+        "promptV29": true,
+        "normalizerV3": true,
+        "hasHighlandCow": true
+      },
+      "restore": {
+        "status": "ready",
+        "aiReviewStatus": "approved",
+        "matchedBeforeStatus": true,
+        "matchedBeforeReview": true
+      },
+      "pass": true
+    },
+    {
+      "id": "6x2LyTvG3ewIePeWHanV",
+      "label": "Jimothy",
+      "outcome": "smoked_and_restored",
+      "callableData": {
+        "designId": "6x2LyTvG3ewIePeWHanV",
+        "queued": true,
+        "completed": true,
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "afterEnrichment": {
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3",
+        "subjects": [
+          "king raccoon",
+          "depicts raccoon",
+          "raccoon"
+        ],
+        "automationDecision": "needs_review",
+        "catalogWorkflowMode": "shadow"
+      },
+      "checks": {
+        "promptV29": true,
+        "normalizerV3": true,
+        "hasRaccoon": true,
+        "noPeople": true
+      },
+      "restore": {
+        "status": "ready",
+        "aiReviewStatus": "approved",
+        "matchedBeforeStatus": true,
+        "matchedBeforeReview": true
+      },
+      "pass": true
+    }
+  ],
+  "aborted": false,
+  "completedAt": "2026-08-26T03:06:12.270Z",
+  "allPass": true
+}

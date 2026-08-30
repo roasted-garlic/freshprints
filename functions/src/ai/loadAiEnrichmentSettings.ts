@@ -12,6 +12,11 @@ import {
   type SuggestionAuthorMode,
   type TagRerankMode,
 } from "../../../packages/shared/src/constants/aiEnrichment.constants";
+import {
+  resolveCatalogAutonomousLiveEnabled,
+  resolveCatalogWorkflowMode,
+  type CatalogWorkflowMode,
+} from "../../../packages/shared/src/constants/catalogWorkflowMode.constants";
 import { resolveSuggestedNewTagsPolicy } from "../../../packages/shared/src/utils/suggestedNewTagsPolicy";
 import { adminDb } from "../lib/admin";
 import { mergeTagExclusions, resolveAdditionalTagExclusions } from "./aiTagExclusions";
@@ -32,6 +37,8 @@ export interface AiEnrichmentSettingsLoaded {
   tagRerankMode: TagRerankMode;
   suggestionAuthorMode: SuggestionAuthorMode;
   suggestedNewTagsPolicy: SuggestedNewTagsPolicy;
+  catalogWorkflowMode: CatalogWorkflowMode;
+  catalogAutonomousLiveEnabled: boolean;
 }
 
 const TAG_RERANK_MODE_SET = new Set<string>(TAG_RERANK_MODES);
@@ -76,6 +83,8 @@ export async function loadAiEnrichmentSettings(): Promise<AiEnrichmentSettingsLo
         tagRerankMode: DEFAULT_TAG_RERANK_MODE,
         suggestionAuthorMode: DEFAULT_SUGGESTION_AUTHOR_MODE,
         suggestedNewTagsPolicy: DEFAULT_SUGGESTED_NEW_TAGS_POLICY,
+        catalogWorkflowMode: resolveCatalogWorkflowMode(undefined),
+        catalogAutonomousLiveEnabled: resolveCatalogAutonomousLiveEnabled(undefined),
       };
     }
 
@@ -99,6 +108,10 @@ export async function loadAiEnrichmentSettings(): Promise<AiEnrichmentSettingsLo
       tagRerankMode,
       suggestionAuthorMode,
       suggestedNewTagsPolicy,
+      catalogWorkflowMode: resolveCatalogWorkflowMode(data?.catalogWorkflowMode),
+      catalogAutonomousLiveEnabled: resolveCatalogAutonomousLiveEnabled(
+        data?.catalogAutonomousLiveEnabled,
+      ),
     };
   } catch {
     return {
@@ -110,6 +123,8 @@ export async function loadAiEnrichmentSettings(): Promise<AiEnrichmentSettingsLo
       tagRerankMode: DEFAULT_TAG_RERANK_MODE,
       suggestionAuthorMode: DEFAULT_SUGGESTION_AUTHOR_MODE,
       suggestedNewTagsPolicy: DEFAULT_SUGGESTED_NEW_TAGS_POLICY,
+      catalogWorkflowMode: resolveCatalogWorkflowMode(undefined),
+      catalogAutonomousLiveEnabled: resolveCatalogAutonomousLiveEnabled(undefined),
     };
   }
 }

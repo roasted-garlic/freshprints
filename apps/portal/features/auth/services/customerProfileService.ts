@@ -1,7 +1,8 @@
-import { collection, getDocs, limit, query, where, type DocumentData } from 'firebase/firestore';
+import { collection, getDocs, limit, onSnapshot, query, where, type DocumentData } from 'firebase/firestore';
 
 import type { Customer } from '@fresh-prints/shared/types/customer/customer.types';
 import { parseCustomerSignupSource } from '@fresh-prints/shared/utils/customerSignupSource';
+import { readCustomerIdentityDocumentFields } from '@fresh-prints/shared/utils/readCustomerIdentityDocumentFields';
 import {
   traceFirestoreOneShotComplete,
   traceFirestoreOneShotStart,
@@ -54,6 +55,9 @@ function mapCustomer(customerId: string, data: CustomerDocumentData): Customer {
     throw new Error('Your customer profile is incomplete.');
   }
 
+  const identityFields = readCustomerIdentityDocumentFields(data);
+  const { deletedAt: deletedAtRaw, disabledAt: disabledAtRaw, ...identityRest } = identityFields;
+
   return {
     id: customerId,
     userId: typeof data.userId === 'string' ? data.userId : undefined,
@@ -76,6 +80,9 @@ function mapCustomer(customerId: string, data: CustomerDocumentData): Customer {
       typeof data.assistedBrowserPushOptIn === 'boolean' ? data.assistedBrowserPushOptIn : undefined,
     assistedBrowserPushOptInUpdatedAt: mapFirestoreTimestamp(data.assistedBrowserPushOptInUpdatedAt),
     usernameUpdatedAt: mapFirestoreTimestamp(data.usernameUpdatedAt),
+    ...identityRest,
+    deletedAt: mapFirestoreTimestamp(deletedAtRaw),
+    disabledAt: mapFirestoreTimestamp(disabledAtRaw),
     createdAt,
     updatedAt,
   };
@@ -95,5 +102,37 @@ export const customerProfileService = {
 
     const customerDoc = snapshot.docs[0];
     return mapCustomer(customerDoc.id, customerDoc.data() as CustomerDocumentData);
+  },
+
+  subscribeToCustomerByUserId(
+    userId: string,
+    onChange: (customer: Customer | null) => void,
+    onError?: (error: Error) => void,
+  ): () => void {
+    const customerQuery = query(
+      collection(getPortalDb(), 'customers'),
+      where('userId', '==', userId),
+      limit(1),
+    );
+
+    return onSnapshot(
+      customerQuery,
+      (snapshot) => {
+        if (snapshot.empty) {
+          onChange(null);
+          return;
+        }
+
+        try {
+          const customerDoc = snapshot.docs[0];
+          onChange(mapCustomer(customerDoc.id, customerDoc.data() as CustomerDocumentData));
+        } catch (error) {
+          onError?.(error instanceof Error ? error : new Error('Unable to read customer profile.'));
+        }
+      },
+      (error) => {
+        onError?.(error instanceof Error ? error : new Error('Unable to read customer profile.'));
+      },
+    );
   },
 };

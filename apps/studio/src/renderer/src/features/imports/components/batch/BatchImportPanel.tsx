@@ -9,15 +9,19 @@ import { BatchImportResultPanel } from "./BatchImportResultPanel";
 import { BatchImportSourceActions } from "./BatchImportSourceActions";
 
 interface BatchImportPanelProps {
+  backgroundMode: import("@fresh-prints/shared/types/design/artworkBackgroundSource.types").ImportArtworkBackgroundMode;
   batchImport: UseBatchImportReturn;
   blockingMessage?: string | null;
   disabled?: boolean;
+  halftoneMode: import("@fresh-prints/shared/types/design/artworkBackgroundSource.types").ImportHalftoneMode;
 }
 
 export function BatchImportPanel({
+  backgroundMode,
   batchImport,
   blockingMessage = null,
   disabled = false,
+  halftoneMode,
 }: BatchImportPanelProps) {
   const isDesktop = isElectronDesktop();
   const {
@@ -29,12 +33,18 @@ export function BatchImportPanel({
     excludedFilePaths,
     includeAllValidatedFiles,
     isBusy,
+    itemBackgroundOverrides,
+    itemHalftoneOverrides,
     phase,
     progress,
+    recordSuggestDarkForFile,
     selectFolder,
     selectMultiplePngs,
     selectZip,
+    setItemBackgroundOverride,
+    setItemHalftoneOverride,
     sourceType,
+    suggestDarkByPath,
     toggleFileIncluded,
     uploadBatch,
     uploadReport,
@@ -108,34 +118,35 @@ export function BatchImportPanel({
       </Card>
 
       {showDiscoveryProgress ? (
-        <BatchImportProgressPanel
-          hookPhase={phase}
-          progress={progress}
-          sourceType={sourceType}
-        />
+        <BatchImportProgressPanel hookPhase={phase} progress={progress} sourceType={sourceType} />
       ) : null}
 
       {showDiscoverySummary && discoveryResult ? (
         <BatchImportDiscoverySummary
+          backgroundMode={backgroundMode}
           canUpload={canUpload}
           discoveryResult={discoveryResult}
           excludedFilePaths={new Set(excludedFilePaths)}
+          halftoneMode={halftoneMode}
           isBusy={isBusy}
+          itemBackgroundOverrides={itemBackgroundOverrides}
+          itemHalftoneOverrides={itemHalftoneOverrides}
           onExcludeAllValidatedFiles={excludeAllValidatedFiles}
           onIncludeAllValidatedFiles={includeAllValidatedFiles}
+          onItemBackgroundOverrideChange={setItemBackgroundOverride}
+          onItemHalftoneOverrideChange={setItemHalftoneOverride}
+          onSuggestDarkDetected={recordSuggestDarkForFile}
           onToggleFileIncluded={toggleFileIncluded}
           onUpload={() => {
             void uploadBatch();
           }}
+          suggestDarkByPath={suggestDarkByPath}
           warning={warning}
         />
       ) : null}
 
       {showResult && uploadReport ? (
-        <BatchImportResultPanel
-          uploadReport={uploadReport}
-          warning={warning}
-        />
+        <BatchImportResultPanel uploadReport={uploadReport} warning={warning} />
       ) : null}
 
       {showError ? (

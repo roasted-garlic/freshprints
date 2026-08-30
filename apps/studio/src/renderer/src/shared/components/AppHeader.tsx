@@ -12,7 +12,8 @@ import { ThemeToggle } from "../../features/theme/components/ThemeToggle";
 
 export function AppHeader() {
   const { headerConfig } = useShellHeader();
-  const { actions, description, filters, primaryAction, search, title, toggle } = headerConfig;
+  const { accessory, actions, description, filters, primaryAction, search, title, toggle } =
+    headerConfig;
   const { open: openDrawer } = useSidebarDrawer();
 
   return (
@@ -72,6 +73,7 @@ export function AppHeader() {
             {action.label}
           </Button>
         ))}
+        {accessory ?? null}
         <StaffInboxBellButton />
         <AssistedMessagesBellButton />
         <ThemeToggle />

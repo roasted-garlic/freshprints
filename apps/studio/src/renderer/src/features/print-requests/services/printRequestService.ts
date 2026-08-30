@@ -1,5 +1,6 @@
 import {
   deleteDoc,
+  deleteField,
   doc,
   getCountFromServer,
   getDoc,
@@ -17,6 +18,7 @@ import {
   setDoc,
   updateDoc,
   where,
+  writeBatch,
   type DocumentData,
   type QueryConstraint,
   type Transaction,
@@ -30,6 +32,7 @@ import {
 
 import { mapFirestoreTimestamp, resolveDesignDocumentTimestamps } from "../../firebase/utils/firestoreTimestamp";
 import { assertNoUndefinedFirestoreFields, withoutUndefinedFields } from "../../firebase/utils/firestoreDocument";
+import { db } from "../../../config/firebase";
 import { firestoreCollectionService } from "../../firebase/services/firestoreCollectionService";
 import { permissionService } from "../../permissions/services/permissionService";
 import type { User } from "../../users/types/user.types";
@@ -42,8 +45,13 @@ import type {
   PrintRequestOrigin,
 } from "@fresh-prints/shared/types/printRequest/printRequest.types";
 import type { PrintRequestListTab } from "@fresh-prints/shared/utils/printRequestListGrouping";
+import {
+  hasNeedsStaffRequeueMarker,
+} from "@fresh-prints/shared/utils/printRequestStaffRequeue";
+import { readCustomerIdentityDocumentFields } from "@fresh-prints/shared/utils/readCustomerIdentityDocumentFields";
 import { requireValidCustomerUsername } from "@fresh-prints/shared/utils/customerUsername";
 import { isPrintRequestOrigin } from "@fresh-prints/shared/utils/printRequestOrigin";
+import { isPortalContinuablePrintRequestStatus } from "@fresh-prints/shared/utils/portalPrintRequestListTabs";
 import {
   formatCustomerPrintRequestName,
   formatInternalPrintRequestName,
@@ -79,6 +87,7 @@ import { ShowCompletionReconciliationRemediationError } from "../../upcoming-sho
 import { diagnosePrintRequestForCompletion } from "../utils/printRequestCompletionDiagnostics";
 import { buildPrintRequestCompletionPayload } from "../utils/printRequestCompletionPayload";
 import { planPrintRequestDesignSelectionWrites } from "../utils/planPrintRequestDesignSelectionWrites";
+import { callTracedFunction } from "../../../config/tracedCallable";
 
 export type ShowReconciliationReadSource = "default" | "server";
 
@@ -124,6 +133,7 @@ export interface CreatePrintRequestItemInput {
   quantity: number;
   printWidthInches?: number;
   printHeightInches?: number;
+  standardSizePresetKey?: string;
   sortOrder?: number;
   notes?: string;
 }
@@ -132,6 +142,7 @@ export interface UpdatePrintRequestItemInput {
   quantity?: number;
   printWidthInches?: number;
   printHeightInches?: number;
+  standardSizePresetKey?: string | null;
   notes?: string;
   status?: PrintRequestItemStatus;
 }
@@ -167,6 +178,10 @@ interface PrintRequestDocumentData extends DocumentData {
   convertedFromCustomerRequestId?: unknown;
   convertedAt?: unknown;
   convertedBy?: unknown;
+  needsStaffRequeueAt?: unknown;
+  needsStaffRequeueSourceShowId?: unknown;
+  needsStaffRequeueSourceShowTitleSnapshot?: unknown;
+  needsStaffRequeueReleasedQuantity?: unknown;
   createdBy?: unknown;
   updatedBy?: unknown;
   createdAt?: unknown;
@@ -184,6 +199,7 @@ interface PrintRequestItemDocumentData extends DocumentData {
   printWidthInches?: unknown;
   printHeightInches?: unknown;
   sizeLabel?: unknown;
+  standardSizePresetKey?: unknown;
   sortOrder?: unknown;
   notes?: unknown;
   status?: unknown;
@@ -268,6 +284,19 @@ function mapPrintRequestData(printRequestId: string, data: PrintRequestDocumentD
       typeof data.convertedFromCustomerRequestId === "string"
         ? data.convertedFromCustomerRequestId
         : undefined,
+    needsStaffRequeueAt: mapFirestoreTimestamp(data.needsStaffRequeueAt),
+    needsStaffRequeueSourceShowId:
+      typeof data.needsStaffRequeueSourceShowId === "string"
+        ? data.needsStaffRequeueSourceShowId
+        : undefined,
+    needsStaffRequeueSourceShowTitleSnapshot:
+      typeof data.needsStaffRequeueSourceShowTitleSnapshot === "string"
+        ? data.needsStaffRequeueSourceShowTitleSnapshot
+        : undefined,
+    needsStaffRequeueReleasedQuantity:
+      typeof data.needsStaffRequeueReleasedQuantity === "number"
+        ? data.needsStaffRequeueReleasedQuantity
+        : undefined,
     createdBy: data.createdBy,
     updatedBy: data.updatedBy,
     createdAt,
@@ -328,6 +357,10 @@ function mapPrintRequestItemData(
     printWidthInches: typeof data.printWidthInches === "number" ? data.printWidthInches : undefined,
     printHeightInches: typeof data.printHeightInches === "number" ? data.printHeightInches : undefined,
     sizeLabel: typeof data.sizeLabel === "string" ? data.sizeLabel : undefined,
+    standardSizePresetKey:
+      typeof data.standardSizePresetKey === "string" && data.standardSizePresetKey.trim()
+        ? data.standardSizePresetKey.trim()
+        : undefined,
     sortOrder: typeof data.sortOrder === "number" ? data.sortOrder : undefined,
     notes: typeof data.notes === "string" ? data.notes : undefined,
     status: data.status as PrintRequestItemStatus,
@@ -354,6 +387,9 @@ function mapCustomerData(customerId: string, data: CustomerDocumentData): Custom
     throw new Error("A customer is incomplete.");
   }
 
+  const identityFields = readCustomerIdentityDocumentFields(data);
+  const { deletedAt: deletedAtRaw, disabledAt: disabledAtRaw, ...identityRest } = identityFields;
+
   return {
     id: customerId,
     userId: typeof data.userId === "string" ? data.userId : undefined,
@@ -369,6 +405,9 @@ function mapCustomerData(customerId: string, data: CustomerDocumentData): Custom
     totalApprovedRequests:
       typeof data.totalApprovedRequests === "number" ? data.totalApprovedRequests : undefined,
     usernameUpdatedAt: resolveRequiredTimestamp(data.usernameUpdatedAt),
+    ...identityRest,
+    deletedAt: resolveRequiredTimestamp(deletedAtRaw),
+    disabledAt: resolveRequiredTimestamp(disabledAtRaw),
     createdAt,
     updatedAt,
   };
@@ -576,6 +615,24 @@ function getInternalPrintRequestCounterRef() {
   return doc(firestoreCollectionService.getCountersCollection(), INTERNAL_PRINT_REQUEST_COUNTER_ID);
 }
 
+function buildContinuableCustomerPrintRequestsQuery(customerId: string) {
+  return query(
+    firestoreCollectionService.getPrintRequestsCollection(),
+    where("customerId", "==", customerId),
+    where("status", "in", ["draft", "editing"]),
+    limit(1),
+  );
+}
+
+async function assertCustomerHasNoContinuablePrintRequest(customerId: string): Promise<void> {
+  const snapshot = await getDocs(buildContinuableCustomerPrintRequestsQuery(customerId));
+  if (!snapshot.empty) {
+    throw new Error(
+      "This customer already has an open print request. Finish or release that request before creating another.",
+    );
+  }
+}
+
 async function createInternalPrintRequestInTransaction(
   transaction: Transaction,
   callerId: string,
@@ -626,6 +683,7 @@ async function createCustomerPrintRequestInTransaction(
 
   const customer = mapCustomerData(customerSnapshot.id, customerSnapshot.data() as CustomerDocumentData);
   const username = requireValidCustomerUsername(customer.username ?? "");
+
   const sequence = resolveNextSequence(customer.nextPrintRequestSequence);
   const payload = buildPrintRequestPayload(
     {
@@ -651,6 +709,149 @@ async function createCustomerPrintRequestInTransaction(
   });
 
   return requestRef;
+}
+
+function buildDuplicatedPrintRequestItemPayload(
+  callerId: string,
+  newPrintRequestId: string,
+  itemRefId: string,
+  sourceItem: PrintRequestItem,
+) {
+  const isUploadItem =
+    sourceItem.sourceType === "customer_upload" || Boolean(sourceItem.customerUploadId);
+
+  return withoutUndefinedFields({
+    id: itemRefId,
+    printRequestId: newPrintRequestId,
+    ...(isUploadItem
+      ? {
+          sourceType: "customer_upload" as const,
+          customerUploadId: sourceItem.customerUploadId,
+          titleSnapshot: sourceItem.titleSnapshot,
+        }
+      : { designId: sourceItem.designId }),
+    quantity: sourceItem.quantity,
+    printWidthInches: sourceItem.printWidthInches,
+    printHeightInches: sourceItem.printHeightInches,
+    sizeLabel: sourceItem.sizeLabel,
+    sortOrder: sourceItem.sortOrder,
+    notes: sourceItem.notes,
+    status: "pending" as const,
+    addedBy: callerId,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+async function duplicatePrintRequestForShowTransferCopyInTransaction(
+  transaction: Transaction,
+  callerId: string,
+  source: PrintRequest,
+  itemCount: number,
+): Promise<{
+  requestRef: ReturnType<typeof doc>;
+  name: string;
+  requestOrigin?: PrintRequestOrigin;
+  customerId?: string;
+}> {
+  const requestRef = doc(firestoreCollectionService.getPrintRequestsCollection());
+  let name = "";
+  let requestOrigin = source.requestOrigin;
+  let customerId = source.customerId;
+  let sequence = 0;
+
+  if (source.isInternal) {
+    const counterRef = getInternalPrintRequestCounterRef();
+    const counterSnapshot = await transaction.get(counterRef);
+    sequence = resolveNextSequence(counterSnapshot.data()?.nextInternalRequestSequence);
+    const internalBaseName = requireValidInternalBaseName(source.internalBaseName ?? "internal");
+    name = formatInternalPrintRequestName(internalBaseName, sequence);
+    requestOrigin = source.requestOrigin ?? "studio_internal";
+
+    const payload = withoutUndefinedFields({
+      ...buildPrintRequestPayload(
+        {
+          name,
+          isInternal: true,
+          requestOrigin,
+          internalBaseName,
+          nameFormatVersion: source.nameFormatVersion ?? "cr-ir-v1",
+          requestSequenceNumber: sequence,
+          notes: source.notes,
+        },
+        callerId,
+      ),
+      status: "active" as const,
+      itemCount,
+    });
+
+    assertNoUndefinedFirestoreFields(payload, "Copied internal print request payload");
+    transaction.set(requestRef, payload);
+    transaction.set(
+      counterRef,
+      withoutUndefinedFields({
+        nextInternalRequestSequence: sequence + 1,
+        createdAt: counterSnapshot.exists() ? undefined : serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }),
+      { merge: true },
+    );
+  } else {
+    if (!source.customerId) {
+      throw new Error("Customer print requests must have a customer to copy.");
+    }
+
+    const customerRef = doc(firestoreCollectionService.getCustomersCollection(), source.customerId);
+    const customerSnapshot = await transaction.get(customerRef);
+
+    if (!customerSnapshot.exists()) {
+      throw new Error("Customer not found.");
+    }
+
+    const customer = mapCustomerData(customerSnapshot.id, customerSnapshot.data() as CustomerDocumentData);
+    const username = requireValidCustomerUsername(
+      source.customerUsernameSnapshot ?? customer.username ?? "",
+    );
+    sequence = resolveNextSequence(customer.nextPrintRequestSequence);
+    name = formatCustomerPrintRequestName(username, sequence);
+    customerId = customer.id;
+    requestOrigin = source.requestOrigin ?? "studio_customer";
+
+    const payload = withoutUndefinedFields({
+      ...buildPrintRequestPayload(
+        {
+          name,
+          customerId: customer.id,
+          isInternal: false,
+          requestOrigin,
+          requestSequenceNumber: sequence,
+          customerUsernameSnapshot: username,
+          customerDisplayNameSnapshot:
+            source.customerDisplayNameSnapshot ?? customer.displayName,
+          nameFormatVersion: source.nameFormatVersion ?? "cr-ir-v1",
+          notes: source.notes,
+        },
+        callerId,
+      ),
+      status: "active" as const,
+      itemCount,
+    });
+
+    assertNoUndefinedFirestoreFields(payload, "Copied customer print request payload");
+    transaction.set(requestRef, payload);
+    transaction.update(customerRef, {
+      nextPrintRequestSequence: sequence + 1,
+      totalPrintRequests: customer.totalPrintRequests + 1,
+      updatedAt: serverTimestamp(),
+    });
+  }
+
+  return {
+    requestRef,
+    name,
+    requestOrigin,
+    customerId,
+  };
 }
 
 export const printRequestService = {
@@ -824,18 +1025,20 @@ export const printRequestService = {
   },
 
   /**
-   * Active allocation rows scoped to the given request IDs (chunked `in` queries, cap 10) —
-   * returns full `ShowAllocation` documents for show grouping on the Print Requests list page.
-   * Canceled allocations are excluded server-side in the mapper/filter pass.
+   * Allocation rows scoped to the given request IDs (chunked `in` queries, cap 10).
+   * When `activeOnly` is true, canceled rows are excluded (Print Requests list grouping).
+   * Customer history uses `activeOnly: false` so missed-show / requeue timelines stay truthful.
    */
-  async listActiveShowAllocationsForRequests(
+  async listShowAllocationsForRequests(
     caller: User,
     printRequestIds: string[],
+    options?: { activeOnly?: boolean },
   ): Promise<ShowAllocation[]> {
     if (!permissionService.canViewPrintRequests(caller)) {
       return [];
     }
 
+    const activeOnly = options?.activeOnly ?? false;
     const uniqueIds = [...new Set(printRequestIds.map((id) => id.trim()).filter(Boolean))];
     if (uniqueIds.length === 0) {
       return [];
@@ -846,7 +1049,10 @@ export const printRequestService = {
       chunks.push(uniqueIds.slice(index, index + 10));
     }
 
-    traceFirestoreOneShotStart("getDocs", "showAllocations:activeByRequestIds-chunked");
+    traceFirestoreOneShotStart(
+      "getDocs",
+      activeOnly ? "showAllocations:activeByRequestIds-chunked" : "showAllocations:byRequestIds-chunked",
+    );
     const chunkSnapshots = await Promise.all(
       chunks.map((chunk) =>
         getDocs(
@@ -859,7 +1065,7 @@ export const printRequestService = {
     );
     traceFirestoreOneShotComplete(
       "getDocs",
-      "showAllocations:activeByRequestIds-chunked",
+      activeOnly ? "showAllocations:activeByRequestIds-chunked" : "showAllocations:byRequestIds-chunked",
       chunkSnapshots.reduce((total, snapshot) => total + snapshot.size, 0),
     );
 
@@ -870,7 +1076,10 @@ export const printRequestService = {
             allocationDoc.id,
             allocationDoc.data() as ShowAllocationDocumentData,
           );
-          return allocation.status === "canceled" ? [] : [allocation];
+          if (activeOnly && allocation.status === "canceled") {
+            return [];
+          }
+          return [allocation];
         } catch (error) {
           console.warn(
             `[printRequestService] Skipping incomplete show allocation ${allocationDoc.id}:`,
@@ -880,6 +1089,18 @@ export const printRequestService = {
         }
       }),
     );
+  },
+
+  /**
+   * Active allocation rows scoped to the given request IDs (chunked `in` queries, cap 10) —
+   * returns full `ShowAllocation` documents for show grouping on the Print Requests list page.
+   * Canceled allocations are excluded server-side in the mapper/filter pass.
+   */
+  async listActiveShowAllocationsForRequests(
+    caller: User,
+    printRequestIds: string[],
+  ): Promise<ShowAllocation[]> {
+    return this.listShowAllocationsForRequests(caller, printRequestIds, { activeOnly: true });
   },
 
   async listPrintRequestItemSummariesForRequests(
@@ -1010,6 +1231,39 @@ export const printRequestService = {
     );
   },
 
+  async listCustomerIdsWithContinuableCustomerRequests(caller: User): Promise<string[]> {
+    if (!permissionService.canViewPrintRequests(caller)) {
+      return [];
+    }
+
+    const continuableQuery = query(
+      firestoreCollectionService.getPrintRequestsCollection(),
+      where("status", "in", ["draft", "editing"]),
+      where("isInternal", "==", false),
+    );
+    traceFirestoreOneShotStart("getDocs", "printRequests:continuableCustomerIds");
+    const snapshot = await getDocs(continuableQuery);
+    traceFirestoreOneShotComplete(
+      "getDocs",
+      "printRequests:continuableCustomerIds",
+      snapshot.size,
+    );
+
+    const customerIds = new Set<string>();
+    for (const requestDoc of snapshot.docs) {
+      const data = requestDoc.data() as { customerId?: unknown; status?: unknown };
+      if (
+        typeof data.customerId === "string" &&
+        data.customerId.length > 0 &&
+        isPortalContinuablePrintRequestStatus(data.status as PrintRequest["status"])
+      ) {
+        customerIds.add(data.customerId);
+      }
+    }
+
+    return [...customerIds];
+  },
+
   /**
    * Fetches only the given customer IDs (direct doc reads) — replaces a full `customers`
    * collection scan for list rendering, since a visible request page only ever references a
@@ -1089,9 +1343,8 @@ export const printRequestService = {
     const requestRef = await runTracedWrite(
       "runTransaction",
       () =>
-        runTransaction(
-          firestoreCollectionService.getPrintRequestsCollection().firestore,
-          (transaction) => createInternalPrintRequestInTransaction(transaction, caller.id, input),
+        runTransaction(db, (transaction) =>
+          createInternalPrintRequestInTransaction(transaction, caller.id, input),
         ),
       {
         app: "studio",
@@ -1113,12 +1366,13 @@ export const printRequestService = {
       throw new Error("You do not have permission to create print requests.");
     }
 
+    await assertCustomerHasNoContinuablePrintRequest(input.customerId);
+
     const requestRef = await runTracedWrite(
       "runTransaction",
       () =>
-        runTransaction(
-          firestoreCollectionService.getPrintRequestsCollection().firestore,
-          (transaction) => createCustomerPrintRequestInTransaction(transaction, caller.id, input),
+        runTransaction(db, (transaction) =>
+          createCustomerPrintRequestInTransaction(transaction, caller.id, input),
         ),
       {
         app: "studio",
@@ -1169,6 +1423,41 @@ export const printRequestService = {
 
     const updatedSnapshot = await getDoc(requestRef);
     return mapPrintRequestData(updatedSnapshot.id, updatedSnapshot.data() as PrintRequestDocumentData);
+  },
+
+  async clearNeedsStaffRequeueMarker(caller: User, printRequestId: string): Promise<void> {
+    if (!permissionService.canManagePrintRequests(caller)) {
+      throw new Error("You do not have permission to edit print requests.");
+    }
+
+    const requestRef = doc(firestoreCollectionService.getPrintRequestsCollection(), printRequestId);
+    const snapshot = await getDoc(requestRef);
+
+    if (!snapshot.exists()) {
+      throw new Error("Print request not found.");
+    }
+
+    const current = mapPrintRequestData(snapshot.id, snapshot.data() as PrintRequestDocumentData);
+    if (!hasNeedsStaffRequeueMarker(current)) {
+      return;
+    }
+
+    const nextPayload = {
+      needsStaffRequeueAt: deleteField(),
+      needsStaffRequeueSourceShowId: deleteField(),
+      needsStaffRequeueSourceShowTitleSnapshot: deleteField(),
+      needsStaffRequeueReleasedQuantity: deleteField(),
+      updatedBy: caller.id,
+      updatedAt: serverTimestamp(),
+    };
+
+    assertNoUndefinedFirestoreFields(nextPayload, "Print request requeue marker clear payload");
+    await runTracedWrite("updateDoc", () => updateDoc(requestRef, nextPayload), {
+      app: "studio",
+      collection: "printRequests",
+      documentPathPattern: "printRequests/{printRequestId}",
+      source: "printRequestService.clearNeedsStaffRequeueMarker",
+    });
   },
 
   async getPrintRequestForShowReconciliation(
@@ -1260,6 +1549,36 @@ export const printRequestService = {
       documentPathPattern: "printRequests/{printRequestId}",
       source: "printRequestService.markPrintRequestCompletedForShowReconciliation",
     });
+
+    try {
+      await this.syncPrintRequestQueueTab(caller, printRequestId);
+    } catch {
+      // Firestore trigger / a later owner repair can reconcile queueTab.
+    }
+  },
+
+  async syncPrintRequestQueueTab(
+    caller: User,
+    printRequestId: string,
+  ): Promise<PrintRequestListTab | null> {
+    if (!permissionService.canManagePrintRequests(caller)) {
+      throw new Error("You do not have permission to edit print requests.");
+    }
+
+    const trimmedId = printRequestId.trim();
+    if (!trimmedId) {
+      throw new Error("A print request ID is required.");
+    }
+
+    const invoke = callTracedFunction<{ printRequestId: string }, { queueTab: string | null }>(
+      "syncPrintRequestQueueTab",
+      {
+        source: "printRequestService.syncPrintRequestQueueTab",
+        action: "Sync print request queue tab",
+      },
+    );
+    const result = await invoke({ printRequestId: trimmedId });
+    return isPrintRequestListTab(result.queueTab) ? result.queueTab : null;
   },
 
   async updatePrintRequestDetail(
@@ -1386,6 +1705,9 @@ export const printRequestService = {
           typeof printWidthInches === "number" && typeof printHeightInches === "number"
             ? formatPrintRequestItemSizeLabel(printWidthInches, printHeightInches)
             : undefined,
+        ...(input.standardSizePresetKey?.trim()
+          ? { standardSizePresetKey: input.standardSizePresetKey.trim() }
+          : {}),
         sortOrder,
         notes: input.notes?.trim() || undefined,
         status: "pending" as const,
@@ -1437,6 +1759,9 @@ export const printRequestService = {
       printWidthInches: requestedSize.printWidthInches,
       printHeightInches: requestedSize.printHeightInches,
       sizeLabel: requestedSize.sizeLabel,
+      ...(input.standardSizePresetKey?.trim()
+        ? { standardSizePresetKey: input.standardSizePresetKey.trim() }
+        : {}),
       sortOrder,
       notes: input.notes?.trim() || undefined,
       status: "pending" as const,
@@ -1544,6 +1869,19 @@ export const printRequestService = {
                 completedAt: current.completedAt,
               };
 
+    const presetKeyUpdate =
+      input.standardSizePresetKey === null
+        ? { standardSizePresetKey: deleteField() }
+        : input.standardSizePresetKey !== undefined
+          ? {
+              standardSizePresetKey:
+                typeof input.standardSizePresetKey === "string" &&
+                input.standardSizePresetKey.trim()
+                  ? input.standardSizePresetKey.trim()
+                  : deleteField(),
+            }
+          : {};
+
     const payload = withoutUndefinedFields({
       quantity: input.quantity ?? current.quantity,
       printWidthInches: requestedSize.printWidthInches,
@@ -1552,6 +1890,7 @@ export const printRequestService = {
       notes: input.notes?.trim() || undefined,
       updatedAt: serverTimestamp(),
       ...statusFields,
+      ...presetKeyUpdate,
     });
 
     assertNoUndefinedFirestoreFields(payload, "Print request item update payload");
@@ -1635,6 +1974,7 @@ export const printRequestService = {
         quantity: item.quantity,
         printWidthInches: item.printWidthInches,
         printHeightInches: item.printHeightInches,
+        standardSizePresetKey: item.standardSizePresetKey,
         sortOrder: duplicateSortOrder,
         notes: item.notes,
       });
@@ -1649,11 +1989,92 @@ export const printRequestService = {
       quantity: item.quantity,
       printWidthInches: item.printWidthInches,
       printHeightInches: item.printHeightInches,
+      standardSizePresetKey: item.standardSizePresetKey,
       sortOrder: duplicateSortOrder,
       notes: item.notes,
     });
 
     return createdItem;
+  },
+
+  /**
+   * Creates a new print request with the next locked sequence number and duplicates every item.
+   * Used when staff copy a queued request from a past/finished show to another show.
+   */
+  async duplicatePrintRequestForShowTransferCopy(
+    caller: User,
+    source: PrintRequest,
+    sourceItems: PrintRequestItem[],
+  ): Promise<{
+    printRequestId: string;
+    printRequestName: string;
+    requestOrigin?: PrintRequestOrigin;
+    customerId?: string;
+    itemIdBySourceItemId: Record<string, string>;
+  }> {
+    if (!permissionService.canManagePrintRequests(caller)) {
+      throw new Error("You do not have permission to create print requests.");
+    }
+
+    if (!permissionService.canManagePrintRequestItems(caller)) {
+      throw new Error("You do not have permission to duplicate print request items.");
+    }
+
+    if (sourceItems.length === 0) {
+      throw new Error("This print request has no items to copy.");
+    }
+
+    const duplicated = await runTracedWrite(
+      "runTransaction",
+      () =>
+        runTransaction(db, (transaction) =>
+            duplicatePrintRequestForShowTransferCopyInTransaction(
+              transaction,
+              caller.id,
+              source,
+              sourceItems.length,
+            ),
+        ),
+      {
+        app: "studio",
+        collection: "printRequests",
+        documentPathPattern: "printRequests/{printRequestId}",
+        source: "printRequestService.duplicatePrintRequestForShowTransferCopy",
+      },
+      { writeCount: 2 },
+    );
+
+    const itemIdBySourceItemId: Record<string, string> = {};
+    const batch = writeBatch(firestoreCollectionService.getPrintRequestsCollection().firestore);
+
+    for (const sourceItem of sourceItems) {
+      const itemRef = doc(firestoreCollectionService.getPrintRequestItemsCollection());
+      const itemPayload = buildDuplicatedPrintRequestItemPayload(
+        caller.id,
+        duplicated.requestRef.id,
+        itemRef.id,
+        sourceItem,
+      );
+
+      assertNoUndefinedFirestoreFields(itemPayload, "Copied print request item payload");
+      batch.set(itemRef, itemPayload);
+      itemIdBySourceItemId[sourceItem.id] = itemRef.id;
+    }
+
+    await runTracedWrite("writeBatch", () => batch.commit(), {
+      app: "studio",
+      collection: "printRequestItems",
+      documentPathPattern: "printRequestItems/{printRequestItemId}",
+      source: "printRequestService.duplicatePrintRequestForShowTransferCopy",
+    });
+
+    return {
+      printRequestId: duplicated.requestRef.id,
+      printRequestName: duplicated.name,
+      requestOrigin: duplicated.requestOrigin,
+      customerId: duplicated.customerId,
+      itemIdBySourceItemId,
+    };
   },
 
   async removePrintRequestItem(caller: User, itemId: string): Promise<void> {

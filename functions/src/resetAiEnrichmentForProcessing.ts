@@ -81,6 +81,7 @@ export const resetAiEnrichmentForProcessing = onCall(
       aiRequestedReasoningEffort: FieldValue.delete(),
       aiSuggestions: FieldValue.delete(),
       aiAnalysis: FieldValue.delete(),
+      smartProfile: FieldValue.delete(),
       aiReviewedAt: FieldValue.delete(),
       aiReviewedBy: FieldValue.delete(),
       aiReviewNotes: FieldValue.delete(),

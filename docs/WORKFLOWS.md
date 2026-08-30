@@ -869,6 +869,8 @@ Staff starts AI (Start AI with auto advance, or Process image with AI one at a t
 Sequential enqueue → Cloud Function pipeline (maxInstances: 1)
      ↓
 AI completes → Needs Review tab (aiReviewStatus: needs_review)
+
+**Catalog Processing Mode (ADR-FP-144 / Slice 4):** Server setting `manual` \| `shadow` \| `autonomous` (fail-safe Manual). Live Autonomous publication requires a separate owner-only live gate + typed `ENABLE AUTONOMOUS`. Until live is enabled, successful enrichment always remains Needs Review (Shadow may record would-auto-approve). Catalog Reprocessing Start for AI Review Queue / Ready Catalog unlocks in Slices 5–6.
      ↓
 Staff reviews in Approval Mode, corrects metadata
      ↓

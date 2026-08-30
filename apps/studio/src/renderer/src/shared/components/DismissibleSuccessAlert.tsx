@@ -24,6 +24,11 @@ export function DismissibleSuccessAlert({
   const remainingMsRef = useRef(dismissDelayMs);
   const timerRef = useRef<number | null>(null);
   const segmentStartedAtRef = useRef(0);
+  const onDismissRef = useRef(onDismiss);
+
+  useEffect(() => {
+    onDismissRef.current = onDismiss;
+  }, [onDismiss]);
 
   const clearDismissTimer = useCallback(() => {
     if (timerRef.current !== null) {
@@ -37,9 +42,11 @@ export function DismissibleSuccessAlert({
       clearDismissTimer();
       remainingMsRef.current = durationMs;
       segmentStartedAtRef.current = Date.now();
-      timerRef.current = window.setTimeout(onDismiss, durationMs);
+      timerRef.current = window.setTimeout(() => {
+        onDismissRef.current();
+      }, durationMs);
     },
-    [clearDismissTimer, onDismiss],
+    [clearDismissTimer],
   );
 
   useEffect(() => {
@@ -50,7 +57,7 @@ export function DismissibleSuccessAlert({
     beginDismissSegment(dismissDelayMs);
 
     return clearDismissTimer;
-  }, [beginDismissSegment, clearDismissTimer, dismissDelayMs, message, onDismiss]);
+  }, [beginDismissSegment, clearDismissTimer, dismissDelayMs, message]);
 
   const handleMouseEnter = useCallback(() => {
     if (!showProgress || isPaused) {
@@ -71,7 +78,7 @@ export function DismissibleSuccessAlert({
     const remainingMs = remainingMsRef.current;
 
     if (remainingMs <= 0) {
-      onDismiss();
+      onDismissRef.current();
       return;
     }
 
@@ -80,7 +87,7 @@ export function DismissibleSuccessAlert({
     setProgressStart(remainingMs / dismissDelayMs);
     setProgressSeed((currentKey) => currentKey + 1);
     beginDismissSegment(remainingMs);
-  }, [beginDismissSegment, dismissDelayMs, isPaused, onDismiss, showProgress]);
+  }, [beginDismissSegment, dismissDelayMs, isPaused, showProgress]);
 
   if (!showProgress) {
     return (

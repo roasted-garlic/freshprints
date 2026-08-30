@@ -47,7 +47,17 @@ export function formatUpcomingShowTitle(show: UpcomingShow): string {
     }
     return show.title?.trim() || "Internal Gang Sheet";
   }
+  if (show.source === "dev_fixture") {
+    return show.title?.trim() || "DEV fixture show";
+  }
   return show.title?.trim() || `Whatnot show ${show.whatnotShowId ?? "unknown"}`;
+}
+
+export function formatUpcomingShowWhatnotIdentityLabel(show: UpcomingShow): string {
+  if (show.source === "dev_fixture") {
+    return "DEV OVERRIDE";
+  }
+  return show.whatnotShowId ?? "unknown";
 }
 
 export function formatUpcomingShowTimestampLabel(value: { toDate: () => Date } | undefined): string {

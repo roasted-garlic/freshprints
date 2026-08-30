@@ -1,5 +1,53 @@
 # Fresh Prints Roadmap
 
+> 2026-08-30: **Print Request 11″ Default + 15″ Upscale + Legacy Art Upscale — PLAN + FORMAL REVIEW** — Goal `print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale`. Plan + Review **approved_with_changes**; **STOP** for owner approval before implement. Sequenced **before** Smart Profiling completion. **Production NOT AUTHORIZED.** Plan: `docs/workflow/plans/2026-08-30-print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale-plan.md`. Review: `docs/workflow/reviews/2026-08-30-print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale-review.md`.
+>
+> 2026-08-30: **Customer Account Identity WS4 — CLOSED (DEV)** — Goal `customer-account-identity-management-ws4-customer-activity-and-deep-linking` **DONE**. Owner DEV QA **PASS**. Print Request History + Account Activity + deep linking in Studio User Info. **WS1–WS4 complete on DEV.** Production **NOT AUTHORIZED.** Signoff: `docs/workflow/reviews/2026-08-30-customer-account-identity-management-ws4-signoff.md`.
+>
+> 2026-08-30: **Show Queue Did Not Print Re-queue Recovery — CLOSED (DEV)** — Goal `show-queue-needs-attention-did-not-print-recovery` **DONE**. Owner DEV QA **PASS** (primary Move + secondary Release-only + DEV fixture + allocation permissions + scoped Owner Edit Show enabler). `requeue_unfulfilled`, Needs Re-queue triage, `requeuedFromAllocationId` lineage on `fresh-prints-dev`. **Production / Studio publish NOT AUTHORIZED.** Signoff: `docs/workflow/reviews/2026-08-30-show-queue-needs-attention-did-not-print-recovery-signoff.md`.
+>
+> 2026-08-29: **Show Queue DEV Override + Allocation Permission Repair — CLOSED (DEV)** — Goal `show-queue-dev-override-and-allocation-permission-repair` **DONE**. Owner DEV QA **PASS** (incl. Needs Attention corrective). Rules allowlist repair; `DEV-OVERRIDE` / `dev_fixture`; recovery callables on `fresh-prints-dev`. **Production / Studio publish NOT AUTHORIZED.** Signoff: `docs/workflow/reviews/2026-08-29-show-queue-dev-override-and-allocation-permission-repair-signoff.md`.
+>
+> 2026-08-29: **Show Queue Did Not Print Re-queue Recovery — PLAN + REVIEW** — *(superseded)* Formal Review **approved_with_changes**.
+>
+> 2026-08-29: **Customer Account Identity Management — WS2 CLOSED (DEV)** — Goal `customer-account-identity-management-ws2-duplicate-resolution` **DONE**. Owner DEV QA **PASS**; Studio product name **Transfer Username**. Functions on `fresh-prints-dev`: `previewDuplicateAccountResolution`, `transferCustomerUsername`. **No WS3 merge; no history reassignment.** Production / Studio publish / Portal **NOT AUTHORIZED** (coordinated identity promotion deferred). Signoff: `docs/workflow/reviews/2026-08-29-customer-account-identity-management-ws2-signoff.md`.
+>
+> 2026-08-29: **Customer Account Identity WS3 IMPLEMENTED (DEV source)** — *(superseded by WS3 CLOSED banner above)* Merge Accounts callables + Studio wizard + Merged tab. Stage-order QA corrective documented.
+>
+> 2026-08-29: **Print Request Standard Size Presets — CLOSED (DEV)** — Goal `print-request-standard-size-presets` **DONE**. Signoff **approved**; owner focused corrective re-QA **PASS**. Standard Sizes settings + modal (v1 defaults, Pocket, Adult/Youth/Toddler/Infant + Hat sub-tabs) on `fresh-prints-dev`. **Production / Studio publish / Portal App Hosting NOT AUTHORIZED.** Signoff: `docs/workflow/reviews/2026-08-29-print-request-standard-size-presets-signoff.md`. Production **NOT AUTHORIZED**.
+>
+> 2026-08-28: **Customer Account Identity Management — WS1 CLOSED (DEV)** — Goal `customer-account-identity-management-and-audit` **WS1 DONE**. Signoff **approved**; owner DEV QA **PASS** (correctives #1–#5). Reversible disable, hard-delete preview/apply (dev-gated), Change Username UX, Portal-editable PR contract, duplicate-CR guards on `fresh-prints-dev`. **WS2–WS4 not started.** Production / Studio publish / Portal App Hosting **not authorized**. Signoff: `docs/workflow/reviews/2026-08-28-customer-account-identity-management-ws1-signoff.md`. FreshForge **IDLE**. Phase 9 **PARKED**.
+>
+> 2026-08-28: **Phase 7 Show Queue past-show failsafe — CLOSED (DEV)** — Goal `show-queue-past-show-failsafe-and-owner-override` **DONE**. Signoff **approved_with_notes**; owner DEV QA **PASS**. Needs Attention tab; staff remediation + owner override v1; recovery callables on `fresh-prints-dev` only. Session corrective: Show Queue tab URL sync; Portal show-list caches. **Production / Studio publish not authorized.** Signoff: `docs/workflow/reviews/2026-08-28-show-queue-past-show-failsafe-and-owner-override-signoff.md`. FreshForge **IDLE**. Phase 9 **PARKED**.
+>
+> 2026-08-27: **DEV work closeout — owner acceptance** — Portal customer username change **DONE** (DEV QA PASS; production promotion deferred). Smart Catalog Intelligence **Slice 6 SIGNOFF approved_with_notes (DEV)** — Ready preservation passed; full Ready Catalog backfill on `fresh-prints-dev`; Smart Profile visibility/editing/reconciliation accepted; **1 failed enrichment design** + calibration notes retained. Shadow ON; Autonomous OFF; production untouched. Signoffs: `docs/workflow/reviews/2026-08-27-portal-customer-username-change-signoff.md`, `docs/workflow/reviews/2026-08-26-smart-catalog-intelligence-slice-6-signoff.md`. FreshForge **IDLE**.
+
+> 2026-08-27: **Phase 7 Show Queue gang-sheet three-mode refinement — CLOSED (DEV)** — Goal `show-queue-gang-sheet-three-mode-refinement` **DONE**. Signoff **approved**; owner DEV QA **PASS**. Three modes: Standard · Grouped by Customer (`customer_grouped_continuous`) · Sheet per Customer (`grouped_by_customer`). Studio + shared only; **no Studio publish / production**. Signoff: `docs/workflow/reviews/2026-08-27-show-queue-gang-sheet-three-mode-refinement-signoff.md`. Phase 9 **PARKED**.
+
+> 2026-08-27: **Phase 7 Show Queue gang-sheet modes — owner refinement (docs only)** — Queued goal product spec refined (superseded by formal plan). Phase 9 **PARKED**.
+>
+> 2026-08-26: **Smart Catalog Intelligence — Slice 6 SIGNOFF approved_with_notes (DEV)** — *(see 2026-08-27 closeout banner above)* Ready Catalog reprocess preservation + full DEV backfill; Smart Profile visibility/editing/reconciliation; gate unlocked on DEV. ADR-FP-146, ADR-FP-147. Phase 9 **PARKED**.
+
+> 2026-08-26: **Smart Catalog Intelligence — Slice 6 PLAN ready (Formal Review approved_with_changes)** — *(superseded by implement banner above)* Ready Catalog reprocess planned. Phase 9 **PARKED**.
+
+> 2026-08-26: **Smart Catalog Intelligence — Slice 5 SIGNOFF approved_with_notes (DEV)** — Goal `smart-catalog-intelligence-unattended-enrichment` **Slice 5 DONE**. AI Review Queue reprocess + Shadow calibration (Gate H 204/204) + Gate I catch-and-correct (**catalog-enrich-v30** + **smart-profile-normalizer-v4**; `category_dominant_intent_conflict` + subject anti-glue). Mini QA **PASS WITH NOTES**. Ready Catalog locked; Autonomous OFF; production untouched. **Slice 6 planning authorized separately.** Signoff: `docs/workflow/reviews/2026-08-26-smart-catalog-intelligence-slice-5-signoff.md`. Phase 9 **PARKED**.
+
+> 2026-08-26: **Smart Catalog Intelligence — Slice 5 Gate I CORRECTIVE implemented (code only)** — *(superseded by Slice 5 signoff banner above)* Gate I owner sample **NEEDS CORRECTIVE**; corrective v30/v4 shipped then DEV-deployed + mini-QA’d. Plan: `docs/workflow/plans/2026-08-26-slice-5-gate-i-corrective-plan.md`. Phase 9 **PARKED**.
+
+> 2026-08-25: **Smart Catalog Intelligence — Slice 5 IMPLEMENTATION REVIEW approved (code only)** — Goal `smart-catalog-intelligence-unattended-enrichment` **Slice 5 Gate C DONE** (Implement + Test + Implementation Review). AI Review Queue unlock + eligibility/preview/worker/outcomes/Shadow preflight on control plane; Ready Catalog still gated; Autonomous OFF; **no DEV deploy / no job Start**. Next: owner Gate E deploy authorize. Review: `docs/workflow/reviews/2026-08-25-smart-catalog-intelligence-slice-5-implementation-review.md`. Phase 9 **PARKED**.
+
+> 2026-08-25: **Smart Profile Quality + Canonicalization (+ Import Background) refinement — SIGNOFF approved_with_notes (DEV)** — Goal `smart-catalog-intelligence-unattended-enrichment` refinement **DONE**. Prompt **catalog-enrich-v29** + **smart-profile-normalizer-v3** (C1 Highland specificity) on DEV `enqueueAiEnrichment`; import Auto background C2b accepted (PASS WITH NOTES; further detector tuning deferred). Live smoke PASS; Autonomous OFF; production untouched. **Slice 5 unblocked** (not started). Signoff: `docs/workflow/reviews/2026-08-25-smart-profile-quality-canonicalization-and-import-background-signoff.md`. Phase 9 **PARKED**.
+
+> 2026-08-25: **Smart Catalog Intelligence — Slice 4 SIGNOFF approved_with_notes (DEV)** — Goal `smart-catalog-intelligence-unattended-enrichment` **Slice 4 DONE**. Catalog Processing Mode + dual Autonomous gate (live OFF) + autonomy/verifier + Automation Health + Catalog Reprocessing control plane (Start gated) on `fresh-prints-dev`. Owner QA **PASS WITH NOTES**. **Slice 5 blocked** until Smart Profile Quality + Canonicalization (+ import background/halftone) refinement signed off. No production / live Autonomous. Signoff: `docs/workflow/reviews/2026-08-25-smart-catalog-intelligence-slice-4-signoff.md`. Phase 9 **PARKED**.
+
+> 2026-08-25: **Smart Catalog Intelligence — Catalog Reprocessing amendment (docs)** — Owner-required cross-slice capability: Settings → AI Enrichment → Catalog Reprocessing (owner-only; DEV+PROD). Slice 4 owns control plane/job architecture; Slice 5 **Reprocess AI Review Queue**; Slice 6 **Reprocess Ready Catalog**. Master plan §11a. Phase 9 **PARKED**.
+>
+> 2026-08-25: **Smart Catalog Intelligence — Slice 3 SIGNOFF approved_with_notes (DEV)** — Goal `smart-catalog-intelligence-unattended-enrichment` **Slice 3 DONE**. Search Intelligence + Algolia Smart Profile fields + Smart Filters (flag default OFF) + Category↔search/Smart reciprocal narrowing on `fresh-prints-dev`. Owner final QA **PASS**. Correctives: Portal post-filter skip, Filters CSS, category facets. **Slice 4 not started.** No production. Signoff: `docs/workflow/reviews/2026-08-25-smart-catalog-intelligence-slice-3-signoff.md`. Phase 9 **PARKED**.
+>
+> 2026-08-24: **Phase 7 Show Queue gang-sheet three-mode refinement — QUEUED ONLY (docs)** — Future managed goal `show-queue-gang-sheet-three-mode-refinement` recorded; **not started**. Owner product clarification: modal eventually exposes **Standard**, **Grouped by Customer** (continuous multi-customer sheets with CR headings; new customer ≠ new sheet), and **Separate by Customer** (preserve today’s isolated-per-request sheet sets). Not part of Smart Catalog Intelligence Slices 3–6. No runtime work. Brief: `docs/workflow/plans/2026-08-24-show-queue-gang-sheet-three-mode-refinement-queued-goal.md`. ADR-FP-143 follow-up note in `docs/project/DECISIONS.md`. Phase 9 **PARKED**.
+>
+> 2026-08-24: **Smart Catalog Intelligence — Slice 2 SIGNOFF approved_with_notes (DEV)** — Goal `smart-catalog-intelligence-unattended-enrichment` **Slice 2 DONE**. Smart Profile `smart-profile-v1`, prompt **catalog-enrich-v27**, import provenance fields, shadow automation (Needs Review only), persistence corrective on `fresh-prints-dev`. Owner DEV QA **PASS WITH NOTES**; **PROVENANCE PASS**. Calibration notes retained for Slices 3–4. **Slice 3 not started.** No auto-approval / tag retirement / backfill / prod. Signoff: `docs/workflow/reviews/2026-08-24-smart-catalog-intelligence-slice-2-signoff.md`. Phase 9 **PARKED**.
+>
 > 2026-08-24: **Portal Discover show-rail loading + order polish — SIGNOFF approved (DEV)** — Goal `portal-discover-show-rails-loading-and-order-polish` **DONE**. Independent Next Show / This Week Discover loading; compact This Week rail presentation reversed; View All canonical order unchanged. Owner `OWNER DEV QA: PASS`. Production untouched. Signoff: `docs/workflow/reviews/2026-08-24-portal-discover-show-rails-loading-and-order-polish-signoff.md`. Phase 9 **PARKED**.
 >
 > 2026-08-24: **Production promote Portal + Studio 1.0.9 — CLOSED** — Goal `production-promote-portal-and-studio-2026-08-23` **DONE**. PR **#88** @ `94a1ed0`; PR **#89** hotfix @ `f35c96d`. Gate D Firebase live. Portal **`build-2026-08-24-002`**. Studio **1.0.9** published release **375869566** / run [32754684436](https://github.com/roasted-garlic/freshprints/actions/runs/32754684436). Signoff: `docs/workflow/reviews/2026-08-24-production-promote-portal-and-studio-signoff.md`. Phase 9 **PARKED**.
@@ -1495,6 +1543,43 @@ nice-to-have after Portal; auto-nested export already covers production file nee
 
 **Signed off 2026-07-07** — production-file export (zip + gang sheet PNG):
 `docs/workflow/reviews/2026-07-07-show-queue-export-and-production-files-signoff.md`
+
+### Phase 7 fast-follow — Show Queue gang-sheet generation modes (CLOSED DEV 2026-08-27)
+
+| Field | Value |
+|-------|-------|
+| Status | **DONE (DEV)** — signoff **approved** 2026-08-27 |
+| Managed goal id | `show-queue-gang-sheet-three-mode-refinement` |
+| Phase alignment | Phase 7 — Show Queue / production workflow refinement |
+| Plan | `docs/workflow/plans/2026-08-27-show-queue-gang-sheet-three-mode-refinement-plan.md` |
+| Review | `docs/workflow/reviews/2026-08-27-show-queue-gang-sheet-three-mode-refinement-review.md` (**approved_with_changes**) |
+| Signoff | `docs/workflow/reviews/2026-08-27-show-queue-gang-sheet-three-mode-refinement-signoff.md` (**approved**) |
+| Owner DEV QA | **PASS** |
+| Superseded brief | `docs/workflow/plans/2026-08-24-show-queue-gang-sheet-three-mode-refinement-queued-goal.md` |
+| Baseline | ADR-FP-143 + WS5 signoff 2026-08-23 |
+
+**Three modal options (shipped in repo):**
+
+1. **Standard** — `efficiency` (omitted on wire); unchanged efficiency packing.
+2. **Grouped by Customer** — `customer_grouped_continuous`; continuous multi-customer sheets with CR headings.
+3. **Sheet per Customer** — `grouped_by_customer`; per-customer physical sheet sets (preserved legacy grouped behavior).
+
+**Production / Studio publish:** not authorized — separate promote when owner approves.
+
+---
+
+### Phase 7 corrective — Show Queue past-show failsafe (PLAN + REVIEW 2026-08-27)
+
+| Field | Value |
+|-------|-------|
+| Status | **PLAN + REVIEW complete** — implementation **not authorized** |
+| Managed goal id | `show-queue-past-show-failsafe-and-owner-override` |
+| Plan | `docs/workflow/plans/2026-08-27-show-queue-past-show-failsafe-and-owner-override-plan.md` |
+| Review | `docs/workflow/reviews/2026-08-27-show-queue-past-show-failsafe-and-owner-override-review.md` (**approved_with_changes**) |
+
+**Problem:** Past schedule ≠ production completion; queued PRs can strand on Past shows with `open`/`full` (ADR-FP-139 covers Past+`printing` only).
+
+**Planned:** Needs Attention tab; Close Empty Show; Mark Fulfilled / Release paths; owner-only override; Functions callables.
 
 ---
 

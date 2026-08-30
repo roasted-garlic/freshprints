@@ -17,6 +17,7 @@ import { PortalLoadingPanel } from '../../shared/components/PortalLoadingPanel';
 import { ArrowLeftIcon } from '../../shared/components/PortalIcons';
 import { portalShowDesignsService } from '../services/portalShowDesignsService';
 import { formatShowDesignGallerySubtitle } from '../utils/ourShowsLifecycle';
+import { SHOW_DESIGN_COUNT_DISCLAIMER } from '../utils/showDesignCountDisclaimer';
 
 export function ShowDesignGalleryPageContent() {
   const params = useParams<{ showId: string }>();
@@ -92,6 +93,7 @@ export function ShowDesignGalleryPageContent() {
           <p className="portal-muted portal-catalog-topbar-subtitle">
             {formatShowDesignGallerySubtitle({ productionStatus, scheduledStartAt })}
           </p>
+          <p className="our-shows-count-disclaimer">{SHOW_DESIGN_COUNT_DISCLAIMER}</p>
         </div>
       </header>
 
@@ -100,7 +102,7 @@ export function ShowDesignGalleryPageContent() {
 
       {!isLoading && !error ? (
         designs.length === 0 ? (
-          <p className="portal-muted">No public catalog designs are attached to this show yet.</p>
+          <p className="portal-muted">No design library designs are attached to this show yet.</p>
         ) : (
           <div className="design-grid" role="list">
             {designs.map((design) => {

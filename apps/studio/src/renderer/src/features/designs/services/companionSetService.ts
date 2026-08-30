@@ -17,7 +17,7 @@ import { firestoreCollectionService } from "../../firebase/services/firestoreCol
 import { permissionService } from "../../permissions/services/permissionService";
 import type { User } from "../../users/types/user.types";
 import type { Design } from "../types/design.types";
-import { addCompanionNeighbor, buildCompanionLinkId, removeCompanionNeighbor, sortedCompanionPair } from "../utils/companionSetHelpers";
+import { addCompanionNeighbor, buildCompanionLinkId, listCompanionPeerLinkPairs, listFullMeshLinkPairs, removeCompanionNeighbor, sortedCompanionPair } from "../utils/companionSetHelpers";
 import { designService } from "./designService";
 
 /**
@@ -292,6 +292,35 @@ async function listLinkedDesignsSnapshots(companionDesignIds: string[]): Promise
   return Promise.all(companionDesignIds.map((companionDesignId) => getDoc(designDocRef(companionDesignId))));
 }
 
+async function runLinkDesign(caller: User, designAId: string, designBId: string): Promise<void> {
+  assertCanManageCompanionLinks(caller);
+
+  try {
+    await runTracedWrite(
+      "runTransaction",
+      () =>
+        runTransaction(getCompanionLinksFirestore(), (transaction) =>
+          linkDesignInTransaction(transaction, caller.id, designAId, designBId),
+        ),
+      {
+        app: "studio",
+        collection: "companionLinks",
+        documentPathPattern: "companionLinks/{linkId}",
+        source: "companionSetService.linkDesign",
+      },
+      { writeCount: 3 },
+    );
+    designService.invalidateReadCaches(designAId);
+    designService.invalidateReadCaches(designBId);
+  } catch (error) {
+    if (isKnownCompanionLinkError(error)) {
+      throw error;
+    }
+
+    throw new Error(getFirestoreErrorMessage(error, "Unable to link the companion design. Please try again."));
+  }
+}
+
 export const companionSetService = {
   /**
    * Raises the "Needs Companion" queue flag. Rejects if the design already has any companion
@@ -364,31 +393,44 @@ export const companionSetService = {
    * linked pair is a no-op success. See `linkDesignInTransaction`.
    */
   async linkDesign(caller: User, designAId: string, designBId: string): Promise<void> {
+    await runLinkDesign(caller, designAId, designBId);
+  },
+
+  /**
+   * Links `peerIds` to `anchorId` and fully meshes the new peers with each other. Use when
+   * linking color variants or other siblings that should all see one another — not only the anchor.
+   */
+  async linkCompanionPeers(caller: User, anchorId: string, peerIds: string[]): Promise<void> {
+    const pairs = listCompanionPeerLinkPairs(anchorId, peerIds);
+
+    for (const [designAId, designBId] of pairs) {
+      await runLinkDesign(caller, designAId, designBId);
+    }
+  },
+
+  /**
+   * Creates any missing direct links among this design and its current companion neighbors so
+   * every member of the group can see every other member (e.g. repair a star-only color set).
+   */
+  async meshAllCompanionNeighbors(caller: User, designId: string): Promise<void> {
     assertCanManageCompanionLinks(caller);
 
-    try {
-      await runTracedWrite(
-        "runTransaction",
-        () =>
-          runTransaction(getCompanionLinksFirestore(), (transaction) =>
-            linkDesignInTransaction(transaction, caller.id, designAId, designBId),
-          ),
-        {
-          app: "studio",
-          collection: "companionLinks",
-          documentPathPattern: "companionLinks/{linkId}",
-          source: "companionSetService.linkDesign",
-        },
-        { writeCount: 3 },
-      );
-      designService.invalidateReadCaches(designAId);
-      designService.invalidateReadCaches(designBId);
-    } catch (error) {
-      if (isKnownCompanionLinkError(error)) {
-        throw error;
-      }
+    const designSnapshot = await getDoc(designDocRef(designId));
 
-      throw new Error(getFirestoreErrorMessage(error, "Unable to link the companion design. Please try again."));
+    if (!designSnapshot.exists()) {
+      throw new Error("The design record was not found.");
+    }
+
+    const neighborIds = readCompanionDesignIds(designSnapshot.data() as Record<string, unknown>);
+
+    if (neighborIds.length === 0) {
+      return;
+    }
+
+    const pairs = listFullMeshLinkPairs([designId, ...neighborIds]);
+
+    for (const [designAId, designBId] of pairs) {
+      await runLinkDesign(caller, designAId, designBId);
     }
   },
 

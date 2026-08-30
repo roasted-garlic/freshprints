@@ -14,6 +14,10 @@ import {
 import { buildFeaturedTagPills } from '../utils/featuredCatalogTags';
 
 import { CheckIcon, XIcon } from '../../shared/components/PortalIcons';
+import {
+  serializeSmartFilters,
+  type PortalSmartFilters,
+} from '../services/portalAlgoliaCatalogSearchService';
 
 interface CatalogTagFilterModalProps {
   approvedTags: CatalogTagOption[];
@@ -27,6 +31,8 @@ interface CatalogTagFilterModalProps {
   onApply: (selectedTags: string[]) => void;
   onClose: () => void;
   selectedTags: string[];
+  /** Active Smart Filters — refine tag facet counts under the same AND context. */
+  smartFilters?: PortalSmartFilters;
 }
 
 export function CatalogTagFilterModal({
@@ -38,6 +44,7 @@ export function CatalogTagFilterModal({
   onApply,
   onClose,
   selectedTags,
+  smartFilters,
 }: CatalogTagFilterModalProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [draftSelectedTags, setDraftSelectedTags] = useState<string[]>(selectedTags);
@@ -84,6 +91,7 @@ export function CatalogTagFilterModal({
   );
   const appliedCatalogSearch = catalogSearchQuery.trim();
   const appliedCategoryId = categoryId.trim();
+  const smartFiltersKey = useMemo(() => serializeSmartFilters(smartFilters), [smartFilters]);
 
   // Always refresh facets when the modal opens (global or constrained). Mount-cached
   // `approvedTags` from useCatalogTags can lag Algolia sync (Stage 1b-C: cartoon 3→4).
@@ -103,6 +111,7 @@ export function CatalogTagFilterModal({
       .listNarrowedApprovedTags(tags, {
         search: appliedCatalogSearch || undefined,
         categoryId: appliedCategoryId || undefined,
+        smartFilters,
       })
       .then((result) => {
         if (isCancelled || generation !== narrowGenerationRef.current) return;
@@ -119,7 +128,7 @@ export function CatalogTagFilterModal({
     return () => {
       isCancelled = true;
     };
-  }, [appliedCatalogSearch, appliedCategoryId, draftTagsKey, isOpen]);
+  }, [appliedCatalogSearch, appliedCategoryId, draftTagsKey, isOpen, smartFilters, smartFiltersKey]);
 
   // Prefer live modal fetch; fall back to mount-cached tags only if the refresh fails.
   const activeTagSource = narrowedTags ?? (narrowError ? approvedTags : null);

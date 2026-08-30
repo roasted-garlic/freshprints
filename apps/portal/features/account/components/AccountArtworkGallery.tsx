@@ -230,7 +230,7 @@ export function AccountArtworkGallery({
       </PortalConfirmModal>
 
       <PortalPickContinuableRequestModal
-        continuableRequests={continuableRequests}
+        continuableRequests={addDesignFlow.pickerContinuableRequests}
         designTitle={addDesignFlow.pendingDesign?.title}
         isAdding={addDesignFlow.isAdding}
         isOpen={addDesignFlow.isPickerOpen}

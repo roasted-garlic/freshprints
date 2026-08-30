@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
-import { ChevronDown, Download, ExternalLink, Pause, Play, Plus, Settings, Upload, X } from "lucide-react";
+import { ChevronDown, Download, ExternalLink, Pause, Play, Plus, RefreshCw, Settings, Upload, X } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { Badge } from "../../../shared/components/Badge";
 import { Button } from "../../../shared/components/Button";
 import { Card } from "../../../shared/components/Card";
-import { DangerOverflowMenu } from "../../../shared/components/DangerOverflowMenu";
+import { DangerOverflowMenu, type DangerOverflowMenuItem } from "../../../shared/components/DangerOverflowMenu";
 import { DismissibleSuccessAlert } from "../../../shared/components/DismissibleSuccessAlert";
 import { EmptyState } from "../../../shared/components/EmptyState";
 import { ErrorState } from "../../../shared/components/ErrorState";
@@ -20,12 +20,21 @@ import { desktopAppService } from "../../../shared/services/desktopAppService";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
 import { clearPrintRequestsPageCache } from "../../print-requests/services/printRequestsPageReadCache";
+import { TransferPrintRequestToShowModal } from "../../print-requests/components/TransferPrintRequestToShowModal";
+import { formatPrintRequestShowTransferActionLabel, resolvePrintRequestShowTransferMode } from "@fresh-prints/shared/utils/printRequestShowTransfer";
 import { upcomingShowService } from "../services/upcomingShowService";
 import { UpcomingShowDeletionDialog } from "../components/UpcomingShowDeletionDialog";
+import { NeedsAttentionShowPanel } from "../components/NeedsAttentionShowPanel";
+import { DidNotPrintRecoveryDialog } from "../components/DidNotPrintRecoveryDialog";
+import {
+  OwnerShowProductionOverrideDialog,
+  ShowProductionRecoveryDialog,
+} from "../components/ShowProductionRecoveryDialog";
 import { useUpcomingShows } from "../hooks/useUpcomingShows";
 import { useShowAllocations } from "../hooks/useShowAllocations";
 import { useShowProductionTimer } from "../hooks/useShowProductionTimer";
 import { useStalePastPrintingShowReconciliation } from "../hooks/useStalePastPrintingShowReconciliation";
+import { useEmptyPastShowReconciliation } from "../hooks/useEmptyPastShowReconciliation";
 import { useShowQueueSettings } from "../hooks/useShowQueueSettings";
 import {
   DEFAULT_GANG_SHEET_GUTTER_INCHES,
@@ -55,15 +64,20 @@ import {
   getShowAllocationBlockReason,
 } from "@fresh-prints/shared/utils/showAllocationEligibility";
 import {
-  filterShowsByScheduleTab,
-  getShowScheduleTab,
+  getWhatnotShowQueueTab,
+  isShowQueuePastReadOnlyShow,
+  partitionWhatnotShowsByQueueTab,
+  resolveWhatnotQueueTabForStillExistingSelection,
+  type WhatnotShowQueueTab,
+} from "@fresh-prints/shared/utils/showProductionRecovery";
+import type { ShowProductionRecoveryAction } from "@fresh-prints/shared/types/showProductionRecovery/showProductionRecovery.types";
+import {
   isPastScheduledShow,
   PAST_SHOW_READ_ONLY_MESSAGE,
-  resolveScheduleTabForStillExistingSelection,
   resolveVisibleShowSelection,
-  type ShowScheduleTab,
 } from "../utils/groupShowsByUpcomingPast";
-import { parseWhatnotShowUrl } from "@fresh-prints/shared/utils/whatnotShowUrl";
+import { sortPastShowsForDisplay } from "../utils/upcomingShowListSort";
+import { parseWhatnotShowUrl, isDevOverrideShowUrlSentinel } from "@fresh-prints/shared/utils/whatnotShowUrl";
 import { parseWhatnotShowBaseUrl } from "@fresh-prints/shared/utils/whatnotShowBaseUrl";
 import { assessShowCapacity } from "@fresh-prints/shared/utils/showCapacity";
 import {
@@ -72,8 +86,9 @@ import {
   getDerivedShowStatusDisplay,
   getShowCapacityPercent,
 } from "@fresh-prints/shared/utils/showCapacityDisplay";
+import { resolveShowDisplayAllocatedQuantity } from "@fresh-prints/shared/utils/showDisplayAllocatedQuantity";
 import { canRemoveRequestFromShow } from "@fresh-prints/shared/utils/showQueueEditability";
-import { isStaffGangSheetShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
+import { isStaffGangSheetShow, isDevFixtureShow, isWhatnotQueueSurfaceShow, type UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
 import {
   canAllocateOriginToShowSource,
   formatStaffGangSheetTitle,
@@ -89,20 +104,31 @@ import {
   resolveShowQueuePrintRequestLinkTab,
 } from "../utils/showQueuePrintRequestSources";
 import { refreshSelectedShowGangSheetCache } from "../utils/gangSheetCacheRefresh";
+import {
+  hasShowExportableAllocations,
+  PAST_SHOW_EXPORT_COPY,
+} from "../utils/showExportEligibility";
 import type { GangSheetLayoutMode } from "@fresh-prints/shared/types/export/gangSheetExportIpc.types";
-import { parseDateTimeInputToTimestamp } from "../utils/upcomingShowDateTimeInput";
+import { parseDateTimeInputToTimestamp, formatTimestampForDateTimeInput } from "../utils/upcomingShowDateTimeInput";
 import {
   formatUpcomingShowTimestampLabel,
   formatUpcomingShowManualImportTimestampLabel,
   formatUpcomingShowTitle,
+  formatUpcomingShowWhatnotIdentityLabel,
   getUpcomingShowStatusBadgeVariant,
   shouldShowUpcomingShowScheduleStatusBadge,
 } from "../utils/upcomingShowDisplay";
+import { isDevFixtureShowOperationAllowedForStudio } from "../utils/devFixtureShowStudioGate";
 import { getShowAllocationStatusBadgeVariant } from "../utils/showAllocationDisplay";
 import {
+  buildShowQueueRouteSearchParams,
+  SHOW_QUEUE_TAB_QUERY_PARAM,
   UPCOMING_SHOW_ID_QUERY_PARAM,
   UPCOMING_SHOW_REQUEST_ID_QUERY_PARAM,
   getShowQueueSurfacePath,
+  resolveStaffGangSheetListTab,
+  resolveWhatnotShowQueueListTab,
+  type StaffGangSheetListTab,
 } from "../constants/upcomingShowRoutes";
 
 interface CreateShowFormState {
@@ -121,7 +147,45 @@ const DEFAULT_CREATE_SHOW_FORM: CreateShowFormState = {
 
 const DEFAULT_WHATNOT_SHOW_BASE_URL = "https://www.whatnot.com/user/funkyfreshprints/shows";
 
-type StaffGangSheetListTab = "current" | "history";
+/** Live print timer — 1s while a show is printing. */
+const SHOW_QUEUE_SCHEDULE_TICK_MS_WHILE_PRINTING = 1_000;
+/** Queue tab classification (Upcoming → Needs Attention) — must tick even when idle. */
+const SHOW_QUEUE_SCHEDULE_TICK_MS = 5_000;
+
+function getShowQueueRailEmptyState(
+  queueSurface: ShowQueueSurface,
+  tab: WhatnotShowQueueTab | StaffGangSheetListTab,
+): { title: string; message: string; isPastScheduled: boolean } {
+  if (queueSurface === "staff_gang_sheets") {
+    return {
+      title: "No Internal Gang Sheets yet",
+      message: "Create a shared Internal Gang Sheet to start internal production.",
+      isPastScheduled: false,
+    };
+  }
+
+  switch (tab) {
+    case "needs_attention":
+      return {
+        title: "No shows need attention",
+        message: "Unresolved past shows with incomplete production will appear here.",
+        isPastScheduled: true,
+      };
+    case "past":
+      return {
+        title: "No past shows yet",
+        message: "Completed and archived past shows appear here after remediation.",
+        isPastScheduled: true,
+      };
+    case "upcoming":
+    default:
+      return {
+        title: "No shows yet",
+        message: "Add the first Whatnot show to start tracking the schedule and production.",
+        isPastScheduled: false,
+      };
+  }
+}
 
 function isCurrentStaffGangSheetProductionStatus(status: string): boolean {
   return status === "open" || status === "full" || status === "printing";
@@ -145,21 +209,30 @@ interface UpcomingShowsPageProps {
 
 export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPageProps) {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
-  const [selectedShowId, setSelectedShowId] = useState<string | null>(null);
+  const selectedShowId = searchParams.get(UPCOMING_SHOW_ID_QUERY_PARAM)?.trim() || null;
   // Plan Section 22.5 (Amendment 4, Fix 3 extended): live-subscribe only the currently selected
   // show's own document, so its `allocatedQuantity`/capacity fields reflect a Portal-submitted
   // allocation without a remount — bounded to one show, never the whole collection.
   const { shows, error: loadError, isLoading, reloadUpcomingShows } = useUpcomingShows(selectedShowId);
-  const { totalsByRequestId: allocationTotalsByRequestId } = usePrintRequestAllocationTotals();
+  const { totalsByRequestId: allocationTotalsByRequestId, reload: reloadAllocationTotals } =
+    usePrintRequestAllocationTotals();
   const showQueueSettings = useShowQueueSettings();
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createForm, setCreateForm] = useState<CreateShowFormState>(DEFAULT_CREATE_SHOW_FORM);
+  const [isCreatingShow, setIsCreatingShow] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editForm, setEditForm] = useState<CreateShowFormState>(DEFAULT_CREATE_SHOW_FORM);
+  const [isSavingShowEdit, setIsSavingShowEdit] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [successAlertSeed, setSuccessAlertSeed] = useState(0);
+  const dismissSuccessMessage = useCallback(() => {
+    setSuccessMessage(null);
+  }, []);
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
 
   const [isMaxQuantityModalOpen, setIsMaxQuantityModalOpen] = useState(false);
   const [maxQuantityInput, setMaxQuantityInput] = useState("");
@@ -168,6 +241,11 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
   const [isAddRequestModalOpen, setIsAddRequestModalOpen] = useState(false);
   const [addRequestId, setAddRequestId] = useState("");
   const [isDeletionDialogOpen, setIsDeletionDialogOpen] = useState(false);
+  const [recoveryDialogAction, setRecoveryDialogAction] = useState<ShowProductionRecoveryAction | null>(
+    null,
+  );
+  const [isDidNotPrintDialogOpen, setIsDidNotPrintDialogOpen] = useState(false);
+  const [isOwnerOverrideDialogOpen, setIsOwnerOverrideDialogOpen] = useState(false);
 
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [defaultCapacityInput, setDefaultCapacityInput] = useState("");
@@ -196,34 +274,51 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
   const whatnotImport = useWhatnotShowImport(shows, handleShowsImported);
 
   const [confirmingRemoveRequestId, setConfirmingRemoveRequestId] = useState<string | null>(null);
-  const [activeScheduleTab, setActiveScheduleTab] = useState<ShowScheduleTab>("upcoming");
+  const [transferRequestContext, setTransferRequestContext] = useState<{
+    printRequestId: string;
+    requestNameSnapshot: string;
+    transferQuantity: number;
+  } | null>(null);
   const queueSurface = lockedSurface;
-  const [staffListTab, setStaffListTab] = useState<StaffGangSheetListTab>("current");
   const [isCreateStaffLaneModalOpen, setIsCreateStaffLaneModalOpen] = useState(false);
   const [isCompletingStaffGangSheet, setIsCompletingStaffGangSheet] = useState(false);
   const [completeConfirmKind, setCompleteConfirmKind] = useState<"staff_complete" | "show_finished" | null>(
     null,
   );
   const hasHydratedFromQueryRef = useRef(false);
+  const skipRailScrollRef = useRef(false);
+  const skipListTabRouteSyncRef = useRef(false);
 
-  const selectedShowIdParam = searchParams.get(UPCOMING_SHOW_ID_QUERY_PARAM);
+  const tabParam = searchParams.get(SHOW_QUEUE_TAB_QUERY_PARAM);
   const highlightedRequestIdParam = searchParams.get(UPCOMING_SHOW_REQUEST_ID_QUERY_PARAM)?.trim() || null;
+  const activeScheduleTab = resolveWhatnotShowQueueListTab(tabParam);
+  const staffListTab = resolveStaffGangSheetListTab(tabParam);
 
   useEffect(() => {
     setConfirmingRemoveRequestId(null);
   }, [selectedShowId]);
 
-  const updateSelectedShowPath = useCallback(
-    (showId: string | null, requestId?: string | null) => {
-      navigate(
-        getShowQueueSurfacePath(lockedSurface, {
-          showId: showId ?? undefined,
-          requestId: requestId === undefined ? highlightedRequestIdParam ?? undefined : requestId ?? undefined,
-        }),
-        { replace: true },
-      );
+  const applyShowQueueRoute = useCallback(
+    (options: {
+      tab: WhatnotShowQueueTab | StaffGangSheetListTab;
+      showId?: string | null;
+      requestId?: string | null;
+    }) => {
+      const nextParams = buildShowQueueRouteSearchParams({
+        tab: options.tab,
+        showId: options.showId?.trim() || undefined,
+        requestId:
+          options.requestId === undefined
+            ? highlightedRequestIdParam ?? undefined
+            : options.requestId?.trim() || undefined,
+      });
+      const nextSearch = nextParams.toString();
+      if (searchParams.toString() === nextSearch) {
+        return;
+      }
+      setSearchParams(nextParams, { replace: true });
     },
-    [highlightedRequestIdParam, lockedSurface, navigate],
+    [highlightedRequestIdParam, searchParams, setSearchParams],
   );
 
   const openCreateModal = useCallback(() => {
@@ -234,6 +329,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
 
   const closeCreateModal = useCallback(() => {
     setIsCreateModalOpen(false);
+    setIsCreatingShow(false);
     setActionError(null);
   }, []);
 
@@ -312,65 +408,9 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
     void openWhatnotImportWindowRequest(effectiveWhatnotBaseUrl);
   }, [effectiveWhatnotBaseUrl, openWhatnotImportWindowRequest]);
 
-  useShellHeaderConfig(
-    useMemo(
-      () => ({
-        title: queueSurface === "staff_gang_sheets" ? "Internal Sheets" : "Show Queue",
-        actions:
-          queueSurface === "shows" && permissionService.canManageUpcomingShows(user)
-            ? [
-                ...(permissionService.canImportWhatnotShows(user)
-                  ? [
-                      {
-                        icon: <Upload aria-hidden="true" size={16} strokeWidth={2} />,
-                        label: "Import Shows",
-                        onClick: openWhatnotImportWindow,
-                      },
-                    ]
-                  : []),
-                ...(permissionService.canManageShowQueueSettings(user)
-                  ? [
-                      {
-                        icon: <Settings aria-hidden="true" size={16} strokeWidth={2} />,
-                        label: "Settings",
-                        onClick: openSettingsModal,
-                      },
-                    ]
-                  : []),
-              ]
-            : null,
-        primaryAction:
-          queueSurface === "shows" && permissionService.canManageUpcomingShows(user)
-            ? {
-                icon: <Plus aria-hidden="true" size={16} strokeWidth={2} />,
-                label: "Add show",
-                onClick: openCreateModal,
-              }
-            : queueSurface === "staff_gang_sheets" && canCreateStaffGangSheet
-              ? {
-                  icon: <Plus aria-hidden="true" size={16} strokeWidth={2} />,
-                  label: "Create Internal Gang Sheet",
-                  onClick: () => {
-                    setActionError(null);
-                    setIsCreateStaffLaneModalOpen(true);
-                  },
-                }
-              : null,
-      }),
-      [
-        canCreateStaffGangSheet,
-        openCreateModal,
-        openWhatnotImportWindow,
-        openSettingsModal,
-        queueSurface,
-        user,
-      ],
-    ),
-  );
-
   const surfaceShows = useMemo(() => {
     return shows.filter((show) =>
-      queueSurface === "staff_gang_sheets" ? isStaffGangSheetShow(show) : show.source === "whatnot",
+      queueSurface === "staff_gang_sheets" ? isStaffGangSheetShow(show) : isWhatnotQueueSurfaceShow(show),
     );
   }, [queueSurface, shows]);
 
@@ -392,20 +432,24 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
     };
     window.addEventListener("focus", tick);
     document.addEventListener("visibilitychange", onVisibility);
-    const intervalId = hasPrintingWhatnotShow ? window.setInterval(tick, 1000) : undefined;
+    tick();
+    const intervalMs = hasPrintingWhatnotShow
+      ? SHOW_QUEUE_SCHEDULE_TICK_MS_WHILE_PRINTING
+      : SHOW_QUEUE_SCHEDULE_TICK_MS;
+    const intervalId = window.setInterval(tick, intervalMs);
     return () => {
       window.removeEventListener("focus", tick);
       document.removeEventListener("visibilitychange", onVisibility);
-      if (intervalId !== undefined) {
-        window.clearInterval(intervalId);
-      }
+      window.clearInterval(intervalId);
     };
   }, [hasPrintingWhatnotShow]);
 
   const showsByScheduleTab = useMemo(() => {
+    const partitioned = partitionWhatnotShowsByQueueTab(surfaceShows, scheduleNow);
     return {
-      upcoming: filterShowsByScheduleTab(surfaceShows, "upcoming", scheduleNow),
-      past: filterShowsByScheduleTab(surfaceShows, "past", scheduleNow),
+      upcoming: partitioned.upcoming,
+      needs_attention: partitioned.needs_attention,
+      past: sortPastShowsForDisplay(partitioned.past),
     };
   }, [scheduleNow, surfaceShows]);
 
@@ -427,17 +471,34 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
       ? staffShowsByListTab[staffListTab]
       : showsByScheduleTab[activeScheduleTab];
 
+  const activeListTab =
+    queueSurface === "staff_gang_sheets" ? staffListTab : activeScheduleTab;
+  const railEmptyState = getShowQueueRailEmptyState(queueSurface, activeListTab);
+
   useEffect(() => {
     if (isLoading) {
       return;
     }
 
-    if (selectedShowIdParam) {
-      const showFromQuery = shows.find((show) => show.id === selectedShowIdParam) ?? null;
+    if (skipListTabRouteSyncRef.current) {
+      skipListTabRouteSyncRef.current = false;
+      return;
+    }
 
-      if (!showFromQuery) {
-        // Unknown id after load — fall through to default selection.
-      } else {
+    const currentListTab =
+      queueSurface === "staff_gang_sheets" ? staffListTab : activeScheduleTab;
+
+    const inferListTabForShow = (show: UpcomingShow): WhatnotShowQueueTab | StaffGangSheetListTab => {
+      if (queueSurface === "staff_gang_sheets") {
+        return isCurrentStaffGangSheetProductionStatus(show.productionStatus) ? "current" : "history";
+      }
+      return getWhatnotShowQueueTab(show, scheduleNow);
+    };
+
+    if (selectedShowId) {
+      const showFromQuery = shows.find((show) => show.id === selectedShowId) ?? null;
+
+      if (showFromQuery) {
         const surfaceDecision = decideQuerySurfaceSync({
           queueSurface,
           queryShowSource: showFromQuery.source,
@@ -445,49 +506,54 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
         });
 
         if (surfaceDecision.action === "set_surface") {
-          // Dedicated routes own each surface — send deep links to the matching page.
           if (surfaceDecision.surface !== lockedSurface) {
+            const targetTab =
+              surfaceDecision.surface === "staff_gang_sheets"
+                ? isCurrentStaffGangSheetProductionStatus(showFromQuery.productionStatus)
+                  ? "current"
+                  : "history"
+                : getWhatnotShowQueueTab(showFromQuery, scheduleNow);
             navigate(
               getShowQueueSurfacePath(surfaceDecision.surface, {
-                showId: selectedShowIdParam ?? undefined,
+                showId: selectedShowId,
                 requestId: highlightedRequestIdParam ?? undefined,
+                tab: targetTab,
               }),
               { replace: true },
             );
-            return;
           }
           return;
         }
 
         if (surfaceDecision.action === "clear_incompatible_query") {
-          // Keep the user's explicit Shows | Internal Gang Sheets choice; drop the stale URL show.
-          setSelectedShowId(null);
-          updateSelectedShowPath(null);
+          applyShowQueueRoute({ tab: currentListTab, showId: null, requestId: null });
           hasHydratedFromQueryRef.current = true;
           return;
         }
 
-        if (queueSurface === "staff_gang_sheets") {
-          const nextStaffTab: StaffGangSheetListTab = isCurrentStaffGangSheetProductionStatus(
-            showFromQuery.productionStatus,
-          )
-            ? "current"
-            : "history";
-          if (nextStaffTab !== staffListTab) {
-            setStaffListTab(nextStaffTab);
-            return;
-          }
-        } else {
-          const queryShowTab = getShowScheduleTab(showFromQuery, new Date());
-
-          if (queryShowTab !== activeScheduleTab) {
-            setActiveScheduleTab(queryShowTab);
-            return;
-          }
+        if (!tabParam) {
+          applyShowQueueRoute({
+            tab: inferListTabForShow(showFromQuery),
+            showId: selectedShowId,
+            requestId: highlightedRequestIdParam ?? null,
+          });
+          hasHydratedFromQueryRef.current = true;
+          return;
         }
 
-        if (selectedShowId !== selectedShowIdParam) {
-          setSelectedShowId(selectedShowIdParam);
+        if (!visibleShows.some((show) => show.id === selectedShowId)) {
+          const showTab = inferListTabForShow(showFromQuery);
+          if (showTab !== currentListTab) {
+            applyShowQueueRoute({
+              tab: showTab,
+              showId: selectedShowId,
+              requestId: highlightedRequestIdParam ?? null,
+            });
+          } else {
+            applyShowQueueRoute({ tab: currentListTab, showId: null, requestId: null });
+          }
+          hasHydratedFromQueryRef.current = true;
+          return;
         }
 
         hasHydratedFromQueryRef.current = true;
@@ -495,51 +561,65 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
       }
     }
 
-    if (selectedShowId && visibleShows.some((show) => show.id === selectedShowId)) {
+    if (!tabParam) {
+      applyShowQueueRoute({
+        tab: currentListTab,
+        showId: selectedShowId ?? undefined,
+        requestId: highlightedRequestIdParam ?? null,
+      });
       hasHydratedFromQueryRef.current = true;
       return;
     }
 
-    // Only auto-switch Upcoming/Past for Whatnot Shows — never rewrite Internal Gang Sheets surface.
-    if (queueSurface === "shows") {
-      const reclassifiedTab = resolveScheduleTabForStillExistingSelection(
-        shows,
-        selectedShowId,
-        activeScheduleTab,
-        new Date(),
-      );
-      if (reclassifiedTab) {
-        hasHydratedFromQueryRef.current = true;
-        setActiveScheduleTab(reclassifiedTab);
-        return;
+    if (selectedShowId && visibleShows.some((show) => show.id === selectedShowId)) {
+      if (
+        queueSurface === "shows" &&
+        visibleShows.some((show) => show.id === selectedShowId)
+      ) {
+        const reclassifiedTab = resolveWhatnotQueueTabForStillExistingSelection(
+          shows,
+          selectedShowId,
+          activeScheduleTab,
+          scheduleNow,
+        );
+        if (reclassifiedTab) {
+          applyShowQueueRoute({
+            tab: reclassifiedTab,
+            showId: selectedShowId,
+            requestId: highlightedRequestIdParam ?? null,
+          });
+          hasHydratedFromQueryRef.current = true;
+          return;
+        }
       }
+
+      hasHydratedFromQueryRef.current = true;
+      return;
     }
 
     hasHydratedFromQueryRef.current = true;
 
-    const nextSelectedShowId = resolveVisibleShowSelection(visibleShows, selectedShowId);
-
-    if (nextSelectedShowId !== selectedShowId) {
-      setSelectedShowId(nextSelectedShowId);
-      if (!selectedShowIdParam || nextSelectedShowId === selectedShowIdParam) {
-        updateSelectedShowPath(
-          nextSelectedShowId,
-          selectedShowIdParam ? highlightedRequestIdParam : null,
-        );
-      }
+    if (!selectedShowId && visibleShows.length > 0) {
+      const nextSelectedShowId = resolveVisibleShowSelection(visibleShows, null);
+      applyShowQueueRoute({
+        tab: currentListTab,
+        showId: nextSelectedShowId,
+        requestId: null,
+      });
     }
   }, [
     activeScheduleTab,
+    applyShowQueueRoute,
     highlightedRequestIdParam,
     isLoading,
     lockedSurface,
     navigate,
     queueSurface,
+    scheduleNow,
     selectedShowId,
-    selectedShowIdParam,
     shows,
     staffListTab,
-    updateSelectedShowPath,
+    tabParam,
     visibleShows,
   ]);
 
@@ -548,51 +628,115 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
       return;
     }
 
+    if (skipRailScrollRef.current) {
+      skipRailScrollRef.current = false;
+      return;
+    }
+
     const frame = window.requestAnimationFrame(() => {
       const target = document.querySelector<HTMLElement>(
         `[data-upcoming-show-id="${CSS.escape(selectedShowId)}"]`,
       );
-      target?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      target?.scrollIntoView({ block: "nearest" });
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [isLoading, selectedShowId, visibleShows]);
+  }, [isLoading, selectedShowId]);
 
   const handleScheduleTabChange = useCallback(
-    (tab: ShowScheduleTab) => {
-      const nextSelectedShowId = resolveVisibleShowSelection(showsByScheduleTab[tab], null);
+    (tab: WhatnotShowQueueTab) => {
+      if (tab === activeScheduleTab) {
+        return;
+      }
 
-      setActiveScheduleTab(tab);
-      setSelectedShowId(nextSelectedShowId);
-      updateSelectedShowPath(nextSelectedShowId, null);
+      skipRailScrollRef.current = true;
+      skipListTabRouteSyncRef.current = true;
+      hasHydratedFromQueryRef.current = true;
+      const nextSelectedShowId = resolveVisibleShowSelection(showsByScheduleTab[tab], null);
+      applyShowQueueRoute({ tab, showId: nextSelectedShowId, requestId: null });
     },
-    [showsByScheduleTab, updateSelectedShowPath],
+    [activeScheduleTab, applyShowQueueRoute, showsByScheduleTab],
   );
 
   const handleStaffListTabChange = useCallback(
     (tab: StaffGangSheetListTab) => {
-      const nextSelectedShowId = resolveVisibleShowSelection(staffShowsByListTab[tab], null);
+      if (tab === staffListTab) {
+        return;
+      }
 
-      setStaffListTab(tab);
-      setSelectedShowId(nextSelectedShowId);
-      // Keep the URL show on the same list tab so hydration cannot snap Current ↔ History.
-      updateSelectedShowPath(nextSelectedShowId, null);
+      skipRailScrollRef.current = true;
+      skipListTabRouteSyncRef.current = true;
+      hasHydratedFromQueryRef.current = true;
+      const nextSelectedShowId = resolveVisibleShowSelection(staffShowsByListTab[tab], null);
+      applyShowQueueRoute({ tab, showId: nextSelectedShowId, requestId: null });
     },
-    [staffShowsByListTab, updateSelectedShowPath],
+    [applyShowQueueRoute, staffListTab, staffShowsByListTab],
   );
 
   const handleSelectShow = useCallback(
     (showId: string) => {
-      setSelectedShowId(showId);
-      updateSelectedShowPath(showId, null);
+      applyShowQueueRoute({
+        tab: queueSurface === "staff_gang_sheets" ? staffListTab : activeScheduleTab,
+        showId,
+        requestId: null,
+      });
     },
-    [updateSelectedShowPath],
+    [activeScheduleTab, applyShowQueueRoute, queueSurface, staffListTab],
   );
 
   const selectedShow = useMemo(
-    () => visibleShows.find((show) => show.id === selectedShowId) ?? null,
-    [selectedShowId, visibleShows],
+    () => shows.find((show) => show.id === selectedShowId) ?? null,
+    [selectedShowId, shows],
   );
+
+  const openEditShowModal = useCallback(() => {
+    if (!selectedShow || !isWhatnotQueueSurfaceShow(selectedShow)) {
+      return;
+    }
+    setActionError(null);
+    setEditForm({
+      whatnotUrl: selectedShow.whatnotUrl ?? "",
+      title: selectedShow.title ?? "",
+      scheduledStartAtInput: formatTimestampForDateTimeInput(selectedShow.scheduledStartAt),
+      notes: selectedShow.notes ?? "",
+    });
+    setIsEditModalOpen(true);
+  }, [selectedShow]);
+
+  const closeEditShowModal = useCallback(() => {
+    setIsEditModalOpen(false);
+    setIsSavingShowEdit(false);
+    setActionError(null);
+  }, []);
+
+  const showDetailOverflowMenuItems = useMemo((): DangerOverflowMenuItem[] => {
+    const items: DangerOverflowMenuItem[] = [];
+
+    if (
+      user &&
+      selectedShow &&
+      permissionService.canEditUpcomingShowMetadata(user) &&
+      isWhatnotQueueSurfaceShow(selectedShow)
+    ) {
+      items.push({
+        id: "edit-show",
+        label: "Edit show…",
+        danger: false,
+        onSelect: openEditShowModal,
+      });
+    }
+
+    if (user && permissionService.canDeleteEligibleUpcomingShow(user)) {
+      items.push({
+        id: "delete-show",
+        label: "Delete show…",
+        onSelect: () => setIsDeletionDialogOpen(true),
+      });
+    }
+
+    return items;
+  }, [openEditShowModal, selectedShow, user]);
+
   const isSelectedStaffGangSheet = Boolean(selectedShow && isStaffGangSheetShow(selectedShow));
   const canManageSelectedStaffGangSheet = Boolean(
     user &&
@@ -603,10 +747,16 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
   const isSelectedShowPast = useMemo(
     () =>
       selectedShow && !isStaffGangSheetShow(selectedShow)
-        ? isPastScheduledShow(selectedShow, scheduleNow)
+        ? isShowQueuePastReadOnlyShow(selectedShow, scheduleNow)
         : false,
     [scheduleNow, selectedShow],
   );
+  const selectedShowQueueTab = useMemo((): WhatnotShowQueueTab | null => {
+    if (!selectedShow || isStaffGangSheetShow(selectedShow) || !isWhatnotQueueSurfaceShow(selectedShow)) {
+      return null;
+    }
+    return getWhatnotShowQueueTab(selectedShow, scheduleNow);
+  }, [scheduleNow, selectedShow]);
   const selectedShowAllocationBlockReason = useMemo(() => {
     if (!selectedShow) {
       return null;
@@ -688,10 +838,125 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
     () => (selectedShow?.allocatedQuantity ?? 0) > 0,
     [selectedShow?.allocatedQuantity],
   );
+  const hasExportableAllocationsForSelectedShow = useMemo(
+    () =>
+      selectedShow
+        ? hasShowExportableAllocations({
+            allocatedQuantity: selectedShow.allocatedQuantity ?? 0,
+            allocations,
+            show: selectedShow,
+            now: scheduleNow,
+          })
+        : false,
+    [allocations, scheduleNow, selectedShow],
+  );
 
   const handleProductionTimerUpdated = useCallback(async () => {
     await Promise.all([reloadUpcomingShows(), reloadAllocations()]);
   }, [reloadAllocations, reloadUpcomingShows]);
+
+  const handleRecoveryCompleted = useCallback(async () => {
+    await Promise.all([reloadUpcomingShows(), reloadAllocations()]);
+  }, [reloadAllocations, reloadUpcomingShows]);
+
+  const handleRefreshShowQueue = useCallback(async () => {
+    if (isManualRefreshing) {
+      return;
+    }
+
+    setIsManualRefreshing(true);
+    setActionError(null);
+
+    try {
+      clearPrintRequestsPageCache();
+      const reloadTasks: Promise<unknown>[] = [
+        reloadUpcomingShows({ silent: true }),
+        reloadAllocationTotals({ silent: true }),
+      ];
+      if (selectedShowId) {
+        reloadTasks.push(reloadAllocations());
+      }
+      await Promise.all(reloadTasks);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Unable to refresh Show Queue.");
+    } finally {
+      setIsManualRefreshing(false);
+    }
+  }, [
+    isManualRefreshing,
+    reloadAllocationTotals,
+    reloadAllocations,
+    reloadUpcomingShows,
+    selectedShowId,
+  ]);
+
+  useShellHeaderConfig(
+    useMemo(
+      () => ({
+        title: queueSurface === "staff_gang_sheets" ? "Internal Sheets" : "Show Queue",
+        actions: permissionService.canViewUpcomingShows(user)
+          ? [
+              {
+                icon: <RefreshCw aria-hidden="true" size={16} strokeWidth={2} />,
+                label: isManualRefreshing ? "Refreshing…" : "Refresh",
+                onClick: () => {
+                  void handleRefreshShowQueue();
+                },
+              },
+              ...(queueSurface === "shows" && permissionService.canManageUpcomingShows(user)
+                ? [
+                    ...(permissionService.canImportWhatnotShows(user)
+                      ? [
+                          {
+                            icon: <Upload aria-hidden="true" size={16} strokeWidth={2} />,
+                            label: "Import Shows",
+                            onClick: openWhatnotImportWindow,
+                          },
+                        ]
+                      : []),
+                    ...(permissionService.canManageShowQueueSettings(user)
+                      ? [
+                          {
+                            icon: <Settings aria-hidden="true" size={16} strokeWidth={2} />,
+                            label: "Settings",
+                            onClick: openSettingsModal,
+                          },
+                        ]
+                      : []),
+                  ]
+                : []),
+            ]
+          : null,
+        primaryAction:
+          queueSurface === "shows" && permissionService.canManageUpcomingShows(user)
+            ? {
+                icon: <Plus aria-hidden="true" size={16} strokeWidth={2} />,
+                label: "Add show",
+                onClick: openCreateModal,
+              }
+            : queueSurface === "staff_gang_sheets" && canCreateStaffGangSheet
+              ? {
+                  icon: <Plus aria-hidden="true" size={16} strokeWidth={2} />,
+                  label: "Create Internal Gang Sheet",
+                  onClick: () => {
+                    setActionError(null);
+                    setIsCreateStaffLaneModalOpen(true);
+                  },
+                }
+              : null,
+      }),
+      [
+        canCreateStaffGangSheet,
+        handleRefreshShowQueue,
+        isManualRefreshing,
+        openCreateModal,
+        openWhatnotImportWindow,
+        openSettingsModal,
+        queueSurface,
+        user,
+      ],
+    ),
+  );
 
   const productionTimer = useShowProductionTimer({
     show: selectedShow,
@@ -700,6 +965,11 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
     onShowUpdated: handleProductionTimerUpdated,
   });
   const stalePrintingReconciliation = useStalePastPrintingShowReconciliation(surfaceShows, scheduleNow);
+  const emptyPastShowReconciliation = useEmptyPastShowReconciliation(
+    surfaceShows,
+    scheduleNow,
+    handleProductionTimerUpdated,
+  );
 
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportMultiplyByQuantity, setExportMultiplyByQuantity] = useState(false);
@@ -707,12 +977,6 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
 
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (isSelectedShowPast) {
-      setIsExportMenuOpen(false);
-    }
-  }, [isSelectedShowPast]);
 
   useEffect(() => {
     if (!isExportMenuOpen) {
@@ -741,16 +1005,12 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
 
   const openExportModal = useCallback(
     (multiplyByQuantity: boolean) => {
-      if (isSelectedShowPast) {
-        return;
-      }
-
       exportShowZipState.reset();
       setExportMultiplyByQuantity(multiplyByQuantity);
       setIsExportModalOpen(true);
       setIsExportMenuOpen(false);
     },
-    [exportShowZipState, isSelectedShowPast],
+    [exportShowZipState],
   );
 
   const closeExportModal = useCallback(() => {
@@ -772,7 +1032,6 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
   const gangSheetModalPrepareIdRef = useRef(0);
   const exportGangSheetPngState = useExportGangSheetPng();
   const {
-    clearCacheForShow: clearGangSheetCacheForShow,
     prepareGangSheetModal: prepareGangSheetModalData,
     hydrateCacheForLayoutMode: hydrateGangSheetCacheForLayoutMode,
     refreshCacheStatus: refreshGangSheetCacheStatus,
@@ -805,16 +1064,12 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
     void refreshSelectedShowGangSheetCache({
       show: selectedShow,
       selectedShowId,
-      isPast: isSelectedShowPast,
       settings: gangSheetLayoutSettings,
       reset: resetGangSheetExport,
-      clearForShow: clearGangSheetCacheForShow,
       refresh: refreshGangSheetCacheStatus,
     });
   }, [
-    clearGangSheetCacheForShow,
     gangSheetLayoutSettings,
-    isSelectedShowPast,
     refreshGangSheetCacheStatus,
     resetGangSheetExport,
     selectedShow,
@@ -823,7 +1078,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
 
   const openExportGangSheetModal = useCallback(
     (layoutMode: GangSheetLayoutMode) => {
-      if (isSelectedShowPast || !selectedShow) {
+      if (!selectedShow) {
         return;
       }
 
@@ -854,7 +1109,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
           }
         });
     },
-    [gangSheetLayoutSettings, isSelectedShowPast, prepareGangSheetModalData, selectedShow],
+    [gangSheetLayoutSettings, prepareGangSheetModalData, selectedShow],
   );
 
   const handleGangSheetLayoutModeChange = useCallback(
@@ -919,18 +1174,87 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
     void exportGangSheetPngState.exportCachedGangSheets();
   }, [exportGangSheetPngState]);
 
-  const parsedShow = useMemo(() => parseWhatnotShowUrl(createForm.whatnotUrl), [createForm.whatnotUrl]);
+  const isDevFixtureCreateIntent = useMemo(() => {
+    const trimmedUrl = createForm.whatnotUrl.trim();
+    if (!isDevOverrideShowUrlSentinel(trimmedUrl)) {
+      return false;
+    }
+    return isDevFixtureShowOperationAllowedForStudio();
+  }, [createForm.whatnotUrl]);
+
+  const parsedShow = useMemo(() => {
+    if (isDevFixtureCreateIntent) {
+      return undefined;
+    }
+    return parseWhatnotShowUrl(createForm.whatnotUrl);
+  }, [createForm.whatnotUrl, isDevFixtureCreateIntent]);
   const scheduledStartAt = parseDateTimeInputToTimestamp(createForm.scheduledStartAtInput);
-  const isCreateSubmitDisabled = !parsedShow || !scheduledStartAt;
+  const isCreateSubmitDisabled = isDevFixtureCreateIntent
+    ? !scheduledStartAt
+    : !parsedShow || !scheduledStartAt;
+
+  const isEditingDevFixtureShow = Boolean(
+    selectedShow && isDevFixtureShow(selectedShow),
+  );
+  const editParsedShow = useMemo(() => {
+    if (isEditingDevFixtureShow) {
+      return undefined;
+    }
+    return parseWhatnotShowUrl(editForm.whatnotUrl);
+  }, [editForm.whatnotUrl, isEditingDevFixtureShow]);
+  const editScheduledStartAt = parseDateTimeInputToTimestamp(editForm.scheduledStartAtInput);
+  const isEditSubmitDisabled = isEditingDevFixtureShow
+    ? !editScheduledStartAt
+    : !editParsedShow || !editScheduledStartAt;
 
   async function handleCreateShow(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!user || !permissionService.canManageUpcomingShows(user) || !parsedShow || !scheduledStartAt) {
+    if (isCreatingShow) {
+      return;
+    }
+
+    if (!user || !permissionService.canManageUpcomingShows(user) || !scheduledStartAt) {
+      return;
+    }
+
+    if (isDevFixtureCreateIntent) {
+      if (!isDevFixtureShowOperationAllowedForStudio()) {
+        setActionError("DEV-OVERRIDE is only available on fresh-prints-dev in a development build.");
+        return;
+      }
+
+      try {
+        setIsCreatingShow(true);
+        setActionError(null);
+        const result = await upcomingShowService.upsertDevFixtureShow(user, {
+          title: createForm.title.trim() || undefined,
+          scheduledStartAt,
+          notes: createForm.notes.trim() || undefined,
+        });
+
+        setSuccessMessage(`Show "${formatUpcomingShowTitle(result)}" created.`);
+        setSuccessAlertSeed((current) => current + 1);
+        closeCreateModal();
+        await reloadUpcomingShows();
+        applyShowQueueRoute({
+          showId: result.id,
+          tab: getWhatnotShowQueueTab(result, scheduleNow),
+        });
+      } catch (error) {
+        setActionError(formatWriteErrorMessage(error));
+      } finally {
+        setIsCreatingShow(false);
+      }
+      return;
+    }
+
+    if (!parsedShow) {
       return;
     }
 
     try {
+      setIsCreatingShow(true);
       setActionError(null);
       const result = await upcomingShowService.upsertUpcomingShow(user, {
         source: "whatnot",
@@ -941,14 +1265,58 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
         notes: createForm.notes.trim() || undefined,
       });
 
-      setSuccessMessage(`Show "${formatUpcomingShowTitle(result)}" saved.`);
+      setSuccessMessage(`Show "${formatUpcomingShowTitle(result)}" created.`);
       setSuccessAlertSeed((current) => current + 1);
       closeCreateModal();
       await reloadUpcomingShows();
-      setSelectedShowId(result.id);
-      updateSelectedShowPath(result.id);
+      applyShowQueueRoute({
+        showId: result.id,
+        tab: getWhatnotShowQueueTab(result, scheduleNow),
+      });
     } catch (error) {
       setActionError(formatWriteErrorMessage(error));
+    } finally {
+      setIsCreatingShow(false);
+    }
+  }
+
+  async function handleSaveShowEdit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (isSavingShowEdit || !user || !selectedShow || !editScheduledStartAt) {
+      return;
+    }
+    if (!permissionService.canEditUpcomingShowMetadata(user)) {
+      setActionError("Only owners can edit show details.");
+      return;
+    }
+    if (!isWhatnotQueueSurfaceShow(selectedShow)) {
+      return;
+    }
+    if (!isEditingDevFixtureShow && editParsedShow && editParsedShow.whatnotShowId !== selectedShow.whatnotShowId) {
+      setActionError("Whatnot URL must refer to the same show ID as this record.");
+      return;
+    }
+
+    try {
+      setIsSavingShowEdit(true);
+      setActionError(null);
+      const result = await upcomingShowService.updateUpcomingShowMetadata(user, selectedShow.id, {
+        title: editForm.title.trim() || undefined,
+        scheduledStartAt: editScheduledStartAt,
+        notes: editForm.notes.trim() || undefined,
+        whatnotUrl: isEditingDevFixtureShow ? undefined : editForm.whatnotUrl.trim() || undefined,
+      });
+
+      setSuccessMessage(`Show "${formatUpcomingShowTitle(result)}" updated.`);
+      setSuccessAlertSeed((current) => current + 1);
+      closeEditShowModal();
+      setScheduleNow(new Date());
+      await reloadUpcomingShows();
+    } catch (error) {
+      setActionError(formatWriteErrorMessage(error));
+    } finally {
+      setIsSavingShowEdit(false);
     }
   }
 
@@ -1058,8 +1426,23 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
     setActionError(null);
   }, []);
 
+  const selectedShowDisplayAllocatedQuantity = useMemo(() => {
+    if (!selectedShow) {
+      return 0;
+    }
+
+    return resolveShowDisplayAllocatedQuantity({
+      show: selectedShow,
+      allocations,
+      now: scheduleNow,
+    });
+  }, [allocations, scheduleNow, selectedShow]);
+
   const capacity = selectedShow
-    ? assessShowCapacity({ maxTotalQuantity: selectedShow.maxTotalQuantity, allocatedQuantity: selectedShow.allocatedQuantity })
+    ? assessShowCapacity({
+        maxTotalQuantity: selectedShow.maxTotalQuantity,
+        allocatedQuantity: selectedShowDisplayAllocatedQuantity,
+      })
     : null;
   const selectedShowStatusDisplay = useMemo(() => {
     if (!selectedShow || !capacity) {
@@ -1067,9 +1450,10 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
     }
 
     return getDerivedShowStatusDisplay(selectedShow.productionStatus, capacity, {
-      isPastScheduled: isSelectedShowPast,
+      isPastScheduled: isPastScheduledShow(selectedShow, scheduleNow),
+      productionResolutionKind: selectedShow.productionResolutionKind,
     });
-  }, [capacity, isSelectedShowPast, selectedShow]);
+  }, [capacity, scheduleNow, selectedShow]);
 
   const pendingMaxQuantity = maxQuantityInput.trim() ? Number(maxQuantityInput) : undefined;
   const maxQuantityNeedsOverride =
@@ -1127,11 +1511,11 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
       allocationTotalsByRequestId,
       requestIdsAlreadyOnShow: printRequestIdsAlreadyOnSelectedShow,
     });
-    if (!selectedShow || !isStaffGangSheetShow(selectedShow)) {
+    if (!selectedShow) {
       return options;
     }
-    // Preserve placeholder (value ""); filter eligible studio_internal only — no isInternal inference.
-    // Also drop anything already attached to this sheet (defensive; builder already excludes).
+
+    // Preserve placeholder (value ""); filter by show-source ↔ request-origin eligibility.
     return options.filter((option) => {
       if (option.value === "") {
         return true;
@@ -1184,6 +1568,66 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
     }
   }
 
+  const renderShowRailCard = useCallback(
+    (show: UpcomingShow, isPastScheduled: boolean) => {
+      const isSelected = show.id === selectedShowId;
+      const showCapacity = assessShowCapacity({
+        maxTotalQuantity: show.maxTotalQuantity,
+        allocatedQuantity: show.allocatedQuantity,
+      });
+      const showStatusDisplay = getDerivedShowStatusDisplay(show.productionStatus, showCapacity, {
+        isPastScheduled,
+        productionResolutionKind: show.productionResolutionKind,
+      });
+      const cardStateClass =
+        queueSurface === "staff_gang_sheets"
+          ? ""
+          : showCapacity.isOverCapacity
+            ? " is-over-capacity"
+            : showCapacity.isFull
+              ? " is-full"
+              : "";
+
+      return (
+        <button
+          className={`print-requests-request-card${isSelected ? " is-selected" : ""}${cardStateClass}`}
+          data-upcoming-show-id={show.id}
+          key={show.id}
+          onClick={() => handleSelectShow(show.id)}
+          type="button"
+        >
+          <div className="print-requests-request-card-title-row">
+            <strong>{formatUpcomingShowTitle(show)}</strong>
+            <div className="print-requests-request-card-badges">
+              <Badge variant={showStatusDisplay.variant}>{showStatusDisplay.label}</Badge>
+            </div>
+          </div>
+          <p className="print-requests-request-card-subtitle">
+            {queueSurface === "staff_gang_sheets"
+              ? isStaffGangSheetShow(show)
+                ? `Shared · Cycle ${show.staffGangSheetCycleNumber}`
+                : "Internal Gang Sheet"
+              : formatUpcomingShowTimestampLabel(show.scheduledStartAt)}
+          </p>
+        </button>
+      );
+    },
+    [handleSelectShow, queueSurface, selectedShowId],
+  );
+
+  const renderShowRailPane = useCallback(
+    (tabShows: UpcomingShow[], emptyTitle: string, emptyMessage: string, isPastScheduled: boolean) => (
+      <div className="print-requests-rail-list-pane">
+        {tabShows.length === 0 ? (
+          <EmptyState message={emptyMessage} title={emptyTitle} />
+        ) : (
+          tabShows.map((show) => renderShowRailCard(show, isPastScheduled))
+        )}
+      </div>
+    ),
+    [renderShowRailCard],
+  );
+
   return (
     <main className="page-layout page-layout-shell upcoming-shows-page">
       {loadError ? <ErrorState message={loadError} title="Unable to load the show queue" /> : null}
@@ -1191,7 +1635,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
         <DismissibleSuccessAlert
           key={`${successAlertSeed}-${successMessage}`}
           message={successMessage}
-          onDismiss={() => setSuccessMessage(null)}
+          onDismiss={dismissSuccessMessage}
         />
       ) : null}
 
@@ -1209,14 +1653,18 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                     {tab === "current" ? "Current" : "History"} ({staffShowsByListTab[tab].length})
                   </button>
                 ))
-              : (["upcoming", "past"] as const).map((tab) => (
+              : (["upcoming", "needs_attention", "past"] as const).map((tab) => (
                   <button
                     className={`print-requests-tab-button${activeScheduleTab === tab ? " is-active" : ""}`}
                     key={tab}
                     onClick={() => handleScheduleTabChange(tab)}
                     type="button"
                   >
-                    {tab === "upcoming" ? "Upcoming" : "Past"} ({showsByScheduleTab[tab].length})
+                    {tab === "upcoming"
+                      ? "Upcoming"
+                      : tab === "needs_attention"
+                        ? "Needs Attention"
+                        : "Past"} ({showsByScheduleTab[tab].length})
                   </button>
                 ))}
           </div>
@@ -1225,58 +1673,13 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
               <div className="print-requests-loading">
                 <LoadingSpinner label="Loading shows" />
               </div>
-            ) : visibleShows.length === 0 ? (
-              <EmptyState
-                message={
-                  queueSurface === "staff_gang_sheets"
-                    ? "Create a shared Internal Gang Sheet to start internal production."
-                    : "Add the first Whatnot show to start tracking the schedule and production."
-                }
-                title={queueSurface === "staff_gang_sheets" ? "No Internal Gang Sheets yet" : "No shows yet"}
-              />
             ) : (
-              visibleShows.map((show) => {
-                const isSelected = show.id === selectedShowId;
-                const showCapacity = assessShowCapacity({
-                  maxTotalQuantity: show.maxTotalQuantity,
-                  allocatedQuantity: show.allocatedQuantity,
-                });
-                const showStatusDisplay = getDerivedShowStatusDisplay(show.productionStatus, showCapacity, {
-                  isPastScheduled: queueSurface === "shows" && activeScheduleTab === "past",
-                });
-                const cardStateClass =
-                  queueSurface === "staff_gang_sheets"
-                    ? ""
-                    : showCapacity.isOverCapacity
-                      ? " is-over-capacity"
-                      : showCapacity.isFull
-                        ? " is-full"
-                        : "";
-
-                return (
-                  <button
-                    className={`print-requests-request-card${isSelected ? " is-selected" : ""}${cardStateClass}`}
-                    data-upcoming-show-id={show.id}
-                    key={show.id}
-                    onClick={() => handleSelectShow(show.id)}
-                    type="button"
-                  >
-                    <div className="print-requests-request-card-title-row">
-                      <strong>{formatUpcomingShowTitle(show)}</strong>
-                      <div className="print-requests-request-card-badges">
-                        <Badge variant={showStatusDisplay.variant}>{showStatusDisplay.label}</Badge>
-                      </div>
-                    </div>
-                    <p className="print-requests-request-card-subtitle">
-                      {queueSurface === "staff_gang_sheets"
-                        ? isStaffGangSheetShow(show)
-                          ? `Shared · Cycle ${show.staffGangSheetCycleNumber}`
-                          : "Internal Gang Sheet"
-                        : formatUpcomingShowTimestampLabel(show.scheduledStartAt)}
-                    </p>
-                  </button>
-                );
-              })
+              renderShowRailPane(
+                visibleShows,
+                railEmptyState.title,
+                railEmptyState.message,
+                railEmptyState.isPastScheduled,
+              )
             )}
           </div>
         </aside>
@@ -1328,16 +1731,14 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                           aria-expanded={isExportMenuOpen}
                           aria-haspopup="menu"
                           className="button-leading-icon"
-                          disabled={isSelectedShowPast || !hasActiveAllocationsForSelectedShow}
+                          disabled={!hasExportableAllocationsForSelectedShow}
                           onClick={() => setIsExportMenuOpen((current) => !current)}
                           size="sm"
                           variant="secondary"
                           title={
-                            isSelectedShowPast
-                              ? PAST_SHOW_READ_ONLY_MESSAGE
-                              : hasActiveAllocationsForSelectedShow
-                                ? undefined
-                                : "Add a print request to this show before exporting."
+                            hasExportableAllocationsForSelectedShow
+                              ? undefined
+                              : "Add a print request to this show before exporting."
                           }
                         >
                           <Download aria-hidden="true" size={16} strokeWidth={2} />
@@ -1345,7 +1746,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                           <ChevronDown aria-hidden="true" size={14} strokeWidth={2.4} />
                         </Button>
 
-                        {isExportMenuOpen && !isSelectedShowPast ? (
+                        {isExportMenuOpen ? (
                           <div aria-label="Export options" className="export-menu" id="export-menu" role="menu">
                             <button
                               className="export-menu-option"
@@ -1372,17 +1773,15 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                       </div>
 
                       <GangSheetLayoutModeMenu
-                        disabled={isSelectedShowPast || !hasActiveAllocationsForSelectedShow}
+                        disabled={!hasExportableAllocationsForSelectedShow}
                         isBusy={exportGangSheetPngState.isGenerating}
                         label="Generate"
                         menuId="gang-sheet-generate-menu"
                         onSelect={openExportGangSheetModal}
                         title={
-                          isSelectedShowPast
-                            ? PAST_SHOW_READ_ONLY_MESSAGE
-                            : hasActiveAllocationsForSelectedShow
-                              ? undefined
-                              : "Add a print request to this show before exporting."
+                          hasExportableAllocationsForSelectedShow
+                            ? undefined
+                            : "Add a print request to this show before exporting."
                         }
                       />
                       {isSelectedStaffGangSheet &&
@@ -1402,16 +1801,10 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                           Mark Complete
                         </Button>
                       ) : null}
-                      {permissionService.canDeleteEligibleUpcomingShow(user) ? (
+                      {showDetailOverflowMenuItems.length > 0 ? (
                         <DangerOverflowMenu
-                          ariaLabel="Show destructive actions"
-                          items={[
-                            {
-                              id: "delete-show",
-                              label: "Delete show…",
-                              onSelect: () => setIsDeletionDialogOpen(true),
-                            },
-                          ]}
+                          ariaLabel="Show actions"
+                          items={showDetailOverflowMenuItems}
                         />
                       ) : null}
                     </div>
@@ -1429,6 +1822,19 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                     <Badge variant={selectedShowStatusDisplay.variant}>{selectedShowStatusDisplay.label}</Badge>
                   ) : null}
                 </div>
+
+                {!isSelectedStaffGangSheet && selectedShow ? (
+                  <NeedsAttentionShowPanel
+                    allocations={allocations}
+                    canManage={Boolean(user && permissionService.canManageUpcomingShows(user))}
+                    isOwner={Boolean(user && permissionService.isOwner(user))}
+                    now={scheduleNow}
+                    onOpenDidNotPrint={() => setIsDidNotPrintDialogOpen(true)}
+                    onOpenOwnerOverride={() => setIsOwnerOverrideDialogOpen(true)}
+                    onSelectRecoveryAction={(action) => setRecoveryDialogAction(action)}
+                    show={selectedShow}
+                  />
+                ) : null}
 
                 {!isSelectedStaffGangSheet && permissionService.canManageUpcomingShows(user) ? (
                   <Card
@@ -1479,7 +1885,9 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                             : productionTimer.isPrinting
                               ? "Customers see this as Printing in the portal."
                               : productionTimer.isPastScheduledShow
-                                ? PAST_SHOW_READ_ONLY_MESSAGE
+                                ? selectedShowQueueTab === "needs_attention"
+                                  ? "Scheduled time has passed. Resolve production using the Needs Attention actions below."
+                                  : PAST_SHOW_EXPORT_COPY
                                 : "Start when the printer begins. Exporting does not start the timer."}
                       </p>
                       <div className="show-production-timer-actions">
@@ -1547,6 +1955,10 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                       <p className="print-requests-error show-production-timer-error" role="alert">
                         {stalePrintingReconciliation.error}
                       </p>
+                    ) : emptyPastShowReconciliation.error ? (
+                      <p className="print-requests-error show-production-timer-error" role="alert">
+                        {emptyPastShowReconciliation.error}
+                      </p>
                     ) : null}
                     {productionTimer.reconciliationRetryUiState !== "none" ? (
                       <div role="status">
@@ -1574,12 +1986,14 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                 <dl className="upcoming-show-detail-facts">
                   <div>
                     <dt>Whatnot show ID</dt>
-                    <dd>{selectedShow.whatnotShowId}</dd>
+                    <dd>{formatUpcomingShowWhatnotIdentityLabel(selectedShow)}</dd>
                   </div>
                   <div>
                     <dt>Whatnot URL</dt>
                     <dd>
-                      {selectedShow.whatnotUrl ? (
+                      {isDevFixtureShow(selectedShow) ? (
+                        "No external Whatnot URL"
+                      ) : selectedShow.whatnotUrl ? (
                         <button
                           className="link-button"
                           onClick={() => void desktopAppService.openExternalLink(selectedShow.whatnotUrl!)}
@@ -1756,7 +2170,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                             <Badge variant={getShowAllocationStatusBadgeVariant(group.allocations[0].status)}>
                               {group.allocations[0].status}
                             </Badge>
-                            {!canRemove ? null : isConfirmingRemove ? (
+                            {isConfirmingRemove ? (
                               <>
                                 <Button
                                   onClick={() => setConfirmingRemoveRequestId(null)}
@@ -1774,13 +2188,36 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                                 </Button>
                               </>
                             ) : (
-                              <Button
-                                onClick={() => setConfirmingRemoveRequestId(group.printRequestId)}
-                                size="sm"
-                                variant="ghost"
-                              >
-                                Remove
-                              </Button>
+                              <DangerOverflowMenu
+                                ariaLabel={`Actions for ${group.requestNameSnapshot}`}
+                                items={[
+                                  {
+                                    id: "transfer",
+                                    danger: false,
+                                    label: selectedShow
+                                      ? formatPrintRequestShowTransferActionLabel(
+                                          resolvePrintRequestShowTransferMode(selectedShow),
+                                        )
+                                      : "Move to another show",
+                                    onSelect: () =>
+                                      setTransferRequestContext({
+                                        printRequestId: group.printRequestId,
+                                        requestNameSnapshot: group.requestNameSnapshot,
+                                        transferQuantity: totalAllocated,
+                                      }),
+                                  },
+                                  ...(canRemove
+                                    ? [
+                                        {
+                                          id: "remove",
+                                          label: "Remove from show",
+                                          onSelect: () =>
+                                            setConfirmingRemoveRequestId(group.printRequestId),
+                                        },
+                                      ]
+                                    : []),
+                                ]}
+                              />
                             )}
                           </div>
                         </div>
@@ -1809,6 +2246,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
               <button
                 aria-label="Close add show"
                 className="icon-button icon-button-md icon-button-ghost"
+                disabled={isCreatingShow}
                 onClick={closeCreateModal}
                 type="button"
               >
@@ -1829,11 +2267,15 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                   value={createForm.whatnotUrl}
                 />
                 <p className="print-requests-modal-hint">
-                  {parsedShow
-                    ? `Show ID: ${parsedShow.whatnotShowId}`
-                    : createForm.whatnotUrl.trim()
-                      ? "This does not look like a valid Whatnot live show URL."
-                      : "Show ID will appear after a valid Whatnot URL is entered."}
+                  {isDevFixtureCreateIntent
+                    ? "DEV OVERRIDE — creates a fixture show with no real Whatnot identity."
+                    : parsedShow
+                      ? `Show ID: ${parsedShow.whatnotShowId}`
+                      : isDevOverrideShowUrlSentinel(createForm.whatnotUrl)
+                        ? "DEV-OVERRIDE is only available on fresh-prints-dev in a development build."
+                        : createForm.whatnotUrl.trim()
+                          ? "This does not look like a valid Whatnot live show URL."
+                          : "Show ID will appear after a valid Whatnot URL is entered."}
                 </p>
                 <TextInput
                   label="Title"
@@ -1870,11 +2312,115 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
               </form>
             </ModalBody>
             <ModalFooter>
-              <Button onClick={closeCreateModal} variant="ghost">
+              <Button disabled={isCreatingShow} onClick={closeCreateModal} variant="ghost">
                 Cancel
               </Button>
-              <Button disabled={isCreateSubmitDisabled} form="create-upcoming-show-form" type="submit">
-                Save show
+              <Button
+                disabled={isCreateSubmitDisabled || isCreatingShow}
+                form="create-upcoming-show-form"
+                type="submit"
+              >
+                {isCreatingShow ? "Saving…" : "Save show"}
+              </Button>
+            </ModalFooter>
+          </Modal>
+        </div>
+      ) : null}
+
+      {isEditModalOpen && selectedShow ? (
+        <div className="modal-overlay modal-overlay-blur">
+          <Modal
+            aria-labelledby="upcoming-show-edit-title"
+            className="modal-panel modal-panel-md"
+            role="dialog"
+          >
+            <ModalHeader>
+              <div>
+                <p className="eyebrow">Edit show</p>
+                <h3 id="upcoming-show-edit-title">{formatUpcomingShowTitle(selectedShow)}</h3>
+              </div>
+              <button
+                aria-label="Close edit show"
+                className="icon-button icon-button-md icon-button-ghost"
+                disabled={isSavingShowEdit}
+                onClick={closeEditShowModal}
+                type="button"
+              >
+                <X aria-hidden="true" size={18} strokeWidth={2.2} />
+              </button>
+            </ModalHeader>
+            <ModalBody>
+              <form
+                className="print-requests-modal-form"
+                id="edit-upcoming-show-form"
+                onSubmit={handleSaveShowEdit}
+              >
+                {isEditingDevFixtureShow ? (
+                  <p className="print-requests-modal-hint">
+                    DEV OVERRIDE fixture — Whatnot URL and show ID cannot be changed.
+                  </p>
+                ) : (
+                  <>
+                    <TextInput
+                      label="Whatnot show URL"
+                      name="editWhatnotUrl"
+                      onChange={(event) =>
+                        setEditForm((current) => ({ ...current, whatnotUrl: event.target.value }))
+                      }
+                      placeholder="https://www.whatnot.com/live/..."
+                      value={editForm.whatnotUrl}
+                    />
+                    <p className="print-requests-modal-hint">
+                      {editParsedShow
+                        ? editParsedShow.whatnotShowId === selectedShow.whatnotShowId
+                          ? `Show ID: ${editParsedShow.whatnotShowId}`
+                          : "URL must refer to the same show ID as this record."
+                        : editForm.whatnotUrl.trim()
+                          ? "This does not look like a valid Whatnot live show URL."
+                          : "Show ID will appear after a valid Whatnot URL is entered."}
+                    </p>
+                  </>
+                )}
+                <TextInput
+                  label="Title"
+                  name="editTitle"
+                  onChange={(event) => setEditForm((current) => ({ ...current, title: event.target.value }))}
+                  value={editForm.title}
+                />
+                <TextInput
+                  label="Scheduled date and time"
+                  name="editScheduledStartAtInput"
+                  onChange={(event) =>
+                    setEditForm((current) => ({ ...current, scheduledStartAtInput: event.target.value }))
+                  }
+                  type="datetime-local"
+                  value={editForm.scheduledStartAtInput}
+                />
+                <AutoResizeTextarea
+                  label="Notes"
+                  name="editNotes"
+                  onChange={(event) => setEditForm((current) => ({ ...current, notes: event.target.value }))}
+                  placeholder="Optional planning notes"
+                  value={editForm.notes}
+                />
+
+                {actionError ? (
+                  <p className="auth-message auth-message-error" role="alert">
+                    {actionError}
+                  </p>
+                ) : null}
+              </form>
+            </ModalBody>
+            <ModalFooter>
+              <Button disabled={isSavingShowEdit} onClick={closeEditShowModal} variant="ghost">
+                Cancel
+              </Button>
+              <Button
+                disabled={isEditSubmitDisabled || isSavingShowEdit}
+                form="edit-upcoming-show-form"
+                type="submit"
+              >
+                {isSavingShowEdit ? "Saving…" : "Save changes"}
               </Button>
             </ModalFooter>
           </Modal>
@@ -1924,9 +2470,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                       setSuccessMessage(`Created ${formatUpcomingShowTitle(created)}.`);
                       setSuccessAlertSeed((current) => current + 1);
                       await reloadUpcomingShows();
-                      setStaffListTab("current");
-                      setSelectedShowId(created.id);
-                      updateSelectedShowPath(created.id, null);
+                      applyShowQueueRoute({ tab: "current", showId: created.id, requestId: null });
                     } catch (error) {
                       setActionError(formatWriteErrorMessage(error));
                     }
@@ -2487,9 +3031,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                       );
                       setSuccessAlertSeed((current) => current + 1);
                       await reloadUpcomingShows();
-                      setSelectedShowId(result.nextShowId);
-                      setStaffListTab("current");
-                      updateSelectedShowPath(result.nextShowId, null);
+                      applyShowQueueRoute({ tab: "current", showId: result.nextShowId, requestId: null });
                     } catch (error) {
                       setActionError(formatWriteErrorMessage(error));
                     } finally {
@@ -2522,12 +3064,100 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
           setIsDeletionDialogOpen(false);
           setSuccessMessage(message);
           setSuccessAlertSeed((current) => current + 1);
-          setSelectedShowId(null);
+          applyShowQueueRoute({
+            showId: null,
+            requestId: null,
+            tab: queueSurface === "staff_gang_sheets" ? staffListTab : activeScheduleTab,
+          });
           void reloadUpcomingShows();
         }}
         showLabel={selectedShow ? formatUpcomingShowTitle(selectedShow) : "Show"}
         upcomingShowId={selectedShow?.id ?? null}
       />
+
+      <DidNotPrintRecoveryDialog
+        allocations={allocations}
+        isOpen={isDidNotPrintDialogOpen}
+        now={scheduleNow}
+        onCancel={() => setIsDidNotPrintDialogOpen(false)}
+        onCompleted={(message) => {
+          setIsDidNotPrintDialogOpen(false);
+          setSuccessMessage(message);
+          setSuccessAlertSeed((current) => current + 1);
+          clearPrintRequestsPageCache();
+          void handleRecoveryCompleted();
+        }}
+        onReleaseOnly={() => {
+          setIsDidNotPrintDialogOpen(false);
+          setRecoveryDialogAction("release_unfulfilled");
+        }}
+        show={selectedShow}
+        showLabel={selectedShow ? formatUpcomingShowTitle(selectedShow) : "Show"}
+        upcomingShowId={selectedShow?.id ?? null}
+      />
+
+      <ShowProductionRecoveryDialog
+        action={recoveryDialogAction}
+        allocations={allocations}
+        isOpen={recoveryDialogAction !== null}
+        now={scheduleNow}
+        onCancel={() => setRecoveryDialogAction(null)}
+        onCompleted={(message) => {
+          setRecoveryDialogAction(null);
+          setSuccessMessage(message);
+          setSuccessAlertSeed((current) => current + 1);
+          clearPrintRequestsPageCache();
+          void handleRecoveryCompleted();
+        }}
+        show={selectedShow}
+        showLabel={selectedShow ? formatUpcomingShowTitle(selectedShow) : "Show"}
+        upcomingShowId={selectedShow?.id ?? null}
+      />
+
+      <OwnerShowProductionOverrideDialog
+        allocations={allocations}
+        isOpen={isOwnerOverrideDialogOpen}
+        now={scheduleNow}
+        onCancel={() => setIsOwnerOverrideDialogOpen(false)}
+        onCompleted={(message) => {
+          setIsOwnerOverrideDialogOpen(false);
+          setSuccessMessage(message);
+          setSuccessAlertSeed((current) => current + 1);
+          clearPrintRequestsPageCache();
+          void handleRecoveryCompleted();
+        }}
+        show={selectedShow}
+        showLabel={selectedShow ? formatUpcomingShowTitle(selectedShow) : "Show"}
+        upcomingShowId={selectedShow?.id ?? null}
+      />
+
+      {transferRequestContext && selectedShow ? (() => {
+        const matchedRequest =
+          requests.find((request) => request.id === transferRequestContext.printRequestId) ?? {
+            id: transferRequestContext.printRequestId,
+            name: transferRequestContext.requestNameSnapshot,
+          };
+
+        return (
+          <TransferPrintRequestToShowModal
+            onClose={() => setTransferRequestContext(null)}
+            onTransferred={async () => {
+              setTransferRequestContext(null);
+              clearPrintRequestsPageCache();
+              setSuccessMessage(
+                selectedShow && resolvePrintRequestShowTransferMode(selectedShow) === "copy"
+                  ? "Request copied to the selected show."
+                  : "Request moved to the selected show.",
+              );
+              setSuccessAlertSeed((current) => current + 1);
+              await Promise.all([reloadUpcomingShows(), reloadAllocations()]);
+            }}
+            printRequest={matchedRequest}
+            sourceShow={selectedShow}
+            transferQuantity={transferRequestContext.transferQuantity}
+          />
+        );
+      })() : null}
     </main>
   );
 }

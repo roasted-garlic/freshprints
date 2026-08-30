@@ -1,6 +1,24 @@
 import type { PrintRequestListTab } from "../utils/printRequestListGrouping";
 
-export function getPrintRequestTabHelperCopy(tab: PrintRequestListTab): string {
+export function getPrintRequestTabHelperCopy(
+  tab: PrintRequestListTab,
+  options?: { isInternal?: boolean },
+): string {
+  if (options?.isInternal) {
+    switch (tab) {
+      case "working":
+        return "Working — open internal carts not yet on a show or Internal Gang Sheet. Use Stale / Empty / All and search to find others.";
+      case "queued":
+        return "Queued — internal requests assigned to a show or Internal Gang Sheet. Completing the run moves them to Printed (there is no Printing step for internal requests).";
+      case "printed":
+        return "Printed — completed internal runs. Use search to find a request name.";
+      case "printing":
+        return "";
+      default:
+        return "";
+    }
+  }
+
   switch (tab) {
     case "working":
       return "Working — open carts not yet on a show. Default view is Active (has items, updated recently). Use Stale / Empty / All and search to find others.";

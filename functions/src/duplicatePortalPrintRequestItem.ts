@@ -147,6 +147,12 @@ export const duplicatePortalPrintRequestItem = onCall(
             ? itemData.titleSnapshot.trim()
             : undefined;
 
+        const standardSizePresetKey =
+          typeof itemData.standardSizePresetKey === "string" &&
+          itemData.standardSizePresetKey.trim()
+            ? itemData.standardSizePresetKey.trim()
+            : undefined;
+
         // Newest-first Portal display: insert-before = visual right of source.
         const insertOrder = resolveDuplicateInsertBeforeSortOrder({
           sourceItemId: itemId,
@@ -242,6 +248,7 @@ export const duplicatePortalPrintRequestItem = onCall(
                 typeof printWidthInches === "number" && typeof printHeightInches === "number"
                   ? formatPrintRequestItemSizeLabel(printWidthInches, printHeightInches)
                   : undefined,
+              ...(standardSizePresetKey ? { standardSizePresetKey } : {}),
               sortOrder,
               notes,
               status: "pending",
@@ -264,6 +271,7 @@ export const duplicatePortalPrintRequestItem = onCall(
                 typeof printWidthInches === "number" && typeof printHeightInches === "number"
                   ? formatPrintRequestItemSizeLabel(printWidthInches, printHeightInches)
                   : undefined,
+              ...(standardSizePresetKey ? { standardSizePresetKey } : {}),
               sortOrder,
               notes,
               status: "pending",

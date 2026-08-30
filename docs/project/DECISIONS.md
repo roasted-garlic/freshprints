@@ -4,6 +4,348 @@
 
 ---
 
+---
+
+---
+
+---
+
+---
+
+---
+
+### ADR-FP-156: Did Not Print bulk requeue + Needs Re-queue (Show Queue)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-29 |
+| Status | **accepted — DEV QA PASS (2026-08-30)** |
+| Related | ADR-FP-149, ADR-FP-071, ADR-FP-155 |
+| Signoff | `docs/workflow/reviews/2026-08-30-show-queue-needs-attention-did-not-print-recovery-signoff.md` |
+
+**Context**
+
+Staff resolving missed shows need to move unprinted allocation quantities to another upcoming show in one trusted operation. Release-only must surface requests requiring later scheduling without breaking Portal one-continuable-request rules.
+
+**Decision**
+
+1. Add recovery action `requeue_unfulfilled` → source show `productionResolutionKind: unfulfilled_requeue` (Did Not Print).
+2. Move only finishable source allocations (`pending`/`queued`/`in_progress`); cancel source rows; create new destination rows with `requeuedFromAllocationId` lineage.
+3. Server preview checksum + single transaction apply (max 150 finishable rows); idempotency doc `showProductionRecoveryApplications/{checksum}`.
+4. Release-only sets optional `needsStaffRequeue*` on print requests; Working triage filter `needs_requeue` (rightmost Working filter); cleared on successful Add to Show allocation.
+5. Requeue path does **not** transition requests to `editing`; requests reconcile to Queued via existing tab recompute.
+
+**QA enabler (scoped, same phase)**
+
+Owner-only **Edit show** metadata on eligible Whatnot / DEV fixture shows enabled on DEV to adjust fixture schedules during recovery QA. Not a separate managed goal; production promotion requires separate review.
+
+**Consequences**
+
+- Extend `previewShowProductionRecovery` / `applyShowProductionRecovery` + Firestore rules allowlists — deployed `fresh-prints-dev` only.
+- Owner DEV QA **PASS** 2026-08-30. **Production deploy NOT AUTHORIZED** (coordinated promotion deferred).
+
+---
+
+### ADR-FP-155: DEV-only Show Queue fixture shows (`DEV-OVERRIDE`)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-29 |
+| Status | accepted |
+| Related | Show Queue allocation permission repair; ADR-FP-049 |
+
+**Context**
+
+Owners need to exercise Show Queue allocation and upcoming Did Not Print / re-queue workflows on `fresh-prints-dev` without fabricating real Whatnot URLs or external show IDs. A sentinel in the existing Whatnot URL field must not weaken production rules or pollute import matching.
+
+**Decision**
+
+1. Exact trimmed sentinel `DEV-OVERRIDE` in the Whatnot URL input on approved DEV only (`import.meta.env.DEV` + `projectId === "fresh-prints-dev"`).
+2. Persist `source: "dev_fixture"` with `devFixtureSentinel: "DEV-OVERRIDE"`; **do not** persist fake `whatnotShowId` or `whatnotUrl`.
+3. Create/update through callable `upsertDevFixtureShow` with independent `GCLOUD_PROJECT === "fresh-prints-dev"` gate and staff authorization; client Firestore rules deny client create of `dev_fixture`.
+4. Studio Show Detail displays **DEV OVERRIDE** / “No external Whatnot URL”; Whatnot import continues to match `source === "whatnot"` only.
+
+**Consequences**
+
+- Production rejects the sentinel and callable.
+- Allocation permission repair remains a separate narrow rules allowlist reconciliation (creation snapshots + production-resolution metadata).
+
+---
+
+### ADR-FP-154: Owner-authorized full customer account merge (WS3)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-29 |
+| Status | accepted |
+| Related | ADR-FP-153 (WS2 Transfer Username); ADR-FP-150; ADR-FP-151; customer identity WS3 |
+
+**Context**
+
+When two customer accounts represent the same person, WS2 **Transfer Username** is insufficient: operational history (print requests, uploads, allocations, favorites, etc.) must consolidate under one canonical survivor while preserving immutable historical truth. Merge is high-risk, resumable, and distinct from username-only transfer.
+
+**Decision**
+
+1. **Owner-only callables** — `previewCustomerAccountMerge`, `applyCustomerAccountMerge`, `getCustomerAccountMergeStatus`.
+2. **Survivor canonical** — survivor keeps `customerId`, Firebase Auth UID, login provider, and chosen username; source Auth UID is never substituted into survivor.
+3. **Source tombstone** — source `customers/{id}` remains with `isMerged: true`, `mergedIntoCustomerId`, `mergedAt`, `mergedBy`; distinct from Disabled/Closed.
+4. **Source `users/{uid}`** — retained inactive with merge metadata (not deleted in v1).
+5. **Source Auth** — permanently disabled after UID-dependent Storage migration completes; never auto-deleted in v1.
+6. **Resumable job** — `customerMergeJobs/{jobId}` with staged idempotent checkpoints; no single-transaction merge; no automatic rollback.
+7. **Identity locks** — both customers locked (`kind: merge`) during Apply; reuse WS1/WS2 lock helper.
+8. **Continuable working requests** — distinguish empty (0 `printRequestItems`) vs meaningful; both meaningful → BLOCK; empty drafts removed via trusted internal cleanup; source-only meaningful → reassign to survivor when survivor has none; Apply rechecks item counts.
+9. **Username** — default survivor keeps username; owner may choose source username via shared transactional primitives with `merged-src-*` placeholder (not `dupe-src-*`).
+10. **Immutable history** — do not rewrite `printRequests.name`, at-creation snapshots, allocation snapshots, or historical `customerActivityEvents.customerId`.
+11. **Operational migration** — batch reassign approved collections; Storage copy-verify-delete when Auth UIDs differ.
+12. **Web push** — invalidate/remove source subscriptions; do not migrate tokens.
+13. **WS4 prep** — survivor `mergedSourceCustomerIds[]` + source tombstone enable alias-aware history queries.
+14. **Studio** — distinct **Merged** directory tab; separate **Merge Accounts** wizard from **Transfer Username**.
+15. **Confirmation phrase** — `MERGE ACCOUNTS`.
+
+**Consequences**
+
+- DEV-only until coordinated identity package promotion.
+- WS4 grouped customer history depends on merge alias metadata and immutable audit events.
+
+---
+
+### ADR-FP-153: Owner-authorized verified duplicate username transfer (WS2)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-29 |
+| Status | accepted |
+| Related | ADR-FP-115; ADR-FP-150; ADR-FP-151; customer identity WS2 |
+
+**Context**
+
+Customers can create separate Fresh Prints accounts (for example email/password then Google) that retain separate `customerId` records. When the duplicate source owns the desired username reservation, the survivor cannot claim it through ordinary username change. WS3 full merge is out of scope for WS2.
+
+**Decision**
+
+1. **Owner-only** callables `previewDuplicateAccountResolution` and `transferCustomerUsername` (no admin WS2 preview/apply).
+2. **Two-tier verification** — Tier A: matching normalized verified Auth emails; Tier B: owner attestation + reason (≥8 chars). Display-name similarity never auto-verifies.
+3. **Apply confirmation phrase** — shared constant `TRANSFER USERNAME`.
+4. **Default disposition** — atomic username transfer, survivor identity propagation, then reversible disable of source (not tombstone, not hard delete).
+5. **Continuable Portal print requests** — fail-closed block when source has continuable request (disable would strand it) or when both have continuable requests; survivor-only continuable allowed.
+6. **Username transaction** — desired reservation moves source → survivor in one Firestore transaction; survivor prior reservation released; source receives server-generated `dupe-src-*` placeholder reservation.
+7. **Preview safety** — single-use 15-minute preview + checksum; Apply revalidates reservations, continuable state, verification, and identity locks.
+8. **Partial success** — if disable fails after successful transfer, return explicit partial-success contract (transfer not rolled back).
+9. **Audit** — `account.duplicate_resolution_previewed`, `account.username_transferred`, reuse `account.disabled` for disable step. No WS3 ownership reassignment.
+
+**Consequences**
+
+- Source history remains on source `customerId`; survivor login continues with desired username.
+- WS4 activity deep links and WS3 merge remain separate authorized workstreams.
+
+---
+
+### ADR-FP-151: History-free customer hard delete (dev-gated)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-28 |
+| Status | accepted |
+| Related | `customer-account-identity-management-and-audit` WS1; ADR-FP-115 |
+
+**Context**
+
+Duplicate-account cleanup may require removing a genuinely history-free customer account and releasing its username. `ownerDeleteUser` cascades all business history and is quarantined to Test Data on `fresh-prints-dev` only. Product needs a separate eligibility-gated path.
+
+**Decision**
+
+1. **Callables** `previewHardDeleteCustomerAccount` + `hardDeleteCustomerAccount` (owner only).
+2. **Fail closed** — server-side inventory of all meaningful history blockers; tombstoned/merged accounts blocked.
+3. **Apply** removes identity/bootstrap records only (Auth, `users`, `customers`, `customerUsernames`, ephemeral ops docs) — never print requests, uploads, assisted history, etc.
+4. **Preview** uses short-lived single-use preview docs + checksum bound to eligibility snapshot; Apply revalidates.
+5. **DEV gate** — `hardDeleteCustomerAccount` Apply allowed only on `fresh-prints-dev` until explicit production authorization.
+6. **Audit** — append-only `customerActivityEvents` record preview/apply with actor + checksum (audit evidence, not lifecycle source-of-truth).
+
+**Consequences**
+
+- Username released on successful history-free delete (intentional duplicate-resolution enabler).
+- Distinct confirmation phrase: `DELETE CUSTOMER`.
+
+---
+
+### ADR-FP-150: Reversible customer account disable
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-28 |
+| Status | accepted |
+| Related | ADR-FP-115 tombstone; `customer-account-identity-management-and-audit` WS1 |
+
+**Context**
+
+Duplicate resolution and investigation need a reversible sign-in block without ADR-FP-115 tombstone semantics (permanent username reservation + `isDeleted`).
+
+**Decision**
+
+1. **Fields** on `customers`: `isDisabled`, `disabledAt`, `disabledBy`, `disabledReason?`.
+2. **Callables** `disableCustomerAccount` / `restoreCustomerAccount` (owner apply only).
+3. **Auth** — disable/enable Firebase Auth; set `users.isActive` false/true; preserve all history and `customerUsernames`.
+4. **Portal gate** — `requirePortalCustomer` rejects `isDisabled`.
+5. **Tombstone** — `isDeleted` accounts cannot use reversible disable/restore.
+
+**Consequences**
+
+- Studio owner menu distinguishes reversible disable from tombstone disable.
+
+---
+
+### ADR-FP-148: Portal customer identity self-service + snapshot propagation
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-27 |
+| Status | accepted |
+| Related | `2026-08-27-portal-customer-username-change` plan + review |
+
+**Context**
+
+Portal customers requested self-service username and display-name changes. Print request `name` fields (e.g. `olduser-CR001`) must remain immutable for operational history, while searchable/display snapshots should reflect current identity with write-once at-creation preservation for historical UI (`@new · was @old at submission`).
+
+**Decision**
+
+1. **Portal callable** `updatePortalCustomerProfile` — self-only; `displayName` + `username` only; 30-day Portal username cooldown; display-name-only allowed during cooldown.
+2. **Staff parity** — `updateCustomer` delegates username/displayName to shared `applyCustomerProfileUpdate`; staff bypass cooldown; email/notes unchanged.
+3. **Canonical transaction** — single Firestore txn: customer doc, `customerUsernames` reservation swap, optional `users/{uid}` mirror, bounded `usernameHistory` append (max 10, support-only).
+4. **Propagation** — Admin SDK batch updates to `printRequests` + `designIssueReports` by `customerId`; write-once `*AtCreationSnapshot` fields; never mutate print request `name`.
+5. **Recovery** — `customers.identitySnapshotPropagation` persisted cursor/state; resumable in-callable batches (≤400 writes/batch).
+6. **No migration** — legacy records without at-creation fields render safely via shared formatter.
+7. **No new indexes** — single-field `customerId` equality queries only.
+
+**Consequences**
+
+- DEV deploy allowlist: `updatePortalCustomerProfile` + updated `updateCustomer` only.
+- `usernameHistory` not exposed in Portal UI.
+- Firestore rules unchanged (Admin SDK writes for propagation + new customer fields).
+
+---
+
+### ADR-FP-147: Ready Smart Profile visibility, owner/admin staff edit, and AI snapshot merge
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-26 |
+| Status | accepted (Slice 6 corrective) |
+| Related | ADR-FP-146; Slice 6 visibility/editing plan + review |
+
+**Context**
+
+Ready catalog designs expose Smart Profile v30/v4 in Algolia but Studio Design Details had no owner-facing visibility. Owner QA on the 3-design canary blocked on inspecting automation provenance. Staff occasionally need to correct individual Smart Profile dimensions without unpublishing Ready designs or losing corrections on future Ready backfill.
+
+**Decision**
+
+1. **Visibility:** Design Details shows Smart Catalog Profile (Missing / Older / Current from shared `resolveSmartProfilePipelineStatus()` comparing `promptVersion` + `normalizerVersion` to v30/v4). Audit & Technical Details shows technical provenance/automation diagnostics.
+2. **Edit permission:** Owner + admin only — enforced server-side in callables (`updateDesignSmartProfileDimensions`, `resetDesignSmartProfileDimension`); helpers may view but not edit. Missing Smart Profile on Ready designs is read-only (no manual creation).
+3. **Write path:** Callable/service only; client Firestore rules continue to deny `smartProfile` writes.
+4. **Staff provenance:** `smartProfile.provenance.staffEditedDimensionKeys`, `staffEditedAt`, `staffEditedBy` on each staff save; keys validated against canonical dimension enum.
+5. **AI snapshot:** Functions-owned `smartProfileAiSnapshot` updated on every successful AI Smart Profile write (queue + `ready_backfill`); represents raw AI dimensions before staff merge.
+6. **Ready backfill merge:** AI replaces non-staff-edited dimensions; dimensions listed in `staffEditedDimensionKeys` keep effective staff values; staff provenance preserved.
+7. **Reset:** Per-dimension reset restores from `smartProfileAiSnapshot` and removes key from `staffEditedDimensionKeys`.
+8. **Algolia:** Reuse existing Ready sync classifier — Smart Profile dimension edits trigger index-filter upsert; no new publisher.
+9. **Preservation diagnostic fix:** `approvalAuditUnchanged` uses semantic Firestore Timestamp equality (not object identity).
+
+**Consequences**
+
+- DEV deploy allowlist: new Smart Profile callables only (no full catalog run).
+- Card badge surfacing remains out of scope.
+
+---
+
+### ADR-FP-146: Ready Catalog backfill preservation (Slice 6)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-26 |
+| Status | accepted (implementation complete; gate unlock + DEV deploy separately gated) |
+| Related | Slice 6 plan/review; ADR-FP-144; ADR-FP-145 |
+
+**Context**
+
+Slice 5 AI Review Queue reprocess intentionally demotes designs to `imported` + `needs_review` under Shadow. Ready Catalog designs are customer-visible and Algolia-indexed; re-enrichment must regenerate Smart Profile v30/v4 without unpublishing or rewriting human approval metadata.
+
+**Decision**
+
+1. Separate **Ready-safe staging** — never reuse `buildCatalogReprocessAiClearUpdate()` for `ready_catalog`.
+2. Pipeline **`ready_backfill`** mode — success/failure preserve `status: ready` + `aiReviewStatus: approved`; no `publishReady`; approval audit and `readyAt` immutable.
+3. Success terminal **`aiProcessingStage: ready_for_review`** (AI operational stage only).
+4. Worker asserts `ready_lifecycle_violation` → soft-pause + `preservationViolations` counter.
+5. Shadow automation recorded in `smartProfile.provenance` for calibration only.
+6. Optional **`canaryDesignIds`** at Start → `boundedDesignIds` on job (max 50); required before full Ready Start per Formal Review.
+7. Gate **`CATALOG_REPROCESS_READY_CATALOG_ENABLED`** remains false until deploy-then-unlock owner sequence.
+8. No tag retirement; no Autonomous enablement in Slice 6 implement.
+
+**Consequences**
+
+- Algolia upsert on Smart Profile change while Ready is expected; non-ready status flip is P0.
+- Deploy preservation Functions before gate unlock.
+
+---
+
+### ADR-FP-145: Gate I corrective — subject anti-glue + category dominant-intent blocker
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-26 |
+| Status | accepted (DEV implemented, deployed, mini-QA’d; Slice 5 signed off) |
+| Related | Slice 5 Gate I; ADR-FP-144; plan `2026-08-26-slice-5-gate-i-corrective-plan.md`; signoff `2026-08-26-smart-catalog-intelligence-slice-5-signoff.md` |
+
+**Context**
+
+Gate I manual sample on job `zFzAwEIwCXFWC8dce0f4` (v29/v3) found a material false-positive unattended approval (fantasy/storybook art under Floral & Nature) and repeated artificial Subject compounds from title/slogan glue (`problem skeleton`, `coochie alligator`, etc.). Precision of unattended approval remains more important than approval rate.
+
+**Decision**
+
+1. Bump prompt to **`catalog-enrich-v30`** and normalizer to **`smart-profile-normalizer-v4`**.
+2. **Anti-glue subject promotion:** prefer description/centralSubject; distrust title-only adjacency when modifiers are slogan/visible-text or late in long titles; strip redundant character merges (`donald goofy` beside Donald Duck + Goofy); multi-word subjects must not self-validate solely via title glue.
+3. Preserve genuine specificity (e.g. highland cow, schnauzer, Frankenstein's monster, chimpanzee, raccoon). No curated subject allowlist.
+4. **Decision-layer** hard blocker `category_dominant_intent_conflict` when strong fantasy/story/reading profile signals conflict with a scenic category family (e.g. Floral & Nature) whose scenic tokens are weaker than the dominant family score. Do not modify category governance / CRUD.
+5. Subject `structured_evidence_gap:*` remains **hard** / verifier-unresolved.
+6. Object soft-lane **deferred**. Narrow `daisy`↔`daisies` plural equivalence shipped only.
+7. Shadow lifecycle unchanged; Ready Catalog locked; Autonomous live OFF; no production deploy in this corrective.
+
+**Consequences**
+
+- DEV deploy + mini QA completed 2026-08-26; Slice 5 signed off **approved_with_notes**.
+- Catalog reprocess pipeline snapshot records v30+v4 for any later owner-authorized re-calibration.
+- Live Autonomous, Ready Catalog unlock, Slice 6, and production remain separately gated.
+
+---
+
+### ADR-FP-144: Catalog Processing Mode and unattended catalog approval architecture
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-25 |
+| Status | accepted (architecture); **live Autonomous publication not authorized** |
+| Related | Smart Catalog Intelligence Slice 4; ADR staff-approval doctrine amendment; Catalog Reprocessing amendment |
+
+**Context**
+
+Slices 2–3 delivered Smart Profile + Search Intelligence with shadow automation evidence while every successful enrichment still routed to Needs Review. Slice 4 must ship a server-authoritative Catalog Processing Mode, evidence-based autonomy decisions, a conditional targeted verifier, Automation Health, and an owner-only durable Catalog Reprocessing control plane — without enabling live Autonomous publication by default.
+
+**Decision**
+
+1. Persist `catalogWorkflowMode` (`manual` \| `shadow` \| `autonomous`) and `catalogAutonomousLiveEnabled` (default `false`) on `settings/aiEnrichment`.
+2. Missing/invalid/unreadable mode resolves to **manual** — never Autonomous.
+3. Live Autonomous publication requires **both** mode=`autonomous` **and** `catalogAutonomousLiveEnabled=true`, with typed phrase `ENABLE AUTONOMOUS` validated server-side (owner-only).
+4. With Autonomous mode and live gate OFF: run full decision/verifier; record would-auto-approve; still Needs Review.
+5. Autonomy decisions are evidence-based (title/description/category/Smart Profile validation, contextual structured-evidence consistency, category gap, verifier when triggered, pipeline success). No single model self-score as authority. No global semantic denylist for ordinary Subjects/Objects (e.g. `people`); evaluate contextually.
+6. Catalog Reprocessing uses durable `catalogReprocessJobs` + backend worker + callable start gates; soft pause; one active job per `(projectId, targetType)`; owner-only. Slice 5/6 Start remain gated until those slices.
+7. Reuse existing Algolia sync on design ready writes; do not create a parallel publisher.
+8. ADR-FP-080 halftone remains human-authoritative.
+
+**Consequences**
+
+- Staff-only ready approval remains the default until the owner enables live Autonomous per environment.
+- Implementing ADR-FP-144 / Slice 4 is **not** authorization to enable live Autonomous in DEV or PRODUCTION.
+- DATA_MODEL / WORKFLOWS document the dual-gate exception for unattended ready transitions.
+
+---
+
 ### ADR-FP-143: Studio grouped gang sheet export mode
 
 | Field | Value |
@@ -31,6 +373,19 @@ Show Queue gang sheet generation already nests allocations for sheet efficiency.
 
 - Two layout modes in Studio; regression contract tests guard efficiency ordering and fingerprints.
 - Owner DEV QA (2026-08-23) PASS for WS5 including coexistence and naming.
+
+**Follow-up — owner product clarification (2026-08-24; refined 2026-08-27; implemented 2026-08-27 DEV)**
+
+Owner QA clarified that **three** generation modes are desired for Phase 7 Show Queue fast-follow (`show-queue-gang-sheet-three-mode-refinement`). **Implemented in DEV** (not production):
+
+1. **Standard** — unchanged efficiency packing (`layoutMode` omitted or `efficiency`).
+2. **Grouped by Customer** — `layoutMode: "customer_grouped_continuous"`: continuous multi-customer physical sheets; customer blocks + comma-joined CR headings; new customer ≠ new sheet; spill uses show heading + `CR-Continued`.
+3. **Sheet per Customer** — `layoutMode: "grouped_by_customer"`: preserve pre-change grouped export semantics (one physical sheet per customer nest segment); UI label **Sheet per Customer**.
+
+**Backward-safe enum mapping (Option A):** do not rename `grouped_by_customer` so existing Sheet-per-Customer local cache fingerprints remain valid. New continuous mode uses distinct `customer_grouped_continuous` fingerprint + base name `whatnot_MM-DD-YYYY_grouped-continuous-gang-sheet`.
+
+**Implementation artifacts:** `planContinuousCustomerGroupedGangSheetLayout`, `composeContinuousCustomerGroupedGangSheetSheets`, three-mode modal picker. Plan: `docs/workflow/plans/2026-08-27-show-queue-gang-sheet-three-mode-refinement-plan.md`. Signoff pending owner DEV QA.
+
 ---
 
 ### ADR-FP-142: Public Show Designs browse with login-gated mutations
@@ -134,6 +489,37 @@ Studio classifies Whatnot shows as Upcoming vs Past from `scheduledStartAt` vs n
 
 - Finish is idempotent for already-completed shows so automatic and manual callers can race safely.
 - Production data repair of already-stuck shows happens through this product path after Studio rollout, not by console edits.
+
+**Cross-reference:** ADR-FP-149 extends remediation to Past + `open`/`full` via Needs Attention; ADR-FP-139 remains authoritative for Past + `printing` auto/manual Finish.
+
+---
+
+### ADR-FP-149: Past Whatnot shows need explicit remediation (Needs Attention)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-27 |
+| Status | accepted |
+| Related | Goal `show-queue-past-show-failsafe-and-owner-override`; ADR-FP-139, ADR-FP-071 |
+
+**Context**
+
+Calendar Past (`scheduledStartAt` elapsed) does not imply production completion. ADR-FP-139 repairs Past + `printing` only. Past + `open`/`full` with queued allocations could not Finish via client rules; empty Past shows lingered without a truthful close path.
+
+**Decision**
+
+1. **Needs Attention tab** — Past Whatnot shows with non-terminal `productionStatus` (`open`, `full`, `printing`) surface separately from terminal Past history (`completed`, `fully_printed`, `archived`, `canceled`).
+2. **Past ≠ Completed** — schedule classification never marks Printed/Completed without allocation truth or explicit staff/owner remediation.
+3. **Staff remediation (callable)** — `close_empty`, `mark_fulfilled`, `release_unfulfilled` via `previewShowProductionRecovery` / `applyShowProductionRecovery` with Admin SDK reconciliation.
+4. **Owner override** — `force_completed` owner-only; requires bounded `productionOverrideReason` (max 500 chars); shares fulfillment/release planners with audit `owner_override`.
+5. **ADR-FP-071 guard** — after release, do not `active→editing` when another `draft|editing` request exists for the customer; derive Working tab from zero allocations.
+6. **Audit fields** — optional `productionResolutionKind`, `productionResolvedAt`, `productionResolvedBy`, `productionOverrideReason` on `upcomingShows`.
+7. **Multi-show** — cancel/finish only allocations on the remediated show; global request reconciliation.
+
+**Consequences**
+
+- Functions deploy required for remediation mutations.
+- Historical stuck shows appear in Needs Attention; same per-show UI repairs them (no bulk APPLY in v1).
 
 ---
 

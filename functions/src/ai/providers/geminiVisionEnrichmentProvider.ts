@@ -173,6 +173,7 @@ async function callVision(
     approvedTagNames: input.approvedTagNames,
     effectiveTagExclusions: input.effectiveTagExclusions,
     promptTemplate: input.promptTemplate,
+    smartProfileVocab: input.smartProfileVocab,
   });
 
   // Single call, playground-style: one lightweight request, no `response_format`, no automatic

@@ -135,8 +135,18 @@ function buildBatchSummary(files: BatchImportUploadFileResult[]) {
 
 export const importBatchOrchestrationService = {
   async runBatchUpload(input: RunBatchImportUploadInput): Promise<BatchImportUploadReport> {
-    const { caller, discovery, excludedFilePaths, onProgress, onDesignPipelineSuccess, cancelToken } =
-      input;
+    const {
+      caller,
+      discovery,
+      excludedFilePaths,
+      onProgress,
+      onDesignPipelineSuccess,
+      cancelToken,
+      halftoneMode = "normal",
+      backgroundMode = "auto",
+      itemBackgroundOverridesByPath,
+      itemHalftoneOverridesByPath,
+    } = input;
     const excludedPaths = excludedFilePaths ?? new Set<string>();
     const startedAt = new Date().toISOString();
 
@@ -210,6 +220,13 @@ export const importBatchOrchestrationService = {
           const outcome = await importValidatedPngFile(caller, validation, {
             jobId: discovery.jobId,
             cancelToken,
+            importRelativePath: entry.relativePath,
+            halftoneMode,
+            backgroundMode,
+            itemBackgroundOverride:
+              itemBackgroundOverridesByPath?.get(entry.filePath) ?? "auto",
+            itemHalftoneOverride:
+              itemHalftoneOverridesByPath?.get(entry.filePath) ?? "auto",
           });
 
           const result = mapImportOutcomeToBatchFileResult(entry, outcome);

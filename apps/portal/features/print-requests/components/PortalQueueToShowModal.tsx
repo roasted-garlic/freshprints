@@ -485,7 +485,7 @@ export function PortalQueueToShowModal({
           </header>
 
           <div className="modal-body portal-queue-to-show-body">
-            {isLoading || isLoadingAllocations ? (
+            {isLoading ? (
               <PortalLoadingPanel label="Loading show dates…" />
             ) : loadError ? (
               <p className="portal-error" role="alert">
@@ -495,6 +495,11 @@ export function PortalQueueToShowModal({
               <p className="portal-muted">No upcoming shows are available right now. Try again later.</p>
             ) : (
               <>
+                {isLoadingAllocations ? (
+                  <p className="portal-muted portal-queue-to-show-summary" role="status">
+                    Loading your queue limits…
+                  </p>
+                ) : null}
                 {isCelebratingSave ? (
                   <p className="portal-muted portal-queue-to-show-summary" role="status">
                     Updating show capacity…

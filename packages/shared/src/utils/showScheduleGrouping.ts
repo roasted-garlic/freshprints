@@ -44,6 +44,7 @@ export function isPastScheduledShow(show: ShowWithScheduledStart, now: Date): bo
 export interface ShowWithProductionSource extends ShowWithScheduledStart {
   source?: string | null;
   productionStatus?: string | null;
+  allocatedQuantity?: number;
 }
 
 /**

@@ -93,16 +93,17 @@ describe('portalAlgoliaCatalogSearchService narrowed facets (Stage 1b-C)', () =>
     assert.match(page, /categoryId=\{categoryFilter/);
   });
 
-  it('catalogService forwards search/category on Algolia narrowed facet path', () => {
+  it('catalogService forwards search/category/smartFilters on Algolia narrowed facet path', () => {
     const source = readFileSync(
       join(process.cwd(), 'apps/portal/features/catalog/services/catalogService.ts'),
       'utf8',
     );
     assert.match(
       source,
-      /listNarrowedApprovedTags\([\s\S]*options: \{ search\?: string; categoryId\?: string \}/,
+      /listNarrowedApprovedTags\([\s\S]*options: \{[\s\S]*search\?: string;[\s\S]*categoryId\?: string;[\s\S]*smartFilters\?:/,
     );
     assert.match(source, /listNarrowedTagFacets\(\{[\s\S]*search: options\.search/);
+    assert.match(source, /smartFilters: options\.smartFilters/);
     assert.doesNotMatch(source, /portalCatalogAssetService/);
   });
 });

@@ -1,31 +1,25 @@
-import { FieldValue } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 
 import type { UpdateCustomerResponse } from "../../packages/shared/src/types/customer/updateCustomer.types";
 import { adminAuth, adminDb } from "./lib/admin";
 import { loadCallerProfile } from "./lib/caller";
+import { applyCustomerProfileUpdate } from "./lib/customerProfileUpdate";
 import {
   normalizeCustomerEmail,
   validateUpdateCustomerRequest,
 } from "./lib/customerUpdateValidation";
 import { alreadyExists, internal, invalidArgument, unauthenticated } from "./lib/errors";
-import { withoutUndefinedFields } from "./lib/firestoreDocument";
+import {
+  initializeIdentitySnapshotPropagation,
+  propagateCustomerIdentitySnapshots,
+  resumeCustomerIdentitySnapshotPropagation,
+} from "./lib/propagateCustomerIdentitySnapshots";
 import { assertCanManageCustomers } from "./lib/permissions";
+import { appendCustomerActivityEvent } from "./lib/customerActivityEvents";
 
 interface CustomerRecord {
   userId?: string;
-  displayName?: string;
-  username?: string;
   email?: string;
-  notes?: string;
-  isGuest?: boolean;
-  signupSource?: string;
-  totalPrintRequests?: number;
-  nextPrintRequestSequence?: number;
-  totalRequests?: number;
-  totalApprovedRequests?: number;
-  usernameUpdatedAt?: FirebaseFirestore.Timestamp;
-  createdAt?: FirebaseFirestore.Timestamp;
 }
 
 function normalizeOptionalEmail(value: string | undefined): string | undefined {
@@ -106,8 +100,12 @@ export const updateCustomer = onCall(async (request): Promise<UpdateCustomerResp
       throw invalidArgument("Customer not found.");
     }
 
-    const current = customerSnapshot.data() as CustomerRecord;
+    const current = customerSnapshot.data() as CustomerRecord & {
+      username?: string;
+    };
     const linkedUserId = typeof current.userId === "string" ? current.userId : undefined;
+    const previousUsername =
+      typeof current.username === "string" ? current.username.trim().toLowerCase() : "";
 
     if (linkedUserId && !payload.email) {
       throw invalidArgument("Email is required for customers with Portal access.");
@@ -126,84 +124,50 @@ export const updateCustomer = onCall(async (request): Promise<UpdateCustomerResp
       }
     }
 
-    const previousUsername = typeof current.username === "string" ? current.username : undefined;
-    const usernameChanged = previousUsername !== payload.username;
-    const emailChanged =
-      normalizeOptionalEmail(typeof current.email === "string" ? current.email : undefined) !==
-      payload.email;
-    const displayNameChanged = current.displayName !== payload.displayName;
-    const timestamp = FieldValue.serverTimestamp();
-
-    await adminDb.runTransaction(async (transaction) => {
-      const usernameReservationRef = adminDb.collection("customerUsernames").doc(payload.username);
-      const reservationSnapshot = await transaction.get(usernameReservationRef);
-
-      if (
-        reservationSnapshot.exists &&
-        reservationSnapshot.data()?.customerId !== payload.customerId
-      ) {
-        throw alreadyExists("That customer username is already taken.");
-      }
-
-      const previousReservationRef =
-        previousUsername && previousUsername !== payload.username
-          ? adminDb.collection("customerUsernames").doc(previousUsername)
-          : null;
-
-      transaction.update(
-        customerRef,
-        withoutUndefinedFields({
-          displayName: payload.displayName,
-          username: payload.username,
-          email: payload.email,
-          notes: payload.notes,
-          usernameUpdatedAt: usernameChanged ? timestamp : current.usernameUpdatedAt,
-          updatedAt: timestamp,
-        }),
-      );
-
-      transaction.set(
-        usernameReservationRef,
-        {
-          customerId: payload.customerId,
-          createdAt: timestamp,
-          updatedAt: timestamp,
-        },
-        { merge: true },
-      );
-
-      if (previousReservationRef) {
-        transaction.delete(previousReservationRef);
-      }
-
-      if (linkedUserId && (emailChanged || displayNameChanged)) {
-        const userRef = adminDb.collection("users").doc(linkedUserId);
-        transaction.update(
-          userRef,
-          withoutUndefinedFields({
-            email: payload.email,
-            displayName: payload.displayName,
-            updatedAt: timestamp,
-            updatedBy: caller.id,
-          }),
-        );
-      }
+    const updateResult = await applyCustomerProfileUpdate({
+      customerId: payload.customerId,
+      displayName: payload.displayName,
+      username: payload.username,
+      email: payload.email,
+      notes: payload.notes,
+      mode: "staff",
+      callerId: caller.id,
     });
 
-    let portalAuthEmailSynced = true;
+    if (updateResult.usernameChanged) {
+      await appendCustomerActivityEvent({
+        customerId: payload.customerId,
+        eventType: "account.username_changed",
+        actorUid: caller.id,
+        actorRole: caller.role === "owner" ? "owner" : "admin",
+        result: "success",
+        metadata: {
+          previousUsername,
+          newUsername: updateResult.username,
+        },
+      });
+    }
 
-    if (linkedUserId && emailChanged && payload.email) {
+    let portalAuthEmailSynced = true;
+    let portalAuthDisplayNameSynced = true;
+
+    if (linkedUserId && updateResult.emailChanged && payload.email) {
       portalAuthEmailSynced = await syncPortalAuthEmail(
         linkedUserId,
         payload.email,
-        payload.displayName,
+        updateResult.displayName,
       );
-    } else if (linkedUserId && displayNameChanged && !emailChanged) {
+    } else if (
+      linkedUserId &&
+      updateResult.displayNameChanged &&
+      !updateResult.emailChanged
+    ) {
       try {
         await adminAuth.updateUser(linkedUserId, {
-          displayName: payload.displayName,
+          displayName: updateResult.displayName,
         });
       } catch (error) {
+        portalAuthDisplayNameSynced = false;
         console.error("Failed to sync customer display name to Firebase Auth.", {
           userId: linkedUserId,
           message: error instanceof Error ? error.message : "unknown",
@@ -211,13 +175,78 @@ export const updateCustomer = onCall(async (request): Promise<UpdateCustomerResp
       }
     }
 
+    let propagationComplete = true;
+    let propagationStatus: UpdateCustomerResponse["propagationStatus"] = "completed";
+    let printRequestsUpdated = 0;
+    let designIssueReportsUpdated = 0;
+    let propagationWarning: string | undefined;
+
+    try {
+      if (updateResult.identityChanged) {
+        await initializeIdentitySnapshotPropagation(payload.customerId, {
+          username: updateResult.username,
+          displayName: updateResult.displayName,
+        });
+
+        const propagation = await propagateCustomerIdentitySnapshots(payload.customerId);
+
+        if (!propagation.complete) {
+          const resumed = await resumeCustomerIdentitySnapshotPropagation(payload.customerId);
+          propagationComplete = resumed.complete;
+          propagationStatus = resumed.status;
+          printRequestsUpdated = resumed.printRequestsUpdated;
+          designIssueReportsUpdated = resumed.designIssueReportsUpdated;
+        } else {
+          propagationComplete = propagation.complete;
+          propagationStatus = propagation.status;
+          printRequestsUpdated = propagation.printRequestsUpdated;
+          designIssueReportsUpdated = propagation.designIssueReportsUpdated;
+        }
+      } else {
+        const existingPropagation = customerSnapshot.data()?.identitySnapshotPropagation;
+        if (
+          existingPropagation &&
+          (existingPropagation.status === "in_progress" || existingPropagation.status === "failed")
+        ) {
+          const resumed = await resumeCustomerIdentitySnapshotPropagation(payload.customerId);
+          propagationComplete = resumed.complete;
+          propagationStatus = resumed.status;
+          printRequestsUpdated = resumed.printRequestsUpdated;
+          designIssueReportsUpdated = resumed.designIssueReportsUpdated;
+        }
+      }
+    } catch (propagationError) {
+      propagationComplete = false;
+      propagationStatus = "failed";
+      propagationWarning =
+        propagationError instanceof Error
+          ? propagationError.message
+          : "Identity snapshot propagation needs a retry.";
+      console.error("Customer identity snapshot propagation failed after profile update.", {
+        customerId: payload.customerId,
+        usernameChanged: updateResult.usernameChanged,
+        message: propagationWarning,
+      });
+    }
+
+    if (!propagationComplete && propagationStatus === "failed" && !propagationWarning) {
+      propagationWarning = "Identity snapshot propagation needs a retry.";
+    }
+
     return {
       customerId: payload.customerId,
-      displayName: payload.displayName,
-      username: payload.username,
+      displayName: updateResult.displayName,
+      username: updateResult.username,
       email: payload.email,
       portalAuthEmailSynced,
-      usernameChanged,
+      portalAuthDisplayNameSynced,
+      usernameChanged: updateResult.usernameChanged,
+      displayNameChanged: updateResult.displayNameChanged,
+      propagationComplete,
+      propagationStatus,
+      printRequestsUpdated,
+      designIssueReportsUpdated,
+      propagationWarning,
     };
   } catch (error) {
     if (error instanceof HttpsError) {

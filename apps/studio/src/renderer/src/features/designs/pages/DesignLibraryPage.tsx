@@ -17,6 +17,7 @@ import { CategoryManagementModal } from "../components/CategoryManagementModal";
 import { DesignDetailsModal } from "../components/DesignDetailsModal";
 import { DesignGrid } from "../components/DesignGrid";
 import { DesignLibraryFilterControls } from "../components/DesignLibraryFilterControls";
+import { DesignLibrarySmartFilterModal } from "../components/DesignLibrarySmartFilterModal";
 import { DesignLibraryTagFilterModal } from "../components/DesignLibraryTagFilterModal";
 import { EditDesignModal } from "../components/EditDesignModal";
 import { PurgeArchivedDesignAssetsDialog } from "../components/PurgeArchivedDesignAssetsDialog";
@@ -27,7 +28,21 @@ import {
   getLegacyDesignLibraryRedirectPath,
   parseDesignLibraryUrlFilters,
 } from "../constants/designLibraryFilters";
-import { getPrintRequestsPath } from "../../print-requests/constants/printRequestRoutes";
+import {
+  buildPrintRequestDeepLinkPath,
+  getPrintRequestsPath,
+} from "../../print-requests/constants/printRequestRoutes";
+import { studioSmartFiltersEnabled } from "../services/studioAlgoliaCatalogFlags";
+import { studioAlgoliaCatalogSearchService } from "../services/studioAlgoliaCatalogSearchService";
+import { hasStudioAlgoliaCategoryFacetConstraints } from "../services/studioAlgoliaCatalogFacets";
+import {
+  countStudioAlgoliaSmartFilterSelections,
+  emptyStudioAlgoliaSmartFilters,
+  hasStudioAlgoliaSmartFilterSelections,
+  listActiveStudioSmartFilterChips,
+  serializeStudioAlgoliaSmartFilters,
+  type StudioAlgoliaSmartFilters,
+} from "../services/studioAlgoliaSmartFilters";
 import { usePrintRequestSelectionMode } from "../../print-requests/hooks/usePrintRequestSelectionMode";
 import { useArchiveDesign } from "../hooks/useArchiveDesign";
 import { useCategories } from "../hooks/useCategories";
@@ -39,6 +54,7 @@ import { usePurgeArchivedDesignAssets } from "../hooks/usePurgeArchivedDesignAss
 import { useRestoreDesign } from "../hooks/useRestoreDesign";
 import { designService } from "../services/designService";
 import { findDesignIdsOnActiveShowQueue } from "../services/purgeArchivedDesignAssetsService";
+import type { DesignSmartProfile } from "@fresh-prints/shared/types/catalog/smartProfile.types";
 import type { Design } from "../types/design.types";
 import {
   resolveDesignLibraryCountLabel,
@@ -51,6 +67,7 @@ import {
 } from "../utils/designLibraryExactIdSearch";
 import {
   buildCategoryFilterOptions,
+  buildCategoryFilterOptionsFromFacetIds,
   countVisibleSelectedTags,
   filterDesignsByCategory,
   filterDesignsByNeedsCompanion,
@@ -96,9 +113,13 @@ export function DesignLibraryPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>(ALL_FILTER_VALUE);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [smartFilters, setSmartFilters] = useState<StudioAlgoliaSmartFilters>(() =>
+    emptyStudioAlgoliaSmartFilters(),
+  );
   const [includeArchived, setIncludeArchived] = useState(false);
   const [needsCompanionFilter, setNeedsCompanionFilter] = useState(false);
   const [isTagFilterModalOpen, setIsTagFilterModalOpen] = useState(false);
+  const [isSmartFilterModalOpen, setIsSmartFilterModalOpen] = useState(false);
   const [selectedDesign, setSelectedDesign] = useState<Design | null>(null);
   const [editingDesign, setEditingDesign] = useState<Design | null>(null);
   const [designToArchive, setDesignToArchive] = useState<Design | null>(null);
@@ -189,6 +210,7 @@ export function DesignLibraryPage() {
     setIsCategoryModalOpen(false);
     setIsTagManagementModalOpen(false);
     setIsTagFilterModalOpen(false);
+    setIsSmartFilterModalOpen(false);
     setSuccessMessage(null);
     setActionError(null);
   }, [selectionModeActive]);
@@ -197,6 +219,13 @@ export function DesignLibraryPage() {
     if (!includeArchived || selectionModeActive) {
       setSelectedPurgeIds([]);
       setDesignsToPurge([]);
+    }
+  }, [includeArchived, selectionModeActive]);
+
+  useEffect(() => {
+    if (includeArchived && !selectionModeActive) {
+      setSmartFilters(emptyStudioAlgoliaSmartFilters());
+      setIsSmartFilterModalOpen(false);
     }
   }, [includeArchived, selectionModeActive]);
 
@@ -221,13 +250,17 @@ export function DesignLibraryPage() {
   const trimmedSearch = searchQuery.trim();
   const managedCategoryId =
     categoryFilter === ALL_FILTER_VALUE ? undefined : categoryFilter;
-  // Managed Algolia owns text search and/or tag/category filters on ready catalog.
+  const smartFiltersUiEnabled = studioSmartFiltersEnabled() && !browsingArchived;
+  const smartFiltersActive =
+    smartFiltersUiEnabled && hasStudioAlgoliaSmartFilterSelections(smartFilters);
+  // Managed Algolia owns text search and/or tag/category/smart filters on ready catalog.
   // needsCompanion-only uses Firestore browse with server companionSetIncomplete filter.
   const managedSearchActive =
     !browsingArchived &&
     (trimmedSearch.length > 0 ||
       selectedTags.length > 0 ||
-      Boolean(managedCategoryId));
+      Boolean(managedCategoryId) ||
+      smartFiltersActive);
 
   // The design LIST is always bounded-Firestore-authoritative (Amendment 1).
   // Phase 1A: display taxonomy is Firestore-backed via useGeneratedDesignLibraryTaxonomy.
@@ -289,6 +322,7 @@ export function DesignLibraryPage() {
     needsCompanion: needsCompanionFilter,
     searchQuery: trimmedSearch,
     selectedTags,
+    smartFilters: smartFiltersActive ? smartFilters : undefined,
     user,
   });
 
@@ -406,16 +440,82 @@ export function DesignLibraryPage() {
           ),
     [categoryFilter, managedSearchActive, searchMatchedDesigns],
   );
-  const categoryFilterOptions = useMemo(
-    () =>
-      buildCategoryFilterOptions({
+
+  const needsAlgoliaCategoryNarrowing =
+    managedSearchActive &&
+    hasStudioAlgoliaCategoryFacetConstraints({
+      search: trimmedSearch,
+      selectedTags,
+      smartFilters: smartFiltersActive ? smartFilters : undefined,
+    });
+  const [algoliaCategoryFacetIds, setAlgoliaCategoryFacetIds] = useState<string[] | null>(null);
+  const smartFiltersKey = useMemo(
+    () => serializeStudioAlgoliaSmartFilters(smartFiltersActive ? smartFilters : undefined),
+    [smartFilters, smartFiltersActive],
+  );
+  const selectedTagsKey = selectedTags.join("\u0000");
+
+  useEffect(() => {
+    if (!needsAlgoliaCategoryNarrowing || !studioAlgoliaCatalogSearchService.isConfigured()) {
+      setAlgoliaCategoryFacetIds(null);
+      return;
+    }
+    let cancelled = false;
+    void studioAlgoliaCatalogSearchService
+      .listNarrowedCategoryFacets({
+        search: trimmedSearch,
+        selectedTags,
+        smartFilters: smartFiltersActive ? smartFilters : undefined,
+      })
+      .then((facets) => {
+        if (!cancelled) {
+          setAlgoliaCategoryFacetIds(facets.map((entry) => entry.id));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAlgoliaCategoryFacetIds(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    needsAlgoliaCategoryNarrowing,
+    selectedTags,
+    selectedTagsKey,
+    smartFilters,
+    smartFiltersActive,
+    smartFiltersKey,
+    trimmedSearch,
+  ]);
+
+  const categoryFilterOptions = useMemo(() => {
+    const selectedCategoryId =
+      categoryFilter === ALL_FILTER_VALUE ? undefined : categoryFilter;
+    if (needsAlgoliaCategoryNarrowing && algoliaCategoryFacetIds) {
+      return buildCategoryFilterOptionsFromFacetIds({
         allOptionValue: ALL_FILTER_VALUE,
         categories,
-        designs: filterDesignsByTags(searchMatchedDesigns, managedSearchActive ? [] : selectedTags),
-        selectedCategoryId: categoryFilter === ALL_FILTER_VALUE ? undefined : categoryFilter,
-      }),
-    [categories, categoryFilter, managedSearchActive, searchMatchedDesigns, selectedTags],
-  );
+        facetCategoryIds: algoliaCategoryFacetIds,
+        selectedCategoryId,
+      });
+    }
+    return buildCategoryFilterOptions({
+      allOptionValue: ALL_FILTER_VALUE,
+      categories,
+      designs: filterDesignsByTags(searchMatchedDesigns, managedSearchActive ? [] : selectedTags),
+      selectedCategoryId,
+    });
+  }, [
+    algoliaCategoryFacetIds,
+    categories,
+    categoryFilter,
+    managedSearchActive,
+    needsAlgoliaCategoryNarrowing,
+    searchMatchedDesigns,
+    selectedTags,
+  ]);
 
   // Designs come straight from useDesigns (bounded, cursor-paginated, already sorted createdAt
   // desc by the query itself) — no generated-index re-sort or card-resolution stage needed, since
@@ -443,12 +543,21 @@ export function DesignLibraryPage() {
 
   const visibleTags = useMemo(() => visibleSelectedTags(selectedTags), [selectedTags]);
   const visibleTagCount = useMemo(() => countVisibleSelectedTags(selectedTags), [selectedTags]);
+  const smartFilterChips = useMemo(
+    () => (smartFiltersUiEnabled ? listActiveStudioSmartFilterChips(smartFilters) : []),
+    [smartFilters, smartFiltersUiEnabled],
+  );
+  const smartFilterCount = useMemo(
+    () => countStudioAlgoliaSmartFilterSelections(smartFilters),
+    [smartFilters],
+  );
   const halftoneFilterOn = selectedTagsIncludeHalftone(selectedTags);
 
   const hasActiveFilters =
     searchQuery.trim().length > 0 ||
     categoryFilter !== ALL_FILTER_VALUE ||
     selectedTags.length > 0 ||
+    smartFilterCount > 0 ||
     needsCompanionFilter ||
     (selectionModeActive ? false : includeArchived);
 
@@ -481,6 +590,7 @@ export function DesignLibraryPage() {
     setSearchQuery("");
     setCategoryFilter(ALL_FILTER_VALUE);
     setSelectedTags([]);
+    setSmartFilters(emptyStudioAlgoliaSmartFilters());
     setNeedsCompanionFilter(false);
     if (!selectionModeActive) {
       setIncludeArchived(false);
@@ -490,6 +600,22 @@ export function DesignLibraryPage() {
   const removeSelectedTag = useCallback((tagToRemove: string) => {
     setSelectedTags((currentTags) => currentTags.filter((tag) => tag !== tagToRemove));
   }, []);
+
+  const removeSmartFilterValue = useCallback(
+    (attribute: keyof StudioAlgoliaSmartFilters, value: string) => {
+      setSmartFilters((current) => {
+        const remaining = (current[attribute] ?? []).filter((entry) => entry !== value);
+        const next = { ...current };
+        if (remaining.length === 0) {
+          delete next[attribute];
+        } else {
+          next[attribute] = remaining;
+        }
+        return next;
+      });
+    },
+    [],
+  );
 
   const handleHalftoneFilterChange = useCallback((halftoneOn: boolean) => {
     setSelectedTags((currentTags) => setHalftoneInSelectedTags(currentTags, halftoneOn));
@@ -535,13 +661,29 @@ export function DesignLibraryPage() {
     setIsTagManagementModalOpen(true);
   }, []);
 
-  const openDesignDetails = useCallback((design: Design) => {
-    // designs is always sourced from useDesigns (bounded Firestore, full authoritative Design
-    // objects) — no synthetic-card re-fetch needed here anymore.
-    setSuccessMessage(null);
-    setActionError(null);
-    setSelectedDesign(design);
-  }, []);
+  const openDesignDetails = useCallback(
+    (design: Design) => {
+      // designs is always sourced from useDesigns (bounded Firestore, full authoritative Design
+      // objects) — no synthetic-card re-fetch needed here anymore.
+      setSuccessMessage(null);
+      setActionError(null);
+      setSelectedDesign(design);
+
+      // Companion denorm can change on other designs during a link/mesh — hydrate from Firestore so
+      // the open details modal and companion panel are not stuck on a stale list snapshot.
+      if (user) {
+        void designService
+          .getDesignById(user, design.id)
+          .then((fresh) => {
+            setSelectedDesign((current) => (current?.id === fresh.id ? fresh : current));
+          })
+          .catch(() => {
+            // Keep the list snapshot when the refresh fails.
+          });
+      }
+    },
+    [user],
+  );
 
   const closeDesignDetails = useCallback(() => {
     setSelectedDesign(null);
@@ -614,9 +756,50 @@ export function DesignLibraryPage() {
     async (updated: Design) => {
       applyDesignPatch(updated.id, updated);
       setSelectedDesign(updated);
+
+      if (user) {
+        const peerIds = updated.companionDesignIds ?? [];
+        const refreshedPeers = await Promise.all(
+          peerIds.map((peerId) =>
+            designService.getDesignById(user, peerId).catch(() => null),
+          ),
+        );
+
+        for (const peer of refreshedPeers) {
+          if (peer) {
+            applyDesignPatch(peer.id, peer);
+          }
+        }
+      }
+
       await refreshCatalog();
     },
-    [applyDesignPatch, refreshCatalog],
+    [applyDesignPatch, refreshCatalog, user],
+  );
+
+  const handleSmartProfileUpdated = useCallback(
+    (designId: string, smartProfile: DesignSmartProfile) => {
+      applyDesignPatch(designId, { smartProfile });
+      if (managedSearchActive) {
+        const current =
+          selectedDesign?.id === designId
+            ? selectedDesign
+            : filteredDesigns.find((design) => design.id === designId);
+        if (current) {
+          applyManagedSearchPatch({ ...current, smartProfile });
+        }
+      }
+      setSelectedDesign((prev) =>
+        prev?.id === designId ? { ...prev, smartProfile } : prev,
+      );
+    },
+    [
+      applyDesignPatch,
+      applyManagedSearchPatch,
+      filteredDesigns,
+      managedSearchActive,
+      selectedDesign,
+    ],
   );
 
   const handleRestoreDesign = useCallback(
@@ -663,6 +846,36 @@ export function DesignLibraryPage() {
         : [...current, design.id],
     );
   }, []);
+
+  const purgeSelectableDesigns = useMemo(
+    () =>
+      includeArchived && canPurgeArchivedDesignAssets && !selectionModeActive
+        ? filteredDesigns.filter((design) => !design.assetsPurgedAt)
+        : [],
+    [canPurgeArchivedDesignAssets, filteredDesigns, includeArchived, selectionModeActive],
+  );
+
+  const allPurgeSelectableSelected = useMemo(
+    () =>
+      purgeSelectableDesigns.length > 0 &&
+      purgeSelectableDesigns.every((design) => selectedPurgeIds.includes(design.id)),
+    [purgeSelectableDesigns, selectedPurgeIds],
+  );
+
+  const toggleSelectAllPurge = useCallback(() => {
+    setSelectedPurgeIds((current) => {
+      const selectableIds = purgeSelectableDesigns.map((design) => design.id);
+      const allSelected =
+        selectableIds.length > 0 && selectableIds.every((id) => current.includes(id));
+
+      if (allSelected) {
+        const visibleIds = new Set(selectableIds);
+        return current.filter((id) => !visibleIds.has(id));
+      }
+
+      return [...new Set([...current, ...selectableIds])];
+    });
+  }, [purgeSelectableDesigns]);
 
   const openPurgeDesigns = useCallback(
     async (candidates: Design[]) => {
@@ -786,14 +999,24 @@ export function DesignLibraryPage() {
     selectionRequestId,
   ]);
 
-  const selectionExitPath = useMemo(
-    () => getPrintRequestsPath({ requestId: selectionRequestId ?? undefined }),
-    [selectionRequestId],
-  );
+  const buildSelectionExitPath = useCallback(() => {
+    const request = selectionMode.printRequest;
+    if (!selectionRequestId || !request) {
+      return getPrintRequestsPath({ requestId: selectionRequestId ?? undefined });
+    }
+
+    return buildPrintRequestDeepLinkPath({
+      id: selectionRequestId,
+      isInternal: request.isInternal,
+      queueTab: request.queueTab,
+      itemCount: request.itemCount,
+      updatedAtMillis: request.updatedAt.toMillis(),
+    });
+  }, [selectionMode.printRequest, selectionRequestId]);
 
   const handleExitSelectionMode = useCallback(() => {
-    navigate(selectionExitPath, { replace: true });
-  }, [navigate, selectionExitPath]);
+    navigate(buildSelectionExitPath(), { replace: true });
+  }, [buildSelectionExitPath, navigate]);
 
   const handleSaveSelectionMode = useCallback(async () => {
     try {
@@ -801,11 +1024,11 @@ export function DesignLibraryPage() {
       setSuccessMessage(null);
       await selectionMode.saveSelections();
       showSuccessMessage("Request selections saved.");
-      navigate(selectionExitPath, { replace: true });
+      navigate(buildSelectionExitPath(), { replace: true });
     } catch (error) {
       setActionError(formatSelectionActionError(error));
     }
-  }, [navigate, selectionExitPath, selectionMode, showSuccessMessage]);
+  }, [buildSelectionExitPath, navigate, selectionMode, showSuccessMessage]);
 
   // Search, category, and tags live in the fixed page filter dock. The archive toggle
   // remains in the app header next to the theme toggle because it switches catalog scope.
@@ -946,7 +1169,23 @@ export function DesignLibraryPage() {
 
           <div className="design-library-filter-dock">
             <div className="design-library-summary-row">
-              <span className="design-library-count-chip">{designCountLabel}</span>
+              <div className="design-library-summary-leading">
+                <span className="design-library-count-chip">{designCountLabel}</span>
+                {includeArchived &&
+                !selectionModeActive &&
+                canPurgeArchivedDesignAssets &&
+                purgeSelectableDesigns.length > 0 ? (
+                  <label className="design-library-purge-select-all studio-checkbox studio-checkbox--danger">
+                    <input
+                      aria-label="Select all archived designs for permanent delete"
+                      checked={allPurgeSelectableSelected}
+                      onChange={toggleSelectAllPurge}
+                      type="checkbox"
+                    />
+                    <span>Select all</span>
+                  </label>
+                ) : null}
+              </div>
               <div className="design-library-summary-actions">
                 {includeArchived &&
                 !selectionModeActive &&
@@ -992,10 +1231,13 @@ export function DesignLibraryPage() {
               onCategoryChange={setCategoryFilter}
               onHalftoneFilterChange={handleHalftoneFilterChange}
               onNeedsCompanionFilterChange={handleNeedsCompanionFilterChange}
+              onOpenSmartFilters={() => setIsSmartFilterModalOpen(true)}
               onOpenTags={() => setIsTagFilterModalOpen(true)}
               onSearchChange={setSearchQuery}
               searchQuery={searchQuery}
+              selectedSmartFilterCount={smartFilterCount}
               selectedTagCount={visibleTagCount}
+              showSmartFilters={smartFiltersUiEnabled}
             />
           </div>
 
@@ -1009,6 +1251,30 @@ export function DesignLibraryPage() {
                     aria-label={`Remove ${tag} tag filter`}
                     className="design-library-active-tag-remove"
                     onClick={() => removeSelectedTag(tag)}
+                    type="button"
+                  >
+                    <X aria-hidden="true" size={12} strokeWidth={2.25} />
+                  </button>
+                </span>
+              ))}
+            </div>
+          ) : null}
+
+          {smartFilterChips.length > 0 ? (
+            <div className="design-library-active-tags" aria-label="Active Smart Filters">
+              <span className="design-library-active-tags-label">Smart:</span>
+              {smartFilterChips.map((chip) => (
+                <span
+                  className="design-library-active-tag"
+                  key={`${chip.attribute}:${chip.value}`}
+                >
+                  <span>
+                    {chip.label}: {chip.value}
+                  </span>
+                  <button
+                    aria-label={`Remove ${chip.label} ${chip.value} Smart Filter`}
+                    className="design-library-active-tag-remove"
+                    onClick={() => removeSmartFilterValue(chip.attribute, chip.value)}
                     type="button"
                   >
                     <X aria-hidden="true" size={12} strokeWidth={2.25} />
@@ -1062,8 +1328,23 @@ export function DesignLibraryPage() {
         onApply={setSelectedTags}
         onClose={() => setIsTagFilterModalOpen(false)}
         selectedTags={selectedTags}
+        smartFilters={smartFiltersActive ? smartFilters : undefined}
         useAlgoliaFacets={!browsingArchived}
       />
+
+      {smartFiltersUiEnabled ? (
+        <DesignLibrarySmartFilterModal
+          algoliaFacetContext={{
+            categoryId: managedCategoryId,
+            searchQuery: trimmedSearch,
+          }}
+          isOpen={isSmartFilterModalOpen}
+          onApply={setSmartFilters}
+          onClose={() => setIsSmartFilterModalOpen(false)}
+          selectedTags={selectedTags}
+          smartFilters={smartFilters}
+        />
+      ) : null}
 
       <DesignDetailsModal
         categoryName={selectedDesign?.categoryId ? categoryNameById.get(selectedDesign.categoryId) : undefined}
@@ -1077,6 +1358,7 @@ export function DesignLibraryPage() {
           void openPurgeDesigns([design]);
         }}
         onRestore={handleRestoreDesign}
+        onSmartProfileUpdated={handleSmartProfileUpdated}
       />
 
       <EditDesignModal

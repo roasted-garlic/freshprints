@@ -8,6 +8,9 @@ import { DesignThumbnailPanel } from "../../designs/components/DesignThumbnailPa
 import { useDesignDerivativeUrl } from "../../designs/hooks/useDesignDerivativeUrl";
 import type { Design } from "../../designs/types/design.types";
 import type { PrintRequestItem } from "@fresh-prints/shared/types/printRequest/printRequest.types";
+import type { StandardPrintSizesSettings } from "@fresh-prints/shared/constants/printSize/standardPrintSizesSettings.constants";
+import { resolveStandardSizePresetKeyAfterManualSizeChange } from "@fresh-prints/shared/constants/printSize/standardPrintSizesSettings.constants";
+import { resolvePrintRequestItemSourcePill } from "@fresh-prints/shared/utils/printRequestItemSource";
 import {
   assessPrintRequestItemSize,
   calculateLockedHeightFromWidth,
@@ -20,6 +23,10 @@ import {
 } from "@fresh-prints/shared/utils/printRequestItemPersistenceHealth";
 import type { UpdatePrintRequestItemInput } from "../services/printRequestService";
 import { resolvePrintRequestItemArtworkBackground } from "../utils/resolvePrintRequestItemArtworkBackground";
+import {
+  StandardPrintSizesModal,
+} from "./StandardPrintSizesModal";
+import { resolveStandardPrintSizeCardLabel } from "../utils/standardPrintSizeLabels";
 
 export interface PrintRequestItemUploadSummary {
   title: string;
@@ -32,6 +39,7 @@ export interface PrintRequestItemUploadSummary {
   approvedMaxPrintWidthInches?: number | null;
   approvedMaxPrintHeightInches?: number | null;
   wasUpscaled?: boolean | null;
+  fromAssistedCreation?: boolean;
 }
 
 interface PrintRequestItemCardProps {
@@ -48,6 +56,7 @@ interface PrintRequestItemCardProps {
   ) => void;
   onPersistenceHealthChange?: (itemId: string, health: PrintRequestItemPersistenceHealth) => void;
   onRegisterFlush?: (itemId: string, flush: (() => Promise<boolean>) | null) => void;
+  standardPrintSizesSettings: StandardPrintSizesSettings;
   /** When true, hides edit/remove/duplicate controls because the request is locked while queued to a show. */
   readOnly?: boolean;
 }
@@ -116,11 +125,17 @@ function parsePositiveDecimalInput(value: string): number | null {
   return parsedValue;
 }
 
-function buildItemSignature(quantity: number, width: number, height: number): string {
+function buildItemSignature(
+  quantity: number,
+  width: number,
+  height: number,
+  standardSizePresetKey?: string | null,
+): string {
   return JSON.stringify({
     quantity,
     width: Number.isFinite(width) ? Number(width.toFixed(2)) : width,
     height: Number.isFinite(height) ? Number(height.toFixed(2)) : height,
+    standardSizePresetKey: standardSizePresetKey ?? null,
   });
 }
 
@@ -135,8 +150,13 @@ export function PrintRequestItemCard({
   onPersistenceHealthChange,
   onRegisterFlush,
   readOnly,
+  standardPrintSizesSettings,
 }: PrintRequestItemCardProps) {
   const isUploadItem = item.sourceType === "customer_upload" || Boolean(item.customerUploadId);
+  const sourcePill = resolvePrintRequestItemSourcePill({
+    item,
+    fromAssistedCreation: upload?.fromAssistedCreation,
+  });
   const title =
     design?.title ??
     upload?.title ??
@@ -158,12 +178,17 @@ export function PrintRequestItemCard({
   );
   const [isConfirmingRemove, setIsConfirmingRemove] = useState(false);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [isStandardSizesModalOpen, setIsStandardSizesModalOpen] = useState(false);
+  const [standardSizePresetKey, setStandardSizePresetKey] = useState<string | undefined>(
+    item.standardSizePresetKey,
+  );
   const { url: previewUrl } = useDesignDerivativeUrl(previewPath);
   const lastSavedSignatureRef = useRef(
     buildItemSignature(
       item.quantity,
       resolveInitialWidth(item),
       resolveInitialHeight(item),
+      item.standardSizePresetKey,
     ),
   );
   const saveDraftRef = useRef<() => Promise<boolean>>(async () => false);
@@ -176,7 +201,12 @@ export function PrintRequestItemCard({
   useEffect(() => {
     const nextWidth = resolveInitialWidth(item);
     const nextHeight = resolveInitialHeight(item);
-    const incomingSignature = buildItemSignature(item.quantity, nextWidth, nextHeight);
+    const incomingSignature = buildItemSignature(
+      item.quantity,
+      nextWidth,
+      nextHeight,
+      item.standardSizePresetKey,
+    );
 
     if (incomingSignature === lastSavedSignatureRef.current) {
       return;
@@ -185,6 +215,7 @@ export function PrintRequestItemCard({
     setQuantityInput(String(item.quantity));
     setPrintWidthInput(formatEditableNumber(nextWidth));
     setPrintHeightInput(formatEditableNumber(nextHeight));
+    setStandardSizePresetKey(item.standardSizePresetKey);
     setIsConfirmingRemove(false);
     setIsLightboxOpen(false);
     lastSavedSignatureRef.current = incomingSignature;
@@ -255,30 +286,48 @@ export function PrintRequestItemCard({
     scheduleSave();
   }
 
+  function applyManualSize(nextWidthInput: string, nextHeightInput: string) {
+    const nextWidth = parsePositiveDecimalInput(nextWidthInput);
+    const nextHeight = parsePositiveDecimalInput(nextHeightInput);
+    if (nextWidth === null || nextHeight === null) {
+      setStandardSizePresetKey(undefined);
+      return;
+    }
+    setStandardSizePresetKey(
+      resolveStandardSizePresetKeyAfterManualSizeChange({
+        currentPresetKey: standardSizePresetKey,
+        settings: standardPrintSizesSettings,
+        printWidthInches: nextWidth,
+      }),
+    );
+  }
+
   function updateWidth(nextWidthInput: string) {
     setPrintWidthInput(nextWidthInput);
 
     const nextWidth = parsePositiveDecimalInput(nextWidthInput);
+    let nextHeightInput = printHeightInput;
     if (aspectPixels && nextWidth !== null) {
-      setPrintHeightInput(
-        formatEditableNumber(
-          calculateLockedHeightFromWidth(aspectPixels.width, aspectPixels.height, nextWidth),
-        ),
+      nextHeightInput = formatEditableNumber(
+        calculateLockedHeightFromWidth(aspectPixels.width, aspectPixels.height, nextWidth),
       );
+      setPrintHeightInput(nextHeightInput);
     }
+    applyManualSize(nextWidthInput, nextHeightInput);
   }
 
   function updateHeight(nextHeightInput: string) {
     setPrintHeightInput(nextHeightInput);
 
     const nextHeight = parsePositiveDecimalInput(nextHeightInput);
+    let nextWidthInput = printWidthInput;
     if (aspectPixels && nextHeight !== null) {
-      setPrintWidthInput(
-        formatEditableNumber(
-          calculateLockedWidthFromHeight(aspectPixels.width, aspectPixels.height, nextHeight),
-        ),
+      nextWidthInput = formatEditableNumber(
+        calculateLockedWidthFromHeight(aspectPixels.width, aspectPixels.height, nextHeight),
       );
+      setPrintWidthInput(nextWidthInput);
     }
+    applyManualSize(nextWidthInput, nextHeightInput);
   }
 
   const saveDraft = useCallback(async (): Promise<boolean> => {
@@ -295,6 +344,7 @@ export function PrintRequestItemCard({
       parsedQuantity,
       parsedPrintWidthInches,
       parsedPrintHeightInches,
+      standardSizePresetKey,
     );
 
     if (draftSignature === lastSavedSignatureRef.current) {
@@ -316,6 +366,7 @@ export function PrintRequestItemCard({
         quantity: parsedQuantity,
         printWidthInches: parsedPrintWidthInches,
         printHeightInches: parsedPrintHeightInches,
+        standardSizePresetKey: standardSizePresetKey ?? null,
       });
       lastSavedSignatureRef.current = draftSignature;
       setIsFailed(false);
@@ -345,6 +396,7 @@ export function PrintRequestItemCard({
     parsedPrintHeightInches,
     parsedPrintWidthInches,
     parsedQuantity,
+    standardSizePresetKey,
   ]);
 
   useEffect(() => {
@@ -442,17 +494,24 @@ export function PrintRequestItemCard({
     <>
       <Card className="print-requests-item-card">
         <div className="print-requests-item-card-header">
-          <DesignThumbnailPanel
-            alt={`${title} preview`}
-            artworkBackgroundHex={artworkBackgroundHex}
-            catalogPath={previewPath}
-            className="print-requests-item-card-thumbnail"
-            fallbackLabel="Preview unavailable"
-            imageFit="contain"
-            interactive={Boolean(previewUrl)}
-            loadingLabel="Loading preview"
-            onImageClick={() => setIsLightboxOpen(true)}
-          />
+          <div className="print-requests-item-card-thumb-wrap">
+            <DesignThumbnailPanel
+              alt={`${title} preview`}
+              artworkBackgroundHex={artworkBackgroundHex}
+              catalogPath={previewPath}
+              className="print-requests-item-card-thumbnail"
+              fallbackLabel="Preview unavailable"
+              imageFit="contain"
+              interactive={Boolean(previewUrl)}
+              loadingLabel="Loading preview"
+              onImageClick={() => setIsLightboxOpen(true)}
+            />
+            <span
+              className={`print-requests-item-source-badge is-${sourcePill.variant}`}
+            >
+              {sourcePill.label}
+            </span>
+          </div>
 
           <div className="print-requests-item-card-copy">
             <strong className="print-requests-item-card-title">{title}</strong>
@@ -467,6 +526,16 @@ export function PrintRequestItemCard({
 
         {!readOnly ? (
           <>
+            <button
+              className={`print-requests-standard-size-trigger${
+                standardSizePresetKey ? " is-selected" : ""
+              }`}
+              onClick={() => setIsStandardSizesModalOpen(true)}
+              type="button"
+            >
+              {resolveStandardPrintSizeCardLabel(standardPrintSizesSettings, standardSizePresetKey)}
+            </button>
+
             <div className="print-requests-item-size-row">
               <label className="print-requests-item-field">
                 <span className="print-requests-item-field-label">Width</span>
@@ -598,6 +667,31 @@ export function PrintRequestItemCard({
         onClose={() => setIsLightboxOpen(false)}
         previewUrl={previewUrl ?? null}
       />
+
+      {aspectPixels ? (
+        <StandardPrintSizesModal
+          approvedMaxPrintHeightInches={
+            upload?.approvedMaxPrintHeightInches ?? design?.approvedMaxPrintHeightInches
+          }
+          approvedMaxPrintWidthInches={
+            upload?.approvedMaxPrintWidthInches ?? design?.approvedMaxPrintWidthInches
+          }
+          currentPrintHeightInches={parsedPrintHeightInches ?? resolveInitialHeight(item)}
+          currentPrintWidthInches={parsedPrintWidthInches ?? resolveInitialWidth(item)}
+          isOpen={isStandardSizesModalOpen}
+          onApply={({ printHeightInches, printWidthInches, standardSizePresetKey: nextPresetKey }) => {
+            setPrintWidthInput(formatEditableNumber(printWidthInches));
+            setPrintHeightInput(formatEditableNumber(printHeightInches));
+            setStandardSizePresetKey(nextPresetKey);
+            scheduleSave();
+          }}
+          onClose={() => setIsStandardSizesModalOpen(false)}
+          pixelHeight={aspectPixels.height}
+          pixelWidth={aspectPixels.width}
+          settings={standardPrintSizesSettings}
+          wasUpscaled={upload?.wasUpscaled ?? design?.wasUpscaled}
+        />
+      ) : null}
     </>
   );
 }

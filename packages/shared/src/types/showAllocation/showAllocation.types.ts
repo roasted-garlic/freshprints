@@ -45,6 +45,8 @@ export interface ShowAllocation {
   completedBy?: string;
   canceledAt?: Timestamp;
   canceledBy?: string;
+  /** When set, this allocation was created by Did Not Print requeue from the referenced source row. */
+  requeuedFromAllocationId?: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

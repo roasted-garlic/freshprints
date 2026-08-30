@@ -1,4 +1,5 @@
-import { BadgeInfo, FileText, Pencil } from "lucide-react";
+import { BadgeInfo, FileText, Pencil, RotateCcw } from "lucide-react";
+import { useMemo } from "react";
 
 import { Badge } from "../../../shared/components/Badge";
 import { Card } from "../../../shared/components/Card";
@@ -13,28 +14,55 @@ import {
   getCustomerSignupSourceBadgeVariant,
 } from "@fresh-prints/shared/utils/customerSignupSource";
 import { formatCustomerUsernameForDisplay } from "@fresh-prints/shared/utils/formatCustomerUsernameForDisplay";
+import { isReversibleDisabledCustomer } from "../utils/customerDirectoryVisibility";
+
+import type { CustomerDirectoryVisibilityTab } from "../utils/customerDirectoryVisibility";
 
 interface CustomerDirectoryTableProps {
   customers: Customer[];
+  allCustomers?: Customer[];
   error: string | null;
   isLoading: boolean;
+  visibilityTab?: CustomerDirectoryVisibilityTab;
   canTombstoneCustomer?: boolean;
+  canHardDeleteCustomer?: boolean;
+  canDisableCustomer?: boolean;
   onEditCustomer: (customer: Customer) => void;
   onTombstoneCustomer?: (customer: Customer) => void;
+  onHardDeleteCustomer?: (customer: Customer) => void;
+  onDisableCustomer?: (customer: Customer) => void;
+  onRestoreCustomer?: (customer: Customer) => void;
   onViewAuditTrail: (customer: Customer) => void;
+  onViewSurvivorCustomer?: (customer: Customer) => void;
   searchQuery: string;
 }
 
 export function CustomerDirectoryTable({
   customers,
+  allCustomers = [],
   error,
   isLoading,
   canTombstoneCustomer = false,
+  canHardDeleteCustomer = false,
+  canDisableCustomer = false,
   onEditCustomer,
   onTombstoneCustomer,
+  onHardDeleteCustomer,
+  onDisableCustomer,
+  onRestoreCustomer,
   onViewAuditTrail,
+  onViewSurvivorCustomer,
   searchQuery,
+  visibilityTab = "active",
 }: CustomerDirectoryTableProps) {
+  const customerById = useMemo(() => {
+    const lookup = new Map<string, Customer>();
+    for (const customer of allCustomers) {
+      lookup.set(customer.id, customer);
+    }
+    return lookup;
+  }, [allCustomers]);
+
   if (isLoading) {
     return (
       <Card className="user-directory-panel">
@@ -54,12 +82,18 @@ export function CustomerDirectoryTable({
   if (customers.length === 0) {
     const emptyMessage = searchQuery.trim()
       ? "Try a different search term or clear the search field."
-      : "Create the first customer to use customer Print Requests.";
+      : visibilityTab === "active"
+        ? "No active customers. Check Disabled, Merged, or Closed for other accounts."
+        : visibilityTab === "disabled"
+          ? "No disabled customers in this view."
+          : visibilityTab === "merged"
+            ? "No merged customers in this view."
+            : "No closed customers in this view.";
 
     return (
       <EmptyState
         message={emptyMessage}
-        title={searchQuery.trim() ? "No matching customers" : "No customers yet"}
+        title={searchQuery.trim() ? "No matching customers" : "No customers in this view"}
       />
     );
   }
@@ -82,16 +116,102 @@ export function CustomerDirectoryTable({
           <tbody>
             {customers.map((customer) => {
               const isDeleted = customer.isDeleted === true;
+              const isMerged = customer.isMerged === true;
+              const isReversiblyDisabled = isReversibleDisabledCustomer(customer);
+              const survivorCustomer =
+                isMerged && customer.mergedIntoCustomerId
+                  ? customerById.get(customer.mergedIntoCustomerId)
+                  : undefined;
+              const showOwnerMenu =
+                !isMerged &&
+                ((canTombstoneCustomer && !isDeleted && onTombstoneCustomer) ||
+                  (canDisableCustomer && onDisableCustomer) ||
+                  (canHardDeleteCustomer && onHardDeleteCustomer));
+
+              const menuItems = [];
+
+              if (canDisableCustomer && onDisableCustomer && !isDeleted) {
+                if (isReversiblyDisabled && onRestoreCustomer) {
+                  menuItems.push({
+                    id: "restore-customer",
+                    label: "Re-enable Account",
+                    danger: false,
+                    onSelect: () => onRestoreCustomer(customer),
+                  });
+                } else if (!isReversiblyDisabled) {
+                  menuItems.push({
+                    id: "disable-customer-reversible",
+                    label: "Disable Account",
+                    onSelect: () => onDisableCustomer(customer),
+                  });
+                }
+              }
+
+              if (canTombstoneCustomer && !isDeleted && onTombstoneCustomer) {
+                menuItems.push({
+                  id: "tombstone-customer",
+                  label: "Close Account Permanently",
+                  onSelect: () => onTombstoneCustomer(customer),
+                });
+              }
+
+              if (canHardDeleteCustomer && onHardDeleteCustomer && !isDeleted) {
+                menuItems.push({
+                  id: "hard-delete-customer",
+                  label: "Delete Account Permanently",
+                  onSelect: () => onHardDeleteCustomer(customer),
+                });
+              }
+
               return (
                 <tr key={customer.id}>
-                  <td className="user-directory-name">{customer.displayName}</td>
+                  <td className="user-directory-name">
+                    <div className="customer-directory-name-cell">
+                      <span>{customer.displayName}</span>
+                      {isReversiblyDisabled ? (
+                        <Badge className="customer-status-badge-disabled" variant="warning">
+                          Disabled
+                        </Badge>
+                      ) : null}
+                      {isMerged ? (
+                        <Badge className="customer-status-badge-merged" variant="info">
+                          Merged
+                        </Badge>
+                      ) : null}
+                      {isDeleted ? (
+                        <Badge className="customer-status-badge-deleted" variant="warning">
+                          Closed
+                        </Badge>
+                      ) : null}
+                      {isMerged && survivorCustomer ? (
+                        onViewSurvivorCustomer ? (
+                          <button
+                            className="customer-merged-into-link"
+                            onClick={() => onViewSurvivorCustomer(survivorCustomer)}
+                            type="button"
+                          >
+                            Merged into{" "}
+                            {formatCustomerUsernameForDisplay(survivorCustomer.username, {
+                              isDeleted: survivorCustomer.isDeleted === true,
+                            })}
+                          </button>
+                        ) : (
+                          <span className="customer-merged-into-link">
+                            Merged into{" "}
+                            {formatCustomerUsernameForDisplay(survivorCustomer.username, {
+                              isDeleted: survivorCustomer.isDeleted === true,
+                            })}
+                          </span>
+                        )
+                      ) : null}
+                    </div>
+                  </td>
                   <td>{formatCustomerUsernameForDisplay(customer.username, { isDeleted })}</td>
                   <td>{customer.email ?? "—"}</td>
                   <td>
                     <Badge variant={getCustomerSignupSourceBadgeVariant(customer)}>
                       {getCustomerSignupSourceBadgeLabel(customer)}
                     </Badge>
-                    {isDeleted ? <Badge variant="warning">Deleted</Badge> : null}
                   </td>
                   <td className="user-directory-notes-cell">
                     <span
@@ -115,6 +235,16 @@ export function CustomerDirectoryTable({
                   </td>
                   <td className="user-directory-actions-cell">
                     <div className="user-directory-actions">
+                      {canDisableCustomer && isReversiblyDisabled && onRestoreCustomer ? (
+                        <IconButton
+                          className="icon-button-outline icon-button-success"
+                          label="Re-enable Account"
+                          onClick={() => onRestoreCustomer(customer)}
+                          variant="outline"
+                        >
+                          <RotateCcw aria-hidden="true" size={15} strokeWidth={2} />
+                        </IconButton>
+                      ) : null}
                       <IconButton
                         label="Edit Customer"
                         onClick={() => onEditCustomer(customer)}
@@ -122,16 +252,10 @@ export function CustomerDirectoryTable({
                       >
                         <Pencil aria-hidden="true" size={15} strokeWidth={2} />
                       </IconButton>
-                      {canTombstoneCustomer && !isDeleted && onTombstoneCustomer ? (
+                      {showOwnerMenu && menuItems.length > 0 ? (
                         <DangerOverflowMenu
                           ariaLabel={`Customer actions for ${customer.displayName}`}
-                          items={[
-                            {
-                              id: "disable-customer",
-                              label: "Disable customer account…",
-                              onSelect: () => onTombstoneCustomer(customer),
-                            },
-                          ]}
+                          items={menuItems}
                         />
                       ) : null}
                     </div>

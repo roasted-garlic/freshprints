@@ -4,6 +4,7 @@ import type { OperationalWipeTarget } from "../types/admin/wipeOperationalTestDa
 export const OPERATIONAL_WIPE_DELETE_COLLECTION_ORDER = [
   "staffInboxAcks",
   "staffInboxAlertDeliveries",
+  "staffInboxSuppressions",
   "assistedCreationUpdateAcks",
   "customerNotifications",
   "emailDeliveryJobs",
@@ -181,6 +182,7 @@ export function expandOperationalWipePlan(
     if (target === "printRequests") {
       deleteSet.add("staffInboxAcks");
       deleteSet.add("staffInboxAlertDeliveries");
+      deleteSet.add("staffInboxSuppressions");
       for (const collectionName of PRINT_REQUEST_STACK_COLLECTIONS) {
         deleteSet.add(collectionName);
       }
@@ -190,6 +192,7 @@ export function expandOperationalWipePlan(
     if (target === "showQueueAttachments") {
       deleteSet.add("staffInboxAcks");
       deleteSet.add("staffInboxAlertDeliveries");
+      deleteSet.add("staffInboxSuppressions");
       for (const collectionName of SHOW_QUEUE_ATTACHMENT_COLLECTIONS) {
         deleteSet.add(collectionName);
       }
@@ -199,6 +202,7 @@ export function expandOperationalWipePlan(
     if (target === "upcomingShows") {
       deleteSet.add("staffInboxAcks");
       deleteSet.add("staffInboxAlertDeliveries");
+      deleteSet.add("staffInboxSuppressions");
       for (const collectionName of UPCOMING_SHOW_COLLECTIONS) {
         deleteSet.add(collectionName);
       }

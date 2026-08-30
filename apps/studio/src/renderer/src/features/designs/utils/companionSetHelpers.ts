@@ -43,7 +43,43 @@ export function removeCompanionNeighbor(companionDesignIds: string[], peerId: st
   return companionDesignIds.filter((neighborId) => neighborId !== peerId);
 }
 
-export type CompanionSetStatusLabel = "Needs Companion" | "Linked" | "Not linked";
+/**
+ * Ordered unique design-id pairs to link when adding `peerIds` to an anchor design.
+ * Each new peer links to the anchor and to every other new peer (full mesh within the batch).
+ * Does not auto-link new peers to the anchor's existing neighbors — that preserves unrelated
+ * hub links (e.g. front/back companions) while supporting color-variant batches.
+ */
+export function listCompanionPeerLinkPairs(anchorId: string, peerIds: string[]): Array<[string, string]> {
+  const uniquePeers = [...new Set(peerIds.filter((peerId) => peerId !== anchorId))];
+  const pairs: Array<[string, string]> = [];
+
+  for (let index = 0; index < uniquePeers.length; index += 1) {
+    pairs.push([anchorId, uniquePeers[index]]);
+    for (let otherIndex = index + 1; otherIndex < uniquePeers.length; otherIndex += 1) {
+      pairs.push([uniquePeers[index], uniquePeers[otherIndex]]);
+    }
+  }
+
+  return pairs;
+}
+
+/**
+ * Every unordered pair in `designIds` — used to fully mesh an existing companion group
+ * (e.g. star topology where siblings only linked to a parent).
+ */
+export function listFullMeshLinkPairs(designIds: string[]): Array<[string, string]> {
+  const uniqueIds = [...new Set(designIds)];
+  const pairs: Array<[string, string]> = [];
+
+  for (let index = 0; index < uniqueIds.length; index += 1) {
+    for (let otherIndex = index + 1; otherIndex < uniqueIds.length; otherIndex += 1) {
+      pairs.push([uniqueIds[index], uniqueIds[otherIndex]]);
+    }
+  }
+
+  return pairs;
+}
+
 
 /**
  * Staff-facing status from a design's own denorm fields only (no Firestore reads).

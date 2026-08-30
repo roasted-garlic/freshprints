@@ -131,7 +131,18 @@ function isValidGangSheetImageRequest(value: unknown): value is GangSheetExportI
 }
 
 function isValidGangSheetLayoutMode(value: unknown): value is NonNullable<ExportGangSheetPngRequest["layoutMode"]> {
-  return value === undefined || value === "efficiency" || value === "grouped_by_customer";
+  return (
+    value === undefined ||
+    value === "efficiency" ||
+    value === "grouped_by_customer" ||
+    value === "customer_grouped_continuous"
+  );
+}
+
+function isGroupedGangSheetLayoutMode(
+  layoutMode: ExportGangSheetPngRequest["layoutMode"],
+): boolean {
+  return layoutMode === "grouped_by_customer" || layoutMode === "customer_grouped_continuous";
 }
 
 export function validateExportGangSheetPngRequest(payload: unknown) {
@@ -169,7 +180,7 @@ export function validateExportGangSheetPngRequest(payload: unknown) {
     return {
       error: importIpcFailure(
         "INVALID_INPUT",
-        'layoutMode must be omitted, "efficiency", or "grouped_by_customer".',
+        'layoutMode must be omitted, "efficiency", "grouped_by_customer", or "customer_grouped_continuous".',
       ),
     };
   }
@@ -182,7 +193,7 @@ export function validateExportGangSheetPngRequest(payload: unknown) {
     return { error: importIpcFailure("INVALID_INPUT", "One or more gang sheet image entries are invalid.") };
   }
 
-  if (request.layoutMode === "grouped_by_customer" && request.images.some((image) => !image.grouping)) {
+  if (isGroupedGangSheetLayoutMode(request.layoutMode) && request.images.some((image) => !image.grouping)) {
     return {
       error: importIpcFailure(
         "INVALID_INPUT",
@@ -222,7 +233,9 @@ export function validateGenerateGangSheetPngRequest(
       gutterInches: exportRequest.gutterInches,
       maxSheetLengthInches: exportRequest.maxSheetLengthInches,
       labelFontSizePx: exportRequest.labelFontSizePx,
-      ...(exportRequest.layoutMode === "grouped_by_customer" ? { layoutMode: exportRequest.layoutMode } : {}),
+      ...(exportRequest.layoutMode && exportRequest.layoutMode !== "efficiency"
+        ? { layoutMode: exportRequest.layoutMode }
+        : {}),
       images: exportRequest.images,
       showId: request.showId.trim(),
     },

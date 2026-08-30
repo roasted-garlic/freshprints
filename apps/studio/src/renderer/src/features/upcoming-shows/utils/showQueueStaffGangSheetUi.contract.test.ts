@@ -37,6 +37,15 @@ test("open Staff Gang Sheet exposes Add Request on Attached print requests secti
   assert.match(pageSource, /Attached print requests[\s\S]*Add Request/);
 });
 
+test("past shows can still export images and gang sheets", () => {
+  assert.match(pageSource, /hasExportableAllocationsForSelectedShow/);
+  assert.match(pageSource, /hasShowExportableAllocations/);
+  assert.doesNotMatch(pageSource, /disabled=\{isSelectedShowPast \|\| !has/);
+  assert.doesNotMatch(pageSource, /openExportModal[\s\S]{0,120}isSelectedShowPast/);
+  assert.doesNotMatch(pageSource, /openExportGangSheetModal[\s\S]{0,120}isSelectedShowPast/);
+  assert.doesNotMatch(pageSource, /isExportMenuOpen && !isSelectedShowPast/);
+});
+
 test("Staff Gang Sheet keeps a single Add Request on the request list header", () => {
   assert.match(pageSource, /!isSelectedStaffGangSheet \? \([\s\S]*Add Request/);
   assert.match(pageSource, /Attached print requests[\s\S]*openAddRequestModal/);
@@ -63,11 +72,13 @@ test("Add Request keeps Staff surface after allocation success path uses fixedSh
   assert.match(pageSource, /fixedShowId=\{selectedShow\.id\}/);
 });
 
-test("Internal Current/History tab change updates URL selection (avoids History flicker)", () => {
+test("Internal Current/History tab change updates URL tab and selection (avoids list flicker)", () => {
   assert.match(pageSource, /handleStaffListTabChange/);
+  assert.match(pageSource, /SHOW_QUEUE_TAB_QUERY_PARAM/);
+  assert.match(pageSource, /skipListTabRouteSyncRef/);
   assert.match(
     pageSource,
-    /const handleStaffListTabChange = useCallback\([\s\S]*updateSelectedShowPath\(nextSelectedShowId, null\)/,
+    /const handleStaffListTabChange = useCallback\([\s\S]*applyShowQueueRoute\(\{ tab, showId: nextSelectedShowId, requestId: null \}\)/,
   );
 });
 

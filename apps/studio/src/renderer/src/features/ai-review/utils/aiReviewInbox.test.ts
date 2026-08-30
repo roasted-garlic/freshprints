@@ -56,7 +56,14 @@ describe("buildAiReviewInboxListQuery", () => {
 
     assert.deepEqual(query.statusIn, ["imported", "processing"]);
     assert.equal(query.aiReviewStatus, "pending");
-    assert.equal(query.sortField, "updatedAt");
+    assert.equal(query.sortField, "createdAt");
+    assert.equal(query.sortDirection, "asc");
+  });
+
+  it("builds processing tab query with explicit newest sort", () => {
+    const query = buildAiReviewInboxListQuery({ tab: "processing", sortOrder: "newest" });
+
+    assert.equal(query.sortField, "createdAt");
     assert.equal(query.sortDirection, "desc");
   });
 
@@ -66,6 +73,7 @@ describe("buildAiReviewInboxListQuery", () => {
     assert.equal(query.status, "imported");
     assert.equal(query.aiReviewStatus, "needs_review");
     assert.equal(query.sortField, "updatedAt");
+    assert.equal(query.sortDirection, "desc");
   });
 
   it("builds rejected tab query", () => {

@@ -12,8 +12,11 @@ interface CatalogFiltersSheetProps {
   onCategoryChange: (value: string) => void;
   onClose: () => void;
   onHalftoneFilterChange: (on: boolean) => void;
+  onOpenSmartFilters?: () => void;
   onOpenTags: () => void;
+  selectedSmartFilterCount?: number;
   selectedTagCount: number;
+  showSmartFilters?: boolean;
 }
 
 /**
@@ -28,8 +31,11 @@ export function CatalogFiltersSheet({
   onCategoryChange,
   onClose,
   onHalftoneFilterChange,
+  onOpenSmartFilters,
   onOpenTags,
+  selectedSmartFilterCount = 0,
   selectedTagCount,
+  showSmartFilters = false,
 }: CatalogFiltersSheetProps) {
   const { setShowExplicitContent, showExplicitContent } = useExplicitContentPreference();
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
@@ -188,6 +194,29 @@ export function CatalogFiltersSheet({
               </span>
             </button>
           </section>
+
+          {showSmartFilters && onOpenSmartFilters ? (
+            <section
+              aria-labelledby="catalog-filters-smart-heading"
+              className="catalog-filters-sheet-section"
+            >
+              <h3 className="catalog-filters-sheet-section-title" id="catalog-filters-smart-heading">
+                Smart Filters
+              </h3>
+              <button
+                className="portal-button portal-button-secondary portal-button-leading-icon catalog-filters-tags-button"
+                onClick={onOpenSmartFilters}
+                type="button"
+              >
+                <FilterIcon />
+                <span>
+                  {selectedSmartFilterCount > 0
+                    ? `Choose smart filters (${selectedSmartFilterCount} selected)`
+                    : 'Choose smart filters'}
+                </span>
+              </button>
+            </section>
+          ) : null}
         </div>
 
         <footer className="modal-footer modal-footer-tag-filter catalog-filters-sheet-footer">

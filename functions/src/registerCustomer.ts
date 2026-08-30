@@ -141,7 +141,6 @@ export const registerCustomer = onCall(async (request): Promise<RegisterCustomer
         signupSource: "portal",
         totalPrintRequests: 0,
         nextPrintRequestSequence: 1,
-        usernameUpdatedAt: timestamp,
         createdAt: timestamp,
         updatedAt: timestamp,
       });

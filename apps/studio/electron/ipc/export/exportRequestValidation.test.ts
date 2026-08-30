@@ -49,6 +49,18 @@ describe("validateGenerateGangSheetPngRequest", () => {
     assert.equal(validated.request.layoutMode, undefined);
   });
 
+  it("preserves customer_grouped_continuous layoutMode and image grouping", () => {
+    const validated = validateGenerateGangSheetPngRequest({
+      ...basePayload,
+      layoutMode: "customer_grouped_continuous",
+      baseFileName: "whatnot_08-24-2026_grouped-continuous-gang-sheet",
+    });
+
+    assert.ok("request" in validated);
+    assert.equal(validated.request.layoutMode, "customer_grouped_continuous");
+    assert.deepEqual(validated.request.images[0]?.grouping, baseImage.grouping);
+  });
+
   it("rejects grouped mode when any image is missing grouping metadata", () => {
     const validated = validateGenerateGangSheetPngRequest({
       ...basePayload,
@@ -57,5 +69,13 @@ describe("validateGenerateGangSheetPngRequest", () => {
     });
 
     assert.ok("error" in validated);
+
+    const continuousValidated = validateGenerateGangSheetPngRequest({
+      ...basePayload,
+      layoutMode: "customer_grouped_continuous",
+      images: [{ ...baseImage, grouping: undefined }],
+    });
+
+    assert.ok("error" in continuousValidated);
   });
 });

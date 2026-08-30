@@ -38,12 +38,14 @@ import { PrintRequestDetailGuide } from '../../../../features/print-requests/com
 import { usePortalPrintRequests } from '../../../../features/print-requests/context/PortalPrintRequestContext';
 import { useAddDesignToRequestFlow } from '../../../../features/print-requests/hooks/useAddDesignToRequestFlow';
 import { usePrintRequestDetail } from '../../../../features/print-requests/hooks/usePrintRequestDetail';
+import { usePortalStandardPrintSizes } from '../../../../features/print-requests/hooks/usePortalStandardPrintSizes';
 import { usePortalShowPrintProgress } from '../../../../features/print-requests/hooks/usePortalShowPrintProgress';
 import { usePortalPrintRequestShowSchedules } from '../../../../features/print-requests/hooks/usePortalPrintRequestShowSchedules';
 import {
   portalPrintRequestService,
   printRequestItemHasCustomerUpload,
 } from '../../../../features/print-requests/services/portalPrintRequestService';
+import { prefetchPortalAllocatableShows } from '../../../../features/print-requests/services/portalShowSelectionService';
 import { buildCatalogLibraryHref, buildRequestArtworkHref } from '../../../../features/print-requests/utils/catalogSelectionNavigation';
 import {
   parsePortalRequestDetailFrom,
@@ -122,6 +124,7 @@ export default function PrintRequestDetailView() {
     removeItem,
     reconcileQueued,
   } = usePrintRequestDetail(printRequestId);
+  const { settings: standardPrintSizesSettings } = usePortalStandardPrintSizes();
 
   const addDesignFlow = useAddDesignToRequestFlow({
     continuableRequests,
@@ -129,6 +132,10 @@ export default function PrintRequestDetailView() {
     refreshRequests,
     reloadWorkingItems,
   });
+
+  useEffect(() => {
+    void prefetchPortalAllocatableShows();
+  }, []);
 
   useEffect(() => {
     if (searchParams.get('upload') !== '1') {
@@ -231,7 +238,12 @@ export default function PrintRequestDetailView() {
   const handleUpdateItem = useCallback(
     async (
       item: PrintRequestItem,
-      input: { quantity: number; printWidthInches: number; printHeightInches: number },
+      input: {
+        quantity: number;
+        printWidthInches: number;
+        printHeightInches: number;
+        standardSizePresetKey?: string | null;
+      },
     ): Promise<{ quantity: number }> => {
       setActionError(null);
       // updateItem already synchronously reconciles both local items and shared workingItems
@@ -613,6 +625,7 @@ export default function PrintRequestDetailView() {
                 onRegisterFlush={handleRegisterFlush}
                 quantityResetKey={quantityResetKeys[item.id] ?? 0}
                 readOnly={!isEditable}
+                standardPrintSizesSettings={standardPrintSizesSettings}
               />
             );
           })}
@@ -694,7 +707,7 @@ export default function PrintRequestDetailView() {
       </PortalConfirmModal>
 
       <PortalPickContinuableRequestModal
-        continuableRequests={continuableRequests}
+        continuableRequests={addDesignFlow.pickerContinuableRequests}
         designTitle={addDesignFlow.pendingDesign?.title}
         isAdding={addDesignFlow.isAdding}
         isOpen={addDesignFlow.isPickerOpen}

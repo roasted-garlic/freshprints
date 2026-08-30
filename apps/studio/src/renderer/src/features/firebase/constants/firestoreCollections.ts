@@ -19,10 +19,12 @@ export const FIRESTORE_COLLECTIONS = {
   gangSheetItems: "gangSheetItems",
   staffInboxAcks: "staffInboxAcks",
   staffInboxAlertDeliveries: "staffInboxAlertDeliveries",
+  staffInboxSuppressions: "staffInboxSuppressions",
   designIssueReports: "designIssueReports",
   assistedCreationUpdateAcks: "assistedCreationUpdateAcks",
   settings: "settings",
   auditLogs: "auditLogs",
+  customerActivityEvents: "customerActivityEvents",
   /** @deprecated Legacy transitive group model — replaced by `companionLinks`. Kept only so
    * old DEV documents remain typeable/reachable for manual staff cleanup; no product code
    * creates or joins these anymore. */

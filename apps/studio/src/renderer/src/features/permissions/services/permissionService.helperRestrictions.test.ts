@@ -23,6 +23,12 @@ describe("helper permission restrictions", () => {
     assert.equal(permissionService.canImportWhatnotShows(activeAdmin), true);
   });
 
+  it("only owners can edit upcoming show metadata", () => {
+    assert.equal(permissionService.canEditUpcomingShowMetadata(activeOwner), true);
+    assert.equal(permissionService.canEditUpcomingShowMetadata(activeAdmin), false);
+    assert.equal(permissionService.canEditUpcomingShowMetadata(activeHelper), false);
+  });
+
   it("only owners can open Dev Tools; admin and helper cannot", () => {
     assert.equal(permissionService.canOpenDevTools(activeHelper), false);
     assert.equal(permissionService.canOpenDevTools(activeAdmin), false);

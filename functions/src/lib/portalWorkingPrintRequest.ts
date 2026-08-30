@@ -1,6 +1,7 @@
-import { FieldValue, type Transaction } from "firebase-admin/firestore";
+import { FieldValue, type QueryDocumentSnapshot, type Transaction } from "firebase-admin/firestore";
 
 import { formatCustomerPrintRequestName } from "../../../packages/shared/src/utils/printRequestNaming";
+import { isPortalEditablePrintRequest } from "../../../packages/shared/src/utils/portalPrintRequestEditability";
 import { requireValidCustomerUsername } from "../../../packages/shared/src/utils/customerUsername";
 import {
   PORTAL_MULTIPLE_WORKING_REQUESTS_MESSAGE,
@@ -32,6 +33,18 @@ function continuableQuery(customerId: string) {
     .limit(2);
 }
 
+function filterPortalEditableContinuableDocs(
+  docs: QueryDocumentSnapshot[],
+): QueryDocumentSnapshot[] {
+  return docs.filter((doc) =>
+    isPortalEditablePrintRequest({
+      status: doc.data().status,
+      requestOrigin: doc.data().requestOrigin,
+      isInternal: doc.data().isInternal,
+    }),
+  );
+}
+
 /**
  * Assert no continuable request exists, then create one (ADR-FP-071 create path).
  */
@@ -41,7 +54,8 @@ export async function createWorkingPrintRequestInTransaction(
   notes?: string,
 ): Promise<{ printRequestId: string; name: string }> {
   const existing = await transaction.get(continuableQuery(customer.customerId));
-  if (!existing.empty) {
+  const portalEditable = filterPortalEditableContinuableDocs(existing.docs);
+  if (portalEditable.length > 0) {
     throw failedPrecondition(PORTAL_ONE_WORKING_REQUEST_MESSAGE);
   }
 
@@ -69,17 +83,17 @@ export async function resolveOrCreateWorkingPrintRequestInTransaction(
   customer: WorkingPrintRequestCustomer,
 ): Promise<{ printRequestId: string; created: boolean; name?: string }> {
   const existing = await transaction.get(continuableQuery(customer.customerId));
+  const portalEditable = filterPortalEditableContinuableDocs(existing.docs);
 
-  if (existing.size > 1) {
+  if (portalEditable.length > 1) {
     throw failedPrecondition(PORTAL_MULTIPLE_WORKING_REQUESTS_MESSAGE);
   }
 
-  if (existing.size === 1) {
-    return { printRequestId: existing.docs[0].id, created: false };
+  if (portalEditable.length === 1) {
+    return { printRequestId: portalEditable[0].id, created: false };
   }
 
-  // Cap A create-gate for empty carts is enforced on createPortalPrintRequest + Portal UX.
-  // Add/attach callables charge Cap A in the same transaction; a failed charge rolls back create.
+  // Legacy Studio drafts may still exist; Portal may create its own working request.
   const created = await createPrintRequestDoc(transaction, customer);
   return { printRequestId: created.printRequestId, created: true, name: created.name };
 }

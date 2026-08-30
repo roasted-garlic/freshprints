@@ -78,6 +78,7 @@ interface PrintRequestItemDocumentData extends DocumentData {
   printWidthInches?: unknown;
   printHeightInches?: unknown;
   sizeLabel?: unknown;
+  standardSizePresetKey?: unknown;
   sortOrder?: unknown;
   notes?: unknown;
   status?: unknown;
@@ -237,6 +238,10 @@ function mapPrintRequestItem(itemId: string, data: PrintRequestItemDocumentData)
     printWidthInches: typeof data.printWidthInches === 'number' ? data.printWidthInches : undefined,
     printHeightInches: typeof data.printHeightInches === 'number' ? data.printHeightInches : undefined,
     sizeLabel: typeof data.sizeLabel === 'string' ? data.sizeLabel : undefined,
+    standardSizePresetKey:
+      typeof data.standardSizePresetKey === 'string' && data.standardSizePresetKey.trim()
+        ? data.standardSizePresetKey.trim()
+        : undefined,
     sortOrder: typeof data.sortOrder === 'number' ? data.sortOrder : undefined,
     notes: typeof data.notes === 'string' ? data.notes : undefined,
     status: data.status as PrintRequestItem['status'],
@@ -852,6 +857,7 @@ export const portalPrintRequestService = {
     quantity?: number;
     printWidthInches?: number;
     printHeightInches?: number;
+    standardSizePresetKey?: string | null;
   }): Promise<{ quantity: number }> {
     if (isOptimisticPrintRequestItemId(input.itemId)) {
       throw new Error('Wait for the duplicate to finish saving before editing.');
@@ -927,12 +933,29 @@ export const portalPrintRequestService = {
       authoritativeQuantity = quantityResult.quantity;
     }
 
+    const presetKeyChanged =
+      input.standardSizePresetKey !== undefined &&
+      (input.standardSizePresetKey ?? null) !== (current.standardSizePresetKey ?? null);
+
     if (
       nextWidth === current.printWidthInches &&
-      nextHeight === current.printHeightInches
+      nextHeight === current.printHeightInches &&
+      !presetKeyChanged
     ) {
       return { quantity: authoritativeQuantity };
     }
+
+    const presetKeyUpdate =
+      input.standardSizePresetKey === null
+        ? { standardSizePresetKey: deleteField() }
+        : input.standardSizePresetKey !== undefined
+          ? {
+              standardSizePresetKey:
+                typeof input.standardSizePresetKey === 'string' && input.standardSizePresetKey.trim()
+                  ? input.standardSizePresetKey.trim()
+                  : deleteField(),
+            }
+          : {};
 
     // Item-only write (Studio parity). Do not bump parent printRequests here — customer
     // parent-update rules are stricter and were denying resize autosaves as permission-denied.
@@ -943,6 +966,7 @@ export const portalPrintRequestService = {
         printWidthInches: nextWidth,
         printHeightInches: nextHeight,
         sizeLabel: formatPrintRequestItemSizeLabel(nextWidth, nextHeight),
+        ...presetKeyUpdate,
         updatedAt: serverTimestamp(),
       }),
       {

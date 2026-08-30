@@ -1,6 +1,11 @@
 import { algoliasearch, type Algoliasearch } from 'algoliasearch';
 import { defineString } from 'firebase-functions/params';
 
+import {
+  PORTAL_CATALOG_ALGOLIA_ATTRIBUTES_FOR_FACETING,
+  PORTAL_CATALOG_ALGOLIA_SEARCHABLE_ATTRIBUTES,
+} from '../../../packages/shared/src/catalog-search/portalCatalogAlgoliaRecord';
+
 import { algoliaAdminApiKeySecret } from './algoliaSecrets';
 
 export const algoliaAppId = defineString('ALGOLIA_APP_ID', { default: '' });
@@ -37,8 +42,8 @@ export async function ensurePortalCatalogAlgoliaIndexSettings(
   await client.setSettings({
     indexName,
     indexSettings: {
-      searchableAttributes: ['title', 'searchText', 'categoryName', 'unordered(tagFacetKeys)'],
-      attributesForFaceting: ['filterOnly(tagIds)', 'filterOnly(categoryId)', 'tagFacetKeys'],
+      searchableAttributes: [...PORTAL_CATALOG_ALGOLIA_SEARCHABLE_ATTRIBUTES],
+      attributesForFaceting: [...PORTAL_CATALOG_ALGOLIA_ATTRIBUTES_FOR_FACETING],
       customRanking: ['desc(readyAtMs)'],
       // Keep records small — no unretrievable private attrs expected.
       unretrievableAttributes: [],

@@ -17,6 +17,7 @@ import { userService } from "../../users/services/userService";
 import type { User } from "../../users/types/user.types";
 import type { Customer } from "@fresh-prints/shared/types/customer/customer.types";
 import { parseCustomerSignupSource } from "@fresh-prints/shared/utils/customerSignupSource";
+import { readCustomerIdentityDocumentFields } from "@fresh-prints/shared/utils/readCustomerIdentityDocumentFields";
 import { requireValidCustomerUsername } from "@fresh-prints/shared/utils/customerUsername";
 
 export interface CreateCustomerRecordInput {
@@ -73,6 +74,9 @@ function mapCustomerData(customerId: string, data: CustomerDocumentData): Custom
     throw new Error("A customer is incomplete.");
   }
 
+  const identityFields = readCustomerIdentityDocumentFields(data);
+  const { deletedAt: deletedAtRaw, disabledAt: disabledAtRaw, ...identityRest } = identityFields;
+
   return {
     id: customerId,
     userId: typeof data.userId === "string" ? data.userId : undefined,
@@ -89,13 +93,9 @@ function mapCustomerData(customerId: string, data: CustomerDocumentData): Custom
     totalApprovedRequests:
       typeof data.totalApprovedRequests === "number" ? data.totalApprovedRequests : undefined,
     usernameUpdatedAt: resolveRequiredTimestamp(data.usernameUpdatedAt),
-    isDeleted: data.isDeleted === true ? true : undefined,
-    deletedAt: resolveRequiredTimestamp(data.deletedAt),
-    deletedBy: typeof data.deletedBy === "string" ? data.deletedBy : undefined,
-    deletionSource:
-      data.deletionSource === "studio_owner" || data.deletionSource === "portal_request"
-        ? data.deletionSource
-        : undefined,
+    ...identityRest,
+    deletedAt: resolveRequiredTimestamp(deletedAtRaw),
+    disabledAt: resolveRequiredTimestamp(disabledAtRaw),
     createdAt,
     updatedAt,
   };
@@ -233,7 +233,6 @@ export const customerService = {
         signupSource: "studio",
         totalPrintRequests: 0,
         nextPrintRequestSequence: 1,
-        usernameUpdatedAt: serverTimestamp(),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });

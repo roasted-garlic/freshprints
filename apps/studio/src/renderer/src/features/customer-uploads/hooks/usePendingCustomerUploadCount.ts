@@ -3,6 +3,7 @@ import { onSnapshot, type Unsubscribe } from "firebase/firestore";
 
 import { CUSTOMER_UPLOAD_COLLECTIONS } from "@fresh-prints/shared/constants/customerUpload/customerUploadCollections.constants";
 import type { CustomerUploadPurpose } from "@fresh-prints/shared/types/customerUpload/customerUpload.enums";
+import { isCustomerUploadEligibleForCatalogIntake } from "@fresh-prints/shared/utils/customerUploadCatalogIntakeEligibility";
 import { isMissingCustomerUploadPurpose } from "@fresh-prints/shared/utils/customerUploadPurpose";
 import {
   traceFirestoreListenerAttach,
@@ -78,10 +79,13 @@ export function usePendingCustomerUploadCounts(): PendingCustomerUploadCounts {
             countQuery,
             (snapshot) => {
               traceFirestoreListenerEmission(trace, snapshot.size);
+              const eligibleCount = snapshot.docs.filter((docSnap) =>
+                isCustomerUploadEligibleForCatalogIntake(docSnap.data()),
+              ).length;
               if (purpose === "catalog_donation") {
-                catalogDonationScoped = snapshot.size;
+                catalogDonationScoped = eligibleCount;
               } else {
-                printRequestScoped = snapshot.size;
+                printRequestScoped = eligibleCount;
               }
               publish();
             },
@@ -122,7 +126,10 @@ export function usePendingCustomerUploadCounts(): PendingCustomerUploadCounts {
           (snapshot) => {
             legacyMissingPurpose = 0;
             for (const docSnap of snapshot.docs) {
-              if (isMissingCustomerUploadPurpose(docSnap.data().purpose)) {
+              if (
+                isMissingCustomerUploadPurpose(docSnap.data().purpose) &&
+                isCustomerUploadEligibleForCatalogIntake(docSnap.data())
+              ) {
                 legacyMissingPurpose += 1;
               }
             }

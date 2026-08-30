@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { Info, X } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "../../../shared/components/Button";
@@ -17,6 +17,7 @@ import { formatDesignTimestamp } from "../utils/designDateDisplay";
 import { formatDesignStatusLabel, getDesignStatusBadgeVariant } from "../utils/designStatusDisplay";
 import { formatDesignPrintInches } from "../utils/designPrintSizeDisplay";
 import { resolveDesignAiReviewDisplay } from "../utils/aiReviewState";
+import type { DesignSmartProfile } from "@fresh-prints/shared/types/catalog/smartProfile.types";
 import { resolveCompanionSetStatusLabel } from "../utils/companionSetHelpers";
 import {
   formatAiEstimatedCost,
@@ -24,6 +25,10 @@ import {
   resolveCombinedAiEstimatedCost,
 } from "../utils/aiReviewDisplay";
 import { CompanionSetPanel } from "./CompanionSetPanel";
+import {
+  DesignSmartProfileAuditSection,
+  DesignSmartProfileSection,
+} from "./DesignSmartProfileSection";
 import { DesignLibraryModal } from "./DesignLibraryModal";
 import { DesignPreviewLightbox } from "./DesignPreviewLightbox";
 import { DesignThumbnailPanel } from "./DesignThumbnailPanel";
@@ -39,6 +44,7 @@ interface DesignDetailsModalProps {
   onEdit?: (design: Design) => void;
   onPurgeAssets?: (design: Design) => void;
   onRestore?: (design: Design) => void;
+  onSmartProfileUpdated?: (designId: string, smartProfile: DesignSmartProfile) => void;
 }
 
 interface DetailFieldProps {
@@ -73,6 +79,7 @@ export function DesignDetailsModal({
   onEdit,
   onPurgeAssets,
   onRestore,
+  onSmartProfileUpdated,
 }: DesignDetailsModalProps) {
   const { user } = useAuth();
   const [isPreviewLightboxOpen, setIsPreviewLightboxOpen] = useState(false);
@@ -90,6 +97,7 @@ export function DesignDetailsModal({
   }
 
   const canEdit = permissionService.canEditDesigns(user);
+  const canEditSmartProfile = permissionService.canEditSmartProfile(user);
   const canArchive = permissionService.canArchiveDesigns(user) && design.status !== "archived";
   const canRestore =
     permissionService.canRestoreDesigns(user) &&
@@ -142,9 +150,15 @@ export function DesignDetailsModal({
               {resolveCompanionSetStatusLabel(design) === "Needs Companion" ? (
                 <Badge variant="warning">Needs Companion</Badge>
               ) : null}
-              {printSize?.effectiveDpi !== undefined ? (
-                <ResolutionQualityPill effectiveDpi={printSize.effectiveDpi} />
-              ) : null}
+              <button
+                aria-label="View audit and technical details"
+                className="icon-button icon-button-md icon-button-ghost design-details-audit-info-button"
+                onClick={() => setIsMoreDetailsOpen(true)}
+                title="Audit and technical details"
+                type="button"
+              >
+                <Info aria-hidden="true" size={18} strokeWidth={2.2} />
+              </button>
             </div>
           </div>
 
@@ -192,13 +206,35 @@ export function DesignDetailsModal({
           )}
         </section>
 
-        <Button onClick={() => setIsMoreDetailsOpen(true)} type="button" variant="secondary">
-          View more details
-        </Button>
+        <div className="design-details-action-stack">
+          {canEdit && onEdit ? (
+            <Button
+              className="design-details-action-button"
+              onClick={() => onEdit(design)}
+              type="button"
+              variant="secondary"
+            >
+              Edit Design Details
+            </Button>
+          ) : null}
+          <Button
+            className="design-details-action-button"
+            onClick={() => setIsCompanionModalOpen(true)}
+            type="button"
+            variant="secondary"
+          >
+            Companion Designs
+          </Button>
+        </div>
 
-        <Button onClick={() => setIsCompanionModalOpen(true)} type="button" variant="secondary">
-          Companion Designs
-        </Button>
+        <DesignSmartProfileSection
+          canEdit={canEditSmartProfile}
+          design={design}
+          onProfileUpdated={(smartProfile) => {
+            onSmartProfileUpdated?.(design.id, smartProfile);
+          }}
+        />
+
       </ModalBody>
 
       <ModalFooter className="design-details-footer">
@@ -237,11 +273,6 @@ export function DesignDetailsModal({
               variant="secondary"
             >
               {isDownloadingOriginal ? "Downloading…" : "Download"}
-            </Button>
-          ) : null}
-          {canEdit && onEdit ? (
-            <Button onClick={() => onEdit(design)} variant="secondary">
-              Edit
             </Button>
           ) : null}
           <Button onClick={onClose} variant="secondary">
@@ -388,6 +419,8 @@ export function DesignDetailsModal({
               </dl>
             </section>
           ) : null}
+
+          <DesignSmartProfileAuditSection design={design} />
 
           <section
             aria-labelledby="design-details-technical-title"

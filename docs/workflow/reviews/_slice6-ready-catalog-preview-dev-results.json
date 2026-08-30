@@ -1,0 +1,93 @@
+{
+  "projectId": "fresh-prints-dev",
+  "startedAt": "2026-08-26T17:40:35.389Z",
+  "finishedAt": "2026-08-26T17:40:41.895Z",
+  "callable": "previewCatalogReprocessJob",
+  "request": {
+    "targetType": "ready_catalog"
+  },
+  "precheck": {
+    "projectId": "fresh-prints-dev",
+    "catalogWorkflowMode": "shadow",
+    "catalogAutonomousLiveEnabled": false,
+    "readyTotal": 270,
+    "readyApprovedEligible": 270,
+    "readyNotApprovedApprox": 0,
+    "activeReadyCatalogJobs": 0,
+    "activeAiReviewQueueJobs": 0,
+    "totalCatalogReprocessJobs": 1
+  },
+  "response": {
+    "targetType": "ready_catalog",
+    "environment": "dev",
+    "projectId": "fresh-prints-dev",
+    "eligibleCount": 270,
+    "catalogWorkflowMode": "shadow",
+    "autonomousLiveEnabled": false,
+    "targetEnabled": true,
+    "unavailableReason": null,
+    "requiredConfirmationPhrase": "REPROCESS READY CATALOG",
+    "activeJobId": null,
+    "readyInventory": {
+      "eligibleCount": 270,
+      "statusDistribution": {
+        "ready": 270
+      },
+      "aiReviewStatusDistribution": {
+        "approved": 270
+      },
+      "promptVersionDistribution": {
+        "(missing)": 265,
+        "catalog-enrich-v27": 5
+      },
+      "normalizerVersionDistribution": {
+        "(missing)": 265,
+        "smart-profile-normalizer-v1": 5
+      },
+      "alreadyCurrentPipelineCount": 0,
+      "missingProfileCount": 265,
+      "exclusions": {
+        "importedNeedsReview": 205,
+        "rejectedStatus": 0,
+        "archivedStatus": 2,
+        "pendingReviewProcessing": 0,
+        "readyNotApproved": 0,
+        "eligibleReadyCatalog": 270
+      },
+      "tagDensityBuckets": {
+        "zeroTags": 0,
+        "lowTags": 74,
+        "highTags": 196
+      },
+      "exclusionMethod": "indexed_status_counts"
+    }
+  },
+  "mutationProof": {
+    "before": {
+      "projectId": "fresh-prints-dev",
+      "catalogWorkflowMode": "shadow",
+      "catalogAutonomousLiveEnabled": false,
+      "readyTotal": 270,
+      "readyApprovedEligible": 270,
+      "readyNotApprovedApprox": 0,
+      "activeReadyCatalogJobs": 0,
+      "activeAiReviewQueueJobs": 0,
+      "totalCatalogReprocessJobs": 1
+    },
+    "after": {
+      "projectId": "fresh-prints-dev",
+      "catalogWorkflowMode": "shadow",
+      "catalogAutonomousLiveEnabled": false,
+      "readyTotal": 270,
+      "readyApprovedEligible": 270,
+      "readyNotApprovedApprox": 0,
+      "activeReadyCatalogJobs": 0,
+      "activeAiReviewQueueJobs": 0,
+      "totalCatalogReprocessJobs": 1
+    },
+    "unchanged": true,
+    "jobsCreated": 0
+  },
+  "startNotCalled": true,
+  "canaryNotUsed": true
+}

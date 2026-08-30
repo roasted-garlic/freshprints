@@ -518,6 +518,91 @@
   margin: 0;
 }
 
+.studio-checkbox {
+  align-items: center;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: var(--font-size-sm);
+  gap: var(--space-2);
+  line-height: 1.2;
+  user-select: none;
+}
+
+.studio-checkbox input[type="checkbox"] {
+  appearance: none;
+  background: var(--color-bg-secondary);
+  border: 1.5px solid var(--color-border-strong);
+  border-radius: var(--radius-xs);
+  box-sizing: border-box;
+  cursor: pointer;
+  display: grid;
+  flex: 0 0 auto;
+  height: 1.125rem;
+  margin: 0;
+  place-content: center;
+  position: relative;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+  width: 1.125rem;
+}
+
+.studio-checkbox input[type="checkbox"]::after {
+  border: solid var(--color-accent-primary-text);
+  border-width: 0 2px 2px 0;
+  content: "";
+  height: 0.55rem;
+  margin-top: -0.1rem;
+  opacity: 0;
+  transform: rotate(45deg) scale(0.65);
+  transition:
+    opacity var(--transition-fast),
+    transform var(--transition-fast);
+  width: 0.3rem;
+}
+
+.studio-checkbox input[type="checkbox"]:hover {
+  border-color: color-mix(in srgb, var(--color-accent-primary) 45%, var(--color-border-strong));
+}
+
+.studio-checkbox input[type="checkbox"]:focus-visible {
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+  outline: none;
+}
+
+.studio-checkbox input[type="checkbox"]:checked {
+  background: var(--color-accent-primary);
+  border-color: var(--color-accent-primary);
+}
+
+.studio-checkbox input[type="checkbox"]:checked::after {
+  opacity: 1;
+  transform: rotate(45deg) scale(1);
+}
+
+.studio-checkbox--danger input[type="checkbox"]:hover {
+  border-color: color-mix(in srgb, var(--color-danger) 55%, var(--color-border-strong));
+}
+
+.studio-checkbox--danger input[type="checkbox"]:checked {
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+.studio-checkbox--danger input[type="checkbox"]:checked::after {
+  border-color: #fff;
+}
+
+.studio-checkbox--overlay {
+  backdrop-filter: blur(4px);
+  background: color-mix(in srgb, var(--color-bg-secondary) 92%, transparent);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-xs);
+  padding: var(--space-1);
+}
+
 .form-toggle {
   align-items: center;
   display: flex;

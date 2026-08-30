@@ -203,11 +203,25 @@ describe("printRequestItems size update — requestCountApplied allowlist", () =
     await assertFails(updateDoc(doc(firestore, "printRequestItems", ITEM_ID), sizePatch()));
   });
 
-  it("denies customer quantity change via client size write path", async () => {
+  it("allows customer size update with standardSizePresetKey when marker is present", async () => {
+    await seedEditableCatalogContext({ requestCountApplied: true });
+    const firestore = environment.authenticatedContext(CUSTOMER_UID).firestore();
+    await assertSucceeds(
+      updateDoc(
+        doc(firestore, "printRequestItems", ITEM_ID),
+        sizePatch({ standardSizePresetKey: "full_front.adult.m" }),
+      ),
+    );
+  });
+
+  it("denies invalid standardSizePresetKey type during size update", async () => {
     await seedEditableCatalogContext({ requestCountApplied: true });
     const firestore = environment.authenticatedContext(CUSTOMER_UID).firestore();
     await assertFails(
-      updateDoc(doc(firestore, "printRequestItems", ITEM_ID), sizePatch({ quantity: 2 })),
+      updateDoc(
+        doc(firestore, "printRequestItems", ITEM_ID),
+        sizePatch({ standardSizePresetKey: 123 }),
+      ),
     );
   });
 });

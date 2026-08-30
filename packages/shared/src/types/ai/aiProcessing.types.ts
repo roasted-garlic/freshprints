@@ -108,6 +108,12 @@ export interface DesignAiAnalysis {
    * final category and always deleted before the design write, same as rawTags.
    */
   rawCategory?: string;
+  /** Shadow halftone evidence only — never drives staff halftone decision (ADR-FP-080). */
+  halftoneShadowAssessment?: import("../catalog/smartProfile.types").HalftoneShadowAssessment;
+  /**
+   * Transient Smart Profile parse payload from enrichment JSON — deleted before Firestore write.
+   */
+  smartProfileEnrichmentParse?: import("../catalog/smartProfile.types").SmartProfileEnrichmentParse;
 }
 
 export const AI_PROCESSING_STAGE_LABELS: Record<AiProcessingStage, string> = {

@@ -5,6 +5,7 @@
 | — | README.md | When structure changes |
 | 0 | 00-START-HERE-PROMPT.md | When onboarding rules change |
 | ★ | CURRENT-STATE.md | **Every session / every signoff** |
+| ★ | NEXT-PLANNED-GOAL.md | When active goal changes |
 | 1 | 01-project-brief.md | When product scope changes |
 | 2 | 02-architecture-overview.md | When architecture changes |
 | 3 | 03-roadmap-and-phases.md | When phases complete |
@@ -20,20 +21,19 @@
 | 13 | 13-recent-completed-work.md | After each signoff |
 | 14 | 14-prompt-building-guide.md | Rarely |
 
-**Total: 18 files** (limit: 25)
-
-**Last full package refresh:** 2026-07-13 (Your Stash polish signoff); partial refresh **2026-08-24** (Discover show-rail loading polish signoff + prior production promote / theme-toggle updates: CURRENT-STATE, 03, 04, 13, MANIFEST)
+**Total: 19 files** (limit: 25)
 
 ---
 
 ## Update checklist (after each managed phase signoff)
 
-1. [ ] Update `CURRENT-STATE.md` from `.cursor/workflow/state.md`
-2. [ ] Add entry to `13-recent-completed-work.md`
-3. [ ] Update `03-roadmap-and-phases.md` / `04-features-inventory.md` if needed
-4. [ ] Update `05-workflows-summary.md` if customer/staff flow changed
-5. [ ] Add ADR summary to `12-decisions-and-constraints.md` if applicable
-6. [ ] Update `07-backend-and-ai-pipeline.md` if Functions/AI/uploads changed
+1. [x] Update `CURRENT-STATE.md` from `.cursor/workflow/state.md`
+2. [x] Add entry to `13-recent-completed-work.md`
+3. [x] Update `03-roadmap-and-phases.md` / `04-features-inventory.md` if needed
+4. [x] Update `05-workflows-summary.md` if customer/staff flow changed
+5. [x] Add ADR summary to `12-decisions-and-constraints.md` if applicable
+6. [x] Update `07-backend-and-ai-pipeline.md` if Functions/AI/uploads changed
+7. [x] Update `NEXT-PLANNED-GOAL.md` when active goal changes
 
 ---
 

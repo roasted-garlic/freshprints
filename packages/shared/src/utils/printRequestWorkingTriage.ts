@@ -3,17 +3,20 @@ import type { PrintRequestStatus } from "../types/printRequest/printRequest.enum
 /** Working carts older than this (by updatedAt) are Stale when they still have items. */
 export const PRINT_REQUEST_WORKING_STALE_AFTER_DAYS = 14;
 
-export type PrintRequestWorkingTriageFilter = "active" | "stale" | "empty" | "all";
+export type PrintRequestWorkingTriageFilter = "needs_requeue" | "active" | "stale" | "empty" | "all";
 
 export const PRINT_REQUEST_WORKING_TRIAGE_FILTERS: readonly PrintRequestWorkingTriageFilter[] = [
   "active",
   "stale",
   "empty",
   "all",
+  "needs_requeue",
 ] as const;
 
 export function getPrintRequestWorkingTriageLabel(filter: PrintRequestWorkingTriageFilter): string {
   switch (filter) {
+    case "needs_requeue":
+      return "Needs Re-queue";
     case "active":
       return "Active";
     case "stale":
@@ -41,14 +44,19 @@ export function getPrintRequestWorkingStaleCutoffMs(
   return nowMs - staleAfterDays * 24 * 60 * 60 * 1000;
 }
 
-export type PrintRequestWorkingTriageBucket = "active" | "stale" | "empty";
+export type PrintRequestWorkingTriageBucket = "needs_requeue" | "active" | "stale" | "empty";
 
 export function resolvePrintRequestWorkingTriageBucket(input: {
   itemCount: number;
   updatedAtMillis: number;
+  needsStaffRequeueAt?: unknown | null;
   nowMs?: number;
   staleAfterDays?: number;
 }): PrintRequestWorkingTriageBucket {
+  if (input.needsStaffRequeueAt != null) {
+    return "needs_requeue";
+  }
+
   if (input.itemCount <= 0) {
     return "empty";
   }

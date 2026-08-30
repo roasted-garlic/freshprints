@@ -3,18 +3,33 @@ import { describe, it } from "node:test";
 
 import {
   PRINT_REQUEST_LIST_TABS,
+  buildPrintRequestNavigationDeepLinkPath,
+  getPrintRequestListTabsForKind,
   getPrintRequestsPath,
+  normalizePrintRequestListTabForKind,
   resolveCanonicalPrintRequestsRoute,
   resolvePrintRequestListKind,
   resolveWorkingFilterClick,
   shouldReplacePrintRequestsPath,
   type PrintRequestRouteTab,
+  type PrintRequestRouteTriageRequest,
 } from "./printRequestRoutes";
 import {
   PRINT_REQUEST_WORKING_TRIAGE_FILTERS,
   resolvePrintRequestWorkingTriageBucket,
   type PrintRequestWorkingTriageFilter,
 } from "@fresh-prints/shared/utils/printRequestWorkingTriage";
+
+const ROUTE_TRIAGE_NOW_MS = Date.UTC(2026, 6, 23);
+
+function triageRequest(
+  id: string,
+  itemCount: number,
+  updatedAtMillis = ROUTE_TRIAGE_NOW_MS,
+  extra?: Pick<PrintRequestRouteTriageRequest, "needsStaffRequeueAt">,
+): PrintRequestRouteTriageRequest {
+  return { id, itemCount, updatedAtMillis, ...extra };
+}
 
 describe("Print Requests route normalization", () => {
   it("does not replace an already canonical populated or empty tab route", () => {
@@ -140,8 +155,8 @@ describe("Print Requests route normalization", () => {
     );
 
     const loaded = {
-      working: [{ id: "request-1" }],
-      queued: [{ id: "request-2" }],
+      working: [triageRequest("request-1", 1)],
+      queued: [triageRequest("request-2", 1)],
       printing: [],
       printed: [],
     };
@@ -154,12 +169,13 @@ describe("Print Requests route normalization", () => {
         requestedTab: "working",
         requestedWorkingFilter: "active",
         requestsByTab: loaded,
+        nowMs: ROUTE_TRIAGE_NOW_MS,
       }),
       { requestId: "request-1", kind: "customer", tab: "working", workingFilter: "active" },
     );
 
     loaded.working = [];
-    loaded.queued = [{ id: "request-2" }, { id: "request-1" }];
+    loaded.queued = [triageRequest("request-2", 1), triageRequest("request-1", 1)];
     assert.deepEqual(
       resolveCanonicalPrintRequestsRoute({
         dataReady: true,
@@ -170,15 +186,34 @@ describe("Print Requests route normalization", () => {
         requestedWorkingFilter: "active",
         requestsByTab: loaded,
       }),
-      { kind: "customer", tab: "working", workingFilter: "active" },
+      { requestId: "request-1", kind: "customer", tab: "queued" },
+    );
+
+    assert.deepEqual(
+      resolveCanonicalPrintRequestsRoute({
+        dataReady: true,
+        eligibleRequestIds: [],
+        requestedRequestId: "request-1",
+        requestedKind: null,
+        requestedTab: "working",
+        requestedWorkingFilter: "active",
+        requestsByTab: empty,
+        loadedRequestHint: {
+          id: "request-1",
+          queueTab: "queued",
+          itemCount: 1,
+          updatedAtMillis: ROUTE_TRIAGE_NOW_MS,
+        },
+      }),
+      { requestId: "request-1", kind: "customer", tab: "queued" },
     );
   });
 
   it("replaces a stale request once and settles on populated or empty tabs", () => {
     const requestsByTab = {
-      working: [{ id: "working-1" }],
+      working: [triageRequest("working-1", 1)],
       queued: [],
-      printing: [{ id: "printing-1" }],
+      printing: [triageRequest("printing-1", 1)],
       printed: [],
     };
     const populated = resolveCanonicalPrintRequestsRoute({
@@ -227,10 +262,11 @@ describe("Print Requests route normalization", () => {
 
   it("makes every explicit Working-filter transition authoritative in one stable route", () => {
     const requestsByFilter = {
+      needs_requeue: ["requeue-1", "shared"],
       active: ["active-1", "shared"],
       stale: ["stale-1", "shared"],
       empty: ["empty-1"],
-      all: ["active-1", "stale-1", "empty-1", "shared", "all-only"],
+      all: ["requeue-1", "active-1", "stale-1", "empty-1", "shared", "all-only"],
     } as const;
 
     for (const sourceFilter of PRINT_REQUEST_WORKING_TRIAGE_FILTERS) {
@@ -279,31 +315,68 @@ describe("Print Requests route normalization", () => {
     }
   });
 
-  it("allows every valid empty Working filter to remain selected", () => {
-    for (const workingFilter of PRINT_REQUEST_WORKING_TRIAGE_FILTERS) {
-      assert.deepEqual(
-        resolveCanonicalPrintRequestsRoute({
-          dataReady: true,
-          eligibleRequestIds: [],
-          requestedRequestId: "not-visible",
-          requestedKind: null,
-          requestedTab: "working",
-          requestedWorkingFilter: workingFilter,
-          requestsByTab: {
-            working: [{ id: "not-visible" }],
-            queued: [],
-            printing: [],
-            printed: [],
-          },
-        }),
-        { kind: "customer", tab: "working", workingFilter },
-      );
-    }
+  it("reveals a selected Working request hidden only by triage filter mismatch", () => {
+    const nowMs = ROUTE_TRIAGE_NOW_MS;
+    assert.deepEqual(
+      resolveCanonicalPrintRequestsRoute({
+        dataReady: true,
+        eligibleRequestIds: [],
+        requestedRequestId: "not-visible",
+        requestedKind: null,
+        requestedTab: "working",
+        requestedWorkingFilter: "active",
+        requestsByTab: {
+          working: [triageRequest("not-visible", 0, nowMs)],
+          queued: [],
+          printing: [],
+          printed: [],
+        },
+        nowMs,
+      }),
+      {
+        requestId: "not-visible",
+        kind: "customer",
+        tab: "working",
+        workingFilter: "empty",
+      },
+    );
   });
 
-  it("preserves history/deep-link filters while normalizing only invalid selections", () => {
+  it("keeps an explicit All filter when the selected request has a narrower triage bucket", () => {
+    const nowMs = ROUTE_TRIAGE_NOW_MS;
+    assert.deepEqual(
+      resolveCanonicalPrintRequestsRoute({
+        dataReady: true,
+        eligibleRequestIds: ["requeue-1"],
+        requestedRequestId: "requeue-1",
+        requestedKind: null,
+        requestedTab: "working",
+        requestedWorkingFilter: "all",
+        requestsByTab: {
+          working: [
+            triageRequest("requeue-1", 5, nowMs, {
+              needsStaffRequeueAt: { toMillis: () => nowMs },
+            }),
+          ],
+          queued: [],
+          printing: [],
+          printed: [],
+        },
+        nowMs,
+      }),
+      {
+        requestId: "requeue-1",
+        kind: "customer",
+        tab: "working",
+        workingFilter: "all",
+      },
+    );
+  });
+
+  it("preserves a deep-linked Working request when triage classification catches up", () => {
+    const nowMs = ROUTE_TRIAGE_NOW_MS;
     const requestsByTab = {
-      working: [{ id: "active-1" }, { id: "empty-1" }],
+      working: [triageRequest("active-1", 1, nowMs), triageRequest("empty-1", 0, nowMs)],
       queued: [],
       printing: [],
       printed: [],
@@ -311,10 +384,11 @@ describe("Print Requests route normalization", () => {
     const destinations: Array<{
       workingFilter: PrintRequestWorkingTriageFilter;
       eligibleRequestIds: string[];
+      expectedWorkingFilter: PrintRequestWorkingTriageFilter;
     }> = [
-      { workingFilter: "empty", eligibleRequestIds: ["empty-1"] },
-      { workingFilter: "active", eligibleRequestIds: ["active-1"] },
-      { workingFilter: "stale", eligibleRequestIds: [] },
+      { workingFilter: "empty", eligibleRequestIds: ["empty-1"], expectedWorkingFilter: "empty" },
+      { workingFilter: "active", eligibleRequestIds: ["active-1"], expectedWorkingFilter: "empty" },
+      { workingFilter: "stale", eligibleRequestIds: [], expectedWorkingFilter: "empty" },
     ];
 
     for (const destination of [...destinations, ...destinations.slice().reverse()]) {
@@ -326,15 +400,11 @@ describe("Print Requests route normalization", () => {
         requestedWorkingFilter: destination.workingFilter,
         requestsByTab,
         eligibleRequestIds: destination.eligibleRequestIds,
+        nowMs,
       });
-      assert.equal(resolved?.workingFilter, destination.workingFilter);
+      assert.equal(resolved?.workingFilter, destination.expectedWorkingFilter);
       assert.equal(resolved?.kind, "customer");
-      assert.equal(
-        resolved?.requestId,
-        destination.eligibleRequestIds.includes("empty-1")
-          ? "empty-1"
-          : destination.eligibleRequestIds[0],
-      );
+      assert.equal(resolved?.requestId, "empty-1");
     }
   });
 
@@ -360,6 +430,14 @@ describe("Print Requests route normalization", () => {
       stale: "stale",
       empty: "empty",
     });
+
+    const needsRequeue = resolvePrintRequestWorkingTriageBucket({
+      itemCount: 1,
+      updatedAtMillis: nowMs,
+      needsStaffRequeueAt: { toMillis: () => nowMs },
+      nowMs,
+    });
+    assert.equal(needsRequeue, "needs_requeue");
 
     const afterFirstItem = resolveWorkingFilterClick({
       currentRequestId: "request-1",
@@ -402,5 +480,47 @@ describe("Print Requests route normalization", () => {
       ),
       true,
     );
+  });
+});
+
+describe("converted request navigation deep links", () => {
+  it("follows converted customer requests to the internal request", () => {
+    const links = buildPrintRequestNavigationDeepLinkPath({
+      id: "cr-1",
+      closureKind: "converted_to_internal",
+      convertedToInternalRequestId: "ir-1",
+      queueTab: "working",
+      itemCount: 3,
+      updatedAtMillis: 100,
+      convertedInternalRequest: {
+        queueTab: "queued",
+        itemCount: 3,
+        updatedAtMillis: 200,
+      },
+    });
+
+    assert.match(links.path, /kind=internal/);
+    assert.match(links.path, /requestId=ir-1/);
+    assert.match(links.path, /tab=queued/);
+    assert.match(links.archivedCustomerPath ?? "", /requestId=cr-1/);
+    assert.doesNotMatch(links.archivedCustomerPath ?? "", /kind=internal/);
+  });
+});
+
+describe("internal print request list tabs", () => {
+  it("omits printing for internal requests", () => {
+    assert.deepEqual(getPrintRequestListTabsForKind("internal"), ["working", "queued", "printed"]);
+    assert.deepEqual(getPrintRequestListTabsForKind("customer"), [
+      "working",
+      "queued",
+      "printing",
+      "printed",
+    ]);
+  });
+
+  it("maps printing to printed when viewing internal requests", () => {
+    assert.equal(normalizePrintRequestListTabForKind("printing", "internal"), "printed");
+    assert.equal(normalizePrintRequestListTabForKind("printing", "customer"), "printing");
+    assert.equal(normalizePrintRequestListTabForKind("queued", "internal"), "queued");
   });
 });

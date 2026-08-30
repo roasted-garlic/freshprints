@@ -184,6 +184,12 @@ service cloud.firestore {
       return !(field in data) || data[field] == null || data[field] is bool;
     }
 
+    function isOptionalArtworkBackgroundSource(data, field) {
+      return !(field in data)
+        || data[field] == null
+        || data[field] in ["import_override", "import_halftone_default", "code_auto", "staff_manual"];
+    }
+
     function isOptionalTimestamp(data, field) {
       return !(field in data) || data[field] == null || data[field] is timestamp;
     }
@@ -212,7 +218,7 @@ service cloud.firestore {
     // companion denorm writes) as permission-denied.
     function clientAiFieldsUnchanged() {
       return !request.resource.data.diff(resource.data).affectedKeys()
-        .hasAny(["aiSuggestions", "aiAnalysis", "aiProcessingStage"]);
+        .hasAny(["aiSuggestions", "aiAnalysis", "aiProcessingStage", "smartProfile"]);
     }
 
     // Fast path for companionSetService denorm writes only. Full `designRequiredFieldsValid` on
@@ -243,6 +249,33 @@ service cloud.firestore {
         && isOptionalCompanionDesignIdsList(request.resource.data, "companionDesignIds")
         && isOptionalString(request.resource.data, "companionSetId")
         && isOptionalBool(request.resource.data, "companionSetIncomplete");
+    }
+
+    // Fast path for AI Processing / Inbox preview controls (background mat + halftone staff
+    // decision + canonical halftone tag). Avoids catalogMetadataOnly title validators and the
+    // full enrichment-heavy `designRequiredFieldsValid` expression budget on processing designs.
+    function designInboxPreviewControlUpdate() {
+      return request.resource.data.status == resource.data.status
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly([
+            "artworkBackgroundHex",
+            "artworkBackgroundSource",
+            "halftoneStaffDecision",
+            "tags",
+            "updatedAt",
+            "updatedBy",
+            "createdBy"
+          ])
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.uploadedBy == resource.data.uploadedBy
+        && (!("createdBy" in resource.data) || request.resource.data.createdBy == resource.data.createdBy)
+        && (!("createdAt" in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedAt is timestamp
+        && isOptionalString(request.resource.data, "artworkBackgroundHex")
+        && isOptionalArtworkBackgroundSource(request.resource.data, "artworkBackgroundSource")
+        && isOptionalMap(request.resource.data, "halftoneStaffDecision")
+        && request.resource.data.tags is list;
     }
 
     function isOptionalCensoredTermsList(data, field) {
@@ -543,6 +576,10 @@ service cloud.firestore {
         && isOptionalString(data, "aiProcessingStage")
         && isOptionalMap(data, "aiSuggestions")
         && isOptionalMap(data, "aiAnalysis")
+        && isOptionalMap(data, "smartProfile")
+        && isOptionalString(data, "importBatchId")
+        && isOptionalString(data, "importSourceFileName")
+        && isOptionalString(data, "importRelativePath")
         && isOptionalString(data, "companionSetId")
         && isOptionalCompanionDesignIdsList(data, "companionDesignIds")
         && isOptionalBool(data, "companionSetIncomplete")
@@ -785,6 +822,8 @@ service cloud.firestore {
           "requestSequenceNumber",
           "customerUsernameSnapshot",
           "customerDisplayNameSnapshot",
+          "customerUsernameAtCreationSnapshot",
+          "customerDisplayNameAtCreationSnapshot",
           "internalBaseName",
           "nameFormatVersion",
           "notes",
@@ -794,6 +833,10 @@ service cloud.firestore {
           "convertedFromCustomerRequestId",
           "convertedAt",
           "convertedBy",
+          "needsStaffRequeueAt",
+          "needsStaffRequeueSourceShowId",
+          "needsStaffRequeueSourceShowTitleSnapshot",
+          "needsStaffRequeueReleasedQuantity",
           "createdBy",
           "updatedBy",
           "createdAt",
@@ -815,6 +858,8 @@ service cloud.firestore {
         && isOptionalNumber(data, "requestSequenceNumber")
         && isOptionalString(data, "customerUsernameSnapshot")
         && isOptionalString(data, "customerDisplayNameSnapshot")
+        && isOptionalString(data, "customerUsernameAtCreationSnapshot")
+        && isOptionalString(data, "customerDisplayNameAtCreationSnapshot")
         && isOptionalString(data, "internalBaseName")
         && isOptionalString(data, "nameFormatVersion")
         && isOptionalString(data, "notes")
@@ -825,6 +870,10 @@ service cloud.firestore {
         && isOptionalString(data, "convertedFromCustomerRequestId")
         && isOptionalTimestamp(data, "convertedAt")
         && isOptionalString(data, "convertedBy")
+        && isOptionalTimestamp(data, "needsStaffRequeueAt")
+        && isOptionalString(data, "needsStaffRequeueSourceShowId")
+        && isOptionalString(data, "needsStaffRequeueSourceShowTitleSnapshot")
+        && isOptionalNumber(data, "needsStaffRequeueReleasedQuantity")
         && data.createdBy is string
         && data.updatedBy is string
         && data.createdAt is timestamp
@@ -872,6 +921,7 @@ service cloud.firestore {
           "printWidthInches",
           "printHeightInches",
           "sizeLabel",
+          "standardSizePresetKey",
           "sortOrder",
           "notes",
           "status",
@@ -893,6 +943,7 @@ service cloud.firestore {
         && isOptionalPositiveStandardPrintInches(data, "printWidthInches")
         && isOptionalPositiveStandardPrintInches(data, "printHeightInches")
         && isOptionalString(data, "sizeLabel")
+        && isOptionalString(data, "standardSizePresetKey")
         && isOptionalNumber(data, "sortOrder")
         && isOptionalString(data, "notes")
         && data.status is string
@@ -945,11 +996,29 @@ service cloud.firestore {
           "totalRequests",
           "totalApprovedRequests",
           "usernameUpdatedAt",
+          "usernameHistory",
           "signupSource",
           "assistedProofEmailOptIn",
           "assistedProofEmailOptInUpdatedAt",
           "assistedBrowserPushOptIn",
           "assistedBrowserPushOptInUpdatedAt",
+          "accountDeletionRequest",
+          "isDeleted",
+          "deletedAt",
+          "deletedBy",
+          "deletionSource",
+          "isDisabled",
+          "disabledAt",
+          "disabledBy",
+          "disabledReason",
+          "identityOperationLock",
+          "isMerged",
+          "mergedIntoCustomerId",
+          "mergedAt",
+          "mergedBy",
+          "mergeJobId",
+          "mergedSourceCustomerIds",
+          "identitySnapshotPropagation",
           "createdAt",
           "updatedAt"
         ])
@@ -974,6 +1043,24 @@ service cloud.firestore {
         && isOptionalNumber(data, "totalApprovedRequests")
         && isOptionalTimestamp(data, "usernameUpdatedAt")
         && isOptionalCustomerSignupSource(data, "signupSource")
+        && (!("usernameHistory" in data) || data.usernameHistory is list)
+        && (!("accountDeletionRequest" in data) || data.accountDeletionRequest is map)
+        && (!("isDeleted" in data) || data.isDeleted is bool)
+        && isOptionalTimestamp(data, "deletedAt")
+        && isOptionalString(data, "deletedBy")
+        && isOptionalString(data, "deletionSource")
+        && (!("isDisabled" in data) || data.isDisabled is bool)
+        && isOptionalTimestamp(data, "disabledAt")
+        && isOptionalString(data, "disabledBy")
+        && isOptionalString(data, "disabledReason")
+        && (!("identityOperationLock" in data) || data.identityOperationLock is map)
+        && (!("isMerged" in data) || data.isMerged is bool)
+        && isOptionalString(data, "mergedIntoCustomerId")
+        && isOptionalTimestamp(data, "mergedAt")
+        && isOptionalString(data, "mergedBy")
+        && isOptionalString(data, "mergeJobId")
+        && (!("mergedSourceCustomerIds" in data) || data.mergedSourceCustomerIds is list)
+        && (!("identitySnapshotPropagation" in data) || data.identitySnapshotPropagation is map)
         && data.createdAt is timestamp
         && data.updatedAt is timestamp;
     }
@@ -1004,7 +1091,16 @@ service cloud.firestore {
     }
 
     function isValidUpcomingShowSource(source) {
-      return source in ["whatnot", "staff_gang_sheet"];
+      return source in ["whatnot", "staff_gang_sheet", "dev_fixture"];
+    }
+
+    function isValidShowProductionResolutionKind(kind) {
+      return kind in ["empty_closure", "fulfilled_confirmed", "unfulfilled_release", "unfulfilled_requeue", "owner_override"];
+    }
+
+    function isOptionalShowProductionResolutionKind(data, field) {
+      return !(field in data)
+        || (data[field] is string && isValidShowProductionResolutionKind(data[field]));
     }
 
     function isValidUpcomingShowStatus(status) {
@@ -1045,6 +1141,10 @@ service cloud.firestore {
         && isOptionalString(data, "printFinishedBy")
         && isOptionalTimestamp(data, "gangSheetGeneratedAt")
         && isOptionalString(data, "gangSheetGeneratedBy")
+        && isOptionalShowProductionResolutionKind(data, "productionResolutionKind")
+        && isOptionalTimestamp(data, "productionResolvedAt")
+        && isOptionalString(data, "productionResolvedBy")
+        && isOptionalString(data, "productionOverrideReason")
         && isOptionalString(data, "createdBy")
         && isOptionalString(data, "updatedBy")
         && data.createdAt is timestamp
@@ -1079,6 +1179,10 @@ service cloud.firestore {
           "printFinishedBy",
           "gangSheetGeneratedAt",
           "gangSheetGeneratedBy",
+          "productionResolutionKind",
+          "productionResolvedAt",
+          "productionResolvedBy",
+          "productionOverrideReason",
           "createdBy",
           "updatedBy",
           "createdAt",
@@ -1118,6 +1222,10 @@ service cloud.firestore {
           "printFinishedBy",
           "gangSheetGeneratedAt",
           "gangSheetGeneratedBy",
+          "productionResolutionKind",
+          "productionResolvedAt",
+          "productionResolvedBy",
+          "productionOverrideReason",
           "assignedStaffUserId",
           "staffGangSheetCycleNumber",
           "createdBy",
@@ -1141,11 +1249,56 @@ service cloud.firestore {
         && upcomingShowCommonFieldsValid(data);
     }
 
+    function devFixtureUpcomingShowFieldsValid(data) {
+      return data.keys().hasOnly([
+          "source",
+          "devFixtureSentinel",
+          "title",
+          "scheduledStartAt",
+          "status",
+          "syncStatus",
+          "syncError",
+          "lastSyncedAt",
+          "lastSeenAt",
+          "sourceBaseUrlSnapshot",
+          "lastSeenInAssistedImportAt",
+          "notes",
+          "isArchived",
+          "productionStatus",
+          "maxTotalQuantity",
+          "maxQuantityOverridden",
+          "allocatedQuantity",
+          "accumulatedPrintMs",
+          "activePrintStartedAt",
+          "printStartedAt",
+          "printPausedAt",
+          "printFinishedAt",
+          "printFinishedBy",
+          "gangSheetGeneratedAt",
+          "gangSheetGeneratedBy",
+          "productionResolutionKind",
+          "productionResolvedAt",
+          "productionResolvedBy",
+          "productionOverrideReason",
+          "createdBy",
+          "updatedBy",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.source == "dev_fixture"
+        && data.devFixtureSentinel == "DEV-OVERRIDE"
+        && !("whatnotShowId" in data)
+        && !("whatnotUrl" in data)
+        && isOptionalNumber(data, "maxTotalQuantity")
+        && upcomingShowCommonFieldsValid(data);
+    }
+
     function upcomingShowRequiredFieldsValid(data) {
       return isValidUpcomingShowSource(data.source)
         && (
           whatnotUpcomingShowFieldsValid(data)
           || staffGangSheetUpcomingShowFieldsValid(data)
+          || devFixtureUpcomingShowFieldsValid(data)
         );
     }
 
@@ -1157,6 +1310,7 @@ service cloud.firestore {
 
     function staffCanUpdateUpcomingShow() {
       return request.resource.data.source == "whatnot"
+        || request.resource.data.source == "dev_fixture"
         ? isStaff()
         : (
           isOwnerOrAdmin()
@@ -1164,6 +1318,43 @@ service cloud.firestore {
             isStaff()
             && resource.data.source == "staff_gang_sheet"
             && request.resource.data.staffGangSheetCycleNumber == resource.data.staffGangSheetCycleNumber
+          )
+        );
+    }
+
+    function ownerCanUpdateUpcomingShowMetadata() {
+      return isOwner()
+        && request.resource.data.source == resource.data.source
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "title",
+          "whatnotUrl",
+          "scheduledStartAt",
+          "notes",
+          "updatedBy",
+          "updatedAt",
+        ])
+        && isOptionalString(request.resource.data, "title")
+        && isOptionalTimestamp(request.resource.data, "scheduledStartAt")
+        && isOptionalString(request.resource.data, "notes")
+        && isOptionalString(request.resource.data, "whatnotUrl")
+        && request.resource.data.productionStatus == resource.data.productionStatus
+        && request.resource.data.allocatedQuantity == resource.data.allocatedQuantity
+        && optionalFieldUnchanged("productionResolutionKind")
+        && optionalFieldUnchanged("productionResolvedAt")
+        && optionalFieldUnchanged("productionResolvedBy")
+        && optionalFieldUnchanged("productionOverrideReason")
+        && (
+          resource.data.source != "whatnot"
+          || request.resource.data.whatnotShowId == resource.data.whatnotShowId
+        )
+        && (
+          resource.data.source != "dev_fixture"
+          || (
+            request.resource.data.devFixtureSentinel == resource.data.devFixtureSentinel
+            && !("whatnotShowId" in request.resource.data)
+            && !("whatnotUrl" in request.resource.data)
           )
         );
     }
@@ -1257,6 +1448,7 @@ service cloud.firestore {
           "completedBy",
           "canceledAt",
           "canceledBy",
+          "requeuedFromAllocationId",
           "createdAt",
           "updatedAt"
         ])
@@ -1292,6 +1484,7 @@ service cloud.firestore {
         && isOptionalString(data, "completedBy")
         && isOptionalTimestamp(data, "canceledAt")
         && isOptionalString(data, "canceledBy")
+        && isOptionalString(data, "requeuedFromAllocationId")
         && data.createdAt is timestamp
         && data.updatedAt is timestamp
         && (
@@ -1374,6 +1567,7 @@ service cloud.firestore {
       // `status !=` first so non-approval writes do not pay its diff().
       allow update: if isStaff() && (
         companionDenormOnlyUpdate()
+        || designInboxPreviewControlUpdate()
         || catalogMetadataOnlyUpdate()
         || designArchiveStatusOnlyUpdate()
         || designRestoreStatusOnlyUpdate()
@@ -1700,19 +1894,27 @@ service cloud.firestore {
       // Internal uniqueness is enforced in createInitialStaffGangSheet / client create.
       allow create: if staffCanCreateUpcomingShow()
         && upcomingShowRequiredFieldsValid(request.resource.data)
+        && request.resource.data.source != "dev_fixture"
         && request.resource.data.updatedBy == request.auth.uid
         && (
           request.resource.data.source != "staff_gang_sheet"
           || !("assignedStaffUserId" in request.resource.data)
         );
 
-      allow update: if (
+      allow update: if ownerCanUpdateUpcomingShowMetadata()
+        || (
           staffCanUpdateUpcomingShow()
           && upcomingShowRequiredFieldsValid(request.resource.data)
           && request.resource.data.source == resource.data.source
           && (
             resource.data.source == "whatnot"
               ? request.resource.data.whatnotShowId == resource.data.whatnotShowId
+              : resource.data.source == "dev_fixture"
+                ? (
+                  request.resource.data.devFixtureSentinel == resource.data.devFixtureSentinel
+                  && !("whatnotShowId" in request.resource.data)
+                  && !("whatnotUrl" in request.resource.data)
+                )
               : (
                 request.resource.data.staffGangSheetCycleNumber == resource.data.staffGangSheetCycleNumber
                 && (
@@ -2023,6 +2225,11 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /settings/standardPrintSizes {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
     // Portal Open Graph title/description (owner-editable). Writes via Admin callable only.
     match /settings/portalSocialMeta {
       allow read: if isOwner();
@@ -2042,8 +2249,19 @@ service cloud.firestore {
     }
 
     match /settings/{settingId} {
-      allow read: if isStaff() && settingId == "aiEnrichment";
+      allow read: if isStaff() && (settingId == "aiEnrichment" || settingId == "catalogAutomationHealth");
       allow write: if false;
+    }
+
+    // Catalog Reprocessing durable jobs (Slice 4+). Writes Admin/callable only; owner read for progress UI.
+    match /catalogReprocessJobs/{jobId} {
+      allow read: if isOwner();
+      allow write: if false;
+
+      match /outcomes/{designId} {
+        allow read: if isOwner();
+        allow write: if false;
+      }
     }
 
     function isValidStaffInboxAckKind(kind) {
@@ -2057,7 +2275,6 @@ service cloud.firestore {
 
     function staffInboxAckFieldsValid(data) {
       return data.keys().hasOnly([
-          "userId",
           "itemId",
           "kind",
           "title",
@@ -2070,10 +2287,9 @@ service cloud.firestore {
           "acknowledgedByDisplayName",
           "acknowledgedAt",
           "createdAt",
-          "updatedAt"
+          "updatedAt",
+          "userId"
         ])
-        && data.userId is string
-        && data.userId.size() > 0
         && data.itemId is string
         && data.itemId.size() > 0
         && isValidStaffInboxAckKind(data.kind)
@@ -2086,19 +2302,21 @@ service cloud.firestore {
         && isOptionalPrintRequestListTab(data, "printRequestTab")
         && data.occurredAtMillis is number
         && data.occurredAtMillis >= 0
-        && (
-          !("acknowledgedByUserId" in data)
-          || (
-            data.acknowledgedByUserId is string
-            && data.acknowledgedByUserId == data.userId
-          )
-        )
+        && data.acknowledgedByUserId is string
+        && data.acknowledgedByUserId.size() > 0
         && (
           !("acknowledgedByDisplayName" in data)
           || (
             data.acknowledgedByDisplayName is string
             && data.acknowledgedByDisplayName.size() > 0
             && data.acknowledgedByDisplayName.size() <= 120
+          )
+        )
+        && (
+          !("userId" in data)
+          || (
+            data.userId is string
+            && data.userId.size() > 0
           )
         )
         && data.acknowledgedAt is timestamp
@@ -2108,38 +2326,75 @@ service cloud.firestore {
 
     function staffInboxAlertDeliveryFieldsValid(data) {
       return data.keys().hasOnly([
-          "userId",
           "itemId",
           "kind",
           "occurredAtMillis",
           "soundPlayedAt",
           "createdAt",
-          "updatedAt"
+          "updatedAt",
+          "deliveredByUserId",
+          "userId"
         ])
-        && data.userId is string
-        && data.userId.size() > 0
         && data.itemId is string
         && data.itemId.size() > 0
         && isValidStaffInboxAckKind(data.kind)
         && data.occurredAtMillis is number
         && data.occurredAtMillis >= 0
+        && (
+          !("deliveredByUserId" in data)
+          || (
+            data.deliveredByUserId is string
+            && data.deliveredByUserId.size() > 0
+          )
+        )
+        && (
+          !("userId" in data)
+          || (
+            data.userId is string
+            && data.userId.size() > 0
+          )
+        )
         && data.soundPlayedAt is timestamp
         && data.createdAt is timestamp
         && data.updatedAt is timestamp;
     }
 
+    function staffInboxSuppressionFieldsValid(data) {
+      return data.keys().hasOnly([
+          "itemId",
+          "deletedByUserId",
+          "deletedByDisplayName",
+          "deletedAt",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.itemId is string
+        && data.itemId.size() > 0
+        && data.deletedByUserId is string
+        && data.deletedByUserId.size() > 0
+        && (
+          !("deletedByDisplayName" in data)
+          || (
+            data.deletedByDisplayName is string
+            && data.deletedByDisplayName.size() > 0
+            && data.deletedByDisplayName.size() <= 120
+          )
+        )
+        && data.deletedAt is timestamp
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
     match /staffInboxAcks/{ackId} {
-      allow read: if isStaff()
-        && resource.data.userId == request.auth.uid;
+      allow read: if isStaff();
 
       allow create: if isStaff()
-        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.acknowledgedByUserId == request.auth.uid
         && staffInboxAckFieldsValid(request.resource.data);
 
       allow update: if false;
 
-      allow delete: if isStaff()
-        && resource.data.userId == request.auth.uid;
+      allow delete: if isStaff();
     }
 
     function assistedCreationUpdateAckFieldsValid(data) {
@@ -2213,22 +2468,33 @@ service cloud.firestore {
     }
 
     match /staffInboxAlertDeliveries/{deliveryId} {
-      allow read: if isStaff()
-        && resource.data.userId == request.auth.uid;
+      allow read: if isStaff();
 
       allow create: if isStaff()
-        && request.resource.data.userId == request.auth.uid
-        && staffInboxAlertDeliveryFieldsValid(request.resource.data);
+        && staffInboxAlertDeliveryFieldsValid(request.resource.data)
+        && (
+          !("deliveredByUserId" in request.resource.data)
+          || request.resource.data.deliveredByUserId == request.auth.uid
+        );
 
       allow update: if isStaff()
-        && resource.data.userId == request.auth.uid
-        && request.resource.data.userId == resource.data.userId
+        && staffInboxAlertDeliveryFieldsValid(request.resource.data)
         && request.resource.data.itemId == resource.data.itemId
-        && request.resource.data.kind == resource.data.kind
-        && staffInboxAlertDeliveryFieldsValid(request.resource.data);
+        && request.resource.data.kind == resource.data.kind;
 
-      allow delete: if isStaff()
-        && resource.data.userId == request.auth.uid;
+      allow delete: if isStaff();
+    }
+
+    match /staffInboxSuppressions/{suppressionId} {
+      allow read: if isStaff();
+
+      allow create: if isOwner()
+        && request.resource.data.deletedByUserId == request.auth.uid
+        && staffInboxSuppressionFieldsValid(request.resource.data);
+
+      allow update: if false;
+
+      allow delete: if isOwner();
     }
 
     // Customer uploads (ADR-FP-073) — Admin SDK / callables own all writes.
@@ -2311,6 +2577,22 @@ service cloud.firestore {
     match /designIssueReports/{reportId} {
       allow read: if isStaff();
       allow create, update, delete: if false;
+    }
+
+    // Immutable customer identity audit evidence (Admin SDK writes only).
+    match /customerActivityEvents/{eventId} {
+      allow read: if isStaff();
+      allow create, update, delete: if false;
+    }
+
+    // Short-lived identity operation previews (hard delete Apply validation).
+    match /customerIdentityOperationPreviews/{previewId} {
+      allow read, write: if false;
+    }
+
+    // Resumable customer account merge jobs (Admin SDK / Functions only).
+    match /customerMergeJobs/{jobId} {
+      allow read, write: if false;
     }
     match /designIssueReportIntents/{docId} { allow read, write: if false; }
     match /designIssueReportOpenGuards/{docId} { allow read, write: if false; }

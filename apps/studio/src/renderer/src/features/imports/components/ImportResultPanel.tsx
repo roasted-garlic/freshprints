@@ -5,7 +5,6 @@ import { Link } from "react-router-dom";
 
 import type {
   ImportIpcError,
-  ImportPngWarning,
   ImportOriginalUploadResult,
   ValidateSelectedPngFileResult,
 } from "@fresh-prints/shared/types/import/importIpc.types";
@@ -16,20 +15,34 @@ import { Card } from "../../../shared/components/Card";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
 import { formatFileSize } from "../../../shared/utils/formatFileSize";
 import type { SinglePngImportPhase } from "../hooks/useSinglePngImport";
+import type {
+  ImportArtworkBackgroundMode,
+  ImportHalftoneMode,
+} from "@fresh-prints/shared/types/design/artworkBackgroundSource.types";
+import type { ImportItemBackgroundOverride } from "@fresh-prints/shared/utils/resolveImportArtworkBackgroundDecision";
+import type { ImportItemHalftoneOverride } from "@fresh-prints/shared/utils/resolveImportArtworkBackgroundDecision";
+import { resolveImportPreviewBackgroundCssHex } from "@fresh-prints/shared/utils/resolveImportArtworkBackgroundDecision";
 import {
   formatPrintInchesDisplay,
-  getImportWarningMessageClassName,
 } from "../utils/importPrintSizeDisplay";
 import { ImportPreviewLightbox } from "./ImportPreviewLightbox";
 import { ImportPngPreview } from "./ImportPngPreview";
+import { ImportValidationWarningsTrigger } from "./ImportValidationWarningsTrigger";
 
 interface ImportResultPanelProps {
+  backgroundMode?: ImportArtworkBackgroundMode;
   canUpload: boolean;
+  halftoneMode?: ImportHalftoneMode;
   isUploading: boolean;
+  itemBackgroundOverride?: ImportItemBackgroundOverride;
+  itemHalftoneOverride?: ImportItemHalftoneOverride;
+  onItemBackgroundOverrideChange?: (value: ImportItemBackgroundOverride) => void;
+  onItemHalftoneOverrideChange?: (value: ImportItemHalftoneOverride) => void;
   onUpload: () => void;
   phase: SinglePngImportPhase;
   previewDataUrl: string | null;
   selectionCanceled: boolean;
+  suggestDarkArtworkBackground?: boolean;
   uploadError: string | null;
   uploadResult: ImportOriginalUploadResult | null;
   uploadWarning: string | null;
@@ -88,18 +101,6 @@ function formatPrintSizeDisplay(validationResult: ValidateSelectedPngFileResult)
   )} in`;
 }
 
-function getVisibleValidationWarnings(
-  validationResult: ValidateSelectedPngFileResult,
-): ImportPngWarning[] {
-  return validationResult.warnings.filter((warning) => warning.code !== "PRINT_SIZE_NORMALIZED");
-}
-
-function getNormalizedPrintSizeWarning(
-  validationResult: ValidateSelectedPngFileResult,
-): ImportPngWarning | undefined {
-  return validationResult.warnings.find((warning) => warning.code === "PRINT_SIZE_NORMALIZED");
-}
-
 function ValidationDetails({
   validationResult,
 }: {
@@ -109,9 +110,15 @@ function ValidationDetails({
     <>
       <div className="import-validation-heading">
         <p className="eyebrow">Validation</p>
-        <Badge variant={validationResult.valid ? "success" : "danger"}>
-          {validationResult.valid ? "Passed" : "Failed"}
-        </Badge>
+        <div className="import-validation-heading-actions">
+          <ImportValidationWarningsTrigger
+            fileLabel={validationResult.fileName}
+            warnings={validationResult.warnings}
+          />
+          <Badge variant={validationResult.valid ? "success" : "danger"}>
+            {validationResult.valid ? "Passed" : "Failed"}
+          </Badge>
+        </div>
       </div>
 
       <dl className="import-validation-details">
@@ -137,50 +144,6 @@ function ValidationDetails({
         <p className="auth-message auth-message-success">No validation warnings.</p>
       ) : null}
     </>
-  );
-}
-
-function NormalizedPrintSizeNotice({
-  validationResult,
-}: {
-  validationResult: ValidateSelectedPngFileResult;
-}) {
-  const normalizedWarning = getNormalizedPrintSizeWarning(validationResult);
-
-  if (!normalizedWarning) {
-    return null;
-  }
-
-  return (
-    <p
-      className={`${getImportWarningMessageClassName(normalizedWarning.code)} import-normalized-print-size-message`}
-    >
-      Print size normalized to {formatPrintSizeDisplay(validationResult)}.
-    </p>
-  );
-}
-
-function ValidationWarnings({
-  validationResult,
-}: {
-  validationResult: ValidateSelectedPngFileResult;
-}) {
-  const visibleWarnings = getVisibleValidationWarnings(validationResult);
-
-  if (visibleWarnings.length === 0) {
-    return null;
-  }
-
-  return (
-    <div aria-label="Validation warnings" className="import-validation-warnings">
-      <ul>
-        {visibleWarnings.map((warning) => (
-          <li className={getImportWarningMessageClassName(warning.code)} key={warning.code}>
-            {warning.message}
-          </li>
-        ))}
-      </ul>
-    </div>
   );
 }
 
@@ -340,12 +303,19 @@ function ImportDetailsModal({
 }
 
 export function ImportResultPanel({
+  backgroundMode = "auto",
   canUpload,
+  halftoneMode = "normal",
   isUploading,
+  itemBackgroundOverride = "auto",
+  itemHalftoneOverride = "auto",
+  onItemBackgroundOverrideChange,
+  onItemHalftoneOverrideChange,
   onUpload,
   phase,
   previewDataUrl,
   selectionCanceled,
+  suggestDarkArtworkBackground = false,
   uploadError,
   uploadResult,
   uploadWarning,
@@ -355,6 +325,13 @@ export function ImportResultPanel({
   const phaseMessage = getPhaseMessage(phase);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const previewMatHex = resolveImportPreviewBackgroundCssHex({
+    backgroundMode,
+    halftoneMode,
+    autoSuggestsDark: suggestDarkArtworkBackground,
+    itemBackgroundOverride,
+    itemHalftoneOverride,
+  });
 
   if (phaseMessage) {
     return (
@@ -394,8 +371,16 @@ export function ImportResultPanel({
           {validationResult ? (
             <ImportPngPreview
               alt={`Preview of ${validationResult.fileName}`}
+              autoSuggestsDark={suggestDarkArtworkBackground}
+              backgroundMode={backgroundMode}
+              halftoneMode={halftoneMode}
+              itemBackgroundOverride={itemBackgroundOverride}
+              itemHalftoneOverride={itemHalftoneOverride}
+              onItemBackgroundOverrideChange={onItemBackgroundOverrideChange}
+              onItemHalftoneOverrideChange={onItemHalftoneOverrideChange}
               onPreviewClick={() => setIsPreviewOpen(true)}
               previewDataUrl={previewDataUrl}
+              showBackgroundPicker={Boolean(onItemBackgroundOverrideChange)}
             />
           ) : null}
 
@@ -418,6 +403,7 @@ export function ImportResultPanel({
         />
         <ImportPreviewLightbox
           alt={validationResult ? `Preview of ${validationResult.fileName}` : "Import preview"}
+          backgroundCssHex={previewMatHex}
           isOpen={isPreviewOpen}
           onClose={() => setIsPreviewOpen(false)}
           previewDataUrl={previewDataUrl}
@@ -434,8 +420,16 @@ export function ImportResultPanel({
           <div className="import-validation-preview-column">
             <ImportPngPreview
               alt={`Preview of ${validationResult.fileName}`}
+              autoSuggestsDark={suggestDarkArtworkBackground}
+              backgroundMode={backgroundMode}
+              halftoneMode={halftoneMode}
+              itemBackgroundOverride={itemBackgroundOverride}
+              itemHalftoneOverride={itemHalftoneOverride}
+              onItemBackgroundOverrideChange={onItemBackgroundOverrideChange}
+              onItemHalftoneOverrideChange={onItemHalftoneOverrideChange}
               onPreviewClick={() => setIsPreviewOpen(true)}
               previewDataUrl={previewDataUrl}
+              showBackgroundPicker={Boolean(onItemBackgroundOverrideChange)}
             />
 
             {canUpload || isUploading ? (
@@ -453,8 +447,6 @@ export function ImportResultPanel({
 
         <div className="import-validation-result-main">
           {validationResult ? <ValidationDetails validationResult={validationResult} /> : null}
-
-          {validationResult ? <NormalizedPrintSizeNotice validationResult={validationResult} /> : null}
 
           {uploadError ? (
             <div className="import-upload-feedback">
@@ -475,14 +467,11 @@ export function ImportResultPanel({
               {uploadWarning}
             </p>
           ) : null}
-
-          {validationResult && getVisibleValidationWarnings(validationResult).length > 0 ? (
-            <ValidationWarnings validationResult={validationResult} />
-          ) : null}
         </div>
       </div>
       <ImportPreviewLightbox
         alt={validationResult ? `Preview of ${validationResult.fileName}` : "Import preview"}
+        backgroundCssHex={previewMatHex}
         isOpen={isPreviewOpen}
         onClose={() => setIsPreviewOpen(false)}
         previewDataUrl={previewDataUrl}

@@ -10,6 +10,7 @@ import {
 
 import { CUSTOMER_UPLOAD_COLLECTIONS } from "@fresh-prints/shared/constants/customerUpload/customerUploadCollections.constants";
 import type { CustomerUploadPurpose } from "@fresh-prints/shared/types/customerUpload/customerUpload.enums";
+import { isCustomerUploadEligibleForCatalogIntake } from "@fresh-prints/shared/utils/customerUploadCatalogIntakeEligibility";
 import { isMissingCustomerUploadPurpose } from "@fresh-prints/shared/utils/customerUploadPurpose";
 
 export type CustomerUploadIntakeFilter = "pending_staff_review" | "excluded_from_catalog";
@@ -77,6 +78,13 @@ export function filterLegacyMissingPurposeDocs<T extends { data: () => Record<st
   docs: T[],
 ): T[] {
   return docs.filter((docSnap) => isMissingCustomerUploadPurpose(docSnap.data().purpose));
+}
+
+/** Pending intake excludes print-only uploads where the customer denied library consent. */
+export function filterCatalogIntakeEligibleDocs<T extends { data: () => Record<string, unknown> }>(
+  docs: T[],
+): T[] {
+  return docs.filter((docSnap) => isCustomerUploadEligibleForCatalogIntake(docSnap.data()));
 }
 
 export function mergeIntakeDocsByCreatedAtDesc<

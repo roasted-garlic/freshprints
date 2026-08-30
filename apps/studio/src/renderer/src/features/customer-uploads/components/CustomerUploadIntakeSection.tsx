@@ -9,7 +9,7 @@ import { DangerOverflowMenu } from "../../../shared/components/DangerOverflowMen
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
 import { Toggle } from "../../../shared/components/Toggle";
 import { DesignPreviewLightbox } from "../../designs/components/DesignPreviewLightbox";
-import { getPrintRequestsPath } from "../../print-requests/constants/printRequestRoutes";
+import { buildPrintRequestDeepLinkPath } from "../../print-requests/constants/printRequestRoutes";
 import type { useCustomerUploadIntake } from "../hooks/useCustomerUploadIntake";
 import type { CustomerUploadIntakeRow } from "../services/customerUploadIntakeService";
 import { CustomerUploadDeletionDialog } from "./CustomerUploadDeletionDialog";
@@ -93,6 +93,7 @@ function IntakeDetail({
   const pendingAction = intake.pendingByUploadId[row.id] ?? null;
   const busy = Boolean(pendingAction);
   const fromAssisted = Boolean(row.assistedCreationRequestId);
+  const catalogIntakeEligible = row.catalogUseAcknowledged !== false;
   const halftoneOn = resolveIntakeHalftoneStaffToggle({
     staffDecision: row.halftoneStaffDecision,
     submitterResponse: row.halftoneSubmitterResponse,
@@ -167,10 +168,16 @@ function IntakeDetail({
         {!isDonation && row.printRequestId ? (
           <Button
             onClick={() => {
+              if (!row.printRequestId) {
+                return;
+              }
               navigate(
-                getPrintRequestsPath({
-                  requestId: row.printRequestId ?? undefined,
-                  tab: "working",
+                buildPrintRequestDeepLinkPath({
+                  id: row.printRequestId,
+                  isInternal: row.printRequestIsInternal,
+                  queueTab: row.printRequestQueueTab,
+                  itemCount: row.printRequestItemCount,
+                  updatedAtMillis: row.printRequestUpdatedAtMs,
                 }),
               );
             }}
@@ -195,6 +202,7 @@ function IntakeDetail({
         ) : null}
 
         {intake.canPromote &&
+        catalogIntakeEligible &&
         row.catalogReviewStatus === "pending_staff_review" &&
         row.technicalStatus === "ready" ? (
           <Button
@@ -209,7 +217,7 @@ function IntakeDetail({
           </Button>
         ) : null}
 
-        {intake.canExclude && row.catalogReviewStatus === "pending_staff_review" ? (
+        {intake.canExclude && catalogIntakeEligible && row.catalogReviewStatus === "pending_staff_review" ? (
           <Button
             disabled={busy}
             onClick={() => {

@@ -71,14 +71,14 @@ describe('show home rail loaders', () => {
     assert.notEqual(loadPortalNextShowRail, loadPortalShowsThisWeekRail);
   });
 
-  it('loadPortalShowsThisWeekRail sets reversePresentationOrder on the rail object', async () => {
+  it('buildPortalShowsThisWeekRailFromShows sets reversePresentationOrder on the rail object', async () => {
     const source = readFileSync(
       'apps/portal/features/show-designs/services/portalShowDiscoveryContent.ts',
       'utf8',
     );
     const block = source.slice(
-      source.indexOf('export async function loadPortalShowsThisWeekRail'),
-      source.indexOf('export async function loadCatalogShowDesigns'),
+      source.indexOf('export async function buildPortalShowsThisWeekRailFromShows'),
+      source.indexOf('export async function loadPortalNextShowRail'),
     );
     assert.match(block, /reversePresentationOrder:\s*true/);
     assert.doesNotMatch(block, /designs\.reverse\(/);

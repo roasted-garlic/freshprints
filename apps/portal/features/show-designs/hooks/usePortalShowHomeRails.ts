@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react';
 
 import type { PortalShowHomeRail } from '../services/portalShowDiscoveryContent';
 import {
-  loadPortalNextShowRail,
-  loadPortalShowsThisWeekRail,
+  buildPortalNextShowRailFromShows,
+  buildPortalShowsThisWeekRailFromShows,
 } from '../services/portalShowDiscoveryContent';
+import { portalShowDesignsService } from '../services/portalShowDesignsService';
 
 export interface PortalShowHomeRailSlot {
   error: string | null;
@@ -30,43 +31,32 @@ export function usePortalShowHomeRails(): {
   useEffect(() => {
     let cancelled = false;
 
+    setNextShow({ error: null, isLoading: true, rail: null });
+    setThisWeek({ error: null, isLoading: true, rail: null });
+
     void (async () => {
-      setNextShow({ error: null, isLoading: true, rail: null });
       try {
-        const rail = await loadPortalNextShowRail();
+        const { shows } = await portalShowDesignsService.listPublicShows();
+        const [nextShowRail, thisWeekRail] = await Promise.all([
+          buildPortalNextShowRailFromShows(shows),
+          buildPortalShowsThisWeekRailFromShows(shows),
+        ]);
+
         if (!cancelled) {
-          setNextShow({ error: null, isLoading: false, rail });
+          setNextShow({ error: null, isLoading: false, rail: nextShowRail });
+          setThisWeek({ error: null, isLoading: false, rail: thisWeekRail });
         }
       } catch (loadError) {
         if (!cancelled) {
+          const message =
+            loadError instanceof Error ? loadError.message : 'Unable to load show designs.';
           setNextShow({
-            error: loadError instanceof Error ? loadError.message : 'Unable to load Next Show designs.',
+            error: message,
             isLoading: false,
             rail: null,
           });
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    void (async () => {
-      setThisWeek({ error: null, isLoading: true, rail: null });
-      try {
-        const rail = await loadPortalShowsThisWeekRail();
-        if (!cancelled) {
-          setThisWeek({ error: null, isLoading: false, rail });
-        }
-      } catch (loadError) {
-        if (!cancelled) {
           setThisWeek({
-            error: loadError instanceof Error ? loadError.message : 'Unable to load this week\'s designs.',
+            error: message,
             isLoading: false,
             rail: null,
           });

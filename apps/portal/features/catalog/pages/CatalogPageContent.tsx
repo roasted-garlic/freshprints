@@ -15,18 +15,19 @@ import { CatalogDesignDetailsModal } from '../components/CatalogDesignDetailsMod
 import { CatalogFilterBar } from '../components/CatalogFilterBar';
 import { CatalogFiltersSheet } from '../components/CatalogFiltersSheet';
 import { CatalogSelectionCard } from '../components/CatalogSelectionCard';
-import { designHasMatchingDesignsHint } from '../services/catalogService';
-import { CATALOG_FIRST_VIEWPORT_EAGER_COUNT } from '../hooks/useCatalogDesigns';
-
-/** Bound Algolia/search requests while typing — do not fire per raw keystroke. */
-export const CATALOG_SEARCH_DEBOUNCE_MS = 300;
+import { CatalogSmartFilterModal } from '../components/CatalogSmartFilterModal';
 import { CatalogTagFilterModal } from '../components/CatalogTagFilterModal';
+import { designHasMatchingDesignsHint } from '../services/catalogService';
+import { isPortalSmartFiltersConfigured } from '../services/portalAlgoliaCatalogFlags';
+import {
+  countSelectedSmartFilters,
+  type PortalSmartFilters,
+} from '../services/portalAlgoliaCatalogSearchService';
+import { CATALOG_FIRST_VIEWPORT_EAGER_COUNT } from '../hooks/useCatalogDesigns';
 import { useCatalogDesignDeepLink } from '../hooks/useCatalogDesignDeepLink';
 import { useCatalogCategories } from '../hooks/useCatalogCategories';
-import {
-  useCatalogCategoryOptions,
-  useCatalogDesigns,
-} from '../hooks/useCatalogDesigns';
+import { useCatalogDesigns } from '../hooks/useCatalogDesigns';
+import { useNarrowedCatalogCategoryOptions } from '../hooks/useNarrowedCatalogCategoryOptions';
 import { useCatalogTags } from '../hooks/useCatalogTags';
 import {
   countVisibleSelectedTags,
@@ -60,6 +61,9 @@ import {
   XIcon,
 } from '../../shared/components/PortalIcons';
 
+/** Bound Algolia/search requests while typing — do not fire per raw keystroke. */
+export const CATALOG_SEARCH_DEBOUNCE_MS = 300;
+
 export function CatalogPageContent() {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
@@ -81,7 +85,9 @@ export function CatalogPageContent() {
   const lastSelfPushedQRef = useRef<string | null>(initialSearch.trim() ? initialSearch.trim() : null);
   const [categoryFilter, setCategoryFilter] = useState(initialCategory);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [smartFilters, setSmartFilters] = useState<PortalSmartFilters>({});
   const [isTagFilterModalOpen, setIsTagFilterModalOpen] = useState(false);
+  const [isSmartFilterModalOpen, setIsSmartFilterModalOpen] = useState(false);
   const [isFiltersSheetOpen, setIsFiltersSheetOpen] = useState(false);
   const [selectedDesign, setSelectedDesign] = useState<CatalogDesign | null>(null);
   const [selectionActionError, setSelectionActionError] = useState<string | null>(null);
@@ -158,6 +164,7 @@ export function CatalogPageContent() {
     discoveryMode: showDesignLibraryView ? null : discoveryMode,
     searchQuery: debouncedSearchQuery,
     selectedTags,
+    smartFilters,
   });
 
   const showDesignsState = useCatalogShowDesigns({
@@ -182,7 +189,13 @@ export function CatalogPageContent() {
     matchingCount,
   } = showDesignLibraryView ? showDesignsState : catalogDesignsState;
 
-  const categoryOptions = useCatalogCategoryOptions(categories);
+  const categoryOptions = useNarrowedCatalogCategoryOptions({
+    categories,
+    searchQuery: debouncedSearchQuery,
+    selectedCategoryId: categoryFilter || undefined,
+    selectedTags,
+    smartFilters,
+  });
   const activeCategoryName =
     categories.find((category) => category.id === categoryFilter)?.name ?? null;
   const curatedLibraryView = Boolean(discoveryMode || categoryFilter || showDesignLibraryView);
@@ -193,6 +206,7 @@ export function CatalogPageContent() {
     searchQuery.trim() ||
       categoryFilter ||
       selectedTags.length > 0 ||
+      countSelectedSmartFilters(smartFilters) > 0 ||
       discoveryMode ||
       showDesignLibraryView,
   );
@@ -230,6 +244,7 @@ export function CatalogPageContent() {
     setDebouncedSearchQuery('');
     setCategoryFilter('');
     setSelectedTags([]);
+    setSmartFilters({});
     syncLibraryUrl({ discover: discoveryMode, search: '', categoryId: '' });
   }
 
@@ -248,9 +263,14 @@ export function CatalogPageContent() {
 
   const visibleTags = useMemo(() => visibleSelectedTags(selectedTags), [selectedTags]);
   const visibleTagCount = countVisibleSelectedTags(selectedTags);
+  const smartFilterCount = countSelectedSmartFilters(smartFilters);
+  const showSmartFilters = isPortalSmartFiltersConfigured();
   const halftoneFilterOn = selectedTagsIncludeHalftone(selectedTags);
   const filterSheetActiveCount =
-    (categoryFilter ? 1 : 0) + (halftoneFilterOn ? 1 : 0) + visibleTagCount;
+    (categoryFilter ? 1 : 0) +
+    (halftoneFilterOn ? 1 : 0) +
+    visibleTagCount +
+    smartFilterCount;
 
   const { resetTransientState } = addDesignFlow;
 
@@ -528,7 +548,10 @@ export function CatalogPageContent() {
           <div className="design-library-filter-dock">
             <div className="design-library-summary-row">
               <span className="design-library-count-chip">{designCountLabel}</span>
-              {searchQuery.trim() || categoryFilter || selectedTags.length > 0 ? (
+              {searchQuery.trim() ||
+              categoryFilter ||
+              selectedTags.length > 0 ||
+              smartFilterCount > 0 ? (
                 <button
                   className="portal-button portal-button-secondary portal-button-sm portal-button-leading-icon"
                   onClick={clearFilters}
@@ -548,10 +571,13 @@ export function CatalogPageContent() {
               onCategoryChange={handleCategoryChange}
               onHalftoneFilterChange={handleHalftoneFilterChange}
               onOpenFiltersSheet={() => setIsFiltersSheetOpen(true)}
+              onOpenSmartFilters={() => setIsSmartFilterModalOpen(true)}
               onOpenTags={() => setIsTagFilterModalOpen(true)}
               onSearchChange={setSearchQuery}
               searchQuery={searchQuery}
+              selectedSmartFilterCount={smartFilterCount}
               selectedTagCount={visibleTagCount}
+              showSmartFilters={showSmartFilters}
             />
           </div>
 
@@ -749,7 +775,7 @@ export function CatalogPageContent() {
       </PortalConfirmModal>
 
       <PortalPickContinuableRequestModal
-        continuableRequests={continuableRequests}
+        continuableRequests={addDesignFlow.pickerContinuableRequests}
         designTitle={addDesignFlow.pendingDesign?.title}
         isAdding={addDesignFlow.isAdding}
         isOpen={addDesignFlow.isPickerOpen}
@@ -765,11 +791,17 @@ export function CatalogPageContent() {
         onCategoryChange={handleCategoryChange}
         onClose={() => setIsFiltersSheetOpen(false)}
         onHalftoneFilterChange={handleHalftoneFilterChange}
+        onOpenSmartFilters={() => {
+          setIsFiltersSheetOpen(false);
+          setIsSmartFilterModalOpen(true);
+        }}
         onOpenTags={() => {
           setIsFiltersSheetOpen(false);
           setIsTagFilterModalOpen(true);
         }}
+        selectedSmartFilterCount={smartFilterCount}
         selectedTagCount={visibleTagCount}
+        showSmartFilters={showSmartFilters}
       />
 
       <CatalogTagFilterModal
@@ -781,7 +813,20 @@ export function CatalogPageContent() {
         onApply={(nextTags) => setSelectedTags(sortCatalogTags(nextTags))}
         onClose={() => setIsTagFilterModalOpen(false)}
         selectedTags={selectedTags}
+        smartFilters={smartFilters}
       />
+
+      {showSmartFilters ? (
+        <CatalogSmartFilterModal
+          catalogSearchQuery={debouncedSearchQuery}
+          categoryId={categoryFilter || undefined}
+          isOpen={isSmartFilterModalOpen}
+          onApply={setSmartFilters}
+          onClose={() => setIsSmartFilterModalOpen(false)}
+          selectedTags={selectedTags}
+          smartFilters={smartFilters}
+        />
+      ) : null}
     </main>
   );
 }

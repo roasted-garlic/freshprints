@@ -12,6 +12,10 @@ import { importDesktopService } from "../services/importDesktopService";
 import { importOrchestrationService } from "../services/importOrchestrationService";
 import { UploadCancelToken } from "../utils/uploadCancelToken";
 import { releaseSinglePngImportSession } from "../utils/releaseSinglePngImportSession";
+import { IMPORT_SESSION_DEFAULT_SETTINGS } from "../constants/importSessionSettings";
+import type { ImportSessionSettings } from "../constants/importSessionSettings";
+import type { ImportItemBackgroundOverride } from "@fresh-prints/shared/utils/resolveImportArtworkBackgroundDecision";
+import type { ImportItemHalftoneOverride } from "@fresh-prints/shared/utils/resolveImportArtworkBackgroundDecision";
 
 export type SinglePngImportPhase =
   | "idle"
@@ -25,6 +29,9 @@ interface UseSinglePngImportState {
   isBusy: boolean;
   phase: SinglePngImportPhase;
   previewDataUrl: string | null;
+  suggestDarkArtworkBackground: boolean;
+  itemBackgroundOverride: ImportItemBackgroundOverride;
+  itemHalftoneOverride: ImportItemHalftoneOverride;
   selectionCanceled: boolean;
   uploadError: string | null;
   uploadResult: ImportOriginalUploadResult | null;
@@ -37,6 +44,9 @@ const initialState: UseSinglePngImportState = {
   isBusy: false,
   phase: "idle",
   previewDataUrl: null,
+  suggestDarkArtworkBackground: false,
+  itemBackgroundOverride: "auto",
+  itemHalftoneOverride: "auto",
   selectionCanceled: false,
   uploadError: null,
   uploadResult: null,
@@ -45,26 +55,36 @@ const initialState: UseSinglePngImportState = {
   validationResult: null,
 };
 
-async function loadPreviewDataUrl(filePath: string): Promise<string | null> {
+async function loadPreviewWithBackgroundHint(filePath: string): Promise<{
+  dataUrl: string | null;
+  suggestDarkArtworkBackground: boolean;
+}> {
   const previewResult = await importDesktopService.getSelectedPngPreview(filePath);
 
   if (!previewResult.success) {
-    return null;
+    return { dataUrl: null, suggestDarkArtworkBackground: false };
   }
 
-  return previewResult.data.dataUrl;
+  return {
+    dataUrl: previewResult.data.dataUrl,
+    suggestDarkArtworkBackground: previewResult.data.suggestDarkArtworkBackground === true,
+  };
 }
 
 function isSingleImportWorkflowActive(phase: SinglePngImportPhase): boolean {
   return phase !== "idle" && phase !== "upload-complete";
 }
 
-export function useSinglePngImport() {
+export function useSinglePngImport(options: {
+  getSessionSettings?: () => ImportSessionSettings;
+} = {}) {
   const { user } = useAuth();
   const [state, setState] = useState<UseSinglePngImportState>(initialState);
   const { setUploadActive, registerCancelHandler } = useUploadActivity();
   const uploadCancelTokenRef = useRef<UploadCancelToken | null>(null);
   const uploadPromiseRef = useRef<Promise<void> | null>(null);
+  const getSessionSettingsRef = useRef(options.getSessionSettings);
+  getSessionSettingsRef.current = options.getSessionSettings;
 
   const selectAndValidatePng = useCallback(async () => {
     setState({
@@ -104,6 +124,9 @@ export function useSinglePngImport() {
       validationError: null,
       validationResult: null,
       previewDataUrl: null,
+      suggestDarkArtworkBackground: false,
+      itemBackgroundOverride: "auto",
+      itemHalftoneOverride: "auto",
     }));
 
     const validationResult = await importDesktopService.validateSelectedPngFile(
@@ -119,12 +142,15 @@ export function useSinglePngImport() {
       return;
     }
 
-    const previewDataUrl = await loadPreviewDataUrl(validationResult.data.filePath);
+    const preview = await loadPreviewWithBackgroundHint(validationResult.data.filePath);
 
     setState({
       isBusy: false,
       phase: "validated",
-      previewDataUrl,
+      previewDataUrl: preview.dataUrl,
+      suggestDarkArtworkBackground: preview.suggestDarkArtworkBackground,
+      itemBackgroundOverride: "auto",
+      itemHalftoneOverride: "auto",
       selectionCanceled: false,
       uploadError: null,
       uploadResult: null,
@@ -132,6 +158,14 @@ export function useSinglePngImport() {
       validationError: null,
       validationResult: validationResult.data,
     });
+  }, []);
+
+  const setItemBackgroundOverride = useCallback((itemBackgroundOverride: ImportItemBackgroundOverride) => {
+    setState((current) => ({ ...current, itemBackgroundOverride }));
+  }, []);
+
+  const setItemHalftoneOverride = useCallback((itemHalftoneOverride: ImportItemHalftoneOverride) => {
+    setState((current) => ({ ...current, itemHalftoneOverride }));
   }, []);
 
   const uploadValidatedPng = useCallback(async () => {
@@ -152,6 +186,9 @@ export function useSinglePngImport() {
 
     const validationResult = state.validationResult;
     const previewDataUrl = state.previewDataUrl;
+    const suggestDarkArtworkBackground = state.suggestDarkArtworkBackground;
+    const itemBackgroundOverride = state.itemBackgroundOverride;
+    const itemHalftoneOverride = state.itemHalftoneOverride;
 
     setState((current) => ({
       ...current,
@@ -166,10 +203,18 @@ export function useSinglePngImport() {
 
     const runUploadAndCleanup = async (): Promise<void> => {
       try {
+        const sessionSettings =
+          getSessionSettingsRef.current?.() ?? IMPORT_SESSION_DEFAULT_SETTINGS;
         const outcome = await importOrchestrationService.uploadValidatedPng(
           user,
           validationResult,
           cancelToken,
+          {
+            halftoneMode: sessionSettings.halftoneMode,
+            backgroundMode: sessionSettings.backgroundMode,
+            itemBackgroundOverride,
+            itemHalftoneOverride,
+          },
         );
 
         await releaseSinglePngImportSession();
@@ -178,6 +223,9 @@ export function useSinglePngImport() {
           isBusy: false,
           phase: "upload-complete",
           previewDataUrl,
+          suggestDarkArtworkBackground,
+          itemBackgroundOverride,
+          itemHalftoneOverride,
           selectionCanceled: false,
           uploadError: null,
           uploadResult: outcome.uploadResult,
@@ -199,6 +247,9 @@ export function useSinglePngImport() {
           isBusy: false,
           phase: "validated",
           previewDataUrl,
+          suggestDarkArtworkBackground,
+          itemBackgroundOverride,
+          itemHalftoneOverride,
           selectionCanceled: false,
           uploadError,
           uploadResult: null,
@@ -215,7 +266,14 @@ export function useSinglePngImport() {
     const uploadPromise = runUploadAndCleanup();
     uploadPromiseRef.current = uploadPromise;
     await uploadPromise;
-  }, [state.previewDataUrl, state.validationResult, user]);
+  }, [
+    state.previewDataUrl,
+    state.suggestDarkArtworkBackground,
+    state.itemBackgroundOverride,
+    state.itemHalftoneOverride,
+    state.validationResult,
+    user,
+  ]);
 
   const cancelImport = useCallback(async () => {
     if (state.phase === "uploading") {
@@ -265,6 +323,8 @@ export function useSinglePngImport() {
     isWorkflowActive,
     reset: cancelImport,
     selectAndValidatePng,
+    setItemBackgroundOverride,
+    setItemHalftoneOverride,
     uploadValidatedPng,
   };
 }

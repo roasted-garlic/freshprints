@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import type { Design } from "../../designs/types/design.types";
-import { sortInboxDesigns } from "./aiReviewInboxSort";
+import {
+  getDefaultAiReviewInboxSortOrder,
+  resolveAiReviewInboxSortDirection,
+  sortInboxDesigns,
+} from "./aiReviewInboxSort";
 
 function createDesign(
   id: string,
@@ -34,7 +38,13 @@ function createDesign(
   };
 }
 
-describe("sortInboxDesigns", () => {
+describe("aiReviewInboxSort", () => {
+  it("defaults processing to oldest and review tabs to newest", () => {
+    assert.equal(getDefaultAiReviewInboxSortOrder("processing"), "oldest");
+    assert.equal(getDefaultAiReviewInboxSortOrder("needs_review"), "newest");
+    assert.equal(getDefaultAiReviewInboxSortOrder("rejected"), "newest");
+  });
+
   it("sorts needs_review newest first by updatedAt", () => {
     const designs = [
       createDesign("b", 1000, 2000),
@@ -47,6 +57,20 @@ describe("sortInboxDesigns", () => {
     assert.deepEqual(
       sorted.map((design) => design.id),
       ["a", "c", "b"],
+    );
+  });
+
+  it("sorts needs_review oldest first when requested", () => {
+    const designs = [
+      createDesign("b", 1000, 2000),
+      createDesign("a", 3000, 5000),
+    ];
+
+    const sorted = sortInboxDesigns(designs, "needs_review", "oldest");
+
+    assert.deepEqual(
+      sorted.map((design) => design.id),
+      ["b", "a"],
     );
   });
 
@@ -75,6 +99,20 @@ describe("sortInboxDesigns", () => {
     );
   });
 
+  it("sorts processing newest first by createdAt when requested", () => {
+    const designs = [
+      createDesign("older", 1000, 9000),
+      createDesign("newer", 5000, 5000),
+    ];
+
+    const sorted = sortInboxDesigns(designs, "processing", "newest");
+
+    assert.deepEqual(
+      sorted.map((design) => design.id),
+      ["newer", "older"],
+    );
+  });
+
   it("uses id as tie-breaker when timestamps match", () => {
     const designs = [createDesign("z-design", 1000), createDesign("a-design", 1000)];
 
@@ -84,5 +122,12 @@ describe("sortInboxDesigns", () => {
       sorted.map((design) => design.id),
       ["a-design", "z-design"],
     );
+  });
+
+  it("maps sort order to Firestore direction", () => {
+    assert.equal(resolveAiReviewInboxSortDirection("processing"), "asc");
+    assert.equal(resolveAiReviewInboxSortDirection("processing", "newest"), "desc");
+    assert.equal(resolveAiReviewInboxSortDirection("needs_review"), "desc");
+    assert.equal(resolveAiReviewInboxSortDirection("needs_review", "oldest"), "asc");
   });
 });

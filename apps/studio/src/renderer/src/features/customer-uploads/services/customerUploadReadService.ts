@@ -23,6 +23,7 @@ export interface StudioCustomerUploadSummary {
   wasUpscaled: boolean | null;
   technicalStatus: CustomerUploadTechnicalStatus;
   catalogReviewStatus: string | null;
+  assistedCreationRequestId: string | null;
 }
 
 export const customerUploadReadService = {
@@ -66,6 +67,10 @@ export const customerUploadReadService = {
       technicalStatus: data.technicalStatus as CustomerUploadTechnicalStatus,
       catalogReviewStatus:
         typeof data.catalogReviewStatus === "string" ? data.catalogReviewStatus : null,
+      assistedCreationRequestId:
+        typeof data.assistedCreationRequestId === "string" && data.assistedCreationRequestId.trim()
+          ? data.assistedCreationRequestId.trim()
+          : null,
     };
   },
 };

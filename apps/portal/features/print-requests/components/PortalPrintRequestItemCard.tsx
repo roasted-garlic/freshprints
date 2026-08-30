@@ -3,12 +3,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent } from 'react';
 import { Repeat } from 'lucide-react';
 
+import type { StandardPrintSizesSettings } from '@fresh-prints/shared/constants/printSize/standardPrintSizesSettings.constants';
+import { resolveStandardSizePresetKeyAfterManualSizeChange } from '@fresh-prints/shared/constants/printSize/standardPrintSizesSettings.constants';
 import type { PrintRequestItem } from '@fresh-prints/shared/types/printRequest/printRequest.types';
 import {
   assessPrintRequestItemSize,
   calculateLockedHeightFromWidth,
   calculateLockedWidthFromHeight,
 } from '@fresh-prints/shared/utils/printRequestItemSizing';
+import {
+  PortalStandardPrintSizesModal,
+  resolveStandardPrintSizeCardLabel,
+} from './PortalStandardPrintSizesModal';
 import { CatalogPreviewLightbox } from '../../catalog/components/CatalogPreviewLightbox';
 import { CatalogThumbnailPanel } from '../../catalog/components/CatalogThumbnailPanel';
 import { useCatalogDerivativeUrl } from '../../catalog/hooks/useCatalogDerivativeUrl';
@@ -78,9 +84,15 @@ interface PortalPrintRequestItemCardProps {
    * the server may clamp it). `saveDraft` uses the returned value, not the locally typed one, to
    * reconcile its own draft state (Plan Section 21.1/21.4, Fix 1).
    */
+  standardPrintSizesSettings: StandardPrintSizesSettings;
   onUpdate: (
     item: PrintRequestItem,
-    input: { quantity: number; printWidthInches: number; printHeightInches: number },
+    input: {
+      quantity: number;
+      printWidthInches: number;
+      printHeightInches: number;
+      standardSizePresetKey?: string | null;
+    },
   ) => Promise<{ quantity: number }>;
   onAutosaveStateChange: (
     status: 'saving' | 'saved' | 'failed',
@@ -150,11 +162,17 @@ function parsePositiveDecimalInput(value: string): number | null {
   return parsedValue;
 }
 
-function buildItemSignature(quantity: number, width: number, height: number): string {
+function buildItemSignature(
+  quantity: number,
+  width: number,
+  height: number,
+  standardSizePresetKey?: string | null,
+): string {
   return JSON.stringify({
     quantity,
     width: Number.isFinite(width) ? Number(width.toFixed(2)) : width,
     height: Number.isFinite(height) ? Number(height.toFixed(2)) : height,
+    standardSizePresetKey: standardSizePresetKey ?? null,
   });
 }
 
@@ -181,6 +199,7 @@ export function PortalPrintRequestItemCard({
   onAutosaveStateChange,
   onPersistenceHealthChange,
   onRegisterFlush,
+  standardPrintSizesSettings,
 }: PortalPrintRequestItemCardProps) {
   const blockedStatusText = exhaustedStatusText;
   const isUploadItem =
@@ -222,12 +241,17 @@ export function PortalPrintRequestItemCard({
     formatEditableNumber(resolveInitialHeight(item)),
   );
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [isStandardSizesModalOpen, setIsStandardSizesModalOpen] = useState(false);
+  const [standardSizePresetKey, setStandardSizePresetKey] = useState<string | undefined>(
+    item.standardSizePresetKey,
+  );
   const { url: previewUrl } = useCatalogDerivativeUrl(previewPath, design?.updatedAtMs);
   const lastSavedSignatureRef = useRef(
     buildItemSignature(
       item.quantity,
       resolveInitialWidth(item),
       resolveInitialHeight(item),
+      item.standardSizePresetKey,
     ),
   );
   /**
@@ -250,7 +274,12 @@ export function PortalPrintRequestItemCard({
   useEffect(() => {
     const nextWidth = resolveInitialWidth(item);
     const nextHeight = resolveInitialHeight(item);
-    const incomingSignature = buildItemSignature(item.quantity, nextWidth, nextHeight);
+    const incomingSignature = buildItemSignature(
+      item.quantity,
+      nextWidth,
+      nextHeight,
+      item.standardSizePresetKey,
+    );
 
     // A signature mismatch alone doesn't prove this is a genuinely newer external change — a
     // stale reload (e.g. from a different mounted consumer's own reloadWorkingItems call) can
@@ -275,6 +304,7 @@ export function PortalPrintRequestItemCard({
     setQuantityInput(String(item.quantity));
     setPrintWidthInput(formatEditableNumber(nextWidth));
     setPrintHeightInput(formatEditableNumber(nextHeight));
+    setStandardSizePresetKey(item.standardSizePresetKey);
     setIsLightboxOpen(false);
     lastSavedSignatureRef.current = incomingSignature;
     if (incomingUpdatedAtMs !== null) {
@@ -364,6 +394,7 @@ export function PortalPrintRequestItemCard({
       parsedQuantity,
       parsedPrintWidthInches,
       parsedPrintHeightInches,
+      standardSizePresetKey,
     );
 
     if (draftSignature === lastSavedSignatureRef.current) {
@@ -391,6 +422,7 @@ export function PortalPrintRequestItemCard({
         quantity: parsedQuantity,
         printWidthInches: parsedPrintWidthInches,
         printHeightInches: parsedPrintHeightInches,
+        standardSizePresetKey: standardSizePresetKey ?? null,
       });
 
       // Reconcile against the server-ACCEPTED quantity, not the locally typed/requested value —
@@ -414,6 +446,7 @@ export function PortalPrintRequestItemCard({
           printHeightInches: parsedPrintHeightInches,
           currentQuantityInput: quantityInputRef.current,
           buildSignature: buildItemSignature,
+          standardSizePresetKey,
         });
         if (reconciliation.quantityInput !== quantityInputRef.current) {
           setQuantityInput(reconciliation.quantityInput);
@@ -426,6 +459,7 @@ export function PortalPrintRequestItemCard({
           acceptedQuantity,
           parsedPrintWidthInches,
           parsedPrintHeightInches,
+          standardSizePresetKey,
         );
       }
       // This save's own correction was just applied directly above (not via the prop-sync
@@ -463,6 +497,7 @@ export function PortalPrintRequestItemCard({
     parsedPrintWidthInches,
     parsedQuantity,
     quantityInput,
+    standardSizePresetKey,
   ]);
 
   useEffect(() => {
@@ -481,6 +516,7 @@ export function PortalPrintRequestItemCard({
       parsedQuantity ?? Number.NaN,
       parsedPrintWidthInches ?? Number.NaN,
       parsedPrintHeightInches ?? Number.NaN,
+      standardSizePresetKey,
     ) !== lastSavedSignatureRef.current;
 
   const persistenceHealth = resolvePrintRequestItemPersistenceHealth({
@@ -515,30 +551,48 @@ export function PortalPrintRequestItemCard({
     }
   }
 
+  function applyManualSize(nextWidthInput: string, nextHeightInput: string) {
+    const nextWidth = parsePositiveDecimalInput(nextWidthInput);
+    const nextHeight = parsePositiveDecimalInput(nextHeightInput);
+    if (nextWidth === null || nextHeight === null) {
+      setStandardSizePresetKey(undefined);
+      return;
+    }
+    setStandardSizePresetKey(
+      resolveStandardSizePresetKeyAfterManualSizeChange({
+        currentPresetKey: standardSizePresetKey,
+        settings: standardPrintSizesSettings,
+        printWidthInches: nextWidth,
+      }),
+    );
+  }
+
   function updateWidth(nextWidthInput: string) {
     setPrintWidthInput(nextWidthInput);
 
     const nextWidth = parsePositiveDecimalInput(nextWidthInput);
+    let nextHeightInput = printHeightInput;
     if (aspectPixels && nextWidth !== null) {
-      setPrintHeightInput(
-        formatEditableNumber(
-          calculateLockedHeightFromWidth(aspectPixels.width, aspectPixels.height, nextWidth),
-        ),
+      nextHeightInput = formatEditableNumber(
+        calculateLockedHeightFromWidth(aspectPixels.width, aspectPixels.height, nextWidth),
       );
+      setPrintHeightInput(nextHeightInput);
     }
+    applyManualSize(nextWidthInput, nextHeightInput);
   }
 
   function updateHeight(nextHeightInput: string) {
     setPrintHeightInput(nextHeightInput);
 
     const nextHeight = parsePositiveDecimalInput(nextHeightInput);
+    let nextWidthInput = printWidthInput;
     if (aspectPixels && nextHeight !== null) {
-      setPrintWidthInput(
-        formatEditableNumber(
-          calculateLockedWidthFromHeight(aspectPixels.width, aspectPixels.height, nextHeight),
-        ),
+      nextWidthInput = formatEditableNumber(
+        calculateLockedWidthFromHeight(aspectPixels.width, aspectPixels.height, nextHeight),
       );
+      setPrintWidthInput(nextWidthInput);
     }
+    applyManualSize(nextWidthInput, nextHeightInput);
   }
 
   const handleFieldBlur = useCallback(() => {
@@ -642,19 +696,6 @@ export function PortalPrintRequestItemCard({
                   : 'Uploaded'
                 : 'Library'}
             </span>
-            {sizeAssessment ? (
-              <span
-                aria-label={`${sizeAssessment.qualityLabel}, ${sizeAssessment.effectiveDpi} DPI`}
-                className={`portal-request-item-dpi-badge is-${sizeAssessment.qualityLevel}`}
-                title={
-                  sizeAssessment.warningMessage ??
-                  sizeAssessment.errorMessage ??
-                  `${sizeAssessment.qualityLabel} · ${sizeAssessment.effectiveDpi} DPI`
-                }
-              >
-                {sizeAssessment.effectiveDpi} DPI
-              </span>
-            ) : null}
           </div>
 
           <div className="portal-request-item-editor-body">
@@ -713,6 +754,16 @@ export function PortalPrintRequestItemCard({
 
         {showItemEditors ? (
           <>
+            <button
+              className={`portal-request-standard-size-trigger${
+                standardSizePresetKey ? ' is-selected' : ''
+              }`}
+              onClick={() => setIsStandardSizesModalOpen(true)}
+              type="button"
+            >
+              {resolveStandardPrintSizeCardLabel(standardPrintSizesSettings, standardSizePresetKey)}
+            </button>
+
             <div className="portal-request-item-size-row">
               <label className="portal-request-item-field">
                 <span className="portal-request-item-field-label">Width</span>
@@ -755,91 +806,113 @@ export function PortalPrintRequestItemCard({
               </label>
             </div>
 
+            <div className="portal-request-item-meta-row">
+              {sizeAssessment ? (
+                <span
+                  aria-label={`${sizeAssessment.qualityLabel}, ${sizeAssessment.effectiveDpi} DPI`}
+                  className={`portal-request-item-dpi-badge is-${sizeAssessment.qualityLevel}`}
+                  title={
+                    sizeAssessment.warningMessage ??
+                    sizeAssessment.errorMessage ??
+                    `${sizeAssessment.qualityLabel} · ${sizeAssessment.effectiveDpi} DPI`
+                  }
+                >
+                  {sizeAssessment.effectiveDpi} DPI
+                </span>
+              ) : (
+                <span className="portal-request-item-dpi-badge is-unavailable">DPI unavailable</span>
+              )}
+
+              <div className="portal-request-item-stepper portal-card-input-shell">
+                <button
+                  aria-label={`Decrease quantity for ${title}`}
+                  className="portal-request-item-stepper-button"
+                  onClick={() => stepQuantity((parsedQuantity ?? 1) - 1)}
+                  tabIndex={-1}
+                  type="button"
+                >
+                  −
+                </button>
+                <input
+                  aria-label={`Quantity for ${title}`}
+                  className="portal-request-item-number-input portal-request-item-stepper-input"
+                  data-portal-request-qty-input="true"
+                  inputMode="numeric"
+                  min={1}
+                  name={`quantity-${item.id}`}
+                  onBlur={handleFieldBlur}
+                  onChange={(event) => setQuantityInput(event.target.value)}
+                  onFocus={handleFieldFocus}
+                  onKeyDown={handleQuantityKeyDown}
+                  type="number"
+                  value={quantityInput}
+                />
+                <button
+                  aria-label={`Increase quantity for ${title}`}
+                  className="portal-request-item-stepper-button"
+                  disabled={!canAddPrints}
+                  onClick={() => stepQuantity((parsedQuantity ?? 0) + 1)}
+                  tabIndex={-1}
+                  title={
+                    !canAddPrints && blockedStatusText
+                      ? blockedStatusText
+                      : undefined
+                  }
+                  type="button"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
             {sizeAssessment?.errorMessage ? (
-              <p className="portal-error portal-request-item-field-error" role="alert">
+              <p
+                className="portal-request-item-field-callout is-error portal-request-item-field-error"
+                role="alert"
+              >
                 {sizeAssessment.errorMessage}
               </p>
             ) : sizeAssessment?.warningMessage ? (
-              <p className="portal-muted portal-request-item-dpi-warning" role="status">
+              <p
+                className="portal-request-item-field-callout is-warning portal-request-item-field-error"
+                role="status"
+              >
                 {sizeAssessment.warningMessage}
               </p>
             ) : null}
-          </>
-        ) : null}
 
-        {showItemEditors ? (
-          <div className="portal-request-item-editor-actions">
-            <div className="portal-request-item-stepper portal-card-input-shell">
+            <div className="portal-request-item-editor-actions">
               <button
-                aria-label={`Decrease quantity for ${title}`}
-                className="portal-request-item-stepper-button"
-                onClick={() => stepQuantity((parsedQuantity ?? 1) - 1)}
-                tabIndex={-1}
-                type="button"
-              >
-                −
-              </button>
-              <input
-                aria-label={`Quantity for ${title}`}
-                className="portal-request-item-number-input portal-request-item-stepper-input"
-                data-portal-request-qty-input="true"
-                inputMode="numeric"
-                min={1}
-                name={`quantity-${item.id}`}
-                onBlur={handleFieldBlur}
-                onChange={(event) => setQuantityInput(event.target.value)}
-                onFocus={handleFieldFocus}
-                onKeyDown={handleQuantityKeyDown}
-                type="number"
-                value={quantityInput}
-              />
-              <button
-                aria-label={`Increase quantity for ${title}`}
-                className="portal-request-item-stepper-button"
-                disabled={!canAddPrints}
-                onClick={() => stepQuantity((parsedQuantity ?? 0) + 1)}
+                className="portal-button portal-button-secondary portal-button-sm portal-button-leading-icon"
+                disabled={actionsDisabled || !canAddPrints}
+                onClick={() => onDuplicate(item)}
                 tabIndex={-1}
                 title={
-                  !canAddPrints && blockedStatusText
-                    ? blockedStatusText
-                    : undefined
+                  actionsDisabled
+                    ? 'Preparing duplicate…'
+                    : !canAddPrints && blockedStatusText
+                      ? blockedStatusText
+                      : undefined
                 }
                 type="button"
               >
-                +
+                <CopyIcon size={14} />
+                Duplicate
+              </button>
+
+              <button
+                className="portal-button portal-button-danger portal-button-sm portal-button-leading-icon"
+                disabled={actionsDisabled}
+                onClick={() => onRemove(item)}
+                tabIndex={-1}
+                title={actionsDisabled ? 'Preparing duplicate…' : undefined}
+                type="button"
+              >
+                <TrashIcon size={14} />
+                Remove
               </button>
             </div>
-
-            <button
-              className="portal-button portal-button-secondary portal-button-sm portal-button-leading-icon"
-              disabled={actionsDisabled || !canAddPrints}
-              onClick={() => onDuplicate(item)}
-              tabIndex={-1}
-              title={
-                actionsDisabled
-                  ? 'Preparing duplicate…'
-                  : !canAddPrints && blockedStatusText
-                    ? blockedStatusText
-                    : undefined
-              }
-              type="button"
-            >
-              <CopyIcon size={14} />
-              Duplicate
-            </button>
-
-            <button
-              className="portal-button portal-button-danger portal-button-sm portal-button-leading-icon"
-              disabled={actionsDisabled}
-              onClick={() => onRemove(item)}
-              tabIndex={-1}
-              title={actionsDisabled ? 'Preparing duplicate…' : undefined}
-              type="button"
-            >
-              <TrashIcon size={14} />
-              Remove
-            </button>
-          </div>
+          </>
         ) : null}
       </article>
 
@@ -850,6 +923,27 @@ export function PortalPrintRequestItemCard({
         onClose={() => setIsLightboxOpen(false)}
         previewUrl={previewUrl}
       />
+
+      {aspectPixels ? (
+        <PortalStandardPrintSizesModal
+          approvedMaxPrintHeightInches={upload?.approvedMaxPrintHeightInches}
+          approvedMaxPrintWidthInches={upload?.approvedMaxPrintWidthInches}
+          currentPrintHeightInches={parsedPrintHeightInches ?? resolveInitialHeight(item)}
+          currentPrintWidthInches={parsedPrintWidthInches ?? resolveInitialWidth(item)}
+          isOpen={isStandardSizesModalOpen}
+          onApply={({ printHeightInches, printWidthInches, standardSizePresetKey: nextPresetKey }) => {
+            setPrintWidthInput(formatEditableNumber(printWidthInches));
+            setPrintHeightInput(formatEditableNumber(printHeightInches));
+            setStandardSizePresetKey(nextPresetKey);
+            scheduleSave();
+          }}
+          onClose={() => setIsStandardSizesModalOpen(false)}
+          pixelHeight={aspectPixels.height}
+          pixelWidth={aspectPixels.width}
+          settings={standardPrintSizesSettings}
+          wasUpscaled={upload?.wasUpscaled}
+        />
+      ) : null}
     </>
   );
 }

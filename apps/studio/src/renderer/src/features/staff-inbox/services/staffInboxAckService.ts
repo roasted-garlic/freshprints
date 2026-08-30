@@ -1,20 +1,24 @@
 import {
   deleteDoc,
   doc,
+  getDocs,
   onSnapshot,
-  query,
   serverTimestamp,
   setDoc,
-  where,
+  writeBatch,
   type DocumentData,
   type Unsubscribe,
 } from "firebase/firestore";
 
-import { buildStaffInboxAckDocId } from "@fresh-prints/shared/staffInbox/staffInboxAck.types";
+import {
+  buildStaffInboxAckDocId,
+  isLegacyStaffInboxAckDocId,
+} from "@fresh-prints/shared/staffInbox/staffInboxAck.types";
 import type { StaffInboxCompletedItem, StaffInboxItem } from "@fresh-prints/shared/staffInbox/staffInbox.types";
 import { runTracedWrite } from "@fresh-prints/shared/utils/firestoreUsageTrace";
 
 import { firestoreCollectionService } from "../../firebase/services/firestoreCollectionService";
+import { db } from "../../../config/firebase";
 import { mapFirestoreTimestamp } from "../../firebase/utils/firestoreTimestamp";
 import {
   clearLegacyStaffInboxAckLocalStorage,
@@ -37,6 +41,12 @@ function mapAckRecord(data: DocumentData): StaffInboxAckRecord | null {
     typeof data.occurredAtMillis === "number" && Number.isFinite(data.occurredAtMillis)
       ? data.occurredAtMillis
       : 0;
+  const acknowledgedByUserId =
+    typeof data.acknowledgedByUserId === "string" && data.acknowledgedByUserId.trim()
+      ? data.acknowledgedByUserId.trim()
+      : typeof data.userId === "string" && data.userId.trim()
+        ? data.userId.trim()
+        : undefined;
 
   return {
     itemId: data.itemId,
@@ -54,15 +64,26 @@ function mapAckRecord(data: DocumentData): StaffInboxAckRecord | null {
         : undefined,
     createdAtMillis: occurredAtMillis,
     acknowledgedAtMillis: acknowledgedAt?.toMillis() ?? Date.now(),
-    acknowledgedByUserId:
-      typeof data.acknowledgedByUserId === "string" && data.acknowledgedByUserId.trim()
-        ? data.acknowledgedByUserId.trim()
-        : undefined,
+    acknowledgedByUserId,
     acknowledgedByDisplayName:
       typeof data.acknowledgedByDisplayName === "string" && data.acknowledgedByDisplayName.trim()
         ? data.acknowledgedByDisplayName.trim()
         : undefined,
   };
+}
+
+function dedupeAckRecordsByItemId(records: StaffInboxAckRecord[]): StaffInboxAckRecord[] {
+  const byItemId = new Map<string, StaffInboxAckRecord>();
+
+  for (const record of records) {
+    const existing = byItemId.get(record.itemId);
+
+    if (!existing || record.acknowledgedAtMillis > existing.acknowledgedAtMillis) {
+      byItemId.set(record.itemId, record);
+    }
+  }
+
+  return [...byItemId.values()].sort((left, right) => right.acknowledgedAtMillis - left.acknowledgedAtMillis);
 }
 
 export function mapAckRecordsToCompletedItems(records: StaffInboxAckRecord[]): StaffInboxCompletedItem[] {
@@ -81,19 +102,15 @@ export function mapAckRecordsToCompletedItems(records: StaffInboxAckRecord[]): S
   }));
 }
 
+let sharedAckMigrationPromise: Promise<void> | null = null;
+
 export const staffInboxAckService = {
   subscribe(
-    userId: string,
     onChange: (records: StaffInboxAckRecord[]) => void,
     onError?: (message: string) => void,
   ): Unsubscribe {
-    const acksQuery = query(
-      firestoreCollectionService.getStaffInboxAcksCollection(),
-      where("userId", "==", userId),
-    );
-
     return onSnapshot(
-      acksQuery,
+      firestoreCollectionService.getStaffInboxAcksCollection(),
       (snapshot) => {
         const records: StaffInboxAckRecord[] = [];
 
@@ -105,8 +122,7 @@ export const staffInboxAckService = {
           }
         }
 
-        records.sort((left, right) => right.acknowledgedAtMillis - left.acknowledgedAtMillis);
-        onChange(records);
+        onChange(dedupeAckRecordsByItemId(records));
       },
       (error) => {
         onError?.(error.message);
@@ -122,7 +138,7 @@ export const staffInboxAckService = {
   ): Promise<void> {
     const ackRef = doc(
       firestoreCollectionService.getStaffInboxAcksCollection(),
-      buildStaffInboxAckDocId(userId, item.id),
+      buildStaffInboxAckDocId(item.id),
     );
     const displayName =
       typeof options?.displayName === "string" && options.displayName.trim()
@@ -133,7 +149,6 @@ export const staffInboxAckService = {
       "setDoc",
       () =>
         setDoc(ackRef, {
-          userId,
           itemId: item.id,
           kind: item.kind,
           title: item.title,
@@ -157,10 +172,10 @@ export const staffInboxAckService = {
     );
   },
 
-  async restore(userId: string, itemId: string): Promise<void> {
+  async restore(itemId: string): Promise<void> {
     const ackRef = doc(
       firestoreCollectionService.getStaffInboxAcksCollection(),
-      buildStaffInboxAckDocId(userId, itemId),
+      buildStaffInboxAckDocId(itemId),
     );
     await runTracedWrite("deleteDoc", () => deleteDoc(ackRef), {
       app: "studio",
@@ -170,8 +185,31 @@ export const staffInboxAckService = {
     });
   },
 
+  async deleteAck(itemId: string): Promise<void> {
+    await this.restore(itemId);
+  },
+
+  async deleteAcks(itemIds: string[]): Promise<void> {
+    if (itemIds.length === 0) {
+      return;
+    }
+
+    const batch = writeBatch(db);
+    for (const itemId of itemIds) {
+      batch.delete(
+        doc(firestoreCollectionService.getStaffInboxAcksCollection(), buildStaffInboxAckDocId(itemId)),
+      );
+    }
+
+    await runTracedWrite("writeBatch", () => batch.commit(), {
+      app: "studio",
+      collection: "staffInboxAcks",
+      documentPathPattern: "staffInboxAcks/{staffInboxAckId}",
+      source: "staffInboxAckService.deleteAcks",
+    });
+  },
+
   async pruneResolvedShowQueueFull(
-    userId: string,
     records: StaffInboxAckRecord[],
     fullShowIds: ReadonlySet<string>,
   ): Promise<void> {
@@ -184,7 +222,7 @@ export const staffInboxAckService = {
       return !showId || !fullShowIds.has(showId);
     });
 
-    await Promise.all(stale.map((record) => this.restore(userId, record.itemId)));
+    await Promise.all(stale.map((record) => this.restore(record.itemId)));
   },
 
   /**
@@ -214,5 +252,102 @@ export const staffInboxAckService = {
     );
 
     clearLegacyStaffInboxAckLocalStorage(userId);
+  },
+
+  /**
+   * Consolidate legacy per-user ack docs into shared item-id docs.
+   */
+  async migrateLegacyPerUserAcksToShared(): Promise<void> {
+    if (sharedAckMigrationPromise) {
+      return sharedAckMigrationPromise;
+    }
+
+    sharedAckMigrationPromise = (async () => {
+      const snapshot = await getDocs(firestoreCollectionService.getStaffInboxAcksCollection());
+      const grouped = new Map<string, { canonicalId: string; records: Array<{ docId: string; record: StaffInboxAckRecord }> }>();
+
+      for (const document of snapshot.docs) {
+        const mapped = mapAckRecord(document.data());
+
+        if (!mapped) {
+          continue;
+        }
+
+        const canonicalId = buildStaffInboxAckDocId(mapped.itemId);
+        const entry = grouped.get(mapped.itemId) ?? { canonicalId, records: [] };
+        entry.records.push({ docId: document.id, record: mapped });
+        grouped.set(mapped.itemId, entry);
+      }
+
+      for (const { canonicalId, records } of grouped.values()) {
+        const best = [...records].sort(
+          (left, right) => right.record.acknowledgedAtMillis - left.record.acknowledgedAtMillis,
+        )[0]?.record;
+
+        if (!best) {
+          continue;
+        }
+
+        const canonicalRef = doc(firestoreCollectionService.getStaffInboxAcksCollection(), canonicalId);
+        const hasCanonical = records.some((entry) => entry.docId === canonicalId);
+
+        if (!hasCanonical && best.acknowledgedByUserId) {
+          await runTracedWrite(
+            "setDoc",
+            () =>
+              setDoc(canonicalRef, {
+                itemId: best.itemId,
+                kind: best.kind,
+                title: best.title,
+                subtitle: best.subtitle,
+                ...(best.printRequestId ? { printRequestId: best.printRequestId } : {}),
+                ...(best.upcomingShowId ? { upcomingShowId: best.upcomingShowId } : {}),
+                ...(best.printRequestTab ? { printRequestTab: best.printRequestTab } : {}),
+                occurredAtMillis: best.createdAtMillis || best.acknowledgedAtMillis,
+                acknowledgedByUserId: best.acknowledgedByUserId,
+                ...(best.acknowledgedByDisplayName
+                  ? { acknowledgedByDisplayName: best.acknowledgedByDisplayName }
+                  : {}),
+                acknowledgedAt: serverTimestamp(),
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+              }),
+            {
+              app: "studio",
+              collection: "staffInboxAcks",
+              documentPathPattern: "staffInboxAcks/{staffInboxAckId}",
+              source: "staffInboxAckService.migrateLegacyPerUserAcksToShared",
+            },
+          );
+        }
+
+        const staleDocIds = records
+          .map((entry) => entry.docId)
+          .filter(
+            (docId) =>
+              docId !== canonicalId &&
+              isLegacyStaffInboxAckDocId(docId, records[0]?.record.itemId ?? ""),
+          );
+
+        await Promise.all(
+          staleDocIds.map((docId) =>
+            runTracedWrite(
+              "deleteDoc",
+              () => deleteDoc(doc(firestoreCollectionService.getStaffInboxAcksCollection(), docId)),
+              {
+                app: "studio",
+                collection: "staffInboxAcks",
+                documentPathPattern: "staffInboxAcks/{staffInboxAckId}",
+                source: "staffInboxAckService.migrateLegacyPerUserAcksToShared",
+              },
+            ),
+          ),
+        );
+      }
+    })().finally(() => {
+      sharedAckMigrationPromise = null;
+    });
+
+    return sharedAckMigrationPromise;
   },
 };

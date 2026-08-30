@@ -17,15 +17,20 @@ ZIP/folder import; PNG validation; trim + upscale (ADR-FP-080 ≤6× toward 12�
 Processing / Needs Review / Rejected tabs; suggestions panel; approve/reject/skip; re-run AI; keyboard shortcuts; settings-driven model + tag exclusions; staff Halftone toggle (human-only; AI never auto-enables). **Needs Review search** with shared normalization, AI-suggestion field match, and 500-design hydration batches.
 
 ### Print Requests (`/print-requests`)
-Internal + customer requests in **separate lists** (Customer Requests default; Internal Requests via `isInternal`, ADR-FP-140); list sections **grouped by primary upcoming show** (`+N more shows` badge; Unassigned last); item qty/size autosave; DPI quality feedback; **manual save ≥200 DPI and ≤22″** (approved-max is initial/processing only); duplicate same design for other sizes; Design Library selection mode adds **new** catalog designs only (existing items keep ID/size/quantity).
+Internal + customer requests in **separate lists** (Customer Requests default; Internal Requests via `isInternal`, ADR-FP-140); list sections **grouped by primary upcoming show** (`+N more shows` badge; Unassigned last); item qty/size autosave; DPI quality feedback; **manual save ≥200 DPI and ≤22″** (approved-max is initial/processing only); **Standard Size presets** modal (DEV — v1 defaults); duplicate same design for other sizes; Design Library selection mode adds **new** catalog designs only (existing items keep ID/size/quantity).
 **Convert to Internal Request** (callable, ADR-FP-141) under overflow ⋯; Customer primary action **Add to Show**; Internal primary action **Add to Internal Gangsheet**.
+**Planned (not shipped):** 11″ default width; 15″ import upscale target; staff legacy enhance from PR card.
 
 ### Show Queue (`/show-queue`)
-Upcoming/Past shows; capacity; attach requests; Working/Queued/Printing/Printed; Whatnot assisted
-import; zip export @ 300 DPI; gang sheet PNG via **Generate** menu:
-- **Standard** (efficiency nesting — default when `layoutMode` omitted; ADR-FP-143)
-- **Grouped by customer** (section headings + `-Continued` spillover; separate cache fingerprint)
-Standard and Grouped caches coexist. Start/Pause/Resume/Finish production timer; **Past + Printing Whatnot shows Finish automatically (or Mark Complete)** (ADR-FP-139); Internal Gang Sheet Mark Complete reconciles eligible internal requests to **Printed**; terminal request reconciliation and completed locking; calendar picker; **Portal add-to-show cutoff hours** setting (`portalQueueCutoffHoursBeforeStart`, ADR-FP-103). Manual gang-sheet builder deferred.
+Upcoming/Past shows; capacity; attach requests; Working triage **Active · Stale · Empty · All · Needs Re-queue** (rightmost); **NEEDS RE-QUEUE** badge; Whatnot assisted
+import; **DEV fixture shows** (`DEV-OVERRIDE`, `source: dev_fixture` — DEV-only, not Whatnot sync); zip export @ 300 DPI; gang sheet PNG via **Generate** menu (**three modes**, ADR-FP-143):
+- **Standard** — efficiency nesting (`layoutMode` omitted / `efficiency`; default)
+- **Grouped by Customer** — `customer_grouped_continuous`: customer section headings; multiple customers may share one physical sheet
+- **Sheet per Customer** — `grouped_by_customer`: one physical sheet set per customer (preserved legacy grouped behavior)
+Separate cache fingerprints per mode; Standard unchanged. Start/Pause/Resume/Finish production timer; **Past + Printing Whatnot shows Finish automatically (or Mark Complete)** (ADR-FP-139); **Needs Attention → Did Not Print**: primary **Move unprinted to another show**; secondary **Release only** → Needs Re-queue (ADR-FP-156); **Owner Edit Show** metadata (owner-only, scoped DEV enabler); Internal Gang Sheet Mark Complete reconciles eligible internal requests to **Printed**; terminal request reconciliation and completed locking; calendar picker; **Portal add-to-show cutoff hours** setting (`portalQueueCutoffHoursBeforeStart`, ADR-FP-103). Manual gang-sheet builder deferred.
+
+### Customer account (Portal)
+Account Settings → Profile: self-service **display name** and **username** with 30-day username cooldown (staff bypass); identity snapshots propagate to print requests and design issue reports (DEV — `portal-customer-username-change`).
 
 ### Customer Uploads (intake)
 Staff review of Portal customer artwork: Pending / Excluded tabs; Send to AI Review; exclude/restore; retry processing; surface library-permission declined (ADR-FP-074).
@@ -34,7 +39,7 @@ Staff review of Portal customer artwork: Pending / Excluded tabs; Send to AI Rev
 Assisted inbox with stage tabs, request details, audited start/cancel/reject/restore actions, proof staging, and customer-revision visibility. Etsy searches and Suggestions management remain separate tabs.
 
 ### Users / Settings / Dev
-Team users + customer records; AI enrichment settings; show queue settings; dashboard scaffold;
+Team users + customer records; **User Info modal** with Print Request History + Account Activity (WS4 DEV); **Transfer Username** (WS2); **Merge Accounts** (WS3); AI enrichment settings; show queue settings; dashboard scaffold;
 sidebar footer **Studio Updates** (desktop staff, including Helpers) is an application-level overlay;
 approved-tag pickers close after a suggestion is selected;
 **Brand logos** (owner upload Studio/Portal full+collapsed PNGs + display sizes — ADR-FP-114;
@@ -48,6 +53,7 @@ print-limit counters** cleanup for retired, unenforced Cap A documents.
 | Feature | Status |
 |---------|--------|
 | Customer register / login | ✅ Live — username field accepts mixed case; normalizes to lowercase; Whatnot guidance |
+| Account Settings profile | ✅ **DEV** — display name + username self-service; 30-day username cooldown (`portal-customer-username-change`) |
 | Auth return-to / deep-link | ✅ Live — return after login to public browse / show paths |
 | **Public browse (guest)** | ✅ Live — catalog/home without sign-in (ADR-FP-106) |
 | Guest auth overlay (gated routes) | ✅ Live — in-shell dimmed overlay; Sign in / Register / Browse designs |

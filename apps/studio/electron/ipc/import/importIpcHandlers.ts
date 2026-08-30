@@ -28,7 +28,7 @@ import { readBatchValidatedPngFileBytes } from "./readBatchValidatedPngFileBytes
 import { enrichReadResultWithDerivatives } from "./enrichReadResultWithDerivatives";
 import { mapReadBytesError, readSelectedPngFileBytes } from "./readSelectedPngFileBytes";
 import { validateReadPngFileBytesRequest } from "./validateReadPngFileBytesRequest";
-import { getSelectedPngPreview } from "./getSelectedPngPreview";
+import { getSelectedPngPreviewWithBackgroundHint } from "./getSelectedPngPreview";
 import { selectImportFolder } from "./selectImportFolder";
 import { selectImportZipFile } from "./selectImportZipFile";
 import { selectMultiplePngFiles } from "./selectMultiplePngFiles";
@@ -279,7 +279,7 @@ export function registerImportIpcHandlers(): void {
         return previewRequest;
       }
 
-      const preview = getSelectedPngPreview(previewRequest.filePath);
+      const preview = await getSelectedPngPreviewWithBackgroundHint(previewRequest.filePath);
 
       if (!preview) {
         return importIpcFailure(

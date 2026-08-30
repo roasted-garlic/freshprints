@@ -38,6 +38,10 @@ export interface PrintRequest {
   requestSequenceNumber?: number;
   customerUsernameSnapshot?: string;
   customerDisplayNameSnapshot?: string;
+  /** Write-once username at first identity propagation after creation. */
+  customerUsernameAtCreationSnapshot?: string;
+  /** Write-once display name at first identity propagation after creation. */
+  customerDisplayNameAtCreationSnapshot?: string;
   internalBaseName?: string;
   nameFormatVersion?: "legacy-v1" | "cr-ir-v1";
   notes?: string;
@@ -54,6 +58,11 @@ export interface PrintRequest {
   };
   /** Terminal closure reason when a request is closed without being printed. */
   closureKind?: PrintRequestClosureKind;
+  /** Set when release-only Did Not Print recovery left unfulfilled qty needing staff requeue. */
+  needsStaffRequeueAt?: Timestamp;
+  needsStaffRequeueSourceShowId?: string;
+  needsStaffRequeueSourceShowTitleSnapshot?: string;
+  needsStaffRequeueReleasedQuantity?: number;
   convertedToInternalRequestId?: string;
   convertedFromCustomerRequestId?: string;
   convertedAt?: Timestamp;
@@ -83,6 +92,8 @@ export interface PrintRequestItem {
   printWidthInches?: number;
   printHeightInches?: number;
   sizeLabel?: string;
+  /** When set, width was last applied from this Standard Size preset key. */
+  standardSizePresetKey?: string;
   sortOrder?: number;
   notes?: string;
   status: PrintRequestItemStatus;

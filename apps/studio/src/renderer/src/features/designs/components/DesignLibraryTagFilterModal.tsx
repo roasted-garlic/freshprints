@@ -18,6 +18,7 @@ import {
   studioAlgoliaCatalogSearchService,
   type StudioAlgoliaTagFacetOption,
 } from "../services/studioAlgoliaCatalogSearchService";
+import type { StudioAlgoliaSmartFilters } from "../services/studioAlgoliaSmartFilters";
 import { DesignLibraryModal } from "./DesignLibraryModal";
 
 interface DesignLibraryTagFilterModalProps {
@@ -33,6 +34,8 @@ interface DesignLibraryTagFilterModalProps {
   onApply: (selectedTags: string[]) => void;
   onClose: () => void;
   selectedTags: string[];
+  /** Applied Smart Filters (AND with tags) when Smart Filters flag is on. */
+  smartFilters?: StudioAlgoliaSmartFilters;
   /** When true, counts come from Algolia `tagFacetKeys` (complete ready scope). */
   useAlgoliaFacets?: boolean;
 }
@@ -45,6 +48,7 @@ export function DesignLibraryTagFilterModal({
   onApply,
   onClose,
   selectedTags,
+  smartFilters,
   useAlgoliaFacets = false,
 }: DesignLibraryTagFilterModalProps) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -91,6 +95,7 @@ export function DesignLibraryTagFilterModal({
         categoryId: algoliaFacetContext?.categoryId,
         search: algoliaFacetContext?.searchQuery ?? "",
         selectedTags: draftSelectedTags,
+        smartFilters,
       })
       .then((options) => {
         if (cancelled || generation !== requestGenerationRef.current) return;
@@ -119,6 +124,7 @@ export function DesignLibraryTagFilterModal({
     algoliaFacetContext?.searchQuery,
     draftSelectedTags,
     isOpen,
+    smartFilters,
     useAlgoliaFacets,
   ]);
 

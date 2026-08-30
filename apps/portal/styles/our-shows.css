@@ -278,6 +278,19 @@
   text-align: center;
 }
 
+.our-shows-count-disclaimer {
+  color: var(--color-text-tertiary);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  margin: var(--space-2) 0 0;
+  text-align: center;
+}
+
+.our-shows-intro .our-shows-count-disclaimer {
+  margin-top: var(--space-3);
+  max-width: 42rem;
+}
+
 .our-shows-picker-overlay {
   z-index: 60;
 }

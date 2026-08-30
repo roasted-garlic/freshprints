@@ -20,6 +20,11 @@ import type { PrintRequestAllocationTotals } from '@fresh-prints/shared/utils/sh
 import type { PrintRequestItemSummary } from '@fresh-prints/shared/utils/printRequestItemSummaries';
 import type { PortalCustomerShowSchedule } from '@fresh-prints/shared/utils/portalCustomerShowSchedule';
 import type { CurrentRequestAggregates } from '@fresh-prints/shared/utils/currentRequestAggregates';
+import {
+  filterLegacyContinuablePrintRequests,
+  filterPortalEditableContinuablePrintRequests,
+  selectPortalWorkingPrintRequest,
+} from '@fresh-prints/shared/utils/portalPrintRequestEditability';
 
 import { PortalStartPrintRequestModal } from '../../shared/components/PortalStartPrintRequestModal';
 import { useMyPrintRequests } from '../hooks/useMyPrintRequests';
@@ -42,7 +47,15 @@ interface PortalPrintRequestContextValue {
   currentRequestAggregates: CurrentRequestAggregates;
   /** True when authenticated customer has no working Firestore request yet. */
   isVirtualEmptyCurrentRequest: boolean;
+  /** All draft/editing requests for this customer (including legacy Studio drafts). */
   continuableRequests: PrintRequest[];
+  /** Draft/editing requests the Portal may mutate (portal_customer, non-internal). */
+  portalEditableContinuableRequests: PrintRequest[];
+  /** Continuable Studio/legacy requests that cannot be edited from Portal. */
+  legacyContinuableRequests: PrintRequest[];
+  /** Explicit working-request selection when multiple Portal-editable drafts exist. */
+  selectedWorkingRequestId: string | null;
+  setSelectedWorkingRequestId: (printRequestId: string | null) => void;
   createPrintRequest: (
     notes?: string,
     options?: { skipListReload?: boolean },
@@ -118,6 +131,8 @@ interface PortalPrintRequestContextValue {
 
 const PortalPrintRequestContext = createContext<PortalPrintRequestContextValue | null>(null);
 
+const SELECTED_WORKING_REQUEST_STORAGE_KEY = 'portal.selectedWorkingRequestId';
+
 export function PortalPrintRequestProvider({ children }: { children: ReactNode }) {
   const printRequests = useMyPrintRequests();
   const createPrintRequest = printRequests.createPrintRequest;
@@ -125,14 +140,65 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
   const [isClearingWorkingRequest, setIsClearingWorkingRequest] = useState(false);
   const [isEnsuringWorkingRequest, setIsEnsuringWorkingRequest] = useState(false);
   const [pendingWorkingRequestId, setPendingWorkingRequestId] = useState<string | null>(null);
+  const [selectedWorkingRequestId, setSelectedWorkingRequestIdState] = useState<string | null>(
+    () => {
+      if (typeof window === 'undefined') {
+        return null;
+      }
+      return window.sessionStorage.getItem(SELECTED_WORKING_REQUEST_STORAGE_KEY);
+    },
+  );
   /** In-flight create shared across all catalog/favorites add callers. */
   const ensureWorkingPromiseRef = useRef<Promise<string> | null>(null);
   /** Survives after create resolves until list reload exposes the working request. */
   const ensuredWorkingRequestIdRef = useRef<string | null>(null);
 
-  const workingRequest = printRequests.continuableRequests[0] ?? null;
+  const allContinuableRequests = printRequests.continuableRequests;
+  const portalEditableContinuableRequests = useMemo(
+    () => filterPortalEditableContinuablePrintRequests(allContinuableRequests),
+    [allContinuableRequests],
+  );
+  const legacyContinuableRequests = useMemo(
+    () => filterLegacyContinuablePrintRequests(allContinuableRequests),
+    [allContinuableRequests],
+  );
+
+  const setSelectedWorkingRequestId = useCallback((printRequestId: string | null) => {
+    setSelectedWorkingRequestIdState(printRequestId);
+    if (typeof window === 'undefined') {
+      return;
+    }
+    if (printRequestId) {
+      window.sessionStorage.setItem(SELECTED_WORKING_REQUEST_STORAGE_KEY, printRequestId);
+    } else {
+      window.sessionStorage.removeItem(SELECTED_WORKING_REQUEST_STORAGE_KEY);
+    }
+  }, []);
+
+  const workingRequest = useMemo(
+    () =>
+      selectPortalWorkingPrintRequest(
+        portalEditableContinuableRequests,
+        selectedWorkingRequestId,
+      ),
+    [portalEditableContinuableRequests, selectedWorkingRequestId],
+  );
+
+  useEffect(() => {
+    if (!selectedWorkingRequestId) {
+      return;
+    }
+
+    const stillValid = portalEditableContinuableRequests.some(
+      (request) => request.id === selectedWorkingRequestId,
+    );
+    if (!stillValid) {
+      setSelectedWorkingRequestId(null);
+    }
+  }, [portalEditableContinuableRequests, selectedWorkingRequestId, setSelectedWorkingRequestId]);
+
   const isVirtualEmptyCurrentRequest =
-    !printRequests.isLoading && printRequests.continuableRequests.length === 0;
+    !printRequests.isLoading && portalEditableContinuableRequests.length === 0;
 
   const clearEnsuredWorkingRequest = useCallback(() => {
     ensuredWorkingRequestIdRef.current = null;
@@ -224,7 +290,7 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
     isCreating,
     modalStep,
   } = usePrintRequestCreationFlow({
-    continuableRequests: printRequests.continuableRequests,
+    continuableRequests: portalEditableContinuableRequests,
     createPrintRequest: printRequests.createPrintRequest,
     ensureWorkingPrintRequestId,
   });
@@ -301,7 +367,11 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
       schedulesByRequestId: printRequests.schedulesByRequestId,
       currentRequestAggregates: aggregates,
       isVirtualEmptyCurrentRequest,
-      continuableRequests: printRequests.continuableRequests,
+      continuableRequests: allContinuableRequests,
+      portalEditableContinuableRequests,
+      legacyContinuableRequests,
+      selectedWorkingRequestId,
+      setSelectedWorkingRequestId,
       createPrintRequest: printRequests.createPrintRequest,
       ensureWorkingPrintRequestId,
       clearWorkingRequest,
@@ -359,7 +429,11 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
       ensureDesignSummaries,
       printRequests.allocationTotalsByRequestId,
       printRequests.schedulesByRequestId,
-      printRequests.continuableRequests,
+      allContinuableRequests,
+      portalEditableContinuableRequests,
+      legacyContinuableRequests,
+      selectedWorkingRequestId,
+      setSelectedWorkingRequestId,
       printRequests.createPrintRequest,
       printRequests.error,
       printRequests.isLoading,

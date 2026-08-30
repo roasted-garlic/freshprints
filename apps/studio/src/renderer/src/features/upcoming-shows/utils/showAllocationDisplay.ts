@@ -16,3 +16,22 @@ export function getShowAllocationStatusBadgeVariant(status: ShowAllocationStatus
       return "default";
   }
 }
+
+export function getShowAllocationStatusBadgeVariantForLabel(label: string) {
+  switch (label.toLowerCase()) {
+    case "done":
+      return "success";
+    case "printed":
+    case "in_progress":
+      return "info";
+    case "queued":
+      return "warning";
+    case "released":
+    case "canceled":
+      return "danger";
+    case "mixed":
+      return "warning";
+    default:
+      return "default";
+  }
+}

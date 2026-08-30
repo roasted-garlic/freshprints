@@ -50,6 +50,8 @@ function resolveCompanionSetStatusBadgeVariant(
 export function CompanionSetPanel({ design, onCompanionsChanged }: CompanionSetPanelProps) {
   const { user } = useAuth();
   const canEdit = permissionService.canEditDesigns(user);
+  /** Local anchor snapshot so the panel updates immediately after mutations, not only when the parent re-renders. */
+  const [anchorDesign, setAnchorDesign] = useState(design);
   const [neighbors, setNeighbors] = useState<Design[]>([]);
   const [isLoadingNeighbors, setIsLoadingNeighbors] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -61,7 +63,11 @@ export function CompanionSetPanel({ design, onCompanionsChanged }: CompanionSetP
   const [placementSavingId, setPlacementSavingId] = useState<string | null>(null);
   const [placementError, setPlacementError] = useState<string | null>(null);
 
-  const companionDesignIds = design.companionDesignIds ?? [];
+  useEffect(() => {
+    setAnchorDesign(design);
+  }, [design]);
+
+  const companionDesignIds = anchorDesign.companionDesignIds ?? [];
   const isLinked = companionDesignIds.length > 0;
 
   useEffect(() => {
@@ -76,7 +82,7 @@ export function CompanionSetPanel({ design, onCompanionsChanged }: CompanionSetP
     setLoadError(null);
 
     companionSetService
-      .listLinkedDesigns(design.id)
+      .listLinkedDesigns(anchorDesign.id)
       .then((loadedNeighbors) => {
         if (cancelled) {
           return;
@@ -100,20 +106,23 @@ export function CompanionSetPanel({ design, onCompanionsChanged }: CompanionSetP
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- companionDesignIds is derived from design.id each render; re-run on identity/content change only.
-  }, [design.id, companionDesignIds.join(",")]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- companionDesignIds is derived from anchorDesign.id each render; re-run on identity/content change only.
+  }, [anchorDesign.id, companionDesignIds.join(",")]);
 
   async function refreshAnchorDesign(): Promise<void> {
     if (!user) {
       return;
     }
 
-    const refreshed = await designService.getDesignById(user, design.id);
-    onCompanionsChanged?.(refreshed);
+    const refreshed = await designService.getDesignById(user, anchorDesign.id);
+    setAnchorDesign(refreshed);
+    if (onCompanionsChanged) {
+      await onCompanionsChanged(refreshed);
+    }
   }
 
   async function reloadNeighbors(): Promise<void> {
-    const reloaded = await companionSetService.listLinkedDesigns(design.id);
+    const reloaded = await companionSetService.listLinkedDesigns(anchorDesign.id);
     setNeighbors(reloaded);
   }
 
@@ -149,24 +158,34 @@ export function CompanionSetPanel({ design, onCompanionsChanged }: CompanionSetP
     if (!user) {
       return;
     }
-    void runCompanionAction(() => companionSetService.markNeedsCompanion(user, design.id));
+    void runCompanionAction(() => companionSetService.markNeedsCompanion(user, anchorDesign.id));
   }
 
   function handleClearNeedsCompanion(): void {
     if (!user) {
       return;
     }
-    void runCompanionAction(() => companionSetService.clearNeedsCompanionUnlinked(user, design.id));
+    void runCompanionAction(() =>
+      companionSetService.clearNeedsCompanionUnlinked(user, anchorDesign.id),
+    );
   }
 
-  function handleLinkSelected(selected: Design): void {
-    setIsLinkPickerOpen(false);
-
-    if (!user) {
+  async function handleLinkConfirmed(selected: Design[]): Promise<void> {
+    if (!user || selected.length === 0) {
       return;
     }
 
-    void runCompanionAction(() => companionSetService.linkDesign(user, design.id, selected.id));
+    const succeeded = await runCompanionAction(async () => {
+      await companionSetService.linkCompanionPeers(
+        user,
+        anchorDesign.id,
+        selected.map((target) => target.id),
+      );
+    });
+
+    if (succeeded) {
+      setIsLinkPickerOpen(false);
+    }
   }
 
   async function handleConfirmUnlink(): Promise<void> {
@@ -176,7 +195,7 @@ export function CompanionSetPanel({ design, onCompanionsChanged }: CompanionSetP
 
     const peerDesignId = unlinkTarget.id;
     const succeeded = await runCompanionAction(() =>
-      companionSetService.unlinkPair(user, design.id, peerDesignId),
+      companionSetService.unlinkPair(user, anchorDesign.id, peerDesignId),
     );
 
     if (succeeded) {
@@ -204,7 +223,8 @@ export function CompanionSetPanel({ design, onCompanionsChanged }: CompanionSetP
         artworkPlacement: nextPlacement,
       });
 
-      if (member.id === design.id) {
+      if (member.id === anchorDesign.id) {
+        setAnchorDesign(updated);
         onCompanionsChanged?.(updated);
       } else {
         setNeighbors((currentNeighbors) =>
@@ -220,9 +240,20 @@ export function CompanionSetPanel({ design, onCompanionsChanged }: CompanionSetP
     }
   }
 
-  const statusLabel = resolveCompanionSetStatusLabel(design);
+  async function handleMeshAllCompanions(): Promise<void> {
+    if (!user) {
+      return;
+    }
+
+    await runCompanionAction(() =>
+      companionSetService.meshAllCompanionNeighbors(user, anchorDesign.id),
+    );
+  }
+
+  const statusLabel = resolveCompanionSetStatusLabel(anchorDesign);
   const isLarge = neighbors.length > LARGE_COMPANION_NEIGHBOR_COUNT;
-  const members = isLinked ? [design, ...neighbors] : [];
+  const showCompanionMembers = isLinked || neighbors.length > 0;
+  const members = showCompanionMembers ? [anchorDesign, ...neighbors] : [];
   const { url: lightboxPreviewUrl } = useDesignDerivativeUrl(
     lightboxMember?.previewPath ?? lightboxMember?.thumbnailPath,
   );
@@ -242,11 +273,11 @@ export function CompanionSetPanel({ design, onCompanionsChanged }: CompanionSetP
         </p>
       ) : null}
 
-      {!isLoadingNeighbors && isLinked ? (
-        neighbors.length > 0 ? (
+      {!isLoadingNeighbors && showCompanionMembers ? (
+        neighbors.length > 0 || isLinked ? (
           <ul className="design-companion-member-list">
             {members.map((member) => {
-              const isAnchor = member.id === design.id;
+              const isAnchor = member.id === anchorDesign.id;
 
               return (
                 <li className="design-companion-member" key={member.id}>
@@ -369,6 +400,17 @@ export function CompanionSetPanel({ design, onCompanionsChanged }: CompanionSetP
             >
               Link companion
             </Button>
+
+            {isLinked && neighbors.length >= 2 ? (
+              <Button
+                disabled={isSubmitting}
+                onClick={() => void handleMeshAllCompanions()}
+                type="button"
+                variant="secondary"
+              >
+                Connect all companions
+              </Button>
+            ) : null}
           </div>
         </div>
       ) : null}
@@ -381,9 +423,14 @@ export function CompanionSetPanel({ design, onCompanionsChanged }: CompanionSetP
 
       {isLinkPickerOpen ? (
         <CompanionLinkPickerModal
-          currentDesign={design}
-          onClose={() => setIsLinkPickerOpen(false)}
-          onSelect={handleLinkSelected}
+          currentDesign={anchorDesign}
+          error={actionError}
+          isSubmitting={isSubmitting}
+          onClose={() => {
+            setActionError(null);
+            setIsLinkPickerOpen(false);
+          }}
+          onConfirm={handleLinkConfirmed}
         />
       ) : null}
 

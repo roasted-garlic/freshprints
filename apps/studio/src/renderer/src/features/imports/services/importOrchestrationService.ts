@@ -8,6 +8,15 @@ import {
   type ImportDerivativeStatus,
   type ImportFinalDesignStatus,
 } from "@fresh-prints/shared/types/import/importOrchestration.types";
+import type {
+  ImportArtworkBackgroundMode,
+  ImportHalftoneMode,
+} from "@fresh-prints/shared/types/design/artworkBackgroundSource.types";
+import {
+  buildImportDesignBackgroundAndHalftoneFields,
+  type ImportItemBackgroundOverride,
+  type ImportItemHalftoneOverride,
+} from "@fresh-prints/shared/utils/resolveImportArtworkBackgroundDecision";
 import { buildImportPrintSizeCreateFields } from "@fresh-prints/shared/utils/importPrintSizeMetadata";
 import { formatPrintSizeRejectedMessage } from "@fresh-prints/shared/utils/importPrintSizeMessages";
 import type { User } from "../../users/types/user.types";
@@ -35,6 +44,12 @@ export interface SinglePngUploadOutcome {
 export interface ImportValidatedPngFileOptions {
   jobId?: string;
   cancelToken?: UploadCancelToken;
+  importRelativePath?: string;
+  /** Session-scoped batch/single import controls (defaults: normal + auto). */
+  halftoneMode?: ImportHalftoneMode;
+  backgroundMode?: ImportArtworkBackgroundMode;
+  itemBackgroundOverride?: ImportItemBackgroundOverride;
+  itemHalftoneOverride?: ImportItemHalftoneOverride;
 }
 
 export interface ImportValidatedPngFileSuccess {
@@ -249,6 +264,15 @@ export async function importValidatedPngFile(
   let designAuthority;
 
   try {
+    const bgHalftoneFields = buildImportDesignBackgroundAndHalftoneFields({
+      backgroundMode: options?.backgroundMode ?? "auto",
+      halftoneMode: options?.halftoneMode ?? "normal",
+      autoSuggestsDark: readResult.data.suggestDarkArtworkBackground === true,
+      itemBackgroundOverride: options?.itemBackgroundOverride ?? "auto",
+      itemHalftoneOverride: options?.itemHalftoneOverride ?? "auto",
+      callerId: caller.id,
+    });
+
     designAuthority = await designService.createDesign(caller, {
       id: designId,
       title: importDesignTitleFromFileName(validationResult.fileName),
@@ -258,6 +282,9 @@ export async function importValidatedPngFile(
       thumbnailPath: "",
       previewPath: "",
       tags: [],
+      ...(options?.jobId ? { importBatchId: options.jobId } : {}),
+      importSourceFileName: validationResult.fileName,
+      ...(options?.importRelativePath ? { importRelativePath: options.importRelativePath } : {}),
       width: effectiveWidth,
       height: effectiveHeight,
       dpi: resolveImportDpi(validationResult),
@@ -268,6 +295,7 @@ export async function importValidatedPngFile(
       approvedMaxPrintWidthInches: validationResult.approvedMaxPrintWidthInches,
       approvedMaxPrintHeightInches: validationResult.approvedMaxPrintHeightInches,
       sizingPolicyVersion: validationResult.sizingPolicyVersion,
+      ...bgHalftoneFields,
       aiReviewStatus: "pending",
       aiReviewed: false,
       aiProcessed: false,
@@ -407,8 +435,20 @@ export const importOrchestrationService = {
     caller: User,
     validationResult: ValidateSelectedPngFileResult,
     cancelToken?: UploadCancelToken,
+    sessionOptions?: {
+      halftoneMode?: ImportHalftoneMode;
+      backgroundMode?: ImportArtworkBackgroundMode;
+      itemBackgroundOverride?: ImportItemBackgroundOverride;
+      itemHalftoneOverride?: ImportItemHalftoneOverride;
+    },
   ): Promise<SinglePngUploadOutcome> {
-    const outcome = await importValidatedPngFile(caller, validationResult, { cancelToken });
+    const outcome = await importValidatedPngFile(caller, validationResult, {
+      cancelToken,
+      halftoneMode: sessionOptions?.halftoneMode,
+      backgroundMode: sessionOptions?.backgroundMode,
+      itemBackgroundOverride: sessionOptions?.itemBackgroundOverride,
+      itemHalftoneOverride: sessionOptions?.itemHalftoneOverride,
+    });
 
     if (outcome.status === "failed") {
       throw new ImportOrchestrationError(outcome.message, outcome.cleanupWarning ?? null);

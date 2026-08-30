@@ -30,7 +30,7 @@ npx tsx --test apps/studio/src/renderer/src/features/print-requests/utils/*.test
 npx tsx --test functions/src/lib/customerUpload*.test.ts
 npx tsx --test functions/src/ai/*.test.ts
 npx tsx --test tests/firebase/printRequestCompletion.rules.test.ts
-npx tsx --test packages/shared/src/utils/operationalWipeTargets.test.ts packages/shared/src/utils/operationalWipeTargetsUiSafety.test.ts
+npx tsx --test apps/studio/src/renderer/src/features/users/utils/buildPrintRequestHistoryCard.test.ts apps/studio/src/renderer/src/features/users/utils/resolveLogicalCustomerIds.test.ts
 ```
 
 Canonical list: `docs/standards/TESTING.md`.
@@ -39,8 +39,13 @@ Canonical list: `docs/standards/TESTING.md`.
 
 Owner replies `PASS` / `FAIL` / `PASS WITH NOTES` on docs under `docs/workflow/reviews/`.
 
-Most recent completed checkpoint:
-`2026-07-29-studio-test-data-print-limit-wipe-audit-qa-checkpoint.md` — owner **PASS**
+Most recent completed checkpoints:
+- WS4 Owner DEV QA — **PASS** (2026-08-30)
+- Show Queue Did Not Print recovery — **PASS** (2026-08-30)
+
+## Firestore Rules test disposition (preserve)
+
+Show Queue scoped Rules suites passed where run. Full `npm run test:rules` is **not** claimed globally passing — unrelated suites have documented expression-budget failures.
 
 ## FreshForge test phase
 

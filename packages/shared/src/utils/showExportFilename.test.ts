@@ -52,6 +52,14 @@ describe("buildGangSheetBaseFileName", () => {
       "whatnot_07-06-2026_grouped-gang-sheet",
     );
   });
+
+  it("inserts grouped-continuous into the base name for customer_grouped_continuous layout", () => {
+    const date = new Date(2026, 6, 6, 14, 0);
+    assert.equal(
+      buildGangSheetBaseFileName(date, "customer_grouped_continuous"),
+      "whatnot_07-06-2026_grouped-continuous-gang-sheet",
+    );
+  });
 });
 
 describe("buildGangSheetFilename", () => {

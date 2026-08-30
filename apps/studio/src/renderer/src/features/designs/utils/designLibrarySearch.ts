@@ -330,6 +330,36 @@ export function buildCategoryFilterOptions(params: {
   return options;
 }
 
+/**
+ * Category options from Algolia `categoryId` facet IDs (managed search).
+ * Keeps selected category visible even when not in the facet set.
+ */
+export function buildCategoryFilterOptionsFromFacetIds(params: {
+  allOptionValue: string;
+  categories: Category[];
+  facetCategoryIds: readonly string[];
+  selectedCategoryId?: string;
+}): CategoryFilterOption[] {
+  const { allOptionValue, categories, facetCategoryIds, selectedCategoryId } = params;
+  const allowed = new Set(facetCategoryIds.map((id) => id.trim()).filter(Boolean));
+  const options: CategoryFilterOption[] = [{ label: "All categories", value: allOptionValue }];
+
+  for (const category of categories) {
+    if (!category.isActive) {
+      continue;
+    }
+    if (!allowed.has(category.id) && category.id !== selectedCategoryId) {
+      continue;
+    }
+    options.push({
+      label: category.name,
+      value: category.id,
+    });
+  }
+
+  return options;
+}
+
 export interface FacetedTag {
   tag: string;
   count: number;

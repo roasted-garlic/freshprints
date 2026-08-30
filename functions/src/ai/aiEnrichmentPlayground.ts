@@ -32,6 +32,7 @@ import {
   loadCachedApprovedTags,
   type AiEnrichmentReadDiagnosticContext,
 } from "./aiEnrichmentRuntimeCache";
+import { loadSmartProfileVocabSnapshot } from "./loadSmartProfileVocabSnapshot";
 import {
   buildSimpleCatalogEnrichmentSystemPrompt,
   buildSimpleCatalogEnrichmentUserPrompt,
@@ -228,12 +229,14 @@ export async function runAiEnrichmentPlayground(
     functionName: "runAiEnrichmentPlayground",
     invocationId: randomUUID(),
   };
-  const [preparedImage, categories, approvedTags, enrichmentSettings] = await Promise.all([
-    validatedRequest.imageBytes ? prepareAiAnalysisImage(validatedRequest.imageBytes) : null,
-    loadCachedActiveCategories(diagnosticContext),
-    loadCachedApprovedTags(diagnosticContext),
-    loadCachedAiEnrichmentSettings(diagnosticContext),
-  ]);
+  const [preparedImage, categories, approvedTags, enrichmentSettings, smartProfileVocabSnapshot] =
+    await Promise.all([
+      validatedRequest.imageBytes ? prepareAiAnalysisImage(validatedRequest.imageBytes) : null,
+      loadCachedActiveCategories(diagnosticContext),
+      loadCachedApprovedTags(diagnosticContext),
+      loadCachedAiEnrichmentSettings(diagnosticContext),
+      loadSmartProfileVocabSnapshot(),
+    ]);
 
   const expandedPrompt = buildSimpleCatalogEnrichmentUserPrompt({
     approvedCategories: categories.categories,
@@ -242,6 +245,7 @@ export async function runAiEnrichmentPlayground(
     approvedTagNames: approvedTags.map((tag) => tag.name),
     effectiveTagExclusions: enrichmentSettings.effectiveTagExclusions,
     promptTemplate: validatedRequest.prompt,
+    smartProfileVocab: smartProfileVocabSnapshot.lists,
   });
   const systemPrompt = buildSimpleCatalogEnrichmentSystemPrompt();
 

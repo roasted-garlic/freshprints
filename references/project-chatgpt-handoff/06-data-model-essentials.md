@@ -70,6 +70,36 @@ After staff promote → creates/links a `designs` doc and existing AI enqueue; r
 
 Link `printRequest` / `printRequestItem` quantities to an `upcomingShow`. Source-aware resolvers support catalog originals **and** customer-upload production paths for export/gang sheets.
 
+| Field | Notes |
+|-------|-------|
+| `requeuedFromAllocationId` | **Lineage only** — points to canceled source allocation after Did Not Print move; not current allocation authority |
+| `status` | Includes `canceled` for historical missed-show allocations |
+
+### Print Request staff re-queue markers (release-only path)
+
+| Field | Notes |
+|-------|-------|
+| `needsStaffRequeueAt` | Set when staff Release-only from Did Not Print |
+| `needsStaffRequeueSourceShowId` | Source missed show |
+| `needsStaffRequeueSourceShowTitleSnapshot` | Display snapshot |
+| `needsStaffRequeueReleasedQuantity` | Quantity released for staff triage |
+
+Clears on successful Add to Show / move recovery.
+
+### DEV fixture shows (DEV-only)
+
+| Field | Notes |
+|-------|-------|
+| `source` | `"dev_fixture"` for DEV-OVERRIDE shows |
+| `devFixtureSentinel` | Marks synthetic external identity; **not** Whatnot |
+
+### Customer merge (WS3)
+
+| Field | Notes |
+|-------|-------|
+| `mergedSourceCustomerIds` | Survivor customer doc — source customer ids absorbed by merge |
+| Tombstone fields | Source accounts closed; history query uses logical customer ids |
+
 ### Public show browse DTOs (ADR-FP-142)
 
 `listPortalPublicShows` / `listPortalShowCatalogDesigns` return catalog-only summaries (no `printRequestId`, `customerId`, or private upload identifiers).

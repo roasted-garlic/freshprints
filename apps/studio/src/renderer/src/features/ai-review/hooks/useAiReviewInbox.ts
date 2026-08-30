@@ -190,7 +190,7 @@ export function useAiReviewInbox(
       filtered = filterDesignsByAiReviewStatus(filtered, "pending");
     }
 
-    const sorted = sortInboxDesigns(filtered, filters.tab);
+    const sorted = sortInboxDesigns(filtered, filters.tab, filters.sortOrder);
 
     if (
       shouldPrependPinnedDesignToInbox({
@@ -213,7 +213,7 @@ export function useAiReviewInbox(
     }
 
     return sorted.map((design, index) => (index === liveIndex ? liveDesign : design));
-  }, [filters.tab, isPinnedNeedsReviewDesign, liveDesign, rawDesigns]);
+  }, [filters.sortOrder, filters.tab, isPinnedNeedsReviewDesign, liveDesign, rawDesigns]);
 
   const tabMatchedDesigns = useMemo(() => {
     let filtered = rawDesigns.filter((design) => designMatchesInboxTab(design, filters.tab));
@@ -237,8 +237,9 @@ export function useAiReviewInbox(
         generatedTaxonomy.tags,
       ),
       filters.tab,
+      filters.sortOrder,
     );
-  }, [designs, filters.searchQuery, filters.tab, generatedTaxonomy.tags, tabMatchedDesigns]);
+  }, [designs, filters.searchQuery, filters.sortOrder, filters.tab, generatedTaxonomy.tags, tabMatchedDesigns]);
   designsRef.current = visibleDesigns;
 
   const [draftForm, setDraftForm] = useState<AiReviewDraftForm | null>(null);
@@ -246,6 +247,7 @@ export function useAiReviewInbox(
   const [actionError, setActionError] = useState<string | null>(null);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [isSavingArtworkBackground, setIsSavingArtworkBackground] = useState(false);
+  const [isSavingHalftone, setIsSavingHalftone] = useState(false);
   const [isSendingBackToProcessing, setIsSendingBackToProcessing] = useState(false);
   /** Amendment 9 P0 scroll correction: bump only after successful approve/reject/archive. */
   const [reviewScrollNonce, setReviewScrollNonce] = useState(0);
@@ -542,6 +544,14 @@ export function useAiReviewInbox(
     return designDocumentSubscriptionService.subscribeToDesign(
       selectedDesignId,
       (design) => {
+        const previous = liveDesignRef.current;
+        if (
+          previous?.id === design.id &&
+          previous.updatedAt.toMillis() > design.updatedAt.toMillis()
+        ) {
+          return;
+        }
+
         liveDesignRef.current = design;
         setLiveDesign(design);
       },
@@ -1051,6 +1061,7 @@ export function useAiReviewInbox(
           selectedDesign.id,
           values,
         );
+        applyDesignPatch(updated.id, updated);
         liveDesignRef.current = updated;
         setLiveDesign(updated);
         setDraftForm((currentDraft) =>
@@ -1074,14 +1085,70 @@ export function useAiReviewInbox(
       } catch (saveError) {
         setActionError(
           saveError instanceof Error
-            ? saveError.message
+            ? saveError.message.includes("permission")
+              ? `${saveError.message} If this persists on AI Processing, redeploy firestore.rules to DEV (preview-control fast path).`
+              : saveError.message
             : "Unable to save artwork background.",
         );
       } finally {
         setIsSavingArtworkBackground(false);
       }
     },
-    [canSaveArtworkBackground, selectedDesign, user],
+    [applyDesignPatch, canSaveArtworkBackground, selectedDesign, user],
+  );
+
+  const saveHalftoneStaffDecision = useCallback(
+    async (markAsHalftone: boolean) => {
+      if (!user || !selectedDesign || !canSaveArtworkBackground) {
+        return;
+      }
+
+      setIsSavingHalftone(true);
+      setActionError(null);
+
+      const artworkBackground = {
+        artworkBackgroundPreset: markAsHalftone ? ("lightBlack" as const) : ("grey" as const),
+        artworkBackgroundCustomHex: "",
+      };
+
+      try {
+        const updated = await aiReviewInboxService.updateHalftoneFromInbox(
+          user,
+          selectedDesign,
+          markAsHalftone,
+        );
+        applyDesignPatch(updated.id, updated);
+        liveDesignRef.current = updated;
+        setLiveDesign(updated);
+        setDraftForm((currentDraft) =>
+          currentDraft
+            ? {
+                ...currentDraft,
+                markAsHalftone,
+                artworkBackgroundPreset: artworkBackground.artworkBackgroundPreset,
+                artworkBackgroundCustomHex: artworkBackground.artworkBackgroundCustomHex,
+              }
+            : currentDraft,
+        );
+        setBaselineForm((currentBaseline) =>
+          currentBaseline
+            ? {
+                ...currentBaseline,
+                markAsHalftone,
+                artworkBackgroundPreset: artworkBackground.artworkBackgroundPreset,
+                artworkBackgroundCustomHex: artworkBackground.artworkBackgroundCustomHex,
+              }
+            : currentBaseline,
+        );
+      } catch (saveError) {
+        setActionError(
+          saveError instanceof Error ? saveError.message : "Unable to update halftone.",
+        );
+      } finally {
+        setIsSavingHalftone(false);
+      }
+    },
+    [applyDesignPatch, canSaveArtworkBackground, selectedDesign, user],
   );
 
   const runInboxAction = useCallback(
@@ -1387,6 +1454,7 @@ export function useAiReviewInbox(
     hasMore,
     isActionLoading,
     isSavingArtworkBackground,
+    isSavingHalftone,
     isDraftDirty,
     isLoading,
     isLoadingMore,
@@ -1415,6 +1483,7 @@ export function useAiReviewInbox(
     approveSuggestedTag,
     ignoreSuggestedTag,
     saveArtworkBackground,
+    saveHalftoneStaffDecision,
     updateDraftField,
     processingQueue,
   };

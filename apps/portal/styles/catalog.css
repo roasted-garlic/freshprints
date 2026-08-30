@@ -1072,7 +1072,11 @@
   min-width: 0;
 }
 
-.design-library-open-filters-button {
+/*
+ * Mobile-only Filters sheet trigger. Must beat `.portal-button-sm` /
+ * `.portal-button-leading-icon { display: inline-flex }` (same 0,1,0 specificity later in cascade).
+ */
+.design-library-open-filters-button.portal-button-sm {
   display: none;
   flex-shrink: 0;
 }
@@ -2336,7 +2340,7 @@
     width: auto;
   }
 
-  .design-library-open-filters-button {
+  .design-library-open-filters-button.portal-button-sm {
     display: inline-flex;
     height: 2.25rem;
     justify-content: center;

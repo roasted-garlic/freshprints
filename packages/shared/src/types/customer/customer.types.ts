@@ -2,6 +2,11 @@ import type { Timestamp } from "firebase/firestore";
 
 import type { CustomerAccountDeletionRequestMirror } from "../account/portalAccountSettings.types";
 import type { CustomerAccountDeletionSource } from "../deletion/deletion.types";
+import type {
+  CustomerIdentitySnapshotPropagationState,
+  CustomerIdentityOperationLock,
+  CustomerUsernameHistoryEntry,
+} from "./customerIdentity.types";
 import type { CustomerSignupSource } from "./customer.enums";
 
 export interface Customer {
@@ -40,6 +45,24 @@ export interface Customer {
   deletedBy?: string;
   deletionSource?: CustomerAccountDeletionSource;
   usernameUpdatedAt?: Timestamp;
+  /** Support/audit only — append-only, capped server-side (max 10). Not exposed in Portal UI. */
+  usernameHistory?: CustomerUsernameHistoryEntry[];
+  /** Reversible owner disable — distinct from ADR-FP-115 tombstone (`isDeleted`). */
+  isDisabled?: boolean;
+  disabledAt?: Timestamp;
+  disabledBy?: string;
+  disabledReason?: string;
+  /** Short-lived lock during destructive identity operations (Admin SDK writes only). */
+  identityOperationLock?: CustomerIdentityOperationLock;
+  /** Set in WS3 when account is merged into another customer. */
+  isMerged?: boolean;
+  mergedIntoCustomerId?: string;
+  mergedAt?: Timestamp;
+  mergedBy?: string;
+  /** Source customer ids merged into this survivor (WS3). */
+  mergedSourceCustomerIds?: string[];
+  /** Resumable identity snapshot propagation state (Admin SDK writes only). */
+  identitySnapshotPropagation?: CustomerIdentitySnapshotPropagationState;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

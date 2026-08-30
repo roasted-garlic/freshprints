@@ -1,4 +1,4 @@
-export type UpcomingShowSource = "whatnot" | "staff_gang_sheet";
+export type UpcomingShowSource = "whatnot" | "staff_gang_sheet" | "dev_fixture";
 
 /** Whatnot schedule/source status — never mixed with production completion. */
 export type UpcomingShowStatus =

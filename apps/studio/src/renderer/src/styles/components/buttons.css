@@ -188,6 +188,17 @@
   color: var(--color-accent-primary);
 }
 
+.icon-button-success {
+  border-color: var(--color-success);
+  color: var(--color-success);
+}
+
+.icon-button-success:hover:not(:disabled) {
+  background: var(--color-success-soft);
+  border-color: var(--color-success);
+  color: var(--color-success-text);
+}
+
 .icon-button-muted,
 .icon-button-static {
   cursor: default;

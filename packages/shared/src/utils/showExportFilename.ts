@@ -27,11 +27,15 @@ export function buildExportZipFilename(scheduledStartAt: Date): string {
  */
 export function buildGangSheetBaseFileName(
   scheduledStartAt: Date,
-  layoutMode: "efficiency" | "grouped_by_customer" = "efficiency",
+  layoutMode: "efficiency" | "grouped_by_customer" | "customer_grouped_continuous" = "efficiency",
 ): string {
   const dateSegment = formatExportZipDateTime(scheduledStartAt);
   if (layoutMode === "grouped_by_customer") {
     return `whatnot_${dateSegment}_grouped-gang-sheet`;
+  }
+
+  if (layoutMode === "customer_grouped_continuous") {
+    return `whatnot_${dateSegment}_grouped-continuous-gang-sheet`;
   }
 
   return `whatnot_${dateSegment}_gang-sheet`;

@@ -40,6 +40,9 @@
   --color-warning-soft: #fffbeb;
   --color-warning-text: #92400e;
 
+  --color-custom: #7c3aed;
+  --color-custom-text: #6d28d9;
+
   /* Secondary button fill (idle darker surface → lighter on hover) */
   --color-button-secondary-bg: #e8ebf0;
   --color-button-secondary-bg-hover: #f3f4f6;
@@ -90,6 +93,9 @@
   --color-warning-hover: #f0c14d;
   --color-warning-soft: rgb(232 179 57 / 0.14);
   --color-warning-text: #fde68a;
+
+  --color-custom: #8b5cf6;
+  --color-custom-text: #c4b5fd;
 
   /* Secondary button fill (idle darker surface → lighter on hover) */
   --color-button-secondary-bg: #151a24;

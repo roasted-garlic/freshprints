@@ -6,6 +6,11 @@ import type {
   SuggestionAuthorMode,
   TagRerankMode,
 } from "@fresh-prints/shared/constants/aiEnrichment.constants";
+import {
+  resolveCatalogAutonomousLiveEnabled,
+  resolveCatalogWorkflowMode,
+  type CatalogWorkflowMode,
+} from "@fresh-prints/shared/constants/catalogWorkflowMode.constants";
 import { db } from "../../../config/firebase";
 import { callTracedFunction } from "../../../config/tracedCallable";
 import {
@@ -30,6 +35,8 @@ export interface AiEnrichmentSettingsSnapshot {
   tagRerankMode: TagRerankMode;
   suggestionAuthorMode: SuggestionAuthorMode;
   suggestedNewTagsPolicy: SuggestedNewTagsPolicy;
+  catalogWorkflowMode: CatalogWorkflowMode;
+  catalogAutonomousLiveEnabled: boolean;
   updatedBy?: string;
 }
 
@@ -126,6 +133,10 @@ function mapSettingsSnapshot(data: Record<string, unknown> | undefined): AiEnric
     tagRerankMode,
     suggestionAuthorMode,
     suggestedNewTagsPolicy,
+    catalogWorkflowMode: resolveCatalogWorkflowMode(data?.catalogWorkflowMode),
+    catalogAutonomousLiveEnabled: resolveCatalogAutonomousLiveEnabled(
+      data?.catalogAutonomousLiveEnabled,
+    ),
     updatedBy: typeof data?.updatedBy === "string" ? data.updatedBy : undefined,
   };
 }
@@ -154,7 +165,16 @@ export const aiEnrichmentSettingsService = {
     tagRerankMode: TagRerankMode;
     suggestionAuthorMode: SuggestionAuthorMode;
     suggestedNewTagsPolicy: SuggestedNewTagsPolicy;
-  }): Promise<AiEnrichmentSettingsSnapshot> {
+  }): Promise<{
+    visionModelId: AllowedVisionModelId;
+    promptTemplate: string;
+    tagRerankPromptTemplate: string;
+    additionalTagExclusions: string[];
+    effectiveTagExclusions: string[];
+    tagRerankMode: TagRerankMode;
+    suggestionAuthorMode: SuggestionAuthorMode;
+    suggestedNewTagsPolicy: SuggestedNewTagsPolicy;
+  }> {
     const response = await callTracedFunction<
       UpdateAiEnrichmentSettingsInput,
       UpdateAiEnrichmentSettingsResult

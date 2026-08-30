@@ -1,11 +1,14 @@
 import { Settings } from "lucide-react";
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useEffect, useMemo, useRef, useState } from "react";
+
+import { resolveAiReviewHalftoneStaffToggle } from "@fresh-prints/shared/utils/halftoneReviewState";
 
 import { Button } from "../../../shared/components/Button";
 import { DangerOverflowMenu } from "../../../shared/components/DangerOverflowMenu";
 import { LoadingSpinner } from "../../../shared/components/LoadingSpinner";
 import { Toggle } from "../../../shared/components/Toggle";
-import { ArtworkBackgroundPreviewControl } from "../../designs/components/ArtworkBackgroundPreviewControl";
+import { AiReviewPreviewBackgroundToggle } from "./AiReviewPreviewBackgroundToggle";
+import { AiReviewPreviewHalftoneToggle } from "./AiReviewPreviewHalftoneToggle";
 import type { ArtworkBackgroundFieldsValues } from "../../designs/components/ArtworkBackgroundFields";
 import { DesignPreviewLightbox } from "../../designs/components/DesignPreviewLightbox";
 import { DesignThumbnailPanel } from "../../designs/components/DesignThumbnailPanel";
@@ -24,6 +27,7 @@ import { AiReviewProcessingStatusSection } from "./AiReviewProcessingStatusSecti
 import { AiReviewRejectedStatusSection } from "./AiReviewRejectedStatusSection";
 import { AiReviewSuggestedTagsSection } from "./AiReviewSuggestedTagsSection";
 import { AiReviewSuggestionsSection } from "./AiReviewSuggestionsSection";
+import { AiReviewSmartProfileSection } from "./AiReviewSmartProfileSection";
 import { AiReviewWorkspaceEmpty } from "./AiReviewWorkspaceEmpty";
 
 interface AiReviewWorkspaceProps {
@@ -51,6 +55,7 @@ interface AiReviewWorkspaceProps {
   draftForm: AiReviewDraftForm | null;
   isActionLoading: boolean;
   isSavingArtworkBackground: boolean;
+  isSavingHalftone: boolean;
   isAutoQueueRunning: boolean;
   isQueueBusy: boolean;
   isOptimisticEnqueue?: boolean;
@@ -76,6 +81,7 @@ interface AiReviewWorkspaceProps {
   onRerunAiSuggestions: () => void;
   onRetryProcessing: () => void;
   onSaveArtworkBackground: (values: ArtworkBackgroundFieldsValues) => void;
+  onSaveHalftoneStaffDecision: (markAsHalftone: boolean) => void;
   onApplyProcessingSettings: (visionModelId: string) => void;
   onClearProcessingSettings: () => void;
   onStartAutoQueue: () => void;
@@ -116,6 +122,7 @@ export function AiReviewWorkspace({
   draftForm,
   isActionLoading,
   isSavingArtworkBackground,
+  isSavingHalftone,
   isAutoQueueRunning,
   isQueueBusy,
   isOptimisticEnqueue = false,
@@ -137,6 +144,7 @@ export function AiReviewWorkspace({
   onRerunAiSuggestions,
   onRetryProcessing,
   onSaveArtworkBackground,
+  onSaveHalftoneStaffDecision,
   onApplyProcessingSettings,
   onClearProcessingSettings,
   onStartAutoQueue,
@@ -152,6 +160,8 @@ export function AiReviewWorkspace({
 }: AiReviewWorkspaceProps) {
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [isProcessingSettingsOpen, setIsProcessingSettingsOpen] = useState(false);
+  const [pendingPreviewBackgroundValues, setPendingPreviewBackgroundValues] =
+    useState<ArtworkBackgroundFieldsValues | null>(null);
   const previewStageRef = useRef<HTMLDivElement>(null);
   const workspaceTopRef = useRef<HTMLDivElement>(null);
 
@@ -171,13 +181,33 @@ export function AiReviewWorkspace({
     return { artworkBackgroundPreset: "grey", artworkBackgroundCustomHex: "" };
   }, [draftForm, selectedDesign]);
 
+  useEffect(() => {
+    setPendingPreviewBackgroundValues(null);
+  }, [selectedDesign?.artworkBackgroundHex, selectedDesign?.id, selectedDesign?.updatedAt]);
+
+  const resolvedArtworkBackgroundValues =
+    pendingPreviewBackgroundValues ?? artworkBackgroundValues;
+
   const previewArtworkBackgroundHex = resolveFormArtworkBackgroundHex({
     title: "",
     description: "",
     categoryId: "",
     tagsInput: "",
-    ...artworkBackgroundValues,
+    ...resolvedArtworkBackgroundValues,
   });
+
+  function handlePreviewBackgroundSave(values: ArtworkBackgroundFieldsValues): void {
+    setPendingPreviewBackgroundValues(values);
+    onSaveArtworkBackground(values);
+  }
+
+  function handlePreviewHalftoneChange(markAsHalftone: boolean): void {
+    setPendingPreviewBackgroundValues({
+      artworkBackgroundPreset: markAsHalftone ? "lightBlack" : "grey",
+      artworkBackgroundCustomHex: "",
+    });
+    onSaveHalftoneStaffDecision(markAsHalftone);
+  }
 
   // After a successful approve/reject/archive, reveal the next design (or empty state) from the
   // top of the AI Review page scroll container — not window.
@@ -221,6 +251,14 @@ export function AiReviewWorkspace({
     !isSelectedDesignProcessing &&
     !isSelectedDerivativesIncomplete;
 
+  const previewHalftoneActive =
+    draftForm?.markAsHalftone ??
+    resolveAiReviewHalftoneStaffToggle({
+      staffDecision: selectedDesign.halftoneStaffDecision,
+      submitterResponse: selectedDesign.halftoneSubmitterResponse,
+    });
+  const isSavingPreviewControls = isSavingArtworkBackground || isSavingHalftone;
+
   return (
     <div className="ai-review-workspace" ref={workspaceTopRef}>
       <section aria-label="Design preview" className="ai-review-workspace-preview">
@@ -240,12 +278,18 @@ export function AiReviewWorkspace({
           </div>
         ) : null}
         {canSaveArtworkBackground ? (
-          <div className="ai-review-preview-bg-control">
-            <ArtworkBackgroundPreviewControl
+          <div className="ai-review-preview-controls">
+            <AiReviewPreviewBackgroundToggle
               disabled={isActionLoading}
-              isSaving={isSavingArtworkBackground}
-              onChange={onSaveArtworkBackground}
-              values={artworkBackgroundValues}
+              isSaving={isSavingPreviewControls}
+              onChange={handlePreviewBackgroundSave}
+              values={resolvedArtworkBackgroundValues}
+            />
+            <AiReviewPreviewHalftoneToggle
+              disabled={isActionLoading}
+              isActive={previewHalftoneActive}
+              isSaving={isSavingPreviewControls}
+              onChange={handlePreviewHalftoneChange}
             />
           </div>
         ) : null}
@@ -285,6 +329,20 @@ export function AiReviewWorkspace({
             />
           ) : null}
 
+          {showSuggestions ? (
+            <AiReviewSmartProfileSection
+              canEditCategory={Boolean(showEditableForm && canEdit)}
+              categoryOptions={categoryOptions}
+              design={selectedDesign}
+              onSelectCategoryId={
+                showEditableForm
+                  ? (categoryId) => onUpdateDraftField("categoryId", categoryId)
+                  : undefined
+              }
+              selectedCategoryId={draftForm?.categoryId ?? selectedDesign.categoryId ?? ""}
+            />
+          ) : null}
+
           {activeTab === "needs_review" ? (
             <AiReviewSuggestedTagsSection
               canApproveSuggestedTags={canApproveSuggestedTags}
@@ -305,15 +363,7 @@ export function AiReviewWorkspace({
               onChange={onUpdateDraftField}
               onHalftoneChange={(value) => {
                 onUpdateDraftField("markAsHalftone", value);
-                const artworkBackground = {
-                  artworkBackgroundPreset: value ? ("lightBlack" as const) : ("grey" as const),
-                  artworkBackgroundCustomHex: "",
-                };
-                onUpdateDraftField("artworkBackgroundPreset", artworkBackground.artworkBackgroundPreset);
-                onUpdateDraftField("artworkBackgroundCustomHex", artworkBackground.artworkBackgroundCustomHex);
-                if (canSaveArtworkBackground) {
-                  onSaveArtworkBackground(artworkBackground);
-                }
+                handlePreviewHalftoneChange(value);
               }}
               onInputFocusChange={onInputFocusChange}
             />

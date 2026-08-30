@@ -43,10 +43,10 @@ export function designsForShowHomeRailPresentation(rail: PortalShowHomeRail): Ca
   return rail.reversePresentationOrder ? [...rail.designs].reverse() : rail.designs;
 }
 
-export async function loadPortalNextShowRail(): Promise<PortalShowHomeRail | null> {
-  const { shows } = await portalShowDesignsService.listPublicShows();
-  const now = new Date();
-
+export async function buildPortalNextShowRailFromShows(
+  shows: readonly Awaited<ReturnType<typeof portalShowDesignsService.listPublicShows>>['shows'],
+  now = new Date(),
+): Promise<PortalShowHomeRail | null> {
   const nextShow = findNextUpcomingShowWithDesigns(shows, now);
   if (!nextShow) {
     return null;
@@ -70,10 +70,10 @@ export async function loadPortalNextShowRail(): Promise<PortalShowHomeRail | nul
   };
 }
 
-export async function loadPortalShowsThisWeekRail(): Promise<PortalShowHomeRail | null> {
-  const { shows } = await portalShowDesignsService.listPublicShows();
-  const now = new Date();
-
+export async function buildPortalShowsThisWeekRailFromShows(
+  shows: readonly Awaited<ReturnType<typeof portalShowDesignsService.listPublicShows>>['shows'],
+  now = new Date(),
+): Promise<PortalShowHomeRail | null> {
   const weekShows = findShowsThisWeekWithDesigns(shows, now);
   if (weekShows.length === 0) {
     return null;
@@ -91,6 +91,16 @@ export async function loadPortalShowsThisWeekRail(): Promise<PortalShowHomeRail 
     reversePresentationOrder: true,
     viewAllDiscover: 'showsThisWeek',
   };
+}
+
+export async function loadPortalNextShowRail(): Promise<PortalShowHomeRail | null> {
+  const { shows } = await portalShowDesignsService.listPublicShows();
+  return buildPortalNextShowRailFromShows(shows);
+}
+
+export async function loadPortalShowsThisWeekRail(): Promise<PortalShowHomeRail | null> {
+  const { shows } = await portalShowDesignsService.listPublicShows();
+  return buildPortalShowsThisWeekRailFromShows(shows);
 }
 
 export async function loadCatalogShowDesigns(input: {

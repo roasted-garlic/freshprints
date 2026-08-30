@@ -107,6 +107,7 @@ function shellHeaderConfigsEqual(a: ShellHeaderConfig, b: ShellHeaderConfig): bo
   return (
     a.title === b.title &&
     a.description === b.description &&
+    a.accessory === b.accessory &&
     actionsEqual(a.actions, b.actions) &&
     primaryActionEqual(a.primaryAction, b.primaryAction) &&
     searchEqual(a.search, b.search) &&
