@@ -26,10 +26,13 @@ import { CatalogThumbnailPanel } from '../../catalog/components/CatalogThumbnail
 import { useCatalogDerivativeUrl } from '../../catalog/hooks/useCatalogDerivativeUrl';
 import type { CatalogDesign } from '../../catalog/types/catalog.types';
 import { CopyIcon, TrashIcon } from '../../shared/components/PortalIcons';
+import { HoverBubbleTooltip } from '../../shared/components/HoverBubbleTooltip';
+import { PortalToggle } from '../../shared/components/PortalToggle';
 import { isOptimisticPrintRequestItemId } from '../utils/optimisticPrintRequestItemId';
 import { resolveArtworkEnhanceCallableErrorMessage } from '../utils/artworkEnhanceCallableErrorMessage';
 import { setPrintRequestItemArtworkEnhanceModeService } from '../services/setPrintRequestItemArtworkEnhanceModeService';
 import { shouldAcceptIncomingItemProp } from '../utils/itemPropSyncGuard';
+import { usePortalInteractiveUpscaleEnabled } from '../hooks/usePortalInteractiveUpscaleEnabled';
 import { resolveSavedDraftReconciliation } from './resolveSavedDraftReconciliation';
 import {
   resolvePrintRequestItemPersistenceHealth,
@@ -207,6 +210,7 @@ export function PortalPrintRequestItemCard({
   design,
   upload,
   item,
+  printRequestId,
   readOnly = false,
   catalogReuseDesign,
   isAddingToRequest = false,
@@ -223,6 +227,7 @@ export function PortalPrintRequestItemCard({
   onRegisterFlush,
   standardPrintSizesSettings,
 }: PortalPrintRequestItemCardProps) {
+  const portalInteractiveUpscaleEnabled = usePortalInteractiveUpscaleEnabled();
   const blockedStatusText = exhaustedStatusText;
   const isUploadItem =
     item.sourceType === 'customer_upload' || Boolean(item.customerUploadId);
@@ -293,11 +298,13 @@ export function PortalPrintRequestItemCard({
   const [isSaving, setIsSaving] = useState(false);
   const [isFailed, setIsFailed] = useState(false);
   const [isTogglingEnhance, setIsTogglingEnhance] = useState(false);
+  const [enhanceToggleMode, setEnhanceToggleMode] = useState<'baseline' | 'enhanced' | null>(null);
   const [enhanceError, setEnhanceError] = useState<string | null>(null);
   const [enhanceResultPixels, setEnhanceResultPixels] = useState<{
     width: number;
     height: number;
   } | null>(null);
+  const [hiddenDpiWarningKey, setHiddenDpiWarningKey] = useState<string | null>(null);
 
   useEffect(() => {
     const nextWidth = resolveInitialWidth(item);
@@ -351,6 +358,7 @@ export function PortalPrintRequestItemCard({
   const parsedPrintWidthInches = parsePositiveDecimalInput(printWidthInput);
   const parsedPrintHeightInches = parsePositiveDecimalInput(printHeightInput);
   const artworkEnhanceMode = resolveArtworkEnhanceMode(item.artworkEnhanceMode);
+  const displayedArtworkEnhanceMode = enhanceToggleMode ?? artworkEnhanceMode;
   const baselineAspectPixels = useMemo(() => resolveAspectPixels(design, upload), [design, upload]);
   const activeAspectPixels = useMemo(() => {
     if (!baselineAspectPixels) {
@@ -417,11 +425,7 @@ export function PortalPrintRequestItemCard({
   ]);
 
   const showUpscaleToggle =
-    upscaleToggleEligibility &&
-    (upscaleToggleEligibility.toggleEnabled ||
-      upscaleToggleEligibility.state === 'available' ||
-      upscaleToggleEligibility.state === 'generated' ||
-      upscaleToggleEligibility.state === 'maximum_resolution');
+    portalInteractiveUpscaleEnabled && Boolean(upscaleToggleEligibility);
 
   async function applyArtworkEnhanceMode(
     mode: 'baseline' | 'enhanced',
@@ -432,6 +436,7 @@ export function PortalPrintRequestItemCard({
     }
 
     setIsTogglingEnhance(true);
+    setEnhanceToggleMode(mode);
     setEnhanceError(null);
 
     try {
@@ -455,6 +460,7 @@ export function PortalPrintRequestItemCard({
       setEnhanceError(resolveArtworkEnhanceCallableErrorMessage(error));
     } finally {
       setIsTogglingEnhance(false);
+      setEnhanceToggleMode(null);
     }
   }
 
@@ -486,6 +492,29 @@ export function PortalPrintRequestItemCard({
   }, [aspectPixels, parsedPrintHeightInches, parsedPrintWidthInches, upload]);
 
   const isOptimisticItem = isOptimisticPrintRequestItemId(item.id);
+  const dpiWarningCalloutKey =
+    sizeAssessment?.warningMessage &&
+    parsedPrintWidthInches !== null &&
+    parsedPrintHeightInches !== null
+      ? `${item.id}:${sizeAssessment.warningMessage}:${parsedPrintWidthInches}:${parsedPrintHeightInches}`
+      : null;
+  const showDpiWarningCallout =
+    dpiWarningCalloutKey !== null && hiddenDpiWarningKey !== dpiWarningCalloutKey;
+  const dpiHoverBubble =
+    sizeAssessment?.warningMessage ?? sizeAssessment?.errorMessage ?? undefined;
+  const dpiHoverBubbleTone = sizeAssessment?.errorMessage ? 'error' : 'warning';
+
+  useEffect(() => {
+    if (!dpiWarningCalloutKey || hiddenDpiWarningKey === dpiWarningCalloutKey) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setHiddenDpiWarningKey(dpiWarningCalloutKey);
+    }, 5000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [dpiWarningCalloutKey, hiddenDpiWarningKey]);
   const canSave =
     !isOptimisticItem && (sizeAssessment?.canSave ?? true) && parsedQuantity !== null;
   /** Request submitted / non-editable — hide editors (catalog reuse path). */
@@ -813,7 +842,11 @@ export function PortalPrintRequestItemCard({
         className={`portal-request-item-editor-card${isOptimisticItem ? ' is-preparing' : ''}`}
       >
         <div className="portal-request-item-editor-header">
-          <div className="portal-request-item-editor-thumb-wrap">
+          <div
+            className={`portal-request-item-editor-thumb-wrap${
+              isTogglingEnhance ? ' is-enhancing' : ''
+            }`}
+          >
             <CatalogThumbnailPanel
               alt={`${title} preview`}
               artworkBackgroundHex={design?.artworkBackgroundHex}
@@ -821,10 +854,23 @@ export function PortalPrintRequestItemCard({
               className="design-card-thumbnail"
               contentVersion={design?.updatedAtMs}
               fallbackLabel="Preview unavailable"
-              interactive={Boolean(previewUrl)}
+              interactive={Boolean(previewUrl) && !isTogglingEnhance}
               loadingLabel="Loading preview"
               onImageClick={() => setIsLightboxOpen(true)}
             />
+            {isTogglingEnhance ? (
+              <div
+                aria-live="polite"
+                className={`portal-request-item-enhance-overlay${
+                  enhanceToggleMode === 'baseline' ? ' is-removing' : ''
+                }`}
+                role="status"
+              >
+                <span className="portal-request-item-enhance-overlay-label">
+                  {enhanceToggleMode === 'baseline' ? 'Removing upscale…' : 'Upscaling…'}
+                </span>
+              </div>
+            ) : null}
             <span
               className={`portal-request-item-source-badge${
                 isUploadItem
@@ -909,32 +955,36 @@ export function PortalPrintRequestItemCard({
             </button>
 
             <div
-              className={`portal-request-item-size-row${
+              className={`portal-request-item-metrics-grid${
                 showUpscaleToggle ? ' has-upscale' : ''
               }`}
             >
-              {showUpscaleToggle ? (
-                <label className="portal-request-item-field portal-request-item-upscale-field">
-                  <span className="portal-request-item-field-label">Improve resolution</span>
-                  <div
-                    className="portal-request-item-upscale-toggle-wrap"
-                    title={upscaleToggleEligibility?.helperText}
-                  >
-                    <input
-                      checked={artworkEnhanceMode === 'enhanced'}
-                      className="portal-request-item-upscale-toggle"
-                      disabled={isTogglingEnhance || !upscaleToggleEligibility?.toggleEnabled}
-                      name={`artworkEnhanceMode-${item.id}`}
-                      onChange={(event) => {
-                        void handleUpscaleToggle(event.target.checked ? 'enhanced' : 'baseline');
-                      }}
-                      type="checkbox"
-                    />
+              <div
+                className={`portal-request-item-size-row${
+                  showUpscaleToggle ? ' has-upscale' : ''
+                }`}
+              >
+                {showUpscaleToggle ? (
+                  <div className="portal-request-item-field portal-request-item-upscale-field">
+                    <span className="portal-request-item-field-label">Upscale</span>
+                    <div
+                      className="portal-request-item-upscale-toggle-wrap"
+                      title={upscaleToggleEligibility?.helperText}
+                    >
+                      <PortalToggle
+                        checked={displayedArtworkEnhanceMode === 'enhanced'}
+                        disabled={isTogglingEnhance || !upscaleToggleEligibility?.toggleEnabled}
+                        label="Upscale"
+                        name={`artworkEnhanceMode-${item.id}`}
+                        onChange={(checked) => {
+                          void handleUpscaleToggle(checked ? 'enhanced' : 'baseline');
+                        }}
+                      />
+                    </div>
                   </div>
-                </label>
-              ) : null}
+                ) : null}
 
-              <label className="portal-request-item-field">
+                <label className="portal-request-item-field">
                 <span className="portal-request-item-field-label">Width</span>
                 <div className="portal-request-item-size-input-wrap portal-card-input-shell">
                   <input
@@ -975,25 +1025,20 @@ export function PortalPrintRequestItemCard({
               </label>
             </div>
 
-            {enhanceError ? (
-              <p className="portal-request-item-field-callout is-error" role="alert">
-                {enhanceError}
-              </p>
-            ) : null}
-
             <div className="portal-request-item-meta-row">
               {sizeAssessment ? (
-                <span
-                  aria-label={`${sizeAssessment.qualityLabel}, ${sizeAssessment.effectiveDpi} DPI`}
-                  className={`portal-request-item-dpi-badge is-${sizeAssessment.qualityLevel}`}
-                  title={
-                    sizeAssessment.warningMessage ??
-                    sizeAssessment.errorMessage ??
-                    `${sizeAssessment.qualityLabel} · ${sizeAssessment.effectiveDpi} DPI`
-                  }
-                >
-                  {sizeAssessment.effectiveDpi} DPI
-                </span>
+                <HoverBubbleTooltip bubble={dpiHoverBubble} tone={dpiHoverBubbleTone}>
+                  <span
+                    aria-label={
+                      dpiHoverBubble ??
+                      `${sizeAssessment.qualityLabel}, ${sizeAssessment.effectiveDpi} DPI`
+                    }
+                    className={`portal-request-item-dpi-badge is-${sizeAssessment.qualityLevel}`}
+                    tabIndex={dpiHoverBubble ? 0 : undefined}
+                  >
+                    {sizeAssessment.effectiveDpi} DPI
+                  </span>
+                </HoverBubbleTooltip>
               ) : (
                 <span className="portal-request-item-dpi-badge is-unavailable">DPI unavailable</span>
               )}
@@ -1039,6 +1084,13 @@ export function PortalPrintRequestItemCard({
                 </button>
               </div>
             </div>
+            </div>
+
+            {enhanceError ? (
+              <p className="portal-request-item-field-callout is-error" role="alert">
+                {enhanceError}
+              </p>
+            ) : null}
 
             {sizeAssessment?.errorMessage ? (
               <p
@@ -1047,7 +1099,7 @@ export function PortalPrintRequestItemCard({
               >
                 {sizeAssessment.errorMessage}
               </p>
-            ) : sizeAssessment?.warningMessage ? (
+            ) : showDpiWarningCallout && sizeAssessment?.warningMessage ? (
               <p
                 className="portal-request-item-field-callout is-warning portal-request-item-field-error"
                 role="status"
@@ -1108,7 +1160,11 @@ export function PortalPrintRequestItemCard({
           isOpen={isStandardSizesModalOpen}
           onApply={({ printHeightInches, printWidthInches, standardSizePresetKey: nextPresetKey }) => {
             void (async () => {
-              if (nextPresetKey === null && artworkEnhanceMode === 'enhanced') {
+              if (
+                portalInteractiveUpscaleEnabled &&
+                nextPresetKey === null &&
+                artworkEnhanceMode === 'enhanced'
+              ) {
                 await applyArtworkEnhanceMode('baseline');
               }
 

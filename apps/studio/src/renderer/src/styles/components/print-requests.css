@@ -1011,6 +1011,17 @@
   display: flex;
   gap: var(--space-2);
   min-width: 0;
+  overflow: visible;
+}
+
+.print-requests-item-meta-row .hover-bubble-tooltip {
+  align-self: stretch;
+  z-index: 2;
+}
+
+.print-requests-item-meta-row .hover-bubble-tooltip:hover,
+.print-requests-item-meta-row .hover-bubble-tooltip:focus-within {
+  z-index: 5;
 }
 
 .print-requests-item-meta-row .print-requests-item-quality {

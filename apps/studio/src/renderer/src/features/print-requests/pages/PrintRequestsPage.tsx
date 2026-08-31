@@ -38,6 +38,7 @@ import { formatCustomerIdentityLabel } from "@fresh-prints/shared/utils/formatCu
 import { formatCustomerUsernameForDisplay } from "@fresh-prints/shared/utils/formatCustomerUsernameForDisplay";
 import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/showAllocation.types";
 import { formatInternalPrintRequestName } from "@fresh-prints/shared/utils/printRequestNaming";
+import { mergePrintRequestItemPreservingArtworkEnhanceFields } from "@fresh-prints/shared/utils/printRequestItemArtworkEnhanceFields";
 import { getPrintRequestOriginBadgeLabel } from "@fresh-prints/shared/utils/printRequestOrigin";
 import { evaluateCustomerPrintRequestConversionEligibility, isPrintRequestConvertedToInternal } from "@fresh-prints/shared/utils/printRequestConversion";
 import { getPrintRequestTabHelperCopy } from "@fresh-prints/shared/staffInbox/printRequestTabHelperCopy";
@@ -1240,7 +1241,9 @@ export function PrintRequestsPage() {
 
     setActionError(null);
     const updatedItem = await printRequestService.updatePrintRequestItem(user, item.id, input);
-    replaceRequestItem(updatedItem);
+    replaceRequestItem(
+      mergePrintRequestItemPreservingArtworkEnhanceFields(item, updatedItem),
+    );
     // Only this item's quantity changed — recompute the one affected row's summary locally
     // instead of a full-list reload (Wave C hydration remediation, 2026-07-25).
     if (visibleSelectedRequest) {

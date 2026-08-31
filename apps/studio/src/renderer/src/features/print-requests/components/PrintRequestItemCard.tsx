@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent, typ
 
 import { Button } from "../../../shared/components/Button";
 import { Card } from "../../../shared/components/Card";
+import { HoverBubbleTooltip } from "../../../shared/components/HoverBubbleTooltip";
 import { Toggle } from "../../../shared/components/Toggle";
 import { DesignPreviewLightbox } from "../../designs/components/DesignPreviewLightbox";
 import { DesignThumbnailPanel } from "../../designs/components/DesignThumbnailPanel";
@@ -224,6 +225,7 @@ export function PrintRequestItemCard({
     width: number;
     height: number;
   } | null>(null);
+  const [hiddenDpiWarningKey, setHiddenDpiWarningKey] = useState<string | null>(null);
   const applyArtworkEnhanceRef = useRef<
     (mode: "baseline" | "enhanced", confirmFirstEnhance?: boolean) => Promise<void>
   >(async () => {});
@@ -255,6 +257,7 @@ export function PrintRequestItemCard({
   const parsedPrintWidthInches = parsePositiveDecimalInput(printWidthInput);
   const parsedPrintHeightInches = parsePositiveDecimalInput(printHeightInput);
   const artworkEnhanceMode = resolveArtworkEnhanceMode(item.artworkEnhanceMode);
+  const displayedArtworkEnhanceMode = enhanceToggleMode ?? artworkEnhanceMode;
   const baselineAspectPixels = useMemo(() => resolveAspectPixels(design, upload), [design, upload]);
   const activeAspectPixels = useMemo(() => {
     if (!baselineAspectPixels) {
@@ -305,6 +308,30 @@ export function PrintRequestItemCard({
     ? `print-requests-item-quality is-${sizeAssessment.qualityLevel}`
     : "print-requests-item-quality is-unavailable";
   const canSave = (sizeAssessment?.canSave ?? true) && parsedQuantity !== null;
+
+  const dpiWarningCalloutKey =
+    sizeAssessment?.warningMessage &&
+    parsedPrintWidthInches !== null &&
+    parsedPrintHeightInches !== null
+      ? `${item.id}:${sizeAssessment.warningMessage}:${parsedPrintWidthInches}:${parsedPrintHeightInches}`
+      : null;
+  const showDpiWarningCallout =
+    dpiWarningCalloutKey !== null && hiddenDpiWarningKey !== dpiWarningCalloutKey;
+  const dpiHoverBubble =
+    sizeAssessment?.warningMessage ?? sizeAssessment?.errorMessage ?? undefined;
+  const dpiHoverBubbleTone = sizeAssessment?.errorMessage ? "error" : "warning";
+
+  useEffect(() => {
+    if (!dpiWarningCalloutKey || hiddenDpiWarningKey === dpiWarningCalloutKey) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setHiddenDpiWarningKey(dpiWarningCalloutKey);
+    }, 5000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [dpiWarningCalloutKey, hiddenDpiWarningKey]);
 
   const upscaleToggleEligibility = useMemo(() => {
     if (!baselineAspectPixels || readOnly) {
@@ -408,12 +435,7 @@ export function PrintRequestItemCard({
     await applyArtworkEnhanceMode(nextMode, confirmFirstEnhance);
   }
 
-  const showUpscaleToggle =
-    upscaleToggleEligibility &&
-    (upscaleToggleEligibility.toggleEnabled ||
-      upscaleToggleEligibility.state === "available" ||
-      upscaleToggleEligibility.state === "generated" ||
-      upscaleToggleEligibility.state === "maximum_resolution");
+  const showUpscaleToggle = Boolean(upscaleToggleEligibility);
 
   useEffect(() => {
     return () => {
@@ -749,7 +771,7 @@ export function PrintRequestItemCard({
                     title={upscaleToggleEligibility?.helperText}
                   >
                     <Toggle
-                      checked={artworkEnhanceMode === "enhanced"}
+                      checked={displayedArtworkEnhanceMode === "enhanced"}
                       disabled={
                         isTogglingEnhance || !upscaleToggleEligibility?.toggleEnabled
                       }
@@ -806,12 +828,18 @@ export function PrintRequestItemCard({
 
             <div className="print-requests-item-meta-row">
               {sizeAssessment ? (
-                <span
-                  aria-label={`${sizeAssessment.qualityLabel}, ${sizeAssessment.effectiveDpi} DPI`}
-                  className={qualityClass}
-                >
-                  {sizeAssessment.effectiveDpi} DPI
-                </span>
+                <HoverBubbleTooltip bubble={dpiHoverBubble} tone={dpiHoverBubbleTone}>
+                  <span
+                    aria-label={
+                      dpiHoverBubble ??
+                      `${sizeAssessment.qualityLabel}, ${sizeAssessment.effectiveDpi} DPI`
+                    }
+                    className={qualityClass}
+                    tabIndex={dpiHoverBubble ? 0 : undefined}
+                  >
+                    {sizeAssessment.effectiveDpi} DPI
+                  </span>
+                </HoverBubbleTooltip>
               ) : (
                 <span className={`${qualityClass} print-requests-item-quality-compact`}>DPI unavailable</span>
               )}
@@ -857,7 +885,7 @@ export function PrintRequestItemCard({
               <p className="auth-message auth-message-error print-requests-item-field-error" role="alert">
                 {sizeAssessment.errorMessage}
               </p>
-            ) : sizeAssessment?.warningMessage ? (
+            ) : showDpiWarningCallout && sizeAssessment?.warningMessage ? (
               <p className="auth-message auth-message-warning print-requests-item-field-error" role="status">
                 {sizeAssessment.warningMessage}
               </p>

@@ -5,6 +5,10 @@
 **Workstream:** WS-CONFIG-DEFAULT only  
 **Verdict:** **approved_with_notes**
 
+**DEV deploy (2026-08-30):** `fresh-prints-dev` — 4 Functions at implementation SHA `c2461238328873c281aea67b97e8a96f8c44d6de`. Record: `docs/workflow/reviews/2026-08-30-print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale-dev-deploy-record.md`
+
+**Assisted proof 15″ bundle:** **A — YES** (documented in deploy record).
+
 ---
 
 ## Scope verified

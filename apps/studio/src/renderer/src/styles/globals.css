@@ -13,6 +13,7 @@
 @import "./components/tag-chip-input.css";
 @import "./components/danger-overflow-menu.css";
 @import "./components/ai-review.css";
+@import "./components/hover-bubble-tooltip.css";
 @import "./components/print-requests.css";
 @import "./components/show-queue.css";
 @import "./components/gang-sheet-builder.css";

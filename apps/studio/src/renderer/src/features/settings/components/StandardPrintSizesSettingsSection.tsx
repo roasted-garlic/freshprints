@@ -1,7 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Minus, Plus } from "lucide-react";
 
-import { PRINT_INCHES_DECIMAL_PLACES } from "@fresh-prints/shared/constants/printSize.constants";
+import {
+  DEFAULT_PRINT_REQUEST_WIDTH_MAX_INCHES,
+  PRINT_INCHES_DECIMAL_PLACES,
+} from "@fresh-prints/shared/constants/printSize.constants";
 import {
   STANDARD_PRINT_SIZE_WIDTH_MAX_INCHES,
   STANDARD_PRINT_SIZE_WIDTH_MIN_INCHES,
@@ -20,6 +23,7 @@ import { Checkbox } from "../../../shared/components/Checkbox";
 import { useStandardPrintSizesSettings } from "../hooks/useStandardPrintSizesSettings";
 
 const STANDARD_PRINT_SIZE_WIDTH_STEP_INCHES = 0.25;
+const DEFAULT_PRINT_REQUEST_WIDTH_STEP_INCHES = 0.01;
 
 function roundPresetWidth(value: number): number {
   const factor = 10 ** PRINT_INCHES_DECIMAL_PLACES;
@@ -37,6 +41,50 @@ function clampPresetWidth(value: number): number {
 
 function stepPresetWidth(current: number, delta: number): number {
   return clampPresetWidth(current + delta);
+}
+
+function roundDefaultPrintRequestWidth(value: number): number {
+  const factor = 10 ** PRINT_INCHES_DECIMAL_PLACES;
+  return Math.round(value * factor) / factor;
+}
+
+function clampDefaultPrintRequestWidth(value: number): number {
+  return roundDefaultPrintRequestWidth(
+    Math.min(
+      DEFAULT_PRINT_REQUEST_WIDTH_MAX_INCHES,
+      Math.max(STANDARD_PRINT_SIZE_WIDTH_MIN_INCHES, value),
+    ),
+  );
+}
+
+function formatDefaultPrintRequestWidth(value: number): string {
+  return clampDefaultPrintRequestWidth(value).toFixed(PRINT_INCHES_DECIMAL_PLACES);
+}
+
+function isPartialDefaultPrintRequestWidthInput(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return false;
+  }
+  return /^\d*(\.\d{0,2})?$/.test(trimmed);
+}
+
+function parseDefaultPrintRequestWidthInput(value: string): number | null {
+  const trimmedValue = value.trim();
+  if (!trimmedValue || !isPartialDefaultPrintRequestWidthInput(trimmedValue)) {
+    return null;
+  }
+
+  const parsedValue = Number(trimmedValue);
+  if (!Number.isFinite(parsedValue) || parsedValue <= 0) {
+    return null;
+  }
+
+  return clampDefaultPrintRequestWidth(parsedValue);
+}
+
+function stepDefaultPrintRequestWidth(current: number, delta: number): number {
+  return clampDefaultPrintRequestWidth(current + delta);
 }
 
 function parsePresetWidthInput(value: string): number | null {
@@ -107,10 +155,23 @@ function updatePresetWidth(
 export function StandardPrintSizesSettingsSection() {
   const { error, isLoading, isSaving, save, saved, settings } = useStandardPrintSizesSettings();
   const [draft, setDraft] = useState<StandardPrintSizesSettings>(settings);
+  const [defaultWidthInput, setDefaultWidthInput] = useState(() =>
+    formatDefaultPrintRequestWidth(resolvePrintRequestDefaultWidthInches(settings)),
+  );
+  const defaultWidthInputFocusedRef = useRef(false);
 
   useEffect(() => {
     setDraft(cloneSettings(settings));
   }, [settings]);
+
+  useEffect(() => {
+    if (defaultWidthInputFocusedRef.current) {
+      return;
+    }
+    setDefaultWidthInput(
+      formatDefaultPrintRequestWidth(resolvePrintRequestDefaultWidthInches(draft)),
+    );
+  }, [draft]);
 
   if (isLoading) {
     return (
@@ -122,14 +183,25 @@ export function StandardPrintSizesSettingsSection() {
 
   return (
     <section aria-labelledby="standard-print-sizes-settings-title" className="card settings-section">
-      <header className="settings-section-header">
-        <h2 className="settings-section-title" id="standard-print-sizes-settings-title">
-          Standard Print Sizes
-        </h2>
-        <p className="settings-section-description">
-          Configure preset target widths for Print Request Standard Size pickers in Studio and
-          Portal. Heights are always calculated from each artwork&apos;s aspect ratio.
-        </p>
+      <header className="settings-section-header standard-print-sizes-settings-header">
+        <div className="standard-print-sizes-settings-header-copy">
+          <h2 className="settings-section-title" id="standard-print-sizes-settings-title">
+            Standard Print Sizes
+          </h2>
+          <p className="settings-section-description">
+            Configure preset target widths for Print Request Standard Size pickers in Studio and
+            Portal. Heights are always calculated from each artwork&apos;s aspect ratio.
+          </p>
+        </div>
+        <Button
+          className="standard-print-sizes-settings-header-action"
+          disabled={isSaving}
+          onClick={() => void save(draft)}
+          type="button"
+          variant="primary"
+        >
+          {isSaving ? "Saving…" : "Save"}
+        </Button>
       </header>
 
       <div className="settings-form-grid">
@@ -146,15 +218,17 @@ export function StandardPrintSizesSettingsSection() {
                 aria-label="Decrease default print request width"
                 className="print-requests-item-stepper-button"
                 disabled={isSaving}
-                onClick={() =>
+                onClick={() => {
+                  const nextWidth = stepDefaultPrintRequestWidth(
+                    resolvePrintRequestDefaultWidthInches(draft),
+                    -DEFAULT_PRINT_REQUEST_WIDTH_STEP_INCHES,
+                  );
                   setDraft((current) => ({
                     ...current,
-                    defaultPrintRequestWidthInches: stepPresetWidth(
-                      resolvePrintRequestDefaultWidthInches(current),
-                      -STANDARD_PRINT_SIZE_WIDTH_STEP_INCHES,
-                    ),
-                  }))
-                }
+                    defaultPrintRequestWidthInches: nextWidth,
+                  }));
+                  setDefaultWidthInput(formatDefaultPrintRequestWidth(nextWidth));
+                }}
                 type="button"
               >
                 <Minus aria-hidden size={14} strokeWidth={2} />
@@ -167,7 +241,12 @@ export function StandardPrintSizesSettingsSection() {
                 inputMode="decimal"
                 name="default-print-request-width"
                 onChange={(event) => {
-                  const nextWidth = parsePresetWidthInput(event.target.value);
+                  const nextText = event.target.value;
+                  if (!isPartialDefaultPrintRequestWidthInput(nextText)) {
+                    return;
+                  }
+                  setDefaultWidthInput(nextText);
+                  const nextWidth = parseDefaultPrintRequestWidthInput(nextText);
                   if (nextWidth === null) {
                     return;
                   }
@@ -176,23 +255,39 @@ export function StandardPrintSizesSettingsSection() {
                     defaultPrintRequestWidthInches: nextWidth,
                   }));
                 }}
-                onFocus={(event) => event.currentTarget.select()}
+                onBlur={() => {
+                  defaultWidthInputFocusedRef.current = false;
+                  const parsed = parseDefaultPrintRequestWidthInput(defaultWidthInput);
+                  const resolved = parsed ?? resolvePrintRequestDefaultWidthInches(draft);
+                  const clamped = clampDefaultPrintRequestWidth(resolved);
+                  setDraft((current) => ({
+                    ...current,
+                    defaultPrintRequestWidthInches: clamped,
+                  }));
+                  setDefaultWidthInput(formatDefaultPrintRequestWidth(clamped));
+                }}
+                onFocus={(event) => {
+                  defaultWidthInputFocusedRef.current = true;
+                  event.currentTarget.select();
+                }}
                 type="text"
-                value={resolvePrintRequestDefaultWidthInches(draft)}
+                value={defaultWidthInput}
               />
               <button
                 aria-label="Increase default print request width"
                 className="print-requests-item-stepper-button"
                 disabled={isSaving}
-                onClick={() =>
+                onClick={() => {
+                  const nextWidth = stepDefaultPrintRequestWidth(
+                    resolvePrintRequestDefaultWidthInches(draft),
+                    DEFAULT_PRINT_REQUEST_WIDTH_STEP_INCHES,
+                  );
                   setDraft((current) => ({
                     ...current,
-                    defaultPrintRequestWidthInches: stepPresetWidth(
-                      resolvePrintRequestDefaultWidthInches(current),
-                      STANDARD_PRINT_SIZE_WIDTH_STEP_INCHES,
-                    ),
-                  }))
-                }
+                    defaultPrintRequestWidthInches: nextWidth,
+                  }));
+                  setDefaultWidthInput(formatDefaultPrintRequestWidth(nextWidth));
+                }}
                 type="button"
               >
                 <Plus aria-hidden size={14} strokeWidth={2} />
@@ -200,7 +295,9 @@ export function StandardPrintSizesSettingsSection() {
             </div>
           </label>
           <p className="settings-section-description">
-            Fallback when unset: {STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES} inches.
+            Valid range: {STANDARD_PRINT_SIZE_WIDTH_MIN_INCHES}–{DEFAULT_PRINT_REQUEST_WIDTH_MAX_INCHES}{" "}
+            inches (two decimal places). Fallback when unset:{" "}
+            {STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES.toFixed(PRINT_INCHES_DECIMAL_PLACES)} inches.
           </p>
         </fieldset>
 

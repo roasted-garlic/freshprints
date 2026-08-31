@@ -1,5 +1,5 @@
 import { MAX_STANDARD_PRINT_REQUEST_SIZE_INCHES } from "../../utils/printRequestItemSizing";
-import { PRINT_INCHES_DECIMAL_PLACES } from "../printSize.constants";
+import { DEFAULT_PRINT_REQUEST_WIDTH_MAX_INCHES, PRINT_INCHES_DECIMAL_PLACES } from "../printSize.constants";
 
 export const STANDARD_PRINT_SIZES_SETTINGS_DOC_ID = "standardPrintSizes";
 
@@ -446,7 +446,13 @@ function isValidPresetWidth(value: unknown): value is number {
 }
 
 export function isValidDefaultPrintRequestWidthInches(value: unknown): value is number {
-  return isValidPresetWidth(value) && value > 0;
+  return (
+    typeof value === "number" &&
+    Number.isFinite(value) &&
+    value > 0 &&
+    value >= STANDARD_PRINT_SIZE_WIDTH_MIN_INCHES &&
+    value <= DEFAULT_PRINT_REQUEST_WIDTH_MAX_INCHES
+  );
 }
 
 function resolvePreset(raw: unknown, fallback: StandardPrintSizePreset): StandardPrintSizePreset {

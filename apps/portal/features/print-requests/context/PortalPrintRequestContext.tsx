@@ -100,6 +100,8 @@ interface PortalPrintRequestContextValue {
   ensureDesignSummaries: (designIds: string[]) => Promise<void>;
   /** Empty Current Request items; keeps the same open draft/editing request. */
   clearWorkingRequest: () => Promise<void>;
+  /** Empty items on any open draft/editing request (detail page, continuable requests). */
+  clearPrintRequestItems: (printRequestId: string) => Promise<void>;
   isClearingWorkingRequest: boolean;
   /** Shared working-request limit for disable gates and situational errors. */
   workingRequestLimit: PortalWorkingRequestLimitState;
@@ -327,38 +329,51 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
     setIsCurrentRequestDrawerOpen(false);
   }, []);
 
+  const clearPrintRequestItems = useCallback(
+    async (printRequestId: string) => {
+      const clearedRequestId = printRequestId.trim();
+      if (!clearedRequestId || isClearingWorkingRequest) {
+        return;
+      }
+
+      setIsClearingWorkingRequest(true);
+      try {
+        const result = await portalPrintRequestService.clearWorkingPrintRequest(clearedRequestId);
+        // Keep ensure cache + pending id so next Add reuses this request during list lag.
+        // Do not call resetWorkingCart() — that clears the id (queue-to-show only).
+        ensuredWorkingRequestIdRef.current = clearedRequestId;
+        setPendingWorkingRequestId(clearedRequestId);
+        if (workingRequest?.id === clearedRequestId) {
+          // Post-clear state is fully known from the callable: reconcile locally with zero refetch
+          // reads, and invalidate any pre-clear in-flight item load so a late resolve cannot
+          // resurrect the cleared rows (owner live-test evidence: cart/detail stayed full until a
+          // browser refresh — the 30s read cache had been serving the pre-clear items back to the
+          // silent reloads this block previously awaited).
+          discardPendingWorkingItemLoads();
+          patchWorkingItems([]);
+        }
+        reconcileClearedRequest(clearedRequestId, result.status);
+      } finally {
+        setIsClearingWorkingRequest(false);
+      }
+    },
+    [
+      discardPendingWorkingItemLoads,
+      isClearingWorkingRequest,
+      patchWorkingItems,
+      reconcileClearedRequest,
+      workingRequest?.id,
+    ],
+  );
+
   const clearWorkingRequest = useCallback(async () => {
-    if (!workingRequest || isClearingWorkingRequest) {
+    if (!workingRequest) {
       return;
     }
 
-    const clearedRequestId = workingRequest.id;
-    setIsClearingWorkingRequest(true);
-    try {
-      const result = await portalPrintRequestService.clearWorkingPrintRequest(clearedRequestId);
-      // Keep ensure cache + pending id so next Add reuses this request during list lag.
-      // Do not call resetWorkingCart() — that clears the id (queue-to-show only).
-      ensuredWorkingRequestIdRef.current = clearedRequestId;
-      setPendingWorkingRequestId(clearedRequestId);
-      // Post-clear state is fully known from the callable: reconcile locally with zero refetch
-      // reads, and invalidate any pre-clear in-flight item load so a late resolve cannot
-      // resurrect the cleared rows (owner live-test evidence: cart/detail stayed full until a
-      // browser refresh — the 30s read cache had been serving the pre-clear items back to the
-      // silent reloads this block previously awaited).
-      discardPendingWorkingItemLoads();
-      patchWorkingItems([]);
-      reconcileClearedRequest(clearedRequestId, result.status);
-      setIsCurrentRequestDrawerOpen(false);
-    } finally {
-      setIsClearingWorkingRequest(false);
-    }
-  }, [
-    discardPendingWorkingItemLoads,
-    isClearingWorkingRequest,
-    patchWorkingItems,
-    reconcileClearedRequest,
-    workingRequest,
-  ]);
+    await clearPrintRequestItems(workingRequest.id);
+    setIsCurrentRequestDrawerOpen(false);
+  }, [clearPrintRequestItems, workingRequest]);
 
   const value: PortalPrintRequestContextValue = useMemo(
     () => ({
@@ -375,6 +390,7 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
       createPrintRequest: printRequests.createPrintRequest,
       ensureWorkingPrintRequestId,
       clearWorkingRequest,
+      clearPrintRequestItems,
       isClearingWorkingRequest,
       isEnsuringWorkingRequest,
       pendingWorkingRequestId,
@@ -410,6 +426,7 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
       aggregates,
       beginPendingItemRemovals,
       clearWorkingRequest,
+      clearPrintRequestItems,
       closeCurrentRequestDrawer,
       designSummaries,
       endPendingItemRemovals,

@@ -6,6 +6,7 @@ import { loadPortalGlobalSocialMeta } from '../features/brand/portalGlobalSocial
 import { resolvePortalAnalyticsConfig } from '../features/analytics/services/portalAnalyticsConfig'
 import { Providers } from './providers'
 import './globals.css'
+import '../styles/hover-bubble-tooltip.css'
 import '../styles/catalog.css'
 import '../styles/requests.css'
 import '../styles/customer-uploads.css'

@@ -17,6 +17,7 @@ WS-TOGGLE replaces the destructive one-way Studio enhance path with a per-item *
 | 1 | No destructive baseline replacement | **Pass** — writes `*.interactive.png` siblings |
 | 2 | One derivative per lineage | **Pass** — `interactiveEnhanceGeneratedAt` gate |
 | 3 | Repeat ON reuses | **Pass** — selection-only after derivative exists; no regeneration on larger size |
+| 3b | Size edit preserves enhanced mode | **Pass** — Studio mapper + merge fix (2026-08-31) |
 | 4 | OFF restores baseline + pre-enhance size | **Pass** — with 200 DPI floor |
 | 5 | Native cumulative ≤6× | **Pass** — `resolveInteractiveUpscaleCapacity` |
 | 6 | Request-driven target | **Pass** — `resolveInteractiveEnhanceTargetPixels` |
@@ -42,6 +43,8 @@ WS-TOGGLE replaces the destructive one-way Studio enhance path with a per-item *
 | No auto-baseline / no “not needed” when derivative exists | **Implemented** |
 | Mode switch preserves print inches | **Implemented** |
 | Portal Improve resolution parity | **Implemented** |
+
+**Binding statement:** Once `artworkEnhanceMode` is `enhanced`, ordinary Print Request size changes preserve enhanced mode. Only explicit user mode selection or Reset to Default may return the item to baseline.
 
 **Superseded policy (removed):** “Regenerate when existing enhanced file is insufficient for larger print size.”
 

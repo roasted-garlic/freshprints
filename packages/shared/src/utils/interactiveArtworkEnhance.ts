@@ -286,16 +286,24 @@ export function resolveInteractiveUpscaleToggleEligibility(
 ): InteractiveUpscaleToggleEligibility {
   const capacity = resolveInteractiveUpscaleCapacity(input.asset);
   const mode = resolveArtworkEnhanceMode(input.artworkEnhanceMode);
+  const needsUpscaleAtPrintSize = isInteractiveUpscaleGenerationOfferedAtPrintSize(
+    capacity.baselineWidthPx,
+    capacity.baselineHeightPx,
+    input.printWidthInches,
+    input.printHeightInches,
+  );
 
-  // STATE B / C — derivative exists: selection only, never generation policy.
+  // STATE B / C — derivative exists: selection only, never regeneration policy.
   if (capacity.hasInteractiveDerivative) {
+    const toggleEnabled = needsUpscaleAtPrintSize || mode === "enhanced";
     return {
       state: "generated",
-      toggleEnabled: true,
-      helperText:
-        mode === "enhanced"
+      toggleEnabled,
+      helperText: toggleEnabled
+        ? mode === "enhanced"
           ? undefined
-          : "Turn on to use the enhanced resolution for this item.",
+          : "Turn on to use the enhanced resolution for this item."
+        : "Resolution is already sufficient for this print size",
       capacity,
     };
   }
@@ -310,14 +318,7 @@ export function resolveInteractiveUpscaleToggleEligibility(
     };
   }
 
-  const offerFirstGeneration = isInteractiveUpscaleGenerationOfferedAtPrintSize(
-    capacity.baselineWidthPx,
-    capacity.baselineHeightPx,
-    input.printWidthInches,
-    input.printHeightInches,
-  );
-
-  if (!offerFirstGeneration) {
+  if (!needsUpscaleAtPrintSize) {
     return {
       state: "sufficient_capacity_remains",
       toggleEnabled: false,

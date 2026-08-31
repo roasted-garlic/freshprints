@@ -745,9 +745,24 @@
   background: color-mix(in srgb, var(--color-warning) 18%, transparent);
 }
 
+.import-validation-warnings-trigger-info {
+  background: color-mix(in srgb, var(--color-accent-primary) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent-primary) 32%, var(--color-border));
+  color: var(--color-accent-primary);
+}
+
+.import-validation-warnings-trigger-info:hover {
+  background: color-mix(in srgb, var(--color-accent-primary) 18%, transparent);
+}
+
 .import-validation-warnings-trigger-count {
   min-width: 0.65rem;
   text-align: center;
+}
+
+.import-validation-warnings-modal {
+  max-width: min(calc(100vw - var(--space-6) - var(--space-6)), 44rem);
+  width: 100%;
 }
 
 .import-validation-warnings-modal-list {

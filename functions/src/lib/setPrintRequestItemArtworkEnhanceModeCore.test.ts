@@ -6,6 +6,7 @@ import {
   parseSetPrintRequestItemArtworkEnhanceModeRequest,
   resolveBaselineRestorePrintSize,
 } from "./setPrintRequestItemArtworkEnhanceModeCore";
+import { invalidArgument } from "./errors";
 import { hasInteractiveArtworkDerivative } from "../../../packages/shared/src/utils/interactiveArtworkEnhance";
 
 describe("setPrintRequestItemArtworkEnhanceModeCore", () => {
@@ -50,6 +51,13 @@ describe("setPrintRequestItemArtworkEnhanceModeCore", () => {
         true,
       );
       assert.equal(isStaffOnlyAuthError(new Error("You do not own this print request.")), false);
+    });
+
+    it("detects staff-only auth failures on HttpsError", () => {
+      assert.equal(
+        isStaffOnlyAuthError(invalidArgument("Only staff accounts can perform this action.")),
+        true,
+      );
     });
   });
 

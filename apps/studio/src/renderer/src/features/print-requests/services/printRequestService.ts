@@ -30,6 +30,9 @@ import {
   traceFirestoreOneShotStart,
 } from "@fresh-prints/shared/utils/firestoreUsageTrace";
 
+import {
+  readPrintRequestItemArtworkEnhanceFields,
+} from "@fresh-prints/shared/utils/printRequestItemArtworkEnhanceFields";
 import { mapFirestoreTimestamp, resolveDesignDocumentTimestamps } from "../../firebase/utils/firestoreTimestamp";
 import { assertNoUndefinedFirestoreFields, withoutUndefinedFields } from "../../firebase/utils/firestoreDocument";
 import { db } from "../../../config/firebase";
@@ -63,6 +66,7 @@ import {
   requireSavablePrintRequestItemSize,
   resolveInitialPrintRequestItemSize,
 } from "@fresh-prints/shared/utils/printRequestItemSizing";
+import { resolveActiveArtworkPixelDimensions } from "@fresh-prints/shared/utils/interactiveArtworkEnhance";
 import {
   buildCustomerListQueryPlan,
   buildPrintRequestItemSummaries,
@@ -207,6 +211,9 @@ interface PrintRequestItemDocumentData extends DocumentData {
   printedAt?: unknown;
   printedBy?: unknown;
   completedAt?: unknown;
+  artworkEnhanceMode?: unknown;
+  preEnhancePrintWidthInches?: unknown;
+  preEnhancePrintHeightInches?: unknown;
   createdAt?: unknown;
   updatedAt?: unknown;
 }
@@ -363,6 +370,7 @@ function mapPrintRequestItemData(
         : undefined,
     sortOrder: typeof data.sortOrder === "number" ? data.sortOrder : undefined,
     notes: typeof data.notes === "string" ? data.notes : undefined,
+    ...readPrintRequestItemArtworkEnhanceFields(data),
     status: data.status as PrintRequestItemStatus,
     addedBy: data.addedBy,
     printedAt: mapFirestoreTimestamp(data.printedAt),
@@ -482,6 +490,22 @@ function resolveDesignPixelDimensions(design: Awaited<ReturnType<typeof designSe
   return { pixelWidth: design.width, pixelHeight: design.height };
 }
 
+function resolveActiveDesignPixelDimensions(
+  design: Awaited<ReturnType<typeof designService.getDesignById>>,
+  artworkEnhanceMode?: PrintRequestItem["artworkEnhanceMode"],
+): { pixelWidth: number; pixelHeight: number } {
+  const baseline = resolveDesignPixelDimensions(design);
+  const active = resolveActiveArtworkPixelDimensions({
+    artworkEnhanceMode,
+    baselineWidthPx: baseline.pixelWidth,
+    baselineHeightPx: baseline.pixelHeight,
+    enhancedWidthPx: design.interactiveEnhancedWidthPx ?? null,
+    enhancedHeightPx: design.interactiveEnhancedHeightPx ?? null,
+  });
+
+  return { pixelWidth: active.widthPx, pixelHeight: active.heightPx };
+}
+
 function resolveDefaultRequestedSize(
   design: Awaited<ReturnType<typeof designService.getDesignById>>,
   printRequestDefaultWidthInches?: number,
@@ -499,7 +523,10 @@ function resolveDefaultRequestedSize(
 function resolveRequestedItemSize(
   design: Awaited<ReturnType<typeof designService.getDesignById>>,
   input: { printWidthInches?: number; printHeightInches?: number },
-  current?: Pick<PrintRequestItem, "printWidthInches" | "printHeightInches">,
+  current?: Pick<
+    PrintRequestItem,
+    "printWidthInches" | "printHeightInches" | "artworkEnhanceMode"
+  >,
   printRequestDefaultWidthInches?: number,
 ) {
   const fallbackSize = current?.printWidthInches && current.printHeightInches
@@ -510,7 +537,10 @@ function resolveRequestedItemSize(
     : resolveDefaultRequestedSize(design, printRequestDefaultWidthInches);
   const printWidthInches = input.printWidthInches ?? fallbackSize.printWidthInches;
   const printHeightInches = input.printHeightInches ?? fallbackSize.printHeightInches;
-  const { pixelWidth, pixelHeight } = resolveDesignPixelDimensions(design);
+  const { pixelWidth, pixelHeight } = resolveActiveDesignPixelDimensions(
+    design,
+    current?.artworkEnhanceMode,
+  );
   const assessment = assessPrintRequestItemSize({
     pixelWidth,
     pixelHeight,
@@ -572,7 +602,7 @@ export async function assertPersistedPrintRequestItemSize(
       throw new Error("Design pixel dimensions are required to validate requested size.");
     }
     const design = await designService.getDesignById(caller, item.designId);
-    const pixels = resolveDesignPixelDimensions(design);
+    const pixels = resolveActiveDesignPixelDimensions(design, item.artworkEnhanceMode);
     pixelWidth = pixels.pixelWidth;
     pixelHeight = pixels.pixelHeight;
   }

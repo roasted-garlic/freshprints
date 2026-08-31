@@ -1,4 +1,4 @@
-import { HttpsError, onCall } from "firebase-functions/v2/https";
+import { onCall } from "firebase-functions/v2/https";
 
 import type {
   SetPrintRequestItemArtworkEnhanceModeRequest,
@@ -38,9 +38,6 @@ export const setPrintRequestItemArtworkEnhanceMode = onCall(
         parsed,
       );
     } catch (error) {
-      if (error instanceof HttpsError) {
-        throw error;
-      }
       if (!isStaffOnlyAuthError(error)) {
         throw error;
       }

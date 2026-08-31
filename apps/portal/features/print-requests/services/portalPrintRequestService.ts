@@ -18,6 +18,7 @@ import {
   traceFirestoreOneShotComplete,
   traceFirestoreOneShotStart,
 } from '@fresh-prints/shared/utils/firestoreUsageTrace';
+import { readPrintRequestItemArtworkEnhanceFields } from '@fresh-prints/shared/utils/printRequestItemArtworkEnhanceFields';
 import type {
   AddPortalCatalogDesignToPrintRequestRequest,
   AddPortalCatalogDesignToPrintRequestResponse,
@@ -248,15 +249,7 @@ function mapPrintRequestItem(itemId: string, data: PrintRequestItemDocumentData)
         : undefined,
     sortOrder: typeof data.sortOrder === 'number' ? data.sortOrder : undefined,
     notes: typeof data.notes === 'string' ? data.notes : undefined,
-    ...(data.artworkEnhanceMode === 'baseline' || data.artworkEnhanceMode === 'enhanced'
-      ? { artworkEnhanceMode: data.artworkEnhanceMode }
-      : {}),
-    ...(typeof data.preEnhancePrintWidthInches === 'number'
-      ? { preEnhancePrintWidthInches: data.preEnhancePrintWidthInches }
-      : {}),
-    ...(typeof data.preEnhancePrintHeightInches === 'number'
-      ? { preEnhancePrintHeightInches: data.preEnhancePrintHeightInches }
-      : {}),
+    ...readPrintRequestItemArtworkEnhanceFields(data),
     status: data.status as PrintRequestItem['status'],
     addedBy: data.addedBy,
     createdAt,

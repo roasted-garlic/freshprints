@@ -106,7 +106,7 @@ describe("resolveInteractiveUpscaleToggleEligibility — STATE B/C (derivative e
     assert.equal(eligibility.toggleEnabled, true);
   });
 
-  it("derivative exists + 300+ baseline DPI → user may still select enhanced derivative", () => {
+  it("derivative exists + 300+ baseline DPI → toggle disabled in baseline mode", () => {
     const eligibility = resolveInteractiveUpscaleToggleEligibility({
       asset: {
         ...DERIVATIVE_ASSET,
@@ -116,6 +116,22 @@ describe("resolveInteractiveUpscaleToggleEligibility — STATE B/C (derivative e
       printWidthInches: 10,
       printHeightInches: 10,
       artworkEnhanceMode: "baseline",
+    });
+    assert.equal(eligibility.state, "generated");
+    assert.equal(eligibility.toggleEnabled, false);
+    assert.equal(eligibility.helperText, "Resolution is already sufficient for this print size");
+  });
+
+  it("derivative exists + 300+ baseline DPI + enhanced mode → toggle stays enabled to switch off", () => {
+    const eligibility = resolveInteractiveUpscaleToggleEligibility({
+      asset: {
+        ...DERIVATIVE_ASSET,
+        currentWidthPx: 6000,
+        currentHeightPx: 6000,
+      },
+      printWidthInches: 10,
+      printHeightInches: 10,
+      artworkEnhanceMode: "enhanced",
     });
     assert.equal(eligibility.state, "generated");
     assert.equal(eligibility.toggleEnabled, true);

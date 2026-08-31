@@ -239,3 +239,21 @@ test("parseStandardPrintSizesSettingsInput round-trips decimal default width", (
   assert.ok(parsed);
   assert.equal(parsed?.defaultPrintRequestWidthInches, 11.5);
 });
+
+test("parseStandardPrintSizesSettingsInput rejects default width above 12 inches", () => {
+  const invalid = parseStandardPrintSizesSettingsInput({
+    defaultPrintRequestWidthInches: 12.01,
+    placements: DEFAULT_STANDARD_PRINT_SIZES_SETTINGS.placements,
+  });
+  assert.equal(invalid, null);
+});
+
+test("parseStandardPrintSizesSettingsInput accepts default width at 12 inches", () => {
+  const parsed = parseStandardPrintSizesSettingsInput({
+    version: 1,
+    defaultPrintRequestWidthInches: 12,
+    placements: DEFAULT_STANDARD_PRINT_SIZES_SETTINGS.placements,
+  });
+  assert.ok(parsed);
+  assert.equal(parsed?.defaultPrintRequestWidthInches, 12);
+});

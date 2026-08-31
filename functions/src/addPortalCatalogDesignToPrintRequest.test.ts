@@ -64,11 +64,22 @@ test("does not claim a create-only analytics trigger for quantity increments", (
 });
 
 describe("resolvePortalCatalogAddLineSize (Portal catalog-add callable)", () => {
-  it("initializes eligible legacy catalog art at 11 inches", () => {
+  it("initializes eligible legacy catalog art at 10 inches when runtime default is absent", () => {
     const size = resolvePortalCatalogAddLineSize({
       pixelWidth: 3600,
       pixelHeight: 1800,
       designPrintWidthInches: 10,
+    });
+    assert.equal(size.printWidthInches, 10);
+    assert.equal(size.printHeightInches, 5);
+  });
+
+  it("initializes at 11 inches when runtime default is configured", () => {
+    const size = resolvePortalCatalogAddLineSize({
+      pixelWidth: 3600,
+      pixelHeight: 1800,
+      designPrintWidthInches: 10,
+      printRequestDefaultWidthInches: 11,
     });
     assert.equal(size.printWidthInches, 11);
     assert.equal(size.printHeightInches, 5.5);
@@ -79,6 +90,7 @@ describe("resolvePortalCatalogAddLineSize (Portal catalog-add callable)", () => 
       pixelWidth: 3000,
       pixelHeight: 3000,
       designPrintWidthInches: 10,
+      printRequestDefaultWidthInches: 11,
     });
     assert.equal(size.printWidthInches, 11);
     const assessment = assessPrintRequestItemSize({
@@ -122,14 +134,13 @@ describe("resolvePortalCatalogAddLineSize (Portal catalog-add callable)", () => 
     assert.equal(size.printHeightInches, 4);
   });
 
-  it("uses the shared 11 inch standard constant, not a Portal-specific 10 inch default", () => {
-    assert.equal(STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES, 11);
+  it("uses the shared 10 inch system fallback constant when runtime default is absent", () => {
+    assert.equal(STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES, 10);
     const size = resolvePortalCatalogAddLineSize({
       pixelWidth: 4500,
       pixelHeight: 4500,
     });
-    assert.equal(size.printWidthInches, 11);
-    assert.notEqual(size.printWidthInches, 10);
+    assert.equal(size.printWidthInches, 10);
   });
 });
 
@@ -139,6 +150,7 @@ describe("Portal catalog-add persisted sizing semantics", () => {
       pixelWidth: 3600,
       pixelHeight: 1800,
       designPrintWidthInches: 10,
+      printRequestDefaultWidthInches: 11,
     });
     const persistedItem = {
       printWidthInches: size.printWidthInches,
@@ -166,11 +178,12 @@ describe("Portal catalog-add persisted sizing semantics", () => {
     assert.equal(responseItem.quantity, 3);
   });
 
-  it("explicit Standard Size selection overrides the generic 11 inch default", () => {
+  it("explicit Standard Size selection overrides the generic runtime default", () => {
     const genericDefault = resolveInitialPrintRequestItemSize({
       pixelWidth: 3600,
       pixelHeight: 3600,
       defaultPrintWidthInches: 10,
+      printRequestDefaultWidthInches: 11,
     });
     const preset = applyStandardPrintSizePreset({
       presetWidthInches: 14,
@@ -201,12 +214,12 @@ describe("Portal catalog-add persisted sizing semantics", () => {
     assert.equal(size.printWidthInches, 11.5);
   });
 
-  it("falls back to 11 inches when runtime default is absent", () => {
+  it("falls back to 10 inches when runtime default is absent", () => {
     const size = resolvePortalCatalogAddLineSize({
       pixelWidth: 3600,
       pixelHeight: 1800,
       designPrintWidthInches: 10,
     });
-    assert.equal(size.printWidthInches, 11);
+    assert.equal(size.printWidthInches, 10);
   });
 });

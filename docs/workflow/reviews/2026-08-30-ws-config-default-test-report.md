@@ -38,7 +38,9 @@ No whitespace errors in diff.
 | Portal `npm run typecheck` | **Failed** — pre-existing errors in `portalShowDiscoveryContent.ts` (unrelated) |
 | Studio `npx tsc --noEmit` | **Failed** — pre-existing errors across unrelated modules |
 | Full monorepo lint | Not run (scoped change) |
-| E2E / manual DEV QA | **Pending** — blocked on deploy approval |
+| E2E / manual DEV QA | **Pending** — owner retest after DEV deploy 2026-08-30 |
+
+**Post-deploy:** Functions deployed at commit `c246123`. Owner DEV QA checklist issued; await PASS/FAIL.
 
 ---
 
