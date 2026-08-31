@@ -1,5 +1,13 @@
 # Backend and AI Pipeline
 
+## Interactive artwork enhance — WS-TOGGLE (DEV — 2026-08-31)
+
+| Callable | Purpose |
+|----------|---------|
+| `setPrintRequestItemArtworkEnhanceMode` | Toggle baseline vs enhanced; first pass generates non-destructive derivative; reuse on subsequent ON |
+
+Studio Settings also persist `defaultPrintRequestWidthInches` (WS-CONFIG). Deployed on `fresh-prints-dev` with Storage rules for `{designId}.interactive.png` staff reads. Production **not authorized**.
+
 ## Customer identity management — WS1–WS4 (DEV — complete 2026-08-30)
 
 | Item | Value |

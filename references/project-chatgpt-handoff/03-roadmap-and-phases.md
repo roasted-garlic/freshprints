@@ -1,6 +1,8 @@
 # Roadmap and Phases
 
-> 2026-08-30: **Print Request 11″ + 15″ upscale + legacy enhance — IMPLEMENT COMPLETE (local)** — Goal `print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale`. Implement + Test + Implementation Review **complete** on `development`; **STOP before DEV Firebase deploy**. Before Smart Profiling. Production **NOT AUTHORIZED**.
+> 2026-08-31: **Print Request sizing + interactive upscale — CLOSED (DEV)** — Goal `print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale` **DONE**. Signoff **approved**; owner DEV QA **PASS**. Configurable PR default (10″ fallback); 15″ automated upscale; WS-TOGGLE interactive enhance Studio+Portal; production export parity. DEV Firebase deployed (`fresh-prints-dev`). Production **NOT AUTHORIZED**. FreshForge **IDLE**. Smart Profiling **NOT STARTED**.
+>
+> 2026-08-30: **Print Request 11″ + 15″ upscale + legacy enhance — IMPLEMENT COMPLETE (local)** — *(superseded by 2026-08-31 signoff banner above)*
 >
 > 2026-08-30: **Customer Identity WS1–WS4 — COMPLETE (DEV)** — WS4 signoff **approved**; owner DEV QA **PASS**. Production / Studio / Portal hosting **not authorized**. FreshForge active on sizing goal.
 >

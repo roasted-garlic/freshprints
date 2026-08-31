@@ -1,5 +1,17 @@
 # Recent Completed Work
 
+## 2026-08-31 - Print Request sizing + interactive upscale — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale` — **DONE** |
+| Signoff | **approved** |
+| Owner DEV QA | **PASS** |
+| Delivered | Configurable PR default (10″ fallback); 15″ automated upscale; interactive upscale Studio+Portal; production export parity; Storage/Firestore security |
+| Production | **NOT AUTHORIZED** |
+| Smart Profiling | **NOT STARTED** |
+| Signoff | `docs/workflow/reviews/2026-08-31-print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale-signoff.md` |
+
 ## 2026-08-30 - Customer Account Identity WS4 — CLOSED (DEV)
 
 | Item | Status |

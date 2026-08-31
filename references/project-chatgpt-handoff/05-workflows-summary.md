@@ -20,7 +20,7 @@ Upload your own artwork (PNG/WebP, folder, or ZIP)
     ↓
 Upload pipeline (server-authoritative):
   create batch → upload source to Storage → finalize callable
-  → transparency check → optional convert/trim/upscale (ADR-FP-080: ≤6× toward 12″) → DPI check
+  → transparency check → optional convert/trim/upscale (ADR-FP-080: ≤6× toward **15″** automated target, `image-quality-v3`) → DPI check
   → previews → ready
   (optional: mark “This artwork is a halftone design.” — evidence only, non-blocking)
     ↓
@@ -29,7 +29,7 @@ Confirm: ownership REQUIRED; Design Library permission OPTIONAL (default checked
 Attach ready uploads to the working print request
   (items may be sourceType: catalog_design OR customer_upload)
     ↓
-On the request page: set quantity + print size (**default ~10″ wide today**; **planned 11″** — not shipped)
+On the request page: set quantity + print size (**runtime default** from Studio Settings, **10″** system fallback; Standard Size presets override)
   - Soft warning if 200–299 DPI
   - HARD BLOCK save if < 200 DPI or either side > 22″ (ADR-FP-075)
   - ADR-FP-080 approved-max is **not** a later manual-save ceiling

@@ -1,6 +1,8 @@
 # Fresh Prints Roadmap
 
-> 2026-08-30: **Print Request 11″ Default + 15″ Upscale + Legacy Art Upscale — PLAN + FORMAL REVIEW** — Goal `print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale`. Plan + Review **approved_with_changes**; **STOP** for owner approval before implement. Sequenced **before** Smart Profiling completion. **Production NOT AUTHORIZED.** Plan: `docs/workflow/plans/2026-08-30-print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale-plan.md`. Review: `docs/workflow/reviews/2026-08-30-print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale-review.md`.
+> 2026-08-31: **Print Request Sizing + Interactive Upscale — CLOSED (DEV)** — Goal `print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale` **DONE**. Signoff **approved**; owner DEV QA **PASS**. Configurable PR default (10″ fallback); 15″ automated upscale; WS-TOGGLE interactive enhance; production export parity on `fresh-prints-dev`. **Production NOT AUTHORIZED.** FreshForge **IDLE**. Smart Profiling **NOT STARTED.** Signoff: `docs/workflow/reviews/2026-08-31-print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale-signoff.md`.
+>
+> 2026-08-30: **Print Request 11″ Default + 15″ Upscale + Legacy Art Upscale — PLAN + FORMAL REVIEW** — *(superseded by 2026-08-31 signoff banner above)*
 >
 > 2026-08-30: **Customer Account Identity WS4 — CLOSED (DEV)** — Goal `customer-account-identity-management-ws4-customer-activity-and-deep-linking` **DONE**. Owner DEV QA **PASS**. Print Request History + Account Activity + deep linking in Studio User Info. **WS1–WS4 complete on DEV.** Production **NOT AUTHORIZED.** Signoff: `docs/workflow/reviews/2026-08-30-customer-account-identity-management-ws4-signoff.md`.
 >

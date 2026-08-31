@@ -2,9 +2,14 @@
 
 > Full log: `docs/project/DECISIONS.md` — newest ADRs first.
 
-## Roadmap sequencing (2026-08-30 — not an ADR)
+## Roadmap sequencing (2026-08-31 — not an ADR)
 
-Print Request **11″ default + 15″ upscale + legacy enhance** is intentionally scheduled **before** remaining Smart Profiling / legacy tag-retirement work. Production promotion remains separately gated.
+Print Request **sizing + interactive upscale** (`print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale`) **DONE on DEV** (signoff 2026-08-31). **Smart Profiling** remains the next major candidate — **not started**. Production promotion separately gated.
+
+### ADR-FP-080 amendment (2026-08-31 — accepted)
+
+- Configurable Print Request default width (**10″** system fallback); **15″** automated import/upload target (`image-quality-v3`)
+- Interactive upscale: one derivative per lineage; Studio + Portal; production export parity; non-destructive baseline
 
 ---
 

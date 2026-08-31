@@ -75,6 +75,13 @@ Auth provider changes, relaxing rules, new public sensitive endpoints, secret ro
 
 - Owner-only metadata mutation on eligible shows; not a customer/Portal path
 
+## Interactive upscale + catalog originals (DEV — 2026-08-31)
+
+- `setPrintRequestItemArtworkEnhanceMode` — staff + Portal customer (own items); server generates/selects derivatives
+- Storage: staff may read `/originals/{designId}.interactive.png` for production export; customer-upload interactive derivatives remain under `/customer-uploads/{uid}/…`
+- Firestore: optional `artworkEnhanceMode` and related fields on `printRequestItems`; gang sheet snapshot paths may reference interactive derivatives
+- No secrets in client; derivative creation Admin/server-controlled for catalog
+
 ## Incident posture
 
 Fail closed; log risks in `RISK_REGISTER.md`; ADRs in `DECISIONS.md`.

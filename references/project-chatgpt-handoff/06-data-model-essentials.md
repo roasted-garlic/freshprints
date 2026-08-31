@@ -47,6 +47,8 @@
 | `quantity` | ≥ 1 |
 | `printWidthInches` / `printHeightInches` | Aspect-locked; standard cap 22″ |
 | `sizeLabel` | Display string |
+| `artworkEnhanceMode` | Optional: absent/`baseline` \| `enhanced` — selects production asset variant (DEV — ADR-FP-080 2026-08-31) |
+| `preEnhancePrintWidthInches` / `preEnhancePrintHeightInches` | Snapshot for Reset to Default when enhanced |
 
 **Save floor:** effective DPI must be **≥ 200** (`MIN_PRINT_REQUEST_EFFECTIVE_DPI`). Soft warn 200–299; optimal ≥ 300. ADR-FP-075.
 
@@ -68,7 +70,7 @@ After staff promote → creates/links a `designs` doc and existing AI enqueue; r
 
 ## Show allocations
 
-Link `printRequest` / `printRequestItem` quantities to an `upcomingShow`. Source-aware resolvers support catalog originals **and** customer-upload production paths for export/gang sheets.
+Link `printRequest` / `printRequestItem` quantities to an `upcomingShow`. Source-aware resolvers support catalog originals **and** customer-upload production paths for export/gang sheets. **`artworkEnhanceMode`** on each item selects baseline vs interactive enhanced derivative at export time (gang sheets, ZIP, manual builder).
 
 | Field | Notes |
 |-------|-------|

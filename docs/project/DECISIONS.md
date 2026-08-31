@@ -3246,7 +3246,7 @@ Portal customers need a faster sign-up path via Google while retaining email/pas
 | Field | Value |
 |-------|-------|
 | Date | 2026-07-13 |
-| Status | accepted (amended 2026-08-20 — approved-max is not a manual save ceiling) |
+| Status | accepted (amended 2026-08-31 — interactive upscale + configurable default + 15″ automated target) |
 
 **Context**
 
@@ -3278,31 +3278,25 @@ Embedded DPI metadata is unreliable for print quality. Imports previously upscal
 - Functions deploy required for Portal finalize in shared environments so the 6× ceiling is live.
 - Production deploy remains a separate owner checkpoint.
 
-**Amendment (2026-08-30 — print-request sizing / legacy enhance goal)**
+**Amendment (2026-08-30 — automated target + WS-CONFIG-DEFAULT, accepted 2026-08-31):**
 
-1. **Automated upscale target** raised from **12″** to **15″** (`AUTOMATED_UPSCALE_TARGET_WIDTH_INCHES`); policy version **`image-quality-v3`** for newly processed assets (forward-only).
-2. **Print Request initial default** raised to **11″** (`STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES`) when pixels support ≥200 effective DPI at that width; stale ~10″ normalization envelopes no longer clamp eligible defaults.
-3. **Manual staff legacy enhancement:** one additional successful upscale pass allowed (`upscalePassCount` max **2** total) via Studio `enhancePrintRequestArtwork` callable; **cumulative ≤6×** from preserved native source; catalog designs only in V1.
-4. **`MAX_UPSCALE_PASSES = 1`** unchanged for automated import — manual second pass is an explicit exception, not a global pass-count increase.
-5. **`PREFERRED_PRINT_WIDTH_INCHES` / `DEFAULT_PRINT_REQUEST_WIDTH_INCHES`** remain **10″** for import messaging and `resolveDefaultPrintRequestSizeInches` — distinct from the 11″ Print Request initializer.
+1. **Automated upscale target** raised from **12″** to **15″** (`AUTOMATED_UPSCALE_TARGET_WIDTH_INCHES`); policy version **`image-quality-v3`** for newly processed assets (forward-only). **15″ remains the automated import/upload target only** — not the interactive enhancement target.
+2. **Print Request default width** is a **runtime Studio setting** (`settings/standardPrintSizes.defaultPrintRequestWidthInches`), snapshot-at-create for **new items only**; existing items keep persisted dimensions; **no migration/backfill**.
+3. **System fallback** when the setting is absent or invalid: **10″** (`STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES`). **`PREFERRED_PRINT_WIDTH_INCHES` / `DEFAULT_PRINT_REQUEST_WIDTH_INCHES`** remain **10″** for import messaging — distinct from the operational Print Request initializer.
+4. **Standard Size presets** and explicit requested dimensions continue to override the generic default where architecture supports them. Duplicates preserve source dimensions.
+5. **`MAX_UPSCALE_PASSES = 1`** unchanged for automated import. Cumulative **`MAX_UPSCALE_FACTOR = 6×`** measured from true native/original artwork dimensions; do not chain another 6× from an already-upscaled derivative.
 
-**Pending amendment (2026-08-30 — WS-TOGGLE, not yet implemented):**
+**Amendment (2026-08-31 — WS-TOGGLE interactive upscale, accepted 2026-08-31):**
 
-1. **Interactive enhancement** becomes a **per-asset one-time non-destructive derivative** + **per-request-item ON/OFF toggle** (baseline preserved); supersedes destructive overwrite in `enhancePrintRequestArtworkCore`.
-2. **No customer usage quota** on interactive enhancement; security via auth, idempotency, and per-asset processing lock only.
-3. **Studio + Portal**; **`catalog_design` + `customer_upload`**; interactive target is **request-driven** (~300 DPI at selected print size), not fixed 15″.
-4. **Cumulative ≤6× from native** remains authoritative; `wasUpscaled` alone does not imply ineligibility.
-5. Implement only after Formal Review amendment passes — see review amendment.
-
-**Amendment (2026-08-31 — WS-TOGGLE state-machine corrective, owner-approved):**
-
-1. **One successful interactive derivative per artwork lineage** — after `interactiveEnhanceGeneratedAt` exists, OFF/ON is **asset selection only** (baseline vs existing enhanced sibling). **No regeneration** when the user increases print size or when enhanced DPI falls below 300.
-2. **Larger physical size after derivative exists:** reuse the same derivative; recalculate effective DPI from enhanced pixels; apply ADR-FP-075 floors (≥200 save, 200–299 warning, 300+ optimal). **Do not** generate a second interactive derivative or chase 300 DPI via reprocessing.
-3. **Removed:** `regenerated_enhanced`, derivative sufficiency checks, auto-baseline on eligibility, and any “enhancement not needed” path when a reusable derivative exists.
-
-**Pending amendment (2026-08-30 — WS-CONFIG-DEFAULT, not yet implemented):**
-
-1. **Print Request default width** becomes a persisted Studio setting (`settings/standardPrintSizes.defaultPrintRequestWidthInches`, initial value 11″), snapshot-at-create for new items only; `STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES` remains fallback when setting absent.
+1. **Interactive enhancement** is a **per-artwork-lineage one-time non-destructive derivative** + **per-request-item ON/OFF toggle** (`artworkEnhanceMode`: absent/`baseline` vs `enhanced`). Baseline production assets are **never destructively replaced** for interactive enhancement. Supersedes destructive overwrite in legacy `enhancePrintRequestArtworkCore`.
+2. **Eligibility:** `catalog_design` and `customer_upload`; **Studio + Portal**. **No customer usage quota**; security via auth, idempotency, processing lock, Firestore/Storage rules.
+3. **Interactive target is request-driven** (~300 effective DPI at the selected physical print size), subject to cumulative ≤6× native, aspect-safe sizing, processing ceilings, and the 22″ Print Request cap. **Not fixed at 15″.**
+4. **One valid successful interactive derivative per lineage.** After it exists, OFF→ON and ON→OFF are **variant selection only** — **no regeneration** when print size increases or when enhanced DPI falls below 300. Larger sizes **reuse** the same derivative; ADR-FP-075 DPI floors apply.
+5. **Stale metadata recovery:** if derivative metadata exists but the Storage object is missing, regeneration is allowed because no valid derivative remains — recovery only, not a second valid enhancement pass.
+6. **Ordinary size edits** (width, height, Standard Size preset, quantity) **must not** auto-revert to baseline. Only explicit user actions (Upscale OFF, Reset to Default) change mode. Reset to Default may turn Upscale OFF and restore configured default physical size but **must not delete** the reusable enhanced derivative.
+7. **Production export parity:** gang sheets (Standard / Grouped by Customer / Sheet per Customer), ZIP export, manual gang-sheet builder, and Show Queue production resolution use the **active variant** selected on each item. Cache fingerprints include active production asset identity. Enhanced mode + missing derivative → **fail closed**.
+8. **Catalog:** baseline uses `design.originalPath`; enhanced uses interactive catalog derivative (`/originals/{designId}.interactive.png`). Do not mutate `design.originalPath` to switch variants. **Customer upload:** baseline uses private production asset; enhanced uses private interactive derivative — never promoted to catalog or exposed to other customers.
+9. **Storage rules:** staff production reads of interactive catalog originals (`{designId}.interactive.png`) are authorized; customer-upload private boundaries remain intact. Interactive catalog derivative creation remains server/Admin-controlled.
 
 ---
 

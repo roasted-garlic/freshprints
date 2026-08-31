@@ -18,8 +18,9 @@ Processing / Needs Review / Rejected tabs; suggestions panel; approve/reject/ski
 
 ### Print Requests (`/print-requests`)
 Internal + customer requests in **separate lists** (Customer Requests default; Internal Requests via `isInternal`, ADR-FP-140); list sections **grouped by primary upcoming show** (`+N more shows` badge; Unassigned last); item qty/size autosave; DPI quality feedback; **manual save ≥200 DPI and ≤22″** (approved-max is initial/processing only); **Standard Size presets** modal (DEV — v1 defaults); duplicate same design for other sizes; Design Library selection mode adds **new** catalog designs only (existing items keep ID/size/quantity).
+**Configurable Print Request default width** via Studio Settings (`defaultPrintRequestWidthInches`, **10″** system fallback, new items only — ADR-FP-080 amendment 2026-08-31, **DEV**).
+**Interactive Upscale toggle** on Print Request item cards (`artworkEnhanceMode`: baseline vs enhanced) for `catalog_design` and `customer_upload`; one non-destructive derivative per lineage; request-driven ~300 DPI first pass; cumulative ≤6× from native (**DEV**).
 **Convert to Internal Request** (callable, ADR-FP-141) under overflow ⋯; Customer primary action **Add to Show**; Internal primary action **Add to Internal Gangsheet**.
-**Planned (not shipped):** 11″ default width; 15″ import upscale target; staff legacy enhance from PR card.
 
 ### Show Queue (`/show-queue`)
 Upcoming/Past shows; capacity; attach requests; Working triage **Active · Stale · Empty · All · Needs Re-queue** (rightmost); **NEEDS RE-QUEUE** badge; Whatnot assisted
@@ -69,7 +70,8 @@ print-limit counters** cleanup for retired, unenforced Cap A documents.
 | Confirm ownership (required) + library permission (optional, default on) | ✅ Live |
 | Attach ready uploads to working request | ✅ Live |
 | Request item cards: qty, size, DPI badge; save blocked &lt; 200 DPI | ✅ Live |
-| Image quality sizing (`image-quality-v2`, ≤6× toward 12″) | ✅ Live — ADR-FP-080 |
+| **Interactive Upscale** toggle (`artworkEnhanceMode`) | ✅ **DEV** — catalog + customer upload; one derivative per lineage |
+| Image quality sizing (`image-quality-v3` automated 15″, ≤6×) | ✅ Live — ADR-FP-080 |
 | Progress tabs (Working / Queued / Printing / Printed) | ✅ Live — converted requests show **Converted to Internal Request · Closed** in Printed |
 | Add request to show (callable + calendar) | ✅ Live — Portal cutoff hours (ADR-FP-103); review header **Add Request to Whatnot Show** |
 | Design engagement analytics (GA4) | ✅ Live — modal/share `page_view` + `design_view`; public catalog IDs only (ADR-FP-138) |
