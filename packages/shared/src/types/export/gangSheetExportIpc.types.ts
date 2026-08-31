@@ -23,6 +23,9 @@ export interface GangSheetExportImageRequest {
   quantity: number;
   /** Present for grouped-by-customer layout mode only. */
   grouping?: GangSheetExportImageGrouping;
+  /** Persisted allocation print inches — used for grouped section price/weight summaries. */
+  printWidthInches?: number;
+  printHeightInches?: number;
 }
 
 export interface ExportGangSheetPngRequest {

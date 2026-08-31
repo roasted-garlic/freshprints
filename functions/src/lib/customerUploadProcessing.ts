@@ -51,6 +51,39 @@ export { storageObjectPath };
  */
 export const CUSTOMER_UPLOAD_DECODE_MAX_INPUT_PIXELS = MEANINGFUL_TRANSPARENCY_DECODE_MAX_INPUT_PIXELS;
 
+export interface AssistedFinalSourceImageProbeResult {
+  widthPx: number;
+  heightPx: number;
+  format: string;
+}
+
+export async function probeAssistedFinalSourceImageBytes(
+  sourceBytes: Buffer,
+): Promise<AssistedFinalSourceImageProbeResult> {
+  let metadata: Metadata;
+  try {
+    metadata = await getSharp()(sourceBytes, {
+      failOn: "error",
+      limitInputPixels: CUSTOMER_UPLOAD_DECODE_MAX_INPUT_PIXELS,
+    }).metadata();
+  } catch {
+    throw new Error("Could not decode final artwork image.");
+  }
+
+  const widthPx = metadata.width ?? 0;
+  const heightPx = metadata.height ?? 0;
+  if (widthPx <= 0 || heightPx <= 0 || !Number.isFinite(widthPx) || !Number.isFinite(heightPx)) {
+    throw new Error("Final artwork image dimensions are invalid.");
+  }
+
+  const format = typeof metadata.format === "string" ? metadata.format : "";
+  if (!format) {
+    throw new Error("Final artwork image format is not supported.");
+  }
+
+  return { widthPx, heightPx, format };
+}
+
 export interface CustomerUploadProcessingSuccess {
   ok: true;
   sourceFormat: CustomerUploadSourceFormat;

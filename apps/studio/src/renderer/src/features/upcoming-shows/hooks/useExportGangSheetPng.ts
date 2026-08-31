@@ -242,6 +242,8 @@ async function buildImageRequests(
       productionStoragePath: asset.productionStoragePath,
       targetWidthPx: asset.targetWidthPx,
       targetHeightPx: asset.targetHeightPx,
+      printWidthInches: asset.printWidthInches,
+      printHeightInches: asset.printHeightInches,
       fileName: asset.fileName,
       quantity: asset.quantity,
       grouping: asset.grouping,

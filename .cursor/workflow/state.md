@@ -2,37 +2,71 @@
 
 | Field | Value |
 |-------|-------|
-| Status | **IDLE** |
-| DONE | **yes** |
-| Active goal | — |
-| Last completed goal | `print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale` |
-| Phase | **Signoff complete** |
-| Owner DEV QA | **PASS** (2026-08-31) |
+| Status | **ACTIVE** |
+| DONE | **no** |
+| Active goal | `pre-smart-profiling-print-request-and-gang-sheet-polish` |
+| Phase | **Implementation Review complete — STOP before DEV deploy** |
+| Plan Status | **complete** |
+| Review Status | **approved_with_changes** (acknowledged) |
+| Implementation | **complete** |
 | Test Status | **passed_with_notes** |
-| Signoff Status | **approved** |
-| Human Checkpoint Required | **no** |
-| Production | **NOT AUTHORIZED / NOT PROMOTED** |
-| Smart Profiling | **NOT STARTED** (parked — next major candidate only) |
+| Implementation Review | **approved** |
+| Signoff | **not authorized** |
+| Human Checkpoint Required | **yes** — owner DEV QA + deploy authorization (hook-order blocker fixed 2026-08-31) |
+| Production | **NOT AUTHORIZED** |
+| Smart Profiling | **NOT STARTED** (parked) |
 | Last updated | 2026-08-31 |
-| Last Completed Step | Signoff — sizing/upscale managed goal closed on `development` |
+| Last Completed Step | WS1 Portal hook-order corrective + permissions query fix |
+
+## Decision Log (recent)
+
+| Date | Decision |
+|------|----------|
+| 2026-08-31 | Owner QA blocker: PrintRequestDetailView hook order — **fixed** (handleUnqueueFromShow moved above early returns) |
+| 2026-08-31 | Owner QA: Portal permissions on /requests — fixed client `in` query → per-request equality queries |
+
+---
+
+## Workstreams
+
+| WS | Title | Status |
+|----|-------|--------|
+| WS1 | Customer remove queued request from show to edit | **implemented** |
+| WS2 | Custom Request Final Image validation + attach hardening | **implemented** |
+| WS3 | Gang-sheet customer price + weight line | **implemented** |
+
+---
+
+## Artifacts
+
+| Artifact | Path |
+|----------|------|
+| Plan | `docs/workflow/plans/2026-08-31-pre-smart-profiling-print-request-and-gang-sheet-polish-plan.md` |
+| Formal Review | `docs/workflow/reviews/2026-08-31-pre-smart-profiling-print-request-and-gang-sheet-polish-review.md` |
+| Implementation Review | `docs/workflow/reviews/2026-08-31-pre-smart-profiling-print-request-and-gang-sheet-polish-implementation-review.md` |
+| Test Report | `docs/workflow/reviews/2026-08-31-pre-smart-profiling-print-request-and-gang-sheet-polish-test-report.md` |
+| Hook-order corrective | `docs/workflow/reviews/2026-08-31-pre-smart-profiling-print-request-hook-order-corrective-review.md` |
 
 ---
 
 ## Allowed Actions
 
-- Read docs; start a new managed goal only when owner explicitly requests one
-- Production promotion only via separately authorized workflow
+- Owner DEV QA (manual)
+- Owner-authorized DEV deploy (Functions + Studio reload)
+- Read docs / repo inspection
 
 ## Forbidden Actions
 
-- Automatic Smart Profiling start
-- Production deploy / Firebase production promotion without separate owner authorization
+- Production deploy
+- Signoff (pending owner DEV QA)
+- Smart Profiling work
+- Committing unrelated working-tree changes into this goal
 
 ---
 
 ## Next Required Step
 
-None — FreshForge **IDLE**. Await owner direction for production promotion or Smart Profiling managed goal.
+Owner re-run DEV QA on queued Print Request detail (hook-order fix) → authorize DEV deploy if PASS.
 
 ---
 
@@ -40,6 +74,11 @@ None — FreshForge **IDLE**. Await owner direction for production promotion or 
 
 | Date | Decision |
 |------|----------|
-| 2026-08-31 | Owner DEV QA **PASS** — interactive upscale + production export parity verified on `fresh-prints-dev` |
-| 2026-08-31 | Managed goal `print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale` **DONE** on `development`; signoff approved |
-| 2026-08-31 | Production promotion **NOT AUTHORIZED**; Smart Profiling **NOT STARTED** |
+| 2026-08-31 | New managed goal opened — Plan + Review |
+| 2026-08-31 | Formal Review **approved_with_changes** |
+| 2026-08-31 | Owner approved implement — ADR-FP-071, WS2 V1 scope, `sectionSummaryVersion: 1` mandatory |
+| 2026-08-31 | Implement + Test + Implementation Review complete — **STOP before DEV deploy** |
+
+## Unrelated Working Tree (preserved)
+
+Portal show-designs rails/cache; Studio imports + ai-review; `portalShowCatalogDesigns.ts`; `listPortalShowCatalogDesigns.types.ts` — **not part of this goal**.

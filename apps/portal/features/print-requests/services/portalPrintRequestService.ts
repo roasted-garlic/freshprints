@@ -106,8 +106,10 @@ interface DesignDocumentData extends DocumentData {
 }
 
 interface PortalShowAllocationRecord {
+  id: string;
   printRequestId: string;
   printRequestItemId: string;
+  upcomingShowId: string;
   allocatedQuantity: number;
   status: ShowAllocationStatus;
 }
@@ -115,6 +117,7 @@ interface PortalShowAllocationRecord {
 interface ShowAllocationDocumentData extends DocumentData {
   printRequestId?: unknown;
   printRequestItemId?: unknown;
+  upcomingShowId?: unknown;
   allocatedQuantity?: unknown;
   status?: unknown;
 }
@@ -129,19 +132,27 @@ function chunkValues<T>(values: T[], chunkSize: number): T[][] {
   return chunks;
 }
 
-function mapShowAllocationRecord(data: ShowAllocationDocumentData): PortalShowAllocationRecord {
+function mapShowAllocationRecord(
+  id: string,
+  data: ShowAllocationDocumentData,
+): PortalShowAllocationRecord | null {
   if (
     typeof data.printRequestId !== 'string' ||
     typeof data.printRequestItemId !== 'string' ||
     typeof data.allocatedQuantity !== 'number' ||
     typeof data.status !== 'string'
   ) {
-    throw new Error('Show allocation data is incomplete.');
+    return null;
   }
 
+  const upcomingShowId =
+    typeof data.upcomingShowId === 'string' ? data.upcomingShowId.trim() : '';
+
   return {
+    id,
     printRequestId: data.printRequestId,
     printRequestItemId: data.printRequestItemId,
+    upcomingShowId,
     allocatedQuantity: data.allocatedQuantity,
     status: data.status as ShowAllocationStatus,
   };
@@ -534,42 +545,42 @@ export const portalPrintRequestService = {
     return loadPortalPrintRequestReadCached(
       readCacheKey('items-for-requests', uniquePrintRequestIds.slice().sort().join('|')),
       async () => {
-    const itemLists = await Promise.all(
-      chunkValues(uniquePrintRequestIds, 10).map(async (printRequestIdChunk) => {
-        const traceMetadata = {
-          app: 'portal' as const,
-          collection: 'printRequestItems',
-          constraints: ['printRequestId in {currentRequestChunk<=10}'],
-          source: 'portalPrintRequestService.listPrintRequestItemsForRequests',
-          triggerReason: 'authentication' as const,
-        };
-        traceFirestoreOneShotStart('getDocs', traceMetadata);
-        const snapshot = await getDocs(
-          query(
-            collection(getPortalDb(), 'printRequestItems'),
-            where('printRequestId', 'in', printRequestIdChunk),
-          ),
+        const itemLists = await Promise.all(
+          uniquePrintRequestIds.map(async (printRequestId) => {
+            const traceMetadata = {
+              app: 'portal' as const,
+              collection: 'printRequestItems',
+              constraints: ['printRequestId=={printRequestId}'],
+              source: 'portalPrintRequestService.listPrintRequestItemsForRequests',
+              triggerReason: 'authentication' as const,
+            };
+            traceFirestoreOneShotStart('getDocs', traceMetadata);
+            const snapshot = await getDocs(
+              query(
+                collection(getPortalDb(), 'printRequestItems'),
+                where('printRequestId', '==', printRequestId),
+              ),
+            );
+            traceFirestoreOneShotComplete('getDocs', traceMetadata, snapshot.size);
+
+            return snapshot.docs.flatMap((itemDoc) => {
+              try {
+                return [mapPrintRequestItem(itemDoc.id, itemDoc.data() as PrintRequestItemDocumentData)];
+              } catch {
+                return [];
+              }
+            });
+          }),
         );
-        traceFirestoreOneShotComplete('getDocs', traceMetadata, snapshot.size);
 
-        return snapshot.docs.flatMap((itemDoc) => {
-          try {
-            return [mapPrintRequestItem(itemDoc.id, itemDoc.data() as PrintRequestItemDocumentData)];
-          } catch {
-            return [];
-          }
-        });
-      }),
-    );
-
-    const items = itemLists.flat();
-    for (const requestId of uniquePrintRequestIds) {
-      primePortalPrintRequestReadCache(
-        readCacheKey('items', requestId),
-        items.filter((item) => item.printRequestId === requestId),
-      );
-    }
-    return items;
+        const items = itemLists.flat();
+        for (const requestId of uniquePrintRequestIds) {
+          primePortalPrintRequestReadCache(
+            readCacheKey('items', requestId),
+            items.filter((item) => item.printRequestId === requestId),
+          );
+        }
+        return items;
       },
     );
   },
@@ -586,31 +597,38 @@ export const portalPrintRequestService = {
     return loadPortalPrintRequestReadCached(
       readCacheKey('allocations', uniquePrintRequestIds.slice().sort().join('|')),
       async () => {
-    const allocationLists = await Promise.all(
-      chunkValues(uniquePrintRequestIds, 10).map(async (printRequestIdChunk) => {
-        const traceMetadata = {
-          app: 'portal' as const,
-          collection: 'showAllocations',
-          constraints: ['printRequestId in {requestChunk<=10}'],
-          source: 'portalPrintRequestService.listShowAllocationsForPrintRequests',
-          triggerReason: 'authentication' as const,
-        };
-        traceFirestoreOneShotStart('getDocs', traceMetadata);
-        const snapshot = await getDocs(
-          query(
-            collection(getPortalDb(), 'showAllocations'),
-            where('printRequestId', 'in', printRequestIdChunk),
-          ),
-        );
-        traceFirestoreOneShotComplete('getDocs', traceMetadata, snapshot.size);
+        // One equality query per print request — not `printRequestId in [...]`. Customer rules
+        // call get() on the parent print request per evaluated document; batched `in` queries
+        // share one rules access budget (~10) and fail as permission-denied on the list page.
+        const allocationLists = await Promise.all(
+          uniquePrintRequestIds.map(async (printRequestId) => {
+            const traceMetadata = {
+              app: 'portal' as const,
+              collection: 'showAllocations',
+              constraints: ['printRequestId=={printRequestId}'],
+              source: 'portalPrintRequestService.listShowAllocationsForPrintRequests',
+              triggerReason: 'authentication' as const,
+            };
+            traceFirestoreOneShotStart('getDocs', traceMetadata);
+            const snapshot = await getDocs(
+              query(
+                collection(getPortalDb(), 'showAllocations'),
+                where('printRequestId', '==', printRequestId),
+              ),
+            );
+            traceFirestoreOneShotComplete('getDocs', traceMetadata, snapshot.size);
 
-        return snapshot.docs.map((allocationDoc) =>
-          mapShowAllocationRecord(allocationDoc.data() as ShowAllocationDocumentData),
+            return snapshot.docs.flatMap((allocationDoc) => {
+              const mapped = mapShowAllocationRecord(
+                allocationDoc.id,
+                allocationDoc.data() as ShowAllocationDocumentData,
+              );
+              return mapped ? [mapped] : [];
+            });
+          }),
         );
-      }),
-    );
 
-    return allocationLists.flat();
+        return allocationLists.flat();
       },
     );
   },

@@ -552,6 +552,15 @@ export function AssistedApprovedDesignCard({ request }: { request: AssistedCreat
         contentType: entry.contentType,
         fullSizePurgedAtMillis: assistedCreationTimestampMillis(entry.fullSizePurgedAt),
       })),
+      finalSource: request.finalSource
+        ? {
+            id: request.finalSource.id,
+            storagePath: request.finalSource.storagePath,
+            contentType: request.finalSource.contentType,
+            widthPx: request.finalSource.widthPx ?? null,
+            heightPx: request.finalSource.heightPx ?? null,
+          }
+        : null,
       printRequestIngest:
         ingest &&
         typeof ingest.customerUploadId === 'string' &&

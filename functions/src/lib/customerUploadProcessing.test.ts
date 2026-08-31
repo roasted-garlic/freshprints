@@ -497,3 +497,22 @@ describe("customerUploadProcessing", () => {
     }
   });
 });
+
+describe("probeAssistedFinalSourceImageBytes", () => {
+  it("returns dimensions for a valid PNG", async () => {
+    const { probeAssistedFinalSourceImageBytes } = await import("./customerUploadProcessing");
+    const bytes = await makeOpaquePng(640, 480);
+    const probe = await probeAssistedFinalSourceImageBytes(bytes);
+    assert.equal(probe.widthPx, 640);
+    assert.equal(probe.heightPx, 480);
+    assert.equal(probe.format, "png");
+  });
+
+  it("rejects invalid image bytes", async () => {
+    const { probeAssistedFinalSourceImageBytes } = await import("./customerUploadProcessing");
+    await assert.rejects(
+      () => probeAssistedFinalSourceImageBytes(Buffer.from("not-an-image")),
+      /Could not decode final artwork image/,
+    );
+  });
+});

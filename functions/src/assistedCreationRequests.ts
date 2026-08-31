@@ -62,7 +62,7 @@ import {
   parseAssistedCreationReferenceImageUpdateInputs,
 } from "../../packages/shared/src/utils/assistedCreationValidation";
 
-import { adminDb } from "./lib/admin";
+import { adminDb, adminStorage } from "./lib/admin";
 import { purgeAssistedCreationProofsForTerminal } from "./lib/assistedCreationProofPurge";
 import { promoteAssistedCreationReferenceImages } from "./lib/assistedCreationReferencePromote";
 import { loadCallerProfile } from "./lib/caller";
@@ -74,6 +74,8 @@ import {
   permissionDenied,
   unauthenticated,
 } from "./lib/errors";
+import { probeAssistedFinalSourceImageBytes } from "./lib/customerUploadProcessing";
+import { storageObjectPath } from "./lib/storageObjectPath";
 import { requirePortalCustomer } from "./lib/etsy/requirePortalCustomer";
 import { loadEmailProviderSettings } from "./lib/email/emailSettings";
 import {
@@ -1451,6 +1453,12 @@ export const staffAddAssistedCreationFinalSource = onCall(
       const friendlyName =
         clientFileName || buildAssistedCreationFinalArtworkDownloadFileName(contentType);
 
+      const [finalSourceBytes] = await adminStorage
+        .bucket()
+        .file(storageObjectPath(storagePath))
+        .download();
+      const probe = await probeAssistedFinalSourceImageBytes(finalSourceBytes);
+
       const docRef = adminDb.collection(ASSISTED_CREATION_COLLECTION).doc(requestId);
       await adminDb.runTransaction(async (tx) => {
         const snap = await tx.get(docRef);
@@ -1486,6 +1494,8 @@ export const staffAddAssistedCreationFinalSource = onCall(
           sizeBytes,
           uploadedByUid: caller.id,
           uploadedAt: Timestamp.now(),
+          widthPx: probe.widthPx,
+          heightPx: probe.heightPx,
         };
 
         const history = Array.isArray(current.revisionHistory) ? current.revisionHistory : [];

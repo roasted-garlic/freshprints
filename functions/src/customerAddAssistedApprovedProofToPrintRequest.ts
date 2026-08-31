@@ -252,13 +252,27 @@ export const customerAddAssistedApprovedProofToPrintRequest = onCall(
         approvedProofId: approvedProofId || null,
         approvedAtMillis: timestampMillis(assisted.approvedAt),
         proofs: proofsToRetentionViews(proofs),
+        finalSource: hasFinalSource
+          ? {
+              id:
+                typeof (assisted.finalSource as { id?: unknown }).id === "string"
+                  ? (assisted.finalSource as { id: string }).id
+                  : "",
+              storagePath:
+                typeof (assisted.finalSource as { storagePath?: unknown }).storagePath === "string"
+                  ? (assisted.finalSource as { storagePath: string }).storagePath
+                  : "",
+              contentType:
+                typeof (assisted.finalSource as { contentType?: unknown }).contentType === "string"
+                  ? (assisted.finalSource as { contentType: string }).contentType
+                  : undefined,
+            }
+          : null,
         printRequestIngest: existingIngest,
         nowMs: Date.now(),
       });
 
-      // Prefer final source when present (ADR-FP-110); still allow legacy proof-only approvals.
-      const eligibleViaFinalSource = status === "approved" && hasFinalSource;
-      if (!eligibility.eligible && !eligibleViaFinalSource) {
+      if (!eligibility.eligible) {
         if (eligibility.reason === "not_approved") {
           throw failedPrecondition("This request is not approved yet.");
         }
@@ -296,6 +310,14 @@ export const customerAddAssistedApprovedProofToPrintRequest = onCall(
           updatedAt: FieldValue.serverTimestamp(),
         });
       }
+
+      const assistedFinalSourceId =
+        hasFinalSource &&
+        assisted.finalSource &&
+        typeof assisted.finalSource === "object" &&
+        typeof (assisted.finalSource as { id?: unknown }).id === "string"
+          ? (assisted.finalSource as { id: string }).id.trim()
+          : null;
 
       const resolvedProof = await resolveAssistedCreationApprovedProofDownload({
         uid: customerUid,
@@ -494,7 +516,9 @@ export const customerAddAssistedApprovedProofToPrintRequest = onCall(
             ...intakeConfirmation,
             assistedCreationRequestId: payload.requestId,
             assistedProofId: approvedProofId || null,
+            assistedFinalSourceId,
             createdAt: now,
+            updatedAt: now,
           }),
         );
 

@@ -79,6 +79,8 @@ interface ResizedImage {
   pngBytes: Buffer;
   widthPx: number;
   heightPx: number;
+  printWidthInches: number;
+  printHeightInches: number;
 }
 
 /**
@@ -136,6 +138,8 @@ export async function generateGangSheetPng(
         pngBytes: downloadResult.data.pngBytes,
         widthPx: image.targetWidthPx,
         heightPx: image.targetHeightPx,
+        printWidthInches: image.printWidthInches ?? image.targetWidthPx / EXPORT_DPI,
+        printHeightInches: image.printHeightInches ?? image.targetHeightPx / EXPORT_DPI,
       });
     }
 
@@ -143,7 +147,12 @@ export async function generateGangSheetPng(
       resizedImageGroups.push(group);
       resizedByAllocationId.set(
         image.allocationId,
-        group.map((entry) => ({ ...entry, allocationId: image.allocationId })),
+        group.map((entry) => ({
+          ...entry,
+          allocationId: image.allocationId,
+          printWidthInches: image.printWidthInches ?? entry.printWidthInches,
+          printHeightInches: image.printHeightInches ?? entry.printHeightInches,
+        })),
       );
     }
   }

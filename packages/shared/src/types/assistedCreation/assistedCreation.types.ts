@@ -133,6 +133,8 @@ export interface AssistedCreationFinalSource {
   uploadedByUid: string;
   /** Server Timestamp or ISO string in DTOs. */
   uploadedAt: unknown;
+  widthPx?: number;
+  heightPx?: number;
 }
 
 /**

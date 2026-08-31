@@ -18,6 +18,8 @@ import {
   type PortalPrintProgressStage,
 } from '@fresh-prints/shared/utils/portalPrintProgressStage';
 import { formatPortalCustomerShowScheduleLabel } from '@fresh-prints/shared/utils/portalCustomerShowSchedule';
+import { evaluatePortalPrintRequestUnqueue } from '@fresh-prints/shared/utils/portalPrintRequestUnqueue';
+import type { ShowProductionStatus } from '@fresh-prints/shared/types/upcomingShow/upcomingShow.enums';
 import { sumPrintRequestItemQuantities } from '@fresh-prints/shared/utils/portalShowQueueCapacity';
 import {
   summarizePrintRequestPersistenceHealth,
@@ -28,6 +30,7 @@ import {
   sumRemainingUnallocatedQuantity,
 } from '@fresh-prints/shared/utils/portalShowQueueFit';
 import { PortalPrintRequestItemCard } from '../../../../features/print-requests/components/PortalPrintRequestItemCard';
+import { PortalUnqueueFromShowConfirmModal } from '../../../../features/print-requests/components/PortalUnqueueFromShowConfirmModal';
 import { PortalPrintRequestProgressPanel } from '../../../../features/print-requests/components/PortalPrintRequestProgressPanel';
 import { PortalPrintRequestScheduleSection } from '../../../../features/print-requests/components/PortalPrintRequestScheduleSection';
 import {
@@ -41,6 +44,7 @@ import { usePrintRequestDetail } from '../../../../features/print-requests/hooks
 import { usePortalStandardPrintSizes } from '../../../../features/print-requests/hooks/usePortalStandardPrintSizes';
 import { usePortalShowPrintProgress } from '../../../../features/print-requests/hooks/usePortalShowPrintProgress';
 import { usePortalPrintRequestShowSchedules } from '../../../../features/print-requests/hooks/usePortalPrintRequestShowSchedules';
+import { useUnqueuePrintRequestFromShow } from '../../../../features/print-requests/hooks/useUnqueuePrintRequestFromShow';
 import {
   portalPrintRequestService,
   printRequestItemHasCustomerUpload,
@@ -51,6 +55,7 @@ import {
   parsePortalRequestDetailFrom,
   resolvePortalRequestDetailBack,
 } from '../../../../features/print-requests/utils/portalRequestDetailReturn';
+import { resolveCanShowUnqueueFromShowCta } from '../../../../features/print-requests/utils/printRequestDetailUnqueueUi';
 import { PortalConfirmModal } from '../../../../features/shared/components/PortalConfirmModal';
 import { PortalPickContinuableRequestModal } from '../../../../features/shared/components/PortalPickContinuableRequestModal';
 import { ArrowLeftIcon, CalendarPlusIcon, ImagePlusIcon, LibraryIcon, RefreshIcon } from '../../../../features/shared/components/PortalIcons';
@@ -91,6 +96,7 @@ export default function PrintRequestDetailView() {
     continuableRequests,
     createPrintRequest,
     isClearingWorkingRequest,
+    portalEditableContinuableRequests,
     refreshRequests,
     reloadWorkingItems,
     reconcileQueuedRequest,
@@ -112,6 +118,16 @@ export default function PrintRequestDetailView() {
   const [isRemovingItem, setIsRemovingItem] = useState(false);
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
   const [clearError, setClearError] = useState<string | null>(null);
+  const [requestAllocations, setRequestAllocations] = useState<
+    Awaited<ReturnType<typeof portalPrintRequestService.listShowAllocationsForPrintRequests>>
+  >([]);
+  const [isUnqueueModalOpen, setIsUnqueueModalOpen] = useState(false);
+  const {
+    clearError: clearUnqueueError,
+    error: unqueueError,
+    isSubmitting: isUnqueueSubmitting,
+    unqueueFromShow,
+  } = useUnqueuePrintRequestFromShow();
   /** Bumped per item id when remove confirm is cancelled so qty-0 input restores. */
   const [quantityResetKeys, setQuantityResetKeys] = useState<Record<string, number>>({});
 
@@ -178,6 +194,7 @@ export default function PrintRequestDetailView() {
     try {
       const allocations =
         await portalPrintRequestService.listShowAllocationsForPrintRequests([printRequestId]);
+      setRequestAllocations(allocations);
       const allocatedByItemId = sumAllocatedQuantityByItemId(
         allocations.map((allocation) => ({
           printRequestItemId: allocation.printRequestItemId,
@@ -187,6 +204,7 @@ export default function PrintRequestDetailView() {
       );
       setUnallocatedQuantity(sumRemainingUnallocatedQuantity(items, allocatedByItemId));
     } catch {
+      setRequestAllocations([]);
       setUnallocatedQuantity(sumPrintRequestItemQuantities(items));
     }
   }, [items, printRequestId]);
@@ -384,6 +402,67 @@ export default function PrintRequestDetailView() {
       })),
     [requestSchedules],
   );
+  const primaryScheduledShow = requestSchedules[0] ?? null;
+  const primaryShowProductionStatus = useMemo((): ShowProductionStatus => {
+    if (!primaryScheduledShow) {
+      return 'open';
+    }
+    const match = printProgress.shows.find(
+      (show) => show.showId === primaryScheduledShow.upcomingShowId,
+    );
+    return match?.productionStatus ?? 'open';
+  }, [primaryScheduledShow, printProgress.shows]);
+  const hasOtherPortalEditableContinuableRequest = useMemo(
+    () =>
+      portalEditableContinuableRequests.some((request) => request.id !== printRequestId),
+    [portalEditableContinuableRequests, printRequestId],
+  );
+  const unqueueEligibility = useMemo(() => {
+    if (!printRequest || !primaryScheduledShow) {
+      return evaluatePortalPrintRequestUnqueue({
+        request: {
+          id: printRequestId,
+          status: 'active',
+        },
+        showProductionStatus: 'open',
+        allocationsOnShow: [],
+        hasOtherPortalEditableContinuableRequest: false,
+      });
+    }
+
+    const allocationsOnShow = requestAllocations
+      .filter(
+        (allocation) =>
+          allocation.upcomingShowId &&
+          allocation.upcomingShowId === primaryScheduledShow.upcomingShowId,
+      )
+      .map((allocation) => ({
+        id: allocation.id,
+        upcomingShowId: allocation.upcomingShowId,
+        status: allocation.status,
+        allocatedQuantity: allocation.allocatedQuantity,
+      }));
+
+    return evaluatePortalPrintRequestUnqueue({
+      request: {
+        id: printRequest.id,
+        status: printRequest.status,
+        requestOrigin: printRequest.requestOrigin,
+        isInternal: printRequest.isInternal,
+        closureKind: printRequest.closureKind,
+      },
+      showProductionStatus: primaryShowProductionStatus,
+      allocationsOnShow,
+      hasOtherPortalEditableContinuableRequest,
+    });
+  }, [
+    hasOtherPortalEditableContinuableRequest,
+    primaryScheduledShow,
+    primaryShowProductionStatus,
+    printRequest,
+    printRequestId,
+    requestAllocations,
+  ]);
   const hasAttachedDesigns = items.length > 0;
 
   const handleQueuedToShow = useCallback(
@@ -413,6 +492,42 @@ export default function PrintRequestDetailView() {
       reloadRequestSchedules,
     ],
   );
+
+  const canShowUnqueueFromShowCta = resolveCanShowUnqueueFromShowCta({
+    isEditable,
+    unqueueEligibility,
+    hasPrimaryScheduledShow: primaryScheduledShow !== null,
+  });
+
+  const handleUnqueueFromShow = useCallback(async () => {
+    if (!printRequest || !primaryScheduledShow) {
+      return;
+    }
+
+    clearUnqueueError();
+    try {
+      await unqueueFromShow({
+        printRequestId: printRequest.id,
+        upcomingShowId: primaryScheduledShow.upcomingShowId,
+      });
+      setIsUnqueueModalOpen(false);
+      await reload();
+      void reloadRequestSchedules();
+      void loadAllocationState();
+      await refreshRequests({ printRequestId: printRequest.id });
+    } catch {
+      // surfaced via unqueueError
+    }
+  }, [
+    clearUnqueueError,
+    loadAllocationState,
+    primaryScheduledShow,
+    printRequest,
+    refreshRequests,
+    reload,
+    reloadRequestSchedules,
+    unqueueFromShow,
+  ]);
 
   if (isLoading) {
     return (
@@ -521,6 +636,29 @@ export default function PrintRequestDetailView() {
             ) : (
               <p className="portal-muted portal-request-detail-show-cta-hint">
                 Final step: choose the show you want this request added to.
+              </p>
+            )}
+          </div>
+        ) : canShowUnqueueFromShowCta ? (
+          <div className="portal-request-detail-header-actions">
+            <button
+              className="portal-button portal-button-secondary"
+              disabled={isUnqueueSubmitting}
+              onClick={() => {
+                clearUnqueueError();
+                setIsUnqueueModalOpen(true);
+              }}
+              type="button"
+            >
+              Remove from Show & Edit
+            </button>
+            {unqueueError ? (
+              <p className="portal-error portal-request-detail-show-cta-hint" role="alert">
+                {unqueueError}
+              </p>
+            ) : (
+              <p className="portal-muted portal-request-detail-show-cta-hint">
+                Remove this request from the show so you can edit it again.
               </p>
             )}
           </div>
@@ -719,6 +857,24 @@ export default function PrintRequestDetailView() {
         onClose={() => setIsQueueModalOpen(false)}
         onQueued={handleQueuedToShow}
         printRequest={printRequest}
+      />
+
+      <PortalUnqueueFromShowConfirmModal
+        isOpen={isUnqueueModalOpen}
+        isSubmitting={isUnqueueSubmitting}
+        showLabel={
+          primaryScheduledShow
+            ? formatPortalCustomerShowScheduleLabel(primaryScheduledShow)
+            : undefined
+        }
+        onCancel={() => {
+          if (!isUnqueueSubmitting) {
+            setIsUnqueueModalOpen(false);
+          }
+        }}
+        onConfirm={() => {
+          void handleUnqueueFromShow();
+        }}
       />
 
       <PortalConfirmModal

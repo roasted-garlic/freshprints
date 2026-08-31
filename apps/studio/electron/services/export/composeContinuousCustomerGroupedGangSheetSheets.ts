@@ -6,8 +6,12 @@ import {
 } from "@fresh-prints/shared/utils/gangSheetNesting";
 import {
   buildGangSheetLabelSvg,
+  buildGroupedSectionHeadingSvg,
   computeGangSheetLabelBandHeightPx,
+  computeGroupedSectionLabelBandHeightPx,
+  resolveGroupedSectionLabelFontSizePx,
 } from "@fresh-prints/shared/utils/gangSheetLabelRendering";
+import { calculateGangSheetSectionSummaryForPlacements } from "@fresh-prints/shared/utils/gangSheetCustomerSectionSummary";
 import {
   buildGroupedGangSheetSectionHeading,
   buildGroupedGangSheetSectionContinuedHeading,
@@ -28,6 +32,8 @@ export interface GroupedResizedImage {
   pngBytes: Buffer;
   widthPx: number;
   heightPx: number;
+  printWidthInches: number;
+  printHeightInches: number;
 }
 
 interface ProductionGroup {
@@ -126,7 +132,12 @@ export async function composeContinuousCustomerGroupedGangSheetSheets(input: {
   }
 
   const showLabelBandHeightPx = computeGangSheetLabelBandHeightPx(input.request.labelFontSizePx);
-  const sectionLabelBandHeightPx = computeGangSheetLabelBandHeightPx(input.request.labelFontSizePx);
+  const sectionHeadingFontSizePx = input.request.labelFontSizePx;
+  const sectionSummaryFontSizePx = resolveGroupedSectionLabelFontSizePx(input.request.labelFontSizePx);
+  const sectionLabelBandHeightPx = computeGroupedSectionLabelBandHeightPx(
+    sectionHeadingFontSizePx,
+    sectionSummaryFontSizePx,
+  );
 
   const pendingSections: PendingGroupedSection[] = [];
 
@@ -198,11 +209,27 @@ export async function composeContinuousCustomerGroupedGangSheetSheets(input: {
 
     for (const pending of sections) {
       const { group, sectionHeading, sheet } = pending;
-      const sectionLabelSvg = buildGangSheetLabelSvg({
-        label: sectionHeading,
+      const sectionImagesById = new Map(
+        group.images.map((image) => [
+          image.id,
+          {
+            id: image.id,
+            printWidthInches: image.printWidthInches,
+            printHeightInches: image.printHeightInches,
+          },
+        ]),
+      );
+      const sectionSummary = calculateGangSheetSectionSummaryForPlacements(
+        sheet.placements,
+        sectionImagesById,
+      );
+      const sectionLabelSvg = buildGroupedSectionHeadingSvg({
+        heading: sectionHeading,
+        summaryLine: sectionSummary.combinedLine,
         sheetWidthPx: input.sheetWidthPx,
         bandHeightPx: sectionLabelBandHeightPx,
-        labelFontSizePx: input.request.labelFontSizePx,
+        headingFontSizePx: sectionHeadingFontSizePx,
+        summaryFontSizePx: sectionSummaryFontSizePx,
       });
       compositeLayers.push({ input: Buffer.from(sectionLabelSvg), left: 0, top: artworkTopOffset });
 
@@ -264,7 +291,12 @@ export function countContinuousCustomerGroupedPhysicalSheets(input: {
   labelFontSizePx: number;
 }): number {
   const showLabelBandHeightPx = computeGangSheetLabelBandHeightPx(input.labelFontSizePx);
-  const sectionLabelBandHeightPx = computeGangSheetLabelBandHeightPx(input.labelFontSizePx);
+  const sectionHeadingFontSizePx = input.labelFontSizePx;
+  const sectionSummaryFontSizePx = resolveGroupedSectionLabelFontSizePx(input.labelFontSizePx);
+  const sectionLabelBandHeightPx = computeGroupedSectionLabelBandHeightPx(
+    sectionHeadingFontSizePx,
+    sectionSummaryFontSizePx,
+  );
 
   const pendingSections: PendingGroupedSection[] = input.sections.map((section, index) => ({
     group: {

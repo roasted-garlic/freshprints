@@ -50,6 +50,24 @@ describe("evaluateAssistedApprovedProofAddToRequest", () => {
     assert.equal(result.alreadyIngested, true);
   });
 
+  it("is eligible when finalSource exists even if proof is purged", () => {
+    const result = evaluateAssistedApprovedProofAddToRequest({
+      status: "approved",
+      approvedProofId: "proof-1",
+      approvedAtMillis: APPROVED_AT,
+      proofs: [{ ...proof, fullSizePurgedAtMillis: AFTER_WINDOW, storagePath: "" }],
+      finalSource: {
+        id: "final-1",
+        storagePath: "assisted-creation/u1/r1/final/final-1.png",
+        contentType: "image/png",
+      },
+      printRequestIngest: null,
+      nowMs: AFTER_WINDOW,
+    });
+    assert.equal(result.eligible, true);
+    assert.equal(result.reason, "final_source_available");
+  });
+
   it("hides CTA when purged and never ingested", () => {
     const result = evaluateAssistedApprovedProofAddToRequest({
       status: "approved",

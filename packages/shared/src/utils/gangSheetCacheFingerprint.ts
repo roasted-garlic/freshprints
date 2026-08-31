@@ -6,6 +6,10 @@ import type { ExportGangSheetPngRequest } from "../types/export/gangSheetExportI
  * they rotate and must not affect cache identity.
  */
 export function buildGangSheetCacheFingerprint(request: ExportGangSheetPngRequest): string {
+  const includeSectionSummaryInputs =
+    request.layoutMode === "grouped_by_customer" ||
+    request.layoutMode === "customer_grouped_continuous";
+
   const images = request.images
     .map((image) => ({
       allocationId: image.allocationId,
@@ -13,6 +17,12 @@ export function buildGangSheetCacheFingerprint(request: ExportGangSheetPngReques
       targetWidthPx: image.targetWidthPx,
       targetHeightPx: image.targetHeightPx,
       quantity: image.quantity,
+      ...(includeSectionSummaryInputs && typeof image.printWidthInches === "number"
+        ? { printWidthInches: image.printWidthInches }
+        : {}),
+      ...(includeSectionSummaryInputs && typeof image.printHeightInches === "number"
+        ? { printHeightInches: image.printHeightInches }
+        : {}),
     }))
     .sort((left, right) => left.allocationId.localeCompare(right.allocationId));
 
@@ -24,7 +34,9 @@ export function buildGangSheetCacheFingerprint(request: ExportGangSheetPngReques
     gutterInches: request.gutterInches,
     maxSheetLengthInches: request.maxSheetLengthInches,
     labelFontSizePx: request.labelFontSizePx,
-    ...(request.layoutMode && request.layoutMode !== "efficiency" ? { layoutMode: request.layoutMode } : {}),
+    ...(request.layoutMode && request.layoutMode !== "efficiency"
+      ? { layoutMode: request.layoutMode, sectionSummaryVersion: 1 }
+      : {}),
     images,
   });
 

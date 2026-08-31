@@ -25,6 +25,7 @@ export { listPortalAllocatableShows } from "./listPortalAllocatableShows";
 export { listPortalPublicShows } from "./listPortalPublicShows";
 export { listPortalShowCatalogDesigns } from "./listPortalShowCatalogDesigns";
 export { queuePortalPrintRequestToShow } from "./queuePortalPrintRequestToShow";
+export { unqueuePortalPrintRequestFromShow } from "./unqueuePortalPrintRequestFromShow";
 export { completeStaffGangSheetAndOpenNext } from "./completeStaffGangSheetAndOpenNext";
 export { convertCustomerPrintRequestToInternal } from "./convertCustomerPrintRequestToInternal";
 export { createInitialStaffGangSheet } from "./createInitialStaffGangSheet";

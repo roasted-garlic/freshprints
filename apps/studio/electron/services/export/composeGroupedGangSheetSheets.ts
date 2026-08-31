@@ -6,8 +6,12 @@ import {
 } from "@fresh-prints/shared/utils/gangSheetNesting";
 import {
   buildGangSheetLabelSvg,
+  buildGroupedSectionHeadingSvg,
   computeGangSheetLabelBandHeightPx,
+  computeGroupedSectionLabelBandHeightPx,
+  resolveGroupedSectionLabelFontSizePx,
 } from "@fresh-prints/shared/utils/gangSheetLabelRendering";
+import { calculateGangSheetSectionSummaryForPlacements } from "@fresh-prints/shared/utils/gangSheetCustomerSectionSummary";
 import {
   buildGroupedGangSheetSectionHeading,
   buildGroupedGangSheetSectionContinuedHeading,
@@ -28,6 +32,8 @@ export interface GroupedResizedImage {
   pngBytes: Buffer;
   widthPx: number;
   heightPx: number;
+  printWidthInches: number;
+  printHeightInches: number;
 }
 
 interface ProductionGroup {
@@ -87,7 +93,12 @@ export async function composeGroupedGangSheetSheets(input: {
   }
 
   const showLabelBandHeightPx = computeGangSheetLabelBandHeightPx(input.request.labelFontSizePx);
-  const sectionLabelBandHeightPx = computeGangSheetLabelBandHeightPx(input.request.labelFontSizePx);
+  const sectionHeadingFontSizePx = input.request.labelFontSizePx;
+  const sectionSummaryFontSizePx = resolveGroupedSectionLabelFontSizePx(input.request.labelFontSizePx);
+  const sectionLabelBandHeightPx = computeGroupedSectionLabelBandHeightPx(
+    sectionHeadingFontSizePx,
+    sectionSummaryFontSizePx,
+  );
 
   const sharpApi = await loadSharpModule();
   const rotatedPngCache = new Map<string, Buffer>();
@@ -147,11 +158,27 @@ export async function composeGroupedGangSheetSheets(input: {
       bandHeightPx: showLabelBandHeightPx,
       labelFontSizePx: input.request.labelFontSizePx,
     });
-    const sectionLabelSvg = buildGangSheetLabelSvg({
-      label: sectionHeading,
+    const sectionImagesById = new Map(
+      group.images.map((image) => [
+        image.id,
+        {
+          id: image.id,
+          printWidthInches: image.printWidthInches,
+          printHeightInches: image.printHeightInches,
+        },
+      ]),
+    );
+    const sectionSummary = calculateGangSheetSectionSummaryForPlacements(
+      sheet.placements,
+      sectionImagesById,
+    );
+    const sectionLabelSvg = buildGroupedSectionHeadingSvg({
+      heading: sectionHeading,
+      summaryLine: sectionSummary.combinedLine,
       sheetWidthPx: input.sheetWidthPx,
       bandHeightPx: sectionLabelBandHeightPx,
-      labelFontSizePx: input.request.labelFontSizePx,
+      headingFontSizePx: sectionHeadingFontSizePx,
+      summaryFontSizePx: sectionSummaryFontSizePx,
     });
 
     const artworkTopOffset = showLabelBandHeightPx + sectionLabelBandHeightPx;

@@ -17,6 +17,10 @@ import type {
   QueuePortalPrintRequestToShowRequest,
   QueuePortalPrintRequestToShowResponse,
 } from '@fresh-prints/shared/types/portal/queuePortalPrintRequestToShow.types';
+import type {
+  UnqueuePortalPrintRequestFromShowRequest,
+  UnqueuePortalPrintRequestFromShowResponse,
+} from '@fresh-prints/shared/types/portal/unqueuePortalPrintRequestFromShow.types';
 import { DEFAULT_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START } from '@fresh-prints/shared/utils/showQueueCutoff';
 
 import { callTracedFunction } from '../../../lib/firebase/tracedCallable';
@@ -166,6 +170,21 @@ export const portalShowSelectionService = {
           source: 'portalShowSelectionService.queuePrintRequestToShow',
         })(input),
       );
+    } catch (error) {
+      throw mapCallableError(error);
+    }
+  },
+
+  async unqueuePrintRequestFromShow(
+    input: UnqueuePortalPrintRequestFromShowRequest,
+  ): Promise<UnqueuePortalPrintRequestFromShowResponse> {
+    try {
+      return await callTracedFunction<
+        UnqueuePortalPrintRequestFromShowRequest,
+        UnqueuePortalPrintRequestFromShowResponse
+      >('unqueuePortalPrintRequestFromShow', {
+        source: 'portalShowSelectionService.unqueuePrintRequestFromShow',
+      })(input);
     } catch (error) {
       throw mapCallableError(error);
     }

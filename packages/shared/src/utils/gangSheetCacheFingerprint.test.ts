@@ -175,6 +175,88 @@ describe("buildGangSheetCacheFingerprint", () => {
 
     assert.notEqual(baseline, enhanced);
   });
+
+  it("includes sectionSummaryVersion for grouped customer layouts", () => {
+    const grouped = buildGangSheetCacheFingerprint(
+      sampleRequest({
+        layoutMode: "grouped_by_customer",
+        images: sampleRequest().images.map((image) => ({
+          ...image,
+          grouping: {
+            printRequestId: "req-1",
+            requestName: "alice-IR001",
+            customerUsernameSnapshot: "alice",
+            isInternal: false,
+          },
+        })),
+      }),
+    );
+    const groupedWithSummaryBump = buildGangSheetCacheFingerprint(
+      sampleRequest({
+        layoutMode: "grouped_by_customer",
+        images: sampleRequest().images.map((image) => ({
+          ...image,
+          grouping: {
+            printRequestId: "req-1",
+            requestName: "alice-IR001",
+            customerUsernameSnapshot: "alice",
+            isInternal: false,
+          },
+        })),
+        labelFontSizePx: 49,
+      }),
+    );
+
+    assert.notEqual(grouped, groupedWithSummaryBump);
+  });
+
+  it("changes grouped fingerprint when print dimensions cross price tier", () => {
+    const groupedImages = sampleRequest().images.map((image) => ({
+      ...image,
+      grouping: {
+        printRequestId: "req-1",
+        requestName: "alice-IR001",
+        customerUsernameSnapshot: "alice",
+        isInternal: false,
+      },
+      printWidthInches: 5.5,
+      printHeightInches: 5.5,
+    }));
+
+    const smallTier = buildGangSheetCacheFingerprint(
+      sampleRequest({
+        layoutMode: "grouped_by_customer",
+        images: groupedImages,
+      }),
+    );
+    const largeTier = buildGangSheetCacheFingerprint(
+      sampleRequest({
+        layoutMode: "grouped_by_customer",
+        images: groupedImages.map((image) => ({
+          ...image,
+          printWidthInches: 6,
+          printHeightInches: 5.5,
+        })),
+      }),
+    );
+
+    assert.notEqual(smallTier, largeTier);
+  });
+
+  it("does not include sectionSummaryVersion for efficiency layout", () => {
+    const efficiency = buildGangSheetCacheFingerprint(sampleRequest());
+    const efficiencyWithDimensions = buildGangSheetCacheFingerprint(
+      sampleRequest({
+        images: sampleRequest().images.map((image) => ({
+          ...image,
+          printWidthInches: 8,
+          printHeightInches: 8,
+        })),
+      }),
+    );
+
+    assert.equal(efficiency, efficiencyWithDimensions);
+  });
 });
 
 describe("sanitizeGangSheetCacheShowId", () => {

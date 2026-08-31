@@ -102,6 +102,7 @@ export interface CustomerUpload {
    */
   assistedCreationRequestId?: string | null;
   assistedProofId?: string | null;
+  assistedFinalSourceId?: string | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
