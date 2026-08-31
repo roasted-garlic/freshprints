@@ -58,3 +58,39 @@ test("printRequestItems recognize immutable requestCountApplied Wave C marker", 
     /match \/printRequestItems\/\{printRequestItemId\}[\s\S]*?allow update: if isStaff\(\)[\s\S]*?optionalFieldUnchanged\("requestCountApplied"\)/,
   );
 });
+
+test("printRequestItems allow optional interactive artwork enhance fields", async () => {
+  const rules = await readFile(path.join(REPO_ROOT, "firestore.rules"), "utf8");
+  assert.match(
+    rules,
+    /function printRequestItemRequiredFieldsValid\(data\)[\s\S]*?"artworkEnhanceMode"/,
+  );
+  assert.match(
+    rules,
+    /function printRequestItemRequiredFieldsValid\(data\)[\s\S]*?isOptionalArtworkEnhanceMode\(data, "artworkEnhanceMode"\)/,
+  );
+  assert.match(
+    rules,
+    /function customerCanUpdatePrintRequestItem\(\)[\s\S]*?optionalFieldUnchanged\("artworkEnhanceMode"\)/,
+  );
+  assert.match(
+    rules,
+    /match \/printRequestItems\/\{printRequestItemId\}[\s\S]*?allow update: if isStaff\(\)[\s\S]*?optionalFieldUnchanged\("artworkEnhanceMode"\)/,
+  );
+});
+
+test("printRequestItems tolerate legacy callable updatedBy field on items", async () => {
+  const rules = await readFile(path.join(REPO_ROOT, "firestore.rules"), "utf8");
+  assert.match(
+    rules,
+    /function printRequestItemRequiredFieldsValid\(data\)[\s\S]*?"updatedBy"/,
+  );
+  assert.match(
+    rules,
+    /function printRequestItemRequiredFieldsValid\(data\)[\s\S]*?isOptionalString\(data, "updatedBy"\)/,
+  );
+  assert.match(
+    rules,
+    /match \/printRequestItems\/\{printRequestItemId\}[\s\S]*?allow update: if isStaff\(\)[\s\S]*?optionalFieldUnchanged\("updatedBy"\)/,
+  );
+});

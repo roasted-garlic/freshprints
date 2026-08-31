@@ -86,14 +86,17 @@ export default function PrintRequestDetailView() {
   const searchParams = useSearchParams();
   const {
     allocationTotalsByRequestId,
+    clearPrintRequestItems,
     closeCurrentRequestDrawer,
     continuableRequests,
     createPrintRequest,
+    isClearingWorkingRequest,
     refreshRequests,
     reloadWorkingItems,
     reconcileQueuedRequest,
     resetWorkingCart,
     summariesByRequestId,
+    workingRequest,
   } = usePortalPrintRequests();
   const printRequestId = params.id;
   const [actionError, setActionError] = useState<string | null>(null);
@@ -107,6 +110,8 @@ export default function PrintRequestDetailView() {
   const [isQueueModalOpen, setIsQueueModalOpen] = useState(false);
   const [itemPendingRemoval, setItemPendingRemoval] = useState<PrintRequestItem | null>(null);
   const [isRemovingItem, setIsRemovingItem] = useState(false);
+  const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
+  const [clearError, setClearError] = useState<string | null>(null);
   /** Bumped per item id when remove confirm is cancelled so qty-0 input restores. */
   const [quantityResetKeys, setQuantityResetKeys] = useState<Record<string, number>>({});
 
@@ -118,11 +123,13 @@ export default function PrintRequestDetailView() {
     isLoading,
     error,
     isEditable,
+    reload,
     updateItem,
     duplicateItem,
     getItemClientKey,
     removeItem,
     reconcileQueued,
+    patchArtworkEnhanceMode,
   } = usePrintRequestDetail(printRequestId);
   const { settings: standardPrintSizesSettings } = usePortalStandardPrintSizes();
 
@@ -294,6 +301,25 @@ export default function PrintRequestDetailView() {
     },
     [removeItem],
   );
+
+  const handleClearAllDesigns = useCallback(async () => {
+    if (!printRequestId) {
+      return;
+    }
+
+    setClearError(null);
+    try {
+      await clearPrintRequestItems(printRequestId);
+      if (workingRequest?.id !== printRequestId) {
+        await reload({ silent: true });
+      }
+      setIsClearConfirmOpen(false);
+    } catch (error) {
+      setClearError(
+        error instanceof Error ? error.message : 'Unable to clear designs from this request.',
+      );
+    }
+  }, [clearPrintRequestItems, printRequestId, reload, workingRequest?.id]);
 
   const pendingRemovalTitle =
     itemPendingRemoval?.titleSnapshot ||
@@ -563,7 +589,23 @@ export default function PrintRequestDetailView() {
           ) : null}
         </section>
       ) : (
-        <section aria-label="Request items" className="portal-request-item-editor-grid">
+        <>
+          {isEditable ? (
+            <div className="portal-request-detail-items-toolbar">
+              <button
+                className="current-request-drawer-clear"
+                disabled={isClearingWorkingRequest}
+                onClick={() => {
+                  setClearError(null);
+                  setIsClearConfirmOpen(true);
+                }}
+                type="button"
+              >
+                {isClearingWorkingRequest ? 'Clearing…' : 'Clear all designs'}
+              </button>
+            </div>
+          ) : null}
+          <section aria-label="Request items" className="portal-request-item-editor-grid">
           {items.map((item) => {
             const design = item.designId ? designSummaries.get(item.designId) : null;
             const upload = item.customerUploadId
@@ -593,6 +635,10 @@ export default function PrintRequestDetailView() {
                         printWidthInches: design.printWidthInches,
                         printHeightInches: design.printHeightInches,
                         updatedAtMs: design.updatedAtMs,
+                        interactiveEnhancedOriginalPath: design.interactiveEnhancedOriginalPath,
+                        interactiveEnhancedWidthPx: design.interactiveEnhancedWidthPx,
+                        interactiveEnhancedHeightPx: design.interactiveEnhancedHeightPx,
+                        interactiveEnhanceGeneratedAt: design.interactiveEnhanceGeneratedAt,
                       }
                     : null
                 }
@@ -609,6 +655,11 @@ export default function PrintRequestDetailView() {
                         approvedMaxPrintWidthInches: upload?.approvedMaxPrintWidthInches,
                         approvedMaxPrintHeightInches: upload?.approvedMaxPrintHeightInches,
                         wasUpscaled: upload?.wasUpscaled,
+                        interactiveEnhancedProductionStoragePath:
+                          upload?.interactiveEnhancedProductionStoragePath,
+                        interactiveEnhancedWidthPx: upload?.interactiveEnhancedWidthPx,
+                        interactiveEnhancedHeightPx: upload?.interactiveEnhancedHeightPx,
+                        interactiveEnhanceGeneratedAt: upload?.interactiveEnhanceGeneratedAt,
                         fromAssistedCreation: Boolean(upload?.assistedCreationRequestId),
                       }
                     : null
@@ -618,6 +669,10 @@ export default function PrintRequestDetailView() {
                 key={getItemClientKey(item.id)}
                 onAddToRequest={addDesignFlow.addDesign}
                 onDuplicate={(nextItem) => void handleDuplicateItem(nextItem)}
+                onArtworkEnhanceModeChanged={(nextItem, result) => {
+                  patchArtworkEnhanceMode(nextItem.id, result);
+                }}
+                printRequestId={printRequestId}
                 onRemove={(nextItem) => setItemPendingRemoval(nextItem)}
                 onUpdate={handleUpdateItem}
                 onAutosaveStateChange={updateAutosaveState}
@@ -629,7 +684,8 @@ export default function PrintRequestDetailView() {
               />
             );
           })}
-        </section>
+          </section>
+        </>
       )}
 
       {autosaveState.status !== 'idle' ? (
@@ -704,6 +760,33 @@ export default function PrintRequestDetailView() {
         title="Add to request?"
       >
         <p className="portal-muted portal-confirm-modal-message">{addDesignFlow.confirmMessage}</p>
+      </PortalConfirmModal>
+
+      <PortalConfirmModal
+        cancelLabel="Keep designs"
+        confirmLabel="Clear all"
+        confirmVariant="danger"
+        isConfirmLoading={isClearingWorkingRequest}
+        isOpen={isClearConfirmOpen}
+        onCancel={() => {
+          if (!isClearingWorkingRequest) {
+            setIsClearConfirmOpen(false);
+          }
+        }}
+        onConfirm={() => {
+          void handleClearAllDesigns();
+        }}
+        title="Clear all designs?"
+      >
+        <p className="portal-muted portal-confirm-modal-message">
+          This removes every design from this request so you can start fresh. You can add designs
+          again anytime.
+        </p>
+        {clearError ? (
+          <p className="portal-error" role="alert">
+            {clearError}
+          </p>
+        ) : null}
       </PortalConfirmModal>
 
       <PortalPickContinuableRequestModal

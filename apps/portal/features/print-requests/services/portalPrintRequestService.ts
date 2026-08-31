@@ -27,6 +27,7 @@ import type {
   CreatePortalPrintRequestResponse,
 } from '@fresh-prints/shared/types/printRequest/createPortalPrintRequest.types';
 import type { PrintRequest, PrintRequestItem } from '@fresh-prints/shared/types/printRequest/printRequest.types';
+import { resolveActiveArtworkPixelDimensions } from '@fresh-prints/shared/utils/interactiveArtworkEnhance';
 import type { ShowAllocationStatus } from '@fresh-prints/shared/types/showAllocation/showAllocation.enums';
 import { CUSTOMER_UPLOAD_COLLECTIONS } from '@fresh-prints/shared/constants/customerUpload/customerUploadCollections.constants';
 import {
@@ -81,6 +82,9 @@ interface PrintRequestItemDocumentData extends DocumentData {
   standardSizePresetKey?: unknown;
   sortOrder?: unknown;
   notes?: unknown;
+  artworkEnhanceMode?: unknown;
+  preEnhancePrintWidthInches?: unknown;
+  preEnhancePrintHeightInches?: unknown;
   status?: unknown;
   addedBy?: unknown;
   createdAt?: unknown;
@@ -244,6 +248,15 @@ function mapPrintRequestItem(itemId: string, data: PrintRequestItemDocumentData)
         : undefined,
     sortOrder: typeof data.sortOrder === 'number' ? data.sortOrder : undefined,
     notes: typeof data.notes === 'string' ? data.notes : undefined,
+    ...(data.artworkEnhanceMode === 'baseline' || data.artworkEnhanceMode === 'enhanced'
+      ? { artworkEnhanceMode: data.artworkEnhanceMode }
+      : {}),
+    ...(typeof data.preEnhancePrintWidthInches === 'number'
+      ? { preEnhancePrintWidthInches: data.preEnhancePrintWidthInches }
+      : {}),
+    ...(typeof data.preEnhancePrintHeightInches === 'number'
+      ? { preEnhancePrintHeightInches: data.preEnhancePrintHeightInches }
+      : {}),
     status: data.status as PrintRequestItem['status'],
     addedBy: data.addedBy,
     createdAt,
@@ -263,14 +276,30 @@ async function loadProductionPixelsForItem(item: PrintRequestItem): Promise<{
     const snapshot = await getDoc(
       doc(getPortalDb(), CUSTOMER_UPLOAD_COLLECTIONS.customerUploads, item.customerUploadId),
     );
-    const data = snapshot.data() as { widthPx?: unknown; heightPx?: unknown } | undefined;
+    const data = snapshot.data() as {
+      widthPx?: unknown;
+      heightPx?: unknown;
+      interactiveEnhancedWidthPx?: unknown;
+      interactiveEnhancedHeightPx?: unknown;
+    } | undefined;
     if (
       typeof data?.widthPx === 'number' &&
       data.widthPx > 0 &&
       typeof data.heightPx === 'number' &&
       data.heightPx > 0
     ) {
-      return { pixelWidth: data.widthPx, pixelHeight: data.heightPx };
+      const active = resolveActiveArtworkPixelDimensions({
+        artworkEnhanceMode: item.artworkEnhanceMode,
+        baselineWidthPx: data.widthPx,
+        baselineHeightPx: data.heightPx,
+        enhancedWidthPx:
+          typeof data.interactiveEnhancedWidthPx === 'number' ? data.interactiveEnhancedWidthPx : null,
+        enhancedHeightPx:
+          typeof data.interactiveEnhancedHeightPx === 'number'
+            ? data.interactiveEnhancedHeightPx
+            : null,
+      });
+      return { pixelWidth: active.widthPx, pixelHeight: active.heightPx };
     }
     throw new Error('Design pixel dimensions are required to validate requested size.');
   }
@@ -279,14 +308,30 @@ async function loadProductionPixelsForItem(item: PrintRequestItem): Promise<{
     const snapshot = await getDoc(
       doc(getPortalDb(), PORTAL_FIRESTORE_COLLECTIONS.designs, item.designId),
     );
-    const data = snapshot.data() as { width?: unknown; height?: unknown } | undefined;
+    const data = snapshot.data() as {
+      width?: unknown;
+      height?: unknown;
+      interactiveEnhancedWidthPx?: unknown;
+      interactiveEnhancedHeightPx?: unknown;
+    } | undefined;
     if (
       typeof data?.width === 'number' &&
       data.width > 0 &&
       typeof data.height === 'number' &&
       data.height > 0
     ) {
-      return { pixelWidth: data.width, pixelHeight: data.height };
+      const active = resolveActiveArtworkPixelDimensions({
+        artworkEnhanceMode: item.artworkEnhanceMode,
+        baselineWidthPx: data.width,
+        baselineHeightPx: data.height,
+        enhancedWidthPx:
+          typeof data.interactiveEnhancedWidthPx === 'number' ? data.interactiveEnhancedWidthPx : null,
+        enhancedHeightPx:
+          typeof data.interactiveEnhancedHeightPx === 'number'
+            ? data.interactiveEnhancedHeightPx
+            : null,
+      });
+      return { pixelWidth: active.widthPx, pixelHeight: active.heightPx };
     }
   }
 

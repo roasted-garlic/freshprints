@@ -63,6 +63,10 @@ export interface CatalogDesign {
    * Not used for default library order (request counters bump this field).
    */
   updatedAtMs?: number;
+  interactiveEnhancedOriginalPath?: string;
+  interactiveEnhancedWidthPx?: number;
+  interactiveEnhancedHeightPx?: number;
+  interactiveEnhanceGeneratedAt?: unknown;
   /**
    * Staff "Explicit Content" classification (Portal term: Censored Content).
    * Always a real boolean after mapping — missing/false on the Firestore doc ⇒ `false`

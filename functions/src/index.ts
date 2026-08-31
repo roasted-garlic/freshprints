@@ -94,6 +94,7 @@ export { updateCustomerUploadQuotaSettings } from "./updateCustomerUploadQuotaSe
 export { updatePrintRequestLimitSettings } from "./updatePrintRequestLimitSettings";
 export { updateStandardPrintSizesSettings } from "./updateStandardPrintSizesSettings";
 export { enhancePrintRequestArtwork } from "./enhancePrintRequestArtwork";
+export { setPrintRequestItemArtworkEnhanceMode } from "./setPrintRequestItemArtworkEnhanceMode";
 export { updatePortalSocialMetaSettings } from "./updatePortalSocialMetaSettings";
 export { updatePortalHelpSettings } from "./updatePortalHelpSettings";
 export { finalizeBrandLogoSlot } from "./finalizeBrandLogoSlot";

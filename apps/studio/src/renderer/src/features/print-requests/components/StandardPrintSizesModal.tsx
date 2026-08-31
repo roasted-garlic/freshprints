@@ -14,7 +14,10 @@ import {
   type StandardPrintSizesSettings,
 } from "@fresh-prints/shared/constants/printSize/standardPrintSizesSettings.constants";
 import { applyStandardPrintSizePreset } from "@fresh-prints/shared/utils/applyStandardPrintSizePreset";
-import { formatPrintRequestItemSizeLabel } from "@fresh-prints/shared/utils/printRequestItemSizing";
+import {
+  formatPrintRequestItemSizeLabel,
+  resolveDefaultPrintRequestItemSizeSelection,
+} from "@fresh-prints/shared/utils/printRequestItemSizing";
 import { Button } from "../../../shared/components/Button";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
 
@@ -26,13 +29,16 @@ interface StandardPrintSizesModalProps {
   currentPrintHeightInches: number;
   pixelWidth: number;
   pixelHeight: number;
+  /** Baseline production pixels for default-size reset (falls back to pixelWidth/Height). */
+  baselinePixelWidth?: number;
+  baselinePixelHeight?: number;
   approvedMaxPrintWidthInches?: number | null;
   approvedMaxPrintHeightInches?: number | null;
   wasUpscaled?: boolean | null;
   onApply: (input: {
     printWidthInches: number;
     printHeightInches: number;
-    standardSizePresetKey: StandardPrintSizePresetKey;
+    standardSizePresetKey: StandardPrintSizePresetKey | null;
   }) => void;
 }
 
@@ -43,6 +49,8 @@ function formatInch(value: number): string {
 export function StandardPrintSizesModal({
   approvedMaxPrintHeightInches,
   approvedMaxPrintWidthInches,
+  baselinePixelHeight,
+  baselinePixelWidth,
   currentPrintHeightInches,
   currentPrintWidthInches,
   isOpen,
@@ -108,6 +116,27 @@ export function StandardPrintSizesModal({
     : null;
 
   const selectionLabel = formatStandardPrintSizeSelectionLabel(settings, selectedPresetKey);
+  const resetBaselinePixelWidth = baselinePixelWidth ?? pixelWidth;
+  const resetBaselinePixelHeight = baselinePixelHeight ?? pixelHeight;
+  const defaultSizeSelection = useMemo(
+    () =>
+      resolveDefaultPrintRequestItemSizeSelection({
+        pixelWidth: resetBaselinePixelWidth,
+        pixelHeight: resetBaselinePixelHeight,
+        printRequestDefaultWidthInches: settings.defaultPrintRequestWidthInches,
+        approvedMaxPrintWidthInches: approvedMaxPrintWidthInches ?? undefined,
+        approvedMaxPrintHeightInches: approvedMaxPrintHeightInches ?? undefined,
+        wasUpscaled: wasUpscaled ?? undefined,
+      }),
+    [
+      approvedMaxPrintHeightInches,
+      approvedMaxPrintWidthInches,
+      resetBaselinePixelHeight,
+      resetBaselinePixelWidth,
+      settings.defaultPrintRequestWidthInches,
+      wasUpscaled,
+    ],
+  );
 
   if (!isOpen) {
     return null;
@@ -229,6 +258,12 @@ export function StandardPrintSizesModal({
               {preview.assessment.warningMessage}
             </p>
           ) : null}
+          {defaultSizeSelection && !defaultSizeSelection.assessment.canSave ? (
+            <p className="standard-print-sizes-error" role="alert">
+              {defaultSizeSelection.assessment.errorMessage ??
+                "Default size cannot be applied with the current artwork."}
+            </p>
+          ) : null}
         </ModalBody>
 
         <ModalFooter className="standard-print-sizes-modal-footer">
@@ -249,6 +284,24 @@ export function StandardPrintSizesModal({
             ) : null}
           </div>
           <div className="standard-print-sizes-footer-actions">
+            <Button
+              disabled={!defaultSizeSelection || !defaultSizeSelection.assessment.canSave}
+              onClick={() => {
+                if (!defaultSizeSelection || !defaultSizeSelection.assessment.canSave) {
+                  return;
+                }
+                onApply({
+                  printWidthInches: defaultSizeSelection.printWidthInches,
+                  printHeightInches: defaultSizeSelection.printHeightInches,
+                  standardSizePresetKey: null,
+                });
+                onClose();
+              }}
+              type="button"
+              variant="ghost"
+            >
+              Reset to default ({formatInch(defaultSizeSelection?.configuredDefaultWidthInches ?? 10)})
+            </Button>
             <Button onClick={onClose} type="button" variant="secondary">
               Cancel
             </Button>

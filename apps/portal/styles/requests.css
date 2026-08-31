@@ -635,6 +635,12 @@
   overflow: hidden;
 }
 
+.portal-request-detail-items-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-3);
+}
+
 .portal-request-detail-guide-summary {
   align-items: center;
   color: var(--color-text-primary);
@@ -1152,6 +1158,26 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+}
+
+.portal-request-item-size-row.has-upscale {
+  grid-template-columns: minmax(7rem, auto) repeat(2, minmax(0, 1fr));
+}
+
+.portal-request-item-upscale-field {
+  align-self: end;
+}
+
+.portal-request-item-upscale-toggle {
+  width: 2.75rem;
+  height: 1.5rem;
+  accent-color: var(--portal-accent, #2563eb);
+  cursor: pointer;
+}
+
+.portal-request-item-upscale-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .portal-request-item-size-row {

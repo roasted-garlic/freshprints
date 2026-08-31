@@ -77,6 +77,10 @@ export interface Design {
   /** Native production pixels before any upscale pass (provenance). */
   nativeProductionWidthPx?: number;
   nativeProductionHeightPx?: number;
+  interactiveEnhancedOriginalPath?: string;
+  interactiveEnhancedWidthPx?: number;
+  interactiveEnhancedHeightPx?: number;
+  interactiveEnhanceGeneratedAt?: unknown;
   approvedMaxPrintWidthInches?: number;
   approvedMaxPrintHeightInches?: number;
   sizingPolicyVersion?: string;

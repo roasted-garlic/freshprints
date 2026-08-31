@@ -3,6 +3,7 @@ import {
   resolvePrintRequestItemSourceType,
   type PrintRequestItemSourceFields,
 } from "./printRequestItemSource";
+import { resolveArtworkEnhanceMode } from "./interactiveArtworkEnhance";
 
 export type PrintAssetSourceType = "catalog_design" | "customer_upload";
 
@@ -20,6 +21,9 @@ export interface ResolvedPrintAssetPaths {
 export interface CatalogDesignAssetInput {
   designId: string;
   originalPath: string;
+  interactiveEnhancedOriginalPath?: string;
+  interactiveEnhancedWidthPx?: number;
+  interactiveEnhancedHeightPx?: number;
   previewPath?: string;
   thumbnailPath?: string;
   title?: string;
@@ -28,6 +32,9 @@ export interface CatalogDesignAssetInput {
 export interface CustomerUploadAssetInput {
   customerUploadId: string;
   productionStoragePath: string;
+  interactiveEnhancedProductionStoragePath?: string | null;
+  interactiveEnhancedWidthPx?: number;
+  interactiveEnhancedHeightPx?: number;
   previewStoragePath?: string | null;
   thumbnailStoragePath?: string | null;
   originalFilename?: string | null;
@@ -41,11 +48,15 @@ export interface CustomerUploadAssetInput {
  * Catalog exclusion / AI review status must not affect production path selection.
  */
 export function resolvePrintAssetPaths(input: {
-  item: PrintRequestItemSourceFields & { titleSnapshot?: string };
+  item: PrintRequestItemSourceFields & {
+    titleSnapshot?: string;
+    artworkEnhanceMode?: "baseline" | "enhanced";
+  };
   catalogDesign?: CatalogDesignAssetInput | null;
   customerUpload?: CustomerUploadAssetInput | null;
 }): ResolvedPrintAssetPaths {
   const sourceType = resolvePrintRequestItemSourceType(input.item);
+  const artworkEnhanceMode = resolveArtworkEnhanceMode(input.item.artworkEnhanceMode);
 
   if (sourceType === "customer_upload") {
     const upload = input.customerUpload;
@@ -53,7 +64,11 @@ export function resolvePrintAssetPaths(input: {
       (typeof input.item.customerUploadId === "string" && input.item.customerUploadId.trim()) ||
       upload?.customerUploadId?.trim() ||
       "";
-    const productionStoragePath = upload?.productionStoragePath?.trim() ?? "";
+    const enhancedProductionPath = upload?.interactiveEnhancedProductionStoragePath?.trim() ?? "";
+    const productionStoragePath =
+      artworkEnhanceMode === "enhanced" && enhancedProductionPath
+        ? enhancedProductionPath
+        : upload?.productionStoragePath?.trim() ?? "";
     if (!upload || !customerUploadId || !productionStoragePath) {
       throw new Error("Customer upload production asset is missing.");
     }
@@ -77,7 +92,11 @@ export function resolvePrintAssetPaths(input: {
     (typeof input.item.designId === "string" && input.item.designId.trim()) ||
     design?.designId?.trim() ||
     "";
-  const productionStoragePath = design?.originalPath?.trim() ?? "";
+  const enhancedOriginalPath = design?.interactiveEnhancedOriginalPath?.trim() ?? "";
+  const productionStoragePath =
+    artworkEnhanceMode === "enhanced" && enhancedOriginalPath
+      ? enhancedOriginalPath
+      : design?.originalPath?.trim() ?? "";
   if (!design || !designId || !productionStoragePath) {
     throw new Error("Catalog design production asset is missing.");
   }
@@ -100,9 +119,24 @@ export function isCatalogOriginalStoragePath(path: string): boolean {
   return /^\/originals\/[A-Za-z0-9_-]+\.png$/.test(path.trim());
 }
 
+export function isCatalogInteractiveOriginalStoragePath(path: string): boolean {
+  return /^\/originals\/[A-Za-z0-9_-]+\.interactive\.png$/.test(path.trim());
+}
+
+export function isCustomerUploadInteractiveProductionStoragePath(path: string): boolean {
+  return /^\/customer-uploads\/[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+\/production\.interactive\.png$/.test(
+    path.trim(),
+  );
+}
+
 export function isAllowedGangSheetOriginalPathSnapshot(path: string): boolean {
   const trimmed = path.trim();
-  return isCatalogOriginalStoragePath(trimmed) || isCustomerUploadProductionStoragePath(trimmed);
+  return (
+    isCatalogOriginalStoragePath(trimmed) ||
+    isCatalogInteractiveOriginalStoragePath(trimmed) ||
+    isCustomerUploadProductionStoragePath(trimmed) ||
+    isCustomerUploadInteractiveProductionStoragePath(trimmed)
+  );
 }
 
 export function allocationSourceTypeFromItem(

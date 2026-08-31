@@ -238,6 +238,19 @@ export function mapCatalogDesign(designId: string, data: DesignDocumentData): Ca
     createdAtMs: timestampToMillis(data.createdAt),
     readyAtMs: timestampToMillis(data.readyAt),
     updatedAtMs: timestampToMillis(data.updatedAt),
+    interactiveEnhancedOriginalPath:
+      typeof data.interactiveEnhancedOriginalPath === 'string'
+        ? data.interactiveEnhancedOriginalPath
+        : undefined,
+    interactiveEnhancedWidthPx:
+      typeof data.interactiveEnhancedWidthPx === 'number'
+        ? data.interactiveEnhancedWidthPx
+        : undefined,
+    interactiveEnhancedHeightPx:
+      typeof data.interactiveEnhancedHeightPx === 'number'
+        ? data.interactiveEnhancedHeightPx
+        : undefined,
+    interactiveEnhanceGeneratedAt: data.interactiveEnhanceGeneratedAt,
     requestCount:
       typeof data.requestCount === 'number' && Number.isFinite(data.requestCount) && data.requestCount >= 0
         ? data.requestCount

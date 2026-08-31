@@ -235,6 +235,12 @@ interface DesignDocumentData {
   wasUpscaled?: unknown;
   upscaleFactor?: unknown;
   upscalePassCount?: unknown;
+  nativeProductionWidthPx?: unknown;
+  nativeProductionHeightPx?: unknown;
+  interactiveEnhancedOriginalPath?: unknown;
+  interactiveEnhancedWidthPx?: unknown;
+  interactiveEnhancedHeightPx?: unknown;
+  interactiveEnhanceGeneratedAt?: unknown;
   approvedMaxPrintWidthInches?: unknown;
   approvedMaxPrintHeightInches?: unknown;
   sizingPolicyVersion?: unknown;
@@ -348,6 +354,19 @@ function mapDesignDocument(designId: string, data: DesignDocumentData): Design {
       typeof data.nativeProductionWidthPx === "number" ? data.nativeProductionWidthPx : undefined,
     nativeProductionHeightPx:
       typeof data.nativeProductionHeightPx === "number" ? data.nativeProductionHeightPx : undefined,
+    interactiveEnhancedOriginalPath:
+      typeof data.interactiveEnhancedOriginalPath === "string"
+        ? data.interactiveEnhancedOriginalPath
+        : undefined,
+    interactiveEnhancedWidthPx:
+      typeof data.interactiveEnhancedWidthPx === "number"
+        ? data.interactiveEnhancedWidthPx
+        : undefined,
+    interactiveEnhancedHeightPx:
+      typeof data.interactiveEnhancedHeightPx === "number"
+        ? data.interactiveEnhancedHeightPx
+        : undefined,
+    interactiveEnhanceGeneratedAt: data.interactiveEnhanceGeneratedAt,
     approvedMaxPrintWidthInches:
       typeof data.approvedMaxPrintWidthInches === "number"
         ? data.approvedMaxPrintWidthInches

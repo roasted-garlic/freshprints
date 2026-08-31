@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { PrintRequest } from '@fresh-prints/shared/types/printRequest/printRequest.types';
 import type { PrintRequestItem } from '@fresh-prints/shared/types/printRequest/printRequest.types';
+import type { SetPrintRequestItemArtworkEnhanceModeResponse } from '@fresh-prints/shared/types/printRequest/setPrintRequestItemArtworkEnhanceMode.types';
 import { sumPrintRequestItemQuantities } from '@fresh-prints/shared/utils/portalShowQueueCapacity';
 import { clampItemQuantityToWorkingRequestMax } from '@fresh-prints/shared/utils/printRequestWorkingRequestMax';
 import { resolveDuplicateInsertBeforeSortOrder } from '@fresh-prints/shared/utils/printRequestItemDisplayOrder';
@@ -656,6 +657,20 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
     setPrintRequest((current) => (current ? { ...current, status: 'active' } : current));
   }, []);
 
+  const patchArtworkEnhanceMode = useCallback(
+    (itemId: string, result: SetPrintRequestItemArtworkEnhanceModeResponse) => {
+      const patch = (currentItems: PrintRequestItem[]) =>
+        currentItems.map((entry) =>
+          entry.id === itemId ? { ...entry, artworkEnhanceMode: result.artworkEnhanceMode } : entry,
+        );
+      setItems(patch);
+      if (isViewingWorkingRequest) {
+        patchWorkingItems(patch);
+      }
+    },
+    [isViewingWorkingRequest, patchWorkingItems],
+  );
+
   return {
     printRequest,
     items,
@@ -673,5 +688,6 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
     getItemClientKey,
     removeItem,
     reconcileQueued,
+    patchArtworkEnhanceMode,
   };
 }

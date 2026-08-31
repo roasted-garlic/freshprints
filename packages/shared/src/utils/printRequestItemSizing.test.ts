@@ -5,6 +5,7 @@ import {
   assessPrintRequestItemSize,
   calculateLockedHeightFromWidth,
   calculateLockedWidthFromHeight,
+  resolveDefaultPrintRequestItemSizeSelection,
   resolveInitialPrintRequestItemSize,
   resolvePrintRequestDefaultWidthInches,
   STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES,
@@ -152,13 +153,17 @@ describe("assessPrintRequestItemSize", () => {
 });
 
 describe("resolvePrintRequestDefaultWidthInches", () => {
-  it("falls back to 11 inches when setting is absent", () => {
-    assert.equal(resolvePrintRequestDefaultWidthInches({}), 11);
-    assert.equal(resolvePrintRequestDefaultWidthInches(undefined), 11);
-    assert.equal(STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES, 11);
+  it("falls back to 10 inches when setting is absent", () => {
+    assert.equal(resolvePrintRequestDefaultWidthInches({}), 10);
+    assert.equal(resolvePrintRequestDefaultWidthInches(undefined), 10);
+    assert.equal(STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES, 10);
   });
 
-  it("resolves 10.5, 11, and 11.5 when valid", () => {
+  it("resolves 10, 10.5, 11, and 11.5 when valid", () => {
+    assert.equal(
+      resolvePrintRequestDefaultWidthInches({ defaultPrintRequestWidthInches: 10 }),
+      10,
+    );
     assert.equal(
       resolvePrintRequestDefaultWidthInches({ defaultPrintRequestWidthInches: 10.5 }),
       10.5,
@@ -176,11 +181,11 @@ describe("resolvePrintRequestDefaultWidthInches", () => {
   it("falls back when persisted value is invalid", () => {
     assert.equal(
       resolvePrintRequestDefaultWidthInches({ defaultPrintRequestWidthInches: -1 }),
-      11,
+      10,
     );
     assert.equal(
       resolvePrintRequestDefaultWidthInches({ defaultPrintRequestWidthInches: 99 }),
-      11,
+      10,
     );
   });
 });
@@ -221,5 +226,19 @@ describe("resolveInitialPrintRequestItemSize runtime default", () => {
     });
     assert.equal(assessment.canSave, true);
     assert.ok(assessment.effectiveDpi >= 200);
+  });
+});
+
+describe("resolveDefaultPrintRequestItemSizeSelection", () => {
+  it("returns configured default width with save assessment", () => {
+    const selection = resolveDefaultPrintRequestItemSizeSelection({
+      pixelWidth: 3600,
+      pixelHeight: 1800,
+      printRequestDefaultWidthInches: 10.5,
+    });
+    assert.ok(selection);
+    assert.equal(selection.configuredDefaultWidthInches, 10.5);
+    assert.equal(selection.printWidthInches, 10.5);
+    assert.equal(selection.assessment.canSave, true);
   });
 });

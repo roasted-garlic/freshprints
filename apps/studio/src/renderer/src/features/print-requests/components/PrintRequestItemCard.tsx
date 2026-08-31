@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent, typ
 
 import { Button } from "../../../shared/components/Button";
 import { Card } from "../../../shared/components/Card";
+import { Toggle } from "../../../shared/components/Toggle";
 import { DesignPreviewLightbox } from "../../designs/components/DesignPreviewLightbox";
 import { DesignThumbnailPanel } from "../../designs/components/DesignThumbnailPanel";
 import { useDesignDerivativeUrl } from "../../designs/hooks/useDesignDerivativeUrl";
@@ -22,16 +23,19 @@ import {
   type PrintRequestItemPersistenceHealth,
 } from "@fresh-prints/shared/utils/printRequestItemPersistenceHealth";
 import {
-  resolveManualArtworkEnhanceDecision,
-  shouldOfferManualArtworkEnhanceAction,
-} from "@fresh-prints/shared/utils/manualArtworkEnhance";
+  resolveActiveArtworkPixelDimensions,
+  resolveArtworkEnhanceMode,
+  resolveInteractiveUpscaleToggleEligibility,
+} from "@fresh-prints/shared/utils/interactiveArtworkEnhance";
+import type { SetPrintRequestItemArtworkEnhanceModeResponse } from "@fresh-prints/shared/types/printRequest/setPrintRequestItemArtworkEnhanceMode.types";
 import type { UpdatePrintRequestItemInput } from "../services/printRequestService";
-import { enhancePrintRequestArtworkService } from "../services/enhancePrintRequestArtworkService";
+import { setPrintRequestItemArtworkEnhanceModeService } from "../services/setPrintRequestItemArtworkEnhanceModeService";
 import { resolvePrintRequestItemArtworkBackground } from "../utils/resolvePrintRequestItemArtworkBackground";
 import {
   StandardPrintSizesModal,
 } from "./StandardPrintSizesModal";
 import { resolveStandardPrintSizeCardLabel } from "../utils/standardPrintSizeLabels";
+import { resolveArtworkEnhanceCallableErrorMessage } from "../utils/artworkEnhanceCallableErrorMessage";
 
 export interface PrintRequestItemUploadSummary {
   title: string;
@@ -45,6 +49,10 @@ export interface PrintRequestItemUploadSummary {
   approvedMaxPrintHeightInches?: number | null;
   wasUpscaled?: boolean | null;
   fromAssistedCreation?: boolean;
+  interactiveEnhancedProductionStoragePath?: string | null;
+  interactiveEnhancedWidthPx?: number | null;
+  interactiveEnhancedHeightPx?: number | null;
+  interactiveEnhanceGeneratedAt?: unknown;
 }
 
 interface PrintRequestItemCardProps {
@@ -66,6 +74,7 @@ interface PrintRequestItemCardProps {
   /** When true, hides edit/remove/duplicate controls because the request is locked while queued to a show. */
   readOnly?: boolean;
   onDesignArtworkEnhanced?: () => void | Promise<void>;
+  onArtworkEnhanceModeChanged?: (result: SetPrintRequestItemArtworkEnhanceModeResponse) => void;
 }
 
 function resolveInitialWidth(item: PrintRequestItem): number {
@@ -160,6 +169,7 @@ export function PrintRequestItemCard({
   readOnly,
   standardPrintSizesSettings,
   onDesignArtworkEnhanced,
+  onArtworkEnhanceModeChanged,
 }: PrintRequestItemCardProps) {
   const isUploadItem = item.sourceType === "customer_upload" || Boolean(item.customerUploadId);
   const sourcePill = resolvePrintRequestItemSourcePill({
@@ -206,10 +216,17 @@ export function PrintRequestItemCard({
   const saveQueuedRef = useRef(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isFailed, setIsFailed] = useState(false);
-  const [isEnhancing, setIsEnhancing] = useState(false);
+  const [isTogglingEnhance, setIsTogglingEnhance] = useState(false);
+  const [enhanceToggleMode, setEnhanceToggleMode] = useState<"baseline" | "enhanced" | null>(null);
   const [enhanceMessage, setEnhanceMessage] = useState<string | null>(null);
   const [enhanceError, setEnhanceError] = useState<string | null>(null);
-  const [isConfirmingCatalogEnhance, setIsConfirmingCatalogEnhance] = useState(false);
+  const [enhanceResultPixels, setEnhanceResultPixels] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
+  const applyArtworkEnhanceRef = useRef<
+    (mode: "baseline" | "enhanced", confirmFirstEnhance?: boolean) => Promise<void>
+  >(async () => {});
 
   useEffect(() => {
     const nextWidth = resolveInitialWidth(item);
@@ -237,7 +254,30 @@ export function PrintRequestItemCard({
   const parsedQuantity = parsePositiveIntegerInput(quantityInput);
   const parsedPrintWidthInches = parsePositiveDecimalInput(printWidthInput);
   const parsedPrintHeightInches = parsePositiveDecimalInput(printHeightInput);
-  const aspectPixels = useMemo(() => resolveAspectPixels(design, upload), [design, upload]);
+  const artworkEnhanceMode = resolveArtworkEnhanceMode(item.artworkEnhanceMode);
+  const baselineAspectPixels = useMemo(() => resolveAspectPixels(design, upload), [design, upload]);
+  const activeAspectPixels = useMemo(() => {
+    if (!baselineAspectPixels) {
+      return null;
+    }
+
+    const active = resolveActiveArtworkPixelDimensions({
+      artworkEnhanceMode,
+      baselineWidthPx: baselineAspectPixels.width,
+      baselineHeightPx: baselineAspectPixels.height,
+      enhancedWidthPx:
+        design?.interactiveEnhancedWidthPx ??
+        upload?.interactiveEnhancedWidthPx ??
+        enhanceResultPixels?.width,
+      enhancedHeightPx:
+        design?.interactiveEnhancedHeightPx ??
+        upload?.interactiveEnhancedHeightPx ??
+        enhanceResultPixels?.height,
+    });
+
+    return { width: active.widthPx, height: active.heightPx };
+  }, [artworkEnhanceMode, baselineAspectPixels, design, enhanceResultPixels, upload]);
+  const aspectPixels = activeAspectPixels ?? baselineAspectPixels;
 
   const sizeAssessment = useMemo(() => {
     if (!aspectPixels) {
@@ -266,68 +306,114 @@ export function PrintRequestItemCard({
     : "print-requests-item-quality is-unavailable";
   const canSave = (sizeAssessment?.canSave ?? true) && parsedQuantity !== null;
 
-  const enhanceDecision = useMemo(() => {
-    if (!design || !aspectPixels || isUploadItem) {
+  const upscaleToggleEligibility = useMemo(() => {
+    if (!baselineAspectPixels || readOnly) {
       return null;
     }
 
-    return resolveManualArtworkEnhanceDecision({
-      currentWidthPx: aspectPixels.width,
-      currentHeightPx: aspectPixels.height,
-      upscalePassCount: design.upscalePassCount,
-      upscaleFactor: design.upscaleFactor,
-      nativeSourceWidthPx: design.nativeProductionWidthPx,
-      nativeSourceHeightPx: design.nativeProductionHeightPx,
+    const interactiveMarker =
+      design?.interactiveEnhanceGeneratedAt ??
+      upload?.interactiveEnhanceGeneratedAt ??
+      (design?.interactiveEnhancedOriginalPath || upload?.interactiveEnhancedProductionStoragePath
+        ? true
+        : null);
+
+    return resolveInteractiveUpscaleToggleEligibility({
+      asset: {
+        currentWidthPx: baselineAspectPixels.width,
+        currentHeightPx: baselineAspectPixels.height,
+        upscalePassCount: design?.upscalePassCount ?? (upload?.wasUpscaled ? 1 : 0),
+        upscaleFactor: design?.upscaleFactor,
+        nativeSourceWidthPx: design?.nativeProductionWidthPx,
+        nativeSourceHeightPx: design?.nativeProductionHeightPx,
+        interactiveEnhanceGeneratedAt: interactiveMarker,
+        enhancedWidthPx:
+          design?.interactiveEnhancedWidthPx ?? upload?.interactiveEnhancedWidthPx ?? enhanceResultPixels?.width,
+        enhancedHeightPx:
+          design?.interactiveEnhancedHeightPx ??
+          upload?.interactiveEnhancedHeightPx ??
+          enhanceResultPixels?.height,
+      },
+      printWidthInches: parsedPrintWidthInches ?? Number.NaN,
+      printHeightInches: parsedPrintHeightInches ?? Number.NaN,
+      artworkEnhanceMode,
     });
-  }, [aspectPixels, design, isUploadItem]);
+  }, [
+    artworkEnhanceMode,
+    baselineAspectPixels,
+    design,
+    parsedPrintHeightInches,
+    parsedPrintWidthInches,
+    readOnly,
+    upload,
+  ]);
 
-  const showEnhanceAction =
-    enhanceDecision &&
-    shouldOfferManualArtworkEnhanceAction({
-      effectiveDpi: sizeAssessment?.effectiveDpi ?? 0,
-      enhanceDecision,
-    });
-
-  const showEnhanceWhenBlocked =
-    enhanceDecision?.status === "enhance" &&
-    sizeAssessment?.qualityLevel === "below_minimum";
-
-  async function handleEnhanceArtwork() {
-    if (!design || !printRequestId || isEnhancing) {
+  async function applyArtworkEnhanceMode(
+    mode: "baseline" | "enhanced",
+    confirmFirstEnhance = false,
+  ) {
+    if (!printRequestId || isTogglingEnhance) {
       return;
     }
 
-    if (!isConfirmingCatalogEnhance) {
-      setIsConfirmingCatalogEnhance(true);
-      return;
-    }
-
-    setIsEnhancing(true);
+    setIsTogglingEnhance(true);
+    setEnhanceToggleMode(mode);
     setEnhanceError(null);
     setEnhanceMessage(null);
 
     try {
-      const result = await enhancePrintRequestArtworkService.enhancePrintRequestArtwork({
+      const result = await setPrintRequestItemArtworkEnhanceModeService.setMode({
         printRequestId,
         itemId: item.id,
-        confirmCatalogEnhance: true,
+        mode,
+        confirmFirstEnhance,
       });
 
-      if (result.resultCode === "already_sufficient") {
-        setEnhanceMessage(result.message ?? "Artwork already meets the enhancement target.");
-      } else if (result.resultCode === "in_progress") {
-        setEnhanceMessage(result.message ?? "Enhancement is already in progress.");
+      onArtworkEnhanceModeChanged?.(result);
+      if (result.artworkEnhanceMode === "enhanced") {
+        setEnhanceResultPixels({
+          width: result.widthPx,
+          height: result.heightPx,
+        });
       } else {
-        setEnhanceMessage(result.message ?? "Artwork enhanced successfully.");
-        await onDesignArtworkEnhanced?.();
+        setEnhanceResultPixels(null);
       }
-      setIsConfirmingCatalogEnhance(false);
+      await onDesignArtworkEnhanced?.();
+
+      if (result.resultCode === "in_progress") {
+        setEnhanceMessage(result.message ?? "Enhancement is already in progress.");
+      } else if (mode === "enhanced") {
+        setEnhanceMessage(result.message ?? "Enhanced resolution enabled.");
+      } else {
+        setEnhanceMessage(result.message ?? "Using standard artwork at the current print size.");
+      }
     } catch (error) {
-      setEnhanceError(error instanceof Error ? error.message : "Unable to enhance artwork.");
+      setEnhanceError(resolveArtworkEnhanceCallableErrorMessage(error));
     } finally {
-      setIsEnhancing(false);
+      setIsTogglingEnhance(false);
+      setEnhanceToggleMode(null);
     }
   }
+
+  applyArtworkEnhanceRef.current = applyArtworkEnhanceMode;
+
+  async function handleUpscaleToggle(nextMode: "baseline" | "enhanced") {
+    if (nextMode === artworkEnhanceMode) {
+      return;
+    }
+
+    const confirmFirstEnhance =
+      nextMode === "enhanced" && upscaleToggleEligibility?.state === "available";
+
+    await applyArtworkEnhanceMode(nextMode, confirmFirstEnhance);
+  }
+
+  const showUpscaleToggle =
+    upscaleToggleEligibility &&
+    (upscaleToggleEligibility.toggleEnabled ||
+      upscaleToggleEligibility.state === "available" ||
+      upscaleToggleEligibility.state === "generated" ||
+      upscaleToggleEligibility.state === "maximum_resolution");
 
   useEffect(() => {
     return () => {
@@ -336,6 +422,22 @@ export function PrintRequestItemCard({
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!enhanceMessage) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setEnhanceMessage(null);
+    }, 2000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [enhanceMessage]);
+
+  useEffect(() => {
+    setEnhanceResultPixels(null);
+  }, [design?.interactiveEnhancedWidthPx, design?.interactiveEnhancedHeightPx, item.id]);
 
   function cancelScheduledSave() {
     if (saveDebounceRef.current !== null) {
@@ -570,7 +672,11 @@ export function PrintRequestItemCard({
     <>
       <Card className="print-requests-item-card">
         <div className="print-requests-item-card-header">
-          <div className="print-requests-item-card-thumb-wrap">
+          <div
+            className={`print-requests-item-card-thumb-wrap${
+              isTogglingEnhance ? " is-enhancing" : ""
+            }`}
+          >
             <DesignThumbnailPanel
               alt={`${title} preview`}
               artworkBackgroundHex={artworkBackgroundHex}
@@ -578,10 +684,23 @@ export function PrintRequestItemCard({
               className="print-requests-item-card-thumbnail"
               fallbackLabel="Preview unavailable"
               imageFit="contain"
-              interactive={Boolean(previewUrl)}
+              interactive={Boolean(previewUrl) && !isTogglingEnhance}
               loadingLabel="Loading preview"
               onImageClick={() => setIsLightboxOpen(true)}
             />
+            {isTogglingEnhance ? (
+              <div
+                aria-live="polite"
+                className={`print-requests-item-enhance-overlay${
+                  enhanceToggleMode === "baseline" ? " is-removing" : ""
+                }`}
+                role="status"
+              >
+                <span className="print-requests-item-enhance-overlay-label">
+                  {enhanceToggleMode === "baseline" ? "Removing upscale…" : "Upscaling…"}
+                </span>
+              </div>
+            ) : null}
             <span
               className={`print-requests-item-source-badge is-${sourcePill.variant}`}
             >
@@ -612,7 +731,38 @@ export function PrintRequestItemCard({
               {resolveStandardPrintSizeCardLabel(standardPrintSizesSettings, standardSizePresetKey)}
             </button>
 
-            <div className="print-requests-item-size-row">
+            <div
+              className={`print-requests-item-metrics-grid${
+                showUpscaleToggle ? " has-upscale" : ""
+              }`}
+            >
+            <div
+              className={`print-requests-item-size-row${
+                showUpscaleToggle ? " has-upscale" : ""
+              }`}
+            >
+              {showUpscaleToggle ? (
+                <div className="print-requests-item-field print-requests-item-upscale-field">
+                  <span className="print-requests-item-field-label">Upscale</span>
+                  <div
+                    className="print-requests-item-upscale-toggle-wrap"
+                    title={upscaleToggleEligibility?.helperText}
+                  >
+                    <Toggle
+                      checked={artworkEnhanceMode === "enhanced"}
+                      disabled={
+                        isTogglingEnhance || !upscaleToggleEligibility?.toggleEnabled
+                      }
+                      label="Upscale"
+                      name={`artworkEnhanceMode-${item.id}`}
+                      onChange={(checked) => {
+                        void handleUpscaleToggle(checked ? "enhanced" : "baseline");
+                      }}
+                    />
+                  </div>
+                </div>
+              ) : null}
+
               <label className="print-requests-item-field">
                 <span className="print-requests-item-field-label">Width</span>
                 <div className="print-requests-item-size-input-wrap">
@@ -701,6 +851,7 @@ export function PrintRequestItemCard({
                 </button>
               </div>
             </div>
+            </div>
 
             {sizeAssessment?.errorMessage ? (
               <p className="auth-message auth-message-error print-requests-item-field-error" role="alert">
@@ -720,48 +871,6 @@ export function PrintRequestItemCard({
               <p className="auth-message auth-message-success print-requests-item-field-error" role="status">
                 {enhanceMessage}
               </p>
-            ) : null}
-
-            {showEnhanceAction || showEnhanceWhenBlocked ? (
-              <div className="print-requests-item-enhance-row">
-                {isConfirmingCatalogEnhance ? (
-                  <>
-                    <p className="print-requests-item-enhance-confirm-copy" role="status">
-                      Enhancing updates this catalog design for all future print requests.
-                    </p>
-                    <div className="print-requests-item-enhance-actions">
-                      <Button
-                        disabled={isEnhancing}
-                        onClick={() => void handleEnhanceArtwork()}
-                        size="sm"
-                        type="button"
-                        variant="primary"
-                      >
-                        {isEnhancing ? "Enhancing…" : "Confirm enhance"}
-                      </Button>
-                      <Button
-                        disabled={isEnhancing}
-                        onClick={() => setIsConfirmingCatalogEnhance(false)}
-                        size="sm"
-                        type="button"
-                        variant="ghost"
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </>
-                ) : (
-                  <Button
-                    disabled={isEnhancing}
-                    onClick={() => void handleEnhanceArtwork()}
-                    size="sm"
-                    type="button"
-                    variant="secondary"
-                  >
-                    Upscale artwork
-                  </Button>
-                )}
-              </div>
             ) : null}
 
             <div className="print-requests-item-editor-actions">
@@ -808,12 +917,20 @@ export function PrintRequestItemCard({
           currentPrintWidthInches={parsedPrintWidthInches ?? resolveInitialWidth(item)}
           isOpen={isStandardSizesModalOpen}
           onApply={({ printHeightInches, printWidthInches, standardSizePresetKey: nextPresetKey }) => {
-            setPrintWidthInput(formatEditableNumber(printWidthInches));
-            setPrintHeightInput(formatEditableNumber(printHeightInches));
-            setStandardSizePresetKey(nextPresetKey);
-            scheduleSave();
+            void (async () => {
+              if (nextPresetKey === null && artworkEnhanceMode === "enhanced") {
+                await applyArtworkEnhanceMode("baseline");
+              }
+
+              setPrintWidthInput(formatEditableNumber(printWidthInches));
+              setPrintHeightInput(formatEditableNumber(printHeightInches));
+              setStandardSizePresetKey(nextPresetKey ?? undefined);
+              scheduleSave();
+            })();
           }}
           onClose={() => setIsStandardSizesModalOpen(false)}
+          baselinePixelHeight={baselineAspectPixels?.height}
+          baselinePixelWidth={baselineAspectPixels?.width}
           pixelHeight={aspectPixels.height}
           pixelWidth={aspectPixels.width}
           settings={standardPrintSizesSettings}

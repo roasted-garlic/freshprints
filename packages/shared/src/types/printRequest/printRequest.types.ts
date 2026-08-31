@@ -97,6 +97,11 @@ export interface PrintRequestItem {
   sortOrder?: number;
   notes?: string;
   status: PrintRequestItemStatus;
+  /** Absent or `baseline` = baseline production asset (legacy default). */
+  artworkEnhanceMode?: "baseline" | "enhanced";
+  /** Captured on first successful interactive enhance ON; restored on OFF. */
+  preEnhancePrintWidthInches?: number;
+  preEnhancePrintHeightInches?: number;
   addedBy: string;
   printedAt?: Timestamp;
   printedBy?: string;

@@ -87,11 +87,23 @@ export const MAX_REASONABLE_PRINT_WIDTH_INCHES = 72;
 /** Decimal places for persisted and displayed print inch values. */
 export const PRINT_INCHES_DECIMAL_PLACES = 2;
 
+/**
+ * Maximum configurable Default Print Request Width in Studio Settings (inches).
+ * Distinct from per-item physical caps (e.g. 22″).
+ */
+export const DEFAULT_PRINT_REQUEST_WIDTH_MAX_INCHES = 12;
+
 /** Effective DPI at or above this value is optimal (green). */
 export const EFFECTIVE_DPI_OPTIMAL_MIN = 300;
 
 /** Effective DPI at or above this value is good (yellow). */
 export const EFFECTIVE_DPI_GOOD_MIN = 250;
+
+/**
+ * Baseline effective DPI must be below this value before interactive upscale is offered.
+ * Processing still targets {@link TARGET_PRINT_DPI} when enhance runs.
+ */
+export const INTERACTIVE_UPSCALE_OFFER_MIN_DPI = EFFECTIVE_DPI_GOOD_MIN;
 
 /** Effective DPI at or above this value is bad (red). */
 export const EFFECTIVE_DPI_BAD_MIN = 200;

@@ -39,13 +39,49 @@ describe("printAssetResolution", () => {
     assert.equal(resolved.productionStoragePath, "/originals/d1.png");
   });
 
-  it("accepts both gang sheet snapshot path shapes", () => {
+  it("accepts gang sheet snapshot path shapes including interactive derivatives", () => {
     assert.equal(isAllowedGangSheetOriginalPathSnapshot("/originals/abc.png"), true);
+    assert.equal(
+      isAllowedGangSheetOriginalPathSnapshot("/originals/abc.interactive.png"),
+      true,
+    );
     assert.equal(
       isAllowedGangSheetOriginalPathSnapshot("/customer-uploads/u1/up1/production.png"),
       true,
     );
+    assert.equal(
+      isAllowedGangSheetOriginalPathSnapshot(
+        "/customer-uploads/u1/up1/production.interactive.png",
+      ),
+      true,
+    );
     assert.equal(isAllowedGangSheetOriginalPathSnapshot("/bad/path.png"), false);
+  });
+
+  it("resolves enhanced production paths when artworkEnhanceMode is enhanced", () => {
+    const catalogResolved = resolvePrintAssetPaths({
+      item: { designId: "d1", artworkEnhanceMode: "enhanced" },
+      catalogDesign: {
+        designId: "d1",
+        originalPath: "/originals/d1.png",
+        interactiveEnhancedOriginalPath: "/originals/d1.interactive.png",
+      },
+    });
+    assert.equal(catalogResolved.productionStoragePath, "/originals/d1.interactive.png");
+
+    const uploadResolved = resolvePrintAssetPaths({
+      item: { sourceType: "customer_upload", customerUploadId: "up1", artworkEnhanceMode: "enhanced" },
+      customerUpload: {
+        customerUploadId: "up1",
+        productionStoragePath: "/customer-uploads/u1/up1/production.png",
+        interactiveEnhancedProductionStoragePath:
+          "/customer-uploads/u1/up1/production.interactive.png",
+      },
+    });
+    assert.equal(
+      uploadResolved.productionStoragePath,
+      "/customer-uploads/u1/up1/production.interactive.png",
+    );
   });
 });
 

@@ -1,4 +1,5 @@
 import {
+  DEFAULT_PRINT_REQUEST_WIDTH_MAX_INCHES,
   MIN_PRINT_REQUEST_EFFECTIVE_DPI,
   PRINT_INCHES_DECIMAL_PLACES,
   STANDARD_PRINT_WIDTH_INCHES,
@@ -8,14 +9,14 @@ import { deriveApprovedMaxPrintSizeFromPixels } from "./imageQualitySizingPolicy
 import { calculateEffectiveDpi } from "./printSizeMath";
 
 export const MAX_STANDARD_PRINT_REQUEST_SIZE_INCHES = 22;
-export const STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES = 11;
+export const STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES = 10;
 
 export function isValidPrintRequestDefaultWidthInches(value: unknown): value is number {
   return (
     typeof value === "number" &&
     Number.isFinite(value) &&
     value > 0 &&
-    value <= MAX_STANDARD_PRINT_REQUEST_SIZE_INCHES
+    value <= DEFAULT_PRINT_REQUEST_WIDTH_MAX_INCHES
   );
 }
 
@@ -196,7 +197,7 @@ export function resolveInitialPrintRequestItemSize(
   });
 
   // Small-format art keeps its native/source width. Otherwise use the configured runtime
-  // default (fallback 11″) rather than legacy import-normalized width (often ~10″).
+  // default (fallback 10″) rather than legacy import-normalized width (often ~10″).
   const baselineWidthInches =
     sourceWidth <= STANDARD_PRINT_WIDTH_INCHES
       ? sourceWidth
@@ -356,6 +357,41 @@ export function requireSavablePrintRequestItemSize(
     throw new Error(assessment.errorMessage ?? "Requested print size is not valid.");
   }
   return assessment;
+}
+
+export interface DefaultPrintRequestItemSizeSelection {
+  printWidthInches: number;
+  printHeightInches: number;
+  configuredDefaultWidthInches: number;
+  assessment: PrintRequestItemSizeAssessment;
+}
+
+export function resolveDefaultPrintRequestItemSizeSelection(
+  input: InitialPrintRequestItemSizeInput &
+    Pick<PrintRequestItemSizeInput, "wasUpscaled">,
+): DefaultPrintRequestItemSizeSelection | null {
+  try {
+    const size = resolveInitialPrintRequestItemSize(input);
+    const assessment = assessPrintRequestItemSize({
+      pixelWidth: input.pixelWidth,
+      pixelHeight: input.pixelHeight,
+      printWidthInches: size.printWidthInches,
+      printHeightInches: size.printHeightInches,
+      approvedMaxPrintWidthInches: input.approvedMaxPrintWidthInches,
+      approvedMaxPrintHeightInches: input.approvedMaxPrintHeightInches,
+      wasUpscaled: input.wasUpscaled,
+    });
+
+    return {
+      ...size,
+      configuredDefaultWidthInches: resolvePrintRequestDefaultWidthInches({
+        defaultPrintRequestWidthInches: input.printRequestDefaultWidthInches,
+      }),
+      assessment,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export function formatPrintRequestItemSizeLabel(printWidthInches: number, printHeightInches: number): string {

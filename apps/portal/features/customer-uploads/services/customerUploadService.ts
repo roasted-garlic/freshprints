@@ -130,6 +130,10 @@ export interface CustomerUploadDocSummary {
   approvedMaxPrintWidthInches: number | null;
   approvedMaxPrintHeightInches: number | null;
   wasUpscaled: boolean | null;
+  interactiveEnhancedProductionStoragePath?: string | null;
+  interactiveEnhancedWidthPx?: number | null;
+  interactiveEnhancedHeightPx?: number | null;
+  interactiveEnhanceGeneratedAt?: unknown;
   ownershipConfirmed: boolean;
   catalogUseAcknowledged: boolean;
   /** Set when this upload was copied from an Assisted Creation approved proof. */
@@ -496,6 +500,17 @@ export const customerUploadService = {
           ? data.approvedMaxPrintHeightInches
           : null,
       wasUpscaled: typeof data.wasUpscaled === 'boolean' ? data.wasUpscaled : null,
+      interactiveEnhancedProductionStoragePath:
+        typeof data.interactiveEnhancedProductionStoragePath === 'string'
+          ? data.interactiveEnhancedProductionStoragePath
+          : null,
+      interactiveEnhancedWidthPx:
+        typeof data.interactiveEnhancedWidthPx === 'number' ? data.interactiveEnhancedWidthPx : null,
+      interactiveEnhancedHeightPx:
+        typeof data.interactiveEnhancedHeightPx === 'number'
+          ? data.interactiveEnhancedHeightPx
+          : null,
+      interactiveEnhanceGeneratedAt: data.interactiveEnhanceGeneratedAt,
       ownershipConfirmed: data.ownershipConfirmed === true,
       catalogUseAcknowledged: data.catalogUseAcknowledged === true,
       assistedCreationRequestId:
@@ -615,6 +630,19 @@ export const customerUploadService = {
               ? data.approvedMaxPrintHeightInches
               : null,
           wasUpscaled: typeof data.wasUpscaled === 'boolean' ? data.wasUpscaled : null,
+          interactiveEnhancedProductionStoragePath:
+            typeof data.interactiveEnhancedProductionStoragePath === 'string'
+              ? data.interactiveEnhancedProductionStoragePath
+              : null,
+          interactiveEnhancedWidthPx:
+            typeof data.interactiveEnhancedWidthPx === 'number'
+              ? data.interactiveEnhancedWidthPx
+              : null,
+          interactiveEnhancedHeightPx:
+            typeof data.interactiveEnhancedHeightPx === 'number'
+              ? data.interactiveEnhancedHeightPx
+              : null,
+          interactiveEnhanceGeneratedAt: data.interactiveEnhanceGeneratedAt,
           ownershipConfirmed: data.ownershipConfirmed === true,
           catalogUseAcknowledged: data.catalogUseAcknowledged === true,
           assistedCreationRequestId:

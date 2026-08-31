@@ -9,35 +9,6 @@ import {
 } from "./manualArtworkEnhance";
 import { resolveInitialPrintRequestItemSize } from "./printRequestItemSizing";
 
-describe("resolveInitialPrintRequestItemSize 11 inch default", () => {
-  it("initializes legacy 3600px catalog art at 11 inches instead of 10", () => {
-    const result = resolveInitialPrintRequestItemSize({
-      pixelWidth: 3600,
-      pixelHeight: 1800,
-    });
-    assert.equal(result.printWidthInches, 11);
-    assert.equal(result.printHeightInches, 5.5);
-  });
-
-  it("initializes 3000px art at 11 inches with good-tier DPI", () => {
-    const result = resolveInitialPrintRequestItemSize({
-      pixelWidth: 3000,
-      pixelHeight: 3000,
-    });
-    assert.equal(result.printWidthInches, 11);
-    assert.ok(Math.abs(3000 / 11 - 272.7) < 0.2);
-  });
-
-  it("keeps small-format art at native width", () => {
-    const result = resolveInitialPrintRequestItemSize({
-      pixelWidth: 2400,
-      pixelHeight: 1200,
-      defaultPrintWidthInches: 8,
-    });
-    assert.equal(result.printWidthInches, 8);
-  });
-});
-
 describe("resolveManualArtworkEnhanceDecision", () => {
   it("returns already_sufficient when at 15 inch target", () => {
     const widthPx = Math.round(AUTOMATED_UPSCALE_TARGET_WIDTH_INCHES * TARGET_PRINT_DPI);

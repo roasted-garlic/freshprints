@@ -5,7 +5,8 @@
 | Date | 2026-08-30 |
 | Verdict | **approved_with_notes** |
 | Production | **NOT AUTHORIZED** |
-| DEV Firebase deploy | **NOT PERFORMED — human checkpoint** |
+| DEV Firebase deploy | **COMPLETE** on `fresh-prints-dev` (2026-08-30) |
+| Owner DEV QA | **pending** |
 
 ## Checklist (26)
 
@@ -54,7 +55,7 @@ Each Cloud Function bundles its own copy of `packages/shared` at build time. Dep
 
 **Portal/client:** uses `printRequestItemSizing` for sizing/DPI display only — **no** automated upscale path. **11″ default** applies after Portal dev reload; no Firebase deploy needed for Portal sizing UX.
 
-**Assisted-creation proof attach** (`customerAddAssistedApprovedProofToPrintRequest`) also calls `processCustomerUploadImageBytes` — include in redeploy if that workflow must use 15″ on DEV.
+**Assisted-creation proof attach** (`customerAddAssistedApprovedProofToPrintRequest`) also calls `processCustomerUploadImageBytes` — **intentionally excluded** from this goal's DEV deploy; may retain prior bundle until a future checkpoint. **Not a blocker** for this goal.
 
 ### Studio reload only (no Firebase)
 
@@ -67,13 +68,77 @@ Each Cloud Function bundles its own copy of `packages/shared` at build time. Dep
 firebase deploy --only functions:enhancePrintRequestArtwork,functions:finalizeCustomerUpload,functions:finalizeCustomerUploadZip,functions:retryCustomerUploadProcessing --project fresh-prints-dev
 ```
 
-Optional fifth function if assisted-creation proof processing must match 15″ on DEV: append `,functions:customerAddAssistedApprovedProofToPrintRequest` to the `--only` list.
+Optional fifth function if assisted-creation proof processing must match 15″ on DEV: append `,functions:customerAddAssistedApprovedProofToPrintRequest` to the `--only` list. **Owner declined for this goal.**
 
 **Firestore Rules:** not required  
 **Storage Rules:** not required  
 **Indexes:** not required  
 
-**STOP:** await owner DEV deploy authorization.
+## DEV deploy evidence (2026-08-30)
+
+| Item | Result |
+|------|--------|
+| Project | `fresh-prints-dev` |
+| Source | `c039f71` |
+| Attempt 1 | Exit **1** — discovery timeout (10s default); no remote change |
+| Attempt 2 | Exit **0** — `FUNCTIONS_DISCOVERY_TIMEOUT=120` |
+| `enhancePrintRequestArtwork` | **Successful create** |
+| `finalizeCustomerUpload` | **Successful update** |
+| `finalizeCustomerUploadZip` | **Successful update** |
+| `retryCustomerUploadProcessing` | **Successful update** |
+| Rules / indexes / hosting | **not deployed** |
+| Production | **untouched** |
+
+Record: `docs/workflow/reviews/2026-08-30-print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale-dev-deploy-record.md`
+
+**STOP:** await owner DEV QA.
+
+---
+
+## Owner DEV QA corrective (2026-08-30) — FAIL
+
+| # | Finding | Root cause | Corrective |
+|---|---------|------------|------------|
+| 1 | Portal catalog add ~10″ not 11″ | `addPortalCatalogDesignToPrintRequest` **not redeployed** on DEV; stale shared bundle | Redeploy callable; tests added |
+| 2 | Studio Upscale not visible | **Not unwired** — `shouldOfferManualArtworkEnhanceAction` requires `effectiveDpi < 300`; `already_sufficient` hides action | No wiring fix; discoverability in review amendment |
+| 3 | Portal + Studio toggle enhancement | **Toggle model amendment** — per-asset one-time derivative; catalog + upload; **no customer quota** |
+
+### FAIL 1 — proven runtime path
+
+```
+Portal catalog add
+  → portalPrintRequestService.addOrIncrementCatalogDesign
+  → addPortalCatalogDesignToPrintRequest (Cloud Function — stale bundle on DEV)
+  → resolvePortalCatalogAddLineSize
+  → Firestore printRequestItems
+  → Current Request drawer + review page
+```
+
+**Files changed (corrective):**
+
+- `functions/src/addPortalCatalogDesignToPrintRequest.ts` — `resolvePortalCatalogAddLineSize` helper
+- `functions/src/addPortalCatalogDesignToPrintRequest.test.ts` — regression tests
+- `apps/portal/features/print-requests/utils/portalCatalogAddInitialSizing.test.ts` — cart/review parity tests
+
+**DEV redeploy required:** **Yes**
+
+```powershell
+$env:FUNCTIONS_DISCOVERY_TIMEOUT = "120"
+firebase deploy --only functions:addPortalCatalogDesignToPrintRequest --project fresh-prints-dev
+```
+
+**STOP** — await owner approval before deploy.
+
+### FAIL 2 — superseded by toggle redesign (2026-08-30 owner correction)
+
+- Current one-way button gated by `effectiveDpi < 300` — explains QA invisibility
+- `enhancePrintRequestArtworkCore` **destructively overwrites** baseline `originalPath` — **incompatible** with toggle OFF
+- **Do not** patch old eligibility; implement per-item toggle + non-destructive derivative after Formal Review ack
+
+### Amendments (revised 2026-08-30 — quota model removed)
+
+- Plan: `docs/workflow/plans/2026-08-30-print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale-plan-amendment-portal-enhance.md`
+- Review: `docs/workflow/reviews/2026-08-30-print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale-review-amendment-corrective-and-portal-enhance.md`
 
 ## Owner DEV QA checklist
 

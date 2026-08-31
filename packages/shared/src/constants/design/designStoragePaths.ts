@@ -19,6 +19,10 @@ export type DesignStorageRoot = (typeof DESIGN_STORAGE_ROOTS)[keyof typeof DESIG
 const ORIGINAL_EXTENSION = ".png";
 const DERIVATIVE_EXTENSION = ".webp";
 
+export function getInteractiveOriginalStoragePath(designId: string): string {
+  return `/${DESIGN_STORAGE_ROOTS.originals}/${designId}.interactive.png`;
+}
+
 export function getOriginalStoragePath(designId: string): string {
   return `/${DESIGN_STORAGE_ROOTS.originals}/${designId}${ORIGINAL_EXTENSION}`;
 }

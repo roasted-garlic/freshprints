@@ -6,6 +6,12 @@ import { Repeat } from 'lucide-react';
 import type { StandardPrintSizesSettings } from '@fresh-prints/shared/constants/printSize/standardPrintSizesSettings.constants';
 import { resolveStandardSizePresetKeyAfterManualSizeChange } from '@fresh-prints/shared/constants/printSize/standardPrintSizesSettings.constants';
 import type { PrintRequestItem } from '@fresh-prints/shared/types/printRequest/printRequest.types';
+import type { SetPrintRequestItemArtworkEnhanceModeResponse } from '@fresh-prints/shared/types/printRequest/setPrintRequestItemArtworkEnhanceMode.types';
+import {
+  resolveActiveArtworkPixelDimensions,
+  resolveArtworkEnhanceMode,
+  resolveInteractiveUpscaleToggleEligibility,
+} from '@fresh-prints/shared/utils/interactiveArtworkEnhance';
 import {
   assessPrintRequestItemSize,
   calculateLockedHeightFromWidth,
@@ -21,6 +27,8 @@ import { useCatalogDerivativeUrl } from '../../catalog/hooks/useCatalogDerivativ
 import type { CatalogDesign } from '../../catalog/types/catalog.types';
 import { CopyIcon, TrashIcon } from '../../shared/components/PortalIcons';
 import { isOptimisticPrintRequestItemId } from '../utils/optimisticPrintRequestItemId';
+import { resolveArtworkEnhanceCallableErrorMessage } from '../utils/artworkEnhanceCallableErrorMessage';
+import { setPrintRequestItemArtworkEnhanceModeService } from '../services/setPrintRequestItemArtworkEnhanceModeService';
 import { shouldAcceptIncomingItemProp } from '../utils/itemPropSyncGuard';
 import { resolveSavedDraftReconciliation } from './resolveSavedDraftReconciliation';
 import {
@@ -39,6 +47,10 @@ interface PortalPrintRequestItemDesign {
   printWidthInches?: number;
   printHeightInches?: number;
   updatedAtMs?: number;
+  interactiveEnhancedOriginalPath?: string;
+  interactiveEnhancedWidthPx?: number;
+  interactiveEnhancedHeightPx?: number;
+  interactiveEnhanceGeneratedAt?: unknown;
 }
 
 interface PortalPrintRequestItemUpload {
@@ -52,6 +64,10 @@ interface PortalPrintRequestItemUpload {
   approvedMaxPrintWidthInches?: number | null;
   approvedMaxPrintHeightInches?: number | null;
   wasUpscaled?: boolean | null;
+  interactiveEnhancedProductionStoragePath?: string | null;
+  interactiveEnhancedWidthPx?: number | null;
+  interactiveEnhancedHeightPx?: number | null;
+  interactiveEnhanceGeneratedAt?: unknown;
   /** True when sourced from Assisted Creation approved proof (badge: Custom). */
   fromAssistedCreation?: boolean;
 }
@@ -60,6 +76,7 @@ interface PortalPrintRequestItemCardProps {
   design?: PortalPrintRequestItemDesign | null;
   upload?: PortalPrintRequestItemUpload | null;
   item: PrintRequestItem;
+  printRequestId?: string;
   readOnly?: boolean;
   /**
    * Read-only catalog reuse: ready `CatalogDesign` when still in catalog;
@@ -94,6 +111,10 @@ interface PortalPrintRequestItemCardProps {
       standardSizePresetKey?: string | null;
     },
   ) => Promise<{ quantity: number }>;
+  onArtworkEnhanceModeChanged?: (
+    item: PrintRequestItem,
+    result: SetPrintRequestItemArtworkEnhanceModeResponse,
+  ) => void;
   onAutosaveStateChange: (
     status: 'saving' | 'saved' | 'failed',
     message?: string,
@@ -196,6 +217,7 @@ export function PortalPrintRequestItemCard({
   onRemove,
   quantityResetKey = 0,
   onUpdate,
+  onArtworkEnhanceModeChanged,
   onAutosaveStateChange,
   onPersistenceHealthChange,
   onRegisterFlush,
@@ -270,6 +292,12 @@ export function PortalPrintRequestItemCard({
   const saveQueuedRef = useRef(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isFailed, setIsFailed] = useState(false);
+  const [isTogglingEnhance, setIsTogglingEnhance] = useState(false);
+  const [enhanceError, setEnhanceError] = useState<string | null>(null);
+  const [enhanceResultPixels, setEnhanceResultPixels] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
 
   useEffect(() => {
     const nextWidth = resolveInitialWidth(item);
@@ -322,8 +350,124 @@ export function PortalPrintRequestItemCard({
   const parsedQuantity = parsePositiveIntegerInput(quantityInput);
   const parsedPrintWidthInches = parsePositiveDecimalInput(printWidthInput);
   const parsedPrintHeightInches = parsePositiveDecimalInput(printHeightInput);
+  const artworkEnhanceMode = resolveArtworkEnhanceMode(item.artworkEnhanceMode);
+  const baselineAspectPixels = useMemo(() => resolveAspectPixels(design, upload), [design, upload]);
+  const activeAspectPixels = useMemo(() => {
+    if (!baselineAspectPixels) {
+      return null;
+    }
 
-  const aspectPixels = useMemo(() => resolveAspectPixels(design, upload), [design, upload]);
+    const active = resolveActiveArtworkPixelDimensions({
+      artworkEnhanceMode,
+      baselineWidthPx: baselineAspectPixels.width,
+      baselineHeightPx: baselineAspectPixels.height,
+      enhancedWidthPx:
+        design?.interactiveEnhancedWidthPx ??
+        upload?.interactiveEnhancedWidthPx ??
+        enhanceResultPixels?.width,
+      enhancedHeightPx:
+        design?.interactiveEnhancedHeightPx ??
+        upload?.interactiveEnhancedHeightPx ??
+        enhanceResultPixels?.height,
+    });
+
+    return { width: active.widthPx, height: active.heightPx };
+  }, [artworkEnhanceMode, baselineAspectPixels, design, enhanceResultPixels, upload]);
+  const aspectPixels = activeAspectPixels ?? baselineAspectPixels;
+
+  const upscaleToggleEligibility = useMemo(() => {
+    if (!baselineAspectPixels || readOnly) {
+      return null;
+    }
+
+    const interactiveMarker =
+      design?.interactiveEnhanceGeneratedAt ??
+      upload?.interactiveEnhanceGeneratedAt ??
+      (design?.interactiveEnhancedOriginalPath || upload?.interactiveEnhancedProductionStoragePath
+        ? true
+        : null);
+
+    return resolveInteractiveUpscaleToggleEligibility({
+      asset: {
+        currentWidthPx: baselineAspectPixels.width,
+        currentHeightPx: baselineAspectPixels.height,
+        interactiveEnhanceGeneratedAt: interactiveMarker,
+        enhancedWidthPx:
+          design?.interactiveEnhancedWidthPx ??
+          upload?.interactiveEnhancedWidthPx ??
+          enhanceResultPixels?.width,
+        enhancedHeightPx:
+          design?.interactiveEnhancedHeightPx ??
+          upload?.interactiveEnhancedHeightPx ??
+          enhanceResultPixels?.height,
+      },
+      printWidthInches: parsedPrintWidthInches ?? Number.NaN,
+      printHeightInches: parsedPrintHeightInches ?? Number.NaN,
+      artworkEnhanceMode,
+    });
+  }, [
+    artworkEnhanceMode,
+    baselineAspectPixels,
+    design,
+    enhanceResultPixels,
+    parsedPrintHeightInches,
+    parsedPrintWidthInches,
+    readOnly,
+    upload,
+  ]);
+
+  const showUpscaleToggle =
+    upscaleToggleEligibility &&
+    (upscaleToggleEligibility.toggleEnabled ||
+      upscaleToggleEligibility.state === 'available' ||
+      upscaleToggleEligibility.state === 'generated' ||
+      upscaleToggleEligibility.state === 'maximum_resolution');
+
+  async function applyArtworkEnhanceMode(
+    mode: 'baseline' | 'enhanced',
+    confirmFirstEnhance = false,
+  ) {
+    if (!printRequestId || isTogglingEnhance) {
+      return;
+    }
+
+    setIsTogglingEnhance(true);
+    setEnhanceError(null);
+
+    try {
+      const result = await setPrintRequestItemArtworkEnhanceModeService.setMode({
+        printRequestId,
+        itemId: item.id,
+        mode,
+        confirmFirstEnhance,
+      });
+
+      onArtworkEnhanceModeChanged?.(item, result);
+      if (result.artworkEnhanceMode === 'enhanced') {
+        setEnhanceResultPixels({
+          width: result.widthPx,
+          height: result.heightPx,
+        });
+      } else {
+        setEnhanceResultPixels(null);
+      }
+    } catch (error) {
+      setEnhanceError(resolveArtworkEnhanceCallableErrorMessage(error));
+    } finally {
+      setIsTogglingEnhance(false);
+    }
+  }
+
+  async function handleUpscaleToggle(nextMode: 'baseline' | 'enhanced') {
+    if (nextMode === artworkEnhanceMode) {
+      return;
+    }
+
+    const confirmFirstEnhance =
+      nextMode === 'enhanced' && upscaleToggleEligibility?.state === 'available';
+
+    await applyArtworkEnhanceMode(nextMode, confirmFirstEnhance);
+  }
 
   const sizeAssessment = useMemo(() => {
     if (!aspectPixels) {
@@ -764,7 +908,32 @@ export function PortalPrintRequestItemCard({
               {resolveStandardPrintSizeCardLabel(standardPrintSizesSettings, standardSizePresetKey)}
             </button>
 
-            <div className="portal-request-item-size-row">
+            <div
+              className={`portal-request-item-size-row${
+                showUpscaleToggle ? ' has-upscale' : ''
+              }`}
+            >
+              {showUpscaleToggle ? (
+                <label className="portal-request-item-field portal-request-item-upscale-field">
+                  <span className="portal-request-item-field-label">Improve resolution</span>
+                  <div
+                    className="portal-request-item-upscale-toggle-wrap"
+                    title={upscaleToggleEligibility?.helperText}
+                  >
+                    <input
+                      checked={artworkEnhanceMode === 'enhanced'}
+                      className="portal-request-item-upscale-toggle"
+                      disabled={isTogglingEnhance || !upscaleToggleEligibility?.toggleEnabled}
+                      name={`artworkEnhanceMode-${item.id}`}
+                      onChange={(event) => {
+                        void handleUpscaleToggle(event.target.checked ? 'enhanced' : 'baseline');
+                      }}
+                      type="checkbox"
+                    />
+                  </div>
+                </label>
+              ) : null}
+
               <label className="portal-request-item-field">
                 <span className="portal-request-item-field-label">Width</span>
                 <div className="portal-request-item-size-input-wrap portal-card-input-shell">
@@ -805,6 +974,12 @@ export function PortalPrintRequestItemCard({
                 </div>
               </label>
             </div>
+
+            {enhanceError ? (
+              <p className="portal-request-item-field-callout is-error" role="alert">
+                {enhanceError}
+              </p>
+            ) : null}
 
             <div className="portal-request-item-meta-row">
               {sizeAssessment ? (
@@ -932,10 +1107,16 @@ export function PortalPrintRequestItemCard({
           currentPrintWidthInches={parsedPrintWidthInches ?? resolveInitialWidth(item)}
           isOpen={isStandardSizesModalOpen}
           onApply={({ printHeightInches, printWidthInches, standardSizePresetKey: nextPresetKey }) => {
-            setPrintWidthInput(formatEditableNumber(printWidthInches));
-            setPrintHeightInput(formatEditableNumber(printHeightInches));
-            setStandardSizePresetKey(nextPresetKey);
-            scheduleSave();
+            void (async () => {
+              if (nextPresetKey === null && artworkEnhanceMode === 'enhanced') {
+                await applyArtworkEnhanceMode('baseline');
+              }
+
+              setPrintWidthInput(formatEditableNumber(printWidthInches));
+              setPrintHeightInput(formatEditableNumber(printHeightInches));
+              setStandardSizePresetKey(nextPresetKey ?? undefined);
+              scheduleSave();
+            })();
           }}
           onClose={() => setIsStandardSizesModalOpen(false)}
           pixelHeight={aspectPixels.height}

@@ -3286,13 +3286,19 @@ Embedded DPI metadata is unreliable for print quality. Imports previously upscal
 4. **`MAX_UPSCALE_PASSES = 1`** unchanged for automated import — manual second pass is an explicit exception, not a global pass-count increase.
 5. **`PREFERRED_PRINT_WIDTH_INCHES` / `DEFAULT_PRINT_REQUEST_WIDTH_INCHES`** remain **10″** for import messaging and `resolveDefaultPrintRequestSizeInches` — distinct from the 11″ Print Request initializer.
 
-**Pending amendment (2026-08-30 — owner correction, not yet implemented):**
+**Pending amendment (2026-08-30 — WS-TOGGLE, not yet implemented):**
 
 1. **Interactive enhancement** becomes a **per-asset one-time non-destructive derivative** + **per-request-item ON/OFF toggle** (baseline preserved); supersedes destructive overwrite in `enhancePrintRequestArtworkCore`.
 2. **No customer usage quota** on interactive enhancement; security via auth, idempotency, and per-asset processing lock only.
 3. **Studio + Portal**; **`catalog_design` + `customer_upload`**; interactive target is **request-driven** (~300 DPI at selected print size), not fixed 15″.
 4. **Cumulative ≤6× from native** remains authoritative; `wasUpscaled` alone does not imply ineligibility.
 5. Implement only after Formal Review amendment passes — see review amendment.
+
+**Amendment (2026-08-31 — WS-TOGGLE state-machine corrective, owner-approved):**
+
+1. **One successful interactive derivative per artwork lineage** — after `interactiveEnhanceGeneratedAt` exists, OFF/ON is **asset selection only** (baseline vs existing enhanced sibling). **No regeneration** when the user increases print size or when enhanced DPI falls below 300.
+2. **Larger physical size after derivative exists:** reuse the same derivative; recalculate effective DPI from enhanced pixels; apply ADR-FP-075 floors (≥200 save, 200–299 warning, 300+ optimal). **Do not** generate a second interactive derivative or chase 300 DPI via reprocessing.
+3. **Removed:** `regenerated_enhanced`, derivative sufficiency checks, auto-baseline on eligibility, and any “enhancement not needed” path when a reusable derivative exists.
 
 **Pending amendment (2026-08-30 — WS-CONFIG-DEFAULT, not yet implemented):**
 

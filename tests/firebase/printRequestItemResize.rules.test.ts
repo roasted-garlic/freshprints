@@ -224,4 +224,55 @@ describe("printRequestItems size update — requestCountApplied allowlist", () =
       ),
     );
   });
+
+  it("allows staff size update when interactive upscale fields are present and unchanged", async () => {
+    await seedEditableCatalogContext({ requestCountApplied: true });
+    await environment.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "printRequestItems", ITEM_ID), {
+        ...baseCatalogItem({ requestCountApplied: true }),
+        artworkEnhanceMode: "enhanced",
+        preEnhancePrintWidthInches: 4,
+        preEnhancePrintHeightInches: 4,
+        updatedBy: OWNER_UID,
+      });
+    });
+    const firestore = environment.authenticatedContext(OWNER_UID).firestore();
+    await assertSucceeds(
+      updateDoc(doc(firestore, "printRequestItems", ITEM_ID), sizePatch({ quantity: 1 })),
+    );
+  });
+
+  it("denies staff mutating artworkEnhanceMode during size update", async () => {
+    await seedEditableCatalogContext({ requestCountApplied: true });
+    await environment.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "printRequestItems", ITEM_ID), {
+        ...baseCatalogItem({ requestCountApplied: true }),
+        artworkEnhanceMode: "baseline",
+      });
+    });
+    const firestore = environment.authenticatedContext(OWNER_UID).firestore();
+    await assertFails(
+      updateDoc(
+        doc(firestore, "printRequestItems", ITEM_ID),
+        sizePatch({ quantity: 1, artworkEnhanceMode: "enhanced" }),
+      ),
+    );
+  });
+
+  it("allows customer size update when interactive upscale fields are present and unchanged", async () => {
+    await seedEditableCatalogContext({ requestCountApplied: true });
+    await environment.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "printRequestItems", ITEM_ID), {
+        ...baseCatalogItem({ requestCountApplied: true }),
+        artworkEnhanceMode: "enhanced",
+        preEnhancePrintWidthInches: 10,
+        preEnhancePrintHeightInches: 7.29,
+        updatedBy: OWNER_UID,
+      });
+    });
+    const firestore = environment.authenticatedContext(CUSTOMER_UID).firestore();
+    await assertSucceeds(
+      updateDoc(doc(firestore, "printRequestItems", ITEM_ID), sizePatch()),
+    );
+  });
 });

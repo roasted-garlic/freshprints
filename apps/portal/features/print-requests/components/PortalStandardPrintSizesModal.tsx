@@ -16,7 +16,10 @@ import {
   type StandardPrintSizesSettings,
 } from '@fresh-prints/shared/constants/printSize/standardPrintSizesSettings.constants';
 import { applyStandardPrintSizePreset } from '@fresh-prints/shared/utils/applyStandardPrintSizePreset';
-import { formatPrintRequestItemSizeLabel } from '@fresh-prints/shared/utils/printRequestItemSizing';
+import {
+  formatPrintRequestItemSizeLabel,
+  resolveDefaultPrintRequestItemSizeSelection,
+} from '@fresh-prints/shared/utils/printRequestItemSizing';
 
 interface PortalStandardPrintSizesModalProps {
   isOpen: boolean;
@@ -26,13 +29,15 @@ interface PortalStandardPrintSizesModalProps {
   currentPrintHeightInches: number;
   pixelWidth: number;
   pixelHeight: number;
+  baselinePixelWidth?: number;
+  baselinePixelHeight?: number;
   approvedMaxPrintWidthInches?: number | null;
   approvedMaxPrintHeightInches?: number | null;
   wasUpscaled?: boolean | null;
   onApply: (input: {
     printWidthInches: number;
     printHeightInches: number;
-    standardSizePresetKey: StandardPrintSizePresetKey;
+    standardSizePresetKey: StandardPrintSizePresetKey | null;
   }) => void;
 }
 
@@ -43,6 +48,8 @@ function formatInch(value: number): string {
 export function PortalStandardPrintSizesModal({
   approvedMaxPrintHeightInches,
   approvedMaxPrintWidthInches,
+  baselinePixelHeight,
+  baselinePixelWidth,
   currentPrintHeightInches,
   currentPrintWidthInches,
   isOpen,
@@ -123,6 +130,27 @@ export function PortalStandardPrintSizesModal({
     : null;
 
   const selectionLabel = formatStandardPrintSizeSelectionLabel(settings, selectedPresetKey);
+  const resetBaselinePixelWidth = baselinePixelWidth ?? pixelWidth;
+  const resetBaselinePixelHeight = baselinePixelHeight ?? pixelHeight;
+  const defaultSizeSelection = useMemo(
+    () =>
+      resolveDefaultPrintRequestItemSizeSelection({
+        pixelWidth: resetBaselinePixelWidth,
+        pixelHeight: resetBaselinePixelHeight,
+        printRequestDefaultWidthInches: settings.defaultPrintRequestWidthInches,
+        approvedMaxPrintWidthInches: approvedMaxPrintWidthInches ?? undefined,
+        approvedMaxPrintHeightInches: approvedMaxPrintHeightInches ?? undefined,
+        wasUpscaled: wasUpscaled ?? undefined,
+      }),
+    [
+      approvedMaxPrintHeightInches,
+      approvedMaxPrintWidthInches,
+      resetBaselinePixelHeight,
+      resetBaselinePixelWidth,
+      settings.defaultPrintRequestWidthInches,
+      wasUpscaled,
+    ],
+  );
 
   if (!isOpen) {
     return null;
@@ -242,6 +270,12 @@ export function PortalStandardPrintSizesModal({
               {preview.assessment.warningMessage}
             </p>
           ) : null}
+          {defaultSizeSelection && !defaultSizeSelection.assessment.canSave ? (
+            <p className="standard-print-sizes-error" role="alert">
+              {defaultSizeSelection.assessment.errorMessage ??
+                'Default size cannot be applied with the current artwork.'}
+            </p>
+          ) : null}
         </div>
 
         <footer className="modal-footer standard-print-sizes-modal-footer">
@@ -262,6 +296,24 @@ export function PortalStandardPrintSizesModal({
             ) : null}
           </div>
           <div className="standard-print-sizes-footer-actions">
+            <button
+              className="portal-button portal-button-ghost"
+              disabled={!defaultSizeSelection || !defaultSizeSelection.assessment.canSave}
+              onClick={() => {
+                if (!defaultSizeSelection || !defaultSizeSelection.assessment.canSave) {
+                  return;
+                }
+                onApply({
+                  printWidthInches: defaultSizeSelection.printWidthInches,
+                  printHeightInches: defaultSizeSelection.printHeightInches,
+                  standardSizePresetKey: null,
+                });
+                onClose();
+              }}
+              type="button"
+            >
+              Reset to default ({formatInch(defaultSizeSelection?.configuredDefaultWidthInches ?? 10)})
+            </button>
             <button
               className="portal-button portal-button-secondary"
               onClick={onClose}

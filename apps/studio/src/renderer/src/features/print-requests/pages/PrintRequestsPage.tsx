@@ -32,6 +32,7 @@ import { TransferPrintRequestToShowModal } from "../components/TransferPrintRequ
 import { formatPrintRequestShowTransferActionLabel, resolvePrintRequestShowTransferMode } from "@fresh-prints/shared/utils/printRequestShowTransfer";
 import { PrintRequestDeletionDialog } from "../components/PrintRequestDeletionDialog";
 import type { PrintRequest, PrintRequestItem } from "@fresh-prints/shared/types/printRequest/printRequest.types";
+import type { SetPrintRequestItemArtworkEnhanceModeResponse } from "@fresh-prints/shared/types/printRequest/setPrintRequestItemArtworkEnhanceMode.types";
 import type { Customer } from "@fresh-prints/shared/types/customer/customer.types";
 import { formatCustomerIdentityLabel } from "@fresh-prints/shared/utils/formatCustomerIdentityLabel";
 import { formatCustomerUsernameForDisplay } from "@fresh-prints/shared/utils/formatCustomerUsernameForDisplay";
@@ -460,6 +461,9 @@ export function PrintRequestsPage() {
   const [isDeletionDialogOpen, setIsDeletionDialogOpen] = useState(false);
   const [isConvertConfirmOpen, setIsConvertConfirmOpen] = useState(false);
   const [isConvertingRequest, setIsConvertingRequest] = useState(false);
+  const [isClearAllConfirmOpen, setIsClearAllConfirmOpen] = useState(false);
+  const [isClearingAllItems, setIsClearingAllItems] = useState(false);
+  const [clearAllError, setClearAllError] = useState<string | null>(null);
   const [convertError, setConvertError] = useState<string | null>(null);
   const [transferShowContext, setTransferShowContext] = useState<{
     sourceShowId: string;
@@ -1311,6 +1315,49 @@ export function PrintRequestsPage() {
     }
   }
 
+  async function handleClearAllItems() {
+    if (!user || !permissionService.canManagePrintRequestItems(user) || !visibleSelectedRequest) {
+      return;
+    }
+
+    const itemsToRemove = [...requestItems];
+    if (itemsToRemove.length === 0) {
+      return;
+    }
+
+    try {
+      setClearAllError(null);
+      setActionError(null);
+      setIsClearingAllItems(true);
+      for (const item of itemsToRemove) {
+        await printRequestService.removePrintRequestItem(user, item.id);
+        removeRequestItem(item.id);
+      }
+      patchSummaryLocally(visibleSelectedRequest.id, {
+        totalQuantity: 0,
+        uniqueDesignCount: 0,
+      });
+      patchRequestLocally(visibleSelectedRequest.id, { itemCount: 0 });
+      setSuccessMessage("All designs removed from request.");
+      setSuccessAlertSeed((current) => current + 1);
+      setIsClearAllConfirmOpen(false);
+    } catch (error) {
+      setClearAllError(formatWriteErrorMessage(error));
+    } finally {
+      setIsClearingAllItems(false);
+    }
+  }
+
+  function handleArtworkEnhanceModeChanged(
+    item: PrintRequestItem,
+    result: SetPrintRequestItemArtworkEnhanceModeResponse,
+  ) {
+    replaceRequestItem({
+      ...item,
+      artworkEnhanceMode: result.artworkEnhanceMode,
+    });
+  }
+
   async function handleDuplicateItem(item: PrintRequestItem) {
     if (!user || !permissionService.canManagePrintRequestItems(user)) {
       return;
@@ -1480,6 +1527,9 @@ export function PrintRequestsPage() {
   ]);
 
   const isSelectedRequestDetailLocked = isSelectedRequestQueueLocked || isSelectedRequestFullyPrinted;
+  const canManageRequestItems = Boolean(
+    user && permissionService.canManagePrintRequestItems(user),
+  );
   const canViewUpcomingShows = user ? permissionService.canViewUpcomingShows(user) : false;
 
   function renderSelectedRequestShowQueueLinks(includeTransferActions: boolean) {
@@ -2152,7 +2202,24 @@ export function PrintRequestsPage() {
 
               <Card className="print-requests-card">
                 <div className="print-requests-section-header">
-                  <p className="eyebrow">Request items</p>
+                  {requestItems.length > 0 &&
+                  canManageRequestItems &&
+                  !isSelectedRequestDetailLocked &&
+                  !isSelectedRequestFullyPrinted ? (
+                    <button
+                      className="print-requests-clear-all"
+                      disabled={isClearingAllItems}
+                      onClick={() => {
+                        setClearAllError(null);
+                        setIsClearAllConfirmOpen(true);
+                      }}
+                      type="button"
+                    >
+                      {isClearingAllItems ? "Clearing..." : "Clear all"}
+                    </button>
+                  ) : (
+                    <p className="eyebrow">Request items</p>
+                  )}
                   {!isSelectedRequestFullyPrinted ? (
                     <Button
                       className="button-leading-icon"
@@ -2211,6 +2278,9 @@ export function PrintRequestsPage() {
                           key={item.id}
                           onAutosaveStateChange={updateAutosaveState}
                           onDesignArtworkEnhanced={reloadReadyDesigns}
+                          onArtworkEnhanceModeChanged={(result) =>
+                            handleArtworkEnhanceModeChanged(item, result)
+                          }
                           onPersistenceHealthChange={handlePersistenceHealthChange}
                           onRegisterFlush={handleRegisterFlush}
                           onDuplicate={handleDuplicateItem}
@@ -2478,6 +2548,61 @@ export function PrintRequestsPage() {
                 type="button"
               >
                 {isConvertingRequest ? "Converting..." : "Convert"}
+              </Button>
+            </ModalFooter>
+          </Modal>
+        </div>
+      ) : null}
+
+      {isClearAllConfirmOpen ? (
+        <div className="modal-overlay modal-overlay-blur">
+          <Modal
+            aria-labelledby="print-request-clear-all-title"
+            className="modal-panel modal-panel-md"
+            role="dialog"
+          >
+            <ModalHeader>
+              <div>
+                <p className="eyebrow">Request items</p>
+                <h3 id="print-request-clear-all-title">Clear all designs?</h3>
+              </div>
+              <button
+                aria-label="Close clear-all confirmation"
+                className="icon-button icon-button-md icon-button-ghost"
+                disabled={isClearingAllItems}
+                onClick={() => setIsClearAllConfirmOpen(false)}
+                type="button"
+              >
+                <X aria-hidden="true" size={18} strokeWidth={2.2} />
+              </button>
+            </ModalHeader>
+            <ModalBody>
+              <p>
+                This removes every design from this request so you can start fresh. You can add
+                designs again anytime.
+              </p>
+              {clearAllError ? (
+                <p className="auth-message auth-message-error" role="alert">
+                  {clearAllError}
+                </p>
+              ) : null}
+            </ModalBody>
+            <ModalFooter>
+              <Button
+                disabled={isClearingAllItems}
+                onClick={() => setIsClearAllConfirmOpen(false)}
+                type="button"
+                variant="secondary"
+              >
+                Keep designs
+              </Button>
+              <Button
+                disabled={isClearingAllItems}
+                onClick={() => void handleClearAllItems()}
+                type="button"
+                variant="danger"
+              >
+                {isClearingAllItems ? "Clearing..." : "Clear all"}
               </Button>
             </ModalFooter>
           </Modal>
