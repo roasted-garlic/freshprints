@@ -24,6 +24,8 @@ export interface CatalogDesignAssetInput {
   interactiveEnhancedOriginalPath?: string;
   interactiveEnhancedWidthPx?: number;
   interactiveEnhancedHeightPx?: number;
+  widthPx?: number;
+  heightPx?: number;
   previewPath?: string;
   thumbnailPath?: string;
   title?: string;
@@ -35,6 +37,8 @@ export interface CustomerUploadAssetInput {
   interactiveEnhancedProductionStoragePath?: string | null;
   interactiveEnhancedWidthPx?: number;
   interactiveEnhancedHeightPx?: number;
+  widthPx?: number | null;
+  heightPx?: number | null;
   previewStoragePath?: string | null;
   thumbnailStoragePath?: string | null;
   originalFilename?: string | null;
@@ -65,10 +69,16 @@ export function resolvePrintAssetPaths(input: {
       upload?.customerUploadId?.trim() ||
       "";
     const enhancedProductionPath = upload?.interactiveEnhancedProductionStoragePath?.trim() ?? "";
-    const productionStoragePath =
-      artworkEnhanceMode === "enhanced" && enhancedProductionPath
-        ? enhancedProductionPath
-        : upload?.productionStoragePath?.trim() ?? "";
+    const baselineProductionPath = upload?.productionStoragePath?.trim() ?? "";
+    let productionStoragePath = baselineProductionPath;
+    if (artworkEnhanceMode === "enhanced") {
+      if (!enhancedProductionPath) {
+        throw new Error(
+          "Interactive enhanced artwork is unavailable for this customer upload. Turn Upscale off or re-run enhance.",
+        );
+      }
+      productionStoragePath = enhancedProductionPath;
+    }
     if (!upload || !customerUploadId || !productionStoragePath) {
       throw new Error("Customer upload production asset is missing.");
     }
@@ -93,10 +103,16 @@ export function resolvePrintAssetPaths(input: {
     design?.designId?.trim() ||
     "";
   const enhancedOriginalPath = design?.interactiveEnhancedOriginalPath?.trim() ?? "";
-  const productionStoragePath =
-    artworkEnhanceMode === "enhanced" && enhancedOriginalPath
-      ? enhancedOriginalPath
-      : design?.originalPath?.trim() ?? "";
+  const baselineOriginalPath = design?.originalPath?.trim() ?? "";
+  let productionStoragePath = baselineOriginalPath;
+  if (artworkEnhanceMode === "enhanced") {
+    if (!enhancedOriginalPath) {
+      throw new Error(
+        "Interactive enhanced artwork is unavailable for this catalog design. Turn Upscale off or re-run enhance.",
+      );
+    }
+    productionStoragePath = enhancedOriginalPath;
+  }
   if (!design || !designId || !productionStoragePath) {
     throw new Error("Catalog design production asset is missing.");
   }

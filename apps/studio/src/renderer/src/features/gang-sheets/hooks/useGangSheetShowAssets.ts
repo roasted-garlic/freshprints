@@ -10,10 +10,13 @@ import {
   type StudioCustomerUploadSummary,
 } from "../../customer-uploads/services/customerUploadReadService";
 import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/showAllocation.types";
+import type { PrintRequestItem } from "@fresh-prints/shared/types/printRequest/printRequest.types";
 import type { Design } from "../../designs/types/design.types";
+import { printRequestService } from "../../print-requests/services/printRequestService";
 
 export interface GangSheetShowAsset {
   allocation: ShowAllocation;
+  printRequestItem: PrintRequestItem | null;
   design: Design | null;
   upload: StudioCustomerUploadSummary | null;
   thumbnailUrl: string | null;
@@ -58,9 +61,22 @@ export function useGangSheetShowAssets(upcomingShowId: string | null) {
       try {
         const allocations = await upcomingShowService.listShowAllocations(user, upcomingShowId);
         const activeAllocations = allocations.filter((allocation) => allocation.status !== "canceled");
+        const uniqueRequestIds = [...new Set(activeAllocations.map((allocation) => allocation.printRequestId))];
+        const printRequestItemsById = new Map<string, PrintRequestItem>();
+
+        await Promise.all(
+          uniqueRequestIds.map(async (printRequestId) => {
+            const items = await printRequestService.listPrintRequestItems(user, printRequestId);
+            for (const item of items) {
+              printRequestItemsById.set(item.id, item);
+            }
+          }),
+        );
 
         const assets = await Promise.all(
           activeAllocations.map(async (allocation): Promise<GangSheetShowAsset> => {
+            const printRequestItem = printRequestItemsById.get(allocation.printRequestItemId) ?? null;
+
             if (isUploadAllocation(allocation) && allocation.customerUploadId) {
               let upload: StudioCustomerUploadSummary | null = null;
               try {
@@ -74,7 +90,7 @@ export function useGangSheetShowAssets(upcomingShowId: string | null) {
                 ? await designDerivativeUrlService.getDownloadUrlForCatalogPath(thumbnailPath)
                 : null;
 
-              return { allocation, design: null, upload, thumbnailUrl };
+              return { allocation, printRequestItem, design: null, upload, thumbnailUrl };
             }
 
             let design: Design | null = null;
@@ -87,7 +103,7 @@ export function useGangSheetShowAssets(upcomingShowId: string | null) {
             }
 
             const thumbnailUrl = design ? await designDerivativeUrlService.getThumbnailUrl(design) : null;
-            return { allocation, design, upload: null, thumbnailUrl };
+            return { allocation, printRequestItem, design, upload: null, thumbnailUrl };
           }),
         );
 

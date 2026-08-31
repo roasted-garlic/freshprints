@@ -15,6 +15,8 @@ export interface GangSheetExportImageGrouping {
 export interface GangSheetExportImageRequest {
   allocationId: string;
   downloadUrl: string;
+  /** Stable storage path for the active production asset (baseline or enhanced). */
+  productionStoragePath: string;
   targetWidthPx: number;
   targetHeightPx: number;
   fileName: string;

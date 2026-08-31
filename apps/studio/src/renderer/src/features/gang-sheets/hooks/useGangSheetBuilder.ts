@@ -9,6 +9,12 @@ import { overlapsAnyOtherItem } from "@fresh-prints/shared/utils/gangSheetLayout
 import type { GangSheet, GangSheetItem } from "@fresh-prints/shared/types/gangSheet/gangSheet.types";
 import type { GangSheetShowAsset } from "./useGangSheetShowAssets";
 import { resolveQueuedPrintInches } from "@fresh-prints/shared/utils/printRequestQueuedInches";
+import {
+  resolveShowExportProductionAsset,
+  toCatalogDesignAssetInput,
+  toCustomerUploadAssetInput,
+  toShowExportPrintRequestItemFields,
+} from "@fresh-prints/shared/utils/resolveShowExportProductionAsset";
 
 const PLACEMENT_SEARCH_STEP_INCHES = 0.5;
 
@@ -135,10 +141,33 @@ export function useGangSheetBuilder(upcomingShowId: string | null) {
       if (!isUpload && !asset.design) {
         return;
       }
-      if (isUpload && (!asset.upload?.productionStoragePath || !asset.allocation.customerUploadId)) {
+      if (isUpload && (!asset.upload || !asset.allocation.customerUploadId)) {
         setState((current) => ({
           ...current,
           error: "Uploaded artwork production file is missing.",
+        }));
+        return;
+      }
+      if (!asset.printRequestItem) {
+        setState((current) => ({
+          ...current,
+          error: "Print request item is missing for this allocation.",
+        }));
+        return;
+      }
+
+      let productionStoragePath: string;
+      try {
+        const resolved = resolveShowExportProductionAsset({
+          item: toShowExportPrintRequestItemFields(asset.printRequestItem),
+          catalogDesign: !isUpload && asset.design ? toCatalogDesignAssetInput(asset.design) : null,
+          customerUpload: isUpload && asset.upload ? toCustomerUploadAssetInput(asset.upload) : null,
+        });
+        productionStoragePath = resolved.productionStoragePath;
+      } catch (error) {
+        setState((current) => ({
+          ...current,
+          error: formatError(error, "Unable to resolve production artwork for this item."),
         }));
         return;
       }
@@ -202,9 +231,7 @@ export function useGangSheetBuilder(upcomingShowId: string | null) {
             asset.upload?.originalFilename ??
             asset.allocation.designTitleSnapshot,
           requestNameSnapshot: asset.allocation.requestNameSnapshot,
-          originalPathSnapshot: isUpload
-            ? asset.upload!.productionStoragePath!
-            : asset.design!.originalPath,
+          originalPathSnapshot: productionStoragePath,
           xInches: origin.xInches,
           yInches: origin.yInches,
           widthInches,

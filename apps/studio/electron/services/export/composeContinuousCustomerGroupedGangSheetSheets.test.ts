@@ -44,6 +44,7 @@ function buildGroupedRequest(layoutMode: GenerateGangSheetPngRequest["layoutMode
       {
         allocationId: "alloc-a",
         downloadUrl: "https://firebasestorage.googleapis.com/v0/b/x/o/a",
+        productionStoragePath: "/originals/a.png",
         targetWidthPx: 900,
         targetHeightPx: 900,
         fileName: "alice.png",
@@ -58,6 +59,7 @@ function buildGroupedRequest(layoutMode: GenerateGangSheetPngRequest["layoutMode
       {
         allocationId: "alloc-b",
         downloadUrl: "https://firebasestorage.googleapis.com/v0/b/x/o/b",
+        productionStoragePath: "/originals/b.png",
         targetWidthPx: 900,
         targetHeightPx: 900,
         fileName: "bob.png",

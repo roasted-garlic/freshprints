@@ -9,6 +9,7 @@ export function buildGangSheetCacheFingerprint(request: ExportGangSheetPngReques
   const images = request.images
     .map((image) => ({
       allocationId: image.allocationId,
+      productionStoragePath: image.productionStoragePath,
       targetWidthPx: image.targetWidthPx,
       targetHeightPx: image.targetHeightPx,
       quantity: image.quantity,

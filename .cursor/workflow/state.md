@@ -5,48 +5,47 @@
 | Status | **ACTIVE** |
 | DONE | **no** |
 | Active goal | `print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale` |
-| Phase | **Test — Owner DEV QA WS-TOGGLE (re-test after state-machine fix)** |
-| Plan Status | **amended (revised)** — WS-CONFIG-DEFAULT + WS-TOGGLE + selection-only derivative reuse |
-| Review Status | **approved_with_changes** |
-| Implementation Status | **WS-TOGGLE state-machine fix implemented locally (generation vs selection split)** |
+| Phase | **Test — Owner DEV QA production export parity (gang sheet + ZIP)** |
+| Plan Status | **amended** — production export must honor `artworkEnhanceMode` per item |
+| Review Status | **approved_with_changes** — `2026-08-31-ws-toggle-production-export-parity-implementation-review.md` |
+| Implementation Status | **WS-TOGGLE production export parity corrective complete** |
 | WS-CONFIG Owner DEV QA | **PASS** (2026-08-30) |
-| WS-TOGGLE Owner DEV QA | **FAIL** (2026-08-31) — existing derivative re-enable blocked; Portal save permissions |
-| DEV Deploy | **REQUIRED** — `setPrintRequestItemArtworkEnhanceMode` + Firestore rules to `fresh-prints-dev` |
-| Test Status | **passed_with_notes** (focused suites; Firebase rules emulator not run — no Java) |
-| Signoff Status | **n/a** |
-| Human Checkpoint Required | **yes** — Owner DEV QA WS-TOGGLE re-test after DEV deploy |
+| WS-TOGGLE Interactive Owner DEV QA | **PASS** (2026-08-31) — toggle/state machine |
+| WS-TOGGLE Export Parity Owner DEV QA | **pending** — gang sheet + ZIP must use active variant |
+| Test Status | **passed_with_notes** — 39/39 focused export/gang-sheet regression (2026-08-31) |
+| Signoff Status | **n/a** — blocked on export parity owner QA |
+| Human Checkpoint Required | **yes** — Owner DEV QA production export parity Tests A–E |
 | Blocked | **no** |
 | Production | **NOT AUTHORIZED** |
 | Smart Profiling | **NOT STARTED** |
 | Last updated | 2026-08-31 |
-| Last Completed Step | WS-TOGGLE state-machine fix (selection-only reuse path) + Portal upscale parity |
+| Last Completed Step | Production export parity implementation + focused tests |
 
 ---
 
 ## Allowed Actions
 
-- Owner manual DEV QA (WS-TOGGLE checklist after DEV deploy)
-- DEV deploy `setPrintRequestItemArtworkEnhanceMode` + Firestore rules (owner approval)
-- Read docs, respond to owner
+- Owner manual DEV QA (export parity Tests A–E)
+- Owner reload/rebuild Studio (client-only)
+- Owner approve + deploy DEV Firestore rules for interactive gang-sheet `originalPathSnapshot` paths (if manual builder used with enhanced items)
 
 ## Forbidden Actions
 
 - Production deploy
-- Signoff
+- Signoff (until export parity owner QA PASS)
 - Smart Profiling
 
 ---
 
 ## Decision Log
 
-- 2026-08-31: **Owner DEV QA FAIL** — derivative exists but Upscale ON conflated with first-time generation; auto-off + wrong helper at 227 DPI; Portal save permissions.
-- 2026-08-31: **Binding rule** — ONE interactive derivative per lineage; OFF/ON is asset selection only after derivative exists; no regeneration on larger sizes.
-- 2026-08-30: **Owner APPROVE DEPLOY** — prior WS-TOGGLE bundle to `fresh-prints-dev`.
-- 2026-08-30: **WS-CONFIG-DEFAULT Owner DEV QA PASS**.
+- 2026-08-31: **Owner DEV QA PASS (WS-TOGGLE interactive)** — toggle, reuse, reset, size/standard changes preserve mode, DPI correct.
+- 2026-08-31: **Remaining blocker** — production export parity (gang sheet + ZIP); implementation complete; owner QA pending.
+- 2026-08-31: **Owner DEV QA FAIL (size edit)** — fixed via `mapPrintRequestItemData` preserve `artworkEnhanceMode`.
+- 2026-08-31: **Binding rule** — `artworkEnhanceMode` on persisted item selects production asset; absent = baseline; enhanced + missing derivative = fail closed.
 
 ---
 
 ## Next Required Step
 
-1. Owner **APPROVE DEPLOY** — `setPrintRequestItemArtworkEnhanceMode` + `firestore.rules` to `fresh-prints-dev`.
-2. Owner re-run WS-TOGGLE DEV QA repro (enhance → reset → enlarge → Upscale ON → reuse derivative).
+Owner DEV QA production export parity — Tests A–E in `docs/workflow/reviews/2026-08-31-ws-toggle-production-export-parity-implementation-review.md`. Rebuild/reload Studio first. DEV Firestore rules deploy needed only if testing manual gang-sheet builder with enhanced placement.

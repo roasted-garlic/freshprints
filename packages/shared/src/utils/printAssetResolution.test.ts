@@ -83,6 +83,36 @@ describe("printAssetResolution", () => {
       "/customer-uploads/u1/up1/production.interactive.png",
     );
   });
+
+  it("fails closed when enhanced mode is set but derivative path is missing", () => {
+    assert.throws(
+      () =>
+        resolvePrintAssetPaths({
+          item: { designId: "d1", artworkEnhanceMode: "enhanced" },
+          catalogDesign: {
+            designId: "d1",
+            originalPath: "/originals/d1.png",
+          },
+        }),
+      /Interactive enhanced artwork is unavailable/,
+    );
+
+    assert.throws(
+      () =>
+        resolvePrintAssetPaths({
+          item: {
+            sourceType: "customer_upload",
+            customerUploadId: "up1",
+            artworkEnhanceMode: "enhanced",
+          },
+          customerUpload: {
+            customerUploadId: "up1",
+            productionStoragePath: "/customer-uploads/u1/up1/production.png",
+          },
+        }),
+      /Interactive enhanced artwork is unavailable/,
+    );
+  });
 });
 
 describe("showAllocationSourceFields", () => {

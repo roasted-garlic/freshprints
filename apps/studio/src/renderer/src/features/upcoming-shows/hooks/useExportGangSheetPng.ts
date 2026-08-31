@@ -3,19 +3,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
 import { upcomingShowService } from "../services/upcomingShowService";
-import { designService } from "../../designs/services/designService";
-import { designDerivativeUrlService } from "../../designs/services/designDerivativeUrlService";
 import { buildGangSheetCacheFingerprint } from "@fresh-prints/shared/utils/gangSheetCacheFingerprint";
 import { planEfficiencyGangSheetLayout } from "@fresh-prints/shared/utils/gangSheetEfficiencyLayout";
 import { planContinuousCustomerGroupedGangSheetLayout } from "@fresh-prints/shared/utils/gangSheetContinuousCustomerGroupedLayout";
 import { planSheetPerCustomerGangSheetLayout } from "@fresh-prints/shared/utils/gangSheetGroupedLayout";
 import {
   buildGangSheetBaseFileName,
-  computeExportTargetPixelSize,
 } from "@fresh-prints/shared/utils/showExportFilename";
 import type { User } from "../../users/types/user.types";
 import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
-import { resolveQueuedPrintInches } from "@fresh-prints/shared/utils/printRequestQueuedInches";
 import type {
   CachedGangSheetSheetMeta,
   ExportGangSheetPngRequest,
@@ -26,12 +22,7 @@ import type {
   GangSheetExportProgressEvent,
 } from "@fresh-prints/shared/types/export/gangSheetExportIpc.types";
 import type { ShowExportImageWarning } from "@fresh-prints/shared/types/export/showExportIpc.types";
-import { printRequestService } from "../../print-requests/services/printRequestService";
-import type { PrintRequest } from "@fresh-prints/shared/types/printRequest/printRequest.types";
-import {
-  filterShowExportAllocations,
-  shouldUseHistoricalShowExportAllocations,
-} from "../utils/showExportEligibility";
+import { buildShowExportAllocationAssets } from "../utils/buildShowExportAllocationAssets";
 
 const GANG_SHEET_EXPORT_DPI = 300;
 
@@ -82,28 +73,6 @@ function resolveLayoutModeForFingerprint(
   }
 
   return null;
-}
-
-function buildGroupingMetadata(
-  allocation: { printRequestId: string; requestNameSnapshot?: string },
-  printRequest: PrintRequest | null,
-) {
-  if (!printRequest) {
-    return {
-      printRequestId: allocation.printRequestId,
-      requestName: allocation.requestNameSnapshot ?? allocation.printRequestId,
-      isInternal: false,
-    };
-  }
-
-  return {
-    printRequestId: printRequest.id,
-    requestName: printRequest.name,
-    customerId: printRequest.customerId,
-    customerUsernameSnapshot: printRequest.customerUsernameSnapshot,
-    internalBaseName: printRequest.internalBaseName,
-    isInternal: printRequest.isInternal,
-  };
 }
 
 export interface GangSheetSheetCountPreview {
@@ -261,137 +230,24 @@ async function buildImageRequests(
   user: User,
   show: UpcomingShow,
 ): Promise<{ imageRequests: GangSheetExportImageRequest[]; error: string | null }> {
-  const allocations = await upcomingShowService.listShowAllocations(user, show.id);
-  const useHistoricalPastExport = shouldUseHistoricalShowExportAllocations(show);
-  const activeAllocations = filterShowExportAllocations(allocations, {
-    useHistoricalPastExport,
-  });
-
-  if (activeAllocations.length === 0) {
-    return {
-      imageRequests: [],
-      error: useHistoricalPastExport
-        ? "This show has no attached print requests to export."
-        : "This show has no active allocations to export.",
-    };
+  const { assets, error } = await buildShowExportAllocationAssets(user, show);
+  if (error) {
+    return { imageRequests: [], error };
   }
 
-  const uniqueRequestIds = [...new Set(activeAllocations.map((allocation) => allocation.printRequestId))];
-  const printRequestEntries = await Promise.all(
-    uniqueRequestIds.map(async (printRequestId) => {
-      try {
-        const printRequest = await printRequestService.getPrintRequestById(user, printRequestId);
-        return [printRequestId, printRequest] as const;
-      } catch {
-        return [printRequestId, null] as const;
-      }
-    }),
-  );
-  const printRequestsById = new Map(
-    printRequestEntries.filter((entry): entry is readonly [string, PrintRequest] => entry[1] !== null),
-  );
-
-  const imageRequests: GangSheetExportImageRequest[] = [];
-
-  for (const allocation of activeAllocations) {
-    const isUpload =
-      allocation.sourceType === "customer_upload" || Boolean(allocation.customerUploadId);
-
-    if (isUpload && allocation.customerUploadId) {
-      let upload;
-      try {
-        const { customerUploadReadService } = await import(
-          "../../customer-uploads/services/customerUploadReadService"
-        );
-        upload = await customerUploadReadService.getUploadById(user, allocation.customerUploadId);
-      } catch {
-        upload = null;
-      }
-
-      if (!upload?.productionStoragePath) {
-        continue;
-      }
-
-      const downloadUrl = await designDerivativeUrlService.getDownloadUrlForCatalogPath(
-        upload.productionStoragePath,
-      );
-      if (!downloadUrl) {
-        continue;
-      }
-
-      const { printWidthInches, printHeightInches } = resolveQueuedPrintInches({
-        allocationWidthInches: allocation.printWidthInches,
-        allocationHeightInches: allocation.printHeightInches,
-      });
-
-      const { targetWidthPx, targetHeightPx } = computeExportTargetPixelSize(
-        printWidthInches,
-        printHeightInches,
-        upload.widthPx ?? 0,
-        upload.heightPx ?? 0,
-      );
-
-      imageRequests.push({
-        allocationId: allocation.id,
-        downloadUrl,
-        targetWidthPx,
-        targetHeightPx,
-        fileName: upload.originalFilename ?? allocation.designTitleSnapshot ?? "upload",
-        quantity: allocation.allocatedQuantity,
-        grouping: buildGroupingMetadata(allocation, printRequestsById.get(allocation.printRequestId) ?? null),
-      });
-      continue;
-    }
-
-    let design;
-
-    try {
-      if (!allocation.designId) {
-        continue;
-      }
-      design = await designService.getDesignById(user, allocation.designId);
-    } catch {
-      design = null;
-    }
-
-    if (!design) {
-      continue;
-    }
-
-    const downloadUrl = await designDerivativeUrlService.getDownloadUrlForCatalogPath(design.originalPath);
-
-    if (!downloadUrl) {
-      continue;
-    }
-
-    const { printWidthInches, printHeightInches } = resolveQueuedPrintInches({
-      allocationWidthInches: allocation.printWidthInches,
-      allocationHeightInches: allocation.printHeightInches,
-    });
-
-    const { targetWidthPx, targetHeightPx } = computeExportTargetPixelSize(
-      printWidthInches,
-      printHeightInches,
-      design.width ?? 0,
-      design.height ?? 0,
-    );
-
-    imageRequests.push({
-      allocationId: allocation.id,
-      downloadUrl,
-      targetWidthPx,
-      targetHeightPx,
-      fileName: design.title ?? allocation.designTitleSnapshot ?? "design",
-      quantity: allocation.allocatedQuantity,
-      grouping: buildGroupingMetadata(allocation, printRequestsById.get(allocation.printRequestId) ?? null),
-    });
-  }
-
-  if (imageRequests.length === 0) {
-    return { imageRequests: [], error: "No exportable images were found for this show's allocations." };
-  }
-
-  return { imageRequests, error: null };
+  return {
+    imageRequests: assets.map((asset) => ({
+      allocationId: asset.allocationId,
+      downloadUrl: asset.downloadUrl,
+      productionStoragePath: asset.productionStoragePath,
+      targetWidthPx: asset.targetWidthPx,
+      targetHeightPx: asset.targetHeightPx,
+      fileName: asset.fileName,
+      quantity: asset.quantity,
+      grouping: asset.grouping,
+    })),
+    error: null,
+  };
 }
 
 function buildLayoutRequest(

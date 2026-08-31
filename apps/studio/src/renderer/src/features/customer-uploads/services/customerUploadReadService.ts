@@ -16,6 +16,9 @@ export interface StudioCustomerUploadSummary {
   thumbnailStoragePath: string | null;
   printWidthInches: number | null;
   printHeightInches: number | null;
+  interactiveEnhancedProductionStoragePath?: string | null;
+  interactiveEnhancedWidthPx?: number | null;
+  interactiveEnhancedHeightPx?: number | null;
   widthPx: number | null;
   heightPx: number | null;
   approvedMaxPrintWidthInches: number | null;
@@ -48,6 +51,14 @@ export const customerUploadReadService = {
       originalFilename: String(data.originalFilename ?? "Uploaded artwork"),
       productionStoragePath:
         typeof data.productionStoragePath === "string" ? data.productionStoragePath : null,
+      interactiveEnhancedProductionStoragePath:
+        typeof data.interactiveEnhancedProductionStoragePath === "string"
+          ? data.interactiveEnhancedProductionStoragePath
+          : null,
+      interactiveEnhancedWidthPx:
+        typeof data.interactiveEnhancedWidthPx === "number" ? data.interactiveEnhancedWidthPx : null,
+      interactiveEnhancedHeightPx:
+        typeof data.interactiveEnhancedHeightPx === "number" ? data.interactiveEnhancedHeightPx : null,
       previewStoragePath: typeof data.previewStoragePath === "string" ? data.previewStoragePath : null,
       thumbnailStoragePath:
         typeof data.thumbnailStoragePath === "string" ? data.thumbnailStoragePath : null,

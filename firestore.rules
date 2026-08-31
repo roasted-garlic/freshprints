@@ -2073,7 +2073,9 @@ service cloud.firestore {
         && data.originalPathSnapshot is string
         && (
           data.originalPathSnapshot.matches("^/originals/[A-Za-z0-9_-]+\\.png$")
+          || data.originalPathSnapshot.matches("^/originals/[A-Za-z0-9_-]+\\.interactive\\.png$")
           || data.originalPathSnapshot.matches("^/customer-uploads/[A-Za-z0-9_-]+/[A-Za-z0-9_-]+/production\\.png$")
+          || data.originalPathSnapshot.matches("^/customer-uploads/[A-Za-z0-9_-]+/[A-Za-z0-9_-]+/production\\.interactive\\.png$")
         )
         && (
           (
@@ -2081,14 +2083,20 @@ service cloud.firestore {
             && data.designId is string
             && data.designId.size() > 0
             && !("customerUploadId" in data)
-            && data.originalPathSnapshot.matches("^/originals/[A-Za-z0-9_-]+\\.png$")
+            && (
+              data.originalPathSnapshot.matches("^/originals/[A-Za-z0-9_-]+\\.png$")
+              || data.originalPathSnapshot.matches("^/originals/[A-Za-z0-9_-]+\\.interactive\\.png$")
+            )
           )
           || (
             data.sourceType == "customer_upload"
             && !("designId" in data)
             && data.customerUploadId is string
             && data.customerUploadId.size() > 0
-            && data.originalPathSnapshot.matches("^/customer-uploads/[A-Za-z0-9_-]+/[A-Za-z0-9_-]+/production\\.png$")
+            && (
+              data.originalPathSnapshot.matches("^/customer-uploads/[A-Za-z0-9_-]+/[A-Za-z0-9_-]+/production\\.png$")
+              || data.originalPathSnapshot.matches("^/customer-uploads/[A-Za-z0-9_-]+/[A-Za-z0-9_-]+/production\\.interactive\\.png$")
+            )
           )
         )
         && data.xInches is number

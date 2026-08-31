@@ -2,26 +2,18 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
-import { upcomingShowService } from "../services/upcomingShowService";
-import { designService } from "../../designs/services/designService";
-import { designDerivativeUrlService } from "../../designs/services/designDerivativeUrlService";
 import {
   buildExportImageFilename,
   buildExportZipFilename,
-  computeExportTargetPixelSize,
 } from "@fresh-prints/shared/utils/showExportFilename";
 import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
-import { resolveQueuedPrintInches } from "@fresh-prints/shared/utils/printRequestQueuedInches";
 import type {
   ExportShowZipRequest,
   ExportShowZipResult,
   ShowExportImageRequest,
   ShowExportProgressEvent,
 } from "@fresh-prints/shared/types/export/showExportIpc.types";
-import {
-  filterShowExportAllocations,
-  shouldUseHistoricalShowExportAllocations,
-} from "../utils/showExportEligibility";
+import { buildShowExportAllocationAssets } from "../utils/buildShowExportAllocationAssets";
 
 interface ExportShowZipState {
   isExporting: boolean;
@@ -66,19 +58,12 @@ export function useExportShowZip() {
       setState({ isExporting: true, error: null, result: null, progress: null });
 
       try {
-        const allocations = await upcomingShowService.listShowAllocations(user, show.id);
-        const useHistoricalPastExport = shouldUseHistoricalShowExportAllocations(show);
-        const activeAllocations = filterShowExportAllocations(allocations, {
-          useHistoricalPastExport,
-        });
-
-        if (activeAllocations.length === 0) {
+        const { assets, error: buildError } = await buildShowExportAllocationAssets(user, show);
+        if (buildError) {
           isExportingRef.current = false;
           setState({
             isExporting: false,
-            error: useHistoricalPastExport
-              ? "This show has no attached print requests to export."
-              : "This show has no active allocations to export.",
+            error: buildError,
             result: null,
             progress: null,
           });
@@ -88,115 +73,22 @@ export function useExportShowZip() {
         const imageRequests: ShowExportImageRequest[] = [];
         let sequenceNumber = 0;
 
-        for (const allocation of activeAllocations) {
-          const isUpload =
-            allocation.sourceType === "customer_upload" || Boolean(allocation.customerUploadId);
-
-          if (isUpload && allocation.customerUploadId) {
-            let upload;
-            try {
-              const { customerUploadReadService } = await import(
-                "../../customer-uploads/services/customerUploadReadService"
-              );
-              upload = await customerUploadReadService.getUploadById(user, allocation.customerUploadId);
-            } catch {
-              upload = null;
-            }
-
-            if (!upload?.productionStoragePath) {
-              continue;
-            }
-
-            const downloadUrl = await designDerivativeUrlService.getDownloadUrlForCatalogPath(
-              upload.productionStoragePath,
-            );
-            if (!downloadUrl) {
-              continue;
-            }
-
-            const { printWidthInches, printHeightInches } = resolveQueuedPrintInches({
-              allocationWidthInches: allocation.printWidthInches,
-              allocationHeightInches: allocation.printHeightInches,
-            });
-
-            const { targetWidthPx, targetHeightPx } = computeExportTargetPixelSize(
-              printWidthInches,
-              printHeightInches,
-              upload.widthPx ?? 0,
-              upload.heightPx ?? 0,
-            );
-
-            sequenceNumber += 1;
-            imageRequests.push({
-              allocationId: allocation.id,
-              downloadUrl,
-              targetWidthPx,
-              targetHeightPx,
-              fileName: buildExportImageFilename({
-                sequenceNumber,
-                allocatedQuantity: allocation.allocatedQuantity,
-                printWidthInches,
-                printHeightInches,
-                designTitle:
-                  upload.originalFilename ?? allocation.designTitleSnapshot ?? "upload",
-                allocationId: allocation.id,
-              }),
-              quantity: allocation.allocatedQuantity,
-            });
-            continue;
-          }
-
-          let design;
-
-          try {
-            if (!allocation.designId) {
-              continue;
-            }
-            design = await designService.getDesignById(user, allocation.designId);
-          } catch {
-            design = null;
-          }
-
-          if (!design) {
-            continue;
-          }
-
-          const downloadUrl = await designDerivativeUrlService.getDownloadUrlForCatalogPath(design.originalPath);
-
-          if (!downloadUrl) {
-            continue;
-          }
-
-          const { printWidthInches, printHeightInches } = resolveQueuedPrintInches({
-            allocationWidthInches: allocation.printWidthInches,
-            allocationHeightInches: allocation.printHeightInches,
-          });
-
-          const { targetWidthPx, targetHeightPx } = computeExportTargetPixelSize(
-            printWidthInches,
-            printHeightInches,
-            design.width ?? 0,
-            design.height ?? 0,
-          );
-
+        for (const asset of assets) {
           sequenceNumber += 1;
-
-          const fileName = buildExportImageFilename({
-            sequenceNumber,
-            allocatedQuantity: allocation.allocatedQuantity,
-            printWidthInches,
-            printHeightInches,
-            designTitle: design.title ?? allocation.designTitleSnapshot ?? "design",
-            allocationId: allocation.id,
-          });
-
           imageRequests.push({
-            allocationId: allocation.id,
-            downloadUrl,
-            targetWidthPx,
-            targetHeightPx,
-            fileName,
-            quantity: allocation.allocatedQuantity,
+            allocationId: asset.allocationId,
+            downloadUrl: asset.downloadUrl,
+            targetWidthPx: asset.targetWidthPx,
+            targetHeightPx: asset.targetHeightPx,
+            fileName: buildExportImageFilename({
+              sequenceNumber,
+              allocatedQuantity: asset.quantity,
+              printWidthInches: asset.printWidthInches,
+              printHeightInches: asset.printHeightInches,
+              designTitle: asset.fileName,
+              allocationId: asset.allocationId,
+            }),
+            quantity: asset.quantity,
           });
         }
 

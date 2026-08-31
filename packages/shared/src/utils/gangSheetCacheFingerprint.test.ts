@@ -20,6 +20,7 @@ function sampleRequest(overrides: Partial<ExportGangSheetPngRequest> = {}): Expo
       {
         allocationId: "alloc-b",
         downloadUrl: "https://firebasestorage.googleapis.com/v0/b/x/o/y",
+        productionStoragePath: "/originals/b.png",
         targetWidthPx: 900,
         targetHeightPx: 1200,
         fileName: "Design B",
@@ -28,6 +29,7 @@ function sampleRequest(overrides: Partial<ExportGangSheetPngRequest> = {}): Expo
       {
         allocationId: "alloc-a",
         downloadUrl: "https://firebasestorage.googleapis.com/v0/b/x/o/z",
+        productionStoragePath: "/originals/a.png",
         targetWidthPx: 900,
         targetHeightPx: 900,
         fileName: "Design A",
@@ -47,6 +49,7 @@ describe("buildGangSheetCacheFingerprint", () => {
           {
             allocationId: "alloc-a",
             downloadUrl: "https://firebasestorage.googleapis.com/v0/b/x/o/different",
+            productionStoragePath: "/originals/a.png",
             targetWidthPx: 900,
             targetHeightPx: 900,
             fileName: "Design A",
@@ -55,6 +58,7 @@ describe("buildGangSheetCacheFingerprint", () => {
           {
             allocationId: "alloc-b",
             downloadUrl: "https://firebasestorage.googleapis.com/v0/b/x/o/other",
+            productionStoragePath: "/originals/b.png",
             targetWidthPx: 900,
             targetHeightPx: 1200,
             fileName: "Design B",
@@ -75,6 +79,7 @@ describe("buildGangSheetCacheFingerprint", () => {
           {
             allocationId: "alloc-a",
             downloadUrl: "https://firebasestorage.googleapis.com/v0/b/x/o/z",
+            productionStoragePath: "/originals/a.png",
             targetWidthPx: 900,
             targetHeightPx: 900,
             fileName: "Design A",
@@ -83,6 +88,7 @@ describe("buildGangSheetCacheFingerprint", () => {
           {
             allocationId: "alloc-b",
             downloadUrl: "https://firebasestorage.googleapis.com/v0/b/x/o/y",
+            productionStoragePath: "/originals/b.png",
             targetWidthPx: 900,
             targetHeightPx: 1200,
             fileName: "Design B",
@@ -151,6 +157,23 @@ describe("buildGangSheetCacheFingerprint", () => {
     );
 
     assert.notEqual(sheetPerCustomer, continuousGrouped);
+  });
+
+  it("changes when active production asset path changes for the same allocation", () => {
+    const baseline = buildGangSheetCacheFingerprint(sampleRequest());
+    const enhanced = buildGangSheetCacheFingerprint(
+      sampleRequest({
+        images: sampleRequest().images.map((image) => ({
+          ...image,
+          productionStoragePath:
+            image.allocationId === "alloc-a"
+              ? "/originals/a.interactive.png"
+              : image.productionStoragePath,
+        })),
+      }),
+    );
+
+    assert.notEqual(baseline, enhanced);
   });
 });
 
