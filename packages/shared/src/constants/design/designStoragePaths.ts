@@ -23,6 +23,34 @@ export function getInteractiveOriginalStoragePath(designId: string): string {
   return `/${DESIGN_STORAGE_ROOTS.originals}/${designId}.interactive.png`;
 }
 
+/** Baseline catalog original filename only — excludes `{designId}.interactive.png`. */
+export function isBaselineOriginalFileName(fileName: string): boolean {
+  return /^[A-Za-z0-9_-]+\.png$/.test(fileName) && !fileName.endsWith(".interactive.png");
+}
+
+/** Interactive catalog original filename — `{designId}.interactive.png`. */
+export function isInteractiveOriginalFileName(fileName: string): boolean {
+  return /^[A-Za-z0-9_-]+\.interactive\.png$/.test(fileName);
+}
+
+/** Filenames staff may read under `/originals/{fileName}` (sync with storage.rules). */
+export function isStaffReadableOriginalFileName(fileName: string): boolean {
+  return isBaselineOriginalFileName(fileName) || isInteractiveOriginalFileName(fileName);
+}
+
+export function isInteractiveOriginalStoragePath(path: string): boolean {
+  return /^\/originals\/[A-Za-z0-9_-]+\.interactive\.png$/.test(path.trim());
+}
+
+export function isBaselineOriginalStoragePath(path: string): boolean {
+  const trimmed = path.trim();
+  return /^\/originals\/[A-Za-z0-9_-]+\.png$/.test(trimmed) && !trimmed.endsWith(".interactive.png");
+}
+
+export function isStaffReadableOriginalStoragePath(path: string): boolean {
+  return isBaselineOriginalStoragePath(path) || isInteractiveOriginalStoragePath(path);
+}
+
 export function getOriginalStoragePath(designId: string): string {
   return `/${DESIGN_STORAGE_ROOTS.originals}/${designId}${ORIGINAL_EXTENSION}`;
 }
@@ -37,7 +65,7 @@ export function getPreviewStoragePath(designId: string): string {
 
 export function isCanonicalDesignStoragePath(path: string, root: DesignStorageRoot): boolean {
   if (root === DESIGN_STORAGE_ROOTS.originals) {
-    return /^\/originals\/[A-Za-z0-9_-]+\.png$/.test(path);
+    return isStaffReadableOriginalStoragePath(path);
   }
 
   return new RegExp(`^/${root}/[A-Za-z0-9_-]+\\.webp$`).test(path);

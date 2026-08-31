@@ -33,6 +33,7 @@ import {
 } from "./errors";
 import { withoutUndefinedFields } from "./firestoreDocument";
 import { storageObjectPath } from "./storageObjectPath";
+import { canonicalStorageObjectExists } from "./interactiveDerivativeStorage";
 
 const ENHANCE_LOCK_MS = 10 * 60 * 1000;
 
@@ -236,6 +237,14 @@ async function loadCatalogAssetContext(
       ? design.originalPath.trim()
       : getOriginalStoragePath(designId);
 
+  const metadataClaimsDerivative = hasInteractiveArtworkDerivative({
+    currentWidthPx: baselineWidthPx,
+    currentHeightPx: baselineHeightPx,
+    interactiveEnhanceGeneratedAt: design.interactiveEnhanceGeneratedAt,
+  });
+  const hasDerivative =
+    metadataClaimsDerivative && (await canonicalStorageObjectExists(interactivePath));
+
   return {
     sourceType: "catalog_design",
     designId,
@@ -247,11 +256,7 @@ async function loadCatalogAssetContext(
     interactivePath,
     enhancedWidthPx: readPositiveNumber(design.interactiveEnhancedWidthPx),
     enhancedHeightPx: readPositiveNumber(design.interactiveEnhancedHeightPx),
-    hasDerivative: hasInteractiveArtworkDerivative({
-      currentWidthPx: baselineWidthPx,
-      currentHeightPx: baselineHeightPx,
-      interactiveEnhanceGeneratedAt: design.interactiveEnhanceGeneratedAt,
-    }),
+    hasDerivative,
     nativeWidthPx: native.widthPx,
     nativeHeightPx: native.heightPx,
     upscalePassCount: readUpscalePassCount(design.upscalePassCount),
@@ -308,6 +313,14 @@ async function loadUploadAssetContext(customerUploadId: string): Promise<UploadA
       ? upload.interactiveEnhancedProductionStoragePath.trim()
       : getCustomerUploadInteractiveProductionStoragePath(customerUid, customerUploadId);
 
+  const metadataClaimsDerivative = hasInteractiveArtworkDerivative({
+    currentWidthPx: baselineWidthPx,
+    currentHeightPx: baselineHeightPx,
+    interactiveEnhanceGeneratedAt: upload.interactiveEnhanceGeneratedAt,
+  });
+  const hasDerivative =
+    metadataClaimsDerivative && (await canonicalStorageObjectExists(interactivePath));
+
   return {
     sourceType: "customer_upload",
     customerUploadId,
@@ -320,11 +333,7 @@ async function loadUploadAssetContext(customerUploadId: string): Promise<UploadA
     interactivePath,
     enhancedWidthPx: readPositiveNumber(upload.interactiveEnhancedWidthPx),
     enhancedHeightPx: readPositiveNumber(upload.interactiveEnhancedHeightPx),
-    hasDerivative: hasInteractiveArtworkDerivative({
-      currentWidthPx: baselineWidthPx,
-      currentHeightPx: baselineHeightPx,
-      interactiveEnhanceGeneratedAt: upload.interactiveEnhanceGeneratedAt,
-    }),
+    hasDerivative,
     nativeWidthPx: native.widthPx,
     nativeHeightPx: native.heightPx,
     upscalePassCount: readUpscalePassCount(upload.upscalePassCount),
@@ -425,6 +434,12 @@ async function switchToEnhancedReuse(
 ): Promise<SetPrintRequestItemArtworkEnhanceModeResponse> {
   if (!asset.enhancedWidthPx || !asset.enhancedHeightPx) {
     throw failedPrecondition("Interactive enhanced artwork metadata is incomplete.");
+  }
+
+  if (!(await canonicalStorageObjectExists(asset.interactivePath))) {
+    throw failedPrecondition(
+      "Enhanced artwork metadata exists but the storage file is missing. Turn Upscale off and on again to regenerate it.",
+    );
   }
 
   await itemRef.update({

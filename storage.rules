@@ -51,7 +51,17 @@ service firebase.storage {
     }
 
     function isCanonicalOriginalFileName(fileName) {
-      return fileName.matches('[A-Za-z0-9_-]+\\.png');
+      return fileName.matches('[A-Za-z0-9_-]+\\.png')
+        && !fileName.matches('.*\\.interactive\\.png$');
+    }
+
+    function isCanonicalInteractiveOriginalFileName(fileName) {
+      return fileName.matches('[A-Za-z0-9_-]+\\.interactive\\.png');
+    }
+
+    function isStaffReadableOriginalFileName(fileName) {
+      return isCanonicalOriginalFileName(fileName)
+        || isCanonicalInteractiveOriginalFileName(fileName);
     }
 
     function isCanonicalDerivativeFileName(fileName) {
@@ -70,14 +80,14 @@ service firebase.storage {
     }
 
     match /originals/{fileName} {
-      allow read: if isStaff() && isCanonicalOriginalFileName(fileName);
+      allow read: if isStaff() && isStaffReadableOriginalFileName(fileName);
       allow create: if isStaff()
         && isCanonicalOriginalFileName(fileName)
         && isValidOriginalUpload();
       allow update: if isStaff()
         && isCanonicalOriginalFileName(fileName)
         && isValidOriginalUpload();
-      allow delete: if isStaff() && isCanonicalOriginalFileName(fileName);
+      allow delete: if isStaff() && isStaffReadableOriginalFileName(fileName);
     }
 
     match /thumbnails/{fileName} {

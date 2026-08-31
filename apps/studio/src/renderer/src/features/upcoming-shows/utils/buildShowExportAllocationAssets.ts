@@ -110,7 +110,7 @@ async function resolveAllocationExportAsset(input: {
   );
   if (!downloadUrl) {
     throw new Error(
-      `Unable to download production artwork for allocation ${allocation.id} (${resolvedAsset.productionStoragePath}).`,
+      `Unable to download production artwork for allocation ${allocation.id} (${resolvedAsset.productionStoragePath}). Verify the Storage object exists and Studio has read access to this path.`,
     );
   }
 
