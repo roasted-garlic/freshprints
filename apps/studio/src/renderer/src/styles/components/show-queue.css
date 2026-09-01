@@ -913,8 +913,33 @@
 }
 
 .export-gang-sheet-modal.modal-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  max-height: min(90vh, 48rem);
   max-width: min(44rem, calc(100vw - 2 * var(--space-6)));
+  min-height: 0;
+  overflow: hidden;
   width: min(44rem, calc(100vw - 2 * var(--space-6)));
+}
+
+.export-gang-sheet-modal.modal-panel .modal-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.export-gang-sheet-modal .export-show-result {
+  flex: 1;
+  min-height: 0;
+}
+
+.gang-sheet-preview-list-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .gang-sheet-preview-list {

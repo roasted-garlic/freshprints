@@ -242,6 +242,32 @@ export function useMyPrintRequests() {
     [],
   );
 
+  /**
+   * Unqueue-from-show success is fully known from the callable response — patch status to editing
+   * and zero allocation totals locally so the detail page immediately leaves Queued chrome.
+   */
+  const reconcileUnqueuedRequest = useCallback(
+    (printRequestId: string, requestStatus: 'editing' | 'active') => {
+      setRequests((current) =>
+        current.map((request) =>
+          request.id === printRequestId ? { ...request, status: requestStatus } : request,
+        ),
+      );
+      setAllocationTotalsByRequestId((current) =>
+        mergeQueuedAllocationTotal(current, printRequestId, { totalAllocatedQuantity: 0 }),
+      );
+      setSchedulesByRequestId((current) => {
+        if (!(printRequestId in current)) {
+          return current;
+        }
+        const next = { ...current };
+        delete next[printRequestId];
+        return next;
+      });
+    },
+    [],
+  );
+
   return {
     requests,
     requestsByTab,
@@ -256,6 +282,7 @@ export function useMyPrintRequests() {
     createPrintRequest,
     reconcileQueuedRequest,
     reconcileClearedRequest,
+    reconcileUnqueuedRequest,
   };
 }
 

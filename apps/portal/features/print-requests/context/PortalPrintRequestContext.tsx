@@ -118,6 +118,10 @@ interface PortalPrintRequestContextValue {
     printRequestId: string,
     allocationResult?: { totalAllocatedQuantity: number },
   ) => void;
+  reconcileUnqueuedRequest: (
+    printRequestId: string,
+    requestStatus: 'editing' | 'active',
+  ) => void;
   requests: PrintRequest[];
   requestsByTab: Record<PortalPrintRequestListTab, PrintRequest[]>;
   summariesByRequestId: Record<string, PrintRequestItemSummary>;
@@ -413,6 +417,7 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
       reloadWorkingItems,
       resetWorkingCart,
       reconcileQueuedRequest: printRequests.reconcileQueuedRequest,
+      reconcileUnqueuedRequest: printRequests.reconcileUnqueuedRequest,
       requests: printRequests.requests,
       requestsByTab: printRequests.requestsByTab,
       summariesByRequestId: printRequests.summariesByRequestId,
@@ -457,6 +462,7 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
       printRequests.requests,
       printRequests.requestsByTab,
       printRequests.reconcileQueuedRequest,
+      printRequests.reconcileUnqueuedRequest,
       printRequests.summariesByRequestId,
       refreshRequests,
       reloadWorkingItems,

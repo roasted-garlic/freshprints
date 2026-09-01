@@ -1,4 +1,4 @@
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldValue, type DocumentReference } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 
 import {
@@ -13,7 +13,6 @@ import type { ShowProductionStatus } from "../../packages/shared/src/types/upcom
 import { isPortalEditablePrintRequest } from "../../packages/shared/src/utils/portalPrintRequestEditability";
 import { isPrintRequestOrigin } from "../../packages/shared/src/utils/printRequestOrigin";
 import { evaluatePortalPrintRequestUnqueue } from "../../packages/shared/src/utils/portalPrintRequestUnqueue";
-import { shouldTransitionActiveRequestToEditing } from "../../packages/shared/src/utils/showProductionRecovery";
 import { computeShowAllocatedQuantityFromAllocations } from "../../packages/shared/src/utils/showProductionRecovery";
 
 import { adminDb } from "./lib/admin";
@@ -62,6 +61,45 @@ async function customerHasOtherPortalEditableContinuableRequest(
   );
 }
 
+async function healStuckActivePortalRequest(input: {
+  requestRef: DocumentReference;
+  printRequestId: string;
+  customerId: string;
+  requestStatus: string;
+  hasOtherContinuable: boolean;
+  upcomingShowId: string;
+}): Promise<UnqueuePortalPrintRequestFromShowResponse | null> {
+  if (input.requestStatus !== "active" || input.hasOtherContinuable) {
+    return null;
+  }
+
+  const allAllocationsSnap = await adminDb
+    .collection("showAllocations")
+    .where("printRequestId", "==", input.printRequestId)
+    .get();
+  const hasActiveGlobally = allAllocationsSnap.docs.some(
+    (doc) => doc.data().status !== "canceled",
+  );
+  if (hasActiveGlobally) {
+    return null;
+  }
+
+  await input.requestRef.update({
+    status: "editing",
+    updatedBy: input.customerId,
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+  await recomputeAndPersistQueueTab(input.printRequestId);
+
+  return {
+    printRequestId: input.printRequestId,
+    upcomingShowId: input.upcomingShowId,
+    canceledAllocationIds: [],
+    releasedQuantity: 0,
+    requestStatus: "editing",
+  };
+}
+
 export const unqueuePortalPrintRequestFromShow = onCall(
   async (request): Promise<UnqueuePortalPrintRequestFromShowResponse> => {
     if (!request.auth?.uid) {
@@ -73,9 +111,7 @@ export const unqueuePortalPrintRequestFromShow = onCall(
       const payload = validateUnqueuePortalPrintRequestFromShowRequest(request.data);
 
       const requestRef = adminDb.collection("printRequests").doc(payload.printRequestId);
-      const showRef = adminDb.collection("upcomingShows").doc(payload.upcomingShowId);
-
-      const [requestSnap, showSnap] = await Promise.all([requestRef.get(), showRef.get()]);
+      const requestSnap = await requestRef.get();
 
       if (!requestSnap.exists) {
         throw invalidArgument("Print request not found.");
@@ -87,6 +123,39 @@ export const unqueuePortalPrintRequestFromShow = onCall(
       if (requestCustomerId !== customer.customerId) {
         throw permissionDenied("You can only change your own print requests.");
       }
+
+      const requestStatus =
+        typeof requestData.status === "string" ? requestData.status : "draft";
+      const hasOtherContinuable = await customerHasOtherPortalEditableContinuableRequest(
+        customer.customerId,
+        payload.printRequestId,
+      );
+
+      // Heal path: stuck `active` with no allocations (e.g. prior unqueue canceled allocations
+      // but missed the status flip). upcomingShowId is optional here.
+      if (!payload.upcomingShowId) {
+        const healed = await healStuckActivePortalRequest({
+          requestRef,
+          printRequestId: payload.printRequestId,
+          customerId: customer.customerId,
+          requestStatus,
+          hasOtherContinuable,
+          upcomingShowId: "",
+        });
+        if (healed) {
+          return healed;
+        }
+        if (hasOtherContinuable) {
+          unqueueFailedPrecondition(
+            PORTAL_UNQUEUE_PRINT_REQUEST_ERROR_CODES.CONTINUABLE_REQUEST_CONFLICT,
+            PORTAL_UNQUEUE_CONTINUABLE_REQUEST_CONFLICT_MESSAGE,
+          );
+        }
+        throw invalidArgument("Show id is required.");
+      }
+
+      const showRef = adminDb.collection("upcomingShows").doc(payload.upcomingShowId);
+      const showSnap = await showRef.get();
 
       if (!showSnap.exists) {
         throw invalidArgument("Show not found.");
@@ -107,22 +176,17 @@ export const unqueuePortalPrintRequestFromShow = onCall(
         const data = doc.data();
         return {
           id: doc.id,
-          upcomingShowId: payload.upcomingShowId,
+          upcomingShowId: payload.upcomingShowId!,
           status: (typeof data.status === "string" ? data.status : "canceled") as ShowAllocationStatus,
           allocatedQuantity:
             typeof data.allocatedQuantity === "number" ? data.allocatedQuantity : 0,
         };
       });
 
-      const hasOtherContinuable = await customerHasOtherPortalEditableContinuableRequest(
-        customer.customerId,
-        payload.printRequestId,
-      );
-
       const eligibility = evaluatePortalPrintRequestUnqueue({
         request: {
           id: payload.printRequestId,
-          status: typeof requestData.status === "string" ? requestData.status : "draft",
+          status: requestStatus,
           requestOrigin: isPrintRequestOrigin(requestData.requestOrigin)
             ? requestData.requestOrigin
             : undefined,
@@ -136,6 +200,20 @@ export const unqueuePortalPrintRequestFromShow = onCall(
       });
 
       if (!eligibility.eligible) {
+        if (eligibility.reason === "not_queued_on_show") {
+          const healed = await healStuckActivePortalRequest({
+            requestRef,
+            printRequestId: payload.printRequestId,
+            customerId: customer.customerId,
+            requestStatus,
+            hasOtherContinuable,
+            upcomingShowId: payload.upcomingShowId,
+          });
+          if (healed) {
+            return healed;
+          }
+        }
+
         switch (eligibility.reason) {
           case "continuable_request_conflict":
             unqueueFailedPrecondition(
@@ -179,24 +257,32 @@ export const unqueuePortalPrintRequestFromShow = onCall(
         }
       }
 
-      const cancelableIds = new Set(eligibility.cancelableAllocationIds);
-
       await adminDb.runTransaction(async (transaction) => {
-        const freshAllocationsSnap = await transaction.get(
-          adminDb
-            .collection("showAllocations")
-            .where("printRequestId", "==", payload.printRequestId)
-            .where("upcomingShowId", "==", payload.upcomingShowId),
-        );
+        const allocationsOnShowQuery = adminDb
+          .collection("showAllocations")
+          .where("printRequestId", "==", payload.printRequestId)
+          .where("upcomingShowId", "==", payload.upcomingShowId);
+        const allRequestAllocationsQuery = adminDb
+          .collection("showAllocations")
+          .where("printRequestId", "==", payload.printRequestId);
+        const showAllocationsForQuantityQuery = adminDb
+          .collection("showAllocations")
+          .where("upcomingShowId", "==", payload.upcomingShowId);
 
+        const [freshAllocationsSnap, allRequestAllocationsSnap, showAllocationsForQuantitySnap] =
+          await Promise.all([
+            transaction.get(allocationsOnShowQuery),
+            transaction.get(allRequestAllocationsQuery),
+            transaction.get(showAllocationsForQuantityQuery),
+          ]);
+
+        const canceledThisTx = new Set<string>();
         for (const allocationDoc of freshAllocationsSnap.docs) {
-          if (!cancelableIds.has(allocationDoc.id)) {
-            continue;
-          }
           const status = allocationDoc.data().status;
-          if (status === "canceled") {
+          if (status !== "pending" && status !== "queued") {
             continue;
           }
+          canceledThisTx.add(allocationDoc.id);
           transaction.update(allocationDoc.ref, {
             status: "canceled",
             canceledAt: FieldValue.serverTimestamp(),
@@ -206,28 +292,16 @@ export const unqueuePortalPrintRequestFromShow = onCall(
           });
         }
 
-        const allRequestAllocationsSnap = await transaction.get(
-          adminDb
-            .collection("showAllocations")
-            .where("printRequestId", "==", payload.printRequestId),
-        );
-
         const hasActiveGlobally = allRequestAllocationsSnap.docs.some((doc) => {
-          if (cancelableIds.has(doc.id)) {
+          if (canceledThisTx.has(doc.id)) {
             return false;
           }
           return doc.data().status !== "canceled";
         });
 
-        const showAllocationsForQuantitySnap = await transaction.get(
-          adminDb
-            .collection("showAllocations")
-            .where("upcomingShowId", "==", payload.upcomingShowId),
-        );
-
         const snapshots = showAllocationsForQuantitySnap.docs.map((doc) => {
           const data = doc.data();
-          const status = cancelableIds.has(doc.id)
+          const status = canceledThisTx.has(doc.id)
             ? "canceled"
             : typeof data.status === "string"
               ? data.status
@@ -237,7 +311,7 @@ export const unqueuePortalPrintRequestFromShow = onCall(
             status,
             allocatedQuantity:
               typeof data.allocatedQuantity === "number" ? data.allocatedQuantity : 0,
-            upcomingShowId: payload.upcomingShowId,
+            upcomingShowId: payload.upcomingShowId!,
             printRequestId:
               typeof data.printRequestId === "string" ? data.printRequestId : undefined,
           };
@@ -245,7 +319,7 @@ export const unqueuePortalPrintRequestFromShow = onCall(
 
         const freshAllocated = computeShowAllocatedQuantityFromAllocations(
           snapshots,
-          payload.upcomingShowId,
+          payload.upcomingShowId!,
         );
 
         transaction.update(showRef, {
@@ -253,21 +327,14 @@ export const unqueuePortalPrintRequestFromShow = onCall(
           updatedAt: FieldValue.serverTimestamp(),
         });
 
-        const requestStatus =
-          typeof requestData.status === "string" ? requestData.status : "active";
         const requestPatch: Record<string, unknown> = {
           updatedBy: customer.customerId,
           updatedAt: FieldValue.serverTimestamp(),
         };
 
-        if (
-          shouldTransitionActiveRequestToEditing({
-            requestStatus,
-            hasActiveAllocationsGlobally: hasActiveGlobally,
-            hasOtherContinuableRequest: hasOtherContinuable,
-            isInternal: false,
-          })
-        ) {
+        // ADR-FP-071 already blocked before this transaction when another continuable exists.
+        // When this release leaves zero active allocations, restore Portal editability.
+        if (!hasActiveGlobally && !hasOtherContinuable) {
           requestPatch.status = "editing";
         }
 

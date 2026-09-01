@@ -1,6 +1,7 @@
 export interface UnqueuePortalPrintRequestFromShowRequest {
   printRequestId: string;
-  upcomingShowId: string;
+  /** Optional when healing a stuck active request that already has no show allocations. */
+  upcomingShowId?: string;
 }
 
 export interface UnqueuePortalPrintRequestFromShowResponse {

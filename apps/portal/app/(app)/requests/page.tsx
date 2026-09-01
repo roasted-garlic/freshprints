@@ -21,6 +21,7 @@ import {
   getPortalPrintRequestTabEmptyCopy,
   getPortalPrintRequestsEmptyPageCopyLines,
 } from '../../../features/print-requests/utils/portalPrintRequestTabCopy';
+import { resolvePortalPrintRequestCardLabel } from '../../../features/print-requests/utils/resolvePortalPrintRequestCardLabel';
 import { LibraryIcon, ShoppingBagIcon } from '../../../features/shared/components/PortalIcons';
 
 const PORTAL_REQUEST_TABS: PortalPrintRequestListTab[] = ['working', 'queued', 'printing', 'printed'];
@@ -178,17 +179,21 @@ export default function RequestsPage() {
                   totalInProgressQuantity: 0,
                   totalPrintedQuantity: 0,
                 };
-                const progressLabel = resolvePortalPrintRequestProgressLabel({
-                  closureKind: request.closureKind,
-                  status: request.status,
-                  defaultLabel: getPrintRequestProgressLabel(
-                    derivePrintRequestQueueState({
-                      totalRequestedQuantity: summary.totalQuantity,
-                      totalAllocatedQuantity: allocationTotals.totalAllocatedQuantity,
-                      totalInProgressQuantity: allocationTotals.totalInProgressQuantity,
-                      totalPrintedQuantity: allocationTotals.totalPrintedQuantity,
-                    }),
-                  ),
+                const progressLabel = resolvePortalPrintRequestCardLabel({
+                  listTab: activeTab,
+                  requestStatus: request.status,
+                  progressLabel: resolvePortalPrintRequestProgressLabel({
+                    closureKind: request.closureKind,
+                    status: request.status,
+                    defaultLabel: getPrintRequestProgressLabel(
+                      derivePrintRequestQueueState({
+                        totalRequestedQuantity: summary.totalQuantity,
+                        totalAllocatedQuantity: allocationTotals.totalAllocatedQuantity,
+                        totalInProgressQuantity: allocationTotals.totalInProgressQuantity,
+                        totalPrintedQuantity: allocationTotals.totalPrintedQuantity,
+                      }),
+                    ),
+                  }),
                 });
                 const scheduleLine = buildPortalCustomerShowScheduleCardSummary(
                   schedulesByRequestId[request.id] ?? [],

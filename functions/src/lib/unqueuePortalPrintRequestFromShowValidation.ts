@@ -16,9 +16,9 @@ export function validateUnqueuePortalPrintRequestFromShowRequest(
   if (!printRequestId) {
     throw new Error("Print request id is required.");
   }
-  if (!upcomingShowId) {
-    throw new Error("Show id is required.");
-  }
 
-  return { printRequestId, upcomingShowId };
+  return {
+    printRequestId,
+    ...(upcomingShowId ? { upcomingShowId } : {}),
+  };
 }
