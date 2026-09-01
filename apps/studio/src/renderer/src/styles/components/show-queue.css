@@ -78,6 +78,44 @@
   max-width: 48rem;
 }
 
+.show-queue-settings-tab-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.show-queue-settings-tab {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full, 999px);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  flex: 0 0 auto;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  padding: var(--space-2) var(--space-4);
+  white-space: nowrap;
+}
+
+.show-queue-settings-tab:hover,
+.show-queue-settings-tab:focus-visible {
+  color: var(--color-text-primary);
+  outline: none;
+}
+
+.show-queue-settings-tab.is-active {
+  background: var(--color-accent-primary-soft);
+  border-color: var(--color-accent-primary);
+  color: var(--color-text-primary);
+}
+
+.show-queue-settings-tab-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
 .show-queue-settings-form {
   display: flex;
   flex-direction: column;

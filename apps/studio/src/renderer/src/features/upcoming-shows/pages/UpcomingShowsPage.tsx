@@ -21,7 +21,7 @@ import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
 import { clearPrintRequestsPageCache } from "../../print-requests/services/printRequestsPageReadCache";
 import { TransferPrintRequestToShowModal } from "../../print-requests/components/TransferPrintRequestToShowModal";
-import { resolveGangSheetSectionPricingFromShowQueueSettings,
+import { resolveGangSheetSectionPricingFromSettings,
   formatGangSheetSectionCutoffLabel,
   isValidGangSheetSectionPriceCutoffInches,
   isValidGangSheetTierPriceUsd,
@@ -29,6 +29,7 @@ import { resolveGangSheetSectionPricingFromShowQueueSettings,
   MAX_GANG_SHEET_SECTION_PRICE_CUTOFF_INCHES,
 } from "@fresh-prints/shared/constants/gangSheetSectionPricingSettings.constants";
 import { upcomingShowService } from "../services/upcomingShowService";
+import type { GangSheetLayoutAndPricingSettingsInput } from "../services/gangSheetSettingsFields";
 import { UpcomingShowDeletionDialog } from "../components/UpcomingShowDeletionDialog";
 import { NeedsAttentionShowPanel } from "../components/NeedsAttentionShowPanel";
 import { DidNotPrintRecoveryDialog } from "../components/DidNotPrintRecoveryDialog";
@@ -42,6 +43,7 @@ import { useShowProductionTimer } from "../hooks/useShowProductionTimer";
 import { useStalePastPrintingShowReconciliation } from "../hooks/useStalePastPrintingShowReconciliation";
 import { useEmptyPastShowReconciliation } from "../hooks/useEmptyPastShowReconciliation";
 import { useShowQueueSettings } from "../hooks/useShowQueueSettings";
+import { useInternalGangSheetSettings } from "../hooks/useInternalGangSheetSettings";
 import {
   DEFAULT_GANG_SHEET_GUTTER_INCHES,
   DEFAULT_GANG_SHEET_LABEL_FONT_SIZE_PX,
@@ -99,6 +101,10 @@ import {
 } from "@fresh-prints/shared/utils/showCapacityDisplay";
 import { resolveShowDisplayAllocatedQuantity } from "@fresh-prints/shared/utils/showDisplayAllocatedQuantity";
 import { canRemoveRequestFromShow } from "@fresh-prints/shared/utils/showQueueEditability";
+import {
+  formatPrintRequestShowTransferActionLabel,
+  resolvePrintRequestShowTransferMode,
+} from "@fresh-prints/shared/utils/printRequestShowTransfer";
 import { isStaffGangSheetShow, isDevFixtureShow, isWhatnotQueueSurfaceShow, type UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
 import {
   canAllocateOriginToShowSource,
@@ -115,6 +121,7 @@ import {
   resolveShowQueuePrintRequestLinkTab,
 } from "../utils/showQueuePrintRequestSources";
 import { refreshSelectedShowGangSheetCache } from "../utils/gangSheetCacheRefresh";
+import { resolveActiveGangSheetSettingsSource } from "../utils/resolveActiveGangSheetSettingsSource";
 import {
   hasShowExportableAllocations,
   PAST_SHOW_EXPORT_COPY,
@@ -230,6 +237,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
   const { totalsByRequestId: allocationTotalsByRequestId, reload: reloadAllocationTotals } =
     usePrintRequestAllocationTotals();
   const showQueueSettings = useShowQueueSettings();
+  const internalGangSheetSettings = useInternalGangSheetSettings();
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createForm, setCreateForm] = useState<CreateShowFormState>(DEFAULT_CREATE_SHOW_FORM);
@@ -259,6 +267,12 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
   const [isOwnerOverrideDialogOpen, setIsOwnerOverrideDialogOpen] = useState(false);
 
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [settingsModalContext, setSettingsModalContext] = useState<"show_queue" | "internal_gang_sheet">(
+    "show_queue",
+  );
+  const [showQueueSettingsTab, setShowQueueSettingsTab] = useState<
+    "general" | "gangSheetLayout" | "pricingWeight"
+  >("general");
   const [defaultCapacityInput, setDefaultCapacityInput] = useState("");
   const [whatnotBaseUrlInput, setWhatnotBaseUrlInput] = useState("");
   const [portalCutoffHoursInput, setPortalCutoffHoursInput] = useState("");
@@ -349,55 +363,73 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
     setActionError(null);
   }, []);
 
-  const openSettingsModal = useCallback(() => {
-    setActionError(null);
-    setDefaultCapacityInput(showQueueSettings.settings.defaultMaxTotalQuantity?.toString() ?? "");
-    setWhatnotBaseUrlInput(showQueueSettings.settings.whatnotShowBaseUrl ?? DEFAULT_WHATNOT_SHOW_BASE_URL);
-    setPortalCutoffHoursInput(
-      (
-        showQueueSettings.settings.portalQueueCutoffHoursBeforeStart ??
-        DEFAULT_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START
-      ).toString(),
-    );
+  const populateGangSheetSettingsInputs = useCallback((settings: GangSheetLayoutAndPricingSettingsInput) => {
     setGangSheetWidthInput(
-      (showQueueSettings.settings.gangSheetWidthInches ?? DEFAULT_GANG_SHEET_WIDTH_INCHES).toString(),
+      (settings.gangSheetWidthInches ?? DEFAULT_GANG_SHEET_WIDTH_INCHES).toString(),
     );
     setGangSheetSideMarginInput(
-      (showQueueSettings.settings.gangSheetSideMarginInches ?? DEFAULT_GANG_SHEET_SIDE_MARGIN_INCHES).toString(),
+      (settings.gangSheetSideMarginInches ?? DEFAULT_GANG_SHEET_SIDE_MARGIN_INCHES).toString(),
     );
     setGangSheetTopBottomMarginInput(
-      (
-        showQueueSettings.settings.gangSheetTopBottomMarginInches ?? DEFAULT_GANG_SHEET_TOP_BOTTOM_MARGIN_INCHES
-      ).toString(),
+      (settings.gangSheetTopBottomMarginInches ?? DEFAULT_GANG_SHEET_TOP_BOTTOM_MARGIN_INCHES).toString(),
     );
     setGangSheetGutterInput(
-      (showQueueSettings.settings.gangSheetGutterInches ?? DEFAULT_GANG_SHEET_GUTTER_INCHES).toString(),
+      (settings.gangSheetGutterInches ?? DEFAULT_GANG_SHEET_GUTTER_INCHES).toString(),
     );
     setGangSheetMaxLengthInput(
-      (showQueueSettings.settings.gangSheetMaxLengthInches ?? DEFAULT_GANG_SHEET_MAX_LENGTH_INCHES).toString(),
+      (settings.gangSheetMaxLengthInches ?? DEFAULT_GANG_SHEET_MAX_LENGTH_INCHES).toString(),
     );
     setGangSheetLabelFontSizeInput(
-      (showQueueSettings.settings.gangSheetLabelFontSizePx ?? DEFAULT_GANG_SHEET_LABEL_FONT_SIZE_PX).toString(),
+      (settings.gangSheetLabelFontSizePx ?? DEFAULT_GANG_SHEET_LABEL_FONT_SIZE_PX).toString(),
     );
-    const resolvedPricing = resolveGangSheetSectionPricingFromShowQueueSettings(showQueueSettings.settings);
+    const resolvedPricing = resolveGangSheetSectionPricingFromSettings(settings);
     setGangSheetPricingCutoffInput(resolvedPricing.sizeCutoffInches.toString());
     setGangSheetSmallTierPriceInput(resolvedPricing.smallTierPriceUsd.toString());
     setGangSheetSmallTierWeightInput(resolvedPricing.smallTierWeightOz.toString());
     setGangSheetLargeTierPriceInput(resolvedPricing.largeTierPriceUsd.toString());
     setGangSheetLargeTierWeightInput(resolvedPricing.largeTierWeightOz.toString());
-    setIsSettingsModalOpen(true);
-  }, [
-    showQueueSettings.settings,
-    showQueueSettings.settings.defaultMaxTotalQuantity,
-    showQueueSettings.settings.gangSheetGutterInches,
-    showQueueSettings.settings.gangSheetLabelFontSizePx,
-    showQueueSettings.settings.gangSheetMaxLengthInches,
-    showQueueSettings.settings.gangSheetSideMarginInches,
-    showQueueSettings.settings.gangSheetTopBottomMarginInches,
-    showQueueSettings.settings.gangSheetWidthInches,
-    showQueueSettings.settings.portalQueueCutoffHoursBeforeStart,
-    showQueueSettings.settings.whatnotShowBaseUrl,
-  ]);
+  }, []);
+
+  const openSettingsModalForContext = useCallback(
+    (context: "show_queue" | "internal_gang_sheet") => {
+      setSettingsModalContext(context);
+      setActionError(null);
+
+      if (context === "show_queue") {
+        setDefaultCapacityInput(showQueueSettings.settings.defaultMaxTotalQuantity?.toString() ?? "");
+        setWhatnotBaseUrlInput(showQueueSettings.settings.whatnotShowBaseUrl ?? DEFAULT_WHATNOT_SHOW_BASE_URL);
+        setPortalCutoffHoursInput(
+          (
+            showQueueSettings.settings.portalQueueCutoffHoursBeforeStart ??
+            DEFAULT_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START
+          ).toString(),
+        );
+        populateGangSheetSettingsInputs(showQueueSettings.settings);
+        setShowQueueSettingsTab("general");
+      } else {
+        populateGangSheetSettingsInputs(internalGangSheetSettings.settings);
+        setShowQueueSettingsTab("gangSheetLayout");
+      }
+
+      setIsSettingsModalOpen(true);
+    },
+    [
+      internalGangSheetSettings.settings,
+      populateGangSheetSettingsInputs,
+      showQueueSettings.settings,
+      showQueueSettings.settings.defaultMaxTotalQuantity,
+      showQueueSettings.settings.portalQueueCutoffHoursBeforeStart,
+      showQueueSettings.settings.whatnotShowBaseUrl,
+    ],
+  );
+
+  const openSettingsModal = useCallback(() => {
+    openSettingsModalForContext("show_queue");
+  }, [openSettingsModalForContext]);
+
+  const openInternalGangSheetSettingsModal = useCallback(() => {
+    openSettingsModalForContext("internal_gang_sheet");
+  }, [openSettingsModalForContext]);
 
   const closeSettingsModal = useCallback(() => {
     setIsSettingsModalOpen(false);
@@ -572,6 +604,9 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
               showId: selectedShowId,
               requestId: highlightedRequestIdParam ?? null,
             });
+          } else if (shows.some((show) => show.id === selectedShowId)) {
+            // Deep-linked show exists but isn't on this tab's rail list (e.g. partition edge case).
+            // Keep showId/requestId so the detail pane can still render the selection.
           } else {
             applyShowQueueRoute({ tab: currentListTab, showId: null, requestId: null });
           }
@@ -752,13 +787,13 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
     if (user && permissionService.canDeleteEligibleUpcomingShow(user)) {
       items.push({
         id: "delete-show",
-        label: "Delete show…",
+        label: queueSurface === "staff_gang_sheets" ? "Delete internal sheet…" : "Delete show…",
         onSelect: () => setIsDeletionDialogOpen(true),
       });
     }
 
     return items;
-  }, [openEditShowModal, selectedShow, user]);
+  }, [openEditShowModal, queueSurface, selectedShow, user]);
 
   const isSelectedStaffGangSheet = Boolean(selectedShow && isStaffGangSheetShow(selectedShow));
   const canManageSelectedStaffGangSheet = Boolean(
@@ -926,6 +961,15 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                   void handleRefreshShowQueue();
                 },
               },
+              ...(queueSurface === "staff_gang_sheets" && permissionService.canManageShowQueueSettings(user)
+                ? [
+                    {
+                      icon: <Settings aria-hidden="true" size={16} strokeWidth={2} />,
+                      label: "Settings",
+                      onClick: openInternalGangSheetSettingsModal,
+                    },
+                  ]
+                : []),
               ...(queueSurface === "shows" && permissionService.canManageUpcomingShows(user)
                 ? [
                     ...(permissionService.canImportWhatnotShows(user)
@@ -974,6 +1018,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
         isManualRefreshing,
         openCreateModal,
         openWhatnotImportWindow,
+        openInternalGangSheetSettingsModal,
         openSettingsModal,
         queueSurface,
         user,
@@ -1059,30 +1104,42 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
     hydrateCacheForLayoutMode: hydrateGangSheetCacheForLayoutMode,
     refreshCacheStatus: refreshGangSheetCacheStatus,
     reset: resetGangSheetExport,
+    clearCacheForShow: clearGangSheetCacheForShow,
   } = exportGangSheetPngState;
+
+  const invalidateGangSheetExportCache = useCallback(() => {
+    resetGangSheetExport();
+    if (selectedShow) {
+      void clearGangSheetCacheForShow(selectedShow.id);
+    }
+  }, [clearGangSheetCacheForShow, resetGangSheetExport, selectedShow]);
+
+  const activeGangSheetSettingsSource = useMemo(
+    () =>
+      resolveActiveGangSheetSettingsSource(
+        selectedShow,
+        showQueueSettings.settings,
+        internalGangSheetSettings.settings,
+      ),
+    [internalGangSheetSettings.settings, selectedShow, showQueueSettings.settings],
+  );
+
   const gangSheetLayoutSettings = useMemo(
     () => ({
-      sheetWidthInches: showQueueSettings.settings.gangSheetWidthInches ?? DEFAULT_GANG_SHEET_WIDTH_INCHES,
+      sheetWidthInches: activeGangSheetSettingsSource.gangSheetWidthInches ?? DEFAULT_GANG_SHEET_WIDTH_INCHES,
       sideMarginInches:
-        showQueueSettings.settings.gangSheetSideMarginInches ?? DEFAULT_GANG_SHEET_SIDE_MARGIN_INCHES,
+        activeGangSheetSettingsSource.gangSheetSideMarginInches ?? DEFAULT_GANG_SHEET_SIDE_MARGIN_INCHES,
       topBottomMarginInches:
-        showQueueSettings.settings.gangSheetTopBottomMarginInches ?? DEFAULT_GANG_SHEET_TOP_BOTTOM_MARGIN_INCHES,
-      gutterInches: showQueueSettings.settings.gangSheetGutterInches ?? DEFAULT_GANG_SHEET_GUTTER_INCHES,
+        activeGangSheetSettingsSource.gangSheetTopBottomMarginInches ??
+        DEFAULT_GANG_SHEET_TOP_BOTTOM_MARGIN_INCHES,
+      gutterInches: activeGangSheetSettingsSource.gangSheetGutterInches ?? DEFAULT_GANG_SHEET_GUTTER_INCHES,
       maxSheetLengthInches:
-        showQueueSettings.settings.gangSheetMaxLengthInches ?? DEFAULT_GANG_SHEET_MAX_LENGTH_INCHES,
+        activeGangSheetSettingsSource.gangSheetMaxLengthInches ?? DEFAULT_GANG_SHEET_MAX_LENGTH_INCHES,
       labelFontSizePx:
-        showQueueSettings.settings.gangSheetLabelFontSizePx ?? DEFAULT_GANG_SHEET_LABEL_FONT_SIZE_PX,
-      sectionPricing: resolveGangSheetSectionPricingFromShowQueueSettings(showQueueSettings.settings),
+        activeGangSheetSettingsSource.gangSheetLabelFontSizePx ?? DEFAULT_GANG_SHEET_LABEL_FONT_SIZE_PX,
+      sectionPricing: resolveGangSheetSectionPricingFromSettings(activeGangSheetSettingsSource),
     }),
-    [
-      showQueueSettings.settings,
-      showQueueSettings.settings.gangSheetGutterInches,
-      showQueueSettings.settings.gangSheetLabelFontSizePx,
-      showQueueSettings.settings.gangSheetMaxLengthInches,
-      showQueueSettings.settings.gangSheetSideMarginInches,
-      showQueueSettings.settings.gangSheetTopBottomMarginInches,
-      showQueueSettings.settings.gangSheetWidthInches,
-    ],
+    [activeGangSheetSettingsSource],
   );
 
   useEffect(() => {
@@ -1412,27 +1469,66 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
   const gangSheetPricingCutoffLabel = formatGangSheetSectionCutoffLabel(
     isGangSheetPricingCutoffValid ? parsedGangSheetPricingCutoff : DEFAULT_GANG_SHEET_SECTION_PRICE_CUTOFF_INCHES,
   );
+  const gangSheetSettingsFieldsValid =
+    isGangSheetWidthValid &&
+    isGangSheetSideMarginValid &&
+    isGangSheetTopBottomMarginValid &&
+    isGangSheetGutterValid &&
+    isGangSheetMaxLengthValid &&
+    isGangSheetLabelFontSizeValid &&
+    isGangSheetPricingCutoffValid &&
+    isGangSheetSmallTierPriceValid &&
+    isGangSheetLargeTierPriceValid &&
+    isGangSheetSmallTierWeightValid &&
+    isGangSheetLargeTierWeightValid;
+  const isSettingsSaveDisabled =
+    isSavingSettings ||
+    !gangSheetSettingsFieldsValid ||
+    (settingsModalContext === "show_queue" && (!isWhatnotBaseUrlValid || !isPortalCutoffHoursValid));
 
   async function handleSaveSettings(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (
-      !user ||
-      !permissionService.canManageShowQueueSettings(user) ||
-      !isWhatnotBaseUrlValid ||
-      !isPortalCutoffHoursValid ||
-      !isGangSheetWidthValid ||
-      !isGangSheetSideMarginValid ||
-      !isGangSheetTopBottomMarginValid ||
-      !isGangSheetGutterValid ||
-      !isGangSheetMaxLengthValid ||
-      !isGangSheetLabelFontSizeValid ||
-      !isGangSheetPricingCutoffValid ||
-      !isGangSheetSmallTierPriceValid ||
-      !isGangSheetLargeTierPriceValid ||
-      !isGangSheetSmallTierWeightValid ||
-      !isGangSheetLargeTierWeightValid
-    ) {
+    const gangSheetFieldsValid = gangSheetSettingsFieldsValid;
+
+    if (!user || !permissionService.canManageShowQueueSettings(user)) {
+      return;
+    }
+
+    if (settingsModalContext === "internal_gang_sheet") {
+      if (!gangSheetFieldsValid) {
+        return;
+      }
+
+      try {
+        setActionError(null);
+        setIsSavingSettings(true);
+        await internalGangSheetSettings.updateSettings({
+          gangSheetWidthInches: parsedGangSheetWidth,
+          gangSheetSideMarginInches: parsedGangSheetSideMargin,
+          gangSheetTopBottomMarginInches: parsedGangSheetTopBottomMargin,
+          gangSheetGutterInches: parsedGangSheetGutter,
+          gangSheetMaxLengthInches: parsedGangSheetMaxLength,
+          gangSheetLabelFontSizePx: parsedGangSheetLabelFontSize,
+          gangSheetSectionPriceCutoffInches: parsedGangSheetPricingCutoff,
+          gangSheetSmallTierPriceUsd: parsedGangSheetSmallTierPrice,
+          gangSheetSmallTierWeightOz: parsedGangSheetSmallTierWeight,
+          gangSheetLargeTierPriceUsd: parsedGangSheetLargeTierPrice,
+          gangSheetLargeTierWeightOz: parsedGangSheetLargeTierWeight,
+        });
+        invalidateGangSheetExportCache();
+        setSuccessMessage("Internal Gang Sheet settings updated. Regenerate gang sheets to apply new pricing.");
+        setSuccessAlertSeed((current) => current + 1);
+        closeSettingsModal();
+      } catch (error) {
+        setActionError(formatWriteErrorMessage(error));
+      } finally {
+        setIsSavingSettings(false);
+      }
+      return;
+    }
+
+    if (!isWhatnotBaseUrlValid || !isPortalCutoffHoursValid || !gangSheetFieldsValid) {
       return;
     }
 
@@ -1458,7 +1554,8 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
         gangSheetLargeTierPriceUsd: parsedGangSheetLargeTierPrice,
         gangSheetLargeTierWeightOz: parsedGangSheetLargeTierWeight,
       });
-      setSuccessMessage("Show Queue settings updated.");
+      invalidateGangSheetExportCache();
+      setSuccessMessage("Show Queue settings updated. Regenerate gang sheets to apply new pricing.");
       setSuccessAlertSeed((current) => current + 1);
       closeSettingsModal();
     } catch (error) {
@@ -2755,7 +2852,11 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
             <ModalHeader>
               <div>
                 <p className="eyebrow">Settings</p>
-                <h3 id="show-queue-settings-title">Show Queue settings</h3>
+                <h3 id="show-queue-settings-title">
+                  {settingsModalContext === "internal_gang_sheet"
+                    ? "Internal Gang Sheet settings"
+                    : "Show Queue settings"}
+                </h3>
               </div>
               <button
                 aria-label="Close Show Queue settings"
@@ -2767,13 +2868,63 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
               </button>
             </ModalHeader>
             <ModalBody>
+              <div
+                aria-label={
+                  settingsModalContext === "internal_gang_sheet"
+                    ? "Internal Gang Sheet settings sections"
+                    : "Show Queue settings sections"
+                }
+                className="show-queue-settings-tab-bar"
+                role="tablist"
+              >
+                {settingsModalContext === "show_queue" ? (
+                  <button
+                    aria-controls="show-queue-settings-tab-panel-general"
+                    aria-selected={showQueueSettingsTab === "general"}
+                    className={`show-queue-settings-tab${showQueueSettingsTab === "general" ? " is-active" : ""}`}
+                    id="show-queue-settings-tab-general"
+                    onClick={() => setShowQueueSettingsTab("general")}
+                    role="tab"
+                    type="button"
+                  >
+                    General
+                  </button>
+                ) : null}
+                <button
+                  aria-controls="show-queue-settings-tab-panel-gang-sheet-layout"
+                  aria-selected={showQueueSettingsTab === "gangSheetLayout"}
+                  className={`show-queue-settings-tab${showQueueSettingsTab === "gangSheetLayout" ? " is-active" : ""}`}
+                  id="show-queue-settings-tab-gang-sheet-layout"
+                  onClick={() => setShowQueueSettingsTab("gangSheetLayout")}
+                  role="tab"
+                  type="button"
+                >
+                  Gang sheet layout
+                </button>
+                <button
+                  aria-controls="show-queue-settings-tab-panel-pricing-weight"
+                  aria-selected={showQueueSettingsTab === "pricingWeight"}
+                  className={`show-queue-settings-tab${showQueueSettingsTab === "pricingWeight" ? " is-active" : ""}`}
+                  id="show-queue-settings-tab-pricing-weight"
+                  onClick={() => setShowQueueSettingsTab("pricingWeight")}
+                  role="tab"
+                  type="button"
+                >
+                  Pricing &amp; Weight
+                </button>
+              </div>
               <form
                 className="show-queue-settings-form"
                 id="show-queue-settings-form"
                 onSubmit={handleSaveSettings}
               >
-                <section className="show-queue-settings-section">
-                  <h4 className="show-queue-settings-section-title">General</h4>
+                {showQueueSettingsTab === "general" && settingsModalContext === "show_queue" ? (
+                  <section
+                    aria-labelledby="show-queue-settings-tab-general"
+                    className="show-queue-settings-tab-panel"
+                    id="show-queue-settings-tab-panel-general"
+                    role="tabpanel"
+                  >
                   <div className="show-queue-settings-grid">
                     <div className="show-queue-settings-field">
                       <TextInput
@@ -2828,10 +2979,16 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                       </p>
                     </div>
                   </div>
-                </section>
+                  </section>
+                ) : null}
 
-                <section className="show-queue-settings-section">
-                  <h4 className="show-queue-settings-section-title">Gang sheet layout</h4>
+                {showQueueSettingsTab === "gangSheetLayout" ? (
+                  <section
+                    aria-labelledby="show-queue-settings-tab-gang-sheet-layout"
+                    className="show-queue-settings-tab-panel"
+                    id="show-queue-settings-tab-panel-gang-sheet-layout"
+                    role="tabpanel"
+                  >
                   <div className="show-queue-settings-grid">
                     <div className="show-queue-settings-field">
                       <TextInput
@@ -2941,13 +3098,20 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                       </p>
                     </div>
                   </div>
-                </section>
+                  </section>
+                ) : null}
 
-                <section className="show-queue-settings-section">
-                  <h4 className="show-queue-settings-section-title">Pricing &amp; Weight</h4>
+                {showQueueSettingsTab === "pricingWeight" ? (
+                  <section
+                    aria-labelledby="show-queue-settings-tab-pricing-weight"
+                    className="show-queue-settings-tab-panel"
+                    id="show-queue-settings-tab-panel-pricing-weight"
+                    role="tabpanel"
+                  >
                   <p className="print-requests-modal-hint">
-                    Used for Grouped by Customer and Sheet per Customer gang sheets only. Standard mode is
-                    unaffected.
+                    {settingsModalContext === "internal_gang_sheet"
+                      ? "Used for Internal Gang Sheet exports with grouped customer sections."
+                      : "Used for Grouped by Customer and Sheet per Customer gang sheets only. Standard mode is unaffected."}
                   </p>
                   <div className="show-queue-settings-grid">
                     <div className="show-queue-settings-field">
@@ -3040,7 +3204,8 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                       </p>
                     </div>
                   </div>
-                </section>
+                  </section>
+                ) : null}
 
                 {actionError ? (
                   <p className="auth-message auth-message-error" role="alert">
@@ -3054,22 +3219,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                 Cancel
               </Button>
               <Button
-                disabled={
-                  isSavingSettings ||
-                  !isWhatnotBaseUrlValid ||
-                  !isPortalCutoffHoursValid ||
-                  !isGangSheetWidthValid ||
-                  !isGangSheetSideMarginValid ||
-                  !isGangSheetTopBottomMarginValid ||
-                  !isGangSheetGutterValid ||
-                  !isGangSheetMaxLengthValid ||
-                  !isGangSheetLabelFontSizeValid ||
-                  !isGangSheetPricingCutoffValid ||
-                  !isGangSheetSmallTierPriceValid ||
-                  !isGangSheetLargeTierPriceValid ||
-                  !isGangSheetSmallTierWeightValid ||
-                  !isGangSheetLargeTierWeightValid
-                }
+                disabled={isSettingsSaveDisabled}
                 form="show-queue-settings-form"
                 type="submit"
               >

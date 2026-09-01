@@ -51,6 +51,12 @@ function resolveNonNegativeNumber(value: unknown, fallback: number): number {
   return isFiniteNumber(value) && value >= 0 ? value : fallback;
 }
 
+export function resolveGangSheetSectionPricingFromSettings(
+  input: GangSheetSectionPricingSettingsInput = {},
+): GangSheetSectionPricingConfig {
+  return resolveGangSheetSectionPricingFromShowQueueSettings(input);
+}
+
 export function resolveGangSheetSectionPricingFromShowQueueSettings(
   input: GangSheetSectionPricingSettingsInput = {},
 ): GangSheetSectionPricingConfig {
