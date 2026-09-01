@@ -16,7 +16,7 @@ Studio AI Review approval draft updates call `designService.updateDesign` with `
 
 | Field | Value |
 |-------|-------|
-| Corrective commit | `139aad4e` (`139aad4e`… — `fix: allow AI Review artwork background source updates`) |
+| Corrective commit | `bea7f18bea86fcbbe1bb3f0fb2a9f906008be268` |
 | Files | `firestore.rules`, `tests/firebase/designCatalogApprovalExpressionBudget.rules.test.ts` |
 
 ---
