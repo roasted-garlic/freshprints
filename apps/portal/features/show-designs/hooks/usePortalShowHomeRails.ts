@@ -37,29 +37,47 @@ export function usePortalShowHomeRails(): {
     void (async () => {
       try {
         const { shows } = await portalShowDesignsService.listPublicShows();
-        const [nextShowRail, thisWeekRail] = await Promise.all([
-          buildPortalNextShowRailFromShows(shows),
-          buildPortalShowsThisWeekRailFromShows(shows),
-        ]);
-
-        if (!cancelled) {
-          setNextShow({ error: null, isLoading: false, rail: nextShowRail });
-          setThisWeek({ error: null, isLoading: false, rail: thisWeekRail });
+        if (cancelled) {
+          return;
         }
+
+        void buildPortalNextShowRailFromShows(shows)
+          .then((rail) => {
+            if (!cancelled) {
+              setNextShow({ error: null, isLoading: false, rail });
+            }
+          })
+          .catch((loadError) => {
+            if (!cancelled) {
+              const message =
+                loadError instanceof Error
+                  ? loadError.message
+                  : 'Unable to load Next Show designs.';
+              setNextShow({ error: message, isLoading: false, rail: null });
+            }
+          });
+
+        void buildPortalShowsThisWeekRailFromShows(shows)
+          .then((rail) => {
+            if (!cancelled) {
+              setThisWeek({ error: null, isLoading: false, rail });
+            }
+          })
+          .catch((loadError) => {
+            if (!cancelled) {
+              const message =
+                loadError instanceof Error
+                  ? loadError.message
+                  : "Unable to load this week's designs.";
+              setThisWeek({ error: message, isLoading: false, rail: null });
+            }
+          });
       } catch (loadError) {
         if (!cancelled) {
           const message =
             loadError instanceof Error ? loadError.message : 'Unable to load show designs.';
-          setNextShow({
-            error: message,
-            isLoading: false,
-            rail: null,
-          });
-          setThisWeek({
-            error: message,
-            isLoading: false,
-            rail: null,
-          });
+          setNextShow({ error: message, isLoading: false, rail: null });
+          setThisWeek({ error: message, isLoading: false, rail: null });
         }
       }
     })();

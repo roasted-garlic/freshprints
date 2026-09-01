@@ -181,15 +181,39 @@ export async function listPublicCatalogDesignCardsForShow(
         continue;
       }
 
+      const width = typeof data.width === "number" && Number.isFinite(data.width) && data.width > 0
+        ? data.width
+        : null;
+      const height = typeof data.height === "number" && Number.isFinite(data.height) && data.height > 0
+        ? data.height
+        : null;
+      if (width === null || height === null) {
+        continue;
+      }
+
+      const updatedAtField = data.updatedAt as { toMillis: () => number } | undefined;
+      const updatedAtMs =
+        updatedAtField && typeof updatedAtField.toMillis === "function"
+          ? updatedAtField.toMillis()
+          : undefined;
+
       cards.push({
         id: designId,
         title: typeof data.title === "string" ? data.title : "Untitled",
         thumbnailPath: typeof data.thumbnailPath === "string" ? data.thumbnailPath : undefined,
+        previewPath: typeof data.previewPath === "string" ? data.previewPath : undefined,
         categoryId: typeof data.categoryId === "string" ? data.categoryId : undefined,
         tags: Array.isArray(data.tags)
           ? data.tags.filter((tag): tag is string => typeof tag === "string")
           : [],
         isExplicitContent: data.isExplicitContent === true,
+        width,
+        height,
+        requestCount: typeof data.requestCount === "number" ? data.requestCount : 0,
+        favoriteCount: typeof data.favoriteCount === "number" ? data.favoriteCount : 0,
+        updatedAtMs,
+        artworkBackgroundHex:
+          typeof data.artworkBackgroundHex === "string" ? data.artworkBackgroundHex : undefined,
       });
     }
   }
