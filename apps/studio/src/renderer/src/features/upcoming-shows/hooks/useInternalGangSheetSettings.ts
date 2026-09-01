@@ -59,4 +59,4 @@ export function useInternalGangSheetSettings() {
     ...state,
     updateSettings,
   };
-};
+}
