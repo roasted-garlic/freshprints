@@ -25,7 +25,7 @@ export const AI_REVIEW_INBOX_TABS: readonly { id: AiReviewInboxTab; label: strin
 ] as const;
 
 export const DEFAULT_AI_REVIEW_INBOX_FILTERS: AiReviewInboxFilters = {
-  tab: "processing",
+  tab: "needs_review",
 };
 
 export function parseAiReviewInboxTab(value: string | null): AiReviewInboxTab {
