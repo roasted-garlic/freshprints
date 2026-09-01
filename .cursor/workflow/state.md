@@ -5,28 +5,29 @@
 | Status | **ACTIVE** |
 | DONE | **no** |
 | Active goal | `pre-smart-profiling-print-request-and-gang-sheet-polish` |
-| Phase | **WS2 corrective complete — await DEV deploy approval + owner re-test** |
+| Phase | **WS2 owner DEV QA re-test** |
 | Plan Status | **complete** |
 | Review Status | **approved_with_changes** (acknowledged) |
-| Implementation | **WS2 corrective implemented locally** |
-| Test Status | **passed_with_notes** (WS2 corrective focused suites) |
+| Implementation | **WS2 corrective deployed to DEV** |
+| Test Status | **passed_with_notes** (WS2 corrective pre-deploy) |
 | Implementation Review | **approved_with_notes** — WS2 corrective |
-| DEV Deploy | **pending owner approval** (attach Function) |
+| DEV Deploy | **complete** — WS2 corrective `b861a047` |
 | Signoff | **not authorized** |
-| Human Checkpoint Required | **yes** — WS2 DEV deploy approval; WS2/WS3 owner re-test |
+| Human Checkpoint Required | **yes** — owner WS2 re-test |
 | Production | **NOT AUTHORIZED** |
 | Smart Profiling | **NOT STARTED** (parked) |
 | Last updated | 2026-09-01 |
-| Last Completed Step | WS2 corrective implementation + focused tests |
+| Last Completed Step | WS2 corrective DEV Function deploy |
 
 ## Decision Log (recent)
 
 | Date | Decision |
 |------|----------|
-| 2026-09-01 | **WS2 owner DEV QA: FAIL** — attach latency + large Final Image download blocked at 8MB callable |
-| 2026-09-01 | WS2 corrective: idempotent `assistedFinalSourceId` reuse, single Storage read ingest, signed-URL download, honest progress stages |
+| 2026-09-01 | Owner **APPROVED** WS2 corrective DEV deploy |
+| 2026-09-01 | WS2 corrective deployed — `customerAddAssistedApprovedProofToPrintRequest` → `fresh-prints-dev` |
+| 2026-09-01 | Corrective SHA `b861a047` pushed to `origin/development` |
+| 2026-09-01 | WS2 owner QA **FAIL** — attach latency + large download; corrective implemented |
 | 2026-08-31 | **WS1 owner DEV QA: PASS** |
-| 2026-08-31 | DEV deploy complete — baseline WS1–WS3 Functions |
 
 ---
 
@@ -35,49 +36,44 @@
 | WS | Title | Owner DEV QA |
 |----|-------|----------------|
 | WS1 | Customer remove queued request from show to edit | **PASS** |
-| WS2 | Custom Request Final Image validation + attach hardening | **FAIL — corrective pending deploy + re-test** |
+| WS2 | Custom Request Final Image validation + attach hardening | **FAIL → corrective deployed — re-test pending** |
 | WS3 | Gang-sheet customer price + weight line | **PENDING** |
 
 ---
 
-## WS2 Corrective Deploy Scope (pending approval)
+## Deploy Record
 
-| Surface | Action |
-|---------|--------|
-| Functions | `customerAddAssistedApprovedProofToPrintRequest` → `fresh-prints-dev` |
-| Portal | **restart** `npm run dev:portal` (download + progress UX) |
-| Rules / indexes | **none** |
-
-Download fix uses existing `customerGetAssistedCreationApprovedProofDownloadUrl` (no new Function deploy if already on DEV).
+| Field | Value |
+|-------|-------|
+| Corrective SHA | `b861a047bbc61ab7d9739c3163d72102f945c446` |
+| Firebase project | `fresh-prints-dev` |
+| Functions deployed | `customerAddAssistedApprovedProofToPrintRequest` (update) |
+| Download URL callable | `customerGetAssistedCreationApprovedProofDownloadUrl` — already on DEV |
+| Rules / indexes / Hosting | **none deployed** |
+| Record | `docs/workflow/reviews/2026-09-01-pre-smart-profiling-ws2-corrective-dev-deploy-record.md` |
 
 ---
 
 ## Allowed Actions
 
-- Owner approval for WS2 corrective DEV Function deploy
-- Owner WS2 re-test after deploy
-- Read docs / repo inspection
+- Owner WS2 re-test (Tests A–E)
+- Read docs / DEV Function logs for attach timings
 
 ## Forbidden Actions
 
-- Automatic deploy
+- Signoff (WS2 + WS3 pending)
 - Production deploy
-- Signoff
 - Smart Profiling
-- Moving production pipeline to staff Final Image upload without owner decision
+- Automatic further deploys
 
 ---
 
 ## Next Required Step
 
-Owner approves WS2 corrective DEV deploy, then reruns WS2 checklist. Reply `WS2 PASS`, `WS2 PASS WITH NOTES: …`, or `WS2 FAIL: …`.
-
-### Portal reload
-
-`npm run dev:portal` — **restart** after pulling corrective changes.
+Owner WS2 re-test after **Portal restart** (`npm run dev:portal`). Reply `WS2 PASS`, `WS2 PASS WITH NOTES: …`, or `WS2 FAIL: …`.
 
 ---
 
 ## Unrelated Working Tree (preserved)
 
-Portal show-designs rails/cache; Studio imports + ai-review; local `firestore.rules` tweak — **not part of this goal**.
+WS1 Portal unqueue fixes, show-designs rails/cache, Studio imports/AI Review, `firestore.rules` tweak — **not in corrective commit `b861a047`**.
