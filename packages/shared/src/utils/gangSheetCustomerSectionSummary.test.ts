@@ -28,6 +28,7 @@ describe("gangSheetCustomerSectionSummary classification", () => {
   it("respects a custom cutoff", () => {
     assert.equal(resolveGangSheetPriceTierForInches(6, 6, 6), "small");
     assert.equal(resolveGangSheetPriceTierForInches(6.01, 4, 6), "large");
+    assert.equal(resolveGangSheetPriceTierForInches(4, 6.01, 6), "large");
   });
 });
 
