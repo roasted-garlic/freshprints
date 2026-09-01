@@ -28,6 +28,8 @@
 
 Deploy record: `docs/workflow/reviews/2026-09-01-ai-review-artwork-background-source-rules-dev-deploy-record.md`
 
+DEV Rules alignment (2026-09-01): `docs/workflow/reviews/2026-09-01-dev-firestore-rules-alignment-drift-correction-deploy-record.md` — redeployed committed `56717c53` to remove unintended live `showAllocations` drift.
+
 ## Next step
 
 Owner runs WS3 gang-sheet QA (Tests A–H). Reply `WS3 PASS`, `WS3 PASS WITH NOTES: …`, or `WS3 FAIL: …`.
@@ -57,3 +59,4 @@ Owner runs WS3 gang-sheet QA (Tests A–H). Reply `WS3 PASS`, `WS3 PASS WITH NOT
 | 2026-09-01 | WS2 owner DEV QA **PASS** (Final Artwork corrective verified) |
 | 2026-09-01 | AI Review Rules corrective owner QA **PASS** (standalone) |
 | 2026-09-01 | Advance to WS3 owner QA; signoff remains blocked |
+| 2026-09-01 | DEV Firestore Rules alignment redeploy — remove unintended `showAllocations` drift; committed `56717c53` → `fresh-prints-dev` |
