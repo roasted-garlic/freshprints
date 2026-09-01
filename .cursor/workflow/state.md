@@ -3,13 +3,13 @@
 | Field | Value |
 |-------|-------|
 | Status | **ACTIVE** |
-| Phase | **WS3 owner DEV QA IN PROGRESS** |
+| Phase | **AWAITING OWNER FINAL SIGNOFF** (signoff prep — **NOT READY**) |
 | WS1 Owner QA | **PASS** |
 | WS2 Owner QA | **PASS** |
-| WS3 Owner QA | **IN PROGRESS** — owner retry Internal Gang Sheet settings + Tests A–G |
+| WS3 Owner QA | **PASS** |
 | Production | **NOT AUTHORIZED** |
 | Smart Profiling | **PARKED** |
-| Managed goal signoff | **NOT AUTHORIZED** |
+| Managed goal signoff | **NOT AUTHORIZED** — blocked on uncommitted goal-scoped source |
 | Last updated | 2026-09-01 |
 
 ## Workstream summary
@@ -18,20 +18,24 @@
 |----|-------|--------------|
 | WS1 | Remove from Show & Edit | **PASS** |
 | WS2 | Custom Request Final Artwork | **PASS** |
-| WS3 | Gang-sheet configurable price + weight tiers (+ Internal Gang Sheet settings split) | **IN PROGRESS** |
+| WS3 | Gang-sheet configurable price + weight tiers (+ Internal Gang Sheet settings split) | **PASS** |
 
 ## WS3 amendment (2026-09-01)
 
 Plan: `docs/workflow/plans/2026-09-01-pre-smart-profiling-ws3-configurable-gang-sheet-pricing-amendment.md`  
 Review: **approved**  
-Implementation + tests: **complete locally**  
+Implementation + tests: **complete locally** (core @ `40fe7fd0`; additional session source **uncommitted** — see blockers)  
 Implementation review: **approved**  
+Owner DEV QA: **PASS** — `docs/workflow/reviews/2026-09-01-pre-smart-profiling-ws3-owner-dev-qa-pass.md`  
 Implementation SHA: `40fe7fd0`  
-Show Queue pricing Rules deploy: `docs/workflow/reviews/2026-09-01-pre-smart-profiling-ws3-configurable-gang-sheet-pricing-dev-rules-deploy-record.md` (@ `40fe7fd0`)  
-Internal Gang Sheet settings Rules deploy: `docs/workflow/reviews/2026-09-01-pre-smart-profiling-internal-gang-sheet-settings-dev-rules-deploy-record.md` — live DEV @ working-tree +41 lines; **git aligned** (no redeploy)  
-**STOP:** owner WS3 manual QA — do **not** sign off until WS3 PASS
+Internal Gang Sheet Rules alignment SHA: `fe500975`  
+Show Queue pricing Rules deploy: `docs/workflow/reviews/2026-09-01-pre-smart-profiling-ws3-configurable-gang-sheet-pricing-dev-rules-deploy-record.md`  
+Internal Gang Sheet settings Rules deploy: `docs/workflow/reviews/2026-09-01-pre-smart-profiling-internal-gang-sheet-settings-dev-rules-deploy-record.md`
 
-Prior hard-coded WS3 (6″ / $1·$2 / flat 0.75 oz) superseded — do not record PASS on old model.
+## Signoff blockers
+
+1. **Uncommitted managed-goal application source** on working tree (Internal Gang Sheet settings Studio code, IPC `sectionPricing` propagation fix, session Portal/Show Queue fixes, shared pricing test/constants deltas, etc.) — owner decision required before final signoff commit scope.
+2. **Focused tests not re-run** on current working tree after post-`40fe7fd0` changes (`exportRequestValidation.test.ts`, `gangSheetCustomerSectionSummary.test.ts`, etc.).
 
 ## Standalone corrective (not part of managed goal)
 
@@ -45,20 +49,20 @@ DEV Rules alignment (2026-09-01): `docs/workflow/reviews/2026-09-01-dev-firestor
 
 ## Next step
 
-Owner retries Internal Gang Sheet settings save on DEV (Rules deployed). Continue WS3 QA (Tests A–G). Reply `WS3 PASS`, `WS3 PASS WITH NOTES: …`, or `WS3 FAIL: …`.
+Owner: decide commit scope for remaining managed-goal source → rerun applicable focused tests → authorize **final signoff** phase (do not mark DONE until signoff doc complete).
 
 ## Allowed actions
 
-- Owner WS3 manual QA
 - Read docs / workflow state
-- Record WS3 result when owner replies
+- Prepare final signoff artifacts (when blockers cleared)
+- Record owner decisions on uncommitted scope
 
 ## Forbidden actions
 
-- Managed goal signoff (WS3 still in progress)
+- Managed goal final signoff (not ready)
 - Production deploy
 - Smart Profiling implementation
-- Additional Firebase deploy without owner authorization
+- Sweeping unrelated working-tree changes into goal commits without owner decision
 
 ## Decision log
 
@@ -66,7 +70,8 @@ Owner retries Internal Gang Sheet settings save on DEV (Rules deployed). Continu
 |------|----------|
 | 2026-09-01 | WS1 owner DEV QA **PASS** |
 | 2026-09-01 | WS2 owner DEV QA **PASS** (Final Artwork corrective verified) |
+| 2026-09-01 | WS3 owner DEV QA **PASS** — configurable gang-sheet pricing/weight + Internal Gang Sheet settings on DEV |
 | 2026-09-01 | AI Review Rules corrective owner QA **PASS** (standalone) |
 | 2026-09-01 | WS3 Show Queue pricing Rules deploy to `fresh-prints-dev` @ `40fe7fd0` |
-| 2026-09-01 | Internal Gang Sheet settings Rules deploy to `fresh-prints-dev` — working-tree +41 lines; git aligned to `development` (no redeploy) |
+| 2026-09-01 | Internal Gang Sheet settings Rules deploy + git alignment @ `fe500975` |
 | 2026-09-01 | DEV Firestore Rules alignment redeploy — remove unintended `showAllocations` drift; committed `56717c53` → `fresh-prints-dev` |
