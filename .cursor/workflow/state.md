@@ -3,75 +3,59 @@
 | Field | Value |
 |-------|-------|
 | Status | **ACTIVE** |
-| Phase | **AWAITING OWNER FINAL SIGNOFF** (signoff prep — **NOT READY**) |
-| WS1 Owner QA | **PASS** |
-| WS2 Owner QA | **PASS** |
-| WS3 Owner QA | **PASS** |
+| Phase | **TEST / SIGNOFF PENDING** |
+| Current goal | `pre-smart-profiling-print-request-and-gang-sheet-polish` — Bucket 7 reconciled; final signoff **NOT DONE** |
+| Queued goal | `ai-review-stuck-processing-recovery` — plan + review approved; **implement BLOCKED** |
+| Plan (queued) | `docs/workflow/plans/2026-09-01-ai-review-stuck-processing-recovery-plan.md` |
+| Review (queued) | **approved** — `docs/workflow/reviews/2026-09-01-ai-review-stuck-processing-recovery-review.md` |
+| Deferred follow-up | `show-queue-batch-allocation-performance` — `docs/workflow/plans/2026-09-01-show-queue-batch-allocation-performance-deferred-plan.md` |
 | Production | **NOT AUTHORIZED** |
 | Smart Profiling | **PARKED** |
-| Managed goal signoff | **NOT AUTHORIZED** — blocked on uncommitted goal-scoped source |
 | Last updated | 2026-09-01 |
 
-## Workstream summary
+## Prerequisite gate (hard)
 
-| WS | Scope | Owner DEV QA |
-|----|-------|--------------|
-| WS1 | Remove from Show & Edit | **PASS** |
-| WS2 | Custom Request Final Artwork | **PASS** |
-| WS3 | Gang-sheet configurable price + weight tiers (+ Internal Gang Sheet settings split) | **PASS** |
+**Do not implement** `ai-review-stuck-processing-recovery` until:
 
-## WS3 amendment (2026-09-01)
+1. `pre-smart-profiling-print-request-and-gang-sheet-polish` final signoff **DONE**
+2. Bucket 7 uncommitted source resolved per owner decision
+3. Workflow state returns to **IDLE** or explicit owner override to start implement
 
-Plan: `docs/workflow/plans/2026-09-01-pre-smart-profiling-ws3-configurable-gang-sheet-pricing-amendment.md`  
-Review: **approved**  
-Implementation + tests: **complete locally** (core @ `40fe7fd0`; additional session source **uncommitted** — see blockers)  
-Implementation review: **approved**  
-Owner DEV QA: **PASS** — `docs/workflow/reviews/2026-09-01-pre-smart-profiling-ws3-owner-dev-qa-pass.md`  
-Implementation SHA: `40fe7fd0`  
-Internal Gang Sheet Rules alignment SHA: `fe500975`  
-Show Queue pricing Rules deploy: `docs/workflow/reviews/2026-09-01-pre-smart-profiling-ws3-configurable-gang-sheet-pricing-dev-rules-deploy-record.md`  
-Internal Gang Sheet settings Rules deploy: `docs/workflow/reviews/2026-09-01-pre-smart-profiling-internal-gang-sheet-settings-dev-rules-deploy-record.md`
+## Prior goal status (unchanged)
 
-## Signoff blockers
+| WS | Owner DEV QA |
+|----|--------------|
+| WS1 | **PASS** |
+| WS2 | **PASS** |
+| WS3 | **PASS** |
 
-1. **Uncommitted managed-goal application source** on working tree (Internal Gang Sheet settings Studio code, IPC `sectionPricing` propagation fix, session Portal/Show Queue fixes, shared pricing test/constants deltas, etc.) — owner decision required before final signoff commit scope.
-2. **Focused tests not re-run** on current working tree after post-`40fe7fd0` changes (`exportRequestValidation.test.ts`, `gangSheetCustomerSectionSummary.test.ts`, etc.).
+Signoff blockers for prior goal:
 
-## Standalone corrective (not part of managed goal)
+1. ~~Uncommitted Bucket 7 managed-goal source~~ — **reconciled 2026-09-01** (commits `f1989cf9`, `68db625d`, `3873ab4f`)
+2. Final regression test pass + signoff documentation on reconciled stack
 
-| Item | Owner QA |
-|------|----------|
-| AI Review Approve/Reject Firestore Rules (`artworkBackgroundSource` on `catalogMetadataOnlyUpdate`) | **PASS** |
+## Next goal summary
 
-Deploy record: `docs/workflow/reviews/2026-09-01-ai-review-artwork-background-source-rules-dev-deploy-record.md`
-
-DEV Rules alignment (2026-09-01): `docs/workflow/reviews/2026-09-01-dev-firestore-rules-alignment-drift-correction-deploy-record.md` — redeployed committed `56717c53` to remove unintended live `showAllocations` drift.
-
-## Next step
-
-Owner: decide commit scope for remaining managed-goal source → rerun applicable focused tests → authorize **final signoff** phase (do not mark DONE until signoff doc complete).
+Expose **Retry Processing** on Processing tab when AI stage is **waiting** and `updatedAt` ≥ **10 min** stale threshold; reuse `enqueueForProcessing` → server `enqueue.stale_requeued`. Studio-only V1; no Functions deploy for QA.
 
 ## Allowed actions
 
 - Read docs / workflow state
-- Prepare final signoff artifacts (when blockers cleared)
-- Record owner decisions on uncommitted scope
+- Close prior goal signoff (when blockers cleared)
+- **Implement** stuck-processing recovery (after prerequisite gate only)
 
 ## Forbidden actions
 
-- Managed goal final signoff (not ready)
+- Implement stuck-processing recovery **before** prior signoff
 - Production deploy
-- Smart Profiling implementation
-- Sweeping unrelated working-tree changes into goal commits without owner decision
+- Smart Profiling
+- Touch production stuck design
+- Broaden `resetAiEnrichmentForProcessing` in V1
 
 ## Decision log
 
 | Date | Decision |
 |------|----------|
-| 2026-09-01 | WS1 owner DEV QA **PASS** |
-| 2026-09-01 | WS2 owner DEV QA **PASS** (Final Artwork corrective verified) |
-| 2026-09-01 | WS3 owner DEV QA **PASS** — configurable gang-sheet pricing/weight + Internal Gang Sheet settings on DEV |
-| 2026-09-01 | AI Review Rules corrective owner QA **PASS** (standalone) |
-| 2026-09-01 | WS3 Show Queue pricing Rules deploy to `fresh-prints-dev` @ `40fe7fd0` |
-| 2026-09-01 | Internal Gang Sheet settings Rules deploy + git alignment @ `fe500975` |
-| 2026-09-01 | DEV Firestore Rules alignment redeploy — remove unintended `showAllocations` drift; committed `56717c53` → `fresh-prints-dev` |
+| 2026-09-01 | Bucket 7 reconciled: WS3 drift removed; Internal Gang Sheet committed; batch allocation deferred |
+| 2026-09-01 | New goal `ai-review-stuck-processing-recovery` plan + review **approved**; implement queued after prior signoff |
+| 2026-09-01 | V1: Studio-only stale retry via existing enqueue path; 10 min threshold; no scheduled recovery |
