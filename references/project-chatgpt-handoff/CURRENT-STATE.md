@@ -1,6 +1,6 @@
 # Fresh Prints — Current State Snapshot
 
-**Last updated:** 2026-08-31
+**Last updated:** 2026-09-01
 
 ---
 
@@ -8,17 +8,24 @@
 
 | Item | Value |
 |------|-------|
-| Status | **IDLE** |
-| DONE | **yes** |
-| Active goal | — |
-| Last completed goal | `print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale` |
-| Owner DEV QA | **PASS** (2026-08-31) |
+| Status | **ACTIVE** |
+| DONE | **no** |
+| Active goal | `pre-smart-profiling-print-request-and-gang-sheet-polish` |
+| WS1 Owner QA | **PASS** |
+| WS2 Owner QA | **PASS** |
+| WS3 Owner QA | **PENDING / NEXT** |
 | Production | **NOT AUTHORIZED / NOT PROMOTED** |
-| Smart Profiling | **NOT STARTED** (parked — next major candidate only) |
+| Smart Profiling | **NOT STARTED** (parked) |
+| Signoff | **NOT AUTHORIZED** (WS3 pending) |
 | Workflow state | `.cursor/workflow/state.md` |
-| Signoff | `docs/workflow/reviews/2026-08-31-print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale-signoff.md` |
 
-**No automatic next goal started.**
+Standalone DEV corrective (not part of managed goal): **AI Review Approve/Reject Firestore Rules — PASS** on `fresh-prints-dev`. Production promotion inventory updated in `docs/standards/DEPLOYMENT.md`.
+
+---
+
+## Next workflow step
+
+Owner WS3 gang-sheet price + weight QA (Tests A–H). Restart `npm run dev:studio` if needed. No Studio release. No managed-goal signoff until WS3 passes.
 
 ---
 
@@ -67,4 +74,4 @@ Recent DEV goals (identity, show queue recovery, sizing/upscale) are **not** on 
 
 ## Next workflow step
 
-Await owner direction: **production promotion** (separate authorization) or **Smart Profiling** managed goal. FreshForge **IDLE**.
+Await explicit owner approval for WS1 corrective DEV deploy, then rerun owner QA. WS2 / WS3 QA remains pending. Production and Smart Profiling remain unauthorized.
