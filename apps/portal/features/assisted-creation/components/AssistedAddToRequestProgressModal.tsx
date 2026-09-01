@@ -8,7 +8,10 @@ export type AssistedAddToRequestProgressPhase =
   | 'done'
   | 'error';
 
+export type AssistedAddToRequestProgressArtworkKind = 'final' | 'proof';
+
 export interface AssistedAddToRequestProgressModalProps {
+  artworkKind?: AssistedAddToRequestProgressArtworkKind;
   errorMessage?: string | null;
   isOpen: boolean;
   onDismiss: () => void;
@@ -17,11 +20,17 @@ export interface AssistedAddToRequestProgressModalProps {
 
 function messageForPhase(
   phase: AssistedAddToRequestProgressPhase,
+  artworkKind: AssistedAddToRequestProgressArtworkKind,
   errorMessage?: string | null,
 ): string {
+  const preparingLabel =
+    artworkKind === 'final'
+      ? 'Preparing final artwork for print…'
+      : 'Preparing artwork for print…';
+
   switch (phase) {
     case 'preparing':
-      return 'Preparing and resizing artwork…';
+      return preparingLabel;
     case 'adding':
       return 'Adding to your request…';
     case 'done':
@@ -38,6 +47,7 @@ function messageForPhase(
  * Stages are client-timed (honest wait feedback), not live server events.
  */
 export function AssistedAddToRequestProgressModal({
+  artworkKind = 'proof',
   errorMessage = null,
   isOpen,
   onDismiss,
@@ -45,6 +55,8 @@ export function AssistedAddToRequestProgressModal({
 }: AssistedAddToRequestProgressModalProps) {
   const isBusy = phase === 'preparing' || phase === 'adding';
   const canDismiss = phase === 'error' || phase === 'done';
+  const preparingStepLabel =
+    artworkKind === 'final' ? 'Preparing final artwork' : 'Preparing artwork';
 
   useEffect(() => {
     if (!isOpen) {
@@ -90,12 +102,12 @@ export function AssistedAddToRequestProgressModal({
         </header>
         <div className="modal-body">
           <p className="portal-muted portal-confirm-modal-message assisted-add-progress-message">
-            {messageForPhase(phase, errorMessage)}
+            {messageForPhase(phase, artworkKind, errorMessage)}
           </p>
           {isBusy ? (
             <ol className="assisted-add-progress-steps" aria-hidden="true">
               <li className={phase === 'preparing' ? 'is-current' : 'is-done'}>
-                Preparing artwork
+                {preparingStepLabel}
               </li>
               <li className={phase === 'adding' ? 'is-current' : phase === 'preparing' ? '' : 'is-done'}>
                 Adding to request

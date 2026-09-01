@@ -656,14 +656,9 @@ export function AssistedApprovedDesignCard({ request }: { request: AssistedCreat
     setAddProgressPhase('preparing');
     setAddProgressOpen(true);
 
-    const stageTimer = window.setTimeout(() => {
-      setAddProgressPhase((current) => (current === 'preparing' ? 'adding' : current));
-    }, 1200);
-
     void assistedCreationService
       .addApprovedProofToPrintRequest(requestId, { catalogUseAcknowledged })
       .then(async (result) => {
-        window.clearTimeout(stageTimer);
         setAddProgressPhase('adding');
         setAddSuccess(
           result.alreadyAttached
@@ -681,7 +676,6 @@ export function AssistedApprovedDesignCard({ request }: { request: AssistedCreat
         }, 700);
       })
       .catch((error: unknown) => {
-        window.clearTimeout(stageTimer);
         const message =
           error instanceof Error ? error.message : 'Unable to add to request.';
         setAddProgressPhase('error');
@@ -821,6 +815,7 @@ export function AssistedApprovedDesignCard({ request }: { request: AssistedCreat
         }}
       />
       <AssistedAddToRequestProgressModal
+        artworkKind={hasFinalSource ? 'final' : 'proof'}
         errorMessage={addProgressError}
         isOpen={addProgressOpen}
         onDismiss={() => {

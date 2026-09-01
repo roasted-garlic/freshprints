@@ -54,6 +54,10 @@ import { requirePortalCustomer, type PortalCustomerContext } from "./lib/portalC
 import { assertWorkingRequestAllowsPrintAdds } from "./lib/printRequestWorkingRequestMax";
 import { resolveOrCreateWorkingPrintRequestInTransaction } from "./lib/portalWorkingPrintRequest";
 import { storageObjectPath } from "./lib/storageObjectPath";
+import {
+  assistedUploadMatchesArtworkSource,
+  selectReusableAssistedArtworkUpload,
+} from "./lib/assistedFinalSourceAttachReuse";
 import { sumPrintRequestItemQuantities } from "../../packages/shared/src/utils/portalShowQueueCapacity";
 
 function mapHttpsError(error: unknown): never {
@@ -281,6 +285,20 @@ export const customerAddAssistedApprovedProofToPrintRequest = onCall(
         );
       }
 
+      const assistedFinalSourceId =
+        hasFinalSource &&
+        assisted.finalSource &&
+        typeof assisted.finalSource === "object" &&
+        typeof (assisted.finalSource as { id?: unknown }).id === "string"
+          ? (assisted.finalSource as { id: string }).id.trim()
+          : null;
+
+      const artworkLineage = {
+        assistedFinalSourceId,
+        approvedProofId,
+        hasFinalSource: Boolean(hasFinalSource),
+      };
+
       if (existingIngest) {
         const uploadSnap = await adminDb
           .collection(CUSTOMER_UPLOAD_COLLECTIONS.customerUploads)
@@ -288,8 +306,11 @@ export const customerAddAssistedApprovedProofToPrintRequest = onCall(
           .get();
         const uploadOwned =
           uploadSnap.exists && uploadSnap.data()?.customerUid === customerUid;
+        const uploadMatchesLineage =
+          uploadOwned &&
+          assistedUploadMatchesArtworkSource(uploadSnap.data() ?? {}, artworkLineage);
 
-        if (uploadOwned) {
+        if (uploadMatchesLineage) {
           return await ensureIngestOnWorkingRequest({
             portalCustomer,
             customerUid,
@@ -303,26 +324,47 @@ export const customerAddAssistedApprovedProofToPrintRequest = onCall(
           });
         }
 
-        // Sticky printRequestIngest can outlive a wiped/deleted upload (ingest survives
-        // remove-from-request). Clear the orphan pointer and fall through to fresh copy.
-        await assistedRef.update({
-          printRequestIngest: FieldValue.delete(),
-          updatedAt: FieldValue.serverTimestamp(),
+        if (uploadOwned || existingIngest) {
+          // Sticky printRequestIngest can outlive a wiped/deleted upload or replaced Final Image.
+          await assistedRef.update({
+            printRequestIngest: FieldValue.delete(),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        }
+      }
+
+      const reusableUploadSnap = await findReusableAssistedArtworkUpload({
+        customerUid,
+        requestId: payload.requestId,
+        lineage: artworkLineage,
+      });
+      if (reusableUploadSnap) {
+        const reusableIngest = {
+          customerUploadId: reusableUploadSnap.id,
+          printRequestItemId: "",
+          printRequestId: "",
+          assistedProofId: approvedProofId,
+        };
+        return await ensureIngestOnWorkingRequest({
+          portalCustomer,
+          customerUid,
+          assistedRef,
+          existingIngest: reusableIngest,
+          uploadTitleFallback: "Assisted design",
+          catalogUseAcknowledged: payload.catalogUseAcknowledged,
+          uploadSnap: reusableUploadSnap,
+          maxPerRequest,
+          printRequestDefaultWidthInches,
         });
       }
 
-      const assistedFinalSourceId =
-        hasFinalSource &&
-        assisted.finalSource &&
-        typeof assisted.finalSource === "object" &&
-        typeof (assisted.finalSource as { id?: unknown }).id === "string"
-          ? (assisted.finalSource as { id: string }).id.trim()
-          : null;
+      const attachStartedAt = Date.now();
 
       const resolvedProof = await resolveAssistedCreationApprovedProofDownload({
         uid: customerUid,
         requestId: payload.requestId,
       });
+      const resolveProofMs = Date.now() - attachStartedAt;
 
       const proofFile = approvedProofStorageFile(resolvedProof.storagePath);
       const [exists] = await proofFile.exists();
@@ -355,26 +397,27 @@ export const customerAddAssistedApprovedProofToPrintRequest = onCall(
       const sourceFile = bucket.file(sourceObjectPath);
       const contentType = resolvedProof.contentType || "application/octet-stream";
 
-      // Parallel: in-bucket copy to customer-upload source + download once for derivatives.
-      const [, downloadResult] = await Promise.all([
-        proofFile.copy(sourceFile).then(() =>
-          sourceFile.setMetadata({
-            contentType,
-            cacheControl: "private, max-age=3600",
-          }),
-        ),
-        proofFile.download(),
-      ]);
-      const sourceBytes = downloadResult[0];
+      const downloadStartedAt = Date.now();
+      const [sourceBytes] = await proofFile.download();
+      const downloadMs = Date.now() - downloadStartedAt;
 
-      // Same resize/DPI/approvedMax path as normal uploads; only skip quality gates.
+      await sourceFile.save(sourceBytes, {
+        metadata: {
+          contentType,
+          cacheControl: "private, max-age=3600",
+        },
+      });
+
+      const processingStartedAt = Date.now();
       const processed = await processCustomerUploadImageBytes(sourceBytes, {
         skipCustomerQualityGates: true,
       });
+      const processingMs = Date.now() - processingStartedAt;
       if (!processed.ok) {
         throw failedPrecondition(processed.message);
       }
 
+      const saveOutputsStartedAt = Date.now();
       await saveCustomerUploadProcessedOutputs({
         bucket,
         sourceObjectPath,
@@ -383,6 +426,7 @@ export const customerAddAssistedApprovedProofToPrintRequest = onCall(
         thumbnailObjectPath: storageObjectPath(thumbnailStoragePath),
         processed,
       });
+      const saveOutputsMs = Date.now() - saveOutputsStartedAt;
 
       const titleSnapshot = resolveTitleSnapshot(resolvedProof.fileName, assisted);
       const printSize = resolveAttachPrintSize({
@@ -398,6 +442,7 @@ export const customerAddAssistedApprovedProofToPrintRequest = onCall(
       let printRequestItemId = "";
       let createdFresh = false;
 
+      const transactionStartedAt = Date.now();
       await adminDb.runTransaction(async (tx) => {
         const freshAssisted = await tx.get(assistedRef);
         const freshIngest = parseIngest(freshAssisted.data());
@@ -557,6 +602,20 @@ export const customerAddAssistedApprovedProofToPrintRequest = onCall(
           },
           updatedAt: now,
         });
+      });
+      const transactionMs = Date.now() - transactionStartedAt;
+
+      console.info("[customerAddAssistedApprovedProofToPrintRequest] attach timings", {
+        requestId: payload.requestId,
+        assistedFinalSourceId,
+        sizeBytes,
+        resolveProofMs,
+        downloadMs,
+        processingMs,
+        saveOutputsMs,
+        transactionMs,
+        totalMs: Date.now() - attachStartedAt,
+        reusedExistingUpload: false,
       });
 
       if (!createdFresh) {
@@ -771,4 +830,42 @@ async function ensureIngestOnWorkingRequest(input: {
     customerUploadId: existingIngest.customerUploadId,
     alreadyAttached,
   };
+}
+
+async function findReusableAssistedArtworkUpload(input: {
+  customerUid: string;
+  requestId: string;
+  lineage: {
+    assistedFinalSourceId: string | null;
+    approvedProofId: string;
+    hasFinalSource: boolean;
+  };
+}): Promise<DocumentSnapshot | null> {
+  const candidates = await adminDb
+    .collection(CUSTOMER_UPLOAD_COLLECTIONS.customerUploads)
+    .where("assistedCreationRequestId", "==", input.requestId)
+    .limit(8)
+    .get();
+
+  const ownedDocs = candidates.docs.filter(
+    (docSnap) => docSnap.data()?.customerUid === input.customerUid,
+  );
+  const reusable = selectReusableAssistedArtworkUpload(ownedDocs, input.lineage);
+  if (!reusable) {
+    return null;
+  }
+
+  const productionPath =
+    typeof reusable.data()?.productionStoragePath === "string"
+      ? reusable.data()?.productionStoragePath.trim()
+      : "";
+  if (!productionPath) {
+    return null;
+  }
+
+  const [productionExists] = await adminStorage
+    .bucket()
+    .file(storageObjectPath(productionPath))
+    .exists();
+  return productionExists ? reusable : null;
 }

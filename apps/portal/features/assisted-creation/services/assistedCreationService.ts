@@ -22,6 +22,8 @@ import type {
   CustomerAddAssistedApprovedProofToPrintRequestResponse,
   CustomerGetAssistedCreationApprovedProofFileRequest,
   CustomerGetAssistedCreationApprovedProofFileResponse,
+  CustomerGetAssistedCreationApprovedProofDownloadUrlRequest,
+  CustomerGetAssistedCreationApprovedProofDownloadUrlResponse,
   CustomerRespondToAssistedCreationProofRequest,
   CustomerRespondToAssistedCreationProofResponse,
   CustomerSendAssistedCreationMessageRequest,
@@ -521,8 +523,9 @@ export const assistedCreationService = {
   },
 
   /**
-   * Download approved proof full-res via callable (Admin bytes → base64 → blob).
-   * AuthZ + 14-day eligibility enforced server-side. Avoids GCS in-tab PNG and CORS fetch failures.
+   * Download approved proof / Final Image without loading full bytes into JS memory.
+   * Uses server-signed Storage URL with attachment disposition; falls back to callable
+   * bytes only for legacy/small files when signing is unavailable.
    */
   async downloadApprovedProof(requestId: string): Promise<void> {
     const trimmedId = requestId.trim();
@@ -530,21 +533,49 @@ export const assistedCreationService = {
       throw new Error('Request id is required.');
     }
     try {
-      const result = await callTracedFunction<
-        CustomerGetAssistedCreationApprovedProofFileRequest,
-        CustomerGetAssistedCreationApprovedProofFileResponse
-      >('customerGetAssistedCreationApprovedProofFile', {
+      const signed = await callTracedFunction<
+        CustomerGetAssistedCreationApprovedProofDownloadUrlRequest,
+        CustomerGetAssistedCreationApprovedProofDownloadUrlResponse
+      >('customerGetAssistedCreationApprovedProofDownloadUrl', {
         source: 'assistedCreationService.downloadApprovedProof',
       })({ requestId: trimmedId });
-      const { contentBase64, contentType, fileName } = result;
-      if (!contentBase64?.trim()) {
+      if (!signed.downloadUrl?.trim()) {
         throw new Error('Unable to download.');
       }
-      const blob = base64ToBlob(contentBase64, contentType);
-      this.triggerBrowserDownloadFromBlob(blob, fileName || 'proof.png');
-    } catch (error) {
-      throw mapCallableError(error);
+      this.triggerBrowserDownloadFromUrl(
+        signed.downloadUrl.trim(),
+        signed.fileName || 'assisted-artwork.png',
+      );
+      return;
+    } catch (signedUrlError) {
+      try {
+        const result = await callTracedFunction<
+          CustomerGetAssistedCreationApprovedProofFileRequest,
+          CustomerGetAssistedCreationApprovedProofFileResponse
+        >('customerGetAssistedCreationApprovedProofFile', {
+          source: 'assistedCreationService.downloadApprovedProof',
+        })({ requestId: trimmedId });
+        const { contentBase64, contentType, fileName } = result;
+        if (!contentBase64?.trim()) {
+          throw new Error('Unable to download.');
+        }
+        const blob = base64ToBlob(contentBase64, contentType);
+        this.triggerBrowserDownloadFromBlob(blob, fileName || 'proof.png');
+      } catch (bytesError) {
+        throw mapCallableError(bytesError ?? signedUrlError);
+      }
     }
+  },
+
+  triggerBrowserDownloadFromUrl(downloadUrl: string, fileName: string): void {
+    const safeName = fileName.trim() || 'assisted-artwork.png';
+    const anchor = document.createElement('a');
+    anchor.href = downloadUrl;
+    anchor.download = safeName;
+    anchor.rel = 'noopener noreferrer';
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
   },
 
   /**
