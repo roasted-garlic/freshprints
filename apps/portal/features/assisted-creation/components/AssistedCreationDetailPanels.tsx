@@ -32,6 +32,7 @@ import {
   isAssistedCreationProofPng,
   resolveAssistedCreationApprovedProofId,
 } from '@fresh-prints/shared/utils/assistedCreationApprovedProofRetention';
+import { buildAssistedCreationArtworkHistoryNewestFirst } from '@fresh-prints/shared/utils/assistedCreationArtworkHistory';
 import { evaluateAssistedApprovedProofAddToRequest } from '@fresh-prints/shared/utils/assistedCreationApprovedProofAddToRequest';
 import {
   assistedCreationCatalogShareProofTitle,
@@ -746,8 +747,10 @@ export function AssistedApprovedDesignCard({ request }: { request: AssistedCreat
                 }
                 setDownloadBusy(true);
                 setActionError(null);
-                void assistedCreationService
-                  .downloadApprovedProof(requestId)
+                const downloadPromise = hasFinalSource
+                  ? assistedCreationService.downloadFinalArtwork(requestId)
+                  : assistedCreationService.downloadApprovedProof(requestId);
+                void downloadPromise
                   .catch((error: unknown) => {
                     setActionError(
                       error instanceof Error ? error.message : 'Unable to download.',
@@ -1166,8 +1169,10 @@ function ProofDetailModal({
                 }
                 setDownloadBusy(true);
                 setDownloadError(null);
-                void assistedCreationService
-                  .downloadApprovedProof(requestId)
+                const downloadPromise = request.finalSource?.storagePath
+                  ? assistedCreationService.downloadFinalArtwork(requestId)
+                  : assistedCreationService.downloadApprovedProof(requestId);
+                void downloadPromise
                   .catch((error: unknown) => {
                     setDownloadError(
                       error instanceof Error ? error.message : 'Unable to download.',
@@ -1279,6 +1284,54 @@ function ProofListThumb({
   );
 }
 
+function FinalArtworkListThumb({
+  contentType,
+  storagePath,
+}: {
+  contentType?: string | null;
+  storagePath: string;
+}) {
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void assistedCreationService
+      .getPreviewObjectUrl(storagePath, contentType)
+      .then((next) => {
+        if (!cancelled) {
+          setUrl((previous) => {
+            if (typeof previous === 'string' && previous.startsWith('blob:')) {
+              URL.revokeObjectURL(previous);
+            }
+            return next;
+          });
+        } else if (next.startsWith('blob:')) {
+          URL.revokeObjectURL(next);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setUrl(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [contentType, storagePath]);
+
+  if (!url) {
+    return <span aria-hidden="true" className="assisted-creation-proof-row-placeholder" />;
+  }
+
+  return (
+    <img
+      alt=""
+      className="assisted-creation-proof-row-thumb"
+      src={url}
+    />
+  );
+}
+
 export function AssistedCreationProofsPanel({ request }: { request: AssistedCreationRequest }) {
   const proofsAsc = useMemo(() => request.proofs ?? [], [request.proofs]);
   const proofsNewestFirst = useMemo(
@@ -1298,6 +1351,37 @@ export function AssistedCreationProofsPanel({ request }: { request: AssistedCrea
     );
   }, [request.approvedProofId, request.proofs, request.status]);
   const [selectedProofId, setSelectedProofId] = useState<string | null>(null);
+  const [selectedFinalArtworkOpen, setSelectedFinalArtworkOpen] = useState(false);
+  const artworkHistory = useMemo(
+    () =>
+      buildAssistedCreationArtworkHistoryNewestFirst({
+        proofs: proofsAsc.map((proof) => {
+          const isCatalogShare = isAssistedCreationCatalogShareProof(proof);
+          const proofNumber = chronologicalProofNumber(proofsAsc, proof.id);
+          return {
+            id: proof.id,
+            storagePath: proof.storagePath,
+            contentType: proof.contentType,
+            createdAtMillis: proofCreatedAtMillis(proof.createdAt),
+            proofNumber,
+            isApprovedProof:
+              !isCatalogShare && Boolean(approvedProofId) && proof.id === approvedProofId,
+            isCatalogShare,
+            catalogTitle: isCatalogShare ? assistedCreationCatalogShareProofTitle(proof) : undefined,
+          };
+        }),
+        finalSource: request.finalSource?.storagePath
+          ? {
+              id: request.finalSource.id,
+              storagePath: request.finalSource.storagePath,
+              contentType: request.finalSource.contentType,
+              fileName: request.finalSource.fileName,
+              uploadedAtMillis: assistedCreationTimestampMillis(request.finalSource.uploadedAt),
+            }
+          : null,
+      }),
+    [approvedProofId, proofsAsc, request.finalSource],
+  );
   const selectedProof = useMemo(
     () => proofsNewestFirst.find((proof) => proof.id === selectedProofId) ?? null,
     [proofsNewestFirst, selectedProofId],
@@ -1359,26 +1443,65 @@ export function AssistedCreationProofsPanel({ request }: { request: AssistedCrea
   return (
     <div className="assisted-creation-detail-stack assisted-creation-detail-stack--dense">
       <section className="assisted-creation-detail-block">
-        <h3 className="assisted-creation-detail-block-title">Proofs</h3>
-        {proofsNewestFirst.length === 0 ? (
+        <h3 className="assisted-creation-detail-block-title">Proofs &amp; artwork</h3>
+        {artworkHistory.length === 0 ? (
           <p className="portal-muted">No proofs yet.</p>
         ) : (
           <ul className="assisted-creation-proof-list">
-            {proofsNewestFirst.map((proof, index) => {
-              const isCatalogShare = isAssistedCreationCatalogShareProof(proof);
-              const proofNumber = chronologicalProofNumber(proofsAsc, proof.id);
-              const isApprovedProof =
-                !isCatalogShare && Boolean(approvedProofId) && proof.id === approvedProofId;
+            {artworkHistory.map((entry, index) => {
+              if (entry.kind === 'final_artwork') {
+                return (
+                  <li key={`final-${entry.id}`}>
+                    <button
+                      className="assisted-creation-proof-row"
+                      onClick={() => {
+                        setSelectedProofId(null);
+                        setSelectedFinalArtworkOpen(true);
+                      }}
+                      type="button"
+                    >
+                      <FinalArtworkListThumb
+                        contentType={entry.contentType}
+                        storagePath={entry.storagePath}
+                      />
+                      <span className="assisted-creation-proof-row-body">
+                        <span className="assisted-creation-proof-row-title">
+                          <span>
+                            Final Artwork
+                            {index === 0 ? ' (latest)' : ''}
+                          </span>
+                        </span>
+                        <span className="assisted-creation-proof-row-meta">
+                          {request.finalSource?.uploadedAt
+                            ? formatAssistedWhen(request.finalSource.uploadedAt)
+                            : 'Uploaded'}
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                );
+              }
+
+              const proof = proofsNewestFirst.find((item) => item.id === entry.id);
+              if (!proof) {
+                return null;
+              }
+              const isCatalogShare = entry.isCatalogShare === true;
+              const proofNumber = entry.proofNumber ?? chronologicalProofNumber(proofsAsc, proof.id);
+              const isApprovedProof = entry.isApprovedProof;
               const isApprovedCatalog =
                 isCatalogShare &&
                 Boolean(request.approvedCatalogDesignId) &&
                 proof.catalogDesignId?.trim() === request.approvedCatalogDesignId?.trim();
-              const catalogTitle = assistedCreationCatalogShareProofTitle(proof);
+              const catalogTitle = entry.catalogTitle ?? assistedCreationCatalogShareProofTitle(proof);
               return (
                 <li key={proof.id}>
                   <button
                     className="assisted-creation-proof-row"
-                    onClick={() => setSelectedProofId(proof.id)}
+                    onClick={() => {
+                      setSelectedFinalArtworkOpen(false);
+                      setSelectedProofId(proof.id);
+                    }}
                     type="button"
                   >
                     <ProofListThumb
@@ -1431,6 +1554,108 @@ export function AssistedCreationProofsPanel({ request }: { request: AssistedCrea
           request={request}
         />
       ) : null}
+      {selectedFinalArtworkOpen && request.finalSource?.storagePath ? (
+        <FinalArtworkDetailModal
+          onClose={() => setSelectedFinalArtworkOpen(false)}
+          request={request}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function FinalArtworkDetailModal({
+  onClose,
+  request,
+}: {
+  onClose: () => void;
+  request: AssistedCreationRequest;
+}) {
+  const finalSource = request.finalSource;
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [downloadBusy, setDownloadBusy] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!finalSource?.storagePath) {
+      setPreviewUrl(null);
+      return;
+    }
+    void assistedCreationService
+      .getPreviewObjectUrl(finalSource.storagePath, finalSource.contentType)
+      .then((next) => {
+        if (!cancelled) {
+          setPreviewUrl(next);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPreviewUrl(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [finalSource?.contentType, finalSource?.storagePath]);
+
+  return (
+    <div
+      aria-modal="true"
+      className="modal-overlay modal-overlay-blur"
+      onClick={onClose}
+      role="dialog"
+    >
+      <div className="modal-panel assisted-creation-proof-modal" onClick={(event) => event.stopPropagation()}>
+        <header className="modal-header">
+          <h2>Final Artwork</h2>
+        </header>
+        <div className="modal-body">
+          {previewUrl ? (
+            <div className="assisted-creation-proof-stage">
+              <img
+                alt="Final Artwork"
+                className="assisted-creation-proof-stage-image"
+                src={previewUrl}
+              />
+            </div>
+          ) : (
+            <p className="portal-muted">Loading final artwork…</p>
+          )}
+          {downloadError ? <p className="portal-form-error">{downloadError}</p> : null}
+        </div>
+        <footer className="modal-footer assisted-creation-proof-modal-footer">
+          <button className="portal-button portal-button-secondary" onClick={onClose} type="button">
+            Close
+          </button>
+          <button
+            aria-busy={downloadBusy || undefined}
+            className="portal-button portal-button-primary"
+            disabled={downloadBusy}
+            onClick={() => {
+              const requestId = request.id?.trim();
+              if (!requestId || downloadBusy) {
+                return;
+              }
+              setDownloadBusy(true);
+              setDownloadError(null);
+              void assistedCreationService
+                .downloadFinalArtwork(requestId)
+                .catch((error: unknown) => {
+                  setDownloadError(
+                    error instanceof Error ? error.message : 'Unable to download.',
+                  );
+                })
+                .finally(() => {
+                  setDownloadBusy(false);
+                });
+            }}
+            type="button"
+          >
+            {downloadBusy ? 'Downloading…' : 'Download Final Artwork'}
+          </button>
+        </footer>
+      </div>
     </div>
   );
 }

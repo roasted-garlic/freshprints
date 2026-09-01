@@ -166,6 +166,8 @@ export interface StaffSuggestAssistedCreationCatalogDesignResponse {
 /** Customer: mint a short-lived signed URL for the approved proof full-res download. */
 export interface CustomerGetAssistedCreationApprovedProofDownloadUrlRequest {
   requestId: string;
+  /** Omit for legacy auto (finalSource when present, else approved proof). */
+  downloadTarget?: "final_artwork" | "approved_proof";
 }
 
 export interface CustomerGetAssistedCreationApprovedProofDownloadUrlResponse {
@@ -181,6 +183,7 @@ export interface CustomerGetAssistedCreationApprovedProofDownloadUrlResponse {
 /** Customer: Admin-streamed proof bytes for reliable Portal file download (no GCS navigate / CORS fetch). */
 export interface CustomerGetAssistedCreationApprovedProofFileRequest {
   requestId: string;
+  downloadTarget?: "final_artwork" | "approved_proof";
 }
 
 export interface CustomerGetAssistedCreationApprovedProofFileResponse {

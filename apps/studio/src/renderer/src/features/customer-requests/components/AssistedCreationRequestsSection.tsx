@@ -833,11 +833,13 @@ function AssistedDetail({
   const [staffNotes, setStaffNotes] = useState(item.staffNotes);
   const [aiContextOpen, setAiContextOpen] = useState(false);
   const [pendingFinalFile, setPendingFinalFile] = useState<File | null>(null);
+  const [pendingFinalPreviewUrl, setPendingFinalPreviewUrl] = useState<string | null>(null);
   const [messageDraft, setMessageDraft] = useState("");
   const [sendingMessage, setSendingMessage] = useState(false);
   const [messageError, setMessageError] = useState<string | null>(null);
   const [refMedia, setRefMedia] = useState<AssistedMediaPreview[]>([]);
   const [proofMedia, setProofMedia] = useState<AssistedProofPreview[]>([]);
+  const [finalSourcePreview, setFinalSourcePreview] = useState<AssistedMediaPreview | null>(null);
   const [selectedProofId, setSelectedProofId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [pendingProofFile, setPendingProofFile] = useState<File | null>(null);
@@ -871,8 +873,11 @@ function AssistedDetail({
       if (pendingProofPreviewUrl) {
         URL.revokeObjectURL(pendingProofPreviewUrl);
       }
+      if (pendingFinalPreviewUrl) {
+        URL.revokeObjectURL(pendingFinalPreviewUrl);
+      }
     };
-  }, [pendingProofPreviewUrl]);
+  }, [pendingFinalPreviewUrl, pendingProofPreviewUrl]);
 
   const refFingerprint = useMemo(
     () => assistedMediaFingerprint(item.referenceImages),
@@ -1242,6 +1247,32 @@ function AssistedDetail({
   }, [item.id, proofFingerprint, historyFingerprint, user?.id]);
 
   useEffect(() => {
+    let cancelled = false;
+    const finalSource = item.finalSource;
+    if (!finalSource?.storagePath?.trim()) {
+      setFinalSourcePreview(null);
+      return;
+    }
+    void loadAssistedReferencePreview(
+      {
+        id: finalSource.id,
+        storagePath: finalSource.storagePath,
+        contentType: finalSource.contentType,
+      },
+      finalSource.fileName || "Final Artwork",
+    ).then((preview) => {
+      if (!cancelled) {
+        setFinalSourcePreview(preview);
+      } else {
+        revokeAssistedMediaBlobUrls([preview]);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [item.finalSource]);
+
+  useEffect(() => {
     return () => {
       revokeAssistedMediaBlobUrls(refMediaBlobRef.current);
       revokeAssistedMediaBlobUrls(proofMediaBlobRef.current);
@@ -1394,6 +1425,14 @@ function AssistedDetail({
     }
   }
 
+  function clearPendingFinalSource(): void {
+    if (pendingFinalPreviewUrl) {
+      URL.revokeObjectURL(pendingFinalPreviewUrl);
+    }
+    setPendingFinalFile(null);
+    setPendingFinalPreviewUrl(null);
+  }
+
   async function submitPendingFinalSource(): Promise<void> {
     if (!pendingFinalFile || !canMutate || item.status !== "final_source_needed") {
       return;
@@ -1406,7 +1445,7 @@ function AssistedDetail({
         customerUid: item.customerUid,
         file: pendingFinalFile,
       });
-      setPendingFinalFile(null);
+      clearPendingFinalSource();
       onToast("Final artwork uploaded — request completed");
       onFollowRequest(item.id, "approved");
     } catch (err) {
@@ -1533,6 +1572,8 @@ function AssistedDetail({
   const proofMediaNewestFirst = [...proofMedia].sort(
     (a, b) => toMillis(b.createdAt) - toMillis(a.createdAt),
   );
+  const hasArtworkHistory =
+    proofMediaNewestFirst.length > 0 || Boolean(item.finalSource?.storagePath?.trim());
   const selectedProof =
     proofMediaNewestFirst.find((proof) => proof.id === selectedProofId) ?? null;
 
@@ -1734,11 +1775,33 @@ function AssistedDetail({
 
           {activeDetailTab === "proofs" ? (
             <section className="customer-requests-assisted-panel">
-            <h3 className="customer-requests-assisted-panel-title">Proofs</h3>
-            {proofMediaNewestFirst.length > 0 ? (
+            <h3 className="customer-requests-assisted-panel-title">Proofs &amp; artwork</h3>
+            {hasArtworkHistory ? (
               <ul className="customer-requests-assisted-proof-list">
+                {item.finalSource?.storagePath ? (
+                  <li key={`final-${item.finalSource.id}`}>
+                    <div className="customer-requests-assisted-proof-row customer-requests-assisted-proof-row--static">
+                      {finalSourcePreview?.url && !finalSourcePreview.unavailable ? (
+                        <img alt="" src={finalSourcePreview.url} />
+                      ) : (
+                        <span
+                          aria-hidden="true"
+                          className="customer-requests-assisted-proof-row-placeholder"
+                        />
+                      )}
+                      <span className="customer-requests-assisted-proof-row-body">
+                        <span className="customer-requests-assisted-proof-row-title">
+                          Final Artwork
+                        </span>
+                        <span className="customer-requests-assisted-proof-row-meta">
+                          {item.finalSource.fileName || "Uploaded final artwork"}
+                        </span>
+                      </span>
+                    </div>
+                  </li>
+                ) : null}
                 {proofMediaNewestFirst.map((proof, index) => {
-                  const isLatest = index === 0;
+                  const isLatest = !item.finalSource?.storagePath && index === 0;
                   const isApprovedProof =
                     !proof.isCatalogShare && item.approvedProofId === proof.id;
                   const isApprovedCatalog =
@@ -1864,7 +1927,11 @@ function AssistedDetail({
                     if (!file) {
                       return;
                     }
+                    if (pendingFinalPreviewUrl) {
+                      URL.revokeObjectURL(pendingFinalPreviewUrl);
+                    }
                     setPendingFinalFile(file);
+                    setPendingFinalPreviewUrl(URL.createObjectURL(file));
                     setError(null);
                   }}
                   type="file"
@@ -1880,6 +1947,11 @@ function AssistedDetail({
                   </Button>
                 ) : (
                   <div className="customer-requests-assisted-proof-pending">
+                    {pendingFinalPreviewUrl ? (
+                      <div className="customer-requests-assisted-proof-pending-preview">
+                        <img alt="Pending final artwork preview" src={pendingFinalPreviewUrl} />
+                      </div>
+                    ) : null}
                     <p className="customer-requests-assisted-proof-pending-name">
                       {pendingFinalFile.name}
                     </p>
@@ -1893,7 +1965,7 @@ function AssistedDetail({
                       </Button>
                       <Button
                         disabled={busy}
-                        onClick={() => setPendingFinalFile(null)}
+                        onClick={clearPendingFinalSource}
                         type="button"
                         variant="secondary"
                       >

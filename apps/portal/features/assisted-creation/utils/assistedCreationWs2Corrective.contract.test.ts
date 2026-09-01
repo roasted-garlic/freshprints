@@ -11,6 +11,8 @@ describe('assisted creation download service contract', () => {
     );
 
     assert.match(source, /customerGetAssistedCreationApprovedProofDownloadUrl/);
+    assert.match(source, /downloadFinalArtwork/);
+    assert.match(source, /downloadAssistedArtwork/);
     assert.match(source, /triggerBrowserDownloadFromUrl/);
     assert.match(
       source,

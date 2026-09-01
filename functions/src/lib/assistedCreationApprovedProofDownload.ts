@@ -10,6 +10,7 @@ import {
   buildAssistedCreationCustomerDownloadFileName,
   buildAssistedCreationFinalArtworkDownloadFileName,
 } from "../../../packages/shared/src/utils/assistedCreationProofFileName";
+import type { AssistedCreationArtworkDownloadTarget } from "../../../packages/shared/src/utils/assistedCreationArtworkDownload";
 
 import { adminDb, adminStorage } from "./admin";
 import {
@@ -70,8 +71,15 @@ function parseFinalSource(value: unknown): {
 export async function resolveAssistedCreationApprovedProofDownload(input: {
   uid: string;
   requestId: string;
+  /**
+   * `final_artwork` — Final Image only; never falls back to approved proof.
+   * `approved_proof` — approved proof only; ignores finalSource.
+   * `auto` — prefer finalSource when present (attach / legacy callers).
+   */
+  downloadTarget?: AssistedCreationArtworkDownloadTarget | "auto";
 }): Promise<ResolvedApprovedProofDownload> {
   const requestId = input.requestId.trim();
+  const downloadTarget = input.downloadTarget ?? "auto";
   if (!requestId) {
     throw invalidArgument("Request id is required.");
   }
@@ -108,26 +116,23 @@ export async function resolveAssistedCreationApprovedProofDownload(input: {
     (current.approvedAt instanceof Timestamp ? current.approvedAt.toMillis() : null);
 
   const finalSource = parseFinalSource(current.finalSource);
-  if (finalSource) {
-    let downloadExpiresAtMillis: number | null = null;
-    if (approvedAtMillis != null && Number.isFinite(approvedAtMillis)) {
-      downloadExpiresAtMillis = assistedCreationApprovedProofExpiresAtMillis(approvedAtMillis);
-      if (Date.now() >= downloadExpiresAtMillis) {
-        throw failedPrecondition("This download is no longer available.");
-      }
+  if (downloadTarget === "final_artwork") {
+    if (!finalSource) {
+      throw failedPrecondition("Final artwork is not available for download.");
     }
-    const file = adminStorage.bucket().file(storageObjectPath(finalSource.storagePath));
-    const [exists] = await file.exists();
-    if (!exists) {
-      throw failedPrecondition("This download is no longer available.");
-    }
-    return {
+    return await resolveFinalSourceDownload({
       requestId,
-      storagePath: finalSource.storagePath,
-      fileName: escapeContentDispositionFileName(finalSource.fileName),
-      contentType: finalSource.contentType,
-      downloadExpiresAtMillis,
-    };
+      finalSource,
+      approvedAtMillis,
+    });
+  }
+
+  if (downloadTarget === "auto" && finalSource) {
+    return await resolveFinalSourceDownload({
+      requestId,
+      finalSource,
+      approvedAtMillis,
+    });
   }
 
   const proofs = Array.isArray(current.proofs)
@@ -189,4 +194,30 @@ export async function resolveAssistedCreationApprovedProofDownload(input: {
 
 export function approvedProofStorageFile(storagePath: string) {
   return adminStorage.bucket().file(storageObjectPath(storagePath));
+}
+
+async function resolveFinalSourceDownload(input: {
+  requestId: string;
+  finalSource: { storagePath: string; fileName: string; contentType: string };
+  approvedAtMillis: number | null;
+}): Promise<ResolvedApprovedProofDownload> {
+  let downloadExpiresAtMillis: number | null = null;
+  if (input.approvedAtMillis != null && Number.isFinite(input.approvedAtMillis)) {
+    downloadExpiresAtMillis = assistedCreationApprovedProofExpiresAtMillis(input.approvedAtMillis);
+    if (Date.now() >= downloadExpiresAtMillis) {
+      throw failedPrecondition("This download is no longer available.");
+    }
+  }
+  const file = adminStorage.bucket().file(storageObjectPath(input.finalSource.storagePath));
+  const [exists] = await file.exists();
+  if (!exists) {
+    throw failedPrecondition("This download is no longer available.");
+  }
+  return {
+    requestId: input.requestId,
+    storagePath: input.finalSource.storagePath,
+    fileName: escapeContentDispositionFileName(input.finalSource.fileName),
+    contentType: input.finalSource.contentType,
+    downloadExpiresAtMillis,
+  };
 }

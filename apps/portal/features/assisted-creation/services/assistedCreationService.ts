@@ -47,6 +47,9 @@ import {
   traceFirestoreListenerEmission,
   traceWrappedUnsubscribe,
 } from '@fresh-prints/shared/utils/firestoreUsageTrace';
+import type {
+  AssistedCreationArtworkDownloadTarget,
+} from '@fresh-prints/shared/utils/assistedCreationArtworkDownload';
 import { buildAssistedCreationFinalArtworkDownloadFileName } from '@fresh-prints/shared/utils/assistedCreationProofFileName';
 import { snapshotAssistedCatalogArtworkBackgroundHex } from '@fresh-prints/shared/utils/assistedCreationCatalogShareArtworkBackground';
 import { withTimeout } from '@fresh-prints/shared/utils/withTimeout';
@@ -523,11 +526,23 @@ export const assistedCreationService = {
   },
 
   /**
-   * Download approved proof / Final Image without loading full bytes into JS memory.
-   * Uses server-signed Storage URL with attachment disposition; falls back to callable
-   * bytes only for legacy/small files when signing is unavailable.
+   * Download staff Final Artwork only. Never falls back to approved proof bytes.
+   */
+  async downloadFinalArtwork(requestId: string): Promise<void> {
+    await this.downloadAssistedArtwork(requestId, 'final_artwork');
+  },
+
+  /**
+   * Download the approved proof file (historical proof asset), not Final Artwork.
    */
   async downloadApprovedProof(requestId: string): Promise<void> {
+    await this.downloadAssistedArtwork(requestId, 'approved_proof');
+  },
+
+  async downloadAssistedArtwork(
+    requestId: string,
+    downloadTarget: AssistedCreationArtworkDownloadTarget,
+  ): Promise<void> {
     const trimmedId = requestId.trim();
     if (!trimmedId) {
       throw new Error('Request id is required.');
@@ -537,14 +552,15 @@ export const assistedCreationService = {
         CustomerGetAssistedCreationApprovedProofDownloadUrlRequest,
         CustomerGetAssistedCreationApprovedProofDownloadUrlResponse
       >('customerGetAssistedCreationApprovedProofDownloadUrl', {
-        source: 'assistedCreationService.downloadApprovedProof',
-      })({ requestId: trimmedId });
+        source: 'assistedCreationService.downloadAssistedArtwork',
+      })({ requestId: trimmedId, downloadTarget });
       if (!signed.downloadUrl?.trim()) {
         throw new Error('Unable to download.');
       }
-      this.triggerBrowserDownloadFromUrl(
+      await this.triggerBrowserDownloadFromSignedUrl(
         signed.downloadUrl.trim(),
         signed.fileName || 'assisted-artwork.png',
+        signed.contentType,
       );
       return;
     } catch (signedUrlError) {
@@ -553,8 +569,8 @@ export const assistedCreationService = {
           CustomerGetAssistedCreationApprovedProofFileRequest,
           CustomerGetAssistedCreationApprovedProofFileResponse
         >('customerGetAssistedCreationApprovedProofFile', {
-          source: 'assistedCreationService.downloadApprovedProof',
-        })({ requestId: trimmedId });
+          source: 'assistedCreationService.downloadAssistedArtwork',
+        })({ requestId: trimmedId, downloadTarget });
         const { contentBase64, contentType, fileName } = result;
         if (!contentBase64?.trim()) {
           throw new Error('Unable to download.');
@@ -564,6 +580,26 @@ export const assistedCreationService = {
       } catch (bytesError) {
         throw mapCallableError(bytesError ?? signedUrlError);
       }
+    }
+  },
+
+  async triggerBrowserDownloadFromSignedUrl(
+    downloadUrl: string,
+    fileName: string,
+    contentType?: string,
+  ): Promise<void> {
+    try {
+      const response = await fetch(downloadUrl);
+      if (!response.ok) {
+        throw new Error('Unable to download.');
+      }
+      const blob = await response.blob();
+      this.triggerBrowserDownloadFromBlob(
+        blob.type ? blob : new Blob([blob], { type: contentType?.trim() || 'application/octet-stream' }),
+        fileName,
+      );
+    } catch {
+      this.triggerBrowserDownloadFromUrl(downloadUrl, fileName);
     }
   },
 

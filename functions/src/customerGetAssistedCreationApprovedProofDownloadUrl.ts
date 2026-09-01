@@ -4,6 +4,7 @@ import type {
   CustomerGetAssistedCreationApprovedProofDownloadUrlRequest,
   CustomerGetAssistedCreationApprovedProofDownloadUrlResponse,
 } from "../../packages/shared/src/types/assistedCreation/assistedCreationActions.types";
+import { parseAssistedCreationArtworkDownloadTarget } from "../../packages/shared/src/utils/assistedCreationArtworkDownload";
 
 import {
   approvedProofStorageFile,
@@ -29,10 +30,13 @@ export const customerGetAssistedCreationApprovedProofDownloadUrl = onCall(
     if (!requestId) {
       throw invalidArgument("Request id is required.");
     }
+    const downloadTarget =
+      parseAssistedCreationArtworkDownloadTarget(data.downloadTarget) ?? "auto";
 
     const resolved = await resolveAssistedCreationApprovedProofDownload({
       uid: request.auth.uid,
       requestId,
+      downloadTarget,
     });
 
     const file = approvedProofStorageFile(resolved.storagePath);
