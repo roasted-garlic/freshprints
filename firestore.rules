@@ -314,6 +314,7 @@ service cloud.firestore {
             "categoryId",
             "tags",
             "artworkBackgroundHex",
+            "artworkBackgroundSource",
             "artworkPlacement",
             "isExplicitContent",
             "censoredTerms",
@@ -335,6 +336,7 @@ service cloud.firestore {
         && isOptionalString(request.resource.data, "description")
         && isOptionalString(request.resource.data, "categoryId")
         && isOptionalString(request.resource.data, "artworkBackgroundHex")
+        && isOptionalArtworkBackgroundSource(request.resource.data, "artworkBackgroundSource")
         && isOptionalString(request.resource.data, "artworkPlacement")
         && isOptionalBool(request.resource.data, "isExplicitContent")
         && isOptionalCensoredTermsList(request.resource.data, "censoredTerms")

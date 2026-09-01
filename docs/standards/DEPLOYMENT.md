@@ -984,6 +984,19 @@ Or paste URLs into [Facebook Sharing Debugger](https://developers.facebook.com/t
 
 ---
 
+## DEV-only pending production promotion inventory
+
+Track Firestore Rules, Functions, indexes, Storage Rules, and Studio releases that passed **DEV** QA but are **not** yet on `fresh-prints-prod`. Add rows when a standalone corrective or goal ships to DEV; remove rows only after owner-authorized production promotion and deploy record.
+
+| Date | Item | DEV deploy | Owner DEV QA | Production |
+|------|------|------------|--------------|------------|
+| 2026-09-01 | **AI Review Approve/Reject Rules** — allow `artworkBackgroundSource` on `catalogMetadataOnlyUpdate` (`firestore.rules`) | `firebase deploy --only firestore:rules --project fresh-prints-dev` — **done** | **PASS** (Approve + Reject) | **Pending** — include in next owner-authorized Rules promotion |
+| 2026-09-01 | **Pre–Smart Profiling managed goal** (WS1–WS3) — Portal + Studio + Functions deltas on `development` | Partial (WS2 Functions on DEV) | WS1 **PASS**, WS2 **PASS**, WS3 **pending** | **Not authorized** — separate promotion after managed goal signoff |
+
+Deploy record (AI Review Rules): `docs/workflow/reviews/2026-09-01-ai-review-artwork-background-source-rules-dev-deploy-record.md`
+
+---
+
 ## Production Release Checklist
 
 ### Wave C dev snapshot checkpoint
