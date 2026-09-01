@@ -171,6 +171,7 @@ export async function composeGroupedGangSheetSheets(input: {
     const sectionSummary = calculateGangSheetSectionSummaryForPlacements(
       sheet.placements,
       sectionImagesById,
+      input.request.sectionPricing,
     );
     const sectionLabelSvg = buildGroupedSectionHeadingSvg({
       heading: sectionHeading,

@@ -3,10 +3,10 @@
 | Field | Value |
 |-------|-------|
 | Status | **ACTIVE** |
-| Phase | **WS3 owner DEV QA — gang-sheet price + weight** |
+| Phase | **STOP before DEV deploy — WS3 configurable pricing amendment** |
 | WS1 Owner QA | **PASS** |
 | WS2 Owner QA | **PASS** |
-| WS3 Owner QA | **PENDING / NEXT** |
+| WS3 Owner QA | **PENDING AFTER CONFIGURABLE SETTINGS AMENDMENT** |
 | Production | **NOT AUTHORIZED** |
 | Smart Profiling | **PARKED** |
 | Managed goal signoff | **NOT AUTHORIZED** |
@@ -18,7 +18,17 @@
 |----|-------|--------------|
 | WS1 | Remove from Show & Edit | **PASS** |
 | WS2 | Custom Request Final Artwork | **PASS** |
-| WS3 | Gang-sheet price + weight line | **PENDING** |
+| WS3 | Gang-sheet configurable price + weight tiers | **PENDING AFTER AMENDMENT** |
+
+## WS3 amendment (2026-09-01)
+
+Plan: `docs/workflow/plans/2026-09-01-pre-smart-profiling-ws3-configurable-gang-sheet-pricing-amendment.md`  
+Review: **approved**  
+Implementation + tests: **complete locally**  
+Implementation review: **approved**  
+**STOP:** DEV Firestore Rules deploy + Studio restart before owner QA
+
+Prior hard-coded WS3 (6″ / $1·$2 / flat 0.75 oz) superseded — do not record PASS on old model.
 
 ## Standalone corrective (not part of managed goal)
 
@@ -32,15 +42,16 @@ DEV Rules alignment (2026-09-01): `docs/workflow/reviews/2026-09-01-dev-firestor
 
 ## Next step
 
-Owner runs WS3 gang-sheet QA (Tests A–H). Reply `WS3 PASS`, `WS3 PASS WITH NOTES: …`, or `WS3 FAIL: …`.
+Owner approves DEV deploy: `firebase deploy --only firestore:rules --project fresh-prints-dev`, then restart Studio and run WS3 owner QA checklist in implementation review doc.
 
-**Ensure Studio is on current `development` source** — restart `npm run dev:studio` if needed. No Studio release.
+Reply `WS3 PASS`, `WS3 PASS WITH NOTES: …`, or `WS3 FAIL: …`.
 
 **Do not sign off the managed goal until WS3 passes. Do not deploy production. Do not start Smart Profiling.**
 
 ## Allowed actions
 
-- Owner WS3 manual QA
+- Owner-approved DEV Firestore Rules deploy for WS3 pricing fields
+- Owner WS3 manual QA after deploy
 - Read docs / workflow state
 - Record WS3 result when owner replies
 
@@ -58,5 +69,5 @@ Owner runs WS3 gang-sheet QA (Tests A–H). Reply `WS3 PASS`, `WS3 PASS WITH NOT
 | 2026-09-01 | WS1 owner DEV QA **PASS** |
 | 2026-09-01 | WS2 owner DEV QA **PASS** (Final Artwork corrective verified) |
 | 2026-09-01 | AI Review Rules corrective owner QA **PASS** (standalone) |
-| 2026-09-01 | Advance to WS3 owner QA; signoff remains blocked |
+| 2026-09-01 | WS3 amended to configurable Show Queue pricing/weight tiers; implement + test complete; STOP before DEV Rules deploy |
 | 2026-09-01 | DEV Firestore Rules alignment redeploy — remove unintended `showAllocations` drift; committed `56717c53` → `fresh-prints-dev` |

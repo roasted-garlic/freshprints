@@ -1,5 +1,7 @@
-const GANG_SHEET_PRICE_TIER_THRESHOLD_INCHES = 6;
-const GANG_SHEET_UNIT_WEIGHT_OZ = 0.75;
+import {
+  DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG,
+  type GangSheetSectionPricingConfig,
+} from "../constants/gangSheetSectionPricingSettings.constants";
 
 export interface GangSheetSectionSummaryUnitInput {
   printWidthInches: number;
@@ -7,8 +9,8 @@ export interface GangSheetSectionSummaryUnitInput {
 }
 
 export interface GangSheetCustomerSectionSummary {
-  oneDollarQuantity: number;
-  twoDollarQuantity: number;
+  smallTierQuantity: number;
+  largeTierQuantity: number;
   totalQuantity: number;
   totalPriceUsd: number;
   totalWeightOz: number;
@@ -17,11 +19,12 @@ export interface GangSheetCustomerSectionSummary {
   combinedLine: string;
 }
 
-function isTwoDollarTier(printWidthInches: number, printHeightInches: number): boolean {
-  return (
-    printWidthInches >= GANG_SHEET_PRICE_TIER_THRESHOLD_INCHES ||
-    printHeightInches >= GANG_SHEET_PRICE_TIER_THRESHOLD_INCHES
-  );
+function isLargeTier(
+  printWidthInches: number,
+  printHeightInches: number,
+  sizeCutoffInches: number,
+): boolean {
+  return printWidthInches > sizeCutoffInches || printHeightInches > sizeCutoffInches;
 }
 
 function formatUsd(amount: number): string {
@@ -29,6 +32,14 @@ function formatUsd(amount: number): string {
     return `$${amount}`;
   }
   return `$${amount.toFixed(2)}`;
+}
+
+function formatUnitPriceUsd(amount: number): string {
+  if (Number.isInteger(amount)) {
+    return `$${amount}`;
+  }
+  const trimmed = amount.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+  return `$${trimmed}`;
 }
 
 function formatWeightOz(amount: number): string {
@@ -39,21 +50,34 @@ function formatWeightOz(amount: number): string {
   return `${trimmed} oz`;
 }
 
-export function buildGangSheetPriceLine(oneDollarQuantity: number, twoDollarQuantity: number): string {
+function formatUnitWeightOz(amount: number): string {
+  if (Number.isInteger(amount)) {
+    return `${amount}oz`;
+  }
+  return `${amount.toFixed(2)}oz`;
+}
+
+export function buildGangSheetPriceLine(
+  smallTierQuantity: number,
+  largeTierQuantity: number,
+  pricing: Pick<GangSheetSectionPricingConfig, "smallTierPriceUsd" | "largeTierPriceUsd">,
+): string {
   const parts: string[] = [];
 
-  if (twoDollarQuantity > 0) {
-    parts.push(`$2 x ${twoDollarQuantity}`);
+  if (largeTierQuantity > 0) {
+    parts.push(`${formatUnitPriceUsd(pricing.largeTierPriceUsd)} x ${largeTierQuantity}`);
   }
-  if (oneDollarQuantity > 0) {
-    parts.push(`$1 x ${oneDollarQuantity}`);
+  if (smallTierQuantity > 0) {
+    parts.push(`${formatUnitPriceUsd(pricing.smallTierPriceUsd)} x ${smallTierQuantity}`);
   }
 
   if (parts.length === 0) {
     return "$0";
   }
 
-  const total = oneDollarQuantity + twoDollarQuantity * 2;
+  const total =
+    smallTierQuantity * pricing.smallTierPriceUsd + largeTierQuantity * pricing.largeTierPriceUsd;
+
   if (parts.length === 1) {
     return `${parts[0]} = ${formatUsd(total)}`;
   }
@@ -61,34 +85,60 @@ export function buildGangSheetPriceLine(oneDollarQuantity: number, twoDollarQuan
   return `${parts.join(" + ")} = ${formatUsd(total)}`;
 }
 
-export function buildGangSheetWeightLine(totalQuantity: number): string {
-  const totalWeightOz = GANG_SHEET_UNIT_WEIGHT_OZ * totalQuantity;
-  return `Weight: ${GANG_SHEET_UNIT_WEIGHT_OZ}oz x ${totalQuantity} = ${formatWeightOz(totalWeightOz)}`;
+export function buildGangSheetWeightLine(
+  smallTierQuantity: number,
+  largeTierQuantity: number,
+  pricing: Pick<GangSheetSectionPricingConfig, "smallTierWeightOz" | "largeTierWeightOz">,
+): string {
+  const parts: string[] = [];
+
+  if (largeTierQuantity > 0) {
+    parts.push(`${formatUnitWeightOz(pricing.largeTierWeightOz)} x ${largeTierQuantity}`);
+  }
+  if (smallTierQuantity > 0) {
+    parts.push(`${formatUnitWeightOz(pricing.smallTierWeightOz)} x ${smallTierQuantity}`);
+  }
+
+  if (parts.length === 0) {
+    return "Weight: 0 oz";
+  }
+
+  const totalWeightOz =
+    smallTierQuantity * pricing.smallTierWeightOz + largeTierQuantity * pricing.largeTierWeightOz;
+
+  if (parts.length === 1) {
+    return `Weight: ${parts[0]} = ${formatWeightOz(totalWeightOz)}`;
+  }
+
+  return `Weight: ${parts.join(" + ")} = ${formatWeightOz(totalWeightOz)}`;
 }
 
 export function calculateGangSheetCustomerSectionSummary(
   units: GangSheetSectionSummaryUnitInput[],
+  pricing: GangSheetSectionPricingConfig = DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG,
 ): GangSheetCustomerSectionSummary {
-  let oneDollarQuantity = 0;
-  let twoDollarQuantity = 0;
+  let smallTierQuantity = 0;
+  let largeTierQuantity = 0;
 
   for (const unit of units) {
-    if (isTwoDollarTier(unit.printWidthInches, unit.printHeightInches)) {
-      twoDollarQuantity += 1;
+    if (isLargeTier(unit.printWidthInches, unit.printHeightInches, pricing.sizeCutoffInches)) {
+      largeTierQuantity += 1;
     } else {
-      oneDollarQuantity += 1;
+      smallTierQuantity += 1;
     }
   }
 
-  const totalQuantity = oneDollarQuantity + twoDollarQuantity;
-  const totalPriceUsd = oneDollarQuantity + twoDollarQuantity * 2;
-  const totalWeightOz = GANG_SHEET_UNIT_WEIGHT_OZ * totalQuantity;
-  const priceLine = buildGangSheetPriceLine(oneDollarQuantity, twoDollarQuantity);
-  const weightLine = buildGangSheetWeightLine(totalQuantity);
+  const totalQuantity = smallTierQuantity + largeTierQuantity;
+  const totalPriceUsd =
+    smallTierQuantity * pricing.smallTierPriceUsd + largeTierQuantity * pricing.largeTierPriceUsd;
+  const totalWeightOz =
+    smallTierQuantity * pricing.smallTierWeightOz + largeTierQuantity * pricing.largeTierWeightOz;
+  const priceLine = buildGangSheetPriceLine(smallTierQuantity, largeTierQuantity, pricing);
+  const weightLine = buildGangSheetWeightLine(smallTierQuantity, largeTierQuantity, pricing);
 
   return {
-    oneDollarQuantity,
-    twoDollarQuantity,
+    smallTierQuantity,
+    largeTierQuantity,
     totalQuantity,
     totalPriceUsd,
     totalWeightOz,
@@ -101,8 +151,9 @@ export function calculateGangSheetCustomerSectionSummary(
 export function resolveGangSheetPriceTierForInches(
   printWidthInches: number,
   printHeightInches: number,
-): 1 | 2 {
-  return isTwoDollarTier(printWidthInches, printHeightInches) ? 2 : 1;
+  sizeCutoffInches: number = DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG.sizeCutoffInches,
+): "small" | "large" {
+  return isLargeTier(printWidthInches, printHeightInches, sizeCutoffInches) ? "large" : "small";
 }
 
 export interface GangSheetSectionPlacementImageView {
@@ -114,6 +165,7 @@ export interface GangSheetSectionPlacementImageView {
 export function calculateGangSheetSectionSummaryForPlacements(
   placements: Array<{ id: string }>,
   imagesById: Map<string, GangSheetSectionPlacementImageView>,
+  pricing: GangSheetSectionPricingConfig = DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG,
 ): GangSheetCustomerSectionSummary {
   const units: GangSheetSectionSummaryUnitInput[] = [];
 
@@ -128,5 +180,5 @@ export function calculateGangSheetSectionSummaryForPlacements(
     });
   }
 
-  return calculateGangSheetCustomerSectionSummary(units);
+  return calculateGangSheetCustomerSectionSummary(units, pricing);
 }

@@ -1,3 +1,4 @@
+import type { GangSheetSectionPricingConfig } from "../../constants/gangSheetSectionPricingSettings.constants";
 import type { ShowExportImageWarning } from "./showExportIpc.types";
 
 export type GangSheetLayoutMode = "efficiency" | "grouped_by_customer" | "customer_grouped_continuous";
@@ -43,6 +44,8 @@ export interface ExportGangSheetPngRequest {
   labelFontSizePx: number;
   /** Omitted or `efficiency` preserves the legacy auto-nested exporter. */
   layoutMode?: GangSheetLayoutMode;
+  /** Resolved Show Queue pricing tiers — grouped layouts only. */
+  sectionPricing?: GangSheetSectionPricingConfig;
   images: GangSheetExportImageRequest[];
 }
 

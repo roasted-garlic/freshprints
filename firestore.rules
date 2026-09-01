@@ -2211,6 +2211,11 @@ service cloud.firestore {
           "gangSheetGutterInches",
           "gangSheetMaxLengthInches",
           "gangSheetLabelFontSizePx",
+          "gangSheetSectionPriceCutoffInches",
+          "gangSheetSmallTierPriceUsd",
+          "gangSheetSmallTierWeightOz",
+          "gangSheetLargeTierPriceUsd",
+          "gangSheetLargeTierWeightOz",
           "updatedBy",
           "updatedAt"
         ])
@@ -2227,6 +2232,11 @@ service cloud.firestore {
         && isOptionalNumber(data, "gangSheetGutterInches")
         && isOptionalNumber(data, "gangSheetMaxLengthInches")
         && isOptionalNumber(data, "gangSheetLabelFontSizePx")
+        && isOptionalNumber(data, "gangSheetSectionPriceCutoffInches")
+        && isOptionalNumber(data, "gangSheetSmallTierPriceUsd")
+        && isOptionalNumber(data, "gangSheetSmallTierWeightOz")
+        && isOptionalNumber(data, "gangSheetLargeTierPriceUsd")
+        && isOptionalNumber(data, "gangSheetLargeTierWeightOz")
         && isOptionalString(data, "updatedBy")
         && data.updatedAt is timestamp;
     }

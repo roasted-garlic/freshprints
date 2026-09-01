@@ -53,6 +53,11 @@ export function useShowQueueSettings() {
       gangSheetGutterInches?: number;
       gangSheetMaxLengthInches?: number;
       gangSheetLabelFontSizePx?: number;
+      gangSheetSectionPriceCutoffInches?: number;
+      gangSheetSmallTierPriceUsd?: number;
+      gangSheetSmallTierWeightOz?: number;
+      gangSheetLargeTierPriceUsd?: number;
+      gangSheetLargeTierWeightOz?: number;
     }) => {
       if (!user) {
         throw new Error("You must be signed in to update Show Queue settings.");

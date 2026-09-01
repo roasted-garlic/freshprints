@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
 import { upcomingShowService } from "../services/upcomingShowService";
+import type { GangSheetSectionPricingConfig } from "@fresh-prints/shared/constants/gangSheetSectionPricingSettings.constants";
 import { buildGangSheetCacheFingerprint } from "@fresh-prints/shared/utils/gangSheetCacheFingerprint";
 import { planEfficiencyGangSheetLayout } from "@fresh-prints/shared/utils/gangSheetEfficiencyLayout";
 import { planContinuousCustomerGroupedGangSheetLayout } from "@fresh-prints/shared/utils/gangSheetContinuousCustomerGroupedLayout";
@@ -33,6 +34,7 @@ export interface GangSheetLayoutSettings {
   gutterInches: number;
   maxSheetLengthInches: number;
   labelFontSizePx: number;
+  sectionPricing: GangSheetSectionPricingConfig;
 }
 
 interface GangSheetGenerateState {
@@ -267,7 +269,9 @@ function buildLayoutRequest(
     gutterInches: layoutSettings.gutterInches,
     maxSheetLengthInches: layoutSettings.maxSheetLengthInches,
     labelFontSizePx: layoutSettings.labelFontSizePx,
-    ...(layoutMode !== "efficiency" ? { layoutMode } : {}),
+    ...(layoutMode !== "efficiency"
+      ? { layoutMode, sectionPricing: layoutSettings.sectionPricing }
+      : {}),
     images: imageRequests,
   };
 }

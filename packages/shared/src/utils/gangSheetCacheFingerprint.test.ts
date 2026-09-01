@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import { DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG } from "../constants/gangSheetSectionPricingSettings.constants";
 import type { ExportGangSheetPngRequest } from "../types/export/gangSheetExportIpc.types";
 import {
   buildGangSheetCacheFingerprint,
@@ -243,9 +244,43 @@ describe("buildGangSheetCacheFingerprint", () => {
     assert.notEqual(smallTier, largeTier);
   });
 
-  it("does not include sectionSummaryVersion for efficiency layout", () => {
+  it("changes grouped fingerprint when section pricing settings change", () => {
+    const groupedBase = sampleRequest({
+      layoutMode: "grouped_by_customer",
+      sectionPricing: DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG,
+      images: sampleRequest().images.map((image) => ({
+        ...image,
+        grouping: {
+          printRequestId: "req-1",
+          requestName: "alice-IR001",
+          customerUsernameSnapshot: "alice",
+          isInternal: false,
+        },
+      })),
+    });
+
+    const cutoffChanged = buildGangSheetCacheFingerprint({
+      ...groupedBase,
+      sectionPricing: { ...DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG, sizeCutoffInches: 6 },
+    });
+    const largePriceChanged = buildGangSheetCacheFingerprint({
+      ...groupedBase,
+      sectionPricing: { ...DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG, largeTierPriceUsd: 2.5 },
+    });
+    const smallWeightChanged = buildGangSheetCacheFingerprint({
+      ...groupedBase,
+      sectionPricing: { ...DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG, smallTierWeightOz: 0.5 },
+    });
+    const baseline = buildGangSheetCacheFingerprint(groupedBase);
+
+    assert.notEqual(baseline, cutoffChanged);
+    assert.notEqual(baseline, largePriceChanged);
+    assert.notEqual(baseline, smallWeightChanged);
+  });
+
+  it("keeps efficiency fingerprint stable when only grouped pricing settings would change", () => {
     const efficiency = buildGangSheetCacheFingerprint(sampleRequest());
-    const efficiencyWithDimensions = buildGangSheetCacheFingerprint(
+    const efficiencyAgain = buildGangSheetCacheFingerprint(
       sampleRequest({
         images: sampleRequest().images.map((image) => ({
           ...image,
@@ -255,7 +290,7 @@ describe("buildGangSheetCacheFingerprint", () => {
       }),
     );
 
-    assert.equal(efficiency, efficiencyWithDimensions);
+    assert.equal(efficiency, efficiencyAgain);
   });
 });
 

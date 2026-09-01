@@ -21,7 +21,13 @@ import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
 import { clearPrintRequestsPageCache } from "../../print-requests/services/printRequestsPageReadCache";
 import { TransferPrintRequestToShowModal } from "../../print-requests/components/TransferPrintRequestToShowModal";
-import { formatPrintRequestShowTransferActionLabel, resolvePrintRequestShowTransferMode } from "@fresh-prints/shared/utils/printRequestShowTransfer";
+import { resolveGangSheetSectionPricingFromShowQueueSettings,
+  formatGangSheetSectionCutoffLabel,
+  isValidGangSheetSectionPriceCutoffInches,
+  isValidGangSheetTierPriceUsd,
+  isValidGangSheetTierWeightOz,
+  MAX_GANG_SHEET_SECTION_PRICE_CUTOFF_INCHES,
+} from "@fresh-prints/shared/constants/gangSheetSectionPricingSettings.constants";
 import { upcomingShowService } from "../services/upcomingShowService";
 import { UpcomingShowDeletionDialog } from "../components/UpcomingShowDeletionDialog";
 import { NeedsAttentionShowPanel } from "../components/NeedsAttentionShowPanel";
@@ -43,6 +49,11 @@ import {
   DEFAULT_GANG_SHEET_SIDE_MARGIN_INCHES,
   DEFAULT_GANG_SHEET_TOP_BOTTOM_MARGIN_INCHES,
   DEFAULT_GANG_SHEET_WIDTH_INCHES,
+  DEFAULT_GANG_SHEET_SECTION_PRICE_CUTOFF_INCHES,
+  DEFAULT_GANG_SHEET_SMALL_TIER_PRICE_USD,
+  DEFAULT_GANG_SHEET_SMALL_TIER_WEIGHT_OZ,
+  DEFAULT_GANG_SHEET_LARGE_TIER_PRICE_USD,
+  DEFAULT_GANG_SHEET_LARGE_TIER_WEIGHT_OZ,
   DEFAULT_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START,
   MAX_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START,
   MIN_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START,
@@ -257,6 +268,11 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
   const [gangSheetGutterInput, setGangSheetGutterInput] = useState("");
   const [gangSheetMaxLengthInput, setGangSheetMaxLengthInput] = useState("");
   const [gangSheetLabelFontSizeInput, setGangSheetLabelFontSizeInput] = useState("");
+  const [gangSheetPricingCutoffInput, setGangSheetPricingCutoffInput] = useState("");
+  const [gangSheetSmallTierPriceInput, setGangSheetSmallTierPriceInput] = useState("");
+  const [gangSheetSmallTierWeightInput, setGangSheetSmallTierWeightInput] = useState("");
+  const [gangSheetLargeTierPriceInput, setGangSheetLargeTierPriceInput] = useState("");
+  const [gangSheetLargeTierWeightInput, setGangSheetLargeTierWeightInput] = useState("");
   const [isSavingSettings, setIsSavingSettings] = useState(false);
 
   const handleShowsImported = useCallback(
@@ -363,8 +379,15 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
     setGangSheetLabelFontSizeInput(
       (showQueueSettings.settings.gangSheetLabelFontSizePx ?? DEFAULT_GANG_SHEET_LABEL_FONT_SIZE_PX).toString(),
     );
+    const resolvedPricing = resolveGangSheetSectionPricingFromShowQueueSettings(showQueueSettings.settings);
+    setGangSheetPricingCutoffInput(resolvedPricing.sizeCutoffInches.toString());
+    setGangSheetSmallTierPriceInput(resolvedPricing.smallTierPriceUsd.toString());
+    setGangSheetSmallTierWeightInput(resolvedPricing.smallTierWeightOz.toString());
+    setGangSheetLargeTierPriceInput(resolvedPricing.largeTierPriceUsd.toString());
+    setGangSheetLargeTierWeightInput(resolvedPricing.largeTierWeightOz.toString());
     setIsSettingsModalOpen(true);
   }, [
+    showQueueSettings.settings,
     showQueueSettings.settings.defaultMaxTotalQuantity,
     showQueueSettings.settings.gangSheetGutterInches,
     showQueueSettings.settings.gangSheetLabelFontSizePx,
@@ -1049,8 +1072,10 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
         showQueueSettings.settings.gangSheetMaxLengthInches ?? DEFAULT_GANG_SHEET_MAX_LENGTH_INCHES,
       labelFontSizePx:
         showQueueSettings.settings.gangSheetLabelFontSizePx ?? DEFAULT_GANG_SHEET_LABEL_FONT_SIZE_PX,
+      sectionPricing: resolveGangSheetSectionPricingFromShowQueueSettings(showQueueSettings.settings),
     }),
     [
+      showQueueSettings.settings,
       showQueueSettings.settings.gangSheetGutterInches,
       showQueueSettings.settings.gangSheetLabelFontSizePx,
       showQueueSettings.settings.gangSheetMaxLengthInches,
@@ -1364,6 +1389,29 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
     Number.isFinite(parsedGangSheetLabelFontSize) &&
     parsedGangSheetLabelFontSize >= 20 &&
     parsedGangSheetLabelFontSize <= 300;
+  const parsedGangSheetPricingCutoff = Number(gangSheetPricingCutoffInput.trim());
+  const isGangSheetPricingCutoffValid =
+    gangSheetPricingCutoffInput.trim() !== "" &&
+    isValidGangSheetSectionPriceCutoffInches(parsedGangSheetPricingCutoff);
+  const parsedGangSheetSmallTierPrice = Number(gangSheetSmallTierPriceInput.trim());
+  const isGangSheetSmallTierPriceValid =
+    gangSheetSmallTierPriceInput.trim() !== "" &&
+    isValidGangSheetTierPriceUsd(parsedGangSheetSmallTierPrice);
+  const parsedGangSheetLargeTierPrice = Number(gangSheetLargeTierPriceInput.trim());
+  const isGangSheetLargeTierPriceValid =
+    gangSheetLargeTierPriceInput.trim() !== "" &&
+    isValidGangSheetTierPriceUsd(parsedGangSheetLargeTierPrice);
+  const parsedGangSheetSmallTierWeight = Number(gangSheetSmallTierWeightInput.trim());
+  const isGangSheetSmallTierWeightValid =
+    gangSheetSmallTierWeightInput.trim() !== "" &&
+    isValidGangSheetTierWeightOz(parsedGangSheetSmallTierWeight);
+  const parsedGangSheetLargeTierWeight = Number(gangSheetLargeTierWeightInput.trim());
+  const isGangSheetLargeTierWeightValid =
+    gangSheetLargeTierWeightInput.trim() !== "" &&
+    isValidGangSheetTierWeightOz(parsedGangSheetLargeTierWeight);
+  const gangSheetPricingCutoffLabel = formatGangSheetSectionCutoffLabel(
+    isGangSheetPricingCutoffValid ? parsedGangSheetPricingCutoff : DEFAULT_GANG_SHEET_SECTION_PRICE_CUTOFF_INCHES,
+  );
 
   async function handleSaveSettings(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1378,7 +1426,12 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
       !isGangSheetTopBottomMarginValid ||
       !isGangSheetGutterValid ||
       !isGangSheetMaxLengthValid ||
-      !isGangSheetLabelFontSizeValid
+      !isGangSheetLabelFontSizeValid ||
+      !isGangSheetPricingCutoffValid ||
+      !isGangSheetSmallTierPriceValid ||
+      !isGangSheetLargeTierPriceValid ||
+      !isGangSheetSmallTierWeightValid ||
+      !isGangSheetLargeTierWeightValid
     ) {
       return;
     }
@@ -1399,6 +1452,11 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
         gangSheetGutterInches: parsedGangSheetGutter,
         gangSheetMaxLengthInches: parsedGangSheetMaxLength,
         gangSheetLabelFontSizePx: parsedGangSheetLabelFontSize,
+        gangSheetSectionPriceCutoffInches: parsedGangSheetPricingCutoff,
+        gangSheetSmallTierPriceUsd: parsedGangSheetSmallTierPrice,
+        gangSheetSmallTierWeightOz: parsedGangSheetSmallTierWeight,
+        gangSheetLargeTierPriceUsd: parsedGangSheetLargeTierPrice,
+        gangSheetLargeTierWeightOz: parsedGangSheetLargeTierWeight,
       });
       setSuccessMessage("Show Queue settings updated.");
       setSuccessAlertSeed((current) => current + 1);
@@ -2885,6 +2943,105 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                   </div>
                 </section>
 
+                <section className="show-queue-settings-section">
+                  <h4 className="show-queue-settings-section-title">Pricing &amp; Weight</h4>
+                  <p className="print-requests-modal-hint">
+                    Used for Grouped by Customer and Sheet per Customer gang sheets only. Standard mode is
+                    unaffected.
+                  </p>
+                  <div className="show-queue-settings-grid">
+                    <div className="show-queue-settings-field">
+                      <TextInput
+                        label="Size cutoff (inches)"
+                        min={0.01}
+                        max={MAX_GANG_SHEET_SECTION_PRICE_CUTOFF_INCHES}
+                        name="gangSheetSectionPriceCutoffInches"
+                        onChange={(event) => setGangSheetPricingCutoffInput(event.target.value)}
+                        step={0.01}
+                        type="number"
+                        value={gangSheetPricingCutoffInput}
+                      />
+                      <p className="print-requests-modal-hint">
+                        {isGangSheetPricingCutoffValid
+                          ? `Exactly ${gangSheetPricingCutoffLabel} and under uses the small tier; either dimension above ${gangSheetPricingCutoffLabel} uses the large tier.`
+                          : `Must be a number greater than 0" and at most ${MAX_GANG_SHEET_SECTION_PRICE_CUTOFF_INCHES}".`}
+                      </p>
+                    </div>
+
+                    <div className="show-queue-settings-field">
+                      <TextInput
+                        label={`${gangSheetPricingCutoffLabel} and under — price per image ($)`}
+                        min={0}
+                        max={999.99}
+                        name="gangSheetSmallTierPriceUsd"
+                        onChange={(event) => setGangSheetSmallTierPriceInput(event.target.value)}
+                        step={0.01}
+                        type="number"
+                        value={gangSheetSmallTierPriceInput}
+                      />
+                      <p className="print-requests-modal-hint">
+                        {isGangSheetSmallTierPriceValid
+                          ? `Default ${DEFAULT_GANG_SHEET_SMALL_TIER_PRICE_USD.toFixed(2)} when unset.`
+                          : "Must be a number between $0 and $999.99."}
+                      </p>
+                    </div>
+
+                    <div className="show-queue-settings-field">
+                      <TextInput
+                        label={`${gangSheetPricingCutoffLabel} and under — weight per image (oz)`}
+                        min={0.01}
+                        max={99.99}
+                        name="gangSheetSmallTierWeightOz"
+                        onChange={(event) => setGangSheetSmallTierWeightInput(event.target.value)}
+                        step={0.01}
+                        type="number"
+                        value={gangSheetSmallTierWeightInput}
+                      />
+                      <p className="print-requests-modal-hint">
+                        {isGangSheetSmallTierWeightValid
+                          ? `Default ${DEFAULT_GANG_SHEET_SMALL_TIER_WEIGHT_OZ} oz when unset.`
+                          : "Must be a number greater than 0 and at most 99.99 oz."}
+                      </p>
+                    </div>
+
+                    <div className="show-queue-settings-field">
+                      <TextInput
+                        label={`Over ${gangSheetPricingCutoffLabel} — price per image ($)`}
+                        min={0}
+                        max={999.99}
+                        name="gangSheetLargeTierPriceUsd"
+                        onChange={(event) => setGangSheetLargeTierPriceInput(event.target.value)}
+                        step={0.01}
+                        type="number"
+                        value={gangSheetLargeTierPriceInput}
+                      />
+                      <p className="print-requests-modal-hint">
+                        {isGangSheetLargeTierPriceValid
+                          ? `Default ${DEFAULT_GANG_SHEET_LARGE_TIER_PRICE_USD.toFixed(2)} when unset.`
+                          : "Must be a number between $0 and $999.99."}
+                      </p>
+                    </div>
+
+                    <div className="show-queue-settings-field">
+                      <TextInput
+                        label={`Over ${gangSheetPricingCutoffLabel} — weight per image (oz)`}
+                        min={0.01}
+                        max={99.99}
+                        name="gangSheetLargeTierWeightOz"
+                        onChange={(event) => setGangSheetLargeTierWeightInput(event.target.value)}
+                        step={0.01}
+                        type="number"
+                        value={gangSheetLargeTierWeightInput}
+                      />
+                      <p className="print-requests-modal-hint">
+                        {isGangSheetLargeTierWeightValid
+                          ? `Default ${DEFAULT_GANG_SHEET_LARGE_TIER_WEIGHT_OZ} oz when unset.`
+                          : "Must be a number greater than 0 and at most 99.99 oz."}
+                      </p>
+                    </div>
+                  </div>
+                </section>
+
                 {actionError ? (
                   <p className="auth-message auth-message-error" role="alert">
                     {actionError}
@@ -2906,7 +3063,12 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                   !isGangSheetTopBottomMarginValid ||
                   !isGangSheetGutterValid ||
                   !isGangSheetMaxLengthValid ||
-                  !isGangSheetLabelFontSizeValid
+                  !isGangSheetLabelFontSizeValid ||
+                  !isGangSheetPricingCutoffValid ||
+                  !isGangSheetSmallTierPriceValid ||
+                  !isGangSheetLargeTierPriceValid ||
+                  !isGangSheetSmallTierWeightValid ||
+                  !isGangSheetLargeTierWeightValid
                 }
                 form="show-queue-settings-form"
                 type="submit"
