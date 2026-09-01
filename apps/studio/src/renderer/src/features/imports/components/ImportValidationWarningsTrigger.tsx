@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { AlertTriangle, X } from "lucide-react";
+import { Info, X } from "lucide-react";
 
 import type { ImportPngWarning } from "@fresh-prints/shared/types/import/importIpc.types";
 
@@ -8,8 +8,8 @@ import { Button } from "../../../shared/components/Button";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
 import {
   formatImportValidationWarningMessage,
+  getImportValidationMessageClassName,
 } from "../utils/importValidationWarningDisplay";
-import { getImportWarningMessageClassName } from "../utils/importPrintSizeDisplay";
 
 interface ImportValidationWarningsTriggerProps {
   fileLabel?: string;
@@ -26,18 +26,18 @@ export function ImportValidationWarningsTrigger({
     return null;
   }
 
-  const modalTitle = fileLabel ? `Validation messages · ${fileLabel}` : "Validation messages";
+  const modalTitle = fileLabel ? `Import details · ${fileLabel}` : "Import details";
 
   return (
     <>
       <button
-        aria-label={`${warnings.length} validation message${warnings.length === 1 ? "" : "s"}. Open details.`}
-        className="import-validation-warnings-trigger"
+        aria-label={`${warnings.length} import detail${warnings.length === 1 ? "" : "s"}. Open details.`}
+        className="import-validation-warnings-trigger import-validation-warnings-trigger-info"
         onClick={() => setIsOpen(true)}
-        title={`${warnings.length} validation message${warnings.length === 1 ? "" : "s"}`}
+        title={`${warnings.length} import detail${warnings.length === 1 ? "" : "s"}`}
         type="button"
       >
-        <AlertTriangle aria-hidden="true" size={14} strokeWidth={2.2} />
+        <Info aria-hidden="true" size={14} strokeWidth={2.2} />
         <span className="import-validation-warnings-trigger-count">{warnings.length}</span>
       </button>
 
@@ -45,16 +45,16 @@ export function ImportValidationWarningsTrigger({
         <div aria-modal="true" className="modal-overlay modal-overlay-blur" role="dialog">
           <Modal
             aria-labelledby="import-validation-warnings-title"
-            className="modal-panel-md import-validation-warnings-modal"
+            className="modal-panel-lg import-validation-warnings-modal"
           >
             <ModalHeader>
               <div>
-                <p className="eyebrow">Validation</p>
+                <p className="eyebrow">Import</p>
                 <h2 id="import-validation-warnings-title">{modalTitle}</h2>
               </div>
 
               <button
-                aria-label="Close validation messages"
+                aria-label="Close import details"
                 className="icon-button icon-button-md icon-button-ghost"
                 onClick={() => setIsOpen(false)}
                 type="button"
@@ -67,7 +67,7 @@ export function ImportValidationWarningsTrigger({
               <ul className="import-validation-warnings-modal-list">
                 {warnings.map((warning, index) => (
                   <li
-                    className={getImportWarningMessageClassName(warning.code)}
+                    className={getImportValidationMessageClassName(warning.code)}
                     key={`${warning.code}-${index}`}
                   >
                     {formatImportValidationWarningMessage(warning)}
