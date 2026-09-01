@@ -991,9 +991,15 @@ Track Firestore Rules, Functions, indexes, Storage Rules, and Studio releases th
 | Date | Item | DEV deploy | Owner DEV QA | Production |
 |------|------|------------|--------------|------------|
 | 2026-09-01 | **AI Review Approve/Reject Rules** — allow `artworkBackgroundSource` on `catalogMetadataOnlyUpdate` (`firestore.rules`) | `firebase deploy --only firestore:rules --project fresh-prints-dev` — **done** | **PASS** (Approve + Reject) | **Pending** — include in next owner-authorized Rules promotion |
+| 2026-09-01 | **WS3 Show Queue gang-sheet pricing/weight fields** — `settings/showQueue` allowlist (`firestore.rules` @ `40fe7fd0`) | `firebase deploy --only firestore:rules --project fresh-prints-dev` — **done** | WS3 **pending** | **Pending** — include in next owner-authorized Rules promotion |
+| 2026-09-01 | **Internal Gang Sheet settings Rules** — `settings/internalGangSheet` + `internalGangSheetSettingsFieldsValid` (`firestore.rules`; git aligned with live DEV) | `firebase deploy --only firestore:rules --project fresh-prints-dev` — **done** (no redeploy on git alignment) | WS3 **pending** (owner retry save) | **Pending** — include in coordinated Rules promotion |
 | 2026-09-01 | **Pre–Smart Profiling managed goal** (WS1–WS3) — Portal + Studio + Functions deltas on `development` | Partial (WS2 Functions on DEV) | WS1 **PASS**, WS2 **PASS**, WS3 **pending** | **Not authorized** — separate promotion after managed goal signoff |
 
-Deploy record (AI Review Rules): `docs/workflow/reviews/2026-09-01-ai-review-artwork-background-source-rules-dev-deploy-record.md`
+Deploy record (AI Review Rules): `docs/workflow/reviews/2026-09-01-ai-review-artwork-background-source-rules-dev-deploy-record.md` — corrective source commit `bea7f18b`.
+
+Deploy record (WS3 Show Queue pricing Rules): `docs/workflow/reviews/2026-09-01-pre-smart-profiling-ws3-configurable-gang-sheet-pricing-dev-rules-deploy-record.md` — source `40fe7fd0`.
+
+Deploy record (Internal Gang Sheet settings Rules): `docs/workflow/reviews/2026-09-01-pre-smart-profiling-internal-gang-sheet-settings-dev-rules-deploy-record.md` — live DEV deploy from working tree; git aligned in commit `fix: commit internal gang sheet settings rules`.
 
 ---
 

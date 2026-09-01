@@ -2241,11 +2241,52 @@ service cloud.firestore {
         && data.updatedAt is timestamp;
     }
 
+    function internalGangSheetSettingsFieldsValid(data) {
+      return data.keys().hasOnly([
+          "gangSheetWidthInches",
+          "gangSheetSideMarginInches",
+          "gangSheetTopBottomMarginInches",
+          "gangSheetGutterInches",
+          "gangSheetMaxLengthInches",
+          "gangSheetLabelFontSizePx",
+          "gangSheetSectionPriceCutoffInches",
+          "gangSheetSmallTierPriceUsd",
+          "gangSheetSmallTierWeightOz",
+          "gangSheetLargeTierPriceUsd",
+          "gangSheetLargeTierWeightOz",
+          "updatedBy",
+          "updatedAt"
+        ])
+        && isOptionalNumber(data, "gangSheetWidthInches")
+        && isOptionalNumber(data, "gangSheetSideMarginInches")
+        && isOptionalNumber(data, "gangSheetTopBottomMarginInches")
+        && isOptionalNumber(data, "gangSheetGutterInches")
+        && isOptionalNumber(data, "gangSheetMaxLengthInches")
+        && isOptionalNumber(data, "gangSheetLabelFontSizePx")
+        && isOptionalNumber(data, "gangSheetSectionPriceCutoffInches")
+        && isOptionalNumber(data, "gangSheetSmallTierPriceUsd")
+        && isOptionalNumber(data, "gangSheetSmallTierWeightOz")
+        && isOptionalNumber(data, "gangSheetLargeTierPriceUsd")
+        && isOptionalNumber(data, "gangSheetLargeTierWeightOz")
+        && isOptionalString(data, "updatedBy")
+        && data.updatedAt is timestamp;
+    }
+
     match /settings/showQueue {
       allow read: if isStaff();
 
       allow create, update: if isOwnerOrAdmin()
         && showQueueSettingsFieldsValid(request.resource.data)
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      allow delete: if false;
+    }
+
+    match /settings/internalGangSheet {
+      allow read: if isStaff();
+
+      allow create, update: if isOwnerOrAdmin()
+        && internalGangSheetSettingsFieldsValid(request.resource.data)
         && request.resource.data.updatedBy == request.auth.uid;
 
       allow delete: if false;
