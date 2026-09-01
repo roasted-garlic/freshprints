@@ -62,6 +62,7 @@ import {
 } from "@fresh-prints/shared/utils/staffGangSheet";
 import type { ShowProductionResolutionKind } from "@fresh-prints/shared/types/showProductionRecovery/showProductionRecovery.types";
 import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/showAllocation.types";
+import type { ShowAllocationStatus } from "@fresh-prints/shared/types/showAllocation/showAllocation.enums";
 import { findMatchingUpcomingShow } from "../utils/upcomingShowUpsert";
 import { canStartShowPrinting, canAllocatePrintRequestToShow, PAST_SHOW_READ_ONLY_MESSAGE } from "../utils/groupShowsByUpcomingPast";
 import { resolvePrintRequestShowTransferMode, type PrintRequestShowTransferMode } from "@fresh-prints/shared/utils/printRequestShowTransfer";

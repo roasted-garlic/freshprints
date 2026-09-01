@@ -53,4 +53,17 @@ describe("buildShowQueueDeepLinkPath", () => {
     assert.match(path, /requestId=pr-2/);
     assert.match(path, /tab=current/);
   });
+
+  it("uses showSource when show metadata is not loaded yet", () => {
+    const path = buildShowQueueDeepLinkPath({
+      showId: "sheet-2",
+      printRequestId: "pr-3",
+      showSource: "staff_gang_sheet",
+    });
+
+    assert.match(path, /^\/internal-gang-sheets\?/);
+    assert.match(path, /showId=sheet-2/);
+    assert.match(path, /requestId=pr-3/);
+    assert.match(path, /tab=current/);
+  });
 });
