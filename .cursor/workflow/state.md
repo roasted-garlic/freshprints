@@ -3,12 +3,12 @@
 | Field | Value |
 |-------|-------|
 | Status | **ACTIVE** |
-| Phase | **TEST / SIGNOFF PENDING** |
-| Current goal | `pre-smart-profiling-print-request-and-gang-sheet-polish` — Bucket 7 reconciled; final signoff **NOT DONE** |
+| Phase | **SIGNOFF PREP — AWAITING OWNER FINAL SIGNOFF** |
+| Current goal | `pre-smart-profiling-print-request-and-gang-sheet-polish` |
+| Test report | `docs/workflow/reviews/2026-09-01-pre-smart-profiling-print-request-and-gang-sheet-polish-final-test-report.md` — **passed_with_notes** |
+| Signoff prep | `docs/workflow/reviews/2026-09-01-pre-smart-profiling-print-request-and-gang-sheet-polish-signoff.md` — **AWAITING OWNER** |
 | Queued goal | `ai-review-stuck-processing-recovery` — plan + review approved; **implement BLOCKED** |
-| Plan (queued) | `docs/workflow/plans/2026-09-01-ai-review-stuck-processing-recovery-plan.md` |
-| Review (queued) | **approved** — `docs/workflow/reviews/2026-09-01-ai-review-stuck-processing-recovery-review.md` |
-| Deferred follow-up | `show-queue-batch-allocation-performance` — `docs/workflow/plans/2026-09-01-show-queue-batch-allocation-performance-deferred-plan.md` |
+| Deferred follow-up | `show-queue-batch-allocation-performance` — plan only |
 | Production | **NOT AUTHORIZED** |
 | Smart Profiling | **PARKED** |
 | Last updated | 2026-09-01 |
@@ -18,44 +18,39 @@
 **Do not implement** `ai-review-stuck-processing-recovery` until:
 
 1. `pre-smart-profiling-print-request-and-gang-sheet-polish` final signoff **DONE**
-2. Bucket 7 uncommitted source resolved per owner decision
-3. Workflow state returns to **IDLE** or explicit owner override to start implement
+2. Workflow state returns to **IDLE**
 
-## Prior goal status (unchanged)
+## Workstream status
 
-| WS | Owner DEV QA |
-|----|--------------|
-| WS1 | **PASS** |
-| WS2 | **PASS** |
-| WS3 | **PASS** |
+| WS | Owner DEV QA | Final regression |
+|----|--------------|------------------|
+| WS1 | **PASS** | 21/21 focused tests pass |
+| WS2 | **PASS** | 18/18 focused tests pass |
+| WS3 | **PASS** | 35/35 + compositor 3/3 pass |
 
-Signoff blockers for prior goal:
+## Signoff blockers
 
-1. ~~Uncommitted Bucket 7 managed-goal source~~ — **reconciled 2026-09-01** (commits `f1989cf9`, `68db625d`, `3873ab4f`)
-2. Final regression test pass + signoff documentation on reconciled stack
-
-## Next goal summary
-
-Expose **Retry Processing** on Processing tab when AI stage is **waiting** and `updatedAt` ≥ **10 min** stale threshold; reuse `enqueueForProcessing` → server `enqueue.stale_requeued`. Studio-only V1; no Functions deploy for QA.
+1. Owner final signoff on signoff prep document
+2. Reviewed PR merge to `origin/development` (in progress — see PR)
 
 ## Allowed actions
 
-- Read docs / workflow state
-- Close prior goal signoff (when blockers cleared)
-- **Implement** stuck-processing recovery (after prerequisite gate only)
+- Owner final signoff response
+- PR review / merge (human)
+- Mark DONE after owner signoff + PR landed
 
 ## Forbidden actions
 
-- Implement stuck-processing recovery **before** prior signoff
-- Production deploy
+- Implement stuck-processing recovery
+- Implement batch allocation
+- Production / DEV deploy
 - Smart Profiling
-- Touch production stuck design
-- Broaden `resetAiEnrichmentForProcessing` in V1
+- Mark DONE without owner confirmation
 
 ## Decision log
 
 | Date | Decision |
 |------|----------|
+| 2026-09-01 | Final regression **passed_with_notes**; signoff prep created; PR path initiated |
 | 2026-09-01 | Bucket 7 reconciled: WS3 drift removed; Internal Gang Sheet committed; batch allocation deferred |
-| 2026-09-01 | New goal `ai-review-stuck-processing-recovery` plan + review **approved**; implement queued after prior signoff |
-| 2026-09-01 | V1: Studio-only stale retry via existing enqueue path; 10 min threshold; no scheduled recovery |
+| 2026-09-01 | `ai-review-stuck-processing-recovery` plan + review approved; implement queued after prior signoff |
