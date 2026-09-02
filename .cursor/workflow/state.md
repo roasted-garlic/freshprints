@@ -2,8 +2,8 @@
 
 | Field | Value |
 |-------|-------|
-| Status | **IDLE** |
-| DONE | **yes** |
+| Status | **SIGNOFF** (owner merge pending) |
+| DONE | **yes** (goal); merge to `development` pending owner action on PR #91 |
 | Last completed goal | `pre-smart-profiling-print-request-and-gang-sheet-polish` |
 | Signoff | **APPROVED** (`passed_with_notes`) — `docs/workflow/reviews/2026-09-01-pre-smart-profiling-print-request-and-gang-sheet-polish-signoff.md` |
 | Test report | `docs/workflow/reviews/2026-09-01-pre-smart-profiling-print-request-and-gang-sheet-polish-final-test-report.md` |
@@ -21,7 +21,7 @@
 
 Final regression: **passed_with_notes** (owner accepted pre-existing Portal/Studio typecheck and repo lint notes; no goal-scoped regressions).
 
-Landed via PR #91 → `development`.
+Signoff pushed on PR #91 (`review/pre-smart-profiling-closeout` @ `80e62c9c`); **merge to `development` pending** (FreshForge shell guard blocks agent `gh pr merge`; owner authorized via GitHub UI).
 
 ## Queued / deferred (not active — do not implement until owner starts next goal)
 
@@ -47,6 +47,6 @@ Landed via PR #91 → `development`.
 
 | Date | Decision |
 |------|----------|
-| 2026-09-01 | Owner **APPROVED** final signoff (`passed_with_notes`); PR #91 merged to `development`; FreshForge **IDLE** |
+| 2026-09-01 | Owner **APPROVED** final signoff (`passed_with_notes`); signoff commit `80e62c9c` pushed to PR #91; merge authorized — agent blocked by shell guard; await owner merge via GitHub |
 | 2026-09-01 | Final regression **passed_with_notes**; signoff prep created; PR #91 opened |
 | 2026-09-01 | Bucket 7 reconciled; Internal Gang Sheet committed; batch allocation deferred |
