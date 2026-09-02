@@ -6,14 +6,15 @@
 | DONE | **yes** |
 | Current Mode | managed-phase (closed) |
 | Current Phase | **signoff** (complete) |
-| Active Goal | none (last: `studio-delete-first-action-latency`) |
+| Active Goal | none (last: `portal-upcoming-shows-calendar-polish-and-performance`) |
 | Plan | complete |
 | Review | approved |
 | Implement | complete |
 | Test | passed_with_notes |
-| DEV Deploy | complete (11 deletion + 2 recovery) |
-| Owner QA | **PASS** (delete latency + recovery impact preview) |
-| Signoff | **approved** — `docs/workflow/reviews/2026-09-02-studio-delete-first-action-latency-signoff.md` |
+| Implementation Review | approved |
+| DEV Deploy | not_required (Portal-only; local QA) |
+| Owner QA | **PASS** |
+| Signoff | **approved** — `docs/workflow/reviews/2026-09-02-portal-upcoming-shows-calendar-polish-and-performance-signoff.md` |
 | Production | **NOT AUTHORIZED** |
 | Smart Profiling | **PARKED** |
 | Last updated | 2026-09-02 |
@@ -39,7 +40,7 @@
 |------|--------|
 | `show-queue-batch-allocation-performance` | **DEFERRED** |
 | Smart Profiling | **PARKED** |
-| Selective deletion `minInstances: 1` | Only if evidence after idle scale-to-zero |
+| `listPortalPublicShows` minInstances | Optional future — only if cold metadata still unacceptable after shell-first |
 
 ## Next Required Step
 
@@ -49,9 +50,7 @@ None — goal closed. Await owner direction for next goal.
 
 | Date | Decision |
 |------|----------|
-| 2026-09-02 | Owner directed **COMMIT + PUSH CLOSEOUT** to `development` (non-force) |
-| 2026-09-02 | Owner QA **PASS** for delete first-action latency **and** Mark as Fulfilled / recovery impact preview → Signoff **approved**; workflow **DONE** |
-| 2026-09-02 | Owner **AUTHORIZE DEV DEPLOY** — recovery warmup (2 Functions) |
-| 2026-09-02 | Owner **AUTHORIZE DEV DEPLOY** — deletion warmup (11 Functions) |
-| 2026-09-02 | Owner **APPROVE PURGE WARMUP AMENDMENT** |
-| 2026-09-02 | Priority audit: Internal Gang Sheets via Show services; Library archive N/A |
+| 2026-09-02 | Owner QA **PASS** → Signoff **approved**; COMMIT + PUSH CLOSEOUT to `development` (non-force); Production NOT AUTHORIZED |
+| 2026-09-02 | Owner QA visual corrective: soften upcoming green; today strongest; today+upcoming layered |
+| 2026-09-02 | Implement complete; SWR via cache snapshot; no Functions/minInstances |
+| 2026-09-02 | Formal Review approved; Plan → Formal Review → Implement → Test → Owner QA → Signoff |
