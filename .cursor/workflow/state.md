@@ -5,12 +5,10 @@
 | Status | **IDLE** |
 | DONE | **yes** |
 | Current Mode | idle |
-| Last completed goal | `studio-history-newest-first-ordering` |
-| Completed amendment | `print-request-pocket-fullsize-counts` |
-| Owner QA History | **PASS** |
-| Owner QA Pocket / Full Size corrective | **PASS** |
-| Signoff | **APPROVED** — `docs/workflow/reviews/2026-09-02-studio-history-newest-first-ordering-signoff.md` |
-| Final test report | `docs/workflow/reviews/2026-09-02-studio-history-newest-first-ordering-final-test-report.md` |
+| Last completed goal | `studio-companion-design-card-title-truncation` |
+| Owner QA | **PASS** — `docs/workflow/reviews/2026-09-02-studio-companion-design-card-title-truncation-owner-qa.md` |
+| Signoff | **APPROVED** — `docs/workflow/reviews/2026-09-02-studio-companion-design-card-title-truncation-signoff.md` |
+| Final test report | `docs/workflow/reviews/2026-09-02-studio-companion-design-card-title-truncation-final-test-report.md` |
 | Production | **NOT AUTHORIZED** |
 | Smart Profiling | **PARKED** |
 | `show-queue-batch-allocation-performance` | **DEFERRED** |
@@ -39,7 +37,7 @@
 
 | Date | Decision |
 |------|----------|
-| 2026-09-02 | Combined closeout: Owner QA History **PASS** + Pocket/Full Size corrective **PASS**; signoff **APPROVED**; push `development` only; production **NOT AUTHORIZED** |
-| 2026-09-02 | Clip fix: outer scroll on `--print-requests`; no nested `.print-requests-main` scroll |
-| 2026-09-02 | WIDTH-ONLY operational counts; pricing both-dim unchanged |
-| 2026-09-02 | History newest-first via `printFinishedAt` DESC; Current/Past/Upcoming locked |
+| 2026-09-02 | Owner QA Companion title truncation **PASS**; signoff **APPROVED**; push `development` only; production **NOT AUTHORIZED** |
+| 2026-09-02 | CSS shrink-chain: body stretch + title `flex:1; min-width:0`; native `title` retained |
+| 2026-09-02 | Final contract 6/6 PASS; artworkPlacement 2 pre-existing fails documented |
+| 2026-09-02 | Prior goal `studio-history-newest-first-ordering` signed off |
