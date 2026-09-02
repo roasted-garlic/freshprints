@@ -19,8 +19,9 @@
 | Queued next goal | `portal-editing-request-parks-current-draft` (**do not auto-start**) |
 | Queued after that | cross-app lightbox Previous/Next |
 | Last updated | 2026-09-02 |
-| Last Completed Step | Signoff + commits; push `development` pending |
+| Last Completed Step | Signoff + commit + push `development` — HEAD == origin/development |
 | Application commit | `61590e9b8950f1d3eb447d4e9a064d3e3aa3bfab` |
+| Docs commit | `eee01b15f9de1f93c1ee146908ae97ac08885482` |
 
 ## Artifacts (last goal)
 
