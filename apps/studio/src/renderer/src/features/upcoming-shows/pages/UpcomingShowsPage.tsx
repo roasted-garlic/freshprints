@@ -28,6 +28,10 @@ import { resolveGangSheetSectionPricingFromSettings,
   isValidGangSheetTierWeightOz,
   MAX_GANG_SHEET_SECTION_PRICE_CUTOFF_INCHES,
 } from "@fresh-prints/shared/constants/gangSheetSectionPricingSettings.constants";
+import {
+  formatPocketFullSizeCountsLabel,
+  resolvePrintRequestPocketFullSizeCounts,
+} from "@fresh-prints/shared/utils/printRequestPocketFullSizeCounts";
 import { upcomingShowService } from "../services/upcomingShowService";
 import type { GangSheetLayoutAndPricingSettingsInput } from "../services/gangSheetSettingsFields";
 import { UpcomingShowDeletionDialog } from "../components/UpcomingShowDeletionDialog";
@@ -89,7 +93,10 @@ import {
   PAST_SHOW_READ_ONLY_MESSAGE,
   resolveVisibleShowSelection,
 } from "../utils/groupShowsByUpcomingPast";
-import { sortPastShowsForDisplay } from "../utils/upcomingShowListSort";
+import {
+  sortPastShowsForDisplay,
+  sortStaffGangSheetHistoryForDisplay,
+} from "../utils/upcomingShowListSort";
 import { parseWhatnotShowUrl, isDevOverrideShowUrlSentinel } from "@fresh-prints/shared/utils/whatnotShowUrl";
 import { parseWhatnotShowBaseUrl } from "@fresh-prints/shared/utils/whatnotShowBaseUrl";
 import { assessShowCapacity } from "@fresh-prints/shared/utils/showCapacity";
@@ -518,7 +525,8 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
         history.push(show);
       }
     }
-    return { current, history };
+    // History only — Current keeps partition order (same as pre-sort behavior).
+    return { current, history: sortStaffGangSheetHistoryForDisplay(history) };
   }, [surfaceShows]);
 
   const visibleShows =
@@ -2304,6 +2312,17 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                           ? printRequestListKindFromIsInternal(matchedRequest.isInternal)
                           : undefined,
                       });
+                      const sizeClassLabel = formatPocketFullSizeCountsLabel(
+                        resolvePrintRequestPocketFullSizeCounts(
+                          group.allocations.map((allocation) => ({
+                            printWidthInches: allocation.printWidthInches,
+                            printHeightInches: allocation.printHeightInches,
+                            quantity: allocation.allocatedQuantity,
+                            status: allocation.status,
+                          })),
+                          gangSheetLayoutSettings.sectionPricing.sizeCutoffInches,
+                        ),
+                      );
 
                       return (
                         <div
@@ -2319,6 +2338,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                             <p>
                               {group.allocations.length} Design{group.allocations.length === 1 ? "" : "s"} |{" "}
                               {totalAllocated} Item{totalAllocated === 1 ? "" : "s"}
+                              {sizeClassLabel ? ` | ${sizeClassLabel}` : ""}
                             </p>
                           </div>
                           <div className="show-allocation-row-actions">

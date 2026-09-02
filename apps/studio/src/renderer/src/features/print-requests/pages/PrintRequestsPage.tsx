@@ -27,6 +27,14 @@ import { usePrintRequests } from "../hooks/usePrintRequests";
 import { useReadyDesignsForSelection } from "../hooks/useReadyDesignsForSelection";
 import { PrintRequestItemCard } from "../components/PrintRequestItemCard";
 import { useStandardPrintSizesSettings } from "../../settings/hooks/useStandardPrintSizesSettings";
+import { useShowQueueSettings } from "../../upcoming-shows/hooks/useShowQueueSettings";
+import { useInternalGangSheetSettings } from "../../upcoming-shows/hooks/useInternalGangSheetSettings";
+import { resolveGangSheetSectionPricingFromSettings } from "@fresh-prints/shared/constants/gangSheetSectionPricingSettings.constants";
+import {
+  formatPocketFullSizeCountsLabel,
+  resolvePrintRequestPocketFullSizeCounts,
+} from "@fresh-prints/shared/utils/printRequestPocketFullSizeCounts";
+import { buildPrintRequestItemSummaries } from "../utils/printRequestQueryPlanning";
 import { AddToShowModal } from "../components/AddToShowModal";
 import { TransferPrintRequestToShowModal } from "../components/TransferPrintRequestToShowModal";
 import { formatPrintRequestShowTransferActionLabel, resolvePrintRequestShowTransferMode } from "@fresh-prints/shared/utils/printRequestShowTransfer";
@@ -214,6 +222,24 @@ function formatTotalQuantityLabel(quantity: number): string {
   return `${quantity} total qty`;
 }
 
+function emptyPrintRequestItemSummary(): {
+  totalQuantity: number;
+  uniqueDesignCount: number;
+  sizeClassRows: Array<{ printWidthInches: number; quantity: number }>;
+} {
+  return { totalQuantity: 0, uniqueDesignCount: 0, sizeClassRows: [] };
+}
+
+function summarizeItemsForRequest(printRequestId: string, items: PrintRequestItem[]) {
+  return (
+    buildPrintRequestItemSummaries(items)[printRequestId] ?? {
+      totalQuantity: 0,
+      uniqueDesignCount: 0,
+      sizeClassRows: [],
+    }
+  );
+}
+
 function resolveSectionShowCapacity(
   section: PrintRequestShowSection<{ id: string; scheduledStartAt?: unknown; allocatedQuantity?: number; maxTotalQuantity?: number }>,
   allocationsByRequestId: Readonly<Record<string, readonly ShowAllocation[]>>,
@@ -280,6 +306,14 @@ export function PrintRequestsPage() {
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { settings: standardPrintSizesSettings } = useStandardPrintSizesSettings();
+  const showQueueSettings = useShowQueueSettings();
+  const internalGangSheetSettings = useInternalGangSheetSettings();
+  const showQueueSizeCutoffInches = resolveGangSheetSectionPricingFromSettings(
+    showQueueSettings.settings,
+  ).sizeCutoffInches;
+  const internalSizeCutoffInches = resolveGangSheetSectionPricingFromSettings(
+    internalGangSheetSettings.settings,
+  ).sizeCutoffInches;
   const tabParam = searchParams.get(PRINT_REQUEST_TAB_QUERY_PARAM);
   const kindParam = searchParams.get(PRINT_REQUEST_KIND_QUERY_PARAM);
   const selectedRequestIdParam = searchParams.get(PRINT_REQUEST_ID_QUERY_PARAM);
@@ -1250,13 +1284,10 @@ export function PrintRequestsPage() {
       const nextItems = requestItems.map((existing) =>
         existing.id === updatedItem.id ? updatedItem : existing,
       );
-      const uniqueDesignIds = new Set(
-        nextItems.flatMap((existing) => (existing.designId ? [existing.designId] : [])),
+      patchSummaryLocally(
+        visibleSelectedRequest.id,
+        summarizeItemsForRequest(visibleSelectedRequest.id, nextItems),
       );
-      patchSummaryLocally(visibleSelectedRequest.id, {
-        totalQuantity: nextItems.reduce((sum, existing) => sum + existing.quantity, 0),
-        uniqueDesignCount: uniqueDesignIds.size,
-      });
     }
   }, [patchSummaryLocally, requestItems, replaceRequestItem, user, visibleSelectedRequest]);
 
@@ -1302,13 +1333,10 @@ export function PrintRequestsPage() {
       removeRequestItem(item.id);
       if (visibleSelectedRequest) {
         const nextItems = requestItems.filter((existing) => existing.id !== item.id);
-        const uniqueDesignIds = new Set(
-          nextItems.flatMap((existing) => (existing.designId ? [existing.designId] : [])),
+        patchSummaryLocally(
+          visibleSelectedRequest.id,
+          summarizeItemsForRequest(visibleSelectedRequest.id, nextItems),
         );
-        patchSummaryLocally(visibleSelectedRequest.id, {
-          totalQuantity: nextItems.reduce((sum, existing) => sum + existing.quantity, 0),
-          uniqueDesignCount: uniqueDesignIds.size,
-        });
         patchRequestLocally(visibleSelectedRequest.id, {
           itemCount: Math.max(0, visibleSelectedRequest.itemCount - 1),
         });
@@ -1336,10 +1364,7 @@ export function PrintRequestsPage() {
         await printRequestService.removePrintRequestItem(user, item.id);
         removeRequestItem(item.id);
       }
-      patchSummaryLocally(visibleSelectedRequest.id, {
-        totalQuantity: 0,
-        uniqueDesignCount: 0,
-      });
+      patchSummaryLocally(visibleSelectedRequest.id, emptyPrintRequestItemSummary());
       patchRequestLocally(visibleSelectedRequest.id, { itemCount: 0 });
       setSuccessMessage("All designs removed from request.");
       setSuccessAlertSeed((current) => current + 1);
@@ -1372,13 +1397,10 @@ export function PrintRequestsPage() {
       insertRequestItemAfter(item.id, createdItem);
       if (visibleSelectedRequest) {
         const nextItems = [...requestItems, createdItem];
-        const uniqueDesignIds = new Set(
-          nextItems.flatMap((existing) => (existing.designId ? [existing.designId] : [])),
+        patchSummaryLocally(
+          visibleSelectedRequest.id,
+          summarizeItemsForRequest(visibleSelectedRequest.id, nextItems),
         );
-        patchSummaryLocally(visibleSelectedRequest.id, {
-          totalQuantity: nextItems.reduce((sum, existing) => sum + existing.quantity, 0),
-          uniqueDesignCount: uniqueDesignIds.size,
-        });
         patchRequestLocally(visibleSelectedRequest.id, {
           itemCount: visibleSelectedRequest.itemCount + 1,
         });
@@ -1387,6 +1409,31 @@ export function PrintRequestsPage() {
       setActionError(formatWriteErrorMessage(error));
     }
   }
+
+  const selectedRequestSizeClassLabel = useMemo(() => {
+    if (!visibleSelectedRequest) {
+      return null;
+    }
+    const cutoffInches = visibleSelectedRequest.isInternal
+      ? internalSizeCutoffInches
+      : showQueueSizeCutoffInches;
+    return formatPocketFullSizeCountsLabel(
+      resolvePrintRequestPocketFullSizeCounts(
+        requestItems.map((item) => ({
+          printWidthInches: item.printWidthInches,
+          printHeightInches: item.printHeightInches,
+          quantity: item.quantity,
+          status: item.status,
+        })),
+        cutoffInches,
+      ),
+    );
+  }, [
+    internalSizeCutoffInches,
+    requestItems,
+    showQueueSizeCutoffInches,
+    visibleSelectedRequest,
+  ]);
 
   const openDesignLibrarySelection = useCallback(() => {
     if (!selectedRequest) {
@@ -1823,11 +1870,17 @@ export function PrintRequestsPage() {
                   ) : null}
                   {section.requests.map((request) => {
                 const isSelected = request.id === selectedRequestId;
-                const requestSummary = summariesByRequestId[request.id] ?? {
-                  totalQuantity: 0,
-                  uniqueDesignCount: 0,
-                };
+                const requestSummary = summariesByRequestId[request.id] ?? emptyPrintRequestItemSummary();
                 const extraShowCount = section.extraShowCountByRequestId[request.id] ?? 0;
+                const listCutoffInches = request.isInternal
+                  ? internalSizeCutoffInches
+                  : showQueueSizeCutoffInches;
+                const sizeClassLabel = formatPocketFullSizeCountsLabel(
+                  resolvePrintRequestPocketFullSizeCounts(
+                    requestSummary.sizeClassRows ?? [],
+                    listCutoffInches,
+                  ),
+                );
 
                 return (
                   <button
@@ -1872,6 +1925,9 @@ export function PrintRequestsPage() {
                     <div className="print-requests-request-card-counts">
                       <span>{formatDesignCountLabel(requestSummary.uniqueDesignCount)}</span>
                       <span>{formatTotalQuantityLabel(requestSummary.totalQuantity)}</span>
+                      {sizeClassLabel ? (
+                        <span className="print-requests-request-card-size-class">{sizeClassLabel}</span>
+                      ) : null}
                     </div>
                   </button>
                 );
@@ -1960,6 +2016,13 @@ export function PrintRequestsPage() {
                       {" | "}
                       Updated {formatTimestampLabel(visibleSelectedRequest.updatedAt)}
                     </p>
+                    {selectedRequestSizeClassLabel ? (
+                      <div className="print-requests-detail-size-class-row">
+                        <span className="print-requests-request-card-size-class">
+                          {selectedRequestSizeClassLabel}
+                        </span>
+                      </div>
+                    ) : null}
                   </div>
                   <div className="print-requests-detail-actions">
                     <div className="print-requests-detail-badges">

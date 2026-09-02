@@ -39,7 +39,7 @@ function source(
     requests,
     summariesByRequestId:
       options.summariesByRequestId ??
-      Object.fromEntries(requests.map((entry) => [entry.id, { totalQuantity: 1, uniqueDesignCount: 1 }])),
+      Object.fromEntries(requests.map((entry) => [entry.id, { totalQuantity: 1, uniqueDesignCount: 1, sizeClassRows: [] }])),
     hasMore: options.hasMore ?? false,
     isLoadingMore: false,
     loadMore: options.loadMore ?? (async () => undefined),
@@ -126,15 +126,19 @@ describe("Show Queue print-request sources", () => {
 
     const merged = mergeShowQueuePrintRequestSources([
       source("working", [queuedRequest], {
-        summariesByRequestId: { "queued-request": { totalQuantity: 1, uniqueDesignCount: 1 } },
+        summariesByRequestId: { "queued-request": { totalQuantity: 1, uniqueDesignCount: 1, sizeClassRows: [] } },
       }),
       source("queued", [queuedRequest], {
-        summariesByRequestId: { "queued-request": { totalQuantity: 5, uniqueDesignCount: 2 } },
+        summariesByRequestId: {
+          "queued-request": { totalQuantity: 5, uniqueDesignCount: 2, sizeClassRows: [] },
+        },
       }),
       source("printing", [queuedRequest], {
         // Processed last; must not win, since this source never admits this request (its
         // queueTab "queued" disagrees with this source's tab "printing").
-        summariesByRequestId: { "queued-request": { totalQuantity: 999, uniqueDesignCount: 999 } },
+        summariesByRequestId: {
+          "queued-request": { totalQuantity: 999, uniqueDesignCount: 999, sizeClassRows: [] },
+        },
       }),
     ]);
 
@@ -142,6 +146,7 @@ describe("Show Queue print-request sources", () => {
     assert.deepEqual(merged.summariesByRequestId["queued-request"], {
       totalQuantity: 5,
       uniqueDesignCount: 2,
+      sizeClassRows: [],
     });
   });
 
@@ -207,7 +212,7 @@ describe("Show Queue print-request sources", () => {
       request("attached", "working"),
     ];
     const summariesByRequestId = Object.fromEntries(
-      requests.map((entry) => [entry.id, { totalQuantity: 1, uniqueDesignCount: 1 }]),
+      requests.map((entry) => [entry.id, { totalQuantity: 1, uniqueDesignCount: 1, sizeClassRows: [] }]),
     );
     const allocationTotalsByRequestId = {
       printed: {
@@ -234,7 +239,7 @@ describe("Show Queue print-request sources", () => {
       buildShowQueuePrintRequestOptions({
         requests,
         summariesByRequestId: {
-          "queued-full": { totalQuantity: 6, uniqueDesignCount: 1 },
+          "queued-full": { totalQuantity: 6, uniqueDesignCount: 1, sizeClassRows: [] },
         },
         allocationTotalsByRequestId: {
           "queued-full": {

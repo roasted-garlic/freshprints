@@ -136,9 +136,53 @@ describe("print request item summaries", () => {
     ]);
 
     assert.deepEqual(summaries, {
-      "request-1": { totalQuantity: 9, uniqueDesignCount: 2 },
-      "request-2": { totalQuantity: 1, uniqueDesignCount: 1 },
+      "request-1": {
+        totalQuantity: 9,
+        uniqueDesignCount: 2,
+        sizeClassRows: [],
+      },
+      "request-2": {
+        totalQuantity: 1,
+        uniqueDesignCount: 1,
+        sizeClassRows: [],
+      },
     });
+  });
+
+  it("collects sizeClassRows only for eligible printable items", () => {
+    const summaries = buildPrintRequestItemSummaries([
+      buildItem({
+        id: "item-1",
+        printRequestId: "request-1",
+        designId: "design-1",
+        quantity: 2,
+      }),
+      {
+        ...buildItem({
+          id: "item-2",
+          printRequestId: "request-1",
+          designId: "design-2",
+          quantity: 3,
+        }),
+        printWidthInches: 4,
+        printHeightInches: 4,
+      },
+      {
+        ...buildItem({
+          id: "item-3",
+          printRequestId: "request-1",
+          designId: "design-3",
+          quantity: 1,
+        }),
+        printWidthInches: 6,
+        printHeightInches: 3,
+        status: "canceled",
+      },
+    ]);
+
+    assert.deepEqual(summaries["request-1"]?.sizeClassRows, [
+      { printWidthInches: 4, quantity: 3 },
+    ]);
   });
 
   it("uses non-colliding stable identities for catalog, upload, and malformed legacy items", () => {
@@ -164,6 +208,7 @@ describe("print request item summaries", () => {
     assert.deepEqual(summaries["request-1"], {
       totalQuantity: 10,
       uniqueDesignCount: 3,
+      sizeClassRows: [],
     });
   });
 });

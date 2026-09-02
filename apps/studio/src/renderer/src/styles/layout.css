@@ -123,6 +123,16 @@
   overflow: hidden;
 }
 
+.page-content-area--print-requests {
+  /*
+   * Match Internal Gang Sheets (/internal-gang-sheets): outer .page-content-area scroll.
+   * Nested .print-requests-main scroll was removed; keeping overflow:hidden here clipped
+   * the item grid with no scrollbar.
+   */
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
 .page-content-area--print-requests > .page-layout.page-layout-shell,
 .page-content-area--show-queue > .page-layout.page-layout-shell {
   display: flex;
@@ -131,6 +141,14 @@
   height: 100%;
   min-height: 0;
   overflow: hidden;
+}
+
+.page-content-area--print-requests > .page-layout.page-layout-shell {
+  /* Grow with request detail content so the content-area scrollbar can reach all items. */
+  flex: 0 0 auto;
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
 }
 
 .firebase-connection-card {

@@ -53,6 +53,14 @@ export interface CustomerListQueryOptions {
 export interface PrintRequestItemSummary {
   totalQuantity: number;
   uniqueDesignCount: number;
+  /**
+   * Eligible printable rows for width-only Pocket / Full Size counts (valid width + qty; excludes canceled).
+   * Counts are derived with the active context cutoff — not stored as fixed totals.
+   */
+  sizeClassRows: Array<{
+    printWidthInches: number;
+    quantity: number;
+  }>;
 }
 
 function countDefinedRequestFilters(options: PrintRequestListQueryOptions): number {
@@ -204,6 +212,10 @@ export function buildPrintRequestItemSummaries(
 ): Record<string, PrintRequestItemSummary> {
   const designIdsByRequestId = new Map<string, Set<string>>();
   const totalQuantityByRequestId = new Map<string, number>();
+  const sizeClassRowsByRequestId = new Map<
+    string,
+    Array<{ printWidthInches: number; quantity: number }>
+  >();
 
   for (const item of items) {
     if (!designIdsByRequestId.has(item.printRequestId)) {
@@ -219,6 +231,22 @@ export function buildPrintRequestItemSummaries(
       item.printRequestId,
       (totalQuantityByRequestId.get(item.printRequestId) ?? 0) + quantity,
     );
+
+    if (
+      item.status !== "canceled" &&
+      Number.isFinite(item.quantity) &&
+      item.quantity > 0 &&
+      typeof item.printWidthInches === "number" &&
+      Number.isFinite(item.printWidthInches) &&
+      item.printWidthInches > 0
+    ) {
+      const rows = sizeClassRowsByRequestId.get(item.printRequestId) ?? [];
+      rows.push({
+        printWidthInches: item.printWidthInches,
+        quantity: item.quantity,
+      });
+      sizeClassRowsByRequestId.set(item.printRequestId, rows);
+    }
   }
 
   return Object.fromEntries(
@@ -227,6 +255,7 @@ export function buildPrintRequestItemSummaries(
       {
         totalQuantity: totalQuantityByRequestId.get(printRequestId) ?? 0,
         uniqueDesignCount: designIds.size,
+        sizeClassRows: sizeClassRowsByRequestId.get(printRequestId) ?? [],
       },
     ]),
   );
