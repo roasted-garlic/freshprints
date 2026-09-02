@@ -2,71 +2,51 @@
 
 | Field | Value |
 |-------|-------|
-| Status | **ACTIVE** |
-| Phase | **WS3 owner DEV QA IN PROGRESS** |
-| WS1 Owner QA | **PASS** |
-| WS2 Owner QA | **PASS** |
-| WS3 Owner QA | **IN PROGRESS** — owner retry Internal Gang Sheet settings + Tests A–G |
-| Production | **NOT AUTHORIZED** |
+| Status | **SIGNOFF** (owner merge pending) |
+| DONE | **yes** (goal); merge to `development` pending owner action on PR #91 |
+| Last completed goal | `pre-smart-profiling-print-request-and-gang-sheet-polish` |
+| Signoff | **APPROVED** (`passed_with_notes`) — `docs/workflow/reviews/2026-09-01-pre-smart-profiling-print-request-and-gang-sheet-polish-signoff.md` |
+| Test report | `docs/workflow/reviews/2026-09-01-pre-smart-profiling-print-request-and-gang-sheet-polish-final-test-report.md` |
+| Production | **NOT AUTHORIZED** — coordinated promotion pending |
 | Smart Profiling | **PARKED** |
-| Managed goal signoff | **NOT AUTHORIZED** |
 | Last updated | 2026-09-01 |
 
-## Workstream summary
+## Last completed goal summary
 
-| WS | Scope | Owner DEV QA |
-|----|-------|--------------|
-| WS1 | Remove from Show & Edit | **PASS** |
-| WS2 | Custom Request Final Artwork | **PASS** |
-| WS3 | Gang-sheet configurable price + weight tiers (+ Internal Gang Sheet settings split) | **IN PROGRESS** |
+| WS | Status |
+|----|--------|
+| WS1 | **PASS** |
+| WS2 | **PASS** |
+| WS3 | **PASS** |
 
-## WS3 amendment (2026-09-01)
+Final regression: **passed_with_notes** (owner accepted pre-existing Portal/Studio typecheck and repo lint notes; no goal-scoped regressions).
 
-Plan: `docs/workflow/plans/2026-09-01-pre-smart-profiling-ws3-configurable-gang-sheet-pricing-amendment.md`  
-Review: **approved**  
-Implementation + tests: **complete locally**  
-Implementation review: **approved**  
-Implementation SHA: `40fe7fd0`  
-Show Queue pricing Rules deploy: `docs/workflow/reviews/2026-09-01-pre-smart-profiling-ws3-configurable-gang-sheet-pricing-dev-rules-deploy-record.md` (@ `40fe7fd0`)  
-Internal Gang Sheet settings Rules deploy: `docs/workflow/reviews/2026-09-01-pre-smart-profiling-internal-gang-sheet-settings-dev-rules-deploy-record.md` — live DEV @ working-tree +41 lines; **git aligned** (no redeploy)  
-**STOP:** owner WS3 manual QA — do **not** sign off until WS3 PASS
+Signoff pushed on PR #91 (`review/pre-smart-profiling-closeout` @ `80e62c9c`); **merge to `development` pending** (FreshForge shell guard blocks agent `gh pr merge`; owner authorized via GitHub UI).
 
-Prior hard-coded WS3 (6″ / $1·$2 / flat 0.75 oz) superseded — do not record PASS on old model.
+## Queued / deferred (not active — do not implement until owner starts next goal)
 
-## Standalone corrective (not part of managed goal)
-
-| Item | Owner QA |
-|------|----------|
-| AI Review Approve/Reject Firestore Rules (`artworkBackgroundSource` on `catalogMetadataOnlyUpdate`) | **PASS** |
-
-Deploy record: `docs/workflow/reviews/2026-09-01-ai-review-artwork-background-source-rules-dev-deploy-record.md`
-
-DEV Rules alignment (2026-09-01): `docs/workflow/reviews/2026-09-01-dev-firestore-rules-alignment-drift-correction-deploy-record.md` — redeployed committed `56717c53` to remove unintended live `showAllocations` drift.
-
-## Next step
-
-Owner retries Internal Gang Sheet settings save on DEV (Rules deployed). Continue WS3 QA (Tests A–G). Reply `WS3 PASS`, `WS3 PASS WITH NOTES: …`, or `WS3 FAIL: …`.
+| Item | Status |
+|------|--------|
+| `ai-review-stuck-processing-recovery` | Plan + review **approved**; **ready as next small managed goal**; implementation **not started** |
+| `show-queue-batch-allocation-performance` | **DEFERRED** — plan only |
+| Smart Profiling | **PARKED** |
 
 ## Allowed actions
 
-- Owner WS3 manual QA
+- Owner selects next managed goal
 - Read docs / workflow state
-- Record WS3 result when owner replies
 
-## Forbidden actions
+## Forbidden actions (until new goal started)
 
-- Managed goal signoff (WS3 still in progress)
-- Production deploy
-- Smart Profiling implementation
-- Additional Firebase deploy without owner authorization
+- Implement `ai-review-stuck-processing-recovery` without new managed phase
+- Implement batch allocation without new managed phase
+- Smart Profiling work
+- Production deploy without separate authorization
 
 ## Decision log
 
 | Date | Decision |
 |------|----------|
-| 2026-09-01 | WS1 owner DEV QA **PASS** |
-| 2026-09-01 | WS2 owner DEV QA **PASS** (Final Artwork corrective verified) |
-| 2026-09-01 | AI Review Rules corrective owner QA **PASS** (standalone) |
-| 2026-09-01 | WS3 Show Queue pricing Rules deploy to `fresh-prints-dev` @ `40fe7fd0` |
-| 2026-09-01 | Internal Gang Sheet settings Rules deploy to `fresh-prints-dev` — working-tree +41 lines; git aligned to `development` (no redeploy) |
-| 2026-09-01 | DEV Firestore Rules alignment redeploy — remove unintended `showAllocations` drift; committed `56717c53` → `fresh-prints-dev` |
+| 2026-09-01 | Owner **APPROVED** final signoff (`passed_with_notes`); signoff commit `80e62c9c` pushed to PR #91; merge authorized — agent blocked by shell guard; await owner merge via GitHub |
+| 2026-09-01 | Final regression **passed_with_notes**; signoff prep created; PR #91 opened |
+| 2026-09-01 | Bucket 7 reconciled; Internal Gang Sheet committed; batch allocation deferred |

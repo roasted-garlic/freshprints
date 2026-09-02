@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import { DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG } from "@fresh-prints/shared/constants/gangSheetSectionPricingSettings.constants";
+
 import { validateGenerateGangSheetPngRequest } from "./exportRequestValidation";
 
 const baseImage = {
@@ -59,6 +61,35 @@ describe("validateGenerateGangSheetPngRequest", () => {
     assert.ok("request" in validated);
     assert.equal(validated.request.layoutMode, "customer_grouped_continuous");
     assert.deepEqual(validated.request.images[0]?.grouping, baseImage.grouping);
+  });
+
+  it("preserves sectionPricing for grouped gang sheet generates", () => {
+    const sectionPricing = {
+      ...DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG,
+      largeTierPriceUsd: 3,
+    };
+
+    const validated = validateGenerateGangSheetPngRequest({
+      ...basePayload,
+      layoutMode: "customer_grouped_continuous",
+      sectionPricing,
+    });
+
+    assert.ok("request" in validated);
+    assert.deepEqual(validated.request.sectionPricing, sectionPricing);
+  });
+
+  it("rejects invalid sectionPricing", () => {
+    const validated = validateGenerateGangSheetPngRequest({
+      ...basePayload,
+      layoutMode: "grouped_by_customer",
+      sectionPricing: {
+        ...DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG,
+        largeTierPriceUsd: -1,
+      },
+    });
+
+    assert.ok("error" in validated);
   });
 
   it("rejects grouped mode when any image is missing grouping metadata", () => {

@@ -1,3 +1,4 @@
+import type { PortalPublicShowSummary } from '@fresh-prints/shared/types/portal/listPortalPublicShows.types';
 import { CATALOG_DISCOVERY_RAIL_LIMIT } from '@fresh-prints/shared/utils/catalogDiscoveryRanking';
 import {
   findNextUpcomingShowWithDesigns,
@@ -6,23 +7,54 @@ import {
 import { formatShowDateTimeLabel } from '@fresh-prints/shared/utils/showDateTimeDisplay';
 
 import type { CatalogDesign } from '../../catalog/types/catalog.types';
-import { catalogService } from '../../catalog/services/catalogService';
 import { portalShowDesignsService } from '../services/portalShowDesignsService';
+import { readPortalShowCatalogDesignsCached } from '../services/portalShowCatalogDesignsReadCache';
+import { mapPortalShowCatalogDesignCardToCatalogDesign } from '../utils/mapPortalShowCatalogDesignCardToCatalogDesign';
 
-async function hydrateShowDesigns(showIds: readonly string[]): Promise<CatalogDesign[]> {
+async function listShowCatalogDesignsCached(showId: string) {
+  return readPortalShowCatalogDesignsCached(showId, () =>
+    portalShowDesignsService.listShowCatalogDesigns({ upcomingShowId: showId }),
+  );
+}
+
+async function hydrateShowDesigns(
+  showIds: readonly string[],
+  options?: { limit?: number },
+): Promise<CatalogDesign[]> {
   if (showIds.length === 0) {
     return [];
   }
 
-  const designLists = await Promise.all(
-    showIds.map(async (showId) => {
-      const result = await portalShowDesignsService.listShowCatalogDesigns({ upcomingShowId: showId });
-      return result.designs.map((design) => design.id);
-    }),
-  );
+  const limit = options?.limit ?? Number.POSITIVE_INFINITY;
+  const designs: CatalogDesign[] = [];
+  const seen = new Set<string>();
 
-  const uniqueDesignIds = [...new Set(designLists.flat())];
-  return catalogService.getReadyDesignsByIds(uniqueDesignIds);
+  for (const showId of showIds) {
+    if (designs.length >= limit) {
+      break;
+    }
+
+    const result = await listShowCatalogDesignsCached(showId);
+
+    for (const card of result.designs) {
+      if (seen.has(card.id)) {
+        continue;
+      }
+
+      const mapped = mapPortalShowCatalogDesignCardToCatalogDesign(card);
+      if (!mapped) {
+        continue;
+      }
+
+      seen.add(card.id);
+      designs.push(mapped);
+      if (designs.length >= limit) {
+        break;
+      }
+    }
+  }
+
+  return designs;
 }
 
 function takeRailDesigns(designs: readonly CatalogDesign[]): CatalogDesign[] {
@@ -44,7 +76,7 @@ export function designsForShowHomeRailPresentation(rail: PortalShowHomeRail): Ca
 }
 
 export async function buildPortalNextShowRailFromShows(
-  shows: readonly Awaited<ReturnType<typeof portalShowDesignsService.listPublicShows>>['shows'],
+  shows: readonly PortalPublicShowSummary[],
   now = new Date(),
 ): Promise<PortalShowHomeRail | null> {
   const nextShow = findNextUpcomingShowWithDesigns(shows, now);
@@ -52,7 +84,9 @@ export async function buildPortalNextShowRailFromShows(
     return null;
   }
 
-  const designs = takeRailDesigns(await hydrateShowDesigns([nextShow.id]));
+  const designs = takeRailDesigns(
+    await hydrateShowDesigns([nextShow.id], { limit: CATALOG_DISCOVERY_RAIL_LIMIT }),
+  );
   if (designs.length === 0) {
     return null;
   }
@@ -71,7 +105,7 @@ export async function buildPortalNextShowRailFromShows(
 }
 
 export async function buildPortalShowsThisWeekRailFromShows(
-  shows: readonly Awaited<ReturnType<typeof portalShowDesignsService.listPublicShows>>['shows'],
+  shows: readonly PortalPublicShowSummary[],
   now = new Date(),
 ): Promise<PortalShowHomeRail | null> {
   const weekShows = findShowsThisWeekWithDesigns(shows, now);
@@ -79,7 +113,11 @@ export async function buildPortalShowsThisWeekRailFromShows(
     return null;
   }
 
-  const designs = takeRailDesigns(await hydrateShowDesigns(weekShows.map((entry) => entry.id)));
+  const designs = takeRailDesigns(
+    await hydrateShowDesigns(weekShows.map((entry) => entry.id), {
+      limit: CATALOG_DISCOVERY_RAIL_LIMIT,
+    }),
+  );
   if (designs.length === 0) {
     return null;
   }

@@ -8,6 +8,12 @@ import type {
   GangSheetExportImageRequest,
 } from "@fresh-prints/shared/types/export/gangSheetExportIpc.types";
 import type { ExportShowZipRequest, ShowExportImageRequest } from "@fresh-prints/shared/types/export/showExportIpc.types";
+import {
+  isValidGangSheetSectionPriceCutoffInches,
+  isValidGangSheetTierPriceUsd,
+  isValidGangSheetTierWeightOz,
+  type GangSheetSectionPricingConfig,
+} from "@fresh-prints/shared/constants/gangSheetSectionPricingSettings.constants";
 import { importIpcFailure } from "../import/importIpcResponse";
 
 const ALLOWED_DOWNLOAD_URL_HOSTS = new Set(["firebasestorage.googleapis.com"]);
@@ -145,6 +151,26 @@ function isGroupedGangSheetLayoutMode(
   return layoutMode === "grouped_by_customer" || layoutMode === "customer_grouped_continuous";
 }
 
+function isValidSectionPricing(value: unknown): value is GangSheetSectionPricingConfig {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const pricing = value as Partial<GangSheetSectionPricingConfig>;
+  return (
+    typeof pricing.sizeCutoffInches === "number" &&
+    isValidGangSheetSectionPriceCutoffInches(pricing.sizeCutoffInches) &&
+    typeof pricing.smallTierPriceUsd === "number" &&
+    isValidGangSheetTierPriceUsd(pricing.smallTierPriceUsd) &&
+    typeof pricing.smallTierWeightOz === "number" &&
+    isValidGangSheetTierWeightOz(pricing.smallTierWeightOz) &&
+    typeof pricing.largeTierPriceUsd === "number" &&
+    isValidGangSheetTierPriceUsd(pricing.largeTierPriceUsd) &&
+    typeof pricing.largeTierWeightOz === "number" &&
+    isValidGangSheetTierWeightOz(pricing.largeTierWeightOz)
+  );
+}
+
 export function validateExportGangSheetPngRequest(payload: unknown) {
   if (!payload || typeof payload !== "object") {
     return { error: importIpcFailure("INVALID_INPUT", "A gang sheet export request object is required.") };
@@ -202,6 +228,12 @@ export function validateExportGangSheetPngRequest(payload: unknown) {
     };
   }
 
+  if (request.sectionPricing !== undefined && !isValidSectionPricing(request.sectionPricing)) {
+    return {
+      error: importIpcFailure("INVALID_INPUT", "Gang sheet section pricing settings are invalid."),
+    };
+  }
+
   return { request: request as ExportGangSheetPngRequest };
 }
 
@@ -234,7 +266,12 @@ export function validateGenerateGangSheetPngRequest(
       maxSheetLengthInches: exportRequest.maxSheetLengthInches,
       labelFontSizePx: exportRequest.labelFontSizePx,
       ...(exportRequest.layoutMode && exportRequest.layoutMode !== "efficiency"
-        ? { layoutMode: exportRequest.layoutMode }
+        ? {
+            layoutMode: exportRequest.layoutMode,
+            ...(exportRequest.sectionPricing
+              ? { sectionPricing: exportRequest.sectionPricing }
+              : {}),
+          }
         : {}),
       images: exportRequest.images,
       showId: request.showId.trim(),

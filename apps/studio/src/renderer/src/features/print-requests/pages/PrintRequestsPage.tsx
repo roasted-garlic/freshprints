@@ -1551,13 +1551,15 @@ export function PrintRequestsPage() {
         ? formatShowDateTimeLabel(show.scheduledStartAt.toDate())
         : "Not scheduled";
       const transferMode = show ? resolvePrintRequestShowTransferMode(show) : "move";
-      const showQueuePath = buildShowQueueDeepLinkPath({
-        showId: group.upcomingShowId,
-        printRequestId: visibleSelectedRequest.id,
-        show,
-      });
+      const showQueuePath = show
+        ? buildShowQueueDeepLinkPath({
+            showId: group.upcomingShowId,
+            printRequestId: visibleSelectedRequest.id,
+            show,
+          })
+        : null;
 
-      const link = (
+      const link = showQueuePath ? (
         <Link
           className="print-requests-show-queue-pill"
           title={showTitle}
@@ -1568,6 +1570,12 @@ export function PrintRequestsPage() {
           <span>{showDateLabel}</span>
           <ExternalLink aria-hidden="true" size={12} strokeWidth={2.2} />
         </Link>
+      ) : (
+        <span aria-busy="true" className="print-requests-show-queue-pill">
+          <span>{groupQuantity} qty</span>
+          <span>&middot;</span>
+          <span>{showDateLabel}</span>
+        </span>
       );
 
       if (!includeTransferActions) {

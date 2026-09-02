@@ -104,7 +104,13 @@ Command: `npx tsx --test` on goal-scoped test files — **63/63 PASS**, exit 0.
 
 ## Owner DEV QA
 
-Pending manual QA on WS1, WS2, WS3 per plan. Hook-order corrective QA: **PASS** (pre-deploy). Signoff **not** authorized.
+| Workstream | Result |
+|------------|--------|
+| WS1 — Remove from Show & Edit | **PASS** — see `2026-08-31-pre-smart-profiling-ws1-owner-dev-qa.md`; post-queue hydration corrective `2d09f14a` |
+| WS2 — Final Image attach | **PASS** — see `2026-09-01-pre-smart-profiling-ws2-owner-dev-qa-pass.md` |
+| WS3 — Gang-sheet price/weight | **PASS** — see `2026-09-01-pre-smart-profiling-ws3-owner-dev-qa-pass.md` |
+
+Hook-order corrective QA: **PASS** (pre-deploy). Post-queue hydration corrective: **PASS** (owner QA). Signoff **not** authorized until remaining managed-goal source is committed.
 
 ---
 

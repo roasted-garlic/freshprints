@@ -50,14 +50,21 @@ import {
   portalPrintRequestService,
   printRequestItemHasCustomerUpload,
 } from '../../../../features/print-requests/services/portalPrintRequestService';
-import { prefetchPortalAllocatableShows } from '../../../../features/print-requests/services/portalShowSelectionService';
+import { clearPortalPrintRequestReadCache } from '../../../../features/print-requests/services/portalPrintRequestReadCache';
+import {
+  portalShowSelectionService,
+  prefetchPortalAllocatableShows,
+} from '../../../../features/print-requests/services/portalShowSelectionService';
 import { buildCatalogLibraryHref, buildRequestArtworkHref } from '../../../../features/print-requests/utils/catalogSelectionNavigation';
 import {
   parsePortalRequestDetailFrom,
   resolvePortalRequestDetailBack,
   buildRequestDetailHref,
 } from '../../../../features/print-requests/utils/portalRequestDetailReturn';
-import { resolveCanShowUnqueueFromShowCta } from '../../../../features/print-requests/utils/printRequestDetailUnqueueUi';
+import {
+  resolveCanShowUnqueueFromShowCta,
+  resolveStuckActiveNeedsEditingHeal,
+} from '../../../../features/print-requests/utils/printRequestDetailUnqueueUi';
 import { PortalConfirmModal } from '../../../../features/shared/components/PortalConfirmModal';
 import { PortalPickContinuableRequestModal } from '../../../../features/shared/components/PortalPickContinuableRequestModal';
 import { ArrowLeftIcon, CalendarPlusIcon, ImagePlusIcon, LibraryIcon, RefreshIcon } from '../../../../features/shared/components/PortalIcons';
@@ -148,6 +155,7 @@ export default function PrintRequestDetailView() {
     getItemClientKey,
     removeItem,
     reconcileQueued,
+    reconcileUnqueued,
     patchArtworkEnhanceMode,
   } = usePrintRequestDetail(printRequestId);
   const { settings: standardPrintSizesSettings } = usePortalStandardPrintSizes();
@@ -387,6 +395,7 @@ export default function PrintRequestDetailView() {
   );
   const printProgress = usePortalShowPrintProgress(printRequestId, preLiveAuthority.pollingEnabled);
   const {
+    clearSchedules,
     reload: reloadRequestSchedules,
     schedules: requestSchedules,
   } = usePortalPrintRequestShowSchedules(printRequestId);
@@ -481,13 +490,22 @@ export default function PrintRequestDetailView() {
       reconcileQueuedRequest(printRequestId, {
         totalAllocatedQuantity: result.totalAllocatedQuantity,
       });
-      void reloadRequestSchedules();
       setUnallocatedQuantity(0);
       resetWorkingCart();
       closeCurrentRequestDrawer();
+      // Drop the pre-queue empty allocation cache so Remove & Edit eligibility can see the new
+      // showAllocations immediately (30s shared read cache otherwise returns the stale empty set).
+      clearPortalPrintRequestReadCache();
+      clearUnqueueError();
+      // The Remove & Edit action needs both the selected show and its real allocation records.
+      // The status-change effect intentionally skips its allocation reread after queue success,
+      // so hydrate these two action dependencies explicitly before this success handler settles.
+      await Promise.all([reloadRequestSchedules(), loadAllocationState()]);
     },
     [
+      clearUnqueueError,
       closeCurrentRequestDrawer,
+      loadAllocationState,
       printRequestId,
       reconcileQueued,
       reconcileQueuedRequest,
@@ -502,18 +520,52 @@ export default function PrintRequestDetailView() {
     hasPrimaryScheduledShow: primaryScheduledShow !== null,
   });
 
-  const stuckActiveNeedsEditingHeal =
-    Boolean(printRequest) &&
-    !isEditable &&
-    printRequest?.status === 'active' &&
-    listTab === 'working' &&
-    isPortalCustomerOriginPrintRequest({
+  const hasActiveRequestAllocations = requestAllocations.some(
+    (allocation) => allocation.status !== 'canceled',
+  );
+
+  const stuckActiveNeedsEditingHeal = resolveStuckActiveNeedsEditingHeal({
+    isEditable,
+    requestStatus: printRequest?.status,
+    listTab,
+    isPortalCustomerOrigin: isPortalCustomerOriginPrintRequest({
       requestOrigin: printRequest?.requestOrigin,
       isInternal: printRequest?.isInternal === true,
-    }) &&
-    !hasOtherPortalEditableContinuableRequest;
+    }),
+    hasOtherPortalEditableContinuableRequest,
+    hasScheduledShows: requestSchedules.length > 0,
+    hasActiveAllocations: hasActiveRequestAllocations,
+  });
 
   const stuckHealAttemptedRef = useRef<string | null>(null);
+
+  const applySuccessfulUnqueue = useCallback(
+    async (result: { printRequestId: string; requestStatus: 'editing' | 'active' }) => {
+      reconcileUnqueuedRequest(result.printRequestId, result.requestStatus);
+      reconcileUnqueued(result.requestStatus);
+      setRequestAllocations([]);
+      clearSchedules();
+      progressWatermarkRef.current = { printRequestId: result.printRequestId, stage: null };
+      setUnallocatedQuantity(sumPrintRequestItemQuantities(items));
+      clearPortalPrintRequestReadCache();
+      router.replace(buildRequestDetailHref(result.printRequestId, { from: 'working' }));
+      await Promise.all([
+        reload(),
+        reloadRequestSchedules(),
+        refreshRequests({ printRequestId: result.printRequestId }),
+      ]);
+    },
+    [
+      clearSchedules,
+      items,
+      reconcileUnqueued,
+      reconcileUnqueuedRequest,
+      refreshRequests,
+      reload,
+      reloadRequestSchedules,
+      router,
+    ],
+  );
 
   useEffect(() => {
     if (!printRequest || !stuckActiveNeedsEditingHeal) {
@@ -527,16 +579,13 @@ export default function PrintRequestDetailView() {
     let cancelled = false;
     void (async () => {
       try {
-        const result = await unqueueFromShow({ printRequestId: printRequest.id });
+        const result = await portalShowSelectionService.unqueuePrintRequestFromShow({
+          printRequestId: printRequest.id,
+        });
         if (cancelled) {
           return;
         }
-        reconcileUnqueuedRequest(printRequest.id, result.requestStatus);
-        setRequestAllocations([]);
-        setUnallocatedQuantity(sumPrintRequestItemQuantities(items));
-        await reload();
-        await refreshRequests({ printRequestId: printRequest.id });
-        router.replace(buildRequestDetailHref(printRequest.id));
+        await applySuccessfulUnqueue(result);
       } catch {
         // Leave stuck page as-is; owner can re-queue then remove again.
       }
@@ -545,16 +594,7 @@ export default function PrintRequestDetailView() {
     return () => {
       cancelled = true;
     };
-  }, [
-    items,
-    printRequest,
-    reconcileUnqueuedRequest,
-    refreshRequests,
-    reload,
-    router,
-    stuckActiveNeedsEditingHeal,
-    unqueueFromShow,
-  ]);
+  }, [applySuccessfulUnqueue, printRequest, stuckActiveNeedsEditingHeal]);
 
   const handleUnqueueFromShow = useCallback(async () => {
     if (!printRequest || !primaryScheduledShow) {
@@ -568,24 +608,15 @@ export default function PrintRequestDetailView() {
         upcomingShowId: primaryScheduledShow.upcomingShowId,
       });
       setIsUnqueueModalOpen(false);
-      reconcileUnqueuedRequest(printRequest.id, result.requestStatus);
-      setRequestAllocations([]);
-      setUnallocatedQuantity(sumPrintRequestItemQuantities(items));
-      await reload();
-      await refreshRequests({ printRequestId: printRequest.id });
-      router.replace(buildRequestDetailHref(printRequest.id));
+      await applySuccessfulUnqueue(result);
     } catch {
       // surfaced via unqueueError
     }
   }, [
+    applySuccessfulUnqueue,
     clearUnqueueError,
-    items,
     primaryScheduledShow,
     printRequest,
-    reconcileUnqueuedRequest,
-    refreshRequests,
-    reload,
-    router,
     unqueueFromShow,
   ]);
 

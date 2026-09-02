@@ -1,6 +1,6 @@
 import type { ListPortalPublicShowsResponse } from '@fresh-prints/shared/types/portal/listPortalPublicShows.types';
 
-const CACHE_TTL_MS = 60_000;
+const CACHE_TTL_MS = 300_000;
 
 let cachedResponse: ListPortalPublicShowsResponse | null = null;
 let cachedAtMs = 0;

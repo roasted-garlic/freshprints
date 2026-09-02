@@ -657,6 +657,12 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
     setPrintRequest((current) => (current ? { ...current, status: 'active' } : current));
   }, []);
 
+  const reconcileUnqueued = useCallback((status: 'editing' | 'active' = 'editing') => {
+    wasViewingWorkingRef.current = false;
+    lastSyncedWorkingSignatureRef.current = null;
+    setPrintRequest((current) => (current ? { ...current, status } : current));
+  }, []);
+
   const patchArtworkEnhanceMode = useCallback(
     (itemId: string, result: SetPrintRequestItemArtworkEnhanceModeResponse) => {
       const patch = (currentItems: PrintRequestItem[]) =>
@@ -688,6 +694,7 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
     getItemClientKey,
     removeItem,
     reconcileQueued,
+    reconcileUnqueued,
     patchArtworkEnhanceMode,
   };
 }
