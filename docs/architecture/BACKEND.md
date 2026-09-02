@@ -48,6 +48,8 @@ Fresh Prints uses **Firebase** as the primary backend platform for authenticatio
 | Category/tag archive guards | `previewCategoryArchive` / `archiveCategoryWithGuards` / `previewTagArchive` / `archiveTagWithGuards` — owner/admin; block while designs reference. |
 | Operational wipe — AI Processing (2026-07-21) | Test Data Reset target `aiProcessingDesigns` via `wipeOperationalTestData`: deletes AI Processing inbox designs (any tab/stage) + their Storage only; keeps ready/archived catalog. Dev allowlist + owner only. |
 
+**Studio deletion first-action latency (2026-09-02):** Gen2 preview/mutate callables accept authenticated `{ warmup: true }` on the **same** Cloud Run service (auth + role assert only; no Firestore writes/deletes). Studio schedules role-gated idle warmups after auth and warms mutate callables when delete dialogs open. Includes `purgeArchivedDesignAssets` (Design Library permanent image purge; owner-approved amendment). Soft `archiveDesign` remains client Firestore — not warmed. No `minInstances` / cron keep-alive in v1.
+
 **Portal post-auth return (2026-07-17):** When `AuthGate` sends a signed-out customer to `/login`,
 it includes the protected Portal path and query string in `returnTo`. Email/password and Google login
 return to that validated target after the existing Firebase user/customer bootstrap succeeds.
