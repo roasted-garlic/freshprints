@@ -1,5 +1,19 @@
 # Recent Completed Work
 
+## 2026-09-02 - Studio + Portal Print Request Editing tab — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `studio-print-request-editing-tab` — **DONE** |
+| Signoff | **approved** |
+| Owner DEV QA | **PASS** |
+| Delivered | `queueTab: "editing"`; Studio Customer/Internal Editing tabs (nowrap); Portal Editing list tab; Internal→Printed newest-first via History sort helper |
+| DEV Firebase | Rules + Functions (10) + reconcile no-op on `fresh-prints-dev` |
+| Production | **NOT AUTHORIZED** |
+| Smart Profiling | **PARKED** |
+| Next queued | `portal-editing-request-parks-current-draft` (not started) |
+| Signoff | `docs/workflow/reviews/2026-09-02-studio-print-request-editing-tab-signoff.md` |
+
 ## 2026-08-31 - Print Request sizing + interactive upscale — CLOSED (DEV)
 
 | Item | Status |

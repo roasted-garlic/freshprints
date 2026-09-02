@@ -1,6 +1,6 @@
 # Fresh Prints — Current State Snapshot
 
-**Last updated:** 2026-09-01
+**Last updated:** 2026-09-02
 
 ---
 
@@ -8,55 +8,40 @@
 
 | Item | Value |
 |------|-------|
-| Status | **ACTIVE** |
-| DONE | **no** |
-| Active goal | `pre-smart-profiling-print-request-and-gang-sheet-polish` |
-| WS1 Owner QA | **PASS** |
-| WS2 Owner QA | **PASS** |
-| WS3 Owner QA | **PENDING / NEXT** |
-| Production | **NOT AUTHORIZED / NOT PROMOTED** |
-| Smart Profiling | **NOT STARTED** (parked) |
-| Signoff | **NOT AUTHORIZED** (WS3 pending) |
+| Status | **IDLE** |
+| DONE | **yes** |
+| Last completed goal | `studio-print-request-editing-tab` |
+| Production | **NOT AUTHORIZED / NOT TOUCHED** |
+| Smart Profiling | **PARKED** |
+| `show-queue-batch-allocation-performance` | **DEFERRED** |
+| Queued next goal | `portal-editing-request-parks-current-draft` (**do not auto-start**) |
+| Queued after that | cross-app lightbox Previous/Next |
 | Workflow state | `.cursor/workflow/state.md` |
 
-Standalone DEV corrective (not part of managed goal): **AI Review Approve/Reject Firestore Rules — PASS** on `fresh-prints-dev`. Production promotion inventory updated in `docs/standards/DEPLOYMENT.md`.
+---
+
+## Last completed — Print Request Editing tab (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `studio-print-request-editing-tab` — **DONE** |
+| Owner QA | **PASS** (DEV Studio Customer + Internal) |
+| Delivered | Editing lifecycle tab + `queueTab`; Portal Editing list tab; Internal Printed newest-first |
+| DEV Firebase | Rules + 10 Functions + reconcile (0 writes) on `fresh-prints-dev` |
+| Production | **NOT AUTHORIZED** |
+| Signoff | `docs/workflow/reviews/2026-09-02-studio-print-request-editing-tab-signoff.md` |
 
 ---
 
 ## Next workflow step
 
-Owner WS3 gang-sheet price + weight QA (Tests A–H). Restart `npm run dev:studio` if needed. No Studio release. No managed-goal signoff until WS3 passes.
-
----
-
-## Customer Identity program — COMPLETE on DEV
-
-| Workstream | Status |
-|------------|--------|
-| WS1–WS4 | **DONE** on DEV; production **NOT AUTHORIZED** |
-
-Signoff: `docs/workflow/reviews/2026-08-30-customer-account-identity-management-ws4-signoff.md`
-
----
-
-## Recently completed — Print Request sizing + interactive upscale (DEV)
-
-| Item | Shipped on `development` |
-|------|--------------------------|
-| Print Request default width | **Runtime Studio setting** `defaultPrintRequestWidthInches`; **10″** system fallback; new items only |
-| Automated import/upload upscale | **15″** target (`image-quality-v3`); cumulative **≤6×** from native |
-| Interactive upscale (WS-TOGGLE) | Studio + Portal; `catalog_design` + `customer_upload`; one derivative per lineage; `artworkEnhanceMode` toggle |
-| Production export parity | Gang sheets (all modes), ZIP, manual builder honor active variant; cache fingerprints updated |
-| Security | Firestore enhance fields; Storage staff read for `{designId}.interactive.png` |
-
-**DEV Firebase:** Functions + Storage + Firestore rules deployed to `fresh-prints-dev` (2026-08-30 – 2026-08-31). **Production untouched.**
+Owner may start **`portal-editing-request-parks-current-draft`** with an explicit Managed Phase command. Do not start automatically. Production and Smart Profiling remain unauthorized.
 
 ---
 
 ## Smart Profiling (truthful state)
 
 - Smart Profiles exist on DEV; autonomous live approval **OFF**
-- Legacy tag retirement **not complete**
 - **No new Smart Profiling work** — parked until owner starts next managed goal
 
 ---
@@ -68,10 +53,4 @@ Signoff: `docs/workflow/reviews/2026-08-30-customer-account-identity-management-
 | Published Studio | **1.0.9** (last documented promote) |
 | Canonical Portal | `https://myprintrequest.com` |
 
-Recent DEV goals (identity, show queue recovery, sizing/upscale) are **not** on production.
-
----
-
-## Next workflow step
-
-Await explicit owner approval for WS1 corrective DEV deploy, then rerun owner QA. WS2 / WS3 QA remains pending. Production and Smart Profiling remain unauthorized.
+Recent DEV goals (including Editing tab) are **not** on production.
