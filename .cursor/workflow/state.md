@@ -17,7 +17,7 @@
 | Smart Profiling | **PARKED** |
 | `show-queue-batch-allocation-performance` | **DEFERRED** |
 | Last updated | 2026-09-02 |
-| Last Completed Step | Signoff + commit + push `development` (in progress / complete) |
+| Last Completed Step | Signoff + commit + push `development` complete (`8bca82f6`) |
 
 ## Artifacts
 
