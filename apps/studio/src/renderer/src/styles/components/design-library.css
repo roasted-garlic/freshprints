@@ -1047,7 +1047,8 @@
 }
 
 .design-companion-member-body {
-  align-items: flex-start;
+  /* Stretch children to the grid cell width so title ellipsis can engage (flex-start sized to content). */
+  align-items: stretch;
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
@@ -1059,14 +1060,21 @@
   display: flex;
   gap: var(--space-2);
   min-width: 0;
+  width: 100%;
 }
 
 .design-companion-member-title {
   color: var(--color-text-primary);
+  flex: 1;
   font-weight: var(--font-weight-semibold, 600);
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.design-companion-member-title-row .badge {
+  flex-shrink: 0;
 }
 
 .design-companion-member-placement-row {
