@@ -4,21 +4,18 @@
 |-------|-------|
 | Status | **IDLE** |
 | DONE | **yes** |
-| Current Mode | managed-phase (closed) |
-| Current Phase | **signoff** (complete) |
-| Active Goal | none (last: `portal-upcoming-shows-calendar-polish-and-performance`) |
-| Plan | complete |
-| Review | approved |
-| Implement | complete |
-| Test | passed_with_notes |
-| Implementation Review | approved |
-| DEV Deploy | not_required (Portal-only; local QA) |
-| Owner QA | **PASS** |
-| Signoff | **approved** — `docs/workflow/reviews/2026-09-02-portal-upcoming-shows-calendar-polish-and-performance-signoff.md` |
+| Current Mode | idle |
+| Last completed goal | `studio-history-newest-first-ordering` |
+| Completed amendment | `print-request-pocket-fullsize-counts` |
+| Owner QA History | **PASS** |
+| Owner QA Pocket / Full Size corrective | **PASS** |
+| Signoff | **APPROVED** — `docs/workflow/reviews/2026-09-02-studio-history-newest-first-ordering-signoff.md` |
+| Final test report | `docs/workflow/reviews/2026-09-02-studio-history-newest-first-ordering-final-test-report.md` |
 | Production | **NOT AUTHORIZED** |
 | Smart Profiling | **PARKED** |
+| `show-queue-batch-allocation-performance` | **DEFERRED** |
 | Last updated | 2026-09-02 |
-| Last Completed Step | Signoff |
+| Last Completed Step | Signoff → commit → push `development` → IDLE |
 
 ## Human checkpoint
 
@@ -26,31 +23,23 @@
 
 ## Allowed actions
 
-- Start a new managed phase / goal when owner directs
-- Commit / push when owner directs
+- Await owner direction for next goal
+- Read docs
 
 ## Forbidden actions
 
-- Production deploy without separate authorization
-- Silent scope expansion on closed goal
-
-## Queued / deferred
-
-| Item | Status |
-|------|--------|
-| `show-queue-batch-allocation-performance` | **DEFERRED** |
-| Smart Profiling | **PARKED** |
-| `listPortalPublicShows` minInstances | Optional future — only if cold metadata still unacceptable after shell-first |
+- Production deploy without explicit authorization
+- Starting a new managed goal until owner directs
 
 ## Next Required Step
 
-None — goal closed. Await owner direction for next goal.
+**Idle** — wait for owner next goal. Do not start another task.
 
 ## Decision log
 
 | Date | Decision |
 |------|----------|
-| 2026-09-02 | Owner QA **PASS** → Signoff **approved**; COMMIT + PUSH CLOSEOUT to `development` (non-force); Production NOT AUTHORIZED |
-| 2026-09-02 | Owner QA visual corrective: soften upcoming green; today strongest; today+upcoming layered |
-| 2026-09-02 | Implement complete; SWR via cache snapshot; no Functions/minInstances |
-| 2026-09-02 | Formal Review approved; Plan → Formal Review → Implement → Test → Owner QA → Signoff |
+| 2026-09-02 | Combined closeout: Owner QA History **PASS** + Pocket/Full Size corrective **PASS**; signoff **APPROVED**; push `development` only; production **NOT AUTHORIZED** |
+| 2026-09-02 | Clip fix: outer scroll on `--print-requests`; no nested `.print-requests-main` scroll |
+| 2026-09-02 | WIDTH-ONLY operational counts; pricing both-dim unchanged |
+| 2026-09-02 | History newest-first via `printFinishedAt` DESC; Current/Past/Upcoming locked |
