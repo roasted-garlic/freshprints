@@ -19,6 +19,7 @@ import {
   isAiReviewDraftDirty,
 } from "../utils/aiReviewFormState";
 import { designHasAiSuggestions } from "../utils/aiProcessingOutput";
+import { STALE_PROCESSING_ALREADY_PROCESSING_MESSAGE } from "../utils/aiProcessingStaleRecovery";
 import { sortInboxDesigns } from "../utils/aiReviewInboxSort";
 import {
   canEditCatalogInInbox,
@@ -30,6 +31,7 @@ import {
   isDesignRerunnableFromNeedsReview,
   isDesignRerunnableInInbox,
   isDesignRetryableInProcessing,
+  isDesignStaleProcessingRetryable,
 } from "../utils/aiReviewInboxEligibility";
 import { filterDesignsByAiReviewStatus } from "../../designs/utils/designLibrarySearch";
 import {
@@ -383,6 +385,9 @@ export function useAiReviewInbox(
   );
   const canRetryProcessingSelected = Boolean(
     user && selectedDesign && isDesignRetryableInProcessing(selectedDesign, filters.tab),
+  );
+  const canRetryStaleProcessingSelected = Boolean(
+    user && selectedDesign && isDesignStaleProcessingRetryable(selectedDesign, filters.tab),
   );
   const canRerunAiSuggestions = Boolean(
     user &&
@@ -1361,6 +1366,57 @@ export function useAiReviewInbox(
     user,
   ]);
 
+  const retryStaleProcessingSelected = useCallback(async () => {
+    if (!user || !selectedDesign || !canRetryStaleProcessingSelected) {
+      return;
+    }
+
+    setIsActionLoading(true);
+    setActionError(null);
+
+    try {
+      clearTerminalAiProcessingLedgerEntry(selectedDesign.id);
+
+      const result = await aiEnrichmentEnqueueService.enqueueForProcessing(selectedDesign.id, {
+        visionModelIdOverride: processingQueue.resolvedSessionVisionModelId,
+      });
+
+      if (!result.queued) {
+        if (result.reason === "already_processing") {
+          setActionError(STALE_PROCESSING_ALREADY_PROCESSING_MESSAGE);
+          return;
+        }
+
+        throw new Error("AI processing could not be queued. Please try again.");
+      }
+
+      const patch = buildDesignPatchFromEnqueueResult(result);
+
+      if (patch) {
+        applyDesignPatch(selectedDesign.id, patch);
+      }
+
+      setLiveDesign(null);
+      await reloadDesigns();
+      options?.onQueueChanged?.();
+    } catch (retryError) {
+      setActionError(
+        retryError instanceof Error ? retryError.message : "Unable to retry AI processing.",
+      );
+    } finally {
+      setIsActionLoading(false);
+    }
+  }, [
+    applyDesignPatch,
+    canRetryStaleProcessingSelected,
+    clearTerminalAiProcessingLedgerEntry,
+    options,
+    processingQueue.resolvedSessionVisionModelId,
+    reloadDesigns,
+    selectedDesign,
+    user,
+  ]);
+
   const ignoreSuggestedTag = useCallback(
     (name: string) => {
       const normalizedName = normalizeSuggestedTagKey(name);
@@ -1440,6 +1496,7 @@ export function useAiReviewInbox(
     canReopen: canReopenSelected,
     canRerun: canRerunSelected,
     canRetryProcessing: canRetryProcessingSelected,
+    canRetryStaleProcessing: canRetryStaleProcessingSelected,
     canRerunAiSuggestions,
     canApproveSuggestedTags,
     showReadOnlySuggestions,
@@ -1480,6 +1537,7 @@ export function useAiReviewInbox(
     rerunSelected,
     requestRerunAiSuggestions,
     retryProcessingSelected,
+    retryStaleProcessingSelected,
     approveSuggestedTag,
     ignoreSuggestedTag,
     saveArtworkBackground,

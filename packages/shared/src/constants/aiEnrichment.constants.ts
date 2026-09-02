@@ -11,6 +11,9 @@ export type AllowedVisionModelId = (typeof ALLOWED_VISION_MODEL_IDS)[number];
 
 export const DEFAULT_VISION_MODEL_ID: AllowedVisionModelId = "gemini-2.5-flash-lite";
 
+/** Must match server stale gate in enqueueAiEnrichment (isStaleAiProcessing). */
+export const AI_ENRICHMENT_STALE_STAGE_MS = 10 * 60 * 1000;
+
 /**
  * Controls the optional text-only Gemini tag reranker second call. "off" (shipped default) never
  * runs the second call. "auto" runs it only when the server-side tag matcher shows signs of

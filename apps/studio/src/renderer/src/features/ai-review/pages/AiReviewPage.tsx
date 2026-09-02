@@ -365,6 +365,7 @@ function AiReviewPageContent() {
             canReject={inbox.canReject}
             canRerun={inbox.canRerun}
             canRetryProcessing={inbox.canRetryProcessing}
+            canRetryStaleProcessing={inbox.canRetryStaleProcessing}
             canStartAutoQueue={inbox.processingQueue.canStartAutoQueue}
             categoryOptions={categoryOptions}
             currentVisionModelId={enrichmentSettings.visionModelId}
@@ -398,6 +399,7 @@ function AiReviewPageContent() {
             onReopen={() => void inbox.reopenSelected()}
             onRerun={() => void inbox.rerunSelected()}
             onRetryProcessing={() => void inbox.retryProcessingSelected()}
+            onRetryStaleProcessing={() => void inbox.retryStaleProcessingSelected()}
             onSaveArtworkBackground={(values) => void inbox.saveArtworkBackground(values)}
             onSaveHalftoneStaffDecision={(markAsHalftone) =>
               void inbox.saveHalftoneStaffDecision(markAsHalftone)

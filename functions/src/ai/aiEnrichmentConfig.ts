@@ -1,4 +1,5 @@
 import {
+  AI_ENRICHMENT_STALE_STAGE_MS as SHARED_AI_ENRICHMENT_STALE_STAGE_MS,
   ALLOWED_VISION_MODEL_IDS,
   DEFAULT_VISION_MODEL_ID as SHARED_DEFAULT_VISION_MODEL_ID,
   type AllowedVisionModelId,
@@ -71,7 +72,7 @@ export const SIMPLE_ENRICHMENT_MAX_SUGGESTED_TAGS = 5;
 export const SIMPLE_ENRICHMENT_DEFAULT_CONFIDENCE = 0.7;
 
 /** Re-queue when an active AI stage has not updated within this window. */
-export const AI_ENRICHMENT_STALE_STAGE_MS = 10 * 60 * 1000;
+export const AI_ENRICHMENT_STALE_STAGE_MS = SHARED_AI_ENRICHMENT_STALE_STAGE_MS;
 
 export const AI_ENRICHMENT_ACTIVE_STAGES = [
   "queued",

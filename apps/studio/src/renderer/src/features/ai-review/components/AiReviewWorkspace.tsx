@@ -48,6 +48,7 @@ interface AiReviewWorkspaceProps {
   canReject: boolean;
   canRerun: boolean;
   canRetryProcessing: boolean;
+  canRetryStaleProcessing: boolean;
   canStartAutoQueue: boolean;
   categoryOptions: { label: string; value: string }[];
   currentVisionModelId: string;
@@ -80,6 +81,7 @@ interface AiReviewWorkspaceProps {
   onRerun: () => void;
   onRerunAiSuggestions: () => void;
   onRetryProcessing: () => void;
+  onRetryStaleProcessing: () => void;
   onSaveArtworkBackground: (values: ArtworkBackgroundFieldsValues) => void;
   onSaveHalftoneStaffDecision: (markAsHalftone: boolean) => void;
   onApplyProcessingSettings: (visionModelId: string) => void;
@@ -115,6 +117,7 @@ export function AiReviewWorkspace({
   canReject,
   canRerun,
   canRetryProcessing,
+  canRetryStaleProcessing,
   canStartAutoQueue,
   categoryOptions,
   currentVisionModelId,
@@ -143,6 +146,7 @@ export function AiReviewWorkspace({
   onRerun,
   onRerunAiSuggestions,
   onRetryProcessing,
+  onRetryStaleProcessing,
   onSaveArtworkBackground,
   onSaveHalftoneStaffDecision,
   onApplyProcessingSettings,
@@ -234,7 +238,8 @@ export function AiReviewWorkspace({
     selectedDesign.aiSuggestions?.suggestedNewTags,
     ignoredSuggestedTagNames,
   );
-  const showProcessingQueueControls = activeTab === "processing" && !canRetryProcessing;
+  const showProcessingQueueControls =
+    activeTab === "processing" && !canRetryProcessing && !canRetryStaleProcessing;
   const isAutoQueueProcessing =
     autoAdvance && (queueRunState === "running" || queueRunState === "pausing");
   const isSelectedDesignProcessing =
@@ -244,6 +249,7 @@ export function AiReviewWorkspace({
   const showIdleProcessingHint =
     activeTab === "processing" &&
     !canRetryProcessing &&
+    !canRetryStaleProcessing &&
     !canProcessSelected &&
     !canStartAutoQueue &&
     queueRunState === "idle" &&
@@ -447,6 +453,16 @@ export function AiReviewWorkspace({
                         variant="warning"
                       >
                         Retry AI Processing
+                      </Button>
+                    ) : null}
+
+                    {activeTab === "processing" && canRetryStaleProcessing ? (
+                      <Button
+                        disabled={isActionLoading}
+                        onClick={onRetryStaleProcessing}
+                        variant="warning"
+                      >
+                        Retry Processing
                       </Button>
                     ) : null}
 

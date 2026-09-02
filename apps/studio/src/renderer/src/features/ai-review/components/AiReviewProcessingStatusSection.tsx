@@ -14,6 +14,7 @@ import {
   resolveAiProcessingPipelineSteps,
   type ProcessingPipelineStep,
 } from "../utils/aiProcessingOutput";
+import { isAiProcessingStaleForRecovery, STALE_PROCESSING_STATUS_COPY } from "../utils/aiProcessingStaleRecovery";
 
 interface AiReviewProcessingStatusSectionProps {
   design: Design;
@@ -63,6 +64,8 @@ export function AiReviewProcessingStatusSection({
     : design;
   const steps = resolveAiProcessingPipelineSteps(displayDesign);
   const outputStatus = showActivePipeline ? "waiting" : resolveAiProcessingOutputStatus(design);
+  const isStaleProcessing =
+    !showActivePipeline && outputStatus === "waiting" && isAiProcessingStaleForRecovery(design);
   const statusMessage = getAiProcessingOutputMessage(outputStatus, displayDesign, {
     isOptimisticEnqueue,
     isRerunInProgress,
@@ -131,7 +134,13 @@ export function AiReviewProcessingStatusSection({
         </ol>
       )}
 
-      {outputStatus === "waiting" && statusMessage ? (
+      {outputStatus === "waiting" && isStaleProcessing ? (
+        <p className="ai-review-processing-stale-copy auth-message auth-message-warning" role="status">
+          {STALE_PROCESSING_STATUS_COPY}
+        </p>
+      ) : null}
+
+      {outputStatus === "waiting" && statusMessage && !isStaleProcessing ? (
         <p className="ai-review-processing-idle-copy">{statusMessage}</p>
       ) : null}
 
