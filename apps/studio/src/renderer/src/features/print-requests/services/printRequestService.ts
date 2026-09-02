@@ -242,7 +242,7 @@ function resolveRequiredTimestamp(value: unknown): Timestamp | undefined {
 }
 
 function isPrintRequestListTab(value: unknown): value is PrintRequestListTab {
-  return value === "working" || value === "queued" || value === "printing" || value === "printed";
+  return value === "working" || value === "editing" || value === "queued" || value === "printing" || value === "printed";
 }
 
 function mapPrintRequestData(printRequestId: string, data: PrintRequestDocumentData): PrintRequest {

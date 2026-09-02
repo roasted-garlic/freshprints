@@ -1943,8 +1943,10 @@ status never misleadingly contradicts the request's actual queue state:
   it is removed from every show it was queued to, with no allocations remaining anywhere) — see
   `markPrintRequestEditingIfNoActiveAllocations()`, called from both `removeShowAllocation()` and
   `removeShowAllocationsForRequest()`. `editing` means "was queued, now back with staff for revision,"
-  distinct from `draft` ("never queued yet"); the Print Requests page treats a request in `editing`
-  as fully editable again, same as `draft`.
+  distinct from `draft` ("never queued yet"). Studio Print Requests list tabs treat `status: "editing"`
+  as the **Editing** lifecycle tab via `derivePrintRequestListTab` → persisted mirror `queueTab: "editing"`
+  (mutually exclusive from Working). Portal `/requests` uses the same derive and also shows an
+  **Editing** tab. Continuable create/edit still allows at most one `draft`/`editing` request (ADR-FP-071).
 - Portal customers may have **at most one** `draft` or `editing` request at a time (`createPortalPrintRequest`
   enforces this; see ADR-FP-071). Queuing to a show (`active`) frees the customer to start another.
 - `active`/`editing` → `completed` once every unit of the request's requested quantity has been

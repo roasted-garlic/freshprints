@@ -7,7 +7,7 @@ const KNOWN_FIELDS = new Set([
   "showQueueBiddingAcknowledgment", "createdBy", "updatedBy", "createdAt", "updatedAt",
 ]);
 
-const VALID_QUEUE_TABS = new Set(["working", "queued", "printing", "printed"]);
+const VALID_QUEUE_TABS = new Set(["working", "editing", "queued", "printing", "printed"]);
 
 export type PrintRequestAssignmentInvariantFailure =
   | "both_customer_and_guest_id_present"

@@ -10,8 +10,19 @@ export const PRINT_REQUEST_TAB_QUERY_PARAM = "tab";
 export const PRINT_REQUEST_WORKING_FILTER_QUERY_PARAM = "workingFilter";
 export const PRINT_REQUEST_KIND_QUERY_PARAM = "kind";
 
-export const PRINT_REQUEST_LIST_TABS = ["working", "queued", "printing", "printed"] as const;
-export const PRINT_REQUEST_INTERNAL_LIST_TABS = ["working", "queued", "printed"] as const;
+export const PRINT_REQUEST_LIST_TABS = [
+  "working",
+  "editing",
+  "queued",
+  "printing",
+  "printed",
+] as const;
+export const PRINT_REQUEST_INTERNAL_LIST_TABS = [
+  "working",
+  "editing",
+  "queued",
+  "printed",
+] as const;
 export const PRINT_REQUEST_LIST_KINDS = ["customer", "internal"] as const;
 
 export type PrintRequestRouteTab = (typeof PRINT_REQUEST_LIST_TABS)[number];
@@ -391,7 +402,7 @@ function findRequestInAnyTab(
   requestsByTab: Record<PrintRequestRouteTab, readonly PrintRequestRouteTriageRequest[]>,
 ): { tab: PrintRequestRouteTab; request: PrintRequestRouteTriageRequest } | null {
   for (const tab of PRINT_REQUEST_LIST_TABS) {
-    const request = requestsByTab[tab].find((entry) => entry.id === requestId);
+    const request = requestsByTab[tab]?.find((entry) => entry.id === requestId);
     if (request) {
       return { tab, request };
     }

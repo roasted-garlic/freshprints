@@ -1,9 +1,19 @@
 import type { PrintRequest } from "../types/printRequest/printRequest.types";
 import type { ShowAllocation } from "../types/showAllocation/showAllocation.types";
+import { compareStaffGangSheetHistoryOrder } from "./staffGangSheetHistorySort";
 
 export const UNASSIGNED_SHOW_SECTION_KEY = "unassigned";
 
-export interface PrintRequestShowSection<TShow extends { id: string; scheduledStartAt?: unknown }> {
+export type PrintRequestShowSectionOrder = "scheduled_start_asc" | "staff_gang_sheet_history";
+
+export interface PrintRequestShowSectionShow {
+  id: string;
+  scheduledStartAt?: unknown;
+  staffGangSheetCycleNumber?: number | null;
+  printFinishedAt?: { toMillis: () => number } | null;
+}
+
+export interface PrintRequestShowSection<TShow extends PrintRequestShowSectionShow> {
   sectionKey: string;
   show: TShow | null;
   requests: PrintRequest[];
@@ -70,7 +80,7 @@ function resolveShowTimestamp(show: { scheduledStartAt?: unknown } | null): numb
   return Number.POSITIVE_INFINITY;
 }
 
-function resolvePrimaryShowId<TShow extends { id: string; scheduledStartAt?: unknown }>(
+function resolvePrimaryShowId<TShow extends PrintRequestShowSectionShow>(
   showIds: readonly string[],
   showsById: Readonly<Record<string, TShow>>,
 ): string | null {
@@ -87,14 +97,46 @@ function resolvePrimaryShowId<TShow extends { id: string; scheduledStartAt?: unk
   return sorted[0] ?? null;
 }
 
-export function groupPrintRequestsByShow<TShow extends { id: string; scheduledStartAt?: unknown }>(input: {
+function compareSectionsByScheduledStartAsc<TShow extends PrintRequestShowSectionShow>(
+  left: PrintRequestShowSection<TShow>,
+  right: PrintRequestShowSection<TShow>,
+): number {
+  const leftAt = resolveShowTimestamp(left.show);
+  const rightAt = resolveShowTimestamp(right.show);
+  if (leftAt !== rightAt) {
+    return leftAt - rightAt;
+  }
+
+  return left.sectionKey.localeCompare(right.sectionKey);
+}
+
+function compareSectionsByStaffGangSheetHistory<TShow extends PrintRequestShowSectionShow>(
+  left: PrintRequestShowSection<TShow>,
+  right: PrintRequestShowSection<TShow>,
+): number {
+  if (!left.show && !right.show) {
+    return left.sectionKey.localeCompare(right.sectionKey);
+  }
+  if (!left.show) {
+    return 1;
+  }
+  if (!right.show) {
+    return -1;
+  }
+
+  return compareStaffGangSheetHistoryOrder(left.show, right.show);
+}
+
+export function groupPrintRequestsByShow<TShow extends PrintRequestShowSectionShow>(input: {
   requests: readonly PrintRequest[];
   allocationsByRequestId: Readonly<Record<string, readonly ShowAllocation[]>>;
   showsById: Readonly<Record<string, TShow>>;
   now?: Date;
+  /** Default: upcoming-schedule ASC. Use `staff_gang_sheet_history` for Internal→Printed. */
+  sectionOrder?: PrintRequestShowSectionOrder;
 }): PrintRequestShowSection<TShow>[] {
+  const sectionOrder = input.sectionOrder ?? "scheduled_start_asc";
   const sectionMap = new Map<string, PrintRequestShowSection<TShow>>();
-  const extraShowCounts = new Map<string, number>();
 
   for (const request of input.requests) {
     const activeAllocations = (input.allocationsByRequestId[request.id] ?? []).filter(
@@ -132,7 +174,6 @@ export function groupPrintRequestsByShow<TShow extends { id: string; scheduledSt
     sectionMap.set(sectionKey, section);
 
     if (uniqueShowIds.length > 1) {
-      extraShowCounts.set(request.id, uniqueShowIds.length - 1);
       section.extraShowCountByRequestId[request.id] = uniqueShowIds.length - 1;
     }
   }
@@ -147,13 +188,11 @@ export function groupPrintRequestsByShow<TShow extends { id: string; scheduledSt
       return -1;
     }
 
-    const leftAt = resolveShowTimestamp(left.show);
-    const rightAt = resolveShowTimestamp(right.show);
-    if (leftAt !== rightAt) {
-      return leftAt - rightAt;
+    if (sectionOrder === "staff_gang_sheet_history") {
+      return compareSectionsByStaffGangSheetHistory(left, right);
     }
 
-    return left.sectionKey.localeCompare(right.sectionKey);
+    return compareSectionsByScheduledStartAsc(left, right);
   });
 
   for (const section of sections) {

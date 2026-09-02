@@ -241,7 +241,9 @@ function summarizeItemsForRequest(printRequestId: string, items: PrintRequestIte
 }
 
 function resolveSectionShowCapacity(
-  section: PrintRequestShowSection<{ id: string; scheduledStartAt?: unknown; allocatedQuantity?: number; maxTotalQuantity?: number }>,
+  section: PrintRequestShowSection<
+    Pick<UpcomingShow, "id" | "scheduledStartAt" | "allocatedQuantity" | "maxTotalQuantity">
+  >,
   allocationsByRequestId: Readonly<Record<string, readonly ShowAllocation[]>>,
 ) {
   if (!section.show) {
@@ -703,10 +705,10 @@ export function PrintRequestsPage() {
 
       setIsConfirmingShowQueueRemoval(false);
       // List tabs key off persisted queueTab (detail badges already flip from live allocations).
-      // Clear remount cache, patch locally, then route to Working so the tab effect reloads fresh.
+      // Clear remount cache, patch locally, then route to Editing so the tab effect reloads fresh.
       clearPrintRequestsPageCache();
-      patchRequestLocally(requestId, { queueTab: "working", status: "editing" });
-      commitPrintRequestsRoute({ requestId, kind: activeListKind, tab: "working" });
+      patchRequestLocally(requestId, { queueTab: "editing", status: "editing" });
+      commitPrintRequestsRoute({ requestId, kind: activeListKind, tab: "editing" });
       await Promise.all([
         refreshAllocationHydration(),
         reloadAllAllocationData({ silent: true }),
@@ -911,8 +913,12 @@ export function PrintRequestsPage() {
         requests: visibleRequests,
         allocationsByRequestId,
         showsById,
+        sectionOrder:
+          activeListKind === "internal" && activeListTab === "printed"
+            ? "staff_gang_sheet_history"
+            : "scheduled_start_asc",
       }),
-    [allocationsByRequestId, showsById, visibleRequests],
+    [activeListKind, activeListTab, allocationsByRequestId, showsById, visibleRequests],
   );
 
   // A deep-linked/selected request outside the currently loaded page is never treated as
@@ -941,6 +947,7 @@ export function PrintRequestsPage() {
 
     const buckets: Record<PrintRequestRouteTab, PrintRequestRouteTriageRequest[]> = {
       working: activeListTab === "working" ? activeTabRequests.map(toTriageRequest) : [],
+      editing: activeListTab === "editing" ? activeTabRequests.map(toTriageRequest) : [],
       queued: activeListTab === "queued" ? activeTabRequests.map(toTriageRequest) : [],
       printing: activeListTab === "printing" ? activeTabRequests.map(toTriageRequest) : [],
       printed: activeListTab === "printed" ? activeTabRequests.map(toTriageRequest) : [],
@@ -1742,11 +1749,13 @@ export function PrintRequestsPage() {
               >
                 {tab === "working"
                   ? "Working"
-                  : tab === "queued"
-                    ? "Queued"
-                    : tab === "printing"
-                      ? "Printing"
-                      : "Printed"}{" "}
+                  : tab === "editing"
+                    ? "Editing"
+                    : tab === "queued"
+                      ? "Queued"
+                      : tab === "printing"
+                        ? "Printing"
+                        : "Printed"}{" "}
                 ({countsByTab[tab]})
               </button>
             ))}

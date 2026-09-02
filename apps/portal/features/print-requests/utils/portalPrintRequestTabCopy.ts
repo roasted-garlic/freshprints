@@ -4,7 +4,7 @@ import type { PortalPrintRequestListTab } from '@fresh-prints/shared/utils/porta
 export function getPortalPrintRequestsEmptyPageCopyLines(): [string, string] {
   return [
     'Your Current Request is always ready. Add designs while browsing or upload your own artwork.',
-    'After you add a request to a show\'s print run, track it here through Queued, Printing, and Printed.',
+    'After you add a request to a show\'s print run, track it here through Queued, Printing, and Printed. Requests returned for changes appear under Editing.',
   ];
 }
 
@@ -13,6 +13,8 @@ export function getPortalPrintRequestTabGuideCopy(tab: PortalPrintRequestListTab
   switch (tab) {
     case 'working':
       return 'The Working tab is for your Current Request while you add designs, set quantities and print sizes, and get ready to add it to a show\'s print run. An empty Current Request still counts as your open request until you queue it.';
+    case 'editing':
+      return 'The Editing tab is for a request that was removed from a show\'s print run so you can revise it. You still have only one open Continuable request at a time — Editing and Working drafts share that limit.';
     case 'queued':
       return 'The Queued tab is for requests assigned to an upcoming show\'s print run. After a request is queued to a show\'s print run, it will appear here until printing begins.';
     case 'printing':
@@ -27,6 +29,8 @@ export function getPortalPrintRequestTabEmptyCopy(tab: PortalPrintRequestListTab
   switch (tab) {
     case 'working':
       return 'Nothing listed yet. Open Current Request to review what\'s in it, or browse designs to add the first item. Your request is created when you add something.';
+    case 'editing':
+      return 'Nothing here yet. If a request comes back from a show for changes, it will appear here until you queue it again.';
     case 'queued':
       return 'Nothing here yet. When you add a request to a show\'s print run, it will appear here until printing begins.';
     case 'printing':

@@ -30,6 +30,7 @@ test("findPrintRequestListTabForRequestId: returns the tab that contains the req
   assert.equal(
     findPrintRequestListTabForRequestId("request-2", {
       working: [{ id: "request-1" }],
+      editing: [],
       queued: [{ id: "request-2" }],
       printing: [],
       printed: [],
@@ -42,6 +43,7 @@ test("findPrintRequestListTabForRequestId: returns null when the request is miss
   assert.equal(
     findPrintRequestListTabForRequestId("missing", {
       working: [{ id: "request-1" }],
+      editing: [],
       queued: [],
       printing: [],
       printed: [],
@@ -54,10 +56,24 @@ test("findPrintRequestListTabForRequestId: returns null for empty ids", () => {
   assert.equal(
     findPrintRequestListTabForRequestId("  ", {
       working: [{ id: "request-1" }],
+      editing: [],
       queued: [],
       printing: [],
       printed: [],
     }),
     null,
+  );
+});
+
+test("findPrintRequestListTabForRequestId: finds Editing tab membership", () => {
+  assert.equal(
+    findPrintRequestListTabForRequestId("edit-1", {
+      working: [],
+      editing: [{ id: "edit-1" }],
+      queued: [],
+      printing: [],
+      printed: [],
+    }),
+    "editing",
   );
 });

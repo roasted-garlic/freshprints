@@ -1,4 +1,5 @@
 import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
+import { sortStaffGangSheetHistoryRecords } from "@fresh-prints/shared/utils/staffGangSheetHistorySort";
 
 type ShowListSortDirection = "asc" | "desc";
 
@@ -41,45 +42,12 @@ export function sortPastShowsForDisplay(shows: UpcomingShow[]): UpcomingShow[] {
   return [...shows].sort((left, right) => compareShowsByScheduledStart(left, right, "desc"));
 }
 
-function compareCycleNumberDesc(left: UpcomingShow, right: UpcomingShow): number | null {
-  const leftCycle = left.staffGangSheetCycleNumber;
-  const rightCycle = right.staffGangSheetCycleNumber;
-  const leftValid = typeof leftCycle === "number" && Number.isInteger(leftCycle);
-  const rightValid = typeof rightCycle === "number" && Number.isInteger(rightCycle);
-
-  if (leftValid && rightValid && leftCycle !== rightCycle) {
-    return rightCycle - leftCycle;
-  }
-
-  return null;
-}
-
 /**
  * Internal Gang Sheet History: most recently completed sheet first (`printFinishedAt` DESC).
  * Sheets missing `printFinishedAt` sort after finished ones. Ties use cycle number DESC, then `id`.
  * Do not use for Current, Upcoming, or Past Show Queue lists.
+ * Shared with Print Requests Internal→Printed section ordering.
  */
 export function sortStaffGangSheetHistoryForDisplay(shows: UpcomingShow[]): UpcomingShow[] {
-  return [...shows].sort((left, right) => {
-    const leftMillis = left.printFinishedAt?.toMillis();
-    const rightMillis = right.printFinishedAt?.toMillis();
-
-    if (leftMillis === undefined && rightMillis === undefined) {
-      return compareCycleNumberDesc(left, right) ?? left.id.localeCompare(right.id);
-    }
-
-    if (leftMillis === undefined) {
-      return 1;
-    }
-
-    if (rightMillis === undefined) {
-      return -1;
-    }
-
-    if (leftMillis !== rightMillis) {
-      return rightMillis - leftMillis;
-    }
-
-    return compareCycleNumberDesc(left, right) ?? left.id.localeCompare(right.id);
-  });
+  return sortStaffGangSheetHistoryRecords(shows);
 }

@@ -9,6 +9,7 @@ import { resolvePortalPrintRequestProgressLabel } from '@fresh-prints/shared/uti
 import { buildPortalCustomerShowScheduleCardSummary } from '@fresh-prints/shared/utils/portalCustomerShowSchedule';
 import {
   PORTAL_PRINT_REQUEST_LIST_TAB_PARAM,
+  PORTAL_PRINT_REQUEST_LIST_TABS,
   getPortalPrintRequestListTabLabel,
   parsePortalPrintRequestListTab,
   type PortalPrintRequestListTab,
@@ -24,7 +25,7 @@ import {
 import { resolvePortalPrintRequestCardLabel } from '../../../features/print-requests/utils/resolvePortalPrintRequestCardLabel';
 import { LibraryIcon, ShoppingBagIcon } from '../../../features/shared/components/PortalIcons';
 
-const PORTAL_REQUEST_TABS: PortalPrintRequestListTab[] = ['working', 'queued', 'printing', 'printed'];
+const PORTAL_REQUEST_TABS: readonly PortalPrintRequestListTab[] = PORTAL_PRINT_REQUEST_LIST_TABS;
 
 function buildRequestsPageHref(tab: PortalPrintRequestListTab): string {
   return `/requests?tab=${tab}`;
@@ -34,6 +35,8 @@ function getEmptyTabTitle(tab: PortalPrintRequestListTab): string {
   switch (tab) {
     case 'working':
       return 'Current Request is open';
+    case 'editing':
+      return 'No requests in Editing';
     case 'queued':
       return 'No queued requests';
     case 'printing':
@@ -77,8 +80,8 @@ export default function RequestsPage() {
         <div>
           <h1>Print requests</h1>
           <p className="portal-muted">
-            Track requests while you build them, after they are queued to a show&apos;s print run, while they
-            print, and once production is complete.
+            Track requests while you build them, while they are back for edits, after they are queued
+            to a show&apos;s print run, while they print, and once production is complete.
           </p>
         </div>
       </header>

@@ -14,7 +14,12 @@
 .portal-requests-tab-bar {
   border-bottom: 1px solid var(--color-border);
   display: flex;
-  gap: var(--space-2);
+  flex-wrap: nowrap;
+  gap: var(--space-1);
+  /* Keep horizontal scroll for narrow viewports; hide Y so the 1px border
+     overlap on active tabs does not spawn a vertical scrollbar track. */
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .portal-requests-tab-button {
@@ -23,14 +28,16 @@
   border-bottom: 2px solid transparent;
   color: var(--color-text-secondary);
   cursor: pointer;
+  flex: 0 0 auto;
   font: inherit;
   font-size: var(--font-size-sm);
   font-weight: 600;
   margin-bottom: -1px;
-  padding: var(--space-2) var(--space-3);
+  padding: 0.4rem 0.65rem;
   transition:
     border-color var(--transition-fast),
     color var(--transition-fast);
+  white-space: nowrap;
 }
 
 .portal-requests-tab-button:hover {

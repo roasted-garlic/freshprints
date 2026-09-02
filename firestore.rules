@@ -742,7 +742,7 @@ service cloud.firestore {
     }
 
     function isValidPrintRequestQueueTab(queueTab) {
-      return queueTab in ["working", "queued", "printing", "printed"];
+      return queueTab in ["working", "editing", "queued", "printing", "printed"];
     }
 
     function isValidShowQueueBiddingAcknowledgment(acknowledgment) {
@@ -2356,7 +2356,7 @@ service cloud.firestore {
 
     function isOptionalPrintRequestListTab(data, field) {
       return !(field in data)
-        || data[field] in ["working", "queued", "printing", "printed"];
+        || data[field] in ["working", "editing", "queued", "printing", "printed"];
     }
 
     function staffInboxAckFieldsValid(data) {

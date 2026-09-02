@@ -11,6 +11,7 @@ export type PortalRequestDetailFrom =
 
 const REQUEST_DETAIL_FROM_VALUES = new Set<string>([
   'working',
+  'editing',
   'queued',
   'printing',
   'printed',
@@ -62,7 +63,11 @@ export function resolvePortalRequestDetailBack(
   }
 
   const tab: PortalPrintRequestListTab =
-    from === 'working' || from === 'queued' || from === 'printing' || from === 'printed'
+    from === 'working' ||
+    from === 'editing' ||
+    from === 'queued' ||
+    from === 'printing' ||
+    from === 'printed'
       ? from
       : fallbackTab;
 

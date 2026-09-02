@@ -140,7 +140,7 @@ describe("Print Requests route normalization", () => {
   });
 
   it("waits for async data, preserves valid deep links, and follows moved requests", () => {
-    const empty = { working: [], queued: [], printing: [], printed: [] };
+    const empty = { working: [], editing: [], queued: [], printing: [], printed: [] };
     assert.equal(
       resolveCanonicalPrintRequestsRoute({
         dataReady: false,
@@ -156,6 +156,7 @@ describe("Print Requests route normalization", () => {
 
     const loaded = {
       working: [triageRequest("request-1", 1)],
+      editing: [],
       queued: [triageRequest("request-2", 1)],
       printing: [],
       printed: [],
@@ -212,6 +213,7 @@ describe("Print Requests route normalization", () => {
   it("replaces a stale request once and settles on populated or empty tabs", () => {
     const requestsByTab = {
       working: [triageRequest("working-1", 1)],
+      editing: [],
       queued: [],
       printing: [triageRequest("printing-1", 1)],
       printed: [],
@@ -327,6 +329,7 @@ describe("Print Requests route normalization", () => {
         requestedWorkingFilter: "active",
         requestsByTab: {
           working: [triageRequest("not-visible", 0, nowMs)],
+          editing: [],
           queued: [],
           printing: [],
           printed: [],
@@ -358,6 +361,7 @@ describe("Print Requests route normalization", () => {
               needsStaffRequeueAt: { toMillis: () => nowMs },
             }),
           ],
+          editing: [],
           queued: [],
           printing: [],
           printed: [],
@@ -377,6 +381,7 @@ describe("Print Requests route normalization", () => {
     const nowMs = ROUTE_TRIAGE_NOW_MS;
     const requestsByTab = {
       working: [triageRequest("active-1", 1, nowMs), triageRequest("empty-1", 0, nowMs)],
+      editing: [],
       queued: [],
       printing: [],
       printed: [],
@@ -508,10 +513,16 @@ describe("converted request navigation deep links", () => {
 });
 
 describe("internal print request list tabs", () => {
-  it("omits printing for internal requests", () => {
-    assert.deepEqual(getPrintRequestListTabsForKind("internal"), ["working", "queued", "printed"]);
+  it("includes Editing and omits printing for internal requests", () => {
+    assert.deepEqual(getPrintRequestListTabsForKind("internal"), [
+      "working",
+      "editing",
+      "queued",
+      "printed",
+    ]);
     assert.deepEqual(getPrintRequestListTabsForKind("customer"), [
       "working",
+      "editing",
       "queued",
       "printing",
       "printed",
@@ -522,5 +533,6 @@ describe("internal print request list tabs", () => {
     assert.equal(normalizePrintRequestListTabForKind("printing", "internal"), "printed");
     assert.equal(normalizePrintRequestListTabForKind("printing", "customer"), "printing");
     assert.equal(normalizePrintRequestListTabForKind("queued", "internal"), "queued");
+    assert.equal(normalizePrintRequestListTabForKind("editing", "internal"), "editing");
   });
 });

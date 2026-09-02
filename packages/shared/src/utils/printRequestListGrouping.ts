@@ -1,4 +1,4 @@
-export type PrintRequestListTab = "working" | "queued" | "printing" | "printed";
+export type PrintRequestListTab = "working" | "editing" | "queued" | "printing" | "printed";
 
 export interface PrintRequestListGroupingInput {
   /** Sum of all `printRequestItems.quantity` for the request. */
@@ -14,11 +14,11 @@ export interface PrintRequestListGroupingInput {
 }
 
 /**
- * Derives which list tab (Working / Queued / Printed) a Print Request belongs in, from its show
- * allocations rather than a persisted queue-status field. A request with no active allocations
- * is Working regardless of its persisted status label; a fully printed/completed request is
- * Printed even if `status` was never transitioned, so the tab never contradicts the allocation
- * data on screen.
+ * Derives which Studio list tab a Print Request belongs in. Allocation-driven tabs win first;
+ * persisted `status === "editing"` (de-queued for revision) maps to Editing when no active
+ * allocations remain; never-queued drafts and other zero-allocation carts stay Working.
+ * Portal list tabs use the same derive output (including Editing). Continuable
+ * create/edit guards still key off `draft` | `editing` status (ADR-FP-071).
  */
 export function derivePrintRequestListTab(input: PrintRequestListGroupingInput): PrintRequestListTab {
   if (input.status === "completed") {
@@ -35,6 +35,10 @@ export function derivePrintRequestListTab(input: PrintRequestListGroupingInput):
 
   if (input.totalAllocatedQuantity > 0) {
     return "queued";
+  }
+
+  if (input.status === "editing") {
+    return "editing";
   }
 
   return "working";

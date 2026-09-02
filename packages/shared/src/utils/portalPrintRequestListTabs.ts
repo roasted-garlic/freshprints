@@ -4,7 +4,19 @@ import type { PrintRequestAllocationTotals } from "./showAllocationTotals";
 import type { PrintRequestItemSummary } from "./printRequestItemSummaries";
 import { derivePrintRequestListTab, type PrintRequestListTab } from "./printRequestListGrouping";
 
+/**
+ * Portal customer list tabs match Studio customer lifecycle tabs, including Editing.
+ * Continuable semantics (ADR-FP-071) still use `draft` | `editing` status — not tab labels.
+ */
 export type PortalPrintRequestListTab = PrintRequestListTab;
+
+export const PORTAL_PRINT_REQUEST_LIST_TABS = [
+  "working",
+  "editing",
+  "queued",
+  "printing",
+  "printed",
+] as const satisfies readonly PortalPrintRequestListTab[];
 
 export const PORTAL_PRINT_REQUEST_LIST_TAB_PARAM = "tab";
 
@@ -13,10 +25,24 @@ export function isPortalContinuablePrintRequestStatus(status: PrintRequestStatus
   return status === "draft" || status === "editing";
 }
 
+/**
+ * Identity map from shared lifecycle derive → Portal list tab.
+ * Kept as a named helper so Studio/Portal presentation stays explicit and testable.
+ */
+export function toPortalPrintRequestListTab(tab: PrintRequestListTab): PortalPrintRequestListTab {
+  return tab;
+}
+
 export function parsePortalPrintRequestListTab(
   value: string | null | undefined,
 ): PortalPrintRequestListTab {
-  if (value === "queued" || value === "printing" || value === "printed" || value === "working") {
+  if (
+    value === "queued" ||
+    value === "printing" ||
+    value === "printed" ||
+    value === "working" ||
+    value === "editing"
+  ) {
     return value;
   }
 
@@ -27,6 +53,8 @@ export function getPortalPrintRequestListTabLabel(tab: PortalPrintRequestListTab
   switch (tab) {
     case "working":
       return "Working";
+    case "editing":
+      return "Editing";
     case "queued":
       return "Queued";
     case "printing":
@@ -43,6 +71,7 @@ export function groupPortalPrintRequestsByListTab(input: {
 }): Record<PortalPrintRequestListTab, PrintRequest[]> {
   const grouped: Record<PortalPrintRequestListTab, PrintRequest[]> = {
     working: [],
+    editing: [],
     queued: [],
     printing: [],
     printed: [],
@@ -60,7 +89,7 @@ export function groupPortalPrintRequestsByListTab(input: {
       totalInProgressQuantity: 0,
       totalPrintedQuantity: 0,
     };
-    const tab = derivePrintRequestListTab({
+    const studioTab = derivePrintRequestListTab({
       totalRequestedQuantity: summary.totalQuantity,
       totalAllocatedQuantity: allocationTotals.totalAllocatedQuantity,
       totalInProgressQuantity: allocationTotals.totalInProgressQuantity,
@@ -68,7 +97,7 @@ export function groupPortalPrintRequestsByListTab(input: {
       status: request.status,
     });
 
-    grouped[tab].push(request);
+    grouped[toPortalPrintRequestListTab(studioTab)].push(request);
   }
 
   return grouped;

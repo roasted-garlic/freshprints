@@ -4,6 +4,38 @@
 
 ---
 
+### ADR-FP-158: Studio Editing lifecycle tab via `queueTab` mirror (+ Internal Printed newest-first)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-02 |
+| Status | **accepted — DEV signed off (2026-09-02)** |
+| Related | ADR-FP-052, ADR-FP-071, ADR-FP-051, Wave C queueTab |
+| Plan | `docs/workflow/plans/2026-09-02-studio-print-request-editing-tab-plan.md` |
+| Signoff | `docs/workflow/reviews/2026-09-02-studio-print-request-editing-tab-signoff.md` |
+
+**Context**
+
+Persisted `status: "editing"` already meant de-queued-for-revision, and Continuable/Portal guards already used `draft`/`editing`. Studio list tabs collapsed editing into Working because `derivePrintRequestListTab` returned `working` and `queueTab` mirrored that. Staff needed a dedicated Editing tab without a new field. Separately, Internal→Printed groups sorted by `scheduledStartAt` ASC (ID fallback when unscheduled), putting older Internal Gang Sheet #N above newer ones.
+
+**Decision**
+
+1. Extend `PrintRequestListTab` / `queueTab` with `"editing"` (no new Firestore field).
+2. Shared derive order: printed → printing → queued → **editing** → working.
+3. **Portal list tabs also expose Editing** (Working \| Editing \| Queued \| Printing \| Printed), using the same derive. ADR-FP-071 Continuable (`draft`\|`editing` one-at-a-time) is unchanged.
+4. Customer Studio tabs: Working \| Editing \| Queued \| Printing \| Printed. Internal: Working \| Editing \| Queued \| Printed.
+5. Rules allowlist `editing` on `queueTab` / staff-inbox optional tab fields. DEV reconcile via existing `backfillPrintRequestQueueTab`.
+6. Internal→Printed section order uses shared History comparator (`printFinishedAt` DESC → cycle DESC → id); other surfaces keep existing schedule sorts.
+
+**Amendment (2026-09-02):** Owner reversed the earlier “Portal folds Editing into Working” Decision 5; Portal now shows a dedicated Editing tab.
+
+**Consequences**
+
+- Existing `status=editing` docs with `queueTab=working` need DEV backfill after Functions redeploy.
+- Production promotion later inventories Functions + Rules + Studio + Portal + shared (+ optional backfill); no new indexes.
+
+---
+
 ### ADR-FP-157: Normal Show Queue MOVE (cancel + generic lineage)
 
 | Field | Value |

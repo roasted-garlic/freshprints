@@ -19,6 +19,8 @@ export function resolvePortalPrintProgressStage(
       return "done";
     case "working":
       return null;
+    case "editing":
+      return null;
   }
 }
 

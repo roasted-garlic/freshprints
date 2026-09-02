@@ -11,10 +11,21 @@ describe("computePrintRequestQueueTab", () => {
     );
   });
 
-  it("is working with items but no allocations", () => {
+  it("is editing with items but no allocations when status is editing", () => {
     assert.equal(
       computePrintRequestQueueTab({
         status: "editing",
+        items: [{ quantity: 2 }],
+        allocations: [],
+      }),
+      "editing",
+    );
+  });
+
+  it("is working with items but no allocations when status is draft", () => {
+    assert.equal(
+      computePrintRequestQueueTab({
+        status: "draft",
         items: [{ quantity: 2 }],
         allocations: [],
       }),

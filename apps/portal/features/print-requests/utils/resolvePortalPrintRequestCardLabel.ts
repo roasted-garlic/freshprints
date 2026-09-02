@@ -7,10 +7,14 @@ interface ResolvePortalPrintRequestCardLabelInput {
   progressLabel: string;
 }
 
-/** Working is a grouping; expose the restored editable lifecycle state on the request itself. */
+/** Working/Editing are build/revise groupings; prefer status wording when useful. */
 export function resolvePortalPrintRequestCardLabel(
   input: ResolvePortalPrintRequestCardLabelInput,
 ): string {
+  if (input.listTab === 'editing') {
+    return 'Editing';
+  }
+
   if (input.listTab === 'working' && input.requestStatus === 'editing') {
     return 'Editing';
   }

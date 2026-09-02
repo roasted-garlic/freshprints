@@ -33,7 +33,7 @@ function buildState(ids: string[], workingCount = ids.length): PrintRequestListS
   return {
     requests,
     summariesByRequestId,
-    countsByTab: { working: workingCount, queued: 0, printing: 0, printed: 0 },
+    countsByTab: { working: workingCount, editing: 0, queued: 0, printing: 0, printed: 0 },
   };
 }
 
@@ -101,7 +101,7 @@ describe("reconcileDeletedOrArchivedRequest", () => {
     const state: PrintRequestListState = {
       requests: [buildRequest("a", "active")],
       summariesByRequestId: {},
-      countsByTab: { working: 0, queued: 5, printing: 0, printed: 0 },
+      countsByTab: { working: 0, editing: 0, queued: 5, printing: 0, printed: 0 },
     };
 
     const result = reconcileDeletedOrArchivedRequest(state, "a", "deleted", "queued");

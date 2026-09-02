@@ -10,6 +10,7 @@ import {
   resolvePortalPrintRequestProgressLabel,
 } from '@fresh-prints/shared/utils/printRequestConversion';
 import {
+  toPortalPrintRequestListTab,
   type PortalPrintRequestListTab,
 } from '@fresh-prints/shared/utils/portalPrintRequestListTabs';
 import {
@@ -370,13 +371,15 @@ export default function PrintRequestDetailView() {
     const summary = summariesByRequestId[printRequest.id];
     const allocationTotals = allocationTotalsByRequestId[printRequest.id];
 
-    return derivePrintRequestListTab({
-      totalRequestedQuantity: summary?.totalQuantity ?? totalPrintCount,
-      totalAllocatedQuantity: allocationTotals?.totalAllocatedQuantity ?? 0,
-      totalInProgressQuantity: allocationTotals?.totalInProgressQuantity ?? 0,
-      totalPrintedQuantity: allocationTotals?.totalPrintedQuantity ?? 0,
-      status: printRequest.status,
-    });
+    return toPortalPrintRequestListTab(
+      derivePrintRequestListTab({
+        totalRequestedQuantity: summary?.totalQuantity ?? totalPrintCount,
+        totalAllocatedQuantity: allocationTotals?.totalAllocatedQuantity ?? 0,
+        totalInProgressQuantity: allocationTotals?.totalInProgressQuantity ?? 0,
+        totalPrintedQuantity: allocationTotals?.totalPrintedQuantity ?? 0,
+        status: printRequest.status,
+      }),
+    );
   }, [allocationTotalsByRequestId, printRequest, summariesByRequestId, totalPrintCount]);
 
   const returnFrom = parsePortalRequestDetailFrom(searchParams.get('from'));
