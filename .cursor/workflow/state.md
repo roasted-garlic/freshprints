@@ -5,13 +5,14 @@
 | Status | **IDLE** |
 | DONE | **yes** |
 | Current Mode | idle |
-| Last completed goal | `studio-companion-design-card-title-truncation` |
-| Owner QA | **PASS** — `docs/workflow/reviews/2026-09-02-studio-companion-design-card-title-truncation-owner-qa.md` |
-| Signoff | **APPROVED** — `docs/workflow/reviews/2026-09-02-studio-companion-design-card-title-truncation-signoff.md` |
-| Final test report | `docs/workflow/reviews/2026-09-02-studio-companion-design-card-title-truncation-final-test-report.md` |
+| Last completed goal | `studio-design-library-archive-search-consistency` |
+| Owner QA | **PASS** — `docs/workflow/reviews/2026-09-02-studio-design-library-archive-search-consistency-owner-qa.md` |
+| Signoff | **APPROVED** — `docs/workflow/reviews/2026-09-02-studio-design-library-archive-search-consistency-signoff.md` |
+| Final test report | `docs/workflow/reviews/2026-09-02-studio-design-library-archive-search-consistency-final-test-report.md` |
 | Production | **NOT AUTHORIZED** |
 | Smart Profiling | **PARKED** |
 | `show-queue-batch-allocation-performance` | **DEFERRED** |
+| Algolia reconcile | **NOT RUN** |
 | Last updated | 2026-09-02 |
 | Last Completed Step | Signoff → commit → push `development` → IDLE |
 
@@ -37,7 +38,7 @@
 
 | Date | Decision |
 |------|----------|
-| 2026-09-02 | Owner QA Companion title truncation **PASS**; signoff **APPROVED**; push `development` only; production **NOT AUTHORIZED** |
-| 2026-09-02 | CSS shrink-chain: body stretch + title `flex:1; min-width:0`; native `title` retained |
-| 2026-09-02 | Final contract 6/6 PASS; artworkPlacement 2 pre-existing fails documented |
-| 2026-09-02 | Prior goal `studio-history-newest-first-ordering` signed off |
+| 2026-09-02 | Owner QA archive/search consistency **PASS**; signoff **APPROVED**; push `development` only; production **NOT AUTHORIZED** |
+| 2026-09-02 | ADR-FP-084 preserved; Algolia reconcile NOT RUN |
+| 2026-09-02 | Final focused regression 39/39 PASS |
+| 2026-09-02 | Prior goal `studio-companion-design-card-title-truncation` signed off |
