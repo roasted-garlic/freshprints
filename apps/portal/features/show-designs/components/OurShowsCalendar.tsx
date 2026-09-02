@@ -7,8 +7,6 @@ import {
   buildCalendarMonthWeeks,
   formatCalendarDayGroupLabel,
   formatCalendarMonthLabel,
-  getEarliestShowDateKey,
-  parseLocalDateKey,
   shiftCalendarMonth,
   toLocalDateKey,
 } from '@fresh-prints/shared/utils/showCalendarGrid';
@@ -23,6 +21,7 @@ import {
   type OurShowsCapacityBorder,
   type OurShowsTiming,
 } from '../utils/ourShowsLifecycle';
+import { formatOurShowsDayAriaLabel } from '../utils/ourShowsDayAriaLabel';
 import { SHOW_DESIGN_COUNT_DISCLAIMER } from '../utils/showDesignCountDisclaimer';
 
 interface OurShowsCalendarProps {
@@ -53,6 +52,10 @@ function dayTimingClass(entries: readonly DayShowEntry[]): OurShowsTiming {
 
 export function OurShowsCalendar({ onOpenShow, shows }: OurShowsCalendarProps) {
   const now = useMemo(() => new Date(), []);
+  const initialMonth = useMemo(
+    () => formatCalendarMonthLabel(now.getFullYear(), now.getMonth()),
+    [now],
+  );
 
   const showsByDateKey = useMemo(() => {
     const groups = new Map<string, DayShowEntry[]>();
@@ -95,14 +98,6 @@ export function OurShowsCalendar({ onOpenShow, shows }: OurShowsCalendarProps) {
   }, [now, shows]);
 
   const showDateKeys = useMemo(() => new Set(showsByDateKey.keys()), [showsByDateKey]);
-  const earliestDateKey = useMemo(() => getEarliestShowDateKey(showDateKeys), [showDateKeys]);
-  const initialMonth = useMemo(() => {
-    if (earliestDateKey) {
-      const start = parseLocalDateKey(earliestDateKey);
-      return formatCalendarMonthLabel(start.getFullYear(), start.getMonth());
-    }
-    return formatCalendarMonthLabel(now.getFullYear(), now.getMonth());
-  }, [earliestDateKey, now]);
 
   const [viewMonth, setViewMonth] = useState(initialMonth.month);
   const [viewYear, setViewYear] = useState(initialMonth.year);
@@ -191,11 +186,13 @@ export function OurShowsCalendar({ onOpenShow, shows }: OurShowsCalendarProps) {
 
                   return (
                     <button
-                      aria-label={
-                        hasShows
-                          ? `${day.dayOfMonth}, ${designCount} design${designCount === 1 ? '' : 's'} — open show gallery`
-                          : `${day.dayOfMonth}, no shows`
-                      }
+                      aria-current={day.isToday ? 'date' : undefined}
+                      aria-label={formatOurShowsDayAriaLabel({
+                        dateKey: day.dateKey,
+                        designCount,
+                        hasShows,
+                        isToday: day.isToday,
+                      })}
                       className={className}
                       disabled={!hasShows}
                       key={day.dateKey}

@@ -196,42 +196,97 @@
   opacity: 0.42;
 }
 
+/*
+  Visual hierarchy (dark UI):
+  ordinary day < upcoming/aired show day (soft) < today (strongest)
+  Capacity borders stay meaningful but muted so they do not outshine today.
+*/
+.our-shows-day.is-today {
+  background: color-mix(in srgb, var(--color-bg-secondary) 58%, var(--color-bg-primary));
+  border-color: color-mix(in srgb, var(--color-text-secondary) 48%, var(--color-border));
+}
+
 .our-shows-day.is-today .our-shows-day-number {
-  color: var(--color-accent-primary);
+  color: var(--color-text-primary);
+  font-weight: 750;
 }
 
 .our-shows-day.has-shows {
   cursor: pointer;
 }
 
+.our-shows-metadata-status {
+  font-size: 0.9rem;
+  margin: 0 auto;
+  max-width: 44rem;
+  text-align: center;
+}
+
 .our-shows-day.has-shows:hover {
   transform: translateY(-1px);
 }
 
+/* Soft upcoming fill — lighter than the previous accent wash. */
 .our-shows-day.has-shows.is-timing-upcoming {
-  background: color-mix(in srgb, var(--color-accent-primary) 12%, var(--color-bg-primary));
+  background: color-mix(in srgb, var(--color-success, #3ecf8e) 6%, var(--color-bg-primary));
 }
 
 .our-shows-day.has-shows.is-timing-aired {
-  background: color-mix(in srgb, var(--color-text-tertiary) 14%, var(--color-bg-primary));
+  background: color-mix(in srgb, var(--color-text-tertiary) 10%, var(--color-bg-primary));
 }
 
+/* Soft capacity borders (upcoming). */
 .our-shows-day.has-shows.is-border-low {
-  border-color: var(--color-success, #3ecf8e);
+  border-color: color-mix(in srgb, var(--color-success, #3ecf8e) 40%, transparent);
 }
 
 .our-shows-day.has-shows.is-border-medium {
-  border-color: var(--color-warning, #f5b942);
+  border-color: color-mix(in srgb, var(--color-warning, #f5b942) 42%, transparent);
 }
 
 .our-shows-day.has-shows.is-border-high {
-  border-color: var(--color-danger, #ff5c5c);
+  border-color: color-mix(in srgb, var(--color-danger, #ff5c5c) 42%, transparent);
 }
 
 .our-shows-day.has-shows.is-timing-aired.is-border-low,
 .our-shows-day.has-shows.is-timing-aired.is-border-medium,
 .our-shows-day.has-shows.is-timing-aired.is-border-high {
-  border-color: color-mix(in srgb, var(--color-text-tertiary) 32%, transparent);
+  border-color: color-mix(in srgb, var(--color-text-tertiary) 28%, transparent);
+}
+
+/* Today + show: keep today lift primary; retain soft status cue. */
+.our-shows-day.is-today.has-shows.is-timing-upcoming {
+  background: color-mix(
+    in srgb,
+    var(--color-success, #3ecf8e) 8%,
+    color-mix(in srgb, var(--color-bg-secondary) 52%, var(--color-bg-primary))
+  );
+}
+
+.our-shows-day.is-today.has-shows.is-timing-aired {
+  background: color-mix(
+    in srgb,
+    var(--color-text-tertiary) 8%,
+    color-mix(in srgb, var(--color-bg-secondary) 52%, var(--color-bg-primary))
+  );
+}
+
+.our-shows-day.is-today.has-shows.is-border-low {
+  border-color: color-mix(in srgb, var(--color-success, #3ecf8e) 55%, var(--color-text-secondary));
+}
+
+.our-shows-day.is-today.has-shows.is-border-medium {
+  border-color: color-mix(in srgb, var(--color-warning, #f5b942) 55%, var(--color-text-secondary));
+}
+
+.our-shows-day.is-today.has-shows.is-border-high {
+  border-color: color-mix(in srgb, var(--color-danger, #ff5c5c) 55%, var(--color-text-secondary));
+}
+
+.our-shows-day.is-today.has-shows.is-timing-aired.is-border-low,
+.our-shows-day.is-today.has-shows.is-timing-aired.is-border-medium,
+.our-shows-day.is-today.has-shows.is-timing-aired.is-border-high {
+  border-color: color-mix(in srgb, var(--color-text-tertiary) 40%, var(--color-text-secondary));
 }
 
 .our-shows-day-number {

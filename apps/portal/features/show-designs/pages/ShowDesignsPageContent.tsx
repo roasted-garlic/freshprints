@@ -3,28 +3,40 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-import { PortalLoadingPanel } from '../../shared/components/PortalLoadingPanel';
+import type { PortalPublicShowSummary } from '@fresh-prints/shared/types/portal/listPortalPublicShows.types';
+
 import { OurShowsCalendar } from '../components/OurShowsCalendar';
+import { getPortalPublicShowsReadCacheSnapshot } from '../services/portalPublicShowsReadCache';
 import { portalShowDesignsService } from '../services/portalShowDesignsService';
 
 export function ShowDesignsPageContent() {
   const router = useRouter();
-  const [shows, setShows] = useState<
-    Awaited<ReturnType<typeof portalShowDesignsService.listPublicShows>>['shows']
-  >([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [shows, setShows] = useState<PortalPublicShowSummary[]>(
+    () => getPortalPublicShowsReadCacheSnapshot()?.response.shows ?? [],
+  );
+  const [isLoadingShows, setIsLoadingShows] = useState(
+    () => getPortalPublicShowsReadCacheSnapshot() === null,
+  );
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
+    const snapshot = getPortalPublicShowsReadCacheSnapshot();
+    if (snapshot) {
+      setShows(snapshot.response.shows);
+      setIsLoadingShows(false);
+    } else {
+      setIsLoadingShows(true);
+    }
+    setError(null);
+
     void (async () => {
-      setIsLoading(true);
-      setError(null);
       try {
         const result = await portalShowDesignsService.listPublicShows();
         if (!cancelled) {
           setShows(result.shows);
+          setError(null);
         }
       } catch (loadError) {
         if (!cancelled) {
@@ -32,7 +44,7 @@ export function ShowDesignsPageContent() {
         }
       } finally {
         if (!cancelled) {
-          setIsLoading(false);
+          setIsLoadingShows(false);
         }
       }
     })();
@@ -52,22 +64,23 @@ export function ShowDesignsPageContent() {
         </p>
       </header>
 
-      {isLoading ? <PortalLoadingPanel label="Loading show calendar." /> : null}
-      {error ? <p className="portal-form-error">{error}</p> : null}
+      <OurShowsCalendar
+        onOpenShow={(showId) => {
+          router.push(`/shows/${showId}`);
+        }}
+        shows={shows}
+      />
 
-      {!isLoading && !error ? (
-        shows.length === 0 ? (
-          <p className="portal-muted" style={{ textAlign: 'center' }}>
-            No public shows are on the calendar right now. Check back soon.
-          </p>
-        ) : (
-          <OurShowsCalendar
-            onOpenShow={(showId) => {
-              router.push(`/shows/${showId}`);
-            }}
-            shows={shows}
-          />
-        )
+      {isLoadingShows ? (
+        <p aria-live="polite" className="our-shows-metadata-status portal-muted">
+          Loading upcoming shows…
+        </p>
+      ) : null}
+      {error ? <p className="portal-form-error">{error}</p> : null}
+      {!isLoadingShows && !error && shows.length === 0 ? (
+        <p className="portal-muted" style={{ textAlign: 'center' }}>
+          No public shows are on the calendar right now. Check back soon.
+        </p>
       ) : null}
     </main>
   );

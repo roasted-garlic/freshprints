@@ -40,6 +40,24 @@ describe("buildCalendarMonthWeeks", () => {
     assert.equal(today.isToday, true);
   });
 
+  it("compares today with browser-local date keys, not UTC midnight", () => {
+    const localEvening = new Date(2026, 6, 11, 22, 30, 0);
+    const weeks = buildCalendarMonthWeeks(2026, 6, new Set(), localEvening);
+    const today = weeks.flat().find((day) => day.isToday);
+    assert.ok(today);
+    assert.equal(today.dateKey, toLocalDateKey(localEvening));
+    assert.equal(today.dateKey, "2026-07-11");
+  });
+
+  it("marks today on an adjacent-month cell when it falls in the grid", () => {
+    const now = new Date(2026, 6, 31, 12, 0, 0);
+    const weeks = buildCalendarMonthWeeks(2026, 7, new Set(), now, { weekStartsOn: "monday" });
+    const today = weeks.flat().find((day) => day.dateKey === "2026-07-31");
+    assert.ok(today);
+    assert.equal(today.isToday, true);
+    assert.equal(today.isCurrentMonth, false);
+  });
+
   it("supports Monday-start weeks", () => {
     const weeks = buildCalendarMonthWeeks(2026, 6, new Set(["2026-07-11"]), new Date(2026, 6, 7), {
       weekStartsOn: "monday",

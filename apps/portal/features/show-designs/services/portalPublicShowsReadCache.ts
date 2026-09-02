@@ -12,6 +12,21 @@ export function clearPortalPublicShowsReadCache(): void {
   inFlight = null;
 }
 
+/** Snapshot of the in-memory public-shows cache (including stale entries past TTL). */
+export function getPortalPublicShowsReadCacheSnapshot(): {
+  isFresh: boolean;
+  response: ListPortalPublicShowsResponse;
+} | null {
+  if (!cachedResponse) {
+    return null;
+  }
+
+  return {
+    isFresh: Date.now() - cachedAtMs < CACHE_TTL_MS,
+    response: cachedResponse,
+  };
+}
+
 export async function readPortalPublicShowsCached(
   load: () => Promise<ListPortalPublicShowsResponse>,
 ): Promise<ListPortalPublicShowsResponse> {
