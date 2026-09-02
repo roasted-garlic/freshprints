@@ -4,41 +4,56 @@
 |-------|-------|
 | Status | **IDLE** |
 | DONE | **yes** |
-| Current Mode | idle |
-| Last completed goal | `studio-design-library-archive-search-consistency` |
-| Owner QA | **PASS** — `docs/workflow/reviews/2026-09-02-studio-design-library-archive-search-consistency-owner-qa.md` |
-| Signoff | **APPROVED** — `docs/workflow/reviews/2026-09-02-studio-design-library-archive-search-consistency-signoff.md` |
-| Final test report | `docs/workflow/reviews/2026-09-02-studio-design-library-archive-search-consistency-final-test-report.md` |
+| Current Mode | managed-phase (closed) |
+| Last completed goal | `show-queue-move-and-combine-requests` |
+| Current Phase | **DONE** |
+| Plan Status | **complete** |
+| Implementation Status | **complete** |
+| Test Status | **passed_with_notes** |
+| Signoff Status | **approved** |
+| Owner QA | **PASS** |
+| DEV deploy | **complete** — Functions + Firestore Rules → `fresh-prints-dev` |
 | Production | **NOT AUTHORIZED** |
 | Smart Profiling | **PARKED** |
 | `show-queue-batch-allocation-performance` | **DEFERRED** |
-| Algolia reconcile | **NOT RUN** |
 | Last updated | 2026-09-02 |
-| Last Completed Step | Signoff → commit → push `development` → IDLE |
+| Last Completed Step | Signoff + commit + push `development` (in progress / complete) |
+
+## Artifacts
+
+| Artifact | Path |
+|----------|------|
+| Plan | `docs/workflow/plans/2026-09-02-show-queue-move-and-combine-requests-plan.md` |
+| Formal Review | `docs/workflow/reviews/2026-09-02-show-queue-move-and-combine-requests-review.md` |
+| Implementation Review | `docs/workflow/reviews/2026-09-02-show-queue-move-and-combine-requests-implementation-review.md` |
+| Test report | `docs/workflow/reviews/2026-09-02-show-queue-move-and-combine-requests-test-report.md` |
+| Owner QA | `docs/workflow/reviews/2026-09-02-show-queue-move-and-combine-requests-owner-qa.md` |
+| Signoff | `docs/workflow/reviews/2026-09-02-show-queue-move-and-combine-requests-signoff.md` |
+| ADR | ADR-FP-157 in `docs/project/DECISIONS.md` |
 
 ## Human checkpoint
 
 **Human Checkpoint Required: no**
 
-## Allowed actions
+**Allowed Actions:**
 
-- Await owner direction for next goal
-- Read docs
+- Idle / await next owner goal
 
-## Forbidden actions
+**Forbidden Actions:**
 
-- Production deploy without explicit authorization
-- Starting a new managed goal until owner directs
+- Production deploy unless newly authorized
+- Starting Smart Profiling or batch-allocation without explicit owner start
 
 ## Next Required Step
 
-**Idle** — wait for owner next goal. Do not start another task.
+None — FreshForge **IDLE**. Await owner for next goal or production promotion authorization.
 
 ## Decision log
 
 | Date | Decision |
 |------|----------|
-| 2026-09-02 | Owner QA archive/search consistency **PASS**; signoff **APPROVED**; push `development` only; production **NOT AUTHORIZED** |
-| 2026-09-02 | ADR-FP-084 preserved; Algolia reconcile NOT RUN |
-| 2026-09-02 | Final focused regression 39/39 PASS |
-| 2026-09-02 | Prior goal `studio-companion-design-card-title-truncation` signed off |
+| 2026-09-02 | DEV deploy: `previewShowQueueMove`, `applyShowQueueMove`, firestore:rules (`movedFromAllocationId`) → `fresh-prints-dev` |
+| 2026-09-02 | Owner QA **PASS** |
+| 2026-09-02 | Final regression 77/77; Functions build PASS; Studio tsc pre-existing-only |
+| 2026-09-02 | Signoff **APPROVED**; production **NOT AUTHORIZED**; Smart Profiling **PARKED**; batch-allocation **DEFERRED** |
+| 2026-09-02 | Owner authorized commit + non-force push to `development` |
