@@ -2,55 +2,51 @@
 
 | Field | Value |
 |-------|-------|
-| Status | **ACTIVE** |
-| Phase | **SIGNOFF PREP — AWAITING OWNER FINAL SIGNOFF** |
-| Current goal | `pre-smart-profiling-print-request-and-gang-sheet-polish` |
-| Test report | `docs/workflow/reviews/2026-09-01-pre-smart-profiling-print-request-and-gang-sheet-polish-final-test-report.md` — **passed_with_notes** |
-| Signoff prep | `docs/workflow/reviews/2026-09-01-pre-smart-profiling-print-request-and-gang-sheet-polish-signoff.md` — **AWAITING OWNER** |
-| Queued goal | `ai-review-stuck-processing-recovery` — plan + review approved; **implement BLOCKED** |
-| Deferred follow-up | `show-queue-batch-allocation-performance` — plan only |
-| Production | **NOT AUTHORIZED** |
+| Status | **IDLE** |
+| DONE | **yes** |
+| Last completed goal | `pre-smart-profiling-print-request-and-gang-sheet-polish` |
+| Signoff | **APPROVED** (`passed_with_notes`) — `docs/workflow/reviews/2026-09-01-pre-smart-profiling-print-request-and-gang-sheet-polish-signoff.md` |
+| Test report | `docs/workflow/reviews/2026-09-01-pre-smart-profiling-print-request-and-gang-sheet-polish-final-test-report.md` |
+| Production | **NOT AUTHORIZED** — coordinated promotion pending |
 | Smart Profiling | **PARKED** |
 | Last updated | 2026-09-01 |
 
-## Prerequisite gate (hard)
+## Last completed goal summary
 
-**Do not implement** `ai-review-stuck-processing-recovery` until:
+| WS | Status |
+|----|--------|
+| WS1 | **PASS** |
+| WS2 | **PASS** |
+| WS3 | **PASS** |
 
-1. `pre-smart-profiling-print-request-and-gang-sheet-polish` final signoff **DONE**
-2. Workflow state returns to **IDLE**
+Final regression: **passed_with_notes** (owner accepted pre-existing Portal/Studio typecheck and repo lint notes; no goal-scoped regressions).
 
-## Workstream status
+Landed via PR #91 → `development`.
 
-| WS | Owner DEV QA | Final regression |
-|----|--------------|------------------|
-| WS1 | **PASS** | 21/21 focused tests pass |
-| WS2 | **PASS** | 18/18 focused tests pass |
-| WS3 | **PASS** | 35/35 + compositor 3/3 pass |
+## Queued / deferred (not active — do not implement until owner starts next goal)
 
-## Signoff blockers
-
-1. Owner final signoff on signoff prep document
-2. Reviewed PR merge to `origin/development` (in progress — see PR)
+| Item | Status |
+|------|--------|
+| `ai-review-stuck-processing-recovery` | Plan + review **approved**; **ready as next small managed goal**; implementation **not started** |
+| `show-queue-batch-allocation-performance` | **DEFERRED** — plan only |
+| Smart Profiling | **PARKED** |
 
 ## Allowed actions
 
-- Owner final signoff response
-- PR review / merge (human)
-- Mark DONE after owner signoff + PR landed
+- Owner selects next managed goal
+- Read docs / workflow state
 
-## Forbidden actions
+## Forbidden actions (until new goal started)
 
-- Implement stuck-processing recovery
-- Implement batch allocation
-- Production / DEV deploy
-- Smart Profiling
-- Mark DONE without owner confirmation
+- Implement `ai-review-stuck-processing-recovery` without new managed phase
+- Implement batch allocation without new managed phase
+- Smart Profiling work
+- Production deploy without separate authorization
 
 ## Decision log
 
 | Date | Decision |
 |------|----------|
-| 2026-09-01 | Final regression **passed_with_notes**; signoff prep created; PR path initiated |
-| 2026-09-01 | Bucket 7 reconciled: WS3 drift removed; Internal Gang Sheet committed; batch allocation deferred |
-| 2026-09-01 | `ai-review-stuck-processing-recovery` plan + review approved; implement queued after prior signoff |
+| 2026-09-01 | Owner **APPROVED** final signoff (`passed_with_notes`); PR #91 merged to `development`; FreshForge **IDLE** |
+| 2026-09-01 | Final regression **passed_with_notes**; signoff prep created; PR #91 opened |
+| 2026-09-01 | Bucket 7 reconciled; Internal Gang Sheet committed; batch allocation deferred |
