@@ -4,36 +4,24 @@
 |-------|-------|
 | Status | **IDLE** |
 | DONE | **yes** |
-| Last completed goal | `pre-smart-profiling-print-request-and-gang-sheet-polish` |
-| Signoff | **APPROVED** (`passed_with_notes`) — `docs/workflow/reviews/2026-09-01-pre-smart-profiling-print-request-and-gang-sheet-polish-signoff.md` |
-| Test report | `docs/workflow/reviews/2026-09-01-pre-smart-profiling-print-request-and-gang-sheet-polish-final-test-report.md` |
-| Production | **NOT AUTHORIZED** — coordinated promotion pending |
+| Last completed goal | `ai-review-stuck-processing-recovery` |
+| Signoff | **APPROVED** — `docs/workflow/reviews/2026-09-02-ai-review-stuck-processing-recovery-signoff.md` |
+| Owner QA | **PASS** — `docs/workflow/reviews/2026-09-02-ai-review-stuck-processing-recovery-owner-qa-pass.md` |
+| Test report | `docs/workflow/reviews/2026-09-02-ai-review-stuck-processing-recovery-test-report.md` |
+| Production | **NOT AUTHORIZED** |
 | Smart Profiling | **PARKED** |
-| Last updated | 2026-09-01 |
-
-## Closeout
-
-PR **#91** merged to `development` at **`73d5f12d472339c880c5fabd1e42fb36cdd63c4d`** (merge commit). FreshForge returned to **IDLE**.
-
-Post-merge bookkeeping: `docs/workflow/reviews/2026-09-01-pre-smart-profiling-pr91-post-merge-idle-closeout.md`
+| Last updated | 2026-09-02 |
 
 ## Last completed goal summary
 
-| WS | Status |
-|----|--------|
-| WS1 | **PASS** |
-| WS2 | **PASS** |
-| WS3 | **PASS** |
+Studio stale AI processing recovery: shared 10-minute threshold, stale detection, **Processing appears stuck** + **Retry Processing** via existing enqueue stale-requeue path. Owner DEV QA **PASS** (normal processing verified; manual stale retry not observed). Direct push to `development` per small-task closeout workflow.
 
-Final regression: **passed_with_notes** (owner accepted pre-existing Portal/Studio typecheck and repo lint notes; no goal-scoped regressions).
-
-## Queued / deferred (not active — do not implement until owner starts next goal)
+## Queued / deferred (not active)
 
 | Item | Status |
 |------|--------|
-| `ai-review-stuck-processing-recovery` | Plan + Formal Review **APPROVED**; implementation **NOT STARTED**; eligible as next small managed goal when owner explicitly starts it |
-| `show-queue-batch-allocation-performance` | **DEFERRED** — plan only; implementation **NOT STARTED** |
-| Smart Profiling | **PARKED** / **NOT STARTED** |
+| `show-queue-batch-allocation-performance` | **DEFERRED** |
+| Smart Profiling | **PARKED** |
 
 ## Allowed actions
 
@@ -42,16 +30,13 @@ Final regression: **passed_with_notes** (owner accepted pre-existing Portal/Stud
 
 ## Forbidden actions (until new goal started)
 
-- Implement `ai-review-stuck-processing-recovery` without new managed phase
-- Implement batch allocation without new managed phase
-- Smart Profiling work
+- Smart Profiling work without new managed phase
+- Batch allocation without new managed phase
 - Production deploy without separate authorization
 
 ## Decision log
 
 | Date | Decision |
 |------|----------|
-| 2026-09-01 | PR #91 merged to `development` @ `73d5f12d`; FreshForge **IDLE** |
-| 2026-09-01 | Owner **APPROVED** final signoff (`passed_with_notes`) for `pre-smart-profiling-print-request-and-gang-sheet-polish` |
-| 2026-09-01 | Final regression **passed_with_notes** |
-| 2026-09-01 | Bucket 7 reconciled; Internal Gang Sheet committed; batch allocation deferred |
+| 2026-09-02 | Owner QA **PASS** for `ai-review-stuck-processing-recovery`; signoff **APPROVED**; FreshForge **IDLE** |
+| 2026-09-02 | Small-task closeout: direct push to `development` (no self-review PR) for routine DEV work — production protections unchanged |
