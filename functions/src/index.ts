@@ -132,6 +132,7 @@ export {
   previewShowProductionRecovery,
   applyShowProductionRecovery,
 } from "./previewShowProductionRecovery";
+export { previewShowQueueMove, applyShowQueueMove } from "./previewShowQueueMove";
 export {
   previewCustomerUploadDeletion,
   deleteEligibleCustomerUpload,

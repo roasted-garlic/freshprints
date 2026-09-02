@@ -276,7 +276,23 @@
 .show-allocation-row p {
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
-  margin: 0;
+}
+
+.show-allocation-row-moved {
+  border-left: 1px solid var(--color-border);
+  margin-left: var(--space-2);
+  padding-left: var(--space-2);
+}
+
+.show-allocation-row-moved-link {
+  color: var(--color-accent-primary);
+  text-decoration: none;
+}
+
+.show-allocation-row-moved-link:hover,
+.show-allocation-row-moved-link:focus-visible {
+  text-decoration: underline;
+  outline: none;
 }
 
 .show-allocation-row-actions {

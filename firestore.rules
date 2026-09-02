@@ -1470,6 +1470,7 @@ service cloud.firestore {
           "canceledAt",
           "canceledBy",
           "requeuedFromAllocationId",
+          "movedFromAllocationId",
           "createdAt",
           "updatedAt"
         ])
@@ -1506,6 +1507,7 @@ service cloud.firestore {
         && isOptionalTimestamp(data, "canceledAt")
         && isOptionalString(data, "canceledBy")
         && isOptionalString(data, "requeuedFromAllocationId")
+        && isOptionalString(data, "movedFromAllocationId")
         && data.createdAt is timestamp
         && data.updatedAt is timestamp
         && (

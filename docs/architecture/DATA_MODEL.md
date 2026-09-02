@@ -1892,6 +1892,10 @@ export interface ShowAllocation {
   completedBy?: string;
   canceledAt?: Timestamp;
   canceledBy?: string;
+  /** Did Not Print recovery lineage only (ADR-FP-156). */
+  requeuedFromAllocationId?: string;
+  /** Normal Show Queue MOVE lineage (ADR-FP-157). */
+  movedFromAllocationId?: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
@@ -1915,12 +1919,20 @@ Working/Queued/Printed list tabs are derived the same way, via
 
 `upcomingShows.allocatedQuantity` is a denormalized total that must always be **recomputed from the
 show's non-canceled `showAllocations`, never incrementally adjusted**, whenever an allocation is added
-or removed. `upcomingShowService.recalculateShowAllocatedQuantity()` is the single implementation of
-this; `removeShowAllocation()` and `removeShowAllocationsForRequest()` both call it after deleting
-allocation records, so the show's capacity display can never drift from its actual allocation records
-— see ADR-FP-051. Removing an allocation (individually or for a whole request) is blocked once the
-show's `productionStatus` is `printing`, `fully_printed`, `completed`, or `archived` — see
-`shared/utils/showQueueEditability.ts`'s `canRemoveRequestFromShow()`.
+or removed. `upcomingShowService.recalculateShowAllocatedQuantity()` is the single client
+implementation of this; trusted Functions move/recovery paths recompute inside their transactions.
+
+### Normal Show Queue MOVE (ADR-FP-157)
+
+Staff **Move to Another Show** / **Move All Requests** (Whatnot → Whatnot only):
+
+- Movable statuses: `pending` \| `queued` only (all-or-nothing if any scoped row is non-movable).
+- Source rows: **canceled** (retained). Destination: **new** docs with `movedFromAllocationId`.
+- Never sets `requeuedFromAllocationId`, Did Not Print resolution, or `needsStaffRequeue*`.
+- Combine: multi-doc **sum** of non-canceled quantities (no single-doc merge).
+- Destination excludes `printing` and later/terminal (move-specific helper; Add-to-Show unchanged).
+- Callables: `previewShowQueueMove` / `applyShowQueueMove`; idempotency `showQueueMoveApplications/{checksum}`; max 150 source allocations per TX.
+- Distinct from **Remove from Show** (delete), **Did Not Print requeue** (ADR-FP-156), and past/locked **copy**.
 
 `printRequests.status` gains automatic transitions driven by `upcomingShowService`, so its persisted
 status never misleadingly contradicts the request's actual queue state:

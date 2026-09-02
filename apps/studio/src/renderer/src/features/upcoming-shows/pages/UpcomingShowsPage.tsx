@@ -21,6 +21,7 @@ import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
 import { clearPrintRequestsPageCache } from "../../print-requests/services/printRequestsPageReadCache";
 import { TransferPrintRequestToShowModal } from "../../print-requests/components/TransferPrintRequestToShowModal";
+import { MoveShowQueueAllRequestsModal } from "../components/MoveShowQueueAllRequestsModal";
 import { resolveGangSheetSectionPricingFromSettings,
   formatGangSheetSectionCutoffLabel,
   isValidGangSheetSectionPriceCutoffInches,
@@ -43,6 +44,9 @@ import {
 } from "../components/ShowProductionRecoveryDialog";
 import { useUpcomingShows } from "../hooks/useUpcomingShows";
 import { useShowAllocations } from "../hooks/useShowAllocations";
+import { printRequestService } from "../../print-requests/services/printRequestService";
+import { buildMovedDestinationByPrintRequestId } from "../utils/buildMovedDestinationByPrintRequestId";
+import { buildShowQueueDeepLinkPath } from "../utils/buildShowQueueDeepLinkPath";
 import { useShowProductionTimer } from "../hooks/useShowProductionTimer";
 import { useStalePastPrintingShowReconciliation } from "../hooks/useStalePastPrintingShowReconciliation";
 import { useEmptyPastShowReconciliation } from "../hooks/useEmptyPastShowReconciliation";
@@ -112,6 +116,7 @@ import {
   formatPrintRequestShowTransferActionLabel,
   resolvePrintRequestShowTransferMode,
 } from "@fresh-prints/shared/utils/printRequestShowTransfer";
+import { isShowQueueMoveSourceEligible } from "@fresh-prints/shared/utils/showQueueMove";
 import { isStaffGangSheetShow, isDevFixtureShow, isWhatnotQueueSurfaceShow, type UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
 import {
   canAllocateOriginToShowSource,
@@ -316,6 +321,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
     requestNameSnapshot: string;
     transferQuantity: number;
   } | null>(null);
+  const [isMoveAllRequestsModalOpen, setIsMoveAllRequestsModalOpen] = useState(false);
   const queueSurface = lockedSurface;
   const [isCreateStaffLaneModalOpen, setIsCreateStaffLaneModalOpen] = useState(false);
   const [isCompletingStaffGangSheet, setIsCompletingStaffGangSheet] = useState(false);
@@ -775,6 +781,21 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
     setActionError(null);
   }, []);
 
+  const isSelectedStaffGangSheet = Boolean(selectedShow && isStaffGangSheetShow(selectedShow));
+  const canManageSelectedStaffGangSheet = Boolean(
+    user &&
+      selectedShow &&
+      isStaffGangSheetShow(selectedShow) &&
+      permissionService.canManageStaffGangSheetShow(user, selectedShow),
+  );
+  const isSelectedShowPast = useMemo(
+    () =>
+      selectedShow && !isStaffGangSheetShow(selectedShow)
+        ? isShowQueuePastReadOnlyShow(selectedShow, scheduleNow)
+        : false,
+    [scheduleNow, selectedShow],
+  );
+
   const showDetailOverflowMenuItems = useMemo((): DangerOverflowMenuItem[] => {
     const items: DangerOverflowMenuItem[] = [];
 
@@ -792,6 +813,23 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
       });
     }
 
+    if (
+      user &&
+      selectedShow &&
+      permissionService.canManageUpcomingShows(user) &&
+      isWhatnotQueueSurfaceShow(selectedShow) &&
+      isShowQueueMoveSourceEligible(selectedShow) &&
+      !isSelectedShowPast &&
+      (selectedShow.allocatedQuantity ?? 0) > 0
+    ) {
+      items.push({
+        id: "move-all-requests",
+        label: "Move All Requests…",
+        danger: false,
+        onSelect: () => setIsMoveAllRequestsModalOpen(true),
+      });
+    }
+
     if (user && permissionService.canDeleteEligibleUpcomingShow(user)) {
       items.push({
         id: "delete-show",
@@ -801,22 +839,8 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
     }
 
     return items;
-  }, [openEditShowModal, queueSurface, selectedShow, user]);
+  }, [isSelectedShowPast, openEditShowModal, queueSurface, selectedShow, user]);
 
-  const isSelectedStaffGangSheet = Boolean(selectedShow && isStaffGangSheetShow(selectedShow));
-  const canManageSelectedStaffGangSheet = Boolean(
-    user &&
-      selectedShow &&
-      isStaffGangSheetShow(selectedShow) &&
-      permissionService.canManageStaffGangSheetShow(user, selectedShow),
-  );
-  const isSelectedShowPast = useMemo(
-    () =>
-      selectedShow && !isStaffGangSheetShow(selectedShow)
-        ? isShowQueuePastReadOnlyShow(selectedShow, scheduleNow)
-        : false,
-    [scheduleNow, selectedShow],
-  );
   const selectedShowQueueTab = useMemo((): WhatnotShowQueueTab | null => {
     if (!selectedShow || isStaffGangSheetShow(selectedShow) || !isWhatnotQueueSurfaceShow(selectedShow)) {
       return null;
@@ -865,6 +889,63 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
     () => [...new Set(allocations.map((allocation) => allocation.printRequestId))],
     [allocations],
   );
+  const canceledHistoryRequestIds = useMemo(() => {
+    const ids: string[] = [];
+    for (const group of requestGroups) {
+      const hasActive = group.allocations.some((allocation) => allocation.status !== "canceled");
+      if (!hasActive) {
+        ids.push(group.printRequestId);
+      }
+    }
+    return ids;
+  }, [requestGroups]);
+  const [movedDestinationByRequestId, setMovedDestinationByRequestId] = useState<
+    Map<string, { destinationShowIds: string[] }>
+  >(() => new Map());
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      if (!user || !selectedShowId || canceledHistoryRequestIds.length === 0) {
+        if (!cancelled) {
+          setMovedDestinationByRequestId(new Map());
+        }
+        return;
+      }
+
+      try {
+        const related = await printRequestService.listShowAllocationsForRequests(
+          user,
+          canceledHistoryRequestIds,
+        );
+        if (cancelled) {
+          return;
+        }
+        setMovedDestinationByRequestId(
+          buildMovedDestinationByPrintRequestId({
+            sourceShowId: selectedShowId,
+            sourceAllocations: allocations,
+            relatedAllocations: related,
+          }),
+        );
+      } catch {
+        if (!cancelled) {
+          setMovedDestinationByRequestId(new Map());
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [allocations, canceledHistoryRequestIds, selectedShowId, user]);
+
+  const showsById = useMemo(() => {
+    const map = new Map(shows.map((show) => [show.id, show]));
+    return map;
+  }, [shows]);
+
   const {
     requests,
     summariesByRequestId,
@@ -2283,10 +2364,27 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                 ) : (
                   <div className="print-requests-item-list">
                     {requestGroups.map((group) => {
-                      const totalAllocated = group.allocations.reduce((sum, a) => sum + a.allocatedQuantity, 0);
+                      const activeAllocations = group.allocations.filter(
+                        (allocation) => allocation.status !== "canceled",
+                      );
+                      const hasActiveAllocations = activeAllocations.length > 0;
+                      const totalAllocated = group.allocations.reduce(
+                        (sum, allocation) => sum + allocation.allocatedQuantity,
+                        0,
+                      );
+                      const activeAllocatedQuantity = activeAllocations.reduce(
+                        (sum, allocation) => sum + allocation.allocatedQuantity,
+                        0,
+                      );
                       const isConfirmingRemove = confirmingRemoveRequestId === group.printRequestId;
                       const canRemove =
-                        !isSelectedShowPast && canRemoveRequestFromShow(selectedShow.productionStatus);
+                        hasActiveAllocations &&
+                        !isSelectedShowPast &&
+                        canRemoveRequestFromShow(selectedShow.productionStatus);
+                      const canTransfer = hasActiveAllocations;
+                      const rowStatus = hasActiveAllocations
+                        ? activeAllocations[0]!.status
+                        : "canceled";
                       const isHighlighted = highlightedRequestIdParam === group.printRequestId;
                       const requestSummary = summariesByRequestId[group.printRequestId] ?? {
                         totalQuantity: 0,
@@ -2318,7 +2416,8 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                             printWidthInches: allocation.printWidthInches,
                             printHeightInches: allocation.printHeightInches,
                             quantity: allocation.allocatedQuantity,
-                            status: allocation.status,
+                            // Fully canceled rows (e.g. moved away) still show historical Pocket/Full Size.
+                            status: hasActiveAllocations ? allocation.status : null,
                           })),
                           gangSheetLayoutSettings.sectionPricing.sizeCutoffInches,
                         ),
@@ -2339,11 +2438,44 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                               {group.allocations.length} Design{group.allocations.length === 1 ? "" : "s"} |{" "}
                               {totalAllocated} Item{totalAllocated === 1 ? "" : "s"}
                               {sizeClassLabel ? ` | ${sizeClassLabel}` : ""}
+                              {!hasActiveAllocations
+                                ? (() => {
+                                    const moved = movedDestinationByRequestId.get(group.printRequestId);
+                                    if (!moved || moved.destinationShowIds.length === 0) {
+                                      return null;
+                                    }
+                                    return (
+                                      <span className="show-allocation-row-moved">
+                                        Moved to{" "}
+                                        {moved.destinationShowIds.map((destinationShowId, index) => {
+                                          const destinationShow = showsById.get(destinationShowId);
+                                          const label = destinationShow
+                                            ? formatUpcomingShowTitle(destinationShow)
+                                            : `Show ${destinationShowId}`;
+                                          const href = buildShowQueueDeepLinkPath({
+                                            showId: destinationShowId,
+                                            printRequestId: group.printRequestId,
+                                            show: destinationShow,
+                                            now: scheduleNow,
+                                          });
+                                          return (
+                                            <span key={destinationShowId}>
+                                              {index > 0 ? ", " : null}
+                                              <Link className="show-allocation-row-moved-link" to={href}>
+                                                {label}
+                                              </Link>
+                                            </span>
+                                          );
+                                        })}
+                                      </span>
+                                    );
+                                  })()
+                                : null}
                             </p>
                           </div>
                           <div className="show-allocation-row-actions">
-                            <Badge variant={getShowAllocationStatusBadgeVariant(group.allocations[0].status)}>
-                              {group.allocations[0].status}
+                            <Badge variant={getShowAllocationStatusBadgeVariant(rowStatus)}>
+                              {rowStatus}
                             </Badge>
                             {isConfirmingRemove ? (
                               <>
@@ -2362,25 +2494,29 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                                   Confirm
                                 </Button>
                               </>
-                            ) : (
+                            ) : canTransfer || canRemove ? (
                               <DangerOverflowMenu
                                 ariaLabel={`Actions for ${group.requestNameSnapshot}`}
                                 items={[
-                                  {
-                                    id: "transfer",
-                                    danger: false,
-                                    label: selectedShow
-                                      ? formatPrintRequestShowTransferActionLabel(
-                                          resolvePrintRequestShowTransferMode(selectedShow),
-                                        )
-                                      : "Move to another show",
-                                    onSelect: () =>
-                                      setTransferRequestContext({
-                                        printRequestId: group.printRequestId,
-                                        requestNameSnapshot: group.requestNameSnapshot,
-                                        transferQuantity: totalAllocated,
-                                      }),
-                                  },
+                                  ...(canTransfer
+                                    ? [
+                                        {
+                                          id: "transfer",
+                                          danger: false,
+                                          label: selectedShow
+                                            ? formatPrintRequestShowTransferActionLabel(
+                                                resolvePrintRequestShowTransferMode(selectedShow),
+                                              )
+                                            : "Move to another show",
+                                          onSelect: () =>
+                                            setTransferRequestContext({
+                                              printRequestId: group.printRequestId,
+                                              requestNameSnapshot: group.requestNameSnapshot,
+                                              transferQuantity: activeAllocatedQuantity,
+                                            }),
+                                        },
+                                      ]
+                                    : []),
                                   ...(canRemove
                                     ? [
                                         {
@@ -2393,7 +2529,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                                     : []),
                                 ]}
                               />
-                            )}
+                            ) : null}
                           </div>
                         </div>
                       );
@@ -3490,6 +3626,20 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
           />
         );
       })() : null}
+
+      {isMoveAllRequestsModalOpen && selectedShow ? (
+        <MoveShowQueueAllRequestsModal
+          onClose={() => setIsMoveAllRequestsModalOpen(false)}
+          onMoved={async () => {
+            setIsMoveAllRequestsModalOpen(false);
+            clearPrintRequestsPageCache();
+            setSuccessMessage("Queue moved to the selected show.");
+            setSuccessAlertSeed((current) => current + 1);
+            await Promise.all([reloadUpcomingShows(), reloadAllocations()]);
+          }}
+          sourceShow={selectedShow}
+        />
+      ) : null}
     </main>
   );
 }

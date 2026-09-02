@@ -384,7 +384,10 @@ function resolveAllocationDetailEventKind(input: {
   requeuedFromSourceIds: ReadonlySet<string>;
   show: UpcomingShow | undefined;
 }): AllocationDetailEventKind {
-  if (input.allocation.requeuedFromAllocationId?.trim()) {
+  if (
+    input.allocation.requeuedFromAllocationId?.trim() ||
+    input.allocation.movedFromAllocationId?.trim()
+  ) {
     return "moved";
   }
 

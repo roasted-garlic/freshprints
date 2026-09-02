@@ -47,6 +47,11 @@ export interface ShowAllocation {
   canceledBy?: string;
   /** When set, this allocation was created by Did Not Print requeue from the referenced source row. */
   requeuedFromAllocationId?: string;
+  /**
+   * When set, this allocation was created by a normal Show Queue MOVE from the referenced source row.
+   * Distinct from `requeuedFromAllocationId` (Did Not Print recovery only).
+   */
+  movedFromAllocationId?: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

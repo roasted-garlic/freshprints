@@ -4,13 +4,37 @@
 
 ---
 
----
+### ADR-FP-157: Normal Show Queue MOVE (cancel + generic lineage)
 
----
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-02 |
+| Status | accepted (implementing) |
+| Related | ADR-FP-156 (DNP requeue), ADR-FP-049, ADR-FP-071, ADR-FP-051 |
+| Plan | `docs/workflow/plans/2026-09-02-show-queue-move-and-combine-requests-plan.md` |
 
----
+**Context**
 
----
+Staff need to move queued Print Request allocations between upcoming Whatnot shows (wrong show, consolidate queues) without Did Not Print recovery semantics. Existing Studio transfer **deleted** source rows; DNP requeue cancels with `requeuedFromAllocationId`. Those must stay distinct.
+
+**Decision**
+
+1. Normal MOVE (individual + whole-show) uses trusted Functions `previewShowQueueMove` / `applyShowQueueMove`.
+2. Movable allocation statuses: `pending` \| `queued` only. Non-movable in scope → fail closed (all-or-nothing for whole-show).
+3. Source rows: **cancel** (retain history). Destination: **new** allocation docs. Lineage: `movedFromAllocationId` (never `requeuedFromAllocationId`).
+4. Combine model: multi-doc sum of non-canceled quantities (no single-doc merge).
+5. Surfaces V1: Whatnot → Whatnot only (no Internal Gang Sheet moves).
+6. Destination eligibility (move-specific): exclude `printing` and later/terminal/past/full/non-allocatable — more conservative than Add-to-Show.
+7. Capacity: hard block when projected over max; no new override.
+8. Atomic TX ≤ 150 source allocations; idempotency via `showQueueMoveApplications/{previewChecksum}`.
+9. Recompute both shows’ `allocatedQuantity` from non-canceled allocations. Do not mutate source show production status or `needsStaffRequeue*`.
+10. Past/locked **copy** and DNP recovery remain separate unchanged products. Remove-from-Show remains delete.
+
+**Consequences**
+
+- Harden `TransferPrintRequestToShowModal` move path onto callables; add Move All Requests UI.
+- History resolver treats `movedFromAllocationId` as moved (not DNP missed).
+- Firestore rules allowlist adds `movedFromAllocationId`. DEV Functions deploy only; production not authorized in this phase.
 
 ---
 

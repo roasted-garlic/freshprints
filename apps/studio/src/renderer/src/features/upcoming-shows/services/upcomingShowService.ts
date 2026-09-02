@@ -66,6 +66,7 @@ import type { ShowAllocationStatus } from "@fresh-prints/shared/types/showAlloca
 import { findMatchingUpcomingShow } from "../utils/upcomingShowUpsert";
 import { canStartShowPrinting, canAllocatePrintRequestToShow, PAST_SHOW_READ_ONLY_MESSAGE } from "../utils/groupShowsByUpcomingPast";
 import { resolvePrintRequestShowTransferMode, type PrintRequestShowTransferMode } from "@fresh-prints/shared/utils/printRequestShowTransfer";
+import { showQueueMoveService } from "./showQueueMoveService";
 import { sortUpcomingShowsForDisplay } from "../utils/upcomingShowListSort";
 import {
   diagnoseShowAllocationForTimer,
@@ -294,6 +295,8 @@ export interface ShowAllocationDocumentData extends DocumentData {
   completedBy?: unknown;
   canceledAt?: unknown;
   canceledBy?: unknown;
+  requeuedFromAllocationId?: unknown;
+  movedFromAllocationId?: unknown;
   createdAt?: unknown;
   updatedAt?: unknown;
 }
@@ -567,6 +570,14 @@ export function mapShowAllocationData(allocationId: string, data: ShowAllocation
     completedBy: typeof data.completedBy === "string" ? data.completedBy : undefined,
     canceledAt: mapFirestoreTimestamp(data.canceledAt),
     canceledBy: typeof data.canceledBy === "string" ? data.canceledBy : undefined,
+    requeuedFromAllocationId:
+      typeof data.requeuedFromAllocationId === "string" && data.requeuedFromAllocationId.trim()
+        ? data.requeuedFromAllocationId.trim()
+        : undefined,
+    movedFromAllocationId:
+      typeof data.movedFromAllocationId === "string" && data.movedFromAllocationId.trim()
+        ? data.movedFromAllocationId.trim()
+        : undefined,
     createdAt,
     updatedAt,
   };
@@ -2360,8 +2371,10 @@ export const upcomingShowService = {
   },
 
   /**
-   * Moves (upcoming source) or copies (aired source) every non-canceled allocation for a Print Request
-   * on one show to another upcoming show. Destination must accept new allocations and have capacity.
+   * Moves (upcoming source) or copies (aired/locked source) every allocation for a Print Request
+   * on one show to another upcoming show.
+   * MOVE uses trusted Functions preview/apply (cancel + movedFromAllocationId).
+   * COPY duplicates the Print Request then allocates (unchanged past/locked path).
    */
   async transferPrintRequestBetweenShows(
     caller: User,
@@ -2404,6 +2417,31 @@ export const upcomingShowService = {
     }
 
     const mode = resolvePrintRequestShowTransferMode(sourceShow);
+
+    if (mode === "move") {
+      const preview = await showQueueMoveService.preview({
+        scope: "print_request",
+        sourceShowId,
+        destinationShowId,
+        printRequestId,
+      });
+      if (!preview.canApply || !preview.previewChecksum) {
+        throw new Error(preview.blockers[0]?.message ?? "Unable to move this request.");
+      }
+      const applied = await showQueueMoveService.apply({
+        scope: "print_request",
+        sourceShowId,
+        destinationShowId,
+        printRequestId,
+        previewChecksum: preview.previewChecksum,
+      });
+      return {
+        mode: "move",
+        transferredQuantity: applied.totalMoveQuantity,
+        destinationPrintRequestId: printRequestId,
+      };
+    }
+
     const transferredQuantity = allocationsToTransfer.reduce(
       (sum, allocation) => sum + allocation.allocatedQuantity,
       0,
@@ -2415,7 +2453,7 @@ export const upcomingShowService = {
     let destinationCustomerId = printRequest.customerId;
     const itemIdBySourceItemId = new Map<string, string>();
 
-    if (mode === "copy") {
+    {
       const sourceItems = await printRequestService.listPrintRequestItems(caller, printRequestId);
       const duplicated = await printRequestService.duplicatePrintRequestForShowTransferCopy(
         caller,
@@ -2476,10 +2514,7 @@ export const upcomingShowService = {
     const batch = writeBatch(db);
 
     for (const allocation of allocationsToTransfer) {
-      const destinationPrintRequestItemId =
-        mode === "copy"
-          ? itemIdBySourceItemId.get(allocation.printRequestItemId)
-          : allocation.printRequestItemId;
+      const destinationPrintRequestItemId = itemIdBySourceItemId.get(allocation.printRequestItemId);
 
       if (!destinationPrintRequestItemId) {
         throw new Error("Unable to map print request items for copy.");
@@ -2514,12 +2549,6 @@ export const upcomingShowService = {
       batch.set(allocationRef, payload);
     }
 
-    if (mode === "move") {
-      for (const allocation of allocationsToTransfer) {
-        batch.delete(doc(firestoreCollectionService.getShowAllocationsCollection(), allocation.id));
-      }
-    }
-
     batch.update(doc(firestoreCollectionService.getUpcomingShowsCollection(), destinationShowId), {
       allocatedQuantity: destinationShow.allocatedQuantity + transferredQuantity,
       updatedBy: caller.id,
@@ -2532,15 +2561,6 @@ export const upcomingShowService = {
       documentPathPattern: "showAllocations/{showAllocationId}",
       source: "upcomingShowService.transferPrintRequestBetweenShows",
     });
-
-    if (mode === "move") {
-      await this.recalculateShowAllocatedQuantity(caller, sourceShowId);
-      await this.markPrintRequestEditingIfNoActiveAllocations(caller, printRequestId);
-
-      if (printRequest.status === "draft" || printRequest.status === "editing") {
-        await printRequestService.updatePrintRequest(caller, printRequest.id, { status: "active" });
-      }
-    }
 
     await this.syncPrintRequestQueueTabBestEffort(
       destinationPrintRequestId,
