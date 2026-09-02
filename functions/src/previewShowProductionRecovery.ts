@@ -7,6 +7,7 @@ import type {
   PreviewShowProductionRecoveryResponse,
   ShowProductionRecoveryAction,
 } from "../../packages/shared/src/types/showProductionRecovery/showProductionRecovery.types";
+import type { DeletionCallableWarmupResponse } from "../../packages/shared/src/types/deletion/deletionWarmup.types";
 
 import { assertStaffCaller, loadCallerProfile } from "./lib/caller";
 import {
@@ -15,6 +16,7 @@ import {
   permissionDenied,
   unauthenticated,
 } from "./lib/errors";
+import { deletionWarmupOk, isDeletionCallableWarmupRequest } from "./lib/deletionWarmup";
 import {
   applyShowProductionRecovery as executeShowProductionRecovery,
   buildShowProductionRecoveryPreview,
@@ -112,12 +114,19 @@ function assertStaffRecoveryCaller(
 }
 
 export const previewShowProductionRecovery = onCall(
-  async (request): Promise<PreviewShowProductionRecoveryResponse> => {
+  async (
+    request,
+  ): Promise<PreviewShowProductionRecoveryResponse | DeletionCallableWarmupResponse> => {
     if (!request.auth?.uid) {
       throw unauthenticated();
     }
     try {
       const caller = await loadCallerProfile(request.auth.uid);
+      assertStaffCaller(caller);
+      if (isDeletionCallableWarmupRequest(request.data)) {
+        return deletionWarmupOk();
+      }
+
       const data = request.data as PreviewShowProductionRecoveryRequest;
       const action = parseAction(data);
       assertStaffRecoveryCaller(caller, action);
@@ -127,19 +136,27 @@ export const previewShowProductionRecovery = onCall(
         action,
         overrideReason: parseOverrideReason(data),
         targetUpcomingShowId: parseTargetUpcomingShowId(data),
-      });    } catch (error) {
+      });
+    } catch (error) {
       mapHttpsError(error);
     }
   },
 );
 
 export const applyShowProductionRecovery = onCall(
-  async (request): Promise<ApplyShowProductionRecoveryResponse> => {
+  async (
+    request,
+  ): Promise<ApplyShowProductionRecoveryResponse | DeletionCallableWarmupResponse> => {
     if (!request.auth?.uid) {
       throw unauthenticated();
     }
     try {
       const caller = await loadCallerProfile(request.auth.uid);
+      assertStaffCaller(caller);
+      if (isDeletionCallableWarmupRequest(request.data)) {
+        return deletionWarmupOk();
+      }
+
       const data = request.data as ApplyShowProductionRecoveryRequest;
       const action = parseAction(data);
       assertStaffRecoveryCaller(caller, action);

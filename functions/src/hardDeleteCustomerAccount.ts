@@ -7,6 +7,7 @@ import type {
   PreviewHardDeleteCustomerAccountRequest,
   PreviewHardDeleteCustomerAccountResponse,
 } from "../../packages/shared/src/types/customer/customerIdentityManagement.types";
+import type { DeletionCallableWarmupResponse } from "../../packages/shared/src/types/deletion/deletionWarmup.types";
 import { loadCallerProfile } from "./lib/caller";
 import { appendCustomerActivityEvent } from "./lib/customerActivityEvents";
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
@@ -21,6 +22,7 @@ import {
 } from "./lib/customerIdentityEligibilitySnapshot";
 import { assertHardDeleteAllowedProject } from "./lib/customerIdentityProjectGate";
 import { storeCustomerIdentityPreview, consumeCustomerIdentityPreview } from "./lib/customerIdentityOperationPreview";
+import { deletionWarmupOk, isDeletionCallableWarmupRequest } from "./lib/deletionWarmup";
 import {
   failedPrecondition,
   internal,
@@ -71,7 +73,9 @@ function blockerCountsRecord(
 }
 
 export const previewHardDeleteCustomerAccount = onCall(
-  async (request): Promise<PreviewHardDeleteCustomerAccountResponse> => {
+  async (
+    request,
+  ): Promise<PreviewHardDeleteCustomerAccountResponse | DeletionCallableWarmupResponse> => {
     if (!request.auth?.uid) {
       throw unauthenticated();
     }
@@ -79,6 +83,9 @@ export const previewHardDeleteCustomerAccount = onCall(
     try {
       const caller = await loadCallerProfile(request.auth.uid);
       assertOwnerCaller(caller);
+      if (isDeletionCallableWarmupRequest(request.data)) {
+        return deletionWarmupOk();
+      }
 
       const customerId = parseCustomerId(request.data as PreviewHardDeleteCustomerAccountRequest);
       const snapshot = await loadCustomerEligibilitySnapshot(customerId);
@@ -186,7 +193,7 @@ function parseHardDeleteRequest(data: unknown): HardDeleteCustomerAccountRequest
 }
 
 export const hardDeleteCustomerAccount = onCall(
-  async (request): Promise<HardDeleteCustomerAccountResponse> => {
+  async (request): Promise<HardDeleteCustomerAccountResponse | DeletionCallableWarmupResponse> => {
     if (!request.auth?.uid) {
       throw unauthenticated();
     }
@@ -195,6 +202,9 @@ export const hardDeleteCustomerAccount = onCall(
       const projectId = assertHardDeleteAllowedProject();
       const caller = await loadCallerProfile(request.auth.uid);
       assertOwnerCaller(caller);
+      if (isDeletionCallableWarmupRequest(request.data)) {
+        return deletionWarmupOk();
+      }
 
       const payload = parseHardDeleteRequest(request.data);
 

@@ -65,6 +65,7 @@ export function HardDeleteCustomerConfirmDialog({
     setError(null);
     setPreview(null);
     setIsLoadingPreview(true);
+    customerIdentityManagementService.warmHardDeleteMutateCallable();
 
     void customerIdentityManagementService
       .previewHardDelete(customer.id)

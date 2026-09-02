@@ -49,6 +49,7 @@ export function CustomerUploadDeletionDialog({
     setPreview(null);
     setError(null);
     setIsLoading(true);
+    customerUploadDeletionService.warmMutateCallables();
     void customerUploadDeletionService
       .preview(uploadId)
       .then((result) => {

@@ -7,6 +7,7 @@ import {
 } from "@fresh-prints/shared/types/deletion/deletion.types";
 
 import { callTracedFunction } from "../../../config/tracedCallable";
+import { warmDeletionCallableBackground } from "../../deletion/services/deletionCallableWarmupService";
 
 function getCallableErrorMessage(error: unknown, fallbackMessage: string): string {
   if (
@@ -24,6 +25,12 @@ function getCallableErrorMessage(error: unknown, fallbackMessage: string): strin
 export const printRequestDeletionService = {
   deleteConfirmationPhrase: DELETE_PRINT_REQUEST_CONFIRMATION_PHRASE,
   archiveConfirmationPhrase: ARCHIVE_PRINT_REQUEST_CONFIRMATION_PHRASE,
+
+  /** Same-service warm for mutate callables that may run after preview (non-blocking). */
+  warmMutateCallables(): void {
+    warmDeletionCallableBackground("deleteEligiblePrintRequest");
+    warmDeletionCallableBackground("archivePrintRequest");
+  },
 
   async preview(printRequestId: string): Promise<PreviewPrintRequestDeletionResponse> {
     try {

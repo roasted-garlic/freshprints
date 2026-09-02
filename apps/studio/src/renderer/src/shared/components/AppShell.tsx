@@ -3,6 +3,8 @@ import { useLocation } from "react-router-dom";
 
 import { setFirestoreUsageTraceContext } from "@fresh-prints/shared/utils/firestoreUsageTrace";
 
+import { useAuth } from "../../features/auth/hooks/useAuth";
+import { schedulePostAuthDeletionWarmup } from "../../features/deletion/services/schedulePostAuthDeletionWarmup";
 import { SidebarDrawerContext } from "../context/sidebarDrawerContext";
 import { ShellHeaderProvider } from "../context/ShellHeaderProvider";
 import { UploadActivityProvider } from "../context/UploadActivityProvider";
@@ -22,6 +24,7 @@ interface AppShellProps {
 
 function AppShellContent({ children }: AppShellProps) {
   const location = useLocation();
+  const { user, bootstrapStatus } = useAuth();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   // useLayoutEffect (not useEffect) so the route context updates before any child route's
@@ -41,6 +44,14 @@ function AppShellContent({ children }: AppShellProps) {
       uninstallTaxonomyBootstrap();
     };
   }, []);
+
+  // Opportunistic same-service deletion callable warmup — never blocks shell render.
+  useEffect(() => {
+    if (bootstrapStatus !== "ready" || !user) {
+      return;
+    }
+    return schedulePostAuthDeletionWarmup(user);
+  }, [bootstrapStatus, user]);
 
   const openDrawer = useCallback(() => setIsDrawerOpen(true), []);
   const closeDrawer = useCallback(() => setIsDrawerOpen(false), []);

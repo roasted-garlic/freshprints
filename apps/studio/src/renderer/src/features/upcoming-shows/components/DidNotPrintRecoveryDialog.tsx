@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
 
 import type { PreviewShowProductionRecoveryResponse } from "@fresh-prints/shared/types/showProductionRecovery/showProductionRecovery.types";
@@ -15,6 +15,7 @@ import { LoadingSpinner } from "../../../shared/components/LoadingSpinner";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
 import { Select } from "../../../shared/components/Select";
 import { useAuth } from "../../auth/hooks/useAuth";
+import { warmDeletionCallableBackground } from "../../deletion/services/deletionCallableWarmupService";
 import { formatUpcomingShowTitle } from "../utils/upcomingShowDisplay";
 import { upcomingShowService } from "../services/upcomingShowService";
 import {
@@ -152,6 +153,13 @@ export function DidNotPrintRecoveryDialog({
   const [error, setError] = useState<string | null>(null);
   const [isClientPreviewOnly, setIsClientPreviewOnly] = useState(false);
 
+  const showRef = useRef(show);
+  const allocationsRef = useRef(allocations);
+  const nowRef = useRef(now);
+  showRef.current = show;
+  allocationsRef.current = allocations;
+  nowRef.current = now;
+
   const totalRequeueQuantity = useMemo(
     () =>
       allocations
@@ -227,8 +235,10 @@ export function DidNotPrintRecoveryDialog({
       });
   }, [now, shows, totalRequeueQuantity, upcomingShowId]);
 
+  const destinationOptionsRef = useRef(destinationOptions);
+  destinationOptionsRef.current = destinationOptions;
+
   const selectableOptions = destinationOptions.filter((option) => option.hasCapacity);
-  const selectedOption = destinationOptions.find((option) => option.show.id === selectedShowId) ?? null;
 
   const destinationSelectOptions = useMemo(
     () =>
@@ -258,6 +268,8 @@ export function DidNotPrintRecoveryDialog({
     setIsClientPreviewOnly(false);
     setIsLoadingPreview(true);
 
+    warmDeletionCallableBackground("applyShowProductionRecovery");
+
     void showProductionRecoveryService
       .preview({
         upcomingShowId,
@@ -271,16 +283,19 @@ export function DidNotPrintRecoveryDialog({
         }
       })
       .catch((previewError: unknown) => {
-        if (cancelled || !show) {
+        const fallbackShow = showRef.current;
+        if (cancelled || !fallbackShow) {
           return;
         }
 
-        const targetShow = selectedOption?.show;
+        const targetShow =
+          destinationOptionsRef.current.find((option) => option.show.id === selectedShowId)?.show ??
+          null;
         const fallback = buildClientShowProductionRecoveryPreview({
           upcomingShowId,
           action: "requeue_unfulfilled",
-          show,
-          allocations: allocations.map((allocation) => ({
+          show: fallbackShow,
+          allocations: allocationsRef.current.map((allocation) => ({
             status: allocation.status,
             allocatedQuantity: allocation.allocatedQuantity,
             upcomingShowId: allocation.upcomingShowId,
@@ -288,7 +303,7 @@ export function DidNotPrintRecoveryDialog({
             requestNameSnapshot: allocation.requestNameSnapshot,
             id: allocation.id,
           })),
-          now,
+          now: nowRef.current,
           targetUpcomingShowId: selectedShowId,
           targetShow: targetShow
             ? {
@@ -318,7 +333,7 @@ export function DidNotPrintRecoveryDialog({
     return () => {
       cancelled = true;
     };
-  }, [allocations, isOpen, now, selectedOption?.show, selectedShowId, show, upcomingShowId]);
+  }, [isOpen, selectedShowId, upcomingShowId]);
 
   const handleApply = useCallback(async () => {
     if (!upcomingShowId || !selectedShowId || !preview?.previewChecksum || isClientPreviewOnly) {

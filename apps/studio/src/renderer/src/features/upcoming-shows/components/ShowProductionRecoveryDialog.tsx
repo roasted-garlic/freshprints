@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 
 import type {
@@ -13,6 +13,7 @@ import { buildClientShowProductionRecoveryPreview } from "@fresh-prints/shared/u
 import { Button } from "../../../shared/components/Button";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
 import { AutoResizeTextarea } from "../../../shared/components/AutoResizeTextarea";
+import { warmDeletionCallableBackground } from "../../deletion/services/deletionCallableWarmupService";
 import {
   SHOW_PRODUCTION_RECOVERY_ACTION_LABELS,
   SHOW_PRODUCTION_RECOVERY_DEPLOY_HINT,
@@ -150,6 +151,15 @@ export function ShowProductionRecoveryDialog({
   const [error, setError] = useState<string | null>(null);
   const [isClientPreviewOnly, setIsClientPreviewOnly] = useState(false);
 
+  // Parent re-renders on a schedule clock (`now`) and allocation snapshots; keep fallback
+  // inputs in refs so the preview effect does not re-fetch / flicker after first load.
+  const showRef = useRef(show);
+  const allocationsRef = useRef(allocations);
+  const nowRef = useRef(now);
+  showRef.current = show;
+  allocationsRef.current = allocations;
+  nowRef.current = now;
+
   useEffect(() => {
     if (!isOpen || !upcomingShowId || !action) {
       return;
@@ -160,6 +170,9 @@ export function ShowProductionRecoveryDialog({
     setPreview(null);
     setIsClientPreviewOnly(false);
     setIsLoadingPreview(true);
+
+    // Warm mutate service in parallel so confirm is less likely to cold-start after preview.
+    warmDeletionCallableBackground("applyShowProductionRecovery");
 
     void showProductionRecoveryService
       .preview({ upcomingShowId, action })
@@ -173,19 +186,20 @@ export function ShowProductionRecoveryDialog({
         if (cancelled) {
           return;
         }
-        if (show) {
+        const fallbackShow = showRef.current;
+        if (fallbackShow) {
           const fallback = buildClientShowProductionRecoveryPreview({
             upcomingShowId,
             action,
-            show,
-            allocations: allocations.map((allocation) => ({
+            show: fallbackShow,
+            allocations: allocationsRef.current.map((allocation) => ({
               status: allocation.status,
               allocatedQuantity: allocation.allocatedQuantity,
               upcomingShowId: allocation.upcomingShowId,
               printRequestId: allocation.printRequestId,
               requestNameSnapshot: allocation.requestNameSnapshot,
             })),
-            now,
+            now: nowRef.current,
           });
           setPreview(fallback);
           setIsClientPreviewOnly(true);
@@ -209,7 +223,7 @@ export function ShowProductionRecoveryDialog({
     return () => {
       cancelled = true;
     };
-  }, [action, allocations, isOpen, now, show, upcomingShowId]);
+  }, [action, isOpen, upcomingShowId]);
 
   const handleApply = useCallback(async () => {
     if (!upcomingShowId || !action || isClientPreviewOnly) {

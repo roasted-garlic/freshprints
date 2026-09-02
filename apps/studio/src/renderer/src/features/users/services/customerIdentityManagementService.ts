@@ -21,6 +21,7 @@ import type {
 } from "@fresh-prints/shared/types/customer/customerDuplicateResolution.types";
 
 import { callTracedFunction } from "../../../config/tracedCallable";
+import { warmDeletionCallableBackground } from "../../deletion/services/deletionCallableWarmupService";
 
 function getCallableErrorMessage(error: unknown, fallbackMessage: string): string {
   if (
@@ -54,6 +55,10 @@ export const customerIdentityManagementService = {
   hardDeleteConfirmationPhrase: HARD_DELETE_CUSTOMER_CONFIRMATION_PHRASE,
   transferUsernameConfirmationPhrase: TRANSFER_USERNAME_CONFIRMATION_PHRASE,
   mergeAccountsConfirmationPhrase: MERGE_ACCOUNTS_CONFIRMATION_PHRASE,
+
+  warmHardDeleteMutateCallable(): void {
+    warmDeletionCallableBackground("hardDeleteCustomerAccount");
+  },
 
   async previewHardDelete(customerId: string): Promise<PreviewHardDeleteCustomerAccountResponse> {
     try {

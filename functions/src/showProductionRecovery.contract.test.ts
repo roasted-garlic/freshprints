@@ -28,6 +28,16 @@ test("staff actions use assertStaffCaller", () => {
   assert.match(source, /assertStaffCaller/);
 });
 
+test("preview and apply accept same-service { warmup: true } after staff assert", () => {
+  const source = read("previewShowProductionRecovery.ts");
+  assert.match(source, /isDeletionCallableWarmupRequest/);
+  assert.match(source, /deletionWarmupOk/);
+  assert.match(
+    source,
+    /assertStaffCaller\(caller\);\s*if \(isDeletionCallableWarmupRequest\(request\.data\)\) \{\s*return deletionWarmupOk\(\);/,
+  );
+});
+
 test("apply revalidates preview before mutation", () => {
   const source = read("previewShowProductionRecovery.ts");
   assert.match(source, /const recheck = await buildShowProductionRecoveryPreview/);

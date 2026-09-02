@@ -6,6 +6,7 @@ import { isDeleteEligibleUnapprovedDesignStatus } from "@fresh-prints/shared/uti
 
 import { Button } from "../../../shared/components/Button";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
+import { warmDeleteEligibleUnapprovedDesignCallable } from "../services/deleteEligibleUnapprovedDesignService";
 import type { Design } from "../types/design.types";
 
 const COPY_FEEDBACK_MS = 2000;
@@ -69,7 +70,10 @@ export function DeleteEligibleUnapprovedDesignDialog({
         window.clearTimeout(copyResetTimerRef.current);
         copyResetTimerRef.current = null;
       }
+      return;
     }
+    // Same-service warm for the confirm callable (no separate preview Gen2 service).
+    warmDeleteEligibleUnapprovedDesignCallable();
   }, [isOpen]);
 
   useEffect(() => {

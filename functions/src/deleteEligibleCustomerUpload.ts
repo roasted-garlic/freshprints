@@ -8,6 +8,7 @@ import {
   type PreviewCustomerUploadDeletionRequest,
   type PreviewCustomerUploadDeletionResponse,
 } from "../../packages/shared/src/types/deletion/deletion.types";
+import type { DeletionCallableWarmupResponse } from "../../packages/shared/src/types/deletion/deletionWarmup.types";
 import { adminDb, adminStorage } from "./lib/admin";
 import { loadCallerProfile } from "./lib/caller";
 import {
@@ -16,6 +17,7 @@ import {
   resolveCustomerUploadDeletionBlockers,
 } from "./lib/customerUploadDeletionEligibility";
 import { assertCanDeleteCustomerUpload } from "./lib/customerUploadStaffAuth";
+import { deletionWarmupOk, isDeletionCallableWarmupRequest } from "./lib/deletionWarmup";
 import {
   failedPrecondition,
   invalidArgument,
@@ -296,13 +298,18 @@ async function executeEligibleHardDelete(
 }
 
 export const previewCustomerUploadDeletion = onCall(
-  async (request): Promise<PreviewCustomerUploadDeletionResponse> => {
+  async (
+    request,
+  ): Promise<PreviewCustomerUploadDeletionResponse | DeletionCallableWarmupResponse> => {
     if (!request.auth?.uid) {
       throw unauthenticated();
     }
     try {
       const caller = await loadCallerProfile(request.auth.uid);
       assertCanDeleteCustomerUpload(caller);
+      if (isDeletionCallableWarmupRequest(request.data)) {
+        return deletionWarmupOk();
+      }
       return await buildPreview(parseUploadId(request.data as PreviewCustomerUploadDeletionRequest));
     } catch (error) {
       mapHttpsError(error);
@@ -311,13 +318,18 @@ export const previewCustomerUploadDeletion = onCall(
 );
 
 export const deleteEligibleCustomerUpload = onCall(
-  async (request): Promise<DeleteEligibleCustomerUploadResponse> => {
+  async (
+    request,
+  ): Promise<DeleteEligibleCustomerUploadResponse | DeletionCallableWarmupResponse> => {
     if (!request.auth?.uid) {
       throw unauthenticated();
     }
     try {
       const caller = await loadCallerProfile(request.auth.uid);
       assertCanDeleteCustomerUpload(caller);
+      if (isDeletionCallableWarmupRequest(request.data)) {
+        return deletionWarmupOk();
+      }
       const customerUploadId = parseUploadId(request.data as DeleteEligibleCustomerUploadRequest);
       requirePhrase(request.data);
       return await executeEligibleHardDelete(customerUploadId);

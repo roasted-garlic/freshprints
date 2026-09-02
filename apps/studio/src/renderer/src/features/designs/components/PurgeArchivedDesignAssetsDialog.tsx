@@ -5,6 +5,7 @@ import { PURGE_ARCHIVED_DESIGN_ASSETS_CONFIRMATION_PHRASE } from "@fresh-prints/
 
 import { Button } from "../../../shared/components/Button";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
+import { warmPurgeArchivedDesignAssetsCallable } from "../services/purgeArchivedDesignAssetsService";
 import type { Design } from "../types/design.types";
 
 const COPY_FEEDBACK_MS = 2000;
@@ -70,7 +71,10 @@ export function PurgeArchivedDesignAssetsDialog({
         window.clearTimeout(copyResetTimerRef.current);
         copyResetTimerRef.current = null;
       }
+      return;
     }
+    // Same-service warm for purgeArchivedDesignAssets (failures non-fatal).
+    warmPurgeArchivedDesignAssetsCallable();
   }, [isOpen]);
 
   useEffect(() => {

@@ -6,6 +6,7 @@ import type {
 } from "@fresh-prints/shared/types/admin/deleteEligibleUnapprovedDesign.types";
 
 import { callTracedFunction } from "../../../config/tracedCallable";
+import { warmDeletionCallableBackground } from "../../deletion/services/deletionCallableWarmupService";
 
 const genericCallableMessages = new Set([
   "internal",
@@ -66,6 +67,10 @@ function getCallableErrorMessage(error: unknown, fallbackMessage: string): strin
 
       return fallbackMessage;
   }
+}
+
+export function warmDeleteEligibleUnapprovedDesignCallable(): void {
+  warmDeletionCallableBackground("deleteEligibleUnapprovedDesign");
 }
 
 export async function deleteEligibleUnapprovedDesigns(

@@ -7,12 +7,14 @@ import {
   type PreviewUpcomingShowDeletionRequest,
   type PreviewUpcomingShowDeletionResponse,
 } from "../../packages/shared/src/types/deletion/deletion.types";
+import type { DeletionCallableWarmupResponse } from "../../packages/shared/src/types/deletion/deletionWarmup.types";
 import { adminDb } from "./lib/admin";
 import { loadCallerProfile } from "./lib/caller";
 import {
   showProductionStatusBlocksHardDelete,
   upcomingShowStatusBlocksHardDelete,
 } from "./lib/deletionEligibility";
+import { deletionWarmupOk, isDeletionCallableWarmupRequest } from "./lib/deletionWarmup";
 import {
   failedPrecondition,
   invalidArgument,
@@ -174,13 +176,18 @@ async function buildPreview(upcomingShowId: string): Promise<PreviewUpcomingShow
 }
 
 export const previewUpcomingShowDeletion = onCall(
-  async (request): Promise<PreviewUpcomingShowDeletionResponse> => {
+  async (
+    request,
+  ): Promise<PreviewUpcomingShowDeletionResponse | DeletionCallableWarmupResponse> => {
     if (!request.auth?.uid) {
       throw unauthenticated();
     }
     try {
       const caller = await loadCallerProfile(request.auth.uid);
       assertOwnerCaller(caller);
+      if (isDeletionCallableWarmupRequest(request.data)) {
+        return deletionWarmupOk();
+      }
       return await buildPreview(parseShowId(request.data as PreviewUpcomingShowDeletionRequest));
     } catch (error) {
       mapHttpsError(error);
@@ -189,18 +196,26 @@ export const previewUpcomingShowDeletion = onCall(
 );
 
 export const deleteEligibleUpcomingShow = onCall(
-  async (request): Promise<DeleteEligibleUpcomingShowResponse> => {
+  async (
+    request,
+  ): Promise<DeleteEligibleUpcomingShowResponse | DeletionCallableWarmupResponse> => {
     if (!request.auth?.uid) {
       throw unauthenticated();
     }
     try {
       const caller = await loadCallerProfile(request.auth.uid);
       assertOwnerCaller(caller);
+      if (isDeletionCallableWarmupRequest(request.data)) {
+        return deletionWarmupOk();
+      }
       const upcomingShowId = parseShowId(request.data as DeleteEligibleUpcomingShowRequest);
       requirePhrase(request.data);
 
-      const preview = await buildPreview(upcomingShowId);
-      if (preview.outcome === "already_done") {
+      // Single server-side eligibility check immediately before mutate (matches print-request
+      // TOCTOU pattern). Client already ran preview for the dialog; a second in-request
+      // buildPreview was redundant same-request work and did not add safety.
+      const recheck = await buildPreview(upcomingShowId);
+      if (recheck.outcome === "already_done") {
         return {
           outcome: "already_done",
           message: "Show already deleted.",
@@ -208,22 +223,11 @@ export const deleteEligibleUpcomingShow = onCall(
           upcomingShowId,
         };
       }
-      if (preview.outcome !== "allowed_hard_delete") {
-        return {
-          outcome: preview.outcome,
-          blockers: preview.blockers,
-          message: preview.blockers[0]?.message ?? "This show cannot be deleted.",
-          entityId: upcomingShowId,
-          upcomingShowId,
-        };
-      }
-
-      const recheck = await buildPreview(upcomingShowId);
       if (recheck.outcome !== "allowed_hard_delete") {
         return {
           outcome: recheck.outcome,
           blockers: recheck.blockers,
-          message: recheck.blockers[0]?.message ?? "Dependencies changed. Deletion was blocked.",
+          message: recheck.blockers[0]?.message ?? "This show cannot be deleted.",
           entityId: upcomingShowId,
           upcomingShowId,
         };
