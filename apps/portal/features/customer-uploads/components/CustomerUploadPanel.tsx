@@ -402,7 +402,7 @@ export function CustomerUploadPanel({
             onDrop={handleDrop}
           >
             <p className="portal-customer-upload-file-limits">
-              PNG or WebP · up to {formatFileSize(sizeLimits.maxSingleImageBytes)} each · ZIP up to{' '}
+              PNG · up to {formatFileSize(sizeLimits.maxSingleImageBytes)} each · ZIP up to{' '}
               {formatFileSize(sizeLimits.maxZipBytes)} (images are discovered and listed, then
               processed) ·{' '}
               {dailyQuota?.maxConcurrentFinalize ?? CUSTOMER_UPLOAD_MAX_CONCURRENT_FINALIZE} at a
@@ -436,7 +436,7 @@ export function CustomerUploadPanel({
               </button>
             </div>
             <input
-              accept=".png,.webp,image/png,image/webp"
+              accept=".png,image/png"
               disabled={isRequestFull}
               hidden
               multiple
@@ -445,7 +445,7 @@ export function CustomerUploadPanel({
               type="file"
             />
             <input
-              accept=".png,.webp,image/png,image/webp"
+              accept=".png,image/png"
               disabled={isRequestFull}
               hidden
               // @ts-expect-error webkitdirectory is supported in Chromium browsers

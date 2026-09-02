@@ -158,12 +158,7 @@ function newClientRequestId(): string {
 function isAllowedImageFile(file: File): boolean {
   const name = file.name.toLowerCase();
   const type = file.type.toLowerCase();
-  return (
-    type === 'image/png' ||
-    type === 'image/webp' ||
-    name.endsWith('.png') ||
-    name.endsWith('.webp')
-  );
+  return type === 'image/png' || name.endsWith('.png');
 }
 
 function isZipFile(file: File): boolean {
@@ -234,7 +229,7 @@ export const customerUploadService = {
         continue;
       }
 
-      rejected.push(`${file.name}: use PNG, WebP, or ZIP.`);
+      rejected.push(`${file.name}: use PNG or ZIP.`);
     }
 
     return { images, zips, rejected };

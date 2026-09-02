@@ -118,7 +118,7 @@ service firebase.storage {
     // packages/shared/.../customerUploadLimits.constants.ts
     function isValidCustomerUploadSource() {
       return request.resource.size < 80 * 1024 * 1024
-        && request.resource.contentType in ["image/png", "image/webp"];
+        && request.resource.contentType == "image/png";
     }
 
     function isValidCustomerUploadZip() {

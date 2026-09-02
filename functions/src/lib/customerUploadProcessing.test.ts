@@ -11,6 +11,11 @@ import {
   CUSTOMER_UPLOAD_MAX_DIMENSION_PX,
   CUSTOMER_UPLOAD_MAX_TOTAL_PIXELS,
 } from "../../../packages/shared/src/constants/customerUpload/customerUploadLimits.constants";
+import {
+  CUSTOMER_UPLOAD_FORMAT_FAILURE_MESSAGE,
+  CUSTOMER_UPLOAD_QUALITY_FAILURE_MESSAGE,
+  CUSTOMER_UPLOAD_TRANSPARENCY_FAILURE_MESSAGE,
+} from "../../../packages/shared/src/utils/customerUploadFailureMessages";
 
 async function makeTransparentPng(width = 400, height = 400): Promise<Buffer> {
   const pixels = Buffer.alloc(width * height * 4);
@@ -56,6 +61,44 @@ async function makeAlphaChannelButOpaquePng(width = 300, height = 300): Promise<
     pixels[i + 3] = 255; // fully opaque, at/above CUSTOMER_UPLOAD_TRANSPARENT_ALPHA_MAX (250)
   }
   return sharp(pixels, { raw: { width, height, channels: 4 } }).png().toBuffer();
+}
+
+/** Opaque screenshot interior with a thin transparent border (must fail transparency gate). */
+async function makeThinBorderScreenshotPng(size = 400, borderPx = 3): Promise<Buffer> {
+  const pixels = Buffer.alloc(size * size * 4);
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const i = (y * size + x) * 4;
+      const onBorder =
+        x < borderPx || y < borderPx || x >= size - borderPx || y >= size - borderPx;
+      pixels[i] = onBorder ? 0 : 235;
+      pixels[i + 1] = onBorder ? 0 : 235;
+      pixels[i + 2] = onBorder ? 0 : 235;
+      pixels[i + 3] = onBorder ? 0 : 255;
+    }
+  }
+  return sharp(pixels, { raw: { width: size, height: size, channels: 4 } }).png().toBuffer();
+}
+
+/** Tiny foreground art on a large transparent canvas; fails even after max upscale projection. */
+async function makeTinyUnusableTransparentPng(
+  canvas = 200,
+  art = 10,
+): Promise<Buffer> {
+  const pixels = Buffer.alloc(canvas * canvas * 4);
+  const offset = Math.floor((canvas - art) / 2);
+  for (let y = 0; y < canvas; y += 1) {
+    for (let x = 0; x < canvas; x += 1) {
+      const i = (y * canvas + x) * 4;
+      const inArt =
+        x >= offset && x < offset + art && y >= offset && y < offset + art;
+      pixels[i] = inArt ? 20 : 0;
+      pixels[i + 1] = inArt ? 180 : 0;
+      pixels[i + 2] = inArt ? 40 : 0;
+      pixels[i + 3] = inArt ? 255 : 0;
+    }
+  }
+  return sharp(pixels, { raw: { width: canvas, height: canvas, channels: 4 } }).png().toBuffer();
 }
 
 /**
@@ -129,7 +172,7 @@ describe("customerUploadProcessing", () => {
       return;
     }
     assert.equal(result.code, "background_not_transparent");
-    assert.equal(result.message, "Background is not transparent.");
+    assert.equal(result.message, CUSTOMER_UPLOAD_TRANSPARENCY_FAILURE_MESSAGE);
     assert.ok(!stagesSeen.includes("trimming"), "rejected upload must never enter the trimming stage");
   });
 
@@ -148,7 +191,7 @@ describe("customerUploadProcessing", () => {
       return;
     }
     assert.equal(result.code, "background_not_transparent");
-    assert.equal(result.message, "Background is not transparent.");
+    assert.equal(result.message, CUSTOMER_UPLOAD_TRANSPARENCY_FAILURE_MESSAGE);
     assert.ok(
       !stagesSeen.includes("trimming"),
       `rejected upload must never enter the trimming stage, saw: ${stagesSeen.join(", ")}`,
@@ -178,6 +221,7 @@ describe("customerUploadProcessing", () => {
       return;
     }
     assert.equal(result.code, "unsupported_format");
+    assert.equal(result.message, CUSTOMER_UPLOAD_FORMAT_FAILURE_MESSAGE);
     assert.ok(!stagesSeen.includes("trimming"), "rejected upload must never enter the trimming stage");
   });
 
@@ -213,6 +257,7 @@ describe("customerUploadProcessing", () => {
       return;
     }
     assert.equal(result.code, "unsupported_format");
+    assert.equal(result.message, CUSTOMER_UPLOAD_FORMAT_FAILURE_MESSAGE);
   });
 
   it("accepts opaque PNG when skipCustomerQualityGates is set", async () => {
@@ -462,15 +507,66 @@ describe("customerUploadProcessing", () => {
     );
   });
 
-  it("normal-size WebP uploads are unchanged by the normalization pass", async () => {
+  it("rejects WebP on the Portal customer upload path", async () => {
     const bytes = await sharp(await makeTransparentPng(300, 300)).webp().toBuffer();
     const result = await processCustomerUploadImageBytes(bytes);
+    assert.equal(result.ok, false);
+    if (result.ok) {
+      return;
+    }
+    assert.equal(result.code, "unsupported_format");
+    assert.equal(result.message, CUSTOMER_UPLOAD_FORMAT_FAILURE_MESSAGE);
+  });
+
+  it("accepts WebP when skipCustomerQualityGates is set (staff paths)", async () => {
+    const bytes = await sharp(await makeTransparentPng(300, 300)).webp().toBuffer();
+    const result = await processCustomerUploadImageBytes(bytes, {
+      skipCustomerQualityGates: true,
+    });
     assert.equal(result.ok, true);
     if (!result.ok) {
       return;
     }
     assert.equal(result.sourceFormat, "webp");
-    assert.equal(result.wasNormalizedForDimensions, false);
+  });
+
+  it("rejects thin transparent border around opaque screenshot interior", async () => {
+    const bytes = await makeThinBorderScreenshotPng();
+    const stagesSeen: string[] = [];
+    const result = await processCustomerUploadImageBytes(bytes, {
+      onStage: (stage) => {
+        stagesSeen.push(stage);
+      },
+    });
+    assert.equal(result.ok, false);
+    if (result.ok) {
+      return;
+    }
+    assert.equal(result.code, "background_not_transparent");
+    assert.equal(result.message, CUSTOMER_UPLOAD_TRANSPARENCY_FAILURE_MESSAGE);
+    assert.ok(!stagesSeen.includes("trimming"));
+  });
+
+  it("rejects tiny transparent art that cannot become usable within safe upscale limits", async () => {
+    const bytes = await makeTinyUnusableTransparentPng();
+    const result = await processCustomerUploadImageBytes(bytes);
+    assert.equal(result.ok, false);
+    if (result.ok) {
+      return;
+    }
+    assert.equal(result.code, "image_exceeds_limits");
+    assert.equal(result.message, CUSTOMER_UPLOAD_QUALITY_FAILURE_MESSAGE);
+  });
+
+  it("accepts modest transparent artwork and upscales under existing contract", async () => {
+    const bytes = await makeTransparentPng(350, 350);
+    const result = await processCustomerUploadImageBytes(bytes);
+    assert.equal(result.ok, true);
+    if (!result.ok) {
+      return;
+    }
+    assert.equal(result.wasUpscaled, true);
+    assert.ok(result.approvedMaxPrintWidthInches >= 3);
   });
 
   it("sanitized stage timings identify the actual stages that ran, with only names and numbers", async () => {

@@ -75,7 +75,7 @@ export function isNestedZipEntryName(entryName: string): boolean {
 
 export function isCandidateImageEntryName(entryName: string): boolean {
   const lower = entryName.replace(/\\/g, "/").toLowerCase();
-  return lower.endsWith(".png") || lower.endsWith(".webp");
+  return lower.endsWith(".png");
 }
 
 export function deterministicZipUploadId(batchId: string, entryName: string): string {

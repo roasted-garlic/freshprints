@@ -262,9 +262,7 @@ export const finalizeCustomerUploadZip = onCall(
 
         await bucket.file(storageObjectPath(sourceStoragePath)).save(image.bytes, {
           resumable: false,
-          contentType: image.displayFilename.toLowerCase().endsWith(".webp")
-            ? "image/webp"
-            : "image/png",
+          contentType: "image/png",
           metadata: { cacheControl: "private, max-age=3600" },
         });
 

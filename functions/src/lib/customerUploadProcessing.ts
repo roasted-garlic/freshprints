@@ -24,6 +24,7 @@ import {
   resolveImportUpscaleTargetPx,
 } from "../../../packages/shared/src/utils/printSizeMath";
 import { buildImageQualitySizingMetadata } from "../../../packages/shared/src/utils/imageQualitySizingPolicy";
+import { resolveCustomerUploadFailureMessage } from "../../../packages/shared/src/utils/customerUploadFailureMessages";
 import { CUSTOMER_UPLOAD_MIN_TRIM_SHRINK_RATIO } from "../../../packages/shared/src/utils/customerUploadTransparency";
 import {
   MEANINGFUL_TRANSPARENCY_DECODE_MAX_INPUT_PIXELS,
@@ -158,9 +159,16 @@ export interface ProcessCustomerUploadImageOptions {
 
 function fail(
   code: CustomerUploadTechnicalFailureCode,
-  message: string,
+  technicalMessage: string,
+  options?: { useStaffMessage?: boolean },
 ): CustomerUploadProcessingFailure {
-  return { ok: false, code, message };
+  return {
+    ok: false,
+    code,
+    message: options?.useStaffMessage
+      ? technicalMessage
+      : resolveCustomerUploadFailureMessage(code, technicalMessage),
+  };
 }
 
 /**
@@ -198,12 +206,9 @@ class StageTimer {
   }
 }
 
-function detectFormat(metadata: Metadata): CustomerUploadSourceFormat | null {
+function detectCustomerPortalImageFormat(metadata: Metadata): "png" | null {
   if (metadata.format === "png") {
     return "png";
-  }
-  if (metadata.format === "webp") {
-    return "webp";
   }
   return null;
 }
@@ -211,9 +216,11 @@ function detectFormat(metadata: Metadata): CustomerUploadSourceFormat | null {
 function detectFormatAllowingJpeg(
   metadata: Metadata,
 ): CustomerUploadSourceFormat | "jpeg" | null {
-  const base = detectFormat(metadata);
-  if (base) {
-    return base;
+  if (metadata.format === "png") {
+    return "png";
+  }
+  if (metadata.format === "webp") {
+    return "webp";
   }
   if (metadata.format === "jpeg" || metadata.format === "jpg") {
     return "jpeg";
@@ -505,13 +512,14 @@ export async function processCustomerUploadImageBytes(
 
   const detected = skipQualityGates
     ? detectFormatAllowingJpeg(metadata)
-    : detectFormat(metadata);
+    : detectCustomerPortalImageFormat(metadata);
   if (!detected) {
     return fail(
       "unsupported_format",
       skipQualityGates
         ? "Only JPEG, PNG, and static WebP images are supported."
-        : "Only transparent PNG and static WebP images are supported.",
+        : "Only PNG artwork files are supported.",
+      skipQualityGates ? { useStaffMessage: true } : undefined,
     );
   }
 
@@ -538,7 +546,9 @@ export async function processCustomerUploadImageBytes(
       sourceHeightPx > CUSTOMER_UPLOAD_MAX_DIMENSION_PX ||
       sourceWidthPx * sourceHeightPx > CUSTOMER_UPLOAD_MAX_TOTAL_PIXELS
     ) {
-      return fail("image_exceeds_limits", "Image dimensions exceed the allowed limits.");
+      return fail("image_exceeds_limits", "Image dimensions exceed the allowed limits.", {
+        useStaffMessage: true,
+      });
     }
     let productionPng: Buffer = sourceBytes;
     let productionWidth = sourceWidthPx;
@@ -553,7 +563,7 @@ export async function processCustomerUploadImageBytes(
           .png()
           .toBuffer();
       } catch {
-        return fail("processing_failed", "Image processing failed.");
+        return fail("processing_failed", "Image processing failed.", { useStaffMessage: true });
       }
       const normalizedMeta = await getSharp()(productionPng, { failOn: "error" }).metadata();
       productionWidth = normalizedMeta.width ?? sourceWidthPx;
@@ -638,7 +648,6 @@ export async function processCustomerUploadImageBytes(
 
   await stageTimer.enter("checking_transparency");
 
-  const hasAlphaMeta = Boolean(metadata.hasAlpha);
   const transparency = await measureMeaningfulTransparency(getSharp(), sourceBytes, {
     decodeMaxInputPixels: CUSTOMER_UPLOAD_DECODE_MAX_INPUT_PIXELS,
     skipQualityGates,
@@ -657,56 +666,26 @@ export async function processCustomerUploadImageBytes(
   let wasTrimmed = false;
   let productionReusedSource = false;
 
-  if (sourceFormat === "png" && hasAlphaMeta) {
-    // Transparent PNG: probe for empty margins; full trim only when needed; else keep source bytes.
-    const needsTrim = await probeNeedsTransparentEdgeTrim(
-      sourceBytes,
-      sourceWidthPx,
-      sourceHeightPx,
-    );
-    if (needsTrim) {
-      await stageTimer.enter("trimming");
-      const trimmed = await trimTransparentEdges(sourceBytes, sourceWidthPx, sourceHeightPx);
-      productionBase = trimmed.bytes;
-      productionWidth = trimmed.width;
-      productionHeight = trimmed.height;
-      wasTrimmed = trimmed.wasTrimmed;
-      productionReusedSource = !trimmed.wasTrimmed;
-    } else {
-      productionBase = sourceBytes;
-      productionWidth = sourceWidthPx;
-      productionHeight = sourceHeightPx;
-      wasTrimmed = false;
-      productionReusedSource = true;
-    }
-  } else {
-    await stageTimer.enter("converting_format");
-    let convertedWidth: number;
-    let convertedHeight: number;
-    try {
-      const { data: _convertedData, info: convertedInfo } = await getSharp()(sourceBytes, {
-        failOn: "error",
-        limitInputPixels: CUSTOMER_UPLOAD_DECODE_MAX_INPUT_PIXELS,
-      })
-        .ensureAlpha()
-        .png()
-        .toBuffer({ resolveWithObject: true });
-      productionBase = Buffer.from(_convertedData);
-      convertedWidth = convertedInfo.width ?? sourceWidthPx;
-      convertedHeight = convertedInfo.height ?? sourceHeightPx;
-    } catch {
-      return fail("processing_failed", "Image processing failed.");
-    }
-    productionWidth = convertedWidth;
-    productionHeight = convertedHeight;
-    wasTrimmed = false;
-
+  // Customer Portal path accepts decoded PNG only; transparent PNG trim when margins exist.
+  const needsTrim = await probeNeedsTransparentEdgeTrim(
+    sourceBytes,
+    sourceWidthPx,
+    sourceHeightPx,
+  );
+  if (needsTrim) {
     await stageTimer.enter("trimming");
-    const trimmed = await trimTransparentEdges(productionBase, convertedWidth, convertedHeight);
+    const trimmed = await trimTransparentEdges(sourceBytes, sourceWidthPx, sourceHeightPx);
     productionBase = trimmed.bytes;
     productionWidth = trimmed.width;
     productionHeight = trimmed.height;
     wasTrimmed = trimmed.wasTrimmed;
+    productionReusedSource = !trimmed.wasTrimmed;
+  } else {
+    productionBase = sourceBytes;
+    productionWidth = sourceWidthPx;
+    productionHeight = sourceHeightPx;
+    wasTrimmed = false;
+    productionReusedSource = true;
   }
 
   // Downscale-only normalization (ADR-FP-125): only reached when the trimmed image still exceeds
@@ -729,7 +708,9 @@ export async function processCustomerUploadImageBytes(
         productionHeight,
       );
     } catch {
-      return fail("image_exceeds_limits", "Image dimensions exceed the allowed limits.");
+      return fail("image_exceeds_limits", "Image dimensions exceed the allowed limits.", {
+        useStaffMessage: true,
+      });
     }
     productionBase = normalization.bytes;
     productionWidth = normalization.width;
@@ -743,7 +724,9 @@ export async function processCustomerUploadImageBytes(
       productionHeight > CUSTOMER_UPLOAD_MAX_DIMENSION_PX ||
       productionWidth * productionHeight > CUSTOMER_UPLOAD_MAX_TOTAL_PIXELS
     ) {
-      return fail("image_exceeds_limits", "Image dimensions exceed the allowed limits.");
+      return fail("image_exceeds_limits", "Image dimensions exceed the allowed limits.", {
+        useStaffMessage: true,
+      });
     }
   } else {
     normalization = {
@@ -754,6 +737,23 @@ export async function processCustomerUploadImageBytes(
       preNormalizationWidthPx: productionWidth,
       preNormalizationHeightPx: productionHeight,
     };
+  }
+
+  if (!skipQualityGates) {
+    await stageTimer.enter("checking_print_size");
+    const upscaleTargetPx = resolveImportUpscaleTargetPx(productionWidth, productionHeight);
+    const projectedWidth = upscaleTargetPx?.widthPx ?? productionWidth;
+    const projectedHeight = upscaleTargetPx?.heightPx ?? productionHeight;
+    const nativeQuality = assessPrintSizeCapability(projectedWidth, projectedHeight);
+    if (!nativeQuality.success) {
+      return fail("image_exceeds_limits", nativeQuality.error);
+    }
+    if (nativeQuality.assessment.acceptanceLevel === "reject") {
+      return fail(
+        "image_exceeds_limits",
+        "Image is too small to meet minimum print quality requirements.",
+      );
+    }
   }
 
   const upscaleTarget = resolveImportUpscaleTargetPx(productionWidth, productionHeight);

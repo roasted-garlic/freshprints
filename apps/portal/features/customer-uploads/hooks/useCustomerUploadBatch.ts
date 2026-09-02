@@ -250,7 +250,7 @@ export function useCustomerUploadBatch(options?: {
       }
 
       if (zips.length > 1 || (zips.length === 1 && images.length > 0)) {
-        setBannerError('Upload one ZIP by itself, or upload PNG/WebP files (including folders).');
+        setBannerError('Upload one ZIP by itself, or upload PNG files (including folders).');
         return;
       }
 
@@ -505,7 +505,7 @@ export function useCustomerUploadBatch(options?: {
               });
               const contentType =
                 row.file.type ||
-                (row.file.name.toLowerCase().endsWith('.webp') ? 'image/webp' : 'image/png');
+                'image/png';
               const uploadStartedAt = performance.now();
               await customerUploadService.uploadSourceFile(
                 row.sourceStoragePath,
@@ -665,7 +665,7 @@ export function useCustomerUploadBatch(options?: {
             });
             const contentType =
               row.file.type ||
-              (row.file.name.toLowerCase().endsWith('.webp') ? 'image/webp' : 'image/png');
+              'image/png';
             await customerUploadService.uploadSourceFile(
               row.sourceStoragePath,
               row.file,
