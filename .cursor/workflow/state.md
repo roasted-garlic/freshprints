@@ -4,39 +4,42 @@
 |-------|-------|
 | Status | **IDLE** |
 | DONE | **yes** |
-| Last completed goal | `ai-review-stuck-processing-recovery` |
-| Signoff | **APPROVED** — `docs/workflow/reviews/2026-09-02-ai-review-stuck-processing-recovery-signoff.md` |
-| Owner QA | **PASS** — `docs/workflow/reviews/2026-09-02-ai-review-stuck-processing-recovery-owner-qa-pass.md` |
-| Test report | `docs/workflow/reviews/2026-09-02-ai-review-stuck-processing-recovery-test-report.md` |
+| Active Goal | *(none)* |
+| Last completed goal | `customer-upload-artwork-quality-gate` |
+| Signoff | `docs/workflow/reviews/2026-09-02-customer-upload-artwork-quality-gate-signoff.md` — **approved** |
+| Owner QA | **PASS** — `docs/workflow/reviews/2026-09-02-customer-upload-artwork-quality-gate-owner-qa.md` |
+| Test Status | **passed_with_notes** (Portal typecheck pre-existing baseline only) |
+| DEV Deploy | `docs/workflow/reviews/2026-09-02-customer-upload-artwork-quality-gate-dev-deploy.md` — Functions + Storage on `fresh-prints-dev` |
 | Production | **NOT AUTHORIZED** |
 | Smart Profiling | **PARKED** |
 | Last updated | 2026-09-02 |
 
-## Last completed goal summary
+## Human checkpoint
 
-Studio stale AI processing recovery: shared 10-minute threshold, stale detection, **Processing appears stuck** + **Retry Processing** via existing enqueue stale-requeue path. Owner DEV QA **PASS** (normal processing verified; manual stale retry not observed). Direct push to `development` per small-task closeout workflow.
+**Human Checkpoint Required: no**
 
-## Queued / deferred (not active)
+## Allowed actions
+
+- Start next managed phase or routine DEV work per owner direction
+
+## Forbidden actions
+
+- Production deploy for this goal without separate owner authorization
+
+## Queued / deferred
 
 | Item | Status |
 |------|--------|
 | `show-queue-batch-allocation-performance` | **DEFERRED** |
 | Smart Profiling | **PARKED** |
-
-## Allowed actions
-
-- Owner selects next managed goal
-- Read docs / workflow state
-
-## Forbidden actions (until new goal started)
-
-- Smart Profiling work without new managed phase
-- Batch allocation without new managed phase
-- Production deploy without separate authorization
+| Semantic customer-upload visual classifier | **Follow-up proposal** (if deterministic gate insufficient) |
+| Production promotion — customer-upload quality gate | **Pending owner authorization** |
 
 ## Decision log
 
 | Date | Decision |
 |------|----------|
-| 2026-09-02 | Owner QA **PASS** for `ai-review-stuck-processing-recovery`; signoff **APPROVED**; FreshForge **IDLE** |
-| 2026-09-02 | Small-task closeout: direct push to `development` (no self-review PR) for routine DEV work — production protections unchanged |
+| 2026-09-02 | Goal `customer-upload-artwork-quality-gate` — PNG-only Portal customer path; implementation authorized |
+| 2026-09-02 | DEV deploy to `fresh-prints-dev` (3 Functions + Storage rules) |
+| 2026-09-02 | Owner DEV QA **PASS** |
+| 2026-09-02 | Signoff **approved**; goal closed |
