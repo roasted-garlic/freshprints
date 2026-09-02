@@ -65,6 +65,7 @@ import {
   looksLikeDesignDocumentId,
   mergeExactIdDesign,
 } from "../utils/designLibraryExactIdSearch";
+import { isDesignVisibleInLibraryScope } from "../utils/designLibraryMembership";
 import {
   buildCategoryFilterOptions,
   buildCategoryFilterOptionsFromFacetIds,
@@ -412,12 +413,12 @@ export function DesignLibraryPage() {
 
   const visibleDesigns = useMemo(() => {
     if (!includeArchived || selectionModeActive) {
-      return designs;
+      // Ready catalog (incl. request-selection): Firestore status is authoritative.
+      return designs.filter((design) => isDesignVisibleInLibraryScope(design, "ready"));
     }
 
-    // Image-purged designs stay in Firestore for print-request / show-queue history,
-    // but are not browsable in the Archived library.
-    return designs.filter((design) => !design.assetsPurgedAt);
+    // Archive browse: archived + ADR-FP-084 hide when assetsPurgedAt is set.
+    return designs.filter((design) => isDesignVisibleInLibraryScope(design, "archived"));
   }, [designs, includeArchived, selectionModeActive]);
 
   const searchMatchedDesigns = useMemo(
@@ -827,17 +828,30 @@ export function DesignLibraryPage() {
       return;
     }
 
+    const designBeingArchived = designToArchive;
+
     try {
-      await archiveDesign(designToArchive.id);
+      const archived = await archiveDesign(designBeingArchived.id);
       setDesignToArchive(null);
-      // Firestore (useDesigns) is the unconditional design-list authority — refreshCatalog's
-      // reloadDesigns() picks up the archive immediately; no separate local-index removal needed.
-      await refreshCatalog();
-      showSuccessMessage(`${designToArchive.title} archived successfully.`);
+      setSelectedDesign((current) =>
+        current?.id === designBeingArchived.id ? null : current,
+      );
+      // Local reconcile (parity with restore/purge). refreshCatalog alone misses managed-search
+      // state because useDesigns is disabled while managed search owns the grid.
+      removeDesignFromList(designBeingArchived.id);
+      applyManagedSearchPatch(archived);
+      setLibraryTotal((current) => (current === null ? null : Math.max(0, current - 1)));
+      showSuccessMessage(`${designBeingArchived.title} archived successfully.`);
     } catch {
       // Error handled in hook.
     }
-  }, [archiveDesign, designToArchive, refreshCatalog, showSuccessMessage]);
+  }, [
+    applyManagedSearchPatch,
+    archiveDesign,
+    designToArchive,
+    removeDesignFromList,
+    showSuccessMessage,
+  ]);
 
   const togglePurgeSelection = useCallback((design: Design) => {
     setSelectedPurgeIds((current) =>

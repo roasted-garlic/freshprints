@@ -1,6 +1,7 @@
 import type { User } from "../../users/types/user.types";
 
 import type { Design } from "../types/design.types";
+import { isDesignVisibleInLibraryScope } from "./designLibraryMembership";
 
 /** Firestore auto-ids are 20 chars; allow a tight band so title tokens do not trigger getDoc. */
 const DESIGN_DOCUMENT_ID_MIN_LENGTH = 16;
@@ -33,13 +34,7 @@ export function designVisibleForExactIdLibrary(
   design: Design,
   browsingArchived: boolean,
 ): boolean {
-  if (design.assetsPurgedAt) {
-    return false;
-  }
-  if (browsingArchived) {
-    return design.status === "archived";
-  }
-  return design.status === "ready";
+  return isDesignVisibleInLibraryScope(design, browsingArchived ? "archived" : "ready");
 }
 
 export function exactIdDesignMatchesLibraryFilters(

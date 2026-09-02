@@ -7,6 +7,8 @@ import {
   looksLikeDesignDocumentId,
   mergeExactIdDesign,
 } from "../utils/designLibraryExactIdSearch";
+import { isDesignVisibleInLibraryScope } from "../utils/designLibraryMembership";
+import { countManagedSearchDroppedHits } from "../utils/countManagedSearchDroppedHits";
 import { deriveManagedCatalogHasMore } from "../utils/deriveManagedCatalogHasMore";
 import {
   designMatchesSearchQuery,
@@ -144,10 +146,14 @@ export function useDesignLibraryManagedSearch(options: UseDesignLibraryManagedSe
         if (cancelled || generation !== requestGenerationRef.current) return;
         const extra = await extraIdPromise;
         if (cancelled || generation !== requestGenerationRef.current) return;
-        const algoliaKept = page.designs.filter((design) =>
+        // Hydrate already drops non-ready; re-check ready scope then smart-filter consistency.
+        const readyKept = page.designs.filter((design) =>
+          isDesignVisibleInLibraryScope(design, "ready"),
+        );
+        const algoliaKept = readyKept.filter((design) =>
           designMatchesSmartFilters(design, smartFilters),
         );
-        const droppedAlgolia = page.designs.length - algoliaKept.length;
+        const droppedAlgolia = countManagedSearchDroppedHits(page.hitCount, algoliaKept.length);
         const extraKept =
           extra &&
           designMatchesSearchQuery(extra, searchKey, catalogTagsRef.current) &&
@@ -248,10 +254,13 @@ export function useDesignLibraryManagedSearch(options: UseDesignLibraryManagedSe
       })
       .then((page) => {
         if (generation !== requestGenerationRef.current) return;
-        const filtered = page.designs.filter((design) =>
+        const readyKept = page.designs.filter((design) =>
+          isDesignVisibleInLibraryScope(design, "ready"),
+        );
+        const filtered = readyKept.filter((design) =>
           designMatchesSmartFilters(design, smartFilters),
         );
-        const dropped = page.designs.length - filtered.length;
+        const dropped = countManagedSearchDroppedHits(page.hitCount, filtered.length);
         setDesigns((current) => [...current, ...filtered]);
         setAlgoliaTotal(page.total === null ? null : Math.max(0, page.total - dropped));
         setTotal((current) =>
@@ -295,7 +304,9 @@ export function useDesignLibraryManagedSearch(options: UseDesignLibraryManagedSe
         return current;
       }
 
-      if (!designMatchesSmartFilters(updated, smartFiltersRef.current)) {
+      const stillInReadyScope = isDesignVisibleInLibraryScope(updated, "ready");
+      const stillMatchesSmart = designMatchesSmartFilters(updated, smartFiltersRef.current);
+      if (!stillInReadyScope || !stillMatchesSmart) {
         setTotal((currentTotal) =>
           currentTotal === null ? null : Math.max(0, currentTotal - 1),
         );

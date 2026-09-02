@@ -7,6 +7,7 @@ import { withPortalCatalogAlgoliaExactTokenSearchParams } from "@fresh-prints/sh
 
 import type { User } from "../../users/types/user.types";
 import type { Design } from "../types/design.types";
+import { filterDesignsForLibraryScope } from "../utils/designLibraryMembership";
 import { designService } from "./designService";
 import { isStudioAlgoliaCatalogConfigured } from "./studioAlgoliaCatalogFlags";
 import { getStudioAlgoliaIndexName, getStudioAlgoliaSearchClient } from "./studioAlgoliaClient";
@@ -68,6 +69,7 @@ function emptySmartFacetMap(): StudioAlgoliaSmartFacetMap {
 /**
  * Preserve Algolia hit order when hydrating Studio Design cards from Firestore by ID.
  * Missing / unauthorized docs are omitted (Firestore remains authoritative).
+ * Non-ready docs (stale Algolia objectIDs after archive) are omitted — status overrides index membership.
  */
 export async function hydrateStudioDesignsPreservingOrder(
   caller: User,
@@ -78,9 +80,10 @@ export async function hydrateStudioDesignsPreservingOrder(
   }
   const designs = await designService.getDesignsByIds(caller, orderedIds);
   const byId = new Map(designs.map((design) => [design.id, design]));
-  return orderedIds
+  const ordered = orderedIds
     .map((id) => byId.get(id))
     .filter((design): design is Design => design !== undefined);
+  return filterDesignsForLibraryScope(ordered, "ready");
 }
 
 export const studioAlgoliaCatalogSearchService = {

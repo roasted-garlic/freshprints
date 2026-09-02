@@ -121,10 +121,12 @@ describe("Design Library design-list source is unconditionally Firestore-authori
     );
 
     assert.match(source, /applyManagedSearchPatch\(updated\)/);
-    assert.match(source, /reloadManagedSearch\(\)/);
+    assert.match(source, /applyManagedSearchPatch\(archived\)/);
     assert.match(hook, /designMatchesSearchQuery/);
     assert.match(hook, /refreshNonce/);
     assert.match(hook, /applyDesignPatch/);
+    assert.match(hook, /isDesignVisibleInLibraryScope\(updated, "ready"\)/);
+    assert.match(hook, /designMatchesSmartFilters/);
   });
 
   it("useGeneratedReadyDesigns remains for Assisted Creation and uses Firestore pagination", () => {
