@@ -39,6 +39,12 @@ describe("Option B permanent delete UI surfaces", () => {
     assert.match(page, /designIds: designsToHardDelete\.map/);
     assert.match(page, /handleRangeMultiSelectDesign/);
     assert.match(page, /applyAiReviewMultiSelectRange/);
+    assert.match(page, /resolveHardDeleteTotalFailureMessage/);
+    assert.match(page, /reportHardDeleteError/);
+    assert.match(
+      page,
+      /successfulIds\.length === 0[\s\S]*reportHardDeleteError\(resolveHardDeleteTotalFailureMessage/,
+    );
   });
 
   it("lists every selected title in a wider scrolling delete dialog", () => {

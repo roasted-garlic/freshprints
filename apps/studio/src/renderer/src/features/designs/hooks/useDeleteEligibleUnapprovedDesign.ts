@@ -15,6 +15,11 @@ export function useDeleteEligibleUnapprovedDesign() {
     setError(null);
   }, []);
 
+  /** Non-throw failures (callable returned only failed items) for the confirm dialog. */
+  const reportError = useCallback((message: string) => {
+    setError(message);
+  }, []);
+
   const deleteDesigns = useCallback(
     async (input: DeleteEligibleUnapprovedDesignRequest) => {
       if (!permissionService.canDeleteEligibleUnapprovedDesigns(user)) {
@@ -47,5 +52,6 @@ export function useDeleteEligibleUnapprovedDesign() {
     deleteDesigns,
     error,
     isSubmitting,
+    reportError,
   };
 }

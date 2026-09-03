@@ -49,6 +49,7 @@ import {
   seedAiReviewMultiSelectIds,
   toggleAiReviewMultiSelectId,
 } from "../utils/aiReviewQueueMultiSelect";
+import { resolveHardDeleteTotalFailureMessage } from "../utils/resolveHardDeleteTotalFailureMessage";
 
 function AiReviewPageContent() {
   const { user } = useAuth();
@@ -71,6 +72,7 @@ function AiReviewPageContent() {
     deleteDesigns: hardDeleteDesigns,
     error: hardDeleteError,
     isSubmitting: isHardDeleting,
+    reportError: reportHardDeleteError,
   } = useDeleteEligibleUnapprovedDesign();
   const [designsToHardDelete, setDesignsToHardDelete] = useState<Design[]>([]);
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
@@ -290,6 +292,7 @@ function AiReviewPageContent() {
         });
 
         if (successfulIds.length === 0) {
+          reportHardDeleteError(resolveHardDeleteTotalFailureMessage(result.results));
           return;
         }
 
@@ -312,6 +315,7 @@ function AiReviewPageContent() {
       hardDeleteDesigns,
       inbox,
       isMultiSelectMode,
+      reportHardDeleteError,
     ],
   );
 
