@@ -1,5 +1,21 @@
 # Recent Completed Work
 
+## 2026-09-02 - Cross-app lightbox Previous/Next — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `cross-app-lightbox-previous-next-navigation` — **DONE** |
+| Signoff | **approved** |
+| Owner QA | **PASS** (A–H) |
+| Final DEV | **APPROVED** |
+| Delivered | Shared nav helper; Studio/Portal lightbox Prev/Next on included collections; `item.id` PR nav; final-item close anchor; mat/image commit-together polish |
+| Firebase | **NONE** (no Functions/Rules/indexes/migration) |
+| Production | **NOT AUTHORIZED** (future: Studio + Portal + shared) |
+| Smart Profiling | **PARKED** |
+| Working tree | Committed + pushed to `development` |
+| Application commit | `9e356809` |
+| Signoff | `docs/workflow/reviews/2026-09-02-cross-app-lightbox-previous-next-navigation-signoff.md` |
+
 ## 2026-09-02 - Portal Editing parks current draft — CLOSED (DEV)
 
 | Item | Status |

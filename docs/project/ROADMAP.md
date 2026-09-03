@@ -1,5 +1,9 @@
 # Fresh Prints Roadmap
 
+> 2026-09-02: **Cross-app lightbox Previous/Next — CLOSED (DEV)** — Goal `cross-app-lightbox-previous-next-navigation` **DONE**. Owner QA **PASS** (A–H). Signoff **approved**; final DEV **APPROVED**. Shared nav helper + Studio/Portal lightbox Prev/Next on Formal Review included surfaces; mat/image commit-together polish. Firebase **NONE**. **Production NOT AUTHORIZED** (future: Studio + Portal + shared). FreshForge **IDLE**. Next queued: `customer-specific-temporary-print-request-and-show-quota-override` (not started). Smart Profiling **PARKED**; batch-allocation **DEFERRED**. Signoff: `docs/workflow/reviews/2026-09-02-cross-app-lightbox-previous-next-navigation-signoff.md`.
+>
+> 2026-09-02: **Cross-app lightbox Previous/Next — IMPLEMENT COMPLETE / OWNER QA** — *(superseded by CLOSED banner above)*
+>
 > 2026-09-02: **Portal Editing parks current draft — CLOSED (DEV)** — Goal `portal-editing-request-parks-current-draft` **DONE**. Continuable parking + Studio trusted remove + Portal UX (banner/overlay/tab strip). Corrective Owner QA **PASS**; polish **PASS**. DEV Functions + Rules (initial) + corrective Functions redeploy. **Production NOT AUTHORIZED**. FreshForge **IDLE**. Smart Profiling **PARKED**. Signoff: `docs/workflow/reviews/2026-09-02-portal-editing-request-parks-current-draft-signoff.md`.
 >
 > 2026-09-02: **Portal Editing parks current draft — IMPL REVIEW / DEV DEPLOY GATE** — *(superseded by CLOSED banner above)*

@@ -8,18 +8,19 @@
 
 **None** — FreshForge **IDLE**
 
-Last completed: `portal-editing-request-parks-current-draft` (signoff 2026-09-02, **approved_with_notes**, corrective + polish Owner QA **PASS**, DEV only).
+Last completed: `cross-app-lightbox-previous-next-navigation` (signoff 2026-09-02, **approved**, Owner QA **PASS**, DEV only).
 
 ---
 
 ## Next queued goal (not started)
 
-**`cross-app-lightbox-previous-next-navigation`**
+**`customer-specific-temporary-print-request-and-show-quota-override`**
 
 | Item | Value |
 |------|-------|
 | Status | **QUEUED** — do not auto-start |
-| Notes | Owner starts explicitly |
+| Concept | Staff temporary per-customer Print Request quota and/or Show quota override without changing site-wide defaults |
+| Notes | Future Plan must audit authoritative quota settings + server-side enforcement before schema. Expiration, clear, Studio indication, audit trail, independent PR vs Show overrides TBD from repo audit. |
 
 ---
 
@@ -29,11 +30,11 @@ Last completed: `portal-editing-request-parks-current-draft` (signoff 2026-09-02
 |------|--------|
 | Smart Profiling completion | **PARKED** |
 | `show-queue-batch-allocation-performance` | **DEFERRED** |
-| Production promotion (parking goal inventory) | **NOT AUTHORIZED** |
-| Lightbox | queued as next goal above — not started |
+| Production promotion (lightbox inventory) | **NOT AUTHORIZED** — Studio + Portal + shared YES; Firebase NO |
+| Production promotion (parking goal inventory) | **NOT AUTHORIZED** (prior goal) |
 
 ---
 
-## Production inventory reminder (parking — later promote)
+## Production inventory reminder (lightbox — later promote)
 
-Shared parking helpers + list-tab visibility · Functions park/restore/unqueue/queue/mutation/recovery set · Firestore Rules parking fields · Portal UX · Studio trusted unqueue · ADR-FP-071 / ADR-FP-158 · Indexes NONE · Storage NONE · Migration NONE
+Studio source/build/release · Portal source/App Hosting · Shared `previewLightboxNavigation` · Functions **NO** · Firestore Rules **NO** · Storage Rules **NO** · Indexes **NO** · Migration **NO** · Firebase **NO**
