@@ -53,7 +53,7 @@ export function resolveShowExportProductionAsset(input: {
     ? customerUpload?.interactiveEnhancedHeightPx
     : catalogDesign?.interactiveEnhancedHeightPx;
 
-  const { widthPx, heightPx } = resolveActiveArtworkPixelDimensions({
+  const active = resolveActiveArtworkPixelDimensions({
     artworkEnhanceMode: input.item.artworkEnhanceMode,
     baselineWidthPx,
     baselineHeightPx,
@@ -61,18 +61,22 @@ export function resolveShowExportProductionAsset(input: {
     enhancedHeightPx,
   });
 
-  if (widthPx <= 0 || heightPx <= 0) {
+  if (!active || active.widthPx <= 0 || active.heightPx <= 0) {
     throw new Error(
       isUpload
-        ? "Customer upload artwork pixel dimensions are missing or invalid."
-        : "Catalog design artwork pixel dimensions are missing or invalid.",
+        ? input.item.artworkEnhanceMode === "enhanced"
+          ? "Enhanced customer upload pixel dimensions are missing or invalid."
+          : "Customer upload artwork pixel dimensions are missing or invalid."
+        : input.item.artworkEnhanceMode === "enhanced"
+          ? "Enhanced catalog design pixel dimensions are missing or invalid."
+          : "Catalog design artwork pixel dimensions are missing or invalid.",
     );
   }
 
   return {
     productionStoragePath: resolved.productionStoragePath,
-    sourceWidthPx: widthPx,
-    sourceHeightPx: heightPx,
+    sourceWidthPx: active.widthPx,
+    sourceHeightPx: active.heightPx,
     titleSnapshot: resolved.titleSnapshot,
   };
 }

@@ -75,11 +75,14 @@ Auth provider changes, relaxing rules, new public sensitive endpoints, secret ro
 
 - Owner-only metadata mutation on eligible shows; not a customer/Portal path
 
-## Interactive upscale + catalog originals (DEV — 2026-08-31)
+## Interactive upscale + catalog originals (DEV — 2026-08-31; hydration corrective 2026-09-03)
 
-- `setPrintRequestItemArtworkEnhanceMode` — staff + Portal customer (own items); server generates/selects derivatives
+- `setPrintRequestItemArtworkEnhanceMode` — staff + Portal customer (own items); server generates/selects derivatives; new generation only when baseline effective DPI `< 250`
+- Legacy `enhancePrintRequestArtwork` shares the same core gate
+- Client remount/reload DPI uses patched design/upload `interactiveEnhanced*` (not card-local state alone)
 - Storage: staff may read `/originals/{designId}.interactive.png` for production export; customer-upload interactive derivatives remain under `/customer-uploads/{uid}/…`
 - Firestore: optional `artworkEnhanceMode` and related fields on `printRequestItems`; gang sheet snapshot paths may reference interactive derivatives
+- Customer item resize (Portal-editable keys only) uses reduced-cost Rules path; upscale metadata remains immutable on that path
 - No secrets in client; derivative creation Admin/server-controlled for catalog
 
 ## Incident posture

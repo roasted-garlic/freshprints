@@ -1,5 +1,17 @@
 # Backend and AI Pipeline
 
+## Firestore Rules resize expression budget + Interactive Upscale hydration (DEV — 2026-09-03)
+
+| Area | Delivered |
+|------|-----------|
+| Rules | Customer Portal-editable Print Request item update reduced-cost path (`customerPrintRequestItemPortalEditableUpdate`); interactive-upscale metadata remains customer-immutable |
+| Rules tests | Focused resize **22/22**; full suite **169/169** |
+| DEV Rules deploy | `firebase deploy --only firestore:rules --project fresh-prints-dev` |
+| Corrective Functions | `setPrintRequestItemArtworkEnhanceMode`, `enhancePrintRequestArtwork` (shared `<250` initiation gate) |
+| Client hydrate | Portal/Studio patch design/upload `interactiveEnhanced*` after callable; Portal invalidates ready-design cache entry |
+| Storage / indexes / migration | **NO** |
+| Production | **NOT AUTHORIZED** |
+
 ## Portal modal + import Smart Profile presets + intake metadata controls (DEV — 2026-09-03)
 
 | Area | Delivered |

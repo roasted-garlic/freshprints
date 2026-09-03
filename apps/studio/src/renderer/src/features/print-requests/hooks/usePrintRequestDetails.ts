@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { mergeInteractiveEnhanceResultIntoAssetSummary } from "@fresh-prints/shared/utils/interactiveArtworkEnhance";
+import type { PrintRequest, PrintRequestItem } from "@fresh-prints/shared/types/printRequest/printRequest.types";
+
 import { useAuth } from "../../auth/hooks/useAuth";
 import {
   customerUploadReadService,
@@ -8,7 +11,6 @@ import {
 import { permissionService } from "../../permissions/services/permissionService";
 import { printRequestService } from "../services/printRequestService";
 import { sortPrintRequestItemsForDisplay } from "../utils/printRequestQueryPlanning";
-import type { PrintRequest, PrintRequestItem } from "@fresh-prints/shared/types/printRequest/printRequest.types";
 
 interface PrintRequestDetailsState {
   printRequest: PrintRequest | null;
@@ -215,10 +217,43 @@ export function usePrintRequestDetails(printRequestId: string | null) {
     }));
   }, []);
 
+  const patchUploadSummaryFromEnhanceResult = useCallback(
+    (
+      uploadId: string,
+      result: {
+        artworkEnhanceMode: "baseline" | "enhanced";
+        widthPx: number;
+        heightPx: number;
+      },
+    ) => {
+      const id = uploadId.trim();
+      if (!id) {
+        return;
+      }
+
+      setState((currentState) => {
+        const existing = currentState.uploadSummaries.get(id);
+        if (!existing) {
+          return currentState;
+        }
+
+        const next = new Map(currentState.uploadSummaries);
+        const patched = mergeInteractiveEnhanceResultIntoAssetSummary(existing, result);
+        if (!patched) {
+          return currentState;
+        }
+        next.set(id, patched);
+        return { ...currentState, uploadSummaries: next };
+      });
+    },
+    [],
+  );
+
   return {
     ...state,
     addItem,
     insertItemAfter,
+    patchUploadSummaryFromEnhanceResult,
     reloadPrintRequest,
     removeItem,
     replaceItem,

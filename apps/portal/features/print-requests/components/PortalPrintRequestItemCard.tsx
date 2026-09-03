@@ -313,6 +313,24 @@ export function PortalPrintRequestItemCard({
   const [hiddenDpiWarningKey, setHiddenDpiWarningKey] = useState<string | null>(null);
 
   useEffect(() => {
+    // Parent summary patch supersedes optimistic local pixels after remount-safe hydration.
+    if (
+      design?.interactiveEnhancedWidthPx ||
+      design?.interactiveEnhancedHeightPx ||
+      upload?.interactiveEnhancedWidthPx ||
+      upload?.interactiveEnhancedHeightPx
+    ) {
+      setEnhanceResultPixels(null);
+    }
+  }, [
+    design?.interactiveEnhancedWidthPx,
+    design?.interactiveEnhancedHeightPx,
+    upload?.interactiveEnhancedWidthPx,
+    upload?.interactiveEnhancedHeightPx,
+    item.id,
+  ]);
+
+  useEffect(() => {
     const nextWidth = resolveInitialWidth(item);
     const nextHeight = resolveInitialHeight(item);
     const incomingSignature = buildItemSignature(
@@ -387,9 +405,16 @@ export function PortalPrintRequestItemCard({
         enhanceResultPixels?.height,
     });
 
+    // Enhanced mode without hydrated dims → null (DPI unavailable), never baseline mislabel.
+    if (!active) {
+      return null;
+    }
+
     return { width: active.widthPx, height: active.heightPx };
   }, [artworkEnhanceMode, baselineAspectPixels, design, enhanceResultPixels, upload]);
+  // Geometry / lock fallback may use baseline; DPI assessment must not mislabel baseline as enhanced.
   const aspectPixels = activeAspectPixels ?? baselineAspectPixels;
+  const dpiAspectPixels = activeAspectPixels;
 
   const upscaleToggleEligibility = useMemo(() => {
     if (!baselineAspectPixels || readOnly) {
@@ -484,20 +509,20 @@ export function PortalPrintRequestItemCard({
   }
 
   const sizeAssessment = useMemo(() => {
-    if (!aspectPixels) {
+    if (!dpiAspectPixels) {
       return null;
     }
 
     return assessPrintRequestItemSize({
-      pixelWidth: aspectPixels.width,
-      pixelHeight: aspectPixels.height,
+      pixelWidth: dpiAspectPixels.width,
+      pixelHeight: dpiAspectPixels.height,
       printWidthInches: parsedPrintWidthInches ?? Number.NaN,
       printHeightInches: parsedPrintHeightInches ?? Number.NaN,
       approvedMaxPrintWidthInches: upload?.approvedMaxPrintWidthInches ?? undefined,
       approvedMaxPrintHeightInches: upload?.approvedMaxPrintHeightInches ?? undefined,
       wasUpscaled: upload?.wasUpscaled ?? undefined,
     });
-  }, [aspectPixels, parsedPrintHeightInches, parsedPrintWidthInches, upload]);
+  }, [dpiAspectPixels, parsedPrintHeightInches, parsedPrintWidthInches, upload]);
 
   const isOptimisticItem = isOptimisticPrintRequestItemId(item.id);
   const dpiWarningCalloutKey =

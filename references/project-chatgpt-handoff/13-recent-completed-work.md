@@ -1,5 +1,22 @@
 # Recent Completed Work
 
+## 2026-09-03 - Firestore Rules resize expression budget + Interactive Upscale DPI corrective — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `firestore-rules-print-request-item-resize-expression-budget` — **DONE** |
+| Corrective | `interactive-upscale-dpi-rehydration-and-eligibility` (TD-033) — **COMPLETE** |
+| Signoff | **approved_with_notes** |
+| Owner Rules QA | **PASS WITH NOTE** (note closed by corrective) |
+| Owner Interactive Upscale QA | **PASS** (Portal+Studio; Library+upload; remount/nav/reload/multi-item; 249/250/>250; existing ON; 200/300) |
+| Rules | focused **22/22**; full **169/169**; DEV `firestore:rules` deployed |
+| Corrective Functions (DEV) | `setPrintRequestItemArtworkEnhanceMode` (`…-00008-yob`); `enhancePrintRequestArtwork` (`…-00003-xut`) |
+| Delivered | Customer Portal-editable resize reduced-cost Rules path; enhanced DPI parent-summary hydration; offer gate `<250`; TD-033 **RESOLVED ON DEV** |
+| Production | **NOT AUTHORIZED** |
+| Smart Profiling | **PARKED** |
+| Batch allocation | **DEFERRED** |
+| Signoff | `docs/workflow/reviews/2026-09-03-firestore-rules-print-request-item-resize-expression-budget-signoff.md` |
+
 ## 2026-09-03 - Portal modal + import Smart Profile presets + intake metadata controls — CLOSED (DEV)
 
 | Item | Status |
@@ -13,11 +30,10 @@
 | Workstream C | Studio per-row Auto/Light/Dark/Halftone controls for Customer Uploads and Donated Designs; instant optimistic first Halftone click; preview/lightbox repaint; stale-send block + retry; trusted background save; authoritative promote with `halftoneDecisionSource: intake` and `artworkBackgroundSource: staff_manual` |
 | DEV Firebase | Workstream B: `enqueueAiEnrichment`, `onCatalogReprocessJobWritten`, `updateDesignSmartProfileDimensions`, `resetDesignSmartProfileDimension`, plus `firestore.rules`; Workstream C: `recordCustomerUploadArtworkBackgroundStaffDecision`, `promoteCustomerUploadToAiReview` |
 | Deploy notes | First Workstream C promote deploy failed on Firebase backend-spec discovery timeout; owner-authorized shell-local `FUNCTIONS_DISCOVERY_TIMEOUT=60` retry succeeded |
-| Full Rules | **158/159** — one known unrelated failure in `tests/firebase/printRequestItemResize.rules.test.ts` (`allows customer size update when interactive upscale fields are present and unchanged`) |
+| Full Rules | **158/159** at that closeout — later resolved by `firestore-rules-print-request-item-resize-expression-budget` (169/169) |
 | Production | **NOT AUTHORIZED** |
 | Smart Profiling | **PARKED** |
 | Batch allocation | **DEFERRED** |
-| Next owner-selected goal | `firestore-rules-print-request-item-resize-expression-budget` |
 | Signoff | `docs/workflow/reviews/2026-09-03-portal-modal-dont-show-again-and-import-smart-profile-presets-signoff.md` |
 
 ## 2026-09-02 - Customer-specific temporary PR + Show quota override — CLOSED (DEV)

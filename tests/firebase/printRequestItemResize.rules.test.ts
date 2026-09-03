@@ -18,7 +18,9 @@ let environment: RulesTestEnvironment;
 
 const OWNER_UID = "owner-uid";
 const CUSTOMER_UID = "customer-uid";
+const OTHER_CUSTOMER_UID = "other-customer-uid";
 const CUSTOMER_DOC_ID = "customer-1";
+const OTHER_CUSTOMER_DOC_ID = "customer-2";
 const REQUEST_ID = "request-1";
 const ITEM_ID = "item-1";
 const DESIGN_ID = "design-ready-1";
@@ -69,6 +71,18 @@ async function seedEditableCatalogContext(options: {
     const firestore = context.firestore();
     await setDoc(doc(firestore, "users", OWNER_UID), { role: "owner", isActive: true });
     await setDoc(doc(firestore, "users", CUSTOMER_UID), { role: "customer", isActive: true });
+    await setDoc(doc(firestore, "users", OTHER_CUSTOMER_UID), { role: "customer", isActive: true });
+    await setDoc(doc(firestore, "customers", OTHER_CUSTOMER_DOC_ID), {
+      id: OTHER_CUSTOMER_DOC_ID,
+      userId: OTHER_CUSTOMER_UID,
+      displayName: "Other Customer",
+      username: "othercustomer",
+      isGuest: false,
+      totalPrintRequests: 0,
+      nextPrintRequestSequence: 1,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
     await setDoc(doc(firestore, "customers", CUSTOMER_DOC_ID), {
       id: CUSTOMER_DOC_ID,
       userId: CUSTOMER_UID,
@@ -274,5 +288,126 @@ describe("printRequestItems size update — requestCountApplied allowlist", () =
     await assertSucceeds(
       updateDoc(doc(firestore, "printRequestItems", ITEM_ID), sizePatch()),
     );
+  });
+
+  it("denies customer mutating artworkEnhanceMode during size update", async () => {
+    await seedEditableCatalogContext({ requestCountApplied: true });
+    await environment.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "printRequestItems", ITEM_ID), {
+        ...baseCatalogItem({ requestCountApplied: true }),
+        artworkEnhanceMode: "baseline",
+      });
+    });
+    const firestore = environment.authenticatedContext(CUSTOMER_UID).firestore();
+    await assertFails(
+      updateDoc(
+        doc(firestore, "printRequestItems", ITEM_ID),
+        sizePatch({ artworkEnhanceMode: "enhanced" }),
+      ),
+    );
+  });
+
+  it("denies customer mutating preEnhancePrintWidthInches during size update", async () => {
+    await seedEditableCatalogContext({ requestCountApplied: true });
+    await environment.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "printRequestItems", ITEM_ID), {
+        ...baseCatalogItem({ requestCountApplied: true }),
+        artworkEnhanceMode: "enhanced",
+        preEnhancePrintWidthInches: 10,
+        preEnhancePrintHeightInches: 7.29,
+      });
+    });
+    const firestore = environment.authenticatedContext(CUSTOMER_UID).firestore();
+    await assertFails(
+      updateDoc(
+        doc(firestore, "printRequestItems", ITEM_ID),
+        sizePatch({ preEnhancePrintWidthInches: 11 }),
+      ),
+    );
+  });
+
+  it("denies customer mutating preEnhancePrintHeightInches during size update", async () => {
+    await seedEditableCatalogContext({ requestCountApplied: true });
+    await environment.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "printRequestItems", ITEM_ID), {
+        ...baseCatalogItem({ requestCountApplied: true }),
+        artworkEnhanceMode: "enhanced",
+        preEnhancePrintWidthInches: 10,
+        preEnhancePrintHeightInches: 7.29,
+      });
+    });
+    const firestore = environment.authenticatedContext(CUSTOMER_UID).firestore();
+    await assertFails(
+      updateDoc(
+        doc(firestore, "printRequestItems", ITEM_ID),
+        sizePatch({ preEnhancePrintHeightInches: 8 }),
+      ),
+    );
+  });
+
+  it("denies customer quantity mutation on the item update path", async () => {
+    await seedEditableCatalogContext({ requestCountApplied: true });
+    const firestore = environment.authenticatedContext(CUSTOMER_UID).firestore();
+    await assertFails(
+      updateDoc(doc(firestore, "printRequestItems", ITEM_ID), sizePatch({ quantity: 2 })),
+    );
+  });
+
+  it("denies customer unknown field injection during size update", async () => {
+    await seedEditableCatalogContext({ requestCountApplied: true });
+    const firestore = environment.authenticatedContext(CUSTOMER_UID).firestore();
+    await assertFails(
+      updateDoc(doc(firestore, "printRequestItems", ITEM_ID), sizePatch({ notARealField: "x" })),
+    );
+  });
+
+  it("denies a different customer resizing the item", async () => {
+    await seedEditableCatalogContext({ requestCountApplied: true });
+    const firestore = environment.authenticatedContext(OTHER_CUSTOMER_UID).firestore();
+    await assertFails(updateDoc(doc(firestore, "printRequestItems", ITEM_ID), sizePatch()));
+  });
+
+  it("denies customer source identity mutation during size update", async () => {
+    await seedEditableCatalogContext({ requestCountApplied: true });
+    const firestore = environment.authenticatedContext(CUSTOMER_UID).firestore();
+    await assertFails(
+      updateDoc(doc(firestore, "printRequestItems", ITEM_ID), sizePatch({ designId: "other-design" })),
+    );
+  });
+
+  it("allows customer notes and sortOrder updates (existing writable set)", async () => {
+    await seedEditableCatalogContext({ requestCountApplied: true });
+    const firestore = environment.authenticatedContext(CUSTOMER_UID).firestore();
+    await assertSucceeds(
+      updateDoc(doc(firestore, "printRequestItems", ITEM_ID), {
+        notes: "keep this",
+        sortOrder: 3,
+        updatedAt: Timestamp.now(),
+      }),
+    );
+  });
+
+  it("denies customer size update when existing item has an unknown extra field", async () => {
+    await seedEditableCatalogContext({ requestCountApplied: true });
+    await environment.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "printRequestItems", ITEM_ID), {
+        ...baseCatalogItem({ requestCountApplied: true }),
+        notARealField: "legacy",
+      });
+    });
+    const firestore = environment.authenticatedContext(CUSTOMER_UID).firestore();
+    await assertFails(updateDoc(doc(firestore, "printRequestItems", ITEM_ID), sizePatch()));
+  });
+
+  it("denies customer size update when existing item has non-positive quantity", async () => {
+    await seedEditableCatalogContext({ requestCountApplied: true });
+    await environment.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "printRequestItems", ITEM_ID), {
+        ...baseCatalogItem({ requestCountApplied: true }),
+        quantity: 0,
+      });
+    });
+    const firestore = environment.authenticatedContext(CUSTOMER_UID).firestore();
+    await assertFails(updateDoc(doc(firestore, "printRequestItems", ITEM_ID), sizePatch()));
   });
 });

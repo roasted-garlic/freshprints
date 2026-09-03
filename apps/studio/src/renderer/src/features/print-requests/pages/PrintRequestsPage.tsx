@@ -444,6 +444,7 @@ export function PrintRequestsPage() {
     designs: readyDesigns,
     isLoading: isReadyDesignsLoading,
     reloadDesigns: reloadReadyDesigns,
+    patchDesignFromEnhanceResult,
   } = useReadyDesignsForSelection(selectedDesignIds);
   const uploadSummariesById = isLoadedSelectedRequest ? requestDetails.uploadSummaries : new Map();
   const requestError = isLoadedSelectedRequest ? requestDetails.error : null;
@@ -453,6 +454,7 @@ export function PrintRequestsPage() {
   const removeRequestItem = requestDetails.removeItem;
   const replaceRequestItem = requestDetails.replaceItem;
   const replaceSelectedRequest = requestDetails.replacePrintRequest;
+  const patchUploadSummaryFromEnhanceResult = requestDetails.patchUploadSummaryFromEnhanceResult;
   const visibleSelectedRequest = isRequestLoading ? null : selectedRequest;
 
   useEffect(() => {
@@ -1398,6 +1400,16 @@ export function PrintRequestsPage() {
       ...item,
       artworkEnhanceMode: result.artworkEnhanceMode,
     });
+
+    const designId = result.designId?.trim() || item.designId?.trim();
+    if (designId) {
+      patchDesignFromEnhanceResult(designId, result);
+    }
+
+    const uploadId = result.customerUploadId?.trim() || item.customerUploadId?.trim();
+    if (uploadId) {
+      patchUploadSummaryFromEnhanceResult(uploadId, result);
+    }
   }
 
   async function handleDuplicateItem(item: PrintRequestItem) {
@@ -2351,6 +2363,11 @@ export function PrintRequestsPage() {
                             approvedMaxPrintWidthInches: uploadDoc.approvedMaxPrintWidthInches,
                             approvedMaxPrintHeightInches: uploadDoc.approvedMaxPrintHeightInches,
                             wasUpscaled: uploadDoc.wasUpscaled,
+                            interactiveEnhancedProductionStoragePath:
+                              uploadDoc.interactiveEnhancedProductionStoragePath,
+                            interactiveEnhancedWidthPx: uploadDoc.interactiveEnhancedWidthPx,
+                            interactiveEnhancedHeightPx: uploadDoc.interactiveEnhancedHeightPx,
+                            interactiveEnhanceGeneratedAt: uploadDoc.interactiveEnhanceGeneratedAt,
                             fromAssistedCreation: Boolean(uploadDoc.assistedCreationRequestId),
                           }
                         : item.titleSnapshot

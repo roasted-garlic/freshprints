@@ -106,6 +106,21 @@ describe("resolveShowExportProductionAsset", () => {
     );
   });
 
+  it("6b. enhanced mode + missing enhanced pixel dims → fail closed", () => {
+    assert.throws(
+      () =>
+        resolveShowExportProductionAsset({
+          item: { designId: "d1", artworkEnhanceMode: "enhanced" },
+          catalogDesign: {
+            ...catalogDesign,
+            interactiveEnhancedWidthPx: undefined,
+            interactiveEnhancedHeightPx: undefined,
+          },
+        }),
+      /Enhanced .* pixel dimensions are missing/,
+    );
+  });
+
   it("7. same design, baseline vs enhanced items → distinct assets", () => {
     const baseline = resolveShowExportProductionAsset({
       item: { designId: "d1", artworkEnhanceMode: "baseline" },

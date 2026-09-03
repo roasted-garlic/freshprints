@@ -278,18 +278,23 @@ export function PrintRequestItemCard({
         enhanceResultPixels?.height,
     });
 
+    if (!active) {
+      return null;
+    }
+
     return { width: active.widthPx, height: active.heightPx };
   }, [artworkEnhanceMode, baselineAspectPixels, design, enhanceResultPixels, upload]);
   const aspectPixels = activeAspectPixels ?? baselineAspectPixels;
+  const dpiAspectPixels = activeAspectPixels;
 
   const sizeAssessment = useMemo(() => {
-    if (!aspectPixels) {
+    if (!dpiAspectPixels) {
       return null;
     }
 
     return assessPrintRequestItemSize({
-      pixelWidth: aspectPixels.width,
-      pixelHeight: aspectPixels.height,
+      pixelWidth: dpiAspectPixels.width,
+      pixelHeight: dpiAspectPixels.height,
       printWidthInches: parsedPrintWidthInches ?? Number.NaN,
       printHeightInches: parsedPrintHeightInches ?? Number.NaN,
       approvedMaxPrintWidthInches:
@@ -298,7 +303,7 @@ export function PrintRequestItemCard({
         upload?.approvedMaxPrintHeightInches ?? design?.approvedMaxPrintHeightInches,
       wasUpscaled: upload?.wasUpscaled ?? design?.wasUpscaled,
     });
-  }, [aspectPixels, design, parsedPrintHeightInches, parsedPrintWidthInches, upload]);
+  }, [design, dpiAspectPixels, parsedPrintHeightInches, parsedPrintWidthInches, upload]);
 
   const sizeLabel =
     parsedPrintWidthInches !== null && parsedPrintHeightInches !== null
@@ -369,6 +374,7 @@ export function PrintRequestItemCard({
     artworkEnhanceMode,
     baselineAspectPixels,
     design,
+    enhanceResultPixels,
     parsedPrintHeightInches,
     parsedPrintWidthInches,
     readOnly,
@@ -459,7 +465,13 @@ export function PrintRequestItemCard({
 
   useEffect(() => {
     setEnhanceResultPixels(null);
-  }, [design?.interactiveEnhancedWidthPx, design?.interactiveEnhancedHeightPx, item.id]);
+  }, [
+    design?.interactiveEnhancedWidthPx,
+    design?.interactiveEnhancedHeightPx,
+    upload?.interactiveEnhancedWidthPx,
+    upload?.interactiveEnhancedHeightPx,
+    item.id,
+  ]);
 
   function cancelScheduledSave() {
     if (saveDebounceRef.current !== null) {

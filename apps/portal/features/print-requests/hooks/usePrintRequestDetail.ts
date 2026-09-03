@@ -11,7 +11,10 @@ import { resolveDuplicateInsertBeforeSortOrder } from '@fresh-prints/shared/util
 import { formatPrintRequestItemSizeLabel } from '@fresh-prints/shared/utils/printRequestItemSizing';
 import { isPortalActiveEditablePrintRequest } from '@fresh-prints/shared/utils/portalActiveEditablePrintRequest';
 
+import { mergeInteractiveEnhanceResultIntoAssetSummary } from '@fresh-prints/shared/utils/interactiveArtworkEnhance';
+
 import { useAuth } from '../../auth/context/AuthContext';
+import { catalogService } from '../../catalog/services/catalogService';
 import {
   portalPrintRequestService,
   printRequestItemHasCustomerUpload,
@@ -672,6 +675,44 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
       setItems(patch);
       if (isViewingWorkingRequest) {
         patchWorkingItems(patch);
+      }
+
+      // Hydrate parent design/upload summaries with callable enhanced pixels so remounts
+      // derive DPI from persisted metadata — not card-local enhanceResultPixels.
+      const designId = result.designId?.trim();
+      if (designId) {
+        catalogService.invalidateReadyDesignById(designId);
+        setDesignSummaries((current) => {
+          const existing = current.get(designId);
+          if (!existing) {
+            return current;
+          }
+          const next = new Map(current);
+          next.set(
+            designId,
+            mergeInteractiveEnhanceResultIntoAssetSummary(existing, result) as CatalogDesign,
+          );
+          return next;
+        });
+      }
+
+      const uploadId = result.customerUploadId?.trim();
+      if (uploadId) {
+        setUploadSummaries((current) => {
+          const existing = current.get(uploadId);
+          if (!existing) {
+            return current;
+          }
+          const next = new Map(current);
+          next.set(
+            uploadId,
+            mergeInteractiveEnhanceResultIntoAssetSummary(
+              existing,
+              result,
+            ) as CustomerUploadDocSummary,
+          );
+          return next;
+        });
       }
     },
     [isViewingWorkingRequest, patchWorkingItems],

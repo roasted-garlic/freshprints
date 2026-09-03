@@ -45,7 +45,7 @@ Most recent completed checkpoints:
 
 ## Firestore Rules test disposition (preserve)
 
-Show Queue scoped Rules suites passed where run. Full `npm run test:rules` is **not** claimed globally passing — unrelated suites have documented expression-budget failures.
+Focused Print Request item resize Rules: **22/22 PASS**. Full `npm run test:rules`: **169/169 PASS** (2026-09-03 closeout of `firestore-rules-print-request-item-resize-expression-budget`). Historical baseline before that goal was 158/159 with one expression-budget failure on customer resize with unchanged Interactive Upscale fields — now resolved on DEV.
 
 ## FreshForge test phase
 

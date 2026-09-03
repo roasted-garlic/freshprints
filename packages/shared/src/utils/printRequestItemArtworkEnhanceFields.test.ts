@@ -106,6 +106,7 @@ describe("mergePrintRequestItemPreservingArtworkEnhanceFields", () => {
       enhancedWidthPx,
       enhancedHeightPx,
     });
+    assert.ok(activePixels);
 
     const at17 = assessPrintRequestItemSize({
       pixelWidth: activePixels.widthPx,
@@ -137,6 +138,7 @@ describe("mergePrintRequestItemPreservingArtworkEnhanceFields", () => {
       enhancedWidthPx: 5100,
       enhancedHeightPx: 3300,
     });
+    assert.ok(activePixels);
     const assessment = assessPrintRequestItemSize({
       pixelWidth: activePixels.widthPx,
       pixelHeight: activePixels.heightPx,

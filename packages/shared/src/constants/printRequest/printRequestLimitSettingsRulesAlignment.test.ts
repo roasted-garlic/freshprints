@@ -59,10 +59,15 @@ test("customers cannot create printRequestItems (callable / Admin only)", async 
 
 test("customers cannot change quantity or delete printRequestItems (Admin callables)", async () => {
   const rules = await readFile(path.join(REPO_ROOT, "firestore.rules"), "utf8");
+  const customerUpdate = rules.match(
+    /function customerPrintRequestItemPortalEditableUpdate\(\)[\s\S]*?\n    \}/,
+  )?.[0];
+  assert.ok(customerUpdate, "customerPrintRequestItemPortalEditableUpdate expected");
   assert.match(
-    rules,
-    /function customerCanUpdatePrintRequestItem\(\)[\s\S]*?request\.resource\.data\.quantity == resource\.data\.quantity/,
+    customerUpdate,
+    /affectedKeys\(\)\s*\.hasOnly\(\[[\s\S]*?"printWidthInches"[\s\S]*?"updatedAt"[\s\S]*?\]\)/,
   );
+  assert.doesNotMatch(customerUpdate, /"quantity"/);
   assert.match(
     rules,
     /allow delete: if isStaff\(\);\s*\/\/ Customer deletes go through Admin callables/,
@@ -73,16 +78,17 @@ test("printRequestItems recognize immutable requestCountApplied Wave C marker", 
   const rules = await readFile(path.join(REPO_ROOT, "firestore.rules"), "utf8");
   assert.match(
     rules,
-    /function printRequestItemRequiredFieldsValid\(data\)[\s\S]*?"requestCountApplied"/,
+    /function printRequestItemKeysAllowed\(data\)[\s\S]*?"requestCountApplied"/,
   );
   assert.match(
     rules,
     /function printRequestItemRequiredFieldsValid\(data\)[\s\S]*?isOptionalBool\(data, "requestCountApplied"\)/,
   );
-  assert.match(
-    rules,
-    /function customerCanUpdatePrintRequestItem\(\)[\s\S]*?optionalFieldUnchanged\("requestCountApplied"\)/,
-  );
+  const customerUpdate = rules.match(
+    /function customerPrintRequestItemPortalEditableUpdate\(\)[\s\S]*?\n    \}/,
+  )?.[0];
+  assert.ok(customerUpdate, "customerPrintRequestItemPortalEditableUpdate expected");
+  assert.doesNotMatch(customerUpdate, /"requestCountApplied"/);
   assert.match(
     rules,
     /match \/printRequestItems\/\{printRequestItemId\}[\s\S]*?allow update: if isStaff\(\)[\s\S]*?optionalFieldUnchanged\("requestCountApplied"\)/,
@@ -93,16 +99,19 @@ test("printRequestItems allow optional interactive artwork enhance fields", asyn
   const rules = await readFile(path.join(REPO_ROOT, "firestore.rules"), "utf8");
   assert.match(
     rules,
-    /function printRequestItemRequiredFieldsValid\(data\)[\s\S]*?"artworkEnhanceMode"/,
+    /function printRequestItemKeysAllowed\(data\)[\s\S]*?"artworkEnhanceMode"/,
   );
   assert.match(
     rules,
     /function printRequestItemRequiredFieldsValid\(data\)[\s\S]*?isOptionalArtworkEnhanceMode\(data, "artworkEnhanceMode"\)/,
   );
-  assert.match(
-    rules,
-    /function customerCanUpdatePrintRequestItem\(\)[\s\S]*?optionalFieldUnchanged\("artworkEnhanceMode"\)/,
-  );
+  const customerUpdate = rules.match(
+    /function customerPrintRequestItemPortalEditableUpdate\(\)[\s\S]*?\n    \}/,
+  )?.[0];
+  assert.ok(customerUpdate, "customerPrintRequestItemPortalEditableUpdate expected");
+  assert.doesNotMatch(customerUpdate, /"artworkEnhanceMode"/);
+  assert.doesNotMatch(customerUpdate, /"preEnhancePrintWidthInches"/);
+  assert.doesNotMatch(customerUpdate, /"preEnhancePrintHeightInches"/);
   assert.match(
     rules,
     /match \/printRequestItems\/\{printRequestItemId\}[\s\S]*?allow update: if isStaff\(\)[\s\S]*?optionalFieldUnchanged\("artworkEnhanceMode"\)/,

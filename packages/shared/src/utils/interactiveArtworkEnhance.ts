@@ -1,4 +1,5 @@
 import {
+  INTERACTIVE_UPSCALE_OFFER_MIN_DPI,
   MAX_UPSCALE_FACTOR,
   NEAR_TARGET_TOLERANCE_RATIO,
   TARGET_PRINT_DPI,
@@ -123,8 +124,10 @@ export function resolveBaselineEffectiveDpiAtPrintSize(
 }
 
 /**
- * First-time generation offer only (~300 DPI target vs hard 200 DPI save floor).
- * Not used when an interactive derivative already exists (selection-only path).
+ * First-time generation offer only (baseline effective DPI must be strictly below
+ * {@link INTERACTIVE_UPSCALE_OFFER_MIN_DPI} = 250). Distinct from the 200 DPI save floor and
+ * the ~300 DPI processing target. Not used when an interactive derivative already exists
+ * (selection-only path).
  */
 export function isInteractiveUpscaleGenerationOfferedAtPrintSize(
   baselineWidthPx: number,
@@ -142,7 +145,7 @@ export function isInteractiveUpscaleGenerationOfferedAtPrintSize(
     return false;
   }
 
-  return effectiveDpi < TARGET_PRINT_DPI * (1 - NEAR_TARGET_TOLERANCE_RATIO);
+  return effectiveDpi < INTERACTIVE_UPSCALE_OFFER_MIN_DPI;
 }
 
 /** @deprecated Use isInteractiveUpscaleGenerationOfferedAtPrintSize */
@@ -212,16 +215,10 @@ export function resolveInteractiveEnhanceTargetPixels(
     return null;
   }
 
-  if (dpiAtBaseline.effectiveDpi >= TARGET_PRINT_DPI * (1 - NEAR_TARGET_TOLERANCE_RATIO)) {
-    const headroomScale = MAX_UPSCALE_FACTOR / resolveCumulativeFactor(
-      input.baselineWidthPx,
-      input.baselineHeightPx,
-      input.nativeWidthPx,
-      input.nativeHeightPx,
-    );
-    if (headroomScale <= 1 + NEAR_TARGET_TOLERANCE_RATIO) {
-      return null;
-    }
+  // New generation is never offered at/above the initiation floor (250). Selection-only
+  // reuse of an existing derivative is handled outside this helper.
+  if (dpiAtBaseline.effectiveDpi >= INTERACTIVE_UPSCALE_OFFER_MIN_DPI) {
+    return null;
   }
 
   const idealWidthPx = Math.round(input.printWidthInches * TARGET_PRINT_DPI);
@@ -354,28 +351,73 @@ export function resolveInteractiveUpscaleToggleEligibility(
   };
 }
 
+/**
+ * Active production pixels for DPI / sizing. When mode is enhanced but enhanced dimensions
+ * are not yet available, returns **null** so callers do not mislabel baseline DPI as enhanced.
+ */
 export function resolveActiveArtworkPixelDimensions(input: {
   artworkEnhanceMode?: ArtworkEnhanceMode | null;
   baselineWidthPx: number;
   baselineHeightPx: number;
   enhancedWidthPx?: number | null;
   enhancedHeightPx?: number | null;
-}): { widthPx: number; heightPx: number } {
-  if (
-    resolveArtworkEnhanceMode(input.artworkEnhanceMode) === "enhanced" &&
-    typeof input.enhancedWidthPx === "number" &&
-    input.enhancedWidthPx > 0 &&
-    typeof input.enhancedHeightPx === "number" &&
-    input.enhancedHeightPx > 0
-  ) {
-    return {
-      widthPx: Math.round(input.enhancedWidthPx),
-      heightPx: Math.round(input.enhancedHeightPx),
-    };
+}): { widthPx: number; heightPx: number } | null {
+  if (resolveArtworkEnhanceMode(input.artworkEnhanceMode) === "enhanced") {
+    if (
+      typeof input.enhancedWidthPx === "number" &&
+      input.enhancedWidthPx > 0 &&
+      typeof input.enhancedHeightPx === "number" &&
+      input.enhancedHeightPx > 0
+    ) {
+      return {
+        widthPx: Math.round(input.enhancedWidthPx),
+        heightPx: Math.round(input.enhancedHeightPx),
+      };
+    }
+    return null;
   }
 
   return {
     widthPx: Math.round(input.baselineWidthPx),
     heightPx: Math.round(input.baselineHeightPx),
+  };
+}
+
+export function mergeInteractiveEnhanceResultIntoAssetSummary<
+  T extends {
+    interactiveEnhancedWidthPx?: number | null;
+    interactiveEnhancedHeightPx?: number | null;
+    interactiveEnhanceGeneratedAt?: unknown;
+  },
+>(
+  summary: T | null | undefined,
+  result: {
+    artworkEnhanceMode: ArtworkEnhanceMode;
+    widthPx: number;
+    heightPx: number;
+  },
+): T | null {
+  if (!summary) {
+    return null;
+  }
+
+  if (result.artworkEnhanceMode !== "enhanced") {
+    return summary;
+  }
+
+  if (
+    !Number.isFinite(result.widthPx) ||
+    result.widthPx <= 0 ||
+    !Number.isFinite(result.heightPx) ||
+    result.heightPx <= 0
+  ) {
+    return summary;
+  }
+
+  return {
+    ...summary,
+    interactiveEnhancedWidthPx: Math.round(result.widthPx),
+    interactiveEnhancedHeightPx: Math.round(result.heightPx),
+    interactiveEnhanceGeneratedAt: summary.interactiveEnhanceGeneratedAt ?? new Date(),
   };
 }

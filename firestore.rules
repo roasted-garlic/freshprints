@@ -146,29 +146,44 @@ service cloud.firestore {
         );
     }
 
-    function customerCanUpdatePrintRequestItem() {
-      return customerCanMutatePrintRequestItem()
-        && request.resource.data.id == resource.data.id
-        && request.resource.data.printRequestId == resource.data.printRequestId
-        && request.resource.data.quantity == resource.data.quantity
-        && request.resource.data.get("designId", "") == resource.data.get("designId", "")
-        && request.resource.data.get("sourceType", "") == resource.data.get("sourceType", "")
-        && request.resource.data.get("customerUploadId", "") == resource.data.get("customerUploadId", "")
-        && request.resource.data.get("titleSnapshot", "") == resource.data.get("titleSnapshot", "")
-        && request.resource.data.addedBy == resource.data.addedBy
-        && request.resource.data.status == resource.data.status
-        && request.resource.data.createdAt == resource.data.createdAt
-        && optionalFieldUnchanged("printedAt")
-        && optionalFieldUnchanged("printedBy")
-        && optionalFieldUnchanged("completedAt")
-        // Wave C Admin idempotency marker — clients must not set/clear it.
-        && optionalFieldUnchanged("requestCountApplied")
-        // Legacy callable field — clients must not set/clear it.
-        && optionalFieldUnchanged("updatedBy")
-        // Interactive upscale — callable-only; clients may not mutate.
-        && optionalFieldUnchanged("artworkEnhanceMode")
-        && optionalFieldUnchanged("preEnhancePrintWidthInches")
-        && optionalFieldUnchanged("preEnhancePrintHeightInches");
+    // Customer printRequestItems updates: cheap affectedKeys allowlist first so size-only
+    // writes with unchanged interactive-upscale fields stay under the 1000-expression budget.
+    // Protected fields (quantity, source identity, upscale metadata, server markers) are
+    // immutable by omission. After-image key allowlist preserves deny of unknown/legacy extra
+    // keys without re-running the full staff/create field-type validator.
+    function customerPrintRequestItemPortalEditableUpdate() {
+      return isCustomer()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly([
+            "printWidthInches",
+            "printHeightInches",
+            "sizeLabel",
+            "standardSizePresetKey",
+            "sortOrder",
+            "notes",
+            "updatedAt"
+          ])
+        && printRequestItemKeysAllowed(request.resource.data)
+        && customerCanMutatePrintRequestItem()
+        && isOptionalPositiveStandardPrintInches(request.resource.data, "printWidthInches")
+        && isOptionalPositiveStandardPrintInches(request.resource.data, "printHeightInches")
+        && isOptionalString(request.resource.data, "sizeLabel")
+        && isOptionalString(request.resource.data, "standardSizePresetKey")
+        && isOptionalNumber(request.resource.data, "sortOrder")
+        && isOptionalString(request.resource.data, "notes")
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.quantity is int
+        && request.resource.data.quantity > 0
+        && (
+          (
+            isUploadPrintRequestItem(resource.data)
+            && isUploadPrintRequestItem(request.resource.data)
+          )
+          || (
+            isCatalogPrintRequestItem(resource.data)
+            && isReadyDesign(request.resource.data.designId)
+          )
+        );
     }
 
     function isOwnerOrAdmin() {
@@ -947,7 +962,7 @@ service cloud.firestore {
       return data.sourceType == "customer_upload";
     }
 
-    function printRequestItemRequiredFieldsValid(data) {
+    function printRequestItemKeysAllowed(data) {
       return data.keys().hasOnly([
           "id",
           "printRequestId",
@@ -976,7 +991,11 @@ service cloud.firestore {
           "requestCountApplied",
           // Legacy callable-only audit field (not part of client item schema).
           "updatedBy"
-        ])
+        ]);
+    }
+
+    function printRequestItemRequiredFieldsValid(data) {
+      return printRequestItemKeysAllowed(data)
         && data.id is string
         && data.id.size() > 0
         && data.printRequestId is string
@@ -1926,19 +1945,7 @@ service cloud.firestore {
           isUploadPrintRequestItem(resource.data)
           || isReadyDesign(request.resource.data.designId)
         )
-        || isCustomer()
-        && printRequestItemRequiredFieldsValid(request.resource.data)
-        && customerCanUpdatePrintRequestItem()
-        && (
-          (
-            isUploadPrintRequestItem(resource.data)
-            && isUploadPrintRequestItem(request.resource.data)
-          )
-          || (
-            isCatalogPrintRequestItem(resource.data)
-            && isReadyDesign(request.resource.data.designId)
-          )
-        );
+        || customerPrintRequestItemPortalEditableUpdate();
 
       allow delete: if isStaff();
       // Customer deletes go through Admin callables (Cap A print-count refund).

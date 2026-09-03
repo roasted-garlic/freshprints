@@ -321,6 +321,11 @@ async function loadProductionPixelsForItem(item: PrintRequestItem): Promise<{
             ? data.interactiveEnhancedHeightPx
             : null,
       });
+      if (!active) {
+        throw new Error(
+          'Enhanced artwork pixel dimensions are required while Upscale is on for this upload.',
+        );
+      }
       return { pixelWidth: active.widthPx, pixelHeight: active.heightPx };
     }
     throw new Error('Design pixel dimensions are required to validate requested size.');
@@ -353,6 +358,11 @@ async function loadProductionPixelsForItem(item: PrintRequestItem): Promise<{
             ? data.interactiveEnhancedHeightPx
             : null,
       });
+      if (!active) {
+        throw new Error(
+          'Enhanced artwork pixel dimensions are required while Upscale is on for this design.',
+        );
+      }
       return { pixelWidth: active.widthPx, pixelHeight: active.heightPx };
     }
   }

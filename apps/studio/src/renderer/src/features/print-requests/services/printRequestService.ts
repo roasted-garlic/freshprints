@@ -503,6 +503,12 @@ function resolveActiveDesignPixelDimensions(
     enhancedHeightPx: design.interactiveEnhancedHeightPx ?? null,
   });
 
+  if (!active) {
+    throw new Error(
+      "Enhanced artwork pixel dimensions are required while Upscale is on for this design.",
+    );
+  }
+
   return { pixelWidth: active.widthPx, pixelHeight: active.heightPx };
 }
 

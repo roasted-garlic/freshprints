@@ -176,6 +176,10 @@ interface DesignDocumentData {
   isExplicitContent?: unknown;
   censoredTerms?: unknown;
   companionDesignIds?: unknown;
+  interactiveEnhancedOriginalPath?: unknown;
+  interactiveEnhancedWidthPx?: unknown;
+  interactiveEnhancedHeightPx?: unknown;
+  interactiveEnhanceGeneratedAt?: unknown;
 }
 
 /** Filters to non-blank, trimmed string neighbor IDs — malformed entries are dropped, not fatal. */
