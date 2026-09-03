@@ -18,6 +18,21 @@ export const PORTAL_PRINT_REQUEST_LIST_TABS = [
   "printed",
 ] as const satisfies readonly PortalPrintRequestListTab[];
 
+/**
+ * Portal `/requests` tab strip presentation:
+ * - Hide Editing when empty
+ * - When any Editing PR exists, show Editing first (before Working)
+ * Membership still derives to the Editing tab (ADR-FP-158).
+ */
+export function getVisiblePortalPrintRequestListTabs(
+  editingCount: number,
+): PortalPrintRequestListTab[] {
+  if (editingCount > 0) {
+    return ["editing", "working", "queued", "printing", "printed"];
+  }
+  return ["working", "queued", "printing", "printed"];
+}
+
 export const PORTAL_PRINT_REQUEST_LIST_TAB_PARAM = "tab";
 
 /** Requests the customer can still edit in the portal (not yet locked for production). */

@@ -15,6 +15,10 @@ import {
   invalidArgument,
   unauthenticated,
 } from "./lib/errors";
+import {
+  applyRestoreParkedDraftWritesInTransaction,
+  readParkedDraftForRestoreInTransaction,
+} from "./lib/portalContinuableParking";
 
 const INTERNAL_PRINT_REQUEST_COUNTER_ID = "printRequests";
 
@@ -168,6 +172,16 @@ export const convertCustomerPrintRequestToInternal = onCall(
           return;
         }
 
+        const parksDraftPrintRequestId =
+          typeof latestCustomer.parksDraftPrintRequestId === "string"
+            ? latestCustomer.parksDraftPrintRequestId
+            : undefined;
+        const parkedRestoreRead = await readParkedDraftForRestoreInTransaction(
+          transaction,
+          customerRequestRef,
+          parksDraftPrintRequestId,
+        );
+
         const sequence = resolveNextSequence(counterSnap.data()?.nextInternalRequestSequence);
         const internalName = formatInternalPrintRequestName(internalBaseName, sequence);
 
@@ -249,12 +263,21 @@ export const convertCustomerPrintRequestToInternal = onCall(
           canceledAllocationIds.push(allocation.id);
         }
 
+        // Restore parked draft if this request was editing with a parked draft (writes only).
+        applyRestoreParkedDraftWritesInTransaction(transaction, {
+          editingRequestRef: customerRequestRef,
+          restoreRead: parkedRestoreRead,
+          actorId: caller.id,
+          clearEditingParkingFields: false,
+        });
+
         transaction.update(customerRequestRef, {
           status: "archived",
           closureKind: "converted_to_internal",
           convertedToInternalRequestId: internalRequestRef.id,
           convertedAt: timestamp,
           convertedBy: caller.id,
+          parksDraftPrintRequestId: FieldValue.delete(),
           updatedBy: caller.id,
           updatedAt: timestamp,
           queueTab: FieldValue.delete(),

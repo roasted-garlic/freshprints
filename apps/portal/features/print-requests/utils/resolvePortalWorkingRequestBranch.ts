@@ -3,20 +3,27 @@ import { resolveAddDesignToRequestBranch } from "./resolveAddDesignToRequestBran
 export type PortalWorkingRequestBranch =
   | { kind: "create" }
   | { kind: "single"; requestId: string }
-  | { kind: "pick" };
+  | { kind: "pick" }
+  /** Multiple active editables with no unique Editing owner — do not open a picker. */
+  | { kind: "conflict" };
 
 /**
- * Resolves which Portal-editable working request mutations should target.
- * When the customer has explicitly selected a request, all controls use that id.
+ * Resolves which Portal active-editable request mutations should target.
+ *
+ * Callers must pass **active editable** ids only (exclude parked drafts).
+ * When an Editing request is uniquely present among actives, always target it
+ * (no "Add to which request?" picker under the parking contract).
  */
 export function resolvePortalWorkingRequestBranch(input: {
-  portalEditableRequestIds: string[];
+  activeEditableRequestIds: string[];
+  /** Optional statuses keyed by request id for Editing preference. */
+  activeEditableStatusesById?: Record<string, string>;
   pendingWorkingRequestId: string | null;
   selectedWorkingRequestId: string | null;
 }): PortalWorkingRequestBranch {
   const knownIds =
-    input.portalEditableRequestIds.length > 0
-      ? input.portalEditableRequestIds
+    input.activeEditableRequestIds.length > 0
+      ? input.activeEditableRequestIds
       : input.pendingWorkingRequestId
         ? [input.pendingWorkingRequestId]
         : [];
@@ -28,5 +35,23 @@ export function resolvePortalWorkingRequestBranch(input: {
     return { kind: "single", requestId: input.selectedWorkingRequestId };
   }
 
-  return resolveAddDesignToRequestBranch(knownIds);
+  if (knownIds.length > 1 && input.activeEditableStatusesById) {
+    const editingIds = knownIds.filter(
+      (id) => input.activeEditableStatusesById?.[id] === "editing",
+    );
+    if (editingIds.length === 1 && editingIds[0]) {
+      return { kind: "single", requestId: editingIds[0] };
+    }
+    if (editingIds.length > 1) {
+      return { kind: "conflict" };
+    }
+  }
+
+  const branch = resolveAddDesignToRequestBranch(knownIds);
+  if (branch.kind === "pick") {
+    // Under parking, multiple actives without a unique Editing owner is an invariant breach —
+    // fail closed instead of asking the customer to choose a parked/corrupt pair.
+    return { kind: "conflict" };
+  }
+  return branch;
 }

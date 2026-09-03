@@ -251,4 +251,32 @@ describe('mergeServerWorkingItemsWithLocal', () => {
       );
     });
   });
+
+  it('discards local rows from a different printRequestId on ownership switch', () => {
+    const localFromA = [
+      item({
+        id: 'a-item',
+        printRequestId: 'req-a',
+        designId: 'design-a',
+        createdAt: stamp(100),
+      }),
+    ];
+    const serverForB = [
+      item({
+        id: 'b-item',
+        printRequestId: 'req-b',
+        designId: 'design-b',
+        createdAt: stamp(200),
+      }),
+    ];
+
+    const merged = mergeServerWorkingItemsWithLocal(serverForB, localFromA, {
+      printRequestId: 'req-b',
+    });
+
+    assert.deepEqual(
+      merged.map((entry) => entry.id),
+      ['b-item'],
+    );
+  });
 });

@@ -82,11 +82,45 @@ describe("portalPrintRequestEditability", () => {
     );
   });
 
+  it("explains parked draft status with clear user message", () => {
+    const message = explainPortalPrintRequestEditability(
+      makeRequest({ parkedByEditingRequestId: "pr-editing" })
+    );
+    assert.match(message, /temporarily parked/);
+    assert.match(message, /another request is being edited/);
+  });
+
   it("counts portal-editable continuable requests for create gates", () => {
     const requests = [
       makeRequest({ id: "portal" }),
       makeRequest({ id: "studio", requestOrigin: "studio_customer" }),
     ];
     assert.equal(countPortalEditableContinuableRequests(requests), 1);
+  });
+
+  it("selectPortalWorkingPrintRequest excludes parked drafts", () => {
+    const activeDraft = makeRequest({
+      id: "active",
+      updatedAt: { toMillis: () => 10 } as PrintRequest["updatedAt"],
+    });
+    const parkedDraft = makeRequest({
+      id: "parked",
+      parkedByEditingRequestId: "pr-editing",
+      updatedAt: { toMillis: () => 20 } as PrintRequest["updatedAt"],
+    });
+
+    // Even though parked draft has newer updatedAt, it should be excluded
+    const selected = selectPortalWorkingPrintRequest([activeDraft, parkedDraft], null);
+    assert.equal(selected?.id, "active");
+  });
+
+  it("selectPortalWorkingPrintRequest returns null when selected request is parked", () => {
+    const parkedDraft = makeRequest({
+      id: "parked",
+      parkedByEditingRequestId: "pr-editing",
+    });
+
+    const selected = selectPortalWorkingPrintRequest([parkedDraft], "parked");
+    assert.equal(selected, null);
   });
 });

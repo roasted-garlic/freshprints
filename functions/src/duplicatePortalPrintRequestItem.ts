@@ -21,6 +21,7 @@ import {
   assertWorkingRequestAllowsPrintAdds,
   sumWorkingRequestPrintQuantities,
 } from "./lib/printRequestWorkingRequestMax";
+import { assertPortalActiveEditableRequestData } from "./lib/portalContinuableParking";
 
 export interface DuplicatePortalPrintRequestItemRequest {
   printRequestId: string;
@@ -119,6 +120,9 @@ export const duplicatePortalPrintRequestItem = onCall(
 
         const requestData = requestSnap.data() ?? {};
         const itemData = itemSnap.data() ?? {};
+
+        // Assert request is active editable (not parked)
+        assertPortalActiveEditableRequestData(requestData, printRequestId);
 
         if (requestData.customerId !== portalCustomer.customerId) {
           throw permissionDenied("You do not own this print request.");

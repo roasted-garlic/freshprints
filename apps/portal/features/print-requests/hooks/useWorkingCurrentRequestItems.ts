@@ -172,9 +172,12 @@ export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | nul
         const visibleItems = filterPendingRemoved(nextItems);
         // Merge so first-create / rapid-add optimistic rows are not wiped by a
         // partial server snapshot (list lag while flushes are still in flight).
+        // Never preserve local rows that belong to a different printRequestId.
         let mergedItems: PrintRequestItem[] = visibleItems;
         setItems((current) => {
-          mergedItems = mergeServerWorkingItemsWithLocal(visibleItems, current);
+          mergedItems = mergeServerWorkingItemsWithLocal(visibleItems, current, {
+            printRequestId: linkedId,
+          });
           return mergedItems;
         });
 
@@ -254,6 +257,18 @@ export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | nul
       // Working request left the continuable set (queued to show, archived, etc.).
       resetWorkingCart();
       return;
+    }
+
+    // Active ownership switch (e.g. draft A → Editing B): never keep A's items in cart state.
+    if (previousId && nextId && previousId !== nextId) {
+      pendingRemovedItemIdsRef.current.clear();
+      reloadEpochRef.current += 1;
+      setItems([]);
+      setDesignSummaries(new Map());
+      setUploadSummaries(new Map());
+      setItemsError(null);
+      setHydratedWorkingRequestId(undefined);
+      setIsLoadingItems(true);
     }
 
     workingRequestIdRef.current = nextId;

@@ -94,6 +94,12 @@ service cloud.firestore {
         );
     }
 
+    function isPrintRequestParked(data) {
+      return data.keys().hasAny(["parkedByEditingRequestId"])
+        && data.parkedByEditingRequestId is string
+        && data.parkedByEditingRequestId.size() > 0;
+    }
+
     function isCustomerEditablePrintRequestStatus(status) {
       return status in ["draft", "editing"];
     }
@@ -109,17 +115,24 @@ service cloud.firestore {
       return customerOwnsPrintRequestData(resource.data)
         && isCustomerEditablePrintRequestStatus(resource.data.status)
         && isCustomerEditablePrintRequestStatus(request.resource.data.status)
+        && !isPrintRequestParked(resource.data)
         && request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly(["itemCount", "notes", "updatedBy", "updatedAt"])
         && request.resource.data.updatedBy == request.auth.uid
         && request.resource.data.itemCount is int
-        && request.resource.data.itemCount >= 0;
+        && request.resource.data.itemCount >= 0
+        && optionalFieldUnchanged("parkedByEditingRequestId")
+        && optionalFieldUnchanged("parkedAt")
+        && optionalFieldUnchanged("parksDraftPrintRequestId");
     }
 
     function customerCanCreatePrintRequestItem(printRequestId) {
       return customerOwnsPrintRequestById(printRequestId)
         && isCustomerEditablePrintRequestStatus(
           get(/databases/$(database)/documents/printRequests/$(printRequestId)).data.status
+        )
+        && !isPrintRequestParked(
+          get(/databases/$(database)/documents/printRequests/$(printRequestId)).data
         );
     }
 
@@ -127,6 +140,9 @@ service cloud.firestore {
       return customerOwnsPrintRequestById(resource.data.printRequestId)
         && isCustomerEditablePrintRequestStatus(
           get(/databases/$(database)/documents/printRequests/$(resource.data.printRequestId)).data.status
+        )
+        && !isPrintRequestParked(
+          get(/databases/$(database)/documents/printRequests/$(resource.data.printRequestId)).data
         );
     }
 
@@ -849,6 +865,9 @@ service cloud.firestore {
           "needsStaffRequeueSourceShowId",
           "needsStaffRequeueSourceShowTitleSnapshot",
           "needsStaffRequeueReleasedQuantity",
+          "parkedByEditingRequestId",
+          "parkedAt",
+          "parksDraftPrintRequestId",
           "createdBy",
           "updatedBy",
           "createdAt",
@@ -886,6 +905,9 @@ service cloud.firestore {
         && isOptionalString(data, "needsStaffRequeueSourceShowId")
         && isOptionalString(data, "needsStaffRequeueSourceShowTitleSnapshot")
         && isOptionalNumber(data, "needsStaffRequeueReleasedQuantity")
+        && isOptionalString(data, "parkedByEditingRequestId")
+        && isOptionalTimestamp(data, "parkedAt")
+        && isOptionalString(data, "parksDraftPrintRequestId")
         && data.createdBy is string
         && data.updatedBy is string
         && data.createdAt is timestamp
@@ -910,7 +932,10 @@ service cloud.firestore {
         && optionalFieldUnchanged("convertedToInternalRequestId")
         && optionalFieldUnchanged("convertedFromCustomerRequestId")
         && optionalFieldUnchanged("convertedAt")
-        && optionalFieldUnchanged("convertedBy");
+        && optionalFieldUnchanged("convertedBy")
+        && optionalFieldUnchanged("parkedByEditingRequestId")
+        && optionalFieldUnchanged("parkedAt")
+        && optionalFieldUnchanged("parksDraftPrintRequestId");
     }
 
     function isCatalogPrintRequestItem(data) {

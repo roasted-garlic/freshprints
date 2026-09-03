@@ -5,7 +5,7 @@ import { isPortalContinuablePrintRequestStatus } from "./portalPrintRequestListT
 
 export type PortalPrintRequestEditabilityFields = Pick<
   PrintRequest,
-  "status" | "requestOrigin" | "isInternal"
+  "status" | "requestOrigin" | "isInternal" | "parkedByEditingRequestId"
 >;
 
 /** Portal item callables only mutate customer requests created in Portal. */
@@ -54,7 +54,12 @@ export function selectPortalWorkingPrintRequest(
   portalEditableContinuableRequests: PrintRequest[],
   selectedWorkingRequestId: string | null,
 ): PrintRequest | null {
-  const sorted = sortPrintRequestsByUpdatedAtDesc(portalEditableContinuableRequests);
+  // Filter to exclude parked drafts - Current Request should never pick a parked draft
+  const activeRequests = portalEditableContinuableRequests.filter((request) => {
+    return !(request.status === "draft" && request.parkedByEditingRequestId?.trim());
+  });
+
+  const sorted = sortPrintRequestsByUpdatedAtDesc(activeRequests);
 
   if (selectedWorkingRequestId) {
     const selected = sorted.find((request) => request.id === selectedWorkingRequestId);
@@ -73,6 +78,11 @@ export function countPortalEditableContinuableRequests(requests: PrintRequest[])
 export function explainPortalPrintRequestEditability(
   request: PortalPrintRequestEditabilityFields,
 ): string {
+  // Check parked status first - most specific reason
+  if (request.status === "draft" && request.parkedByEditingRequestId?.trim()) {
+    return "This draft is temporarily parked while another request is being edited. It will become available when editing is complete.";
+  }
+
   if (request.isInternal === true) {
     return "Internal requests cannot be edited in the Portal.";
   }

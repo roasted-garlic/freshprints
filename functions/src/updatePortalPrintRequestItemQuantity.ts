@@ -14,6 +14,7 @@ import {
 } from "./lib/errors";
 import { loadPrintRequestLimitSettings } from "./lib/loadPrintRequestLimitSettings";
 import { requirePortalCustomer } from "./lib/portalCustomer";
+import { assertPortalActiveEditableRequestData } from "./lib/portalContinuableParking";
 
 export interface UpdatePortalPrintRequestItemQuantityRequest {
   printRequestId: string;
@@ -90,6 +91,9 @@ export const updatePortalPrintRequestItemQuantity = onCall(
 
         const requestData = requestSnap.data() ?? {};
         const itemData = itemSnap.data() ?? {};
+
+        // Assert request is active editable (not parked)
+        assertPortalActiveEditableRequestData(requestData, printRequestId);
 
         if (requestData.customerId !== portalCustomer.customerId) {
           throw permissionDenied("You do not own this print request.");

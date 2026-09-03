@@ -10,6 +10,7 @@ import {
   unauthenticated,
 } from "./lib/errors";
 import { requirePortalCustomer } from "./lib/portalCustomer";
+import { assertPortalActiveEditableRequestData } from "./lib/portalContinuableParking";
 
 export interface RemovePortalPrintRequestItemRequest {
   printRequestId: string;
@@ -70,6 +71,10 @@ export const removePortalPrintRequestItem = onCall(
         }
 
         const requestData = requestSnap.data() ?? {};
+        
+        // Assert request is active editable (not parked)
+        assertPortalActiveEditableRequestData(requestData, printRequestId);
+        
         if (requestData.customerId !== portalCustomer.customerId) {
           throw permissionDenied("You do not own this print request.");
         }

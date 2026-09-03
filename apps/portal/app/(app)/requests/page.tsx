@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useMemo } from 'react';
 
 import { derivePrintRequestQueueState } from '@fresh-prints/shared/utils/printRequestQueueState';
 import { getPrintRequestProgressLabel } from '@fresh-prints/shared/utils/printRequestProgressDisplay';
@@ -9,8 +10,8 @@ import { resolvePortalPrintRequestProgressLabel } from '@fresh-prints/shared/uti
 import { buildPortalCustomerShowScheduleCardSummary } from '@fresh-prints/shared/utils/portalCustomerShowSchedule';
 import {
   PORTAL_PRINT_REQUEST_LIST_TAB_PARAM,
-  PORTAL_PRINT_REQUEST_LIST_TABS,
   getPortalPrintRequestListTabLabel,
+  getVisiblePortalPrintRequestListTabs,
   parsePortalPrintRequestListTab,
   type PortalPrintRequestListTab,
 } from '@fresh-prints/shared/utils/portalPrintRequestListTabs';
@@ -24,8 +25,6 @@ import {
 } from '../../../features/print-requests/utils/portalPrintRequestTabCopy';
 import { resolvePortalPrintRequestCardLabel } from '../../../features/print-requests/utils/resolvePortalPrintRequestCardLabel';
 import { LibraryIcon, ShoppingBagIcon } from '../../../features/shared/components/PortalIcons';
-
-const PORTAL_REQUEST_TABS: readonly PortalPrintRequestListTab[] = PORTAL_PRINT_REQUEST_LIST_TABS;
 
 function buildRequestsPageHref(tab: PortalPrintRequestListTab): string {
   return `/requests?tab=${tab}`;
@@ -66,6 +65,20 @@ export default function RequestsPage() {
     schedulesByRequestId,
     summariesByRequestId,
   } = usePortalPrintRequests();
+
+  const visibleTabs = useMemo(
+    () => getVisiblePortalPrintRequestListTabs(requestsByTab.editing.length),
+    [requestsByTab.editing.length],
+  );
+
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+    if (activeTab === 'editing' && requestsByTab.editing.length === 0) {
+      router.replace(buildRequestsPageHref('working'));
+    }
+  }, [activeTab, isLoading, requestsByTab.editing.length, router]);
 
   const visibleRequests = requestsByTab[activeTab];
   const [emptyCopyLineOne, emptyCopyLineTwo] = getPortalPrintRequestsEmptyPageCopyLines();
@@ -133,7 +146,7 @@ export default function RequestsPage() {
       ) : (
         <>
           <div className="portal-requests-tab-bar" role="tablist" aria-label="Print request filters">
-            {PORTAL_REQUEST_TABS.map((tab) => (
+            {visibleTabs.map((tab) => (
               <button
                 aria-selected={activeTab === tab}
                 className={`portal-requests-tab-button${activeTab === tab ? ' is-active' : ''}`}

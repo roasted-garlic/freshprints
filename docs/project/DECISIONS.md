@@ -29,6 +29,8 @@ Persisted `status: "editing"` already meant de-queued-for-revision, and Continua
 
 **Amendment (2026-09-02):** Owner reversed the earlier “Portal folds Editing into Working” Decision 5; Portal now shows a dedicated Editing tab.
 
+**Amendment (2026-09-02, Portal tab strip):** Hide the Portal Editing tab when count is 0; when count &gt; 0, show Editing **before** Working. Membership still derives to Editing (not folded into Working).
+
 **Consequences**
 
 - Existing `status=editing` docs with `queueTab=working` need DEV backfill after Functions redeploy.
@@ -3690,23 +3692,34 @@ The Portal catalog was a flat searchable grid. Customers needed curated discover
 | Field | Value |
 |-------|-------|
 | Date | 2026-07-11 |
-| Status | accepted |
+| Status | **accepted** (amended 2026-09-02 — active Continuable parking) |
+| Related | ADR-FP-158 (Portal Editing tab); goal `portal-editing-request-parks-current-draft` |
 
 **Context**
 
 Customers could create multiple `draft`/`editing` requests via Portal UI (“Start new”) and `createPortalPrintRequest`, which made Working-tab clutter and split unfinished carts.
 
-**Decision**
+**Decision (original)**
 
 1. A portal customer may have **at most one** continuable print request (`draft` or `editing`) at a time.
 2. **`createPortalPrintRequest`** rejects with `failed-precondition` when any such request already exists (transactional query).
 3. Portal Start/FAB/catalog actions **continue** the existing request when one exists; they never offer “Start new” beside an open draft.
 4. Queued (`active`) / printing / printed requests do not block creating a new request after the current working request is queued.
 
+**Amendment (2026-09-02) — Active Continuable parking**
+
+Lifecycle Continuable statuses remain `draft` | `editing`. Separately, a customer may have **at most one ACTIVE Portal-editable Continuable**:
+
+1. When a customer PR enters `editing` and a meaningful Portal draft already exists, the draft is **parked** (`parkedByEditingRequestId` / `parkedAt` on the draft; `parksDraftPrintRequestId` on the Editing PR) instead of `continuable_request_conflict`.
+2. Parked drafts stay `status: draft`, may remain on the Portal Working list, but are **not** active for Current Request, catalog Add, upload, mutations, or queue. Empty drafts are archived in the park TX (not parked).
+3. Editing owns Current Request until it successfully re-queues (or leaves Editing via archive/delete/convert). Clearing items while status stays `editing` does **not** restore the parked draft.
+4. Restore clears parking fields atomically when Editing ownership ends. ADR-FP-158 Portal Editing tab is unchanged — Editing membership ≠ Working membership.
+
 **Consequences**
 
 - UI and callable must stay aligned; deploy function + `customerId`+`status` index with the release.
 - Customers who already have multiple drafts can still open/pick among them but cannot create another until they are down to zero continuable.
+- Parking fields are Admin SDK / trusted-callable only (Firestore Rules `optionalFieldUnchanged`).
 
 ---
 

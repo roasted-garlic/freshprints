@@ -20,6 +20,10 @@ import { failedPrecondition, internal, invalidArgument, permissionDenied, unauth
 import { requirePortalCustomer } from "./lib/portalCustomer";
 import { recomputeAndPersistQueueTab } from "./lib/printRequestQueueTab";
 import { validateUnqueuePortalPrintRequestFromShowRequest } from "./lib/unqueuePortalPrintRequestFromShowValidation";
+import {
+  applyParkOrCleanupOtherContinuablesInTransaction,
+  mapToContinuableParkingDocs,
+} from "./lib/portalContinuableParking";
 
 function mapHttpsError(error: unknown): never {
   if (error instanceof HttpsError) {
@@ -38,14 +42,14 @@ function unqueueFailedPrecondition(
   throw failedPrecondition(message, { code });
 }
 
-async function customerHasOtherPortalEditableContinuableRequest(
+async function customerHasOtherActiveEditingRequest(
   customerId: string,
   excludePrintRequestId: string,
 ): Promise<boolean> {
   const snap = await adminDb
     .collection("printRequests")
     .where("customerId", "==", customerId)
-    .where("status", "in", ["draft", "editing"])
+    .where("status", "==", "editing")
     .limit(4)
     .get();
 
@@ -53,7 +57,7 @@ async function customerHasOtherPortalEditableContinuableRequest(
     (doc) =>
       doc.id !== excludePrintRequestId &&
       isPortalEditablePrintRequest({
-        status: typeof doc.data().status === "string" ? doc.data().status : "draft",
+        status: "editing",
         requestOrigin:
           typeof doc.data().requestOrigin === "string" ? doc.data().requestOrigin : undefined,
         isInternal: doc.data().isInternal === true,
@@ -66,10 +70,10 @@ async function healStuckActivePortalRequest(input: {
   printRequestId: string;
   customerId: string;
   requestStatus: string;
-  hasOtherContinuable: boolean;
+  hasOtherActiveEditing: boolean;
   upcomingShowId: string;
 }): Promise<UnqueuePortalPrintRequestFromShowResponse | null> {
-  if (input.requestStatus !== "active" || input.hasOtherContinuable) {
+  if (input.requestStatus !== "active" || input.hasOtherActiveEditing) {
     return null;
   }
 
@@ -84,11 +88,34 @@ async function healStuckActivePortalRequest(input: {
     return null;
   }
 
-  await input.requestRef.update({
-    status: "editing",
-    updatedBy: input.customerId,
-    updatedAt: FieldValue.serverTimestamp(),
+  await adminDb.runTransaction(async (transaction) => {
+    const continuablesQuery = adminDb
+      .collection("printRequests")
+      .where("customerId", "==", input.customerId)
+      .where("status", "in", ["draft", "editing"])
+      .limit(4);
+    const continuablesSnap = await transaction.get(continuablesQuery);
+    const parkResult = applyParkOrCleanupOtherContinuablesInTransaction(transaction, {
+      customerId: input.customerId,
+      editingRequestRef: input.requestRef,
+      editingPrintRequestId: input.printRequestId,
+      actorId: input.customerId,
+      otherContinuableDocs: mapToContinuableParkingDocs(continuablesSnap.docs),
+    });
+
+    const requestPatch: Record<string, unknown> = {
+      status: "editing",
+      updatedBy: input.customerId,
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+
+    if (parkResult.parkedDraftId) {
+      requestPatch.parksDraftPrintRequestId = parkResult.parkedDraftId;
+    }
+
+    transaction.update(input.requestRef, requestPatch);
   });
+
   await recomputeAndPersistQueueTab(input.printRequestId);
 
   return {
@@ -126,7 +153,7 @@ export const unqueuePortalPrintRequestFromShow = onCall(
 
       const requestStatus =
         typeof requestData.status === "string" ? requestData.status : "draft";
-      const hasOtherContinuable = await customerHasOtherPortalEditableContinuableRequest(
+      const hasOtherActiveEditing = await customerHasOtherActiveEditingRequest(
         customer.customerId,
         payload.printRequestId,
       );
@@ -139,13 +166,13 @@ export const unqueuePortalPrintRequestFromShow = onCall(
           printRequestId: payload.printRequestId,
           customerId: customer.customerId,
           requestStatus,
-          hasOtherContinuable,
+          hasOtherActiveEditing,
           upcomingShowId: "",
         });
         if (healed) {
           return healed;
         }
-        if (hasOtherContinuable) {
+        if (hasOtherActiveEditing) {
           unqueueFailedPrecondition(
             PORTAL_UNQUEUE_PRINT_REQUEST_ERROR_CODES.CONTINUABLE_REQUEST_CONFLICT,
             PORTAL_UNQUEUE_CONTINUABLE_REQUEST_CONFLICT_MESSAGE,
@@ -196,7 +223,7 @@ export const unqueuePortalPrintRequestFromShow = onCall(
         },
         showProductionStatus,
         allocationsOnShow,
-        hasOtherPortalEditableContinuableRequest: hasOtherContinuable,
+        hasOtherPortalEditableContinuableRequest: hasOtherActiveEditing,
       });
 
       if (!eligibility.eligible) {
@@ -206,7 +233,7 @@ export const unqueuePortalPrintRequestFromShow = onCall(
             printRequestId: payload.printRequestId,
             customerId: customer.customerId,
             requestStatus,
-            hasOtherContinuable,
+            hasOtherActiveEditing,
             upcomingShowId: payload.upcomingShowId,
           });
           if (healed) {
@@ -268,12 +295,18 @@ export const unqueuePortalPrintRequestFromShow = onCall(
         const showAllocationsForQuantityQuery = adminDb
           .collection("showAllocations")
           .where("upcomingShowId", "==", payload.upcomingShowId);
+        const continuablesQuery = adminDb
+          .collection("printRequests")
+          .where("customerId", "==", customer.customerId)
+          .where("status", "in", ["draft", "editing"])
+          .limit(4);
 
-        const [freshAllocationsSnap, allRequestAllocationsSnap, showAllocationsForQuantitySnap] =
+        const [freshAllocationsSnap, allRequestAllocationsSnap, showAllocationsForQuantitySnap, continuablesSnap] =
           await Promise.all([
             transaction.get(allocationsOnShowQuery),
             transaction.get(allRequestAllocationsQuery),
             transaction.get(showAllocationsForQuantityQuery),
+            transaction.get(continuablesQuery),
           ]);
 
         const canceledThisTx = new Set<string>();
@@ -332,10 +365,23 @@ export const unqueuePortalPrintRequestFromShow = onCall(
           updatedAt: FieldValue.serverTimestamp(),
         };
 
-        // ADR-FP-071 already blocked before this transaction when another continuable exists.
-        // When this release leaves zero active allocations, restore Portal editability.
-        if (!hasActiveGlobally && !hasOtherContinuable) {
+        // When this release leaves zero active allocations, restore Portal editability and park other continuables.
+        if (!hasActiveGlobally && !hasOtherActiveEditing) {
           requestPatch.status = "editing";
+
+          // Apply parking logic for other continuables
+          const continuableDocs = mapToContinuableParkingDocs(continuablesSnap.docs);
+          const parkResult = applyParkOrCleanupOtherContinuablesInTransaction(transaction, {
+            customerId: customer.customerId,
+            editingRequestRef: requestRef,
+            editingPrintRequestId: payload.printRequestId,
+            actorId: customer.customerId,
+            otherContinuableDocs: continuableDocs,
+          });
+
+          if (parkResult.parkedDraftId) {
+            requestPatch.parksDraftPrintRequestId = parkResult.parkedDraftId;
+          }
         }
 
         transaction.update(requestRef, requestPatch);

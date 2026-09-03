@@ -46,6 +46,7 @@ export function evaluatePortalPrintRequestUnqueue(input: {
   };
   showProductionStatus: ShowProductionStatus;
   allocationsOnShow: PortalPrintRequestUnqueueAllocationView[];
+  /** Conflict ONLY when another ACTIVE Editing Continuable exists (not when a parkable draft exists) */
   hasOtherPortalEditableContinuableRequest: boolean;
 }): EvaluatePortalPrintRequestUnqueueResult {
   if (!isPortalCustomerOriginPrintRequest({

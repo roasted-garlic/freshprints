@@ -48,6 +48,11 @@ import { requirePortalCustomer } from "./lib/portalCustomer";
 import { applyCustomerUploadStaffReviewTransitionInTransaction } from "./lib/customerUploadCatalogConfirmation";
 import { assertQueuePrintRequestItemSize } from "./lib/assertQueuePrintRequestItemSize";
 import { validateQueuePortalPrintRequestToShowRequest } from "./lib/queuePortalPrintRequestToShowValidation";
+import {
+  applyRestoreParkedDraftWritesInTransaction,
+  assertPortalActiveEditableRequestData,
+  readParkedDraftForRestoreInTransaction,
+} from "./lib/portalContinuableParking";
 import { getPortalQueueTransactionBlockReason } from "./lib/portalQueueTransactionEligibility";
 
 function mapHttpsError(error: unknown): never {
@@ -129,6 +134,9 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
     }
 
     const requestData = requestSnap.data()!;
+
+    // Assert request is active editable (not parked)
+    assertPortalActiveEditableRequestData(requestData, payload.printRequestId);
 
     if (requestData.customerId !== customer.customerId) {
       validationStage = "request-ownership";
@@ -519,12 +527,6 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
           ),
         ),
       );
-      transactionDocumentsReturned +=
-        (freshShowSnap.exists ? 1 : 0) +
-        (freshRequestSnap.exists ? 1 : 0) +
-        freshShowAllocationsSnap.size +
-        freshRequestAllocationsSnap.size +
-        freshUploadSnaps.filter((snap) => snap.exists).length;
 
       if (!freshShowSnap.exists || !freshRequestSnap.exists) {
         throw invalidArgument("Print request or show no longer exists.");
@@ -532,6 +534,25 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
 
       const freshShow = freshShowSnap.data()!;
       const freshRequest = freshRequestSnap.data()!;
+
+      // All reads before writes: parked-draft restore must not get() after allocation sets.
+      const parksDraftPrintRequestId =
+        typeof freshRequest.parksDraftPrintRequestId === "string"
+          ? freshRequest.parksDraftPrintRequestId
+          : undefined;
+      const parkedRestoreRead = await readParkedDraftForRestoreInTransaction(
+        transaction,
+        requestSnap.ref,
+        parksDraftPrintRequestId,
+      );
+
+      transactionDocumentsReturned +=
+        (freshShowSnap.exists ? 1 : 0) +
+        (freshRequestSnap.exists ? 1 : 0) +
+        freshShowAllocationsSnap.size +
+        freshRequestAllocationsSnap.size +
+        freshUploadSnaps.filter((snap) => snap.exists).length +
+        (parkedRestoreRead ? 1 : 0);
       const freshAllocated =
         typeof freshShow.allocatedQuantity === "number" && freshShow.allocatedQuantity >= 0
           ? freshShow.allocatedQuantity
@@ -689,9 +710,19 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
         updatedAt: timestamp,
       });
 
+      // Restore parked draft (writes only — read completed above).
+      applyRestoreParkedDraftWritesInTransaction(transaction, {
+        editingRequestRef: requestSnap.ref,
+        restoreRead: parkedRestoreRead,
+        actorId: userId,
+        // Merge parking clear into the status transition update below.
+        clearEditingParkingFields: false,
+      });
+
       transaction.update(requestSnap.ref, {
         status: "active",
         itemCount: items.length,
+        parksDraftPrintRequestId: FieldValue.delete(),
         showQueueBiddingAcknowledgment: {
           accepted: true,
           acceptedAt: timestamp,

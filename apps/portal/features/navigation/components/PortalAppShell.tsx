@@ -8,6 +8,7 @@ import { useAuth } from '../../auth/context/AuthContext';
 import { isPortalPublicBrowsePath } from '../../auth/utils/portalPublicBrowsePath';
 import { PortalAboutFirstVisitModal } from '../../help/components/PortalAboutFirstVisitModal';
 import { CurrentRequestDrawer } from '../../print-requests/components/CurrentRequestDrawer';
+import { PortalSiteWideEditingModeBanner } from '../../print-requests/components/PortalSiteWideEditingModeBanner';
 import { PortalWorkingRequestLimitBanner } from '../../print-requests/components/PortalWorkingRequestLimitBanner';
 import { PortalPrintRequestProvider } from '../../print-requests/context/PortalPrintRequestContext';
 import { FavoritesProvider } from '../../favorites/context/FavoritesProvider';
@@ -91,6 +92,7 @@ function PortalAppShellContent({ children }: PortalAppShellProps) {
         <PortalScrollReset />
         <div className="portal-app-top" ref={stickyTopRef}>
           <PortalAppHeader />
+          <PortalSiteWideEditingModeBanner />
           <PortalWorkingRequestLimitBanner />
         </div>
         <div className={`portal-app-content${showGuestAuthOverlay ? ' has-guest-auth-overlay' : ''}`}>

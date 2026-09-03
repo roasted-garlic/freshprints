@@ -32,6 +32,11 @@ import {
   validateProductionOverrideReason,
 } from "../../../packages/shared/src/utils/showProductionRecovery";
 import { planProductionRecoveryMutation as planMutation } from "../../../packages/shared/src/utils/showProductionRecoveryPlanners";
+import { isPortalEditablePrintRequest } from "../../../packages/shared/src/utils/portalPrintRequestEditability";
+import {
+  applyParkOrCleanupOtherContinuablesInTransaction,
+  mapToContinuableParkingDocs,
+} from "./portalContinuableParking";
 
 import { adminDb } from "./admin";
 import { recomputeAndPersistQueueTab } from "./printRequestQueueTab";
@@ -112,18 +117,26 @@ async function loadAllocationsForRequest(printRequestId: string): Promise<Loaded
   });
 }
 
-async function customerHasOtherContinuableRequest(
+async function customerHasOtherActiveEditingRequest(
   customerId: string,
   excludePrintRequestId: string,
 ): Promise<boolean> {
   const snap = await adminDb
     .collection("printRequests")
     .where("customerId", "==", customerId)
-    .where("status", "in", ["draft", "editing"])
+    .where("status", "==", "editing")
     .limit(2)
     .get();
 
-  return snap.docs.some((doc) => doc.id !== excludePrintRequestId);
+  return snap.docs.some(
+    (doc) =>
+      doc.id !== excludePrintRequestId &&
+      isPortalEditablePrintRequest({
+        status: "editing",
+        requestOrigin: typeof doc.data().requestOrigin === "string" ? doc.data().requestOrigin : undefined,
+        isInternal: doc.data().isInternal === true,
+      }),
+  );
 }
 
 async function predictRequestEffect(
@@ -225,7 +238,7 @@ async function predictRequestEffect(
       requestStatus: currentStatus,
       hasActiveAllocationsGlobally: hasActiveGlobally,
       hasOtherContinuableRequest: customerId
-        ? await customerHasOtherContinuableRequest(customerId, printRequestId)
+        ? await customerHasOtherActiveEditingRequest(customerId, printRequestId)
         : false,
       isInternal,
     })
@@ -630,12 +643,47 @@ async function reconcileRequestAfterRelease(
       requestStatus: status,
       hasActiveAllocationsGlobally: hasActiveGlobally,
       hasOtherContinuableRequest: customerId
-        ? await customerHasOtherContinuableRequest(customerId, printRequestId)
+        ? await customerHasOtherActiveEditingRequest(customerId, printRequestId)
         : false,
       isInternal,
     })
   ) {
     requestPatch.status = "editing";
+    
+    // Apply parking logic for customer requests when transitioning to editing
+    if (!isInternal && customerId) {
+      await adminDb.runTransaction(async (transaction) => {
+        const continuablesSnap = await transaction.get(
+          adminDb
+            .collection("printRequests")
+            .where("customerId", "==", customerId)
+            .where("status", "in", ["draft", "editing"])
+            .limit(4)
+        );
+        
+        const continuableDocs = mapToContinuableParkingDocs(continuablesSnap.docs);
+        const requestRef = adminDb.collection("printRequests").doc(printRequestId);
+        
+        const parkResult = applyParkOrCleanupOtherContinuablesInTransaction(transaction, {
+          customerId,
+          editingRequestRef: requestRef,
+          editingPrintRequestId: printRequestId,
+          actorId: actorId,
+          otherContinuableDocs: continuableDocs,
+        });
+        
+        if (parkResult.parkedDraftId) {
+          requestPatch.parksDraftPrintRequestId = parkResult.parkedDraftId;
+        }
+        
+        // Apply the status update within the transaction
+        transaction.update(requestRef, requestPatch);
+      });
+      
+      // Skip the regular update since we did it in the transaction
+      await recomputeAndPersistQueueTab(printRequestId);
+      return;
+    }
   }
 
   if (!hasActiveGlobally && sourceContext.releasedQuantity > 0) {

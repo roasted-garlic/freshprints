@@ -9,7 +9,7 @@ import { sumPrintRequestItemQuantities } from '@fresh-prints/shared/utils/portal
 import { clampItemQuantityToWorkingRequestMax } from '@fresh-prints/shared/utils/printRequestWorkingRequestMax';
 import { resolveDuplicateInsertBeforeSortOrder } from '@fresh-prints/shared/utils/printRequestItemDisplayOrder';
 import { formatPrintRequestItemSizeLabel } from '@fresh-prints/shared/utils/printRequestItemSizing';
-import { isPortalEditablePrintRequest } from '@fresh-prints/shared/utils/portalPrintRequestEditability';
+import { isPortalActiveEditablePrintRequest } from '@fresh-prints/shared/utils/portalActiveEditablePrintRequest';
 
 import { useAuth } from '../../auth/context/AuthContext';
 import {
@@ -644,7 +644,7 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
     ],
   );
 
-  const isEditable = printRequest ? isPortalEditablePrintRequest(printRequest) : false;
+  const isEditable = printRequest ? isPortalActiveEditablePrintRequest(printRequest) : false;
   const reconcileQueued = useCallback(() => {
     // Queue success is a locally-known transition, not an external change: the callable response
     // already carries the authoritative outcome. Clear the working-transition flags synchronously

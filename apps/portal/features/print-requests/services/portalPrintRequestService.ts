@@ -38,6 +38,7 @@ import {
 } from '@fresh-prints/shared/utils/printRequestItemSizing';
 import { isPortalContinuablePrintRequestStatus } from '@fresh-prints/shared/utils/portalPrintRequestListTabs';
 import { resolveCatalogAddAction } from '@fresh-prints/shared/utils/currentRequestAggregates';
+import { isPortalParkedDraft, PORTAL_PARKED_DRAFT_MUTATION_REJECTED_MESSAGE } from '@fresh-prints/shared/utils/portalActiveEditablePrintRequest';
 
 import { PORTAL_FIRESTORE_COLLECTIONS } from '../../../lib/firebase/collections';
 import { getPortalAuth, getPortalDb } from '../../../lib/firebase/client';
@@ -64,6 +65,11 @@ interface PrintRequestDocumentData extends DocumentData {
   status?: unknown;
   itemCount?: unknown;
   notes?: unknown;
+  closureKind?: unknown;
+  convertedToInternalRequestId?: unknown;
+  parkedByEditingRequestId?: unknown;
+  parkedAt?: unknown;
+  parksDraftPrintRequestId?: unknown;
   createdBy?: unknown;
   updatedBy?: unknown;
   createdAt?: unknown;
@@ -196,6 +202,18 @@ function mapPrintRequest(printRequestId: string, data: PrintRequestDocumentData)
     convertedToInternalRequestId:
       typeof data.convertedToInternalRequestId === 'string'
         ? data.convertedToInternalRequestId
+        : undefined,
+    parkedByEditingRequestId:
+      typeof data.parkedByEditingRequestId === 'string' && data.parkedByEditingRequestId.trim()
+        ? data.parkedByEditingRequestId.trim()
+        : undefined,
+    parkedAt:
+      data.parkedAt && typeof (data.parkedAt as { toMillis?: unknown }).toMillis === 'function'
+        ? (data.parkedAt as Timestamp)
+        : undefined,
+    parksDraftPrintRequestId:
+      typeof data.parksDraftPrintRequestId === 'string' && data.parksDraftPrintRequestId.trim()
+        ? data.parksDraftPrintRequestId.trim()
         : undefined,
     createdBy: data.createdBy,
     updatedBy: data.updatedBy,
@@ -1229,6 +1247,15 @@ export const portalPrintRequestService = {
     const quantity = Math.floor(input.quantity);
     if (!Number.isFinite(quantity) || quantity < 1) {
       throw new Error('Quantity must be at least 1.');
+    }
+
+    // Check if the print request is parked before allowing updates
+    const printRequest = await this.getPrintRequest(input.printRequestId);
+    if (printRequest && isPortalParkedDraft({
+      status: printRequest.status,
+      parkedByEditingRequestId: printRequest.parkedByEditingRequestId
+    })) {
+      throw new Error(PORTAL_PARKED_DRAFT_MUTATION_REJECTED_MESSAGE);
     }
 
     const result = await callTracedFunction<

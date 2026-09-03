@@ -11,10 +11,11 @@ describe('print request detail post-queue hydration contract', () => {
     );
 
     assert.match(source, /clearPortalPrintRequestReadCache\(\)/);
-    assert.match(source, /buildRequestDetailHref\([^,]+,\s*\{\s*from:\s*'working'\s*\}\)/);
+    assert.match(source, /buildRequestDetailHref\([^,]+,\s*\{\s*from:\s*'editing'\s*\}\)/);
+    assert.match(source, /setSelectedWorkingRequestId\(result\.printRequestId\)/);
     assert.match(
       source,
-      /await Promise\.all\(\[reloadRequestSchedules\(\), loadAllocationState\(\)\]\)/,
+      /await Promise\.all\(\[\s*reload\(\),\s*reloadRequestSchedules\(\),\s*refreshRequests/,
     );
   });
 

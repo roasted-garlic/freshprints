@@ -12,16 +12,31 @@ function isCatalogOptimisticStubId(itemId: string): boolean {
  *
  * Server rows win on matching id. Optimistic catalog stubs (`optimistic:…`) are
  * dropped once the server has any catalog line for the same designId.
+ *
+ * When `printRequestId` is provided, local rows belonging to a different request
+ * are discarded (active Continuable ownership switch must never mix carts).
  */
 export function mergeServerWorkingItemsWithLocal(
   serverItems: PrintRequestItem[],
   localItems: PrintRequestItem[],
+  options?: { printRequestId?: string },
 ): PrintRequestItem[] {
+  const expectedRequestId = options?.printRequestId?.trim() || null;
+  const scopedLocal = expectedRequestId
+    ? localItems.filter((item) => {
+        const itemRequestId = item.printRequestId?.trim();
+        if (itemRequestId && itemRequestId !== expectedRequestId) {
+          return false;
+        }
+        return true;
+      })
+    : localItems;
+
   const serverIds = new Set(serverItems.map((item) => item.id));
   const serverCatalogDesignIds = new Set<string>();
 
   for (const item of serverItems) {
-    if (item.sourceType === 'customer_upload') {
+    if (item.sourceType === "customer_upload") {
       continue;
     }
     const designId = item.designId?.trim();
@@ -30,7 +45,7 @@ export function mergeServerWorkingItemsWithLocal(
     }
   }
 
-  const preservedLocal = localItems.filter((item) => {
+  const preservedLocal = scopedLocal.filter((item) => {
     if (serverIds.has(item.id)) {
       return false;
     }

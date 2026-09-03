@@ -2302,6 +2302,40 @@ export const upcomingShowService = {
       throw new Error("This show has already started printing. Removing allocations requires an admin correction.");
     }
 
+    // Check if this is a customer request - use callable for whole request on show removal
+    // for parking atomicity (single allocation removal uses whole-request-on-show callable)
+    const printRequest = await printRequestService.getPrintRequestById(caller, allocation.printRequestId);
+    const isCustomerRequest = printRequest.customerId && !printRequest.isInternal;
+
+    if (isCustomerRequest) {
+      // Use trusted callable for customer requests to handle parking atomically
+      // Note: This removes all allocations for the request on this show, not just the single allocation,
+      // but this ensures parking atomicity for customer requests.
+      try {
+        await callTracedFunction<
+          { printRequestId: string; upcomingShowId: string },
+          { success: boolean }
+        >('unqueueStudioCustomerPrintRequestFromShow', {
+          source: 'upcomingShowService.removeShowAllocation',
+        })({
+          printRequestId: allocation.printRequestId,
+          upcomingShowId: allocation.upcomingShowId,
+        });
+        
+        // Sync queue tab state after callable success
+        await this.syncPrintRequestQueueTabBestEffort(
+          allocation.printRequestId,
+          "upcomingShowService.removeShowAllocation",
+        );
+        return;
+      } catch (error) {
+        throw new Error(
+          error instanceof Error ? error.message : 'Unable to remove customer request allocation.'
+        );
+      }
+    }
+
+    // For internal requests, use existing client path
     await runTracedWrite("deleteDoc", () => deleteDoc(allocationRef), {
       app: "studio",
       collection: "showAllocations",
@@ -2335,6 +2369,37 @@ export const upcomingShowService = {
       throw new Error("This show has already started printing. Removing allocations requires an admin correction.");
     }
 
+    // Check if this is a customer request - use callable for atomic parking
+    const printRequest = await printRequestService.getPrintRequestById(caller, printRequestId);
+    const isCustomerRequest = printRequest.customerId && !printRequest.isInternal;
+
+    if (isCustomerRequest) {
+      // Use trusted callable for customer requests to handle parking atomically
+      try {
+        await callTracedFunction<
+          { printRequestId: string; upcomingShowId: string },
+          { success: boolean }
+        >('unqueueStudioCustomerPrintRequestFromShow', {
+          source: 'upcomingShowService.removeShowAllocationsForRequest',
+        })({
+          printRequestId,
+          upcomingShowId,
+        });
+        
+        // Sync queue tab state after callable success
+        await this.syncPrintRequestQueueTabBestEffort(
+          printRequestId,
+          "upcomingShowService.removeShowAllocationsForRequest",
+        );
+        return;
+      } catch (error) {
+        throw new Error(
+          error instanceof Error ? error.message : 'Unable to remove customer request from show.'
+        );
+      }
+    }
+
+    // For internal requests, use existing client path
     await this.deleteShowAllocationsForRequestOnShow(caller, upcomingShowId, printRequestId);
     await this.recalculateShowAllocatedQuantity(caller, upcomingShowId);
     await this.markPrintRequestEditingIfNoActiveAllocations(caller, printRequestId);

@@ -81,7 +81,7 @@ describe("evaluatePortalPrintRequestUnqueue", () => {
     assert.equal(result.reason, "not_portal_customer");
   });
 
-  it("blocks ADR-FP-071 continuable conflict", () => {
+  it("blocks ADR-FP-071 active editing continuable conflict", () => {
     const result = evaluatePortalPrintRequestUnqueue({
       request: portalRequest,
       showProductionStatus: "open",
@@ -90,6 +90,19 @@ describe("evaluatePortalPrintRequestUnqueue", () => {
     });
     assert.equal(result.eligible, false);
     assert.equal(result.reason, "continuable_request_conflict");
+  });
+
+  it("allows unqueue when other request is parkable draft (not active editing)", () => {
+    // This test documents that the semantics have changed:
+    // hasOtherPortalEditableContinuableRequest should now only be true
+    // when there's another ACTIVE editing request, not a parkable draft
+    const result = evaluatePortalPrintRequestUnqueue({
+      request: portalRequest,
+      showProductionStatus: "open", 
+      allocationsOnShow: [allocation()],
+      hasOtherPortalEditableContinuableRequest: false, // parkable draft doesn't count
+    });
+    assert.equal(result.eligible, true);
   });
 
   it("blocks printed allocations", () => {

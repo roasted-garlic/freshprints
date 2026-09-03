@@ -25,6 +25,7 @@ import {
   permissionDenied,
   unauthenticated,
 } from "./lib/errors";
+import { applyRestoreParkedDraftInTransaction } from "./lib/portalContinuableParking";
 
 const BATCH_LIMIT = 400;
 
@@ -489,14 +490,27 @@ export const archivePrintRequest = onCall(
         };
       }
 
-      await ref.set(
-        {
-          status: "archived",
-          updatedAt: FieldValue.serverTimestamp(),
-          updatedBy: request.auth.uid,
-        },
-        { merge: true },
-      );
+      await adminDb.runTransaction(async (transaction) => {
+        const freshSnap = await transaction.get(ref);
+        const freshData = freshSnap.data() ?? {};
+        
+        // Restore parked draft if this request was editing with a parked draft
+        await applyRestoreParkedDraftInTransaction(transaction, {
+          editingRequestRef: ref,
+          editingData: { ...freshData, status: freshData.status || "draft" },
+          actorId: request.auth!.uid,
+        });
+
+        transaction.set(
+          ref,
+          {
+            status: "archived",
+            updatedAt: FieldValue.serverTimestamp(),
+            updatedBy: request.auth!.uid,
+          },
+          { merge: true },
+        );
+      });
 
       return {
         outcome: "archive",

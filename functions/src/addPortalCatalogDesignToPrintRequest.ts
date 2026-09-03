@@ -28,6 +28,7 @@ import {
   assertWorkingRequestAllowsPrintAdds,
   sumWorkingRequestPrintQuantities,
 } from "./lib/printRequestWorkingRequestMax";
+import { assertPortalActiveEditableRequestData } from "./lib/portalContinuableParking";
 
 function mapHttpsError(error: unknown): never {
   if (error instanceof HttpsError) {
@@ -197,6 +198,10 @@ export const addPortalCatalogDesignToPrintRequest = onCall(
           throw invalidArgument("Print request not found.");
         }
         const requestData = requestSnap.data() ?? {};
+        
+        // Assert request is active editable (not parked)
+        assertPortalActiveEditableRequestData(requestData, requestRef.id);
+        
         if (requestData.customerId !== portalCustomer.customerId) {
           throw permissionDenied("You do not own this print request.");
         }

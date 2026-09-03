@@ -9,6 +9,8 @@ import {
 import { adminDb } from "./lib/admin";
 import { assertStaffCaller, loadCallerProfile } from "./lib/caller";
 import { invalidArgument, permissionDenied, unauthenticated } from "./lib/errors";
+// Note: applyRestoreParkedDraftInTransaction could be used for editing requests,
+// but batch operations make it complex to implement safely
 
 export interface ArchiveStaleWorkingPrintRequestsRequest {
   dryRun?: boolean;

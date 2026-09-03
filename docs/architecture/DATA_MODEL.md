@@ -1109,6 +1109,13 @@ export interface PrintRequest {
   convertedFromCustomerRequestId?: string;
   convertedAt?: Timestamp;
   convertedBy?: string;
+  /**
+   * Continuable parking (ADR-FP-071 amend 2026-09-02). Admin SDK / trusted callables only.
+   * Parked draft: parkedByEditingRequestId + parkedAt. Editing PR: parksDraftPrintRequestId.
+   */
+  parkedByEditingRequestId?: string;
+  parkedAt?: Timestamp;
+  parksDraftPrintRequestId?: string;
   createdBy: string;
   updatedBy: string;
   createdAt: Timestamp;

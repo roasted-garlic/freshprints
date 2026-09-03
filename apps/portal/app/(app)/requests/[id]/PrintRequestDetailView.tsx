@@ -10,6 +10,10 @@ import {
   resolvePortalPrintRequestProgressLabel,
 } from '@fresh-prints/shared/utils/printRequestConversion';
 import {
+  isPortalActiveEditablePrintRequest,
+  isPortalParkedDraft,
+} from '@fresh-prints/shared/utils/portalActiveEditablePrintRequest';
+import {
   toPortalPrintRequestListTab,
   type PortalPrintRequestListTab,
 } from '@fresh-prints/shared/utils/portalPrintRequestListTabs';
@@ -69,6 +73,8 @@ import {
 import { PortalConfirmModal } from '../../../../features/shared/components/PortalConfirmModal';
 import { PortalPickContinuableRequestModal } from '../../../../features/shared/components/PortalPickContinuableRequestModal';
 import { ArrowLeftIcon, CalendarPlusIcon, ImagePlusIcon, LibraryIcon, RefreshIcon } from '../../../../features/shared/components/PortalIcons';
+import { PortalEditingModeBanner } from '../../../../features/print-requests/components/PortalEditingModeBanner';
+import { PortalParkedDraftOverlay } from '../../../../features/print-requests/components/PortalParkedDraftOverlay';
 
 type AutosaveStatus = 'idle' | 'saving' | 'saved' | 'failed';
 
@@ -114,6 +120,8 @@ export default function PrintRequestDetailView() {
     resetWorkingCart,
     summariesByRequestId,
     workingRequest,
+    parkedDraftRequest,
+    setSelectedWorkingRequestId,
   } = usePortalPrintRequests();
   const printRequestId = params.id;
   const [actionError, setActionError] = useState<string | null>(null);
@@ -429,9 +437,25 @@ export default function PrintRequestDetailView() {
   }, [primaryScheduledShow, printProgress.shows]);
   const hasOtherPortalEditableContinuableRequest = useMemo(
     () =>
-      portalEditableContinuableRequests.some((request) => request.id !== printRequestId),
+      portalEditableContinuableRequests.some(
+        (request) => request.id !== printRequestId && request.status === 'editing'
+      ),
     [portalEditableContinuableRequests, printRequestId],
   );
+
+  const isParkedDraft = useMemo(() => {
+    if (!printRequest) return false;
+    return isPortalParkedDraft(printRequest);
+  }, [printRequest]);
+
+  // Override isEditable from usePrintRequestDetail to use the more precise active editable check
+  const isActivelyEditable = useMemo(() => {
+    if (!printRequest) return false;
+    return isPortalActiveEditablePrintRequest(printRequest);
+  }, [printRequest]);
+
+  // Use the actively editable check instead of the base isEditable
+  const effectiveIsEditable = isActivelyEditable;
   const unqueueEligibility = useMemo(() => {
     if (!printRequest || !primaryScheduledShow) {
       return evaluatePortalPrintRequestUnqueue({
@@ -500,6 +524,9 @@ export default function PrintRequestDetailView() {
       // showAllocations immediately (30s shared read cache otherwise returns the stale empty set).
       clearPortalPrintRequestReadCache();
       clearUnqueueError();
+      // After Editing → show, land on the queued detail with Working return context (restored
+      // draft / Current Request), not the pre-queue Editing `from=`.
+      router.replace(buildRequestDetailHref(printRequestId, { from: 'working' }));
       // The Remove & Edit action needs both the selected show and its real allocation records.
       // The status-change effect intentionally skips its allocation reread after queue success,
       // so hydrate these two action dependencies explicitly before this success handler settles.
@@ -514,11 +541,12 @@ export default function PrintRequestDetailView() {
       reconcileQueuedRequest,
       resetWorkingCart,
       reloadRequestSchedules,
+      router,
     ],
   );
 
   const canShowUnqueueFromShowCta = resolveCanShowUnqueueFromShowCta({
-    isEditable,
+    isEditable: effectiveIsEditable,
     unqueueEligibility,
     hasPrimaryScheduledShow: primaryScheduledShow !== null,
   });
@@ -528,7 +556,7 @@ export default function PrintRequestDetailView() {
   );
 
   const stuckActiveNeedsEditingHeal = resolveStuckActiveNeedsEditingHeal({
-    isEditable,
+    isEditable: effectiveIsEditable,
     requestStatus: printRequest?.status,
     listTab,
     isPortalCustomerOrigin: isPortalCustomerOriginPrintRequest({
@@ -551,7 +579,10 @@ export default function PrintRequestDetailView() {
       progressWatermarkRef.current = { printRequestId: result.printRequestId, stage: null };
       setUnallocatedQuantity(sumPrintRequestItemQuantities(items));
       clearPortalPrintRequestReadCache();
-      router.replace(buildRequestDetailHref(result.printRequestId, { from: 'working' }));
+      if (result.requestStatus === 'editing') {
+        setSelectedWorkingRequestId(result.printRequestId);
+      }
+      router.replace(buildRequestDetailHref(result.printRequestId, { from: 'editing' }));
       await Promise.all([
         reload(),
         reloadRequestSchedules(),
@@ -567,6 +598,7 @@ export default function PrintRequestDetailView() {
       reload,
       reloadRequestSchedules,
       router,
+      setSelectedWorkingRequestId,
     ],
   );
 
@@ -651,7 +683,7 @@ export default function PrintRequestDetailView() {
 
   const designCountLabel = `${printRequest.itemCount} design${printRequest.itemCount === 1 ? '' : 's'}`;
   const printCountLabel = `${totalPrintCount} print${totalPrintCount === 1 ? '' : 's'}`;
-  const canShowQueueCta = isEditable && items.length > 0 && unallocatedQuantity > 0;
+  const canShowQueueCta = effectiveIsEditable && items.length > 0 && unallocatedQuantity > 0;
   const canQueueToShow =
     canShowQueueCta && persistenceSummary.canOpenQueue && !isFlushingQueue;
 
@@ -701,7 +733,7 @@ export default function PrintRequestDetailView() {
               <span className="portal-request-detail-meta-pill">{printCountLabel}</span>
             </div>
           </div>
-          {isEditable && hasAttachedDesigns ? (
+          {effectiveIsEditable && hasAttachedDesigns ? (
             <div className="portal-request-detail-show-hint">
               <p className="portal-muted">
                 When your request is ready, add it to a show to have your prints included.
@@ -757,6 +789,21 @@ export default function PrintRequestDetailView() {
         ) : null}
       </header>
 
+      {!isParkedDraft && printRequest.status === 'editing' ? (
+        <PortalEditingModeBanner hasParkedDraft={Boolean(parkedDraftRequest)} />
+      ) : null}
+
+      <div
+        className={
+          isParkedDraft
+            ? 'portal-request-detail-editor is-parked'
+            : 'portal-request-detail-editor'
+        }
+      >
+        {isParkedDraft && printRequest.parkedByEditingRequestId ? (
+          <PortalParkedDraftOverlay editingRequestId={printRequest.parkedByEditingRequestId} />
+        ) : null}
+
       {progressStage ? (
         <PortalPrintRequestProgressPanel
           activeStage={progressStage}
@@ -777,7 +824,7 @@ export default function PrintRequestDetailView() {
         </section>
       ) : null}
 
-      {isEditable ? <PrintRequestDetailGuide /> : null}
+      {effectiveIsEditable ? <PrintRequestDetailGuide /> : null}
 
       {actionError ? (
         <p className="portal-error" role="alert">
@@ -789,11 +836,11 @@ export default function PrintRequestDetailView() {
         <section className="portal-panel portal-requests-empty">
           <h2>No designs yet</h2>
           <p className="portal-muted">
-            {isEditable
+            {effectiveIsEditable
               ? 'Upload your own artwork or browse the Design Library to add designs with quantities and print sizes.'
               : 'This request has no designs.'}
           </p>
-          {isEditable ? (
+          {effectiveIsEditable ? (
             <div className="portal-requests-empty-actions">
               <Link
                 className="portal-button portal-button-primary portal-button-leading-icon"
@@ -820,7 +867,7 @@ export default function PrintRequestDetailView() {
         </section>
       ) : (
         <>
-          {isEditable ? (
+          {effectiveIsEditable ? (
             <div className="portal-request-detail-items-toolbar">
               <button
                 className="current-request-drawer-clear"
@@ -841,7 +888,8 @@ export default function PrintRequestDetailView() {
             const upload = item.customerUploadId
               ? uploadSummaries.get(item.customerUploadId)
               : null;
-            const catalogReuseDesign = !isEditable ? (design ?? null) : undefined;
+            const catalogReuseDesign =
+              !effectiveIsEditable && !isParkedDraft ? (design ?? null) : undefined;
             const isAddingThisDesign =
               Boolean(catalogReuseDesign) &&
               addDesignFlow.addingDesignId === catalogReuseDesign?.id;
@@ -909,7 +957,7 @@ export default function PrintRequestDetailView() {
                 onPersistenceHealthChange={handlePersistenceHealthChange}
                 onRegisterFlush={handleRegisterFlush}
                 quantityResetKey={quantityResetKeys[item.id] ?? 0}
-                readOnly={!isEditable}
+                readOnly={!effectiveIsEditable}
                 standardPrintSizesSettings={standardPrintSizesSettings}
               />
             );
@@ -942,6 +990,7 @@ export default function PrintRequestDetailView() {
           ) : null}
         </div>
       ) : null}
+      </div>
 
       <PortalQueueToShowModal
         isOpen={isQueueModalOpen}

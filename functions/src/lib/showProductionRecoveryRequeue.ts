@@ -28,6 +28,11 @@ import {
   type RequeueTargetValidationResult,
 } from "../../../packages/shared/src/utils/showProductionRecoveryRequeue";
 import { withoutUndefinedFields } from "./firestoreDocument";
+import {
+  applyRestoreParkedDraftWritesInTransaction,
+  readParkedDraftForRestoreInTransaction,
+  type ParkedDraftRestoreRead,
+} from "./portalContinuableParking";
 
 import { adminDb } from "./admin";
 import { recomputeAndPersistQueueTab } from "./printRequestQueueTab";
@@ -619,6 +624,33 @@ export async function applyRequeueUnfulfilledRecovery(input: {
       }
     }
 
+    // Reads before writes: preload parked-draft snaps for editing→active restores.
+    const parkedRestoreByRequestId = new Map<string, ParkedDraftRestoreRead | null>();
+    for (const printRequestId of affectedRequestIdSet) {
+      const requestSnap = requestSnaps.get(printRequestId);
+      if (!requestSnap?.exists) {
+        continue;
+      }
+      const requestData = requestSnap.data() ?? {};
+      const status = typeof requestData.status === "string" ? requestData.status : "draft";
+      if (status !== "editing") {
+        parkedRestoreByRequestId.set(printRequestId, null);
+        continue;
+      }
+      const parksDraftPrintRequestId =
+        typeof requestData.parksDraftPrintRequestId === "string"
+          ? requestData.parksDraftPrintRequestId
+          : undefined;
+      parkedRestoreByRequestId.set(
+        printRequestId,
+        await readParkedDraftForRestoreInTransaction(
+          transaction,
+          requestSnap.ref,
+          parksDraftPrintRequestId,
+        ),
+      );
+    }
+
     const eligibleById = new Map(eligibleAllocations.map((allocation) => [allocation.id, allocation]));
     const sourceAllocationById = new Map(sourceAllocations.map((allocation) => [allocation.id, allocation]));
 
@@ -712,6 +744,17 @@ export async function applyRequeueUnfulfilledRecovery(input: {
       };
       if (status === "draft" || status === "editing") {
         requestPatch.status = "active";
+
+        // Restore parked draft when transitioning editing → active (writes only).
+        if (status === "editing") {
+          applyRestoreParkedDraftWritesInTransaction(transaction, {
+            editingRequestRef: requestSnap.ref,
+            restoreRead: parkedRestoreByRequestId.get(printRequestId) ?? null,
+            actorId: input.actorId,
+            clearEditingParkingFields: false,
+          });
+          requestPatch.parksDraftPrintRequestId = FieldValue.delete();
+        }
       }
       transaction.update(requestSnap.ref, requestPatch);
     }

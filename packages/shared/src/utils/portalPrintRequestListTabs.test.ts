@@ -7,6 +7,7 @@ import {
   isPortalContinuablePrintRequestStatus,
   parsePortalPrintRequestListTab,
   PORTAL_PRINT_REQUEST_LIST_TABS,
+  getVisiblePortalPrintRequestListTabs,
   toPortalPrintRequestListTab,
 } from "./portalPrintRequestListTabs";
 
@@ -82,6 +83,22 @@ test("PORTAL_PRINT_REQUEST_LIST_TABS order matches Studio customer lifecycle", (
   assert.deepEqual([...PORTAL_PRINT_REQUEST_LIST_TABS], [
     "working",
     "editing",
+    "queued",
+    "printing",
+    "printed",
+  ]);
+});
+
+test("getVisiblePortalPrintRequestListTabs hides empty Editing and fronts it when present", () => {
+  assert.deepEqual(getVisiblePortalPrintRequestListTabs(0), [
+    "working",
+    "queued",
+    "printing",
+    "printed",
+  ]);
+  assert.deepEqual(getVisiblePortalPrintRequestListTabs(1), [
+    "editing",
+    "working",
     "queued",
     "printing",
     "printed",

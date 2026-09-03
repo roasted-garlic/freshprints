@@ -24,7 +24,9 @@ import { usePortalStandardPrintSizes } from './usePortalStandardPrintSizes';
 import { portalPrintRequestService } from '../services/portalPrintRequestService';
 import { excludeDesignsInWorkingItems } from '../utils/companionSuggestionWorkingItemsFilter';
 import { mapPortalPrintRequestCallableError } from '../utils/mapPortalPrintRequestCallableError';
-import { resolveAddDesignToRequestBranch } from '../utils/resolveAddDesignToRequestBranch';
+import {
+  filterPortalActiveEditablePrintRequests,
+} from '@fresh-prints/shared/utils/portalActiveEditablePrintRequest';
 import { resolvePortalWorkingRequestBranch } from '../utils/resolvePortalWorkingRequestBranch';
 import {
   announceCurrentDesignAdded,
@@ -288,8 +290,16 @@ export function useAddDesignToRequestFlow({
   const isBusy = busyDesignId !== null || isEnsuringWorkingRequest;
 
   const resolveBranch = useCallback(() => {
+    const activeEditableRequests = filterPortalActiveEditablePrintRequests(
+      portalEditableContinuableRequests,
+    );
+    const statusesById: Record<string, string> = {};
+    for (const request of activeEditableRequests) {
+      statusesById[request.id] = request.status;
+    }
     return resolvePortalWorkingRequestBranch({
-      portalEditableRequestIds: portalEditableContinuableRequests.map((request) => request.id),
+      activeEditableRequestIds: activeEditableRequests.map((request) => request.id),
+      activeEditableStatusesById: statusesById,
       pendingWorkingRequestId,
       selectedWorkingRequestId,
     });
@@ -614,7 +624,13 @@ export function useAddDesignToRequestFlow({
             });
           return;
         }
-        if (branch.kind === 'pick') {
+        if (branch.kind === 'pick' || branch.kind === 'conflict') {
+          if (branch.kind === 'conflict') {
+            setActionError(
+              'Finish editing your current request before adding designs to another request.',
+            );
+            return;
+          }
           onBeforeNavigate?.();
           setPendingDesign(design);
           setIsPickerOpen(true);
@@ -637,7 +653,13 @@ export function useAddDesignToRequestFlow({
         return;
       }
 
-      if (branch.kind === 'pick') {
+      if (branch.kind === 'pick' || branch.kind === 'conflict') {
+        if (branch.kind === 'conflict') {
+          setActionError(
+            'Finish editing your current request before adding designs to another request.',
+          );
+          return;
+        }
         onBeforeNavigate?.();
         // confirmPickRequest reads this once the user picks a request to add into.
         pendingAddAnnounceRef.current = announce;
@@ -774,7 +796,7 @@ export function useAddDesignToRequestFlow({
       setActionError(null);
 
       const branch = resolveBranch();
-      if (branch.kind === 'create' || branch.kind === 'pick') {
+      if (branch.kind === 'create' || branch.kind === 'pick' || branch.kind === 'conflict') {
         return;
       }
 
@@ -855,7 +877,7 @@ export function useAddDesignToRequestFlow({
       setActionError(null);
 
       const branch = resolveBranch();
-      if (branch.kind === 'create' || branch.kind === 'pick') {
+      if (branch.kind === 'create' || branch.kind === 'pick' || branch.kind === 'conflict') {
         return;
       }
 
@@ -953,8 +975,10 @@ export function useAddDesignToRequestFlow({
     actionError,
     addingDesignId: busyDesignId,
     addDesign,
-    /** Portal-editable continuable requests for the picker modal. */
-    pickerContinuableRequests: portalEditableContinuableRequests,
+    /** Active-editable requests only — parked drafts are never picker candidates. */
+    pickerContinuableRequests: filterPortalActiveEditablePrintRequests(
+      portalEditableContinuableRequests,
+    ),
     /** Non-announcing add for the open companion suggestion modal — trims that suggestion in place. */
     addDesignFromCompanionSuggestion,
     adjustQuantity,

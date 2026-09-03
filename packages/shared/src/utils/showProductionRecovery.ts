@@ -334,10 +334,13 @@ export function resolveProductionRecoveryPreviewOutcome(
 
 /**
  * ADR-FP-071: only transition `active → editing` when no other Portal-continuable request exists.
+ * For recovery, when other is a draft, we WANT to allow transition and park.
+ * Only block when another editing exists.
  */
 export function shouldTransitionActiveRequestToEditing(input: {
   requestStatus: string;
   hasActiveAllocationsGlobally: boolean;
+  /** True when another ACTIVE editable Continuable that isn't a parkable single draft exists */
   hasOtherContinuableRequest: boolean;
   isInternal: boolean;
 }): boolean {

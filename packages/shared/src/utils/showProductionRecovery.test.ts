@@ -277,7 +277,7 @@ describe("production recovery preview outcomes", () => {
 });
 
 describe("ADR-FP-071 guard", () => {
-  it("does not transition active to editing when another continuable exists", () => {
+  it("does not transition active to editing when another active editing exists", () => {
     assert.equal(
       shouldTransitionActiveRequestToEditing({
         requestStatus: "active",
@@ -295,6 +295,20 @@ describe("ADR-FP-071 guard", () => {
         requestStatus: "active",
         hasActiveAllocationsGlobally: false,
         hasOtherContinuableRequest: false,
+        isInternal: false,
+      }),
+      true,
+    );
+  });
+
+  it("allows transition when other is parkable draft (not active editing)", () => {
+    // Updated semantics: hasOtherContinuableRequest now means
+    // "has other ACTIVE editable Continuable that isn't a parkable single draft"
+    assert.equal(
+      shouldTransitionActiveRequestToEditing({
+        requestStatus: "active",
+        hasActiveAllocationsGlobally: false,
+        hasOtherContinuableRequest: false, // parkable draft doesn't count as blocking
         isInternal: false,
       }),
       true,

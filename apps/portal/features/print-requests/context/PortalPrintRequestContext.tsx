@@ -25,6 +25,11 @@ import {
   filterPortalEditableContinuablePrintRequests,
   selectPortalWorkingPrintRequest,
 } from '@fresh-prints/shared/utils/portalPrintRequestEditability';
+import {
+  selectPortalActiveEditablePrintRequest,
+  filterPortalParkedDrafts,
+  isPortalParkedDraft,
+} from '@fresh-prints/shared/utils/portalActiveEditablePrintRequest';
 
 import { PortalStartPrintRequestModal } from '../../shared/components/PortalStartPrintRequestModal';
 import { useMyPrintRequests } from '../hooks/useMyPrintRequests';
@@ -132,6 +137,10 @@ interface PortalPrintRequestContextValue {
   >;
   /** The single working request, or null when virtual empty. */
   workingRequest: PrintRequest | null;
+  /** Parked draft print request if one is parked by the current editing request. */
+  parkedDraftRequest: PrintRequest | null;
+  /** True when the working request is in editing mode (status === 'editing'). */
+  isEditingModeActive: boolean;
   workingItems: PrintRequestItem[];
 }
 
@@ -183,22 +192,33 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
 
   const workingRequest = useMemo(
     () =>
-      selectPortalWorkingPrintRequest(
+      selectPortalActiveEditablePrintRequest(
         portalEditableContinuableRequests,
         selectedWorkingRequestId,
       ),
     [portalEditableContinuableRequests, selectedWorkingRequestId],
   );
 
+  const parkedDraftRequest = useMemo(() => {
+    if (!workingRequest?.parksDraftPrintRequestId) {
+      return null;
+    }
+    const parkedDrafts = filterPortalParkedDrafts(portalEditableContinuableRequests);
+    return parkedDrafts.find(request => request.id === workingRequest.parksDraftPrintRequestId) ?? null;
+  }, [workingRequest?.parksDraftPrintRequestId, portalEditableContinuableRequests]);
+
+  const isEditingModeActive = workingRequest?.status === 'editing';
+
   useEffect(() => {
     if (!selectedWorkingRequestId) {
       return;
     }
 
-    const stillValid = portalEditableContinuableRequests.some(
+    const selected = portalEditableContinuableRequests.find(
       (request) => request.id === selectedWorkingRequestId,
     );
-    if (!stillValid) {
+    // Drop selection when request left the set or became a parked draft.
+    if (!selected || isPortalParkedDraft(selected)) {
       setSelectedWorkingRequestId(null);
     }
   }, [portalEditableContinuableRequests, selectedWorkingRequestId, setSelectedWorkingRequestId]);
@@ -424,6 +444,8 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
       uploadSummariesById: uploadSummaries,
       designSummariesById: designSummaries,
       workingRequest,
+      parkedDraftRequest,
+      isEditingModeActive,
       workingItems,
     }),
     [
@@ -470,6 +492,8 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
       uploadSummaries,
       workingItems,
       workingRequest,
+      parkedDraftRequest,
+      isEditingModeActive,
       workingRequestLimit,
     ],
   );

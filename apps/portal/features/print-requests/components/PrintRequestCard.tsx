@@ -6,6 +6,7 @@ import { ChevronRight } from 'lucide-react';
 import type { PrintRequest } from '@fresh-prints/shared/types/printRequest/printRequest.types';
 import type { PortalPrintRequestListTab } from '@fresh-prints/shared/utils/portalPrintRequestListTabs';
 import type { Timestamp } from 'firebase/firestore';
+import { isPortalParkedDraft } from '@fresh-prints/shared/utils/portalActiveEditablePrintRequest';
 
 import { buildRequestDetailHref } from '../utils/portalRequestDetailReturn';
 
@@ -44,18 +45,26 @@ interface PrintRequestCardProps {
 
 export function PrintRequestCard({ fromTab, request, progressLabel, scheduleLine }: PrintRequestCardProps) {
   const label = progressLabel ?? getStatusLabel(request.status);
-  const href = buildRequestDetailHref(request.id, {
-    from: fromTab ?? 'working',
-  });
+  const isParked = isPortalParkedDraft(request);
 
+  // Parked drafts stay openable under Working so the blocking overlay can explain the lock.
+  const href = buildRequestDetailHref(request.id, { from: fromTab ?? 'working' });
+
+  const cardClassName = isParked ? 'portal-request-card is-inactive' : 'portal-request-card';
+  
   return (
-    <Link className="portal-request-card" href={href}>
+    <Link className={cardClassName} href={href}>
       <div className="portal-request-card-header">
         <h2>{request.name}</h2>
-        <span className="portal-request-status-chip">
-          {label}
-          <ChevronRight aria-hidden size={16} strokeWidth={2} />
-        </span>
+        <div className="portal-request-card-header-right">
+          {isParked ? (
+            <span className="portal-request-card-inactive-badge">Temporarily inactive</span>
+          ) : null}
+          <span className="portal-request-status-chip">
+            {isParked ? 'Temporarily inactive' : label}
+            <ChevronRight aria-hidden size={16} strokeWidth={2} />
+          </span>
+        </div>
       </div>
       <p className="portal-muted">
         {request.itemCount} design{request.itemCount === 1 ? '' : 's'} · Updated{' '}

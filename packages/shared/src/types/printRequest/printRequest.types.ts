@@ -67,6 +67,12 @@ export interface PrintRequest {
   convertedFromCustomerRequestId?: string;
   convertedAt?: Timestamp;
   convertedBy?: string;
+  /** Server-authored: ID of the editing request that parked this draft. */
+  parkedByEditingRequestId?: string;
+  /** Server-authored: timestamp when this draft was parked. */
+  parkedAt?: Timestamp;
+  /** Server-authored: ID of the draft request this editing request parks. */
+  parksDraftPrintRequestId?: string;
   createdBy: string;
   updatedBy: string;
   createdAt: Timestamp;

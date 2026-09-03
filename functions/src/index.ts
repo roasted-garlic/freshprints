@@ -26,6 +26,7 @@ export { listPortalPublicShows } from "./listPortalPublicShows";
 export { listPortalShowCatalogDesigns } from "./listPortalShowCatalogDesigns";
 export { queuePortalPrintRequestToShow } from "./queuePortalPrintRequestToShow";
 export { unqueuePortalPrintRequestFromShow } from "./unqueuePortalPrintRequestFromShow";
+export { unqueueStudioCustomerPrintRequestFromShow } from "./unqueueStudioCustomerPrintRequestFromShow";
 export { completeStaffGangSheetAndOpenNext } from "./completeStaffGangSheetAndOpenNext";
 export { convertCustomerPrintRequestToInternal } from "./convertCustomerPrintRequestToInternal";
 export { createInitialStaffGangSheet } from "./createInitialStaffGangSheet";
@@ -167,6 +168,7 @@ export {
 } from "./purgeExpiredAssistedCreationProofs";
 export { onPrintRequestItemCreated } from "./onPrintRequestItemCreated";
 export { onShowAllocationCreated } from "./onShowAllocationCreated";
+export { onPrintRequestEditingExitRestoreParked } from "./onPrintRequestEditingExitRestoreParked";
 export { syncPrintRequestQueueTab } from "./syncPrintRequestQueueTab";
 export {
   onPrintRequestItemQueueTabInputWritten,
