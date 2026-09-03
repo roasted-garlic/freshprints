@@ -22,8 +22,8 @@ import {
 } from "./catalogTitleRules";
 
 describe("catalogTitleRules", () => {
-  it("uses prompt version v28", () => {
-    assert.equal(CATALOG_ENRICHMENT_PROMPT_VERSION, "catalog-enrich-v31");
+  it("uses prompt version v32", () => {
+    assert.equal(CATALOG_ENRICHMENT_PROMPT_VERSION, "catalog-enrich-v32");
   });
 
   it("keeps the JSON contract, OCR, canvas, and description rules in the trimmed prompt", () => {
@@ -795,6 +795,36 @@ describe("resolveLeanCatalogTitle", () => {
         description: "Mouse ears with a red and white polka dot bow and Christmas accents.",
       }),
       "Mouse Ears With Holiday Bow",
+    );
+  });
+
+  it("rejects dump-shaped model titles even when they contain a readable phrase", () => {
+    const title = resolveLeanCatalogTitle({
+      candidateTitle:
+        "182 Freely I Will Always Love You Dolly Parton NC If Would",
+      tags: ["music"],
+      uploadFileStem: "upload",
+      readableTextLines: [
+        "182 (freely) I WILL ALWAYS LOVE YOU - DOLLY PARTON N.C. if ____ would ____",
+      ],
+      centralSubject: "Dolly Parton portrait",
+    });
+
+    assert.match(title, /i will always love you/i);
+    assert.match(title, /dolly parton/i);
+    assert.doesNotMatch(title, /182|freely|____|\bnc\b/i);
+  });
+
+  it("keeps a semantic Dolly sheet-music portrait title", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: "Dolly Parton I Will Always Love You Sheet Music Portrait",
+        tags: ["music"],
+        uploadFileStem: "upload",
+        readableTextLines: ["I Will Always Love You", "Dolly Parton"],
+        centralSubject: "Dolly Parton",
+      }),
+      "Dolly Parton I Will Always Love You Sheet Music Portrait",
     );
   });
 });

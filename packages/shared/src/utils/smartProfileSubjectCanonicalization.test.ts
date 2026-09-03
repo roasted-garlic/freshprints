@@ -207,6 +207,12 @@ describe("staff and preset paths skip AI derivative collapse", () => {
     assert.deepEqual(staff.subjects, ["leaping fish"]);
   });
 
+  it("normalizeSmartProfileDimensions keeps staff-entered OCR-like visibleText", () => {
+    const dump = "182 (freely) I WILL ALWAYS LOVE YOU ____";
+    const staff = normalizeSmartProfileDimensions({ visibleText: [dump] });
+    assert.ok(staff.visibleText?.some((line) => /____/.test(line)));
+  });
+
   it("AI collapse does not rewrite Dolly Parton import presets", () => {
     const ai = normalizeAi({ subjects: ["leaping fish"] });
     assert.ok(ai.subjects?.some((s) => s.toLowerCase() === "fish"));

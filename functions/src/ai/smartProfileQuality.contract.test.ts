@@ -12,14 +12,18 @@ import { CATALOG_ENRICHMENT_PROMPT_VERSION } from "./catalogTitleRules";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
-describe("smart profile quality v31 contract", () => {
-  it("ships catalog-enrich-v31 and keeps current caps", () => {
-    assert.equal(CATALOG_ENRICHMENT_PROMPT_VERSION, "catalog-enrich-v31");
+describe("smart profile quality v32 contract", () => {
+  it("ships catalog-enrich-v32 and keeps current caps", () => {
+    assert.equal(CATALOG_ENRICHMENT_PROMPT_VERSION, "catalog-enrich-v32");
     assert.equal(SMART_PROFILE_MAX_ITEMS_PER_DIMENSION, 12);
   });
 
-  it("default prompt covers text-dominant, per-dimension, vocab placeholder, mat ignore, anti-glue subjects, canonical bases", () => {
+  it("default prompt covers text-dominant, visible-text quality, vocab placeholder, mat ignore, anti-glue subjects, canonical bases", () => {
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /text-only \| text-dominant/);
+    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /primary\/meaningful design text/);
+    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /background\/document text/);
+    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /Do not dump sheet music/);
+    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /WHAT THE DESIGN IS/);
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /\{\{smart_profile_vocab\}\}/);
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /display mat/i);
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /deliberately consider EVERY array/);
@@ -84,7 +88,7 @@ describe("smart profile quality v31 contract", () => {
 
     assert.deepEqual(profile.subjects, ["Highland Cow", "Jimothy"]);
     assert.ok(profile.searchConcepts?.includes("funny highland cow shirt"));
-    assert.match(profile.provenance.normalizerVersion ?? "", /normalizer-v5/);
+    assert.match(profile.provenance.normalizerVersion ?? "", /normalizer-v6/);
   });
 
   it("promotes highland cow into subjects when model emits only cow", () => {

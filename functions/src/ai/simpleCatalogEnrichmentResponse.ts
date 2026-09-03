@@ -8,6 +8,11 @@ import {
 } from "./aiEnrichmentConfig";
 import { estimateVisionCostUsd } from "../../../packages/shared/src/constants/aiEnrichment.constants";
 import {
+  sanitizeMeaningfulVisibleTextPhrases,
+  stripOcrDumpFromDescription,
+  synthesizeSemanticCatalogDescription,
+} from "../../../packages/shared/src/utils/visibleTextQuality";
+import {
   CATALOG_ENRICHMENT_PROMPT_VERSION,
   normalizeAiTags,
   resolveLeanCatalogTitle,
@@ -380,22 +385,30 @@ export function buildSimpleCatalogEnrichmentResult(input: {
 }): AiEnrichmentResult {
   const { parsed, enrichmentInput, modelId, providerId, promptTokens, completionTokens } = input;
 
-  // Lean schema: trust a good model title. Reject style/tag-invented and description-prose
-  // titles; prefer structured readable lines or guarded description wording. Never synthesize
-  // a title by joining tags. Transient readableTextLines / centralSubject are not persisted.
+  const sanitizedReadableTextLines = sanitizeMeaningfulVisibleTextPhrases(parsed.readableTextLines);
+  const sanitizedVisibleText =
+    sanitizeMeaningfulVisibleTextPhrases(parsed.visibleText) ?? sanitizedReadableTextLines;
+
+  // Lean schema: trust a good model title. Reject style/tag-invented, description-prose, and
+  // OCR-dump titles; prefer sanitized readable lines or guarded description wording.
   const title = resolveLeanCatalogTitle({
     candidateTitle: parsed.title,
     tags: parsed.tags,
     uploadFileStem: enrichmentInput.uploadFileStem,
     description: parsed.description,
-    readableTextLines: parsed.readableTextLines,
+    readableTextLines: sanitizedReadableTextLines,
     centralSubject: parsed.centralSubject,
   });
 
-  // Preserve the model's description. It is required-non-empty by normalizeSimpleCatalogEnrichment,
-  // so only scrub canvas phrases and cap length — no synthesis, which cannot reconstruct full
-  // visible text from the lean schema.
-  const description = sanitizeCatalogDescription(parsed.description).slice(0, 500);
+  const scrubbedDescription = stripOcrDumpFromDescription(
+    sanitizeCatalogDescription(parsed.description),
+  ).slice(0, 500);
+  const description =
+    scrubbedDescription ||
+    synthesizeSemanticCatalogDescription({
+      centralSubject: parsed.centralSubject,
+      visibleText: sanitizedVisibleText,
+    }).slice(0, 500);
 
   const estimatedCostUsd =
     promptTokens != null && completionTokens != null
@@ -437,9 +450,9 @@ export function buildSimpleCatalogEnrichmentResult(input: {
       occasions: parsed.occasions,
       places: parsed.places,
       colors: parsed.colors,
-      visibleText: parsed.visibleText,
+      visibleText: sanitizedVisibleText,
       searchConcepts: parsed.searchConcepts,
-      readableTextLines: parsed.readableTextLines,
+      readableTextLines: sanitizedReadableTextLines,
       categoryAlternatives: parsed.categoryAlternatives,
       categoryGapNote: parsed.categoryGapNote,
       halftoneShadowLikelihood: parsed.halftoneShadowLikelihood,

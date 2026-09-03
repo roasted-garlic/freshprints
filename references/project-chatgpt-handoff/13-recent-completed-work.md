@@ -1,5 +1,21 @@
 # Recent Completed Work
 
+## 2026-09-03 - AI enrichment visible-text + catalog-copy quality — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `ai-enrichment-visible-text-and-catalog-copy-quality` — **DONE** |
+| Signoff | **approved_with_notes** |
+| Owner canary | **PASS** |
+| Pipeline | **catalog-enrich-v32** + **smart-profile-normalizer-v6** (`smart-profile-v1`) |
+| DEV Functions | `enqueueAiEnrichment` `00086-qet`; `onCatalogReprocessJobWritten` `00008-piw`; `startCatalogReprocessJob` `00007-viw`; `previewCatalogReprocessJob` `00007-hug` |
+| Behavior | Semantic visibleText; background/document text not bulk-transcribed; title/description anti-OCR guards; v31/v5 subjects preserved |
+| Automated | focused PASS; regression 184/184 + 52/52; Functions build pass |
+| Mass reprocess / tags / production | **NO** / **NO** / **NOT AUTHORIZED** |
+| Autonomous | **OFF** |
+| Next queued | Smart Profiling completion (not started) |
+| Signoff | `docs/workflow/reviews/2026-09-03-ai-enrichment-visible-text-and-catalog-copy-quality-signoff.md` |
+
 ## 2026-09-03 - AI Processing queue multi-select — CLOSED (DEV / local Studio)
 
 | Item | Status |

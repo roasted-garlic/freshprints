@@ -1,4 +1,8 @@
 import { buildTagExclusionPromptSection, filterExcludedAiTags, mergeTagExclusions } from "./aiTagExclusions";
+import {
+  looksLikeOcrDumpTitle,
+  sanitizeMeaningfulVisibleTextPhrases,
+} from "../../../packages/shared/src/utils/visibleTextQuality";
 
 const VERSION_PATTERN = /[\s-]+(?:v|version)\s*\d+$/i;
 const TRAILING_NUMBER_PATTERN = /\s+\d+$/;
@@ -24,8 +28,8 @@ function hasTrailingTitlePunctuation(rawTitle: string): boolean {
   return TRAILING_TITLE_PUNCTUATION.test(rawTitle.trim());
 }
 
-export const CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-v31";
-export const DEVELOPMENT_CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-dev-v31";
+export const CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-v32";
+export const DEVELOPMENT_CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-dev-v32";
 
 /**
  * Prompt version for the optional text-only tag reranker second call. Independent of
@@ -703,6 +707,32 @@ export function sanitizeCentralSubjectPhrase(subject: string | undefined): strin
   }
 
   return stripTrailingTitlePunctuation(cleaned);
+}
+
+function titleSharesMeaningfulReadableTokens(
+  title: string,
+  readableLines: readonly string[] | undefined,
+): boolean {
+  if (!readableLines?.length) {
+    return false;
+  }
+  const titleTokens = new Set(
+    normalizeComparableTitle(title)
+      .split(" ")
+      .filter((token) => token.length > 2),
+  );
+  if (titleTokens.size === 0) {
+    return false;
+  }
+  let overlap = 0;
+  for (const line of readableLines) {
+    for (const token of normalizeComparableTitle(line).split(" ").filter((item) => item.length > 2)) {
+      if (titleTokens.has(token)) {
+        overlap += 1;
+      }
+    }
+  }
+  return overlap >= 2;
 }
 
 /**
@@ -1633,14 +1663,16 @@ export function resolveLeanCatalogTitle(input: {
   readableTextLines?: string[];
   centralSubject?: string;
 }): string {
+  const sanitizedLines = sanitizeMeaningfulVisibleTextPhrases(input.readableTextLines);
+
   const fromReadableLines = buildTitleFromReadableTextLines(
-    input.readableTextLines,
+    sanitizedLines,
     input.centralSubject,
     LEAN_CATALOG_TITLE_MAX_WORDS,
   );
 
   const readablePhraseOnly = buildTitleFromReadableTextLines(
-    input.readableTextLines,
+    sanitizedLines,
     undefined,
     LEAN_CATALOG_TITLE_MAX_WORDS,
   );
@@ -1656,7 +1688,9 @@ export function resolveLeanCatalogTitle(input: {
     isFilenameLikeTitle(normalizedCandidate, input.uploadFileStem) ||
     isStyleWordHeavyTitle(normalizedCandidate) ||
     isDescriptionLikeCatalogTitle(normalizedCandidate) ||
-    isIncompleteTitleVsDescription(normalizedCandidate, input.description);
+    isIncompleteTitleVsDescription(normalizedCandidate, input.description) ||
+    looksLikeOcrDumpTitle(input.candidateTitle) ||
+    looksLikeOcrDumpTitle(normalizedCandidate);
 
   if (fromReadableLines) {
     const candidateIncludesReadable =
@@ -1666,9 +1700,14 @@ export function resolveLeanCatalogTitle(input: {
         normalizeComparableTitle(readablePhraseOnly),
       );
 
+    const candidateTokenOverlap =
+      Boolean(normalizedCandidate) &&
+      Boolean(sanitizedLines?.length) &&
+      titleSharesMeaningfulReadableTokens(normalizedCandidate, sanitizedLines);
+
     if (
       !candidateUnusable &&
-      candidateIncludesReadable &&
+      (candidateIncludesReadable || candidateTokenOverlap) &&
       !isDescriptionLikeCatalogTitle(normalizedCandidate)
     ) {
       return stripTrailingTitlePunctuation(normalizedCandidate);
@@ -1699,7 +1738,8 @@ export function resolveLeanCatalogTitle(input: {
     fromDescriptionWithSubject &&
     !isGenericCatalogTitle(fromDescriptionWithSubject) &&
     !isStyleWordHeavyTitle(fromDescriptionWithSubject) &&
-    !isDescriptionLikeCatalogTitle(fromDescriptionWithSubject)
+    !isDescriptionLikeCatalogTitle(fromDescriptionWithSubject) &&
+    !looksLikeOcrDumpTitle(fromDescriptionWithSubject)
   ) {
     return stripTrailingTitlePunctuation(fromDescriptionWithSubject);
   }
@@ -1710,9 +1750,17 @@ export function resolveLeanCatalogTitle(input: {
     !isGenericCatalogTitle(normalizedCandidate) &&
     !isFilenameLikeTitle(normalizedCandidate, input.uploadFileStem) &&
     !isStyleWordHeavyTitle(normalizedCandidate) &&
-    !isDescriptionLikeCatalogTitle(normalizedCandidate)
+    !isDescriptionLikeCatalogTitle(normalizedCandidate) &&
+    !looksLikeOcrDumpTitle(normalizedCandidate)
   ) {
     return stripTrailingTitlePunctuation(normalizedCandidate);
+  }
+
+  const subjectOnly = sanitizeCentralSubjectPhrase(input.centralSubject);
+  if (subjectOnly && !isGenericCatalogTitle(subjectOnly) && !looksLikeOcrDumpTitle(subjectOnly)) {
+    return stripTrailingTitlePunctuation(
+      normalizeCatalogTitle(subjectOnly, LEAN_CATALOG_TITLE_MAX_WORDS),
+    );
   }
 
   return "Artwork Design";

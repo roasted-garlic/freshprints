@@ -57,7 +57,7 @@ describe("catalogReprocess callables containment", () => {
     assert.match(source, /Only the owner can manage Catalog Reprocessing/);
   });
 
-  it("records v31 + normalizer-v5 on job Start", () => {
+  it("records v32 + normalizer-v6 on job Start", () => {
     const source = readFileSync(join(here, "catalogReprocessCallables.ts"), "utf8");
     const constants = readFileSync(
       join(here, "../../../packages/shared/src/constants/catalogReprocess.constants.ts"),
@@ -67,8 +67,8 @@ describe("catalogReprocess callables containment", () => {
     assert.match(source, /CATALOG_REPROCESS_NORMALIZER_VERSION_SNAPSHOT/);
     assert.match(source, /promptVersion/);
     assert.match(source, /normalizerVersion/);
-    assert.match(constants, /catalog-enrich-v31/);
-    assert.match(constants, /smart-profile-normalizer-v5/);
+    assert.match(constants, /catalog-enrich-v32/);
+    assert.match(constants, /smart-profile-normalizer-v6/);
   });
 
   it("Ready Catalog and AI Review Queue gates enabled on DEV", () => {

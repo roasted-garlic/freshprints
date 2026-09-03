@@ -421,4 +421,48 @@ describe("buildSimpleCatalogEnrichmentResult", () => {
 
     assert.notEqual(result.suggestions.title?.toLowerCase(), "raw-upload-file");
   });
+
+  it("sanitizes Dolly OCR dump from title, description, and visibleText", () => {
+    const dump =
+      "182 (freely) I WILL ALWAYS LOVE YOU - DOLLY PARTON N.C. if ____ would ____";
+    const parsed = normalizeSimpleCatalogEnrichment(
+      {
+        category: "Music",
+        description: `A vintage-style Dolly Parton portrait layered over sheet music for "I Will Always Love You," with warm country styling. ${dump}`,
+        title: "182 Freely I Will Always Love You Dolly Parton NC If Would",
+        tags: ["music", "country"],
+        readableTextLines: [dump],
+        centralSubject: "Dolly Parton portrait",
+        subjects: ["Dolly Parton"],
+        objects: ["sheet music", "hat"],
+      },
+      EXCLUSIONS,
+    );
+
+    const result = buildSimpleCatalogEnrichmentResult({
+      parsed,
+      enrichmentInput: enrichmentInput(),
+      modelId: "gemini-2.5-flash-lite",
+    });
+
+    assert.match(result.suggestions.title ?? "", /dolly parton/i);
+    assert.match(result.suggestions.title ?? "", /i will always love you/i);
+    assert.doesNotMatch(result.suggestions.title ?? "", /____|182|freely/i);
+    assert.match(result.suggestions.description ?? "", /dolly parton portrait/i);
+    assert.doesNotMatch(result.suggestions.description ?? "", /____/);
+    assert.ok(
+      result.analysis.smartProfileEnrichmentParse?.visibleText?.some((line) =>
+        /i will always love you/i.test(line),
+      ),
+    );
+    assert.ok(
+      result.analysis.smartProfileEnrichmentParse?.visibleText?.some((line) =>
+        /dolly parton/i.test(line),
+      ),
+    );
+    assert.equal(
+      result.analysis.smartProfileEnrichmentParse?.visibleText?.some((line) => /____/.test(line)),
+      false,
+    );
+  });
 });

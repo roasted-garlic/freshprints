@@ -28,6 +28,7 @@ import type {
 
 import { promoteSubjectsWithTitleSpecificity } from "./catalogAutomationEvidence";
 import { collapseRedundantSubjectDerivatives } from "./smartProfileSubjectCanonicalization";
+import { sanitizeMeaningfulVisibleTextPhrases } from "./visibleTextQuality";
 
 import {
 
@@ -367,13 +368,17 @@ export function mergeVisibleTextFromReadableLines(
 
   if (fromVisible && fromVisible.length > 0) {
 
-    return fromVisible;
+    return sanitizeMeaningfulVisibleTextPhrases(fromVisible);
 
   }
 
 
 
-  return normalizeSmartProfileStringList(readableTextLines, { maxItemLength: 120 });
+  return sanitizeMeaningfulVisibleTextPhrases(
+
+    normalizeSmartProfileStringList(readableTextLines, { maxItemLength: 120 }),
+
+  );
 
 }
 
@@ -427,6 +432,8 @@ export function normalizeDesignSmartProfile(
       subjects: subjectsWithSpecificity,
 
       searchConcepts: collapsed.searchConcepts,
+
+      visibleText: sanitizeMeaningfulVisibleTextPhrases(profile.visibleText),
 
     },
 

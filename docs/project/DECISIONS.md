@@ -4,6 +4,39 @@
 
 ---
 
+### ADR-FP-160: AI enrichment visible-text and catalog-copy quality
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-03 |
+| Status | **accepted — DEV signed off (2026-09-03)** |
+| Related | ADR-FP-145 (subjects; preserved); lean catalog enrichment title path |
+| Plan | `docs/workflow/plans/2026-09-03-ai-enrichment-visible-text-and-catalog-copy-quality-plan.md` |
+| Review | `docs/workflow/reviews/2026-09-03-ai-enrichment-visible-text-and-catalog-copy-quality-review.md` |
+| Signoff | `docs/workflow/reviews/2026-09-03-ai-enrichment-visible-text-and-catalog-copy-quality-signoff.md` |
+
+**Context**
+
+Live lean enrichment (`catalog-enrich-v31`) instructed Gemini to transcribe **all** readable text into `readableTextLines` and descriptions. Title resolution joined those lines and could **keep** dump-shaped model titles when they contained a recognized phrase. Smart Profile `visibleText` inherited that dump. Sheet-music / newspaper / book backgrounds produced OCR-like pollution while semantic identity was partly correct.
+
+**Decision**
+
+1. Prompt **`catalog-enrich-v32`**: distinguish primary/meaningful text, background/document text, and low-confidence OCR; do not bulk-transcribe documents/lyrics/notation; titles describe **what the design is**; descriptions summarize.
+2. Shared deterministic AI-only sanitizer `visibleTextQuality.ts` — extract short identity phrases from dumps; drop Class C noise; preserve false-positive slogans/dates/references.
+3. Title guard: `resolveLeanCatalogTitle` sanitizes lines and rejects OCR-dump titles even when they contain readable phrases.
+4. Description guard: strip dump sentences; synthesize only if nothing clean remains (never `join(" / ")` of noise).
+5. Normalizer **`smart-profile-normalizer-v6`**: AI merge/`normalizeDesignSmartProfile` sanitize `visibleText`. Staff `normalizeSmartProfileDimensions` unchanged.
+6. Schema remains **`smart-profile-v1`**. No `rawOcr` field. Autonomous **OFF**. No mass reprocess in this goal.
+
+**Consequences**
+
+- DEV Functions allowlist on `fresh-prints-dev`: `enqueueAiEnrichment` `00086-qet`, `onCatalogReprocessJobWritten` `00008-piw`, `startCatalogReprocessJob` `00007-viw`, `previewCatalogReprocessJob` `00007-hug`.
+- Historical pre-v32 profiles remain until targeted re-enrich / later Smart Profiling completion backfill.
+- Subject canonicalization (ADR-FP-145 / v31/v5) remains a hard regression gate — Owner canary confirmed preserved.
+- Production promotion separately gated. Autonomous remains **OFF**.
+
+---
+
 ### ADR-FP-159: Customer-specific temporary Print Request + Show quota override
 
 | Field | Value |

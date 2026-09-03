@@ -8,7 +8,7 @@
 
 **None** — FreshForge **IDLE**
 
-Last completed: `ai-processing-queue-multi-select`. Signoff **approved**. Owner QA **PASS**.
+Last completed: `ai-enrichment-visible-text-and-catalog-copy-quality`. Signoff **approved_with_notes**. Owner canary **PASS**.
 
 ---
 
@@ -32,5 +32,5 @@ Do **not** auto-start. Owner selects start.
 
 ## Notes
 
-- Live DEV Smart Catalog: v31/v5; Autonomous **OFF**.
-- Last Studio closeout: AI Processing multi-select + bulk Delete + Shift+click range (no Firebase deploy).
+- Live DEV Smart Catalog: **catalog-enrich-v32** / **smart-profile-normalizer-v6**; Autonomous **OFF**.
+- Prior quality correctives: subject canonicalization (v31/v5) + visible-text/catalog-copy (v32/v6).

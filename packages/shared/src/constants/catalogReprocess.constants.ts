@@ -48,9 +48,9 @@ export const REPROCESS_PRODUCTION_READY_CATALOG_CONFIRMATION_PHRASE =
   "REPROCESS PRODUCTION READY CATALOG" as const;
 
 /** Snapshot labels recorded on jobs at Start (must match live DEV pipeline). */
-export const CATALOG_REPROCESS_PROMPT_VERSION_SNAPSHOT = "catalog-enrich-v31" as const;
+export const CATALOG_REPROCESS_PROMPT_VERSION_SNAPSHOT = "catalog-enrich-v32" as const;
 export const CATALOG_REPROCESS_NORMALIZER_VERSION_SNAPSHOT =
-  "smart-profile-normalizer-v5" as const;
+  "smart-profile-normalizer-v6" as const;
 
 export function isCatalogReprocessTargetType(value: unknown): value is CatalogReprocessTargetType {
   return (

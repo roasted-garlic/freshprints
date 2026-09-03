@@ -16,6 +16,7 @@ import {
   PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V23,
   PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V24,
   PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V25,
+  PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V31,
   SUGGESTED_NEW_TAGS_POLICY_OPTIONS,
   SUGGESTION_AUTHOR_MODE_OPTIONS,
   hasRequiredAiEnrichmentPromptPlaceholders,
@@ -62,15 +63,12 @@ describe("aiEnrichmentSettingsConstants", () => {
     assert.ok(hasRequiredAiEnrichmentPromptPlaceholders(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE));
   });
 
-  it("v25: description/title agreement, complete phrases, and contraction rules", () => {
-    // ADR-FP-044: without this framing the model free-associated from visual style (e.g. elegant
-    // script + lash imagery) toward a fashion/luxury category for a design that was actually a
-    // sarcastic joke — see docs/workflow/plans/2026-07-02-ai-business-context-prompt-plan.md.
-    // v25 clarifies completeness: title agrees with description wording; contractions stay intact.
+  it("v32: semantic title/visible-text rules and contraction rules", () => {
+    // Business context framing + text-quality title rules (ADR-FP-160).
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /catalog DTF transfer art for apparel/);
     assert.match(
       DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
-      /main message, subject, buyer intent, occasion, role, or theme/,
+      /dominant identity, main message, buyer intent, occasion, role, or theme/,
     );
     assert.match(
       DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
@@ -79,11 +77,11 @@ describe("aiEnrichmentSettingsConstants", () => {
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /Title rules:/);
     assert.match(
       DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
-      /complete readable phrase in natural reading order/,
+      /complete readable slogan in natural reading order/,
     );
     assert.match(
       DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
-      /description and title must agree/,
+      /WHAT THE DESIGN IS/,
     );
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /Keep contractions intact/);
     assert.match(
@@ -145,6 +143,13 @@ describe("aiEnrichmentSettingsConstants", () => {
   it("resolves a saved copy of the previous v25 default to the current default", () => {
     assert.equal(
       resolveClientPromptTemplate(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V25),
+      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+    );
+  });
+
+  it("resolves a saved copy of the previous v31 default to the current default", () => {
+    assert.equal(
+      resolveClientPromptTemplate(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V31),
       DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
     );
   });

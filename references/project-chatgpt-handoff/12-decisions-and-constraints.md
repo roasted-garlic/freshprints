@@ -2,12 +2,21 @@
 
 > Full log: `docs/project/DECISIONS.md` — newest ADRs first.
 
+### ADR-FP-160: AI enrichment visible-text and catalog-copy quality (DEV signed off 2026-09-03)
+
+- `visibleText` is semantic short intentional wording — not a raw OCR transcript
+- Background/document text understood but not bulk-transcribed; Class C OCR fragments suppressed
+- Titles describe what the design is; descriptions summarize (anti-OCR guards + AI-only sanitizer)
+- Primary typography and false-positive-safe strings preserved (dates, scripture, `Smith & Co.`, etc.)
+- Prompt **catalog-enrich-v32** / normalizer **smart-profile-normalizer-v6**; schema **smart-profile-v1**
+- Subject canonicalization (ADR-FP-145 / v31/v5) preserved; Autonomous **OFF**
+
 ### ADR-FP-145 amendment (2026-09-03 — DEV signed off)
 
 - Canonical/base depicted subjects required; redundant action/style/color/OCR/type-class phrases suppressed
 - Genuine atomic compounds preserved; no curated subject allowlist
 - AI collapse does not override staff edits or import presets
-- Prompt **catalog-enrich-v31** / normalizer **smart-profile-normalizer-v5**
+- Prompt **catalog-enrich-v31** / normalizer **smart-profile-normalizer-v5** (live stack now v32/v6; subject contract retained)
 
 ### ADR-FP-159: Customer-specific temporary Print Request + Show quota override (DEV signed off 2026-09-02)
 

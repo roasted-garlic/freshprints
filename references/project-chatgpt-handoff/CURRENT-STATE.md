@@ -11,9 +11,9 @@
 | Status | **IDLE** |
 | DONE | **yes** (last goal closed) |
 | Current managed goal | **none** |
-| Last completed goal | `ai-processing-queue-multi-select` |
-| Signoff | **approved** — `docs/workflow/reviews/2026-09-03-ai-processing-queue-multi-select-signoff.md` |
-| Owner QA | **PASS** |
+| Last completed goal | `ai-enrichment-visible-text-and-catalog-copy-quality` |
+| Signoff | **approved_with_notes** — `docs/workflow/reviews/2026-09-03-ai-enrichment-visible-text-and-catalog-copy-quality-signoff.md` |
+| Owner canary | **PASS** |
 | Production | **NOT AUTHORIZED** |
 | Smart Profiling | **PARKED** (next selected goal — not started) |
 | Batch allocation | **DEFERRED** |
@@ -26,13 +26,22 @@
 | Item | Value |
 |------|--------|
 | Smart Profile | smart-profile-v1 |
-| Prompt | **catalog-enrich-v31** |
-| Normalizer | **smart-profile-normalizer-v5** |
+| Prompt | **catalog-enrich-v32** |
+| Normalizer | **smart-profile-normalizer-v6** |
 | Mode | shadow |
 | Autonomous | **OFF** |
+
+### Function revisions (fresh-prints-dev)
+
+| Function | Revision | Traffic |
+|----------|----------|---------|
+| `enqueueAiEnrichment` | `enqueueaienrichment-00086-qet` | 100% |
+| `onCatalogReprocessJobWritten` | `oncatalogreprocessjobwritten-00008-piw` | 100% |
+| `startCatalogReprocessJob` | `startcatalogreprocessjob-00007-viw` | 100% |
+| `previewCatalogReprocessJob` | `previewcatalogreprocessjob-00007-hug` | 100% |
 
 ---
 
 ## Notes
 
-AI Processing queue multi-select closed (Studio UI). Owner PASS. No new Functions. Production untouched. **Next:** owner-start Smart Profiling completion when ready.
+AI visible-text + catalog-copy quality closed on DEV. Owner canary PASS. No mass reprocess. Production untouched. **Next:** owner-start Smart Profiling completion when ready.

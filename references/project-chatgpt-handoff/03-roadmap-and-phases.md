@@ -1,5 +1,13 @@
 # Roadmap and Phases
 
+> 2026-09-03: **AI enrichment visible-text + catalog-copy quality — CLOSED (DEV)** — Goal `ai-enrichment-visible-text-and-catalog-copy-quality` **DONE**. Signoff **approved_with_notes**. Owner canary **PASS**. Live DEV: **catalog-enrich-v32** / **smart-profile-normalizer-v6**. Autonomous **OFF**. Production **NOT AUTHORIZED**. FreshForge **IDLE**. Next queued: Smart Profiling completion (not started).
+>
+> 2026-09-03: **AI enrichment visible-text + catalog-copy quality — DEV DEPLOYED; OWNER CANARY PENDING** — Live DEV v32/v6 on four Functions. Owner ≤10-design canary pending. No mass reprocess. Autonomous OFF. Production NOT AUTHORIZED. Smart Profiling completion remains next after this goal closes.
+>
+> 2026-09-03: **AI enrichment visible-text + catalog-copy quality — IMPLEMENT + TEST + IR (STOP before deploy)** — Code v32/v6. IR **approved_with_notes**. Live DEV still v31/v5. Await owner DEV deploy + canary. Smart Profiling completion remains next after this goal closes.
+>
+> 2026-09-03: **AI enrichment visible-text + catalog-copy quality — PLAN + FORMAL REVIEW (STOP)** — Goal `ai-enrichment-visible-text-and-catalog-copy-quality`. Review **approved_with_changes**. Proposed v32/v6. No implement. Smart Profiling completion remains next after this goal closes. Production **NOT AUTHORIZED**.
+>
 > 2026-09-03: **AI Processing queue multi-select — CLOSED** — Goal `ai-processing-queue-multi-select` **DONE**. Signoff **approved**. Owner QA **PASS**. Studio multi-select + Shift+click range + owner bulk Delete (existing callable). No Firebase deploy. Production **NOT AUTHORIZED**. FreshForge **IDLE**. Smart Profiling **PARKED**.
 >
 > 2026-09-03: **Smart Profile subject canonicalization + derivative suppression — CLOSED (DEV)** — Goal `smart-profile-subject-canonicalization-and-derivative-suppression` **DONE**. Signoff **approved_with_notes**. Live DEV: **catalog-enrich-v31** / **smart-profile-normalizer-v5**. Owner canary **PASS**. Autonomous **OFF**. Production **NOT AUTHORIZED**. Next queued: Smart Profiling completion (not started).
