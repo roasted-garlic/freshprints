@@ -1,5 +1,13 @@
 # Backend and AI Pipeline
 
+## Customer temporary Print Request + Show quota override (ADR-FP-159 — DEV 2026-09-02)
+
+| Callable | Purpose |
+|----------|---------|
+| `updateCustomerPrintRequestQuotaOverride` | Owner-only set/clear `customers/{id}.printRequestQuotaOverride`; activity events; omit undefined metadata |
+
+Portal consumers resolve effective limits via `loadEffectivePrintRequestLimitsForCustomer`: add catalog, upload attach, duplicate, qty update, assisted proof add, `queuePortalPrintRequestToShow`. Staff / Show Move / DNP bypass unchanged. Firestore Rules: override client-immutable. Corrective DEV redeploy of owner callable for Internal Save (`expiresAtMs` omit when unset). Production **not authorized**.
+
 ## Interactive artwork enhance — WS-TOGGLE (DEV — 2026-08-31)
 
 | Callable | Purpose |

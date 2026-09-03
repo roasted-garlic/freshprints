@@ -1,5 +1,21 @@
 # Recent Completed Work
 
+## 2026-09-02 - Customer-specific temporary PR + Show quota override — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `customer-specific-temporary-print-request-and-show-quota-override` — **DONE** |
+| Signoff | **approved** |
+| Owner QA | **PASS** (A–Q incl. linked UX + Internal Save fix) |
+| Final DEV | **APPROVED** |
+| Delivered | `customers/{id}.printRequestQuotaOverride`; effective limits; owner callable; Rules; six Portal consumers; Studio linked Quota Override + badge; ADR-FP-159 |
+| DEV Firebase | Rules + 7 Functions + corrective `updateCustomerPrintRequestQuotaOverride` on `fresh-prints-dev` |
+| Production | **NOT AUTHORIZED** (future: Shared/Studio/Portal/Functions/Rules; promote corrective callable) |
+| Smart Profiling | **PARKED** |
+| Batch allocation | **DEFERRED** |
+| Working tree | Dirty/uncommitted until Owner authorizes commit/push |
+| Signoff | `docs/workflow/reviews/2026-09-02-customer-specific-temporary-print-request-and-show-quota-override-signoff.md` |
+
 ## 2026-09-02 - Cross-app lightbox Previous/Next — CLOSED (DEV)
 
 | Item | Status |

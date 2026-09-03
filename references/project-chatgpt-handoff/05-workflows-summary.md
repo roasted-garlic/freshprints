@@ -38,6 +38,9 @@ On the request page: set quantity + print size (**runtime default** from Studio 
 Current Request drawer: **Review & Add to Show** (non-empty working request also shows **Needs a show**)
     ↓
 When ready → review Current Request → **Add Request to Whatnot Show** → pick allocatable upcoming show
+  (Portal PR + Show quantity caps use **effective** limits: optional owner temporary
+  `customers/{id}.printRequestQuotaOverride` ?? current global `settings/printRequestLimits` — ADR-FP-159;
+  expired overrides fall back by clock; parking/Editing Continuable unchanged)
     ↓
 Request moves toward Queued / Printing / Printed (derived from show allocations + timer)
 

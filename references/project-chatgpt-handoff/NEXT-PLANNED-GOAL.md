@@ -8,19 +8,15 @@
 
 **None** — FreshForge **IDLE**
 
-Last completed: `cross-app-lightbox-previous-next-navigation` (signoff 2026-09-02, **approved**, Owner QA **PASS**, DEV only).
+Last completed: `customer-specific-temporary-print-request-and-show-quota-override` (signoff 2026-09-02, **approved**, Owner QA **PASS**, DEV only).
 
 ---
 
-## Next queued goal (not started)
+## Next queued goal
 
-**`customer-specific-temporary-print-request-and-show-quota-override`**
+**None auto-queued.** Owner chooses the next managed goal explicitly.
 
-| Item | Value |
-|------|-------|
-| Status | **QUEUED** — do not auto-start |
-| Concept | Staff temporary per-customer Print Request quota and/or Show quota override without changing site-wide defaults |
-| Notes | Future Plan must audit authoritative quota settings + server-side enforcement before schema. Expiration, clear, Studio indication, audit trail, independent PR vs Show overrides TBD from repo audit. |
+Prior closed (for context): `cross-app-lightbox-previous-next-navigation`, parking, Editing tab, etc.
 
 ---
 
@@ -30,11 +26,11 @@ Last completed: `cross-app-lightbox-previous-next-navigation` (signoff 2026-09-0
 |------|--------|
 | Smart Profiling completion | **PARKED** |
 | `show-queue-batch-allocation-performance` | **DEFERRED** |
-| Production promotion (lightbox inventory) | **NOT AUTHORIZED** — Studio + Portal + shared YES; Firebase NO |
-| Production promotion (parking goal inventory) | **NOT AUTHORIZED** (prior goal) |
+| Production promotion (quota-override inventory) | **NOT AUTHORIZED** — Shared + Studio + Portal + Functions + Rules YES; Storage/indexes/migration NO; must promote **corrective** `updateCustomerPrintRequestQuotaOverride` |
+| Production promotion (lightbox / parking / prior goals) | **NOT AUTHORIZED** (separate inventories) |
 
 ---
 
-## Production inventory reminder (lightbox — later promote)
+## Production inventory reminder (quota override — later promote)
 
-Studio source/build/release · Portal source/App Hosting · Shared `previewLightboxNavigation` · Functions **NO** · Firestore Rules **NO** · Storage Rules **NO** · Indexes **NO** · Migration **NO** · Firebase **NO**
+Shared effective-limit utils/types · Studio Users Quota Override UX · Portal limit hydration · Functions (7 allowlist including post-corrective owner callable) · Firestore Rules · Storage **NO** · Indexes **NO** · Migration **NO**

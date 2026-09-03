@@ -2,6 +2,14 @@
 
 > Full log: `docs/project/DECISIONS.md` — newest ADRs first.
 
+### ADR-FP-159: Customer-specific temporary Print Request + Show quota override (DEV signed off 2026-09-02)
+
+- Optional `customers/{id}.printRequestQuotaOverride`; effective = active override ?? current global; clock expiry (no scheduler)
+- Owner-only callable; Rules immutable; Portal consumers use effective limits; staff bypass preserved
+- Studio Edit Customer → Quota Override: **linked** Temporary quota default; **Set independently** for unequal dimensions; Users active badge
+- Audit: `account.quota_override_set` / `_cleared`; Cap A stays retired
+- Production promotion deferred (include post-corrective callable)
+
 ## Roadmap sequencing (2026-08-31 — not an ADR)
 
 Print Request **sizing + interactive upscale** (`print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale`) **DONE on DEV** (signoff 2026-08-31). **Smart Profiling** remains the next major candidate — **not started**. Production promotion separately gated.

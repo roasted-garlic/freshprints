@@ -7,7 +7,7 @@
 | `users` | Team + customer Auth profiles (`role`, `isActive`) — client cannot write roles |
 | `designs` | Staff catalog metadata |
 | `categories` / catalog tags | Organization |
-| `customers` | Customer business records (Portal linked) |
+| `customers` | Customer business records (Portal linked); optional `printRequestQuotaOverride` (ADR-FP-159) |
 | `printRequests` | Named request lists (working / queued derived) |
 | `printRequestItems` | Line items: catalog design **or** customer upload |
 | `customerUploads` | Customer artwork for requests (ADR-FP-073) |
@@ -28,6 +28,13 @@
 | `archived` | Only with archived toggle |
 
 **Never** write `queued` / `printed` on designs. Production lives on request items / allocations.
+
+## Print Request quotas (ADR-FP-159 — DEV)
+
+- Global: `settings/printRequestLimits` (`maxQuantityPerPrintRequest`, `maxQuantityPerShowPerCustomer`; defaults 20/20).
+- Optional customer override: `customers/{id}.printRequestQuotaOverride` — independently nullable PR/Show ints, optional `expiresAt`, `updatedAt`/`updatedBy`.
+- Effective = active override dimension ?? **current** global; no scheduler; Clear removes map.
+- Owner-only callable mutate; clients cannot direct-write override.
 
 ## Print Request
 

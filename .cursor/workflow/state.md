@@ -4,41 +4,42 @@
 |-------|-------|
 | Status | **IDLE** |
 | DONE | **yes** |
-| Current Mode | managed-phase |
-| Current Goal | _(none — last closed `cross-app-lightbox-previous-next-navigation`)_ |
-| Current Phase | **IDLE** |
-| Plan Status | **complete** (closed goal) |
-| Review Status | **approved_with_changes** (closed) |
+| Current Mode | idle |
+| Current Goal | *(none)* |
+| Last closed goal | `customer-specific-temporary-print-request-and-show-quota-override` |
+| Current Phase | **signoff** (complete) |
+| Plan Status | **complete** |
+| Review Status | **approved_with_changes** |
 | Implementation Status | **complete** |
-| Implementation Review | **approved_with_notes** |
+| Implementation Review | **approved_with_notes** (+ linked-ux **approved_with_notes**) |
 | Test Status | **passed_with_notes** |
+| Owner QA | **PASS** |
 | Signoff Status | **approved** |
-| Owner QA | **PASS** (A–H) |
 | Final DEV status | **APPROVED** |
 | Production | **NOT AUTHORIZED** |
 | Smart Profiling | **PARKED** |
 | Batch allocation | **DEFERRED** (`show-queue-batch-allocation-performance`) |
-| Next queued goal | `customer-specific-temporary-print-request-and-show-quota-override` (**not started**) |
-| Baseline HEAD (goal start) | `1e6005b7f6f2ddcdfce696a9e9832f246b8ed2de` |
-| Signoff | `docs/workflow/reviews/2026-09-02-cross-app-lightbox-previous-next-navigation-signoff.md` |
+| Baseline HEAD (goal start) | `c050a0bfd02f53098e6c36697381a7657b661c5a` |
+| Signoff | `docs/workflow/reviews/2026-09-02-customer-specific-temporary-print-request-and-show-quota-override-signoff.md` |
+| DEV deploy record | `docs/workflow/reviews/2026-09-02-customer-specific-temporary-print-request-and-show-quota-override-dev-deploy-record.md` |
 | Last updated | 2026-09-02 |
-| Last Completed Step | Commit + push closeout to `development` |
+| Last Completed Step | Signoff **approved**; goal closed; FreshForge IDLE |
 
 ## Human checkpoint
 
 **Human Checkpoint Required: no**
 
-**Allowed Actions:** idle; await Owner to start next queued goal or authorize production promote
+**Allowed Actions:** idle; answer questions; await Owner commit/push or next goal authorization
 
-**Forbidden Actions:** auto-start next goal; production deploy; Firebase deploy; force push
+**Forbidden Actions:** production deploy; commit/push without Owner request; Smart Profiling; batch-allocation; auto-start new managed goal
 
 ## Next Required Step
 
-Idle — Owner starts `customer-specific-temporary-print-request-and-show-quota-override` when ready (do not auto-start).
+None — FreshForge **IDLE**. Owner may authorize commit/push or choose next goal. Production promotion deferred.
 
 ## Decision Log
 
-- 2026-09-02: Goal closed DEV; Owner QA **PASS**; signoff **approved**; commit+push to `development`.
-- Production inventory: Studio YES · Portal YES · Shared YES · Functions/Rules/Storage/indexes/migration/Firebase **NO**.
-- Next queued (not started): `customer-specific-temporary-print-request-and-show-quota-override`.
-- Smart Profiling **PARKED**; batch-allocation **DEFERRED**.
+- 2026-09-02: Goal implemented, DEV Rules + 7 Functions deployed; linked UX + Internal Save corrective; Owner QA **PASS**; Signoff **approved**; DONE; IDLE.
+- 2026-09-02: Owner authorized commit + non-force push to `development`; application `9d0f23e0` + docs signoff commit; production still **NOT AUTHORIZED**.
+- Production **NOT AUTHORIZED**; Smart Profiling **PARKED**; batch-allocation **DEFERRED**.
+- Working tree expected clean after push except intentional `?? .worktrees/`.

@@ -1,5 +1,7 @@
 # Roadmap and Phases
 
+> 2026-09-02: **Customer-specific temporary Print Request + Show quota override — CLOSED (DEV)** — Goal `customer-specific-temporary-print-request-and-show-quota-override` **DONE**. Signoff **approved**; Owner QA **PASS**. ADR-FP-159. DEV Rules + Functions (+ corrective callable) on `fresh-prints-dev`. Production **NOT AUTHORIZED**. FreshForge **IDLE**. Smart Profiling **PARKED**; batch-allocation **DEFERRED**.
+>
 > 2026-09-02: **Portal Editing parks current draft — CLOSED (DEV)** — Goal `portal-editing-request-parks-current-draft` **DONE**. Signoff **approved_with_notes**; corrective + polish Owner QA **PASS**. Production **NOT AUTHORIZED**. FreshForge **IDLE**. Smart Profiling **PARKED**.
 >
 > 2026-08-31: **Print Request sizing + interactive upscale — CLOSED (DEV)** — Goal `print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale` **DONE**. Signoff **approved**; owner DEV QA **PASS**. Configurable PR default (10″ fallback); 15″ automated upscale; WS-TOGGLE interactive enhance Studio+Portal; production export parity. DEV Firebase deployed (`fresh-prints-dev`). Production **NOT AUTHORIZED**. FreshForge **IDLE**. Smart Profiling **NOT STARTED**.
