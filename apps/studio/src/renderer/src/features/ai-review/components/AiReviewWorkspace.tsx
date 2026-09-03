@@ -43,6 +43,7 @@ interface AiReviewWorkspaceProps {
   canStopAutoQueue: boolean;
   canProcessSelected: boolean;
   canArchive: boolean;
+  canEnterMultiSelect: boolean;
   canPermanentlyDelete: boolean;
   canReopen: boolean;
   canReject: boolean;
@@ -60,6 +61,7 @@ interface AiReviewWorkspaceProps {
   isAutoQueueRunning: boolean;
   isQueueBusy: boolean;
   isOptimisticEnqueue?: boolean;
+  isMultiSelectMode: boolean;
   isRerunningAi: boolean;
   ignoredSuggestedTagNames: string[];
   onApprove: () => void;
@@ -75,6 +77,7 @@ interface AiReviewWorkspaceProps {
   onPrevious: () => void;
   onProcessSelectedDesign: () => void;
   onArchive: () => void;
+  onEnterMultiSelect: () => void;
   onPermanentlyDelete: () => void;
   onReject: () => void;
   onReopen: () => void;
@@ -115,6 +118,7 @@ export function AiReviewWorkspace({
   canStopAutoQueue,
   canProcessSelected,
   canArchive,
+  canEnterMultiSelect,
   canPermanentlyDelete,
   canReopen,
   canReject,
@@ -132,6 +136,7 @@ export function AiReviewWorkspace({
   isAutoQueueRunning,
   isQueueBusy,
   isOptimisticEnqueue = false,
+  isMultiSelectMode,
   isRerunningAi,
   ignoredSuggestedTagNames,
   onApprove,
@@ -143,6 +148,7 @@ export function AiReviewWorkspace({
   onPrevious,
   onProcessSelectedDesign,
   onArchive,
+  onEnterMultiSelect,
   onPermanentlyDelete,
   onReject,
   onReopen,
@@ -284,21 +290,37 @@ export function AiReviewWorkspace({
     });
   const isSavingPreviewControls = isSavingArtworkBackground || isSavingHalftone;
 
+  const overflowItems = [
+    ...(!isMultiSelectMode && canEnterMultiSelect
+      ? [
+          {
+            id: "multiple-select",
+            label: "Multiple select",
+            danger: false,
+            onSelect: onEnterMultiSelect,
+          },
+        ]
+      : []),
+    ...(canPermanentlyDelete
+      ? [
+          {
+            id: "permanent-delete",
+            label: "Delete",
+            onSelect: onPermanentlyDelete,
+          },
+        ]
+      : []),
+  ];
+
   return (
     <div className="ai-review-workspace" ref={workspaceTopRef}>
       <section aria-label="Design preview" className="ai-review-workspace-preview">
-        {canPermanentlyDelete ? (
+        {overflowItems.length > 0 ? (
           <div className="ai-review-preview-overflow-menu">
             <DangerOverflowMenu
               ariaLabel="Design actions"
               disabled={isActionLoading}
-              items={[
-                {
-                  id: "permanent-delete",
-                  label: "Delete",
-                  onSelect: onPermanentlyDelete,
-                },
-              ]}
+              items={overflowItems}
             />
           </div>
         ) : null}

@@ -12,6 +12,10 @@ import { DesignThumbnailPanel } from "../../designs/components/DesignThumbnailPa
 import { getAiReviewEmptyState } from "../constants/aiReviewInboxConstants";
 import type { AiReviewInboxTab } from "../types/aiReviewInbox.types";
 import { getProcessingTabBadgeLabel, getQueueDesignLabel, resolveAiProcessingOutputStatus } from "../utils/aiProcessingOutput";
+import {
+  isAiReviewQueueCardHighlighted,
+  resolveAiReviewQueueCardClick,
+} from "../utils/aiReviewQueueMultiSelect";
 
 interface AiReviewQueueListProps {
   activeTab: AiReviewInboxTab;
@@ -23,6 +27,10 @@ interface AiReviewQueueListProps {
   listRef: RefObject<HTMLDivElement | null>;
   onLoadMore: () => void;
   onSelectDesign: (designId: string) => void;
+  onToggleMultiSelectDesign?: (designId: string) => void;
+  onRangeMultiSelectDesign?: (designId: string) => void;
+  isMultiSelectMode?: boolean;
+  multiSelectedIds?: readonly string[];
   searchActive?: boolean;
   /** Effective mat hex for the selected design (same resolve path as main preview). */
   selectedArtworkBackgroundHex?: string;
@@ -50,6 +58,10 @@ export function AiReviewQueueList({
   listRef,
   onLoadMore,
   onSelectDesign,
+  onToggleMultiSelectDesign,
+  onRangeMultiSelectDesign,
+  isMultiSelectMode = false,
+  multiSelectedIds = [],
   searchActive = false,
   selectedArtworkBackgroundHex,
   selectedDesignId,
@@ -94,10 +106,19 @@ export function AiReviewQueueList({
 
   return (
     <div className="ai-review-queue-list" ref={listRef as RefObject<HTMLDivElement>}>
-      <ul className="ai-review-queue-items" role="listbox">
+      <ul
+        aria-multiselectable={isMultiSelectMode || undefined}
+        className="ai-review-queue-items"
+        role="listbox"
+      >
         {designs.map((design) => {
           const aiReview = resolveDesignAiReviewDisplay(design);
-          const isSelected = design.id === selectedDesignId;
+          const isSelected = isAiReviewQueueCardHighlighted({
+            designId: design.id,
+            isMultiSelectMode,
+            multiSelectedIds,
+            selectedDesignId,
+          });
           const queueLabel = getQueueDesignLabel(design);
           const hasFailedAi = resolveAiProcessingOutputStatus(design) === "failed";
           const hasIncompleteDerivatives =
@@ -113,7 +134,22 @@ export function AiReviewQueueList({
                 ]
                   .filter(Boolean)
                   .join(" ")}
-                onClick={() => onSelectDesign(design.id)}
+                onClick={(event) => {
+                  const clickKind = resolveAiReviewQueueCardClick({
+                    isMultiSelectMode,
+                    shiftKey: event.shiftKey,
+                  });
+                  if (clickKind === "range-multi" && onRangeMultiSelectDesign) {
+                    event.preventDefault();
+                    onRangeMultiSelectDesign(design.id);
+                    return;
+                  }
+                  if (clickKind === "toggle-multi" && onToggleMultiSelectDesign) {
+                    onToggleMultiSelectDesign(design.id);
+                    return;
+                  }
+                  onSelectDesign(design.id);
+                }}
                 role="option"
                 type="button"
               >
@@ -121,7 +157,7 @@ export function AiReviewQueueList({
                   <DesignThumbnailPanel
                     alt=""
                     artworkBackgroundHex={
-                      isSelected
+                      design.id === selectedDesignId
                         ? selectedArtworkBackgroundHex ?? design.artworkBackgroundHex
                         : design.artworkBackgroundHex
                     }

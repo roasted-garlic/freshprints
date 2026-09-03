@@ -1,5 +1,19 @@
 # Recent Completed Work
 
+## 2026-09-03 - AI Processing queue multi-select — CLOSED (DEV / local Studio)
+
+| Item | Status |
+|------|--------|
+| Goal | `ai-processing-queue-multi-select` — **DONE** |
+| Signoff | **approved** |
+| Owner QA | **PASS** |
+| Delivered | ⋯ Multiple select; click highlight; Shift+click inclusive range on loaded rows; Cancel; owner Delete on the set via existing callable; wider scrolling truncated title dialog |
+| Firebase | **NONE** |
+| Production | **NOT AUTHORIZED** |
+| Smart Profiling | **PARKED** |
+| Batch allocation | **DEFERRED** |
+| Signoff | `docs/workflow/reviews/2026-09-03-ai-processing-queue-multi-select-signoff.md` |
+
 ## 2026-09-03 - Smart Profile subject canonicalization + derivative suppression — CLOSED (DEV)
 
 | Item | Status |

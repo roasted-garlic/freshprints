@@ -15,6 +15,9 @@ describe("Option B permanent delete UI surfaces", () => {
     assert.match(workspace, /onPermanentlyDelete/);
     assert.match(workspace, /DangerOverflowMenu/);
     assert.match(workspace, /label:\s*"Delete"/);
+    assert.match(workspace, /label:\s*"Multiple select"/);
+    assert.match(workspace, /danger:\s*false/);
+    assert.match(workspace, /onEnterMultiSelect/);
     assert.match(workspace, /ai-review-preview-overflow-menu/);
     assert.doesNotMatch(workspace, />\s*Permanently delete\s*</);
 
@@ -28,6 +31,30 @@ describe("Option B permanent delete UI surfaces", () => {
     assert.match(page, /filters\.tab === "processing"/);
     assert.match(page, /filters\.tab === "needs_review"/);
     assert.match(page, /filters\.tab === "rejected"/);
+    assert.match(page, /ai-review-multi-select-bar/);
+    assert.match(page, /handleEnterMultiSelect/);
+    assert.match(page, /handleCancelMultiSelect/);
+    assert.match(page, /designsToHardDelete/);
+    assert.match(page, /resolveAiReviewHardDeleteTargets/);
+    assert.match(page, /designIds: designsToHardDelete\.map/);
+    assert.match(page, /handleRangeMultiSelectDesign/);
+    assert.match(page, /applyAiReviewMultiSelectRange/);
+  });
+
+  it("lists every selected title in a wider scrolling delete dialog", () => {
+    const dialog = read(
+      "apps/studio/src/renderer/src/features/designs/components/DeleteEligibleUnapprovedDesignDialog.tsx",
+    );
+    const modalCss = read("apps/studio/src/renderer/src/styles/components/modals.css");
+    assert.match(dialog, /delete-eligible-unapproved-design-modal/);
+    assert.match(dialog, /delete-eligible-unapproved-design-list-title/);
+    assert.match(dialog, /title=\{label\}/);
+    assert.doesNotMatch(dialog, /slice\(0,\s*12\)/);
+    assert.match(modalCss, /delete-eligible-unapproved-design-modal\.modal-panel/);
+    assert.match(modalCss, /width:\s*min\(100%,\s*44rem\)/);
+    assert.match(modalCss, /max-height:\s*16rem/);
+    assert.match(modalCss, /overflow-y:\s*auto/);
+    assert.match(modalCss, /text-overflow:\s*ellipsis/);
   });
 
   it("does not expose Design Library ready-browse hard-delete selection chrome", () => {

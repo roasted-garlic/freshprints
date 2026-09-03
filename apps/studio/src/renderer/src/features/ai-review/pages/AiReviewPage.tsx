@@ -40,6 +40,15 @@ import { useAiReviewMainPanelHeight } from "../hooks/useAiReviewMainPanelHeight"
 import type { AiReviewInboxFilters, AiReviewInboxTab } from "../types/aiReviewInbox.types";
 import { resolveAiReviewInboxSortOrder } from "../utils/aiReviewInboxSort";
 import { shouldShowNeedsReviewSearchNoResults } from "../utils/aiReviewNeedsReviewSearch";
+import {
+  applyAiReviewMultiSelectRange,
+  collectSuccessfulHardDeleteIds,
+  emptyAiReviewMultiSelectState,
+  orderHardDeleteReconcileIds,
+  resolveAiReviewHardDeleteTargets,
+  seedAiReviewMultiSelectIds,
+  toggleAiReviewMultiSelectId,
+} from "../utils/aiReviewQueueMultiSelect";
 
 function AiReviewPageContent() {
   const { user } = useAuth();
@@ -63,7 +72,10 @@ function AiReviewPageContent() {
     error: hardDeleteError,
     isSubmitting: isHardDeleting,
   } = useDeleteEligibleUnapprovedDesign();
-  const [designToHardDelete, setDesignToHardDelete] = useState<Design | null>(null);
+  const [designsToHardDelete, setDesignsToHardDelete] = useState<Design[]>([]);
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+  const [multiSelectedIds, setMultiSelectedIds] = useState<string[]>([]);
+  const [multiSelectAnchorId, setMultiSelectAnchorId] = useState<string | null>(null);
 
   // Read-only, active-only filter dropdown data — reuses the same zero-Firestore-read generated
   // client-safe taxonomy snapshot the Design Library already consumes (Wave C amendment,
@@ -152,55 +164,161 @@ function AiReviewPageContent() {
 
   useShellHeaderConfig(shellHeaderConfig);
 
-  const canPermanentlyDeleteSelected = Boolean(
-    canDeleteEligibleUnapprovedDesigns &&
-      (filters.tab === "processing" ||
-        filters.tab === "needs_review" ||
-        filters.tab === "rejected") &&
-      inbox.selectedDesign &&
-      isDeleteEligibleUnapprovedDesignStatus(inbox.selectedDesign.status),
+  const hardDeleteTabAllowed =
+    filters.tab === "processing" ||
+    filters.tab === "needs_review" ||
+    filters.tab === "rejected";
+
+  const designsPendingHardDelete = useMemo(
+    () =>
+      resolveAiReviewHardDeleteTargets({
+        designs: inbox.designs,
+        isMultiSelectMode,
+        multiSelectedIds,
+        selectedDesign: inbox.selectedDesign,
+      }),
+    [inbox.designs, inbox.selectedDesign, isMultiSelectMode, multiSelectedIds],
   );
 
+  const canPermanentlyDeleteSelected = Boolean(
+    canDeleteEligibleUnapprovedDesigns &&
+      hardDeleteTabAllowed &&
+      (isMultiSelectMode
+        ? designsPendingHardDelete.length > 0
+        : inbox.selectedDesign &&
+          isDeleteEligibleUnapprovedDesignStatus(inbox.selectedDesign.status)),
+  );
+
+  const handleCancelMultiSelect = useCallback(() => {
+    const cleared = emptyAiReviewMultiSelectState();
+    setIsMultiSelectMode(cleared.isMultiSelectMode);
+    setMultiSelectedIds(cleared.multiSelectedIds);
+    setMultiSelectAnchorId(null);
+  }, []);
+
+  const handleEnterMultiSelect = useCallback(() => {
+    const seededIds = seedAiReviewMultiSelectIds(inbox.selectedDesign?.id ?? null);
+    setIsMultiSelectMode(true);
+    setMultiSelectedIds(seededIds);
+    setMultiSelectAnchorId(seededIds[0] ?? null);
+  }, [inbox.selectedDesign?.id]);
+
+  const handleToggleMultiSelectDesign = useCallback((designId: string) => {
+    setMultiSelectedIds((current) => toggleAiReviewMultiSelectId(current, designId));
+    setMultiSelectAnchorId(designId);
+  }, []);
+
+  const handleRangeMultiSelectDesign = useCallback(
+    (designId: string) => {
+      const next = applyAiReviewMultiSelectRange({
+        anchorId: multiSelectAnchorId ?? multiSelectedIds[0] ?? inbox.selectedDesign?.id ?? null,
+        listIds: inbox.designs.map((design) => design.id),
+        selectedIds: multiSelectedIds,
+        targetId: designId,
+      });
+      setMultiSelectedIds(next.selectedIds);
+      setMultiSelectAnchorId(next.anchorId);
+    },
+    [inbox.designs, inbox.selectedDesign?.id, multiSelectAnchorId, multiSelectedIds],
+  );
+
+  useEffect(() => {
+    const visibleIds = new Set(inbox.designs.map((design) => design.id));
+    setMultiSelectedIds((current) => {
+      const next = current.filter((id) => visibleIds.has(id));
+      if (next.length === current.length && next.every((id, index) => id === current[index])) {
+        return current;
+      }
+      return next;
+    });
+  }, [inbox.designs]);
+
+  useEffect(() => {
+    const visibleIds = new Set(inbox.designs.map((design) => design.id));
+    setMultiSelectAnchorId((current) => {
+      if (current && visibleIds.has(current)) {
+        return current;
+      }
+      return null;
+    });
+  }, [inbox.designs]);
+
+  useEffect(() => {
+    if (!isMultiSelectMode) {
+      return;
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") {
+        return;
+      }
+      if (designsToHardDelete.length > 0) {
+        return;
+      }
+      event.preventDefault();
+      handleCancelMultiSelect();
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [designsToHardDelete.length, handleCancelMultiSelect, isMultiSelectMode]);
+
   const handleOpenPermanentDelete = useCallback(() => {
-    if (!inbox.selectedDesign || !canPermanentlyDeleteSelected) {
+    if (!canPermanentlyDeleteSelected || designsPendingHardDelete.length === 0) {
       return;
     }
     clearHardDeleteError();
-    setDesignToHardDelete(inbox.selectedDesign);
-  }, [canPermanentlyDeleteSelected, clearHardDeleteError, inbox.selectedDesign]);
+    setDesignsToHardDelete(designsPendingHardDelete);
+  }, [canPermanentlyDeleteSelected, clearHardDeleteError, designsPendingHardDelete]);
 
   const handleConfirmPermanentDelete = useCallback(
     async (input: { confirmationPhrase: string }) => {
-      if (!designToHardDelete) {
+      if (designsToHardDelete.length === 0) {
         return;
       }
 
       try {
         const result = await hardDeleteDesigns({
-          designIds: [designToHardDelete.id],
+          designIds: designsToHardDelete.map((design) => design.id),
           confirmationPhrase: input.confirmationPhrase,
         });
 
-        setDesignToHardDelete(null);
+        const successfulIds = collectSuccessfulHardDeleteIds(result.results);
+        const reconcileIds = orderHardDeleteReconcileIds({
+          deletedIds: successfulIds,
+          listIds: inbox.designs.map((design) => design.id),
+        });
 
-        if (result.failedCount > 0 && result.deletedCount === 0) {
+        if (successfulIds.length === 0) {
           return;
         }
 
-        // Local remove + advance immediately. Do not await reloadDesigns — that clears the list
-        // into a possible stale 15s page-cache hit and makes deletes appear delayed.
-        inbox.reconcileAfterHardDeleteSuccess(designToHardDelete.id);
+        setDesignsToHardDelete([]);
+
+        for (const designId of reconcileIds) {
+          inbox.reconcileAfterHardDeleteSuccess(designId);
+        }
+
+        if (isMultiSelectMode) {
+          handleCancelMultiSelect();
+        }
       } catch {
         // Error surfaced via hardDeleteError on the dialog.
       }
     },
-    [designToHardDelete, hardDeleteDesigns, inbox],
+    [
+      designsToHardDelete,
+      handleCancelMultiSelect,
+      hardDeleteDesigns,
+      inbox,
+      isMultiSelectMode,
+    ],
   );
 
   useAiReviewKeyboardShortcuts({
     canApprove: inbox.canApprove,
     canReject: inbox.canReject,
-    isEnabled: Boolean(inbox.selectedDesign),
+    isEnabled: Boolean(inbox.selectedDesign) && !isMultiSelectMode,
     isInputFocused,
     onApprove: () => void inbox.approveSelected(),
     onNext: () => inbox.selectRelative(1),
@@ -209,6 +327,9 @@ function AiReviewPageContent() {
   });
 
   function handleTabChange(tab: AiReviewInboxTab) {
+    if (tab !== filters.tab) {
+      handleCancelMultiSelect();
+    }
     setSearchParams(buildAiReviewInboxSearchParams({ tab, sortOrder: filters.sortOrder }), {
       replace: true,
     });
@@ -307,6 +428,31 @@ function AiReviewPageContent() {
             <AiReviewInboxSortToggle onToggle={handleSortToggle} sortOrder={resolvedSortOrder} />
           </div>
 
+          {isMultiSelectMode ? (
+            <div className="ai-review-multi-select-bar">
+              <p className="ai-review-multi-select-bar-copy">
+                {multiSelectedIds.length === 1
+                  ? "1 selected"
+                  : `${multiSelectedIds.length} selected`}
+              </p>
+              <div className="ai-review-multi-select-bar-actions">
+                {canPermanentlyDeleteSelected ? (
+                  <Button
+                    onClick={handleOpenPermanentDelete}
+                    size="sm"
+                    type="button"
+                    variant="danger"
+                  >
+                    Delete
+                  </Button>
+                ) : null}
+                <Button onClick={handleCancelMultiSelect} size="sm" type="button" variant="secondary">
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
           {filters.tab === "needs_review" && inbox.searchHydration ? (
             <div className="ai-review-search-status">
               <span>
@@ -339,6 +485,10 @@ function AiReviewPageContent() {
             listRef={inbox.queueListRef}
             onLoadMore={inbox.loadMoreDesigns}
             onSelectDesign={inbox.requestSelectDesign}
+            onToggleMultiSelectDesign={handleToggleMultiSelectDesign}
+            onRangeMultiSelectDesign={handleRangeMultiSelectDesign}
+            isMultiSelectMode={isMultiSelectMode}
+            multiSelectedIds={multiSelectedIds}
             searchActive={Boolean(inboxFilters.searchQuery?.trim())}
             selectedArtworkBackgroundHex={selectedArtworkBackgroundHex}
             selectedDesignId={inbox.selectedDesign?.id ?? null}
@@ -360,6 +510,7 @@ function AiReviewPageContent() {
             canStopAutoQueue={inbox.processingQueue.canStopAutoQueue}
             canProcessSelected={inbox.processingQueue.canProcessSelected}
             canArchive={inbox.canArchive}
+            canEnterMultiSelect={inbox.designs.length > 0}
             canPermanentlyDelete={canPermanentlyDeleteSelected}
             canReopen={inbox.canReopen}
             canReject={inbox.canReject}
@@ -381,6 +532,7 @@ function AiReviewPageContent() {
               Boolean(inbox.selectedDesign) &&
               inbox.processingQueue.enqueueingDesignId === inbox.selectedDesign?.id
             }
+            isMultiSelectMode={isMultiSelectMode}
             ignoredSuggestedTagNames={inbox.ignoredSuggestedTagNames}
             onApprove={() => void inbox.approveSelected()}
             onApproveSuggestedTag={(sourceName, input, addToDraft) =>
@@ -394,6 +546,7 @@ function AiReviewPageContent() {
             onPrevious={() => inbox.selectRelative(-1)}
             onProcessSelectedDesign={() => void inbox.processingQueue.processSelectedDesign()}
             onArchive={() => void inbox.archiveSelected()}
+            onEnterMultiSelect={handleEnterMultiSelect}
             onPermanentlyDelete={handleOpenPermanentDelete}
             onReject={() => void inbox.rejectSelected()}
             onReopen={() => void inbox.reopenSelected()}
@@ -439,13 +592,13 @@ function AiReviewPageContent() {
       />
 
       <DeleteEligibleUnapprovedDesignDialog
-        designs={designToHardDelete ? [designToHardDelete] : []}
+        designs={designsToHardDelete}
         error={hardDeleteError}
-        isOpen={designToHardDelete !== null}
+        isOpen={designsToHardDelete.length > 0}
         isSubmitting={isHardDeleting}
         onCancel={() => {
           clearHardDeleteError();
-          setDesignToHardDelete(null);
+          setDesignsToHardDelete([]);
         }}
         onConfirm={handleConfirmPermanentDelete}
       />

@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Copy, X } from "lucide-react";
 
-import { DELETE_ELIGIBLE_UNAPPROVED_DESIGN_CONFIRMATION_PHRASE } from "@fresh-prints/shared/types/admin/deleteEligibleUnapprovedDesign.types";
+import {
+  DELETE_ELIGIBLE_UNAPPROVED_DESIGN_CONFIRMATION_PHRASE,
+  DELETE_ELIGIBLE_UNAPPROVED_DESIGN_MAX_IDS,
+} from "@fresh-prints/shared/types/admin/deleteEligibleUnapprovedDesign.types";
 import { isDeleteEligibleUnapprovedDesignStatus } from "@fresh-prints/shared/utils/deleteEligibleUnapprovedDesignValidation";
 
 import { Button } from "../../../shared/components/Button";
@@ -10,6 +13,20 @@ import { warmDeleteEligibleUnapprovedDesignCallable } from "../services/deleteEl
 import type { Design } from "../types/design.types";
 
 const COPY_FEEDBACK_MS = 2000;
+
+function getDeleteDialogDesignLabel(design: Design): string {
+  const suggestedTitle = design.aiSuggestions?.title?.trim();
+  if (suggestedTitle) {
+    return suggestedTitle;
+  }
+
+  const title = design.title.trim();
+  if (title) {
+    return title;
+  }
+
+  return design.id;
+}
 
 async function copyText(text: string): Promise<void> {
   if (navigator.clipboard?.writeText) {
@@ -90,12 +107,20 @@ export function DeleteEligibleUnapprovedDesignDialog({
 
   const phraseMatches =
     confirmationPhrase.trim() === DELETE_ELIGIBLE_UNAPPROVED_DESIGN_CONFIRMATION_PHRASE;
+  const tooManySelected = designs.length > DELETE_ELIGIBLE_UNAPPROVED_DESIGN_MAX_IDS;
   const canSubmit =
-    designs.length > 0 && ineligible.length === 0 && phraseMatches && !isSubmitting;
+    designs.length > 0 &&
+    ineligible.length === 0 &&
+    !tooManySelected &&
+    phraseMatches &&
+    !isSubmitting;
 
   return (
     <div aria-modal="true" className="modal-overlay modal-overlay-blur" role="dialog">
-      <Modal aria-labelledby="delete-unapproved-design-title">
+      <Modal
+        aria-labelledby="delete-unapproved-design-title"
+        className="delete-eligible-unapproved-design-modal"
+      >
         <ModalHeader>
           <div>
             <p className="eyebrow">Owner destructive action</p>
@@ -125,14 +150,25 @@ export function DeleteEligibleUnapprovedDesignDialog({
             </p>
           ) : null}
 
-          <ul>
-            {designs.slice(0, 12).map((design) => (
-              <li key={design.id}>
-                <strong>{design.title || design.id}</strong>{" "}
-                <code>{design.status}</code>
-              </li>
-            ))}
-            {designs.length > 12 ? <li>…and {designs.length - 12} more</li> : null}
+          {tooManySelected ? (
+            <p className="auth-message auth-message-error" role="alert">
+              You can permanently delete at most {DELETE_ELIGIBLE_UNAPPROVED_DESIGN_MAX_IDS}{" "}
+              designs at a time. Deselect some cards and try again.
+            </p>
+          ) : null}
+
+          <ul className="delete-eligible-unapproved-design-list">
+            {designs.map((design) => {
+              const label = getDeleteDialogDesignLabel(design);
+              return (
+                <li className="delete-eligible-unapproved-design-list-item" key={design.id}>
+                  <span className="delete-eligible-unapproved-design-list-title" title={label}>
+                    {label}
+                  </span>
+                  <code>{design.status}</code>
+                </li>
+              );
+            })}
           </ul>
 
           <label className="form-field">

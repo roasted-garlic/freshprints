@@ -11,9 +11,9 @@
 | Status | **IDLE** |
 | DONE | **yes** (last goal closed) |
 | Current managed goal | **none** |
-| Last completed goal | `smart-profile-subject-canonicalization-and-derivative-suppression` |
-| Signoff | **approved_with_notes** — `docs/workflow/reviews/2026-09-03-smart-profile-subject-canonicalization-and-derivative-suppression-signoff.md` |
-| Owner canary | **PASS** |
+| Last completed goal | `ai-processing-queue-multi-select` |
+| Signoff | **approved** — `docs/workflow/reviews/2026-09-03-ai-processing-queue-multi-select-signoff.md` |
+| Owner QA | **PASS** |
 | Production | **NOT AUTHORIZED** |
 | Smart Profiling | **PARKED** (next selected goal — not started) |
 | Batch allocation | **DEFERRED** |
@@ -35,4 +35,4 @@
 
 ## Notes
 
-Subject canonicalization closed on DEV. No full catalog backfill. Production untouched. **Next:** owner-start Smart Profiling completion when ready.
+AI Processing queue multi-select closed (Studio UI). Owner PASS. No new Functions. Production untouched. **Next:** owner-start Smart Profiling completion when ready.

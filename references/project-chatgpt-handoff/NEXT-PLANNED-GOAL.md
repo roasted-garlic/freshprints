@@ -8,7 +8,7 @@
 
 **None** — FreshForge **IDLE**
 
-Last completed: `smart-profile-subject-canonicalization-and-derivative-suppression`. Signoff **approved_with_notes**. Owner canary **PASS**. DEV **catalog-enrich-v31** / **smart-profile-normalizer-v5**.
+Last completed: `ai-processing-queue-multi-select`. Signoff **approved**. Owner QA **PASS**.
 
 ---
 
@@ -33,4 +33,4 @@ Do **not** auto-start. Owner selects start.
 ## Notes
 
 - Live DEV Smart Catalog: v31/v5; Autonomous **OFF**.
-- Full Ready / AI Review backfill and tag retirement belong to the later Smart Profiling completion goal.
+- Last Studio closeout: AI Processing multi-select + bulk Delete + Shift+click range (no Firebase deploy).
