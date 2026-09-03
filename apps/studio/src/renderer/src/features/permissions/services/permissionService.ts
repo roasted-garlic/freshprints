@@ -173,6 +173,11 @@ export const permissionService = {
     return isOwner(user);
   },
 
+  /** Owner-only temporary per-customer Portal print/show quota overrides. */
+  canManageCustomerPrintRequestQuotaOverrides(user: UserLike) {
+    return isOwner(user);
+  },
+
   canManageStandardPrintSizes(user: UserLike) {
     return isOwner(user);
   },

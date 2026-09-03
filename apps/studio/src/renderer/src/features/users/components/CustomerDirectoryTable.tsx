@@ -14,6 +14,7 @@ import {
   getCustomerSignupSourceBadgeVariant,
 } from "@fresh-prints/shared/utils/customerSignupSource";
 import { formatCustomerUsernameForDisplay } from "@fresh-prints/shared/utils/formatCustomerUsernameForDisplay";
+import { hasActivePrintRequestQuotaOverride } from "@fresh-prints/shared/utils/printRequestQuotaOverride";
 import { isReversibleDisabledCustomer } from "../utils/customerDirectoryVisibility";
 
 import type { CustomerDirectoryVisibilityTab } from "../utils/customerDirectoryVisibility";
@@ -181,6 +182,11 @@ export function CustomerDirectoryTable({
                       {isDeleted ? (
                         <Badge className="customer-status-badge-deleted" variant="warning">
                           Closed
+                        </Badge>
+                      ) : null}
+                      {hasActivePrintRequestQuotaOverride(customer.printRequestQuotaOverride) ? (
+                        <Badge className="customer-quota-override-badge" variant="info">
+                          Quota Override
                         </Badge>
                       ) : null}
                       {isMerged && survivorCustomer ? (

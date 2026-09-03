@@ -19,7 +19,7 @@ import {
   unauthenticated,
 } from "./lib/errors";
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
-import { loadPrintRequestLimitSettings } from "./lib/loadPrintRequestLimitSettings";
+import { loadEffectivePrintRequestLimitsForCustomer } from "./lib/loadEffectivePrintRequestLimits";
 import { loadStandardPrintSizesSettings } from "./lib/loadStandardPrintSizesSettings";
 import { requirePortalCustomer } from "./lib/portalCustomer";
 import { assertWorkingRequestAllowsPrintAdds } from "./lib/printRequestWorkingRequestMax";
@@ -137,14 +137,14 @@ export const confirmCustomerUploadsAndAttachToRequest = onCall(
       const attachedItemIds: string[] = [];
       const reusedItemIds: string[] = [];
       let printRequestId = "";
-      const [limitSettings, standardPrintSizesSettings] = await Promise.all([
-        loadPrintRequestLimitSettings(),
+      const [effectiveLimits, standardPrintSizesSettings] = await Promise.all([
+        loadEffectivePrintRequestLimitsForCustomer(portalCustomer.customerId),
         loadStandardPrintSizesSettings(),
       ]);
       const printRequestDefaultWidthInches = resolvePrintRequestDefaultWidthInches(
         standardPrintSizesSettings,
       );
-      const maxPerRequest = limitSettings.maxQuantityPerPrintRequest;
+      const maxPerRequest = effectiveLimits.effectiveMaxQuantityPerPrintRequest;
 
       await adminDb.runTransaction(async (tx) => {
         const resolved = await resolveOrCreateWorkingPrintRequestInTransaction(tx, {

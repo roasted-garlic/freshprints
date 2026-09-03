@@ -39,6 +39,7 @@ interface CustomerDocumentData extends DocumentData {
   assistedBrowserPushOptInUpdatedAt?: unknown;
   createdAt?: unknown;
   updatedAt?: unknown;
+  printRequestQuotaOverride?: unknown;
 }
 
 function mapCustomer(customerId: string, data: CustomerDocumentData): Customer {
@@ -80,6 +81,10 @@ function mapCustomer(customerId: string, data: CustomerDocumentData): Customer {
       typeof data.assistedBrowserPushOptIn === 'boolean' ? data.assistedBrowserPushOptIn : undefined,
     assistedBrowserPushOptInUpdatedAt: mapFirestoreTimestamp(data.assistedBrowserPushOptInUpdatedAt),
     usernameUpdatedAt: mapFirestoreTimestamp(data.usernameUpdatedAt),
+    printRequestQuotaOverride:
+      data.printRequestQuotaOverride && typeof data.printRequestQuotaOverride === 'object'
+        ? (data.printRequestQuotaOverride as Customer['printRequestQuotaOverride'])
+        : undefined,
     ...identityRest,
     deletedAt: mapFirestoreTimestamp(deletedAtRaw),
     disabledAt: mapFirestoreTimestamp(disabledAtRaw),

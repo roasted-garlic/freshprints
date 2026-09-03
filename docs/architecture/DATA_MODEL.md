@@ -2130,6 +2130,14 @@ request limit falls back to customer-show when absent).
 Signed-in users may read; writes use `updatePrintRequestLimitSettings` (mirrors request limit into legacy Cap A).
 Bounds: integers 1–10000.
 
+Optional **customer-specific temporary override** on `customers/{customerId}.printRequestQuotaOverride`
+(owner-only Admin callable `updateCustomerPrintRequestQuotaOverride`; ADR-FP-159). Independently nullable
+`maxQuantityPerPrintRequest` / `maxQuantityPerShowPerCustomer`, optional `expiresAt`, plus `updatedAt` /
+`updatedBy`. Effective limits = active override dimension ?? current global
+(`resolveEffectivePrintRequestLimits`). Expired overrides are inactive without a scheduler. Studio
+editing may **link** both dimensions in the UI while still storing independent fields. Does not
+mutate existing requests/allocations. Cap A / `printRequestDesignDailyLimits` remain retired.
+
 ### `settings/portalHelp`
 
 ```ts

@@ -349,6 +349,12 @@ export function UserManagementPage() {
           setChangeUsernameCustomer(customer);
         }}
         onClose={() => setEditingCustomer(null)}
+        onCustomerPatched={(customer) => {
+          patchCustomer(customer.id, {
+            printRequestQuotaOverride: customer.printRequestQuotaOverride,
+          });
+          setEditingCustomer(customer);
+        }}
         onUpdated={async (message) => {
           await reloadCustomers();
           setPageSuccessMessage(message);

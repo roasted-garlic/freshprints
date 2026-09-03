@@ -17,6 +17,8 @@ const CUSTOMER_IDENTITY_ACTIVITY_EVENT_TYPES = new Set<CustomerActivityEventType
   "account.merge_started",
   "account.merge_completed",
   "account.merge_failed",
+  "account.quota_override_set",
+  "account.quota_override_cleared",
 ]);
 
 export function isCustomerIdentityActivityEventType(
@@ -137,6 +139,23 @@ export function buildCustomerIdentityActivityAuditEntry(input: {
     case "account.merge_failed":
       label = "Account merge failed";
       detail = buildMergeDetail(metadata);
+      break;
+    case "account.quota_override_set":
+      label = "Quota override set";
+      detail = [
+        metadata?.maxQuantityPerPrintRequest != null
+          ? `PR ${String(metadata.maxQuantityPerPrintRequest)}`
+          : null,
+        metadata?.maxQuantityPerShowPerCustomer != null
+          ? `Show ${String(metadata.maxQuantityPerShowPerCustomer)}`
+          : null,
+        metadata?.hasExpiration === true ? "Expires set" : "No expiration",
+      ]
+        .filter(Boolean)
+        .join(" · ");
+      break;
+    case "account.quota_override_cleared":
+      label = "Quota override cleared";
       break;
     default:
       break;

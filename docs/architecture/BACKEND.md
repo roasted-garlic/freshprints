@@ -183,12 +183,16 @@ Request room (`L`) is the customer cap (request-room copy only; no midnight rese
 Designs still enforces **images/day** only (footer: resets at midnight CST); upload starts and ZIP
 day counters are not charged (Studio Settings fields remain configurable). ZIP byte max is **2 GB**
 for both Upload Designs and Donate.
-`settings/printRequestLimits` holds the sole Portal limit `L` (`maxQuantityPerShowPerCustomer`:
-max Current Request prints = max per customer per show; default 20; ADR-FP-102). Legacy Cap A field
-`dailyDesignsAddedToRequestsLimit` is mirrored = `L` on save for one-release rollback and is **not**
+`settings/printRequestLimits` holds dual Portal limits (ADR-FP-102 amended 2026-07-31):
+`maxQuantityPerPrintRequest` (working request max) and `maxQuantityPerShowPerCustomer` (per-customer
+per-show cap); code default **20** each; optional `linkPrintRequestAndCustomerShowLimits`. Legacy Cap A field
+`dailyDesignsAddedToRequestsLimit` is mirrored from the request limit on save for one-release rollback and is **not**
 enforced. Cap A counters in `printRequestDesignDailyLimits` are no longer written; optional wipe
-target remains on Test Data Reset. Print-request / queue rejects may include structured `details.code`:
-`WORKING_REQUEST_PRINT_LIMIT` (request over `L`), `SHOW_CUSTOMER_LIMIT` / `SHOW_CAPACITY` /
+target remains on Test Data Reset. Optional per-customer temporary overrides live on
+`customers/{id}.printRequestQuotaOverride` (owner callable `updateCustomerPrintRequestQuotaOverride`);
+Portal callables resolve **effective** limits via `resolveEffectivePrintRequestLimits` (override ?? global;
+clock-aware expiry; no scheduler). Print-request / queue rejects may include structured `details.code`:
+`WORKING_REQUEST_PRINT_LIMIT` (request over effective PR limit), `SHOW_CUSTOMER_LIMIT` / `SHOW_CAPACITY` /
 `SHOW_ALLOCATION_BLOCKED` (`failed-precondition` on queue). Stale queue clients sending `selections`
 are rejected with soft-reload copy. Upload quota Settings remain ADR-FP-095 (enforcement narrowed as above).
 `settings/standardPrintSizes` holds owner-configured Standard Print Size preset target widths
@@ -307,7 +311,8 @@ Authoritative constants: `packages/shared/src/constants/import/batchImportLimits
 | `purgeExpiredAssistedCreationProofsScheduled` | Scheduled (daily) | Same purge logic as the callable (ADR-FP-093) |
 | `updateEmailProviderSettings` | Callable | Studio owner: select invitation and proof-notice providers (`resend` \| `brevo`) |
 | `updateCustomerUploadQuotaSettings` | Callable | Studio owner: set America/Chicago daily print-request vs donation upload caps (`settings/customerUploadQuotas`; ADR-FP-095) |
-| `updatePrintRequestLimitSettings` | Callable | Studio owner: set sole limit `L` (`maxQuantityPerShowPerCustomer`); mirrors into legacy Cap A field for one-release rollback (ADR-FP-102) |
+| `updatePrintRequestLimitSettings` | Callable | Studio owner: set dual Portal limits on `settings/printRequestLimits`; mirrors request limit into legacy Cap A field (ADR-FP-102) |
+| `updateCustomerPrintRequestQuotaOverride` | Callable | Studio **owner-only**: set/clear temporary per-customer PR and/or Show limit overrides on `customers/{id}.printRequestQuotaOverride` (optional `expiresAt`; activity events; ADR-FP-159) |
 | `onEmailDeliveryJobCreated` | Firestore create | Deliver a proof-ready or catalog-share notice from the durable outbox |
 | `enqueueAiEnrichment` | Callable | Run imported design through direct AI processing |
 | `resetAiEnrichmentForProcessing` | Callable | Return Needs Review or Rejected design to Processing for a staff-started re-run |

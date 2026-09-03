@@ -21,7 +21,7 @@ import {
   unauthenticated,
 } from "./lib/errors";
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
-import { loadPrintRequestLimitSettings } from "./lib/loadPrintRequestLimitSettings";
+import { loadEffectivePrintRequestLimitsForCustomer } from "./lib/loadEffectivePrintRequestLimits";
 import { loadStandardPrintSizesSettings } from "./lib/loadStandardPrintSizesSettings";
 import { requirePortalCustomer } from "./lib/portalCustomer";
 import {
@@ -157,8 +157,8 @@ export const addPortalCatalogDesignToPrintRequest = onCall(
         throw invalidArgument("Quantity must be at least 1.");
       }
 
-      const [limitSettings, standardPrintSizesSettings, designSnap] = await Promise.all([
-        loadPrintRequestLimitSettings(),
+      const [effectiveLimits, standardPrintSizesSettings, designSnap] = await Promise.all([
+        loadEffectivePrintRequestLimitsForCustomer(portalCustomer.customerId),
         loadStandardPrintSizesSettings(),
         adminDb.collection("designs").doc(designId).get(),
       ]);
@@ -175,7 +175,7 @@ export const addPortalCatalogDesignToPrintRequest = onCall(
       }
 
       const customerUid = request.auth.uid;
-      const maxPerRequest = limitSettings.maxQuantityPerPrintRequest;
+      const maxPerRequest = effectiveLimits.effectiveMaxQuantityPerPrintRequest;
       let kind: "created" | "incremented" = "created";
       let itemId = "";
       let quantity = quantityDelta;

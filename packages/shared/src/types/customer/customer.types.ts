@@ -8,6 +8,7 @@ import type {
   CustomerUsernameHistoryEntry,
 } from "./customerIdentity.types";
 import type { CustomerSignupSource } from "./customer.enums";
+import type { PrintRequestQuotaOverride } from "./printRequestQuotaOverride.types";
 
 export interface Customer {
   id: string;
@@ -17,6 +18,11 @@ export interface Customer {
   email?: string;
   notes?: string;
   isGuest: boolean;
+  /**
+   * Optional temporary Portal print-request / customer-show quota override.
+   * Written only by owner Admin callable; clients must not mutate.
+   */
+  printRequestQuotaOverride?: PrintRequestQuotaOverride;
   /** How the customer record was created: staff directory (studio) or Portal self-registration (portal). */
   signupSource?: CustomerSignupSource;
   totalPrintRequests: number;

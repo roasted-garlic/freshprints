@@ -12,7 +12,7 @@ import {
   permissionDenied,
   unauthenticated,
 } from "./lib/errors";
-import { loadPrintRequestLimitSettings } from "./lib/loadPrintRequestLimitSettings";
+import { loadEffectivePrintRequestLimitsForCustomer } from "./lib/loadEffectivePrintRequestLimits";
 import { requirePortalCustomer } from "./lib/portalCustomer";
 import { assertPortalActiveEditableRequestData } from "./lib/portalContinuableParking";
 
@@ -65,8 +65,10 @@ export const updatePortalPrintRequestItemQuantity = onCall(
       }
 
       const customerUid = request.auth.uid;
-      const settings = await loadPrintRequestLimitSettings();
-      const maxPerRequest = settings.maxQuantityPerPrintRequest;
+      const effectiveLimits = await loadEffectivePrintRequestLimitsForCustomer(
+        portalCustomer.customerId,
+      );
+      const maxPerRequest = effectiveLimits.effectiveMaxQuantityPerPrintRequest;
       let quantity = nextQuantity;
 
       await adminDb.runTransaction(async (tx) => {

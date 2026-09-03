@@ -94,6 +94,7 @@ export { resetDesignSmartProfileDimension } from "./designs/resetDesignSmartProf
 export { updateEmailProviderSettings } from "./updateEmailProviderSettings";
 export { updateCustomerUploadQuotaSettings } from "./updateCustomerUploadQuotaSettings";
 export { updatePrintRequestLimitSettings } from "./updatePrintRequestLimitSettings";
+export { updateCustomerPrintRequestQuotaOverride } from "./updateCustomerPrintRequestQuotaOverride";
 export { updateStandardPrintSizesSettings } from "./updateStandardPrintSizesSettings";
 export { enhancePrintRequestArtwork } from "./enhancePrintRequestArtwork";
 export { setPrintRequestItemArtworkEnhanceMode } from "./setPrintRequestItemArtworkEnhanceMode";

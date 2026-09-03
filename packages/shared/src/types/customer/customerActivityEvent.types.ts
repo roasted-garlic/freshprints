@@ -12,7 +12,9 @@ export type CustomerActivityEventType =
   | "account.merge_previewed"
   | "account.merge_started"
   | "account.merge_completed"
-  | "account.merge_failed";
+  | "account.merge_failed"
+  | "account.quota_override_set"
+  | "account.quota_override_cleared";
 
 export type CustomerActivityEventDerivation = "live" | "reconstructed";
 

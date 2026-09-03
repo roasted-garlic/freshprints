@@ -13,7 +13,10 @@ import type { Customer } from "@fresh-prints/shared/types/customer/customer.type
 import { formatCustomerUsernameForDisplay } from "@fresh-prints/shared/utils/formatCustomerUsernameForDisplay";
 import { customerIdentityManagementService } from "../services/customerIdentityManagementService";
 import { isReversibleDisabledCustomer } from "../utils/customerDirectoryVisibility";
+import { CustomerQuotaOverrideSection } from "./CustomerQuotaOverrideSection";
 import { UserManagementModal } from "./UserManagementModal";
+
+type EditCustomerTab = "details" | "quota";
 
 interface EditCustomerModalProps {
   customer: Customer | null;
@@ -22,6 +25,7 @@ interface EditCustomerModalProps {
   canReenableCustomer?: boolean;
   onChangeUsername?: (customer: Customer) => void;
   onClose: () => void;
+  onCustomerPatched?: (customer: Customer) => void;
   onUpdated: (message: string) => Promise<void> | void;
 }
 
@@ -32,9 +36,11 @@ export function EditCustomerModal({
   canReenableCustomer = false,
   onChangeUsername,
   onClose,
+  onCustomerPatched,
   onUpdated,
 }: EditCustomerModalProps) {
   const { clearResult, error, isSubmitting, updateCustomerRecord } = useUpdateCustomerRecord();
+  const [activeTab, setActiveTab] = useState<EditCustomerTab>("details");
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [notes, setNotes] = useState("");
@@ -47,6 +53,7 @@ export function EditCustomerModal({
     }
 
     clearResult();
+    setActiveTab("details");
     setDisplayName(customer.displayName);
     setEmail(customer.email ?? "");
     setNotes(customer.notes ?? "");
@@ -75,7 +82,7 @@ export function EditCustomerModal({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!customer) {
+    if (!customer || activeTab !== "details") {
       return;
     }
 
@@ -133,9 +140,11 @@ export function EditCustomerModal({
             <p className="eyebrow">Customers</p>
             <h2 id="edit-customer-title">Edit customer</h2>
             <p className="user-management-modal-lead-condensed">
-              {hasPortalAccess
-                ? "Updates sync to Portal. Email changes update Firebase Authentication login."
-                : "Update customer details for Print Requests."}
+              {activeTab === "quota"
+                ? "Temporary Portal print limits for this customer only."
+                : hasPortalAccess
+                  ? "Updates sync to Portal. Email changes update Firebase Authentication login."
+                  : "Update customer details for Print Requests."}
             </p>
           </div>
 
@@ -150,102 +159,154 @@ export function EditCustomerModal({
         </ModalHeader>
 
         <ModalBody className="user-management-modal-body-condensed">
-          {isReversiblyDisabled ? (
-            <div className="customer-identity-status-banner customer-identity-status-banner-disabled" role="status">
-              <div>
-                <strong>Disabled</strong>
-                <p>This account cannot sign in or create new activity until it is re-enabled.</p>
-              </div>
-              {canReenableCustomer ? (
-                <Button
-                  disabled={isReenabling || isSubmitting}
-                  onClick={() => {
-                    void handleReenable();
-                  }}
-                  type="button"
-                  variant="success"
-                >
-                  {isReenabling ? "Re-enabling…" : "Re-enable account"}
-                </Button>
-              ) : null}
-            </div>
-          ) : null}
-
-          {isDeleted ? (
-            <div className="customer-identity-status-banner customer-identity-status-banner-deleted" role="status">
-              <strong>Closed (tombstone)</strong>
-              <p>Permanent account closure — not reversible through Re-enable.</p>
-            </div>
-          ) : null}
-
-          <section aria-labelledby="edit-customer-identity-title" className="customer-identity-panel">
-            <div className="customer-identity-panel-header">
-              <div>
-                <h3 id="edit-customer-identity-title">Username</h3>
-                <p className="customer-identity-username-value">{usernameLabel}</p>
-              </div>
-              {canChangeUsername && onChangeUsername ? (
-                <Button
-                  disabled={isReversiblyDisabled || isDeleted}
-                  onClick={() => onChangeUsername(customer)}
-                  type="button"
-                  variant="secondary"
-                >
-                  Change username
-                </Button>
-              ) : null}
-            </div>
-          </section>
-
-          <div className="user-management-form-grid">
-            <TextInput
-              label="Customer name"
-              name="displayName"
-              onChange={(event) => setDisplayName(event.target.value)}
-              required
-              value={displayName}
-            />
-
-            <TextInput
-              autoComplete="off"
-              label="Email"
-              name="email"
-              onChange={(event) => setEmail(event.target.value)}
-              required={hasPortalAccess}
-              type="email"
-              value={email}
-            />
+          <div className="user-directory-tab-bar" role="tablist" aria-label="Edit customer sections">
+            <button
+              aria-selected={activeTab === "details"}
+              className={`user-directory-tab-button${activeTab === "details" ? " is-active" : ""}`}
+              id="edit-customer-tab-details"
+              onClick={() => setActiveTab("details")}
+              role="tab"
+              type="button"
+            >
+              Details
+            </button>
+            <button
+              aria-selected={activeTab === "quota"}
+              className={`user-directory-tab-button${activeTab === "quota" ? " is-active" : ""}`}
+              id="edit-customer-tab-quota"
+              onClick={() => setActiveTab("quota")}
+              role="tab"
+              type="button"
+            >
+              Quota Override
+            </button>
           </div>
 
-          <AutoResizeTextarea
-            label="Customer notes"
-            name="notes"
-            onChange={(event) => setNotes(event.target.value)}
-            placeholder="Optional notes for staff reference"
-            value={notes}
-          />
+          {activeTab === "details" ? (
+            <div
+              aria-labelledby="edit-customer-tab-details"
+              className="edit-customer-tab-panel"
+              id="edit-customer-panel-details"
+              role="tabpanel"
+            >
+              {isReversiblyDisabled ? (
+                <div className="customer-identity-status-banner customer-identity-status-banner-disabled" role="status">
+                  <div>
+                    <strong>Disabled</strong>
+                    <p>This account cannot sign in or create new activity until it is re-enabled.</p>
+                  </div>
+                  {canReenableCustomer ? (
+                    <Button
+                      disabled={isReenabling || isSubmitting}
+                      onClick={() => {
+                        void handleReenable();
+                      }}
+                      type="button"
+                      variant="success"
+                    >
+                      {isReenabling ? "Re-enabling…" : "Re-enable account"}
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null}
 
-          {reenableError ? (
-            <p className="auth-message auth-message-error" role="alert">
-              {reenableError}
-            </p>
-          ) : null}
+              {isDeleted ? (
+                <div className="customer-identity-status-banner customer-identity-status-banner-deleted" role="status">
+                  <strong>Closed (tombstone)</strong>
+                  <p>Permanent account closure — not reversible through Re-enable.</p>
+                </div>
+              ) : null}
 
-          {error ? (
-            <p className="auth-message auth-message-error" role="alert">
-              {error}
-            </p>
-          ) : null}
+              <section aria-labelledby="edit-customer-identity-title" className="customer-identity-panel">
+                <div className="customer-identity-panel-header">
+                  <div>
+                    <h3 id="edit-customer-identity-title">Username</h3>
+                    <p className="customer-identity-username-value">{usernameLabel}</p>
+                  </div>
+                  {canChangeUsername && onChangeUsername ? (
+                    <Button
+                      disabled={isReversiblyDisabled || isDeleted}
+                      onClick={() => onChangeUsername(customer)}
+                      type="button"
+                      variant="secondary"
+                    >
+                      Change username
+                    </Button>
+                  ) : null}
+                </div>
+              </section>
+
+              <div className="user-management-form-grid">
+                <TextInput
+                  label="Customer name"
+                  name="displayName"
+                  onChange={(event) => setDisplayName(event.target.value)}
+                  required
+                  value={displayName}
+                />
+
+                <TextInput
+                  autoComplete="off"
+                  label="Email"
+                  name="email"
+                  onChange={(event) => setEmail(event.target.value)}
+                  required={hasPortalAccess}
+                  type="email"
+                  value={email}
+                />
+              </div>
+
+              <AutoResizeTextarea
+                label="Customer notes"
+                name="notes"
+                onChange={(event) => setNotes(event.target.value)}
+                placeholder="Optional notes for staff reference"
+                value={notes}
+              />
+
+              {reenableError ? (
+                <p className="auth-message auth-message-error" role="alert">
+                  {reenableError}
+                </p>
+              ) : null}
+
+              {error ? (
+                <p className="auth-message auth-message-error" role="alert">
+                  {error}
+                </p>
+              ) : null}
+            </div>
+          ) : (
+            <div
+              aria-labelledby="edit-customer-tab-quota"
+              className="edit-customer-tab-panel"
+              id="edit-customer-panel-quota"
+              role="tabpanel"
+            >
+              <CustomerQuotaOverrideSection
+                customer={customer}
+                onCustomerPatched={onCustomerPatched}
+              />
+            </div>
+          )}
         </ModalBody>
 
-        <ModalFooter className="user-management-modal-footer-condensed">
-          <Button disabled={isSubmitting || isReenabling} onClick={onClose} type="button" variant="secondary">
-            Cancel
-          </Button>
-          <Button disabled={isSubmitting || isReenabling || !hasChanges} type="submit">
-            {isSubmitting ? "Saving..." : "Save changes"}
-          </Button>
-        </ModalFooter>
+        {activeTab === "details" ? (
+          <ModalFooter className="user-management-modal-footer-condensed">
+            <Button disabled={isSubmitting || isReenabling} onClick={onClose} type="button" variant="secondary">
+              Cancel
+            </Button>
+            <Button disabled={isSubmitting || isReenabling || !hasChanges} type="submit">
+              {isSubmitting ? "Saving..." : "Save changes"}
+            </Button>
+          </ModalFooter>
+        ) : (
+          <ModalFooter className="user-management-modal-footer-condensed">
+            <Button onClick={onClose} type="button" variant="secondary">
+              Close
+            </Button>
+          </ModalFooter>
+        )}
       </form>
     </UserManagementModal>
   );

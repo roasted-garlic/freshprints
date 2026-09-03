@@ -79,7 +79,11 @@ function TeamUserRecentActivitySection({
   );
 }
 
-export function UserAuditTrailModal({ isOpen, onClose, subject }: UserAuditTrailModalProps) {
+export function UserAuditTrailModal({
+  isOpen,
+  onClose,
+  subject,
+}: UserAuditTrailModalProps) {
   const { user: caller } = useAuth();
   const isCustomer = subject?.kind === "customer";
   const customer = isCustomer ? subject.customer : null;

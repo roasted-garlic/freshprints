@@ -14,6 +14,11 @@ import {
 
 import { useAuth } from '../../auth/context/AuthContext';
 import { portalPrintRequestLimitService } from '../services/portalPrintRequestLimitService';
+import { resolveEffectivePrintRequestLimits } from '@fresh-prints/shared/utils/printRequestQuotaOverride';
+import {
+  DEFAULT_PRINT_REQUEST_LIMIT_SETTINGS,
+  type PrintRequestLimitSettings,
+} from '@fresh-prints/shared/constants/printRequest/printRequestLimitSettings.constants';
 
 export interface PortalWorkingRequestLimitHydration {
   /** True while the customer's print-request list is still loading. */
@@ -63,28 +68,39 @@ export function usePortalWorkingRequestLimitState(
   workingItems: PrintRequestItem[],
   hydration: PortalWorkingRequestLimitHydration,
 ): PortalWorkingRequestLimitState {
-  const { firebaseUser } = useAuth();
-  const [requestLimit, setRequestLimit] = useState<number | null>(null);
-  const [customerShowLimit, setCustomerShowLimit] = useState<number | null>(null);
+  const { firebaseUser, customer } = useAuth();
+  const [settings, setSettings] = useState<PrintRequestLimitSettings>(
+    DEFAULT_PRINT_REQUEST_LIMIT_SETTINGS,
+  );
   const [isLimitReady, setIsLimitReady] = useState(false);
 
   useEffect(() => {
     if (!firebaseUser) {
-      setRequestLimit(null);
-      setCustomerShowLimit(null);
+      setSettings(DEFAULT_PRINT_REQUEST_LIMIT_SETTINGS);
       setIsLimitReady(true);
       return;
     }
 
     setIsLimitReady(false);
-    const unsubscribe = portalPrintRequestLimitService.subscribe((limits) => {
-      setRequestLimit(limits.requestLimit);
-      setCustomerShowLimit(limits.customerShowLimit);
+    const unsubscribe = portalPrintRequestLimitService.subscribeSettings((next) => {
+      setSettings(next);
       setIsLimitReady(true);
     });
 
     return unsubscribe;
   }, [firebaseUser]);
+
+  const { requestLimit, customerShowLimit } = useMemo(() => {
+    const effective = resolveEffectivePrintRequestLimits({
+      settings,
+      override: customer?.printRequestQuotaOverride,
+      nowMs: Date.now(),
+    });
+    return {
+      requestLimit: effective.effectiveMaxQuantityPerPrintRequest,
+      customerShowLimit: effective.effectiveMaxQuantityPerShowPerCustomer,
+    };
+  }, [customer?.printRequestQuotaOverride, settings]);
 
   const workingPrintCount = useMemo(
     () => sumPrintRequestItemQuantities(workingItems),

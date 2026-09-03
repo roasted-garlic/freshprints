@@ -15,7 +15,7 @@ import {
   unauthenticated,
 } from "./lib/errors";
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
-import { loadPrintRequestLimitSettings } from "./lib/loadPrintRequestLimitSettings";
+import { loadEffectivePrintRequestLimitsForCustomer } from "./lib/loadEffectivePrintRequestLimits";
 import { requirePortalCustomer } from "./lib/portalCustomer";
 import {
   assertWorkingRequestAllowsPrintAdds,
@@ -95,8 +95,10 @@ export const duplicatePortalPrintRequestItem = onCall(
       let sourceType: "catalog_design" | "customer_upload" = "catalog_design";
       let designId: string | undefined;
       let customerUploadId: string | undefined;
-      const settings = await loadPrintRequestLimitSettings();
-      const maxPerRequest = settings.maxQuantityPerPrintRequest;
+      const effectiveLimits = await loadEffectivePrintRequestLimitsForCustomer(
+        portalCustomer.customerId,
+      );
+      const maxPerRequest = effectiveLimits.effectiveMaxQuantityPerPrintRequest;
 
       await adminDb.runTransaction(async (tx) => {
         const requestRef = adminDb.collection("printRequests").doc(printRequestId);

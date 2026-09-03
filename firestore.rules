@@ -1065,6 +1065,7 @@ service cloud.firestore {
           "mergeJobId",
           "mergedSourceCustomerIds",
           "identitySnapshotPropagation",
+          "printRequestQuotaOverride",
           "createdAt",
           "updatedAt"
         ])
@@ -1107,6 +1108,7 @@ service cloud.firestore {
         && isOptionalString(data, "mergeJobId")
         && (!("mergedSourceCustomerIds" in data) || data.mergedSourceCustomerIds is list)
         && (!("identitySnapshotPropagation" in data) || data.identitySnapshotPropagation is map)
+        && (!("printRequestQuotaOverride" in data) || data.printRequestQuotaOverride is map)
         && data.createdAt is timestamp
         && data.updatedAt is timestamp;
     }
@@ -1729,7 +1731,8 @@ service cloud.firestore {
       allow create: if isStaff()
         && customerRequiredFieldsValid(request.resource.data)
         && request.resource.data.id == customerId
-        && request.resource.data.signupSource == "studio";
+        && request.resource.data.signupSource == "studio"
+        && !("printRequestQuotaOverride" in request.resource.data);
 
       allow update: if isStaff()
         && customerRequiredFieldsValid(request.resource.data)
@@ -1739,6 +1742,7 @@ service cloud.firestore {
         && (!("isGuest" in resource.data) || request.resource.data.isGuest == resource.data.isGuest)
         && (!("signupSource" in resource.data) || request.resource.data.signupSource == resource.data.signupSource)
         && (!("createdAt" in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
+        && optionalFieldUnchanged("printRequestQuotaOverride")
         || (
           isCustomer()
           && resource.data.userId == request.auth.uid

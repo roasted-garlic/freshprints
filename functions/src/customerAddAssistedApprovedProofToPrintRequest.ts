@@ -48,7 +48,7 @@ import {
 } from "./lib/errors";
 import { buildCatalogIntakeConfirmationPatch } from "./lib/customerUploadCatalogConfirmation";
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
-import { loadPrintRequestLimitSettings } from "./lib/loadPrintRequestLimitSettings";
+import { loadEffectivePrintRequestLimitsForCustomer } from "./lib/loadEffectivePrintRequestLimits";
 import { loadStandardPrintSizesSettings } from "./lib/loadStandardPrintSizesSettings";
 import { requirePortalCustomer, type PortalCustomerContext } from "./lib/portalCustomer";
 import { assertWorkingRequestAllowsPrintAdds } from "./lib/printRequestWorkingRequestMax";
@@ -203,14 +203,14 @@ export const customerAddAssistedApprovedProofToPrintRequest = onCall(
       const portalCustomer = await requirePortalCustomer(request.auth.uid);
       const payload = validateRequest(request.data);
       const customerUid = request.auth.uid;
-      const [limitSettings, standardPrintSizesSettings] = await Promise.all([
-        loadPrintRequestLimitSettings(),
+      const [effectiveLimits, standardPrintSizesSettings] = await Promise.all([
+        loadEffectivePrintRequestLimitsForCustomer(portalCustomer.customerId),
         loadStandardPrintSizesSettings(),
       ]);
       const printRequestDefaultWidthInches = resolvePrintRequestDefaultWidthInches(
         standardPrintSizesSettings,
       );
-      const maxPerRequest = limitSettings.maxQuantityPerPrintRequest;
+      const maxPerRequest = effectiveLimits.effectiveMaxQuantityPerPrintRequest;
       const assistedRef = adminDb.collection(ASSISTED_CREATION_COLLECTION).doc(payload.requestId);
 
       const assistedSnap = await assistedRef.get();

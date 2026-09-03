@@ -2089,6 +2089,122 @@ button.customer-merged-into-link {
   margin: 0;
 }
 
+.customer-quota-override-section {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.customer-quota-override-intro {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.customer-quota-override-intro h3 {
+  font-size: var(--font-size-lg);
+  margin: 0;
+}
+
+.customer-quota-override-intro p {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.customer-quota-override-summary {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 720px) {
+  .customer-quota-override-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
+.customer-quota-override-summary-item {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+}
+
+.customer-quota-override-summary-label {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+}
+
+.customer-quota-override-summary-hint {
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-xs);
+}
+
+.customer-quota-override-status.is-active {
+  color: var(--color-text-primary);
+}
+
+.customer-quota-override-fields {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.customer-quota-override-field-block {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.customer-quota-override-mode-row {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.customer-quota-override-mode-hint,
+.customer-quota-override-applies-to,
+.customer-quota-override-dimension-hint {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.customer-quota-override-readonly {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.customer-quota-override-readonly p {
+  margin: 0;
+}
+
+.customer-quota-override-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+.customer-quota-override-readonly-note {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  margin: 0;
+}
+
+.customer-quota-override-badge {
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.edit-customer-tab-panel {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
 .data-table-compact td,
 .data-table-compact th {
   padding: var(--space-2) var(--space-3);

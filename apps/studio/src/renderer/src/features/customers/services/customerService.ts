@@ -48,6 +48,7 @@ interface CustomerDocumentData extends DocumentData {
   totalRequests?: unknown;
   totalApprovedRequests?: unknown;
   usernameUpdatedAt?: unknown;
+  printRequestQuotaOverride?: unknown;
   isDeleted?: unknown;
   deletedAt?: unknown;
   deletedBy?: unknown;
@@ -93,6 +94,10 @@ function mapCustomerData(customerId: string, data: CustomerDocumentData): Custom
     totalApprovedRequests:
       typeof data.totalApprovedRequests === "number" ? data.totalApprovedRequests : undefined,
     usernameUpdatedAt: resolveRequiredTimestamp(data.usernameUpdatedAt),
+    printRequestQuotaOverride:
+      data.printRequestQuotaOverride && typeof data.printRequestQuotaOverride === "object"
+        ? (data.printRequestQuotaOverride as Customer["printRequestQuotaOverride"])
+        : undefined,
     ...identityRest,
     deletedAt: resolveRequiredTimestamp(deletedAtRaw),
     disabledAt: resolveRequiredTimestamp(disabledAtRaw),

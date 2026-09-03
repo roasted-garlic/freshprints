@@ -14,6 +14,36 @@ test("print request limit settings are signed-in readable and server-written", a
   );
 });
 
+test("customer printRequestQuotaOverride is allowlisted and client-immutable", async () => {
+  const rules = await readFile(path.join(REPO_ROOT, "firestore.rules"), "utf8");
+  assert.match(
+    rules,
+    /function customerRequiredFieldsValid\(data\)[\s\S]*?"printRequestQuotaOverride"/,
+  );
+  assert.match(
+    rules,
+    /function customerRequiredFieldsValid\(data\)[\s\S]*?\(!\("printRequestQuotaOverride" in data\) \|\| data\.printRequestQuotaOverride is map\)/,
+  );
+  assert.match(
+    rules,
+    /match \/customers\/\{customerId\}[\s\S]*?allow update: if isStaff\(\)[\s\S]*?optionalFieldUnchanged\("printRequestQuotaOverride"\)/,
+  );
+  assert.match(
+    rules,
+    /match \/customers\/\{customerId\}[\s\S]*?allow create: if isStaff\(\)[\s\S]*?!\("printRequestQuotaOverride" in request\.resource\.data\)/,
+  );
+  const customersBlock = rules.match(/match \/customers\/\{customerId\}[\s\S]*?match \/customerUsernames/)?.[0];
+  assert.ok(customersBlock, "customers rules block expected");
+  assert.match(
+    customersBlock,
+    /isCustomer\(\)[\s\S]*?affectedKeys\(\)\s*\.hasOnly\(\[[\s\S]*?assistedProofEmailOptIn[\s\S]*?updatedAt[\s\S]*?\]\)/,
+  );
+  assert.doesNotMatch(
+    customersBlock,
+    /isCustomer\(\)[\s\S]*?affectedKeys\(\)\s*\.hasOnly\(\[[\s\S]*?printRequestQuotaOverride/,
+  );
+});
+
 test("customers cannot create printRequestItems (callable / Admin only)", async () => {
   const rules = await readFile(path.join(REPO_ROOT, "firestore.rules"), "utf8");
   // Customer create must be denied; staff create may still be allowed.

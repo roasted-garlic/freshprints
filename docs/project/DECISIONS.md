@@ -4,6 +4,37 @@
 
 ---
 
+### ADR-FP-159: Customer-specific temporary Print Request + Show quota override
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-02 |
+| Status | **accepted — DEV signed off (2026-09-02)** |
+| Related | ADR-FP-102 (dual limits), ADR-FP-122 (multi-request accumulation), ADR-FP-071 (Continuable ownership) |
+| Plan | `docs/workflow/plans/2026-09-02-customer-specific-temporary-print-request-and-show-quota-override-plan.md` |
+| Review | `docs/workflow/reviews/2026-09-02-customer-specific-temporary-print-request-and-show-quota-override-review.md` |
+| Signoff | `docs/workflow/reviews/2026-09-02-customer-specific-temporary-print-request-and-show-quota-override-signoff.md` |
+
+**Context**
+
+Site-wide Portal limits live on `settings/printRequestLimits` (`maxQuantityPerPrintRequest`, `maxQuantityPerShowPerCustomer`). Owner needs temporary higher/different limits for one customer without changing globals.
+
+**Decision**
+
+1. Additive optional `customers/{id}.printRequestQuotaOverride` with independently nullable PR/Show integers (bounds 1–10000), optional `expiresAt`, audit fields.
+2. Shared `resolveEffectivePrintRequestLimits`: active override dimension ?? **current** global; expired = inactive without a scheduler (OPTION C).
+3. Owner-only mutation callable `updateCustomerPrintRequestQuotaOverride`; Rules allowlist + client-immutable; customer cannot write. Activity metadata must omit Firestore-illegal `undefined` values.
+4. All Portal PR/Show quota enforcement callables use effective limits. Studio staff / Show Move / DNP remain bypass.
+5. Studio management UI under **Users → Edit customer → Quota Override**. Default editing mode is **linked** (one Temporary quota writes both stored dimensions). **Set independently** preserves unequal/PR-only/Show-only. Compact Users-list **Quota Override** badge when clock-active. Linked Studio UX does **not** bind to global `linkPrintRequestAndCustomerShowLimits`.
+6. Audit via `customerActivityEvents`: `account.quota_override_set` / `account.quota_override_cleared`.
+7. Do not mutate existing requests/items/allocations on set/clear/expire; Cap A remains retired; physical show capacity unchanged.
+
+**Owner decisions (2026-09-02):** OD-1 OPTION C; OD-2 owner-only mutate; OD-3 Users badge yes; linked Studio UX default with independent stored dimensions preserved.
+
+**DEV status:** Rules + Functions allowlist (+ corrective callable redeploy) on `fresh-prints-dev`. Owner QA **PASS**. Production **NOT AUTHORIZED**.
+
+---
+
 ### ADR-FP-158: Studio Editing lifecycle tab via `queueTab` mirror (+ Internal Printed newest-first)
 
 | Field | Value |

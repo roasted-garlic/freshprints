@@ -35,15 +35,11 @@ import { buildShowAllocationSourceFields } from "../../packages/shared/src/utils
 import {
   formatWorkingRequestOverLimitForQueueMessage,
 } from "../../packages/shared/src/utils/printRequestWorkingRequestMax";
-import {
-  printRequestLimitPerCustomerPerShow,
-  printRequestLimitPerRequest,
-} from "../../packages/shared/src/constants/printRequest/printRequestLimitSettings.constants";
 import { adminDb } from "./lib/admin";
 import { failedPrecondition, internal, invalidArgument, unauthenticated } from "./lib/errors";
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
 import { loadPortalQueueCutoffHours } from "./lib/loadPortalQueueCutoffHours";
-import { loadPrintRequestLimitSettings } from "./lib/loadPrintRequestLimitSettings";
+import { loadEffectivePrintRequestLimitsForCustomer } from "./lib/loadEffectivePrintRequestLimits";
 import { requirePortalCustomer } from "./lib/portalCustomer";
 import { applyCustomerUploadStaffReviewTransitionInTransaction } from "./lib/customerUploadCatalogConfirmation";
 import { assertQueuePrintRequestItemSize } from "./lib/assertQueuePrintRequestItemSize";
@@ -251,9 +247,9 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
       throw failedPrecondition("This request is already fully queued to shows.");
     }
 
-    const settings = await loadPrintRequestLimitSettings();
-    const maxPerRequest = printRequestLimitPerRequest(settings);
-    const customerShowLimit = printRequestLimitPerCustomerPerShow(settings);
+    const effectiveLimits = await loadEffectivePrintRequestLimitsForCustomer(customer.customerId);
+    const maxPerRequest = effectiveLimits.effectiveMaxQuantityPerPrintRequest;
+    const customerShowLimit = effectiveLimits.effectiveMaxQuantityPerShowPerCustomer;
 
     if (totalRemaining > maxPerRequest) {
       validationStage = "working-request-over-limit";
