@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { onSnapshot, type QueryDocumentSnapshot, type Unsubscribe } from "firebase/firestore";
 
 import { CUSTOMER_UPLOAD_COLLECTIONS } from "@fresh-prints/shared/constants/customerUpload/customerUploadCollections.constants";
+import { ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK } from "@fresh-prints/shared/constants/design/artworkBackground.constants";
 import type { CustomerUploadPurpose } from "@fresh-prints/shared/types/customerUpload/customerUpload.enums";
 import { resolveCustomerUploadPurpose } from "@fresh-prints/shared/utils/customerUploadPurpose";
 import { resolveIntakeHalftoneStaffToggle } from "@fresh-prints/shared/utils/halftoneReviewState";
@@ -36,7 +37,9 @@ export type CustomerUploadIntakePendingAction =
   | "exclude"
   | "restore"
   | "retry"
-  | "delete";
+  | "delete"
+  | "halftone"
+  | "artwork_background";
 
 type EnrichmentCacheEntry = {
   customerDisplayName: string;
@@ -144,6 +147,11 @@ function buildShellRow(
       data.halftoneStaffDecision && typeof data.halftoneStaffDecision === "object"
         ? (data.halftoneStaffDecision as CustomerUploadIntakeRow["halftoneStaffDecision"])
         : null,
+    artworkBackgroundHex: asString(data.artworkBackgroundHex),
+    artworkBackgroundSource:
+      data.artworkBackgroundSource && typeof data.artworkBackgroundSource === "string"
+        ? (data.artworkBackgroundSource as CustomerUploadIntakeRow["artworkBackgroundSource"])
+        : null,
     assistedCreationRequestId: asString(data.assistedCreationRequestId),
     assistedProofId: asString(data.assistedProofId),
   };
@@ -174,6 +182,26 @@ export function useCustomerUploadIntake(options?: {
   const [pendingByUploadId, setPendingByUploadId] = useState<
     Partial<Record<string, CustomerUploadIntakePendingAction>>
   >({});
+  /** Durable metadata save failed — blocks promote until Retry succeeds. */
+  const [metadataFailedByUploadId, setMetadataFailedByUploadId] = useState<
+    Partial<Record<string, "halftone" | "artwork_background">>
+  >({});
+  /**
+   * In-flight / failed optimistic metadata. Applied on top of every snapshot remap so
+   * Firestore listener emissions cannot flash the control back to stale server values
+   * before persist completes (first-click latency root cause companion).
+   */
+  const metadataOverridesRef = useRef(
+    new Map<
+      string,
+      Partial<
+        Pick<
+          CustomerUploadIntakeRow,
+          "halftoneStaffDecision" | "artworkBackgroundHex" | "artworkBackgroundSource"
+        >
+      >
+    >(),
+  );
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const enrichmentCacheRef = useRef(new Map<string, EnrichmentCacheEntry>());
@@ -264,9 +292,11 @@ export function useCustomerUploadIntake(options?: {
         filter === "pending_staff_review"
           ? filterCatalogIntakeEligibleDocs(merged)
           : merged;
-      const shellRows = intakeDocs.map((docSnap) =>
-        buildShellRow(docSnap, enrichmentCacheRef.current.get(docSnap.id) ?? null),
-      );
+      const shellRows = intakeDocs.map((docSnap) => {
+        const base = buildShellRow(docSnap, enrichmentCacheRef.current.get(docSnap.id) ?? null);
+        const override = metadataOverridesRef.current.get(docSnap.id);
+        return override ? { ...base, ...override } : base;
+      });
 
       setRows(shellRows);
       setSelectedId((current) => {
@@ -401,6 +431,28 @@ export function useCustomerUploadIntake(options?: {
     [],
   );
 
+  const clearMetadataOverrideKeys = useCallback(
+    (
+      uploadId: string,
+      keys: Array<"halftoneStaffDecision" | "artworkBackgroundHex" | "artworkBackgroundSource">,
+    ) => {
+      const existing = metadataOverridesRef.current.get(uploadId);
+      if (!existing) {
+        return;
+      }
+      const next = { ...existing };
+      for (const key of keys) {
+        delete next[key];
+      }
+      if (Object.keys(next).length === 0) {
+        metadataOverridesRef.current.delete(uploadId);
+      } else {
+        metadataOverridesRef.current.set(uploadId, next);
+      }
+    },
+    [],
+  );
+
   const runMutation = useCallback(
     async (
       uploadId: string,
@@ -449,12 +501,25 @@ export function useCustomerUploadIntake(options?: {
     setSelectedId,
     isLoading: isInitialLoading,
     pendingByUploadId,
+    metadataFailedByUploadId,
     actionBusyId: null as string | null,
     error,
     notice,
     refresh,
     promote: async (uploadId: string) => {
-      await runMutation(
+      const currentPending = pendingByUploadId[uploadId];
+      if (currentPending === "halftone" || currentPending === "artwork_background") {
+        setError("Cannot send to AI Review while Halftone or Artwork Background changes are being saved.");
+        return false;
+      }
+      if (metadataFailedByUploadId[uploadId]) {
+        setError(
+          "Cannot send to AI Review until Halftone / Artwork Background save succeeds. Use Retry metadata save.",
+        );
+        return false;
+      }
+
+      return await runMutation(
         uploadId,
         "promote",
         async () => {
@@ -541,19 +606,216 @@ export function useCustomerUploadIntake(options?: {
       setNotice(message || "Unused customer upload deleted.");
       removeRowLocally(uploadId);
     },
-    setHalftoneDecision: async (uploadId: string, value: boolean) => {
+    setHalftoneDecision: async (
+      uploadId: string,
+      value: boolean,
+      options?: { defaultDarkBackgroundWhenAuto?: boolean },
+    ) => {
+      if (pendingByUploadId[uploadId]) {
+        return false;
+      }
+
       setError(null);
+      setPending(uploadId, "halftone");
+      setMetadataFailedByUploadId((current) => {
+        if (!current[uploadId]) {
+          return current;
+        }
+        const next = { ...current };
+        delete next[uploadId];
+        return next;
+      });
+
+      const optimisticDecision = {
+        value,
+        isExplicitOverride: true,
+        decidedBy: user?.id ?? null,
+      } as CustomerUploadIntakeRow["halftoneStaffDecision"];
+      const shouldDefaultDarkBackground = value && options?.defaultDarkBackgroundWhenAuto === true;
+
+      metadataOverridesRef.current.set(uploadId, {
+        ...metadataOverridesRef.current.get(uploadId),
+        halftoneStaffDecision: optimisticDecision,
+        ...(shouldDefaultDarkBackground
+          ? {
+              artworkBackgroundHex: ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK,
+              artworkBackgroundSource: "staff_manual" as const,
+            }
+          : {}),
+      });
+
+      // OPTIMISTIC: Patch locally FIRST (before any await).
+      patchRowLocally(uploadId, {
+        halftoneStaffDecision: optimisticDecision,
+        ...(shouldDefaultDarkBackground
+          ? {
+              artworkBackgroundHex: ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK,
+              artworkBackgroundSource: "staff_manual" as const,
+            }
+          : {}),
+      });
+
       try {
         await customerUploadIntakeService.recordHalftoneStaffDecision(uploadId, value);
-        patchRowLocally(uploadId, {
-          halftoneStaffDecision: {
-            value,
-            isExplicitOverride: true,
-            decidedBy: user?.id ?? null,
-          },
-        });
       } catch (err) {
+        // Keep intended local choice + override visible; latch failed so promote is blocked until Retry.
+        setMetadataFailedByUploadId((current) => ({ ...current, [uploadId]: "halftone" }));
         setError(err instanceof Error ? err.message : "Unable to save Halftone decision.");
+        return false;
+      }
+
+      clearMetadataOverrideKeys(uploadId, ["halftoneStaffDecision"]);
+
+      if (!shouldDefaultDarkBackground) {
+        return true;
+      }
+
+      try {
+        await customerUploadIntakeService.recordArtworkBackgroundStaffDecision(
+          uploadId,
+          ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK,
+        );
+        clearMetadataOverrideKeys(uploadId, ["artworkBackgroundHex", "artworkBackgroundSource"]);
+        return true;
+      } catch (err) {
+        setMetadataFailedByUploadId((current) => ({
+          ...current,
+          [uploadId]: "artwork_background",
+        }));
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Unable to save artwork background decision.",
+        );
+        return false;
+      } finally {
+        setPending(uploadId, null);
+      }
+    },
+
+    setArtworkBackgroundDecision: async (
+      uploadId: string,
+      hex: string | null,
+      source: import("@fresh-prints/shared/types/design/artworkBackgroundSource.types").ArtworkBackgroundSource | null,
+    ) => {
+      if (pendingByUploadId[uploadId]) {
+        return false;
+      }
+
+      setError(null);
+      setPending(uploadId, "artwork_background");
+      setMetadataFailedByUploadId((current) => {
+        if (!current[uploadId]) {
+          return current;
+        }
+        const next = { ...current };
+        delete next[uploadId];
+        return next;
+      });
+
+      metadataOverridesRef.current.set(uploadId, {
+        ...metadataOverridesRef.current.get(uploadId),
+        artworkBackgroundHex: hex,
+        artworkBackgroundSource: source,
+      });
+
+      // OPTIMISTIC: Patch locally FIRST (before any await).
+      patchRowLocally(uploadId, {
+        artworkBackgroundHex: hex,
+        artworkBackgroundSource: source,
+      });
+
+      try {
+        await customerUploadIntakeService.recordArtworkBackgroundStaffDecision(uploadId, hex, {
+          clearArtworkBackground: source === null,
+        });
+        clearMetadataOverrideKeys(uploadId, ["artworkBackgroundHex", "artworkBackgroundSource"]);
+        return true;
+      } catch (err) {
+        setMetadataFailedByUploadId((current) => ({
+          ...current,
+          [uploadId]: "artwork_background",
+        }));
+        setError(err instanceof Error ? err.message : "Unable to save artwork background decision.");
+        return false;
+      } finally {
+        setPending(uploadId, null);
+      }
+    },
+
+    retryMetadataSave: async (uploadId: string) => {
+      if (pendingByUploadId[uploadId]) {
+        return false;
+      }
+      const failedKind = metadataFailedByUploadId[uploadId];
+      if (!failedKind) {
+        return true;
+      }
+      const row = rowsRef.current.find((item) => item.id === uploadId);
+      if (!row) {
+        return false;
+      }
+
+      setError(null);
+      if (failedKind === "halftone") {
+        const value = row.halftoneStaffDecision?.value;
+        if (typeof value !== "boolean") {
+          setMetadataFailedByUploadId((current) => {
+            const next = { ...current };
+            delete next[uploadId];
+            return next;
+          });
+          return true;
+        }
+        setPending(uploadId, "halftone");
+        try {
+          await customerUploadIntakeService.recordHalftoneStaffDecision(uploadId, value);
+          if (row.artworkBackgroundSource === "staff_manual") {
+            await customerUploadIntakeService.recordArtworkBackgroundStaffDecision(
+              uploadId,
+              row.artworkBackgroundHex ?? null,
+            );
+            clearMetadataOverrideKeys(uploadId, [
+              "artworkBackgroundHex",
+              "artworkBackgroundSource",
+            ]);
+          }
+          setMetadataFailedByUploadId((current) => {
+            const next = { ...current };
+            delete next[uploadId];
+            return next;
+          });
+          clearMetadataOverrideKeys(uploadId, ["halftoneStaffDecision"]);
+          setNotice("Halftone decision saved.");
+          return true;
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "Unable to save Halftone decision.");
+          return false;
+        } finally {
+          setPending(uploadId, null);
+        }
+      }
+
+      setPending(uploadId, "artwork_background");
+      try {
+        await customerUploadIntakeService.recordArtworkBackgroundStaffDecision(
+          uploadId,
+          row.artworkBackgroundHex,
+          { clearArtworkBackground: row.artworkBackgroundSource === null },
+        );
+        setMetadataFailedByUploadId((current) => {
+          const next = { ...current };
+          delete next[uploadId];
+          return next;
+        });
+        clearMetadataOverrideKeys(uploadId, ["artworkBackgroundHex", "artworkBackgroundSource"]);
+        setNotice("Artwork background saved.");
+        return true;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Unable to save artwork background decision.");
+        return false;
+      } finally {
+        setPending(uploadId, null);
       }
     },
   };

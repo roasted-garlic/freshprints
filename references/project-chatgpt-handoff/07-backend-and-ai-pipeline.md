@@ -1,5 +1,30 @@
 # Backend and AI Pipeline
 
+## Portal modal + import Smart Profile presets + intake metadata controls (DEV — 2026-09-03)
+
+| Area | Delivered |
+|------|-----------|
+| Workstream A | Portal Upload/Donate shared localStorage-only quality-notice dismissal; no Firebase deploy required |
+| Workstream B Functions | `enqueueAiEnrichment`, `onCatalogReprocessJobWritten`, `updateDesignSmartProfileDimensions`, `resetDesignSmartProfileDimension` |
+| Workstream B Rules | `firestore.rules` allowlist for optional `smartProfileImportPresets` map |
+| Workstream C Functions | `recordCustomerUploadArtworkBackgroundStaffDecision`, `promoteCustomerUploadToAiReview` |
+| Storage Rules | **NO** |
+| Indexes | **NO** |
+| Migration | **NO** |
+| Production | **NOT AUTHORIZED** |
+
+### Workstream B backend behavior
+
+- Import-time preset values persist as durable `smartProfileImportPresets`.
+- AI enrichment and ready-catalog reprocess merge preset-owned values back in after AI output.
+- Later staff Smart Profile edits and dimension resets synchronize the durable seed so removed values do not resurrect.
+
+### Workstream C backend behavior
+
+- `recordCustomerUploadArtworkBackgroundStaffDecision` is the trusted DEV callable for explicit Light/Dark background persistence and Auto clear.
+- `promoteCustomerUploadToAiReview` now copies authoritative intake Halftone/background metadata into the created design and stamps `halftoneDecisionSource: intake`.
+- The first deploy retry for `promoteCustomerUploadToAiReview` initially failed on Firebase backend-spec discovery timeout; the owner-authorized retry using shell-local `FUNCTIONS_DISCOVERY_TIMEOUT=60` succeeded and updated the live DEV function.
+
 ## Customer temporary Print Request + Show quota override (ADR-FP-159 — DEV 2026-09-02)
 
 | Callable | Purpose |

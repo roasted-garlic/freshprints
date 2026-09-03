@@ -1,6 +1,6 @@
 # Next Planned Goal
 
-**Updated:** 2026-09-02
+**Updated:** 2026-09-03
 
 ---
 
@@ -8,15 +8,20 @@
 
 **None** — FreshForge **IDLE**
 
-Last completed: `customer-specific-temporary-print-request-and-show-quota-override` (signoff 2026-09-02, **approved**, Owner QA **PASS**, DEV only).
+Last completed: `portal-modal-dont-show-again-and-import-smart-profile-presets` (signoff 2026-09-03, **approved_with_notes**, Owner QA **PASS**, DEV only).
 
 ---
 
 ## Next queued goal
 
-**None auto-queued.** Owner chooses the next managed goal explicitly.
+`firestore-rules-print-request-item-resize-expression-budget`
 
-Prior closed (for context): `cross-app-lightbox-previous-next-navigation`, parking, Editing tab, etc.
+Purpose: narrow corrective for the one remaining global Firestore Rules expression-budget failure in
+`tests/firebase/printRequestItemResize.rules.test.ts`, subtest
+`allows customer size update when interactive upscale fields are present and unchanged`.
+
+This is **recorded only**. It is **not started**, has **no plan yet**, and requires fresh owner
+authorization before any work begins.
 
 ---
 
@@ -26,11 +31,13 @@ Prior closed (for context): `cross-app-lightbox-previous-next-navigation`, parki
 |------|--------|
 | Smart Profiling completion | **PARKED** |
 | `show-queue-batch-allocation-performance` | **DEFERRED** |
-| Production promotion (quota-override inventory) | **NOT AUTHORIZED** — Shared + Studio + Portal + Functions + Rules YES; Storage/indexes/migration NO; must promote **corrective** `updateCustomerPrintRequestQuotaOverride` |
-| Production promotion (lightbox / parking / prior goals) | **NOT AUTHORIZED** (separate inventories) |
+| Production promotion for this A+B+C umbrella goal | **NOT AUTHORIZED** |
+| Other production promotions from prior goals | **NOT AUTHORIZED** (separate inventories) |
 
 ---
 
-## Production inventory reminder (quota override — later promote)
+## Notes
 
-Shared effective-limit utils/types · Studio Users Quota Override UX · Portal limit hydration · Functions (7 allowlist including post-corrective owner callable) · Firestore Rules · Storage **NO** · Indexes **NO** · Migration **NO**
+- Broad Smart Profiling remains **PARKED**.
+- `show-queue-batch-allocation-performance` remains **DEFERRED**.
+- The queued Rules corrective must stay separate from the closed A+B+C umbrella goal.

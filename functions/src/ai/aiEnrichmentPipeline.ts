@@ -20,7 +20,7 @@ import { resolveAiEnrichmentProvider } from "./providers/resolveAiEnrichmentProv
 import type { DesignSmartProfile } from "../../../packages/shared/src/types/catalog/smartProfile.types";
 import { stripEmptySmartProfileDimensions } from "./smartProfileBuilder";
 import { incrementCatalogAutomationHealth } from "./catalogAutomationHealth";
-import { buildSmartProfileAiSnapshot, mergeReadyBackfillSmartProfile } from "./smartProfileEnrichmentWrite";
+import { buildSmartProfileAiSnapshot, mergeQueueSmartProfileWithImportPresets, mergeReadyBackfillSmartProfile, parseImportPresetSeed } from "./smartProfileEnrichmentWrite";
 
 // Re-export decision helpers so existing aiEnrichmentPipeline.test.ts imports keep working.
 export { shouldRunSuggestionAuthor, shouldRunTagRerank };
@@ -106,9 +106,10 @@ async function markAiSuccess(
 
   if (smartProfile) {
     const stripped = stripEmptySmartProfileDimensions(smartProfile) as unknown as DesignSmartProfile;
+    const priorSnap = await adminDb.collection("designs").doc(designId).get();
+    const priorData = priorSnap.data();
+    const importPresets = parseImportPresetSeed(priorData?.smartProfileImportPresets);
     if (mode === "ready_backfill") {
-      const priorSnap = await adminDb.collection("designs").doc(designId).get();
-      const priorData = priorSnap.data();
       const priorProfile =
         priorData?.smartProfile && typeof priorData.smartProfile === "object"
           ? (priorData.smartProfile as DesignSmartProfile)
@@ -116,11 +117,18 @@ async function markAiSuccess(
       const merged = mergeReadyBackfillSmartProfile({
         aiProfile: stripped,
         priorProfile,
+        importPresets,
       });
       persistedSmartProfile = removeUndefinedFields(merged.smartProfile) as DesignSmartProfile;
       smartProfileAiSnapshot = merged.smartProfileAiSnapshot;
     } else {
-      persistedSmartProfile = removeUndefinedFields(stripped) as DesignSmartProfile;
+      const withPresets = mergeQueueSmartProfileWithImportPresets({
+        aiProfile: stripped,
+        importPresets,
+      });
+      persistedSmartProfile = removeUndefinedFields(
+        stripEmptySmartProfileDimensions(withPresets),
+      ) as unknown as DesignSmartProfile;
       smartProfileAiSnapshot = buildSmartProfileAiSnapshot(stripped);
     }
   }

@@ -295,6 +295,7 @@ export function useBatchImport(options: UseBatchImportOptions = {}): UseBatchImp
           cancelToken,
           halftoneMode: sessionSettings.halftoneMode,
           backgroundMode: sessionSettings.backgroundMode,
+          smartProfileImportPresets: sessionSettings.smartProfilePresets,
           itemBackgroundOverridesByPath: new Map(
             Object.entries(state.itemBackgroundOverrides),
           ),

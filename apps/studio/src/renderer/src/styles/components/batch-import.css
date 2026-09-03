@@ -27,9 +27,12 @@
 
 .import-session-settings-modal.modal-panel {
   display: grid;
-  gap: var(--space-4);
+  gap: 0;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  max-height: min(48rem, calc(100vh - 2rem));
   max-width: min(52rem, calc(100vw - 2rem));
-  padding: var(--space-7);
+  overflow: hidden;
+  padding: 0;
   width: min(52rem, calc(100vw - 2rem));
 }
 
@@ -43,6 +46,164 @@
 .import-session-settings-form {
   display: grid;
   gap: var(--space-4);
+}
+
+.import-session-settings-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-height: 0;
+  padding: 0;
+}
+
+.import-session-settings-tabs {
+  background: var(--color-bg-secondary);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  flex: 0 0 auto;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-5) 0;
+}
+
+.import-session-settings-tab {
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  min-height: 2.5rem;
+  padding: 0 var(--space-3);
+}
+
+.import-session-settings-tab:hover {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+}
+
+.import-session-settings-tab.is-active {
+  border-bottom-color: var(--color-accent-primary);
+  color: var(--color-text-primary);
+}
+
+.import-session-settings-tab:focus-visible {
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+  outline: none;
+}
+
+.import-session-settings-tab-panel {
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-5);
+}
+
+.import-session-settings-tab-panel[hidden] {
+  display: none;
+}
+
+.import-session-settings-presets-editor {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.import-session-settings-presets-intro {
+  align-items: flex-start;
+  display: flex;
+  gap: var(--space-4);
+  justify-content: space-between;
+}
+
+.import-session-settings-presets-intro h3,
+.import-session-settings-presets-intro p {
+  margin: 0;
+}
+
+.import-session-settings-presets-intro h3 {
+  font-size: var(--font-size-md);
+}
+
+.import-session-settings-presets-intro p {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  margin-top: var(--space-1);
+  max-width: 39rem;
+}
+
+.import-session-settings-presets-grid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.import-session-settings-preset-dimension {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-3);
+}
+
+.import-session-settings-preset-dimension-heading {
+  align-items: center;
+  display: flex;
+  gap: var(--space-2);
+  justify-content: space-between;
+}
+
+.import-session-settings-preset-dimension-heading label {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.import-session-settings-preset-dimension-heading span {
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-pill);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  padding: var(--space-1) var(--space-2);
+}
+
+.import-session-settings-preset-add-row {
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.import-session-settings-preset-add-row input {
+  min-width: 0;
+  width: 100%;
+}
+
+.import-session-settings-preset-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+@media (max-width: 700px) {
+  .import-session-settings-modal.modal-panel {
+    max-height: calc(100vh - 1rem);
+    max-width: calc(100vw - 1rem);
+    width: calc(100vw - 1rem);
+  }
+
+  .import-session-settings-presets-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .import-session-settings-tabs {
+    padding-inline: var(--space-3);
+  }
+
+  .import-session-settings-tab {
+    flex: 1 1 0;
+    padding-inline: var(--space-2);
+  }
 }
 
 .import-session-settings-group {

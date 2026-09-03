@@ -17,6 +17,7 @@ export { inventoryCatalogImageStorage } from "./inventoryCatalogImageStorage";
 export { promoteCustomerUploadToAiReview } from "./promoteCustomerUploadToAiReview";
 export { recordCustomerUploadHalftoneResponse } from "./recordCustomerUploadHalftoneResponse";
 export { recordCustomerUploadHalftoneStaffDecision } from "./recordCustomerUploadHalftoneStaffDecision";
+export { recordCustomerUploadArtworkBackgroundStaffDecision } from "./recordCustomerUploadArtworkBackgroundStaffDecision";
 export { restoreCustomerUploadCatalogEligibility } from "./restoreCustomerUploadCatalogEligibility";
 export { retryCustomerUploadProcessing } from "./retryCustomerUploadProcessing";
 export { getPortalShowPrintProgress } from "./getPortalShowPrintProgress";

@@ -271,6 +271,7 @@ interface DesignDocumentData {
   aiAnalysis?: unknown;
   smartProfile?: unknown;
   smartProfileAiSnapshot?: unknown;
+  smartProfileImportPresets?: unknown;
   importBatchId?: unknown;
   importSourceFileName?: unknown;
   importRelativePath?: unknown;
@@ -429,6 +430,10 @@ function mapDesignDocument(designId: string, data: DesignDocumentData): Design {
     smartProfileAiSnapshot:
       data.smartProfileAiSnapshot && typeof data.smartProfileAiSnapshot === "object"
         ? (data.smartProfileAiSnapshot as Design["smartProfileAiSnapshot"])
+        : undefined,
+    smartProfileImportPresets:
+      data.smartProfileImportPresets && typeof data.smartProfileImportPresets === "object"
+        ? (data.smartProfileImportPresets as Design["smartProfileImportPresets"])
         : undefined,
     importBatchId: typeof data.importBatchId === "string" ? data.importBatchId : undefined,
     importSourceFileName:
@@ -993,6 +998,9 @@ export const designService = {
       importBatchId: input.importBatchId?.trim() || undefined,
       importSourceFileName: input.importSourceFileName?.trim() || undefined,
       importRelativePath: input.importRelativePath?.trim() || undefined,
+      smartProfileImportPresets: input.smartProfileImportPresets && Object.keys(input.smartProfileImportPresets).length > 0
+        ? input.smartProfileImportPresets
+        : undefined,
       queueCount: 0,
       aiProcessed: input.aiProcessed ?? false,
       aiReviewed: input.aiReviewed ?? false,

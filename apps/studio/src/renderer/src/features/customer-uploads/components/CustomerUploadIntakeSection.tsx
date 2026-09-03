@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { resolveIntakeHalftoneStaffToggle } from "@fresh-prints/shared/utils/halftoneReviewState";
@@ -7,7 +7,6 @@ import { Button } from "../../../shared/components/Button";
 import { Card } from "../../../shared/components/Card";
 import { DangerOverflowMenu } from "../../../shared/components/DangerOverflowMenu";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
-import { Toggle } from "../../../shared/components/Toggle";
 import { DesignPreviewLightbox } from "../../designs/components/DesignPreviewLightbox";
 import { buildPrintRequestDeepLinkPath } from "../../print-requests/constants/printRequestRoutes";
 import type { useCustomerUploadIntake } from "../hooks/useCustomerUploadIntake";
@@ -15,6 +14,11 @@ import type { CustomerUploadIntakeRow } from "../services/customerUploadIntakeSe
 import { CustomerUploadDeletionDialog } from "./CustomerUploadDeletionDialog";
 import { CustomerUploadExclusionDialog } from "./CustomerUploadExclusionDialog";
 import { CustomerUploadRestoreDialog } from "./CustomerUploadRestoreDialog";
+import { CustomerUploadIntakePreviewControls } from "./CustomerUploadIntakePreviewControls";
+import {
+  resolveCustomerUploadBackgroundOverride,
+  resolveCustomerUploadPreviewBackgroundHex,
+} from "../utils/customerUploadPreviewBackground";
 
 type IntakeApi = ReturnType<typeof useCustomerUploadIntake>;
 
@@ -96,12 +100,24 @@ function IntakeDetail({
   const restoreTriggerRef = useRef<HTMLButtonElement | null>(null);
   const pendingAction = intake.pendingByUploadId[row.id] ?? null;
   const busy = Boolean(pendingAction);
+  const metadataSavePending = pendingAction === "halftone" || pendingAction === "artwork_background";
+  const metadataSaveFailed = Boolean(intake.metadataFailedByUploadId?.[row.id]);
+  const metadataBlocksPromote = metadataSavePending || metadataSaveFailed;
   const fromAssisted = Boolean(row.assistedCreationRequestId);
   const catalogIntakeEligible = row.catalogUseAcknowledged !== false;
   const halftoneOn = resolveIntakeHalftoneStaffToggle({
     staffDecision: row.halftoneStaffDecision,
     submitterResponse: row.halftoneSubmitterResponse,
   });
+  const previewBackgroundHex = resolveCustomerUploadPreviewBackgroundHex({
+    artworkBackgroundHex: row.artworkBackgroundHex,
+    artworkBackgroundSource: row.artworkBackgroundSource,
+    halftoneOn,
+  });
+  const previewStyle = {
+    ["--color-artwork-preview-bg" as string]: previewBackgroundHex,
+    backgroundColor: previewBackgroundHex,
+  } as CSSProperties;
 
   return (
     <div className="customer-upload-intake-detail">
@@ -111,16 +127,21 @@ function IntakeDetail({
             aria-label={`Enlarge preview of ${row.originalFilename}`}
             className="customer-upload-intake-preview-button"
             onClick={() => setIsLightboxOpen(true)}
+            style={previewStyle}
             type="button"
           >
             <img
               alt=""
               className="customer-upload-intake-preview"
               src={row.previewUrl}
+              style={previewStyle}
             />
           </button>
         ) : (
-          <div className="customer-upload-intake-preview customer-upload-intake-preview--empty">
+          <div
+            className="customer-upload-intake-preview customer-upload-intake-preview--empty"
+            style={previewStyle}
+          >
             No preview
           </div>
         )}
@@ -152,19 +173,29 @@ function IntakeDetail({
         </div>
       </div>
 
-      <div className="customer-upload-intake-halftone-row">
-        <Toggle
-          checked={halftoneOn}
+      <div className="customer-upload-intake-preview-controls-row">
+        <CustomerUploadIntakePreviewControls
+          artworkBackgroundHex={row.artworkBackgroundHex}
+          artworkBackgroundSource={row.artworkBackgroundSource}
           disabled={busy || !intake.canPromote}
-          label="Halftone"
-          name={`halftone-${row.id}`}
-          onChange={(checked) => {
-            void intake.setHalftoneDecision(row.id, checked);
+          halftoneOn={halftoneOn}
+          onArtworkBackgroundChange={(hex, source) => {
+            void intake.setArtworkBackgroundDecision?.(row.id, hex, source);
           }}
-          tone="success"
+          onHalftoneChange={(value) => {
+            void intake.setHalftoneDecision(row.id, value, {
+              defaultDarkBackgroundWhenAuto:
+                value &&
+                resolveCustomerUploadBackgroundOverride(
+                  row.artworkBackgroundHex,
+                  row.artworkBackgroundSource,
+                ) === "auto",
+            });
+          }}
         />
-        <p className="customer-upload-intake-halftone-help">
-          Staff override. Tag is applied only on AI Review approve.
+        <p className="customer-upload-intake-preview-controls-help">
+          Same controls as Imports. Halftone is staff authority (applied on AI Review approve).
+          Artwork Background is display context only.
         </p>
       </div>
 
@@ -178,10 +209,10 @@ function IntakeDetail({
               navigate(
                 buildPrintRequestDeepLinkPath({
                   id: row.printRequestId,
-                  isInternal: row.printRequestIsInternal,
+                  isInternal: row.printRequestIsInternal ?? undefined,
                   queueTab: row.printRequestQueueTab,
-                  itemCount: row.printRequestItemCount,
-                  updatedAtMillis: row.printRequestUpdatedAtMs,
+                  itemCount: row.printRequestItemCount ?? undefined,
+                  updatedAtMillis: row.printRequestUpdatedAtMs ?? undefined,
                 }),
               );
             }}
@@ -205,19 +236,45 @@ function IntakeDetail({
           </Button>
         ) : null}
 
+        {metadataSaveFailed && intake.canPromote ? (
+          <Button
+            disabled={busy}
+            onClick={() => {
+              void intake.retryMetadataSave?.(row.id);
+            }}
+            size="sm"
+            variant="secondary"
+          >
+            {metadataSavePending ? "Retrying metadata…" : "Retry metadata save"}
+          </Button>
+        ) : null}
+
         {intake.canPromote &&
         catalogIntakeEligible &&
         row.catalogReviewStatus === "pending_staff_review" &&
         row.technicalStatus === "ready" ? (
           <Button
-            disabled={busy}
+            disabled={busy || metadataBlocksPromote}
             onClick={() => {
               void intake.promote(row.id);
             }}
             size="sm"
             variant="primary"
+            title={
+              metadataSaveFailed
+                ? "Metadata save failed — retry before sending to AI Review"
+                : metadataSavePending
+                  ? "Saving Halftone or Artwork Background decision..."
+                  : undefined
+            }
           >
-            {pendingAction === "promote" ? "Sending…" : "Send to AI Review"}
+            {pendingAction === "promote"
+              ? "Sending…"
+              : metadataSavePending
+                ? "Saving..."
+                : metadataSaveFailed
+                  ? "Fix metadata to send"
+                  : "Send to AI Review"}
           </Button>
         ) : null}
 
@@ -442,6 +499,7 @@ function IntakeDetail({
       <DesignPreviewLightbox
         activeItemId={row.id}
         alt={row.originalFilename}
+        artworkBackgroundHex={previewBackgroundHex}
         isOpen={isLightboxOpen}
         navigationItems={previewNavigationItems}
         onActiveItemChange={onPreviewNavigate}
@@ -465,11 +523,22 @@ export function CustomerUploadIntakeSection({
     .filter((row): row is CustomerUploadIntakeRow & { previewUrl: string } =>
       Boolean(row.previewUrl?.trim()),
     )
-    .map((row) => ({
-      id: row.id,
-      alt: row.originalFilename,
-      previewUrl: row.previewUrl,
-    }));
+    .map((row) => {
+      const halftoneOn = resolveIntakeHalftoneStaffToggle({
+        staffDecision: row.halftoneStaffDecision,
+        submitterResponse: row.halftoneSubmitterResponse,
+      });
+      return {
+        id: row.id,
+        alt: row.originalFilename,
+        previewUrl: row.previewUrl,
+        artworkBackgroundHex: resolveCustomerUploadPreviewBackgroundHex({
+          artworkBackgroundHex: row.artworkBackgroundHex,
+          artworkBackgroundSource: row.artworkBackgroundSource,
+          halftoneOn,
+        }),
+      };
+    });
 
   if (!intake.canView) {
     return null;

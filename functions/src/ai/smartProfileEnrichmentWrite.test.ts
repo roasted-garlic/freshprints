@@ -56,4 +56,31 @@ describe("mergeReadyBackfillSmartProfile", () => {
     });
     assert.deepEqual(merged.smartProfile.subjects, ["cat"]);
   });
+
+  it("restores import presets omitted by AI before staff merge", () => {
+    const merged = mergeReadyBackfillSmartProfile({
+      aiProfile: {
+        styles: ["modern"],
+        provenance: { version: "smart-profile-v1" },
+      },
+      priorProfile: {
+        subjects: ["Dolly Parton"],
+        styles: ["retro"],
+        provenance: {
+          version: "smart-profile-v1",
+          staffEditedDimensionKeys: ["styles"],
+          staffEditedBy: "owner-1",
+          staffEditedAt: "2026-08-26T00:00:00.000Z",
+        },
+      },
+      importPresets: { subjects: ["Dolly Parton"], places: ["Pensacola, FL"] },
+    });
+    assert.deepEqual(merged.smartProfile.subjects, ["Dolly Parton"]);
+    assert.deepEqual(merged.smartProfile.places, ["Pensacola, FL"]);
+    assert.deepEqual(merged.smartProfile.styles, ["retro"]);
+    assert.deepEqual(merged.smartProfile.provenance.importPresetDimensionKeys, [
+      "subjects",
+      "places",
+    ]);
+  });
 });

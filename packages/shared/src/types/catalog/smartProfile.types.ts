@@ -57,6 +57,8 @@ export interface SmartProfileProvenance {
   staffEditedDimensionKeys?: string[];
   staffEditedAt?: string;
   staffEditedBy?: string;
+  /** Import preset dimension keys that were applied during design creation from Studio session state. */
+  importPresetDimensionKeys?: string[];
 }
 
 /** Transient pipeline payload — not persisted on designs. */

@@ -73,6 +73,7 @@ Short explainer (collapsed by default): a print request is the customer’s list
 - Uploaded artwork is for the **request** first — not auto-added to the shared Design Library (staff may later promote if customer allowed it).
 - Library permission decline does **not** block attach; staff still see the decline and may promote (ADR-FP-074).
 - Mixing library + uploads on one request is intentional.
+- Upload and Donate share a browser-local informational quality-notice dismissal; this affects notice visibility only and is not a permission or validation boundary.
 
 ---
 
@@ -81,9 +82,17 @@ Short explainer (collapsed by default): a print request is the customer’s list
 ```
 Import PNG (ZIP/folder)
     ↓
+Optional: open Import Session Settings
+    ↓
+Enter Smart Profile presets in a dedicated tab
+    (existing editable dimensions only; opens on Smart Profile presets;
+     per-session inputs only; no value survives into the next import session)
+    ↓
 Validate → trim/upscale as needed → Storage originals + derivatives
     ↓
-Create design (status: imported) → enqueue AI enrichment
+Create design (status: imported) with optional durable `smartProfileImportPresets`
+    ↓
+enqueue AI enrichment
     ↓
 AI Review — Processing → Needs Review
     ↓
@@ -91,7 +100,7 @@ Staff Approve → status: ready → Design Library
   OR Reject → Rejected tab
 ```
 
-Design Library never shows imported/rejected by default.
+Preset-owned values are re-merged after AI enrichment and ready-catalog reprocess. Later staff edits or dimension resets update the durable preset seed so removed values do not resurrect. Design Library never shows imported/rejected by default.
 
 ---
 
@@ -102,13 +111,19 @@ Portal customer uploads artwork (customerUploads)
     ↓
 Appears in Studio Customer Uploads intake (Pending)
     ↓
+Staff may set per-row Auto / Light / Dark background and Halftone
+    - Halftone-on from Auto defaults that row to Dark
+    - Explicit Light/Dark stays preserved while Halftone remains on
+    - Pending/failed metadata writes block stale Send to AI Review
+    - Retry keeps intended local state visible
+    ↓
 Staff: Send to AI Review (promotes to designs + AI queue)
      OR Exclude from catalog (request assets remain)
     ↓
 If approved in AI Review → shared Design Library
 ```
 
-Two independent lifecycles on the upload: `technicalStatus` (processing quality) vs `catalogReviewStatus` (staff catalog eligibility). ADR-FP-073.
+Promotion now carries authoritative intake Halftone/background metadata into the created design, including `halftoneDecisionSource: intake` and explicit background source `staff_manual`. Two independent lifecycles on the upload remain: `technicalStatus` (processing quality) vs `catalogReviewStatus` (staff catalog eligibility). ADR-FP-073.
 
 ---
 

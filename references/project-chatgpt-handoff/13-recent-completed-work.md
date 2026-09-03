@@ -1,5 +1,25 @@
 # Recent Completed Work
 
+## 2026-09-03 - Portal modal + import Smart Profile presets + intake metadata controls — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `portal-modal-dont-show-again-and-import-smart-profile-presets` — **DONE** |
+| Signoff | **approved_with_notes** |
+| Owner QA | **PASS** — Workstream A PASS; Workstream B DEV QA PASS; Workstream C UI/metadata PASS; Workstream C end-to-end DEV QA PASS |
+| Final DEV | **APPROVED** |
+| Workstream A | Shared Portal Upload/Donate informational quality-notice dismissal via localStorage only |
+| Workstream B | Dedicated Smart Profile presets modal tab; Studio-themed controls; responsive/internal-scroll UI; durable `smartProfileImportPresets`; provenance tracking; post-AI merge; reprocess and staff-edit/removal preservation |
+| Workstream C | Studio per-row Auto/Light/Dark/Halftone controls for Customer Uploads and Donated Designs; instant optimistic first Halftone click; preview/lightbox repaint; stale-send block + retry; trusted background save; authoritative promote with `halftoneDecisionSource: intake` and `artworkBackgroundSource: staff_manual` |
+| DEV Firebase | Workstream B: `enqueueAiEnrichment`, `onCatalogReprocessJobWritten`, `updateDesignSmartProfileDimensions`, `resetDesignSmartProfileDimension`, plus `firestore.rules`; Workstream C: `recordCustomerUploadArtworkBackgroundStaffDecision`, `promoteCustomerUploadToAiReview` |
+| Deploy notes | First Workstream C promote deploy failed on Firebase backend-spec discovery timeout; owner-authorized shell-local `FUNCTIONS_DISCOVERY_TIMEOUT=60` retry succeeded |
+| Full Rules | **158/159** — one known unrelated failure in `tests/firebase/printRequestItemResize.rules.test.ts` (`allows customer size update when interactive upscale fields are present and unchanged`) |
+| Production | **NOT AUTHORIZED** |
+| Smart Profiling | **PARKED** |
+| Batch allocation | **DEFERRED** |
+| Next owner-selected goal | `firestore-rules-print-request-item-resize-expression-budget` |
+| Signoff | `docs/workflow/reviews/2026-09-03-portal-modal-dont-show-again-and-import-smart-profile-presets-signoff.md` |
+
 ## 2026-09-02 - Customer-specific temporary PR + Show quota override — CLOSED (DEV)
 
 | Item | Status |

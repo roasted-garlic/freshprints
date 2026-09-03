@@ -214,6 +214,7 @@ export function useSinglePngImport(options: {
             backgroundMode: sessionSettings.backgroundMode,
             itemBackgroundOverride,
             itemHalftoneOverride,
+            smartProfileImportPresets: sessionSettings.smartProfilePresets,
           },
         );
 

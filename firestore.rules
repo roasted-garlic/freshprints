@@ -605,6 +605,7 @@ service cloud.firestore {
         && isOptionalMap(data, "aiSuggestions")
         && isOptionalMap(data, "aiAnalysis")
         && isOptionalMap(data, "smartProfile")
+        && isOptionalMap(data, "smartProfileImportPresets")
         && isOptionalString(data, "importBatchId")
         && isOptionalString(data, "importSourceFileName")
         && isOptionalString(data, "importRelativePath")

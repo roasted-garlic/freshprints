@@ -4,6 +4,7 @@ import type {
   ImportArtworkBackgroundMode,
   ImportHalftoneMode,
 } from "@fresh-prints/shared/types/design/artworkBackgroundSource.types";
+import type { SmartProfileDimensionLists } from "@fresh-prints/shared/types/catalog/smartProfile.types";
 
 import {
   formatImportSessionSettingsSummary,
@@ -26,10 +27,26 @@ export function useImportSessionSettings() {
     setSettings((current) => ({ ...current, backgroundMode }));
   }, []);
 
+  const setSmartProfilePresets = useCallback((smartProfilePresets?: Partial<SmartProfileDimensionLists>) => {
+    setSettings((current) => ({ ...current, smartProfilePresets }));
+  }, []);
+
+  /** Clear transient Smart Profile presets so they never leak into the next import session. */
+  const clearSmartProfilePresets = useCallback(() => {
+    setSettings((current) => {
+      if (!current.smartProfilePresets) {
+        return current;
+      }
+      return { ...current, smartProfilePresets: undefined };
+    });
+  }, []);
+
   return {
     ...settings,
     setHalftoneMode,
     setBackgroundMode,
+    setSmartProfilePresets,
+    clearSmartProfilePresets,
     summaryText: formatImportSessionSettingsSummary(settings),
   };
 }

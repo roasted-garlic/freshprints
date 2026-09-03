@@ -382,13 +382,19 @@
   letter-spacing: 0.02em;
 }
 
-.customer-upload-intake-halftone-row {
-  align-items: flex-start;
+.customer-upload-intake-preview-controls-row {
+  align-items: stretch;
   display: grid;
   gap: 0.35rem;
+  max-width: 22rem;
 }
 
-.customer-upload-intake-halftone-help {
+.customer-upload-intake-preview-controls .import-preview-controls.is-inline {
+  /* Match Imports batch-row pill row: Auto · Light · Dark · Halftone */
+  width: 100%;
+}
+
+.customer-upload-intake-preview-controls-help {
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
   margin: 0;

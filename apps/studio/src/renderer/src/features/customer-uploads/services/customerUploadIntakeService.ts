@@ -17,6 +17,7 @@ import type {
   RestoreCustomerUploadCatalogEligibilityResponse,
   RetryCustomerUploadProcessingResponse,
 } from "@fresh-prints/shared/types/customerUpload/customerUploadStaffActions.types";
+import type { ArtworkBackgroundSource } from "@fresh-prints/shared/types/design/artworkBackgroundSource.types";
 import { resolveCustomerUploadPurpose } from "@fresh-prints/shared/utils/customerUploadPurpose";
 
 import { db, storage } from "../../../config/firebase";
@@ -77,6 +78,10 @@ export interface CustomerUploadIntakeRow {
   halftoneDetection: import("@fresh-prints/shared/types/halftone/halftone.types").HalftoneDetectionPersisted | null;
   halftoneSubmitterResponse: import("@fresh-prints/shared/types/halftone/halftone.types").HalftoneSubmitterResponsePersisted | null;
   halftoneStaffDecision: import("@fresh-prints/shared/types/halftone/halftone.types").HalftoneStaffDecisionPersisted | null;
+  /** Artwork background hex for intake/review display mat (staff override). */
+  artworkBackgroundHex: string | null;
+  /** Source of artwork background decision. */
+  artworkBackgroundSource: import("@fresh-prints/shared/types/design/artworkBackgroundSource.types").ArtworkBackgroundSource | null;
   /** Set when upload was server-copied from Assisted approved proof (ADR-FP-094). */
   assistedCreationRequestId: string | null;
   assistedProofId: string | null;
@@ -265,6 +270,10 @@ export const customerUploadIntakeService = {
         printRequestId,
         printRequestName,
         printRequestStatus,
+        printRequestQueueTab: null,
+        printRequestIsInternal: null,
+        printRequestItemCount: null,
+        printRequestUpdatedAtMs: null,
         showAssignmentLabel: null,
         originalFilename: asString(data.originalFilename) ?? "Uploaded artwork",
         sourceFormat: (asString(data.sourceFormat) as CustomerUploadSourceFormat | null) ?? null,
@@ -309,6 +318,11 @@ export const customerUploadIntakeService = {
         halftoneStaffDecision:
           data.halftoneStaffDecision && typeof data.halftoneStaffDecision === "object"
             ? (data.halftoneStaffDecision as CustomerUploadIntakeRow["halftoneStaffDecision"])
+            : null,
+        artworkBackgroundHex: asString(data.artworkBackgroundHex),
+        artworkBackgroundSource:
+          data.artworkBackgroundSource && typeof data.artworkBackgroundSource === "string"
+            ? (data.artworkBackgroundSource as CustomerUploadIntakeRow["artworkBackgroundSource"])
             : null,
         assistedCreationRequestId: asString(data.assistedCreationRequestId),
         assistedProofId: asString(data.assistedProofId),
@@ -358,5 +372,34 @@ export const customerUploadIntakeService = {
     >("recordCustomerUploadHalftoneStaffDecision", {
       source: "customerUploadIntakeService.recordHalftoneStaffDecision",
     })({ uploadId, value });
+  },
+
+  async recordArtworkBackgroundStaffDecision(
+    uploadId: string,
+    artworkBackgroundHex: string | null,
+    options?: { clearArtworkBackground?: boolean },
+  ): Promise<{
+    uploadId: string;
+    artworkBackgroundHex: string | null;
+    artworkBackgroundSource: ArtworkBackgroundSource | null;
+  }> {
+    return callTracedFunction<
+      {
+        uploadId: string;
+        artworkBackgroundHex: string | null;
+        clearArtworkBackground?: boolean;
+      },
+      {
+        uploadId: string;
+        artworkBackgroundHex: string | null;
+        artworkBackgroundSource: ArtworkBackgroundSource | null;
+      }
+    >("recordCustomerUploadArtworkBackgroundStaffDecision", {
+      source: "customerUploadIntakeService.recordArtworkBackgroundStaffDecision",
+    })({
+      uploadId,
+      artworkBackgroundHex,
+      clearArtworkBackground: options?.clearArtworkBackground === true,
+    });
   },
 };

@@ -195,6 +195,20 @@ export const promoteCustomerUploadToAiReview = onCall(
           halftoneDetection: upload.halftoneDetection ?? undefined,
           halftoneSubmitterResponse: upload.halftoneSubmitterResponse ?? undefined,
           halftoneStaffDecision: upload.halftoneStaffDecision ?? undefined,
+          halftoneDecisionSource:
+            upload.halftoneStaffDecision &&
+            typeof upload.halftoneStaffDecision === "object" &&
+            typeof upload.halftoneStaffDecision.value === "boolean"
+              ? "intake"
+              : undefined,
+          ...(typeof upload.artworkBackgroundSource === "string"
+            ? {
+                artworkBackgroundSource: upload.artworkBackgroundSource,
+                ...(typeof upload.artworkBackgroundHex === "string"
+                  ? { artworkBackgroundHex: upload.artworkBackgroundHex }
+                  : {}),
+              }
+            : {}),
           queueCount: 0,
           aiProcessed: false,
           aiReviewed: false,

@@ -167,6 +167,8 @@ export interface Design {
   smartProfile?: DesignSmartProfile;
   /** Last raw AI dimension snapshot before staff merge (Functions-owned). */
   smartProfileAiSnapshot?: SmartProfileDimensionLists;
+  /** Smart Profile import presets from Studio session state (durable; persisted on design create). */
+  smartProfileImportPresets?: Partial<SmartProfileDimensionLists>;
   /** Batch import job id when design was created from a folder/ZIP/multi-PNG batch. */
   importBatchId?: string;
   /** Original source filename at import (audit/context only). */
@@ -228,6 +230,8 @@ export interface CreateDesignInput {
   importBatchId?: string;
   importSourceFileName?: string;
   importRelativePath?: string;
+  /** Smart Profile import presets from Studio session state (optional). */
+  smartProfileImportPresets?: Partial<SmartProfileDimensionLists>;
 }
 
 export type UpdateDesignInput = Partial<

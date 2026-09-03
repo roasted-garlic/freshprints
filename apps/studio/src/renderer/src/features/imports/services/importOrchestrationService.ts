@@ -50,6 +50,8 @@ export interface ImportValidatedPngFileOptions {
   backgroundMode?: ImportArtworkBackgroundMode;
   itemBackgroundOverride?: ImportItemBackgroundOverride;
   itemHalftoneOverride?: ImportItemHalftoneOverride;
+  /** Optional Smart Profile presets from Studio session state. */
+  smartProfileImportPresets?: Partial<import("@fresh-prints/shared/types/catalog/smartProfile.types").SmartProfileDimensionLists>;
 }
 
 export interface ImportValidatedPngFileSuccess {
@@ -299,6 +301,7 @@ export async function importValidatedPngFile(
       aiReviewStatus: "pending",
       aiReviewed: false,
       aiProcessed: false,
+      smartProfileImportPresets: options?.smartProfileImportPresets,
     });
   } catch (error) {
     const cleanupWarning = await rollbackUploadedOriginal(designId);
@@ -440,6 +443,7 @@ export const importOrchestrationService = {
       backgroundMode?: ImportArtworkBackgroundMode;
       itemBackgroundOverride?: ImportItemBackgroundOverride;
       itemHalftoneOverride?: ImportItemHalftoneOverride;
+      smartProfileImportPresets?: Partial<import("@fresh-prints/shared/types/catalog/smartProfile.types").SmartProfileDimensionLists>;
     },
   ): Promise<SinglePngUploadOutcome> {
     const outcome = await importValidatedPngFile(caller, validationResult, {
@@ -448,6 +452,7 @@ export const importOrchestrationService = {
       backgroundMode: sessionOptions?.backgroundMode,
       itemBackgroundOverride: sessionOptions?.itemBackgroundOverride,
       itemHalftoneOverride: sessionOptions?.itemHalftoneOverride,
+      smartProfileImportPresets: sessionOptions?.smartProfileImportPresets,
     });
 
     if (outcome.status === "failed") {

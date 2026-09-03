@@ -13,6 +13,7 @@ import {
   isSmartProfileEditableDimensionKey,
   resetStaffEditedDimension,
 } from "../../../packages/shared/src/utils/smartProfileStaffEdit";
+import { syncImportPresetSeedOnStaffEdit } from "../../../packages/shared/src/utils/smartProfileImportPresets";
 import { normalizeSmartProfileDimensions } from "../../../packages/shared/src/utils/smartProfileNormalization";
 import { stripEmptySmartProfileDimensions } from "../ai/smartProfileBuilder";
 import { adminDb } from "../lib/admin";
@@ -136,8 +137,19 @@ export async function applyDesignSmartProfileDimensionPatch(input: {
     }),
   ) as unknown as DesignSmartProfile;
 
+  const priorSeed =
+    designData.smartProfileImportPresets && typeof designData.smartProfileImportPresets === "object"
+      ? (designData.smartProfileImportPresets as Partial<SmartProfileDimensionLists>)
+      : undefined;
+  const nextSeed = syncImportPresetSeedOnStaffEdit({
+    seed: priorSeed,
+    importPresetDimensionKeys: profile.provenance?.importPresetDimensionKeys,
+    patch,
+  });
+
   await designRef.update({
     smartProfile: nextProfile,
+    smartProfileImportPresets: nextSeed ?? FieldValue.delete(),
     updatedAt: FieldValue.serverTimestamp(),
     updatedBy: input.caller.id,
   });
@@ -189,8 +201,21 @@ export async function applyDesignSmartProfileDimensionReset(input: {
 
   const nextProfile = stripEmptySmartProfileDimensions(resetProfile) as unknown as DesignSmartProfile;
 
+  const priorSeed =
+    designData.smartProfileImportPresets && typeof designData.smartProfileImportPresets === "object"
+      ? (designData.smartProfileImportPresets as Partial<SmartProfileDimensionLists>)
+      : undefined;
+  const nextSeed = syncImportPresetSeedOnStaffEdit({
+    seed: priorSeed,
+    importPresetDimensionKeys: profile.provenance?.importPresetDimensionKeys,
+    patch: {
+      [input.dimensionKey]: nextProfile[input.dimensionKey] as string[] | undefined,
+    },
+  });
+
   await designRef.update({
     smartProfile: nextProfile,
+    smartProfileImportPresets: nextSeed ?? FieldValue.delete(),
     updatedAt: FieldValue.serverTimestamp(),
     updatedBy: input.caller.id,
   });

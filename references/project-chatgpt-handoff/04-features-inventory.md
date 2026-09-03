@@ -11,7 +11,7 @@ Login/logout, profile bootstrap, protected routes via permissions.
 Approved catalog grid; search (including paste of a full Firestore design ID); **case- and separator-insensitive** text match shared with Portal; category + tag filters; archive toggle; details/edit; request-selection mode for staff print requests; print-size / DPI display; default list **newest uploads first** (`createdAt` desc); Design details modal **full-res Download** of Storage original. **Load more** only when another catalog page exists. **Scroll position preserved** after save (anchor to edited card).
 
 ### Imports (`/imports`)
-ZIP/folder import; PNG validation; trim + upscale (ADR-FP-080 ≤6× toward 12″); thumbnails/previews; Storage upload; AI enqueue; batch progress. No import-time halftone interrupt. **Normalized Files** modal is condensed with internal scroll.
+ZIP/folder import; PNG validation; trim + upscale (ADR-FP-080 ≤6× toward 12″); thumbnails/previews; Storage upload; AI enqueue; batch progress. No import-time halftone interrupt. **Normalized Files** modal is condensed with internal scroll. Import Session Settings now includes a dedicated **Smart Profile presets** tab before **Import settings** with Studio-themed controls, responsive layout, internal scrolling, and per-session preset entry for existing Smart Profile dimensions only. Presets persist as durable `smartProfileImportPresets`, track preset-owned dimensions, merge back in after AI enrichment/reprocess, and update correctly after later staff edits or removals.
 
 ### AI Review (`/ai-review`)
 Processing / Needs Review / Rejected tabs; suggestions panel; approve/reject/skip; re-run AI; keyboard shortcuts; settings-driven model + tag exclusions; staff Halftone toggle (human-only; AI never auto-enables). **Needs Review search** with shared normalization, AI-suggestion field match, and 500-design hydration batches.
@@ -34,7 +34,7 @@ Separate cache fingerprints per mode; Standard unchanged. Start/Pause/Resume/Fin
 Account Settings → Profile: self-service **display name** and **username** with 30-day username cooldown (staff bypass); identity snapshots propagate to print requests and design issue reports (DEV — `portal-customer-username-change`).
 
 ### Customer Uploads (intake)
-Staff review of Portal customer artwork: Pending / Excluded tabs; Send to AI Review; exclude/restore; retry processing; surface library-permission declined (ADR-FP-074).
+Staff review of Portal customer artwork: Pending / Excluded tabs; Send to AI Review; exclude/restore; retry processing; surface library-permission declined (ADR-FP-074). Customer Uploads and Donated Designs now share per-row **Auto · Light · Dark · Halftone** controls before Send to AI Review. Halftone-on from Auto defaults that row to Dark, explicit Light/Dark remains preserved while Halftone stays on, row previews and lightbox repaint, pending/failed metadata writes block stale promotion, retry is available, and promoted designs carry authoritative Halftone/background metadata.
 
 ### Custom Designs
 Assisted inbox with stage tabs, request details, audited start/cancel/reject/restore actions, proof staging, and customer-revision visibility. Etsy searches and Suggestions management remain separate tabs.
@@ -65,6 +65,7 @@ print-limit counters** cleanup for retired, unenforced Cap A documents.
 | Start / continue print request | ✅ Live (one working request — ADR-FP-071) |
 | Selection mode: add library designs with quantities | ✅ Live |
 | **Upload artwork** (modal; PNG/WebP/folder/ZIP) | ✅ Live — `/requests/artwork`; optional halftone checkbox (ADR-FP-080) |
+| Upload / Donate informational quality notice | ✅ Live — shared Upload+Donate browser-local "Don't show again" dismissal; localStorage only |
 | Persistent Current Request / basket drawer | ✅ Live — hidden for guests; filled CTA **Review & Add to Show** + **Needs a show** |
 | Donate designs (`/donate`) | ✅ Live — ADR-FP-078; guest donate (Anonymous Auth) |
 | Confirm ownership (required) + library permission (optional, default on) | ✅ Live |

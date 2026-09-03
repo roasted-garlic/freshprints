@@ -98,4 +98,6 @@ export interface RunBatchImportUploadInput {
     string,
     import("@fresh-prints/shared/utils/resolveImportArtworkBackgroundDecision").ImportItemHalftoneOverride
   >;
+  /** Optional Smart Profile presets from Studio session state. */
+  smartProfileImportPresets?: Partial<import("@fresh-prints/shared/types/catalog/smartProfile.types").SmartProfileDimensionLists>;
 }

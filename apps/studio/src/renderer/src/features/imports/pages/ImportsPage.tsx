@@ -50,14 +50,16 @@ function isBatchImportBlockingSingleImport(
 export function ImportsPage() {
   const isDesktop = isElectronDesktop();
   const sessionSettings = useImportSessionSettings();
+  const { clearSmartProfilePresets } = sessionSettings;
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
 
   const getSessionSettings = useCallback((): ImportSessionSettings => {
     return {
       halftoneMode: sessionSettings.halftoneMode,
       backgroundMode: sessionSettings.backgroundMode,
+      smartProfilePresets: sessionSettings.smartProfilePresets,
     };
-  }, [sessionSettings.halftoneMode, sessionSettings.backgroundMode]);
+  }, [sessionSettings.halftoneMode, sessionSettings.backgroundMode, sessionSettings.smartProfilePresets]);
 
   const batchImport = useBatchImport({ getSessionSettings });
   const {
@@ -113,7 +115,36 @@ export function ImportsPage() {
     }
     singleAutoStartRef.current = uploadResult.designId;
     enqueueImportedDesignsForBackgroundAi([uploadResult.designId]);
-  }, [uploadResult]);
+    // Import session complete — clear transient presets so the next import starts clean.
+    clearSmartProfilePresets();
+  }, [uploadResult, clearSmartProfilePresets]);
+
+  useEffect(() => {
+    if (batchImport.phase !== "completed") {
+      return;
+    }
+    clearSmartProfilePresets();
+  }, [batchImport.phase, clearSmartProfilePresets]);
+
+  const cancelSingleImportAndClearPresets = useCallback(async () => {
+    await cancelSingleImport();
+    clearSmartProfilePresets();
+  }, [cancelSingleImport, clearSmartProfilePresets]);
+
+  const batchImportWithPresetClear = useMemo(
+    () => ({
+      ...batchImport,
+      cancelImport: async () => {
+        await batchImport.cancelImport();
+        clearSmartProfilePresets();
+      },
+      reset: async () => {
+        await batchImport.reset();
+        clearSmartProfilePresets();
+      },
+    }),
+    [batchImport, clearSmartProfilePresets],
+  );
 
   const showCancelSingleImport =
     uploadResult === null &&
@@ -177,7 +208,7 @@ export function ImportsPage() {
             <ImportMethodCardOverlay>
               <Button
                 onClick={() => {
-                  void cancelSingleImport();
+                  void cancelSingleImportAndClearPresets();
                 }}
                 variant="secondary"
               >
@@ -189,7 +220,7 @@ export function ImportsPage() {
 
         <BatchImportPanel
           backgroundMode={sessionSettings.backgroundMode}
-          batchImport={batchImport}
+          batchImport={batchImportWithPresetClear}
           blockingMessage={batchImportBlocked ? batchImportBlockingMessage : null}
           disabled={batchImportBlocked}
           halftoneMode={sessionSettings.halftoneMode}
@@ -224,9 +255,11 @@ export function ImportsPage() {
         disabled={settingsDisabled}
         halftoneMode={sessionSettings.halftoneMode}
         isOpen={settingsModalOpen}
+        smartProfilePresets={sessionSettings.smartProfilePresets}
         onBackgroundModeChange={sessionSettings.setBackgroundMode}
         onClose={() => setSettingsModalOpen(false)}
         onHalftoneModeChange={sessionSettings.setHalftoneMode}
+        onSmartProfilePresetsChange={sessionSettings.setSmartProfilePresets}
       />
     </main>
   );

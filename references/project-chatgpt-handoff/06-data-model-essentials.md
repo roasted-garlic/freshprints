@@ -72,8 +72,16 @@ Do **not** increment `designs.requestCount` for customer-upload-only items.
 | Permissions | `ownershipAcknowledged` required to attach; `catalogUseAcknowledged` optional (ADR-FP-074) |
 | Formats | PNG / static WebP with meaningful transparency |
 | Storage | `/customer-uploads/{uid}/…` source + production + preview/thumbnail |
+| Intake metadata | Optional authoritative staff metadata before promotion: `halftoneStaffDecision`; `artworkBackgroundHex`; `artworkBackgroundSource` (`staff_manual` for explicit Light/Dark, omit/clear for Auto) |
 
 After staff promote → creates/links a `designs` doc and existing AI enqueue; request items keep working.
+
+## Smart Profile import presets (DEV)
+
+- `designs.smartProfileImportPresets` stores the durable import-time preset seed for owner-approved editable Smart Profile dimensions only.
+- Preset provenance tracks which dimensions came from import presets so AI merge and later staff edits can preserve human-entered values correctly.
+- Firestore Rules allow the field only as an optional map on reviewed design writes; client ownership of `smartProfile` does not broaden.
+- Reset/reprocess keeps the seed so AI refreshes do not erase import presets; later staff edits/removals synchronize the seed so removed values do not resurrect.
 
 ## Show allocations
 

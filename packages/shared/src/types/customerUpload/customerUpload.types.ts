@@ -80,6 +80,10 @@ export interface CustomerUpload {
   halftoneSubmitterResponse?: import("../halftone/halftone.types").HalftoneSubmitterResponsePersisted | null;
   /** Staff decision (authoritative for catalog). */
   halftoneStaffDecision?: import("../halftone/halftone.types").HalftoneStaffDecisionPersisted | null;
+  /** Artwork background hex for intake/review display mat (staff override). */
+  artworkBackgroundHex?: string | null;
+  /** Source of artwork background decision. */
+  artworkBackgroundSource?: import("../design/artworkBackgroundSource.types").ArtworkBackgroundSource | null;
   technicalStatus: CustomerUploadTechnicalStatus;
   /** Live finalize progress; null when idle, ready, or failed. */
   technicalProgressStage?: CustomerUploadTechnicalProgressStage | null;
