@@ -1,5 +1,20 @@
 # Recent Completed Work
 
+## 2026-09-03 - Smart Profile subject canonicalization + derivative suppression — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `smart-profile-subject-canonicalization-and-derivative-suppression` — **DONE** |
+| Signoff | **approved_with_notes** |
+| Owner canary | **PASS** |
+| Pipeline | **catalog-enrich-v31** + **smart-profile-normalizer-v5** (`smart-profile-v1`) |
+| DEV Functions | `enqueueAiEnrichment`, `onCatalogReprocessJobWritten`, `startCatalogReprocessJob`, `previewCatalogReprocessJob` |
+| Automated | focused 181/181; regression 52/52; Functions build pass |
+| Mass reprocess / tags / production | **NO** / **NO** / **NOT AUTHORIZED** |
+| Autonomous | **OFF** |
+| Next queued | Smart Profiling completion (not started) |
+| Signoff | `docs/workflow/reviews/2026-09-03-smart-profile-subject-canonicalization-and-derivative-suppression-signoff.md` |
+
 ## 2026-09-03 - Firestore Rules resize expression budget + Interactive Upscale DPI corrective — CLOSED (DEV)
 
 | Item | Status |

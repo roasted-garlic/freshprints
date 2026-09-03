@@ -8,13 +8,15 @@
 
 **None** — FreshForge **IDLE**
 
-Last completed: `firestore-rules-print-request-item-resize-expression-budget` (with blocking corrective `interactive-upscale-dpi-rehydration-and-eligibility` / TD-033). Signoff **approved_with_notes**, Owner Interactive Upscale DEV QA **PASS**, DEV only.
+Last completed: `smart-profile-subject-canonicalization-and-derivative-suppression`. Signoff **approved_with_notes**. Owner canary **PASS**. DEV **catalog-enrich-v31** / **smart-profile-normalizer-v5**.
 
 ---
 
 ## Next queued goal
 
-**None recorded.** Await owner selection.
+**Smart Profiling completion / unattended catalog enrichment completion**
+
+Do **not** auto-start. Owner selects start.
 
 ---
 
@@ -22,15 +24,13 @@ Last completed: `firestore-rules-print-request-item-resize-expression-budget` (w
 
 | Item | Status |
 |------|--------|
-| Smart Profiling completion | **PARKED** |
+| Smart Profiling completion | **PARKED** (queued as next selected goal) |
 | `show-queue-batch-allocation-performance` | **DEFERRED** |
-| Production promotion for Rules + Interactive Upscale corrective | **NOT AUTHORIZED** |
-| Other production promotions from prior goals | **NOT AUTHORIZED** (separate inventories) |
+| Production promotion | **NOT AUTHORIZED** |
 
 ---
 
 ## Notes
 
-- Broad Smart Profiling remains **PARKED**.
-- `show-queue-batch-allocation-performance` remains **DEFERRED**.
-- Production Rules / Functions / Portal App Hosting / Studio release require separate owner authorization.
+- Live DEV Smart Catalog: v31/v5; Autonomous **OFF**.
+- Full Ready / AI Review backfill and tag retirement belong to the later Smart Profiling completion goal.

@@ -27,6 +27,7 @@ import type {
 } from "../types/catalog/smartProfile.types";
 
 import { promoteSubjectsWithTitleSpecificity } from "./catalogAutomationEvidence";
+import { collapseRedundantSubjectDerivatives } from "./smartProfileSubjectCanonicalization";
 
 import {
 
@@ -393,6 +394,16 @@ export function normalizeDesignSmartProfile(
 
 ): DesignSmartProfile {
 
+  const collapsed = collapseRedundantSubjectDerivatives({
+
+    subjects: profile.subjects,
+
+    searchConcepts: profile.searchConcepts,
+
+    visibleText: evidence?.visibleText ?? profile.visibleText,
+
+  });
+
   const subjectsWithSpecificity = promoteSubjectsWithTitleSpecificity({
 
     title: evidence?.title,
@@ -403,7 +414,7 @@ export function normalizeDesignSmartProfile(
 
     visibleText: evidence?.visibleText ?? profile.visibleText,
 
-    subjects: profile.subjects,
+    subjects: collapsed.subjects,
 
   });
 
@@ -414,6 +425,8 @@ export function normalizeDesignSmartProfile(
       ...profile,
 
       subjects: subjectsWithSpecificity,
+
+      searchConcepts: collapsed.searchConcepts,
 
     },
 

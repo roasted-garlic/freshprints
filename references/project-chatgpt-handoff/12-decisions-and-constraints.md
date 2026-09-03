@@ -2,6 +2,13 @@
 
 > Full log: `docs/project/DECISIONS.md` — newest ADRs first.
 
+### ADR-FP-145 amendment (2026-09-03 — DEV signed off)
+
+- Canonical/base depicted subjects required; redundant action/style/color/OCR/type-class phrases suppressed
+- Genuine atomic compounds preserved; no curated subject allowlist
+- AI collapse does not override staff edits or import presets
+- Prompt **catalog-enrich-v31** / normalizer **smart-profile-normalizer-v5**
+
 ### ADR-FP-159: Customer-specific temporary Print Request + Show quota override (DEV signed off 2026-09-02)
 
 - Optional `customers/{id}.printRequestQuotaOverride`; effective = active override ?? current global; clock expiry (no scheduler)

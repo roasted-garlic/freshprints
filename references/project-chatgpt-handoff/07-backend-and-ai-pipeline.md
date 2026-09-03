@@ -1,5 +1,18 @@
 # Backend and AI Pipeline
 
+## Smart Profile subject canonicalization (DEV — 2026-09-03)
+
+| Area | Delivered |
+|------|-----------|
+| Prompt | **catalog-enrich-v31** |
+| Normalizer | **smart-profile-normalizer-v5** |
+| Schema | **smart-profile-v1** (unchanged) |
+| Functions (DEV) | `enqueueAiEnrichment` `00085-pun`; `onCatalogReprocessJobWritten` `00007-fuf`; `startCatalogReprocessJob` `00006-her`; `previewCatalogReprocessJob` `00006-xed` |
+| Behavior | AI-only subject derivative collapse; staff/import presets authoritative; no new quality gate |
+| Reprocess | Targeted Owner canary only — no full AI Review / Ready backfill |
+| Autonomous | **OFF** |
+| Production | **NOT AUTHORIZED** |
+
 ## Firestore Rules resize expression budget + Interactive Upscale hydration (DEV — 2026-09-03)
 
 | Area | Delivered |

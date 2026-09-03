@@ -12,19 +12,22 @@ import { CATALOG_ENRICHMENT_PROMPT_VERSION } from "./catalogTitleRules";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
-describe("smart profile quality v30 contract", () => {
-  it("ships catalog-enrich-v30 and keeps current caps", () => {
-    assert.equal(CATALOG_ENRICHMENT_PROMPT_VERSION, "catalog-enrich-v30");
+describe("smart profile quality v31 contract", () => {
+  it("ships catalog-enrich-v31 and keeps current caps", () => {
+    assert.equal(CATALOG_ENRICHMENT_PROMPT_VERSION, "catalog-enrich-v31");
     assert.equal(SMART_PROFILE_MAX_ITEMS_PER_DIMENSION, 12);
   });
 
-  it("default prompt covers text-dominant, per-dimension, vocab placeholder, mat ignore, anti-glue subjects", () => {
+  it("default prompt covers text-dominant, per-dimension, vocab placeholder, mat ignore, anti-glue subjects, canonical bases", () => {
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /text-only \| text-dominant/);
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /\{\{smart_profile_vocab\}\}/);
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /display mat/i);
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /deliberately consider EVERY array/);
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /highland cow/);
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /MUST include that full phrase/);
+    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /canonical base noun/);
+    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /leaping fish/);
+    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /make fish/);
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /searchConcepts: richer shopper/);
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /Do NOT create specificity by gluing/);
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /dominant buyer intent/);
@@ -81,7 +84,7 @@ describe("smart profile quality v30 contract", () => {
 
     assert.deepEqual(profile.subjects, ["Highland Cow", "Jimothy"]);
     assert.ok(profile.searchConcepts?.includes("funny highland cow shirt"));
-    assert.match(profile.provenance.normalizerVersion ?? "", /normalizer-v4/);
+    assert.match(profile.provenance.normalizerVersion ?? "", /normalizer-v5/);
   });
 
   it("promotes highland cow into subjects when model emits only cow", () => {

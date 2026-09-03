@@ -15,7 +15,7 @@ describe("resolveSmartProfilePipelineStatus", () => {
     assert.match(result.label, /Missing/);
   });
 
-  it("returns current for v30/v4", () => {
+  it("returns current for live prompt/normalizer versions", () => {
     const result = resolveSmartProfilePipelineStatus({
       provenance: {
         version: "smart-profile-v1",

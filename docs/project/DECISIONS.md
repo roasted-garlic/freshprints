@@ -402,6 +402,24 @@ Gate I manual sample on job `zFzAwEIwCXFWC8dce0f4` (v29/v3) found a material fal
 - Catalog reprocess pipeline snapshot records v30+v4 for any later owner-authorized re-calibration.
 - Live Autonomous, Ready Catalog unlock, Slice 6, and production remain separately gated.
 
+**Amendment — subject canonicalization + derivative suppression (2026-09-03)**
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-03 |
+| Status | accepted (implemented in-repo; DEV Functions deploy not yet authorized) |
+| Related | Goal `smart-profile-subject-canonicalization-and-derivative-suppression`; plan `2026-09-03-smart-profile-subject-canonicalization-and-derivative-suppression-plan.md` |
+
+Refine the subject contract without replacing Gate I anti-glue, without a curated subject allowlist, and without a schema change:
+
+1. Prompt **`catalog-enrich-v31`** + normalizer **`smart-profile-normalizer-v5`**. Schema remains **`smart-profile-v1`**.
+2. AI-generated `subjects` must include a reusable canonical base for each dominant depicted entity.
+3. Redundant action/style/color/mood/verb/OCR derivatives (`leaping fish`, `make fish`, `pink ghost`) are suppressed on the AI normalization path. Type+class restatements (`bass fish`) collapse to the base plus an atomic type token relocated to `searchConcepts` when already present as the modifier.
+4. Genuine atomic compounds (`highland cow`, `sea turtle`, `fire truck`, `police officer`, `hot air balloon`, `Christmas tree`, `ice cream`) are preserved. Promote remains bound-compound-only (not slogan glue, not type restatement).
+5. Visible-text fragments are not subjects unless they independently name a depicted entity. Description echo of slogan wording does not validate verb+entity subjects.
+6. AI derivative collapse does **not** rewrite staff-edited dimensions or import-preset values. Precedence remains staff edit > import preset > AI.
+7. No new hard quality gate / Needs Review reason for redundant-subject noise. Autonomous remains OFF.
+
 ---
 
 ### ADR-FP-144: Catalog Processing Mode and unattended catalog approval architecture

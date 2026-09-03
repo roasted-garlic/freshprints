@@ -82,6 +82,24 @@ describe("catalogAutomationEvidence", () => {
     assert.ok(promoted?.includes("cow"));
   });
 
+  it("does not promote bass fish or leaping fish as required specificity", () => {
+    const bassPromoted = promoteSubjectsWithTitleSpecificity({
+      title: "Bass Fish Artwork",
+      description: "An illustrated bass fish leaping from water.",
+      subjects: ["fish"],
+    });
+    assert.ok(bassPromoted?.some((s) => s.toLowerCase() === "fish"));
+    assert.ok(!bassPromoted?.some((s) => s.toLowerCase() === "bass fish"));
+    assert.ok(!bassPromoted?.some((s) => s.toLowerCase() === "leaping fish"));
+
+    const leapingRisk = detectSubjectSpecificityRisk({
+      title: "Leaping Fish",
+      description: "A leaping fish over waves.",
+      subjects: ["fish"],
+    });
+    assert.equal(leapingRisk, null);
+  });
+
   it("promotes highland cow from description when title lacks specificity", () => {
     const promoted = promoteSubjectsWithTitleSpecificity({
       title: "Artwork Design",

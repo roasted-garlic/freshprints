@@ -3,6 +3,8 @@
  * Do NOT use a global semantic denylist for ordinary concepts (people, animal, etc.).
  */
 
+import { isPromotableSpecificityModifier } from "./smartProfileSubjectCanonicalization";
+
 export interface StructuredEvidenceGap {
   dimension: "subjects" | "objects";
   token: string;
@@ -169,107 +171,9 @@ export function findStructuredEvidenceGaps(input: {
 }
 
 /**
- * Modifiers that must not form a “specific identity” phrase with a subject head.
- * Keeps promote grounded in breed/type-like tokens (highland cow), not prose glue.
+ * Promote uses {@link isPromotableSpecificityModifier} (bound identity modifiers only).
+ * Hyphenated OCR/slogan tokens are not promotable.
  */
-const SPECIFICITY_MODIFIER_BLOCKLIST = new Set([
-  "the",
-  "and",
-  "for",
-  "with",
-  "from",
-  "into",
-  "onto",
-  "over",
-  "under",
-  "its",
-  "his",
-  "her",
-  "their",
-  "this",
-  "that",
-  "these",
-  "those",
-  "cute",
-  "funny",
-  "fuzzy",
-  "brown",
-  "soft",
-  "large",
-  "small",
-  "wide",
-  "eyed",
-  "wide-eyed",
-  "cartoon",
-  "illustration",
-  "image",
-  "design",
-  "artwork",
-  "sitting",
-  "standing",
-  "holding",
-  "wearing",
-  "featuring",
-  "features",
-  "including",
-  "includes",
-  "showing",
-  "shows",
-  "depicting",
-  "animated",
-  "whimsical",
-  "expressive",
-  "plaid",
-  "checkered",
-  "group",
-  "photo",
-  "friends",
-  "white",
-  "black",
-  "brown",
-  "green",
-  "blue",
-  "pink",
-  "red",
-  "yellow",
-  "orange",
-  "purple",
-  "gray",
-  "grey",
-  // Slogan / state / context glue (Gate I anti-compound)
-  "problem",
-  "bath",
-  "hotter",
-  "than",
-  "like",
-  "sounds",
-  "husband",
-  "husbands",
-  "wife",
-  "live",
-  "laugh",
-  "toaster",
-  "peace",
-  "love",
-  "just",
-  "hit",
-  "silhouette",
-]);
-
-function isAllowedSpecificityModifier(word: string): boolean {
-  const normalized = word.trim().toLowerCase();
-  if (normalized.length < 4) {
-    return false;
-  }
-  if (SPECIFICITY_MODIFIER_BLOCKLIST.has(normalized)) {
-    return false;
-  }
-  // Hyphenated OCR/slogan tokens (e.g. f-caw-f) are not breed/type modifiers.
-  if (normalized.includes("-")) {
-    return false;
-  }
-  return true;
-}
 
 function visibleTextTokenSet(visibleText: readonly string[] | undefined): Set<string> {
   const set = new Set<string>();
@@ -304,8 +208,9 @@ function phraseContiguousIn(value: string | undefined | null, phrase: string): b
  * while subjects only list a shorter head token (e.g. Highland cow → subject "cow").
  * Returns grounded phrases to promote into subjects (e.g. "highland cow").
  *
- * Anti-glue (normalizer-v4):
+ * Anti-glue (normalizer-v4) + bound-compound promote (normalizer-v5):
  * - Prefer description / centralSubject contiguous identity phrases.
+ * - Promote only bound identity modifiers (highland cow), never action/color/type-restatement.
  * - Title-only adjacency is accepted only for short identity-style titles where the
  *   phrase appears early (index < 3) AND the modifier is not a visible slogan token.
  */
@@ -350,7 +255,7 @@ export function findTitleGroundedSpecificSubjectPhrases(input: {
         if (word === subject || next !== subject) {
           continue;
         }
-        if (!isAllowedSpecificityModifier(word)) {
+        if (!isPromotableSpecificityModifier(word)) {
           continue;
         }
         const phrase = `${word} ${subject}`;
