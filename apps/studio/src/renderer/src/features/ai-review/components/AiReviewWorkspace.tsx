@@ -93,6 +93,9 @@ interface AiReviewWorkspaceProps {
   queueRunState: AiProcessingQueueRunState;
   processingVisionModelId: string;
   selectedDesign: Design | null;
+  /** Visible inbox list for lightbox Previous/Next (continuous selection; not autoAdvance). */
+  visibleDesigns?: readonly Design[];
+  onSelectDesign?: (designId: string) => void;
   showReadOnlySuggestions: boolean;
   showRerunAiButton: boolean;
   /** Amendment 9 P0 scroll correction — increments after successful approve/reject/archive. */
@@ -158,6 +161,8 @@ export function AiReviewWorkspace({
   queueRunState,
   processingVisionModelId,
   selectedDesign,
+  visibleDesigns = [],
+  onSelectDesign,
   showReadOnlySuggestions,
   showRerunAiButton,
   reviewScrollNonce = 0,
@@ -171,6 +176,20 @@ export function AiReviewWorkspace({
 
   const previewPath = selectedDesign?.previewPath ?? selectedDesign?.thumbnailPath ?? "";
   const { url: previewUrl } = useDesignDerivativeUrl(previewPath || undefined);
+
+  const lightboxNavigationItems = useMemo(() => {
+    const previewable = visibleDesigns.filter((design) =>
+      Boolean(design.previewPath?.trim() || design.thumbnailPath?.trim()),
+    );
+    if (previewable.length <= 1) {
+      return undefined;
+    }
+    return previewable.map((design) => ({
+      id: design.id,
+      alt: `Preview for ${design.title}`,
+      artworkBackgroundHex: design.artworkBackgroundHex,
+    }));
+  }, [visibleDesigns]);
 
   const artworkBackgroundValues = useMemo<ArtworkBackgroundFieldsValues>(() => {
     if (draftForm) {
@@ -596,9 +615,12 @@ export function AiReviewWorkspace({
       </div>
 
       <DesignPreviewLightbox
+        activeItemId={selectedDesign.id}
         alt={`Preview for ${selectedDesign.title}`}
         artworkBackgroundHex={previewArtworkBackgroundHex}
         isOpen={isLightboxOpen}
+        navigationItems={lightboxNavigationItems}
+        onActiveItemChange={onSelectDesign}
         onClose={() => setIsLightboxOpen(false)}
         previewUrl={previewUrl}
       />

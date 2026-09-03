@@ -45,6 +45,13 @@ interface DesignDetailsModalProps {
   onPurgeAssets?: (design: Design) => void;
   onRestore?: (design: Design) => void;
   onSmartProfileUpdated?: (designId: string, smartProfile: DesignSmartProfile) => void;
+  /**
+   * Ordered previewable siblings for lightbox Previous/Next (typically filteredDesigns).
+   * When omitted, lightbox stays singleton.
+   */
+  previewNavigationDesigns?: readonly Design[];
+  /** Continuous selection while lightbox navigates — must not require a network fetch when id is in list. */
+  onPreviewNavigate?: (designId: string) => void;
 }
 
 interface DetailFieldProps {
@@ -80,6 +87,8 @@ export function DesignDetailsModal({
   onPurgeAssets,
   onRestore,
   onSmartProfileUpdated,
+  previewNavigationDesigns,
+  onPreviewNavigate,
 }: DesignDetailsModalProps) {
   const { user } = useAuth();
   const [isPreviewLightboxOpen, setIsPreviewLightboxOpen] = useState(false);
@@ -91,6 +100,21 @@ export function DesignDetailsModal({
   const { url: previewUrl } = useDesignDerivativeUrl(
     isAssetsPurged ? design?.thumbnailPath : design?.previewPath,
   );
+
+  const lightboxNavigationItems =
+    previewNavigationDesigns && previewNavigationDesigns.length > 1
+      ? previewNavigationDesigns
+          .filter(
+            (candidate) =>
+              !candidate.assetsPurgedAt &&
+              Boolean(candidate.previewPath?.trim() || candidate.thumbnailPath?.trim()),
+          )
+          .map((candidate) => ({
+            id: candidate.id,
+            alt: `${candidate.title} preview`,
+            artworkBackgroundHex: candidate.artworkBackgroundHex,
+          }))
+      : undefined;
 
   if (!design) {
     return null;
@@ -516,9 +540,12 @@ export function DesignDetailsModal({
       </DesignLibraryModal>
 
       <DesignPreviewLightbox
+        activeItemId={design.id}
         alt={`${design.title} preview`}
         artworkBackgroundHex={design.artworkBackgroundHex}
         isOpen={isPreviewLightboxOpen}
+        navigationItems={lightboxNavigationItems}
+        onActiveItemChange={onPreviewNavigate}
         onClose={() => setIsPreviewLightboxOpen(false)}
         previewUrl={previewUrl}
       />

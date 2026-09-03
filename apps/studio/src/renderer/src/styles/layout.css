@@ -1003,6 +1003,34 @@
   overflow: auto;
 }
 
+.import-preview-lightbox-position {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-variant-numeric: tabular-nums;
+  margin: var(--space-1) 0 0;
+}
+
+.import-preview-lightbox-nav-stage {
+  align-items: center;
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.import-preview-lightbox-nav-stage:not(:has(.import-preview-lightbox-nav)) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.import-preview-lightbox-nav {
+  min-width: 2.5rem;
+  padding: var(--space-2);
+}
+
+.import-preview-lightbox-nav:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
 .import-preview-lightbox-stage {
   align-items: center;
   background: var(--color-artwork-preview-bg);

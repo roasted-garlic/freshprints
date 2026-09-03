@@ -414,6 +414,8 @@ function AiReviewPageContent() {
             queueRunState={inbox.processingQueue.runState}
             processingVisionModelId={inbox.processingQueue.resolvedSessionVisionModelId}
             selectedDesign={inbox.selectedDesign}
+            visibleDesigns={inbox.designs}
+            onSelectDesign={inbox.requestSelectDesign}
             showReadOnlySuggestions={inbox.showReadOnlySuggestions}
             reviewScrollNonce={inbox.reviewScrollNonce}
             showRerunAiButton={inbox.canRerunAiSuggestions || inbox.isRerunningAi}

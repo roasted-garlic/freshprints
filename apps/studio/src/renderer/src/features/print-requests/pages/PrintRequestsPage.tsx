@@ -26,6 +26,7 @@ import { usePrintRequestDetails } from "../hooks/usePrintRequestDetails";
 import { usePrintRequests } from "../hooks/usePrintRequests";
 import { useReadyDesignsForSelection } from "../hooks/useReadyDesignsForSelection";
 import { PrintRequestItemCard } from "../components/PrintRequestItemCard";
+import { PrintRequestItemsPreviewLightbox } from "../components/PrintRequestItemsPreviewLightbox";
 import { useStandardPrintSizesSettings } from "../../settings/hooks/useStandardPrintSizesSettings";
 import { useShowQueueSettings } from "../../upcoming-shows/hooks/useShowQueueSettings";
 import { useInternalGangSheetSettings } from "../../upcoming-shows/hooks/useInternalGangSheetSettings";
@@ -429,6 +430,11 @@ export function PrintRequestsPage() {
     () => isLoadedSelectedRequest ? requestDetails.items : [],
     [isLoadedSelectedRequest, requestDetails.items],
   );
+
+  useEffect(() => {
+    setLightboxItemId(null);
+  }, [selectedRequestId]);
+
   const selectedDesignIds = useMemo(
     () =>
       requestItems.flatMap((item) => item.designId ? [item.designId] : []),
@@ -500,6 +506,7 @@ export function PrintRequestsPage() {
   const [isConvertingRequest, setIsConvertingRequest] = useState(false);
   const [isClearAllConfirmOpen, setIsClearAllConfirmOpen] = useState(false);
   const [isClearingAllItems, setIsClearingAllItems] = useState(false);
+  const [lightboxItemId, setLightboxItemId] = useState<string | null>(null);
   const [clearAllError, setClearAllError] = useState<string | null>(null);
   const [convertError, setConvertError] = useState<string | null>(null);
   const [transferShowContext, setTransferShowContext] = useState<{
@@ -2364,6 +2371,14 @@ export function PrintRequestsPage() {
                           onArtworkEnhanceModeChanged={(result) =>
                             handleArtworkEnhanceModeChanged(item, result)
                           }
+                          onOpenPreview={
+                            design?.previewPath ||
+                            design?.thumbnailPath ||
+                            upload?.previewPath ||
+                            upload?.thumbnailPath
+                              ? () => setLightboxItemId(item.id)
+                              : undefined
+                          }
                           onPersistenceHealthChange={handlePersistenceHealthChange}
                           onRegisterFlush={handleRegisterFlush}
                           onDuplicate={handleDuplicateItem}
@@ -2379,6 +2394,45 @@ export function PrintRequestsPage() {
                   </div>
                 )}
               </Card>
+
+              <PrintRequestItemsPreviewLightbox
+                activeItemId={lightboxItemId}
+                designById={designById}
+                items={requestItems}
+                onActiveItemChange={setLightboxItemId}
+                onClose={() => setLightboxItemId(null)}
+                resolveUpload={(item) => {
+                  const uploadDoc = item.customerUploadId
+                    ? uploadSummariesById.get(item.customerUploadId)
+                    : null;
+                  if (uploadDoc) {
+                    return {
+                      title:
+                        uploadDoc.originalFilename?.trim() ||
+                        item.titleSnapshot?.trim() ||
+                        "Uploaded artwork",
+                      previewPath: uploadDoc.previewStoragePath,
+                      thumbnailPath: uploadDoc.thumbnailStoragePath,
+                      printWidthInches: uploadDoc.printWidthInches,
+                      printHeightInches: uploadDoc.printHeightInches,
+                      widthPx: uploadDoc.widthPx,
+                      heightPx: uploadDoc.heightPx,
+                      approvedMaxPrintWidthInches: uploadDoc.approvedMaxPrintWidthInches,
+                      approvedMaxPrintHeightInches: uploadDoc.approvedMaxPrintHeightInches,
+                      wasUpscaled: uploadDoc.wasUpscaled,
+                      fromAssistedCreation: Boolean(uploadDoc.assistedCreationRequestId),
+                    };
+                  }
+                  if (item.titleSnapshot) {
+                    return {
+                      title: item.titleSnapshot,
+                      previewPath: null,
+                      thumbnailPath: null,
+                    };
+                  }
+                  return null;
+                }}
+              />
             </>
           )}
         </section>

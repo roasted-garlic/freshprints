@@ -5,7 +5,6 @@ import { Button } from "../../../shared/components/Button";
 import { Card } from "../../../shared/components/Card";
 import { HoverBubbleTooltip } from "../../../shared/components/HoverBubbleTooltip";
 import { Toggle } from "../../../shared/components/Toggle";
-import { DesignPreviewLightbox } from "../../designs/components/DesignPreviewLightbox";
 import { DesignThumbnailPanel } from "../../designs/components/DesignThumbnailPanel";
 import { useDesignDerivativeUrl } from "../../designs/hooks/useDesignDerivativeUrl";
 import type { Design } from "../../designs/types/design.types";
@@ -76,6 +75,8 @@ interface PrintRequestItemCardProps {
   readOnly?: boolean;
   onDesignArtworkEnhanced?: () => void | Promise<void>;
   onArtworkEnhanceModeChanged?: (result: SetPrintRequestItemArtworkEnhanceModeResponse) => void;
+  /** Parent-owned lightbox open — identity is always `item.id`. */
+  onOpenPreview?: () => void;
 }
 
 function resolveInitialWidth(item: PrintRequestItem): number {
@@ -171,6 +172,7 @@ export function PrintRequestItemCard({
   standardPrintSizesSettings,
   onDesignArtworkEnhanced,
   onArtworkEnhanceModeChanged,
+  onOpenPreview,
 }: PrintRequestItemCardProps) {
   const isUploadItem = item.sourceType === "customer_upload" || Boolean(item.customerUploadId);
   const sourcePill = resolvePrintRequestItemSourcePill({
@@ -197,7 +199,6 @@ export function PrintRequestItemCard({
     formatEditableNumber(resolveInitialHeight(item)),
   );
   const [isConfirmingRemove, setIsConfirmingRemove] = useState(false);
-  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [isStandardSizesModalOpen, setIsStandardSizesModalOpen] = useState(false);
   const [standardSizePresetKey, setStandardSizePresetKey] = useState<string | undefined>(
     item.standardSizePresetKey,
@@ -249,7 +250,6 @@ export function PrintRequestItemCard({
     setPrintHeightInput(formatEditableNumber(nextHeight));
     setStandardSizePresetKey(item.standardSizePresetKey);
     setIsConfirmingRemove(false);
-    setIsLightboxOpen(false);
     lastSavedSignatureRef.current = incomingSignature;
   }, [design, item, upload]);
 
@@ -691,7 +691,7 @@ export function PrintRequestItemCard({
   );
 
   return (
-    <>
+    <div data-print-request-item-id={item.id}>
       <Card className="print-requests-item-card">
         <div className="print-requests-item-card-header">
           <div
@@ -706,9 +706,9 @@ export function PrintRequestItemCard({
               className="print-requests-item-card-thumbnail"
               fallbackLabel="Preview unavailable"
               imageFit="contain"
-              interactive={Boolean(previewUrl) && !isTogglingEnhance}
+              interactive={Boolean(previewUrl) && !isTogglingEnhance && Boolean(onOpenPreview)}
               loadingLabel="Loading preview"
-              onImageClick={() => setIsLightboxOpen(true)}
+              onImageClick={onOpenPreview}
             />
             {isTogglingEnhance ? (
               <div
@@ -925,14 +925,6 @@ export function PrintRequestItemCard({
         ) : null}
       </Card>
 
-      <DesignPreviewLightbox
-        alt={`${title} preview`}
-        artworkBackgroundHex={artworkBackgroundHex}
-        isOpen={isLightboxOpen}
-        onClose={() => setIsLightboxOpen(false)}
-        previewUrl={previewUrl ?? null}
-      />
-
       {aspectPixels ? (
         <StandardPrintSizesModal
           approvedMaxPrintHeightInches={
@@ -965,6 +957,6 @@ export function PrintRequestItemCard({
           wasUpscaled={upload?.wasUpscaled ?? design?.wasUpscaled}
         />
       ) : null}
-    </>
+    </div>
   );
 }

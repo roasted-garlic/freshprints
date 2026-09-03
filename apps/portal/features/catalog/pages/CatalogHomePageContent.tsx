@@ -169,6 +169,32 @@ export function CatalogHomePageContent() {
     };
   }, [discoveryRails]);
 
+  const homeRailSections = useMemo((): CatalogHomeRailSection[] => {
+    const showRails: CatalogHomeRailSection[] = [];
+    if (nextShow.rail) {
+      showRails.push(showHomeRailToSection(nextShow.rail));
+    }
+    if (thisWeek.rail) {
+      showRails.push(showHomeRailToSection(thisWeek.rail));
+    }
+    return [
+      ...discoveryBeforeShow,
+      ...showRails,
+      ...discoveryAfterShow,
+      ...categoryRails,
+    ];
+  }, [categoryRails, discoveryAfterShow, discoveryBeforeShow, nextShow.rail, thisWeek.rail]);
+
+  const navigationDesigns = useMemo((): CatalogDesign[] => {
+    if (!selectedDesign) {
+      return [];
+    }
+    const containingRail = homeRailSections.find((section) =>
+      section.designs.some((entry) => entry.id === selectedDesign.id),
+    );
+    return containingRail?.designs ?? [selectedDesign];
+  }, [homeRailSections, selectedDesign]);
+
   const hasCatalogRails = discoveryRails.length > 0 || categoryRails.length > 0;
   const hasShowRailContent = Boolean(nextShow.rail || thisWeek.rail);
   const hasShowRailPending = nextShow.isLoading || thisWeek.isLoading;
@@ -418,6 +444,7 @@ export function CatalogHomePageContent() {
           (currentRequestAggregates.quantityByDesignId[selectedDesign.id] ?? 0) > 0
         }
         isOpen={selectedDesign !== null}
+        navigationDesigns={navigationDesigns}
         onOpenDesign={openDesignDetails}
         onAddToRequest={isAuthenticated ? addDesignFlow.addDesign : undefined}
         onClose={closeDesignDetails}

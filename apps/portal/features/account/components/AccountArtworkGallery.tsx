@@ -3,7 +3,10 @@
 import { useEffect, useState } from 'react';
 
 import { CatalogDesignDetailsModal } from '../../catalog/components/CatalogDesignDetailsModal';
-import { CatalogPreviewLightbox } from '../../catalog/components/CatalogPreviewLightbox';
+import {
+  CatalogPreviewLightbox,
+  type CatalogPreviewLightboxNavItem,
+} from '../../catalog/components/CatalogPreviewLightbox';
 import type { CatalogDesign } from '../../catalog/types/catalog.types';
 import { customerUploadService } from '../../customer-uploads/services/customerUploadService';
 import { useAddDesignToRequestFlow } from '../../print-requests/hooks/useAddDesignToRequestFlow';
@@ -22,6 +25,34 @@ interface AccountArtworkGalleryProps {
   onArtworkCountsChange?: (counts: { donatedCount: number; uploadCount: number }) => void;
   /** When true, render without the outer panel chrome (for nesting under Overview). */
   embedded?: boolean;
+}
+
+interface AccountArtworkLightboxState {
+  activeItemId: string;
+  items: CatalogPreviewLightboxNavItem[];
+}
+
+async function resolveGalleryLightboxItems(
+  collection: readonly AccountArtworkGalleryTile[],
+): Promise<Array<CatalogPreviewLightboxNavItem & { previewUrl: string }>> {
+  const resolved: Array<CatalogPreviewLightboxNavItem & { previewUrl: string } | null> =
+    await Promise.all(
+      collection.map(async (item) => {
+        const previewUrl =
+          (await customerUploadService.getDownloadUrl(item.previewStoragePath)) ?? item.imageUrl;
+        if (!previewUrl) {
+          return null;
+        }
+        return {
+          id: item.id,
+          alt: item.title,
+          previewUrl,
+        };
+      }),
+    );
+  return resolved.filter(
+    (entry): entry is CatalogPreviewLightboxNavItem & { previewUrl: string } => entry !== null,
+  );
 }
 
 export function AccountArtworkGallery({
@@ -51,7 +82,7 @@ export function AccountArtworkGallery({
   } = usePortalPrintRequests();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [lightbox, setLightbox] = useState<{ alt: string; url: string } | null>(null);
+  const [lightbox, setLightbox] = useState<AccountArtworkLightboxState | null>(null);
   const [selectedDesign, setSelectedDesign] = useState<CatalogDesign | null>(null);
   const [pendingDelete, setPendingDelete] = useState<AccountArtworkGalleryTile | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -71,19 +102,24 @@ export function AccountArtworkGallery({
     onArtworkCountsChange?.({ donatedCount, uploadCount });
   }, [donatedCount, isLoading, onArtworkCountsChange, uploadCount]);
 
-  async function openLightbox(item: AccountArtworkGalleryTile) {
-    const url =
-      (await customerUploadService.getDownloadUrl(item.previewStoragePath)) ?? item.imageUrl;
-    if (!url) {
+  async function openLightbox(
+    item: AccountArtworkGalleryTile,
+    collection: readonly AccountArtworkGalleryTile[],
+  ) {
+    const navItems = await resolveGalleryLightboxItems(collection);
+    if (navItems.length === 0 || !navItems.some((entry) => entry.id === item.id)) {
       return;
     }
-    setLightbox({ alt: item.title, url });
+    setLightbox({ activeItemId: item.id, items: navItems });
   }
 
   function handleDeleteRequest(item: AccountArtworkGalleryTile) {
     setStatusMessage(null);
     setPendingDelete(item);
   }
+
+  const activeLightboxItem =
+    lightbox?.items.find((entry) => entry.id === lightbox.activeItemId) ?? lightbox?.items[0];
 
   const content = (
     <>
@@ -128,7 +164,7 @@ export function AccountArtworkGallery({
             <div className="portal-account-gallery-tile-wrap" key={item.id}>
               <button
                 className="portal-account-gallery-tile"
-                onClick={() => void openLightbox(item)}
+                onClick={() => void openLightbox(item, previewItems)}
                 type="button"
               >
                 {item.imageUrl ? (
@@ -161,8 +197,8 @@ export function AccountArtworkGallery({
         items={items}
         onClose={() => setIsModalOpen(false)}
         onDeletePast={handleDeleteRequest}
-        onSelectPast={(item) => {
-          void openLightbox(item);
+        onSelectPast={(item, filteredPastItems) => {
+          void openLightbox(item, filteredPastItems);
         }}
         onSelectReusable={(design) => {
           setIsModalOpen(false);
@@ -188,10 +224,15 @@ export function AccountArtworkGallery({
       />
 
       <CatalogPreviewLightbox
-        alt={lightbox?.alt ?? 'Design preview'}
+        activeItemId={lightbox?.activeItemId ?? null}
+        alt={activeLightboxItem?.alt ?? 'Design preview'}
         isOpen={lightbox !== null}
+        navigationItems={lightbox && lightbox.items.length > 1 ? lightbox.items : undefined}
+        onActiveItemChange={(itemId) => {
+          setLightbox((current) => (current ? { ...current, activeItemId: itemId } : current));
+        }}
         onClose={() => setLightbox(null)}
-        previewUrl={lightbox?.url ?? null}
+        previewUrl={activeLightboxItem?.previewUrl ?? null}
       />
 
       <CatalogDesignDetailsModal
@@ -212,8 +253,10 @@ export function AccountArtworkGallery({
           (currentRequestAggregates.quantityByDesignId[selectedDesign.id] ?? 0) > 0
         }
         isOpen={selectedDesign !== null}
+        navigationDesigns={reusableDesigns}
         onAddToRequest={addDesignFlow.addDesign}
         onClose={() => setSelectedDesign(null)}
+        onOpenDesign={setSelectedDesign}
         onQuantityChange={addDesignFlow.setQuantity}
         onRemoveFromRequest={addDesignFlow.removeDesign}
       />

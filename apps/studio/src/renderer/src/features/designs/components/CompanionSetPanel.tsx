@@ -258,6 +258,24 @@ export function CompanionSetPanel({ design, onCompanionsChanged }: CompanionSetP
     lightboxMember?.previewPath ?? lightboxMember?.thumbnailPath,
   );
 
+  const lightboxNavigationItems =
+    members.length > 1
+      ? members
+          .filter((member) => Boolean(member.previewPath?.trim() || member.thumbnailPath?.trim()))
+          .map((member) => ({
+            id: member.id,
+            alt: `${member.title} preview`,
+            artworkBackgroundHex: member.artworkBackgroundHex,
+          }))
+      : undefined;
+
+  function handleLightboxActiveItemChange(itemId: string) {
+    const nextMember = members.find((member) => member.id === itemId) ?? null;
+    if (nextMember) {
+      setLightboxMember(nextMember);
+    }
+  }
+
   return (
     <section aria-labelledby="design-details-companion-title" className="design-details-section">
       <h3 id="design-details-companion-title">Companion designs</h3>
@@ -475,9 +493,12 @@ export function CompanionSetPanel({ design, onCompanionsChanged }: CompanionSetP
       ) : null}
 
       <DesignPreviewLightbox
+        activeItemId={lightboxMember?.id ?? null}
         alt={lightboxMember ? `${lightboxMember.title} preview` : ""}
         artworkBackgroundHex={lightboxMember?.artworkBackgroundHex}
         isOpen={Boolean(lightboxMember)}
+        navigationItems={lightboxNavigationItems}
+        onActiveItemChange={handleLightboxActiveItemChange}
         onClose={() => setLightboxMember(null)}
         previewUrl={lightboxPreviewUrl}
       />

@@ -242,8 +242,10 @@ export function FavoritesPageContent() {
           (currentRequestAggregates.quantityByDesignId[selectedDesign.id] ?? 0) > 0
         }
         isOpen={selectedDesign !== null}
+        navigationDesigns={designs}
         onAddToRequest={addDesignFlow.addDesign}
         onClose={() => setSelectedDesign(null)}
+        onOpenDesign={setSelectedDesign}
         onQuantityChange={addDesignFlow.setQuantity}
         onRemoveFromRequest={addDesignFlow.removeDesign}
       />

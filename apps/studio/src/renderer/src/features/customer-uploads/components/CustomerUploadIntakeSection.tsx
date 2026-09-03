@@ -77,10 +77,14 @@ function IntakeDetail({
   row,
   intake,
   isDonation = false,
+  previewNavigationItems,
+  onPreviewNavigate,
 }: {
   row: CustomerUploadIntakeRow;
   intake: IntakeApi;
   isDonation?: boolean;
+  previewNavigationItems?: { id: string; alt: string; previewUrl: string }[];
+  onPreviewNavigate?: (itemId: string) => void;
 }) {
   const navigate = useNavigate();
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -436,8 +440,11 @@ function IntakeDetail({
       ) : null}
 
       <DesignPreviewLightbox
+        activeItemId={row.id}
         alt={row.originalFilename}
         isOpen={isLightboxOpen}
+        navigationItems={previewNavigationItems}
+        onActiveItemChange={onPreviewNavigate}
         onClose={() => setIsLightboxOpen(false)}
         previewUrl={row.previewUrl}
       />
@@ -453,6 +460,16 @@ export function CustomerUploadIntakeSection({
   intake: IntakeApi;
 }) {
   const isDonation = purposeScope === "catalog_donation";
+
+  const previewNavigationItems = intake.rows
+    .filter((row): row is CustomerUploadIntakeRow & { previewUrl: string } =>
+      Boolean(row.previewUrl?.trim()),
+    )
+    .map((row) => ({
+      id: row.id,
+      alt: row.originalFilename,
+      previewUrl: row.previewUrl,
+    }));
 
   if (!intake.canView) {
     return null;
@@ -545,7 +562,13 @@ export function CustomerUploadIntakeSection({
                 <IntakeDetail
                   intake={intake}
                   isDonation={isDonation}
-                  key={`${intake.filter}:${intake.selected.id}`}
+                  key={intake.filter}
+                  onPreviewNavigate={(itemId) => {
+                    intake.setSelectedId(itemId);
+                  }}
+                  previewNavigationItems={
+                    previewNavigationItems.length > 1 ? previewNavigationItems : undefined
+                  }
                   row={intake.selected}
                 />
               ) : null}

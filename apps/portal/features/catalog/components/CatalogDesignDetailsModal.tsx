@@ -1,9 +1,10 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { resolveArtworkBackgroundHex } from '@fresh-prints/shared/constants/design/artworkBackground.constants';
+import { filterPreviewableItemIds } from '@fresh-prints/shared/utils/previewLightboxNavigation';
 
 import { useCatalogDesignViewAnalytics } from '../../analytics/hooks/useCatalogDesignViewAnalytics';
 import { useAuth } from '../../auth/context/AuthContext';
@@ -19,12 +20,19 @@ import { CatalogArtworkBackgroundPreviewPicker } from './CatalogArtworkBackgroun
 import { CatalogDesignShareButton } from './CatalogDesignShareButton';
 import { CatalogDesignIssueReportModal } from './CatalogDesignIssueReportModal';
 import { CatalogMatchingDesignsSection } from './CatalogMatchingDesignsSection';
-import { CatalogPreviewLightbox } from './CatalogPreviewLightbox';
+import {
+  CatalogPreviewLightbox,
+  type CatalogPreviewLightboxNavItem,
+} from './CatalogPreviewLightbox';
 import {
   CatalogRequestQuantityControls,
   type CatalogRequestQuantityChangeHandler,
 } from './CatalogRequestQuantityControls';
 import { CatalogThumbnailPanel } from './CatalogThumbnailPanel';
+
+function isCatalogDesignPreviewable(design: CatalogDesign): boolean {
+  return Boolean(design.previewPath?.trim() || design.thumbnailPath?.trim());
+}
 
 interface CatalogDesignDetailsModalProps {
   /** In-flight designId from the add flow — powers the busy state on Matching designs Add buttons. */
@@ -43,10 +51,15 @@ interface CatalogDesignDetailsModalProps {
   /** When true, design is already on the Current Request (or selection) — hide the full-request label. */
   isInCurrentRequest?: boolean;
   isOpen: boolean;
+  /**
+   * Host-supplied ordered designs currently displayed (filtered/loaded rail or grid).
+   * Enables Previous/Next in the details lightbox via continuous `onOpenDesign` swaps.
+   */
+  navigationDesigns?: readonly CatalogDesign[];
   /** When omitted for guests, modal shows Sign in to add to a request CTA. */
   onAddToRequest?: (design: CatalogDesign) => void;
   onClose: () => void;
-  /** Swap the modal to show a different design — used by the Matching designs section. */
+  /** Swap the modal to show a different design — used by Matching designs and lightbox nav. */
   onOpenDesign?: (design: CatalogDesign) => void;
   /** Same handlers as CatalogSelectionCard — required with onRemove when in Current Request. */
   onQuantityChange?: CatalogRequestQuantityChangeHandler;
@@ -70,6 +83,7 @@ export function CatalogDesignDetailsModal({
   isAdding = false,
   isInCurrentRequest = false,
   isOpen,
+  navigationDesigns,
   onAddToRequest,
   onClose,
   onOpenDesign,
@@ -101,6 +115,43 @@ export function CatalogDesignDetailsModal({
     isOpen ? previewPath : undefined,
     design?.updatedAtMs,
   );
+  const lightboxNavigationItems = useMemo((): CatalogPreviewLightboxNavItem[] | undefined => {
+    if (!navigationDesigns || !onOpenDesign || navigationDesigns.length <= 1) {
+      return undefined;
+    }
+
+    const previewableIds = new Set(
+      filterPreviewableItemIds(
+        navigationDesigns,
+        (entry) => entry.id,
+        isCatalogDesignPreviewable,
+      ),
+    );
+
+    if (previewableIds.size <= 1) {
+      return undefined;
+    }
+
+    return navigationDesigns
+      .filter((entry) => previewableIds.has(entry.id))
+      .map((entry) => ({
+        id: entry.id,
+        alt: entry.title,
+        artworkBackgroundHex: entry.artworkBackgroundHex,
+        isExplicitContent: entry.isExplicitContent,
+        // Pattern A: parent supplies the active design's resolved previewUrl.
+      }));
+  }, [navigationDesigns, onOpenDesign]);
+
+  function handleLightboxActiveItemChange(itemId: string) {
+    if (!onOpenDesign || !navigationDesigns) {
+      return;
+    }
+    const nextDesign = navigationDesigns.find((entry) => entry.id === itemId);
+    if (nextDesign) {
+      onOpenDesign(nextDesign);
+    }
+  }
   const addDisabled = isAdding || !canAddPrints;
   const quantityChangeHandler = onQuantityChange;
   const removeFromRequestHandler = onRemoveFromRequest;
@@ -311,10 +362,13 @@ export function CatalogDesignDetailsModal({
       </div>
 
       <CatalogPreviewLightbox
+        activeItemId={design.id}
         alt={displayTitle}
         artworkBackgroundHex={previewBgHex}
         isExplicitContent={design.isExplicitContent}
         isOpen={isPreviewLightboxOpen}
+        navigationItems={lightboxNavigationItems}
+        onActiveItemChange={handleLightboxActiveItemChange}
         onClose={() => setIsPreviewLightboxOpen(false)}
         onReveal={() => setSessionRevealed(true)}
         previewUrl={previewUrl}

@@ -125,6 +125,11 @@ interface PortalPrintRequestItemCardProps {
   ) => void;
   onPersistenceHealthChange?: (itemId: string, health: PrintRequestItemPersistenceHealth) => void;
   onRegisterFlush?: (itemId: string, flush: (() => Promise<boolean>) | null) => void;
+  /**
+   * When provided, preview opens via the parent-owned lightbox collection (item.id identity).
+   * Local CatalogPreviewLightbox is omitted.
+   */
+  onOpenLightbox?: (itemId: string) => void;
 }
 
 function resolveAspectPixels(
@@ -225,6 +230,7 @@ export function PortalPrintRequestItemCard({
   onAutosaveStateChange,
   onPersistenceHealthChange,
   onRegisterFlush,
+  onOpenLightbox,
   standardPrintSizesSettings,
 }: PortalPrintRequestItemCardProps) {
   const portalInteractiveUpscaleEnabled = usePortalInteractiveUpscaleEnabled();
@@ -340,12 +346,14 @@ export function PortalPrintRequestItemCard({
     setPrintWidthInput(formatEditableNumber(nextWidth));
     setPrintHeightInput(formatEditableNumber(nextHeight));
     setStandardSizePresetKey(item.standardSizePresetKey);
-    setIsLightboxOpen(false);
+    if (!onOpenLightbox) {
+      setIsLightboxOpen(false);
+    }
     lastSavedSignatureRef.current = incomingSignature;
     if (incomingUpdatedAtMs !== null) {
       lastAcceptedUpdatedAtMsRef.current = incomingUpdatedAtMs;
     }
-  }, [design, item, upload]);
+  }, [design, item, onOpenLightbox, upload]);
 
   useEffect(() => {
     if (quantityResetKey < 1) {
@@ -840,6 +848,7 @@ export function PortalPrintRequestItemCard({
       <article
         aria-busy={isOptimisticItem || undefined}
         className={`portal-request-item-editor-card${isOptimisticItem ? ' is-preparing' : ''}`}
+        data-print-request-item-id={item.id}
       >
         <div className="portal-request-item-editor-header">
           <div
@@ -856,7 +865,13 @@ export function PortalPrintRequestItemCard({
               fallbackLabel="Preview unavailable"
               interactive={Boolean(previewUrl) && !isTogglingEnhance}
               loadingLabel="Loading preview"
-              onImageClick={() => setIsLightboxOpen(true)}
+              onImageClick={() => {
+                if (onOpenLightbox) {
+                  onOpenLightbox(item.id);
+                  return;
+                }
+                setIsLightboxOpen(true);
+              }}
             />
             {isTogglingEnhance ? (
               <div
@@ -1143,13 +1158,15 @@ export function PortalPrintRequestItemCard({
         ) : null}
       </article>
 
-      <CatalogPreviewLightbox
-        alt={`${title} preview`}
-        artworkBackgroundHex={design?.artworkBackgroundHex}
-        isOpen={isLightboxOpen}
-        onClose={() => setIsLightboxOpen(false)}
-        previewUrl={previewUrl}
-      />
+      {!onOpenLightbox ? (
+        <CatalogPreviewLightbox
+          alt={`${title} preview`}
+          artworkBackgroundHex={design?.artworkBackgroundHex}
+          isOpen={isLightboxOpen}
+          onClose={() => setIsLightboxOpen(false)}
+          previewUrl={previewUrl}
+        />
+      ) : null}
 
       {aspectPixels ? (
         <PortalStandardPrintSizesModal

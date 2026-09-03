@@ -148,12 +148,14 @@ export function ShowDesignGalleryPageContent() {
             : false
         }
         isOpen={selectedDesign !== null}
+        navigationDesigns={designs}
         onAddToRequest={
           isAuthenticated && selectedDesign
             ? () => addDesignFlow.addDesign(selectedDesign)
             : undefined
         }
         onClose={() => setSelectedDesignId(null)}
+        onOpenDesign={openDesignDetails}
         onQuantityChange={isAuthenticated ? addDesignFlow.setQuantity : undefined}
         onRemoveFromRequest={isAuthenticated ? addDesignFlow.removeDesign : undefined}
       />

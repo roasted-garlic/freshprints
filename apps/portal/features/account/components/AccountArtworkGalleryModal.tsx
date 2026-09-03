@@ -19,7 +19,10 @@ interface AccountArtworkGalleryModalProps {
   reusableErrorMessage: string | null;
   onClose: () => void;
   onDeletePast: (item: AccountArtworkGalleryTile) => void;
-  onSelectPast: (item: AccountArtworkGalleryTile) => void;
+  onSelectPast: (
+    item: AccountArtworkGalleryTile,
+    filteredPastItems: readonly AccountArtworkGalleryTile[],
+  ) => void;
   onSelectReusable: (design: CatalogDesign) => void;
 }
 
@@ -208,7 +211,7 @@ export function AccountArtworkGalleryModal({
               <div className="portal-account-gallery-tile-wrap" key={item.id}>
                 <button
                   className="portal-account-gallery-tile"
-                  onClick={() => onSelectPast(item)}
+                  onClick={() => onSelectPast(item, filteredPastItems)}
                   type="button"
                 >
                   {item.imageUrl ? (

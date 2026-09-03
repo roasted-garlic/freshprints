@@ -1,9 +1,12 @@
 import { Images } from "lucide-react";
+import { useMemo, useState } from "react";
 
 import { EmptyState } from "../../../shared/components/EmptyState";
 import { PageLoadingState } from "../../../shared/components/PageLoadingState";
 import type { Design } from "../types/design.types";
+import { useDesignDerivativeUrl } from "../hooks/useDesignDerivativeUrl";
 import { DesignCard } from "./DesignCard";
+import { DesignPreviewLightbox } from "./DesignPreviewLightbox";
 import { DesignSelectionCard } from "./DesignSelectionCard";
 
 export type DesignLibraryCatalogView = "approved" | "archived";
@@ -54,6 +57,13 @@ function getDefaultEmptyState(catalogView: DesignLibraryCatalogView) {
   };
 }
 
+function isDesignPreviewable(design: Design): boolean {
+  return (
+    !design.assetsPurgedAt &&
+    Boolean(design.previewPath?.trim() || design.thumbnailPath?.trim())
+  );
+}
+
 export function DesignGrid({
   catalogView,
   designs,
@@ -63,6 +73,46 @@ export function DesignGrid({
   requestSelection,
   onSelectDesign,
 }: DesignGridProps) {
+  const [lightboxDesignId, setLightboxDesignId] = useState<string | null>(null);
+
+  const previewableDesigns = useMemo(
+    () => (requestSelection ? designs.filter(isDesignPreviewable) : []),
+    [designs, requestSelection],
+  );
+
+  const lightboxDesign =
+    lightboxDesignId != null
+      ? previewableDesigns.find((design) => design.id === lightboxDesignId) ?? null
+      : null;
+
+  const { url: lightboxPreviewUrl } = useDesignDerivativeUrl(
+    lightboxDesign?.previewPath ?? lightboxDesign?.thumbnailPath,
+  );
+
+  const lightboxNavigationItems = useMemo(
+    () =>
+      previewableDesigns.map((design) => ({
+        id: design.id,
+        alt: `${design.title} preview`,
+        artworkBackgroundHex: design.artworkBackgroundHex,
+      })),
+    [previewableDesigns],
+  );
+
+  function closeLightboxWithScroll(finalItemId: string | null) {
+    setLightboxDesignId(null);
+    if (!finalItemId) {
+      return;
+    }
+
+    window.requestAnimationFrame(() => {
+      const target = document.querySelector<HTMLElement>(
+        `[data-design-id="${CSS.escape(finalItemId)}"]`,
+      );
+      target?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+  }
+
   if (isLoading) {
     return <PageLoadingState label="Loading designs" message="Loading design library..." />;
   }
@@ -87,34 +137,55 @@ export function DesignGrid({
   }
 
   return (
-    <div className="design-grid" role="list">
-      {designs.map((design) => {
-        const selection = requestSelection?.getSelection(design.id);
+    <>
+      <div className="design-grid" role="list">
+        {designs.map((design) => {
+          const selection = requestSelection?.getSelection(design.id);
 
-        return (
-          <div data-design-id={design.id} key={design.id} role="listitem">
-            {requestSelection ? (
-              <DesignSelectionCard
-                design={design}
-                isExistingSelection={selection?.isExistingSelection ?? false}
-                isSelected={selection?.isSelected ?? false}
-                onAdd={requestSelection.onAdd}
-                onQuantityChange={requestSelection.onQuantityChange}
-                onRemove={requestSelection.onRemove}
-                quantity={selection?.quantity ?? 1}
-              />
-            ) : (
-              <DesignCard
-                design={design}
-                isSelectedForPurge={purgeSelection?.isSelected(design.id) ?? false}
-                onSelect={onSelectDesign}
-                onTogglePurgeSelection={purgeSelection?.onToggle}
-                showPurgeSelection={Boolean(purgeSelection)}
-              />
-            )}
-          </div>
-        );
-      })}
-    </div>
+          return (
+            <div data-design-id={design.id} key={design.id} role="listitem">
+              {requestSelection ? (
+                <DesignSelectionCard
+                  design={design}
+                  isExistingSelection={selection?.isExistingSelection ?? false}
+                  isSelected={selection?.isSelected ?? false}
+                  onAdd={requestSelection.onAdd}
+                  onOpenPreview={
+                    isDesignPreviewable(design)
+                      ? (nextDesign) => setLightboxDesignId(nextDesign.id)
+                      : undefined
+                  }
+                  onQuantityChange={requestSelection.onQuantityChange}
+                  onRemove={requestSelection.onRemove}
+                  quantity={selection?.quantity ?? 1}
+                />
+              ) : (
+                <DesignCard
+                  design={design}
+                  isSelectedForPurge={purgeSelection?.isSelected(design.id) ?? false}
+                  onSelect={onSelectDesign}
+                  onTogglePurgeSelection={purgeSelection?.onToggle}
+                  showPurgeSelection={Boolean(purgeSelection)}
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {requestSelection ? (
+        <DesignPreviewLightbox
+          activeItemId={lightboxDesignId}
+          alt={lightboxDesign ? `${lightboxDesign.title} preview` : "Design preview"}
+          artworkBackgroundHex={lightboxDesign?.artworkBackgroundHex}
+          isOpen={Boolean(lightboxDesignId && lightboxDesign)}
+          navigationItems={lightboxNavigationItems}
+          onActiveItemChange={setLightboxDesignId}
+          onClose={() => setLightboxDesignId(null)}
+          onCloseWithFinalItemId={closeLightboxWithScroll}
+          previewUrl={lightboxPreviewUrl ?? null}
+        />
+      ) : null}
+    </>
   );
 }

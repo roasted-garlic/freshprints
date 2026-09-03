@@ -687,8 +687,33 @@ export function DesignLibraryPage() {
   );
 
   const closeDesignDetails = useCallback(() => {
+    if (selectedDesign) {
+      pendingScrollDesignIdRef.current = selectedDesign.id;
+    }
     setSelectedDesign(null);
-  }, []);
+  }, [selectedDesign]);
+
+  const handlePreviewNavigate = useCallback(
+    (designId: string) => {
+      const fromList = filteredDesigns.find((design) => design.id === designId);
+      if (fromList) {
+        setSelectedDesign(fromList);
+        return;
+      }
+      // Fallback only when the id is not in the loaded filtered list.
+      if (user) {
+        void designService
+          .getDesignById(user, designId)
+          .then((fresh) => {
+            setSelectedDesign(fresh);
+          })
+          .catch(() => {
+            // Keep current selection if fetch fails.
+          });
+      }
+    },
+    [filteredDesigns, user],
+  );
 
   const openEditDesign = useCallback((design: Design) => {
     setSuccessMessage(null);
@@ -731,6 +756,11 @@ export function DesignLibraryPage() {
       return;
     }
 
+    // Wait until details are closed so the grid is the scroll target context.
+    if (selectedDesign !== null) {
+      return;
+    }
+
     pendingScrollDesignIdRef.current = null;
     const frame = window.requestAnimationFrame(() => {
       const target = catalogScrollRef.current?.querySelector<HTMLElement>(
@@ -740,7 +770,7 @@ export function DesignLibraryPage() {
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [filteredDesigns]);
+  }, [filteredDesigns, selectedDesign]);
 
   const handleCategoriesUpdated = useCallback(async () => {
     await refreshCatalog();
@@ -1368,11 +1398,21 @@ export function DesignLibraryPage() {
         onClose={closeDesignDetails}
         onCompanionsChanged={handleDesignCompanionsChanged}
         onEdit={openEditDesign}
+        onPreviewNavigate={handlePreviewNavigate}
         onPurgeAssets={(design) => {
           void openPurgeDesigns([design]);
         }}
         onRestore={handleRestoreDesign}
         onSmartProfileUpdated={handleSmartProfileUpdated}
+        previewNavigationDesigns={
+          selectionModeActive
+            ? undefined
+            : filteredDesigns.filter(
+                (design) =>
+                  !design.assetsPurgedAt &&
+                  Boolean(design.previewPath?.trim() || design.thumbnailPath?.trim()),
+              )
+        }
       />
 
       <EditDesignModal

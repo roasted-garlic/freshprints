@@ -35,6 +35,8 @@ import {
   sumAllocatedQuantityByItemId,
   sumRemainingUnallocatedQuantity,
 } from '@fresh-prints/shared/utils/portalShowQueueFit';
+import { CatalogPreviewLightbox, type CatalogPreviewLightboxNavItem } from '../../../../features/catalog/components/CatalogPreviewLightbox';
+import { catalogStorageService } from '../../../../features/catalog/services/catalogStorageService';
 import { PortalPrintRequestItemCard } from '../../../../features/print-requests/components/PortalPrintRequestItemCard';
 import { PortalUnqueueFromShowConfirmModal } from '../../../../features/print-requests/components/PortalUnqueueFromShowConfirmModal';
 import { PortalPrintRequestProgressPanel } from '../../../../features/print-requests/components/PortalPrintRequestProgressPanel';
@@ -101,6 +103,42 @@ function getStatusLabel(status: string): string {
   }
 }
 
+function resolvePrintRequestItemPreviewPath(
+  item: PrintRequestItem,
+  designSummaries: Map<string, { previewPath?: string; thumbnailPath?: string; title?: string; artworkBackgroundHex?: string; updatedAtMs?: number } | null>,
+  uploadSummaries: Map<
+    string,
+    {
+      previewStoragePath: string | null;
+      thumbnailStoragePath: string | null;
+      originalFilename: string;
+    } | null
+  >,
+): {
+  path: string;
+  contentVersion?: number;
+  alt: string;
+  artworkBackgroundHex?: string;
+} | null {
+  const design = item.designId ? designSummaries.get(item.designId) : null;
+  const upload = item.customerUploadId ? uploadSummaries.get(item.customerUploadId) : null;
+  const path =
+    design?.previewPath?.trim() ||
+    design?.thumbnailPath?.trim() ||
+    upload?.previewStoragePath?.trim() ||
+    upload?.thumbnailStoragePath?.trim() ||
+    '';
+  if (!path) {
+    return null;
+  }
+  return {
+    path,
+    contentVersion: design?.updatedAtMs,
+    alt: `${design?.title ?? upload?.originalFilename ?? item.titleSnapshot ?? 'Design'} preview`,
+    artworkBackgroundHex: design?.artworkBackgroundHex,
+  };
+}
+
 export default function PrintRequestDetailView() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -149,6 +187,8 @@ export default function PrintRequestDetailView() {
   } = useUnqueuePrintRequestFromShow();
   /** Bumped per item id when remove confirm is cancelled so qty-0 input restores. */
   const [quantityResetKeys, setQuantityResetKeys] = useState<Record<string, number>>({});
+  const [lightboxActiveItemId, setLightboxActiveItemId] = useState<string | null>(null);
+  const [lightboxNavItems, setLightboxNavItems] = useState<CatalogPreviewLightboxNavItem[]>([]);
 
   const {
     printRequest,
@@ -157,7 +197,6 @@ export default function PrintRequestDetailView() {
     uploadSummaries,
     isLoading,
     error,
-    isEditable,
     reload,
     updateItem,
     duplicateItem,
@@ -175,6 +214,63 @@ export default function PrintRequestDetailView() {
     refreshRequests,
     reloadWorkingItems,
   });
+
+  const openItemLightbox = useCallback(
+    async (itemId: string) => {
+      const resolved: Array<(CatalogPreviewLightboxNavItem & { previewUrl: string }) | null> =
+        await Promise.all(
+          items.map(async (item) => {
+            const preview = resolvePrintRequestItemPreviewPath(
+              item,
+              designSummaries,
+              uploadSummaries,
+            );
+            if (!preview) {
+              return null;
+            }
+            const previewUrl = await catalogStorageService.getDownloadUrlForCatalogPath(
+              preview.path,
+              preview.contentVersion,
+            );
+            if (!previewUrl) {
+              return null;
+            }
+            return {
+              id: item.id,
+              alt: preview.alt,
+              previewUrl,
+              artworkBackgroundHex: preview.artworkBackgroundHex,
+            };
+          }),
+        );
+      const navItems = resolved.filter(
+        (entry): entry is CatalogPreviewLightboxNavItem & { previewUrl: string } => entry !== null,
+      );
+      if (navItems.length === 0 || !navItems.some((entry) => entry.id === itemId)) {
+        return;
+      }
+      setLightboxNavItems(navItems);
+      setLightboxActiveItemId(itemId);
+    },
+    [designSummaries, items, uploadSummaries],
+  );
+
+  const closeItemLightbox = useCallback((finalItemId: string | null) => {
+    setLightboxActiveItemId(null);
+    setLightboxNavItems([]);
+    if (!finalItemId) {
+      return;
+    }
+    const card = document.querySelector<HTMLElement>(
+      `[data-print-request-item-id="${CSS.escape(finalItemId)}"]`,
+    );
+    card?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, []);
+
+  const activeLightboxItem =
+    lightboxActiveItemId === null
+      ? undefined
+      : lightboxNavItems.find((entry) => entry.id === lightboxActiveItemId);
 
   useEffect(() => {
     void prefetchPortalAllocatableShows();
@@ -947,6 +1043,9 @@ export default function PrintRequestDetailView() {
                 key={getItemClientKey(item.id)}
                 onAddToRequest={addDesignFlow.addDesign}
                 onDuplicate={(nextItem) => void handleDuplicateItem(nextItem)}
+                onOpenLightbox={(itemId) => {
+                  void openItemLightbox(itemId);
+                }}
                 onArtworkEnhanceModeChanged={(nextItem, result) => {
                   patchArtworkEnhanceMode(nextItem.id, result);
                 }}
@@ -991,6 +1090,21 @@ export default function PrintRequestDetailView() {
         </div>
       ) : null}
       </div>
+
+      <CatalogPreviewLightbox
+        activeItemId={lightboxActiveItemId}
+        alt={activeLightboxItem?.alt ?? 'Design preview'}
+        artworkBackgroundHex={activeLightboxItem?.artworkBackgroundHex}
+        isOpen={lightboxActiveItemId !== null && Boolean(activeLightboxItem?.previewUrl)}
+        navigationItems={lightboxNavItems.length > 1 ? lightboxNavItems : undefined}
+        onActiveItemChange={setLightboxActiveItemId}
+        onClose={() => {
+          setLightboxActiveItemId(null);
+          setLightboxNavItems([]);
+        }}
+        onCloseWithFinalItemId={closeItemLightbox}
+        previewUrl={activeLightboxItem?.previewUrl ?? null}
+      />
 
       <PortalQueueToShowModal
         isOpen={isQueueModalOpen}

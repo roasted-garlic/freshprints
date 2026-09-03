@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type {
   BatchImportFileManifestEntry,
@@ -18,7 +18,10 @@ import { Button } from "../../../../shared/components/Button";
 import { importDesktopService } from "../../services/importDesktopService";
 import { isValidatedFileIncluded } from "../../utils/batchImportDisplay";
 import { ImportPreviewControls } from "../ImportPreviewControls";
-import { ImportPreviewLightbox } from "../ImportPreviewLightbox";
+import {
+  ImportPreviewLightbox,
+  type ImportPreviewLightboxNavItem,
+} from "../ImportPreviewLightbox";
 import { ImportValidationWarningsTrigger } from "../ImportValidationWarningsTrigger";
 
 interface BatchImportFileListProps {
@@ -69,7 +72,10 @@ function BatchImportFilePreview({
   itemBackgroundOverride,
   itemHalftoneOverride,
   jobId,
+  onOpenPreview,
+  onPreviewLoaded,
   onSuggestDarkDetected,
+  previewDataUrl,
   suggestDark,
 }: {
   backgroundMode: ImportArtworkBackgroundMode;
@@ -78,13 +84,14 @@ function BatchImportFilePreview({
   itemBackgroundOverride: ImportItemBackgroundOverride;
   itemHalftoneOverride: ImportItemHalftoneOverride;
   jobId: BatchImportJobId | undefined;
+  onOpenPreview: (filePath: string) => void;
+  onPreviewLoaded: (filePath: string, dataUrl: string, suggestDark: boolean) => void;
   onSuggestDarkDetected?: (filePath: string, suggestDark: boolean) => void;
+  previewDataUrl: string | null;
   suggestDark: boolean;
 }) {
   const previewRef = useRef<HTMLDivElement | null>(null);
   const [hasBeenVisible, setHasBeenVisible] = useState(false);
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
   const [localSuggestDark, setLocalSuggestDark] = useState(suggestDark);
   const fileLabel = getFileLabel(file);
   const effectiveSuggestDark = suggestDark || localSuggestDark;
@@ -147,28 +154,37 @@ function BatchImportFilePreview({
         }
 
         const detected = previewResult.data.suggestDarkArtworkBackground === true;
-        setPreviewDataUrl(previewResult.data.dataUrl);
         setLocalSuggestDark(detected);
+        onPreviewLoaded(file.filePath, previewResult.data.dataUrl, detected);
         onSuggestDarkDetected?.(file.filePath, detected);
       })
       .catch(() => {
-        if (isActive) {
-          setPreviewDataUrl(null);
-        }
+        // Keep placeholder when preview load fails.
       });
 
     return () => {
       isActive = false;
     };
-  }, [file.filePath, hasBeenVisible, jobId, onSuggestDarkDetected, previewDataUrl]);
+  }, [
+    file.filePath,
+    hasBeenVisible,
+    jobId,
+    onPreviewLoaded,
+    onSuggestDarkDetected,
+    previewDataUrl,
+  ]);
 
   return (
-    <div className="batch-import-file-preview-shell" ref={previewRef}>
+    <div
+      className="batch-import-file-preview-shell"
+      data-batch-import-file-path={file.filePath}
+      ref={previewRef}
+    >
       {previewDataUrl ? (
         <button
           aria-label={`Open preview of ${fileLabel}`}
           className="batch-import-file-preview-button"
-          onClick={() => setIsPreviewOpen(true)}
+          onClick={() => onOpenPreview(file.filePath)}
           style={{ background: matHex }}
           type="button"
         >
@@ -186,14 +202,6 @@ function BatchImportFilePreview({
           style={{ background: matHex }}
         />
       )}
-      <ImportPreviewLightbox
-        alt={`Preview of ${fileLabel}`}
-        backgroundCssHex={matHex}
-        isOpen={isPreviewOpen}
-        onClose={() => setIsPreviewOpen(false)}
-        previewDataUrl={previewDataUrl}
-        title={fileLabel}
-      />
     </div>
   );
 }
@@ -217,6 +225,100 @@ export function BatchImportFileList({
   variant = "default",
 }: BatchImportFileListProps) {
   const items = files;
+  const [previewDataUrlByPath, setPreviewDataUrlByPath] = useState<Record<string, string>>({});
+  const [lightboxFilePath, setLightboxFilePath] = useState<string | null>(null);
+
+  const handlePreviewLoaded = useCallback(
+    (filePath: string, dataUrl: string, suggestDarkDetected?: boolean) => {
+      setPreviewDataUrlByPath((current) => {
+        if (current[filePath] === dataUrl) {
+          return current;
+        }
+        return { ...current, [filePath]: dataUrl };
+      });
+      if (suggestDarkDetected === true) {
+        onSuggestDarkDetected?.(filePath, true);
+      }
+    },
+    [onSuggestDarkDetected],
+  );
+
+  const navigationItems = useMemo((): ImportPreviewLightboxNavItem[] | undefined => {
+    if (variant !== "validated") {
+      return undefined;
+    }
+
+    const navItems = files.flatMap((file) => {
+      const previewDataUrl = previewDataUrlByPath[file.filePath];
+      if (!previewDataUrl) {
+        return [];
+      }
+
+      const fileLabel = getFileLabel(file);
+      const itemBackgroundOverride = itemBackgroundOverrides?.[file.filePath] ?? "auto";
+      const itemHalftoneOverride = itemHalftoneOverrides?.[file.filePath] ?? "auto";
+      const suggestDark = suggestDarkByPath?.[file.filePath] === true;
+      const backgroundCssHex = resolveImportPreviewBackgroundCssHex({
+        backgroundMode,
+        halftoneMode,
+        autoSuggestsDark: suggestDark,
+        itemBackgroundOverride,
+        itemHalftoneOverride,
+      });
+
+      return [
+        {
+          id: file.filePath,
+          alt: `Preview of ${fileLabel}`,
+          title: fileLabel,
+          previewDataUrl,
+          backgroundCssHex,
+        },
+      ];
+    });
+
+    return navItems.length > 1 ? navItems : undefined;
+  }, [
+    backgroundMode,
+    files,
+    halftoneMode,
+    itemBackgroundOverrides,
+    itemHalftoneOverrides,
+    previewDataUrlByPath,
+    suggestDarkByPath,
+    variant,
+  ]);
+
+  const activeFile =
+    lightboxFilePath != null
+      ? files.find((file) => file.filePath === lightboxFilePath)
+      : undefined;
+  const activePreviewDataUrl =
+    lightboxFilePath != null ? previewDataUrlByPath[lightboxFilePath] ?? null : null;
+  const activeFileLabel = activeFile ? getFileLabel(activeFile) : "Preview";
+  const activeBackgroundCssHex =
+    activeFile && lightboxFilePath
+      ? resolveImportPreviewBackgroundCssHex({
+          backgroundMode,
+          halftoneMode,
+          autoSuggestsDark: suggestDarkByPath?.[lightboxFilePath] === true,
+          itemBackgroundOverride: itemBackgroundOverrides?.[lightboxFilePath] ?? "auto",
+          itemHalftoneOverride: itemHalftoneOverrides?.[lightboxFilePath] ?? "auto",
+        })
+      : undefined;
+
+  function closeLightboxWithScroll(finalItemId: string | null) {
+    setLightboxFilePath(null);
+    if (!finalItemId) {
+      return;
+    }
+    window.requestAnimationFrame(() => {
+      const target = document.querySelector<HTMLElement>(
+        `[data-batch-import-file-path="${CSS.escape(finalItemId)}"]`,
+      );
+      target?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+  }
 
   if (files.length === 0) {
     return (
@@ -266,7 +368,10 @@ export function BatchImportFileList({
                   itemBackgroundOverride={itemBackgroundOverride}
                   itemHalftoneOverride={itemHalftoneOverride}
                   jobId={jobId}
+                  onOpenPreview={setLightboxFilePath}
+                  onPreviewLoaded={handlePreviewLoaded}
                   onSuggestDarkDetected={onSuggestDarkDetected}
+                  previewDataUrl={previewDataUrlByPath[file.filePath] ?? null}
                   suggestDark={suggestDark}
                 />
               ) : null}
@@ -327,6 +432,21 @@ export function BatchImportFileList({
           );
         })}
       </ul>
+
+      {variant === "validated" ? (
+        <ImportPreviewLightbox
+          activeItemId={lightboxFilePath}
+          alt={`Preview of ${activeFileLabel}`}
+          backgroundCssHex={activeBackgroundCssHex}
+          isOpen={Boolean(lightboxFilePath && activePreviewDataUrl)}
+          navigationItems={navigationItems}
+          onActiveItemChange={setLightboxFilePath}
+          onClose={() => setLightboxFilePath(null)}
+          onCloseWithFinalItemId={closeLightboxWithScroll}
+          previewDataUrl={activePreviewDataUrl}
+          title={activeFileLabel}
+        />
+      ) : null}
     </div>
   );
 }

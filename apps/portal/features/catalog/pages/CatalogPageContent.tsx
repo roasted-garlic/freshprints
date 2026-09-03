@@ -734,6 +734,7 @@ export function CatalogPageContent() {
             : (currentRequestAggregates.quantityByDesignId[selectedDesign.id] ?? 0) > 0)
         }
         isOpen={selectedDesign !== null}
+        navigationDesigns={displayedDesigns}
         onOpenDesign={openDesignDetails}
         onAddToRequest={
           !isAuthenticated
