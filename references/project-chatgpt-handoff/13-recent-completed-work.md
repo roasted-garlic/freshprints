@@ -1,5 +1,18 @@
 # Recent Completed Work
 
+## 2026-09-02 - Portal Editing parks current draft — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `portal-editing-request-parks-current-draft` — **DONE** |
+| Signoff | **approved_with_notes** |
+| Owner QA | Initial **FAIL** preserved; corrective **PASS**; polish **PASS** |
+| Delivered | Continuable parking; Studio trusted remove; Portal cancel+park; requeue TX fix; site-wide Editing strip; parked overlay; Editing tab hide/front; `from=editing` unqueue / `from=working` requeue |
+| DEV Firebase | Initial Rules+Functions + corrective 5 Functions on `fresh-prints-dev` |
+| Production | **NOT AUTHORIZED** |
+| Smart Profiling | **PARKED** |
+| Signoff | `docs/workflow/reviews/2026-09-02-portal-editing-request-parks-current-draft-signoff.md` |
+
 ## 2026-09-02 - Studio + Portal Print Request Editing tab — CLOSED (DEV)
 
 | Item | Status |
@@ -11,7 +24,7 @@
 | DEV Firebase | Rules + Functions (10) + reconcile no-op on `fresh-prints-dev` |
 | Production | **NOT AUTHORIZED** |
 | Smart Profiling | **PARKED** |
-| Next queued | `portal-editing-request-parks-current-draft` (not started) |
+| Next queued | `portal-editing-request-parks-current-draft` (**closed**) |
 | Signoff | `docs/workflow/reviews/2026-09-02-studio-print-request-editing-tab-signoff.md` |
 
 ## 2026-08-31 - Print Request sizing + interactive upscale — CLOSED (DEV)

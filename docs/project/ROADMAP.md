@@ -1,5 +1,11 @@
 # Fresh Prints Roadmap
 
+> 2026-09-02: **Portal Editing parks current draft — CLOSED (DEV)** — Goal `portal-editing-request-parks-current-draft` **DONE**. Continuable parking + Studio trusted remove + Portal UX (banner/overlay/tab strip). Corrective Owner QA **PASS**; polish **PASS**. DEV Functions + Rules (initial) + corrective Functions redeploy. **Production NOT AUTHORIZED**. FreshForge **IDLE**. Smart Profiling **PARKED**. Signoff: `docs/workflow/reviews/2026-09-02-portal-editing-request-parks-current-draft-signoff.md`.
+>
+> 2026-09-02: **Portal Editing parks current draft — IMPL REVIEW / DEV DEPLOY GATE** — *(superseded by CLOSED banner above)*
+>
+> 2026-09-02: **Portal Editing parks current draft — PLAN + FORMAL REVIEW** — *(superseded)*
+>
 > 2026-09-02: **Studio + Portal Print Request Editing tab — CLOSED (DEV)** — Goal `studio-print-request-editing-tab` **DONE**. `queueTab: "editing"`; Customer Working\|Editing\|Queued\|Printing\|Printed; Internal Working\|Editing\|Queued\|Printed; Portal Editing tab (Decision 5 reverse); Internal→Printed newest-first History sort. Owner QA **PASS**. DEV Functions + Rules + reconcile complete. **Production NOT AUTHORIZED**. FreshForge **IDLE**. Next queued: `portal-editing-request-parks-current-draft` (not started). Smart Profiling **PARKED**; batch-allocation **DEFERRED**. Signoff: `docs/workflow/reviews/2026-09-02-studio-print-request-editing-tab-signoff.md`.
 >
 > 2026-09-02: **Show Queue Move / Combine Requests — CLOSED (DEV)** — Goal `show-queue-move-and-combine-requests` **DONE**. Authoritative `previewShowQueueMove` / `applyShowQueueMove`; source cancel + `movedFromAllocationId`; multi-doc combine (e.g. 3+5→8); Move All all-or-nothing (≤150); Whatnot→Whatnot only. Owner QA **PASS**. DEV Functions + Firestore Rules deployed. **Production NOT AUTHORIZED** (future inventory: Functions + Rules + Studio + shared; no Storage/indexes/migration/Portal). FreshForge **IDLE**. Smart Profiling **PARKED**; `show-queue-batch-allocation-performance` **DEFERRED**. Signoff: `docs/workflow/reviews/2026-09-02-show-queue-move-and-combine-requests-signoff.md`.

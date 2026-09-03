@@ -1,6 +1,6 @@
 # Next Planned Goal
 
-**Updated:** 2026-08-31
+**Updated:** 2026-09-02
 
 ---
 
@@ -8,30 +8,32 @@
 
 **None** — FreshForge **IDLE**
 
-Last completed: `print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale` (signoff 2026-08-31, Owner DEV QA **PASS**, DEV only).
+Last completed: `portal-editing-request-parks-current-draft` (signoff 2026-09-02, **approved_with_notes**, corrective + polish Owner QA **PASS**, DEV only).
 
 ---
 
-## Next major candidate (not started)
+## Next queued goal (not started)
 
-**Smart Profiling completion** — autonomous workflow guardrails, legacy tag retirement, remaining catalog intelligence work.
+**`cross-app-lightbox-previous-next-navigation`**
 
 | Item | Value |
 |------|-------|
-| Status | **NOT STARTED** |
-| Authorization | Owner must explicitly start a new managed goal |
-| Production | **NOT AUTHORIZED** for accumulated DEV work |
+| Status | **QUEUED** — do not auto-start |
+| Notes | Owner starts explicitly |
 
 ---
 
-## Not next (unless owner directs)
+## Also deferred / parked
 
-- Automatic Smart Profiling start
-- Production promotion without separate authorized workflow
-- Bulk catalog re-upscale backfill (out of scope)
+| Item | Status |
+|------|--------|
+| Smart Profiling completion | **PARKED** |
+| `show-queue-batch-allocation-performance` | **DEFERRED** |
+| Production promotion (parking goal inventory) | **NOT AUTHORIZED** |
+| Lightbox | queued as next goal above — not started |
 
 ---
 
-## Reference
+## Production inventory reminder (parking — later promote)
 
-Signoff: `docs/workflow/reviews/2026-08-31-print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale-signoff.md`
+Shared parking helpers + list-tab visibility · Functions park/restore/unqueue/queue/mutation/recovery set · Firestore Rules parking fields · Portal UX · Studio trusted unqueue · ADR-FP-071 / ADR-FP-158 · Indexes NONE · Storage NONE · Migration NONE
