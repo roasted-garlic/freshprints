@@ -4,6 +4,232 @@
 
 ---
 
+### ADR-FP-168: No-text catalog title specificity (subjects/objects enrich)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-04 |
+| Status | accepted (source; **DEV deploy pending**) |
+| Related | ADR-FP-113; ADR-FP-145; plan `2026-09-04-visual-catalog-title-specificity-plan.md` |
+
+**Context**
+
+Visual/no-text designs sometimes finalized as bare subjects (`Sloth`, `Dog`) while Smart Profile already held richer subjects/objects (poodle + glasses; sloth + tree). Lean resolver trusted short non-generic model titles. Highland-class long descriptive titles are owner-accepted and must not be rejected for length.
+
+**Decision**
+
+1. Keep prompt **catalog-enrich-v34**, normalizer **v6**, schema **smart-profile-v1**.
+2. After lean title resolution, when meaningful readable text is absent and the title has ≤2 words, deterministically enrich from Smart Profile **subjects** / **objects** only (prefer more specific subject; append up to two distinguishing objects with natural `With` / `And` phrasing).
+3. Do not use themes/styles/interests/searchConcepts/matchedTags for title enrichment.
+4. Do not rewrite titles already longer than 2 words (preserves Highland).
+5. No second AI call; no new Autonomous hard blocker in this pass (repair-before-decision is the primary fix).
+
+**Consequences**
+
+- Redeploy enrichment Functions before owner QA.
+- Unrepaired under-specific edge cases (no richer evidence) still lack a dedicated title-specificity Autonomous blocker — revisit before WS5.
+
+---
+
+### ADR-FP-167: Exact-match structured-evidence challenge + styles wiring (Cute & Whimsical)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-04 |
+| Status | accepted (source; **DEV deploy pending**) |
+| Related | ADR-FP-166; ADR-FP-165; ADR-FP-161; plan `2026-09-04-cute-whimsical-dominant-intent-and-tag-independence-plan.md` |
+
+**Context**
+
+After owner added **Cute & Whimsical** (taxonomy materialization revision 19) with reciprocal Animals wording, Highland cow `swcJl3RvjTFsf5hp04Ze` still finalized as **Animals** because exact Gemini match short-circuited and Smart Profile `styles` (cute/whimsical) were not consumed by the resolver. Fallback without styles also stayed Animals. Music-vs-Pop (ADR-FP-166) remains in place.
+
+**Decision**
+
+1. Keep prompt **catalog-enrich-v34**, normalizer **v6**, schema **smart-profile-v1** (no version bump).
+2. Wire Smart Profile **`styles`** into the durable resolver signal path (generic dimension; no schema/prompt/normalizer change).
+3. Add a **generalized** exact-match structured-evidence challenge (not an Animals→Cute pair table): after family-specific overrides, if exact is not a protected domain category, reuse name-primary scoring on durable evidence (excluding `matchedTags`); override only when a challenger wins by a material margin (≥ one priority boost) with ≥2 supporting Smart Profile/copy dimensions.
+4. Add **Cute & Whimsical** priority family; match category by **name** only (Animals reciprocal descriptions mention cute/whimsical).
+5. Protect Faith / Inspirational / Music / Occupations / School / Holiday / Family / Sports / Cannabis / Astrology / Funny / Patriotic / Awareness / Western & Country exact matches from being overturned by the challenge.
+6. Do not require `matchedTags` for the challenge (tag-retirement compatible). No second AI call.
+
+**Consequences**
+
+- Redeploy enrichment Functions bundling the resolver before owner QA.
+- Primary acceptance: Highland → Cute & Whimsical with and without tags (source + live taxonomy replay verified pre-deploy).
+
+---
+
+### ADR-FP-166: Music & Bands vs Pop Culture dominant-intent (resolver-only)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-04 |
+| Status | accepted (source; DEV deploy pending) |
+| Related | ADR-FP-161; ADR-FP-163; ADR-FP-165; plan `2026-09-04-music-vs-pop-dominant-intent-corrective-plan.md` |
+
+**Context**
+
+Exact Gemini `Pop Culture & Characters` was trusted even when Smart Profile evidence (themes/interests/searchConcepts/professionsGroups) strongly indicated Music & Bands (e.g. Judas Priest Painkiller). Fallback scoring already preferred Music; exact-match short-circuit was the defect. Live Music/Pop taxonomy descriptions were already reciprocal.
+
+**Decision**
+
+1. Keep prompt **catalog-enrich-v34**, normalizer **v6**, schema **smart-profile-v1** (no v35).
+2. Add Pop→Music dominant-intent override: exact Pop only + multi-dimension durable music evidence + music identity cue; blocked by faith/life-role dominance or strong non-music media/franchise signals.
+3. Wire **professionsGroups** into the generic resolver signal bag (no schema change).
+4. Music override evidence **must not require matchedTags** (tag-retirement compatible).
+5. Select Music categories by **name tokens** only (Pop descriptions mention Music & Bands and must not match as Music).
+
+**Consequences**
+
+- Redeploy enrichment Functions bundling the resolver before owner QA.
+- Faith exact and faith-dominant Pop cases are protected; no Faith→Music override.
+
+---
+
+### ADR-FP-165: Category descriptions in primary enrichment prompt (catalog-enrich-v34)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-04 |
+| Status | **accepted — implemented (DEV deploy pending)** |
+| Plan | `docs/workflow/plans/2026-09-04-category-descriptions-in-ai-classification-context-plan.md` |
+| Review | `docs/workflow/reviews/2026-09-04-category-descriptions-in-ai-classification-context-review.md` |
+
+**Context**
+
+ADR-FP-041 injected approved **category names only** (~+0.8% cost) and kept descriptions server-side. Owner-refined taxonomy descriptions now encode buyer-intent distinctions (Faith vs Inspirational, Music vs Pop, etc.) that the model cannot read from names alone.
+
+**Decision**
+
+1. Default enrichment prompt **catalog-enrich-v34** requires `{{approved_categories}}`, which injects `- {name} — {description}` from live taxonomy materialization (whitespace-collapsed via existing `formatCategoryContext`). No hardcoded category text; no auto-summaries.
+2. `{{approved_category_names}}` remains implemented for legacy/debug templates but is **not** required for v34.
+3. Owner **accepted** the measured cost envelope (~+4,240 est. input tokens / ~+$0.000424 per design / ~+80% primary vision-call cost vs live 3385-token baseline). Full owner descriptions must not be shortened to save cost.
+4. Previous shipped defaults including **v33** auto-upgrade to v34. Genuine custom prompts that include required placeholders are preserved. Custom prompts missing `{{approved_categories}}` are incompatible: resolve falls back to shipped default (does not inject into the custom string); Settings save rejects.
+5. Server `catalogThemeCategoryResolver` retained; normalizer stays **v6**; schema stays **smart-profile-v1**. No tag taxonomy injection.
+6. Supersedes ADR-FP-041’s “names-only in default prompt” for v34+; ADR-FP-041’s ban on full tag injection remains.
+
+**Consequences**
+
+- Higher per-design vision input cost in exchange for model access to owner buyer-intent definitions.
+- Ready Catalog reprocess snapshot target moves to `catalog-enrich-v34`.
+- DEV Functions deploy still required before live enrichment uses v34.
+
+---
+
+### ADR-FP-164: Owner Design Library “Reprocess with AI” (Ready → AI Review)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-04 |
+| Status | **accepted — implemented (DEV deploy pending)** |
+| Plan | `docs/workflow/plans/2026-09-04-design-library-ai-processing-reprocess-plan.md` |
+| Review | `docs/workflow/reviews/2026-09-04-design-library-ai-processing-reprocess-review.md` |
+
+**Context**
+
+Ready Catalog bulk reconciliation preserves Ready. Owners need a single-design path to intentionally demote Ready → AI Processing → Needs Review after taxonomy/enrichment changes.
+
+**Decision**
+
+1. Owner-only callable `reprocessReadyDesignWithAi` demotes `ready`+`approved` → `imported`+`pending`, retains root title/description/categoryId and `readyAt`, does **not** wipe `smartProfile`.
+2. Runs queue enrichment; staff+preset merge via `mergeReadyBackfillSmartProfile` when prior profile exists.
+3. Approve may apply reviewed category/title/description; existing `readyAt` preserved on re-approval (first Ready still stamps).
+4. Audit: `lastOwnerAiReprocessAt` / `lastOwnerAiReprocessBy`.
+5. Studio Design Details: **Reprocess with AI** + confirm modal (no typed phrase).
+
+**Consequences**
+
+- Design leaves Design Library / Algolia while not Ready; print-request line items retained.
+- WS5 Autonomous still separate.
+
+---
+
+### ADR-FP-163: Plausible category preference is not a Needs Review hard blocker
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-04 |
+| Status | **accepted** |
+| Related | ADR-FP-161, ADR-FP-162; Catalog Processing Mode / automation decision |
+| Owner | Owner decision closing category/humor corrective with notes |
+
+**Context**
+
+Smart Profiling aims to automate as much catalog processing as reasonably and safely possible. F-CAW-F-class designs may resolve to Animals (defensible) while Funny & Sarcastic is owner-preferred. Perfect category ranking is not required when discovery metadata remains strong.
+
+**Decision**
+
+1. A **plausible but suboptimal** category choice alone must **not** force Needs Review.
+2. Needs Review remains for material uncertainty: unresolved/incompatible category, material category conflict, missing required enrichment, structured evidence that materially undermines confidence, safety/content issues, and other existing hard quality blockers.
+3. Do **not** add a broad “when uncertain → Needs Review” rule; do **not** loosen unrelated quality/safety gates.
+4. Category/humor corrective closed **approved_with_notes**; no further F-CAW-F/caw hardcodes or threshold chasing for this edge case.
+
+**Consequences**
+
+- WS4 Ready reconciliation may proceed to inventory/Preview under v33/v6.
+- Autonomous remains OFF until a separate owner gate.
+
+---
+
+### ADR-FP-162: Humor dominant-intent override reliability (joke-primary dual-gate)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-04 |
+| Status | **accepted — DEV deployed; owner accepted known limitation (2026-09-04)** |
+| Related | ADR-FP-161 (v33 category calibration; Animals-gated humor insufficient) |
+| Plan | `docs/workflow/plans/2026-09-03-humor-dominant-intent-override-reliability-plan.md` |
+| Review | `docs/workflow/reviews/2026-09-03-humor-dominant-intent-override-reliability-review.md` |
+| Implementation Review | `docs/workflow/reviews/2026-09-03-humor-dominant-intent-override-reliability-implementation-review.md` |
+
+**Context**
+
+Owner canary FAIL on #1 (F-CAW-F): Animals ~9/10. Root causes: humor override Animals-gated; resolver ignored enrichment-parse themes/searchConcepts; lexical threshold depended on stochastic title/desc/tags; `F-CAW-F` is not a humor token.
+
+**Decision**
+
+1. Expand category resolve signal bag with enrichment-parse **themes, subjects, objects, interests, searchConcepts** (wired in `aiEnrichmentCandidateCore` before resolve). Prompt stays **catalog-enrich-v33** (resolver-first; no prompt text change).
+2. Joke-primary dual-gate: `(humorLexicalHits >= 2 ∧ jokeStructureEvidence) ∨ (humorLexicalHits >= 3)`. May override **any non-humor** exact match. visibleText slogan alone is never enough. Life-role and cannabis-before-humor preserved.
+3. Normalizer **v6**, schema **v1** unchanged. No tag retirement.
+4. **Amendment (2026-09-04):** Owner accepted known F-CAW-F limitation (**approved_with_notes**); WS4 inventory/Preview unblocked. See ADR-FP-163.
+
+**Consequences**
+
+- CASE B incidental humor stays Animals.
+- Occasional plausible non-humor category on joke-primary art is accepted when discovery metadata is strong.
+
+---
+
+### ADR-FP-161: Category dominant-intent calibration (prompt v33 + resolver second-pass)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-03 |
+| Status | **accepted — DEV live v33; closed with notes via ADR-FP-162/163 (2026-09-04)** |
+| Related | ADR-FP-160 (v32 text quality preserved); ADR-FP-145 (subjects / floral conflict preserved) |
+| Plan | `docs/workflow/plans/2026-09-03-category-dominant-intent-calibration-plan.md` |
+| Review | `docs/workflow/reviews/2026-09-03-category-dominant-intent-calibration-review.md` |
+| Implementation Review | `docs/workflow/reviews/2026-09-03-category-dominant-intent-calibration-implementation-review.md` |
+
+**Context**
+
+WS3 Shadow sample PASS WITH NOTES: enrichment quality was generally good, but category primary selection sometimes preferred literal subject or a weak exact model pick over commercial intent (humor>animals, cannabis>humor, astrology>pop). Exact `resolveThemeCategory` match short-circuited competing signals. Process-local AI taxonomy cache (15m TTL) did not peek materialization revision within TTL, so newly curated categories could be invisible on warm workers.
+
+**Decision**
+
+1. Prompt **`catalog-enrich-v33`**: strengthen dominant commercial-intent category examples; keep lean **category-name** injection (no description dump). Previous default v32 auto-upgrades via existing Settings previous-default recognition; custom owner prompts remain custom. Raise `AI_ENRICHMENT_PROMPT_TEMPLATE_MAX_LENGTH` to **12000** so the shipped default remains saveable in Studio Settings (v33 exceeded the prior 10000 ceiling).
+2. Resolver: exact match remains strong default; **thresholded second-pass** may override for general families (humor over Animals; cannabis over humor; astrology over generic Pop Culture when franchise signals are weak). Family/Faith/Teacher goldens preserved; franchise+family wording keeps Pop Culture (#13).
+3. Taxonomy cache: within TTL, **meta-only revision peek** (`readTaxonomyMaterializationRevision`) — same revision → hit; new revision → reload corpus. No per-design full taxonomy reread on hit. No fleet-wide sync claim.
+4. Normalizer stays **`smart-profile-normalizer-v6`**. Schema stays **`smart-profile-v1`**. No tag retirement. No WS4 / Autonomous in this corrective.
+
+**Consequences**
+
+- Gate A live #9 reprocess + four-design canary require DEV Functions deploy of this source.
+- Historical profiles retain prior promptVersion provenance until re-enriched.
+- Production separately gated.
+
+---
+
 ### ADR-FP-160: AI enrichment visible-text and catalog-copy quality
 
 | Field | Value |
@@ -483,6 +709,23 @@ Slices 2–3 delivered Smart Profile + Search Intelligence with shadow automatio
 - Staff-only ready approval remains the default until the owner enables live Autonomous per environment.
 - Implementing ADR-FP-144 / Slice 4 is **not** authorization to enable live Autonomous in DEV or PRODUCTION.
 - DATA_MODEL / WORKFLOWS document the dual-gate exception for unattended ready transitions.
+
+**Amendment — WS1 automation calibration (2026-09-03)**
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-03 |
+| Status | accepted (DEV source); live Autonomous still **not authorized** |
+| Related | Goal `smart-catalog-intelligence-completion-and-legacy-tag-retirement` WS1 |
+
+Clarifications:
+
+1. **Title validity is a hard safety requirement.** Missing/blank effective catalog titles emit `title:title_missing` and never qualify for Autonomous Ready.
+2. **Verifier truthfulness.** Structured evidence gaps and subject-specificity risks are **hard Needs Review blockers**. They are not confirmable by re-running the same deterministic checks. Natural `verifier_confirmed` applies only to confirmable uncertainty (e.g. `automation_policy_uncertainty`). Health/UI must not imply confirmation when the natural path cannot produce it.
+3. **Dual gate unchanged.** Mode=`autonomous` alone never publishes; live flag must be explicitly true. Missing/malformed settings fail safe.
+4. **Trusted Autonomous Ready actor.** Unattended publication remains Admin `markAiSuccess` with `aiReviewedBy: system:catalog-autonomy` — distinct from staff client approval; must not broaden client authority.
+5. **Publication truthfulness.** Firestore Ready may commit before Algolia succeeds (existing sync architecture). Algolia sync failures must be recorded on the design (`portalCatalogPublication*`), counted in Automation Health (`publicationFailures`), and rethrown for platform retry. Reconcile remains durable recovery. Operators must not treat automation success as “search published” when publication status is failed.
+6. **Observability.** Automation Health `retries` / `failures` / `publicationFailures` / `hardBlockerRoutings` must derive from durable runtime evidence. Absent counters mean not tracked yet — not fabricated zeros.
 
 ---
 

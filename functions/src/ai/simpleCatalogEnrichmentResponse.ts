@@ -398,6 +398,8 @@ export function buildSimpleCatalogEnrichmentResult(input: {
     description: parsed.description,
     readableTextLines: sanitizedReadableTextLines,
     centralSubject: parsed.centralSubject,
+    subjects: parsed.subjects,
+    objects: parsed.objects,
   });
 
   const scrubbedDescription = stripOcrDumpFromDescription(

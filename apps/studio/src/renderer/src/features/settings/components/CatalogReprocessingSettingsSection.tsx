@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 
 import {
+  CATALOG_REPROCESS_NORMALIZER_VERSION_SNAPSHOT,
+  CATALOG_REPROCESS_PROMPT_VERSION_SNAPSHOT,
   CATALOG_REPROCESS_TARGET_TYPES,
   catalogReprocessTargetLabel,
   type CatalogReprocessTargetType,
@@ -249,7 +251,9 @@ export function CatalogReprocessingSettingsSection({
                         {preview.inventory ? (
                           <>
                             <p>
-                              Already v29: {preview.inventory.alreadyV29Count} · Missing profile:{" "}
+                              Already current ({CATALOG_REPROCESS_PROMPT_VERSION_SNAPSHOT}/
+                              {CATALOG_REPROCESS_NORMALIZER_VERSION_SNAPSHOT}):{" "}
+                              {preview.inventory.alreadyCurrentPipelineCount} · Missing profile:{" "}
                               {preview.inventory.missingProfileCount}
                             </p>
                             <p>
@@ -262,7 +266,8 @@ export function CatalogReprocessingSettingsSection({
                         {preview.readyInventory ? (
                           <>
                             <p>
-                              Already v30/v4:{" "}
+                              Already current ({CATALOG_REPROCESS_PROMPT_VERSION_SNAPSHOT}/
+                              {CATALOG_REPROCESS_NORMALIZER_VERSION_SNAPSHOT}):{" "}
                               {preview.readyInventory.alreadyCurrentPipelineCount} · Missing profile:{" "}
                               {preview.readyInventory.missingProfileCount}
                             </p>

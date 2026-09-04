@@ -170,7 +170,21 @@ export const enqueueAiEnrichment = onCall(
       updatePayload.status = "imported";
     }
 
+    // Durable retry evidence: prior failure, explicit staff re-run, or stale active-stage reclaim.
+    const countsAsAutomationRetry =
+      currentStage === "failed" ||
+      isRerun ||
+      (Boolean(currentStage) &&
+        currentStage !== "failed" &&
+        currentStage !== "ready_for_review" &&
+        currentStage !== "queued");
+
     await designRef.update(updatePayload);
+
+    if (countsAsAutomationRetry) {
+      const { incrementCatalogAutomationHealth } = await import("./ai/catalogAutomationHealth");
+      await incrementCatalogAutomationHealth({ retries: 1 });
+    }
 
     const eventName = rerunFromReview
       ? "enqueue.rerun_from_review"

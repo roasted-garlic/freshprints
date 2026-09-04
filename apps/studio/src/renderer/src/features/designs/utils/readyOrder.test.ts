@@ -45,16 +45,16 @@ describe("sortDesignsByReadyTransition", () => {
     );
   });
 
-  it("moves a reprocessed-and-reapproved design back to first", () => {
+  it("keeps chronology when reprocessed design is reapproved with preserved readyAt", () => {
     const a = { id: "a", createdAt: ts(1_000), readyAt: ts(2_000) };
     const b = { id: "b", createdAt: ts(3_000), readyAt: ts(4_000) };
     assert.deepEqual(sortDesignsByReadyTransition([a, b]).map((d) => d.id), ["b", "a"]);
 
-    // `a` is reprocessed and reapproved -> new readyAt, so it becomes first.
-    const reapprovedA = { ...a, readyAt: ts(9_000) };
+    // Owner Reprocess with AI retains readyAt through demotion + Approve — order unchanged.
+    const reapprovedA = { ...a };
     assert.deepEqual(
       sortDesignsByReadyTransition([reapprovedA, b]).map((d) => d.id),
-      ["a", "b"],
+      ["b", "a"],
     );
   });
 
@@ -90,12 +90,15 @@ describe("readyAt write semantics (Amendment 3)", () => {
     "apps/studio/src/renderer/src/features/designs/services/designService.ts",
   );
 
-  it("stamps readyAt only when the write transitions the design into ready", () => {
-    assert.match(designService, /if \(input\.status === "ready"\) \{\s*\n\s*updatePayload\.readyAt = serverTimestamp\(\);/);
+  it("stamps readyAt only when transitioning into ready and readyAt is missing", () => {
+    assert.match(
+      designService,
+      /if \(input\.status === "ready" && existingData\.readyAt == null\) \{\s*\n\s*updatePayload\.readyAt = serverTimestamp\(\);/,
+    );
   });
 
   it("does not write readyAt from any metadata-edit path", () => {
-    // The only assignment in the whole service must be the ready-transition one above.
+    // The only assignment in the whole service must be the missing-readyAt branch above.
     assert.equal((designService.match(/updatePayload\.readyAt/g) ?? []).length, 1);
     assert.equal((designService.match(/readyAt: serverTimestamp\(\)/g) ?? []).length, 0);
   });

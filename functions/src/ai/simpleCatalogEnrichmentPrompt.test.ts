@@ -73,6 +73,38 @@ describe("simpleCatalogEnrichmentPrompt — legacy template backward compatibili
   });
 });
 
+describe("simpleCatalogEnrichmentPrompt — {{approved_categories}} (v34 default)", () => {
+  it("substitutes category name + whitespace-collapsed description", () => {
+    const messy = [
+      {
+        id: "cat-faith",
+        name: "  Faith & Worship  ",
+        description: "  Christian faith,\n  scripture,  church.  ",
+      },
+      { id: "cat-no-desc", name: "Occasions" },
+    ];
+    const template = [
+      "Analyze the image.",
+      "Approved categories:",
+      "{{approved_categories}}",
+      "Excluded tags: {{excluded_tags}}",
+    ].join("\n");
+
+    const resolved = buildSimpleCatalogEnrichmentUserPrompt({
+      approvedCategories: messy,
+      approvedCategoryNames: messy.map((category) => category.name),
+      approvedTagNames: [],
+      effectiveTagExclusions: ["death"],
+      promptTemplate: template,
+    });
+
+    assert.ok(resolved.includes("- Faith & Worship — Christian faith, scripture, church."));
+    assert.ok(resolved.includes("- Occasions"));
+    assert.ok(!resolved.includes("{{approved_categories}}"));
+    assert.ok(!resolved.includes("\n  scripture"));
+  });
+});
+
 describe("simpleCatalogEnrichmentPrompt — {{approved_category_names}}", () => {
   it("substitutes only category names, without descriptions", () => {
     const template = [

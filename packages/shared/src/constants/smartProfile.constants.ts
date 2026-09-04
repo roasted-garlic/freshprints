@@ -16,7 +16,7 @@ export const SMART_PROFILE_MAX_GAP_EVIDENCE_LENGTH = 240;
 export const CATALOG_TITLE_MAX_CHARACTERS = 200;
 
 /** Live catalog enrichment prompt version (DEV/prod pipeline). */
-export const CURRENT_CATALOG_ENRICH_PROMPT_VERSION = "catalog-enrich-v32" as const;
+export const CURRENT_CATALOG_ENRICH_PROMPT_VERSION = "catalog-enrich-v34" as const;
 
 /** Editable Smart Profile dimension list keys (excludes category — root Edit Design owns category). */
 export const SMART_PROFILE_EDITABLE_DIMENSION_KEYS = [

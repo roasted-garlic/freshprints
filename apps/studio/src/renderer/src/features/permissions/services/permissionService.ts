@@ -196,6 +196,11 @@ export const permissionService = {
     return isOwner(user);
   },
 
+  /** Owner-only: Design Library Ready → AI Processing reprocess. */
+  canReprocessReadyDesignWithAi(user: UserLike) {
+    return isOwner(user);
+  },
+
   canPurgeArchivedDesignAssets(user: UserLike) {
     return isOwner(user);
   },

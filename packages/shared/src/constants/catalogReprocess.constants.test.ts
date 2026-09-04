@@ -37,8 +37,8 @@ describe("catalogReprocess Slice 5/6 gates", () => {
     );
   });
 
-  it("snapshots v32 + normalizer-v6 labels", () => {
-    assert.equal(CATALOG_REPROCESS_PROMPT_VERSION_SNAPSHOT, "catalog-enrich-v32");
+  it("snapshots v33 + normalizer-v6 labels", () => {
+    assert.equal(CATALOG_REPROCESS_PROMPT_VERSION_SNAPSHOT, "catalog-enrich-v34");
     assert.equal(CATALOG_REPROCESS_NORMALIZER_VERSION_SNAPSHOT, "smart-profile-normalizer-v6");
   });
 });

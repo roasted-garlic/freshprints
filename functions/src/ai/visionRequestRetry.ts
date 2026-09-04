@@ -26,6 +26,8 @@ export interface VisionRetryOptions {
   modelId?: string;
   /** Per-attempt timeout — aborts a single hung request so it can't stall the whole retry loop. */
   timeoutMs?: number;
+  /** Called once per retryable attempt after a failed try (not on the final failure). */
+  onRetry?: (info: { attempt: number; maxRetries: number }) => void | Promise<void>;
 }
 
 const DEFAULT_VISION_REQUEST_TIMEOUT_MS = 45_000;
@@ -89,6 +91,10 @@ export async function fetchVisionWithRetry(
       }
     } finally {
       clearTimeout(timeoutId);
+    }
+
+    if (options.onRetry) {
+      await options.onRetry({ attempt: attempt + 1, maxRetries });
     }
 
     await sleep(baseDelayMs * 2 ** attempt);

@@ -28,8 +28,8 @@ function hasTrailingTitlePunctuation(rawTitle: string): boolean {
   return TRAILING_TITLE_PUNCTUATION.test(rawTitle.trim());
 }
 
-export const CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-v32";
-export const DEVELOPMENT_CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-dev-v32";
+export const CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-v34";
+export const DEVELOPMENT_CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-dev-v34";
 
 /**
  * Prompt version for the optional text-only tag reranker second call. Independent of
@@ -1651,6 +1651,10 @@ export function resolveCatalogTitle(input: {
  * description extraction — never a description first-sentence copy). Optionally appends one
  * concise central subject. Never synthesizes a title by joining tags.
  *
+ * For no-visible-text artwork, a short non-generic model title may still be materially
+ * under-specific when Smart Profile subjects/objects already carry a richer identity — in that
+ * case a deterministic enrich/rebuild runs (subjects/objects only; not themes/styles/tags).
+ *
  * Intentionally does not replace a non-style title merely because it differs from the
  * description's leading transcription (e.g. keep "Motherhood Skeleton Rock On" when the
  * description leads with a longer slogan).
@@ -1662,8 +1666,13 @@ export function resolveLeanCatalogTitle(input: {
   description?: string;
   readableTextLines?: string[];
   centralSubject?: string;
+  /** Smart Profile subjects — used only for no-text under-specific title enrichment. */
+  subjects?: readonly string[];
+  /** Smart Profile objects — used only for no-text under-specific title enrichment. */
+  objects?: readonly string[];
 }): string {
   const sanitizedLines = sanitizeMeaningfulVisibleTextPhrases(input.readableTextLines);
+  const hasMeaningfulReadableText = Boolean(sanitizedLines?.length);
 
   const fromReadableLines = buildTitleFromReadableTextLines(
     sanitizedLines,
@@ -1692,6 +1701,8 @@ export function resolveLeanCatalogTitle(input: {
     looksLikeOcrDumpTitle(input.candidateTitle) ||
     looksLikeOcrDumpTitle(normalizedCandidate);
 
+  let resolved: string;
+
   if (fromReadableLines) {
     const candidateIncludesReadable =
       Boolean(readablePhraseOnly) &&
@@ -1710,60 +1721,325 @@ export function resolveLeanCatalogTitle(input: {
       (candidateIncludesReadable || candidateTokenOverlap) &&
       !isDescriptionLikeCatalogTitle(normalizedCandidate)
     ) {
-      return stripTrailingTitlePunctuation(normalizedCandidate);
+      resolved = stripTrailingTitlePunctuation(normalizedCandidate);
+    } else {
+      resolved = fromReadableLines;
     }
+  } else if (!candidateUnusable) {
+    resolved = stripTrailingTitlePunctuation(normalizedCandidate);
+  } else {
+    const fromDescription = resolveReadableWordingForTitle(
+      input.description,
+      normalizedCandidate,
+      LEAN_CATALOG_TITLE_MAX_WORDS,
+    );
 
-    return fromReadableLines;
+    const fromDescriptionWithSubject = fromDescription
+      ? buildTitleFromReadableTextLines(
+          [fromDescription],
+          input.centralSubject,
+          LEAN_CATALOG_TITLE_MAX_WORDS,
+        ) || fromDescription
+      : "";
+
+    if (
+      fromDescriptionWithSubject &&
+      !isGenericCatalogTitle(fromDescriptionWithSubject) &&
+      !isStyleWordHeavyTitle(fromDescriptionWithSubject) &&
+      !isDescriptionLikeCatalogTitle(fromDescriptionWithSubject) &&
+      !looksLikeOcrDumpTitle(fromDescriptionWithSubject)
+    ) {
+      resolved = stripTrailingTitlePunctuation(fromDescriptionWithSubject);
+    } else if (
+      normalizedCandidate &&
+      !isGenericCatalogTitle(normalizedCandidate) &&
+      !isFilenameLikeTitle(normalizedCandidate, input.uploadFileStem) &&
+      !isStyleWordHeavyTitle(normalizedCandidate) &&
+      !isDescriptionLikeCatalogTitle(normalizedCandidate) &&
+      !looksLikeOcrDumpTitle(normalizedCandidate)
+    ) {
+      resolved = stripTrailingTitlePunctuation(normalizedCandidate);
+    } else {
+      const subjectOnly = sanitizeCentralSubjectPhrase(input.centralSubject);
+      if (subjectOnly && !isGenericCatalogTitle(subjectOnly) && !looksLikeOcrDumpTitle(subjectOnly)) {
+        resolved = stripTrailingTitlePunctuation(
+          normalizeCatalogTitle(subjectOnly, LEAN_CATALOG_TITLE_MAX_WORDS),
+        );
+      } else {
+        resolved = "Artwork Design";
+      }
+    }
   }
 
-  if (!candidateUnusable) {
-    return stripTrailingTitlePunctuation(normalizedCandidate);
+  if (hasMeaningfulReadableText) {
+    return resolved;
   }
 
-  const fromDescription = resolveReadableWordingForTitle(
-    input.description,
-    normalizedCandidate,
-    LEAN_CATALOG_TITLE_MAX_WORDS,
+  return enrichUnderSpecificNoTextCatalogTitle({
+    title: resolved,
+    subjects: input.subjects,
+    objects: input.objects,
+  });
+}
+
+/** Weak / non-identity subject tokens that must not drive title enrichment. */
+const WEAK_TITLE_ENRICHMENT_SUBJECT_TOKENS = new Set([
+  "person",
+  "people",
+  "man",
+  "woman",
+  "human",
+  "figure",
+  "figures",
+  "character",
+  "characters",
+]);
+
+/** Low-value objects that must not be appended as distinguishing title features. */
+const WEAK_TITLE_ENRICHMENT_OBJECT_TOKENS = new Set([
+  "background",
+  "foreground",
+  "sky",
+  "ground",
+  "floor",
+  "shadow",
+  "shadows",
+  "border",
+  "frame",
+  "mat",
+  "canvas",
+  "backdrop",
+  "sparkle",
+  "sparkles",
+  "star",
+  "stars",
+  "line",
+  "lines",
+]);
+
+const MAX_TITLE_ENRICHMENT_OBJECTS = 2;
+
+/**
+ * Titles with more than this many comparable words are treated as already specific enough
+ * for the no-text under-specific enricher (preserves Highland-class long descriptive titles).
+ */
+const UNDER_SPECIFIC_TITLE_MAX_WORDS = 2;
+
+function isWeakTitleEnrichmentSubject(comparable: string): boolean {
+  const words = comparable.split(" ").filter(Boolean);
+  return words.length > 0 && words.every((word) => WEAK_TITLE_ENRICHMENT_SUBJECT_TOKENS.has(word));
+}
+
+function isWeakTitleEnrichmentObject(comparable: string): boolean {
+  const words = comparable.split(" ").filter(Boolean);
+  return words.length > 0 && words.every((word) => WEAK_TITLE_ENRICHMENT_OBJECT_TOKENS.has(word));
+}
+
+const INVARIANT_PLURAL_OBJECT_TOKENS = new Set([
+  "glasses",
+  "sunglasses",
+  "pants",
+  "jeans",
+  "shorts",
+  "scissors",
+  "tweezers",
+  "clothes",
+  "binoculars",
+]);
+
+function singularizeTitleObjectToken(token: string): string {
+  if (token.length <= 3) {
+    return token;
+  }
+  if (INVARIANT_PLURAL_OBJECT_TOKENS.has(token)) {
+    return token;
+  }
+  if (token.endsWith("ss") || token.endsWith("us") || token.endsWith("is")) {
+    return token;
+  }
+  if (token.endsWith("ies") && token.length > 4) {
+    return `${token.slice(0, -3)}y`;
+  }
+  if (
+    token.endsWith("ses") ||
+    token.endsWith("xes") ||
+    token.endsWith("zes") ||
+    token.endsWith("ches") ||
+    token.endsWith("shes")
+  ) {
+    return token.slice(0, -2);
+  }
+  if (token.endsWith("s")) {
+    return token.slice(0, -1);
+  }
+  return token;
+}
+
+function titleCaseEnrichmentPhrase(phrase: string): string {
+  return normalizeCatalogTitle(phrase, LEAN_CATALOG_TITLE_MAX_WORDS);
+}
+
+/**
+ * Prefer a subject that is a richer identity than the short title (e.g. poodle over dog,
+ * highland cow over cow). Does not invent identities absent from subjects.
+ */
+export function selectMoreSpecificSubjectForTitle(
+  subjects: readonly string[] | undefined,
+  titleComparable: string,
+): string | undefined {
+  if (!subjects?.length || !titleComparable) {
+    return undefined;
+  }
+
+  const normalized = subjects
+    .map((raw) => ({ raw: raw.trim(), comparable: normalizeComparableTitle(raw) }))
+    .filter((entry) => entry.raw && entry.comparable && !isWeakTitleEnrichmentSubject(entry.comparable));
+
+  if (normalized.length === 0) {
+    return undefined;
+  }
+
+  const titleWords = titleComparable.split(" ").filter(Boolean);
+
+  // Compound subject that contains the title tokens as a proper subset (cow → highland cow).
+  const compounds = normalized.filter((entry) => {
+    if (entry.comparable === titleComparable) {
+      return false;
+    }
+    const words = entry.comparable.split(" ").filter(Boolean);
+    return titleWords.length > 0 && titleWords.every((word) => words.includes(word)) && words.length > titleWords.length;
+  });
+  if (compounds.length > 0) {
+    compounds.sort((a, b) => b.comparable.split(" ").length - a.comparable.split(" ").length);
+    return compounds[0]?.raw;
+  }
+
+  // Title matches one subject exactly; another distinct subject exists (dog + poodle).
+  const titleIsSubject = normalized.some((entry) => entry.comparable === titleComparable);
+  const others = normalized.filter((entry) => entry.comparable !== titleComparable);
+  if (titleIsSubject && others.length > 0) {
+    others.sort((a, b) => b.comparable.split(" ").length - a.comparable.split(" ").length);
+    return others[0]?.raw;
+  }
+
+  return undefined;
+}
+
+function selectDistinguishingObjectsForTitle(
+  objects: readonly string[] | undefined,
+  titleComparable: string,
+  subjectComparable: string,
+): string[] {
+  if (!objects?.length) {
+    return [];
+  }
+
+  const selected: string[] = [];
+  for (const raw of objects) {
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      continue;
+    }
+    const comparable = normalizeComparableTitle(trimmed);
+    if (!comparable || isWeakTitleEnrichmentObject(comparable)) {
+      continue;
+    }
+    if (titleComparable.includes(comparable) || subjectComparable.includes(comparable)) {
+      continue;
+    }
+    const singularWords = comparable
+      .split(" ")
+      .filter(Boolean)
+      .map(singularizeTitleObjectToken)
+      .join(" ");
+    if (!singularWords) {
+      continue;
+    }
+    if (selected.some((existing) => normalizeComparableTitle(existing) === singularWords)) {
+      continue;
+    }
+    selected.push(singularWords);
+    if (selected.length >= MAX_TITLE_ENRICHMENT_OBJECTS) {
+      break;
+    }
+  }
+  return selected;
+}
+
+/**
+ * When a no-text lean title collapses known visual identity to a broader/generic subject,
+ * rebuild from Smart Profile subjects/objects only. Preserves titles that are already
+ * sufficiently specific (including long descriptive Highland-class titles).
+ */
+export function enrichUnderSpecificNoTextCatalogTitle(input: {
+  title: string;
+  subjects?: readonly string[];
+  objects?: readonly string[];
+}): string {
+  const original = stripTrailingTitlePunctuation(input.title?.trim() ?? "");
+  if (!original || original === "Artwork Design") {
+    return original || "Artwork Design";
+  }
+
+  const titleComparable = normalizeComparableTitle(original);
+  const titleWords = titleComparable.split(" ").filter(Boolean);
+
+  // Already specific enough (incl. long / sentence-like descriptive titles).
+  if (titleWords.length > UNDER_SPECIFIC_TITLE_MAX_WORDS) {
+    return original;
+  }
+
+  const moreSpecificSubject = selectMoreSpecificSubjectForTitle(input.subjects, titleComparable);
+  const subjectForObjects =
+    moreSpecificSubject ??
+    (input.subjects ?? []).find((subject) => normalizeComparableTitle(subject) === titleComparable) ??
+    original;
+  const subjectComparable = normalizeComparableTitle(subjectForObjects);
+  const distinguishingObjects = selectDistinguishingObjectsForTitle(
+    input.objects,
+    titleComparable,
+    subjectComparable,
   );
 
-  const fromDescriptionWithSubject = fromDescription
-    ? buildTitleFromReadableTextLines(
-        [fromDescription],
-        input.centralSubject,
-        LEAN_CATALOG_TITLE_MAX_WORDS,
-      ) || fromDescription
-    : "";
+  const needsSubjectUpgrade = Boolean(
+    moreSpecificSubject && normalizeComparableTitle(moreSpecificSubject) !== titleComparable,
+  );
+  const needsObjectEnrichment = distinguishingObjects.length > 0;
+
+  if (!needsSubjectUpgrade && !needsObjectEnrichment) {
+    return original;
+  }
+
+  let rebuilt = titleCaseEnrichmentPhrase(needsSubjectUpgrade ? moreSpecificSubject! : original);
+  if (needsObjectEnrichment) {
+    const objectPhrase =
+      distinguishingObjects.length === 1
+        ? titleCaseEnrichmentPhrase(distinguishingObjects[0]!)
+        : titleCaseEnrichmentPhrase(`${distinguishingObjects[0]} And ${distinguishingObjects[1]}`);
+    rebuilt = titleCaseEnrichmentPhrase(`${rebuilt} With ${objectPhrase}`);
+  }
 
   if (
-    fromDescriptionWithSubject &&
-    !isGenericCatalogTitle(fromDescriptionWithSubject) &&
-    !isStyleWordHeavyTitle(fromDescriptionWithSubject) &&
-    !isDescriptionLikeCatalogTitle(fromDescriptionWithSubject) &&
-    !looksLikeOcrDumpTitle(fromDescriptionWithSubject)
+    !rebuilt ||
+    isGenericCatalogTitle(rebuilt) ||
+    isDescriptionLikeCatalogTitle(rebuilt) ||
+    isStyleWordHeavyTitle(rebuilt) ||
+    looksLikeOcrDumpTitle(rebuilt)
   ) {
-    return stripTrailingTitlePunctuation(fromDescriptionWithSubject);
+    return original;
   }
 
-  // Incomplete candidate still beats Artwork Design when description wording is unusable.
-  if (
-    normalizedCandidate &&
-    !isGenericCatalogTitle(normalizedCandidate) &&
-    !isFilenameLikeTitle(normalizedCandidate, input.uploadFileStem) &&
-    !isStyleWordHeavyTitle(normalizedCandidate) &&
-    !isDescriptionLikeCatalogTitle(normalizedCandidate) &&
-    !looksLikeOcrDumpTitle(normalizedCandidate)
-  ) {
-    return stripTrailingTitlePunctuation(normalizedCandidate);
+  if (normalizeComparableTitle(rebuilt) === titleComparable) {
+    return original;
   }
 
-  const subjectOnly = sanitizeCentralSubjectPhrase(input.centralSubject);
-  if (subjectOnly && !isGenericCatalogTitle(subjectOnly) && !looksLikeOcrDumpTitle(subjectOnly)) {
-    return stripTrailingTitlePunctuation(
-      normalizeCatalogTitle(subjectOnly, LEAN_CATALOG_TITLE_MAX_WORDS),
-    );
+  // Prefer the enriched title only when it clearly adds identity (more tokens or upgraded subject).
+  const rebuiltWords = normalizeComparableTitle(rebuilt).split(" ").filter(Boolean);
+  if (rebuiltWords.length < titleWords.length) {
+    return original;
   }
 
-  return "Artwork Design";
+  return stripTrailingTitlePunctuation(rebuilt);
 }
 
 export function normalizeVisibleTextPhrases(value: unknown): string[] | undefined {

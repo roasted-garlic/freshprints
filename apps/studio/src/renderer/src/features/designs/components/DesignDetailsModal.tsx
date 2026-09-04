@@ -32,6 +32,8 @@ import {
 import { DesignLibraryModal } from "./DesignLibraryModal";
 import { DesignPreviewLightbox } from "./DesignPreviewLightbox";
 import { DesignThumbnailPanel } from "./DesignThumbnailPanel";
+import { ReprocessReadyDesignWithAiConfirmDialog } from "./ReprocessReadyDesignWithAiConfirmDialog";
+import { designReprocessWithAiService } from "../services/designReprocessWithAiService";
 
 interface DesignDetailsModalProps {
   categoryName?: string;
@@ -43,6 +45,8 @@ interface DesignDetailsModalProps {
   onCompanionsChanged?: (design: Design) => void;
   onEdit?: (design: Design) => void;
   onPurgeAssets?: (design: Design) => void;
+  /** After owner Reprocess with AI succeeds — design left Ready; close/refresh library. */
+  onReprocessedWithAi?: (designId: string) => void;
   onRestore?: (design: Design) => void;
   onSmartProfileUpdated?: (designId: string, smartProfile: DesignSmartProfile) => void;
   /**
@@ -85,6 +89,7 @@ export function DesignDetailsModal({
   onCompanionsChanged,
   onEdit,
   onPurgeAssets,
+  onReprocessedWithAi,
   onRestore,
   onSmartProfileUpdated,
   previewNavigationDesigns,
@@ -96,6 +101,9 @@ export function DesignDetailsModal({
   const [isCompanionModalOpen, setIsCompanionModalOpen] = useState(false);
   const [isDownloadingOriginal, setIsDownloadingOriginal] = useState(false);
   const [downloadOriginalError, setDownloadOriginalError] = useState<string | null>(null);
+  const [isReprocessConfirmOpen, setIsReprocessConfirmOpen] = useState(false);
+  const [isReprocessSubmitting, setIsReprocessSubmitting] = useState(false);
+  const [reprocessError, setReprocessError] = useState<string | null>(null);
   const isAssetsPurged = Boolean(design?.assetsPurgedAt);
   const { url: previewUrl } = useDesignDerivativeUrl(
     isAssetsPurged ? design?.thumbnailPath : design?.previewPath,
@@ -120,21 +128,48 @@ export function DesignDetailsModal({
     return null;
   }
 
+  const currentDesign = design;
+
   const canEdit = permissionService.canEditDesigns(user);
   const canEditSmartProfile = permissionService.canEditSmartProfile(user);
-  const canArchive = permissionService.canArchiveDesigns(user) && design.status !== "archived";
+  const canArchive = permissionService.canArchiveDesigns(user) && currentDesign.status !== "archived";
   const canRestore =
     permissionService.canRestoreDesigns(user) &&
-    design.status === "archived" &&
-    !design.assetsPurgedAt;
+    currentDesign.status === "archived" &&
+    !currentDesign.assetsPurgedAt;
   const canPurgeAssets =
     permissionService.canPurgeArchivedDesignAssets(user) &&
-    design.status === "archived" &&
-    !design.assetsPurgedAt;
-  const canDownloadOriginal = canDownloadDesignOriginal(design);
+    currentDesign.status === "archived" &&
+    !currentDesign.assetsPurgedAt;
+  const canDownloadOriginal = canDownloadDesignOriginal(currentDesign);
+  const canReprocessWithAi =
+    permissionService.canReprocessReadyDesignWithAi(user) &&
+    currentDesign.status === "ready" &&
+    currentDesign.aiReviewStatus === "approved" &&
+    !currentDesign.assetsPurgedAt;
 
-  const printSize = resolveDesignPrintSizeForDisplay(design);
-  const originLabel = resolveDesignOriginLabel(design);
+  const printSize = resolveDesignPrintSizeForDisplay(currentDesign);
+  const originLabel = resolveDesignOriginLabel(currentDesign);
+
+  async function handleConfirmReprocessWithAi(): Promise<void> {
+    if (!user || !canReprocessWithAi) {
+      return;
+    }
+    setReprocessError(null);
+    setIsReprocessSubmitting(true);
+    try {
+      await designReprocessWithAiService.reprocessReadyDesignWithAi(user, currentDesign.id);
+      setIsReprocessConfirmOpen(false);
+      onReprocessedWithAi?.(currentDesign.id);
+      onClose();
+    } catch (error) {
+      setReprocessError(
+        error instanceof Error ? error.message : "Unable to reprocess this design with AI.",
+      );
+    } finally {
+      setIsReprocessSubmitting(false);
+    }
+  }
 
   async function handleDownloadOriginal(): Promise<void> {
     if (
@@ -289,6 +324,18 @@ export function DesignDetailsModal({
         </div>
 
         <div className="design-details-footer-actions">
+          {canReprocessWithAi ? (
+            <Button
+              onClick={() => {
+                setReprocessError(null);
+                setIsReprocessConfirmOpen(true);
+              }}
+              type="button"
+              variant="secondary"
+            >
+              Reprocess with AI
+            </Button>
+          ) : null}
           {canDownloadOriginal ? (
             <Button
               disabled={isDownloadingOriginal}
@@ -548,6 +595,20 @@ export function DesignDetailsModal({
         onActiveItemChange={onPreviewNavigate}
         onClose={() => setIsPreviewLightboxOpen(false)}
         previewUrl={previewUrl}
+      />
+
+      <ReprocessReadyDesignWithAiConfirmDialog
+        design={design}
+        error={reprocessError}
+        isOpen={isReprocessConfirmOpen}
+        isSubmitting={isReprocessSubmitting}
+        onCancel={() => {
+          if (!isReprocessSubmitting) {
+            setIsReprocessConfirmOpen(false);
+            setReprocessError(null);
+          }
+        }}
+        onConfirm={() => void handleConfirmReprocessWithAi()}
       />
     </>
   );

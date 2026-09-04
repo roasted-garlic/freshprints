@@ -1,36 +1,32 @@
 # Next Planned Goal
 
-**Updated:** 2026-09-03
+**Updated:** 2026-09-04
 
 ---
 
 ## Active managed goal
 
-**None** — FreshForge **IDLE**
+`smart-catalog-intelligence-completion-and-legacy-tag-retirement`
 
-Last completed: `ai-enrichment-visible-text-and-catalog-copy-quality`. Signoff **approved_with_notes**. Owner canary **PASS**.
+**WS4 COMPLETE / PASS WITH NOTES.** Next:
+
+1. **Owner decision:** authorize **WS5 Autonomous DEV canary** planning/execution (or defer)
+2. Do **not** enable Autonomous until authorized
+3. Do **not** start canaries until WS5 is authorized and planned
+4. Tag / reranker retirement remains later (WS7+); tags NON-MATERIAL for WS5
+
+Artifacts:
+
+- Title Signoff: `docs/workflow/reviews/2026-09-04-visual-catalog-title-specificity-signoff.md`
+- WS4 Closeout: `docs/workflow/reviews/2026-09-04-smart-catalog-intelligence-completion-ws4-signoff.md`
 
 ---
 
-## Next queued goal
-
-**Smart Profiling completion / unattended catalog enrichment completion**
-
-Do **not** auto-start. Owner selects start.
-
----
-
-## Also deferred / parked
+## Deferred
 
 | Item | Status |
 |------|--------|
-| Smart Profiling completion | **PARKED** (queued as next selected goal) |
-| `show-queue-batch-allocation-performance` | **DEFERRED** |
-| Production promotion | **NOT AUTHORIZED** |
-
----
-
-## Notes
-
-- Live DEV Smart Catalog: **catalog-enrich-v32** / **smart-profile-normalizer-v6**; Autonomous **OFF**.
-- Prior quality correctives: subject canonicalization (v31/v5) + visible-text/catalog-copy (v32/v6).
+| WS5 Autonomous DEV canary | **READY FOR OWNER AUTHORIZATION** (not started) |
+| Tag / reranker retirement | Later under parent goal |
+| Production | **NOT AUTHORIZED** |
+| Commit/push | Owner-gated |

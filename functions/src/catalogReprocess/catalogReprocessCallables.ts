@@ -164,7 +164,7 @@ export const previewCatalogReprocessJob = onCall(
           aiReviewStatusDistribution: inventory.aiReviewStatusDistribution,
           promptVersionDistribution: inventory.promptVersionDistribution,
           normalizerVersionDistribution: inventory.normalizerVersionDistribution,
-          alreadyV29Count: inventory.alreadyV29Count,
+          alreadyCurrentPipelineCount: inventory.alreadyCurrentPipelineCount,
           missingProfileCount: inventory.missingProfileCount,
           exclusions: inventory.exclusions,
           aiReviewNotes: inventory.aiReviewNotes,

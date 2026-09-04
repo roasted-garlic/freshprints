@@ -86,6 +86,71 @@ AI enrichment reference-read diagnostics are structured Functions logs only. Cor
 `pipeline.invocation.*`, `pipeline.terminal`, `reference_cache.*`, and `reference_query.*` by
 `invocationId`; do not add Firestore reads solely to produce diagnostics.
 
+### Category dominant-intent calibration (v33)
+
+```bash
+npx tsx --test functions/src/ai/catalogThemeCategoryResolver.test.ts
+npx tsx --test functions/src/ai/aiTaxonomyCache.test.ts
+npx tsx --test functions/src/ai/smartProfileQuality.contract.test.ts functions/src/ai/catalogTitleRules.test.ts
+npx tsx --test packages/shared/src/constants/catalogReprocess.constants.test.ts packages/shared/src/constants/aiEnrichment.constants.test.ts
+npm --prefix functions run build
+```
+
+Owner Gate A (#9) and four-design canary require DEV Functions deploy first; do not treat unit fixtures as live attribution for cannabis cache timing.
+
+### Humor dominant-intent override reliability (post-canary FAIL)
+
+```bash
+npx tsx --test functions/src/ai/catalogThemeCategoryResolver.test.ts
+npx tsx --test functions/src/ai/smartProfileQuality.contract.test.ts
+npm --prefix functions run build
+```
+
+Live acceptance after DEV deploy: **10 consecutive** reprocesses of `#1` `7bVlWMFwxECdfHH8VNPB` must all resolve primary **Funny & Sarcastic** (any Animals / Food & Drink / unrelated = FAIL). Also re-canary #9/#12/#13 once each. WS4 remains blocked until that PASS.
+
+### Music & Bands vs Pop Culture dominant-intent (resolver-only)
+
+```bash
+npx tsx --test functions/src/ai/catalogThemeCategoryResolver.test.ts
+npx tsx --test functions/src/ai/smartProfileQuality.contract.test.ts
+npm --prefix functions run build
+```
+
+Prompt stays **catalog-enrich-v34** (no v35). Owner QA after DEV deploy: `Wt5eILv4uyCnYNoJI8uZ` → Music & Bands; Scooby `0UsPRAh0tggzuX8xwWqq` stays Pop; Faith `8pSowFU1o1H1EjXBaXaA` stays Faith & Worship.
+
+### Cute & Whimsical exact-match structured-evidence challenge (resolver-only)
+
+```bash
+npx tsx --test functions/src/ai/catalogThemeCategoryResolver.test.ts
+npx tsx --test functions/src/ai/smartProfileQuality.contract.test.ts
+npm --prefix functions run build
+```
+
+Prompt stays **catalog-enrich-v34** / normalizer **v6** / schema **v1**. Requires live taxonomy **Cute & Whimsical** (materialization revision ≥ 19). After DEV deploy: Highland `swcJl3RvjTFsf5hp04Ze` → Cute & Whimsical (with and without tags); literal Animals negatives stay Animals; Music/Faith/Holiday/Occupations goldens stable.
+
+### Visual / no-text catalog title specificity (subjects/objects enrich)
+
+```bash
+npx tsx --test functions/src/ai/catalogTitleRules.test.ts
+npx tsx --test functions/src/ai/simpleCatalogEnrichmentResponse.test.ts
+npx tsx --test functions/src/ai/catalogThemeCategoryResolver.test.ts
+npm --prefix functions run build
+```
+
+Prompt stays **catalog-enrich-v34**. After DEV deploy: Sloth `7ZZIvBXvrnS2AcTVdjzl` and Poodle `rhfZm1hB37krd8QBtfm9` titles materially more specific than bare subject; Highland long descriptive title remains acceptable; text-led goldens unchanged.
+
+### Design Library → Reprocess with AI (Ready → AI Review)
+
+```bash
+npx tsx --test functions/src/ai/reprocessReadyDesignWithAiCore.test.ts
+npx tsx --test functions/src/reprocessReadyDesignWithAi.contract.test.ts
+npx tsx --test apps/studio/src/renderer/src/features/designs/components/reprocessReadyDesignWithAi.contract.test.ts
+npx tsx --test apps/studio/src/renderer/src/features/designs/utils/readyOrder.test.ts
+npm --prefix functions run build
+```
+
+Owner-only callable `reprocessReadyDesignWithAi`. Manual QA after DEV deploy: Design Details → Reprocess with AI on Ready designs `74BdnNQuNWz0N0GaL4CO`, `8QpQFWwwfM21WEimy6Vm`, `FRP1L0K6AKq2hrgGnOxX` (expect Inspirational Quotes & Affirmations after review Approve).
+
 ### Etsy recommendations (Phase 9A)
 
 ```bash

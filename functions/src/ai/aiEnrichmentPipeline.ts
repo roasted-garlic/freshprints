@@ -109,11 +109,13 @@ async function markAiSuccess(
     const priorSnap = await adminDb.collection("designs").doc(designId).get();
     const priorData = priorSnap.data();
     const importPresets = parseImportPresetSeed(priorData?.smartProfileImportPresets);
-    if (mode === "ready_backfill") {
-      const priorProfile =
-        priorData?.smartProfile && typeof priorData.smartProfile === "object"
-          ? (priorData.smartProfile as DesignSmartProfile)
-          : undefined;
+    // Queue and ready_backfill both preserve staff SP edits + import presets when prior exists.
+    // (Owner Ready→AI Review demotion keeps smartProfile; Needs Review must not wipe staff keys.)
+    const priorProfile =
+      priorData?.smartProfile && typeof priorData.smartProfile === "object"
+        ? (priorData.smartProfile as DesignSmartProfile)
+        : undefined;
+    if (mode === "ready_backfill" || priorProfile) {
       const merged = mergeReadyBackfillSmartProfile({
         aiProfile: stripped,
         priorProfile,
@@ -279,6 +281,7 @@ async function runAiEnrichmentPipelineInternal(
         verifierUnresolved: automationDecision.verifier.outcome === "unresolved" ? 1 : 0,
         routedNeedsReview: automationDecision.shouldPublishReady ? 0 : 1,
         categoryGap: automationDecision.reasonCodes.includes("category_gap_suggested") ? 1 : 0,
+        hardBlockerRoutings: automationDecision.hardBlockers.length > 0 ? 1 : 0,
       });
     }
 
@@ -319,6 +322,10 @@ async function runAiEnrichmentPipelineInternal(
       reason: error instanceof Error ? error.name : "unknown_error",
     });
     await markAiFailure(designId, error, resolveAiEnrichmentProvider().providerId, mode);
+    await incrementCatalogAutomationHealth({
+      analyzed: 1,
+      failures: 1,
+    });
   }
 }
 

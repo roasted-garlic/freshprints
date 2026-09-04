@@ -1,0 +1,31 @@
+{
+  "designId": "7bVlWMFwxECdfHH8VNPB",
+  "finishedAt": "2026-09-04T01:04:43.793Z",
+  "categoryName": "Funny & Sarcastic",
+  "title": "F-caw-f Raven",
+  "description": "This humorous design features a black raven with outstretched wings and an open beak, as if cawing. The text \"F-CAW-F\" is printed above the bird in bold, distressed lettering.",
+  "subjects": [
+    "raven"
+  ],
+  "themes": [
+    "humor",
+    "sarcasm",
+    "pun",
+    "animal humor"
+  ],
+  "visibleText": [
+    "F-CAW-F"
+  ],
+  "tags": [
+    "funny",
+    "sarcastic",
+    "distressed",
+    "teentitans"
+  ],
+  "promptVersion": "catalog-enrich-v33",
+  "normalizerVersion": "smart-profile-normalizer-v6",
+  "automationDecision": "shadow",
+  "automationReasonCodes": [
+    "shadow_would_auto_approve"
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "projectId": "fresh-prints-dev",
+  "startedAt": "2026-09-04T05:37:44.621Z",
+  "catalogWorkflowMode": "shadow",
+  "catalogAutonomousLiveEnabled": false,
+  "activeReprocessJobs": 0,
+  "expectedPrompt": "catalog-enrich-v33",
+  "expectedNormalizer": "smart-profile-normalizer-v6",
+  "design1Runs": [
+    {
+      "run": 1,
+      "designId": "7bVlWMFwxECdfHH8VNPB",
+      "rawModelCategory": null,
+      "finalCategory": "Animals",
+      "alternatives": [],
+      "promptVersion": "catalog-enrich-v33",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "automationDecision": "needs_review",
+      "themes": [
+        "humor",
+        "quirky",
+        "animal humor"
+      ],
+      "searchConcepts": [
+        "crow",
+        "raven pun",
+        "f-caw-f pun",
+        "bird pun",
+        "funny bird",
+        "sarcastic bird",
+        "raven saying",
+        "bird saying",
+        "animal saying",
+        "animal pun",
+        "bird illustration",
+        "raven illustration"
+      ],
+      "subjects": [
+        "raven",
+        "bird"
+      ],
+      "visibleText": [
+        "F-CAW-F"
+      ],
+      "title": "F-caw-f Raven",
+      "description": "Bold, distressed lettering above spells out \"F-CAW-F\".",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "callableData": {
+        "designId": "7bVlWMFwxECdfHH8VNPB",
+        "queued": true,
+        "completed": true,
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "passFail": "FAIL"
+    }
+  ],
+  "regressions": [],
+  "aborted": true,
+  "abortReason": "[NEEDS OWNER DECISION — HUMOR RELIABILITY CANARY FAILURE]",
+  "design1Summary": {
+    "funnyCount": 0,
+    "failAtRun": 1,
+    "overall": "FAIL"
+  }
+}

@@ -52,6 +52,7 @@ export interface CatalogAutomationDecisionResult {
 const HARD_BLOCKER_CODES = new Set([
   "category_unresolved",
   "description_missing",
+  "title:title_missing",
   "title:title_exceeds_max_characters",
   "category_gap_suggested",
   "category_dominant_intent_conflict",
@@ -61,9 +62,60 @@ function isHardValidationCode(code: string): boolean {
   return code.startsWith("validation:") && !code.includes("missing_generated_at");
 }
 
+/** Deterministic evidence failures — hard Needs Review (not confirmable by re-running the same checks). */
+function isHardEvidenceCode(code: string): boolean {
+  return (
+    code.startsWith("structured_evidence_gap:") || code.startsWith("subject_specificity_risk:")
+  );
+}
+
+function isConfirmableVerifierTrigger(code: string): boolean {
+  return code === "automation_policy_uncertainty";
+}
+
+function normalizeInjectedVerifierResult(result: CatalogVerifierResult): CatalogVerifierResult {
+  if (!result || typeof result !== "object") {
+    return {
+      invoked: true,
+      outcome: "unresolved",
+      reasonCodes: ["verifier_unresolved", "verifier_malformed"],
+    };
+  }
+  if (typeof result.invoked !== "boolean") {
+    return {
+      invoked: true,
+      outcome: "unresolved",
+      reasonCodes: ["verifier_unresolved", "verifier_malformed"],
+    };
+  }
+  if (
+    result.outcome !== "confirmed" &&
+    result.outcome !== "unresolved" &&
+    result.outcome !== "skipped"
+  ) {
+    return {
+      invoked: true,
+      outcome: "unresolved",
+      reasonCodes: ["verifier_unresolved", "verifier_malformed"],
+    };
+  }
+  if (!Array.isArray(result.reasonCodes)) {
+    return {
+      invoked: true,
+      outcome: "unresolved",
+      reasonCodes: ["verifier_unresolved", "verifier_malformed"],
+    };
+  }
+  return result;
+}
+
 /**
- * Deterministic targeted verifier — contextual evidence only.
- * No global semantic denylist (people/animal/etc. are not inherently invalid).
+ * Targeted verifier for *confirmable* uncertainty only.
+ *
+ * Structured evidence gaps and subject-specificity risks are hard blockers in the
+ * decision function — re-running the same deterministic checks cannot "confirm" them.
+ * Natural `verifier_confirmed` is reachable only when a confirmable trigger
+ * (e.g. `automation_policy_uncertainty`) remains and re-check finds no hard evidence gaps.
  */
 export function runTargetedCatalogVerifier(input: {
   smartProfile: DesignSmartProfile;
@@ -72,7 +124,8 @@ export function runTargetedCatalogVerifier(input: {
   visibleText?: string[];
   triggers: string[];
 }): CatalogVerifierResult {
-  if (input.triggers.length === 0) {
+  const confirmableTriggers = [...new Set(input.triggers)].filter(isConfirmableVerifierTrigger);
+  if (confirmableTriggers.length === 0) {
     return { invoked: false, outcome: "skipped", reasonCodes: [] };
   }
 
@@ -96,19 +149,6 @@ export function runTargetedCatalogVerifier(input: {
   if (specificity) {
     unresolvedCodes.push(specificity);
   }
-  if (
-    input.triggers.some(
-      (code) =>
-        code === "category_alternatives_present" ||
-        code.startsWith("category_") ||
-        code === "automation_policy_uncertainty",
-    ) &&
-    unresolvedCodes.length === 0 &&
-    input.triggers.includes("automation_policy_uncertainty")
-  ) {
-    // Category alternatives alone are soft; only unresolved if paired with other uncertainty
-    // and no confirming evidence path — leave confirmed when only alternatives.
-  }
 
   if (unresolvedCodes.length > 0) {
     return {
@@ -121,26 +161,18 @@ export function runTargetedCatalogVerifier(input: {
   return {
     invoked: true,
     outcome: "confirmed",
-    reasonCodes: ["verifier_confirmed", ...input.triggers],
+    reasonCodes: ["verifier_confirmed", ...confirmableTriggers],
   };
 }
 
 function collectVerifierTriggers(reasonCodes: string[]): string[] {
   const triggers: string[] = [];
   for (const code of reasonCodes) {
-    if (
-      code.startsWith("structured_evidence_gap:") ||
-      code.startsWith("subject_specificity_risk:") ||
-      code === "category_alternatives_present" ||
-      code === "automation_policy_uncertainty"
-    ) {
+    if (isConfirmableVerifierTrigger(code)) {
       triggers.push(code);
     }
   }
-  // Search concept codes are soft — never auto-trigger verifier
-  return [...new Set(triggers)].filter(
-    (code) => !code.startsWith("search_concept") && code !== "category_alternatives_present",
-  );
+  return [...new Set(triggers)];
 }
 
 /**
@@ -158,6 +190,7 @@ export function computeCatalogAutomationDecision(
   reasonCodes.push(...profileValidation.warnings.map((code) => `validation:${code}`));
 
   const titleValidation = validateCatalogTitleLength(input.title);
+  reasonCodes.push(...titleValidation.errors.map((code) => `title:${code}`));
   reasonCodes.push(...titleValidation.warnings.map((code) => `title:${code}`));
 
   if (!input.categoryId?.trim()) {
@@ -211,34 +244,41 @@ export function computeCatalogAutomationDecision(
     reasonCodes.push(specificity);
   }
 
-  const hardBlockers = [
+  const hardBlockers: string[] = [
     ...new Set(
       reasonCodes.filter(
-        (code) => isHardValidationCode(code) || HARD_BLOCKER_CODES.has(code),
+        (code) =>
+          isHardValidationCode(code) ||
+          HARD_BLOCKER_CODES.has(code) ||
+          isHardEvidenceCode(code),
       ),
     ),
   ];
 
-  const verifier: CatalogVerifierResult =
-    input.verifierResult ??
-    runTargetedCatalogVerifier({
+  const verifierWorthy = collectVerifierTriggers(reasonCodes);
+
+  let verifier: CatalogVerifierResult;
+  if (input.verifierResult !== undefined) {
+    verifier = normalizeInjectedVerifierResult(input.verifierResult);
+  } else {
+    verifier = runTargetedCatalogVerifier({
       smartProfile: input.smartProfile,
       title: input.title,
       description: input.description,
       visibleText: input.visibleText,
-      triggers: collectVerifierTriggers(reasonCodes),
+      triggers: verifierWorthy,
     });
+  }
 
   if (verifier.invoked) {
     reasonCodes.push(...verifier.reasonCodes);
   }
 
-  const verifierWorthy = collectVerifierTriggers(reasonCodes);
-
   if (verifier.outcome === "unresolved") {
     hardBlockers.push("verifier_unresolved");
   }
 
+  // Verifier must never clear existing hard blockers (confirmed only clears soft uncertainty).
   const uniqueReasons = [...new Set(reasonCodes)];
   const uniqueHard = [...new Set(hardBlockers)];
 

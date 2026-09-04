@@ -1,0 +1,2861 @@
+{
+  "projectId": "fresh-prints-dev",
+  "capturedAt": "2026-09-04T14:41:55.484Z",
+  "confirmationPhrase": "REPROCESS READY CATALOG",
+  "targetType": "ready_catalog",
+  "targetPrompt": "catalog-enrich-v33",
+  "targetNormalizer": "smart-profile-normalizer-v6",
+  "schema": "smart-profile-v1",
+  "expectedEligible": 359,
+  "preStart": {
+    "settings": {
+      "catalogWorkflowMode": "shadow",
+      "catalogAutonomousLiveEnabled": false
+    },
+    "preScanSummary": {
+      "readyApprovedEligible": 359,
+      "exactV33V6": 0,
+      "exactV32V6": 13,
+      "v30v4": 317,
+      "v29v3": 29,
+      "staffEditedCount": 4,
+      "presetSeededCount": 13,
+      "pairDistribution": {
+        "catalog-enrich-v30 / smart-profile-normalizer-v4": 317,
+        "catalog-enrich-v32 / smart-profile-normalizer-v6": 13,
+        "catalog-enrich-v29 / smart-profile-normalizer-v3": 29
+      }
+    },
+    "staffEditedIds": [
+      "0MpiuK4ERPawPEsUoZLn",
+      "4zSyysgn7v3BVkitK7Cj",
+      "6x2LyTvG3ewIePeWHanV",
+      "uDzwiwJzlZ48Y9TP4fxd"
+    ],
+    "presetSeededIds": [
+      "74BdnNQuNWz0N0GaL4CO",
+      "8QpQFWwwfM21WEimy6Vm",
+      "Ai4Wmfp4Vd6Ady2WCsKC",
+      "Hlajtdg7g2O1eEJ3lT3C",
+      "IigPMoKk23cA9cv8XI1K",
+      "Wf8rDSuJhWhKGcVtI5PY",
+      "g7aK32L5KFQ6Y0OXHSU0",
+      "lsCvUxzGViG1EJYxf5LU",
+      "ph8W8ToIAMgVOAKKzSfj",
+      "qu4ZXq1eyClVGVSkVPpF",
+      "xno5dl0n90j8ESvdO2lr",
+      "y3ihNKt1UKOA7BFSY9U7",
+      "yTdgKw9InD0H4un0PEId"
+    ]
+  },
+  "previewResponse": {
+    "targetType": "ready_catalog",
+    "environment": "dev",
+    "projectId": "fresh-prints-dev",
+    "eligibleCount": 359,
+    "catalogWorkflowMode": "shadow",
+    "autonomousLiveEnabled": false,
+    "targetEnabled": true,
+    "unavailableReason": null,
+    "requiredConfirmationPhrase": "REPROCESS READY CATALOG",
+    "activeJobId": null,
+    "readyInventory": {
+      "eligibleCount": 359,
+      "statusDistribution": {
+        "ready": 359
+      },
+      "aiReviewStatusDistribution": {
+        "approved": 359
+      },
+      "promptVersionDistribution": {
+        "catalog-enrich-v30": 317,
+        "catalog-enrich-v32": 13,
+        "catalog-enrich-v29": 29
+      },
+      "normalizerVersionDistribution": {
+        "smart-profile-normalizer-v4": 317,
+        "smart-profile-normalizer-v6": 13,
+        "smart-profile-normalizer-v3": 29
+      },
+      "alreadyCurrentPipelineCount": 0,
+      "missingProfileCount": 0,
+      "exclusions": {
+        "importedNeedsReview": 165,
+        "rejectedStatus": 0,
+        "archivedStatus": 7,
+        "pendingReviewProcessing": 0,
+        "readyNotApproved": 0,
+        "eligibleReadyCatalog": 359
+      },
+      "tagDensityBuckets": {
+        "zeroTags": 0,
+        "lowTags": 95,
+        "highTags": 264
+      },
+      "exclusionMethod": "indexed_status_counts"
+    }
+  },
+  "previewDelta": {
+    "expected": 359,
+    "actual": 359,
+    "delta": 0
+  },
+  "startResponse": {
+    "jobId": "z9RF1Ym2hsYR6AAHoE5H",
+    "dryRun": false,
+    "targetType": "ready_catalog",
+    "totalEligible": 359,
+    "status": "pending"
+  },
+  "jobId": "z9RF1Ym2hsYR6AAHoE5H",
+  "jobSnapshotAtStart": {
+    "promptVersion": "catalog-enrich-v33",
+    "normalizerVersion": "smart-profile-normalizer-v6",
+    "totalEligible": 359,
+    "boundedDesignIds": null,
+    "catalogWorkflowModeSnapshot": "shadow",
+    "autonomousLiveEnabledSnapshot": false
+  },
+  "terminalJob": {
+    "status": "completed",
+    "totalEligible": 359,
+    "processed": 359,
+    "succeeded": 359,
+    "failed": 0,
+    "skipped": 0,
+    "retrying": 0,
+    "remainedReady": 359,
+    "preservationViolations": 0,
+    "anomalies": 0,
+    "wouldAutoApprove": 153,
+    "hardBlocked": 3,
+    "autoApproved": 0,
+    "attemptCount": 1,
+    "lastError": null
+  },
+  "outcomeSummary": {
+    "rows": 359,
+    "succeeded": 359,
+    "failed": 0,
+    "retrySuccess": 0,
+    "geminiFailures": 0,
+    "parseFailures": 0,
+    "persistenceFailures": 0,
+    "publicationFailures": 0,
+    "lifecycleViolations": 0
+  },
+  "postScanSummary": {
+    "readyTotal": 359,
+    "readyApprovedEligible": 359,
+    "exactV33V6": 359,
+    "exactV32V6": 0,
+    "v30v4": 0,
+    "v29v3": 0,
+    "missingProvenance": 0,
+    "missingProfile": 0,
+    "pairDistribution": {
+      "catalog-enrich-v33 / smart-profile-normalizer-v6": 359
+    },
+    "unexpectedPairs": [],
+    "staffEditedCount": 4,
+    "presetSeededCount": 13,
+    "failedAiProcessingStage": 0,
+    "processingStatusCount": 0
+  },
+  "humanAuthority": {
+    "staff": {
+      "checked": [
+        {
+          "designId": "0MpiuK4ERPawPEsUoZLn",
+          "keysBefore": [
+            "subjects",
+            "objects",
+            "styles",
+            "themes",
+            "interests",
+            "professionsGroups",
+            "colors",
+            "searchConcepts"
+          ],
+          "keysAfter": [
+            "subjects",
+            "objects",
+            "styles",
+            "themes",
+            "interests",
+            "professionsGroups",
+            "colors",
+            "searchConcepts"
+          ],
+          "keysLost": [],
+          "dimViolations": [],
+          "ok": true
+        },
+        {
+          "designId": "4zSyysgn7v3BVkitK7Cj",
+          "keysBefore": [
+            "subjects",
+            "objects",
+            "styles",
+            "themes",
+            "interests",
+            "colors",
+            "visibleText",
+            "searchConcepts"
+          ],
+          "keysAfter": [
+            "subjects",
+            "objects",
+            "styles",
+            "themes",
+            "interests",
+            "colors",
+            "visibleText",
+            "searchConcepts"
+          ],
+          "keysLost": [],
+          "dimViolations": [],
+          "ok": true
+        },
+        {
+          "designId": "6x2LyTvG3ewIePeWHanV",
+          "keysBefore": [
+            "subjects",
+            "objects",
+            "styles",
+            "themes",
+            "interests",
+            "places",
+            "colors",
+            "visibleText",
+            "searchConcepts"
+          ],
+          "keysAfter": [
+            "subjects",
+            "objects",
+            "styles",
+            "themes",
+            "interests",
+            "places",
+            "colors",
+            "visibleText",
+            "searchConcepts"
+          ],
+          "keysLost": [],
+          "dimViolations": [],
+          "ok": true
+        },
+        {
+          "designId": "uDzwiwJzlZ48Y9TP4fxd",
+          "keysBefore": [
+            "styles",
+            "themes",
+            "interests",
+            "colors",
+            "visibleText",
+            "searchConcepts"
+          ],
+          "keysAfter": [
+            "styles",
+            "themes",
+            "interests",
+            "colors",
+            "visibleText",
+            "searchConcepts"
+          ],
+          "keysLost": [],
+          "dimViolations": [],
+          "ok": true
+        }
+      ],
+      "violations": []
+    },
+    "preset": {
+      "checked": [
+        {
+          "designId": "74BdnNQuNWz0N0GaL4CO",
+          "keysBefore": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysAfter": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysLost": [],
+          "dimViolations": [
+            {
+              "key": "searchConcepts",
+              "before": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "give a smile quote",
+                "spread kindness quote",
+                "be nice quote",
+                "motivational saying",
+                "inspirational text",
+                "positive message",
+                "dolly"
+              ],
+              "after": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "share a smile",
+                "kindness quote",
+                "uplifting quote",
+                "positive message",
+                "dolly"
+              ]
+            }
+          ],
+          "ok": false
+        },
+        {
+          "designId": "8QpQFWwwfM21WEimy6Vm",
+          "keysBefore": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysAfter": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysLost": [],
+          "dimViolations": [
+            {
+              "key": "searchConcepts",
+              "before": [
+                "dolly parton",
+                "motivational quote",
+                "sharing smiles",
+                "bekind",
+                "feel good",
+                "Dolly signature",
+                "pink butterfly",
+                "decorative text",
+                "dolly"
+              ],
+              "after": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "give kindness",
+                "spread joy",
+                "uplifting quote",
+                "inspirational saying",
+                "dolly"
+              ]
+            }
+          ],
+          "ok": false
+        },
+        {
+          "designId": "Ai4Wmfp4Vd6Ady2WCsKC",
+          "keysBefore": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysAfter": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysLost": [],
+          "dimViolations": [
+            {
+              "key": "searchConcepts",
+              "before": [
+                "dolly parton",
+                "country music icon",
+                "famous singer",
+                "song lyrics",
+                "musical notation",
+                "western style",
+                "dolly"
+              ],
+              "after": [
+                "dolly parton",
+                "Dolly Parton portrait",
+                "I Will Always Love You lyrics",
+                "country music legend",
+                "famous singer",
+                "music score",
+                "ballad",
+                "western style",
+                "iconic artist",
+                "dolly"
+              ]
+            }
+          ],
+          "ok": false
+        },
+        {
+          "designId": "Hlajtdg7g2O1eEJ3lT3C",
+          "keysBefore": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysAfter": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysLost": [],
+          "dimViolations": [
+            {
+              "key": "searchConcepts",
+              "before": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "motivational quote",
+                "smile quote",
+                "face value quote",
+                "celebrity portrait",
+                "singer",
+                "country singer",
+                "iconic singer",
+                "dolly"
+              ],
+              "after": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "inspirational quote",
+                "country music icon",
+                "positive affirmation",
+                "butterfly accent",
+                "dolly"
+              ]
+            }
+          ],
+          "ok": false
+        },
+        {
+          "designId": "IigPMoKk23cA9cv8XI1K",
+          "keysBefore": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysAfter": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysLost": [],
+          "dimViolations": [
+            {
+              "key": "searchConcepts",
+              "before": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "give a smile quote",
+                "smile more quote",
+                "spread happiness quote",
+                "kindness quote",
+                "inspirational saying",
+                "celebrity quote",
+                "autograph",
+                "iconic quote",
+                "dolly"
+              ],
+              "after": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "give smile quote",
+                "motivational quote",
+                "kindness quote",
+                "positive quote",
+                "inspirational text",
+                "famous person quote",
+                "country music icon",
+                "dolly"
+              ]
+            }
+          ],
+          "ok": false
+        },
+        {
+          "designId": "Wf8rDSuJhWhKGcVtI5PY",
+          "keysBefore": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysAfter": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysLost": [],
+          "dimViolations": [
+            {
+              "key": "searchConcepts",
+              "before": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "give your smile",
+                "smile quote",
+                "inspirational quote",
+                "country music icon",
+                "singer portrait",
+                "retro gradient",
+                "neon art",
+                "butterfly art",
+                "Dolly Parton merchandise",
+                "dolly"
+              ],
+              "after": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "inspirational quote",
+                "smile more",
+                "uplifting message",
+                "celebrity",
+                "music icon",
+                "country singer",
+                "butterfly graphic",
+                "dolly"
+              ]
+            }
+          ],
+          "ok": false
+        },
+        {
+          "designId": "g7aK32L5KFQ6Y0OXHSU0",
+          "keysBefore": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysAfter": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysLost": [],
+          "dimViolations": [
+            {
+              "key": "searchConcepts",
+              "before": [
+                "dolly parton",
+                "Dolly Parton portrait",
+                "I Will Always Love You song",
+                "country music legend",
+                "American singer",
+                "iconic musician",
+                "Nashville Tennessee",
+                "Dollywood",
+                "singer-songwriter",
+                "music memorabilia",
+                "dolly"
+              ],
+              "after": [
+                "dolly parton",
+                "Dolly Parton",
+                "I Will Always Love You",
+                "country singer",
+                "music icon",
+                "Nashville",
+                "apparel",
+                "tshirt",
+                "transfer",
+                "DTF",
+                "printable",
+                "dolly"
+              ]
+            }
+          ],
+          "ok": false
+        },
+        {
+          "designId": "lsCvUxzGViG1EJYxf5LU",
+          "keysBefore": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysAfter": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysLost": [],
+          "dimViolations": [
+            {
+              "key": "subjects",
+              "before": [
+                "Dolly Parton",
+                "parton",
+                "dolly"
+              ],
+              "after": [
+                "Dolly Parton",
+                "Dolly Parton silhouette",
+                "silhouette",
+                "butterfly"
+              ]
+            },
+            {
+              "key": "searchConcepts",
+              "before": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "country music icon",
+                "inspirational saying",
+                "positive affirmation",
+                "celebrity silhouette",
+                "dolly"
+              ],
+              "after": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "inspirational quote",
+                "Dolly Parton style",
+                "country singer",
+                "celebrity silhouette",
+                "smile quote",
+                "face value quote",
+                "butterfly graphic",
+                "iconic musician"
+              ]
+            }
+          ],
+          "ok": false
+        },
+        {
+          "designId": "ph8W8ToIAMgVOAKKzSfj",
+          "keysBefore": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysAfter": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysLost": [],
+          "dimViolations": [
+            {
+              "key": "searchConcepts",
+              "before": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "country music icon",
+                "inspirational sayings",
+                "positive affirmation",
+                "Dolly Parton silhouette",
+                "butterfly graphic",
+                "famous singer",
+                "dolly"
+              ],
+              "after": [
+                "dolly parton",
+                "Dolly Parton silhouette",
+                "smile quote",
+                "face value quote",
+                "country singer",
+                "iconic woman",
+                "butterfly graphic",
+                "inspirational celebrity",
+                "dolly"
+              ]
+            }
+          ],
+          "ok": false
+        },
+        {
+          "designId": "qu4ZXq1eyClVGVSkVPpF",
+          "keysBefore": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysAfter": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysLost": [],
+          "dimViolations": [
+            {
+              "key": "subjects",
+              "before": [
+                "Dolly Parton"
+              ],
+              "after": [
+                "Dolly Parton",
+                "parton",
+                "dolly"
+              ]
+            },
+            {
+              "key": "searchConcepts",
+              "before": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "spread kindness",
+                "give a smile",
+                "uplifting message",
+                "motivational text"
+              ],
+              "after": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "give smile",
+                "kindness quote",
+                "spread joy",
+                "famous person quote",
+                "country music icon",
+                "dolly"
+              ]
+            }
+          ],
+          "ok": false
+        },
+        {
+          "designId": "xno5dl0n90j8ESvdO2lr",
+          "keysBefore": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysAfter": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysLost": [],
+          "dimViolations": [
+            {
+              "key": "searchConcepts",
+              "before": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "give a smile",
+                "uplifting message",
+                "famous quote",
+                "dolly"
+              ],
+              "after": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "inspirational quote",
+                "share a smile",
+                "kindness quote",
+                "country icon",
+                "famous singer quote",
+                "dolly"
+              ]
+            }
+          ],
+          "ok": false
+        },
+        {
+          "designId": "y3ihNKt1UKOA7BFSY9U7",
+          "keysBefore": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysAfter": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysLost": [],
+          "dimViolations": [
+            {
+              "key": "subjects",
+              "before": [
+                "Dolly Parton",
+                "parton",
+                "dolly"
+              ],
+              "after": [
+                "Dolly Parton",
+                "parton",
+                "dolly",
+                "woman"
+              ]
+            },
+            {
+              "key": "searchConcepts",
+              "before": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "country music icon",
+                "inspirational celebrity",
+                "positive sayings",
+                "butterfly graphic",
+                "gift for fan",
+                "singer merchandise",
+                "dolly"
+              ],
+              "after": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "give smile quote",
+                "iconic woman",
+                "country music icon",
+                "inspirational quote",
+                "positive message",
+                "dolly"
+              ]
+            }
+          ],
+          "ok": false
+        },
+        {
+          "designId": "yTdgKw9InD0H4un0PEId",
+          "keysBefore": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysAfter": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysLost": [],
+          "dimViolations": [
+            {
+              "key": "searchConcepts",
+              "before": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "inspirational quote",
+                "smile quote",
+                "face value",
+                "Dolly Parton design",
+                "country music icon",
+                "celebrity portrait",
+                "dolly"
+              ],
+              "after": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "face value quote",
+                "smile quote",
+                "country music icon",
+                "singer quote",
+                "Dolly Parton design",
+                "butterfly accent",
+                "dolly"
+              ]
+            }
+          ],
+          "ok": false
+        }
+      ],
+      "violations": [
+        {
+          "kind": "preset",
+          "designId": "74BdnNQuNWz0N0GaL4CO",
+          "keysBefore": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysAfter": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysLost": [],
+          "dimViolations": [
+            {
+              "key": "searchConcepts",
+              "before": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "give a smile quote",
+                "spread kindness quote",
+                "be nice quote",
+                "motivational saying",
+                "inspirational text",
+                "positive message",
+                "dolly"
+              ],
+              "after": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "share a smile",
+                "kindness quote",
+                "uplifting quote",
+                "positive message",
+                "dolly"
+              ]
+            }
+          ],
+          "ok": false
+        },
+        {
+          "kind": "preset",
+          "designId": "8QpQFWwwfM21WEimy6Vm",
+          "keysBefore": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysAfter": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysLost": [],
+          "dimViolations": [
+            {
+              "key": "searchConcepts",
+              "before": [
+                "dolly parton",
+                "motivational quote",
+                "sharing smiles",
+                "bekind",
+                "feel good",
+                "Dolly signature",
+                "pink butterfly",
+                "decorative text",
+                "dolly"
+              ],
+              "after": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "give kindness",
+                "spread joy",
+                "uplifting quote",
+                "inspirational saying",
+                "dolly"
+              ]
+            }
+          ],
+          "ok": false
+        },
+        {
+          "kind": "preset",
+          "designId": "Ai4Wmfp4Vd6Ady2WCsKC",
+          "keysBefore": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysAfter": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysLost": [],
+          "dimViolations": [
+            {
+              "key": "searchConcepts",
+              "before": [
+                "dolly parton",
+                "country music icon",
+                "famous singer",
+                "song lyrics",
+                "musical notation",
+                "western style",
+                "dolly"
+              ],
+              "after": [
+                "dolly parton",
+                "Dolly Parton portrait",
+                "I Will Always Love You lyrics",
+                "country music legend",
+                "famous singer",
+                "music score",
+                "ballad",
+                "western style",
+                "iconic artist",
+                "dolly"
+              ]
+            }
+          ],
+          "ok": false
+        },
+        {
+          "kind": "preset",
+          "designId": "Hlajtdg7g2O1eEJ3lT3C",
+          "keysBefore": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysAfter": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysLost": [],
+          "dimViolations": [
+            {
+              "key": "searchConcepts",
+              "before": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "motivational quote",
+                "smile quote",
+                "face value quote",
+                "celebrity portrait",
+                "singer",
+                "country singer",
+                "iconic singer",
+                "dolly"
+              ],
+              "after": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "inspirational quote",
+                "country music icon",
+                "positive affirmation",
+                "butterfly accent",
+                "dolly"
+              ]
+            }
+          ],
+          "ok": false
+        },
+        {
+          "kind": "preset",
+          "designId": "IigPMoKk23cA9cv8XI1K",
+          "keysBefore": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysAfter": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysLost": [],
+          "dimViolations": [
+            {
+              "key": "searchConcepts",
+              "before": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "give a smile quote",
+                "smile more quote",
+                "spread happiness quote",
+                "kindness quote",
+                "inspirational saying",
+                "celebrity quote",
+                "autograph",
+                "iconic quote",
+                "dolly"
+              ],
+              "after": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "give smile quote",
+                "motivational quote",
+                "kindness quote",
+                "positive quote",
+                "inspirational text",
+                "famous person quote",
+                "country music icon",
+                "dolly"
+              ]
+            }
+          ],
+          "ok": false
+        },
+        {
+          "kind": "preset",
+          "designId": "Wf8rDSuJhWhKGcVtI5PY",
+          "keysBefore": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysAfter": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysLost": [],
+          "dimViolations": [
+            {
+              "key": "searchConcepts",
+              "before": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "give your smile",
+                "smile quote",
+                "inspirational quote",
+                "country music icon",
+                "singer portrait",
+                "retro gradient",
+                "neon art",
+                "butterfly art",
+                "Dolly Parton merchandise",
+                "dolly"
+              ],
+              "after": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "inspirational quote",
+                "smile more",
+                "uplifting message",
+                "celebrity",
+                "music icon",
+                "country singer",
+                "butterfly graphic",
+                "dolly"
+              ]
+            }
+          ],
+          "ok": false
+        },
+        {
+          "kind": "preset",
+          "designId": "g7aK32L5KFQ6Y0OXHSU0",
+          "keysBefore": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysAfter": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysLost": [],
+          "dimViolations": [
+            {
+              "key": "searchConcepts",
+              "before": [
+                "dolly parton",
+                "Dolly Parton portrait",
+                "I Will Always Love You song",
+                "country music legend",
+                "American singer",
+                "iconic musician",
+                "Nashville Tennessee",
+                "Dollywood",
+                "singer-songwriter",
+                "music memorabilia",
+                "dolly"
+              ],
+              "after": [
+                "dolly parton",
+                "Dolly Parton",
+                "I Will Always Love You",
+                "country singer",
+                "music icon",
+                "Nashville",
+                "apparel",
+                "tshirt",
+                "transfer",
+                "DTF",
+                "printable",
+                "dolly"
+              ]
+            }
+          ],
+          "ok": false
+        },
+        {
+          "kind": "preset",
+          "designId": "lsCvUxzGViG1EJYxf5LU",
+          "keysBefore": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysAfter": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysLost": [],
+          "dimViolations": [
+            {
+              "key": "subjects",
+              "before": [
+                "Dolly Parton",
+                "parton",
+                "dolly"
+              ],
+              "after": [
+                "Dolly Parton",
+                "Dolly Parton silhouette",
+                "silhouette",
+                "butterfly"
+              ]
+            },
+            {
+              "key": "searchConcepts",
+              "before": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "country music icon",
+                "inspirational saying",
+                "positive affirmation",
+                "celebrity silhouette",
+                "dolly"
+              ],
+              "after": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "inspirational quote",
+                "Dolly Parton style",
+                "country singer",
+                "celebrity silhouette",
+                "smile quote",
+                "face value quote",
+                "butterfly graphic",
+                "iconic musician"
+              ]
+            }
+          ],
+          "ok": false
+        },
+        {
+          "kind": "preset",
+          "designId": "ph8W8ToIAMgVOAKKzSfj",
+          "keysBefore": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysAfter": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysLost": [],
+          "dimViolations": [
+            {
+              "key": "searchConcepts",
+              "before": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "country music icon",
+                "inspirational sayings",
+                "positive affirmation",
+                "Dolly Parton silhouette",
+                "butterfly graphic",
+                "famous singer",
+                "dolly"
+              ],
+              "after": [
+                "dolly parton",
+                "Dolly Parton silhouette",
+                "smile quote",
+                "face value quote",
+                "country singer",
+                "iconic woman",
+                "butterfly graphic",
+                "inspirational celebrity",
+                "dolly"
+              ]
+            }
+          ],
+          "ok": false
+        },
+        {
+          "kind": "preset",
+          "designId": "qu4ZXq1eyClVGVSkVPpF",
+          "keysBefore": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysAfter": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysLost": [],
+          "dimViolations": [
+            {
+              "key": "subjects",
+              "before": [
+                "Dolly Parton"
+              ],
+              "after": [
+                "Dolly Parton",
+                "parton",
+                "dolly"
+              ]
+            },
+            {
+              "key": "searchConcepts",
+              "before": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "spread kindness",
+                "give a smile",
+                "uplifting message",
+                "motivational text"
+              ],
+              "after": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "give smile",
+                "kindness quote",
+                "spread joy",
+                "famous person quote",
+                "country music icon",
+                "dolly"
+              ]
+            }
+          ],
+          "ok": false
+        },
+        {
+          "kind": "preset",
+          "designId": "xno5dl0n90j8ESvdO2lr",
+          "keysBefore": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysAfter": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysLost": [],
+          "dimViolations": [
+            {
+              "key": "searchConcepts",
+              "before": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "give a smile",
+                "uplifting message",
+                "famous quote",
+                "dolly"
+              ],
+              "after": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "inspirational quote",
+                "share a smile",
+                "kindness quote",
+                "country icon",
+                "famous singer quote",
+                "dolly"
+              ]
+            }
+          ],
+          "ok": false
+        },
+        {
+          "kind": "preset",
+          "designId": "y3ihNKt1UKOA7BFSY9U7",
+          "keysBefore": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysAfter": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysLost": [],
+          "dimViolations": [
+            {
+              "key": "subjects",
+              "before": [
+                "Dolly Parton",
+                "parton",
+                "dolly"
+              ],
+              "after": [
+                "Dolly Parton",
+                "parton",
+                "dolly",
+                "woman"
+              ]
+            },
+            {
+              "key": "searchConcepts",
+              "before": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "country music icon",
+                "inspirational celebrity",
+                "positive sayings",
+                "butterfly graphic",
+                "gift for fan",
+                "singer merchandise",
+                "dolly"
+              ],
+              "after": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "give smile quote",
+                "iconic woman",
+                "country music icon",
+                "inspirational quote",
+                "positive message",
+                "dolly"
+              ]
+            }
+          ],
+          "ok": false
+        },
+        {
+          "kind": "preset",
+          "designId": "yTdgKw9InD0H4un0PEId",
+          "keysBefore": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysAfter": [
+            "subjects",
+            "searchConcepts"
+          ],
+          "keysLost": [],
+          "dimViolations": [
+            {
+              "key": "searchConcepts",
+              "before": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "inspirational quote",
+                "smile quote",
+                "face value",
+                "Dolly Parton design",
+                "country music icon",
+                "celebrity portrait",
+                "dolly"
+              ],
+              "after": [
+                "dolly parton",
+                "Dolly Parton quote",
+                "face value quote",
+                "smile quote",
+                "country music icon",
+                "singer quote",
+                "Dolly Parton design",
+                "butterfly accent",
+                "dolly"
+              ]
+            }
+          ],
+          "ok": false
+        }
+      ]
+    },
+    "intakeViolations": []
+  },
+  "settingsAfter": {
+    "catalogWorkflowMode": "shadow",
+    "catalogAutonomousLiveEnabled": false
+  },
+  "ownerSample": [
+    {
+      "designId": "0MpiuK4ERPawPEsUoZLn",
+      "stratum": "staff-edited",
+      "title": "Thin Red Line American Flag",
+      "primaryCategory": "Patriotic & Americana",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "promptVersion": "catalog-enrich-v33",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "staffEditedDimensionKeys": [
+        "subjects",
+        "objects",
+        "styles",
+        "themes",
+        "interests",
+        "professionsGroups",
+        "colors",
+        "searchConcepts"
+      ],
+      "importPresetDimensionKeys": [],
+      "wasStaffEditedBefore": true,
+      "wasPresetBefore": false,
+      "highlights": {
+        "subjects": [],
+        "themes": [
+          "patriotic",
+          "support"
+        ],
+        "objects": [
+          "flag"
+        ],
+        "searchConcepts": [
+          "firefighter support",
+          "law enforcement support",
+          "support first responders",
+          "usa flag",
+          "american pride",
+          "united states of america flag",
+          "red line flag",
+          "distressed flag"
+        ],
+        "visibleText": []
+      },
+      "readyAt": "2026-08-11T16:48:21.572Z",
+      "portalCatalogPublicationStatus": null,
+      "anomaly": null
+    },
+    {
+      "designId": "4zSyysgn7v3BVkitK7Cj",
+      "stratum": "staff-edited",
+      "title": "I Like It When She Bends Over But I Love It Tugs On My Worm And Swallows Fisherman Bass Fish",
+      "primaryCategory": "Hobbies & Lifestyle",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "promptVersion": "catalog-enrich-v33",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "staffEditedDimensionKeys": [
+        "subjects",
+        "objects",
+        "styles",
+        "themes",
+        "interests",
+        "colors",
+        "visibleText",
+        "searchConcepts"
+      ],
+      "importPresetDimensionKeys": [],
+      "wasStaffEditedBefore": true,
+      "wasPresetBefore": false,
+      "highlights": {
+        "subjects": [
+          "fisherman",
+          "bass"
+        ],
+        "themes": [
+          "humor",
+          "fishing",
+          "adult humor",
+          "sarcasm"
+        ],
+        "objects": [
+          "fishing rod",
+          "worm"
+        ],
+        "searchConcepts": [
+          "fishing humor",
+          "adult fishing shirt",
+          "funny fishing saying",
+          "bass fishing graphic",
+          "fisherman illustration",
+          "bait and tackle humor",
+          "fishing double entendre"
+        ],
+        "visibleText": [
+          "I LIKE IT WHEN",
+          "SHE BENDS",
+          "Over",
+          "BUT I LOVE IT"
+        ]
+      },
+      "readyAt": "2026-08-11T19:33:03.936Z",
+      "portalCatalogPublicationStatus": null,
+      "anomaly": null
+    },
+    {
+      "designId": "74BdnNQuNWz0N0GaL4CO",
+      "stratum": "preset-seeded",
+      "title": "If You See Someone Without A Smile Give Em Yours Dolly",
+      "primaryCategory": "Family",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "promptVersion": "catalog-enrich-v33",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "staffEditedDimensionKeys": [],
+      "importPresetDimensionKeys": [
+        "subjects",
+        "searchConcepts"
+      ],
+      "wasStaffEditedBefore": false,
+      "wasPresetBefore": true,
+      "highlights": {
+        "subjects": [
+          "Dolly Parton",
+          "parton",
+          "dolly"
+        ],
+        "themes": [
+          "positivity",
+          "inspiration",
+          "kindness"
+        ],
+        "objects": [],
+        "searchConcepts": [
+          "dolly parton",
+          "Dolly Parton quote",
+          "share a smile",
+          "kindness quote",
+          "uplifting quote",
+          "positive message",
+          "dolly"
+        ],
+        "visibleText": [
+          "If you see",
+          "someone",
+          "without a",
+          "Smile,"
+        ]
+      },
+      "readyAt": "2026-09-03T21:12:25.854Z",
+      "portalCatalogPublicationStatus": "synced",
+      "anomaly": null
+    },
+    {
+      "designId": "8QpQFWwwfM21WEimy6Vm",
+      "stratum": "preset-seeded",
+      "title": "If You See Someone Without A Smile Give Em Yours Dolly Butterfly",
+      "primaryCategory": "Funny & Sarcastic",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "promptVersion": "catalog-enrich-v33",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "staffEditedDimensionKeys": [],
+      "importPresetDimensionKeys": [
+        "subjects",
+        "searchConcepts"
+      ],
+      "wasStaffEditedBefore": false,
+      "wasPresetBefore": true,
+      "highlights": {
+        "subjects": [
+          "Dolly Parton",
+          "parton",
+          "dolly"
+        ],
+        "themes": [
+          "inspirational",
+          "positivity",
+          "kindness",
+          "appreciation"
+        ],
+        "objects": [
+          "butterflies"
+        ],
+        "searchConcepts": [
+          "dolly parton",
+          "Dolly Parton quote",
+          "give kindness",
+          "spread joy",
+          "uplifting quote",
+          "inspirational saying",
+          "dolly"
+        ],
+        "visibleText": [
+          "If you see someone",
+          "without a smile,",
+          "give em yours.",
+          "Dolly"
+        ]
+      },
+      "readyAt": "2026-09-03T21:12:21.879Z",
+      "portalCatalogPublicationStatus": "synced",
+      "anomaly": null
+    },
+    {
+      "designId": "Ai4Wmfp4Vd6Ady2WCsKC",
+      "stratum": "preset-seeded",
+      "title": "Dolly Parton I Will Always Love You Sheet Music Portrait",
+      "primaryCategory": "Pop Culture & Characters",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "promptVersion": "catalog-enrich-v33",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "staffEditedDimensionKeys": [],
+      "importPresetDimensionKeys": [
+        "subjects",
+        "searchConcepts"
+      ],
+      "wasStaffEditedBefore": false,
+      "wasPresetBefore": true,
+      "highlights": {
+        "subjects": [
+          "Dolly Parton",
+          "parton",
+          "dolly"
+        ],
+        "themes": [
+          "iconic",
+          "music",
+          "appreciation"
+        ],
+        "objects": [
+          "sheet music"
+        ],
+        "searchConcepts": [
+          "dolly parton",
+          "Dolly Parton portrait",
+          "I Will Always Love You lyrics",
+          "country music legend",
+          "famous singer",
+          "music score",
+          "ballad",
+          "western style"
+        ],
+        "visibleText": [
+          "I WILL ALWAYS LOVE YOU",
+          "DOLLY PARTON"
+        ]
+      },
+      "readyAt": "2026-09-03T21:12:29.811Z",
+      "portalCatalogPublicationStatus": "synced",
+      "anomaly": null
+    },
+    {
+      "designId": "07ZCzmp7OFdSYKZ6hTg5",
+      "stratum": "text-heavy",
+      "title": "Don't Worry About What Other People Think They Don't Do It Often",
+      "primaryCategory": "Funny & Sarcastic",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "promptVersion": "catalog-enrich-v33",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "staffEditedDimensionKeys": [],
+      "importPresetDimensionKeys": [],
+      "wasStaffEditedBefore": false,
+      "wasPresetBefore": false,
+      "highlights": {
+        "subjects": [],
+        "themes": [
+          "humor",
+          "sarcasm",
+          "positivity",
+          "inspiration",
+          "attitude"
+        ],
+        "objects": [],
+        "searchConcepts": [
+          "don't worry",
+          "other people's opinions",
+          "think",
+          "often",
+          "funny quote",
+          "sarcastic saying",
+          "typography design",
+          "colorful text"
+        ],
+        "visibleText": [
+          "Don't Worry",
+          "about what",
+          "other people think",
+          "they don't do it"
+        ]
+      },
+      "readyAt": "2026-08-11T16:49:21.556Z",
+      "portalCatalogPublicationStatus": "synced",
+      "anomaly": null
+    },
+    {
+      "designId": "0LN89kU1X8FSUUs0cMjb",
+      "stratum": "ordinary-ready",
+      "title": "Fun Fact I Don't Really Care",
+      "primaryCategory": "Funny & Sarcastic",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "promptVersion": "catalog-enrich-v33",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "staffEditedDimensionKeys": [],
+      "importPresetDimensionKeys": [],
+      "wasStaffEditedBefore": false,
+      "wasPresetBefore": false,
+      "highlights": {
+        "subjects": [],
+        "themes": [
+          "sarcasm",
+          "attitude",
+          "humor",
+          "boldness"
+        ],
+        "objects": [
+          "crown",
+          "heart",
+          "stars"
+        ],
+        "searchConcepts": [
+          "sarcastic saying",
+          "bold typography",
+          "attitude quote",
+          "don't care",
+          "fun fact",
+          "pink design",
+          "brush stroke font",
+          "gothic font"
+        ],
+        "visibleText": [
+          "Fun Fact",
+          "I don't really",
+          "CARE",
+          "xx"
+        ]
+      },
+      "readyAt": "2026-08-11T16:49:13.827Z",
+      "portalCatalogPublicationStatus": "synced",
+      "anomaly": null
+    },
+    {
+      "designId": "0UsPRAh0tggzuX8xwWqq",
+      "stratum": "ordinary-ready",
+      "title": "Scooby-doo Bursting Through",
+      "primaryCategory": "Pop Culture & Characters",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "promptVersion": "catalog-enrich-v33",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "staffEditedDimensionKeys": [],
+      "importPresetDimensionKeys": [],
+      "wasStaffEditedBefore": false,
+      "wasPresetBefore": false,
+      "highlights": {
+        "subjects": [
+          "Scooby-Doo",
+          "dog"
+        ],
+        "themes": [
+          "animation",
+          "fun",
+          "character"
+        ],
+        "objects": [
+          "collar",
+          "tag"
+        ],
+        "searchConcepts": [
+          "Scooby-Doo character",
+          "Scooby-Doo dog",
+          "cartoon dog",
+          "animated dog",
+          "breaking through wall",
+          "Hanna-Barbera",
+          "pop culture character",
+          "kids cartoon"
+        ],
+        "visibleText": []
+      },
+      "readyAt": "2026-08-11T16:49:43.108Z",
+      "portalCatalogPublicationStatus": "synced",
+      "anomaly": null
+    },
+    {
+      "designId": "0XO2ZquGgG3hsyI5Zqye",
+      "stratum": "ordinary-ready",
+      "title": "Cat Taking Selfie With Dinosaur",
+      "primaryCategory": "Animals",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "promptVersion": "catalog-enrich-v33",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "staffEditedDimensionKeys": [],
+      "importPresetDimensionKeys": [],
+      "wasStaffEditedBefore": false,
+      "wasPresetBefore": false,
+      "highlights": {
+        "subjects": [
+          "cat",
+          "rex",
+          "tyrannosaurus"
+        ],
+        "themes": [
+          "humor",
+          "animal humor",
+          "unexpected encounter"
+        ],
+        "objects": [
+          "trees"
+        ],
+        "searchConcepts": [
+          "cat selfie",
+          "dinosaur encounter",
+          "funny cat",
+          "scared cat",
+          "tabby cat",
+          "t-rex",
+          "jurassic",
+          "prehistoric"
+        ],
+        "visibleText": []
+      },
+      "readyAt": "2026-08-11T16:47:09.727Z",
+      "portalCatalogPublicationStatus": "synced",
+      "anomaly": null
+    },
+    {
+      "designId": "573nO60q6KeJZPnDK8yC",
+      "stratum": "object-rich",
+      "title": "Alpha Male Teddy Bear With Rainbow",
+      "primaryCategory": "Funny & Sarcastic",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "promptVersion": "catalog-enrich-v33",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "staffEditedDimensionKeys": [],
+      "importPresetDimensionKeys": [],
+      "wasStaffEditedBefore": false,
+      "wasPresetBefore": false,
+      "highlights": {
+        "subjects": [
+          "teddy bear",
+          "bear"
+        ],
+        "themes": [
+          "humor",
+          "sarcasm",
+          "irony"
+        ],
+        "objects": [
+          "rainbow",
+          "bow",
+          "heart",
+          "stars"
+        ],
+        "searchConcepts": [
+          "ironic alpha male",
+          "cute alpha male",
+          "care bear style",
+          "kidcore",
+          "funny bear",
+          "sarcastic teddy bear",
+          "gender neutral humor"
+        ],
+        "visibleText": [
+          "Alpha",
+          "Male"
+        ]
+      },
+      "readyAt": "2026-08-21T03:34:28.781Z",
+      "portalCatalogPublicationStatus": "synced",
+      "anomaly": null
+    },
+    {
+      "designId": "7bVlWMFwxECdfHH8VNPB",
+      "stratum": "humor/category F-CAW-F",
+      "title": "F Caw F-03",
+      "primaryCategory": null,
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "promptVersion": "catalog-enrich-v33",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "staffEditedDimensionKeys": [],
+      "importPresetDimensionKeys": [],
+      "wasStaffEditedBefore": false,
+      "wasPresetBefore": false,
+      "highlights": {
+        "subjects": [
+          "raven",
+          "bird"
+        ],
+        "themes": [
+          "humor",
+          "quirky",
+          "animal humor"
+        ],
+        "objects": [],
+        "searchConcepts": [
+          "crow",
+          "raven pun",
+          "f-caw-f pun",
+          "bird pun",
+          "funny bird",
+          "sarcastic bird",
+          "raven saying",
+          "bird saying"
+        ],
+        "visibleText": [
+          "F-CAW-F"
+        ]
+      },
+      "readyAt": null,
+      "portalCatalogPublicationStatus": null,
+      "anomaly": null
+    },
+    {
+      "designId": "1Ws0T9fivryest6IUSbt",
+      "stratum": "specialty cannabis",
+      "title": "just_hit_it",
+      "primaryCategory": null,
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "promptVersion": "catalog-enrich-v33",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "staffEditedDimensionKeys": [],
+      "importPresetDimensionKeys": [],
+      "wasStaffEditedBefore": false,
+      "wasPresetBefore": false,
+      "highlights": {
+        "subjects": [],
+        "themes": [
+          "humor",
+          "parody",
+          "cannabis culture"
+        ],
+        "objects": [
+          "cannabis leaves"
+        ],
+        "searchConcepts": [
+          "cannabis swoosh",
+          "nike parody",
+          "just do it parody",
+          "weed leaf logo",
+          "stoner humor",
+          "420 design"
+        ],
+        "visibleText": [
+          "JUST HIT IT"
+        ]
+      },
+      "readyAt": null,
+      "portalCatalogPublicationStatus": null,
+      "anomaly": null
+    },
+    {
+      "designId": "7BjqFQIhkavo80sv5kCp",
+      "stratum": "zodiac specialty",
+      "title": "4-01",
+      "primaryCategory": null,
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "promptVersion": "catalog-enrich-v33",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "staffEditedDimensionKeys": [],
+      "importPresetDimensionKeys": [],
+      "wasStaffEditedBefore": false,
+      "wasPresetBefore": false,
+      "highlights": {
+        "subjects": [
+          "ram"
+        ],
+        "themes": [
+          "zodiac",
+          "astrology",
+          "personality"
+        ],
+        "objects": [
+          "stars"
+        ],
+        "searchConcepts": [
+          "Aries zodiac sign",
+          "Aries traits",
+          "zodiac symbol",
+          "horoscope sign",
+          "ram illustration",
+          "personalized astrology",
+          "birth sign",
+          "zodiac character"
+        ],
+        "visibleText": [
+          "Aries",
+          "Lively",
+          "Versatile",
+          "Passionate"
+        ]
+      },
+      "readyAt": null,
+      "portalCatalogPublicationStatus": null,
+      "anomaly": null
+    },
+    {
+      "designId": "E2fVUzTL8Smx0gXaGqUZ",
+      "stratum": "pop-culture",
+      "title": "FD_M_ALL02_PNG",
+      "primaryCategory": null,
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "promptVersion": "catalog-enrich-v33",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "staffEditedDimensionKeys": [],
+      "importPresetDimensionKeys": [],
+      "wasStaffEditedBefore": false,
+      "wasPresetBefore": false,
+      "highlights": {
+        "subjects": [
+          "vader",
+          "darth",
+          "yoda",
+          "baby",
+          "fett",
+          "boba"
+        ],
+        "themes": [
+          "Fandom",
+          "Father's Day",
+          "humor",
+          "family",
+          "Sci-Fi"
+        ],
+        "objects": [
+          "lightsaber",
+          "stars",
+          "Millennium Falcon",
+          "planet",
+          "droid"
+        ],
+        "searchConcepts": [
+          "Star Wars Father's Day",
+          "Darth Vader Father's Day",
+          "I Am Your Father",
+          "Star Wars Dad",
+          "Geeky Father's Day",
+          "Funny Star Wars Dad",
+          "darth",
+          "baby"
+        ],
+        "visibleText": [
+          "I AM THEIR",
+          "FATHER"
+        ]
+      },
+      "readyAt": null,
+      "portalCatalogPublicationStatus": null,
+      "anomaly": null
+    }
+  ],
+  "pollLog": [
+    {
+      "at": "2026-09-04T14:09:43.289Z",
+      "status": "pending",
+      "processed": 0,
+      "totalEligible": 359,
+      "succeeded": 0,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 0,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:10:13.398Z",
+      "status": "running",
+      "processed": 2,
+      "totalEligible": 359,
+      "succeeded": 2,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 2,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:10:43.524Z",
+      "status": "running",
+      "processed": 8,
+      "totalEligible": 359,
+      "succeeded": 8,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 8,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:11:13.887Z",
+      "status": "running",
+      "processed": 15,
+      "totalEligible": 359,
+      "succeeded": 15,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 15,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:11:44.008Z",
+      "status": "running",
+      "processed": 21,
+      "totalEligible": 359,
+      "succeeded": 21,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 21,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:12:14.112Z",
+      "status": "running",
+      "processed": 25,
+      "totalEligible": 359,
+      "succeeded": 25,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 25,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:12:44.334Z",
+      "status": "running",
+      "processed": 30,
+      "totalEligible": 359,
+      "succeeded": 30,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 30,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:13:14.447Z",
+      "status": "running",
+      "processed": 37,
+      "totalEligible": 359,
+      "succeeded": 37,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 37,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:13:44.547Z",
+      "status": "running",
+      "processed": 42,
+      "totalEligible": 359,
+      "succeeded": 42,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 42,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:14:14.651Z",
+      "status": "running",
+      "processed": 48,
+      "totalEligible": 359,
+      "succeeded": 48,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 48,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:14:44.773Z",
+      "status": "running",
+      "processed": 54,
+      "totalEligible": 359,
+      "succeeded": 54,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 54,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:15:14.881Z",
+      "status": "running",
+      "processed": 60,
+      "totalEligible": 359,
+      "succeeded": 60,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 60,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:15:45.107Z",
+      "status": "running",
+      "processed": 64,
+      "totalEligible": 359,
+      "succeeded": 64,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 64,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:16:15.225Z",
+      "status": "running",
+      "processed": 70,
+      "totalEligible": 359,
+      "succeeded": 70,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 70,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:16:45.327Z",
+      "status": "running",
+      "processed": 74,
+      "totalEligible": 359,
+      "succeeded": 74,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 74,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:17:15.426Z",
+      "status": "running",
+      "processed": 79,
+      "totalEligible": 359,
+      "succeeded": 79,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 79,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:17:45.542Z",
+      "status": "running",
+      "processed": 84,
+      "totalEligible": 359,
+      "succeeded": 84,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 84,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:18:15.651Z",
+      "status": "running",
+      "processed": 89,
+      "totalEligible": 359,
+      "succeeded": 89,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 89,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:18:45.770Z",
+      "status": "running",
+      "processed": 93,
+      "totalEligible": 359,
+      "succeeded": 93,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 93,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:19:15.894Z",
+      "status": "running",
+      "processed": 98,
+      "totalEligible": 359,
+      "succeeded": 98,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 98,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:19:46.283Z",
+      "status": "running",
+      "processed": 103,
+      "totalEligible": 359,
+      "succeeded": 103,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 103,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:20:16.416Z",
+      "status": "running",
+      "processed": 109,
+      "totalEligible": 359,
+      "succeeded": 109,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 109,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:20:46.532Z",
+      "status": "running",
+      "processed": 113,
+      "totalEligible": 359,
+      "succeeded": 113,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 113,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:21:16.649Z",
+      "status": "running",
+      "processed": 119,
+      "totalEligible": 359,
+      "succeeded": 119,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 119,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:21:46.765Z",
+      "status": "running",
+      "processed": 124,
+      "totalEligible": 359,
+      "succeeded": 124,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 124,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:22:16.886Z",
+      "status": "running",
+      "processed": 131,
+      "totalEligible": 359,
+      "succeeded": 131,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 131,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:22:46.970Z",
+      "status": "running",
+      "processed": 135,
+      "totalEligible": 359,
+      "succeeded": 135,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 135,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:23:17.078Z",
+      "status": "running",
+      "processed": 140,
+      "totalEligible": 359,
+      "succeeded": 140,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 140,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:23:47.202Z",
+      "status": "running",
+      "processed": 146,
+      "totalEligible": 359,
+      "succeeded": 146,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 146,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:24:17.304Z",
+      "status": "running",
+      "processed": 153,
+      "totalEligible": 359,
+      "succeeded": 153,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 153,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:24:47.412Z",
+      "status": "running",
+      "processed": 159,
+      "totalEligible": 359,
+      "succeeded": 159,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 159,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:25:17.538Z",
+      "status": "running",
+      "processed": 166,
+      "totalEligible": 359,
+      "succeeded": 166,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 166,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:25:47.803Z",
+      "status": "running",
+      "processed": 172,
+      "totalEligible": 359,
+      "succeeded": 172,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 172,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:26:17.915Z",
+      "status": "running",
+      "processed": 179,
+      "totalEligible": 359,
+      "succeeded": 179,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 179,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:26:48.039Z",
+      "status": "running",
+      "processed": 185,
+      "totalEligible": 359,
+      "succeeded": 185,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 185,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:27:18.156Z",
+      "status": "running",
+      "processed": 189,
+      "totalEligible": 359,
+      "succeeded": 189,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 189,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:27:48.606Z",
+      "status": "running",
+      "processed": 192,
+      "totalEligible": 359,
+      "succeeded": 192,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 192,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:28:18.715Z",
+      "status": "running",
+      "processed": 198,
+      "totalEligible": 359,
+      "succeeded": 198,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 198,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:28:48.849Z",
+      "status": "running",
+      "processed": 205,
+      "totalEligible": 359,
+      "succeeded": 205,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 205,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:29:18.975Z",
+      "status": "running",
+      "processed": 211,
+      "totalEligible": 359,
+      "succeeded": 211,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 211,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:29:49.107Z",
+      "status": "running",
+      "processed": 217,
+      "totalEligible": 359,
+      "succeeded": 217,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 217,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:30:19.226Z",
+      "status": "running",
+      "processed": 223,
+      "totalEligible": 359,
+      "succeeded": 223,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 223,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:30:49.337Z",
+      "status": "running",
+      "processed": 229,
+      "totalEligible": 359,
+      "succeeded": 229,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 229,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:31:19.445Z",
+      "status": "running",
+      "processed": 235,
+      "totalEligible": 359,
+      "succeeded": 235,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 235,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:31:49.568Z",
+      "status": "running",
+      "processed": 242,
+      "totalEligible": 359,
+      "succeeded": 242,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 242,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:32:19.763Z",
+      "status": "running",
+      "processed": 248,
+      "totalEligible": 359,
+      "succeeded": 248,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 248,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:32:49.869Z",
+      "status": "running",
+      "processed": 254,
+      "totalEligible": 359,
+      "succeeded": 254,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 254,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:33:19.975Z",
+      "status": "pending",
+      "processed": 261,
+      "totalEligible": 359,
+      "succeeded": 261,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 261,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:33:50.082Z",
+      "status": "running",
+      "processed": 266,
+      "totalEligible": 359,
+      "succeeded": 266,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 266,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:34:20.206Z",
+      "status": "pending",
+      "processed": 274,
+      "totalEligible": 359,
+      "succeeded": 274,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 274,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:34:50.323Z",
+      "status": "running",
+      "processed": 279,
+      "totalEligible": 359,
+      "succeeded": 279,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 279,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:35:20.439Z",
+      "status": "running",
+      "processed": 285,
+      "totalEligible": 359,
+      "succeeded": 285,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 285,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:35:50.555Z",
+      "status": "running",
+      "processed": 289,
+      "totalEligible": 359,
+      "succeeded": 289,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 289,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:36:20.677Z",
+      "status": "running",
+      "processed": 294,
+      "totalEligible": 359,
+      "succeeded": 294,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 294,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:36:50.788Z",
+      "status": "running",
+      "processed": 300,
+      "totalEligible": 359,
+      "succeeded": 300,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 300,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:37:20.879Z",
+      "status": "running",
+      "processed": 305,
+      "totalEligible": 359,
+      "succeeded": 305,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 305,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:37:50.977Z",
+      "status": "running",
+      "processed": 312,
+      "totalEligible": 359,
+      "succeeded": 312,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 312,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:38:21.096Z",
+      "status": "running",
+      "processed": 318,
+      "totalEligible": 359,
+      "succeeded": 318,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 318,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:38:51.223Z",
+      "status": "running",
+      "processed": 325,
+      "totalEligible": 359,
+      "succeeded": 325,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 325,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:39:21.350Z",
+      "status": "running",
+      "processed": 331,
+      "totalEligible": 359,
+      "succeeded": 331,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 331,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:39:51.457Z",
+      "status": "running",
+      "processed": 338,
+      "totalEligible": 359,
+      "succeeded": 338,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 338,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:40:21.584Z",
+      "status": "running",
+      "processed": 344,
+      "totalEligible": 359,
+      "succeeded": 344,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 344,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:40:51.707Z",
+      "status": "running",
+      "processed": 351,
+      "totalEligible": 359,
+      "succeeded": 351,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 351,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:41:21.817Z",
+      "status": "running",
+      "processed": 358,
+      "totalEligible": 359,
+      "succeeded": 358,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 358,
+      "preservationViolations": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-09-04T14:41:51.937Z",
+      "status": "completed",
+      "processed": 359,
+      "totalEligible": 359,
+      "succeeded": 359,
+      "failed": 0,
+      "retrying": 0,
+      "remainedReady": 359,
+      "preservationViolations": 0,
+      "anomalies": 0
+    }
+  ],
+  "safety": {
+    "autonomousEnabled": false,
+    "aiReviewReprocessPerformed": false,
+    "tagRetirementPerformed": false,
+    "matchedTagsChanged": false,
+    "algoliaSettingsChanged": false,
+    "rulesStorageIndexChanged": false,
+    "migrationBackfillOutsideJob": false,
+    "productionTouched": false,
+    "commitPush": false
+  }
+}

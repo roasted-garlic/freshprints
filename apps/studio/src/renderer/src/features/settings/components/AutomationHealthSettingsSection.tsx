@@ -28,11 +28,20 @@ interface HealthCounters {
   routedNeedsReview?: number;
   retries?: number;
   failures?: number;
+  publicationFailures?: number;
   categoryGap?: number;
+  hardBlockerRoutings?: number;
 }
 
-function asCount(value: unknown): number {
-  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+function asCount(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function formatTrackedCount(value: number | null, trackedSince: string): string {
+  if (value === null) {
+    return `not tracked yet (${trackedSince})`;
+  }
+  return String(value);
 }
 
 export function AutomationHealthSettingsSection({
@@ -53,17 +62,25 @@ export function AutomationHealthSettingsSection({
     return catalogReprocessService.subscribeRecentJobs(setJobs, () => undefined);
   }, []);
 
-  const rows: Array<[string, number]> = [
-    ["Analyzed", asCount(health.analyzed)],
-    ["Would auto-approve", asCount(health.wouldAutoApprove)],
-    ["Actually auto-approved", asCount(health.actuallyAutoApproved)],
-    ["Verifier invoked", asCount(health.verifierInvoked)],
-    ["Verifier confirmed", asCount(health.verifierConfirmed)],
-    ["Verifier unresolved", asCount(health.verifierUnresolved)],
-    ["Routed to Needs Review", asCount(health.routedNeedsReview)],
-    ["Retries", asCount(health.retries)],
-    ["Failures", asCount(health.failures)],
-    ["Category-gap cases", asCount(health.categoryGap)],
+  const rows: Array<[string, string]> = [
+    ["Analyzed", formatTrackedCount(asCount(health.analyzed), "WS1+")],
+    ["Would auto-approve", formatTrackedCount(asCount(health.wouldAutoApprove), "WS1+")],
+    ["Actually auto-approved", formatTrackedCount(asCount(health.actuallyAutoApproved), "WS1+")],
+    ["Verifier invoked", formatTrackedCount(asCount(health.verifierInvoked), "WS1+")],
+    [
+      "Verifier confirmed (confirmable uncertainty only)",
+      formatTrackedCount(asCount(health.verifierConfirmed), "WS1+; natural echo-confirm retired"),
+    ],
+    ["Verifier unresolved", formatTrackedCount(asCount(health.verifierUnresolved), "WS1+")],
+    ["Routed to Needs Review", formatTrackedCount(asCount(health.routedNeedsReview), "WS1+")],
+    ["Hard-blocker routings", formatTrackedCount(asCount(health.hardBlockerRoutings), "WS1+")],
+    ["Retries", formatTrackedCount(asCount(health.retries), "WS1+ enqueue/vision retries")],
+    ["Pipeline failures", formatTrackedCount(asCount(health.failures), "WS1+")],
+    [
+      "Publication failures",
+      formatTrackedCount(asCount(health.publicationFailures), "WS1+ Algolia sync"),
+    ],
+    ["Category-gap cases", formatTrackedCount(asCount(health.categoryGap), "WS1+")],
   ];
 
   return (
@@ -74,7 +91,9 @@ export function AutomationHealthSettingsSection({
         </h2>
         <p className="settings-section-description">
           Lightweight counters for Catalog Processing Mode and recent reprocessing job state. Not a
-          full analytics dashboard.
+          full analytics dashboard. Missing counters mean not tracked yet — not “zero events.”
+          Evidence gaps / subject-specificity risks are hard Needs Review blockers (not
+          confirmable by re-running the same checks).
         </p>
       </header>
 

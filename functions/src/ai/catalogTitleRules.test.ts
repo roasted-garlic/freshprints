@@ -23,7 +23,7 @@ import {
 
 describe("catalogTitleRules", () => {
   it("uses prompt version v32", () => {
-    assert.equal(CATALOG_ENRICHMENT_PROMPT_VERSION, "catalog-enrich-v32");
+    assert.equal(CATALOG_ENRICHMENT_PROMPT_VERSION, "catalog-enrich-v34");
   });
 
   it("keeps the JSON contract, OCR, canvas, and description rules in the trimmed prompt", () => {
@@ -826,5 +826,140 @@ describe("resolveLeanCatalogTitle", () => {
       }),
       "Dolly Parton I Will Always Love You Sheet Music Portrait",
     );
+  });
+});
+
+describe("resolveLeanCatalogTitle — no-text under-specific enrichment (subjects/objects)", () => {
+  const highlandAccepted =
+    "A Charming Illustrated Highland Cow With Large Expressive Eyes Is Depicted Resting Its Chin On Its Hand";
+
+  it("Sloth + tree object → materially more specific than bare Sloth", () => {
+    const title = resolveLeanCatalogTitle({
+      candidateTitle: "Sloth",
+      tags: [],
+      uploadFileStem: "upload",
+      description: "This design features a detailed illustration of a sloth clinging to a tree trunk.",
+      subjects: ["sloth", "person"],
+      objects: ["trees"],
+    });
+
+    assert.notEqual(title, "Sloth");
+    assert.match(title, /sloth/i);
+    assert.match(title, /tree/i);
+    assert.doesNotMatch(title, /\bperson\b/i);
+  });
+
+  it("Poodle: Dog + dog/poodle subjects + heart/glasses → not bare Dog", () => {
+    const title = resolveLeanCatalogTitle({
+      candidateTitle: "Dog",
+      tags: [],
+      uploadFileStem: "upload",
+      description: "A detailed illustration of a black poodle wearing light blue heart-shaped glasses.",
+      subjects: ["dog", "poodle"],
+      objects: ["glasses", "heart"],
+    });
+
+    assert.notEqual(title, "Dog");
+    assert.match(title, /poodle/i);
+    assert.match(title, /glasses/i);
+    assert.match(title, /heart/i);
+    assert.doesNotMatch(title, /\bglass\b/i);
+    assert.doesNotMatch(title, /^dog$/i);
+  });
+
+  it("Highland accepted long descriptive title remains unchanged", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: highlandAccepted,
+        tags: [],
+        uploadFileStem: "upload",
+        description: "A charming illustrated highland cow.",
+        subjects: ["cow", "Highland cow"],
+        objects: ["flowers", "bow"],
+      }),
+      highlandAccepted,
+    );
+  });
+
+  it("legitimate generic Cat with no richer evidence stays Cat", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: "Cat",
+        tags: [],
+        uploadFileStem: "upload",
+        description: "A cat.",
+        subjects: ["cat"],
+        objects: [],
+      }),
+      "Cat",
+    );
+  });
+
+  it("no-hallucination: Dog without poodle/glasses evidence stays Dog", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: "Dog",
+        tags: [],
+        uploadFileStem: "upload",
+        description: "A dog portrait.",
+        subjects: ["dog"],
+        objects: [],
+      }),
+      "Dog",
+    );
+  });
+
+  it("subject promotion: Dog + dog/poodle without objects → Poodle", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: "Dog",
+        tags: [],
+        uploadFileStem: "upload",
+        subjects: ["dog", "poodle"],
+        objects: [],
+      }),
+      "Poodle",
+    );
+  });
+
+  it("decorative object restraint: does not append every weak object", () => {
+    const title = resolveLeanCatalogTitle({
+      candidateTitle: "Fox",
+      tags: [],
+      uploadFileStem: "upload",
+      subjects: ["fox"],
+      objects: ["stars", "sparkles", "border", "tree"],
+    });
+
+    assert.match(title, /fox/i);
+    assert.match(title, /tree/i);
+    assert.doesNotMatch(title, /star|sparkle|border/i);
+  });
+
+  it("visibleText-led slogan path is not replaced by subjects/objects", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: "Sarcasm",
+        tags: [],
+        uploadFileStem: "upload",
+        readableTextLines: ["Sarcasm", "Just one of my many talents"],
+        subjects: ["skeleton"],
+        objects: ["stars"],
+      }),
+      "Sarcasm Just One Of My Many Talents",
+    );
+  });
+
+  it("works with matchedTags empty (tag-retirement compatible)", () => {
+    const title = resolveLeanCatalogTitle({
+      candidateTitle: "Dog",
+      tags: [],
+      uploadFileStem: "upload",
+      subjects: ["dog", "poodle"],
+      objects: ["glasses", "heart"],
+    });
+
+    assert.match(title, /poodle/i);
+    assert.match(title, /glasses/i);
   });
 });

@@ -67,7 +67,7 @@ describe("catalogReprocess callables containment", () => {
     assert.match(source, /CATALOG_REPROCESS_NORMALIZER_VERSION_SNAPSHOT/);
     assert.match(source, /promptVersion/);
     assert.match(source, /normalizerVersion/);
-    assert.match(constants, /catalog-enrich-v32/);
+    assert.match(constants, /catalog-enrich-v34/);
     assert.match(constants, /smart-profile-normalizer-v6/);
   });
 

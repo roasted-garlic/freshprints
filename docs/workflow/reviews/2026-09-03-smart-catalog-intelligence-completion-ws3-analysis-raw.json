@@ -1,0 +1,2011 @@
+{
+  "capturedAt": "2026-09-03T23:10:58.743Z",
+  "jobId": "omLhRHLnpkyvhOc8yQp9",
+  "preflight": {
+    "eligible": 165,
+    "deltaFromWs2": 0,
+    "phrase": "REPROCESS AI REVIEW QUEUE",
+    "mode": "shadow",
+    "live": false,
+    "prompt": "catalog-enrich-v32",
+    "normalizer": "smart-profile-normalizer-v6"
+  },
+  "liveSettingsNow": {
+    "catalogWorkflowMode": "shadow",
+    "catalogAutonomousLiveEnabled": false
+  },
+  "jobSummary": {
+    "status": "completed",
+    "totalEligible": 165,
+    "processed": 165,
+    "succeeded": 165,
+    "failed": 0,
+    "retrying": 0,
+    "attemptCount": 1,
+    "wouldAutoApprove": 50,
+    "hardBlocked": 2,
+    "autoApproved": 0,
+    "remainedNeedsReview": 165,
+    "remainedReady": 0,
+    "anomalies": 0,
+    "verifierInvoked": 0,
+    "verifierUnresolved": 0,
+    "preservationViolations": 0
+  },
+  "outcomes": {
+    "count": 165,
+    "statusDist": [
+      {
+        "code": "succeeded",
+        "count": 165
+      }
+    ],
+    "wouldAutoApprove": 50,
+    "needsReview": 115,
+    "wouldAutoApprovePct": 30.3,
+    "hardBlockedFlag": 2,
+    "verifierInvoked": 0,
+    "verifierConfirmed": 0,
+    "verifierUnresolved": 0,
+    "decisions": [
+      {
+        "code": "needs_review",
+        "count": 115
+      },
+      {
+        "code": "shadow",
+        "count": 50
+      }
+    ],
+    "hardBlockerDistribution": [
+      {
+        "code": "structured_evidence_gap:objects:stars",
+        "count": 22
+      },
+      {
+        "code": "structured_evidence_gap:objects:flowers",
+        "count": 17
+      },
+      {
+        "code": "structured_evidence_gap:objects:heart",
+        "count": 13
+      },
+      {
+        "code": "structured_evidence_gap:objects:sunglasses",
+        "count": 13
+      },
+      {
+        "code": "structured_evidence_gap:objects:hat",
+        "count": 10
+      },
+      {
+        "code": "structured_evidence_gap:objects:lightning bolt",
+        "count": 8
+      },
+      {
+        "code": "structured_evidence_gap:objects:coffee cup",
+        "count": 7
+      },
+      {
+        "code": "structured_evidence_gap:objects:butterflies",
+        "count": 6
+      },
+      {
+        "code": "structured_evidence_gap:objects:palm tree",
+        "count": 6
+      },
+      {
+        "code": "structured_evidence_gap:objects:bow",
+        "count": 5
+      },
+      {
+        "code": "structured_evidence_gap:objects:leaves",
+        "count": 5
+      },
+      {
+        "code": "structured_evidence_gap:subjects:dog",
+        "count": 5
+      },
+      {
+        "code": "structured_evidence_gap:objects:bats",
+        "count": 4
+      },
+      {
+        "code": "structured_evidence_gap:objects:book",
+        "count": 4
+      },
+      {
+        "code": "structured_evidence_gap:objects:moon",
+        "count": 4
+      },
+      {
+        "code": "structured_evidence_gap:objects:roses",
+        "count": 4
+      },
+      {
+        "code": "structured_evidence_gap:objects:sun",
+        "count": 4
+      },
+      {
+        "code": "structured_evidence_gap:objects:trees",
+        "count": 4
+      },
+      {
+        "code": "structured_evidence_gap:objects:cannabis leaves",
+        "count": 3
+      },
+      {
+        "code": "structured_evidence_gap:objects:cocktail",
+        "count": 3
+      },
+      {
+        "code": "structured_evidence_gap:objects:haunted house",
+        "count": 3
+      },
+      {
+        "code": "structured_evidence_gap:objects:ice cream cone",
+        "count": 3
+      },
+      {
+        "code": "structured_evidence_gap:objects:inner tube",
+        "count": 3
+      },
+      {
+        "code": "structured_evidence_gap:objects:skull",
+        "count": 3
+      },
+      {
+        "code": "structured_evidence_gap:subjects:cat",
+        "count": 3
+      },
+      {
+        "code": "structured_evidence_gap:subjects:character",
+        "count": 3
+      },
+      {
+        "code": "structured_evidence_gap:subjects:mouse",
+        "count": 3
+      },
+      {
+        "code": "structured_evidence_gap:subjects:skull",
+        "count": 3
+      },
+      {
+        "code": "category_gap_suggested",
+        "count": 2
+      },
+      {
+        "code": "structured_evidence_gap:objects:bathtub",
+        "count": 2
+      },
+      {
+        "code": "structured_evidence_gap:objects:cityscape",
+        "count": 2
+      },
+      {
+        "code": "structured_evidence_gap:objects:drink",
+        "count": 2
+      },
+      {
+        "code": "structured_evidence_gap:objects:millennium falcon",
+        "count": 2
+      },
+      {
+        "code": "structured_evidence_gap:objects:planet",
+        "count": 2
+      },
+      {
+        "code": "structured_evidence_gap:objects:pumpkins",
+        "count": 2
+      },
+      {
+        "code": "structured_evidence_gap:objects:rainbow",
+        "count": 2
+      },
+      {
+        "code": "structured_evidence_gap:objects:seashell",
+        "count": 2
+      },
+      {
+        "code": "structured_evidence_gap:objects:space needle",
+        "count": 2
+      },
+      {
+        "code": "structured_evidence_gap:subjects:bb-8",
+        "count": 2
+      },
+      {
+        "code": "structured_evidence_gap:subjects:jason",
+        "count": 2
+      },
+      {
+        "code": "structured_evidence_gap:subjects:members",
+        "count": 2
+      },
+      {
+        "code": "structured_evidence_gap:subjects:skeleton",
+        "count": 2
+      },
+      {
+        "code": "structured_evidence_gap:subjects:voorhees",
+        "count": 2
+      },
+      {
+        "code": "structured_evidence_gap:objects:alarm clock",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:antlers",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:armchair",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:at-at walker",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:avengers logo",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:awareness ribbons",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:bandages",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:basket",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:basketball hoop",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:beach chair",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:beach umbrella",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:bee",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:boa",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:boat",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:bow tie",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:bubbles",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:car",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:chat bubble",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:christmas tree",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:cigarette",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:circle",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:clouds",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:coconut",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:cross",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:crutches",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:cursor",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:daisies",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:death star",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:flip flops",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:flip-flops",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:glass bottle",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:glasses",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:hourglass",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:ice cubes",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:inflatable",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:jacket",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:lantern",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:lavender",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:life preserver",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:lime",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:loading bar",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:log",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:lollipop",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:mallet",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:medicine capsules",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:necklace",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:paper",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:paw",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:peace sign",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:peace symbol",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:pearl necklace",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:peonies",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:pill bottles",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:pine trees",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:pineapple",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:ribbon",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:rubber duck",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:saddle",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:spider web",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:starfish",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:stethoscopes",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:straw",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:stream",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:suit",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:sunflower",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:sunset",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:surfboard",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:syringes",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:tie fighter",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:water",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:watermelon slice",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:wheat",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:window",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:x-wing",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:x-wing fighter",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:baby",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:bird",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:boba",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:bugs",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:bunny",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:chucky",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:daffy",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:darth",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:devil",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:duck",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:fett",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:fish",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:freddy",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:girl",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:jerry",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:krueger",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:michael",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:myers",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:r2-d2",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:raven",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:reindeer",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:stormtrooper",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:sylvester",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:tasmanian",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:tom",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:tweety",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:vader",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:warrior",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:yoda",
+        "count": 1
+      },
+      {
+        "code": "subject_specificity_risk:cow",
+        "count": 1
+      }
+    ],
+    "softReasonDistribution": [
+      {
+        "code": "category_alternatives_present",
+        "count": 1
+      }
+    ],
+    "allReasonDistribution": [
+      {
+        "code": "shadow_would_auto_approve",
+        "count": 50
+      },
+      {
+        "code": "structured_evidence_gap:objects:stars",
+        "count": 22
+      },
+      {
+        "code": "structured_evidence_gap:objects:flowers",
+        "count": 17
+      },
+      {
+        "code": "structured_evidence_gap:objects:heart",
+        "count": 13
+      },
+      {
+        "code": "structured_evidence_gap:objects:sunglasses",
+        "count": 13
+      },
+      {
+        "code": "structured_evidence_gap:objects:hat",
+        "count": 10
+      },
+      {
+        "code": "structured_evidence_gap:objects:lightning bolt",
+        "count": 8
+      },
+      {
+        "code": "structured_evidence_gap:objects:coffee cup",
+        "count": 7
+      },
+      {
+        "code": "structured_evidence_gap:objects:butterflies",
+        "count": 6
+      },
+      {
+        "code": "structured_evidence_gap:objects:palm tree",
+        "count": 6
+      },
+      {
+        "code": "structured_evidence_gap:objects:bow",
+        "count": 5
+      },
+      {
+        "code": "structured_evidence_gap:objects:leaves",
+        "count": 5
+      },
+      {
+        "code": "structured_evidence_gap:subjects:dog",
+        "count": 5
+      },
+      {
+        "code": "structured_evidence_gap:objects:bats",
+        "count": 4
+      },
+      {
+        "code": "structured_evidence_gap:objects:book",
+        "count": 4
+      },
+      {
+        "code": "structured_evidence_gap:objects:moon",
+        "count": 4
+      },
+      {
+        "code": "structured_evidence_gap:objects:roses",
+        "count": 4
+      },
+      {
+        "code": "structured_evidence_gap:objects:sun",
+        "count": 4
+      },
+      {
+        "code": "structured_evidence_gap:objects:trees",
+        "count": 4
+      },
+      {
+        "code": "structured_evidence_gap:objects:cannabis leaves",
+        "count": 3
+      },
+      {
+        "code": "structured_evidence_gap:objects:cocktail",
+        "count": 3
+      },
+      {
+        "code": "structured_evidence_gap:objects:haunted house",
+        "count": 3
+      },
+      {
+        "code": "structured_evidence_gap:objects:ice cream cone",
+        "count": 3
+      },
+      {
+        "code": "structured_evidence_gap:objects:inner tube",
+        "count": 3
+      },
+      {
+        "code": "structured_evidence_gap:objects:skull",
+        "count": 3
+      },
+      {
+        "code": "structured_evidence_gap:subjects:cat",
+        "count": 3
+      },
+      {
+        "code": "structured_evidence_gap:subjects:character",
+        "count": 3
+      },
+      {
+        "code": "structured_evidence_gap:subjects:mouse",
+        "count": 3
+      },
+      {
+        "code": "structured_evidence_gap:subjects:skull",
+        "count": 3
+      },
+      {
+        "code": "category_gap_suggested",
+        "count": 2
+      },
+      {
+        "code": "structured_evidence_gap:objects:bathtub",
+        "count": 2
+      },
+      {
+        "code": "structured_evidence_gap:objects:cityscape",
+        "count": 2
+      },
+      {
+        "code": "structured_evidence_gap:objects:drink",
+        "count": 2
+      },
+      {
+        "code": "structured_evidence_gap:objects:millennium falcon",
+        "count": 2
+      },
+      {
+        "code": "structured_evidence_gap:objects:planet",
+        "count": 2
+      },
+      {
+        "code": "structured_evidence_gap:objects:pumpkins",
+        "count": 2
+      },
+      {
+        "code": "structured_evidence_gap:objects:rainbow",
+        "count": 2
+      },
+      {
+        "code": "structured_evidence_gap:objects:seashell",
+        "count": 2
+      },
+      {
+        "code": "structured_evidence_gap:objects:space needle",
+        "count": 2
+      },
+      {
+        "code": "structured_evidence_gap:subjects:bb-8",
+        "count": 2
+      },
+      {
+        "code": "structured_evidence_gap:subjects:jason",
+        "count": 2
+      },
+      {
+        "code": "structured_evidence_gap:subjects:members",
+        "count": 2
+      },
+      {
+        "code": "structured_evidence_gap:subjects:skeleton",
+        "count": 2
+      },
+      {
+        "code": "structured_evidence_gap:subjects:voorhees",
+        "count": 2
+      },
+      {
+        "code": "category_alternatives_present",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:alarm clock",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:antlers",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:armchair",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:at-at walker",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:avengers logo",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:awareness ribbons",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:bandages",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:basket",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:basketball hoop",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:beach chair",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:beach umbrella",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:bee",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:boa",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:boat",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:bow tie",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:bubbles",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:car",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:chat bubble",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:christmas tree",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:cigarette",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:circle",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:clouds",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:coconut",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:cross",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:crutches",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:cursor",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:daisies",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:death star",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:flip flops",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:flip-flops",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:glass bottle",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:glasses",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:hourglass",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:ice cubes",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:inflatable",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:jacket",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:lantern",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:lavender",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:life preserver",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:lime",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:loading bar",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:log",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:lollipop",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:mallet",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:medicine capsules",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:necklace",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:paper",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:paw",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:peace sign",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:peace symbol",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:pearl necklace",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:peonies",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:pill bottles",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:pine trees",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:pineapple",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:ribbon",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:rubber duck",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:saddle",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:spider web",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:starfish",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:stethoscopes",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:straw",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:stream",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:suit",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:sunflower",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:sunset",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:surfboard",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:syringes",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:tie fighter",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:water",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:watermelon slice",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:wheat",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:window",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:x-wing",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:x-wing fighter",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:baby",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:bird",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:boba",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:bugs",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:bunny",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:chucky",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:daffy",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:darth",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:devil",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:duck",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:fett",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:fish",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:freddy",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:girl",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:jerry",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:krueger",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:michael",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:myers",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:r2-d2",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:raven",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:reindeer",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:stormtrooper",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:sylvester",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:tasmanian",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:tom",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:tweety",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:vader",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:warrior",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:subjects:yoda",
+        "count": 1
+      },
+      {
+        "code": "subject_specificity_risk:cow",
+        "count": 1
+      }
+    ],
+    "structuredEvidenceByDimension": [
+      {
+        "code": "structured_evidence_gap:objects",
+        "count": 247
+      },
+      {
+        "code": "structured_evidence_gap:subjects",
+        "count": 56
+      }
+    ],
+    "subjectSpecificityDistribution": [
+      {
+        "code": "subject_specificity_risk:cow",
+        "count": 1
+      }
+    ],
+    "titleHardDistribution": [],
+    "descriptionHardDistribution": [],
+    "categoryUnresolved": 0,
+    "categoryGap": 2,
+    "categoryDominantConflict": 0,
+    "titleValidationIssueFlag": 0,
+    "subjectSpecificityIssueFlag": 1,
+    "evidenceByDesign": {
+      "designsWithAnyEvidenceGap": 113,
+      "designsWithSubjectSpec": 1
+    }
+  },
+  "version": {
+    "exactV32V6": 165,
+    "older": 0,
+    "missingProvenance": 0,
+    "schemaSmartProfileV1": 165,
+    "unexpectedCombos": [],
+    "promptDist": [
+      {
+        "code": "catalog-enrich-v32",
+        "count": 165
+      }
+    ],
+    "normalizerDist": [
+      {
+        "code": "smart-profile-normalizer-v6",
+        "count": 165
+      }
+    ]
+  },
+  "lifecycle": {
+    "importedNeedsReviewDesigns": 165,
+    "jobRemainedNeedsReview": 165,
+    "jobRemainedReady": 0,
+    "jobAutoApproved": 0,
+    "automaticReadyTransitions": 0
+  },
+  "fieldPresence": {
+    "smartProfileCategoryId": 165,
+    "rootCategoryId": 0,
+    "rootDescriptionNonEmpty": 0,
+    "filenameLikeTitles": 73,
+    "wouldAutoApproveFilenameLikeTitles": 21,
+    "matchedTagsNonEmpty": 0,
+    "importPresets": 0,
+    "staffEdited": 0,
+    "categoryDistribution": [
+      {
+        "code": "Funny & Sarcastic",
+        "count": 60
+      },
+      {
+        "code": "Pop Culture & Characters",
+        "count": 27
+      },
+      {
+        "code": "Holiday & Seasonal",
+        "count": 20
+      },
+      {
+        "code": "Animals",
+        "count": 16
+      },
+      {
+        "code": "Hobbies & Lifestyle",
+        "count": 10
+      },
+      {
+        "code": "Occupations",
+        "count": 10
+      },
+      {
+        "code": "Awareness & Causes",
+        "count": 5
+      },
+      {
+        "code": "Floral & Nature",
+        "count": 5
+      },
+      {
+        "code": "Occasions",
+        "count": 4
+      },
+      {
+        "code": "Faith & Inspirational",
+        "count": 3
+      },
+      {
+        "code": "Family",
+        "count": 3
+      },
+      {
+        "code": "School & Education",
+        "count": 2
+      }
+    ]
+  },
+  "systemicFlags": [
+    "AI Review queue persistence does not write root title/description/categoryId (markAiSuccess queue path) — Shadow scored aiSuggestions; Studio still shows import root titles. Owner QA must compare aiSuggestedTitle/description, not only root title.",
+    "wouldAutoApprove=50 of which root-vs-AI title differ on 50; aiSuggestions title quality ok≈50 bad≈0; aiSuggestions description present=50 missing=0.",
+    "Category on smartProfile 165/165; root categoryId 0/165; matchedTags 0/165 — tag materialization not applied on imported Needs Review (expected for this WS).",
+    "Primary Needs Review driver: structured_evidence_gap on objects/subjects (113/165 designs). Not a single bogus rule collapse of wouldAutoApprove path."
+  ],
+  "sample": [
+    {
+      "why": "wouldAutoApprove — human-readable title",
+      "id": "7bVlWMFwxECdfHH8VNPB",
+      "title": "F Caw F-03",
+      "filenameLikeTitle": false,
+      "categoryName": "Animals",
+      "categoryId": "qhGPaAHPOOmPe7PvQvi0",
+      "subjects": [],
+      "objects": [],
+      "visibleTextSample": [
+        "F-CAW-F"
+      ],
+      "descriptionLen": 0,
+      "wouldAutoApprove": true,
+      "decision": "shadow",
+      "hardBlocked": false,
+      "reasonCodes": [
+        "shadow_would_auto_approve"
+      ],
+      "hardReasons": [],
+      "softReasons": [],
+      "titleOutcome": "first_pass",
+      "matchedTagsCount": 0,
+      "hasImportPreset": false,
+      "staffEdited": [],
+      "artworkBackground": null,
+      "halftone": null,
+      "aiSuggestedTitle": "F-caw-f Raven",
+      "aiSuggestedDescription": "This design features a raven in mid-caw with its wings spread and one leg raised. The typography \"F-CAW-F\" is prominently displayed above the illustration, suggesting a humorous or attention-grabbing message.",
+      "aiSuggestedCategoryId": "qhGPaAHPOOmPe7PvQvi0",
+      "aiSuggestedCategoryName": "Animals",
+      "aiVisibleText": [],
+      "aiConfidence": null,
+      "rootTitle": "F Caw F-03",
+      "titleMismatch": true
+    },
+    {
+      "why": "wouldAutoApprove — human-readable title",
+      "id": "At5hu7vLjWgduiyzZCfR",
+      "title": "I dont do matching shirtsW",
+      "filenameLikeTitle": false,
+      "categoryName": "Funny & Sarcastic",
+      "categoryId": "tj0HemRh2RuYLfI7N6nO",
+      "subjects": [],
+      "objects": [],
+      "visibleTextSample": [
+        "I don't do",
+        "Matching",
+        "Shirts"
+      ],
+      "descriptionLen": 0,
+      "wouldAutoApprove": true,
+      "decision": "shadow",
+      "hardBlocked": false,
+      "reasonCodes": [
+        "shadow_would_auto_approve"
+      ],
+      "hardReasons": [],
+      "softReasons": [],
+      "titleOutcome": "first_pass",
+      "matchedTagsCount": 0,
+      "hasImportPreset": false,
+      "staffEdited": [],
+      "artworkBackground": null,
+      "halftone": null,
+      "aiSuggestedTitle": "I Don't Do Matching Shirts",
+      "aiSuggestedDescription": "It expresses a humorous sentiment about avoiding coordinated outfits.",
+      "aiSuggestedCategoryId": "tj0HemRh2RuYLfI7N6nO",
+      "aiSuggestedCategoryName": "Funny & Sarcastic",
+      "aiVisibleText": [],
+      "aiConfidence": null,
+      "rootTitle": "I dont do matching shirtsW",
+      "titleMismatch": true
+    },
+    {
+      "why": "wouldAutoApprove — human-readable title",
+      "id": "Bilulhd5Hm7nwv1uZfbA",
+      "title": "Laundry Worker Appreciation Week Healthcare For Women Men T-Shirt",
+      "filenameLikeTitle": false,
+      "categoryName": "Occupations",
+      "categoryId": "lUNc6pjkJ99WdBAGbrCF",
+      "subjects": [],
+      "objects": [],
+      "visibleTextSample": [
+        "LAUNDRY",
+        "worker"
+      ],
+      "descriptionLen": 0,
+      "wouldAutoApprove": true,
+      "decision": "shadow",
+      "hardBlocked": false,
+      "reasonCodes": [
+        "shadow_would_auto_approve"
+      ],
+      "hardReasons": [],
+      "softReasons": [],
+      "titleOutcome": "first_pass",
+      "matchedTagsCount": 0,
+      "hasImportPreset": false,
+      "staffEdited": [],
+      "artworkBackground": null,
+      "halftone": null,
+      "aiSuggestedTitle": "Laundry Worker Colorful Retro Text",
+      "aiSuggestedDescription": "This design features the word \"LAUNDRY\" repeated multiple times in colorful, retro-style lettering. Below the repeated word, \"worker\" is written in a smaller, cursive font, identifying the occupation.",
+      "aiSuggestedCategoryId": "lUNc6pjkJ99WdBAGbrCF",
+      "aiSuggestedCategoryName": "Occupations",
+      "aiVisibleText": [],
+      "aiConfidence": null,
+      "rootTitle": "Laundry Worker Appreciation Week Healthcare For Women Men T-Shirt",
+      "titleMismatch": true
+    },
+    {
+      "why": "wouldAutoApprove — filename/short title (quality concern)",
+      "id": "03cbj1cIFH7Bavt38XBX",
+      "title": "(4)",
+      "filenameLikeTitle": true,
+      "categoryName": "Pop Culture & Characters",
+      "categoryId": "Sn9nmGJvFlIRO4DnFnIB",
+      "subjects": [],
+      "objects": [],
+      "visibleTextSample": [],
+      "descriptionLen": 0,
+      "wouldAutoApprove": true,
+      "decision": "shadow",
+      "hardBlocked": false,
+      "reasonCodes": [
+        "shadow_would_auto_approve"
+      ],
+      "hardReasons": [],
+      "softReasons": [],
+      "titleOutcome": "first_pass",
+      "matchedTagsCount": 0,
+      "hasImportPreset": false,
+      "staffEdited": [],
+      "artworkBackground": null,
+      "halftone": null,
+      "aiSuggestedTitle": "Michael Jackson Dancing Silhouette",
+      "aiSuggestedDescription": "A Michael Jackson apparel design.",
+      "aiSuggestedCategoryId": "Sn9nmGJvFlIRO4DnFnIB",
+      "aiSuggestedCategoryName": "Pop Culture & Characters",
+      "aiVisibleText": [],
+      "aiConfidence": null,
+      "rootTitle": "(4)",
+      "titleMismatch": true
+    },
+    {
+      "why": "wouldAutoApprove — filename/short title (quality concern)",
+      "id": "6fBRl87jaXyYYGlhapS9",
+      "title": "1 (52)",
+      "filenameLikeTitle": true,
+      "categoryName": "Pop Culture & Characters",
+      "categoryId": "Sn9nmGJvFlIRO4DnFnIB",
+      "subjects": [],
+      "objects": [],
+      "visibleTextSample": [
+        "LOONEY",
+        "TUNES"
+      ],
+      "descriptionLen": 0,
+      "wouldAutoApprove": true,
+      "decision": "shadow",
+      "hardBlocked": false,
+      "reasonCodes": [
+        "shadow_would_auto_approve"
+      ],
+      "hardReasons": [],
+      "softReasons": [],
+      "titleOutcome": "first_pass",
+      "matchedTagsCount": 0,
+      "hasImportPreset": false,
+      "staffEdited": [],
+      "artworkBackground": null,
+      "halftone": null,
+      "aiSuggestedTitle": "Looney Tunes Characters Collage",
+      "aiSuggestedDescription": "This design features a collage of iconic Looney Tunes characters, including Bugs Bunny, Sylvester, Taz, Pepé Le Pew, Tweety Bird, and Daffy Duck. The \"LOONEY TUNES\" logo is prominently displayed across the center, with e",
+      "aiSuggestedCategoryId": "Sn9nmGJvFlIRO4DnFnIB",
+      "aiSuggestedCategoryName": "Pop Culture & Characters",
+      "aiVisibleText": [],
+      "aiConfidence": null,
+      "rootTitle": "1 (52)",
+      "titleMismatch": true
+    },
+    {
+      "why": "category-related Needs Review",
+      "id": "Dr8lcyPE8imTQlNESP8X",
+      "title": "(5)",
+      "filenameLikeTitle": true,
+      "categoryName": "Pop Culture & Characters",
+      "categoryId": "Sn9nmGJvFlIRO4DnFnIB",
+      "subjects": [],
+      "objects": [],
+      "visibleTextSample": [],
+      "descriptionLen": 0,
+      "wouldAutoApprove": false,
+      "decision": "needs_review",
+      "hardBlocked": true,
+      "reasonCodes": [
+        "category_gap_suggested"
+      ],
+      "hardReasons": [
+        "category_gap_suggested"
+      ],
+      "softReasons": [],
+      "titleOutcome": "first_pass",
+      "matchedTagsCount": 0,
+      "hasImportPreset": false,
+      "staffEdited": [],
+      "artworkBackground": null,
+      "halftone": null,
+      "aiSuggestedTitle": "Fairytale Castle Emerging From Open Book",
+      "aiSuggestedDescription": "An open book dramatically transforms into a majestic fairytale castle, surrounded by a magical, dreamlike landscape.",
+      "aiSuggestedCategoryId": "Sn9nmGJvFlIRO4DnFnIB",
+      "aiSuggestedCategoryName": "Pop Culture & Characters",
+      "aiVisibleText": [],
+      "aiConfidence": null,
+      "rootTitle": "(5)",
+      "titleMismatch": true
+    },
+    {
+      "why": "category-related Needs Review",
+      "id": "nff6PpkZF9TNitnpX2Mm",
+      "title": "343 Boston Terrier",
+      "filenameLikeTitle": false,
+      "categoryName": "Animals",
+      "categoryId": "qhGPaAHPOOmPe7PvQvi0",
+      "subjects": [],
+      "objects": [],
+      "visibleTextSample": [],
+      "descriptionLen": 0,
+      "wouldAutoApprove": false,
+      "decision": "needs_review",
+      "hardBlocked": true,
+      "reasonCodes": [
+        "category_gap_suggested",
+        "structured_evidence_gap:objects:flowers"
+      ],
+      "hardReasons": [
+        "category_gap_suggested",
+        "structured_evidence_gap:objects:flowers"
+      ],
+      "softReasons": [],
+      "titleOutcome": "first_pass",
+      "matchedTagsCount": 0,
+      "hasImportPreset": false,
+      "staffEdited": [],
+      "artworkBackground": null,
+      "halftone": null,
+      "aiSuggestedTitle": "Boston Terrier With Floral Bow Tie",
+      "aiSuggestedDescription": "A Boston Terrier apparel design.",
+      "aiSuggestedCategoryId": "qhGPaAHPOOmPe7PvQvi0",
+      "aiSuggestedCategoryName": "Animals",
+      "aiVisibleText": [],
+      "aiConfidence": null,
+      "rootTitle": "343 Boston Terrier",
+      "titleMismatch": true
+    },
+    {
+      "why": "structured-evidence Needs Review",
+      "id": "0EHBrGD4wXNLnNNKij4N",
+      "title": "2601895693 Spread The Hope Find The Cure Fight Cancer In All Colors Shirt, Colorful Ribbon Dandelion Cancer Awareness Shirt, Can",
+      "filenameLikeTitle": false,
+      "categoryName": "Awareness & Causes",
+      "categoryId": "AcCIuOx3J0EQhe66dSv6",
+      "subjects": [],
+      "objects": [],
+      "visibleTextSample": [
+        "Spread",
+        "the Hope",
+        "find",
+        "the Cure",
+        "Fight Cancer In All Colors"
+      ],
+      "descriptionLen": 0,
+      "wouldAutoApprove": false,
+      "decision": "needs_review",
+      "hardBlocked": false,
+      "reasonCodes": [
+        "structured_evidence_gap:objects:ribbon",
+        "structured_evidence_gap:objects:bee",
+        "structured_evidence_gap:objects:heart"
+      ],
+      "hardReasons": [
+        "structured_evidence_gap:objects:ribbon",
+        "structured_evidence_gap:objects:bee",
+        "structured_evidence_gap:objects:heart"
+      ],
+      "softReasons": [],
+      "titleOutcome": "first_pass",
+      "matchedTagsCount": 0,
+      "hasImportPreset": false,
+      "staffEdited": [],
+      "artworkBackground": null,
+      "halftone": null,
+      "aiSuggestedTitle": "Spread The Hope Find The Cure Fight Cancer In All Colors Awareness",
+      "aiSuggestedDescription": "A dandelion design featuring \"Spread\" and \"the Hope\".",
+      "aiSuggestedCategoryId": "AcCIuOx3J0EQhe66dSv6",
+      "aiSuggestedCategoryName": "Awareness & Causes",
+      "aiVisibleText": [],
+      "aiConfidence": null,
+      "rootTitle": "2601895693 Spread The Hope Find The Cure Fight Cancer In All Colors Shirt, Colorful Ribbon Dandelion Cancer Awareness Shirt, Can",
+      "titleMismatch": true
+    },
+    {
+      "why": "structured-evidence Needs Review",
+      "id": "1Ws0T9fivryest6IUSbt",
+      "title": "just_hit_it",
+      "filenameLikeTitle": true,
+      "categoryName": "Funny & Sarcastic",
+      "categoryId": "tj0HemRh2RuYLfI7N6nO",
+      "subjects": [],
+      "objects": [],
+      "visibleTextSample": [
+        "JUST HIT IT"
+      ],
+      "descriptionLen": 0,
+      "wouldAutoApprove": false,
+      "decision": "needs_review",
+      "hardBlocked": false,
+      "reasonCodes": [
+        "structured_evidence_gap:objects:cannabis leaves"
+      ],
+      "hardReasons": [
+        "structured_evidence_gap:objects:cannabis leaves"
+      ],
+      "softReasons": [],
+      "titleOutcome": "first_pass",
+      "matchedTagsCount": 0,
+      "hasImportPreset": false,
+      "staffEdited": [],
+      "artworkBackground": null,
+      "halftone": null,
+      "aiSuggestedTitle": "Just Hit It Marijuana Leaves",
+      "aiSuggestedDescription": "Below the logo, the text \"JUST HIT IT\" is displayed in bold green lettering. The overall theme merges athletic branding with cannabis culture.",
+      "aiSuggestedCategoryId": "tj0HemRh2RuYLfI7N6nO",
+      "aiSuggestedCategoryName": "Funny & Sarcastic",
+      "aiVisibleText": [],
+      "aiConfidence": null,
+      "rootTitle": "just_hit_it",
+      "titleMismatch": true
+    },
+    {
+      "why": "subject-specificity Needs Review",
+      "id": "LYJcsxnfUyacRWtntEkd",
+      "title": "cow summer vibes front",
+      "filenameLikeTitle": false,
+      "categoryName": "Animals",
+      "categoryId": "qhGPaAHPOOmPe7PvQvi0",
+      "subjects": [],
+      "objects": [],
+      "visibleTextSample": [],
+      "descriptionLen": 0,
+      "wouldAutoApprove": false,
+      "decision": "needs_review",
+      "hardBlocked": false,
+      "reasonCodes": [
+        "subject_specificity_risk:cow"
+      ],
+      "hardReasons": [
+        "subject_specificity_risk:cow"
+      ],
+      "softReasons": [],
+      "titleOutcome": "first_pass",
+      "matchedTagsCount": 0,
+      "hasImportPreset": false,
+      "staffEdited": [],
+      "artworkBackground": null,
+      "halftone": null,
+      "aiSuggestedTitle": "Highland Cow Relaxing In Inner Tube With Sunglasses",
+      "aiSuggestedDescription": "Small pink starbursts surround the scene, suggesting a fun and summery vibe.",
+      "aiSuggestedCategoryId": "qhGPaAHPOOmPe7PvQvi0",
+      "aiSuggestedCategoryName": "Animals",
+      "aiVisibleText": [],
+      "aiConfidence": null,
+      "rootTitle": "cow summer vibes front",
+      "titleMismatch": true
+    },
+    {
+      "why": "text-heavy / visibleText",
+      "id": "1eOWMVHDvRKY0kwYWQet",
+      "title": "FD_M_CT58_PNG",
+      "filenameLikeTitle": true,
+      "categoryName": "Family",
+      "categoryId": "PjYcGaa61ai2EIB2O8LK",
+      "subjects": [],
+      "objects": [],
+      "visibleTextSample": [
+        "HARDWORKING",
+        "FUNNY",
+        "WISE",
+        "STRONG",
+        "BRAVE",
+        "ADVENTUROUS",
+        "FEARLESS",
+        "LOVING"
+      ],
+      "descriptionLen": 0,
+      "wouldAutoApprove": false,
+      "decision": "needs_review",
+      "hardBlocked": false,
+      "reasonCodes": [
+        "structured_evidence_gap:subjects:bb-8",
+        "structured_evidence_gap:subjects:vader",
+        "structured_evidence_gap:subjects:darth",
+        "structured_evidence_gap:subjects:r2-d2",
+        "structured_evidence_gap:objects:x-wing fighter",
+        "structured_evidence_gap:objects:at-at walker",
+        "structured_evidence_gap:objects:millennium falcon",
+        "structured_evidence_gap:objects:tie fighter"
+      ],
+      "hardReasons": [
+        "structured_evidence_gap:subjects:bb-8",
+        "structured_evidence_gap:subjects:vader",
+        "structured_evidence_gap:subjects:darth",
+        "structured_evidence_gap:subjects:r2-d2",
+        "structured_evidence_gap:objects:x-wing fighter",
+        "structured_evidence_gap:objects:at-at walker",
+        "structured_evidence_gap:objects:millennium falcon",
+        "structured_evidence_gap:objects:tie fighter"
+      ],
+      "softReasons": [],
+      "titleOutcome": "first_pass",
+      "matchedTagsCount": 0,
+      "hasImportPreset": false,
+      "staffEdited": [],
+      "artworkBackground": null,
+      "halftone": null,
+      "aiSuggestedTitle": "Father Protector Hero Acrostic With Star Wars Icons",
+      "aiSuggestedDescription": "This design features an acrostic spelling out \"FATHER\" vertically, with each letter filled with Star Wars imagery. Beside the vertical text are descriptive words like \"HARDWORKING,\" \"FUNNY,\" \"BRAVE,\" and \"HERO,\" accompan",
+      "aiSuggestedCategoryId": "PjYcGaa61ai2EIB2O8LK",
+      "aiSuggestedCategoryName": "Family",
+      "aiVisibleText": [],
+      "aiConfidence": null,
+      "rootTitle": "FD_M_CT58_PNG",
+      "titleMismatch": true
+    },
+    {
+      "why": "document/background-text candidate",
+      "id": "7BjqFQIhkavo80sv5kCp",
+      "title": "4-01",
+      "filenameLikeTitle": false,
+      "categoryName": "Pop Culture & Characters",
+      "categoryId": "Sn9nmGJvFlIRO4DnFnIB",
+      "subjects": [],
+      "objects": [],
+      "visibleTextSample": [
+        "Aries",
+        "Lively",
+        "Versatile",
+        "Passionate",
+        "Courageous",
+        "Positive",
+        "Adventurous"
+      ],
+      "descriptionLen": 0,
+      "wouldAutoApprove": false,
+      "decision": "needs_review",
+      "hardBlocked": false,
+      "reasonCodes": [
+        "structured_evidence_gap:objects:stars"
+      ],
+      "hardReasons": [
+        "structured_evidence_gap:objects:stars"
+      ],
+      "softReasons": [],
+      "titleOutcome": "first_pass",
+      "matchedTagsCount": 0,
+      "hasImportPreset": false,
+      "staffEdited": [],
+      "artworkBackground": null,
+      "halftone": null,
+      "aiSuggestedTitle": "Aries Lively Versatile Passionate Courageous Positive Adventurous Ram",
+      "aiSuggestedDescription": "A ram design featuring \"Aries\" and \"Lively\".",
+      "aiSuggestedCategoryId": "Sn9nmGJvFlIRO4DnFnIB",
+      "aiSuggestedCategoryName": "Pop Culture & Characters",
+      "aiVisibleText": [],
+      "aiConfidence": null,
+      "rootTitle": "4-01",
+      "titleMismatch": true
+    },
+    {
+      "why": "unusual/outlier — many hard reasons",
+      "id": "E2fVUzTL8Smx0gXaGqUZ",
+      "title": "FD_M_ALL02_PNG",
+      "filenameLikeTitle": true,
+      "categoryName": "Pop Culture & Characters",
+      "categoryId": "Sn9nmGJvFlIRO4DnFnIB",
+      "subjects": [],
+      "objects": [],
+      "visibleTextSample": [
+        "I AM THEIR",
+        "FATHER"
+      ],
+      "descriptionLen": 0,
+      "wouldAutoApprove": false,
+      "decision": "needs_review",
+      "hardBlocked": false,
+      "reasonCodes": [
+        "structured_evidence_gap:subjects:yoda",
+        "structured_evidence_gap:subjects:baby",
+        "structured_evidence_gap:subjects:fett",
+        "structured_evidence_gap:subjects:boba",
+        "structured_evidence_gap:subjects:stormtrooper",
+        "structured_evidence_gap:subjects:bb-8",
+        "structured_evidence_gap:objects:death star",
+        "structured_evidence_gap:objects:millennium falcon",
+        "structured_evidence_gap:objects:x-wing",
+        "structured_evidence_gap:objects:planet"
+      ],
+      "hardReasons": [
+        "structured_evidence_gap:subjects:yoda",
+        "structured_evidence_gap:subjects:baby",
+        "structured_evidence_gap:subjects:fett",
+        "structured_evidence_gap:subjects:boba",
+        "structured_evidence_gap:subjects:stormtrooper",
+        "structured_evidence_gap:subjects:bb-8",
+        "structured_evidence_gap:objects:death star",
+        "structured_evidence_gap:objects:millennium falcon",
+        "structured_evidence_gap:objects:x-wing",
+        "structured_evidence_gap:objects:planet"
+      ],
+      "softReasons": [],
+      "titleOutcome": "first_pass",
+      "matchedTagsCount": 0,
+      "hasImportPreset": false,
+      "staffEdited": [],
+      "artworkBackground": null,
+      "halftone": null,
+      "aiSuggestedTitle": "I Am Their Father Darth Vader Star Wars",
+      "aiSuggestedDescription": "This design features Darth Vader holding a red lightsaber, with the text \"I AM THEIR FATHER\" prominently displayed.",
+      "aiSuggestedCategoryId": "Sn9nmGJvFlIRO4DnFnIB",
+      "aiSuggestedCategoryName": "Pop Culture & Characters",
+      "aiVisibleText": [],
+      "aiConfidence": null,
+      "rootTitle": "FD_M_ALL02_PNG",
+      "titleMismatch": true
+    },
+    {
+      "why": "additional Needs Review fill",
+      "id": "1scpUhx0KriTBC1IfFIW",
+      "title": "PNG 4",
+      "filenameLikeTitle": false,
+      "categoryName": "Funny & Sarcastic",
+      "categoryId": "tj0HemRh2RuYLfI7N6nO",
+      "subjects": [],
+      "objects": [],
+      "visibleTextSample": [
+        "LIVE, LAUGH",
+        "TOASTER BATH"
+      ],
+      "descriptionLen": 0,
+      "wouldAutoApprove": false,
+      "decision": "needs_review",
+      "hardBlocked": false,
+      "reasonCodes": [
+        "structured_evidence_gap:subjects:skull",
+        "structured_evidence_gap:objects:bathtub",
+        "structured_evidence_gap:objects:bubbles",
+        "structured_evidence_gap:objects:stars"
+      ],
+      "hardReasons": [
+        "structured_evidence_gap:subjects:skull",
+        "structured_evidence_gap:objects:bathtub",
+        "structured_evidence_gap:objects:bubbles",
+        "structured_evidence_gap:objects:stars"
+      ],
+      "softReasons": [],
+      "titleOutcome": "first_pass",
+      "matchedTagsCount": 0,
+      "hasImportPreset": false,
+      "staffEdited": [],
+      "artworkBackground": null,
+      "halftone": null,
+      "aiSuggestedTitle": "Skeleton Live Laugh Toaster Bath",
+      "aiSuggestedDescription": "A skeleton design featuring \"LIVE, LAUGH\" and \"TOASTER BATH\".",
+      "aiSuggestedCategoryId": "tj0HemRh2RuYLfI7N6nO",
+      "aiSuggestedCategoryName": "Funny & Sarcastic",
+      "aiVisibleText": [],
+      "aiConfidence": null,
+      "rootTitle": "PNG 4",
+      "titleMismatch": true
+    },
+    {
+      "why": "additional Needs Review fill",
+      "id": "2g9IrxIiuOGrUbZio4Qn",
+      "title": "2 (12)",
+      "filenameLikeTitle": true,
+      "categoryName": "Floral & Nature",
+      "categoryId": "aqDBTE9a8D2R7hBwzSVD",
+      "subjects": [],
+      "objects": [],
+      "visibleTextSample": [],
+      "descriptionLen": 0,
+      "wouldAutoApprove": false,
+      "decision": "needs_review",
+      "hardBlocked": false,
+      "reasonCodes": [
+        "structured_evidence_gap:objects:leaves"
+      ],
+      "hardReasons": [
+        "structured_evidence_gap:objects:leaves"
+      ],
+      "softReasons": [],
+      "titleOutcome": "first_pass",
+      "matchedTagsCount": 0,
+      "hasImportPreset": false,
+      "staffEdited": [],
+      "artworkBackground": null,
+      "halftone": null,
+      "aiSuggestedTitle": "Colorful Flamingo With Tropical Flowers",
+      "aiSuggestedDescription": "A vibrant, multi-colored flamingo stands amidst lush tropical foliage and bright hibiscus flowers. The design features a distressed blue and gray striped background with a summery, beachy aesthetic.",
+      "aiSuggestedCategoryId": "aqDBTE9a8D2R7hBwzSVD",
+      "aiSuggestedCategoryName": "Floral & Nature",
+      "aiVisibleText": [],
+      "aiConfidence": null,
+      "rootTitle": "2 (12)",
+      "titleMismatch": true
+    }
+  ],
+  "aiSuggestionsVsRoot": {
+    "would": 50,
+    "titleDiff": 50,
+    "aiTitleOk": 50,
+    "aiTitleBad": 0,
+    "aiDescPresent": 50,
+    "aiDescMissing": 0,
+    "badAiTitles": []
+  },
+  "calibrationFailureRecommended": false
+}

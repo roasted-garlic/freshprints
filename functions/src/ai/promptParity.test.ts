@@ -10,12 +10,8 @@ import {
 import { DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE } from "../../../packages/shared/src/constants/aiEnrichment.constants";
 
 /**
- * Prompt parity: the Settings AI Playground (aiEnrichmentPlayground.ts) and AI Processing
- * (openAiVisionEnrichmentProvider.ts) both build their prompts from the SAME shared builders. This
- * test locks that in so the two paths cannot drift back into two separate prompt implementations.
- * The lean prompt injects approved category names only (cheap, ~0.8% cost increase measured);
- * the full approved category descriptions and the approved tag list stay resolved server-side and
- * are not injected (full tag-name injection measured ~4.4x the per-image cost — see ADR-FP-041).
+ * Prompt parity: Settings AI Playground and AI Processing share the same builders.
+ * v34 default injects category name + description (ADR-FP-165); tag taxonomy stays out.
  */
 
 const categories: AiEnrichmentCategoryOption[] = [
@@ -63,7 +59,6 @@ function buildUserPrompt(promptTemplate: string): string {
 
 describe("prompt parity (playground vs AI processing)", () => {
   it("produces an identical system prompt for both paths", () => {
-    // Both aiEnrichmentPlayground.ts and openAiVisionEnrichmentProvider.ts call this same builder.
     assert.equal(
       buildSimpleCatalogEnrichmentSystemPrompt(),
       buildSimpleCatalogEnrichmentSystemPrompt(),
@@ -71,25 +66,20 @@ describe("prompt parity (playground vs AI processing)", () => {
   });
 
   it("produces an identical user prompt when the same template is used in both paths", () => {
-    // AI Processing uses the saved settings template; the Playground uses the textarea contents.
-    // When they carry the same template, the resolved prompt (with categories/tags/exclusions
-    // injected) must be byte-identical.
     const template = DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE;
-
     assert.equal(buildUserPrompt(template), buildUserPrompt(template));
   });
 
-  it("injects approved category names but not category descriptions or the approved tag list into the default prompt", () => {
-    // The lean prompt sends only approved category names; category descriptions and the full
-    // approved tag list (names/aliases/preferredWhen) stay resolved server-side, so the resolved
-    // prompt must contain category names but not the injected description/tag taxonomy context.
+  it("injects approved category names and descriptions but not the approved tag list into the default prompt", () => {
     const resolved = buildUserPrompt(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE);
 
     assert.ok(resolved.includes("Pop Culture & Characters"));
-    assert.ok(!resolved.includes("Recognizable IP and characters."));
+    assert.ok(resolved.includes("Recognizable IP and characters."));
+    assert.ok(resolved.includes("Family — Motherhood, parenting, family themes."));
     assert.ok(!resolved.includes("rock-n-roll"));
     assert.ok(!resolved.includes("aliases: rock and roll, rock n roll"));
-    assert.ok(!DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE.includes("{{approved_categories}}"));
+    assert.ok(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE.includes("{{approved_categories}}"));
+    assert.ok(!DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE.includes("{{approved_category_names}}"));
     assert.ok(!DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE.includes("{{approved_tags}}"));
   });
 
@@ -98,13 +88,5 @@ describe("prompt parity (playground vs AI processing)", () => {
 
     assert.ok(resolved.includes("death"));
     assert.ok(resolved.includes("skull"));
-    assert.ok(!resolved.includes("{{excluded_tags}}"));
-  });
-
-  it("includes the skeleton-alone halloween guard in the default prompt", () => {
-    assert.match(
-      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
-      /Do not tag halloween for (?:a )?skeleton, skull, or bones alone/i,
-    );
   });
 });

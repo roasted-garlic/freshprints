@@ -2,40 +2,67 @@
 
 | Field | Value |
 |-------|-------|
-| Status | **IDLE** |
-| DONE | **yes** |
-| Current Mode | none |
-| Current Goal | **none** |
-| Last Completed Goal | `ai-processing-hard-delete-failure-feedback` |
-| Signoff | `docs/workflow/reviews/2026-09-03-ai-processing-hard-delete-failure-feedback-signoff.md` — **approved_with_notes** |
-| Prior completed | `ai-enrichment-visible-text-and-catalog-copy-quality` — **approved_with_notes** |
-| Live DEV AI | **catalog-enrich-v32** / **smart-profile-normalizer-v6** |
-| Smart Profile | **smart-profile-v1** |
-| Production | **NOT AUTHORIZED** |
-| Smart Profiling | **PARKED** (next selected goal — do not auto-start) |
-| Next queued goal | Smart Profiling completion / unattended catalog enrichment completion |
-| Autonomous | **OFF** |
-| Batch allocation | **DEFERRED** |
-| Last updated | 2026-09-03 |
-| Last Completed Step | Signoff |
+| Status | **ACTIVE — WS4 CLOSED; WS5 AWAITING OWNER AUTHORIZATION** |
+| DONE | **no** (parent goal continues; WS4 workstream closed) |
+| Current Mode | managed-phase |
+| Current Goal | `smart-catalog-intelligence-completion-and-legacy-tag-retirement` |
+| Active workstream | **WS5 Autonomous DEV canary** — **READY FOR OWNER AUTHORIZATION** (not started) |
+| Prior | Title specificity **signed off**; WS4 **COMPLETE / PASS WITH NOTES** |
+| Source / live DEV | `catalog-enrich-v34` / `smart-profile-normalizer-v6` / `smart-profile-v1` |
+| Mode | **shadow** · Autonomous **OFF** (`catalogAutonomousLiveEnabled: false`) — live verified 2026-09-04 |
+| WS4 | **COMPLETE / PASS WITH NOTES** |
+| WS5 | **READY FOR OWNER AUTHORIZATION** (not started; no canary; Autonomous not enabled) |
+| Production | **NOT AUTHORIZED** / untouched |
+| Commit/push | **NOT DONE** (not mechanically required for this closeout) |
+| Last updated | 2026-09-04 |
+| Last Completed Step | Title specificity Signoff + **WS4 closeout Signoff** |
+
+## Phase statuses
+
+| Phase | Status |
+|-------|--------|
+| Title Owner QA | **PASS** |
+| Title Signoff | **approved_with_notes** |
+| WS4 Closeout | **COMPLETE / PASS WITH NOTES** |
+| WS5 | **READY FOR OWNER AUTHORIZATION** (not started) |
 
 ## Human checkpoint
 
-**Human Checkpoint Required: no**
+**Human Checkpoint Required: yes**
 
-**Blocked: no**
+**Human Checkpoint Reason:** Owner decision — authorize WS5 Autonomous DEV canary planning/execution (or defer). Do **not** treat WS4 closeout as Autonomous enablement.
 
-**Allowed Actions:** idle; await next owner-authorized managed goal
+**Allowed Actions:** Answer questions; prepare WS5 plan **only after** owner authorization; record owner decision
 
-**Forbidden Actions:** production; Smart Profiling unless newly authorized; batch-allocation unless newly authorized
+**Forbidden Actions:** Start WS5 without authorization; enable Autonomous; run canaries; mutate `catalogWorkflowMode` / `catalogAutonomousLiveEnabled`; tag/reranker retirement; production; commit/push unless asked
 
-## Next Required Step
+## Artifacts
 
-None — FreshForge IDLE. Await owner-selected next goal (intended: Smart Profiling completion), or a provenance-delete policy phase for customer-upload–promoted designs.
+| Doc | Path |
+|-----|------|
+| Title Signoff | `docs/workflow/reviews/2026-09-04-visual-catalog-title-specificity-signoff.md` |
+| WS4 Closeout | `docs/workflow/reviews/2026-09-04-smart-catalog-intelligence-completion-ws4-signoff.md` |
+| Owner QA (title) | `docs/workflow/reviews/2026-09-04-visual-catalog-title-specificity-owner-qa-checkpoint.md` |
+| Tag audit | `docs/workflow/reviews/_cute-whimsical-tag-independence-audit-dev.json` (`NON-MATERIAL`) |
+
+## Deployed revisions (fresh-prints-dev)
+
+| Function | Revision |
+|----------|----------|
+| `enqueueAiEnrichment` | `enqueueaienrichment-00094-wuz` |
+| `reprocessReadyDesignWithAi` | `reprocessreadydesignwithai-00005-fud` |
+| `onCatalogReprocessJobWritten` | `oncatalogreprocessjobwritten-00016-han` |
+| `testAiEnrichmentPlayground` | `testaienrichmentplayground-00058-bop` |
 
 ## Decision Log
 
-- 2026-09-03: Goal `ai-processing-hard-delete-failure-feedback` signed off **approved_with_notes**. Owner verified dialog shows refusal (customer-upload provenance). Option B still blocks `sourceCustomerUploadId` by design.
-- 2026-09-03: Owner AI text-quality DEV canary **PASS**. Goal `ai-enrichment-visible-text-and-catalog-copy-quality` signed off **approved_with_notes**. Live DEV v32/v6. Autonomous **OFF**. Production **NOT AUTHORIZED**.
-- 2026-09-03: DEV Functions allowlist deployed (v32/v6). Revisions: enqueue `00086-qet`, onWrite `00008-piw`, start `00007-viw`, preview `00007-hug`.
-- 2026-09-03: Goal `ai-processing-queue-multi-select` signed off **approved**.
+| Date | Decision |
+|------|----------|
+| 2026-09-04 | OWNER TITLE SPECIFICITY QA: **PASS** (Sloth/Poodle/Highland accepted; no hallucination) |
+| 2026-09-04 | Title specificity Signoff → **approved_with_notes** |
+| 2026-09-04 | WS4 closeout → **COMPLETE / PASS WITH NOTES**; no material blockers; legacy tags NON-MATERIAL (do not block WS5) |
+| 2026-09-04 | WS5 = READY FOR OWNER AUTHORIZATION; Autonomous remains OFF; no canary |
+
+## Next Required Step
+
+Await owner authorization for **WS5 Autonomous DEV canary** planning/execution. **No WS5 execution until authorized.** Autonomous stays OFF.

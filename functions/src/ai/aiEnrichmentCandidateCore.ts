@@ -30,7 +30,42 @@ import {
   subtractAssignedFromAiTagSuggestions,
   type ResolveAiCatalogTagsResult,
 } from "./catalogTagResolver";
-import { resolveThemeCategory } from "./catalogThemeCategoryResolver";
+import { resolveThemeCategory, type ResolveThemeCategoryInput } from "./catalogThemeCategoryResolver";
+
+function buildThemeCategoryResolveInput(args: {
+  rawCategory?: string;
+  title?: string;
+  description?: string;
+  visibleText?: string[];
+  matchedTags: readonly string[];
+  enrichmentParse?: {
+    subjects?: string[];
+    objects?: string[];
+    styles?: string[];
+    themes?: string[];
+    interests?: string[];
+    professionsGroups?: string[];
+    searchConcepts?: string[];
+  } | null;
+  approvedCategories: ResolveThemeCategoryInput["approvedCategories"];
+}): ResolveThemeCategoryInput {
+  const parse = args.enrichmentParse ?? undefined;
+  return {
+    rawCategory: args.rawCategory,
+    title: args.title,
+    description: args.description,
+    visibleText: args.visibleText,
+    matchedTags: args.matchedTags,
+    subjects: parse?.subjects,
+    objects: parse?.objects,
+    styles: parse?.styles,
+    themes: parse?.themes,
+    interests: parse?.interests,
+    professionsGroups: parse?.professionsGroups,
+    searchConcepts: parse?.searchConcepts,
+    approvedCategories: args.approvedCategories,
+  };
+}
 import { resolveAiEnrichmentProvider } from "./providers/resolveAiEnrichmentProvider";
 import { callTagRerank, TagRerankError } from "./catalogTagRerankProvider";
 import {
@@ -360,14 +395,15 @@ export async function generateAiEnrichmentCandidateForDesign(input: {
     // Best-effort category resolution using pre-rerank tags, so the reranker prompt can include a
     // resolved category name. Cheap/deterministic — re-run below with the final tag set regardless.
     const preRerankCategory = resolveThemeCategory(
-      {
+      buildThemeCategoryResolveInput({
         rawCategory: result.analysis.rawCategory,
         title: suggestions.title,
         description: suggestions.description,
         visibleText: result.analysis.visibleText,
         matchedTags: [...new Set([...assignedCanonicalNames, ...(suggestions.tags ?? [])])],
+        enrichmentParse: result.analysis.smartProfileEnrichmentParse,
         approvedCategories: categories.categories,
-      },
+      }),
       categories.idsByName,
     );
 
@@ -515,20 +551,22 @@ export async function generateAiEnrichmentCandidateForDesign(input: {
   }
 
   // Category resolution runs after tag resolution (and after any rerank) so the final matched
-  // approved tags feed the category scoring signal. The model's raw category candidate
-  // (result.analysis.rawCategory) is only one competing signal here — never trusted or persisted
-  // directly — alongside title, description, visible text, and matched tags. Leaves
-  // categoryId/categoryName undefined when no approved category clears the confidence threshold
-  // (staff sets it in AI Review).
+  // approved tags feed the category scoring signal. Enrichment-parse themes/subjects/objects/
+  // interests/professionsGroups/searchConcepts are included when present (available on analysis
+  // before this step). The model's raw category candidate is only one competing signal — never
+  // trusted or persisted directly. Leaves categoryId/categoryName undefined when no approved
+  // category clears the confidence threshold (staff sets it in AI Review).
+  const enrichmentParse = result.analysis.smartProfileEnrichmentParse;
   const resolvedCategory = resolveThemeCategory(
-    {
+    buildThemeCategoryResolveInput({
       rawCategory: result.analysis.rawCategory,
       title: suggestions.title,
       description: suggestions.description,
       visibleText: result.analysis.visibleText,
       matchedTags: [...new Set([...assignedCanonicalNames, ...(suggestions.tags ?? [])])],
+      enrichmentParse,
       approvedCategories: categories.categories,
-    },
+    }),
     categories.idsByName,
   );
   suggestions.categoryName = resolvedCategory.categoryName;
@@ -537,7 +575,6 @@ export async function generateAiEnrichmentCandidateForDesign(input: {
   let smartProfile: DesignSmartProfile | undefined;
   let publishReady = false;
   let automationDecision: CatalogAutomationDecisionResult | undefined;
-  const enrichmentParse = result.analysis.smartProfileEnrichmentParse;
 
   if (enrichmentParse) {
     smartProfile = buildDesignSmartProfile({

@@ -5,6 +5,7 @@ import { SMART_PROFILE_VERSION } from "../types/catalog/smartProfile.types";
 import {
   computeCatalogAutomationDecision,
   computeShadowAutomationDecision,
+  runTargetedCatalogVerifier,
 } from "./catalogAutomationDecision";
 import {
   detectSubjectSpecificityRisk,
@@ -251,7 +252,7 @@ describe("computeCatalogAutomationDecision", () => {
     assert.equal(result.decision, "auto_approved");
   });
 
-  it("Jimothy-like people gap blocks via verifier unresolved", () => {
+  it("Jimothy-like people gap is a hard evidence blocker (not a fake verifier confirm path)", () => {
     const result = computeCatalogAutomationDecision({
       smartProfile: baseProfile({ subjects: ["people", "raccoon"] }),
       title: "Jimothy the Raccoon",
@@ -263,8 +264,9 @@ describe("computeCatalogAutomationDecision", () => {
     });
     assert.equal(result.shouldPublishReady, false);
     assert.equal(result.decision, "needs_review");
-    assert.equal(result.verifier.invoked, true);
-    assert.equal(result.verifier.outcome, "unresolved");
+    assert.equal(result.verifier.invoked, false);
+    assert.equal(result.verifier.outcome, "skipped");
+    assert.ok(result.hardBlockers.some((c) => c.includes("structured_evidence_gap:subjects:people")));
     assert.ok(result.reasonCodes.some((c) => c.includes("people")));
   });
 
@@ -407,5 +409,169 @@ describe("computeCatalogAutomationDecision", () => {
     });
     assert.equal(result.decision, "shadow");
     assert.ok(result.reasonCodes.includes("shadow_would_auto_approve"));
+  });
+
+  it("A2 missing title is a hard blocker", () => {
+    const result = computeCatalogAutomationDecision({
+      smartProfile: baseProfile(),
+      title: undefined,
+      categoryId: "animals",
+      description: "A raccoon holding coffee.",
+      catalogWorkflowMode: "autonomous",
+      catalogAutonomousLiveEnabled: true,
+    });
+    assert.equal(result.shouldPublishReady, false);
+    assert.equal(result.decision, "needs_review");
+    assert.ok(result.hardBlockers.includes("title:title_missing"));
+  });
+
+  it("A3 whitespace-only title is a hard blocker", () => {
+    const result = computeCatalogAutomationDecision({
+      smartProfile: baseProfile(),
+      title: "   ",
+      categoryId: "animals",
+      description: "A raccoon holding coffee.",
+      catalogWorkflowMode: "autonomous",
+      catalogAutonomousLiveEnabled: true,
+    });
+    assert.equal(result.shouldPublishReady, false);
+    assert.ok(result.hardBlockers.includes("title:title_missing"));
+  });
+
+  it("A4 title exceeding max characters cannot auto-approve", () => {
+    const result = computeCatalogAutomationDecision({
+      smartProfile: baseProfile(),
+      title: "x".repeat(500),
+      categoryId: "animals",
+      description: "A raccoon holding coffee.",
+      catalogWorkflowMode: "autonomous",
+      catalogAutonomousLiveEnabled: true,
+    });
+    assert.equal(result.shouldPublishReady, false);
+    assert.ok(result.hardBlockers.includes("title:title_exceeds_max_characters"));
+  });
+
+  it("A1 valid title does not emit title blocker", () => {
+    const result = computeCatalogAutomationDecision({
+      smartProfile: baseProfile(),
+      title: "Trash Panda Coffee",
+      categoryId: "animals",
+      description: "A raccoon holding coffee.",
+      catalogWorkflowMode: "shadow",
+      catalogAutonomousLiveEnabled: false,
+    });
+    assert.ok(!result.reasonCodes.some((c) => c.startsWith("title:")));
+    assert.equal(result.wouldAutoApprove, true);
+  });
+
+  it("B1 no confirmable verifier-worthy signal → verifier skipped", () => {
+    const result = computeCatalogAutomationDecision({
+      smartProfile: baseProfile(),
+      title: "Trash Panda Coffee",
+      categoryId: "animals",
+      description: "A raccoon holding coffee.",
+      catalogWorkflowMode: "shadow",
+      catalogAutonomousLiveEnabled: false,
+    });
+    assert.equal(result.verifier.invoked, false);
+    assert.equal(result.verifier.outcome, "skipped");
+    assert.deepEqual(result.verifierWorthy, []);
+  });
+
+  it("B3 injected verifier unresolved → Needs Review", () => {
+    const result = computeCatalogAutomationDecision({
+      smartProfile: baseProfile(),
+      title: "Trash Panda Coffee",
+      categoryId: "animals",
+      description: "A raccoon holding coffee.",
+      catalogWorkflowMode: "autonomous",
+      catalogAutonomousLiveEnabled: true,
+      verifierResult: {
+        invoked: true,
+        outcome: "unresolved",
+        reasonCodes: ["verifier_unresolved"],
+      },
+    });
+    assert.equal(result.shouldPublishReady, false);
+    assert.ok(result.hardBlockers.includes("verifier_unresolved"));
+  });
+
+  it("B4/B5 malformed verifier result fails safe to unresolved", () => {
+    const result = computeCatalogAutomationDecision({
+      smartProfile: baseProfile(),
+      title: "Trash Panda Coffee",
+      categoryId: "animals",
+      description: "A raccoon holding coffee.",
+      catalogWorkflowMode: "autonomous",
+      catalogAutonomousLiveEnabled: true,
+      verifierResult: { invoked: true, outcome: "bogus" as "confirmed", reasonCodes: [] },
+    });
+    assert.equal(result.shouldPublishReady, false);
+    assert.equal(result.verifier.outcome, "unresolved");
+    assert.ok(result.hardBlockers.includes("verifier_unresolved"));
+  });
+
+  it("B6 confirmable uncertainty can reach verifier_confirmed", () => {
+    const result = computeCatalogAutomationDecision({
+      smartProfile: baseProfile({
+        // Force confirmable trigger via injected reason path: use verifierResult with confirmed
+        // after automation_policy_uncertainty-style confirmable run.
+      }),
+      title: "Trash Panda Coffee",
+      categoryId: "animals",
+      description: "A raccoon holding coffee.",
+      catalogWorkflowMode: "autonomous",
+      catalogAutonomousLiveEnabled: true,
+      verifierResult: {
+        invoked: true,
+        outcome: "confirmed",
+        reasonCodes: ["verifier_confirmed", "automation_policy_uncertainty"],
+      },
+    });
+    assert.equal(result.shouldPublishReady, true);
+    assert.equal(result.verifier.outcome, "confirmed");
+  });
+
+  it("B7 hard blocker cannot be overridden by verifier confirmed", () => {
+    const result = computeCatalogAutomationDecision({
+      smartProfile: baseProfile({ subjects: ["people", "raccoon"] }),
+      title: "Jimothy the Raccoon",
+      categoryId: "animals",
+      description: "A raccoon holding coffee.",
+      visibleText: [],
+      catalogWorkflowMode: "autonomous",
+      catalogAutonomousLiveEnabled: true,
+      verifierResult: {
+        invoked: true,
+        outcome: "confirmed",
+        reasonCodes: ["verifier_confirmed"],
+      },
+    });
+    assert.equal(result.shouldPublishReady, false);
+    assert.ok(result.hardBlockers.some((c) => c.startsWith("structured_evidence_gap:")));
+  });
+
+  it("B2 confirmable automation_policy_uncertainty invokes verifier", () => {
+    const verifier = runTargetedCatalogVerifier({
+      smartProfile: baseProfile(),
+      title: "Trash Panda Coffee",
+      description: "A raccoon holding coffee.",
+      triggers: ["automation_policy_uncertainty"],
+    });
+    assert.equal(verifier.invoked, true);
+    assert.equal(verifier.outcome, "confirmed");
+    assert.ok(verifier.reasonCodes.includes("verifier_confirmed"));
+  });
+
+  it("echo evidence triggers are not confirmable via verifier", () => {
+    const verifier = runTargetedCatalogVerifier({
+      smartProfile: baseProfile({ subjects: ["people", "raccoon"] }),
+      title: "Jimothy the Raccoon",
+      description: "A raccoon holding coffee.",
+      visibleText: [],
+      triggers: ["structured_evidence_gap:subjects:people"],
+    });
+    assert.equal(verifier.invoked, false);
+    assert.equal(verifier.outcome, "skipped");
   });
 });

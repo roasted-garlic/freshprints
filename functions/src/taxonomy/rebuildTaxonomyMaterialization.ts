@@ -218,3 +218,24 @@ export async function readTaxonomyMaterializationCorpus(): Promise<
   }
   return { ok: true, revision: meta.revision, corpus: structural.corpus, meta };
 }
+
+/**
+ * Light revision peek for AI taxonomy cache — meta doc only (no chunk loads).
+ * Used to invalidate process-local snapshots when materialization advances within TTL.
+ */
+export async function readTaxonomyMaterializationRevision(): Promise<
+  { ok: true; revision: number } | { ok: false; reason: string }
+> {
+  const metaSnap = await adminDb
+    .collection(TAXONOMY_MATERIALIZATION_COLLECTION)
+    .doc(TAXONOMY_MATERIALIZATION_META_DOC_ID)
+    .get();
+  if (!metaSnap.exists) {
+    return { ok: false, reason: "meta_missing" };
+  }
+  const meta = metaSnap.data() as TaxonomyMaterializationMeta;
+  if (!meta?.ready || typeof meta.revision !== "number") {
+    return { ok: false, reason: "meta_not_ready" };
+  }
+  return { ok: true, revision: meta.revision };
+}

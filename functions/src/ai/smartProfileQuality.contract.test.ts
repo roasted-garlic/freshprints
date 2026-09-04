@@ -12,9 +12,9 @@ import { CATALOG_ENRICHMENT_PROMPT_VERSION } from "./catalogTitleRules";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
-describe("smart profile quality v32 contract", () => {
-  it("ships catalog-enrich-v32 and keeps current caps", () => {
-    assert.equal(CATALOG_ENRICHMENT_PROMPT_VERSION, "catalog-enrich-v32");
+describe("smart profile quality v33 contract", () => {
+  it("ships catalog-enrich-v34 and keeps current caps", () => {
+    assert.equal(CATALOG_ENRICHMENT_PROMPT_VERSION, "catalog-enrich-v34");
     assert.equal(SMART_PROFILE_MAX_ITEMS_PER_DIMENSION, 12);
   });
 
@@ -34,7 +34,11 @@ describe("smart profile quality v32 contract", () => {
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /make fish/);
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /searchConcepts: richer shopper/);
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /Do NOT create specificity by gluing/);
-    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /dominant buyer intent/);
+    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /dominant BUYER INTENT/);
+    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /\{\{approved_categories\}\}/);
+    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /Funny & Sarcastic/);
+    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /Cannabis & 420/);
+    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /Astrology & Zodiac/);
   });
 
   it("injects bounded vocab and does not inject approved-tag synonym boards", () => {
@@ -150,6 +154,20 @@ describe("smart profile quality v32 contract", () => {
     assert.match(pipeline, /maybeRefreshSmartProfileVocabSnapshot/);
     assert.doesNotMatch(pipeline, /ALGOLIA_ADMIN_API_KEY|algoliaAdminClient/);
     assert.doesNotMatch(core, /ALGOLIA_ADMIN_API_KEY|algoliaAdminClient/);
+  });
+
+  it("category resolve receives enrichment-parse themes/subjects/objects/styles/interests/professionsGroups/searchConcepts", () => {
+    const core = readFileSync(join(here, "aiEnrichmentCandidateCore.ts"), "utf8");
+    assert.match(core, /buildThemeCategoryResolveInput/);
+    assert.match(core, /enrichmentParse:\s*result\.analysis\.smartProfileEnrichmentParse/);
+    assert.match(core, /subjects:\s*parse\?\.subjects/);
+    assert.match(core, /objects:\s*parse\?\.objects/);
+    assert.match(core, /styles:\s*parse\?\.styles/);
+    assert.match(core, /themes:\s*parse\?\.themes/);
+    assert.match(core, /interests:\s*parse\?\.interests/);
+    assert.match(core, /professionsGroups:\s*parse\?\.professionsGroups/);
+    assert.match(core, /searchConcepts:\s*parse\?\.searchConcepts/);
+    assert.match(core, /resolveThemeCategory\(\s*buildThemeCategoryResolveInput/);
   });
 
   it("auto-refreshes settings/aiSmartProfileVocab via bounded Firestore sample (not manual)", () => {

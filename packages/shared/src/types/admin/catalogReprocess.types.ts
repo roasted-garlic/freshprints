@@ -137,7 +137,7 @@ export interface PreviewCatalogReprocessJobResponse {
     aiReviewStatusDistribution: Record<string, number>;
     promptVersionDistribution: Record<string, number>;
     normalizerVersionDistribution: Record<string, number>;
-    alreadyV29Count: number;
+    alreadyCurrentPipelineCount: number;
     missingProfileCount: number;
     exclusions: CatalogReprocessExclusionBuckets;
     aiReviewNotes: CatalogReprocessNotesInventory;

@@ -2,6 +2,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { onCall } from "firebase-functions/v2/https";
 
 import {
+  AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER,
   AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER,
   AI_ENRICHMENT_PROMPT_TEMPLATE_MAX_LENGTH,
   AI_ENRICHMENT_TAG_RERANK_PROMPT_TEMPLATE_MAX_LENGTH,
@@ -83,7 +84,7 @@ function validateRequest(data: unknown): UpdateAiEnrichmentSettingsRequest {
 
   if (!hasRequiredAiEnrichmentPromptPlaceholders(promptTemplate)) {
     throw invalidArgument(
-      `The AI processing prompt must include ${AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER}.`,
+      `The AI processing prompt must include ${AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER} and ${AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER}.`,
     );
   }
 

@@ -72,6 +72,7 @@ export { customerGetAssistedCreationApprovedProofFile } from "./customerGetAssis
 export { customerAddAssistedApprovedProofToPrintRequest } from "./customerAddAssistedApprovedProofToPrintRequest";
 export { enqueueAiEnrichment } from "./enqueueAiEnrichment";
 export { resetAiEnrichmentForProcessing } from "./resetAiEnrichmentForProcessing";
+export { reprocessReadyDesignWithAi } from "./reprocessReadyDesignWithAi";
 export { testAiEnrichmentPlayground } from "./testAiEnrichmentPlayground";
 export { testAiEnrichmentTagRerank } from "./testAiEnrichmentTagRerank";
 export { updateAiEnrichmentSettings } from "./updateAiEnrichmentSettings";

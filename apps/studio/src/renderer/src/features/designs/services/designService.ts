@@ -1385,13 +1385,6 @@ export const designService = {
       aiReviewedBy: input.aiReviewedBy,
     };
 
-    // Owner QA Amendment 3: stamp the canonical ready-transition timestamp only when this write
-    // actually moves the design into `ready`. Rejections and every metadata edit leave it alone,
-    // and a reprocessed design approved back into ready is correctly re-stamped to the front.
-    if (input.status === "ready") {
-      updatePayload.readyAt = serverTimestamp();
-    }
-
     if (input.aiReviewVersion !== undefined) {
       updatePayload.aiReviewVersion = input.aiReviewVersion ? input.aiReviewVersion : deleteField();
     }
@@ -1425,6 +1418,13 @@ export const designService = {
 
       if (existingData.status === "archived") {
         throw new Error("Archived designs cannot be approved or rejected.");
+      }
+
+      // Amendment 3 + owner Ready→AI reprocess: stamp readyAt only on first transition into Ready.
+      // If readyAt already exists (retained through owner "Reprocess with AI" demotion), preserve it
+      // so Design Library / Portal chronology is not distorted on re-approval.
+      if (input.status === "ready" && existingData.readyAt == null) {
+        updatePayload.readyAt = serverTimestamp();
       }
 
       if (typeof existingData.createdBy !== "string") {

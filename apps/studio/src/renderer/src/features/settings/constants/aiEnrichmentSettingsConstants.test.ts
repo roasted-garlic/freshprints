@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER,
   AI_ENRICHMENT_APPROVED_CATEGORY_NAMES_PLACEHOLDER,
   AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER,
   DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
@@ -50,16 +51,14 @@ describe("aiEnrichmentSettingsConstants", () => {
     assert.equal(resolveClientVisionModelId("gpt-5.4-mini-2026-03-17"), DEFAULT_VISION_MODEL_ID);
   });
 
-  it("keeps the default AI Processing prompt small, vision-only, plus approved category names (v21)", () => {
+  it("keeps the default AI Processing prompt with approved category name+description context (v34)", () => {
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /description:/);
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /category:/);
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /title:/);
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /tags:/);
-    // The lean prompt injects only approved category names (cheap, ~0.8% cost increase) — the
-    // full approved category/tag list with descriptions/aliases stays server-side and gated behind
-    // an accuracy test (see ADR-FP-041) because it measured ~4.4x the per-image cost.
     assert.ok(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE.includes(AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER));
-    assert.ok(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE.includes(AI_ENRICHMENT_APPROVED_CATEGORY_NAMES_PLACEHOLDER));
+    assert.ok(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE.includes(AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER));
+    assert.ok(!DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE.includes(AI_ENRICHMENT_APPROVED_CATEGORY_NAMES_PLACEHOLDER));
     assert.ok(hasRequiredAiEnrichmentPromptPlaceholders(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE));
   });
 
@@ -181,7 +180,7 @@ describe("aiEnrichmentSettingsConstants", () => {
     const customPrompt = `Custom catalog prompt.
 
 Approved categories:
-${AI_ENRICHMENT_APPROVED_CATEGORY_NAMES_PLACEHOLDER}
+${AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER}
 
 Do not use these tag words: ${AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER}`;
 

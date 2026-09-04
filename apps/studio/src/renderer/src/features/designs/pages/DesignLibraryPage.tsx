@@ -1402,6 +1402,28 @@ export function DesignLibraryPage() {
         onPurgeAssets={(design) => {
           void openPurgeDesigns([design]);
         }}
+        onReprocessedWithAi={(designId) => {
+          // Firestore browse list (when managed search is off).
+          removeDesignFromList(designId);
+          // Managed Algolia grid owns search/filter results — removeDesignFromList alone
+          // leaves the card visible until navigate/refresh (same pattern as archive).
+          const candidate =
+            managedSearchDesigns.find((design) => design.id === designId) ??
+            (selectedDesign?.id === designId ? selectedDesign : null) ??
+            filteredDesigns.find((design) => design.id === designId);
+          if (candidate) {
+            applyManagedSearchPatch({
+              ...candidate,
+              status: "imported",
+              aiReviewStatus: "pending",
+            });
+          }
+          setExactIdDesign((current) => (current?.id === designId ? null : current));
+          setLibraryTotal((current) => (current === null ? null : Math.max(0, current - 1)));
+          showSuccessMessage(
+            "Design sent to AI Processing. It will appear in Needs Review when enrichment finishes.",
+          );
+        }}
         onRestore={handleRestoreDesign}
         onSmartProfileUpdated={handleSmartProfileUpdated}
         previewNavigationDesigns={

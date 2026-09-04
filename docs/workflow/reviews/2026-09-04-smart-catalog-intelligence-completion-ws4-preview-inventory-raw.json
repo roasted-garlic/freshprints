@@ -1,0 +1,93 @@
+{
+  "projectId": "fresh-prints-dev",
+  "capturedAt": "2026-09-04T06:17:24.304Z",
+  "method": "previewCatalogReprocessJob(ready_catalog) + Admin Ready approved scan for version pairs / staff / presets",
+  "catalogWorkflowMode": "shadow",
+  "catalogAutonomousLiveEnabled": false,
+  "startNotCalled": true,
+  "targetPrompt": "catalog-enrich-v33",
+  "targetNormalizer": "smart-profile-normalizer-v6",
+  "confirmationPhrase": "REPROCESS READY CATALOG",
+  "extras": {
+    "targetPrompt": "catalog-enrich-v33",
+    "targetNormalizer": "smart-profile-normalizer-v6",
+    "readyTotal": 359,
+    "readyApprovedEligible": 359,
+    "exactV33V6": 0,
+    "exactV32V6": 13,
+    "refreshRequired": 359,
+    "alreadyCurrent": 0,
+    "missingProfile": 0,
+    "missingProvenance": 0,
+    "schemaV1Approx": 0,
+    "staffEditedSmartProfileCount": 4,
+    "presetSeededCount": 13,
+    "legacyTagsNonEmpty": 359,
+    "promptVersionDistribution": {
+      "catalog-enrich-v30": 317,
+      "catalog-enrich-v32": 13,
+      "catalog-enrich-v29": 29
+    },
+    "normalizerVersionDistribution": {
+      "smart-profile-normalizer-v4": 317,
+      "smart-profile-normalizer-v6": 13,
+      "smart-profile-normalizer-v3": 29
+    },
+    "promptNormalizerPairDistribution": {
+      "catalog-enrich-v30 / smart-profile-normalizer-v4": 317,
+      "catalog-enrich-v32 / smart-profile-normalizer-v6": 13,
+      "catalog-enrich-v29 / smart-profile-normalizer-v3": 29
+    },
+    "failedAiProcessingStage": 0,
+    "processingStatusCount": 0,
+    "activeReadyCatalogJobs": 0,
+    "activeAiReviewQueueJobs": 0
+  },
+  "previewResponse": {
+    "targetType": "ready_catalog",
+    "environment": "dev",
+    "projectId": "fresh-prints-dev",
+    "eligibleCount": 359,
+    "catalogWorkflowMode": "shadow",
+    "autonomousLiveEnabled": false,
+    "targetEnabled": true,
+    "unavailableReason": null,
+    "requiredConfirmationPhrase": "REPROCESS READY CATALOG",
+    "activeJobId": null,
+    "readyInventory": {
+      "eligibleCount": 359,
+      "statusDistribution": {
+        "ready": 359
+      },
+      "aiReviewStatusDistribution": {
+        "approved": 359
+      },
+      "promptVersionDistribution": {
+        "catalog-enrich-v30": 317,
+        "catalog-enrich-v32": 13,
+        "catalog-enrich-v29": 29
+      },
+      "normalizerVersionDistribution": {
+        "smart-profile-normalizer-v4": 317,
+        "smart-profile-normalizer-v6": 13,
+        "smart-profile-normalizer-v3": 29
+      },
+      "alreadyCurrentPipelineCount": 0,
+      "missingProfileCount": 0,
+      "exclusions": {
+        "importedNeedsReview": 165,
+        "rejectedStatus": 0,
+        "archivedStatus": 7,
+        "pendingReviewProcessing": 0,
+        "readyNotApproved": 0,
+        "eligibleReadyCatalog": 359
+      },
+      "tagDensityBuckets": {
+        "zeroTags": 0,
+        "lowTags": 95,
+        "highTags": 264
+      },
+      "exclusionMethod": "indexed_status_counts"
+    }
+  }
+}

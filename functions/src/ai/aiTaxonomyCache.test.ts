@@ -80,6 +80,7 @@ describe("AI taxonomy process-local cache (P3 + materialization)", () => {
     __setAiTaxonomyCacheTestDeps({
       now: () => nowMs,
       ttlMs: AI_TAXONOMY_CACHE_TTL_MS,
+      peekRevision: async () => 1,
       log: (event) => {
         events.push(event);
       },
@@ -95,6 +96,35 @@ describe("AI taxonomy process-local cache (P3 + materialization)", () => {
     assert.equal(loadCount, 1);
     assert.equal(value.contentVersion, "test-v1");
     assert.deepEqual(events, ["taxonomy-cache-hit"]);
+  });
+
+  it("revision change within TTL reloads taxonomy snapshot (meta peek only)", async () => {
+    let loadCount = 0;
+    let liveRevision = 1;
+    const events: string[] = [];
+    const nowMs = 1_000_000;
+    __setAiTaxonomyCacheTestDeps({
+      now: () => nowMs,
+      ttlMs: AI_TAXONOMY_CACHE_TTL_MS,
+      peekRevision: async () => liveRevision,
+      log: (event) => {
+        events.push(event);
+      },
+      loadTaxonomy: async () => {
+        loadCount += 1;
+        return { snapshot: makeSnapshot(`r${liveRevision}`), revision: liveRevision };
+      },
+    });
+
+    await loadAiCatalogReferenceSnapshot();
+    assert.equal(loadCount, 1);
+    liveRevision = 2;
+    events.length = 0;
+    const value = await loadAiCatalogReferenceSnapshot();
+    assert.equal(loadCount, 2);
+    assert.equal(value.contentVersion, "test-r2");
+    assert.ok(events.includes("taxonomy-cache-revision-changed"));
+    assert.ok(events.includes("taxonomy-cache-miss"));
   });
 
   it("many sequential requests within TTL still call the loader once", async () => {

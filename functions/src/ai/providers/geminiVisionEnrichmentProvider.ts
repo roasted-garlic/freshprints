@@ -90,7 +90,15 @@ async function postVisionCompletion(
         systemPrompt,
       ),
     },
-    { maxRetries: VISION_REQUEST_MAX_RETRIES, baseDelayMs: VISION_REQUEST_BASE_DELAY_MS, modelId: visionModelId },
+    {
+      maxRetries: VISION_REQUEST_MAX_RETRIES,
+      baseDelayMs: VISION_REQUEST_BASE_DELAY_MS,
+      modelId: visionModelId,
+      onRetry: async () => {
+        const { incrementCatalogAutomationHealth } = await import("../catalogAutomationHealth");
+        await incrementCatalogAutomationHealth({ retries: 1 });
+      },
+    },
   );
 
   return (await response.json()) as VisionChatCompletionPayload;

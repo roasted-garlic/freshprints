@@ -5,7 +5,7 @@ import { randomUUID } from "node:crypto";
 
 import { adminDb } from "../lib/admin";
 import { logPipelineEvent } from "../lib/pipelineLog";
-import { readTaxonomyMaterializationCorpus } from "../taxonomy/rebuildTaxonomyMaterialization";
+import { readTaxonomyMaterializationCorpus, readTaxonomyMaterializationRevision } from "../taxonomy/rebuildTaxonomyMaterialization";
 
 /**
  * Process-local AI taxonomy cache.
@@ -28,6 +28,7 @@ type TaxonomyLogEvent =
   | "taxonomy-cache-miss"
   | "taxonomy-cache-join-inflight"
   | "taxonomy-cache-expired"
+  | "taxonomy-cache-revision-changed"
   | "taxonomy-load-success"
   | "taxonomy-load-failure"
   | "taxonomy-fallback-fs"
@@ -36,6 +37,8 @@ type TaxonomyLogEvent =
 
 interface AiTaxonomyCacheDeps {
   loadTaxonomy: () => Promise<{ snapshot: AiCatalogReferenceSnapshot; revision: number | "fs-fallback" }>;
+  /** Optional light revision peek; when omitted, TTL-only hit behavior is preserved. */
+  peekRevision?: () => Promise<number | "fs-fallback" | null>;
   now: () => number;
   log: (event: TaxonomyLogEvent, context: Record<string, unknown>) => void;
   ttlMs: number;
@@ -177,6 +180,13 @@ function defaultLog(event: TaxonomyLogEvent, context: Record<string, unknown>): 
 function createDefaultDeps(): AiTaxonomyCacheDeps {
   return {
     loadTaxonomy: defaultLoadTaxonomy,
+    peekRevision: async () => {
+      const peeked = await readTaxonomyMaterializationRevision();
+      if (!peeked.ok) {
+        return null;
+      }
+      return peeked.revision;
+    },
     now: () => Date.now(),
     log: defaultLog,
     ttlMs: AI_TAXONOMY_CACHE_TTL_MS,
@@ -217,7 +227,30 @@ async function loadThroughCache(
 ): Promise<AiCatalogReferenceSnapshot> {
   const now = deps.now();
 
-  // Revision-keyed hit: same revision in process memory → zero FS (TTL secondary).
+  // Revision-keyed hit: same revision in process memory → zero corpus reload (TTL secondary).
+  // Light meta revision peek detects category/tag materialization advances within TTL.
+  if (cacheEntry && cacheEntry.expiresAtMs > now) {
+    if (deps.peekRevision && cacheEntry.revision !== "fs-fallback") {
+      try {
+        const liveRevision = await deps.peekRevision();
+        if (
+          liveRevision !== null &&
+          liveRevision !== "fs-fallback" &&
+          liveRevision !== cacheEntry.revision
+        ) {
+          deps.log("taxonomy-cache-revision-changed", {
+            ...baseLogContext(context),
+            cachedRevision: cacheEntry.revision,
+            liveRevision,
+          });
+          cacheEntry = null;
+        }
+      } catch {
+        // Peek failures must not block enrichment — fall through to TTL hit.
+      }
+    }
+  }
+
   if (cacheEntry && cacheEntry.expiresAtMs > now) {
     deps.log("taxonomy-cache-hit", {
       ...baseLogContext(context),
@@ -351,6 +384,8 @@ export function __setAiTaxonomyCacheTestDeps(
   circuitOpenUntilMs = 0;
   deps = {
     ...createDefaultDeps(),
+    // Unit tests default to no revision peek (TTL-only) unless explicitly overridden.
+    peekRevision: async () => null,
     ...overrides,
     runtimeInstanceId: overrides.runtimeInstanceId ?? "test-runtime-instance",
   };

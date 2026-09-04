@@ -1,5 +1,19 @@
 # Recent Completed Work
 
+## 2026-09-04 - Visual catalog title specificity + WS4 closeout — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal (parent) | `smart-catalog-intelligence-completion-and-legacy-tag-retirement` — **continues** |
+| Title Signoff | **approved_with_notes** (`2026-09-04-visual-catalog-title-specificity-signoff.md`) |
+| Owner title QA | **PASS** (Sloth/Poodle/Highland accepted; no hallucination) |
+| WS4 | **COMPLETE / PASS WITH NOTES** (`2026-09-04-smart-catalog-intelligence-completion-ws4-signoff.md`) |
+| Pipeline | **catalog-enrich-v34** + **smart-profile-normalizer-v6** (`smart-profile-v1`) |
+| Behavior | No-text ≤2-word titles enrich from subjects/objects; visibleText path unchanged; no second AI call |
+| Legacy tags | **NON-MATERIAL** — do not block WS5; retirement deferred |
+| Autonomous | **OFF** (shadow); WS5 **READY FOR OWNER AUTHORIZATION** only |
+| Production / commit | **NOT AUTHORIZED** / not committed this pass |
+
 ## 2026-09-03 - AI enrichment visible-text + catalog-copy quality — CLOSED (DEV)
 
 | Item | Status |

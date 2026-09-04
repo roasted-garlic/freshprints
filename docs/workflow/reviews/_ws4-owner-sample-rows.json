@@ -1,0 +1,707 @@
+[
+  {
+    "designId": "0MpiuK4ERPawPEsUoZLn",
+    "stratum": "staff-edited",
+    "title": "Thin Red Line American Flag",
+    "primaryCategory": "Patriotic & Americana",
+    "status": "ready",
+    "aiReviewStatus": "approved",
+    "promptVersion": "catalog-enrich-v33",
+    "normalizerVersion": "smart-profile-normalizer-v6",
+    "staffEditedDimensionKeys": [
+      "subjects",
+      "objects",
+      "styles",
+      "themes",
+      "interests",
+      "professionsGroups",
+      "colors",
+      "searchConcepts"
+    ],
+    "importPresetDimensionKeys": [],
+    "wasStaffEditedBefore": true,
+    "wasPresetBefore": false,
+    "highlights": {
+      "subjects": [],
+      "themes": [
+        "patriotic",
+        "support"
+      ],
+      "objects": [
+        "flag"
+      ],
+      "searchConcepts": [
+        "firefighter support",
+        "law enforcement support",
+        "support first responders",
+        "usa flag",
+        "american pride",
+        "united states of america flag",
+        "red line flag",
+        "distressed flag"
+      ],
+      "visibleText": []
+    },
+    "readyAt": "2026-08-11T16:48:21.572Z",
+    "portalCatalogPublicationStatus": null,
+    "anomaly": null
+  },
+  {
+    "designId": "4zSyysgn7v3BVkitK7Cj",
+    "stratum": "staff-edited",
+    "title": "I Like It When She Bends Over But I Love It Tugs On My Worm And Swallows Fisherman Bass Fish",
+    "primaryCategory": "Hobbies & Lifestyle",
+    "status": "ready",
+    "aiReviewStatus": "approved",
+    "promptVersion": "catalog-enrich-v33",
+    "normalizerVersion": "smart-profile-normalizer-v6",
+    "staffEditedDimensionKeys": [
+      "subjects",
+      "objects",
+      "styles",
+      "themes",
+      "interests",
+      "colors",
+      "visibleText",
+      "searchConcepts"
+    ],
+    "importPresetDimensionKeys": [],
+    "wasStaffEditedBefore": true,
+    "wasPresetBefore": false,
+    "highlights": {
+      "subjects": [
+        "fisherman",
+        "bass"
+      ],
+      "themes": [
+        "humor",
+        "fishing",
+        "adult humor",
+        "sarcasm"
+      ],
+      "objects": [
+        "fishing rod",
+        "worm"
+      ],
+      "searchConcepts": [
+        "fishing humor",
+        "adult fishing shirt",
+        "funny fishing saying",
+        "bass fishing graphic",
+        "fisherman illustration",
+        "bait and tackle humor",
+        "fishing double entendre"
+      ],
+      "visibleText": [
+        "I LIKE IT WHEN",
+        "SHE BENDS",
+        "Over",
+        "BUT I LOVE IT"
+      ]
+    },
+    "readyAt": "2026-08-11T19:33:03.936Z",
+    "portalCatalogPublicationStatus": null,
+    "anomaly": null
+  },
+  {
+    "designId": "74BdnNQuNWz0N0GaL4CO",
+    "stratum": "preset-seeded",
+    "title": "If You See Someone Without A Smile Give Em Yours Dolly",
+    "primaryCategory": "Family",
+    "status": "ready",
+    "aiReviewStatus": "approved",
+    "promptVersion": "catalog-enrich-v33",
+    "normalizerVersion": "smart-profile-normalizer-v6",
+    "staffEditedDimensionKeys": [],
+    "importPresetDimensionKeys": [
+      "subjects",
+      "searchConcepts"
+    ],
+    "wasStaffEditedBefore": false,
+    "wasPresetBefore": true,
+    "highlights": {
+      "subjects": [
+        "Dolly Parton",
+        "parton",
+        "dolly"
+      ],
+      "themes": [
+        "positivity",
+        "inspiration",
+        "kindness"
+      ],
+      "objects": [],
+      "searchConcepts": [
+        "dolly parton",
+        "Dolly Parton quote",
+        "share a smile",
+        "kindness quote",
+        "uplifting quote",
+        "positive message",
+        "dolly"
+      ],
+      "visibleText": [
+        "If you see",
+        "someone",
+        "without a",
+        "Smile,"
+      ]
+    },
+    "readyAt": "2026-09-03T21:12:25.854Z",
+    "portalCatalogPublicationStatus": "synced",
+    "anomaly": null
+  },
+  {
+    "designId": "8QpQFWwwfM21WEimy6Vm",
+    "stratum": "preset-seeded",
+    "title": "If You See Someone Without A Smile Give Em Yours Dolly Butterfly",
+    "primaryCategory": "Funny & Sarcastic",
+    "status": "ready",
+    "aiReviewStatus": "approved",
+    "promptVersion": "catalog-enrich-v33",
+    "normalizerVersion": "smart-profile-normalizer-v6",
+    "staffEditedDimensionKeys": [],
+    "importPresetDimensionKeys": [
+      "subjects",
+      "searchConcepts"
+    ],
+    "wasStaffEditedBefore": false,
+    "wasPresetBefore": true,
+    "highlights": {
+      "subjects": [
+        "Dolly Parton",
+        "parton",
+        "dolly"
+      ],
+      "themes": [
+        "inspirational",
+        "positivity",
+        "kindness",
+        "appreciation"
+      ],
+      "objects": [
+        "butterflies"
+      ],
+      "searchConcepts": [
+        "dolly parton",
+        "Dolly Parton quote",
+        "give kindness",
+        "spread joy",
+        "uplifting quote",
+        "inspirational saying",
+        "dolly"
+      ],
+      "visibleText": [
+        "If you see someone",
+        "without a smile,",
+        "give em yours.",
+        "Dolly"
+      ]
+    },
+    "readyAt": "2026-09-03T21:12:21.879Z",
+    "portalCatalogPublicationStatus": "synced",
+    "anomaly": null
+  },
+  {
+    "designId": "Ai4Wmfp4Vd6Ady2WCsKC",
+    "stratum": "preset-seeded",
+    "title": "Dolly Parton I Will Always Love You Sheet Music Portrait",
+    "primaryCategory": "Pop Culture & Characters",
+    "status": "ready",
+    "aiReviewStatus": "approved",
+    "promptVersion": "catalog-enrich-v33",
+    "normalizerVersion": "smart-profile-normalizer-v6",
+    "staffEditedDimensionKeys": [],
+    "importPresetDimensionKeys": [
+      "subjects",
+      "searchConcepts"
+    ],
+    "wasStaffEditedBefore": false,
+    "wasPresetBefore": true,
+    "highlights": {
+      "subjects": [
+        "Dolly Parton",
+        "parton",
+        "dolly"
+      ],
+      "themes": [
+        "iconic",
+        "music",
+        "appreciation"
+      ],
+      "objects": [
+        "sheet music"
+      ],
+      "searchConcepts": [
+        "dolly parton",
+        "Dolly Parton portrait",
+        "I Will Always Love You lyrics",
+        "country music legend",
+        "famous singer",
+        "music score",
+        "ballad",
+        "western style"
+      ],
+      "visibleText": [
+        "I WILL ALWAYS LOVE YOU",
+        "DOLLY PARTON"
+      ]
+    },
+    "readyAt": "2026-09-03T21:12:29.811Z",
+    "portalCatalogPublicationStatus": "synced",
+    "anomaly": null
+  },
+  {
+    "designId": "07ZCzmp7OFdSYKZ6hTg5",
+    "stratum": "text-heavy",
+    "title": "Don't Worry About What Other People Think They Don't Do It Often",
+    "primaryCategory": "Funny & Sarcastic",
+    "status": "ready",
+    "aiReviewStatus": "approved",
+    "promptVersion": "catalog-enrich-v33",
+    "normalizerVersion": "smart-profile-normalizer-v6",
+    "staffEditedDimensionKeys": [],
+    "importPresetDimensionKeys": [],
+    "wasStaffEditedBefore": false,
+    "wasPresetBefore": false,
+    "highlights": {
+      "subjects": [],
+      "themes": [
+        "humor",
+        "sarcasm",
+        "positivity",
+        "inspiration",
+        "attitude"
+      ],
+      "objects": [],
+      "searchConcepts": [
+        "don't worry",
+        "other people's opinions",
+        "think",
+        "often",
+        "funny quote",
+        "sarcastic saying",
+        "typography design",
+        "colorful text"
+      ],
+      "visibleText": [
+        "Don't Worry",
+        "about what",
+        "other people think",
+        "they don't do it"
+      ]
+    },
+    "readyAt": "2026-08-11T16:49:21.556Z",
+    "portalCatalogPublicationStatus": "synced",
+    "anomaly": null
+  },
+  {
+    "designId": "0LN89kU1X8FSUUs0cMjb",
+    "stratum": "ordinary-ready",
+    "title": "Fun Fact I Don't Really Care",
+    "primaryCategory": "Funny & Sarcastic",
+    "status": "ready",
+    "aiReviewStatus": "approved",
+    "promptVersion": "catalog-enrich-v33",
+    "normalizerVersion": "smart-profile-normalizer-v6",
+    "staffEditedDimensionKeys": [],
+    "importPresetDimensionKeys": [],
+    "wasStaffEditedBefore": false,
+    "wasPresetBefore": false,
+    "highlights": {
+      "subjects": [],
+      "themes": [
+        "sarcasm",
+        "attitude",
+        "humor",
+        "boldness"
+      ],
+      "objects": [
+        "crown",
+        "heart",
+        "stars"
+      ],
+      "searchConcepts": [
+        "sarcastic saying",
+        "bold typography",
+        "attitude quote",
+        "don't care",
+        "fun fact",
+        "pink design",
+        "brush stroke font",
+        "gothic font"
+      ],
+      "visibleText": [
+        "Fun Fact",
+        "I don't really",
+        "CARE",
+        "xx"
+      ]
+    },
+    "readyAt": "2026-08-11T16:49:13.827Z",
+    "portalCatalogPublicationStatus": "synced",
+    "anomaly": null
+  },
+  {
+    "designId": "0UsPRAh0tggzuX8xwWqq",
+    "stratum": "ordinary-ready",
+    "title": "Scooby-doo Bursting Through",
+    "primaryCategory": "Pop Culture & Characters",
+    "status": "ready",
+    "aiReviewStatus": "approved",
+    "promptVersion": "catalog-enrich-v33",
+    "normalizerVersion": "smart-profile-normalizer-v6",
+    "staffEditedDimensionKeys": [],
+    "importPresetDimensionKeys": [],
+    "wasStaffEditedBefore": false,
+    "wasPresetBefore": false,
+    "highlights": {
+      "subjects": [
+        "Scooby-Doo",
+        "dog"
+      ],
+      "themes": [
+        "animation",
+        "fun",
+        "character"
+      ],
+      "objects": [
+        "collar",
+        "tag"
+      ],
+      "searchConcepts": [
+        "Scooby-Doo character",
+        "Scooby-Doo dog",
+        "cartoon dog",
+        "animated dog",
+        "breaking through wall",
+        "Hanna-Barbera",
+        "pop culture character",
+        "kids cartoon"
+      ],
+      "visibleText": []
+    },
+    "readyAt": "2026-08-11T16:49:43.108Z",
+    "portalCatalogPublicationStatus": "synced",
+    "anomaly": null
+  },
+  {
+    "designId": "0XO2ZquGgG3hsyI5Zqye",
+    "stratum": "ordinary-ready",
+    "title": "Cat Taking Selfie With Dinosaur",
+    "primaryCategory": "Animals",
+    "status": "ready",
+    "aiReviewStatus": "approved",
+    "promptVersion": "catalog-enrich-v33",
+    "normalizerVersion": "smart-profile-normalizer-v6",
+    "staffEditedDimensionKeys": [],
+    "importPresetDimensionKeys": [],
+    "wasStaffEditedBefore": false,
+    "wasPresetBefore": false,
+    "highlights": {
+      "subjects": [
+        "cat",
+        "rex",
+        "tyrannosaurus"
+      ],
+      "themes": [
+        "humor",
+        "animal humor",
+        "unexpected encounter"
+      ],
+      "objects": [
+        "trees"
+      ],
+      "searchConcepts": [
+        "cat selfie",
+        "dinosaur encounter",
+        "funny cat",
+        "scared cat",
+        "tabby cat",
+        "t-rex",
+        "jurassic",
+        "prehistoric"
+      ],
+      "visibleText": []
+    },
+    "readyAt": "2026-08-11T16:47:09.727Z",
+    "portalCatalogPublicationStatus": "synced",
+    "anomaly": null
+  },
+  {
+    "designId": "573nO60q6KeJZPnDK8yC",
+    "stratum": "object-rich",
+    "title": "Alpha Male Teddy Bear With Rainbow",
+    "primaryCategory": "Funny & Sarcastic",
+    "status": "ready",
+    "aiReviewStatus": "approved",
+    "promptVersion": "catalog-enrich-v33",
+    "normalizerVersion": "smart-profile-normalizer-v6",
+    "staffEditedDimensionKeys": [],
+    "importPresetDimensionKeys": [],
+    "wasStaffEditedBefore": false,
+    "wasPresetBefore": false,
+    "highlights": {
+      "subjects": [
+        "teddy bear",
+        "bear"
+      ],
+      "themes": [
+        "humor",
+        "sarcasm",
+        "irony"
+      ],
+      "objects": [
+        "rainbow",
+        "bow",
+        "heart",
+        "stars"
+      ],
+      "searchConcepts": [
+        "ironic alpha male",
+        "cute alpha male",
+        "care bear style",
+        "kidcore",
+        "funny bear",
+        "sarcastic teddy bear",
+        "gender neutral humor"
+      ],
+      "visibleText": [
+        "Alpha",
+        "Male"
+      ]
+    },
+    "readyAt": "2026-08-21T03:34:28.781Z",
+    "portalCatalogPublicationStatus": "synced",
+    "anomaly": null
+  },
+  {
+    "designId": "0a2CnYbwv26II2rKL3mc",
+    "stratum": "humor/text Ready",
+    "title": "I Have 5 Moods I'm Too Old For This Too Tired I Don't Have Time Bird",
+    "primaryCategory": "Funny & Sarcastic",
+    "status": "ready",
+    "aiReviewStatus": "approved",
+    "promptVersion": "catalog-enrich-v33",
+    "normalizerVersion": "smart-profile-normalizer-v6",
+    "staffEditedDimensionKeys": [],
+    "importPresetDimensionKeys": [],
+    "highlights": {
+      "subjects": [
+        "bird"
+      ],
+      "themes": [
+        "humor",
+        "sarcasm",
+        "attitude",
+        "quirky",
+        "relatable"
+      ],
+      "objects": [
+        "branch"
+      ],
+      "searchConcepts": [
+        "grumpy bird",
+        "bird with attitude",
+        "funny bird saying",
+        "relatable moods",
+        "sarcastic bird",
+        "moody bird",
+        "animal humor",
+        "cartoon bird"
+      ],
+      "visibleText": [
+        "I HAVE 5 MOODS",
+        "I'M too old FOR THIS",
+        "I'M too tired FOR THIS",
+        "I DON'T have time FOR THIS"
+      ]
+    },
+    "portalCatalogPublicationStatus": "synced",
+    "anomaly": null
+  },
+  {
+    "designId": "5ILCJXcR6LCmFwf8Fno4",
+    "stratum": "specialty-ish cannabis signals",
+    "title": "The Tree Only Thing Getting Lit Cat",
+    "primaryCategory": "Funny & Sarcastic",
+    "status": "ready",
+    "aiReviewStatus": "approved",
+    "promptVersion": "catalog-enrich-v33",
+    "normalizerVersion": "smart-profile-normalizer-v6",
+    "staffEditedDimensionKeys": [],
+    "importPresetDimensionKeys": [],
+    "highlights": {
+      "subjects": [
+        "cat"
+      ],
+      "themes": [
+        "humor",
+        "cannabis",
+        "lit",
+        "funny",
+        "animal humor",
+        "smoking"
+      ],
+      "objects": [
+        "lighter",
+        "joint",
+        "cannabis leaves"
+      ],
+      "searchConcepts": [
+        "weed cat",
+        "stoner cat",
+        "funny weed shirt",
+        "cannabis humor",
+        "420 cat design",
+        "cat smoking weed",
+        "getting lit",
+        "cat with joint"
+      ],
+      "visibleText": [
+        "the",
+        "tree",
+        "isn't the",
+        "only"
+      ]
+    },
+    "portalCatalogPublicationStatus": "synced",
+    "anomaly": null
+  },
+  {
+    "designId": "FRP1L0K6AKq2hrgGnOxX",
+    "stratum": "hardBlocked category_gap",
+    "title": "1n73ll1g3nc3 15 7h3 4b1l17y 70 4d4p7 70 Ch4ng3 573ph3n H4wk1ng Stephen Hawking",
+    "primaryCategory": "School & Education",
+    "status": "ready",
+    "aiReviewStatus": "approved",
+    "promptVersion": "catalog-enrich-v33",
+    "normalizerVersion": "smart-profile-normalizer-v6",
+    "staffEditedDimensionKeys": [],
+    "importPresetDimensionKeys": [],
+    "highlights": {
+      "subjects": [],
+      "themes": [
+        "inspirational",
+        "intelligence",
+        "change",
+        "adaptation"
+      ],
+      "objects": [],
+      "searchConcepts": [
+        "Stephen Hawking quote",
+        "intelligence quote",
+        "ability to adapt",
+        "adapting to change",
+        "numbers for letters",
+        "leet speak",
+        "motivational quote",
+        "smart person"
+      ],
+      "visibleText": [
+        "INTELLIGENCE IS THE ABILITY TO ADAPT TO CHANGE.",
+        "-STEPHEN HAWKING"
+      ]
+    },
+    "portalCatalogPublicationStatus": "synced",
+    "anomaly": null
+  },
+  {
+    "designId": "6x2LyTvG3ewIePeWHanV",
+    "stratum": "staff-edited (Jimothy)",
+    "title": "Jimothy Seattle Wildlife Do Not Pet The Round King",
+    "primaryCategory": "Funny & Sarcastic",
+    "status": "ready",
+    "aiReviewStatus": "approved",
+    "promptVersion": "catalog-enrich-v33",
+    "normalizerVersion": "smart-profile-normalizer-v6",
+    "staffEditedDimensionKeys": [
+      "subjects",
+      "objects",
+      "styles",
+      "themes",
+      "interests",
+      "places",
+      "colors",
+      "visibleText",
+      "searchConcepts"
+    ],
+    "importPresetDimensionKeys": [],
+    "highlights": {
+      "subjects": [
+        "raccoon"
+      ],
+      "themes": [
+        "humor",
+        "animal humor",
+        "city life",
+        "nature",
+        "quirky"
+      ],
+      "objects": [
+        "Space Needle",
+        "cityscape",
+        "trees"
+      ],
+      "searchConcepts": [
+        "Jimothy",
+        "Seattle wildlife",
+        "do not pet the round king",
+        "raccoon design",
+        "funny raccoon shirt",
+        "Seattle travel",
+        "Pacific Northwest"
+      ],
+      "visibleText": [
+        "JIMOTHY",
+        "SEATTLE WILDLIFE",
+        "DO NOT PET THE ROUND KING"
+      ]
+    },
+    "portalCatalogPublicationStatus": null,
+    "anomaly": null
+  },
+  {
+    "designId": "uDzwiwJzlZ48Y9TP4fxd",
+    "stratum": "staff-edited",
+    "title": "Dyslexics Are Teople Doo",
+    "primaryCategory": "Funny & Sarcastic",
+    "status": "ready",
+    "aiReviewStatus": "approved",
+    "promptVersion": "catalog-enrich-v33",
+    "normalizerVersion": "smart-profile-normalizer-v6",
+    "staffEditedDimensionKeys": [
+      "styles",
+      "themes",
+      "interests",
+      "colors",
+      "visibleText",
+      "searchConcepts"
+    ],
+    "importPresetDimensionKeys": [],
+    "highlights": {
+      "subjects": [],
+      "themes": [
+        "humor",
+        "sarcasm",
+        "awareness",
+        "educational"
+      ],
+      "objects": [],
+      "searchConcepts": [
+        "dyslexia humor",
+        "funny dyslexia",
+        "dyslexic problems",
+        "people poo",
+        "misspelling humor",
+        "reading difficulty joke",
+        "learning disability joke"
+      ],
+      "visibleText": [
+        "DYSLEXICS ARE TEOPLE POO"
+      ]
+    },
+    "portalCatalogPublicationStatus": null,
+    "anomaly": null
+  }
+]

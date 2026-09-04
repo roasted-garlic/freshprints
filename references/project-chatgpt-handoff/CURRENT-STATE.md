@@ -1,6 +1,6 @@
 # Fresh Prints — Current State Snapshot
 
-**Last updated:** 2026-09-03
+**Last updated:** 2026-09-04
 
 ---
 
@@ -8,40 +8,40 @@
 
 | Item | Value |
 |------|--------|
-| Status | **IDLE** |
-| DONE | **yes** (last goal closed) |
-| Current managed goal | **none** |
-| Last completed goal | `ai-enrichment-visible-text-and-catalog-copy-quality` |
-| Signoff | **approved_with_notes** — `docs/workflow/reviews/2026-09-03-ai-enrichment-visible-text-and-catalog-copy-quality-signoff.md` |
-| Owner canary | **PASS** |
-| Production | **NOT AUTHORIZED** |
-| Smart Profiling | **PARKED** (next selected goal — not started) |
-| Batch allocation | **DEFERRED** |
-| Active blocker | **none** |
+| Status | **ACTIVE — WS4 CLOSED; WS5 AWAITING OWNER AUTHORIZATION** |
+| Goal | `smart-catalog-intelligence-completion-and-legacy-tag-retirement` |
+| Title specificity | **Signed off** (`approved_with_notes`); owner QA **PASS** |
+| WS4 | **COMPLETE / PASS WITH NOTES** |
+| WS5 | **READY FOR OWNER AUTHORIZATION** (not started) |
+| Runtime | `catalog-enrich-v34` / `v6` / `v1` · **shadow** · Autonomous **OFF** |
+| Production / commit | Untouched / not done |
 
 ---
 
-## Smart Catalog runtime (DEV live)
+## WS4 closeout
 
-| Item | Value |
-|------|--------|
-| Smart Profile | smart-profile-v1 |
-| Prompt | **catalog-enrich-v32** |
-| Normalizer | **smart-profile-normalizer-v6** |
-| Mode | shadow |
-| Autonomous | **OFF** |
+Artifact: `docs/workflow/reviews/2026-09-04-smart-catalog-intelligence-completion-ws4-signoff.md`
 
-### Function revisions (fresh-prints-dev)
-
-| Function | Revision | Traffic |
-|----------|----------|---------|
-| `enqueueAiEnrichment` | `enqueueaienrichment-00086-qet` | 100% |
-| `onCatalogReprocessJobWritten` | `oncatalogreprocessjobwritten-00008-piw` | 100% |
-| `startCatalogReprocessJob` | `startcatalogreprocessjob-00007-viw` | 100% |
-| `previewCatalogReprocessJob` | `previewcatalogreprocessjob-00007-hug` | 100% |
+- Ready reprocess 359/359; Ready/human/preset preservation OK
+- Category calibrations + Music-vs-Pop + Cute + title specificity signed off
+- Legacy tag influence **NON-MATERIAL** (does not block WS5)
+- No material WS4 blockers remaining
 
 ---
 
-## Notes
+## Next owner decision
 
-AI visible-text + catalog-copy quality closed on DEV. Owner canary PASS. No mass reprocess. Production untouched. **Next:** owner-start Smart Profiling completion when ready.
+Authorize **WS5 Autonomous DEV canary** planning/execution — or defer.
+
+Do **not** enable Autonomous until explicitly authorized.
+
+---
+
+## Deployed DEV Functions
+
+| Function | Revision |
+|----------|----------|
+| enqueueAiEnrichment | `enqueueaienrichment-00094-wuz` |
+| reprocessReadyDesignWithAi | `reprocessreadydesignwithai-00005-fud` |
+| onCatalogReprocessJobWritten | `oncatalogreprocessjobwritten-00016-han` |
+| testAiEnrichmentPlayground | `testaienrichmentplayground-00058-bop` |

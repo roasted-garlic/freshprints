@@ -298,7 +298,7 @@ function ManageableSettingsPage() {
     (draftSuggestedNewTagsPolicy !== null &&
       draftSuggestedNewTagsPolicy !== suggestedNewTagsPolicy);
   const promptTemplateError = !hasRequiredAiEnrichmentPromptPlaceholders(selectedPromptTemplate)
-    ? "Prompt must include {{excluded_tags}} and {{approved_category_names}} so server-side values are inserted."
+    ? "Prompt must include {{excluded_tags}} and {{approved_categories}} so server-side values are inserted."
     : null;
 
   const shellHeaderConfig = useMemo(

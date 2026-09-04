@@ -98,7 +98,7 @@ export async function buildAiReviewQueueInventory(): Promise<{
   aiReviewStatusDistribution: Record<string, number>;
   promptVersionDistribution: Record<string, number>;
   normalizerVersionDistribution: Record<string, number>;
-  alreadyV29Count: number;
+  alreadyCurrentPipelineCount: number;
   missingProfileCount: number;
   exclusions: CatalogReprocessExclusionBuckets;
   aiReviewNotes: CatalogReprocessNotesInventory;
@@ -127,7 +127,7 @@ export async function buildAiReviewQueueInventory(): Promise<{
   };
   const promptVersionDistribution: Record<string, number> = {};
   const normalizerVersionDistribution: Record<string, number> = {};
-  let alreadyV29Count = 0;
+  let alreadyCurrentPipelineCount = 0;
   let missingProfileCount = 0;
   let designsWithNonEmptyNotes = 0;
   let maxNoteLength = 0;
@@ -167,7 +167,7 @@ export async function buildAiReviewQueueInventory(): Promise<{
         bump(promptVersionDistribution, promptVersion);
         bump(normalizerVersionDistribution, normalizerVersion);
         if (promptVersion === CATALOG_REPROCESS_PROMPT_VERSION_SNAPSHOT) {
-          alreadyV29Count += 1;
+          alreadyCurrentPipelineCount += 1;
         }
       }
 
@@ -190,7 +190,7 @@ export async function buildAiReviewQueueInventory(): Promise<{
     aiReviewStatusDistribution,
     promptVersionDistribution,
     normalizerVersionDistribution,
-    alreadyV29Count,
+    alreadyCurrentPipelineCount,
     missingProfileCount,
     exclusions,
     aiReviewNotes: {

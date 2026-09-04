@@ -1,0 +1,51 @@
+{
+  "projectId": "fresh-prints-dev",
+  "method": "direct_gemini_openai_compat_same_as_provider",
+  "imageDesignId": "0MpiuK4ERPawPEsUoZLn",
+  "imageTitle": "Thin Red Line American Flag",
+  "previewPath": "previews/0MpiuK4ERPawPEsUoZLn.webp",
+  "taxonomyRevision": 17,
+  "materializationReady": true,
+  "categoryCount": 25,
+  "userPromptCharsV33": 11032,
+  "userPromptCharsV34": 29117,
+  "descriptionsObservedInBuiltV34Prompt": true,
+  "namesOnlyObservedInBuiltV33Prompt": true,
+  "sampleCategoryLine": "- Faith & Worship — Use this category when the buyer intent is Christian faith, religion, spirituality, worship, prayer, scripture, church, …",
+  "ownerBaselineCombinedUsd": 0.000521,
+  "a": {
+    "label": "v33_names_only_template",
+    "visionModelId": "gemini-2.5-flash-lite",
+    "elapsedMs": 1693,
+    "promptTokens": 2661,
+    "completionTokens": 349,
+    "totalTokens": 3010,
+    "outputPreview": "```json\n{\n  \"title\": \"Thin Red Line American Flag Grunge\",\n  \"description\": \"A distressed American flag design features a prominent thin red line replacing one of the white stripes. The flag has a grunge aesthetic with rough, torn edges.\",\n  \"category\": \"Patriotic & Americana\",\n  \"tags\": [\n    \"American flag\",\n    \"thi",
+    "estimatedCostUsd": 0.00040570000000000005
+  },
+  "b": {
+    "label": "v34_names_plus_descriptions_template",
+    "visionModelId": "gemini-2.5-flash-lite",
+    "elapsedMs": 17676,
+    "promptTokens": 6271,
+    "completionTokens": 396,
+    "totalTokens": 6667,
+    "outputPreview": "```json\n{\n  \"title\": \"Distressed American Flag with Thin Red Line\",\n  \"description\": \"This design features a distressed American flag where the traditional blue field of stars is replaced with white stars on a black background, and one of the red stripes is substituted with a thin red line. The flag exhibits a worn, ri",
+    "estimatedCostUsd": 0.0007855
+  },
+  "deltas": {
+    "promptTokens": 3610,
+    "completionTokens": 47,
+    "estimatedCostUsd": 0.0003797999999999999,
+    "pctCostVsA": 93.6159723933941,
+    "pctCostVsOwnerBaseline": 50.76775431861804,
+    "costDeltaVsOwnerBaseline": 0.0002645
+  },
+  "notes": [
+    "Playground 8k template limit cannot accept full DEFAULT (~10.7k); used direct Gemini call matching geminiVisionEnrichmentProvider request shape.",
+    "A = PREVIOUS v33 ({{approved_category_names}}); B = DEFAULT v34 ({{approved_categories}}).",
+    "Same image; no settings or design mutation.",
+    "estimatedCostUsd is primary vision call only (no tag author / rerank second call).",
+    "Owner baseline $0.000521 was Studio combined cost (vision + tag/reranker). Vision-only B vs that baseline understates full-pipeline apples-to-apples."
+  ]
+}
