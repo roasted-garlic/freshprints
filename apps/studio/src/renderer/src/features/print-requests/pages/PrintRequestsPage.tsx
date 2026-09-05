@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { ExternalLink, ImagePlus, Plus, RefreshCw, Search, X } from "lucide-react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
@@ -384,6 +384,9 @@ export function PrintRequestsPage() {
 
   const [listSearchQuery, setListSearchQuery] = useState("");
   const previousSelectedRequestIdRef = useRef<string | null | undefined>(undefined);
+  const railListRef = useRef<HTMLDivElement | null>(null);
+  const railListScrollTopRef = useRef(0);
+  const pageContentScrollTopRef = useRef(0);
 
   const {
     allocationTotalsByRequestId,
@@ -442,13 +445,17 @@ export function PrintRequestsPage() {
   );
   const {
     designs: readyDesigns,
-    isLoading: isReadyDesignsLoading,
     reloadDesigns: reloadReadyDesigns,
     patchDesignFromEnhanceResult,
   } = useReadyDesignsForSelection(selectedDesignIds);
   const uploadSummariesById = isLoadedSelectedRequest ? requestDetails.uploadSummaries : new Map();
   const requestError = isLoadedSelectedRequest ? requestDetails.error : null;
   const isRequestLoading = requestDetails.isLoading || (Boolean(selectedRequestId) && !isLoadedSelectedRequest);
+  /**
+   * Ready-design fetches are detail-panel hydration only. Never gate the left rail on them —
+   * doing so remounted the list as a spinner on every selection and reset scroll to the top.
+   */
+  const isListLoading = isRequestsLoading;
   const reloadPrintRequest = requestDetails.reloadPrintRequest;
   const insertRequestItemAfter = requestDetails.insertItemAfter;
   const removeRequestItem = requestDetails.removeItem;
@@ -1131,20 +1138,92 @@ export function PrintRequestsPage() {
     visibleRequests,
   ]);
 
+  /**
+   * Keep the selected rail card in view inside `.print-requests-rail-list` only.
+   * Do not call element.scrollIntoView — with the sticky rail + page scroll shell that
+   * scrolls ancestor containers and jumps the list (or page) back to the top on click.
+   */
   useEffect(() => {
-    if (!selectedRequestId || isRequestsLoading) {
+    if (!selectedRequestId || isListLoading) {
       return;
     }
 
     const frame = window.requestAnimationFrame(() => {
-      const target = document.querySelector<HTMLElement>(
+      const list = railListRef.current;
+      if (!list) {
+        return;
+      }
+
+      const target = list.querySelector<HTMLElement>(
         `[data-print-request-id="${CSS.escape(selectedRequestId)}"]`,
       );
-      target?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      if (!target) {
+        return;
+      }
+
+      const listRect = list.getBoundingClientRect();
+      const targetRect = target.getBoundingClientRect();
+      if (targetRect.top >= listRect.top && targetRect.bottom <= listRect.bottom) {
+        railListScrollTopRef.current = list.scrollTop;
+        return;
+      }
+
+      const nextTop =
+        targetRect.top < listRect.top
+          ? list.scrollTop - (listRect.top - targetRect.top)
+          : list.scrollTop + (targetRect.bottom - listRect.bottom);
+      list.scrollTo({ top: nextTop, behavior: "smooth" });
+      railListScrollTopRef.current = nextTop;
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [isRequestsLoading, selectedRequestId, visibleRequests]);
+  }, [isListLoading, selectedRequestId, visibleRequests]);
+
+  /** Restore page-shell scroll after the detail panel finishes loading the new selection. */
+  useLayoutEffect(() => {
+    const pageContent = document.querySelector<HTMLElement>(".page-content-area--print-requests");
+    const list = railListRef.current;
+
+    if (list && railListScrollTopRef.current > 0) {
+      list.scrollTop = railListScrollTopRef.current;
+    }
+
+    if (!pageContent || pageContentScrollTopRef.current <= 0) {
+      return;
+    }
+
+    // Keep restoring while details load/collapse so the shell cannot clamp scrollTop to 0.
+    pageContent.scrollTop = pageContentScrollTopRef.current;
+  }, [isRequestLoading, selectedRequestId, visibleSelectedRequest?.id, visibleRequests]);
+
+  const capturePageContentScroll = useCallback(() => {
+    const pageContent = document.querySelector<HTMLElement>(".page-content-area--print-requests");
+    if (pageContent) {
+      pageContentScrollTopRef.current = pageContent.scrollTop;
+    }
+    if (railListRef.current) {
+      railListScrollTopRef.current = railListRef.current.scrollTop;
+    }
+  }, []);
+
+  const selectPrintRequestFromRail = useCallback(
+    (requestId: string) => {
+      capturePageContentScroll();
+      commitPrintRequestsRoute({
+        requestId,
+        kind: activeListKind,
+        tab: activeListTab,
+        workingFilter: activeListTab === "working" ? workingTriageFilter : undefined,
+      });
+    },
+    [
+      activeListKind,
+      activeListTab,
+      capturePageContentScroll,
+      commitPrintRequestsRoute,
+      workingTriageFilter,
+    ],
+  );
 
   const selectedCreateCustomer = useMemo(
     () => customerDirectory.find((customer) => customer.id === createRequestForm.customerId),
@@ -1479,7 +1558,6 @@ export function PrintRequestsPage() {
     navigate("/users");
   }, [closeCreateModal, navigate]);
 
-  const isLoading = isRequestsLoading || isReadyDesignsLoading;
   const loadError = requestsError ?? requestError;
   /**
    * Derived from `allocationTotalsByRequestId` (loaded once for every request and stable across
@@ -1826,8 +1904,14 @@ export function PrintRequestsPage() {
               </div>
             ) : null}
           </div>
-          <div className="print-requests-rail-list">
-            {isLoading ? (
+          <div
+            className="print-requests-rail-list"
+            onScroll={(event) => {
+              railListScrollTopRef.current = event.currentTarget.scrollTop;
+            }}
+            ref={railListRef}
+          >
+            {isListLoading ? (
               <div className="print-requests-loading">
                 <LoadingSpinner label="Loading print requests" />
               </div>
@@ -1915,13 +1999,7 @@ export function PrintRequestsPage() {
                     className={`print-requests-request-card${isSelected ? " is-selected" : ""}`}
                     data-print-request-id={request.id}
                     key={request.id}
-                    onClick={() => commitPrintRequestsRoute({
-                      requestId: request.id,
-                      kind: activeListKind,
-                      tab: activeListTab,
-                      workingFilter:
-                        activeListTab === "working" ? workingTriageFilter : undefined,
-                    })}
+                    onClick={() => selectPrintRequestFromRail(request.id)}
                     type="button"
                   >
                     <div className="print-requests-request-card-title-row">
@@ -1964,7 +2042,7 @@ export function PrintRequestsPage() {
                 );
               })
             )}
-            {!isLoading && hasMoreRequests && !listSearchQuery.trim() ? (
+            {!isListLoading && hasMoreRequests && !listSearchQuery.trim() ? (
               <Button
                 className="print-requests-load-more"
                 disabled={isLoadingMoreRequests}
