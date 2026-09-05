@@ -1,0 +1,104 @@
+{
+  "projectId": "fresh-prints-dev",
+  "startedAt": "2026-09-05T19:05:26.315Z",
+  "catalogWorkflowMode": "shadow",
+  "catalogAutonomousLiveEnabled": false,
+  "termsCount": 43,
+  "selectedTerm": "damn",
+  "termPresent": true,
+  "note": "QA C staff edit is owner Studio action on QA A fixture after PASS path",
+  "qaA": {
+    "label": "qa-a",
+    "designId": "CqkwDf1BOll43yojGd5Y",
+    "title": "DEV QA FIXTURE — ADR172 Shadow Explicit — DAMN — mtor672o",
+    "artworkKind": "DAMN text only",
+    "selectedTerm": "damn",
+    "enqueueResponse": {
+      "designId": "CqkwDf1BOll43yojGd5Y",
+      "queued": true,
+      "completed": true,
+      "aiProcessingStage": "ready_for_review",
+      "aiReviewStatus": "needs_review",
+      "status": "imported"
+    },
+    "after": {
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "aiProcessingStage": "ready_for_review",
+      "aiReviewedBy": null,
+      "readyAt": null,
+      "portalCatalogPublicationStatus": null,
+      "isExplicitContent": true,
+      "explicitContentSource": "automation",
+      "censoredTerms": [
+        "damn"
+      ],
+      "automationDecision": "shadow",
+      "automationReasonCodes": [
+        "shadow_would_auto_approve"
+      ],
+      "explicitAutomationPreview": {
+        "wouldMarkExplicitContent": true,
+        "applied": true,
+        "detected": true,
+        "artworkHit": true,
+        "proposedCensoredTerms": [
+          "damn"
+        ]
+      },
+      "suggestionTitle": "Damn",
+      "suggestionDescription": "This design features the bold, black, all-caps word \"DAMN\" in a simple sans-serif font. It is a text-only design with a strong, impactful message."
+    }
+  },
+  "qaB": {
+    "label": "qa-b",
+    "designId": "UB7g6T6Nxj3ImQxmcfG2",
+    "title": "DEV QA FIXTURE — ADR172 Explicit + Blocker attempt — DAMN + hat shape — mtor672o",
+    "artworkKind": "DAMN text + hat silhouette (no lexical hat)",
+    "selectedTerm": "damn",
+    "enqueueResponse": {
+      "designId": "UB7g6T6Nxj3ImQxmcfG2",
+      "queued": true,
+      "completed": true,
+      "aiProcessingStage": "ready_for_review",
+      "aiReviewStatus": "needs_review",
+      "status": "imported"
+    },
+    "after": {
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "aiProcessingStage": "ready_for_review",
+      "aiReviewedBy": null,
+      "readyAt": null,
+      "portalCatalogPublicationStatus": null,
+      "isExplicitContent": true,
+      "explicitContentSource": "automation",
+      "censoredTerms": [
+        "damn"
+      ],
+      "automationDecision": "shadow",
+      "automationReasonCodes": [
+        "shadow_would_auto_approve"
+      ],
+      "explicitAutomationPreview": {
+        "wouldMarkExplicitContent": true,
+        "applied": true,
+        "detected": true,
+        "artworkHit": true,
+        "proposedCensoredTerms": [
+          "damn"
+        ]
+      },
+      "suggestionTitle": "Damn Hat",
+      "suggestionDescription": "It's a text-dominant design with a minimalist illustrative element."
+    },
+    "blockerAssessment": {
+      "automationReasonCodes": [
+        "shadow_would_auto_approve"
+      ],
+      "likelyHardBlockerPresent": false,
+      "note": "[QA B FIXTURE NEEDS OWNER DECISION] — enrichment did not surface a clear unrelated hard blocker; do not weaken validation"
+    }
+  },
+  "finishedAt": "2026-09-05T19:05:39.189Z"
+}

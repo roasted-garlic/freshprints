@@ -498,6 +498,8 @@ export async function processNextCatalogReprocessUnit(input: {
 
   geminiApiKey: string;
 
+  openAiApiKey?: string;
+
   targetType: string;
 
   dryRun?: boolean;
@@ -553,6 +555,8 @@ async function processAiReviewQueueUnit(input: {
   leaseOwner: string;
 
   geminiApiKey: string;
+
+  openAiApiKey?: string;
 
   dryRun?: boolean;
 
@@ -764,7 +768,10 @@ async function processAiReviewQueueUnit(input: {
 
     await designRef.update(buildCatalogReprocessAiClearUpdate());
 
-    await runAiEnrichmentPipeline(designId, input.geminiApiKey, { mode: "queue" });
+    await runAiEnrichmentPipeline(designId, input.geminiApiKey, {
+      mode: "queue",
+      openAiApiKey: input.openAiApiKey,
+    });
 
 
 
@@ -999,6 +1006,8 @@ async function processReadyCatalogUnit(input: {
   leaseOwner: string;
 
   geminiApiKey: string;
+
+  openAiApiKey?: string;
 
   dryRun?: boolean;
 
@@ -1278,7 +1287,10 @@ async function processReadyCatalogUnit(input: {
 
     await designRef.update(buildReadyCatalogReprocessAiStageUpdate());
 
-    await runAiEnrichmentPipeline(designId, input.geminiApiKey, { mode: "ready_backfill" });
+    await runAiEnrichmentPipeline(designId, input.geminiApiKey, {
+      mode: "ready_backfill",
+      openAiApiKey: input.openAiApiKey,
+    });
 
 
 

@@ -113,14 +113,25 @@ export interface Design {
    */
   companionSetIncomplete?: boolean;
   /**
-   * Staff-only human classification ("Explicit Content" in Studio, "Censored Content" in
-   * Portal). Missing/undefined ⇒ not explicit. AI must not set this field.
+   * Explicit Content classification for Portal Censored presentation.
+   * Missing/undefined ⇒ not explicit. Staff may set manually; catalog enrichment may set when
+   * owner-configured artwork terms match (ADR-FP-172/173). AI must not set this via semantic judgment.
    */
   isExplicitContent?: boolean;
   /**
-   * Staff-entered words/phrases to mask in Portal title/description while Censored mode is on
+   * Who last authored Explicit root fields (`staff` | `automation`). Provenance only (ADR-FP-173).
+   * Does not permanently suppress future automatic classification.
+   */
+  explicitContentSource?: "staff" | "automation";
+  /**
+   * When true, enrichment/reprocess must not mutate Explicit root fields (ADR-FP-173).
+   * Absent/false = unlocked. Never inferred from staff edits alone.
+   */
+  explicitContentAutomationLocked?: boolean;
+  /**
+   * Words/phrases to mask in Portal title/description while Censored mode is on
    * and `isExplicitContent` is true. Missing/empty = no text masking. Kept if Explicit is later
-   * turned off (inactive until Explicit is on again). Does not alter stored title/description.
+   * turned off (inactive until Explicit is on again). Staff- or automation-populated.
    */
   censoredTerms?: string[];
   queueCount: number;
@@ -257,6 +268,7 @@ export type UpdateDesignInput = Partial<
     | "halftoneStaffDecision"
     | "isExplicitContent"
     | "censoredTerms"
+    | "explicitContentAutomationLocked"
   >
 > & {
   /**

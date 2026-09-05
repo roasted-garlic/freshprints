@@ -5,11 +5,55 @@ export const GEMINI_VISION_MODEL_IDS = [
 
 export type GeminiVisionModelId = (typeof GEMINI_VISION_MODEL_IDS)[number];
 
-export const ALLOWED_VISION_MODEL_IDS = [...GEMINI_VISION_MODEL_IDS] as const;
+/** OpenAI vision models allowlisted for Phase 1 dual-provider enrichment (ADR-FP-174). */
+export const OPENAI_VISION_MODEL_IDS = ["gpt-5.6-luna"] as const;
+
+export type OpenAiVisionModelId = (typeof OPENAI_VISION_MODEL_IDS)[number];
+
+export const OPENAI_LUNA_VISION_MODEL_ID: OpenAiVisionModelId = "gpt-5.6-luna";
+
+/** Pinned Chat Completions reasoning effort for Luna — never rely on provider default `medium`. */
+export const OPENAI_LUNA_REASONING_EFFORT = "low" as const;
+
+export const ALLOWED_VISION_MODEL_IDS = [
+  ...GEMINI_VISION_MODEL_IDS,
+  ...OPENAI_VISION_MODEL_IDS,
+] as const;
 
 export type AllowedVisionModelId = (typeof ALLOWED_VISION_MODEL_IDS)[number];
 
+/**
+ * System fallback when Settings `visionModelId` is missing/invalid/unavailable.
+ * Not an automatic switch of saved Settings — do not silently rewrite Firestore on ordinary resolve.
+ */
 export const DEFAULT_VISION_MODEL_ID: AllowedVisionModelId = "gemini-2.5-flash-lite";
+
+/** Explicit model → provider map. Never infer provider from model-id prefix/regex. */
+export const AI_ENRICHMENT_BACKEND_PROVIDER_IDS = ["google", "openai"] as const;
+
+export type AiEnrichmentBackendProviderId = (typeof AI_ENRICHMENT_BACKEND_PROVIDER_IDS)[number];
+
+export const VISION_MODEL_PROVIDER_BY_ID: Record<
+  AllowedVisionModelId,
+  AiEnrichmentBackendProviderId
+> = {
+  "gemini-2.5-flash-lite": "google",
+  "gemini-3.1-flash-lite": "google",
+  "gpt-5.6-luna": "openai",
+};
+
+export function resolveVisionModelProviderId(
+  modelId: string,
+): AiEnrichmentBackendProviderId | null {
+  if ((ALLOWED_VISION_MODEL_IDS as readonly string[]).includes(modelId)) {
+    return VISION_MODEL_PROVIDER_BY_ID[modelId as AllowedVisionModelId];
+  }
+  return null;
+}
+
+export function visionModelRequiresReasoningEffort(modelId: string): boolean {
+  return modelId === OPENAI_LUNA_VISION_MODEL_ID;
+}
 
 /** Must match server stale gate in enqueueAiEnrichment (isStaleAiProcessing). */
 export const AI_ENRICHMENT_STALE_STAGE_MS = 10 * 60 * 1000;
@@ -122,23 +166,40 @@ function normalizePromptForDefaultComparison(value: string): string {
 
 /**
  * Per-model pricing in USD per 1M tokens.
- * Used client-side only for cost estimates — not authoritative billing.
+ * Used for cost estimates / observability only — not authoritative billing.
+ * `cachedInput` is optional; when omitted, cached tokens (if any) use the input rate.
  */
-export const VISION_MODEL_PRICING_USD_PER_1M: Record<string, { input: number; output: number }> = {
+export type VisionModelPricingUsdPer1M = {
+  input: number;
+  output: number;
+  cachedInput?: number;
+};
+
+export const VISION_MODEL_PRICING_USD_PER_1M: Record<string, VisionModelPricingUsdPer1M> = {
   "gemini-2.5-flash-lite": { input: 0.10, output: 0.40 },
   "gemini-3.1-flash-lite": { input: 0.25, output: 1.50 },
+  "gpt-5.6-luna": { input: 0.2, cachedInput: 0.02, output: 1.2 },
 };
 
 export function estimateVisionCostUsd(
   modelId: string,
   promptTokens: number | null,
   completionTokens: number | null,
+  cachedInputTokens: number | null = null,
 ): number | null {
   const pricing = VISION_MODEL_PRICING_USD_PER_1M[modelId];
   if (!pricing || promptTokens === null || completionTokens === null) {
     return null;
   }
-  return (promptTokens * pricing.input + completionTokens * pricing.output) / 1_000_000;
+
+  const cached = Math.max(0, Math.min(promptTokens, cachedInputTokens ?? 0));
+  const uncachedInput = Math.max(0, promptTokens - cached);
+  const cachedRate = pricing.cachedInput ?? pricing.input;
+
+  return (
+    (uncachedInput * pricing.input + cached * cachedRate + completionTokens * pricing.output) /
+    1_000_000
+  );
 }
 
 /**

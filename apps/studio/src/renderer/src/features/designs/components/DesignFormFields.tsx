@@ -24,6 +24,8 @@ interface DesignFormFieldsProps {
   onChange: (field: keyof DesignFormValues, value: string) => void;
   /** Dedicated boolean setter for the "Explicit Content" toggle. */
   onExplicitContentChange: (checked: boolean) => void;
+  /** Deliberate lock against automatic Explicit mutation (ADR-FP-173). */
+  onExplicitAutomationLockChange: (checked: boolean) => void;
 }
 
 export function DesignFormFields({
@@ -36,6 +38,7 @@ export function DesignFormFields({
   isArchived = false,
   onChange,
   onExplicitContentChange,
+  onExplicitAutomationLockChange,
 }: DesignFormFieldsProps) {
   const parsedTags = tryParseTagsInput(formValues.tagsInput);
   const isHalftone = parsedTags.some((tag) => tag.trim().toLowerCase() === "halftone");
@@ -121,7 +124,10 @@ export function DesignFormFields({
         <div className="design-form-halftone-copy">
           <p className="design-form-halftone-label">Explicit Content</p>
           <p className="design-form-hint">
-            Staff-only classification. Portal blurs and censors this design by default.
+            Staff can set Explicit Content manually. Catalog enrichment may also set it when an
+            owner-configured word or phrase is detected in artwork text. Reprocessing may apply
+            detected Explicit terms again unless this design is locked. Portal blurs and censors
+            Explicit designs by default.
           </p>
         </div>
         <Toggle
@@ -141,6 +147,22 @@ export function DesignFormFields({
           value={formValues.censoredTermsInput ?? ""}
         />
       ) : null}
+
+      <div className="design-form-halftone-row">
+        <div className="design-form-halftone-copy">
+          <p className="design-form-halftone-label">Lock Explicit setting</p>
+          <p className="design-form-hint">
+            When locked, AI reprocessing will not change Explicit Content or censored terms for this
+            design.
+          </p>
+        </div>
+        <Toggle
+          checked={formValues.explicitContentAutomationLocked === true}
+          label="Lock Explicit setting"
+          name="editDesignExplicitAutomationLock"
+          onChange={onExplicitAutomationLockChange}
+        />
+      </div>
 
       <ArtworkBackgroundFields
         onChange={onChange}

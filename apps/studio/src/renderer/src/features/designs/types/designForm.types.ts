@@ -27,6 +27,10 @@ export interface DesignFormValues {
    * on save. Optional so partial form literals need not supply it — read with `?? ""`.
    */
   censoredTermsInput?: string;
+  /**
+   * Deliberate lock against automatic Explicit mutation (ADR-FP-173). Optional; read with `?? false`.
+   */
+  explicitContentAutomationLocked?: boolean;
 }
 
 export const emptyDesignFormValues: DesignFormValues = {
@@ -39,6 +43,7 @@ export const emptyDesignFormValues: DesignFormValues = {
   artworkPlacement: "",
   isExplicitContent: false,
   censoredTermsInput: "",
+  explicitContentAutomationLocked: false,
 };
 
 export interface CategoryFormValues {

@@ -11,7 +11,9 @@ import {
   AI_ENRICHMENT_PLAYGROUND_MAX_IMAGE_BYTES,
   AI_ENRICHMENT_PLAYGROUND_MAX_PROMPT_LENGTH,
   AI_ENRICHMENT_PLAYGROUND_VERSION,
+  OPENAI_LUNA_REASONING_EFFORT,
   estimateVisionCostUsd,
+  visionModelRequiresReasoningEffort,
 } from "../../../packages/shared/src/constants/aiEnrichment.constants";
 import { logPipelineEvent } from "../lib/pipelineLog";
 import { prepareAiAnalysisImage } from "./prepareAiAnalysisImage";
@@ -37,7 +39,7 @@ import {
   buildSimpleCatalogEnrichmentSystemPrompt,
   buildSimpleCatalogEnrichmentUserPrompt,
 } from "./simpleCatalogEnrichmentPrompt";
-import { resolveProviderTarget } from "./providers/resolveProviderTarget";
+import { resolveVisionProviderCredentials } from "./resolveVisionProviderCredentials";
 import { extractJsonObject, normalizeSimpleCatalogEnrichment } from "./simpleCatalogEnrichmentResponse";
 import { resolveAiCatalogTags } from "./catalogTagResolver";
 import { resolveThemeCategory } from "./catalogThemeCategoryResolver";
@@ -165,7 +167,7 @@ export function buildAiEnrichmentPlaygroundRequestBody(
     });
   }
 
-  return JSON.stringify({
+  const body: Record<string, unknown> = {
     model: input.visionModelId,
     max_completion_tokens: VISION_MAX_COMPLETION_TOKENS,
     messages: [
@@ -178,7 +180,13 @@ export function buildAiEnrichmentPlaygroundRequestBody(
         content: userContent,
       },
     ],
-  });
+  };
+
+  if (visionModelRequiresReasoningEffort(input.visionModelId)) {
+    body.reasoning_effort = OPENAI_LUNA_REASONING_EFFORT;
+  }
+
+  return JSON.stringify(body);
 }
 
 async function requestPlaygroundCompletion(
@@ -213,17 +221,14 @@ async function requestPlaygroundCompletion(
 }
 
 export async function runAiEnrichmentPlayground(
-  geminiApiKey: string,
+  keys: { geminiApiKey: string; openAiApiKey?: string },
   request: AiEnrichmentPlaygroundRequest,
 ): Promise<AiEnrichmentPlaygroundResponse> {
   const validatedRequest = validateAiEnrichmentPlaygroundRequest(request);
-  const providerTarget = resolveProviderTarget();
-
-  if (!geminiApiKey.trim()) {
-    throw new Error(
-      "The AI playground is unavailable because GEMINI_API_KEY is not configured for this environment.",
-    );
-  }
+  const { providerTarget, apiKey } = resolveVisionProviderCredentials(validatedRequest.visionModelId, {
+    geminiApiKey: keys.geminiApiKey,
+    openAiApiKey: keys.openAiApiKey,
+  });
 
   const diagnosticContext: AiEnrichmentReadDiagnosticContext = {
     functionName: "runAiEnrichmentPlayground",
@@ -264,7 +269,7 @@ export async function runAiEnrichmentPlayground(
   });
 
   const payload = await requestPlaygroundCompletion(
-    geminiApiKey,
+    apiKey,
     providerTarget.baseUrl,
     validatedRequest,
     base64Image,
@@ -341,17 +346,14 @@ function validateTagRerankPlaygroundRequest(input: unknown): AiEnrichmentTagRera
  * normalizeSimpleCatalogEnrichment validation the real pipeline applies) before rerank is possible.
  */
 export async function runAiEnrichmentTagRerankPlayground(
-  geminiApiKey: string,
+  keys: { geminiApiKey: string; openAiApiKey?: string },
   request: AiEnrichmentTagRerankPlaygroundRequest,
 ): Promise<AiEnrichmentTagRerankPlaygroundResponse> {
   const validatedRequest = validateTagRerankPlaygroundRequest(request);
-  const providerTarget = resolveProviderTarget();
-
-  if (!geminiApiKey.trim()) {
-    throw new Error(
-      "The AI playground is unavailable because GEMINI_API_KEY is not configured for this environment.",
-    );
-  }
+  const { providerTarget, apiKey } = resolveVisionProviderCredentials(validatedRequest.visionModelId, {
+    geminiApiKey: keys.geminiApiKey,
+    openAiApiKey: keys.openAiApiKey,
+  });
 
   const diagnosticContext: AiEnrichmentReadDiagnosticContext = {
     functionName: "runAiEnrichmentTagRerankPlayground",
@@ -400,7 +402,7 @@ export async function runAiEnrichmentTagRerankPlayground(
   });
 
   const rerankResult = await callTagRerank(
-    geminiApiKey,
+    apiKey,
     providerTarget,
     validatedRequest.visionModelId,
     {

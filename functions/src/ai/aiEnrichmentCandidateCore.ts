@@ -79,6 +79,11 @@ import {
 import { resolveProviderTarget } from "./providers/resolveProviderTarget";
 import { buildDesignSmartProfile } from "./smartProfileBuilder";
 import { computeCatalogAutomationDecision } from "./automationDecisionShadow";
+import {
+  buildExplicitContentAutomationPreview,
+  classifyExplicitContentAutomation,
+  type ExplicitContentAutomationWrite,
+} from "../../../packages/shared/src/utils/explicitContentAutomation";
 
 /**
  * Design fields required for read-only candidate generation (no lifecycle writes).
@@ -93,6 +98,8 @@ export type AiEnrichmentDesignInput = {
   tags?: string[];
 };
 
+export type { ExplicitContentAutomationWrite };
+
 export type AiEnrichmentCandidate = {
   suggestions: DesignAiSuggestions;
   analysis: DesignAiAnalysis;
@@ -100,6 +107,11 @@ export type AiEnrichmentCandidate = {
   publishReady: boolean;
   /** Present when Smart Profile parse succeeded — for pipeline health increment only. */
   automationDecision?: CatalogAutomationDecisionResult;
+  /**
+   * ADR-FP-172: attached when artwork hit + terms + settings OK (not Ready-gated).
+   * markAiSuccess still gates on staff Explicit authority and may skip write.
+   */
+  explicitContentAutomation?: ExplicitContentAutomationWrite;
   providerId: string;
   modelId: string;
 };
@@ -217,11 +229,13 @@ export async function generateAiEnrichmentCandidateForDesign(input: {
   designId: string;
   design: AiEnrichmentDesignInput;
   geminiApiKey: string;
+  openAiApiKey?: string;
   diagnosticContext: AiEnrichmentReadDiagnosticContext;
   onProcessingStage?: (stage: AiProcessingStage) => Promise<void>;
   nowIso?: string;
 }): Promise<AiEnrichmentCandidate> {
   const { designId, design, geminiApiKey, diagnosticContext, onProcessingStage } = input;
+  const openAiApiKey = input.openAiApiKey ?? "";
   const nowIso = input.nowIso ?? new Date().toISOString();
 
   const previewPath = design.previewPath || design.thumbnailPath;
@@ -235,7 +249,13 @@ export async function generateAiEnrichmentCandidateForDesign(input: {
     geminiApiKey,
     enrichmentSettings.visionModelId,
     requestedVisionModelId,
+    openAiApiKey,
   );
+  const secondaryProviderTarget = resolveProviderTarget(
+    provider.providerId === "openai" ? "openai" : "google",
+  );
+  const secondaryApiKey =
+    secondaryProviderTarget.providerId === "openai" ? openAiApiKey : geminiApiKey;
 
   await maybeNotifyStage(onProcessingStage, "preparing_image");  const previewBytes = await downloadPreviewBytes(previewPath);
   const analysisImage = await prepareAiAnalysisImage(previewBytes, design.artworkBackgroundHex);
@@ -337,8 +357,8 @@ export async function generateAiEnrichmentCandidateForDesign(input: {
         const reservedCatalogTerms = buildReservedCatalogTagTerms(approvedTags);
 
         const authorResult = await callSuggestedTagAuthorStandalone(
-          geminiApiKey,
-          resolveProviderTarget(),
+          secondaryApiKey,
+          secondaryProviderTarget,
           provider.modelId,
           {
             approvedMatchedTags: suggestions.tags,
@@ -417,8 +437,8 @@ export async function generateAiEnrichmentCandidateForDesign(input: {
 
     try {
       const rerankResult = await callTagRerank(
-        geminiApiKey,
-        resolveProviderTarget(),
+        secondaryApiKey,
+        secondaryProviderTarget,
         provider.modelId,
         {
           approvedTagCandidates: resolvedTags.approvedTagCandidates,
@@ -607,6 +627,28 @@ export async function generateAiEnrichmentCandidateForDesign(input: {
 
     publishReady = automationDecision.shouldPublishReady;
 
+    if (enrichmentSettings.settingsReadFailed && automationDecision.wouldAutoApprove) {
+      publishReady = false;
+      automationDecision = {
+        ...automationDecision,
+        decision: "needs_review",
+        wouldAutoApprove: false,
+        shouldPublishReady: false,
+        reasonCodes: [
+          ...new Set([
+            ...automationDecision.reasonCodes.filter(
+              (code) => code !== "shadow_would_auto_approve" && code !== "auto_approved",
+            ),
+            "explicit_automation_settings_unavailable",
+          ]),
+        ],
+      };
+      logPipelineEvent("explicit_content_automation.settings_unavailable", {
+        designId,
+        message: "Settings read failed; fail closed to Needs Review instead of auto-approve.",
+      });
+    }
+
     smartProfile.provenance.automationDecision = automationDecision.decision;
     smartProfile.provenance.automationReasonCodes = automationDecision.reasonCodes;
     smartProfile.provenance.automationDecisionAt = nowIso;
@@ -625,10 +667,59 @@ export async function generateAiEnrichmentCandidateForDesign(input: {
     });
   }
 
-  // rawTags/rawCategory/smartProfileEnrichmentParse are transient resolver inputs; do not persist.
+  let explicitContentAutomation: ExplicitContentAutomationWrite | undefined;
+  if (smartProfile && automationDecision) {
+    const classification = classifyExplicitContentAutomation({
+      artworkEvidenceLines: result.analysis.explicitContentArtworkEvidence ?? [],
+      title: suggestions.title,
+      description: suggestions.description,
+      vocabularyTerms: enrichmentSettings.explicitContentAutomationTerms,
+    });
+
+    // Candidate cannot see prior staff authority; pipeline re-checks and may drop the write.
+    const willApplyRootWrite =
+      !enrichmentSettings.settingsReadFailed &&
+      classification.artworkHit === true &&
+      classification.censoredTerms.length > 0;
+
+    smartProfile.provenance.explicitAutomationPreview = buildExplicitContentAutomationPreview({
+      classification,
+      willApplyRootWrite,
+    });
+
+    if (willApplyRootWrite) {
+      explicitContentAutomation = {
+        isExplicitContent: true,
+        censoredTerms: classification.censoredTerms,
+        explicitContentSource: "automation",
+      };
+      logPipelineEvent("explicit_content_automation.classified", {
+        designId,
+        termCount: classification.censoredTerms.length,
+        matchedTerms: classification.matches.map((match) => match.matchedVocabularyTerm),
+        publishReady,
+        settingsReadFailed: enrichmentSettings.settingsReadFailed,
+      });
+    } else if (classification.artworkHit) {
+      logPipelineEvent("explicit_content_automation.detected_no_write", {
+        designId,
+        wouldAutoApprove: automationDecision.wouldAutoApprove,
+        termCount: classification.censoredTerms.length,
+        publishReady,
+        settingsReadFailed: enrichmentSettings.settingsReadFailed,
+      });
+    } else if (enrichmentSettings.settingsReadFailed) {
+      logPipelineEvent("explicit_content_automation.settings_unavailable_skip_write", {
+        designId,
+      });
+    }
+  }
+
+  // rawTags/rawCategory/smartProfileEnrichmentParse/evidence are transient; do not persist.
   delete result.analysis.rawTags;
   delete result.analysis.rawCategory;
   delete result.analysis.smartProfileEnrichmentParse;
+  delete result.analysis.explicitContentArtworkEvidence;
 
   if (descriptionLacksVisibleTextOverlap(suggestions.description, result.analysis.visibleText)) {
     logPipelineEvent("catalog.enrich.description_text_mismatch", {
@@ -664,6 +755,7 @@ export async function generateAiEnrichmentCandidateForDesign(input: {
     smartProfile,
     publishReady,
     automationDecision,
+    explicitContentAutomation,
     providerId: provider.providerId,
     modelId: provider.modelId,
   };

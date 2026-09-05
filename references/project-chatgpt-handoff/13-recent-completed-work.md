@@ -1,5 +1,49 @@
 # Recent Completed Work
 
+## 2026-09-05 - Restore OpenAI GPT-5.6 Luna AI enrichment — Phase 1 CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `restore-openai-gpt-5-6-luna-ai-enrichment` |
+| Status | **DONE** — Signoff **approved_with_notes** |
+| Owner Studio QA | **PASS** |
+| Signoff | `2026-09-05-restore-openai-gpt-5-6-luna-ai-enrichment-signoff.md` |
+| Delivered | Additive `gpt-5.6-luna` + Gemini 2.5/3.1; dual-provider DEV; Settings default + overrides; Luna `reasoning_effort: low` |
+| Benchmark | Three-model DEV report recorded; TD-034 not closed by Luna |
+| UI polish | Smart Profile footer: Profile + Normalizer versions |
+| Gate | **shadow / live false**; Autonomous **OFF** |
+| Phase 2 registry | **DEFERRED** |
+| Production | **NOT AUTHORIZED** |
+
+## 2026-09-05 - WS5 Autonomous DEV Canary — CLOSED (PASS UNDER MODEL 2)
+
+| Item | Status |
+|------|--------|
+| Goal (parent) | `smart-catalog-intelligence-completion-and-legacy-tag-retirement` — **continues** |
+| Workstream | WS5 Autonomous DEV Canary |
+| Status | **COMPLETE / PASS UNDER MODEL 2** — Signoff **approved_with_notes** |
+| Signoff | `2026-09-05-smart-catalog-intelligence-completion-ws5-autonomous-dev-canary-signoff.md` |
+| Gate | **shadow / live false**; Autonomous **OFF** |
+| Explicit fixture | Cleaned up (`N3Ag21ThKyFXLTTsKAZZ`); vocab unchanged |
+| Deferred | TD-034 visual-object lexical evidence friction |
+| WS6 | **NOT STARTED** (needs new Plan/Review + owner auth) |
+| Production / commit | **NOT AUTHORIZED** / not committed |
+
+## 2026-09-05 - Automatic Explicit Content classification — SOURCE SIGNED OFF
+
+| Item | Status |
+|------|--------|
+| Goal (parent) | `smart-catalog-intelligence-completion-and-legacy-tag-retirement` — **continues** |
+| Corrective | `pre-ws5-catalog-profanity-autonomous-safety-gate` |
+| Status | Source signed off → DEV Functions deployed → **Owner QA PASS** |
+| Signoff | **approved_with_notes** (`2026-09-05-catalog-explicit-content-automation-signoff.md`) |
+| DEV deploy | 4 Functions (`updateAiEnrichmentSettings`, `enqueueAiEnrichment`, `reprocessReadyDesignWithAi`, `onCatalogReprocessJobWritten`) |
+| Owner QA | **PASS** (`2026-09-05-catalog-explicit-content-automation-owner-qa-checkpoint.md`) |
+| Contract | Global vocab on `settings/aiEnrichment.explicitContentAutomationTerms`; Ready-path Explicit; B-light aliases; human authority wins; settings fail-closed |
+| Versions | **catalog-enrich-v34** / **v6** / **v1** unchanged; no second AI; no tag dependency |
+| Autonomous | **OFF**; WS5 **BLOCKED** pending narrow enablement-checkpoint refresh |
+| Production / commit | **NOT AUTHORIZED** / not committed |
+
 ## 2026-09-04 - Visual catalog title specificity + WS4 closeout — CLOSED (DEV)
 
 | Item | Status |

@@ -68,6 +68,7 @@ export function createAiReviewDraftFromDesign(design: Design): AiReviewDraftForm
     }),
     isExplicitContent: design.isExplicitContent === true,
     censoredTermsInput: formatTagsInput(design.censoredTerms ?? []),
+    explicitContentAutomationLocked: design.explicitContentAutomationLocked === true,
     // Queue flag only — a design already linked to a companion set (no queue flag) does not seed
     // this toggle ON, since "expects companions" here means "waiting to be linked," not "linked."
     expectsCompanions: design.companionSetIncomplete === true,
@@ -84,6 +85,7 @@ export function isAiReviewDraftDirty(baseline: AiReviewDraftForm, draft: AiRevie
     baseline.markAsHalftone !== draft.markAsHalftone ||
     baseline.isExplicitContent !== draft.isExplicitContent ||
     baseline.censoredTermsInput !== draft.censoredTermsInput ||
+    baseline.explicitContentAutomationLocked !== draft.explicitContentAutomationLocked ||
     baseline.expectsCompanions !== draft.expectsCompanions ||
     baseline.artworkBackgroundPreset !== draft.artworkBackgroundPreset ||
     baseline.artworkBackgroundCustomHex !== draft.artworkBackgroundCustomHex

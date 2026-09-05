@@ -64,7 +64,7 @@ export function extractVisionCompletionUsage(
 export function buildEmptyOutputUserMessage(finishReason: string | null): string {
   const reasonLabel = finishReason?.trim() || "unknown";
 
-  return `Google AI returned no visible output (reason: ${reasonLabel}). Try again or switch model in Settings.`;
+  return `The AI provider returned no visible output (reason: ${reasonLabel}). Try again or switch model in Settings.`;
 }
 
 export function assertVisionCompletionHasContent(

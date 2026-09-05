@@ -4,7 +4,7 @@ import { logger } from "firebase-functions";
 
 import { CATALOG_REPROCESS_JOBS_COLLECTION } from "../../../packages/shared/src/constants/catalogReprocess.constants";
 import { adminDb } from "../lib/admin";
-import { geminiApiKeySecret } from "../lib/secrets";
+import { geminiApiKeySecret, openAiApiKeySecret } from "../lib/secrets";
 import { claimCatalogReprocessJob } from "./catalogReprocessJobPolicy";
 import { processNextCatalogReprocessUnit } from "./catalogReprocessWorker";
 import { logPipelineEvent } from "../lib/pipelineLog";
@@ -17,7 +17,7 @@ import { logPipelineEvent } from "../lib/pipelineLog";
 export const onCatalogReprocessJobWritten = onDocumentWritten(
   {
     document: `${CATALOG_REPROCESS_JOBS_COLLECTION}/{jobId}`,
-    secrets: [geminiApiKeySecret],
+    secrets: [geminiApiKeySecret, openAiApiKeySecret],
     timeoutSeconds: 540,
     memory: "1GiB",
   },
@@ -93,6 +93,7 @@ export const onCatalogReprocessJobWritten = onDocumentWritten(
         jobId,
         leaseOwner,
         geminiApiKey: geminiApiKeySecret.value(),
+        openAiApiKey: openAiApiKeySecret.value(),
         targetType,
         dryRun: data.dryRun === true,
         cursorDesignId:

@@ -5,7 +5,9 @@ import type { AuthoredSuggestedTag, SuggestedTagAuthorInput } from "./catalogSug
 import { CATALOG_TAG_RERANK_PROMPT_VERSION } from "./catalogTitleRules";
 import {
   estimateVisionCostUsd,
+  OPENAI_LUNA_REASONING_EFFORT,
   resolveTagRerankPromptTemplate,
+  visionModelRequiresReasoningEffort,
 } from "../../../packages/shared/src/constants/aiEnrichment.constants";
 // Deliberately smaller/faster than the primary vision call's retry budget
 // (VISION_REQUEST_MAX_RETRIES/VISION_REQUEST_BASE_DELAY_MS). The reranker is an optional
@@ -134,7 +136,7 @@ export function buildCatalogTagRerankRequestBody(
   userPromptText: string,
   maxCompletionTokens: number,
 ): string {
-  return JSON.stringify({
+  const body: Record<string, unknown> = {
     model: visionModelId,
     max_completion_tokens: maxCompletionTokens,
     messages: [
@@ -147,7 +149,13 @@ export function buildCatalogTagRerankRequestBody(
         content: userPromptText,
       },
     ],
-  });
+  };
+
+  if (visionModelRequiresReasoningEffort(visionModelId)) {
+    body.reasoning_effort = OPENAI_LUNA_REASONING_EFFORT;
+  }
+
+  return JSON.stringify(body);
 }
 
 const TAG_RERANK_MAX_COMPLETION_TOKENS = 500;

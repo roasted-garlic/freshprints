@@ -20,6 +20,10 @@ import type {
   SuggestionAuthorMode,
   TagRerankMode,
 } from "@fresh-prints/shared/constants/aiEnrichment.constants";
+import { DEFAULT_EXPLICIT_CONTENT_AUTOMATION_TERMS } from "@fresh-prints/shared/constants/explicitContentAutomation.constants";
+import {
+  normalizeExplicitContentAutomationTermsInput,
+} from "@fresh-prints/shared/utils/explicitContentAutomation";
 import {
   DEFAULT_CATALOG_WORKFLOW_MODE,
   type CatalogWorkflowMode,
@@ -34,6 +38,7 @@ import {
 interface UseAiEnrichmentSettingsResult {
   additionalTagExclusions: string[];
   effectiveTagExclusions: string[];
+  explicitContentAutomationTerms: string[];
   error: string | null;
   isLoading: boolean;
   isSaving: boolean;
@@ -50,6 +55,7 @@ interface UseAiEnrichmentSettingsResult {
     tagRerankMode: string;
     suggestionAuthorMode: string;
     suggestedNewTagsPolicy: string;
+    explicitContentAutomationTerms: string[];
   }) => Promise<void>;
   suggestionAuthorMode: SuggestionAuthorMode;
   suggestedNewTagsPolicy: SuggestedNewTagsPolicy;
@@ -66,6 +72,9 @@ export function useAiEnrichmentSettings(): UseAiEnrichmentSettingsResult {
   );
   const [additionalTagExclusions, setAdditionalTagExclusions] = useState<string[]>([]);
   const [effectiveTagExclusions, setEffectiveTagExclusions] = useState<string[]>([]);
+  const [explicitContentAutomationTerms, setExplicitContentAutomationTerms] = useState<string[]>([
+    ...DEFAULT_EXPLICIT_CONTENT_AUTOMATION_TERMS,
+  ]);
   const [tagRerankMode, setTagRerankMode] = useState<TagRerankMode>(DEFAULT_TAG_RERANK_MODE);
   const [suggestionAuthorMode, setSuggestionAuthorMode] = useState<SuggestionAuthorMode>(
     DEFAULT_SUGGESTION_AUTHOR_MODE,
@@ -93,6 +102,7 @@ export function useAiEnrichmentSettings(): UseAiEnrichmentSettingsResult {
         setTagRerankPromptTemplate(settings.tagRerankPromptTemplate);
         setAdditionalTagExclusions(settings.additionalTagExclusions);
         setEffectiveTagExclusions(settings.effectiveTagExclusions);
+        setExplicitContentAutomationTerms(settings.explicitContentAutomationTerms);
         setTagRerankMode(settings.tagRerankMode);
         setSuggestionAuthorMode(settings.suggestionAuthorMode);
         setSuggestedNewTagsPolicy(settings.suggestedNewTagsPolicy);
@@ -107,6 +117,7 @@ export function useAiEnrichmentSettings(): UseAiEnrichmentSettingsResult {
         setTagRerankPromptTemplate(DEFAULT_TAG_RERANK_PROMPT_TEMPLATE);
         setAdditionalTagExclusions([]);
         setEffectiveTagExclusions([]);
+        setExplicitContentAutomationTerms([...DEFAULT_EXPLICIT_CONTENT_AUTOMATION_TERMS]);
         setTagRerankMode(DEFAULT_TAG_RERANK_MODE);
         setSuggestionAuthorMode(DEFAULT_SUGGESTION_AUTHOR_MODE);
         setSuggestedNewTagsPolicy(DEFAULT_SUGGESTED_NEW_TAGS_POLICY);
@@ -128,6 +139,7 @@ export function useAiEnrichmentSettings(): UseAiEnrichmentSettingsResult {
       tagRerankMode: string;
       suggestionAuthorMode: string;
       suggestedNewTagsPolicy: string;
+      explicitContentAutomationTerms: string[];
     }) => {
       setIsSaving(true);
       setSaveError(null);
@@ -143,12 +155,16 @@ export function useAiEnrichmentSettings(): UseAiEnrichmentSettingsResult {
           tagRerankMode: resolveClientTagRerankMode(input.tagRerankMode),
           suggestionAuthorMode: resolveClientSuggestionAuthorMode(input.suggestionAuthorMode),
           suggestedNewTagsPolicy: resolveClientSuggestedNewTagsPolicy(input.suggestedNewTagsPolicy),
+          explicitContentAutomationTerms: normalizeExplicitContentAutomationTermsInput(
+            input.explicitContentAutomationTerms,
+          ),
         });
         setVisionModelId(saved.visionModelId);
         setPromptTemplate(saved.promptTemplate);
         setTagRerankPromptTemplate(saved.tagRerankPromptTemplate);
         setAdditionalTagExclusions(saved.additionalTagExclusions);
         setEffectiveTagExclusions(saved.effectiveTagExclusions);
+        setExplicitContentAutomationTerms(saved.explicitContentAutomationTerms);
         setTagRerankMode(saved.tagRerankMode);
         setSuggestionAuthorMode(saved.suggestionAuthorMode);
         setSuggestedNewTagsPolicy(saved.suggestedNewTagsPolicy);
@@ -167,6 +183,7 @@ export function useAiEnrichmentSettings(): UseAiEnrichmentSettingsResult {
   return {
     additionalTagExclusions,
     effectiveTagExclusions,
+    explicitContentAutomationTerms,
     error,
     isLoading,
     isSaving,
@@ -190,4 +207,18 @@ export function formatAdditionalTagExclusionsInput(tags: string[]): string {
 
 export function parseAdditionalTagExclusionsInput(value: string): string[] {
   return resolveClientAdditionalTagExclusions(tryParseTagsInput(value));
+}
+
+export function formatExplicitContentAutomationTermsInput(terms: string[]): string {
+  return formatTagsInput(terms);
+}
+
+export function parseExplicitContentAutomationTermsInput(value: string): string[] {
+  // Do not use design-tag tryParseTagsInput (caps at 20) — vocabulary allows up to 200 terms.
+  return normalizeExplicitContentAutomationTermsInput(
+    value
+      .split(",")
+      .map((term) => term.trim())
+      .filter(Boolean),
+  );
 }

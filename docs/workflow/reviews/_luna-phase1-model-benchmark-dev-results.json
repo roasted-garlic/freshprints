@@ -1,0 +1,1310 @@
+{
+  "projectId": "fresh-prints-dev",
+  "startedAt": "2026-09-05T20:37:46.710Z",
+  "runId": "mtougz83",
+  "models": [
+    "gemini-2.5-flash-lite",
+    "gemini-3.1-flash-lite",
+    "gpt-5.6-luna"
+  ],
+  "designs": [
+    {
+      "id": "Y2IQuCgAPgnqrBIeJuap",
+      "label": "cucumber / woman subject gap",
+      "bucket": "evidence_friction_subject"
+    },
+    {
+      "id": "03cbj1cIFH7Bavt38XBX",
+      "label": "MJ / hat object gap",
+      "bucket": "evidence_friction_object"
+    },
+    {
+      "id": "1Ws0T9fivryest6IUSbt",
+      "label": "cannabis leaves object gap",
+      "bucket": "evidence_friction_object"
+    },
+    {
+      "id": "LYJcsxnfUyacRWtntEkd",
+      "label": "highland cow / stars object gap",
+      "bucket": "evidence_friction_object"
+    },
+    {
+      "id": "nff6PpkZF9TNitnpX2Mm",
+      "label": "Boston Terrier / flowers object gap",
+      "bucket": "evidence_friction_object"
+    },
+    {
+      "id": "Bilulhd5Hm7nwv1uZfbA",
+      "label": "laundry occupation control",
+      "bucket": "control_occupation"
+    },
+    {
+      "id": "6fBRl87jaXyYYGlhapS9",
+      "label": "Looney Tunes pop-culture control",
+      "bucket": "control_pop_culture"
+    },
+    {
+      "id": "8bGvOZVxkx54Am5rx1EW",
+      "label": "teddy bear cute control",
+      "bucket": "control_uncomplicated"
+    }
+  ],
+  "runs": [
+    {
+      "designId": "Y2IQuCgAPgnqrBIeJuap",
+      "label": "cucumber / woman subject gap",
+      "bucket": "evidence_friction_subject",
+      "modelId": "gemini-2.5-flash-lite",
+      "providerId": "google",
+      "title": "When Life Gives You Cucumbers Go Fuck Yourself Woman",
+      "description": "The design uses a vintage aesthetic with distressed textures and a playful, sarcastic message.",
+      "visibleText": [
+        "WHEN LIFE GIVES YOU",
+        "Cucumbers",
+        "GO FUCK YOURSELF..."
+      ],
+      "subjects": [
+        "woman"
+      ],
+      "objects": [
+        "cucumber"
+      ],
+      "searchConcepts": [
+        "pin up girl",
+        "vintage woman",
+        "sarcastic humor",
+        "passive aggressive",
+        "adult saying",
+        "cucumber meme",
+        "funny retro",
+        "old fashioned woman",
+        "food humor"
+      ],
+      "categoryName": "Funny & Sarcastic",
+      "categoryAlternatives": null,
+      "promptVersion": "catalog-enrich-v34",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "profileVersion": "smart-profile-v1",
+      "automationDecision": "shadow",
+      "automationReasonCodes": [
+        "shadow_would_auto_approve"
+      ],
+      "evidenceGaps": [],
+      "shadowPath": "would_auto_approve",
+      "wouldAutoApproveHeuristic": true,
+      "promptTokens": 7138,
+      "completionTokens": 531,
+      "estimatedCostUsd": 0.0009262000000000001,
+      "generatedAt": "2026-09-05T20:37:51.236Z",
+      "elapsedMs": 4179,
+      "error": null,
+      "aiProcessingStage": "ready_for_review",
+      "aiFailureReason": null
+    },
+    {
+      "designId": "Y2IQuCgAPgnqrBIeJuap",
+      "label": "cucumber / woman subject gap",
+      "bucket": "evidence_friction_subject",
+      "modelId": "gemini-3.1-flash-lite",
+      "providerId": "google",
+      "title": "When Life Gives You Cucumbers Go Fuck Yourself",
+      "description": "A woman design featuring \"WHEN LIFE GIVES YOU\" and \"Cucumbers\".",
+      "visibleText": [
+        "WHEN LIFE GIVES YOU",
+        "Cucumbers",
+        "GO FUCK YOURSELF..."
+      ],
+      "subjects": [
+        "woman"
+      ],
+      "objects": [
+        "cucumber"
+      ],
+      "searchConcepts": [
+        "funny cucumber shirt",
+        "sarcastic pinup art",
+        "rude humor",
+        "when life gives you lemons parody",
+        "adult comedy"
+      ],
+      "categoryName": "Funny & Sarcastic",
+      "categoryAlternatives": null,
+      "promptVersion": "catalog-enrich-v34",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "profileVersion": "smart-profile-v1",
+      "automationDecision": "shadow",
+      "automationReasonCodes": [
+        "shadow_would_auto_approve"
+      ],
+      "evidenceGaps": [],
+      "shadowPath": "would_auto_approve",
+      "wouldAutoApproveHeuristic": true,
+      "promptTokens": 7969,
+      "completionTokens": 492,
+      "estimatedCostUsd": 0.00273025,
+      "generatedAt": "2026-09-05T20:37:55.217Z",
+      "elapsedMs": 3771,
+      "error": null,
+      "aiProcessingStage": "ready_for_review",
+      "aiFailureReason": null
+    },
+    {
+      "designId": "Y2IQuCgAPgnqrBIeJuap",
+      "label": "cucumber / woman subject gap",
+      "bucket": "evidence_friction_subject",
+      "modelId": "gpt-5.6-luna",
+      "providerId": "openai",
+      "title": "When Life Gives You Cucumbers Go Fuck Yourself",
+      "description": "The design is a cheeky food-themed parody with distressed retro lettering.",
+      "visibleText": [
+        "WHEN LIFE GIVES YOU",
+        "Cucumbers",
+        "GO FUCK YOURSELF..."
+      ],
+      "subjects": [
+        "woman"
+      ],
+      "objects": [
+        "cucumber"
+      ],
+      "searchConcepts": [
+        "cucumber joke",
+        "sarcastic food saying",
+        "adult cucumber humor",
+        "pinup cucumber graphic",
+        "snarky food quote",
+        "retro pin-up humor"
+      ],
+      "categoryName": "Funny & Sarcastic",
+      "categoryAlternatives": null,
+      "promptVersion": "catalog-enrich-v34",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "profileVersion": "smart-profile-v1",
+      "automationDecision": "needs_review",
+      "automationReasonCodes": [
+        "structured_evidence_gap:subjects:woman"
+      ],
+      "evidenceGaps": [
+        "structured_evidence_gap:subjects:woman"
+      ],
+      "shadowPath": "needs_review",
+      "wouldAutoApproveHeuristic": false,
+      "promptTokens": 8020,
+      "completionTokens": 430,
+      "estimatedCostUsd": 0.00212,
+      "generatedAt": "2026-09-05T20:38:02.705Z",
+      "elapsedMs": 6990,
+      "error": null,
+      "aiProcessingStage": "ready_for_review",
+      "aiFailureReason": null
+    },
+    {
+      "designId": "03cbj1cIFH7Bavt38XBX",
+      "label": "MJ / hat object gap",
+      "bucket": "evidence_friction_object",
+      "modelId": "gemini-2.5-flash-lite",
+      "providerId": "google",
+      "title": "Michael Jackson Dancing Watercolor",
+      "description": "A vibrant watercolor illustration depicts Michael Jackson in his iconic pose, mid-dance. Splashes of red and blue paint create a dynamic, energetic effect around the figure.",
+      "visibleText": null,
+      "subjects": [
+        "jackson",
+        "michael"
+      ],
+      "objects": [
+        "hat"
+      ],
+      "searchConcepts": [
+        "King of Pop",
+        "dancer",
+        "performer",
+        "legend",
+        "moonwalk",
+        "music icon",
+        "pop music",
+        "artist",
+        "entertainer",
+        "singer",
+        "choreography",
+        "artistic",
+        "michael"
+      ],
+      "categoryName": "Music & Bands",
+      "categoryAlternatives": null,
+      "promptVersion": "catalog-enrich-v34",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "profileVersion": "smart-profile-v1",
+      "automationDecision": "needs_review",
+      "automationReasonCodes": [
+        "structured_evidence_gap:objects:hat"
+      ],
+      "evidenceGaps": [
+        "structured_evidence_gap:objects:hat"
+      ],
+      "shadowPath": "needs_review",
+      "wouldAutoApproveHeuristic": false,
+      "promptTokens": 7138,
+      "completionTokens": 437,
+      "estimatedCostUsd": 0.0008886000000000001,
+      "generatedAt": "2026-09-05T20:38:06.055Z",
+      "elapsedMs": 3515,
+      "error": null,
+      "aiProcessingStage": "ready_for_review",
+      "aiFailureReason": null
+    },
+    {
+      "designId": "03cbj1cIFH7Bavt38XBX",
+      "label": "MJ / hat object gap",
+      "bucket": "evidence_friction_object",
+      "modelId": "gemini-3.1-flash-lite",
+      "providerId": "google",
+      "title": "Michael Jackson Watercolor Dance Pose",
+      "description": "A Michael Jackson apparel design.",
+      "visibleText": null,
+      "subjects": [
+        "jackson",
+        "michael"
+      ],
+      "objects": null,
+      "searchConcepts": [
+        "King of Pop",
+        "Michael Jackson dance",
+        "pop legend",
+        "pop music icon",
+        "watercolor portrait",
+        "michael"
+      ],
+      "categoryName": "Music & Bands",
+      "categoryAlternatives": [
+        {
+          "categoryName": "Pop Culture & Characters",
+          "categoryId": "Sn9nmGJvFlIRO4DnFnIB",
+          "reason": "He is a global pop culture icon whose imagery often transcends j"
+        }
+      ],
+      "promptVersion": "catalog-enrich-v34",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "profileVersion": "smart-profile-v1",
+      "automationDecision": "shadow",
+      "automationReasonCodes": [
+        "category_alternatives_present",
+        "shadow_would_auto_approve"
+      ],
+      "evidenceGaps": [],
+      "shadowPath": "would_auto_approve",
+      "wouldAutoApproveHeuristic": true,
+      "promptTokens": 7969,
+      "completionTokens": 220,
+      "estimatedCostUsd": 0.00232225,
+      "generatedAt": "2026-09-05T20:38:09.324Z",
+      "elapsedMs": 3537,
+      "error": null,
+      "aiProcessingStage": "ready_for_review",
+      "aiFailureReason": null
+    },
+    {
+      "designId": "03cbj1cIFH7Bavt38XBX",
+      "label": "MJ / hat object gap",
+      "bucket": "evidence_friction_object",
+      "modelId": "gpt-5.6-luna",
+      "providerId": "openai",
+      "title": "Dancing Performer In Hat And Suit",
+      "description": "Colorful red, blue, and white paint splashes surround the energetic figure.",
+      "visibleText": null,
+      "subjects": [
+        "man"
+      ],
+      "objects": [
+        "hat"
+      ],
+      "searchConcepts": [
+        "dancing man",
+        "male dancer",
+        "music performer",
+        "fedora dancer",
+        "concert performer",
+        "watercolor dance art",
+        "paint splash dancer"
+      ],
+      "categoryName": "Music & Bands",
+      "categoryAlternatives": null,
+      "promptVersion": "catalog-enrich-v34",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "profileVersion": "smart-profile-v1",
+      "automationDecision": "needs_review",
+      "automationReasonCodes": [
+        "structured_evidence_gap:subjects:man"
+      ],
+      "evidenceGaps": [
+        "structured_evidence_gap:subjects:man"
+      ],
+      "shadowPath": "needs_review",
+      "wouldAutoApproveHeuristic": false,
+      "promptTokens": 8020,
+      "completionTokens": 241,
+      "estimatedCostUsd": 0.0018932,
+      "generatedAt": "2026-09-05T20:38:14.256Z",
+      "elapsedMs": 6092,
+      "error": null,
+      "aiProcessingStage": "ready_for_review",
+      "aiFailureReason": null
+    },
+    {
+      "designId": "1Ws0T9fivryest6IUSbt",
+      "label": "cannabis leaves object gap",
+      "bucket": "evidence_friction_object",
+      "modelId": "gemini-2.5-flash-lite",
+      "providerId": "google",
+      "title": "Just Hit It",
+      "description": "This design features a stylized swoosh logo incorporating cannabis leaves, accompanied by the text \"JUST HIT IT\". The overall aesthetic is bold and suggestive of cannabis culture and its associated lifestyle.",
+      "visibleText": [
+        "JUST HIT IT"
+      ],
+      "subjects": null,
+      "objects": [
+        "cannabis leaves"
+      ],
+      "searchConcepts": [
+        "cannabis logo parody",
+        "weed logo parody",
+        "stoner humor",
+        "cannabis lifestyle",
+        "cannabis culture",
+        "legal weed",
+        "just do it weed",
+        "nike parody",
+        "swoosh weed",
+        "pot leaf logo",
+        "marijuana humor"
+      ],
+      "categoryName": "Cannabis & 420",
+      "categoryAlternatives": null,
+      "promptVersion": "catalog-enrich-v34",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "profileVersion": "smart-profile-v1",
+      "automationDecision": "shadow",
+      "automationReasonCodes": [
+        "shadow_would_auto_approve"
+      ],
+      "evidenceGaps": [],
+      "shadowPath": "would_auto_approve",
+      "wouldAutoApproveHeuristic": true,
+      "promptTokens": 7138,
+      "completionTokens": 461,
+      "estimatedCostUsd": 0.0008982,
+      "generatedAt": "2026-09-05T20:38:19.249Z",
+      "elapsedMs": 3255,
+      "error": null,
+      "aiProcessingStage": "ready_for_review",
+      "aiFailureReason": null
+    },
+    {
+      "designId": "1Ws0T9fivryest6IUSbt",
+      "label": "cannabis leaves object gap",
+      "bucket": "evidence_friction_object",
+      "modelId": "gemini-3.1-flash-lite",
+      "providerId": "google",
+      "title": "Just Hit It Cannabis Leaf Swoosh",
+      "description": "A cannabis leaf swoosh design featuring \"JUST HIT IT\".",
+      "visibleText": [
+        "JUST HIT IT"
+      ],
+      "subjects": null,
+      "objects": [
+        "swoosh",
+        "cannabis leaves"
+      ],
+      "searchConcepts": [
+        "weed parody",
+        "cannabis swoosh",
+        "stoner humor",
+        "420 apparel",
+        "marijuana logo"
+      ],
+      "categoryName": "Cannabis & 420",
+      "categoryAlternatives": null,
+      "promptVersion": "catalog-enrich-v34",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "profileVersion": "smart-profile-v1",
+      "automationDecision": "needs_review",
+      "automationReasonCodes": [
+        "structured_evidence_gap:objects:cannabis leaves"
+      ],
+      "evidenceGaps": [
+        "structured_evidence_gap:objects:cannabis leaves"
+      ],
+      "shadowPath": "needs_review",
+      "wouldAutoApproveHeuristic": false,
+      "promptTokens": 7969,
+      "completionTokens": 410,
+      "estimatedCostUsd": 0.00260725,
+      "generatedAt": "2026-09-05T20:38:22.549Z",
+      "elapsedMs": 3380,
+      "error": null,
+      "aiProcessingStage": "ready_for_review",
+      "aiFailureReason": null
+    },
+    {
+      "designId": "1Ws0T9fivryest6IUSbt",
+      "label": "cannabis leaves object gap",
+      "bucket": "evidence_friction_object",
+      "modelId": "gpt-5.6-luna",
+      "providerId": "openai",
+      "title": "Just Hit It Cannabis Leaves",
+      "description": "A cannabis leaves design featuring \"JUST HIT IT\".",
+      "visibleText": [
+        "JUST HIT IT"
+      ],
+      "subjects": null,
+      "objects": [
+        "cannabis leaves"
+      ],
+      "searchConcepts": [
+        "Just Hit It cannabis parody",
+        "marijuana leaf slogan",
+        "weed joke",
+        "420 apparel phrase",
+        "stoner statement"
+      ],
+      "categoryName": "Cannabis & 420",
+      "categoryAlternatives": null,
+      "promptVersion": "catalog-enrich-v34",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "profileVersion": "smart-profile-v1",
+      "automationDecision": "shadow",
+      "automationReasonCodes": [
+        "shadow_would_auto_approve"
+      ],
+      "evidenceGaps": [],
+      "shadowPath": "would_auto_approve",
+      "wouldAutoApproveHeuristic": true,
+      "promptTokens": 8020,
+      "completionTokens": 282,
+      "estimatedCostUsd": 0.0019424000000000002,
+      "generatedAt": "2026-09-05T20:38:27.637Z",
+      "elapsedMs": 4429,
+      "error": null,
+      "aiProcessingStage": "ready_for_review",
+      "aiFailureReason": null
+    },
+    {
+      "designId": "LYJcsxnfUyacRWtntEkd",
+      "label": "highland cow / stars object gap",
+      "bucket": "evidence_friction_object",
+      "modelId": "gemini-2.5-flash-lite",
+      "providerId": "google",
+      "title": "Highland Cow Relaxing On Inner Tube With Sunglasses",
+      "description": "Small pink starbursts are scattered around the design, adding a playful touch to the scene.",
+      "visibleText": null,
+      "subjects": [
+        "cow"
+      ],
+      "objects": [
+        "sunglasses",
+        "inner tube"
+      ],
+      "searchConcepts": [
+        "highland cow",
+        "cow",
+        "sunglasses",
+        "inner tube",
+        "summer vibe",
+        "vacation mode",
+        "pool float",
+        "funny cow",
+        "cute cow",
+        "shaggy cow",
+        "Scottish Highland cattle",
+        "country animal"
+      ],
+      "categoryName": "Family",
+      "categoryAlternatives": null,
+      "promptVersion": "catalog-enrich-v34",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "profileVersion": "smart-profile-v1",
+      "automationDecision": "needs_review",
+      "automationReasonCodes": [
+        "subject_specificity_risk:cow"
+      ],
+      "evidenceGaps": [],
+      "shadowPath": "needs_review",
+      "wouldAutoApproveHeuristic": false,
+      "promptTokens": 7138,
+      "completionTokens": 540,
+      "estimatedCostUsd": 0.0009298,
+      "generatedAt": "2026-09-05T20:38:31.278Z",
+      "elapsedMs": 4029,
+      "error": null,
+      "aiProcessingStage": "ready_for_review",
+      "aiFailureReason": null
+    },
+    {
+      "designId": "LYJcsxnfUyacRWtntEkd",
+      "label": "highland cow / stars object gap",
+      "bucket": "evidence_friction_object",
+      "modelId": "gemini-3.1-flash-lite",
+      "providerId": "google",
+      "title": "Highland Cow Wearing Sunglasses In Inner Tube",
+      "description": "The scene is decorated with small pink stars and has a playful, summer-ready aesthetic.",
+      "visibleText": null,
+      "subjects": [
+        "highland cow",
+        "cow"
+      ],
+      "objects": [
+        "sunglasses",
+        "inner tube",
+        "stars"
+      ],
+      "searchConcepts": [
+        "cow in pool float",
+        "cool cow",
+        "summer farm animal",
+        "highland cattle"
+      ],
+      "categoryName": "Cute & Whimsical",
+      "categoryAlternatives": null,
+      "promptVersion": "catalog-enrich-v34",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "profileVersion": "smart-profile-v1",
+      "automationDecision": "shadow",
+      "automationReasonCodes": [
+        "shadow_would_auto_approve"
+      ],
+      "evidenceGaps": [],
+      "shadowPath": "would_auto_approve",
+      "wouldAutoApproveHeuristic": true,
+      "promptTokens": 7969,
+      "completionTokens": 457,
+      "estimatedCostUsd": 0.00267775,
+      "generatedAt": "2026-09-05T20:38:35.122Z",
+      "elapsedMs": 3879,
+      "error": null,
+      "aiProcessingStage": "ready_for_review",
+      "aiFailureReason": null
+    },
+    {
+      "designId": "LYJcsxnfUyacRWtntEkd",
+      "label": "highland cow / stars object gap",
+      "bucket": "evidence_friction_object",
+      "modelId": "gpt-5.6-luna",
+      "providerId": "openai",
+      "title": "Highland Cow Relaxing On Pool Float",
+      "description": "A shaggy highland cow wearing pink sunglasses lounges on a pink inflatable pool float, surrounded by sparkles. The playful black-and-white illustration has a cute summer vibe.",
+      "visibleText": null,
+      "subjects": [
+        "highland cow",
+        "cow"
+      ],
+      "objects": [
+        "sunglasses",
+        "inner tube"
+      ],
+      "searchConcepts": [
+        "shaggy cow",
+        "cow in sunglasses",
+        "relaxed highland cow",
+        "cow pool float",
+        "summer cow",
+        "cute farm animal"
+      ],
+      "categoryName": "Cute & Whimsical",
+      "categoryAlternatives": null,
+      "promptVersion": "catalog-enrich-v34",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "profileVersion": "smart-profile-v1",
+      "automationDecision": "needs_review",
+      "automationReasonCodes": [
+        "structured_evidence_gap:objects:inner tube"
+      ],
+      "evidenceGaps": [
+        "structured_evidence_gap:objects:inner tube"
+      ],
+      "shadowPath": "needs_review",
+      "wouldAutoApproveHeuristic": false,
+      "promptTokens": 8020,
+      "completionTokens": 378,
+      "estimatedCostUsd": 0.0020575999999999997,
+      "generatedAt": "2026-09-05T20:38:41.765Z",
+      "elapsedMs": 7607,
+      "error": null,
+      "aiProcessingStage": "ready_for_review",
+      "aiFailureReason": null
+    },
+    {
+      "designId": "nff6PpkZF9TNitnpX2Mm",
+      "label": "Boston Terrier / flowers object gap",
+      "bucket": "evidence_friction_object",
+      "modelId": "gemini-2.5-flash-lite",
+      "providerId": "google",
+      "title": "Boston Terrier With Floral Bow Tie",
+      "description": "The dog's expressive eyes and the detailed floral elements create a charming and sophisticated portrait.",
+      "visibleText": null,
+      "subjects": [
+        "dog",
+        "terrier",
+        "boston"
+      ],
+      "objects": [
+        "flowers",
+        "roses",
+        "daisies",
+        "bow tie"
+      ],
+      "searchConcepts": [
+        "boston terrier dog",
+        "dog with bow tie",
+        "floral dog art",
+        "dog breeds",
+        "cute animal",
+        "dog gift",
+        "boston"
+      ],
+      "categoryName": "Cute & Whimsical",
+      "categoryAlternatives": null,
+      "promptVersion": "catalog-enrich-v34",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "profileVersion": "smart-profile-v1",
+      "automationDecision": "needs_review",
+      "automationReasonCodes": [
+        "structured_evidence_gap:objects:flowers",
+        "structured_evidence_gap:objects:roses",
+        "structured_evidence_gap:objects:daisies"
+      ],
+      "evidenceGaps": [
+        "structured_evidence_gap:objects:flowers",
+        "structured_evidence_gap:objects:roses",
+        "structured_evidence_gap:objects:daisies"
+      ],
+      "shadowPath": "needs_review",
+      "wouldAutoApproveHeuristic": false,
+      "promptTokens": 7138,
+      "completionTokens": 449,
+      "estimatedCostUsd": 0.0008934000000000001,
+      "generatedAt": "2026-09-05T20:38:47.187Z",
+      "elapsedMs": 3919,
+      "error": null,
+      "aiProcessingStage": "ready_for_review",
+      "aiFailureReason": null
+    },
+    {
+      "designId": "nff6PpkZF9TNitnpX2Mm",
+      "label": "Boston Terrier / flowers object gap",
+      "bucket": "evidence_friction_object",
+      "modelId": "gemini-3.1-flash-lite",
+      "providerId": "google",
+      "title": "Boston Terrier With Floral Bow Tie",
+      "description": "A Boston Terrier apparel design.",
+      "visibleText": null,
+      "subjects": [
+        "terrier",
+        "boston",
+        "dog"
+      ],
+      "objects": [
+        "bow tie",
+        "flowers",
+        "leaves"
+      ],
+      "searchConcepts": [
+        "floral dog",
+        "dog portrait",
+        "fancy dog",
+        "boston terrier art",
+        "boston"
+      ],
+      "categoryName": "Animals",
+      "categoryAlternatives": null,
+      "promptVersion": "catalog-enrich-v34",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "profileVersion": "smart-profile-v1",
+      "automationDecision": "needs_review",
+      "automationReasonCodes": [
+        "structured_evidence_gap:subjects:dog",
+        "structured_evidence_gap:objects:flowers",
+        "structured_evidence_gap:objects:leaves"
+      ],
+      "evidenceGaps": [
+        "structured_evidence_gap:subjects:dog",
+        "structured_evidence_gap:objects:flowers",
+        "structured_evidence_gap:objects:leaves"
+      ],
+      "shadowPath": "needs_review",
+      "wouldAutoApproveHeuristic": false,
+      "promptTokens": 7969,
+      "completionTokens": 439,
+      "estimatedCostUsd": 0.00265075,
+      "generatedAt": "2026-09-05T20:38:50.714Z",
+      "elapsedMs": 3564,
+      "error": null,
+      "aiProcessingStage": "ready_for_review",
+      "aiFailureReason": null
+    },
+    {
+      "designId": "nff6PpkZF9TNitnpX2Mm",
+      "label": "Boston Terrier / flowers object gap",
+      "bucket": "evidence_friction_object",
+      "modelId": "gpt-5.6-luna",
+      "providerId": "openai",
+      "title": "Boston Terrier Surrounded By Flowers",
+      "description": "A Boston Terrier apparel design.",
+      "visibleText": null,
+      "subjects": [
+        "terrier",
+        "boston",
+        "dog"
+      ],
+      "objects": [
+        "bow",
+        "flowers",
+        "roses",
+        "leaves"
+      ],
+      "searchConcepts": [
+        "Boston terrier floral portrait",
+        "floral dog portrait",
+        "dog with flowers",
+        "pet lover artwork",
+        "flower crown dog",
+        "Boston terrier bow tie",
+        "boston"
+      ],
+      "categoryName": "Animals",
+      "categoryAlternatives": null,
+      "promptVersion": "catalog-enrich-v34",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "profileVersion": "smart-profile-v1",
+      "automationDecision": "needs_review",
+      "automationReasonCodes": [
+        "structured_evidence_gap:subjects:dog",
+        "structured_evidence_gap:objects:bow",
+        "structured_evidence_gap:objects:roses",
+        "structured_evidence_gap:objects:leaves"
+      ],
+      "evidenceGaps": [
+        "structured_evidence_gap:subjects:dog",
+        "structured_evidence_gap:objects:bow",
+        "structured_evidence_gap:objects:roses",
+        "structured_evidence_gap:objects:leaves"
+      ],
+      "shadowPath": "needs_review",
+      "wouldAutoApproveHeuristic": false,
+      "promptTokens": 8020,
+      "completionTokens": 320,
+      "estimatedCostUsd": 0.001988,
+      "generatedAt": "2026-09-05T20:38:56.177Z",
+      "elapsedMs": 6463,
+      "error": null,
+      "aiProcessingStage": "ready_for_review",
+      "aiFailureReason": null
+    },
+    {
+      "designId": "Bilulhd5Hm7nwv1uZfbA",
+      "label": "laundry occupation control",
+      "bucket": "control_occupation",
+      "modelId": "gemini-2.5-flash-lite",
+      "providerId": "google",
+      "title": "Laundry Worker Retro Repeating Text",
+      "description": "This design features the word \"LAUNDRY\" repeated five times in a colorful, retro-style font. Below the main text, \"worker\" is written in a smaller, cursive font. The overall effect is bold and graphic, highlighting the profession.",
+      "visibleText": [
+        "LAUNDRY",
+        "worker"
+      ],
+      "subjects": null,
+      "objects": null,
+      "searchConcepts": [
+        "laundry services",
+        "cleaning services",
+        "housekeeping job",
+        "laundry attendant",
+        "work apparel",
+        "job pride",
+        "retro typography",
+        "multi-color text",
+        "repeated text",
+        "laundry day"
+      ],
+      "categoryName": "Occupations",
+      "categoryAlternatives": null,
+      "promptVersion": "catalog-enrich-v34",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "profileVersion": "smart-profile-v1",
+      "automationDecision": "shadow",
+      "automationReasonCodes": [
+        "shadow_would_auto_approve"
+      ],
+      "evidenceGaps": [],
+      "shadowPath": "would_auto_approve",
+      "wouldAutoApproveHeuristic": true,
+      "promptTokens": 7138,
+      "completionTokens": 497,
+      "estimatedCostUsd": 0.0009126000000000002,
+      "generatedAt": "2026-09-05T20:39:00.708Z",
+      "elapsedMs": 3103,
+      "error": null,
+      "aiProcessingStage": "ready_for_review",
+      "aiFailureReason": null
+    },
+    {
+      "designId": "Bilulhd5Hm7nwv1uZfbA",
+      "label": "laundry occupation control",
+      "bucket": "control_occupation",
+      "modelId": "gemini-3.1-flash-lite",
+      "providerId": "google",
+      "title": "Laundry Laundry Laundry Laundry Laundry Worker",
+      "description": "Apparel artwork featuring \"LAUNDRY\" and \"worker\".",
+      "visibleText": [
+        "LAUNDRY",
+        "worker"
+      ],
+      "subjects": null,
+      "objects": null,
+      "searchConcepts": [
+        "laundry lady",
+        "laundry guy",
+        "laundry squad",
+        "laundry life",
+        "laundromat staff",
+        "laundry room"
+      ],
+      "categoryName": "Occupations",
+      "categoryAlternatives": null,
+      "promptVersion": "catalog-enrich-v34",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "profileVersion": "smart-profile-v1",
+      "automationDecision": "shadow",
+      "automationReasonCodes": [
+        "shadow_would_auto_approve"
+      ],
+      "evidenceGaps": [],
+      "shadowPath": "would_auto_approve",
+      "wouldAutoApproveHeuristic": true,
+      "promptTokens": 7969,
+      "completionTokens": 480,
+      "estimatedCostUsd": 0.00271225,
+      "generatedAt": "2026-09-05T20:39:04.271Z",
+      "elapsedMs": 4448,
+      "error": null,
+      "aiProcessingStage": "ready_for_review",
+      "aiFailureReason": null
+    },
+    {
+      "designId": "Bilulhd5Hm7nwv1uZfbA",
+      "label": "laundry occupation control",
+      "bucket": "control_occupation",
+      "modelId": "gpt-5.6-luna",
+      "providerId": "openai",
+      "title": "Laundry Worker",
+      "description": "The design communicates laundry-work identity and workplace pride.",
+      "visibleText": [
+        "LAUNDRY",
+        "worker"
+      ],
+      "subjects": null,
+      "objects": null,
+      "searchConcepts": [
+        "laundry job",
+        "laundry staff",
+        "laundry room worker",
+        "wash and fold worker",
+        "laundromat employee",
+        "laundry service"
+      ],
+      "categoryName": "Occupations",
+      "categoryAlternatives": null,
+      "promptVersion": "catalog-enrich-v34",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "profileVersion": "smart-profile-v1",
+      "automationDecision": "shadow",
+      "automationReasonCodes": [
+        "shadow_would_auto_approve"
+      ],
+      "evidenceGaps": [],
+      "shadowPath": "would_auto_approve",
+      "wouldAutoApproveHeuristic": true,
+      "promptTokens": 8020,
+      "completionTokens": 304,
+      "estimatedCostUsd": 0.0019688,
+      "generatedAt": "2026-09-05T20:39:10.019Z",
+      "elapsedMs": null,
+      "error": null,
+      "aiProcessingStage": "ready_for_review",
+      "aiFailureReason": null,
+      "recoveredFromFalseTimeout": true
+    },
+    {
+      "designId": "6fBRl87jaXyYYGlhapS9",
+      "label": "Looney Tunes pop-culture control",
+      "bucket": "control_pop_culture",
+      "modelId": "gemini-2.5-flash-lite",
+      "providerId": "google",
+      "title": "Looney Tunes Characters Montage",
+      "description": "A vibrant montage featuring iconic Looney Tunes characters including Bugs Bunny, Sylvester the Cat, Taz, Pepé Le Pew, Tweety Bird, and Daffy Duck. The \"LOONEY TUNES\" logo is prominently displayed in a stylized yellow font.",
+      "visibleText": [
+        "LOONEY",
+        "TUNES"
+      ],
+      "subjects": [
+        "bunny",
+        "bugs",
+        "Sylvester the Cat",
+        "cat",
+        "Taz",
+        "Pepé Le Pew",
+        "pew",
+        "bird",
+        "tweety",
+        "duck",
+        "daffy",
+        "rabbit"
+      ],
+      "objects": null,
+      "searchConcepts": [
+        "looney tunes characters",
+        "classic cartoon characters",
+        "warner bros cartoons",
+        "animated series",
+        "retro cartoons",
+        "Bugs Bunny",
+        "Daffy Duck",
+        "Tweety Bird",
+        "Sylvester",
+        "Tazmanian Devil",
+        "Pepé Le Pew",
+        "bugs",
+        "tweety",
+        "daffy"
+      ],
+      "categoryName": "Pop Culture & Characters",
+      "categoryAlternatives": null,
+      "promptVersion": "catalog-enrich-v34",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "profileVersion": "smart-profile-v1",
+      "automationDecision": "needs_review",
+      "automationReasonCodes": [
+        "structured_evidence_gap:subjects:rabbit"
+      ],
+      "evidenceGaps": [
+        "structured_evidence_gap:subjects:rabbit"
+      ],
+      "shadowPath": "needs_review",
+      "wouldAutoApproveHeuristic": false,
+      "promptTokens": 7138,
+      "completionTokens": 568,
+      "estimatedCostUsd": 0.0009410000000000001,
+      "generatedAt": "2026-09-05T20:43:20.988Z",
+      "elapsedMs": 4459,
+      "error": null,
+      "aiProcessingStage": "ready_for_review",
+      "aiFailureReason": null
+    },
+    {
+      "designId": "6fBRl87jaXyYYGlhapS9",
+      "label": "Looney Tunes pop-culture control",
+      "bucket": "control_pop_culture",
+      "modelId": "gemini-3.1-flash-lite",
+      "providerId": "google",
+      "title": "Looney Tunes",
+      "description": "A Looney Tunes characters design featuring \"LOONEY TUNES\".",
+      "visibleText": [
+        "LOONEY TUNES"
+      ],
+      "subjects": [
+        "bunny",
+        "bugs",
+        "Sylvester the Cat",
+        "cat",
+        "devil",
+        "tasmanian",
+        "Pepé Le Pew",
+        "pew",
+        "bird",
+        "tweety",
+        "duck",
+        "daffy"
+      ],
+      "objects": null,
+      "searchConcepts": [
+        "Looney Tunes characters",
+        "classic cartoons",
+        "cartoon ensemble",
+        "bugs",
+        "tasmanian",
+        "tweety",
+        "daffy"
+      ],
+      "categoryName": "Pop Culture & Characters",
+      "categoryAlternatives": null,
+      "promptVersion": "catalog-enrich-v34",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "profileVersion": "smart-profile-v1",
+      "automationDecision": "needs_review",
+      "automationReasonCodes": [
+        "structured_evidence_gap:subjects:bunny",
+        "structured_evidence_gap:subjects:bugs",
+        "structured_evidence_gap:subjects:sylvester the cat",
+        "structured_evidence_gap:subjects:cat",
+        "structured_evidence_gap:subjects:devil",
+        "structured_evidence_gap:subjects:tasmanian",
+        "structured_evidence_gap:subjects:pepé le pew",
+        "structured_evidence_gap:subjects:pew",
+        "structured_evidence_gap:subjects:bird",
+        "structured_evidence_gap:subjects:tweety",
+        "structured_evidence_gap:subjects:duck",
+        "structured_evidence_gap:subjects:daffy"
+      ],
+      "evidenceGaps": [
+        "structured_evidence_gap:subjects:bunny",
+        "structured_evidence_gap:subjects:bugs",
+        "structured_evidence_gap:subjects:sylvester the cat",
+        "structured_evidence_gap:subjects:cat",
+        "structured_evidence_gap:subjects:devil",
+        "structured_evidence_gap:subjects:tasmanian",
+        "structured_evidence_gap:subjects:pepé le pew",
+        "structured_evidence_gap:subjects:pew",
+        "structured_evidence_gap:subjects:bird",
+        "structured_evidence_gap:subjects:tweety",
+        "structured_evidence_gap:subjects:duck",
+        "structured_evidence_gap:subjects:daffy"
+      ],
+      "shadowPath": "needs_review",
+      "wouldAutoApproveHeuristic": false,
+      "promptTokens": 7969,
+      "completionTokens": 443,
+      "estimatedCostUsd": 0.00265675,
+      "generatedAt": "2026-09-05T20:43:25.049Z",
+      "elapsedMs": 4009,
+      "error": null,
+      "aiProcessingStage": "ready_for_review",
+      "aiFailureReason": null
+    },
+    {
+      "designId": "6fBRl87jaXyYYGlhapS9",
+      "label": "Looney Tunes pop-culture control",
+      "bucket": "control_pop_culture",
+      "modelId": "gpt-5.6-luna",
+      "providerId": "openai",
+      "title": "Looney Tunes Character Collage",
+      "description": "A Looney Tunes characters design featuring \"LOONEY\" and \"TUNES\".",
+      "visibleText": [
+        "LOONEY",
+        "TUNES"
+      ],
+      "subjects": [
+        "bunny",
+        "bugs",
+        "Sylvester",
+        "Taz",
+        "Tweety",
+        "duck",
+        "daffy"
+      ],
+      "objects": null,
+      "searchConcepts": [
+        "Looney Tunes collage",
+        "classic cartoon characters",
+        "Warner Bros cartoons",
+        "Bugs Bunny shirt",
+        "Daffy Duck cartoon",
+        "vintage animation nostalgia",
+        "bugs",
+        "daffy"
+      ],
+      "categoryName": "Pop Culture & Characters",
+      "categoryAlternatives": null,
+      "promptVersion": "catalog-enrich-v34",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "profileVersion": "smart-profile-v1",
+      "automationDecision": "needs_review",
+      "automationReasonCodes": [
+        "structured_evidence_gap:subjects:bunny",
+        "structured_evidence_gap:subjects:bugs",
+        "structured_evidence_gap:subjects:sylvester",
+        "structured_evidence_gap:subjects:taz",
+        "structured_evidence_gap:subjects:tweety",
+        "structured_evidence_gap:subjects:duck",
+        "structured_evidence_gap:subjects:daffy"
+      ],
+      "evidenceGaps": [
+        "structured_evidence_gap:subjects:bunny",
+        "structured_evidence_gap:subjects:bugs",
+        "structured_evidence_gap:subjects:sylvester",
+        "structured_evidence_gap:subjects:taz",
+        "structured_evidence_gap:subjects:tweety",
+        "structured_evidence_gap:subjects:duck",
+        "structured_evidence_gap:subjects:daffy"
+      ],
+      "shadowPath": "needs_review",
+      "wouldAutoApproveHeuristic": false,
+      "promptTokens": 8020,
+      "completionTokens": 353,
+      "estimatedCostUsd": 0.0020276,
+      "generatedAt": "2026-09-05T20:43:30.951Z",
+      "elapsedMs": 5347,
+      "error": null,
+      "aiProcessingStage": "ready_for_review",
+      "aiFailureReason": null
+    },
+    {
+      "designId": "8bGvOZVxkx54Am5rx1EW",
+      "label": "teddy bear cute control",
+      "bucket": "control_uncomplicated",
+      "modelId": "gemini-2.5-flash-lite",
+      "providerId": "google",
+      "title": "Teddy Bear With Bow And Heart",
+      "description": "A very cute, fluffy light brown teddy bear is depicted sitting down and looking directly at the viewer.",
+      "visibleText": null,
+      "subjects": [
+        "teddy bear",
+        "bear"
+      ],
+      "objects": [
+        "bow",
+        "heart"
+      ],
+      "searchConcepts": [
+        "teddy bear illustration",
+        "cute teddy bear",
+        "fluffy teddy bear",
+        "teddy bear with bow",
+        "teal bow",
+        "plush animal",
+        "stuffed toy",
+        "child's toy",
+        "baby gift",
+        "birthday gift"
+      ],
+      "categoryName": "Cute & Whimsical",
+      "categoryAlternatives": null,
+      "promptVersion": "catalog-enrich-v34",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "profileVersion": "smart-profile-v1",
+      "automationDecision": "shadow",
+      "automationReasonCodes": [
+        "shadow_would_auto_approve"
+      ],
+      "evidenceGaps": [],
+      "shadowPath": "would_auto_approve",
+      "wouldAutoApproveHeuristic": true,
+      "promptTokens": 7138,
+      "completionTokens": 567,
+      "estimatedCostUsd": 0.0009406000000000001,
+      "generatedAt": "2026-09-05T20:43:34.430Z",
+      "elapsedMs": 4810,
+      "error": null,
+      "aiProcessingStage": "ready_for_review",
+      "aiFailureReason": null
+    },
+    {
+      "designId": "8bGvOZVxkx54Am5rx1EW",
+      "label": "teddy bear cute control",
+      "bucket": "control_uncomplicated",
+      "modelId": "gemini-3.1-flash-lite",
+      "providerId": "google",
+      "title": "Teddy Bear With Bow And Heart",
+      "description": "A teddy bear apparel design.",
+      "visibleText": null,
+      "subjects": [
+        "teddy bear",
+        "bear"
+      ],
+      "objects": [
+        "bow",
+        "heart"
+      ],
+      "searchConcepts": [
+        "plush bear",
+        "baby bear",
+        "stuffed toy",
+        "cute bear"
+      ],
+      "categoryName": "Cute & Whimsical",
+      "categoryAlternatives": null,
+      "promptVersion": "catalog-enrich-v34",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "profileVersion": "smart-profile-v1",
+      "automationDecision": "shadow",
+      "automationReasonCodes": [
+        "shadow_would_auto_approve"
+      ],
+      "evidenceGaps": [],
+      "shadowPath": "would_auto_approve",
+      "wouldAutoApproveHeuristic": true,
+      "promptTokens": 7969,
+      "completionTokens": 387,
+      "estimatedCostUsd": 0.00257275,
+      "generatedAt": "2026-09-05T20:43:39.187Z",
+      "elapsedMs": 3685,
+      "error": null,
+      "aiProcessingStage": "ready_for_review",
+      "aiFailureReason": null
+    },
+    {
+      "designId": "8bGvOZVxkx54Am5rx1EW",
+      "label": "teddy bear cute control",
+      "bucket": "control_uncomplicated",
+      "modelId": "gpt-5.6-luna",
+      "providerId": "openai",
+      "title": "Teddy Bear With Bow And Heart",
+      "description": "The soft, expressive, cuddly character illustration has a charming whimsical style.",
+      "visibleText": null,
+      "subjects": [
+        "teddy bear",
+        "bear"
+      ],
+      "objects": [
+        "bow",
+        "heart"
+      ],
+      "searchConcepts": [
+        "teddy bear graphic",
+        "stuffed bear",
+        "cuddly bear",
+        "cute nursery art",
+        "bear with turquoise bow",
+        "heart paw bear"
+      ],
+      "categoryName": "Cute & Whimsical",
+      "categoryAlternatives": null,
+      "promptVersion": "catalog-enrich-v34",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "profileVersion": "smart-profile-v1",
+      "automationDecision": "shadow",
+      "automationReasonCodes": [
+        "shadow_would_auto_approve"
+      ],
+      "evidenceGaps": [],
+      "shadowPath": "would_auto_approve",
+      "wouldAutoApproveHeuristic": true,
+      "promptTokens": 8020,
+      "completionTokens": 270,
+      "estimatedCostUsd": 0.001928,
+      "generatedAt": "2026-09-05T20:43:44.430Z",
+      "elapsedMs": 6753,
+      "error": null,
+      "aiProcessingStage": "ready_for_review",
+      "aiFailureReason": null
+    }
+  ],
+  "settingsBefore": {
+    "visionModelId": "gemini-2.5-flash-lite",
+    "catalogWorkflowMode": "shadow",
+    "catalogAutonomousLiveEnabled": false
+  },
+  "qaUserUid": "dYhbGAZ9cSf3Rk2bzqOjFdP5wO92",
+  "settingsAfter": {
+    "visionModelId": "gemini-2.5-flash-lite",
+    "catalogWorkflowMode": "shadow",
+    "catalogAutonomousLiveEnabled": false
+  },
+  "globalDefaultUnchanged": true,
+  "finishedAt": "2026-09-05T20:43:48.042Z",
+  "recoveredRuns": [
+    "Bilulhd5Hm7nwv1uZfbA/gpt-5.6-luna"
+  ],
+  "settingsFinalCheck": {
+    "visionModelId": "gemini-2.5-flash-lite",
+    "catalogWorkflowMode": "shadow",
+    "catalogAutonomousLiveEnabled": false
+  }
+}

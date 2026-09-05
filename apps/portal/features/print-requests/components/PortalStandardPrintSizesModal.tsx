@@ -19,6 +19,7 @@ import { applyStandardPrintSizePreset } from '@fresh-prints/shared/utils/applySt
 import {
   formatPrintRequestItemSizeLabel,
   resolveDefaultPrintRequestItemSizeSelection,
+  STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES,
 } from '@fresh-prints/shared/utils/printRequestItemSizing';
 
 interface PortalStandardPrintSizesModalProps {
@@ -312,7 +313,7 @@ export function PortalStandardPrintSizesModal({
               }}
               type="button"
             >
-              Reset to default ({formatInch(defaultSizeSelection?.configuredDefaultWidthInches ?? 10)})
+              Reset to default ({formatInch(defaultSizeSelection?.configuredDefaultWidthInches ?? STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES)})
             </button>
             <button
               className="portal-button portal-button-secondary"

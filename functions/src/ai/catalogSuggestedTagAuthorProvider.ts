@@ -1,7 +1,11 @@
 import type { CatalogTag } from "../../../packages/shared/src/types/catalogTag.types";
 import type { ProviderTarget } from "./providers/resolveProviderTarget";
 
-import { estimateVisionCostUsd } from "../../../packages/shared/src/constants/aiEnrichment.constants";
+import {
+  estimateVisionCostUsd,
+  OPENAI_LUNA_REASONING_EFFORT,
+  visionModelRequiresReasoningEffort,
+} from "../../../packages/shared/src/constants/aiEnrichment.constants";
 import { VISION_REQUEST_BASE_DELAY_MS, VISION_REQUEST_MAX_RETRIES } from "./aiEnrichmentConfig";
 import { extractJsonObject } from "./simpleCatalogEnrichmentResponse";
 import {
@@ -216,7 +220,7 @@ export function buildSuggestedTagAuthorRequestBody(
   userPromptText: string,
   maxCompletionTokens: number,
 ): string {
-  return JSON.stringify({
+  const body: Record<string, unknown> = {
     model: visionModelId,
     max_completion_tokens: maxCompletionTokens,
     messages: [
@@ -229,7 +233,13 @@ export function buildSuggestedTagAuthorRequestBody(
         content: userPromptText,
       },
     ],
-  });
+  };
+
+  if (visionModelRequiresReasoningEffort(visionModelId)) {
+    body.reasoning_effort = OPENAI_LUNA_REASONING_EFFORT;
+  }
+
+  return JSON.stringify(body);
 }
 
 async function requestSuggestedTagAuthorCompletion(

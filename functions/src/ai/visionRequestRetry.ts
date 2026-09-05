@@ -44,7 +44,7 @@ async function readVisionErrorMessage(response: Response): Promise<string> {
     // Response body may not be JSON.
   }
 
-  return `Google AI request failed with status ${response.status}`;
+  return `AI vision request failed with status ${response.status}`;
 }
 
 export async function fetchVisionWithRetry(
@@ -83,7 +83,7 @@ export async function fetchVisionWithRetry(
     } catch (error) {
       lastError =
         error instanceof Error && error.name === "AbortError"
-          ? new Error(`Google AI request timed out after ${timeoutMs}ms`)
+          ? new Error(`AI vision request timed out after ${timeoutMs}ms`)
           : error;
 
       if (attempt === maxRetries) {
@@ -100,7 +100,7 @@ export async function fetchVisionWithRetry(
     await sleep(baseDelayMs * 2 ** attempt);
   }
 
-  throw lastError instanceof Error ? lastError : new Error("Google AI request failed.");
+  throw lastError instanceof Error ? lastError : new Error("AI vision request failed.");
 }
 
 export function resolveVisionErrorCode(error: unknown): string {

@@ -949,7 +949,7 @@ Google AI (Gemini) **provider API key** for server-side AI enrichment:
 
 | Allowed | Forbidden |
 |---------|-----------|
-| Firebase Secret Manager (`GEMINI_API_KEY`) | Firestore `settings` or any document field |
+| Firebase Secret Manager (`GEMINI_API_KEY`, `OPENAI_API_KEY`) | Firestore `settings` or any document field |
 | Cloud Functions reading bound secrets | Desktop Settings page API-key fields |
 | Documented setup in `FIREBASE.md` / `DEPLOYMENT.md` | Renderer env vars, preload, or IPC exposing keys |
 
@@ -957,7 +957,7 @@ Google AI (Gemini) **provider API key** for server-side AI enrichment:
 
 **Etsy recommendations (Phase 9A, ADR-FP-087l / ADR-FP-087o):** Portal builds website search URLs client-side; listing cards come from the secret-bound Open API callable. The last normalized listing snapshot is stored on `etsyRecommendationRequests.lastApiSearch` (Admin SDK; public listing metadata only). Studio staff may refresh via `staffSearchEtsyRecommendationApiResults` (staff auth; no customer preview quota). Website scrape remains forbidden (ADR-FP-087j). Purchases happen off-platform via listing/search URLs.
 
-The Electron renderer may call `enqueueAiEnrichment` but must **never** receive the Gemini key. Development environments may run the heuristic provider without a real key; production Gemini vision requires Secret Manager configuration with human approval. As of ADR-FP-040, OpenAI is no longer used and `OPENAI_API_KEY` was removed from Cloud Function code.
+The Electron renderer may call `enqueueAiEnrichment` but must **never** receive provider API keys. Development environments may run the heuristic provider without a real Gemini key; production Gemini vision requires Secret Manager configuration with human approval. OpenAI Luna (ADR-FP-174) requires `OPENAI_API_KEY` and fails closed when that secret is missing for an OpenAI-selected model. Keys must never be logged or placed in test fixtures as real values.
 
 ---
 

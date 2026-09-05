@@ -7,6 +7,9 @@ export const brevoApiKeySecret = defineSecret("BREVO_API_KEY");
 
 export const geminiApiKeySecret = defineSecret("GEMINI_API_KEY");
 
+/** OpenAI API key for Luna / dual-provider enrichment (ADR-FP-174). Server-only; never log value. */
+export const openAiApiKeySecret = defineSecret("OPENAI_API_KEY");
+
 /** Etsy Open API `x-api-key` value (`keystring:shared_secret`). Bound to searchEtsyRecommendations + staffSearchEtsyRecommendationApiResults. */
 export const etsyXApiKeySecret = defineSecret("ETSY_X_API_KEY");
 

@@ -27,9 +27,9 @@ const DERIVATIVE_ASSET = {
 };
 
 describe("interactiveArtworkEnhance fallback contract", () => {
-  it("system fallback is 10 inches", () => {
-    assert.equal(STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES, 10);
-    assert.equal(resolvePrintRequestDefaultWidthInches({}), 10);
+  it("system fallback is 11 inches", () => {
+    assert.equal(STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES, 11);
+    assert.equal(resolvePrintRequestDefaultWidthInches({}), 11);
   });
 
   it("initiation floor constant is 250", () => {

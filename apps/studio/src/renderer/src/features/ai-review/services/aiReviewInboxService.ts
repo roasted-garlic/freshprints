@@ -78,6 +78,7 @@ export const aiReviewInboxService = {
       artworkBackgroundHex: artworkBackgroundHex ?? null,
       isExplicitContent: draft.isExplicitContent,
       censoredTerms: parseTagsInput(draft.censoredTermsInput),
+      explicitContentAutomationLocked: draft.explicitContentAutomationLocked,
       halftoneStaffDecision: {
         value: draft.markAsHalftone,
         decidedBy: caller.id,

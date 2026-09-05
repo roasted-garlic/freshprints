@@ -1,5 +1,7 @@
 # Roadmap and Phases
 
+> 2026-09-05: **Pre-WS5 Automatic Explicit Content classification — SOURCE SIGNED OFF** — Corrective **COMPLETE / APPROVED WITH NOTES — SOURCE SIGNED OFF** (not DEV-live). Signoff **approved_with_notes**. DEV deploy + Studio QA pending. Autonomous **OFF**. **WS5 BLOCKED**. Production / commit **NOT AUTHORIZED**. Parent goal continues.
+>
 > 2026-09-03: **AI enrichment visible-text + catalog-copy quality — CLOSED (DEV)** — Goal `ai-enrichment-visible-text-and-catalog-copy-quality` **DONE**. Signoff **approved_with_notes**. Owner canary **PASS**. Live DEV: **catalog-enrich-v32** / **smart-profile-normalizer-v6**. Autonomous **OFF**. Production **NOT AUTHORIZED**. FreshForge **IDLE**. Next queued: Smart Profiling completion (not started).
 >
 > 2026-09-03: **AI enrichment visible-text + catalog-copy quality — DEV DEPLOYED; OWNER CANARY PENDING** — Live DEV v32/v6 on four Functions. Owner ≤10-design canary pending. No mass reprocess. Autonomous OFF. Production NOT AUTHORIZED. Smart Profiling completion remains next after this goal closes.

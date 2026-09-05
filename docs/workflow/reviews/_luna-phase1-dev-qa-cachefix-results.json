@@ -1,0 +1,27 @@
+{
+  "warmGemini": {
+    "designId": "ZABCE79D2xyGc9V1CgKN",
+    "provider": "development"
+  },
+  "settingsAfterLunaSave": "gpt-5.6-luna",
+  "lunaDefaultAfterWarmCache": {
+    "designId": "yV4Fc80N47d3EqK1tyxy",
+    "provider": "openai",
+    "model": "gpt-5.6-luna",
+    "promptVersion": "catalog-enrich-v34"
+  },
+  "lunaPlayground": {
+    "provider": "openai",
+    "visionModelId": "gpt-5.6-luna"
+  },
+  "openaiProviderSelectedLogs": [
+    {
+      "providerId": "openai",
+      "modelId": "gpt-5.6-luna",
+      "reasoningEffort": "low",
+      "timestamp": "2026-09-05T20:28:55.771536Z"
+    }
+  ],
+  "finalVisionModelId": "gemini-2.5-flash-lite",
+  "pass": true
+}

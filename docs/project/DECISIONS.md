@@ -4,6 +4,189 @@
 
 ---
 
+### ADR-FP-174: Dual-provider AI enrichment — restore OpenAI `gpt-5.6-luna` (Phase 1)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-05 |
+| Status | accepted — source Phase 1; DEV deploy separately authorized |
+| Related | Plan `2026-09-05-restore-openai-gpt-5-6-luna-ai-enrichment-plan.md`; Review `2026-09-05-restore-openai-gpt-5-6-luna-ai-enrichment-review.md`; ADR-FP-040 |
+| Amends | ADR-FP-040 (Gemini-only) — dual-provider Phase 1; Gemini remains system fallback |
+
+**Context**
+
+ADR-FP-040 removed OpenAI. Owner authorized additive restoration of `gpt-5.6-luna` for catalog enrichment quality benchmarking while keeping Gemini models selectable and `gemini-2.5-flash-lite` as system fallback.
+
+**Decision**
+
+1. Allowlist: `gemini-2.5-flash-lite`, `gemini-3.1-flash-lite`, `gpt-5.6-luna`.
+2. Sole persisted global default: `settings/aiEnrichment.visionModelId` (no per-model `isDefault`, no provider picker).
+3. Explicit code-side `modelId → provider` map (`google` | `openai`); never infer from name prefix.
+4. System fallback: missing/invalid configured model → `gemini-2.5-flash-lite` without silently rewriting Firestore.
+5. Luna pins `reasoning_effort: "low"`; never send that field to Gemini.
+6. `OPENAI_API_KEY` bound only on Cloud Functions; Studio stores model id only; OpenAI path fails closed without key.
+7. Run override (`visionModelIdOverride` / `aiRequestedVisionModelId`) is run-scoped and must not mutate Settings.
+8. Secondary AI calls (tag rerank, suggestion author, playground) follow the selected model/provider.
+9. Pricing metadata includes Luna cached-input rate for estimates only.
+10. Phase 2 Firestore dynamic model registry remains deferred.
+
+**Consequences**
+
+- Downstream Smart Profile / evidence / prompt versions unchanged (`catalog-enrich-v34`, normalizer v6, smart-profile-v1).
+- Existing installs are not auto-switched to Luna.
+
+---
+
+### ADR-FP-173: Explicit Content reprocess authority and manual automation lock
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-05 |
+| Status | accepted — owner decisions + Formal Review approved_with_changes; implement this pass |
+| Related | Plan `2026-09-05-explicit-content-reprocess-authority-corrective-plan.md`; Review `2026-09-05-explicit-content-reprocess-authority-corrective-review.md`; ADR-FP-172 |
+| Partially supersedes | ADR-FP-172 **staff permanent suppress via `explicitContentSource`** only |
+
+**Context**
+
+ADR-FP-172 treated `explicitContentSource=staff` (and legacy Explicit fields) as permanent protection against automatic Explicit writes. Owner QA C showed staff temporarily clearing Explicit then reprocessing — product desire is that reprocess may re-apply positive detection unless staff deliberately locks the design.
+
+**Decision**
+
+1. `explicitContentSource: "staff" | "automation"` is **last-writer provenance only** — it does not block future automatic Explicit classification.
+2. Permanent suppression requires deliberate per-design `explicitContentAutomationLocked: true` (absent/false = unlocked). Never inferred from toggle/terms edit/save/approve/reprocess.
+3. Positive configured-term match + unlocked + settings OK → may SET Explicit ON + terms + source automation (including after prior staff edits).
+4. Non-match → **no automated clearing** (unchanged).
+5. Unlocking does not immediately reclassify; later enrichment/reprocess may apply again.
+6. Settings-fail skip Explicit auto-write unchanged. Explicit remains non-blocking. Cucumber evidence blockers unchanged (TD-034 family).
+
+**Consequences**
+
+- Studio AI Review + Design Library: “Lock Explicit setting” control; helper copy explains reprocess vs lock.
+- Rules: additive allowlist for `explicitContentAutomationLocked`.
+- Replacement QA C after DEV deploy.
+
+---
+
+### ADR-FP-172: Explicit Content as standard enrichment metadata
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-05 |
+| Status | accepted — source + DEV deploy for enrichment timing; **staff permanent suppress via source partially superseded by ADR-FP-173** |
+| Related | Plan `2026-09-05-explicit-content-standard-enrichment-classification-plan.md`; Review `2026-09-05-explicit-content-standard-enrichment-classification-review.md` |
+| Partially supersedes | ADR-FP-169 / ADR-FP-170 **write timing / shadow root mutation only** (historical ADRs retained) |
+
+**Context**
+
+ADR-FP-169 gated root Explicit writes on Autonomous Ready (`publishReady` / `shouldPublishReady`). ADR-FP-170 added shadow preview only. Owner decided Explicit classification is standard catalog enrichment metadata (like title / Smart Profile), independent of Autonomous lifecycle. No automated Explicit clearing.
+
+**Decision**
+
+1. When enrichment detects owner-configured Explicit terms in catalog artwork and Settings load succeeds and no protected staff Explicit authority exists: persist `isExplicitContent=true`, masker-effective `censoredTerms`, and `explicitContentSource: "automation"` in the same `markAiSuccess` update — **independent of** `catalogWorkflowMode`, `catalogAutonomousLiveEnabled`, `publishReady`, Ready vs Needs Review, and unrelated hard blockers.
+2. Explicit terminology alone is **non-blocking**: it does not create a Needs Review hard blocker, force Ready, or bypass other blockers.
+3. Staff vs automation authority uses additive `explicitContentSource: "staff" | "automation"`. Legacy documents with Explicit fields but no source → treat as staff. Staff edits via Studio `designService.updateDesign` stamp `"staff"`. Staff authority wins until another staff edit.
+4. Automation may refresh automation-authored Explicit fields when a current match exists. **No automated clearing** when a later enrichment has no match.
+5. Settings load failure → skip Explicit root auto-write; preserve Autonomous fail-closed `explicit_automation_settings_unavailable`; no silent fallback vocabulary persistence.
+6. Preview/provenance may report `detected` / `applied` / `suppressedDueToHumanAuthority`; applied writes must not be described as hypothetical-only.
+7. Portal consumer unchanged (`isExplicitContent` + `censoredTerms`). Customer Print Requests unchanged. No second AI call. `catalog-enrich-v34` / `smart-profile-normalizer-v6` / `smart-profile-v1` unchanged. No tag/reranker dependency. No Rules/index/migration expected.
+
+**Consequences**
+
+- Shadow Needs Review designs may carry real Explicit root metadata.
+- Studio AI Review wording reflects detected/applied classification, not Ready-only hypotheticals.
+- WS6 remains blocked until DEV deploy + owner QA + corrective Signoff.
+
+---
+
+### ADR-FP-171: WS5 Autonomous DEV canary — Model 2 safety-invariant expectation
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-05 |
+| Status | accepted — owner decision + Formal Review approved 2026-09-05 |
+| Related | Plan amendment `2026-09-05-smart-catalog-intelligence-completion-ws5-autonomous-dev-canary-model-2-amendment-plan.md`; Review `…-model-2-amendment-review.md`; Diagnostic `2026-09-05-ws5-autonomous-canary-03cb-unexpected-blocker-diagnostic.md` |
+
+**Context**
+
+WS5 preflight used deterministic replay of persisted enrichment to predict AUTO / Needs Review classes. Fresh Gemini reruns are probabilistic and may introduce new contract-valid hard blockers (e.g. `03cb` → `structured_evidence_gap:objects:hat`) or change blocker sets while preserving class (e.g. `nff6`). Exact class reproduction as the primary pass/fail criterion caused a correct Model 1 procedural STOP that was not an Autonomous safety failure.
+
+**Decision**
+
+1. Adopt **MODEL 2 — SAFETY-INVARIANT** as the going-forward WS5 canary acceptance contract.
+2. Ready only when policy-clear (`hardBlockers.length === 0`) and existing Autonomous/publication/audit requirements pass; Ready with any hard blocker is CRITICAL FAIL.
+3. A new **valid** hard blocker routing Needs Review is a conservative PASS, even if persisted preflight predicted AUTO.
+4. Exact preflight class and exact blocker-set reproduction are **not** required.
+5. Unexplained zero-blocker Needs Review, and invalid/false blocker application, remain STOP/investigate — Model 2 is not “any Needs Review passes.”
+6. Confidence and verifier still cannot bypass hard blockers.
+7. Persisted replay remains useful for diversity/estimation/decision-code checks, but **persisted deterministic replay ≠ fresh probabilistic enrichment**.
+8. Historical Model 1 stop documentation is retained; do not rewrite history.
+9. No source, deploy, prompt v34, normalizer v6, or schema v1 changes accompany this decision.
+
+**Consequences**
+
+- Remaining unrun WS5 rows may continue only under Model 2 after separate owner authorization.
+- Visual-object lexical evidence friction (TD-034) is deferred quality — does not block WS5 and does not authorize loosening blockers in this workstream.
+
+---
+
+### ADR-FP-170: Explicit Content automation shadow preview (WS5 observability)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-05 |
+| Status | accepted — source + DEV deploy + **OWNER SHADOW QA PASS** 2026-09-05; **partially superseded by ADR-FP-172** for write timing / shadow root mutation |
+| Related | ADR-FP-169; ADR-FP-172; Plan `2026-09-05-ws5-explicit-content-shadow-preview-observability-plan.md` |
+
+**Context**
+
+ADR-FP-169 writes Explicit metadata only on Autonomous Ready (`shouldPublishReady`). In shadow, owners could not see Would Mark Explicit / proposed `censoredTerms` before enabling Autonomous.
+
+**Decision**
+
+1. Run the **same** `classifyExplicitContentAutomation` whenever automation decision + artwork evidence exist (not only when `publishReady`).
+2. Persist preview under `smartProfile.provenance.explicitAutomationPreview` (additive; no `smart-profile-v1` bump).
+3. ~~Shadow must not mutate root `isExplicitContent` / `censoredTerms`, Ready, or Algolia Ready publication.~~ **Superseded by ADR-FP-172:** shadow may mutate Explicit root metadata when allowed; Ready / Algolia Ready publication remain lifecycle-gated.
+4. Would Auto Approve is derived from existing provenance (`automationDecision` / `shadow_would_auto_approve`).
+5. Settings fail-closed uses `settingsReadFailed && wouldAutoApprove` so shadow matches Autonomous.
+6. Human/staff authority suppresses applied write with `suppressedDueToHumanAuthority`; hard blockers no longer gate Explicit root write (ADR-FP-172).
+
+**Consequences**
+
+- Historical WS5 observability Signoff remains valid for its then-current contract.
+- Studio labels updated under ADR-FP-172 (detected / auto-classified vs hypothetical Would Mark).
+- Owner vocabulary count 43 is authoritative (not a defaults drift).
+
+---
+
+### ADR-FP-169: Automatic Explicit Content classification (Autonomous Ready)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-05 |
+| Status | accepted — **source signed off** 2026-09-05 (`approved_with_notes`); **partially superseded by ADR-FP-172** for write timing / shadow root mutation |
+| Related | Pre-WS5 corrective; ADR-FP-172; Plan `2026-09-04-catalog-profanity-autonomous-safety-gate-plan.md`; Review `2026-09-05-catalog-explicit-content-automation-review.md`; Signoff `2026-09-05-catalog-explicit-content-automation-signoff.md` |
+| Supersedes (partial) | ADR-FP-131 item 2 “human classification only” / “AI never sets Explicit” |
+
+**Context**
+
+Autonomous catalog approval needed a deterministic way to mark designs with material artwork profanity as Explicit for Portal masking — without treating profanity as a Needs Review hard blocker, and without a second AI/moderation call. Per-design `censoredTerms` cannot supply the vocabulary at enrichment time.
+
+**Decision**
+
+1. Global vocabulary: `settings/aiEnrichment.explicitContentAutomationTerms` (`string[]`), owner/admin via `updateAiEnrichmentSettings`. Absent → code defaults; intentional `[]` → no auto classification (no hidden fallback).
+2. Deterministic B-light matcher over pre-sanitize artwork evidence (`visibleText` / `readableTextLines`). Title/description alone never set Explicit.
+3. ~~When `shouldPublishReady` and artwork hit and no protected human Explicit authority: same Ready `markAiSuccess` write sets `isExplicitContent=true` and masker-effective `censoredTerms`.~~ **Superseded by ADR-FP-172:** Explicit root write is standard enrichment persistence (not Ready-gated); staff vs automation distinguished by `explicitContentSource`.
+4. Settings load failure while otherwise auto-approving → fail closed to Needs Review (`explicit_automation_settings_unavailable`). Not a profanity hard blocker. ADR-FP-172 also skips Explicit auto-write on settings failure.
+5. Staff may still manually set/edit Explicit; staff-authored state (including legacy fields without source) is not overwritten by automation. **No automated clearing** when a later enrichment has no match (ADR-FP-172).
+
+**Consequences**
+
+- Studio Settings “Explicit Content Automation” UI; AI Review / Design copy updated under ADR-FP-172.
+- Portal masking unchanged (consumes existing design fields).
+- Prompt/normalizer/schema versions unchanged (`catalog-enrich-v34` / v6 / v1).
+
+---
+
 ### ADR-FP-168: No-text catalog title specificity (subjects/objects enrich)
 
 | Field | Value |
@@ -3665,7 +3848,7 @@ Embedded DPI metadata is unreliable for print quality. Imports previously upscal
 
 1. **Automated upscale target** raised from **12″** to **15″** (`AUTOMATED_UPSCALE_TARGET_WIDTH_INCHES`); policy version **`image-quality-v3`** for newly processed assets (forward-only). **15″ remains the automated import/upload target only** — not the interactive enhancement target.
 2. **Print Request default width** is a **runtime Studio setting** (`settings/standardPrintSizes.defaultPrintRequestWidthInches`), snapshot-at-create for **new items only**; existing items keep persisted dimensions; **no migration/backfill**.
-3. **System fallback** when the setting is absent or invalid: **10″** (`STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES`). **`PREFERRED_PRINT_WIDTH_INCHES` / `DEFAULT_PRINT_REQUEST_WIDTH_INCHES`** remain **10″** for import messaging — distinct from the operational Print Request initializer.
+3. **System fallback** when the setting is absent or invalid: **11″** (`STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES`; amended 2026-09-05 from 10″). **`PREFERRED_PRINT_WIDTH_INCHES` / `DEFAULT_PRINT_REQUEST_WIDTH_INCHES`** remain **10″** for import messaging — distinct from the operational Print Request initializer.
 4. **Standard Size presets** and explicit requested dimensions continue to override the generic default where architecture supports them. Duplicates preserve source dimensions.
 5. **`MAX_UPSCALE_PASSES = 1`** unchanged for automated import. Cumulative **`MAX_UPSCALE_FACTOR = 6×`** measured from true native/original artwork dimensions; do not chain another 6× from an already-upscaled derivative.
 

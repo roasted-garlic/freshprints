@@ -78,6 +78,14 @@ export function EditDesignModal({
     }));
   }
 
+  function handleExplicitAutomationLockChange(checked: boolean) {
+    setValidationError(null);
+    setFormValues((currentValues) => ({
+      ...currentValues,
+      explicitContentAutomationLocked: checked,
+    }));
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     clearError();
@@ -128,6 +136,7 @@ export function EditDesignModal({
             isArchived={design.status === "archived"}
             onChange={handleFieldChange}
             onExplicitContentChange={handleExplicitContentChange}
+            onExplicitAutomationLockChange={handleExplicitAutomationLockChange}
           />
         </ModalBody>
 

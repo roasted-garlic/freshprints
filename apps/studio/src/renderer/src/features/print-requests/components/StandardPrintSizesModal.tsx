@@ -17,6 +17,7 @@ import { applyStandardPrintSizePreset } from "@fresh-prints/shared/utils/applySt
 import {
   formatPrintRequestItemSizeLabel,
   resolveDefaultPrintRequestItemSizeSelection,
+  STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES,
 } from "@fresh-prints/shared/utils/printRequestItemSizing";
 import { Button } from "../../../shared/components/Button";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
@@ -300,7 +301,7 @@ export function StandardPrintSizesModal({
               type="button"
               variant="ghost"
             >
-              Reset to default ({formatInch(defaultSizeSelection?.configuredDefaultWidthInches ?? 10)})
+              Reset to default ({formatInch(defaultSizeSelection?.configuredDefaultWidthInches ?? STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES)})
             </Button>
             <Button onClick={onClose} type="button" variant="secondary">
               Cancel

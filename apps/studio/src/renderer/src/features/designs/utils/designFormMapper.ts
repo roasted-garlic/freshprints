@@ -57,6 +57,7 @@ export function mapDesignToFormValues(design: Design): DesignFormValues {
     censoredTermsInput: formatTagsInput(design.censoredTerms ?? []),
     artworkPlacement: design.artworkPlacement ?? "",
     isExplicitContent: design.isExplicitContent ?? false,
+    explicitContentAutomationLocked: design.explicitContentAutomationLocked === true,
     ...mapArtworkBackgroundToForm(design),
   };
 }
@@ -115,6 +116,7 @@ export function buildEditDesignUpdateInput(formValues: DesignFormValues): Update
     artworkBackgroundHex: artworkBackgroundHex ?? null,
     artworkPlacement: parseArtworkPlacement(formValues.artworkPlacement ?? "") ?? null,
     isExplicitContent: formValues.isExplicitContent ?? false,
+    explicitContentAutomationLocked: formValues.explicitContentAutomationLocked === true,
   };
 }
 

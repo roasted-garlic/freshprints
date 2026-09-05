@@ -2,6 +2,14 @@
 
 > Full log: `docs/project/DECISIONS.md` — newest ADRs first.
 
+### ADR-FP-169: Automatic Explicit Content classification (source signed off 2026-09-05)
+
+- Global vocab: `settings/aiEnrichment.explicitContentAutomationTerms`; absent → defaults; `[]` intentional empty
+- Deterministic B-light matcher on pre-sanitize artwork text; Ready-path atomic Explicit write only
+- Human Explicit authority wins; settings load failure fail-closed (`explicit_automation_settings_unavailable`)
+- No profanity hard blocker; Portal/customer PR unchanged; v34/v6/v1; no second AI
+- **DEV deploy / Studio QA / WS5 still pending**
+
 ### ADR-FP-160: AI enrichment visible-text and catalog-copy quality (DEV signed off 2026-09-03)
 
 - `visibleText` is semantic short intentional wording — not a raw OCR transcript

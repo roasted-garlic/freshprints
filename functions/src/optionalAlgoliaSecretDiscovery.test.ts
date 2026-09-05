@@ -64,6 +64,7 @@ test("enqueueAiEnrichment discovery does not register ALGOLIA_ADMIN_API_KEY", ()
   const names = declaredSecretNames("enqueueAiEnrichment.js");
   assert.ok(!names.includes("ALGOLIA_ADMIN_API_KEY"), `secrets=${names.join(",")}`);
   assert.ok(names.includes("GEMINI_API_KEY"), "expected GEMINI_API_KEY from shared secrets");
+  assert.ok(names.includes("OPENAI_API_KEY"), "expected OPENAI_API_KEY from shared secrets");
   assert.ok(names.includes("RESEND_API_KEY"), "expected RESEND_API_KEY from shared secrets");
   assert.ok(names.includes("BREVO_API_KEY"), "expected BREVO_API_KEY from shared secrets");
   assert.ok(names.includes("ETSY_X_API_KEY"), "expected ETSY_X_API_KEY from shared secrets");
@@ -83,4 +84,5 @@ test("shared lib/secrets discovery does not register ALGOLIA_ADMIN_API_KEY", () 
   const names = declaredSecretNames("lib/secrets.js");
   assert.ok(!names.includes("ALGOLIA_ADMIN_API_KEY"), `secrets=${names.join(",")}`);
   assert.ok(names.includes("GEMINI_API_KEY"));
+  assert.ok(names.includes("OPENAI_API_KEY"));
 });

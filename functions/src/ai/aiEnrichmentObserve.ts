@@ -37,6 +37,7 @@ function resolveFirebaseProjectId(): string | undefined {
 export async function runAiEnrichmentObserveForDesign(input: {
   designId: string;
   geminiApiKey: string;
+  openAiApiKey?: string;
 }): Promise<AiEnrichmentObserveResult> {
   const { designId, geminiApiKey } = input;
 
@@ -68,6 +69,7 @@ export async function runAiEnrichmentObserveForDesign(input: {
     designId,
     design,
     geminiApiKey,
+    openAiApiKey: input.openAiApiKey ?? "",
     diagnosticContext: {
       functionName: "runAiEnrichmentObserveForDesign",
       invocationId: `observe-${designId}`,

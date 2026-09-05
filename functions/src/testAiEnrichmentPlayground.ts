@@ -7,7 +7,7 @@ import type {
 import { runAiEnrichmentPlayground } from "./ai/aiEnrichmentPlayground";
 import { loadCallerProfile } from "./lib/caller";
 import { invalidArgument, permissionDenied, unauthenticated } from "./lib/errors";
-import { geminiApiKeySecret } from "./lib/secrets";
+import { geminiApiKeySecret, openAiApiKeySecret } from "./lib/secrets";
 
 function assertOwnerAdminCaller(caller: Awaited<ReturnType<typeof loadCallerProfile>>): void {
   if (!caller.isActive || !["owner", "admin"].includes(caller.role)) {
@@ -16,7 +16,7 @@ function assertOwnerAdminCaller(caller: Awaited<ReturnType<typeof loadCallerProf
 }
 
 export const testAiEnrichmentPlayground = onCall(
-  { secrets: [geminiApiKeySecret], memory: "512MiB" },
+  { secrets: [geminiApiKeySecret, openAiApiKeySecret], memory: "512MiB" },
   async (request): Promise<AiEnrichmentPlaygroundResponse> => {
     if (!request.auth?.uid) {
       throw unauthenticated();
@@ -27,7 +27,10 @@ export const testAiEnrichmentPlayground = onCall(
 
     try {
       return await runAiEnrichmentPlayground(
-        geminiApiKeySecret.value(),
+        {
+          geminiApiKey: geminiApiKeySecret.value(),
+          openAiApiKey: openAiApiKeySecret.value(),
+        },
         request.data as AiEnrichmentPlaygroundRequest,
       );
     } catch (error) {

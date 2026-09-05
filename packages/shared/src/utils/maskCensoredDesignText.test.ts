@@ -47,6 +47,12 @@ describe("maskCensoredDesignText", () => {
     assert.equal(maskCensoredDesignText("fuck", undefined), "fuck");
     assert.equal(maskCensoredDesignText("fuck", []), "fuck");
   });
+
+  it("masks automation surface forms f*ck and fucking (not via canonical fuck alone)", () => {
+    assert.equal(maskCensoredDesignText("say f*ck now", ["f*ck"]), "say **** now");
+    assert.equal(maskCensoredDesignText("stop fucking around", ["fucking"]), "stop ******* around");
+    assert.equal(maskCensoredDesignText("stop fucking around", ["fuck"]), "stop fucking around");
+  });
 });
 
 describe("resolvePortalCensoredDisplayText", () => {

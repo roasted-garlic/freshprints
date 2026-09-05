@@ -9,7 +9,7 @@ import { deriveApprovedMaxPrintSizeFromPixels } from "./imageQualitySizingPolicy
 import { calculateEffectiveDpi } from "./printSizeMath";
 
 export const MAX_STANDARD_PRINT_REQUEST_SIZE_INCHES = 22;
-export const STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES = 10;
+export const STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES = 11;
 
 export function isValidPrintRequestDefaultWidthInches(value: unknown): value is number {
   return (
@@ -197,7 +197,7 @@ export function resolveInitialPrintRequestItemSize(
   });
 
   // Small-format art keeps its native/source width. Otherwise use the configured runtime
-  // default (fallback 10″) rather than legacy import-normalized width (often ~10″).
+  // default (fallback 11″) rather than legacy import-normalized width (often ~10″).
   const baselineWidthInches =
     sourceWidth <= STANDARD_PRINT_WIDTH_INCHES
       ? sourceWidth

@@ -48,9 +48,12 @@ import { useAiEnrichmentPlayground } from "../hooks/useAiEnrichmentPlayground";
 import { useAiEnrichmentTagRerankPlayground } from "../hooks/useAiEnrichmentTagRerankPlayground";
 import {
   formatAdditionalTagExclusionsInput,
+  formatExplicitContentAutomationTermsInput,
   parseAdditionalTagExclusionsInput,
+  parseExplicitContentAutomationTermsInput,
   useAiEnrichmentSettings,
 } from "../hooks/useAiEnrichmentSettings";
+import { ExplicitContentAutomationSettingsSection } from "../components/ExplicitContentAutomationSettingsSection";
 import { formatAiPlaygroundOutput } from "../utils/aiPlaygroundOutputFormatter";
 import { HelperSettingsPage } from "./HelperSettingsPage";
 
@@ -124,6 +127,14 @@ type SettingsPageTabId =
   | "brandLogos"
   | "aiEnrichment"
   | "studioUpdates";
+
+type AiEnrichmentSubTabId = "general" | "explicitContent" | "catalogReprocessing";
+
+const AI_ENRICHMENT_SUB_TABS: ReadonlyArray<{ id: AiEnrichmentSubTabId; label: string }> = [
+  { id: "general", label: "General" },
+  { id: "explicitContent", label: "Explicit Content" },
+  { id: "catalogReprocessing", label: "Catalog Reprocessing" },
+];
 
 interface SettingsPageTab {
   id: SettingsPageTabId;
@@ -199,6 +210,7 @@ function ManageableSettingsPage() {
       : (settingsTabs[0]?.id ?? "studioUpdates");
   const {
     additionalTagExclusions,
+    explicitContentAutomationTerms,
     error,
     isLoading,
     isSaving,
@@ -231,6 +243,9 @@ function ManageableSettingsPage() {
   const [draftAdditionalTagExclusions, setDraftAdditionalTagExclusions] = useState<string[] | null>(
     null,
   );
+  const [draftExplicitContentAutomationTerms, setDraftExplicitContentAutomationTerms] = useState<
+    string[] | null
+  >(null);
   const [draftTagRerankMode, setDraftTagRerankMode] = useState<string | null>(null);
   const [draftSuggestionAuthorMode, setDraftSuggestionAuthorMode] = useState<string | null>(null);
   const [draftSuggestedNewTagsPolicy, setDraftSuggestedNewTagsPolicy] = useState<string | null>(
@@ -248,6 +263,8 @@ function ManageableSettingsPage() {
   const [isPlaygroundResultModalOpen, setIsPlaygroundResultModalOpen] = useState(false);
   const [hasInjectedProcessingPrompt, setHasInjectedProcessingPrompt] = useState(false);
   const [copiedBlockId, setCopiedBlockId] = useState<string | null>(null);
+  const [aiEnrichmentSubTab, setAiEnrichmentSubTab] =
+    useState<AiEnrichmentSubTabId>("general");
   const playgroundResultOutputText = useMemo(
     () => formatAiPlaygroundOutput(playground.result?.outputText ?? ""),
     [playground.result?.outputText],
@@ -276,6 +293,11 @@ function ManageableSettingsPage() {
   const selectedTagRerankPromptTemplate = draftTagRerankPromptTemplate ?? tagRerankPromptTemplate;
   const selectedAdditionalTagExclusions = draftAdditionalTagExclusions ?? additionalTagExclusions;
   const additionalTagExclusionsInput = formatAdditionalTagExclusionsInput(selectedAdditionalTagExclusions);
+  const selectedExplicitContentAutomationTerms =
+    draftExplicitContentAutomationTerms ?? explicitContentAutomationTerms;
+  const explicitContentAutomationTermsInput = formatExplicitContentAutomationTermsInput(
+    selectedExplicitContentAutomationTerms,
+  );
   const selectedTagRerankMode = resolveClientTagRerankMode(draftTagRerankMode ?? tagRerankMode);
   const selectedSuggestionAuthorMode = resolveClientSuggestionAuthorMode(
     draftSuggestionAuthorMode ?? suggestionAuthorMode,
@@ -293,6 +315,9 @@ function ManageableSettingsPage() {
     (draftAdditionalTagExclusions !== null &&
       formatAdditionalTagExclusionsInput(draftAdditionalTagExclusions) !==
         formatAdditionalTagExclusionsInput(additionalTagExclusions)) ||
+    (draftExplicitContentAutomationTerms !== null &&
+      formatExplicitContentAutomationTermsInput(draftExplicitContentAutomationTerms) !==
+        formatExplicitContentAutomationTermsInput(explicitContentAutomationTerms)) ||
     (draftTagRerankMode !== null && draftTagRerankMode !== tagRerankMode) ||
     (draftSuggestionAuthorMode !== null && draftSuggestionAuthorMode !== suggestionAuthorMode) ||
     (draftSuggestedNewTagsPolicy !== null &&
@@ -466,11 +491,15 @@ function ManageableSettingsPage() {
       tagRerankMode: selectedTagRerankMode,
       suggestionAuthorMode: selectedSuggestionAuthorMode,
       suggestedNewTagsPolicy: selectedSuggestedNewTagsPolicy,
+      explicitContentAutomationTerms: parseExplicitContentAutomationTermsInput(
+        explicitContentAutomationTermsInput,
+      ),
     });
     setDraftVisionModelId(null);
     setDraftPromptTemplate(null);
     setDraftTagRerankPromptTemplate(null);
     setDraftAdditionalTagExclusions(null);
+    setDraftExplicitContentAutomationTerms(null);
     setDraftTagRerankMode(null);
     setDraftSuggestionAuthorMode(null);
     setDraftSuggestedNewTagsPolicy(null);
@@ -613,212 +642,282 @@ function ManageableSettingsPage() {
           id="settings-tab-panel-aiEnrichment"
           role="tabpanel"
         >
-          <section aria-labelledby="ai-enrichment-settings-title" className="card settings-section">
-            <header className="settings-section-header">
-              <h2 className="settings-section-title" id="ai-enrichment-settings-title">
-                AI Enrichment
-              </h2>
-              <p className="settings-section-description">
-                Choose the Google AI vision model and team tag exclusions used for catalog title,
-                description, category, tags, and OCR. Applies on the next AI processing run.
-              </p>
-            </header>
+          <div
+            aria-label="AI Enrichment sections"
+            className="settings-page-subtab-bar"
+            role="tablist"
+          >
+            {AI_ENRICHMENT_SUB_TABS.map((subTab) => (
+              <button
+                aria-controls={`ai-enrichment-subtab-panel-${subTab.id}`}
+                aria-selected={aiEnrichmentSubTab === subTab.id}
+                className={`settings-page-subtab${aiEnrichmentSubTab === subTab.id ? " is-active" : ""}`}
+                id={`ai-enrichment-subtab-${subTab.id}`}
+                key={subTab.id}
+                onClick={() => setAiEnrichmentSubTab(subTab.id)}
+                role="tab"
+                type="button"
+              >
+                {subTab.label}
+              </button>
+            ))}
+          </div>
 
-            {isLoading ? (
-              <p className="settings-section-status">Loading AI enrichment settings…</p>
-            ) : (
-              <div className="settings-form-grid">
-                <div className="settings-control-grid">
-                  <div className="settings-control-item">
-                    <Select
-                      disabled={!canManageSettings || isSaving}
-                      label="Vision model"
-                      name="visionModelId"
-                      onChange={(event) => setDraftVisionModelId(event.target.value)}
-                      options={ALL_VISION_MODEL_OPTIONS.map((option) => ({
-                        label: option.label,
-                        value: option.value,
-                      }))}
-                      value={selectedVisionModelId}
-                    />
+          {aiEnrichmentSubTab === "general" ? (
+            <div
+              aria-labelledby="ai-enrichment-subtab-general"
+              className="settings-page-subtab-panel"
+              id="ai-enrichment-subtab-panel-general"
+              role="tabpanel"
+            >
+              <section aria-labelledby="ai-enrichment-settings-title" className="card settings-section">
+                <header className="settings-section-header">
+                  <h2 className="settings-section-title" id="ai-enrichment-settings-title">
+                    AI Enrichment
+                  </h2>
+                  <p className="settings-section-description">
+                    Choose the Google AI vision model and team tag exclusions used for catalog title,
+                    description, category, tags, and OCR. Applies on the next AI processing run.
+                  </p>
+                </header>
 
-                    <p className="settings-field-hint">
-                      {ALL_VISION_MODEL_OPTIONS.find((option) => option.value === selectedVisionModelId)
-                        ?.hint ?? selectedVisionModelId}
-                    </p>
-                  </div>
+                {isLoading ? (
+                  <p className="settings-section-status">Loading AI enrichment settings…</p>
+                ) : (
+                  <div className="settings-form-grid">
+                    <div className="settings-control-grid">
+                      <div className="settings-control-item">
+                        <Select
+                          disabled={!canManageSettings || isSaving}
+                          label="Default AI model"
+                          name="visionModelId"
+                          onChange={(event) => setDraftVisionModelId(event.target.value)}
+                          options={ALL_VISION_MODEL_OPTIONS.map((option) => ({
+                            label: option.label,
+                            value: option.value,
+                          }))}
+                          value={selectedVisionModelId}
+                        />
 
-                  <div className="settings-control-item">
-                    <Select
-                      disabled={!canManageSettings || isSaving}
-                      label="Tag reranker"
-                      name="tagRerankMode"
-                      onChange={(event) => setDraftTagRerankMode(event.target.value)}
-                      options={TAG_RERANK_MODE_OPTIONS.map((option) => ({
-                        label: option.label,
-                        value: option.value,
-                      }))}
-                      value={selectedTagRerankMode}
-                    />
-
-                    <p className="settings-field-hint">
-                      {TAG_RERANK_MODE_OPTIONS.find((option) => option.value === selectedTagRerankMode)
-                        ?.hint ?? selectedTagRerankMode}
-                    </p>
-                  </div>
-
-                  <div className="settings-control-item">
-                    <Select
-                      disabled={!canManageSettings || isSaving}
-                      label="Suggested new tags"
-                      name="suggestedNewTagsPolicy"
-                      onChange={(event) => setDraftSuggestedNewTagsPolicy(event.target.value)}
-                      options={SUGGESTED_NEW_TAGS_POLICY_OPTIONS.map((option) => ({
-                        label: option.label,
-                        value: option.value,
-                      }))}
-                      value={selectedSuggestedNewTagsPolicy}
-                    />
-
-                    <p className="settings-field-hint">
-                      {SUGGESTED_NEW_TAGS_POLICY_OPTIONS.find(
-                        (option) => option.value === selectedSuggestedNewTagsPolicy,
-                      )?.hint ?? selectedSuggestedNewTagsPolicy}
-                    </p>
-                  </div>
-
-                  <div className="settings-control-item">
-                    <Select
-                      disabled={!canManageSettings || isSaving}
-                      label="Suggested-tag writing"
-                      name="suggestionAuthorMode"
-                      onChange={(event) => setDraftSuggestionAuthorMode(event.target.value)}
-                      options={SUGGESTION_AUTHOR_MODE_OPTIONS.map((option) => ({
-                        label: option.label,
-                        value: option.value,
-                      }))}
-                      value={selectedSuggestionAuthorMode}
-                    />
-
-                    <p className="settings-field-hint">
-                      {SUGGESTION_AUTHOR_MODE_OPTIONS.find(
-                        (option) => option.value === selectedSuggestionAuthorMode,
-                      )?.hint ?? selectedSuggestionAuthorMode}
-                    </p>
-                  </div>
-                </div>
-
-                {isOwner ? (
-                  <div className="settings-prompt-template-block settings-prompt-template-danger">
-                    <div className="settings-prompt-template-summary">
-                      <div className="settings-prompt-template-copy">
-                        <h3 className="settings-subsection-title">AI Processing prompt</h3>
                         <p className="settings-field-hint">
-                          This prompt drives live AI Processing output. Keep it collapsed unless you are
-                          intentionally changing the production prompt.
+                          {ALL_VISION_MODEL_OPTIONS.find((option) => option.value === selectedVisionModelId)
+                            ?.hint ?? selectedVisionModelId}
                         </p>
                       </div>
 
-                      <Button
-                        disabled={!canManageSettings || isSaving}
-                        id="settings-prompt-editor-open-button"
-                        onClick={handleOpenPromptTemplateEditor}
-                        variant="warning"
-                      >
-                        Edit prompt
-                      </Button>
+                      <div className="settings-control-item">
+                        <Select
+                          disabled={!canManageSettings || isSaving}
+                          label="Tag reranker"
+                          name="tagRerankMode"
+                          onChange={(event) => setDraftTagRerankMode(event.target.value)}
+                          options={TAG_RERANK_MODE_OPTIONS.map((option) => ({
+                            label: option.label,
+                            value: option.value,
+                          }))}
+                          value={selectedTagRerankMode}
+                        />
+
+                        <p className="settings-field-hint">
+                          {TAG_RERANK_MODE_OPTIONS.find((option) => option.value === selectedTagRerankMode)
+                            ?.hint ?? selectedTagRerankMode}
+                        </p>
+                      </div>
+
+                      <div className="settings-control-item">
+                        <Select
+                          disabled={!canManageSettings || isSaving}
+                          label="Suggested new tags"
+                          name="suggestedNewTagsPolicy"
+                          onChange={(event) => setDraftSuggestedNewTagsPolicy(event.target.value)}
+                          options={SUGGESTED_NEW_TAGS_POLICY_OPTIONS.map((option) => ({
+                            label: option.label,
+                            value: option.value,
+                          }))}
+                          value={selectedSuggestedNewTagsPolicy}
+                        />
+
+                        <p className="settings-field-hint">
+                          {SUGGESTED_NEW_TAGS_POLICY_OPTIONS.find(
+                            (option) => option.value === selectedSuggestedNewTagsPolicy,
+                          )?.hint ?? selectedSuggestedNewTagsPolicy}
+                        </p>
+                      </div>
+
+                      <div className="settings-control-item">
+                        <Select
+                          disabled={!canManageSettings || isSaving}
+                          label="Suggested-tag writing"
+                          name="suggestionAuthorMode"
+                          onChange={(event) => setDraftSuggestionAuthorMode(event.target.value)}
+                          options={SUGGESTION_AUTHOR_MODE_OPTIONS.map((option) => ({
+                            label: option.label,
+                            value: option.value,
+                          }))}
+                          value={selectedSuggestionAuthorMode}
+                        />
+
+                        <p className="settings-field-hint">
+                          {SUGGESTION_AUTHOR_MODE_OPTIONS.find(
+                            (option) => option.value === selectedSuggestionAuthorMode,
+                          )?.hint ?? selectedSuggestionAuthorMode}
+                        </p>
+                      </div>
                     </div>
 
-                    {promptTemplateError ? (
-                      <p className="auth-message auth-message-error" role="alert">
-                        {promptTemplateError}
-                      </p>
+                    {isOwner ? (
+                      <div className="settings-prompt-template-block settings-prompt-template-danger">
+                        <div className="settings-prompt-template-summary">
+                          <div className="settings-prompt-template-copy">
+                            <h3 className="settings-subsection-title">AI Processing prompt</h3>
+                            <p className="settings-field-hint">
+                              This prompt drives live AI Processing output. Keep it collapsed unless you are
+                              intentionally changing the production prompt.
+                            </p>
+                          </div>
+
+                          <Button
+                            disabled={!canManageSettings || isSaving}
+                            id="settings-prompt-editor-open-button"
+                            onClick={handleOpenPromptTemplateEditor}
+                            variant="warning"
+                          >
+                            Edit prompt
+                          </Button>
+                        </div>
+
+                        {promptTemplateError ? (
+                          <p className="auth-message auth-message-error" role="alert">
+                            {promptTemplateError}
+                          </p>
+                        ) : null}
+                      </div>
                     ) : null}
-                  </div>
-                ) : null}
 
-                {isOwner ? (
-                  <div className="settings-prompt-template-block settings-prompt-template-danger">
-                    <div className="settings-prompt-template-summary">
-                      <div className="settings-prompt-template-copy">
-                        <h3 className="settings-subsection-title">Tag rerank prompt</h3>
+                    {isOwner ? (
+                      <div className="settings-prompt-template-block settings-prompt-template-danger">
+                        <div className="settings-prompt-template-summary">
+                          <div className="settings-prompt-template-copy">
+                            <h3 className="settings-subsection-title">Tag rerank prompt</h3>
+                            <p className="settings-field-hint">
+                              Instructional rules for the optional second-call tag reranker. Only used when
+                              the tag reranker runs (see &quot;Tag reranker&quot; mode above).
+                            </p>
+                          </div>
+
+                          <Button
+                            disabled={!canManageSettings || isSaving}
+                            id="settings-tag-rerank-prompt-editor-open-button"
+                            onClick={handleOpenTagRerankPromptEditor}
+                            variant="warning"
+                          >
+                            Edit prompt
+                          </Button>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    <div className="settings-tag-exclusions-block">
+                      <div className="settings-tag-exclusions-copy">
+                        <h3 className="settings-subsection-title">Tag exclusions</h3>
                         <p className="settings-field-hint">
-                          Instructional rules for the optional second-call tag reranker. Only used when
-                          the tag reranker runs (see &quot;Tag reranker&quot; mode above).
+                          Built-in: {BASE_AI_TAG_EXCLUSIONS.length} | Additional:{" "}
+                          {selectedAdditionalTagExclusions.length}
                         </p>
                       </div>
 
                       <Button
                         disabled={!canManageSettings || isSaving}
-                        id="settings-tag-rerank-prompt-editor-open-button"
-                        onClick={handleOpenTagRerankPromptEditor}
-                        variant="warning"
+                        onClick={() => setIsTagExclusionsModalOpen(true)}
+                        variant="secondary"
                       >
-                        Edit prompt
+                        Manage exclusions
                       </Button>
                     </div>
-                  </div>
-                ) : null}
 
-                <div className="settings-tag-exclusions-block">
-                  <div className="settings-tag-exclusions-copy">
-                    <h3 className="settings-subsection-title">Tag exclusions</h3>
-                    <p className="settings-field-hint">
-                      Built-in: {BASE_AI_TAG_EXCLUSIONS.length} | Additional:{" "}
-                      {selectedAdditionalTagExclusions.length}
-                    </p>
-                  </div>
+                    {canManageSettings ? (
+                      <div className="settings-card-footer">
+                        <div className="settings-form-actions">
+                          <Button
+                            disabled={!hasUnsavedChanges || isSaving || Boolean(promptTemplateError)}
+                            onClick={() => void handleSaveSettings()}
+                            variant="primary"
+                          >
+                            {isSaving ? "Saving…" : "Save AI enrichment settings"}
+                          </Button>
+                        </div>
 
+                        <div className="settings-card-aside">
+                          <Button onClick={() => setIsPlaygroundModalOpen(true)} variant="secondary">
+                            Open AI Playground
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="settings-section-status">
+                        Only owners and admins can change AI enrichment settings.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </section>
+
+              <CatalogProcessingModeSettingsSection
+                catalogAutonomousLiveEnabled={catalogAutonomousLiveEnabled}
+                catalogWorkflowMode={catalogWorkflowMode}
+                isLoading={isLoading}
+              />
+              <AutomationHealthSettingsSection
+                catalogAutonomousLiveEnabled={catalogAutonomousLiveEnabled}
+                catalogWorkflowMode={catalogWorkflowMode}
+                isLoading={isLoading}
+              />
+            </div>
+          ) : null}
+
+          {aiEnrichmentSubTab === "explicitContent" ? (
+            <div
+              aria-labelledby="ai-enrichment-subtab-explicitContent"
+              className="settings-page-subtab-panel"
+              id="ai-enrichment-subtab-panel-explicitContent"
+              role="tabpanel"
+            >
+              <ExplicitContentAutomationSettingsSection
+                canEdit={canManageSettings && !isLoading}
+                onChange={(nextValue) =>
+                  setDraftExplicitContentAutomationTerms(
+                    parseExplicitContentAutomationTermsInput(nextValue),
+                  )
+                }
+                termsInput={explicitContentAutomationTermsInput}
+              />
+              {canManageSettings ? (
+                <div className="settings-form-actions">
                   <Button
-                    disabled={!canManageSettings || isSaving}
-                    onClick={() => setIsTagExclusionsModalOpen(true)}
-                    variant="secondary"
+                    disabled={!hasUnsavedChanges || isSaving || Boolean(promptTemplateError)}
+                    onClick={() => void handleSaveSettings()}
+                    variant="primary"
                   >
-                    Manage exclusions
+                    {isSaving ? "Saving…" : "Save AI enrichment settings"}
                   </Button>
                 </div>
+              ) : null}
+            </div>
+          ) : null}
 
-                {canManageSettings ? (
-                  <div className="settings-card-footer">
-                    <div className="settings-form-actions">
-                      <Button
-                        disabled={!hasUnsavedChanges || isSaving || Boolean(promptTemplateError)}
-                        onClick={() => void handleSaveSettings()}
-                        variant="primary"
-                      >
-                        {isSaving ? "Saving…" : "Save AI enrichment settings"}
-                      </Button>
-                    </div>
-
-                    <div className="settings-card-aside">
-                      <Button onClick={() => setIsPlaygroundModalOpen(true)} variant="secondary">
-                        Open AI Playground
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="settings-section-status">
-                    Only owners and admins can change AI enrichment settings.
-                  </p>
-                )}
-              </div>
-            )}
-          </section>
-
-          <CatalogProcessingModeSettingsSection
-            catalogAutonomousLiveEnabled={catalogAutonomousLiveEnabled}
-            catalogWorkflowMode={catalogWorkflowMode}
-            isLoading={isLoading}
-          />
-          <CatalogReprocessingSettingsSection
-            catalogAutonomousLiveEnabled={catalogAutonomousLiveEnabled}
-            catalogWorkflowMode={catalogWorkflowMode}
-          />
-          <AutomationHealthSettingsSection
-            catalogAutonomousLiveEnabled={catalogAutonomousLiveEnabled}
-            catalogWorkflowMode={catalogWorkflowMode}
-            isLoading={isLoading}
-          />
+          {aiEnrichmentSubTab === "catalogReprocessing" ? (
+            <div
+              aria-labelledby="ai-enrichment-subtab-catalogReprocessing"
+              className="settings-page-subtab-panel"
+              id="ai-enrichment-subtab-panel-catalogReprocessing"
+              role="tabpanel"
+            >
+              <CatalogReprocessingSettingsSection
+                catalogAutonomousLiveEnabled={catalogAutonomousLiveEnabled}
+                catalogWorkflowMode={catalogWorkflowMode}
+              />
+            </div>
+          ) : null}
         </div>
       ) : null}
 

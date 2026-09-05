@@ -96,6 +96,7 @@ describe("catalogReprocess worker containment", () => {
   it("onWrite worker enables ai_review_queue and ready_catalog targets", () => {
     const source = readFileSync(join(here, "onCatalogReprocessJobWritten.ts"), "utf8");
     assert.match(source, /geminiApiKeySecret/);
+    assert.match(source, /openAiApiKeySecret/);
     assert.match(source, /processNextCatalogReprocessUnit/);
     assert.match(source, /ready_catalog/);
     assert.match(source, /boundedDesignIds/);

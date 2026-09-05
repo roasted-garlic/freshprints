@@ -114,6 +114,11 @@ export interface DesignAiAnalysis {
    * Transient Smart Profile parse payload from enrichment JSON — deleted before Firestore write.
    */
   smartProfileEnrichmentParse?: import("../catalog/smartProfile.types").SmartProfileEnrichmentParse;
+  /**
+   * Transient pre-sanitize artwork text lines for Explicit Content Automation.
+   * Deleted before Firestore write — not persisted.
+   */
+  explicitContentArtworkEvidence?: string[];
 }
 
 export const AI_PROCESSING_STAGE_LABELS: Record<AiProcessingStage, string> = {

@@ -65,12 +65,11 @@ export function buildSmartProfileProvenanceFields(profile: DesignSmartProfile): 
 }> {
   const provenance = profile.provenance;
   return [
-    { label: "Prompt version", value: provenance.promptVersion ?? "—" },
+    { label: "Profile version", value: provenance.version ?? "—" },
     { label: "Normalizer version", value: provenance.normalizerVersion ?? "—" },
     { label: "Generated at", value: provenance.generatedAt ?? "—" },
     { label: "Provider", value: provenance.provider ?? "—" },
     { label: "Model", value: provenance.model ?? "—" },
-    { label: "Profile version", value: provenance.version ?? "—" },
     {
       label: "Staff-edited dimensions",
       value: provenance.staffEditedDimensionKeys?.join(", ") ?? "—",

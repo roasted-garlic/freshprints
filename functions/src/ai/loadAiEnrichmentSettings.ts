@@ -18,6 +18,7 @@ import {
   type CatalogWorkflowMode,
 } from "../../../packages/shared/src/constants/catalogWorkflowMode.constants";
 import { resolveSuggestedNewTagsPolicy } from "../../../packages/shared/src/utils/suggestedNewTagsPolicy";
+import { resolveExplicitContentAutomationTerms } from "../../../packages/shared/src/utils/explicitContentAutomation";
 import { adminDb } from "../lib/admin";
 import { mergeTagExclusions, resolveAdditionalTagExclusions } from "./aiTagExclusions";
 import {
@@ -39,10 +40,37 @@ export interface AiEnrichmentSettingsLoaded {
   suggestedNewTagsPolicy: SuggestedNewTagsPolicy;
   catalogWorkflowMode: CatalogWorkflowMode;
   catalogAutonomousLiveEnabled: boolean;
+  /**
+   * Owner Explicit Content Automation vocabulary.
+   * Absent Firestore field → code defaults. Intentional `[]` → empty (no hidden fallback).
+   */
+  explicitContentAutomationTerms: string[];
+  /**
+   * True when Firestore settings read threw. Callers that would otherwise auto-approve must
+   * fail closed to Needs Review (classification capability unavailable).
+   */
+  settingsReadFailed: boolean;
 }
 
 const TAG_RERANK_MODE_SET = new Set<string>(TAG_RERANK_MODES);
 const SUGGESTION_AUTHOR_MODE_SET = new Set<string>(SUGGESTION_AUTHOR_MODES);
+
+function defaultSettingsPayload(settingsReadFailed: boolean): AiEnrichmentSettingsLoaded {
+  return {
+    visionModelId: DEFAULT_VISION_MODEL_ID,
+    promptTemplate: DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+    tagRerankPromptTemplate: DEFAULT_TAG_RERANK_PROMPT_TEMPLATE,
+    additionalTagExclusions: [],
+    effectiveTagExclusions: mergeTagExclusions(),
+    tagRerankMode: DEFAULT_TAG_RERANK_MODE,
+    suggestionAuthorMode: DEFAULT_SUGGESTION_AUTHOR_MODE,
+    suggestedNewTagsPolicy: DEFAULT_SUGGESTED_NEW_TAGS_POLICY,
+    catalogWorkflowMode: resolveCatalogWorkflowMode(undefined),
+    catalogAutonomousLiveEnabled: resolveCatalogAutonomousLiveEnabled(undefined),
+    explicitContentAutomationTerms: resolveExplicitContentAutomationTerms(undefined),
+    settingsReadFailed,
+  };
+}
 
 export function resolveTagRerankMode(raw: unknown): TagRerankMode {
   return typeof raw === "string" && TAG_RERANK_MODE_SET.has(raw) ? (raw as TagRerankMode) : DEFAULT_TAG_RERANK_MODE;
@@ -74,18 +102,7 @@ export async function loadAiEnrichmentSettings(): Promise<AiEnrichmentSettingsLo
       .get();
 
     if (!snapshot.exists) {
-      return {
-        visionModelId: DEFAULT_VISION_MODEL_ID,
-        promptTemplate: DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
-        tagRerankPromptTemplate: DEFAULT_TAG_RERANK_PROMPT_TEMPLATE,
-        additionalTagExclusions: [],
-        effectiveTagExclusions: mergeTagExclusions(),
-        tagRerankMode: DEFAULT_TAG_RERANK_MODE,
-        suggestionAuthorMode: DEFAULT_SUGGESTION_AUTHOR_MODE,
-        suggestedNewTagsPolicy: DEFAULT_SUGGESTED_NEW_TAGS_POLICY,
-        catalogWorkflowMode: resolveCatalogWorkflowMode(undefined),
-        catalogAutonomousLiveEnabled: resolveCatalogAutonomousLiveEnabled(undefined),
-      };
+      return defaultSettingsPayload(false);
     }
 
     const data = snapshot.data();
@@ -98,6 +115,9 @@ export async function loadAiEnrichmentSettings(): Promise<AiEnrichmentSettingsLo
     const tagRerankMode = resolveTagRerankMode(data?.tagRerankMode);
     const suggestionAuthorMode = resolveSuggestionAuthorMode(data?.suggestionAuthorMode);
     const suggestedNewTagsPolicy = resolveSuggestedNewTagsPolicySetting(data?.suggestedNewTagsPolicy);
+    const explicitContentAutomationTerms = resolveExplicitContentAutomationTerms(
+      data?.explicitContentAutomationTerms,
+    );
 
     return {
       visionModelId,
@@ -112,20 +132,11 @@ export async function loadAiEnrichmentSettings(): Promise<AiEnrichmentSettingsLo
       catalogAutonomousLiveEnabled: resolveCatalogAutonomousLiveEnabled(
         data?.catalogAutonomousLiveEnabled,
       ),
+      explicitContentAutomationTerms,
+      settingsReadFailed: false,
     };
   } catch {
-    return {
-      visionModelId: DEFAULT_VISION_MODEL_ID,
-      promptTemplate: DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
-      tagRerankPromptTemplate: DEFAULT_TAG_RERANK_PROMPT_TEMPLATE,
-      additionalTagExclusions: [],
-      effectiveTagExclusions: mergeTagExclusions(),
-      tagRerankMode: DEFAULT_TAG_RERANK_MODE,
-      suggestionAuthorMode: DEFAULT_SUGGESTION_AUTHOR_MODE,
-      suggestedNewTagsPolicy: DEFAULT_SUGGESTED_NEW_TAGS_POLICY,
-      catalogWorkflowMode: resolveCatalogWorkflowMode(undefined),
-      catalogAutonomousLiveEnabled: resolveCatalogAutonomousLiveEnabled(undefined),
-    };
+    return defaultSettingsPayload(true);
   }
 }
 

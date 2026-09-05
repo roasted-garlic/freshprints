@@ -18,7 +18,7 @@ import {
   permissionDenied,
   unauthenticated,
 } from "./lib/errors";
-import { geminiApiKeySecret } from "./lib/secrets";
+import { geminiApiKeySecret, openAiApiKeySecret } from "./lib/secrets";
 import { runAiEnrichmentPipeline } from "./ai/aiEnrichmentPipeline";
 import {
   AI_ENRICHMENT_ACTIVE_STAGES,
@@ -64,7 +64,7 @@ function isActiveNonStaleProcessing(design: Record<string, unknown>): boolean {
 }
 
 export const reprocessReadyDesignWithAi = onCall(
-  { secrets: [geminiApiKeySecret], timeoutSeconds: 180, memory: "512MiB" },
+  { secrets: [geminiApiKeySecret, openAiApiKeySecret], timeoutSeconds: 180, memory: "512MiB" },
   async (request) => {
     if (!request.auth?.uid) {
       throw unauthenticated();
@@ -120,7 +120,10 @@ export const reprocessReadyDesignWithAi = onCall(
     });
 
     try {
-      await runAiEnrichmentPipeline(designId, geminiApiKeySecret.value(), { mode: "queue" });
+      await runAiEnrichmentPipeline(designId, geminiApiKeySecret.value(), {
+        mode: "queue",
+        openAiApiKey: openAiApiKeySecret.value(),
+      });
     } catch (error) {
       logPipelineEvent("ai.owner_ready_reprocess.pipeline_error", {
         designId,

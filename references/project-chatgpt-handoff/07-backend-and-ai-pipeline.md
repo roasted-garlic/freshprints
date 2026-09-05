@@ -1,5 +1,16 @@
 # Backend and AI Pipeline
 
+## Automatic Explicit Content classification (source signed off 2026-09-05 — not DEV-live)
+
+| Area | Contract |
+|------|----------|
+| Settings | `settings/aiEnrichment.explicitContentAutomationTerms` via `updateAiEnrichmentSettings` |
+| Pipeline | After `shouldPublishReady`: classify artwork evidence; atomic Ready Explicit write in `markAiSuccess` |
+| Fail-closed | Settings load failure → Needs Review (`explicit_automation_settings_unavailable`) |
+| Versions | **catalog-enrich-v34** / **v6** / **v1** unchanged; no second AI |
+| Next deploy allowlist | `updateAiEnrichmentSettings`, `enqueueAiEnrichment`, `reprocessReadyDesignWithAi`, `onCatalogReprocessJobWritten` |
+| ADR | ADR-FP-169 |
+
 ## AI enrichment visible-text + catalog-copy quality (DEV — 2026-09-03)
 
 | Area | Delivered |

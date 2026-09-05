@@ -207,16 +207,16 @@ export interface VisionModelOption {
   label: string;
   shortLabel: string;
   value: AllowedVisionModelId;
-  provider: "google";
+  provider: "google" | "openai";
 }
 
 export const GEMINI_VISION_MODEL_OPTIONS: readonly VisionModelOption[] = [
   {
     value: "gemini-2.5-flash-lite",
-    label: "Gemini 2.5 Flash-Lite (Google) — Default",
+    label: "Gemini 2.5 Flash-Lite (Google)",
     shortLabel: "Gemini 2.5 Flash-Lite",
-    badgeLabel: "Default",
-    hint: "gemini-2.5-flash-lite — fastest and most cost-effective ($0.10/$0.40 per 1M). Default.",
+    badgeLabel: "Google",
+    hint: "gemini-2.5-flash-lite — fastest and most cost-effective ($0.10/$0.40 per 1M). System fallback when Settings model is missing/invalid.",
     provider: "google",
   },
   {
@@ -229,8 +229,20 @@ export const GEMINI_VISION_MODEL_OPTIONS: readonly VisionModelOption[] = [
   },
 ];
 
+export const OPENAI_VISION_MODEL_OPTIONS: readonly VisionModelOption[] = [
+  {
+    value: "gpt-5.6-luna",
+    label: "GPT-5.6 Luna (OpenAI)",
+    shortLabel: "GPT-5.6 Luna",
+    badgeLabel: "OpenAI",
+    hint: "gpt-5.6-luna — OpenAI Luna ($0.20/$0.02 cached/$1.20 per 1M). Additive; not auto-selected.",
+    provider: "openai",
+  },
+];
+
 export const ALL_VISION_MODEL_OPTIONS: readonly VisionModelOption[] = [
   ...GEMINI_VISION_MODEL_OPTIONS,
+  ...OPENAI_VISION_MODEL_OPTIONS,
 ];
 
 const ALLOWED_VISION_MODEL_ID_SET = new Set<string>(

@@ -119,15 +119,15 @@ function groupPresetRows(
 }
 
 const ADULT_GARMENT_ROWS: readonly PresetRow[] = [
-  ["xs", "XS", 9.5],
-  ["s", "S", 10],
-  ["m", "M", 11],
-  ["l", "L", 11.5],
-  ["xl", "XL", 12],
-  ["2xl", "2XL", 13],
-  ["3xl", "3XL", 14],
-  ["4xl", "4XL", 16],
-  ["5xl", "5XL", 17],
+  ["xs", "XS", 9],
+  ["s", "S", 9.5],
+  ["m", "M", 10],
+  ["l", "L", 10.5],
+  ["xl", "XL", 11],
+  ["2xl", "2XL", 12],
+  ["3xl", "3XL", 13],
+  ["4xl", "4XL", 14],
+  ["5xl", "5XL", 15],
 ];
 
 const YOUTH_GARMENT_ROWS: readonly PresetRow[] = [

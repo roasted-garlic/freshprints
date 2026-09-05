@@ -1,0 +1,63 @@
+{
+  "projectId": "fresh-prints-dev",
+  "startedAt": "2026-09-05T06:59:23.321Z",
+  "catalogWorkflowMode": "shadow",
+  "catalogAutonomousLiveEnabled": false,
+  "termsCount": 43,
+  "selectedTerm": "damn",
+  "termPresent": true,
+  "fixture": {
+    "designId": "QFVEX3gYHhSrtPyi36SO",
+    "title": "DEV QA FIXTURE — Explicit Shadow — DAMN — mto18fna",
+    "selectedTerm": "damn",
+    "artworkText": "DAMN",
+    "originalPath": "/originals/QFVEX3gYHhSrtPyi36SO.png",
+    "previewPath": "/previews/QFVEX3gYHhSrtPyi36SO.webp",
+    "initialLifecycle": {
+      "status": "imported",
+      "aiReviewStatus": "pending",
+      "aiProcessingStage": null
+    },
+    "protectedHumanAuthority": {
+      "isExplicitContent": null,
+      "censoredTerms": null
+    }
+  },
+  "preEnqueueGate": {
+    "catalogWorkflowMode": "shadow",
+    "catalogAutonomousLiveEnabled": false
+  },
+  "enqueueResponse": {
+    "designId": "QFVEX3gYHhSrtPyi36SO",
+    "queued": true,
+    "completed": true,
+    "aiProcessingStage": "ready_for_review",
+    "aiReviewStatus": "needs_review",
+    "status": "imported"
+  },
+  "after": {
+    "status": "imported",
+    "aiReviewStatus": "needs_review",
+    "aiProcessingStage": "ready_for_review",
+    "aiReviewedBy": null,
+    "readyAt": null,
+    "portalCatalogPublicationStatus": null,
+    "isExplicitContent": null,
+    "censoredTerms": null,
+    "automationDecision": "shadow",
+    "automationReasonCodes": [
+      "shadow_would_auto_approve"
+    ],
+    "promptVersion": "catalog-enrich-v34",
+    "normalizerVersion": "smart-profile-normalizer-v6",
+    "explicitAutomationPreview": {
+      "wouldMarkExplicitContent": true,
+      "artworkHit": true,
+      "proposedCensoredTerms": [
+        "damn"
+      ]
+    },
+    "suggestionTitle": "Damn"
+  },
+  "finishedAt": "2026-09-05T06:59:31.709Z"
+}

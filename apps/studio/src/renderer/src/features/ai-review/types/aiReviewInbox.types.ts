@@ -21,10 +21,12 @@ export interface AiReviewDraftForm {
   tagsAdjustmentNote?: string;
   /** Staff Halftone toggle — authoritative on approve. */
   markAsHalftone: boolean;
-  /** Staff Explicit Content classification — human only; missing on design ⇒ false. */
+  /** Staff Explicit Content classification — missing on design ⇒ false. */
   isExplicitContent: boolean;
   /** Chip-input string for words/phrases to censor in Portal (Censored mode). */
   censoredTermsInput: string;
+  /** Deliberate lock against automatic Explicit mutation (ADR-FP-173). */
+  explicitContentAutomationLocked: boolean;
   /**
    * Staff: this design expects companion artwork (may not be uploaded yet).
    * AI Review only creates/ensures an incomplete set — full link/unlink is Design Library.

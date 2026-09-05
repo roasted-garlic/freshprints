@@ -26,6 +26,7 @@ import { AI_ENRICHMENT_SETTINGS_DOC_ID } from "./ai/loadAiEnrichmentSettings";
 import { resolveAdditionalTagExclusions } from "./ai/aiTagExclusions";
 import { clearAiEnrichmentRuntimeCache } from "./ai/aiEnrichmentRuntimeCache";
 import { logPipelineEvent } from "./lib/pipelineLog";
+import { normalizeExplicitContentAutomationTermsInput } from "../../packages/shared/src/utils/explicitContentAutomation";
 
 const TAG_RERANK_MODE_SET = new Set<string>(TAG_RERANK_MODES);
 const SUGGESTION_AUTHOR_MODE_SET = new Set<string>(SUGGESTION_AUTHOR_MODES);
@@ -39,6 +40,8 @@ interface UpdateAiEnrichmentSettingsRequest {
   tagRerankMode?: TagRerankMode;
   suggestionAuthorMode?: SuggestionAuthorMode;
   suggestedNewTagsPolicy?: SuggestedNewTagsPolicy;
+  /** When provided (including []), persist normalized list. When omitted, leave Firestore field unchanged. */
+  explicitContentAutomationTerms?: string[];
 }
 
 interface UpdateAiEnrichmentSettingsResponse {
@@ -49,6 +52,7 @@ interface UpdateAiEnrichmentSettingsResponse {
   tagRerankMode: TagRerankMode;
   suggestionAuthorMode: SuggestionAuthorMode;
   suggestedNewTagsPolicy: SuggestedNewTagsPolicy;
+  explicitContentAutomationTerms?: string[];
 }
 
 function assertOwnerAdminCaller(caller: Awaited<ReturnType<typeof loadCallerProfile>>): void {
@@ -139,6 +143,17 @@ function validateRequest(data: unknown): UpdateAiEnrichmentSettingsRequest {
     );
   }
 
+  const explicitContentAutomationTerms =
+    "explicitContentAutomationTerms" in data ? data.explicitContentAutomationTerms : undefined;
+
+  if (
+    explicitContentAutomationTerms !== undefined &&
+    explicitContentAutomationTerms !== null &&
+    !Array.isArray(explicitContentAutomationTerms)
+  ) {
+    throw invalidArgument("explicitContentAutomationTerms must be an array of strings.");
+  }
+
   return {
     visionModelId,
     promptTemplate,
@@ -153,6 +168,9 @@ function validateRequest(data: unknown): UpdateAiEnrichmentSettingsRequest {
       typeof suggestedNewTagsPolicy === "string"
         ? (suggestedNewTagsPolicy as SuggestedNewTagsPolicy)
         : undefined,
+    explicitContentAutomationTerms: Array.isArray(explicitContentAutomationTerms)
+      ? explicitContentAutomationTerms
+      : undefined,
   };
 }
 
@@ -173,6 +191,7 @@ export const updateAiEnrichmentSettings = onCall(
       tagRerankMode: requestedTagRerankMode,
       suggestionAuthorMode: requestedSuggestionAuthorMode,
       suggestedNewTagsPolicy: requestedSuggestedNewTagsPolicy,
+      explicitContentAutomationTerms: requestedExplicitTerms,
     } = validateRequest(request.data);
     const resolvedModelId = resolveVisionModelId(requestedModelId);
 
@@ -188,6 +207,10 @@ export const updateAiEnrichmentSettings = onCall(
       requestedSuggestedNewTagsPolicy ?? DEFAULT_SUGGESTED_NEW_TAGS_POLICY;
     const resolvedTagRerankPromptTemplate =
       requestedTagRerankPromptTemplate?.trim() || DEFAULT_TAG_RERANK_PROMPT_TEMPLATE;
+    const resolvedExplicitTerms =
+      requestedExplicitTerms !== undefined
+        ? normalizeExplicitContentAutomationTermsInput(requestedExplicitTerms)
+        : undefined;
 
     await adminDb.collection("settings").doc(AI_ENRICHMENT_SETTINGS_DOC_ID).set(
       {
@@ -198,6 +221,9 @@ export const updateAiEnrichmentSettings = onCall(
         tagRerankMode: resolvedTagRerankMode,
         suggestionAuthorMode: resolvedSuggestionAuthorMode,
         suggestedNewTagsPolicy: resolvedSuggestedNewTagsPolicy,
+        ...(resolvedExplicitTerms !== undefined
+          ? { explicitContentAutomationTerms: resolvedExplicitTerms }
+          : {}),
         updatedAt: FieldValue.serverTimestamp(),
         updatedBy: request.auth.uid,
       },
@@ -214,6 +240,7 @@ export const updateAiEnrichmentSettings = onCall(
       tagRerankMode: resolvedTagRerankMode,
       suggestionAuthorMode: resolvedSuggestionAuthorMode,
       suggestedNewTagsPolicy: resolvedSuggestedNewTagsPolicy,
+      explicitContentAutomationTermsCount: resolvedExplicitTerms?.length ?? null,
       updatedBy: request.auth.uid,
     });
 
@@ -225,6 +252,9 @@ export const updateAiEnrichmentSettings = onCall(
       tagRerankMode: resolvedTagRerankMode,
       suggestionAuthorMode: resolvedSuggestionAuthorMode,
       suggestedNewTagsPolicy: resolvedSuggestedNewTagsPolicy,
+      ...(resolvedExplicitTerms !== undefined
+        ? { explicitContentAutomationTerms: resolvedExplicitTerms }
+        : {}),
     };
   },
 );

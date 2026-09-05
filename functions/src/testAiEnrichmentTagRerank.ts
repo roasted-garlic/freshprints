@@ -7,9 +7,9 @@ import type {
 import { runAiEnrichmentTagRerankPlayground } from "./ai/aiEnrichmentPlayground";
 import { loadCallerProfile } from "./lib/caller";
 import { invalidArgument, permissionDenied, unauthenticated } from "./lib/errors";
-import { geminiApiKeySecret } from "./lib/secrets";
+import { geminiApiKeySecret, openAiApiKeySecret } from "./lib/secrets";
 
-// Same owner/admin gate as testAiEnrichmentPlayground — this callable triggers a real Gemini call
+// Same owner/admin gate as testAiEnrichmentPlayground — this callable triggers a real provider call
 // and reads internal approved-tag data, so it must never be weaker than the existing Settings AI
 // Playground / updateAiEnrichmentSettings authorization (review note 2). Exported so the gate
 // itself is independently unit-testable without requiring a live/emulated Firestore.
@@ -20,7 +20,7 @@ export function assertOwnerAdminCaller(caller: Awaited<ReturnType<typeof loadCal
 }
 
 export const testAiEnrichmentTagRerank = onCall(
-  { secrets: [geminiApiKeySecret], memory: "512MiB" },
+  { secrets: [geminiApiKeySecret, openAiApiKeySecret], memory: "512MiB" },
   async (request): Promise<AiEnrichmentTagRerankPlaygroundResponse> => {
     if (!request.auth?.uid) {
       throw unauthenticated();
@@ -31,7 +31,10 @@ export const testAiEnrichmentTagRerank = onCall(
 
     try {
       return await runAiEnrichmentTagRerankPlayground(
-        geminiApiKeySecret.value(),
+        {
+          geminiApiKey: geminiApiKeySecret.value(),
+          openAiApiKey: openAiApiKeySecret.value(),
+        },
         request.data as AiEnrichmentTagRerankPlaygroundRequest,
       );
     } catch (error) {

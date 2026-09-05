@@ -11,6 +11,10 @@ import {
   resolveCatalogWorkflowMode,
   type CatalogWorkflowMode,
 } from "@fresh-prints/shared/constants/catalogWorkflowMode.constants";
+import {
+  normalizeExplicitContentAutomationTermsInput,
+  resolveExplicitContentAutomationTerms,
+} from "@fresh-prints/shared/utils/explicitContentAutomation";
 import { db } from "../../../config/firebase";
 import { callTracedFunction } from "../../../config/tracedCallable";
 import {
@@ -37,6 +41,7 @@ export interface AiEnrichmentSettingsSnapshot {
   suggestedNewTagsPolicy: SuggestedNewTagsPolicy;
   catalogWorkflowMode: CatalogWorkflowMode;
   catalogAutonomousLiveEnabled: boolean;
+  explicitContentAutomationTerms: string[];
   updatedBy?: string;
 }
 
@@ -48,6 +53,7 @@ interface UpdateAiEnrichmentSettingsInput {
   tagRerankMode: TagRerankMode;
   suggestionAuthorMode: SuggestionAuthorMode;
   suggestedNewTagsPolicy: SuggestedNewTagsPolicy;
+  explicitContentAutomationTerms: string[];
 }
 
 interface UpdateAiEnrichmentSettingsResult {
@@ -58,6 +64,7 @@ interface UpdateAiEnrichmentSettingsResult {
   tagRerankMode: TagRerankMode;
   suggestionAuthorMode: SuggestionAuthorMode;
   suggestedNewTagsPolicy: SuggestedNewTagsPolicy;
+  explicitContentAutomationTerms?: string[];
 }
 
 export function resolveClientAdditionalTagExclusions(raw: unknown): string[] {
@@ -137,6 +144,9 @@ function mapSettingsSnapshot(data: Record<string, unknown> | undefined): AiEnric
     catalogAutonomousLiveEnabled: resolveCatalogAutonomousLiveEnabled(
       data?.catalogAutonomousLiveEnabled,
     ),
+    explicitContentAutomationTerms: resolveExplicitContentAutomationTerms(
+      data?.explicitContentAutomationTerms,
+    ),
     updatedBy: typeof data?.updatedBy === "string" ? data.updatedBy : undefined,
   };
 }
@@ -165,6 +175,7 @@ export const aiEnrichmentSettingsService = {
     tagRerankMode: TagRerankMode;
     suggestionAuthorMode: SuggestionAuthorMode;
     suggestedNewTagsPolicy: SuggestedNewTagsPolicy;
+    explicitContentAutomationTerms: string[];
   }): Promise<{
     visionModelId: AllowedVisionModelId;
     promptTemplate: string;
@@ -174,7 +185,11 @@ export const aiEnrichmentSettingsService = {
     tagRerankMode: TagRerankMode;
     suggestionAuthorMode: SuggestionAuthorMode;
     suggestedNewTagsPolicy: SuggestedNewTagsPolicy;
+    explicitContentAutomationTerms: string[];
   }> {
+    const explicitContentAutomationTerms = normalizeExplicitContentAutomationTermsInput(
+      input.explicitContentAutomationTerms,
+    );
     const response = await callTracedFunction<
       UpdateAiEnrichmentSettingsInput,
       UpdateAiEnrichmentSettingsResult
@@ -188,6 +203,7 @@ export const aiEnrichmentSettingsService = {
       tagRerankMode: resolveClientTagRerankMode(input.tagRerankMode),
       suggestionAuthorMode: resolveClientSuggestionAuthorMode(input.suggestionAuthorMode),
       suggestedNewTagsPolicy: resolveClientSuggestedNewTagsPolicy(input.suggestedNewTagsPolicy),
+      explicitContentAutomationTerms,
     });
 
     return {
@@ -206,6 +222,9 @@ export const aiEnrichmentSettingsService = {
       suggestionAuthorMode: resolveClientSuggestionAuthorMode(response.suggestionAuthorMode),
       suggestedNewTagsPolicy: resolveClientSuggestedNewTagsPolicy(
         response.suggestedNewTagsPolicy,
+      ),
+      explicitContentAutomationTerms: normalizeExplicitContentAutomationTermsInput(
+        response.explicitContentAutomationTerms ?? explicitContentAutomationTerms,
       ),
     };
   },

@@ -160,7 +160,10 @@ export function AiReviewFormPanel({
           />
         </div>
         <p className="ai-review-halftone-help">
-          Human classification only. Portal shows censored artwork by default; AI never sets this.
+          Staff can set Explicit Content manually. Catalog enrichment may also set it when an
+          owner-configured word or phrase is detected in artwork text. Reprocessing may apply
+          detected Explicit terms again unless this design is locked. Portal shows censored artwork
+          by default in Censored mode.
         </p>
         {draftForm.isExplicitContent ? (
           <TagChipInput
@@ -174,6 +177,21 @@ export function AiReviewFormPanel({
             value={draftForm.censoredTermsInput}
           />
         ) : null}
+        <div className="ai-review-halftone-panel-header" style={{ marginTop: "0.75rem" }}>
+          <h4 className="ai-review-halftone-title">Lock Explicit setting</h4>
+          <Toggle
+            checked={draftForm.explicitContentAutomationLocked}
+            disabled={!canEdit}
+            label="Lock Explicit setting"
+            name="aiReviewExplicitAutomationLock"
+            onChange={(value) => onChange("explicitContentAutomationLocked", value)}
+            tone="accent"
+          />
+        </div>
+        <p className="ai-review-halftone-help">
+          When locked, AI reprocessing will not change Explicit Content or censored terms for this
+          design.
+        </p>
       </div>
 
       <div className="ai-review-halftone-panel">

@@ -55,6 +55,11 @@ export function clearAiEnrichmentRuntimeCache(): void {
   clearAiCatalogReferenceSnapshotCache();
 }
 
+/** Drop only settings TTL so visionModelId/provider changes apply on the next enrichment run. */
+export function clearAiEnrichmentSettingsCache(): void {
+  settingsCache = null;
+}
+
 export async function loadCachedAiEnrichmentSettings(
   context?: AiEnrichmentReadDiagnosticContext,
 ): Promise<AiEnrichmentSettingsLoaded> {

@@ -8,10 +8,10 @@ import {
 /** Max concurrent Cloud Function instances processing AI enrichment. */
 export const AI_ENRICHMENT_MAX_INSTANCES = 1;
 
-/** Default vision model (currently Gemini 2.5 Flash-Lite). */
+/** Default / system-fallback vision model (Gemini 2.5 Flash-Lite). */
 export const DEFAULT_VISION_MODEL_ID: AllowedVisionModelId = SHARED_DEFAULT_VISION_MODEL_ID;
 
-/** Allowed Gemini vision model IDs. */
+/** Allowed vision model IDs (Gemini + OpenAI Luna Phase 1). */
 export const ALLOWED_VISION_MODEL_ID_LIST = ALLOWED_VISION_MODEL_IDS;
 
 export type { AllowedVisionModelId };

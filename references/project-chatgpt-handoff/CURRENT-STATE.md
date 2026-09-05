@@ -1,47 +1,32 @@
 # Fresh Prints — Current State Snapshot
 
-**Last updated:** 2026-09-04
-
----
+**Last updated:** 2026-09-05
 
 ## FreshForge workflow
 
 | Item | Value |
-|------|--------|
-| Status | **ACTIVE — WS4 CLOSED; WS5 AWAITING OWNER AUTHORIZATION** |
-| Goal | `smart-catalog-intelligence-completion-and-legacy-tag-retirement` |
-| Title specificity | **Signed off** (`approved_with_notes`); owner QA **PASS** |
-| WS4 | **COMPLETE / PASS WITH NOTES** |
-| WS5 | **READY FOR OWNER AUTHORIZATION** (not started) |
-| Runtime | `catalog-enrich-v34` / `v6` / `v1` · **shadow** · Autonomous **OFF** |
-| Production / commit | Untouched / not done |
+|---|---|
+| Status | **DONE — Luna Phase 1 signed off (DEV)** |
+| Goal | `restore-openai-gpt-5-6-luna-ai-enrichment` |
+| Signoff | **approved_with_notes** |
+| Owner Studio QA | **PASS** |
+| Gate | **shadow / live false** |
+| Autonomous | **OFF** |
+| DEV `visionModelId` | **`gemini-2.5-flash-lite`** |
+| Production | **NOT AUTHORIZED** |
 
----
+## Delivered
 
-## WS4 closeout
+- Additive OpenAI `gpt-5.6-luna` + Gemini 2.5 / 3.1
+- Dual-provider routing; Settings default + run overrides
+- DEV Functions deployed; Owner QA PASS
+- Smart Profile footer: Profile + Normalizer versions
 
-Artifact: `docs/workflow/reviews/2026-09-04-smart-catalog-intelligence-completion-ws4-signoff.md`
+## Open follow-ups
 
-- Ready reprocess 359/359; Ready/human/preset preservation OK
-- Category calibrations + Music-vs-Pop + Cute + title specificity signed off
-- Legacy tag influence **NON-MATERIAL** (does not block WS5)
-- No material WS4 blockers remaining
+- TD-034 narrow corrective (benchmark: Luna does not close friction)
+- Phase 2 model registry (deferred)
+- WS6 still blocked under parent smart-catalog program
+- Production Luna promote requires separate auth
 
----
-
-## Next owner decision
-
-Authorize **WS5 Autonomous DEV canary** planning/execution — or defer.
-
-Do **not** enable Autonomous until explicitly authorized.
-
----
-
-## Deployed DEV Functions
-
-| Function | Revision |
-|----------|----------|
-| enqueueAiEnrichment | `enqueueaienrichment-00094-wuz` |
-| reprocessReadyDesignWithAi | `reprocessreadydesignwithai-00005-fud` |
-| onCatalogReprocessJobWritten | `oncatalogreprocessjobwritten-00016-han` |
-| testAiEnrichmentPlayground | `testaienrichmentplayground-00058-bop` |
+Signoff: `docs/workflow/reviews/2026-09-05-restore-openai-gpt-5-6-luna-ai-enrichment-signoff.md`

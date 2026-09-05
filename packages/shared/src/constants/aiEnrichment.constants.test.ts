@@ -8,10 +8,13 @@ import {
   PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V31,
   PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V32,
   PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V33,
+  VISION_MODEL_PRICING_USD_PER_1M,
+  estimateVisionCostUsd,
   hasRequiredAiEnrichmentPromptPlaceholders,
   isDefaultAiEnrichmentPromptTemplate,
   isPreviousDefaultAiEnrichmentPromptTemplate,
   resolveAiEnrichmentPromptTemplate,
+  resolveVisionModelProviderId,
 } from "../constants/aiEnrichment.constants";
 import { CURRENT_CATALOG_ENRICH_PROMPT_VERSION } from "../constants/smartProfile.constants";
 
@@ -19,6 +22,23 @@ describe("aiEnrichment.constants stale threshold", () => {
   it("matches the authoritative 10-minute server stale window", () => {
     assert.equal(AI_ENRICHMENT_STALE_STAGE_MS, 10 * 60 * 1000);
     assert.equal(AI_ENRICHMENT_STALE_STAGE_MS, 600_000);
+  });
+});
+
+describe("dual-provider vision model metadata", () => {
+  it("maps models to providers explicitly and prices Luna with cached input", () => {
+    assert.equal(resolveVisionModelProviderId("gemini-2.5-flash-lite"), "google");
+    assert.equal(resolveVisionModelProviderId("gemini-3.1-flash-lite"), "google");
+    assert.equal(resolveVisionModelProviderId("gpt-5.6-luna"), "openai");
+    assert.equal(resolveVisionModelProviderId("not-a-model"), null);
+    assert.deepEqual(VISION_MODEL_PRICING_USD_PER_1M["gpt-5.6-luna"], {
+      input: 0.2,
+      cachedInput: 0.02,
+      output: 1.2,
+    });
+    assert.equal(estimateVisionCostUsd("gpt-5.6-luna", 1_000_000, 1_000_000), 0.2 + 1.2);
+    assert.equal(estimateVisionCostUsd("gpt-5.6-luna", 1_000_000, 0, 500_000), 0.1 + 0.01);
+    assert.equal(estimateVisionCostUsd("gemini-2.5-flash-lite", 1_000_000, 1_000_000), 0.5);
   });
 });
 

@@ -42,6 +42,47 @@
   min-width: 0;
 }
 
+.settings-page-subtab-bar {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--space-2);
+  max-width: 80rem;
+  overflow-x: auto;
+  width: min(100%, 80rem);
+}
+
+.settings-page-subtab {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md, 0.5rem);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  flex: 0 0 auto;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  padding: var(--space-2) var(--space-3);
+  white-space: nowrap;
+}
+
+.settings-page-subtab:hover,
+.settings-page-subtab:focus-visible {
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  outline: none;
+}
+
+.settings-page-subtab.is-active {
+  background: var(--color-bg-secondary);
+  border-color: var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.settings-page-subtab-panel {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
 .settings-section {
   display: grid;
   gap: var(--space-3);

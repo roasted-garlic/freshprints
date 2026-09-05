@@ -1,0 +1,111 @@
+{
+  "projectId": "fresh-prints-dev",
+  "startedAt": "2026-09-05T16:10:11.229Z",
+  "continuationOf": "C:\\coding\\fresh-prints\\docs\\workflow\\reviews\\_ws5-autonomous-dev-canary-execution-raw.json",
+  "priorFixtureId": "N3Ag21ThKyFXLTTsKAZZ",
+  "note": "Resuming after Algolia search lag false-stop on Explicit fixture; fixture already Ready+Explicit+synced",
+  "rows": [
+    {
+      "label": "CANARY 4",
+      "id": "03cbj1cIFH7Bavt38XBX",
+      "expected": "Ready",
+      "enqueueResponse": {
+        "designId": "03cbj1cIFH7Bavt38XBX",
+        "queued": true,
+        "completed": true,
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewedBy": null,
+        "readyAt": null,
+        "isExplicitContent": null,
+        "censoredTerms": null,
+        "portalCatalogPublicationStatus": null,
+        "portalCatalogPublicationError": null,
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "structured_evidence_gap:objects:hat"
+        ],
+        "promptVersion": "catalog-enrich-v34",
+        "normalizerVersion": "smart-profile-normalizer-v6",
+        "schemaVersion": "smart-profile-v1"
+      },
+      "publication": {
+        "status": null,
+        "timedOut": true,
+        "ms": 90982
+      },
+      "algolia": {
+        "checked": true,
+        "indexName": "portal_catalog_ready_dev",
+        "objectPresent": false,
+        "timedOut": true,
+        "ms": 47042
+      },
+      "evaluation": {
+        "pass": false,
+        "failures": [
+          "expected_Ready_not_met",
+          "publication_not_synced",
+          "algolia_object_missing"
+        ],
+        "actualClass": "Needs Review"
+      }
+    }
+  ],
+  "fixtureRecheck": {
+    "status": "ready",
+    "aiReviewStatus": "approved",
+    "aiProcessingStage": "ready_for_review",
+    "aiReviewedBy": "system:catalog-autonomy",
+    "readyAt": "2026-09-05T16:09:01.625Z",
+    "isExplicitContent": true,
+    "censoredTerms": [
+      "damn"
+    ],
+    "portalCatalogPublicationStatus": "synced",
+    "portalCatalogPublicationError": null,
+    "automationDecision": "auto_approved",
+    "automationReasonCodes": [
+      "auto_approved"
+    ],
+    "promptVersion": "catalog-enrich-v34",
+    "normalizerVersion": "smart-profile-normalizer-v6",
+    "schemaVersion": "smart-profile-v1"
+  },
+  "fixtureAlgoliaNow": {
+    "checked": true,
+    "indexName": "portal_catalog_ready_dev",
+    "objectPresent": true,
+    "objectID": "N3Ag21ThKyFXLTTsKAZZ",
+    "title": "DEV QA FIXTURE — Explicit Autonomous — DAMN — mtokuo95",
+    "ms": 139
+  },
+  "enablement": {
+    "verified": {
+      "catalogWorkflowMode": "autonomous",
+      "catalogAutonomousLiveEnabled": true
+    },
+    "at": "2026-09-05T16:10:13.765Z"
+  },
+  "rollback": {
+    "reason": "fail_03cbj1cIFH7Bavt38XBX",
+    "response": {
+      "catalogWorkflowMode": "shadow",
+      "catalogAutonomousLiveEnabled": false
+    },
+    "verified": {
+      "catalogWorkflowMode": "shadow",
+      "catalogAutonomousLiveEnabled": false
+    },
+    "at": "2026-09-05T16:12:36.843Z"
+  },
+  "aborted": true,
+  "abortReason": "expected_Ready_not_met,publication_not_synced,algolia_object_missing",
+  "error": "expected_Ready_not_met,publication_not_synced,algolia_object_missing"
+}

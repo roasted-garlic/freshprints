@@ -39,6 +39,25 @@ export interface SmartProfileCategoryAlternative {
   reason?: string;
 }
 
+/**
+ * Observability preview of Explicit Content automation (ADR-FP-172).
+ * Root Explicit writes happen in enrichment persistence when allowed; this preview
+ * must stay truthful about detection vs applied vs staff suppression.
+ * Omit `proposedCensoredTerms` when empty (Firestore empty-array convention).
+ */
+export interface ExplicitContentAutomationPreview {
+  /** True when automation applied (or will apply) root Explicit write. */
+  wouldMarkExplicitContent: boolean;
+  /** Additive alias of wouldMarkExplicitContent. */
+  applied?: boolean;
+  /** Artwork hit with detected terms. */
+  detected?: boolean;
+  artworkHit: boolean;
+  proposedCensoredTerms?: string[];
+  suppressedDueToHumanAuthority?: boolean;
+  suppressedDueToAutomationLock?: boolean;
+}
+
 export interface SmartProfileProvenance {
   version: string;
   provider?: string;
@@ -51,6 +70,11 @@ export interface SmartProfileProvenance {
   automationDecision?: SmartProfileAutomationDecision;
   automationDecisionAt?: string;
   automationReasonCodes?: string[];
+  /**
+   * Derived Explicit automation preview for shadow QA (and Autonomous audit).
+   * Staff-visible only; not Portal/Algolia search metadata.
+   */
+  explicitAutomationPreview?: ExplicitContentAutomationPreview;
   /** Present only when warnings exist; omit (never undefined or []) on Firestore persist. */
   validationWarnings?: string[];
   /** Dimension keys staff explicitly edited; preserved during Ready backfill merge. */

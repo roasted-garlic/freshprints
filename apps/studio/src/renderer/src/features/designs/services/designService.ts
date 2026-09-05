@@ -253,6 +253,8 @@ interface DesignDocumentData {
   companionDesignIds?: unknown;
   companionSetIncomplete?: unknown;
   isExplicitContent?: unknown;
+  explicitContentSource?: unknown;
+  explicitContentAutomationLocked?: unknown;
   censoredTerms?: unknown;
   uploadedBy?: unknown;
   requestedByCustomerId?: unknown;
@@ -403,6 +405,14 @@ function mapDesignDocument(designId: string, data: DesignDocumentData): Design {
       typeof data.companionSetIncomplete === "boolean" ? data.companionSetIncomplete : undefined,
     isExplicitContent:
       typeof data.isExplicitContent === "boolean" ? data.isExplicitContent : undefined,
+    explicitContentSource:
+      data.explicitContentSource === "staff" || data.explicitContentSource === "automation"
+        ? data.explicitContentSource
+        : undefined,
+    explicitContentAutomationLocked:
+      typeof data.explicitContentAutomationLocked === "boolean"
+        ? data.explicitContentAutomationLocked
+        : undefined,
     censoredTerms: Array.isArray(data.censoredTerms)
       ? data.censoredTerms.filter(
           (term): term is string => typeof term === "string" && term.trim().length > 0,
@@ -1107,13 +1117,20 @@ export const designService = {
       }
     }
 
+    // Staff Explicit edits stamp provenance only (ADR-FP-173). Lock is a separate deliberate control.
     if (input.isExplicitContent !== undefined) {
       updatePayload.isExplicitContent = input.isExplicitContent;
+      updatePayload.explicitContentSource = "staff";
     }
 
     if (input.censoredTerms !== undefined) {
       const terms = normalizeDesignTags(input.censoredTerms);
       updatePayload.censoredTerms = terms.length > 0 ? terms : deleteField();
+      updatePayload.explicitContentSource = "staff";
+    }
+
+    if (input.explicitContentAutomationLocked !== undefined) {
+      updatePayload.explicitContentAutomationLocked = input.explicitContentAutomationLocked;
     }
 
     if (input.status !== undefined) {

@@ -6,6 +6,12 @@ import {
 } from "../utils/resolveExistingCategoryChoice";
 import { SmartProfileDimensionListsView } from "../../designs/components/SmartProfileDimensionListsView";
 import { CURRENT_CATALOG_ENRICH_PROMPT_VERSION } from "@fresh-prints/shared/constants/smartProfile.constants";
+import {
+  formatYesNo,
+  resolveExplicitAppliedFromPreview,
+  resolveExplicitDetectedFromPreview,
+  resolveWouldAutoApproveFromProvenance,
+} from "../utils/explicitAutomationPreviewDisplay";
 
 interface AiReviewSmartProfileSectionProps {
   canEditCategory?: boolean;
@@ -43,6 +49,15 @@ export function AiReviewSmartProfileSection({
   }
 
   const automationDecision = profile.provenance.automationDecision ?? "shadow";
+  const wouldAutoApprove = resolveWouldAutoApproveFromProvenance(profile);
+  const explicitPreview = profile.provenance.explicitAutomationPreview;
+  const explicitApplied = resolveExplicitAppliedFromPreview(profile);
+  const explicitDetected = resolveExplicitDetectedFromPreview(profile);
+  const proposedTerms = explicitPreview?.proposedCensoredTerms ?? [];
+  const suppressedByAutomationLock =
+    explicitPreview?.suppressedDueToAutomationLock === true ||
+    explicitPreview?.suppressedDueToHumanAuthority === true;
+  const rootExplicitOn = design.isExplicitContent === true;
 
   const primaryChoice =
     profile.categoryId || profile.categoryName
@@ -96,6 +111,43 @@ export function AiReviewSmartProfileSection({
         <h3 className="ai-review-workspace-section-title">Smart Profile</h3>
         <Badge variant="info">{automationDecision}</Badge>
       </div>
+
+      <dl className="ai-review-automation-preview" aria-label="Automation preview">
+        <div>
+          <dt>Would Auto Approve</dt>
+          <dd>{formatYesNo(wouldAutoApprove)}</dd>
+        </div>
+        <div>
+          <dt>Explicit Content Auto-classified</dt>
+          <dd>{formatYesNo(explicitApplied || rootExplicitOn)}</dd>
+        </div>
+        {(explicitDetected || proposedTerms.length > 0) && proposedTerms.length > 0 ? (
+          <div>
+            <dt>Detected Censored Terms</dt>
+            <dd>
+              <ul className="ai-review-automation-preview-terms">
+                {proposedTerms.map((term) => (
+                  <li key={term}>{term}</li>
+                ))}
+              </ul>
+            </dd>
+          </div>
+        ) : null}
+      </dl>
+
+      {suppressedByAutomationLock ? (
+        <p className="ai-review-suggestions-note">
+          Automatic Explicit write suppressed: Lock Explicit setting is on for this design. Root
+          Explicit fields were not changed by automation.
+        </p>
+      ) : null}
+
+      {explicitDetected && !explicitApplied && !rootExplicitOn && proposedTerms.length > 0 ? (
+        <p className="ai-review-suggestions-note">
+          Explicit terminology detected but not applied to root fields (settings failure or staff
+          authority).
+        </p>
+      ) : null}
 
       <SmartProfileDimensionListsView profile={profile} />
 
@@ -166,12 +218,10 @@ export function AiReviewSmartProfileSection({
           <dt>Profile version</dt>
           <dd>{profile.provenance.version}</dd>
         </div>
-        {profile.provenance.promptVersion ? (
-          <div>
-            <dt>Prompt version</dt>
-            <dd>{profile.provenance.promptVersion}</dd>
-          </div>
-        ) : null}
+        <div>
+          <dt>Normalizer version</dt>
+          <dd>{profile.provenance.normalizerVersion?.trim() || "—"}</dd>
+        </div>
       </dl>
     </section>
   );

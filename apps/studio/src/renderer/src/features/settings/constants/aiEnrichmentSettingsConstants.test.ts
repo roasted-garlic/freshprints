@@ -40,6 +40,10 @@ describe("aiEnrichmentSettingsConstants", () => {
     );
   });
 
+  it("includes Luna in the selectable Phase 1 model list", () => {
+    assert.equal(resolveClientVisionModelId("gpt-5.6-luna"), "gpt-5.6-luna");
+  });
+
   it("accepts gemini-3.1-flash-lite as a saved client model selection", () => {
     assert.equal(
       resolveClientVisionModelId("gemini-3.1-flash-lite"),

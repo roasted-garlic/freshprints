@@ -389,6 +389,13 @@ export function buildSimpleCatalogEnrichmentResult(input: {
   const sanitizedVisibleText =
     sanitizeMeaningfulVisibleTextPhrases(parsed.visibleText) ?? sanitizedReadableTextLines;
 
+  const explicitContentArtworkEvidence = [
+    ...(parsed.visibleText ?? []),
+    ...(parsed.readableTextLines ?? []),
+  ]
+    .map((line) => (typeof line === "string" ? line.trim() : ""))
+    .filter(Boolean);
+
   // Lean schema: trust a good model title. Reject style/tag-invented, description-prose, and
   // OCR-dump titles; prefer sanitized readable lines or guarded description wording.
   const title = resolveLeanCatalogTitle({
@@ -442,6 +449,8 @@ export function buildSimpleCatalogEnrichmentResult(input: {
     rawCategory: parsed.category || undefined,
     rawTags: parsed.rawTags.length > 0 ? parsed.rawTags : undefined,
     halftoneShadowAssessment: parseHalftoneShadowAssessment(parsed),
+    explicitContentArtworkEvidence:
+      explicitContentArtworkEvidence.length > 0 ? explicitContentArtworkEvidence : undefined,
     smartProfileEnrichmentParse: {
       subjects: parsed.subjects,
       objects: parsed.objects,

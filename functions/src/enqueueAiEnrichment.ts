@@ -3,7 +3,7 @@ import { onCall } from "firebase-functions/v2/https";
 
 import { assertStaffCaller, loadCallerProfile } from "./lib/caller";
 import { failedPrecondition, invalidArgument, unauthenticated } from "./lib/errors";
-import { geminiApiKeySecret } from "./lib/secrets";
+import { geminiApiKeySecret, openAiApiKeySecret } from "./lib/secrets";
 import { adminDb } from "./lib/admin";
 import { runAiEnrichmentPipeline } from "./ai/aiEnrichmentPipeline";
 import {
@@ -44,7 +44,7 @@ function isStaleAiProcessing(design: Record<string, unknown>): boolean {
 }
 
 export const enqueueAiEnrichment = onCall(
-  { secrets: [geminiApiKeySecret], timeoutSeconds: 180, memory: "512MiB" },
+  { secrets: [geminiApiKeySecret, openAiApiKeySecret], timeoutSeconds: 180, memory: "512MiB" },
   async (request) => {
     if (!request.auth?.uid) {
       throw unauthenticated();
@@ -197,7 +197,9 @@ export const enqueueAiEnrichment = onCall(
       callerUid: request.auth.uid,
       visionModelIdOverride: visionModelIdOverride ?? null,
     });
-    await runAiEnrichmentPipeline(designId, geminiApiKeySecret.value());
+    await runAiEnrichmentPipeline(designId, geminiApiKeySecret.value(), {
+      openAiApiKey: openAiApiKeySecret.value(),
+    });
     const completedSnapshot = await designRef.get();
     const completedDesign = completedSnapshot.data() ?? {};
 

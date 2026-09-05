@@ -357,14 +357,28 @@ export interface Design {
   companionSetIncomplete?: boolean;
 
   /**
-   * Staff Explicit Content classification (human only). Missing/undefined/false ⇒ not explicit.
-   * Portal presents as Censored Content by default. Not access control.
+   * Explicit Content flag for Portal Censored presentation. Missing/undefined/false ⇒ not explicit.
+   * Not access control. May be set by staff OR by catalog enrichment when owner-configured
+   * artwork-text terms match (ADR-FP-172; independent of Autonomous Ready). Staff-authored values
+   * are not overwritten by automation.
    */
   isExplicitContent?: boolean;
   /**
-   * Staff words/phrases masked in Portal title/description while Censored mode is on and
+   * Who last authored Explicit root fields. `"staff"` | `"automation"`.
+   * Provenance only (ADR-FP-173) — does not permanently suppress automatic classification.
+   * No migration / backfill required.
+   */
+  explicitContentSource?: "staff" | "automation";
+  /**
+   * When true, enrichment/reprocess must not mutate Explicit root fields (ADR-FP-173).
+   * Absent/false = unlocked. Never inferred from staff Explicit edits alone.
+   */
+  explicitContentAutomationLocked?: boolean;
+  /**
+   * Words/phrases masked in Portal title/description while Censored mode is on and
    * `isExplicitContent` is true. Missing/empty = no text masking. Kept when Explicit is turned
    * off (inactive until Explicit is on again). Does not alter stored title/description.
+   * May be staff-entered or automation-populated with masker-effective surface forms (ADR-FP-172).
    */
   censoredTerms?: string[];
 
@@ -547,7 +561,7 @@ AI enrichment writes versioned fields on `designs/{id}`:
 | `aiRequestedVisionModelId` | string | Cloud Function callable | Transient one-off AI re-run override while queued/in flight |
 | `aiSuggestions` | object | Cloud Function | AI catalog suggestions (separate from approved fields) |
 | `aiAnalysis` | object | Cloud Function | Rich analysis metadata (includes optional shadow halftone assessment) |
-| `smartProfile` | object | Cloud Function + owner/admin callable | Versioned Smart Profile / search intelligence (`smart-profile-v1`); shadow automation in Slice 2; **Slice 3** indexes public-safe dimensions into Algolia (search + Smart Filters). Provenance includes automation fields and **Slice 6 corrective** staff edit metadata (`staffEditedDimensionKeys`, `staffEditedAt`, `staffEditedBy`). |
+| `smartProfile` | object | Cloud Function + owner/admin callable | Versioned Smart Profile / search intelligence (`smart-profile-v1`); shadow automation in Slice 2; **Slice 3** indexes public-safe dimensions into Algolia (search + Smart Filters). Provenance includes automation fields, **Slice 6** staff edit metadata (`staffEditedDimensionKeys`, `staffEditedAt`, `staffEditedBy`), and Explicit automation preview (`explicitAutomationPreview`: wouldMarkExplicitContent / applied / detected / proposedCensoredTerms / artworkHit / suppressedDueToHumanAuthority). Preview is staff-only; not Portal/Algolia search metadata. **ADR-FP-172:** root `isExplicitContent` / `censoredTerms` / `explicitContentSource` may be written on Needs Review and Ready enrichment paths when classification allows (not Ready-gated). |
 | `smartProfileAiSnapshot` | object | Cloud Function only | Last raw AI-generated dimension lists before staff merge; used for per-dimension Reset to AI. Staff/client cannot write. |
 
 **Catalog search permanence (Slice 3):** `title` and `description` are permanent core catalog search inputs (title is a top Algolia searchable attribute; description is included in flattened `searchText`). They are **not** “legacy.” Legacy migration refers to approved-tag / `tagFacetKeys` / tag-derived corpus only — future tag retirement must not remove or de-prioritize title/description search.
@@ -605,7 +619,7 @@ export interface DesignAiAnalysis {
 
 **Reopen for review (rejected):** `status: imported`, `aiReviewStatus: needs_review`; preserves existing `aiSuggestions` / `aiAnalysis`; does not enqueue AI.
 
-**One-off processing override (2026-06-29):** AI Processing may send `visionModelIdOverride` and `reasoningEffortOverride` on processing requests. The callable validates them against server allowlists, writes transient `aiRequestedVisionModelId` / `aiRequestedReasoningEffort`, the pipeline prefers those values for the current run, and success/failure cleanup deletes the fields. This does not mutate `settings/aiEnrichment`.
+**One-off processing override (2026-06-29; amended ADR-FP-174):** AI Processing may send `visionModelIdOverride` on processing requests. The callable validates it against the server allowlist, writes transient `aiRequestedVisionModelId`, the pipeline prefers that value for the current run, and success/failure cleanup deletes the field. This does not mutate `settings/aiEnrichment`. Reasoning-effort UI/overrides are not exposed in Phase 1; Luna pins `reasoning_effort: "low"` server-side only.
 
 **Writes:** Cloud Function only for `aiSuggestions`, `aiAnalysis`, `smartProfile`, and `aiProcessingStage`. Client rules block mutations.
 

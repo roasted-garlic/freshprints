@@ -1,5 +1,9 @@
 import type { AiEnrichmentInput, AiEnrichmentProvider, AiEnrichmentResult } from "./AiEnrichmentProvider";
 
+import {
+  OPENAI_LUNA_REASONING_EFFORT,
+  visionModelRequiresReasoningEffort,
+} from "../../../../packages/shared/src/constants/aiEnrichment.constants";
 import { CATALOG_ENRICHMENT_PROMPT_VERSION } from "../catalogTitleRules";
 import {
   VISION_MAX_COMPLETION_TOKENS,
@@ -23,7 +27,12 @@ import {
 import { fetchVisionWithRetry } from "../visionRequestRetry";
 import { logPipelineEvent } from "../../lib/pipelineLog";
 import { developmentAiEnrichmentProvider } from "./developmentAiEnrichmentProvider";
-import { GEMINI_CHAT_COMPLETIONS_URL, resolveProviderTarget, type ProviderTarget } from "./resolveProviderTarget";
+import {
+  GEMINI_CHAT_COMPLETIONS_URL,
+  resolveProviderTarget,
+  type ProviderTarget,
+  type ProviderTargetId,
+} from "./resolveProviderTarget";
 
 export function buildVisionRequestBody(
   visionModelId: string,
@@ -35,7 +44,7 @@ export function buildVisionRequestBody(
 ): string {
   // No `response_format: json_object` — matches the Settings AI Playground request shape. The
   // model returns instruction-only JSON and the server parses it tolerantly.
-  return JSON.stringify({
+  const body: Record<string, unknown> = {
     model: visionModelId,
     max_completion_tokens: maxCompletionTokens,
     messages: [
@@ -60,7 +69,14 @@ export function buildVisionRequestBody(
         ],
       },
     ],
-  });
+  };
+
+  // OpenAI Luna only — never send reasoning fields to Gemini endpoints.
+  if (visionModelRequiresReasoningEffort(visionModelId)) {
+    body.reasoning_effort = OPENAI_LUNA_REASONING_EFFORT;
+  }
+
+  return JSON.stringify(body);
 }
 
 async function postVisionCompletion(
@@ -216,11 +232,12 @@ async function callVision(
   });
 }
 
-export function createGeminiVisionEnrichmentProvider(
+export function createChatCompletionsVisionEnrichmentProvider(
   apiKey: string,
   visionModelId: string,
+  providerId: ProviderTargetId,
 ): AiEnrichmentProvider {
-  const providerTarget = resolveProviderTarget();
+  const providerTarget = resolveProviderTarget(providerId);
 
   return {
     providerId: providerTarget.providerId,
@@ -229,12 +246,25 @@ export function createGeminiVisionEnrichmentProvider(
 
     async enrichDesign(input: AiEnrichmentInput): Promise<AiEnrichmentResult> {
       if (!apiKey.trim()) {
+        if (providerTarget.providerId === "openai") {
+          throw new Error(
+            "AI enrichment is unavailable because OPENAI_API_KEY is not configured for this environment.",
+          );
+        }
         return developmentAiEnrichmentProvider.enrichDesign(input);
       }
 
       return callVision(apiKey, providerTarget, visionModelId, input);
     },
   };
+}
+
+/** @deprecated Prefer createChatCompletionsVisionEnrichmentProvider(..., "google") */
+export function createGeminiVisionEnrichmentProvider(
+  apiKey: string,
+  visionModelId: string,
+): AiEnrichmentProvider {
+  return createChatCompletionsVisionEnrichmentProvider(apiKey, visionModelId, "google");
 }
 
 export { GEMINI_CHAT_COMPLETIONS_URL };

@@ -14,6 +14,7 @@ import {
   type AiEnrichmentDesignInput,
 } from "./aiEnrichmentCandidateCore";
 import type { AiEnrichmentReadDiagnosticContext } from "./aiEnrichmentRuntimeCache";
+import { clearAiEnrichmentSettingsCache } from "./aiEnrichmentRuntimeCache";
 import { maybeRefreshSmartProfileVocabSnapshot } from "./refreshSmartProfileVocabSnapshot";
 import { PipelinePhaseTimer } from "./pipelineTiming";
 import { resolveAiEnrichmentProvider } from "./providers/resolveAiEnrichmentProvider";
@@ -21,6 +22,11 @@ import type { DesignSmartProfile } from "../../../packages/shared/src/types/cata
 import { stripEmptySmartProfileDimensions } from "./smartProfileBuilder";
 import { incrementCatalogAutomationHealth } from "./catalogAutomationHealth";
 import { buildSmartProfileAiSnapshot, mergeQueueSmartProfileWithImportPresets, mergeReadyBackfillSmartProfile, parseImportPresetSeed } from "./smartProfileEnrichmentWrite";
+import type { ExplicitContentAutomationWrite } from "../../../packages/shared/src/utils/explicitContentAutomation";
+import {
+  applyHumanAuthorityToExplicitContentAutomationPreview,
+  hasProtectedStaffExplicitAuthority,
+} from "../../../packages/shared/src/utils/explicitContentAutomation";
 
 // Re-export decision helpers so existing aiEnrichmentPipeline.test.ts imports keep working.
 export { shouldRunSuggestionAuthor, shouldRunTagRerank };
@@ -29,6 +35,7 @@ export type AiEnrichmentPipelineMode = "queue" | "ready_backfill";
 
 export interface RunAiEnrichmentPipelineOptions {
   mode?: AiEnrichmentPipelineMode;
+  openAiApiKey?: string;
 }
 
 interface DesignRecord extends AiEnrichmentDesignInput {
@@ -94,7 +101,11 @@ async function markAiSuccess(
   suggestions: DesignAiSuggestions,
   analysis: DesignAiAnalysis,
   smartProfile?: DesignSmartProfile,
-  options?: { publishReady?: boolean; mode?: AiEnrichmentPipelineMode },
+  options?: {
+    publishReady?: boolean;
+    mode?: AiEnrichmentPipelineMode;
+    explicitContentAutomation?: ExplicitContentAutomationWrite;
+  },
 ): Promise<void> {
   const firestoreSuggestions = removeUndefinedFields(suggestions);
   const firestoreAnalysis = removeUndefinedFields(analysis);
@@ -103,11 +114,12 @@ async function markAiSuccess(
 
   let persistedSmartProfile: DesignSmartProfile | undefined;
   let smartProfileAiSnapshot: ReturnType<typeof buildSmartProfileAiSnapshot>;
+  let priorData: Record<string, unknown> | undefined;
 
   if (smartProfile) {
     const stripped = stripEmptySmartProfileDimensions(smartProfile) as unknown as DesignSmartProfile;
     const priorSnap = await adminDb.collection("designs").doc(designId).get();
-    const priorData = priorSnap.data();
+    priorData = priorSnap.data() as Record<string, unknown> | undefined;
     const importPresets = parseImportPresetSeed(priorData?.smartProfileImportPresets);
     // Queue and ready_backfill both preserve staff SP edits + import presets when prior exists.
     // (Owner Ready→AI Review demotion keeps smartProfile; Needs Review must not wipe staff keys.)
@@ -133,7 +145,42 @@ async function markAiSuccess(
       ) as unknown as DesignSmartProfile;
       smartProfileAiSnapshot = buildSmartProfileAiSnapshot(stripped);
     }
+  } else if (options?.explicitContentAutomation) {
+    const priorSnap = await adminDb.collection("designs").doc(designId).get();
+    priorData = priorSnap.data() as Record<string, unknown> | undefined;
   }
+
+  const protectedStaffExplicitAuthority = hasProtectedStaffExplicitAuthority({
+    isExplicitContent: priorData?.isExplicitContent,
+    censoredTerms: priorData?.censoredTerms,
+    explicitContentSource: priorData?.explicitContentSource,
+    explicitContentAutomationLocked: priorData?.explicitContentAutomationLocked,
+  });
+
+  if (persistedSmartProfile?.provenance?.explicitAutomationPreview) {
+    persistedSmartProfile.provenance.explicitAutomationPreview =
+      applyHumanAuthorityToExplicitContentAutomationPreview(
+        persistedSmartProfile.provenance.explicitAutomationPreview,
+        {
+          hasProtectedAuthority: protectedStaffExplicitAuthority,
+        },
+      );
+    persistedSmartProfile = stripEmptySmartProfileDimensions(
+      persistedSmartProfile,
+    ) as unknown as DesignSmartProfile;
+  }
+
+  // ADR-FP-173: Explicit root write blocked only by deliberate lock (not staff provenance).
+  const mayWriteExplicit =
+    Boolean(options?.explicitContentAutomation) && !protectedStaffExplicitAuthority;
+
+  const explicitWrite = mayWriteExplicit
+    ? {
+        isExplicitContent: true as const,
+        censoredTerms: options!.explicitContentAutomation!.censoredTerms,
+        explicitContentSource: "automation" as const,
+      }
+    : undefined;
 
   if (mode === "ready_backfill") {
     await adminDb.collection("designs").doc(designId).update({
@@ -148,6 +195,13 @@ async function markAiSuccess(
       aiAnalysis: firestoreAnalysis,
       ...(persistedSmartProfile ? { smartProfile: persistedSmartProfile } : {}),
       ...(smartProfileAiSnapshot ? { smartProfileAiSnapshot } : {}),
+      ...(explicitWrite
+        ? {
+            isExplicitContent: true,
+            censoredTerms: explicitWrite.censoredTerms,
+            explicitContentSource: "automation",
+          }
+        : {}),
       updatedAt: FieldValue.serverTimestamp(),
     });
     return;
@@ -168,6 +222,13 @@ async function markAiSuccess(
       : {
           aiReviewStatus: "needs_review",
         }),
+    ...(explicitWrite
+      ? {
+          isExplicitContent: true,
+          censoredTerms: explicitWrite.censoredTerms,
+          explicitContentSource: "automation",
+        }
+      : {}),
     aiRequestedVisionModelId: FieldValue.delete(),
     ...(suggestions.confidence !== undefined
       ? { aiReviewConfidence: suggestions.confidence }
@@ -192,6 +253,7 @@ async function runAiEnrichmentPipelineInternal(
   geminiApiKey: string | undefined,
   diagnosticContext: AiEnrichmentReadDiagnosticContext,
   mode: AiEnrichmentPipelineMode = "queue",
+  openAiApiKey?: string,
 ): Promise<void> {
   const designSnapshot = await adminDb.collection("designs").doc(designId).get();
 
@@ -251,6 +313,10 @@ async function runAiEnrichmentPipelineInternal(
   const phaseTimer = new PipelinePhaseTimer();
   phaseTimer.logPhase("pipeline.started", { designId });
 
+  // Dual-provider: Settings visionModelId can change between runs on a warm instance.
+  // Bust settings TTL so each design resolves the current Default AI model / provider.
+  clearAiEnrichmentSettingsCache();
+
   try {
     const candidate = await generateAiEnrichmentCandidateForDesign({
       designId,
@@ -264,6 +330,7 @@ async function runAiEnrichmentPipelineInternal(
         tags: data.tags,
       },
       geminiApiKey: geminiApiKey ?? "",
+      openAiApiKey: openAiApiKey ?? "",
       diagnosticContext,
       onProcessingStage: async (stage) => {
         await updateAiProcessingStage(designId, stage);
@@ -288,6 +355,7 @@ async function runAiEnrichmentPipelineInternal(
     await markAiSuccess(designId, candidate.suggestions, candidate.analysis, candidate.smartProfile, {
       publishReady: mode === "ready_backfill" ? false : candidate.publishReady,
       mode,
+      explicitContentAutomation: candidate.explicitContentAutomation,
     });
 
     if (candidate.smartProfile) {
@@ -351,7 +419,13 @@ export async function runAiEnrichmentPipeline(
   });
 
   try {
-    await runAiEnrichmentPipelineInternal(designId, geminiApiKey, diagnosticContext, mode);
+    await runAiEnrichmentPipelineInternal(
+      designId,
+      geminiApiKey,
+      diagnosticContext,
+      mode,
+      options?.openAiApiKey,
+    );
   } finally {
     const remaining = (activeDesignInvocations.get(designId) ?? 1) - 1;
 

@@ -1,0 +1,410 @@
+{
+  "projectId": "fresh-prints-dev",
+  "startedAt": "2026-09-05T16:08:31.806Z",
+  "runId": "mtokuo95",
+  "aborted": true,
+  "rows": [
+    {
+      "label": "CANARY 1 — NORMAL AUTO",
+      "id": "At5hu7vLjWgduiyzZCfR",
+      "expected": "Ready",
+      "before": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewedBy": null,
+        "readyAt": null,
+        "isExplicitContent": null,
+        "censoredTerms": null,
+        "portalCatalogPublicationStatus": null,
+        "portalCatalogPublicationError": null,
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "shadow_would_auto_approve"
+        ],
+        "promptVersion": "catalog-enrich-v32",
+        "normalizerVersion": "smart-profile-normalizer-v6",
+        "schemaVersion": "smart-profile-v1",
+        "explicitAutomationPreview": null,
+        "title": "I dont do matching shirtsW"
+      },
+      "enqueueResponse": {
+        "designId": "At5hu7vLjWgduiyzZCfR",
+        "queued": true,
+        "completed": true,
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewStatus": "approved",
+        "status": "ready"
+      },
+      "afterEnrichment": {
+        "status": "ready",
+        "aiReviewStatus": "approved",
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewedBy": "system:catalog-autonomy",
+        "readyAt": "2026-09-05T16:08:51.209Z",
+        "isExplicitContent": null,
+        "censoredTerms": null,
+        "portalCatalogPublicationStatus": null,
+        "portalCatalogPublicationError": null,
+        "automationDecision": "auto_approved",
+        "automationReasonCodes": [
+          "auto_approved"
+        ],
+        "promptVersion": "catalog-enrich-v34",
+        "normalizerVersion": "smart-profile-normalizer-v6",
+        "schemaVersion": "smart-profile-v1",
+        "explicitAutomationPreview": {
+          "wouldMarkExplicitContent": false,
+          "artworkHit": false
+        },
+        "title": "I dont do matching shirtsW"
+      },
+      "publication": {
+        "waited": true,
+        "status": "synced",
+        "ms": 2186
+      },
+      "afterPublication": {
+        "status": "ready",
+        "aiReviewStatus": "approved",
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewedBy": "system:catalog-autonomy",
+        "readyAt": "2026-09-05T16:08:51.209Z",
+        "isExplicitContent": null,
+        "censoredTerms": null,
+        "portalCatalogPublicationStatus": "synced",
+        "portalCatalogPublicationError": null,
+        "automationDecision": "auto_approved",
+        "automationReasonCodes": [
+          "auto_approved"
+        ],
+        "promptVersion": "catalog-enrich-v34",
+        "normalizerVersion": "smart-profile-normalizer-v6",
+        "schemaVersion": "smart-profile-v1",
+        "explicitAutomationPreview": {
+          "wouldMarkExplicitContent": false,
+          "artworkHit": false
+        },
+        "title": "I dont do matching shirtsW"
+      },
+      "algolia": {
+        "checked": true,
+        "indexName": "portal_catalog_ready_dev",
+        "objectPresent": true,
+        "objectID": "At5hu7vLjWgduiyzZCfR",
+        "title": "I dont do matching shirtsW",
+        "isExplicitContent": null
+      },
+      "evaluation": {
+        "actualClass": "Ready",
+        "pass": true,
+        "failures": []
+      },
+      "isExplicitFixture": false
+    },
+    {
+      "label": "CANARY 2 — BLOCKED CONTROL",
+      "id": "nff6PpkZF9TNitnpX2Mm",
+      "expected": "Needs Review",
+      "before": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewedBy": null,
+        "readyAt": null,
+        "isExplicitContent": null,
+        "censoredTerms": null,
+        "portalCatalogPublicationStatus": null,
+        "portalCatalogPublicationError": null,
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "category_gap_suggested",
+          "structured_evidence_gap:objects:flowers"
+        ],
+        "promptVersion": "catalog-enrich-v32",
+        "normalizerVersion": "smart-profile-normalizer-v6",
+        "schemaVersion": "smart-profile-v1",
+        "explicitAutomationPreview": null,
+        "title": "343 Boston Terrier"
+      },
+      "enqueueResponse": {
+        "designId": "nff6PpkZF9TNitnpX2Mm",
+        "queued": true,
+        "completed": true,
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "afterEnrichment": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewedBy": null,
+        "readyAt": null,
+        "isExplicitContent": null,
+        "censoredTerms": null,
+        "portalCatalogPublicationStatus": null,
+        "portalCatalogPublicationError": null,
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "structured_evidence_gap:objects:flowers"
+        ],
+        "promptVersion": "catalog-enrich-v34",
+        "normalizerVersion": "smart-profile-normalizer-v6",
+        "schemaVersion": "smart-profile-v1",
+        "explicitAutomationPreview": {
+          "wouldMarkExplicitContent": false,
+          "artworkHit": false
+        },
+        "title": "343 Boston Terrier"
+      },
+      "publication": {
+        "waited": false,
+        "reason": "not_ready_expected"
+      },
+      "afterPublication": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewedBy": null,
+        "readyAt": null,
+        "isExplicitContent": null,
+        "censoredTerms": null,
+        "portalCatalogPublicationStatus": null,
+        "portalCatalogPublicationError": null,
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "structured_evidence_gap:objects:flowers"
+        ],
+        "promptVersion": "catalog-enrich-v34",
+        "normalizerVersion": "smart-profile-normalizer-v6",
+        "schemaVersion": "smart-profile-v1",
+        "explicitAutomationPreview": {
+          "wouldMarkExplicitContent": false,
+          "artworkHit": false
+        },
+        "title": "343 Boston Terrier"
+      },
+      "algolia": {
+        "checked": false,
+        "reason": "not_required"
+      },
+      "evaluation": {
+        "actualClass": "Needs Review",
+        "pass": true,
+        "failures": [],
+        "notes": {
+          "missingExpectedBlockers": [
+            "category_gap_suggested"
+          ],
+          "reasons": [
+            "structured_evidence_gap:objects:flowers"
+          ]
+        }
+      },
+      "isExplicitFixture": false
+    },
+    {
+      "label": "CANARY 3 — EXPLICIT AUTO FIXTURE",
+      "id": "N3Ag21ThKyFXLTTsKAZZ",
+      "expected": "Ready",
+      "before": {
+        "status": "imported",
+        "aiReviewStatus": "pending",
+        "aiProcessingStage": null,
+        "aiReviewedBy": null,
+        "readyAt": null,
+        "isExplicitContent": null,
+        "censoredTerms": null,
+        "portalCatalogPublicationStatus": null,
+        "portalCatalogPublicationError": null,
+        "automationDecision": null,
+        "automationReasonCodes": null,
+        "promptVersion": null,
+        "normalizerVersion": null,
+        "schemaVersion": null,
+        "explicitAutomationPreview": null,
+        "title": "DEV QA FIXTURE — Explicit Autonomous — DAMN — mtokuo95"
+      },
+      "enqueueResponse": {
+        "designId": "N3Ag21ThKyFXLTTsKAZZ",
+        "queued": true,
+        "completed": true,
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewStatus": "approved",
+        "status": "ready"
+      },
+      "afterEnrichment": {
+        "status": "ready",
+        "aiReviewStatus": "approved",
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewedBy": "system:catalog-autonomy",
+        "readyAt": "2026-09-05T16:09:01.625Z",
+        "isExplicitContent": true,
+        "censoredTerms": [
+          "damn"
+        ],
+        "portalCatalogPublicationStatus": null,
+        "portalCatalogPublicationError": null,
+        "automationDecision": "auto_approved",
+        "automationReasonCodes": [
+          "auto_approved"
+        ],
+        "promptVersion": "catalog-enrich-v34",
+        "normalizerVersion": "smart-profile-normalizer-v6",
+        "schemaVersion": "smart-profile-v1",
+        "explicitAutomationPreview": {
+          "wouldMarkExplicitContent": true,
+          "artworkHit": true,
+          "proposedCensoredTerms": [
+            "damn"
+          ]
+        },
+        "title": "DEV QA FIXTURE — Explicit Autonomous — DAMN — mtokuo95"
+      },
+      "publication": {
+        "waited": true,
+        "status": "synced",
+        "ms": 73
+      },
+      "afterPublication": {
+        "status": "ready",
+        "aiReviewStatus": "approved",
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewedBy": "system:catalog-autonomy",
+        "readyAt": "2026-09-05T16:09:01.625Z",
+        "isExplicitContent": true,
+        "censoredTerms": [
+          "damn"
+        ],
+        "portalCatalogPublicationStatus": "synced",
+        "portalCatalogPublicationError": null,
+        "automationDecision": "auto_approved",
+        "automationReasonCodes": [
+          "auto_approved"
+        ],
+        "promptVersion": "catalog-enrich-v34",
+        "normalizerVersion": "smart-profile-normalizer-v6",
+        "schemaVersion": "smart-profile-v1",
+        "explicitAutomationPreview": {
+          "wouldMarkExplicitContent": true,
+          "artworkHit": true,
+          "proposedCensoredTerms": [
+            "damn"
+          ]
+        },
+        "title": "DEV QA FIXTURE — Explicit Autonomous — DAMN — mtokuo95"
+      },
+      "algolia": {
+        "checked": true,
+        "indexName": "portal_catalog_ready_dev",
+        "objectPresent": false,
+        "objectID": null,
+        "title": null,
+        "isExplicitContent": null
+      },
+      "evaluation": {
+        "actualClass": "Ready",
+        "pass": false,
+        "failures": [
+          "algolia_object_missing"
+        ],
+        "explicit": {
+          "artworkHit": true,
+          "isExplicitContent": true,
+          "censoredTerms": [
+            "damn"
+          ],
+          "shadowPredictionMatched": true
+        }
+      },
+      "isExplicitFixture": true
+    }
+  ],
+  "preflight": {
+    "gate": {
+      "catalogWorkflowMode": "shadow",
+      "catalogAutonomousLiveEnabled": false,
+      "termsCount": 43,
+      "hasDamn": true,
+      "catalogAutonomousLiveEnabledAt": null,
+      "catalogAutonomousLiveEnabledBy": null
+    }
+  },
+  "fixture": {
+    "designId": "N3Ag21ThKyFXLTTsKAZZ",
+    "selectedTerm": "damn",
+    "artworkText": "DAMN",
+    "creationPath": "admin Storage + Firestore create-only (no enqueue)",
+    "initial": {
+      "status": "imported",
+      "aiReviewStatus": "pending",
+      "aiProcessingStage": null,
+      "aiReviewedBy": null,
+      "readyAt": null,
+      "isExplicitContent": null,
+      "censoredTerms": null,
+      "portalCatalogPublicationStatus": null,
+      "portalCatalogPublicationError": null,
+      "automationDecision": null,
+      "automationReasonCodes": null,
+      "promptVersion": null,
+      "normalizerVersion": null,
+      "schemaVersion": null,
+      "explicitAutomationPreview": null,
+      "title": "DEV QA FIXTURE — Explicit Autonomous — DAMN — mtokuo95"
+    },
+    "humanAuthorityAbsent": true
+  },
+  "enablement": {
+    "step1": {
+      "response": {
+        "catalogWorkflowMode": "autonomous",
+        "catalogAutonomousLiveEnabled": false
+      },
+      "verified": {
+        "catalogWorkflowMode": "autonomous",
+        "catalogAutonomousLiveEnabled": false,
+        "termsCount": 43,
+        "hasDamn": true,
+        "catalogAutonomousLiveEnabledAt": null,
+        "catalogAutonomousLiveEnabledBy": null
+      },
+      "at": "2026-09-05T16:08:42.242Z"
+    },
+    "step2": {
+      "response": {
+        "catalogWorkflowMode": "autonomous",
+        "catalogAutonomousLiveEnabled": true
+      },
+      "verified": {
+        "catalogWorkflowMode": "autonomous",
+        "catalogAutonomousLiveEnabled": true,
+        "termsCount": 43,
+        "hasDamn": true,
+        "catalogAutonomousLiveEnabledAt": "2026-09-05T16:08:41.759Z",
+        "catalogAutonomousLiveEnabledBy": "FZHLcMfWPoZO8RJuQWQGpQSywKy2"
+      },
+      "at": "2026-09-05T16:08:42.637Z"
+    }
+  },
+  "rollback": {
+    "reason": "row_fail_N3Ag21ThKyFXLTTsKAZZ",
+    "callableResponse": {
+      "catalogWorkflowMode": "shadow",
+      "catalogAutonomousLiveEnabled": false
+    },
+    "verified": {
+      "catalogWorkflowMode": "shadow",
+      "catalogAutonomousLiveEnabled": false,
+      "termsCount": 43,
+      "hasDamn": true,
+      "catalogAutonomousLiveEnabledAt": null,
+      "catalogAutonomousLiveEnabledBy": null
+    },
+    "at": "2026-09-05T16:09:03.108Z"
+  },
+  "abortReason": "STOP: CANARY 3 — EXPLICIT AUTO FIXTURE failed: algolia_object_missing",
+  "error": "STOP: CANARY 3 — EXPLICIT AUTO FIXTURE failed: algolia_object_missing",
+  "finishedAt": "2026-09-05T16:09:03.205Z"
+}

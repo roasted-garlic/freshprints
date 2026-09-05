@@ -29,7 +29,7 @@ describe("resolveVisionErrorCode", () => {
 
   it("maps VisionEmptyOutputError to its error code", () => {
     const error = new VisionEmptyOutputError(
-      "Google AI returned no visible output (reason: length). Try again or switch model in Settings.",
+      "The AI provider returned no visible output (reason: length). Try again or switch model in Settings.",
       "vision_empty_output",
       "length",
     );

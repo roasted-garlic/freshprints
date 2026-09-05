@@ -37,11 +37,15 @@ test("v1 defaults include all seven placement tabs in canonical order", () => {
 });
 
 test("Full Front Adult includes XS through 5XL with approved widths", () => {
-  assert.equal(findPreset("full_front.adult.xs")?.widthInches, 9.5);
-  assert.equal(findPreset("full_front.adult.2xl")?.widthInches, 13);
-  assert.equal(findPreset("full_front.adult.3xl")?.widthInches, 14);
-  assert.equal(findPreset("full_front.adult.4xl")?.widthInches, 16);
-  assert.equal(findPreset("full_front.adult.5xl")?.widthInches, 17);
+  assert.equal(findPreset("full_front.adult.xs")?.widthInches, 9);
+  assert.equal(findPreset("full_front.adult.s")?.widthInches, 9.5);
+  assert.equal(findPreset("full_front.adult.m")?.widthInches, 10);
+  assert.equal(findPreset("full_front.adult.l")?.widthInches, 10.5);
+  assert.equal(findPreset("full_front.adult.xl")?.widthInches, 11);
+  assert.equal(findPreset("full_front.adult.2xl")?.widthInches, 12);
+  assert.equal(findPreset("full_front.adult.3xl")?.widthInches, 13);
+  assert.equal(findPreset("full_front.adult.4xl")?.widthInches, 14);
+  assert.equal(findPreset("full_front.adult.5xl")?.widthInches, 15);
 });
 
 test("Full Back Adult includes 3XL 14.5 and 5XL 17", () => {
@@ -109,8 +113,8 @@ test("resolve overlays saved widths by stable key and exposes new v1 presets", (
   });
 
   assert.equal(findStandardPrintSizePreset(resolved, "full_front.adult.m_l"), undefined);
-  assert.equal(findStandardPrintSizePreset(resolved, "full_front.adult.m")?.widthInches, 11);
-  assert.equal(findStandardPrintSizePreset(resolved, "full_front.adult.3xl")?.widthInches, 14);
+  assert.equal(findStandardPrintSizePreset(resolved, "full_front.adult.m")?.widthInches, 10);
+  assert.equal(findStandardPrintSizePreset(resolved, "full_front.adult.3xl")?.widthInches, 13);
   assert.ok(findStandardPrintSizePreset(resolved, "pocket.pocket.small"));
 });
 
@@ -131,7 +135,7 @@ test("resolve preserves matching saved width without rewriting unrelated presets
   const saved = findStandardPrintSizePreset(resolved, "full_front.adult.m");
   assert.equal(saved?.widthInches, 10.75);
   assert.equal(saved?.enabled, true);
-  assert.equal(findStandardPrintSizePreset(resolved, "full_front.adult.l")?.widthInches, 11.5);
+  assert.equal(findStandardPrintSizePreset(resolved, "full_front.adult.l")?.widthInches, 10.5);
 });
 
 test("reset to defaults produces exactly the canonical v1 table", () => {
@@ -173,13 +177,13 @@ test("manual width divergence clears preset key", () => {
   const cleared = resolveStandardSizePresetKeyAfterManualSizeChange({
     currentPresetKey: "full_front.adult.m",
     settings,
-    printWidthInches: 10,
+    printWidthInches: 10.25,
   });
   assert.equal(cleared, undefined);
   const kept = resolveStandardSizePresetKeyAfterManualSizeChange({
     currentPresetKey: "full_front.adult.m",
     settings,
-    printWidthInches: 11,
+    printWidthInches: 10,
   });
   assert.equal(kept, "full_front.adult.m");
 });

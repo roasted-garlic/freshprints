@@ -3,7 +3,7 @@ import type {
   AllowedVisionModelId,
 } from "../../constants/aiEnrichment.constants";
 
-export type AiEnrichmentProviderId = "google" | "development";
+export type AiEnrichmentProviderId = "google" | "openai" | "development";
 
 export interface AiEnrichmentPlaygroundRequest {
   /** Optional — the playground supports text-only prompt tests with no image. */

@@ -323,6 +323,13 @@ service cloud.firestore {
       return !(field in data) || data[field] == null || isValidTagStringList(data[field]);
     }
 
+    // ADR-FP-172: staff vs automation Explicit authorship. Absent is valid (legacy).
+    function isOptionalExplicitContentSource(data, field) {
+      return !(field in data)
+        || data[field] == null
+        || data[field] in ["staff", "automation"];
+    }
+
     // Fast path for Studio Edit Design catalog metadata + Placement-only writes.
     // Covers tags/title/category/description/background/placement/explicit/censoredTerms/
     // AI Review draft Halftone decision + audit.
@@ -349,6 +356,8 @@ service cloud.firestore {
             "artworkPlacement",
             "isExplicitContent",
             "censoredTerms",
+            "explicitContentSource",
+            "explicitContentAutomationLocked",
             "halftoneStaffDecision",
             "updatedAt",
             "updatedBy",
@@ -371,6 +380,8 @@ service cloud.firestore {
         && isOptionalString(request.resource.data, "artworkPlacement")
         && isOptionalBool(request.resource.data, "isExplicitContent")
         && isOptionalCensoredTermsList(request.resource.data, "censoredTerms")
+        && isOptionalExplicitContentSource(request.resource.data, "explicitContentSource")
+        && isOptionalBool(request.resource.data, "explicitContentAutomationLocked")
         && isOptionalMap(request.resource.data, "halftoneStaffDecision");
     }
 
@@ -628,7 +639,9 @@ service cloud.firestore {
         && isOptionalCompanionDesignIdsList(data, "companionDesignIds")
         && isOptionalBool(data, "companionSetIncomplete")
         && isOptionalBool(data, "isExplicitContent")
-        && isOptionalCensoredTermsList(data, "censoredTerms");
+        && isOptionalCensoredTermsList(data, "censoredTerms")
+        && isOptionalExplicitContentSource(data, "explicitContentSource")
+        && isOptionalBool(data, "explicitContentAutomationLocked");
     }
 
     // Rules cannot iterate list elements (no forEach); size-only validation mirrors the existing

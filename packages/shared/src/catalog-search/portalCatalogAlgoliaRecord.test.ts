@@ -45,15 +45,32 @@ describe('portalCatalogAlgoliaRecord Slice 3 helpers', () => {
         version: 'smart-profile-v1',
         automationDecision: 'shadow',
         validationWarnings: ['x'],
+        explicitAutomationPreview: {
+          wouldMarkExplicitContent: true,
+          artworkHit: true,
+          proposedCensoredTerms: ['damn'],
+        },
       },
     });
     assert.deepEqual(projected?.subjects, ['cow']);
     assert.deepEqual(projected?.objects, ['bow']);
     assert.equal(projected?.version, 'smart-profile-v1');
     assert.equal(projected?.automationDecision, undefined);
+    assert.equal(
+      Object.prototype.hasOwnProperty.call(projected ?? {}, 'explicitAutomationPreview'),
+      false,
+    );
 
     const onlyProvenance = projectSmartProfileForAlgoliaIndex({
-      provenance: { automationDecision: 'shadow', validationWarnings: ['x'] },
+      provenance: {
+        automationDecision: 'shadow',
+        validationWarnings: ['x'],
+        explicitAutomationPreview: {
+          wouldMarkExplicitContent: true,
+          artworkHit: true,
+          proposedCensoredTerms: ['damn'],
+        },
+      },
     });
     assert.equal(onlyProvenance, null);
   });
