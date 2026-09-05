@@ -48,10 +48,34 @@ test("Full Front Adult includes XS through 5XL with approved widths", () => {
   assert.equal(findPreset("full_front.adult.5xl")?.widthInches, 15);
 });
 
-test("Full Back Adult includes 3XL 14.5 and 5XL 17", () => {
-  assert.equal(findPreset("full_back.adult.3xl")?.widthInches, 14.5);
-  assert.equal(findPreset("full_back.adult.4xl")?.widthInches, 16);
-  assert.equal(findPreset("full_back.adult.5xl")?.widthInches, 17);
+test("Full Back Adult M/L/XL are 11 and 2XL–5XL match approved widths", () => {
+  assert.equal(findPreset("full_back.adult.xs")?.widthInches, 10);
+  assert.equal(findPreset("full_back.adult.s")?.widthInches, 10.5);
+  assert.equal(findPreset("full_back.adult.m")?.widthInches, 11);
+  assert.equal(findPreset("full_back.adult.l")?.widthInches, 11);
+  assert.equal(findPreset("full_back.adult.xl")?.widthInches, 11);
+  assert.equal(findPreset("full_back.adult.2xl")?.widthInches, 12);
+  assert.equal(findPreset("full_back.adult.3xl")?.widthInches, 13);
+  assert.equal(findPreset("full_back.adult.4xl")?.widthInches, 14);
+  assert.equal(findPreset("full_back.adult.5xl")?.widthInches, 15);
+});
+
+test("Full Front Youth YXS through Y2XL match approved widths", () => {
+  assert.equal(findPreset("full_front.youth.yxs")?.widthInches, 7.5);
+  assert.equal(findPreset("full_front.youth.ys")?.widthInches, 8.5);
+  assert.equal(findPreset("full_front.youth.ym")?.widthInches, 9.5);
+  assert.equal(findPreset("full_front.youth.yl")?.widthInches, 10);
+  assert.equal(findPreset("full_front.youth.yxl")?.widthInches, 10.5);
+  assert.equal(findPreset("full_front.youth.y2xl")?.widthInches, 11);
+});
+
+test("Full Back Youth YXS through Y2XL match approved widths", () => {
+  assert.equal(findPreset("full_back.youth.yxs")?.widthInches, 7.5);
+  assert.equal(findPreset("full_back.youth.ys")?.widthInches, 8.5);
+  assert.equal(findPreset("full_back.youth.ym")?.widthInches, 9.5);
+  assert.equal(findPreset("full_back.youth.yl")?.widthInches, 10.5);
+  assert.equal(findPreset("full_back.youth.yxl")?.widthInches, 11);
+  assert.equal(findPreset("full_back.youth.y2xl")?.widthInches, 11);
 });
 
 test("Youth Y2XL and infant month ranges exist on Full Front", () => {

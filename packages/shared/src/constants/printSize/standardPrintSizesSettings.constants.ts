@@ -158,13 +158,13 @@ const INFANT_GARMENT_ROWS: readonly PresetRow[] = [
 const ADULT_FULL_BACK_ROWS: readonly PresetRow[] = [
   ["xs", "XS", 10],
   ["s", "S", 10.5],
-  ["m", "M", 11.5],
-  ["l", "L", 12],
-  ["xl", "XL", 12.5],
-  ["2xl", "2XL", 13.5],
-  ["3xl", "3XL", 14.5],
-  ["4xl", "4XL", 16],
-  ["5xl", "5XL", 17],
+  ["m", "M", 11],
+  ["l", "L", 11],
+  ["xl", "XL", 11],
+  ["2xl", "2XL", 12],
+  ["3xl", "3XL", 13],
+  ["4xl", "4XL", 14],
+  ["5xl", "5XL", 15],
 ];
 
 const YOUTH_FULL_BACK_ROWS: readonly PresetRow[] = [
@@ -173,7 +173,7 @@ const YOUTH_FULL_BACK_ROWS: readonly PresetRow[] = [
   ["ym", "YM", 9.5],
   ["yl", "YL", 10.5],
   ["yxl", "YXL", 11],
-  ["y2xl", "Y2XL", 11.5],
+  ["y2xl", "Y2XL", 11],
 ];
 
 const ADULT_LEFT_CHEST_ROWS: readonly PresetRow[] = [
@@ -340,7 +340,7 @@ function buildPlacement(
   };
 }
 
-/** Fresh Prints Standard Size Defaults v1 — target widths only (2026-08-29 corrective). */
+/** Fresh Prints Standard Size Defaults — target widths (2026-09-05 Full Back + PR fallback recalibration). */
 export function buildDefaultStandardPrintSizesSettings(): StandardPrintSizesSettings {
   return {
     version: 1,

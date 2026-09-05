@@ -2,53 +2,63 @@
 
 | Field | Value |
 |---|---|
-| Status | **DONE — Luna Phase 1 signed off (DEV)** |
+| Status | **IDLE** — Standard Size recalibration signed off |
 | DONE | **yes** |
-| Current Mode | managed-phase |
-| Parent program | `smart-catalog-intelligence-completion-and-legacy-tag-retirement` |
-| Current Goal | `restore-openai-gpt-5-6-luna-ai-enrichment` |
-| Current Phase | Signoff complete |
-| Environment | `fresh-prints-dev` |
-| Mode | **shadow** · Autonomous **OFF** |
-| Production | untouched / **NOT AUTHORIZED** |
-| Commit/push | authorized by owner this closeout |
+| Current Mode | managed-phase (closed) |
+| Current Goal | Standard Size preset + Add to Request default recalibration |
+| Current Phase | **Signoff** complete |
+| Environment | `fresh-prints-dev` (code only; no Firebase writes) |
+| Mode | Autonomous **OFF** |
+| Production | untouched |
+| Commit/push | **NOT AUTHORIZED** / none this pass |
 | Last updated | 2026-09-05 |
-| Last Completed Step | Owner QA PASS → UI footer polish → Signoff **approved_with_notes** |
+| Last Completed Step | Signoff **approved_with_notes** |
 
 ## Phase statuses
 
 | Phase | Status |
 |---|---|
-| Luna Phase 1 | **COMPLETE / SIGNOFF approved_with_notes** |
-| Owner Studio QA | **PASS** |
-| Three-model benchmark | complete (support) |
-| TD-034 | open — READY FOR SEPARATE CORRECTIVE |
-| WS6 | **BLOCKED** (parent gates) |
+| Plan | complete |
+| Review | **approved** |
+| Implement | complete |
+| Test | **passed_with_notes** (87/87 unit; Functions build; Portal tsc; pre-existing full lint/Studio tsc) |
+| Signoff | **approved_with_notes** |
 | Autonomous | **OFF** |
-| Phase 2 registry | **DEFERRED** |
-| DEV `visionModelId` | **`gemini-2.5-flash-lite`** |
+| Production | untouched |
+
+## Parked (do not resume unless owner directs)
+
+| Item | Status |
+|---|---|
+| TD-034 `catalog-enrich-v35` | Source ready; IR approved_with_notes; **STOP before DEV deploy** — awaiting owner deploy auth |
+| WS6 | **BLOCKED** |
+| Phase 2 model registry | **DEFERRED TO NEXT VERSION** |
 
 ## Human checkpoint
 
-**Human Checkpoint Required: no**
+**Human Checkpoint Required: no** (optional DEV settings Reset is owner follow-up, not a workflow blocker)
+
+**Allowed Actions:** Read docs; start next managed goal on owner request; prepare TD-034 deploy on owner auth
+
+**Forbidden Actions:** Production; commit/push without auth; Autonomous; TD-034 deploy without auth
 
 ## Artifacts
 
 | Doc | Path |
 |---|---|
-| Signoff | `docs/workflow/reviews/2026-09-05-restore-openai-gpt-5-6-luna-ai-enrichment-signoff.md` |
-| Owner QA | `docs/workflow/reviews/2026-09-05-restore-openai-gpt-5-6-luna-ai-enrichment-owner-qa-checkpoint.md` |
-| Benchmark | `docs/workflow/reviews/2026-09-05-restore-openai-gpt-5-6-luna-ai-enrichment-model-benchmark-report.md` |
-| Plan | `docs/workflow/plans/2026-09-05-restore-openai-gpt-5-6-luna-ai-enrichment-plan.md` |
+| Plan | `docs/workflow/plans/2026-09-05-standard-size-preset-and-add-to-request-default-recalibration-plan.md` |
+| Review | `docs/workflow/reviews/2026-09-05-standard-size-preset-and-add-to-request-default-recalibration-review.md` |
+| Test report | `docs/workflow/reviews/2026-09-05-standard-size-preset-and-add-to-request-default-recalibration-test-report.md` |
+| Implementation report | `docs/workflow/reviews/2026-09-05-standard-size-preset-and-add-to-request-default-recalibration-implementation-report.md` |
+| Signoff | `docs/workflow/reviews/2026-09-05-standard-size-preset-and-add-to-request-default-recalibration-signoff.md` |
 
 ## Decision Log
 
 | Date | Decision |
 |---|---|
-| 2026-09-05 | Owner QA: **PASS**; authorize Signoff + commit + push |
-| 2026-09-05 | Smart Profile footer: Prompt → Normalizer (persisted `normalizerVersion`) |
-| 2026-09-05 | Signoff **approved_with_notes**; Luna Phase 1 DONE on DEV |
+| 2026-09-05 | Owner approved plan; keep `YXS`; no Firestore/production writes |
+| 2026-09-05 | Implemented Full Back seeds + 10.5″ fallback; Signoff approved_with_notes |
 
 ## Next Required Step
 
-Idle / owner picks next goal (TD-034 corrective plan, WS6, or other). Production Luna promote not authorized.
+Idle. Optional: owner Reset Standard Size defaults / set PR default 10.5″ on DEV. Or authorize TD-034 DEV deploy.

@@ -35,18 +35,18 @@ function resolvePortalOptimisticCatalogAddSize(
 }
 
 describe('Portal catalog-add initial sizing (client reconciliation)', () => {
-  it('optimistic add flow initializes eligible catalog designs at 11 inches', () => {
+  it('optimistic add flow initializes eligible catalog designs at 10.5 inches', () => {
     const size = resolvePortalOptimisticCatalogAddSize({
       width: 3600,
       height: 1800,
       printWidthInches: 10,
     });
-    assert.equal(size.printWidthInches, 11);
-    assert.equal(size.printHeightInches, 5.5);
-    assert.match(size.sizeLabel, /^11(\.0+)? x 5\.5/);
+    assert.equal(size.printWidthInches, 10.5);
+    assert.equal(size.printHeightInches, 5.25);
+    assert.match(size.sizeLabel, /^10\.50? x 5\.25/);
   });
 
-  it('Current Request drawer displays persisted 11 inch dimensions', () => {
+  it('Current Request drawer displays persisted 10.5 inch dimensions', () => {
     const persisted = resolvePortalOptimisticCatalogAddSize({
       width: 3600,
       height: 1800,
@@ -57,7 +57,7 @@ describe('Portal catalog-add initial sizing (client reconciliation)', () => {
         printWidthInches: persisted.printWidthInches,
         printHeightInches: persisted.printHeightInches,
       }),
-      '11 x 5.5',
+      '10.5 x 5.25',
     );
     assert.equal(
       formatCurrentRequestDrawerItemMeta({
@@ -65,7 +65,7 @@ describe('Portal catalog-add initial sizing (client reconciliation)', () => {
         printHeightInches: persisted.printHeightInches,
         quantity: 1,
       }),
-      '11 x 5.5 · Qty 1',
+      '10.5 x 5.25 · Qty 1',
     );
   });
 
@@ -79,14 +79,19 @@ describe('Portal catalog-add initial sizing (client reconciliation)', () => {
       printWidthInches: persisted.printWidthInches,
       printHeightInches: persisted.printHeightInches,
     });
-    const reviewLabel = formatPrintRequestItemSizeLabel(
-      persisted.printWidthInches,
-      persisted.printHeightInches,
-    )
-      .replace(' in', '')
-      .replace(/\.00\b/g, '');
-    assert.equal(cartLabel, reviewLabel);
-    assert.equal(persisted.printWidthInches, 11);
+    const normalizeInchLabel = (label: string) =>
+      label
+        .replace(' in', '')
+        .replace(/(\.\d*?)0+\b/g, '$1')
+        .replace(/\.$/g, '');
+    const reviewLabel = normalizeInchLabel(
+      formatPrintRequestItemSizeLabel(
+        persisted.printWidthInches,
+        persisted.printHeightInches,
+      ),
+    );
+    assert.equal(normalizeInchLabel(cartLabel), reviewLabel);
+    assert.equal(persisted.printWidthInches, 10.5);
   });
 
   it('reload preserves dimensions when only quantity changes', () => {
@@ -99,12 +104,12 @@ describe('Portal catalog-add initial sizing (client reconciliation)', () => {
       ...initial,
       quantity: 2,
     };
-    assert.equal(afterQuantityBump.printWidthInches, 11);
-    assert.equal(afterQuantityBump.printHeightInches, 5.5);
+    assert.equal(afterQuantityBump.printWidthInches, 10.5);
+    assert.equal(afterQuantityBump.printHeightInches, 5.25);
   });
 
   it('does not hardcode a Portal-specific 10 inch default', () => {
-    assert.equal(STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES, 11);
+    assert.equal(STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES, 10.5);
     const size = resolvePortalOptimisticCatalogAddSize({
       width: 3600,
       height: 1800,

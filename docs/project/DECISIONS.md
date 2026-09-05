@@ -3848,7 +3848,7 @@ Embedded DPI metadata is unreliable for print quality. Imports previously upscal
 
 1. **Automated upscale target** raised from **12″** to **15″** (`AUTOMATED_UPSCALE_TARGET_WIDTH_INCHES`); policy version **`image-quality-v3`** for newly processed assets (forward-only). **15″ remains the automated import/upload target only** — not the interactive enhancement target.
 2. **Print Request default width** is a **runtime Studio setting** (`settings/standardPrintSizes.defaultPrintRequestWidthInches`), snapshot-at-create for **new items only**; existing items keep persisted dimensions; **no migration/backfill**.
-3. **System fallback** when the setting is absent or invalid: **11″** (`STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES`; amended 2026-09-05 from 10″). **`PREFERRED_PRINT_WIDTH_INCHES` / `DEFAULT_PRINT_REQUEST_WIDTH_INCHES`** remain **10″** for import messaging — distinct from the operational Print Request initializer.
+3. **System fallback** when the setting is absent or invalid: **10.5″** (`STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES`; amended 2026-09-05 from 11″, previously 10″). **`PREFERRED_PRINT_WIDTH_INCHES` / `DEFAULT_PRINT_REQUEST_WIDTH_INCHES`** remain **10″** for import messaging — distinct from the operational Print Request initializer.
 4. **Standard Size presets** and explicit requested dimensions continue to override the generic default where architecture supports them. Duplicates preserve source dimensions.
 5. **`MAX_UPSCALE_PASSES = 1`** unchanged for automated import. Cumulative **`MAX_UPSCALE_FACTOR = 6×`** measured from true native/original artwork dimensions; do not chain another 6× from an already-upscaled derivative.
 
@@ -3863,6 +3863,13 @@ Embedded DPI metadata is unreliable for print quality. Imports previously upscal
 7. **Production export parity:** gang sheets (Standard / Grouped by Customer / Sheet per Customer), ZIP export, manual gang-sheet builder, and Show Queue production resolution use the **active variant** selected on each item. Cache fingerprints include active production asset identity. Enhanced mode + missing derivative → **fail closed**.
 8. **Catalog:** baseline uses `design.originalPath`; enhanced uses interactive catalog derivative (`/originals/{designId}.interactive.png`). Do not mutate `design.originalPath` to switch variants. **Customer upload:** baseline uses private production asset; enhanced uses private interactive derivative — never promoted to catalog or exposed to other customers.
 9. **Storage rules:** staff production reads of interactive catalog originals (`{designId}.interactive.png`) are authorized; customer-upload private boundaries remain intact. Interactive catalog derivative creation remains server/Admin-controlled.
+
+**Amendment (2026-09-05 — Standard Size Full Back + Add to Request default recalibration):**
+
+1. **System fallback** for new Print Request / Add to Request items when `defaultPrintRequestWidthInches` is absent or invalid: **10.5″** (`STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES`).
+2. **Full Back Adult** seed widths recalibrated: M/L/XL **11″**; 2XL–5XL **12 / 13 / 14 / 15″** (XS/S unchanged at 10 / 10.5).
+3. **Full Back Youth** Y2XL seed width **11″** (was 11.5″); other youth back and all Full Front Adult/Youth seeds unchanged. Youth smallest key remains **`yxs` / YXS** (not renamed).
+4. **No migration** of existing `printRequestItems` or production Firestore settings. Saved item dimensions and persisted `settings/standardPrintSizes` overlays remain until owner Reset / re-save. Automated **15″** image-processing target and interactive enhance policy unchanged.
 
 ---
 

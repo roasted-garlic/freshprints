@@ -1229,7 +1229,7 @@ export interface PrintRequestItem {
 
 **Proposed (2026-08-30 — configurable default width):** On `settings/standardPrintSizes` (`StandardPrintSizesSettings`):
 
-- `defaultPrintRequestWidthInches?: number` — global operational default for **new** item init only; fallback 11″ when absent; owner-writable via `updateStandardPrintSizesSettings`; signed-in read (Portal presets + default).
+- `defaultPrintRequestWidthInches?: number` — global operational default for **new** item init only; fallback **10.5″** when absent (`STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES`); owner-writable via `updateStandardPrintSizesSettings`; signed-in read (Portal presets + default).
 
 Asset documents (`designs`, `customerUploads`) gain additive interactive-derivative path + provenance fields; see plan amendment. Callable-only writes for toggle mode. No migration — legacy items default OFF.
 

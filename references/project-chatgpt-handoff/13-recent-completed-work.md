@@ -1,5 +1,18 @@
 # Recent Completed Work
 
+## 2026-09-05 - Standard Size + Add to Request default recalibration — SOURCE CLOSED
+
+| Item | Status |
+|------|--------|
+| Goal | `standard-size-preset-and-add-to-request-default-recalibration` |
+| Status | **DONE** — Signoff **approved_with_notes** |
+| Delivered | Full Back Adult M/L/XL → 11″; 2XL–5XL → 12/13/14/15″; Youth Y2XL back → 11″; system fallback **10.5″**; keep `YXS` |
+| Tests | 87/87 unit; Functions build PASS; Portal typecheck PASS |
+| Firebase / production | **No writes, no deploys** |
+| Signoff | `2026-09-05-standard-size-preset-and-add-to-request-default-recalibration-signoff.md` |
+| Follow-up | Owner may Reset Studio Standard Size defaults on DEV if Firestore overlays remain |
+| Parked | TD-034 still awaiting DEV deploy auth |
+
 ## 2026-09-05 - Restore OpenAI GPT-5.6 Luna AI enrichment — Phase 1 CLOSED (DEV)
 
 | Item | Status |

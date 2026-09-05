@@ -153,10 +153,10 @@ describe("assessPrintRequestItemSize", () => {
 });
 
 describe("resolvePrintRequestDefaultWidthInches", () => {
-  it("falls back to 11 inches when setting is absent", () => {
-    assert.equal(resolvePrintRequestDefaultWidthInches({}), 11);
-    assert.equal(resolvePrintRequestDefaultWidthInches(undefined), 11);
-    assert.equal(STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES, 11);
+  it("falls back to 10.5 inches when setting is absent", () => {
+    assert.equal(resolvePrintRequestDefaultWidthInches({}), 10.5);
+    assert.equal(resolvePrintRequestDefaultWidthInches(undefined), 10.5);
+    assert.equal(STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES, 10.5);
   });
 
   it("resolves 10, 10.5, 11, and 11.5 when valid", () => {
@@ -181,11 +181,11 @@ describe("resolvePrintRequestDefaultWidthInches", () => {
   it("falls back when persisted value is invalid", () => {
     assert.equal(
       resolvePrintRequestDefaultWidthInches({ defaultPrintRequestWidthInches: -1 }),
-      11,
+      10.5,
     );
     assert.equal(
       resolvePrintRequestDefaultWidthInches({ defaultPrintRequestWidthInches: 99 }),
-      11,
+      10.5,
     );
   });
 });
