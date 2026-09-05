@@ -85,6 +85,16 @@ function shouldOfferCategoryDescriptionExpansion(description: string): boolean {
   return description.length > CATEGORY_DESCRIPTION_PREVIEW_LENGTH;
 }
 
+function categoryMatchesSearch(category: Category, searchQuery: string): boolean {
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+
+  if (!normalizedQuery) {
+    return true;
+  }
+
+  return category.name.toLowerCase().includes(normalizedQuery);
+}
+
 export function CategoryManagementModal({
   categories,
   isOpen,
@@ -120,6 +130,7 @@ export function CategoryManagementModal({
 
   const [editorMode, setEditorMode] = useState<CategoryEditorMode>("list");
   const [showArchived, setShowArchived] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [formValues, setFormValues] = useState<CategoryFormValues>(emptyCategoryFormValues);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [categoryToArchive, setCategoryToArchive] = useState<Category | null>(null);
@@ -138,6 +149,7 @@ export function CategoryManagementModal({
   );
   const bulkImportTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const bulkImportSummaryRef = useRef<HTMLDivElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const shouldScrollListToTopRef = useRef(false);
 
   const activeCategories = useMemo(
@@ -150,12 +162,15 @@ export function CategoryManagementModal({
   );
 
   const visibleCategories = useMemo(() => {
-    if (showArchived) {
-      return archivedCategories;
-    }
+    const baseCategories = showArchived
+      ? archivedCategories
+      : (dragPreviewCategories ?? activeCategories);
 
-    return dragPreviewCategories ?? activeCategories;
-  }, [activeCategories, archivedCategories, dragPreviewCategories, showArchived]);
+    return baseCategories.filter((category) => categoryMatchesSearch(category, searchQuery));
+  }, [activeCategories, archivedCategories, dragPreviewCategories, searchQuery, showArchived]);
+
+  const isCategorySearchActive = searchQuery.trim().length > 0;
+  const canReorderCategories = canManageCategories && !showArchived && !isCategorySearchActive;
 
   const formError = createError ?? updateError;
   const listError = archiveError ?? restoreError ?? reorderError;
@@ -179,10 +194,12 @@ export function CategoryManagementModal({
     }
   }, [bulkImportInput, editorMode]);
   const bulkImportPreview = bulkImportValidation.preview;
-  const categoryCount = showArchived ? archivedCategories.length : activeCategories.length;
-  const categoryCountLabel = `${categoryCount} ${showArchived ? "archived" : "active"} ${
-    categoryCount === 1 ? "category" : "categories"
-  }`;
+  const currentCategoryTotal = showArchived ? archivedCategories.length : activeCategories.length;
+  const categoryStatusLabel = showArchived ? "archived" : "active";
+  const categoryCountNoun = currentCategoryTotal === 1 ? "category" : "categories";
+  const categoryCountLabel = isCategorySearchActive
+    ? `${visibleCategories.length} of ${currentCategoryTotal} ${categoryStatusLabel} ${categoryCountNoun}`
+    : `${currentCategoryTotal} ${categoryStatusLabel} ${categoryCountNoun}`;
 
   const resetDragState = useCallback(() => {
     setDraggingCategoryId(null);
@@ -198,6 +215,7 @@ export function CategoryManagementModal({
 
     setEditorMode("list");
     setShowArchived(false);
+    setSearchQuery("");
     setFormValues(emptyCategoryFormValues);
     setEditingCategory(null);
     setCategoryToArchive(null);
@@ -224,10 +242,10 @@ export function CategoryManagementModal({
   ]);
 
   useEffect(() => {
-    if (showArchived) {
+    if (showArchived || isCategorySearchActive) {
       resetDragState();
     }
-  }, [resetDragState, showArchived]);
+  }, [isCategorySearchActive, resetDragState, showArchived]);
 
   useEffect(() => {
     if (editorMode === "bulk-import" && bulkImportPreview) {
@@ -346,6 +364,14 @@ export function CategoryManagementModal({
       }
 
       return nextIds;
+    });
+  }
+
+  function handleClearCategorySearch() {
+    setSearchQuery("");
+
+    window.requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
     });
   }
 
@@ -482,7 +508,7 @@ export function CategoryManagementModal({
   }
 
   function handleCategoryDragStart(event: DragEvent<HTMLElement>, categoryId: string) {
-    if (!canManageCategories || showArchived || isMutatingCategories) {
+    if (!canReorderCategories || isMutatingCategories) {
       return;
     }
 
@@ -495,7 +521,7 @@ export function CategoryManagementModal({
   }
 
   function handleCategoryDragOver(event: DragEvent<HTMLElement>, targetCategoryId: string) {
-    if (!draggingCategoryId || showArchived) {
+    if (!draggingCategoryId || !canReorderCategories) {
       return;
     }
 
@@ -521,7 +547,7 @@ export function CategoryManagementModal({
   }
 
   async function handleCategoryDrop(event: DragEvent<HTMLElement>, targetCategoryId: string) {
-    if (!draggingCategoryId || showArchived) {
+    if (!draggingCategoryId || !canReorderCategories) {
       return;
     }
 
@@ -607,6 +633,27 @@ export function CategoryManagementModal({
                 ) : null}
               </div>
 
+              <TextInput
+                label="Search categories"
+                name="categoryManagementSearch"
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search by name..."
+                ref={searchInputRef}
+                trailingControl={
+                  searchQuery ? (
+                    <button
+                      aria-label="Clear category search"
+                      className="form-input-clear-button"
+                      onClick={handleClearCategorySearch}
+                      type="button"
+                    >
+                      <X aria-hidden="true" size={16} strokeWidth={2.2} />
+                    </button>
+                  ) : null
+                }
+                value={searchQuery}
+              />
+
               <div className="category-management-count-row" aria-live="polite">
                 <span className="design-library-count-chip">{categoryCountLabel}</span>
               </div>
@@ -625,7 +672,7 @@ export function CategoryManagementModal({
                 />
               ) : null}
 
-              {!showArchived && canManageCategories ? (
+              {!showArchived && canManageCategories && !isCategorySearchActive ? (
                 <p className="design-details-muted">
                   Drag active categories to reorder them. Active category order always resequences to
                   contiguous values starting at 0.
@@ -635,7 +682,11 @@ export function CategoryManagementModal({
               <div className="category-management-list" role="list">
                 {visibleCategories.length === 0 ? (
                   <p className="design-details-muted">
-                    {showArchived ? "No archived categories." : "No active categories yet."}
+                    {isCategorySearchActive
+                      ? "No categories match this search."
+                      : showArchived
+                        ? "No archived categories."
+                        : "No active categories yet."}
                   </p>
                 ) : (
                   visibleCategories.map((category) => {
@@ -648,9 +699,7 @@ export function CategoryManagementModal({
                       <article
                         className={[
                           "category-management-item",
-                          canManageCategories && category.isActive && !showArchived
-                            ? "category-management-item-draggable"
-                            : "",
+                          canReorderCategories ? "category-management-item-draggable" : "",
                           draggingCategoryId === category.id ? "category-management-item-dragging" : "",
                           dragOverCategoryId === category.id && draggingCategoryId !== category.id
                             ? dragOverPosition === "after"
@@ -660,9 +709,7 @@ export function CategoryManagementModal({
                         ]
                           .filter(Boolean)
                           .join(" ")}
-                        draggable={
-                          canManageCategories && category.isActive && !showArchived && !isMutatingCategories
-                        }
+                        draggable={canReorderCategories && !isMutatingCategories}
                         key={category.id}
                         onDragEnd={resetDragState}
                         onDragOver={(event) => handleCategoryDragOver(event, category.id)}
@@ -672,7 +719,7 @@ export function CategoryManagementModal({
                       >
                         <div className="category-management-item-copy">
                           <div className="category-management-item-header">
-                            {canManageCategories && category.isActive && !showArchived ? (
+                            {canReorderCategories ? (
                               <span
                                 aria-hidden="true"
                                 className="category-management-drag-handle"
