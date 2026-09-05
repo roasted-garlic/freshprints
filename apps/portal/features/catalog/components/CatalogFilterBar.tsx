@@ -50,7 +50,7 @@ export function CatalogFilterBar({
             <input
               className="global-search-input"
               onChange={(event) => onSearchChange(event.target.value)}
-              placeholder="Search catalog..."
+              placeholder="Search catalog or paste a design ID..."
               type="search"
               value={searchQuery}
             />

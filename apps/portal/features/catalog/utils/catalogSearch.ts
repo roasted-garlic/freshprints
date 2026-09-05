@@ -73,6 +73,7 @@ export function filterCatalogDesignsBySearch(
   return designs.filter((design) =>
     catalogDesignTextMatchesSearch(
       {
+        id: design.id,
         title: design.title,
         description: design.description,
         tags: design.tags,

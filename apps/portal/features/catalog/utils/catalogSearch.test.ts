@@ -85,10 +85,11 @@ describe('filterCatalogDesignsBySearch', () => {
     assert.deepEqual(filterCatalogDesignsBySearch(designs, '   '), designs);
   });
 
-  it('matches title, description, and tags', () => {
+  it('matches title, description, tags, and design id', () => {
     const designs = [
       createDesign(),
       createDesign({ id: 'design-2', title: 'Forest', description: 'Pine trees', tags: ['nature'] }),
+      createDesign({ id: 'yJm2VBRvecPNjx79aSnK', title: 'Highland Cow', tags: [] }),
     ];
 
     assert.deepEqual(filterCatalogDesignsBySearch(designs, 'ocean').map((design) => design.id), [
@@ -100,6 +101,14 @@ describe('filterCatalogDesignsBySearch', () => {
     assert.deepEqual(filterCatalogDesignsBySearch(designs, 'nature').map((design) => design.id), [
       'design-2',
     ]);
+    assert.deepEqual(
+      filterCatalogDesignsBySearch(designs, 'yJm2VBRvecPNjx79aSnK').map((design) => design.id),
+      ['yJm2VBRvecPNjx79aSnK'],
+    );
+    assert.deepEqual(
+      filterCatalogDesignsBySearch(designs, 'vecPNjx').map((design) => design.id),
+      ['yJm2VBRvecPNjx79aSnK'],
+    );
   });
 
   it('matches summer progressive substring parity with Studio Design Library', () => {

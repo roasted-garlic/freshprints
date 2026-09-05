@@ -35,6 +35,11 @@ import {
   resolveManagedSearchClientFilters,
 } from '../utils/catalogSearch';
 import { catalogNeedsFullClientHydrate } from '../utils/catalogNeedsFullClientHydrate';
+import {
+  fetchVisibleExactIdCatalogDesign,
+  looksLikeDesignDocumentId,
+  mergeExactIdCatalogDesign,
+} from '../utils/portalCatalogExactIdSearch';
 
 export interface UseCatalogDesignsQuery {
   categoryId?: string;
@@ -336,25 +341,42 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
 
       try {
         if (useManagedSearch) {
+          const searchQuery = options.searchQuery ?? '';
+          const exactIdPromise = looksLikeDesignDocumentId(searchQuery)
+            ? fetchVisibleExactIdCatalogDesign(searchQuery, {
+                categoryId: options.categoryId,
+                selectedTags: selectedTagsForAssets,
+              })
+            : Promise.resolve(null);
+
           if (useAlgoliaSearch) {
             try {
-              const algoliaPage = await portalAlgoliaCatalogSearchService.listMatchingDesigns(
-                options.searchQuery ?? '',
-                selectedTagsForAssets,
-                {
-                  categoryId: options.categoryId,
-                  limit: pageSize,
-                  offset: 0,
-                  smartFilters: smartFiltersForSearch,
-                },
-              );
+              const [algoliaPage, exactIdDesign] = await Promise.all([
+                portalAlgoliaCatalogSearchService.listMatchingDesigns(
+                  searchQuery,
+                  selectedTagsForAssets,
+                  {
+                    categoryId: options.categoryId,
+                    limit: pageSize,
+                    offset: 0,
+                    smartFilters: smartFiltersForSearch,
+                  },
+                ),
+                exactIdPromise,
+              ]);
               if (isCancelled || generation !== hydrateGenerationRef.current) return;
+              const designs = mergeExactIdCatalogDesign(algoliaPage.designs, exactIdDesign);
+              const addedExactId =
+                Boolean(exactIdDesign) &&
+                !algoliaPage.designs.some((design) => design.id === exactIdDesign?.id);
               const nextOffset = algoliaPage.hitCount;
-              setAllDesigns(algoliaPage.designs);
-              setServerTotalCount(algoliaPage.total ?? algoliaPage.designs.length);
+              const algoliaTotal = algoliaPage.total ?? algoliaPage.designs.length;
+              const total = algoliaTotal + (addedExactId ? 1 : 0);
+              setAllDesigns(designs);
+              setServerTotalCount(total);
               setCountAuthority({
                 status: 'resolved',
-                total: algoliaPage.total ?? algoliaPage.designs.length,
+                total,
               });
               setManagedSearchNextOffset(nextOffset);
               setIsFullyHydrated(nextOffset >= algoliaPage.total || algoliaPage.hitCount === 0);
@@ -362,6 +384,18 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
               setIsLoading(false);
               return;
             } catch {
+              const exactIdDesign = await exactIdPromise.catch(() => null);
+              if (!isCancelled && generation === hydrateGenerationRef.current && exactIdDesign) {
+                setAllDesigns([exactIdDesign]);
+                setServerTotalCount(1);
+                setCountAuthority({ status: 'resolved', total: 1 });
+                setManagedSearchNextOffset(0);
+                setIsFullyHydrated(true);
+                setIsManagedSearchQuery(true);
+                setIsLoading(false);
+                setError(null);
+                return;
+              }
               if (!isCancelled && generation === hydrateGenerationRef.current) {
                 setError('Catalog search is temporarily unavailable. Please try again in a moment.');
                 setAllDesigns([]);
@@ -373,7 +407,18 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
             }
           }
 
-          // Stage 4: no generated Storage fallback. Algolia off → fail closed for managed search.
+          // Stage 4: no generated Storage fallback. Algolia off → exact-id lookup only, else fail closed.
+          const exactIdDesign = await exactIdPromise.catch(() => null);
+          if (!isCancelled && generation === hydrateGenerationRef.current && exactIdDesign) {
+            setAllDesigns([exactIdDesign]);
+            setServerTotalCount(1);
+            setCountAuthority({ status: 'resolved', total: 1 });
+            setManagedSearchNextOffset(0);
+            setIsFullyHydrated(true);
+            setIsManagedSearchQuery(true);
+            setIsLoading(false);
+            return;
+          }
           if (!isCancelled && generation === hydrateGenerationRef.current) {
             setError('Catalog search is temporarily unavailable. Please try again in a moment.');
             setAllDesigns([]);

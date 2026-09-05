@@ -61,6 +61,13 @@ describe('Stage 1b Algolia portal catalog wiring', () => {
     assert.match(source, /already applied q\/tags\/category/);
   });
 
+  it('useCatalogDesigns merges exact design-id lookup alongside Algolia search', () => {
+    const source = readFileSync(join(catalogRoot, 'hooks/useCatalogDesigns.ts'), 'utf8');
+    assert.match(source, /fetchVisibleExactIdCatalogDesign/);
+    assert.match(source, /mergeExactIdCatalogDesign/);
+    assert.match(source, /looksLikeDesignDocumentId/);
+  });
+
   it('catalog.css hides Filters trigger on desktop with specificity over portal-button-sm', () => {
     const css = readFileSync(join(process.cwd(), 'apps/portal/styles/catalog.css'), 'utf8');
     assert.match(css, /\.design-library-open-filters-button\.portal-button-sm\s*\{[^}]*display:\s*none/s);
