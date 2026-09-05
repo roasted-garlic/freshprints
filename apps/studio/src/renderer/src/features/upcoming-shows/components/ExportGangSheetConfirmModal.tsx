@@ -98,6 +98,39 @@ function formatByteSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function gangSheetLastDownloadStorageKey(showId: string, layoutMode: GangSheetLayoutMode): string {
+  return `freshprints.gangSheetLastDownload.${showId}.${layoutMode}`;
+}
+
+function readLastDownloadedSheetIndex(showId: string, layoutMode: GangSheetLayoutMode): number | null {
+  try {
+    const raw = window.sessionStorage.getItem(gangSheetLastDownloadStorageKey(showId, layoutMode));
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = Number(raw);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeLastDownloadedSheetIndex(
+  showId: string,
+  layoutMode: GangSheetLayoutMode,
+  sheetIndex: number,
+): void {
+  try {
+    window.sessionStorage.setItem(
+      gangSheetLastDownloadStorageKey(showId, layoutMode),
+      String(sheetIndex),
+    );
+  } catch {
+    // Best-effort recall when reopening the modal in this Studio session.
+  }
+}
+
 function formatTotalLength(totalInches: number): string {
   const inchesLabel = formatInchesForFilename(totalInches);
   const feetLabel = Number((totalInches / 12).toFixed(2)).toString();
@@ -148,6 +181,9 @@ export function ExportGangSheetConfirmModal({
   const hasGenerated = hasGeneratedForLayout && Boolean(generated) && sheets.length > 0;
   const layoutOption = getGangSheetLayoutModeOption(layoutMode);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [lastDownloadedSheetIndex, setLastDownloadedSheetIndex] = useState<number | null>(() =>
+    readLastDownloadedSheetIndex(show.id, layoutMode),
+  );
   const generateStartedAtRef = useRef<number | null>(null);
   const compositingStartedAtRef = useRef<number | null>(null);
   const lastSheetIndexRef = useRef<number | null>(null);
@@ -158,6 +194,16 @@ export function ExportGangSheetConfirmModal({
     [sheets],
   );
   const estimatedSheets = estimatedSheetCount(sheetCountPreview, layoutMode);
+
+  useEffect(() => {
+    setLastDownloadedSheetIndex(readLastDownloadedSheetIndex(show.id, layoutMode));
+  }, [layoutMode, show.id]);
+
+  function handleDownloadSheet(sheetIndex: number) {
+    setLastDownloadedSheetIndex(sheetIndex);
+    writeLastDownloadedSheetIndex(show.id, layoutMode, sheetIndex);
+    onDownloadSheet(sheetIndex);
+  }
 
   useEffect(() => {
     if (!isGenerating) {
@@ -320,8 +366,14 @@ export function ExportGangSheetConfirmModal({
               <p className="print-requests-modal-hint">{formatTotalLength(totalLengthInches)}</p>
               <div className="gang-sheet-preview-list-scroll">
                 <ul className="gang-sheet-preview-list">
-                  {sheets.map((sheet) => (
-                    <li className="gang-sheet-preview-row" key={sheet.fileName}>
+                  {sheets.map((sheet) => {
+                    const isLastDownloaded = lastDownloadedSheetIndex === sheet.sheetIndex;
+
+                    return (
+                    <li
+                      className={`gang-sheet-preview-row${isLastDownloaded ? " is-last-downloaded" : ""}`}
+                      key={sheet.fileName}
+                    >
                       <div>
                         <strong>
                           Sheet {sheet.sheetIndex} of {sheet.sheetTotal}
@@ -333,15 +385,18 @@ export function ExportGangSheetConfirmModal({
                         <p className="print-requests-modal-hint">{sheet.fileName}</p>
                       </div>
                       <Button
+                        aria-current={isLastDownloaded ? "true" : undefined}
+                        className={isLastDownloaded ? "is-last-downloaded" : undefined}
                         disabled={isBusy}
-                        onClick={() => onDownloadSheet(sheet.sheetIndex)}
+                        onClick={() => handleDownloadSheet(sheet.sheetIndex)}
                         size="sm"
                         variant="secondary"
                       >
                         Download
                       </Button>
                     </li>
-                  ))}
+                    );
+                  })}
                 </ul>
               </div>
               {lastSavedPaths.length > 0 ? (

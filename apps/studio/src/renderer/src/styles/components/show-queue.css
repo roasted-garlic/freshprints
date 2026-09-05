@@ -1034,6 +1034,18 @@
   flex-shrink: 0;
 }
 
+.gang-sheet-preview-row.is-last-downloaded {
+  border-color: color-mix(in srgb, var(--color-accent-primary) 55%, var(--color-border));
+  background: color-mix(in srgb, var(--color-accent-primary) 8%, var(--color-bg-secondary));
+}
+
+.gang-sheet-preview-row > .button.is-last-downloaded {
+  border-color: var(--color-accent-primary);
+  box-shadow: 0 0 0 1px var(--color-accent-primary);
+  color: var(--color-accent-primary);
+  font-weight: 600;
+}
+
 .create-internal-gang-sheet-modal {
   max-width: min(42rem, calc(100vw - 2 * var(--space-6)));
   width: min(42rem, calc(100vw - 2 * var(--space-6)));

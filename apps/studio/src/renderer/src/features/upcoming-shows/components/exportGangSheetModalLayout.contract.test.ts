@@ -24,4 +24,11 @@ describe("export gang sheet modal layout contracts", () => {
     assert.match(showQueueCss, /max-height: min\(90vh/);
     assert.match(showQueueCss, /grid-template-rows: auto minmax\(0, 1fr\) auto/);
   });
+
+  it("highlights the most recently clicked sheet download button", () => {
+    assert.match(modalSource, /lastDownloadedSheetIndex/);
+    assert.match(modalSource, /is-last-downloaded/);
+    assert.match(modalSource, /handleDownloadSheet/);
+    assert.match(showQueueCss, /\.button\.is-last-downloaded/);
+  });
 });
