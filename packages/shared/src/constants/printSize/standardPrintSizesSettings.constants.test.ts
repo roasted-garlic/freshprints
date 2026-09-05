@@ -48,10 +48,10 @@ test("Full Front Adult includes XS through 5XL with approved widths", () => {
   assert.equal(findPreset("full_front.adult.5xl")?.widthInches, 15);
 });
 
-test("Full Back Adult M/L/XL are 11 and 2XL–5XL match approved widths", () => {
+test("Full Back Adult M/L/XL and 2XL–5XL match approved widths", () => {
   assert.equal(findPreset("full_back.adult.xs")?.widthInches, 10);
   assert.equal(findPreset("full_back.adult.s")?.widthInches, 10.5);
-  assert.equal(findPreset("full_back.adult.m")?.widthInches, 11);
+  assert.equal(findPreset("full_back.adult.m")?.widthInches, 10.5);
   assert.equal(findPreset("full_back.adult.l")?.widthInches, 11);
   assert.equal(findPreset("full_back.adult.xl")?.widthInches, 11);
   assert.equal(findPreset("full_back.adult.2xl")?.widthInches, 12);

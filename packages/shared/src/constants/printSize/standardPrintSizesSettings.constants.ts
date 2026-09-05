@@ -158,7 +158,7 @@ const INFANT_GARMENT_ROWS: readonly PresetRow[] = [
 const ADULT_FULL_BACK_ROWS: readonly PresetRow[] = [
   ["xs", "XS", 10],
   ["s", "S", 10.5],
-  ["m", "M", 11],
+  ["m", "M", 10.5],
   ["l", "L", 11],
   ["xl", "XL", 11],
   ["2xl", "2XL", 12],
