@@ -200,72 +200,77 @@ export function resolveCanonicalPrintRequestsRoute(input: {
   const routeFilter = workingFilter ? { workingFilter } : {};
   const nowMs = input.nowMs ?? Date.now();
 
-  if (requestedRequestId) {
-    const located = findRequestInAnyTab(requestedRequestId, input.requestsByTab);
-    const hint =
-      input.loadedRequestHint?.id === requestedRequestId ? input.loadedRequestHint : null;
-    const hintTab =
-      hint?.queueTab && isPrintRequestRouteTab(hint.queueTab)
-        ? normalizePrintRequestListTabForKind(hint.queueTab, requestedKind)
-        : null;
-    const tab = located?.tab ?? hintTab ?? requestedTab;
-    const triageSource =
-      located?.request ??
-      (hint
-        ? {
-            id: requestedRequestId,
-            itemCount: hint.itemCount,
-            updatedAtMillis: hint.updatedAtMillis,
-          }
-        : null);
+  // Intentional empty selection (no requestId in the URL): keep it empty. Do not auto-select the
+  // first eligible row — that made re-entering Print Requests always restore a selection.
+  if (!requestedRequestId) {
+    return { kind: requestedKind, tab: requestedTab, ...routeFilter };
+  }
 
-    if (triageSource) {
-      const routeFilter =
-        tab === "working" && workingFilter
+  const located = findRequestInAnyTab(requestedRequestId, input.requestsByTab);
+  const hint =
+    input.loadedRequestHint?.id === requestedRequestId ? input.loadedRequestHint : null;
+  const hintTab =
+    hint?.queueTab && isPrintRequestRouteTab(hint.queueTab)
+      ? normalizePrintRequestListTabForKind(hint.queueTab, requestedKind)
+      : null;
+  const tab = located?.tab ?? hintTab ?? requestedTab;
+  const triageSource =
+    located?.request ??
+    (hint
+      ? {
+          id: requestedRequestId,
+          itemCount: hint.itemCount,
+          updatedAtMillis: hint.updatedAtMillis,
+        }
+      : null);
+
+  if (triageSource) {
+    const resolvedFilter =
+      tab === "working" && workingFilter
+        ? {
+            workingFilter: resolveWorkingTabFilterForRequest({
+              requestedFilter: workingFilter,
+              itemCount: triageSource.itemCount,
+              updatedAtMillis: triageSource.updatedAtMillis,
+              needsStaffRequeueAt: triageSource.needsStaffRequeueAt,
+              nowMs,
+            }),
+          }
+        : tab === "working"
           ? {
-              workingFilter: resolveWorkingTabFilterForRequest({
-                requestedFilter: workingFilter,
+              workingFilter: resolvePrintRequestWorkingTriageBucket({
                 itemCount: triageSource.itemCount,
                 updatedAtMillis: triageSource.updatedAtMillis,
                 needsStaffRequeueAt: triageSource.needsStaffRequeueAt,
                 nowMs,
               }),
             }
-          : tab === "working"
-            ? {
-                workingFilter: resolvePrintRequestWorkingTriageBucket({
-                  itemCount: triageSource.itemCount,
-                  updatedAtMillis: triageSource.updatedAtMillis,
-                  needsStaffRequeueAt: triageSource.needsStaffRequeueAt,
-                  nowMs,
-                }),
-              }
-            : {};
+          : {};
 
-      const shouldKeepRequest =
-        eligibleRequestIds.has(requestedRequestId) || located !== null || hintTab !== null;
+    const shouldKeepRequest =
+      eligibleRequestIds.has(requestedRequestId) || located !== null || hintTab !== null;
 
-      if (shouldKeepRequest) {
-        return { requestId: requestedRequestId, kind: requestedKind, tab, ...routeFilter };
-      }
+    if (shouldKeepRequest) {
+      return { requestId: requestedRequestId, kind: requestedKind, tab, ...resolvedFilter };
+    }
 
-      if (tab === "working" && workingFilter) {
-        return {
-          requestId: requestedRequestId,
-          kind: requestedKind,
-          tab,
-          workingFilter: resolveWorkingTabFilterForRequest({
-            requestedFilter: workingFilter,
-            itemCount: triageSource.itemCount,
-            updatedAtMillis: triageSource.updatedAtMillis,
-            needsStaffRequeueAt: triageSource.needsStaffRequeueAt,
-            nowMs,
-          }),
-        };
-      }
+    if (tab === "working" && workingFilter) {
+      return {
+        requestId: requestedRequestId,
+        kind: requestedKind,
+        tab,
+        workingFilter: resolveWorkingTabFilterForRequest({
+          requestedFilter: workingFilter,
+          itemCount: triageSource.itemCount,
+          updatedAtMillis: triageSource.updatedAtMillis,
+          needsStaffRequeueAt: triageSource.needsStaffRequeueAt,
+          nowMs,
+        }),
+      };
     }
   }
 
+  // Stale / unknown requestId: fall back to the first eligible row, or an empty selection.
   const fallbackRequestId = input.eligibleRequestIds[0];
   return fallbackRequestId
     ? { requestId: fallbackRequestId, kind: requestedKind, tab: requestedTab, ...routeFilter }
@@ -416,11 +421,8 @@ export function resolveWorkingFilterClick(input: {
   destinationRequestIds: readonly string[];
   kind: PrintRequestListKind;
 }): CanonicalPrintRequestsRoute {
-  const currentRequestId = input.currentRequestId?.trim() || null;
-  const requestId =
-    currentRequestId && input.destinationRequestIds.includes(currentRequestId)
-      ? currentRequestId
-      : input.destinationRequestIds[0];
+  // Always land on the first request in the destination filter (same as tab entry).
+  const requestId = input.destinationRequestIds[0];
 
   return {
     ...(requestId ? { requestId } : {}),

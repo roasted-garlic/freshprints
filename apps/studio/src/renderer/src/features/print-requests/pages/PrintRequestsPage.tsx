@@ -873,6 +873,7 @@ export function PrintRequestsPage() {
     const grouped: Record<PrintRequestWorkingTriageFilter, PrintRequest[]> = {
       needs_requeue: [],
       active: [],
+      idle: [],
       stale: [],
       empty: [],
       all: [...activeTabRequests],
@@ -894,7 +895,7 @@ export function PrintRequestsPage() {
   }, [activeListTab, activeTabRequests]);
 
   // Triage chip counts reflect the currently loaded Working page, not the full corpus — an exact
-  // whole-database Active/Stale count would require a second maintained field kept in sync purely
+  // whole-database Active/Idle/Stale count would require a second maintained field kept in sync purely
   // by time passing (no write event to trigger off), a materially larger mechanism than this
   // secondary in-page filter chip warrants. The primary tab counts (`countsByTab`) remain exact
   // via `getCountFromServer`.
@@ -902,6 +903,7 @@ export function PrintRequestsPage() {
     () => ({
       needs_requeue: workingRequestsByFilter.needs_requeue.length,
       active: workingRequestsByFilter.active.length,
+      idle: workingRequestsByFilter.idle.length,
       stale: workingRequestsByFilter.stale.length,
       empty: workingRequestsByFilter.empty.length,
       all: workingRequestsByFilter.all.length,
@@ -1923,9 +1925,11 @@ export function PrintRequestsPage() {
                     : activeListTab === "working" && workingTriageFilter === "needs_requeue"
                       ? "No requests need staff re-queue in this filter."
                       : activeListTab === "working" && workingTriageFilter === "active"
-                      ? "No Active carts here. New empty carts are under Empty; older unused carts under Stale. Or choose All."
+                      ? "No Active carts here. Check Idle (2–7 days), Stale (7+ days), Empty, or All."
+                      : activeListTab === "working" && workingTriageFilter === "idle"
+                        ? "No Idle carts here. Active is under 48 hours; Stale is 7+ days. Or choose All."
                       : activeListTab === "working" && workingTriageFilter !== "all"
-                        ? "No requests in this Working filter. Try Stale, Empty, or All."
+                        ? "No requests in this Working filter. Try Idle, Stale, Empty, or All."
                         : "No print requests in this tab yet."
                 }
                 title="Nothing here yet"

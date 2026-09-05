@@ -3696,11 +3696,11 @@ Ecommerce-style one-open-request (ADR-FP-071) fills Studio Working with idle/emp
 
 **Decision**
 
-1. Working triage chips: **Active** (default) / **Stale** / **Empty** / **All** — Active = `itemCount > 0` and `updatedAt` within 14 days.
+1. Working triage chips: **Active** (default) / **Idle** / **Stale** / **Empty** / **All** — Active = `itemCount > 0` and `updatedAt` within **48 hours**; Idle = has items, updated **48 hours–7 days** ago; Stale = has items, updated **7+ days** ago (amended 2026-09-05; previously Active/Stale only with Active = 14 days, then Active = 48 hours with no Idle band).
 2. Soft-exclude `status: archived` from Studio list tabs.
 3. Client-side rail search on all Print Request tabs (name, id, customer fields).
 4. Portal **Clear request** → callable `clearPortalWorkingPrintRequest` deletes items and sets `itemCount: 0`, **keeping** `draft`/`editing` so the next Add reuses the same open request (amended 2026-07-18; previously archived on clear).
-5. Owner/admin callable `archiveStaleWorkingPrintRequests` auto-archives **empty** working requests older than 14 days (`dryRun` supported). Stale carts with items stay filterable only.
+5. Owner/admin callable `archiveStaleWorkingPrintRequests` auto-archives **empty** working requests older than **14 days** (`dryRun` supported). Idle/Stale carts with items stay filterable only (age triage is independent of empty auto-archive).
 
 **Consequences**
 

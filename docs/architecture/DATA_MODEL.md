@@ -1964,7 +1964,9 @@ status never misleadingly contradicts the request's actual queue state:
 open as `draft`/`editing` so the next Add reuses the same id (ADR-FP-071). Owner/admin **empty
 stale archive** (`archiveStaleWorkingPrintRequests`, 14-day empty working carts) sets `archived`.
 It is never a synonym for printed. Studio Working triage defaults to **Active** carts (has items,
-updated within 14 days); Stale / Empty / All chips + rail search cover the rest (ADR-FP-079).
+updated within 48 hours); **Idle** (2–7 days) / **Stale** (7+ days) / Empty / All chips + rail
+search cover the rest (ADR-FP-079).
+Empty working carts may be owner/admin auto-archived after 14 days of no updates.
 None of these transitions touch `designs.status`.
 
 ---

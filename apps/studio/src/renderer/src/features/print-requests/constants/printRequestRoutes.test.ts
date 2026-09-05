@@ -262,13 +262,35 @@ describe("Print Requests route normalization", () => {
     );
   });
 
-  it("makes every explicit Working-filter transition authoritative in one stable route", () => {
+  it("does not auto-select the first request when the URL has no requestId", () => {
+    assert.deepEqual(
+      resolveCanonicalPrintRequestsRoute({
+        dataReady: true,
+        eligibleRequestIds: ["working-1", "working-2"],
+        requestedRequestId: null,
+        requestedKind: null,
+        requestedTab: "working",
+        requestedWorkingFilter: "active",
+        requestsByTab: {
+          working: [triageRequest("working-1", 1), triageRequest("working-2", 1)],
+          editing: [],
+          queued: [],
+          printing: [],
+          printed: [],
+        },
+      }),
+      { kind: "customer", tab: "working", workingFilter: "active" },
+    );
+  });
+
+  it("makes every explicit Working-filter transition select the first destination request", () => {
     const requestsByFilter = {
       needs_requeue: ["requeue-1", "shared"],
       active: ["active-1", "shared"],
+      idle: ["idle-1", "shared"],
       stale: ["stale-1", "shared"],
       empty: ["empty-1"],
-      all: ["requeue-1", "active-1", "stale-1", "empty-1", "shared", "all-only"],
+      all: ["requeue-1", "active-1", "idle-1", "stale-1", "empty-1", "shared", "all-only"],
     } as const;
 
     for (const sourceFilter of PRINT_REQUEST_WORKING_TRIAGE_FILTERS) {
@@ -289,10 +311,7 @@ describe("Print Requests route normalization", () => {
             destinationRequestIds: requestsByFilter[destinationFilter],
             kind: "customer",
           });
-          const expectedRequestId =
-            currentRequestId && requestsByFilter[destinationFilter].includes(currentRequestId as never)
-              ? currentRequestId
-              : requestsByFilter[destinationFilter][0];
+          const expectedRequestId = requestsByFilter[destinationFilter][0];
 
           assert.deepEqual(next, {
             ...(expectedRequestId ? { requestId: expectedRequestId } : {}),
@@ -393,6 +412,7 @@ describe("Print Requests route normalization", () => {
     }> = [
       { workingFilter: "empty", eligibleRequestIds: ["empty-1"], expectedWorkingFilter: "empty" },
       { workingFilter: "active", eligibleRequestIds: ["active-1"], expectedWorkingFilter: "empty" },
+      { workingFilter: "idle", eligibleRequestIds: [], expectedWorkingFilter: "empty" },
       { workingFilter: "stale", eligibleRequestIds: [], expectedWorkingFilter: "empty" },
     ];
 
@@ -420,6 +440,11 @@ describe("Print Requests route normalization", () => {
       updatedAtMillis: nowMs,
       nowMs,
     });
+    const idle = resolvePrintRequestWorkingTriageBucket({
+      itemCount: 1,
+      updatedAtMillis: nowMs - 3 * 24 * 60 * 60 * 1000,
+      nowMs,
+    });
     const stale = resolvePrintRequestWorkingTriageBucket({
       itemCount: 1,
       updatedAtMillis: nowMs - 15 * 24 * 60 * 60 * 1000,
@@ -430,8 +455,9 @@ describe("Print Requests route normalization", () => {
       updatedAtMillis: nowMs,
       nowMs,
     });
-    assert.deepEqual({ active, stale, empty }, {
+    assert.deepEqual({ active, idle, stale, empty }, {
       active: "active",
+      idle: "idle",
       stale: "stale",
       empty: "empty",
     });

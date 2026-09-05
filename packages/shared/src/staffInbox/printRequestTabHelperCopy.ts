@@ -7,7 +7,7 @@ export function getPrintRequestTabHelperCopy(
   if (options?.isInternal) {
     switch (tab) {
       case "working":
-        return "Working — open internal carts not yet on a show or Internal Gang Sheet. Use Stale / Empty / All and search to find others.";
+        return "Working — open internal carts not yet on a show or Internal Gang Sheet. Default view is Active (has items, updated within 48 hours). Use Idle (2–7 days) / Stale (7+ days) / Empty / All and search to find others.";
       case "editing":
         return "Editing — internal requests removed from every show / Internal Gang Sheet and back for revision.";
       case "queued":
@@ -23,7 +23,7 @@ export function getPrintRequestTabHelperCopy(
 
   switch (tab) {
     case "working":
-      return "Working — open carts not yet on a show. Default view is Active (has items, updated recently). Use Stale / Empty / All and search to find others.";
+      return "Working — open carts not yet on a show. Default view is Active (has items, updated within 48 hours). Use Idle (2–7 days) / Stale (7+ days) / Empty / All and search to find others.";
     case "editing":
       return "Editing — customer requests removed from every show and back for revision (distinct from never-queued Working drafts).";
     case "queued":
