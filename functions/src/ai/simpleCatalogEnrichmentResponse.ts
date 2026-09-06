@@ -7,19 +7,24 @@ import {
   SIMPLE_ENRICHMENT_MAX_TAGS,
 } from "./aiEnrichmentConfig";
 import { estimateVisionCostUsd } from "../../../packages/shared/src/constants/aiEnrichment.constants";
-import {
-  sanitizeMeaningfulVisibleTextPhrases,
-  stripOcrDumpFromDescription,
-  synthesizeSemanticCatalogDescription,
-} from "../../../packages/shared/src/utils/visibleTextQuality";
+import { sanitizeMeaningfulVisibleTextPhrases } from "../../../packages/shared/src/utils/visibleTextQuality";
 import {
   CATALOG_ENRICHMENT_PROMPT_VERSION,
+  acceptCanonicalCatalogCopy,
   normalizeAiTags,
-  resolveLeanCatalogTitle,
-  sanitizeCatalogDescription,
 } from "./catalogTitleRules";
 import { filterUnsupportedHalloweenTags } from "./halloweenTagGuard";
 import { parseHalftoneShadowAssessment } from "./smartProfileBuilder";
+import {
+  VISUAL_CONTEXT_ALIAS_MAX,
+  VISUAL_CONTEXT_ARRAY_MAX,
+  VISUAL_CONTEXT_DETAILED_MAX,
+  VISUAL_CONTEXT_LINE_MAX,
+  VISUAL_CONTEXT_STRING_MAX,
+  VISUAL_CONTEXT_SUMMARY_MAX,
+  VISUAL_CONTEXT_VERSION,
+  type VisualContextProfile,
+} from "../../../packages/shared/src/types/catalog/visualContext.types";
 
 export interface SimpleCatalogEnrichmentParsed {
   category: string;
@@ -57,6 +62,28 @@ export interface SimpleCatalogEnrichmentParsed {
   categoryGapNote?: string;
   halftoneShadowLikelihood?: string;
   halftoneShadowEvidence?: string;
+  visualContextProfile?: VisualContextProfile;
+}
+
+function normalizeVisualContextProfile(value: unknown): VisualContextProfile | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const raw = value as Record<string, unknown>;
+  const summary = coerceString(raw.summary).slice(0, VISUAL_CONTEXT_SUMMARY_MAX);
+  const detailedDescription = coerceString(raw.detailedDescription).slice(0, VISUAL_CONTEXT_DETAILED_MAX);
+  if (!summary || !detailedDescription || raw.version !== VISUAL_CONTEXT_VERSION) return undefined;
+  const profile: VisualContextProfile = { version: VISUAL_CONTEXT_VERSION, summary, detailedDescription };
+  const arrays = ["peopleCharacters", "animals", "objects", "readableArtworkText", "symbols", "colors", "themesInterests", "professionsGroups", "occasions", "semanticAliases", "uncertainties"] as const;
+  for (const field of arrays) {
+    const max = field === "semanticAliases" ? VISUAL_CONTEXT_ALIAS_MAX : VISUAL_CONTEXT_ARRAY_MAX;
+    const values = normalizeStringArray(raw[field], max)?.map((item) => item.slice(0, VISUAL_CONTEXT_LINE_MAX));
+    if (values?.length) profile[field] = values;
+  }
+  const strings = ["appearance", "posesActions", "relationships", "setting", "styleComposition", "visualJokeOrStory"] as const;
+  for (const field of strings) {
+    const value = coerceString(raw[field]).slice(0, VISUAL_CONTEXT_STRING_MAX);
+    if (value) profile[field] = value;
+  }
+  return profile;
 }
 
 /**
@@ -369,6 +396,42 @@ export function normalizeSimpleCatalogEnrichment(
     categoryGapNote: coerceString(raw.categoryGapNote) || undefined,
     halftoneShadowLikelihood: coerceString(raw.halftoneShadowLikelihood) || undefined,
     halftoneShadowEvidence: coerceString(raw.halftoneShadowEvidence) || undefined,
+    visualContextProfile: normalizeVisualContextProfile(raw.visualContextProfile),
+  };
+}
+
+/**
+ * Project a normalized parse into the canonical enrichment JSON keys only.
+ * Unknown provider keys (prompt, keywords, people, etc.) are never included.
+ */
+export function toCanonicalSimpleCatalogEnrichmentJson(
+  parsed: SimpleCatalogEnrichmentParsed,
+): Record<string, unknown> {
+  return {
+    title: parsed.title,
+    description: parsed.description,
+    category: parsed.category,
+    tags: parsed.tags,
+    readableTextLines: parsed.readableTextLines ?? [],
+    centralSubject: parsed.centralSubject ?? "",
+    subjects: parsed.subjects ?? [],
+    objects: parsed.objects ?? [],
+    styles: parsed.styles ?? [],
+    themes: parsed.themes ?? [],
+    interests: parsed.interests ?? [],
+    professionsGroups: parsed.professionsGroups ?? [],
+    occasions: parsed.occasions ?? [],
+    places: parsed.places ?? [],
+    colors: parsed.colors ?? [],
+    searchConcepts: parsed.searchConcepts ?? [],
+    categoryAlternatives: (parsed.categoryAlternatives ?? []).map((entry) => ({
+      name: entry.name,
+      ...(entry.reason ? { reason: entry.reason } : {}),
+    })),
+    categoryGapNote: parsed.categoryGapNote ?? "",
+    halftoneShadowLikelihood: parsed.halftoneShadowLikelihood ?? "none",
+    halftoneShadowEvidence: parsed.halftoneShadowEvidence ?? "",
+    ...(parsed.visualContextProfile ? { visualContextProfile: parsed.visualContextProfile } : {}),
   };
 }
 
@@ -383,7 +446,8 @@ export function buildSimpleCatalogEnrichmentResult(input: {
   promptTokens?: number | null;
   completionTokens?: number | null;
 }): AiEnrichmentResult {
-  const { parsed, enrichmentInput, modelId, providerId, promptTokens, completionTokens } = input;
+  const { parsed, enrichmentInput: _enrichmentInput, modelId, providerId, promptTokens, completionTokens } =
+    input;
 
   const sanitizedReadableTextLines = sanitizeMeaningfulVisibleTextPhrases(parsed.readableTextLines);
   const sanitizedVisibleText =
@@ -396,28 +460,11 @@ export function buildSimpleCatalogEnrichmentResult(input: {
     .map((line) => (typeof line === "string" ? line.trim() : ""))
     .filter(Boolean);
 
-  // Lean schema: trust a good model title. Reject style/tag-invented, description-prose, and
-  // OCR-dump titles; prefer sanitized readable lines or guarded description wording.
-  const title = resolveLeanCatalogTitle({
-    candidateTitle: parsed.title,
-    tags: parsed.tags,
-    uploadFileStem: enrichmentInput.uploadFileStem,
-    description: parsed.description,
-    readableTextLines: sanitizedReadableTextLines,
-    centralSubject: parsed.centralSubject,
-    subjects: parsed.subjects,
-    objects: parsed.objects,
-  });
-
-  const scrubbedDescription = stripOcrDumpFromDescription(
-    sanitizeCatalogDescription(parsed.description),
-  ).slice(0, 500);
-  const description =
-    scrubbedDescription ||
-    synthesizeSemanticCatalogDescription({
-      centralSubject: parsed.centralSubject,
-      visibleText: sanitizedVisibleText,
-    }).slice(0, 500);
+  // ADR-FP-181 / owner contract: AI owns semantic title/description.
+  // Persist canonical model copy after structural validation only — no lean rewrite,
+  // slogan rebuild, subject append, or description synthesis.
+  const title = acceptCanonicalCatalogCopy("title", parsed.title);
+  const description = acceptCanonicalCatalogCopy("description", parsed.description);
 
   const estimatedCostUsd =
     promptTokens != null && completionTokens != null
@@ -446,6 +493,10 @@ export function buildSimpleCatalogEnrichmentResult(input: {
   };
 
   const analysis: DesignAiAnalysis = {
+    visualContextProfile: parsed.visualContextProfile,
+    // Canonical evidence path: automation and persistence consume analysis.visibleText.
+    // Keep the Smart Profile parse synchronized with the same sanitized phrases.
+    visibleText: sanitizedVisibleText,
     rawCategory: parsed.category || undefined,
     rawTags: parsed.rawTags.length > 0 ? parsed.rawTags : undefined,
     halftoneShadowAssessment: parseHalftoneShadowAssessment(parsed),

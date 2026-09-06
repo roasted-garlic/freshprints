@@ -3,80 +3,24 @@ import type {
   DesignAiAnalysis,
   DesignAiSuggestions,
 } from "../../../packages/shared/src/types/ai/aiProcessing.types";
-import type { SuggestedNewTag } from "../../../packages/shared/src/types/catalogTag.types";
-import type { SuggestionAuthorMode, TagRerankMode } from "../../../packages/shared/src/constants/aiEnrichment.constants";
 import type { DesignSmartProfile } from "../../../packages/shared/src/types/catalog/smartProfile.types";
+import type { SuggestionAuthorMode, TagRerankMode } from "../../../packages/shared/src/constants/aiEnrichment.constants";
+import type { ResolveAiCatalogTagsResult } from "./catalogTagResolver";
 import type { CatalogAutomationDecisionResult } from "./automationDecisionShadow";
 import { adminStorage } from "../lib/admin";
 import { logPipelineEvent } from "../lib/pipelineLog";
 import { prepareAiAnalysisImage } from "./prepareAiAnalysisImage";
 import {
   loadCachedActiveCategories,
-  loadCachedApprovedTags,
   loadCachedAiEnrichmentSettings,
   type AiEnrichmentReadDiagnosticContext,
 } from "./aiEnrichmentRuntimeCache";
 import { loadSmartProfileVocabSnapshot } from "./loadSmartProfileVocabSnapshot";
 import {
-  CATALOG_TAG_RERANK_PROMPT_VERSION,
+  acceptCanonicalCatalogCopy,
   descriptionLacksVisibleTextOverlap,
-  isPlaceholderCatalogDescription,
-  resolveCatalogDescription,
 } from "./catalogTitleRules";
-import { SIMPLE_ENRICHMENT_MAX_TAGS } from "./aiEnrichmentConfig";
-import {
-  filterCandidatesExcludingAssigned,
-  resolveAiCatalogTags,
-  subtractAssignedFromAiTagSuggestions,
-  type ResolveAiCatalogTagsResult,
-} from "./catalogTagResolver";
-import { resolveThemeCategory, type ResolveThemeCategoryInput } from "./catalogThemeCategoryResolver";
-
-function buildThemeCategoryResolveInput(args: {
-  rawCategory?: string;
-  title?: string;
-  description?: string;
-  visibleText?: string[];
-  matchedTags: readonly string[];
-  enrichmentParse?: {
-    subjects?: string[];
-    objects?: string[];
-    styles?: string[];
-    themes?: string[];
-    interests?: string[];
-    professionsGroups?: string[];
-    searchConcepts?: string[];
-  } | null;
-  approvedCategories: ResolveThemeCategoryInput["approvedCategories"];
-}): ResolveThemeCategoryInput {
-  const parse = args.enrichmentParse ?? undefined;
-  return {
-    rawCategory: args.rawCategory,
-    title: args.title,
-    description: args.description,
-    visibleText: args.visibleText,
-    matchedTags: args.matchedTags,
-    subjects: parse?.subjects,
-    objects: parse?.objects,
-    styles: parse?.styles,
-    themes: parse?.themes,
-    interests: parse?.interests,
-    professionsGroups: parse?.professionsGroups,
-    searchConcepts: parse?.searchConcepts,
-    approvedCategories: args.approvedCategories,
-  };
-}
 import { resolveAiEnrichmentProvider } from "./providers/resolveAiEnrichmentProvider";
-import { callTagRerank, TagRerankError } from "./catalogTagRerankProvider";
-import {
-  CATALOG_SUGGESTED_TAG_AUTHOR_PROMPT_VERSION,
-  buildReservedCatalogTagTerms,
-  callSuggestedTagAuthorStandalone,
-  selectCalibrationExampleTags,
-  SuggestedTagAuthorError,
-  type AuthoredSuggestedTag,
-} from "./catalogSuggestedTagAuthorProvider";
-import { resolveProviderTarget } from "./providers/resolveProviderTarget";
 import { buildDesignSmartProfile } from "./smartProfileBuilder";
 import { computeCatalogAutomationDecision } from "./automationDecisionShadow";
 import {
@@ -84,6 +28,15 @@ import {
   classifyExplicitContentAutomation,
   type ExplicitContentAutomationWrite,
 } from "../../../packages/shared/src/utils/explicitContentAutomation";
+
+/** Compatibility predicates retained for callers; active tag-AI execution is retired. */
+export function shouldRunTagRerank(_mode: TagRerankMode, _resolvedTags: ResolveAiCatalogTagsResult): boolean {
+  return false;
+}
+
+export function shouldRunSuggestionAuthor(_mode: SuggestionAuthorMode, _resolvedTags: ResolveAiCatalogTagsResult): boolean {
+  return false;
+}
 
 /**
  * Design fields required for read-only candidate generation (no lifecycle writes).
@@ -123,88 +76,6 @@ export type AiEnrichmentCandidate = {
  * exact symptom reported (too many missed tags / suggestedNewTags). Thresholds are a starting
  * point, expected to need tuning once real auto-mode usage data comes in (see plan §8 note 2).
  */
-export function shouldRunTagRerank(mode: TagRerankMode, resolvedTags: ResolveAiCatalogTagsResult): boolean {
-  if (mode === "off") {
-    return false;
-  }
-
-  if (mode === "always") {
-    return true;
-  }
-
-  return (
-    resolvedTags.unmatchedCandidateCount >= 3 ||
-    resolvedTags.tags.length < 5 ||
-    resolvedTags.suggestedNewTags.length >= 2
-  );
-}
-
-/**
- * Decide whether the optional AI-authored suggestion-quality call should run. Independent of
- * tagRerankMode — only cares whether suggestedNewTags already survived the settings policy gate
- * and whether the author setting allows it. "auto" and "always" behave identically.
- */
-export function shouldRunSuggestionAuthor(
-  mode: SuggestionAuthorMode,
-  resolvedTags: ResolveAiCatalogTagsResult,
-): boolean {
-  if (mode === "off") {
-    return false;
-  }
-
-  return resolvedTags.suggestedNewTags.length > 0;
-}
-
-/**
- * Merge AI-authored suggestions back onto the server-templated suggestion list: an authored entry
- * replaces the matching-by-name server template (upgrading its preferredWhen/aliases), while any
- * candidate the AI declined to author (omitted from its output) keeps the server template as a
- * fallback — suggestions are never silently dropped once the last-resort gate has already decided
- * they are needed (plan §4.3).
- */
-function mergeAuthoredSuggestions(
-  serverTemplateSuggestions: readonly SuggestedNewTag[],
-  authored: readonly AuthoredSuggestedTag[],
-): SuggestedNewTag[] {
-  const authoredByName = new Map(authored.map((entry) => [entry.name, entry]));
-
-  return serverTemplateSuggestions.map((template) => {
-    const authoredEntry = authoredByName.get(template.name);
-
-    if (!authoredEntry) {
-      return template;
-    }
-
-    return {
-      aliases: authoredEntry.aliases,
-      name: authoredEntry.name,
-      preferredWhen: authoredEntry.preferredWhen,
-      reason: template.reason,
-      source: template.source,
-    };
-  });
-}
-
-function applyAssignedTagReconciliation(input: {
-  approvedTags: Parameters<typeof subtractAssignedFromAiTagSuggestions>[0]["approvedTags"];
-  assignedTags: readonly string[] | undefined;
-  tags: string[];
-  suggestedNewTags?: SuggestedNewTag[];
-}): { assignedCanonicalNames: string[]; tags: string[]; suggestedNewTags: SuggestedNewTag[] | undefined } {
-  const reconciled = subtractAssignedFromAiTagSuggestions({
-    approvedTags: input.approvedTags,
-    assignedTags: input.assignedTags,
-    tags: input.tags,
-    suggestedNewTags: input.suggestedNewTags,
-  });
-  return {
-    assignedCanonicalNames: reconciled.assignedCanonicalNames,
-    tags: reconciled.tags,
-    suggestedNewTags:
-      reconciled.suggestedNewTags.length > 0 ? reconciled.suggestedNewTags : undefined,
-  };
-}
-
 async function downloadPreviewBytes(previewPath: string): Promise<Buffer> {
   const bucket = adminStorage.bucket();
   const normalizedPath = previewPath.replace(/^\//, "");
@@ -251,16 +122,11 @@ export async function generateAiEnrichmentCandidateForDesign(input: {
     requestedVisionModelId,
     openAiApiKey,
   );
-  const secondaryProviderTarget = resolveProviderTarget(
-    provider.providerId === "openai" ? "openai" : "google",
-  );
-  const secondaryApiKey =
-    secondaryProviderTarget.providerId === "openai" ? openAiApiKey : geminiApiKey;
+  void openAiApiKey;
 
   await maybeNotifyStage(onProcessingStage, "preparing_image");  const previewBytes = await downloadPreviewBytes(previewPath);
   const analysisImage = await prepareAiAnalysisImage(previewBytes, design.artworkBackgroundHex);
   const categories = await loadCachedActiveCategories(diagnosticContext);
-  const approvedTags = await loadCachedApprovedTags(diagnosticContext);
   const smartProfileVocabSnapshot = await loadSmartProfileVocabSnapshot();
   logPipelineEvent("analysis_image.prepared", {
     designId,
@@ -279,8 +145,8 @@ export async function generateAiEnrichmentCandidateForDesign(input: {
     promptTemplate: enrichmentSettings.promptTemplate,
     categoryOptions: categories.categories,
     categoryNames: categories.names,
-    approvedTags,
-    approvedTagNames: approvedTags.map((tag) => tag.name),
+    approvedTags: [],
+    approvedTagNames: [],
     categoryIdsByName: categories.idsByName,
     effectiveTagExclusions: enrichmentSettings.effectiveTagExclusions,
     smartProfileVocab: smartProfileVocabSnapshot.lists,
@@ -297,6 +163,14 @@ export async function generateAiEnrichmentCandidateForDesign(input: {
     generatedAt: result.suggestions.generatedAt ?? nowIso,
   };
 
+  // Legacy tag AI is retired from the active enrichment path. Keep historical fields readable,
+  // but never resolve, rerank, author, or emit AI tag suggestions for new runs.
+  suggestions.tags = [];
+  suggestions.suggestedNewTags = undefined;
+  suggestions.tagRerankStatus = "skipped";
+  suggestions.suggestionAuthorStatus = "skipped";
+
+  /*
   // Prefer the raw (untokenized) model tags so multi-word approved names and aliases
   // (e.g. "rock and roll") resolve before falling back to suggestions. suggestions.tags is
   // already tokenized into single words, so it is only a fallback when rawTags is absent.
@@ -323,7 +197,7 @@ export async function generateAiEnrichmentCandidateForDesign(input: {
   });
   suggestions.tags = afterResolve.tags;
   suggestions.suggestedNewTags = afterResolve.suggestedNewTags;
-  const assignedCanonicalNames = afterResolve.assignedCanonicalNames;
+  const assignedCanonicalNamesLegacy = afterResolve.assignedCanonicalNames;
 
   const rerankWillRun = shouldRunTagRerank(enrichmentSettings.tagRerankMode, {
     ...resolvedTags,
@@ -342,7 +216,6 @@ export async function generateAiEnrichmentCandidateForDesign(input: {
   if (!authorWillRun || suggestionCandidateNames.length === 0) {
     suggestions.suggestionAuthorStatus = "skipped";
   }
-
   if (!rerankWillRun) {
     suggestions.tagRerankStatus = "skipped";
 
@@ -570,6 +443,8 @@ export async function generateAiEnrichmentCandidateForDesign(input: {
     }
   }
 
+  */
+
   // Category resolution runs after tag resolution (and after any rerank) so the final matched
   // approved tags feed the category scoring signal. Enrichment-parse themes/subjects/objects/
   // interests/professionsGroups/searchConcepts are included when present (available on analysis
@@ -577,18 +452,12 @@ export async function generateAiEnrichmentCandidateForDesign(input: {
   // trusted or persisted directly. Leaves categoryId/categoryName undefined when no approved
   // category clears the confidence threshold (staff sets it in AI Review).
   const enrichmentParse = result.analysis.smartProfileEnrichmentParse;
-  const resolvedCategory = resolveThemeCategory(
-    buildThemeCategoryResolveInput({
-      rawCategory: result.analysis.rawCategory,
-      title: suggestions.title,
-      description: suggestions.description,
-      visibleText: result.analysis.visibleText,
-      matchedTags: [...new Set([...assignedCanonicalNames, ...(suggestions.tags ?? [])])],
-      enrichmentParse,
-      approvedCategories: categories.categories,
-    }),
-    categories.idsByName,
+  const exactAiCategory = categories.categories.find(
+    (category) => category.name.trim().toLowerCase() === (result.analysis.rawCategory ?? "").trim().toLowerCase(),
   );
+  const resolvedCategory = exactAiCategory
+    ? { categoryId: exactAiCategory.id, categoryName: exactAiCategory.name }
+    : { categoryId: undefined, categoryName: undefined };
   suggestions.categoryName = resolvedCategory.categoryName;
   suggestions.categoryId = resolvedCategory.categoryId;
 
@@ -729,25 +598,9 @@ export async function generateAiEnrichmentCandidateForDesign(input: {
     });
   }
 
-  if (isPlaceholderCatalogDescription(suggestions.description)) {
-    const repaired = resolveCatalogDescription({
-      candidateDescription: suggestions.description,
-      title: suggestions.title,
-      primarySubject: result.analysis.primarySubject,
-      style: result.analysis.style,
-      theme: result.analysis.theme,
-      tags: suggestions.tags,
-      visibleText: result.analysis.visibleText,
-      artworkContainsText: result.analysis.artworkContainsText,
-      colorPalette: result.analysis.colorPalette,
-    });
-    suggestions.description = repaired.description;
-    logPipelineEvent("catalog.enrich.description_fallback", {
-      designId,
-      reason: repaired.fallbackReason ?? "pipeline_guard",
-      tier: repaired.fallbackTier ?? "generic",
-    });
-  }
+  // Structural re-check only — never synthesize substitute catalog prose.
+  suggestions.title = acceptCanonicalCatalogCopy("title", suggestions.title);
+  suggestions.description = acceptCanonicalCatalogCopy("description", suggestions.description);
 
   return {
     suggestions,

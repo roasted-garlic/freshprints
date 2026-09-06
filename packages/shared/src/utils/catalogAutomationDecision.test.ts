@@ -374,6 +374,50 @@ describe("computeCatalogAutomationDecision", () => {
     assert.ok(result.hardBlockers.includes("category_gap_suggested"));
   });
 
+  it("valid category with empty gap note does not hard-block (secondary concepts allowed)", () => {
+    const result = computeCatalogAutomationDecision({
+      smartProfile: baseProfile({
+        subjects: ["woman"],
+        objects: ["cucumber"],
+        styles: ["vintage", "pin-up"],
+        themes: ["humor", "sarcasm"],
+        categoryGapSuggested: undefined,
+        categoryGapEvidence: undefined,
+      }),
+      title: "Retro Woman Holding Cucumber",
+      categoryId: "funny",
+      categoryName: "Funny & Sarcastic",
+      description:
+        "A vintage pin-up woman holding a cucumber with a sarcastic slogan. Food imagery is secondary to the joke.",
+      visibleText: ["WHEN LIFE GIVES YOU CUCUMBERS"],
+      catalogWorkflowMode: "shadow",
+      catalogAutonomousLiveEnabled: false,
+    });
+    assert.ok(!result.hardBlockers.includes("category_gap_suggested"));
+    assert.equal(result.wouldAutoApprove, true);
+    assert.equal(result.decision, "shadow");
+  });
+
+  it("category alternatives remain soft and do not create category_gap_suggested alone", () => {
+    const result = computeCatalogAutomationDecision({
+      smartProfile: baseProfile({
+        subjects: ["woman"],
+        categoryAlternatives: [{ categoryId: "animals", categoryName: "Animals", reason: "person depicted" }],
+        categoryGapSuggested: undefined,
+      }),
+      title: "Funny Woman Design",
+      categoryId: "funny",
+      categoryName: "Funny & Sarcastic",
+      description: "A humorous illustration of a woman.",
+      catalogWorkflowMode: "shadow",
+      catalogAutonomousLiveEnabled: false,
+    });
+    assert.ok(result.reasonCodes.includes("category_alternatives_present"));
+    assert.ok(result.softConcerns.includes("category_alternatives_present"));
+    assert.ok(!result.hardBlockers.includes("category_gap_suggested"));
+    assert.ok(!result.hardBlockers.includes("category_alternatives_present"));
+  });
+
   it("genuine people subject is not inherently invalid", () => {
     const result = computeCatalogAutomationDecision({
       smartProfile: baseProfile({ subjects: ["people"] }),

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER,
   AI_ENRICHMENT_APPROVED_CATEGORY_NAMES_PLACEHOLDER,
   AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER,
   DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
@@ -120,11 +121,20 @@ describe("resolveAiPromptTemplate", () => {
     const customPrompt = `Custom production prompt.
 
 Approved categories:
+${AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER}`;
+
+    assert.equal(resolveAiPromptTemplate(customPrompt), customPrompt);
+  });
+
+  it("falls back to default when custom prompt only has names-only category placeholder", () => {
+    const namesOnly = `Custom production prompt.
+
+Approved categories:
 ${AI_ENRICHMENT_APPROVED_CATEGORY_NAMES_PLACEHOLDER}
 
 Do not use: ${AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER}`;
 
-    assert.equal(resolveAiPromptTemplate(customPrompt), customPrompt);
+    assert.equal(resolveAiPromptTemplate(namesOnly), DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE);
   });
 
   it("falls back to the current default for invalid prompt values", () => {

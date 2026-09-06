@@ -3,6 +3,8 @@
  */
 
 import type { SuggestedNewTag } from "../catalogTag.types";
+import type { VisualContextProfile } from "../catalog/visualContext.types";
+import type { SemanticReviewDecision, SemanticReviewStatus, SemanticReviewPatch } from "../catalog/semanticReview.types";
 
 export const AI_PROCESSING_STAGES = [
   "queued",
@@ -73,9 +75,23 @@ export interface DesignAiSuggestions {
   suggestionAuthorCompletionTokens?: number | null;
   suggestionAuthorEstimatedCostUsd?: number | null;
   suggestionAuthorPromptVersion?: string;
+  semanticReviewStatus?: SemanticReviewStatus;
+  semanticReviewFailureReason?: string;
+  semanticReviewDecision?: SemanticReviewDecision;
+  semanticReviewReason?: string;
+  semanticReviewPromptTokens?: number | null;
+  semanticReviewCompletionTokens?: number | null;
+  semanticReviewEstimatedCostUsd?: number | null;
+  semanticReviewPromptVersion?: string;
+  semanticReviewModel?: string;
+  semanticReviewProvider?: string;
+  semanticReviewBlockersResolved?: string[];
+  semanticReviewBlockersUnresolved?: string[];
+  semanticReviewPatchesApplied?: SemanticReviewPatch[];
 }
 
 export interface DesignAiAnalysis {
+  visualContextProfile?: VisualContextProfile;
   primarySubject?: string;
   secondarySubjects?: string[];
   theme?: string;

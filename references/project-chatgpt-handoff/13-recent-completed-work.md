@@ -1,5 +1,18 @@
 # Recent Completed Work
 
+## 2026-09-05 - Canonical AI catalog copy trust (ADR-FP-181) — SIGNED OFF
+
+| Item | Status |
+|------|--------|
+| Goal | Canonical AI title/description trust corrective |
+| Status | **DONE** — Signoff **approved_with_notes** |
+| Owner DEV QA | **PASS WITH NOTES** |
+| Signoff | `2026-09-05-canonical-ai-catalog-copy-trust-corrective-signoff.md` |
+| Delivered | No semantic rewrite of title/description; structural fail-closed; Processing/Playground parity for copy class |
+| Note | 1/5 cucumber blocked by lexical `structured_evidence_gap:subjects:woman` — deferred to two-pass architecture |
+| Follow-up | Architecture investigation Plan/Review (no implement yet) |
+| Production / commit | **NOT AUTHORIZED** / not committed |
+
 ## 2026-09-05 - Standard Size + Add to Request default recalibration — SOURCE CLOSED
 
 | Item | Status |

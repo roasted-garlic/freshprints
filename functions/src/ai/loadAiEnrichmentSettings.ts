@@ -38,6 +38,8 @@ export interface AiEnrichmentSettingsLoaded {
   tagRerankMode: TagRerankMode;
   suggestionAuthorMode: SuggestionAuthorMode;
   suggestedNewTagsPolicy: SuggestedNewTagsPolicy;
+  semanticReviewerEnabled: boolean;
+  semanticReviewerModelId: AllowedVisionModelId;
   catalogWorkflowMode: CatalogWorkflowMode;
   catalogAutonomousLiveEnabled: boolean;
   /**
@@ -65,6 +67,8 @@ function defaultSettingsPayload(settingsReadFailed: boolean): AiEnrichmentSettin
     tagRerankMode: DEFAULT_TAG_RERANK_MODE,
     suggestionAuthorMode: DEFAULT_SUGGESTION_AUTHOR_MODE,
     suggestedNewTagsPolicy: DEFAULT_SUGGESTED_NEW_TAGS_POLICY,
+    semanticReviewerEnabled: false,
+    semanticReviewerModelId: "gemini-2.5-flash-lite",
     catalogWorkflowMode: resolveCatalogWorkflowMode(undefined),
     catalogAutonomousLiveEnabled: resolveCatalogAutonomousLiveEnabled(undefined),
     explicitContentAutomationTerms: resolveExplicitContentAutomationTerms(undefined),
@@ -128,6 +132,10 @@ export async function loadAiEnrichmentSettings(): Promise<AiEnrichmentSettingsLo
       tagRerankMode,
       suggestionAuthorMode,
       suggestedNewTagsPolicy,
+      semanticReviewerEnabled: data?.semanticReviewerEnabled === true,
+      semanticReviewerModelId: resolveVisionModelId(
+        typeof data?.semanticReviewerModelId === "string" ? data.semanticReviewerModelId : "gemini-2.5-flash-lite",
+      ),
       catalogWorkflowMode: resolveCatalogWorkflowMode(data?.catalogWorkflowMode),
       catalogAutonomousLiveEnabled: resolveCatalogAutonomousLiveEnabled(
         data?.catalogAutonomousLiveEnabled,

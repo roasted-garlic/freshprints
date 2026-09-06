@@ -55,18 +55,10 @@ const HARD_BLOCKER_CODES = new Set([
   "title:title_missing",
   "title:title_exceeds_max_characters",
   "category_gap_suggested",
-  "category_dominant_intent_conflict",
 ]);
 
 function isHardValidationCode(code: string): boolean {
   return code.startsWith("validation:") && !code.includes("missing_generated_at");
-}
-
-/** Deterministic evidence failures — hard Needs Review (not confirmable by re-running the same checks). */
-function isHardEvidenceCode(code: string): boolean {
-  return (
-    code.startsWith("structured_evidence_gap:") || code.startsWith("subject_specificity_risk:")
-  );
 }
 
 function isConfirmableVerifierTrigger(code: string): boolean {
@@ -249,8 +241,7 @@ export function computeCatalogAutomationDecision(
       reasonCodes.filter(
         (code) =>
           isHardValidationCode(code) ||
-          HARD_BLOCKER_CODES.has(code) ||
-          isHardEvidenceCode(code),
+          HARD_BLOCKER_CODES.has(code),
       ),
     ),
   ];

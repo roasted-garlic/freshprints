@@ -12,40 +12,30 @@ import { CATALOG_ENRICHMENT_PROMPT_VERSION } from "./catalogTitleRules";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
-describe("smart profile quality v33 contract", () => {
-  it("ships catalog-enrich-v34 and keeps current caps", () => {
-    assert.equal(CATALOG_ENRICHMENT_PROMPT_VERSION, "catalog-enrich-v34");
+describe("smart profile quality contract", () => {
+  it("ships catalog-enrich-v37 and keeps current caps", () => {
+    assert.equal(CATALOG_ENRICHMENT_PROMPT_VERSION, "catalog-enrich-v37");
     assert.equal(SMART_PROFILE_MAX_ITEMS_PER_DIMENSION, 12);
   });
 
-  it("default prompt covers text-dominant, visible-text quality, vocab placeholder, mat ignore, anti-glue subjects, canonical bases", () => {
-    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /text-only \| text-dominant/);
-    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /primary\/meaningful design text/);
-    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /background\/document text/);
-    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /Do not dump sheet music/);
-    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /WHAT THE DESIGN IS/);
-    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /\{\{smart_profile_vocab\}\}/);
+  it("default prompt is visual-first with required placeholders and canonical JSON keys", () => {
+    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /4–10 words|4-10 words/);
+    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /2–4 sentences|2-4 sentences/);
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /display mat/i);
-    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /deliberately consider EVERY array/);
-    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /highland cow/);
-    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /MUST include that full phrase/);
-    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /canonical base noun/);
-    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /leaping fish/);
-    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /make fish/);
-    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /searchConcepts: richer shopper/);
-    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /Do NOT create specificity by gluing/);
-    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /dominant BUYER INTENT/);
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /\{\{approved_categories\}\}/);
-    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /Funny & Sarcastic/);
-    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /Cannabis & 420/);
-    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /Astrology & Zodiac/);
+    assert.doesNotMatch(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /\{\{excluded_tags\}\}/);
+    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /"subjects":\[\]/);
+    assert.doesNotMatch(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /\{\{smart_profile_vocab\}\}/);
+    assert.doesNotMatch(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /dominant BUYER INTENT/);
+    assert.doesNotMatch(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /"prompt":/);
   });
 
-  it("injects bounded vocab and does not inject approved-tag synonym boards", () => {
+  it("injects bounded vocab when template requests it and does not inject approved-tag synonym boards", () => {
     const prompt = buildSimpleCatalogEnrichmentUserPrompt({
       approvedCategoryNames: ["Animals"],
       approvedTagNames: ["legacy-tag-should-not-be-vocab"],
       effectiveTagExclusions: [],
+      promptTemplate: `${DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE}\n{{smart_profile_vocab}}`,
       smartProfileVocab: { subjects: ["raccoon", "cow"] },
     });
     assert.match(prompt, /subjects: raccoon, cow/);

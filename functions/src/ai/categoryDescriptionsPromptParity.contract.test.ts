@@ -1,16 +1,19 @@
 /**
- * Path parity: v34 category-description prompt is built once and shared.
- * Run: npx tsx --test functions/src/ai/categoryDescriptionsPromptParity.contract.test.ts
+ * Path parity: catalog enrichment prompt is built once and shared across Playground + providers.
+ * Paths resolve from this file so the suite works when cwd is `functions/` or repo root.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
+const repoRoot = resolve(import.meta.dirname, "../../..");
+
 function read(rel: string): string {
-  return readFileSync(rel, "utf8");
+  return readFileSync(resolve(repoRoot, rel), "utf8");
 }
 
-describe("v34 category-description prompt path parity", () => {
+describe("v36 category-description prompt path parity", () => {
   it("Gemini provider, Playground, and candidate core share buildSimpleCatalogEnrichmentUserPrompt", () => {
     assert.match(
       read("functions/src/ai/providers/geminiVisionEnrichmentProvider.ts"),
@@ -39,19 +42,23 @@ describe("v34 category-description prompt path parity", () => {
     const defaultEnd = constants.indexOf("`;", defaultStart + 50);
     const defaultBody = constants.slice(defaultStart, defaultEnd);
     assert.match(defaultBody, /\{\{approved_categories\}\}/);
+    assert.doesNotMatch(defaultBody, /\{\{excluded_tags\}\}/);
+    assert.match(defaultBody, /4–10 words|4-10 words/);
     assert.doesNotMatch(defaultBody, /\{\{approved_category_names\}\}/);
     assert.doesNotMatch(defaultBody, /\{\{approved_tags\}\}/);
     assert.doesNotMatch(defaultBody, /\{\{approved_tag_names\}\}/);
+    assert.doesNotMatch(defaultBody, /Structured evidence self-consistency/);
+    assert.doesNotMatch(defaultBody, /\{\{existing_smart_profile_response_schema\}\}/);
     assert.match(
       constants,
       /AI_ENRICHMENT_REQUIRED_PROMPT_PLACEHOLDERS = \[[\s\S]*AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER/,
     );
   });
 
-  it("prompt and normalizer/schema versions stay on the v34 / v6 / v1 contract", () => {
+  it("prompt and normalizer/schema versions stay on the v37 / v6 / v1 contract", () => {
     assert.match(
       read("packages/shared/src/constants/smartProfile.constants.ts"),
-      /CURRENT_CATALOG_ENRICH_PROMPT_VERSION = "catalog-enrich-v34"/,
+      /CURRENT_CATALOG_ENRICH_PROMPT_VERSION = "catalog-enrich-v37"/,
     );
     assert.match(
       read("packages/shared/src/constants/smartProfile.constants.ts"),
@@ -59,7 +66,7 @@ describe("v34 category-description prompt path parity", () => {
     );
     assert.match(
       read("functions/src/ai/catalogTitleRules.ts"),
-      /CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-v34"/,
+      /CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-v37"/,
     );
   });
 });

@@ -10,6 +10,97 @@ const TITLE_TOKEN_EDGE_PUNCTUATION = /^['"'""–—|,:;.,!?/\\-]+|['"'""–—|,
 const TRAILING_TITLE_PUNCTUATION = /[\s–—|:;.,!?'"/\\]+$/;
 const SEPARATOR_ONLY_TOKEN = /^[–—|-]+$/;
 
+/**
+ * Owner contract (ADR-FP-181): structural integrity only — not semantic quality.
+ * Reject missing/empty, placeholder tokens, JSON/fence leakage, control corruption,
+ * and symbol-dominated garbage. Allow Unicode, punctuation, profanity, slogans.
+ */
+const STRUCTURAL_PLACEHOLDER_COPY = new Set([
+  "-",
+  "—",
+  "–",
+  ".",
+  "...",
+  "n/a",
+  "na",
+  "none",
+  "null",
+  "undefined",
+]);
+
+export function isStructurallyValidCatalogCopy(value: unknown): boolean {
+  if (typeof value !== "string") {
+    return false;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return false;
+  }
+
+  if (STRUCTURAL_PLACEHOLDER_COPY.has(trimmed.toLowerCase())) {
+    return false;
+  }
+
+  // Markdown / code-fence leakage.
+  if (/```/.test(trimmed)) {
+    return false;
+  }
+
+  // Raw JSON object/array as the field value.
+  if (/^\s*[{\[][\s\S]*[}\]]\s*$/.test(trimmed) && /[{}:\[\],"]/.test(trimmed)) {
+    const letterCount = (trimmed.match(/\p{L}/gu) ?? []).length;
+    const structuralChars = (trimmed.match(/[{}\[\]":,]/g) ?? []).length;
+    if (structuralChars >= 4 && structuralChars >= letterCount) {
+      return false;
+    }
+  }
+
+  if (/"title"\s*:|"description"\s*:/.test(trimmed) && /[{}]/.test(trimmed)) {
+    return false;
+  }
+
+  // Control characters (allow tab/newline/carriage return).
+  if (/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(trimmed)) {
+    return false;
+  }
+
+  const letters = (trimmed.match(/\p{L}/gu) ?? []).length;
+  if (letters < 2) {
+    return false;
+  }
+
+  // Underscore-run garbage dominating the string.
+  const underscores = (trimmed.match(/_/g) ?? []).length;
+  if (underscores >= 4 && underscores > letters) {
+    return false;
+  }
+
+  // Symbol soup: far more exotic symbols than letters (normal punctuation is fine).
+  const exotic = (trimmed.match(/[^\p{L}\p{N}\s'''ʼ''""\-\u2013\u2014&.,:;!?()\/]/gu) ?? []).length;
+  if (exotic > 12 && exotic > letters * 2) {
+    return false;
+  }
+
+  return true;
+}
+
+export function acceptCanonicalCatalogCopy(
+  field: "title" | "description",
+  value: unknown,
+): string {
+  if (typeof value !== "string") {
+    throw new Error(`AI response ${field} is structurally invalid (non-string).`);
+  }
+
+  const trimmed = value.trim();
+  if (!isStructurallyValidCatalogCopy(trimmed)) {
+    throw new Error(`AI response ${field} is structurally invalid.`);
+  }
+
+  return trimmed;
+}
+
 export function stripTrailingTitlePunctuation(title: string): string {
   return title.replace(TRAILING_TITLE_PUNCTUATION, "").trim();
 }
@@ -28,8 +119,8 @@ function hasTrailingTitlePunctuation(rawTitle: string): boolean {
   return TRAILING_TITLE_PUNCTUATION.test(rawTitle.trim());
 }
 
-export const CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-v34";
-export const DEVELOPMENT_CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-dev-v34";
+export const CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-v38";
+export const DEVELOPMENT_CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-dev-v38";
 
 /**
  * Prompt version for the optional text-only tag reranker second call. Independent of

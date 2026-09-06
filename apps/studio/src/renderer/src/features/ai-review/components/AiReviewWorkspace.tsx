@@ -20,12 +20,10 @@ import type { AiProcessingQueueRunState } from "../hooks/useAiProcessingQueue";
 import type { AiReviewDraftForm, AiReviewInboxTab } from "../types/aiReviewInbox.types";
 import { resolveAiProcessingOutputStatus } from "../utils/aiProcessingOutput";
 import { scrollAiReviewPageContentToTop } from "../utils/aiReviewWorkspaceScroll";
-import { filterIgnoredSuggestedTags } from "../utils/suggestedNewTags";
 import { AiProcessingSettingsModal } from "./AiProcessingSettingsModal";
 import { AiReviewFormPanel } from "./AiReviewFormPanel";
 import { AiReviewProcessingStatusSection } from "./AiReviewProcessingStatusSection";
 import { AiReviewRejectedStatusSection } from "./AiReviewRejectedStatusSection";
-import { AiReviewSuggestedTagsSection } from "./AiReviewSuggestedTagsSection";
 import { AiReviewSuggestionsSection } from "./AiReviewSuggestionsSection";
 import { AiReviewSmartProfileSection } from "./AiReviewSmartProfileSection";
 import { AiReviewWorkspaceEmpty } from "./AiReviewWorkspaceEmpty";
@@ -65,11 +63,7 @@ interface AiReviewWorkspaceProps {
   isRerunningAi: boolean;
   ignoredSuggestedTagNames: string[];
   onApprove: () => void;
-  onApproveSuggestedTag: (
-    sourceName: string,
-    input: CreateCatalogTagInput,
-    addToDraft: boolean,
-  ) => Promise<void> | void;
+  onApproveSuggestedTag: (sourceName: string, input: CreateCatalogTagInput, addToDraft: boolean) => Promise<void> | void;
   onAutoAdvanceChange: (enabled: boolean) => void;
   onInputFocusChange: (isFocused: boolean) => void;
   onIgnoreSuggestedTag: (name: string) => void;
@@ -111,7 +105,6 @@ export function AiReviewWorkspace({
   approvedTags,
   autoAdvance,
   canApprove,
-  canApproveSuggestedTags,
   canEdit,
   canSaveArtworkBackground,
   canManageProcessingSettings,
@@ -138,12 +131,9 @@ export function AiReviewWorkspace({
   isOptimisticEnqueue = false,
   isMultiSelectMode,
   isRerunningAi,
-  ignoredSuggestedTagNames,
   onApprove,
-  onApproveSuggestedTag,
   onAutoAdvanceChange,
   onInputFocusChange,
-  onIgnoreSuggestedTag,
   onNext,
   onPrevious,
   onProcessSelectedDesign,
@@ -259,10 +249,6 @@ export function AiReviewWorkspace({
   const showEditableForm = activeTab === "needs_review" && draftForm;
   const showSuggestions =
     activeTab === "needs_review" || showReadOnlySuggestions;
-  const suggestedNewTags = filterIgnoredSuggestedTags(
-    selectedDesign.aiSuggestions?.suggestedNewTags,
-    ignoredSuggestedTagNames,
-  );
   const showProcessingQueueControls =
     activeTab === "processing" && !canRetryProcessing && !canRetryStaleProcessing;
   const isAutoQueueProcessing =
@@ -387,16 +373,6 @@ export function AiReviewWorkspace({
                   : undefined
               }
               selectedCategoryId={draftForm?.categoryId ?? selectedDesign.categoryId ?? ""}
-            />
-          ) : null}
-
-          {activeTab === "needs_review" ? (
-            <AiReviewSuggestedTagsSection
-              canApproveSuggestedTags={canApproveSuggestedTags}
-              isSubmitting={isActionLoading}
-              onApproveSuggestedTag={onApproveSuggestedTag}
-              onIgnoreSuggestedTag={onIgnoreSuggestedTag}
-              suggestedNewTags={suggestedNewTags}
             />
           ) : null}
 

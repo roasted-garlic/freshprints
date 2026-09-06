@@ -3,7 +3,6 @@ import { onCall } from "firebase-functions/v2/https";
 
 import {
   AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER,
-  AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER,
   AI_ENRICHMENT_PROMPT_TEMPLATE_MAX_LENGTH,
   AI_ENRICHMENT_TAG_RERANK_PROMPT_TEMPLATE_MAX_LENGTH,
   DEFAULT_SUGGESTED_NEW_TAGS_POLICY,
@@ -40,6 +39,8 @@ interface UpdateAiEnrichmentSettingsRequest {
   tagRerankMode?: TagRerankMode;
   suggestionAuthorMode?: SuggestionAuthorMode;
   suggestedNewTagsPolicy?: SuggestedNewTagsPolicy;
+  semanticReviewerEnabled?: boolean;
+  semanticReviewerModelId?: string;
   /** When provided (including []), persist normalized list. When omitted, leave Firestore field unchanged. */
   explicitContentAutomationTerms?: string[];
 }
@@ -52,6 +53,8 @@ interface UpdateAiEnrichmentSettingsResponse {
   tagRerankMode: TagRerankMode;
   suggestionAuthorMode: SuggestionAuthorMode;
   suggestedNewTagsPolicy: SuggestedNewTagsPolicy;
+  semanticReviewerEnabled: boolean;
+  semanticReviewerModelId: AllowedVisionModelId;
   explicitContentAutomationTerms?: string[];
 }
 
@@ -88,7 +91,7 @@ function validateRequest(data: unknown): UpdateAiEnrichmentSettingsRequest {
 
   if (!hasRequiredAiEnrichmentPromptPlaceholders(promptTemplate)) {
     throw invalidArgument(
-      `The AI processing prompt must include ${AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER} and ${AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER}.`,
+      `The AI processing prompt must include ${AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER}.`,
     );
   }
 
@@ -143,6 +146,13 @@ function validateRequest(data: unknown): UpdateAiEnrichmentSettingsRequest {
     );
   }
 
+  const semanticReviewerEnabled = "semanticReviewerEnabled" in data ? data.semanticReviewerEnabled : undefined;
+  if (semanticReviewerEnabled !== undefined && typeof semanticReviewerEnabled !== "boolean") {
+    throw invalidArgument("semanticReviewerEnabled must be a boolean.");
+  }
+  const semanticReviewerModelId = "semanticReviewerModelId" in data && typeof data.semanticReviewerModelId === "string"
+    ? data.semanticReviewerModelId.trim() : undefined;
+
   const explicitContentAutomationTerms =
     "explicitContentAutomationTerms" in data ? data.explicitContentAutomationTerms : undefined;
 
@@ -168,6 +178,8 @@ function validateRequest(data: unknown): UpdateAiEnrichmentSettingsRequest {
       typeof suggestedNewTagsPolicy === "string"
         ? (suggestedNewTagsPolicy as SuggestedNewTagsPolicy)
         : undefined,
+    semanticReviewerEnabled,
+    semanticReviewerModelId,
     explicitContentAutomationTerms: Array.isArray(explicitContentAutomationTerms)
       ? explicitContentAutomationTerms
       : undefined,
@@ -191,6 +203,8 @@ export const updateAiEnrichmentSettings = onCall(
       tagRerankMode: requestedTagRerankMode,
       suggestionAuthorMode: requestedSuggestionAuthorMode,
       suggestedNewTagsPolicy: requestedSuggestedNewTagsPolicy,
+      semanticReviewerEnabled: requestedSemanticReviewerEnabled,
+      semanticReviewerModelId: requestedSemanticReviewerModelId,
       explicitContentAutomationTerms: requestedExplicitTerms,
     } = validateRequest(request.data);
     const resolvedModelId = resolveVisionModelId(requestedModelId);
@@ -204,7 +218,11 @@ export const updateAiEnrichmentSettings = onCall(
     const resolvedSuggestionAuthorMode: SuggestionAuthorMode =
       requestedSuggestionAuthorMode ?? DEFAULT_SUGGESTION_AUTHOR_MODE;
     const resolvedSuggestedNewTagsPolicy: SuggestedNewTagsPolicy =
-      requestedSuggestedNewTagsPolicy ?? DEFAULT_SUGGESTED_NEW_TAGS_POLICY;
+        requestedSuggestedNewTagsPolicy ?? DEFAULT_SUGGESTED_NEW_TAGS_POLICY;
+    const resolvedSemanticReviewerModelId = resolveVisionModelId(requestedSemanticReviewerModelId ?? "gemini-2.5-flash-lite");
+    if (resolvedSemanticReviewerModelId !== (requestedSemanticReviewerModelId ?? "gemini-2.5-flash-lite")) {
+      throw invalidArgument("The selected semantic reviewer model is not allowed.");
+    }
     const resolvedTagRerankPromptTemplate =
       requestedTagRerankPromptTemplate?.trim() || DEFAULT_TAG_RERANK_PROMPT_TEMPLATE;
     const resolvedExplicitTerms =
@@ -221,6 +239,8 @@ export const updateAiEnrichmentSettings = onCall(
         tagRerankMode: resolvedTagRerankMode,
         suggestionAuthorMode: resolvedSuggestionAuthorMode,
         suggestedNewTagsPolicy: resolvedSuggestedNewTagsPolicy,
+        semanticReviewerEnabled: requestedSemanticReviewerEnabled === true,
+        semanticReviewerModelId: resolvedSemanticReviewerModelId,
         ...(resolvedExplicitTerms !== undefined
           ? { explicitContentAutomationTerms: resolvedExplicitTerms }
           : {}),
@@ -240,6 +260,8 @@ export const updateAiEnrichmentSettings = onCall(
       tagRerankMode: resolvedTagRerankMode,
       suggestionAuthorMode: resolvedSuggestionAuthorMode,
       suggestedNewTagsPolicy: resolvedSuggestedNewTagsPolicy,
+      semanticReviewerEnabled: requestedSemanticReviewerEnabled === true,
+      semanticReviewerModelId: resolvedSemanticReviewerModelId,
       explicitContentAutomationTermsCount: resolvedExplicitTerms?.length ?? null,
       updatedBy: request.auth.uid,
     });
@@ -252,6 +274,8 @@ export const updateAiEnrichmentSettings = onCall(
       tagRerankMode: resolvedTagRerankMode,
       suggestionAuthorMode: resolvedSuggestionAuthorMode,
       suggestedNewTagsPolicy: resolvedSuggestedNewTagsPolicy,
+      semanticReviewerEnabled: requestedSemanticReviewerEnabled === true,
+      semanticReviewerModelId: resolvedSemanticReviewerModelId,
       ...(resolvedExplicitTerms !== undefined
         ? { explicitContentAutomationTerms: resolvedExplicitTerms }
         : {}),

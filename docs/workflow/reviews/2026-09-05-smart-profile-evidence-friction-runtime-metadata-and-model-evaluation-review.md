@@ -3,16 +3,36 @@
 | Field | Value |
 |-------|-------|
 | Date | 2026-09-05 |
+| Updated | 2026-09-05 — **reconciled** after Luna Phase 1 Signoff + owner sequencing |
 | Reviewer | Review Agent |
 | Plan | `docs/workflow/plans/2026-09-05-smart-profile-evidence-friction-runtime-metadata-and-model-evaluation-plan.md` |
-| Verdict | **approved_with_changes** |
-| Implementation authorized | **NO** — Plan→Review→STOP only; owner must separately authorize Implement |
+| Prior verdict | `approved_with_changes` (parked) |
+| Verdict | **approved** |
+| Implementation authorized | **YES** — narrow Workstream A prompt self-consistency only (this pass) |
 
 ---
 
 ## Summary
 
-The plan correctly traces cucumber `Y2IQuCgAPgnqrBIeJuap` to a **contract-valid** `structured_evidence_gap:subjects:woman` caused primarily by **non-self-supporting model copy** under `catalog-enrich-v34` / `gemini-2.5-flash-lite`, not by Explicit/profanity, not by a broken validator, and not by normalizer invention of the gap. Workstream B (footer observability) is low-risk display of already-persisted provenance. Workstream C correctly gates model change behind a Gemini-allowlisted DEV benchmark and marks Luna **not feasible** without a new provider. Hard-blocker softening remains correctly out of scope.
+Owner resumes TD-034 now. Luna Phase 1 three-model DEV benchmark is **consumed**: Luna does **not** close evidence friction; Gemini 3.1 helps only partially; model switch alone is insufficient. Preferred fix remains **prompt self-consistency** (`catalog-enrich-v35`), with **no** corpus/matcher/validator/Model 2 changes, **no** searchConcepts-as-evidence, **no** normalizer bump, **no** Phase 2 registry (deferred to next version), and **no** metadata UI work (already satisfied by Luna follow-up: Profile + Normalizer footer).
+
+---
+
+## Reconciliation (owner + Luna)
+
+| Prior open item | Resolution |
+|-----------------|------------|
+| Sequencing (benchmark vs prompt) | **RESOLVED** — implement TD-034 prompt corrective **now**; Luna benchmark already done |
+| Phase 2 model registry | **DEFERRED TO NEXT VERSION** — do not plan/implement this release |
+| searchConcepts as evidence | **NO** — confirmed |
+| Provider footer optional | **OUT** — not TD-034; no add |
+| Metadata footer (Prompt/Normalizer/Model) | **SUPERSEDED / SATISFIED** by Luna Phase 1 UI follow-up (Profile + Normalizer). No further UI in this corrective |
+| Broad 20–50 model competition | **NOT required** to start this corrective; use existing 8-design Luna benchmark + focused fixtures + post-deploy canary |
+| Luna / OpenAI feasibility | **RESOLVED** — Luna live on DEV; still does not eliminate TD-034 |
+
+### Benchmark conclusion (no contradiction)
+
+From `2026-09-05-restore-openai-gpt-5-6-luna-ai-enrichment-model-benchmark-report.md`: Luna **5/8** gap runs (worse than Gemini); cucumber still blocked on Luna; Gemini 3.1 partial only. Aligns with “prompt primary / model secondary.” **No STOP for contradiction.**
 
 ---
 
@@ -20,137 +40,37 @@ The plan correctly traces cucumber `Y2IQuCgAPgnqrBIeJuap` to a **contract-valid*
 
 | Area | Status | Notes |
 |------|--------|-------|
-| Scope clear and bounded | pass | Three workstreams; Explicit ADR-173 parallel; no implement this pass |
-| Architecture alignment | pass | Evidence stays in shared decision layer; UI reads provenance |
-| Security impact addressed | pass | Model 2 hardness preserved; no production; DEV-only eval |
-| Data model impact addressed | pass | No migration for metadata UI |
-| Backend impact addressed | pass | Gemini 3.1 already allowlisted; Luna needs provider |
-| Test strategy adequate | pass | Evidence + Model 2 + UI fallbacks + benchmark smoke |
-| Human checkpoints identified | pass | See Owner Decision Matrix |
-| Roadmap alignment | pass | Under smart-catalog completion; TD-034 reopen; WS6 still blocked |
-| Documentation plan | pass | TECH_DEBT / ADR on Implement |
-| No silent scope expansion | pass | No v35 creation, no model switch, no Autonomous |
+| Scope clear and bounded | pass | Prompt v35 only; UI/model/registry out |
+| Architecture alignment | pass | Prompt contract; validators unchanged |
+| Security impact addressed | pass | Hard blockers stay hard; Model 2 unchanged |
+| Data model impact addressed | pass | No schema/migration |
+| Backend impact addressed | pass | Prompt/version constants + Functions consumers |
+| Test strategy adequate | pass | Prompt contract + evidence + quality regressions |
+| Human checkpoints identified | pass | DEV deploy + owner canary after IR (not this pass) |
+| Roadmap alignment | pass | Parent smart-catalog; WS6 still blocked |
+| Documentation plan | pass | ADR/TECH_DEBT/version notes on Implement |
+| No silent scope expansion | pass | Explicit outs recorded |
 
 ---
 
-## Architecture Review
+## Required Changes
 
-**Findings:**
-- Evidence path is correctly identified: enrichment → normalizer → `smartProfileBuilder` → `findStructuredEvidenceGaps` → `catalogAutomationDecision` → provenance → Studio `Would Auto Approve`.
-- Corpus fields verified in source: title, description, centralSubject, visibleText only.
-- Rejecting “subjects self-validate” is mandatory for Model 2 safety.
-- Metadata UI should bind to `smartProfile.provenance`, not live `CURRENT_*` constants.
-
-**Required changes:**
-- [ ] None architectural beyond Owner Decision Matrix sequencing
-
----
-
-## Security Review
-
-**Findings:**
-- Softening `structured_evidence_gap:*` would increase false Ready risk under Autonomous — correctly forbidden.
-- Adding `searchConcepts` to the evidence corpus without a tight independence policy would weaken the validator (synonym/retrieval field already held “vintage woman” while descriptive copy lacked it).
-- Model benchmark must not write production Ready state; DEV/fixture isolation required at Implement.
-
-**Required changes:**
-- [ ] At Implement: keep Autonomous OFF unless separately authorized; hard-blocker policy unchanged unless a future dedicated ADR
-
-**Human approval needed before production:**
-- [x] Any production deploy / model default change / prompt version bump to production
-
----
-
-## Data Model Review
-
-**Findings:**
-- `SmartProfileProvenance` already includes `normalizerVersion`, `model`, `provider` — cucumber document confirms all three present.
-- No schema bump / migration for Workstream B.
-
-**Required changes:**
-- [ ] None
-
----
-
-## Backend Review
-
-**Findings:**
-- Provider target is Google-only (`resolveProviderTarget`).
-- `gemini-3.1-flash-lite` is already in `ALLOWED_VISION_MODEL_IDS` and Studio settings options — feasible without new secrets.
-- Luna / ChatGPT path does not exist in repo — `[NEEDS PROVIDER/REPO CHECK]` stands; do not invent OpenAI wiring in this corrective.
-
-**Required changes:**
-- [ ] First authorized benchmark must be Gemini-only unless owner separately authorizes provider work
-
----
-
-## Testing Review
-
-**Findings:**
-- Plan’s cucumber local reproduction of the evidence gap is sound.
-- Require fixtures: (1) supported subject does not false-block; (2) unsupported subject still blocks; (3) Model 2 hard blockers cannot Ready; (4) UI missing provenance fallback.
-
-**Required changes:**
-- [ ] None for Plan phase
-
----
-
-## Documentation Review
-
-**Findings:**
-- TD-034 should remain open and marked planning-reopened; expand description to include **subjects** (not only objects) when Implement updates TECH_DEBT.
-- Cucumber diagnostic remains accepted contract-correct baseline.
-
----
-
-## Owner Decision Matrix (Formal Review answers)
-
-| # | Question | Review finding / recommendation |
-|---|----------|----------------------------------|
-| 1 | Preferred root fix for TD-034 | **Prompt self-consistency (+ optional better model)** — not validator softening |
-| 2 | Prompt revision required? | **YES** (future v35) — v34 lacks explicit subject/object↔evidence contract |
-| 3 | Normalizer revision required? | **NO** for cucumber root cause |
-| 4 | Evidence matching revision required? | **NOT first**; optional later for closed aliases only |
-| 5 | Validator hardness change? | **NO** |
-| 6 | Exact metadata UI fields | Profile, Prompt, Normalizer, Model; optional Provider |
-| 7 | Persisted provenance available? | **YES** (`version`, `promptVersion`, `normalizerVersion`, `model`, `provider`) |
-| 8 | Benchmark before source corrective? | **Recommended yes** before model switch; prompt-first allowed if owner prioritizes cucumber |
-| 9 | Candidate feasibility | Gemini 3.1 **YES**; Luna **NO** without new provider |
-| 10 | Benchmark sample size | **30** recommended (20–50 acceptable) |
-| 11 | Owner approval before model switch | **REQUIRED** |
-| 12 | Owner approval before prompt/version bump | **REQUIRED** |
-
----
-
-## Required Changes (approved_with_changes)
-
-Before Implement authorization is accepted, owner must confirm (or override) in workflow state:
-
-1. **Sequencing:** metadata-first → Gemini benchmark → prompt/model corrective (**plan default**) **OR** prompt-first if cucumber urgency wins.  
-2. **Corpus policy:** do **not** add `searchConcepts` as evidence in the first corrective unless a separate ADR justifies independence.  
-3. **Benchmark scope:** Gemini allowlist only for first run; Luna remains out until provider work is planned.  
-4. **Hard blockers:** remain hard; no silent policy change.  
-5. **Parallel Explicit work:** ADR-FP-173 QA C continues independently; do not couple Signoff.
-
-Plan text already matches (1)–(5); treat as binding Implement constraints unless owner records a different Decision Log entry.
+- [x] None blocking Implement — owner decisions resolve prior `approved_with_changes` list
 
 ---
 
 ## Blockers
 
-None for Plan quality. **Implement is blocked** until owner issues a separate Implement authorization (and answers sequencing if differing from default).
+None for Implement of Workstream A (prompt). DEV deploy remains **owner-gated** after IR.
 
 ---
 
 ## Verdict Rationale
 
-**approved_with_changes** — plan is accurate, safety-aligned, and actionable; binding Implement constraints and unresolved sequencing preference must be acknowledged before coding. This Formal Review does **not** authorize implementation, model switch, prompt bump, Autonomous, WS6, production, or commit/push.
+**approved** — narrow prompt self-consistency corrective is authorized. Metadata UI and model-registry/benchmark sequencing are reconciled. Hard-blocker / searchConcepts / normalizer / schema / Model 2 policies locked as NO-CHANGE.
 
 ---
 
 ## Next Step
 
-1. Owner reads Plan + this Review.  
-2. Owner may continue ADR-FP-173 QA C in parallel.  
-3. Owner separately authorizes Implement (with sequencing choice).  
-4. Until then: **STOP** — no implementation.
+IMPLEMENT → TEST → IMPLEMENTATION REVIEW → **STOP before DEV deploy**.

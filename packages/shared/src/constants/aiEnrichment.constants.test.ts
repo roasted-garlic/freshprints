@@ -8,6 +8,9 @@ import {
   PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V31,
   PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V32,
   PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V33,
+  PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V34,
+  PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V35,
+  PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V36,
   VISION_MODEL_PRICING_USD_PER_1M,
   estimateVisionCostUsd,
   hasRequiredAiEnrichmentPromptPlaceholders,
@@ -42,17 +45,56 @@ describe("dual-provider vision model metadata", () => {
   });
 });
 
-describe("catalog-enrich-v34 previous-default auto-upgrade", () => {
-  it("ships catalog-enrich-v34 as the current default constant", () => {
-    assert.equal(CURRENT_CATALOG_ENRICH_PROMPT_VERSION, "catalog-enrich-v34");
-    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /dominant BUYER INTENT/);
+describe("catalog-enrich-v38 previous-default auto-upgrade", () => {
+  it("ships catalog-enrich-v38 as the current default constant", () => {
+    assert.equal(CURRENT_CATALOG_ENRICH_PROMPT_VERSION, "catalog-enrich-v38");
+    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /4–10 words|4-10 words/);
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /\{\{approved_categories\}\}/);
+    assert.match(
+      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+      /Use categoryGapNote only when no approved category is a reasonable fit/,
+    );
+    assert.doesNotMatch(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /\{\{excluded_tags\}\}/);
     assert.doesNotMatch(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /\{\{approved_category_names\}\}/);
+    assert.doesNotMatch(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /Structured evidence self-consistency/);
+    assert.doesNotMatch(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /\{\{existing_smart_profile_response_schema\}\}/);
     assert.equal(hasRequiredAiEnrichmentPromptPlaceholders(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE), true);
     assert.equal(isDefaultAiEnrichmentPromptTemplate(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE), true);
     assert.ok(
       DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE.length <= AI_ENRICHMENT_PROMPT_TEMPLATE_MAX_LENGTH,
       `default prompt length ${DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE.length} exceeds max ${AI_ENRICHMENT_PROMPT_TEMPLATE_MAX_LENGTH}`,
+    );
+  });
+
+  it("upgrades recognized previous default v36 to the current default", () => {
+    assert.equal(isPreviousDefaultAiEnrichmentPromptTemplate(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V36), true);
+    assert.doesNotMatch(
+      PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V36,
+      /Use categoryGapNote only when no approved category is a reasonable fit/,
+    );
+    assert.equal(
+      resolveAiEnrichmentPromptTemplate(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V36),
+      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+    );
+  });
+
+  it("upgrades recognized previous default v35 to the current default", () => {
+    assert.equal(isPreviousDefaultAiEnrichmentPromptTemplate(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V35), true);
+    assert.match(
+      PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V35,
+      /Structured evidence self-consistency/,
+    );
+    assert.equal(
+      resolveAiEnrichmentPromptTemplate(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V35),
+      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+    );
+  });
+
+  it("upgrades recognized previous default v34 to the current default", () => {
+    assert.equal(isPreviousDefaultAiEnrichmentPromptTemplate(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V34), true);
+    assert.equal(
+      resolveAiEnrichmentPromptTemplate(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V34),
+      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
     );
   });
 
@@ -81,12 +123,11 @@ describe("catalog-enrich-v34 previous-default auto-upgrade", () => {
     );
   });
 
-  it("preserves owner-customized prompt text that includes required v34 placeholders", () => {
+  it("preserves owner-customized prompt text that includes required v36 placeholders", () => {
     const custom = [
       "Owner custom enrichment guidance for DTF cataloging.",
       "Approved categories:",
       "{{approved_categories}}",
-      "Do not use these tag words: {{excluded_tags}}",
       "Return JSON only.",
     ].join("\n");
     assert.equal(isPreviousDefaultAiEnrichmentPromptTemplate(custom), false);

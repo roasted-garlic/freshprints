@@ -434,6 +434,60 @@ describe("stripEmptySmartProfileDimensions", () => {
 
   });
 
+  it("maps empty categoryGapNote to no gap; non-empty note to categoryGapSuggested", () => {
+    const clear = buildDesignSmartProfile({
+      parsed: {
+        category: "Funny & Sarcastic",
+        description: "A sarcastic slogan design.",
+        suggestedNewTags: [],
+        title: "Sarcastic Slogan",
+        tags: [],
+        rawTags: [],
+        subjects: ["woman"],
+        categoryGapNote: "",
+      },
+      suggestions: {
+        title: "Sarcastic Slogan",
+        description: "A sarcastic slogan design.",
+        promptVersion: "catalog-enrich-v37",
+        provider: "google",
+        model: "gemini-2.5-flash-lite",
+        generatedAt: "2026-09-05T00:00:00.000Z",
+      },
+      categoryId: "funny",
+      categoryName: "Funny & Sarcastic",
+      categoryIdsByName: { "funny & sarcastic": "funny" },
+    });
+    assert.equal(clear.categoryGapSuggested, undefined);
+    assert.equal(clear.categoryGapEvidence, undefined);
+
+    const gap = buildDesignSmartProfile({
+      parsed: {
+        category: "Funny & Sarcastic",
+        description: "An uncategorizable abstract.",
+        suggestedNewTags: [],
+        title: "Abstract Unfit",
+        tags: [],
+        rawTags: [],
+        subjects: [],
+        categoryGapNote: "No approved category is a reasonable fit for this design.",
+      },
+      suggestions: {
+        title: "Abstract Unfit",
+        description: "An uncategorizable abstract.",
+        promptVersion: "catalog-enrich-v37",
+        provider: "google",
+        model: "gemini-2.5-flash-lite",
+        generatedAt: "2026-09-05T00:00:00.000Z",
+      },
+      categoryId: undefined,
+      categoryName: undefined,
+      categoryIdsByName: {},
+    });
+    assert.equal(gap.categoryGapSuggested, true);
+    assert.match(gap.categoryGapEvidence ?? "", /No approved category/);
+  });
+
 });
 
 

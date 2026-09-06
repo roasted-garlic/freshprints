@@ -104,10 +104,10 @@ describe("buildVisionRequestBody", () => {
     assert.equal(parsed.reasoning_effort, undefined);
   });
 
-  it("injects excluded tags and approved category names, but not category descriptions or the approved tag list, into the default user prompt", () => {
-    // The default prompt is vision-only plus approved category names: full category descriptions
-    // and the approved tag list (names/aliases/preferredWhen) stay resolved server-side
-    // (catalogTagResolver.ts, catalogThemeCategoryResolver.ts) and are not sent to the model.
+  it("injects approved category names+descriptions; default v37+ does not embed tag exclusion lists", () => {
+    // Default prompt uses {{approved_categories}} (name — description). Tag taxonomy
+    // (names/aliases/preferredWhen) stays resolved server-side and is not sent to the model.
+    // catalog-enrich-v37+ also omits {{excluded_tags}} from the default template.
     const parsed = parseBody();
     const userMessage = parsed.messages.find((message) => message.role === "user");
     assert.ok(userMessage);
@@ -119,10 +119,11 @@ describe("buildVisionRequestBody", () => {
     );
 
     assert.ok(textInput);
-    assert.match(textInput.text, /death/);
     assert.match(textInput.text, /Motherhood/);
     assert.match(textInput.text, /Faith/);
-    assert.doesNotMatch(textInput.text, /Use for mom, mama, and family designs\./);
+    assert.match(textInput.text, /Use for mom, mama, and family designs\./);
     assert.doesNotMatch(textInput.text, /aliases: mom, mother/);
+    assert.doesNotMatch(textInput.text, /Use when motherhood is the main searchable idea/);
+    assert.doesNotMatch(textInput.text, /\{\{excluded_tags\}\}/);
   });
 });

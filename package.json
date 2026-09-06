@@ -6,10 +6,7 @@
   "author": "Fresh Prints",
   "type": "module",
   "packageManager": "npm@10.8.2",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
+  "workspaces": ["apps/*", "packages/*"],
   "scripts": {
     "dev": "concurrently -n studio,portal -c blue,green \"npm run dev:studio\" \"npm run dev:portal\"",
     "dev:studio": "npm run dev --workspace @fresh-prints/studio",

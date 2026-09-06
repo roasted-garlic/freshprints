@@ -1,6 +1,6 @@
 # Technical Debt Register — Fresh Prints
 
-**Last reviewed:** 2026-09-05 (TD-034: Luna three-model DEV benchmark — READY FOR SEPARATE CORRECTIVE; Luna does not close friction)
+**Last reviewed:** 2026-09-05 (TD-034: HOLD — false category-gap corrective; v37 source ready, STOP before DEV deploy)
 
 ---
 
@@ -14,7 +14,7 @@ See field definitions in template. Fixes require approved Managed Phases — **n
 
 | ID | Issue | Category | Severity | Location | Why it matters | Recommended fix | Suggested phase | Status |
 |----|-------|----------|----------|----------|----------------|-----------------|-----------------|--------|
-| TD-034 | Structured-evidence hard-blocks visually obvious subjects/objects when the model lists them but title/description/centralSubject/visibleText omit the token (subjects+objects) | ai/quality | medium | `catalogAutomationEvidence.ts` lexical corpus; enrichment prompt v34; model output quality | Conservative review friction (WS5 + Luna benchmark 2026-09-05) | Narrow corrective: prompt self-consistency and/or lexical matching; **do not loosen hard blockers**; model switch alone insufficient (Luna did not reduce friction) | smart-catalog evidence friction corrective | **open** — **READY FOR SEPARATE CORRECTIVE** after Luna Signoff; 2026-09-05 three-model DEV benchmark: Luna 5/8 gap runs, Gemini 3.1 partial only; see `2026-09-05-restore-openai-gpt-5-6-luna-ai-enrichment-model-benchmark-report.md` |
+| TD-034 | Visual-first enrichment + false `category_gap_suggested` when model misuses `categoryGapNote` as category rationale | ai/quality | medium | DEV live **v36**; source corrective **v37** (undeployed) | Valid category hard-blocked by rationale-as-gap | Prompt-contract restore only; keep gap hard; no Option B; no tag retirement yet | smart-catalog evidence friction corrective | **HOLD — FALSE CATEGORY GAP CORRECTIVE REQUIRED** — v37 source+tests ready; STOP before DEV deploy |
 | TD-031 | Discover/View All total badge / NTW Counting stuck | ui/data | medium | Portal Discover `new`; `countReadyDesigns` + badge | Page-length badge then NTW Counting stuck | Aggregate count + NTW DESC orderBy + Count unavailable UI | `portal-discover-view-all-complete-pagination` | **resolved** 2026-08-08 — live `build-2026-08-08-004`; owner QA PASS; Signoff `docs/workflow/reviews/2026-08-08-portal-discover-view-all-complete-pagination-signoff.md` |
 
 | TD-001 | Generated build artifacts tracked in git | deployment | **high** | `release/`, `dist-electron/`, `build/icon.*` | Bloated repo, slow clones | Added to `.gitignore`; `git rm --cached` | `git-generated-output-cleanup` | **resolved** |

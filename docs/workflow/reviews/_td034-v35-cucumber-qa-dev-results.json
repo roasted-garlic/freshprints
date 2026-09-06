@@ -1,0 +1,103 @@
+{
+  "projectId": "fresh-prints-dev",
+  "runId": "mtowg0n5",
+  "startedAt": "2026-09-05T21:33:02.407Z",
+  "finishedAt": "2026-09-05T21:33:13.341Z",
+  "elapsedMs": 10934,
+  "pre": {
+    "visionModelId": "gemini-2.5-flash-lite",
+    "catalogWorkflowMode": "shadow",
+    "catalogAutonomousLiveEnabled": false
+  },
+  "settingsAfter": {
+    "visionModelId": "gemini-2.5-flash-lite",
+    "catalogWorkflowMode": "shadow",
+    "catalogAutonomousLiveEnabled": false
+  },
+  "prior": {
+    "designId": "Y2IQuCgAPgnqrBIeJuap",
+    "status": "imported",
+    "aiReviewStatus": "needs_review",
+    "aiProcessingStage": "ready_for_review",
+    "model": "gpt-5.6-luna",
+    "provider": "openai",
+    "promptVersion": "catalog-enrich-v34",
+    "normalizerVersion": "smart-profile-normalizer-v6",
+    "smartProfileVersion": null,
+    "title": "1 (31)",
+    "description": "The design combines retro advertising imagery with bold distressed typography and adult humor.",
+    "centralSubject": null,
+    "subjects": [
+      "woman"
+    ],
+    "objects": [
+      "cucumber"
+    ],
+    "visibleText": [
+      "WHEN LIFE GIVES YOU CUCUMBERS",
+      "Cucumbers",
+      "GO FUCK YOURSELF..."
+    ],
+    "hardBlockers": [
+      "structured_evidence_gap:subjects:woman"
+    ],
+    "softReasons": null,
+    "wouldAutoApprove": null,
+    "automationDecision": "needs_review",
+    "explicit": null,
+    "censoredTerms": [
+      "fuck"
+    ],
+    "lifecycleStatus": "imported"
+  },
+  "callable": {
+    "designId": "Y2IQuCgAPgnqrBIeJuap",
+    "queued": true,
+    "completed": true,
+    "aiProcessingStage": "ready_for_review",
+    "aiReviewStatus": "needs_review",
+    "status": "imported"
+  },
+  "capture": {
+    "designId": "Y2IQuCgAPgnqrBIeJuap",
+    "status": "imported",
+    "aiReviewStatus": "needs_review",
+    "aiProcessingStage": "ready_for_review",
+    "model": "gemini-2.5-flash-lite",
+    "provider": "google",
+    "promptVersion": "catalog-enrich-v35",
+    "normalizerVersion": "smart-profile-normalizer-v6",
+    "smartProfileVersion": null,
+    "title": "1 (31)",
+    "description": "The design features a vintage illustration style with distressed typography.",
+    "centralSubject": null,
+    "subjects": [
+      "woman"
+    ],
+    "objects": [
+      "cucumber"
+    ],
+    "visibleText": [
+      "WHEN LIFE GIVES YOU",
+      "Cucumbers",
+      "GO FUCK YOURSELF..."
+    ],
+    "hardBlockers": [
+      "structured_evidence_gap:subjects:woman"
+    ],
+    "softReasons": null,
+    "wouldAutoApprove": null,
+    "automationDecision": "needs_review",
+    "explicit": null,
+    "censoredTerms": [
+      "fuck"
+    ],
+    "lifecycleStatus": "imported"
+  },
+  "mechanical": {
+    "priorWomanBlockerGone": false,
+    "newHardBlockersPresent": false,
+    "womanStillEmitted": true,
+    "cucumberStillEmitted": true
+  }
+}

@@ -64,9 +64,9 @@ describe("explicit content automation wiring (contract) — ADR-FP-172", () => {
     assert.match(update, /clearAiEnrichmentRuntimeCache/);
   });
 
-  it("retains v34 / v6 / v1 version pins", () => {
+  it("retains current prompt / normalizer / schema version pins", () => {
     const titleRules = read("catalogTitleRules.ts");
-    assert.match(titleRules, /catalog-enrich-v34/);
+    assert.match(titleRules, /catalog-enrich-v37/);
   });
 
   it("does not wire Explicit classifier into Print Request finalize paths", () => {

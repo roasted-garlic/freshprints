@@ -40,7 +40,7 @@ import {
   buildSimpleCatalogEnrichmentUserPrompt,
 } from "./simpleCatalogEnrichmentPrompt";
 import { resolveVisionProviderCredentials } from "./resolveVisionProviderCredentials";
-import { extractJsonObject, normalizeSimpleCatalogEnrichment } from "./simpleCatalogEnrichmentResponse";
+import { extractJsonObject, normalizeSimpleCatalogEnrichment, toCanonicalSimpleCatalogEnrichmentJson } from "./simpleCatalogEnrichmentResponse";
 import { resolveAiCatalogTags } from "./catalogTagResolver";
 import { resolveThemeCategory } from "./catalogThemeCategoryResolver";
 import { callTagRerank, CATALOG_TAG_RERANK_PROMPT_VERSION } from "./catalogTagRerankProvider";
@@ -277,9 +277,22 @@ export async function runAiEnrichmentPlayground(
     expandedPrompt,
     systemPrompt,
   );
-  const outputText = assertVisionCompletionHasContent(payload);
+  const rawOutputText = assertVisionCompletionHasContent(payload);
   const elapsedMs = Date.now() - startedAt;
   const usage = extractVisionCompletionUsage(payload);
+
+  // Canonicalize through the same parser as production enrichment so Playground cannot
+  // surface invented keys (prompt, keywords, etc.) as if they were Smart Profile fields.
+  const rawObject = extractJsonObject(rawOutputText);
+  const parsed = normalizeSimpleCatalogEnrichment(
+    rawObject,
+    enrichmentSettings.effectiveTagExclusions,
+  );
+  const canonicalOutputText = JSON.stringify(
+    toCanonicalSimpleCatalogEnrichmentJson(parsed),
+    null,
+    2,
+  );
 
   logPipelineEvent("settings.ai_playground.completed", {
     providerId: providerTarget.providerId,
@@ -287,11 +300,39 @@ export async function runAiEnrichmentPlayground(
     elapsedMs,
     promptTokens: usage.promptTokens,
     completionTokens: usage.completionTokens,
+    strippedUnknownKeys: Object.keys(rawObject).filter(
+      (key) =>
+        ![
+          "title",
+          "description",
+          "category",
+          "tags",
+          "suggestedNewTags",
+          "readableTextLines",
+          "centralSubject",
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "professionsGroups",
+          "occasions",
+          "places",
+          "colors",
+          "searchConcepts",
+          "categoryAlternatives",
+          "categoryGapNote",
+          "halftoneShadowLikelihood",
+          "halftoneShadowEvidence",
+          "visibleText",
+          "visualContextProfile",
+        ].includes(key),
+    ),
   });
 
   return {
     elapsedMs,
-    outputText,
+    outputText: canonicalOutputText,
     provider: providerTarget.providerId,
     visionModelId: validatedRequest.visionModelId,
     version: AI_ENRICHMENT_PLAYGROUND_VERSION,

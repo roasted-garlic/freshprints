@@ -4,6 +4,31 @@
 
 ---
 
+### ADR-FP-182: Two-pass AI enrichment — Visual Context + conditional Semantic Reviewer
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-05 |
+| Status | accepted (architecture + owner decisions locked; implementation Plan/Review next — **no code until owner proceeds**) |
+| Related | Architecture Plan/Review `2026-09-05-two-pass-ai-enrichment-context-and-semantic-verification-architecture-*`; Implementation Plan/Review `…-implementation-*`; ADR-FP-181; parent `smart-catalog-intelligence-completion-and-legacy-tag-retirement` |
+
+**Context:** Lexical Model 2 evidence (e.g. `subjects:woman` vs prose “pin-up girl”) creates false Needs Review. Owner philosophy: AI understands semantics; code enforces objective contracts. Tag AI (Rerank / Suggested Tags) is retired from active enrichment.
+
+**Decision (owner-locked):**
+
+1. **Pass 1** — one vision call: immutable `aiAnalysis.visualContextProfile` (`visual-context-v1`) + canonical title/description (ADR-FP-181) + category + Smart Profile; prompt **`catalog-enrich-v38`**.
+2. **Pass 2** — text-only, conditional, max once: adjudicate `structured_evidence_gap:*` and `subject_specificity_risk:*`; outcomes APPROVE / APPROVE_WITH_PATCH / NEEDS_REVIEW; model default `gemini-2.5-flash-lite`; setting off until DEV canary; prompt **`catalog-semantic-review-v1`**.
+3. **No** synonym dictionaries; **no** Pass 2 category/title/description/Explicit/context patches.
+4. **Category:** Pass 1 authoritative when approved exact match + empty gap note; retire `category_dominant_intent_conflict` hard block and semantic resolver overrides of valid AI category; remove `matchedTags` influence; keep existence/gap validation.
+5. **Tags:** retire from active AI path; keep `design.tags` temporarily inert; prefer remove `tags` from Pass 1 schema.
+6. **Playground:** same Pass 1/Pass 2 cores; manual Pass 2; non-persisting; Pass1/Pass2/Combined cost.
+7. **Authority:** WAA on effective post-merge profile; staff > preset > AI; narrow ordering fix only (not WS6).
+8. **visibleText:** fix canonical wiring; do not use as excuse to keep lexical evidence as final judge.
+
+**Consequences:** Larger enrichment reshape; DEV canary for cost/latency; Functions + Studio deploy when implementing; no production/Autonomous/WS6 in implementation slice without new gates.
+
+---
+
 ### ADR-FP-180: Customer-upload finalize speed (sample→extract trim + concurrency)
 
 | Field | Value |
@@ -43,6 +68,145 @@
 4. Never infer halftone from dark mat. No historical bulk backfill in this slice (Retry processing covers key rows).
 
 **Consequences:** New/reprocessed uploads show correct Studio mat automatically; Functions + Studio deploys required for live effect.
+
+---
+
+### ADR-FP-181: Canonical AI title/description trust — no semantic rewrite (parity corrective)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-05 |
+| Status | accepted — source ready; **STOP before DEV deploy** |
+| Related | Playground vs Processing parity investigation; Plan/Review `2026-09-05-canonical-ai-catalog-copy-trust-corrective-*` |
+| Does not change | `catalog-enrich-v37` prompt text; smart-profile-v1; smart-profile-normalizer-v6; evidence/Model 2 |
+
+**Principle:** AI owns the semantic catalog copy. Application code validates response structure and integrity but does not rewrite the AI's title or description.
+
+**Decision:**
+
+1. Processing persists canonical model `title` / `description` after conservative structural validation only (`acceptCanonicalCatalogCopy`).
+2. Do not call `resolveLeanCatalogTitle`, `buildTitleFromReadableTextLines`, centralSubject append, description scrub/synthesize, or `resolveCatalogDescription` repair on the live Gemini enrichment persistence path.
+3. Structural invalidity fails closed (throw → enrichment failure / Needs Review). No substitute prose.
+4. Improving semantic quality belongs in prompt/model contract, not deterministic post-processing.
+
+**Consequences:** Playground and Processing display the same semantic copy class for valid model output. Historical lean-title helpers may remain for legacy/dev tests but are off the active path.
+
+---
+
+### ADR-FP-178: Catalog enrich v37 — restore categoryGapNote true-gap semantics (TD-034)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-05 |
+| Status | accepted — source ready; **STOP before DEV deploy** |
+| Related | Plan/Review `2026-09-05-v36-false-category-gap-semantics-corrective-*`; ADR-FP-177 |
+| Supersedes (prompt default) | Live default moves `catalog-enrich-v36` → `catalog-enrich-v37` after DEV deploy |
+
+**Context:** After v36 DEV deploy, cucumber `Y2IQuCgAPgnqrBIeJuap` correctly chose **Funny & Sarcastic** but hard-blocked on `category_gap_suggested` because the model filled `categoryGapNote` with category *rationale* (secondary food/pin-up). v36 omitted the prior NL definition of the field. Automation correctly hard-blocks non-empty gap notes; the signal was wrong.
+
+**Decision:**
+
+1. Ship **`catalog-enrich-v37`** = visual-first baseline + one general sentence restoring gap/alternatives semantics (no fixture examples; do not rebuild v35 rulebook).
+2. Keep `category_gap_suggested` **hard**. Do not soften, verifier-clear, or special-case categories.
+3. No resolver / schema / normalizer / automation-decision / Option B / tag changes for this defect.
+4. Evidence truncation at 240 remains intentional; not fixed this pass (false gaps should emit `""`).
+
+**Consequences:** Stock v36 Settings auto-upgrade to v37; genuine custom prompts preserved. True taxonomy gaps still Needs Review.
+
+---
+
+### ADR-FP-177: Catalog enrich v36 — visual-first default + Playground/Processing parity (TD-034)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-05 |
+| Status | accepted — **source ready; DEV deploy NOT authorized this pass** |
+| Related | Plan/Review `2026-09-05-td034-visual-first-catalog-description-and-structured-profile-consistency-*`; cucumber FAIL on v35; ADR-FP-175; ADR-FP-176 withdrawn |
+| Supersedes (prompt default) | Live default moves `catalog-enrich-v35` → `catalog-enrich-v36` after DEV deploy |
+| Does not supersede | normalizer v6, smart-profile-v1, evidence corpus, matcher, hard blockers, Model 2, Tag Rerank |
+
+**Context**
+
+Owner Playground (typed short visual-first prompt) outperformed Processing. Diagnosis: `promptVersion` is a **deployed code constant** (not prompt-text hash); Playground uses **request-body** text; Processing uses **persisted Settings**; Suggested Tags come from primary→resolve→optional Tag Rerank (`aiSuggestions.tags`). `tags: []` does **not** retire Tag Rerank.
+
+**Decision**
+
+1. Ship **`catalog-enrich-v36`** as code-owned default = owner-approved short visual-first prompt (no cucumber fixtures; no `{{excluded_tags}}` line).
+2. Required Settings placeholder = **`{{approved_categories}}` only**; `{{excluded_tags}}` optional; post-parse exclusions remain.
+3. Stamp `promptVersion` from `CATALOG_ENRICHMENT_PROMPT_VERSION` (requires Functions deploy to change label).
+4. Playground + Processing share `normalizeSimpleCatalogEnrichment` + canonical projector (strip unknown keys including AI `prompt`).
+5. Do **not** retire Tag Rerank / Suggested Tags in this pass.
+6. Keep **`smart-profile-v1`** / **`smart-profile-normalizer-v6`**; no Option B; no evidence/matcher/blocker/Model 2 changes.
+
+**Consequences**
+
+- Until DEV Function deploy, live Processing continues to stamp **v35**.
+- After deploy, stock Settings previous-defaults auto-upgrade to v36; genuine customs preserved.
+- Studio rebuild not required for prompt/playground Function changes.
+- WS6 blocked; Phase 2 registry deferred; production not authorized.
+
+---
+
+### ADR-FP-176: TD-034 Option B — prune unsupported AI-only subjects/objects before automation decision
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-05 |
+| Status | **WITHDRAWN BEFORE DEV DEPLOY** |
+| Related | Amendment Plan/Review/IR `2026-09-05-td034-post-v35-deterministic-structured-evidence-corrective-*`; cucumber FAIL on v35 |
+| Superseded by (direction) | Visual-first catalog description corrective (Plan `2026-09-05-td034-visual-first-catalog-description-and-structured-profile-consistency-plan.md`) |
+
+**Context**
+
+`catalog-enrich-v35` failed cucumber owner QA. Owner initially selected OPTION B (omit unsupported AI-only subjects/objects before automation decision). Source was implemented and Implementation-Reviewed, but **never deployed, committed, or pushed**.
+
+**Withdrawal (2026-09-05)**
+
+Owner withdrew Option B after Playground evidence showed a shorter visual-first prompt produced the desired cucumber result (`Woman` + `Cucumber` naturally supported in title/description/centralSubject). Preferred outcome is **keep accurate structured metadata via coherent visual description**, not delete `Woman` to clear the blocker.
+
+Option B source was **reverted** from the working tree. Historical Plan/Review/IR/ADR remain for audit. Option B may be reconsidered later only as a **last-resort safety net** after visual-first QA.
+
+**Original decision (historical; not live)**
+
+1. Before `computeCatalogAutomationDecision`, omit AI-owned subjects/objects failing `findStructuredEvidenceGaps`.
+2. Do not soften blocker hardness for survivors; do not invent evidence; staff/import never pruned.
+3. Diagnostics via `logPipelineEvent("smart_profile.ai_structured_token_pruned", …)`.
+
+**Consequences of withdrawal**
+
+- DEV runtime remains `catalog-enrich-v35` + normalizer v6 + profile v1 until a new prompt version is approved and deployed.
+- No prune helper in source.
+- WS6 remains blocked; Phase 2 registry remains deferred.
+
+---
+
+### ADR-FP-175: Catalog enrich v35 — structured evidence self-consistency (TD-034)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-05 |
+| Status | accepted — source; DEV deploy not yet authorized |
+| Related | Plan/Review `2026-09-05-smart-profile-evidence-friction-runtime-metadata-and-model-evaluation-*`; Luna Phase 1 Signoff; TD-034 |
+| Supersedes (prompt) | Live default moves `catalog-enrich-v34` → `catalog-enrich-v35` |
+
+**Context**
+
+TD-034 false/avoidable `structured_evidence_gap:*` hard blockers occur when the model lists meaningful subjects/objects without naming them in title/description/centralSubject. Luna Phase 1 three-model benchmark showed model switch alone does not close the friction. Phase 2 model registry deferred to next version.
+
+**Decision**
+
+1. Ship **catalog-enrich-v35** with an explicit structured evidence self-consistency contract: meaningful `subjects[]` / `objects[]` tokens must appear in natural wording in title, description, or centralSubject; searchConcepts alone is insufficient; omit minor props rather than list without support.
+2. Preserve ADR-FP-160 anti-OCR / concise catalog copy; no keyword stuffing; no OCR dumps.
+3. **Do not** change normalizer (v6), schema (v1), evidence corpus, matcher, hard-blocker hardness, or Model 2.
+4. **Do not** add searchConcepts to the evidence corpus.
+5. Metadata footer UI already satisfies Profile + Normalizer (Luna follow-up) — no UI in this corrective.
+6. Phase 2 dynamic model registry remains **next-version only**.
+
+**Consequences**
+
+- Saved Studio Settings prior defaults (including v34 text) auto-upgrade via existing previous-default resolver.
+- DEV Functions that stamp/run enrichment must redeploy before live DEV uses v35.
+- Unsupported structured claims still Needs Review; hard blockers still cannot Ready.
 
 ---
 

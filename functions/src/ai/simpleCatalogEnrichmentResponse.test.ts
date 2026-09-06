@@ -303,7 +303,7 @@ describe("buildSimpleCatalogEnrichmentResult", () => {
     assert.ok(!/some days it rocks me/i.test(result.suggestions.title ?? ""));
   });
 
-  it("replaces style/tag-invented titles with readable text from the description", () => {
+  it("keeps style-heavy model titles (no readable-text rewrite)", () => {
     const parsed = normalizeSimpleCatalogEnrichment(
       {
         category: "Humor",
@@ -321,7 +321,10 @@ describe("buildSimpleCatalogEnrichmentResult", () => {
       modelId: "gemini-2.5-flash-lite",
     });
 
-    assert.equal(result.suggestions.title, "Kinda Give A Damn Kinda Don't Care");
+    assert.equal(
+      result.suggestions.title,
+      "Sarcastic Funny Attitude Statement Retro Distressed",
+    );
   });
 
   it("preserves the full transcribed visible text in the description", () => {
@@ -402,7 +405,7 @@ describe("buildSimpleCatalogEnrichmentResult", () => {
     assert.ok(result.suggestions.description && result.suggestions.description.trim().length > 0);
   });
 
-  it("never uses the upload filename as the title", () => {
+  it("persists the model title even when it matches the upload stem (no filename rewrite)", () => {
     const parsed = normalizeSimpleCatalogEnrichment(
       {
         category: "Floral",
@@ -419,17 +422,19 @@ describe("buildSimpleCatalogEnrichmentResult", () => {
       modelId: "gpt-5.4-nano-2026-03-17",
     });
 
-    assert.notEqual(result.suggestions.title?.toLowerCase(), "raw-upload-file");
+    assert.equal(result.suggestions.title, "raw-upload-file");
   });
 
-  it("sanitizes Dolly OCR dump from title, description, and visibleText", () => {
+  it("persists AI title/description verbatim; visibleText may still drop OCR dump lines", () => {
     const dump =
       "182 (freely) I WILL ALWAYS LOVE YOU - DOLLY PARTON N.C. if ____ would ____";
+    const description = `A vintage-style Dolly Parton portrait layered over sheet music for "I Will Always Love You," with warm country styling. ${dump}`;
+    const title = "182 Freely I Will Always Love You Dolly Parton NC If Would";
     const parsed = normalizeSimpleCatalogEnrichment(
       {
         category: "Music",
-        description: `A vintage-style Dolly Parton portrait layered over sheet music for "I Will Always Love You," with warm country styling. ${dump}`,
-        title: "182 Freely I Will Always Love You Dolly Parton NC If Would",
+        description,
+        title,
         tags: ["music", "country"],
         readableTextLines: [dump],
         centralSubject: "Dolly Parton portrait",
@@ -445,21 +450,8 @@ describe("buildSimpleCatalogEnrichmentResult", () => {
       modelId: "gemini-2.5-flash-lite",
     });
 
-    assert.match(result.suggestions.title ?? "", /dolly parton/i);
-    assert.match(result.suggestions.title ?? "", /i will always love you/i);
-    assert.doesNotMatch(result.suggestions.title ?? "", /____|182|freely/i);
-    assert.match(result.suggestions.description ?? "", /dolly parton portrait/i);
-    assert.doesNotMatch(result.suggestions.description ?? "", /____/);
-    assert.ok(
-      result.analysis.smartProfileEnrichmentParse?.visibleText?.some((line) =>
-        /i will always love you/i.test(line),
-      ),
-    );
-    assert.ok(
-      result.analysis.smartProfileEnrichmentParse?.visibleText?.some((line) =>
-        /dolly parton/i.test(line),
-      ),
-    );
+    assert.equal(result.suggestions.title, title);
+    assert.equal(result.suggestions.description, description);
     assert.equal(
       result.analysis.smartProfileEnrichmentParse?.visibleText?.some((line) => /____/.test(line)),
       false,
