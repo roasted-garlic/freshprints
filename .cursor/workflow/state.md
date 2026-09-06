@@ -2,12 +2,12 @@
 
 | Field | Value |
 |-------|-------|
-| Status | **COMPLETE — DEV Gate B QA signed off with notes** |
+| Status | **COMPLETE — Gate C canary Plan/Formal Review approved; stopped before execution** |
 | DONE | **yes** |
 | Current Mode | managed-phase |
 | Parent program | `smart-catalog-intelligence-completion-and-legacy-tag-retirement` |
 | Current Goal | `two-pass-ai-enrichment-context-and-semantic-verification-implementation` |
-| Current Phase | Signoff |
+| Current Phase | Plan/Review |
 | Environment | `fresh-prints-dev` |
 | Mode | **shadow** · Autonomous **OFF** |
 | Production | untouched |
@@ -19,15 +19,15 @@
 
 **Human Checkpoint Required: yes**
 
-**Human Checkpoint Reason:** Gate B basic QA signed off with notes; awaiting separate owner authorization before Gate C or Playground UX work.
+**Human Checkpoint Reason:** Gate C Plan/Formal Review approved; execution requires separate owner authorization.
 
-**Allowed Actions:** Review DEV Gate B evidence; provide owner QA/signoff; separately authorize Gate C or Playground UX corrective
+**Allowed Actions:** Review Gate C Plan/Review; authorize named DEV Gate C execution separately
 
 **Forbidden Actions:** Gate C; enabling Semantic Reviewer; Autonomous; WS6; production; Playground UX corrective without signoff
 
 ## Next Required Step
 
-Record owner QA/signoff. Do not enable Semantic Reviewer or begin Playground UX work without a separate authorization.
+Await explicit owner authorization for Gate C execution with exact DEV design IDs. Do not mutate settings or process designs.
 
 ## Parked (interrupted)
 
@@ -46,6 +46,8 @@ Record owner QA/signoff. Do not enable Semantic Reviewer or begin Playground UX 
 | ADR | ADR-FP-182 in `docs/project/DECISIONS.md` |
 | DEV Deploy/Canary Review | `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-dev-deploy-and-canary-review.md` |
 | Owner QA/Signoff | `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-owner-qa-signoff.md` |
+| Gate C Canary Plan | `docs/workflow/plans/2026-09-06-two-pass-ai-enrichment-gate-c-dev-canary-plan.md` |
+| Gate C Formal Review | `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-gate-c-dev-canary-review.md` |
 
 ## Decision Log
 

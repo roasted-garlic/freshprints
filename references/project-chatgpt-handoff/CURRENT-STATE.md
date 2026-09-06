@@ -6,7 +6,7 @@
 
 | Item | Value |
 |---|---|
-| Status | **COMPLETE** — DEV Gate B QA **APPROVE WITH NOTES** |
+| Status | **COMPLETE** — Gate C Plan/Formal Review approved; execution not authorized |
 | Parent | `smart-catalog-intelligence-completion-and-legacy-tag-retirement` |
 | Child | `two-pass-ai-enrichment-context-and-semantic-verification-implementation` |
 | ADR | **ADR-FP-182** (owner decisions locked) |
@@ -17,7 +17,7 @@
 
 ## Next
 
-Owner QA/signoff: **APPROVE WITH NOTES**. Gate C and Playground UX remain separately unauthorized.
+Owner QA/signoff: **APPROVE WITH NOTES**. Gate C Plan/Formal Review is approved for planning only; execution remains separately unauthorized.
 
 ## Artifacts
 
@@ -25,6 +25,17 @@ Owner QA/signoff: **APPROVE WITH NOTES**. Gate C and Playground UX remain separa
 - Implementation Review: `docs/workflow/reviews/2026-09-05-two-pass-ai-enrichment-context-and-semantic-verification-implementation-review.md`
 - DEV Deploy/Canary Review: `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-dev-deploy-and-canary-review.md`
 - Owner QA/Signoff: `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-owner-qa-signoff.md`
+- Gate C Canary Plan: `docs/workflow/plans/2026-09-06-two-pass-ai-enrichment-gate-c-dev-canary-plan.md`
+- Gate C Formal Review: `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-gate-c-dev-canary-review.md`
+
+## Current checkpoint
+
+- Gate C execution: NOT AUTHORIZED
+- `semanticReviewerEnabled`: `false`
+- Semantic Reviewer automatic processing: OFF
+- Autonomous: OFF
+- Production: untouched
+- No settings mutation, deployment, processing, or catalog mutation occurred during Gate C planning.
 
 ## Latest DEV checkpoint
 
