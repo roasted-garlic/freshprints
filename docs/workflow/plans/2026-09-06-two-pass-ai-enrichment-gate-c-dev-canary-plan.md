@@ -107,3 +107,13 @@ Capture source SHA, deployed revision/hash, settings before/after, exact design 
 ## Owner QA checkpoint
 
 Owner must review the evidence and explicitly sign off before any subsequent Gate C phase. This plan does not authorize Gate C execution, Semantic Reviewer enablement, Autonomous processing, Playground UX work, WS6, or production.
+
+## Read-only fixture-resolution checkpoint — 2026-09-06
+
+The authorized read-only inspection did not establish an exact executable three-fixture set. `Y2IQuCgAPgnqrBIeJuap` remains the known cucumber/pin-up Gate B design, but its current persisted state is `imported` / `needs_review`, prompt `catalog-enrich-v37`, subjects `[woman, cucumber]`, reason code `shadow_would_auto_approve`, and no persisted Visual Context. It is therefore not currently proven eligible for automatic Pass 2 and cannot be used as the Role 1 Gate C fixture without mutation or new Pass 1 evidence.
+
+`8m0KgJEel8kLpYlmZpFb` is a viable Role 2 candidate: current state `ready` / `approved`, subjects `[girl, dog, monster]`, and persisted blocker codes `structured_evidence_gap:subjects:dog`, `structured_evidence_gap:subjects:monster`, and `structured_evidence_gap:objects:bow`. It is a genuine unsupported-subject semantic candidate, but its current persisted state is not sufficient to prove fresh Gate C eligibility without processing-state mutation.
+
+`AeITnDAFlHTdCZwyn4Es` is a viable Role 3 candidate: current state `imported` / `needs_review`, with current objective blocker `category_gap_suggested` plus semantic evidence gaps. It must not be processed until the exact Role 1 fixture is resolved and owner-approved.
+
+The older `9bR7JWSWwv94Ofb7byC3` and retired-conflict fixture `5NVU91SMRiecLkZqdrN8` were not selected. Gate C remains blocked by `[NEEDS OWNER DECISION: EXACT GATE C DEV DESIGN IDS]` for Role 1, and no settings or designs were changed.
