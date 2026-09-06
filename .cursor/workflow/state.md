@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | **COMPLETE — stopped at DEV deploy checkpoint** |
+| Status | **COMPLETE — stopped at DEV Gate B owner QA checkpoint** |
 | DONE | **yes** |
 | Current Mode | managed-phase |
 | Parent program | `smart-catalog-intelligence-completion-and-legacy-tag-retirement` |
@@ -11,23 +11,23 @@
 | Environment | `fresh-prints-dev` |
 | Mode | **shadow** · Autonomous **OFF** |
 | Production | untouched |
-| Commit/push | **NOT AUTHORIZED** |
+| Commit/push | Corrective and handoff commits pushed to `origin/development` |
 | Last updated | 2026-09-06 |
-| Last Completed Step | Implementation, scoped validation, accepted exception record, and Implementation Review |
+| Last Completed Step | Evidence-based Gemini patch-map corrective, one-Function DEV deploy, and Gate B basic retest |
 
 ## Human checkpoint
 
 **Human Checkpoint Required: yes**
 
-**Human Checkpoint Reason:** Implementation Review complete; awaiting owner authorization for DEV deploy.
+**Human Checkpoint Reason:** Gate B basic callable PASS recorded; awaiting owner QA/signoff before any Gate C or Playground UX work.
 
-**Allowed Actions:** Review implementation artifacts; authorize DEV deploy
+**Allowed Actions:** Review DEV Gate B evidence; provide owner QA/signoff; separately authorize Gate C or Playground UX corrective
 
-**Forbidden Actions:** Deploy without owner authorization; Autonomous; WS6; production; commit/push
+**Forbidden Actions:** Gate C; enabling Semantic Reviewer; Autonomous; WS6; production; Playground UX corrective without signoff
 
 ## Next Required Step
 
-Await owner DEV deploy authorization. No deploy, commit, or production action.
+Await owner QA/signoff for the DEV Gate B evidence. Do not enable Semantic Reviewer or begin Playground UX work.
 
 ## Parked (interrupted)
 
@@ -44,6 +44,7 @@ Await owner DEV deploy authorization. No deploy, commit, or production action.
 | **Implementation Plan** | `docs/workflow/plans/2026-09-05-two-pass-ai-enrichment-context-and-semantic-verification-implementation-plan.md` |
 | **Implementation Review** | `docs/workflow/reviews/2026-09-05-two-pass-ai-enrichment-context-and-semantic-verification-implementation-review.md` |
 | ADR | ADR-FP-182 in `docs/project/DECISIONS.md` |
+| DEV Deploy/Canary Review | `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-dev-deploy-and-canary-review.md` |
 
 ## Decision Log
 
@@ -52,3 +53,4 @@ Await owner DEV deploy authorization. No deploy, commit, or production action.
 | 2026-09-05 | Owner locked 21 product decisions for two-pass enrichment (ADR-FP-182). |
 | 2026-09-05 | Implementation Formal Review **approved**; code starts only after owner proceed. |
 | 2026-09-05 | Owner authorized and implementation completed for the separate Studio dev/prod environment-isolation task; focused tests pass, full typecheck has unrelated pre-existing failures. |
+| 2026-09-06 | Corrective SHA `5a4de46ceeaf0aed76cc5298d57a9840621d397a` deployed only `testAiEnrichmentSemanticReviewPlayground`; Gate B basic callable PASSed for Gemini and OpenAI/Luna. |
