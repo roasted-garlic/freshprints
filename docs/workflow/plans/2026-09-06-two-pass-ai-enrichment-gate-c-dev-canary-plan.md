@@ -117,3 +117,11 @@ The authorized read-only inspection did not establish an exact executable three-
 `AeITnDAFlHTdCZwyn4Es` is a viable Role 3 candidate: current state `imported` / `needs_review`, with current objective blocker `category_gap_suggested` plus semantic evidence gaps. It must not be processed until the exact Role 1 fixture is resolved and owner-approved.
 
 The older `9bR7JWSWwv94Ofb7byC3` and retired-conflict fixture `5NVU91SMRiecLkZqdrN8` were not selected. Gate C remains blocked by `[NEEDS OWNER DECISION: EXACT GATE C DEV DESIGN IDS]` for Role 1, and no settings or designs were changed.
+
+## Final broad Role 1 search — 2026-09-06
+
+Read-only inspection covered all 537 current `fresh-prints-dev` design records. 325 contained at least one relevant semantic blocker family; zero contained a persisted Visual Context Profile in the current `aiAnalysis`, `aiSuggestions`, or Smart Profile records. No current design therefore satisfies the complete Role 1 predicate without processing/mutation.
+
+Plausible female/person candidates—including `0uw7qWseEDHTQGdVL3mu`, `5ExcfvXK8fLM4hFvpWa4`, `6zKWIvQyvwH5M19bCeYW`, `8m0KgJEel8kLpYlmZpFb`, `EPSwckJ8M9IbR8dvgtW8`, `KFKOkbT2EhGmKM5Wi7K7`, `VCGY1ccOkIjjCqy83nvD`, `X6sWDHZj9I6ovQhGIbM8`, and other current records—failed solely or primarily because Visual Context was absent; older v30/v33 provenance also failed the current v38-compatible requirement. `Y2IQuCgAPgnqrBIeJuap` additionally has no eligible semantic blocker. No candidate was substituted.
+
+Recommended next path: **A. controlled fixture preparation using an existing design**, requiring a separately reviewed execution amendment that names the source design, limits processing to that fixture, and captures the resulting current Visual Context and blocker state. This path is not executed by this checkpoint.
