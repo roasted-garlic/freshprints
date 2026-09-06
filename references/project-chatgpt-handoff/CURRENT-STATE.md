@@ -6,7 +6,7 @@
 
 | Item | Value |
 |---|---|
-| Status | **COMPLETE** — Gate C Plan/Formal Review approved; execution not authorized |
+| Status | **COMPLETE** — Role 1 preparation amendment reviewed; preparation not authorized |
 | Parent | `smart-catalog-intelligence-completion-and-legacy-tag-retirement` |
 | Child | `two-pass-ai-enrichment-context-and-semantic-verification-implementation` |
 | ADR | **ADR-FP-182** (owner decisions locked) |
@@ -17,7 +17,7 @@
 
 ## Next
 
-Owner QA/signoff: **APPROVE WITH NOTES**. Gate C Plan/Formal Review is approved for planning only; execution remains separately unauthorized.
+Owner QA/signoff: **APPROVE WITH NOTES**. Role 1 preparation amendment is approved for planning only; preparation and Gate C execution remain separately unauthorized.
 
 ## Artifacts
 
@@ -27,6 +27,8 @@ Owner QA/signoff: **APPROVE WITH NOTES**. Gate C Plan/Formal Review is approved 
 - Owner QA/Signoff: `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-owner-qa-signoff.md`
 - Gate C Canary Plan: `docs/workflow/plans/2026-09-06-two-pass-ai-enrichment-gate-c-dev-canary-plan.md`
 - Gate C Formal Review: `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-gate-c-dev-canary-review.md`
+- Role 1 Preparation Plan: `docs/workflow/plans/2026-09-06-two-pass-ai-enrichment-gate-c-role-1-fixture-preparation-amendment.md`
+- Role 1 Preparation Review: `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-gate-c-role-1-fixture-preparation-review.md`
 
 ## Current checkpoint
 

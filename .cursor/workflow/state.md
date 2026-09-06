@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | **COMPLETE — Gate C canary Plan/Formal Review approved; stopped before execution** |
+| Status | **COMPLETE — Role 1 fixture-preparation amendment reviewed; stopped before preparation** |
 | DONE | **yes** |
 | Current Mode | managed-phase |
 | Parent program | `smart-catalog-intelligence-completion-and-legacy-tag-retirement` |
@@ -19,15 +19,15 @@
 
 **Human Checkpoint Required: yes**
 
-**Human Checkpoint Reason:** Gate C Plan/Formal Review approved; execution requires separate owner authorization.
+**Human Checkpoint Reason:** Role 1 fixture-preparation amendment reviewed; preparation requires separate owner authorization.
 
-**Allowed Actions:** Review Gate C Plan/Review; authorize named DEV Gate C execution separately
+**Allowed Actions:** Review fixture-preparation amendment; authorize bounded preparation separately
 
 **Forbidden Actions:** Gate C; enabling Semantic Reviewer; Autonomous; WS6; production; Playground UX corrective without signoff
 
 ## Next Required Step
 
-Await explicit owner authorization for Gate C execution with exact DEV design IDs. Do not mutate settings or process designs.
+Await explicit owner authorization for bounded Role 1 preparation. Do not mutate settings or process designs.
 
 ## Parked (interrupted)
 
@@ -48,6 +48,8 @@ Await explicit owner authorization for Gate C execution with exact DEV design ID
 | Owner QA/Signoff | `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-owner-qa-signoff.md` |
 | Gate C Canary Plan | `docs/workflow/plans/2026-09-06-two-pass-ai-enrichment-gate-c-dev-canary-plan.md` |
 | Gate C Formal Review | `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-gate-c-dev-canary-review.md` |
+| Role 1 Preparation Plan | `docs/workflow/plans/2026-09-06-two-pass-ai-enrichment-gate-c-role-1-fixture-preparation-amendment.md` |
+| Role 1 Preparation Review | `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-gate-c-role-1-fixture-preparation-review.md` |
 
 ## Decision Log
 
