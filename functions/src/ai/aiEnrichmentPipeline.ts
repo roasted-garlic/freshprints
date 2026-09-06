@@ -9,17 +9,16 @@ import { logPipelineEvent } from "../lib/pipelineLog";
 import { resolveVisionErrorCode } from "./visionRequestRetry";
 import {
   generateAiEnrichmentCandidateForDesign,
-  shouldRunSuggestionAuthor,
-  shouldRunTagRerank,
   type AiEnrichmentDesignInput,
 } from "./aiEnrichmentCandidateCore";
 import type { AiEnrichmentReadDiagnosticContext } from "./aiEnrichmentRuntimeCache";
-import { clearAiEnrichmentSettingsCache } from "./aiEnrichmentRuntimeCache";
+import { clearAiEnrichmentSettingsCache, loadCachedAiEnrichmentSettings } from "./aiEnrichmentRuntimeCache";
 import { maybeRefreshSmartProfileVocabSnapshot } from "./refreshSmartProfileVocabSnapshot";
 import { PipelinePhaseTimer } from "./pipelineTiming";
 import { resolveAiEnrichmentProvider } from "./providers/resolveAiEnrichmentProvider";
 import type { DesignSmartProfile } from "../../../packages/shared/src/types/catalog/smartProfile.types";
 import { stripEmptySmartProfileDimensions } from "./smartProfileBuilder";
+import { computeCatalogAutomationDecision } from "./automationDecisionShadow";
 import { incrementCatalogAutomationHealth } from "./catalogAutomationHealth";
 import { buildSmartProfileAiSnapshot, mergeQueueSmartProfileWithImportPresets, mergeReadyBackfillSmartProfile, parseImportPresetSeed } from "./smartProfileEnrichmentWrite";
 import type { ExplicitContentAutomationWrite } from "../../../packages/shared/src/utils/explicitContentAutomation";
@@ -27,9 +26,6 @@ import {
   applyHumanAuthorityToExplicitContentAutomationPreview,
   hasProtectedStaffExplicitAuthority,
 } from "../../../packages/shared/src/utils/explicitContentAutomation";
-
-// Re-export decision helpers so existing aiEnrichmentPipeline.test.ts imports keep working.
-export { shouldRunSuggestionAuthor, shouldRunTagRerank };
 
 export type AiEnrichmentPipelineMode = "queue" | "ready_backfill";
 
@@ -110,7 +106,7 @@ async function markAiSuccess(
   const firestoreSuggestions = removeUndefinedFields(suggestions);
   const firestoreAnalysis = removeUndefinedFields(analysis);
   const mode = options?.mode ?? "queue";
-  const publishReady = mode === "queue" && options?.publishReady === true;
+  let publishReady = mode === "queue" && options?.publishReady === true;
 
   let persistedSmartProfile: DesignSmartProfile | undefined;
   let smartProfileAiSnapshot: ReturnType<typeof buildSmartProfileAiSnapshot>;
@@ -168,6 +164,29 @@ async function markAiSuccess(
     persistedSmartProfile = stripEmptySmartProfileDimensions(
       persistedSmartProfile,
     ) as unknown as DesignSmartProfile;
+  }
+
+  // Re-evaluate WAA only after staff/import authority has been merged into the effective profile.
+  // Candidate generation may use the AI-only profile for Pass 2, but persisted automation must
+  // never outrank durable human authority.
+  if (persistedSmartProfile && mode === "queue") {
+    const settings = await loadCachedAiEnrichmentSettings({
+      functionName: "markAiSuccess",
+      invocationId: randomUUID(),
+    });
+    const effectiveDecision = computeCatalogAutomationDecision({
+      smartProfile: persistedSmartProfile,
+      title: suggestions.title,
+      categoryId: suggestions.categoryId,
+      categoryName: suggestions.categoryName ?? persistedSmartProfile.categoryName,
+      description: suggestions.description,
+      visibleText: analysis.visibleText,
+      catalogWorkflowMode: settings.catalogWorkflowMode,
+      catalogAutonomousLiveEnabled: settings.catalogAutonomousLiveEnabled,
+    });
+    publishReady = effectiveDecision.shouldPublishReady;
+    persistedSmartProfile.provenance.automationDecision = effectiveDecision.decision;
+    persistedSmartProfile.provenance.automationReasonCodes = effectiveDecision.reasonCodes;
   }
 
   // ADR-FP-173: Explicit root write blocked only by deliberate lock (not staff provenance).

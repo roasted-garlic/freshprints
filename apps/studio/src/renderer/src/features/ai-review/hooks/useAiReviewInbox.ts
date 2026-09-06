@@ -2,11 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "../../auth/hooks/useAuth";
 import { designDocumentSubscriptionService } from "../../designs/services/designDocumentSubscriptionService";
-import { catalogTagService } from "../../designs/services/catalogTagService";
 import { designService } from "../../designs/services/designService";
 import { useDesigns } from "../../designs/hooks/useDesigns";
 import { useGeneratedDesignLibraryTaxonomy } from "../../designs/hooks/useGeneratedDesignLibraryTaxonomy";
-import type { CreateCatalogTagInput } from "../../designs/types/catalogTag.types";
 import { permissionService } from "../../permissions/services/permissionService";
 import type { Design } from "../../designs/types/design.types";
 import { buildAiReviewInboxListQuery } from "../constants/aiReviewInboxConstants";
@@ -50,10 +48,6 @@ import {
 } from "../../imports/services/importAiBackgroundQueue";
 import { reconcileBackgroundAiQueueEvent } from "../utils/backgroundAiQueueReconciliation";
 import { useAiProcessingQueue } from "./useAiProcessingQueue";
-import {
-  addApprovedSuggestedTagToDraftTags,
-  normalizeSuggestedTagKey,
-} from "../utils/suggestedNewTags";
 import {
   resolveAdvanceIndexAfterInboxRemoval,
   resolveIsPinnedNeedsReviewDesign,
@@ -124,20 +118,6 @@ export function useAiReviewInbox(
 
   const [selectedDesignId, setSelectedDesignId] = useState<string | null>(null);
   const [liveDesign, setLiveDesign] = useState<Design | null>(null);
-  const [ignoredTagsByDesignId, setIgnoredTagsByDesignId] = useState<Map<string, string[]>>(
-    () => {
-      try {
-        const raw = sessionStorage.getItem("aiReview.ignoredTags");
-        if (raw) {
-          const parsed = JSON.parse(raw) as Record<string, string[]>;
-          return new Map(Object.entries(parsed));
-        }
-      } catch {
-        // corrupt storage — start fresh
-      }
-      return new Map();
-    },
-  );
   const [pendingRerun, setPendingRerun] = useState(false);
 
   const [pendingSelection, setPendingSelection] = useState<PendingSelectionChange | null>(null);
@@ -266,7 +246,6 @@ export function useAiReviewInbox(
   const canManageCatalog = Boolean(user && permissionService.canEditAiReviewInbox(user));
   const canApprove = Boolean(user && permissionService.canApproveDesignForCatalog(user));
   const canReject = Boolean(user && permissionService.canRejectDesignFromCatalog(user));
-  const canApproveSuggestedTags = Boolean(user && permissionService.canApproveSuggestedTags(user));
 
   const needsReviewHydratedCount =
     filters.tab === "needs_review" ? tabMatchedDesigns.length : 0;
@@ -1417,73 +1396,6 @@ export function useAiReviewInbox(
     user,
   ]);
 
-  const ignoreSuggestedTag = useCallback(
-    (name: string) => {
-      const normalizedName = normalizeSuggestedTagKey(name);
-
-      if (!normalizedName || !selectedDesignId) {
-        return;
-      }
-
-      setIgnoredTagsByDesignId((currentMap) => {
-        const existing = currentMap.get(selectedDesignId) ?? [];
-
-        if (existing.includes(normalizedName)) {
-          return currentMap;
-        }
-
-        const nextMap = new Map(currentMap);
-        nextMap.set(selectedDesignId, [...existing, normalizedName]);
-
-        try {
-          sessionStorage.setItem(
-            "aiReview.ignoredTags",
-            JSON.stringify(Object.fromEntries(nextMap)),
-          );
-        } catch {
-          // storage unavailable — ignore
-        }
-
-        return nextMap;
-      });
-    },
-    [selectedDesignId],
-  );
-
-  const approveSuggestedTag = useCallback(
-    async (sourceName: string, input: CreateCatalogTagInput, addToDraft: boolean) => {
-      if (!user || !canApproveSuggestedTags) {
-        return;
-      }
-
-      setIsActionLoading(true);
-      setActionError(null);
-
-      try {
-        // Lazy, on-demand mutation — does not require the tag corpus to be preloaded.
-        const approvedTag = await catalogTagService.approveSuggestedTag(user, input);
-        ignoreSuggestedTag(sourceName);
-
-        if (addToDraft) {
-          setDraftForm((currentDraft) =>
-            currentDraft ? addApprovedSuggestedTagToDraftTags(currentDraft, approvedTag.name) : currentDraft,
-          );
-        }
-      } catch (approvalError) {
-        setActionError(
-          approvalError instanceof Error ? approvalError.message : "Unable to approve suggested tag.",
-        );
-      } finally {
-        setIsActionLoading(false);
-      }
-    },
-    [canApproveSuggestedTags, ignoreSuggestedTag, user],
-  );
-
-  const ignoredSuggestedTagNames = selectedDesignId
-    ? (ignoredTagsByDesignId.get(selectedDesignId) ?? [])
-    : [];
-
   return {
     actionError,
     approvedTags: generatedTaxonomy.tags,
@@ -1498,7 +1410,6 @@ export function useAiReviewInbox(
     canRetryProcessing: canRetryProcessingSelected,
     canRetryStaleProcessing: canRetryStaleProcessingSelected,
     canRerunAiSuggestions,
-    canApproveSuggestedTags,
     showReadOnlySuggestions,
     activeTab: filters.tab,
     cancelPendingSelection,
@@ -1516,7 +1427,6 @@ export function useAiReviewInbox(
     isLoading,
     isLoadingMore,
     isRerunningAi: isSendingBackToProcessing,
-    ignoredSuggestedTagNames,
     listQuery,
     loadMoreDesigns,
     pendingSelection,
@@ -1538,8 +1448,6 @@ export function useAiReviewInbox(
     requestRerunAiSuggestions,
     retryProcessingSelected,
     retryStaleProcessingSelected,
-    approveSuggestedTag,
-    ignoreSuggestedTag,
     saveArtworkBackground,
     saveHalftoneStaffDecision,
     updateDraftField,

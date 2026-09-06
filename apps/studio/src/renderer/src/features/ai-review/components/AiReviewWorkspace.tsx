@@ -13,7 +13,7 @@ import type { ArtworkBackgroundFieldsValues } from "../../designs/components/Art
 import { DesignPreviewLightbox } from "../../designs/components/DesignPreviewLightbox";
 import { DesignThumbnailPanel } from "../../designs/components/DesignThumbnailPanel";
 import { useDesignDerivativeUrl } from "../../designs/hooks/useDesignDerivativeUrl";
-import type { CatalogTag, CreateCatalogTagInput } from "../../designs/types/catalogTag.types";
+import type { CatalogTag } from "../../designs/types/catalogTag.types";
 import type { Design } from "../../designs/types/design.types";
 import { mapArtworkBackgroundToForm, resolveFormArtworkBackgroundHex } from "../../designs/utils/designFormMapper";
 import type { AiProcessingQueueRunState } from "../hooks/useAiProcessingQueue";
@@ -34,7 +34,6 @@ interface AiReviewWorkspaceProps {
   approvedTags: CatalogTag[];
   autoAdvance: boolean;
   canApprove: boolean;
-  canApproveSuggestedTags: boolean;
   canEdit: boolean;
   canSaveArtworkBackground: boolean;
   canManageProcessingSettings: boolean;
@@ -61,12 +60,9 @@ interface AiReviewWorkspaceProps {
   isOptimisticEnqueue?: boolean;
   isMultiSelectMode: boolean;
   isRerunningAi: boolean;
-  ignoredSuggestedTagNames: string[];
   onApprove: () => void;
-  onApproveSuggestedTag: (sourceName: string, input: CreateCatalogTagInput, addToDraft: boolean) => Promise<void> | void;
   onAutoAdvanceChange: (enabled: boolean) => void;
   onInputFocusChange: (isFocused: boolean) => void;
-  onIgnoreSuggestedTag: (name: string) => void;
   onNext: () => void;
   onPrevious: () => void;
   onProcessSelectedDesign: () => void;

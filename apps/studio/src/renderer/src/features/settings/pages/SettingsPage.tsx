@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Copy, Paperclip, Settings, Sparkles, X } from "lucide-react";
+import { Check, ChevronDown, Copy, Paperclip, Sparkles, X } from "lucide-react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { AI_ENRICHMENT_PLAYGROUND_MAX_PROMPT_LENGTH } from "@fresh-prints/shared/constants/aiEnrichment.constants";
@@ -32,20 +32,17 @@ import {
   BASE_AI_TAG_EXCLUSIONS,
   ALL_VISION_MODEL_OPTIONS,
   DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
-  DEFAULT_TAG_RERANK_PROMPT_TEMPLATE,
   SUGGESTED_NEW_TAGS_POLICY_OPTIONS,
   SUGGESTION_AUTHOR_MODE_OPTIONS,
   TAG_RERANK_MODE_OPTIONS,
   hasRequiredAiEnrichmentPromptPlaceholders,
   resolveClientPromptTemplate,
-  resolveClientSuggestedNewTagsPolicy,
-  resolveClientSuggestionAuthorMode,
-  resolveClientTagRerankMode,
-  resolveClientTagRerankPromptTemplate,
+    resolveClientSuggestedNewTagsPolicy,
+    resolveClientSuggestionAuthorMode,
+    resolveClientTagRerankMode,
   resolveClientVisionModelId,
 } from "../constants/aiEnrichmentSettingsConstants";
 import { useAiEnrichmentPlayground } from "../hooks/useAiEnrichmentPlayground";
-import { useAiEnrichmentTagRerankPlayground } from "../hooks/useAiEnrichmentTagRerankPlayground";
 import {
   formatAdditionalTagExclusionsInput,
   formatExplicitContentAutomationTermsInput,
@@ -56,6 +53,7 @@ import {
 import { ExplicitContentAutomationSettingsSection } from "../components/ExplicitContentAutomationSettingsSection";
 import { formatAiPlaygroundOutput } from "../utils/aiPlaygroundOutputFormatter";
 import { HelperSettingsPage } from "./HelperSettingsPage";
+import { SemanticReviewPlaygroundPanel } from "../components/SemanticReviewPlaygroundPanel";
 
 /**
  * Tolerantly extract a JSON object from raw model output that may include a fenced code block
@@ -64,7 +62,7 @@ import { HelperSettingsPage } from "./HelperSettingsPage";
  * check for "Run tag rerank" matches what the server-side callable will actually be able to
  * parse instead of requiring perfectly bare JSON.
  */
-function extractClientJsonObject(raw: string): Record<string, unknown> | null {
+export function extractClientJsonObject(raw: string): Record<string, unknown> | null {
   const trimmed = raw.trim();
 
   const tryParse = (candidate: string): Record<string, unknown> | null => {
@@ -101,20 +99,6 @@ function extractClientJsonObject(raw: string): Record<string, unknown> | null {
   }
 
   return null;
-}
-
-function isValidFirstCallJson(outputText: string): boolean {
-  try {
-    const parsed = extractClientJsonObject(outputText);
-    return (
-      typeof parsed?.title === "string" &&
-      typeof parsed?.description === "string" &&
-      typeof parsed?.category === "string" &&
-      Array.isArray(parsed?.tags)
-    );
-  } catch {
-    return false;
-  }
 }
 
 type SettingsPageTabId =
@@ -227,8 +211,6 @@ function ManageableSettingsPage() {
   } = useAiEnrichmentSettings();
   const playground = useAiEnrichmentPlayground();
   const { resetPlayground } = playground;
-  const tagRerankPlayground = useAiEnrichmentTagRerankPlayground();
-  const { reset: resetTagRerankPlayground } = tagRerankPlayground;
   const playgroundImageInputId = useId();
   const playgroundPromptId = useId();
   const playgroundPromptMenuId = useId();
@@ -237,9 +219,7 @@ function ManageableSettingsPage() {
   const [isPromptMenuOpen, setIsPromptMenuOpen] = useState(false);
   const [draftVisionModelId, setDraftVisionModelId] = useState<string | null>(null);
   const [draftPromptTemplate, setDraftPromptTemplate] = useState<string | null>(null);
-  const [draftTagRerankPromptTemplate, setDraftTagRerankPromptTemplate] = useState<string | null>(
-    null,
-  );
+  const [draftTagRerankPromptTemplate, setDraftTagRerankPromptTemplate] = useState<string | null>(null);
   const [draftAdditionalTagExclusions, setDraftAdditionalTagExclusions] = useState<string[] | null>(
     null,
   );
@@ -248,9 +228,7 @@ function ManageableSettingsPage() {
   >(null);
   const [draftTagRerankMode, setDraftTagRerankMode] = useState<string | null>(null);
   const [draftSuggestionAuthorMode, setDraftSuggestionAuthorMode] = useState<string | null>(null);
-  const [draftSuggestedNewTagsPolicy, setDraftSuggestedNewTagsPolicy] = useState<string | null>(
-    null,
-  );
+  const [draftSuggestedNewTagsPolicy, setDraftSuggestedNewTagsPolicy] = useState<string | null>(null);
   const [isPromptTemplateEditorOpen, setIsPromptTemplateEditorOpen] = useState(false);
   const [isTagRerankPromptEditorOpen, setIsTagRerankPromptEditorOpen] = useState(false);
   const [tagRerankPlaygroundPromptOverride, setTagRerankPlaygroundPromptOverride] = useState<
@@ -265,6 +243,7 @@ function ManageableSettingsPage() {
   const [copiedBlockId, setCopiedBlockId] = useState<string | null>(null);
   const [aiEnrichmentSubTab, setAiEnrichmentSubTab] =
     useState<AiEnrichmentSubTabId>("general");
+  const tagRerankPlayground = { isRunning: false };
   const playgroundResultOutputText = useMemo(
     () => formatAiPlaygroundOutput(playground.result?.outputText ?? ""),
     [playground.result?.outputText],
@@ -277,17 +256,6 @@ function ManageableSettingsPage() {
     });
   }, []);
 
-  const combinedEstimatedCostUsd = useMemo(() => {
-    const first = playground.result?.estimatedCostUsd ?? null;
-    const rerank = tagRerankPlayground.result?.estimatedCostUsd ?? null;
-
-    if (first == null && rerank == null) {
-      return null;
-    }
-
-    return (first ?? 0) + (rerank ?? 0);
-  }, [playground.result?.estimatedCostUsd, tagRerankPlayground.result?.estimatedCostUsd]);
-
   const selectedVisionModelId = draftVisionModelId ?? visionModelId;
   const selectedPromptTemplate = draftPromptTemplate ?? promptTemplate;
   const selectedTagRerankPromptTemplate = draftTagRerankPromptTemplate ?? tagRerankPromptTemplate;
@@ -299,29 +267,19 @@ function ManageableSettingsPage() {
     selectedExplicitContentAutomationTerms,
   );
   const selectedTagRerankMode = resolveClientTagRerankMode(draftTagRerankMode ?? tagRerankMode);
-  const selectedSuggestionAuthorMode = resolveClientSuggestionAuthorMode(
-    draftSuggestionAuthorMode ?? suggestionAuthorMode,
-  );
-  const selectedSuggestedNewTagsPolicy = resolveClientSuggestedNewTagsPolicy(
-    draftSuggestedNewTagsPolicy ?? suggestedNewTagsPolicy,
-  );
+  const selectedSuggestionAuthorMode = resolveClientSuggestionAuthorMode(draftSuggestionAuthorMode ?? suggestionAuthorMode);
+  const selectedSuggestedNewTagsPolicy = resolveClientSuggestedNewTagsPolicy(draftSuggestedNewTagsPolicy ?? suggestedNewTagsPolicy);
   const hasUnsavedChanges =
     (draftVisionModelId !== null && draftVisionModelId !== visionModelId) ||
     (draftPromptTemplate !== null &&
       resolveClientPromptTemplate(draftPromptTemplate) !== promptTemplate) ||
-    (draftTagRerankPromptTemplate !== null &&
-      resolveClientTagRerankPromptTemplate(draftTagRerankPromptTemplate) !==
-        tagRerankPromptTemplate) ||
     (draftAdditionalTagExclusions !== null &&
       formatAdditionalTagExclusionsInput(draftAdditionalTagExclusions) !==
         formatAdditionalTagExclusionsInput(additionalTagExclusions)) ||
     (draftExplicitContentAutomationTerms !== null &&
       formatExplicitContentAutomationTermsInput(draftExplicitContentAutomationTerms) !==
         formatExplicitContentAutomationTermsInput(explicitContentAutomationTerms)) ||
-    (draftTagRerankMode !== null && draftTagRerankMode !== tagRerankMode) ||
-    (draftSuggestionAuthorMode !== null && draftSuggestionAuthorMode !== suggestionAuthorMode) ||
-    (draftSuggestedNewTagsPolicy !== null &&
-      draftSuggestedNewTagsPolicy !== suggestedNewTagsPolicy);
+    false;
   const promptTemplateError = !hasRequiredAiEnrichmentPromptPlaceholders(selectedPromptTemplate)
     ? "Prompt must include {{excluded_tags}} and {{approved_categories}} so server-side values are inserted."
     : null;
@@ -339,11 +297,8 @@ function ManageableSettingsPage() {
   const closePlaygroundModal = useCallback(() => {
     setIsPlaygroundResultModalOpen(false);
     resetPlayground();
-    resetTagRerankPlayground();
-    setTagRerankPlaygroundPromptOverride(null);
-    setIsTagRerankPlaygroundPromptModalOpen(false);
     setIsPlaygroundModalOpen(false);
-  }, [resetPlayground, resetTagRerankPlayground]);
+  }, [resetPlayground]);
 
   const closePlaygroundResultModal = useCallback(() => {
     setIsPlaygroundResultModalOpen(false);
@@ -361,6 +316,14 @@ function ManageableSettingsPage() {
     requestAnimationFrame(() => {
       document.getElementById("settings-tag-rerank-prompt-editor-open-button")?.focus();
     });
+  }, []);
+
+  const handleOpenTagRerankPromptEditor = useCallback(() => {
+    setIsTagRerankPromptEditorOpen(true);
+  }, []);
+
+  const handleUseCurrentDefaultTagRerankPrompt = useCallback(() => {
+    setIsTagRerankPromptEditorOpen(false);
   }, []);
 
   useEffect(() => {
@@ -414,9 +377,8 @@ function ManageableSettingsPage() {
   useEffect(() => {
     if (playground.result) {
       setIsPlaygroundResultModalOpen(true);
-      resetTagRerankPlayground();
     }
-  }, [playground.result, resetTagRerankPlayground]);
+  }, [playground.result]);
 
   useEffect(() => {
     if (isPlaygroundModalOpen) {
@@ -486,23 +448,15 @@ function ManageableSettingsPage() {
     await saveSettings({
       visionModelId: resolveClientVisionModelId(selectedVisionModelId),
       promptTemplate: selectedPromptTemplate,
-      tagRerankPromptTemplate: selectedTagRerankPromptTemplate,
       additionalTagExclusions: parseAdditionalTagExclusionsInput(additionalTagExclusionsInput),
-      tagRerankMode: selectedTagRerankMode,
-      suggestionAuthorMode: selectedSuggestionAuthorMode,
-      suggestedNewTagsPolicy: selectedSuggestedNewTagsPolicy,
       explicitContentAutomationTerms: parseExplicitContentAutomationTermsInput(
         explicitContentAutomationTermsInput,
       ),
     });
     setDraftVisionModelId(null);
     setDraftPromptTemplate(null);
-    setDraftTagRerankPromptTemplate(null);
     setDraftAdditionalTagExclusions(null);
     setDraftExplicitContentAutomationTerms(null);
-    setDraftTagRerankMode(null);
-    setDraftSuggestionAuthorMode(null);
-    setDraftSuggestedNewTagsPolicy(null);
     setIsPromptTemplateEditorOpen(false);
     setIsTagRerankPromptEditorOpen(false);
   }
@@ -513,14 +467,6 @@ function ManageableSettingsPage() {
 
   function handleUseCurrentDefaultPrompt() {
     setDraftPromptTemplate(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE);
-  }
-
-  function handleOpenTagRerankPromptEditor() {
-    setIsTagRerankPromptEditorOpen(true);
-  }
-
-  function handleUseCurrentDefaultTagRerankPrompt() {
-    setDraftTagRerankPromptTemplate(DEFAULT_TAG_RERANK_PROMPT_TEMPLATE);
   }
 
   return (
@@ -670,6 +616,7 @@ function ManageableSettingsPage() {
               id="ai-enrichment-subtab-panel-general"
               role="tabpanel"
             >
+              <SemanticReviewPlaygroundPanel />
               <section aria-labelledby="ai-enrichment-settings-title" className="card settings-section">
                 <header className="settings-section-header">
                   <h2 className="settings-section-title" id="ai-enrichment-settings-title">
@@ -705,6 +652,7 @@ function ManageableSettingsPage() {
                         </p>
                       </div>
 
+                      {false && (<>
                       <div className="settings-control-item">
                         <Select
                           disabled={!canManageSettings || isSaving}
@@ -763,6 +711,7 @@ function ManageableSettingsPage() {
                           )?.hint ?? selectedSuggestionAuthorMode}
                         </p>
                       </div>
+                      </>)}
                     </div>
 
                     {isOwner ? (
@@ -1007,7 +956,7 @@ function ManageableSettingsPage() {
         </div>
       ) : null}
 
-      {isOwner && isTagRerankPromptEditorOpen ? (
+      {false && isOwner && isTagRerankPromptEditorOpen ? (
         <div className="modal-overlay modal-overlay-blur" onClick={handleCloseTagRerankPromptEditor}>
           <div
             className="settings-editor-modal-shell"
@@ -1491,6 +1440,7 @@ function ManageableSettingsPage() {
                     <pre>{playgroundResultOutputText}</pre>
                   </div>
 
+                  {/*
                   <div className="settings-playground-tag-rerank">
                     <div className="settings-form-actions">
                       <Button
@@ -1635,6 +1585,7 @@ function ManageableSettingsPage() {
                       </section>
                     ) : null}
                   </div>
+                  */}
                 </section>
               </ModalBody>
             </Modal>

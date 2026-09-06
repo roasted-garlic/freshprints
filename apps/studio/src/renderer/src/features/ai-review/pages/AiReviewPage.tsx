@@ -507,7 +507,6 @@ function AiReviewPageContent() {
             approvedTags={inbox.approvedTags}
             autoAdvance={inbox.processingQueue.autoAdvance}
             canApprove={inbox.canApprove}
-            canApproveSuggestedTags={inbox.canApproveSuggestedTags}
             canEdit={inbox.canEdit}
             canSaveArtworkBackground={inbox.canSaveArtworkBackground}
             canManageProcessingSettings={canManageProcessingSettings}
@@ -537,14 +536,9 @@ function AiReviewPageContent() {
               inbox.processingQueue.enqueueingDesignId === inbox.selectedDesign?.id
             }
             isMultiSelectMode={isMultiSelectMode}
-            ignoredSuggestedTagNames={inbox.ignoredSuggestedTagNames}
             onApprove={() => void inbox.approveSelected()}
-            onApproveSuggestedTag={(sourceName, input, addToDraft) =>
-              void inbox.approveSuggestedTag(sourceName, input, addToDraft)
-            }
             onAutoAdvanceChange={inbox.processingQueue.setAutoAdvance}
             onInputFocusChange={setIsInputFocused}
-            onIgnoreSuggestedTag={inbox.ignoreSuggestedTag}
             onNext={() => inbox.selectRelative(1)}
             onStopAutoQueue={inbox.processingQueue.stopAutoQueue}
             onPrevious={() => inbox.selectRelative(-1)}

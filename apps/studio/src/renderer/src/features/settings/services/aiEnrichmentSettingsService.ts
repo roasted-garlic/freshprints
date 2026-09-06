@@ -48,11 +48,11 @@ export interface AiEnrichmentSettingsSnapshot {
 interface UpdateAiEnrichmentSettingsInput {
   visionModelId: AllowedVisionModelId;
   promptTemplate: string;
-  tagRerankPromptTemplate: string;
+  tagRerankPromptTemplate?: string;
   additionalTagExclusions: string[];
-  tagRerankMode: TagRerankMode;
-  suggestionAuthorMode: SuggestionAuthorMode;
-  suggestedNewTagsPolicy: SuggestedNewTagsPolicy;
+  tagRerankMode?: TagRerankMode;
+  suggestionAuthorMode?: SuggestionAuthorMode;
+  suggestedNewTagsPolicy?: SuggestedNewTagsPolicy;
   explicitContentAutomationTerms: string[];
 }
 
@@ -170,11 +170,11 @@ export const aiEnrichmentSettingsService = {
   async updateSettings(input: {
     visionModelId: AllowedVisionModelId;
     promptTemplate: string;
-    tagRerankPromptTemplate: string;
+    tagRerankPromptTemplate?: string;
     additionalTagExclusions: string[];
-    tagRerankMode: TagRerankMode;
-    suggestionAuthorMode: SuggestionAuthorMode;
-    suggestedNewTagsPolicy: SuggestedNewTagsPolicy;
+    tagRerankMode?: TagRerankMode;
+    suggestionAuthorMode?: SuggestionAuthorMode;
+    suggestedNewTagsPolicy?: SuggestedNewTagsPolicy;
     explicitContentAutomationTerms: string[];
   }): Promise<{
     visionModelId: AllowedVisionModelId;
@@ -198,11 +198,11 @@ export const aiEnrichmentSettingsService = {
     })({
       visionModelId: resolveClientVisionModelId(input.visionModelId),
       promptTemplate: resolveClientPromptTemplate(input.promptTemplate),
-      tagRerankPromptTemplate: resolveClientAiTagRerankPromptTemplate(input.tagRerankPromptTemplate),
+      ...(input.tagRerankPromptTemplate ? { tagRerankPromptTemplate: resolveClientAiTagRerankPromptTemplate(input.tagRerankPromptTemplate) } : {}),
       additionalTagExclusions: resolveClientAdditionalTagExclusions(input.additionalTagExclusions),
-      tagRerankMode: resolveClientTagRerankMode(input.tagRerankMode),
-      suggestionAuthorMode: resolveClientSuggestionAuthorMode(input.suggestionAuthorMode),
-      suggestedNewTagsPolicy: resolveClientSuggestedNewTagsPolicy(input.suggestedNewTagsPolicy),
+      ...(input.tagRerankMode ? { tagRerankMode: resolveClientTagRerankMode(input.tagRerankMode) } : {}),
+      ...(input.suggestionAuthorMode ? { suggestionAuthorMode: resolveClientSuggestionAuthorMode(input.suggestionAuthorMode) } : {}),
+      ...(input.suggestedNewTagsPolicy ? { suggestedNewTagsPolicy: resolveClientSuggestedNewTagsPolicy(input.suggestedNewTagsPolicy) } : {}),
       explicitContentAutomationTerms,
     });
 

@@ -3,8 +3,6 @@ import { randomUUID } from "node:crypto";
 import type {
   AiEnrichmentPlaygroundRequest,
   AiEnrichmentPlaygroundResponse,
-  AiEnrichmentTagRerankPlaygroundRequest,
-  AiEnrichmentTagRerankPlaygroundResponse,
 } from "../../../packages/shared/src/types/ai/aiEnrichmentPlayground.types";
 import {
   AI_ENRICHMENT_PLAYGROUND_IMAGE_CONTENT_TYPES,
@@ -41,9 +39,6 @@ import {
 } from "./simpleCatalogEnrichmentPrompt";
 import { resolveVisionProviderCredentials } from "./resolveVisionProviderCredentials";
 import { extractJsonObject, normalizeSimpleCatalogEnrichment, toCanonicalSimpleCatalogEnrichmentJson } from "./simpleCatalogEnrichmentResponse";
-import { resolveAiCatalogTags } from "./catalogTagResolver";
-import { resolveThemeCategory } from "./catalogThemeCategoryResolver";
-import { callTagRerank, CATALOG_TAG_RERANK_PROMPT_VERSION } from "./catalogTagRerankProvider";
 
 const ALLOWED_PLAYGROUND_IMAGE_CONTENT_TYPES = new Set<string>(
   AI_ENRICHMENT_PLAYGROUND_IMAGE_CONTENT_TYPES,
@@ -343,142 +338,5 @@ export async function runAiEnrichmentPlayground(
       usage.promptTokens,
       usage.completionTokens,
     ),
-  };
-}
-
-function validateTagRerankPlaygroundRequest(input: unknown): AiEnrichmentTagRerankPlaygroundRequest {
-  if (!input || typeof input !== "object") {
-    throw new Error("Playground tag rerank request data is required.");
-  }
-
-  const firstResponseOutputText =
-    "firstResponseOutputText" in input && typeof input.firstResponseOutputText === "string"
-      ? input.firstResponseOutputText.trim()
-      : "";
-
-  if (!firstResponseOutputText) {
-    throw new Error("A first-call vision response is required before running the tag rerank.");
-  }
-
-  const requestedVisionModelId =
-    "visionModelId" in input && typeof input.visionModelId === "string"
-      ? input.visionModelId.trim()
-      : "";
-  const visionModelId = resolveVisionModelId(requestedVisionModelId);
-
-  if (visionModelId !== requestedVisionModelId) {
-    throw new Error("The selected vision model is not allowed.");
-  }
-
-  const promptTemplate =
-    "promptTemplate" in input && typeof input.promptTemplate === "string"
-      ? input.promptTemplate.trim() || undefined
-      : undefined;
-
-  return { firstResponseOutputText, promptTemplate, visionModelId };
-}
-
-/**
- * Playground-only entry point for the optional text-only tag reranker, per the user's request to
- * be able to test the reranker workflow against real designs before enabling it in production.
- * Does not write to `designs` and does not persist the uploaded image — the first-call vision
- * response is passed back in as text only, exactly as production would receive it from the first
- * call in the real pipeline. Requires a valid, already-parseable first-call JSON response (same
- * normalizeSimpleCatalogEnrichment validation the real pipeline applies) before rerank is possible.
- */
-export async function runAiEnrichmentTagRerankPlayground(
-  keys: { geminiApiKey: string; openAiApiKey?: string },
-  request: AiEnrichmentTagRerankPlaygroundRequest,
-): Promise<AiEnrichmentTagRerankPlaygroundResponse> {
-  const validatedRequest = validateTagRerankPlaygroundRequest(request);
-  const { providerTarget, apiKey } = resolveVisionProviderCredentials(validatedRequest.visionModelId, {
-    geminiApiKey: keys.geminiApiKey,
-    openAiApiKey: keys.openAiApiKey,
-  });
-
-  const diagnosticContext: AiEnrichmentReadDiagnosticContext = {
-    functionName: "runAiEnrichmentTagRerankPlayground",
-    invocationId: randomUUID(),
-  };
-  const [approvedTags, categories, enrichmentSettings] = await Promise.all([
-    loadCachedApprovedTags(diagnosticContext),
-    loadCachedActiveCategories(diagnosticContext),
-    loadCachedAiEnrichmentSettings(diagnosticContext),
-  ]);
-
-  const raw = extractJsonObject(validatedRequest.firstResponseOutputText);
-  const parsed = normalizeSimpleCatalogEnrichment(raw, enrichmentSettings.effectiveTagExclusions);
-
-  const resolvedTags = resolveAiCatalogTags({
-    approvedTags,
-    candidates: parsed.rawTags.length > 0 ? parsed.rawTags : parsed.tags,
-    suggestedNewTagsPolicy: enrichmentSettings.suggestedNewTagsPolicy,
-  });
-
-  const resolvedCategory = resolveThemeCategory(
-    {
-      rawCategory: parsed.category,
-      title: parsed.title,
-      description: parsed.description,
-      visibleText: parsed.visibleText,
-      matchedTags: resolvedTags.tags,
-      subjects: parsed.subjects,
-      objects: parsed.objects,
-      styles: parsed.styles,
-      themes: parsed.themes,
-      interests: parsed.interests,
-      professionsGroups: parsed.professionsGroups,
-      searchConcepts: parsed.searchConcepts,
-      approvedCategories: categories.categories,
-    },
-    categories.idsByName,
-  );
-
-  const startedAt = Date.now();
-
-  logPipelineEvent("settings.ai_playground.tag_rerank.started", {
-    providerId: providerTarget.providerId,
-    modelId: validatedRequest.visionModelId,
-    candidateCount: resolvedTags.approvedTagCandidates.length,
-  });
-
-  const rerankResult = await callTagRerank(
-    apiKey,
-    providerTarget,
-    validatedRequest.visionModelId,
-    {
-      approvedTagCandidates: resolvedTags.approvedTagCandidates,
-      firstResponse: {
-        category: parsed.category,
-        description: parsed.description,
-        tags: resolvedTags.tags,
-        title: parsed.title,
-      },
-      promptTemplate: validatedRequest.promptTemplate ?? enrichmentSettings.tagRerankPromptTemplate,
-      resolvedCategoryName: resolvedCategory.categoryName,
-    },
-    { designId: "playground" },
-  );
-
-  const elapsedMs = Date.now() - startedAt;
-
-  logPipelineEvent("settings.ai_playground.tag_rerank.completed", {
-    providerId: providerTarget.providerId,
-    modelId: validatedRequest.visionModelId,
-    elapsedMs,
-    finalTagCount: rerankResult.tags.length,
-    discardedTagCount: rerankResult.discardedTags.length,
-  });
-
-  return {
-    approvedTagCandidates: resolvedTags.approvedTagCandidates,
-    discardedTags: rerankResult.discardedTags,
-    elapsedMs,
-    estimatedCostUsd: rerankResult.estimatedCostUsd,
-    outputText: JSON.stringify({ tags: rerankResult.tags, uncoveredConcepts: rerankResult.uncoveredConcepts }),
-    promptTokens: rerankResult.promptTokens,
-    completionTokens: rerankResult.completionTokens,
-    uncoveredConcepts: rerankResult.uncoveredConcepts,
-    version: CATALOG_TAG_RERANK_PROMPT_VERSION,
   };
 }

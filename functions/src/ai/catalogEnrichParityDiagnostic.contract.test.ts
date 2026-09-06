@@ -7,7 +7,6 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { CATALOG_ENRICHMENT_PROMPT_VERSION } from "./catalogTitleRules";
-import { shouldRunTagRerank } from "./aiEnrichmentCandidateCore";
 
 const repoRoot = resolve(import.meta.dirname, "../../..");
 
@@ -17,7 +16,7 @@ function read(rel: string): string {
 
 describe("Playground vs Processing prompt resolution (diagnostic parity)", () => {
   it("stamps promptVersion from the code constant, not prompt text", () => {
-    assert.equal(CATALOG_ENRICHMENT_PROMPT_VERSION, "catalog-enrich-v37");
+    assert.equal(CATALOG_ENRICHMENT_PROMPT_VERSION, "catalog-enrich-v38");
     const stamp = read("functions/src/ai/simpleCatalogEnrichmentResponse.ts");
     assert.match(stamp, /promptVersion:\s*CATALOG_ENRICHMENT_PROMPT_VERSION/);
     assert.doesNotMatch(stamp, /promptVersion:\s*hash|promptVersion:\s*promptTemplate/);
@@ -35,26 +34,8 @@ describe("Playground vs Processing prompt resolution (diagnostic parity)", () =>
     assert.match(core, /promptTemplate:\s*enrichmentSettings\.promptTemplate/);
   });
 
-  it("tag rerank still triggers in auto mode when primary matched tags are empty", () => {
-    assert.equal(
-      shouldRunTagRerank("auto", {
-        allMatchesAreWeak: false,
-        approvedTagCandidates: [],
-        tags: [],
-        suggestedNewTags: [],
-        unmatchedCandidateCount: 0,
-      }),
-      true,
-    );
-    assert.equal(
-      shouldRunTagRerank("off", {
-        allMatchesAreWeak: false,
-        approvedTagCandidates: [],
-        tags: [],
-        suggestedNewTags: [],
-        unmatchedCandidateCount: 0,
-      }),
-      false,
-    );
+  it("tag rerank is absent from the active candidate path", () => {
+    assert.match(read("functions/src/ai/aiEnrichmentCandidateCore.ts"), /suggestions\.tags = \[\]/);
+    assert.doesNotMatch(read("functions/src/ai/aiEnrichmentCandidateCore.ts"), /import .*catalogTagRerankProvider/);
   });
 });

@@ -2,32 +2,32 @@
 
 | Field | Value |
 |-------|-------|
-| Status | **ACTIVE — Two-pass implementation in progress** |
-| DONE | **no** |
+| Status | **COMPLETE — stopped at DEV deploy checkpoint** |
+| DONE | **yes** |
 | Current Mode | managed-phase |
 | Parent program | `smart-catalog-intelligence-completion-and-legacy-tag-retirement` |
 | Current Goal | `two-pass-ai-enrichment-context-and-semantic-verification-implementation` |
-| Current Phase | Implement |
+| Current Phase | Signoff |
 | Environment | `fresh-prints-dev` |
 | Mode | **shadow** · Autonomous **OFF** |
 | Production | untouched |
 | Commit/push | **NOT AUTHORIZED** |
-| Last updated | 2026-09-05 |
-| Last Completed Step | Owner decisions recorded (ADR-FP-182); implementation Plan + Formal Review |
+| Last updated | 2026-09-06 |
+| Last Completed Step | Implementation, scoped validation, accepted exception record, and Implementation Review |
 
 ## Human checkpoint
 
-**Human Checkpoint Required: no**
+**Human Checkpoint Required: yes**
 
-**Human Checkpoint Reason:** No checkpoint currently blocking the approved implementation slice.
+**Human Checkpoint Reason:** Implementation Review complete; awaiting owner authorization for DEV deploy.
 
-**Allowed Actions:** Read Plan/Review; authorize Implement; park/resume Portal overlay separately
+**Allowed Actions:** Review implementation artifacts; authorize DEV deploy
 
-**Forbidden Actions:** Implement without owner proceed; deploy; Autonomous; WS6; production; commit/push
+**Forbidden Actions:** Deploy without owner authorization; Autonomous; WS6; production; commit/push
 
 ## Next Required Step
 
-Continue approved implementation, then run the full contract matrix and prepare Test/Signoff artifacts. No deploy, commit, or production action.
+Await owner DEV deploy authorization. No deploy, commit, or production action.
 
 ## Parked (interrupted)
 

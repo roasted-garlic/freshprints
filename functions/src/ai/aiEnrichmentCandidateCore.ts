@@ -4,8 +4,6 @@ import type {
   DesignAiSuggestions,
 } from "../../../packages/shared/src/types/ai/aiProcessing.types";
 import type { DesignSmartProfile } from "../../../packages/shared/src/types/catalog/smartProfile.types";
-import type { SuggestionAuthorMode, TagRerankMode } from "../../../packages/shared/src/constants/aiEnrichment.constants";
-import type { ResolveAiCatalogTagsResult } from "./catalogTagResolver";
 import type { CatalogAutomationDecisionResult } from "./automationDecisionShadow";
 import { adminStorage } from "../lib/admin";
 import { logPipelineEvent } from "../lib/pipelineLog";
@@ -23,20 +21,15 @@ import {
 import { resolveAiEnrichmentProvider } from "./providers/resolveAiEnrichmentProvider";
 import { buildDesignSmartProfile } from "./smartProfileBuilder";
 import { computeCatalogAutomationDecision } from "./automationDecisionShadow";
+import { resolveProviderTarget } from "./providers/resolveProviderTarget";
+import { buildSemanticReviewPrompt, applySemanticReviewPatches } from "./semanticReviewCore";
+import { callSemanticReviewer } from "./semanticReviewProvider";
+import { canRunSemanticReview, getSemanticReviewEligibleBlockers } from "../../../packages/shared/src/utils/semanticReviewPolicy";
 import {
   buildExplicitContentAutomationPreview,
   classifyExplicitContentAutomation,
   type ExplicitContentAutomationWrite,
 } from "../../../packages/shared/src/utils/explicitContentAutomation";
-
-/** Compatibility predicates retained for callers; active tag-AI execution is retired. */
-export function shouldRunTagRerank(_mode: TagRerankMode, _resolvedTags: ResolveAiCatalogTagsResult): boolean {
-  return false;
-}
-
-export function shouldRunSuggestionAuthor(_mode: SuggestionAuthorMode, _resolvedTags: ResolveAiCatalogTagsResult): boolean {
-  return false;
-}
 
 /**
  * Design fields required for read-only candidate generation (no lifecycle writes).
@@ -493,6 +486,68 @@ export async function generateAiEnrichmentCandidateForDesign(input: {
       catalogWorkflowMode: enrichmentSettings.catalogWorkflowMode,
       catalogAutonomousLiveEnabled: enrichmentSettings.catalogAutonomousLiveEnabled,
     });
+
+    suggestions.semanticReviewStatus = "ineligible";
+    if (canRunSemanticReview({
+      enabled: enrichmentSettings.semanticReviewerEnabled,
+      objectiveBlockers: automationDecision.hardBlockers,
+      semanticBlockers: getSemanticReviewEligibleBlockers(automationDecision.reasonCodes),
+      visualContextProfile: result.analysis.visualContextProfile,
+    })) {
+      const semanticProviderTarget = resolveProviderTarget(provider.providerId === "openai" ? "openai" : "google");
+      const semanticApiKey = semanticProviderTarget.providerId === "openai" ? openAiApiKey : geminiApiKey;
+      suggestions.semanticReviewStatus = "failed";
+      try {
+        const review = await callSemanticReviewer({
+          apiKey: semanticApiKey,
+          providerTarget: semanticProviderTarget,
+          modelId: enrichmentSettings.semanticReviewerModelId,
+          designId,
+          prompt: buildSemanticReviewPrompt({
+            visualContextProfile: result.analysis.visualContextProfile!,
+            title: suggestions.title,
+            description: suggestions.description,
+            categoryName: suggestions.categoryName,
+            originalSmartProfile: smartProfile as unknown as Record<string, string[]>,
+            effectiveSmartProfile: smartProfile as unknown as Record<string, string[]>,
+            blockers: automationDecision.reasonCodes,
+          }),
+        });
+        suggestions.semanticReviewStatus = "succeeded";
+        suggestions.semanticReviewDecision = review.result.decision;
+        suggestions.semanticReviewReason = review.result.reason;
+        suggestions.semanticReviewPromptTokens = review.promptTokens;
+        suggestions.semanticReviewCompletionTokens = review.completionTokens;
+        suggestions.semanticReviewEstimatedCostUsd = review.estimatedCostUsd;
+        suggestions.semanticReviewPromptVersion = review.promptVersion;
+        suggestions.semanticReviewModel = review.model;
+        suggestions.semanticReviewProvider = review.provider;
+        suggestions.semanticReviewBlockersResolved = review.result.blockersResolved;
+        suggestions.semanticReviewBlockersUnresolved = review.result.blockersUnresolved;
+        if (review.result.patches?.length) {
+          const patched = applySemanticReviewPatches(smartProfile as unknown as Record<string, string[]>, review.result, smartProfile.provenance.staffEditedDimensionKeys ?? []);
+          Object.assign(smartProfile, patched);
+          suggestions.semanticReviewPatchesApplied = review.result.patches;
+        }
+        if (review.result.decision === "NEEDS_REVIEW" || review.result.blockersUnresolved.length > 0) {
+          publishReady = false;
+          automationDecision = { ...automationDecision, decision: "needs_review", wouldAutoApprove: false, shouldPublishReady: false, reasonCodes: [...new Set([...automationDecision.reasonCodes, ...review.result.blockersUnresolved, "semantic_review_needs_review"])] };
+        } else {
+          automationDecision = computeCatalogAutomationDecision({
+            smartProfile, title: suggestions.title, categoryId: suggestions.categoryId,
+            categoryName: suggestions.categoryName ?? smartProfile.categoryName,
+            description: suggestions.description, visibleText: result.analysis.visibleText,
+            catalogWorkflowMode: enrichmentSettings.catalogWorkflowMode,
+            catalogAutonomousLiveEnabled: enrichmentSettings.catalogAutonomousLiveEnabled,
+          });
+          publishReady = automationDecision.shouldPublishReady;
+        }
+      } catch (error) {
+        suggestions.semanticReviewFailureReason = error instanceof Error ? error.message : "semantic_review_failed";
+        publishReady = false;
+        automationDecision = { ...automationDecision, decision: "needs_review", wouldAutoApprove: false, shouldPublishReady: false, reasonCodes: [...new Set([...automationDecision.reasonCodes, "semantic_review_failed"])] };
+      }
+    }
 
     publishReady = automationDecision.shouldPublishReady;
 
