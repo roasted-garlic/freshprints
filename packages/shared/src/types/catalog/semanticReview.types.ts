@@ -1,4 +1,4 @@
-export const CATALOG_SEMANTIC_REVIEW_PROMPT_VERSION = "catalog-semantic-review-v1" as const;
+export const CATALOG_SEMANTIC_REVIEW_PROMPT_VERSION = "catalog-semantic-review-v2" as const;
 export const SEMANTIC_REVIEW_DECISIONS = ["APPROVE", "APPROVE_WITH_PATCH", "NEEDS_REVIEW"] as const;
 export type SemanticReviewDecision = (typeof SEMANTIC_REVIEW_DECISIONS)[number];
 

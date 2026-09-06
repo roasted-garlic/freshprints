@@ -37,3 +37,7 @@ The Studio typecheck continues to report the unrelated `useAiReviewInbox.ts` nul
 ## Deployment boundary
 
 No deploy, push, Semantic Reviewer enablement, WS6 work, production action, or production data operation was performed. This review is the owner checkpoint before DEV deploy authorization.
+
+## Post-deploy Gate B corrective
+
+The first DEV Gate B callable canary exposed a shared Pass 2 response-contract mismatch: the prompt did not explicitly require the complete result shape while the parser required blocker arrays. A narrow corrective was implemented locally and validated without changing Pass 2 authority or safety policy. The prompt is now `catalog-semantic-review-v2`; omitted blocker arrays normalize to empty arrays, supplied malformed fields still fail closed, and provider assistant text arrays are normalized before the shared parser. Gate B remains pending corrective DEV redeploy; Gate C remains unauthorized.

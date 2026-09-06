@@ -6,6 +6,19 @@ import type { ProviderTarget } from "./providers/resolveProviderTarget";
 import { CATALOG_SEMANTIC_REVIEW_PROMPT_VERSION } from "../../../packages/shared/src/types/catalog/semanticReview.types";
 import { parseSemanticReviewResult } from "./semanticReviewCore";
 
+type AssistantContent = string | Array<{ type?: string; text?: string }>;
+
+export function extractSemanticReviewContent(payload: unknown): string {
+  const choices = (payload as { choices?: Array<{ message?: { content?: AssistantContent } }> } | null)?.choices;
+  const content = choices?.[0]?.message?.content;
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) {
+    const text = content.filter((part) => part?.type === "text" && typeof part.text === "string").map((part) => part.text).join("");
+    if (text) return text;
+  }
+  throw new Error("Semantic reviewer returned no content.");
+}
+
 export async function callSemanticReviewer(input: {
   apiKey: string;
   providerTarget: ProviderTarget;
@@ -21,9 +34,8 @@ export async function callSemanticReviewer(input: {
       { role: "user", content: input.prompt },
     ] }),
   }, { modelId: input.modelId, maxRetries: 1 });
-  const payload = (await response.json()) as { choices?: Array<{ message?: { content?: string } }>; usage?: { prompt_tokens?: number; completion_tokens?: number } };
-  const content = payload.choices?.[0]?.message?.content;
-  if (!content) throw new Error("Semantic reviewer returned no content.");
+  const payload = (await response.json()) as { choices?: Array<{ message?: { content?: AssistantContent } }>; usage?: { prompt_tokens?: number; completion_tokens?: number } };
+  const content = extractSemanticReviewContent(payload);
   const raw = parseJson(content);
   const result = parseSemanticReviewResult(raw);
   const promptTokens = typeof payload.usage?.prompt_tokens === "number" ? payload.usage.prompt_tokens : null;

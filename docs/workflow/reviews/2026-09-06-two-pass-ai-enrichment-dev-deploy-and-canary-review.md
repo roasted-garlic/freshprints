@@ -24,3 +24,58 @@ Gate C requires a separate owner authorization to temporarily enable `semanticRe
 Record Function revisions, deployment success, frozen SHA, Studio SHA, exact AI tokens/costs, and canary outputs. Roll back by disabling the setting or redeploying the prior SHA; do not restore retired Tag Rerank.
 
 No deploy, production, Autonomous, Semantic Reviewer enablement, or WS6 action is authorized by this review.
+
+## DEV Gate A/B checkpoint — 2026-09-06
+
+Deployment command exit code: `0`.
+
+Frozen implementation SHA: `74d7b2edb43f89906f4b7449db004747b6ea0c22`.
+
+Local development/origin source verification: local `development` and `origin/development` both point to `84bc40f636189e23a3846c74381de9d19d986f6f`; the frozen implementation SHA is its source ancestor and the working tree is clean. The later commit contains only the reviewed deployment documentation.
+
+Deployed Functions and revisions:
+
+| Function | Revision | State | Firebase source hash |
+|---|---|---|---|
+| `enqueueAiEnrichment` | `enqueueaienrichment-00105-mat` | ACTIVE | `2be34e6a7367fb8b14891e294856d5f77e8b6ff9` |
+| `resetAiEnrichmentForProcessing` | `resetaienrichmentforprocessing-00043-geq` | ACTIVE | `6e21bbe6ad47455a7aefab838730b4f26debd381` |
+| `reprocessReadyDesignWithAi` | `reprocessreadydesignwithai-00016-xom` | ACTIVE | `2be34e6a7367fb8b14891e294856d5f77e8b6ff9` |
+| `testAiEnrichmentPlayground` | `testaienrichmentplayground-00064-bum` | ACTIVE | `2be34e6a7367fb8b14891e294856d5f77e8b6ff9` |
+| `testAiEnrichmentSemanticReviewPlayground` | `testaienrichmentsemanticreviewplayground-00001-tac` | ACTIVE | `2be34e6a7367fb8b14891e294856d5f77e8b6ff9` |
+| `updateAiEnrichmentSettings` | `updateaienrichmentsettings-00052-gaw` | ACTIVE | `6e21bbe6ad47455a7aefab838730b4f26debd381` |
+
+No unrelated Functions or Firebase resources were targeted. Production was not touched.
+
+Studio verification: Vite DEV renderer started successfully at `http://127.0.0.1:5173`. The packaged Electron build did not complete because of the documented pre-existing unrelated type errors in PNG validation, export fixtures, companion sets, print requests, staff inbox, and shared legacy fixtures. No AI-enrichment Studio error was reported.
+
+Gate A: PASS via the owner-authorized temporary owner/admin Firebase Auth mechanism used by the existing repository QA scripts. The known cucumber design `Y2IQuCgAPgnqrBIeJuap` was read from Storage and sent only to `testAiEnrichmentPlayground`; no design document was mutated. Returned provider/model: `google` / `gemini-2.5-flash-lite`. Prompt version: `ai-playground-v1` (the callable's response envelope); the embedded enrichment payload used `catalog-enrich-v38` behavior and VCP version `visual-context-v1`. VCP summary and detailedDescription were present and visually useful. Title: `Pin-up Girl Holding Cucumber with Sarcastic Phrase`. Description preserved the cucumber/pin-up/sarcastic wording. Category: `Funny & Sarcastic`. Readable text lines: `WHEN LIFE GIVES YOU`, `Cucumbers`, `GO FUCK YOURSELF...`. Smart Profile subjects/objects/styles/themes/interests were returned. Tags and suggestedNewTags were both empty. Pass 1 input tokens: `4610`; completion tokens: `1158`; estimated cost: `$0.0009242`. No Tag Rerank, Suggestion Author, or AI-generated tag path was observed. The call was non-persisting.
+
+Gate B: FAILED on the deployed semantic-review callable. Using the exact returned Pass 1 context and no image, `testAiEnrichmentSemanticReviewPlayground` consistently returned `functions/invalid-argument: Malformed semantic review response.` The failure reproduced with the DEV default Gemini model and with `gpt-5.6-luna`; no semantic result, patches, Pass 2 tokens, Pass 2 cost, or combined cost can be honestly recorded. Required woman/girl, unsupported-subject, specificity, objective-blocker, forbidden-patch, authority, and one-call callable checks are therefore NOT RUN. Existing automated semantic core/policy tests remain the authority evidence for objective blockers, forbidden patches, protected dimensions, and one-call policy; no catalog data was mutated.
+
+Gate C recommendation: DO NOT ENABLE. Gate C remains separately unauthorized, and Gate B evidence is incomplete.
+
+`[NEEDS OWNER DECISION]` — authorize remediation/redeployment of the malformed deployed Pass 2 response path, or provide a reviewed alternative. Do not enable `semanticReviewerEnabled=true` until the deployed Gate B path returns a valid semantic result and Gate C is separately authorized.
+
+## Gate B parser corrective — implemented and pending DEV redeploy
+
+Diagnosis: the shared Pass 2 prompt version `catalog-semantic-review-v1` named the allowed decisions and patchable fields but did not explicitly require the complete result object. The shared parser nevertheless required `blockersResolved` and `blockersUnresolved` arrays. The deployed callable therefore rejected valid-looking provider decisions when those optional arrays were omitted. The same rejection through Gemini and OpenAI identifies the common prompt/parser contract boundary, not provider quality. The deployed callable did not log raw provider content, so no secrets or user data were added to this review; sanitized provider-form fixtures now reproduce both content shapes locally.
+
+Corrective source changes:
+
+- `packages/shared/src/types/catalog/semanticReview.types.ts`: versioned the clarified Pass 2 contract to `catalog-semantic-review-v2`.
+- `functions/src/ai/semanticReviewCore.ts`: explicitly requires the result shape in the prompt; conservatively defaults omitted blocker arrays to `[]`, rejects supplied non-arrays, blank reasons, unknown decisions, invalid JSON, and forbidden patches.
+- `functions/src/ai/semanticReviewProvider.ts`: accepts plain-string and text-content-array assistant payloads before entering the common parser.
+- `functions/src/ai/semanticReviewCore.test.ts`: added Gemini/OpenAI APPROVE, APPROVE_WITH_PATCH, NEEDS_REVIEW, optional-field, forbidden-patch, malformed, and content-shape fixtures.
+
+Safety contract unchanged: no title, description, category, visible text, colors, Visual Context, provenance, staff/import fields, objective-blocker override, eligibility change, or semantic retry was introduced. Semantic Reviewer remains disabled.
+
+Validation: 12 focused semantic core/policy tests passed; Functions TypeScript build passed; `git diff --check` passed. Broader unrelated Studio baseline exceptions remain accepted as documented in the Implementation Review.
+
+Corrective deploy inventory: only `testAiEnrichmentSemanticReviewPlayground` is proven to consume the changed runtime path for Gate B validation. The shared semantic runtime is also bundled by Processing, but automatic Processing is disabled and Gate C is not authorized; no automatic path is to be exercised in this checkpoint. Proposed command, not executed:
+
+```powershell
+$env:FUNCTIONS_DISCOVERY_TIMEOUT='60'
+firebase deploy --only "functions:testAiEnrichmentSemanticReviewPlayground" --project fresh-prints-dev --non-interactive
+```
+
+Gate B remains **PENDING CORRECTIVE DEV REDEPLOY**. Gate C remains unauthorized. `[NEEDS OWNER DECISION]` — authorize the corrective DEV redeploy and repeat the owner-authenticated Gate B callable canary; do not enable `semanticReviewerEnabled=true`.
