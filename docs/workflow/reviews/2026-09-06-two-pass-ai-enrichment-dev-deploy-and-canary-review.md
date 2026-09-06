@@ -79,3 +79,22 @@ firebase deploy --only "functions:testAiEnrichmentSemanticReviewPlayground" --pr
 ```
 
 Gate B remains **PENDING CORRECTIVE DEV REDEPLOY**. Gate C remains unauthorized. `[NEEDS OWNER DECISION]` — authorize the corrective DEV redeploy and repeat the owner-authenticated Gate B callable canary; do not enable `semanticReviewerEnabled=true`.
+
+## Corrective redeploy and Gate B retest — 2026-09-06
+
+Corrective source was frozen and pushed as `48a84d592507dcde62f54840242677bbc68343ee`; local `development` and `origin/development` matched and the tree was clean before deployment. The source includes the final conservative parser normalization for omitted/null patch sets and case-normalized decision tokens; supplied malformed patch shapes still fail closed.
+
+Exact command:
+
+```powershell
+$env:FUNCTIONS_DISCOVERY_TIMEOUT='60'
+firebase deploy --only "functions:testAiEnrichmentSemanticReviewPlayground" --project fresh-prints-dev --non-interactive
+```
+
+Exit code: `0`. Exactly one Function deployed; no unrelated Functions or Firebase resources were deployed. Final deployed revision: `testaienrichmentsemanticreviewplayground-00004-cus`. Firebase source hash: `b004fd5c3eab9391ecf0006405ad64e6079941c6`. Prompt version in source: `catalog-semantic-review-v2`. Automatic Semantic Reviewer remained disabled; Autonomous remained OFF; production was untouched.
+
+Gate B retest used the approved temporary owner/admin authentication mechanism and the exact previously successful Pass 1 context for design `Y2IQuCgAPgnqrBIeJuap`; the Pass 2 request contained no image and no catalog mutation. The deployed callable still returned `functions/invalid-argument: Malformed semantic review response.` after the parser corrective. The temporary QA user and user document were deleted. No Pass 2 result, measured Pass 2 cost, combined cost, WAA preview, or semantic-case results can be recorded honestly. Local 12-test semantic core/policy suite and Functions build pass; the remaining live failure is at the deployed provider-response contract boundary and requires further raw-response diagnosis or another approved corrective.
+
+Gate B verdict: **FAILED / BLOCKED AFTER CORRECTIVE RETEST**. Gate A remains PASS. Gate C remains unauthorized. Playground UX corrective was not started.
+
+`[NEEDS OWNER DECISION]` — authorize another narrowly scoped provider-response diagnosis/corrective cycle (with sanitized raw-response capture), or accept Gate B as failed and stop DEV validation. Do not enable `semanticReviewerEnabled=true`.
