@@ -3,7 +3,7 @@ import type {
   AiEnrichmentSemanticReviewPlaygroundResponse,
 } from "../../../packages/shared/src/types/ai/aiEnrichmentPlayground.types";
 import { buildSemanticReviewPrompt } from "./semanticReviewCore";
-import { callSemanticReviewer } from "./semanticReviewProvider";
+import { callSemanticReviewer, diagnoseSemanticReviewer } from "./semanticReviewProvider";
 import { resolveProviderTarget } from "./providers/resolveProviderTarget";
 
 export async function runAiEnrichmentSemanticReviewPlayground(
@@ -13,6 +13,9 @@ export async function runAiEnrichmentSemanticReviewPlayground(
   const target = resolveProviderTarget(request.visionModelId.startsWith("gpt-") ? "openai" : "google");
   const apiKey = target.providerId === "openai" ? keys.openAiApiKey ?? "" : keys.geminiApiKey;
   if (!apiKey) throw new Error(`No API key configured for ${target.providerId}.`);
+  if (request.debugSemanticReviewResponse === true) {
+    return { diagnostic: await diagnoseSemanticReviewer({ apiKey, providerTarget: target, modelId: request.visionModelId, prompt: buildSemanticReviewPrompt(request) }) } as unknown as AiEnrichmentSemanticReviewPlaygroundResponse;
+  }
   const result = await callSemanticReviewer({
     apiKey,
     providerTarget: target,
