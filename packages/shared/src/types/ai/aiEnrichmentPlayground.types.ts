@@ -35,7 +35,6 @@ export interface AiEnrichmentSemanticReviewPlaygroundRequest {
   effectiveSmartProfile: Record<string, string[]>;
   blockers: string[];
   visionModelId: AllowedVisionModelId;
-  debugSemanticReviewResponse?: boolean;
 }
 
 export interface AiEnrichmentSemanticReviewPlaygroundResponse {

@@ -98,3 +98,21 @@ Gate B retest used the approved temporary owner/admin authentication mechanism a
 Gate B verdict: **FAILED / BLOCKED AFTER CORRECTIVE RETEST**. Gate A remains PASS. Gate C remains unauthorized. Playground UX corrective was not started.
 
 `[NEEDS OWNER DECISION]` — authorize another narrowly scoped provider-response diagnosis/corrective cycle (with sanitized raw-response capture), or accept Gate B as failed and stop DEV validation. Do not enable `semanticReviewerEnabled=true`.
+
+## Live provider-response diagnosis — 2026-09-06
+
+Owner-authorized diagnostic ran only through the owner/admin-gated DEV Playground callable, with the exact cucumber Pass 1 context and no image. The temporary diagnostic surface was removed after capture.
+
+Gemini (`google` / `gemini-2.5-flash-lite`): HTTP success, one choice, `finish_reason=stop`, plain-string content, usage `prompt_tokens=297`, `completion_tokens=68`. Raw assistant content was a JSON Markdown fence containing:
+
+```json
+{"decision":"APPROVE_WITH_PATCH","reason":"The subject 'girl' is too general and could be more specific.","blockersResolved":[],"blockersUnresolved":["subject_specificity_risk:girl"],"patches":{"subjects":["pin-up girl"]}}
+```
+
+JSON extraction succeeded after fence removal. The parsed object was structurally intact through `blockersUnresolved`; the first failure was patch validation because `patches` was an object map rather than the required array of `{ field, from, to }` patch records. Normalized result: none; exact first validation error: `Malformed semantic review response.`
+
+OpenAI (`openai` / `gpt-5.6-luna`): HTTP success, one choice, `finish_reason=stop`, plain-string content, no refusal, usage `prompt_tokens=306`, `completion_tokens=243` including `reasoning_tokens=163`. Raw content was canonical JSON with `patches` as an array containing `{ field: "subjects", from: ["girl"], to: ["woman"] }`. JSON extraction succeeded; normalization succeeded; semantic validation succeeded with `APPROVE_WITH_PATCH`, resolved blocker `subject_specificity_risk:girl`, no unresolved blockers. This confirms the common parser is correct for the canonical OpenAI shape and the remaining mismatch is Gemini's patch-map shape.
+
+Live root cause: Gemini emits `patches` as a field-to-values object map, while the approved shared contract requires an array of explicit `{ field, from, to }` records. Previous corrective work did not address this because it had no live raw-response evidence and intentionally did not add speculative patch conversion. Existing fixtures only covered canonical arrays, so they did not reproduce the Gemini map.
+
+No parser semantics were changed during this diagnostic. The temporary diagnostic commit was `c9a9b6889764186d5a822a06d38f955b27bc64ed`; cleanup is being committed separately. Gate B remains pending a narrowly scoped corrective derived from this evidence; Gate C remains unauthorized.
