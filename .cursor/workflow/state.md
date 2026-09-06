@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | **COMPLETE — stopped at DEV Gate B owner QA checkpoint** |
+| Status | **COMPLETE — DEV Gate B QA signed off with notes** |
 | DONE | **yes** |
 | Current Mode | managed-phase |
 | Parent program | `smart-catalog-intelligence-completion-and-legacy-tag-retirement` |
@@ -19,7 +19,7 @@
 
 **Human Checkpoint Required: yes**
 
-**Human Checkpoint Reason:** Gate B basic callable PASS recorded; awaiting owner QA/signoff before any Gate C or Playground UX work.
+**Human Checkpoint Reason:** Gate B basic QA signed off with notes; awaiting separate owner authorization before Gate C or Playground UX work.
 
 **Allowed Actions:** Review DEV Gate B evidence; provide owner QA/signoff; separately authorize Gate C or Playground UX corrective
 
@@ -27,7 +27,7 @@
 
 ## Next Required Step
 
-Await owner QA/signoff for the DEV Gate B evidence. Do not enable Semantic Reviewer or begin Playground UX work.
+Record owner QA/signoff. Do not enable Semantic Reviewer or begin Playground UX work without a separate authorization.
 
 ## Parked (interrupted)
 
@@ -45,6 +45,7 @@ Await owner QA/signoff for the DEV Gate B evidence. Do not enable Semantic Revie
 | **Implementation Review** | `docs/workflow/reviews/2026-09-05-two-pass-ai-enrichment-context-and-semantic-verification-implementation-review.md` |
 | ADR | ADR-FP-182 in `docs/project/DECISIONS.md` |
 | DEV Deploy/Canary Review | `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-dev-deploy-and-canary-review.md` |
+| Owner QA/Signoff | `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-owner-qa-signoff.md` |
 
 ## Decision Log
 

@@ -6,7 +6,7 @@
 
 | Item | Value |
 |---|---|
-| Status | **COMPLETE** — DEV deployed; **STOP for owner Gate B QA/signoff** |
+| Status | **COMPLETE** — DEV Gate B QA **APPROVE WITH NOTES** |
 | Parent | `smart-catalog-intelligence-completion-and-legacy-tag-retirement` |
 | Child | `two-pass-ai-enrichment-context-and-semantic-verification-implementation` |
 | ADR | **ADR-FP-182** (owner decisions locked) |
@@ -17,13 +17,14 @@
 
 ## Next
 
-Owner: review the DEV Gate B evidence and provide QA/signoff. Gate C and Playground UX remain separately unauthorized.
+Owner QA/signoff: **APPROVE WITH NOTES**. Gate C and Playground UX remain separately unauthorized.
 
 ## Artifacts
 
 - Implementation Plan: `docs/workflow/plans/2026-09-05-two-pass-ai-enrichment-context-and-semantic-verification-implementation-plan.md`
 - Implementation Review: `docs/workflow/reviews/2026-09-05-two-pass-ai-enrichment-context-and-semantic-verification-implementation-review.md`
 - DEV Deploy/Canary Review: `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-dev-deploy-and-canary-review.md`
+- Owner QA/Signoff: `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-owner-qa-signoff.md`
 
 ## Latest DEV checkpoint
 
