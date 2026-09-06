@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | **COMPLETE — Role 1 fixture-preparation amendment reviewed; stopped before preparation** |
+| Status | **COMPLETE — Role 1 preparation exhausted; stopped before Gate C** |
 | DONE | **yes** |
 | Current Mode | managed-phase |
 | Parent program | `smart-catalog-intelligence-completion-and-legacy-tag-retirement` |
@@ -19,15 +19,15 @@
 
 **Human Checkpoint Required: yes**
 
-**Human Checkpoint Reason:** Role 1 fixture-preparation amendment reviewed; preparation requires separate owner authorization.
+**Human Checkpoint Reason:** Both bounded Role 1 preparation attempts failed to produce persisted VCP; new Plan/Review decision required.
 
-**Allowed Actions:** Review fixture-preparation amendment; authorize bounded preparation separately
+**Allowed Actions:** Review preparation execution evidence; create/review a new Role 1 strategy if desired
 
 **Forbidden Actions:** Gate C; enabling Semantic Reviewer; Autonomous; WS6; production; Playground UX corrective without signoff
 
 ## Next Required Step
 
-Await explicit owner authorization for bounded Role 1 preparation. Do not mutate settings or process designs.
+Await a new Plan/Review decision for Role 1. Do not retry seeds or execute Gate C.
 
 ## Parked (interrupted)
 
@@ -50,6 +50,7 @@ Await explicit owner authorization for bounded Role 1 preparation. Do not mutate
 | Gate C Formal Review | `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-gate-c-dev-canary-review.md` |
 | Role 1 Preparation Plan | `docs/workflow/plans/2026-09-06-two-pass-ai-enrichment-gate-c-role-1-fixture-preparation-amendment.md` |
 | Role 1 Preparation Review | `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-gate-c-role-1-fixture-preparation-review.md` |
+| Role 1 Preparation Execution | `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-gate-c-role-1-fixture-preparation-execution.md` |
 
 ## Decision Log
 

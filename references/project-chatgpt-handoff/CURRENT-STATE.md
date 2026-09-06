@@ -6,7 +6,7 @@
 
 | Item | Value |
 |---|---|
-| Status | **COMPLETE** — Role 1 preparation amendment reviewed; preparation not authorized |
+| Status | **COMPLETE** — Role 1 preparation exhausted; Gate C not executed |
 | Parent | `smart-catalog-intelligence-completion-and-legacy-tag-retirement` |
 | Child | `two-pass-ai-enrichment-context-and-semantic-verification-implementation` |
 | ADR | **ADR-FP-182** (owner decisions locked) |
@@ -17,7 +17,7 @@
 
 ## Next
 
-Owner QA/signoff: **APPROVE WITH NOTES**. Role 1 preparation amendment is approved for planning only; preparation and Gate C execution remain separately unauthorized.
+Owner QA/signoff: **APPROVE WITH NOTES**. Both bounded Role 1 preparation attempts completed without a qualifying VCP; a new Plan/Review decision is required before any retry or Gate C execution.
 
 ## Artifacts
 
@@ -29,6 +29,7 @@ Owner QA/signoff: **APPROVE WITH NOTES**. Role 1 preparation amendment is approv
 - Gate C Formal Review: `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-gate-c-dev-canary-review.md`
 - Role 1 Preparation Plan: `docs/workflow/plans/2026-09-06-two-pass-ai-enrichment-gate-c-role-1-fixture-preparation-amendment.md`
 - Role 1 Preparation Review: `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-gate-c-role-1-fixture-preparation-review.md`
+- Role 1 Preparation Execution: `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-gate-c-role-1-fixture-preparation-execution.md`
 
 ## Current checkpoint
 
