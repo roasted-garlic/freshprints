@@ -26,6 +26,7 @@ export async function callSemanticReviewer(input: {
   modelId: string;
   prompt: string;
   designId: string;
+  currentSmartProfile?: Record<string, string[]>;
 }): Promise<{ result: SemanticReviewResult; promptTokens: number | null; completionTokens: number | null; estimatedCostUsd: number | null; provider: string; model: string; promptVersion: string }> {
   const response = await fetchVisionWithRetry(input.providerTarget.baseUrl, {
     method: "POST",
@@ -38,7 +39,7 @@ export async function callSemanticReviewer(input: {
   const payload = (await response.json()) as { choices?: Array<{ message?: { content?: AssistantContent } }>; usage?: { prompt_tokens?: number; completion_tokens?: number } };
   const content = extractSemanticReviewContent(payload);
   const raw = parseJson(content);
-  const result = parseSemanticReviewResult(raw);
+  const result = parseSemanticReviewResult(raw, input.currentSmartProfile);
   const promptTokens = typeof payload.usage?.prompt_tokens === "number" ? payload.usage.prompt_tokens : null;
   const completionTokens = typeof payload.usage?.completion_tokens === "number" ? payload.usage.completion_tokens : null;
   return { result, promptTokens, completionTokens, estimatedCostUsd: promptTokens != null && completionTokens != null ? estimateVisionCostUsd(input.modelId, promptTokens, completionTokens) : null, provider: input.providerTarget.providerId, model: input.modelId, promptVersion: CATALOG_SEMANTIC_REVIEW_PROMPT_VERSION };

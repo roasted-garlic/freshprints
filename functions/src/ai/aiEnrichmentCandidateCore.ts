@@ -512,6 +512,7 @@ export async function generateAiEnrichmentCandidateForDesign(input: {
             effectiveSmartProfile: smartProfile as unknown as Record<string, string[]>,
             blockers: automationDecision.reasonCodes,
           }),
+          currentSmartProfile: smartProfile as unknown as Record<string, string[]>,
         });
         suggestions.semanticReviewStatus = "succeeded";
         suggestions.semanticReviewDecision = review.result.decision;

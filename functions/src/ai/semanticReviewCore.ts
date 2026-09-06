@@ -2,6 +2,7 @@ import {
   CATALOG_SEMANTIC_REVIEW_PROMPT_VERSION,
   SEMANTIC_REVIEW_DECISIONS,
   SEMANTIC_REVIEW_PATCHABLE_FIELDS,
+  type SemanticReviewPatch,
   type SemanticReviewResult,
 } from "../../../packages/shared/src/types/catalog/semanticReview.types";
 import type { VisualContextProfile } from "../../../packages/shared/src/types/catalog/visualContext.types";
@@ -30,7 +31,7 @@ export function buildSemanticReviewPrompt(input: SemanticReviewInput): string {
   });
 }
 
-export function parseSemanticReviewResult(raw: unknown): SemanticReviewResult {
+export function parseSemanticReviewResult(raw: unknown, currentSmartProfile: Record<string, string[]> = {}): SemanticReviewResult {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("Malformed semantic review response.");
   const value = raw as Record<string, unknown>;
   const decision = typeof value.decision === "string" ? value.decision.trim().toUpperCase() : "";
@@ -42,8 +43,20 @@ export function parseSemanticReviewResult(raw: unknown): SemanticReviewResult {
   }
   const blockersResolved = (Array.isArray(value.blockersResolved) ? value.blockersResolved : []).filter((v): v is string => typeof v === "string");
   const blockersUnresolved = (Array.isArray(value.blockersUnresolved) ? value.blockersUnresolved : []).filter((v): v is string => typeof v === "string");
-  const patches = value.patches === null || value.patches === undefined ? undefined : value.patches;
-  if (patches !== undefined && !Array.isArray(patches)) throw new Error("Malformed semantic review response.");
+  const rawPatches = value.patches === null || value.patches === undefined ? undefined : value.patches;
+  let patches: SemanticReviewPatch[] | undefined;
+  if (rawPatches !== undefined && Array.isArray(rawPatches)) {
+    patches = rawPatches as SemanticReviewPatch[];
+  } else if (rawPatches !== undefined && rawPatches && typeof rawPatches === "object" && !Array.isArray(rawPatches)) {
+    const patchMap = rawPatches as Record<string, unknown>;
+    const order = SEMANTIC_REVIEW_PATCHABLE_FIELDS.filter((field) => Object.prototype.hasOwnProperty.call(patchMap, field));
+    if (order.length !== Object.keys(patchMap).length || order.some((field) => !Array.isArray(patchMap[field]) || (patchMap[field] as unknown[]).some((item) => typeof item !== "string") || !Array.isArray(currentSmartProfile[field]))) {
+      throw new Error("Malformed semantic review response.");
+    }
+    patches = order.map((field) => ({ field, from: [...currentSmartProfile[field]], to: [...(patchMap[field] as string[])] }));
+  } else if (rawPatches !== undefined) {
+    throw new Error("Malformed semantic review response.");
+  }
   const validated = validateSemanticReviewPatches(patches);
   if (!validated.valid) throw new Error(validated.reason);
   return { decision: decision as SemanticReviewResult["decision"], reason: value.reason.trim(), blockersResolved, blockersUnresolved, ...(validated.patches.length ? { patches: validated.patches } : {}) };

@@ -19,6 +19,7 @@ export async function runAiEnrichmentSemanticReviewPlayground(
     modelId: request.visionModelId,
     designId: "playground",
     prompt: buildSemanticReviewPrompt(request),
+    currentSmartProfile: request.effectiveSmartProfile,
   });
   return { ...result, provider: result.provider as AiEnrichmentSemanticReviewPlaygroundResponse["provider"] };
 }

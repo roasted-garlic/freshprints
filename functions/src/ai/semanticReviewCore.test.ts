@@ -55,8 +55,23 @@ describe("semanticReviewCore", () => {
     assert.throws(() => parseSemanticReviewResult({ decision: "unknown", reason: "x" }));
     assert.throws(() => parseSemanticReviewResult({ decision: "APPROVE", reason: "x", patches: [{ field: "title", from: [], to: ["x"] }] }));
     assert.throws(() => parseSemanticReviewResult({ decision: "APPROVE", reason: "x", blockersResolved: "none" }));
-    assert.throws(() => parseSemanticReviewResult({ decision: "APPROVE", reason: "x", patches: {} }));
     assert.deepEqual(parseSemanticReviewResult({ decision: "APPROVE", reason: "x", patches: null }), { decision: "APPROVE", reason: "x", blockersResolved: [], blockersUnresolved: [] });
     assert.throws(() => parseSemanticReviewResult({ decision: "APPROVE", reason: "" }));
+  });
+
+  it("normalizes the captured Gemini patch-map response using the current profile", () => {
+    const result = parseSemanticReviewResult({ decision: "APPROVE_WITH_PATCH", reason: "The subject 'girl' is too general and could be more specific.", blockersResolved: [], blockersUnresolved: ["subject_specificity_risk:girl"], patches: { subjects: ["pin-up girl"] } }, { subjects: ["girl"] });
+    assert.deepEqual(result.patches, [{ field: "subjects", from: ["girl"], to: ["pin-up girl"] }]);
+  });
+
+  it("normalizes multi-field maps in canonical field order", () => {
+    const result = parseSemanticReviewResult({ decision: "APPROVE_WITH_PATCH", reason: "supported", patches: { objects: ["cucumber"], subjects: ["pin-up girl"] } }, { subjects: ["girl"], objects: ["vegetable"] });
+    assert.deepEqual(result.patches, [{ field: "subjects", from: ["girl"], to: ["pin-up girl"] }, { field: "objects", from: ["vegetable"], to: ["cucumber"] }]);
+  });
+
+  it("rejects invalid shorthand maps and accepts omitted/null patches", () => {
+    assert.throws(() => parseSemanticReviewResult({ decision: "APPROVE", reason: "x", patches: { title: ["x"] } }, { title: ["old"] }));
+    assert.throws(() => parseSemanticReviewResult({ decision: "APPROVE", reason: "x", patches: { subjects: "girl" } }, { subjects: ["old"] }));
+    assert.deepEqual(parseSemanticReviewResult({ decision: "APPROVE", reason: "x", patches: {} }, { subjects: ["old"] }).patches, undefined);
   });
 });
