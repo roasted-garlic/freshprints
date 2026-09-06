@@ -98,7 +98,7 @@ export function ArtworkQualityNotice({ purpose = 'print_request' }: ArtworkQuali
         >
           <span className="artwork-quality-notice-toggle-main">
             <TriangleAlert aria-hidden className="artwork-quality-notice-icon" size={18} strokeWidth={2} />
-            <span className="artwork-quality-notice-toggle-label">Print-ready artwork required</span>
+            <span className="artwork-quality-notice-toggle-label">Print-ready artwork requirements</span>
           </span>
           <ChevronDown
             aria-hidden

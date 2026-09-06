@@ -152,6 +152,7 @@ function buildShellRow(
       data.artworkBackgroundSource && typeof data.artworkBackgroundSource === "string"
         ? (data.artworkBackgroundSource as CustomerUploadIntakeRow["artworkBackgroundSource"])
         : null,
+    suggestDarkArtworkBackground: data.suggestDarkArtworkBackground === true,
     assistedCreationRequestId: asString(data.assistedCreationRequestId),
     assistedProofId: asString(data.assistedProofId),
   };
@@ -727,7 +728,7 @@ export function useCustomerUploadIntake(options?: {
 
       try {
         await customerUploadIntakeService.recordArtworkBackgroundStaffDecision(uploadId, hex, {
-          clearArtworkBackground: source === null,
+          clearArtworkBackground: source === null || source === "code_auto",
         });
         clearMetadataOverrideKeys(uploadId, ["artworkBackgroundHex", "artworkBackgroundSource"]);
         return true;

@@ -157,6 +157,7 @@ describe("customerUploadProcessing", () => {
     assert.ok(result.previewWebp.byteLength > 0);
     assert.ok(result.thumbnailWebp.byteLength > 0);
     assert.equal(result.transparencyPassed, true);
+    assert.equal(typeof result.suggestDarkArtworkBackground, "boolean");
   });
 
   it("rejects opaque PNG with locked message", async () => {

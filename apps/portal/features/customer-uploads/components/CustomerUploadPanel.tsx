@@ -100,6 +100,8 @@ export function CustomerUploadPanel({
     processingCount,
     addFiles,
     removeRow,
+    removeFailed,
+    clearUploadList,
     retryFailed,
     attachToRequest,
     submitDonation,
@@ -480,11 +482,53 @@ export function CustomerUploadPanel({
           ) : null}
 
           {rows.length > 0 ? (
-            <div className="portal-customer-upload-summary" aria-live="polite">
-              <span>{uploadingCount} uploading</span>
-              <span>{processingCount} processing</span>
-              <span>{readyCount} ready</span>
-              <span>{failedCount} failed</span>
+            <div className="portal-customer-upload-list-toolbar">
+              <div className="portal-customer-upload-summary" aria-live="polite">
+                <span>{uploadingCount} uploading</span>
+                <span>{processingCount} processing</span>
+                <span>{readyCount} ready</span>
+                <span>{failedCount} failed</span>
+              </div>
+              <div className="portal-customer-upload-list-actions">
+                {failedCount > 0 ? (
+                  <>
+                    <button
+                      className="portal-button portal-button-secondary"
+                      disabled={uploadBlocked}
+                      onClick={() => void retryFailed()}
+                      type="button"
+                    >
+                      Retry failed
+                    </button>
+                    <button
+                      className="portal-button portal-button-secondary"
+                      disabled={isAttaching}
+                      onClick={() => {
+                        void (async () => {
+                          await removeFailed();
+                          await refreshDailyQuota();
+                        })();
+                      }}
+                      type="button"
+                    >
+                      Remove failed
+                    </button>
+                  </>
+                ) : null}
+                <button
+                  className="portal-button portal-button-secondary"
+                  disabled={isAttaching}
+                  onClick={() => {
+                    void (async () => {
+                      await clearUploadList();
+                      await refreshDailyQuota();
+                    })();
+                  }}
+                  type="button"
+                >
+                  Clear list
+                </button>
+              </div>
             </div>
           ) : null}
 
@@ -617,17 +661,6 @@ export function CustomerUploadPanel({
               </li>
             ))}
           </ul>
-
-          {failedCount > 0 ? (
-            <button
-              className="portal-button portal-button-secondary"
-              disabled={uploadBlocked}
-              onClick={() => void retryFailed()}
-              type="button"
-            >
-              Retry failed
-            </button>
-          ) : null}
 
           <fieldset
             className={`portal-customer-upload-confirmations${

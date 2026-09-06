@@ -113,6 +113,7 @@ function IntakeDetail({
     artworkBackgroundHex: row.artworkBackgroundHex,
     artworkBackgroundSource: row.artworkBackgroundSource,
     halftoneOn,
+    autoSuggestsDark: row.suggestDarkArtworkBackground === true,
   });
   const previewStyle = {
     ["--color-artwork-preview-bg" as string]: previewBackgroundHex,
@@ -199,6 +200,7 @@ function IntakeDetail({
         <CustomerUploadIntakePreviewControls
           artworkBackgroundHex={row.artworkBackgroundHex}
           artworkBackgroundSource={row.artworkBackgroundSource}
+          autoSuggestsDark={row.suggestDarkArtworkBackground === true}
           disabled={busy || !intake.canPromote}
           halftoneOn={halftoneOn}
           onArtworkBackgroundChange={(hex, source) => {
@@ -535,6 +537,7 @@ export function CustomerUploadIntakeSection({
           artworkBackgroundHex: row.artworkBackgroundHex,
           artworkBackgroundSource: row.artworkBackgroundSource,
           halftoneOn,
+          autoSuggestsDark: row.suggestDarkArtworkBackground === true,
         }),
       };
     });

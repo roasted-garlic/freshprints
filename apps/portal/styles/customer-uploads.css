@@ -292,11 +292,25 @@
   margin-top: 0.75rem;
 }
 
+.portal-customer-upload-list-toolbar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  justify-content: space-between;
+}
+
 .portal-customer-upload-summary {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
   font-size: 0.9rem;
+}
+
+.portal-customer-upload-list-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .portal-customer-upload-file-list {

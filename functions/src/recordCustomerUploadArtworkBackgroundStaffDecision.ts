@@ -2,6 +2,8 @@ import { FieldValue } from "firebase-admin/firestore";
 import { onCall } from "firebase-functions/v2/https";
 
 import { CUSTOMER_UPLOAD_COLLECTIONS } from "../../packages/shared/src/constants/customerUpload/customerUploadCollections.constants";
+import { ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK } from "../../packages/shared/src/constants/design/artworkBackground.constants";
+import type { ArtworkBackgroundSource } from "../../packages/shared/src/types/design/artworkBackgroundSource.types";
 
 import { adminDb } from "./lib/admin";
 import { assertStaffCaller, loadCallerProfile } from "./lib/caller";
@@ -14,13 +16,14 @@ import { invalidArgument, unauthenticated } from "./lib/errors";
 export interface RecordCustomerUploadArtworkBackgroundStaffDecisionResponse {
   uploadId: string;
   artworkBackgroundHex: string | null;
-  artworkBackgroundSource: "staff_manual" | null;
+  artworkBackgroundSource: ArtworkBackgroundSource | null;
 }
 
 /**
  * Staff-only: persist Artwork Background on a customer upload (Studio intake).
  * - Explicit Light/Dark → `staff_manual` + hex (null hex = Light)
- * - Auto → clear both fields (`clearArtworkBackground: true`)
+ * - Auto → clear staff override; if `suggestDarkArtworkBackground`, restore `code_auto` + dark
+ *   (never clears the detector hint field)
  */
 export const recordCustomerUploadArtworkBackgroundStaffDecision = onCall(
   async (request): Promise<RecordCustomerUploadArtworkBackgroundStaffDecisionResponse> => {
@@ -49,6 +52,19 @@ export const recordCustomerUploadArtworkBackgroundStaffDecision = onCall(
     }
 
     if (clearArtworkBackground) {
+      const suggestDark = snap.data()?.suggestDarkArtworkBackground === true;
+      if (suggestDark) {
+        await uploadRef.update({
+          artworkBackgroundHex: ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK,
+          artworkBackgroundSource: "code_auto",
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+        return {
+          uploadId,
+          artworkBackgroundHex: ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK,
+          artworkBackgroundSource: "code_auto",
+        };
+      }
       await uploadRef.update({
         artworkBackgroundHex: FieldValue.delete(),
         artworkBackgroundSource: FieldValue.delete(),

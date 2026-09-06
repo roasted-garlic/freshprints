@@ -25,11 +25,13 @@ import {
 } from "../../../packages/shared/src/utils/printSizeMath";
 import { buildImageQualitySizingMetadata } from "../../../packages/shared/src/utils/imageQualitySizingPolicy";
 import { resolveCustomerUploadFailureMessage } from "../../../packages/shared/src/utils/customerUploadFailureMessages";
-import { CUSTOMER_UPLOAD_MIN_TRIM_SHRINK_RATIO } from "../../../packages/shared/src/utils/customerUploadTransparency";
 import {
   MEANINGFUL_TRANSPARENCY_DECODE_MAX_INPUT_PIXELS,
   measureMeaningfulTransparency,
 } from "../../../packages/shared/src/utils/meaningfulTransparencyMeasurement";
+import { CUSTOMER_UPLOAD_MIN_TRIM_SHRINK_RATIO } from "../../../packages/shared/src/utils/customerUploadTransparency";
+
+import { suggestDarkArtworkBackgroundFromPngBytes } from "../../../packages/shared/src/utils/importArtworkBackgroundDetection";
 
 import { storageObjectPath } from "./storageObjectPath";
 import { getSharp } from "./lazySharp";
@@ -37,9 +39,15 @@ import { getSharp } from "./lazySharp";
 export { storageObjectPath };
 
 /**
+ * Production PNG encode tuned for finalize latency (customer-upload path).
+ * Slightly larger Storage objects vs default zlib-6; wall-clock wins on trim/upscale batches.
+ */
+const PRODUCTION_PNG_ENCODE = { compressionLevel: 3 } as const;
+
+/**
  * Decoder-time pixel bound passed to every `getSharp()(...)` call in this module. Deliberately
  * set to **sharp's own built-in decoder default** (`0x3FFF * 0x3FFF` = 268,435,456 px, ~1.0 GiB
- * max RGBA buffer — well within the 2 GiB function memory budget), not to
+ * max RGBA buffer — within the 4 GiB finalize/retry memory budget), not to
  * {@link CUSTOMER_UPLOAD_MAX_TOTAL_PIXELS}. Binding this to the app-level 100,000,000-pixel
  * ceiling would reject the *decode itself* for any oversized-but-trimmable canvas before trim
  * ever runs — exactly the bug this Plan (ADR-FP-125) exists to fix. This bound exists only to
@@ -121,6 +129,11 @@ export interface CustomerUploadProcessingSuccess {
   printWidthInches: number;
   printHeightInches: number;
   effectiveDpi: number;
+  /**
+   * Shared import light-art → dark mat detector on production PNG (display only).
+   * Prefer false on detector failure — never fails the upload.
+   */
+  suggestDarkArtworkBackground: boolean;
   /**
    * Sanitized per-stage duration (ms), keyed by progress-stage name. Contains only stage names
    * and numbers — no artwork content, filenames, or customer identifiers. Callers (finalize/retry
@@ -234,13 +247,26 @@ function isAnimated(metadata: Metadata): boolean {
 }
 
 /**
- * Cheap downscaled trim probe — detects empty transparent margins without a full-res re-encode.
+ * Sample-based trim probe: returns a full-resolution extract box (crop) so we never
+ * run sharp `.trim()` on the full canvas (that OOM'd / timed out on large transparent PNGs).
+ *
+ * sharp reports `trimOffsetLeft`/`trimOffsetTop` as origin displacements that are often
+ * **negative** (e.g. top: -236 → content starts at y=236). Scaling must use the magnitude
+ * (`Math.abs`) before clamping — `Math.max(0, offset * scale)` zeroed negative offsets and
+ * produced the mis-cropped doodles.
  */
-async function probeNeedsTransparentEdgeTrim(
+type TransparentTrimExtractBox = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
+
+async function probeTransparentTrimExtractBox(
   input: Buffer,
   sourceWidth: number,
   sourceHeight: number,
-): Promise<boolean> {
+): Promise<TransparentTrimExtractBox | null> {
   const maxSide = Math.max(sourceWidth, sourceHeight);
   const sampleMax = 512;
   try {
@@ -257,43 +283,76 @@ async function probeNeedsTransparentEdgeTrim(
       });
     }
 
-    const sampleBytes = await pipeline.png().toBuffer();
-    const before = await getSharp()(sampleBytes, { failOn: "error" }).metadata();
-    const beforeW = before.width ?? 0;
-    const beforeH = before.height ?? 0;
+    const sample = await pipeline.toBuffer({ resolveWithObject: true });
+    const beforeW = sample.info.width ?? 0;
+    const beforeH = sample.info.height ?? 0;
     if (beforeW <= 0 || beforeH <= 0) {
-      return false;
+      return null;
     }
 
-    const trimmedBytes = await getSharp()(sampleBytes, { failOn: "error" })
+    const trimmed = await getSharp()(sample.data, { failOn: "error" })
       .ensureAlpha()
       .trim({ background: { r: 0, g: 0, b: 0, alpha: 0 } })
-      .png()
-      .toBuffer();
-    const after = await getSharp()(trimmedBytes, { failOn: "error" }).metadata();
-    const afterW = after.width ?? beforeW;
-    const afterH = after.height ?? beforeH;
+      .toBuffer({ resolveWithObject: true });
+
+    const afterW = trimmed.info.width ?? beforeW;
+    const afterH = trimmed.info.height ?? beforeH;
     const shrinkW = (beforeW - afterW) / beforeW;
     const shrinkH = (beforeH - afterH) / beforeH;
-    return (
-      shrinkW >= CUSTOMER_UPLOAD_MIN_TRIM_SHRINK_RATIO ||
-      shrinkH >= CUSTOMER_UPLOAD_MIN_TRIM_SHRINK_RATIO
-    );
+    if (
+      shrinkW < CUSTOMER_UPLOAD_MIN_TRIM_SHRINK_RATIO &&
+      shrinkH < CUSTOMER_UPLOAD_MIN_TRIM_SHRINK_RATIO
+    ) {
+      return null;
+    }
+
+    const offsetLeft = Number(trimmed.info.trimOffsetLeft ?? 0);
+    const offsetTop = Number(trimmed.info.trimOffsetTop ?? 0);
+    const scaleX = sourceWidth / beforeW;
+    const scaleY = sourceHeight / beforeH;
+
+    // sharp may report trimOffset* as negative origin displacement (common) or positive
+    // pixels-removed. Always take magnitude so we never clamp a negative scaled offset to 0
+    // (that zeroing caused the doodle mis-crops).
+    let left = Math.max(0, Math.floor(Math.abs(offsetLeft) * scaleX));
+    let top = Math.max(0, Math.floor(Math.abs(offsetTop) * scaleY));
+    let width = Math.min(sourceWidth - left, Math.ceil(afterW * scaleX));
+    let height = Math.min(sourceHeight - top, Math.ceil(afterH * scaleY));
+
+    // Small outward pad only when the probe was downsampled — thin line art can vanish at
+    // 512px and over-crop; at 1:1 sample the box is already accurate (and padding would
+    // incorrectly inflate tiny art past the reject gate).
+    if (maxSide > sampleMax) {
+      const padX = Math.max(2, Math.ceil(2 * scaleX));
+      const padY = Math.max(2, Math.ceil(2 * scaleY));
+      const right = Math.min(sourceWidth, left + width + padX);
+      const bottom = Math.min(sourceHeight, top + height + padY);
+      left = Math.max(0, left - padX);
+      top = Math.max(0, top - padY);
+      width = right - left;
+      height = bottom - top;
+    }
+
+    if (width <= 0 || height <= 0) {
+      return null;
+    }
+    if (width >= sourceWidth && height >= sourceHeight) {
+      return null;
+    }
+
+    return { left, top, width, height };
   } catch {
-    return false;
+    return null;
   }
 }
 
 /**
- * Trims transparent margins at full resolution. Callers must already know `originalWidth`/
- * `originalHeight` (from an earlier bounded metadata read) and pass them in — this function
- * never re-derives them via a separate `.metadata()` decode. The trim's own
- * `.toBuffer({ resolveWithObject: true })` call returns `info.width`/`info.height` from the same
- * operation that produced the trimmed bytes, eliminating what was previously a third full-
- * resolution decode. Net: one full-resolution decode total (the trim itself), not three.
+ * Crop transparent margins via extract box (no full-canvas trim scan).
+ * Returns PNG bytes ready for normalize/upscale/reuse.
  */
-async function trimTransparentEdges(
+async function extractTransparentTrimmedRegion(
   input: Buffer,
+  box: TransparentTrimExtractBox,
   originalWidth: number,
   originalHeight: number,
 ): Promise<{
@@ -304,50 +363,53 @@ async function trimTransparentEdges(
   originalWidth: number;
   originalHeight: number;
 }> {
-  try {
-    const { data: _data, info } = await getSharp()(input, {
-      failOn: "error",
-      limitInputPixels: CUSTOMER_UPLOAD_DECODE_MAX_INPUT_PIXELS,
-    })
-      .ensureAlpha()
-      .trim({ background: { r: 0, g: 0, b: 0, alpha: 0 } })
-      .png()
-      .toBuffer({ resolveWithObject: true });
+  const { data, info } = await getSharp()(input, {
+    failOn: "error",
+    limitInputPixels: CUSTOMER_UPLOAD_DECODE_MAX_INPUT_PIXELS,
+  })
+    .ensureAlpha()
+    .extract(box)
+    .png(PRODUCTION_PNG_ENCODE)
+    .toBuffer({ resolveWithObject: true });
 
-    const width = info.width ?? originalWidth;
-    const height = info.height ?? originalHeight;
-    const wasTrimmed = width !== originalWidth || height !== originalHeight;
+  return {
+    bytes: Buffer.from(data),
+    width: info.width ?? box.width,
+    height: info.height ?? box.height,
+    wasTrimmed: true,
+    originalWidth,
+    originalHeight,
+  };
+}
 
-    if (!wasTrimmed) {
-      return {
-        bytes: input,
-        width: originalWidth,
-        height: originalHeight,
-        wasTrimmed: false,
-        originalWidth,
-        originalHeight,
-      };
-    }
+/**
+ * Extract + optional upscale in one sharp pipeline (never materializes full-canvas RGBA).
+ */
+async function extractAndOptionallyUpscale(
+  input: Buffer,
+  box: TransparentTrimExtractBox,
+  upscaleTarget: { widthPx: number; heightPx: number } | null,
+): Promise<{ bytes: Buffer; width: number; height: number }> {
+  let pipeline = getSharp()(input, {
+    failOn: "error",
+    limitInputPixels: CUSTOMER_UPLOAD_DECODE_MAX_INPUT_PIXELS,
+  })
+    .ensureAlpha()
+    .extract(box);
 
-    return {
-      bytes: Buffer.from(_data),
-      width,
-      height,
-      wasTrimmed: true,
-      originalWidth,
-      originalHeight,
-    };
-  } catch {
-    // sharp throws when there is nothing to trim in some versions — treat as no-op.
-    return {
-      bytes: input,
-      width: originalWidth,
-      height: originalHeight,
-      wasTrimmed: false,
-      originalWidth,
-      originalHeight,
-    };
+  if (upscaleTarget) {
+    pipeline = pipeline.resize(upscaleTarget.widthPx, upscaleTarget.heightPx, {
+      fit: "fill",
+      withoutEnlargement: false,
+    });
   }
+
+  const { data, info } = await pipeline.png(PRODUCTION_PNG_ENCODE).toBuffer({ resolveWithObject: true });
+  return {
+    bytes: Buffer.from(data),
+    width: info.width ?? (upscaleTarget?.widthPx ?? box.width),
+    height: info.height ?? (upscaleTarget?.heightPx ?? box.height),
+  };
 }
 
 
@@ -407,7 +469,7 @@ async function normalizeForDimensionCeiling(
     limitInputPixels: CUSTOMER_UPLOAD_DECODE_MAX_INPUT_PIXELS,
   })
     .resize(targetWidth, targetHeight, { fit: "inside", withoutEnlargement: true })
-    .png()
+    .png(PRODUCTION_PNG_ENCODE)
     .toBuffer({ resolveWithObject: true });
 
   return {
@@ -449,7 +511,7 @@ async function upscaleIfNeeded(
 
   const upscaled = await getSharp()(pngBytes, { failOn: "error" })
     .resize(target.widthPx, target.heightPx, { fit: "fill", withoutEnlargement: false })
-    .png()
+    .png(PRODUCTION_PNG_ENCODE)
     .toBuffer();
 
   return {
@@ -560,7 +622,7 @@ export async function processCustomerUploadImageBytes(
       try {
         productionPng = await getSharp()(sourceBytes, { failOn: "error" })
           .ensureAlpha()
-          .png()
+          .png(PRODUCTION_PNG_ENCODE)
           .toBuffer();
       } catch {
         return fail("processing_failed", "Image processing failed.", { useStaffMessage: true });
@@ -642,6 +704,7 @@ export async function processCustomerUploadImageBytes(
       printWidthInches: printFields.printWidthInches,
       printHeightInches: printFields.printHeightInches,
       effectiveDpi: printFields.effectiveDpi,
+      suggestDarkArtworkBackground: false,
       stageTimingsMs: stageTimer.finish(),
     };
   }
@@ -666,26 +729,36 @@ export async function processCustomerUploadImageBytes(
   let wasTrimmed = false;
   let productionReusedSource = false;
 
-  // Customer Portal path accepts decoded PNG only; transparent PNG trim when margins exist.
-  const needsTrim = await probeNeedsTransparentEdgeTrim(
+  // Sample→extract trim (never full-canvas .trim() — that OOM'd / timed out on large transparent PNGs).
+  const trimBox = await probeTransparentTrimExtractBox(
     sourceBytes,
     sourceWidthPx,
     sourceHeightPx,
   );
-  if (needsTrim) {
+
+  // When we can upscale in the same pipeline as extract, do that after quality gates below.
+  let pendingExtractUpscale:
+    | {
+        box: TransparentTrimExtractBox;
+      }
+    | null = trimBox ? { box: trimBox } : null;
+
+  if (trimBox) {
     await stageTimer.enter("trimming");
-    const trimmed = await trimTransparentEdges(sourceBytes, sourceWidthPx, sourceHeightPx);
-    productionBase = trimmed.bytes;
-    productionWidth = trimmed.width;
-    productionHeight = trimmed.height;
-    wasTrimmed = trimmed.wasTrimmed;
-    productionReusedSource = !trimmed.wasTrimmed;
+    // Dimensions for gates/upscale target come from the extract box (no full decode yet when
+    // we later chain extract+upscale). For normalize/oversized path we still extract now.
+    productionWidth = trimBox.width;
+    productionHeight = trimBox.height;
+    wasTrimmed = true;
+    productionReusedSource = false;
+    productionBase = sourceBytes; // placeholder until extract/upscale pipeline runs
   } else {
     productionBase = sourceBytes;
     productionWidth = sourceWidthPx;
     productionHeight = sourceHeightPx;
     wasTrimmed = false;
     productionReusedSource = true;
+    pendingExtractUpscale = null;
   }
 
   // Downscale-only normalization (ADR-FP-125): only reached when the trimmed image still exceeds
@@ -702,6 +775,19 @@ export async function processCustomerUploadImageBytes(
   ) {
     await stageTimer.enter("checking_print_size");
     try {
+      // Oversized post-trim: extract (or use source) then normalize — cannot chain upscale.
+      if (trimBox) {
+        const extracted = await extractTransparentTrimmedRegion(
+          sourceBytes,
+          trimBox,
+          sourceWidthPx,
+          sourceHeightPx,
+        );
+        productionBase = extracted.bytes;
+        productionWidth = extracted.width;
+        productionHeight = extracted.height;
+        pendingExtractUpscale = null;
+      }
       normalization = await normalizeForDimensionCeiling(
         productionBase,
         productionWidth,
@@ -716,6 +802,7 @@ export async function processCustomerUploadImageBytes(
     productionWidth = normalization.width;
     productionHeight = normalization.height;
     productionReusedSource = false;
+    pendingExtractUpscale = null;
 
     // Still over the ceiling after normalizing to the technical maximum — a genuine reject case,
     // not a silent quality loss (the Plan's "reject only when normalization cannot safely succeed").
@@ -758,7 +845,57 @@ export async function processCustomerUploadImageBytes(
 
   const upscaleTarget = resolveImportUpscaleTargetPx(productionWidth, productionHeight);
   let upscaled: Awaited<ReturnType<typeof upscaleIfNeeded>>;
-  if (upscaleTarget) {
+  if (pendingExtractUpscale) {
+    // Single pipeline: crop art region → optional upscale → one PNG (lean memory + CPU).
+    if (upscaleTarget) {
+      await stageTimer.enter("upscaling");
+    }
+    try {
+      const decision = resolveImportUpscaleDecision(productionWidth, productionHeight);
+      const produced = await extractAndOptionallyUpscale(
+        sourceBytes,
+        pendingExtractUpscale.box,
+        upscaleTarget,
+      );
+      upscaled = {
+        bytes: produced.bytes,
+        width: produced.width,
+        height: produced.height,
+        wasUpscaled: Boolean(upscaleTarget),
+        upscaleFactor: upscaleTarget ? decision.upscaleFactor : 1,
+        upscalePassCount: upscaleTarget ? 1 : 0,
+        ...(decision.sizingWarningCode ? { sizingWarningCode: decision.sizingWarningCode } : {}),
+      };
+      productionReusedSource = false;
+    } catch {
+      // Fallback: extract then existing upscale helper.
+      const extracted = await extractTransparentTrimmedRegion(
+        sourceBytes,
+        pendingExtractUpscale.box,
+        sourceWidthPx,
+        sourceHeightPx,
+      );
+      productionBase = extracted.bytes;
+      productionWidth = extracted.width;
+      productionHeight = extracted.height;
+      if (upscaleTarget) {
+        await stageTimer.enter("upscaling");
+        upscaled = await upscaleIfNeeded(productionBase, productionWidth, productionHeight);
+      } else {
+        const decision = resolveImportUpscaleDecision(productionWidth, productionHeight);
+        upscaled = {
+          bytes: productionBase,
+          width: productionWidth,
+          height: productionHeight,
+          wasUpscaled: false,
+          upscaleFactor: 1,
+          upscalePassCount: 0,
+          ...(decision.sizingWarningCode ? { sizingWarningCode: decision.sizingWarningCode } : {}),
+        };
+      }
+      productionReusedSource = false;
+    }
+  } else if (upscaleTarget) {
     await stageTimer.enter("upscaling");
     upscaled = await upscaleIfNeeded(productionBase, productionWidth, productionHeight);
     productionReusedSource = false;
@@ -833,6 +970,14 @@ export async function processCustomerUploadImageBytes(
     return fail("processing_failed", "Could not generate image previews.");
   }
 
+  let suggestDarkArtworkBackground = false;
+  try {
+    suggestDarkArtworkBackground =
+      (await suggestDarkArtworkBackgroundFromPngBytes(getSharp(), upscaled.bytes)) === true;
+  } catch {
+    suggestDarkArtworkBackground = false;
+  }
+
   return {
     ok: true,
     sourceFormat,
@@ -866,6 +1011,7 @@ export async function processCustomerUploadImageBytes(
     printWidthInches: printFields.printWidthInches,
     printHeightInches: printFields.printHeightInches,
     effectiveDpi: printFields.effectiveDpi,
+    suggestDarkArtworkBackground,
     stageTimingsMs: stageTimer.finish(),
   };
 }

@@ -1342,6 +1342,8 @@ Portal always offers an optional “This artwork is a halftone design.” contro
 
 **Artwork background vs halftone:** `artworkBackgroundHex` / `artworkBackgroundSource` are display mats only. Dark mat (`#2c2d2d`) does **not** imply or set halftone. Import precedence: explicit background override → all-halftone dark default → code-auto detector → default light (omit field).
 
+**Studio customer-upload intake (import detector parity):** On successful finalize / ZIP finalize / staff retry processing, Functions run the same shared light-art → dark mat detector used on Imports (`suggestDarkArtworkBackgroundFromPngBytes`) against production PNG bytes. Persist `suggestDarkArtworkBackground: true` when suggested (omit/clear when not). When not already `staff_manual`, also write `artworkBackgroundHex` + `artworkBackgroundSource: "code_auto"`. Studio intake Auto uses the hint (`autoSuggestsDark`); Portal customer UI does **not** surface this. Staff Light/Dark remain `staff_manual`; Auto restores `code_auto` when the hint is true.
+
 ---
 
 # Etsy Recommendation Requests (Phase 9A — shipped in progress)

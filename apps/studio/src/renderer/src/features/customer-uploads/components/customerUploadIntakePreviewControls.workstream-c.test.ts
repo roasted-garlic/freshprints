@@ -17,6 +17,29 @@ import {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const sectionSource = readFileSync(path.join(__dirname, "CustomerUploadIntakeSection.tsx"), "utf8");
 
+test("autoSuggestsDark drives Dark mat while override stays Auto", () => {
+  assert.equal(
+    resolveCustomerUploadPreviewBackgroundHex({
+      artworkBackgroundHex: null,
+      artworkBackgroundSource: null,
+      halftoneOn: false,
+      autoSuggestsDark: true,
+    }),
+    ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK,
+  );
+});
+
+test("code_auto dark hex also resolves Dark without explicit autoSuggestsDark", () => {
+  assert.equal(
+    resolveCustomerUploadPreviewBackgroundHex({
+      artworkBackgroundHex: ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK,
+      artworkBackgroundSource: "code_auto",
+      halftoneOn: false,
+    }),
+    ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK,
+  );
+});
+
 test("halftone-on defaults Auto backgrounds to Dark in preview resolution", () => {
   assert.equal(
     resolveCustomerUploadPreviewBackgroundHex({
@@ -60,6 +83,10 @@ test("background override helper keeps the reviewed Auto/Light/Dark contract", (
     ),
     "dark",
   );
+});
+
+test("intake section wires detector hint into preview controls", () => {
+  assert.match(sectionSource, /autoSuggestsDark=\{row\.suggestDarkArtworkBackground === true\}/);
 });
 
 test("intake section wires halftone-on to default dark when background is Auto", () => {

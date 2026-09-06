@@ -46,6 +46,7 @@ import { withoutUndefinedFields } from "./lib/firestoreDocument";
 import { isAnonymousAuthToken } from "./lib/catalogDonationUploader";
 import { requirePortalCustomer } from "./lib/portalCustomer";
 import { resolveCustomerUploadPurpose } from "../../packages/shared/src/utils/customerUploadPurpose";
+import { applyCustomerUploadArtworkBackgroundDetectionToReadyPatch } from "../../packages/shared/src/utils/customerUploadArtworkBackgroundDetection";
 
 export interface FinalizeCustomerUploadZipFileResult {
   uploadId: string;
@@ -65,7 +66,7 @@ export interface FinalizeCustomerUploadZipResponse {
 }
 
 export const finalizeCustomerUploadZip = onCall(
-  { timeoutSeconds: 540, memory: "2GiB" },
+  { timeoutSeconds: 540, memory: "4GiB" },
   async (request): Promise<FinalizeCustomerUploadZipResponse> => {
     if (!request.auth?.uid) {
       throw unauthenticated();
@@ -358,8 +359,7 @@ export const finalizeCustomerUploadZip = onCall(
             processed,
           });
 
-          await uploadRef.update(
-            withoutUndefinedFields({
+          const readyPatch: Record<string, unknown> = {
               technicalStatus: "ready",
               technicalProgressStage: null,
               technicalFailureCode: null,
@@ -381,8 +381,17 @@ export const finalizeCustomerUploadZip = onCall(
               effectiveDpi: processed.effectiveDpi,
               catalogReviewStatus: "not_eligible",
               updatedAt: FieldValue.serverTimestamp(),
-            }),
-          );
+          };
+          const existingSnap = await uploadRef.get();
+          const existingArtworkBackgroundSource =
+            typeof existingSnap.data()?.artworkBackgroundSource === "string"
+              ? existingSnap.data()?.artworkBackgroundSource
+              : null;
+          applyCustomerUploadArtworkBackgroundDetectionToReadyPatch(readyPatch, {
+            suggestDark: processed.suggestDarkArtworkBackground === true,
+            existingArtworkBackgroundSource,
+          });
+          await uploadRef.update(withoutUndefinedFields(readyPatch));
 
           return {
             uploadId: image.uploadId,

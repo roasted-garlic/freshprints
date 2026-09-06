@@ -78,10 +78,12 @@ export interface CustomerUploadIntakeRow {
   halftoneDetection: import("@fresh-prints/shared/types/halftone/halftone.types").HalftoneDetectionPersisted | null;
   halftoneSubmitterResponse: import("@fresh-prints/shared/types/halftone/halftone.types").HalftoneSubmitterResponsePersisted | null;
   halftoneStaffDecision: import("@fresh-prints/shared/types/halftone/halftone.types").HalftoneStaffDecisionPersisted | null;
-  /** Artwork background hex for intake/review display mat (staff override). */
+  /** Artwork background hex for intake/review display mat (staff override or code_auto). */
   artworkBackgroundHex: string | null;
   /** Source of artwork background decision. */
   artworkBackgroundSource: import("@fresh-prints/shared/types/design/artworkBackgroundSource.types").ArtworkBackgroundSource | null;
+  /** Server detector hint — Studio Auto dark mat (import parity). */
+  suggestDarkArtworkBackground: boolean;
   /** Set when upload was server-copied from Assisted approved proof (ADR-FP-094). */
   assistedCreationRequestId: string | null;
   assistedProofId: string | null;
@@ -324,6 +326,7 @@ export const customerUploadIntakeService = {
           data.artworkBackgroundSource && typeof data.artworkBackgroundSource === "string"
             ? (data.artworkBackgroundSource as CustomerUploadIntakeRow["artworkBackgroundSource"])
             : null,
+        suggestDarkArtworkBackground: data.suggestDarkArtworkBackground === true,
         assistedCreationRequestId: asString(data.assistedCreationRequestId),
         assistedProofId: asString(data.assistedProofId),
       });

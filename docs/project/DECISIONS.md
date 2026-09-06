@@ -4,6 +4,48 @@
 
 ---
 
+### ADR-FP-180: Customer-upload finalize speed (sample→extract trim + concurrency)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-05 |
+| Status | accepted |
+| Related | Plan/Review `2026-09-05-customer-upload-processing-speed-*`; ADR-FP-123; r7 concurrent finalize=8 |
+
+**Context:** Multi-file Portal batches of transparent line art spent most wall clock in full-resolution PNG trim then a second PNG upscale, while the client ran **8** parallel finalize callables (r7 “speed” raise). Full-canvas trim also OOM'd 2 GiB. A first sample→extract path fixed memory but mis-cropped thin line art by clamping sharp’s negative `trimOffset*` to `0`.
+
+**Decision:**
+
+1. Keep `CUSTOMER_UPLOAD_MAX_CONCURRENT_FINALIZE` at **8** once extract-based trim is live (temporary drop to 2 during OOM remediation only).
+2. **Never** full-canvas `.trim()` to raw RGBA. Sample probe → **extract** crop → optional upscale in one pipeline; production PNG `compressionLevel: 3`. Scale trim offsets with `Math.abs` (sharp may report negative origin displacement); pad only when the probe was downsampled.
+3. Finalize / ZIP / retry memory **4GiB** as safety margin for remaining decode peaks.
+4. Do not weaken transparency or print-quality gates. ZIP in-invocation concurrency stays **3** (ADR-FP-123).
+
+**Consequences:** Parallel finalize of 8 is viable with extract-based trim; doodle crops stay correct; stuck-lease / `internal` failures from 2 GiB OOM should not recur for typical transparent batches. Requires Functions deploy for lease + Portal reload for UI concurrency.
+
+---
+
+### ADR-FP-179: Studio customer-upload intake uses import artwork-background detector
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-05 |
+| Status | accepted |
+| Related | Plan/Review `2026-09-05-studio-customer-upload-import-parity-artwork-background-auto-detect-*`; import `suggestDarkArtworkBackgroundFromPngBytes` |
+
+**Context:** Imports Auto already darkens conservative light line art via shared detector. Studio customer-upload intake reused Import preview controls but hard-coded `autoSuggestsDark=false`, so staff had to pick Dark manually. Portal customers do not need this UX.
+
+**Decision:**
+
+1. Run the **same** shared detector on customer-upload **production PNG** during finalize / ZIP finalize / retry success.
+2. Persist `suggestDarkArtworkBackground` (+ `code_auto` mat when not `staff_manual`). Fail soft → no dark.
+3. Studio wires `autoSuggestsDark` from the hint; Auto restores `code_auto` when hinted. Portal UI unchanged.
+4. Never infer halftone from dark mat. No historical bulk backfill in this slice (Retry processing covers key rows).
+
+**Consequences:** New/reprocessed uploads show correct Studio mat automatically; Functions + Studio deploys required for live effect.
+
+---
+
 ### ADR-FP-174: Dual-provider AI enrichment — restore OpenAI `gpt-5.6-luna` (Phase 1)
 
 | Field | Value |

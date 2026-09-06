@@ -2,6 +2,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { onCall } from "firebase-functions/v2/https";
 
 import { CUSTOMER_UPLOAD_COLLECTIONS } from "../../packages/shared/src/constants/customerUpload/customerUploadCollections.constants";
+import { ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK } from "../../packages/shared/src/constants/design/artworkBackground.constants";
 import {
   getPreviewStoragePath,
   getOriginalStoragePath,
@@ -208,7 +209,12 @@ export const promoteCustomerUploadToAiReview = onCall(
                   ? { artworkBackgroundHex: upload.artworkBackgroundHex }
                   : {}),
               }
-            : {}),
+            : upload.suggestDarkArtworkBackground === true
+              ? {
+                  artworkBackgroundSource: "code_auto",
+                  artworkBackgroundHex: ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK,
+                }
+              : {}),
           queueCount: 0,
           aiProcessed: false,
           aiReviewed: false,

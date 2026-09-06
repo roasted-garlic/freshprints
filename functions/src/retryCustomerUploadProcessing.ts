@@ -28,6 +28,7 @@ import {
 import { failedPrecondition, invalidArgument, unauthenticated } from "./lib/errors";
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
 import { withCustomerUploadFinalizeWatchdog } from "../../packages/shared/src/utils/customerUploadFinalizeWatchdog";
+import { applyCustomerUploadArtworkBackgroundDetectionToReadyPatch } from "../../packages/shared/src/utils/customerUploadArtworkBackgroundDetection";
 
 /** Mirrors FINALIZE_CUSTOMER_UPLOAD_STAGE_WATCHDOG_MS in finalizeCustomerUpload.ts — see that constant's doc comment for the 480s/540s rationale. */
 const RETRY_CUSTOMER_UPLOAD_STAGE_WATCHDOG_MS = 480_000;
@@ -46,7 +47,7 @@ const RETRYABLE_FAILURE_CODES = new Set([
 ]);
 
 export const retryCustomerUploadProcessing = onCall(
-  { timeoutSeconds: 540, memory: "2GiB" },
+  { timeoutSeconds: 540, memory: "4GiB" },
   async (request): Promise<RetryCustomerUploadProcessingResponse> => {
     if (!request.auth?.uid) {
       throw unauthenticated();
@@ -231,10 +232,12 @@ export const retryCustomerUploadProcessing = onCall(
       const [freshUpload, batchSnap] = await Promise.all([tx.get(uploadRef), tx.get(batchRef)]);
       const previousStatus = freshUpload.data()?.technicalStatus;
       const wasFailed = previousStatus === "failed" || previousStatus === "processing" || previousStatus === "validating";
+      const existingArtworkBackgroundSource =
+        typeof freshUpload.data()?.artworkBackgroundSource === "string"
+          ? freshUpload.data()?.artworkBackgroundSource
+          : null;
 
-      tx.update(
-        uploadRef,
-        withoutUndefinedFields({
+      const readyPatch: Record<string, unknown> = {
           technicalStatus: "ready",
           technicalProgressStage: null,
           technicalFailureCode: null,
@@ -259,8 +262,12 @@ export const retryCustomerUploadProcessing = onCall(
           effectiveDpi: processed.effectiveDpi,
           catalogReviewStatus: preservedCatalogReviewStatus,
           updatedAt: FieldValue.serverTimestamp(),
-        }),
-      );
+      };
+      applyCustomerUploadArtworkBackgroundDetectionToReadyPatch(readyPatch, {
+        suggestDark: processed.suggestDarkArtworkBackground === true,
+        existingArtworkBackgroundSource,
+      });
+      tx.update(uploadRef, withoutUndefinedFields(readyPatch));
 
       if (wasFailed && batchSnap.exists) {
         const readyCount = Number(batchSnap.data()?.readyCount ?? 0);

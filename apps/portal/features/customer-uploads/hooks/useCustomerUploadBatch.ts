@@ -206,25 +206,74 @@ export function useCustomerUploadBatch(options?: {
       ),
     ];
 
-    if (uploadIds.length > 0) {
-      await Promise.allSettled(
-        uploadIds.map(async (uploadId) => {
-          await customerUploadService.deleteOwnUpload(uploadId);
-        }),
-      );
-      customerUploadService.invalidateDailyQuota();
-    }
-
+    // Clear the queue immediately; deletes run in the background.
     setRows([]);
     setBatchId(null);
     setOwnershipConfirmed(false);
     setCatalogUseAcknowledged(!isDonation);
     setBannerError(null);
     setBatchNotes([]);
+    setIsProcessing(false);
     if (firebaseUser) {
       customerUploadService.clearSession(firebaseUser.uid);
     }
+
+    if (uploadIds.length > 0) {
+      await Promise.allSettled(
+        uploadIds.map(async (uploadId) => {
+          try {
+            await customerUploadService.deleteOwnUpload(uploadId);
+          } catch (error: unknown) {
+            console.warn('[customer-upload] clear-list delete failed', {
+              uploadId,
+              message: error instanceof Error ? error.message : 'unknown',
+            });
+          }
+        }),
+      );
+      customerUploadService.invalidateDailyQuota();
+    }
   }, [firebaseUser, isDonation]);
+
+  const removeFailed = useCallback(async () => {
+    const targets = rowsRef.current.filter((row) => row.phase === 'failed');
+    if (targets.length === 0) {
+      return;
+    }
+
+    setRows((current) =>
+      current.map((row) =>
+        row.phase === 'failed'
+          ? { ...row, phase: 'removed', progressLabel: 'Removed', file: undefined }
+          : row,
+      ),
+    );
+
+    const uploadIds = targets
+      .map((row) => row.uploadId)
+      .filter((id): id is string => Boolean(id));
+    if (uploadIds.length === 0) {
+      return;
+    }
+
+    await Promise.allSettled(
+      uploadIds.map(async (uploadId) => {
+        try {
+          await customerUploadService.deleteOwnUpload(uploadId);
+        } catch (error: unknown) {
+          console.warn('[customer-upload] remove-failed delete failed', {
+            uploadId,
+            message: error instanceof Error ? error.message : 'unknown',
+          });
+        }
+      }),
+    );
+    customerUploadService.invalidateDailyQuota();
+  }, []);
+
+  const clearUploadList = useCallback(async () => {
+    await abandonUnconfirmedUploads();
+  }, [abandonUnconfirmedUploads]);
 
   const addFiles = useCallback(
     async (fileList: FileList | File[]) => {
@@ -324,7 +373,7 @@ export function useCustomerUploadBatch(options?: {
             created.batchId,
             uploadUser.uid,
             (uploads) => {
-              if (uploads.length === 0) {
+              if (abortRef.current || uploads.length === 0) {
                 return;
               }
               setRows(
@@ -350,6 +399,9 @@ export function useCustomerUploadBatch(options?: {
 
           try {
             const finalized = await customerUploadService.finalizeZip(created.batchId);
+            if (abortRef.current) {
+              return;
+            }
             const cappedFiles = finalized.files.slice(0, sessionCap);
             if (finalized.files.length > cappedFiles.length) {
               setBannerError(
@@ -490,8 +542,14 @@ export function useCustomerUploadBatch(options?: {
               return;
             }
 
-            const isRemoved = () =>
-              rowsRef.current.find((item) => item.localId === row.localId)?.phase === 'removed';
+            const isRemoved = () => {
+              if (abortRef.current) {
+                return true;
+              }
+              const current = rowsRef.current.find((item) => item.localId === row.localId);
+              // Cleared list (row gone) or explicit remove — stop writing back into the UI.
+              return !current || current.phase === 'removed';
+            };
 
             if (isRemoved()) {
               return;
@@ -914,6 +972,8 @@ export function useCustomerUploadBatch(options?: {
     canAttach,
     addFiles,
     removeRow,
+    removeFailed,
+    clearUploadList,
     abandonUnconfirmedUploads,
     retryFailed,
     attachToRequest,

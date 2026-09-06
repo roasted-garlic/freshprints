@@ -80,10 +80,15 @@ export interface CustomerUpload {
   halftoneSubmitterResponse?: import("../halftone/halftone.types").HalftoneSubmitterResponsePersisted | null;
   /** Staff decision (authoritative for catalog). */
   halftoneStaffDecision?: import("../halftone/halftone.types").HalftoneStaffDecisionPersisted | null;
-  /** Artwork background hex for intake/review display mat (staff override). */
+  /** Artwork background hex for intake/review display mat (staff override or code_auto). */
   artworkBackgroundHex?: string | null;
   /** Source of artwork background decision. */
   artworkBackgroundSource?: import("../design/artworkBackgroundSource.types").ArtworkBackgroundSource | null;
+  /**
+   * Server detector hint (shared import light-art → dark mat). Studio Auto uses this;
+   * Portal does not surface it. Prefer omit when false.
+   */
+  suggestDarkArtworkBackground?: boolean | null;
   technicalStatus: CustomerUploadTechnicalStatus;
   /** Live finalize progress; null when idle, ready, or failed. */
   technicalProgressStage?: CustomerUploadTechnicalProgressStage | null;

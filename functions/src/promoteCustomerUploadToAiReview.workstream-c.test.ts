@@ -8,6 +8,7 @@ import { describe, it } from "node:test";
 function mapPromoteMetadata(upload: {
   artworkBackgroundHex?: unknown;
   artworkBackgroundSource?: unknown;
+  suggestDarkArtworkBackground?: unknown;
   halftoneStaffDecision?: unknown;
 }) {
   const halftoneDecisionSource =
@@ -25,7 +26,12 @@ function mapPromoteMetadata(upload: {
             ? { artworkBackgroundHex: upload.artworkBackgroundHex }
             : {}),
         }
-      : {};
+      : upload.suggestDarkArtworkBackground === true
+        ? {
+            artworkBackgroundSource: "code_auto",
+            artworkBackgroundHex: "#2c2d2d",
+          }
+        : {};
 
   return { halftoneDecisionSource, ...artwork };
 }
@@ -65,6 +71,14 @@ describe("promoteCustomerUploadToAiReview Workstream C mapping", () => {
     });
     assert.equal("artworkBackgroundSource" in mapped, false);
     assert.equal(mapped.halftoneDecisionSource, undefined);
+  });
+
+  it("maps suggestDark hint to code_auto when source is absent", () => {
+    const mapped = mapPromoteMetadata({
+      suggestDarkArtworkBackground: true,
+    });
+    assert.equal(mapped.artworkBackgroundSource, "code_auto");
+    assert.equal(mapped.artworkBackgroundHex, "#2c2d2d");
   });
 
   it("never stamps customer as Studio intake provenance", () => {

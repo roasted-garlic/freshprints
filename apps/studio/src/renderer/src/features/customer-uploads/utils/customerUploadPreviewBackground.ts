@@ -18,6 +18,7 @@ export function resolveCustomerUploadBackgroundOverride(
     }
     return "light";
   }
+  // code_auto / import_* → Auto chip; dark comes from autoSuggestsDark
   return "auto";
 }
 
@@ -25,9 +26,16 @@ export function resolveCustomerUploadPreviewBackgroundHex(input: {
   artworkBackgroundHex: string | null | undefined;
   artworkBackgroundSource: ArtworkBackgroundSource | null | undefined;
   halftoneOn: boolean;
+  /** Shared import detector hint (or persisted code_auto dark). */
+  autoSuggestsDark?: boolean;
 }): string {
+  const autoSuggestsDark =
+    input.autoSuggestsDark === true ||
+    (input.artworkBackgroundSource === "code_auto" &&
+      input.artworkBackgroundHex === ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK);
+
   return resolveImportPreviewBackgroundCssHex({
-    autoSuggestsDark: false,
+    autoSuggestsDark,
     backgroundMode: "auto",
     halftoneMode: "normal",
     itemBackgroundOverride: resolveCustomerUploadBackgroundOverride(

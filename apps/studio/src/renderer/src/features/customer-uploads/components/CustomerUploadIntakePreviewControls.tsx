@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 
 import type { ArtworkBackgroundSource } from "@fresh-prints/shared/types/design/artworkBackgroundSource.types";
+import { ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK } from "@fresh-prints/shared/constants/design/artworkBackground.constants";
 import {
   resolveImportArtworkBackgroundDecision,
   type ImportItemBackgroundOverride,
@@ -13,6 +14,8 @@ import { resolveCustomerUploadBackgroundOverride } from "../utils/customerUpload
 interface CustomerUploadIntakePreviewControlsProps {
   artworkBackgroundHex?: string | null;
   artworkBackgroundSource?: ArtworkBackgroundSource | null;
+  /** Server/import-parity detector hint for Auto → Dark. */
+  autoSuggestsDark?: boolean;
   className?: string;
   disabled?: boolean;
   /** Explicit staff Halftone decision (authoritative boolean). */
@@ -31,6 +34,7 @@ interface CustomerUploadIntakePreviewControlsProps {
 export function CustomerUploadIntakePreviewControls({
   artworkBackgroundHex,
   artworkBackgroundSource,
+  autoSuggestsDark = false,
   className,
   disabled = false,
   halftoneOn,
@@ -45,6 +49,10 @@ export function CustomerUploadIntakePreviewControls({
   const handleBackgroundChange = useCallback(
     (value: ImportItemBackgroundOverride) => {
       if (value === "auto") {
+        if (autoSuggestsDark) {
+          onArtworkBackgroundChange(ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK, "code_auto");
+          return;
+        }
         onArtworkBackgroundChange(null, null);
         return;
       }
@@ -56,7 +64,7 @@ export function CustomerUploadIntakePreviewControls({
       });
       onArtworkBackgroundChange(decision.hex, "staff_manual");
     },
-    [onArtworkBackgroundChange],
+    [autoSuggestsDark, onArtworkBackgroundChange],
   );
 
   const handleHalftoneChange = useCallback(
@@ -69,7 +77,7 @@ export function CustomerUploadIntakePreviewControls({
   return (
     <div className={`customer-upload-intake-preview-controls ${className ?? ""}`.trim()}>
       <ImportPreviewControls
-        autoSuggestsDark={false}
+        autoSuggestsDark={autoSuggestsDark}
         backgroundMode="auto"
         controlsDisabled={disabled}
         halftoneMode="normal"
