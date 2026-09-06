@@ -1,5 +1,7 @@
 # DEV Deploy and Canary Plan — Two-Pass AI Enrichment
 
+Frozen source SHA: `74d7b2edb43f89906f4b7449db004747b6ea0c22`
+
 ## Exact Function inventory
 
 Redeploy only:
