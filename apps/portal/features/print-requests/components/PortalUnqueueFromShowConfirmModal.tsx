@@ -1,5 +1,6 @@
 'use client';
 
+import { PortalBusyOverlay } from '../../shared/components/PortalBusyOverlay';
 import { PortalConfirmModal } from '../../shared/components/PortalConfirmModal';
 
 interface PortalUnqueueFromShowConfirmModalProps {
@@ -18,24 +19,33 @@ export function PortalUnqueueFromShowConfirmModal({
   onConfirm,
 }: PortalUnqueueFromShowConfirmModalProps) {
   return (
-    <PortalConfirmModal
-      isOpen={isOpen}
-      title="Remove from Show & Edit?"
-      confirmLabel={isSubmitting ? 'Removing…' : 'Remove from Show & Edit'}
-      cancelLabel="Keep on Show"
-      confirmDisabled={isSubmitting}
-      isConfirmLoading={isSubmitting}
-      confirmVariant="danger"
-      onCancel={onCancel}
-      onConfirm={onConfirm}
-    >
-      <p>
-        This request will be removed from
-        {showLabel ? ` ${showLabel}` : ' the selected show'}.
-      </p>
-      <p>You will be able to edit items, sizes, and quantities again.</p>
-      <p>You will need to add the request to a show again before it can print.</p>
-      <p>The same show may no longer be available because of cutoff times or capacity limits.</p>
-    </PortalConfirmModal>
+    <>
+      <PortalConfirmModal
+        isOpen={isOpen}
+        title="Remove from Show & Edit?"
+        confirmLabel={isSubmitting ? 'Removing…' : 'Remove from Show & Edit'}
+        cancelLabel="Keep on Show"
+        confirmDisabled={isSubmitting}
+        isConfirmLoading={isSubmitting}
+        confirmVariant="danger"
+        onCancel={onCancel}
+        onConfirm={onConfirm}
+      >
+        <p>
+          This request will be removed from
+          {showLabel ? ` ${showLabel}` : ' the selected show'}.
+        </p>
+        <p>You will be able to edit items, sizes, and quantities again.</p>
+        <p>You will need to add the request to a show again before it can print.</p>
+        <p>The same show may no longer be available because of cutoff times or capacity limits.</p>
+      </PortalConfirmModal>
+
+      <PortalBusyOverlay
+        description="Please wait while we remove this request from the show so you can edit it."
+        isOpen={isOpen && isSubmitting}
+        title="Removing from show…"
+        titleId="portal-unqueue-from-show-busy-title"
+      />
+    </>
   );
 }

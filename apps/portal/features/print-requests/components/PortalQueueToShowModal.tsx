@@ -27,6 +27,7 @@ import {
 import { formatPortalQueueCutoffMeta } from '@fresh-prints/shared/utils/showQueueCutoff';
 
 import { PortalBiddingAcknowledgmentModal } from '../../shared/components/PortalBiddingAcknowledgmentModal';
+import { PortalBusyOverlay } from '../../shared/components/PortalBusyOverlay';
 import { usePortalAllocatableShows } from '../hooks/usePortalAllocatableShows';
 import { useQueuePrintRequestToShow } from '../hooks/useQueuePrintRequestToShow';
 import { PortalLoadingPanel } from '../../shared/components/PortalLoadingPanel';
@@ -500,11 +501,6 @@ export function PortalQueueToShowModal({
                     Loading your queue limits…
                   </p>
                 ) : null}
-                {isCelebratingSave ? (
-                  <p className="portal-muted portal-queue-to-show-summary" role="status">
-                    Updating show capacity…
-                  </p>
-                ) : null}
                 <ShowPicker
                   className="portal-show-picker"
                   onClearSelection={() => {
@@ -653,6 +649,13 @@ export function PortalQueueToShowModal({
         onConfirm={() => {
           void handleConfirmAcknowledgment();
         }}
+      />
+
+      <PortalBusyOverlay
+        description="Please wait while we add this request to the show's print run."
+        isOpen={isBusy}
+        title="Adding to show…"
+        titleId="portal-queue-to-show-busy-title"
       />
     </>
   );

@@ -1057,6 +1057,36 @@ a.portal-sidebar-sign-out:hover {
   z-index: calc(var(--z-modal, 40) + 4);
 }
 
+.portal-busy-overlay {
+  /* Above bidding-ack (+4) so queue/unqueue progress always stays visible. */
+  z-index: calc(var(--z-modal, 40) + 6);
+}
+
+.portal-busy-overlay-panel {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: min(100%, 22rem);
+  padding: var(--space-6) var(--space-5);
+  text-align: center;
+}
+
+.portal-busy-overlay-panel h2 {
+  font-size: var(--font-size-lg, 1.125rem);
+  font-weight: 600;
+  margin: 0;
+}
+
+.portal-busy-overlay-description {
+  margin: 0;
+}
+
+.portal-busy-overlay-spinner {
+  height: 1.75rem;
+  width: 1.75rem;
+}
+
 .portal-bidding-ack-modal {
   max-width: min(100%, 36rem);
 }
