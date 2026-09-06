@@ -324,6 +324,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
   const [isMoveAllRequestsModalOpen, setIsMoveAllRequestsModalOpen] = useState(false);
   const queueSurface = lockedSurface;
   const [isCreateStaffLaneModalOpen, setIsCreateStaffLaneModalOpen] = useState(false);
+  const [isCreatingStaffLane, setIsCreatingStaffLane] = useState(false);
   const [isCompletingStaffGangSheet, setIsCompletingStaffGangSheet] = useState(false);
   const [completeConfirmKind, setCompleteConfirmKind] = useState<"staff_complete" | "show_finished" | null>(
     null,
@@ -2773,6 +2774,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                   }
                   void (async () => {
                     try {
+                      setIsCreatingStaffLane(true);
                       setActionError(null);
                       const created = await upcomingShowService.createStaffGangSheetLane(user, {
                         staffGangSheetCycleNumber: nextStaffGangSheetCycleNumber,
@@ -2784,13 +2786,15 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                       applyShowQueueRoute({ tab: "current", showId: created.id, requestId: null });
                     } catch (error) {
                       setActionError(formatWriteErrorMessage(error));
+                    } finally {
+                      setIsCreatingStaffLane(false);
                     }
                   })();
                 }}
               >
                 <p className="print-requests-modal-hint">
-                  Creates shared {formatStaffGangSheetTitle(nextStaffGangSheetCycleNumber)} with
-                  capacity 200 (editable) for Studio staff. No Whatnot information is required. After
+                  Creates the next numbered shared Internal Gang Sheet with capacity 200 (editable)
+                  for Studio staff. No Whatnot information is required. After
                   this sheet is open, use Mark Complete to open the next cycle automatically.
                 </p>
                 {actionError ? (
@@ -2802,6 +2806,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
             </ModalBody>
             <ModalFooter>
               <Button
+                disabled={isCreatingStaffLane}
                 onClick={() => {
                   setIsCreateStaffLaneModalOpen(false);
                   setActionError(null);
@@ -2810,8 +2815,8 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
               >
                 Cancel
               </Button>
-              <Button form="create-staff-gang-sheet-form" type="submit">
-                Create Internal Gang Sheet
+              <Button disabled={isCreatingStaffLane} form="create-staff-gang-sheet-form" type="submit">
+                {isCreatingStaffLane ? "Creating…" : "Create Internal Gang Sheet"}
               </Button>
             </ModalFooter>
           </Modal>

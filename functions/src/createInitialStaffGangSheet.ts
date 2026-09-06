@@ -21,6 +21,8 @@ export interface CreateInitialStaffGangSheetResponse {
   cycleNumber: number;
 }
 
+const INTERNAL_GANG_SHEET_COUNTER_ID = "internalGangSheets";
+
 function mapHttpsError(error: unknown): never {
   if (error instanceof HttpsError) {
     throw error;
@@ -63,8 +65,17 @@ export const createInitialStaffGangSheet = onCall(
           );
         }
 
-        const cycleNumber = resolveNextStaffGangSheetCycleNumber(
-          staffSnap.docs.map((docSnap) => docSnap.data().staffGangSheetCycleNumber),
+        const counterRef = adminDb.collection("counters").doc(INTERNAL_GANG_SHEET_COUNTER_ID);
+        const counterSnap = await transaction.get(counterRef);
+        const cycleNumber = Math.max(
+          resolveNextStaffGangSheetCycleNumber(
+            staffSnap.docs.map((docSnap) => docSnap.data().staffGangSheetCycleNumber),
+          ),
+          typeof counterSnap.data()?.nextCycleNumber === "number" &&
+            Number.isInteger(counterSnap.data()?.nextCycleNumber) &&
+            counterSnap.data()?.nextCycleNumber > 0
+            ? counterSnap.data()?.nextCycleNumber
+            : 1,
         );
 
         const showRef = adminDb.collection("upcomingShows").doc();
@@ -86,6 +97,7 @@ export const createInitialStaffGangSheet = onCall(
           createdAt: now,
           updatedAt: now,
         });
+        transaction.set(counterRef, { nextCycleNumber: cycleNumber + 1 }, { merge: true });
 
         return { showId: showRef.id, cycleNumber };
       });

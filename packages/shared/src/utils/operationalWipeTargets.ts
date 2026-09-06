@@ -14,6 +14,7 @@ export const OPERATIONAL_WIPE_DELETE_COLLECTION_ORDER = [
   "printRequestItems",
   "printRequests",
   "upcomingShows",
+  "internalGangSheets",
   "customerRequests",
   "showQueues",
   "showQueueItems",
@@ -144,6 +145,7 @@ const OPERATIONAL_WIPE_TARGETS_ORDER: OperationalWipeTarget[] = [
   "printRequests",
   "showQueueAttachments",
   "upcomingShows",
+  "internalGangSheets",
   "sequences",
   "designRequestStats",
   "designs",
@@ -206,6 +208,11 @@ export function expandOperationalWipePlan(
       for (const collectionName of UPCOMING_SHOW_COLLECTIONS) {
         deleteSet.add(collectionName);
       }
+      continue;
+    }
+
+    if (target === "internalGangSheets") {
+      // Filtered deletion is handled by the wipe callable; this target must not delete customer shows.
       continue;
     }
 
@@ -316,6 +323,7 @@ export const ALL_OPERATIONAL_WIPE_TARGETS: OperationalWipeTarget[] = [
   "printRequests",
   "showQueueAttachments",
   "upcomingShows",
+  "internalGangSheets",
   "sequences",
   "designRequestStats",
   "designs",
