@@ -116,3 +116,28 @@ OpenAI (`openai` / `gpt-5.6-luna`): HTTP success, one choice, `finish_reason=sto
 Live root cause: Gemini emits `patches` as a field-to-values object map, while the approved shared contract requires an array of explicit `{ field, from, to }` records. Previous corrective work did not address this because it had no live raw-response evidence and intentionally did not add speculative patch conversion. Existing fixtures only covered canonical arrays, so they did not reproduce the Gemini map.
 
 No parser semantics were changed during this diagnostic. The temporary diagnostic commit was `c9a9b6889764186d5a822a06d38f955b27bc64ed`; cleanup is being committed separately. Gate B remains pending a narrowly scoped corrective derived from this evidence; Gate C remains unauthorized.
+
+## Evidence-based patch-map corrective and Gate B retest — 2026-09-06
+
+Corrective SHA: `5a4de46ceeaf0aed76cc5298d57a9840621d397a`; local and `origin/development` matched and the working tree was clean before deployment. The corrective converts only plain approved-field patch maps into canonical `{ field, from, to }` records using the exact effective Smart Profile field as `from`, then runs the existing patch validator unchanged. Prompt remains `catalog-semantic-review-v2`; no safety boundary changed.
+
+Exact deployment command:
+
+```powershell
+$env:FUNCTIONS_DISCOVERY_TIMEOUT='60'
+firebase deploy --only "functions:testAiEnrichmentSemanticReviewPlayground" --project fresh-prints-dev --non-interactive
+```
+
+The command exceeded the local shell timeout while the operation continued server-side; the final runtime state was verified ACTIVE. Exactly one Function was deployed. Final revision: `testaienrichmentsemanticreviewplayground-00006-vic`. Firebase source hash: `1af6dce02bac20066eb5031a21744cef0974a22d`. No unrelated resources were deployed.
+
+Basic Gate B retest used the approved temporary owner/admin authentication mechanism, the exact cucumber Pass 1 context, and no image. Temporary auth data was deleted afterward; no catalog data was mutated.
+
+Gemini result: provider `google`, model `gemini-2.5-flash-lite`, prompt version `catalog-semantic-review-v2`; decision `APPROVE`; blockersResolved `["subject_specificity_risk:girl"]`; blockersUnresolved `[]`; patches `[]`; Pass 2 usage `297` prompt tokens / `79` completion tokens; estimated Pass 2 cost `$0.0000613`.
+
+OpenAI result: provider `openai`, model `gpt-5.6-luna`, prompt version `catalog-semantic-review-v2`; decision `APPROVE_WITH_PATCH`; blockersResolved `["subject_specificity_risk:girl"]`; blockersUnresolved `[]`; canonical patches `[subjects: [girl] -> [woman]]`; usage `306` prompt tokens / `161` completion tokens, including provider reasoning metadata; estimated Pass 2 cost `$0.0002544`.
+
+Pass 1 recorded cost: `$0.0009242` (`4610` prompt / `1158` completion tokens). Combined costs: Gemini `$0.0009855`; OpenAI/Luna `$0.0011786`. No Tag Rerank path or cost was observed.
+
+The captured Gemini fixture, canonical OpenAI fixture, multi-field ordering, invalid-map handling, null/omitted patches, objective-blocker policy, authority protection, one-pass policy, and malformed-output rejection are covered by the focused semantic tests. Final focused suite: 15 passed; Functions build passed; `git diff --check` passed.
+
+Gate B basic verdict: **PASS**. The non-persisting Playground callable does not produce final WAA, so no WAA value is fabricated; deterministic post-patch WAA remains covered by existing Processing tests. Gate C remains unauthorized. Playground UX corrective remains deferred. `[NEEDS OWNER DECISION]` — owner QA/signoff is required before any Gate C authorization or Playground UX corrective.
