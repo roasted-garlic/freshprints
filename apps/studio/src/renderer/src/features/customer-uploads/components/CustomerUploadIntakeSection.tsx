@@ -156,6 +156,28 @@ function IntakeDetail({
           </p>
         </div>
         <div className="customer-upload-intake-detail-header-actions">
+          {!isDonation && row.printRequestId ? (
+            <Button
+              onClick={() => {
+                if (!row.printRequestId) {
+                  return;
+                }
+                navigate(
+                  buildPrintRequestDeepLinkPath({
+                    id: row.printRequestId,
+                    isInternal: row.printRequestIsInternal ?? undefined,
+                    queueTab: row.printRequestQueueTab,
+                    itemCount: row.printRequestItemCount ?? undefined,
+                    updatedAtMillis: row.printRequestUpdatedAtMs ?? undefined,
+                  }),
+                );
+              }}
+              size="sm"
+              variant="secondary"
+            >
+              Open linked request
+            </Button>
+          ) : null}
           <Button onClick={() => setDetailsOpen(true)} size="sm" variant="secondary">
             Technical details
           </Button>
@@ -200,29 +222,6 @@ function IntakeDetail({
       </div>
 
       <div className="customer-upload-intake-actions">
-        {!isDonation && row.printRequestId ? (
-          <Button
-            onClick={() => {
-              if (!row.printRequestId) {
-                return;
-              }
-              navigate(
-                buildPrintRequestDeepLinkPath({
-                  id: row.printRequestId,
-                  isInternal: row.printRequestIsInternal ?? undefined,
-                  queueTab: row.printRequestQueueTab,
-                  itemCount: row.printRequestItemCount ?? undefined,
-                  updatedAtMillis: row.printRequestUpdatedAtMs ?? undefined,
-                }),
-              );
-            }}
-            size="sm"
-            variant="secondary"
-          >
-            Open linked request
-          </Button>
-        ) : null}
-
         {intake.canRetry && row.technicalStatus === "failed" ? (
           <Button
             disabled={busy}
