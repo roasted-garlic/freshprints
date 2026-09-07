@@ -6,13 +6,13 @@
 
 | Item | Value |
 |---|---|
-| Status | **LOCAL STUDIO UI POLISH COMPLETE** — awaiting owner visual QA and integrated Playground Pass 2 QA |
+| Status | **CHECKPOINT COMMITTED AND PUSHED** — awaiting owner visual QA and integrated Playground Pass 2 QA |
 | Parent | `smart-catalog-intelligence-completion-and-legacy-tag-retirement` |
 | Child | `two-pass-ai-enrichment Playground integrated Pass 2 semantic-review UX corrective` |
 | ADR | **ADR-FP-182** (owner decisions locked) |
 | Autonomous | **OFF** (`shadow`) |
 | Production | untouched |
-| Commit/push | No commit/push performed for this corrective; existing worktree changes preserved |
+| Commit/push | Checkpoint `ba7c7051` pushed to `origin/development`; production untouched |
 | Application code | **Integrated Pass 2 UX corrective deployed to the two reviewed DEV callables; local DEV Studio now has the wide tabbed result modal** |
 
 ## Next
@@ -76,7 +76,7 @@ Owner reviews the wide tabbed result modal, then performs the bounded real-image
 - DEV deployment checkpoint: `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-pass1-contract-cleanup-dev-deployment-checkpoint.md`.
 - Real-image Playground verification: not started because no mechanically safe checked-in real artwork exists; owner image selection is required.
 - Legacy Playground stock prompt corrective: deployed and verified ACTIVE for the exact authorized inventory; no provider call, Playground invocation, or reprocessing run occurred.
-- Integrated Playground Pass 2 UX corrective: owner authorized DEV deployment on 2026-09-06. Exactly `testAiEnrichmentPlayground` (`testaienrichmentplayground-00070-mil`) and `testAiEnrichmentSemanticReviewPlayground` (`testaienrichmentsemanticreviewplayground-00011-xap`) are ACTIVE in `fresh-prints-dev`/`us-central1` on Firebase source hash `303f6cd59782680602bcb04b81c683b199caba73`. Local DEV Studio is running at `localhost:5173`; owner manual QA is pending. Codex made no provider/callable invocation, Settings mutation, commit, or push.
+- Integrated Playground Pass 2 UX corrective: owner authorized DEV deployment on 2026-09-06. Exactly `testAiEnrichmentPlayground` (`testaienrichmentplayground-00070-mil`) and `testAiEnrichmentSemanticReviewPlayground` (`testaienrichmentsemanticreviewplayground-00011-xap`) are ACTIVE in `fresh-prints-dev`/`us-central1` on Firebase source hash `303f6cd59782680602bcb04b81c683b199caba73`. Local DEV Studio is running at `localhost:5173`; owner manual QA is pending. Checkpoint `ba7c7051` now contains and pushes the current project work; Codex made no provider/callable invocation.
 - Inspector layout corrective: local Studio CSS now constrains trace cards and wraps long prompt/JSON content with vertical-only reading; no Studio deployment was performed or authorized for this styling change.
 - Studio UI polish: Inspector is the far-right AI Enrichment sub-tab locally, and the Playground result modal is now wider, tabbed, and vertical-only for long content; no Studio deployment was performed or authorized for this local styling change.
 - No settings mutation, deployment, processing, or catalog mutation occurred during Gate C planning.
