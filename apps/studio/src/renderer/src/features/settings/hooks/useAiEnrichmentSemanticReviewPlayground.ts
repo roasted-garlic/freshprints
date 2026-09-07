@@ -23,6 +23,7 @@ export interface UseAiEnrichmentSemanticReviewPlaygroundResult extends AiPlaygro
 export function useAiEnrichmentSemanticReviewPlayground(input: {
   pass1Result: AiEnrichmentPlaygroundResponse | null;
   semanticReviewerModelId: string;
+  semanticReviewPlaygroundEnabled: boolean;
 }): UseAiEnrichmentSemanticReviewPlaygroundResult {
   const runId = getPlaygroundRunId(input.pass1Result);
   const [state, setState] = useState<AiPlaygroundPass2State>(() =>
@@ -34,11 +35,15 @@ export function useAiEnrichmentSemanticReviewPlayground(input: {
   useEffect(() => {
     setState(resetPass2State(runId));
     setResult(null);
-  }, [runId]);
+  }, [runId, input.semanticReviewPlaygroundEnabled]);
 
   const runReview = useCallback(async () => {
     const pass1Context = input.pass1Result?.pass1Context;
-    if (!pass1Context || !canAttemptPass2(pass1Context, state)) {
+    if (
+      !input.semanticReviewPlaygroundEnabled ||
+      !pass1Context ||
+      !canAttemptPass2(pass1Context, state)
+    ) {
       return;
     }
 
@@ -51,6 +56,8 @@ export function useAiEnrichmentSemanticReviewPlayground(input: {
           mapPass1ContextToSemanticReviewRequest({
             context: pass1Context,
             semanticReviewerModelId: input.semanticReviewerModelId,
+            pass1TraceId: input.pass1Result?.traceId,
+            captureFullTrace: input.pass1Result?.captureFullTrace,
           }),
         );
       setResult(response);
@@ -65,7 +72,12 @@ export function useAiEnrichmentSemanticReviewPlayground(input: {
             : "Unable to run Semantic Review.",
       }));
     }
-  }, [input.pass1Result, input.semanticReviewerModelId, state]);
+  }, [
+    input.pass1Result,
+    input.semanticReviewerModelId,
+    input.semanticReviewPlaygroundEnabled,
+    state,
+  ]);
 
   return { ...state, result, runReview };
 }

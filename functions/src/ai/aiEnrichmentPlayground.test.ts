@@ -187,7 +187,7 @@ describe("buildPass1Context", () => {
         visionModelId: "gemini-2.5-flash-lite",
         promptTemplate: "prompt",
         additionalTagExclusions: [],
-        semanticReviewerEnabled: false,
+        semanticReviewPlaygroundEnabled: false,
         semanticReviewerModelId: "gemini-2.5-flash-lite",
         catalogWorkflowMode: "shadow",
         catalogAutonomousLiveEnabled: false,
@@ -205,7 +205,7 @@ describe("buildPass1Context", () => {
     assert.ok(context.semanticBlockers.length > 0);
     assert.equal(context.pass2Eligibility, "eligible");
     assert.ok(context.automationDecision);
-    assert.equal(context.semanticReviewerEnabled, false);
+    assert.equal(context.semanticReviewPlaygroundEnabled, false);
     assert.equal(JSON.stringify(context).includes(VALID_IMAGE_BASE64), false);
     assert.equal(JSON.stringify(context).includes("tagRerank"), false);
   });

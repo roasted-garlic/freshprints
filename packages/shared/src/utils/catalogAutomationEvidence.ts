@@ -5,10 +5,25 @@
 
 import { isPromotableSpecificityModifier } from "./smartProfileSubjectCanonicalization";
 
+function specificityPhraseKey(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
 export interface StructuredEvidenceGap {
   dimension: "subjects" | "objects";
   token: string;
   reasonCode: string;
+}
+
+/**
+ * Bounded structured evidence from the Visual Context Profile. Free-form VCP
+ * prose is intentionally excluded so visual evidence cannot become an
+ * unrestricted keyword corpus.
+ */
+export interface StructuredVisualEvidence {
+  peopleCharacters?: readonly string[];
+  animals?: readonly string[];
+  objects?: readonly string[];
 }
 
 function normalizeEvidenceCorpus(parts: Array<string | undefined | null>): string {
@@ -70,6 +85,7 @@ export function multiWordSubjectHasIndependentSupport(input: {
   description?: string;
   centralSubject?: string;
   visibleText?: string[];
+  visualContextProfile?: StructuredVisualEvidence;
 }): boolean {
   const token = input.token.trim().toLowerCase();
   if (!token.includes(" ")) {
@@ -80,6 +96,8 @@ export function multiWordSubjectHasIndependentSupport(input: {
     input.description,
     input.centralSubject,
     ...(input.visibleText ?? []),
+    ...(input.visualContextProfile?.peopleCharacters ?? []),
+    ...(input.visualContextProfile?.animals ?? []),
   ]);
   if (tokenHasLexicalSupport(token, independentCorpus)) {
     return true;
@@ -116,12 +134,22 @@ export function findStructuredEvidenceGaps(input: {
   description?: string;
   centralSubject?: string;
   visibleText?: string[];
+  visualContextProfile?: StructuredVisualEvidence;
 }): StructuredEvidenceGap[] {
   const fullCorpus = normalizeEvidenceCorpus([
     input.title,
     input.description,
     input.centralSubject,
     ...(input.visibleText ?? []),
+  ]);
+  const subjectEvidenceCorpus = normalizeEvidenceCorpus([
+    fullCorpus,
+    ...(input.visualContextProfile?.peopleCharacters ?? []),
+    ...(input.visualContextProfile?.animals ?? []),
+  ]);
+  const objectEvidenceCorpus = normalizeEvidenceCorpus([
+    fullCorpus,
+    ...(input.visualContextProfile?.objects ?? []),
   ]);
   const gaps: StructuredEvidenceGap[] = [];
 
@@ -138,6 +166,7 @@ export function findStructuredEvidenceGaps(input: {
           description: input.description,
           centralSubject: input.centralSubject,
           visibleText: input.visibleText,
+          visualContextProfile: input.visualContextProfile,
         })
       ) {
         gaps.push({
@@ -148,7 +177,7 @@ export function findStructuredEvidenceGaps(input: {
       }
       continue;
     }
-    if (!tokenHasLexicalSupport(normalized, fullCorpus)) {
+    if (!tokenHasLexicalSupport(normalized, subjectEvidenceCorpus)) {
       gaps.push({
         dimension: "subjects",
         token,
@@ -158,7 +187,7 @@ export function findStructuredEvidenceGaps(input: {
   }
 
   for (const token of input.objects ?? []) {
-    if (!tokenHasLexicalSupport(token, fullCorpus)) {
+    if (!tokenHasLexicalSupport(token, objectEvidenceCorpus)) {
       gaps.push({
         dimension: "objects",
         token,
@@ -431,8 +460,11 @@ export function detectSubjectSpecificityRisk(input: {
     return null;
   }
 
+  const subjectKeys = new Set(
+    subjects.map((subject) => specificityPhraseKey(subject)),
+  );
   for (const phrase of phrases) {
-    if (!subjects.includes(phrase.toLowerCase())) {
+    if (!subjectKeys.has(specificityPhraseKey(phrase))) {
       const head = phrase.split(/\s+/).pop()!;
       return `subject_specificity_risk:${head}`;
     }

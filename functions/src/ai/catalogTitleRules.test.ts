@@ -8,7 +8,6 @@ import {
   isFilenameLikeTitle,
   isGenericCatalogTitle,
   isPlaceholderCatalogDescription,
-  normalizeAiTags,
   normalizeCatalogTitle,
   resolveCatalogDescription,
   resolveCatalogTitle,
@@ -17,6 +16,7 @@ import {
   filterBackgroundColorsFromPalette,
   stripTrailingTitlePunctuation,
 } from "./catalogTitleRules";
+import { normalizeAiTags } from "./legacyAiTagNormalization";
 
 describe("catalogTitleRules", () => {
   it("uses prompt version v39", () => {

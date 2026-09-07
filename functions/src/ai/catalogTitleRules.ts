@@ -1,4 +1,3 @@
-import { filterExcludedAiTags, mergeTagExclusions } from "./aiTagExclusions";
 import {
   looksLikeOcrDumpTitle,
   sanitizeMeaningfulVisibleTextPhrases,
@@ -50,11 +49,13 @@ export function isStructurallyValidCatalogCopy(value: unknown): boolean {
 
   // Raw JSON object/array as the field value.
   if (
-    /^\s*[{\[][\s\S]*[}\]]\s*$/.test(trimmed) &&
-    /[{}:\[\],"]/.test(trimmed)
+    /^\s*(?:\{|\[)[\s\S]*(?:\}|\])\s*$/.test(trimmed) &&
+    [...trimmed].some((character) => "{}[]:,\"".includes(character))
   ) {
     const letterCount = (trimmed.match(/\p{L}/gu) ?? []).length;
-    const structuralChars = (trimmed.match(/[{}\[\]":,]/g) ?? []).length;
+    const structuralChars = [...trimmed].filter((character) =>
+      "{}[]:,\"".includes(character),
+    ).length;
     if (structuralChars >= 4 && structuralChars >= letterCount) {
       return false;
     }
@@ -65,6 +66,7 @@ export function isStructurallyValidCatalogCopy(value: unknown): boolean {
   }
 
   // Control characters (allow tab/newline/carriage return).
+  // eslint-disable-next-line no-control-regex
   if (/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(trimmed)) {
     return false;
   }
@@ -82,7 +84,7 @@ export function isStructurallyValidCatalogCopy(value: unknown): boolean {
 
   // Symbol soup: far more exotic symbols than letters (normal punctuation is fine).
   const exotic = (
-    trimmed.match(/[^\p{L}\p{N}\s'''ʼ''""\-\u2013\u2014&.,:;!?()\/]/gu) ?? []
+    trimmed.match(/[^\p{L}\p{N}\s'''ʼ''""\-\u2013\u2014&.,:;!?()/]/gu) ?? []
   ).length;
   if (exotic > 12 && exotic > letters * 2) {
     return false;
@@ -537,34 +539,6 @@ const GENERIC_CATALOG_TITLE_TOKENS = new Set([
   "text art",
   "text design",
   "typography design",
-]);
-
-export const GENERIC_CATALOG_TAGS = new Set([
-  "shirt",
-  "tshirt",
-  "tee",
-  "design",
-  "print",
-  "png",
-  "dtf",
-  "transfer",
-  "image",
-  "artwork",
-  "graphic",
-  "background",
-  "canvas",
-  "quote",
-  "saying",
-  "slogan",
-  "typography",
-  "lettering",
-  "text",
-  "words",
-  "word",
-  "label",
-  "font",
-  "type",
-  "caption",
 ]);
 
 export function isGenericCatalogTitle(title: string): boolean {
@@ -1510,20 +1484,6 @@ export function isFilenameLikeTitle(
   return overlapRatio >= 0.75 && uploadTokens.length >= 2;
 }
 
-/**
- * @deprecated Do not use for catalog titles. Kept only for legacy test references; resolvers
- * must never synthesize titles by joining tags.
- */
-export function buildTitleFromTags(tags: string[]): string {
-  const words = tags
-    .flatMap((tag) => tag.split(/\s+/))
-    .map((word) => word.trim())
-    .filter(Boolean)
-    .slice(0, 6);
-
-  return normalizeCatalogTitle(words.join(" "));
-}
-
 type VisibleTextColor = "black" | "white" | "mixed" | "unknown";
 
 function getPrimaryVisibleTextTitle(visibleText: string[] | undefined): string {
@@ -2329,96 +2289,4 @@ export function normalizeVisibleTextColor(
   }
 
   return undefined;
-}
-
-const MAX_AI_TAG_LENGTH = 40;
-
-const TAG_STOPWORDS = new Set([
-  "a",
-  "an",
-  "and",
-  "are",
-  "as",
-  "at",
-  "be",
-  "been",
-  "being",
-  "but",
-  "by",
-  "for",
-  "from",
-  "he",
-  "her",
-  "him",
-  "his",
-  "i",
-  "if",
-  "im",
-  "in",
-  "is",
-  "it",
-  "its",
-  "me",
-  "my",
-  "not",
-  "of",
-  "on",
-  "or",
-  "our",
-  "she",
-  "so",
-  "that",
-  "the",
-  "their",
-  "them",
-  "they",
-  "this",
-  "to",
-  "was",
-  "we",
-  "were",
-  "with",
-  "you",
-  "your",
-]);
-
-export function tokenizeTagCandidate(value: string): string[] {
-  const normalized = value.toLowerCase().replace(/['’]/g, " ").trim();
-
-  return normalized
-    .split(/[^a-z0-9-]+/)
-    .map((token) => token.trim())
-    .filter(
-      (token) =>
-        token.length > 1 &&
-        token.length <= MAX_AI_TAG_LENGTH &&
-        !TAG_STOPWORDS.has(token),
-    );
-}
-
-function pushNormalizedTag(normalizedTags: string[], value: string): void {
-  normalizedTags.push(...tokenizeTagCandidate(value));
-}
-
-export function normalizeAiTags(
-  value: unknown,
-  _visibleText?: string[],
-  maxTags = 20,
-  exclusions: readonly string[] = mergeTagExclusions(),
-): string[] {
-  const normalizedTags: string[] = [];
-
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      if (typeof item === "string") {
-        pushNormalizedTag(normalizedTags, item);
-      }
-    }
-  }
-
-  const deduped = [...new Set(normalizedTags)].filter(
-    (tag) => !GENERIC_CATALOG_TAGS.has(tag),
-  );
-
-  return filterExcludedAiTags(deduped, exclusions).slice(0, maxTags);
 }

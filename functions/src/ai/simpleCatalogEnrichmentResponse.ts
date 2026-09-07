@@ -365,7 +365,6 @@ export function buildSimpleCatalogEnrichmentResult(input: {
 }): AiEnrichmentResult {
   const {
     parsed,
-    enrichmentInput: _enrichmentInput,
     modelId,
     providerId,
     promptTokens,

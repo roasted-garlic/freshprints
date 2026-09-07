@@ -10,7 +10,7 @@ import {
   normalizeExplicitContentAutomationTermsInput,
   resolveExplicitContentAutomationTerms,
 } from "@fresh-prints/shared/utils/explicitContentAutomation";
-import { db } from "../../../config/firebase";
+import { auth, db } from "../../../config/firebase";
 import { callTracedFunction } from "../../../config/tracedCallable";
 import {
   ADDITIONAL_TAG_EXCLUSION_PATTERN,
@@ -20,11 +20,14 @@ import {
   resolveAiEnrichmentPromptTemplate,
   resolveClientVisionModelId,
 } from "../constants/aiEnrichmentSettingsConstants";
+import { ensureCallableAuthReady } from "../utils/ensureCallableAuthReady";
 
 export interface AiEnrichmentSettingsSnapshot {
   visionModelId: AllowedVisionModelId;
   /** Existing automatic Pass 2 model, exposed read-only for the owner Playground. */
   semanticReviewerModelId: AllowedVisionModelId;
+  /** Owner-only manual Pass 2 experiment gate; never enables automatic Processing. */
+  semanticReviewPlaygroundEnabled: boolean;
   promptTemplate: string;
   /** Historical compatibility read/preserve only; no active UI or Pass 1 path consumes this. */
   additionalTagExclusions: string[];
@@ -37,15 +40,17 @@ export interface AiEnrichmentSettingsSnapshot {
 interface UpdateAiEnrichmentSettingsInput {
   visionModelId: AllowedVisionModelId;
   promptTemplate: string;
-  additionalTagExclusions: string[];
   explicitContentAutomationTerms: string[];
 }
 
 interface UpdateAiEnrichmentSettingsResult {
   visionModelId: AllowedVisionModelId;
   promptTemplate: string;
-  additionalTagExclusions: string[];
   explicitContentAutomationTerms?: string[];
+}
+
+interface UpdateSemanticReviewPlaygroundSettingResult {
+  semanticReviewPlaygroundEnabled: boolean;
 }
 
 export function resolveClientAdditionalTagExclusions(raw: unknown): string[] {
@@ -107,6 +112,8 @@ function mapSettingsSnapshot(
         ? data.semanticReviewerModelId
         : undefined,
     ),
+    semanticReviewPlaygroundEnabled:
+      data?.semanticReviewPlaygroundEnabled === true,
     promptTemplate,
     additionalTagExclusions,
     catalogWorkflowMode: resolveCatalogWorkflowMode(data?.catalogWorkflowMode),
@@ -139,12 +146,10 @@ export const aiEnrichmentSettingsService = {
   async updateSettings(input: {
     visionModelId: AllowedVisionModelId;
     promptTemplate: string;
-    additionalTagExclusions: string[];
     explicitContentAutomationTerms: string[];
   }): Promise<{
     visionModelId: AllowedVisionModelId;
     promptTemplate: string;
-    additionalTagExclusions: string[];
     explicitContentAutomationTerms: string[];
   }> {
     const explicitContentAutomationTerms =
@@ -159,23 +164,34 @@ export const aiEnrichmentSettingsService = {
     })({
       visionModelId: resolveClientVisionModelId(input.visionModelId),
       promptTemplate: resolveClientPromptTemplate(input.promptTemplate),
-      additionalTagExclusions: resolveClientAdditionalTagExclusions(
-        input.additionalTagExclusions,
-      ),
       explicitContentAutomationTerms,
     });
 
     return {
       visionModelId: resolveClientVisionModelId(response.visionModelId),
       promptTemplate: resolveClientPromptTemplate(response.promptTemplate),
-      additionalTagExclusions: resolveClientAdditionalTagExclusions(
-        response.additionalTagExclusions,
-      ),
       explicitContentAutomationTerms:
         normalizeExplicitContentAutomationTermsInput(
           response.explicitContentAutomationTerms ??
             explicitContentAutomationTerms,
         ),
     };
+  },
+
+  async updateSemanticReviewPlaygroundSetting(
+    enabled: boolean,
+  ): Promise<boolean> {
+    // Wait for Auth readiness and a current ID token before the callable so
+    // Studio does not race initialization and send an empty Authorization header.
+    await ensureCallableAuthReady(auth);
+
+    const response = await callTracedFunction<
+      { enabled: boolean },
+      UpdateSemanticReviewPlaygroundSettingResult
+    >("updateSemanticReviewPlaygroundSetting", {
+      source: "aiEnrichmentSettingsService.updateSemanticReviewPlaygroundSetting",
+    })({ enabled });
+
+    return response.semanticReviewPlaygroundEnabled === true;
   },
 };

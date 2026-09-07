@@ -6841,3 +6841,22 @@ AppForge starter template ADRs (ADR-001 through ADR-004 in prior template) descr
 | 2026-06-24 | ADR-FP-009: Three-workspace model; AI Review Inbox; no persisted review drafts; confidence informational only |
 | 2026-06-24 | ADR-FP-008: Fresh Prints Studio + Fresh Prints Portal naming |
 | 2026-06-24 | Fresh Prints ADRs added; AppForge starter ADRs removed |
+
+## 2026-09-07 — Pass 1 semantic authority and parked Pass 2
+
+The active catalog Processing path is Pass 1-only. Deterministic objective
+contracts remain the Ready/Needs Review authority. `structured_evidence_gap:*`
+and `subject_specificity_risk:*` remain observable semantic diagnostics, but do
+not independently veto Ready or trigger another provider request.
+
+Semantic Review Pass 2 is preserved as an experimental, owner-only manual
+Playground path behind `settings/aiEnrichment.semanticReviewPlaygroundEnabled`,
+which defaults to false. This field is not used by Processing, reprocessing,
+Autonomous decisions, or candidate generation. The deprecated
+`semanticReviewerEnabled` field is read-only compatibility state and is not
+translated into the new gate.
+
+AI tag generation, Tag Rerank, Suggestion Author, suggested-new-tag approval,
+and `matchedTags` category/approval authority are retired from the active AI
+path. Staff tags, historical fields, taxonomy, and existing discovery behavior
+remain preserved; destructive historical cleanup requires a separate review.

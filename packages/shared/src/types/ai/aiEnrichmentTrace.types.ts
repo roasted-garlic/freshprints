@@ -6,6 +6,7 @@ export const AI_ENRICHMENT_TRACE_SOURCES = [
 ] as const;
 
 export type AiEnrichmentTraceSource = (typeof AI_ENRICHMENT_TRACE_SOURCES)[number];
+export type AiEnrichmentTracePass = "PASS 1" | "PASS 2";
 export type AiEnrichmentTraceStage =
   | "created" | "prompt_ready" | "request_sent" | "provider_response" | "provider_error" | "parsed"
   | "candidate" | "semantic_review" | "persisted" | "complete" | "failed";
@@ -17,10 +18,20 @@ export interface AiEnrichmentTraceStageEvent {
   durationMs?: number;
   data?: Record<string, unknown>;
 }
+
+export interface AiEnrichmentTracePass2Diagnostics {
+  semanticReviewInput?: Record<string, unknown>;
+  renderedPrompt?: Record<string, unknown>;
+  providerRequest?: Record<string, unknown>;
+  patchValidationInput?: Record<string, unknown>;
+}
+
 export interface AiEnrichmentTrace {
   schemaVersion: 1;
   traceId: string;
+  parentTraceId?: string;
   source: AiEnrichmentTraceSource;
+  pass?: AiEnrichmentTracePass;
   designId?: string;
   attemptId?: string;
   testName?: string;
@@ -29,6 +40,7 @@ export interface AiEnrichmentTrace {
   promptVersion?: string;
   normalizerVersion?: string;
   workflowMode?: string;
+  /** @deprecated Historical compatibility metadata; not an active Processing gate. */
   semanticReviewerEnabled?: boolean;
   autonomousEnabled?: boolean;
   captureFullTrace: boolean;
@@ -46,6 +58,7 @@ export interface AiEnrichmentTrace {
   vcp?: Record<string, unknown>;
   decisions?: Record<string, unknown>;
   pass2?: Record<string, unknown>;
+  pass2Diagnostics?: AiEnrichmentTracePass2Diagnostics;
   candidate?: Record<string, unknown>;
   persistence?: Record<string, unknown>;
   costs?: { pass1?: AiEnrichmentTraceCost; pass2?: AiEnrichmentTraceCost; combined?: AiEnrichmentTraceCost };

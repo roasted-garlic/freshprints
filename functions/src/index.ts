@@ -79,6 +79,7 @@ export { getAiEnrichmentTrace } from "./getAiEnrichmentTrace";
 export { listAiEnrichmentTraces } from "./listAiEnrichmentTraces";
 export { clearAiEnrichmentTraces } from "./clearAiEnrichmentTraces";
 export { updateAiEnrichmentSettings } from "./updateAiEnrichmentSettings";
+export { updateSemanticReviewPlaygroundSetting } from "./updateSemanticReviewPlaygroundSetting";
 export {
   refreshSmartProfileVocabSnapshotCallable,
   refreshSmartProfileVocabSnapshotScheduled,

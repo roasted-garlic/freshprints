@@ -54,7 +54,8 @@ export interface AiEnrichmentPlaygroundPass1Context {
   semanticBlockers: string[];
   pass2Eligibility: AiEnrichmentPlaygroundPass2Eligibility;
   automationDecision: CatalogAutomationDecisionResult;
-  semanticReviewerEnabled: boolean;
+  /** Owner-only manual Pass 2 gate; does not control automatic Processing. */
+  semanticReviewPlaygroundEnabled: boolean;
 }
 
 export interface AiEnrichmentPlaygroundResponse {
@@ -67,6 +68,7 @@ export interface AiEnrichmentPlaygroundResponse {
   completionTokens: number | null;
   estimatedCostUsd: number | null;
   traceId?: string;
+  captureFullTrace?: boolean;
   pass1Context: AiEnrichmentPlaygroundPass1Context;
 }
 export interface AiEnrichmentSemanticReviewPlaygroundRequest {
@@ -85,6 +87,9 @@ export interface AiEnrichmentSemanticReviewPlaygroundRequest {
   semanticReviewerModelId?: AllowedVisionModelId;
   /** Historical request name retained for callable compatibility. */
   visionModelId: AllowedVisionModelId;
+  /** Correlates the text-only review trace to the originating Pass 1 trace. */
+  pass1TraceId?: string;
+  captureFullTrace?: boolean;
 }
 export interface AiEnrichmentSemanticReviewPlaygroundResponse {
   result: SemanticReviewResult;
@@ -94,9 +99,24 @@ export interface AiEnrichmentSemanticReviewPlaygroundResponse {
   provider: AiEnrichmentProviderId;
   model: string;
   promptVersion: string;
+  traceId?: string;
+  pass1TraceId?: string;
   originalSmartProfile: DesignSmartProfile;
   effectiveSmartProfile: DesignSmartProfile;
   finalAutomationDecision: CatalogAutomationDecisionResult;
   finalObjectiveBlockers: string[];
+  /** Deterministic eligible semantic blockers remaining after patch recomputation. */
   finalSemanticBlockers: string[];
+  /** Deterministic: initialEligible − finalEligible. */
+  deterministicBlockersResolved: string[];
+  /** Deterministic: finalEligible (authoritative unresolved set). */
+  deterministicBlockersUnresolved: string[];
+  /**
+   * Reviewer-reported blocker arrays from the model payload.
+   * Audit/diagnostics only — never final catalog authority.
+   */
+  reviewerReportedBlockers: {
+    resolved: string[];
+    unresolved: string[];
+  };
 }

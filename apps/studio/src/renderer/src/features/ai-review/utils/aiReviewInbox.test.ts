@@ -99,6 +99,10 @@ describe("aiProcessingOutput", () => {
       designHasAiSuggestions(createDesign({ aiSuggestions: { title: "Name", tags: ["art"] } })),
       true,
     );
+    assert.equal(
+      designHasAiSuggestions(createDesign({ aiSuggestions: { tags: ["legacy-only"] } })),
+      false,
+    );
   });
 
   it("returns not_generated for pending imports awaiting staff AI start", () => {

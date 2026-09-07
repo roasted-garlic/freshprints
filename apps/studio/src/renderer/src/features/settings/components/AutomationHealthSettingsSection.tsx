@@ -22,6 +22,7 @@ interface HealthCounters {
   analyzed?: number;
   wouldAutoApprove?: number;
   actuallyAutoApproved?: number;
+  /** Historical counters retained for old records; no longer active authority. */
   verifierInvoked?: number;
   verifierConfirmed?: number;
   verifierUnresolved?: number;
@@ -66,12 +67,6 @@ export function AutomationHealthSettingsSection({
     ["Analyzed", formatTrackedCount(asCount(health.analyzed), "WS1+")],
     ["Would auto-approve", formatTrackedCount(asCount(health.wouldAutoApprove), "WS1+")],
     ["Actually auto-approved", formatTrackedCount(asCount(health.actuallyAutoApproved), "WS1+")],
-    ["Verifier invoked", formatTrackedCount(asCount(health.verifierInvoked), "WS1+")],
-    [
-      "Verifier confirmed (confirmable uncertainty only)",
-      formatTrackedCount(asCount(health.verifierConfirmed), "WS1+; natural echo-confirm retired"),
-    ],
-    ["Verifier unresolved", formatTrackedCount(asCount(health.verifierUnresolved), "WS1+")],
     ["Routed to Needs Review", formatTrackedCount(asCount(health.routedNeedsReview), "WS1+")],
     ["Hard-blocker routings", formatTrackedCount(asCount(health.hardBlockerRoutings), "WS1+")],
     ["Retries", formatTrackedCount(asCount(health.retries), "WS1+ enqueue/vision retries")],
@@ -92,8 +87,9 @@ export function AutomationHealthSettingsSection({
         <p className="settings-section-description">
           Lightweight counters for Catalog Processing Mode and recent reprocessing job state. Not a
           full analytics dashboard. Missing counters mean not tracked yet — not “zero events.”
-          Evidence gaps / subject-specificity risks are hard Needs Review blockers (not
-          confirmable by re-running the same checks).
+          Evidence gaps and subject-specificity risks are non-blocking semantic diagnostics.
+          Pass 1 deterministic objective checks remain the active authority. Legacy verifier
+          counters are intentionally not shown as current authority metrics.
         </p>
       </header>
 

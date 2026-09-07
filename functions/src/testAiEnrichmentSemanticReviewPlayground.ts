@@ -4,8 +4,9 @@ import type {
   AiEnrichmentSemanticReviewPlaygroundResponse,
 } from "../../packages/shared/src/types/ai/aiEnrichmentPlayground.types";
 import { runAiEnrichmentSemanticReviewPlayground } from "./ai/semanticReviewPlayground";
+import { mapSemanticReviewError } from "./ai/semanticReviewErrorMapping";
 import { loadCallerProfile } from "./lib/caller";
-import { invalidArgument, permissionDenied, unauthenticated } from "./lib/errors";
+import { permissionDenied, unauthenticated } from "./lib/errors";
 import { geminiApiKeySecret, openAiApiKeySecret } from "./lib/secrets";
 
 export const testAiEnrichmentSemanticReviewPlayground = onCall(
@@ -16,13 +17,17 @@ export const testAiEnrichmentSemanticReviewPlayground = onCall(
     if (!caller.isActive || !["owner", "admin"].includes(caller.role)) {
       throw permissionDenied("Only owners and admins can use the AI playground.");
     }
+    const data = request.data as AiEnrichmentSemanticReviewPlaygroundRequest;
+    if (data.captureFullTrace && caller.role !== "owner") {
+      throw permissionDenied("Only owners may capture full AI trace content.");
+    }
     try {
       return await runAiEnrichmentSemanticReviewPlayground(
         { geminiApiKey: geminiApiKeySecret.value(), openAiApiKey: openAiApiKeySecret.value() },
-        request.data as AiEnrichmentSemanticReviewPlaygroundRequest,
+        data,
       );
     } catch (error) {
-      throw invalidArgument(error instanceof Error ? error.message : "Unable to run semantic review playground.");
+      throw mapSemanticReviewError(error);
     }
   },
 );

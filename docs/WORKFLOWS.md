@@ -1654,3 +1654,25 @@ Before implementing a workflow:
 * User feedback included
 
 Every major feature should map to a documented workflow before implementation.
+
+## AI enrichment release boundary (2026-09-07)
+
+`enqueueAiEnrichment`, ready-design reprocess, and background catalog reprocess
+run the shared Pass 1 enrichment request once, then apply the deterministic
+authority decision after staff/import Smart Profile values are merged. Provider
+transport, parser/schema, title, description, category, safety, lifecycle,
+staff/import, and persistence gates remain fail-closed objective authority.
+
+Structured evidence gaps and subject-specificity risk remain visible semantic
+diagnostics but are not standalone blockers and never trigger Pass 2.
+
+Semantic Review Pass 2 is parked. The owner-only
+`semanticReviewPlaygroundEnabled` setting defaults OFF and affects only the
+manual Playground experiment. It cannot enable automatic Processing, alter
+Ready/Needs Review, or persist design changes. The old
+`semanticReviewerEnabled` field is compatibility/read-only state.
+
+AI tag generation, Tag Rerank, Suggestion Author, suggested-new-tag approval,
+and matched-tag category authority are retired from active AI enrichment.
+Existing staff tags, historical tag fields, taxonomy, and discovery remain
+available.

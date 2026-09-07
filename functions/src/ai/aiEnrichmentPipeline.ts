@@ -112,6 +112,37 @@ function removeUndefinedFields<T>(value: T): T {
   ) as T;
 }
 
+function stripRetiredAiSuggestionFields(
+  suggestions: DesignAiSuggestions,
+): DesignAiSuggestions {
+  const activeSuggestions = { ...suggestions };
+  delete activeSuggestions.tags;
+  delete activeSuggestions.suggestedNewTags;
+  delete activeSuggestions.tagRerankStatus;
+  delete activeSuggestions.tagRerankFailureReason;
+  delete activeSuggestions.tagRerankPromptTokens;
+  delete activeSuggestions.tagRerankCompletionTokens;
+  delete activeSuggestions.tagRerankEstimatedCostUsd;
+  delete activeSuggestions.tagRerankPromptVersion;
+  delete activeSuggestions.tagRerankUncoveredConcepts;
+  delete activeSuggestions.suggestionAuthorStatus;
+  delete activeSuggestions.suggestionAuthorFailureReason;
+  delete activeSuggestions.suggestionAuthorPromptTokens;
+  delete activeSuggestions.suggestionAuthorCompletionTokens;
+  delete activeSuggestions.suggestionAuthorEstimatedCostUsd;
+  delete activeSuggestions.suggestionAuthorPromptVersion;
+  return activeSuggestions;
+}
+
+function stripTransientAiAnalysisFields(analysis: DesignAiAnalysis): DesignAiAnalysis {
+  const persistedAnalysis = { ...analysis };
+  delete persistedAnalysis.rawTags;
+  delete persistedAnalysis.rawCategory;
+  delete persistedAnalysis.smartProfileEnrichmentParse;
+  delete persistedAnalysis.explicitContentArtworkEvidence;
+  return persistedAnalysis;
+}
+
 async function markAiSuccess(
   designId: string,
   suggestions: DesignAiSuggestions,
@@ -123,8 +154,12 @@ async function markAiSuccess(
     explicitContentAutomation?: ExplicitContentAutomationWrite;
   },
 ): Promise<void> {
-  const firestoreSuggestions = removeUndefinedFields(suggestions);
-  const firestoreAnalysis = removeUndefinedFields(analysis);
+  const firestoreSuggestions = removeUndefinedFields(
+    stripRetiredAiSuggestionFields(suggestions),
+  );
+  const firestoreAnalysis = removeUndefinedFields(
+    stripTransientAiAnalysisFields(analysis),
+  );
   const mode = options?.mode ?? "queue";
   let publishReady = mode === "queue" && options?.publishReady === true;
 
@@ -193,8 +228,8 @@ async function markAiSuccess(
   }
 
   // Re-evaluate WAA only after staff/import authority has been merged into the effective profile.
-  // Candidate generation may use the AI-only profile for Pass 2, but persisted automation must
-  // never outrank durable human authority.
+  // The active Processing path is Pass 1-only; persisted automation must never outrank durable
+  // human authority or any later experimental/manual review result.
   if (persistedSmartProfile && mode === "queue") {
     const settings = await loadCachedAiEnrichmentSettings({
       functionName: "markAiSuccess",
@@ -450,11 +485,6 @@ async function runAiEnrichmentPipelineInternal(
         analyzed: 1,
         wouldAutoApprove: automationDecision.wouldAutoApprove ? 1 : 0,
         actuallyAutoApproved: automationDecision.shouldPublishReady ? 1 : 0,
-        verifierInvoked: automationDecision.verifier.invoked ? 1 : 0,
-        verifierConfirmed:
-          automationDecision.verifier.outcome === "confirmed" ? 1 : 0,
-        verifierUnresolved:
-          automationDecision.verifier.outcome === "unresolved" ? 1 : 0,
         routedNeedsReview: automationDecision.shouldPublishReady ? 0 : 1,
         categoryGap: automationDecision.reasonCodes.includes(
           "category_gap_suggested",

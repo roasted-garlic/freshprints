@@ -83,6 +83,44 @@
   min-width: 0;
 }
 
+/* Keep the Inspector inside the app viewport so a large trace history does not
+ * push the selected trace below the fold. The other Settings subtabs retain
+ * their normal content-sized layout. */
+.page-content-area:has(.ai-trace-browser) {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.settings-page:has(.ai-trace-browser) {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: visible;
+}
+
+.settings-page:has(.ai-trace-browser) > .settings-page-tab-bar,
+.settings-page:has(.ai-trace-browser) .settings-page-subtab-bar {
+  flex: 0 0 auto;
+  min-height: 2.25rem;
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+.settings-page:has(.ai-trace-browser) > .settings-page-tab-panel {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.settings-page:has(.ai-trace-browser) .settings-page-subtab-panel:has(.ai-trace-browser) {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .settings-section {
   display: grid;
   gap: var(--space-3);
@@ -536,6 +574,37 @@
   min-width: 0;
 }
 
+.settings-playground-trace-toggle {
+  align-content: center;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+}
+
+.settings-playground-trace-toggle .form-toggle {
+  gap: var(--space-2);
+  min-height: 0;
+}
+
+.settings-playground-trace-toggle .form-toggle-label {
+  color: var(--color-text-primary);
+  font-weight: 600;
+  line-height: var(--line-height-tight);
+}
+
+.settings-playground-trace-toggle-help {
+  color: var(--color-text-secondary);
+  display: block;
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  margin-left: calc(2.5rem + var(--space-2));
+  min-width: 0;
+}
+
 .settings-playground-composer {
   background: var(--color-bg-secondary);
   border: 1px solid var(--color-border);
@@ -799,6 +868,7 @@
 }
 
 .settings-playground-context-grid {
+  align-items: start;
   display: grid;
   gap: var(--space-3);
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1717,8 +1787,11 @@
 .ai-trace-browser {
   display: grid;
   gap: var(--space-4);
+  grid-template-rows: auto minmax(0, 1fr);
   max-width: none;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
   width: 100%;
 }
 .ai-trace-browser-header {
@@ -1769,17 +1842,23 @@
   display: none;
 }
 .ai-trace-layout {
+  align-items: stretch;
   display: grid;
   gap: var(--space-4);
   grid-template-columns: minmax(15rem, 22rem) minmax(0, 1fr);
+  min-height: 0;
   min-width: 0;
+  overflow: hidden;
   width: 100%;
 }
 .ai-trace-list {
-  align-self: start;
+  align-self: stretch;
   margin: 0;
-  overflow: hidden;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: var(--space-3);
+  scrollbar-gutter: stable;
 }
 .ai-trace-list-header,
 .ai-trace-inspector-heading {
@@ -1787,6 +1866,12 @@
   display: flex;
   justify-content: space-between;
   gap: var(--space-3);
+}
+.ai-trace-list-header {
+  background: var(--color-bg-primary);
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 .ai-trace-list-header h3 {
   font-size: var(--font-size-md);
@@ -1825,9 +1910,16 @@
   border-color: var(--color-border);
   outline: none;
 }
-.ai-trace-list-item span:not(.ai-trace-list-source) {
+.ai-trace-list-item > span:not(.ai-trace-list-source) {
   color: var(--color-text-secondary);
   font-size: var(--font-size-xs);
+}
+.ai-trace-list-meta {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-width: 0;
 }
 .ai-trace-list-source {
   color: var(--color-accent-primary);
@@ -1835,11 +1927,52 @@
   font-weight: 700;
   letter-spacing: 0.04em;
 }
+.ai-trace-list-pass,
+.ai-trace-pass-badge {
+  align-items: center;
+  background: var(--color-accent-primary-soft);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  color: var(--color-text-primary);
+  display: inline-flex;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  padding: 0.28rem 0.45rem;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.ai-trace-list-item .ai-trace-list-pass {
+  color: var(--color-text-primary);
+  font-size: 0.64rem;
+}
 .ai-trace-detail {
+  align-content: start;
   display: grid;
   gap: var(--space-3);
+  grid-auto-rows: max-content;
+  max-height: 100%;
   min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
   width: 100%;
+}
+.ai-trace-actions {
+  background: var(--color-bg-primary);
+  padding: var(--space-1) 0;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.ai-trace-inspector-badges {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-end;
 }
 .ai-trace-inspector {
   margin: 0;
@@ -1909,6 +2042,12 @@
   white-space: pre-wrap;
   word-break: break-word;
 }
+.ai-trace-json-panel {
+  max-height: min(34rem, 55vh);
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
 .ai-trace-stage-list {
   display: grid;
   gap: var(--space-2);
@@ -1945,6 +2084,18 @@
 }
 .ai-trace-empty {
   padding: var(--space-6);
+}
+.ai-trace-confirm-modal-shell {
+  max-width: min(34rem, calc(100vw - 2 * var(--space-6)));
+  width: 100%;
+}
+.modal-panel.ai-trace-confirm-modal {
+  max-width: none;
+  width: 100%;
+}
+.ai-trace-confirm-modal-copy {
+  color: var(--color-text-secondary);
+  margin: 0;
 }
 .ai-trace-refresh-button > span,
 .ai-trace-copy-button > span {
@@ -2001,8 +2152,36 @@
 }
 
 @media (max-width: 60rem) {
+  .page-content-area:has(.ai-trace-browser) {
+    overflow-y: auto;
+  }
+  .settings-page:has(.ai-trace-browser) {
+    height: auto;
+    min-height: 100%;
+    overflow: visible;
+  }
+  .settings-page:has(.ai-trace-browser) > .settings-page-tab-panel,
+  .settings-page:has(.ai-trace-browser) .settings-page-subtab-panel:has(.ai-trace-browser) {
+    display: grid;
+    flex: initial;
+  }
+  .ai-trace-browser {
+    overflow: visible;
+  }
   .ai-trace-layout {
+    height: auto;
     grid-template-columns: 1fr;
+    overflow: visible;
+  }
+  .ai-trace-list {
+    max-height: 18rem;
+  }
+  .ai-trace-detail {
+    max-height: none;
+    overflow: visible;
+  }
+  .ai-trace-actions {
+    position: static;
   }
   .ai-trace-summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

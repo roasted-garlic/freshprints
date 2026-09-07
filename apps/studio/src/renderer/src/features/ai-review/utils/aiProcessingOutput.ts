@@ -135,7 +135,7 @@ export function designHasAiSuggestions(design: Design): boolean {
   return Boolean(
     suggestions &&
       !suggestions.errorCode &&
-      (suggestions.title || suggestions.description || suggestions.tags?.length),
+      (suggestions.title || suggestions.description),
   );
 }
 
@@ -218,7 +218,7 @@ function getStageProcessingMessage(stage: AiProcessingStage | undefined): string
     case "sending_to_ai":
       return "Sending image to AI…";
     case "receiving_response":
-      return "Analyzing artwork and generating title, description, and tags…";
+      return "Analyzing artwork and generating catalog copy…";
     case "validating_response":
       return "Validating AI suggestions…";
     default:

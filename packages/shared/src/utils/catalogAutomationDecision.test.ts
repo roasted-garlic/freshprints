@@ -47,6 +47,46 @@ describe("catalogAutomationEvidence", () => {
     assert.equal(gaps.length, 0);
   });
 
+  it("uses bounded VCP objects as evidence without changing the text-only default", () => {
+    const withoutVcp = findStructuredEvidenceGaps({
+      subjects: [],
+      objects: ["Cowboy hat"],
+      title: "Woman in a jacket",
+      description: "A person wearing a jacket.",
+      visibleText: [],
+    });
+    assert.deepEqual(withoutVcp.map((gap) => gap.reasonCode), [
+      "structured_evidence_gap:objects:cowboy hat",
+    ]);
+
+    const withVcp = findStructuredEvidenceGaps({
+      subjects: [],
+      objects: ["Cowboy hat"],
+      title: "Woman in a jacket",
+      description: "A person wearing a jacket.",
+      visibleText: [],
+      visualContextProfile: { objects: [" cowboy HAT "] },
+    });
+    assert.deepEqual(withVcp, []);
+  });
+
+  it("VCP object evidence clears the same semantic blocker in the decision", () => {
+    const result = computeCatalogAutomationDecision({
+      smartProfile: baseProfile({ subjects: ["woman"], objects: ["Cowboy hat"] }),
+      title: "Woman in a jacket",
+      categoryId: "people",
+      categoryName: "People",
+      description: "A person wearing a jacket.",
+      visualContextProfile: { objects: ["Cowboy hat"], peopleCharacters: ["woman"] },
+      catalogWorkflowMode: "shadow",
+      catalogAutonomousLiveEnabled: false,
+    });
+    assert.ok(
+      !result.reasonCodes.includes("structured_evidence_gap:objects:cowboy hat"),
+    );
+    assert.ok(!result.hardBlockers.some((code) => code.includes("cowboy hat")));
+  });
+
   it("matches daisy object against daisies description (safe plural)", () => {
     const gaps = findStructuredEvidenceGaps({
       subjects: [],
@@ -70,6 +110,16 @@ describe("catalogAutomationEvidence", () => {
     const risk = detectSubjectSpecificityRisk({
       title: "Highland Cow Portrait",
       subjects: ["highland cow", "cow"],
+    });
+    assert.equal(risk, null);
+  });
+
+  it("clears Frankenstein specificity when the apostrophe form is already present", () => {
+    const risk = detectSubjectSpecificityRisk({
+      title: "Frankenstein Blowing a Dandelion",
+      description:
+        "Frankenstein's monster gently blows a dandelion in a whimsical illustration.",
+      subjects: ["Frankenstein's monster", "monster", "dandelion"],
     });
     assert.equal(risk, null);
   });
@@ -252,7 +302,7 @@ describe("computeCatalogAutomationDecision", () => {
     assert.equal(result.decision, "auto_approved");
   });
 
-  it("Jimothy-like people gap is a hard evidence blocker (not a fake verifier confirm path)", () => {
+  it("Jimothy-like people gap is a visible non-blocking semantic diagnostic", () => {
     const result = computeCatalogAutomationDecision({
       smartProfile: baseProfile({ subjects: ["people", "raccoon"] }),
       title: "Jimothy the Raccoon",
@@ -262,11 +312,12 @@ describe("computeCatalogAutomationDecision", () => {
       catalogWorkflowMode: "autonomous",
       catalogAutonomousLiveEnabled: true,
     });
-    assert.equal(result.shouldPublishReady, false);
-    assert.equal(result.decision, "needs_review");
+    assert.equal(result.shouldPublishReady, true);
+    assert.equal(result.decision, "auto_approved");
+    assert.equal(result.wouldAutoApprove, true);
     assert.equal(result.verifier.invoked, false);
     assert.equal(result.verifier.outcome, "skipped");
-    assert.ok(result.hardBlockers.some((c) => c.includes("structured_evidence_gap:subjects:people")));
+    assert.ok(!result.hardBlockers.some((c) => c.includes("structured_evidence_gap:subjects:people")));
     assert.ok(result.reasonCodes.some((c) => c.includes("people")));
   });
 
@@ -282,10 +333,76 @@ describe("computeCatalogAutomationDecision", () => {
       catalogWorkflowMode: "shadow",
       catalogAutonomousLiveEnabled: false,
     });
-    assert.equal(result.wouldAutoApprove, false);
+    assert.equal(result.wouldAutoApprove, true);
+    assert.equal(result.shouldPublishReady, false);
     assert.ok(
       result.reasonCodes.some((c) => c.includes("structured_evidence_gap:subjects:person")),
     );
+  });
+
+  it("Beatles musicians evidence gap remains observable without vetoing Ready", () => {
+    const result = computeCatalogAutomationDecision({
+      smartProfile: baseProfile({ subjects: ["The Beatles", "musicians"] }),
+      title: "The Beatles",
+      categoryId: "music",
+      categoryName: "Music & Bands",
+      description: "A design celebrating The Beatles.",
+      visibleText: [],
+      catalogWorkflowMode: "autonomous",
+      catalogAutonomousLiveEnabled: true,
+    });
+
+    assert.ok(
+      result.reasonCodes.includes("structured_evidence_gap:subjects:musicians"),
+    );
+    assert.ok(
+      !result.hardBlockers.includes(
+        "structured_evidence_gap:subjects:musicians",
+      ),
+    );
+    assert.equal(result.decision, "auto_approved");
+    assert.equal(result.shouldPublishReady, true);
+  });
+
+  it("subject specificity risk is diagnostic-only when objective fields are valid", () => {
+    const result = computeCatalogAutomationDecision({
+      smartProfile: baseProfile({ subjects: ["cow"] }),
+      title: "Highland Cow",
+      categoryId: "animals",
+      categoryName: "Animals",
+      description: "A highland cow illustration.",
+      catalogWorkflowMode: "autonomous",
+      catalogAutonomousLiveEnabled: true,
+    });
+
+    assert.ok(result.reasonCodes.includes("subject_specificity_risk:cow"));
+    assert.ok(!result.hardBlockers.includes("subject_specificity_risk:cow"));
+    assert.equal(result.shouldPublishReady, true);
+  });
+
+  it("objective blockers still veto Ready when semantic diagnostics are present", () => {
+    const result = computeCatalogAutomationDecision({
+      smartProfile: baseProfile({ subjects: ["The Beatles", "musicians"] }),
+      title: undefined,
+      categoryId: "music",
+      categoryName: "Music & Bands",
+      description: "A design celebrating The Beatles.",
+      catalogWorkflowMode: "autonomous",
+      catalogAutonomousLiveEnabled: true,
+    });
+
+    assert.ok(result.reasonCodes.includes("title:title_missing"));
+    assert.ok(
+      result.reasonCodes.includes("structured_evidence_gap:subjects:musicians"),
+    );
+    assert.ok(result.hardBlockers.includes("title:title_missing"));
+    assert.ok(
+      !result.hardBlockers.includes(
+        "structured_evidence_gap:subjects:musicians",
+      ),
+    );
+    assert.equal(result.decision, "needs_review");
+    assert.equal(result.shouldPublishReady, false);
   });
 
   it("ambiguous creature dog without evidence blocks unattended approval", () => {
@@ -301,7 +418,7 @@ describe("computeCatalogAutomationDecision", () => {
       catalogWorkflowMode: "shadow",
       catalogAutonomousLiveEnabled: false,
     });
-    assert.equal(result.wouldAutoApprove, false);
+    assert.equal(result.wouldAutoApprove, true);
     assert.ok(result.reasonCodes.some((c) => c.includes("structured_evidence_gap:subjects:dog")));
   });
 
@@ -522,7 +639,7 @@ describe("computeCatalogAutomationDecision", () => {
     assert.deepEqual(result.verifierWorthy, []);
   });
 
-  it("B3 injected verifier unresolved → Needs Review", () => {
+  it("B3 injected historical verifier unresolved cannot affect Pass 1 authority", () => {
     const result = computeCatalogAutomationDecision({
       smartProfile: baseProfile(),
       title: "Trash Panda Coffee",
@@ -536,11 +653,12 @@ describe("computeCatalogAutomationDecision", () => {
         reasonCodes: ["verifier_unresolved"],
       },
     });
-    assert.equal(result.shouldPublishReady, false);
-    assert.ok(result.hardBlockers.includes("verifier_unresolved"));
+    assert.equal(result.shouldPublishReady, true);
+    assert.equal(result.verifier.invoked, false);
+    assert.ok(!result.hardBlockers.includes("verifier_unresolved"));
   });
 
-  it("B4/B5 malformed verifier result fails safe to unresolved", () => {
+  it("B4/B5 malformed historical verifier result is ignored by Pass 1 authority", () => {
     const result = computeCatalogAutomationDecision({
       smartProfile: baseProfile(),
       title: "Trash Panda Coffee",
@@ -550,12 +668,12 @@ describe("computeCatalogAutomationDecision", () => {
       catalogAutonomousLiveEnabled: true,
       verifierResult: { invoked: true, outcome: "bogus" as "confirmed", reasonCodes: [] },
     });
-    assert.equal(result.shouldPublishReady, false);
-    assert.equal(result.verifier.outcome, "unresolved");
-    assert.ok(result.hardBlockers.includes("verifier_unresolved"));
+    assert.equal(result.shouldPublishReady, true);
+    assert.equal(result.verifier.outcome, "skipped");
+    assert.ok(!result.hardBlockers.includes("verifier_unresolved"));
   });
 
-  it("B6 confirmable uncertainty can reach verifier_confirmed", () => {
+  it("B6 historical verifier confirmation cannot grant active authority", () => {
     const result = computeCatalogAutomationDecision({
       smartProfile: baseProfile({
         // Force confirmable trigger via injected reason path: use verifierResult with confirmed
@@ -573,10 +691,11 @@ describe("computeCatalogAutomationDecision", () => {
       },
     });
     assert.equal(result.shouldPublishReady, true);
-    assert.equal(result.verifier.outcome, "confirmed");
+    assert.equal(result.verifier.outcome, "skipped");
+    assert.deepEqual(result.verifierWorthy, []);
   });
 
-  it("B7 hard blocker cannot be overridden by verifier confirmed", () => {
+  it("B7 semantic diagnostics stay non-blocking even when historical verifier confirms", () => {
     const result = computeCatalogAutomationDecision({
       smartProfile: baseProfile({ subjects: ["people", "raccoon"] }),
       title: "Jimothy the Raccoon",
@@ -591,8 +710,9 @@ describe("computeCatalogAutomationDecision", () => {
         reasonCodes: ["verifier_confirmed"],
       },
     });
-    assert.equal(result.shouldPublishReady, false);
-    assert.ok(result.hardBlockers.some((c) => c.startsWith("structured_evidence_gap:")));
+    assert.equal(result.shouldPublishReady, true);
+    assert.ok(result.reasonCodes.some((c) => c.startsWith("structured_evidence_gap:")));
+    assert.ok(!result.hardBlockers.some((c) => c.startsWith("structured_evidence_gap:")));
   });
 
   it("B2 confirmable automation_policy_uncertainty invokes verifier", () => {
@@ -605,6 +725,22 @@ describe("computeCatalogAutomationDecision", () => {
     assert.equal(verifier.invoked, true);
     assert.equal(verifier.outcome, "confirmed");
     assert.ok(verifier.reasonCodes.includes("verifier_confirmed"));
+  });
+
+  it("passes bounded VCP evidence into the targeted verifier", () => {
+    const verifier = runTargetedCatalogVerifier({
+      smartProfile: baseProfile({ subjects: [], objects: ["Cowboy hat"] }),
+      title: "Woman in a jacket",
+      description: "A person wearing a jacket.",
+      visualContextProfile: { objects: ["Cowboy hat"] },
+      triggers: ["automation_policy_uncertainty"],
+    });
+    assert.equal(verifier.invoked, true);
+    assert.equal(verifier.outcome, "confirmed");
+    assert.deepEqual(verifier.reasonCodes, [
+      "verifier_confirmed",
+      "automation_policy_uncertainty",
+    ]);
   });
 
   it("echo evidence triggers are not confirmable via verifier", () => {

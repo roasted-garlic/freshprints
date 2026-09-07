@@ -5,8 +5,9 @@ import type {
   AiEnrichmentPlaygroundResponse,
 } from "../../packages/shared/src/types/ai/aiEnrichmentPlayground.types";
 import { runAiEnrichmentPlayground } from "./ai/aiEnrichmentPlayground";
+import { mapPlaygroundError } from "./ai/playgroundErrorMapping";
 import { loadCallerProfile } from "./lib/caller";
-import { invalidArgument, permissionDenied, unauthenticated } from "./lib/errors";
+import { permissionDenied, unauthenticated } from "./lib/errors";
 import { geminiApiKeySecret, openAiApiKeySecret } from "./lib/secrets";
 
 function assertOwnerAdminCaller(caller: Awaited<ReturnType<typeof loadCallerProfile>>): void {
@@ -36,11 +37,7 @@ export const testAiEnrichmentPlayground = onCall(
         data,
       );
     } catch (error) {
-      if (error instanceof Error) {
-        throw invalidArgument(error.message);
-      }
-
-      throw invalidArgument("Unable to run the AI playground request.");
+      throw mapPlaygroundError(error);
     }
   },
 );

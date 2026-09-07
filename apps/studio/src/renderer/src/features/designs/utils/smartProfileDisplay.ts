@@ -47,8 +47,8 @@ export function buildSmartProfileAutomationSummary(
   return {
     automationDecision: formatAutomationDecision(profile.provenance.automationDecision),
     automationReasonCodes: codes.length > 0 ? codes.join(", ") : "—",
-    verifierInvoked: profile.provenance.verifierInvoked ? "Yes" : "No",
-    verifierOutcome: resolveVerifierOutcome(profile),
+    verifierInvoked: profile.provenance.verifierInvoked ? "Yes (historical)" : "No",
+    verifierOutcome: `${resolveVerifierOutcome(profile)} (historical)`,
     hardBlock: hasHardBlock(codes) ? "Yes" : "No",
     categoryGap: profile.categoryGapSuggested ? "Yes" : "No",
     categoryDominantIntentConflict: codes.some((code) =>

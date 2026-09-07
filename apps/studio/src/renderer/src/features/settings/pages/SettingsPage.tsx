@@ -11,6 +11,7 @@ import {
 import { AI_ENRICHMENT_PLAYGROUND_MAX_PROMPT_LENGTH } from "@fresh-prints/shared/constants/aiEnrichment.constants";
 import { Button } from "../../../shared/components/Button";
 import { AutoResizeTextarea } from "../../../shared/components/AutoResizeTextarea";
+import { Toggle } from "../../../shared/components/Toggle";
 import {
   Modal,
   ModalBody,
@@ -121,10 +122,6 @@ export function SettingsPage() {
 function ManageableSettingsPage() {
   const { user } = useAuth();
 
-  if (permissionService.isHelper(user)) {
-    return <HelperSettingsPage />;
-  }
-
   const isOwner = permissionService.isOwner(user);
   const canManageSettings = permissionService.canManageSettings(user);
   const canViewAdministrativeSettings =
@@ -176,8 +173,8 @@ function ManageableSettingsPage() {
       ? activeTab
       : (settingsTabs[0]?.id ?? "studioUpdates");
   const {
-    additionalTagExclusions,
     explicitContentAutomationTerms,
+    semanticReviewPlaygroundEnabled,
     semanticReviewerModelId,
     error,
     isLoading,
@@ -185,14 +182,20 @@ function ManageableSettingsPage() {
     promptTemplate,
     saveError,
     saveSettings,
+    setSemanticReviewPlaygroundEnabled,
+    isUpdatingSemanticReviewPlayground,
+    semanticReviewPlaygroundError,
     visionModelId,
     catalogWorkflowMode,
     catalogAutonomousLiveEnabled,
   } = useAiEnrichmentSettings();
-  const playground = useAiEnrichmentPlayground();
+  const playground = useAiEnrichmentPlayground({
+    canCaptureFullTrace: isOwner,
+  });
   const semanticReviewPlayground = useAiEnrichmentSemanticReviewPlayground({
     pass1Result: playground.result,
     semanticReviewerModelId,
+    semanticReviewPlaygroundEnabled,
   });
   const { resetPlayground } = playground;
   const playgroundImageInputId = useId();
@@ -401,9 +404,6 @@ function ManageableSettingsPage() {
     await saveSettings({
       visionModelId: resolveClientVisionModelId(selectedVisionModelId),
       promptTemplate: selectedPromptTemplate,
-      // Historical tag exclusions are read/preserved for the compatibility callable only; no UI
-      // control or active Pass 1 prompt path consumes them.
-      additionalTagExclusions,
       explicitContentAutomationTerms: parseExplicitContentAutomationTermsInput(
         explicitContentAutomationTermsInput,
       ),
@@ -650,6 +650,54 @@ function ManageableSettingsPage() {
                         ) : null}
                       </div>
                     ) : null}
+
+                    <section
+                      aria-labelledby="semantic-review-experimental-title"
+                      className="settings-prompt-template-block"
+                    >
+                      <div className="settings-prompt-template-summary">
+                        <div className="settings-prompt-template-copy">
+                          <h3
+                            className="settings-subsection-title"
+                            id="semantic-review-experimental-title"
+                          >
+                            Pass 2 experimental testing
+                          </h3>
+                          <p className="settings-field-hint">
+                            Owner-only manual Semantic Review for Playground
+                            experiments. This never enables automatic
+                            Processing, changes Ready authority, or adds cost
+                            when it is OFF.
+                          </p>
+                        </div>
+                        {isOwner ? (
+                          <Toggle
+                            checked={semanticReviewPlaygroundEnabled}
+                            disabled={isUpdatingSemanticReviewPlayground}
+                            id="semanticReviewPlaygroundEnabled"
+                            label={
+                              semanticReviewPlaygroundEnabled ? "ON" : "OFF"
+                            }
+                            name="semanticReviewPlaygroundEnabled"
+                            onChange={(enabled) =>
+                              void setSemanticReviewPlaygroundEnabled(enabled)
+                            }
+                          />
+                        ) : (
+                          <span className="settings-field-hint">
+                            {semanticReviewPlaygroundEnabled ? "ON" : "OFF"}
+                          </span>
+                        )}
+                      </div>
+                      {semanticReviewPlaygroundError ? (
+                        <p
+                          className="auth-message auth-message-error"
+                          role="alert"
+                        >
+                          {semanticReviewPlaygroundError}
+                        </p>
+                      ) : null}
+                    </section>
 
                     {canManageSettings ? (
                       <div className="settings-card-footer">
@@ -915,6 +963,23 @@ function ManageableSettingsPage() {
                       }))}
                       value={playground.visionModelId}
                     />
+
+                    {isOwner ? (
+                      <div className="settings-playground-trace-toggle">
+                        <Toggle
+                          checked={playground.captureFullTrace}
+                          disabled={playground.isRunning}
+                          id="playgroundCaptureFullTrace"
+                          label="Capture full diagnostic trace"
+                          name="captureFullTrace"
+                          onChange={playground.setCaptureFullTrace}
+                        />
+                        <small className="settings-playground-trace-toggle-help">
+                          Includes the effective prompt and raw provider
+                          response for this owner-only run.
+                        </small>
+                      </div>
+                    ) : null}
                   </div>
 
                   <div className="settings-playground-composer">
@@ -1295,12 +1360,12 @@ function ManageableSettingsPage() {
                                     </dd>
                                   </div>
                                   <div>
-                                    <dt>Automatic reviewer</dt>
-                                    <dd>
-                                      {playgroundPass1Context.semanticReviewerEnabled
-                                        ? "Enabled"
-                                        : "OFF — manual Playground action only"}
-                                    </dd>
+                                      <dt>Pass 2 experimental</dt>
+                                      <dd>
+                                      {playgroundPass1Context.semanticReviewPlaygroundEnabled
+                                        ? "ON — manual testing only"
+                                        : "OFF"}
+                                      </dd>
                                   </div>
                                 </dl>
                               </div>
@@ -1399,6 +1464,12 @@ function ManageableSettingsPage() {
                           <p className="settings-field-hint">
                             Semantic Review is unavailable until a current Pass
                             1 context is returned.
+                          </p>
+                        ) : !semanticReviewPlaygroundEnabled ? (
+                          <p className="settings-field-hint">
+                            Pass 2 experimental testing is OFF. Enable it in
+                            AI Enrichment settings to run manual Semantic
+                            Review. Processing remains Pass 1-only.
                           </p>
                         ) : playgroundPass1Context.pass2Eligibility ===
                           "eligible" ? (
@@ -1537,7 +1608,7 @@ function ManageableSettingsPage() {
                                 <div>
                                   <dt>Resolved blockers</dt>
                                   <dd>
-                                    {semanticReviewResult.result.blockersResolved.join(
+                                    {semanticReviewResult.deterministicBlockersResolved.join(
                                       ", ",
                                     ) || "None"}
                                   </dd>
@@ -1545,7 +1616,7 @@ function ManageableSettingsPage() {
                                 <div>
                                   <dt>Unresolved blockers</dt>
                                   <dd>
-                                    {semanticReviewResult.result.blockersUnresolved.join(
+                                    {semanticReviewResult.deterministicBlockersUnresolved.join(
                                       ", ",
                                     ) || "None"}
                                   </dd>
@@ -1566,9 +1637,22 @@ function ManageableSettingsPage() {
                                     ) || "None"}
                                   </dd>
                                 </div>
+                                <div>
+                                  <dt>Reviewer-reported blockers (audit)</dt>
+                                  <dd>
+                                    resolved:{" "}
+                                    {semanticReviewResult.reviewerReportedBlockers.resolved.join(
+                                      ", ",
+                                    ) || "None"}
+                                    ; unresolved:{" "}
+                                    {semanticReviewResult.reviewerReportedBlockers.unresolved.join(
+                                      ", ",
+                                    ) || "None"}
+                                  </dd>
+                                </div>
                               </dl>
                             </div>
-                            <div className="settings-playground-detail-card">
+                            <div className="settings-playground-detail-card settings-playground-profile-card">
                               <h4>Validated patches</h4>
                               <pre>
                                 {formatPlaygroundJson(

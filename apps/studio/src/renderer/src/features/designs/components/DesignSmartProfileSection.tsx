@@ -323,11 +323,11 @@ export function DesignSmartProfileAuditSection({ design }: { design: Design }) {
           <dd>{automation.automationReasonCodes}</dd>
         </div>
         <div className="design-detail-field">
-          <dt>Verifier invoked</dt>
+          <dt>Legacy verifier invoked (historical)</dt>
           <dd>{automation.verifierInvoked}</dd>
         </div>
         <div className="design-detail-field">
-          <dt>Verifier outcome</dt>
+          <dt>Legacy verifier outcome (historical)</dt>
           <dd>{automation.verifierOutcome}</dd>
         </div>
         <div className="design-detail-field">

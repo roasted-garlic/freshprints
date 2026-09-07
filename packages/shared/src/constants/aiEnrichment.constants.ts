@@ -61,10 +61,9 @@ export function visionModelRequiresReasoningEffort(modelId: string): boolean {
 export const AI_ENRICHMENT_STALE_STAGE_MS = 10 * 60 * 1000;
 
 /**
- * Controls when Suggested New Tags may be emitted after approved-tag matching.
- * Independent of suggestionAuthorMode (which only upgrades preferredWhen/aliases quality)
- * and tagRerankMode. "balanced" is the shipped default — slightly looser than the original
- * hardcoded last-resort gate, with a hard cap of 3 suggestions per design.
+ * Historical compatibility policy for Suggested New Tags after approved-tag
+ * matching. It is not read by the active Pass 1 request; Suggestion Author and
+ * tag rerank are retired.
  */
 export const SUGGESTED_NEW_TAGS_POLICIES = [
   "off",
@@ -105,6 +104,28 @@ export type AiEnrichmentPlaygroundImageContentType =
 
 export const AI_ENRICHMENT_PLAYGROUND_MAX_IMAGE_BYTES = 50 * 1024 * 1024;
 export const AI_ENRICHMENT_PLAYGROUND_MAX_PROMPT_LENGTH = 8000;
+
+/**
+ * Gen2 Cloud Functions uncompressed HTTP request body limit.
+ * Playground encodes images as base64 inside callable JSON, so raw file size is not the transport ceiling.
+ */
+export const AI_ENRICHMENT_PLAYGROUND_GEN2_HTTP_REQUEST_MAX_BYTES =
+  32 * 1024 * 1024;
+/** Headroom reserved for Firebase callable JSON wrapper, prompt, and metadata beyond imageBase64. */
+export const AI_ENRICHMENT_PLAYGROUND_CALLABLE_JSON_HEADROOM_BYTES =
+  2 * 1024 * 1024;
+/** Safe max length of the base64 image string in the callable request. */
+export const AI_ENRICHMENT_PLAYGROUND_SAFE_ENCODED_IMAGE_BYTES =
+  AI_ENRICHMENT_PLAYGROUND_GEN2_HTTP_REQUEST_MAX_BYTES -
+  AI_ENRICHMENT_PLAYGROUND_CALLABLE_JSON_HEADROOM_BYTES;
+
+/**
+ * Matches `functions/src/ai/prepareAiAnalysisImage.ts` analysis canvas contract.
+ * Used by Studio Playground client-side AI-analysis derivatives.
+ */
+export const AI_ANALYSIS_CANVAS_SIZE_PX = 1024;
+export const AI_ANALYSIS_PADDING_PX = 64;
+export const AI_ANALYSIS_WEBP_QUALITY = 0.82;
 
 export const AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER =
   "{{approved_categories}}";

@@ -7,6 +7,7 @@ import type {
 import {
   detectSubjectSpecificityRisk,
   findStructuredEvidenceGaps,
+  type StructuredVisualEvidence,
 } from "./catalogAutomationEvidence";
 import { detectCategoryDominantIntentConflict } from "./catalogCategoryDominantIntent";
 import {
@@ -22,9 +23,11 @@ export interface CatalogAutomationDecisionInput {
   categoryName?: string;
   description?: string;
   visibleText?: string[];
+  /** Optional bounded structured VCP evidence. Omitted callers retain legacy behavior. */
+  visualContextProfile?: StructuredVisualEvidence;
   catalogWorkflowMode: CatalogWorkflowMode;
   catalogAutonomousLiveEnabled: boolean;
-  /** When provided, skips internal verifier trigger evaluation. */
+  /** Historical compatibility input. Ignored by active Pass 1 authority. */
   verifierResult?: CatalogVerifierResult;
 }
 
@@ -65,9 +68,7 @@ function isHardBlockerCode(code: string): boolean {
   return (
     isHardValidationCode(code) ||
     HARD_BLOCKER_CODES.has(code) ||
-    code === "category_dominant_intent_conflict" ||
-    code.startsWith("structured_evidence_gap:") ||
-    code.startsWith("subject_specificity_risk:")
+    code === "category_dominant_intent_conflict"
   );
 }
 
@@ -75,57 +76,19 @@ function isConfirmableVerifierTrigger(code: string): boolean {
   return code === "automation_policy_uncertainty";
 }
 
-function normalizeInjectedVerifierResult(
-  result: CatalogVerifierResult,
-): CatalogVerifierResult {
-  if (!result || typeof result !== "object") {
-    return {
-      invoked: true,
-      outcome: "unresolved",
-      reasonCodes: ["verifier_unresolved", "verifier_malformed"],
-    };
-  }
-  if (typeof result.invoked !== "boolean") {
-    return {
-      invoked: true,
-      outcome: "unresolved",
-      reasonCodes: ["verifier_unresolved", "verifier_malformed"],
-    };
-  }
-  if (
-    result.outcome !== "confirmed" &&
-    result.outcome !== "unresolved" &&
-    result.outcome !== "skipped"
-  ) {
-    return {
-      invoked: true,
-      outcome: "unresolved",
-      reasonCodes: ["verifier_unresolved", "verifier_malformed"],
-    };
-  }
-  if (!Array.isArray(result.reasonCodes)) {
-    return {
-      invoked: true,
-      outcome: "unresolved",
-      reasonCodes: ["verifier_unresolved", "verifier_malformed"],
-    };
-  }
-  return result;
-}
-
 /**
- * Targeted verifier for *confirmable* uncertainty only.
+ * Legacy diagnostic helper for explicitly requested verifier experiments.
  *
- * Structured evidence gaps and subject-specificity risks are hard blockers in the
- * decision function — re-running the same deterministic checks cannot "confirm" them.
- * Natural `verifier_confirmed` is reachable only when a confirmable trigger
- * (e.g. `automation_policy_uncertainty`) remains and re-check finds no hard evidence gaps.
+ * The active Pass 1 decision path does not call this helper. Its result may be
+ * retained in historical diagnostics, but it is never authority for Ready or
+ * Needs Review in the current release.
  */
 export function runTargetedCatalogVerifier(input: {
   smartProfile: DesignSmartProfile;
   title?: string;
   description?: string;
   visibleText?: string[];
+  visualContextProfile?: StructuredVisualEvidence;
   triggers: string[];
 }): CatalogVerifierResult {
   const confirmableTriggers = [...new Set(input.triggers)].filter(
@@ -141,6 +104,7 @@ export function runTargetedCatalogVerifier(input: {
     title: input.title,
     description: input.description,
     visibleText: input.visibleText,
+    visualContextProfile: input.visualContextProfile,
   });
   const specificity = detectSubjectSpecificityRisk({
     title: input.title,
@@ -171,19 +135,11 @@ export function runTargetedCatalogVerifier(input: {
   };
 }
 
-function collectVerifierTriggers(reasonCodes: string[]): string[] {
-  const triggers: string[] = [];
-  for (const code of reasonCodes) {
-    if (isConfirmableVerifierTrigger(code)) {
-      triggers.push(code);
-    }
-  }
-  return [...new Set(triggers)];
-}
-
 /**
  * Evidence-based catalog automation decision.
- * Does not use a single model self-score as authority.
+ * Pass 1-only authority: deterministic objective validation is authoritative;
+ * semantic diagnostics and historical verifier/reviewer output are observable
+ * but cannot independently change the active decision.
  */
 export function computeCatalogAutomationDecision(
   input: CatalogAutomationDecisionInput,
@@ -241,6 +197,7 @@ export function computeCatalogAutomationDecision(
     title: input.title,
     description: input.description,
     visibleText: input.visibleText,
+    visualContextProfile: input.visualContextProfile,
   });
   for (const gap of evidenceGaps) {
     reasonCodes.push(gap.reasonCode);
@@ -260,30 +217,16 @@ export function computeCatalogAutomationDecision(
     ...new Set(reasonCodes.filter(isHardBlockerCode)),
   ];
 
-  const verifierWorthy = collectVerifierTriggers(reasonCodes);
+  // Historical verifierResult input is intentionally ignored by active Pass 1
+  // authority. Preserve the result shape for trace/read compatibility while
+  // making its non-authoritative status explicit.
+  const verifier: CatalogVerifierResult = {
+    invoked: false,
+    outcome: "skipped",
+    reasonCodes: [],
+  };
+  const verifierWorthy: string[] = [];
 
-  let verifier: CatalogVerifierResult;
-  if (input.verifierResult !== undefined) {
-    verifier = normalizeInjectedVerifierResult(input.verifierResult);
-  } else {
-    verifier = runTargetedCatalogVerifier({
-      smartProfile: input.smartProfile,
-      title: input.title,
-      description: input.description,
-      visibleText: input.visibleText,
-      triggers: verifierWorthy,
-    });
-  }
-
-  if (verifier.invoked) {
-    reasonCodes.push(...verifier.reasonCodes);
-  }
-
-  if (verifier.outcome === "unresolved") {
-    hardBlockers.push("verifier_unresolved");
-  }
-
-  // Verifier must never clear existing hard blockers (confirmed only clears soft uncertainty).
   const uniqueReasons = [...new Set(reasonCodes)];
   const uniqueHard = [...new Set(hardBlockers)];
 

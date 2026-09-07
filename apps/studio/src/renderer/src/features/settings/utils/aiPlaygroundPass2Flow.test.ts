@@ -49,7 +49,7 @@ const context = {
   pass2Eligibility: "eligible" as const,
   automationDecision:
     {} as AiEnrichmentPlaygroundPass1Context["automationDecision"],
-  semanticReviewerEnabled: false,
+  semanticReviewPlaygroundEnabled: false,
 } satisfies AiEnrichmentPlaygroundPass1Context;
 
 describe("AI Playground Pass 2 flow", () => {
@@ -57,12 +57,16 @@ describe("AI Playground Pass 2 flow", () => {
     const request = mapPass1ContextToSemanticReviewRequest({
       context,
       semanticReviewerModelId: "gemini-2.5-flash-lite",
+      pass1TraceId: "pass1-trace",
+      captureFullTrace: true,
     });
 
     assert.equal(request.title, "Cat Graphic");
     assert.equal(request.semanticReviewerModelId, "gemini-2.5-flash-lite");
     assert.equal("imageBase64" in request, false);
     assert.equal(JSON.stringify(request).includes("image"), false);
+    assert.equal(request.pass1TraceId, "pass1-trace");
+    assert.equal(request.captureFullTrace, true);
     assert.notEqual(
       request.originalSmartProfile,
       request.effectiveSmartProfile,

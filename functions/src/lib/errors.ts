@@ -16,8 +16,8 @@ export function alreadyExists(message = "A user with this email already exists."
   return new HttpsError("already-exists", message);
 }
 
-export function internal(message = "An internal error occurred."): HttpsError {
-  return new HttpsError("internal", message);
+export function internal(message = "An internal error occurred.", details?: unknown): HttpsError {
+  return new HttpsError("internal", message, details);
 }
 
 export function failedPrecondition(message: string, details?: unknown): HttpsError {
@@ -34,4 +34,8 @@ export function notFound(message: string): HttpsError {
 
 export function unavailable(message: string): HttpsError {
   return new HttpsError("unavailable", message);
+}
+
+export function deadlineExceeded(message: string, details?: unknown): HttpsError {
+  return new HttpsError("deadline-exceeded", message, details);
 }

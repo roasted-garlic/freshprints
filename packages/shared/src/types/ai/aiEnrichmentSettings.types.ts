@@ -10,6 +10,8 @@ export interface AiEnrichmentSettingsDocument {
   promptTemplate: string;
   tagRerankPromptTemplate?: string;
   additionalTagExclusions: string[];
+  /** Owner-only manual Pass 2 experiment gate; absent means OFF. */
+  semanticReviewPlaygroundEnabled?: boolean;
   tagRerankMode?: string;
   suggestionAuthorMode?: string;
   suggestedNewTagsPolicy?: string;

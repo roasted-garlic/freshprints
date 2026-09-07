@@ -18,10 +18,17 @@ import {
 
 export const AI_ENRICHMENT_SETTINGS_DOC_ID = "aiEnrichment";
 
+export function resolveSemanticReviewPlaygroundEnabled(raw: unknown): boolean {
+  return raw === true;
+}
+
 export interface AiEnrichmentSettingsLoaded {
   visionModelId: AllowedVisionModelId;
   promptTemplate: string;
   additionalTagExclusions: string[];
+  /** Owner-only manual Pass 2 experiment gate. Never controls Processing. */
+  semanticReviewPlaygroundEnabled: boolean;
+  /** @deprecated Retained for compatibility reads; no active Processing authority. */
   semanticReviewerEnabled: boolean;
   semanticReviewerModelId: AllowedVisionModelId;
   catalogWorkflowMode: CatalogWorkflowMode;
@@ -45,6 +52,7 @@ function defaultSettingsPayload(
     visionModelId: DEFAULT_VISION_MODEL_ID,
     promptTemplate: DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
     additionalTagExclusions: [],
+    semanticReviewPlaygroundEnabled: false,
     semanticReviewerEnabled: false,
     semanticReviewerModelId: "gemini-2.5-flash-lite",
     catalogWorkflowMode: resolveCatalogWorkflowMode(undefined),
@@ -88,6 +96,9 @@ export async function loadAiEnrichmentSettings(): Promise<AiEnrichmentSettingsLo
       visionModelId,
       promptTemplate,
       additionalTagExclusions,
+      semanticReviewPlaygroundEnabled: resolveSemanticReviewPlaygroundEnabled(
+        data?.semanticReviewPlaygroundEnabled,
+      ),
       semanticReviewerEnabled: data?.semanticReviewerEnabled === true,
       semanticReviewerModelId: resolveVisionModelId(
         typeof data?.semanticReviewerModelId === "string"

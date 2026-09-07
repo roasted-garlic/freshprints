@@ -2683,3 +2683,17 @@ Before creating a new document type:
 * Keeps files in Storage
 
 All applications must follow this document exactly.
+
+## AI enrichment release fields (2026-09-07)
+
+`settings/aiEnrichment.semanticReviewPlaygroundEnabled` is an optional boolean
+with a fail-closed default of `false`. It is written only by the owner-only
+server callable and controls manual Playground experimentation; it is not a
+Processing or approval flag. `semanticReviewerEnabled` remains a deprecated
+compatibility/read field and is never copied into the new field.
+
+`designs.aiSuggestions` and `designs.aiAnalysis` may contain historical
+tag-related fields for compatibility. New Pass 1 writes do not produce or
+persist AI tags, suggested-new-tags, Tag Rerank/Suggestion Author metadata, or
+transient raw tag/category analysis. Staff `designs.tags` and taxonomy data
+remain part of the existing product model and are not deleted by this release.

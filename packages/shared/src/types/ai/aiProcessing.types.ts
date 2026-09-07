@@ -22,6 +22,7 @@ export interface AiSuggestionFieldConfidence {
   title?: number;
   description?: number;
   categoryId?: number;
+  /** @deprecated Historical AI-tag confidence; active Pass 1 does not produce it. */
   tags?: number;
 }
 
@@ -30,7 +31,9 @@ export interface DesignAiSuggestions {
   description?: string;
   categoryId?: string;
   categoryName?: string;
+  /** @deprecated Historical AI output; active Pass 1 never writes catalog tags. */
   tags?: string[];
+  /** @deprecated Historical AI output; active Pass 1 never writes suggested tags. */
   suggestedNewTags?: SuggestedNewTag[];
   confidence?: number;
   fieldConfidence?: AiSuggestionFieldConfidence;
@@ -43,37 +46,31 @@ export interface DesignAiSuggestions {
   promptTokens?: number | null;
   completionTokens?: number | null;
   estimatedCostUsd?: number | null;
-  /**
-   * Status of the optional text-only tag reranker second call. "skipped" means tagRerankMode was
-   * off or the auto heuristic did not trigger for this design (no second call was made). Never
-   * set at all on designs processed before this feature shipped.
-   */
+  /** @deprecated Retired AI tag-rerank metadata retained only for historical reads. */
   tagRerankStatus?: "skipped" | "succeeded" | "failed";
-  /** Set only when tagRerankStatus is "failed" — why the second call did not produce usable output. */
+  /** @deprecated Retired AI tag-rerank metadata retained only for historical reads. */
   tagRerankFailureReason?: string;
+  /** @deprecated Retired AI tag-rerank metadata retained only for historical reads. */
   tagRerankPromptTokens?: number | null;
+  /** @deprecated Retired AI tag-rerank metadata retained only for historical reads. */
   tagRerankCompletionTokens?: number | null;
+  /** @deprecated Retired AI tag-rerank metadata retained only for historical reads. */
   tagRerankEstimatedCostUsd?: number | null;
+  /** @deprecated Retired AI tag-rerank metadata retained only for historical reads. */
   tagRerankPromptVersion?: string;
-  /**
-   * Concepts the reranker flagged as important but not covered by approvedTagCandidates. Feeds
-   * suggestedNewTags generation only — never a source of persisted final tags directly.
-   */
+  /** @deprecated Retired AI tag-rerank metadata retained only for historical reads. */
   tagRerankUncoveredConcepts?: string[];
-  /**
-   * Status of the optional AI-authored suggested-tag quality call. "skipped" means the
-   * last-resort gate did not fire for this design (no suggestions were needed at all) or
-   * suggestionAuthorMode was off (server-templated suggestions were used instead, if any).
-   * Distinct from tagRerankStatus — these are two independent optional calls that may or may not
-   * share a single physical request (see plan §2.4). Never set on designs processed before this
-   * feature shipped.
-   */
+  /** @deprecated Retired Suggestion Author metadata retained only for historical reads. */
   suggestionAuthorStatus?: "skipped" | "succeeded" | "failed";
-  /** Set only when suggestionAuthorStatus is "failed" — why the call did not produce usable output. */
+  /** @deprecated Retired Suggestion Author metadata retained only for historical reads. */
   suggestionAuthorFailureReason?: string;
+  /** @deprecated Retired Suggestion Author metadata retained only for historical reads. */
   suggestionAuthorPromptTokens?: number | null;
+  /** @deprecated Retired Suggestion Author metadata retained only for historical reads. */
   suggestionAuthorCompletionTokens?: number | null;
+  /** @deprecated Retired Suggestion Author metadata retained only for historical reads. */
   suggestionAuthorEstimatedCostUsd?: number | null;
+  /** @deprecated Retired Suggestion Author metadata retained only for historical reads. */
   suggestionAuthorPromptVersion?: string;
   semanticReviewStatus?: SemanticReviewStatus;
   semanticReviewFailureReason?: string;
@@ -111,17 +108,12 @@ export interface DesignAiAnalysis {
   estimatedPrintComplexity?: string;
   trademarkWarning?: string;
   overallConfidence?: number;
-  /**
-   * Raw model tag strings before single-word tokenization. Preserves multi-word tags/aliases
-   * (e.g. "rock and roll") so the catalog tag resolver can match them against approved names
-   * and aliases. Transient pipeline signal — not persisted with the design.
-   */
+  /** @deprecated Historical transient AI-tag input; active Pass 1 does not consume or persist it. */
   rawTags?: string[];
   /**
    * Raw model category candidate (freeform, not guaranteed to match an approved category name).
-   * Used only as a scoring signal by the server-side theme/category resolver, alongside
-   * title/description/visibleText/matchedTags. Transient pipeline signal — never persisted as the
-   * final category and always deleted before the design write, same as rawTags.
+   * Historical transient category candidate. Active Pass 1 uses exact category
+   * trust and does not use AI tags or matchedTags as authority.
    */
   rawCategory?: string;
   /** Shadow halftone evidence only — never drives staff halftone decision (ADR-FP-080). */

@@ -508,4 +508,26 @@ See `docs/standards/SECURITY.md`. Firebase rules and Electron IPC security are d
 | 2026-06-29 | Added saved reasoning effort, Settings AI playground callable, and documented one-off AI Review rerun override/menu behavior |
 | 2026-06-25 | Configurable vision model via `settings/aiEnrichment` + `updateAiEnrichmentSettings` callable |
 | 2026-06-25 | Document OpenAI vision model `gpt-5.4-nano` (`OPENAI_VISION_MODEL_ID`) |
+
+## AI enrichment authority boundary (2026-09-07)
+
+Normal `enqueueAiEnrichment`, ready-design reprocess, background catalog
+reprocess, and future Autonomous processing use the shared Pass 1 candidate
+core and exactly one active provider pass. Candidate generation does not read
+or call Semantic Review. The deprecated `semanticReviewerEnabled` setting is
+compatibility/read state only.
+
+Manual Semantic Review remains available only through the owner-controlled
+`semanticReviewPlaygroundEnabled` setting under `settings/aiEnrichment`.
+Missing, malformed, or unreadable values resolve to false. The narrow server
+callable is owner-only; when false, the manual callable rejects before provider
+construction/dispatch, retry, cost, or design mutation. When true, its result
+is a non-persisting experimental preview and cannot change Processing
+authority or Ready state.
+
+The active Pass 1 persistence boundary strips historical AI tag and transient
+tag-analysis fields. Staff-owned `design.tags`, historical AI fields, taxonomy
+documents, and discovery consumers remain compatible/readable. Tag resolver,
+Tag Rerank, Suggestion Author, and matched-tag category authority are not
+reachable from active enrichment.
 | 2026-06-24 | Initial Fresh Prints backend overview; links to FIREBASE.md |

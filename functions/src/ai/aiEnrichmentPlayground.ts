@@ -211,6 +211,7 @@ export function buildPass1Context(input: {
     categoryName,
     description: input.parsed.description,
     visibleText: input.parsed.visibleText,
+    visualContextProfile: input.parsed.visualContextProfile,
     catalogWorkflowMode: input.settings.catalogWorkflowMode,
     catalogAutonomousLiveEnabled: input.settings.catalogAutonomousLiveEnabled,
   });
@@ -246,7 +247,8 @@ export function buildPass1Context(input: {
     semanticBlockers,
     pass2Eligibility,
     automationDecision,
-    semanticReviewerEnabled: input.settings.semanticReviewerEnabled,
+    semanticReviewPlaygroundEnabled:
+      input.settings.semanticReviewPlaygroundEnabled,
   };
 }
 
@@ -455,6 +457,7 @@ export async function runAiEnrichmentPlayground(
     schemaVersion: 1 as const,
     traceId,
     source: "PLAYGROUND" as const,
+    pass: "PASS 1" as const,
     captureFullTrace: request.captureFullTrace === true,
     startedAt: traceStartedAt,
     provider: providerTarget.providerId,
@@ -616,6 +619,7 @@ export async function runAiEnrichmentPlayground(
       completionTokens: usage.completionTokens,
       estimatedCostUsd,
       traceId,
+      captureFullTrace: request.captureFullTrace === true,
       pass1Context: buildPass1Context({
         parsed,
         providerId: providerTarget.providerId,

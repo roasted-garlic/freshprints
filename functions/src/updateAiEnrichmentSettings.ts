@@ -18,7 +18,6 @@ import {
   type AllowedVisionModelId,
 } from "./ai/aiEnrichmentConfig";
 import { AI_ENRICHMENT_SETTINGS_DOC_ID } from "./ai/loadAiEnrichmentSettings";
-import { resolveAdditionalTagExclusions } from "./ai/aiTagExclusions";
 import { clearAiEnrichmentRuntimeCache } from "./ai/aiEnrichmentRuntimeCache";
 import { logPipelineEvent } from "./lib/pipelineLog";
 import { normalizeExplicitContentAutomationTermsInput } from "../../packages/shared/src/utils/explicitContentAutomation";
@@ -26,8 +25,6 @@ import { normalizeExplicitContentAutomationTermsInput } from "../../packages/sha
 interface UpdateAiEnrichmentSettingsRequest {
   visionModelId: string;
   promptTemplate: string;
-  additionalTagExclusions?: string[];
-  semanticReviewerEnabled?: boolean;
   semanticReviewerModelId?: string;
   /** When provided (including []), persist normalized list. When omitted, leave Firestore field unchanged. */
   explicitContentAutomationTerms?: string[];
@@ -36,8 +33,6 @@ interface UpdateAiEnrichmentSettingsRequest {
 interface UpdateAiEnrichmentSettingsResponse {
   visionModelId: AllowedVisionModelId;
   promptTemplate: string;
-  additionalTagExclusions: string[];
-  semanticReviewerEnabled: boolean;
   semanticReviewerModelId: AllowedVisionModelId;
   explicitContentAutomationTerms?: string[];
 }
@@ -85,31 +80,6 @@ function validateRequest(data: unknown): UpdateAiEnrichmentSettingsRequest {
     );
   }
 
-  const additionalTagExclusions =
-    "additionalTagExclusions" in data
-      ? data.additionalTagExclusions
-      : undefined;
-
-  if (
-    additionalTagExclusions !== undefined &&
-    additionalTagExclusions !== null &&
-    !Array.isArray(additionalTagExclusions)
-  ) {
-    throw invalidArgument(
-      "Additional tag exclusions must be an array of strings.",
-    );
-  }
-
-  const semanticReviewerEnabled =
-    "semanticReviewerEnabled" in data
-      ? data.semanticReviewerEnabled
-      : undefined;
-  if (
-    semanticReviewerEnabled !== undefined &&
-    typeof semanticReviewerEnabled !== "boolean"
-  ) {
-    throw invalidArgument("semanticReviewerEnabled must be a boolean.");
-  }
   const semanticReviewerModelId =
     "semanticReviewerModelId" in data &&
     typeof data.semanticReviewerModelId === "string"
@@ -134,10 +104,6 @@ function validateRequest(data: unknown): UpdateAiEnrichmentSettingsRequest {
   return {
     visionModelId,
     promptTemplate,
-    additionalTagExclusions: Array.isArray(additionalTagExclusions)
-      ? additionalTagExclusions
-      : undefined,
-    semanticReviewerEnabled,
     semanticReviewerModelId,
     explicitContentAutomationTerms: Array.isArray(
       explicitContentAutomationTerms,
@@ -159,8 +125,6 @@ export const updateAiEnrichmentSettings = onCall(
     const {
       visionModelId: requestedModelId,
       promptTemplate,
-      additionalTagExclusions,
-      semanticReviewerEnabled: requestedSemanticReviewerEnabled,
       semanticReviewerModelId: requestedSemanticReviewerModelId,
       explicitContentAutomationTerms: requestedExplicitTerms,
     } = validateRequest(request.data);
@@ -170,9 +134,6 @@ export const updateAiEnrichmentSettings = onCall(
       throw invalidArgument("The selected vision model is not allowed.");
     }
 
-    const resolvedAdditionalTagExclusions = resolveAdditionalTagExclusions(
-      additionalTagExclusions,
-    );
     const resolvedSemanticReviewerModelId = resolveVisionModelId(
       requestedSemanticReviewerModelId ?? "gemini-2.5-flash-lite",
     );
@@ -196,8 +157,6 @@ export const updateAiEnrichmentSettings = onCall(
         {
           visionModelId: resolvedModelId,
           promptTemplate,
-          additionalTagExclusions: resolvedAdditionalTagExclusions,
-          semanticReviewerEnabled: requestedSemanticReviewerEnabled === true,
           semanticReviewerModelId: resolvedSemanticReviewerModelId,
           ...(resolvedExplicitTerms !== undefined
             ? { explicitContentAutomationTerms: resolvedExplicitTerms }
@@ -213,8 +172,6 @@ export const updateAiEnrichmentSettings = onCall(
     logPipelineEvent("settings.ai_enrichment.updated", {
       visionModelId: resolvedModelId,
       promptTemplate,
-      additionalTagExclusionsCount: resolvedAdditionalTagExclusions.length,
-      semanticReviewerEnabled: requestedSemanticReviewerEnabled === true,
       semanticReviewerModelId: resolvedSemanticReviewerModelId,
       explicitContentAutomationTermsCount:
         resolvedExplicitTerms?.length ?? null,
@@ -224,8 +181,6 @@ export const updateAiEnrichmentSettings = onCall(
     return {
       visionModelId: resolvedModelId,
       promptTemplate,
-      additionalTagExclusions: resolvedAdditionalTagExclusions,
-      semanticReviewerEnabled: requestedSemanticReviewerEnabled === true,
       semanticReviewerModelId: resolvedSemanticReviewerModelId,
       ...(resolvedExplicitTerms !== undefined
         ? { explicitContentAutomationTerms: resolvedExplicitTerms }

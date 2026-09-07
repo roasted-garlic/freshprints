@@ -1,5 +1,10 @@
-import { normalizeForAliasMatch } from "./catalogTagResolver";
+import { normalizeCatalogPhrase as normalizeForAliasMatch } from "./normalizeCatalogPhrase";
 import { normalizeComparableTitle } from "./catalogTitleRules";
+
+/**
+ * @deprecated Compatibility-only historical category resolver. Active Pass 1
+ * uses exact approved-category resolution and does not consume matchedTags.
+ */
 
 const STOPWORDS = new Set([
   "a",

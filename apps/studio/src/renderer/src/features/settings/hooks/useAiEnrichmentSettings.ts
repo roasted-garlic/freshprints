@@ -15,27 +15,28 @@ import {
 } from "@fresh-prints/shared/constants/catalogWorkflowMode.constants";
 import {
   aiEnrichmentSettingsService,
-  resolveClientAdditionalTagExclusions,
   resolveClientPromptTemplate,
 } from "../services/aiEnrichmentSettingsService";
 
 interface UseAiEnrichmentSettingsResult {
-  additionalTagExclusions: string[];
   explicitContentAutomationTerms: string[];
+  semanticReviewPlaygroundEnabled: boolean;
   semanticReviewerModelId: string;
   error: string | null;
   isLoading: boolean;
   isSaving: boolean;
+  isUpdatingSemanticReviewPlayground: boolean;
   promptTemplate: string;
   saveError: string | null;
+  semanticReviewPlaygroundError: string | null;
   catalogWorkflowMode: CatalogWorkflowMode;
   catalogAutonomousLiveEnabled: boolean;
   saveSettings: (input: {
     visionModelId: string;
     promptTemplate: string;
-    additionalTagExclusions: string[];
     explicitContentAutomationTerms: string[];
   }) => Promise<void>;
+  setSemanticReviewPlaygroundEnabled: (enabled: boolean) => Promise<void>;
   visionModelId: string;
   visionModelLabel: string;
 }
@@ -49,9 +50,8 @@ export function useAiEnrichmentSettings(): UseAiEnrichmentSettingsResult {
   );
   const [semanticReviewerModelId, setSemanticReviewerModelId] =
     useState<string>(DEFAULT_VISION_MODEL_ID);
-  const [additionalTagExclusions, setAdditionalTagExclusions] = useState<
-    string[]
-  >([]);
+  const [semanticReviewPlaygroundEnabled, setSemanticReviewPlaygroundEnabledState] =
+    useState(false);
   const [explicitContentAutomationTerms, setExplicitContentAutomationTerms] =
     useState<string[]>([...DEFAULT_EXPLICIT_CONTENT_AUTOMATION_TERMS]);
   const [catalogWorkflowMode, setCatalogWorkflowMode] =
@@ -62,6 +62,10 @@ export function useAiEnrichmentSettings(): UseAiEnrichmentSettingsResult {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [semanticReviewPlaygroundError, setSemanticReviewPlaygroundError] =
+    useState<string | null>(null);
+  const [isUpdatingSemanticReviewPlayground, setIsUpdatingSemanticReviewPlayground] =
+    useState(false);
 
   useEffect(() => {
     setIsLoading(true);
@@ -71,8 +75,10 @@ export function useAiEnrichmentSettings(): UseAiEnrichmentSettingsResult {
       (settings) => {
         setVisionModelId(settings.visionModelId);
         setSemanticReviewerModelId(settings.semanticReviewerModelId);
+        setSemanticReviewPlaygroundEnabledState(
+          settings.semanticReviewPlaygroundEnabled,
+        );
         setPromptTemplate(settings.promptTemplate);
-        setAdditionalTagExclusions(settings.additionalTagExclusions);
         setExplicitContentAutomationTerms(
           settings.explicitContentAutomationTerms,
         );
@@ -84,8 +90,8 @@ export function useAiEnrichmentSettings(): UseAiEnrichmentSettingsResult {
         setError(message);
         setVisionModelId(DEFAULT_VISION_MODEL_ID);
         setSemanticReviewerModelId(DEFAULT_VISION_MODEL_ID);
+        setSemanticReviewPlaygroundEnabledState(false);
         setPromptTemplate(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE);
-        setAdditionalTagExclusions([]);
         setExplicitContentAutomationTerms([
           ...DEFAULT_EXPLICIT_CONTENT_AUTOMATION_TERMS,
         ]);
@@ -102,7 +108,6 @@ export function useAiEnrichmentSettings(): UseAiEnrichmentSettingsResult {
     async (input: {
       visionModelId: string;
       promptTemplate: string;
-      additionalTagExclusions: string[];
       explicitContentAutomationTerms: string[];
     }) => {
       setIsSaving(true);
@@ -112,9 +117,6 @@ export function useAiEnrichmentSettings(): UseAiEnrichmentSettingsResult {
         const saved = await aiEnrichmentSettingsService.updateSettings({
           visionModelId: resolveClientVisionModelId(input.visionModelId),
           promptTemplate: resolveClientPromptTemplate(input.promptTemplate),
-          additionalTagExclusions: resolveClientAdditionalTagExclusions(
-            input.additionalTagExclusions,
-          ),
           explicitContentAutomationTerms:
             normalizeExplicitContentAutomationTermsInput(
               input.explicitContentAutomationTerms,
@@ -122,7 +124,6 @@ export function useAiEnrichmentSettings(): UseAiEnrichmentSettingsResult {
         });
         setVisionModelId(saved.visionModelId);
         setPromptTemplate(saved.promptTemplate);
-        setAdditionalTagExclusions(saved.additionalTagExclusions);
         setExplicitContentAutomationTerms(saved.explicitContentAutomationTerms);
       } catch (updateError) {
         setSaveError(
@@ -138,18 +139,42 @@ export function useAiEnrichmentSettings(): UseAiEnrichmentSettingsResult {
     [],
   );
 
+  const setSemanticReviewPlaygroundEnabled = useCallback(async (enabled: boolean) => {
+    setIsUpdatingSemanticReviewPlayground(true);
+    setSemanticReviewPlaygroundError(null);
+    try {
+      const saved =
+        await aiEnrichmentSettingsService.updateSemanticReviewPlaygroundSetting(
+          enabled,
+        );
+      setSemanticReviewPlaygroundEnabledState(saved);
+    } catch (updateError) {
+      setSemanticReviewPlaygroundError(
+        updateError instanceof Error
+          ? updateError.message
+          : "Unable to update Pass 2 experimental testing.",
+      );
+      throw updateError;
+    } finally {
+      setIsUpdatingSemanticReviewPlayground(false);
+    }
+  }, []);
+
   return {
-    additionalTagExclusions,
     explicitContentAutomationTerms,
+    semanticReviewPlaygroundEnabled,
     semanticReviewerModelId,
     error,
     isLoading,
     isSaving,
+    isUpdatingSemanticReviewPlayground,
     promptTemplate,
     saveError,
+    semanticReviewPlaygroundError,
     catalogWorkflowMode,
     catalogAutonomousLiveEnabled,
     saveSettings,
+    setSemanticReviewPlaygroundEnabled,
     visionModelId,
     visionModelLabel: formatVisionModelLabel(visionModelId),
   };

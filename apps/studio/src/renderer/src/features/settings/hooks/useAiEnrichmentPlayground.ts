@@ -13,6 +13,8 @@ import type {
 } from "@fresh-prints/shared/types/ai/aiEnrichmentPlayground.types";
 import { resolveClientVisionModelId } from "../constants/aiEnrichmentSettingsConstants";
 import { aiEnrichmentPlaygroundService } from "../services/aiEnrichmentPlaygroundService";
+import { preparePlaygroundCallableImage } from "../utils/aiPlaygroundCallableImage";
+import { resolveAiEnrichmentCallableErrorMessage } from "../utils/aiEnrichmentCallableError";
 
 function formatFileSize(bytes: number): string {
   if (bytes >= 1024 * 1024) {
@@ -24,18 +26,6 @@ function formatFileSize(bytes: number): string {
   }
 
   return `${bytes} B`;
-}
-
-async function encodeFileToBase64(file: File): Promise<string> {
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  let binary = "";
-  const chunkSize = 0x8000;
-
-  for (let index = 0; index < bytes.length; index += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
-  }
-
-  return window.btoa(binary);
 }
 
 function resolveSelectedImageError(file: File | null): string | null {
@@ -60,6 +50,7 @@ function resolveSelectedImageError(file: File | null): string | null {
 
 export interface UseAiEnrichmentPlaygroundResult {
   acceptedImageTypes: string;
+  captureFullTrace: boolean;
   clearSelectedImage: () => void;
   error: string | null;
   imageName: string | null;
@@ -70,12 +61,16 @@ export interface UseAiEnrichmentPlaygroundResult {
   resetPlayground: () => void;
   runPlayground: () => Promise<void>;
   setPrompt: (value: string) => void;
+  setCaptureFullTrace: (value: boolean) => void;
   setSelectedImage: (file: File | null) => void;
   setVisionModelId: (value: string) => void;
   visionModelId: AllowedVisionModelId;
 }
 
-export function useAiEnrichmentPlayground(): UseAiEnrichmentPlaygroundResult {
+export function useAiEnrichmentPlayground(options?: {
+  canCaptureFullTrace?: boolean;
+}): UseAiEnrichmentPlaygroundResult {
+  const canCaptureFullTrace = options?.canCaptureFullTrace === true;
   const [visionModelId, setVisionModelIdState] = useState<AllowedVisionModelId>(
     DEFAULT_VISION_MODEL_ID,
   );
@@ -86,6 +81,7 @@ export function useAiEnrichmentPlayground(): UseAiEnrichmentPlaygroundResult {
   );
   const [error, setError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
+  const [captureFullTrace, setCaptureFullTraceState] = useState(true);
 
   const acceptedImageTypes = useMemo(
     () => AI_ENRICHMENT_PLAYGROUND_IMAGE_CONTENT_TYPES.join(","),
@@ -172,34 +168,51 @@ export function useAiEnrichmentPlayground(): UseAiEnrichmentPlaygroundResult {
     setResult(null);
 
     try {
-      const imageBase64 = selectedImage
-        ? await encodeFileToBase64(selectedImage)
+      const preparedImage = selectedImage
+        ? await preparePlaygroundCallableImage(selectedImage)
         : undefined;
       const response = await aiEnrichmentPlaygroundService.runPlayground({
-        imageBase64,
-        imageContentType: selectedImage
-          ? (selectedImage.type as AiEnrichmentPlaygroundRequest["imageContentType"])
-          : undefined,
+        imageBase64: preparedImage?.imageBase64,
+        imageContentType: preparedImage?.imageContentType,
         prompt: trimmedPrompt,
         visionModelId: resolveClientVisionModelId(
           visionModelId,
         ) as AiEnrichmentPlaygroundRequest["visionModelId"],
+        captureFullTrace:
+          canCaptureFullTrace && captureFullTrace ? true : undefined,
       });
 
       setResult(response);
     } catch (playgroundError) {
-      setError(
-        playgroundError instanceof Error
-          ? playgroundError.message
-          : "Unable to run the AI playground request.",
-      );
+      const message =
+        playgroundError instanceof Error ? playgroundError.message : "";
+      if (/still too large|AI analysis|could not be decoded|encode an AI analysis/i.test(message)) {
+        setError(message);
+      } else {
+        setError(
+          resolveAiEnrichmentCallableErrorMessage(
+            playgroundError,
+            "playground",
+          ),
+        );
+      }
     } finally {
       setIsRunning(false);
     }
-  }, [prompt, selectedImage, visionModelId]);
+  }, [canCaptureFullTrace, captureFullTrace, prompt, selectedImage, visionModelId]);
+
+  const setCaptureFullTrace = useCallback(
+    (value: boolean) => {
+      if (canCaptureFullTrace) {
+        setCaptureFullTraceState(value);
+      }
+    },
+    [canCaptureFullTrace],
+  );
 
   return {
     acceptedImageTypes,
+    captureFullTrace,
     clearSelectedImage,
     error,
     imageName,
@@ -210,6 +223,7 @@ export function useAiEnrichmentPlayground(): UseAiEnrichmentPlaygroundResult {
     resetPlayground,
     runPlayground,
     setPrompt,
+    setCaptureFullTrace,
     setSelectedImage,
     setVisionModelId,
     visionModelId,

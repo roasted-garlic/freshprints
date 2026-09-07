@@ -96,8 +96,6 @@ function deriveOutcomeFlags(reasonCodes: string[] | undefined): {
 
         (code.startsWith("validation:") && !code.includes("missing_generated_at")) ||
 
-        code === "verifier_unresolved" ||
-
         code === "category_dominant_intent_conflict",
 
     ),
@@ -190,6 +188,8 @@ function extractSmartProfileProvenance(after: Record<string, unknown>) {
 
     flags,
 
+    // Historical verifier telemetry remains readable for old jobs; it is not
+    // an active reprocess authority or a source of new Ready decisions.
     verifierOutcome: reasonCodes.includes("verifier_unresolved")
 
       ? "unresolved"

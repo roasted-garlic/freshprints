@@ -58,6 +58,8 @@ function clone<T>(value: T): T {
 export function mapPass1ContextToSemanticReviewRequest(input: {
   context: AiEnrichmentPlaygroundPass1Context;
   semanticReviewerModelId: string;
+  pass1TraceId?: string;
+  captureFullTrace?: boolean;
 }): AiEnrichmentSemanticReviewPlaygroundRequest {
   const context = input.context;
   const modelId = resolveClientVisionModelId(input.semanticReviewerModelId);
@@ -78,6 +80,8 @@ export function mapPass1ContextToSemanticReviewRequest(input: {
     semanticReviewerModelId: modelId,
     // Kept for the existing callable contract; the backend resolves the configured value.
     visionModelId: modelId,
+    pass1TraceId: input.pass1TraceId,
+    captureFullTrace: input.captureFullTrace,
   };
 }
 
