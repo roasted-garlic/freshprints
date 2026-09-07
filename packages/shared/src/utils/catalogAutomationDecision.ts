@@ -8,9 +8,7 @@ import {
   detectSubjectSpecificityRisk,
   findStructuredEvidenceGaps,
 } from "./catalogAutomationEvidence";
-import {
-  detectCategoryDominantIntentConflict,
-} from "./catalogCategoryDominantIntent";
+import { detectCategoryDominantIntentConflict } from "./catalogCategoryDominantIntent";
 import {
   validateCatalogTitleLength,
   validateDesignSmartProfile,
@@ -58,14 +56,28 @@ const HARD_BLOCKER_CODES = new Set([
 ]);
 
 function isHardValidationCode(code: string): boolean {
-  return code.startsWith("validation:") && !code.includes("missing_generated_at");
+  return (
+    code.startsWith("validation:") && !code.includes("missing_generated_at")
+  );
+}
+
+function isHardBlockerCode(code: string): boolean {
+  return (
+    isHardValidationCode(code) ||
+    HARD_BLOCKER_CODES.has(code) ||
+    code === "category_dominant_intent_conflict" ||
+    code.startsWith("structured_evidence_gap:") ||
+    code.startsWith("subject_specificity_risk:")
+  );
 }
 
 function isConfirmableVerifierTrigger(code: string): boolean {
   return code === "automation_policy_uncertainty";
 }
 
-function normalizeInjectedVerifierResult(result: CatalogVerifierResult): CatalogVerifierResult {
+function normalizeInjectedVerifierResult(
+  result: CatalogVerifierResult,
+): CatalogVerifierResult {
   if (!result || typeof result !== "object") {
     return {
       invoked: true,
@@ -116,7 +128,9 @@ export function runTargetedCatalogVerifier(input: {
   visibleText?: string[];
   triggers: string[];
 }): CatalogVerifierResult {
-  const confirmableTriggers = [...new Set(input.triggers)].filter(isConfirmableVerifierTrigger);
+  const confirmableTriggers = [...new Set(input.triggers)].filter(
+    isConfirmableVerifierTrigger,
+  );
   if (confirmableTriggers.length === 0) {
     return { invoked: false, outcome: "skipped", reasonCodes: [] };
   }
@@ -178,8 +192,12 @@ export function computeCatalogAutomationDecision(
   const softConcerns: string[] = [];
 
   const profileValidation = validateDesignSmartProfile(input.smartProfile);
-  reasonCodes.push(...profileValidation.errors.map((code) => `validation:${code}`));
-  reasonCodes.push(...profileValidation.warnings.map((code) => `validation:${code}`));
+  reasonCodes.push(
+    ...profileValidation.errors.map((code) => `validation:${code}`),
+  );
+  reasonCodes.push(
+    ...profileValidation.warnings.map((code) => `validation:${code}`),
+  );
 
   const titleValidation = validateCatalogTitleLength(input.title);
   reasonCodes.push(...titleValidation.errors.map((code) => `title:${code}`));
@@ -203,7 +221,9 @@ export function computeCatalogAutomationDecision(
   }
 
   const resolvedCategoryName =
-    input.categoryName?.trim() || input.smartProfile.categoryName?.trim() || undefined;
+    input.categoryName?.trim() ||
+    input.smartProfile.categoryName?.trim() ||
+    undefined;
   const categoryConflict = detectCategoryDominantIntentConflict({
     categoryName: resolvedCategoryName,
     themes: input.smartProfile.themes,
@@ -237,13 +257,7 @@ export function computeCatalogAutomationDecision(
   }
 
   const hardBlockers: string[] = [
-    ...new Set(
-      reasonCodes.filter(
-        (code) =>
-          isHardValidationCode(code) ||
-          HARD_BLOCKER_CODES.has(code),
-      ),
-    ),
+    ...new Set(reasonCodes.filter(isHardBlockerCode)),
   ];
 
   const verifierWorthy = collectVerifierTriggers(reasonCodes);
@@ -298,7 +312,10 @@ export function computeCatalogAutomationDecision(
       decision: "auto_approved",
       reasonCodes: uniqueReasons.includes("shadow_would_auto_approve")
         ? uniqueReasons
-        : [...uniqueReasons.filter((c) => c !== "shadow_would_auto_approve"), "auto_approved"],
+        : [
+            ...uniqueReasons.filter((c) => c !== "shadow_would_auto_approve"),
+            "auto_approved",
+          ],
       wouldAutoApprove: true,
       shouldPublishReady: true,
       verifier,

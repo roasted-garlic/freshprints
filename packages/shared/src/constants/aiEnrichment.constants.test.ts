@@ -11,6 +11,7 @@ import {
   PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V34,
   PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V35,
   PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V36,
+  PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V38_LEGACY,
   VISION_MODEL_PRICING_USD_PER_1M,
   estimateVisionCostUsd,
   hasRequiredAiEnrichmentPromptPlaceholders,
@@ -30,8 +31,14 @@ describe("aiEnrichment.constants stale threshold", () => {
 
 describe("dual-provider vision model metadata", () => {
   it("maps models to providers explicitly and prices Luna with cached input", () => {
-    assert.equal(resolveVisionModelProviderId("gemini-2.5-flash-lite"), "google");
-    assert.equal(resolveVisionModelProviderId("gemini-3.1-flash-lite"), "google");
+    assert.equal(
+      resolveVisionModelProviderId("gemini-2.5-flash-lite"),
+      "google",
+    );
+    assert.equal(
+      resolveVisionModelProviderId("gemini-3.1-flash-lite"),
+      "google",
+    );
     assert.equal(resolveVisionModelProviderId("gpt-5.6-luna"), "openai");
     assert.equal(resolveVisionModelProviderId("not-a-model"), null);
     assert.deepEqual(VISION_MODEL_PRICING_USD_PER_1M["gpt-5.6-luna"], {
@@ -39,86 +46,192 @@ describe("dual-provider vision model metadata", () => {
       cachedInput: 0.02,
       output: 1.2,
     });
-    assert.equal(estimateVisionCostUsd("gpt-5.6-luna", 1_000_000, 1_000_000), 0.2 + 1.2);
-    assert.equal(estimateVisionCostUsd("gpt-5.6-luna", 1_000_000, 0, 500_000), 0.1 + 0.01);
-    assert.equal(estimateVisionCostUsd("gemini-2.5-flash-lite", 1_000_000, 1_000_000), 0.5);
+    assert.equal(
+      estimateVisionCostUsd("gpt-5.6-luna", 1_000_000, 1_000_000),
+      0.2 + 1.2,
+    );
+    assert.equal(
+      estimateVisionCostUsd("gpt-5.6-luna", 1_000_000, 0, 500_000),
+      0.1 + 0.01,
+    );
+    assert.equal(
+      estimateVisionCostUsd("gemini-2.5-flash-lite", 1_000_000, 1_000_000),
+      0.5,
+    );
   });
 });
 
-describe("catalog-enrich-v38 previous-default auto-upgrade", () => {
-  it("ships catalog-enrich-v38 as the current default constant", () => {
-    assert.equal(CURRENT_CATALOG_ENRICH_PROMPT_VERSION, "catalog-enrich-v38");
-    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /4–10 words|4-10 words/);
-    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /\{\{approved_categories\}\}/);
+describe("catalog-enrich-v39 previous-default auto-upgrade", () => {
+  it("ships catalog-enrich-v39 as the current default constant", () => {
+    assert.equal(CURRENT_CATALOG_ENRICH_PROMPT_VERSION, "catalog-enrich-v39");
     assert.match(
       DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
-      /Use categoryGapNote only when no approved category is a reasonable fit/,
+      /4–10 words|4-10 words/,
     );
-    assert.doesNotMatch(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /\{\{excluded_tags\}\}/);
-    assert.doesNotMatch(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /\{\{approved_category_names\}\}/);
-    assert.doesNotMatch(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /Structured evidence self-consistency/);
-    assert.doesNotMatch(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /\{\{existing_smart_profile_response_schema\}\}/);
-    assert.equal(hasRequiredAiEnrichmentPromptPlaceholders(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE), true);
-    assert.equal(isDefaultAiEnrichmentPromptTemplate(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE), true);
+    assert.match(
+      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+      /\{\{approved_categories\}\}/,
+    );
+    assert.match(
+      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+      /Use categoryGapNote only when no approved category reasonably fits/,
+    );
+    assert.doesNotMatch(
+      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+      /\{\{excluded_tags\}\}/,
+    );
+    assert.doesNotMatch(
+      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+      /tags|suggestedNewTags|halftoneShadow|readableTextLines/i,
+    );
+    assert.doesNotMatch(
+      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+      /\{\{approved_category_names\}\}/,
+    );
+    assert.doesNotMatch(
+      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+      /Structured evidence self-consistency/,
+    );
+    assert.doesNotMatch(
+      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+      /\{\{existing_smart_profile_response_schema\}\}/,
+    );
+    assert.equal(
+      hasRequiredAiEnrichmentPromptPlaceholders(
+        DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+      ),
+      true,
+    );
+    assert.equal(
+      isDefaultAiEnrichmentPromptTemplate(
+        DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+      ),
+      true,
+    );
     assert.ok(
-      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE.length <= AI_ENRICHMENT_PROMPT_TEMPLATE_MAX_LENGTH,
+      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE.length <=
+        AI_ENRICHMENT_PROMPT_TEMPLATE_MAX_LENGTH,
       `default prompt length ${DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE.length} exceeds max ${AI_ENRICHMENT_PROMPT_TEMPLATE_MAX_LENGTH}`,
     );
   });
 
   it("upgrades recognized previous default v36 to the current default", () => {
-    assert.equal(isPreviousDefaultAiEnrichmentPromptTemplate(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V36), true);
+    assert.equal(
+      isPreviousDefaultAiEnrichmentPromptTemplate(
+        PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V36,
+      ),
+      true,
+    );
     assert.doesNotMatch(
       PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V36,
       /Use categoryGapNote only when no approved category is a reasonable fit/,
     );
     assert.equal(
-      resolveAiEnrichmentPromptTemplate(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V36),
+      resolveAiEnrichmentPromptTemplate(
+        PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V36,
+      ),
+      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+    );
+  });
+
+  it("upgrades the observed legacy v38 Playground stock copy to the current default", () => {
+    assert.equal(
+      isPreviousDefaultAiEnrichmentPromptTemplate(
+        PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V38_LEGACY,
+      ),
+      true,
+    );
+    assert.doesNotMatch(
+      PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V38_LEGACY,
+      /visualContextProfile/,
+    );
+    assert.equal(
+      resolveAiEnrichmentPromptTemplate(
+        PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V38_LEGACY,
+      ),
       DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
     );
   });
 
   it("upgrades recognized previous default v35 to the current default", () => {
-    assert.equal(isPreviousDefaultAiEnrichmentPromptTemplate(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V35), true);
+    assert.equal(
+      isPreviousDefaultAiEnrichmentPromptTemplate(
+        PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V35,
+      ),
+      true,
+    );
     assert.match(
       PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V35,
       /Structured evidence self-consistency/,
     );
     assert.equal(
-      resolveAiEnrichmentPromptTemplate(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V35),
+      resolveAiEnrichmentPromptTemplate(
+        PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V35,
+      ),
       DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
     );
   });
 
   it("upgrades recognized previous default v34 to the current default", () => {
-    assert.equal(isPreviousDefaultAiEnrichmentPromptTemplate(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V34), true);
     assert.equal(
-      resolveAiEnrichmentPromptTemplate(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V34),
+      isPreviousDefaultAiEnrichmentPromptTemplate(
+        PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V34,
+      ),
+      true,
+    );
+    assert.equal(
+      resolveAiEnrichmentPromptTemplate(
+        PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V34,
+      ),
       DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
     );
   });
 
   it("upgrades recognized previous default v33 to the current default", () => {
-    assert.equal(isPreviousDefaultAiEnrichmentPromptTemplate(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V33), true);
-    assert.match(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V33, /\{\{approved_category_names\}\}/);
     assert.equal(
-      resolveAiEnrichmentPromptTemplate(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V33),
+      isPreviousDefaultAiEnrichmentPromptTemplate(
+        PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V33,
+      ),
+      true,
+    );
+    assert.match(
+      PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V33,
+      /\{\{approved_category_names\}\}/,
+    );
+    assert.equal(
+      resolveAiEnrichmentPromptTemplate(
+        PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V33,
+      ),
       DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
     );
   });
 
   it("upgrades recognized previous default v32 to the current default", () => {
-    assert.equal(isPreviousDefaultAiEnrichmentPromptTemplate(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V32), true);
     assert.equal(
-      resolveAiEnrichmentPromptTemplate(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V32),
+      isPreviousDefaultAiEnrichmentPromptTemplate(
+        PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V32,
+      ),
+      true,
+    );
+    assert.equal(
+      resolveAiEnrichmentPromptTemplate(
+        PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V32,
+      ),
       DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
     );
   });
 
   it("upgrades recognized previous default v31 to the current default", () => {
-    assert.equal(isPreviousDefaultAiEnrichmentPromptTemplate(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V31), true);
     assert.equal(
-      resolveAiEnrichmentPromptTemplate(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V31),
+      isPreviousDefaultAiEnrichmentPromptTemplate(
+        PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V31,
+      ),
+      true,
+    );
+    assert.equal(
+      resolveAiEnrichmentPromptTemplate(
+        PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V31,
+      ),
       DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
     );
   });
@@ -145,8 +258,17 @@ describe("catalog-enrich-v38 previous-default auto-upgrade", () => {
       "Do not use these tag words: {{excluded_tags}}",
       "Return JSON only.",
     ].join("\n");
-    assert.equal(isPreviousDefaultAiEnrichmentPromptTemplate(namesOnlyCustom), false);
-    assert.equal(hasRequiredAiEnrichmentPromptPlaceholders(namesOnlyCustom), false);
-    assert.equal(resolveAiEnrichmentPromptTemplate(namesOnlyCustom), DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE);
+    assert.equal(
+      isPreviousDefaultAiEnrichmentPromptTemplate(namesOnlyCustom),
+      false,
+    );
+    assert.equal(
+      hasRequiredAiEnrichmentPromptPlaceholders(namesOnlyCustom),
+      false,
+    );
+    assert.equal(
+      resolveAiEnrichmentPromptTemplate(namesOnlyCustom),
+      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+    );
   });
 });

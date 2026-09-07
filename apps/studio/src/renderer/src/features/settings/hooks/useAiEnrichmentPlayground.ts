@@ -76,10 +76,14 @@ export interface UseAiEnrichmentPlaygroundResult {
 }
 
 export function useAiEnrichmentPlayground(): UseAiEnrichmentPlaygroundResult {
-  const [visionModelId, setVisionModelIdState] = useState<AllowedVisionModelId>(DEFAULT_VISION_MODEL_ID);
+  const [visionModelId, setVisionModelIdState] = useState<AllowedVisionModelId>(
+    DEFAULT_VISION_MODEL_ID,
+  );
   const [prompt, setPromptState] = useState("");
   const [selectedImage, setSelectedImageState] = useState<File | null>(null);
-  const [result, setResult] = useState<AiEnrichmentPlaygroundResponse | null>(null);
+  const [result, setResult] = useState<AiEnrichmentPlaygroundResponse | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
 
@@ -106,15 +110,18 @@ export function useAiEnrichmentPlayground(): UseAiEnrichmentPlaygroundResult {
 
   const setVisionModelId = useCallback((value: string) => {
     setVisionModelIdState(resolveClientVisionModelId(value));
+    setResult(null);
   }, []);
 
   const setPrompt = useCallback((value: string) => {
     setPromptState(value);
+    setResult(null);
   }, []);
 
   const clearSelectedImage = useCallback(() => {
     setSelectedImageState(null);
     setError(null);
+    setResult(null);
   }, []);
 
   const resetPlayground = useCallback(() => {
@@ -135,6 +142,7 @@ export function useAiEnrichmentPlayground(): UseAiEnrichmentPlaygroundResult {
 
     setSelectedImageState(file);
     setError(null);
+    setResult(null);
   }, []);
 
   const runPlayground = useCallback(async () => {
@@ -147,7 +155,9 @@ export function useAiEnrichmentPlayground(): UseAiEnrichmentPlaygroundResult {
     }
 
     if (trimmedPrompt.length > AI_ENRICHMENT_PLAYGROUND_MAX_PROMPT_LENGTH) {
-      setError(`Prompt must be ${AI_ENRICHMENT_PLAYGROUND_MAX_PROMPT_LENGTH.toLocaleString()} characters or fewer.`);
+      setError(
+        `Prompt must be ${AI_ENRICHMENT_PLAYGROUND_MAX_PROMPT_LENGTH.toLocaleString()} characters or fewer.`,
+      );
       return;
     }
 
@@ -162,17 +172,18 @@ export function useAiEnrichmentPlayground(): UseAiEnrichmentPlaygroundResult {
     setResult(null);
 
     try {
-      const imageBase64 = selectedImage ? await encodeFileToBase64(selectedImage) : undefined;
+      const imageBase64 = selectedImage
+        ? await encodeFileToBase64(selectedImage)
+        : undefined;
       const response = await aiEnrichmentPlaygroundService.runPlayground({
         imageBase64,
         imageContentType: selectedImage
           ? (selectedImage.type as AiEnrichmentPlaygroundRequest["imageContentType"])
           : undefined,
         prompt: trimmedPrompt,
-        visionModelId:
-          resolveClientVisionModelId(
-            visionModelId,
-          ) as AiEnrichmentPlaygroundRequest["visionModelId"],
+        visionModelId: resolveClientVisionModelId(
+          visionModelId,
+        ) as AiEnrichmentPlaygroundRequest["visionModelId"],
       });
 
       setResult(response);

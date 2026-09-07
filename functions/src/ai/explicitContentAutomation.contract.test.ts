@@ -12,7 +12,9 @@ function read(rel: string): string {
 
 describe("explicit content automation wiring (contract) — ADR-FP-172", () => {
   it("does not introduce profanity hard-blocker validation codes", () => {
-    const decision = read("../../../packages/shared/src/utils/catalogAutomationDecision.ts");
+    const decision = read(
+      "../../../packages/shared/src/utils/catalogAutomationDecision.ts",
+    );
     const candidate = read("aiEnrichmentCandidateCore.ts");
     assert.doesNotMatch(decision, /validation:profanity_artwork/);
     assert.doesNotMatch(decision, /validation:profanity_catalog_copy/);
@@ -36,7 +38,10 @@ describe("explicit content automation wiring (contract) — ADR-FP-172", () => {
     const candidate = read("aiEnrichmentCandidateCore.ts");
     assert.match(candidate, /explicitAutomationPreview/);
     assert.match(candidate, /buildExplicitContentAutomationPreview/);
-    assert.match(candidate, /settingsReadFailed && automationDecision\.wouldAutoApprove/);
+    assert.match(
+      candidate,
+      /settingsReadFailed[\s\S]{0,80}automationDecision\.wouldAutoApprove/,
+    );
     assert.doesNotMatch(candidate, /settingsReadFailed && publishReady/);
     assert.doesNotMatch(
       candidate,
@@ -46,13 +51,22 @@ describe("explicit content automation wiring (contract) — ADR-FP-172", () => {
 
   it("pipeline Explicit write is not publishReady-gated and lock-gated only", () => {
     const pipeline = read("aiEnrichmentPipeline.ts");
-    assert.match(pipeline, /applyHumanAuthorityToExplicitContentAutomationPreview/);
+    assert.match(
+      pipeline,
+      /applyHumanAuthorityToExplicitContentAutomationPreview/,
+    );
     assert.match(pipeline, /mayWriteExplicit/);
     assert.match(pipeline, /ADR-FP-173/);
     assert.match(pipeline, /explicitContentAutomationLocked/);
     // Ready-only coupling must be gone.
-    assert.doesNotMatch(pipeline, /mayWriteExplicit\s*=\s*[\s\S]*?publishReady\s*&&/);
-    assert.doesNotMatch(pipeline, /publishReady &&[\s\S]{0,80}explicitContentAutomation/);
+    assert.doesNotMatch(
+      pipeline,
+      /mayWriteExplicit\s*=\s*[\s\S]*?publishReady\s*&&/,
+    );
+    assert.doesNotMatch(
+      pipeline,
+      /publishReady &&[\s\S]{0,80}explicitContentAutomation/,
+    );
   });
 
   it("keeps settings field and cache clear on update", () => {
@@ -66,12 +80,15 @@ describe("explicit content automation wiring (contract) — ADR-FP-172", () => {
 
   it("retains current prompt / normalizer / schema version pins", () => {
     const titleRules = read("catalogTitleRules.ts");
-    assert.match(titleRules, /catalog-enrich-v37/);
+    assert.match(titleRules, /catalog-enrich-v39/);
   });
 
   it("does not wire Explicit classifier into Print Request finalize paths", () => {
     const candidate = read("aiEnrichmentCandidateCore.ts");
-    assert.doesNotMatch(candidate, /printRequest.*classifyExplicitContentAutomation/);
+    assert.doesNotMatch(
+      candidate,
+      /printRequest.*classifyExplicitContentAutomation/,
+    );
     assert.doesNotMatch(candidate, /finalizePrintRequest.*explicitContent/);
   });
 });

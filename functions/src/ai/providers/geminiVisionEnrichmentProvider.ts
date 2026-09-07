@@ -1,4 +1,8 @@
-import type { AiEnrichmentInput, AiEnrichmentProvider, AiEnrichmentResult } from "./AiEnrichmentProvider";
+import type {
+  AiEnrichmentInput,
+  AiEnrichmentProvider,
+  AiEnrichmentResult,
+} from "./AiEnrichmentProvider";
 
 import {
   OPENAI_LUNA_REASONING_EFFORT,
@@ -33,6 +37,12 @@ import {
   type ProviderTarget,
   type ProviderTargetId,
 } from "./resolveProviderTarget";
+import {
+  buildPromptVcpDiagnostic,
+  classifyVcpParse,
+  logVcpRuntimeDiagnostic,
+} from "../vcpRuntimeDiagnostics";
+import { buildSimpleCatalogEnrichmentResponseFormat } from "../simpleCatalogEnrichmentSchema";
 
 export function buildVisionRequestBody(
   visionModelId: string,
@@ -42,11 +52,10 @@ export function buildVisionRequestBody(
   maxCompletionTokens: number,
   systemPrompt: string,
 ): string {
-  // No `response_format: json_object` — matches the Settings AI Playground request shape. The
-  // model returns instruction-only JSON and the server parses it tolerantly.
   const body: Record<string, unknown> = {
     model: visionModelId,
     max_completion_tokens: maxCompletionTokens,
+    response_format: buildSimpleCatalogEnrichmentResponseFormat(),
     messages: [
       {
         role: "system",
@@ -111,7 +120,8 @@ async function postVisionCompletion(
       baseDelayMs: VISION_REQUEST_BASE_DELAY_MS,
       modelId: visionModelId,
       onRetry: async () => {
-        const { incrementCatalogAutomationHealth } = await import("../catalogAutomationHealth");
+        const { incrementCatalogAutomationHealth } =
+          await import("../catalogAutomationHealth");
         await incrementCatalogAutomationHealth({ retries: 1 });
       },
     },
@@ -193,17 +203,18 @@ async function callVision(
   const userPromptText = buildSimpleCatalogEnrichmentUserPrompt({
     approvedCategories: input.categoryOptions,
     approvedCategoryNames: input.categoryNames,
-    approvedTags: input.approvedTags,
-    approvedTagNames: input.approvedTagNames,
-    effectiveTagExclusions: input.effectiveTagExclusions,
     promptTemplate: input.promptTemplate,
     smartProfileVocab: input.smartProfileVocab,
   });
+  logVcpRuntimeDiagnostic("vcp_diagnostic.prompt", {
+    designId: input.designId,
+    providerId: providerTarget.providerId,
+    model: visionModelId,
+    ...buildPromptVcpDiagnostic(userPromptText),
+  });
 
-  // Single call, playground-style: one lightweight request, no `response_format`, no automatic
-  // empty-output or quality retries. If the result is not what staff want, they re-run manually
-  // from AI Review (optionally with a different model). Only the transient 429/5xx network retry
-  // in fetchVisionWithRetry is kept; it does not fire on a normal successful run.
+  // Single call: no response-quality retry. Only the transient 429/5xx network retry in
+  // fetchVisionWithRetry is kept; it does not fire on a normal successful run.
   const payload = await requestVisionCompletion(
     apiKey,
     providerTarget.baseUrl,
@@ -220,7 +231,26 @@ async function callVision(
 
   const usage = extractVisionCompletionUsage(payload);
   const raw = extractJsonObject(content);
-  const parsed = normalizeSimpleCatalogEnrichment(raw, input.effectiveTagExclusions);
+  const rawVisualContextProfileKeyPresent =
+    Object.prototype.hasOwnProperty.call(raw, "visualContextProfile");
+  const parsed = normalizeSimpleCatalogEnrichment(raw);
+  const parsedVisualContextProfilePresent = Boolean(
+    parsed.visualContextProfile,
+  );
+  logVcpRuntimeDiagnostic("vcp_diagnostic.provider_parser", {
+    designId: input.designId,
+    providerId: providerTarget.providerId,
+    model: visionModelId,
+    finishReason: payload.choices?.[0]?.finish_reason ?? null,
+    rawContentLength: content.length,
+    rawVisualContextProfileKeyPresent,
+    parsedVisualContextProfilePresent,
+    parsedVisualContextProfileValid: parsedVisualContextProfilePresent,
+    vcpResult: classifyVcpParse(
+      rawVisualContextProfileKeyPresent,
+      parsedVisualContextProfilePresent,
+    ),
+  });
 
   return buildSimpleCatalogEnrichmentResult({
     parsed,
@@ -264,7 +294,11 @@ export function createGeminiVisionEnrichmentProvider(
   apiKey: string,
   visionModelId: string,
 ): AiEnrichmentProvider {
-  return createChatCompletionsVisionEnrichmentProvider(apiKey, visionModelId, "google");
+  return createChatCompletionsVisionEnrichmentProvider(
+    apiKey,
+    visionModelId,
+    "google",
+  );
 }
 
 export { GEMINI_CHAT_COMPLETIONS_URL };

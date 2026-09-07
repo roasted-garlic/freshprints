@@ -4,7 +4,11 @@ import { useState } from "react";
 import { Button } from "../../../shared/components/Button";
 import { Badge } from "../../../shared/components/Badge";
 import { ResolutionQualityPill } from "../../../shared/components/ResolutionQualityPill";
-import { ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
+import {
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+} from "../../../shared/components/Modal";
 import { resolveDesignPrintSizeForDisplay } from "@fresh-prints/shared/utils/designPrintSizeState";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
@@ -14,16 +18,15 @@ import { downloadDesignOriginal } from "../services/designOriginalDownloadServic
 import { canDownloadDesignOriginal } from "../utils/designOriginalDownload";
 import { canStartDesignOriginalDownload } from "../utils/designOriginalDownloadGuard";
 import { formatDesignTimestamp } from "../utils/designDateDisplay";
-import { formatDesignStatusLabel, getDesignStatusBadgeVariant } from "../utils/designStatusDisplay";
+import {
+  formatDesignStatusLabel,
+  getDesignStatusBadgeVariant,
+} from "../utils/designStatusDisplay";
 import { formatDesignPrintInches } from "../utils/designPrintSizeDisplay";
 import { resolveDesignAiReviewDisplay } from "../utils/aiReviewState";
 import type { DesignSmartProfile } from "@fresh-prints/shared/types/catalog/smartProfile.types";
 import { resolveCompanionSetStatusLabel } from "../utils/companionSetHelpers";
-import {
-  formatAiEstimatedCost,
-  formatTagRerankStatusLabel,
-  resolveCombinedAiEstimatedCost,
-} from "../utils/aiReviewDisplay";
+import { formatAiEstimatedCost } from "../utils/aiReviewDisplay";
 import { CompanionSetPanel } from "./CompanionSetPanel";
 import {
   DesignSmartProfileAuditSection,
@@ -48,7 +51,10 @@ interface DesignDetailsModalProps {
   /** After owner Reprocess with AI succeeds — design left Ready; close/refresh library. */
   onReprocessedWithAi?: (designId: string) => void;
   onRestore?: (design: Design) => void;
-  onSmartProfileUpdated?: (designId: string, smartProfile: DesignSmartProfile) => void;
+  onSmartProfileUpdated?: (
+    designId: string,
+    smartProfile: DesignSmartProfile,
+  ) => void;
   /**
    * Ordered previewable siblings for lightbox Previous/Next (typically filteredDesigns).
    * When omitted, lightbox stays singleton.
@@ -100,7 +106,9 @@ export function DesignDetailsModal({
   const [isMoreDetailsOpen, setIsMoreDetailsOpen] = useState(false);
   const [isCompanionModalOpen, setIsCompanionModalOpen] = useState(false);
   const [isDownloadingOriginal, setIsDownloadingOriginal] = useState(false);
-  const [downloadOriginalError, setDownloadOriginalError] = useState<string | null>(null);
+  const [downloadOriginalError, setDownloadOriginalError] = useState<
+    string | null
+  >(null);
   const [isReprocessConfirmOpen, setIsReprocessConfirmOpen] = useState(false);
   const [isReprocessSubmitting, setIsReprocessSubmitting] = useState(false);
   const [reprocessError, setReprocessError] = useState<string | null>(null);
@@ -115,7 +123,10 @@ export function DesignDetailsModal({
           .filter(
             (candidate) =>
               !candidate.assetsPurgedAt &&
-              Boolean(candidate.previewPath?.trim() || candidate.thumbnailPath?.trim()),
+              Boolean(
+                candidate.previewPath?.trim() ||
+                candidate.thumbnailPath?.trim(),
+              ),
           )
           .map((candidate) => ({
             id: candidate.id,
@@ -132,7 +143,9 @@ export function DesignDetailsModal({
 
   const canEdit = permissionService.canEditDesigns(user);
   const canEditSmartProfile = permissionService.canEditSmartProfile(user);
-  const canArchive = permissionService.canArchiveDesigns(user) && currentDesign.status !== "archived";
+  const canArchive =
+    permissionService.canArchiveDesigns(user) &&
+    currentDesign.status !== "archived";
   const canRestore =
     permissionService.canRestoreDesigns(user) &&
     currentDesign.status === "archived" &&
@@ -158,13 +171,18 @@ export function DesignDetailsModal({
     setReprocessError(null);
     setIsReprocessSubmitting(true);
     try {
-      await designReprocessWithAiService.reprocessReadyDesignWithAi(user, currentDesign.id);
+      await designReprocessWithAiService.reprocessReadyDesignWithAi(
+        user,
+        currentDesign.id,
+      );
       setIsReprocessConfirmOpen(false);
       onReprocessedWithAi?.(currentDesign.id);
       onClose();
     } catch (error) {
       setReprocessError(
-        error instanceof Error ? error.message : "Unable to reprocess this design with AI.",
+        error instanceof Error
+          ? error.message
+          : "Unable to reprocess this design with AI.",
       );
     } finally {
       setIsReprocessSubmitting(false);
@@ -173,7 +191,11 @@ export function DesignDetailsModal({
 
   async function handleDownloadOriginal(): Promise<void> {
     if (
-      !canStartDesignOriginalDownload(design, canDownloadOriginal, isDownloadingOriginal)
+      !canStartDesignOriginalDownload(
+        design,
+        canDownloadOriginal,
+        isDownloadingOriginal,
+      )
     ) {
       return;
     }
@@ -185,7 +207,9 @@ export function DesignDetailsModal({
       await downloadDesignOriginal(design);
     } catch (error) {
       setDownloadOriginalError(
-        error instanceof Error ? error.message : "Unable to download the original image.",
+        error instanceof Error
+          ? error.message
+          : "Unable to download the original image.",
       );
     } finally {
       setIsDownloadingOriginal(false);
@@ -194,168 +218,204 @@ export function DesignDetailsModal({
 
   return (
     <>
-      <DesignLibraryModal ariaLabelledBy="design-details-title" isOpen={isOpen} onClose={onClose}>
-      <ModalHeader>
-        <div className="design-details-header">
-          <div className="design-details-header-copy">
-            <p className="eyebrow">Design details</p>
-            <h2 id="design-details-title">{design.title}</h2>
-            <div className="design-details-header-pills">
-              <Badge variant={getDesignStatusBadgeVariant(design.status)}>
-                {formatDesignStatusLabel(design.status)}
-              </Badge>
-              {isAssetsPurged ? <Badge variant="danger">Images deleted</Badge> : null}
-              {design.isExplicitContent ? <Badge variant="warning">Explicit Content</Badge> : null}
-              {resolveCompanionSetStatusLabel(design) === "Needs Companion" ? (
-                <Badge variant="warning">Needs Companion</Badge>
-              ) : null}
-              <button
-                aria-label="View audit and technical details"
-                className="icon-button icon-button-md icon-button-ghost design-details-audit-info-button"
-                onClick={() => setIsMoreDetailsOpen(true)}
-                title="Audit and technical details"
-                type="button"
-              >
-                <Info aria-hidden="true" size={18} strokeWidth={2.2} />
-              </button>
-            </div>
-          </div>
-
-          <div className="design-details-header-media">
-            <DesignThumbnailPanel
-              alt={
-                isAssetsPurged
-                  ? `${design.title} thumbnail (large images deleted)`
-                  : `${design.title} preview`
-              }
-              artworkBackgroundHex={design.artworkBackgroundHex}
-              catalogPath={isAssetsPurged ? design.thumbnailPath : design.previewPath}
-              fallbackLabel={isAssetsPurged ? "Thumbnail unavailable" : "Preview unavailable"}
-              imageFit="contain"
-              interactive={!isAssetsPurged}
-              loadingLabel={isAssetsPurged ? "Loading thumbnail" : "Loading preview"}
-              onImageClick={isAssetsPurged ? undefined : () => setIsPreviewLightboxOpen(true)}
-            />
-          </div>
-        </div>
-      </ModalHeader>
-
-      <ModalBody>
-        <section aria-labelledby="design-details-overview-title" className="design-details-section">
-          <h3 id="design-details-overview-title">Overview</h3>
-          <dl className="design-details-grid">
-            <DetailField label="Description" value={design.description?.trim() || "—"} />
-            <DetailField label="Category" value={categoryName ?? "Uncategorized"} />
-            <DetailField label="Origin" value={originLabel} />
-          </dl>
-        </section>
-
-        <section aria-labelledby="design-details-tags-title" className="design-details-section">
-          <h3 id="design-details-tags-title">Tags</h3>
-          {design.tags.length > 0 ? (
-            <div className="design-details-tags">
-              {design.tags.map((tag) => (
-                <Badge key={tag} variant="default">
-                  {tag}
+      <DesignLibraryModal
+        ariaLabelledBy="design-details-title"
+        isOpen={isOpen}
+        onClose={onClose}
+      >
+        <ModalHeader>
+          <div className="design-details-header">
+            <div className="design-details-header-copy">
+              <p className="eyebrow">Design details</p>
+              <h2 id="design-details-title">{design.title}</h2>
+              <div className="design-details-header-pills">
+                <Badge variant={getDesignStatusBadgeVariant(design.status)}>
+                  {formatDesignStatusLabel(design.status)}
                 </Badge>
-              ))}
+                {isAssetsPurged ? (
+                  <Badge variant="danger">Images deleted</Badge>
+                ) : null}
+                {design.isExplicitContent ? (
+                  <Badge variant="warning">Explicit Content</Badge>
+                ) : null}
+                {resolveCompanionSetStatusLabel(design) ===
+                "Needs Companion" ? (
+                  <Badge variant="warning">Needs Companion</Badge>
+                ) : null}
+                <button
+                  aria-label="View audit and technical details"
+                  className="icon-button icon-button-md icon-button-ghost design-details-audit-info-button"
+                  onClick={() => setIsMoreDetailsOpen(true)}
+                  title="Audit and technical details"
+                  type="button"
+                >
+                  <Info aria-hidden="true" size={18} strokeWidth={2.2} />
+                </button>
+              </div>
             </div>
-          ) : (
-            <p className="design-details-muted">No tags assigned.</p>
-          )}
-        </section>
 
-        <div className="design-details-action-stack">
-          {canEdit && onEdit ? (
+            <div className="design-details-header-media">
+              <DesignThumbnailPanel
+                alt={
+                  isAssetsPurged
+                    ? `${design.title} thumbnail (large images deleted)`
+                    : `${design.title} preview`
+                }
+                artworkBackgroundHex={design.artworkBackgroundHex}
+                catalogPath={
+                  isAssetsPurged ? design.thumbnailPath : design.previewPath
+                }
+                fallbackLabel={
+                  isAssetsPurged
+                    ? "Thumbnail unavailable"
+                    : "Preview unavailable"
+                }
+                imageFit="contain"
+                interactive={!isAssetsPurged}
+                loadingLabel={
+                  isAssetsPurged ? "Loading thumbnail" : "Loading preview"
+                }
+                onImageClick={
+                  isAssetsPurged
+                    ? undefined
+                    : () => setIsPreviewLightboxOpen(true)
+                }
+              />
+            </div>
+          </div>
+        </ModalHeader>
+
+        <ModalBody>
+          <section
+            aria-labelledby="design-details-overview-title"
+            className="design-details-section"
+          >
+            <h3 id="design-details-overview-title">Overview</h3>
+            <dl className="design-details-grid">
+              <DetailField
+                label="Description"
+                value={design.description?.trim() || "—"}
+              />
+              <DetailField
+                label="Category"
+                value={categoryName ?? "Uncategorized"}
+              />
+              <DetailField label="Origin" value={originLabel} />
+            </dl>
+          </section>
+
+          <section
+            aria-labelledby="design-details-tags-title"
+            className="design-details-section"
+          >
+            <h3 id="design-details-tags-title">Tags</h3>
+            {design.tags.length > 0 ? (
+              <div className="design-details-tags">
+                {design.tags.map((tag) => (
+                  <Badge key={tag} variant="default">
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <p className="design-details-muted">No tags assigned.</p>
+            )}
+          </section>
+
+          <div className="design-details-action-stack">
+            {canEdit && onEdit ? (
+              <Button
+                className="design-details-action-button"
+                onClick={() => onEdit(design)}
+                type="button"
+                variant="secondary"
+              >
+                Edit Design Details
+              </Button>
+            ) : null}
             <Button
               className="design-details-action-button"
-              onClick={() => onEdit(design)}
+              onClick={() => setIsCompanionModalOpen(true)}
               type="button"
               variant="secondary"
             >
-              Edit Design Details
+              Companion Designs
             </Button>
-          ) : null}
-          <Button
-            className="design-details-action-button"
-            onClick={() => setIsCompanionModalOpen(true)}
-            type="button"
-            variant="secondary"
-          >
-            Companion Designs
-          </Button>
-        </div>
+          </div>
 
-        <DesignSmartProfileSection
-          canEdit={canEditSmartProfile}
-          design={design}
-          onProfileUpdated={(smartProfile) => {
-            onSmartProfileUpdated?.(design.id, smartProfile);
-          }}
-        />
+          <DesignSmartProfileSection
+            canEdit={canEditSmartProfile}
+            design={design}
+            onProfileUpdated={(smartProfile) => {
+              onSmartProfileUpdated?.(design.id, smartProfile);
+            }}
+          />
+        </ModalBody>
 
-      </ModalBody>
+        <ModalFooter className="design-details-footer">
+          <div className="design-details-footer-start">
+            {canArchive && onArchive ? (
+              <Button onClick={() => onArchive(design)} variant="danger">
+                Archive
+              </Button>
+            ) : null}
+            {canRestore && onRestore ? (
+              <Button onClick={() => onRestore(design)} type="button">
+                Restore
+              </Button>
+            ) : null}
+            {design.assetsPurgedAt ? (
+              <p className="design-details-muted">
+                Large images were deleted. Thumbnail kept for history reference.
+              </p>
+            ) : null}
+          </div>
 
-      <ModalFooter className="design-details-footer">
-        <div className="design-details-footer-start">
-          {canArchive && onArchive ? (
-            <Button onClick={() => onArchive(design)} variant="danger">
-              Archive
+          <div className="design-details-footer-center">
+            {canPurgeAssets && onPurgeAssets ? (
+              <Button
+                onClick={() => onPurgeAssets(design)}
+                type="button"
+                variant="danger"
+              >
+                Delete images
+              </Button>
+            ) : null}
+          </div>
+
+          <div className="design-details-footer-actions">
+            {canReprocessWithAi ? (
+              <Button
+                onClick={() => {
+                  setReprocessError(null);
+                  setIsReprocessConfirmOpen(true);
+                }}
+                type="button"
+                variant="secondary"
+              >
+                Reprocess with AI
+              </Button>
+            ) : null}
+            {canDownloadOriginal ? (
+              <Button
+                disabled={isDownloadingOriginal}
+                onClick={() => void handleDownloadOriginal()}
+                type="button"
+                variant="secondary"
+              >
+                {isDownloadingOriginal ? "Downloading…" : "Download"}
+              </Button>
+            ) : null}
+            <Button onClick={onClose} variant="secondary">
+              Close
             </Button>
-          ) : null}
-          {canRestore && onRestore ? (
-            <Button onClick={() => onRestore(design)} type="button">
-              Restore
-            </Button>
-          ) : null}
-          {design.assetsPurgedAt ? (
-            <p className="design-details-muted">
-              Large images were deleted. Thumbnail kept for history reference.
+          </div>
+          {downloadOriginalError ? (
+            <p className="design-details-download-error" role="alert">
+              {downloadOriginalError}
             </p>
           ) : null}
-        </div>
-
-        <div className="design-details-footer-center">
-          {canPurgeAssets && onPurgeAssets ? (
-            <Button onClick={() => onPurgeAssets(design)} type="button" variant="danger">
-              Delete images
-            </Button>
-          ) : null}
-        </div>
-
-        <div className="design-details-footer-actions">
-          {canReprocessWithAi ? (
-            <Button
-              onClick={() => {
-                setReprocessError(null);
-                setIsReprocessConfirmOpen(true);
-              }}
-              type="button"
-              variant="secondary"
-            >
-              Reprocess with AI
-            </Button>
-          ) : null}
-          {canDownloadOriginal ? (
-            <Button
-              disabled={isDownloadingOriginal}
-              onClick={() => void handleDownloadOriginal()}
-              type="button"
-              variant="secondary"
-            >
-              {isDownloadingOriginal ? "Downloading…" : "Download"}
-            </Button>
-          ) : null}
-          <Button onClick={onClose} variant="secondary">
-            Close
-          </Button>
-        </div>
-        {downloadOriginalError ? (
-          <p className="design-details-download-error" role="alert">
-            {downloadOriginalError}
-          </p>
-        ) : null}
-      </ModalFooter>
+        </ModalFooter>
       </DesignLibraryModal>
 
       <DesignLibraryModal
@@ -366,7 +426,9 @@ export function DesignDetailsModal({
         <ModalHeader>
           <div>
             <p className="eyebrow">{design.title}</p>
-            <h2 id="design-more-details-title">Audit &amp; Technical Details</h2>
+            <h2 id="design-more-details-title">
+              Audit &amp; Technical Details
+            </h2>
           </div>
 
           <button
@@ -380,7 +442,10 @@ export function DesignDetailsModal({
         </ModalHeader>
 
         <ModalBody>
-          <section aria-labelledby="design-details-audit-title" className="design-details-section">
+          <section
+            aria-labelledby="design-details-audit-title"
+            className="design-details-section"
+          >
             <h3 id="design-details-audit-title">Audit trail</h3>
             <dl className="design-details-grid design-details-columns">
               <DetailField label="Origin" value={originLabel} />
@@ -391,19 +456,32 @@ export function DesignDetailsModal({
                 />
               ) : null}
               <DetailField
-                label={design.sourceCustomerUploadId ? "Promoted by (staff)" : "Uploaded by (staff)"}
+                label={
+                  design.sourceCustomerUploadId
+                    ? "Promoted by (staff)"
+                    : "Uploaded by (staff)"
+                }
                 value={design.uploadedBy}
               />
-              <DetailField label="Upload date" value={formatDesignTimestamp(design.createdAt)} />
+              <DetailField
+                label="Upload date"
+                value={formatDesignTimestamp(design.createdAt)}
+              />
               {design.requestedByCustomerId ? (
-                <DetailField label="Customer profile ID" value={design.requestedByCustomerId} />
+                <DetailField
+                  label="Customer profile ID"
+                  value={design.requestedByCustomerId}
+                />
               ) : null}
               {(() => {
                 const aiReview = resolveDesignAiReviewDisplay(design);
 
                 return aiReview.aiReviewedBy ? (
                   <>
-                    <DetailField label="Reviewed by" value={aiReview.aiReviewedBy} />
+                    <DetailField
+                      label="Reviewed by"
+                      value={aiReview.aiReviewedBy}
+                    />
                     <DetailField
                       label="Reviewed date"
                       value={
@@ -416,22 +494,37 @@ export function DesignDetailsModal({
                 ) : null;
               })()}
               <DetailField label="Last edited by" value={design.updatedBy} />
-              <DetailField label="Last edited date" value={formatDesignTimestamp(design.updatedAt)} />
+              <DetailField
+                label="Last edited date"
+                value={formatDesignTimestamp(design.updatedAt)}
+              />
             </dl>
           </section>
 
           {design.aiSuggestions ? (
-            <section aria-labelledby="design-details-ai-title" className="design-details-section">
+            <section
+              aria-labelledby="design-details-ai-title"
+              className="design-details-section"
+            >
               <h3 id="design-details-ai-title">AI Processing</h3>
               <dl className="design-details-grid design-details-columns design-details-columns--ai">
                 {design.aiSuggestions.provider ? (
-                  <DetailField label="Provider" value={design.aiSuggestions.provider} />
+                  <DetailField
+                    label="Provider"
+                    value={design.aiSuggestions.provider}
+                  />
                 ) : null}
                 {design.aiSuggestions.model ? (
-                  <DetailField label="Model" value={design.aiSuggestions.model} />
+                  <DetailField
+                    label="Model"
+                    value={design.aiSuggestions.model}
+                  />
                 ) : null}
                 {design.aiSuggestions.promptVersion ? (
-                  <DetailField label="Prompt version" value={design.aiSuggestions.promptVersion} />
+                  <DetailField
+                    label="Prompt version"
+                    value={design.aiSuggestions.promptVersion}
+                  />
                 ) : null}
                 {typeof design.aiSuggestions.promptTokens === "number" ? (
                   <DetailField
@@ -448,44 +541,10 @@ export function DesignDetailsModal({
                 {typeof design.aiSuggestions.estimatedCostUsd === "number" ? (
                   <DetailField
                     label="Estimated cost"
-                    value={formatAiEstimatedCost(design.aiSuggestions.estimatedCostUsd)}
+                    value={formatAiEstimatedCost(
+                      design.aiSuggestions.estimatedCostUsd,
+                    )}
                   />
-                ) : null}
-                {design.aiSuggestions.tagRerankStatus &&
-                design.aiSuggestions.tagRerankStatus !== "skipped" ? (
-                  <>
-                    <DetailField
-                      label="Tag rerank"
-                      value={formatTagRerankStatusLabel(design.aiSuggestions.tagRerankStatus)}
-                    />
-                    {typeof design.aiSuggestions.tagRerankPromptTokens === "number" ? (
-                      <DetailField
-                        label="Tag rerank input tokens"
-                        value={String(design.aiSuggestions.tagRerankPromptTokens)}
-                      />
-                    ) : null}
-                    {typeof design.aiSuggestions.tagRerankCompletionTokens === "number" ? (
-                      <DetailField
-                        label="Tag rerank output tokens"
-                        value={String(design.aiSuggestions.tagRerankCompletionTokens)}
-                      />
-                    ) : null}
-                    {typeof design.aiSuggestions.tagRerankEstimatedCostUsd === "number" ? (
-                      <DetailField
-                        label="Tag rerank cost"
-                        value={formatAiEstimatedCost(design.aiSuggestions.tagRerankEstimatedCostUsd)}
-                      />
-                    ) : null}
-                    <DetailField
-                      label="Combined cost"
-                      value={formatAiEstimatedCost(
-                        resolveCombinedAiEstimatedCost(
-                          design.aiSuggestions.estimatedCostUsd,
-                          design.aiSuggestions.tagRerankEstimatedCostUsd,
-                        ),
-                      )}
-                    />
-                  </>
                 ) : null}
               </dl>
             </section>
@@ -513,10 +572,13 @@ export function DesignDetailsModal({
                     <dt>Effective DPI</dt>
                     <dd>
                       {printSize.effectiveDpi}{" "}
-                      <ResolutionQualityPill effectiveDpi={printSize.effectiveDpi} />
+                      <ResolutionQualityPill
+                        effectiveDpi={printSize.effectiveDpi}
+                      />
                     </dd>
                   </div>
-                  {design.metadataDpiX !== undefined || design.metadataDpiY !== undefined ? (
+                  {design.metadataDpiX !== undefined ||
+                  design.metadataDpiY !== undefined ? (
                     <DetailField
                       label="Embedded file DPI"
                       value={[design.metadataDpiX, design.metadataDpiY]
@@ -527,28 +589,45 @@ export function DesignDetailsModal({
                 </dl>
                 {printSize.usesLegacyFallback ? (
                   <p className="design-details-muted">
-                    Displaying normalized fallback values. Save from Edit Design to persist print
-                    settings.
+                    Displaying normalized fallback values. Save from Edit Design
+                    to persist print settings.
                   </p>
                 ) : null}
               </>
             ) : (
-              <p className="design-details-muted">Source image dimensions are unavailable.</p>
+              <p className="design-details-muted">
+                Source image dimensions are unavailable.
+              </p>
             )}
           </section>
 
-          <section aria-labelledby="design-details-storage-title" className="design-details-section design-details-storage-footnote">
+          <section
+            aria-labelledby="design-details-storage-title"
+            className="design-details-section design-details-storage-footnote"
+          >
             <h3 id="design-details-storage-title">Storage paths</h3>
             <dl className="design-details-grid">
-              <DetailField label="Original path" value={design.originalPath || "—"} />
-              <DetailField label="Thumbnail path" value={design.thumbnailPath || "—"} />
-              <DetailField label="Preview path" value={design.previewPath || "—"} />
+              <DetailField
+                label="Original path"
+                value={design.originalPath || "—"}
+              />
+              <DetailField
+                label="Thumbnail path"
+                value={design.thumbnailPath || "—"}
+              />
+              <DetailField
+                label="Preview path"
+                value={design.previewPath || "—"}
+              />
             </dl>
           </section>
         </ModalBody>
 
         <ModalFooter>
-          <Button onClick={() => setIsMoreDetailsOpen(false)} variant="secondary">
+          <Button
+            onClick={() => setIsMoreDetailsOpen(false)}
+            variant="secondary"
+          >
             Close
           </Button>
         </ModalFooter>
@@ -576,11 +655,17 @@ export function DesignDetailsModal({
         </ModalHeader>
 
         <ModalBody>
-          <CompanionSetPanel design={design} onCompanionsChanged={onCompanionsChanged} />
+          <CompanionSetPanel
+            design={design}
+            onCompanionsChanged={onCompanionsChanged}
+          />
         </ModalBody>
 
         <ModalFooter>
-          <Button onClick={() => setIsCompanionModalOpen(false)} variant="secondary">
+          <Button
+            onClick={() => setIsCompanionModalOpen(false)}
+            variant="secondary"
+          >
             Close
           </Button>
         </ModalFooter>

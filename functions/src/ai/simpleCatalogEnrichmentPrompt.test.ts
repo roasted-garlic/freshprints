@@ -1,153 +1,77 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import type { CatalogTag } from "../../../packages/shared/src/types/catalogTag.types";
 import type { AiEnrichmentCategoryOption } from "./providers/AiEnrichmentProvider";
-import { buildSimpleCatalogEnrichmentUserPrompt } from "./simpleCatalogEnrichmentPrompt";
+import {
+  buildSimpleCatalogEnrichmentSystemPrompt,
+  buildSimpleCatalogEnrichmentUserPrompt,
+  VISUAL_CONTEXT_PROMPT_CONTRACT,
+} from "./simpleCatalogEnrichmentPrompt";
+import { DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE } from "../../../packages/shared/src/constants/aiEnrichment.constants";
 
 const categories: AiEnrichmentCategoryOption[] = [
-  { id: "cat-family", name: "Family", description: "Motherhood, parenting, family themes." },
-];
-
-const approvedTags: CatalogTag[] = [
   {
-    aliases: ["mom"],
-    createdAt: null,
-    createdBy: "seed",
-    id: "tag-motherhood",
-    name: "motherhood",
-    preferredWhen: "Use for motherhood/parenting themes.",
-    status: "approved",
-    updatedAt: null,
-    updatedBy: "seed",
+    id: "cat-family",
+    name: "Family",
+    description: "Motherhood, parenting, family themes.",
   },
 ];
 
-describe("simpleCatalogEnrichmentPrompt — legacy template backward compatibility (review note 5)", () => {
-  it("still builds and substitutes an owner-edited legacy template containing {{approved_categories}} and {{approved_tags}}", () => {
-    const legacyTemplate = [
-      "Analyze the image.",
-      "Approved categories:",
-      "{{approved_categories}}",
-      "Approved tags:",
-      "{{approved_tags}}",
-      "Excluded tags:",
-      "{{excluded_tags}}",
-    ].join("\n");
+describe("simpleCatalogEnrichmentPrompt v39", () => {
+  it("uses the shared system prompt for both Processing and Playground", () => {
+    assert.equal(
+      buildSimpleCatalogEnrichmentSystemPrompt(),
+      buildSimpleCatalogEnrichmentSystemPrompt(),
+    );
+  });
 
+  it("injects active category names and owner descriptions dynamically", () => {
     const resolved = buildSimpleCatalogEnrichmentUserPrompt({
       approvedCategories: categories,
       approvedCategoryNames: categories.map((category) => category.name),
-      approvedTags,
-      approvedTagNames: approvedTags.map((tag) => tag.name),
-      effectiveTagExclusions: ["death"],
-      promptTemplate: legacyTemplate,
+      promptTemplate: DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
     });
 
-    // Legacy placeholders are still substituted with real taxonomy context — a saved custom
-    // template from before the v18 change keeps working instead of sending literal
-    // "{{approved_categories}}" text to the model.
-    assert.ok(resolved.includes("Family"));
-    assert.ok(resolved.includes("motherhood"));
-    assert.ok(resolved.includes("death"));
+    assert.ok(
+      resolved.includes("- Family — Motherhood, parenting, family themes."),
+    );
     assert.ok(!resolved.includes("{{approved_categories}}"));
-    assert.ok(!resolved.includes("{{approved_tags}}"));
-    assert.ok(!resolved.includes("{{excluded_tags}}"));
-  });
-
-  it("builds the shipped default-style template (no legacy placeholders) without error", () => {
-    const modernTemplate = "Analyze the image. Excluded tags: {{excluded_tags}}";
-
-    const resolved = buildSimpleCatalogEnrichmentUserPrompt({
-      approvedCategories: categories,
-      approvedCategoryNames: categories.map((category) => category.name),
-      approvedTags,
-      approvedTagNames: approvedTags.map((tag) => tag.name),
-      effectiveTagExclusions: ["death"],
-      promptTemplate: modernTemplate,
-    });
-
-    assert.ok(resolved.includes("death"));
-    assert.ok(!resolved.includes("Family"));
-    assert.ok(!resolved.includes("motherhood"));
-  });
-});
-
-describe("simpleCatalogEnrichmentPrompt — {{approved_categories}} (v34 default)", () => {
-  it("substitutes category name + whitespace-collapsed description", () => {
-    const messy = [
-      {
-        id: "cat-faith",
-        name: "  Faith & Worship  ",
-        description: "  Christian faith,\n  scripture,  church.  ",
-      },
-      { id: "cat-no-desc", name: "Occasions" },
-    ];
-    const template = [
-      "Analyze the image.",
-      "Approved categories:",
-      "{{approved_categories}}",
-      "Excluded tags: {{excluded_tags}}",
-    ].join("\n");
-
-    const resolved = buildSimpleCatalogEnrichmentUserPrompt({
-      approvedCategories: messy,
-      approvedCategoryNames: messy.map((category) => category.name),
-      approvedTagNames: [],
-      effectiveTagExclusions: ["death"],
-      promptTemplate: template,
-    });
-
-    assert.ok(resolved.includes("- Faith & Worship — Christian faith, scripture, church."));
-    assert.ok(resolved.includes("- Occasions"));
-    assert.ok(!resolved.includes("{{approved_categories}}"));
-    assert.ok(!resolved.includes("\n  scripture"));
-  });
-});
-
-describe("simpleCatalogEnrichmentPrompt — {{approved_category_names}}", () => {
-  it("substitutes only category names, without descriptions", () => {
-    const template = [
-      "Analyze the image.",
-      "Approved categories:",
-      "{{approved_category_names}}",
-      "Excluded tags: {{excluded_tags}}",
-    ].join("\n");
-
-    const resolved = buildSimpleCatalogEnrichmentUserPrompt({
-      approvedCategories: categories,
-      approvedCategoryNames: categories.map((category) => category.name),
-      approvedTagNames: [],
-      effectiveTagExclusions: ["death"],
-      promptTemplate: template,
-    });
-
-    assert.ok(resolved.includes("Family"));
-    assert.ok(!resolved.includes("Motherhood, parenting, family themes."));
     assert.ok(!resolved.includes("{{approved_category_names}}"));
   });
-});
 
-describe("simpleCatalogEnrichmentPrompt — {{approved_tag_names}}", () => {
-  it("substitutes only tag names, without aliases or preferredWhen", () => {
-    const template = [
-      "Analyze the image.",
-      "Approved tags:",
-      "{{approved_tag_names}}",
-      "Excluded tags: {{excluded_tags}}",
-    ].join("\n");
-
+  it("does not inject retired tag vocabulary into the shipped prompt", () => {
     const resolved = buildSimpleCatalogEnrichmentUserPrompt({
-      approvedCategoryNames: [],
-      approvedTags,
-      approvedTagNames: approvedTags.map((tag) => tag.name),
-      effectiveTagExclusions: ["death"],
-      promptTemplate: template,
+      approvedCategories: categories,
+      approvedCategoryNames: categories.map((category) => category.name),
+      promptTemplate: DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
     });
 
-    assert.ok(resolved.includes("motherhood"));
-    assert.ok(!resolved.includes("aliases:"));
-    assert.ok(!resolved.includes("preferred when:"));
-    assert.ok(!resolved.includes("{{approved_tag_names}}"));
+    assert.doesNotMatch(
+      resolved,
+      /tags|suggestedNewTags|preferredWhen|excluded_tags|approved_tags/i,
+    );
+    assert.doesNotMatch(resolved, /halftoneShadow|readableTextLines/i);
+  });
+
+  it("preserves genuine custom prompt content and adds the VCP contract once", () => {
+    const custom = "Owner rule: preserve artwork wording.";
+    const resolved = buildSimpleCatalogEnrichmentUserPrompt({
+      approvedCategoryNames: [],
+      promptTemplate: custom,
+    });
+    assert.ok(resolved.startsWith(custom));
+    assert.equal(resolved.split(VISUAL_CONTEXT_PROMPT_CONTRACT).length - 1, 1);
+  });
+
+  it("keeps Playground and Processing prompt expansion identical", () => {
+    const input = {
+      approvedCategories: categories,
+      approvedCategoryNames: categories.map((category) => category.name),
+      promptTemplate: DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+    };
+    assert.equal(
+      buildSimpleCatalogEnrichmentUserPrompt(input),
+      buildSimpleCatalogEnrichmentUserPrompt(input),
+    );
   });
 });

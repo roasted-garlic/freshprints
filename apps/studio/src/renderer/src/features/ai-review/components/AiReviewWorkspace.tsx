@@ -27,6 +27,8 @@ import { AiReviewRejectedStatusSection } from "./AiReviewRejectedStatusSection";
 import { AiReviewSuggestionsSection } from "./AiReviewSuggestionsSection";
 import { AiReviewSmartProfileSection } from "./AiReviewSmartProfileSection";
 import { AiReviewWorkspaceEmpty } from "./AiReviewWorkspaceEmpty";
+import { aiEnrichmentTraceService } from "../../settings/services/aiEnrichmentTraceService";
+import { AiEnrichmentTraceInspector } from "../../settings/components/AiEnrichmentTraceInspector";
 
 interface AiReviewWorkspaceProps {
   actionError: string | null;
@@ -159,6 +161,9 @@ export function AiReviewWorkspace({
   showRerunAiButton,
   reviewScrollNonce = 0,
 }: AiReviewWorkspaceProps) {
+  const [aiTraceId, setAiTraceId] = useState<string | null>(null);
+  const [showAiTrace, setShowAiTrace] = useState(false);
+  useEffect(() => { setAiTraceId(null); setShowAiTrace(false); if (!selectedDesign) return; void aiEnrichmentTraceService.list().then((traces) => { const latest = traces.find((trace) => trace.designId === selectedDesign.id); if (latest) setAiTraceId(latest.traceId); }).catch(() => undefined); }, [selectedDesign?.id]);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [isProcessingSettingsOpen, setIsProcessingSettingsOpen] = useState(false);
   const [pendingPreviewBackgroundValues, setPendingPreviewBackgroundValues] =
@@ -402,7 +407,9 @@ export function AiReviewWorkspace({
                 <div className="ai-review-workspace-actions-row">
                   <div className="ai-review-workspace-actions-primary">
                     {activeTab === "needs_review" ? (
-                      <>
+    <>
+      <div className="settings-section-actions"><Button type="button" onClick={() => setShowAiTrace((value) => !value)} disabled={!aiTraceId}>{showAiTrace ? "Hide AI Trace" : "View AI Trace"}</Button></div>
+      {showAiTrace ? <AiEnrichmentTraceInspector traceId={aiTraceId} /> : null}
                         <Button
                           disabled={!canApprove || isActionLoading}
                           onClick={onApprove}

@@ -6,13 +6,12 @@ import {
   buildSimpleCatalogEnrichmentResult,
   extractJsonObject,
   normalizeSimpleCatalogEnrichment,
+  toCanonicalSimpleCatalogEnrichmentJson,
 } from "./simpleCatalogEnrichmentResponse";
 import { CATALOG_ENRICHMENT_PROMPT_VERSION } from "./catalogTitleRules";
 import { DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE } from "../../../packages/shared/src/constants/aiEnrichment.constants";
 
-const EXCLUSIONS = ["death", "skull"];
-
-function enrichmentInput(overrides: Partial<AiEnrichmentInput> = {}): AiEnrichmentInput {
+function enrichmentInput(): AiEnrichmentInput {
   return {
     designId: "design-1",
     uploadFileStem: "raw-upload-file",
@@ -22,439 +21,142 @@ function enrichmentInput(overrides: Partial<AiEnrichmentInput> = {}): AiEnrichme
     promptTemplate: DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
     categoryOptions: [],
     categoryNames: [],
-    approvedTags: [],
-    approvedTagNames: [],
     categoryIdsByName: {},
-    effectiveTagExclusions: EXCLUSIONS,
-    ...overrides,
   };
 }
 
 describe("extractJsonObject", () => {
-  it("parses plain JSON", () => {
+  it("parses plain, fenced, and embedded JSON", () => {
     assert.deepEqual(extractJsonObject('{"title":"Hi"}'), { title: "Hi" });
-  });
-
-  it("parses JSON inside a fenced code block", () => {
-    const raw = "```json\n{\"title\":\"Hi\"}\n```";
-    assert.deepEqual(extractJsonObject(raw), { title: "Hi" });
-  });
-
-  it("parses JSON embedded in surrounding prose", () => {
-    const raw = 'Here is the result: {"title":"Hi","tags":["a"]} hope that helps!';
-    assert.deepEqual(extractJsonObject(raw), { title: "Hi", tags: ["a"] });
-  });
-
-  it("preserves straight apostrophes inside double-quoted JSON strings", () => {
-    const raw = JSON.stringify({
-      title: "I'm Fine The Rest of You Need Therapy",
-      description: "x",
-      category: "Humor",
-      tags: ["funny"],
+    assert.deepEqual(extractJsonObject('```json\n{"title":"Hi"}\n```'), {
+      title: "Hi",
     });
-    assert.equal(
-      extractJsonObject(raw).title,
-      "I'm Fine The Rest of You Need Therapy",
-    );
-  });
-
-  it("preserves curly apostrophes inside double-quoted JSON strings", () => {
-    const curly = "I\u2019m Fine The Rest of You Need Therapy";
-    const raw = JSON.stringify({
-      title: curly,
-      description: "x",
-      category: "Humor",
-      tags: ["funny"],
+    assert.deepEqual(extractJsonObject('Result: {"title":"Hi"}'), {
+      title: "Hi",
     });
-    assert.equal(extractJsonObject(raw).title, curly);
-  });
-
-  it("returns an empty object for unparseable content", () => {
-    assert.deepEqual(extractJsonObject("not json at all"), {});
   });
 });
 
 describe("normalizeSimpleCatalogEnrichment", () => {
-  it("trims required strings", () => {
-    const parsed = normalizeSimpleCatalogEnrichment(
-      {
-        category: "  Motherhood  ",
-        description: "  a design  ",
-        title: "  Cool Title  ",
-        tags: [],
+  it("normalizes required fields and safely defaults omitted optional fields", () => {
+    const parsed = normalizeSimpleCatalogEnrichment({
+      category: "  Motherhood  ",
+      description: "  a design  ",
+      title: "  Cool Title  ",
+      visualContextProfile: {
+        version: "visual-context-v1",
+        summary: "summary",
+        detailedDescription: "description",
       },
-      EXCLUSIONS,
-    );
+    });
 
     assert.equal(parsed.category, "Motherhood");
     assert.equal(parsed.description, "a design");
     assert.equal(parsed.title, "Cool Title");
+    assert.deepEqual(parsed.visibleText, undefined);
+    assert.equal(parsed.professionsGroups, undefined);
+    assert.equal(parsed.occasions, undefined);
+    assert.equal(parsed.places, undefined);
+    assert.equal(parsed.categoryGapNote, undefined);
   });
 
-  it("enforces single-word tags, dedupes, and filters excluded + generic tags", () => {
-    const parsed = normalizeSimpleCatalogEnrichment(
-      {
-        category: "Motherhood",
-        description: "A design.",
-        title: "Cool Title",
-        tags: ["mama bear", "mama", "death", "skull", "design", "funny", "funny"],
-      },
-      EXCLUSIONS,
-    );
+  it("uses visibleText as canonical and only reads historical readableTextLines as a fallback", () => {
+    const canonical = normalizeSimpleCatalogEnrichment({
+      category: "General",
+      description: "A design.",
+      title: "Visible Words",
+      visibleText: ["Damn good art"],
+      readableTextLines: ["stale legacy text"],
+    });
+    assert.deepEqual(canonical.visibleText, ["Damn good art"]);
 
-    // "mama bear" → tokens "mama"/"bear"; "death"/"skull" excluded; "design" generic; deduped.
-    for (const tag of parsed.tags) {
-      assert.ok(!tag.includes(" "), `tag "${tag}" should be a single word`);
-    }
-    assert.equal(new Set(parsed.tags).size, parsed.tags.length, "tags should be deduped");
-    assert.ok(!parsed.tags.includes("death"));
-    assert.ok(!parsed.tags.includes("skull"));
-    assert.ok(!parsed.tags.includes("design"));
-    assert.ok(parsed.tags.includes("mama"));
-    assert.ok(parsed.tags.includes("funny"));
+    const legacy = normalizeSimpleCatalogEnrichment({
+      category: "General",
+      description: "A design.",
+      title: "Legacy Words",
+      readableTextLines: ["damn good art"],
+    });
+    assert.deepEqual(legacy.visibleText, ["damn good art"]);
   });
 
-  it("preserves multi-word raw tags without tokenizing them", () => {
-    const parsed = normalizeSimpleCatalogEnrichment(
-      {
-        category: "Motherhood",
-        description: "A design.",
-        title: "Cool Title",
-        tags: ["rock and roll", "Mama Bear", "funny", "funny"],
+  it("enforces deterministic caps after provider maxItems removal", () => {
+    const parsed = normalizeSimpleCatalogEnrichment({
+      category: "General",
+      description: "A design.",
+      title: "Capped Design",
+      visibleText: Array.from({ length: 30 }, (_, i) => `text-${i}`),
+      subjects: Array.from({ length: 30 }, (_, i) => `subject-${i}`),
+      visualContextProfile: {
+        version: "visual-context-v1",
+        summary: "summary",
+        detailedDescription: "description",
+        uncertainties: Array.from({ length: 30 }, (_, i) => `uncertainty-${i}`),
       },
-      EXCLUSIONS,
-    );
-
-    // rawTags keeps the model's original multi-word strings (lowercased, deduped) so the
-    // resolver can match them against approved names and aliases.
-    assert.deepEqual(parsed.rawTags, ["rock and roll", "mama bear", "funny"]);
+    });
+    assert.equal(parsed.visibleText?.length, 12);
+    assert.equal(parsed.subjects?.length, 24);
+    assert.equal(parsed.visualContextProfile?.uncertainties?.length, 12);
   });
 
-  it("caps tags at the configured limit (8)", () => {
-    const many = Array.from({ length: 30 }, (_, i) => `tag${i}`);
-    const parsed = normalizeSimpleCatalogEnrichment(
-      {
-        category: "General",
-        description: "A design.",
-        title: "Cool Title",
-        tags: many,
-      },
-      EXCLUSIONS,
-    );
-    assert.ok(parsed.tags.length <= 8);
+  it("does not require or parse active tag, suggested-tag, or AI-halftone fields", () => {
+    const parsed = normalizeSimpleCatalogEnrichment({
+      category: "General",
+      description: "A design.",
+      title: "Tag Inert",
+      tags: ["legacy"],
+      suggestedNewTags: [{ name: "legacy", preferredWhen: "never" }],
+      halftoneShadowLikelihood: "likely",
+      halftoneShadowEvidence: "legacy",
+    });
+    assert.equal("tags" in parsed, false);
+    assert.equal("suggestedNewTags" in parsed, false);
+    assert.equal("halftoneShadowLikelihood" in parsed, false);
   });
 
-  it("normalizes complete suggested-new-tag objects", () => {
-    const parsed = normalizeSimpleCatalogEnrichment(
-      {
-        category: "Characters",
-        description: "A moody character portrait design.",
-        title: "Moody Portrait",
-        tags: ["portrait"],
-        suggestedNewTags: [
-          {
-            name: " Wednesday ",
-            aliases: ["Wednesday Addams", "Addams", "wednesday"],
-            preferredWhen: " Use when Wednesday Addams is the main character. ",
-            reason: "No approved character tag matched.",
-          },
-        ],
-      },
-      EXCLUSIONS,
-    );
-
-    assert.deepEqual(parsed.suggestedNewTags, [
-      {
-        aliases: ["wednesday addams", "addams"],
-        name: "wednesday",
-        preferredWhen: "Use when Wednesday Addams is the main character.",
-        reason: "No approved character tag matched.",
-        source: "ai",
-      },
-    ]);
-  });
-
-  it("drops incomplete suggested-new-tags and caps the retained suggestions", () => {
-    const suggestions = Array.from({ length: 8 }, (_, index) => ({
-      name: `tag${index}`,
-      aliases: [`tag ${index}`],
-      preferredWhen: `Use when tag ${index} is a primary visible subject.`,
-      reason: "Approved tags were not specific enough.",
-    }));
-
-    const parsed = normalizeSimpleCatalogEnrichment(
-      {
-        category: "General",
-        description: "A design.",
-        title: "Cool Title",
-        tags: ["cool"],
-        suggestedNewTags: [
-          { name: "two words", aliases: [], preferredWhen: "Use when relevant." },
-          { name: "valid", aliases: [], preferredWhen: "" },
-          ...suggestions,
-        ],
-      },
-      EXCLUSIONS,
-    );
-
-    assert.equal(parsed.suggestedNewTags.length, 5);
-    assert.deepEqual(
-      parsed.suggestedNewTags.map((tag) => tag.name),
-      ["tag0", "tag1", "tag2", "tag3", "tag4"],
-    );
-  });
-
-  it("strips halloween when the design only shows skeleton cues", () => {
-    const parsed = normalizeSimpleCatalogEnrichment(
-      {
-        category: "Family",
-        description: "A cartoon skeleton celebrating motherhood with a rock-on hand sign.",
-        title: "Motherhood Rocks",
-        tags: ["motherhood", "skeleton", "halloween", "funny"],
-      },
-      EXCLUSIONS,
-    );
-
-    assert.deepEqual(parsed.tags, ["motherhood", "skeleton", "funny"]);
-    assert.ok(!parsed.rawTags.includes("halloween"));
-  });
-
-  it("keeps halloween when jack-o'-lantern cues accompany a skeleton", () => {
-    const parsed = normalizeSimpleCatalogEnrichment(
-      {
-        category: "Holiday",
-        description: "A skeleton dancing next to a carved jack-o'-lantern.",
-        title: "Spooky Dance",
-        tags: ["skeleton", "halloween", "dance"],
-      },
-      EXCLUSIONS,
-    );
-
-    assert.ok(parsed.tags.includes("halloween"));
-    assert.ok(parsed.rawTags.includes("halloween"));
-  });
-
-  it("rejects missing required fields", () => {
+  it("rejects missing required catalog fields", () => {
     assert.throws(
-      () => normalizeSimpleCatalogEnrichment({ category: "General", title: "Cool Title", tags: [] }, EXCLUSIONS),
+      () =>
+        normalizeSimpleCatalogEnrichment({
+          category: "General",
+          title: "Missing description",
+        }),
       /description/,
     );
   });
 });
 
-describe("buildSimpleCatalogEnrichmentResult", () => {
-  it("maps the parsed response into aiSuggestions and aiAnalysis, trusting the model title", () => {
-    const parsed = normalizeSimpleCatalogEnrichment(
-      {
-        category: "Motherhood",
-        description: "A bold typography slogan design.",
-        title: "Some Days I Rock It",
-        tags: ["mama", "funny", "retro"],
+describe("canonical projection and result mapping", () => {
+  it("projects only the v39 fields and preserves VCP/visibleText", () => {
+    const parsed = normalizeSimpleCatalogEnrichment({
+      category: "Motherhood",
+      description: "A bold typography slogan design.",
+      title: "Some Days I Rock It",
+      visibleText: ["Some Days I Rock It"],
+      subjects: ["woman"],
+      visualContextProfile: {
+        version: "visual-context-v1",
+        summary: "A grounded design.",
+        detailedDescription: "A grounded visual description.",
       },
-      EXCLUSIONS,
-    );
+    });
+    const canonical = toCanonicalSimpleCatalogEnrichmentJson(parsed);
+    assert.equal(canonical.visibleText instanceof Array, true);
+    assert.equal("tags" in canonical, false);
+    assert.equal("readableTextLines" in canonical, false);
+    assert.equal("halftoneShadowLikelihood" in canonical, false);
 
     const result = buildSimpleCatalogEnrichmentResult({
       parsed,
-      enrichmentInput: enrichmentInput({
-        categoryNames: ["Motherhood"],
-        categoryIdsByName: { motherhood: "cat-motherhood" },
-      }),
+      enrichmentInput: enrichmentInput(),
       modelId: "gemini-2.5-flash-lite",
     });
-
-    assert.equal(result.suggestions.provider, "google");
-    assert.equal(result.suggestions.model, "gemini-2.5-flash-lite");
-    assert.equal(result.suggestions.promptVersion, CATALOG_ENRICHMENT_PROMPT_VERSION);
-    // Lean path trusts the model title verbatim (only non-destructive normalization).
+    assert.equal(
+      result.suggestions.promptVersion,
+      CATALOG_ENRICHMENT_PROMPT_VERSION,
+    );
     assert.equal(result.suggestions.title, "Some Days I Rock It");
-    assert.ok(result.suggestions.description && result.suggestions.description.length > 0);
-    // Category is no longer resolved here (v18): the raw candidate is carried as a transient
-    // analysis.rawCategory scoring signal for the pipeline's resolveThemeCategory step.
-    assert.equal(result.suggestions.categoryName, undefined);
-    assert.equal(result.suggestions.categoryId, undefined);
-    assert.equal(result.analysis.rawCategory, "Motherhood");
-    assert.deepEqual(result.suggestions.tags, ["mama", "funny", "retro"]);
-    assert.deepEqual(result.analysis.rawTags, ["mama", "funny", "retro"]);
-    assert.ok(typeof result.suggestions.generatedAt === "string");
-  });
-
-  it("preserves a good model title even when the description leads with the transcribed quote", () => {
-    // Regression: previously resolveCatalogTitle derived the title from the description's leading
-    // quote, collapsing "Motherhood Skeleton Rock On" into an OCR fragment.
-    const parsed = normalizeSimpleCatalogEnrichment(
-      {
-        category: "Family",
-        description:
-          "SOME DAYS I ROCK IT - SOME DAYS IT ROCKS ME - EITHER WAY WE'RE ROCKIN' / MOTHERHOOD. A skeleton throws a rock-on hand sign in bold typography.",
-        title: "Motherhood Skeleton Rock On",
-        tags: ["motherhood", "skeleton", "attitude"],
-      },
-      EXCLUSIONS,
-    );
-
-    const result = buildSimpleCatalogEnrichmentResult({
-      parsed,
-      enrichmentInput: enrichmentInput(),
-      modelId: "gpt-5.4-nano-2026-03-17",
-    });
-
-    assert.equal(result.suggestions.title, "Motherhood Skeleton Rock On");
-    assert.ok(!/some days it rocks me/i.test(result.suggestions.title ?? ""));
-  });
-
-  it("keeps style-heavy model titles (no readable-text rewrite)", () => {
-    const parsed = normalizeSimpleCatalogEnrichment(
-      {
-        category: "Humor",
-        description:
-          '"Kinda Give A Damn Kinda Don\'t Care" in distressed lettering with decorative stars.',
-        title: "Sarcastic Funny Attitude Statement Retro Distressed",
-        tags: ["sarcastic", "funny", "attitude", "statement", "retro", "distressed"],
-      },
-      EXCLUSIONS,
-    );
-
-    const result = buildSimpleCatalogEnrichmentResult({
-      parsed,
-      enrichmentInput: enrichmentInput(),
-      modelId: "gemini-2.5-flash-lite",
-    });
-
-    assert.equal(
-      result.suggestions.title,
-      "Sarcastic Funny Attitude Statement Retro Distressed",
-    );
-  });
-
-  it("preserves the full transcribed visible text in the description", () => {
-    const description =
-      "SOME DAYS I ROCK IT - SOME DAYS IT ROCKS ME - EITHER WAY WE'RE ROCKIN' / MOTHERHOOD. A skeleton design.";
-    const parsed = normalizeSimpleCatalogEnrichment(
-      {
-        category: "Family",
-        description,
-        title: "Motherhood Skeleton Rock On",
-        tags: ["motherhood"],
-      },
-      EXCLUSIONS,
-    );
-
-    const result = buildSimpleCatalogEnrichmentResult({
-      parsed,
-      enrichmentInput: enrichmentInput(),
-      modelId: "gpt-5.4-nano-2026-03-17",
-    });
-
-    assert.ok(result.suggestions.description?.includes("SOME DAYS I ROCK IT"));
-    assert.ok(result.suggestions.description?.includes("EITHER WAY WE'RE ROCKIN'"));
-    assert.ok(result.suggestions.description?.includes("MOTHERHOOD"));
-  });
-
-  it("carries the raw model category as a transient analysis signal without resolving it here", () => {
-    // Category resolution (including the Family-vs-Pop-Culture priority rules) now happens in the
-    // pipeline's resolveThemeCategory step (see catalogThemeCategoryResolver.test.ts), using the
-    // matched approved tags as an additional signal. This function only passes the raw candidate
-    // through on analysis.rawCategory.
-    const parsed = normalizeSimpleCatalogEnrichment(
-      {
-        category: "Family",
-        description:
-          "SOME DAYS I ROCK IT / MOTHERHOOD. A skeleton throws a rock-on sign.",
-        title: "Motherhood Skeleton Rock On",
-        tags: ["motherhood", "skeleton"],
-      },
-      EXCLUSIONS,
-    );
-
-    const result = buildSimpleCatalogEnrichmentResult({
-      parsed,
-      enrichmentInput: enrichmentInput({
-        categoryNames: ["Family", "Pop Culture & Characters"],
-        categoryIdsByName: {
-          family: "cat-family",
-          "pop culture & characters": "cat-pop-culture",
-        },
-      }),
-      modelId: "gpt-5.4-nano-2026-03-17",
-    });
-
-    assert.equal(result.suggestions.categoryName, undefined);
-    assert.equal(result.suggestions.categoryId, undefined);
-    assert.equal(result.analysis.rawCategory, "Family");
-  });
-
-  it("falls back to a non-empty title and description when the model omits them", () => {
-    const parsed = normalizeSimpleCatalogEnrichment(
-      {
-        category: "Funny",
-        description: "An illustrated raccoon design.",
-        title: "Raccoon Cartoon",
-        tags: ["raccoon", "cartoon"],
-      },
-      EXCLUSIONS,
-    );
-
-    const result = buildSimpleCatalogEnrichmentResult({
-      parsed,
-      enrichmentInput: enrichmentInput(),
-      modelId: "gpt-5.4-nano-2026-03-17",
-    });
-
-    assert.ok(result.suggestions.title && result.suggestions.title.trim().length > 0);
-    assert.ok(result.suggestions.description && result.suggestions.description.trim().length > 0);
-  });
-
-  it("persists the model title even when it matches the upload stem (no filename rewrite)", () => {
-    const parsed = normalizeSimpleCatalogEnrichment(
-      {
-        category: "Floral",
-        description: "A floral artwork design.",
-        title: "raw-upload-file",
-        tags: ["floral"],
-      },
-      EXCLUSIONS,
-    );
-
-    const result = buildSimpleCatalogEnrichmentResult({
-      parsed,
-      enrichmentInput: enrichmentInput({ uploadFileStem: "raw-upload-file" }),
-      modelId: "gpt-5.4-nano-2026-03-17",
-    });
-
-    assert.equal(result.suggestions.title, "raw-upload-file");
-  });
-
-  it("persists AI title/description verbatim; visibleText may still drop OCR dump lines", () => {
-    const dump =
-      "182 (freely) I WILL ALWAYS LOVE YOU - DOLLY PARTON N.C. if ____ would ____";
-    const description = `A vintage-style Dolly Parton portrait layered over sheet music for "I Will Always Love You," with warm country styling. ${dump}`;
-    const title = "182 Freely I Will Always Love You Dolly Parton NC If Would";
-    const parsed = normalizeSimpleCatalogEnrichment(
-      {
-        category: "Music",
-        description,
-        title,
-        tags: ["music", "country"],
-        readableTextLines: [dump],
-        centralSubject: "Dolly Parton portrait",
-        subjects: ["Dolly Parton"],
-        objects: ["sheet music", "hat"],
-      },
-      EXCLUSIONS,
-    );
-
-    const result = buildSimpleCatalogEnrichmentResult({
-      parsed,
-      enrichmentInput: enrichmentInput(),
-      modelId: "gemini-2.5-flash-lite",
-    });
-
-    assert.equal(result.suggestions.title, title);
-    assert.equal(result.suggestions.description, description);
-    assert.equal(
-      result.analysis.smartProfileEnrichmentParse?.visibleText?.some((line) => /____/.test(line)),
-      false,
-    );
+    assert.deepEqual(result.analysis.visibleText, ["Some Days I Rock It"]);
+    assert.equal("rawTags" in result.analysis, false);
+    assert.equal("halftoneShadowAssessment" in result.analysis, false);
   });
 });

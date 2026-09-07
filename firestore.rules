@@ -2389,6 +2389,15 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /aiEnrichmentTraces/{traceId} {
+      allow read: if isOwner() || isAdmin();
+      allow write: if false;
+    }
+    match /aiEnrichmentTraceFull/{traceId} {
+      allow read: if isOwner();
+      allow write: if false;
+    }
+
     // Catalog Reprocessing durable jobs (Slice 4+). Writes Admin/callable only; owner read for progress UI.
     match /catalogReprocessJobs/{jobId} {
       allow read: if isOwner();

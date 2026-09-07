@@ -1,13 +1,9 @@
 import {
   AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER,
   AI_ENRICHMENT_APPROVED_CATEGORY_NAMES_PLACEHOLDER,
-  AI_ENRICHMENT_APPROVED_TAGS_PLACEHOLDER,
-  AI_ENRICHMENT_APPROVED_TAG_NAMES_PLACEHOLDER,
-  AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER,
   AI_ENRICHMENT_SMART_PROFILE_VOCAB_PLACEHOLDER,
   DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
 } from "../../../packages/shared/src/constants/aiEnrichment.constants";
-import type { CatalogTag } from "../../../packages/shared/src/types/catalogTag.types";
 import { formatSmartProfileVocabPromptSection } from "../../../packages/shared/src/utils/smartProfileVocab";
 import type { SmartProfileVocabLists } from "../../../packages/shared/src/utils/smartProfileVocab";
 import type { AiEnrichmentCategoryOption } from "./providers/AiEnrichmentProvider";
@@ -16,10 +12,8 @@ import type { AiEnrichmentCategoryOption } from "./providers/AiEnrichmentProvide
  * Playground-style AI Processing prompt (v20).
  *
  * Intentionally lightweight: it asks for only catalog review fields and does NOT force
- * `response_format: json_object`. This matches the Settings
- * AI Playground request shape, which returns valid JSON quickly at `medium` reasoning effort
- * without exhausting the token budget (the cause of the `finish_reason: length` empty-output
- * error on the heavier v16 structured contract).
+ * a machine-enforced structured response schema. Processing and the Settings AI Playground
+ * share the same response contract while retaining the lightweight prompt.
  *
  * v34 default injects active category name + owner description via {{approved_categories}}
  * (see ADR-FP-165). Tag names/aliases/preferredWhen remain deliberately NOT injected
@@ -78,100 +72,53 @@ function formatCategoryNamesOnly(
   return names.map((name) => `- ${collapsePromptWhitespace(name)}`).join("\n");
 }
 
-function formatTagContext(
-  approvedTags: readonly CatalogTag[] | undefined,
-  fallbackNames: readonly string[],
-): string {
-  const tags =
-    approvedTags && approvedTags.length > 0
-      ? approvedTags
-      : fallbackNames.map((name) => ({
-          aliases: [],
-          createdAt: null,
-          createdBy: "",
-          id: name,
-          name,
-          preferredWhen: "",
-          status: "approved" as const,
-          updatedAt: null,
-          updatedBy: "",
-        }));
+/**
+ * ADR-FP-182: keep editable legacy Settings prompts compatible with the immutable Pass 1
+ * visual-context contract. The marker pair is intentionally narrow so an owner-authored prompt
+ * is preserved verbatim and receives the contract at most once.
+ */
+export const VISUAL_CONTEXT_PROMPT_CONTRACT =
+  'Return a visualContextProfile object with version "visual-context-v1", including a grounded summary and detailedDescription. Use only bounded visual evidence and include uncertainties when evidence is ambiguous.';
 
-  if (tags.length === 0) {
-    return "(none)";
+function ensureVisualContextPromptContract(template: string): string {
+  const hasVcpKey = /visualContextProfile/i.test(template);
+  const hasVcpVersion = /visual-context-v1/i.test(template);
+  if (hasVcpKey && hasVcpVersion) {
+    return template;
   }
 
-  return tags
-    .filter((tag) => tag.status === "approved")
-    .map((tag) => {
-      const name = collapsePromptWhitespace(tag.name);
-      const aliases = tag.aliases.map(collapsePromptWhitespace).filter(Boolean);
-      const preferredWhen = collapsePromptWhitespace(tag.preferredWhen);
-      const parts = [`- ${name}`];
-
-      if (aliases.length > 0) {
-        parts.push(`aliases: ${aliases.join(", ")}`);
-      }
-
-      if (preferredWhen) {
-        parts.push(`preferred when: ${preferredWhen}`);
-      }
-
-      return parts.join(" | ");
-    })
-    .join("\n");
-}
-
-function formatTagNamesOnly(
-  approvedTags: readonly CatalogTag[] | undefined,
-  fallbackNames: readonly string[],
-): string {
-  const names =
-    approvedTags && approvedTags.length > 0
-      ? approvedTags.filter((tag) => tag.status === "approved").map((tag) => tag.name)
-      : fallbackNames;
-
-  if (names.length === 0) {
-    return "(none)";
-  }
-
-  return names.map((name) => `- ${collapsePromptWhitespace(name)}`).join("\n");
-}
-
-function formatExclusionList(values: readonly string[]): string {
-  return values.length > 0 ? values.join(", ") : "(none)";
+  return `${template}\n\n${VISUAL_CONTEXT_PROMPT_CONTRACT}`;
 }
 
 export function buildSimpleCatalogEnrichmentUserPrompt(input: {
   approvedCategories?: readonly AiEnrichmentCategoryOption[];
   approvedCategoryNames: readonly string[];
-  approvedTags?: readonly CatalogTag[];
-  approvedTagNames: readonly string[];
-  effectiveTagExclusions: readonly string[];
   promptTemplate?: string;
   /** Bounded auto-derived vocab — never approved tags; empty OK. */
   smartProfileVocab?: SmartProfileVocabLists;
 }): string {
-  const { approvedCategoryNames, approvedTagNames, approvedCategories, approvedTags, effectiveTagExclusions } = input;
-  const promptTemplate = input.promptTemplate ?? DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE;
-  const approvedCategoryContext = formatCategoryContext(approvedCategories, approvedCategoryNames);
-  const approvedCategoryNamesOnly = formatCategoryNamesOnly(approvedCategories, approvedCategoryNames);
-  const approvedTagContext = formatTagContext(approvedTags, approvedTagNames);
-  const approvedTagNamesOnly = formatTagNamesOnly(approvedTags, approvedTagNames);
-  const excludedTags = formatExclusionList(effectiveTagExclusions);
-  const smartProfileVocab = formatSmartProfileVocabPromptSection(input.smartProfileVocab);
-  const template = promptTemplate.trim() || DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE;
+  const { approvedCategoryNames, approvedCategories } = input;
+  const promptTemplate =
+    input.promptTemplate ?? DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE;
+  const approvedCategoryContext = formatCategoryContext(
+    approvedCategories,
+    approvedCategoryNames,
+  );
+  const approvedCategoryNamesOnly = formatCategoryNamesOnly(
+    approvedCategories,
+    approvedCategoryNames,
+  );
+  const smartProfileVocab = formatSmartProfileVocabPromptSection(
+    input.smartProfileVocab,
+  );
+  const template = ensureVisualContextPromptContract(
+    promptTemplate.trim() || DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
+  );
   return template
     .split(AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER)
     .join(approvedCategoryContext)
     .split(AI_ENRICHMENT_APPROVED_CATEGORY_NAMES_PLACEHOLDER)
     .join(approvedCategoryNamesOnly)
-    .split(AI_ENRICHMENT_APPROVED_TAGS_PLACEHOLDER)
-    .join(approvedTagContext)
-    .split(AI_ENRICHMENT_APPROVED_TAG_NAMES_PLACEHOLDER)
-    .join(approvedTagNamesOnly)
-    .split(AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER)
-    .join(excludedTags)
     .split(AI_ENRICHMENT_SMART_PROFILE_VOCAB_PLACEHOLDER)
     .join(smartProfileVocab);
 }

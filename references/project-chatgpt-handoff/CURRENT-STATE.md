@@ -6,18 +6,18 @@
 
 | Item | Value |
 |---|---|
-| Status | **COMPLETE** — Role 1 preparation exhausted; Gate C not executed |
+| Status | **LOCAL STUDIO UI POLISH COMPLETE** — awaiting owner visual QA and integrated Playground Pass 2 QA |
 | Parent | `smart-catalog-intelligence-completion-and-legacy-tag-retirement` |
-| Child | `two-pass-ai-enrichment-context-and-semantic-verification-implementation` |
+| Child | `two-pass-ai-enrichment Playground integrated Pass 2 semantic-review UX corrective` |
 | ADR | **ADR-FP-182** (owner decisions locked) |
 | Autonomous | **OFF** (`shadow`) |
 | Production | untouched |
-| Commit/push | Corrective and documentation commits pushed to `origin/development` |
-| Application code | **implemented, validated, deployed to DEV, and Gate B basic callable PASSed** |
+| Commit/push | No commit/push performed for this corrective; existing worktree changes preserved |
+| Application code | **Integrated Pass 2 UX corrective deployed to the two reviewed DEV callables; local DEV Studio now has the wide tabbed result modal** |
 
 ## Next
 
-Owner QA/signoff: **APPROVE WITH NOTES**. Both bounded Role 1 preparation attempts completed without a qualifying VCP; a new Plan/Review decision is required before any retry or Gate C execution.
+Owner reviews the wide tabbed result modal, then performs the bounded real-image Pass 1 → integrated Pass 2 QA in local DEV Studio. Codex must not invoke the Playground callables or perform additional deployment.
 
 ## Artifacts
 
@@ -30,6 +30,39 @@ Owner QA/signoff: **APPROVE WITH NOTES**. Both bounded Role 1 preparation attemp
 - Role 1 Preparation Plan: `docs/workflow/plans/2026-09-06-two-pass-ai-enrichment-gate-c-role-1-fixture-preparation-amendment.md`
 - Role 1 Preparation Review: `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-gate-c-role-1-fixture-preparation-review.md`
 - Role 1 Preparation Execution: `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-gate-c-role-1-fixture-preparation-execution.md`
+- VCP Persistence Corrective Plan: `docs/workflow/plans/2026-09-06-two-pass-ai-enrichment-visual-context-persistence-corrective-plan.md`
+- VCP Persistence Corrective Review: `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-visual-context-persistence-corrective-review.md`
+- VCP Corrective DEV Deployment: `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-vcp-corrective-dev-deployment-checkpoint.md`
+- VCP Corrective Y2 Verification: `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-vcp-corrective-y2-verification-checkpoint.md`
+- VCP Runtime-Boundary Diagnostic Plan: `docs/workflow/plans/2026-09-06-two-pass-ai-enrichment-vcp-runtime-boundary-diagnostic-corrective-plan.md`
+- VCP Runtime-Boundary Diagnostic Review: `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-vcp-runtime-boundary-diagnostic-review.md`
+- VCP Runtime-Boundary Diagnostic Implementation Review: `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-vcp-runtime-boundary-diagnostic-implementation-review.md`
+- VCP Runtime-Boundary Diagnostic Execution: `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-vcp-runtime-boundary-diagnostic-execution.md`
+- VCP Provider-Response Contract Corrective Plan: `docs/workflow/plans/2026-09-06-two-pass-ai-enrichment-vcp-provider-response-contract-corrective-plan.md`
+- VCP Provider-Response Contract Corrective Review: `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-vcp-provider-response-contract-corrective-review.md`
+- VCP Provider-Response Contract Implementation Review: `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-vcp-provider-response-contract-implementation-review.md`
+- VCP Provider-Response Contract DEV Verification: `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-vcp-provider-response-contract-dev-verification.md`
+- AI Enrichment Inspector Plan: `docs/workflow/plans/2026-09-06-ai-enrichment-inspector-live-trace-viewer-plan.md`
+- AI Enrichment Inspector Formal Review: `docs/workflow/reviews/2026-09-06-ai-enrichment-inspector-live-trace-viewer-review.md`
+- Pass 1 Contract Cleanup Plan: `docs/workflow/plans/2026-09-06-two-pass-ai-enrichment-pass1-contract-cleanup-plan.md`
+- Pass 1 Contract Cleanup Formal Review: `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-pass1-contract-cleanup-review.md`
+- Pass 1 Contract Cleanup Implementation Review: `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-pass1-contract-cleanup-implementation-review.md`
+- Integrated Playground Pass 2 UX Corrective Plan: `docs/workflow/plans/2026-09-06-two-pass-ai-enrichment-playground-integrated-pass2-ux-corrective-plan.md`
+- Integrated Playground Pass 2 UX Corrective Formal Review: `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-playground-integrated-pass2-ux-corrective-review.md`
+- Integrated Playground Pass 2 UX Corrective Implementation Review: `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-playground-integrated-pass2-ux-corrective-implementation-review.md`
+- Integrated Playground Pass 2 DEV Deployment + QA Checkpoint: `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-playground-integrated-pass2-dev-deployment-qa-checkpoint.md`
+- Current exact request artifact: `gemini-request.json`
+- No-`maxItems` request artifact: `gemini-request-no-maxitems.json`
+- Fully cleaned request artifact: `gemini-request-pass1-cleaned.json`
+- Controlled Gemini 400 Diagnostic: `docs/workflow/reviews/2026-09-06-ai-enrichment-inspector-gemini-400-diagnostic.md`
+- Failure Trace/Stage Projection Corrective Plan: `docs/workflow/plans/2026-09-06-ai-enrichment-inspector-failure-trace-and-stage-projection-corrective-plan.md`
+- Failure Trace/Stage Projection Corrective Review: `docs/workflow/reviews/2026-09-06-ai-enrichment-inspector-failure-trace-and-stage-projection-corrective-review.md`
+- Failure Trace/Stage Projection Corrective Implementation Review: `docs/workflow/reviews/2026-09-06-ai-enrichment-inspector-failure-trace-and-stage-projection-corrective-implementation-review.md`
+- Failure Trace Corrective DEV Deployment Checkpoint: `docs/workflow/reviews/2026-09-06-ai-enrichment-inspector-failure-trace-corrective-dev-deployment-checkpoint.md`
+- Trace-Store Firestore-Safety Corrective Plan: `docs/workflow/plans/2026-09-06-ai-enrichment-inspector-trace-store-firestore-safety-corrective-plan.md`
+- Trace-Store Firestore-Safety Corrective Review: `docs/workflow/reviews/2026-09-06-ai-enrichment-inspector-trace-store-firestore-safety-corrective-review.md`
+- Trace-Store Firestore-Safety Corrective Implementation Review: `docs/workflow/reviews/2026-09-06-ai-enrichment-inspector-trace-store-firestore-safety-corrective-implementation-review.md`
+- Trace-Store Firestore-Safety Corrective DEV Verification: `docs/workflow/reviews/2026-09-06-ai-enrichment-inspector-trace-store-firestore-safety-corrective-dev-verification.md`
 
 ## Current checkpoint
 
@@ -38,7 +71,23 @@ Owner QA/signoff: **APPROVE WITH NOTES**. Both bounded Role 1 preparation attemp
 - Semantic Reviewer automatic processing: OFF
 - Autonomous: OFF
 - Production: untouched
+- v39 Pass 1 contract cleanup: implementation complete; Functions/shared/Studio scoped validation complete with accepted pre-existing exceptions documented in the Implementation Review.
+- DEV deployment: corrective redeployment complete for exactly `enqueueAiEnrichment` (`enqueueaienrichment-00114-xab`), `testAiEnrichmentPlayground` (`testaienrichmentplayground-00069-jep`), and `reprocessReadyDesignWithAi` (`reprocessreadydesignwithai-00020-cax`); all ACTIVE in `fresh-prints-dev`/`us-central1`; Firebase source hash `e65080ba30b00bdd18ce99cc9ed052691fe5d057`.
+- DEV deployment checkpoint: `docs/workflow/reviews/2026-09-06-two-pass-ai-enrichment-pass1-contract-cleanup-dev-deployment-checkpoint.md`.
+- Real-image Playground verification: not started because no mechanically safe checked-in real artwork exists; owner image selection is required.
+- Legacy Playground stock prompt corrective: deployed and verified ACTIVE for the exact authorized inventory; no provider call, Playground invocation, or reprocessing run occurred.
+- Integrated Playground Pass 2 UX corrective: owner authorized DEV deployment on 2026-09-06. Exactly `testAiEnrichmentPlayground` (`testaienrichmentplayground-00070-mil`) and `testAiEnrichmentSemanticReviewPlayground` (`testaienrichmentsemanticreviewplayground-00011-xap`) are ACTIVE in `fresh-prints-dev`/`us-central1` on Firebase source hash `303f6cd59782680602bcb04b81c683b199caba73`. Local DEV Studio is running at `localhost:5173`; owner manual QA is pending. Codex made no provider/callable invocation, Settings mutation, commit, or push.
+- Inspector layout corrective: local Studio CSS now constrains trace cards and wraps long prompt/JSON content with vertical-only reading; no Studio deployment was performed or authorized for this styling change.
+- Studio UI polish: Inspector is the far-right AI Enrichment sub-tab locally, and the Playground result modal is now wider, tabbed, and vertical-only for long content; no Studio deployment was performed or authorized for this local styling change.
 - No settings mutation, deployment, processing, or catalog mutation occurred during Gate C planning.
+- No application implementation, Settings mutation, Processing/reprocessing, or deployment occurred during the VCP corrective diagnosis.
+- Diagnostic source implementation and focused validation are complete; exactly `enqueueAiEnrichment` was deployed as revision `enqueueaienrichment-00107-xit` with source hash `e24174f404e7a111c55c415e021edf3408c26810`.
+- Corrective DEV deployment completed for exactly `enqueueAiEnrichment` and `testAiEnrichmentSemanticReviewPlayground`; no data mutation occurred.
+- Exactly one Y2 verification run completed; VCP remained absent, Pass 2 stayed at zero, and no retry or other fixture processing is authorized.
+- Exactly one authorized Y2 diagnostic run completed. Boundary A prompt markers were present; Boundary B recorded `finishReason=stop`, raw length `1315`, raw VCP key absent, parsed VCP missing; Boundary C candidate VCP absent; Boundary D queue persistence VCP absent and Firestore VCP absent.
+- Pass 1 cost was `$0.0006241` from `4573` prompt and `417` completion tokens; Pass 2 was not invoked and cost `$0`.
+- The first observed failure is provider/parser response shape. No retry or corrective implementation occurred.
+- The structured-contract DEV verification deployed only the two reviewed Functions and ran exactly one Y2 invocation. The provider rejected the request with HTTP 400; Processing failed safely, Pass 2 remained at zero, and no second run occurred.
 
 ## Latest DEV checkpoint
 

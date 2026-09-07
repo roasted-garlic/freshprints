@@ -12,12 +12,49 @@ const MAX_VISION_ERROR_MESSAGE_LENGTH = 300;
 
 export class VisionRequestError extends Error {
   readonly status: number;
+  readonly providerError?: Record<string, unknown>;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, providerError?: Record<string, unknown>) {
     super(message);
     this.name = "VisionRequestError";
     this.status = status;
+    this.providerError = providerError;
   }
+}
+
+const MAX_PROVIDER_ERROR_VALUE_LENGTH = 300;
+
+function boundedString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim()
+    ? value.trim().slice(0, MAX_PROVIDER_ERROR_VALUE_LENGTH)
+    : undefined;
+}
+
+export function sanitizeVisionProviderError(
+  status: number,
+  body: unknown,
+  retryable = RETRYABLE_VISION_STATUSES.has(status),
+): Record<string, unknown> {
+  const record = body && typeof body === "object" ? body as Record<string, unknown> : {};
+  const nested = record.error && typeof record.error === "object"
+    ? record.error as Record<string, unknown>
+    : record;
+  const details: Record<string, unknown> = {
+    status,
+    retryable,
+    classification: status === 400 ? "vision_invalid_request" : status >= 500 ? "vision_server_error" : "provider_request_failed",
+  };
+  for (const [output, keys] of Object.entries({
+    code: ["code", "errorCode"],
+    type: ["type", "errorType"],
+    message: ["message", "errorMessage"],
+    path: ["path", "field", "parameter"],
+    requestId: ["requestId", "request_id", "id"],
+  })) {
+    const value = keys.map((key) => boundedString(nested[key]) ?? boundedString(record[key])).find(Boolean);
+    if (value) details[output] = value;
+  }
+  return details;
 }
 
 export interface VisionRetryOptions {
@@ -32,19 +69,24 @@ export interface VisionRetryOptions {
 
 const DEFAULT_VISION_REQUEST_TIMEOUT_MS = 45_000;
 
-async function readVisionErrorMessage(response: Response): Promise<string> {
+async function readVisionError(response: Response): Promise<{ message: string; details: Record<string, unknown> }> {
   try {
-    const body = (await response.json()) as { error?: { message?: string } };
-    const message = body.error?.message?.trim();
+    const body = await response.json() as unknown;
+    const details = sanitizeVisionProviderError(response.status, body);
+    const message = boundedString(details.message);
 
     if (message) {
-      return message.slice(0, MAX_VISION_ERROR_MESSAGE_LENGTH);
+      return { message: message.slice(0, MAX_VISION_ERROR_MESSAGE_LENGTH), details };
     }
+    return { message: `AI vision request failed with status ${response.status}`, details };
   } catch {
     // Response body may not be JSON.
   }
 
-  return `AI vision request failed with status ${response.status}`;
+  return {
+    message: `AI vision request failed with status ${response.status}`,
+    details: sanitizeVisionProviderError(response.status, undefined),
+  };
 }
 
 export async function fetchVisionWithRetry(
@@ -68,18 +110,18 @@ export async function fetchVisionWithRetry(
         return response;
       }
 
-      const errorMessage = await readVisionErrorMessage(response);
+      const providerError = await readVisionError(response);
 
       if (!RETRYABLE_VISION_STATUSES.has(response.status) || attempt === maxRetries) {
         logPipelineEvent("vision.request.failed", {
           status: response.status,
-          message: errorMessage,
+          message: providerError.message,
           model: options.modelId ?? null,
         });
-        throw new VisionRequestError(errorMessage, response.status);
+        throw new VisionRequestError(providerError.message, response.status, providerError.details);
       }
 
-      lastError = new VisionRequestError(errorMessage, response.status);
+      lastError = new VisionRequestError(providerError.message, response.status, providerError.details);
     } catch (error) {
       lastError =
         error instanceof Error && error.name === "AbortError"

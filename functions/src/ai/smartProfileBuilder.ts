@@ -1,7 +1,6 @@
 import type { DesignAiSuggestions } from "../../../packages/shared/src/types/ai/aiProcessing.types";
 import type {
   DesignSmartProfile,
-  HalftoneShadowAssessment,
   SmartProfileCategoryAlternative,
   SmartProfileDimensionLists,
   SmartProfileProvenance,
@@ -68,7 +67,9 @@ function parseCategoryAlternatives(
 
     const categoryId = categoryIdsByName[name.toLowerCase()];
     const reason =
-      typeof record.reason === "string" ? record.reason.trim() || undefined : undefined;
+      typeof record.reason === "string"
+        ? record.reason.trim() || undefined
+        : undefined;
     const alternative: SmartProfileCategoryAlternative = {
       categoryName: name,
       ...(categoryId ? { categoryId } : {}),
@@ -80,29 +81,9 @@ function parseCategoryAlternatives(
   return result.length > 0 ? result : undefined;
 }
 
-export function parseHalftoneShadowAssessment(parsed: SimpleCatalogEnrichmentParsed): HalftoneShadowAssessment | undefined {
-  const likelihood = parsed.halftoneShadowLikelihood?.trim().toLowerCase();
-  const evidence = parsed.halftoneShadowEvidence?.trim();
-
-  if (!likelihood && !evidence) {
-    return undefined;
-  }
-
-  const normalizedLikelihood =
-    likelihood === "none" ||
-    likelihood === "possible" ||
-    likelihood === "likely" ||
-    likelihood === "unknown"
-      ? likelihood
-      : "unknown";
-
-  return {
-    likelihood: normalizedLikelihood,
-    ...(evidence ? { evidence } : {}),
-  };
-}
-
-export function buildDesignSmartProfile(input: BuildDesignSmartProfileInput): DesignSmartProfile {
+export function buildDesignSmartProfile(
+  input: BuildDesignSmartProfileInput,
+): DesignSmartProfile {
   const dimensions: SmartProfileDimensionLists = {
     subjects: coerceStringList(input.parsed.subjects),
     objects: coerceStringList(input.parsed.objects),
@@ -115,7 +96,7 @@ export function buildDesignSmartProfile(input: BuildDesignSmartProfileInput): De
     colors: coerceStringList(input.parsed.colors),
     visibleText: mergeVisibleTextFromReadableLines(
       coerceStringList(input.parsed.visibleText),
-      input.parsed.readableTextLines,
+      undefined,
     ),
     searchConcepts: coerceStringList(input.parsed.searchConcepts),
   };
@@ -148,7 +129,10 @@ export function buildDesignSmartProfile(input: BuildDesignSmartProfileInput): De
   const validation = validateDesignSmartProfile(profile);
   const titleValidation = validateCatalogTitleLength(input.suggestions.title);
 
-  const validationWarnings = [...validation.warnings, ...titleValidation.warnings];
+  const validationWarnings = [
+    ...validation.warnings,
+    ...titleValidation.warnings,
+  ];
 
   // Persist semantics: omit when empty (never write undefined or []).
   if (validationWarnings.length > 0) {
@@ -162,7 +146,7 @@ export function buildDesignSmartProfile(input: BuildDesignSmartProfileInput): De
       title: input.suggestions.title,
       centralSubject: input.parsed.centralSubject,
       description: input.suggestions.description ?? input.parsed.description,
-      visibleText: profile.visibleText ?? input.parsed.readableTextLines,
+      visibleText: profile.visibleText,
     },
   );
 }
@@ -180,7 +164,9 @@ function sanitizeCategoryAlternativesForPersist(
   });
 }
 
-function sanitizeProvenanceForPersist(provenance: SmartProfileProvenance): SmartProfileProvenance {
+function sanitizeProvenanceForPersist(
+  provenance: SmartProfileProvenance,
+): SmartProfileProvenance {
   return withoutUndefinedDeep(provenance);
 }
 
@@ -198,10 +184,13 @@ export function stripEmptySmartProfileDimensions(
   if (profile.categoryId) output.categoryId = profile.categoryId;
   if (profile.categoryName) output.categoryName = profile.categoryName;
   if (profile.categoryAlternatives?.length) {
-    output.categoryAlternatives = sanitizeCategoryAlternativesForPersist(profile.categoryAlternatives);
+    output.categoryAlternatives = sanitizeCategoryAlternativesForPersist(
+      profile.categoryAlternatives,
+    );
   }
   if (profile.categoryGapSuggested) output.categoryGapSuggested = true;
-  if (profile.categoryGapEvidence) output.categoryGapEvidence = profile.categoryGapEvidence;
+  if (profile.categoryGapEvidence)
+    output.categoryGapEvidence = profile.categoryGapEvidence;
 
   const listFields = [
     "subjects",

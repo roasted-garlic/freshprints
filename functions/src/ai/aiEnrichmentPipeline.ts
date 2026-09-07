@@ -2,17 +2,26 @@ import { randomUUID } from "node:crypto";
 
 import { FieldValue } from "firebase-admin/firestore";
 
-import type { DesignAiAnalysis, DesignAiSuggestions } from "../../../packages/shared/src/types/ai/aiProcessing.types";
+import type {
+  DesignAiAnalysis,
+  DesignAiSuggestions,
+} from "../../../packages/shared/src/types/ai/aiProcessing.types";
 import { adminDb } from "../lib/admin";
 import { updateAiProcessingStage } from "./designAiFields";
 import { logPipelineEvent } from "../lib/pipelineLog";
-import { resolveVisionErrorCode } from "./visionRequestRetry";
+import {
+  resolveVisionErrorCode,
+  VisionRequestError,
+} from "./visionRequestRetry";
 import {
   generateAiEnrichmentCandidateForDesign,
   type AiEnrichmentDesignInput,
 } from "./aiEnrichmentCandidateCore";
 import type { AiEnrichmentReadDiagnosticContext } from "./aiEnrichmentRuntimeCache";
-import { clearAiEnrichmentSettingsCache, loadCachedAiEnrichmentSettings } from "./aiEnrichmentRuntimeCache";
+import {
+  clearAiEnrichmentSettingsCache,
+  loadCachedAiEnrichmentSettings,
+} from "./aiEnrichmentRuntimeCache";
 import { maybeRefreshSmartProfileVocabSnapshot } from "./refreshSmartProfileVocabSnapshot";
 import { PipelinePhaseTimer } from "./pipelineTiming";
 import { resolveAiEnrichmentProvider } from "./providers/resolveAiEnrichmentProvider";
@@ -20,12 +29,19 @@ import type { DesignSmartProfile } from "../../../packages/shared/src/types/cata
 import { stripEmptySmartProfileDimensions } from "./smartProfileBuilder";
 import { computeCatalogAutomationDecision } from "./automationDecisionShadow";
 import { incrementCatalogAutomationHealth } from "./catalogAutomationHealth";
-import { buildSmartProfileAiSnapshot, mergeQueueSmartProfileWithImportPresets, mergeReadyBackfillSmartProfile, parseImportPresetSeed } from "./smartProfileEnrichmentWrite";
+import {
+  buildSmartProfileAiSnapshot,
+  mergeQueueSmartProfileWithImportPresets,
+  mergeReadyBackfillSmartProfile,
+  parseImportPresetSeed,
+} from "./smartProfileEnrichmentWrite";
 import type { ExplicitContentAutomationWrite } from "../../../packages/shared/src/utils/explicitContentAutomation";
 import {
   applyHumanAuthorityToExplicitContentAutomationPreview,
   hasProtectedStaffExplicitAuthority,
 } from "../../../packages/shared/src/utils/explicitContentAutomation";
+import { logVcpRuntimeDiagnostic } from "./vcpRuntimeDiagnostics";
+import { writeAiEnrichmentTrace } from "./aiEnrichmentTraceStore";
 
 export type AiEnrichmentPipelineMode = "queue" | "ready_backfill";
 
@@ -46,7 +62,8 @@ async function markAiFailure(
   providerId = resolveAiEnrichmentProvider().providerId,
   mode: AiEnrichmentPipelineMode = "queue",
 ): Promise<void> {
-  const errorMessage = error instanceof Error ? error.message : "AI processing failed.";
+  const errorMessage =
+    error instanceof Error ? error.message : "AI processing failed.";
   const errorCode = resolveVisionErrorCode(error);
   const suggestions: DesignAiSuggestions = {
     errorCode,
@@ -88,7 +105,10 @@ function removeUndefinedFields<T>(value: T): T {
   return Object.fromEntries(
     Object.entries(value)
       .filter(([, entryValue]) => entryValue !== undefined)
-      .map(([entryKey, entryValue]) => [entryKey, removeUndefinedFields(entryValue)]),
+      .map(([entryKey, entryValue]) => [
+        entryKey,
+        removeUndefinedFields(entryValue),
+      ]),
   ) as T;
 }
 
@@ -113,10 +133,14 @@ async function markAiSuccess(
   let priorData: Record<string, unknown> | undefined;
 
   if (smartProfile) {
-    const stripped = stripEmptySmartProfileDimensions(smartProfile) as unknown as DesignSmartProfile;
+    const stripped = stripEmptySmartProfileDimensions(
+      smartProfile,
+    ) as unknown as DesignSmartProfile;
     const priorSnap = await adminDb.collection("designs").doc(designId).get();
     priorData = priorSnap.data() as Record<string, unknown> | undefined;
-    const importPresets = parseImportPresetSeed(priorData?.smartProfileImportPresets);
+    const importPresets = parseImportPresetSeed(
+      priorData?.smartProfileImportPresets,
+    );
     // Queue and ready_backfill both preserve staff SP edits + import presets when prior exists.
     // (Owner Ready→AI Review demotion keeps smartProfile; Needs Review must not wipe staff keys.)
     const priorProfile =
@@ -129,7 +153,9 @@ async function markAiSuccess(
         priorProfile,
         importPresets,
       });
-      persistedSmartProfile = removeUndefinedFields(merged.smartProfile) as DesignSmartProfile;
+      persistedSmartProfile = removeUndefinedFields(
+        merged.smartProfile,
+      ) as DesignSmartProfile;
       smartProfileAiSnapshot = merged.smartProfileAiSnapshot;
     } else {
       const withPresets = mergeQueueSmartProfileWithImportPresets({
@@ -178,20 +204,24 @@ async function markAiSuccess(
       smartProfile: persistedSmartProfile,
       title: suggestions.title,
       categoryId: suggestions.categoryId,
-      categoryName: suggestions.categoryName ?? persistedSmartProfile.categoryName,
+      categoryName:
+        suggestions.categoryName ?? persistedSmartProfile.categoryName,
       description: suggestions.description,
       visibleText: analysis.visibleText,
       catalogWorkflowMode: settings.catalogWorkflowMode,
       catalogAutonomousLiveEnabled: settings.catalogAutonomousLiveEnabled,
     });
     publishReady = effectiveDecision.shouldPublishReady;
-    persistedSmartProfile.provenance.automationDecision = effectiveDecision.decision;
-    persistedSmartProfile.provenance.automationReasonCodes = effectiveDecision.reasonCodes;
+    persistedSmartProfile.provenance.automationDecision =
+      effectiveDecision.decision;
+    persistedSmartProfile.provenance.automationReasonCodes =
+      effectiveDecision.reasonCodes;
   }
 
   // ADR-FP-173: Explicit root write blocked only by deliberate lock (not staff provenance).
   const mayWriteExplicit =
-    Boolean(options?.explicitContentAutomation) && !protectedStaffExplicitAuthority;
+    Boolean(options?.explicitContentAutomation) &&
+    !protectedStaffExplicitAuthority;
 
   const explicitWrite = mayWriteExplicit
     ? {
@@ -202,18 +232,62 @@ async function markAiSuccess(
     : undefined;
 
   if (mode === "ready_backfill") {
-    await adminDb.collection("designs").doc(designId).update({
+    await adminDb
+      .collection("designs")
+      .doc(designId)
+      .update({
+        aiProcessingStage: "ready_for_review",
+        aiProcessed: true,
+        aiRequestedVisionModelId: FieldValue.delete(),
+        ...(suggestions.confidence !== undefined
+          ? { aiReviewConfidence: suggestions.confidence }
+          : {}),
+        ...(suggestions.promptVersion
+          ? { aiReviewVersion: suggestions.promptVersion }
+          : {}),
+        aiSuggestions: firestoreSuggestions,
+        aiAnalysis: firestoreAnalysis,
+        ...(persistedSmartProfile
+          ? { smartProfile: persistedSmartProfile }
+          : {}),
+        ...(smartProfileAiSnapshot ? { smartProfileAiSnapshot } : {}),
+        ...(explicitWrite
+          ? {
+              isExplicitContent: true,
+              censoredTerms: explicitWrite.censoredTerms,
+              explicitContentSource: "automation",
+            }
+          : {}),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    logVcpRuntimeDiagnostic("vcp_diagnostic.persistence", {
+      designId,
+      writeBranch: "ready_backfill",
+      persistenceVisualContextProfilePresent: Boolean(
+        firestoreAnalysis.visualContextProfile,
+      ),
+    });
+    return;
+  }
+
+  await adminDb
+    .collection("designs")
+    .doc(designId)
+    .update({
       aiProcessingStage: "ready_for_review",
       aiProcessed: true,
-      aiRequestedVisionModelId: FieldValue.delete(),
-      ...(suggestions.confidence !== undefined
-        ? { aiReviewConfidence: suggestions.confidence }
-        : {}),
-      ...(suggestions.promptVersion ? { aiReviewVersion: suggestions.promptVersion } : {}),
-      aiSuggestions: firestoreSuggestions,
-      aiAnalysis: firestoreAnalysis,
-      ...(persistedSmartProfile ? { smartProfile: persistedSmartProfile } : {}),
-      ...(smartProfileAiSnapshot ? { smartProfileAiSnapshot } : {}),
+      ...(publishReady
+        ? {
+            status: "ready",
+            readyAt: FieldValue.serverTimestamp(),
+            aiReviewStatus: "approved",
+            aiReviewed: true,
+            aiReviewedBy: "system:catalog-autonomy",
+            aiReviewedAt: FieldValue.serverTimestamp(),
+          }
+        : {
+            aiReviewStatus: "needs_review",
+          }),
       ...(explicitWrite
         ? {
             isExplicitContent: true,
@@ -221,47 +295,29 @@ async function markAiSuccess(
             explicitContentSource: "automation",
           }
         : {}),
+      aiRequestedVisionModelId: FieldValue.delete(),
+      ...(suggestions.confidence !== undefined
+        ? { aiReviewConfidence: suggestions.confidence }
+        : {}),
+      ...(suggestions.promptVersion
+        ? { aiReviewVersion: suggestions.promptVersion }
+        : {}),
+      aiSuggestions: firestoreSuggestions,
+      aiAnalysis: firestoreAnalysis,
+      ...(persistedSmartProfile
+        ? {
+            smartProfile: persistedSmartProfile,
+          }
+        : {}),
+      ...(smartProfileAiSnapshot ? { smartProfileAiSnapshot } : {}),
       updatedAt: FieldValue.serverTimestamp(),
     });
-    return;
-  }
-
-  await adminDb.collection("designs").doc(designId).update({
-    aiProcessingStage: "ready_for_review",
-    aiProcessed: true,
-    ...(publishReady
-      ? {
-          status: "ready",
-          readyAt: FieldValue.serverTimestamp(),
-          aiReviewStatus: "approved",
-          aiReviewed: true,
-          aiReviewedBy: "system:catalog-autonomy",
-          aiReviewedAt: FieldValue.serverTimestamp(),
-        }
-      : {
-          aiReviewStatus: "needs_review",
-        }),
-    ...(explicitWrite
-      ? {
-          isExplicitContent: true,
-          censoredTerms: explicitWrite.censoredTerms,
-          explicitContentSource: "automation",
-        }
-      : {}),
-    aiRequestedVisionModelId: FieldValue.delete(),
-    ...(suggestions.confidence !== undefined
-      ? { aiReviewConfidence: suggestions.confidence }
-      : {}),
-    ...(suggestions.promptVersion ? { aiReviewVersion: suggestions.promptVersion } : {}),
-    aiSuggestions: firestoreSuggestions,
-    aiAnalysis: firestoreAnalysis,
-    ...(persistedSmartProfile
-      ? {
-          smartProfile: persistedSmartProfile,
-        }
-      : {}),
-    ...(smartProfileAiSnapshot ? { smartProfileAiSnapshot } : {}),
-    updatedAt: FieldValue.serverTimestamp(),
+  logVcpRuntimeDiagnostic("vcp_diagnostic.persistence", {
+    designId,
+    writeBranch: "queue",
+    persistenceVisualContextProfilePresent: Boolean(
+      firestoreAnalysis.visualContextProfile,
+    ),
   });
 }
 
@@ -273,12 +329,18 @@ async function runAiEnrichmentPipelineInternal(
   diagnosticContext: AiEnrichmentReadDiagnosticContext,
   mode: AiEnrichmentPipelineMode = "queue",
   openAiApiKey?: string,
-): Promise<void> {
-  const designSnapshot = await adminDb.collection("designs").doc(designId).get();
+): Promise<boolean> {
+  const designSnapshot = await adminDb
+    .collection("designs")
+    .doc(designId)
+    .get();
 
   if (!designSnapshot.exists) {
-    logPipelineEvent("pipeline.skipped", { ...diagnosticContext, reason: "design_missing" });
-    return;
+    logPipelineEvent("pipeline.skipped", {
+      ...diagnosticContext,
+      reason: "design_missing",
+    });
+    return false;
   }
 
   const data = designSnapshot.data() as DesignRecord;
@@ -290,7 +352,7 @@ async function runAiEnrichmentPipelineInternal(
       reason: "stage_not_queued",
       currentStage: data.aiProcessingStage ?? null,
     });
-    return;
+    return false;
   }
 
   if (mode === "ready_backfill") {
@@ -301,7 +363,7 @@ async function runAiEnrichmentPipelineInternal(
         currentStatus: data.status ?? null,
         currentReviewStatus: data.aiReviewStatus ?? null,
       });
-      return;
+      return false;
     }
   } else if (data.aiReviewStatus && data.aiReviewStatus !== "pending") {
     logPipelineEvent("pipeline.skipped", {
@@ -309,7 +371,7 @@ async function runAiEnrichmentPipelineInternal(
       reason: "review_not_pending",
       currentReviewStatus: data.aiReviewStatus,
     });
-    return;
+    return false;
   }
 
   const previewPath = data.previewPath || data.thumbnailPath;
@@ -326,7 +388,34 @@ async function runAiEnrichmentPipelineInternal(
       result: "failed",
       reason: "preview_missing",
     });
-    return;
+    await writeAiEnrichmentTrace({
+      schemaVersion: 1,
+      traceId: diagnosticContext.invocationId,
+      source: "LIVE PROCESSING",
+      designId,
+      attemptId: diagnosticContext.invocationId,
+      captureFullTrace: false,
+      startedAt: new Date().toISOString(),
+      completedAt: new Date().toISOString(),
+      lifecycleState: "failed",
+      provider: resolveAiEnrichmentProvider().providerId,
+      providerError: { classification: "preview_missing" },
+      stages: [
+        { stage: "created", at: new Date().toISOString() },
+        {
+          stage: "failed",
+          at: new Date().toISOString(),
+          data: {
+            parser: "NOT REACHED",
+            normalized: "NOT REACHED",
+            vcp: "NOT REACHED",
+            candidate: "NOT REACHED",
+            persistence: "NOT REACHED",
+          },
+        },
+      ],
+    });
+    return false;
   }
 
   const phaseTimer = new PipelinePhaseTimer();
@@ -346,7 +435,6 @@ async function runAiEnrichmentPipelineInternal(
         thumbnailPath: data.thumbnailPath,
         artworkBackgroundHex: data.artworkBackgroundHex,
         aiRequestedVisionModelId: data.aiRequestedVisionModelId,
-        tags: data.tags,
       },
       geminiApiKey: geminiApiKey ?? "",
       openAiApiKey: openAiApiKey ?? "",
@@ -363,19 +451,32 @@ async function runAiEnrichmentPipelineInternal(
         wouldAutoApprove: automationDecision.wouldAutoApprove ? 1 : 0,
         actuallyAutoApproved: automationDecision.shouldPublishReady ? 1 : 0,
         verifierInvoked: automationDecision.verifier.invoked ? 1 : 0,
-        verifierConfirmed: automationDecision.verifier.outcome === "confirmed" ? 1 : 0,
-        verifierUnresolved: automationDecision.verifier.outcome === "unresolved" ? 1 : 0,
+        verifierConfirmed:
+          automationDecision.verifier.outcome === "confirmed" ? 1 : 0,
+        verifierUnresolved:
+          automationDecision.verifier.outcome === "unresolved" ? 1 : 0,
         routedNeedsReview: automationDecision.shouldPublishReady ? 0 : 1,
-        categoryGap: automationDecision.reasonCodes.includes("category_gap_suggested") ? 1 : 0,
+        categoryGap: automationDecision.reasonCodes.includes(
+          "category_gap_suggested",
+        )
+          ? 1
+          : 0,
         hardBlockerRoutings: automationDecision.hardBlockers.length > 0 ? 1 : 0,
       });
     }
 
-    await markAiSuccess(designId, candidate.suggestions, candidate.analysis, candidate.smartProfile, {
-      publishReady: mode === "ready_backfill" ? false : candidate.publishReady,
-      mode,
-      explicitContentAutomation: candidate.explicitContentAutomation,
-    });
+    await markAiSuccess(
+      designId,
+      candidate.suggestions,
+      candidate.analysis,
+      candidate.smartProfile,
+      {
+        publishReady:
+          mode === "ready_backfill" ? false : candidate.publishReady,
+        mode,
+        explicitContentAutomation: candidate.explicitContentAutomation,
+      },
+    );
 
     if (candidate.smartProfile) {
       // Opportunistic bounded snapshot refresh — outside the Algolia secret graph; throttled.
@@ -391,8 +492,6 @@ async function runAiEnrichmentPipelineInternal(
       designId,
       providerId: candidate.providerId,
       confidence: candidate.suggestions.confidence ?? null,
-      approvedTagCount: candidate.suggestions.tags?.length ?? 0,
-      suggestedNewTagCount: candidate.suggestions.suggestedNewTags?.length ?? 0,
     });
     logPipelineEvent("pipeline.terminal", {
       ...diagnosticContext,
@@ -408,12 +507,49 @@ async function runAiEnrichmentPipelineInternal(
       result: "failed",
       reason: error instanceof Error ? error.name : "unknown_error",
     });
-    await markAiFailure(designId, error, resolveAiEnrichmentProvider().providerId, mode);
+    await markAiFailure(
+      designId,
+      error,
+      resolveAiEnrichmentProvider().providerId,
+      mode,
+    );
     await incrementCatalogAutomationHealth({
       analyzed: 1,
       failures: 1,
     });
+    await writeAiEnrichmentTrace({
+      schemaVersion: 1,
+      traceId: diagnosticContext.invocationId,
+      source: "LIVE PROCESSING",
+      designId,
+      attemptId: diagnosticContext.invocationId,
+      captureFullTrace: false,
+      startedAt: new Date().toISOString(),
+      completedAt: new Date().toISOString(),
+      lifecycleState: "failed",
+      provider: resolveAiEnrichmentProvider().providerId,
+      providerError:
+        error instanceof VisionRequestError
+          ? error.providerError
+          : { classification: "ai_processing_failed" },
+      stages: [
+        { stage: "created", at: new Date().toISOString() },
+        {
+          stage: "failed",
+          at: new Date().toISOString(),
+          data: {
+            parser: "NOT REACHED",
+            normalized: "NOT REACHED",
+            vcp: "NOT REACHED",
+            candidate: "NOT REACHED",
+            persistence: "NOT REACHED",
+          },
+        },
+      ],
+    });
+    return false;
   }
+  return true;
 }
 
 export async function runAiEnrichmentPipeline(
@@ -429,6 +565,18 @@ export async function runAiEnrichmentPipeline(
     invocationId,
     designId,
   };
+  const traceId = invocationId;
+  await writeAiEnrichmentTrace({
+    schemaVersion: 1,
+    traceId,
+    source: "LIVE PROCESSING",
+    designId,
+    attemptId: invocationId,
+    captureFullTrace: false,
+    startedAt: new Date().toISOString(),
+    lifecycleState: "created",
+    stages: [{ stage: "created", at: new Date().toISOString() }],
+  });
 
   activeDesignInvocations.set(designId, activeForDesign + 1);
   logPipelineEvent("pipeline.invocation.started", {
@@ -438,13 +586,30 @@ export async function runAiEnrichmentPipeline(
   });
 
   try {
-    await runAiEnrichmentPipelineInternal(
+    const succeeded = await runAiEnrichmentPipelineInternal(
       designId,
       geminiApiKey,
       diagnosticContext,
       mode,
       options?.openAiApiKey,
     );
+    if (succeeded) {
+      void writeAiEnrichmentTrace({
+        schemaVersion: 1,
+        traceId,
+        source: "LIVE PROCESSING",
+        designId,
+        attemptId: invocationId,
+        captureFullTrace: false,
+        startedAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+        lifecycleState: "complete",
+        stages: [
+          { stage: "created", at: new Date().toISOString() },
+          { stage: "complete", at: new Date().toISOString() },
+        ],
+      });
+    }
   } finally {
     const remaining = (activeDesignInvocations.get(designId) ?? 1) - 1;
 

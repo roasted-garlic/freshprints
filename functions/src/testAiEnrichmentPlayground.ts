@@ -24,6 +24,8 @@ export const testAiEnrichmentPlayground = onCall(
 
     const caller = await loadCallerProfile(request.auth.uid);
     assertOwnerAdminCaller(caller);
+    const data = request.data as AiEnrichmentPlaygroundRequest;
+    if (data.captureFullTrace && caller.role !== "owner") throw permissionDenied("Only owners may capture full AI trace content.");
 
     try {
       return await runAiEnrichmentPlayground(
@@ -31,7 +33,7 @@ export const testAiEnrichmentPlayground = onCall(
           geminiApiKey: geminiApiKeySecret.value(),
           openAiApiKey: openAiApiKeySecret.value(),
         },
-        request.data as AiEnrichmentPlaygroundRequest,
+        data,
       );
     } catch (error) {
       if (error instanceof Error) {

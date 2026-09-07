@@ -4,41 +4,29 @@ import { onCall } from "firebase-functions/v2/https";
 import {
   AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER,
   AI_ENRICHMENT_PROMPT_TEMPLATE_MAX_LENGTH,
-  AI_ENRICHMENT_TAG_RERANK_PROMPT_TEMPLATE_MAX_LENGTH,
-  DEFAULT_SUGGESTED_NEW_TAGS_POLICY,
-  DEFAULT_SUGGESTION_AUTHOR_MODE,
-  DEFAULT_TAG_RERANK_MODE,
-  DEFAULT_TAG_RERANK_PROMPT_TEMPLATE,
-  SUGGESTED_NEW_TAGS_POLICIES,
-  SUGGESTION_AUTHOR_MODES,
-  TAG_RERANK_MODES,
   hasRequiredAiEnrichmentPromptPlaceholders,
-  type SuggestedNewTagsPolicy,
-  type SuggestionAuthorMode,
-  type TagRerankMode,
 } from "../../packages/shared/src/constants/aiEnrichment.constants";
 import { loadCallerProfile } from "./lib/caller";
 import { adminDb } from "./lib/admin";
-import { invalidArgument, permissionDenied, unauthenticated } from "./lib/errors";
-import { resolveVisionModelId, type AllowedVisionModelId } from "./ai/aiEnrichmentConfig";
+import {
+  invalidArgument,
+  permissionDenied,
+  unauthenticated,
+} from "./lib/errors";
+import {
+  resolveVisionModelId,
+  type AllowedVisionModelId,
+} from "./ai/aiEnrichmentConfig";
 import { AI_ENRICHMENT_SETTINGS_DOC_ID } from "./ai/loadAiEnrichmentSettings";
 import { resolveAdditionalTagExclusions } from "./ai/aiTagExclusions";
 import { clearAiEnrichmentRuntimeCache } from "./ai/aiEnrichmentRuntimeCache";
 import { logPipelineEvent } from "./lib/pipelineLog";
 import { normalizeExplicitContentAutomationTermsInput } from "../../packages/shared/src/utils/explicitContentAutomation";
 
-const TAG_RERANK_MODE_SET = new Set<string>(TAG_RERANK_MODES);
-const SUGGESTION_AUTHOR_MODE_SET = new Set<string>(SUGGESTION_AUTHOR_MODES);
-const SUGGESTED_NEW_TAGS_POLICY_SET = new Set<string>(SUGGESTED_NEW_TAGS_POLICIES);
-
 interface UpdateAiEnrichmentSettingsRequest {
   visionModelId: string;
   promptTemplate: string;
-  tagRerankPromptTemplate?: string;
   additionalTagExclusions?: string[];
-  tagRerankMode?: TagRerankMode;
-  suggestionAuthorMode?: SuggestionAuthorMode;
-  suggestedNewTagsPolicy?: SuggestedNewTagsPolicy;
   semanticReviewerEnabled?: boolean;
   semanticReviewerModelId?: string;
   /** When provided (including []), persist normalized list. When omitted, leave Firestore field unchanged. */
@@ -48,19 +36,19 @@ interface UpdateAiEnrichmentSettingsRequest {
 interface UpdateAiEnrichmentSettingsResponse {
   visionModelId: AllowedVisionModelId;
   promptTemplate: string;
-  tagRerankPromptTemplate: string;
   additionalTagExclusions: string[];
-  tagRerankMode: TagRerankMode;
-  suggestionAuthorMode: SuggestionAuthorMode;
-  suggestedNewTagsPolicy: SuggestedNewTagsPolicy;
   semanticReviewerEnabled: boolean;
   semanticReviewerModelId: AllowedVisionModelId;
   explicitContentAutomationTerms?: string[];
 }
 
-function assertOwnerAdminCaller(caller: Awaited<ReturnType<typeof loadCallerProfile>>): void {
+function assertOwnerAdminCaller(
+  caller: Awaited<ReturnType<typeof loadCallerProfile>>,
+): void {
   if (!caller.isActive || !["owner", "admin"].includes(caller.role)) {
-    throw permissionDenied("Only owners and admins can update AI enrichment settings.");
+    throw permissionDenied(
+      "Only owners and admins can update AI enrichment settings.",
+    );
   }
 }
 
@@ -70,7 +58,9 @@ function validateRequest(data: unknown): UpdateAiEnrichmentSettingsRequest {
   }
 
   const visionModelId =
-    "visionModelId" in data && typeof data.visionModelId === "string" ? data.visionModelId.trim() : "";
+    "visionModelId" in data && typeof data.visionModelId === "string"
+      ? data.visionModelId.trim()
+      : "";
 
   if (!visionModelId) {
     throw invalidArgument("A vision model ID is required.");
@@ -95,92 +85,63 @@ function validateRequest(data: unknown): UpdateAiEnrichmentSettingsRequest {
     );
   }
 
-  const rawTagRerankPromptTemplate =
-    "tagRerankPromptTemplate" in data && typeof data.tagRerankPromptTemplate === "string"
-      ? data.tagRerankPromptTemplate.trim()
-      : undefined;
-
-  if (
-    rawTagRerankPromptTemplate !== undefined &&
-    rawTagRerankPromptTemplate.length > AI_ENRICHMENT_TAG_RERANK_PROMPT_TEMPLATE_MAX_LENGTH
-  ) {
-    throw invalidArgument("The tag rerank prompt is too long.");
-  }
-
   const additionalTagExclusions =
-    "additionalTagExclusions" in data ? data.additionalTagExclusions : undefined;
+    "additionalTagExclusions" in data
+      ? data.additionalTagExclusions
+      : undefined;
 
   if (
     additionalTagExclusions !== undefined &&
     additionalTagExclusions !== null &&
     !Array.isArray(additionalTagExclusions)
   ) {
-    throw invalidArgument("Additional tag exclusions must be an array of strings.");
-  }
-
-  const tagRerankMode = "tagRerankMode" in data ? data.tagRerankMode : undefined;
-
-  if (tagRerankMode !== undefined && (typeof tagRerankMode !== "string" || !TAG_RERANK_MODE_SET.has(tagRerankMode))) {
-    throw invalidArgument(`tagRerankMode must be one of: ${TAG_RERANK_MODES.join(", ")}.`);
-  }
-
-  const suggestionAuthorMode = "suggestionAuthorMode" in data ? data.suggestionAuthorMode : undefined;
-
-  if (
-    suggestionAuthorMode !== undefined &&
-    (typeof suggestionAuthorMode !== "string" || !SUGGESTION_AUTHOR_MODE_SET.has(suggestionAuthorMode))
-  ) {
-    throw invalidArgument(`suggestionAuthorMode must be one of: ${SUGGESTION_AUTHOR_MODES.join(", ")}.`);
-  }
-
-  const suggestedNewTagsPolicy =
-    "suggestedNewTagsPolicy" in data ? data.suggestedNewTagsPolicy : undefined;
-
-  if (
-    suggestedNewTagsPolicy !== undefined &&
-    (typeof suggestedNewTagsPolicy !== "string" ||
-      !SUGGESTED_NEW_TAGS_POLICY_SET.has(suggestedNewTagsPolicy))
-  ) {
     throw invalidArgument(
-      `suggestedNewTagsPolicy must be one of: ${SUGGESTED_NEW_TAGS_POLICIES.join(", ")}.`,
+      "Additional tag exclusions must be an array of strings.",
     );
   }
 
-  const semanticReviewerEnabled = "semanticReviewerEnabled" in data ? data.semanticReviewerEnabled : undefined;
-  if (semanticReviewerEnabled !== undefined && typeof semanticReviewerEnabled !== "boolean") {
+  const semanticReviewerEnabled =
+    "semanticReviewerEnabled" in data
+      ? data.semanticReviewerEnabled
+      : undefined;
+  if (
+    semanticReviewerEnabled !== undefined &&
+    typeof semanticReviewerEnabled !== "boolean"
+  ) {
     throw invalidArgument("semanticReviewerEnabled must be a boolean.");
   }
-  const semanticReviewerModelId = "semanticReviewerModelId" in data && typeof data.semanticReviewerModelId === "string"
-    ? data.semanticReviewerModelId.trim() : undefined;
+  const semanticReviewerModelId =
+    "semanticReviewerModelId" in data &&
+    typeof data.semanticReviewerModelId === "string"
+      ? data.semanticReviewerModelId.trim()
+      : undefined;
 
   const explicitContentAutomationTerms =
-    "explicitContentAutomationTerms" in data ? data.explicitContentAutomationTerms : undefined;
+    "explicitContentAutomationTerms" in data
+      ? data.explicitContentAutomationTerms
+      : undefined;
 
   if (
     explicitContentAutomationTerms !== undefined &&
     explicitContentAutomationTerms !== null &&
     !Array.isArray(explicitContentAutomationTerms)
   ) {
-    throw invalidArgument("explicitContentAutomationTerms must be an array of strings.");
+    throw invalidArgument(
+      "explicitContentAutomationTerms must be an array of strings.",
+    );
   }
 
   return {
     visionModelId,
     promptTemplate,
-    tagRerankPromptTemplate: rawTagRerankPromptTemplate,
     additionalTagExclusions: Array.isArray(additionalTagExclusions)
       ? additionalTagExclusions
       : undefined,
-    tagRerankMode: typeof tagRerankMode === "string" ? (tagRerankMode as TagRerankMode) : undefined,
-    suggestionAuthorMode:
-      typeof suggestionAuthorMode === "string" ? (suggestionAuthorMode as SuggestionAuthorMode) : undefined,
-    suggestedNewTagsPolicy:
-      typeof suggestedNewTagsPolicy === "string"
-        ? (suggestedNewTagsPolicy as SuggestedNewTagsPolicy)
-        : undefined,
     semanticReviewerEnabled,
     semanticReviewerModelId,
-    explicitContentAutomationTerms: Array.isArray(explicitContentAutomationTerms)
+    explicitContentAutomationTerms: Array.isArray(
+      explicitContentAutomationTerms,
+    )
       ? explicitContentAutomationTerms
       : undefined,
   };
@@ -198,11 +159,7 @@ export const updateAiEnrichmentSettings = onCall(
     const {
       visionModelId: requestedModelId,
       promptTemplate,
-      tagRerankPromptTemplate: requestedTagRerankPromptTemplate,
       additionalTagExclusions,
-      tagRerankMode: requestedTagRerankMode,
-      suggestionAuthorMode: requestedSuggestionAuthorMode,
-      suggestedNewTagsPolicy: requestedSuggestedNewTagsPolicy,
       semanticReviewerEnabled: requestedSemanticReviewerEnabled,
       semanticReviewerModelId: requestedSemanticReviewerModelId,
       explicitContentAutomationTerms: requestedExplicitTerms,
@@ -213,67 +170,61 @@ export const updateAiEnrichmentSettings = onCall(
       throw invalidArgument("The selected vision model is not allowed.");
     }
 
-    const resolvedAdditionalTagExclusions = resolveAdditionalTagExclusions(additionalTagExclusions);
-    const resolvedTagRerankMode: TagRerankMode = requestedTagRerankMode ?? DEFAULT_TAG_RERANK_MODE;
-    const resolvedSuggestionAuthorMode: SuggestionAuthorMode =
-      requestedSuggestionAuthorMode ?? DEFAULT_SUGGESTION_AUTHOR_MODE;
-    const resolvedSuggestedNewTagsPolicy: SuggestedNewTagsPolicy =
-        requestedSuggestedNewTagsPolicy ?? DEFAULT_SUGGESTED_NEW_TAGS_POLICY;
-    const resolvedSemanticReviewerModelId = resolveVisionModelId(requestedSemanticReviewerModelId ?? "gemini-2.5-flash-lite");
-    if (resolvedSemanticReviewerModelId !== (requestedSemanticReviewerModelId ?? "gemini-2.5-flash-lite")) {
-      throw invalidArgument("The selected semantic reviewer model is not allowed.");
+    const resolvedAdditionalTagExclusions = resolveAdditionalTagExclusions(
+      additionalTagExclusions,
+    );
+    const resolvedSemanticReviewerModelId = resolveVisionModelId(
+      requestedSemanticReviewerModelId ?? "gemini-2.5-flash-lite",
+    );
+    if (
+      resolvedSemanticReviewerModelId !==
+      (requestedSemanticReviewerModelId ?? "gemini-2.5-flash-lite")
+    ) {
+      throw invalidArgument(
+        "The selected semantic reviewer model is not allowed.",
+      );
     }
-    const resolvedTagRerankPromptTemplate =
-      requestedTagRerankPromptTemplate?.trim() || DEFAULT_TAG_RERANK_PROMPT_TEMPLATE;
     const resolvedExplicitTerms =
       requestedExplicitTerms !== undefined
         ? normalizeExplicitContentAutomationTermsInput(requestedExplicitTerms)
         : undefined;
 
-    await adminDb.collection("settings").doc(AI_ENRICHMENT_SETTINGS_DOC_ID).set(
-      {
-        visionModelId: resolvedModelId,
-        promptTemplate,
-        tagRerankPromptTemplate: resolvedTagRerankPromptTemplate,
-        additionalTagExclusions: resolvedAdditionalTagExclusions,
-        tagRerankMode: resolvedTagRerankMode,
-        suggestionAuthorMode: resolvedSuggestionAuthorMode,
-        suggestedNewTagsPolicy: resolvedSuggestedNewTagsPolicy,
-        semanticReviewerEnabled: requestedSemanticReviewerEnabled === true,
-        semanticReviewerModelId: resolvedSemanticReviewerModelId,
-        ...(resolvedExplicitTerms !== undefined
-          ? { explicitContentAutomationTerms: resolvedExplicitTerms }
-          : {}),
-        updatedAt: FieldValue.serverTimestamp(),
-        updatedBy: request.auth.uid,
-      },
-      { merge: true },
-    );
+    await adminDb
+      .collection("settings")
+      .doc(AI_ENRICHMENT_SETTINGS_DOC_ID)
+      .set(
+        {
+          visionModelId: resolvedModelId,
+          promptTemplate,
+          additionalTagExclusions: resolvedAdditionalTagExclusions,
+          semanticReviewerEnabled: requestedSemanticReviewerEnabled === true,
+          semanticReviewerModelId: resolvedSemanticReviewerModelId,
+          ...(resolvedExplicitTerms !== undefined
+            ? { explicitContentAutomationTerms: resolvedExplicitTerms }
+            : {}),
+          updatedAt: FieldValue.serverTimestamp(),
+          updatedBy: request.auth.uid,
+        },
+        { merge: true },
+      );
 
     clearAiEnrichmentRuntimeCache();
 
     logPipelineEvent("settings.ai_enrichment.updated", {
       visionModelId: resolvedModelId,
       promptTemplate,
-      tagRerankPromptTemplate: resolvedTagRerankPromptTemplate,
       additionalTagExclusionsCount: resolvedAdditionalTagExclusions.length,
-      tagRerankMode: resolvedTagRerankMode,
-      suggestionAuthorMode: resolvedSuggestionAuthorMode,
-      suggestedNewTagsPolicy: resolvedSuggestedNewTagsPolicy,
       semanticReviewerEnabled: requestedSemanticReviewerEnabled === true,
       semanticReviewerModelId: resolvedSemanticReviewerModelId,
-      explicitContentAutomationTermsCount: resolvedExplicitTerms?.length ?? null,
+      explicitContentAutomationTermsCount:
+        resolvedExplicitTerms?.length ?? null,
       updatedBy: request.auth.uid,
     });
 
     return {
       visionModelId: resolvedModelId,
       promptTemplate,
-      tagRerankPromptTemplate: resolvedTagRerankPromptTemplate,
       additionalTagExclusions: resolvedAdditionalTagExclusions,
-      tagRerankMode: resolvedTagRerankMode,
-      suggestionAuthorMode: resolvedSuggestionAuthorMode,
-      suggestedNewTagsPolicy: resolvedSuggestedNewTagsPolicy,
       semanticReviewerEnabled: requestedSemanticReviewerEnabled === true,
       semanticReviewerModelId: resolvedSemanticReviewerModelId,
       ...(resolvedExplicitTerms !== undefined

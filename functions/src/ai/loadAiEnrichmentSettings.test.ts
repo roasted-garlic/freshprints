@@ -6,115 +6,25 @@ import {
   AI_ENRICHMENT_APPROVED_CATEGORY_NAMES_PLACEHOLDER,
   AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER,
   DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
-  DEFAULT_TAG_RERANK_PROMPT_TEMPLATE,
   PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_PRE_HALLOWEEN_GUARD,
   PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_PRE_TITLE_RULES,
   PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V20,
   PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V21,
   PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V23,
 } from "../../../packages/shared/src/constants/aiEnrichment.constants";
-import {
-  resolveAiPromptTemplate,
-  resolveAiTagRerankPromptTemplate,
-  resolveSuggestedNewTagsPolicySetting,
-  resolveSuggestionAuthorMode,
-  resolveTagRerankMode,
-} from "./loadAiEnrichmentSettings";
-
-describe("resolveTagRerankMode", () => {
-  it("defaults to off for undefined/missing values", () => {
-    assert.equal(resolveTagRerankMode(undefined), "off");
-  });
-
-  it("defaults to off for an invalid string", () => {
-    assert.equal(resolveTagRerankMode("not-a-real-mode"), "off");
-  });
-
-  it("defaults to off for a non-string value", () => {
-    assert.equal(resolveTagRerankMode(42), "off");
-  });
-
-  it("accepts off, auto, and always", () => {
-    assert.equal(resolveTagRerankMode("off"), "off");
-    assert.equal(resolveTagRerankMode("auto"), "auto");
-    assert.equal(resolveTagRerankMode("always"), "always");
-  });
-});
-
-describe("resolveSuggestionAuthorMode", () => {
-  it("defaults to off for undefined/missing values", () => {
-    assert.equal(resolveSuggestionAuthorMode(undefined), "off");
-  });
-
-  it("defaults to off for an invalid string", () => {
-    assert.equal(resolveSuggestionAuthorMode("not-a-real-mode"), "off");
-  });
-
-  it("defaults to off for a non-string value", () => {
-    assert.equal(resolveSuggestionAuthorMode(42), "off");
-  });
-
-  it("accepts off, auto, and always", () => {
-    assert.equal(resolveSuggestionAuthorMode("off"), "off");
-    assert.equal(resolveSuggestionAuthorMode("auto"), "auto");
-    assert.equal(resolveSuggestionAuthorMode("always"), "always");
-  });
-
-  it("is independent from resolveTagRerankMode — an invalid tagRerankMode does not affect this", () => {
-    assert.equal(resolveSuggestionAuthorMode("auto"), "auto");
-    assert.equal(resolveTagRerankMode("not-a-real-mode"), "off");
-  });
-});
-
-describe("resolveSuggestedNewTagsPolicySetting", () => {
-  it("defaults to balanced for undefined/invalid values", () => {
-    assert.equal(resolveSuggestedNewTagsPolicySetting(undefined), "balanced");
-    assert.equal(resolveSuggestedNewTagsPolicySetting("nope"), "balanced");
-  });
-
-  it("accepts off, strict, balanced, generous, and always", () => {
-    assert.equal(resolveSuggestedNewTagsPolicySetting("off"), "off");
-    assert.equal(resolveSuggestedNewTagsPolicySetting("strict"), "strict");
-    assert.equal(resolveSuggestedNewTagsPolicySetting("balanced"), "balanced");
-    assert.equal(resolveSuggestedNewTagsPolicySetting("generous"), "generous");
-    assert.equal(resolveSuggestedNewTagsPolicySetting("always"), "always");
-  });
-});
+import { resolveAiPromptTemplate } from "./loadAiEnrichmentSettings";
 
 describe("resolveAiPromptTemplate", () => {
-  it("resolves a saved copy of the previous v20 default to the current default", () => {
-    assert.equal(
-      resolveAiPromptTemplate(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V20),
-      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
-    );
-  });
-
-  it("resolves a saved copy of the previous v21 default to the current default", () => {
-    assert.equal(
-      resolveAiPromptTemplate(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V21),
-      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
-    );
-  });
-
-  it("resolves a saved copy of the pre-halloween-guard default to the current default", () => {
-    assert.equal(
-      resolveAiPromptTemplate(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_PRE_HALLOWEEN_GUARD),
-      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
-    );
-  });
-
-  it("resolves a saved copy of the pre-title-rules default to the current default", () => {
-    assert.equal(
-      resolveAiPromptTemplate(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_PRE_TITLE_RULES),
-      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
-    );
-  });
-
-  it("resolves a saved copy of the previous v23 default to the current default", () => {
-    assert.equal(
-      resolveAiPromptTemplate(PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V23),
-      DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
-    );
+  it("resolves recognized historical stock defaults to the current default", () => {
+    for (const historicalPrompt of [
+      PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V20,
+      PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V21,
+      PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_PRE_HALLOWEEN_GUARD,
+      PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_PRE_TITLE_RULES,
+      PREVIOUS_DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE_V23,
+    ]) {
+      assert.equal(resolveAiPromptTemplate(historicalPrompt), DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE);
+    }
   });
 
   it("preserves a valid custom prompt", () => {
@@ -126,7 +36,7 @@ ${AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER}`;
     assert.equal(resolveAiPromptTemplate(customPrompt), customPrompt);
   });
 
-  it("falls back to default when custom prompt only has names-only category placeholder", () => {
+  it("falls back when a prompt only has the retired names-only or excluded-tags contract", () => {
     const namesOnly = `Custom production prompt.
 
 Approved categories:
@@ -140,18 +50,5 @@ Do not use: ${AI_ENRICHMENT_EXCLUDED_TAGS_PLACEHOLDER}`;
   it("falls back to the current default for invalid prompt values", () => {
     assert.equal(resolveAiPromptTemplate("missing placeholders"), DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE);
     assert.equal(resolveAiPromptTemplate(undefined), DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE);
-  });
-});
-
-describe("resolveAiTagRerankPromptTemplate", () => {
-  it("falls back to the current default for missing/invalid values", () => {
-    assert.equal(resolveAiTagRerankPromptTemplate(undefined), DEFAULT_TAG_RERANK_PROMPT_TEMPLATE);
-    assert.equal(resolveAiTagRerankPromptTemplate(""), DEFAULT_TAG_RERANK_PROMPT_TEMPLATE);
-    assert.equal(resolveAiTagRerankPromptTemplate(42), DEFAULT_TAG_RERANK_PROMPT_TEMPLATE);
-  });
-
-  it("preserves a valid custom tag rerank prompt", () => {
-    const customPrompt = "Only ever return the tag motherhood.";
-    assert.equal(resolveAiTagRerankPromptTemplate(customPrompt), customPrompt);
   });
 });

@@ -72,9 +72,7 @@ describe("canonical enrichment response schema parity", () => {
     );
     assert.match(gemini, /normalizeSimpleCatalogEnrichment/);
     assert.match(gemini, /extractJsonObject/);
-    // Provider intentionally omits structured-output response_format (playground-style NL JSON).
-    assert.match(gemini, /No `response_format: json_object`/);
-    assert.match(gemini, /no `response_format`/);
+    assert.match(gemini, /buildSimpleCatalogEnrichmentResponseFormat/);
   });
 });
 

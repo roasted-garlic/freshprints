@@ -75,6 +75,9 @@ export { resetAiEnrichmentForProcessing } from "./resetAiEnrichmentForProcessing
 export { reprocessReadyDesignWithAi } from "./reprocessReadyDesignWithAi";
 export { testAiEnrichmentPlayground } from "./testAiEnrichmentPlayground";
 export { testAiEnrichmentSemanticReviewPlayground } from "./testAiEnrichmentSemanticReviewPlayground";
+export { getAiEnrichmentTrace } from "./getAiEnrichmentTrace";
+export { listAiEnrichmentTraces } from "./listAiEnrichmentTraces";
+export { clearAiEnrichmentTraces } from "./clearAiEnrichmentTraces";
 export { updateAiEnrichmentSettings } from "./updateAiEnrichmentSettings";
 export {
   refreshSmartProfileVocabSnapshotCallable,

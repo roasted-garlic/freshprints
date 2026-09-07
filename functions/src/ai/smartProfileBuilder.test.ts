@@ -15,9 +15,6 @@ import { CATALOG_TITLE_MAX_CHARACTERS } from "../../../packages/shared/src/const
 import {
 
   buildDesignSmartProfile,
-
-  parseHalftoneShadowAssessment,
-
   stripEmptySmartProfileDimensions,
 
 } from "./smartProfileBuilder";
@@ -243,9 +240,6 @@ describe("buildDesignSmartProfile", () => {
   });
 
 });
-
-
-
 describe("stripEmptySmartProfileDimensions", () => {
 
   it("produces Firestore-safe payload when validationWarnings are absent", () => {
@@ -486,44 +480,6 @@ describe("stripEmptySmartProfileDimensions", () => {
     });
     assert.equal(gap.categoryGapSuggested, true);
     assert.match(gap.categoryGapEvidence ?? "", /No approved category/);
-  });
-
-});
-
-
-
-describe("parseHalftoneShadowAssessment", () => {
-
-  it("omits evidence when absent (no undefined)", () => {
-
-    const assessment = parseHalftoneShadowAssessment({
-
-      category: "Animals",
-
-      description: "x",
-
-      suggestedNewTags: [],
-
-      title: "x",
-
-      tags: [],
-
-      rawTags: [],
-
-      halftoneShadowLikelihood: "possible",
-
-    });
-
-
-
-    assert.ok(assessment);
-
-    assert.equal(assessment?.likelihood, "possible");
-
-    assert.equal(Object.prototype.hasOwnProperty.call(assessment, "evidence"), false);
-
-    assertNoUndefinedDeep(assessment);
-
   });
 
 });

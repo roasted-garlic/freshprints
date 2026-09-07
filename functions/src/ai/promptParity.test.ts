@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import type { CatalogTag } from "../../../packages/shared/src/types/catalogTag.types";
 import type { AiEnrichmentCategoryOption } from "./providers/AiEnrichmentProvider";
 import {
   buildSimpleCatalogEnrichmentSystemPrompt,
@@ -19,40 +18,10 @@ const categories: AiEnrichmentCategoryOption[] = [
   { id: "cat-pop", name: "Pop Culture & Characters", description: "Recognizable IP and characters." },
 ];
 
-const approvedTags: CatalogTag[] = [
-  {
-    aliases: ["rock and roll", "rock n roll"],
-    createdAt: null,
-    createdBy: "seed",
-    id: "tag-rock",
-    name: "rock-n-roll",
-    preferredWhen: "Use for rock/attitude designs.",
-    status: "approved",
-    updatedAt: null,
-    updatedBy: "seed",
-  },
-  {
-    aliases: [],
-    createdAt: null,
-    createdBy: "seed",
-    id: "tag-motherhood",
-    name: "motherhood",
-    preferredWhen: "Use for motherhood/parenting themes.",
-    status: "approved",
-    updatedAt: null,
-    updatedBy: "seed",
-  },
-];
-
-const exclusions = ["death", "skull"];
-
 function buildUserPrompt(promptTemplate: string): string {
   return buildSimpleCatalogEnrichmentUserPrompt({
     approvedCategories: categories,
     approvedCategoryNames: categories.map((category) => category.name),
-    approvedTags,
-    approvedTagNames: approvedTags.map((tag) => tag.name),
-    effectiveTagExclusions: exclusions,
     promptTemplate,
   });
 }
@@ -83,10 +52,10 @@ describe("prompt parity (playground vs AI processing)", () => {
     assert.ok(!DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE.includes("{{approved_tags}}"));
   });
 
-  it("injects excluded tags into the resolved prompt", () => {
+  it("does not inject retired tag exclusions into the resolved prompt", () => {
     const resolved = buildUserPrompt(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE);
 
-    assert.ok(resolved.includes("death"));
-    assert.ok(resolved.includes("skull"));
+    assert.ok(!resolved.includes("death"));
+    assert.ok(!resolved.includes("skull"));
   });
 });

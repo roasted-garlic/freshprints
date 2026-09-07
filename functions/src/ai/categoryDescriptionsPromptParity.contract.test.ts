@@ -19,13 +19,25 @@ describe("v36 category-description prompt path parity", () => {
       read("functions/src/ai/providers/geminiVisionEnrichmentProvider.ts"),
       /buildSimpleCatalogEnrichmentUserPrompt/,
     );
-    assert.match(read("functions/src/ai/aiEnrichmentPlayground.ts"), /buildSimpleCatalogEnrichmentUserPrompt/);
-    assert.match(read("functions/src/ai/aiEnrichmentCandidateCore.ts"), /loadCachedActiveCategories/);
-    assert.match(read("functions/src/ai/aiEnrichmentCandidateCore.ts"), /categoryOptions: categories\.categories/);
+    assert.match(
+      read("functions/src/ai/aiEnrichmentPlayground.ts"),
+      /buildSimpleCatalogEnrichmentUserPrompt/,
+    );
+    assert.match(
+      read("functions/src/ai/aiEnrichmentCandidateCore.ts"),
+      /loadCachedActiveCategories/,
+    );
+    assert.match(
+      read("functions/src/ai/aiEnrichmentCandidateCore.ts"),
+      /categoryOptions: categories\.categories/,
+    );
   });
 
   it("enqueue, Ready reprocess worker, and Design Library reprocess use the shared pipeline/provider path", () => {
-    assert.match(read("functions/src/enqueueAiEnrichment.ts"), /runAiEnrichmentPipeline/);
+    assert.match(
+      read("functions/src/enqueueAiEnrichment.ts"),
+      /runAiEnrichmentPipeline/,
+    );
     assert.match(
       read("functions/src/catalogReprocess/catalogReprocessWorker.ts"),
       /runAiEnrichmentPipeline/,
@@ -37,8 +49,12 @@ describe("v36 category-description prompt path parity", () => {
   });
 
   it("default template requires approved_categories and does not inject tag taxonomy placeholders", () => {
-    const constants = read("packages/shared/src/constants/aiEnrichment.constants.ts");
-    const defaultStart = constants.indexOf("export const DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE = `");
+    const constants = read(
+      "packages/shared/src/constants/aiEnrichment.constants.ts",
+    );
+    const defaultStart = constants.indexOf(
+      "export const DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE = `",
+    );
     const defaultEnd = constants.indexOf("`;", defaultStart + 50);
     const defaultBody = constants.slice(defaultStart, defaultEnd);
     assert.match(defaultBody, /\{\{approved_categories\}\}/);
@@ -48,17 +64,20 @@ describe("v36 category-description prompt path parity", () => {
     assert.doesNotMatch(defaultBody, /\{\{approved_tags\}\}/);
     assert.doesNotMatch(defaultBody, /\{\{approved_tag_names\}\}/);
     assert.doesNotMatch(defaultBody, /Structured evidence self-consistency/);
-    assert.doesNotMatch(defaultBody, /\{\{existing_smart_profile_response_schema\}\}/);
+    assert.doesNotMatch(
+      defaultBody,
+      /\{\{existing_smart_profile_response_schema\}\}/,
+    );
     assert.match(
       constants,
       /AI_ENRICHMENT_REQUIRED_PROMPT_PLACEHOLDERS = \[[\s\S]*AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER/,
     );
   });
 
-  it("prompt and normalizer/schema versions stay on the v37 / v6 / v1 contract", () => {
+  it("prompt and normalizer/schema versions stay on the v39 / v6 / v1 contract", () => {
     assert.match(
       read("packages/shared/src/constants/smartProfile.constants.ts"),
-      /CURRENT_CATALOG_ENRICH_PROMPT_VERSION = "catalog-enrich-v37"/,
+      /CURRENT_CATALOG_ENRICH_PROMPT_VERSION\s*=\s*[\s\S]*"catalog-enrich-v39"/,
     );
     assert.match(
       read("packages/shared/src/constants/smartProfile.constants.ts"),
@@ -66,7 +85,7 @@ describe("v36 category-description prompt path parity", () => {
     );
     assert.match(
       read("functions/src/ai/catalogTitleRules.ts"),
-      /CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-v37"/,
+      /CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-v39"/,
     );
   });
 });

@@ -41,8 +41,8 @@ export function AiReviewSmartProfileSection({
           <Badge variant="info">Shadow</Badge>
         </div>
         <p className="ai-review-suggestions-note">
-          Smart Profile appears after AI processing with prompt {CURRENT_CATALOG_ENRICH_PROMPT_VERSION}{" "}
-          or later.
+          Smart Profile appears after AI processing with prompt{" "}
+          {CURRENT_CATALOG_ENRICH_PROMPT_VERSION} or later.
         </p>
       </section>
     );
@@ -100,7 +100,9 @@ export function AiReviewSmartProfileSection({
     pushChoice(entry.resolved);
   }
 
-  const unresolvedAlternatives = alternativeChoices.filter((entry) => !entry.resolved);
+  const unresolvedAlternatives = alternativeChoices.filter(
+    (entry) => !entry.resolved,
+  );
 
   return (
     <section
@@ -112,7 +114,10 @@ export function AiReviewSmartProfileSection({
         <Badge variant="info">{automationDecision}</Badge>
       </div>
 
-      <dl className="ai-review-automation-preview" aria-label="Automation preview">
+      <dl
+        className="ai-review-automation-preview"
+        aria-label="Automation preview"
+      >
         <div>
           <dt>Would Auto Approve</dt>
           <dd>{formatYesNo(wouldAutoApprove)}</dd>
@@ -121,7 +126,8 @@ export function AiReviewSmartProfileSection({
           <dt>Explicit Content Auto-classified</dt>
           <dd>{formatYesNo(explicitApplied || rootExplicitOn)}</dd>
         </div>
-        {(explicitDetected || proposedTerms.length > 0) && proposedTerms.length > 0 ? (
+        {(explicitDetected || proposedTerms.length > 0) &&
+        proposedTerms.length > 0 ? (
           <div>
             <dt>Detected Censored Terms</dt>
             <dd>
@@ -137,15 +143,18 @@ export function AiReviewSmartProfileSection({
 
       {suppressedByAutomationLock ? (
         <p className="ai-review-suggestions-note">
-          Automatic Explicit write suppressed: Lock Explicit setting is on for this design. Root
-          Explicit fields were not changed by automation.
+          Automatic Explicit write suppressed: Lock Explicit setting is on for
+          this design. Root Explicit fields were not changed by automation.
         </p>
       ) : null}
 
-      {explicitDetected && !explicitApplied && !rootExplicitOn && proposedTerms.length > 0 ? (
+      {explicitDetected &&
+      !explicitApplied &&
+      !rootExplicitOn &&
+      proposedTerms.length > 0 ? (
         <p className="ai-review-suggestions-note">
-          Explicit terminology detected but not applied to root fields (settings failure or staff
-          authority).
+          Explicit terminology detected but not applied to root fields (settings
+          failure or staff authority).
         </p>
       ) : null}
 
@@ -167,7 +176,8 @@ export function AiReviewSmartProfileSection({
                   <button
                     aria-pressed={isActive}
                     className={
-                      "ai-review-category-choice-chip" + (isActive ? " is-selected" : "")
+                      "ai-review-category-choice-chip" +
+                      (isActive ? " is-selected" : "")
                     }
                     disabled={!canClick}
                     key={choice.value}
@@ -186,7 +196,10 @@ export function AiReviewSmartProfileSection({
                 <li key={alt.categoryName}>
                   {alt.categoryName}
                   {alt.reason ? ` — ${alt.reason}` : ""}
-                  <span className="ai-review-suggestions-note"> (not in catalog)</span>
+                  <span className="ai-review-suggestions-note">
+                    {" "}
+                    (not in catalog)
+                  </span>
                 </li>
               ))}
             </ul>
@@ -196,14 +209,8 @@ export function AiReviewSmartProfileSection({
 
       {profile.categoryGapSuggested ? (
         <p className="ai-review-suggestions-note">
-          Category gap noted: {profile.categoryGapEvidence ?? "No details provided."}
-        </p>
-      ) : null}
-
-      {design.aiAnalysis?.halftoneShadowAssessment ? (
-        <p className="ai-review-suggestions-note">
-          Halftone shadow ({design.aiAnalysis.halftoneShadowAssessment.likelihood ?? "unknown"}):{" "}
-          {design.aiAnalysis.halftoneShadowAssessment.evidence ?? "No evidence note."}
+          Category gap noted:{" "}
+          {profile.categoryGapEvidence ?? "No details provided."}
         </p>
       ) : null}
 

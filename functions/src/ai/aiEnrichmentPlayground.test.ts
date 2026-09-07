@@ -2,9 +2,12 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  buildPass1Context,
   buildAiEnrichmentPlaygroundRequestBody,
+  resolveAiEnrichmentPlaygroundPass2Eligibility,
   validateAiEnrichmentPlaygroundRequest,
 } from "./aiEnrichmentPlayground";
+import { normalizeSimpleCatalogEnrichment } from "./simpleCatalogEnrichmentResponse";
 
 const VALID_IMAGE_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wn0gY8AAAAASUVORK5CYII=";
@@ -103,12 +106,18 @@ describe("buildAiEnrichmentPlaygroundRequestBody", () => {
 
     assert.equal(parsed.reasoning_effort, undefined);
 
-    const userMessage = parsed.messages.find((message) => message.role === "user");
+    const userMessage = parsed.messages.find(
+      (message) => message.role === "user",
+    );
     assert.ok(userMessage);
 
     const imageInput = userMessage.content.find(
-      (part): part is { type: "image_url"; image_url: { url: string; detail?: string } } =>
-        part.type === "image_url",
+      (
+        part,
+      ): part is {
+        type: "image_url";
+        image_url: { url: string; detail?: string };
+      } => part.type === "image_url",
     );
 
     assert.ok(imageInput);
@@ -129,13 +138,116 @@ describe("buildAiEnrichmentPlaygroundRequestBody", () => {
     );
 
     const parsed = JSON.parse(body) as ParsedRequestBody;
-    const userMessage = parsed.messages.find((message) => message.role === "user");
+    const userMessage = parsed.messages.find(
+      (message) => message.role === "user",
+    );
     assert.ok(userMessage);
 
-    const imageInput = userMessage.content.find((part) => part.type === "image_url");
-    assert.equal(imageInput, undefined, "text-only request must never include an image_url part");
+    const imageInput = userMessage.content.find(
+      (part) => part.type === "image_url",
+    );
+    assert.equal(
+      imageInput,
+      undefined,
+      "text-only request must never include an image_url part",
+    );
 
     const textInput = userMessage.content.find((part) => part.type === "text");
     assert.ok(textInput);
+  });
+});
+
+describe("buildPass1Context", () => {
+  it("projects the normalized parse into a bounded semantic context without image bytes", () => {
+    const parsed = normalizeSimpleCatalogEnrichment({
+      title: "Cat Graphic",
+      description: "A cat with whiskers graphic for catalog search.",
+      category: "Animals",
+      centralSubject: "cat",
+      subjects: ["cat", "woman"],
+      objects: ["whiskers"],
+      visibleText: ["CAT"],
+      visualContextProfile: {
+        version: "visual-context-v1",
+        summary: "A cat graphic.",
+        detailedDescription: "A cat appears in a printable graphic.",
+      },
+    });
+    const context = buildPass1Context({
+      parsed,
+      providerId: "google",
+      modelId: "gemini-2.5-flash-lite",
+      categories: {
+        categories: [{ id: "animals", name: "Animals" }],
+        names: ["Animals"],
+        idsByName: { animals: "animals" },
+      },
+      smartProfileVocab: { lists: {} },
+      settings: {
+        visionModelId: "gemini-2.5-flash-lite",
+        promptTemplate: "prompt",
+        additionalTagExclusions: [],
+        semanticReviewerEnabled: false,
+        semanticReviewerModelId: "gemini-2.5-flash-lite",
+        catalogWorkflowMode: "shadow",
+        catalogAutonomousLiveEnabled: false,
+        explicitContentAutomationTerms: [],
+        settingsReadFailed: false,
+      },
+    });
+
+    assert.deepEqual(context.normalized.subjects, ["cat", "woman"]);
+    assert.equal(context.categoryId, "animals");
+    assert.equal(context.originalSmartProfile.categoryName, "Animals");
+    assert.ok(context.originalSmartProfile.provenance);
+    assert.ok(context.normalized.visualContextProfile);
+    assert.deepEqual(context.objectiveBlockers, []);
+    assert.ok(context.semanticBlockers.length > 0);
+    assert.equal(context.pass2Eligibility, "eligible");
+    assert.ok(context.automationDecision);
+    assert.equal(context.semanticReviewerEnabled, false);
+    assert.equal(JSON.stringify(context).includes(VALID_IMAGE_BASE64), false);
+    assert.equal(JSON.stringify(context).includes("tagRerank"), false);
+  });
+});
+
+describe("resolveAiEnrichmentPlaygroundPass2Eligibility", () => {
+  const visualContextProfile = {
+    summary: "A summary.",
+    detailedDescription: "A detailed description.",
+  };
+
+  it("returns each reviewed eligibility state", () => {
+    assert.equal(
+      resolveAiEnrichmentPlaygroundPass2Eligibility({
+        objectiveBlockers: [],
+        semanticBlockers: ["structured_evidence_gap:subjects:woman"],
+        visualContextProfile,
+      }),
+      "eligible",
+    );
+    assert.equal(
+      resolveAiEnrichmentPlaygroundPass2Eligibility({
+        objectiveBlockers: [],
+        semanticBlockers: [],
+        visualContextProfile,
+      }),
+      "not_needed",
+    );
+    assert.equal(
+      resolveAiEnrichmentPlaygroundPass2Eligibility({
+        objectiveBlockers: ["category_unresolved"],
+        semanticBlockers: ["structured_evidence_gap:subjects:woman"],
+        visualContextProfile,
+      }),
+      "blocked_by_objective",
+    );
+    assert.equal(
+      resolveAiEnrichmentPlaygroundPass2Eligibility({
+        objectiveBlockers: [],
+        semanticBlockers: ["structured_evidence_gap:subjects:woman"],
+      }),
+      "unavailable",
+    );
   });
 });

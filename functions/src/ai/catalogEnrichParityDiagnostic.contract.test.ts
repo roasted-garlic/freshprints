@@ -16,10 +16,13 @@ function read(rel: string): string {
 
 describe("Playground vs Processing prompt resolution (diagnostic parity)", () => {
   it("stamps promptVersion from the code constant, not prompt text", () => {
-    assert.equal(CATALOG_ENRICHMENT_PROMPT_VERSION, "catalog-enrich-v38");
+    assert.equal(CATALOG_ENRICHMENT_PROMPT_VERSION, "catalog-enrich-v39");
     const stamp = read("functions/src/ai/simpleCatalogEnrichmentResponse.ts");
     assert.match(stamp, /promptVersion:\s*CATALOG_ENRICHMENT_PROMPT_VERSION/);
-    assert.doesNotMatch(stamp, /promptVersion:\s*hash|promptVersion:\s*promptTemplate/);
+    assert.doesNotMatch(
+      stamp,
+      /promptVersion:\s*hash|promptVersion:\s*promptTemplate/,
+    );
   });
 
   it("Playground expands the request-body prompt, not Firestore promptTemplate", () => {
@@ -34,8 +37,18 @@ describe("Playground vs Processing prompt resolution (diagnostic parity)", () =>
     assert.match(core, /promptTemplate:\s*enrichmentSettings\.promptTemplate/);
   });
 
-  it("tag rerank is absent from the active candidate path", () => {
-    assert.match(read("functions/src/ai/aiEnrichmentCandidateCore.ts"), /suggestions\.tags = \[\]/);
-    assert.doesNotMatch(read("functions/src/ai/aiEnrichmentCandidateCore.ts"), /import .*catalogTagRerankProvider/);
+  it("tag rerank and suggestion authoring are absent from the active candidate path", () => {
+    assert.doesNotMatch(
+      read("functions/src/ai/aiEnrichmentCandidateCore.ts"),
+      /suggestions\.tags/,
+    );
+    assert.doesNotMatch(
+      read("functions/src/ai/aiEnrichmentCandidateCore.ts"),
+      /suggestedNewTags/,
+    );
+    assert.doesNotMatch(
+      read("functions/src/ai/aiEnrichmentCandidateCore.ts"),
+      /import .*catalogTagRerankProvider/,
+    );
   });
 });

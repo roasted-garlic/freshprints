@@ -19,7 +19,9 @@ export type AiEnrichmentObserveResult = AiEnrichmentCandidate & {
 };
 
 function resolveFirebaseProjectId(): string | undefined {
-  const fromEnv = process.env.FIREBASE_PROJECT_ID?.trim() || process.env.GCLOUD_PROJECT?.trim();
+  const fromEnv =
+    process.env.FIREBASE_PROJECT_ID?.trim() ||
+    process.env.GCLOUD_PROJECT?.trim();
   if (fromEnv) {
     return fromEnv;
   }
@@ -43,26 +45,37 @@ export async function runAiEnrichmentObserveForDesign(input: {
 
   assertFlagshipObserveAllowed(resolveFirebaseProjectId(), designId);
 
-  const designSnapshot = await adminDb.collection("designs").doc(designId).get();
+  const designSnapshot = await adminDb
+    .collection("designs")
+    .doc(designId)
+    .get();
   if (!designSnapshot.exists) {
     throw new Error(`Flagship observe: design ${designId} not found.`);
   }
 
-  const data = designSnapshot.data() as AiEnrichmentDesignInput & Record<string, unknown>;
+  const data = designSnapshot.data() as AiEnrichmentDesignInput &
+    Record<string, unknown>;
   const design: AiEnrichmentDesignInput = {
     id: designId,
     title: typeof data.title === "string" ? data.title : "",
-    previewPath: typeof data.previewPath === "string" ? data.previewPath : undefined,
-    thumbnailPath: typeof data.thumbnailPath === "string" ? data.thumbnailPath : undefined,
+    previewPath:
+      typeof data.previewPath === "string" ? data.previewPath : undefined,
+    thumbnailPath:
+      typeof data.thumbnailPath === "string" ? data.thumbnailPath : undefined,
     artworkBackgroundHex:
-      typeof data.artworkBackgroundHex === "string" ? data.artworkBackgroundHex : undefined,
+      typeof data.artworkBackgroundHex === "string"
+        ? data.artworkBackgroundHex
+        : undefined,
     aiRequestedVisionModelId:
-      typeof data.aiRequestedVisionModelId === "string" ? data.aiRequestedVisionModelId : undefined,
-    tags: Array.isArray(data.tags) ? (data.tags as string[]) : undefined,
+      typeof data.aiRequestedVisionModelId === "string"
+        ? data.aiRequestedVisionModelId
+        : undefined,
   };
 
   if (!design.previewPath && !design.thumbnailPath) {
-    throw new Error(`Flagship observe: design ${designId} has no previewPath or thumbnailPath.`);
+    throw new Error(
+      `Flagship observe: design ${designId} has no previewPath or thumbnailPath.`,
+    );
   }
 
   const candidate = await generateAiEnrichmentCandidateForDesign({

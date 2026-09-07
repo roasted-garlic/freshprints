@@ -1,24 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import type { CatalogTag } from "../../../../packages/shared/src/types/catalogTag.types";
 import { buildVisionRequestBody } from "./geminiVisionEnrichmentProvider";
 import { buildSimpleCatalogEnrichmentUserPrompt } from "../simpleCatalogEnrichmentPrompt";
 import { DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE } from "../../../../packages/shared/src/constants/aiEnrichment.constants";
 
 describe("buildVisionRequestBody", () => {
-  function catalogTag(input: Pick<CatalogTag, "name" | "aliases" | "preferredWhen">): CatalogTag {
-    return {
-      ...input,
-      createdAt: null,
-      createdBy: "owner-1",
-      id: input.name,
-      status: "approved",
-      updatedAt: null,
-      updatedBy: "owner-1",
-    };
-  }
-
   function buildUserPrompt() {
     return buildSimpleCatalogEnrichmentUserPrompt({
       approvedCategories: [
@@ -34,20 +21,6 @@ describe("buildVisionRequestBody", () => {
         },
       ],
       approvedCategoryNames: ["Motherhood", "Faith"],
-      approvedTags: [
-        catalogTag({
-          aliases: ["mom", "mother"],
-          name: "mama",
-          preferredWhen: "Use when motherhood is the main searchable idea.",
-        }),
-        catalogTag({
-          aliases: ["vintage"],
-          name: "retro",
-          preferredWhen: "Use when artwork has 1970s or vintage styling.",
-        }),
-      ],
-      approvedTagNames: ["mama", "retro", "floral"],
-      effectiveTagExclusions: ["death"],
       promptTemplate: DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
     });
   }
@@ -64,7 +37,7 @@ describe("buildVisionRequestBody", () => {
 
     return JSON.parse(body) as {
       reasoning_effort?: string;
-      response_format?: unknown;
+      response_format?: { type: string; json_schema: { name: string; strict: boolean; schema: unknown } };
       messages: Array<{
         role: string;
         content:
@@ -94,9 +67,11 @@ describe("buildVisionRequestBody", () => {
     assert.match(imageInput.image_url.url, /^data:image\/webp;base64,/);
   });
 
-  it("does not force response_format json_object (playground-style request)", () => {
+  it("uses strict structured output with the canonical response schema", () => {
     const parsed = parseBody();
-    assert.equal(parsed.response_format, undefined);
+    assert.equal(parsed.response_format?.type, "json_schema");
+    assert.equal(parsed.response_format?.json_schema.name, "catalog_enrichment");
+    assert.equal(parsed.response_format?.json_schema.strict, true);
   });
 
   it("never includes reasoning_effort (Gemini does not support it)", () => {

@@ -13,8 +13,8 @@ import { CATALOG_ENRICHMENT_PROMPT_VERSION } from "./catalogTitleRules";
 const here = dirname(fileURLToPath(import.meta.url));
 
 describe("smart profile quality contract", () => {
-  it("ships catalog-enrich-v37 and keeps current caps", () => {
-    assert.equal(CATALOG_ENRICHMENT_PROMPT_VERSION, "catalog-enrich-v37");
+  it("ships catalog-enrich-v39 and keeps current caps", () => {
+    assert.equal(CATALOG_ENRICHMENT_PROMPT_VERSION, "catalog-enrich-v39");
     assert.equal(SMART_PROFILE_MAX_ITEMS_PER_DIMENSION, 12);
   });
 
@@ -24,7 +24,7 @@ describe("smart profile quality contract", () => {
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /display mat/i);
     assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /\{\{approved_categories\}\}/);
     assert.doesNotMatch(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /\{\{excluded_tags\}\}/);
-    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /"subjects":\[\]/);
+    assert.match(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /Use subjects and objects/);
     assert.doesNotMatch(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /\{\{smart_profile_vocab\}\}/);
     assert.doesNotMatch(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /dominant BUYER INTENT/);
     assert.doesNotMatch(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE, /"prompt":/);
@@ -33,8 +33,6 @@ describe("smart profile quality contract", () => {
   it("injects bounded vocab when template requests it and does not inject approved-tag synonym boards", () => {
     const prompt = buildSimpleCatalogEnrichmentUserPrompt({
       approvedCategoryNames: ["Animals"],
-      approvedTagNames: ["legacy-tag-should-not-be-vocab"],
-      effectiveTagExclusions: [],
       promptTemplate: `${DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE}\n{{smart_profile_vocab}}`,
       smartProfileVocab: { subjects: ["raccoon", "cow"] },
     });
@@ -146,18 +144,13 @@ describe("smart profile quality contract", () => {
     assert.doesNotMatch(core, /ALGOLIA_ADMIN_API_KEY|algoliaAdminClient/);
   });
 
-  it("category resolve receives enrichment-parse themes/subjects/objects/styles/interests/professionsGroups/searchConcepts", () => {
+  it("category authority trusts only the exact active category snapshot", () => {
     const core = readFileSync(join(here, "aiEnrichmentCandidateCore.ts"), "utf8");
-    assert.match(core, /buildThemeCategoryResolveInput/);
-    assert.match(core, /enrichmentParse:\s*result\.analysis\.smartProfileEnrichmentParse/);
-    assert.match(core, /subjects:\s*parse\?\.subjects/);
-    assert.match(core, /objects:\s*parse\?\.objects/);
-    assert.match(core, /styles:\s*parse\?\.styles/);
-    assert.match(core, /themes:\s*parse\?\.themes/);
-    assert.match(core, /interests:\s*parse\?\.interests/);
-    assert.match(core, /professionsGroups:\s*parse\?\.professionsGroups/);
-    assert.match(core, /searchConcepts:\s*parse\?\.searchConcepts/);
-    assert.match(core, /resolveThemeCategory\(\s*buildThemeCategoryResolveInput/);
+    assert.match(core, /categories\.categories\.find\(/);
+    assert.match(core, /category\.name\.trim\(\)\.toLowerCase\(\)/);
+    assert.match(core, /resolvedCategory/);
+    assert.doesNotMatch(core, /buildThemeCategoryResolveInput|resolveThemeCategory/);
+    assert.match(core, /Historical design\.tags/);
   });
 
   it("auto-refreshes settings/aiSmartProfileVocab via bounded Firestore sample (not manual)", () => {
