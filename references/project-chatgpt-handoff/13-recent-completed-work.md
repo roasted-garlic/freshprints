@@ -1,5 +1,18 @@
 # Recent Completed Work
 
+## 2026-09-08 - Atomic reprocess automation-state reconciliation — CLOSED
+
+| Item | Status |
+|------|--------|
+| Goal | `atomic-reprocess-automation-state-reconciliation` |
+| Status | **CLOSED** — Signoff **approved** |
+| Owner DEV QA | **PASS** |
+| Signoff | `2026-09-08-atomic-reprocess-automation-state-reconciliation-signoff.md` |
+| Deployment | DEV-only; exactly four authorized Functions verified ACTIVE at 100% |
+| Delivered | Attempt identity guards, failure metadata preservation, and atomic success reconciliation |
+| Autonomous / Pass 2 | **OFF** / **PARKED** |
+| Production | **UNTOUCHED**; promotion remains separately gated |
+
 ## 2026-09-05 - Canonical AI catalog copy trust (ADR-FP-181) — SIGNED OFF
 
 | Item | Status |

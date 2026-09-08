@@ -1,32 +1,30 @@
 # Next Planned Goal
 
-**Updated:** 2026-09-04
+**Updated:** 2026-09-08
 
----
+## Current state
 
-## Active managed goal
+- **No managed goal is currently selected.**
+- FreshForge is **IDLE**.
+- There is no active child phase or implementation checkpoint.
+- The owner must choose the next managed goal before any new Plan, Review, or
+  implementation begins.
 
+Parent program:
 `smart-catalog-intelligence-completion-and-legacy-tag-retirement`
 
-**WS4 COMPLETE / PASS WITH NOTES.** Next:
+The parent may still contain parked or deferred work, but it is not itself an
+active child goal.
 
-1. **Owner decision:** authorize **WS5 Autonomous DEV canary** planning/execution (or defer)
-2. Do **not** enable Autonomous until authorized
-3. Do **not** start canaries until WS5 is authorized and planned
-4. Tag / reranker retirement remains later (WS7+); tags NON-MATERIAL for WS5
-
-Artifacts:
-
-- Title Signoff: `docs/workflow/reviews/2026-09-04-visual-catalog-title-specificity-signoff.md`
-- WS4 Closeout: `docs/workflow/reviews/2026-09-04-smart-catalog-intelligence-completion-ws4-signoff.md`
-
----
-
-## Deferred
+## Parked or deferred work
 
 | Item | Status |
 |------|--------|
-| WS5 Autonomous DEV canary | **READY FOR OWNER AUTHORIZATION** (not started) |
-| Tag / reranker retirement | Later under parent goal |
-| Production | **NOT AUTHORIZED** |
-| Commit/push | Owner-gated |
+| WS5 Autonomous DEV canary | **CLOSED** — PASS under Model 2; Autonomous remains OFF |
+| WS6 | **NOT STARTED** — candidate only; requires a new Plan/Review and owner authorization |
+| Tag / reranker retirement | Parked/deferred under the parent program |
+| Autonomous | **OFF** |
+| Automatic Pass 2 | **PARKED** |
+| Production promotion | **SEPARATELY GATED / NOT AUTHORIZED** |
+
+No candidate is ranked or selected by this file.
