@@ -49,7 +49,11 @@ import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/s
 import { formatInternalPrintRequestName } from "@fresh-prints/shared/utils/printRequestNaming";
 import { mergePrintRequestItemPreservingArtworkEnhanceFields } from "@fresh-prints/shared/utils/printRequestItemArtworkEnhanceFields";
 import { getPrintRequestOriginBadgeLabel } from "@fresh-prints/shared/utils/printRequestOrigin";
-import { evaluateCustomerPrintRequestConversionEligibility, isPrintRequestConvertedToInternal } from "@fresh-prints/shared/utils/printRequestConversion";
+import {
+  evaluateCustomerPrintRequestConversionEligibility,
+  getPrintRequestAllocationBlockReason,
+  isPrintRequestConvertedToInternal,
+} from "@fresh-prints/shared/utils/printRequestConversion";
 import { getPrintRequestTabHelperCopy } from "@fresh-prints/shared/staffInbox/printRequestTabHelperCopy";
 import { derivePrintRequestQueueState, isPrintRequestFullyPrinted } from "@fresh-prints/shared/utils/printRequestQueueState";
 import { derivePrintRequestListTab, type PrintRequestListTab } from "@fresh-prints/shared/utils/printRequestListGrouping";
@@ -78,7 +82,11 @@ import {
   summarizePrintRequestPersistenceHealth,
   type PrintRequestItemPersistenceHealth,
 } from "@fresh-prints/shared/utils/printRequestItemPersistenceHealth";
-import { getPrintRequestQueueStateBadgeLabel, getPrintRequestQueueStateBadgeVariant } from "../utils/printRequestQueueBadge";
+import {
+  getPrintRequestQueueStateBadgeLabel,
+  getPrintRequestQueueStateBadgeVariant,
+  shouldShowPrintRequestQueueStateBadge,
+} from "../utils/printRequestQueueBadge";
 import {
   getPrintRequestRequeueBadgeLabel,
   getPrintRequestRequeueBadgeTitle,
@@ -1269,6 +1277,16 @@ export function PrintRequestsPage() {
     if (requestItems.length === 0) {
       return;
     }
+    if (visibleSelectedRequest) {
+      const allocationBlockReason = getPrintRequestAllocationBlockReason({
+        status: visibleSelectedRequest.status,
+        closureKind: visibleSelectedRequest.closureKind,
+      });
+      if (allocationBlockReason) {
+        setActionError(allocationBlockReason);
+        return;
+      }
+    }
     if (!persistenceSummary.canOpenQueue) {
       setActionError(persistenceSummary.blockReason);
       return;
@@ -1683,6 +1701,16 @@ export function PrintRequestsPage() {
   ]);
 
   const isSelectedRequestDetailLocked = isSelectedRequestQueueLocked || isSelectedRequestFullyPrinted;
+  const selectedRequestAllocationBlockReason = visibleSelectedRequest
+    ? getPrintRequestAllocationBlockReason({
+        status: visibleSelectedRequest.status,
+        closureKind: visibleSelectedRequest.closureKind,
+      })
+    : null;
+  const canShowAllocationActions =
+    Boolean(visibleSelectedRequest) &&
+    !isSelectedRequestDetailLocked &&
+    !selectedRequestAllocationBlockReason;
   const canManageRequestItems = Boolean(
     user && permissionService.canManagePrintRequestItems(user),
   );
@@ -2062,9 +2090,9 @@ export function PrintRequestsPage() {
         </aside>
 
         <section className="print-requests-main">
-          {visibleSelectedRequest && !isSelectedRequestDetailLocked ? (
+          {canShowAllocationActions ? (
             <div className="print-requests-page-actions">
-              {!visibleSelectedRequest.isInternal ? (
+              {!visibleSelectedRequest!.isInternal ? (
                 <Button
                   disabled={
                     requestItems.length === 0 ||
@@ -2150,11 +2178,13 @@ export function PrintRequestsPage() {
                       <Badge variant={getStatusBadgeVariant(visibleSelectedRequest.status)}>
                         {visibleSelectedRequest.status}
                       </Badge>
-                      <Badge
-                        variant={getPrintRequestQueueStateBadgeVariant(selectedRequestQueueState ?? "not_queued")}
-                      >
-                        {getPrintRequestQueueStateBadgeLabel(selectedRequestQueueState ?? "not_queued")}
-                      </Badge>
+                      {shouldShowPrintRequestQueueStateBadge(visibleSelectedRequest.status) ? (
+                        <Badge
+                          variant={getPrintRequestQueueStateBadgeVariant(selectedRequestQueueState ?? "not_queued")}
+                        >
+                          {getPrintRequestQueueStateBadgeLabel(selectedRequestQueueState ?? "not_queued")}
+                        </Badge>
+                      ) : null}
                     </div>
                   </div>
                 </div>

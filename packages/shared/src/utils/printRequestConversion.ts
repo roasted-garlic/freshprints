@@ -31,6 +31,29 @@ export function isPrintRequestConvertedToInternal(closureKind?: PrintRequestClos
   return closureKind === "converted_to_internal";
 }
 
+/**
+ * Staff-safe reason when a print request must not be allocated to a show or Internal Gangsheet.
+ * Archived / converted customer history records are view-only; completed requests are closed.
+ */
+export function getPrintRequestAllocationBlockReason(input: {
+  status: string;
+  closureKind?: PrintRequestClosureKind;
+}): string | null {
+  if (isPrintRequestConvertedToInternal(input.closureKind)) {
+    return "This request was converted to an internal request and can no longer be added to a show.";
+  }
+
+  if (input.status === "archived") {
+    return "This request is archived and can no longer be added to a show.";
+  }
+
+  if (input.status === "completed") {
+    return "This request is completed and can no longer be added to a show.";
+  }
+
+  return null;
+}
+
 export function resolvePortalPrintRequestProgressLabel(input: {
   closureKind?: PrintRequestClosureKind;
   status: string;

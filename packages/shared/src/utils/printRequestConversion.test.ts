@@ -3,9 +3,32 @@ import test from "node:test";
 
 import {
   evaluateCustomerPrintRequestConversionEligibility,
+  getPrintRequestAllocationBlockReason,
   PRINT_REQUEST_CONVERTED_TO_INTERNAL_LABEL,
   resolvePortalPrintRequestProgressLabel,
 } from "./printRequestConversion";
+
+test("getPrintRequestAllocationBlockReason blocks converted and archived requests", () => {
+  assert.match(
+    getPrintRequestAllocationBlockReason({
+      status: "archived",
+      closureKind: "converted_to_internal",
+    }) ?? "",
+    /converted/i,
+  );
+  assert.match(
+    getPrintRequestAllocationBlockReason({ status: "archived" }) ?? "",
+    /archived/i,
+  );
+  assert.match(
+    getPrintRequestAllocationBlockReason({ status: "completed" }) ?? "",
+    /completed/i,
+  );
+  assert.equal(
+    getPrintRequestAllocationBlockReason({ status: "active" }),
+    null,
+  );
+});
 
 test("resolvePortalPrintRequestProgressLabel returns converted copy", () => {
   assert.equal(

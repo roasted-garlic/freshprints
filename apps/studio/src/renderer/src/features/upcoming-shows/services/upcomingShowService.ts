@@ -33,6 +33,7 @@ import { createSharedFirestoreSubscription } from "../../firebase/utils/createSh
 import { permissionService } from "../../permissions/services/permissionService";
 import type { User } from "../../users/types/user.types";
 import { isPrintRequestOrigin } from "@fresh-prints/shared/utils/printRequestOrigin";
+import { getPrintRequestAllocationBlockReason } from "@fresh-prints/shared/utils/printRequestConversion";
 import { planAllocationSplit } from "@fresh-prints/shared/utils/showCapacity";
 import {
   formatShowAllocationBlockedMessage,
@@ -1445,6 +1446,14 @@ export const upcomingShowService = {
       printRequestService.listPrintRequestItems(caller, input.printRequestId),
       this.listShowAllocations(caller, upcomingShowId),
     ]);
+
+    const allocationBlockReason = getPrintRequestAllocationBlockReason({
+      status: printRequest.status,
+      closureKind: printRequest.closureKind,
+    });
+    if (allocationBlockReason) {
+      throw new Error(allocationBlockReason);
+    }
 
     if (isStaffGangSheetShow(show) && !permissionService.canManageStaffGangSheetShow(caller, show)) {
       throw new Error("You can only add requests to Internal Gang Sheets assigned to you.");

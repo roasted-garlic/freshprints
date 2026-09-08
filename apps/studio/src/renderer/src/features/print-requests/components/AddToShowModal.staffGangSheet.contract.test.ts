@@ -18,6 +18,16 @@ test("Studio Print Requests splits Add to Show and Add to Internal Gangsheet", (
   assert.match(pageSource, /destinationMode=\{addToShowDestination\}/);
 });
 
+test("Studio Print Requests hides allocation actions when request cannot be allocated", () => {
+  assert.match(pageSource, /getPrintRequestAllocationBlockReason/);
+  assert.match(pageSource, /canShowAllocationActions/);
+  assert.match(pageSource, /selectedRequestAllocationBlockReason/);
+});
+
+test("Studio Print Requests hides queue-state badge when archived", () => {
+  assert.match(pageSource, /shouldShowPrintRequestQueueStateBadge/);
+});
+
 test("AddToShowModal locks destination via destinationMode without requiring tabs", () => {
   assert.match(modalSource, /destinationMode\?:/);
   assert.match(modalSource, /showDestinationTabs/);

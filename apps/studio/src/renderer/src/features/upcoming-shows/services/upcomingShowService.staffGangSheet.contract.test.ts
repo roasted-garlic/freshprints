@@ -25,6 +25,14 @@ test("allocatePrintRequestItem enforces Staff origin allowlist", () => {
   assert.match(serviceSource, /Only Internal print requests can be added to Internal Gangsheets/);
 });
 
+test("allocatePrintRequestItem rejects archived or converted print requests", () => {
+  assert.match(serviceSource, /getPrintRequestAllocationBlockReason/);
+  const allocateStart = serviceSource.indexOf("async allocatePrintRequestItem(");
+  assert.ok(allocateStart >= 0);
+  const allocateSlice = serviceSource.slice(allocateStart, allocateStart + 2500);
+  assert.match(allocateSlice, /getPrintRequestAllocationBlockReason/);
+});
+
 test("allocate and remove sync queueTab after mutation", () => {
   assert.match(serviceSource, /syncPrintRequestQueueTabBestEffort/);
   assert.match(serviceSource, /upcomingShowService\.allocatePrintRequestItem/);
