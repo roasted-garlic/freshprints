@@ -77,15 +77,10 @@ export const resetAiEnrichmentForProcessing = onCall(
       aiProcessed: false,
       aiReviewed: false,
       aiProcessingStage: FieldValue.delete(),
+      aiProcessingAttemptId: FieldValue.delete(),
+      aiProcessingError: FieldValue.delete(),
       aiRequestedVisionModelId: FieldValue.delete(),
       aiRequestedReasoningEffort: FieldValue.delete(),
-      aiSuggestions: FieldValue.delete(),
-      aiAnalysis: FieldValue.delete(),
-      smartProfile: FieldValue.delete(),
-      aiReviewedAt: FieldValue.delete(),
-      aiReviewedBy: FieldValue.delete(),
-      aiReviewNotes: FieldValue.delete(),
-      aiReviewConfidence: FieldValue.delete(),
       updatedAt: FieldValue.serverTimestamp(),
     });
 

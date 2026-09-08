@@ -4,6 +4,7 @@ import { useShellHeader } from "../hooks/useShellHeader";
 import { useSidebarDrawer } from "../hooks/useSidebarDrawer";
 import { Button } from "./Button";
 import { GlobalSearchField } from "./GlobalSearchField";
+import { HoverBubbleTooltip } from "./HoverBubbleTooltip";
 import { Select } from "./Select";
 import { Toggle } from "./Toggle";
 import { StaffInboxBellButton } from "../../features/staff-inbox/components/StaffInboxBell";
@@ -15,6 +16,15 @@ export function AppHeader() {
   const { accessory, actions, description, filters, primaryAction, search, title, toggle } =
     headerConfig;
   const { open: openDrawer } = useSidebarDrawer();
+
+  const headerToggle = toggle ? (
+    <Toggle
+      checked={toggle.checked}
+      label={toggle.label}
+      name={toggle.name}
+      onChange={toggle.onChange}
+    />
+  ) : null;
 
   return (
     <header className="app-header">
@@ -55,12 +65,13 @@ export function AppHeader() {
           />
         ))}
         {toggle ? (
-          <Toggle
-            checked={toggle.checked}
-            label={toggle.label}
-            name={toggle.name}
-            onChange={toggle.onChange}
-          />
+          toggle.tooltip ? (
+            <HoverBubbleTooltip align="end" bubble={toggle.tooltip}>
+              {headerToggle}
+            </HoverBubbleTooltip>
+          ) : (
+            headerToggle
+          )
         ) : null}
         {actions?.map((action) => (
           <Button

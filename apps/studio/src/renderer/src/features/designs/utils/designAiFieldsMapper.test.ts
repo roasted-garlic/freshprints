@@ -52,4 +52,22 @@ describe("mapDesignAiFields", () => {
     const result = mapDesignAiFields({});
     assert.equal(result.aiSuggestions, undefined);
   });
+
+  it("maps separate processing failure metadata without replacing prior suggestions", () => {
+    const result = mapDesignAiFields({
+      aiSuggestions: { title: "Prior title" },
+      aiProcessingAttemptId: "attempt-1",
+      aiProcessingError: {
+        attemptId: "attempt-1",
+        errorCode: "provider_timeout",
+        errorMessage: "Provider timeout",
+        provider: "development",
+        occurredAt: "2026-09-08T00:00:00.000Z",
+      },
+    });
+
+    assert.equal(result.aiSuggestions?.title, "Prior title");
+    assert.equal(result.aiProcessingAttemptId, "attempt-1");
+    assert.equal(result.aiProcessingError?.errorCode, "provider_timeout");
+  });
 });

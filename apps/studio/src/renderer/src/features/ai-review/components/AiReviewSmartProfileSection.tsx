@@ -1,4 +1,6 @@
 import { Badge } from "../../../shared/components/Badge";
+import { Button } from "../../../shared/components/Button";
+import { LoadingSpinner } from "../../../shared/components/LoadingSpinner";
 import type { Design } from "../../designs/types/design.types";
 import {
   resolveExistingCategoryChoice,
@@ -10,6 +12,7 @@ import {
   formatYesNo,
   resolveExplicitAppliedFromPreview,
   resolveExplicitDetectedFromPreview,
+  resolveDisplayedExplicitTerms,
   resolveWouldAutoApproveFromProvenance,
 } from "../utils/explicitAutomationPreviewDisplay";
 
@@ -19,6 +22,8 @@ interface AiReviewSmartProfileSectionProps {
   design: Design;
   onSelectCategoryId?: (categoryId: string) => void;
   selectedCategoryId?: string;
+  isRerunningAi?: boolean;
+  onOpenRerunModal?: () => void;
 }
 
 export function AiReviewSmartProfileSection({
@@ -27,6 +32,8 @@ export function AiReviewSmartProfileSection({
   design,
   onSelectCategoryId,
   selectedCategoryId = "",
+  isRerunningAi = false,
+  onOpenRerunModal,
 }: AiReviewSmartProfileSectionProps) {
   const profile = design.smartProfile;
 
@@ -58,6 +65,14 @@ export function AiReviewSmartProfileSection({
     explicitPreview?.suppressedDueToAutomationLock === true ||
     explicitPreview?.suppressedDueToHumanAuthority === true;
   const rootExplicitOn = design.isExplicitContent === true;
+  const displayedExplicitTerms = resolveDisplayedExplicitTerms(
+    profile,
+    design.censoredTerms,
+    rootExplicitOn,
+  );
+  const explicitAutoClassified = explicitPreview
+    ? explicitApplied
+    : rootExplicitOn;
 
   const primaryChoice =
     profile.categoryId || profile.categoryName
@@ -111,7 +126,25 @@ export function AiReviewSmartProfileSection({
     >
       <div className="ai-review-workspace-section-header">
         <h3 className="ai-review-workspace-section-title">Smart Profile</h3>
-        <Badge variant="info">{automationDecision}</Badge>
+        <div className="ai-review-form-panel-header-actions">
+          <Badge variant="info">{automationDecision}</Badge>
+          {onOpenRerunModal ? (
+            <Button
+              className={isRerunningAi ? "button-leading-icon" : undefined}
+              disabled={isRerunningAi}
+              onClick={onOpenRerunModal}
+              size="sm"
+              variant="secondary"
+            >
+              {isRerunningAi ? (
+                <>
+                  <LoadingSpinner label="Sending back to Processing" />
+                  Sending…
+                </>
+              ) : "Reprocess"}
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       <dl
@@ -120,19 +153,39 @@ export function AiReviewSmartProfileSection({
       >
         <div>
           <dt>Would Auto Approve</dt>
-          <dd>{formatYesNo(wouldAutoApprove)}</dd>
+          <dd>
+            <span
+              className={
+                "ai-review-decision-pill " +
+                (wouldAutoApprove ? "ai-review-decision-pill--yes" : "ai-review-decision-pill--no")
+              }
+            >
+              {formatYesNo(wouldAutoApprove)}
+            </span>
+          </dd>
         </div>
         <div>
           <dt>Explicit Content Auto-classified</dt>
-          <dd>{formatYesNo(explicitApplied || rootExplicitOn)}</dd>
+          <dd>
+            <span
+              className={
+                "ai-review-decision-pill ai-review-explicit-decision-pill " +
+                (explicitAutoClassified
+                  ? "ai-review-explicit-decision-pill--yes"
+                  : "ai-review-explicit-decision-pill--no")
+              }
+            >
+              {formatYesNo(explicitAutoClassified)}
+            </span>
+          </dd>
         </div>
-        {(explicitDetected || proposedTerms.length > 0) &&
-        proposedTerms.length > 0 ? (
+        {(explicitDetected || displayedExplicitTerms.length > 0) &&
+        displayedExplicitTerms.length > 0 ? (
           <div>
             <dt>Detected Censored Terms</dt>
             <dd>
               <ul className="ai-review-automation-preview-terms">
-                {proposedTerms.map((term) => (
+                {displayedExplicitTerms.map((term) => (
                   <li key={term}>{term}</li>
                 ))}
               </ul>
@@ -172,20 +225,28 @@ export function AiReviewSmartProfileSection({
               {selectableChoices.map((choice) => {
                 const isActive = selectedCategoryId === choice.value;
                 const canClick = canEditCategory && Boolean(onSelectCategoryId);
+                const reason =
+                  alternativeChoices.find((entry) => entry.resolved?.value === choice.value)?.alt
+                    .reason ??
+                  (primaryChoice?.value === choice.value
+                    ? profile.categoryGapEvidence
+                    : undefined);
                 return (
-                  <button
-                    aria-pressed={isActive}
-                    className={
-                      "ai-review-category-choice-chip" +
-                      (isActive ? " is-selected" : "")
-                    }
-                    disabled={!canClick}
-                    key={choice.value}
-                    onClick={() => onSelectCategoryId?.(choice.value)}
-                    type="button"
-                  >
-                    {choice.label}
-                  </button>
+                  <div className="ai-review-category-choice" key={choice.value}>
+                    <button
+                      aria-pressed={isActive}
+                      className={
+                        "ai-review-category-choice-chip" +
+                        (isActive ? " is-selected" : "")
+                      }
+                      disabled={!canClick}
+                      onClick={() => onSelectCategoryId?.(choice.value)}
+                      type="button"
+                    >
+                      {choice.label}
+                    </button>
+                    {reason ? <p className="ai-review-category-choice-reason">{reason}</p> : null}
+                  </div>
                 );
               })}
             </div>

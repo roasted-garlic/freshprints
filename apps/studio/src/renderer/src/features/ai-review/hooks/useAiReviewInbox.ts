@@ -68,6 +68,12 @@ import {
   type AiReviewInboxManualAction,
   type AiReviewTabCountDeltas,
 } from "../utils/aiReviewLocalReconciliation";
+import { readAiProcessingAutoProcessPreference } from "../utils/aiProcessingAutoProcessPreference";
+import {
+  computeTrackedReprocessReturnCountDeltas,
+  resolveTrackedReprocessTerminal,
+  shouldUpsertTrackedReprocessReturn,
+} from "../utils/trackedReprocessReturn";
 
 export interface UseAiReviewInboxOptions {
   defaultVisionModelId: string;
@@ -104,6 +110,7 @@ export function useAiReviewInbox(
     loadMoreDesigns,
     reloadDesigns,
     removeDesignFromList,
+    upsertDesignIntoList,
   } = useDesigns(listQuery, {
     loadAll: needsReviewSearchActive,
     maxLoadAll: NEEDS_REVIEW_SEARCH_HYDRATION_CAP,
@@ -157,6 +164,18 @@ export function useAiReviewInbox(
    * how many times `liveDesign`'s own object reference changes in the meantime.
    */
   const alreadyReconciledLiveDesignIdRef = useRef<string | null>(null);
+  /** Session-tracked design IDs sent back to Processing from Needs Review / Rejected. */
+  const [trackedReprocessIds, setTrackedReprocessIds] = useState<string[]>([]);
+
+  const trackReprocessReturn = useCallback((designId: string) => {
+    setTrackedReprocessIds((current) =>
+      current.includes(designId) ? current : [...current, designId],
+    );
+  }, []);
+
+  const untrackReprocessReturn = useCallback((designId: string) => {
+    setTrackedReprocessIds((current) => current.filter((id) => id !== designId));
+  }, []);
 
   const isPinnedNeedsReviewDesign = resolveIsPinnedNeedsReviewDesign({
     tab: filters.tab,
@@ -549,6 +568,71 @@ export function useAiReviewInbox(
     );
   }, [selectedDesignId, user]);
 
+  // Live return: subscribe tracked reprocess IDs while staff stay on Needs Review / Rejected.
+  useEffect(() => {
+    if (!user || trackedReprocessIds.length === 0) {
+      return;
+    }
+
+    const unsubscribers = trackedReprocessIds.map((designId) =>
+      designDocumentSubscriptionService.subscribeToDesign(
+        designId,
+        (design) => {
+          if (!design) {
+            untrackReprocessReturn(designId);
+            return;
+          }
+
+          const terminal = resolveTrackedReprocessTerminal(design);
+          if (terminal.kind === "still_in_flight") {
+            return;
+          }
+
+          if (terminal.kind === "failed") {
+            untrackReprocessReturn(designId);
+            return;
+          }
+
+          const reviewTab = terminal.reviewTab!;
+          const activeTab = filters.tab;
+          if (
+            shouldUpsertTrackedReprocessReturn({
+              activeTab,
+              reviewTab,
+            })
+          ) {
+            upsertDesignIntoList(design);
+            optionsRef.current?.onInboxCountsDelta?.(
+              computeTrackedReprocessReturnCountDeltas({
+                activeTab,
+                reviewTab,
+              }),
+            );
+          } else {
+            // Staff left the source review tab — authoritative count refresh, no list upsert.
+            optionsRef.current?.onQueueChanged?.();
+          }
+          untrackReprocessReturn(designId);
+        },
+        (subscriptionError) => {
+          if (import.meta.env.DEV) {
+            console.warn(
+              "[AI Processing] tracked reprocess subscription failed",
+              designId,
+              subscriptionError,
+            );
+          }
+        },
+      ),
+    );
+
+    return () => {
+      for (const unsubscribe of unsubscribers) {
+        unsubscribe();
+      }
+    };
+  }, [filters.tab, trackedReprocessIds, untrackReprocessReturn, upsertDesignIntoList, user]);
+
   useEffect(() => {
     if (!selectedDesign || selectedDesign.id !== selectedDesignId || isDraftDirty || !canEditSelected) {
       return;
@@ -923,9 +1007,22 @@ export function useAiReviewInbox(
 
     try {
       const resetResult = await aiReviewInboxService.rerunAiFromInbox(user, designId);
+      // Resetting only makes the design eligible for Processing. When Auto process is ON,
+      // start the queue callable in the background. When OFF, staff start via Start AI.
+      // Live reconciliation owns the eventual Processing → Needs Review/Rejected update.
+      if (readAiProcessingAutoProcessPreference()) {
+        void aiEnrichmentEnqueueService.enqueueForProcessing(designId).catch((enqueueError) => {
+          setActionError(
+            enqueueError instanceof Error
+              ? enqueueError.message
+              : "AI processing could not be started in the background.",
+          );
+        });
+      }
       // Clear any prior terminal-leave ledger entry so this design may legitimately reappear as
       // pending when the staff member later opens Processing.
       clearTerminalAiProcessingLedgerEntry(designId);
+      trackReprocessReturn(designId);
       setDraftForm(null);
       setBaselineForm(null);
       // Stay on the current Needs Review / Rejected tab: patch-primary local reconcile (no list
@@ -969,6 +1066,7 @@ export function useAiReviewInbox(
     filters.tab,
     selectedDesign,
     selectedIndex,
+    trackReprocessReturn,
     user,
   ]);
 

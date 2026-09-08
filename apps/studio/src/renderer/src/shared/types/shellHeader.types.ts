@@ -20,6 +20,8 @@ export interface ShellHeaderToggleConfig {
   label: string;
   name: string;
   onChange: (checked: boolean) => void;
+  /** Optional hover explanation shown via HoverBubbleTooltip. */
+  tooltip?: string;
 }
 
 export interface ShellHeaderPrimaryAction {

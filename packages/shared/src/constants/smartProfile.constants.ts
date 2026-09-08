@@ -1,9 +1,11 @@
 /** Normalizer semver — bump when normalization rules change materially. */
-export const SMART_PROFILE_NORMALIZER_VERSION = "smart-profile-normalizer-v6";
+export const SMART_PROFILE_NORMALIZER_VERSION = "smart-profile-normalizer-v7";
 
 /**
  * Caps are ceilings, not targets. Do not auto-raise without DEV calibration evidence
  * that truncation blocks materially useful profiling (owner lock 2026-08-25).
+ * Category alternative reasons raised to gap-evidence length (owner UX 2026-09-08):
+ * 64-char truncations cut mid-sentence explanations in Smart Profile Category UI.
  */
 export const SMART_PROFILE_MAX_ITEMS_PER_DIMENSION = 12;
 export const SMART_PROFILE_MAX_SEARCH_CONCEPTS = 24;
@@ -11,6 +13,8 @@ export const SMART_PROFILE_MAX_CATEGORY_ALTERNATIVES = 3;
 export const SMART_PROFILE_MAX_STRING_LENGTH = 64;
 export const SMART_PROFILE_MAX_SEARCH_CONCEPT_LENGTH = 80;
 export const SMART_PROFILE_MAX_GAP_EVIDENCE_LENGTH = 240;
+/** Category alternative explanation ceiling — matches gap evidence, not generic 64. */
+export const SMART_PROFILE_MAX_CATEGORY_REASON_LENGTH = SMART_PROFILE_MAX_GAP_EVIDENCE_LENGTH;
 
 /** Studio / catalog title hard cap — matches designService and Firestore rules. */
 export const CATALOG_TITLE_MAX_CHARACTERS = 200;

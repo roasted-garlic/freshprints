@@ -5,6 +5,7 @@ import {
   formatYesNo,
   resolveExplicitAppliedFromPreview,
   resolveExplicitDetectedFromPreview,
+  resolveDisplayedExplicitTerms,
   resolveWouldAutoApproveFromProvenance,
 } from "./explicitAutomationPreviewDisplay";
 
@@ -110,6 +111,57 @@ describe("resolveExplicitDetectedFromPreview", () => {
         },
       } as never),
       true,
+    );
+  });
+});
+
+describe("resolveDisplayedExplicitTerms", () => {
+  it("prefers current preview terms", () => {
+    assert.deepEqual(
+      resolveDisplayedExplicitTerms(
+        {
+          provenance: {
+            version: "smart-profile-v1",
+            explicitAutomationPreview: {
+              artworkHit: true,
+              proposedCensoredTerms: ["damn"],
+            },
+          },
+        } as never,
+        ["old-term"],
+        true,
+      ),
+      ["damn"],
+    );
+  });
+
+  it("falls back to persisted terms for older Explicit records", () => {
+    assert.deepEqual(
+      resolveDisplayedExplicitTerms(
+        { provenance: { version: "smart-profile-v1" } } as never,
+        ["fuck", " eat my ass "],
+        true,
+      ),
+      ["fuck", " eat my ass "],
+    );
+  });
+
+  it("does not resurrect persisted terms when the current preview has no match", () => {
+    assert.deepEqual(
+      resolveDisplayedExplicitTerms(
+        {
+          provenance: {
+            version: "smart-profile-v1",
+            explicitAutomationPreview: {
+              artworkHit: false,
+              proposedCensoredTerms: [],
+            },
+          },
+        } as never,
+        ["1559", "1565"],
+        true,
+      ),
+      [],
     );
   });
 });

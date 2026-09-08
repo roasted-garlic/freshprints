@@ -18,6 +18,15 @@ export const AI_PROCESSING_STAGES = [
 
 export type AiProcessingStage = (typeof AI_PROCESSING_STAGES)[number];
 
+/** Failure diagnostics for the current processing attempt, separate from prior AI output. */
+export interface DesignAiProcessingError {
+  attemptId: string;
+  errorCode: string;
+  errorMessage: string;
+  provider?: string;
+  occurredAt: string;
+}
+
 export interface AiSuggestionFieldConfidence {
   title?: number;
   description?: number;

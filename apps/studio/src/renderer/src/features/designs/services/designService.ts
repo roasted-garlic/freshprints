@@ -1437,10 +1437,10 @@ export const designService = {
         throw new Error("Archived designs cannot be approved or rejected.");
       }
 
-      // Amendment 3 + owner Ready→AI reprocess: stamp readyAt only on first transition into Ready.
-      // If readyAt already exists (retained through owner "Reprocess with AI" demotion), preserve it
-      // so Design Library / Portal chronology is not distorted on re-approval.
-      if (input.status === "ready" && existingData.readyAt == null) {
+      // Amendment 3: readyAt is the most recent transition into Ready. Stamp on every
+      // non-ready → ready transition (including re-approval after owner "Reprocess with AI"),
+      // so Design Library / Portal show the design as newest rather than restoring the old slot.
+      if (input.status === "ready" && existingData.status !== "ready") {
         updatePayload.readyAt = serverTimestamp();
       }
 

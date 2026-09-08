@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   buildSmartProfileAiSnapshot,
+  buildSmartProfileWithHumanAuthorityOnly,
   mergeReadyBackfillSmartProfile,
 } from "./smartProfileEnrichmentWrite";
 
@@ -82,5 +83,52 @@ describe("mergeReadyBackfillSmartProfile", () => {
       "subjects",
       "places",
     ]);
+  });
+});
+
+describe("buildSmartProfileWithHumanAuthorityOnly", () => {
+  it("retains staff values and import presets without stale AI dimensions", () => {
+    const profile = buildSmartProfileWithHumanAuthorityOnly({
+      priorProfile: {
+        subjects: ["staff subject"],
+        objects: ["stale AI object"],
+        styles: ["staff style"],
+        categoryName: "Stale Category",
+        categoryAlternatives: [{ categoryName: "Old Alternative" }],
+        categoryGapSuggested: true,
+        categoryGapEvidence: "old gap",
+        provenance: {
+          version: "smart-profile-v1",
+          staffEditedDimensionKeys: ["subjects", "styles"],
+          staffEditedBy: "owner-1",
+          staffEditedAt: "2026-09-08T00:00:00.000Z",
+        },
+      },
+      importPresets: { places: ["Pensacola"] },
+    });
+
+    assert.deepEqual(profile?.subjects, ["staff subject"]);
+    assert.deepEqual(profile?.styles, ["staff style"]);
+    assert.deepEqual(profile?.places, ["Pensacola"]);
+    assert.equal(profile?.objects, undefined);
+    assert.equal(profile?.categoryName, undefined);
+    assert.equal(profile?.categoryAlternatives, undefined);
+    assert.equal(profile?.categoryGapSuggested, undefined);
+    assert.equal(profile?.provenance.explicitAutomationPreview, undefined);
+    assert.deepEqual(profile?.provenance.staffEditedDimensionKeys, ["subjects", "styles"]);
+  });
+
+  it("does not resurrect a staff-cleared dimension", () => {
+    const profile = buildSmartProfileWithHumanAuthorityOnly({
+      priorProfile: {
+        provenance: {
+          version: "smart-profile-v1",
+          staffEditedDimensionKeys: ["subjects"],
+        },
+      },
+      importPresets: { subjects: ["preset value"] },
+    });
+
+    assert.equal(profile?.subjects, undefined);
   });
 });

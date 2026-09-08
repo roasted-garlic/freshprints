@@ -1,30 +1,25 @@
 import { FieldValue } from "firebase-admin/firestore";
 
 /**
- * Reset-equivalent AI blob clear for Catalog Reprocess work units (AI Review Queue).
- * Mirrors `resetAiEnrichmentForProcessing` AI clears (including smartProfile + aiReviewNotes)
- * while preserving B/D catalog fields (title, tags, bg, halftone, companions, etc.).
+ * Operational staging for Catalog Reprocess work units (AI Review Queue).
+ * Preserves the last successful AI result and review audit until guarded success; only the
+ * processing lifecycle and transient request fields are changed here.
  *
  * Sets review to pending + stage queued so `runAiEnrichmentPipeline` queue mode will accept the design.
  *
  * Do NOT use for Ready Catalog — use `buildReadyCatalogReprocessAiStageUpdate` instead.
  */
-export function buildCatalogReprocessAiClearUpdate(): Record<string, unknown> {
+export function buildCatalogReprocessAiClearUpdate(attemptId: string): Record<string, unknown> {
   return {
     status: "imported",
     aiReviewStatus: "pending",
     aiProcessed: false,
     aiReviewed: false,
+    aiProcessingAttemptId: attemptId,
     aiProcessingStage: "queued",
+    aiProcessingError: FieldValue.delete(),
     aiRequestedVisionModelId: FieldValue.delete(),
     aiRequestedReasoningEffort: FieldValue.delete(),
-    aiSuggestions: FieldValue.delete(),
-    aiAnalysis: FieldValue.delete(),
-    smartProfile: FieldValue.delete(),
-    aiReviewedAt: FieldValue.delete(),
-    aiReviewedBy: FieldValue.delete(),
-    aiReviewNotes: FieldValue.delete(),
-    aiReviewConfidence: FieldValue.delete(),
     updatedAt: FieldValue.serverTimestamp(),
   };
 }
@@ -33,15 +28,14 @@ export function buildCatalogReprocessAiClearUpdate(): Record<string, unknown> {
  * Ready Catalog backfill staging — preserves ready+approved lifecycle on every write.
  * Does not delete smartProfile early; success path replaces it atomically to avoid Algolia thinning.
  */
-export function buildReadyCatalogReprocessAiStageUpdate(): Record<string, unknown> {
+export function buildReadyCatalogReprocessAiStageUpdate(attemptId: string): Record<string, unknown> {
   return {
+    aiProcessingAttemptId: attemptId,
     aiProcessingStage: "queued",
+    aiProcessingError: FieldValue.delete(),
     aiProcessed: false,
     aiRequestedVisionModelId: FieldValue.delete(),
     aiRequestedReasoningEffort: FieldValue.delete(),
-    aiSuggestions: FieldValue.delete(),
-    aiAnalysis: FieldValue.delete(),
-    aiReviewConfidence: FieldValue.delete(),
     updatedAt: FieldValue.serverTimestamp(),
   };
 }

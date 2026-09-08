@@ -42,12 +42,12 @@ describe("Studio Reprocess with AI contracts", () => {
     assert.doesNotMatch(actionStack, /Reprocess with AI/);
   });
 
-  it("Design Library immediately drops reprocessed designs from managed search + exact-id cache", () => {
+  it("Design Library immediately drops reprocessed designs without navigating away", () => {
     const library = read(
       "apps/studio/src/renderer/src/features/designs/pages/DesignLibraryPage.tsx",
     );
     const handler = library.slice(
-      library.indexOf("onReprocessedWithAi={(designId) => {"),
+      library.indexOf("onReprocessedWithAi={(designId, options) => {"),
       library.indexOf("onRestore={handleRestoreDesign}"),
     );
     assert.match(handler, /removeDesignFromList\(designId\)/);
@@ -55,6 +55,8 @@ describe("Studio Reprocess with AI contracts", () => {
     assert.match(handler, /status: "imported"/);
     assert.match(handler, /aiReviewStatus: "pending"/);
     assert.match(handler, /setExactIdDesign/);
+    assert.doesNotMatch(handler, /navigate\(/);
+    assert.doesNotMatch(handler, /AI_REVIEW_PATH/);
   });
 
   it("confirmation modal has no typed phrase requirement", () => {
@@ -72,12 +74,31 @@ describe("Studio Reprocess with AI contracts", () => {
     );
     assert.match(svc, /"reprocessReadyDesignWithAi"/);
     assert.match(svc, /canReprocessReadyDesignWithAi/);
+    assert.match(svc, /autoStart/);
   });
 
-  it("approve path preserves existing readyAt", () => {
+  it("Design Details fires reprocess in the background and respects Auto preference", () => {
+    const modal = read(
+      "apps/studio/src/renderer/src/features/designs/components/DesignDetailsModal.tsx",
+    );
+    const dialog = read(
+      "apps/studio/src/renderer/src/features/designs/components/ReprocessReadyDesignWithAiConfirmDialog.tsx",
+    );
+    assert.match(modal, /readAiProcessingAutoProcessPreference/);
+    assert.match(modal, /autoStart:\s*false/);
+    assert.match(modal, /enqueueForProcessing\(designId\)/);
+    assert.match(modal, /if \(autoStart\)/);
+    assert.match(modal, /setIsReprocessSubmitting\(true\)/);
+    assert.match(modal, /setTimeout\(resolve, 900\)/);
+    assert.match(modal, /onReprocessedWithAi\?\.\(designId, \{ autoStart \}\)/);
+    assert.match(dialog, /Reprocessing/);
+  });
+
+  it("approve path restamps readyAt on re-entry to Ready after demotion", () => {
     const designService = read(
       "apps/studio/src/renderer/src/features/designs/services/designService.ts",
     );
-    assert.match(designService, /existingData\.readyAt == null/);
+    assert.match(designService, /existingData\.status !== "ready"/);
+    assert.match(designService, /updatePayload\.readyAt = serverTimestamp\(\)/);
   });
 });

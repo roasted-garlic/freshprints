@@ -49,3 +49,24 @@ export function resolveExplicitDetectedFromPreview(
     preview.artworkHit === true && (preview.proposedCensoredTerms?.length ?? 0) > 0
   );
 }
+
+/**
+ * Use the current preview when present; otherwise preserve visibility of
+ * durable censored terms on older/pre-preview design records.
+ */
+export function resolveDisplayedExplicitTerms(
+  profile: DesignSmartProfile | null | undefined,
+  persistedTerms: readonly string[] | undefined,
+  rootExplicitOn: boolean,
+): string[] {
+  const preview = profile?.provenance?.explicitAutomationPreview;
+  if (preview) {
+    return [...(preview.proposedCensoredTerms ?? [])];
+  }
+  if (!rootExplicitOn) {
+    return [];
+  }
+  return [...(persistedTerms ?? [])].filter(
+    (term): term is string => typeof term === "string" && term.trim().length > 0,
+  );
+}

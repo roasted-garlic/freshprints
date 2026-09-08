@@ -67,7 +67,7 @@ function resolveFailedGroupIndex(design: Design): number {
     }
   }
 
-  const errorCode = design.aiSuggestions?.errorCode ?? "";
+  const errorCode = design.aiProcessingError?.errorCode ?? design.aiSuggestions?.errorCode ?? "";
 
   if (errorCode.includes("validat")) {
     return 1;
@@ -156,7 +156,6 @@ export function applyRerunOverlayStage(design: Design): Design {
     aiProcessed: false,
     aiProcessingStage: "queued",
     aiReviewStatus: "pending",
-    aiSuggestions: undefined,
   };
 }
 
@@ -168,14 +167,6 @@ export function getOptimisticEnqueueMessage(): string {
 }
 
 export function resolveAiProcessingOutputStatus(design: Design): AiProcessingOutputStatus {
-  if (design.aiSuggestions?.errorCode || design.aiProcessingStage === "failed") {
-    return "failed";
-  }
-
-  if (designHasAiSuggestions(design) || design.aiProcessingStage === "ready_for_review") {
-    return "ready";
-  }
-
   const activeStages: AiProcessingStage[] = [
     "queued",
     "preparing_image",
@@ -188,8 +179,11 @@ export function resolveAiProcessingOutputStatus(design: Design): AiProcessingOut
     return "waiting";
   }
 
+  if (design.aiProcessingError?.errorCode || design.aiSuggestions?.errorCode || design.aiProcessingStage === "failed") {
+    return "failed";
+  }
+
   // CASE 1 / P4 visibility: empty derivative paths must not look like healthy WAITING FOR AI.
-  // Prefer existing persisted fields over a new lifecycle status.
   if (
     (design.status === "imported" || design.status === "processing") &&
     !designHasRequiredDerivatives(design)
@@ -197,11 +191,24 @@ export function resolveAiProcessingOutputStatus(design: Design): AiProcessingOut
     return "derivatives_incomplete";
   }
 
+  // Awaiting Start AI after reset/reprocess: stage cleared, still pending. Atomic reprocess may
+  // preserve prior aiSuggestions until a successful fresh run — those must not look "ready".
+  const review = resolveDesignAiReviewDisplay(design);
+  if (
+    review.aiReviewStatus === "pending" &&
+    !design.aiProcessingStage &&
+    (design.status === "imported" || design.status === "processing")
+  ) {
+    return "not_generated";
+  }
+
+  if (designHasAiSuggestions(design) || design.aiProcessingStage === "ready_for_review") {
+    return "ready";
+  }
+
   if (design.status === "processing") {
     return "waiting";
   }
-
-  const review = resolveDesignAiReviewDisplay(design);
 
   if (review.aiReviewStatus === "pending") {
     return "not_generated";
@@ -239,7 +246,11 @@ export function getAiProcessingOutputMessage(
     return getOptimisticEnqueueMessage();
   }
   if (status === "failed") {
-    return design?.aiSuggestions?.errorMessage ?? "AI processing failed. Complete metadata manually.";
+    return (
+      design?.aiProcessingError?.errorMessage ??
+      design?.aiSuggestions?.errorMessage ??
+      "AI processing failed. Complete metadata manually."
+    );
   }
 
   if (status === "derivatives_incomplete") {

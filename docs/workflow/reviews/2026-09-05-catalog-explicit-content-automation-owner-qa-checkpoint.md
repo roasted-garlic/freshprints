@@ -153,6 +153,34 @@ If skipped: automated masker tests remain authoritative → record **SKIP** or *
 
 ---
 
+## Follow-up corrective checkpoint
+
+The 2026-09-05 owner PASS predates the 2026-09-07 precision-first matcher corrective. The source corrective is implemented, locally validated, and now deployed to DEV. A new bounded owner DEV QA pass is required to verify the Pensacola/St. Augustine fixture, genuine profanity, and human Explicit authority.
+
+### Corrective DEV deployment record — 2026-09-07
+
+The authorized DEV deployment completed for exactly these Functions:
+
+| Function | Revision | Source hash | State / traffic |
+|---|---|---|---|
+| `enqueueAiEnrichment` | `enqueueaienrichment-00116-tul` | `e10ac48700628ac76eaa159cf8ec449ecc221cfe` | ACTIVE / 100% latest |
+| `reprocessReadyDesignWithAi` | `reprocessreadydesignwithai-00022-lap` | `e10ac48700628ac76eaa159cf8ec449ecc221cfe` | ACTIVE / 100% latest |
+| `onCatalogReprocessJobWritten` | `oncatalogreprocessjobwritten-00028-peq` | `e10ac48700628ac76eaa159cf8ec449ecc221cfe` | ACTIVE / 100% latest |
+
+All three are `fresh-prints-dev`, `us-central1`, `nodejs20`. Firebase reported 3 deployed, 0 errored, and 0 aborted. Unauthorized Functions deployed: **NO**. Rules/indexes/migrations changed: **NO**. Settings and Explicit vocabulary mutated: **NO**. Provider calls by Codex: **0**. Production touched: **NO**.
+
+Read-only settings verification found `catalogWorkflowMode=shadow`, `catalogAutonomousLiveEnabled=false`, 43 explicit terms with neither `1559` nor `1565`, and `semanticReviewPlaygroundEnabled=true`. The last value conflicts with the expected OFF/absent checkpoint and was not changed by Codex. Owner resolution or explicit acknowledgement is required before live AI QA.
+
+The new corrective QA sequence remains: historical-year regression, genuine profanity control, human Explicit authority, and architecture guard with Autonomous OFF and automatic Pass 2 parked. Owner performs all live AI QA manually; this checkpoint does not record a new QA PASS.
+
+Source artifacts:
+
+- `docs/workflow/plans/2026-09-07-explicit-content-numeric-false-positive-corrective-plan.md`
+- `docs/workflow/reviews/2026-09-07-explicit-content-numeric-false-positive-corrective-review.md`
+- `docs/workflow/reviews/2026-09-07-explicit-content-numeric-false-positive-corrective-implementation-review.md`
+
+---
+
 ## B — Deferred to WS5 (do NOT test now)
 
 Do **not** enable Autonomous. Do **not** run WS5 canary.

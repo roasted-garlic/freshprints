@@ -128,6 +128,24 @@ describe("aiProcessingOutput", () => {
     );
   });
 
+  it("returns not_generated for pending reset with preserved suggestions and no stage", () => {
+    assert.equal(
+      resolveAiProcessingOutputStatus(
+        createDesign({
+          status: "imported",
+          aiReviewStatus: "pending",
+          aiSuggestions: {
+            title: "Prior title",
+            provider: "google",
+            model: "gemini-2.5-flash-lite",
+            estimatedCostUsd: 0.001,
+          },
+        }),
+      ),
+      "not_generated",
+    );
+  });
+
   it("returns failed when AI error is present", () => {
     assert.equal(
       resolveAiProcessingOutputStatus(

@@ -31,6 +31,7 @@ export interface AiEnrichmentReadDiagnosticContext {
   functionName: string;
   invocationId: string;
   designId?: string;
+  attemptId?: string;
 }
 
 function logSettingsRead(
@@ -45,6 +46,7 @@ function logSettingsRead(
     functionName: context?.functionName ?? "unknown",
     invocationId: context?.invocationId ?? "unknown",
     designId: context?.designId ?? null,
+    attemptId: context?.attemptId ?? null,
     ...extra,
   });
   isColdStart = false;

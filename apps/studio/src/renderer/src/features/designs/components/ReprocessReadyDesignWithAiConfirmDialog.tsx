@@ -57,7 +57,8 @@ export function ReprocessReadyDesignWithAiConfirmDialog({
           </p>
           <p className="design-details-muted">
             Staff Smart Profile edits, import presets, artwork, and print settings are kept. Existing
-            print requests that already include this design are not deleted.
+            print requests that already include this design are not deleted. Enrichment continues in
+            the background when Auto is on so you can keep working in the Design Library.
           </p>
           {error ? (
             <p className="auth-message auth-message-error" role="alert">

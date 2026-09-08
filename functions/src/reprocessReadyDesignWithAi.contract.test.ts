@@ -45,10 +45,24 @@ describe("reprocessReadyDesignWithAi contracts", () => {
     }
   });
 
-  it("runs queue enrichment pipeline after demotion", () => {
+  it("runs queue enrichment pipeline after demotion when autoStart is on", () => {
     const src = read("functions/src/reprocessReadyDesignWithAi.ts");
     assert.match(src, /runAiEnrichmentPipeline/);
     assert.match(src, /mode:\s*"queue"/);
+    assert.match(src, /if \(!autoStart\)/);
+    assert.match(src, /autoStarted: false/);
+  });
+
+  it("accepts optional autoStart and defaults missing to true", () => {
+    const src = read("functions/src/reprocessReadyDesignWithAi.ts");
+    assert.match(src, /autoStart/);
+    assert.match(src, /typeof \(data as \{ autoStart\?: unknown \}\)\.autoStart === "boolean"/);
+  });
+
+  it("demotion-only path deletes stage when autoStart is false", () => {
+    const core = read("functions/src/ai/reprocessReadyDesignWithAiCore.ts");
+    assert.match(core, /autoStart !== false/);
+    assert.match(core, /autoStart \? "queued" : FieldValue\.delete\(\)/);
   });
 
   it("queue write path preserves staff when prior smartProfile exists", () => {

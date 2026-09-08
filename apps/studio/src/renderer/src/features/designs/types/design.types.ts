@@ -1,7 +1,12 @@
 import type { Timestamp } from "firebase/firestore";
 
 import type { PrintSizeSource } from "@fresh-prints/shared/types/printSize/printSize.types";
-import type { DesignAiAnalysis, DesignAiSuggestions, AiProcessingStage } from "@fresh-prints/shared/types/ai/aiProcessing.types";
+import type {
+  DesignAiAnalysis,
+  DesignAiProcessingError,
+  DesignAiSuggestions,
+  AiProcessingStage,
+} from "@fresh-prints/shared/types/ai/aiProcessing.types";
 import type { DesignSmartProfile, SmartProfileDimensionLists } from "@fresh-prints/shared/types/catalog/smartProfile.types";
 import type {
   ArtworkBackgroundSource,
@@ -170,6 +175,10 @@ export interface Design {
   aiReviewConfidence?: number;
   /** Background AI pipeline stage (Cloud Function owned). */
   aiProcessingStage?: AiProcessingStage;
+  /** Current attempt identity used to guard stage, failure, and success writes. */
+  aiProcessingAttemptId?: string;
+  /** Failure diagnostics for the current attempt; prior AI output remains separate. */
+  aiProcessingError?: DesignAiProcessingError;
   /** AI-generated catalog suggestions — separate from approved catalog fields. */
   aiSuggestions?: DesignAiSuggestions;
   /** Rich AI analysis metadata for future features. */

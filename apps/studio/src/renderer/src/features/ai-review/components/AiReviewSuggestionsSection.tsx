@@ -157,7 +157,8 @@ export function AiReviewSuggestionsSection({
         </dl>
       ) : hasFailed ? (
         <p className="ai-review-suggestions-note">
-          {design.aiSuggestions?.errorMessage ??
+          {design.aiProcessingError?.errorMessage ??
+            design.aiSuggestions?.errorMessage ??
             "AI could not complete automatically. Use Reprocess to try again."}
         </p>
       ) : !showProcessingState ? (

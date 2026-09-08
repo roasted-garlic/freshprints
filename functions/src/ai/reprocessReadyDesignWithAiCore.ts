@@ -47,29 +47,37 @@ export function assertReadyDesignEligibleForOwnerAiReprocess(
 
 /**
  * Demotion payload for Ready → AI Processing.
- * Retains root title/description/categoryId, readyAt, smartProfile, presets, artwork, Halftone/bg.
- * Clears AI suggestion/analysis blobs and review actor fields (same spirit as reset, without SP wipe).
+ * Retains root title/description/categoryId, Smart Profile, presets, artwork, and Halftone/bg.
+ * Leaves `readyAt` untouched while demoted (design is out of Ready browse); Studio approval
+ * restamps `readyAt` on the next non-ready → ready transition so Library/Portal sort newest.
+ * Stages only the operational processing state; current AI output and review audit remain
+ * available until the guarded success reconciliation.
+ *
+ * When `autoStart` is true (default), stage is `queued` for immediate pipeline.
+ * When false, delete stage so the design is Start-AI-eligible (`not_generated`).
  */
 export function buildOwnerReadyAiReprocessDemotionUpdate(input: {
   callerUid: string;
+  attemptId: string;
   /** Prefer FieldValue.serverTimestamp() from Admin SDK. */
   now: ReturnType<typeof FieldValue.serverTimestamp>;
+  /** When false, demote only — leave awaiting Start AI. Default true. */
+  autoStart?: boolean;
 }): Record<string, unknown> {
+  const autoStart = input.autoStart !== false;
+
   return {
     status: "imported",
     aiReviewStatus: "pending",
     aiProcessed: false,
     aiReviewed: false,
-    aiProcessingStage: "queued",
+    aiProcessingAttemptId: input.attemptId,
+    aiProcessingStage: autoStart ? "queued" : FieldValue.delete(),
+    aiProcessingError: FieldValue.delete(),
     aiRequestedVisionModelId: FieldValue.delete(),
     aiRequestedReasoningEffort: FieldValue.delete(),
-    aiSuggestions: FieldValue.delete(),
-    aiAnalysis: FieldValue.delete(),
-    // Keep smartProfile + smartProfileImportPresets + readyAt + roots (not listed = untouched)
-    aiReviewedAt: FieldValue.delete(),
-    aiReviewedBy: FieldValue.delete(),
-    aiReviewNotes: FieldValue.delete(),
-    aiReviewConfidence: FieldValue.delete(),
+    // Keep smartProfile + smartProfileImportPresets + roots (not listed = untouched).
+    // readyAt is left in place while demoted; Studio approval restamps on Ready re-entry.
     lastOwnerAiReprocessAt: input.now,
     lastOwnerAiReprocessBy: input.callerUid,
     updatedAt: input.now,

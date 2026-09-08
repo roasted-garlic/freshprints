@@ -1,6 +1,7 @@
 import {
   AI_PROCESSING_STAGES,
   type AiProcessingStage,
+  type DesignAiProcessingError,
   type DesignAiAnalysis,
   type DesignAiSuggestions,
 } from "@fresh-prints/shared/types/ai/aiProcessing.types";
@@ -124,8 +125,34 @@ function mapAiAnalysis(value: unknown): DesignAiAnalysis | undefined {
   };
 }
 
+function mapAiProcessingError(value: unknown): DesignAiProcessingError | undefined {
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
+
+  const data = value as Record<string, unknown>;
+  if (
+    typeof data.attemptId !== "string" ||
+    typeof data.errorCode !== "string" ||
+    typeof data.errorMessage !== "string" ||
+    typeof data.occurredAt !== "string"
+  ) {
+    return undefined;
+  }
+
+  return {
+    attemptId: data.attemptId,
+    errorCode: data.errorCode,
+    errorMessage: data.errorMessage,
+    provider: typeof data.provider === "string" ? data.provider : undefined,
+    occurredAt: data.occurredAt,
+  };
+}
+
 export function mapDesignAiFields(data: Record<string, unknown>): {
   aiProcessingStage?: AiProcessingStage;
+  aiProcessingAttemptId?: string;
+  aiProcessingError?: DesignAiProcessingError;
   aiSuggestions?: DesignAiSuggestions;
   aiAnalysis?: DesignAiAnalysis;
 } {
@@ -133,6 +160,9 @@ export function mapDesignAiFields(data: Record<string, unknown>): {
     aiProcessingStage: isAiProcessingStage(data.aiProcessingStage)
       ? data.aiProcessingStage
       : undefined,
+    aiProcessingAttemptId:
+      typeof data.aiProcessingAttemptId === "string" ? data.aiProcessingAttemptId : undefined,
+    aiProcessingError: mapAiProcessingError(data.aiProcessingError),
     aiSuggestions: mapAiSuggestions(data.aiSuggestions),
     aiAnalysis: mapAiAnalysis(data.aiAnalysis),
   };

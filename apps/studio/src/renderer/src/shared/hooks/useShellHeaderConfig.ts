@@ -67,7 +67,13 @@ function toggleEqual(
     return false;
   }
 
-  return a.checked === b.checked && a.label === b.label && a.name === b.name && a.onChange === b.onChange;
+  return (
+    a.checked === b.checked &&
+    a.label === b.label &&
+    a.name === b.name &&
+    a.onChange === b.onChange &&
+    a.tooltip === b.tooltip
+  );
 }
 
 function filtersEqual(

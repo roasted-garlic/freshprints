@@ -29,11 +29,12 @@ describe("isReadyCatalogEligibleDesign", () => {
 
 describe("buildReadyCatalogReprocessAiStageUpdate", () => {
   it("stages queued without demoting lifecycle or deleting smartProfile", () => {
-    const update = buildReadyCatalogReprocessAiStageUpdate();
+    const update = buildReadyCatalogReprocessAiStageUpdate("attempt-ready");
     assert.equal(update.aiProcessingStage, "queued");
     assert.equal(update.aiProcessed, false);
-    assert.ok(update.aiSuggestions);
-    assert.ok(update.aiAnalysis);
+    assert.equal(update.aiProcessingAttemptId, "attempt-ready");
+    assert.equal(Object.prototype.hasOwnProperty.call(update, "aiSuggestions"), false);
+    assert.equal(Object.prototype.hasOwnProperty.call(update, "aiAnalysis"), false);
     assert.equal(Object.prototype.hasOwnProperty.call(update, "smartProfile"), false);
     assert.equal(Object.prototype.hasOwnProperty.call(update, "status"), false);
     assert.equal(Object.prototype.hasOwnProperty.call(update, "aiReviewStatus"), false);
@@ -43,7 +44,7 @@ describe("buildReadyCatalogReprocessAiStageUpdate", () => {
   });
 
   it("does not touch preserved B/D catalog fields", () => {
-    const update = buildReadyCatalogReprocessAiStageUpdate();
+    const update = buildReadyCatalogReprocessAiStageUpdate("attempt-ready");
     const touched = assertAiClearDoesNotTouchPreservedFields(update);
     assert.deepEqual(touched, []);
     for (const key of CATALOG_REPROCESS_PRESERVED_FIELD_KEYS) {
@@ -52,16 +53,16 @@ describe("buildReadyCatalogReprocessAiStageUpdate", () => {
   });
 
   it("does not touch Ready lifecycle fields", () => {
-    const update = buildReadyCatalogReprocessAiStageUpdate();
+    const update = buildReadyCatalogReprocessAiStageUpdate("attempt-ready");
     assert.deepEqual(assertReadyStageDoesNotTouchLifecycleFields(update), []);
   });
 });
 
 describe("buildCatalogReprocessAiClearUpdate (queue path unchanged)", () => {
   it("still demotes to imported+pending for AI Review Queue", () => {
-    const update = buildCatalogReprocessAiClearUpdate();
+    const update = buildCatalogReprocessAiClearUpdate("attempt-queue");
     assert.equal(update.status, "imported");
     assert.equal(update.aiReviewStatus, "pending");
-    assert.ok(update.smartProfile);
+    assert.equal(Object.prototype.hasOwnProperty.call(update, "smartProfile"), false);
   });
 });

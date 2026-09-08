@@ -1,5 +1,7 @@
 import { Badge } from "../../../shared/components/Badge";
+import { Button } from "../../../shared/components/Button";
 import { AutoResizeTextarea } from "../../../shared/components/AutoResizeTextarea";
+import { LoadingSpinner } from "../../../shared/components/LoadingSpinner";
 import { Select, type SelectOption } from "../../../shared/components/Select";
 import { TagChipInput } from "../../../shared/components/TagChipInput";
 import { TextInput } from "../../../shared/components/TextInput";
@@ -8,6 +10,8 @@ import { ArtworkBackgroundFields } from "../../designs/components/ArtworkBackgro
 import type { CatalogTag } from "../../designs/types/catalogTag.types";
 import type { Design } from "../../designs/types/design.types";
 import type { AiReviewDraftForm } from "../types/aiReviewInbox.types";
+import { resolveAiSuggestions } from "../utils/aiProcessingOutput";
+import { resolveExistingCategoryChoice } from "../utils/resolveExistingCategoryChoice";
 
 interface AiReviewFormPanelProps {
   approvedTags: CatalogTag[];
@@ -18,6 +22,8 @@ interface AiReviewFormPanelProps {
   onChange: (field: keyof AiReviewDraftForm, value: string | boolean) => void;
   onHalftoneChange: (value: boolean) => void;
   onInputFocusChange: (isFocused: boolean) => void;
+  isRerunningAi?: boolean;
+  onOpenRerunModal?: () => void;
 }
 
 function formatSubmitter(design: Design | null): string {
@@ -51,11 +57,30 @@ export function AiReviewFormPanel({
   onChange,
   onHalftoneChange,
   onInputFocusChange,
+  isRerunningAi = false,
+  onOpenRerunModal,
 }: AiReviewFormPanelProps) {
   const selectOptions: SelectOption[] = [
     { label: "No category", value: "" },
     ...categoryOptions.filter((option) => option.value),
   ];
+  const suggestions = design ? resolveAiSuggestions(design) : null;
+  const suggestedCategory = suggestions?.categoryName
+    ? resolveExistingCategoryChoice({ categoryName: suggestions.categoryName }, categoryOptions)
+    : null;
+  const suggestedCategoryExplanation = suggestions?.categoryName
+    ? design?.smartProfile?.categoryAlternatives?.find(
+        (alternative) =>
+          alternative.categoryName.trim().toLowerCase() ===
+          suggestions.categoryName?.trim().toLowerCase(),
+      )?.reason ?? design?.smartProfile?.categoryGapEvidence
+    : undefined;
+  const changedFromAi = suggestions
+    ? [
+        ["Title", suggestions.title, draftForm.title],
+        ["Description", suggestions.description, draftForm.description],
+      ].filter(([, suggested, current]) => Boolean(suggested) && suggested !== current)
+    : [];
 
   function handleFocus() {
     onInputFocusChange(true);
@@ -69,12 +94,43 @@ export function AiReviewFormPanel({
     <div className="ai-review-form-panel ai-review-workspace-section">
       <div className="ai-review-workspace-section-header">
         <h3 className="ai-review-workspace-section-title">Final Catalog Information</h3>
-        {!canEdit ? (
-          <Badge variant="default">View only</Badge>
-        ) : (
-          <Badge variant="warning">Unsaved until Approve</Badge>
-        )}
+        <div className="ai-review-form-panel-header-actions">
+          {!canEdit ? <Badge variant="default">View only</Badge> : <Badge variant="warning">Unsaved until Approve</Badge>}
+          {onOpenRerunModal ? (
+            <Button
+              className={isRerunningAi ? "button-leading-icon" : undefined}
+              disabled={isRerunningAi}
+              onClick={onOpenRerunModal}
+              size="sm"
+              variant="secondary"
+            >
+              {isRerunningAi ? (
+                <>
+                  <LoadingSpinner label="Sending back to Processing" />
+                  Sending…
+                </>
+              ) : "Reprocess"}
+            </Button>
+          ) : null}
+        </div>
       </div>
+
+      {suggestions ? (
+        <div className="ai-review-ai-origin-note">
+          <span className="ai-review-ai-origin-badge">AI suggested</span>
+          <span>Edit these fields directly. Changes are retained as staff overrides.</span>
+          {changedFromAi.length > 0 ? (
+            <details>
+              <summary>{changedFromAi.length} changed from AI</summary>
+              <ul>
+                {changedFromAi.map(([label, suggested]) => (
+                  <li key={label}>{label}: {suggested}</li>
+                ))}
+              </ul>
+            </details>
+          ) : null}
+        </div>
+      ) : null}
 
       <TextInput
         disabled={!canEdit}
@@ -87,19 +143,38 @@ export function AiReviewFormPanel({
         value={draftForm.title}
       />
 
-      <Select
-        disabled={!canEdit}
-        label="Category"
-        name="aiReviewCategory"
-        onBlur={handleBlur}
-        onChange={(event) => onChange("categoryId", event.target.value)}
-        onFocus={handleFocus}
-        options={selectOptions}
-        searchEmptyMessage="No categories found"
-        searchPlaceholder="Search categories..."
-        searchable
-        value={draftForm.categoryId}
-      />
+      <div className="ai-review-category-field">
+        <Select
+          disabled={!canEdit}
+          label="Category"
+          name="aiReviewCategory"
+          onBlur={handleBlur}
+          onChange={(event) => onChange("categoryId", event.target.value)}
+          onFocus={handleFocus}
+          options={selectOptions}
+          searchEmptyMessage="No categories found"
+          searchPlaceholder="Search categories..."
+          searchable
+          value={draftForm.categoryId}
+        />
+        {suggestedCategory && suggestedCategory.value !== draftForm.categoryId ? (
+          <div className="ai-review-suggested-category-callout">
+            <Button
+              disabled={!canEdit}
+              onClick={() => onChange("categoryId", suggestedCategory.value)}
+              size="sm"
+              type="button"
+              variant="secondary"
+            >
+              Use suggested: {suggestedCategory.label}
+            </Button>
+            <p>
+              <strong>Why AI suggested this:</strong>{" "}
+              {suggestedCategoryExplanation || "No explanation was provided."}
+            </p>
+          </div>
+        ) : null}
+      </div>
 
       <AutoResizeTextarea
         disabled={!canEdit}

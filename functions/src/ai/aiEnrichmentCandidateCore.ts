@@ -50,8 +50,9 @@ export type AiEnrichmentCandidate = {
   /** Present when Smart Profile parse succeeded — for pipeline health increment only. */
   automationDecision?: CatalogAutomationDecisionResult;
   /**
-   * ADR-FP-172: attached when artwork hit + terms + settings OK (not Ready-gated).
-   * The pipeline applies staff Explicit authority before persistence.
+   * ADR-FP-172: attached for a positive artwork hit or settings-successful
+   * no-match reconciliation (not Ready-gated). The pipeline applies staff
+   * Explicit authority before persistence.
    */
   explicitContentAutomation?: ExplicitContentAutomationWrite;
   providerId: string;
@@ -254,58 +255,69 @@ export async function generateAiEnrichmentCandidateForDesign(input: {
   }
 
   let explicitContentAutomation: ExplicitContentAutomationWrite | undefined;
-  if (smartProfile && automationDecision) {
-    const classification = classifyExplicitContentAutomation({
-      artworkEvidenceLines:
-        result.analysis.explicitContentArtworkEvidence ?? [],
-      title: suggestions.title,
-      description: suggestions.description,
-      vocabularyTerms: enrichmentSettings.explicitContentAutomationTerms,
-    });
+  const classification = classifyExplicitContentAutomation({
+    artworkEvidenceLines:
+      result.analysis.explicitContentArtworkEvidence ?? [],
+    title: suggestions.title,
+    description: suggestions.description,
+    vocabularyTerms: enrichmentSettings.explicitContentAutomationTerms,
+  });
 
-    // Candidate cannot see prior staff authority; pipeline re-checks and may drop the write.
-    const willApplyRootWrite =
-      !enrichmentSettings.settingsReadFailed &&
-      classification.artworkHit === true &&
-      classification.censoredTerms.length > 0;
+  // Candidate cannot see prior staff authority; pipeline re-checks and may
+  // drop either the positive write or stale automation cleanup.
+  const willApplyRootWrite =
+    !enrichmentSettings.settingsReadFailed &&
+    classification.artworkHit === true &&
+    classification.censoredTerms.length > 0;
 
+  if (smartProfile) {
     smartProfile.provenance.explicitAutomationPreview =
       buildExplicitContentAutomationPreview({
         classification,
         willApplyRootWrite,
       });
+  }
 
-    if (willApplyRootWrite) {
-      explicitContentAutomation = {
-        isExplicitContent: true,
-        censoredTerms: classification.censoredTerms,
-        explicitContentSource: "automation",
-      };
-      logPipelineEvent("explicit_content_automation.classified", {
+  if (willApplyRootWrite) {
+    explicitContentAutomation = {
+      isExplicitContent: true,
+      censoredTerms: classification.censoredTerms,
+      explicitContentSource: "automation",
+    };
+    logPipelineEvent("explicit_content_automation.classified", {
+      designId,
+      termCount: classification.censoredTerms.length,
+      matchedTerms: classification.matches.map(
+        (match) => match.matchedVocabularyTerm,
+      ),
+      publishReady,
+      settingsReadFailed: enrichmentSettings.settingsReadFailed,
+    });
+  } else if (!enrichmentSettings.settingsReadFailed && !classification.artworkHit) {
+    explicitContentAutomation = {
+      isExplicitContent: false,
+      censoredTerms: [],
+      explicitContentSource: "automation",
+      clearStaleAutomationState: true,
+    };
+    logPipelineEvent("explicit_content_automation.reconciled_no_match", {
+      designId,
+    });
+  } else if (classification.artworkHit) {
+    logPipelineEvent("explicit_content_automation.detected_no_write", {
+      designId,
+      wouldAutoApprove: automationDecision?.wouldAutoApprove ?? false,
+      termCount: classification.censoredTerms.length,
+      publishReady,
+      settingsReadFailed: enrichmentSettings.settingsReadFailed,
+    });
+  } else if (enrichmentSettings.settingsReadFailed) {
+    logPipelineEvent(
+      "explicit_content_automation.settings_unavailable_skip_write",
+      {
         designId,
-        termCount: classification.censoredTerms.length,
-        matchedTerms: classification.matches.map(
-          (match) => match.matchedVocabularyTerm,
-        ),
-        publishReady,
-        settingsReadFailed: enrichmentSettings.settingsReadFailed,
-      });
-    } else if (classification.artworkHit) {
-      logPipelineEvent("explicit_content_automation.detected_no_write", {
-        designId,
-        wouldAutoApprove: automationDecision.wouldAutoApprove,
-        termCount: classification.censoredTerms.length,
-        publishReady,
-        settingsReadFailed: enrichmentSettings.settingsReadFailed,
-      });
-    } else if (enrichmentSettings.settingsReadFailed) {
-      logPipelineEvent(
-        "explicit_content_automation.settings_unavailable_skip_write",
-        {
-          designId,
-        },
-      );
-    }
+      },
+    );
   }
 
   // rawCategory/smartProfileEnrichmentParse/evidence are transient; do not persist.

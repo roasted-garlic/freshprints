@@ -1,4 +1,5 @@
 import type { DesignSmartProfile, SmartProfileDimensionLists } from "../../../packages/shared/src/types/catalog/smartProfile.types";
+import { SMART_PROFILE_EDITABLE_DIMENSION_KEYS } from "../../../packages/shared/src/constants/smartProfile.constants";
 import {
   mergeAiSmartProfileWithStaffPreserved,
   parseStaffEditedDimensionKeys,
@@ -92,4 +93,61 @@ export function mergeReadyBackfillSmartProfile(input: {
     smartProfile: stripEmptySmartProfileDimensions(merged) as unknown as DesignSmartProfile,
     smartProfileAiSnapshot: aiSnapshot,
   };
+}
+
+/**
+ * Builds the effective Smart Profile when a valid successful result contains no AI profile.
+ * Only durable human/import authority survives; AI-owned dimensions and provenance do not.
+ */
+export function buildSmartProfileWithHumanAuthorityOnly(input: {
+  priorProfile: DesignSmartProfile | null | undefined;
+  importPresets?: Partial<SmartProfileDimensionLists> | null;
+}): DesignSmartProfile | undefined {
+  const prior = input.priorProfile;
+  if (!prior) {
+    return undefined;
+  }
+
+  const staffEditedKeys = parseStaffEditedDimensionKeys(
+    prior.provenance?.staffEditedDimensionKeys,
+  );
+  const staffEditedKeySet = new Set(staffEditedKeys);
+  const importPresetKeys = SMART_PROFILE_EDITABLE_DIMENSION_KEYS.filter((key) => {
+    const values = input.importPresets?.[key];
+    return Array.isArray(values) && values.length > 0;
+  });
+  const next: DesignSmartProfile = {
+    provenance: {
+      version: prior.provenance?.version ?? "smart-profile-v1",
+      ...(staffEditedKeys.length > 0
+        ? { staffEditedDimensionKeys: staffEditedKeys }
+        : {}),
+      ...(prior.provenance?.staffEditedAt
+        ? { staffEditedAt: prior.provenance.staffEditedAt }
+        : {}),
+      ...(prior.provenance?.staffEditedBy
+        ? { staffEditedBy: prior.provenance.staffEditedBy }
+        : {}),
+      ...(importPresetKeys.length > 0
+        ? { importPresetDimensionKeys: importPresetKeys }
+        : {}),
+    },
+  };
+
+  for (const key of SMART_PROFILE_EDITABLE_DIMENSION_KEYS) {
+    const priorValues = prior[key];
+    if (staffEditedKeySet.has(key)) {
+      if (Array.isArray(priorValues) && priorValues.length > 0) {
+        next[key] = priorValues.filter((value): value is string => typeof value === "string");
+      }
+      continue;
+    }
+
+    const presetValues = input.importPresets?.[key];
+    if (Array.isArray(presetValues) && presetValues.length > 0) {
+      next[key] = presetValues.filter((value): value is string => typeof value === "string");
+    }
+  }
+
+  return stripEmptySmartProfileDimensions(next) as unknown as DesignSmartProfile;
 }

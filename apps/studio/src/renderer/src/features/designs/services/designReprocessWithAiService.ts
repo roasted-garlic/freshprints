@@ -13,12 +13,14 @@ export interface ReprocessReadyDesignWithAiResult {
   aiReviewStatus: string | null;
   aiProcessingStage: string | null;
   readyAtPreserved: boolean;
+  autoStarted?: boolean;
 }
 
 export const designReprocessWithAiService = {
   async reprocessReadyDesignWithAi(
     caller: User,
     designId: string,
+    options?: { autoStart?: boolean },
   ): Promise<ReprocessReadyDesignWithAiResult> {
     if (!permissionService.canReprocessReadyDesignWithAi(caller)) {
       throw new Error("Only the owner can reprocess Ready designs with AI.");
@@ -29,16 +31,18 @@ export const designReprocessWithAiService = {
       throw new Error("A design ID is required.");
     }
 
+    const autoStart = options?.autoStart !== false;
+
     try {
       return await callTracedFunction<
-        { designId: string },
+        { designId: string; autoStart: boolean },
         ReprocessReadyDesignWithAiResult
       >(
         "reprocessReadyDesignWithAi",
         { source: "designReprocessWithAiService.reprocessReadyDesignWithAi" },
         undefined,
         { timeout: ENQUEUE_AI_ENRICHMENT_CLIENT_TIMEOUT_MS },
-      )({ designId: trimmedId });
+      )({ designId: trimmedId, autoStart });
     } catch (error) {
       throw new Error(resolveAiEnrichmentCallableErrorMessage(error));
     }

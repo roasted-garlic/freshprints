@@ -1402,7 +1402,7 @@ export function DesignLibraryPage() {
         onPurgeAssets={(design) => {
           void openPurgeDesigns([design]);
         }}
-        onReprocessedWithAi={(designId) => {
+        onReprocessedWithAi={(designId, options) => {
           // Firestore browse list (when managed search is off).
           removeDesignFromList(designId);
           // Managed Algolia grid owns search/filter results — removeDesignFromList alone
@@ -1420,8 +1420,11 @@ export function DesignLibraryPage() {
           }
           setExactIdDesign((current) => (current?.id === designId ? null : current));
           setLibraryTotal((current) => (current === null ? null : Math.max(0, current - 1)));
+          const autoStart = options?.autoStart !== false;
           showSuccessMessage(
-            "Design sent to AI Processing. It will appear in Needs Review when enrichment finishes.",
+            autoStart
+              ? "Design sent to AI Processing. It will appear in Needs Review when enrichment finishes."
+              : "Design sent to AI Processing. Start AI when you are ready.",
           );
         }}
         onRestore={handleRestoreDesign}

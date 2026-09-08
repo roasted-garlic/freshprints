@@ -45,16 +45,17 @@ describe("sortDesignsByReadyTransition", () => {
     );
   });
 
-  it("keeps chronology when reprocessed design is reapproved with preserved readyAt", () => {
+  it("puts a reprocessed design first when readyAt is restamped on re-approval", () => {
     const a = { id: "a", createdAt: ts(1_000), readyAt: ts(2_000) };
     const b = { id: "b", createdAt: ts(3_000), readyAt: ts(4_000) };
     assert.deepEqual(sortDesignsByReadyTransition([a, b]).map((d) => d.id), ["b", "a"]);
 
-    // Owner Reprocess with AI retains readyAt through demotion + Approve — order unchanged.
-    const reapprovedA = { ...a };
+    // Owner Reprocess with AI → Approve restamps readyAt (Amendment 3 / ADR-FP-164 amendment).
+    const reapprovedA = { ...a, readyAt: ts(9_000) };
     assert.deepEqual(
       sortDesignsByReadyTransition([reapprovedA, b]).map((d) => d.id),
-      ["b", "a"],
+      ["a", "b"],
+      "restamped readyAt makes the re-approved design newest",
     );
   });
 
@@ -90,15 +91,15 @@ describe("readyAt write semantics (Amendment 3)", () => {
     "apps/studio/src/renderer/src/features/designs/services/designService.ts",
   );
 
-  it("stamps readyAt only when transitioning into ready and readyAt is missing", () => {
+  it("stamps readyAt on every non-ready → ready transition", () => {
     assert.match(
       designService,
-      /if \(input\.status === "ready" && existingData\.readyAt == null\) \{\s*\n\s*updatePayload\.readyAt = serverTimestamp\(\);/,
+      /if \(input\.status === "ready" && existingData\.status !== "ready"\) \{\s*\n\s*updatePayload\.readyAt = serverTimestamp\(\);/,
     );
   });
 
   it("does not write readyAt from any metadata-edit path", () => {
-    // The only assignment in the whole service must be the missing-readyAt branch above.
+    // The only assignment in the whole service must be the ready-transition branch above.
     assert.equal((designService.match(/updatePayload\.readyAt/g) ?? []).length, 1);
     assert.equal((designService.match(/readyAt: serverTimestamp\(\)/g) ?? []).length, 0);
   });

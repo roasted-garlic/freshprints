@@ -4,6 +4,42 @@
 
 ---
 
+### ADR-FP-183: Atomic AI reprocess state reconciliation
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-08 |
+| Status | accepted — owner-authorized implementation complete locally; **STOP before DEV deploy** |
+| Related | Plan/Review/Implementation Review `2026-09-08-atomic-reprocess-automation-state-reconciliation-*`; ADR-FP-172; ADR-FP-173 |
+
+**Context:** AI reprocess entrypoints cleared the last successful AI result before a
+new provider run could succeed. A failure could therefore leave no suggestions,
+Smart Profile, confidence, or review context. Direct and catalog workers also had
+no persisted design-attempt guard, so a stale completion could overwrite newer
+state.
+
+**Decision:**
+
+1. Use Option A: preserve current AI/automation output while staging a new attempt;
+   replace it only in one guarded success reconciliation.
+2. Persist `aiProcessingAttemptId` at staging and guard every stage, failure, and
+   success write. Stale attempts are no-ops.
+3. Store failure diagnostics in `aiProcessingError`; never replace
+   `aiSuggestions` or `aiAnalysis` with an error-shaped map.
+4. On successful queue-mode fresh review, clear prior review notes and approval
+   audit only inside the guarded reconciliation, then apply the new lifecycle.
+   Ready Catalog backfill preserves `ready` + `approved` and its review audit on
+   success and failure.
+5. Explicit classification remains independent of Smart Profile construction.
+   Successful omission clears current automation-owned replace-on-success fields;
+   failure preserves them. Staff, import-preset, catalog, lock, and unknown-source
+   authority remains intact.
+
+**Consequences:** Reprocess failures are recoverable and visible without losing the
+last successful result. Successful runs cannot inherit omitted optional AI fields.
+No provider, prompt, settings, vocabulary, migration, or deployment behavior is
+changed by this decision. DEV deployment remains separately owner-authorized.
+
 ### ADR-FP-182: Two-pass AI enrichment — Visual Context + conditional Semantic Reviewer
 
 | Field | Value |
@@ -271,6 +307,14 @@ ADR-FP-172 treated `explicitContentSource=staff` (and legacy Explicit fields) as
 - Rules: additive allowlist for `explicitContentAutomationLocked`.
 - Replacement QA C after DEV deploy.
 
+#### 2026-09-07 precision-first matcher amendment
+
+The DEV `1559` / `1565` false-positive investigation and owner amendment narrowed the automatic Explicit matcher contract. The earlier generic compact/leetspeak/one-letter-hole behavior is not retained for automatic classification. Automatic matches now remain limited to exact case-insensitive whole-token/whole-phrase configured vocabulary and the explicitly enumerated B-light alias families, with whole-boundary behavior. Literal owner-configured numeric terms remain valid. This amendment preserves the historical rationale and does not change human authority, settings ownership, fail-closed behavior, lifecycle authority, category policy, Pass 1 architecture, parked Pass 2, tags, or Autonomous state.
+
+#### 2026-09-08 stale automation reconciliation amendment
+
+The precision-first matcher can correctly return no match after a previous automation run falsely classified a design. Automatic reprocess now reconciles that result by deleting `isExplicitContent`, `censoredTerms`, and `explicitContentSource` only when the prior source is explicitly `automation`, settings loaded successfully, and `explicitContentAutomationLocked` is not true. Locked designs remain untouched; staff-source and unknown-source legacy records are not guessed as automation-owned. This narrowly supersedes ADR-FP-173 / ADR-FP-172's prior blanket “non-match → no automated clearing” statement while preserving deliberate human lock authority and fail-closed behavior.
+
 ---
 
 ### ADR-FP-172: Explicit Content as standard enrichment metadata
@@ -520,15 +564,18 @@ Ready Catalog bulk reconciliation preserves Ready. Owners need a single-design p
 
 **Decision**
 
-1. Owner-only callable `reprocessReadyDesignWithAi` demotes `ready`+`approved` → `imported`+`pending`, retains root title/description/categoryId and `readyAt`, does **not** wipe `smartProfile`.
+1. Owner-only callable `reprocessReadyDesignWithAi` demotes `ready`+`approved` → `imported`+`pending`, retains root title/description/categoryId, does **not** wipe `smartProfile`.
 2. Runs queue enrichment; staff+preset merge via `mergeReadyBackfillSmartProfile` when prior profile exists.
-3. Approve may apply reviewed category/title/description; existing `readyAt` preserved on re-approval (first Ready still stamps).
+3. Approve may apply reviewed category/title/description; **`readyAt` is restamped on every non-ready → ready transition** (including re-approval after reprocess) so Design Library / Portal show the design as newest (Amendment 3 “most recent Ready transition”).
 4. Audit: `lastOwnerAiReprocessAt` / `lastOwnerAiReprocessBy`.
 5. Studio Design Details: **Reprocess with AI** + confirm modal (no typed phrase).
+
+**Amendment (2026-09-08):** Owner QA — do **not** preserve the prior `readyAt` on re-approval after reprocess. Catalog chronology should treat re-entry to Ready like a new Ready transition (newest-first), not restore the pre-reprocess slot.
 
 **Consequences**
 
 - Design leaves Design Library / Algolia while not Ready; print-request line items retained.
+- Re-approved reprocessed designs surface at the front of Ready browse / New This Week windows keyed on `readyAt`.
 - WS5 Autonomous still separate.
 
 ---
@@ -6532,7 +6579,7 @@ Functions redeploy required. Compare Needs Review output vs prior `gpt-4o-mini` 
 | Field | Value |
 |-------|-------|
 | Date | 2026-06-24 |
-| Status | accepted (amended 2026-07-14 — process-as-imported sequential AI) |
+| Status | accepted (amended 2026-07-14 — process-as-imported sequential AI; amended 2026-09-08 — Auto process master gate) |
 | Deciders | Product owner + architecture/security review |
 
 **Context**
@@ -6543,6 +6590,7 @@ Bulk import auto-enqueued every design, spawning up to 10 concurrent Cloud Funct
 1. **No concurrent auto-enqueue on import** — import orchestration must not fire N parallel `enqueueAiEnrichment` calls.
 2. **Processing tab queue controls** — **Auto advance** (sessionStorage): **Start AI** / **Pause AI** runs sequential queue; OFF shows **Process image with AI** for one-at-a-time manual stepping. **Default Auto advance = ON** when unset.
 3. **Process-as-imported background sequential AI (amended 2026-07-14):** As each Studio batch file finishes with derivatives ready (`pipelineSuccess`), Studio pushes that design into a session-scoped FIFO that runs **one** `enqueueAiEnrichment` at a time — while other files may still be uploading. Single PNG import still enqueues on that design’s success. Staff can stay on Imports or open AI Review early. **Auto advance** on the Processing tab only controls Start AI / Pause vs one-at-a-time manual stepping while on that page — it does not gate import enqueue.
+4. **Auto process master gate (amended 2026-09-08):** Shell-header **Auto** toggle (`localStorage` key `fresh-prints.ai-processing.auto-process`, default **ON**; hover tooltip explains behavior) gates whether designs auto-start AI when they land in Processing from import, Needs Review/Rejected reprocess, or Design Library Ready reprocess. **OFF** leaves designs awaiting Start AI / Process image with AI; Auto advance still controls batch vs one-by-one after a manual start. Distinct from catalog Autonomous (`catalogAutonomousLiveEnabled` / `catalogWorkflowMode`). Ready Library path passes `autoStart` to `reprocessReadyDesignWithAi` (demote-only when false).
 4. **Retry UX** — **Retry AI Processing** for the selected failed design only (bulk **Retry All Failed** removed in ADR-FP-017).
 5. **Concurrency** — keep Cloud Function instance limits that prevent 429 storms; sequential client enqueue remains the throughput control. Residual risk: Processing-tab Start AI and the import background pump can overlap on different designs; server `already_processing` skip mitigates double-work.
 

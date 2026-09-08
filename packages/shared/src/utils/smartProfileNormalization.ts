@@ -2,6 +2,8 @@ import {
 
   SMART_PROFILE_MAX_CATEGORY_ALTERNATIVES,
 
+  SMART_PROFILE_MAX_CATEGORY_REASON_LENGTH,
+
   SMART_PROFILE_MAX_GAP_EVIDENCE_LENGTH,
 
   SMART_PROFILE_MAX_ITEMS_PER_DIMENSION,
@@ -240,7 +242,7 @@ export function normalizeSmartProfileCategoryAlternatives(
 
       typeof entry.reason === "string"
 
-        ? normalizeToken(entry.reason, SMART_PROFILE_MAX_STRING_LENGTH) || undefined
+        ? normalizeToken(entry.reason, SMART_PROFILE_MAX_CATEGORY_REASON_LENGTH) || undefined
 
         : undefined;
 

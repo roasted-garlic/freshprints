@@ -14,19 +14,20 @@ import { isAiReviewQueueEligibleDesign } from "./catalogReprocessEligibility";
 const here = dirname(fileURLToPath(import.meta.url));
 
 describe("catalogReprocessAiClear preservation", () => {
-  it("clears AI-owned blobs including smartProfile and aiReviewNotes", () => {
-    const update = buildCatalogReprocessAiClearUpdate();
+  it("stages queue processing without clearing prior AI output or review metadata", () => {
+    const update = buildCatalogReprocessAiClearUpdate("attempt-queue");
     assert.equal(update.status, "imported");
     assert.equal(update.aiReviewStatus, "pending");
     assert.equal(update.aiProcessingStage, "queued");
-    assert.ok(update.aiSuggestions);
-    assert.ok(update.aiAnalysis);
-    assert.ok(update.smartProfile);
-    assert.ok(update.aiReviewNotes);
+    assert.equal(update.aiProcessingAttemptId, "attempt-queue");
+    assert.equal(Object.prototype.hasOwnProperty.call(update, "aiSuggestions"), false);
+    assert.equal(Object.prototype.hasOwnProperty.call(update, "aiAnalysis"), false);
+    assert.equal(Object.prototype.hasOwnProperty.call(update, "smartProfile"), false);
+    assert.equal(Object.prototype.hasOwnProperty.call(update, "aiReviewNotes"), false);
   });
 
   it("does not touch preserved B/D fields", () => {
-    const update = buildCatalogReprocessAiClearUpdate();
+    const update = buildCatalogReprocessAiClearUpdate("attempt-queue");
     const touched = assertAiClearDoesNotTouchPreservedFields(update);
     assert.deepEqual(touched, []);
     for (const key of CATALOG_REPROCESS_PRESERVED_FIELD_KEYS) {

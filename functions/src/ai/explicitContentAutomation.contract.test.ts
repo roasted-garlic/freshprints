@@ -32,6 +32,9 @@ describe("explicit content automation wiring (contract) — ADR-FP-172", () => {
     assert.match(pipeline, /explicitContentAutomationLocked/);
     assert.match(pipeline, /isExplicitContent: true/);
     assert.match(pipeline, /explicitContentSource: "automation"/);
+    assert.match(candidate, /clearStaleAutomationState/);
+    assert.match(pipeline, /clearStaleAutomationState/);
+    assert.match(pipeline, /FieldValue\.delete\(\)/);
   });
 
   it("computes Explicit preview outside publishReady gate and fail-closes Autonomous on settings failure", () => {
@@ -47,6 +50,13 @@ describe("explicit content automation wiring (contract) — ADR-FP-172", () => {
       candidate,
       /if \(publishReady\) \{\s*const classification = classifyExplicitContentAutomation/,
     );
+  });
+
+  it("reconciles Explicit independently when Smart Profile parsing is absent", () => {
+    const candidate = read("aiEnrichmentCandidateCore.ts");
+    assert.doesNotMatch(candidate, /if \(smartProfile && automationDecision\)/);
+    assert.match(candidate, /const classification = classifyExplicitContentAutomation/);
+    assert.match(candidate, /clearStaleAutomationState/);
   });
 
   it("pipeline Explicit write is not publishReady-gated and lock-gated only", () => {

@@ -6,7 +6,11 @@ import {
   matchExactCanonicalDisplay,
   smartCanonicalKey,
 } from "./smartCanonicalKey";
-import { normalizeSmartProfileStringList } from "./smartProfileNormalization";
+import { normalizeSmartProfileStringList, normalizeSmartProfileCategoryAlternatives } from "./smartProfileNormalization";
+import {
+  SMART_PROFILE_MAX_CATEGORY_REASON_LENGTH,
+  SMART_PROFILE_MAX_STRING_LENGTH,
+} from "../constants/smartProfile.constants";
 import {
   evaluateSemanticConsistency,
   textDominantSoftCheck,
@@ -137,5 +141,28 @@ describe("consistency + text-dominant soft checks", () => {
       profile: { themes: ["typography"], searchConcepts: ["kindness saying"] },
     });
     assert.equal(soft.softFail, false);
+  });
+});
+
+describe("category alternative reason length", () => {
+  it("preserves reasons longer than the generic 64-char string cap", () => {
+    const longReason =
+      "The style could be considered pop culture-esque due to its cartoonish character presentation and familiar iconography.";
+    assert.ok(longReason.length > SMART_PROFILE_MAX_STRING_LENGTH);
+    assert.ok(longReason.length <= SMART_PROFILE_MAX_CATEGORY_REASON_LENGTH);
+
+    const result = normalizeSmartProfileCategoryAlternatives([
+      { categoryName: "Pop Culture & Characters", reason: longReason },
+    ]);
+
+    assert.equal(result?.[0]?.reason, longReason);
+  });
+
+  it("still truncates reasons above the category reason ceiling", () => {
+    const tooLong = "x".repeat(SMART_PROFILE_MAX_CATEGORY_REASON_LENGTH + 20);
+    const result = normalizeSmartProfileCategoryAlternatives([
+      { categoryName: "Animals", reason: tooLong },
+    ]);
+    assert.equal(result?.[0]?.reason?.length, SMART_PROFILE_MAX_CATEGORY_REASON_LENGTH);
   });
 });

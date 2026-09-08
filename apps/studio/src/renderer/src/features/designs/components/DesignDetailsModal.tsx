@@ -15,6 +15,9 @@ import { permissionService } from "../../permissions/services/permissionService"
 import type { Design } from "../types/design.types";
 import { useDesignDerivativeUrl } from "../hooks/useDesignDerivativeUrl";
 import { downloadDesignOriginal } from "../services/designOriginalDownloadService";
+import { designReprocessWithAiService } from "../services/designReprocessWithAiService";
+import { aiEnrichmentEnqueueService } from "../../ai-review/services/aiEnrichmentEnqueueService";
+import { readAiProcessingAutoProcessPreference } from "../../ai-review/utils/aiProcessingAutoProcessPreference";
 import { canDownloadDesignOriginal } from "../utils/designOriginalDownload";
 import { canStartDesignOriginalDownload } from "../utils/designOriginalDownloadGuard";
 import { formatDesignTimestamp } from "../utils/designDateDisplay";
@@ -36,7 +39,6 @@ import { DesignLibraryModal } from "./DesignLibraryModal";
 import { DesignPreviewLightbox } from "./DesignPreviewLightbox";
 import { DesignThumbnailPanel } from "./DesignThumbnailPanel";
 import { ReprocessReadyDesignWithAiConfirmDialog } from "./ReprocessReadyDesignWithAiConfirmDialog";
-import { designReprocessWithAiService } from "../services/designReprocessWithAiService";
 
 interface DesignDetailsModalProps {
   categoryName?: string;
@@ -48,8 +50,11 @@ interface DesignDetailsModalProps {
   onCompanionsChanged?: (design: Design) => void;
   onEdit?: (design: Design) => void;
   onPurgeAssets?: (design: Design) => void;
-  /** After owner Reprocess with AI succeeds — design left Ready; close/refresh library. */
-  onReprocessedWithAi?: (designId: string) => void;
+  /** After owner confirms Reprocess with AI — design leaves Ready; navigate/refresh library. */
+  onReprocessedWithAi?: (
+    designId: string,
+    options?: { autoStart: boolean },
+  ) => void;
   onRestore?: (design: Design) => void;
   onSmartProfileUpdated?: (
     designId: string,
@@ -165,28 +170,45 @@ export function DesignDetailsModal({
   const originLabel = resolveDesignOriginLabel(currentDesign);
 
   async function handleConfirmReprocessWithAi(): Promise<void> {
-    if (!user || !canReprocessWithAi) {
+    if (!user || !canReprocessWithAi || isReprocessSubmitting) {
       return;
     }
+
+    const designId = currentDesign.id;
+    const autoStart = readAiProcessingAutoProcessPreference();
+
     setReprocessError(null);
     setIsReprocessSubmitting(true);
-    try {
-      await designReprocessWithAiService.reprocessReadyDesignWithAi(
-        user,
-        currentDesign.id,
-      );
-      setIsReprocessConfirmOpen(false);
-      onReprocessedWithAi?.(currentDesign.id);
-      onClose();
-    } catch (error) {
-      setReprocessError(
-        error instanceof Error
-          ? error.message
-          : "Unable to reprocess this design with AI.",
-      );
-    } finally {
-      setIsReprocessSubmitting(false);
-    }
+
+    // Demote only in the callable; start AI separately when Auto is on (matches import / Needs Review).
+    void (async () => {
+      try {
+        await designReprocessWithAiService.reprocessReadyDesignWithAi(user, designId, {
+          autoStart: false,
+        });
+        if (autoStart) {
+          await aiEnrichmentEnqueueService.enqueueForProcessing(designId);
+        }
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.warn(
+            "[Design Library] Ready reprocess background call failed",
+            designId,
+            error instanceof Error ? error.message : error,
+          );
+        }
+      }
+    })();
+
+    // Brief submitting feedback so the send does not feel instantaneous.
+    await new Promise((resolve) => {
+      window.setTimeout(resolve, 900);
+    });
+
+    setIsReprocessSubmitting(false);
+    setIsReprocessConfirmOpen(false);
+    onReprocessedWithAi?.(designId, { autoStart });
+    onClose();
   }
 
   async function handleDownloadOriginal(): Promise<void> {

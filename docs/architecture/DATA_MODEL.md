@@ -412,6 +412,12 @@ export interface Design {
 
   aiReviewConfidence?: number;
 
+  /** Persisted identity for the currently queued AI attempt. */
+  aiProcessingAttemptId?: string;
+
+  /** Failure diagnostics for the current attempt; prior AI output remains separate. */
+  aiProcessingError?: DesignAiProcessingError;
+
   createdBy: string;
   updatedBy: string;
 
@@ -558,6 +564,8 @@ AI enrichment writes versioned fields on `designs/{id}`:
 | Field | Type | Writer | Purpose |
 | --- | --- | --- | --- |
 | `aiProcessingStage` | enum | Cloud Function | Live pipeline stage for Processing Status UI |
+| `aiProcessingAttemptId` | string | Cloud Function | Persisted attempt identity used to guard stage, failure, and success writes |
+| `aiProcessingError` | object | Cloud Function | Separate failure metadata; does not replace the last successful AI output |
 | `aiRequestedVisionModelId` | string | Cloud Function callable | Transient one-off AI re-run override while queued/in flight |
 | `aiSuggestions` | object | Cloud Function | AI catalog suggestions (separate from approved fields) |
 | `aiAnalysis` | object | Cloud Function | Rich analysis metadata (includes optional shadow halftone assessment) |
@@ -578,6 +586,14 @@ export type AiProcessingStage =
   | "validating_response"
   | "ready_for_review"
   | "failed";
+
+export interface DesignAiProcessingError {
+  attemptId: string;
+  errorCode: string;
+  errorMessage: string;
+  provider?: string;
+  occurredAt: string;
+}
 
 export interface DesignAiSuggestions {
   title?: string;
@@ -615,7 +631,7 @@ export interface DesignAiAnalysis {
 }
 ```
 
-**Re-run AI Suggestions:** Needs Review or Rejected calls `resetAiEnrichmentForProcessing`. Design returns to `status: imported`, `aiReviewStatus: pending`; prior `aiSuggestions`, `aiAnalysis`, and `smartProfile` are **deleted**. Studio keeps staff on the current Needs Review or Rejected tab and reconciles the source list immediately; staff open the Processing tab manually to run the next AI pass (no suggestion versioning in Phase 5B).
+**Re-run AI Suggestions:** Needs Review or Rejected calls `resetAiEnrichmentForProcessing`. Design returns to `status: imported`, `aiReviewStatus: pending`, and receives a new `aiProcessingAttemptId`; prior `aiSuggestions`, `aiAnalysis`, `smartProfile`, confidence, and review audit fields remain available while the attempt runs. A successful fresh-review reconciliation replaces current AI-owned output and applies the new lifecycle; a failure writes separate `aiProcessingError` metadata and retains the prior output. Studio keeps staff on the current Needs Review or Rejected tab and reconciles the source list immediately; staff open the Processing tab manually to run the next AI pass.
 
 **Reopen for review (rejected):** `status: imported`, `aiReviewStatus: needs_review`; preserves existing `aiSuggestions` / `aiAnalysis`; does not enqueue AI.
 
@@ -2043,7 +2059,7 @@ Lightweight Automation Health counters (`analyzed`, `wouldAutoApprove`, `actuall
 
 Durable Catalog Reprocessing jobs. Client write denied; **owner** read for progress. Started via owner callables with typed confirmation. Soft pause; one active job per `(projectId, targetType)`.
 
-**Slice 5 (`ai_review_queue`):** Start enabled when `CATALOG_REPROCESS_AI_REVIEW_QUEUE_ENABLED`. Server Start requires Catalog Processing Mode **shadow** and `catalogAutonomousLiveEnabled === false`. Eligibility: `status == imported` AND `aiReviewStatus == needs_review`. Worker clears AI blobs (including `smartProfile` / `aiReviewNotes`) with reset-equivalent semantics, preserves B/D human fields (title, tags, artwork background, halftone, companions, etc.), runs the live enrichment pipeline (`catalog-enrich-v30` + `smart-profile-normalizer-v4`) in **queue** mode, and records per-design outcomes under `catalogReprocessJobs/{jobId}/outcomes/{designId}`. Shadow success must remain `imported` + `needs_review`; lifecycle anomalies soft-pause the job.
+**Slice 5 (`ai_review_queue`):** Start enabled when `CATALOG_REPROCESS_AI_REVIEW_QUEUE_ENABLED`. Server Start requires Catalog Processing Mode **shadow** and `catalogAutonomousLiveEnabled === false`. Eligibility: `status == imported` AND `aiReviewStatus == needs_review`. Worker stages only operational state with a new `aiProcessingAttemptId`, preserves current AI blobs and review audit fields until guarded success, runs the live enrichment pipeline (`catalog-enrich-v30` + `smart-profile-normalizer-v4`) in **queue** mode, and records per-design outcomes under `catalogReprocessJobs/{jobId}/outcomes/{designId}`. Shadow success must remain `imported` + `needs_review`; lifecycle anomalies soft-pause the job. Failure metadata is separate from retained AI output, and stale attempts become no-ops.
 
 **Slice 6 (`ready_catalog`) — implemented; Start gate still `CATALOG_REPROCESS_READY_CATALOG_ENABLED = false` until owner unlock after DEV deploy:** Eligibility: `status == ready` AND `aiReviewStatus == approved`. Worker uses **Ready-safe staging** (`buildReadyCatalogReprocessAiStageUpdate`) — never writes `imported`, `pending`, or `needs_review`; preserves `aiReviewed*`, `readyAt`, root title/description/categoryId/tags, and `aiReviewNotes`; does **not** delete `smartProfile` before enrich (atomic replace on success). Pipeline runs in **`ready_backfill`** mode: success sets `aiProcessingStage: ready_for_review` while keeping `status: ready` and `aiReviewStatus: approved`; failure sets `aiProcessingStage: failed` without demoting lifecycle. Catalog Processing Mode records Shadow automation provenance only — **no** `publishReady` / Autonomous lifecycle mutation. Outcomes track `remainedReady`, `preservationViolations` (on `ready_lifecycle_violation`), and optional bounded `canaryDesignIds` → job `boundedDesignIds`. Algolia: Smart Profile index-field changes on `status: ready` upsert via existing sync; any non-ready write deletes index object (P0 violation). Terminal success stage: **`ready_for_review`** (same as queue pipeline success stage; does not change operational `status`).
 
@@ -2051,7 +2067,7 @@ Durable Catalog Reprocessing jobs. Client write denied; **owner** read for progr
 
 **Prompt taxonomy context (2026-06-30):** Cloud Functions replace `{{approved_categories}}` with active category names plus descriptions, `{{approved_tags}}` with approved tag names plus aliases and preferred-when guidance, and `{{excluded_tags}}` with the effective exclusion list. AI should choose one approved category and approved tag names first, inspect the full image for readable text, include exact readable text in the description when present, and return `suggestedNewTags` only when no approved name or alias is relevant enough. Each suggestion must include `name`, `aliases`, `preferredWhen`, and `reason` for owner/admin review.
 
-**Needs Review / Rejected re-run:** `resetAiEnrichmentForProcessing` clears suggestions and sends the design back to Processing. No AI call runs on the review tab. Studio stays on the source tab after a successful reset; Processing is opened manually.
+**Needs Review / Rejected re-run:** `resetAiEnrichmentForProcessing` stages a new attempt and sends the design back to Processing without clearing the prior AI result. No AI call runs on the review tab. Studio stays on the source tab after a successful reset; Processing is opened manually. The active stage takes precedence in the UI, so retained output is not presented as the new result while processing.
 
 **Settings AI playground:** No playground prompt text, image payload, or response output is persisted in Firestore for this slice. Playground requests are transient callable invocations only.
 

@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { onCall } from "firebase-functions/v2/https";
 
@@ -150,19 +152,16 @@ export const enqueueAiEnrichment = onCall(
       return { designId, queued: false, reason: "already_processing" };
     }
 
+    const attemptId = randomUUID();
     const updatePayload: Record<string, unknown> = {
+      aiProcessingAttemptId: attemptId,
       aiProcessingStage: "queued",
       aiReviewStatus: "pending",
       aiProcessed: false,
       aiReviewed: false,
       aiRequestedVisionModelId: visionModelIdOverride ?? FieldValue.delete(),
       aiRequestedReasoningEffort: FieldValue.delete(),
-      aiSuggestions: FieldValue.delete(),
-      aiAnalysis: FieldValue.delete(),
-      aiReviewedAt: FieldValue.delete(),
-      aiReviewedBy: FieldValue.delete(),
-      aiReviewNotes: FieldValue.delete(),
-      aiReviewConfidence: FieldValue.delete(),
+      aiProcessingError: FieldValue.delete(),
       updatedAt: FieldValue.serverTimestamp(),
     };
 
@@ -199,6 +198,7 @@ export const enqueueAiEnrichment = onCall(
     });
     await runAiEnrichmentPipeline(designId, geminiApiKeySecret.value(), {
       openAiApiKey: openAiApiKeySecret.value(),
+      attemptId,
     });
     const completedSnapshot = await designRef.get();
     const completedDesign = completedSnapshot.data() ?? {};

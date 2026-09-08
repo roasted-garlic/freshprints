@@ -156,15 +156,23 @@ export function computeReprocessToProcessingCountDeltas(
 
 /**
  * Authoritative local membership patch from `resetAiEnrichmentForProcessing` result.
- * Do not invent statuses beyond the typed callable response.
+ * Clears pipeline stage locally so Processing Status returns to awaiting Start AI even when
+ * prior suggestions are still preserved on the document until a successful fresh run.
  */
 export function buildDesignPatchFromResetForProcessingResult(result: {
   aiReviewStatus: "pending";
   status: "imported";
-}): Pick<Design, "aiReviewStatus" | "status"> {
+}): Pick<Design, "aiReviewStatus" | "status" | "aiProcessed" | "aiReviewed"> & {
+  aiProcessingStage: undefined;
+  aiProcessingError: undefined;
+} {
   return {
     aiReviewStatus: result.aiReviewStatus,
     status: result.status,
+    aiProcessed: false,
+    aiReviewed: false,
+    aiProcessingStage: undefined,
+    aiProcessingError: undefined,
   };
 }
 

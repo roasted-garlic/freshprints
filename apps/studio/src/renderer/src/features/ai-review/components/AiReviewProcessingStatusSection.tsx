@@ -66,7 +66,9 @@ export function AiReviewProcessingStatusSection({
     isRerunInProgress,
   });
   const errorMessage =
-    outputStatus === "failed" ? design.aiSuggestions?.errorMessage?.trim() : undefined;
+    outputStatus === "failed"
+      ? (design.aiProcessingError?.errorMessage ?? design.aiSuggestions?.errorMessage)?.trim()
+      : undefined;
   const isOverlay = variant === "overlay";
 
   return (

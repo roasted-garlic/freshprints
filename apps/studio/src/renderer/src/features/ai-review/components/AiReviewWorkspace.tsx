@@ -1,4 +1,3 @@
-import { Settings } from "lucide-react";
 import { useLayoutEffect, useEffect, useMemo, useRef, useState } from "react";
 
 import { resolveAiReviewHalftoneStaffToggle } from "@fresh-prints/shared/utils/halftoneReviewState";
@@ -20,15 +19,12 @@ import type { AiProcessingQueueRunState } from "../hooks/useAiProcessingQueue";
 import type { AiReviewDraftForm, AiReviewInboxTab } from "../types/aiReviewInbox.types";
 import { resolveAiProcessingOutputStatus } from "../utils/aiProcessingOutput";
 import { scrollAiReviewPageContentToTop } from "../utils/aiReviewWorkspaceScroll";
-import { AiProcessingSettingsModal } from "./AiProcessingSettingsModal";
 import { AiReviewFormPanel } from "./AiReviewFormPanel";
 import { AiReviewProcessingStatusSection } from "./AiReviewProcessingStatusSection";
 import { AiReviewRejectedStatusSection } from "./AiReviewRejectedStatusSection";
 import { AiReviewSuggestionsSection } from "./AiReviewSuggestionsSection";
 import { AiReviewSmartProfileSection } from "./AiReviewSmartProfileSection";
 import { AiReviewWorkspaceEmpty } from "./AiReviewWorkspaceEmpty";
-import { aiEnrichmentTraceService } from "../../settings/services/aiEnrichmentTraceService";
-import { AiEnrichmentTraceInspector } from "../../settings/components/AiEnrichmentTraceInspector";
 
 interface AiReviewWorkspaceProps {
   actionError: string | null;
@@ -38,7 +34,6 @@ interface AiReviewWorkspaceProps {
   canApprove: boolean;
   canEdit: boolean;
   canSaveArtworkBackground: boolean;
-  canManageProcessingSettings: boolean;
   canStopAutoQueue: boolean;
   canProcessSelected: boolean;
   canArchive: boolean;
@@ -51,8 +46,6 @@ interface AiReviewWorkspaceProps {
   canRetryStaleProcessing: boolean;
   canStartAutoQueue: boolean;
   categoryOptions: { label: string; value: string }[];
-  currentVisionModelId: string;
-  hasProcessingSettingsOverride: boolean;
   draftForm: AiReviewDraftForm | null;
   isActionLoading: boolean;
   isSavingArtworkBackground: boolean;
@@ -79,14 +72,11 @@ interface AiReviewWorkspaceProps {
   onRetryStaleProcessing: () => void;
   onSaveArtworkBackground: (values: ArtworkBackgroundFieldsValues) => void;
   onSaveHalftoneStaffDecision: (markAsHalftone: boolean) => void;
-  onApplyProcessingSettings: (visionModelId: string) => void;
-  onClearProcessingSettings: () => void;
   onStartAutoQueue: () => void;
   onStopAutoQueue: () => void;
   onUpdateDraftField: (field: keyof AiReviewDraftForm, value: string | boolean) => void;
   queuePositionLabel: string | null;
   queueRunState: AiProcessingQueueRunState;
-  processingVisionModelId: string;
   selectedDesign: Design | null;
   /** Visible inbox list for lightbox Previous/Next (continuous selection; not autoAdvance). */
   visibleDesigns?: readonly Design[];
@@ -105,7 +95,6 @@ export function AiReviewWorkspace({
   canApprove,
   canEdit,
   canSaveArtworkBackground,
-  canManageProcessingSettings,
   canStopAutoQueue,
   canProcessSelected,
   canArchive,
@@ -118,8 +107,6 @@ export function AiReviewWorkspace({
   canRetryStaleProcessing,
   canStartAutoQueue,
   categoryOptions,
-  currentVisionModelId,
-  hasProcessingSettingsOverride,
   draftForm,
   isActionLoading,
   isSavingArtworkBackground,
@@ -146,14 +133,11 @@ export function AiReviewWorkspace({
   onRetryStaleProcessing,
   onSaveArtworkBackground,
   onSaveHalftoneStaffDecision,
-  onApplyProcessingSettings,
-  onClearProcessingSettings,
   onStartAutoQueue,
   onStopAutoQueue,
   onUpdateDraftField,
   queuePositionLabel,
   queueRunState,
-  processingVisionModelId,
   selectedDesign,
   visibleDesigns = [],
   onSelectDesign,
@@ -161,11 +145,8 @@ export function AiReviewWorkspace({
   showRerunAiButton,
   reviewScrollNonce = 0,
 }: AiReviewWorkspaceProps) {
-  const [aiTraceId, setAiTraceId] = useState<string | null>(null);
-  const [showAiTrace, setShowAiTrace] = useState(false);
-  useEffect(() => { setAiTraceId(null); setShowAiTrace(false); if (!selectedDesign) return; void aiEnrichmentTraceService.list().then((traces) => { const latest = traces.find((trace) => trace.designId === selectedDesign.id); if (latest) setAiTraceId(latest.traceId); }).catch(() => undefined); }, [selectedDesign?.id]);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
-  const [isProcessingSettingsOpen, setIsProcessingSettingsOpen] = useState(false);
+  const [activeReviewInfoTab, setActiveReviewInfoTab] = useState<"catalog" | "profile">("catalog");
   const [pendingPreviewBackgroundValues, setPendingPreviewBackgroundValues] =
     useState<ArtworkBackgroundFieldsValues | null>(null);
   const previewStageRef = useRef<HTMLDivElement>(null);
@@ -203,6 +184,7 @@ export function AiReviewWorkspace({
 
   useEffect(() => {
     setPendingPreviewBackgroundValues(null);
+    setActiveReviewInfoTab("catalog");
   }, [selectedDesign?.artworkBackgroundHex, selectedDesign?.id, selectedDesign?.updatedAt]);
 
   const resolvedArtworkBackgroundValues =
@@ -354,7 +336,7 @@ export function AiReviewWorkspace({
             <AiReviewRejectedStatusSection design={selectedDesign} />
           ) : null}
 
-          {showSuggestions ? (
+          {showSuggestions && !showEditableForm ? (
             <AiReviewSuggestionsSection
               design={selectedDesign}
               isRerunningAi={isRerunningAi}
@@ -363,7 +345,7 @@ export function AiReviewWorkspace({
             />
           ) : null}
 
-          {showSuggestions ? (
+          {showSuggestions && !showEditableForm ? (
             <AiReviewSmartProfileSection
               canEditCategory={Boolean(showEditableForm && canEdit)}
               categoryOptions={categoryOptions}
@@ -378,19 +360,72 @@ export function AiReviewWorkspace({
           ) : null}
 
           {showEditableForm ? (
-            <AiReviewFormPanel
-              approvedTags={approvedTags}
-              canEdit={canEdit}
-              categoryOptions={categoryOptions}
-              design={selectedDesign}
-              draftForm={draftForm}
-              onChange={onUpdateDraftField}
-              onHalftoneChange={(value) => {
-                onUpdateDraftField("markAsHalftone", value);
-                handlePreviewHalftoneChange(value);
-              }}
-              onInputFocusChange={onInputFocusChange}
-            />
+            <section aria-label="AI review information" className="ai-review-info-tabs">
+              <div aria-label="AI review information tabs" className="ai-review-info-tab-list" role="tablist">
+                <button
+                  aria-controls="ai-review-catalog-panel"
+                  aria-selected={activeReviewInfoTab === "catalog"}
+                  className={activeReviewInfoTab === "catalog" ? "is-active" : ""}
+                  onClick={() => setActiveReviewInfoTab("catalog")}
+                  role="tab"
+                  type="button"
+                >
+                  Final Catalog Information
+                </button>
+                <button
+                  aria-controls="ai-review-profile-panel"
+                  aria-selected={activeReviewInfoTab === "profile"}
+                  className={activeReviewInfoTab === "profile" ? "is-active" : ""}
+                  onClick={() => setActiveReviewInfoTab("profile")}
+                  role="tab"
+                  type="button"
+                >
+                  Smart Profile
+                </button>
+              </div>
+              <div
+                aria-hidden={activeReviewInfoTab !== "catalog"}
+                id="ai-review-catalog-panel"
+                role="tabpanel"
+                tabIndex={0}
+              >
+                {activeReviewInfoTab === "catalog" ? (
+                  <AiReviewFormPanel
+                    approvedTags={approvedTags}
+                    canEdit={canEdit}
+                    categoryOptions={categoryOptions}
+                    design={selectedDesign}
+                    draftForm={draftForm}
+                    onChange={onUpdateDraftField}
+                    onHalftoneChange={(value) => {
+                      onUpdateDraftField("markAsHalftone", value);
+                      handlePreviewHalftoneChange(value);
+                    }}
+                    onInputFocusChange={onInputFocusChange}
+                    isRerunningAi={isRerunningAi}
+                    onOpenRerunModal={showRerunAiButton ? onRerunAiSuggestions : undefined}
+                  />
+                ) : null}
+              </div>
+              <div
+                aria-hidden={activeReviewInfoTab !== "profile"}
+                id="ai-review-profile-panel"
+                role="tabpanel"
+                tabIndex={0}
+              >
+                {activeReviewInfoTab === "profile" ? (
+                  <AiReviewSmartProfileSection
+                    canEditCategory={canEdit}
+                    categoryOptions={categoryOptions}
+                    design={selectedDesign}
+                    isRerunningAi={isRerunningAi}
+                    onSelectCategoryId={(categoryId) => onUpdateDraftField("categoryId", categoryId)}
+                    onOpenRerunModal={showRerunAiButton ? onRerunAiSuggestions : undefined}
+                    selectedCategoryId={draftForm.categoryId}
+                  />
+                ) : null}
+              </div>
+            </section>
           ) : null}
 
           {actionError ? (
@@ -408,8 +443,6 @@ export function AiReviewWorkspace({
                   <div className="ai-review-workspace-actions-primary">
                     {activeTab === "needs_review" ? (
     <>
-      <div className="settings-section-actions"><Button type="button" onClick={() => setShowAiTrace((value) => !value)} disabled={!aiTraceId}>{showAiTrace ? "Hide AI Trace" : "View AI Trace"}</Button></div>
-      {showAiTrace ? <AiEnrichmentTraceInspector traceId={aiTraceId} /> : null}
                         <Button
                           disabled={!canApprove || isActionLoading}
                           onClick={onApprove}
@@ -570,24 +603,6 @@ export function AiReviewWorkspace({
                         onChange={onAutoAdvanceChange}
                       />
                     </div>
-                    {canManageProcessingSettings ? (
-                      <button
-                        aria-label="AI processing settings"
-                        className={[
-                          "icon-button icon-button-md icon-button-ghost ai-processing-settings-button",
-                          hasProcessingSettingsOverride
-                            ? "ai-processing-settings-button--active"
-                            : "",
-                        ]
-                          .filter(Boolean)
-                          .join(" ")}
-                        disabled={isAutoQueueRunning || isQueueBusy}
-                        onClick={() => setIsProcessingSettingsOpen(true)}
-                        type="button"
-                      >
-                        <Settings aria-hidden="true" size={18} strokeWidth={2.2} />
-                      </button>
-                    ) : null}
                     <p className="ai-review-shortcuts-hint ai-review-shortcuts-hint--end">
                       Shortcuts: J previous, K next
                     </p>
@@ -625,20 +640,6 @@ export function AiReviewWorkspace({
         onClose={() => setIsLightboxOpen(false)}
         previewUrl={previewUrl}
       />
-
-      {canManageProcessingSettings ? (
-        <AiProcessingSettingsModal
-          defaultVisionModelId={currentVisionModelId}
-          isOpen={isProcessingSettingsOpen}
-          onApply={(visionModelId) => {
-            onApplyProcessingSettings(visionModelId);
-            setIsProcessingSettingsOpen(false);
-          }}
-          onCancel={() => setIsProcessingSettingsOpen(false)}
-          onUseDefaults={onClearProcessingSettings}
-          visionModelId={processingVisionModelId}
-        />
-      ) : null}
     </div>
   );
 }

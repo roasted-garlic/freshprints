@@ -55,6 +55,7 @@ describe("buildOwnerReadyAiReprocessDemotionUpdate", () => {
   it("demotes lifecycle and clears AI blobs without touching preserved keys", () => {
     const update = buildOwnerReadyAiReprocessDemotionUpdate({
       callerUid: "owner-1",
+      attemptId: "attempt-ready",
       now: FieldValue.serverTimestamp(),
     });
 
@@ -62,8 +63,12 @@ describe("buildOwnerReadyAiReprocessDemotionUpdate", () => {
     assert.equal(update.aiReviewStatus, "pending");
     assert.equal(update.aiProcessingStage, "queued");
     assert.equal(update.lastOwnerAiReprocessBy, "owner-1");
-    assert.ok(update.aiSuggestions);
-    assert.ok(update.smartProfile === undefined);
+    assert.equal(update.aiProcessingAttemptId, "attempt-ready");
+    assert.equal(Object.prototype.hasOwnProperty.call(update, "aiSuggestions"), false);
+    assert.equal(Object.prototype.hasOwnProperty.call(update, "smartProfile"), false);
+    assert.equal(Object.prototype.hasOwnProperty.call(update, "aiReviewNotes"), false);
+    assert.equal(Object.prototype.hasOwnProperty.call(update, "aiReviewedBy"), false);
+    assert.equal(Object.prototype.hasOwnProperty.call(update, "aiReviewedAt"), false);
 
     for (const key of OWNER_READY_AI_REPROCESS_PRESERVED_FIELD_KEYS) {
       assert.equal(
@@ -72,5 +77,20 @@ describe("buildOwnerReadyAiReprocessDemotionUpdate", () => {
         `must not write preserved field ${key}`,
       );
     }
+  });
+
+  it("when autoStart is false, deletes aiProcessingStage instead of queued", () => {
+    const update = buildOwnerReadyAiReprocessDemotionUpdate({
+      callerUid: "owner-1",
+      attemptId: "attempt-await",
+      now: FieldValue.serverTimestamp(),
+      autoStart: false,
+    });
+
+    assert.equal(update.status, "imported");
+    assert.equal(update.aiReviewStatus, "pending");
+    assert.notEqual(update.aiProcessingStage, "queued");
+    // FieldValue.delete() sentinel — not a string stage
+    assert.equal(typeof update.aiProcessingStage, "object");
   });
 });

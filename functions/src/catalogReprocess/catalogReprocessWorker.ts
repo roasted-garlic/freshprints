@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
 
@@ -766,11 +768,13 @@ async function processAiReviewQueueUnit(input: {
 
     await renewLease(input.jobId, input.leaseOwner);
 
-    await designRef.update(buildCatalogReprocessAiClearUpdate());
+    const attemptId = randomUUID();
+    await designRef.update(buildCatalogReprocessAiClearUpdate(attemptId));
 
     await runAiEnrichmentPipeline(designId, input.geminiApiKey, {
       mode: "queue",
       openAiApiKey: input.openAiApiKey,
+      attemptId,
     });
 
 
@@ -1285,11 +1289,13 @@ async function processReadyCatalogUnit(input: {
 
     await renewLease(input.jobId, input.leaseOwner);
 
-    await designRef.update(buildReadyCatalogReprocessAiStageUpdate());
+    const attemptId = randomUUID();
+    await designRef.update(buildReadyCatalogReprocessAiStageUpdate(attemptId));
 
     await runAiEnrichmentPipeline(designId, input.geminiApiKey, {
       mode: "ready_backfill",
       openAiApiKey: input.openAiApiKey,
+      attemptId,
     });
 
 

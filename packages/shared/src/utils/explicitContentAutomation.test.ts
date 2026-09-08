@@ -34,7 +34,6 @@ describe("resolveExplicitContentAutomationTerms", () => {
     ]);
   });
 });
-
 describe("normalizeExplicitContentAutomationTermsInput", () => {
   it("rejects oversized and invalid terms", () => {
     const long = "a".repeat(65);
@@ -88,27 +87,76 @@ describe("classifyExplicitContentAutomation", () => {
     assert.equal(maskCensoredDesignText("FUCK YEAH", result.censoredTerms), "**** YEAH");
   });
 
-  it("detects f*ck and stores masker-effective surface", () => {
+  it("does not reconstruct f*ck through generic punctuation compaction", () => {
     const result = classifyExplicitContentAutomation({
       artworkEvidenceLines: ["f*ck"],
       title: "f*ck",
       vocabularyTerms: vocab,
     });
-    assert.equal(result.artworkHit, true);
-    assert.ok(result.censoredTerms.some((term) => compactish(term) === "fck" || term === "f*ck"));
-    assert.equal(maskCensoredDesignText("f*ck", result.censoredTerms), "****");
+    assert.equal(result.artworkHit, false);
+    assert.deepEqual(result.censoredTerms, []);
   });
 
-  it("detects f_ck, f-u-c-k, and spaced letters", () => {
+  it("does not reconstruct separator or spaced-letter profanity", () => {
     for (const line of ["f_ck", "f-u-c-k", "f u c k"]) {
       const result = classifyExplicitContentAutomation({
         artworkEvidenceLines: [line],
         title: line,
         vocabularyTerms: vocab,
       });
-      assert.equal(result.artworkHit, true, line);
-      assert.equal(maskCensoredDesignText(line, result.censoredTerms), expectedMask(line), line);
+      assert.equal(result.artworkHit, false, line);
+      assert.deepEqual(result.censoredTerms, [], line);
     }
+  });
+
+  it("does not infer profanity from historical years or numeric codes", () => {
+    const values = ["1559", "1565", "1776", "1865", "2001", "2026", "1234", "9999"];
+    for (const value of values) {
+      const result = classifyExplicitContentAutomation({
+        artworkEvidenceLines: [value],
+        vocabularyTerms: vocab,
+      });
+      assert.equal(result.artworkHit, false, value);
+      assert.deepEqual(result.censoredTerms, [], value);
+      assert.deepEqual(result.matches, [], value);
+    }
+  });
+
+  it("does not infer profanity from mixed alphanumeric codes", () => {
+    for (const value of ["A55", "P155", "C0CK", "D1CK", "5LUT", "SH1T"]) {
+      const result = classifyExplicitContentAutomation({
+        artworkEvidenceLines: [value],
+        vocabularyTerms: vocab,
+      });
+      assert.equal(result.artworkHit, false, value);
+      assert.deepEqual(result.censoredTerms, [], value);
+      assert.deepEqual(result.matches, [], value);
+    }
+  });
+
+  it("does not infer profanity from missing-character forms", () => {
+    for (const value of ["uck", "fuc", "fck", "is", "iss", "as", "as s"]) {
+      const result = classifyExplicitContentAutomation({
+        artworkEvidenceLines: [value],
+        vocabularyTerms: vocab,
+      });
+      assert.equal(result.artworkHit, false, value);
+    }
+  });
+
+  it("supports an intentionally configured numeric literal without substring matching", () => {
+    const exact = classifyExplicitContentAutomation({
+      artworkEvidenceLines: ["1559"],
+      vocabularyTerms: ["1559"],
+    });
+    assert.equal(exact.artworkHit, true);
+    assert.deepEqual(exact.censoredTerms, ["1559"]);
+
+    const longer = classifyExplicitContentAutomation({
+      artworkEvidenceLines: ["15590"],
+      vocabularyTerms: ["1559"],
+    });
+    assert.equal(longer.artworkHit, false);
   });
 
   it("detects fucking via B-light when fuck present", () => {
@@ -128,6 +176,23 @@ describe("classifyExplicitContentAutomation", () => {
       vocabularyTerms: ["shit"],
     });
     assert.equal(result.artworkHit, false);
+  });
+
+  it("preserves whole-boundary behavior for ass", () => {
+    for (const value of ["ass", "ASS!", "(ass)"]) {
+      const result = classifyExplicitContentAutomation({
+        artworkEvidenceLines: [value],
+        vocabularyTerms: ["ass"],
+      });
+      assert.equal(result.artworkHit, true, value);
+    }
+    for (const value of ["class", "classic", "passage", "assassin"]) {
+      const result = classifyExplicitContentAutomation({
+        artworkEvidenceLines: [value],
+        vocabularyTerms: ["ass"],
+      });
+      assert.equal(result.artworkHit, false, value);
+    }
   });
 
   it("false positive: class / assassin do not match ass", () => {
@@ -293,8 +358,8 @@ describe("resolveExplicitContentAutomationWrite", () => {
     assert.equal(write?.explicitContentSource, "automation");
   });
 
-  it("does not clear automation-authored state on non-match", () => {
-    assert.equal(
+  it("clears stale automation-authored state on non-match", () => {
+    assert.deepEqual(
       resolveExplicitContentAutomationWrite({
         classification: { artworkHit: false, censoredTerms: [], matches: [] },
         settingsReadFailed: false,
@@ -304,7 +369,12 @@ describe("resolveExplicitContentAutomationWrite", () => {
           explicitContentSource: "automation",
         },
       }),
-      undefined,
+      {
+        isExplicitContent: false,
+        censoredTerms: [],
+        explicitContentSource: "automation",
+        clearStaleAutomationState: true,
+      },
     );
   });
 
@@ -317,6 +387,37 @@ describe("resolveExplicitContentAutomationWrite", () => {
           isExplicitContent: false,
           explicitContentSource: "staff",
           explicitContentAutomationLocked: false,
+        },
+      }),
+      undefined,
+    );
+  });
+
+  it("does not clear locked automation state on non-match", () => {
+    assert.equal(
+      resolveExplicitContentAutomationWrite({
+        classification: { artworkHit: false, censoredTerms: [], matches: [] },
+        settingsReadFailed: false,
+        prior: {
+          isExplicitContent: true,
+          censoredTerms: ["damn"],
+          explicitContentSource: "automation",
+          explicitContentAutomationLocked: true,
+        },
+      }),
+      undefined,
+    );
+  });
+
+  it("does not clear automation state when settings read fails", () => {
+    assert.equal(
+      resolveExplicitContentAutomationWrite({
+        classification: { artworkHit: false, censoredTerms: [], matches: [] },
+        settingsReadFailed: true,
+        prior: {
+          isExplicitContent: true,
+          censoredTerms: ["damn"],
+          explicitContentSource: "automation",
         },
       }),
       undefined,
@@ -438,11 +539,3 @@ describe("applyHumanAuthorityToExplicitContentAutomationPreview", () => {
     assert.equal(next.suppressedDueToAutomationLock, undefined);
   });
 });
-
-function compactish(value: string): string {
-  return value.toLowerCase().replace(/[^a-z]/g, "");
-}
-
-function expectedMask(line: string): string {
-  return maskCensoredDesignText(line, [line]);
-}

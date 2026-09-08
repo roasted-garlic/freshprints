@@ -7,6 +7,8 @@
  *
  *   Callable name: reprocessReadyDesignWithAi
  */
+import { randomUUID } from "node:crypto";
+
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { onCall } from "firebase-functions/v2/https";
 
@@ -37,7 +39,7 @@ function assertOwnerCaller(caller: Awaited<ReturnType<typeof loadCallerProfile>>
   }
 }
 
-function parseRequest(data: unknown): { designId: string } {
+function parseRequest(data: unknown): { designId: string; autoStart: boolean } {
   if (!data || typeof data !== "object") {
     throw invalidArgument("Request data is required.");
   }
@@ -45,7 +47,12 @@ function parseRequest(data: unknown): { designId: string } {
   if (!designId) {
     throw invalidArgument("A design ID is required.");
   }
-  return { designId };
+  // Missing/undefined autoStart defaults ON (backward compatible always-run). Non-boolean → true.
+  const autoStart =
+    "autoStart" in data && typeof (data as { autoStart?: unknown }).autoStart === "boolean"
+      ? (data as { autoStart: boolean }).autoStart
+      : true;
+  return { designId, autoStart };
 }
 
 function isActiveNonStaleProcessing(design: Record<string, unknown>): boolean {
@@ -73,7 +80,7 @@ export const reprocessReadyDesignWithAi = onCall(
     const caller = await loadCallerProfile(request.auth.uid);
     assertOwnerCaller(caller);
 
-    const { designId } = parseRequest(request.data);
+    const { designId, autoStart } = parseRequest(request.data);
     const designRef = adminDb.collection("designs").doc(designId);
     const designSnapshot = await designRef.get();
 
@@ -109,20 +116,48 @@ export const reprocessReadyDesignWithAi = onCall(
 
     const demotion = buildOwnerReadyAiReprocessDemotionUpdate({
       callerUid: request.auth.uid,
+      attemptId: randomUUID(),
       now: FieldValue.serverTimestamp(),
+      autoStart,
     });
+    const attemptId = demotion.aiProcessingAttemptId as string;
 
     await designRef.update(demotion);
 
     logPipelineMilestone("ai.owner_ready_reprocess.demoted", {
       designId,
       callerUid: request.auth.uid,
+      autoStart,
     });
+
+    if (!autoStart) {
+      const afterSnap = await designRef.get();
+      const after = afterSnap.data() || {};
+      logPipelineEvent("ai.owner_ready_reprocess.demoted_awaiting_start", {
+        designId,
+        callerUid: request.auth.uid,
+        status: after.status ?? null,
+        aiReviewStatus: after.aiReviewStatus ?? null,
+        aiProcessingStage: after.aiProcessingStage ?? null,
+      });
+      return {
+        designId,
+        demoted: true as const,
+        status: typeof after.status === "string" ? after.status : "imported",
+        aiReviewStatus:
+          typeof after.aiReviewStatus === "string" ? after.aiReviewStatus : null,
+        aiProcessingStage:
+          typeof after.aiProcessingStage === "string" ? after.aiProcessingStage : null,
+        readyAtPreserved: after.readyAt != null,
+        autoStarted: false as const,
+      };
+    }
 
     try {
       await runAiEnrichmentPipeline(designId, geminiApiKeySecret.value(), {
         mode: "queue",
         openAiApiKey: openAiApiKeySecret.value(),
+        attemptId,
       });
     } catch (error) {
       logPipelineEvent("ai.owner_ready_reprocess.pipeline_error", {
@@ -152,6 +187,7 @@ export const reprocessReadyDesignWithAi = onCall(
       aiReviewStatus: after.aiReviewStatus ?? null,
       aiProcessingStage: after.aiProcessingStage ?? null,
       readyAtPreserved: after.readyAt != null,
+      autoStarted: true as const,
     };
   },
 );

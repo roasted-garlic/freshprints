@@ -41,9 +41,12 @@ export interface ExplicitContentAutomationClassifyResult {
 
 /** Payload for root Explicit persistence (markAiSuccess). */
 export interface ExplicitContentAutomationWrite {
-  isExplicitContent: true;
+  /** True for a positive automatic classification; false for reconciliation-only cleanup. */
+  isExplicitContent: boolean;
   censoredTerms: string[];
   explicitContentSource: "automation";
+  /** Clear stale root fields only when the pipeline confirms they were automation-authored. */
+  clearStaleAutomationState?: boolean;
 }
 
 export interface ExplicitContentPriorFields {
@@ -53,19 +56,6 @@ export interface ExplicitContentPriorFields {
   /** Deliberate staff lock against automatic Explicit mutation (ADR-FP-173). */
   explicitContentAutomationLocked?: unknown;
 }
-
-const LEET_MAP: Readonly<Record<string, string>> = {
-  "@": "a",
-  $: "s",
-  "0": "o",
-  "1": "i",
-  "!": "i",
-  "*": "",
-  "3": "e",
-  "4": "a",
-  "5": "s",
-  "7": "t",
-};
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -147,59 +137,6 @@ export function buildActiveExplicitContentMatchTerms(
   return active;
 }
 
-function collapseSeparators(value: string): string {
-  return value.replace(/[\s_\-./\\|]+/g, "");
-}
-
-function applyLeet(value: string): string {
-  let out = "";
-  for (const char of value) {
-    out += LEET_MAP[char] ?? char;
-  }
-  return out;
-}
-
-/** Compact form for obfuscation matching: lowercase, leet, drop remaining non-letters. */
-export function compactForExplicitMatch(value: string): string {
-  const lower = value.toLowerCase();
-  const leet = applyLeet(lower);
-  const collapsed = collapseSeparators(leet);
-  return collapsed.replace(/[^a-z]/g, "");
-}
-
-/** True when `short` equals `long` after removing exactly one letter (bounded hole for f*ck → fuck). */
-function isSingleLetterHole(short: string, long: string): boolean {
-  if (long.length !== short.length + 1 || short.length < 2) {
-    return false;
-  }
-  for (let index = 0; index < long.length; index += 1) {
-    if (long.slice(0, index) + long.slice(index + 1) === short) {
-      return true;
-    }
-  }
-  return false;
-}
-
-function compactMatchesTerm(candidate: string, compactTerm: string): boolean {
-  const compactCandidate = compactForExplicitMatch(candidate);
-  if (!compactCandidate || compactCandidate.length < 2) {
-    return false;
-  }
-  if (compactCandidate === compactTerm) {
-    return true;
-  }
-  // f*ck / f_ck → fck vs fuck (exactly one missing letter)
-  return isSingleLetterHole(compactCandidate, compactTerm);
-}
-
-function tokenizePreservingWords(line: string): string[] {
-  return line
-    .toLowerCase()
-    .split(/[^a-z0-9*_-]+/i)
-    .map((token) => token.trim())
-    .filter(Boolean);
-}
-
 function buildBoundaryPattern(term: string): RegExp {
   const escaped = escapeRegExp(term);
   return new RegExp(`(?<![A-Za-z0-9])${escaped}(?![A-Za-z0-9])`, "gi");
@@ -216,40 +153,6 @@ function findLiteralSurfaceForms(haystack: string, term: string): string[] {
     forms.push(match[0]);
   }
   return forms;
-}
-
-function findCompactHits(
-  line: string,
-  activeTerms: ReadonlySet<string>,
-): ExplicitContentAutomationMatch[] {
-  const trimmed = line.trim();
-  if (!trimmed) {
-    return [];
-  }
-
-  const hits: ExplicitContentAutomationMatch[] = [];
-  const tokens = tokenizePreservingWords(line);
-
-  for (const term of activeTerms) {
-    const compactTerm = compactForExplicitMatch(term);
-    if (!compactTerm || compactTerm.length < 2) {
-      continue;
-    }
-
-    // Whole line compact / single-hole match (e.g. "f u c k", "f*ck", "f-u-c-k")
-    if (compactMatchesTerm(trimmed, compactTerm)) {
-      hits.push({ surfaceForm: trimmed, matchedVocabularyTerm: term });
-      continue;
-    }
-
-    for (const token of tokens) {
-      if (compactMatchesTerm(token, compactTerm)) {
-        hits.push({ surfaceForm: token, matchedVocabularyTerm: term });
-      }
-    }
-  }
-
-  return hits;
 }
 
 function collectArtworkMatches(
@@ -273,7 +176,6 @@ function collectArtworkMatches(
       }
     }
 
-    matches.push(...findCompactHits(line, activeTerms));
   }
 
   return matches;
@@ -290,10 +192,6 @@ function collectCatalogSurfaceForms(
   const forms: string[] = [];
   for (const term of matchedVocabularyTerms) {
     forms.push(...findLiteralSurfaceForms(text, term));
-    // Compact scan on title/desc for obfuscated rendered copy
-    for (const hit of findCompactHits(text, matchedVocabularyTerms)) {
-      forms.push(hit.surfaceForm);
-    }
   }
   return forms;
 }
@@ -413,7 +311,8 @@ export function hasProtectedHumanExplicitAuthority(prior: ExplicitContentPriorFi
 
 /**
  * Decide whether automation may write root Explicit fields this enrichment.
- * Never clears on non-match. Never writes when settings failed or lock is true.
+ * Clears stale automation-authored state on a settings-successful non-match.
+ * Never writes or clears when settings failed or lock is true.
  * Staff provenance alone does not block.
  */
 export function resolveExplicitContentAutomationWrite(input: {
@@ -431,8 +330,15 @@ export function resolveExplicitContentAutomationWrite(input: {
     (term): term is string => typeof term === "string" && term.trim().length > 0,
   );
   if (!input.classification.artworkHit || terms.length === 0) {
-    // No automated clearing — leave prior Explicit state intact.
-    return undefined;
+    if (resolveExplicitContentSource(input.prior) !== "automation") {
+      return undefined;
+    }
+    return {
+      isExplicitContent: false,
+      censoredTerms: [],
+      explicitContentSource: "automation",
+      clearStaleAutomationState: true,
+    };
   }
   return {
     isExplicitContent: true,

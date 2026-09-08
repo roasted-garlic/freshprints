@@ -1,4 +1,5 @@
 import { aiEnrichmentEnqueueService } from "../../ai-review/services/aiEnrichmentEnqueueService";
+import { readAiProcessingAutoProcessPreference } from "../../ai-review/utils/aiProcessingAutoProcessPreference";
 import { logPipelineEvent } from "../../../shared/utils/pipelineLog";
 import { traceAiQueueEvent } from "../../../config/aiQueueTraceClient";
 import { logDerivativeLocusDiag } from "../../../shared/utils/derivativeLocusDiagnostic";
@@ -7,7 +8,7 @@ import { logDerivativeLocusDiag } from "../../../shared/utils/derivativeLocusDia
  * Session-scoped sequential AI enqueue for Studio import.
  * Batch import pushes each design as soon as that file's pipeline succeeds
  * (while other files may still be uploading). Single import pushes on success.
- * Not gated on Processing-tab Auto advance.
+ * Gated by Auto process (localStorage). Not gated on Processing-tab Auto advance.
  * Dedupes design ids and never fires concurrent enqueueAiEnrichment calls.
  */
 const pendingDesignIds: string[] = [];
@@ -91,6 +92,13 @@ function notifyObservers(event: BackgroundAiQueueEvent): void {
 }
 
 export function enqueueImportedDesignsForBackgroundAi(designIds: readonly string[]): void {
+  if (!readAiProcessingAutoProcessPreference()) {
+    logPipelineEvent("import.ai_background.skipped_auto_process_off", {
+      requested: designIds.length,
+    });
+    return;
+  }
+
   let added = 0;
   for (const rawId of designIds) {
     const designId = rawId.trim();

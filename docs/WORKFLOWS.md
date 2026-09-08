@@ -947,7 +947,7 @@ Reasoning-effort controls were removed with OpenAI support in ADR-FP-040; Gemini
 
 **Tag exclusions and server-side taxonomy resolution:** Built-in list in code (`BASE_AI_TAG_EXCLUSIONS`) plus optional `additionalTagExclusions` in Settings. The default prompt only requires `{{excluded_tags}}`; legacy owner-edited templates containing approved category/tag placeholders are still substituted for backward compatibility. Approved categories and tags are resolved server-side after the Gemini call, not injected into every default prompt. Tags are filtered again after parsing.
 
-**Needs Review / Rejected re-run:** **Re-run AI Suggestions** does not run AI on the review tab. It calls `resetAiEnrichmentForProcessing`, clears prior AI output, returns the design to Processing (`status: imported`, `aiReviewStatus: pending`), selects the same design there, and waits for staff to start processing.
+**Needs Review / Rejected re-run:** **Re-run AI Suggestions** does not run AI on the review tab. It calls `resetAiEnrichmentForProcessing`, stages a new persisted attempt, returns the design to Processing (`status: imported`, `aiReviewStatus: pending`), selects the same design there, and waits for staff to start processing. The prior successful AI output remains available until a guarded successful reconciliation; failures are shown through separate processing-error metadata.
 
 ### Tab-specific workspace (Phase 5B QA)
 
@@ -969,7 +969,7 @@ Tie-breaker: design `id` ascending.
 
 **Reopen for Review:** `status: imported`, `aiReviewStatus: needs_review`; keeps existing `aiSuggestions` / `aiAnalysis`; does not re-run AI.
 
-**Re-run AI Suggestions:** Callable `resetAiEnrichmentForProcessing`; restores `status: imported`, `aiReviewStatus: pending`, clears prior `aiSuggestions` / `aiAnalysis`, and navigates/selects the design in Processing. Staff starts the next AI run from Processing.
+**Re-run AI Suggestions:** Callable `resetAiEnrichmentForProcessing`; restores `status: imported`, `aiReviewStatus: pending`, creates a new `aiProcessingAttemptId`, preserves prior `aiSuggestions` / `aiAnalysis` / Smart Profile until success, and navigates/selects the design in Processing. Staff starts the next AI run from Processing. A successful queue-mode run replaces AI-owned output and applies the fresh review lifecycle; a failed run preserves the prior output and writes `aiProcessingError`.
 
 ### Pipeline verification logging (Phase 5B)
 
@@ -982,7 +982,8 @@ Structured events use scope `ai-pipeline`:
 
 Redeploy functions after logging changes. Do not store provider API keys in Firestore or the desktop app.
 
-* Failed AI output stays in Processing (`aiReviewStatus: pending`, `aiProcessingStage: failed`) with retry actions. Structured `errorCode` values include `openai_rate_limited`, `openai_server_error`, `openai_timeout`.
+* Failed AI output stays in Processing (`aiReviewStatus: pending`, `aiProcessingStage: failed`) with retry actions. The last successful `aiSuggestions`, `aiAnalysis`, Smart Profile, confidence, and review audit remain intact; `aiProcessingError` carries the failed attempt's `attemptId`, provider, code, message, and timestamp. Structured `errorCode` values include `openai_rate_limited`, `openai_server_error`, `openai_timeout`.
+* **Atomic reprocess reconciliation (ADR-FP-183):** Every reprocess persists an attempt identity. Stage, failure, and success writes are guarded against that identity. Staging changes operational state only. Success replaces current AI-owned fields and explicitly clears omitted replace-on-success fields; stale attempts no-op. Ready Catalog backfill preserves `ready` + `approved` and its approval audit on both success and failure.
 * **Sequential direct processing (2026-06-29):** `enqueueAiEnrichment` now runs the existing AI pipeline directly inside the callable with `timeoutSeconds: 180` and `memory: 512MiB`. Client still processes one design at a time. Gemini calls retry up to 2 times on 429/5xx. Stale active stages (>10 min) may still be restarted via the callable.
 * **Prompt contract v19 (updated 2026-07-01):** Google AI / Gemini AI Processing uses the saved Settings prompt template with `{{excluded_tags}}` replaced server-side. The default v19 prompt is small and vision-only: it requests `description`, a raw `category` candidate, `title`, up to 8 tag candidates, strict visible-text extraction into the description when readable text exists, and optional complete `suggestedNewTags` objects. Approved tag matching and approved category resolution happen deterministically server-side after the model call. Stored `aiSuggestions.promptVersion` is `catalog-enrich-v19` for Gemini and `catalog-enrich-dev-v19` for the development fallback.
 * **Approved tag normalization (2026-06-30):** Cloud Functions normalize AI tag output against approved `tags` documents. Exact approved name/alias matches remain in `aiSuggestions.tags`; unmatched AI tokens and valid AI `suggestedNewTags` become `aiSuggestions.suggestedNewTags` for owner/admin approval in Needs Review. AI does not auto-create approved tag documents.

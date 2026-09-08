@@ -30,6 +30,8 @@ import { AiReviewQueueList } from "../components/AiReviewQueueList";
 import { AiReviewQueueStats } from "../components/AiReviewQueueStats";
 import { AiReviewQueryErrorPanel } from "../components/AiReviewQueryErrorPanel";
 import { AiReviewWorkspace } from "../components/AiReviewWorkspace";
+import { AiProcessingSettingsModal } from "../components/AiProcessingSettingsModal";
+import { AiProcessingSettingsHeaderAccessory } from "../components/AiProcessingSettingsHeaderAccessory";
 import { useAiReviewInbox } from "../hooks/useAiReviewInbox";
 import { useAiReviewKeyboardShortcuts } from "../hooks/useAiReviewKeyboardShortcuts";
 import { useAiReviewTabCounts } from "../hooks/useAiReviewTabCounts";
@@ -50,12 +52,18 @@ import {
   toggleAiReviewMultiSelectId,
 } from "../utils/aiReviewQueueMultiSelect";
 import { resolveHardDeleteTotalFailureMessage } from "../utils/resolveHardDeleteTotalFailureMessage";
+import {
+  readAiProcessingAutoProcessPreference,
+  writeAiProcessingAutoProcessPreference,
+} from "../utils/aiProcessingAutoProcessPreference";
 
 function AiReviewPageContent() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [needsReviewSearchQuery, setNeedsReviewSearchQuery] = useState("");
+  const [autoProcess, setAutoProcess] = useState(readAiProcessingAutoProcessPreference);
+  const [isProcessingSettingsOpen, setIsProcessingSettingsOpen] = useState(false);
   const filters = useMemo(() => parseAiReviewInboxFilters(searchParams), [searchParams]);
   const inboxFilters = useMemo<AiReviewInboxFilters>(
     () => ({
@@ -156,12 +164,38 @@ function AiReviewPageContent() {
     return undefined;
   }, [inbox.draftForm, inbox.selectedDesign]);
 
+  const handleAutoProcessChange = useCallback((enabled: boolean) => {
+    writeAiProcessingAutoProcessPreference(enabled);
+    setAutoProcess(enabled);
+  }, []);
+
+  const headerAccessory = useMemo(() => {
+    if (!canManageProcessingSettings) {
+      return null;
+    }
+    return (
+      <AiProcessingSettingsHeaderAccessory
+        hasOverride={inbox.processingQueue.hasSessionOverride}
+        onOpenSettings={() => setIsProcessingSettingsOpen(true)}
+      />
+    );
+  }, [canManageProcessingSettings, inbox.processingQueue.hasSessionOverride]);
+
   const shellHeaderConfig = useMemo(
     () => ({
+      accessory: headerAccessory,
       description: AI_PROCESSING_PAGE_DESCRIPTION,
       title: AI_PROCESSING_PAGE_TITLE,
+      toggle: {
+        checked: autoProcess,
+        label: "Auto",
+        name: "aiProcessingAutoProcess",
+        onChange: handleAutoProcessChange,
+        tooltip:
+          "When on, designs that enter Processing (import or reprocess) start AI automatically. When off, wait for Start AI. Separate from Auto advance under the queue buttons.",
+      },
     }),
-    [],
+    [autoProcess, handleAutoProcessChange, headerAccessory],
   );
 
   useShellHeaderConfig(shellHeaderConfig);
@@ -509,7 +543,6 @@ function AiReviewPageContent() {
             canApprove={inbox.canApprove}
             canEdit={inbox.canEdit}
             canSaveArtworkBackground={inbox.canSaveArtworkBackground}
-            canManageProcessingSettings={canManageProcessingSettings}
             canStopAutoQueue={inbox.processingQueue.canStopAutoQueue}
             canProcessSelected={inbox.processingQueue.canProcessSelected}
             canArchive={inbox.canArchive}
@@ -522,8 +555,6 @@ function AiReviewPageContent() {
             canRetryStaleProcessing={inbox.canRetryStaleProcessing}
             canStartAutoQueue={inbox.processingQueue.canStartAutoQueue}
             categoryOptions={categoryOptions}
-            currentVisionModelId={enrichmentSettings.visionModelId}
-            hasProcessingSettingsOverride={inbox.processingQueue.hasSessionOverride}
             draftForm={inbox.draftForm}
             isActionLoading={inbox.isActionLoading}
             isSavingArtworkBackground={inbox.isSavingArtworkBackground}
@@ -555,15 +586,12 @@ function AiReviewPageContent() {
             onSaveHalftoneStaffDecision={(markAsHalftone) =>
               void inbox.saveHalftoneStaffDecision(markAsHalftone)
             }
-            onApplyProcessingSettings={inbox.processingQueue.applySessionSettings}
-            onClearProcessingSettings={inbox.processingQueue.clearSessionSettings}
             onStartAutoQueue={inbox.processingQueue.startAutoQueue}
             onUpdateDraftField={inbox.updateDraftField}
             isRerunningAi={inbox.isRerunningAi}
             onRerunAiSuggestions={() => inbox.requestRerunAiSuggestions()}
             queuePositionLabel={inbox.processingQueue.queuePositionLabel}
             queueRunState={inbox.processingQueue.runState}
-            processingVisionModelId={inbox.processingQueue.resolvedSessionVisionModelId}
             selectedDesign={inbox.selectedDesign}
             visibleDesigns={inbox.designs}
             onSelectDesign={inbox.requestSelectDesign}
@@ -600,6 +628,20 @@ function AiReviewPageContent() {
         }}
         onConfirm={handleConfirmPermanentDelete}
       />
+
+      {canManageProcessingSettings ? (
+        <AiProcessingSettingsModal
+          defaultVisionModelId={enrichmentSettings.visionModelId}
+          isOpen={isProcessingSettingsOpen}
+          onApply={(visionModelId) => {
+            inbox.processingQueue.applySessionSettings(visionModelId);
+            setIsProcessingSettingsOpen(false);
+          }}
+          onCancel={() => setIsProcessingSettingsOpen(false)}
+          onUseDefaults={inbox.processingQueue.clearSessionSettings}
+          visionModelId={inbox.processingQueue.resolvedSessionVisionModelId}
+        />
+      ) : null}
     </section>
   );
 }
