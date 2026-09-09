@@ -14,8 +14,8 @@
 | Compatibility | Historical `design.tags`, `tags/*`, taxonomy schema-v1, Rules/indexes, and tag-trigger/archive Functions preserved |
 | Scope boundary | No tag deletion, migration/backfill, provider call, Rules/index deploy, Portal/Studio publish, or production action |
 | Autonomous / Pass 2 / WS6 | **OFF** / **PARKED** / **NOT STARTED** |
-| Commit/push | **NOT AUTHORIZED** |
-| Next checkpoint | `[NEEDS OWNER AUTHORIZATION: COMMIT/PUSH CLOSED TAG RETIREMENT GOAL]` |
+| Commit/push | **COMPLETE** — `1c43f6e1` pushed to `origin/development` |
+| Next checkpoint | `[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]` |
 
 ## 2026-09-08 - Print Request direct export, gang sheets, copy, and global settings — CLOSED
 

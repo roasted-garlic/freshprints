@@ -31,7 +31,7 @@
   records and the deterministic former-term corrective audit found no material regression.
 - No Smart Profile backfill, migration, tag deletion, provider call, Portal/Studio publish, or
   production action is implied by this decision.
-- Production promotion and commit/push remain separate owner checkpoints.
+- Commit/push completed as `1c43f6e1`; production promotion remains a separate owner checkpoint.
 
 ---
 

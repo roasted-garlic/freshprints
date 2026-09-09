@@ -5,21 +5,21 @@
 | Status | **IDLE** — managed goal closed after Owner DEV QA PASS |
 | DONE | yes |
 | Signoff Status | **approved** |
-| Current Mode | idle (commit/push authorization checkpoint) |
+| Current Mode | idle (awaiting next managed-goal selection) |
 | Parent program | `smart-catalog-intelligence-completion-and-legacy-tag-retirement` |
 | Current Goal | none — `legacy-tag-operational-retirement-and-smart-profile-search-parity` closed |
-| Current Phase | signoff complete; awaiting separate commit/push authorization |
+| Current Phase | signoff and commit/push complete; awaiting next managed-goal selection |
 | Plan Status | complete |
 | Review Status | approved_with_changes |
 | Implementation Status | complete_source_and_dev_cutover |
 | Test Status | Portal 82/82; Studio 39/39; Functions/shared 45/45; Portal tsc pass; Functions build pass; Studio tsc baseline-blocked; Portal build Windows trace/timeout-blocked; diff check pass; live DEV parity corpus and 20-sample corrective audit pass |
 | Human Checkpoint Required | **yes** |
-| Human Checkpoint Reason | `[NEEDS OWNER AUTHORIZATION: COMMIT/PUSH CLOSED TAG RETIREMENT GOAL]` |
+| Human Checkpoint Reason | `[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]` |
 | Environment | `fresh-prints-dev` (DEV-only checkpoint complete) |
 | Production | untouched |
-| Commit/push | not authorized for this goal |
+| Commit/push | **complete** — `1c43f6e1` pushed to `origin/development` |
 | Last updated | 2026-09-09 |
-| Last Completed Step | Owner DEV QA PASS and approved signoff for the DEV cutover; commit/push remains separately gated |
+| Last Completed Step | Owner DEV QA PASS, approved signoff, and commit/push of the closed goal |
 
 **Decision Log:**
 
@@ -43,21 +43,25 @@
   `docs/workflow/reviews/2026-09-09-legacy-tag-operational-retirement-and-smart-profile-search-parity-signoff.md`.
   Historical `design.tags`, `tags/*`, and retained tag compatibility Functions remain preserved;
   no production, publish, deletion, migration, commit, or push occurred.
+- 2026-09-09 — Owner authorized commit/push of the closed goal. All 108 paths were committed as
+  `1c43f6e1` (`feat(catalog): retire legacy tag search authority`) and pushed to
+  `origin/development`; no production, publish, deletion, migration, or provider action occurred.
 
-**Allowed Actions:** Documentation/handoff updates and await the owner authorization marker below.
+**Allowed Actions:** Documentation/handoff updates and owner selection of the next managed goal.
 Do not start another child goal automatically.
 
 **Forbidden Actions:** Production action; Portal App Hosting or Studio publish; Firebase Rules/index/
 storage changes; tag/data deletion; migration/backfill/reprocess; provider calls; unreviewed
-Functions or Algolia changes; commit/push until separately authorized.
+Functions or Algolia changes; commit/push for this closed goal. Future production/publish/deletion
+work remains separately gated.
 
 ## Next Required Step
 
-`[NEEDS OWNER AUTHORIZATION: COMMIT/PUSH CLOSED TAG RETIREMENT GOAL]`
+`[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]`
 
 The DEV cutover evidence is recorded in
 `docs/workflow/reviews/2026-09-09-legacy-tag-retirement-smart-profile-dev-cutover.md`; the
 approved signoff is recorded in
 `docs/workflow/reviews/2026-09-09-legacy-tag-operational-retirement-and-smart-profile-search-parity-signoff.md`.
-Production, physical tag cleanup, retained compatibility Function deletion, and commit/push
-remain separately gated.
+Production, physical tag cleanup, and retained compatibility Function deletion remain separately
+gated. Commit/push for this closed goal is complete in `1c43f6e1`.

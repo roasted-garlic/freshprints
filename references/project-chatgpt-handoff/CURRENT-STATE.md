@@ -14,7 +14,7 @@
 | Related closed goal | `ai-processing-live-review-auto-process-and-ui-polish` |
 | Autonomous | **OFF** (`shadow`) |
 | Production | untouched |
-| Commit/push | Prior Print Request commit `ab319468` is pushed; legacy tag retirement commit/push **not authorized** |
+| Commit/push | Legacy tag retirement commit `1c43f6e1` pushed to `origin/development`; no force push |
 
 ## Closed managed goal — legacy tag retirement and Smart Profile search parity
 
@@ -28,8 +28,8 @@ untouched for separate authorization. On 2026-09-09, exactly six reviewed DEV Fu
 deployed, the existing local DEV Smart Filter flags were confirmed enabled, and the existing
 owner/admin Algolia reconcile rebuilt 350 ready records in `portal_catalog_ready_dev` after removing
 legacy tag settings. No production, Portal/Studio publish, Rules/index deploy, migration/backfill,
-tag deletion, commit, or push occurred. Owner DEV QA passed and the final DEV disposition was
-approved on 2026-09-09.
+tag deletion occurred. Owner DEV QA passed and the final DEV disposition was approved on
+2026-09-09. The closed goal was committed as `1c43f6e1` and pushed to `origin/development`.
 
 Artifacts:
 
@@ -40,13 +40,14 @@ Artifacts:
 - Signoff: `docs/workflow/reviews/2026-09-09-legacy-tag-operational-retirement-and-smart-profile-search-parity-signoff.md`
 
 Next checkpoint:
-`[NEEDS OWNER AUTHORIZATION: COMMIT/PUSH CLOSED TAG RETIREMENT GOAL]`
+`[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]`
 
 Verification: Portal focused 82/82; Studio focused 39/39; Functions/shared focused 45/45; Portal
 TypeScript and Functions build pass; Studio TypeScript remains blocked by unrelated baseline
 errors; Portal Next build remains blocked by the Windows `.next/trace`/timeout issue; diff check
-passes. Live DEV parity checks and the read-only corrective audit pass. Signoff is approved and
-Owner DEV QA is **PASS**. Commit/push is the next separately gated checkpoint.
+passes. Live DEV parity checks and the read-only corrective audit pass. Signoff is approved,
+Owner DEV QA is **PASS**, and commit/push completed as `1c43f6e1`. Production and publish remain
+separately gated.
 
 ## Print Request goal signoff — CLOSED
 

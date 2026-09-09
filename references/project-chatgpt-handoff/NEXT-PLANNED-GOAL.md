@@ -6,8 +6,8 @@
 
 - No active child goal. `legacy-tag-operational-retirement-and-smart-profile-search-parity` is
   **CLOSED** with approved signoff after Owner DEV QA **PASS** on 2026-09-09.
-- Required checkpoint:
-  `[NEEDS OWNER AUTHORIZATION: COMMIT/PUSH CLOSED TAG RETIREMENT GOAL]`.
+- Commit/push is complete as `1c43f6e1` on `origin/development`; production and publish remain
+  separately gated.
   The owner decisions are resolved: Halftone uses the existing `halftoneStaffDecision.value`,
   legacy Studio tag URLs are ignored without mapping, and incomplete Smart Profiles do not fall
   back to historical tags.
@@ -16,8 +16,9 @@
 - The original request Export/Generate/Copy implementation, the owner-authorized global Gang
   Sheet Settings/four-tier amendment, and the requested Settings UX refinement are complete and
   validated. The authorized DEV Rules/Function deployment is preserved as completed evidence.
-- Commit/push is complete in `ab319468` on `origin/development`; Studio publish and production
-  remain separately gated; no new goal is selected.
+- The prior Print Request commit `ab319468` and the legacy tag retirement commit `1c43f6e1` are
+  pushed to `origin/development`; Studio publish and production remain separately gated; no new
+  goal is selected.
 - Direct Export/Generate/Copy buttons are hidden on Working and Editing requests; existing Add to
   Show/Internal Gangsheet actions remain available there.
 - Studio publish and production remain separately gated.
@@ -29,7 +30,8 @@ existing owner/admin reconcile dry-run/apply processed 350 ready records in
 Smart Profile facets and non-tag searchable fields. Live parity checks covered facets/AND,
 category, q/text fields, pagination, zero counts, missing profiles, exact ID, former tag-name/
 alias zeros, and Halftone via `halftoneStaffDecision.value`. No production, Portal/Studio publish,
-Rules/index deploy, migration/backfill, tag deletion, commit, or push occurred.
+Rules/index deploy, migration/backfill, or tag deletion occurred. Commit/push completed as
+`1c43f6e1` after the Owner DEV QA signoff.
 Owner DEV QA then passed; the deterministic read-only corrective audit re-derived 20 former
 tag-name/alias samples, all with no preserved Ready-design baseline and no current Algolia hits,
 with zero material regressions.
@@ -76,7 +78,7 @@ Storage Rules, indexes, migration, Portal, Studio, or production deployment occu
   Owner DEV QA then passed, the goal was signed off, and commit/push completed as `ab319468`.
   Studio publish and production remain separate checkpoints.
 
-`[NEEDS OWNER AUTHORIZATION: COMMIT/PUSH CLOSED TAG RETIREMENT GOAL]`
+`[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]`
 
 ## Closed goal handoff
 
@@ -90,9 +92,9 @@ Storage Rules, indexes, migration, Portal, Studio, or production deployment occu
 - Focused verification: Portal 82/82, Studio 39/39, Functions/shared 45/45; Portal tsc and Functions
   build pass; Studio tsc has only documented unrelated baseline failures; Portal Next build is
   Windows `.next/trace`/timeout-blocked; `git diff --check` passes.
-- Owner DEV QA is **PASS** and signoff is **approved**. Commit/push, production/backfill,
-  physical tag cleanup, retained compatibility Function deletion, and Rules/index cleanup are
-  not included and remain separately gated.
+- Owner DEV QA is **PASS** and signoff is **approved**. Commit/push is complete as `1c43f6e1`.
+  Production/backfill, physical tag cleanup, retained compatibility Function deletion, and
+  Rules/index cleanup remain separately gated.
 
 Parent program:
 `smart-catalog-intelligence-completion-and-legacy-tag-retirement`
@@ -111,5 +113,6 @@ active child goal.
 | Automatic Pass 2 | **PARKED** |
 | Production promotion | **SEPARATELY GATED / NOT AUTHORIZED** |
 
-No active child goal is selected. Commit/push and any production promotion, backfill, Maintenance
-Mode, physical tag cleanup, or Algolia/Firebase external-state changes remain separately gated.
+No active child goal is selected. Production promotion, backfill, Maintenance Mode, physical tag
+cleanup, retained compatibility deletion, and other Algolia/Firebase external-state changes
+remain separately gated.
