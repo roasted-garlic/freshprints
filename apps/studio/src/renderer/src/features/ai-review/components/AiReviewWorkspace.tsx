@@ -12,7 +12,6 @@ import type { ArtworkBackgroundFieldsValues } from "../../designs/components/Art
 import { DesignPreviewLightbox } from "../../designs/components/DesignPreviewLightbox";
 import { DesignThumbnailPanel } from "../../designs/components/DesignThumbnailPanel";
 import { useDesignDerivativeUrl } from "../../designs/hooks/useDesignDerivativeUrl";
-import type { CatalogTag } from "../../designs/types/catalogTag.types";
 import type { Design } from "../../designs/types/design.types";
 import { mapArtworkBackgroundToForm, resolveFormArtworkBackgroundHex } from "../../designs/utils/designFormMapper";
 import type { AiProcessingQueueRunState } from "../hooks/useAiProcessingQueue";
@@ -29,7 +28,6 @@ import { AiReviewWorkspaceEmpty } from "./AiReviewWorkspaceEmpty";
 interface AiReviewWorkspaceProps {
   actionError: string | null;
   activeTab: AiReviewInboxTab;
-  approvedTags: CatalogTag[];
   autoAdvance: boolean;
   canApprove: boolean;
   canEdit: boolean;
@@ -90,7 +88,6 @@ interface AiReviewWorkspaceProps {
 export function AiReviewWorkspace({
   actionError,
   activeTab,
-  approvedTags,
   autoAdvance,
   canApprove,
   canEdit,
@@ -204,10 +201,6 @@ export function AiReviewWorkspace({
   }
 
   function handlePreviewHalftoneChange(markAsHalftone: boolean): void {
-    setPendingPreviewBackgroundValues({
-      artworkBackgroundPreset: markAsHalftone ? "lightBlack" : "grey",
-      artworkBackgroundCustomHex: "",
-    });
     onSaveHalftoneStaffDecision(markAsHalftone);
   }
 
@@ -391,7 +384,6 @@ export function AiReviewWorkspace({
               >
                 {activeReviewInfoTab === "catalog" ? (
                   <AiReviewFormPanel
-                    approvedTags={approvedTags}
                     canEdit={canEdit}
                     categoryOptions={categoryOptions}
                     design={selectedDesign}

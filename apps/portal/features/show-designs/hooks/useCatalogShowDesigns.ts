@@ -5,8 +5,8 @@ import { useEffect, useMemo, useState } from 'react';
 import type { CatalogDesign } from '../../catalog/types/catalog.types';
 import {
   filterCatalogDesignsByCategory,
+  filterCatalogDesignsByHalftone,
   filterCatalogDesignsBySearch,
-  filterCatalogDesignsByTags,
 } from '../../catalog/utils/catalogSearch';
 import { loadCatalogShowDesigns } from '../services/portalShowDiscoveryContent';
 
@@ -14,7 +14,7 @@ export function useCatalogShowDesigns(options: {
   categoryId?: string;
   enabled?: boolean;
   searchQuery?: string;
-  selectedTags: string[];
+  halftoneFilterOn?: boolean;
   showId?: string | null;
   showsThisWeek?: boolean;
 }) {
@@ -71,9 +71,9 @@ export function useCatalogShowDesigns(options: {
     let next = designs;
     next = filterCatalogDesignsBySearch(next, options.searchQuery ?? '');
     next = filterCatalogDesignsByCategory(next, options.categoryId);
-    next = filterCatalogDesignsByTags(next, options.selectedTags);
+    next = filterCatalogDesignsByHalftone(next, options.halftoneFilterOn === true);
     return next;
-  }, [designs, options.categoryId, options.searchQuery, options.selectedTags]);
+  }, [designs, options.categoryId, options.searchQuery, options.halftoneFilterOn]);
 
   return {
     catalogDesigns: filteredDesigns,

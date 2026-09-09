@@ -18,17 +18,15 @@ interface DesignLibraryFilterControlsProps {
   onHalftoneFilterChange?: (on: boolean) => void;
   onNeedsCompanionFilterChange?: (on: boolean) => void;
   onOpenSmartFilters?: () => void;
-  onOpenTags: () => void;
   onSearchChange: (value: string) => void;
   searchQuery: string;
   searchPlaceholder?: string;
   selectedSmartFilterCount?: number;
-  selectedTagCount: number;
   showSmartFilters?: boolean;
 }
 
 /**
- * Presentational filter controls (search, category, tags, optional Smart Filters / Halftone).
+ * Presentational filter controls (search, category, discovery, optional Smart Filters / Halftone).
  * Renders UI only — all state lives in the page so the fixed dock and URL filters stay in sync.
  */
 export function DesignLibraryFilterControls({
@@ -43,12 +41,10 @@ export function DesignLibraryFilterControls({
   onHalftoneFilterChange,
   onNeedsCompanionFilterChange,
   onOpenSmartFilters,
-  onOpenTags,
   onSearchChange,
   searchQuery,
   searchPlaceholder = "Search catalog...",
   selectedSmartFilterCount = 0,
-  selectedTagCount,
   showSmartFilters = false,
 }: DesignLibraryFilterControlsProps) {
   return (
@@ -89,12 +85,6 @@ export function DesignLibraryFilterControls({
           onChange={onNeedsCompanionFilterChange}
         />
       ) : null}
-
-      <Button className="button-leading-icon" onClick={onOpenTags} size="sm" variant="secondary">
-        <ListFilter aria-hidden="true" size={16} strokeWidth={2} />
-        Tags
-        {selectedTagCount > 0 ? ` (${selectedTagCount})` : ""}
-      </Button>
 
       {showSmartFilters && onOpenSmartFilters ? (
         <Button

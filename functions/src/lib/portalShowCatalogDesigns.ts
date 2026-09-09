@@ -203,9 +203,10 @@ export async function listPublicCatalogDesignCardsForShow(
         thumbnailPath: typeof data.thumbnailPath === "string" ? data.thumbnailPath : undefined,
         previewPath: typeof data.previewPath === "string" ? data.previewPath : undefined,
         categoryId: typeof data.categoryId === "string" ? data.categoryId : undefined,
-        tags: Array.isArray(data.tags)
-          ? data.tags.filter((tag): tag is string => typeof tag === "string")
-          : [],
+        isHalftone:
+          data.halftoneStaffDecision && typeof data.halftoneStaffDecision === "object"
+            ? (data.halftoneStaffDecision as { value?: unknown }).value === true
+            : false,
         isExplicitContent: data.isExplicitContent === true,
         width,
         height,

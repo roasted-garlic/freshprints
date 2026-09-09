@@ -4,6 +4,37 @@
 
 ---
 
+### ADR-FP-186: Legacy tag operational retirement and Smart Profile search parity
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-09 |
+| Status | accepted — Owner DEV QA **PASS**; DEV signoff **approved**; production separately gated |
+| Related | Goal `legacy-tag-operational-retirement-and-smart-profile-search-parity`; Plan/Review/Implementation Review `2026-09-08-legacy-tag-operational-retirement-and-smart-profile-search-parity-*`; DEV cutover and signoff `2026-09-09-legacy-tag-*` |
+
+**Decision**
+
+1. Active Portal and Studio catalog discovery use Smart Profile fields, category narrowing, exact
+   IDs, copy search, and dedicated `halftoneStaffDecision.value` filtering. Legacy tags are not
+   active UI, URL, facet, display, DTO, or Algolia search authority.
+2. Studio `?tag=` and `?tags=` are retained only as safe no-op compatibility inputs; incomplete
+   Smart Profiles do not fall back to historical tags.
+3. Algolia records and settings omit `tagIds` and `tagFacetKeys` while retaining Smart Profile
+   fields and searchable `objects`, `searchConcepts`, and `visibleText`.
+4. Historical `design.tags`, `tags/*`, schema-v1 taxonomy materialization, Rules/indexes, tag
+   normalizers/import helpers, and deployed tag-trigger/archive exports remain preserved. Physical
+   cleanup or compatibility deletion requires a separately reviewed and authorized phase.
+
+**Consequences**
+
+- DEV parity is validated on `fresh-prints-dev`; the owner/admin reconcile rebuilt 350 ready
+  records and the deterministic former-term corrective audit found no material regression.
+- No Smart Profile backfill, migration, tag deletion, provider call, Portal/Studio publish, or
+  production action is implied by this decision.
+- Production promotion and commit/push remain separate owner checkpoints.
+
+---
+
 ### ADR-FP-184: Studio Print Request direct export, Standard gang sheet, and atomic copy
 
 | Field | Value |

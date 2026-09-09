@@ -64,13 +64,13 @@ describe("exact-id library visibility", () => {
     assert.equal(designVisibleForExactIdLibrary(purged, true), false);
   });
 
-  it("applies category and tag filters", () => {
+  it("applies category and staff Halftone filters", () => {
     const design = createDesign({ categoryId: "cats", tags: ["summer", "logo"] });
     assert.equal(
       exactIdDesignMatchesLibraryFilters(design, {
         browsingArchived: false,
         categoryId: "cats",
-        selectedTags: ["summer"],
+        halftoneOnly: false,
       }),
       true,
     );
@@ -82,10 +82,10 @@ describe("exact-id library visibility", () => {
       false,
     );
     assert.equal(
-      exactIdDesignMatchesLibraryFilters(design, {
-        browsingArchived: false,
-        selectedTags: ["winter"],
-      }),
+      exactIdDesignMatchesLibraryFilters(
+        createDesign({ halftoneStaffDecision: { value: false } }),
+        { browsingArchived: false, halftoneOnly: true },
+      ),
       false,
     );
   });

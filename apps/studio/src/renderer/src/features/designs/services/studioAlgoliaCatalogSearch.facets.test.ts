@@ -3,10 +3,8 @@ import { describe, it } from "node:test";
 
 import {
   buildStudioAlgoliaCombinedFacetFilters,
-  buildStudioAlgoliaFacetSearchParams,
   buildStudioAlgoliaSmartFacetSearchParams,
   hasStudioAlgoliaFacetConstraints,
-  mergeStudioAlgoliaTagFacetDistribution,
 } from "./studioAlgoliaCatalogFacets";
 import {
   buildStudioAlgoliaSmartFacetFilters,
@@ -17,27 +15,11 @@ import {
 } from "./studioAlgoliaSmartFilters";
 import type { Design } from "../types/design.types";
 
-describe("studio Algolia tag facets", () => {
-  it("buildStudioAlgoliaFacetSearchParams supports empty query + tag/category filters", () => {
-    const params = buildStudioAlgoliaFacetSearchParams({
-      categoryId: "cat-1",
-      search: "",
-      selectedTags: ["cow", "summer"],
-    });
-
-    assert.equal(params.query, "");
-    assert.equal(params.hitsPerPage, 0);
-    assert.deepEqual(params.facets, ["tagFacetKeys"]);
-    assert.equal(params.maxValuesPerFacet, 2000);
-    assert.equal(params.filters, "categoryId:cat-1");
-    assert.deepEqual(params.facetFilters, [["tagIds:cow"], ["tagIds:summer"]]);
-  });
-
+describe("studio Algolia facet retirement", () => {
   it("hasStudioAlgoliaFacetConstraints detects managed constraints", () => {
     assert.equal(hasStudioAlgoliaFacetConstraints({}), false);
     assert.equal(hasStudioAlgoliaFacetConstraints({ search: "  " }), false);
     assert.equal(hasStudioAlgoliaFacetConstraints({ search: "cow" }), true);
-    assert.equal(hasStudioAlgoliaFacetConstraints({ selectedTags: ["cow"] }), true);
     assert.equal(hasStudioAlgoliaFacetConstraints({ categoryId: "c1" }), true);
     assert.equal(
       hasStudioAlgoliaFacetConstraints({ smartFilters: { subjects: ["cow"] } }),
@@ -45,18 +27,6 @@ describe("studio Algolia tag facets", () => {
     );
   });
 
-  it("mergeStudioAlgoliaTagFacetDistribution merges by display name", () => {
-    const merged = mergeStudioAlgoliaTagFacetDistribution({
-      "cow-id::cow": 2,
-      "cow-alt::cow": 3,
-      "summer-id::summer": 1,
-    });
-
-    assert.deepEqual(merged, [
-      { id: "cow-id", name: "cow", count: 5 },
-      { id: "summer-id", name: "summer", count: 1 },
-    ]);
-  });
 });
 
 describe("studio Algolia Smart Filters", () => {
@@ -74,13 +44,11 @@ describe("studio Algolia Smart Filters", () => {
     ]);
   });
 
-  it("combines tags and smart filters for search params", () => {
+  it("combines only Smart Profile filters for search params", () => {
     const combined = buildStudioAlgoliaCombinedFacetFilters({
-      selectedTags: ["funny"],
       smartFilters: { themes: ["humor"], places: ["Seattle"] },
     });
     assert.deepEqual(combined, [
-      ["tagIds:funny"],
       ["themes:humor"],
       ["places:Seattle"],
     ]);
@@ -88,7 +56,6 @@ describe("studio Algolia Smart Filters", () => {
     const smartParams = buildStudioAlgoliaSmartFacetSearchParams({
       categoryId: "cat-1",
       search: "highland",
-      selectedTags: ["funny"],
       smartFilters: { subjects: ["cow"] },
     });
     assert.equal(smartParams.query, "highland");
@@ -107,7 +74,6 @@ describe("studio Algolia Smart Filters", () => {
       "colors",
     ]);
     assert.deepEqual(smartParams.facetFilters, [
-      ["tagIds:funny"],
       ["subjects:cow"],
     ]);
   });

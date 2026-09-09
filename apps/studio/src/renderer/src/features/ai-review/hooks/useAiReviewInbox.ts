@@ -4,7 +4,6 @@ import { useAuth } from "../../auth/hooks/useAuth";
 import { designDocumentSubscriptionService } from "../../designs/services/designDocumentSubscriptionService";
 import { designService } from "../../designs/services/designService";
 import { useDesigns } from "../../designs/hooks/useDesigns";
-import { useGeneratedDesignLibraryTaxonomy } from "../../designs/hooks/useGeneratedDesignLibraryTaxonomy";
 import { permissionService } from "../../permissions/services/permissionService";
 import type { Design } from "../../designs/types/design.types";
 import { buildAiReviewInboxListQuery } from "../constants/aiReviewInboxConstants";
@@ -115,13 +114,9 @@ export function useAiReviewInbox(
     loadAll: needsReviewSearchActive,
     maxLoadAll: NEEDS_REVIEW_SEARCH_HYDRATION_CAP,
   });
-  // Approved-tag display/autocomplete for normal review needs only id/name/aliases/status — the
-  // generated client-safe taxonomy covers that with zero Firestore reads. The previous
-  // `useCatalogTags({ includeArchived: true })` paged the entire ~1,122-doc tag corpus on every
-  // AI Review mount (owner live-test evidence, 2026-07-25). Tag management keeps its own
-  // Firestore-backed hooks; a tag approved mid-session enters the draft via the callable's own
-  // returned name and appears in this list after the next snapshot republish.
-  const generatedTaxonomy = useGeneratedDesignLibraryTaxonomy(user);
+  // Legacy tag autocomplete and tag writes are retired from AI Review. Historical tag fields on
+  // designs remain readable by the service mapper but are never seeded into or persisted from the
+  // review form.
 
   const [selectedDesignId, setSelectedDesignId] = useState<string | null>(null);
   const [liveDesign, setLiveDesign] = useState<Design | null>(null);
@@ -235,12 +230,12 @@ export function useAiReviewInbox(
       filterNeedsReviewDesignsBySearch(
         tabMatchedDesigns,
         filters.searchQuery ?? "",
-        generatedTaxonomy.tags,
+        [],
       ),
       filters.tab,
       filters.sortOrder,
     );
-  }, [designs, filters.searchQuery, filters.sortOrder, filters.tab, generatedTaxonomy.tags, tabMatchedDesigns]);
+  }, [designs, filters.searchQuery, filters.sortOrder, filters.tab, tabMatchedDesigns]);
   designsRef.current = visibleDesigns;
 
   const [draftForm, setDraftForm] = useState<AiReviewDraftForm | null>(null);
@@ -547,6 +542,11 @@ export function useAiReviewInbox(
     return designDocumentSubscriptionService.subscribeToDesign(
       selectedDesignId,
       (design) => {
+        if (!design) {
+          liveDesignRef.current = null;
+          setLiveDesign(null);
+          return;
+        }
         const previous = liveDesignRef.current;
         if (
           previous?.id === design.id &&
@@ -1188,11 +1188,6 @@ export function useAiReviewInbox(
       setIsSavingHalftone(true);
       setActionError(null);
 
-      const artworkBackground = {
-        artworkBackgroundPreset: markAsHalftone ? ("lightBlack" as const) : ("grey" as const),
-        artworkBackgroundCustomHex: "",
-      };
-
       try {
         const updated = await aiReviewInboxService.updateHalftoneFromInbox(
           user,
@@ -1207,8 +1202,6 @@ export function useAiReviewInbox(
             ? {
                 ...currentDraft,
                 markAsHalftone,
-                artworkBackgroundPreset: artworkBackground.artworkBackgroundPreset,
-                artworkBackgroundCustomHex: artworkBackground.artworkBackgroundCustomHex,
               }
             : currentDraft,
         );
@@ -1217,8 +1210,6 @@ export function useAiReviewInbox(
             ? {
                 ...currentBaseline,
                 markAsHalftone,
-                artworkBackgroundPreset: artworkBackground.artworkBackgroundPreset,
-                artworkBackgroundCustomHex: artworkBackground.artworkBackgroundCustomHex,
               }
             : currentBaseline,
         );
@@ -1496,7 +1487,6 @@ export function useAiReviewInbox(
 
   return {
     actionError,
-    approvedTags: generatedTaxonomy.tags,
     baselineForm,
     canApprove: canApproveSelected,
     canArchive: canArchiveSelected,

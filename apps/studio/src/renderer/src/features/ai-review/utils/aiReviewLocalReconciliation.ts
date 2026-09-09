@@ -48,7 +48,6 @@ export function buildAiReviewInboxLocalDesignPatch(design: Design): Partial<Desi
     title: design.title,
     description: design.description,
     categoryId: design.categoryId,
-    tags: design.tags,
     artworkBackgroundHex: design.artworkBackgroundHex,
     updatedAt: design.updatedAt,
     updatedBy: design.updatedBy,

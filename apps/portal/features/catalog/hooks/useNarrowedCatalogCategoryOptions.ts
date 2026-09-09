@@ -17,29 +17,22 @@ export interface UseNarrowedCatalogCategoryOptionsArgs {
   categories: CatalogCategory[];
   searchQuery?: string;
   selectedCategoryId?: string;
-  selectedTags?: string[];
   smartFilters?: PortalSmartFilters;
 }
 
 /**
  * Category select options: full catalog when unconstrained; Algolia `categoryId` facets
- * when search / tags / Smart Filters are active (selected category excluded from facet query).
+ * when search / Smart Filters are active (selected category excluded from facet query).
  */
 export function useNarrowedCatalogCategoryOptions(
   args: UseNarrowedCatalogCategoryOptionsArgs,
 ): Array<{ value: string; label: string }> {
   const fullOptions = useCatalogCategoryOptions(args.categories);
   const search = args.searchQuery?.trim() ?? '';
-  const selectedTags = useMemo(() => args.selectedTags ?? [], [args.selectedTags]);
   const smartFilters = args.smartFilters;
-  const selectedTagsKey = useMemo(
-    () => [...selectedTags].sort((left, right) => left.localeCompare(right)).join('\0'),
-    [selectedTags],
-  );
   const smartFiltersKey = useMemo(() => serializeSmartFilters(smartFilters), [smartFilters]);
   const needsNarrowing = hasPortalAlgoliaCategoryFacetConstraints({
     search,
-    selectedTags,
     smartFilters,
   });
   const algoliaReady = isPortalAlgoliaCatalogConfigured();
@@ -56,7 +49,6 @@ export function useNarrowedCatalogCategoryOptions(
     void portalAlgoliaCatalogSearchService
       .listNarrowedCategoryFacets({
         search,
-        selectedTags,
         smartFilters,
       })
       .then((facets) => {
@@ -74,7 +66,7 @@ export function useNarrowedCatalogCategoryOptions(
     return () => {
       cancelled = true;
     };
-  }, [algoliaReady, needsNarrowing, search, selectedTagsKey, smartFiltersKey, selectedTags, smartFilters]);
+  }, [algoliaReady, needsNarrowing, search, smartFiltersKey, smartFilters]);
 
   return useMemo(() => {
     if (!needsNarrowing || !algoliaReady || facetIds === null) {

@@ -24,7 +24,6 @@ export interface PortalDesignShareMeta {
   /** Absolute HTTPS public image URL for crawlers/page, or null to use site logo. */
   imageUrl: string | null
   categoryName: string | null
-  tags: string[]
   imageAlt: string
 }
 
@@ -59,23 +58,6 @@ function buildStableShareImageUrl(
     designId,
     backgroundHex,
   })
-}
-
-function normalizeTags(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return []
-  }
-  const out: string[] = []
-  for (const tag of value) {
-    if (typeof tag !== 'string') {
-      continue
-    }
-    const trimmed = tag.trim()
-    if (trimmed && !out.includes(trimmed)) {
-      out.push(trimmed)
-    }
-  }
-  return out.slice(0, 24)
 }
 
 async function resolveCategoryName(categoryId: unknown): Promise<string | null> {
@@ -132,7 +114,6 @@ async function loadPortalDesignShareMetaViaAdmin(
       ''
 
     const imageUrl = imagePath ? buildStableShareImageUrl(designId, data.artworkBackgroundHex) : null
-    const tags = normalizeTags(data.tags)
     const categoryName = await resolveCategoryName(data.categoryId)
 
     return {
@@ -141,7 +122,6 @@ async function loadPortalDesignShareMetaViaAdmin(
       description,
       imageUrl,
       categoryName,
-      tags,
       imageAlt: `${title} design preview`,
     }
   } catch {
@@ -168,7 +148,6 @@ async function loadPortalDesignShareMetaViaFunction(
     }
     const payload = (await response.json()) as Partial<PortalDesignShareMeta> & {
       categoryName?: unknown
-      tags?: unknown
     }
     if (
       typeof payload.title !== 'string' ||
@@ -199,7 +178,6 @@ async function loadPortalDesignShareMetaViaFunction(
         typeof payload.categoryName === 'string' && payload.categoryName.trim()
           ? payload.categoryName.trim()
           : null,
-      tags: normalizeTags(payload.tags),
       imageAlt: `${title} design preview`,
     }
   } catch {
@@ -221,14 +199,13 @@ export async function loadPortalDesignShareMeta(
 
   const viaFunction = await loadPortalDesignShareMetaViaFunction(designId)
   if (viaFunction?.imageUrl) {
-    // Enrich category/tags from Admin when Function payload lacks them.
-    if ((!viaFunction.categoryName || viaFunction.tags.length === 0) && tryGetPortalAdminDb()) {
+    // Enrich category from Admin when Function payload lacks it.
+    if (!viaFunction.categoryName && tryGetPortalAdminDb()) {
       const viaAdmin = await loadPortalDesignShareMetaViaAdmin(designId)
       if (viaAdmin) {
         return {
           ...viaFunction,
           categoryName: viaFunction.categoryName ?? viaAdmin.categoryName,
-          tags: viaFunction.tags.length > 0 ? viaFunction.tags : viaAdmin.tags,
           imageAlt: viaAdmin.imageAlt,
         }
       }

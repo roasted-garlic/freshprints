@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 
-import { catalogService } from '../services/catalogService';
 import type { CatalogTagOption } from '../types/catalog.types';
 
 export function useCatalogTags() {
@@ -13,30 +12,12 @@ export function useCatalogTags() {
   useEffect(() => {
     let isCancelled = false;
 
-    async function loadTags() {
-      setIsLoading(true);
+    // Compatibility no-op: Portal no longer reads legacy tag taxonomy at runtime.
+    if (!isCancelled) {
+      setTags([]);
       setError(null);
-
-      try {
-        const nextTags = await catalogService.listApprovedTags();
-
-        if (!isCancelled) {
-          setTags(nextTags);
-        }
-      } catch (loadError) {
-        if (!isCancelled) {
-          const message = loadError instanceof Error ? loadError.message : 'Unable to load tags.';
-          setError(message);
-          setTags([]);
-        }
-      } finally {
-        if (!isCancelled) {
-          setIsLoading(false);
-        }
-      }
+      setIsLoading(false);
     }
-
-    void loadTags();
 
     return () => {
       isCancelled = true;

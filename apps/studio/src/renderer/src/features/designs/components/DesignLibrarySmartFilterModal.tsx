@@ -29,7 +29,6 @@ interface DesignLibrarySmartFilterModalProps {
   isOpen: boolean;
   onApply: (smartFilters: StudioAlgoliaSmartFilters) => void;
   onClose: () => void;
-  selectedTags: string[];
   smartFilters: StudioAlgoliaSmartFilters;
 }
 
@@ -49,7 +48,6 @@ export function DesignLibrarySmartFilterModal({
   isOpen,
   onApply,
   onClose,
-  selectedTags,
   smartFilters,
 }: DesignLibrarySmartFilterModalProps) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -100,7 +98,6 @@ export function DesignLibrarySmartFilterModal({
       .listNarrowedSmartFacets({
         categoryId: algoliaFacetContext?.categoryId,
         search: algoliaFacetContext?.searchQuery ?? "",
-        selectedTags,
         smartFilters: draftFilters,
       })
       .then((options) => {
@@ -130,7 +127,6 @@ export function DesignLibrarySmartFilterModal({
     algoliaFacetContext?.searchQuery,
     draftFilters,
     isOpen,
-    selectedTags,
   ]);
 
   const dimensionOptions = useMemo(

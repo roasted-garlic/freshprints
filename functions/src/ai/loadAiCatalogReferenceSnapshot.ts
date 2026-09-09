@@ -1,11 +1,13 @@
 import type { AiCatalogReferenceSnapshot } from "../../../packages/shared/src/catalog-snapshots/catalogSnapshot.types";
 import { CATALOG_REFERENCE_SCHEMA_VERSION } from "../../../packages/shared/src/catalog-snapshots/catalogSnapshot.types";
-import type { CatalogTag } from "../../../packages/shared/src/types/catalogTag.types";
 import { randomUUID } from "node:crypto";
 
 import { adminDb } from "../lib/admin";
 import { logPipelineEvent } from "../lib/pipelineLog";
-import { readTaxonomyMaterializationCorpus, readTaxonomyMaterializationRevision } from "../taxonomy/rebuildTaxonomyMaterialization";
+import {
+  readTaxonomyMaterializationCategories,
+  readTaxonomyMaterializationRevision,
+} from "../taxonomy/rebuildTaxonomyMaterialization";
 
 /**
  * Process-local AI taxonomy cache.
@@ -50,16 +52,16 @@ interface CacheEntry {
   revision: number | "fs-fallback";
   expiresAtMs: number;
   categoryCount: number;
-  tagCount: number;
 }
 
 async function defaultLoadFromFirestoreDocs(): Promise<AiCatalogReferenceSnapshot> {
-  const [categoriesSnapshot, tagsSnapshot] = await Promise.all([
-    adminDb.collection("categories").where("isActive", "==", true).get(),
-    adminDb.collection("tags").where("status", "==", "approved").get(),
-  ]);
+  // Active category resolution no longer loads the legacy tags collection. The required
+  // `tags: []` shape remains in the snapshot type for older callers/cache readers only.
+  const categoriesSnapshot = await adminDb
+    .collection("categories")
+    .where("isActive", "==", true)
+    .get();
   const categories: AiCatalogReferenceSnapshot["categories"] = [];
-  const tags: AiCatalogReferenceSnapshot["tags"] = [];
   categoriesSnapshot.forEach((document) => {
     const data = document.data();
     if (typeof data.name !== "string" || !data.name.trim()) return;
@@ -71,29 +73,12 @@ async function defaultLoadFromFirestoreDocs(): Promise<AiCatalogReferenceSnapsho
         : {}),
     });
   });
-  tagsSnapshot.forEach((document) => {
-    const data = document.data();
-    if (
-      typeof data.name !== "string" ||
-      !Array.isArray(data.aliases) ||
-      typeof data.preferredWhen !== "string"
-    ) {
-      return;
-    }
-    tags.push({
-      id: document.id,
-      name: data.name,
-      aliases: data.aliases.filter((alias): alias is string => typeof alias === "string"),
-      preferredWhen: data.preferredWhen,
-      status: "approved",
-    });
-  });
   return {
     schemaVersion: CATALOG_REFERENCE_SCHEMA_VERSION,
     contentVersion: "firestore-fallback",
     generatedAt: new Date().toISOString(),
     categories,
-    tags,
+    tags: [],
     categoryNames: categories.map(({ name }) => name),
     categoryIdsByName: Object.fromEntries(
       categories.map(({ id, name }) => [name.toLowerCase(), id]),
@@ -102,18 +87,19 @@ async function defaultLoadFromFirestoreDocs(): Promise<AiCatalogReferenceSnapsho
 }
 
 function corpusToSnapshot(
-  corpus: { categories: AiCatalogReferenceSnapshot["categories"]; tags: AiCatalogReferenceSnapshot["tags"] },
+  categories: AiCatalogReferenceSnapshot["categories"],
   revision: number,
 ): AiCatalogReferenceSnapshot {
   return {
     schemaVersion: CATALOG_REFERENCE_SCHEMA_VERSION,
     contentVersion: `materialization-r${revision}`,
     generatedAt: new Date().toISOString(),
-    categories: corpus.categories,
-    tags: corpus.tags,
-    categoryNames: corpus.categories.map(({ name }) => name),
+    categories,
+    // Keep the schema-v1 compatibility field inert; active category resolution never consumes it.
+    tags: [],
+    categoryNames: categories.map(({ name }) => name),
     categoryIdsByName: Object.fromEntries(
-      corpus.categories.map(({ id, name }) => [name.toLowerCase(), id]),
+      categories.map(({ id, name }) => [name.toLowerCase(), id]),
     ),
   };
 }
@@ -135,18 +121,17 @@ async function defaultLoadTaxonomy(): Promise<{
     return { snapshot, revision: "fs-fallback" };
   }
 
-  const materialized = await readTaxonomyMaterializationCorpus();
+  const materialized = await readTaxonomyMaterializationCategories();
   if (materialized.ok) {
     logPipelineEvent("taxonomy-materialization-hit", {
       revision: materialized.revision,
       chunkCount: materialized.meta.chunkCount,
-      tagCount: materialized.meta.tagCount,
       categoryCount: materialized.meta.categoryCount,
       reason: "healthy_materialization",
     });
     fallbackCount = 0;
     return {
-      snapshot: corpusToSnapshot(materialized.corpus, materialized.revision),
+      snapshot: corpusToSnapshot(materialized.categories, materialized.revision),
       revision: materialized.revision,
     };
   }
@@ -256,7 +241,6 @@ async function loadThroughCache(
       ...baseLogContext(context),
       cacheAgeMs: now - (cacheEntry.expiresAtMs - deps.ttlMs),
       categoryCount: cacheEntry.categoryCount,
-      tagCount: cacheEntry.tagCount,
       revision: cacheEntry.revision,
     });
     finishColdStartFlag();
@@ -268,7 +252,6 @@ async function loadThroughCache(
       ...baseLogContext(context),
       cacheAgeMs: now - (cacheEntry.expiresAtMs - deps.ttlMs),
       categoryCount: cacheEntry.categoryCount,
-      tagCount: cacheEntry.tagCount,
       revision: cacheEntry.revision,
     });
     cacheEntry = null;
@@ -297,7 +280,6 @@ async function loadThroughCache(
       const value = loaded.snapshot;
       const elapsedMs = deps.now() - startedAtMs;
       const categoryCount = value.categories.length;
-      const tagCount = value.tags.length;
 
       if (loadGeneration === cacheGeneration) {
         cacheEntry = {
@@ -305,7 +287,6 @@ async function loadThroughCache(
           revision: loaded.revision,
           expiresAtMs: deps.now() + deps.ttlMs,
           categoryCount,
-          tagCount,
         };
       }
 
@@ -313,8 +294,7 @@ async function loadThroughCache(
         ...baseLogContext(context),
         elapsedMs,
         categoryCount,
-        tagCount,
-        documentCount: categoryCount + tagCount,
+        documentCount: categoryCount,
         publishedToCache: loadGeneration === cacheGeneration,
         revision: loaded.revision,
         source: loaded.revision === "fs-fallback" ? "firestore" : "materialization",
@@ -351,18 +331,6 @@ export async function loadAiCatalogReferenceSnapshot(
   context?: AiTaxonomyLoadContext,
 ): Promise<AiCatalogReferenceSnapshot> {
   return loadThroughCache(context);
-}
-
-export function aiSnapshotTagsToCatalogTags(
-  snapshot: AiCatalogReferenceSnapshot,
-): CatalogTag[] {
-  return snapshot.tags.map((tag) => ({
-    ...tag,
-    createdAt: null,
-    updatedAt: null,
-    createdBy: "catalog-reference-snapshot",
-    updatedBy: "catalog-reference-snapshot",
-  }));
 }
 
 export function clearAiCatalogReferenceSnapshotCache(): void {

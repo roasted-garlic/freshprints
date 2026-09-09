@@ -49,7 +49,7 @@ import { isCanonicalDesignStoragePath } from "../constants/designStoragePaths";
 import type { CreateDesignInput, Design, DesignAuthoritySnapshot, UpdateDesignInput } from "../types/design.types";
 import type { AiReviewStateUpdate, CatalogApprovalUpdate } from "../types/aiReview.types";
 import { isAiReviewStatus } from "../types/aiReview.types";
-import type { DesignListPage, DesignListQuery, DesignListSortDirection, DesignListSortField } from "../types/designQuery.types";
+import type { DesignListPage, DesignListQuery, DesignListSortField } from "../types/designQuery.types";
 import { isDesignStatus, isWritableDesignStatus } from "../types/designStatus.types";
 import { normalizeDesignTags } from "../utils/designTagNormalizer";
 import { mergeDesignDocumentDataAfterWrite } from "../utils/designDocumentAfterWrite";
@@ -135,14 +135,13 @@ function getDesignSortMillis(design: Design, sortField: DesignListSortField): nu
 function buildDesignFilterConstraints(listQuery: DesignListQuery = {}): QueryConstraint[] {
   const constraints: QueryConstraint[] = [];
 
-  // Field order matches composite indexes in firestore.indexes.json:
-  // categoryId → tags (array-contains) → status → aiReviewStatus → orderBy
+  // Field order follows the non-tag catalog query contract; legacy tags are never a constraint.
   if (listQuery.categoryId) {
     constraints.push(where("categoryId", "==", listQuery.categoryId));
   }
 
-  if (listQuery.tag) {
-    constraints.push(where("tags", "array-contains", listQuery.tag.trim().toLowerCase()));
+  if (listQuery.halftoneOnly) {
+    constraints.push(where("halftoneStaffDecision.value", "==", true));
   }
 
   if (listQuery.statusIn && listQuery.statusIn.length > 0) {
@@ -541,20 +540,8 @@ function validateOptionalDerivativePath(path: string | undefined, root: "thumbna
   return trimmedPath;
 }
 
-function shouldSplitStatusQueries(listQuery: DesignListQuery): boolean {
-  return Boolean(
-    listQuery.tag?.trim() && listQuery.statusIn && listQuery.statusIn.length > 1,
-  );
-}
-
 function isFirestoreIndexError(error: unknown): boolean {
   return error instanceof Error && /index/i.test(error.message);
-}
-
-function filterDesignsByTag(designs: Design[], tag: string): Design[] {
-  const normalizedTag = tag.trim().toLowerCase();
-
-  return designs.filter((design) => design.tags.includes(normalizedTag));
 }
 
 function designListTraceMetadata(
@@ -566,7 +553,7 @@ function designListTraceMetadata(
     listQuery.statusIn?.length ? `status in ${[...listQuery.statusIn].sort().join(",")}` : "",
     listQuery.aiReviewStatus ? `aiReviewStatus==${listQuery.aiReviewStatus}` : "",
     listQuery.categoryId ? "categoryId=={categoryId}" : "",
-    listQuery.tag ? "tags array-contains {tag}" : "",
+    listQuery.halftoneOnly === true ? "halftoneStaffDecision.value==true" : "",
     listQuery.companionSetIncomplete === true ? "companionSetIncomplete==true" : "",
   ].filter(Boolean);
   const sortField = listQuery.sortField ?? "updatedAt";
@@ -582,27 +569,6 @@ function designListTraceMetadata(
     triggerReason: "route",
   };
 }
-
-function mergeDesignListPages(
-  pages: DesignListPage[],
-  pageSize: number,
-  sortField: DesignListSortField = "updatedAt",
-  sortDirection: DesignListSortDirection = "desc",
-): DesignListPage {
-  const merged = new Map<string, Design>();
-
-  for (const page of pages) {
-    for (const design of page.designs) {
-      merged.set(design.id, design);
-    }
-  }
-
-  const sortedDesigns = sortDesignsForListQuery([...merged.values()], sortField, sortDirection);
-
-  return buildDesignListPage(sortedDesigns, pageSize, sortField);
-}
-
-const TAG_FILTER_FALLBACK_LIMIT = 500;
 
 async function fetchDesignListPageUncached(
   _caller: User,
@@ -681,30 +647,7 @@ export const designService = {
       return { designs: [], hasMore: false };
     }
 
-    const pageSize = listQuery.limitCount ?? DEFAULT_LIST_LIMIT;
-
     try {
-      if (shouldSplitStatusQueries(listQuery)) {
-        const statuses = listQuery.statusIn ?? [];
-        const pages = await Promise.all(
-          statuses.map((status) =>
-            fetchDesignListPage(caller, {
-              ...listQuery,
-              status,
-              statusIn: undefined,
-              cursor: undefined,
-            }),
-          ),
-        );
-
-        return mergeDesignListPages(
-          pages,
-          pageSize,
-          listQuery.sortField ?? "updatedAt",
-          listQuery.sortDirection ?? "desc",
-        );
-      }
-
       const page = await fetchDesignListPage(caller, listQuery);
 
       // Backfill-completeness guard (Owner QA Amendment 3 correction). A Firestore
@@ -729,36 +672,6 @@ export const designService = {
         return await fetchDesignListPage(caller, { ...listQuery, sortField: "createdAt" });
       }
 
-      if (listQuery.tag?.trim() && isFirestoreIndexError(error)) {
-        const fallbackPage = await fetchDesignListPage(caller, {
-          ...listQuery,
-          tag: undefined,
-          limitCount: TAG_FILTER_FALLBACK_LIMIT,
-          cursor: undefined,
-        });
-
-        let filteredDesigns = filterDesignsByTag(fallbackPage.designs, listQuery.tag);
-
-        if (listQuery.statusIn && listQuery.statusIn.length > 0) {
-          const allowedStatuses = new Set(listQuery.statusIn);
-          filteredDesigns = filteredDesigns.filter((design) =>
-            allowedStatuses.has(design.status),
-          );
-        } else if (listQuery.status) {
-          filteredDesigns = filteredDesigns.filter((design) => design.status === listQuery.status);
-        }
-
-        return buildDesignListPage(
-          sortDesignsForListQuery(
-            filteredDesigns,
-            listQuery.sortField ?? "updatedAt",
-            listQuery.sortDirection ?? "desc",
-          ),
-          pageSize,
-          listQuery.sortField ?? "updatedAt",
-        );
-      }
-
       throw new Error(getFirestoreErrorMessage(error, "Unable to load designs. Please try again."));
     }
   },
@@ -778,20 +691,6 @@ export const designService = {
     }
 
     try {
-      if (shouldSplitStatusQueries(listQuery)) {
-        const statuses = listQuery.statusIn ?? [];
-        const counts = await Promise.all(
-          statuses.map((status) =>
-            this.countDesigns(caller, {
-              ...listQuery,
-              status,
-              statusIn: undefined,
-            }),
-          ),
-        );
-        return counts.reduce((sum, count) => sum + count, 0);
-      }
-
       return await designCountCache.get(getDesignQueryCacheKey(listQuery), async () => {
         const countQuery = query(
           firestoreCollectionService.getDesignsCollection(),
@@ -1094,10 +993,6 @@ export const designService = {
 
     if (input.categoryId !== undefined) {
       updatePayload.categoryId = input.categoryId.trim() ? input.categoryId.trim() : deleteField();
-    }
-
-    if (input.tags !== undefined) {
-      updatePayload.tags = normalizeDesignTags(input.tags);
     }
 
     if (input.halftoneStaffDecision !== undefined) {

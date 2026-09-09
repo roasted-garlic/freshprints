@@ -14,55 +14,13 @@ import {
 } from './algoliaAdminClient';
 import {
   buildPortalCatalogAlgoliaRecord,
-  catalogTagDocumentIdFromName,
-  indexPortalCatalogTaxonomyTag,
   type PortalCatalogAlgoliaTaxonomyCategory,
-  type PortalCatalogAlgoliaTaxonomyTag,
 } from './buildPortalCatalogAlgoliaRecord';
 
-async function loadTaxonomyTagByDesignToken(
-  tagToken: string,
-): Promise<PortalCatalogAlgoliaTaxonomyTag | null> {
-  const direct = await adminDb.collection('tags').doc(tagToken).get();
-  const slug = catalogTagDocumentIdFromName(tagToken);
-  const snap =
-    direct.exists || !slug || slug === tagToken
-      ? direct
-      : await adminDb.collection('tags').doc(slug).get();
-  if (!snap.exists) return null;
-  const tagData = snap.data() ?? {};
-  if (typeof tagData.name !== 'string') return null;
-  return {
-    id: snap.id,
-    name: tagData.name,
-    aliases: Array.isArray(tagData.aliases)
-      ? tagData.aliases.filter((alias): alias is string => typeof alias === 'string')
-      : [],
-    status: typeof tagData.status === 'string' ? tagData.status : undefined,
-  };
-}
-
-async function loadTaxonomyForDesign(
+async function loadCategoryForDesign(
   data: Record<string, unknown>,
-): Promise<{
-  tagsById: Map<string, PortalCatalogAlgoliaTaxonomyTag>;
-  categoriesById: Map<string, PortalCatalogAlgoliaTaxonomyCategory>;
-}> {
-  const tagIds = Array.isArray(data.tags)
-    ? [...new Set(data.tags.filter((tag): tag is string => typeof tag === 'string' && Boolean(tag)))]
-    : [];
+): Promise<Map<string, PortalCatalogAlgoliaTaxonomyCategory>> {
   const categoryId = typeof data.categoryId === 'string' ? data.categoryId : '';
-
-  const tagsById = new Map<string, PortalCatalogAlgoliaTaxonomyTag>();
-  await Promise.all(
-    tagIds.map(async (tagToken) => {
-      const tag = await loadTaxonomyTagByDesignToken(tagToken);
-      if (!tag) return;
-      indexPortalCatalogTaxonomyTag(tagsById, tag);
-      // Also key the exact design.tags token so record builders resolve multi-word names.
-      tagsById.set(tagToken, tag);
-    }),
-  );
 
   const categoriesById = new Map<string, PortalCatalogAlgoliaTaxonomyCategory>();
   if (categoryId) {
@@ -75,7 +33,7 @@ async function loadTaxonomyForDesign(
     }
   }
 
-  return { tagsById, categoriesById };
+  return categoriesById;
 }
 
 async function recordPortalCatalogPublicationState(
@@ -154,11 +112,10 @@ export const syncPortalCatalogDesignToAlgolia = onDocumentWritten(
         return;
       }
 
-      const { tagsById, categoriesById } = await loadTaxonomyForDesign(after);
+      const categoriesById = await loadCategoryForDesign(after);
       const record = buildPortalCatalogAlgoliaRecord({
         designId,
         data: after,
-        tagsById,
         categoriesById,
       });
       if (!record) {
@@ -173,7 +130,6 @@ export const syncPortalCatalogDesignToAlgolia = onDocumentWritten(
       logger.info('algolia-portal-catalog-upsert', {
         designId,
         indexName,
-        tagCount: record.tagIds.length,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'unknown';

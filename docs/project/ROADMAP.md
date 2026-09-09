@@ -1,5 +1,7 @@
 # Fresh Prints Roadmap
 
+> 2026-09-09: **Legacy tag operational retirement + Smart Profile search parity — CLOSED (DEV)** — Goal `legacy-tag-operational-retirement-and-smart-profile-search-parity` **DONE** (Signoff **approved**). Owner DEV QA **PASS**. Portal/Studio active tag authority, tag search corpus, and tag facets retired; Smart Profile search and eight facets retained; exactly six reviewed Functions deployed to `fresh-prints-dev`; DEV Algolia reconcile processed 350 ready records. The deterministic read-only corrective audit found 20 former tag-name/alias samples with no preserved Ready-design baseline and no material regression. Historical `design.tags`, `tags/*`, taxonomy compatibility, Rules/indexes, and deployed tag-trigger/archive Functions remain preserved. Production, Portal/Studio publish, physical cleanup, commit, and push **NOT AUTHORIZED**. Autonomous **OFF**; Pass 2 **PARKED**; WS6 **NOT STARTED**. FreshForge **IDLE**. Signoff: `docs/workflow/reviews/2026-09-09-legacy-tag-operational-retirement-and-smart-profile-search-parity-signoff.md`. Next: `[NEEDS OWNER AUTHORIZATION: COMMIT/PUSH CLOSED TAG RETIREMENT GOAL]`.
+
 > 2026-09-08: **Portal show price commitment acknowledgment — CLOSED** — Goal `portal-show-price-commitment-ack` **DONE** (Signoff **approved_with_notes**). Review Show total + breakdown; Add to Show ack `portal-bidding-ack-v4`; Show Prices sidebar/FAQ/Show Limits; owner visual QA **PASS**. Functions DEV redeploy for live v4 **NOT AUTHORIZED** by this signoff. Commit/push and production **NOT AUTHORIZED**. FreshForge **IDLE**. Signoff: `docs/workflow/reviews/2026-09-08-portal-show-price-commitment-ack-signoff.md`.
 >
 > 2026-09-08: **Print request upload library consent icons — CLOSED** — Goal `print-request-upload-library-consent-detail` **DONE** (Signoff **approved**). Print Request item thumbs show green `CircleCheck` / red `Ban` for Design Library consent on customer uploads only. Owner visual QA **PASS**. Commit/push and Studio publish **NOT AUTHORIZED**. FreshForge **IDLE**. Signoff: `docs/workflow/reviews/2026-09-08-print-request-upload-library-consent-detail-signoff.md`.
@@ -1117,7 +1119,7 @@ Phase 3 complete when:
 
 ---
 
-## Phase 4 — Catalog Cleanup (2026-06-24)
+## Phase 4 — Catalog Cleanup (2026-06-24; historical baseline before 2026-09-09 tag retirement)
 
 **Delivered:**
 
@@ -1139,7 +1141,7 @@ Phase 3 complete when:
 
 ---
 
-# Phase 4
+# Phase 4 (historical baseline before 2026-09-09 tag retirement)
 
 ## Catalog Search And Organization
 
@@ -1156,6 +1158,9 @@ Make the **approved design catalog** easy to search and browse. Design Library i
 ---
 
 ## Objectives
+
+> The following Phase 4 bullets are retained as historical scope and are superseded for current
+> operational catalog behavior by Smart Profile + category + dedicated Halftone filtering.
 
 Build:
 
@@ -1958,5 +1963,3 @@ Fresh Prints succeeds when:
 * The platform remains maintainable for years.
 
 Every feature should move the project toward these goals.
-
-

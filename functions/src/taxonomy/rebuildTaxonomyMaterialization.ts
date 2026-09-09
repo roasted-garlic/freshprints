@@ -220,6 +220,33 @@ export async function readTaxonomyMaterializationCorpus(): Promise<
 }
 
 /**
+ * Category-only view for AI enrichment. Schema-v1 chunks still carry historical tags so older
+ * Studio/cache readers remain compatible; this adapter deliberately does not expose those tags to
+ * the active category resolver. A future versioned materialization may remove the compatibility
+ * payload after all deployed readers have moved off schema-v1.
+ */
+export async function readTaxonomyMaterializationCategories(): Promise<
+  | {
+      ok: true;
+      revision: number;
+      categories: TaxonomyMaterializationCorpus["categories"];
+      meta: TaxonomyMaterializationMeta;
+    }
+  | { ok: false; reason: string }
+> {
+  const materialized = await readTaxonomyMaterializationCorpus();
+  if (!materialized.ok) {
+    return materialized;
+  }
+  return {
+    ok: true,
+    revision: materialized.revision,
+    categories: materialized.corpus.categories,
+    meta: materialized.meta,
+  };
+}
+
+/**
  * Light revision peek for AI taxonomy cache — meta doc only (no chunk loads).
  * Used to invalidate process-local snapshots when materialization advances within TTL.
  */

@@ -7,14 +7,12 @@ import { TagChipInput } from "../../../shared/components/TagChipInput";
 import { TextInput } from "../../../shared/components/TextInput";
 import { Toggle } from "../../../shared/components/Toggle";
 import { ArtworkBackgroundFields } from "../../designs/components/ArtworkBackgroundFields";
-import type { CatalogTag } from "../../designs/types/catalogTag.types";
 import type { Design } from "../../designs/types/design.types";
 import type { AiReviewDraftForm } from "../types/aiReviewInbox.types";
 import { resolveAiSuggestions } from "../utils/aiProcessingOutput";
 import { resolveExistingCategoryChoice } from "../utils/resolveExistingCategoryChoice";
 
 interface AiReviewFormPanelProps {
-  approvedTags: CatalogTag[];
   canEdit: boolean;
   categoryOptions: { label: string; value: string }[];
   design: Design | null;
@@ -49,7 +47,6 @@ function formatStaffDecision(design: Design | null): string {
 }
 
 export function AiReviewFormPanel({
-  approvedTags,
   canEdit,
   categoryOptions,
   design,
@@ -184,18 +181,6 @@ export function AiReviewFormPanel({
         onChange={(event) => onChange("description", event.target.value)}
         onFocus={handleFocus}
         value={draftForm.description}
-      />
-
-      <TagChipInput
-        adjustmentHint={draftForm.tagsAdjustmentNote}
-        approvedTags={approvedTags}
-        disabled={!canEdit}
-        label="Tags"
-        name="aiReviewTags"
-        onBlur={handleBlur}
-        onChange={(nextValue) => onChange("tagsInput", nextValue)}
-        onFocus={handleFocus}
-        value={draftForm.tagsInput}
       />
 
       <div className="ai-review-halftone-panel">

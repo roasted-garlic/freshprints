@@ -6,7 +6,8 @@ export interface PortalShowCatalogDesignCard {
   thumbnailPath?: string;
   previewPath?: string;
   categoryId?: string;
-  tags: string[];
+  /** Human-only Halftone classification sourced from staff decision, not tags/Smart Profile. */
+  isHalftone?: boolean;
   isExplicitContent?: boolean;
   /** Production pixel width — required for Portal print-request sizing. */
   width: number;

@@ -4,7 +4,9 @@ export interface DesignFormValues {
   title: string;
   description: string;
   categoryId: string;
+  /** Legacy design tags are intentionally not editable; retained only for old form callers. */
   tagsInput: string;
+  halftoneStaffDecisionValue?: boolean;
   artworkBackgroundPreset: ArtworkBackgroundPreset;
   /** Raw custom hex input when preset is `custom` (with or without `#`). */
   artworkBackgroundCustomHex: string;

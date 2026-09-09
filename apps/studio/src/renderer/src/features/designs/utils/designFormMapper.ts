@@ -54,6 +54,7 @@ export function mapDesignToFormValues(design: Design): DesignFormValues {
     description: design.description ?? "",
     categoryId: design.categoryId ?? "",
     tagsInput: formatTagsInput(design.tags),
+    halftoneStaffDecisionValue: design.halftoneStaffDecision?.value === true,
     censoredTermsInput: formatTagsInput(design.censoredTerms ?? []),
     artworkPlacement: design.artworkPlacement ?? "",
     isExplicitContent: design.isExplicitContent ?? false,
@@ -111,7 +112,9 @@ export function buildEditDesignUpdateInput(formValues: DesignFormValues): Update
     title: formValues.title,
     description: formValues.description,
     categoryId: formValues.categoryId,
-    tags: parseTagsInput(formValues.tagsInput),
+    ...(formValues.halftoneStaffDecisionValue !== undefined
+      ? { halftoneStaffDecision: { value: formValues.halftoneStaffDecisionValue } }
+      : {}),
     censoredTerms: parseTagsInput(formValues.censoredTermsInput ?? ""),
     artworkBackgroundHex: artworkBackgroundHex ?? null,
     artworkPlacement: parseArtworkPlacement(formValues.artworkPlacement ?? "") ?? null,

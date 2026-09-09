@@ -1,6 +1,5 @@
 import type { ChangeEvent, ReactNode } from "react";
 
-import { syncHalftoneTagInList } from "@fresh-prints/shared/utils/halftoneReviewState";
 
 import { AutoResizeTextarea } from "../../../shared/components/AutoResizeTextarea";
 import { Select, type SelectOption } from "../../../shared/components/Select";
@@ -8,13 +7,10 @@ import { TagChipInput } from "../../../shared/components/TagChipInput";
 import { TextInput } from "../../../shared/components/TextInput";
 import { Toggle } from "../../../shared/components/Toggle";
 import { ARTWORK_PLACEMENT_SELECT_OPTIONS } from "../constants/artworkPlacement";
-import type { CatalogTag } from "../types/catalogTag.types";
 import type { DesignFormValues } from "../types/designForm.types";
-import { formatTagsInput, tryParseTagsInput } from "../utils/designFormMapper";
 import { ArtworkBackgroundFields } from "./ArtworkBackgroundFields";
 
 interface DesignFormFieldsProps {
-  approvedTags: CatalogTag[];
   categoryOptions: SelectOption[];
   children?: ReactNode;
   designId?: string;
@@ -26,10 +22,10 @@ interface DesignFormFieldsProps {
   onExplicitContentChange: (checked: boolean) => void;
   /** Deliberate lock against automatic Explicit mutation (ADR-FP-173). */
   onExplicitAutomationLockChange: (checked: boolean) => void;
+  onHalftoneChange: (checked: boolean) => void;
 }
 
 export function DesignFormFields({
-  approvedTags,
   categoryOptions,
   children,
   designId,
@@ -39,20 +35,13 @@ export function DesignFormFields({
   onChange,
   onExplicitContentChange,
   onExplicitAutomationLockChange,
+  onHalftoneChange,
 }: DesignFormFieldsProps) {
-  const parsedTags = tryParseTagsInput(formValues.tagsInput);
-  const isHalftone = parsedTags.some((tag) => tag.trim().toLowerCase() === "halftone");
 
   function handleFieldChange(field: keyof DesignFormValues) {
     return (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       onChange(field, event.target.value);
     };
-  }
-
-  function handleHalftoneChange(checked: boolean) {
-    onChange("tagsInput", formatTagsInput(syncHalftoneTagInList(parsedTags, checked)));
-    onChange("artworkBackgroundPreset", checked ? "lightBlack" : "grey");
-    onChange("artworkBackgroundCustomHex", "");
   }
 
   return (
@@ -88,14 +77,6 @@ export function DesignFormFields({
         value={formValues.categoryId}
       />
 
-      <TagChipInput
-        approvedTags={approvedTags}
-        label="Tags"
-        name="tagsInput"
-        onChange={(nextValue) => onChange("tagsInput", nextValue)}
-        value={formValues.tagsInput}
-      />
-
       <Select
         label="Placement"
         name="artworkPlacement"
@@ -108,14 +89,14 @@ export function DesignFormFields({
         <div className="design-form-halftone-copy">
           <p className="design-form-halftone-label">Halftone</p>
           <p className="design-form-hint">
-            Turns the canonical <code>halftone</code> tag on or off without typing it.
+            Uses the explicit staff classification; this setting is independent of tags, Smart Profile fields, and artwork background color.
           </p>
         </div>
         <Toggle
-          checked={isHalftone}
+          checked={formValues.halftoneStaffDecisionValue === true}
           label="Halftone"
           name="editDesignHalftone"
-          onChange={handleHalftoneChange}
+          onChange={onHalftoneChange}
           tone="success"
         />
       </div>

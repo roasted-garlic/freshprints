@@ -5,6 +5,8 @@
  * transactional read/write side (edge doc + `companionDesignIds` denorm sync).
  */
 
+export type CompanionSetStatusLabel = "Linked" | "Needs Companion" | "Not linked";
+
 /**
  * Deterministic ascending pair for a companion edge between `a` and `b`. Stable regardless of
  * call order, so `sortedCompanionPair(a, b)` and `sortedCompanionPair(b, a)` always agree.

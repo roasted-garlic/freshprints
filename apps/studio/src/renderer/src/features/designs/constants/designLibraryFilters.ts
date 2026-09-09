@@ -3,7 +3,6 @@ import type { DesignStatus } from "../types/designStatus.types";
 
 export const DESIGN_LIBRARY_SEARCH_QUERY_PARAM = "search";
 export const DESIGN_LIBRARY_CATEGORY_QUERY_PARAM = "category";
-export const DESIGN_LIBRARY_TAGS_QUERY_PARAM = "tags";
 export const DESIGN_LIBRARY_ARCHIVED_QUERY_PARAM = "archived";
 export const DESIGN_LIBRARY_NEEDS_COMPANION_QUERY_PARAM = "needsCompanion";
 export const DESIGN_LIBRARY_MODE_QUERY_PARAM = "mode";
@@ -12,8 +11,10 @@ export const DESIGN_LIBRARY_DESIGN_ID_QUERY_PARAM = "designId";
 
 /** @deprecated Legacy URL param — stripped on load; imported/processing redirects to AI Review */
 export const DESIGN_LIBRARY_STATUS_QUERY_PARAM = "status";
-/** @deprecated Legacy single-tag param — migrated to `tags` */
+/** @deprecated Legacy tag params are intentionally ignored; no tag URL contract remains. */
 export const DESIGN_LIBRARY_TAG_QUERY_PARAM = "tag";
+/** @deprecated Legacy tag params are intentionally ignored; no tag URL contract remains. */
+export const DESIGN_LIBRARY_TAGS_QUERY_PARAM = "tags";
 /** @deprecated Legacy URL param — stripped on load */
 export const DESIGN_LIBRARY_AI_REVIEW_QUERY_PARAM = "aiReview";
 
@@ -35,30 +36,7 @@ export interface DesignLibraryUrlFilters {
   needsCompanion?: boolean;
   requestId?: string;
   search?: string;
-  tags?: string[];
   designId?: string;
-}
-
-export function normalizeDesignLibraryTag(value: string): string {
-  return value.trim().toLowerCase();
-}
-
-export function parseDesignLibraryTagsParam(value: string | null): string[] {
-  if (!value?.trim()) {
-    return [];
-  }
-
-  const uniqueTags = new Set<string>();
-
-  for (const part of value.split(",")) {
-    const normalizedTag = normalizeDesignLibraryTag(part);
-
-    if (normalizedTag) {
-      uniqueTags.add(normalizedTag);
-    }
-  }
-
-  return [...uniqueTags].sort((left, right) => left.localeCompare(right));
 }
 
 function parseBooleanUrlParam(value: string | null): boolean {
@@ -81,17 +59,6 @@ export function parseDesignLibraryNeedsCompanionParam(value: string | null): boo
 }
 
 export function parseDesignLibraryUrlFilters(searchParams: URLSearchParams): DesignLibraryUrlFilters {
-  const legacyTag = searchParams.get(DESIGN_LIBRARY_TAG_QUERY_PARAM);
-  const tagsFromQuery = parseDesignLibraryTagsParam(searchParams.get(DESIGN_LIBRARY_TAGS_QUERY_PARAM));
-
-  if (legacyTag && tagsFromQuery.length === 0) {
-    const normalizedLegacyTag = normalizeDesignLibraryTag(legacyTag);
-
-    if (normalizedLegacyTag) {
-      tagsFromQuery.push(normalizedLegacyTag);
-    }
-  }
-
   const categoryId = searchParams.get(DESIGN_LIBRARY_CATEGORY_QUERY_PARAM)?.trim();
   const mode = searchParams.get(DESIGN_LIBRARY_MODE_QUERY_PARAM)?.trim();
   const requestId = searchParams.get(DESIGN_LIBRARY_REQUEST_ID_QUERY_PARAM)?.trim();
@@ -105,7 +72,6 @@ export function parseDesignLibraryUrlFilters(searchParams: URLSearchParams): Des
     ),
     requestId: requestId || undefined,
     search: searchParams.get(DESIGN_LIBRARY_SEARCH_QUERY_PARAM)?.trim() || undefined,
-    tags: tagsFromQuery.length > 0 ? tagsFromQuery : undefined,
     designId: searchParams.get(DESIGN_LIBRARY_DESIGN_ID_QUERY_PARAM)?.trim() || undefined,
   };
 }
@@ -143,9 +109,6 @@ export function buildDesignLibrarySearchParams(
     searchParams.set(DESIGN_LIBRARY_CATEGORY_QUERY_PARAM, filters.categoryId);
   }
 
-  if (filters.tags && filters.tags.length > 0) {
-    searchParams.set(DESIGN_LIBRARY_TAGS_QUERY_PARAM, filters.tags.join(","));
-  }
 
   if (filters.archived) {
     searchParams.set(DESIGN_LIBRARY_ARCHIVED_QUERY_PARAM, "true");
@@ -194,20 +157,21 @@ export function buildCatalogDesignListQuery(options: {
   categoryId?: string;
   /** Firestore Needs Companion browse — omit for Algolia-managed / non-companion paths */
   companionSetIncomplete?: boolean;
-  tags: string[];
+  halftoneOnly?: boolean;
 }): {
   categoryId?: string;
   companionSetIncomplete?: boolean;
+  halftoneOnly?: boolean;
   sortDirection: DesignListSortDirection;
   sortField: DesignListSortField;
   statusIn: DesignStatus[];
-  tag?: string;
 } {
   return {
     categoryId: options.categoryId,
     ...(options.companionSetIncomplete === true
       ? { companionSetIncomplete: true as const }
       : {}),
+    ...(options.halftoneOnly === true ? { halftoneOnly: true as const } : {}),
     sortDirection: DESIGN_LIBRARY_DEFAULT_SORT_DIRECTION,
     sortField: options.archived
       ? DESIGN_LIBRARY_ARCHIVED_SORT_FIELD
@@ -215,6 +179,5 @@ export function buildCatalogDesignListQuery(options: {
     statusIn: options.archived
       ? [...DESIGN_LIBRARY_ARCHIVED_STATUSES]
       : [...DESIGN_LIBRARY_CATALOG_STATUSES],
-    tag: options.tags[0],
   };
 }

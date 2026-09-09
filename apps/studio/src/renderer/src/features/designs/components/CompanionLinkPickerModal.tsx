@@ -31,7 +31,6 @@ interface CompanionLinkPickerModalProps {
 const COMPANION_LINK_PICKER_LIST_QUERY = buildCatalogDesignListQuery({
   archived: false,
   categoryId: undefined,
-  tags: [],
 });
 
 /**

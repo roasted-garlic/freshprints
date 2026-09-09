@@ -11,7 +11,7 @@ const DESIGN_DOCUMENT_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
 export interface ExactIdLibraryVisibilityOptions {
   browsingArchived: boolean;
   categoryId?: string;
-  selectedTags?: readonly string[];
+  halftoneOnly?: boolean;
 }
 
 export type ExactIdDesignLoader = (caller: User, ids: string[]) => Promise<Design[]>;
@@ -47,8 +47,7 @@ export function exactIdDesignMatchesLibraryFilters(
   if (options.categoryId?.trim() && design.categoryId !== options.categoryId.trim()) {
     return false;
   }
-  const selectedTags = options.selectedTags ?? [];
-  if (selectedTags.length > 0 && !selectedTags.every((tag) => design.tags.includes(tag))) {
+  if (options.halftoneOnly && design.halftoneStaffDecision?.value !== true) {
     return false;
   }
   return true;

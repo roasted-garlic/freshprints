@@ -326,24 +326,6 @@ export function DesignDetailsModal({
             </dl>
           </section>
 
-          <section
-            aria-labelledby="design-details-tags-title"
-            className="design-details-section"
-          >
-            <h3 id="design-details-tags-title">Tags</h3>
-            {design.tags.length > 0 ? (
-              <div className="design-details-tags">
-                {design.tags.map((tag) => (
-                  <Badge key={tag} variant="default">
-                    {tag}
-                  </Badge>
-                ))}
-              </div>
-            ) : (
-              <p className="design-details-muted">No tags assigned.</p>
-            )}
-          </section>
-
           <div className="design-details-action-stack">
             {canEdit && onEdit ? (
               <Button

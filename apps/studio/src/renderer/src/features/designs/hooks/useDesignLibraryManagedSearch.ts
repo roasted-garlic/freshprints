@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { User } from "../../users/types/user.types";
-import type { CatalogTag } from "../types/catalogTag.types";
 import {
   fetchVisibleExactIdDesign,
   looksLikeDesignDocumentId,
@@ -11,7 +10,7 @@ import { isDesignVisibleInLibraryScope } from "../utils/designLibraryMembership"
 import { countManagedSearchDroppedHits } from "../utils/countManagedSearchDroppedHits";
 import { deriveManagedCatalogHasMore } from "../utils/deriveManagedCatalogHasMore";
 import {
-  designMatchesSearchQuery,
+  filterDesignsByHalftone,
   filterDesignsByNeedsCompanion,
 } from "../utils/designLibrarySearch";
 import type { Design } from "../types/design.types";
@@ -27,25 +26,24 @@ import { designService } from "../services/designService";
 const DEFAULT_MANAGED_PAGE_SIZE = 100;
 
 export interface UseDesignLibraryManagedSearchOptions {
-  catalogTags?: readonly CatalogTag[];
   categoryId?: string;
   enabled: boolean;
   needsCompanion: boolean;
   pageSize?: number;
   searchQuery: string;
-  selectedTags: string[];
+  halftoneFilterOn?: boolean;
   smartFilters?: StudioAlgoliaSmartFilters;
   user: User | null;
 }
 
 /**
  * Ready-catalog managed search via Algolia (IDs) + Firestore hydrate.
- * Supports empty query + tag/category/smart filters (Workstream A/B + Slice 3).
+ * Supports empty query + category/smart filters (Workstream A/B + Slice 3).
  * Never loadAll / full collection scan. Fail closed when Algolia is not configured.
  *
  * After hydrate, results are consistency-filtered against current Smart Filter dimensions
  * so a just-removed facet value cannot keep a hit alive while Algolia eventually converges.
- * Do **not** re-apply title/tag text search on Algolia hits — that drops Smart Profile
+ * Do **not** re-apply title text search on Algolia hits — that drops Smart Profile
  * searchConcepts/themes/etc. that are not in legacy design text (Slice 3 DEV QA).
  */
 export function useDesignLibraryManagedSearch(options: UseDesignLibraryManagedSearchOptions): {
@@ -72,11 +70,8 @@ export function useDesignLibraryManagedSearch(options: UseDesignLibraryManagedSe
   const [error, setError] = useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = useState(0);
 
-  const selectedTagsKey = options.selectedTags.join("\u0000");
   const smartFiltersKey = serializeStudioAlgoliaSmartFilters(options.smartFilters);
   const searchKey = options.searchQuery.trim();
-  const catalogTagsRef = useRef(options.catalogTags ?? []);
-  catalogTagsRef.current = options.catalogTags ?? [];
   const smartFiltersRef = useRef(options.smartFilters);
   smartFiltersRef.current = options.smartFilters;
   const requestGenerationRef = useRef(0);
@@ -126,7 +121,7 @@ export function useDesignLibraryManagedSearch(options: UseDesignLibraryManagedSe
           {
             browsingArchived: false,
             categoryId: options.categoryId,
-            selectedTags: options.selectedTags,
+            halftoneOnly: options.halftoneFilterOn,
           },
           (loadCaller, ids) => designService.getDesignsByIds(loadCaller, ids),
         ).then((design) =>
@@ -139,7 +134,6 @@ export function useDesignLibraryManagedSearch(options: UseDesignLibraryManagedSe
         categoryId: options.categoryId,
         limit: pageSize,
         offset: 0,
-        selectedTags: options.selectedTags,
         smartFilters,
       })
       .then(async (page) => {
@@ -147,8 +141,9 @@ export function useDesignLibraryManagedSearch(options: UseDesignLibraryManagedSe
         const extra = await extraIdPromise;
         if (cancelled || generation !== requestGenerationRef.current) return;
         // Hydrate already drops non-ready; re-check ready scope then smart-filter consistency.
-        const readyKept = page.designs.filter((design) =>
-          isDesignVisibleInLibraryScope(design, "ready"),
+        const readyKept = filterDesignsByHalftone(
+          page.designs.filter((design) => isDesignVisibleInLibraryScope(design, "ready")),
+          Boolean(options.halftoneFilterOn),
         );
         const algoliaKept = readyKept.filter((design) =>
           designMatchesSmartFilters(design, smartFilters),
@@ -156,7 +151,7 @@ export function useDesignLibraryManagedSearch(options: UseDesignLibraryManagedSe
         const droppedAlgolia = countManagedSearchDroppedHits(page.hitCount, algoliaKept.length);
         const extraKept =
           extra &&
-          designMatchesSearchQuery(extra, searchKey, catalogTagsRef.current) &&
+          (!options.halftoneFilterOn || extra.halftoneStaffDecision?.value === true) &&
           designMatchesSmartFilters(extra, smartFilters)
             ? extra
             : null;
@@ -178,7 +173,7 @@ export function useDesignLibraryManagedSearch(options: UseDesignLibraryManagedSe
         if (cancelled || generation !== requestGenerationRef.current) return;
         if (
           extra &&
-          designMatchesSearchQuery(extra, searchKey, catalogTagsRef.current) &&
+          (!options.halftoneFilterOn || extra.halftoneStaffDecision?.value === true) &&
           designMatchesSmartFilters(extra, smartFilters)
         ) {
           setDesigns([extra]);
@@ -207,7 +202,7 @@ export function useDesignLibraryManagedSearch(options: UseDesignLibraryManagedSe
     return () => {
       cancelled = true;
     };
-    // selectedTagsKey / smartFiltersKey stand in for array/object contents
+    // smartFiltersKey stands in for object contents
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional stable keys
   }, [
     isConfigured,
@@ -217,7 +212,7 @@ export function useDesignLibraryManagedSearch(options: UseDesignLibraryManagedSe
     pageSize,
     refreshNonce,
     searchKey,
-    selectedTagsKey,
+    options.halftoneFilterOn,
     smartFiltersKey,
   ]);
 
@@ -249,13 +244,13 @@ export function useDesignLibraryManagedSearch(options: UseDesignLibraryManagedSe
         categoryId: options.categoryId,
         limit: pageSize,
         offset: nextOffset,
-        selectedTags: options.selectedTags,
         smartFilters,
       })
       .then((page) => {
         if (generation !== requestGenerationRef.current) return;
-        const readyKept = page.designs.filter((design) =>
-          isDesignVisibleInLibraryScope(design, "ready"),
+        const readyKept = filterDesignsByHalftone(
+          page.designs.filter((design) => isDesignVisibleInLibraryScope(design, "ready")),
+          Boolean(options.halftoneFilterOn),
         );
         const filtered = readyKept.filter((design) =>
           designMatchesSmartFilters(design, smartFilters),
@@ -287,7 +282,7 @@ export function useDesignLibraryManagedSearch(options: UseDesignLibraryManagedSe
     nextOffset,
     options.categoryId,
     options.enabled,
-    options.selectedTags,
+    options.halftoneFilterOn,
     options.user,
     pageSize,
     searchKey,

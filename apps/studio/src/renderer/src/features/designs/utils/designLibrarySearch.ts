@@ -1,297 +1,88 @@
-import type { Category } from "../types/category.types";
 import type { AiReviewStatus } from "../types/aiReview.types";
-import type { CatalogTag } from "../types/catalogTag.types";
+import type { Category } from "../types/category.types";
 import type { Design } from "../types/design.types";
-import {
-  catalogSearchTagLabelMatch,
-  catalogSearchTokensMatch,
-} from "@fresh-prints/shared/utils/catalogSearchNormalization";
 import { catalogDesignTextMatchesSearch } from "@fresh-prints/shared/utils/catalogDesignTextSearch";
 import { resolveDesignAiReviewDisplay } from "./aiReviewState";
 
 function resolveDesignSearchableTitle(design: Design): string {
   const suggestionTitle = design.aiSuggestions?.title?.trim();
-  if (suggestionTitle) {
-    return suggestionTitle;
-  }
-
-  return design.title?.trim() ?? "";
+  return suggestionTitle || design.title?.trim() || "";
 }
 
 function resolveDesignSearchableDescription(design: Design): string | null {
   const suggestionDescription = design.aiSuggestions?.description?.trim();
-  if (suggestionDescription) {
-    return suggestionDescription;
-  }
-
-  return design.description ?? null;
-}
-
-function resolveDesignSearchableTags(design: Design): string[] {
-  const tags = [...(design.tags ?? [])];
-
-  for (const tag of design.aiSuggestions?.tags ?? []) {
-    const trimmed = tag.trim();
-    if (trimmed && !tags.includes(trimmed)) {
-      tags.push(trimmed);
-    }
-  }
-
-  return tags;
-}
-
-/** Canonical design tag synced by staff Halftone confirmation (ADR-FP-080). */
-export const CANONICAL_HALFTONE_TAG = "halftone";
-
-export function isCanonicalHalftoneTag(tag: string): boolean {
-  return tag.trim().toLowerCase() === CANONICAL_HALFTONE_TAG;
-}
-
-export function selectedTagsIncludeHalftone(selectedTags: readonly string[]): boolean {
-  return selectedTags.some(isCanonicalHalftoneTag);
-}
-
-/** Non-halftone selected tags (for Tags button count / active chips). */
-export function visibleSelectedTags(selectedTags: readonly string[]): string[] {
-  return selectedTags.filter((tag) => !isCanonicalHalftoneTag(tag));
-}
-
-export function countVisibleSelectedTags(selectedTags: readonly string[]): number {
-  return visibleSelectedTags(selectedTags).length;
-}
-
-export function setHalftoneInSelectedTags(
-  selectedTags: readonly string[],
-  halftoneOn: boolean,
-): string[] {
-  const withoutHalftone = visibleSelectedTags(selectedTags);
-  if (!halftoneOn) {
-    return sortTagsAlphabetically(withoutHalftone);
-  }
-  return sortTagsAlphabetically([...withoutHalftone, CANONICAL_HALFTONE_TAG]);
+  return suggestionDescription || design.description || null;
 }
 
 /**
- * Whether a design should remain in text-search results given current Firestore fields.
- * When catalogTags are provided, tag name/alias matching mirrors Algolia `searchText` membership
- * (e.g. TMNT alias "turtles") so Studio can drop stale Algolia hits after a tag edit.
+ * Local Studio search deliberately excludes the retired tag taxonomy. The optional third
+ * argument remains only as a source-compatibility slot for stale callers; it is never read.
  */
 export function designMatchesSearchQuery(
   design: Design,
   searchQuery: string,
-  catalogTags: readonly CatalogTag[] = [],
+  _retiredCatalogTags?: readonly unknown[],
 ): boolean {
   const normalizedQuery = searchQuery.trim().toLowerCase();
+  if (!normalizedQuery) return true;
 
-  if (!normalizedQuery) {
-    return true;
-  }
-
-  const searchableTags = resolveDesignSearchableTags(design);
-  const coreFields = {
-    id: design.id,
-    title: resolveDesignSearchableTitle(design),
-    description: resolveDesignSearchableDescription(design),
-    tags: catalogTags.length === 0 ? searchableTags : [],
-  };
-
-  if (catalogDesignTextMatchesSearch(coreFields, normalizedQuery)) {
-    return true;
-  }
-
-  if (catalogTags.length === 0) {
-    return false;
-  }
-
-  const catalogTagLookup = buildCatalogTagLookup(catalogTags);
-  return searchableTags.some((tag) => tagMatchesCatalogSearch(tag, normalizedQuery, catalogTagLookup));
+  return catalogDesignTextMatchesSearch(
+    {
+      id: design.id,
+      title: resolveDesignSearchableTitle(design),
+      description: resolveDesignSearchableDescription(design),
+      tags: [],
+    },
+    normalizedQuery,
+  );
 }
 
 export function filterDesignsBySearch(
   designs: Design[],
   searchQuery: string,
-  catalogTags: readonly CatalogTag[] = [],
+  retiredCatalogTags?: readonly unknown[],
 ): Design[] {
-  const normalizedQuery = searchQuery.trim().toLowerCase();
-
-  if (!normalizedQuery) {
-    return designs;
-  }
-
-  return designs.filter((design) => designMatchesSearchQuery(design, searchQuery, catalogTags));
+  if (!searchQuery.trim()) return designs;
+  return designs.filter((design) =>
+    designMatchesSearchQuery(design, searchQuery, retiredCatalogTags),
+  );
 }
 
 export function filterDesignsByAiReviewStatus(
   designs: Design[],
   aiReviewStatus: AiReviewStatus | undefined,
 ): Design[] {
-  if (!aiReviewStatus) {
-    return designs;
-  }
-
+  if (!aiReviewStatus) return designs;
   return designs.filter(
     (design) => resolveDesignAiReviewDisplay(design).aiReviewStatus === aiReviewStatus,
   );
 }
 
-export function filterDesignsByTags(designs: Design[], selectedTags: string[]): Design[] {
-  if (selectedTags.length === 0) {
-    return designs;
-  }
-
-  return designs.filter((design) =>
-    selectedTags.every((tag) => design.tags.includes(tag)),
-  );
+/** Apply the human-only Halftone staff decision; legacy tags are never consulted. */
+export function filterDesignsByHalftone(designs: Design[], halftoneOn: boolean): Design[] {
+  if (!halftoneOn) return designs;
+  return designs.filter((design) => design.halftoneStaffDecision?.value === true);
 }
 
 export function filterDesignsByCategory(designs: Design[], categoryId?: string): Design[] {
-  if (!categoryId?.trim()) {
-    return designs;
-  }
-
+  if (!categoryId?.trim()) return designs;
   return designs.filter((design) => design.categoryId === categoryId);
 }
 
 /** "Needs Companion" — `companionSetIncomplete === true` (staff-only denorm on `Design`). */
-export function filterDesignsByNeedsCompanion(designs: Design[], needsCompanionOn: boolean): Design[] {
-  if (!needsCompanionOn) {
-    return designs;
-  }
-
+export function filterDesignsByNeedsCompanion(
+  designs: Design[],
+  needsCompanionOn: boolean,
+): Design[] {
+  if (!needsCompanionOn) return designs;
   return designs.filter((design) => design.companionSetIncomplete === true);
-}
-
-export function sortTagsAlphabetically(tags: string[]): string[] {
-  return [...tags].sort((left, right) => left.localeCompare(right, undefined, { sensitivity: "base" }));
-}
-
-export function filterTagsBySearch(availableTags: string[], searchQuery: string): string[] {
-  const normalizedQuery = searchQuery.trim().toLowerCase();
-
-  if (!normalizedQuery) {
-    return sortTagsAlphabetically(availableTags);
-  }
-
-  return sortTagsAlphabetically(
-    availableTags.filter((tag) => catalogSearchTagLabelMatch(tag, searchQuery)),
-  );
-}
-
-function normalizeTagLookupValue(value: string): string {
-  return value.trim().toLowerCase();
-}
-
-function buildCatalogTagLookup(catalogTags: readonly CatalogTag[] = []): Map<string, CatalogTag> {
-  const lookup = new Map<string, CatalogTag>();
-
-  for (const catalogTag of catalogTags) {
-    if (catalogTag.status !== "approved") {
-      continue;
-    }
-
-    lookup.set(normalizeTagLookupValue(catalogTag.name), catalogTag);
-    for (const alias of catalogTag.aliases) {
-      lookup.set(normalizeTagLookupValue(alias), catalogTag);
-    }
-  }
-
-  return lookup;
-}
-
-function tagLabelMatchesCatalogSearch(label: string, normalizedSearch: string): boolean {
-  if (!normalizedSearch) {
-    return true;
-  }
-
-  return catalogSearchTagLabelMatch(label, normalizedSearch);
-}
-
-function facetTagMatchesCatalogSearch(
-  tag: string,
-  normalizedSearch: string,
-  catalogTagLookup: Map<string, CatalogTag>,
-): boolean {
-  if (tagLabelMatchesCatalogSearch(tag, normalizedSearch)) {
-    return true;
-  }
-
-  const catalogTag = catalogTagLookup.get(normalizeTagLookupValue(tag));
-  if (!catalogTag) {
-    return false;
-  }
-
-  return (
-    tagLabelMatchesCatalogSearch(catalogTag.name, normalizedSearch) ||
-    catalogTag.aliases.some((alias) => tagLabelMatchesCatalogSearch(alias, normalizedSearch)) ||
-    catalogSearchTokensMatch(catalogTag.preferredWhen, normalizedSearch)
-  );
-}
-
-function tagMatchesCatalogSearch(
-  tag: string,
-  normalizedSearch: string,
-  catalogTagLookup: Map<string, CatalogTag>,
-): boolean {
-  if (!normalizedSearch) {
-    return true;
-  }
-
-  const normalizedTag = normalizeTagLookupValue(tag);
-
-  if (catalogSearchTokensMatch(tag, normalizedSearch)) {
-    return true;
-  }
-
-  const catalogTag = catalogTagLookup.get(normalizedTag);
-
-  if (!catalogTag) {
-    return catalogSearchTokensMatch(tag, normalizedSearch);
-  }
-
-  return (
-    catalogSearchTokensMatch(catalogTag.name, normalizedSearch) ||
-    catalogTag.aliases.some((alias) => catalogSearchTokensMatch(alias, normalizedSearch)) ||
-    catalogSearchTokensMatch(catalogTag.preferredWhen, normalizedSearch)
-  );
-}
-
-function sortFacetedTagsByCatalogStatus(
-  facetedTags: FacetedTag[],
-  catalogTagLookup: Map<string, CatalogTag>,
-): FacetedTag[] {
-  return [...facetedTags].sort((left, right) => {
-    const leftApproved = catalogTagLookup.has(normalizeTagLookupValue(left.tag));
-    const rightApproved = catalogTagLookup.has(normalizeTagLookupValue(right.tag));
-
-    if (leftApproved !== rightApproved) {
-      return leftApproved ? -1 : 1;
-    }
-
-    return left.tag.localeCompare(right.tag, undefined, { sensitivity: "base" });
-  });
-}
-
-export function collectUniqueDesignTags(designs: Design[]): string[] {
-  const tagSet = new Set<string>();
-
-  for (const design of designs) {
-    for (const tag of design.tags) {
-      tagSet.add(tag);
-    }
-  }
-
-  return sortTagsAlphabetically([...tagSet]);
 }
 
 export function collectUsedCategoryIds(designs: Design[]): string[] {
   const usedCategoryIds = new Set<string>();
-
   for (const design of designs) {
-    if (design.categoryId?.trim()) {
-      usedCategoryIds.add(design.categoryId);
-    }
+    if (design.categoryId?.trim()) usedCategoryIds.add(design.categoryId);
   }
-
   return [...usedCategoryIds].sort((left, right) =>
     left.localeCompare(right, undefined, { sensitivity: "base" }),
   );
@@ -313,27 +104,14 @@ export function buildCategoryFilterOptions(params: {
   const options: CategoryFilterOption[] = [{ label: "All categories", value: allOptionValue }];
 
   for (const category of categories) {
-    if (!category.isActive) {
-      continue;
-    }
-
-    if (!usedCategoryIds.has(category.id) && category.id !== selectedCategoryId) {
-      continue;
-    }
-
-    options.push({
-      label: category.name,
-      value: category.id,
-    });
+    if (!category.isActive) continue;
+    if (!usedCategoryIds.has(category.id) && category.id !== selectedCategoryId) continue;
+    options.push({ label: category.name, value: category.id });
   }
-
   return options;
 }
 
-/**
- * Category options from Algolia `categoryId` facet IDs (managed search).
- * Keeps selected category visible even when not in the facet set.
- */
+/** Category options from Algolia `categoryId` facet IDs; selected remains visible. */
 export function buildCategoryFilterOptionsFromFacetIds(params: {
   allOptionValue: string;
   categories: Category[];
@@ -345,150 +123,9 @@ export function buildCategoryFilterOptionsFromFacetIds(params: {
   const options: CategoryFilterOption[] = [{ label: "All categories", value: allOptionValue }];
 
   for (const category of categories) {
-    if (!category.isActive) {
-      continue;
-    }
-    if (!allowed.has(category.id) && category.id !== selectedCategoryId) {
-      continue;
-    }
-    options.push({
-      label: category.name,
-      value: category.id,
-    });
+    if (!category.isActive) continue;
+    if (!allowed.has(category.id) && category.id !== selectedCategoryId) continue;
+    options.push({ label: category.name, value: category.id });
   }
-
   return options;
-}
-
-export interface FacetedTag {
-  tag: string;
-  count: number;
-  isSelected: boolean;
-}
-
-/**
- * Computes live faceted tag options from a base design set.
- *
- * `baseDesigns` must already have every non-tag filter applied (catalog/archived scope,
- * search, category). `draftSelectedTags` are the tags currently checked — typically the
- * modal's draft selection, so the list narrows live as the user toggles.
- *
- * AND semantics: a design matches the selection only if it has *all* selected tags. For
- * each candidate tag the count is how many designs match all selected tags *plus* that
- * candidate. Candidates with a zero count are dropped — that is what prevents zero-result
- * combinations. Selected tags are always returned (so they can be unchecked) and their
- * count reflects the full current selection.
- *
- * Returned tags are sorted alphabetically. Pass `tagSearchQuery` to filter labels by
- * substring (selected tags always survive the search filter).
- *
- * Limitation: counts reflect only the designs present in `baseDesigns`. Callers that load
- * the full catalog scope into memory get whole-inventory counts; callers passing a
- * paginated subset get counts for that subset only.
- */
-export function computeFacetedTagsForDraftSelection(params: {
-  baseDesigns: Design[];
-  catalogTags?: CatalogTag[];
-  draftSelectedTags: string[];
-  tagSearchQuery?: string;
-}): FacetedTag[] {
-  const { baseDesigns, catalogTags, draftSelectedTags, tagSearchQuery } = params;
-  const catalogTagLookup = buildCatalogTagLookup(catalogTags);
-
-  // Designs already matching every selected tag — the pool every candidate narrows from.
-  const selectionMatches = filterDesignsByTags(baseDesigns, draftSelectedTags);
-  const selectedCount = selectionMatches.length;
-
-  // Candidate tags are every tag present on the matching designs, plus the selected tags
-  // themselves (so they remain visible even if selecting them emptied the pool).
-  const candidateTags = sortTagsAlphabetically([
-    ...new Set([...collectUniqueDesignTags(selectionMatches), ...draftSelectedTags]),
-  ]);
-
-  const normalizedSearch = tagSearchQuery?.trim().toLowerCase() ?? "";
-
-  const faceted: FacetedTag[] = [];
-
-  for (const tag of candidateTags) {
-    // Halftone is filtered via the dedicated dock toggle (same as Portal), not the tag modal.
-    if (isCanonicalHalftoneTag(tag)) {
-      continue;
-    }
-
-    const isSelected = draftSelectedTags.includes(tag);
-
-    // Count designs that match the selection plus this candidate tag.
-    const count = isSelected
-      ? selectedCount
-      : selectionMatches.filter((design) => design.tags.includes(tag)).length;
-
-    // Hide unrelated tags that would produce zero results (selected tags always stay).
-    if (count === 0 && !isSelected) {
-      continue;
-    }
-
-    // Apply the tag metadata search, but never hide a selected tag.
-    if (
-      normalizedSearch &&
-      !isSelected &&
-      !facetTagMatchesCatalogSearch(tag, normalizedSearch, catalogTagLookup)
-    ) {
-      continue;
-    }
-
-    faceted.push({ tag, count, isSelected });
-  }
-
-  return sortFacetedTagsByCatalogStatus(faceted, catalogTagLookup);
-}
-
-/**
- * Map Algolia `tagFacetKeys` name/count options into modal FacetedTag rows.
- * Excludes canonical halftone (dock toggle). Keeps draft-selected tags visible.
- */
-export function buildFacetedTagsFromAlgoliaOptions(params: {
-  catalogTags?: CatalogTag[];
-  draftSelectedTags: string[];
-  facetOptions: readonly { name: string; count: number }[];
-  tagSearchQuery?: string;
-}): FacetedTag[] {
-  const { catalogTags, draftSelectedTags, facetOptions, tagSearchQuery } = params;
-  const catalogTagLookup = buildCatalogTagLookup(catalogTags);
-  const normalizedSearch = tagSearchQuery?.trim().toLowerCase() ?? "";
-  const countByName = new Map<string, number>();
-
-  for (const option of facetOptions) {
-    const name = option.name.trim();
-    if (!name || isCanonicalHalftoneTag(name)) {
-      continue;
-    }
-    countByName.set(name, (countByName.get(name) ?? 0) + option.count);
-  }
-
-  for (const selected of draftSelectedTags) {
-    if (isCanonicalHalftoneTag(selected)) {
-      continue;
-    }
-    if (!countByName.has(selected)) {
-      countByName.set(selected, 0);
-    }
-  }
-
-  const faceted: FacetedTag[] = [];
-  for (const [tag, count] of countByName.entries()) {
-    const isSelected = draftSelectedTags.includes(tag);
-    if (count === 0 && !isSelected) {
-      continue;
-    }
-    if (
-      normalizedSearch &&
-      !isSelected &&
-      !facetTagMatchesCatalogSearch(tag, normalizedSearch, catalogTagLookup)
-    ) {
-      continue;
-    }
-    faceted.push({ tag, count, isSelected });
-  }
-
-  return sortFacetedTagsByCatalogStatus(faceted, catalogTagLookup);
 }

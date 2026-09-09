@@ -2,6 +2,16 @@
 
 > Full log: `docs/project/DECISIONS.md` — newest ADRs first.
 
+### Current operational boundary — legacy tag retirement (2026-09-09)
+
+- Active Portal/Studio catalog discovery is Smart Profile + category + dedicated Halftone; legacy
+  tags are not active filter, facet, display, URL, or Algolia search authority.
+- `tagIds` and `tagFacetKeys` are absent from the DEV Algolia searchable/faceting settings and
+  records; `objects`, `searchConcepts`, and `visibleText` remain searchable.
+- Historical `design.tags`, `tags/*`, schema-v1 taxonomy materialization, Rules/indexes, and
+  deployed tag-trigger/archive exports remain preserved compatibility. Physical cleanup and
+  compatibility deletion require a separate approved phase.
+
 ### ADR-FP-169: Automatic Explicit Content classification (source signed off 2026-09-05)
 
 - Global vocab: `settings/aiEnrichment.explicitContentAutomationTerms`; absent → defaults; `[]` intentional empty
@@ -304,7 +314,7 @@ Full ADR: `docs/project/DECISIONS.md` (ADR-FP-137). Details: `docs/standards/DEP
 | Deprecated on designs | `queued`, `printed` |
 | Approval | Staff AI Review / catalogApprovalService only |
 | Library scope | `ready` only by default |
-| ADR-FP-120 (amended 2026-07-31) | Failed portal-catalog publish recovery: Storage retries, catch-up loop, `retryPortalCatalogPublication`; tags/category stay full index-filter republish |
+| ADR-FP-120 (amended 2026-07-31; historical pre-retirement behavior) | Failed portal-catalog publish recovery: Storage retries, catch-up loop, `retryPortalCatalogPublication`; the former tags/category full index-filter republish behavior is retained as historical compatibility, not active DEV catalog search authority |
 
 ## Print Requests & Portal
 
@@ -341,8 +351,8 @@ Full ADR: `docs/project/DECISIONS.md` (ADR-FP-137). Details: `docs/standards/DEP
 
 | ADR | Summary |
 |-----|---------|
-| ADR-FP-044 / v21 | Business-context Gemini prompt; server-side tag/category resolve |
-| ADR-FP-042 / 043 | Optional tag rerank + suggestion author (defaults off) |
+| ADR-FP-044 / v21 (historical) | Business-context Gemini prompt; former server-side tag/category resolve path retained for compatibility; active DEV catalog authority is category-only |
+| ADR-FP-042 / 043 (historical) | Former optional tag rerank + suggestion author (defaults off); not active catalog search authority |
 | ADR-FP-040 | Gemini provider (OpenAI path removed) |
 
 ## Architecture constraints

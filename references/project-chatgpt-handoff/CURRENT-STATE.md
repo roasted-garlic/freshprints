@@ -1,20 +1,52 @@
 # Fresh Prints — Current State Snapshot
 
-**Last updated:** 2026-09-08
+**Last updated:** 2026-09-09
 
 ## FreshForge workflow
 
 | Item | Value |
 |---|---|
-| Status | **IDLE** — managed goal closed with approved signoff |
-| Parent | `Fresh Prints Studio / Print Request workflow` |
-| Active child phase | none |
+| Status | **IDLE** — legacy tag retirement goal closed after Owner DEV QA PASS |
+| Parent | `smart-catalog-intelligence-completion-and-legacy-tag-retirement` |
+| Active child phase | **none** — `legacy-tag-operational-retirement-and-smart-profile-search-parity` closed |
 | Closed goal | `print-request-direct-export-gangsheet-and-copy` |
-| Signoff | **approved** — Owner DEV QA **PASS** (2026-09-08); commit/push `ab319468` complete; Studio publish remains separately gated |
+| Signoff | Legacy tag retirement: **approved** — Owner DEV QA **PASS** (2026-09-09). Prior Print Request goal: **approved** — commit/push `ab319468` complete |
 | Related closed goal | `ai-processing-live-review-auto-process-and-ui-polish` |
 | Autonomous | **OFF** (`shadow`) |
 | Production | untouched |
-| Commit/push | `ab319468` pushed to `origin/development`; no force push |
+| Commit/push | Prior Print Request commit `ab319468` is pushed; legacy tag retirement commit/push **not authorized** |
+
+## Closed managed goal — legacy tag retirement and Smart Profile search parity
+
+The owner authorized the reviewed implementation and DEV checkpoint. The required decisions remain:
+Halftone is preserved as a dedicated `halftoneStaffDecision.value` filter; Studio `?tags=` and
+`?tag=` are ignored without mapping or crashes; and Ready designs with incomplete Smart Profiles
+remain discoverable through non-tag copy/category/exact ID without tag fallback. Portal, Studio,
+shared, and Functions source slices are complete. Historical `design.tags`, tag documents,
+schema-v1 taxonomy compatibility, Rules/indexes, and deployed tag-trigger/archive exports remain
+untouched for separate authorization. On 2026-09-09, exactly six reviewed DEV Functions were
+deployed, the existing local DEV Smart Filter flags were confirmed enabled, and the existing
+owner/admin Algolia reconcile rebuilt 350 ready records in `portal_catalog_ready_dev` after removing
+legacy tag settings. No production, Portal/Studio publish, Rules/index deploy, migration/backfill,
+tag deletion, commit, or push occurred. Owner DEV QA passed and the final DEV disposition was
+approved on 2026-09-09.
+
+Artifacts:
+
+- Plan: `docs/workflow/plans/2026-09-08-legacy-tag-operational-retirement-and-smart-profile-search-parity-plan.md`
+- Formal Review: `docs/workflow/reviews/2026-09-08-legacy-tag-operational-retirement-and-smart-profile-search-parity-review.md`
+- Implementation Review: `docs/workflow/reviews/2026-09-08-legacy-tag-operational-retirement-and-smart-profile-search-parity-implementation-review.md`
+- DEV cutover evidence: `docs/workflow/reviews/2026-09-09-legacy-tag-retirement-smart-profile-dev-cutover.md`
+- Signoff: `docs/workflow/reviews/2026-09-09-legacy-tag-operational-retirement-and-smart-profile-search-parity-signoff.md`
+
+Next checkpoint:
+`[NEEDS OWNER AUTHORIZATION: COMMIT/PUSH CLOSED TAG RETIREMENT GOAL]`
+
+Verification: Portal focused 82/82; Studio focused 39/39; Functions/shared focused 45/45; Portal
+TypeScript and Functions build pass; Studio TypeScript remains blocked by unrelated baseline
+errors; Portal Next build remains blocked by the Windows `.next/trace`/timeout issue; diff check
+passes. Live DEV parity checks and the read-only corrective audit pass. Signoff is approved and
+Owner DEV QA is **PASS**. Commit/push is the next separately gated checkpoint.
 
 ## Print Request goal signoff — CLOSED
 

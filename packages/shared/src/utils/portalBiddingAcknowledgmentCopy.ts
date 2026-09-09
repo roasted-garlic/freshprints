@@ -13,10 +13,10 @@ export const PORTAL_BIDDING_ACK_EXCLUSIVE_PARAGRAPH =
 
 /**
  * Short hint for size-tier / show-total modals (owner authoritative).
- * Explains show price × quantity commitment paid on Whatnot.
+ * Frames tier rates and request totals as estimated live-show prices (not a Portal charge).
  */
 export const PORTAL_SHOW_PRICE_COMMITMENT_HINT =
-  "Show prices are per print by size. You commit to pay each size's price × the quantity you request when you purchase on our Whatnot show.";
+  "These are estimated prices you will pay during the live Whatnot show. Submitting a request does not charge you.";
 
 /** Add to Show / queue-to-show confirmation copy (owner authoritative). */
 export function buildPortalBiddingAcknowledgmentCopy(): PortalBiddingAcknowledgmentCopy {

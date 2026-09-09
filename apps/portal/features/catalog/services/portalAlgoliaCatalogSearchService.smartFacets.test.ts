@@ -60,13 +60,12 @@ describe('buildSmartFacetAndFilters', () => {
 });
 
 describe('buildPortalAlgoliaCombinedFacetFilters', () => {
-  it('combines tag AND with smart facet AND', () => {
+  it('builds Smart Profile AND groups without legacy tag constraints', () => {
     assert.deepEqual(
       buildPortalAlgoliaCombinedFacetFilters({
-        selectedTags: ['funny', 'quote'],
         smartFilters: { subjects: ['cow'] },
       }),
-      [['tagIds:funny'], ['tagIds:quote'], ['subjects:cow']],
+      [['subjects:cow']],
     );
   });
 });
@@ -75,13 +74,12 @@ describe('smart facet search params', () => {
   it('requests only the 8 customer facet attributes', () => {
     const params = buildPortalAlgoliaSmartFacetSearchParams({
       search: 'highland',
-      selectedTags: ['funny'],
       categoryId: 'animals',
       smartFilters: { colors: ['brown'] },
     });
     assert.equal(params.query, 'highland');
     assert.equal(params.filters, 'categoryId:animals');
-    assert.deepEqual(params.facetFilters, [['tagIds:funny'], ['colors:brown']]);
+    assert.deepEqual(params.facetFilters, [['colors:brown']]);
     assert.deepEqual(params.facets, [...SMART_FACET_ATTRIBUTES]);
     assert.doesNotMatch(params.facets.join(','), /objects|searchConcepts|visibleText/);
   });
@@ -117,14 +115,13 @@ describe('category facet narrowing (Slice 3 refinement)', () => {
   it('omits selected category from facet constraints and only requests categoryId', () => {
     const params = buildPortalAlgoliaCategoryFacetSearchParams({
       search: 'nurse',
-      selectedTags: ['funny'],
       categoryId: 'occupations',
       smartFilters: { professionsGroups: ['nurses'] },
     });
     assert.equal(params.query, 'nurse');
     assert.equal(params.filters, undefined);
     assert.deepEqual(params.facets, ['categoryId']);
-    assert.deepEqual(params.facetFilters, [['tagIds:funny'], ['professionsGroups:nurses']]);
+    assert.deepEqual(params.facetFilters, [['professionsGroups:nurses']]);
   });
 
   it('narrows when search or smart filters are active, not for empty constraints', () => {
@@ -133,7 +130,6 @@ describe('category facet narrowing (Slice 3 refinement)', () => {
       hasPortalAlgoliaCategoryFacetConstraints({ smartFilters: { subjects: ['cow'] } }),
       true,
     );
-    assert.equal(hasPortalAlgoliaCategoryFacetConstraints({ selectedTags: ['funny'] }), true);
     assert.equal(hasPortalAlgoliaCategoryFacetConstraints({}), false);
   });
 

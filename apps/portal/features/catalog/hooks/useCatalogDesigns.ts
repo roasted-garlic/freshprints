@@ -29,9 +29,8 @@ import type {
 } from '../types/catalog.types';
 import {
   filterCatalogDesignsByCategory,
+  filterCatalogDesignsByHalftone,
   filterCatalogDesignsBySearch,
-  filterCatalogDesignsByTags,
-  getPrimaryCatalogQueryTag,
   resolveManagedSearchClientFilters,
 } from '../utils/catalogSearch';
 import { catalogNeedsFullClientHydrate } from '../utils/catalogNeedsFullClientHydrate';
@@ -43,7 +42,8 @@ import {
 
 export interface UseCatalogDesignsQuery {
   categoryId?: string;
-  selectedTags: string[];
+  /** Human-only Halftone classification; not a legacy tag or Smart Profile facet. */
+  halftoneFilterOn?: boolean;
   /** Slice 3 Smart Filters — any selection requires Algolia managed search. */
   smartFilters?: PortalSmartFilters;
   discoveryMode?: CatalogDiscoveryMode | null;
@@ -198,7 +198,6 @@ export function sortFieldForDiscovery(mode: CatalogDiscoveryMode | null | undefi
 export function buildServerListQuery(options: UseCatalogDesignsQuery): CatalogDesignListQuery {
   const discoveryMode = options.discoveryMode ?? null;
   const sortField = sortFieldForDiscovery(discoveryMode);
-  const primaryTag = getPrimaryCatalogQueryTag(options.selectedTags);
 
   return {
     categoryId: options.categoryId?.trim() || undefined,
@@ -207,7 +206,7 @@ export function buildServerListQuery(options: UseCatalogDesignsQuery): CatalogDe
         ? Date.now() - CATALOG_NEW_THIS_WEEK_DAYS * 24 * 60 * 60 * 1000
         : undefined,
     sortField,
-    tag: primaryTag,
+    halftoneOnly: options.halftoneFilterOn === true,
     ...(discoveryMode === 'mostLiked' ? { minFavoriteCount: 1 } : {}),
     ...(discoveryMode === 'recent' ? { requireLastAddedToShowAt: true } : {}),
   };
@@ -219,7 +218,7 @@ function serializeServerListQuery(listQuery: CatalogDesignListQuery): string {
     createdAfterMs: listQuery.createdAfterMs ?? null,
     readyAfterMs: listQuery.readyAfterMs ?? null,
     sortField: listQuery.sortField ?? 'readyAt',
-    tag: listQuery.tag ?? null,
+    halftoneOnly: listQuery.halftoneOnly === true,
     minFavoriteCount: listQuery.minFavoriteCount ?? null,
     requireLastAddedToShowAt: listQuery.requireLastAddedToShowAt === true,
   });
@@ -237,20 +236,21 @@ function toFriendlyCatalogError(error: unknown): string {
 }
 
 /**
- * Phase 1A ordinary browse gate: unfiltered, category, single-tag, and discovery sorts use
+ * Phase 1A ordinary browse gate: unfiltered, category, Halftone, and discovery sorts use
  * bounded Firestore without requiring generated assets or Algolia.
  *
- * Search, multi-tag, and Smart Filters use Stage 1b managed search (Algolia) when configured.
+ * Search and Smart Filters use Stage 1b managed search (Algolia) when configured. Halftone uses
+ * its existing Firestore staff-decision semantics so it does not depend on an undeployed index
+ * projection.
  */
 export function allowsBoundedCatalogFirestoreFallback(options: UseCatalogDesignsQuery): boolean {
   const hasSearch = Boolean(options.searchQuery?.trim());
-  const isMultiTag = options.selectedTags.length > 1;
   const hasSmart = hasSelectedSmartFilters(options.smartFilters);
-  return !hasSearch && !isMultiTag && !hasSmart;
+  return !hasSearch && !hasSmart;
 }
 
 function requiresManagedSearchPath(options: UseCatalogDesignsQuery): boolean {
-  return !allowsBoundedCatalogFirestoreFallback(options);
+  return !allowsBoundedCatalogFirestoreFallback(options) && options.halftoneFilterOn !== true;
 }
 
 export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
@@ -285,14 +285,6 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
   const [managedSearchNextOffset, setManagedSearchNextOffset] = useState(0);
   const hydrateGenerationRef = useRef(0);
 
-  const selectedTagsKey = useMemo(
-    () => [...options.selectedTags].sort((left, right) => left.localeCompare(right)).join('\0'),
-    [options.selectedTags],
-  );
-  const selectedTagsForAssets = useMemo(
-    () => (selectedTagsKey ? selectedTagsKey.split('\0') : []),
-    [selectedTagsKey],
-  );
   const smartFiltersKey = useMemo(
     () => serializeSmartFilters(options.smartFilters),
     [options.smartFilters],
@@ -301,7 +293,6 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
 
   const needsFullHydrate = catalogNeedsFullClientHydrate({
     searchQuery: options.searchQuery,
-    selectedTags: options.selectedTags,
   });
   const useOrdinaryFirestore = allowsBoundedCatalogFirestoreFallback(options);
   const useManagedSearch = requiresManagedSearchPath(options);
@@ -312,9 +303,9 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
       buildServerListQuery({
         categoryId: options.categoryId,
         discoveryMode: options.discoveryMode,
-        selectedTags: options.selectedTags,
+        halftoneFilterOn: options.halftoneFilterOn,
       }),
-    [options.categoryId, options.discoveryMode, options.selectedTags],
+    [options.categoryId, options.discoveryMode, options.halftoneFilterOn],
   );
   const serverListQueryKey = useMemo(
     () => serializeServerListQuery(serverListQuery),
@@ -345,7 +336,7 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
           const exactIdPromise = looksLikeDesignDocumentId(searchQuery)
             ? fetchVisibleExactIdCatalogDesign(searchQuery, {
                 categoryId: options.categoryId,
-                selectedTags: selectedTagsForAssets,
+                halftoneOnly: options.halftoneFilterOn,
               })
             : Promise.resolve(null);
 
@@ -354,7 +345,6 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
               const [algoliaPage, exactIdDesign] = await Promise.all([
                 portalAlgoliaCatalogSearchService.listMatchingDesigns(
                   searchQuery,
-                  selectedTagsForAssets,
                   {
                     categoryId: options.categoryId,
                     limit: pageSize,
@@ -498,8 +488,6 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
     options.discoveryMode,
     options.searchQuery,
     pageSize,
-    selectedTagsForAssets,
-    selectedTagsKey,
     smartFiltersForSearch,
     smartFiltersKey,
     serverListQuery,
@@ -509,24 +497,24 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
     useOrdinaryFirestore,
   ]);
 
-  // Managed search (Algolia) already applied q/tags/category — skip client re-filter so
-  // Smart Profile matches are not dropped by title/description/tags-only search.
+  // Managed search (Algolia) already applied q/category — skip client text re-filter so
+  // Smart Profile matches are not dropped by title/description-only search.
   const clientFilters = resolveManagedSearchClientFilters({
     isManagedSearchQuery,
     searchQuery: options.searchQuery,
     categoryId: options.categoryId,
-    selectedTags: options.selectedTags,
+    halftoneFilterOn: options.halftoneFilterOn === true,
   });
   const filteredDesigns = useFilteredCatalogDesigns({
     designs: allDesigns,
     search: clientFilters.search,
     categoryId: clientFilters.categoryId,
-    selectedTags: clientFilters.selectedTags,
+    halftoneFilterOn: clientFilters.halftoneFilterOn,
   });
 
   useEffect(() => {
     setVisibleCount(pageSize);
-  }, [options.searchQuery, pageSize, selectedTagsKey, smartFiltersKey, serverListQueryKey]);
+  }, [options.searchQuery, pageSize, smartFiltersKey, serverListQueryKey, options.halftoneFilterOn]);
 
   const visibleDesigns = useMemo(
     () => filteredDesigns.slice(0, visibleCount),
@@ -578,7 +566,6 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
             if (useAlgoliaSearch) {
               const page = await portalAlgoliaCatalogSearchService.listMatchingDesigns(
                 options.searchQuery ?? '',
-                selectedTagsForAssets,
                 {
                   categoryId: options.categoryId,
                   limit: pageSize,
@@ -675,7 +662,6 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
     options.categoryId,
     options.searchQuery,
     pageSize,
-    selectedTagsForAssets,
     smartFiltersForSearch,
     serverHasMore,
     serverListQuery,
@@ -823,29 +809,29 @@ export function useCatalogHomeDesigns(categories: CatalogCategory[] = []): {
 /** Discover search field placeholder — aggregate count only; never home-pool length. */
 export function buildDiscoverSearchPlaceholder(readyLibraryCount: number | null): string {
   if (readyLibraryCount === null) {
-    return 'title, tag or description';
+    return 'title, description, or ID';
   }
   if (readyLibraryCount === 1) {
-    return 'Search 1 design, by title, tag or description';
+    return 'Search 1 design, by title, description, or ID';
   }
-  return `Search ${readyLibraryCount.toLocaleString()} designs, by title, tag or description`;
+  return `Search ${readyLibraryCount.toLocaleString()} designs, by title, description, or ID`;
 }
 
 export function useFilteredCatalogDesigns(options: {
   designs: CatalogDesign[];
   search: string;
   categoryId?: string;
-  selectedTags: string[];
+  halftoneFilterOn?: boolean;
 }): CatalogDesign[] {
-  const { designs, search, categoryId, selectedTags } = options;
+  const { designs, search, categoryId, halftoneFilterOn = false } = options;
 
   return useMemo(
     () =>
-      filterCatalogDesignsByTags(
+      filterCatalogDesignsByHalftone(
         filterCatalogDesignsByCategory(filterCatalogDesignsBySearch(designs, search), categoryId),
-        selectedTags,
+        halftoneFilterOn,
       ),
-    [categoryId, designs, search, selectedTags],
+    [categoryId, designs, search, halftoneFilterOn],
   );
 }
 

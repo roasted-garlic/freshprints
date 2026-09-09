@@ -46,52 +46,41 @@ function designsFromIds(ids: string[], readyAtBase = 10_000): CatalogDesign[] {
   );
 }
 
-test('permits bounded Firestore ordinary browse for unfiltered, category, single-tag, and discovery', () => {
-  assert.equal(allowsBoundedCatalogFirestoreFallback({ selectedTags: [] }), true);
+test('permits bounded Firestore ordinary browse for unfiltered, category, Halftone, and discovery', () => {
+  assert.equal(allowsBoundedCatalogFirestoreFallback({}), true);
   assert.equal(
-    allowsBoundedCatalogFirestoreFallback({ categoryId: 'category-a', selectedTags: [] }),
+    allowsBoundedCatalogFirestoreFallback({ categoryId: 'category-a' }),
     true,
   );
   assert.equal(
-    allowsBoundedCatalogFirestoreFallback({ selectedTags: ['tag-a'] }),
+    allowsBoundedCatalogFirestoreFallback({ halftoneFilterOn: true }),
     true,
   );
   assert.equal(
-    allowsBoundedCatalogFirestoreFallback({ discoveryMode: 'new', selectedTags: [] }),
+    allowsBoundedCatalogFirestoreFallback({ discoveryMode: 'new' }),
     true,
   );
   assert.equal(
     allowsBoundedCatalogFirestoreFallback({
       categoryId: 'category-a',
       discoveryMode: 'popular',
-      selectedTags: ['tag-a'],
+      halftoneFilterOn: true,
     }),
     true,
   );
 });
 
-test('keeps search, multi-tag, and smart filters off the ordinary Firestore path', () => {
+test('keeps search and Smart Filters off the ordinary Firestore path', () => {
   assert.equal(
-    allowsBoundedCatalogFirestoreFallback({ searchQuery: 'best', selectedTags: [] }),
+    allowsBoundedCatalogFirestoreFallback({ searchQuery: 'best' }),
     false,
   );
   assert.equal(
-    allowsBoundedCatalogFirestoreFallback({ selectedTags: ['tag-a', 'tag-b'] }),
+    allowsBoundedCatalogFirestoreFallback({ categoryId: 'category-a', searchQuery: 'logo' }),
     false,
   );
   assert.equal(
-    allowsBoundedCatalogFirestoreFallback({
-      categoryId: 'category-a',
-      searchQuery: 'logo',
-      selectedTags: [],
-    }),
-    false,
-  );
-  assert.equal(
-    allowsBoundedCatalogFirestoreFallback({
-      selectedTags: [],
-      smartFilters: { subjects: ['cow'] },
-    }),
+    allowsBoundedCatalogFirestoreFallback({ smartFilters: { subjects: ['cow'] } }),
     false,
   );
 });
@@ -104,7 +93,7 @@ test('Discover new uses readyAt sort and readyAfterMs membership window', () => 
   assert.equal(sortFieldForDiscovery('recent'), 'lastAddedToShowAt');
 
   const before = Date.now();
-  const query = buildServerListQuery({ discoveryMode: 'new', selectedTags: [] });
+  const query = buildServerListQuery({ discoveryMode: 'new' });
   const after = Date.now();
 
   assert.equal(query.sortField, 'readyAt');
@@ -116,45 +105,38 @@ test('Discover new uses readyAt sort and readyAfterMs membership window', () => 
 
 test('ordinary browse and metric Discover modes do not set readyAfterMs', () => {
   assert.equal(
-    buildServerListQuery({ selectedTags: [] }).readyAfterMs,
+    buildServerListQuery({}).readyAfterMs,
     undefined,
   );
   assert.equal(
-    buildServerListQuery({ discoveryMode: 'popular', selectedTags: [] }).readyAfterMs,
+    buildServerListQuery({ discoveryMode: 'popular' }).readyAfterMs,
     undefined,
   );
   assert.equal(
-    buildServerListQuery({ discoveryMode: 'mostLiked', selectedTags: [] }).sortField,
+    buildServerListQuery({ discoveryMode: 'mostLiked' }).sortField,
     'favoriteCount',
   );
   assert.equal(
-    buildServerListQuery({ categoryId: 'cat-a', selectedTags: [] }).sortField,
+    buildServerListQuery({ categoryId: 'cat-a' }).sortField,
     'readyAt',
   );
-  assert.equal(
-    buildServerListQuery({ selectedTags: ['tag-a'] }).sortField,
-    'readyAt',
-  );
-  assert.equal(
-    buildServerListQuery({ selectedTags: ['halftone'] }).tag,
-    'halftone',
-  );
+  assert.equal(buildServerListQuery({ halftoneFilterOn: true }).halftoneOnly, true);
 });
 
 test('Most Liked and Recently Requested set explicit eligibility flags', () => {
-  const mostLiked = buildServerListQuery({ discoveryMode: 'mostLiked', selectedTags: [] });
+  const mostLiked = buildServerListQuery({ discoveryMode: 'mostLiked' });
   assert.equal(mostLiked.minFavoriteCount, 1);
   assert.equal(mostLiked.requireLastAddedToShowAt, undefined);
 
-  const recent = buildServerListQuery({ discoveryMode: 'recent', selectedTags: [] });
+  const recent = buildServerListQuery({ discoveryMode: 'recent' });
   assert.equal(recent.requireLastAddedToShowAt, true);
   assert.equal(recent.minFavoriteCount, undefined);
 
-  const popular = buildServerListQuery({ discoveryMode: 'popular', selectedTags: [] });
+  const popular = buildServerListQuery({ discoveryMode: 'popular' });
   assert.equal(popular.minFavoriteCount, undefined);
   assert.equal(popular.requireLastAddedToShowAt, undefined);
 
-  const ntw = buildServerListQuery({ discoveryMode: 'new', selectedTags: [] });
+  const ntw = buildServerListQuery({ discoveryMode: 'new' });
   assert.equal(ntw.minFavoriteCount, undefined);
   assert.equal(ntw.requireLastAddedToShowAt, undefined);
 });
@@ -326,29 +308,25 @@ test('C/D: page-boundary append never duplicates or drops prior ids', () => {
 });
 
 test('E: filter change query keys differ — NTW vs category (reset contract)', () => {
-  const ntw = buildServerListQuery({ discoveryMode: 'new', selectedTags: [] });
-  const category = buildServerListQuery({
-    categoryId: 'funny',
-    selectedTags: [],
-  });
+  const ntw = buildServerListQuery({ discoveryMode: 'new' });
+  const category = buildServerListQuery({ categoryId: 'funny' });
   assert.notEqual(ntw.readyAfterMs, undefined);
   assert.equal(category.readyAfterMs, undefined);
   assert.equal(category.categoryId, 'funny');
   assert.notEqual(JSON.stringify(ntw), JSON.stringify(category));
 });
 
-test('F/G: category and single-tag / Halftone queries stay on ordinary path with membership fields', () => {
+test('F/G: category and Halftone queries stay on ordinary path with membership fields', () => {
   const category = buildServerListQuery({
     categoryId: 'cat-big',
-    selectedTags: [],
   });
-  const tag = buildServerListQuery({ selectedTags: ['halftone'] });
-  assert.equal(allowsBoundedCatalogFirestoreFallback({ categoryId: 'cat-big', selectedTags: [] }), true);
-  assert.equal(allowsBoundedCatalogFirestoreFallback({ selectedTags: ['halftone'] }), true);
+  const halftone = buildServerListQuery({ halftoneFilterOn: true });
+  assert.equal(allowsBoundedCatalogFirestoreFallback({ categoryId: 'cat-big' }), true);
+  assert.equal(allowsBoundedCatalogFirestoreFallback({ halftoneFilterOn: true }), true);
   assert.equal(category.categoryId, 'cat-big');
-  assert.equal(tag.tag, 'halftone');
+  assert.equal(halftone.halftoneOnly, true);
   assert.equal(category.sortField, 'readyAt');
-  assert.equal(tag.sortField, 'readyAt');
+  assert.equal(halftone.sortField, 'readyAt');
 });
 
 test('H: count failure — badge not loaded-page length; retry then fail; list still independent', async () => {
@@ -539,15 +517,15 @@ test('Discover search placeholder uses aggregate readyLibraryCount, never design
 });
 
 test('buildDiscoverSearchPlaceholder: singular, locale thousands, and null fallback', () => {
-  assert.equal(buildDiscoverSearchPlaceholder(null), 'title, tag or description');
-  assert.equal(buildDiscoverSearchPlaceholder(1), 'Search 1 design, by title, tag or description');
+  assert.equal(buildDiscoverSearchPlaceholder(null), 'title, description, or ID');
+  assert.equal(buildDiscoverSearchPlaceholder(1), 'Search 1 design, by title, description, or ID');
   assert.equal(
     buildDiscoverSearchPlaceholder(85),
-    `Search ${(85).toLocaleString()} designs, by title, tag or description`,
+    `Search ${(85).toLocaleString()} designs, by title, description, or ID`,
   );
   assert.equal(
     buildDiscoverSearchPlaceholder(1243),
-    `Search ${(1243).toLocaleString()} designs, by title, tag or description`,
+    `Search ${(1243).toLocaleString()} designs, by title, description, or ID`,
   );
   // Bounded home pool of 85 must not be forced into the placeholder when total is larger.
   const homePoolLength = 85;

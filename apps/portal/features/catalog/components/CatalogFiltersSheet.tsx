@@ -13,9 +13,7 @@ interface CatalogFiltersSheetProps {
   onClose: () => void;
   onHalftoneFilterChange: (on: boolean) => void;
   onOpenSmartFilters?: () => void;
-  onOpenTags: () => void;
   selectedSmartFilterCount?: number;
-  selectedTagCount: number;
   showSmartFilters?: boolean;
 }
 
@@ -32,9 +30,7 @@ export function CatalogFiltersSheet({
   onClose,
   onHalftoneFilterChange,
   onOpenSmartFilters,
-  onOpenTags,
   selectedSmartFilterCount = 0,
-  selectedTagCount,
   showSmartFilters = false,
 }: CatalogFiltersSheetProps) {
   const { setShowExplicitContent, showExplicitContent } = useExplicitContentPreference();
@@ -177,24 +173,6 @@ export function CatalogFiltersSheet({
             </div>
           </section>
 
-          <section aria-labelledby="catalog-filters-tags-heading" className="catalog-filters-sheet-section">
-            <h3 className="catalog-filters-sheet-section-title" id="catalog-filters-tags-heading">
-              Tags
-            </h3>
-            <button
-              className="portal-button portal-button-secondary portal-button-leading-icon catalog-filters-tags-button"
-              onClick={onOpenTags}
-              type="button"
-            >
-              <FilterIcon />
-              <span>
-                {selectedTagCount > 0
-                  ? `Choose tags (${selectedTagCount} selected)`
-                  : 'Choose tags'}
-              </span>
-            </button>
-          </section>
-
           {showSmartFilters && onOpenSmartFilters ? (
             <section
               aria-labelledby="catalog-filters-smart-heading"
@@ -204,7 +182,7 @@ export function CatalogFiltersSheet({
                 Smart Filters
               </h3>
               <button
-                className="portal-button portal-button-secondary portal-button-leading-icon catalog-filters-tags-button"
+                className="portal-button portal-button-secondary portal-button-leading-icon catalog-filters-smart-button"
                 onClick={onOpenSmartFilters}
                 type="button"
               >

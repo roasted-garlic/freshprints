@@ -1,12 +1,11 @@
 import {
-  parsePortalCatalogTagFacetKey,
   PORTAL_CATALOG_ALGOLIA_SMART_FACET_ATTRIBUTES,
   type PortalCatalogAlgoliaRecord,
   type PortalCatalogAlgoliaSmartFacetAttribute,
 } from '@fresh-prints/shared/catalog-search/portalCatalogAlgoliaRecord';
 import { withPortalCatalogAlgoliaExactTokenSearchParams } from '@fresh-prints/shared/catalog-search/portalCatalogAlgoliaExactSearchParams';
 
-import type { CatalogDesign, CatalogTagOption } from '../types/catalog.types';
+import type { CatalogDesign } from '../types/catalog.types';
 import { catalogService } from './catalogService';
 import { getPortalAlgoliaIndexName, getPortalAlgoliaSearchClient } from './portalAlgoliaClient';
 
@@ -27,7 +26,6 @@ export interface PortalAlgoliaSearchPageOptions {
 /** Constraints that must refine tag / smart facet distribution (Stage 1b-C / Slice 3). */
 export interface PortalAlgoliaFacetQueryOptions {
   search?: string;
-  selectedTags?: string[];
   categoryId?: string;
   smartFilters?: PortalSmartFilters;
 }
@@ -41,15 +39,9 @@ export type PortalSmartFacetDistributions = Partial<
   Record<SmartFacetAttr, PortalSmartFacetOption[]>
 >;
 
-function buildTagAndFilters(tagIds: string[]): string[][] {
-  return [...new Set(tagIds.map((id) => id.trim()).filter(Boolean))].map((tagId) => [
-    `tagIds:${tagId}`,
-  ]);
-}
-
 /**
  * Build Algolia `facetFilters` AND groups for Smart Filters.
- * One inner array per selected value (same AND pattern as tags), e.g. `[['subjects:cow'], ['styles:cartoon']]`.
+ * One inner array per selected value (AND semantics), e.g. `[['subjects:cow'], ['styles:cartoon']]`.
  * Never includes objects / searchConcepts / visibleText.
  */
 export function buildSmartFacetAndFilters(smartFilters?: PortalSmartFilters): string[][] {
@@ -65,15 +57,11 @@ export function buildSmartFacetAndFilters(smartFilters?: PortalSmartFilters): st
   return filters;
 }
 
-/** Combine tag AND + smart facet AND into one facetFilters list. */
+/** Build the Smart facet AND groups used by catalog/search/category queries. */
 export function buildPortalAlgoliaCombinedFacetFilters(options: {
-  selectedTags?: string[];
   smartFilters?: PortalSmartFilters;
 }): string[][] {
-  return [
-    ...buildTagAndFilters(options.selectedTags ?? []),
-    ...buildSmartFacetAndFilters(options.smartFilters),
-  ];
+  return buildSmartFacetAndFilters(options.smartFilters);
 }
 
 export function countSelectedSmartFilters(smartFilters?: PortalSmartFilters): number {
@@ -110,43 +98,7 @@ export function hasPortalAlgoliaFacetConstraints(
 ): boolean {
   const search = options.search?.trim() ?? '';
   const categoryId = options.categoryId?.trim() ?? '';
-  const tags = (options.selectedTags ?? []).map((tag) => tag.trim()).filter(Boolean);
-  return Boolean(search || categoryId || tags.length > 0 || hasSelectedSmartFilters(options.smartFilters));
-}
-
-/**
- * Pure search params for Algolia tag facets — mirrors listMatchingDesigns filters
- * so modal counts match the active catalog result context.
- */
-export function buildPortalAlgoliaFacetSearchParams(
-  options: PortalAlgoliaFacetQueryOptions = {},
-): {
-  query: string;
-  facetFilters?: string[][];
-  filters?: string;
-  hitsPerPage: number;
-  facets: string[];
-  maxValuesPerFacet: number;
-  typoTolerance?: false;
-  queryType?: 'prefixLast';
-} {
-  const query = options.search?.trim() ?? '';
-  const facetFilters = buildPortalAlgoliaCombinedFacetFilters({
-    selectedTags: options.selectedTags,
-    smartFilters: options.smartFilters,
-  });
-  const categoryId = options.categoryId?.trim();
-  return withPortalCatalogAlgoliaExactTokenSearchParams(
-    {
-      query,
-      facetFilters: facetFilters.length > 0 ? facetFilters : undefined,
-      filters: categoryId ? `categoryId:${categoryId}` : undefined,
-      hitsPerPage: 0,
-      facets: ['tagFacetKeys'],
-      maxValuesPerFacet: 2000,
-    },
-    query,
-  );
+  return Boolean(search || categoryId || hasSelectedSmartFilters(options.smartFilters));
 }
 
 /**
@@ -167,7 +119,6 @@ export function buildPortalAlgoliaSmartFacetSearchParams(
 } {
   const query = options.search?.trim() ?? '';
   const facetFilters = buildPortalAlgoliaCombinedFacetFilters({
-    selectedTags: options.selectedTags,
     smartFilters: options.smartFilters,
   });
   const categoryId = options.categoryId?.trim();
@@ -186,7 +137,7 @@ export function buildPortalAlgoliaSmartFacetSearchParams(
 
 /**
  * Pure search params for Category facet distribution.
- * Uses query + tags + smart filters, but **never** the selected category filter —
+ * Uses query + smart filters, but **never** the selected category filter —
  * so the Category selector can list every category that still has matches.
  */
 export function buildPortalAlgoliaCategoryFacetSearchParams(
@@ -203,7 +154,6 @@ export function buildPortalAlgoliaCategoryFacetSearchParams(
 } {
   const query = options.search?.trim() ?? '';
   const facetFilters = buildPortalAlgoliaCombinedFacetFilters({
-    selectedTags: options.selectedTags,
     smartFilters: options.smartFilters,
   });
   return withPortalCatalogAlgoliaExactTokenSearchParams(
@@ -220,13 +170,12 @@ export function buildPortalAlgoliaCategoryFacetSearchParams(
   );
 }
 
-/** True when category options should narrow (search / tags / smart) — not category alone. */
+/** True when category options should narrow (search / Smart Filters) — not category alone. */
 export function hasPortalAlgoliaCategoryFacetConstraints(
-  options: Pick<PortalAlgoliaFacetQueryOptions, 'search' | 'selectedTags' | 'smartFilters'> = {},
+  options: Pick<PortalAlgoliaFacetQueryOptions, 'search' | 'smartFilters'> = {},
 ): boolean {
   const search = options.search?.trim() ?? '';
-  const tags = (options.selectedTags ?? []).map((tag) => tag.trim()).filter(Boolean);
-  return Boolean(search || tags.length > 0 || hasSelectedSmartFilters(options.smartFilters));
+  return Boolean(search || hasSelectedSmartFilters(options.smartFilters));
 }
 
 export interface PortalCategoryFacetOption {
@@ -263,29 +212,6 @@ export function buildNarrowedCatalogCategoryOptions(args: {
     options.push({ value: category.id, label: category.name });
   }
   return options;
-}
-
-/**
- * Convert Algolia tagFacetKeys distribution into tag options.
- * Merges by display name so split keys for the same label cannot under-count.
- */
-export function mergePortalAlgoliaTagFacetDistribution(
-  distribution: Record<string, number> | undefined,
-): CatalogTagOption[] {
-  if (!distribution) return [];
-  const countByName = new Map<string, { id: string; name: string; count: number }>();
-  for (const [key, count] of Object.entries(distribution)) {
-    if (count <= 0) continue;
-    const parsed = parsePortalCatalogTagFacetKey(key);
-    if (!parsed) continue;
-    const existing = countByName.get(parsed.name);
-    if (existing) {
-      existing.count += count;
-    } else {
-      countByName.set(parsed.name, { id: parsed.id, name: parsed.name, count });
-    }
-  }
-  return [...countByName.values()].sort((left, right) => left.name.localeCompare(right.name));
 }
 
 /** Convert a single Smart facet attribute distribution into sorted options. */
@@ -328,7 +254,6 @@ export async function hydrateCatalogDesignsPreservingOrder(
 export const portalAlgoliaCatalogSearchService = {
   async listMatchingDesigns(
     search: string,
-    selectedTags: string[],
     options: PortalAlgoliaSearchPageOptions = {},
   ): Promise<{ designs: CatalogDesign[]; total: number; hitCount: number }> {
     const client = getPortalAlgoliaSearchClient();
@@ -337,7 +262,6 @@ export const portalAlgoliaCatalogSearchService = {
     const offset = Math.max(0, options.offset ?? 0);
     const query = search.trim();
     const facetFilters = buildPortalAlgoliaCombinedFacetFilters({
-      selectedTags,
       smartFilters: options.smartFilters,
     });
     const filters = options.categoryId?.trim()
@@ -369,44 +293,9 @@ export const portalAlgoliaCatalogSearchService = {
     };
   },
 
-  async listTagFacets(): Promise<CatalogTagOption[]> {
-    const client = getPortalAlgoliaSearchClient();
-    const indexName = getPortalAlgoliaIndexName();
-    const response = await client.searchSingleIndex({
-      indexName,
-      searchParams: buildPortalAlgoliaFacetSearchParams({}),
-    });
-    return mergePortalAlgoliaTagFacetDistribution(
-      response.facets?.tagFacetKeys as Record<string, number> | undefined,
-    );
-  },
-
-  /**
-   * Tag facets refined by the same constraints as catalog search (q + tag AND + category + smart).
-   * With no constraints, equivalent to `listTagFacets()`.
-   */
-  async listNarrowedTagFacets(
-    options: PortalAlgoliaFacetQueryOptions = {},
-  ): Promise<CatalogTagOption[]> {
-    if (!hasPortalAlgoliaFacetConstraints(options)) {
-      return portalAlgoliaCatalogSearchService.listTagFacets();
-    }
-
-    const client = getPortalAlgoliaSearchClient();
-    const indexName = getPortalAlgoliaIndexName();
-    const response = await client.searchSingleIndex({
-      indexName,
-      searchParams: buildPortalAlgoliaFacetSearchParams(options),
-    });
-
-    return mergePortalAlgoliaTagFacetDistribution(
-      response.facets?.tagFacetKeys as Record<string, number> | undefined,
-    );
-  },
-
   /**
    * Smart Filter facet distributions for the 8 customer dimensions.
-   * Refined by q + tags + category + current smart selections (AND).
+   * Refined by q + category + current smart selections (AND).
    */
   async listSmartFacetDistributions(
     options: PortalAlgoliaFacetQueryOptions = {},
@@ -424,7 +313,7 @@ export const portalAlgoliaCatalogSearchService = {
 
   /**
    * CategoryId facet distribution for the Category selector.
-   * Refined by q + tags + smart filters — **never** by the selected category.
+   * Refined by q + Smart Filters — **never** by the selected category.
    */
   async listNarrowedCategoryFacets(
     options: Omit<PortalAlgoliaFacetQueryOptions, 'categoryId'> = {},

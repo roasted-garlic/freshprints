@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { ArrowLeft, FolderCog, Save, Tags, Trash2, X } from "lucide-react";
+import { ArrowLeft, FolderCog, Save, Trash2, X } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { withFirebaseTraceAction } from "@fresh-prints/shared/utils/firestoreUsageTrace";
@@ -18,10 +18,8 @@ import { DesignDetailsModal } from "../components/DesignDetailsModal";
 import { DesignGrid } from "../components/DesignGrid";
 import { DesignLibraryFilterControls } from "../components/DesignLibraryFilterControls";
 import { DesignLibrarySmartFilterModal } from "../components/DesignLibrarySmartFilterModal";
-import { DesignLibraryTagFilterModal } from "../components/DesignLibraryTagFilterModal";
 import { EditDesignModal } from "../components/EditDesignModal";
 import { PurgeArchivedDesignAssetsDialog } from "../components/PurgeArchivedDesignAssetsDialog";
-import { TagManagementModal } from "../components/TagManagementModal";
 import {
   buildCatalogDesignListQuery,
   buildDesignLibrarySearchParams,
@@ -46,7 +44,6 @@ import {
 import { usePrintRequestSelectionMode } from "../../print-requests/hooks/usePrintRequestSelectionMode";
 import { useArchiveDesign } from "../hooks/useArchiveDesign";
 import { useCategories } from "../hooks/useCategories";
-import { useCatalogTags } from "../hooks/useCatalogTags";
 import { useDesignLibraryManagedSearch } from "../hooks/useDesignLibraryManagedSearch";
 import { useDesigns } from "../hooks/useDesigns";
 import { useGeneratedDesignLibraryTaxonomy } from "../hooks/useGeneratedDesignLibraryTaxonomy";
@@ -69,14 +66,9 @@ import { isDesignVisibleInLibraryScope } from "../utils/designLibraryMembership"
 import {
   buildCategoryFilterOptions,
   buildCategoryFilterOptionsFromFacetIds,
-  countVisibleSelectedTags,
   filterDesignsByCategory,
   filterDesignsByNeedsCompanion,
   filterDesignsBySearch,
-  filterDesignsByTags,
-  selectedTagsIncludeHalftone,
-  setHalftoneInSelectedTags,
-  visibleSelectedTags,
 } from "../utils/designLibrarySearch";
 import { getDesignLibraryFirestoreLoadPolicy } from "../utils/designLibraryFirestoreLoadPolicy";
 
@@ -113,13 +105,12 @@ export function DesignLibraryPage() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>(ALL_FILTER_VALUE);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [halftoneFilterOn, setHalftoneFilterOn] = useState(false);
   const [smartFilters, setSmartFilters] = useState<StudioAlgoliaSmartFilters>(() =>
     emptyStudioAlgoliaSmartFilters(),
   );
   const [includeArchived, setIncludeArchived] = useState(false);
   const [needsCompanionFilter, setNeedsCompanionFilter] = useState(false);
-  const [isTagFilterModalOpen, setIsTagFilterModalOpen] = useState(false);
   const [isSmartFilterModalOpen, setIsSmartFilterModalOpen] = useState(false);
   const [selectedDesign, setSelectedDesign] = useState<Design | null>(null);
   const [editingDesign, setEditingDesign] = useState<Design | null>(null);
@@ -128,7 +119,6 @@ export function DesignLibraryPage() {
   const [activeQueueDesignIds, setActiveQueueDesignIds] = useState<string[]>([]);
   const [selectedPurgeIds, setSelectedPurgeIds] = useState<string[]>([]);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
-  const [isTagManagementModalOpen, setIsTagManagementModalOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   /** Skip one URL write-back after applying searchParams → local state (prevents archive toggle loop). */
@@ -148,7 +138,7 @@ export function DesignLibraryPage() {
 
     setSearchQuery(nextFilters.search ?? "");
     setCategoryFilter(nextFilters.categoryId ?? ALL_FILTER_VALUE);
-    setSelectedTags(nextFilters.tags ?? []);
+    setHalftoneFilterOn(false);
     setNeedsCompanionFilter(nextFilters.needsCompanion ?? false);
     // Sync from URL first; the write-back effect skips one pass via urlSyncGenerationRef
     // so it cannot immediately push the previous local archived value back into the URL
@@ -170,7 +160,6 @@ export function DesignLibraryPage() {
       needsCompanion: needsCompanionFilter,
       requestId: selectionModeActive ? selectionRequestId ?? undefined : undefined,
       search: searchQuery,
-      tags: selectedTags,
       designId: filters.designId,
     });
 
@@ -183,7 +172,6 @@ export function DesignLibraryPage() {
     needsCompanionFilter,
     searchParams,
     searchQuery,
-    selectedTags,
     selectionModeActive,
     selectionRequestId,
     setSearchParams,
@@ -209,8 +197,6 @@ export function DesignLibraryPage() {
     setDesignsToPurge([]);
     setSelectedPurgeIds([]);
     setIsCategoryModalOpen(false);
-    setIsTagManagementModalOpen(false);
-    setIsTagFilterModalOpen(false);
     setIsSmartFilterModalOpen(false);
     setSuccessMessage(null);
     setActionError(null);
@@ -230,8 +216,6 @@ export function DesignLibraryPage() {
     }
   }, [includeArchived, selectionModeActive]);
 
-  // The query intentionally omits `tags`: tag filtering is fully client-side (AND + live
-  // faceting), so we load the whole category/archived scope once and facet in memory.
   // Needs Companion (Firestore browse only): server-filter companionSetIncomplete so hasMore
   // matches visible companion results. Managed Algolia + Needs Companion remains client-filtered
   // (follow-up; out of this phase).
@@ -242,9 +226,9 @@ export function DesignLibraryPage() {
         categoryId: undefined,
         companionSetIncomplete:
           !selectionModeActive && !includeArchived && needsCompanionFilter ? true : undefined,
-        tags: [],
+        halftoneOnly: halftoneFilterOn,
       }),
-    [includeArchived, needsCompanionFilter, selectionModeActive],
+    [halftoneFilterOn, includeArchived, needsCompanionFilter, selectionModeActive],
   );
 
   const browsingArchived = selectionModeActive ? false : includeArchived;
@@ -254,12 +238,11 @@ export function DesignLibraryPage() {
   const smartFiltersUiEnabled = studioSmartFiltersEnabled() && !browsingArchived;
   const smartFiltersActive =
     smartFiltersUiEnabled && hasStudioAlgoliaSmartFilterSelections(smartFilters);
-  // Managed Algolia owns text search and/or tag/category/smart filters on ready catalog.
+  // Managed Algolia owns text search and/or category/smart filters on ready catalog.
   // needsCompanion-only uses Firestore browse with server companionSetIncomplete filter.
   const managedSearchActive =
     !browsingArchived &&
     (trimmedSearch.length > 0 ||
-      selectedTags.length > 0 ||
       Boolean(managedCategoryId) ||
       smartFiltersActive);
 
@@ -269,7 +252,6 @@ export function DesignLibraryPage() {
   const displayTaxonomy = useGeneratedDesignLibraryTaxonomy(includeArchived ? null : user);
   const {
     categories: displayCategories,
-    tags: displayTags,
     reloadFromAuthoritativeSource: reloadDisplayTaxonomy,
   } = displayTaxonomy;
   const firestoreLoadPolicy = getDesignLibraryFirestoreLoadPolicy({
@@ -277,22 +259,14 @@ export function DesignLibraryPage() {
     requiresFullCategoryManagementData: isCategoryModalOpen,
   });
 
-  // Categories/tags: normal browse uses displayTaxonomy; archived/management use Firestore hooks.
+  // Categories: normal browse uses displayTaxonomy; archived/management uses Firestore categories.
   const {
     categories: firestoreCategories,
     error: categoriesError,
     isLoading: isCategoriesLoading,
     reloadCategories,
   } = useCategories({ enabled: firestoreLoadPolicy.loadCategories });
-  const {
-    tags: firestoreCatalogTags,
-    reloadTags,
-  } = useCatalogTags({
-    enabled: firestoreLoadPolicy.loadTags,
-    includeArchived: true,
-  });
   const categories = includeArchived ? firestoreCategories : displayCategories;
-  const catalogTags = includeArchived ? firestoreCatalogTags : displayTags;
   const {
     designs,
     error: designsError,
@@ -317,12 +291,11 @@ export function DesignLibraryPage() {
     loadMore: managedSearchLoadMore,
     total: managedSearchTotal,
   } = useDesignLibraryManagedSearch({
-    catalogTags,
     categoryId: managedCategoryId,
     enabled: managedSearchActive,
     needsCompanion: needsCompanionFilter,
     searchQuery: trimmedSearch,
-    selectedTags,
+    halftoneFilterOn,
     smartFilters: smartFiltersActive ? smartFilters : undefined,
     user,
   });
@@ -341,7 +314,7 @@ export function DesignLibraryPage() {
       {
         browsingArchived: includeArchived && !selectionModeActive,
         categoryId: managedCategoryId,
-        selectedTags,
+        halftoneOnly: halftoneFilterOn,
       },
       (caller, ids) => designService.getDesignsByIds(caller, ids),
     )
@@ -363,8 +336,8 @@ export function DesignLibraryPage() {
     includeArchived,
     managedCategoryId,
     managedSearchActive,
+    halftoneFilterOn,
     selectionModeActive,
-    selectedTags,
     trimmedSearch,
     user,
   ]);
@@ -446,7 +419,6 @@ export function DesignLibraryPage() {
     managedSearchActive &&
     hasStudioAlgoliaCategoryFacetConstraints({
       search: trimmedSearch,
-      selectedTags,
       smartFilters: smartFiltersActive ? smartFilters : undefined,
     });
   const [algoliaCategoryFacetIds, setAlgoliaCategoryFacetIds] = useState<string[] | null>(null);
@@ -454,8 +426,6 @@ export function DesignLibraryPage() {
     () => serializeStudioAlgoliaSmartFilters(smartFiltersActive ? smartFilters : undefined),
     [smartFilters, smartFiltersActive],
   );
-  const selectedTagsKey = selectedTags.join("\u0000");
-
   useEffect(() => {
     if (!needsAlgoliaCategoryNarrowing || !studioAlgoliaCatalogSearchService.isConfigured()) {
       setAlgoliaCategoryFacetIds(null);
@@ -465,7 +435,6 @@ export function DesignLibraryPage() {
     void studioAlgoliaCatalogSearchService
       .listNarrowedCategoryFacets({
         search: trimmedSearch,
-        selectedTags,
         smartFilters: smartFiltersActive ? smartFilters : undefined,
       })
       .then((facets) => {
@@ -483,8 +452,6 @@ export function DesignLibraryPage() {
     };
   }, [
     needsAlgoliaCategoryNarrowing,
-    selectedTags,
-    selectedTagsKey,
     smartFilters,
     smartFiltersActive,
     smartFiltersKey,
@@ -505,7 +472,7 @@ export function DesignLibraryPage() {
     return buildCategoryFilterOptions({
       allOptionValue: ALL_FILTER_VALUE,
       categories,
-      designs: filterDesignsByTags(searchMatchedDesigns, managedSearchActive ? [] : selectedTags),
+      designs: searchMatchedDesigns,
       selectedCategoryId,
     });
   }, [
@@ -515,7 +482,6 @@ export function DesignLibraryPage() {
     managedSearchActive,
     needsAlgoliaCategoryNarrowing,
     searchMatchedDesigns,
-    selectedTags,
   ]);
 
   // Designs come straight from useDesigns (bounded, cursor-paginated, already sorted createdAt
@@ -525,25 +491,16 @@ export function DesignLibraryPage() {
   // for normal browse — Owner QA Amendment 3 correction). Sorting the page locally afterwards was
   // insufficient: a design reapproved today but created long ago falls outside a `createdAt`-
   // ordered page entirely, so no page-local sort could ever surface it.
-  // Managed search: Algolia hit order + Firestore hydrate (category/tags via Algolia; needsCompanion
+  // Managed search: Algolia hit order + Firestore hydrate (category/Smart Profile via Algolia; needsCompanion
   // already applied in useDesignLibraryManagedSearch).
-  const tagFilteredDesigns = useMemo(
-    () =>
-      managedSearchActive
-        ? categoryFilteredDesigns
-        : filterDesignsByTags(categoryFilteredDesigns, selectedTags),
-    [categoryFilteredDesigns, managedSearchActive, selectedTags],
-  );
   const filteredDesigns = useMemo(
     () =>
       managedSearchActive
-        ? tagFilteredDesigns
-        : filterDesignsByNeedsCompanion(tagFilteredDesigns, needsCompanionFilter),
-    [managedSearchActive, needsCompanionFilter, tagFilteredDesigns],
+        ? categoryFilteredDesigns
+        : filterDesignsByNeedsCompanion(categoryFilteredDesigns, needsCompanionFilter),
+    [categoryFilteredDesigns, managedSearchActive, needsCompanionFilter],
   );
 
-  const visibleTags = useMemo(() => visibleSelectedTags(selectedTags), [selectedTags]);
-  const visibleTagCount = useMemo(() => countVisibleSelectedTags(selectedTags), [selectedTags]);
   const smartFilterChips = useMemo(
     () => (smartFiltersUiEnabled ? listActiveStudioSmartFilterChips(smartFilters) : []),
     [smartFilters, smartFiltersUiEnabled],
@@ -552,12 +509,10 @@ export function DesignLibraryPage() {
     () => countStudioAlgoliaSmartFilterSelections(smartFilters),
     [smartFilters],
   );
-  const halftoneFilterOn = selectedTagsIncludeHalftone(selectedTags);
-
   const hasActiveFilters =
     searchQuery.trim().length > 0 ||
     categoryFilter !== ALL_FILTER_VALUE ||
-    selectedTags.length > 0 ||
+    halftoneFilterOn ||
     smartFilterCount > 0 ||
     needsCompanionFilter ||
     (selectionModeActive ? false : includeArchived);
@@ -565,7 +520,7 @@ export function DesignLibraryPage() {
   const countLabelMode = resolveDesignLibraryCountLabelMode({
     hasClientCategoryOrTags:
       !managedSearchActive &&
-      (categoryFilter !== ALL_FILTER_VALUE || selectedTags.length > 0),
+      (categoryFilter !== ALL_FILTER_VALUE || halftoneFilterOn),
     hasClientPageLocalSearch: !managedSearchActive && trimmedSearch.length > 0,
     includeArchived: browsingArchived,
     managedSearchActive,
@@ -590,17 +545,13 @@ export function DesignLibraryPage() {
   const clearFilters = useCallback(() => {
     setSearchQuery("");
     setCategoryFilter(ALL_FILTER_VALUE);
-    setSelectedTags([]);
+    setHalftoneFilterOn(false);
     setSmartFilters(emptyStudioAlgoliaSmartFilters());
     setNeedsCompanionFilter(false);
     if (!selectionModeActive) {
       setIncludeArchived(false);
     }
   }, [selectionModeActive]);
-
-  const removeSelectedTag = useCallback((tagToRemove: string) => {
-    setSelectedTags((currentTags) => currentTags.filter((tag) => tag !== tagToRemove));
-  }, []);
 
   const removeSmartFilterValue = useCallback(
     (attribute: keyof StudioAlgoliaSmartFilters, value: string) => {
@@ -619,7 +570,7 @@ export function DesignLibraryPage() {
   );
 
   const handleHalftoneFilterChange = useCallback((halftoneOn: boolean) => {
-    setSelectedTags((currentTags) => setHalftoneInSelectedTags(currentTags, halftoneOn));
+    setHalftoneFilterOn(halftoneOn);
   }, []);
 
   const handleNeedsCompanionFilterChange = useCallback((needsCompanionOn: boolean) => {
@@ -630,17 +581,12 @@ export function DesignLibraryPage() {
     // Firestore (useDesigns) is the unconditional design-list authority — always reload it so a
     // just-completed action (approval, archive, edit, restore) is reflected immediately, not only
     // after a later generated-snapshot republish. Category management explicitly enables/reloads
-    // its own Firestore-backed hook when open; TagManagementModal owns its own full Firestore hook.
-    // reloadCategories/reloadTags remain safe no-ops when their hooks are disabled.
-    // After Tag Management writes, also refresh display taxonomy from authoritative Firestore lists
-    // so newly created (including featured) tags appear in design TagChipInput before materialization lag.
     await Promise.all([
       reloadDesigns(),
       reloadCategories(),
-      reloadTags(),
       includeArchived ? Promise.resolve() : reloadDisplayTaxonomy(),
     ]);
-  }, [includeArchived, reloadCategories, reloadDesigns, reloadDisplayTaxonomy, reloadTags]);
+  }, [includeArchived, reloadCategories, reloadDesigns, reloadDisplayTaxonomy]);
 
   const dismissSuccessMessage = useCallback(() => {
     setSuccessMessage(null);
@@ -654,12 +600,6 @@ export function DesignLibraryPage() {
     setSuccessMessage(null);
     setActionError(null);
     setIsCategoryModalOpen(true);
-  }, []);
-
-  const openTagManagementModal = useCallback(() => {
-    setSuccessMessage(null);
-    setActionError(null);
-    setIsTagManagementModalOpen(true);
   }, []);
 
   const openDesignDetails = useCallback(
@@ -1074,7 +1014,7 @@ export function DesignLibraryPage() {
     }
   }, [buildSelectionExitPath, navigate, selectionMode, showSuccessMessage]);
 
-  // Search, category, and tags live in the fixed page filter dock. The archive toggle
+  // Search, category, and discovery filters live in the fixed page filter dock. The archive toggle
   // remains in the app header next to the theme toggle because it switches catalog scope.
   const shellHeaderConfig = useMemo(() => {
     if (selectionModeActive) {
@@ -1093,11 +1033,6 @@ export function DesignLibraryPage() {
           label: "Categories",
           onClick: openCategoryModal,
         },
-        {
-          icon: <Tags aria-hidden="true" size={16} strokeWidth={2} />,
-          label: "Tags",
-          onClick: openTagManagementModal,
-        },
       ],
       title: "Design Library",
       description: includeArchived
@@ -1113,7 +1048,6 @@ export function DesignLibraryPage() {
   }, [
     includeArchived,
     openCategoryModal,
-    openTagManagementModal,
     selectionMode.printRequest,
     selectionModeActive,
   ]);
@@ -1276,33 +1210,12 @@ export function DesignLibraryPage() {
               onHalftoneFilterChange={handleHalftoneFilterChange}
               onNeedsCompanionFilterChange={handleNeedsCompanionFilterChange}
               onOpenSmartFilters={() => setIsSmartFilterModalOpen(true)}
-              onOpenTags={() => setIsTagFilterModalOpen(true)}
               onSearchChange={setSearchQuery}
               searchQuery={searchQuery}
               selectedSmartFilterCount={smartFilterCount}
-              selectedTagCount={visibleTagCount}
               showSmartFilters={smartFiltersUiEnabled}
             />
           </div>
-
-          {visibleTags.length > 0 ? (
-            <div className="design-library-active-tags" aria-label="Active tag filters">
-              <span className="design-library-active-tags-label">Tags:</span>
-              {visibleTags.map((tag) => (
-                <span className="design-library-active-tag" key={tag}>
-                  <span>{tag}</span>
-                  <button
-                    aria-label={`Remove ${tag} tag filter`}
-                    className="design-library-active-tag-remove"
-                    onClick={() => removeSelectedTag(tag)}
-                    type="button"
-                  >
-                    <X aria-hidden="true" size={12} strokeWidth={2.25} />
-                  </button>
-                </span>
-              ))}
-            </div>
-          ) : null}
 
           {smartFilterChips.length > 0 ? (
             <div className="design-library-active-tags" aria-label="Active Smart Filters">
@@ -1357,25 +1270,6 @@ export function DesignLibraryPage() {
         </div>
       </section>
 
-      <DesignLibraryTagFilterModal
-        algoliaFacetContext={
-          browsingArchived
-            ? null
-            : {
-                categoryId: managedCategoryId,
-                searchQuery: trimmedSearch,
-              }
-        }
-        baseDesigns={categoryFilteredDesigns}
-        catalogTags={catalogTags}
-        isOpen={isTagFilterModalOpen}
-        onApply={setSelectedTags}
-        onClose={() => setIsTagFilterModalOpen(false)}
-        selectedTags={selectedTags}
-        smartFilters={smartFiltersActive ? smartFilters : undefined}
-        useAlgoliaFacets={!browsingArchived}
-      />
-
       {smartFiltersUiEnabled ? (
         <DesignLibrarySmartFilterModal
           algoliaFacetContext={{
@@ -1385,7 +1279,6 @@ export function DesignLibraryPage() {
           isOpen={isSmartFilterModalOpen}
           onApply={setSmartFilters}
           onClose={() => setIsSmartFilterModalOpen(false)}
-          selectedTags={selectedTags}
           smartFilters={smartFilters}
         />
       ) : null}
@@ -1441,7 +1334,6 @@ export function DesignLibraryPage() {
       />
 
       <EditDesignModal
-        approvedTags={catalogTags}
         categories={categories}
         design={editingDesign}
         isOpen={editingDesign !== null}
@@ -1455,14 +1347,6 @@ export function DesignLibraryPage() {
         onClose={() => setIsCategoryModalOpen(false)}
         onUpdated={handleCategoriesUpdated}
       />
-
-      {isTagManagementModalOpen ? (
-        <TagManagementModal
-          isOpen
-          onClose={() => setIsTagManagementModalOpen(false)}
-          onUpdated={refreshCatalog}
-        />
-      ) : null}
 
       <ArchiveDesignConfirmDialog
         design={designToArchive}

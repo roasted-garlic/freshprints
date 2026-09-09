@@ -333,9 +333,19 @@ Proof-ready emails are the next planned backend phase. The design will put Resen
 
 ---
 
-## AI enrichment (Studio catalog)
+## Current operational boundary — legacy tag retirement (2026-09-09)
 
-Current prompt target: **`catalog-enrich-v21`** (Gemini vision; business-context framing). Provider key: Firebase Secret Manager (`GEMINI_API_KEY`). Settings: `settings/aiEnrichment` (vision model, optional tag rerank / suggestion author modes — defaults **off**).
+The active DEV catalog/Algolia path is category-only for taxonomy authority and uses Smart Profile
+fields, category, copy, exact IDs, and dedicated Halftone as applicable. It does not hydrate legacy
+tags or use tag terms for search, facets, or record-change classification. Historical tag/reranker
+material, compatibility shapes, and deployed tag-trigger/archive exports remain retained and
+deferred; this closeout did not delete them or change production.
+
+## Historical AI enrichment snapshot (retained compatibility reference)
+
+The older prompt snapshot below records the pre-retirement v21 path. Its optional tag rerank /
+suggestion-author modes are historical compatibility material, not active catalog search authority.
+Provider key: Firebase Secret Manager (`GEMINI_API_KEY`).
 
 ```
 enqueueAiEnrichment → onDesignAiEnrichmentQueued

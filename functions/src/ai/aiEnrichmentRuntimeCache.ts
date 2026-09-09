@@ -1,10 +1,8 @@
 import { randomUUID } from "node:crypto";
 
 import { loadAiEnrichmentSettings, type AiEnrichmentSettingsLoaded } from "./loadAiEnrichmentSettings";
-import type { CatalogTag } from "../../../packages/shared/src/types/catalogTag.types";
 import { logPipelineEvent } from "../lib/pipelineLog";
 import {
-  aiSnapshotTagsToCatalogTags,
   clearAiCatalogReferenceSnapshotCache,
   loadAiCatalogReferenceSnapshot,
 } from "./loadAiCatalogReferenceSnapshot";
@@ -113,15 +111,4 @@ export async function loadCachedActiveCategories(
     names: snapshot.categoryNames,
     idsByName: snapshot.categoryIdsByName,
   };
-}
-
-/**
- * Thin adapter over the sole taxonomy TTL/in-flight boundary in
- * `loadAiCatalogReferenceSnapshot`. No independent tags TTL.
- */
-export async function loadCachedApprovedTags(
-  context?: AiEnrichmentReadDiagnosticContext,
-): Promise<CatalogTag[]> {
-  const snapshot = await loadAiCatalogReferenceSnapshot(context);
-  return aiSnapshotTagsToCatalogTags(snapshot);
 }

@@ -34,8 +34,6 @@ interface CatalogSmartFilterModalProps {
   isOpen: boolean;
   onApply: (smartFilters: PortalSmartFilters) => void;
   onClose: () => void;
-  /** Active legacy tag filters — refine Smart facet counts under the same AND context. */
-  selectedTags?: string[];
   smartFilters: PortalSmartFilters;
 }
 
@@ -115,7 +113,6 @@ export function CatalogSmartFilterModal({
   isOpen,
   onApply,
   onClose,
-  selectedTags = [],
   smartFilters,
 }: CatalogSmartFilterModalProps) {
   const [activeAttr, setActiveAttr] = useState<SmartFacetAttr>('subjects');
@@ -147,11 +144,6 @@ export function CatalogSmartFilterModal({
 
   const appliedCatalogSearch = catalogSearchQuery.trim();
   const appliedCategoryId = categoryId.trim();
-  const selectedTagsKey = useMemo(
-    () => [...selectedTags].map((tag) => tag.trim()).filter(Boolean).sort().join('\0'),
-    [selectedTags],
-  );
-
   useEffect(() => {
     if (!isOpen) {
       return;
@@ -159,7 +151,6 @@ export function CatalogSmartFilterModal({
 
     let isCancelled = false;
     const generation = ++loadGenerationRef.current;
-    const tags = selectedTagsKey ? selectedTagsKey.split('\0') : [];
     const draft: PortalSmartFilters = {};
     if (draftKey) {
       for (const part of draftKey.split('\u0000')) {
@@ -180,7 +171,6 @@ export function CatalogSmartFilterModal({
       .listSmartFacetDistributions({
         search: appliedCatalogSearch || undefined,
         categoryId: appliedCategoryId || undefined,
-        selectedTags: tags,
         smartFilters: draft,
       })
       .then((result) => {
@@ -198,7 +188,7 @@ export function CatalogSmartFilterModal({
     return () => {
       isCancelled = true;
     };
-  }, [appliedCatalogSearch, appliedCategoryId, draftKey, isOpen, selectedTagsKey]);
+  }, [appliedCatalogSearch, appliedCategoryId, draftKey, isOpen]);
 
   const activeDistribution = useMemo(
     () => distributions?.[activeAttr] ?? [],

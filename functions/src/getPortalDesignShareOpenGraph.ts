@@ -19,7 +19,6 @@ export interface PortalDesignShareOpenGraphResponse {
   imageUrl: string | null;
   letterboxOgImages: boolean;
   categoryName: string | null;
-  tags: string[];
 }
 
 async function loadLetterboxPreference(): Promise<boolean> {
@@ -32,23 +31,6 @@ async function loadLetterboxPreference(): Promise<boolean> {
   } catch {
     return true;
   }
-}
-
-function normalizeTags(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-  const out: string[] = [];
-  for (const tag of value) {
-    if (typeof tag !== "string") {
-      continue;
-    }
-    const trimmed = tag.trim();
-    if (trimmed && !out.includes(trimmed)) {
-      out.push(trimmed);
-    }
-  }
-  return out.slice(0, 24);
 }
 
 /**
@@ -139,7 +121,6 @@ export const getPortalDesignShareOpenGraph = onRequest(
         imageUrl,
         letterboxOgImages,
         categoryName,
-        tags: normalizeTags(data.tags),
       };
 
       response.set("Cache-Control", "public, max-age=300");

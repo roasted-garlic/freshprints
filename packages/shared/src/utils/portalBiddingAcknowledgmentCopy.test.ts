@@ -10,11 +10,12 @@ import {
 } from "./portalBiddingAcknowledgmentCopy";
 
 describe("PORTAL_SHOW_PRICE_COMMITMENT_HINT", () => {
-  it("explains per-size price times quantity paid on Whatnot", () => {
-    assert.match(PORTAL_SHOW_PRICE_COMMITMENT_HINT, /per print by size/i);
-    assert.match(PORTAL_SHOW_PRICE_COMMITMENT_HINT, /price × the quantity/i);
-    assert.match(PORTAL_SHOW_PRICE_COMMITMENT_HINT, /purchase on our Whatnot show/i);
+  it("frames totals as estimated live-show prices, not a Portal charge", () => {
+    assert.match(PORTAL_SHOW_PRICE_COMMITMENT_HINT, /estimated prices/i);
+    assert.match(PORTAL_SHOW_PRICE_COMMITMENT_HINT, /live Whatnot show/i);
+    assert.match(PORTAL_SHOW_PRICE_COMMITMENT_HINT, /does not charge you/i);
     assert.doesNotMatch(PORTAL_SHOW_PRICE_COMMITMENT_HINT, /personal bin/i);
+    assert.doesNotMatch(PORTAL_SHOW_PRICE_COMMITMENT_HINT, /commit to pay/i);
     assert.ok(PORTAL_SHOW_PRICE_COMMITMENT_HINT.length <= 160);
   });
 });

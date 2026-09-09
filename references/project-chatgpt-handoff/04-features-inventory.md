@@ -8,13 +8,13 @@
 Login/logout, profile bootstrap, protected routes via permissions.
 
 ### Design Library (`/designs`)
-Approved catalog grid; search (including paste of a full Firestore design ID); **case- and separator-insensitive** text match shared with Portal; category + tag filters; archive toggle; details/edit; request-selection mode for staff print requests; print-size / DPI display; default list **newest uploads first** (`createdAt` desc); Design details modal **full-res Download** of Storage original. **Load more** only when another catalog page exists. **Scroll position preserved** after save (anchor to edited card).
+Approved catalog grid; search (including paste of a full Firestore design ID); **case- and separator-insensitive** text match shared with Portal; Smart Profile + category filters and dedicated Halftone; archive toggle; details/edit; request-selection mode for staff print requests; print-size / DPI display; default list **newest uploads first** (`createdAt` desc); Design details modal **full-res Download** of Storage original. **Load more** only when another catalog page exists. **Scroll position preserved** after save (anchor to edited card).
 
 ### Imports (`/imports`)
 ZIP/folder import; PNG validation; trim + upscale (ADR-FP-080 ≤6× toward 12″); thumbnails/previews; Storage upload; AI enqueue; batch progress. No import-time halftone interrupt. **Normalized Files** modal is condensed with internal scroll. Import Session Settings now includes a dedicated **Smart Profile presets** tab before **Import settings** with Studio-themed controls, responsive layout, internal scrolling, and per-session preset entry for existing Smart Profile dimensions only. Presets persist as durable `smartProfileImportPresets`, track preset-owned dimensions, merge back in after AI enrichment/reprocess, and update correctly after later staff edits or removals.
 
 ### AI Review (`/ai-review`)
-Processing / Needs Review / Rejected tabs; suggestions panel; approve/reject/skip; re-run AI; keyboard shortcuts; settings-driven model + tag exclusions; staff Halftone toggle (human-only; AI never auto-enables). **Needs Review search** with shared normalization, AI-suggestion field match, and 500-design hydration batches. **DEV live enrichment:** **catalog-enrich-v32** / **smart-profile-normalizer-v6** — titles/descriptions/`visibleText` reject OCR dumps while preserving primary typography; subject canonicalization from v31/v5 retained (ADR-FP-160).
+Processing / Needs Review / Rejected tabs; suggestions panel; approve/reject/skip; re-run AI; keyboard shortcuts; settings-driven model and retained compatibility exclusions; staff Halftone toggle (human-only; AI never auto-enables). **Needs Review search** with shared normalization, AI-suggestion field match, and 500-design hydration batches. **DEV live enrichment:** **catalog-enrich-v32** / **smart-profile-normalizer-v6** — titles/descriptions/`visibleText` reject OCR dumps while preserving primary typography; subject canonicalization from v31/v5 retained (ADR-FP-160).
 
 ### Print Requests (`/print-requests`)
 Internal + customer requests in **separate lists** (Customer Requests default; Internal Requests via `isInternal`, ADR-FP-140); list sections **grouped by primary upcoming show** (`+N more shows` badge; Unassigned last); item qty/size autosave; DPI quality feedback; **manual save ≥200 DPI and ≤22″** (approved-max is initial/processing only); **Standard Size presets** modal (DEV — v1 defaults); duplicate same design for other sizes; Design Library selection mode adds **new** catalog designs only (existing items keep ID/size/quantity).
@@ -44,7 +44,6 @@ Assisted inbox with stage tabs, request details, audited start/cancel/reject/res
 ### Users / Settings / Dev
 Team users + customer records; **User Info modal** with Print Request History + Account Activity (WS4 DEV); **Edit customer → Quota Override** (ADR-FP-159 DEV — linked Temporary quota default + Set independently; Users-list active badge); **Transfer Username** (WS2); **Merge Accounts** (WS3); AI enrichment settings; show queue settings (incl. global `printRequestLimits`); dashboard scaffold;
 sidebar footer **Studio Updates** (desktop staff, including Helpers) is an application-level overlay;
-approved-tag pickers close after a suggestion is selected;
 **Brand logos** (owner upload Studio/Portal full+collapsed PNGs + display sizes — ADR-FP-114;
 soft-deployed fresh-prints-dev); owner/dev-only **Test Data Reset**, including truthful **Legacy
 print-limit counters** cleanup for retired, unenforced Cap A documents.

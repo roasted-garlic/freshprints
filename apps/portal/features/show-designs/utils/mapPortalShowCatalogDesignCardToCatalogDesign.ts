@@ -25,7 +25,9 @@ export function mapPortalShowCatalogDesignCardToCatalogDesign(
     id: card.id,
     title: card.title,
     categoryId: card.categoryId,
-    tags: card.tags,
+    // Structural compatibility only; legacy tags are not part of the show DTO or discovery.
+    tags: [],
+    isHalftone: card.isHalftone === true,
     thumbnailPath,
     previewPath: card.previewPath,
     artworkBackgroundHex: card.artworkBackgroundHex,

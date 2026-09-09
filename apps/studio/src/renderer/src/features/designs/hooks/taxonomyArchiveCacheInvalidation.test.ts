@@ -9,14 +9,8 @@ function read(relativePath: string): string {
 }
 
 /**
- * Regression coverage for the tag/category archive cache-staleness defect
- * (post-launch-catalog-and-processing-stability, Workstream A).
- *
- * archiveTagWithGuards / archiveCategoryWithGuards write through the Admin
- * SDK, bypassing the client-side tagListCache / categoryListCache entirely.
- * Before the fix, the guarded-archive call chain never invalidated those
- * caches, so a successful archive left the UI showing stale pre-archive
- * data for up to the cache's full TTL.
+ * Category archive cache regression coverage. Legacy tag management is retired
+ * and intentionally has no client cache or write path to exercise here.
  */
 describe("taxonomy archive/restore cache invalidation", () => {
   it("reproduces the pre-fix defect: a cache with no invalidation call keeps serving stale data after an out-of-band write succeeds", async () => {
@@ -67,27 +61,12 @@ describe("taxonomy archive/restore cache invalidation", () => {
     );
   });
 
-  it("wires clearStudioTaxonomyCaches() into the tag guarded-archive success path only", () => {
+  it("keeps the retired tag hook free of taxonomy reads and writes", () => {
     const source = read(
       "apps/studio/src/renderer/src/features/designs/hooks/useCatalogTags.ts",
     );
-
-    assert.match(source, /import \{ clearStudioTaxonomyCaches \} from "\.\.\/services\/taxonomyCacheControl";/);
-
-    const archiveTagBlock = source.slice(
-      source.indexOf("const archiveTag = useCallback("),
-      source.indexOf("const restoreTag = useCallback("),
-    );
-    assert.match(archiveTagBlock, /taxonomyArchiveGuardsService\.archiveTag\(tagId\)/);
-    assert.match(archiveTagBlock, /clearStudioTaxonomyCaches\(\);/);
-
-    // The blocked-outcome branch throws before the invalidation call is
-    // reached — confirm the invalidation is textually after the blocked
-    // check, so a failed/blocked write cannot falsely evict cache state or
-    // imply local state changed.
-    const blockedIndex = archiveTagBlock.indexOf('if (result.outcome === "blocked")');
-    const invalidateIndex = archiveTagBlock.indexOf("clearStudioTaxonomyCaches();");
-    assert.ok(blockedIndex > -1 && invalidateIndex > -1 && invalidateIndex > blockedIndex);
+    assert.doesNotMatch(source, /catalogTagService|taxonomyArchiveGuardsService|firestore/);
+    assert.match(source, /Legacy catalog tag operations are retired/);
   });
 
   it("wires clearStudioTaxonomyCaches() into the category guarded-archive success path only", () => {
@@ -104,24 +83,6 @@ describe("taxonomy archive/restore cache invalidation", () => {
     assert.match(persistSource, /archiveViaGuards/);
     assert.match(persistSource, /archiveViaClient/);
     assert.match(persistSource, /Category archive did not persist/);
-  });
-
-  it("adds a tag restoreTag action that reuses catalogTagService.updateTag (which already self-invalidates)", () => {
-    const source = read(
-      "apps/studio/src/renderer/src/features/designs/hooks/useCatalogTags.ts",
-    );
-
-    const restoreTagBlock = source.slice(source.indexOf("const restoreTag = useCallback("));
-    assert.match(restoreTagBlock, /catalogTagService\.updateTag\(user, tagId, \{ status: "approved" \}\)/);
-
-    const catalogTagServiceSource = read(
-      "apps/studio/src/renderer/src/features/designs/services/catalogTagService.ts",
-    );
-    const updateTagBlock = catalogTagServiceSource.slice(
-      catalogTagServiceSource.indexOf("async updateTag("),
-      catalogTagServiceSource.indexOf("async archiveTag("),
-    );
-    assert.match(updateTagBlock, /invalidateCatalogTagListCache\(\);/);
   });
 
   it("does not introduce broad taxonomy polling or a reload loop", () => {

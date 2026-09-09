@@ -23,6 +23,17 @@ describe('portalCatalogAlgoliaRecord Slice 3 helpers', () => {
     assert.ok(conceptsIdx < visibleIdx);
     assert.ok(visibleIdx < objectsIdx);
     assert.ok(objectsIdx < legacyIdx);
+    assert.equal((attrs as readonly string[]).includes('unordered(tagFacetKeys)'), false);
+    assert.equal(
+      (PORTAL_CATALOG_ALGOLIA_ATTRIBUTES_FOR_FACETING as readonly string[]).includes('tagFacetKeys'),
+      false,
+    );
+    assert.equal(
+      (PORTAL_CATALOG_ALGOLIA_ATTRIBUTES_FOR_FACETING as readonly string[]).includes(
+        'filterOnly(tagIds)',
+      ),
+      false,
+    );
     assert.ok(!PORTAL_CATALOG_ALGOLIA_SMART_FACET_ATTRIBUTES.includes('objects' as never));
     // Title is a permanent core searchable field; description remains via searchText.
     assert.ok(attrs.includes('searchText'));
@@ -82,5 +93,16 @@ describe('portalCatalogAlgoliaRecord Slice 3 helpers', () => {
     assert.ok(
       PORTAL_CATALOG_ALGOLIA_RECORD_SIZE_SOFT_MAX_BYTES >= 10_000,
     );
+  });
+
+  it('builds search text without legacy tag names or aliases', async () => {
+    const { buildPortalCatalogSearchText } = await import('./portalCatalogAlgoliaRecord');
+    const text = buildPortalCatalogSearchText({
+      title: 'Cool Cat',
+      description: 'A design',
+      categoryName: 'Animals',
+    });
+    assert.equal(text, 'Cool Cat A design Animals');
+    assert.doesNotMatch(text, /kitty|feline/);
   });
 });

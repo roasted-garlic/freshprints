@@ -1,5 +1,22 @@
 # Recent Completed Work
 
+## 2026-09-09 - Legacy tag operational retirement and Smart Profile search parity — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `legacy-tag-operational-retirement-and-smart-profile-search-parity` |
+| Status | **CLOSED** — Signoff **approved** |
+| Owner DEV QA | **PASS** (2026-09-09) |
+| Signoff | `docs/workflow/reviews/2026-09-09-legacy-tag-operational-retirement-and-smart-profile-search-parity-signoff.md` |
+| Delivered | Active Portal/Studio legacy tag authority, tag search corpus, and tag facets retired; Smart Profile search, eight facets, category, exact ID, pagination, zero-count behavior, and dedicated Halftone retained |
+| DEV evidence | `fresh-prints-dev`; Algolia `WQ6OPP2E6Z` / `portal_catalog_ready_dev`; six reviewed Functions; existing reconcile processed 350 ready records |
+| Corrective audit | Read-only 20-sample former tag-name/alias audit: 20 had no preserved Ready-design baseline; 0 material regressions |
+| Compatibility | Historical `design.tags`, `tags/*`, taxonomy schema-v1, Rules/indexes, and tag-trigger/archive Functions preserved |
+| Scope boundary | No tag deletion, migration/backfill, provider call, Rules/index deploy, Portal/Studio publish, or production action |
+| Autonomous / Pass 2 / WS6 | **OFF** / **PARKED** / **NOT STARTED** |
+| Commit/push | **NOT AUTHORIZED** |
+| Next checkpoint | `[NEEDS OWNER AUTHORIZATION: COMMIT/PUSH CLOSED TAG RETIREMENT GOAL]` |
+
 ## 2026-09-08 - Print Request direct export, gang sheets, copy, and global settings — CLOSED
 
 | Item | Status |

@@ -14,35 +14,15 @@ import {
 } from './algoliaAdminClient';
 import {
   buildPortalCatalogAlgoliaRecord,
-  indexPortalCatalogTaxonomyTag,
   type PortalCatalogAlgoliaTaxonomyCategory,
-  type PortalCatalogAlgoliaTaxonomyTag,
 } from './buildPortalCatalogAlgoliaRecord';
 
 const READY_PAGE_SIZE = 200;
 
-async function loadFullTaxonomyMaps(): Promise<{
-  tagsById: Map<string, PortalCatalogAlgoliaTaxonomyTag>;
+async function loadCategoryMap(): Promise<{
   categoriesById: Map<string, PortalCatalogAlgoliaTaxonomyCategory>;
 }> {
-  const [tagsSnap, categoriesSnap] = await Promise.all([
-    adminDb.collection('tags').get(),
-    adminDb.collection('categories').get(),
-  ]);
-
-  const tagsById = new Map<string, PortalCatalogAlgoliaTaxonomyTag>();
-  for (const doc of tagsSnap.docs) {
-    const data = doc.data();
-    if (typeof data.name !== 'string') continue;
-    indexPortalCatalogTaxonomyTag(tagsById, {
-      id: doc.id,
-      name: data.name,
-      aliases: Array.isArray(data.aliases)
-        ? data.aliases.filter((alias): alias is string => typeof alias === 'string')
-        : [],
-      status: typeof data.status === 'string' ? data.status : undefined,
-    });
-  }
+  const categoriesSnap = await adminDb.collection('categories').get();
 
   const categoriesById = new Map<string, PortalCatalogAlgoliaTaxonomyCategory>();
   for (const doc of categoriesSnap.docs) {
@@ -51,7 +31,7 @@ async function loadFullTaxonomyMaps(): Promise<{
     categoriesById.set(doc.id, { id: doc.id, name: data.name });
   }
 
-  return { tagsById, categoriesById };
+  return { categoriesById };
 }
 
 /**
@@ -67,7 +47,7 @@ export async function runPortalCatalogAlgoliaReconcile(options: {
 
   const client = createAlgoliaAdminClient();
   const indexName = getAlgoliaPortalCatalogIndexName();
-  const { tagsById, categoriesById } = await loadFullTaxonomyMaps();
+  const { categoriesById } = await loadCategoryMap();
   const records: NonNullable<ReturnType<typeof buildPortalCatalogAlgoliaRecord>>[] = [];
 
   let lastDoc: QueryDocumentSnapshot | undefined;
@@ -90,7 +70,6 @@ export async function runPortalCatalogAlgoliaReconcile(options: {
       const record = buildPortalCatalogAlgoliaRecord({
         designId: doc.id,
         data: doc.data() as Record<string, unknown>,
-        tagsById,
         categoriesById,
       });
       if (record) records.push(record);

@@ -8,7 +8,7 @@ const DESIGN_DOCUMENT_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
 
 export interface ExactIdCatalogVisibilityOptions {
   categoryId?: string;
-  selectedTags?: readonly string[];
+  halftoneOnly?: boolean;
 }
 
 export function looksLikeDesignDocumentId(query: string): boolean {
@@ -32,8 +32,7 @@ export function exactIdDesignMatchesCatalogFilters(
   if (options.categoryId?.trim() && design.categoryId !== options.categoryId.trim()) {
     return false;
   }
-  const selectedTags = options.selectedTags ?? [];
-  if (selectedTags.length > 0 && !selectedTags.every((tag) => design.tags.includes(tag))) {
+  if (options.halftoneOnly === true && design.isHalftone !== true) {
     return false;
   }
   return true;

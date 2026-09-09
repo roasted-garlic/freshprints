@@ -17,7 +17,6 @@ describe("buildCatalogDesignListQuery", () => {
   it("defaults Design Library sort to readyAt descending (most recent ready transition first)", () => {
     const query = buildCatalogDesignListQuery({
       archived: false,
-      tags: [],
     });
 
     assert.equal(query.sortField, "readyAt");
@@ -31,13 +30,13 @@ describe("buildCatalogDesignListQuery", () => {
     const query = buildCatalogDesignListQuery({
       archived: true,
       categoryId: "cat-1",
-      tags: ["summer"],
+      halftoneOnly: true,
     });
 
     assert.equal(query.sortField, "createdAt");
     assert.equal(query.sortDirection, "desc");
     assert.equal(query.categoryId, "cat-1");
-    assert.equal(query.tag, "summer");
+    assert.equal(query.halftoneOnly, true);
     assert.deepEqual(query.statusIn, ["archived"]);
     assert.equal(query.companionSetIncomplete, undefined);
   });
@@ -46,7 +45,6 @@ describe("buildCatalogDesignListQuery", () => {
     const withCompanion = buildCatalogDesignListQuery({
       archived: false,
       companionSetIncomplete: true,
-      tags: [],
     });
     assert.equal(withCompanion.companionSetIncomplete, true);
     assert.deepEqual(withCompanion.statusIn, ["ready"]);
@@ -56,9 +54,25 @@ describe("buildCatalogDesignListQuery", () => {
     const without = buildCatalogDesignListQuery({
       archived: false,
       companionSetIncomplete: false,
-      tags: [],
     });
     assert.equal(without.companionSetIncomplete, undefined);
+  });
+});
+
+describe("retired tag URL contract", () => {
+  it("ignores legacy tags while preserving unrelated search and category filters", () => {
+    const filters = parseDesignLibraryUrlFilters(
+      new URLSearchParams({ tags: "summer", tag: "legacy", search: "cow", category: "animals" }),
+    );
+    assert.equal(Object.prototype.hasOwnProperty.call(filters, "tags"), false);
+    assert.equal(filters.search, "cow");
+    assert.equal(filters.categoryId, "animals");
+
+    const rebuilt = buildDesignLibrarySearchParams(filters);
+    assert.equal(rebuilt.has("tags"), false);
+    assert.equal(rebuilt.has("tag"), false);
+    assert.equal(rebuilt.get("search"), "cow");
+    assert.equal(rebuilt.get("category"), "animals");
   });
 });
 

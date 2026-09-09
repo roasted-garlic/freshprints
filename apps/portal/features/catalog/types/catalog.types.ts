@@ -22,6 +22,8 @@ export interface CatalogDesign {
   description?: string;
   categoryId?: string;
   tags: string[];
+  /** Human-only Halftone classification, derived from halftoneStaffDecision (never a tag/Smart Profile facet). */
+  isHalftone?: boolean;
   thumbnailPath: string;
   previewPath?: string;
   /**
@@ -110,7 +112,8 @@ export interface CatalogDesignListCursor {
 
 export interface CatalogDesignListQuery {
   categoryId?: string;
-  tag?: string;
+  /** Human-only Halftone classification; retained independently of legacy tags. */
+  halftoneOnly?: boolean;
   /** Client-side only in listReadyDesignsPage today; prefer filtering after fetch. */
   search?: string;
   limitCount?: number;

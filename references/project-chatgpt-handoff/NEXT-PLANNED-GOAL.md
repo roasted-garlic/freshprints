@@ -1,11 +1,18 @@
 # Next Planned Goal
 
-**Updated:** 2026-09-08
+**Updated:** 2026-09-09
 
 ## Current state
 
-- No managed goal is active. `print-request-direct-export-gangsheet-and-copy` is closed with
-  approved signoff after Owner DEV QA **PASS** on 2026-09-08.
+- No active child goal. `legacy-tag-operational-retirement-and-smart-profile-search-parity` is
+  **CLOSED** with approved signoff after Owner DEV QA **PASS** on 2026-09-09.
+- Required checkpoint:
+  `[NEEDS OWNER AUTHORIZATION: COMMIT/PUSH CLOSED TAG RETIREMENT GOAL]`.
+  The owner decisions are resolved: Halftone uses the existing `halftoneStaffDecision.value`,
+  legacy Studio tag URLs are ignored without mapping, and incomplete Smart Profiles do not fall
+  back to historical tags.
+- Prior managed goal `print-request-direct-export-gangsheet-and-copy` is closed with approved
+  signoff after Owner DEV QA **PASS** on 2026-09-08.
 - The original request Export/Generate/Copy implementation, the owner-authorized global Gang
   Sheet Settings/four-tier amendment, and the requested Settings UX refinement are complete and
   validated. The authorized DEV Rules/Function deployment is preserved as completed evidence.
@@ -14,6 +21,21 @@
 - Direct Export/Generate/Copy buttons are hidden on Working and Editing requests; existing Add to
   Show/Internal Gangsheet actions remain available there.
 - Studio publish and production remain separately gated.
+
+DEV cutover evidence (2026-09-09): six explicitly allowlisted Functions were deployed to
+`fresh-prints-dev`; existing local Portal/Studio Smart Filter flags were already enabled; the
+existing owner/admin reconcile dry-run/apply processed 350 ready records in
+`portal_catalog_ready_dev`; settings removed `tagIds` and `tagFacetKeys` while preserving all eight
+Smart Profile facets and non-tag searchable fields. Live parity checks covered facets/AND,
+category, q/text fields, pagination, zero counts, missing profiles, exact ID, former tag-name/
+alias zeros, and Halftone via `halftoneStaffDecision.value`. No production, Portal/Studio publish,
+Rules/index deploy, migration/backfill, tag deletion, commit, or push occurred.
+Owner DEV QA then passed; the deterministic read-only corrective audit re-derived 20 former
+tag-name/alias samples, all with no preserved Ready-design baseline and no current Algolia hits,
+with zero material regressions.
+
+Artifact: `docs/workflow/reviews/2026-09-09-legacy-tag-retirement-smart-profile-dev-cutover.md`.
+Signoff: `docs/workflow/reviews/2026-09-09-legacy-tag-operational-retirement-and-smart-profile-search-parity-signoff.md`.
 
 ## Closed goal evidence
 
@@ -54,7 +76,23 @@ Storage Rules, indexes, migration, Portal, Studio, or production deployment occu
   Owner DEV QA then passed, the goal was signed off, and commit/push completed as `ab319468`.
   Studio publish and production remain separate checkpoints.
 
-`[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]`
+`[NEEDS OWNER AUTHORIZATION: COMMIT/PUSH CLOSED TAG RETIREMENT GOAL]`
+
+## Closed goal handoff
+
+- Portal and Studio no longer expose active legacy tag filters, tag management, tag display, tag
+  facet reads, or tag search corpus terms. Smart Profile facets/category/search, exact IDs, and
+  dedicated Halftone filtering remain.
+- Studio AI Review no longer seeds or writes regular tags; existing censored-term editing remains.
+- Shared/Functions Algolia records and change classification no longer carry tag-specific fields or
+  index work. Historical `design.tags`, Rules/indexes, taxonomy schema-v1 compatibility, and
+  deployed tag-trigger/archive exports remain deferred compatibility.
+- Focused verification: Portal 82/82, Studio 39/39, Functions/shared 45/45; Portal tsc and Functions
+  build pass; Studio tsc has only documented unrelated baseline failures; Portal Next build is
+  Windows `.next/trace`/timeout-blocked; `git diff --check` passes.
+- Owner DEV QA is **PASS** and signoff is **approved**. Commit/push, production/backfill,
+  physical tag cleanup, retained compatibility Function deletion, and Rules/index cleanup are
+  not included and remain separately gated.
 
 Parent program:
 `smart-catalog-intelligence-completion-and-legacy-tag-retirement`
@@ -68,9 +106,10 @@ active child goal.
 |------|--------|
 | WS5 Autonomous DEV canary | **CLOSED** — PASS under Model 2; Autonomous remains OFF |
 | WS6 | **NOT STARTED** — candidate only; requires a new Plan/Review and owner authorization |
-| Tag / reranker retirement | Parked/deferred under the parent program |
+| Tag / reranker retirement | Operationally retired in DEV; physical cleanup and compatibility deletion deferred |
 | Autonomous | **OFF** |
 | Automatic Pass 2 | **PARKED** |
 | Production promotion | **SEPARATELY GATED / NOT AUTHORIZED** |
 
-No later goal is selected while the closed Print Request goal awaits commit/push authorization.
+No active child goal is selected. Commit/push and any production promotion, backfill, Maintenance
+Mode, physical tag cleanup, or Algolia/Firebase external-state changes remain separately gated.

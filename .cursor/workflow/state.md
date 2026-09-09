@@ -2,35 +2,62 @@
 
 | Field | Value |
 |---|---|
-| Status | **IDLE** |
+| Status | **IDLE** — managed goal closed after Owner DEV QA PASS |
 | DONE | yes |
-| Signoff Status | **approved_with_notes** |
-| Current Mode | managed-phase (closed) |
-| Parent program | Fresh Prints Portal / Print Requests |
-| Current Goal | _(none — last closed: `portal-show-price-commitment-ack`)_ |
-| Current Phase | — |
+| Signoff Status | **approved** |
+| Current Mode | idle (commit/push authorization checkpoint) |
+| Parent program | `smart-catalog-intelligence-completion-and-legacy-tag-retirement` |
+| Current Goal | none — `legacy-tag-operational-retirement-and-smart-profile-search-parity` closed |
+| Current Phase | signoff complete; awaiting separate commit/push authorization |
 | Plan Status | complete |
 | Review Status | approved_with_changes |
-| Implementation Status | complete |
-| Test Status | **passed_with_notes** — owner visual QA **PASS** |
-| Human Checkpoint Required | **no** |
-| Human Checkpoint Reason | — |
-| Environment | `fresh-prints-dev` |
+| Implementation Status | complete_source_and_dev_cutover |
+| Test Status | Portal 82/82; Studio 39/39; Functions/shared 45/45; Portal tsc pass; Functions build pass; Studio tsc baseline-blocked; Portal build Windows trace/timeout-blocked; diff check pass; live DEV parity corpus and 20-sample corrective audit pass |
+| Human Checkpoint Required | **yes** |
+| Human Checkpoint Reason | `[NEEDS OWNER AUTHORIZATION: COMMIT/PUSH CLOSED TAG RETIREMENT GOAL]` |
+| Environment | `fresh-prints-dev` (DEV-only checkpoint complete) |
 | Production | untouched |
-| Commit/push | authorized 2026-09-08 (this commit); production still not authorized |
-| Last updated | 2026-09-08 |
-| Last Completed Step | Signoff + owner-authorized commit/push of recent closed goals |
-| Prior closed goal | `portal-show-price-commitment-ack` |
+| Commit/push | not authorized for this goal |
+| Last updated | 2026-09-09 |
+| Last Completed Step | Owner DEV QA PASS and approved signoff for the DEV cutover; commit/push remains separately gated |
 
 **Decision Log:**
-- 2026-09-08 — Owner: approve draft ack copy; pricing source A (defaults); keep exclusive paragraph.
-- 2026-09-08 — Implemented Portal Show total + breakdown; ack v4; Show Prices entry points; Show Limits copy polish.
-- 2026-09-08 — Owner visual QA **PASS**; signoff **approved_with_notes** (Functions DEV redeploy still owner-gated).
-- 2026-09-08 — Owner: commit and push all recent changes.
 
-**Allowed Actions:** Await next owner goal; document-only unless new managed phase started.
-**Forbidden Actions:** Production promote; Functions deploy without owner auth.
+- 2026-09-08 — Owner authorized source implementation after resolving Halftone as a dedicated
+  `halftoneStaffDecision.value` filter, retiring Studio `?tags=`/`?tag=` with a no-filter fallback,
+  and preserving Ready discovery without tag fallback for incomplete Smart Profiles.
+- 2026-09-08 — Portal, Studio, shared, and Functions source slices implemented. Legacy tag UI,
+  active reads/writes, facets, search corpus, and tag-bearing public DTOs were retired; historical
+  fields and deployed compatibility exports remain deferred. No external action occurred.
+- 2026-09-08 — Focused verification passed: Portal 82/82, Studio 39/39, Functions/shared 45/45; Portal
+  tsc and Functions build passed; Studio tsc retains unrelated baseline failures; Portal build
+  remains blocked by the Windows Next `.next/trace`/timeout issue; `git diff --check` passed.
+- 2026-09-09 — Owner-authorized DEV checkpoint completed on `fresh-prints-dev`: six explicitly
+  allowlisted Functions deployed; existing local Portal/Studio Smart Filter flags were already
+  enabled; the DEV Algolia index settings removed `tagIds`/`tagFacetKeys` while retaining the eight
+  Smart Profile facets and non-tag searchable fields; the existing owner/admin reconcile dry-run
+  and apply rebuilt 350 ready records. Former tag-name/alias queries, Smart Profile facets/AND,
+  category, text fields, exact ID, missing-profile, and Halftone evidence were verified live. No
+  production, Portal/Studio publish, Rules/index deploy, migration, provider call, commit, or push.
+- 2026-09-09 — Owner DEV QA **PASS** and final DEV disposition **approved**. Signoff recorded in
+  `docs/workflow/reviews/2026-09-09-legacy-tag-operational-retirement-and-smart-profile-search-parity-signoff.md`.
+  Historical `design.tags`, `tags/*`, and retained tag compatibility Functions remain preserved;
+  no production, publish, deletion, migration, commit, or push occurred.
+
+**Allowed Actions:** Documentation/handoff updates and await the owner authorization marker below.
+Do not start another child goal automatically.
+
+**Forbidden Actions:** Production action; Portal App Hosting or Studio publish; Firebase Rules/index/
+storage changes; tag/data deletion; migration/backfill/reprocess; provider calls; unreviewed
+Functions or Algolia changes; commit/push until separately authorized.
 
 ## Next Required Step
 
-Idle after push. When ready: authorize Functions DEV redeploy of `registerCustomer` + `queuePortalPrintRequestToShow` for live ack v4, and/or say the next goal.
+`[NEEDS OWNER AUTHORIZATION: COMMIT/PUSH CLOSED TAG RETIREMENT GOAL]`
+
+The DEV cutover evidence is recorded in
+`docs/workflow/reviews/2026-09-09-legacy-tag-retirement-smart-profile-dev-cutover.md`; the
+approved signoff is recorded in
+`docs/workflow/reviews/2026-09-09-legacy-tag-operational-retirement-and-smart-profile-search-parity-signoff.md`.
+Production, physical tag cleanup, retained compatibility Function deletion, and commit/push
+remain separately gated.

@@ -260,7 +260,6 @@ export type UpdateDesignInput = Partial<
     | "title"
     | "description"
     | "categoryId"
-    | "tags"
     | "status"
     | "originalPath"
     | "thumbnailPath"

@@ -36,25 +36,26 @@ describe('looksLikeDesignDocumentId', () => {
 });
 
 describe('exactIdDesignMatchesCatalogFilters', () => {
-  it('respects category and tag filters', () => {
+  it('respects category and staff Halftone filters', () => {
     const design = createDesign({ categoryId: 'animals', tags: ['ocean', 'sunset'] });
 
     assert.equal(
-      exactIdDesignMatchesCatalogFilters(design, { categoryId: 'animals', selectedTags: [] }),
+      exactIdDesignMatchesCatalogFilters(design, { categoryId: 'animals' }),
       true,
     );
     assert.equal(
-      exactIdDesignMatchesCatalogFilters(design, { categoryId: 'nature', selectedTags: [] }),
+      exactIdDesignMatchesCatalogFilters(design, { categoryId: 'nature' }),
       false,
     );
     assert.equal(
-      exactIdDesignMatchesCatalogFilters(design, {
-        selectedTags: ['ocean', 'sunset'],
-      }),
+      exactIdDesignMatchesCatalogFilters(design, { halftoneOnly: false }),
       true,
     );
     assert.equal(
-      exactIdDesignMatchesCatalogFilters(design, { selectedTags: ['ocean', 'halftone'] }),
+      exactIdDesignMatchesCatalogFilters(
+        { ...design, isHalftone: false },
+        { halftoneOnly: true },
+      ),
       false,
     );
   });

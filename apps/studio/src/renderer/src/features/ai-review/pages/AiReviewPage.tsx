@@ -458,7 +458,7 @@ function AiReviewPageContent() {
                 <GlobalSearchField
                   clearable
                   onChange={setNeedsReviewSearchQuery}
-                  placeholder="Search title, tags, id…"
+                  placeholder="Search title, description, ID…"
                   value={needsReviewSearchQuery}
                 />
               </div>
@@ -538,7 +538,6 @@ function AiReviewPageContent() {
           <AiReviewWorkspace
             actionError={inbox.actionError}
             activeTab={inbox.activeTab}
-            approvedTags={inbox.approvedTags}
             autoAdvance={inbox.processingQueue.autoAdvance}
             canApprove={inbox.canApprove}
             canEdit={inbox.canEdit}

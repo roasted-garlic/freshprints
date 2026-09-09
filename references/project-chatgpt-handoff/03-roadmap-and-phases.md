@@ -1,5 +1,7 @@
 # Roadmap and Phases
 
+> 2026-09-09: **Legacy tag operational retirement + Smart Profile search parity — CLOSED (DEV)** — Goal `legacy-tag-operational-retirement-and-smart-profile-search-parity` **DONE**; signoff **approved** after Owner DEV QA **PASS**. Active catalog search/filter behavior is Smart Profile + category + dedicated Halftone; historical tags and compatibility exports are retained. DEV-only cutover and read-only 20-sample corrective audit passed. Commit/push, publish, production, and physical cleanup remain separately gated. FreshForge **IDLE**.
+
 > 2026-09-05: **Pre-WS5 Automatic Explicit Content classification — SOURCE SIGNED OFF** — Corrective **COMPLETE / APPROVED WITH NOTES — SOURCE SIGNED OFF** (not DEV-live). Signoff **approved_with_notes**. DEV deploy + Studio QA pending. Autonomous **OFF**. **WS5 BLOCKED**. Production / commit **NOT AUTHORIZED**. Parent goal continues.
 >
 > 2026-09-03: **AI enrichment visible-text + catalog-copy quality — CLOSED (DEV)** — Goal `ai-enrichment-visible-text-and-catalog-copy-quality` **DONE**. Signoff **approved_with_notes**. Owner canary **PASS**. Live DEV: **catalog-enrich-v32** / **smart-profile-normalizer-v6**. Autonomous **OFF**. Production **NOT AUTHORIZED**. FreshForge **IDLE**. Next queued: Smart Profiling completion (not started).
@@ -167,7 +169,7 @@ Catalog CRUD, categories, grid, search foundation.
 ZIP/folder import, validation, derivatives, print-size math, upscale/trim.
 
 ### Phase 4 — Catalog Search & Organization
-Library = approved `ready` only; tag filters; archived toggle.
+Library = approved `ready` only; Smart Profile/category filters; dedicated Halftone; archived toggle.
 
 ### Phase 5 — AI Processing / Catalog Approval
 AI Review workspace; staff-controlled enrichment (now **catalog-enrich-v21**); approve/reject.

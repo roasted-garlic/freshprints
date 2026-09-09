@@ -12,12 +12,12 @@ export function serializeDesignListQueryKey(listQuery: DesignListQuery): string 
     aiReviewStatus: listQuery.aiReviewStatus,
     categoryId: listQuery.categoryId,
     companionSetIncomplete: listQuery.companionSetIncomplete === true ? true : undefined,
+    halftoneOnly: listQuery.halftoneOnly === true ? true : undefined,
     limitCount: listQuery.limitCount,
     sortDirection: listQuery.sortDirection,
     sortField: listQuery.sortField,
     status: listQuery.status,
     statusIn: listQuery.statusIn,
-    tag: listQuery.tag,
   });
 }
 
@@ -41,6 +41,7 @@ export function getDesignListQueryCacheKey(
     aiReviewStatus: listQuery.aiReviewStatus,
     categoryId: listQuery.categoryId,
     companionSetIncomplete: listQuery.companionSetIncomplete === true ? true : undefined,
+    halftoneOnly: listQuery.halftoneOnly === true ? true : undefined,
     cursor: listQuery.cursor
       ? [listQuery.cursor.designId, listQuery.cursor.sortMillis]
       : undefined,
@@ -49,6 +50,5 @@ export function getDesignListQueryCacheKey(
     sortField: listQuery.sortField ?? "updatedAt",
     status: normalizedStatus,
     statusIn: normalizedStatusIn,
-    tag: listQuery.tag?.trim().toLowerCase(),
   });
 }

@@ -13,7 +13,6 @@ import {
 import {
   clearAiEnrichmentRuntimeCache,
   loadCachedActiveCategories,
-  loadCachedApprovedTags,
 } from "./aiEnrichmentRuntimeCache";
 
 function makeSnapshot(label: string): AiCatalogReferenceSnapshot {
@@ -316,7 +315,6 @@ describe("AI taxonomy process-local cache (P3 + materialization)", () => {
     });
 
     await loadCachedActiveCategories();
-    await loadCachedApprovedTags();
     assert.equal(loadCount, 1);
 
     clearAiEnrichmentRuntimeCache();
@@ -324,7 +322,7 @@ describe("AI taxonomy process-local cache (P3 + materialization)", () => {
     assert.equal(loadCount, 2);
   });
 
-  it("category and tag adapters share one taxonomy load (no dual TTL)", async () => {
+  it("category adapter shares the taxonomy load boundary (no dual TTL)", async () => {
     let loadCount = 0;
     __setAiTaxonomyCacheTestDeps({
       now: () => 1_000_000,
@@ -337,10 +335,8 @@ describe("AI taxonomy process-local cache (P3 + materialization)", () => {
     });
 
     const categories = await loadCachedActiveCategories();
-    const tags = await loadCachedApprovedTags();
     assert.equal(loadCount, 1);
     assert.equal(categories.categories[0]?.id, "cat-shared-adapters");
-    assert.equal(tags[0]?.name, "tag-shared-adapters");
   });
 
   it("explicit clear then new revision load refreshes cache", async () => {

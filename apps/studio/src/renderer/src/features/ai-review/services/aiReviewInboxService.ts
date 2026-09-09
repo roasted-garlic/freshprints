@@ -1,5 +1,3 @@
-import { syncHalftoneTagInList } from "@fresh-prints/shared/utils/halftoneReviewState";
-
 import { catalogApprovalService } from "../../designs/services/catalogApprovalService";
 import { companionSetService } from "../../designs/services/companionSetService";
 import { designService } from "../../designs/services/designService";
@@ -7,7 +5,6 @@ import type { Design } from "../../designs/types/design.types";
 import type { DesignListPage, DesignListQuery } from "../../designs/types/designQuery.types";
 import {
   buildArtworkBackgroundUpdateValue,
-  parseTagsInput,
 } from "../../designs/utils/designFormMapper";
 import { filterDesignsByAiReviewStatus } from "../../designs/utils/designLibrarySearch";
 import { permissionService } from "../../permissions/services/permissionService";
@@ -64,7 +61,6 @@ export const aiReviewInboxService = {
   async approveFromInbox(caller: User, designId: string, draft: AiReviewDraftForm): Promise<Design> {
     assertCanApproveInbox(caller);
 
-    const tags = syncHalftoneTagInList(parseTagsInput(draft.tagsInput), draft.markAsHalftone);
     const artworkBackgroundHex = buildArtworkBackgroundUpdateValue(draft);
     if (draft.artworkBackgroundPreset === "custom" && artworkBackgroundHex === undefined) {
       throw new Error("Enter a valid 6-digit hex color (for example #2c2d2d).");
@@ -74,10 +70,12 @@ export const aiReviewInboxService = {
       title: draft.title.trim(),
       description: draft.description.trim() || undefined,
       categoryId: draft.categoryId.trim() || undefined,
-      tags,
       artworkBackgroundHex: artworkBackgroundHex ?? null,
       isExplicitContent: draft.isExplicitContent,
-      censoredTerms: parseTagsInput(draft.censoredTermsInput),
+      censoredTerms: draft.censoredTermsInput
+        .split(",")
+        .map((term) => term.trim())
+        .filter(Boolean),
       explicitContentAutomationLocked: draft.explicitContentAutomationLocked,
       halftoneStaffDecision: {
         value: draft.markAsHalftone,
@@ -147,15 +145,7 @@ export const aiReviewInboxService = {
       throw new Error("You do not have permission to update halftone.");
     }
 
-    const tags = syncHalftoneTagInList(design.tags, markAsHalftone);
-    const artworkBackgroundHex = buildArtworkBackgroundUpdateValue({
-      artworkBackgroundPreset: markAsHalftone ? "lightBlack" : "grey",
-      artworkBackgroundCustomHex: "",
-    });
-
     return designService.updateDesign(caller, design.id, {
-      tags,
-      artworkBackgroundHex: artworkBackgroundHex ?? null,
       halftoneStaffDecision: {
         value: markAsHalftone,
         decidedBy: caller.id,

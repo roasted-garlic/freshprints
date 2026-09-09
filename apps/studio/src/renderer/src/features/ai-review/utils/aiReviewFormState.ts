@@ -2,32 +2,8 @@ import { resolveAiReviewHalftoneStaffToggle } from "@fresh-prints/shared/utils/h
 
 import type { Design } from "../../designs/types/design.types";
 import { formatTagsInput, mapArtworkBackgroundToForm } from "../../designs/utils/designFormMapper";
-import {
-  formatTagsSanitizationNote,
-  sanitizeDesignTagsForDisplay,
-} from "../../designs/utils/designTagNormalizer";
 
 import type { AiReviewDraftForm } from "../types/aiReviewInbox.types";
-
-function buildSanitizedTagsInput(rawTags: string[]): {
-  tagsInput: string;
-  tagsAdjustmentNote?: string;
-} {
-  const sanitization = sanitizeDesignTagsForDisplay(rawTags);
-  const tagsAdjustmentNote = formatTagsSanitizationNote(sanitization) ?? undefined;
-
-  if (import.meta.env?.DEV && tagsAdjustmentNote) {
-    console.warn("[AI Review] design tags adjusted for display limits:", tagsAdjustmentNote, {
-      before: rawTags,
-      after: sanitization.tags,
-    });
-  }
-
-  return {
-    tagsInput: formatTagsInput(sanitization.tags),
-    tagsAdjustmentNote,
-  };
-}
 
 /**
  * Seeds Final Catalog Information from the same persisted `aiSuggestions` object
@@ -41,19 +17,13 @@ export function createAiReviewDraftFromDesign(design: Design): AiReviewDraftForm
   const suggestedTitle = suggestions?.title?.trim();
   const suggestedDescription = suggestions?.description?.trim();
   const suggestedCategoryId = suggestions?.categoryId?.trim();
-  // AI tag generation is retired from the active enrichment contract. Keep
-  // staff-entered/historical design tags intact, but never seed new tags from
-  // legacy aiSuggestions.tags.
-  const { tagsInput, tagsAdjustmentNote } = buildSanitizedTagsInput(design.tags);
-
   return {
     title: hasAiSeed && suggestedTitle ? suggestedTitle : design.title,
     description:
       hasAiSeed && suggestedDescription ? suggestedDescription : design.description ?? "",
     categoryId:
       hasAiSeed && suggestedCategoryId ? suggestedCategoryId : design.categoryId ?? "",
-    tagsInput,
-    tagsAdjustmentNote,
+    tagsInput: "",
     markAsHalftone: resolveAiReviewHalftoneStaffToggle({
       staffDecision: design.halftoneStaffDecision,
       submitterResponse: design.halftoneSubmitterResponse,
@@ -73,7 +43,6 @@ export function isAiReviewDraftDirty(baseline: AiReviewDraftForm, draft: AiRevie
     baseline.title !== draft.title ||
     baseline.description !== draft.description ||
     baseline.categoryId !== draft.categoryId ||
-    baseline.tagsInput !== draft.tagsInput ||
     baseline.markAsHalftone !== draft.markAsHalftone ||
     baseline.isExplicitContent !== draft.isExplicitContent ||
     baseline.censoredTermsInput !== draft.censoredTermsInput ||

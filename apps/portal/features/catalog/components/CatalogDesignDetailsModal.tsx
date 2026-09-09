@@ -331,21 +331,6 @@ export function CatalogDesignDetailsModal({
               <p className="design-details-description">{displayDescription.trim() || '—'}</p>
             </section>
 
-            <section className="design-details-section">
-              <h3>Tags</h3>
-              {design.tags.length > 0 ? (
-                <div className="design-details-tags">
-                  {design.tags.map((tag) => (
-                    <span className="design-details-tag" key={tag}>
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <p className="design-details-description">—</p>
-              )}
-            </section>
-
             {design.companionDesignIds?.length ? (
               <CatalogMatchingDesignsSection
                 addingDesignId={addingDesignId}

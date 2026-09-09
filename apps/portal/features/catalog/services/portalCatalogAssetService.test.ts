@@ -11,11 +11,4 @@ describe('portalCatalogAssetService Stage 4 retirement stub', () => {
     );
   });
 
-  it('listTagFacets fails closed', async () => {
-    await assert.rejects(() => portalCatalogAssetService.listTagFacets(), /Stage 4/);
-  });
-
-  it('listNarrowedTagFacets fails closed', async () => {
-    await assert.rejects(() => portalCatalogAssetService.listNarrowedTagFacets(), /Stage 4/);
-  });
 });

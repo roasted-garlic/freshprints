@@ -42,7 +42,8 @@ const INDEX_FILTER_FIELDS = [
   "title",
   "description",
   "categoryId",
-  "tags",
+  // `tags` remains a required inert Firestore field for schema compatibility, but is no longer
+  // projected into Algolia and therefore must not trigger publication work.
   "createdAt",
   // Owner QA Amendment 3: readyAt is the default catalog ordering key, so a change to it must
   // republish the generated browse order.

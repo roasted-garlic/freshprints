@@ -15,15 +15,16 @@ function read(rel: string): string {
 }
 
 describe("Studio taxonomy materialization short-circuit", () => {
-  it("hook prefers materialization before listTags/listCategories", () => {
+  it("hook prefers materialization and never reads the retired tag taxonomy", () => {
     const hook = read("./useGeneratedDesignLibraryTaxonomy.ts");
     const preferIdx = hook.indexOf("loadStudioTaxonomyPreferringMaterialization");
     const listTagsIdx = hook.indexOf("catalogTagService.listTags");
     const listCatsIdx = hook.indexOf("categoryService.listCategories");
     assert.ok(preferIdx >= 0);
-    assert.ok(listTagsIdx > preferIdx);
+    assert.equal(listTagsIdx, -1);
     assert.ok(listCatsIdx > preferIdx);
     assert.match(hook, /source === "disk-cache" \|\| preferred\.source === "materialization"/);
+    assert.match(hook, /tags: \[\]/);
   });
 
   it("exposes reloadFromAuthoritativeSource for Tag Management freshness", () => {
