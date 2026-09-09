@@ -965,8 +965,9 @@ a.portal-editing-mode-banner-cta:focus-visible {
 .portal-show-price-commitment-hint {
   line-height: 1.35;
   margin: 0;
-  max-width: 46ch;
+  max-width: none;
   overflow-wrap: break-word;
+  width: 100%;
 }
 
 .portal-show-price-commitment-totals {
