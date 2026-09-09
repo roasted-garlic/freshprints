@@ -11,7 +11,7 @@ import {
   computeGroupedSectionLabelBandHeightPx,
   resolveGroupedSectionLabelFontSizePx,
 } from "@fresh-prints/shared/utils/gangSheetLabelRendering";
-import { calculateGangSheetSectionSummaryForPlacements } from "@fresh-prints/shared/utils/gangSheetCustomerSectionSummary";
+import { calculateGangSheetCustomerSectionSummary } from "@fresh-prints/shared/utils/gangSheetCustomerSectionSummary";
 import {
   buildGroupedGangSheetSectionHeading,
   buildGroupedGangSheetSectionContinuedHeading,
@@ -28,25 +28,35 @@ const EXPORT_DPI = 300;
 export interface GroupedResizedImage {
   id: string;
   allocationId: string;
+  requestItemId?: string;
   fileName: string;
   pngBytes: Buffer;
   widthPx: number;
   heightPx: number;
-  printWidthInches: number;
-  printHeightInches: number;
+  /** Saved dimensions are present on production requests; pixel fallback keeps older fixtures compatible. */
+  printWidthInches?: number;
+  printHeightInches?: number;
 }
 
 interface ProductionGroup {
   groupKey: string;
   heading: string;
   images: GroupedResizedImage[];
+  sourceImages: GenerateGangSheetPngRequest["images"];
 }
 
 function buildProductionGroups(
   images: GenerateGangSheetPngRequest["images"],
   resizedByAllocationId: Map<string, GroupedResizedImage[]>,
 ): ProductionGroup[] {
-  const groups = new Map<string, { requestNames: Set<string>; images: GroupedResizedImage[] }>();
+  const groups = new Map<
+    string,
+    {
+      requestNames: Set<string>;
+      images: GroupedResizedImage[];
+      sourceImages: GenerateGangSheetPngRequest["images"];
+    }
+  >();
 
   for (const image of images) {
     if (!image.grouping) {
@@ -54,9 +64,11 @@ function buildProductionGroups(
     }
 
     const groupKey = resolveGangSheetProductionGroupKey(image.grouping);
-    const existing = groups.get(groupKey) ?? { requestNames: new Set<string>(), images: [] };
+    const existing = groups.get(groupKey) ?? { requestNames: new Set<string>(), images: [], sourceImages: [] };
     existing.requestNames.add(image.grouping.requestName);
-    const resized = resizedByAllocationId.get(image.allocationId) ?? [];
+    existing.sourceImages.push(image);
+    const assetId = image.requestItemId ?? image.allocationId;
+    const resized = resizedByAllocationId.get(assetId) ?? [];
     existing.images.push(...resized);
     groups.set(groupKey, existing);
   }
@@ -67,6 +79,7 @@ function buildProductionGroups(
       groupKey,
       heading: buildGroupedGangSheetSectionHeading([...value.requestNames]),
       images: value.images,
+      sourceImages: value.sourceImages,
     }));
 }
 
@@ -209,24 +222,17 @@ export async function composeContinuousCustomerGroupedGangSheetSheets(input: {
 
     for (const pending of sections) {
       const { group, sectionHeading, sheet } = pending;
-      const sectionImagesById = new Map(
-        group.images.map((image) => [
-          image.id,
-          {
-            id: image.id,
-            printWidthInches: image.printWidthInches,
-            printHeightInches: image.printHeightInches,
-          },
-        ]),
-      );
-      const sectionSummary = calculateGangSheetSectionSummaryForPlacements(
-        sheet.placements,
-        sectionImagesById,
+      const sectionSummary = calculateGangSheetCustomerSectionSummary(
+        group.sourceImages.map((image) => ({
+          printWidthInches: image.printWidthInches ?? image.targetWidthPx / EXPORT_DPI,
+          printHeightInches: image.printHeightInches ?? image.targetHeightPx / EXPORT_DPI,
+          quantity: image.quantity,
+        })),
         input.request.sectionPricing,
       );
       const sectionLabelSvg = buildGroupedSectionHeadingSvg({
         heading: sectionHeading,
-        summaryLine: sectionSummary.combinedLine,
+        summaryLines: [sectionSummary.priceLine, sectionSummary.weightLine],
         sheetWidthPx: input.sheetWidthPx,
         bandHeightPx: sectionLabelBandHeightPx,
         headingFontSizePx: sectionHeadingFontSizePx,
@@ -304,6 +310,7 @@ export function countContinuousCustomerGroupedPhysicalSheets(input: {
       groupKey: String(index),
       heading: `section-${index}`,
       images: [],
+      sourceImages: [],
     },
     sectionHeading: `section-${index}`,
     sheet: {

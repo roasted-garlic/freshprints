@@ -8,7 +8,7 @@ import { LoadingSpinner } from "../../../shared/components/LoadingSpinner";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
 import { getGangSheetLayoutModeOption, GANG_SHEET_LAYOUT_MODE_OPTIONS } from "../utils/gangSheetLayoutModeOptions";
 import { formatUpcomingShowTitle } from "../utils/upcomingShowDisplay";
-import { formatInchesForFilename } from "@fresh-prints/shared/utils/showExportFilename";
+import { formatGangSheetLengthInches } from "@fresh-prints/shared/utils/showExportFilename";
 import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
 import type {
   CachedGangSheetSheetMeta,
@@ -132,7 +132,7 @@ function writeLastDownloadedSheetIndex(
 }
 
 function formatTotalLength(totalInches: number): string {
-  const inchesLabel = formatInchesForFilename(totalInches);
+  const inchesLabel = formatGangSheetLengthInches(totalInches);
   const feetLabel = Number((totalInches / 12).toFixed(2)).toString();
   return `${inchesLabel}″ total (${feetLabel} ft)`;
 }
@@ -184,6 +184,7 @@ export function ExportGangSheetConfirmModal({
   const [lastDownloadedSheetIndex, setLastDownloadedSheetIndex] = useState<number | null>(() =>
     readLastDownloadedSheetIndex(show.id, layoutMode),
   );
+  const [areWarningsVisible, setAreWarningsVisible] = useState(true);
   const generateStartedAtRef = useRef<number | null>(null);
   const compositingStartedAtRef = useRef<number | null>(null);
   const lastSheetIndexRef = useRef<number | null>(null);
@@ -194,10 +195,15 @@ export function ExportGangSheetConfirmModal({
     [sheets],
   );
   const estimatedSheets = estimatedSheetCount(sheetCountPreview, layoutMode);
+  const warningSignature = warnings.map((warning) => `${warning.fileName}:${warning.reason}:${warning.message}`).join("|");
 
   useEffect(() => {
     setLastDownloadedSheetIndex(readLastDownloadedSheetIndex(show.id, layoutMode));
   }, [layoutMode, show.id]);
+
+  useEffect(() => {
+    setAreWarningsVisible(true);
+  }, [warningSignature]);
 
   function handleDownloadSheet(sheetIndex: number) {
     setLastDownloadedSheetIndex(sheetIndex);
@@ -379,7 +385,7 @@ export function ExportGangSheetConfirmModal({
                           Sheet {sheet.sheetIndex} of {sheet.sheetTotal}
                         </strong>
                         <p className="print-requests-modal-hint">
-                          Length {formatInchesForFilename(sheet.lengthInches)}″ ·{" "}
+                          Length {formatGangSheetLengthInches(sheet.lengthInches)}″ ·{" "}
                           {formatByteSize(sheet.byteSize)}
                         </p>
                         <p className="print-requests-modal-hint">{sheet.fileName}</p>
@@ -409,12 +415,22 @@ export function ExportGangSheetConfirmModal({
                   </ul>
                 </div>
               ) : null}
-              {warnings.length > 0 ? (
+              {warnings.length > 0 && areWarningsVisible ? (
                 <div className="export-show-warnings">
-                  <p>
-                    {warnings.length} warning{warnings.length === 1 ? "" : "s"} — a warnings text file
-                    is included when you export all sheets.
-                  </p>
+                  <div className="export-show-warnings-header">
+                    <p>
+                      {warnings.length} warning{warnings.length === 1 ? "" : "s"} — a warnings text file
+                      is included when you export all sheets.
+                    </p>
+                    <button
+                      aria-label="Dismiss gang sheet warnings"
+                      className="icon-button icon-button-sm icon-button-ghost"
+                      onClick={() => setAreWarningsVisible(false)}
+                      type="button"
+                    >
+                      <X aria-hidden="true" size={16} />
+                    </button>
+                  </div>
                   <ul>
                     {warnings.map((warning) => (
                       <li key={`${warning.fileName}-${warning.reason}`}>

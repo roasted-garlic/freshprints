@@ -21,6 +21,15 @@ export interface GangSheetLayoutAndPricingSettingsInput {
   gangSheetGutterInches?: number;
   gangSheetMaxLengthInches?: number;
   gangSheetLabelFontSizePx?: number;
+  gangSheetPocketPriceUsd?: number;
+  gangSheetPocketWeightOz?: number;
+  gangSheetStandardFullSizePriceUsd?: number;
+  gangSheetStandardFullSizeWeightOz?: number;
+  gangSheetStandardOversizedPriceUsd?: number;
+  gangSheetStandardOversizedWeightOz?: number;
+  gangSheetExtraOversizedPriceUsd?: number;
+  gangSheetExtraOversizedWeightOz?: number;
+  /** Legacy fields are read for fallback only and are no longer editable. */
   gangSheetSectionPriceCutoffInches?: number;
   gangSheetSmallTierPriceUsd?: number;
   gangSheetSmallTierWeightOz?: number;
@@ -109,5 +118,32 @@ export function assertGangSheetLayoutAndPricingSettingsInput(
     !isValidGangSheetTierWeightOz(input.gangSheetLargeTierWeightOz)
   ) {
     throw new Error("Large-tier weight must be a finite number greater than 0 and at most 99.99 oz.");
+  }
+
+  const tierFields: Array<{ value: number | undefined; kind: "price" | "weight"; label: string }> = [
+    { value: input.gangSheetPocketPriceUsd, kind: "price", label: "Pocket price" },
+    { value: input.gangSheetStandardFullSizePriceUsd, kind: "price", label: "Standard Full Size price" },
+    { value: input.gangSheetStandardOversizedPriceUsd, kind: "price", label: "Standard Oversized price" },
+    { value: input.gangSheetExtraOversizedPriceUsd, kind: "price", label: "Extra Oversized price" },
+    { value: input.gangSheetPocketWeightOz, kind: "weight", label: "Pocket weight" },
+    { value: input.gangSheetStandardFullSizeWeightOz, kind: "weight", label: "Standard Full Size weight" },
+    { value: input.gangSheetStandardOversizedWeightOz, kind: "weight", label: "Standard Oversized weight" },
+    { value: input.gangSheetExtraOversizedWeightOz, kind: "weight", label: "Extra Oversized weight" },
+  ];
+
+  for (const field of tierFields) {
+    if (field.value === undefined) {
+      continue;
+    }
+    const valid = field.kind === "price"
+      ? isValidGangSheetTierPriceUsd(field.value)
+      : isValidGangSheetTierWeightOz(field.value);
+    if (!valid) {
+      throw new Error(
+        field.kind === "price"
+          ? `${field.label} must be a finite number between $0 and $999.99.`
+          : `${field.label} must be a finite number greater than 0 and at most 99.99 oz.`,
+      );
+    }
   }
 }

@@ -731,7 +731,43 @@ This is **file export for production** — not shipping, packing, or order fulfi
 
 Remote helpers never need access to local production folders.
 
+## Global Gang Sheet Settings (2026-09 amendment)
+
+Studio resolves one effective gang-sheet configuration from the canonical `settings/showQueue`
+document. The six layout values (sheet width, side margin, top/bottom margin, gutter, maximum
+length, and label font size) and four editable price/weight tiers are consumed by Show Queue
+Standard, grouped customer modes, Internal Gang Sheets, and both request Generate surfaces.
+The legacy `settings/internalGangSheet` document is read only as a non-destructive fallback when
+canonical values are absent; it is not migrated or written by the new Settings UI.
+
+Pricing is classified from saved print width only: Pocket (0–4 inches), Standard Full Size
+(over 4–11), Standard Oversized (over 11–14), and Extra Oversized (over 14). Breakpoints are
+fixed policy. Request Standard sheets render the request name plus price/weight summary and keep
+the `print-request:<requestId>` cache namespace. Material layout and pricing settings participate
+in cache fingerprints.
+
 The shared connection point for **design originals** remains Firebase Storage.
+
+## Print Request-scoped production actions
+
+Studio Print Request detail can export a single request directly, without a Show Allocation.
+The renderer gathers the request's persisted `printRequestItems`, then reuses
+`resolveShowExportProductionAsset`, fixed 300-DPI target sizing, and the existing Electron ZIP or
+Standard gang-sheet compositor. These direct Export/Generate/Copy buttons are hidden for Working
+and Editing requests; those requests retain their existing Add to Show/Internal Gangsheet actions.
+Customer-upload and catalog-backed items use the same baseline / enhanced source selection and
+fail-closed preflight as Show Queue.
+
+Request gang sheets use Standard efficiency mode only. Their local Electron cache scope is prefixed
+`print-request:<requestId>` and their fingerprint includes request scope, request name, layout, item
+identity, active production path, target pixels, and quantity. Request generation never writes a
+Firebase artifact or Show Queue telemetry.
+
+Studio Copy Request is a staff-only `copyStudioPrintRequest` callable. It uses one Admin SDK
+transaction, explicit item allowlists, fresh CR/IR sequences and IDs, and excludes allocations,
+production history, and lifecycle lineage. A private customer upload may return to its owner or an
+Internal Request, but cross-customer copies fail atomically; Firestore and Storage Rules are
+unchanged.
 
 ---
 

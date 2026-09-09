@@ -23,6 +23,41 @@ Fresh Prints is a **two-app monorepo**: Fresh Prints Studio (Electron + Vite + R
 | Studio installer | `npm run build:studio` | Electron packaging changes |
 | Unit tests | `npx tsx --test` (see below) | Logic changes with tests |
 
+### Print Request direct export / gang-sheet / copy focus
+
+```bash
+npx tsx --test \
+  packages/shared/src/utils/printRequestExportFilename.test.ts \
+  packages/shared/src/utils/resolveShowExportProductionAsset.test.ts \
+  packages/shared/src/utils/gangSheetCacheFingerprint.test.ts \
+  functions/src/lib/copyStudioPrintRequestCore.test.ts \
+  apps/studio/src/renderer/src/features/print-requests/hooks/printRequestExport.contract.test.ts \
+  apps/studio/electron/ipc/export/exportRequestValidation.test.ts
+```
+
+The focused contract set verifies request-only inputs, source-aware resolver parity, Standard-only
+request gang sheets, request cache isolation, atomic copy boundaries, and the existing Electron IPC
+validation. Existing Show Queue filename, resolver, planner, and compositor suites remain required
+regressions after this refactor.
+
+For the global Gang Sheet Settings amendment, also run:
+
+```bash
+npx tsx --test \
+  packages/shared/src/constants/gangSheetSectionPricingSettings.constants.test.ts \
+  packages/shared/src/utils/gangSheetCustomerSectionSummary.test.ts \
+  packages/shared/src/utils/gangSheetCacheFingerprint.test.ts \
+  apps/studio/electron/services/export/composeContinuousCustomerGroupedGangSheetSheets.test.ts \
+  apps/studio/electron/ipc/export/exportRequestValidation.test.ts \
+  apps/studio/src/renderer/src/features/print-requests/utils/printRequestPocketFullSizeCounts.contract.test.ts
+```
+
+These cover fixed width boundaries, canonical/legacy/default pricing fallback, exact quantity,
+weight totals, request Standard summary inputs, grouped compositor compatibility, cache material
+settings, and the retired local-editor wiring. Because the amendment changes `firestore.rules`,
+the Rules emulator suite is required; if the local Firebase emulator cannot start, record the
+exact environment blocker rather than claiming a pass.
+
 **Never claim tests passed unless they were actually run.**
 
 ---

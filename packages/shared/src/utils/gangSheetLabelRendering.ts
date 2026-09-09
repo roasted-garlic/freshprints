@@ -35,20 +35,23 @@ export function buildGangSheetLabelSvg(input: {
 export function computeGroupedSectionLabelBandHeightPx(
   headingFontSizePx: number,
   summaryFontSizePx: number,
+  summaryLineCount = 2,
 ): number {
   const lineGapPx = Math.round(summaryFontSizePx * 0.35);
+  const safeSummaryLineCount = Math.max(1, Math.floor(summaryLineCount));
   return (
     GANG_SHEET_LABEL_TOP_PADDING_PX +
     headingFontSizePx +
     lineGapPx +
-    summaryFontSizePx +
+    safeSummaryLineCount * summaryFontSizePx +
+    (safeSummaryLineCount - 1) * lineGapPx +
     GANG_SHEET_LABEL_CLEARANCE_PX
   );
 }
 
 export function buildGroupedSectionHeadingSvg(input: {
   heading: string;
-  summaryLine: string;
+  summaryLines: readonly string[];
   sheetWidthPx: number;
   bandHeightPx: number;
   headingFontSizePx: number;
@@ -56,14 +59,20 @@ export function buildGroupedSectionHeadingSvg(input: {
 }): string {
   const headingY = GANG_SHEET_LABEL_TOP_PADDING_PX + input.headingFontSizePx;
   const lineGapPx = Math.round(input.summaryFontSizePx * 0.35);
-  const summaryY = headingY + lineGapPx + input.summaryFontSizePx;
+  const firstSummaryY = headingY + lineGapPx + input.summaryFontSizePx;
+  const summarySvg = input.summaryLines
+    .map(
+      (summaryLine, index) =>
+        `<text x="${input.sheetWidthPx / 2}" y="${firstSummaryY + index * (input.summaryFontSizePx + lineGapPx)}" font-family="sans-serif" font-size="${input.summaryFontSizePx}" font-weight="normal" fill="#4a4a4a" text-anchor="middle">${escapeGangSheetLabelXml(summaryLine)}</text>`,
+    )
+    .join("\n    ");
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${input.sheetWidthPx}" height="${input.bandHeightPx}">
     <text x="${input.sheetWidthPx / 2}" y="${headingY}" font-family="sans-serif" font-size="${input.headingFontSizePx}" font-weight="bold" fill="#1a1a1a" text-anchor="middle">${escapeGangSheetLabelXml(input.heading)}</text>
-    <text x="${input.sheetWidthPx / 2}" y="${summaryY}" font-family="sans-serif" font-size="${input.summaryFontSizePx}" font-weight="normal" fill="#4a4a4a" text-anchor="middle">${escapeGangSheetLabelXml(input.summaryLine)}</text>
+    ${summarySvg}
   </svg>`;
 }
 
 export function resolveGroupedSectionLabelFontSizePx(sheetLabelFontSizePx: number): number {
-  return Math.round(sheetLabelFontSizePx * 0.85);
+  return Math.round(sheetLabelFontSizePx * 0.75);
 }

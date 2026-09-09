@@ -9,22 +9,24 @@ export function buildGangSheetCacheFingerprint(request: ExportGangSheetPngReques
   const includeSectionSummaryInputs =
     request.layoutMode === "grouped_by_customer" ||
     request.layoutMode === "customer_grouped_continuous";
+  const includeRequestSummaryInputs = Boolean(request.cacheScope?.startsWith("print-request:") && request.sectionPricing);
+  const includePricingInputs = includeSectionSummaryInputs || includeRequestSummaryInputs;
 
   const images = request.images
     .map((image) => ({
-      allocationId: image.allocationId,
+      assetId: image.requestItemId ?? image.allocationId ?? "",
       productionStoragePath: image.productionStoragePath,
       targetWidthPx: image.targetWidthPx,
       targetHeightPx: image.targetHeightPx,
       quantity: image.quantity,
-      ...(includeSectionSummaryInputs && typeof image.printWidthInches === "number"
+      ...(includePricingInputs && typeof image.printWidthInches === "number"
         ? { printWidthInches: image.printWidthInches }
         : {}),
-      ...(includeSectionSummaryInputs && typeof image.printHeightInches === "number"
+      ...(includePricingInputs && typeof image.printHeightInches === "number"
         ? { printHeightInches: image.printHeightInches }
         : {}),
     }))
-    .sort((left, right) => left.allocationId.localeCompare(right.allocationId));
+    .sort((left, right) => left.assetId.localeCompare(right.assetId));
 
   const payload = JSON.stringify({
     baseFileName: request.baseFileName,
@@ -34,12 +36,13 @@ export function buildGangSheetCacheFingerprint(request: ExportGangSheetPngReques
     gutterInches: request.gutterInches,
     maxSheetLengthInches: request.maxSheetLengthInches,
     labelFontSizePx: request.labelFontSizePx,
+    ...(request.sheetLabel ? { sheetLabel: request.sheetLabel } : {}),
+    ...(request.cacheScope ? { cacheScope: request.cacheScope } : {}),
     ...(request.layoutMode && request.layoutMode !== "efficiency"
-      ? {
-          layoutMode: request.layoutMode,
-          sectionSummaryVersion: 2,
-          ...(request.sectionPricing ? { sectionPricing: request.sectionPricing } : {}),
-        }
+      ? { layoutMode: request.layoutMode }
+      : {}),
+    ...(request.sectionPricing
+      ? { sectionSummaryVersion: 3, sectionPricing: request.sectionPricing }
       : {}),
     images,
   });

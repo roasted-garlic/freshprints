@@ -4,6 +4,73 @@
 
 ---
 
+### ADR-FP-184: Studio Print Request direct export, Standard gang sheet, and atomic copy
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-08 |
+| Status | accepted — owner-authorized implementation complete locally; **STOP before DEV deploy / Owner QA** |
+| Related | Goal `print-request-direct-export-gangsheet-and-copy`; Plan/Review/Implementation Review `2026-09-08-print-request-direct-export-gangsheet-and-copy-*`; ADR-FP-070; ADR-FP-071; ADR-FP-073; ADR-FP-141; ADR-FP-143 |
+
+**Decision**
+
+1. Request-level Export Images and Generate Gangsheet build only from the selected request's
+   `printRequestItems`; no Show Allocation is required. Both reuse the existing source-aware
+   production resolver, 300-DPI sizing, Electron download/resize, ZIP, and compositor paths.
+2. Request gang sheets expose Standard efficiency mode only. Their local cache uses an isolated
+   `print-request:<requestId>` scope and request material inputs in the fingerprint; no Firebase
+   artifact or `upcomingShows.gangSheetGenerated*` telemetry is written.
+3. Request output names use the immutable CR/IR request name. Show Queue `whatnot_<date>` names and
+   all existing Show Queue modes remain unchanged.
+4. `copyStudioPrintRequest` is the sole trusted staff copy path. One Admin SDK transaction creates
+   a fresh clean request and pending items using normal sequences, with explicit allowlists. It
+   excludes allocations and production/lifecycle history and fails atomically for a private upload
+   copied to a different Customer.
+5. Firestore Rules, Storage Rules, indexes, and migrations remain unchanged. Portal behavior and
+   permissions are unchanged.
+
+**Consequences**
+
+- Historical/Printed requests remain eligible when exact persisted assets resolve; actions never
+  reopen lifecycle state.
+- A later DEV Function deployment and Studio packaging/publish are separately gated after the
+  Implementation Review and Owner DEV QA.
+
+---
+
+### ADR-FP-185: Global Gang Sheet Settings and four-tier width pricing
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-08 |
+| Status | accepted — owner-authorized implementation complete locally; **STOP before DEV deploy / Owner QA** |
+| Related | Goal `print-request-direct-export-gangsheet-and-copy`; ADR-FP-070; ADR-FP-143; ADR-FP-184 |
+
+**Decision**
+
+1. Persist canonical global Gang Sheet Settings fields on the existing `settings/showQueue`
+   document. The existing `settings/internalGangSheet` document is a read-only compatibility
+   fallback when canonical values are absent; do not migrate or backfill it.
+2. Normalize six layout settings and four editable price/weight tiers through one resolver used
+   by Show Queue Standard, both grouped modes, Internal Gang Sheets, and Customer/Internal Print
+   Request Standard generation.
+3. Classify by saved print width only with fixed boundaries: Pocket `<=4`, Standard Full Size
+   `>4..<=11`, Standard Oversized `>11..<=14`, and Extra Oversized `>14`. Exact item quantity
+   drives price and weight totals.
+4. Put the editor under owner/admin `/settings?tab=gangSheetSettings`; local Show Queue/Internal
+   editors are retired. Request Standard sheets render request name plus price/weight summary.
+5. Include material layout/pricing settings and request identity in local cache fingerprints. The
+   only backend rule change is the narrow existing `settings/showQueue` field allowlist; no new
+   Function, Storage Rules, index, or migration is introduced.
+
+**Consequences**
+
+- Existing grouped compositor semantics and request cache isolation remain intact.
+- Owner DEV deployment and QA must validate canonical settings, fallback behavior, all six
+  generation surfaces, and direct-action visibility before release/publish.
+
+---
+
 ### ADR-FP-183: Atomic AI reprocess state reconciliation
 
 | Field | Value |

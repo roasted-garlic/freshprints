@@ -54,8 +54,8 @@ export interface PrintRequestItemSummary {
   totalQuantity: number;
   uniqueDesignCount: number;
   /**
-   * Eligible printable rows for width-only Pocket / Full Size counts (valid width + qty; excludes canceled).
-   * Counts are derived with the active context cutoff — not stored as fixed totals.
+   * Eligible printable rows for width-only four-tier size counts (valid width + qty; excludes canceled).
+   * Counts are derived from the canonical fixed width tiers — not stored as fixed totals.
    */
   sizeClassRows: Array<{
     printWidthInches: number;

@@ -90,6 +90,11 @@ export function formatInchesForFilename(inches: number): string {
   return Number(inches.toFixed(2)).toString();
 }
 
+/** Formats a gang-sheet length for UI display with exactly two decimal places. */
+export function formatGangSheetLengthInches(inches: number): string {
+  return inches.toFixed(2);
+}
+
 export interface ExportImageFilenameInput {
   sequenceNumber: number;
   allocatedQuantity: number;

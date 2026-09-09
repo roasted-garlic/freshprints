@@ -175,6 +175,19 @@ Full ADR: `docs/project/DECISIONS.md` (ADR-FP-145).
 
 Full ADR + follow-up: `docs/project/DECISIONS.md` (ADR-FP-143).
 
+## Print Request production actions and Gang Sheet Settings (2026-09-08)
+
+| Constraint | Rule |
+|------------|------|
+| Canonical settings | `settings/showQueue` owns the six shared physical layout fields and four width-only price/weight tiers; legacy `settings/internalGangSheet` is read-only fallback |
+| Width tiers | Pocket ≤4″ → `$1` / `0.40 oz`; Standard Full >4–11″ → `$2` / `0.75 oz`; Standard Oversized >11–14″ → `$3` / `0.75 oz`; Extra Oversized >14″ → `$4` / `0.75 oz` |
+| Direct actions | Eligible non-working Customer/Internal requests may Export Images, Export x(Qty), Generate Standard Gang Sheet, or Copy |
+| Working / Editing | Direct production actions are hidden; existing Add to Show / Add to Internal Gangsheet actions remain |
+| Scope | Shared Show Queue, Internal Gang Sheet, and request generation use the same resolver; no migration, backfill, index, Storage Rules, Portal, or production change |
+
+DEV callable evidence: `copyStudioPrintRequest` is ACTIVE in `fresh-prints-dev` (`us-central1`,
+Node.js 20), revision `copystudioprintrequest-00001-yec`.
+
 ## Public Our Shows (2026-08-22 — ADR-FP-142)
 
 | Constraint | Rule |

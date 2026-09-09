@@ -30,6 +30,7 @@ export { unqueuePortalPrintRequestFromShow } from "./unqueuePortalPrintRequestFr
 export { unqueueStudioCustomerPrintRequestFromShow } from "./unqueueStudioCustomerPrintRequestFromShow";
 export { completeStaffGangSheetAndOpenNext } from "./completeStaffGangSheetAndOpenNext";
 export { convertCustomerPrintRequestToInternal } from "./convertCustomerPrintRequestToInternal";
+export { copyStudioPrintRequest } from "./copyStudioPrintRequest";
 export { createInitialStaffGangSheet } from "./createInitialStaffGangSheet";
 export { removePortalPrintRequestItem } from "./removePortalPrintRequestItem";
 export { updatePortalPrintRequestItemQuantity } from "./updatePortalPrintRequestItemQuantity";

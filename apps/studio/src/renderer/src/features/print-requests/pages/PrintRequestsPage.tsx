@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
-import { ExternalLink, ImagePlus, Plus, RefreshCw, Search, X } from "lucide-react";
+import { ExternalLink, ImagePlus, Plus, RefreshCw, Search, X, Download, Copy, WandSparkles } from "lucide-react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 import { Button } from "../../../shared/components/Button";
@@ -28,13 +28,7 @@ import { useReadyDesignsForSelection } from "../hooks/useReadyDesignsForSelectio
 import { PrintRequestItemCard } from "../components/PrintRequestItemCard";
 import { PrintRequestItemsPreviewLightbox } from "../components/PrintRequestItemsPreviewLightbox";
 import { useStandardPrintSizesSettings } from "../../settings/hooks/useStandardPrintSizesSettings";
-import { useShowQueueSettings } from "../../upcoming-shows/hooks/useShowQueueSettings";
-import { useInternalGangSheetSettings } from "../../upcoming-shows/hooks/useInternalGangSheetSettings";
-import { resolveGangSheetSectionPricingFromSettings } from "@fresh-prints/shared/constants/gangSheetSectionPricingSettings.constants";
-import {
-  formatPocketFullSizeCountsLabel,
-  resolvePrintRequestPocketFullSizeCounts,
-} from "@fresh-prints/shared/utils/printRequestPocketFullSizeCounts";
+import { useGangSheetSettings } from "../../settings/hooks/useGangSheetSettings";
 import { buildPrintRequestItemSummaries } from "../utils/printRequestQueryPlanning";
 import { AddToShowModal } from "../components/AddToShowModal";
 import { TransferPrintRequestToShowModal } from "../components/TransferPrintRequestToShowModal";
@@ -122,7 +116,17 @@ import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcom
 import { formatUpcomingShowTitle, formatUpcomingShowTimestampLabel } from "../../upcoming-shows/utils/upcomingShowDisplay";
 import { formatShowDateTimeLabel } from "@fresh-prints/shared/utils/showDateTimeDisplay";
 import { buildShowQueueDeepLinkPath } from "../../upcoming-shows/utils/buildShowQueueDeepLinkPath";
-
+import { useExportPrintRequestZip } from "../hooks/useExportPrintRequestZip";
+import { useGeneratePrintRequestGangSheet } from "../hooks/useGeneratePrintRequestGangSheet";
+import { ExportPrintRequestConfirmModal } from "../components/ExportPrintRequestConfirmModal";
+import { GeneratePrintRequestGangSheetModal } from "../components/GeneratePrintRequestGangSheetModal";
+import { CopyPrintRequestModal } from "../components/CopyPrintRequestModal";
+import { PrintRequestCostBreakdownModal } from "../components/PrintRequestCostBreakdownModal";
+import { copyStudioPrintRequestService } from "../services/copyStudioPrintRequestService";
+import {
+  calculateGangSheetCustomerSectionSummary,
+  type GangSheetCustomerSectionSummary,
+} from "@fresh-prints/shared/utils/gangSheetCustomerSectionSummary";
 type CustomerMode = "internal" | "customer";
 
 interface PrintRequestFormState {
@@ -158,6 +162,14 @@ function formatTimestampLabel(value: { toDate: () => Date } | undefined): string
   }
 
   return value.toDate().toLocaleString();
+}
+
+function formatRequestPrice(amount: number): string {
+  return Number.isInteger(amount) ? `$${amount}` : `$${amount.toFixed(2)}`;
+}
+
+function formatRequestWeight(amount: number): string {
+  return `${amount.toFixed(2)} oz`;
 }
 
 function getPrintRequestCustomerLabel(
@@ -317,14 +329,7 @@ export function PrintRequestsPage() {
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { settings: standardPrintSizesSettings } = useStandardPrintSizesSettings();
-  const showQueueSettings = useShowQueueSettings();
-  const internalGangSheetSettings = useInternalGangSheetSettings();
-  const showQueueSizeCutoffInches = resolveGangSheetSectionPricingFromSettings(
-    showQueueSettings.settings,
-  ).sizeCutoffInches;
-  const internalSizeCutoffInches = resolveGangSheetSectionPricingFromSettings(
-    internalGangSheetSettings.settings,
-  ).sizeCutoffInches;
+  const gangSheetSettings = useGangSheetSettings();
   const tabParam = searchParams.get(PRINT_REQUEST_TAB_QUERY_PARAM);
   const kindParam = searchParams.get(PRINT_REQUEST_KIND_QUERY_PARAM);
   const selectedRequestIdParam = searchParams.get(PRINT_REQUEST_ID_QUERY_PARAM);
@@ -472,30 +477,6 @@ export function PrintRequestsPage() {
   const patchUploadSummaryFromEnhanceResult = requestDetails.patchUploadSummaryFromEnhanceResult;
   const visibleSelectedRequest = isRequestLoading ? null : selectedRequest;
 
-  useEffect(() => {
-    if (!visibleSelectedRequest || visibleSelectedRequest.isInternal) {
-      return;
-    }
-
-    const internalRequestId = visibleSelectedRequest.convertedToInternalRequestId?.trim();
-    if (
-      !isPrintRequestConvertedToInternal(visibleSelectedRequest.closureKind) ||
-      !internalRequestId ||
-      selectedRequestId !== visibleSelectedRequest.id
-    ) {
-      return;
-    }
-
-    navigate(
-      buildPrintRequestNavigationDeepLinkPath({
-        id: visibleSelectedRequest.id,
-        closureKind: visibleSelectedRequest.closureKind,
-        convertedToInternalRequestId: internalRequestId,
-      }).path,
-      { replace: true },
-    );
-  }, [navigate, selectedRequestId, visibleSelectedRequest]);
-
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [autosaveState, setAutosaveState] = useState<AutosaveState>({ status: "idle" });
@@ -530,6 +511,15 @@ export function PrintRequestsPage() {
     sourceShowId: string;
     transferQuantity: number;
   } | null>(null);
+  const [isRequestExportModalOpen, setIsRequestExportModalOpen] = useState(false);
+  const [requestExportMultiplyByQuantity, setRequestExportMultiplyByQuantity] = useState(false);
+  const [isRequestGangSheetModalOpen, setIsRequestGangSheetModalOpen] = useState(false);
+  const [isCostBreakdownModalOpen, setIsCostBreakdownModalOpen] = useState(false);
+  const [isCopyRequestModalOpen, setIsCopyRequestModalOpen] = useState(false);
+  const [isCopyingRequest, setIsCopyingRequest] = useState(false);
+  const [copyRequestError, setCopyRequestError] = useState<string | null>(null);
+  const exportPrintRequestZipState = useExportPrintRequestZip();
+  const printRequestGangSheetState = useGeneratePrintRequestGangSheet();
 
   const reloadSelectedRequestAllocations = useCallback(async () => {
     if (!user || !visibleSelectedRequest) {
@@ -547,6 +537,10 @@ export function PrintRequestsPage() {
 
   useEffect(() => {
     setIsConfirmingShowQueueRemoval(false);
+  }, [selectedRequestId]);
+
+  useEffect(() => {
+    setIsCostBreakdownModalOpen(false);
   }, [selectedRequestId]);
 
   const selectedRequestShowGroups = useMemo(
@@ -1535,30 +1529,24 @@ export function PrintRequestsPage() {
     }
   }
 
-  const selectedRequestSizeClassLabel = useMemo(() => {
-    if (!visibleSelectedRequest) {
+  const selectedRequestCostSummary = useMemo<GangSheetCustomerSectionSummary | null>(() => {
+    if (!visibleSelectedRequest || requestItems.length === 0) {
       return null;
     }
-    const cutoffInches = visibleSelectedRequest.isInternal
-      ? internalSizeCutoffInches
-      : showQueueSizeCutoffInches;
-    return formatPocketFullSizeCountsLabel(
-      resolvePrintRequestPocketFullSizeCounts(
+
+    try {
+      return calculateGangSheetCustomerSectionSummary(
         requestItems.map((item) => ({
-          printWidthInches: item.printWidthInches,
-          printHeightInches: item.printHeightInches,
+          printWidthInches: item.printWidthInches ?? Number.NaN,
+          printHeightInches: item.printHeightInches ?? 1,
           quantity: item.quantity,
-          status: item.status,
         })),
-        cutoffInches,
-      ),
-    );
-  }, [
-    internalSizeCutoffInches,
-    requestItems,
-    showQueueSizeCutoffInches,
-    visibleSelectedRequest,
-  ]);
+        gangSheetSettings.settings.sectionPricing,
+      );
+    } catch {
+      return null;
+    }
+  }, [gangSheetSettings.settings.sectionPricing, requestItems, visibleSelectedRequest]);
 
   const openDesignLibrarySelection = useCallback(() => {
     if (!selectedRequest) {
@@ -1714,7 +1702,86 @@ export function PrintRequestsPage() {
   const canManageRequestItems = Boolean(
     user && permissionService.canManagePrintRequestItems(user),
   );
+  const isSelectedRequestWorkingOrEditing =
+    selectedRequestDerivedListTab === "working" || selectedRequestDerivedListTab === "editing";
+  const canShowDirectRequestActions = Boolean(
+    visibleSelectedRequest &&
+      requestItems.length > 0 &&
+      canManageRequestItems &&
+      !isSelectedRequestWorkingOrEditing,
+  );
   const canViewUpcomingShows = user ? permissionService.canViewUpcomingShows(user) : false;
+  const requestGangSheetSettings = useMemo(() => {
+    return {
+      sheetWidthInches: gangSheetSettings.settings.gangSheetWidthInches,
+      sideMarginInches: gangSheetSettings.settings.gangSheetSideMarginInches,
+      topBottomMarginInches: gangSheetSettings.settings.gangSheetTopBottomMarginInches,
+      gutterInches: gangSheetSettings.settings.gangSheetGutterInches,
+      maxSheetLengthInches: gangSheetSettings.settings.gangSheetMaxLengthInches,
+      labelFontSizePx: gangSheetSettings.settings.gangSheetLabelFontSizePx,
+      sectionPricing: gangSheetSettings.settings.sectionPricing,
+    };
+  }, [gangSheetSettings.settings]);
+
+  const loadCustomerDirectoryForCopy = useCallback(async () => {
+    if (!user || customerDirectory.length > 0) return;
+    setIsCustomerDirectoryLoading(true);
+    try {
+      setCustomerDirectory(await printRequestService.listCustomers(user));
+    } finally {
+      setIsCustomerDirectoryLoading(false);
+    }
+  }, [customerDirectory.length, user]);
+
+  const openRequestExportModal = useCallback((multiplyByQuantity: boolean) => {
+    if (!visibleSelectedRequest || requestItems.length === 0) return;
+    exportPrintRequestZipState.reset();
+    setRequestExportMultiplyByQuantity(multiplyByQuantity);
+    setIsRequestExportModalOpen(true);
+  }, [exportPrintRequestZipState, requestItems.length, visibleSelectedRequest]);
+
+  const openRequestGangSheetModal = useCallback(() => {
+    if (!visibleSelectedRequest || requestItems.length === 0) return;
+    printRequestGangSheetState.reset();
+    setIsRequestGangSheetModalOpen(true);
+  }, [printRequestGangSheetState, requestItems.length, visibleSelectedRequest]);
+
+  const openCopyRequestModal = useCallback(() => {
+    if (!visibleSelectedRequest || requestItems.length === 0) return;
+    setCopyRequestError(null);
+    setIsCopyRequestModalOpen(true);
+    void loadCustomerDirectoryForCopy();
+  }, [loadCustomerDirectoryForCopy, requestItems.length, visibleSelectedRequest]);
+
+  const submitCopyRequest = useCallback(async (input: {
+    destinationKind: "customer" | "internal";
+    destinationCustomerId?: string;
+    destinationInternalBaseName?: string;
+  }) => {
+    if (!visibleSelectedRequest) return;
+    setIsCopyingRequest(true);
+    setCopyRequestError(null);
+    try {
+      const result = await copyStudioPrintRequestService.copy({
+        sourcePrintRequestId: visibleSelectedRequest.id,
+        ...input,
+      });
+      setIsCopyRequestModalOpen(false);
+      clearPrintRequestsPageCache();
+      await reloadPrintRequests({ silent: true });
+      navigate(getPrintRequestsPath({
+        kind: result.isInternal ? "internal" : "customer",
+        tab: "working",
+        requestId: result.printRequestId,
+      }));
+      setSuccessMessage(`Copied ${visibleSelectedRequest.name} to ${result.printRequestName}.`);
+      setSuccessAlertSeed((current) => current + 1);
+    } catch (error) {
+      setCopyRequestError(formatWriteErrorMessage(error));
+    } finally {
+      setIsCopyingRequest(false);
+    }
+  }, [navigate, reloadPrintRequests, visibleSelectedRequest]);
 
   function renderSelectedRequestShowQueueLinks(includeTransferActions: boolean) {
     if (!visibleSelectedRequest || selectedRequestShowGroups.length === 0) {
@@ -2016,15 +2083,6 @@ export function PrintRequestsPage() {
                 const isSelected = request.id === selectedRequestId;
                 const requestSummary = summariesByRequestId[request.id] ?? emptyPrintRequestItemSummary();
                 const extraShowCount = section.extraShowCountByRequestId[request.id] ?? 0;
-                const listCutoffInches = request.isInternal
-                  ? internalSizeCutoffInches
-                  : showQueueSizeCutoffInches;
-                const sizeClassLabel = formatPocketFullSizeCountsLabel(
-                  resolvePrintRequestPocketFullSizeCounts(
-                    requestSummary.sizeClassRows ?? [],
-                    listCutoffInches,
-                  ),
-                );
 
                 return (
                   <button
@@ -2063,9 +2121,6 @@ export function PrintRequestsPage() {
                     <div className="print-requests-request-card-counts">
                       <span>{formatDesignCountLabel(requestSummary.uniqueDesignCount)}</span>
                       <span>{formatTotalQuantityLabel(requestSummary.totalQuantity)}</span>
-                      {sizeClassLabel ? (
-                        <span className="print-requests-request-card-size-class">{sizeClassLabel}</span>
-                      ) : null}
                     </div>
                   </button>
                 );
@@ -2090,8 +2145,26 @@ export function PrintRequestsPage() {
         </aside>
 
         <section className="print-requests-main">
-          {canShowAllocationActions ? (
+          {canShowDirectRequestActions || canShowAllocationActions ? (
             <div className="print-requests-page-actions">
+              {canShowDirectRequestActions ? (
+                <>
+                  <Button className="button-leading-icon" onClick={() => openRequestExportModal(false)} type="button">
+                    <Download aria-hidden="true" size={16} /> Export Images
+                  </Button>
+                  <Button className="button-leading-icon" onClick={() => openRequestExportModal(true)} type="button" variant="secondary">
+                    <Download aria-hidden="true" size={16} /> Export x(Qty)
+                  </Button>
+                  <Button className="button-leading-icon" onClick={openRequestGangSheetModal} type="button" variant="secondary">
+                    <WandSparkles aria-hidden="true" size={16} /> Generate Gangsheet
+                  </Button>
+                  <Button className="button-leading-icon" onClick={openCopyRequestModal} type="button" variant="secondary">
+                    <Copy aria-hidden="true" size={16} /> Copy Request
+                  </Button>
+                </>
+              ) : null}
+              {canShowAllocationActions ? (
+                <>
               {!visibleSelectedRequest!.isInternal ? (
                 <Button
                   disabled={
@@ -2128,6 +2201,8 @@ export function PrintRequestsPage() {
                   Add to Internal Gangsheet
                 </Button>
               )}
+                </>
+              ) : null}
             </div>
           ) : null}
 
@@ -2154,11 +2229,28 @@ export function PrintRequestsPage() {
                       {" | "}
                       Updated {formatTimestampLabel(visibleSelectedRequest.updatedAt)}
                     </p>
-                    {selectedRequestSizeClassLabel ? (
-                      <div className="print-requests-detail-size-class-row">
-                        <span className="print-requests-request-card-size-class">
-                          {selectedRequestSizeClassLabel}
-                        </span>
+                    {selectedRequestCostSummary ? (
+                      <div className="print-requests-detail-metrics">
+                        <button
+                          aria-haspopup="dialog"
+                          aria-label={`Open total price breakdown for ${visibleSelectedRequest.name}`}
+                          className="print-requests-detail-metric-pill"
+                          onClick={() => setIsCostBreakdownModalOpen(true)}
+                          type="button"
+                        >
+                          <span>Total price</span>
+                          <strong>{formatRequestPrice(selectedRequestCostSummary.totalPriceUsd)}</strong>
+                        </button>
+                        <button
+                          aria-haspopup="dialog"
+                          aria-label={`Open total weight breakdown for ${visibleSelectedRequest.name}`}
+                          className="print-requests-detail-metric-pill"
+                          onClick={() => setIsCostBreakdownModalOpen(true)}
+                          type="button"
+                        >
+                          <span>Total weight</span>
+                          <strong>{formatRequestWeight(selectedRequestCostSummary.totalWeightOz)}</strong>
+                        </button>
                       </div>
                     ) : null}
                   </div>
@@ -2515,6 +2607,7 @@ export function PrintRequestsPage() {
                           onUpdate={handleUpdateItem}
                           printRequestId={selectedRequestId ?? ""}
                           readOnly={isSelectedRequestDetailLocked}
+                          sectionPricing={gangSheetSettings.settings.sectionPricing}
                           standardPrintSizesSettings={standardPrintSizesSettings}
                           upload={upload}
                         />
@@ -2724,6 +2817,81 @@ export function PrintRequestsPage() {
           items={requestItems}
           onAdded={handleAddedToShow}
           onClose={() => setIsAddToShowModalOpen(false)}
+          printRequest={visibleSelectedRequest}
+        />
+      ) : null}
+
+      {isCostBreakdownModalOpen && visibleSelectedRequest && selectedRequestCostSummary ? (
+        <PrintRequestCostBreakdownModal
+          onClose={() => setIsCostBreakdownModalOpen(false)}
+          pricing={gangSheetSettings.settings.sectionPricing}
+          requestName={visibleSelectedRequest.name}
+          summary={selectedRequestCostSummary}
+        />
+      ) : null}
+
+      {isRequestExportModalOpen && visibleSelectedRequest ? (
+        <ExportPrintRequestConfirmModal
+          error={exportPrintRequestZipState.error}
+          isExporting={exportPrintRequestZipState.isExporting}
+          multiplyByQuantity={requestExportMultiplyByQuantity}
+          onClose={() => {
+            if (!exportPrintRequestZipState.isExporting) {
+              setIsRequestExportModalOpen(false);
+              exportPrintRequestZipState.reset();
+            }
+          }}
+          onConfirm={() => void exportPrintRequestZipState.exportPrintRequestZip(
+            visibleSelectedRequest,
+            requestItems,
+            requestExportMultiplyByQuantity,
+          )}
+          progress={exportPrintRequestZipState.progress}
+          requestName={visibleSelectedRequest.name}
+          result={exportPrintRequestZipState.result}
+        />
+      ) : null}
+
+      {isRequestGangSheetModalOpen && visibleSelectedRequest ? (
+        <GeneratePrintRequestGangSheetModal
+          error={printRequestGangSheetState.error}
+          generated={printRequestGangSheetState.generated}
+          isExporting={printRequestGangSheetState.isExporting}
+          isGenerating={printRequestGangSheetState.isGenerating}
+          lastSavedPaths={printRequestGangSheetState.lastSavedPaths}
+          onClose={() => {
+            if (!printRequestGangSheetState.isGenerating && !printRequestGangSheetState.isExporting) {
+              setIsRequestGangSheetModalOpen(false);
+              printRequestGangSheetState.reset();
+            }
+          }}
+          onDownload={(sheetIndex) => void printRequestGangSheetState.downloadSheet(sheetIndex)}
+          onExport={() => void printRequestGangSheetState.exportCached()}
+          onGenerate={() => void printRequestGangSheetState.generate(
+            visibleSelectedRequest,
+            requestItems,
+            requestGangSheetSettings,
+          )}
+          progress={printRequestGangSheetState.progress}
+          requestName={visibleSelectedRequest.name}
+          sheetWidthInches={requestGangSheetSettings.sheetWidthInches}
+          sheets={printRequestGangSheetState.sheets}
+          warnings={printRequestGangSheetState.warnings}
+        />
+      ) : null}
+
+      {isCopyRequestModalOpen && visibleSelectedRequest ? (
+        <CopyPrintRequestModal
+          customers={customerDirectory.filter((customer) => isActiveCustomerAccount(customer) && !customer.isGuest)}
+          error={copyRequestError}
+          isSubmitting={isCopyingRequest || isCustomerDirectoryLoading}
+          onClose={() => {
+            if (!isCopyingRequest) {
+              setIsCopyRequestModalOpen(false);
+              setCopyRequestError(null);
+            }
+          }}
+          onSubmit={(input) => void submitCopyRequest(input)}
           printRequest={visibleSelectedRequest}
         />
       ) : null}

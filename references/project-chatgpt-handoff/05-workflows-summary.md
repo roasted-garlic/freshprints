@@ -149,6 +149,9 @@ Edit qty/size (same DPI floor as Portal: ≥ 200 to save, ≤ 22″)
 Customer: **Add to Show**  |  Internal: **Add to Internal Gangsheet**
   Convert Customer → Internal via ⋯ (ADR-FP-141; blocks if in_progress allocations)
     ↓
+For eligible non-working requests: Export Images / Export x(Qty) / Generate Standard Gang Sheet / Copy.
+Working and Editing requests keep only the existing allocation actions.
+    ↓
 Attach to Show Queue / upcoming show (both kinds still attachable)
     ↓
 Show Queue Generate: **Standard**, **Grouped by Customer**, or **Sheet per Customer** gang sheets (ADR-FP-143 three-mode extension 2026-08-27)
@@ -168,6 +171,7 @@ Attach print requests / allocations
 Production timer → Printing tab for customers
     ↓
 Export zip (300 DPI) and/or gang sheet PNGs (**Standard** · **Grouped by Customer** · **Sheet per Customer** — ADR-FP-143)
+  Shared `settings/showQueue` Gang Sheet Settings resolve physical layout, four width-based price/weight tiers, request totals, and card cost summaries.
     ↓
 Finish → terminal allocations + exact request completion
     (Past + Printing Whatnot shows also Finish automatically or via Mark Complete — ADR-FP-139;

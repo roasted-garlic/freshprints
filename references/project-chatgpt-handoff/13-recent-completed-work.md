@@ -1,5 +1,19 @@
 # Recent Completed Work
 
+## 2026-09-08 - Print Request direct export, gang sheets, copy, and global settings — CLOSED
+
+| Item | Status |
+|------|--------|
+| Goal | `print-request-direct-export-gangsheet-and-copy` |
+| Status | **CLOSED** — Signoff **approved** |
+| Owner DEV QA | **PASS** (2026-09-08) |
+| Signoff | `docs/workflow/reviews/2026-09-08-print-request-direct-export-gangsheet-and-copy-signoff.md` |
+| DEV evidence | Firestore Rules ruleset `0d32ca64-8cfc-4bd8-bd56-b34f426d47bd`; `copyStudioPrintRequest` ACTIVE, `us-central1`, Node.js 20, revision `copystudioprintrequest-00001-yec`, source hash `6484fccde1612904191273e4e92138f1c9c780e0` |
+| Validation | Rules **169/169 across 22 suites**; Show Queue, request Export, Copy, focused amended tests, Functions/Vite builds, targeted lint, and diff check **PASS** |
+| Scope | No Storage Rules, indexes, migration/backfill, Portal, Studio publish, or production action |
+| Autonomous / Pass 2 | **OFF** / **PARKED** |
+| Next checkpoint | `[NEEDS OWNER AUTHORIZATION: COMMIT/PUSH CLOSED PRINT REQUEST GOAL]` |
+
 ## 2026-09-08 - Atomic reprocess automation-state reconciliation — CLOSED
 
 | Item | Status |

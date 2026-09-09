@@ -51,6 +51,18 @@ describe("validateGenerateGangSheetPngRequest", () => {
     assert.equal(validated.request.layoutMode, undefined);
   });
 
+  it("preserves sectionPricing for standard request generates", () => {
+    const validated = validateGenerateGangSheetPngRequest({
+      ...basePayload,
+      cacheScope: "print-request:req-1",
+      sectionPricing: DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG,
+    });
+
+    assert.ok("request" in validated);
+    assert.equal(validated.request.layoutMode, undefined);
+    assert.deepEqual(validated.request.sectionPricing, DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG);
+  });
+
   it("preserves customer_grouped_continuous layoutMode and image grouping", () => {
     const validated = validateGenerateGangSheetPngRequest({
       ...basePayload,
@@ -66,7 +78,10 @@ describe("validateGenerateGangSheetPngRequest", () => {
   it("preserves sectionPricing for grouped gang sheet generates", () => {
     const sectionPricing = {
       ...DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG,
-      largeTierPriceUsd: 3,
+      standardOversized: {
+        ...DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG.standardOversized,
+        priceUsd: 3.5,
+      },
     };
 
     const validated = validateGenerateGangSheetPngRequest({
@@ -85,7 +100,10 @@ describe("validateGenerateGangSheetPngRequest", () => {
       layoutMode: "grouped_by_customer",
       sectionPricing: {
         ...DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG,
-        largeTierPriceUsd: -1,
+        extraOversized: {
+          ...DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG.extraOversized,
+          priceUsd: -1,
+        },
       },
     });
 

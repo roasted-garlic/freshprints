@@ -2,50 +2,50 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
-  DEFAULT_GANG_SHEET_LARGE_TIER_PRICE_USD,
-  DEFAULT_GANG_SHEET_LARGE_TIER_WEIGHT_OZ,
-  DEFAULT_GANG_SHEET_SECTION_PRICE_CUTOFF_INCHES,
   DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG,
-  DEFAULT_GANG_SHEET_SMALL_TIER_PRICE_USD,
-  DEFAULT_GANG_SHEET_SMALL_TIER_WEIGHT_OZ,
   resolveGangSheetSectionPricingFromShowQueueSettings,
 } from "./gangSheetSectionPricingSettings.constants";
 
 describe("resolveGangSheetSectionPricingFromShowQueueSettings", () => {
-  it("returns documented defaults when settings are missing", () => {
-    assert.deepEqual(resolveGangSheetSectionPricingFromShowQueueSettings({}), DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG);
-    assert.equal(DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG.sizeCutoffInches, 5);
-    assert.equal(DEFAULT_GANG_SHEET_SMALL_TIER_PRICE_USD, 1);
-    assert.equal(DEFAULT_GANG_SHEET_SMALL_TIER_WEIGHT_OZ, 0.4);
-    assert.equal(DEFAULT_GANG_SHEET_LARGE_TIER_PRICE_USD, 2);
-    assert.equal(DEFAULT_GANG_SHEET_LARGE_TIER_WEIGHT_OZ, 0.75);
-  });
-
-  it("ignores invalid persisted values and falls back per field", () => {
-    const resolved = resolveGangSheetSectionPricingFromShowQueueSettings({
-      gangSheetSectionPriceCutoffInches: Number.NaN,
-      gangSheetSmallTierPriceUsd: -1,
-      gangSheetSmallTierWeightOz: 0,
-      gangSheetLargeTierPriceUsd: Number.POSITIVE_INFINITY,
-      gangSheetLargeTierWeightOz: -5,
-    });
-
+  it("returns owner-approved four-tier defaults when settings are missing", () => {
+    const resolved = resolveGangSheetSectionPricingFromShowQueueSettings({});
     assert.deepEqual(resolved, DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG);
+    assert.equal(resolved.sizeCutoffInches, 4);
+    assert.equal(resolved.pocket.priceUsd, 1);
+    assert.equal(resolved.standardFullSize.priceUsd, 2);
+    assert.equal(resolved.standardOversized.priceUsd, 3);
+    assert.equal(resolved.extraOversized.priceUsd, 4);
+    assert.equal(resolved.pocket.weightOz, 0.4);
+    assert.equal(resolved.extraOversized.weightOz, 0.75);
   });
 
-  it("uses valid persisted overrides", () => {
+  it("uses valid canonical overrides and ignores invalid values", () => {
     const resolved = resolveGangSheetSectionPricingFromShowQueueSettings({
-      gangSheetSectionPriceCutoffInches: 6,
-      gangSheetSmallTierPriceUsd: 1.5,
-      gangSheetSmallTierWeightOz: 0.45,
-      gangSheetLargeTierPriceUsd: 3,
-      gangSheetLargeTierWeightOz: 0.9,
+      gangSheetPocketPriceUsd: 1.25,
+      gangSheetPocketWeightOz: 0.45,
+      gangSheetStandardFullSizePriceUsd: 2.5,
+      gangSheetStandardFullSizeWeightOz: 0.8,
+      gangSheetStandardOversizedPriceUsd: Number.NaN,
+      gangSheetExtraOversizedWeightOz: -1,
+      gangSheetSmallTierPriceUsd: 9,
+      gangSheetLargeTierWeightOz: 1.2,
     });
+    assert.equal(resolved.pocket.priceUsd, 1.25);
+    assert.equal(resolved.pocket.weightOz, 0.45);
+    assert.equal(resolved.standardFullSize.priceUsd, 2.5);
+    assert.equal(resolved.standardFullSize.weightOz, 0.8);
+    assert.equal(resolved.standardOversized.priceUsd, 3);
+    assert.equal(resolved.extraOversized.weightOz, 1.2);
+  });
 
-    assert.equal(resolved.sizeCutoffInches, 6);
-    assert.equal(resolved.smallTierPriceUsd, 1.5);
-    assert.equal(resolved.smallTierWeightOz, 0.45);
-    assert.equal(resolved.largeTierPriceUsd, 3);
-    assert.equal(resolved.largeTierWeightOz, 0.9);
+  it("lets canonical values win over legacy values", () => {
+    const resolved = resolveGangSheetSectionPricingFromShowQueueSettings({
+      gangSheetPocketPriceUsd: 1.5,
+      gangSheetSmallTierPriceUsd: 9,
+      gangSheetStandardFullSizeWeightOz: 0.9,
+      gangSheetLargeTierWeightOz: 1.9,
+    });
+    assert.equal(resolved.pocket.priceUsd, 1.5);
+    assert.equal(resolved.standardFullSize.weightOz, 0.9);
   });
 });

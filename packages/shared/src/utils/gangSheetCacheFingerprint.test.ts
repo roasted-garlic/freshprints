@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, it, test } from "node:test";
 
 import { DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG } from "../constants/gangSheetSectionPricingSettings.constants";
 import type { ExportGangSheetPngRequest } from "../types/export/gangSheetExportIpc.types";
@@ -259,21 +259,22 @@ describe("buildGangSheetCacheFingerprint", () => {
       })),
     });
 
-    const cutoffChanged = buildGangSheetCacheFingerprint({
-      ...groupedBase,
-      sectionPricing: { ...DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG, sizeCutoffInches: 6 },
-    });
     const largePriceChanged = buildGangSheetCacheFingerprint({
       ...groupedBase,
-      sectionPricing: { ...DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG, largeTierPriceUsd: 2.5 },
+      sectionPricing: {
+        ...DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG,
+        standardFullSize: { ...DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG.standardFullSize, priceUsd: 2.5 },
+      },
     });
     const smallWeightChanged = buildGangSheetCacheFingerprint({
       ...groupedBase,
-      sectionPricing: { ...DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG, smallTierWeightOz: 0.5 },
+      sectionPricing: {
+        ...DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG,
+        pocket: { ...DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG.pocket, weightOz: 0.5 },
+      },
     });
     const baseline = buildGangSheetCacheFingerprint(groupedBase);
 
-    assert.notEqual(baseline, cutoffChanged);
     assert.notEqual(baseline, largePriceChanged);
     assert.notEqual(baseline, smallWeightChanged);
   });
@@ -302,4 +303,17 @@ describe("sanitizeGangSheetCacheShowId", () => {
   it("falls back when empty", () => {
     assert.equal(sanitizeGangSheetCacheShowId("   "), "show");
   });
+});
+
+test("request item identity and human-readable sheet label participate in cache isolation", () => {
+  const base = sampleRequest({
+    images: [{ ...sampleRequest().images[0], allocationId: "item-1", requestItemId: "item-1" }],
+    sheetLabel: "alice-CR001",
+  });
+  const otherRequest = buildGangSheetCacheFingerprint({ ...base, sheetLabel: "alice-CR002" });
+  assert.notEqual(buildGangSheetCacheFingerprint(base), otherRequest);
+  assert.notEqual(
+    buildGangSheetCacheFingerprint({ ...base, cacheScope: "print-request:req-1" }),
+    buildGangSheetCacheFingerprint({ ...base, cacheScope: "print-request:req-2" }),
+  );
 });

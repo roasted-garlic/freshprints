@@ -2263,6 +2263,14 @@ service cloud.firestore {
           "gangSheetGutterInches",
           "gangSheetMaxLengthInches",
           "gangSheetLabelFontSizePx",
+          "gangSheetPocketPriceUsd",
+          "gangSheetPocketWeightOz",
+          "gangSheetStandardFullSizePriceUsd",
+          "gangSheetStandardFullSizeWeightOz",
+          "gangSheetStandardOversizedPriceUsd",
+          "gangSheetStandardOversizedWeightOz",
+          "gangSheetExtraOversizedPriceUsd",
+          "gangSheetExtraOversizedWeightOz",
           "gangSheetSectionPriceCutoffInches",
           "gangSheetSmallTierPriceUsd",
           "gangSheetSmallTierWeightOz",
@@ -2284,6 +2292,14 @@ service cloud.firestore {
         && isOptionalNumber(data, "gangSheetGutterInches")
         && isOptionalNumber(data, "gangSheetMaxLengthInches")
         && isOptionalNumber(data, "gangSheetLabelFontSizePx")
+        && isOptionalNumber(data, "gangSheetPocketPriceUsd")
+        && isOptionalNumber(data, "gangSheetPocketWeightOz")
+        && isOptionalNumber(data, "gangSheetStandardFullSizePriceUsd")
+        && isOptionalNumber(data, "gangSheetStandardFullSizeWeightOz")
+        && isOptionalNumber(data, "gangSheetStandardOversizedPriceUsd")
+        && isOptionalNumber(data, "gangSheetStandardOversizedWeightOz")
+        && isOptionalNumber(data, "gangSheetExtraOversizedPriceUsd")
+        && isOptionalNumber(data, "gangSheetExtraOversizedWeightOz")
         && isOptionalNumber(data, "gangSheetSectionPriceCutoffInches")
         && isOptionalNumber(data, "gangSheetSmallTierPriceUsd")
         && isOptionalNumber(data, "gangSheetSmallTierWeightOz")

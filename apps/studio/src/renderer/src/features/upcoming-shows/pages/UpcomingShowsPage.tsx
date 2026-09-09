@@ -22,19 +22,11 @@ import { permissionService } from "../../permissions/services/permissionService"
 import { clearPrintRequestsPageCache } from "../../print-requests/services/printRequestsPageReadCache";
 import { TransferPrintRequestToShowModal } from "../../print-requests/components/TransferPrintRequestToShowModal";
 import { MoveShowQueueAllRequestsModal } from "../components/MoveShowQueueAllRequestsModal";
-import { resolveGangSheetSectionPricingFromSettings,
-  formatGangSheetSectionCutoffLabel,
-  isValidGangSheetSectionPriceCutoffInches,
-  isValidGangSheetTierPriceUsd,
-  isValidGangSheetTierWeightOz,
-  MAX_GANG_SHEET_SECTION_PRICE_CUTOFF_INCHES,
-} from "@fresh-prints/shared/constants/gangSheetSectionPricingSettings.constants";
 import {
-  formatPocketFullSizeCountsLabel,
-  resolvePrintRequestPocketFullSizeCounts,
+  formatPrintRequestSizeClassCountsLabel,
+  resolvePrintRequestSizeClassCounts,
 } from "@fresh-prints/shared/utils/printRequestPocketFullSizeCounts";
 import { upcomingShowService } from "../services/upcomingShowService";
-import type { GangSheetLayoutAndPricingSettingsInput } from "../services/gangSheetSettingsFields";
 import { UpcomingShowDeletionDialog } from "../components/UpcomingShowDeletionDialog";
 import { NeedsAttentionShowPanel } from "../components/NeedsAttentionShowPanel";
 import { DidNotPrintRecoveryDialog } from "../components/DidNotPrintRecoveryDialog";
@@ -51,19 +43,8 @@ import { useShowProductionTimer } from "../hooks/useShowProductionTimer";
 import { useStalePastPrintingShowReconciliation } from "../hooks/useStalePastPrintingShowReconciliation";
 import { useEmptyPastShowReconciliation } from "../hooks/useEmptyPastShowReconciliation";
 import { useShowQueueSettings } from "../hooks/useShowQueueSettings";
-import { useInternalGangSheetSettings } from "../hooks/useInternalGangSheetSettings";
+import { useGangSheetSettings } from "../../settings/hooks/useGangSheetSettings";
 import {
-  DEFAULT_GANG_SHEET_GUTTER_INCHES,
-  DEFAULT_GANG_SHEET_LABEL_FONT_SIZE_PX,
-  DEFAULT_GANG_SHEET_MAX_LENGTH_INCHES,
-  DEFAULT_GANG_SHEET_SIDE_MARGIN_INCHES,
-  DEFAULT_GANG_SHEET_TOP_BOTTOM_MARGIN_INCHES,
-  DEFAULT_GANG_SHEET_WIDTH_INCHES,
-  DEFAULT_GANG_SHEET_SECTION_PRICE_CUTOFF_INCHES,
-  DEFAULT_GANG_SHEET_SMALL_TIER_PRICE_USD,
-  DEFAULT_GANG_SHEET_SMALL_TIER_WEIGHT_OZ,
-  DEFAULT_GANG_SHEET_LARGE_TIER_PRICE_USD,
-  DEFAULT_GANG_SHEET_LARGE_TIER_WEIGHT_OZ,
   DEFAULT_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START,
   MAX_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START,
   MIN_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START,
@@ -120,7 +101,6 @@ import { isShowQueueMoveSourceEligible } from "@fresh-prints/shared/utils/showQu
 import { isStaffGangSheetShow, isDevFixtureShow, isWhatnotQueueSurfaceShow, type UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
 import {
   canAllocateOriginToShowSource,
-  formatStaffGangSheetTitle,
   resolveNextStaffGangSheetCycleNumber,
 } from "@fresh-prints/shared/utils/staffGangSheet";
 import {
@@ -133,7 +113,6 @@ import {
   resolveShowQueuePrintRequestLinkTab,
 } from "../utils/showQueuePrintRequestSources";
 import { refreshSelectedShowGangSheetCache } from "../utils/gangSheetCacheRefresh";
-import { resolveActiveGangSheetSettingsSource } from "../utils/resolveActiveGangSheetSettingsSource";
 import {
   hasShowExportableAllocations,
   PAST_SHOW_EXPORT_COPY,
@@ -249,7 +228,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
   const { totalsByRequestId: allocationTotalsByRequestId, reload: reloadAllocationTotals } =
     usePrintRequestAllocationTotals();
   const showQueueSettings = useShowQueueSettings();
-  const internalGangSheetSettings = useInternalGangSheetSettings();
+  const gangSheetSettings = useGangSheetSettings();
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createForm, setCreateForm] = useState<CreateShowFormState>(DEFAULT_CREATE_SHOW_FORM);
@@ -279,26 +258,9 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
   const [isOwnerOverrideDialogOpen, setIsOwnerOverrideDialogOpen] = useState(false);
 
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const [settingsModalContext, setSettingsModalContext] = useState<"show_queue" | "internal_gang_sheet">(
-    "show_queue",
-  );
-  const [showQueueSettingsTab, setShowQueueSettingsTab] = useState<
-    "general" | "gangSheetLayout" | "pricingWeight"
-  >("general");
   const [defaultCapacityInput, setDefaultCapacityInput] = useState("");
   const [whatnotBaseUrlInput, setWhatnotBaseUrlInput] = useState("");
   const [portalCutoffHoursInput, setPortalCutoffHoursInput] = useState("");
-  const [gangSheetWidthInput, setGangSheetWidthInput] = useState("");
-  const [gangSheetSideMarginInput, setGangSheetSideMarginInput] = useState("");
-  const [gangSheetTopBottomMarginInput, setGangSheetTopBottomMarginInput] = useState("");
-  const [gangSheetGutterInput, setGangSheetGutterInput] = useState("");
-  const [gangSheetMaxLengthInput, setGangSheetMaxLengthInput] = useState("");
-  const [gangSheetLabelFontSizeInput, setGangSheetLabelFontSizeInput] = useState("");
-  const [gangSheetPricingCutoffInput, setGangSheetPricingCutoffInput] = useState("");
-  const [gangSheetSmallTierPriceInput, setGangSheetSmallTierPriceInput] = useState("");
-  const [gangSheetSmallTierWeightInput, setGangSheetSmallTierWeightInput] = useState("");
-  const [gangSheetLargeTierPriceInput, setGangSheetLargeTierPriceInput] = useState("");
-  const [gangSheetLargeTierWeightInput, setGangSheetLargeTierWeightInput] = useState("");
   const [isSavingSettings, setIsSavingSettings] = useState(false);
 
   const handleShowsImported = useCallback(
@@ -377,73 +339,33 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
     setActionError(null);
   }, []);
 
-  const populateGangSheetSettingsInputs = useCallback((settings: GangSheetLayoutAndPricingSettingsInput) => {
-    setGangSheetWidthInput(
-      (settings.gangSheetWidthInches ?? DEFAULT_GANG_SHEET_WIDTH_INCHES).toString(),
-    );
-    setGangSheetSideMarginInput(
-      (settings.gangSheetSideMarginInches ?? DEFAULT_GANG_SHEET_SIDE_MARGIN_INCHES).toString(),
-    );
-    setGangSheetTopBottomMarginInput(
-      (settings.gangSheetTopBottomMarginInches ?? DEFAULT_GANG_SHEET_TOP_BOTTOM_MARGIN_INCHES).toString(),
-    );
-    setGangSheetGutterInput(
-      (settings.gangSheetGutterInches ?? DEFAULT_GANG_SHEET_GUTTER_INCHES).toString(),
-    );
-    setGangSheetMaxLengthInput(
-      (settings.gangSheetMaxLengthInches ?? DEFAULT_GANG_SHEET_MAX_LENGTH_INCHES).toString(),
-    );
-    setGangSheetLabelFontSizeInput(
-      (settings.gangSheetLabelFontSizePx ?? DEFAULT_GANG_SHEET_LABEL_FONT_SIZE_PX).toString(),
-    );
-    const resolvedPricing = resolveGangSheetSectionPricingFromSettings(settings);
-    setGangSheetPricingCutoffInput(resolvedPricing.sizeCutoffInches.toString());
-    setGangSheetSmallTierPriceInput(resolvedPricing.smallTierPriceUsd.toString());
-    setGangSheetSmallTierWeightInput(resolvedPricing.smallTierWeightOz.toString());
-    setGangSheetLargeTierPriceInput(resolvedPricing.largeTierPriceUsd.toString());
-    setGangSheetLargeTierWeightInput(resolvedPricing.largeTierWeightOz.toString());
-  }, []);
-
   const openSettingsModalForContext = useCallback(
-    (context: "show_queue" | "internal_gang_sheet") => {
-      setSettingsModalContext(context);
+    () => {
       setActionError(null);
 
-      if (context === "show_queue") {
-        setDefaultCapacityInput(showQueueSettings.settings.defaultMaxTotalQuantity?.toString() ?? "");
-        setWhatnotBaseUrlInput(showQueueSettings.settings.whatnotShowBaseUrl ?? DEFAULT_WHATNOT_SHOW_BASE_URL);
-        setPortalCutoffHoursInput(
-          (
-            showQueueSettings.settings.portalQueueCutoffHoursBeforeStart ??
-            DEFAULT_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START
-          ).toString(),
-        );
-        populateGangSheetSettingsInputs(showQueueSettings.settings);
-        setShowQueueSettingsTab("general");
-      } else {
-        populateGangSheetSettingsInputs(internalGangSheetSettings.settings);
-        setShowQueueSettingsTab("gangSheetLayout");
-      }
+      setDefaultCapacityInput(showQueueSettings.settings.defaultMaxTotalQuantity?.toString() ?? "");
+      setWhatnotBaseUrlInput(showQueueSettings.settings.whatnotShowBaseUrl ?? DEFAULT_WHATNOT_SHOW_BASE_URL);
+      setPortalCutoffHoursInput(
+        (
+          showQueueSettings.settings.portalQueueCutoffHoursBeforeStart ??
+          DEFAULT_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START
+        ).toString(),
+      );
 
       setIsSettingsModalOpen(true);
     },
     [
-      internalGangSheetSettings.settings,
-      populateGangSheetSettingsInputs,
       showQueueSettings.settings,
-      showQueueSettings.settings.defaultMaxTotalQuantity,
-      showQueueSettings.settings.portalQueueCutoffHoursBeforeStart,
-      showQueueSettings.settings.whatnotShowBaseUrl,
     ],
   );
 
   const openSettingsModal = useCallback(() => {
-    openSettingsModalForContext("show_queue");
+    openSettingsModalForContext();
   }, [openSettingsModalForContext]);
 
   const openInternalGangSheetSettingsModal = useCallback(() => {
-    openSettingsModalForContext("internal_gang_sheet");
-  }, [openSettingsModalForContext]);
+    navigate("/settings?tab=gangSheetSettings");
+  }, [navigate]);
 
   const closeSettingsModal = useCallback(() => {
     setIsSettingsModalOpen(false);
@@ -1204,32 +1126,17 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
     }
   }, [clearGangSheetCacheForShow, resetGangSheetExport, selectedShow]);
 
-  const activeGangSheetSettingsSource = useMemo(
-    () =>
-      resolveActiveGangSheetSettingsSource(
-        selectedShow,
-        showQueueSettings.settings,
-        internalGangSheetSettings.settings,
-      ),
-    [internalGangSheetSettings.settings, selectedShow, showQueueSettings.settings],
-  );
-
   const gangSheetLayoutSettings = useMemo(
     () => ({
-      sheetWidthInches: activeGangSheetSettingsSource.gangSheetWidthInches ?? DEFAULT_GANG_SHEET_WIDTH_INCHES,
-      sideMarginInches:
-        activeGangSheetSettingsSource.gangSheetSideMarginInches ?? DEFAULT_GANG_SHEET_SIDE_MARGIN_INCHES,
-      topBottomMarginInches:
-        activeGangSheetSettingsSource.gangSheetTopBottomMarginInches ??
-        DEFAULT_GANG_SHEET_TOP_BOTTOM_MARGIN_INCHES,
-      gutterInches: activeGangSheetSettingsSource.gangSheetGutterInches ?? DEFAULT_GANG_SHEET_GUTTER_INCHES,
-      maxSheetLengthInches:
-        activeGangSheetSettingsSource.gangSheetMaxLengthInches ?? DEFAULT_GANG_SHEET_MAX_LENGTH_INCHES,
-      labelFontSizePx:
-        activeGangSheetSettingsSource.gangSheetLabelFontSizePx ?? DEFAULT_GANG_SHEET_LABEL_FONT_SIZE_PX,
-      sectionPricing: resolveGangSheetSectionPricingFromSettings(activeGangSheetSettingsSource),
+      sheetWidthInches: gangSheetSettings.settings.gangSheetWidthInches,
+      sideMarginInches: gangSheetSettings.settings.gangSheetSideMarginInches,
+      topBottomMarginInches: gangSheetSettings.settings.gangSheetTopBottomMarginInches,
+      gutterInches: gangSheetSettings.settings.gangSheetGutterInches,
+      maxSheetLengthInches: gangSheetSettings.settings.gangSheetMaxLengthInches,
+      labelFontSizePx: gangSheetSettings.settings.gangSheetLabelFontSizePx,
+      sectionPricing: gangSheetSettings.settings.sectionPricing,
     }),
-    [activeGangSheetSettingsSource],
+    [gangSheetSettings.settings],
   );
 
   useEffect(() => {
@@ -1500,125 +1407,19 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
     Number.isInteger(parsedPortalCutoffHours) &&
     parsedPortalCutoffHours >= MIN_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START &&
     parsedPortalCutoffHours <= MAX_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START;
-  const parsedGangSheetWidth = Number(gangSheetWidthInput.trim());
-  const isGangSheetWidthValid =
-    gangSheetWidthInput.trim() !== "" &&
-    Number.isFinite(parsedGangSheetWidth) &&
-    parsedGangSheetWidth >= 10 &&
-    parsedGangSheetWidth <= 60;
-  const parsedGangSheetSideMargin = Number(gangSheetSideMarginInput.trim());
-  const isGangSheetSideMarginValid =
-    gangSheetSideMarginInput.trim() !== "" &&
-    Number.isFinite(parsedGangSheetSideMargin) &&
-    parsedGangSheetSideMargin >= 0 &&
-    parsedGangSheetSideMargin <= 5;
-  const parsedGangSheetTopBottomMargin = Number(gangSheetTopBottomMarginInput.trim());
-  const isGangSheetTopBottomMarginValid =
-    gangSheetTopBottomMarginInput.trim() !== "" &&
-    Number.isFinite(parsedGangSheetTopBottomMargin) &&
-    parsedGangSheetTopBottomMargin >= 0 &&
-    parsedGangSheetTopBottomMargin <= 5;
-  const parsedGangSheetGutter = Number(gangSheetGutterInput.trim());
-  const isGangSheetGutterValid =
-    gangSheetGutterInput.trim() !== "" &&
-    Number.isFinite(parsedGangSheetGutter) &&
-    parsedGangSheetGutter >= 0 &&
-    parsedGangSheetGutter <= 5;
-  const parsedGangSheetMaxLength = Number(gangSheetMaxLengthInput.trim());
-  const isGangSheetMaxLengthValid =
-    gangSheetMaxLengthInput.trim() !== "" &&
-    Number.isFinite(parsedGangSheetMaxLength) &&
-    parsedGangSheetMaxLength >= 10 &&
-    parsedGangSheetMaxLength <= 300;
-  const parsedGangSheetLabelFontSize = Number(gangSheetLabelFontSizeInput.trim());
-  const isGangSheetLabelFontSizeValid =
-    gangSheetLabelFontSizeInput.trim() !== "" &&
-    Number.isFinite(parsedGangSheetLabelFontSize) &&
-    parsedGangSheetLabelFontSize >= 20 &&
-    parsedGangSheetLabelFontSize <= 300;
-  const parsedGangSheetPricingCutoff = Number(gangSheetPricingCutoffInput.trim());
-  const isGangSheetPricingCutoffValid =
-    gangSheetPricingCutoffInput.trim() !== "" &&
-    isValidGangSheetSectionPriceCutoffInches(parsedGangSheetPricingCutoff);
-  const parsedGangSheetSmallTierPrice = Number(gangSheetSmallTierPriceInput.trim());
-  const isGangSheetSmallTierPriceValid =
-    gangSheetSmallTierPriceInput.trim() !== "" &&
-    isValidGangSheetTierPriceUsd(parsedGangSheetSmallTierPrice);
-  const parsedGangSheetLargeTierPrice = Number(gangSheetLargeTierPriceInput.trim());
-  const isGangSheetLargeTierPriceValid =
-    gangSheetLargeTierPriceInput.trim() !== "" &&
-    isValidGangSheetTierPriceUsd(parsedGangSheetLargeTierPrice);
-  const parsedGangSheetSmallTierWeight = Number(gangSheetSmallTierWeightInput.trim());
-  const isGangSheetSmallTierWeightValid =
-    gangSheetSmallTierWeightInput.trim() !== "" &&
-    isValidGangSheetTierWeightOz(parsedGangSheetSmallTierWeight);
-  const parsedGangSheetLargeTierWeight = Number(gangSheetLargeTierWeightInput.trim());
-  const isGangSheetLargeTierWeightValid =
-    gangSheetLargeTierWeightInput.trim() !== "" &&
-    isValidGangSheetTierWeightOz(parsedGangSheetLargeTierWeight);
-  const gangSheetPricingCutoffLabel = formatGangSheetSectionCutoffLabel(
-    isGangSheetPricingCutoffValid ? parsedGangSheetPricingCutoff : DEFAULT_GANG_SHEET_SECTION_PRICE_CUTOFF_INCHES,
-  );
-  const gangSheetSettingsFieldsValid =
-    isGangSheetWidthValid &&
-    isGangSheetSideMarginValid &&
-    isGangSheetTopBottomMarginValid &&
-    isGangSheetGutterValid &&
-    isGangSheetMaxLengthValid &&
-    isGangSheetLabelFontSizeValid &&
-    isGangSheetPricingCutoffValid &&
-    isGangSheetSmallTierPriceValid &&
-    isGangSheetLargeTierPriceValid &&
-    isGangSheetSmallTierWeightValid &&
-    isGangSheetLargeTierWeightValid;
   const isSettingsSaveDisabled =
     isSavingSettings ||
-    !gangSheetSettingsFieldsValid ||
-    (settingsModalContext === "show_queue" && (!isWhatnotBaseUrlValid || !isPortalCutoffHoursValid));
+    !isWhatnotBaseUrlValid ||
+    !isPortalCutoffHoursValid;
 
   async function handleSaveSettings(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
-    const gangSheetFieldsValid = gangSheetSettingsFieldsValid;
 
     if (!user || !permissionService.canManageShowQueueSettings(user)) {
       return;
     }
 
-    if (settingsModalContext === "internal_gang_sheet") {
-      if (!gangSheetFieldsValid) {
-        return;
-      }
-
-      try {
-        setActionError(null);
-        setIsSavingSettings(true);
-        await internalGangSheetSettings.updateSettings({
-          gangSheetWidthInches: parsedGangSheetWidth,
-          gangSheetSideMarginInches: parsedGangSheetSideMargin,
-          gangSheetTopBottomMarginInches: parsedGangSheetTopBottomMargin,
-          gangSheetGutterInches: parsedGangSheetGutter,
-          gangSheetMaxLengthInches: parsedGangSheetMaxLength,
-          gangSheetLabelFontSizePx: parsedGangSheetLabelFontSize,
-          gangSheetSectionPriceCutoffInches: parsedGangSheetPricingCutoff,
-          gangSheetSmallTierPriceUsd: parsedGangSheetSmallTierPrice,
-          gangSheetSmallTierWeightOz: parsedGangSheetSmallTierWeight,
-          gangSheetLargeTierPriceUsd: parsedGangSheetLargeTierPrice,
-          gangSheetLargeTierWeightOz: parsedGangSheetLargeTierWeight,
-        });
-        invalidateGangSheetExportCache();
-        setSuccessMessage("Internal Gang Sheet settings updated. Regenerate gang sheets to apply new pricing.");
-        setSuccessAlertSeed((current) => current + 1);
-        closeSettingsModal();
-      } catch (error) {
-        setActionError(formatWriteErrorMessage(error));
-      } finally {
-        setIsSavingSettings(false);
-      }
-      return;
-    }
-
-    if (!isWhatnotBaseUrlValid || !isPortalCutoffHoursValid || !gangSheetFieldsValid) {
+    if (!isWhatnotBaseUrlValid || !isPortalCutoffHoursValid) {
       return;
     }
 
@@ -1632,17 +1433,6 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
         defaultMaxTotalQuantity: parsedDefault,
         whatnotShowBaseUrl: parsedWhatnotBaseUrl?.normalizedUrl,
         portalQueueCutoffHoursBeforeStart: parsedPortalCutoffHours,
-        gangSheetWidthInches: parsedGangSheetWidth,
-        gangSheetSideMarginInches: parsedGangSheetSideMargin,
-        gangSheetTopBottomMarginInches: parsedGangSheetTopBottomMargin,
-        gangSheetGutterInches: parsedGangSheetGutter,
-        gangSheetMaxLengthInches: parsedGangSheetMaxLength,
-        gangSheetLabelFontSizePx: parsedGangSheetLabelFontSize,
-        gangSheetSectionPriceCutoffInches: parsedGangSheetPricingCutoff,
-        gangSheetSmallTierPriceUsd: parsedGangSheetSmallTierPrice,
-        gangSheetSmallTierWeightOz: parsedGangSheetSmallTierWeight,
-        gangSheetLargeTierPriceUsd: parsedGangSheetLargeTierPrice,
-        gangSheetLargeTierWeightOz: parsedGangSheetLargeTierWeight,
       });
       invalidateGangSheetExportCache();
       setSuccessMessage("Show Queue settings updated. Regenerate gang sheets to apply new pricing.");
@@ -2411,16 +2201,15 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                           ? printRequestListKindFromIsInternal(matchedRequest.isInternal)
                           : undefined,
                       });
-                      const sizeClassLabel = formatPocketFullSizeCountsLabel(
-                        resolvePrintRequestPocketFullSizeCounts(
+                      const sizeClassLabel = formatPrintRequestSizeClassCountsLabel(
+                        resolvePrintRequestSizeClassCounts(
                           group.allocations.map((allocation) => ({
                             printWidthInches: allocation.printWidthInches,
                             printHeightInches: allocation.printHeightInches,
                             quantity: allocation.allocatedQuantity,
-                            // Fully canceled rows (e.g. moved away) still show historical Pocket/Full Size.
+                            // Fully canceled rows (e.g. moved away) still show historical size classes.
                             status: hasActiveAllocations ? allocation.status : null,
                           })),
-                          gangSheetLayoutSettings.sectionPricing.sizeCutoffInches,
                         ),
                       );
 
@@ -3014,9 +2803,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
               <div>
                 <p className="eyebrow">Settings</p>
                 <h3 id="show-queue-settings-title">
-                  {settingsModalContext === "internal_gang_sheet"
-                    ? "Internal Gang Sheet settings"
-                    : "Show Queue settings"}
+                  Show Queue settings
                 </h3>
               </div>
               <button
@@ -3029,64 +2816,31 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
               </button>
             </ModalHeader>
             <ModalBody>
-              <div
-                aria-label={
-                  settingsModalContext === "internal_gang_sheet"
-                    ? "Internal Gang Sheet settings sections"
-                    : "Show Queue settings sections"
-                }
-                className="show-queue-settings-tab-bar"
-                role="tablist"
-              >
-                {settingsModalContext === "show_queue" ? (
-                  <button
-                    aria-controls="show-queue-settings-tab-panel-general"
-                    aria-selected={showQueueSettingsTab === "general"}
-                    className={`show-queue-settings-tab${showQueueSettingsTab === "general" ? " is-active" : ""}`}
-                    id="show-queue-settings-tab-general"
-                    onClick={() => setShowQueueSettingsTab("general")}
-                    role="tab"
-                    type="button"
-                  >
-                    General
-                  </button>
-                ) : null}
-                <button
-                  aria-controls="show-queue-settings-tab-panel-gang-sheet-layout"
-                  aria-selected={showQueueSettingsTab === "gangSheetLayout"}
-                  className={`show-queue-settings-tab${showQueueSettingsTab === "gangSheetLayout" ? " is-active" : ""}`}
-                  id="show-queue-settings-tab-gang-sheet-layout"
-                  onClick={() => setShowQueueSettingsTab("gangSheetLayout")}
-                  role="tab"
-                  type="button"
-                >
-                  Gang sheet layout
-                </button>
-                <button
-                  aria-controls="show-queue-settings-tab-panel-pricing-weight"
-                  aria-selected={showQueueSettingsTab === "pricingWeight"}
-                  className={`show-queue-settings-tab${showQueueSettingsTab === "pricingWeight" ? " is-active" : ""}`}
-                  id="show-queue-settings-tab-pricing-weight"
-                  onClick={() => setShowQueueSettingsTab("pricingWeight")}
-                  role="tab"
-                  type="button"
-                >
-                  Pricing &amp; Weight
-                </button>
-              </div>
               <form
                 className="show-queue-settings-form"
                 id="show-queue-settings-form"
                 onSubmit={handleSaveSettings}
               >
-                {showQueueSettingsTab === "general" && settingsModalContext === "show_queue" ? (
-                  <section
-                    aria-labelledby="show-queue-settings-tab-general"
-                    className="show-queue-settings-tab-panel"
-                    id="show-queue-settings-tab-panel-general"
-                    role="tabpanel"
-                  >
-                  <div className="show-queue-settings-grid">
+                <section
+                  aria-label="General Show Queue settings"
+                  className="show-queue-settings-section"
+                >
+                  <div className="show-queue-settings-field show-queue-settings-url-field">
+                    <TextInput
+                      label="Whatnot show base URL"
+                      name="whatnotShowBaseUrl"
+                      onChange={(event) => setWhatnotBaseUrlInput(event.target.value)}
+                      placeholder={DEFAULT_WHATNOT_SHOW_BASE_URL}
+                      value={whatnotBaseUrlInput}
+                    />
+                    <p className="print-requests-modal-hint">
+                      {isWhatnotBaseUrlValid
+                        ? "Used by “Import Shows” to open your show list."
+                        : "Must be a https://www.whatnot.com/user/<name>/shows URL."}
+                    </p>
+                  </div>
+
+                  <div className="show-queue-settings-grid show-queue-settings-grid-paired">
                     <div className="show-queue-settings-field">
                       <TextInput
                         label="Default max quantity for new shows"
@@ -3110,21 +2864,6 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
 
                     <div className="show-queue-settings-field">
                       <TextInput
-                        label="Whatnot show base URL"
-                        name="whatnotShowBaseUrl"
-                        onChange={(event) => setWhatnotBaseUrlInput(event.target.value)}
-                        placeholder={DEFAULT_WHATNOT_SHOW_BASE_URL}
-                        value={whatnotBaseUrlInput}
-                      />
-                      <p className="print-requests-modal-hint">
-                        {isWhatnotBaseUrlValid
-                          ? "Used by “Import Shows” to open your show list."
-                          : "Must be a https://www.whatnot.com/user/<name>/shows URL."}
-                      </p>
-                    </div>
-
-                    <div className="show-queue-settings-field">
-                      <TextInput
                         label="Portal add-to-show cutoff (hours before start)"
                         min={MIN_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START}
                         max={MAX_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START}
@@ -3140,233 +2879,19 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                       </p>
                     </div>
                   </div>
-                  </section>
-                ) : null}
 
-                {showQueueSettingsTab === "gangSheetLayout" ? (
-                  <section
-                    aria-labelledby="show-queue-settings-tab-gang-sheet-layout"
-                    className="show-queue-settings-tab-panel"
-                    id="show-queue-settings-tab-panel-gang-sheet-layout"
-                    role="tabpanel"
-                  >
-                  <div className="show-queue-settings-grid">
-                    <div className="show-queue-settings-field">
-                      <TextInput
-                        label="Sheet width (inches)"
-                        min={10}
-                        max={60}
-                        name="gangSheetWidthInches"
-                        onChange={(event) => setGangSheetWidthInput(event.target.value)}
-                        step={0.01}
-                        type="number"
-                        value={gangSheetWidthInput}
-                      />
-                      <p className="print-requests-modal-hint">
-                        {isGangSheetWidthValid
-                          ? "Fixed artboard width used by “Export Gang Sheet”."
-                          : "Must be a number between 10\" and 60\"."}
-                      </p>
-                    </div>
-
-                    <div className="show-queue-settings-field">
-                      <TextInput
-                        label="Max sheet length before new sheet (inches)"
-                        min={10}
-                        max={300}
-                        name="gangSheetMaxLengthInches"
-                        onChange={(event) => setGangSheetMaxLengthInput(event.target.value)}
-                        step={0.01}
-                        type="number"
-                        value={gangSheetMaxLengthInput}
-                      />
-                      <p className="print-requests-modal-hint">
-                        {isGangSheetMaxLengthValid
-                          ? "A new sheet starts once this height would be exceeded."
-                          : "Must be a number between 10\" and 300\"."}
-                      </p>
-                    </div>
-
-                    <div className="show-queue-settings-field">
-                      <TextInput
-                        label="Side margin (inches)"
-                        min={0}
-                        max={5}
-                        name="gangSheetSideMarginInches"
-                        onChange={(event) => setGangSheetSideMarginInput(event.target.value)}
-                        step={0.01}
-                        type="number"
-                        value={gangSheetSideMarginInput}
-                      />
-                      <p className="print-requests-modal-hint">
-                        {isGangSheetSideMarginValid
-                          ? "Sheet edge to nearest image, left/right only."
-                          : "Must be a number between 0\" and 5\"."}
-                      </p>
-                    </div>
-
-                    <div className="show-queue-settings-field">
-                      <TextInput
-                        label="Top/bottom margin (inches)"
-                        min={0}
-                        max={5}
-                        name="gangSheetTopBottomMarginInches"
-                        onChange={(event) => setGangSheetTopBottomMarginInput(event.target.value)}
-                        step={0.01}
-                        type="number"
-                        value={gangSheetTopBottomMarginInput}
-                      />
-                      <p className="print-requests-modal-hint">
-                        {isGangSheetTopBottomMarginValid
-                          ? "Sheet edge to nearest image, top/bottom only."
-                          : "Must be a number between 0\" and 5\"."}
-                      </p>
-                    </div>
-
-                    <div className="show-queue-settings-field">
-                      <TextInput
-                        label="Gutter between images (inches)"
-                        min={0}
-                        max={5}
-                        name="gangSheetGutterInches"
-                        onChange={(event) => setGangSheetGutterInput(event.target.value)}
-                        step={0.01}
-                        type="number"
-                        value={gangSheetGutterInput}
-                      />
-                      <p className="print-requests-modal-hint">
-                        {isGangSheetGutterValid
-                          ? "Spacing between images, both within a row and between rows."
-                          : "Must be a number between 0\" and 5\"."}
-                      </p>
-                    </div>
-
-                    <div className="show-queue-settings-field">
-                      <TextInput
-                        label="Sheet label font size (px)"
-                        min={20}
-                        max={300}
-                        name="gangSheetLabelFontSizePx"
-                        onChange={(event) => setGangSheetLabelFontSizeInput(event.target.value)}
-                        step={1}
-                        type="number"
-                        value={gangSheetLabelFontSizeInput}
-                      />
-                      <p className="print-requests-modal-hint">
-                        {isGangSheetLabelFontSizeValid
-                          ? "Size of the filename label printed at the top of each gang sheet."
-                          : "Must be a number between 20px and 300px."}
-                      </p>
-                    </div>
+                  <div className="show-queue-settings-field show-queue-settings-gang-sheet-link">
+                    <p className="print-requests-modal-hint">
+                      Gang Sheet layout, pricing, and weight are configured globally in Studio Settings.
+                    </p>
+                    <Link
+                      className="button button-secondary button-md show-queue-settings-link"
+                      to="/settings?tab=gangSheetSettings"
+                    >
+                      Open Gang Sheet Settings
+                    </Link>
                   </div>
-                  </section>
-                ) : null}
-
-                {showQueueSettingsTab === "pricingWeight" ? (
-                  <section
-                    aria-labelledby="show-queue-settings-tab-pricing-weight"
-                    className="show-queue-settings-tab-panel"
-                    id="show-queue-settings-tab-panel-pricing-weight"
-                    role="tabpanel"
-                  >
-                  <p className="print-requests-modal-hint">
-                    {settingsModalContext === "internal_gang_sheet"
-                      ? "Used for Internal Gang Sheet exports with grouped customer sections."
-                      : "Used for Grouped by Customer and Sheet per Customer gang sheets only. Standard mode is unaffected."}
-                  </p>
-                  <div className="show-queue-settings-grid">
-                    <div className="show-queue-settings-field">
-                      <TextInput
-                        label="Size cutoff (inches)"
-                        min={0.01}
-                        max={MAX_GANG_SHEET_SECTION_PRICE_CUTOFF_INCHES}
-                        name="gangSheetSectionPriceCutoffInches"
-                        onChange={(event) => setGangSheetPricingCutoffInput(event.target.value)}
-                        step={0.01}
-                        type="number"
-                        value={gangSheetPricingCutoffInput}
-                      />
-                      <p className="print-requests-modal-hint">
-                        {isGangSheetPricingCutoffValid
-                          ? `Exactly ${gangSheetPricingCutoffLabel} and under uses the small tier; either dimension above ${gangSheetPricingCutoffLabel} uses the large tier.`
-                          : `Must be a number greater than 0" and at most ${MAX_GANG_SHEET_SECTION_PRICE_CUTOFF_INCHES}".`}
-                      </p>
-                    </div>
-
-                    <div className="show-queue-settings-field">
-                      <TextInput
-                        label={`${gangSheetPricingCutoffLabel} and under — price per image ($)`}
-                        min={0}
-                        max={999.99}
-                        name="gangSheetSmallTierPriceUsd"
-                        onChange={(event) => setGangSheetSmallTierPriceInput(event.target.value)}
-                        step={0.01}
-                        type="number"
-                        value={gangSheetSmallTierPriceInput}
-                      />
-                      <p className="print-requests-modal-hint">
-                        {isGangSheetSmallTierPriceValid
-                          ? `Default ${DEFAULT_GANG_SHEET_SMALL_TIER_PRICE_USD.toFixed(2)} when unset.`
-                          : "Must be a number between $0 and $999.99."}
-                      </p>
-                    </div>
-
-                    <div className="show-queue-settings-field">
-                      <TextInput
-                        label={`${gangSheetPricingCutoffLabel} and under — weight per image (oz)`}
-                        min={0.01}
-                        max={99.99}
-                        name="gangSheetSmallTierWeightOz"
-                        onChange={(event) => setGangSheetSmallTierWeightInput(event.target.value)}
-                        step={0.01}
-                        type="number"
-                        value={gangSheetSmallTierWeightInput}
-                      />
-                      <p className="print-requests-modal-hint">
-                        {isGangSheetSmallTierWeightValid
-                          ? `Default ${DEFAULT_GANG_SHEET_SMALL_TIER_WEIGHT_OZ} oz when unset.`
-                          : "Must be a number greater than 0 and at most 99.99 oz."}
-                      </p>
-                    </div>
-
-                    <div className="show-queue-settings-field">
-                      <TextInput
-                        label={`Over ${gangSheetPricingCutoffLabel} — price per image ($)`}
-                        min={0}
-                        max={999.99}
-                        name="gangSheetLargeTierPriceUsd"
-                        onChange={(event) => setGangSheetLargeTierPriceInput(event.target.value)}
-                        step={0.01}
-                        type="number"
-                        value={gangSheetLargeTierPriceInput}
-                      />
-                      <p className="print-requests-modal-hint">
-                        {isGangSheetLargeTierPriceValid
-                          ? `Default ${DEFAULT_GANG_SHEET_LARGE_TIER_PRICE_USD.toFixed(2)} when unset.`
-                          : "Must be a number between $0 and $999.99."}
-                      </p>
-                    </div>
-
-                    <div className="show-queue-settings-field">
-                      <TextInput
-                        label={`Over ${gangSheetPricingCutoffLabel} — weight per image (oz)`}
-                        min={0.01}
-                        max={99.99}
-                        name="gangSheetLargeTierWeightOz"
-                        onChange={(event) => setGangSheetLargeTierWeightInput(event.target.value)}
-                        step={0.01}
-                        type="number"
-                        value={gangSheetLargeTierWeightInput}
-                      />
-                      <p className="print-requests-modal-hint">
-                        {isGangSheetLargeTierWeightValid
-                          ? `Default ${DEFAULT_GANG_SHEET_LARGE_TIER_WEIGHT_OZ} oz when unset.`
-                          : "Must be a number greater than 0 and at most 99.99 oz."}
-                      </p>
-                    </div>
-                  </div>
-                  </section>
-                ) : null}
+                </section>
 
                 {actionError ? (
                   <p className="auth-message auth-message-error" role="alert">

@@ -1099,6 +1099,38 @@ Adjust quantity and requested size in the request detail item UI; edits autosave
 * Request naming does not depend on loaded request lists.
 * Origin display does not add origin filters, origin indexes, Portal behavior, customer Auth, migrations, or backfills in Phase 6.
 
+## Studio request-scoped production actions
+
+From a request detail with at least one item, staff may choose **Export Images**, **Export x(Qty)**,
+**Generate Gangsheet**, or **Copy Request** for non-Working/non-Editing requests, including
+historical/Printed requests, provided the persisted items and production assets still resolve.
+Working and Editing requests keep only their existing **Add to Show** / **Add to Internal Gangsheet**
+action surface; the direct production/copy buttons are intentionally hidden. Direct actions are
+read-only for the source request and do not require a current Show Allocation.
+
+Export and generation use the request item's saved quantity, print inches, source identity, and
+`artworkEnhanceMode`; missing source, dimensions, active pixel dimensions, enhanced derivative, or
+Storage access fails before Electron processing. Request filenames use the immutable CR/IR request
+name, not `whatnot_<date>`.
+
+Request gang sheets expose Standard efficiency mode only. Generated PNGs are cached locally under
+an isolated `print-request:<requestId>` scope and include the human-readable request name in the
+filename and rendered sheet label. No `upcomingShows` gang-sheet telemetry or Firebase artifact is
+written.
+
+All gang-sheet generation surfaces consume the normalized global Gang Sheet Settings resolver.
+The Settings page exposes six layout controls and four fixed-width price/weight tiers; Show Queue
+and Internal Gang Sheet local gang-sheet editors are retired in favor of a link to this page.
+Request Standard output renders exact request-quantity price and weight totals using saved print
+width. The canonical document is `settings/showQueue`, with non-destructive read-only fallback to
+legacy `settings/internalGangSheet` values.
+
+Copy Request creates a new clean Working/draft request and pending items through the trusted
+`copyStudioPrintRequest` transaction. It supports all four Customer/Internal direction pairs,
+allocates normal CR/IR sequences, and copies only reusable print intent. Allocations, production
+history, lifecycle lineage, and cache/artifact state are excluded. Private customer uploads cannot
+cross to a different Customer; the entire copy fails atomically if any item violates that boundary.
+
 ---
 
 # Show Queue Workflow (Phase 7 — combined show/print-run entity)

@@ -1,14 +1,29 @@
 .settings-page {
   gap: var(--space-4);
+  min-width: 0;
+  width: 100%;
+}
+
+.settings-page-layout {
+  align-items: start;
+  display: grid;
+  gap: var(--space-5);
+  grid-template-columns: minmax(13rem, 16rem) minmax(0, 1fr);
+  min-width: 0;
+  width: 100%;
+}
+
+.settings-page-sidebar {
+  min-width: 0;
+  position: sticky;
+  top: var(--space-4);
 }
 
 .settings-page-tab-bar {
-  display: flex;
-  flex-wrap: nowrap;
+  display: grid;
   gap: var(--space-2);
-  max-width: 80rem;
-  overflow-x: auto;
-  width: min(100%, 80rem);
+  max-width: none;
+  width: 100%;
 }
 
 .settings-page-tab {
@@ -17,11 +32,12 @@
   border-radius: var(--radius-full, 999px);
   color: var(--color-text-secondary);
   cursor: pointer;
-  flex: 0 0 auto;
   font-size: var(--font-size-sm);
   font-weight: 600;
   padding: var(--space-2) var(--space-4);
-  white-space: nowrap;
+  text-align: left;
+  white-space: normal;
+  width: 100%;
 }
 
 .settings-page-tab:hover,
@@ -40,6 +56,14 @@
   display: grid;
   gap: var(--space-4);
   min-width: 0;
+  width: 100%;
+}
+
+.settings-page-content {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+  width: 100%;
 }
 
 .settings-page-subtab-bar {
@@ -99,15 +123,26 @@
   overflow: visible;
 }
 
-.settings-page:has(.ai-trace-browser) > .settings-page-tab-bar,
+.settings-page:has(.ai-trace-browser) .settings-page-layout {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.settings-page:has(.ai-trace-browser) .settings-page-content {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.settings-page:has(.ai-trace-browser) .settings-page-sidebar,
 .settings-page:has(.ai-trace-browser) .settings-page-subtab-bar {
   flex: 0 0 auto;
   min-height: 2.25rem;
-  overflow-x: auto;
   overflow-y: visible;
 }
 
-.settings-page:has(.ai-trace-browser) > .settings-page-tab-panel {
+.settings-page:has(.ai-trace-browser) .settings-page-content > .settings-page-tab-panel {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
@@ -124,8 +159,8 @@
 .settings-section {
   display: grid;
   gap: var(--space-3);
-  max-width: 80rem;
-  width: min(100%, 80rem);
+  max-width: none;
+  width: 100%;
 }
 
 .settings-section-header {
@@ -172,6 +207,64 @@
 .settings-form-grid {
   display: grid;
   gap: var(--space-3);
+}
+
+.gang-sheet-settings-grid {
+  align-items: stretch;
+  gap: var(--space-4);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.gang-sheet-settings-column {
+  align-content: start;
+  height: 100%;
+}
+
+.gang-sheet-layout-fields {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.gang-sheet-layout-fields .settings-number-input,
+.gang-sheet-pricing-fields .settings-number-input {
+  max-width: none;
+  width: 100%;
+}
+
+.gang-sheet-pricing-row {
+  border-bottom: 1px solid var(--color-border);
+  display: grid;
+  gap: var(--space-1);
+  padding-block: var(--space-3);
+}
+
+.gang-sheet-pricing-row:first-of-type {
+  padding-top: var(--space-1);
+}
+
+.gang-sheet-pricing-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.gang-sheet-pricing-fields {
+  align-items: center;
+  display: grid;
+  gap: var(--space-2) var(--space-3);
+  grid-template-columns: minmax(0, 1fr) minmax(8rem, 10rem);
+}
+
+.gang-sheet-pricing-fields label {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.settings-section-actions {
+  align-items: center;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-2);
 }
 
 .settings-control-grid {
@@ -2152,6 +2245,18 @@
 }
 
 @media (max-width: 60rem) {
+  .gang-sheet-settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-page-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-page-sidebar {
+    position: static;
+  }
+
   .page-content-area:has(.ai-trace-browser) {
     overflow-y: auto;
   }
@@ -2160,7 +2265,7 @@
     min-height: 100%;
     overflow: visible;
   }
-  .settings-page:has(.ai-trace-browser) > .settings-page-tab-panel,
+  .settings-page:has(.ai-trace-browser) .settings-page-content > .settings-page-tab-panel,
   .settings-page:has(.ai-trace-browser) .settings-page-subtab-panel:has(.ai-trace-browser) {
     display: grid;
     flex: initial;
@@ -2188,6 +2293,11 @@
   }
 }
 @media (max-width: 40rem) {
+  .gang-sheet-layout-fields,
+  .gang-sheet-pricing-fields {
+    grid-template-columns: 1fr;
+  }
+
   .ai-trace-browser-header {
     flex-direction: column;
   }

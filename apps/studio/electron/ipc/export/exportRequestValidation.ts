@@ -9,7 +9,7 @@ import type {
 } from "@fresh-prints/shared/types/export/gangSheetExportIpc.types";
 import type { ExportShowZipRequest, ShowExportImageRequest } from "@fresh-prints/shared/types/export/showExportIpc.types";
 import {
-  isValidGangSheetSectionPriceCutoffInches,
+  GANG_SHEET_PRICING_POLICY_VERSION,
   isValidGangSheetTierPriceUsd,
   isValidGangSheetTierWeightOz,
   type GangSheetSectionPricingConfig,
@@ -59,7 +59,7 @@ function isValidImageRequest(value: unknown): value is ShowExportImageRequest {
   const image = value as Partial<ShowExportImageRequest>;
 
   return (
-    isNonEmptyString(image.allocationId) &&
+    (isNonEmptyString(image.allocationId) || isNonEmptyString(image.requestItemId)) &&
     isAllowedDownloadUrl(image.downloadUrl) &&
     isPositiveInteger(image.targetWidthPx) &&
     isPositiveInteger(image.targetHeightPx) &&
@@ -126,7 +126,7 @@ function isValidGangSheetImageRequest(value: unknown): value is GangSheetExportI
   const image = value as Partial<GangSheetExportImageRequest>;
 
   return (
-    isNonEmptyString(image.allocationId) &&
+    (isNonEmptyString(image.allocationId) || isNonEmptyString(image.requestItemId)) &&
     isAllowedDownloadUrl(image.downloadUrl) &&
     isPositiveInteger(image.targetWidthPx) &&
     isPositiveInteger(image.targetHeightPx) &&
@@ -157,17 +157,22 @@ function isValidSectionPricing(value: unknown): value is GangSheetSectionPricing
   }
 
   const pricing = value as Partial<GangSheetSectionPricingConfig>;
-  return (
-    typeof pricing.sizeCutoffInches === "number" &&
-    isValidGangSheetSectionPriceCutoffInches(pricing.sizeCutoffInches) &&
-    typeof pricing.smallTierPriceUsd === "number" &&
-    isValidGangSheetTierPriceUsd(pricing.smallTierPriceUsd) &&
-    typeof pricing.smallTierWeightOz === "number" &&
-    isValidGangSheetTierWeightOz(pricing.smallTierWeightOz) &&
-    typeof pricing.largeTierPriceUsd === "number" &&
-    isValidGangSheetTierPriceUsd(pricing.largeTierPriceUsd) &&
-    typeof pricing.largeTierWeightOz === "number" &&
-    isValidGangSheetTierWeightOz(pricing.largeTierWeightOz)
+  if (
+    pricing.policyVersion !== GANG_SHEET_PRICING_POLICY_VERSION ||
+    pricing.sizeCutoffInches !== 4 ||
+    !pricing.pocket ||
+    !pricing.standardFullSize ||
+    !pricing.standardOversized ||
+    !pricing.extraOversized
+  ) {
+    return false;
+  }
+  return [pricing.pocket, pricing.standardFullSize, pricing.standardOversized, pricing.extraOversized].every(
+    (tier) =>
+      typeof tier.priceUsd === "number" &&
+      isValidGangSheetTierPriceUsd(tier.priceUsd) &&
+      typeof tier.weightOz === "number" &&
+      isValidGangSheetTierWeightOz(tier.weightOz),
   );
 }
 
@@ -200,6 +205,14 @@ export function validateExportGangSheetPngRequest(payload: unknown) {
 
   if (!isPositiveInteger(request.labelFontSizePx)) {
     return { error: importIpcFailure("INVALID_INPUT", "A positive label font size in pixels is required.") };
+  }
+
+  if (request.sheetLabel !== undefined && !isNonEmptyString(request.sheetLabel)) {
+    return { error: importIpcFailure("INVALID_INPUT", "A sheet label must be a non-empty string when provided.") };
+  }
+
+  if (request.cacheScope !== undefined && !isNonEmptyString(request.cacheScope)) {
+    return { error: importIpcFailure("INVALID_INPUT", "A cache scope must be a non-empty string when provided.") };
   }
 
   if (!isValidGangSheetLayoutMode(request.layoutMode)) {
@@ -265,13 +278,13 @@ export function validateGenerateGangSheetPngRequest(
       gutterInches: exportRequest.gutterInches,
       maxSheetLengthInches: exportRequest.maxSheetLengthInches,
       labelFontSizePx: exportRequest.labelFontSizePx,
+      ...(exportRequest.sheetLabel ? { sheetLabel: exportRequest.sheetLabel } : {}),
+      ...(exportRequest.cacheScope ? { cacheScope: exportRequest.cacheScope } : {}),
       ...(exportRequest.layoutMode && exportRequest.layoutMode !== "efficiency"
-        ? {
-            layoutMode: exportRequest.layoutMode,
-            ...(exportRequest.sectionPricing
-              ? { sectionPricing: exportRequest.sectionPricing }
-              : {}),
-          }
+        ? { layoutMode: exportRequest.layoutMode }
+        : {}),
+      ...(exportRequest.sectionPricing
+        ? { sectionPricing: exportRequest.sectionPricing }
         : {}),
       images: exportRequest.images,
       showId: request.showId.trim(),

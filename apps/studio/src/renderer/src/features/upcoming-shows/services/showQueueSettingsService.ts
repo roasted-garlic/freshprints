@@ -10,11 +10,19 @@ import {
 } from "@fresh-prints/shared/utils/showQueueCutoff";
 
 import {
+  DEFAULT_GANG_SHEET_EXTRA_OVERSIZED_PRICE_USD,
+  DEFAULT_GANG_SHEET_EXTRA_OVERSIZED_WEIGHT_OZ,
   DEFAULT_GANG_SHEET_LARGE_TIER_PRICE_USD,
   DEFAULT_GANG_SHEET_LARGE_TIER_WEIGHT_OZ,
   DEFAULT_GANG_SHEET_SECTION_PRICE_CUTOFF_INCHES,
   DEFAULT_GANG_SHEET_SMALL_TIER_PRICE_USD,
   DEFAULT_GANG_SHEET_SMALL_TIER_WEIGHT_OZ,
+  DEFAULT_GANG_SHEET_POCKET_PRICE_USD,
+  DEFAULT_GANG_SHEET_POCKET_WEIGHT_OZ,
+  DEFAULT_GANG_SHEET_STANDARD_FULL_SIZE_PRICE_USD,
+  DEFAULT_GANG_SHEET_STANDARD_FULL_SIZE_WEIGHT_OZ,
+  DEFAULT_GANG_SHEET_STANDARD_OVERSIZED_PRICE_USD,
+  DEFAULT_GANG_SHEET_STANDARD_OVERSIZED_WEIGHT_OZ,
 } from "@fresh-prints/shared/constants/gangSheetSectionPricingSettings.constants";
 
 import { db } from "../../../config/firebase";
@@ -68,7 +76,15 @@ export interface ShowQueueSettings {
   gangSheetMaxLengthInches?: number;
   /** Sheet label text font size in pixels; defaults to `DEFAULT_GANG_SHEET_LABEL_FONT_SIZE_PX`. */
   gangSheetLabelFontSizePx?: number;
-  /** Size cutoff for grouped gang-sheet price/weight tiers (inches). Default 5 when unset. */
+  gangSheetPocketPriceUsd?: number;
+  gangSheetPocketWeightOz?: number;
+  gangSheetStandardFullSizePriceUsd?: number;
+  gangSheetStandardFullSizeWeightOz?: number;
+  gangSheetStandardOversizedPriceUsd?: number;
+  gangSheetStandardOversizedWeightOz?: number;
+  gangSheetExtraOversizedPriceUsd?: number;
+  gangSheetExtraOversizedWeightOz?: number;
+  /** Legacy two-tier cutoff retained for read-only fallback compatibility. */
   gangSheetSectionPriceCutoffInches?: number;
   gangSheetSmallTierPriceUsd?: number;
   gangSheetSmallTierWeightOz?: number;
@@ -101,6 +117,14 @@ export {
   DEFAULT_GANG_SHEET_SMALL_TIER_WEIGHT_OZ,
   DEFAULT_GANG_SHEET_LARGE_TIER_PRICE_USD,
   DEFAULT_GANG_SHEET_LARGE_TIER_WEIGHT_OZ,
+  DEFAULT_GANG_SHEET_POCKET_PRICE_USD,
+  DEFAULT_GANG_SHEET_POCKET_WEIGHT_OZ,
+  DEFAULT_GANG_SHEET_STANDARD_FULL_SIZE_PRICE_USD,
+  DEFAULT_GANG_SHEET_STANDARD_FULL_SIZE_WEIGHT_OZ,
+  DEFAULT_GANG_SHEET_STANDARD_OVERSIZED_PRICE_USD,
+  DEFAULT_GANG_SHEET_STANDARD_OVERSIZED_WEIGHT_OZ,
+  DEFAULT_GANG_SHEET_EXTRA_OVERSIZED_PRICE_USD,
+  DEFAULT_GANG_SHEET_EXTRA_OVERSIZED_WEIGHT_OZ,
 };
 
 function mapWhatnotAssistedImportSummary(value: unknown): WhatnotAssistedImportSummary | undefined {
@@ -157,6 +181,22 @@ function mapShowQueueSettings(data: Record<string, unknown> | undefined): ShowQu
       typeof data?.gangSheetMaxLengthInches === "number" ? data.gangSheetMaxLengthInches : undefined,
     gangSheetLabelFontSizePx:
       typeof data?.gangSheetLabelFontSizePx === "number" ? data.gangSheetLabelFontSizePx : undefined,
+    gangSheetPocketPriceUsd:
+      typeof data?.gangSheetPocketPriceUsd === "number" ? data.gangSheetPocketPriceUsd : undefined,
+    gangSheetPocketWeightOz:
+      typeof data?.gangSheetPocketWeightOz === "number" ? data.gangSheetPocketWeightOz : undefined,
+    gangSheetStandardFullSizePriceUsd:
+      typeof data?.gangSheetStandardFullSizePriceUsd === "number" ? data.gangSheetStandardFullSizePriceUsd : undefined,
+    gangSheetStandardFullSizeWeightOz:
+      typeof data?.gangSheetStandardFullSizeWeightOz === "number" ? data.gangSheetStandardFullSizeWeightOz : undefined,
+    gangSheetStandardOversizedPriceUsd:
+      typeof data?.gangSheetStandardOversizedPriceUsd === "number" ? data.gangSheetStandardOversizedPriceUsd : undefined,
+    gangSheetStandardOversizedWeightOz:
+      typeof data?.gangSheetStandardOversizedWeightOz === "number" ? data.gangSheetStandardOversizedWeightOz : undefined,
+    gangSheetExtraOversizedPriceUsd:
+      typeof data?.gangSheetExtraOversizedPriceUsd === "number" ? data.gangSheetExtraOversizedPriceUsd : undefined,
+    gangSheetExtraOversizedWeightOz:
+      typeof data?.gangSheetExtraOversizedWeightOz === "number" ? data.gangSheetExtraOversizedWeightOz : undefined,
     gangSheetSectionPriceCutoffInches:
       typeof data?.gangSheetSectionPriceCutoffInches === "number"
         ? data.gangSheetSectionPriceCutoffInches
@@ -190,6 +230,14 @@ export const showQueueSettingsService = {
       gangSheetGutterInches?: number;
       gangSheetMaxLengthInches?: number;
       gangSheetLabelFontSizePx?: number;
+      gangSheetPocketPriceUsd?: number;
+      gangSheetPocketWeightOz?: number;
+      gangSheetStandardFullSizePriceUsd?: number;
+      gangSheetStandardFullSizeWeightOz?: number;
+      gangSheetStandardOversizedPriceUsd?: number;
+      gangSheetStandardOversizedWeightOz?: number;
+      gangSheetExtraOversizedPriceUsd?: number;
+      gangSheetExtraOversizedWeightOz?: number;
       gangSheetSectionPriceCutoffInches?: number;
       gangSheetSmallTierPriceUsd?: number;
       gangSheetSmallTierWeightOz?: number;
@@ -221,6 +269,14 @@ export const showQueueSettingsService = {
       gangSheetGutterInches: input.gangSheetGutterInches,
       gangSheetMaxLengthInches: input.gangSheetMaxLengthInches,
       gangSheetLabelFontSizePx: input.gangSheetLabelFontSizePx,
+      gangSheetPocketPriceUsd: input.gangSheetPocketPriceUsd,
+      gangSheetPocketWeightOz: input.gangSheetPocketWeightOz,
+      gangSheetStandardFullSizePriceUsd: input.gangSheetStandardFullSizePriceUsd,
+      gangSheetStandardFullSizeWeightOz: input.gangSheetStandardFullSizeWeightOz,
+      gangSheetStandardOversizedPriceUsd: input.gangSheetStandardOversizedPriceUsd,
+      gangSheetStandardOversizedWeightOz: input.gangSheetStandardOversizedWeightOz,
+      gangSheetExtraOversizedPriceUsd: input.gangSheetExtraOversizedPriceUsd,
+      gangSheetExtraOversizedWeightOz: input.gangSheetExtraOversizedWeightOz,
       gangSheetSectionPriceCutoffInches: input.gangSheetSectionPriceCutoffInches,
       gangSheetSmallTierPriceUsd: input.gangSheetSmallTierPriceUsd,
       gangSheetSmallTierWeightOz: input.gangSheetSmallTierWeightOz,

@@ -10,6 +10,11 @@ import { useDesignDerivativeUrl } from "../../designs/hooks/useDesignDerivativeU
 import type { Design } from "../../designs/types/design.types";
 import type { PrintRequestItem } from "@fresh-prints/shared/types/printRequest/printRequest.types";
 import type { StandardPrintSizesSettings } from "@fresh-prints/shared/constants/printSize/standardPrintSizesSettings.constants";
+import type { GangSheetSectionPricingConfig } from "@fresh-prints/shared/constants/gangSheetSectionPricingSettings.constants";
+import {
+  resolveGangSheetPriceTierForInches,
+  resolveGangSheetPricingForTier,
+} from "@fresh-prints/shared/utils/gangSheetCustomerSectionSummary";
 import { resolveStandardSizePresetKeyAfterManualSizeChange } from "@fresh-prints/shared/constants/printSize/standardPrintSizesSettings.constants";
 import { resolvePrintRequestItemSourcePill } from "@fresh-prints/shared/utils/printRequestItemSource";
 import {
@@ -71,6 +76,7 @@ interface PrintRequestItemCardProps {
   onPersistenceHealthChange?: (itemId: string, health: PrintRequestItemPersistenceHealth) => void;
   onRegisterFlush?: (itemId: string, flush: (() => Promise<boolean>) | null) => void;
   standardPrintSizesSettings: StandardPrintSizesSettings;
+  sectionPricing: GangSheetSectionPricingConfig;
   /** When true, hides edit/remove/duplicate controls because the request is locked while queued to a show. */
   readOnly?: boolean;
   onDesignArtworkEnhanced?: () => void | Promise<void>;
@@ -113,6 +119,11 @@ function resolveAspectPixels(
 
 function formatEditableNumber(value: number): string {
   return Number.isFinite(value) ? String(value) : "";
+}
+
+function formatItemCost(unitPriceUsd: number, quantity: number, totalPriceUsd: number): string {
+  const formatPrice = (amount: number) => Number.isInteger(amount) ? `$${amount}` : `$${amount.toFixed(2)}`;
+  return `${formatPrice(unitPriceUsd)} x ${quantity} = ${formatPrice(totalPriceUsd)}`;
 }
 
 function parsePositiveIntegerInput(value: string): number | null {
@@ -170,6 +181,7 @@ export function PrintRequestItemCard({
   onRegisterFlush,
   readOnly,
   standardPrintSizesSettings,
+  sectionPricing,
   onDesignArtworkEnhanced,
   onArtworkEnhanceModeChanged,
   onOpenPreview,
@@ -309,6 +321,21 @@ export function PrintRequestItemCard({
     parsedPrintWidthInches !== null && parsedPrintHeightInches !== null
       ? formatPrintRequestItemSizeLabel(parsedPrintWidthInches, parsedPrintHeightInches)
       : "Size not set";
+  const itemCost = useMemo(() => {
+    const width = parsedPrintWidthInches ?? resolveInitialWidth(item);
+    const quantity = parsedQuantity ?? item.quantity;
+    if (!Number.isFinite(width) || width <= 0 || !Number.isInteger(quantity) || quantity <= 0) {
+      return null;
+    }
+
+    const tier = resolveGangSheetPriceTierForInches(width);
+    const tierPricing = resolveGangSheetPricingForTier(sectionPricing, tier);
+    return {
+      quantity,
+      unitPriceUsd: tierPricing.priceUsd,
+      totalPriceUsd: tierPricing.priceUsd * quantity,
+    };
+  }, [item, parsedPrintWidthInches, parsedQuantity, sectionPricing]);
   const qualityClass = sizeAssessment
     ? `print-requests-item-quality is-${sizeAssessment.qualityLevel}`
     : "print-requests-item-quality is-unavailable";
@@ -745,10 +772,24 @@ export function PrintRequestItemCard({
           <div className="print-requests-item-card-copy">
             <strong className="print-requests-item-card-title">{title}</strong>
             {readOnly ? (
-              <>
+              <div
+                className={`print-requests-item-readonly-meta${
+                  itemCost ? " has-cost" : ""
+                }`}
+              >
                 <span className="print-requests-item-card-meta">Qty {item.quantity}</span>
+                {itemCost ? (
+                  <span className="print-requests-item-card-meta print-requests-item-cost-label">
+                    Cost
+                  </span>
+                ) : null}
                 <span className="print-requests-item-card-meta">{sizeLabel}</span>
-              </>
+                {itemCost ? (
+                  <span className="print-requests-item-card-meta print-requests-item-cost-value">
+                    {formatItemCost(itemCost.unitPriceUsd, itemCost.quantity, itemCost.totalPriceUsd)}
+                  </span>
+                ) : null}
+              </div>
             ) : null}
           </div>
         </div>
@@ -890,6 +931,14 @@ export function PrintRequestItemCard({
                   <Plus aria-hidden="true" size={14} strokeWidth={2} />
                 </button>
               </div>
+              {itemCost ? (
+                <div className="print-requests-item-cost-summary">
+                  <span className="print-requests-item-field-label">Cost</span>
+                  <span className="print-requests-item-cost-value">
+                    {formatItemCost(itemCost.unitPriceUsd, itemCost.quantity, itemCost.totalPriceUsd)}
+                  </span>
+                </div>
+              ) : null}
             </div>
             </div>
 

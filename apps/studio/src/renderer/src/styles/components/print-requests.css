@@ -377,13 +377,6 @@
   padding: var(--space-1) var(--space-2);
 }
 
-.print-requests-request-card-counts .print-requests-request-card-size-class {
-  color: var(--color-text-secondary);
-  font-variant-numeric: tabular-nums;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-}
-
 .print-requests-request-card-title-row {
   align-items: flex-start;
   display: flex;
@@ -871,6 +864,28 @@
   font-size: var(--font-size-xs);
 }
 
+.print-requests-item-readonly-meta {
+  display: grid;
+  gap: var(--space-1) var(--space-3);
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+}
+
+.print-requests-item-readonly-meta.has-cost {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.print-requests-item-cost-label,
+.print-requests-item-cost-value {
+  text-align: right;
+}
+
+.print-requests-item-cost-value {
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .print-requests-item-size-row {
   display: grid;
   gap: var(--space-2);
@@ -1044,6 +1059,22 @@
   min-width: 0;
 }
 
+.print-requests-item-cost-summary {
+  align-items: baseline;
+  display: flex;
+  gap: var(--space-1);
+  margin-left: auto;
+  min-width: 0;
+  text-align: right;
+}
+
+.print-requests-item-cost-value {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .print-requests-item-editor-actions {
   align-items: center;
   border-top: 1px solid var(--color-border);
@@ -1100,22 +1131,11 @@
   margin: 0;
 }
 
-.print-requests-detail-size-class-row {
+.print-requests-detail-metrics {
+  align-items: center;
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
-}
-
-.print-requests-detail-size-class-row .print-requests-request-card-size-class {
-  background: var(--color-bg-tertiary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-  font-variant-numeric: tabular-nums;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  padding: var(--space-1) var(--space-2);
 }
 
 .print-requests-detail-actions {
@@ -1173,6 +1193,128 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+}
+
+.print-requests-detail-metric-pill {
+  align-items: center;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  gap: var(--space-2);
+  min-height: 2rem;
+  padding: var(--space-1) var(--space-3);
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.print-requests-detail-metric-pill:hover,
+.print-requests-detail-metric-pill:focus-visible {
+  background: var(--color-accent-primary-soft);
+  border-color: var(--color-accent-primary);
+  outline: none;
+}
+
+.print-requests-detail-metric-pill span {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.print-requests-detail-metric-pill strong {
+  font-size: var(--font-size-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.print-request-cost-breakdown-modal.modal-panel {
+  max-width: min(44rem, calc(100vw - 2rem));
+  width: 100%;
+}
+
+.print-request-cost-breakdown-totals {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.print-request-cost-breakdown-total {
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+}
+
+.print-request-cost-breakdown-total span,
+.print-request-cost-breakdown-row > div:first-child span {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.print-request-cost-breakdown-total strong {
+  font-size: var(--font-size-lg);
+  font-variant-numeric: tabular-nums;
+}
+
+.print-request-cost-breakdown-section {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.print-request-cost-breakdown-section > .eyebrow {
+  margin: 0;
+}
+
+.print-request-cost-breakdown-formula {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-family-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: var(--font-size-sm);
+  margin: 0;
+  overflow-wrap: anywhere;
+  padding: var(--space-2) var(--space-3);
+}
+
+.print-request-cost-breakdown-list {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.print-request-cost-breakdown-row {
+  align-items: center;
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+  padding: var(--space-3);
+}
+
+.print-request-cost-breakdown-row + .print-request-cost-breakdown-row {
+  border-top: 1px solid var(--color-border);
+}
+
+.print-request-cost-breakdown-row > div:first-child {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.print-request-cost-breakdown-row-range {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: 400;
+}
+
+.print-request-cost-breakdown-row-values {
+  color: var(--color-text-secondary);
+  display: grid;
+  font-size: var(--font-size-xs);
+  gap: var(--space-1);
+  text-align: right;
+  white-space: nowrap;
 }
 
 .print-requests-item-stepper {
@@ -1492,5 +1634,19 @@
 
   .print-requests-item-editor-actions .button {
     flex: 1 1 auto;
+  }
+
+  .print-request-cost-breakdown-totals {
+    grid-template-columns: 1fr;
+  }
+
+  .print-request-cost-breakdown-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .print-request-cost-breakdown-row-values {
+    text-align: left;
+    white-space: normal;
   }
 }

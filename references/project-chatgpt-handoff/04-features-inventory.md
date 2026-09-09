@@ -21,6 +21,7 @@ Internal + customer requests in **separate lists** (Customer Requests default; I
 **Configurable Print Request default width** via Studio Settings (`defaultPrintRequestWidthInches`, **10″** system fallback, new items only — ADR-FP-080 amendment 2026-08-31, **DEV**).
 **Interactive Upscale toggle** on Print Request item cards (`artworkEnhanceMode`: baseline vs enhanced) for `catalog_design` and `customer_upload`; one non-destructive derivative per lineage; request-driven ~300 DPI first pass; cumulative ≤6× from native (**DEV**). Enhanced DPI hydrates from parent design/upload `interactiveEnhanced*` after remount/reload (TD-033 resolved on DEV). New OFF→ON only when effective DPI `< 250`; existing ON preserved at ≥250. Save floor 200 / optimal 300 unchanged.
 **Convert to Internal Request** (callable, ADR-FP-141) under overflow ⋯; Customer primary action **Add to Show**; Internal primary action **Add to Internal Gangsheet**.
+Eligible non-working requests also expose direct **Export Images**, **Export x(Qty)**, **Generate Standard Gang Sheet**, and **Copy** actions. Working and Editing requests retain only their existing Add to Show / Add to Internal Gangsheet actions. Request totals and card costs use the shared four-tier Gang Sheet Settings resolver.
 
 ### Show Queue (`/show-queue`)
 Upcoming/Past shows; capacity; attach requests; Working triage **Active · Stale · Empty · All · Needs Re-queue** (rightmost); **NEEDS RE-QUEUE** badge; Whatnot assisted
@@ -29,6 +30,7 @@ import; **DEV fixture shows** (`DEV-OVERRIDE`, `source: dev_fixture` — DEV-onl
 - **Grouped by Customer** — `customer_grouped_continuous`: customer section headings; multiple customers may share one physical sheet
 - **Sheet per Customer** — `grouped_by_customer`: one physical sheet set per customer (preserved legacy grouped behavior)
 Separate cache fingerprints per mode; Standard unchanged. Start/Pause/Resume/Finish production timer; **Past + Printing Whatnot shows Finish automatically (or Mark Complete)** (ADR-FP-139); **Needs Attention → Did Not Print**: primary **Move unprinted to another show**; secondary **Release only** → Needs Re-queue (ADR-FP-156); **Owner Edit Show** metadata (owner-only, scoped DEV enabler); Internal Gang Sheet Mark Complete reconciles eligible internal requests to **Printed**; terminal request reconciliation and completed locking; calendar picker; **Portal add-to-show cutoff hours** setting (`portalQueueCutoffHoursBeforeStart`, ADR-FP-103). Manual gang-sheet builder deferred.
+Global Gang Sheet Settings on `settings/showQueue` provide six layout fields plus width-only Pocket / Standard Full / Standard Oversized / Extra Oversized price and weight tiers for Show Queue, Internal Gang Sheet, and request generation; legacy Internal settings are read-only fallback only.
 
 ### Customer account (Portal)
 Account Settings → Profile: self-service **display name** and **username** with 30-day username cooldown (staff bypass); identity snapshots propagate to print requests and design issue reports (DEV — `portal-customer-username-change`).

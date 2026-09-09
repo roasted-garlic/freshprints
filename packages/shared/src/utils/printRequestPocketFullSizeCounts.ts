@@ -1,12 +1,12 @@
-import { DEFAULT_GANG_SHEET_SECTION_PRICE_CUTOFF_INCHES } from "../constants/gangSheetSectionPricingSettings.constants";
+import { resolveGangSheetPriceTierForInches } from "./gangSheetCustomerSectionSummary";
 
 /**
- * Operational Pocket / Full Size count input (Print Request items or Show Allocations).
- * Classification is WIDTH-ONLY — intentionally different from gang-sheet pricing tiers.
+ * Operational size-class count input (Print Request items or Show Allocations).
+ * Classification is WIDTH-ONLY and follows the canonical four-tier gang-sheet pricing policy.
  */
-export interface PrintRequestPocketFullSizeCountInput {
+export interface PrintRequestSizeClassCountInput {
   printWidthInches?: number | null;
-  /** Ignored for Pocket / Full Size classification; accepted so callers can pass full item rows. */
+  /** Ignored for size classification; accepted so callers can pass full item rows. */
   printHeightInches?: number | null;
   /** Print quantity (item.quantity or allocation.allocatedQuantity). */
   quantity: number;
@@ -14,9 +14,11 @@ export interface PrintRequestPocketFullSizeCountInput {
   status?: string | null;
 }
 
-export interface PrintRequestPocketFullSizeCounts {
+export interface PrintRequestSizeClassCounts {
   pocketCount: number;
-  fullSizeCount: number;
+  standardFullSizeCount: number;
+  standardOversizedCount: number;
+  extraOversizedCount: number;
 }
 
 function isPositiveFiniteInches(value: unknown): value is number {
@@ -27,29 +29,25 @@ function isPositiveFiniteQuantity(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value > 0;
 }
 
-function resolveCutoffInches(sizeCutoffInches: number): number {
-  return typeof sizeCutoffInches === "number" && Number.isFinite(sizeCutoffInches) && sizeCutoffInches > 0
-    ? sizeCutoffInches
-    : DEFAULT_GANG_SHEET_SECTION_PRICE_CUTOFF_INCHES;
-}
-
 /**
- * Operational Pocket / Full Size print-quantity counts for Studio cards.
+ * Operational four-tier print-quantity counts for Studio cards.
  *
- * WIDTH-ONLY product rule (Owner QA 2026-09-02):
- * - Pocket: printWidthInches <= cutoff
- * - Full Size: printWidthInches > cutoff
+ * WIDTH-ONLY product rule:
+ * - Pocket: printWidthInches <= 4
+ * - Reg Full: printWidthInches <= 11
+ * - Reg Oversize: printWidthInches <= 14
+ * - Ext Oversize: printWidthInches > 14
  *
- * Height does not participate. This is intentionally separate from
- * `resolveGangSheetPriceTierForInches` / gang-sheet pricing-weight classification.
+ * Height does not participate. Classification is shared with
+ * `resolveGangSheetPriceTierForInches` so compact cards stay current with gang-sheet pricing.
  */
-export function resolvePrintRequestPocketFullSizeCounts(
-  rows: readonly PrintRequestPocketFullSizeCountInput[],
-  sizeCutoffInches: number,
-): PrintRequestPocketFullSizeCounts {
-  const cutoff = resolveCutoffInches(sizeCutoffInches);
+export function resolvePrintRequestSizeClassCounts(
+  rows: readonly PrintRequestSizeClassCountInput[],
+): PrintRequestSizeClassCounts {
   let pocketCount = 0;
-  let fullSizeCount = 0;
+  let standardFullSizeCount = 0;
+  let standardOversizedCount = 0;
+  let extraOversizedCount = 0;
 
   for (const row of rows) {
     if (row.status === "canceled") {
@@ -67,22 +65,66 @@ export function resolvePrintRequestPocketFullSizeCounts(
       continue;
     }
 
-    if (row.printWidthInches <= cutoff) {
-      pocketCount += quantity;
-    } else {
-      fullSizeCount += quantity;
+    switch (resolveGangSheetPriceTierForInches(row.printWidthInches)) {
+      case "pocket":
+        pocketCount += quantity;
+        break;
+      case "standard_full_size":
+        standardFullSizeCount += quantity;
+        break;
+      case "standard_oversized":
+        standardOversizedCount += quantity;
+        break;
+      case "extra_oversized":
+        extraOversizedCount += quantity;
+        break;
     }
   }
 
-  return { pocketCount, fullSizeCount };
+  return { pocketCount, standardFullSizeCount, standardOversizedCount, extraOversizedCount };
 }
 
-/** Compact Studio label, or `null` when both counts are zero (hide empty summary). */
-export function formatPocketFullSizeCountsLabel(
-  counts: PrintRequestPocketFullSizeCounts,
+const SIZE_CLASS_LABELS: ReadonlyArray<{
+  key: keyof PrintRequestSizeClassCounts;
+  label: string;
+}> = [
+  { key: "pocketCount", label: "Pocket" },
+  { key: "standardFullSizeCount", label: "Reg Full" },
+  { key: "standardOversizedCount", label: "Reg Oversize" },
+  { key: "extraOversizedCount", label: "Ext Oversize" },
+];
+
+/** Compact Studio label, or `null` when all counts are zero (hide empty summary). */
+export function formatPrintRequestSizeClassCountsLabel(
+  counts: PrintRequestSizeClassCounts,
 ): string | null {
-  if (counts.pocketCount <= 0 && counts.fullSizeCount <= 0) {
+  const parts = SIZE_CLASS_LABELS
+    .filter(({ key }) => counts[key] > 0)
+    .map(({ key, label }) => `${label} ${counts[key]}`);
+  if (parts.length === 0) {
     return null;
   }
-  return `Pocket ${counts.pocketCount} · Full Size ${counts.fullSizeCount}`;
+  return parts.join(" · ");
+}
+
+/** @deprecated Use PrintRequestSizeClassCountInput. */
+export type PrintRequestPocketFullSizeCountInput = PrintRequestSizeClassCountInput;
+
+/** @deprecated Use PrintRequestSizeClassCounts. */
+export type PrintRequestPocketFullSizeCounts = PrintRequestSizeClassCounts;
+
+/** @deprecated Use resolvePrintRequestSizeClassCounts. The cutoff is ignored. */
+export function resolvePrintRequestPocketFullSizeCounts(
+  rows: readonly PrintRequestSizeClassCountInput[],
+  _legacyCutoffInches?: number,
+): PrintRequestSizeClassCounts {
+  void _legacyCutoffInches;
+  return resolvePrintRequestSizeClassCounts(rows);
+}
+
+/** @deprecated Use formatPrintRequestSizeClassCountsLabel. */
+export function formatPocketFullSizeCountsLabel(
+  counts: PrintRequestSizeClassCounts,
+): string | null {
+  return formatPrintRequestSizeClassCountsLabel(counts);
 }

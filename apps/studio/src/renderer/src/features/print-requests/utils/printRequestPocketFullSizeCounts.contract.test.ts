@@ -6,27 +6,26 @@ import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
-describe("pocket/full-size counts UI wiring", () => {
-  it("PrintRequestsPage uses width-only helper and one compact list pill", () => {
+describe("four-tier size counts UI wiring", () => {
+  it("PrintRequestsPage keeps the compact list card focused on request totals", () => {
     const source = readFileSync(join(here, "../pages/PrintRequestsPage.tsx"), "utf8");
-    assert.match(source, /resolvePrintRequestPocketFullSizeCounts/);
-    assert.match(source, /formatPocketFullSizeCountsLabel/);
+    assert.doesNotMatch(source, /resolvePrintRequestSizeClassCounts/);
+    assert.doesNotMatch(source, /formatPrintRequestSizeClassCountsLabel/);
     assert.doesNotMatch(source, /resolveGangSheetSizeClassCounts/);
-    assert.doesNotMatch(source, /resolveGangSheetPriceTierForInches/);
-    assert.match(source, /useShowQueueSettings/);
-    assert.match(source, /useInternalGangSheetSettings/);
-    assert.match(source, /print-requests-request-card-size-class/);
-    assert.match(source, /\{sizeClassLabel\}/);
-    assert.doesNotMatch(source, /Pocket \{sizeClassCounts\.pocketCount\}/);
+    assert.match(source, /useGangSheetSettings/);
+    assert.doesNotMatch(source, /print-requests-request-card-size-class/);
+    assert.doesNotMatch(source, /sizeClassLabel/);
+    assert.doesNotMatch(source, /Full Size/);
   });
 
-  it("UpcomingShowsPage uses width-only helper with active settings cutoff", () => {
+  it("UpcomingShowsPage uses the canonical four-tier helper for show and internal cards", () => {
     const source = readFileSync(join(here, "../../upcoming-shows/pages/UpcomingShowsPage.tsx"), "utf8");
-    assert.match(source, /resolvePrintRequestPocketFullSizeCounts/);
-    assert.match(source, /formatPocketFullSizeCountsLabel/);
-    assert.match(source, /gangSheetLayoutSettings\.sectionPricing\.sizeCutoffInches/);
-    assert.match(source, /resolveActiveGangSheetSettingsSource/);
+    assert.match(source, /resolvePrintRequestSizeClassCounts/);
+    assert.match(source, /formatPrintRequestSizeClassCountsLabel/);
+    assert.match(source, /sectionPricing:\s*gangSheetSettings\.settings\.sectionPricing/);
+    assert.doesNotMatch(source, /resolveActiveGangSheetSettingsSource/);
     assert.doesNotMatch(source, /resolveGangSheetSizeClassCounts/);
+    assert.doesNotMatch(source, /Full Size/);
   });
 });
 

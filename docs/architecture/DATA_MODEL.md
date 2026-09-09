@@ -1091,6 +1091,13 @@ printRequests/{printRequestId}
 
 A Print Request is a **named list of catalog designs** for a customer, guest, or internal staff use. It is **not an order** — no payment, checkout, or shipping fields.
 
+Studio-only request actions (Export Images, Standard Generate Gangsheet, and Copy Request) are
+derived operations over the existing request and item documents. They do not add fields or
+collections. Export/generation reads the exact saved item quantity, requested inches, source
+identity, and artwork enhancement mode. Copy creates a new normal Working/draft request with fresh
+IDs and sequence state; it does not copy allocation, completion, conversion, parking, cache, or
+audit fields.
+
 ```ts
 export type PrintRequestStatus =
   | "draft"
@@ -2124,13 +2131,32 @@ interface ShowQueueSettings {
   gangSheetGutterInches?: number;
   gangSheetMaxLengthInches?: number;
   gangSheetLabelFontSizePx?: number;
+  // Canonical global Gang Sheet Settings price/weight fields. Breakpoints are fixed policy.
+  gangSheetPocketPriceUsd?: number;
+  gangSheetPocketWeightOz?: number;
+  gangSheetStandardFullSizePriceUsd?: number;
+  gangSheetStandardFullSizeWeightOz?: number;
+  gangSheetStandardOversizedPriceUsd?: number;
+  gangSheetStandardOversizedWeightOz?: number;
+  gangSheetExtraOversizedPriceUsd?: number;
+  gangSheetExtraOversizedWeightOz?: number;
+  // Legacy two-tier fields remain readable only for fallback compatibility.
+  gangSheetSectionPriceCutoffInches?: number;
+  gangSheetSmallTierPriceUsd?: number;
+  gangSheetSmallTierWeightOz?: number;
+  gangSheetLargeTierPriceUsd?: number;
+  gangSheetLargeTierWeightOz?: number;
   // … Whatnot assisted-import audit fields …
   updatedAt: Timestamp;
   updatedBy: string;
 }
 ```
 
-Cutoff math uses absolute Timestamps (`cutoffAt = scheduledStartAt − N hours`). Display labels use the browser locale; America/Chicago applies to other day-bucket features, not this offset. Staff configure via Show Queue settings modal. Clients may not bypass — `listPortalAllocatableShows` / `queuePortalPrintRequestToShow` enforce.
+Cutoff math uses absolute Timestamps (`cutoffAt = scheduledStartAt − N hours`). Display labels use the browser locale; America/Chicago applies to other day-bucket features, not this offset. Staff configure Gang Sheet fields under `/settings?tab=gangSheetSettings`; unrelated Show Queue settings remain in the Show Queue modal. Clients may not bypass — `listPortalAllocatableShows` / `queuePortalPrintRequestToShow` enforce.
+
+The normalized pricing policy is width-only with fixed boundaries `<=4`, `<=11`, and `<=14`
+inches. Defaults are `$1/0.40oz`, `$2/0.75oz`, `$3/0.75oz`, and `$4/0.75oz` respectively.
+Canonical fields win individually over legacy fallback fields; no migration or backfill is performed.
 
 ### `settings/printRequestLimits`
 

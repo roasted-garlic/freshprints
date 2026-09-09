@@ -12,91 +12,96 @@ import {
 const defaultPricing = DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG;
 
 describe("gangSheetCustomerSectionSummary classification", () => {
-  it("uses small tier when both dimensions are exactly the cutoff", () => {
-    assert.equal(resolveGangSheetPriceTierForInches(5, 5), "small");
-    assert.equal(resolveGangSheetPriceTierForInches(5, 4), "small");
-    assert.equal(resolveGangSheetPriceTierForInches(4, 5), "small");
-    assert.equal(resolveGangSheetPriceTierForInches(5, 5.0), "small");
+  it("uses continuous saved-width boundaries", () => {
+    assert.equal(resolveGangSheetPriceTierForInches(4), "pocket");
+    assert.equal(resolveGangSheetPriceTierForInches(4.5), "standard_full_size");
+    assert.equal(resolveGangSheetPriceTierForInches(10.5), "standard_full_size");
+    assert.equal(resolveGangSheetPriceTierForInches(11), "standard_full_size");
+    assert.equal(resolveGangSheetPriceTierForInches(11.5), "standard_oversized");
+    assert.equal(resolveGangSheetPriceTierForInches(12), "standard_oversized");
+    assert.equal(resolveGangSheetPriceTierForInches(14), "standard_oversized");
+    assert.equal(resolveGangSheetPriceTierForInches(14.5), "extra_oversized");
+    assert.equal(resolveGangSheetPriceTierForInches(15), "extra_oversized");
   });
 
-  it("uses large tier when either dimension exceeds the cutoff", () => {
-    assert.equal(resolveGangSheetPriceTierForInches(5.01, 5), "large");
-    assert.equal(resolveGangSheetPriceTierForInches(5, 5.01), "large");
-    assert.equal(resolveGangSheetPriceTierForInches(6, 3), "large");
-  });
-
-  it("respects a custom cutoff", () => {
-    assert.equal(resolveGangSheetPriceTierForInches(6, 6, 6), "small");
-    assert.equal(resolveGangSheetPriceTierForInches(6.01, 4, 6), "large");
-    assert.equal(resolveGangSheetPriceTierForInches(4, 6.01, 6), "large");
+  it("rejects invalid widths", () => {
+    for (const width of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      assert.throws(() => resolveGangSheetPriceTierForInches(width), RangeError);
+    }
   });
 });
 
 describe("gangSheetCustomerSectionSummary calculations", () => {
-  it("calculates all-large defaults", () => {
-    const summary = calculateGangSheetCustomerSectionSummary(
-      Array.from({ length: 20 }, () => ({ printWidthInches: 8, printHeightInches: 8 })),
-      defaultPricing,
-    );
-    assert.equal(summary.largeTierQuantity, 20);
-    assert.equal(summary.smallTierQuantity, 0);
-    assert.equal(summary.totalPriceUsd, 40);
-    assert.equal(summary.priceLine, "$2 x 20 = $40");
-    assert.equal(summary.weightLine, "Weight: 0.75oz x 20 = 15 oz");
-  });
-
-  it("calculates all-small defaults", () => {
-    const summary = calculateGangSheetCustomerSectionSummary(
-      Array.from({ length: 20 }, () => ({ printWidthInches: 5, printHeightInches: 5 })),
-      defaultPricing,
-    );
-    assert.equal(summary.largeTierQuantity, 0);
-    assert.equal(summary.smallTierQuantity, 20);
-    assert.equal(summary.totalPriceUsd, 20);
-    assert.equal(summary.priceLine, "$1 x 20 = $20");
-    assert.equal(summary.weightLine, "Weight: 0.40oz x 20 = 8 oz");
-  });
-
-  it("calculates mixed-tier defaults", () => {
+  it("calculates default four-tier totals and exact quantity", () => {
     const summary = calculateGangSheetCustomerSectionSummary(
       [
-        ...Array.from({ length: 10 }, () => ({ printWidthInches: 8, printHeightInches: 8 })),
-        ...Array.from({ length: 10 }, () => ({ printWidthInches: 5, printHeightInches: 5 })),
+        { printWidthInches: 4, printHeightInches: 8, quantity: 1 },
+        { printWidthInches: 10.5, printHeightInches: 2, quantity: 2 },
+        { printWidthInches: 12, printHeightInches: 2, quantity: 3 },
+        { printWidthInches: 15, printHeightInches: 2, quantity: 4 },
       ],
       defaultPricing,
     );
+    assert.deepEqual(summary.tierQuantities, {
+      pocket: 1,
+      standard_full_size: 2,
+      standard_oversized: 3,
+      extra_oversized: 4,
+    });
+    assert.equal(summary.totalQuantity, 10);
     assert.equal(summary.totalPriceUsd, 30);
-    assert.equal(summary.priceLine, "$2 x 10 + $1 x 10 = $30");
-    assert.equal(summary.weightLine, "Weight: 0.75oz x 10 + 0.40oz x 10 = 11.5 oz");
-    assert.equal(summary.totalWeightOz, 11.5);
+    assert.equal(summary.totalWeightOz, 7.15);
+    assert.equal(summary.priceLine, "Price: $1 x 1 + $2 x 2 + $3 x 3 + $4 x 4 = $30");
+    assert.equal(summary.weightLine, "Weight: 0.40oz x 1 + 0.75oz x 2 + 0.75oz x 3 + 0.75oz x 4 = 7.15 oz");
+  });
+
+  it("ignores height for classification", () => {
+    const summary = calculateGangSheetCustomerSectionSummary(
+      [{ printWidthInches: 4, printHeightInches: 30 }],
+      defaultPricing,
+    );
+    assert.equal(summary.tierQuantities.pocket, 1);
+    assert.equal(summary.totalPriceUsd, 1);
   });
 
   it("calculates custom tier prices and weights", () => {
     const customPricing = {
-      sizeCutoffInches: 5,
-      smallTierPriceUsd: 1.25,
-      smallTierWeightOz: 0.3,
-      largeTierPriceUsd: 2.5,
-      largeTierWeightOz: 0.8,
+      ...defaultPricing,
+      pocket: { priceUsd: 1.25, weightOz: 0.3 },
+      standardFullSize: { priceUsd: 2.5, weightOz: 0.8 },
+      standardOversized: { priceUsd: 3.5, weightOz: 0.9 },
+      extraOversized: { priceUsd: 4.5, weightOz: 1.1 },
     };
     const summary = calculateGangSheetCustomerSectionSummary(
       [
-        ...Array.from({ length: 4 }, () => ({ printWidthInches: 7, printHeightInches: 7 })),
-        ...Array.from({ length: 2 }, () => ({ printWidthInches: 4, printHeightInches: 4 })),
+        { printWidthInches: 7, printHeightInches: 7, quantity: 4 },
+        { printWidthInches: 4, printHeightInches: 4, quantity: 2 },
       ],
       customPricing,
     );
     assert.equal(summary.totalPriceUsd, 12.5);
-    assert.equal(summary.priceLine, "$2.5 x 4 + $1.25 x 2 = $12.50");
-    assert.equal(summary.weightLine, "Weight: 0.80oz x 4 + 0.30oz x 2 = 3.8 oz");
+    assert.equal(summary.totalWeightOz, 3.8);
   });
 
-  it("omits zero-count terms in price and weight helpers", () => {
-    assert.equal(buildGangSheetPriceLine(0, 5, defaultPricing), "$2 x 5 = $10");
-    assert.equal(buildGangSheetPriceLine(3, 0, defaultPricing), "$1 x 3 = $3");
-    assert.equal(
-      buildGangSheetWeightLine(10, 10, defaultPricing),
-      "Weight: 0.75oz x 10 + 0.40oz x 10 = 11.5 oz",
+  it("orders visible breakdown terms by configured price", () => {
+    const customPricing = {
+      ...defaultPricing,
+      pocket: { priceUsd: 4, weightOz: 0.4 },
+      standardFullSize: { priceUsd: 1, weightOz: 0.75 },
+    };
+    const summary = calculateGangSheetCustomerSectionSummary(
+      [
+        { printWidthInches: 4, printHeightInches: 4, quantity: 1 },
+        { printWidthInches: 8, printHeightInches: 8, quantity: 2 },
+      ],
+      customPricing,
     );
+    assert.equal(summary.priceLine, "Price: $1 x 2 + $4 x 1 = $6");
+  });
+
+  it("formats zero-count terms out of price and weight lines", () => {
+    const quantities = { pocket: 0, standard_full_size: 0, standard_oversized: 0, extra_oversized: 5 } as const;
+    assert.equal(buildGangSheetPriceLine(quantities, defaultPricing), "Price: $4 x 5 = $20");
+    assert.equal(buildGangSheetWeightLine(quantities, defaultPricing), "Weight: 0.75oz x 5 = 3.75 oz");
   });
 });

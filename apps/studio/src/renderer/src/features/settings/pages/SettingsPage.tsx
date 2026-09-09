@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import { AI_ENRICHMENT_PLAYGROUND_MAX_PROMPT_LENGTH } from "@fresh-prints/shared/constants/aiEnrichment.constants";
 import { Button } from "../../../shared/components/Button";
@@ -33,6 +34,7 @@ import { StudioUpdatesSettingsSection } from "../components/StudioUpdatesSetting
 import { CatalogProcessingModeSettingsSection } from "../components/CatalogProcessingModeSettingsSection";
 import { CatalogReprocessingSettingsSection } from "../components/CatalogReprocessingSettingsSection";
 import { AutomationHealthSettingsSection } from "../components/AutomationHealthSettingsSection";
+import { GangSheetSettingsSection } from "../components/GangSheetSettingsSection";
 import {
   AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER,
   AI_ENRICHMENT_PROMPT_TEMPLATE_MAX_LENGTH,
@@ -64,6 +66,7 @@ function formatPlaygroundCost(value: number | null | undefined): string {
 }
 
 type SettingsPageTabId =
+  | "gangSheetSettings"
   | "emailProviders"
   | "uploadQuotas"
   | "printRequestLimits"
@@ -121,6 +124,7 @@ export function SettingsPage() {
 
 function ManageableSettingsPage() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
 
   const isOwner = permissionService.isOwner(user);
   const canManageSettings = permissionService.canManageSettings(user);
@@ -133,7 +137,7 @@ function ManageableSettingsPage() {
   const canManageStandardPrintSizes =
     permissionService.canManageStandardPrintSizes(user);
   const settingsTabs = useMemo((): SettingsPageTab[] => {
-    const tabs: SettingsPageTab[] = [];
+    const tabs: SettingsPageTab[] = [{ id: "gangSheetSettings", label: "Gang Sheet Settings" }];
 
     if (canManageEmailProviders) {
       tabs.push({ id: "emailProviders", label: "Email Providers" });
@@ -168,10 +172,13 @@ function ManageableSettingsPage() {
     isOwner,
   ]);
   const [activeTab, setActiveTab] = useState<SettingsPageTabId | null>(null);
+  const requestedTab = searchParams.get("tab") as SettingsPageTabId | null;
   const resolvedTab: SettingsPageTabId =
-    activeTab && settingsTabs.some((tab) => tab.id === activeTab)
+    (activeTab && settingsTabs.some((tab) => tab.id === activeTab)
       ? activeTab
-      : (settingsTabs[0]?.id ?? "studioUpdates");
+      : requestedTab && settingsTabs.some((tab) => tab.id === requestedTab)
+        ? requestedTab
+        : (settingsTabs[0]?.id ?? "studioUpdates"));
   const {
     explicitContentAutomationTerms,
     semanticReviewPlaygroundEnabled,
@@ -436,26 +443,43 @@ function ManageableSettingsPage() {
         </p>
       ) : null}
 
-      <div
-        aria-label="Settings sections"
-        className="settings-page-tab-bar"
-        role="tablist"
-      >
-        {settingsTabs.map((tab) => (
-          <button
-            aria-controls={`settings-tab-panel-${tab.id}`}
-            aria-selected={resolvedTab === tab.id}
-            className={`settings-page-tab${resolvedTab === tab.id ? " is-active" : ""}`}
-            id={`settings-tab-${tab.id}`}
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            role="tab"
-            type="button"
+      <div className="settings-page-layout">
+        <aside className="settings-page-sidebar">
+          <nav
+            aria-label="Settings sections"
+            className="settings-page-tab-bar"
+            role="tablist"
+            aria-orientation="vertical"
           >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+            {settingsTabs.map((tab) => (
+              <button
+                aria-controls={`settings-tab-panel-${tab.id}`}
+                aria-selected={resolvedTab === tab.id}
+                className={`settings-page-tab${resolvedTab === tab.id ? " is-active" : ""}`}
+                id={`settings-tab-${tab.id}`}
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                role="tab"
+                type="button"
+              >
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+        </aside>
+
+        <div className="settings-page-content">
+
+      {resolvedTab === "gangSheetSettings" ? (
+        <div
+          aria-labelledby="settings-tab-gangSheetSettings"
+          className="settings-page-tab-panel"
+          id="settings-tab-panel-gangSheetSettings"
+          role="tabpanel"
+        >
+          <GangSheetSettingsSection />
+        </div>
+      ) : null}
 
       {resolvedTab === "emailProviders" && canManageEmailProviders ? (
         <div
@@ -820,6 +844,8 @@ function ManageableSettingsPage() {
           <StudioUpdatesSettingsSection />
         </div>
       ) : null}
+        </div>
+      </div>
 
       {isOwner && isPromptTemplateEditorOpen ? (
         <div

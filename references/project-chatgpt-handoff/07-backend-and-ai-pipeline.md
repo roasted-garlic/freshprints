@@ -194,6 +194,17 @@ Identity snapshots propagate resumably to `printRequests` and `designIssueReport
 
 **Production:** NOT authorized. Recovery extends ADR-FP-149 patterns (ADR-FP-156).
 
+## Print Request production actions (DEV — 2026-09-08)
+
+| Callable / surface | Purpose | DEV evidence |
+|--------------------|---------|--------------|
+| `copyStudioPrintRequest` | Owner/admin-authorized transactional copy of eligible Studio print requests | ACTIVE in `fresh-prints-dev`, `us-central1`, Node.js 20; revision `copystudioprintrequest-00001-yec`; source hash `6484fccde1612904191273e4e92138f1c9c780e0` |
+| Studio request actions | Direct image export, quantity export, Standard gang-sheet generation, and Copy for eligible non-working requests; allocation-only actions for Working/Editing | Owner DEV QA **PASS**; no Portal or production deployment |
+
+The shared Gang Sheet Settings resolver uses canonical `settings/showQueue` fields and the fixed
+4/11/14-inch width boundaries for price and weight. No migration, index, or Storage Rules change
+was required.
+
 ---
 
 ## Smart Catalog enrichment (DEV — 2026-08-27)

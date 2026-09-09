@@ -53,6 +53,14 @@ export function useShowQueueSettings() {
       gangSheetGutterInches?: number;
       gangSheetMaxLengthInches?: number;
       gangSheetLabelFontSizePx?: number;
+      gangSheetPocketPriceUsd?: number;
+      gangSheetPocketWeightOz?: number;
+      gangSheetStandardFullSizePriceUsd?: number;
+      gangSheetStandardFullSizeWeightOz?: number;
+      gangSheetStandardOversizedPriceUsd?: number;
+      gangSheetStandardOversizedWeightOz?: number;
+      gangSheetExtraOversizedPriceUsd?: number;
+      gangSheetExtraOversizedWeightOz?: number;
       gangSheetSectionPriceCutoffInches?: number;
       gangSheetSmallTierPriceUsd?: number;
       gangSheetSmallTierWeightOz?: number;

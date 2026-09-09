@@ -73,6 +73,15 @@ environment variables, or secrets. Helper: `portalReturnUrl.ts`.
 
 See `DATA_MODEL.md` for entities.
 
+### Gang Sheet settings persistence
+
+Global Gang Sheet Settings use the existing trusted Studio direct Firestore path for
+`settings/showQueue`, protected by the existing owner/admin settings permission and a narrow
+Rules allowlist extension for the eight canonical price/weight fields. A renderer resolver reads
+`settings/internalGangSheet` only as a legacy fallback when canonical values are missing. No
+settings Function, Storage Rules change, index, migration, or automatic backfill is part of this
+surface.
+
 ---
 
 ## Storage (Files / Media)
@@ -93,6 +102,15 @@ Fresh Prints does not expose a separate REST API for core operations. Business l
 
 - Electron renderer services (Firebase SDK)
 - Firebase Cloud Functions (server-side operations)
+
+`copyStudioPrintRequest` is a staff-authenticated callable backed by one Admin SDK transaction. It
+revalidates source items, destination customer/base-name eligibility, the continuable customer
+guard, catalog/upload existence, and the private-upload ownership boundary immediately before
+writes. No Rules, Storage Rules, indexes, or migration changes are required for this operation.
+
+Request-scoped image export and Standard gang-sheet generation remain Electron desktop operations:
+renderer → preload → validated IPC → Electron main → Firebase Storage download / Sharp / ZIP or
+compositor → native save dialog. The renderer does not gain filesystem access.
 
 ### External Integrations
 
