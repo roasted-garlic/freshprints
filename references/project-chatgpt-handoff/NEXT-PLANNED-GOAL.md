@@ -4,8 +4,26 @@
 
 ## Current state
 
-- No active child goal. `legacy-tag-operational-retirement-and-smart-profile-search-parity` is
-  **CLOSED** with approved signoff after Owner DEV QA **PASS** on 2026-09-09.
+- Active managed goal: `portal-admin-daily-show-queue`.
+- Dashboard amendment is implemented locally: sidebar/dashboard/modal + responsive mobile-first
+  polish (hamburger drawer, centered modal, themed scrollbar, compact title/metadata) +
+  `getPortalAdminUpcomingShowQueueDashboard` + `getPortalAdminShowQueueRequestDesigns`.
+- Exact next checkpoint:
+  `[NEEDS OWNER AUTHORIZATION: REDEPLOY PORTAL ADMIN SHOW QUEUE REQUEST DESIGNS FUNCTION PERFORMANCE CORRECTIVE]`.
+- Owner DEV QA is **PASS** and commit/push is authorized. No Portal publish, Studio publish,
+  production action, or Function deployment occurred. The performance corrective changes Function
+  source locally; do not reuse the prior deployment authorization.
+
+Active artifacts:
+
+- Amended Plan: `docs/workflow/plans/2026-09-09-portal-admin-daily-show-queue-plan.md`
+- Formal Review Amendment: `docs/workflow/reviews/2026-09-09-portal-admin-show-queue-dashboard-amendment-review.md`
+- Dashboard Implementation Review: `docs/workflow/reviews/2026-09-09-portal-admin-show-queue-dashboard-implementation-review.md`
+- ADR: `docs/project/DECISIONS.md` — ADR-FP-187 (amended)
+
+- The previous child goal `legacy-tag-operational-retirement-and-smart-profile-search-parity` is
+  **CLOSED** with approved signoff after Owner DEV QA **PASS** on 2026-09-09; the active goal is
+  recorded above.
 - Commit/push is complete as `1c43f6e1` on `origin/development`; production and publish remain
   separately gated.
   The owner decisions are resolved: Halftone uses the existing `halftoneStaffDecision.value`,
@@ -113,6 +131,6 @@ active child goal.
 | Automatic Pass 2 | **PARKED** |
 | Production promotion | **SEPARATELY GATED / NOT AUTHORIZED** |
 
-No active child goal is selected. Production promotion, backfill, Maintenance Mode, physical tag
-cleanup, retained compatibility deletion, and other Algolia/Firebase external-state changes
-remain separately gated.
+The active `portal-admin-daily-show-queue` goal is committed/pushed after Owner DEV QA PASS and is
+paused for owner authorization to redeploy the corrected dashboard/designs Functions. Do not deploy
+or sign off until authorized. Production remains separately gated.

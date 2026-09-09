@@ -2739,3 +2739,11 @@ tag-related fields for compatibility. New Pass 1 writes do not produce or
 persist AI tags, suggested-new-tags, Tag Rerank/Suggestion Author metadata, or
 transient raw tag/category analysis. Staff `designs.tags` and taxonomy data
 remain part of the existing product model and are not deleted by this release.
+# Portal admin Show Queue response (ADR-FP-187)
+
+The Portal admin Show Queue is a derived response, not a persisted collection or read model. Its
+shared DTO contains operational-day metadata, lifecycle/totals for matching Whatnot/DEV-fixture
+shows, request groups, and allocation rows. It intentionally omits all document identifiers,
+customer/upload/design identifiers, private artwork metadata, filenames, URLs, paths, and lineage
+IDs. Customer-upload rows use the literal `Customer upload` label. Canceled allocation rows remain
+historical evidence while active-work totals exclude them.

@@ -549,3 +549,18 @@ documents, and discovery consumers remain compatible/readable. Tag resolver,
 Tag Rerank, Suggestion Author, and matched-tag category authority are not
 reachable from active enrichment.
 | 2026-06-24 | Initial Fresh Prints backend overview; links to FIREBASE.md |
+# Portal admin Show Queue callables (ADR-FP-187)
+
+`getPortalAdminUpcomingShowQueueDashboard` is a read-only authenticated callable. It loads upcoming
+Whatnot-surface shows (plus DEV-only fixtures), selects the requested or default next upcoming show,
+loads that show’s `showAllocations`, and batch-loads required `printRequests` for kind/identity
+labels and PR summaries. It does not hydrate designs, uploads, or signed artwork URLs.
+
+`getPortalAdminShowQueueRequestDesigns` lazy-loads active allocations for a validated
+`showId` + `printRequestId` pair and returns 15-minute Admin SDK signed derivative thumbnail URLs
+after owner/admin authorization and allocation linkage proof. It does not accept client Storage
+paths and does not return originals, filenames, or raw paths.
+
+Neither callable widens Firestore or Storage Rules. No composite index is required for the selected
+single-field allocation queries. The legacy `getPortalAdminDailyShowQueue` day-flattened callable
+remains in source for historical compatibility until an authorized DEV redeploy retires client use.

@@ -46,4 +46,16 @@ describe('Portal auth bootstrap contracts', () => {
     assert.match(loginFormSource, /showGlobalAuthError/);
     assert.match(loginFormSource, /role="alert"/);
   });
+
+  it('establishes a narrow admin session before any customer document load', () => {
+    assert.match(authProviderSource, /bootstrapStatus: 'portal-admin'/);
+    assert.match(authProviderSource, /if \(user\.role === 'owner' \|\| user\.role === 'admin'\)/);
+    assert.match(authProviderSource, /authState\.bootstrapStatus === 'ready'/);
+  });
+
+  it('invalidates an admin session when role or active state changes', () => {
+    assert.match(authProviderSource, /roleStillMatchesSession/);
+    assert.match(authProviderSource, /!roleStillMatchesSession/);
+    assert.match(authProviderSource, /This staff session is no longer authorized/);
+  });
 });

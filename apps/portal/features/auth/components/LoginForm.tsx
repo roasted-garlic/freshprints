@@ -11,6 +11,7 @@ import {
   buildPortalAuthHref,
   getPortalReturnToFromSearch,
   resolvePortalPostAuthPath,
+  resolvePortalPostAuthPathForSession,
 } from '../utils/portalReturnUrl';
 import { buildPortalRegisterHref } from '../utils/requirePortalLogin';
 import { LogInIcon } from '../../shared/components/PortalIcons';
@@ -67,7 +68,12 @@ export function LoginForm() {
       getPortalReturnToFromSearch(window.location.search),
     );
     if (isAuthenticated) {
-      router.replace(returnTo);
+      router.replace(
+        resolvePortalPostAuthPathForSession(
+          returnTo,
+          bootstrapStatus === 'portal-admin' ? 'admin' : 'customer',
+        ),
+      );
       return;
     }
 

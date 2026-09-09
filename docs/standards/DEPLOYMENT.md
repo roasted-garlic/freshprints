@@ -1272,3 +1272,15 @@ Report under `docs/workflow/reviews/`.
 | 2026-07-16 | Provider-neutral Resend invitations + proof-ready outbox; selective dev deploy checkpoint |
 | 2026-06-24 | Git artifact cleanup; Storage deploy commands; packaging icon note |
 | 2026-06-24 | Initial Fresh Prints deployment doc |
+# Portal admin Show Queue release boundary (ADR-FP-187)
+
+The owner-authorized DEV deployment completed on 2026-09-09 for exactly one callable Function:
+
+`firebase deploy --only functions:getPortalAdminDailyShowQueue --project fresh-prints-dev`
+
+`getPortalAdminDailyShowQueue` is `ACTIVE` in `fresh-prints-dev` / `us-central1` on Node.js 20,
+revision `getportaladmindailyshowqueue-00001-nux`, with latest-revision traffic enabled. No Rules,
+Storage Rules, indexes, DEV App Hosting, Studio publish, or production deployment was part of this
+checkpoint. The first Owner DEV QA failed on a Portal loading lifecycle defect; the corrective is
+local-only and awaits Owner DEV re-QA. See
+`docs/workflow/reviews/2026-09-09-portal-admin-daily-show-queue-dev-deployment.md`.

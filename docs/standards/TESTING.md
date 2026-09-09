@@ -351,3 +351,10 @@ before running `npm run test:rules`.
 | 2026-07-10 | Test Data Reset page + wipeOperationalTestData callable |
 | 2026-07-08 | Phase 8 closeout — Portal commands, monorepo test paths |
 | 2026-06-24 | Initial Fresh Prints testing doc (intake) |
+# Portal admin Show Queue validation (ADR-FP-187)
+
+The Show Queue implementation requires focused shared operational-day/DST tests, callable role and
+empty-input tests, DTO privacy/allowlist tests, and Portal auth/route/page contract tests. The
+operational day is tested in `America/Chicago` on standard-time, daylight-time, spring-forward, and
+fall-back boundaries. Firestore Rules tests are not part of this feature because Rules remain
+unchanged.

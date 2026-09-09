@@ -2,66 +2,71 @@
 
 | Field | Value |
 |---|---|
-| Status | **IDLE** — managed goal closed after Owner DEV QA PASS |
-| DONE | yes |
-| Signoff Status | **approved** |
-| Current Mode | idle (awaiting next managed-goal selection) |
-| Parent program | `smart-catalog-intelligence-completion-and-legacy-tag-retirement` |
-| Current Goal | none — `legacy-tag-operational-retirement-and-smart-profile-search-parity` closed |
-| Current Phase | signoff and commit/push complete; awaiting next managed-goal selection |
-| Plan Status | complete |
-| Review Status | approved_with_changes |
-| Implementation Status | complete_source_and_dev_cutover |
-| Test Status | Portal 82/82; Studio 39/39; Functions/shared 45/45; Portal tsc pass; Functions build pass; Studio tsc baseline-blocked; Portal build Windows trace/timeout-blocked; diff check pass; live DEV parity corpus and 20-sample corrective audit pass |
+| Status | **COMMITTED — OWNER DEV FUNCTION REDEPLOY AUTHORIZATION REQUIRED** |
+| DONE | no |
+| Signoff Status | not started |
+| Current Mode | managed-phase |
+| Parent program | `portal-admin-daily-show-queue` |
+| Current Goal | `portal-admin-daily-show-queue` |
+| Current Phase | Dashboard UI/performance corrective implemented + tested locally; STOP before Function redeploy |
+| Plan Status | amended — `docs/workflow/plans/2026-09-09-portal-admin-daily-show-queue-plan.md` |
+| Review Status | approved_with_changes — dashboard amendment Formal Review |
+| Implementation Status | complete locally — dashboard amendment + responsive UI/performance refinement |
+| Test Status | focused 33/33; admin UI contract/lifecycle 13/13; designs performance contract 3/3; Portal typecheck PASS; Functions build PASS; targeted lint PASS; Portal build EPERM baseline FAIL |
 | Human Checkpoint Required | **yes** |
-| Human Checkpoint Reason | `[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]` |
-| Environment | `fresh-prints-dev` (DEV-only checkpoint complete) |
+| Human Checkpoint Reason | `[NEEDS OWNER AUTHORIZATION: REDEPLOY PORTAL ADMIN SHOW QUEUE DASHBOARD + REQUEST DESIGNS FUNCTIONS]` |
+| Environment | Local source only; deployed Functions remain unchanged until the new owner checkpoint |
 | Production | untouched |
-| Commit/push | **complete** — `1c43f6e1` pushed to `origin/development` |
+| Commit/push | owner-authorized; final commit/push in progress on `development` |
 | Last updated | 2026-09-09 |
-| Last Completed Step | Owner DEV QA PASS, approved signoff, and commit/push of the closed goal |
+| Last Completed Step | Owner DEV QA **PASS** received; commit/push authorized; Function redeploy still required |
 
 **Decision Log:**
 
-- 2026-09-08 — Owner authorized source implementation after resolving Halftone as a dedicated
-  `halftoneStaffDecision.value` filter, retiring Studio `?tags=`/`?tag=` with a no-filter fallback,
-  and preserving Ready discovery without tag fallback for incomplete Smart Profiles.
-- 2026-09-08 — Portal, Studio, shared, and Functions source slices implemented. Legacy tag UI,
-  active reads/writes, facets, search corpus, and tag-bearing public DTOs were retired; historical
-  fields and deployed compatibility exports remain deferred. No external action occurred.
-- 2026-09-08 — Focused verification passed: Portal 82/82, Studio 39/39, Functions/shared 45/45; Portal
-  tsc and Functions build passed; Studio tsc retains unrelated baseline failures; Portal build
-  remains blocked by the Windows Next `.next/trace`/timeout issue; `git diff --check` passed.
-- 2026-09-09 — Owner-authorized DEV checkpoint completed on `fresh-prints-dev`: six explicitly
-  allowlisted Functions deployed; existing local Portal/Studio Smart Filter flags were already
-  enabled; the DEV Algolia index settings removed `tagIds`/`tagFacetKeys` while retaining the eight
-  Smart Profile facets and non-tag searchable fields; the existing owner/admin reconcile dry-run
-  and apply rebuilt 350 ready records. Former tag-name/alias queries, Smart Profile facets/AND,
-  category, text fields, exact ID, missing-profile, and Halftone evidence were verified live. No
-  production, Portal/Studio publish, Rules/index deploy, migration, provider call, commit, or push.
-- 2026-09-09 — Owner DEV QA **PASS** and final DEV disposition **approved**. Signoff recorded in
-  `docs/workflow/reviews/2026-09-09-legacy-tag-operational-retirement-and-smart-profile-search-parity-signoff.md`.
-  Historical `design.tags`, `tags/*`, and retained tag compatibility Functions remain preserved;
-  no production, publish, deletion, migration, commit, or push occurred.
-- 2026-09-09 — Owner authorized commit/push of the closed goal. All 108 paths were committed as
-  `1c43f6e1` (`feat(catalog): retire legacy tag search authority`) and pushed to
-  `origin/development`; no production, publish, deletion, migration, or provider action occurred.
+- 2026-09-09 — Owner asked why customer name was missing under request cards. Cause: dashboard
+  returned username-only identity and did not load `customers/{id}` when snapshots lacked
+  displayName. Fixed locally to use `formatCustomerIdentityLabel` (Studio pattern) and batch-load
+  customer docs. Requires DEV redeploy of `getPortalAdminUpcomingShowQueueDashboard`.
+- 2026-09-09 — Owner-requested View Designs polish: catalog label → "Design Library"; Uploaded for
+  uploads; Studio artwork backgrounds; prefer preview derivatives for lightbox size; size-tier
+  metadata; Designs/Prints pills; remove pending line. Portal + Function source updated locally.
+- 2026-09-09 — Owner authorized IMPLEMENT PORTAL ADMIN SHOW QUEUE DASHBOARD AMENDMENT.
+  Implemented Option B callables `getPortalAdminUpcomingShowQueueDashboard` and
+  `getPortalAdminShowQueueRequestDesigns`, admin sidebar/dashboard/modal UI, metrics helpers,
+  ADR-FP-187 amendment, docs updates. Focused tests 33/33; Portal typecheck and Functions build
+  passed; Portal Next build reproduced Windows `.next/trace` EPERM baseline. No deploy, Rules,
+  indexes, commit, or push. Implementation Review:
+  `docs/workflow/reviews/2026-09-09-portal-admin-show-queue-dashboard-implementation-review.md`.
+- 2026-09-09 — Owner-requested responsive UI refinement completed locally: mobile hamburger drawer,
+  permanently expanded desktop sidebar, themed sidebar/modal scrollbars, mobile gutters and
+  compact responsive queue title, centered design modal, and `origin · upload/catalog` metadata without
+  image status. Admin UI contract/lifecycle tests 12/12; Portal typecheck and targeted lint pass;
+  Portal build retains the documented Windows `.next/trace` EPERM baseline. No deploy, commit, or
+  push. DEV Function authorization checkpoint unchanged.
+- 2026-09-09 — Owner-requested performance corrective completed locally. The modal callable now
+  resolves independent artwork previews concurrently with per-request thumbnail-path de-duplication;
+  the Portal hook waits for in-flight loads, ignores stale selections, and caches visited shows.
+  Admin UI contract/lifecycle tests 13/13; designs performance contract 3/3; Portal typecheck,
+  Functions build, and targeted lint pass. Because Function source changed, the prior deployment
+  authorization is not reused; no deploy, commit, or push.
+- 2026-09-09 — Owner DEV QA reported **PASS** and explicitly authorized commit/push. The reviewed
+  local source is being committed on `development`; the Function redeploy checkpoint remains
+  separate and unchanged. No production action.
 
-**Allowed Actions:** Documentation/handoff updates and owner selection of the next managed goal.
-Do not start another child goal automatically.
+**Allowed Actions:** Documentation amendment; await owner DEV Function redeploy authorization.
 
-**Forbidden Actions:** Production action; Portal App Hosting or Studio publish; Firebase Rules/index/
-storage changes; tag/data deletion; migration/backfill/reprocess; provider calls; unreviewed
-Functions or Algolia changes; commit/push for this closed goal. Future production/publish/deletion
-work remains separately gated.
+**Forbidden Actions:** Function/Portal/App Hosting/Studio/DEV/production deploy until authorized;
+Rules/index/storage changes; signoff until the redeploy checkpoint is resolved.
 
 ## Next Required Step
 
-`[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]`
+`[NEEDS OWNER AUTHORIZATION: REDEPLOY PORTAL ADMIN SHOW QUEUE DASHBOARD + REQUEST DESIGNS FUNCTIONS]`
 
-The DEV cutover evidence is recorded in
-`docs/workflow/reviews/2026-09-09-legacy-tag-retirement-smart-profile-dev-cutover.md`; the
-approved signoff is recorded in
-`docs/workflow/reviews/2026-09-09-legacy-tag-operational-retirement-and-smart-profile-search-parity-signoff.md`.
-Production, physical tag cleanup, and retained compatibility Function deletion remain separately
-gated. Commit/push for this closed goal is complete in `1c43f6e1`.
+Exact inventory when authorized:
+
+```bash
+firebase deploy --only functions:getPortalAdminUpcomingShowQueueDashboard,functions:getPortalAdminShowQueueRequestDesigns --project fresh-prints-dev
+```
+
+No Rules, Storage Rules, index, Portal App Hosting, Studio, or production deploys in that gate.
+Production remains untouched. Do not sign off this goal yet.

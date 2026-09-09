@@ -1172,3 +1172,21 @@ Review-approved); none of the 24 findings were introduced by Wave C.
   `retry-request`, `teeny-request`, `uuid`) are transitive Firebase Admin/Google Cloud client library
   dependencies; documented as a known dependency-risk note, not individually blocking.
 - No `npm audit fix` or `npm audit fix --force` was run. No dependency was upgraded.
+# Portal admin Show Queue (ADR-FP-187)
+
+The Portal admin Show Queue is a constrained exception to the customer-only Portal surface. The
+`/admin/show-queue` route is available only to active `owner` and `admin` sessions. Helpers,
+customers, guests, and inactive accounts are denied. Client session gating is UX only: the
+dashboard and designs callables fresh-load `users/{uid}` and enforce the role on every request.
+
+Trusted callables:
+
+- `getPortalAdminUpcomingShowQueueDashboard` — upcoming show list + selected-show stats/PR
+  summaries; accepts optional `showId`
+- `getPortalAdminShowQueueRequestDesigns` — lazy View Designs modal; requires `showId` +
+  `printRequestId`; returns 15-minute signed derivative URLs only after allocation linkage proof
+
+Dashboard DTOs omit artwork. Modal DTOs omit Storage paths, filenames, design/upload IDs, and
+originals. Firestore and Storage Rules are unchanged. The admin route uses a separate shell/sidebar
+and does not mount customer mutation, navigation, notification, favorite, request, or upload
+providers. Staff sessions do not query or subscribe to customer documents.

@@ -102,3 +102,19 @@ export function resolvePortalPostAuthPath(returnTo: string): string {
     return safe;
   }
 }
+
+/** Resolve a safe post-auth destination without allowing an admin session into customer defaults. */
+export function resolvePortalPostAuthPathForSession(
+  returnTo: string,
+  session: 'customer' | 'admin',
+): string {
+  const resolved = resolvePortalPostAuthPath(returnTo);
+  const isAdminQueuePath =
+    resolved === '/admin/show-queue' ||
+    resolved.startsWith('/admin/show-queue?') ||
+    resolved.startsWith('/admin/show-queue#');
+  if (session === 'admin' && !isAdminQueuePath) {
+    return '/admin/show-queue';
+  }
+  return resolved;
+}

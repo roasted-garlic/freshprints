@@ -4,6 +4,57 @@
 
 ---
 
+### ADR-FP-187: Narrow Portal admin Show Queue exception
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-09 |
+| Status | accepted — dashboard amendment implemented locally; **STOP before DEV Function deploy / Owner QA** |
+| Related | Goal `portal-admin-daily-show-queue`; Plan/Review/Amendment/Implementation Review `2026-09-09-portal-admin-*` |
+
+**Context**
+
+Fresh Prints has exactly two applications. Portal remains primarily customer-facing, while the
+authoritative Show Queue is private staff data. Active owners/admins need a narrow, read-only
+mobile-first upcoming-show dashboard without converting Portal into a general staff application or
+widening shared Firestore/Storage Rules.
+
+**Decision**
+
+1. Active `owner` and `admin` users may use the Portal route `/admin/show-queue`; `helper`,
+   `customer`, anonymous, and inactive users are denied. Customer flows remain unchanged.
+2. The route uses a dedicated admin route group and `PortalAdminShell` with an admin-composed
+   upcoming-shows sidebar (`PortalAdminShowSidebar`) that reuses Portal sidebar visual tokens only.
+   It does not mount `PortalAppShell`, customer `PortalSidebar`, or customer mutation/navigation
+   providers. Staff sessions do not query or subscribe to customer documents.
+3. Trusted callables are the boundary:
+   - `getPortalAdminUpcomingShowQueueDashboard` — upcoming show metadata + selected-show stats/PR
+     summaries (no artwork)
+   - `getPortalAdminShowQueueRequestDesigns` — lazy View Designs modal items with 15-minute signed
+     derivative URLs after show+PR allocation linkage proof
+4. Upcoming membership reuses Studio Whatnot Upcoming semantics (`whatnot` + DEV-only
+   `dev_fixture`; exclude Past and `staff_gang_sheet`). Default selection is the first sorted
+   upcoming show (`resolveVisibleShowSelection` parity).
+5. Glance metrics: Design Qty = distinct non-canceled design/upload identities; Print Qty =
+   non-canceled allocated sum (capacity numerator); PR Qty = distinct active attached PRs.
+   Capacity uses `assessShowCapacity` / `getShowCapacityPercent` (over-capacity remains truthful).
+6. Minimal `showId` / `printRequestId` may appear for navigation under callable authz. Dashboard
+   and modal DTOs still omit customer IDs, design/upload IDs, allocation IDs, filenames, and raw
+   Storage paths. Artwork is derivative-only signed URLs.
+7. Firestore Rules and Storage Rules remain unchanged. Display timezone remains
+   `America/Chicago`. No production controls, realtime listeners, polling, or general staff Portal
+   conversion.
+
+**Consequences**
+
+- Portal stops using the day-flattened `getPortalAdminDailyShowQueue` client path; that export may
+  remain until an authorized DEV cleanup/redeploy replaces traffic with the dashboard callables.
+- DEV Function redeploy of the dashboard + designs callables is required before Owner DEV QA of the
+  amendment. Production remains separately gated.
+- Any broader staff Portal surface, Rules change, or production control requires a new reviewed goal.
+
+---
+
 ### ADR-FP-186: Legacy tag operational retirement and Smart Profile search parity
 
 | Field | Value |

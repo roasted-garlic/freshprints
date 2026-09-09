@@ -80,6 +80,19 @@ function getReadyState(
   });
 }
 
+function getPortalAdminState(firebaseUser: FirebaseUser, user: UserProfile): PortalAuthState {
+  return completeInitialBootstrap({
+    firebaseUser,
+    user,
+    customer: null,
+    bootstrapStatus: 'portal-admin',
+    isInitialBootstrap: true,
+    isAuthActionLoading: false,
+    isAuthenticated: true,
+    error: null,
+  });
+}
+
 function getBlockedState(
   firebaseUser: FirebaseUser,
   bootstrapStatus: PortalAuthBootstrapStatus,
@@ -102,6 +115,10 @@ async function loadPortalSession(firebaseUser: FirebaseUser): Promise<PortalAuth
 
   if (!user.isActive) {
     return getBlockedState(firebaseUser, 'inactive', PORTAL_ACCOUNT_INACTIVE_MESSAGE);
+  }
+
+  if (user.role === 'owner' || user.role === 'admin') {
+    return getPortalAdminState(firebaseUser, user);
   }
 
   if (user.role !== 'customer') {
@@ -658,7 +675,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const refreshCustomer = useCallback(async () => {
     const firebaseUser = getPortalAuth().currentUser;
 
-    if (!firebaseUser) {
+    if (!firebaseUser || authState.user?.role !== 'customer') {
       return;
     }
 
@@ -690,7 +707,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } catch {
       // Keep the last known profile if a background refresh fails.
     }
-  }, [finalizeBlockedLogin]);
+  }, [authState.user?.role, finalizeBlockedLogin]);
 
   useEffect(() => {
     const firebaseUser = authState.firebaseUser;
@@ -710,9 +727,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const unsubscribeUser = userProfileService.subscribeToUserProfile(
       firebaseUser.uid,
       (profile) => {
-        if (!profile.isActive) {
+        const roleStillMatchesSession =
+          authState.bootstrapStatus === 'portal-admin'
+            ? profile.role === 'owner' || profile.role === 'admin'
+            : profile.role === 'customer';
+        if (!profile.isActive || !roleStillMatchesSession) {
           terminateSession(
-            authState.customer?.isDeleted === true
+            authState.bootstrapStatus === 'portal-admin'
+              ? 'This staff session is no longer authorized for the Portal Show Queue.'
+              : authState.customer?.isDeleted === true
               ? PORTAL_ACCOUNT_CLOSED_MESSAGE
               : PORTAL_ACCOUNT_DISABLED_MESSAGE,
           );
@@ -720,39 +743,48 @@ export function AuthProvider({ children }: AuthProviderProps) {
       },
     );
 
-    const unsubscribeCustomer = customerProfileService.subscribeToCustomerByUserId(
-      firebaseUser.uid,
-      (customer) => {
-        if (!customer) {
-          return;
-        }
-
-        if (customer.isDeleted === true) {
-          terminateSession(PORTAL_ACCOUNT_CLOSED_MESSAGE);
-          return;
-        }
-
-        if (customer.isDisabled === true) {
-          terminateSession(PORTAL_ACCOUNT_DISABLED_MESSAGE);
-          return;
-        }
-
-        setAuthState((currentState) =>
-          currentState.firebaseUser?.uid === firebaseUser.uid && currentState.isAuthenticated
-            ? {
-                ...currentState,
-                customer,
+    const unsubscribeCustomer =
+      authState.bootstrapStatus === 'ready'
+        ? customerProfileService.subscribeToCustomerByUserId(
+            firebaseUser.uid,
+            (customer) => {
+              if (!customer) {
+                return;
               }
-            : currentState,
-        );
-      },
-    );
+
+              if (customer.isDeleted === true) {
+                terminateSession(PORTAL_ACCOUNT_CLOSED_MESSAGE);
+                return;
+              }
+
+              if (customer.isDisabled === true) {
+                terminateSession(PORTAL_ACCOUNT_DISABLED_MESSAGE);
+                return;
+              }
+
+              setAuthState((currentState) =>
+                currentState.firebaseUser?.uid === firebaseUser.uid && currentState.isAuthenticated
+                  ? {
+                      ...currentState,
+                      customer,
+                    }
+                  : currentState,
+              );
+            },
+          )
+        : () => {};
 
     return () => {
       unsubscribeUser();
       unsubscribeCustomer();
     };
-  }, [authState.firebaseUser, authState.isAuthenticated, authState.customer?.isDeleted, finalizeBlockedLogin]);
+  }, [
+    authState.bootstrapStatus,
+    authState.firebaseUser,
+    authState.isAuthenticated,
+    authState.customer?.isDeleted,
+    finalizeBlockedLogin,
+  ]);
 
   const value = useMemo<PortalAuthContextValue>(
     () => ({

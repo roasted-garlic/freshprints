@@ -267,6 +267,15 @@ The Firebase backend should support:
 
 without modification. No separate mobile backend or database.
 
+### Portal admin Show Queue exception (ADR-FP-187)
+
+Portal remains primarily customer-facing, but active `owner` and `admin` users have one narrow,
+read-only mobile-first upcoming-show dashboard at `/admin/show-queue`. The route uses an isolated
+admin shell and admin-composed show sidebar; it does not mount the customer Portal shell/providers.
+Helpers remain excluded, customer flows remain unchanged, and the route is not a general staff
+Portal conversion. Private queue data crosses the application boundary only through
+`getPortalAdminUpcomingShowQueueDashboard` and lazy `getPortalAdminShowQueueRequestDesigns`.
+
 ---
 
 # Authentication Architecture

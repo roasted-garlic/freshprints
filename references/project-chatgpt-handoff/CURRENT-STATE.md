@@ -6,9 +6,9 @@
 
 | Item | Value |
 |---|---|
-| Status | **IDLE** — legacy tag retirement goal closed after Owner DEV QA PASS |
-| Parent | `smart-catalog-intelligence-completion-and-legacy-tag-retirement` |
-| Active child phase | **none** — `legacy-tag-operational-retirement-and-smart-profile-search-parity` closed |
+| Status | **COMMITTED — STOP FOR OWNER DEV FUNCTION REDEPLOY AUTH** |
+| Parent | `portal-admin-daily-show-queue` |
+| Active child phase | **Owner DEV QA PASS; source committed/pushed; awaiting Function redeploy authorization** |
 | Closed goal | `print-request-direct-export-gangsheet-and-copy` |
 | Signoff | Legacy tag retirement: **approved** — Owner DEV QA **PASS** (2026-09-09). Prior Print Request goal: **approved** — commit/push `ab319468` complete |
 | Related closed goal | `ai-processing-live-review-auto-process-and-ui-polish` |
@@ -42,7 +42,40 @@ Artifacts:
 Next checkpoint:
 `[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]`
 
-Verification: Portal focused 82/82; Studio focused 39/39; Functions/shared focused 45/45; Portal
+## Active managed goal — Portal admin daily Show Queue
+
+The owner authorized implementation and selected `America/Chicago` as the canonical IANA
+operational-day timezone. Local source implementation of the daily queue slice is complete on
+`development`. The owner authorized exactly one DEV Function deployment; the first Owner DEV QA
+failed on a Portal loading lifecycle defect. A Portal-only corrective fixed loading. Owner DEV
+re-QA confirmed the page loads, then **withheld final acceptance** and requested a substantial
+product amendment: mobile-first upcoming-show dashboard (admin sidebar, default next show,
+Design/Print/PR qty + capacity, PR summaries, lazy View Designs modal with artwork).
+
+**Dashboard amendment is implemented locally (not deployed).** Callables:
+`getPortalAdminUpcomingShowQueueDashboard`, `getPortalAdminShowQueueRequestDesigns`. Admin sidebar,
+default next-upcoming selection, stats/capacity, PR summaries, lazy signed View Designs modal. The
+responsive refinement adds a mobile action-cluster hamburger, off-canvas drawer, explicit mobile
+gutters, compact responsive title treatment, centered modal, themed scrollbars, and status-free
+`origin · upload/catalog` design metadata. ADR-FP-187 amended. Focused tests 33/33 plus admin UI
+contract/lifecycle 13/13; designs performance contract 3/3; Portal typecheck PASS; Functions build
+PASS. Portal build retains Windows `.next/trace` EPERM baseline. The designs Function source has a
+local performance corrective and requires a fresh owner-authorized DEV redeploy; no deployed
+Function changed.
+
+Artifacts:
+
+- Amended Plan: `docs/workflow/plans/2026-09-09-portal-admin-daily-show-queue-plan.md`
+- Formal Review Amendment: `docs/workflow/reviews/2026-09-09-portal-admin-show-queue-dashboard-amendment-review.md`
+- Dashboard Implementation Review: `docs/workflow/reviews/2026-09-09-portal-admin-show-queue-dashboard-implementation-review.md`
+- ADR: `docs/project/DECISIONS.md` — ADR-FP-187 (amended)
+
+Next checkpoint:
+`[NEEDS OWNER AUTHORIZATION: REDEPLOY PORTAL ADMIN SHOW QUEUE REQUEST DESIGNS FUNCTION PERFORMANCE CORRECTIVE]`
+
+Do not deploy or sign off until the Function redeploy checkpoint is authorized. Production remains untouched.
+
+Historical prior-goal verification: Portal focused 82/82; Studio focused 39/39; Functions/shared focused 45/45; Portal
 TypeScript and Functions build pass; Studio TypeScript remains blocked by unrelated baseline
 errors; Portal Next build remains blocked by the Windows `.next/trace`/timeout issue; diff check
 passes. Live DEV parity checks and the read-only corrective audit pass. Signoff is approved,

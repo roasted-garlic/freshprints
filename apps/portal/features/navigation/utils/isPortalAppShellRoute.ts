@@ -1,6 +1,7 @@
 /**
- * Routes that render PortalAppShell (sidebar theme toggle).
- * Floating PortalChrome must stay hidden on these paths.
+ * Routes that render PortalAppShell (sidebar + in-page theme toggle).
+ * Floating PortalChrome visibility is controlled separately by
+ * `shouldShowFloatingThemeToggle` (auth-page allowlist).
  */
 export function isPortalAppShellRoute(pathname: string): boolean {
   return (
