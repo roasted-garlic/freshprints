@@ -17,9 +17,9 @@
 | Human Checkpoint Reason | `[NEEDS OWNER AUTHORIZATION: REDEPLOY PORTAL ADMIN SHOW QUEUE DASHBOARD + REQUEST DESIGNS FUNCTIONS]` |
 | Environment | Local source only; deployed Functions remain unchanged until the new owner checkpoint |
 | Production | untouched |
-| Commit/push | owner-authorized; final commit/push in progress on `development` |
+| Commit/push | `908d9123` pushed to `origin/development` |
 | Last updated | 2026-09-09 |
-| Last Completed Step | Owner DEV QA **PASS** received; commit/push authorized; Function redeploy still required |
+| Last Completed Step | Owner DEV QA **PASS** received; `908d9123` committed and pushed; Function redeploy still required |
 
 **Decision Log:**
 
@@ -49,9 +49,10 @@
   Admin UI contract/lifecycle tests 13/13; designs performance contract 3/3; Portal typecheck,
   Functions build, and targeted lint pass. Because Function source changed, the prior deployment
   authorization is not reused; no deploy, commit, or push.
-- 2026-09-09 — Owner DEV QA reported **PASS** and explicitly authorized commit/push. The reviewed
-  local source is being committed on `development`; the Function redeploy checkpoint remains
-  separate and unchanged. No production action.
+- 2026-09-09 — Owner DEV QA reported **PASS** and explicitly authorized commit/push. Commit
+  `908d9123` (`feat(portal): add admin show queue dashboard`) was pushed to
+  `origin/development`; the Function redeploy checkpoint remains separate and unchanged. No
+  production action.
 
 **Allowed Actions:** Documentation amendment; await owner DEV Function redeploy authorization.
 

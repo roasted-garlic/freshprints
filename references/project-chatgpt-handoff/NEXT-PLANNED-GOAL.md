@@ -10,7 +10,7 @@
   `getPortalAdminUpcomingShowQueueDashboard` + `getPortalAdminShowQueueRequestDesigns`.
 - Exact next checkpoint:
   `[NEEDS OWNER AUTHORIZATION: REDEPLOY PORTAL ADMIN SHOW QUEUE REQUEST DESIGNS FUNCTION PERFORMANCE CORRECTIVE]`.
-- Owner DEV QA is **PASS** and commit/push is authorized. No Portal publish, Studio publish,
+- Owner DEV QA is **PASS**; commit `908d9123` is pushed to `origin/development`. No Portal publish, Studio publish,
   production action, or Function deployment occurred. The performance corrective changes Function
   source locally; do not reuse the prior deployment authorization.
 

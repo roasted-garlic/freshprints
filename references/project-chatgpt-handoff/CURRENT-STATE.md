@@ -8,13 +8,13 @@
 |---|---|
 | Status | **COMMITTED — STOP FOR OWNER DEV FUNCTION REDEPLOY AUTH** |
 | Parent | `portal-admin-daily-show-queue` |
-| Active child phase | **Owner DEV QA PASS; source committed/pushed; awaiting Function redeploy authorization** |
+| Active child phase | **Owner DEV QA PASS; `908d9123` committed/pushed; awaiting Function redeploy authorization** |
 | Closed goal | `print-request-direct-export-gangsheet-and-copy` |
 | Signoff | Legacy tag retirement: **approved** — Owner DEV QA **PASS** (2026-09-09). Prior Print Request goal: **approved** — commit/push `ab319468` complete |
 | Related closed goal | `ai-processing-live-review-auto-process-and-ui-polish` |
 | Autonomous | **OFF** (`shadow`) |
 | Production | untouched |
-| Commit/push | Legacy tag retirement commit `1c43f6e1` pushed to `origin/development`; no force push |
+| Commit/push | Show Queue commit `908d9123` and legacy tag retirement `1c43f6e1` pushed to `origin/development`; no force push |
 
 ## Closed managed goal — legacy tag retirement and Smart Profile search parity
 
@@ -73,7 +73,7 @@ Artifacts:
 Next checkpoint:
 `[NEEDS OWNER AUTHORIZATION: REDEPLOY PORTAL ADMIN SHOW QUEUE REQUEST DESIGNS FUNCTION PERFORMANCE CORRECTIVE]`
 
-Do not deploy or sign off until the Function redeploy checkpoint is authorized. Production remains untouched.
+Commit/push is complete. Do not deploy or sign off until the Function redeploy checkpoint is authorized. Production remains untouched.
 
 Historical prior-goal verification: Portal focused 82/82; Studio focused 39/39; Functions/shared focused 45/45; Portal
 TypeScript and Functions build pass; Studio TypeScript remains blocked by unrelated baseline
