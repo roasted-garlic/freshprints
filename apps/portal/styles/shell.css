@@ -690,16 +690,25 @@ a.portal-sidebar-sign-out:hover {
 }
 
 .portal-print-request-quota-help-modal {
-  max-width: min(100%, 32rem);
+  max-width: min(100%, 36rem);
+  width: min(100%, 36rem);
+}
+
+.portal-print-request-quota-help-modal > .modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
 .portal-print-request-quota-help-copy {
   line-height: 1.45;
   margin: 0;
+  max-width: none;
+  width: 100%;
 }
 
 .portal-print-request-quota-help-copy + .portal-print-request-quota-help-copy {
-  margin-top: 0.75rem;
+  margin-top: 0;
 }
 
 .portal-print-request-quota-help-footer {

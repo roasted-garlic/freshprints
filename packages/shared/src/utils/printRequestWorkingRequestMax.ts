@@ -219,8 +219,8 @@ export function formatWorkingRequestLimitHelpModalCopy(
   const requestMax = finitePositive(maxPerRequest) ?? 0;
   const showMax = finitePositive(maxPerShow) ?? requestMax;
   return [
-    `Each show has a limit of ${showMax} prints per customer. You can put up to ${showMax} on every show, with no daily cutoff.`,
+    `Each Whatnot show has a limit of ${showMax} prints per customer. You can put up to ${showMax} on every show, with no daily cutoff.`,
     `Each request is also capped at ${requestMax} prints as a failsafe so you cannot put more than one show's worth into a single request.`,
-    "Submitting a request is free. You pay during the live show.",
+    "Submitting a request is free. You pay during the live Whatnot show.",
   ];
 }

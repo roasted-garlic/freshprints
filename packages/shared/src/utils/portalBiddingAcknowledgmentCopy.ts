@@ -13,10 +13,10 @@ export const PORTAL_BIDDING_ACK_EXCLUSIVE_PARAGRAPH =
 
 /**
  * Short hint for size-tier / show-total modals (owner authoritative).
- * Explains price × quantity commitment without platform-specific wording.
+ * Explains show price × quantity commitment paid on Whatnot.
  */
 export const PORTAL_SHOW_PRICE_COMMITMENT_HINT =
-  "Show prices are per print by size. You commit to pay each size's price × the quantity you request.";
+  "Show prices are per print by size. You commit to pay each size's price × the quantity you request when you purchase on our Whatnot show.";
 
 /** Add to Show / queue-to-show confirmation copy (owner authoritative). */
 export function buildPortalBiddingAcknowledgmentCopy(): PortalBiddingAcknowledgmentCopy {

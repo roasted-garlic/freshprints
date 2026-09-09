@@ -129,13 +129,13 @@ describe("printRequestWorkingRequestMax", () => {
     assert.equal(lines.length, 3);
     assert.equal(
       lines[0],
-      "Each show has a limit of 25 prints per customer. You can put up to 25 on every show, with no daily cutoff.",
+      "Each Whatnot show has a limit of 25 prints per customer. You can put up to 25 on every show, with no daily cutoff.",
     );
     assert.equal(
       lines[1],
       "Each request is also capped at 25 prints as a failsafe so you cannot put more than one show's worth into a single request.",
     );
-    assert.equal(lines[2], "Submitting a request is free. You pay during the live show.");
+    assert.equal(lines[2], "Submitting a request is free. You pay during the live Whatnot show.");
     assert.match(lines.join(" "), /no daily cutoff/i);
     assert.doesNotMatch(lines.join(" "), /max of 200/i);
     assert.doesNotMatch(lines.join(" "), /Current Request/i);
@@ -148,17 +148,17 @@ describe("printRequestWorkingRequestMax", () => {
     const lines = formatWorkingRequestLimitHelpModalCopy(50, 25);
     assert.equal(
       lines[0],
-      "Each show has a limit of 25 prints per customer. You can put up to 25 on every show, with no daily cutoff.",
+      "Each Whatnot show has a limit of 25 prints per customer. You can put up to 25 on every show, with no daily cutoff.",
     );
     assert.match(lines[1]!, /capped at 50 prints as a failsafe/);
-    assert.match(lines[2]!, /Submitting a request is free/);
+    assert.match(lines[2]!, /live Whatnot show/);
     assert.match(lines.join(" "), /no daily cutoff/i);
     assert.doesNotMatch(lines.join(" "), /max of 200/i);
 
     const fiftyShow = formatWorkingRequestLimitHelpModalCopy(50, 50);
     assert.equal(
       fiftyShow[0],
-      "Each show has a limit of 50 prints per customer. You can put up to 50 on every show, with no daily cutoff.",
+      "Each Whatnot show has a limit of 50 prints per customer. You can put up to 50 on every show, with no daily cutoff.",
     );
     assert.match(fiftyShow[1]!, /capped at 50 prints as a failsafe/);
 

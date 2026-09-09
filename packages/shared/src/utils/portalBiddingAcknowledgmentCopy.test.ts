@@ -10,11 +10,12 @@ import {
 } from "./portalBiddingAcknowledgmentCopy";
 
 describe("PORTAL_SHOW_PRICE_COMMITMENT_HINT", () => {
-  it("explains per-size price times quantity without platform-specific wording", () => {
+  it("explains per-size price times quantity paid on Whatnot", () => {
     assert.match(PORTAL_SHOW_PRICE_COMMITMENT_HINT, /per print by size/i);
     assert.match(PORTAL_SHOW_PRICE_COMMITMENT_HINT, /price × the quantity/i);
-    assert.doesNotMatch(PORTAL_SHOW_PRICE_COMMITMENT_HINT, /Whatnot|personal bin/i);
-    assert.ok(PORTAL_SHOW_PRICE_COMMITMENT_HINT.length <= 120);
+    assert.match(PORTAL_SHOW_PRICE_COMMITMENT_HINT, /purchase on our Whatnot show/i);
+    assert.doesNotMatch(PORTAL_SHOW_PRICE_COMMITMENT_HINT, /personal bin/i);
+    assert.ok(PORTAL_SHOW_PRICE_COMMITMENT_HINT.length <= 160);
   });
 });
 
