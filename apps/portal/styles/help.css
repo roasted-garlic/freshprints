@@ -13,8 +13,12 @@
   border-bottom: none;
 }
 
-.portal-help-about + .portal-help-section {
-  margin-top: var(--space-1);
+.portal-help-pricing-trigger {
+  align-self: flex-start;
+}
+
+.portal-help-page .portal-help-section:has(.portal-help-pricing-trigger) {
+  gap: var(--space-3);
 }
 
 .portal-shell .portal-help-page-header h1 {
@@ -436,13 +440,28 @@
 }
 
 /* Sidebar footer Help link (secondary; above Whatnot) */
+.portal-sidebar-footer-actions {
+  align-items: stretch;
+  display: flex;
+  gap: var(--space-1);
+  margin: 0 var(--space-1);
+}
+
+.portal-sidebar-footer-actions .portal-sidebar-help-link {
+  flex: 1 1 0;
+  margin: 0;
+  min-width: 0;
+}
+
 .portal-sidebar-help-link {
   align-items: center;
   background: transparent;
   border: 0;
   border-radius: var(--radius-md);
   color: var(--color-text-secondary);
+  cursor: pointer;
   display: flex;
+  font: inherit;
   font-size: var(--font-size-md);
   font-weight: 500;
   justify-content: center;
@@ -454,6 +473,12 @@
     background var(--transition-fast),
     color var(--transition-fast);
   width: auto;
+}
+
+.portal-sidebar-pricing-link .portal-sidebar-help-icon,
+.portal-sidebar-pricing-link svg {
+  color: var(--color-accent-primary, #38bdf8);
+  flex-shrink: 0;
 }
 
 .portal-sidebar-help-link.is-active {
@@ -487,6 +512,11 @@
 
 .portal-sidebar-help-link-label {
   white-space: nowrap;
+}
+
+.portal-sidebar-collapsed .portal-sidebar-footer-actions {
+  flex-direction: column;
+  margin: 0;
 }
 
 .portal-sidebar-collapsed .portal-sidebar-help-link {

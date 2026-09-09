@@ -144,6 +144,44 @@ describe("deriveStaffInboxItems", () => {
     assert.equal(items.length, 0);
   });
 
+  it("attaches glance metrics from active allocation quantities", () => {
+    const items = deriveStaffInboxItems({
+      portalAllocations: [
+        {
+          printRequestId: "req-1",
+          upcomingShowId: "show-1",
+          requestNameSnapshot: "CR-jane-1",
+          status: "queued",
+          createdAtMillis: 200,
+          allocatedQuantity: 2,
+          designId: "d1",
+          printRequestItemId: "item-1",
+          printWidthInches: 3,
+          printHeightInches: 3,
+        },
+        {
+          printRequestId: "req-1",
+          upcomingShowId: "show-1",
+          requestNameSnapshot: "CR-jane-1",
+          status: "queued",
+          createdAtMillis: 210,
+          allocatedQuantity: 4,
+          designId: "d2",
+          printRequestItemId: "item-2",
+          printWidthInches: 12,
+          printHeightInches: 12,
+        },
+      ],
+      acknowledgedItemIds: new Set(),
+      showTitleById: { "show-1": "Friday Vinyl" },
+      shows: [baseShow],
+    });
+
+    assert.equal(items[0]?.queuedGlance?.designCount, 2);
+    assert.equal(items[0]?.queuedGlance?.printQuantity, 6);
+    assert.equal(items[0]?.queuedGlance?.pricingUnits.length, 2);
+  });
+
   it("derives badge counts from open items", () => {
     const items = deriveStaffInboxItems({
       portalAllocations: [

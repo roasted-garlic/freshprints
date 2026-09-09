@@ -703,6 +703,9 @@ a.portal-sidebar-sign-out:hover {
 }
 
 .portal-print-request-quota-help-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
   justify-content: flex-end;
 }
 
@@ -1088,13 +1091,74 @@ a.portal-sidebar-sign-out:hover {
 }
 
 .portal-bidding-ack-modal {
-  max-width: min(100%, 36rem);
+  max-width: min(100%, 40rem);
 }
 
 .portal-bidding-ack-body {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+}
+
+.portal-bidding-ack-pricing-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.modal-overlay.portal-show-price-commitment-modal-overlay {
+  /* Above Add-to-Show ack (+4); below busy overlay (+6). */
+  z-index: calc(var(--z-modal, 40) + 5);
+}
+
+.portal-show-size-tiers-modal {
+  max-width: min(100%, 32rem);
+}
+
+.portal-show-size-tiers-table-wrap {
+  -webkit-overflow-scrolling: touch;
+  margin: 0 calc(var(--space-1) * -1);
+  overflow-x: auto;
+  padding: 0 var(--space-1);
+}
+
+.portal-show-size-tiers-table {
+  border-collapse: collapse;
+  min-width: 100%;
+  width: max-content;
+}
+
+.portal-show-size-tiers-table th,
+.portal-show-size-tiers-table td {
+  border-bottom: 1px solid var(--color-border);
+  padding: var(--space-2) var(--space-2);
+  text-align: left;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.portal-show-size-tiers-table thead th {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.portal-show-size-tiers-table tbody th {
+  font-weight: 600;
+}
+
+.portal-show-size-tiers-table td:last-child,
+.portal-show-size-tiers-table th:last-child {
+  text-align: right;
+}
+
+@media (max-width: 32rem) {
+  .portal-show-size-tiers-table th,
+  .portal-show-size-tiers-table td {
+    font-size: var(--font-size-sm);
+    padding: var(--space-2) var(--space-2);
+  }
 }
 
 .portal-bidding-ack-lead,

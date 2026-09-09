@@ -26,6 +26,8 @@ export interface StudioCustomerUploadSummary {
   wasUpscaled: boolean | null;
   technicalStatus: CustomerUploadTechnicalStatus;
   catalogReviewStatus: string | null;
+  /** Library consent from uploader; null when missing on legacy docs. */
+  catalogUseAcknowledged: boolean | null;
   assistedCreationRequestId: string | null;
 }
 
@@ -78,6 +80,8 @@ export const customerUploadReadService = {
       technicalStatus: data.technicalStatus as CustomerUploadTechnicalStatus,
       catalogReviewStatus:
         typeof data.catalogReviewStatus === "string" ? data.catalogReviewStatus : null,
+      catalogUseAcknowledged:
+        typeof data.catalogUseAcknowledged === "boolean" ? data.catalogUseAcknowledged : null,
       assistedCreationRequestId:
         typeof data.assistedCreationRequestId === "string" && data.assistedCreationRequestId.trim()
           ? data.assistedCreationRequestId.trim()

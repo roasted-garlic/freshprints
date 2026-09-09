@@ -124,49 +124,43 @@ describe("printRequestWorkingRequestMax", () => {
     assertCustomerSafe(formatWorkingRequestLimitBannerCopy(12, 25));
   });
 
-  it("help modal uses owner request/show limits copy with five×five for 25", () => {
+  it("help modal leads with show limit and treats request cap as failsafe", () => {
     const lines = formatWorkingRequestLimitHelpModalCopy(25);
-    assert.equal(lines.length, 4);
+    assert.equal(lines.length, 3);
     assert.equal(
       lines[0],
-      "Print requests are for Fresh Prints Whatnot shows (live shopping). Each request can include up to 25 prints. You may submit a request with fewer prints if needed, but you cannot exceed this limit within a single request.",
+      "Each show has a limit of 25 prints per customer. You can put up to 25 on every show, with no daily cutoff.",
     );
     assert.equal(
       lines[1],
-      "Building and submitting a print request does not cost any money up front. Payment happens when you buy on the Fresh Prints Whatnot show.",
+      "Each request is also capped at 25 prints as a failsafe so you cannot put more than one show's worth into a single request.",
     );
-    assert.equal(
-      lines[2],
-      "Each Whatnot show can also hold up to 25 prints per customer and a max of 200. These prints can come from one request or multiple requests, such as five requests with five prints each.",
-    );
-    assert.equal(
-      lines[3],
-      "Once a show reaches its 25-print limit, any additional prints must be assigned to a different show. To add new designs to a full show, you will need to remove prints or reduce quantities to free up space.",
-    );
+    assert.equal(lines[2], "Submitting a request is free. You pay during the live show.");
+    assert.match(lines.join(" "), /no daily cutoff/i);
+    assert.doesNotMatch(lines.join(" "), /max of 200/i);
     assert.doesNotMatch(lines.join(" "), /Current Request/i);
-    assert.doesNotMatch(lines.join(" "), /only one print request per show/i);
     for (const line of lines) {
       assertCustomerSafe(line);
     }
   });
 
-  it("help modal interpolates live request and per-show limits with proportional example", () => {
+  it("help modal interpolates live request and per-show limits", () => {
     const lines = formatWorkingRequestLimitHelpModalCopy(50, 25);
     assert.equal(
       lines[0],
-      "Print requests are for Fresh Prints Whatnot shows (live shopping). Each request can include up to 50 prints. You may submit a request with fewer prints if needed, but you cannot exceed this limit within a single request.",
+      "Each show has a limit of 25 prints per customer. You can put up to 25 on every show, with no daily cutoff.",
     );
-    assert.match(lines[1]!, /does not cost any money up front/);
-    assert.match(lines[2]!, /Each Whatnot show can also hold up to 25 prints per customer and a max of 200/);
-    assert.match(lines[2]!, /five requests with five prints each/);
-    assert.match(lines[3]!, /its 25-print limit/);
-    assert.doesNotMatch(lines.join(" "), /Current Request/i);
-    assert.doesNotMatch(lines.join(" "), /only one print request per show/i);
+    assert.match(lines[1]!, /capped at 50 prints as a failsafe/);
+    assert.match(lines[2]!, /Submitting a request is free/);
+    assert.match(lines.join(" "), /no daily cutoff/i);
+    assert.doesNotMatch(lines.join(" "), /max of 200/i);
 
     const fiftyShow = formatWorkingRequestLimitHelpModalCopy(50, 50);
-    assert.match(fiftyShow[2]!, /up to 50 prints per customer and a max of 200/);
-    assert.match(fiftyShow[2]!, /10 requests with 5 prints each/);
-    assert.doesNotMatch(fiftyShow[2]!, /five requests with five prints each/);
+    assert.equal(
+      fiftyShow[0],
+      "Each show has a limit of 50 prints per customer. You can put up to 50 on every show, with no daily cutoff.",
+    );
+    assert.match(fiftyShow[1]!, /capped at 50 prints as a failsafe/);
 
     for (const line of [...lines, ...fiftyShow]) {
       assertCustomerSafe(line);

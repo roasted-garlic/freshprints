@@ -10,9 +10,14 @@ import { buildStaffInboxAlertToastCopy } from "@fresh-prints/shared/staffInbox/s
 import { compareStaffInboxAlertSoundKinds } from "@fresh-prints/shared/staffInbox/staffInboxAlertOrdering";
 import { listFullPortalShowIds } from "@fresh-prints/shared/staffInbox/staffInboxShowSnapshots";
 import type { StaffInboxCompletedItem, StaffInboxItem } from "@fresh-prints/shared/staffInbox/staffInbox.types";
+import {
+  buildStaffInboxQueuedGlanceMetrics,
+  filterAllocationsForQueuedGroup,
+} from "@fresh-prints/shared/staffInbox/staffInboxQueuedGlanceMetrics";
 
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
+import { useGangSheetSettings } from "../../settings/hooks/useGangSheetSettings";
 import { StaffInboxContext, type StaffInboxToast } from "../context/staffInboxContext";
 import type { StaffInboxSubscriptionSnapshot } from "../services/staffInboxSubscriptionService";
 import type { StaffInboxShowSnapshot } from "@fresh-prints/shared/staffInbox/staffInboxShowSnapshots";
@@ -82,6 +87,7 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const isEnabled = Boolean(user && permissionService.canViewPrintRequests(user));
+  const gangSheetSettings = useGangSheetSettings();
 
   const [acknowledgedItemIds, setAcknowledgedItemIds] = useState<Set<string>>(() => new Set());
   const [suppressedItemIds, setSuppressedItemIds] = useState<Set<string>>(() => new Set());
@@ -530,6 +536,28 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
     ],
   );
 
+  const enrichedCompletedItems = useMemo(() => {
+    return completedItems.map((item) => {
+      if (item.kind !== "portal_queued" || !item.printRequestId || !item.upcomingShowId) {
+        return item;
+      }
+
+      if (item.queuedGlance) {
+        return item;
+      }
+
+      const queuedGlance = buildStaffInboxQueuedGlanceMetrics(
+        filterAllocationsForQueuedGroup(
+          subscriptionSnapshot.portalAllocations,
+          item.printRequestId,
+          item.upcomingShowId,
+        ),
+      );
+
+      return queuedGlance ? { ...item, queuedGlance } : item;
+    });
+  }, [completedItems, subscriptionSnapshot.portalAllocations]);
+
   const highlightItem = useCallback((itemId: string) => {
     setHighlightedItemIds((current) => {
       if (current.has(itemId)) {
@@ -783,13 +811,14 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
   const contextValue = useMemo(
     () => ({
       openItems,
-      completedItems,
+      completedItems: enrichedCompletedItems,
       badgeCounts,
       toasts,
       isPanelOpen,
       isEnabled,
       error,
       warning,
+      sectionPricing: gangSheetSettings.settings.sectionPricing,
       togglePanel,
       closePanel,
       acknowledgeItem,
@@ -803,10 +832,11 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
       acknowledgeItem,
       badgeCounts,
       closePanel,
-      completedItems,
       deleteCompletedAlerts,
       dismissToast,
+      enrichedCompletedItems,
       error,
+      gangSheetSettings.settings.sectionPricing,
       isEnabled,
       isItemHighlighted,
       isPanelOpen,

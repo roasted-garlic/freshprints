@@ -1,10 +1,13 @@
 import { ExternalLink, Eye } from "lucide-react";
+import { useMemo } from "react";
 
 import { formatDesignIssueReportSubmitter } from "@fresh-prints/shared/designIssueReports/formatDesignIssueReportSubmitter";
 import { getStaffInboxKindLabel } from "@fresh-prints/shared/staffInbox/staffInboxItemIds";
 import type { StaffInboxCompletedItem, StaffInboxItem } from "@fresh-prints/shared/staffInbox/staffInbox.types";
+import { calculateGangSheetCustomerSectionSummary } from "@fresh-prints/shared/utils/gangSheetCustomerSectionSummary";
 import { Badge } from "../../../shared/components/Badge";
 import { Button } from "../../../shared/components/Button";
+import { useStaffInboxContext } from "../context/staffInboxContext";
 
 interface StaffInboxItemRowProps {
   compact?: boolean;
@@ -32,6 +35,18 @@ function isCompletedItem(item: StaffInboxItem | StaffInboxCompletedItem): item i
   return "acknowledgedAtMillis" in item && typeof item.acknowledgedAtMillis === "number";
 }
 
+function formatDesignCountLabel(count: number): string {
+  return `${count} design${count === 1 ? "" : "s"}`;
+}
+
+function formatPrintQuantityLabel(quantity: number): string {
+  return `${quantity} print qty`;
+}
+
+function formatGlancePrice(amount: number): string {
+  return Number.isInteger(amount) ? `$${amount}` : `$${amount.toFixed(2)}`;
+}
+
 export function StaffInboxItemRow({
   compact = false,
   isCompleted = false,
@@ -45,6 +60,7 @@ export function StaffInboxItemRow({
   onRestore,
   onToggleSelect,
 }: StaffInboxItemRowProps) {
+  const { sectionPricing } = useStaffInboxContext();
   const acknowledgedAtMillis = isCompletedItem(item) ? item.acknowledgedAtMillis : undefined;
   const acknowledgedByDisplayName = isCompletedItem(item)
     ? item.acknowledgedByDisplayName
@@ -54,6 +70,22 @@ export function StaffInboxItemRow({
   const submitter = isDesignReport && item.designIssueReport
     ? formatDesignIssueReportSubmitter(item.designIssueReport)
     : null;
+  const queuedGlance = item.kind === "portal_queued" ? item.queuedGlance : undefined;
+
+  const glanceTotalPriceUsd = useMemo(() => {
+    if (!queuedGlance?.pricingUnits.length) {
+      return null;
+    }
+
+    try {
+      return calculateGangSheetCustomerSectionSummary(
+        queuedGlance.pricingUnits,
+        sectionPricing,
+      ).totalPriceUsd;
+    } catch {
+      return null;
+    }
+  }, [queuedGlance, sectionPricing]);
 
   return (
     <li
@@ -89,6 +121,17 @@ export function StaffInboxItemRow({
           >
             {getStaffInboxKindLabel(item.kind)}
           </Badge>
+          {queuedGlance ? (
+            <div className="staff-inbox-item-glance-metrics" aria-label="Queued request totals">
+              <span className="staff-inbox-glance-pill">{formatDesignCountLabel(queuedGlance.designCount)}</span>
+              <span className="staff-inbox-glance-pill">{formatPrintQuantityLabel(queuedGlance.printQuantity)}</span>
+              {glanceTotalPriceUsd !== null ? (
+                <span className="staff-inbox-glance-pill staff-inbox-glance-pill-price">
+                  {formatGlancePrice(glanceTotalPriceUsd)}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </div>
 

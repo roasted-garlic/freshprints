@@ -13,6 +13,7 @@ import {
 } from '@fresh-prints/shared/utils/printRequestWorkingRequestMax';
 
 import { CircleHelpIcon, XIcon } from '../../shared/components/PortalIcons';
+import { PortalShowSizeTiersModal } from './PortalShowSizeTiersModal';
 import { usePortalPrintRequests } from '../context/PortalPrintRequestContext';
 
 function toneClassName(tone: WorkingRequestLimitBannerTone): string {
@@ -28,6 +29,7 @@ function toneClassName(tone: WorkingRequestLimitBannerTone): string {
 export function PortalWorkingRequestLimitBanner() {
   const { workingRequestLimit } = usePortalPrintRequests();
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [isSizeTiersOpen, setIsSizeTiersOpen] = useState(false);
 
   useEffect(() => {
     if (!isHelpOpen) {
@@ -116,6 +118,16 @@ export function PortalWorkingRequestLimitBanner() {
               ))}
             </div>
             <footer className="modal-footer portal-print-request-quota-help-footer">
+              <button
+                className="portal-button portal-button-secondary"
+                onClick={() => {
+                  setIsHelpOpen(false);
+                  setIsSizeTiersOpen(true);
+                }}
+                type="button"
+              >
+                Show Prices
+              </button>
               <Link
                 className="portal-button portal-button-primary"
                 href={PORTAL_HELP_PATH}
@@ -127,6 +139,11 @@ export function PortalWorkingRequestLimitBanner() {
           </div>
         </div>
       ) : null}
+
+      <PortalShowSizeTiersModal
+        isOpen={isSizeTiersOpen}
+        onClose={() => setIsSizeTiersOpen(false)}
+      />
     </>
   );
 }

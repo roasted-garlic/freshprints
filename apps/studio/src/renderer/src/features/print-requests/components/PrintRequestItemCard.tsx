@@ -1,4 +1,4 @@
-import { Minus, Plus } from "lucide-react";
+import { Ban, CircleCheck, Minus, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
 
 import { Button } from "../../../shared/components/Button";
@@ -36,6 +36,7 @@ import type { SetPrintRequestItemArtworkEnhanceModeResponse } from "@fresh-print
 import type { UpdatePrintRequestItemInput } from "../services/printRequestService";
 import { setPrintRequestItemArtworkEnhanceModeService } from "../services/setPrintRequestItemArtworkEnhanceModeService";
 import { resolvePrintRequestItemArtworkBackground } from "../utils/resolvePrintRequestItemArtworkBackground";
+import { resolvePrintRequestItemLibraryConsentIcon } from "../utils/printRequestCustomerUploadConsentSummary";
 import {
   StandardPrintSizesModal,
 } from "./StandardPrintSizesModal";
@@ -54,6 +55,8 @@ export interface PrintRequestItemUploadSummary {
   approvedMaxPrintHeightInches?: number | null;
   wasUpscaled?: boolean | null;
   fromAssistedCreation?: boolean;
+  /** Library consent from uploader; null/undefined when missing or pending. */
+  catalogUseAcknowledged?: boolean | null;
   interactiveEnhancedProductionStoragePath?: string | null;
   interactiveEnhancedWidthPx?: number | null;
   interactiveEnhancedHeightPx?: number | null;
@@ -191,6 +194,7 @@ export function PrintRequestItemCard({
     item,
     fromAssistedCreation: upload?.fromAssistedCreation,
   });
+  const libraryConsentIcon = resolvePrintRequestItemLibraryConsentIcon(item, upload);
   const title =
     design?.title ??
     upload?.title ??
@@ -761,6 +765,27 @@ export function PrintRequestItemCard({
                   {enhanceToggleMode === "baseline" ? "Removing upscale…" : "Upscaling…"}
                 </span>
               </div>
+            ) : null}
+            {libraryConsentIcon ? (
+              <span
+                aria-label={
+                  libraryConsentIcon === "approved"
+                    ? "Uploader approved Design Library use"
+                    : "Uploader denied Design Library use"
+                }
+                className={`print-requests-item-library-consent-icon is-${libraryConsentIcon}`}
+                title={
+                  libraryConsentIcon === "approved"
+                    ? "Library approved by uploader"
+                    : "Library denied by uploader"
+                }
+              >
+                {libraryConsentIcon === "approved" ? (
+                  <CircleCheck aria-hidden="true" size={16} strokeWidth={2.5} />
+                ) : (
+                  <Ban aria-hidden="true" size={16} strokeWidth={2.5} />
+                )}
+              </span>
             ) : null}
             <span
               className={`print-requests-item-source-badge is-${sourcePill.variant}`}

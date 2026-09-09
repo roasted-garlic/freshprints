@@ -48,4 +48,13 @@ describe('PrintRequestDetailView hook-order contract', () => {
       'no useCallback declarations may appear after the loading early return',
     );
   });
+
+  it('wires show total pill and help into a price commitment modal', () => {
+    assert.match(source, /PortalShowPriceCommitmentModal/);
+    assert.match(source, /buildPortalShowPriceCommitmentSummary/);
+    assert.match(source, /showPriceCommitmentSummary/);
+    assert.match(source, /isPriceCommitmentModalOpen/);
+    assert.match(source, /CircleHelpIcon/);
+    assert.doesNotMatch(source, /PortalShowPriceCommitmentPanel/);
+  });
 });

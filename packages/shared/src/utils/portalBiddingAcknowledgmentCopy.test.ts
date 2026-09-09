@@ -4,22 +4,35 @@ import { describe, it } from "node:test";
 import { PORTAL_BIDDING_ACKNOWLEDGMENT_VERSION } from "../constants/portal/portalBiddingAcknowledgment.constants";
 import {
   PORTAL_BIDDING_ACK_EXCLUSIVE_PARAGRAPH,
+  PORTAL_SHOW_PRICE_COMMITMENT_HINT,
   buildPortalBiddingAcknowledgmentCopy,
   buildPortalBiddingAcknowledgmentSignupCopy,
 } from "./portalBiddingAcknowledgmentCopy";
 
+describe("PORTAL_SHOW_PRICE_COMMITMENT_HINT", () => {
+  it("explains per-size price times quantity without platform-specific wording", () => {
+    assert.match(PORTAL_SHOW_PRICE_COMMITMENT_HINT, /per print by size/i);
+    assert.match(PORTAL_SHOW_PRICE_COMMITMENT_HINT, /price × the quantity/i);
+    assert.doesNotMatch(PORTAL_SHOW_PRICE_COMMITMENT_HINT, /Whatnot|personal bin/i);
+    assert.ok(PORTAL_SHOW_PRICE_COMMITMENT_HINT.length <= 120);
+  });
+});
+
 describe("buildPortalBiddingAcknowledgmentCopy", () => {
-  it("uses Add to Show Print Run title, queue checkbox, and exclusive note", () => {
+  it("uses Add to Show title, price-commitment checkbox, and exclusive note", () => {
     const copy = buildPortalBiddingAcknowledgmentCopy();
-    assert.equal(copy.title, "Add to Show Print Run");
+    assert.equal(copy.title, "Add to Show");
     assert.equal(
       copy.checkboxLabel,
-      "I understand that these designs are not reserved for me and will be available for anyone to bid on during the selected live show.",
+      "I understand the show pricing and estimated total, and that I am not charged to submit this request.",
     );
     assert.equal(copy.version, PORTAL_BIDDING_ACKNOWLEDGMENT_VERSION);
-    assert.equal(copy.version, "portal-bidding-ack-v3");
+    assert.equal(copy.version, "portal-bidding-ack-v4");
     assert.equal(copy.paragraphs.at(-1), PORTAL_BIDDING_ACK_EXCLUSIVE_PARAGRAPH);
     assert.match(PORTAL_BIDDING_ACK_EXCLUSIVE_PARAGRAPH, /funkyfreshprints\.com/);
+    assert.match(copy.paragraphs.join(" "), /personal bin/);
+    assert.doesNotMatch(copy.paragraphs.join(" "), /bid|auction/i);
+    assert.doesNotMatch(copy.paragraphs.join(" "), /listed below/i);
     for (const paragraph of copy.paragraphs) {
       assert.doesNotMatch(paragraph, /—/);
     }
@@ -39,10 +52,11 @@ describe("buildPortalBiddingAcknowledgmentSignupCopy", () => {
     assert.equal(copy.title, "Request Portal Acknowledgment");
     assert.equal(
       copy.checkboxLabel,
-      "I understand how the Fresh Prints Request Portal works and agree that requested designs will be available for anyone to bid on during the live show.",
+      "I understand show pricing works by size tier and that requesting designs does not charge me in the Portal.",
     );
-    assert.equal(copy.version, "portal-bidding-ack-v3");
+    assert.equal(copy.version, "portal-bidding-ack-v4");
     assert.equal(copy.paragraphs.at(-1), PORTAL_BIDDING_ACK_EXCLUSIVE_PARAGRAPH);
+    assert.doesNotMatch(copy.paragraphs.join(" "), /bid|auction/i);
     for (const paragraph of copy.paragraphs) {
       assert.doesNotMatch(paragraph, /—/);
     }

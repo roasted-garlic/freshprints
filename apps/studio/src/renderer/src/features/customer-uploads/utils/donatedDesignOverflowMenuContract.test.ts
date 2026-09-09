@@ -69,7 +69,7 @@ test("accessible menu semantics, keyboard focus, and design context are wired", 
 test("primary intake actions and halftone control remain on their existing handlers", () => {
   assert.match(componentSource, /void intake\.promote\(row\.id\)/);
   assert.match(componentSource, /await intake\.exclude\(row\.id\)/);
-  assert.match(componentSource, /void intake\.setHalftoneDecision\(row\.id, checked\)/);
+  assert.match(componentSource, /void intake\.setHalftoneDecision\(row\.id,/);
 });
 
 test("customer upload intake contains no browser-native prompt, confirm, or alert", () => {

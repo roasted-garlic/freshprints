@@ -163,6 +163,27 @@ function mapPortalAllocationSnapshot(
     requestNameSnapshot: data.requestNameSnapshot,
     status: data.status,
     createdAtMillis: createdAt?.toMillis() ?? 0,
+    allocatedQuantity:
+      typeof data.allocatedQuantity === "number" && Number.isFinite(data.allocatedQuantity)
+        ? data.allocatedQuantity
+        : undefined,
+    printRequestItemId:
+      typeof data.printRequestItemId === "string" && data.printRequestItemId.trim()
+        ? data.printRequestItemId
+        : undefined,
+    designId: typeof data.designId === "string" && data.designId.trim() ? data.designId : undefined,
+    customerUploadId:
+      typeof data.customerUploadId === "string" && data.customerUploadId.trim()
+        ? data.customerUploadId
+        : undefined,
+    printWidthInches:
+      typeof data.printWidthInches === "number" && Number.isFinite(data.printWidthInches)
+        ? data.printWidthInches
+        : undefined,
+    printHeightInches:
+      typeof data.printHeightInches === "number" && Number.isFinite(data.printHeightInches)
+        ? data.printHeightInches
+        : undefined,
   };
 }
 

@@ -3198,25 +3198,26 @@ Portal briefly sorted Current Request / detail items newest-first (`createdAt` d
 | Field | Value |
 |-------|-------|
 | Date | 2026-07-18 |
-| Status | accepted |
-| Related | ADR-FP-049 (queue state), Portal show selection |
+| Status | accepted — **amended 2026-09-08** (personal-bin pricing commitment; `portal-bidding-ack-v4`) |
+| Related | ADR-FP-049 (queue state), Portal show selection, ADR-FP-185 |
 | Target | Portal + Functions on `fresh-prints-dev`; production excluded |
 
 **Context**
 
-Customers need clear understanding that designs queued to a live show are public for bidding and not reserved. Owner requires acknowledgment before account creation and again before each queue-to-show.
+Customers need clear understanding that designs queued to a live show are held in a **personal bin at tiered show prices**, not auctioned for open bidding. Owner requires acknowledgment before account creation and again before each queue-to-show, including estimated show total commitment (not a Portal charge).
 
 **Decision**
 
 1. **Signup:** After registration form submit (email or Google complete-profile), show acknowledgment modal with required checkbox. Cancel creates nothing. Only after confirm: Auth create (email) and/or `registerCustomer` with `biddingAcknowledgmentAccepted` + version. Persist `users/{uid}.portalBiddingAcknowledgments.signup`.
-2. **Add to Show:** Always require confirmation modal (even if signup ack exists). Callable `queuePortalPrintRequestToShow` rejects without accepted flag + known version. Persist binding ack on `printRequests.showQueueBiddingAcknowledgment` and `users.portalBiddingAcknowledgments.lastQueueToShow`.
-3. Shared version id `portal-bidding-ack-v3` (bumped from v2 when owner restored gang-sheet / funkyfreshprints.com exclusive-order note). Signup and Add to Show use distinct titles/body/checkbox strings plus shared exclusive-order paragraph linking `funkyfreshprints.com`. Unified wording covers singular and plural designs.
+2. **Add to Show:** Always require confirmation modal (even if signup ack exists). Callable `queuePortalPrintRequestToShow` rejects without accepted flag + known version. Persist binding ack on `printRequests.showQueueBiddingAcknowledgment` and `users.portalBiddingAcknowledgments.lastQueueToShow`. Modal shows estimated show total + tier breakdown from **shared default** gang-sheet pricing (ADR-FP-185 defaults); Portal does not read staff-only `settings/showQueue`.
+3. Shared version id `portal-bidding-ack-v4` (bumped from v3 when auction/bidding copy was replaced with personal-bin pricing commitment). Signup and Add to Show use distinct titles/body/checkbox strings plus shared exclusive-order paragraph linking `funkyfreshprints.com`.
 
 **Consequences**
 
 - Signup ack is educational; queue ack is binding and re-required every queue.
 - No client writes to `users/{uid}` (Admin only).
 - Redeploy `registerCustomer` + `queuePortalPrintRequestToShow` to `fresh-prints-dev` when the version constant changes (server rejects unknown versions).
+- If Studio customizes gang-sheet prices away from defaults, Portal display may diverge until a customer-safe pricing read is added.
 
 ---
 

@@ -173,18 +173,34 @@ async function assertUsernameReservationAvailable(
   return reservationRef;
 }
 
+async function listAllCustomersMapped(): Promise<Customer[]> {
+  const snapshot = await getDocs(firestoreCollectionService.getCustomersCollection());
+  const customers = snapshot.docs.map((customerDoc: { id: string; data: () => DocumentData }) =>
+    mapCustomerData(customerDoc.id, customerDoc.data() as CustomerDocumentData),
+  );
+
+  return [...customers].sort((left, right) => left.displayName.localeCompare(right.displayName));
+}
+
 export const customerService = {
   async listCustomers(caller: User): Promise<Customer[]> {
     if (!permissionService.canManageCustomers(caller)) {
       return [];
     }
 
-    const snapshot = await getDocs(firestoreCollectionService.getCustomersCollection());
-    const customers = snapshot.docs.map((customerDoc: { id: string; data: () => DocumentData }) =>
-      mapCustomerData(customerDoc.id, customerDoc.data() as CustomerDocumentData),
-    );
+    return listAllCustomersMapped();
+  },
 
-    return [...customers].sort((left, right) => left.displayName.localeCompare(right.displayName));
+  /**
+   * Staff-readable customer directory for intake name/username search.
+   * Rules allow all staff to read `customers`; do not require owner/admin manage gate.
+   */
+  async listCustomersForIntakeSearch(caller: User): Promise<Customer[]> {
+    if (!permissionService.canViewCustomerUploadIntake(caller)) {
+      return [];
+    }
+
+    return listAllCustomersMapped();
   },
 
   async getCustomerById(caller: User, customerId: string): Promise<Customer> {

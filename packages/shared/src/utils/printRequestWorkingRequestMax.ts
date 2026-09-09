@@ -204,34 +204,13 @@ export function formatWorkingRequestLimitBannerCopy(remaining: number, limit: nu
 }
 
 /** Portal print-limits help modal title (owner copy). */
-export const WORKING_REQUEST_LIMIT_HELP_MODAL_TITLE = "Request and Show Limits";
+export const WORKING_REQUEST_LIMIT_HELP_MODAL_TITLE = "Show Limits";
 
 /**
- * Illustrative multi-request fill for the show-cap sentence.
- * Owner wording uses five×five when the show limit is 25; otherwise a simple
- * proportional example (or no "such as" clause if no clean factors).
- */
-function formatShowMultiRequestExample(showMax: number): string | null {
-  if (showMax === 25) {
-    return "such as five requests with five prints each";
-  }
-  if (showMax >= 10 && showMax % 5 === 0) {
-    return `such as ${showMax / 5} requests with 5 prints each`;
-  }
-  if (showMax >= 4 && showMax % 2 === 0) {
-    return `such as 2 requests with ${showMax / 2} prints each`;
-  }
-  return null;
-}
-
-/**
- * Help modal lines for Portal print limits.
- * Request capacity (X) and per-show-per-customer cap (Y) come from live Studio settings
- * (same sole `L` when linked; both args so copy stays correct when they diverge).
- * Customers may queue multiple requests to the same show until they hit Y prints.
- * Show-wide capacity ("a max of 200") is illustrative owner wording, not live per-show maxTotalQuantity.
- * Includes owner note that building/submitting a request does not cost money up front
- * (payment is on the Whatnot show). No Cap A/B jargon; no em dashes.
+ * Help modal lines for Portal print limits (owner: keep short).
+ * Lead with the per-show-per-customer cap (and no daily cutoff);
+ * mention the request cap only as a failsafe.
+ * Live Studio values are interpolated; no show-wide max wording.
  */
 export function formatWorkingRequestLimitHelpModalCopy(
   maxPerRequest: number,
@@ -239,14 +218,9 @@ export function formatWorkingRequestLimitHelpModalCopy(
 ): string[] {
   const requestMax = finitePositive(maxPerRequest) ?? 0;
   const showMax = finitePositive(maxPerShow) ?? requestMax;
-  const multiExample = formatShowMultiRequestExample(showMax);
-  const multiClause = multiExample
-    ? `one request or multiple requests, ${multiExample}`
-    : "one request or multiple requests";
   return [
-    `Print requests are for Fresh Prints Whatnot shows (live shopping). Each request can include up to ${requestMax} prints. You may submit a request with fewer prints if needed, but you cannot exceed this limit within a single request.`,
-    "Building and submitting a print request does not cost any money up front. Payment happens when you buy on the Fresh Prints Whatnot show.",
-    `Each Whatnot show can also hold up to ${showMax} prints per customer and a max of 200. These prints can come from ${multiClause}.`,
-    `Once a show reaches its ${showMax}-print limit, any additional prints must be assigned to a different show. To add new designs to a full show, you will need to remove prints or reduce quantities to free up space.`,
+    `Each show has a limit of ${showMax} prints per customer. You can put up to ${showMax} on every show, with no daily cutoff.`,
+    `Each request is also capped at ${requestMax} prints as a failsafe so you cannot put more than one show's worth into a single request.`,
+    "Submitting a request is free. You pay during the live show.",
   ];
 }

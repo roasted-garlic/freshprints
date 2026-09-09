@@ -74,9 +74,15 @@ import {
 } from '../../../../features/print-requests/utils/printRequestDetailUnqueueUi';
 import { PortalConfirmModal } from '../../../../features/shared/components/PortalConfirmModal';
 import { PortalPickContinuableRequestModal } from '../../../../features/shared/components/PortalPickContinuableRequestModal';
-import { ArrowLeftIcon, CalendarPlusIcon, ImagePlusIcon, LibraryIcon, RefreshIcon } from '../../../../features/shared/components/PortalIcons';
+import { HoverBubbleTooltip } from '../../../../features/shared/components/HoverBubbleTooltip';
+import { ArrowLeftIcon, CalendarPlusIcon, CircleHelpIcon, ImagePlusIcon, LibraryIcon, RefreshIcon } from '../../../../features/shared/components/PortalIcons';
 import { PortalEditingModeBanner } from '../../../../features/print-requests/components/PortalEditingModeBanner';
 import { PortalParkedDraftOverlay } from '../../../../features/print-requests/components/PortalParkedDraftOverlay';
+import { PortalShowPriceCommitmentModal } from '../../../../features/print-requests/components/PortalShowPriceCommitmentModal';
+import {
+  buildPortalShowPriceCommitmentSummary,
+  formatPortalShowPriceUsd,
+} from '../../../../features/print-requests/utils/buildPortalShowPriceCommitmentSummary';
 
 type AutosaveStatus = 'idle' | 'saving' | 'saved' | 'failed';
 
@@ -171,6 +177,7 @@ export default function PrintRequestDetailView() {
   const [isFlushingQueue, setIsFlushingQueue] = useState(false);
   const [unallocatedQuantity, setUnallocatedQuantity] = useState(0);
   const [isQueueModalOpen, setIsQueueModalOpen] = useState(false);
+  const [isPriceCommitmentModalOpen, setIsPriceCommitmentModalOpen] = useState(false);
   const [itemPendingRemoval, setItemPendingRemoval] = useState<PrintRequestItem | null>(null);
   const [isRemovingItem, setIsRemovingItem] = useState(false);
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
@@ -466,6 +473,10 @@ export default function PrintRequestDetailView() {
     'this design';
 
   const totalPrintCount = useMemo(() => sumPrintRequestItemQuantities(items), [items]);
+  const showPriceCommitmentSummary = useMemo(
+    () => buildPortalShowPriceCommitmentSummary(items),
+    [items],
+  );
 
   const listTab = useMemo((): PortalPrintRequestListTab => {
     if (!printRequest) {
@@ -827,6 +838,38 @@ export default function PrintRequestDetailView() {
               </span>
               <span className="portal-request-detail-meta-pill">{designCountLabel}</span>
               <span className="portal-request-detail-meta-pill">{printCountLabel}</span>
+              {showPriceCommitmentSummary ? (
+                <div className="portal-show-price-commitment-trigger">
+                  <HoverBubbleTooltip
+                    align="center"
+                    bubble="View show pricing and weight breakdown"
+                  >
+                    <button
+                      aria-haspopup="dialog"
+                      aria-label={`Open show pricing details for ${printRequest.name}`}
+                      className="portal-request-detail-meta-pill portal-show-price-commitment-total-pill is-button"
+                      onClick={() => setIsPriceCommitmentModalOpen(true)}
+                      type="button"
+                    >
+                      <span className="portal-show-price-commitment-pill-label">Show total</span>
+                      <strong>
+                        {formatPortalShowPriceUsd(showPriceCommitmentSummary.totalPriceUsd)}
+                      </strong>
+                    </button>
+                  </HoverBubbleTooltip>
+                  <HoverBubbleTooltip align="center" bubble="What does show pricing mean?">
+                    <button
+                      aria-haspopup="dialog"
+                      aria-label={`Explain show pricing for ${printRequest.name}`}
+                      className="portal-show-price-commitment-help"
+                      onClick={() => setIsPriceCommitmentModalOpen(true)}
+                      type="button"
+                    >
+                      <CircleHelpIcon size={18} />
+                    </button>
+                  </HoverBubbleTooltip>
+                </div>
+              ) : null}
             </div>
           </div>
           {effectiveIsEditable && hasAttachedDesigns ? (
@@ -1113,6 +1156,15 @@ export default function PrintRequestDetailView() {
         onQueued={handleQueuedToShow}
         printRequest={printRequest}
       />
+
+      {showPriceCommitmentSummary ? (
+        <PortalShowPriceCommitmentModal
+          isOpen={isPriceCommitmentModalOpen}
+          onClose={() => setIsPriceCommitmentModalOpen(false)}
+          requestName={printRequest.name}
+          summary={showPriceCommitmentSummary}
+        />
+      ) : null}
 
       <PortalUnqueueFromShowConfirmModal
         isOpen={isUnqueueModalOpen}

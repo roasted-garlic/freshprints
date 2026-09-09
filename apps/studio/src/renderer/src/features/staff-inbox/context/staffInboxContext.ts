@@ -5,6 +5,7 @@ import type {
   StaffInboxCompletedItem,
   StaffInboxItem,
 } from "@fresh-prints/shared/staffInbox/staffInbox.types";
+import type { GangSheetSectionPricingConfig } from "@fresh-prints/shared/constants/gangSheetSectionPricingSettings.constants";
 
 import type { StaffInboxAlertSoundKind } from "../types/staffInboxAlertSettings.types";
 
@@ -25,6 +26,8 @@ export interface StaffInboxContextValue {
   isEnabled: boolean;
   error: string | null;
   warning: string | null;
+  /** Global gang-sheet pricing for inbox glance price pills. */
+  sectionPricing: GangSheetSectionPricingConfig;
   togglePanel: () => void;
   closePanel: () => void;
   acknowledgeItem: (item: StaffInboxItem) => void;

@@ -19,6 +19,8 @@ export const CUSTOMER_UPLOAD_INTAKE_PAGE_SIZE = 50;
 
 export const CUSTOMER_UPLOAD_INTAKE_ENRICH_CONCURRENCY = 4;
 
+export const CUSTOMER_UPLOAD_INTAKE_SEARCH_CUSTOMER_LIMIT = 40;
+
 /**
  * Purpose + status + createdAt list query (uses purpose composite index).
  */
@@ -35,6 +37,43 @@ export function buildPurposeScopedIntakeQuery(
     where("purpose", "==", options.purpose),
     where("catalogReviewStatus", "==", options.catalogReviewStatus),
     orderBy("createdAt", "desc"),
+    limit(options.pageSize ?? CUSTOMER_UPLOAD_INTAKE_PAGE_SIZE),
+  );
+}
+
+/**
+ * Per-customer upload history (uses customerUid + createdAt index).
+ * Callers filter purpose / catalogReviewStatus client-side.
+ */
+export function buildCustomerUidUploadHistoryQuery(
+  db: Firestore,
+  options: {
+    customerUid: string;
+    pageSize?: number;
+  },
+): Query {
+  return query(
+    collection(db, CUSTOMER_UPLOAD_COLLECTIONS.customerUploads),
+    where("customerUid", "==", options.customerUid),
+    orderBy("createdAt", "desc"),
+    limit(options.pageSize ?? CUSTOMER_UPLOAD_INTAKE_PAGE_SIZE),
+  );
+}
+
+/**
+ * Fallback when the customer has no auth uid yet (rare). Single-field equality;
+ * callers filter purpose / status and sort.
+ */
+export function buildCustomerIdUploadQuery(
+  db: Firestore,
+  options: {
+    customerId: string;
+    pageSize?: number;
+  },
+): Query {
+  return query(
+    collection(db, CUSTOMER_UPLOAD_COLLECTIONS.customerUploads),
+    where("customerId", "==", options.customerId),
     limit(options.pageSize ?? CUSTOMER_UPLOAD_INTAKE_PAGE_SIZE),
   );
 }

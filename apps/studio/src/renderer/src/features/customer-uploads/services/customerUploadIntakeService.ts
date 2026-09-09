@@ -36,6 +36,7 @@ export interface CustomerUploadIntakeRow {
   customerUid: string;
   customerId: string;
   customerDisplayName: string;
+  customerUsername: string | null;
   printRequestId: string | null;
   printRequestName: string | null;
   printRequestStatus: string | null;
@@ -131,6 +132,7 @@ export const customerUploadIntakeService = {
     previewStoragePath: string | null;
   }): Promise<{
     customerDisplayName: string;
+    customerUsername: string | null;
     printRequestName: string | null;
     printRequestStatus: string | null;
     printRequestQueueTab: string | null;
@@ -139,20 +141,25 @@ export const customerUploadIntakeService = {
     printRequestUpdatedAtMs: number | null;
     previewUrl: string | null;
   }> {
-    const resolveCustomer = async (): Promise<string> => {
+    const resolveCustomer = async (): Promise<{
+      customerDisplayName: string;
+      customerUsername: string | null;
+    }> => {
       let customerDisplayName = input.customerId || "Customer";
+      let customerUsername: string | null = null;
       if (!input.customerId) {
-        return customerDisplayName;
+        return { customerDisplayName, customerUsername };
       }
       const customerSnap = await getDoc(doc(db, "customers", input.customerId));
       if (customerSnap.exists()) {
         const customer = customerSnap.data();
+        customerUsername = asString(customer.username);
         customerDisplayName =
           asString(customer.displayName) ??
-          asString(customer.username) ??
+          customerUsername ??
           customerDisplayName;
       }
-      return customerDisplayName;
+      return { customerDisplayName, customerUsername };
     };
 
     const resolvePrintRequest = async (): Promise<{
@@ -199,14 +206,15 @@ export const customerUploadIntakeService = {
       };
     };
 
-    const [customerDisplayName, printRequest, previewUrl] = await Promise.all([
+    const [customer, printRequest, previewUrl] = await Promise.all([
       resolveCustomer(),
       resolvePrintRequest(),
       resolvePreviewUrl(input.previewStoragePath),
     ]);
 
     return {
-      customerDisplayName,
+      customerDisplayName: customer.customerDisplayName,
+      customerUsername: customer.customerUsername,
       printRequestName: printRequest.printRequestName,
       printRequestStatus: printRequest.printRequestStatus,
       printRequestQueueTab: printRequest.printRequestQueueTab,
@@ -241,13 +249,15 @@ export const customerUploadIntakeService = {
       const previewStoragePath = asString(data.previewStoragePath) ?? asString(data.thumbnailStoragePath);
 
       let customerDisplayName = customerId || "Customer";
+      let customerUsername: string | null = null;
       if (customerId) {
         const customerSnap = await getDoc(doc(db, "customers", customerId));
         if (customerSnap.exists()) {
           const customer = customerSnap.data();
+          customerUsername = asString(customer.username);
           customerDisplayName =
             asString(customer.displayName) ??
-            asString(customer.username) ??
+            customerUsername ??
             customerDisplayName;
         }
       }
@@ -269,6 +279,7 @@ export const customerUploadIntakeService = {
         customerUid: asString(data.customerUid) ?? "",
         customerId,
         customerDisplayName,
+        customerUsername,
         printRequestId,
         printRequestName,
         printRequestStatus,

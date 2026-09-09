@@ -538,6 +538,32 @@
   z-index: 1;
 }
 
+.print-requests-item-library-consent-icon {
+  align-items: center;
+  background: transparent;
+  display: inline-flex;
+  justify-content: center;
+  left: 0.4rem;
+  pointer-events: none;
+  position: absolute;
+  top: 0.4rem;
+  z-index: 1;
+}
+
+.print-requests-item-library-consent-icon.is-approved {
+  color: var(--color-success, #0b8a60);
+}
+
+.print-requests-item-library-consent-icon.is-denied {
+  color: var(--color-danger, #dc2626);
+}
+
+.print-requests-item-library-consent-icon svg {
+  display: block;
+  /* Keep the mark readable on busy artwork. */
+  filter: drop-shadow(0 0 1px color-mix(in srgb, #000 55%, transparent));
+}
+
 .print-requests-item-source-badge.is-library {
   background: color-mix(in srgb, var(--color-accent-primary) 22%, var(--color-bg-secondary));
   border-color: color-mix(in srgb, var(--color-accent-primary) 55%, transparent);

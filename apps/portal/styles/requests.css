@@ -864,7 +864,7 @@ a.portal-editing-mode-banner-cta:focus-visible {
   align-items: center;
   display: flex;
   flex-shrink: 0;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: var(--space-2);
 }
 
@@ -877,6 +877,229 @@ a.portal-editing-mode-banner-cta:focus-visible {
   line-height: 1.3;
   padding: var(--space-1) var(--space-3);
   white-space: nowrap;
+}
+
+.portal-show-price-commitment-trigger {
+  align-items: center;
+  display: inline-flex;
+  gap: var(--space-1);
+}
+
+.portal-show-price-commitment-trigger .hover-bubble-tooltip {
+  display: inline-flex;
+}
+
+.portal-show-price-commitment-total-pill.is-button {
+  align-items: center;
+  cursor: pointer;
+  display: inline-flex;
+  gap: var(--space-2);
+  font: inherit;
+}
+
+.portal-show-price-commitment-total-pill.is-button:hover,
+.portal-show-price-commitment-total-pill.is-button:focus-visible {
+  border-color: var(--color-accent-primary);
+  color: var(--color-text-primary);
+}
+
+.portal-show-price-commitment-total-pill.is-button:focus-visible {
+  box-shadow: 0 0 0 3px var(--color-focus-ring, color-mix(in srgb, var(--color-accent-primary) 35%, transparent));
+  outline: none;
+}
+
+.portal-show-price-commitment-pill-label {
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.portal-show-price-commitment-total-pill strong {
+  color: var(--color-text-primary);
+  font-weight: 700;
+}
+
+.portal-show-price-commitment-help {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  padding: 0.15rem;
+}
+
+.portal-show-price-commitment-help:hover,
+.portal-show-price-commitment-help:focus-visible {
+  color: var(--color-accent-primary);
+}
+
+.portal-show-price-commitment-help:focus-visible {
+  border-radius: var(--radius-full);
+  box-shadow: 0 0 0 3px var(--color-focus-ring, color-mix(in srgb, var(--color-accent-primary) 35%, transparent));
+  outline: none;
+}
+
+.portal-show-price-commitment-modal {
+  max-width: min(100%, 36rem);
+}
+
+.portal-show-price-commitment {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.portal-show-price-commitment.is-acknowledgment {
+  background: color-mix(in srgb, var(--color-bg-secondary) 88%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+}
+
+.portal-show-price-commitment-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.portal-show-price-commitment-hint {
+  line-height: 1.35;
+  margin: 0;
+  max-width: 46ch;
+  overflow-wrap: break-word;
+}
+
+.portal-show-price-commitment-totals {
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.portal-show-price-commitment-total {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-3);
+}
+
+.portal-show-price-commitment-total span {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.portal-show-price-commitment-total strong {
+  font-size: var(--font-size-xl, 1.25rem);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.portal-show-price-commitment-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.portal-show-price-commitment-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.portal-show-price-commitment-row {
+  align-items: flex-start;
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+  padding: var(--space-2) 0;
+}
+
+.portal-show-price-commitment-row + .portal-show-price-commitment-row {
+  border-top: 1px solid var(--color-border);
+}
+
+.portal-show-price-commitment-row > div:first-child {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.portal-show-price-commitment-row > div:first-child span {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.portal-show-price-commitment-row-range {
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.portal-show-price-commitment-row-values {
+  color: var(--color-text-secondary);
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  font-size: var(--font-size-sm);
+  font-variant-numeric: tabular-nums;
+  gap: 0.2rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+@media (max-width: 32rem) {
+  .portal-show-price-commitment-modal {
+    max-width: min(100%, calc(100vw - 1rem));
+  }
+
+  .portal-show-price-commitment-breakdown {
+    gap: var(--space-2);
+  }
+
+  .portal-show-price-commitment-hint {
+    font-size: var(--font-size-sm);
+    max-width: none;
+  }
+
+  .portal-show-price-commitment-totals {
+    gap: var(--space-2);
+  }
+
+  .portal-show-price-commitment-total {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .portal-show-price-commitment-total span {
+    font-size: var(--font-size-xs, 0.75rem);
+  }
+
+  .portal-show-price-commitment-total strong {
+    font-size: var(--font-size-lg, 1.125rem);
+  }
+
+  .portal-show-price-commitment-row {
+    /* Keep desktop-like side-by-side layout on mobile. */
+    align-items: flex-start;
+    flex-direction: row;
+    gap: var(--space-2);
+  }
+
+  .portal-show-price-commitment-row > div:first-child strong {
+    font-size: var(--font-size-sm);
+    line-height: 1.35;
+  }
+
+  .portal-show-price-commitment-row-range {
+    display: inline;
+  }
+
+  .portal-show-price-commitment-row-values {
+    font-size: var(--font-size-xs, 0.75rem);
+    text-align: right;
+  }
 }
 
 .portal-request-detail-guide {

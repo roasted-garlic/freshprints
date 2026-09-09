@@ -14,6 +14,7 @@ import {
 
 import { db } from "../../../config/firebase";
 import { useAuth } from "../../auth/hooks/useAuth";
+import { customerService } from "../../customers/services/customerService";
 import { permissionService } from "../../permissions/services/permissionService";
 import { enqueueImportedDesignsForBackgroundAi } from "../../imports/services/importAiBackgroundQueue";
 import {
@@ -22,10 +23,13 @@ import {
   type CustomerUploadIntakeRow,
 } from "../services/customerUploadIntakeService";
 import { mapCustomerUploadPurgeTimestamp } from "../utils/customerUploadPurgeTimestamp";
+import { filterCustomersForIntakeSearch } from "../utils/customerUploadIntakeSearch";
+import { fetchIntakeDocsForMatchedCustomers } from "../utils/fetchIntakeDocsForMatchedCustomers";
 import {
   buildPurposeScopedIntakeQuery,
   buildStatusScopedCatalogReviewQuery,
   CUSTOMER_UPLOAD_INTAKE_ENRICH_CONCURRENCY,
+  CUSTOMER_UPLOAD_INTAKE_PAGE_SIZE,
   filterCatalogIntakeEligibleDocs,
   filterLegacyMissingPurposeDocs,
   mergeIntakeDocsByCreatedAtDesc,
@@ -43,6 +47,7 @@ export type CustomerUploadIntakePendingAction =
 
 type EnrichmentCacheEntry = {
   customerDisplayName: string;
+  customerUsername: string | null;
   printRequestName: string | null;
   printRequestStatus: string | null;
   printRequestQueueTab: string | null;
@@ -96,6 +101,7 @@ function buildShellRow(
     customerUid: asString(data.customerUid) ?? "",
     customerId,
     customerDisplayName: enrichment?.customerDisplayName ?? (customerId || "Customer"),
+    customerUsername: enrichment?.customerUsername ?? null,
     printRequestId: asString(data.printRequestId),
     printRequestName: enrichment?.printRequestName ?? null,
     printRequestStatus: enrichment?.printRequestStatus ?? null,
@@ -175,6 +181,11 @@ export function useCustomerUploadIntake(options?: {
   const canDeleteEligible = Boolean(user && permissionService.canDeleteEligibleCustomerUpload(user));
 
   const [filter, setFilter] = useState<CustomerUploadIntakeFilter>("pending_staff_review");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  const [pageSize, setPageSize] = useState(CUSTOMER_UPLOAD_INTAKE_PAGE_SIZE);
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [rows, setRows] = useState<CustomerUploadIntakeRow[]>([]);
   const rowsRef = useRef<CustomerUploadIntakeRow[]>([]);
   rowsRef.current = rows;
@@ -215,6 +226,7 @@ export function useCustomerUploadIntake(options?: {
           ? {
               ...row,
               customerDisplayName: enrichment.customerDisplayName,
+              customerUsername: enrichment.customerUsername,
               printRequestName: enrichment.printRequestName,
               printRequestStatus: enrichment.printRequestStatus,
               printRequestQueueTab: enrichment.printRequestQueueTab,
@@ -267,9 +279,47 @@ export function useCustomerUploadIntake(options?: {
   );
 
   useEffect(() => {
+    const handle = window.setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery.trim());
+    }, 300);
+    return () => window.clearTimeout(handle);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    setPageSize(CUSTOMER_UPLOAD_INTAKE_PAGE_SIZE);
+    setHasMore(false);
+  }, [filter, purposeScope, debouncedSearchQuery]);
+
+  const applyShellRowsFromDocs = useCallback((intakeDocs: IntakeDocRef[]) => {
+    const shellRows = intakeDocs.map((docSnap) => {
+      const base = buildShellRow(docSnap, enrichmentCacheRef.current.get(docSnap.id) ?? null);
+      const override = metadataOverridesRef.current.get(docSnap.id);
+      return override ? { ...base, ...override } : base;
+    });
+
+    setRows(shellRows);
+    setSelectedId((current) => {
+      if (current && shellRows.some((row) => row.id === current)) {
+        return current;
+      }
+      return shellRows[0]?.id ?? null;
+    });
+    setIsInitialLoading(false);
+
+    const generation = ++enrichGenerationRef.current;
+    void enrichDocsProgressively(intakeDocs, generation);
+  }, [enrichDocsProgressively]);
+
+  useEffect(() => {
     if (!user || !canView) {
       setRows([]);
       setIsInitialLoading(false);
+      setHasMore(false);
+      return;
+    }
+
+    // Search mode uses a separate one-shot fetch effect.
+    if (debouncedSearchQuery) {
       return;
     }
 
@@ -288,33 +338,20 @@ export function useCustomerUploadIntake(options?: {
         return;
       }
 
-      const merged = mergeIntakeDocsByCreatedAtDesc(primarySnap, legacySnap);
+      const merged = mergeIntakeDocsByCreatedAtDesc(primarySnap, legacySnap, pageSize);
       const intakeDocs =
         filter === "pending_staff_review"
           ? filterCatalogIntakeEligibleDocs(merged)
           : merged;
-      const shellRows = intakeDocs.map((docSnap) => {
-        const base = buildShellRow(docSnap, enrichmentCacheRef.current.get(docSnap.id) ?? null);
-        const override = metadataOverridesRef.current.get(docSnap.id);
-        return override ? { ...base, ...override } : base;
-      });
-
-      setRows(shellRows);
-      setSelectedId((current) => {
-        if (current && shellRows.some((row) => row.id === current)) {
-          return current;
-        }
-        return shellRows[0]?.id ?? null;
-      });
-      setIsInitialLoading(false);
-
-      const generation = ++enrichGenerationRef.current;
-      void enrichDocsProgressively(intakeDocs, generation);
+      setHasMore(primarySnap.length >= pageSize);
+      applyShellRowsFromDocs(intakeDocs);
+      setIsLoadingMore(false);
     };
 
     const primaryQuery = buildPurposeScopedIntakeQuery(db, {
       purpose: purposeScope,
       catalogReviewStatus: filter,
+      pageSize,
     });
     const primaryTrace = {
       app: "studio" as const,
@@ -323,7 +360,7 @@ export function useCustomerUploadIntake(options?: {
         `purpose==${purposeScope}`,
         `catalogReviewStatus==${filter}`,
         "orderBy createdAt desc",
-        "limit 50",
+        `limit ${pageSize}`,
       ],
       source: "useCustomerUploadIntake",
       triggerReason: "route" as const,
@@ -345,14 +382,14 @@ export function useCustomerUploadIntake(options?: {
             }
             setError(err.message || "Unable to load customer uploads.");
             setRows([]);
+            setHasMore(false);
             setIsInitialLoading(false);
+            setIsLoadingMore(false);
           },
         ),
       ),
     );
 
-    // H-DM-2: Firestore purpose==print_request excludes missing-purpose legacy docs.
-    // Status-scoped companion is metadata-only; filter before any enrichment.
     if (purposeScope === "print_request") {
       const legacyQuery = buildStatusScopedCatalogReviewQuery(db, filter);
       const legacyTrace = {
@@ -378,7 +415,6 @@ export function useCustomerUploadIntake(options?: {
               if (cancelled) {
                 return;
               }
-              // Purpose-scoped primary remains authoritative; fail open without legacy merge.
               console.warn(
                 "[useCustomerUploadIntake] legacy missing-purpose companion failed:",
                 err.message,
@@ -398,7 +434,85 @@ export function useCustomerUploadIntake(options?: {
         unsubscribe();
       }
     };
-  }, [user, canView, filter, purposeScope, enrichDocsProgressively]);
+  }, [
+    applyShellRowsFromDocs,
+    canView,
+    debouncedSearchQuery,
+    filter,
+    pageSize,
+    purposeScope,
+    user,
+  ]);
+
+  useEffect(() => {
+    if (!user || !canView || !debouncedSearchQuery) {
+      return;
+    }
+
+    let cancelled = false;
+    setIsInitialLoading(true);
+    setError(null);
+    enrichGenerationRef.current += 1;
+
+    void (async () => {
+      try {
+        const customers = await customerService.listCustomersForIntakeSearch(user);
+        if (cancelled) {
+          return;
+        }
+        const matched = filterCustomersForIntakeSearch(customers, debouncedSearchQuery);
+        if (matched.length === 0) {
+          setRows([]);
+          setSelectedId(null);
+          setHasMore(false);
+          setIsInitialLoading(false);
+          setIsLoadingMore(false);
+          return;
+        }
+
+        const { docs, hasMore: moreAvailable } = await fetchIntakeDocsForMatchedCustomers({
+          db,
+          customers: matched,
+          purpose: purposeScope,
+          catalogReviewStatus: filter,
+          perCustomerLimit: pageSize,
+        });
+        if (cancelled) {
+          return;
+        }
+        setHasMore(moreAvailable);
+        applyShellRowsFromDocs(docs);
+        setIsLoadingMore(false);
+      } catch (err) {
+        if (cancelled) {
+          return;
+        }
+        setError(err instanceof Error ? err.message : "Unable to search customer uploads.");
+        setRows([]);
+        setHasMore(false);
+        setIsInitialLoading(false);
+        setIsLoadingMore(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      enrichGenerationRef.current += 1;
+    };
+  }, [
+    applyShellRowsFromDocs,
+    canView,
+    debouncedSearchQuery,
+    filter,
+    pageSize,
+    purposeScope,
+    user,
+  ]);
+
+  const loadMore = useCallback(() => {
+    setIsLoadingMore(true);
+    setPageSize((current) => current + CUSTOMER_UPLOAD_INTAKE_PAGE_SIZE);
+  }, []);
 
   const selected = rows.find((row) => row.id === selectedId) ?? null;
 
@@ -496,11 +610,16 @@ export function useCustomerUploadIntake(options?: {
     canDeleteEligible,
     filter,
     setFilter,
+    searchQuery,
+    setSearchQuery,
     rows,
     selected,
     selectedId,
     setSelectedId,
     isLoading: isInitialLoading,
+    isLoadingMore,
+    hasMore,
+    loadMore,
     pendingByUploadId,
     metadataFailedByUploadId,
     actionBusyId: null as string | null,

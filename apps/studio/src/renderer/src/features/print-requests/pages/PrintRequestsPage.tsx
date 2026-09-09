@@ -2573,6 +2573,7 @@ export function PrintRequestsPage() {
                             interactiveEnhancedHeightPx: uploadDoc.interactiveEnhancedHeightPx,
                             interactiveEnhanceGeneratedAt: uploadDoc.interactiveEnhanceGeneratedAt,
                             fromAssistedCreation: Boolean(uploadDoc.assistedCreationRequestId),
+                            catalogUseAcknowledged: uploadDoc.catalogUseAcknowledged,
                           }
                         : item.titleSnapshot
                           ? {
@@ -2643,6 +2644,7 @@ export function PrintRequestsPage() {
                       approvedMaxPrintHeightInches: uploadDoc.approvedMaxPrintHeightInches,
                       wasUpscaled: uploadDoc.wasUpscaled,
                       fromAssistedCreation: Boolean(uploadDoc.assistedCreationRequestId),
+                      catalogUseAcknowledged: uploadDoc.catalogUseAcknowledged,
                     };
                   }
                   if (item.titleSnapshot) {

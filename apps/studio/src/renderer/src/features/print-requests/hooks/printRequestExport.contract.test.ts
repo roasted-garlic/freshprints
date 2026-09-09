@@ -68,3 +68,17 @@ test("request totals breakdown includes the canonical size ranges", () => {
   assert.match(source, /over 14"/);
   assert.match(source, /print-request-cost-breakdown-row-range/);
 });
+
+test("request detail shows library consent icons on upload thumbs, not a header summary line", () => {
+  const pageSource = readFileSync(join(here, "../pages/PrintRequestsPage.tsx"), "utf8");
+  const cardSource = readFileSync(join(here, "../components/PrintRequestItemCard.tsx"), "utf8");
+  const readServiceSource = readFileSync(
+    join(here, "../../customer-uploads/services/customerUploadReadService.ts"),
+    "utf8",
+  );
+  assert.match(pageSource, /catalogUseAcknowledged: uploadDoc\.catalogUseAcknowledged/);
+  assert.doesNotMatch(pageSource, /print-requests-detail-upload-consent/);
+  assert.match(cardSource, /print-requests-item-library-consent-icon/);
+  assert.match(cardSource, /resolvePrintRequestItemLibraryConsentIcon/);
+  assert.match(readServiceSource, /catalogUseAcknowledged:/);
+});

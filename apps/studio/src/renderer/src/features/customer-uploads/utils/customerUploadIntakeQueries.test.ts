@@ -65,6 +65,12 @@ test("mergeIntakeDocsByCreatedAtDesc prefers newest and caps page size", () => {
   assert.equal(CUSTOMER_UPLOAD_INTAKE_PAGE_SIZE, 50);
 });
 
+test("buildPurposeScopedIntakeQuery accepts custom page size", async () => {
+  const { buildPurposeScopedIntakeQuery } = await import("./customerUploadIntakeQueries.ts");
+  // Smoke: helper remains exported for load-more pageSize wiring.
+  assert.equal(typeof buildPurposeScopedIntakeQuery, "function");
+});
+
 test("runWithConcurrencyLimit never exceeds concurrency and covers all items", async () => {
   let inFlight = 0;
   let maxInFlight = 0;

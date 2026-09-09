@@ -151,6 +151,17 @@ export function HoverBubbleTooltip({
     }
   };
 
+  const handleFocusCapture = () => {
+    // Touch devices keep focus after tap; avoid sticky tooltips over opened modals.
+    if (typeof window !== 'undefined' && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+      show();
+    }
+  };
+
+  const handlePointerDown = () => {
+    hide();
+  };
+
   if (!bubble) {
     return <>{children}</>;
   }
@@ -184,9 +195,10 @@ export function HoverBubbleTooltip({
       <span
         className={`hover-bubble-tooltip ${className}`.trim()}
         onBlur={handleBlur}
-        onFocusCapture={show}
+        onFocusCapture={handleFocusCapture}
         onMouseEnter={scheduleShow}
         onMouseLeave={hide}
+        onPointerDown={handlePointerDown}
         ref={triggerRef}
       >
         {children}

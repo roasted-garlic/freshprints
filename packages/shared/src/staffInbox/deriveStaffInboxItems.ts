@@ -15,6 +15,7 @@ import type {
   StaffInboxPortalRequestSnapshot,
 } from "./staffInbox.types";
 import { compareStaffInboxItemsForDisplay } from "./staffInboxAlertOrdering";
+import { buildStaffInboxQueuedGlanceMetrics } from "./staffInboxQueuedGlanceMetrics";
 
 const ACTIVE_ALLOCATION_STATUSES = new Set<ShowAllocationStatus>([
   "pending",
@@ -49,6 +50,7 @@ function groupQueuedAllocations(portalAllocations: StaffInboxPortalAllocationSna
       upcomingShowId: string;
       requestNameSnapshot: string;
       createdAtMillis: number;
+      allocations: StaffInboxPortalAllocationSnapshot[];
     }
   >();
 
@@ -60,13 +62,21 @@ function groupQueuedAllocations(portalAllocations: StaffInboxPortalAllocationSna
     const groupKey = buildStaffInboxQueuedGroupKey(allocation.printRequestId, allocation.upcomingShowId);
     const existing = groups.get(groupKey);
 
-    if (!existing || allocation.createdAtMillis < existing.createdAtMillis) {
+    if (!existing) {
       groups.set(groupKey, {
         printRequestId: allocation.printRequestId,
         upcomingShowId: allocation.upcomingShowId,
         requestNameSnapshot: allocation.requestNameSnapshot,
         createdAtMillis: allocation.createdAtMillis,
+        allocations: [allocation],
       });
+      continue;
+    }
+
+    existing.allocations.push(allocation);
+    if (allocation.createdAtMillis < existing.createdAtMillis) {
+      existing.createdAtMillis = allocation.createdAtMillis;
+      existing.requestNameSnapshot = allocation.requestNameSnapshot;
     }
   }
 
@@ -109,6 +119,8 @@ export function deriveStaffInboxItems(input: DeriveStaffInboxItemsInput): StaffI
       group.requestNameSnapshot ||
       "Upcoming show";
 
+    const queuedGlance = buildStaffInboxQueuedGlanceMetrics(group.allocations);
+
     items.push({
       id,
       kind: "portal_queued",
@@ -118,6 +130,7 @@ export function deriveStaffInboxItems(input: DeriveStaffInboxItemsInput): StaffI
       subtitle: `Queued to ${showTitle} — check Queued tab and Show Queue.`,
       printRequestTab: "queued",
       occurredAtMillis: group.createdAtMillis,
+      ...(queuedGlance ? { queuedGlance } : {}),
     });
   }
 

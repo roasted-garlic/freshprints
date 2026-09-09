@@ -19,7 +19,8 @@
   text-align: left;
   white-space: normal;
   width: max-content;
-  z-index: 9999;
+  /* Below Portal nested modals (ack +5 / busy +6); still above page chrome. */
+  z-index: calc(var(--z-modal, 40) + 3);
 }
 
 .hover-bubble-tooltip__bubble.is-portal {

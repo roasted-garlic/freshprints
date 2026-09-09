@@ -6,6 +6,7 @@ import { resolveIntakeHalftoneStaffToggle } from "@fresh-prints/shared/utils/hal
 import { Button } from "../../../shared/components/Button";
 import { Card } from "../../../shared/components/Card";
 import { DangerOverflowMenu } from "../../../shared/components/DangerOverflowMenu";
+import { GlobalSearchField } from "../../../shared/components/GlobalSearchField";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
 import { DesignPreviewLightbox } from "../../designs/components/DesignPreviewLightbox";
 import { buildPrintRequestDeepLinkPath } from "../../print-requests/constants/printRequestRoutes";
@@ -589,62 +590,92 @@ export function CustomerUploadIntakeSection({
         </div>
 
         <div className="customer-upload-intake-panel-body" role="tabpanel">
-          {intake.isLoading && intake.rows.length === 0 ? (
-            <p>Loading {isDonation ? "donations" : "customer uploads"}…</p>
-          ) : intake.rows.length === 0 ? (
-            <p className="customer-upload-intake-empty">
-              {intake.filter === "pending_staff_review"
-                ? isDonation
-                  ? "No donations pending staff review."
-                  : "No uploads pending staff review."
-                : isDonation
-                  ? "No excluded donations."
-                  : "No excluded uploads."}
-            </p>
-          ) : (
-            <div className="customer-upload-intake-layout">
-              <ul className="customer-upload-intake-list">
-                {intake.rows.map((row) => {
-                  const customerMarked = row.halftoneSubmitterResponse?.value === "yes";
-                  return (
-                    <li key={row.id}>
-                      <button
-                        className={`customer-upload-intake-list-item${
-                          intake.selectedId === row.id ? " is-selected" : ""
-                        }`}
-                        onClick={() => {
-                          intake.setSelectedId(row.id);
-                        }}
-                        type="button"
-                      >
-                        <span className="customer-upload-intake-list-title">
-                          {row.originalFilename}
-                        </span>
-                        <span className="customer-upload-intake-list-sub">
-                          {row.customerDisplayName} · {row.technicalStatus}
-                          {customerMarked ? " · customer: halftone" : null}
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-              {intake.selected ? (
-                <IntakeDetail
-                  intake={intake}
-                  isDonation={isDonation}
-                  key={intake.filter}
-                  onPreviewNavigate={(itemId) => {
-                    intake.setSelectedId(itemId);
-                  }}
-                  previewNavigationItems={
-                    previewNavigationItems.length > 1 ? previewNavigationItems : undefined
-                  }
-                  row={intake.selected}
+          <div className="customer-upload-intake-layout">
+            <div className="customer-upload-intake-list-column">
+              <div className="customer-upload-intake-list-search">
+                <GlobalSearchField
+                  clearable
+                  onChange={intake.setSearchQuery}
+                  placeholder="Search name or username…"
+                  value={intake.searchQuery}
                 />
-              ) : null}
+              </div>
+              {intake.isLoading && intake.rows.length === 0 ? (
+                <p>Loading {isDonation ? "donations" : "customer uploads"}…</p>
+              ) : intake.rows.length === 0 ? (
+                <p className="customer-upload-intake-empty">
+                  {intake.searchQuery.trim()
+                    ? isDonation
+                      ? "No donations match that name or username."
+                      : "No uploads match that name or username."
+                    : intake.filter === "pending_staff_review"
+                      ? isDonation
+                        ? "No donations pending staff review."
+                        : "No uploads pending staff review."
+                      : isDonation
+                        ? "No excluded donations."
+                        : "No excluded uploads."}
+                </p>
+              ) : (
+                <ul className="customer-upload-intake-list">
+                  {intake.rows.map((row) => {
+                    const customerMarked = row.halftoneSubmitterResponse?.value === "yes";
+                    return (
+                      <li key={row.id}>
+                        <button
+                          className={`customer-upload-intake-list-item${
+                            intake.selectedId === row.id ? " is-selected" : ""
+                          }`}
+                          onClick={() => {
+                            intake.setSelectedId(row.id);
+                          }}
+                          type="button"
+                        >
+                          <span className="customer-upload-intake-list-title">
+                            {row.originalFilename}
+                          </span>
+                          <span className="customer-upload-intake-list-sub">
+                            {row.customerUsername?.trim()
+                              ? `${row.customerDisplayName} (@${row.customerUsername.trim()}) · ${row.technicalStatus}`
+                              : `${row.customerDisplayName} · ${row.technicalStatus}`}
+                            {customerMarked ? " · customer: halftone" : null}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                  {intake.hasMore ? (
+                    <li className="customer-upload-intake-load-more-item">
+                      <Button
+                        className="customer-upload-intake-load-more"
+                        disabled={intake.isLoadingMore}
+                        onClick={() => intake.loadMore()}
+                        size="sm"
+                        type="button"
+                        variant="secondary"
+                      >
+                        {intake.isLoadingMore ? "Loading…" : "Load more"}
+                      </Button>
+                    </li>
+                  ) : null}
+                </ul>
+              )}
             </div>
-          )}
+            {intake.selected ? (
+              <IntakeDetail
+                intake={intake}
+                isDonation={isDonation}
+                key={`${intake.filter}:${intake.selected.id}`}
+                onPreviewNavigate={(itemId) => {
+                  intake.setSelectedId(itemId);
+                }}
+                previewNavigationItems={
+                  previewNavigationItems.length > 1 ? previewNavigationItems : undefined
+                }
+                row={intake.selected}
+              />
+            ) : null}
+          </div>
         </div>
       </div>
     </Card>

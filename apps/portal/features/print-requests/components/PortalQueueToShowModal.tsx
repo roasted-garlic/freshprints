@@ -38,6 +38,7 @@ import {
   canSubmitPortalShowDestination,
   resolvePortalShowInspectionActivation,
 } from '../utils/portalHistoricalShowInspection';
+import { buildPortalShowPriceCommitmentSummary } from '../utils/buildPortalShowPriceCommitmentSummary';
 
 function waitForCapacityBarAnimation(): Promise<void> {
   return new Promise((resolve) => {
@@ -147,6 +148,17 @@ export function PortalQueueToShowModal({
   const acknowledgmentCopy = useMemo(
     () => buildPortalBiddingAcknowledgmentCopy(),
     [],
+  );
+
+  const priceCommitmentSummary = useMemo(
+    () =>
+      buildPortalShowPriceCommitmentSummary(items, (item) =>
+        remainingUnallocatedQuantityForItem(
+          item.quantity,
+          allocatedByItemId.get(item.id) ?? 0,
+        ),
+      ),
+    [allocatedByItemId, items],
   );
 
   const showPickerOptions = useMemo(
@@ -649,6 +661,8 @@ export function PortalQueueToShowModal({
         onConfirm={() => {
           void handleConfirmAcknowledgment();
         }}
+        priceCommitmentSummary={priceCommitmentSummary}
+        requestName={printRequest.name}
       />
 
       <PortalBusyOverlay
