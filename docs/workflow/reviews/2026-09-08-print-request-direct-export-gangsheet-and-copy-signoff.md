@@ -18,7 +18,7 @@
 
 The owner-approved Print Request production workflow is complete and signed off for DEV. Eligible Customer and Internal requests expose direct Export Images, Export x(Qty), Standard Generate Gang Sheet, and Copy actions; Working and Editing requests retain only their existing Add to Show / Add to Internal Gangsheet actions. Global Gang Sheet Settings now drive the shared layout, four width-based price tiers, weights, request totals, card summaries, and gang-sheet output surfaces.
 
-Owner DEV QA passed. The authorized DEV Firestore Rules and callable deployment evidence is preserved below. Commit/push, Studio publish, and production promotion remain separate owner checkpoints.
+Owner DEV QA passed. The authorized DEV Firestore Rules and callable deployment evidence is preserved below. Commit/push is complete; Studio publish and production promotion remain separate owner checkpoints.
 
 ## Changes Delivered
 
@@ -76,9 +76,9 @@ No Storage Rules, indexes, migrations, backfills, Portal deployment, unauthorize
 - Migration or backfill required: **NO**.
 - Studio publish performed: **NO**.
 - Production touched: **NO**.
-- Commit/push performed during this closeout: **NO**.
+- Commit/push performed: **YES** — `ab319468` pushed normally to `origin/development`.
 - Autonomous remains **OFF**; Automatic Pass 2 remains **PARKED**; WS6 was not started.
 
 ## Final Status
 
-**approved** — Owner DEV QA PASS recorded and the managed goal is closed. The next checkpoint is owner authorization to commit and push the closed goal.
+**approved** — Owner DEV QA PASS recorded, the managed goal is closed, and commit `ab319468` is pushed to `origin/development`. The next checkpoint is owner selection of the next managed goal.

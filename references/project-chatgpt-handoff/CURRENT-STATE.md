@@ -10,11 +10,11 @@
 | Parent | `Fresh Prints Studio / Print Request workflow` |
 | Active child phase | none |
 | Closed goal | `print-request-direct-export-gangsheet-and-copy` |
-| Signoff | **approved** — Owner DEV QA **PASS** (2026-09-08); commit/push and Studio publish remain separately gated |
+| Signoff | **approved** — Owner DEV QA **PASS** (2026-09-08); commit/push `ab319468` complete; Studio publish remains separately gated |
 | Related closed goal | `ai-processing-live-review-auto-process-and-ui-polish` |
 | Autonomous | **OFF** (`shadow`) |
 | Production | untouched |
-| Commit/push | not performed for this goal |
+| Commit/push | `ab319468` pushed to `origin/development`; no force push |
 
 ## Print Request goal signoff — CLOSED
 
@@ -34,12 +34,13 @@ Owner DEV QA is **PASS** and the final DEV disposition is **approved**. The mana
   errors.
 - Storage Rules, indexes, migration/backfill, Portal, Studio publish, and production: **NO**.
 - Autonomous: **OFF**. Automatic Pass 2: **PARKED**. WS6: **NOT STARTED**.
+- Commit/push: **COMPLETE** — `ab319468` pushed normally to `origin/development`.
 
 Signoff artifact:
 `docs/workflow/reviews/2026-09-08-print-request-direct-export-gangsheet-and-copy-signoff.md`
 
 Next checkpoint:
-`[NEEDS OWNER AUTHORIZATION: COMMIT/PUSH CLOSED PRINT REQUEST GOAL]`
+`[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]`
 
 ### Closed goal implementation history
 
@@ -60,8 +61,9 @@ full-width normal-height Gang Sheet Settings button. The authorized DEV Firestor
 Implementation Review:
 `docs/workflow/reviews/2026-09-08-print-request-direct-export-gangsheet-and-copy-implementation-review.md`
 
-Historical checkpoint before signoff: authorize Studio publish if desired. Commit, push, and
-production remain separately gated. Production is untouched; provider calls remain 0.
+Historical checkpoint before signoff: authorize Studio publish if desired. Commit and push are
+now complete; Studio publish and production remain separately gated. Production is untouched;
+provider calls remain 0.
 
 Test-only Rules checkpoint: owner authorization was received, but read-only Java preflight found no
 compatible JDK (`java -version` unavailable, no `where.exe java`, empty `JAVA_HOME`, and no
@@ -86,8 +88,8 @@ no migration unless mechanically required. New four-tier fields require narrow e
 allowlist updates. Legacy large-tier 0.75 oz is the resolved equivalent for non-Pocket tiers,
 including Extra Oversized.
 
-Required next marker after signoff:
-`[NEEDS OWNER AUTHORIZATION: COMMIT/PUSH CLOSED PRINT REQUEST GOAL]`
+Required next marker after signoff and push:
+`[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]`
 
 ### Authorized DEV deployment checkpoint
 

@@ -388,7 +388,7 @@ The exact DEV Rules and `copyStudioPrintRequest` deployment evidence, Rules 169/
 regression results, build/lint results, and prohibited-surface disposition are preserved in that
 signoff. The next checkpoint is:
 
-`[NEEDS OWNER AUTHORIZATION: COMMIT/PUSH CLOSED PRINT REQUEST GOAL]`
+`[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]`
 
 ### Owner follow-up: keep four-tier summaries on queue cards only — local only
 

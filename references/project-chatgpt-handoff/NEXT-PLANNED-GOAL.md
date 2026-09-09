@@ -9,7 +9,8 @@
 - The original request Export/Generate/Copy implementation, the owner-authorized global Gang
   Sheet Settings/four-tier amendment, and the requested Settings UX refinement are complete and
   validated. The authorized DEV Rules/Function deployment is preserved as completed evidence.
-- Commit/push, Studio publish, and production remain separately gated; no new goal is selected.
+- Commit/push is complete in `ab319468` on `origin/development`; Studio publish and production
+  remain separately gated; no new goal is selected.
 - Direct Export/Generate/Copy buttons are hidden on Working and Editing requests; existing Add to
   Show/Internal Gangsheet actions remain available there.
 - Studio publish and production remain separately gated.
@@ -50,10 +51,10 @@ Storage Rules, indexes, migration, Portal, Studio, or production deployment occu
   Studio build remains blocked by documented unrelated baseline TypeScript errors. The latest
   totals-modal polish renders each bold tier label with its settings range inline in parentheses,
   with the count on the next line; modal contract tests passed 6/6.
-  Owner DEV QA then passed and the goal was signed off. The next required step is commit/push
-  authorization for the closed goal; Studio publish and production remain separate checkpoints.
+  Owner DEV QA then passed, the goal was signed off, and commit/push completed as `ab319468`.
+  Studio publish and production remain separate checkpoints.
 
-`[NEEDS OWNER AUTHORIZATION: COMMIT/PUSH CLOSED PRINT REQUEST GOAL]`
+`[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]`
 
 Parent program:
 `smart-catalog-intelligence-completion-and-legacy-tag-retirement`
