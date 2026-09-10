@@ -2,6 +2,18 @@
 
 > Full log: `docs/project/DECISIONS.md` — newest ADRs first.
 
+### ADR-FP-188: Server-authored Print Request lifecycle evidence and ordering mirror (DEV closed 2026-09-09)
+
+- Lifecycle events are Admin-trigger-only; `lastLifecycleActivityAt` and its stable tie-break
+  mirrors are server-maintained and never client lifecycle authority.
+- User Info cards use indexed newest-activity ordering; Details is **newest → oldest**. The
+  compatibility reader remains available as rollback.
+- DEV mirror backfill is complete with 8/8 eligible coverage and both indexes READY. Owner DEV QA
+  passed; final disposition is **approved_with_notes**.
+- Two historical duplicate conversion events are `SAFE_TO_LEAVE_AS_HISTORICAL_DUPLICATE`; no
+  ordering impact or cleanup is required. Production, publish, commit, and push remain separately
+  gated.
+
 ### Current operational boundary — legacy tag retirement (2026-09-09)
 
 - Active Portal/Studio catalog discovery is Smart Profile + category + dedicated Halftone; legacy

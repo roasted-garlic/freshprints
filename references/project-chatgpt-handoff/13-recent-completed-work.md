@@ -1,5 +1,51 @@
 # Recent Completed Work
 
+## 2026-09-09 - User Info Print Request lifecycle activity ordering — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `user-info-print-request-lifecycle-activity-ordering` |
+| Status | **CLOSED** — Signoff **approved_with_notes** |
+| Owner DEV QA | **PASS** (2026-09-09) for `PRINT REQUEST LIFECYCLE INDEXED HISTORY READER` |
+| Accepted behavior | Lifecycle activity drives card order; one logical card per request; current show context and historical removal/show context reconcile; Details is **newest → oldest**; remove → Editing → re-add succeeds without permission error or partial queue |
+| Reader | Indexed reader enabled in local Studio source; compatibility reader preserved as rollback |
+| DEV evidence | 8/8 (100%) reader-eligible mirror coverage; ordering and Details indexes READY; post-backfill dry-run proposed 0 writes; mirror-only trigger corrective deployed; no post-corrective mirror-only lifecycle events observed |
+| Validation | Indexed lifecycle/reader focused suite **24/24**; trigger/allocation/backfill corrective suite **14/14**; latest full Rules **174/174**; Functions build, targeted lint, and `git diff --check` PASS |
+| Notes | Two historical duplicate conversion events are `SAFE_TO_LEAVE_AS_HISTORICAL_DUPLICATE`; no mirror-order impact, Details deduplication prevents a duplicate visible row, and no cleanup is required. Studio typecheck retains unrelated baseline failures. |
+| Scope boundary | No backfill rerun, event repair, Rules/index change, Firebase deploy, Studio publish, Portal deployment, production action, commit, or push in the signoff turn |
+| Signoff | `docs/workflow/reviews/2026-09-09-user-info-print-request-lifecycle-activity-ordering-signoff.md` |
+| Next checkpoint | `[NEEDS OWNER AUTHORIZATION: COMMIT/PUSH CLOSED PRINT REQUEST LIFECYCLE GOAL]` |
+
+## 2026-09-09 - Studio Editing → Re-add Show Queue corrective — DEV QA PASS (historical corrective checkpoint)
+
+| Item | Status |
+|------|--------|
+| Goal | `user-info-print-request-lifecycle-activity-ordering` (parent later closed by final signoff) |
+| Corrective | `studio-editing-readd-show-queue-permissions-corrective` |
+| Owner DEV re-QA | **PASS** (2026-09-09) |
+| Verified | Remove→Editing; re-add without permission error; no partial queue; exits Editing; Add to Show and Studio reconciliation correct |
+| Deployment | `allocateStudioPrintRequestToShow` ACTIVE in `fresh-prints-dev/us-central1`; Rules release `bc9e3e7a-6597-4228-8aa7-e9f006388a26` |
+| Evidence | `docs/workflow/reviews/2026-09-09-studio-editing-readd-show-queue-corrective-dev-qa.md` |
+| Scope boundary | No backfill, indexed-reader activation, additional deployment, Studio/Portal publish, production action, data repair, commit, or push |
+| Follow-up | Owner-authorized mirror APPLY wrote 8 requests; post-apply mirror dry-run proposed 0; 3 trusted tuples preserved; 2 unexpected events documented; mirror-only trigger corrective deployed as `onprintrequestlifecyclerequestwritten-00002-fuy`; indexed reader enabled locally with 24/24 focused tests passing |
+| Next checkpoint | Indexed-reader Owner DEV QA **PASS** and final lifecycle signoff recorded above |
+
+## 2026-09-09 - Portal admin daily Show Queue — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `portal-admin-daily-show-queue` |
+| Status | **CLOSED** — Signoff **approved_with_notes** |
+| Owner DEV QA | **PASS** (2026-09-09) |
+| Signoff | `docs/workflow/reviews/2026-09-09-portal-admin-daily-show-queue-signoff.md` |
+| Delivered | Isolated owner/admin Portal Show Queue dashboard, next-upcoming-show default, capacity/request summaries, mobile sidebar/drawer, and lazy View Designs modal |
+| DEV deploy | `getPortalAdminUpcomingShowQueueDashboard` `…-00003-fug` and `getPortalAdminShowQueueRequestDesigns` `…-00005-fad`, ACTIVE in `fresh-prints-dev/us-central1` with latest traffic |
+| Validation | Focused 33/33; admin lifecycle 13/13; designs performance 3/3; Portal typecheck, Functions build, targeted lint, and deploy prebuild PASS |
+| Scope boundary | No Rules, indexes, Storage Rules, migration/backfill, data, Portal App Hosting, Studio publish, or production action |
+| Notes | Portal production build retains the documented Windows `.next/trace` EPERM baseline; Functions Node 20 requires a future compatibility migration |
+| Commit/push | **COMPLETE** — `908d9123` previously pushed to `origin/development`; signoff docs are uncommitted |
+| Next checkpoint | `user-info-print-request-lifecycle-activity-ordering` — Plan + Formal Review only |
+
 ## 2026-09-09 - Legacy tag operational retirement and Smart Profile search parity — CLOSED (DEV)
 
 | Item | Status |

@@ -226,6 +226,25 @@ export interface AllocatePrintRequestItemInput {
   overrideCapacity?: boolean;
 }
 
+export interface AllocateStudioPrintRequestToShowLeg {
+  upcomingShowId: string;
+  quantitiesByItemId: Record<string, number>;
+}
+
+export interface AllocateStudioPrintRequestToShowInput {
+  printRequestId: string;
+  legs: AllocateStudioPrintRequestToShowLeg[];
+}
+
+export interface AllocateStudioPrintRequestToShowResult {
+  printRequestId: string;
+  allocationIds: string[];
+  totalAllocatedQuantity: number;
+  remainingUnallocatedQuantity: number;
+  isFullyQueued: boolean;
+  repairedExistingAllocationState: boolean;
+}
+
 interface UpcomingShowDocumentData extends DocumentData {
   id?: unknown;
   source?: unknown;
@@ -1588,6 +1607,28 @@ export const upcomingShowService = {
 
     const createdSnapshot = await getDoc(allocationRef);
     return mapShowAllocationData(createdSnapshot.id, createdSnapshot.data() as ShowAllocationDocumentData);
+  },
+
+  /**
+   * Atomically allocates a complete Add-to-Show plan and activates the request. This is the
+   * trusted staff path used by Studio re-add/editing flows; the legacy per-item client writer
+   * remains available only for narrower maintenance callers.
+   */
+  async allocateStudioPrintRequestToShow(
+    caller: User,
+    input: AllocateStudioPrintRequestToShowInput,
+  ): Promise<AllocateStudioPrintRequestToShowResult> {
+    if (!permissionService.canManageUpcomingShows(caller)) {
+      throw new Error("You do not have permission to manage show allocations.");
+    }
+
+    const callable = callTracedFunction<
+      AllocateStudioPrintRequestToShowInput,
+      AllocateStudioPrintRequestToShowResult
+    >("allocateStudioPrintRequestToShow", {
+      source: "upcomingShowService.allocateStudioPrintRequestToShow",
+    });
+    return callable(input);
   },
 
   async updateShowAllocationStatus(

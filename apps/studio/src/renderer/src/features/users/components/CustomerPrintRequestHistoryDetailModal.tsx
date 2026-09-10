@@ -9,6 +9,7 @@ import type {
   PrintRequestHistoryCardSummary,
   PrintRequestHistoryDetail,
 } from "../types/customerPrintRequestHistory.types";
+import { formatShowDateTimeLabel } from "@fresh-prints/shared/utils/showDateTimeDisplay";
 
 interface CustomerPrintRequestHistoryDetailModalProps {
   detail: PrintRequestHistoryDetail | null;
@@ -24,7 +25,7 @@ function formatAuditTimestamp(value: number): string {
     return "Unknown time";
   }
 
-  return new Date(value).toLocaleString();
+  return formatShowDateTimeLabel(new Date(value));
 }
 
 function getStatusBadgeVariant(
@@ -157,6 +158,11 @@ function CustomerPrintRequestHistoryDetailContent({
                 <strong>{event.label}</strong>
                 <span>{formatAuditTimestamp(event.occurredAtMillis)}</span>
               </div>
+              {event.showScheduledStartAtMillis ? (
+                <span className="customer-print-request-detail-event-schedule">
+                  Scheduled {formatAuditTimestamp(event.showScheduledStartAtMillis)}
+                </span>
+              ) : null}
               {event.detail ? <p>{event.detail}</p> : null}
             </li>
           ))}

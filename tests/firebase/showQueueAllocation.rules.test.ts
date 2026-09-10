@@ -262,6 +262,146 @@ describe("Show Queue allocation — allocatePrintRequestItem sequence", () => {
     );
   });
 
+  it("allows status-only activation on a realistic post-unqueue customer request", async () => {
+    await environment.withSecurityRulesDisabled(async (context) => {
+      await setDoc(
+        doc(context.firestore(), "printRequests", CUSTOMER_REQUEST_ID),
+        buildPrintRequestDoc({
+          queueTab: "editing",
+          parksDraftPrintRequestId: "draft-customer-1",
+          showQueueBiddingAcknowledgment: {
+            accepted: true,
+            acceptedAt: Timestamp.now(),
+            acceptedByUid: OWNER_UID,
+            version: 1,
+            upcomingShowId: MANUAL_SHOW_ID,
+          },
+          lastLifecycleActivityAt: Timestamp.now(),
+          lastLifecycleActivityEventId: "request-customer:editing_started:phase-0",
+          lastLifecycleActivityPrecedence: 40,
+        }),
+      );
+    });
+
+    const firestore = environment.authenticatedContext(OWNER_UID).firestore();
+    await assertSucceeds(
+      updateDoc(doc(firestore, "printRequests", CUSTOMER_REQUEST_ID), {
+        status: "active",
+        updatedBy: OWNER_UID,
+        updatedAt: Timestamp.now(),
+      }),
+    );
+  });
+
+  it("allows Studio-shaped activation when post-unqueue fields are unchanged", async () => {
+    await environment.withSecurityRulesDisabled(async (context) => {
+      await setDoc(
+        doc(context.firestore(), "printRequests", CUSTOMER_REQUEST_ID),
+        buildPrintRequestDoc({
+          queueTab: "editing",
+          parksDraftPrintRequestId: "draft-customer-2",
+          showQueueBiddingAcknowledgment: {
+            accepted: true,
+            acceptedAt: Timestamp.now(),
+            acceptedByUid: OWNER_UID,
+            version: 1,
+            upcomingShowId: MANUAL_SHOW_ID,
+          },
+          lastLifecycleActivityAt: Timestamp.now(),
+          lastLifecycleActivityEventId: "request-customer:editing_started:phase-0-studio",
+          lastLifecycleActivityPrecedence: 40,
+        }),
+      );
+    });
+
+    const firestore = environment.authenticatedContext(OWNER_UID).firestore();
+    await assertSucceeds(
+      updateDoc(doc(firestore, "printRequests", CUSTOMER_REQUEST_ID), {
+        name: "customer-CR001",
+        customerId: "customer-1",
+        isInternal: false,
+        status: "active",
+        updatedBy: OWNER_UID,
+        updatedAt: Timestamp.now(),
+      }),
+    );
+  });
+
+  it("allows activation after a trusted lifecycle mirror advancement", async () => {
+    await environment.withSecurityRulesDisabled(async (context) => {
+      await setDoc(
+        doc(context.firestore(), "printRequests", CUSTOMER_REQUEST_ID),
+        buildPrintRequestDoc({
+          queueTab: "editing",
+          parksDraftPrintRequestId: "draft-customer-3",
+          lastLifecycleActivityAt: Timestamp.fromMillis(100),
+          lastLifecycleActivityEventId: "request-customer:editing_started:phase-0-race",
+          lastLifecycleActivityPrecedence: 40,
+        }),
+      );
+      await updateDoc(doc(context.firestore(), "printRequests", CUSTOMER_REQUEST_ID), {
+        lastLifecycleActivityAt: Timestamp.fromMillis(200),
+        lastLifecycleActivityEventId: "request-customer:added_to_show:phase-0-race",
+        lastLifecycleActivityPrecedence: 60,
+      });
+    });
+
+    const firestore = environment.authenticatedContext(OWNER_UID).firestore();
+    await assertSucceeds(
+      updateDoc(doc(firestore, "printRequests", CUSTOMER_REQUEST_ID), {
+        status: "active",
+        updatedBy: OWNER_UID,
+        updatedAt: Timestamp.now(),
+      }),
+    );
+  });
+
+  it("denies client lifecycle mirror mutation during editing activation", async () => {
+    await environment.withSecurityRulesDisabled(async (context) => {
+      await setDoc(
+        doc(context.firestore(), "printRequests", CUSTOMER_REQUEST_ID),
+        buildPrintRequestDoc({
+          queueTab: "editing",
+          parksDraftPrintRequestId: "draft-customer-tamper",
+          lastLifecycleActivityAt: Timestamp.now(),
+          lastLifecycleActivityEventId: "request-customer:editing_started:phase-0-tamper",
+          lastLifecycleActivityPrecedence: 40,
+        }),
+      );
+    });
+
+    const firestore = environment.authenticatedContext(OWNER_UID).firestore();
+    await assertFails(
+      updateDoc(doc(firestore, "printRequests", CUSTOMER_REQUEST_ID), {
+        status: "active",
+        updatedBy: OWNER_UID,
+        updatedAt: Timestamp.now(),
+        lastLifecycleActivityEventId: "client-spoofed-event",
+      }),
+    );
+  });
+
+  it("allows re-adding an edited request after lifecycle mirror fields are present", async () => {
+    await environment.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "printRequests", CUSTOMER_REQUEST_ID), buildPrintRequestDoc({
+        lastLifecycleActivityAt: Timestamp.now(),
+        lastLifecycleActivityEventId: "request-customer:editing_started:edit-1",
+        lastLifecycleActivityPrecedence: 40,
+      }));
+    });
+
+    const firestore = environment.authenticatedContext(OWNER_UID).firestore();
+    await assertSucceeds(
+      runAllocatePrintRequestItemSequence(
+        firestore,
+        OWNER_UID,
+        MANUAL_SHOW_ID,
+        CUSTOMER_REQUEST_ID,
+        "alloc-after-editing-1",
+      ),
+    );
+  });
+
   it("denies customer allocation create", async () => {
     const firestore = environment.authenticatedContext(CUSTOMER_UID).firestore();
     await assertFails(

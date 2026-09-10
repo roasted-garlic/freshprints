@@ -1,5 +1,29 @@
 # Fresh Prints Roadmap
 
+> 2026-09-09: **User Info Print Request lifecycle activity ordering — CLOSED (DEV)** — Goal
+> `user-info-print-request-lifecycle-activity-ordering` **DONE** with final disposition
+> **approved_with_notes** after Owner DEV QA **PASS** for the indexed history reader. Lifecycle
+> events/mirrors, the accepted Studio Editing→re-add and mirror-only trigger correctives, bounded
+> DEV mirror backfill, and local indexed-reader activation are complete; reader coverage is 8/8 and
+> both lifecycle indexes are READY. Details is **newest → oldest**. Two historical duplicate
+> conversion events remain safely documented with no ordering impact or cleanup required. No
+> commit/push, Studio publish, Portal deployment, or production action occurred in the signoff
+> turn. FreshForge **IDLE**. Signoff:
+> `docs/workflow/reviews/2026-09-09-user-info-print-request-lifecycle-activity-ordering-signoff.md`.
+> Next: `[NEEDS OWNER AUTHORIZATION: COMMIT/PUSH CLOSED PRINT REQUEST LIFECYCLE GOAL]`.
+
+> 2026-09-09: **Portal admin daily Show Queue — CLOSED (DEV)** — Goal
+> `portal-admin-daily-show-queue` **DONE** (Signoff **approved_with_notes**). Owner DEV QA
+> **PASS**. The read-only mobile-first Portal admin dashboard (`/admin/show-queue`) delivers
+> isolated owner/admin access, upcoming-show selection, capacity and request summaries, and lazy
+> authorized design-preview viewing. Exactly two reviewed Functions were deployed to
+> `fresh-prints-dev`: `getPortalAdminUpcomingShowQueueDashboard`
+> (`…-00003-fug`) and `getPortalAdminShowQueueRequestDesigns` (`…-00005-fad`), both ACTIVE
+> on latest traffic. No Rules, indexes, hosting, Studio, data, or production action. The
+> documented Windows Portal build EPERM baseline remains a separate follow-up. Signoff:
+> `docs/workflow/reviews/2026-09-09-portal-admin-daily-show-queue-signoff.md`. Next:
+> `user-info-print-request-lifecycle-activity-ordering` Plan + Formal Review only.
+
 > 2026-09-09: **Legacy tag operational retirement + Smart Profile search parity — CLOSED (DEV)** — Goal `legacy-tag-operational-retirement-and-smart-profile-search-parity` **DONE** (Signoff **approved**). Owner DEV QA **PASS**. Portal/Studio active tag authority, tag search corpus, and tag facets retired; Smart Profile search and eight facets retained; exactly six reviewed Functions deployed to `fresh-prints-dev`; DEV Algolia reconcile processed 350 ready records. The deterministic read-only corrective audit found 20 former tag-name/alias samples with no preserved Ready-design baseline and no material regression. Historical `design.tags`, `tags/*`, taxonomy compatibility, Rules/indexes, and deployed tag-trigger/archive Functions remain preserved. Production, Portal/Studio publish, and physical cleanup remain **NOT AUTHORIZED**. Commit/push **COMPLETE** as `1c43f6e1` on `origin/development`. Autonomous **OFF**; Pass 2 **PARKED**; WS6 **NOT STARTED**. FreshForge **IDLE**. Signoff: `docs/workflow/reviews/2026-09-09-legacy-tag-operational-retirement-and-smart-profile-search-parity-signoff.md`. Next: `[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]`.
 
 > 2026-09-08: **Portal show price commitment acknowledgment — CLOSED** — Goal `portal-show-price-commitment-ack` **DONE** (Signoff **approved_with_notes**). Review Show total + breakdown; Add to Show ack `portal-bidding-ack-v4`; Show Prices sidebar/FAQ/Show Limits; owner visual QA **PASS**. Functions DEV redeploy for live v4 **NOT AUTHORIZED** by this signoff. Commit/push and production **NOT AUTHORIZED**. FreshForge **IDLE**. Signoff: `docs/workflow/reviews/2026-09-08-portal-show-price-commitment-ack-signoff.md`.

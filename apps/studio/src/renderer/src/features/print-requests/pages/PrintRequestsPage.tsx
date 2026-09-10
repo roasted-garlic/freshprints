@@ -796,6 +796,14 @@ export function PrintRequestsPage() {
     visibleSelectedRequest?.id,
   ]);
 
+  const reconcileAddToShowFailure = useCallback(async () => {
+    await Promise.all([
+      reloadAllAllocationData({ silent: true }),
+      reloadPrintRequests({ silent: true }),
+      refreshAllocationHydration(),
+    ]);
+  }, [refreshAllocationHydration, reloadAllAllocationData, reloadPrintRequests]);
+
   useShellHeaderConfig(
     useMemo(
       () => ({
@@ -2819,6 +2827,7 @@ export function PrintRequestsPage() {
           items={requestItems}
           onAdded={handleAddedToShow}
           onClose={() => setIsAddToShowModalOpen(false)}
+          onReconcile={reconcileAddToShowFailure}
           printRequest={visibleSelectedRequest}
         />
       ) : null}

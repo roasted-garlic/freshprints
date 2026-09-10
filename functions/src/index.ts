@@ -26,6 +26,7 @@ export { listPortalAllocatableShows } from "./listPortalAllocatableShows";
 export { listPortalPublicShows } from "./listPortalPublicShows";
 export { listPortalShowCatalogDesigns } from "./listPortalShowCatalogDesigns";
 export { queuePortalPrintRequestToShow } from "./queuePortalPrintRequestToShow";
+export { allocateStudioPrintRequestToShow } from "./allocateStudioPrintRequestToShow";
 export { unqueuePortalPrintRequestFromShow } from "./unqueuePortalPrintRequestFromShow";
 export { unqueueStudioCustomerPrintRequestFromShow } from "./unqueueStudioCustomerPrintRequestFromShow";
 export { completeStaffGangSheetAndOpenNext } from "./completeStaffGangSheetAndOpenNext";
@@ -186,6 +187,8 @@ export {
   onShowAllocationQueueTabInputWritten,
 } from "./onPrintRequestQueueTabInputsWritten";
 export { onPrintRequestStatusQueueTabInputWritten } from "./onPrintRequestStatusQueueTabInputWritten";
+export { onPrintRequestLifecycleRequestWritten } from "./onPrintRequestLifecycleRequestWritten";
+export { onPrintRequestLifecycleAllocationWritten } from "./onPrintRequestLifecycleAllocationWritten";
 export { backfillPrintRequestQueueTab } from "./backfillPrintRequestQueueTab";
 export {
   onCustomerFavoriteCreated,

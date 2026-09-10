@@ -1146,6 +1146,10 @@ export interface PrintRequest {
   convertedFromCustomerRequestId?: string;
   convertedAt?: Timestamp;
   convertedBy?: string;
+  /** Server-authored lifecycle ordering mirror; absent on legacy rows until compatibility backfill. */
+  lastLifecycleActivityAt?: Timestamp;
+  lastLifecycleActivityEventId?: string;
+  lastLifecycleActivityPrecedence?: number;
   /**
    * Continuable parking (ADR-FP-071 amend 2026-09-02). Admin SDK / trusted callables only.
    * Parked draft: parkedByEditingRequestId + parkedAt. Editing PR: parksDraftPrintRequestId.
@@ -1159,6 +1163,19 @@ export interface PrintRequest {
   updatedAt: Timestamp;
 }
 ```
+
+## Print Request Lifecycle Events
+
+Collection: `printRequestLifecycleEvents/{eventId}`
+
+Lifecycle events are immutable, server-authored forward evidence for request and allocation
+transitions. The event ID is deterministic from the request, event type, source, and source change,
+so retries are idempotent. Each event stores `occurredAt`, causal `precedence`, source/source ID,
+optional show snapshot (`upcomingShowId`, title, scheduled start), and optional allocation linkage.
+Staff may read this collection through the Studio history service; clients cannot create, update, or
+delete events. The request mirror fields above provide the same deterministic activity clock for
+card display and indexed ordering. Historical mirror values are backfilled separately and do not
+invent forward events.
 
 Portal customers must acknowledge show / personal-bin pricing understanding before signup account create and again before each Add to Show. Signup ack lives on `users/{uid}.portalBiddingAcknowledgments.signup`; queue ack is stored on the print request (above) and mirrored to `users/{uid}.portalBiddingAcknowledgments.lastQueueToShow`. Version constant: `portal-bidding-ack-v4`. Portal displays estimated show totals from shared default four-tier gang-sheet pricing (not a Portal charge).
 
@@ -1881,8 +1898,11 @@ appears in the list.
 Allocates some or all of a Print Request item's quantity to a show. A Print Request may be split across
 multiple shows when it exceeds a single show's remaining capacity — the same `printRequestItemId` can
 have multiple `showAllocations` records across different shows. Each allocation is a
-snapshot-plus-reference created via `upcomingShowService.allocatePrintRequestItem()` — it never mutates
-the source `printRequestItems`, `printRequests`, or `designs` documents. Production status
+snapshot-plus-reference. Portal creates a complete request through
+`queuePortalPrintRequestToShow`; Studio Add-to-Show/re-add creates a complete remaining plan through
+the trusted `allocateStudioPrintRequestToShow` transaction (the legacy per-item client writer is
+not the primary Add-to-Show path). Neither flow mutates the source `printRequestItems` or `designs`
+documents. Production status
 (`pending` → `queued` → `in_progress` → `printed`/`done`/`canceled`) lives only on `showAllocations`;
 **`designs.status` must never receive a production write.**
 
@@ -1965,8 +1985,8 @@ Working/Queued/Printed list tabs are derived the same way, via
 
 `upcomingShows.allocatedQuantity` is a denormalized total that must always be **recomputed from the
 show's non-canceled `showAllocations`, never incrementally adjusted**, whenever an allocation is added
-or removed. `upcomingShowService.recalculateShowAllocatedQuantity()` is the single client
-implementation of this; trusted Functions move/recovery paths recompute inside their transactions.
+or removed. `upcomingShowService.recalculateShowAllocatedQuantity()` is the client maintenance
+implementation; trusted Functions, including Studio Add-to-Show, reconcile inside their transactions.
 
 ### Normal Show Queue MOVE (ADR-FP-157)
 

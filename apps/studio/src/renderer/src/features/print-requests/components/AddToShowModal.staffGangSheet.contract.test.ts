@@ -52,3 +52,11 @@ test("AddToShowModal calendar lists only open allocatable shows", () => {
   assert.match(modalSource, /const calendarShows = useMemo\(\s*\(\) => allocatableShows\.filter/);
   assert.doesNotMatch(modalSource, /pastWindowStart/);
 });
+
+test("AddToShowModal submits one complete trusted plan and reconciles failures", () => {
+  assert.match(modalSource, /allocateStudioPrintRequestToShow/);
+  assert.doesNotMatch(modalSource, /for \(const \[index, step\] of steps\.entries\(\)/);
+  assert.match(modalSource, /onReconcile\?:/);
+  assert.match(modalSource, /await onReconcile\?\.\(\)/);
+  assert.match(modalSource, /remainingItems\.length > 0 && !canConfirmFullFitDirectly/);
+});

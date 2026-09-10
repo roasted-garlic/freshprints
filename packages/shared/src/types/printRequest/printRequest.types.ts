@@ -67,6 +67,12 @@ export interface PrintRequest {
   convertedFromCustomerRequestId?: string;
   convertedAt?: Timestamp;
   convertedBy?: string;
+  /** Server-maintained lifecycle ordering mirror; never a client lifecycle authority. */
+  lastLifecycleActivityAt?: Timestamp;
+  /** Stable tie-break for the lifecycle ordering mirror. */
+  lastLifecycleActivityEventId?: string;
+  /** Causal tie-break for same-timestamp lifecycle activity. */
+  lastLifecycleActivityPrecedence?: number;
   /** Server-authored: ID of the editing request that parked this draft. */
   parkedByEditingRequestId?: string;
   /** Server-authored: timestamp when this draft was parked. */

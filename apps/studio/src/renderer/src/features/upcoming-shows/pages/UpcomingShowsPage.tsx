@@ -2749,6 +2749,9 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
             await Promise.all([reloadUpcomingShows(), reloadAllocations()]);
           }}
           onClose={closeAddRequestModal}
+          onReconcile={async () => {
+            await Promise.all([reloadUpcomingShows({ silent: true }), reloadAllocations()]);
+          }}
           printRequest={addRequestDetails.printRequest}
         />
       ) : null}

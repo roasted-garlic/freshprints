@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import type { Customer } from "@fresh-prints/shared/types/customer/customer.types";
 import type { PrintRequest } from "@fresh-prints/shared/types/printRequest/printRequest.types";
+import type { PrintRequestLifecycleEvent } from "@fresh-prints/shared/types/printRequest/printRequestLifecycle.types";
 import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/showAllocation.types";
 import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
 import { Timestamp } from "firebase/firestore";
@@ -15,6 +16,8 @@ import {
   buildShowContextForRequest,
   comparePrintRequestHistorySummaries,
   dedupePrintRequestsById,
+  formatPrintRequestCardCreatedLabel,
+  formatPrintRequestCardLastUpdatedLabel,
   sortPrintRequestHistorySummaries,
 } from "./buildPrintRequestHistoryCard";
 import { batchFirestoreInValues, resolveLogicalCustomerIds } from "./resolveLogicalCustomerIds";
@@ -110,7 +113,7 @@ describe("batchFirestoreInValues", () => {
 });
 
 describe("sortPrintRequestHistorySummaries", () => {
-  it("orders newest activity first using updatedAt then createdAt", () => {
+  it("orders newest activity first using the lifecycle clock", () => {
     const sorted = sortPrintRequestHistorySummaries([
       buildPrintRequestHistoryCardSummary({
         request: buildRequest({
@@ -118,6 +121,7 @@ describe("sortPrintRequestHistorySummaries", () => {
           name: "roasted_garlic-CR004",
           createdAt: Timestamp.fromMillis(100),
           updatedAt: Timestamp.fromMillis(100),
+          lastLifecycleActivityAt: Timestamp.fromMillis(100),
         }),
         customer: buildCustomer(),
         allocations: [],
@@ -130,6 +134,7 @@ describe("sortPrintRequestHistorySummaries", () => {
           name: "roasted_garlic-CR001",
           createdAt: Timestamp.fromMillis(300),
           updatedAt: Timestamp.fromMillis(300),
+          lastLifecycleActivityAt: Timestamp.fromMillis(300),
         }),
         customer: buildCustomer(),
         allocations: [],
@@ -142,6 +147,7 @@ describe("sortPrintRequestHistorySummaries", () => {
           name: "roasted_garlic-CR008",
           createdAt: Timestamp.fromMillis(200),
           updatedAt: Timestamp.fromMillis(250),
+          lastLifecycleActivityAt: Timestamp.fromMillis(250),
         }),
         customer: buildCustomer(),
         allocations: [],
@@ -159,16 +165,28 @@ describe("sortPrintRequestHistorySummaries", () => {
 });
 
 describe("dedupePrintRequestsById", () => {
-  it("dedupes duplicate ids and keeps the newest updatedAt", () => {
+  it("dedupes duplicate ids and keeps the newest lifecycle activity", () => {
     const deduped = dedupePrintRequestsById([
-      buildRequest({ id: "pr-1", updatedAt: Timestamp.fromMillis(100) }),
-      buildRequest({ id: "pr-1", updatedAt: Timestamp.fromMillis(200) }),
-      buildRequest({ id: "pr-2", updatedAt: Timestamp.fromMillis(150) }),
+      buildRequest({
+        id: "pr-1",
+        updatedAt: Timestamp.fromMillis(100),
+        lastLifecycleActivityAt: Timestamp.fromMillis(100),
+      }),
+      buildRequest({
+        id: "pr-1",
+        updatedAt: Timestamp.fromMillis(200),
+        lastLifecycleActivityAt: Timestamp.fromMillis(200),
+      }),
+      buildRequest({
+        id: "pr-2",
+        updatedAt: Timestamp.fromMillis(150),
+        lastLifecycleActivityAt: Timestamp.fromMillis(150),
+      }),
     ]);
 
     assert.equal(deduped.length, 2);
     assert.equal(deduped[0]?.id, "pr-1");
-    assert.equal(deduped[0]?.updatedAt.toMillis(), 200);
+    assert.equal(deduped[0]?.lastLifecycleActivityAt?.toMillis(), 200);
   });
 });
 
@@ -325,6 +343,40 @@ describe("buildPrintRequestHistoryCardSummary", () => {
 
     assert.match(summary.mergedSourceAttribution?.label ?? "", /old_username/);
   });
+
+  it("uses the latest preserved lifecycle timestamp when the server mirror is absent", () => {
+    const request = buildRequest({
+      createdAt: Timestamp.fromMillis(100),
+      updatedAt: Timestamp.fromMillis(999),
+    });
+    const summary = buildPrintRequestHistoryCardSummary({
+      request,
+      customer: buildCustomer(),
+      allocations: [
+        buildAllocation({
+          createdAt: Timestamp.fromMillis(200),
+          queuedAt: Timestamp.fromMillis(250),
+          canceledAt: Timestamp.fromMillis(400),
+          status: "canceled",
+        }),
+      ],
+      showsById: new Map(),
+      relatedRequestNamesById: new Map(),
+    });
+
+    assert.equal(summary.lastLifecycleActivityAtMillis, 400);
+    assert.notEqual(summary.lastLifecycleActivityAtMillis, request.updatedAt.toMillis());
+  });
+});
+
+describe("Print Request card timestamp labels", () => {
+  it("include date and time for Created and lifecycle Last Updated", () => {
+    assert.match(formatPrintRequestCardCreatedLabel(1_700_000_000_000), /Created .*\d{1,2}:\d{2}/);
+    assert.match(
+      formatPrintRequestCardLastUpdatedLabel(1_700_000_100_000),
+      /Last updated .*\d{1,2}:\d{2}/,
+    );
+  });
 });
 
 describe("buildPrintRequestHistoryDetailEvents", () => {
@@ -444,6 +496,72 @@ describe("buildPrintRequestHistoryDetailEvents", () => {
     const queuedEvents = detail.events.filter((event) => event.label === "Queued to show");
     assert.equal(queuedEvents.length, 1);
     assert.equal(queuedEvents[0]?.occurredAtMillis, 1_700_015_000_000);
+  });
+
+  it("merges forward lifecycle events newest-first and never emits raw Last updated", () => {
+    const summary = buildPrintRequestHistoryCardSummary({
+      request: buildRequest({
+        lastLifecycleActivityAt: Timestamp.fromMillis(1_700_030_000_000),
+        lastLifecycleActivityPrecedence: 50,
+        lastLifecycleActivityEventId: "050_move",
+      }),
+      customer: buildCustomer(),
+      allocations: [],
+      showsById: new Map(),
+      relatedRequestNamesById: new Map(),
+    });
+    const lifecycleEvents = [
+      {
+        id: "010_created",
+        printRequestId: "pr-1",
+        type: "request_created",
+        occurredAt: Timestamp.fromMillis(1_700_010_000_000),
+        precedence: 10,
+        source: "print_request",
+        sourceId: "pr-1",
+        sourceChangeId: "create",
+        derivation: "forward",
+      },
+      {
+        id: "040_edit",
+        printRequestId: "pr-1",
+        type: "editing_started",
+        occurredAt: Timestamp.fromMillis(1_700_020_000_000),
+        precedence: 40,
+        source: "print_request",
+        sourceId: "pr-1",
+        sourceChangeId: "edit",
+        derivation: "forward",
+      },
+      {
+        id: "050_move",
+        printRequestId: "pr-1",
+        type: "moved_to_show",
+        occurredAt: Timestamp.fromMillis(1_700_030_000_000),
+        precedence: 50,
+        source: "show_allocation",
+        sourceId: "alloc-1",
+        sourceChangeId: "move",
+        derivation: "forward",
+        upcomingShowId: "show-2",
+        showTitleSnapshot: "Recovery Friday",
+      },
+    ] satisfies PrintRequestLifecycleEvent[];
+
+    const detail = buildPrintRequestHistoryDetailEvents({
+      summary,
+      request: buildRequest(),
+      allocations: [],
+      showsById: new Map(),
+      lifecycleEvents,
+    });
+
+    assert.deepEqual(
+      detail.events.map((event) => event.label),
+      ["Moved to another show", "Editing started", "Print request created"],
+    );
+    assert.equal(detail.events.some((event) => event.label === "Last updated"), false);
+    assert.ok(detail.events.every((event, index, all) => index === 0 || event.occurredAtMillis <= all[index - 1]!.occurredAtMillis));
   });
 });
 

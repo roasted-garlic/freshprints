@@ -4,6 +4,76 @@
 
 ---
 
+### ADR-FP-189: Atomic Studio Add-to-Show re-add and editing repair
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-09 |
+| Status | accepted with changes — implementation/tests/docs local; **STOP before DEV deploy** |
+| Related | Goal `studio-editing-readd-show-queue-permissions-corrective`; Plan/Review/Implementation Review `2026-09-09-studio-editing-readd-show-queue-*` |
+
+**Decision**
+
+1. Studio full-request and remaining-quantity Add-to-Show plans use the trusted
+   `allocateStudioPrintRequestToShow` callable. It validates active staff, request/show eligibility,
+   complete item quantities, and split legs, then atomically creates allocations, recomputes show
+   totals, activates the request, clears editing/requeue parking, and recomputes `queueTab`.
+2. A fully allocated request stranded in `editing` is repaired by the same callable's status/parking
+   reconciliation; it never fabricates allocation quantity. Production allocations in progress or
+   complete block re-add.
+3. Studio's modal no longer loops client allocation writes for this flow. It rejects incomplete
+   plans and reloads request/allocation state after callable failure or success. Portal's existing
+   Admin queue transaction remains unchanged.
+4. Firestore Rules add only a short-circuit `editing → active` client compatibility path with a
+   three-field diff. Lifecycle mirrors, queue/parking fields, bidding acknowledgements, and
+   identity snapshots remain client-immutable; no customer authority is broadened.
+
+**Consequences**
+
+- The former multi-write client sequence remains available only to narrower legacy callers and is
+  not the primary Add-to-Show path.
+- DEV Function/Rules deployment and owner re-QA require a separate exact authorization. No indexes,
+  backfill, indexed-reader activation, Studio/Portal publish, commit, push, or production action is
+  included in this corrective.
+
+---
+
+### ADR-FP-188: Server-authored Print Request lifecycle evidence and ordering mirror
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-09 |
+| Status | accepted with changes — DEV implementation, deployment, backfill, indexed-reader activation, and Owner QA complete; production/publish/commit separately gated |
+| Related | Goal `user-info-print-request-lifecycle-activity-ordering`; Plan/Review/Implementation Review `2026-09-09-user-info-print-request-lifecycle-activity-ordering-*` |
+
+**Decision**
+
+1. Add the additive `printRequestLifecycleEvents/{eventId}` collection and the server-maintained
+   `lastLifecycleActivityAt`, `lastLifecycleActivityPrecedence`, and
+   `lastLifecycleActivityEventId` mirror fields on `printRequests`.
+2. The exact reviewed Functions are the `printRequests/{printRequestId}` trigger
+   `onPrintRequestLifecycleRequestWritten` and the `showAllocations/{allocationId}` trigger
+   `onPrintRequestLifecycleAllocationWritten`. Events are immutable, idempotent, and Admin-authored;
+   the mirror is monotonic and is never a client lifecycle authority.
+3. Studio User Info cards display and order by the same lifecycle clock. Created and Last Updated
+   metadata include date and time; raw `updatedAt` is not a lifecycle display or ordering source.
+4. Existing account `customerActivityEvents` remains a separate account-audit surface. Historical
+   rows use a deterministic compatibility fallback until the separately authorized non-destructive
+   mirror backfill completes. The indexed reader is explicitly disabled until that gate is cleared.
+5. This phase includes source Rules/index definitions, tests, and documentation only. It does not
+  deploy Functions/Rules/indexes, execute a backfill, publish Studio, commit, or push.
+
+**DEV outcome (2026-09-09):** The reviewed implementation was subsequently deployed only to
+`fresh-prints-dev`; the bounded non-destructive mirror backfill completed with 8/8 eligible mirror
+coverage, and the two required indexes reached READY. The indexed reader is enabled in local
+Studio source, with the compatibility reader preserved as rollback. Owner DEV QA passed and the
+managed goal closed **approved_with_notes**. Two historical duplicate conversion events from the
+pre-corrective backfill remain `SAFE_TO_LEAVE_AS_HISTORICAL_DUPLICATE`; they do not affect mirror
+ordering and require no cleanup. No production promotion, Studio publish, Portal deployment,
+commit, or push is authorized by this outcome.
+
+---
+
 ### ADR-FP-187: Narrow Portal admin Show Queue exception
 
 | Field | Value |

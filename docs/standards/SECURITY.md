@@ -550,6 +550,17 @@ Firestore rules and `permissionService` should stay aligned:
 * Active staff may read/update the `counters/printRequests` internal request counter
 * Customer role has no Studio access to these collections yet
 
+### Print Request lifecycle evidence
+
+`printRequestLifecycleEvents` is staff-readable for the User Info history surface. Firestore Rules
+do not permit client create, update, or delete; only the two reviewed Admin SDK triggers may write
+events. `lastLifecycleActivityAt`, `lastLifecycleActivityPrecedence`, and
+`lastLifecycleActivityEventId` on `printRequests` are server-maintained mirrors and are not accepted
+as client lifecycle authority. Historical compatibility/backfill work is non-destructive and
+separately authorized; the DEV mirror backfill and indexed-reader activation are complete, while
+the compatibility reader remains available as rollback. Production changes remain separately
+gated.
+
 ### Customer favorites (Portal)
 
 Path: `customers/{customerId}/favorites/{designId}`

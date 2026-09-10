@@ -2,6 +2,8 @@ import type { Customer } from "@fresh-prints/shared/types/customer/customer.type
 import type { PrintRequest } from "@fresh-prints/shared/types/printRequest/printRequest.types";
 import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/showAllocation.types";
 import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
+import type { PrintRequestLifecycleEvent } from "@fresh-prints/shared/types/printRequest/printRequestLifecycle.types";
+import { formatShowDateTimeLabel } from "@fresh-prints/shared/utils/showDateTimeDisplay";
 import { getPrintRequestOriginBadgeLabel } from "@fresh-prints/shared/utils/printRequestOrigin";
 
 import { buildPrintRequestNavigationDeepLinkPath } from "../../print-requests/constants/printRequestRoutes";
@@ -57,24 +59,94 @@ function formatLifecycleLabel(status: PrintRequest["status"]): string {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
-function formatAuditDateLabel(millis: number): string {
-  if (!millis) {
-    return "Unknown date";
-  }
-
-  return new Date(millis).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
 function formatAuditDateTimeLabel(millis: number): string {
   if (!millis) {
     return "Unknown time";
   }
 
-  return new Date(millis).toLocaleString();
+  return formatShowDateTimeLabel(new Date(millis));
+}
+
+const HISTORICAL_LIFECYCLE_PRECEDENCE = {
+  created: 10,
+  queued: 20,
+  canceled: 30,
+  completed: 70,
+  converted: 90,
+} as const;
+
+export function resolveHistoricalLifecycleActivity(input: {
+  request: PrintRequest;
+  allocations: readonly ShowAllocation[];
+}): { millis: number; precedence: number; eventId: string } {
+  const candidates: Array<{ millis: number; precedence: number; eventId: string }> = [
+    {
+      millis: getAuditTimestampMillis(input.request.createdAt),
+      precedence: HISTORICAL_LIFECYCLE_PRECEDENCE.created,
+      eventId: input.request.id + ":created",
+    },
+  ];
+
+  if (input.request.convertedAt) {
+    candidates.push({
+      millis: getAuditTimestampMillis(input.request.convertedAt),
+      precedence: HISTORICAL_LIFECYCLE_PRECEDENCE.converted,
+      eventId: input.request.id + ":converted",
+    });
+  }
+  if (input.request.needsStaffRequeueAt) {
+    candidates.push({
+      millis: getAuditTimestampMillis(input.request.needsStaffRequeueAt),
+      precedence: HISTORICAL_LIFECYCLE_PRECEDENCE.queued,
+      eventId: input.request.id + ":released-for-requeue",
+    });
+  }
+
+  for (const allocation of input.allocations) {
+    if (allocation.printRequestId !== input.request.id) {
+      continue;
+    }
+    const timestampCandidates = [
+      { value: allocation.completedAt, precedence: HISTORICAL_LIFECYCLE_PRECEDENCE.completed, suffix: "completed" },
+      { value: allocation.printedAt, precedence: HISTORICAL_LIFECYCLE_PRECEDENCE.completed, suffix: "printed" },
+      { value: allocation.canceledAt, precedence: HISTORICAL_LIFECYCLE_PRECEDENCE.canceled, suffix: "canceled" },
+      { value: allocation.queuedAt, precedence: HISTORICAL_LIFECYCLE_PRECEDENCE.queued, suffix: "queued" },
+      { value: allocation.createdAt, precedence: HISTORICAL_LIFECYCLE_PRECEDENCE.queued, suffix: "created" },
+    ];
+    for (const candidate of timestampCandidates) {
+      if (candidate.value) {
+        candidates.push({
+          millis: getAuditTimestampMillis(candidate.value),
+          precedence: candidate.precedence,
+          eventId: input.request.id + ":allocation:" + allocation.id + ":" + candidate.suffix,
+        });
+      }
+    }
+  }
+
+  return candidates.reduce((latest, candidate) => {
+    if (candidate.millis !== latest.millis) {
+      return candidate.millis > latest.millis ? candidate : latest;
+    }
+    if (candidate.precedence !== latest.precedence) {
+      return candidate.precedence > latest.precedence ? candidate : latest;
+    }
+    return candidate.eventId.localeCompare(latest.eventId) > 0 ? candidate : latest;
+  });
+}
+
+function resolveSummaryLifecycleActivity(input: {
+  request: PrintRequest;
+  allocations: readonly ShowAllocation[];
+}): { millis: number; precedence: number; eventId: string } {
+  if (input.request.lastLifecycleActivityAt) {
+    return {
+      millis: getAuditTimestampMillis(input.request.lastLifecycleActivityAt),
+      precedence: input.request.lastLifecycleActivityPrecedence ?? HISTORICAL_LIFECYCLE_PRECEDENCE.created,
+      eventId: input.request.lastLifecycleActivityEventId ?? input.request.id,
+    };
+  }
+  return resolveHistoricalLifecycleActivity(input);
 }
 
 export function buildPrintRequestDeepLinkForRequest(
@@ -248,6 +320,7 @@ export function buildPrintRequestHistoryCardSummary(input: {
   const showContext = buildShowContextForRequest(request, allocations, showsById);
   const missedShowContext = buildMissedShowContextForRequest(request, allocations, showsById);
   const mergedSourceAttribution = buildMergedSourceAttribution(request, customer);
+  const lifecycleActivity = resolveSummaryLifecycleActivity({ request, allocations });
 
   const conversion =
     request.closureKind === "converted_to_internal" && request.convertedToInternalRequestId
@@ -311,7 +384,9 @@ export function buildPrintRequestHistoryCardSummary(input: {
     lifecycleLabel: formatLifecycleLabel(request.status),
     queueTab: request.queueTab,
     createdAtMillis: getAuditTimestampMillis(request.createdAt),
-    updatedAtMillis: getAuditTimestampMillis(request.updatedAt),
+    lastLifecycleActivityAtMillis: lifecycleActivity.millis,
+    lastLifecycleActivityPrecedence: lifecycleActivity.precedence,
+    lastLifecycleActivityEventId: lifecycleActivity.eventId,
     itemCount: request.itemCount,
     showContext,
     missedShowContext,
@@ -330,37 +405,66 @@ export function dedupePrintRequestsById(requests: readonly PrintRequest[]): Prin
 
   for (const request of requests) {
     const existing = byId.get(request.id);
-    if (!existing || getAuditTimestampMillis(request.updatedAt) > getAuditTimestampMillis(existing.updatedAt)) {
+    const requestLifecycleMillis = request.lastLifecycleActivityAt
+      ? getAuditTimestampMillis(request.lastLifecycleActivityAt)
+      : getAuditTimestampMillis(request.createdAt);
+    const existingLifecycleMillis = existing?.lastLifecycleActivityAt
+      ? getAuditTimestampMillis(existing.lastLifecycleActivityAt)
+      : existing
+        ? getAuditTimestampMillis(existing.createdAt)
+        : -1;
+    if (
+      !existing ||
+      requestLifecycleMillis > existingLifecycleMillis ||
+      (requestLifecycleMillis === existingLifecycleMillis &&
+        (request.lastLifecycleActivityPrecedence ?? 0) >
+          (existing.lastLifecycleActivityPrecedence ?? 0))
+    ) {
       byId.set(request.id, request);
     }
   }
 
-  return [...byId.values()].sort(comparePrintRequestRecency);
+  return [...byId.values()].sort((left, right) => {
+    const leftMillis = left.lastLifecycleActivityAt
+      ? getAuditTimestampMillis(left.lastLifecycleActivityAt)
+      : getAuditTimestampMillis(left.createdAt);
+    const rightMillis = right.lastLifecycleActivityAt
+      ? getAuditTimestampMillis(right.lastLifecycleActivityAt)
+      : getAuditTimestampMillis(right.createdAt);
+    return (
+      rightMillis - leftMillis ||
+      (right.lastLifecycleActivityPrecedence ?? 0) - (left.lastLifecycleActivityPrecedence ?? 0) ||
+      right.id.localeCompare(left.id)
+    );
+  });
 }
 
 export function comparePrintRequestRecency(left: PrintRequest, right: PrintRequest): number {
-  const updatedDiff =
-    getAuditTimestampMillis(right.updatedAt) - getAuditTimestampMillis(left.updatedAt);
-  if (updatedDiff !== 0) {
-    return updatedDiff;
-  }
-
-  const createdDiff =
-    getAuditTimestampMillis(right.createdAt) - getAuditTimestampMillis(left.createdAt);
-  if (createdDiff !== 0) {
-    return createdDiff;
-  }
-
-  return right.id.localeCompare(left.id);
+  const leftMillis = left.lastLifecycleActivityAt
+    ? getAuditTimestampMillis(left.lastLifecycleActivityAt)
+    : getAuditTimestampMillis(left.createdAt);
+  const rightMillis = right.lastLifecycleActivityAt
+    ? getAuditTimestampMillis(right.lastLifecycleActivityAt)
+    : getAuditTimestampMillis(right.createdAt);
+  return (
+    rightMillis - leftMillis ||
+    (right.lastLifecycleActivityPrecedence ?? 0) - (left.lastLifecycleActivityPrecedence ?? 0) ||
+    right.id.localeCompare(left.id)
+  );
 }
 
 export function comparePrintRequestHistorySummaries(
   left: PrintRequestHistoryCardSummary,
   right: PrintRequestHistoryCardSummary,
 ): number {
-  const updatedDiff = right.updatedAtMillis - left.updatedAtMillis;
-  if (updatedDiff !== 0) {
-    return updatedDiff;
+  const lifecycleDiff = right.lastLifecycleActivityAtMillis - left.lastLifecycleActivityAtMillis;
+  if (lifecycleDiff !== 0) {
+    return lifecycleDiff;
+  }
+
+  const precedenceDiff = right.lastLifecycleActivityPrecedence - left.lastLifecycleActivityPrecedence;
+  if (precedenceDiff !== 0) {
+    return precedenceDiff;
   }
 
   const createdDiff = right.createdAtMillis - left.createdAtMillis;
@@ -368,7 +472,7 @@ export function comparePrintRequestHistorySummaries(
     return createdDiff;
   }
 
-  return right.printRequestId.localeCompare(left.printRequestId);
+  return right.lastLifecycleActivityEventId.localeCompare(left.lastLifecycleActivityEventId);
 }
 
 export function sortPrintRequestHistorySummaries(
@@ -378,6 +482,13 @@ export function sortPrintRequestHistorySummaries(
 }
 
 type AllocationDetailEventKind = "moved" | "missed" | "canceled" | "queued";
+
+const RECONSTRUCTED_PRECEDENCE: Record<AllocationDetailEventKind, number> = {
+  moved: 50,
+  missed: 30,
+  canceled: 30,
+  queued: 20,
+};
 
 function resolveAllocationDetailEventKind(input: {
   allocation: ShowAllocation;
@@ -474,8 +585,118 @@ function buildGroupedAllocationDetailEvents(input: {
     label: buildAllocationDetailEventLabel(entry.kind),
     detail: entry.scheduleDetail,
     occurredAtMillis: entry.occurredAtMillis,
+    precedence: RECONSTRUCTED_PRECEDENCE[entry.kind],
+    showId: entry.showId,
     derivation: "reconstructed" as const,
   }));
+}
+
+function getLifecycleEventLabel(
+  event: PrintRequestLifecycleEvent,
+  forwardEvents: readonly PrintRequestLifecycleEvent[],
+): string {
+  const editingStarted = forwardEvents.some((candidate) => candidate.type === "editing_started");
+
+  switch (event.type) {
+    case "request_created":
+      return "Print request created";
+    case "added_to_show":
+      return editingStarted ? "Re-added to show" : "Added to show";
+    case "removed_from_show":
+      return editingStarted ? "Removed from show for editing" : "Removed from show";
+    case "editing_started":
+      return "Editing started";
+    case "moved_from_show":
+      return "Moved from another show";
+    case "moved_to_show":
+      return "Moved to another show";
+    case "did_not_print_requeued":
+      return "Did Not Print · Re-queued to another show";
+    case "released_for_requeue":
+      return "Released for re-queue";
+    case "production_started":
+      return "Production started";
+    case "allocation_printed":
+      return "Printing completed";
+    case "allocation_completed":
+      return "Allocation completed";
+    case "request_completed":
+      return "Print request completed";
+    case "converted_to_internal":
+      return "Converted to Internal Request";
+    case "archived":
+      return "Archived";
+    default:
+      return "Lifecycle activity";
+  }
+}
+
+const COALESCED_ALLOCATION_EVENT_TYPES = new Set<PrintRequestLifecycleEvent["type"]>([
+  "added_to_show",
+  "removed_from_show",
+  "moved_from_show",
+  "moved_to_show",
+  "did_not_print_requeued",
+  "production_started",
+  "allocation_printed",
+  "allocation_completed",
+]);
+
+function coalesceForwardLifecycleEvents(
+  events: readonly PrintRequestLifecycleEvent[],
+): PrintRequestLifecycleEvent[] {
+  const coalesced = new Map<string, PrintRequestLifecycleEvent>();
+  for (const event of events) {
+    if (!COALESCED_ALLOCATION_EVENT_TYPES.has(event.type)) {
+      coalesced.set(event.id, event);
+      continue;
+    }
+    const key = `${event.type}:${event.upcomingShowId ?? "<unknown-show>"}`;
+    const existing = coalesced.get(key);
+    if (
+      !existing ||
+      getAuditTimestampMillis(event.occurredAt) > getAuditTimestampMillis(existing.occurredAt) ||
+      (getAuditTimestampMillis(event.occurredAt) === getAuditTimestampMillis(existing.occurredAt) &&
+        event.id.localeCompare(existing.id) > 0)
+    ) {
+      coalesced.set(key, event);
+    }
+  }
+  return [...coalesced.values()];
+}
+
+function buildLifecycleEventDetail(event: PrintRequestLifecycleEvent): string | undefined {
+  const showLabel = event.showTitleSnapshot ?? event.upcomingShowId;
+  const scheduleMillis = event.showScheduledStartAt
+    ? getAuditTimestampMillis(event.showScheduledStartAt)
+    : null;
+  const showDetail = showLabel
+    ? `${showLabel}${scheduleMillis ? ` · Scheduled ${formatShowDateTimeLabel(new Date(scheduleMillis))}` : ""}`
+    : undefined;
+
+  if (showDetail && event.detail) {
+    return `${showDetail} · ${event.detail}`;
+  }
+  return showDetail ?? event.detail;
+}
+
+function mapLifecycleEventToDetailEvent(
+  event: PrintRequestLifecycleEvent,
+  forwardEvents: readonly PrintRequestLifecycleEvent[],
+): PrintRequestHistoryDetailEvent {
+  return {
+    id: event.id,
+    label: getLifecycleEventLabel(event, forwardEvents),
+    detail: buildLifecycleEventDetail(event),
+    occurredAtMillis: getAuditTimestampMillis(event.occurredAt),
+    precedence: event.precedence,
+    ...(event.upcomingShowId ? { showId: event.upcomingShowId } : {}),
+    ...(event.showTitleSnapshot ? { showTitle: event.showTitleSnapshot } : {}),
+    showScheduledStartAtMillis: event.showScheduledStartAt
+      ? getAuditTimestampMillis(event.showScheduledStartAt)
+      : null,
+    derivation: "persisted",
+  };
 }
 
 export function buildPrintRequestHistoryDetailEvents(input: {
@@ -483,47 +704,64 @@ export function buildPrintRequestHistoryDetailEvents(input: {
   request: PrintRequest;
   allocations: readonly ShowAllocation[];
   showsById: ReadonlyMap<string, UpcomingShow>;
+  lifecycleEvents?: readonly PrintRequestLifecycleEvent[];
   limit?: number;
 }): { events: PrintRequestHistoryDetailEvent[]; totalEventCount: number; hasMoreEvents: boolean } {
   const limit = input.limit ?? PRINT_REQUEST_DETAIL_EVENT_LIMIT;
-  const events: PrintRequestHistoryDetailEvent[] = [];
+  const forwardEvents = coalesceForwardLifecycleEvents(input.lifecycleEvents ?? []);
+  const events: PrintRequestHistoryDetailEvent[] = forwardEvents.map((event) =>
+    mapLifecycleEventToDetailEvent(event, forwardEvents),
+  );
 
-  events.push({
-    id: `${input.request.id}:created`,
-    label: "Print request created",
-    detail: `${input.summary.name} · ${input.summary.itemCount} design${input.summary.itemCount === 1 ? "" : "s"}`,
-    occurredAtMillis: input.summary.createdAtMillis,
-    derivation: "persisted",
-  });
-
-  if (input.summary.updatedAtMillis > input.summary.createdAtMillis) {
+  const hasCreatedEvent = forwardEvents.some((event) => event.type === "request_created");
+  if (!hasCreatedEvent) {
     events.push({
-      id: `${input.request.id}:updated`,
-      label: "Last updated",
-      detail: `Status ${input.summary.lifecycleLabel}`,
-      occurredAtMillis: input.summary.updatedAtMillis,
-      derivation: "persisted",
+      id: `${input.request.id}:created`,
+      label: "Print request created",
+      detail: `${input.summary.name} · ${input.summary.itemCount} design${input.summary.itemCount === 1 ? "" : "s"}`,
+      occurredAtMillis: input.summary.createdAtMillis,
+      precedence: HISTORICAL_LIFECYCLE_PRECEDENCE.created,
+      derivation: "reconstructed",
     });
   }
 
-  events.push(
-    ...buildGroupedAllocationDetailEvents({
-      requestId: input.request.id,
-      allocations: input.allocations,
-      showsById: input.showsById,
-    }),
-  );
+  const reconstructedAllocationEvents = buildGroupedAllocationDetailEvents({
+    requestId: input.request.id,
+    allocations: input.allocations,
+    showsById: input.showsById,
+  });
+  for (const reconstructed of reconstructedAllocationEvents) {
+    const duplicateForward = forwardEvents.some((event) => {
+      if (!event.upcomingShowId || event.upcomingShowId !== reconstructed.showId) {
+        return false;
+      }
+      const eventMillis = getAuditTimestampMillis(event.occurredAt);
+      if (eventMillis !== reconstructed.occurredAtMillis) {
+        return false;
+      }
+      return [
+        "added_to_show",
+        "removed_from_show",
+        "moved_from_show",
+        "moved_to_show",
+        "did_not_print_requeued",
+      ].includes(event.type);
+    });
+    if (!duplicateForward) {
+      events.push(reconstructed);
+    }
+  }
 
-  if (input.summary.conversion) {
+  if (input.summary.conversion && !forwardEvents.some((event) => event.type === "converted_to_internal")) {
     events.push({
       id: `${input.request.id}:converted`,
       label: "Converted to Internal Request",
       detail: input.summary.conversion.internalRequestName
         ? `→ ${input.summary.conversion.internalRequestName}`
         : `→ ${input.summary.conversion.internalRequestId}`,
-      occurredAtMillis:
-        input.summary.conversion.convertedAtMillis ?? input.summary.updatedAtMillis,
-      derivation: "persisted",
+      occurredAtMillis: input.summary.conversion.convertedAtMillis ?? input.summary.createdAtMillis,
+      precedence: HISTORICAL_LIFECYCLE_PRECEDENCE.converted,
+      derivation: "reconstructed",
     });
   }
 
@@ -533,11 +771,17 @@ export function buildPrintRequestHistoryDetailEvents(input: {
       label: "Merged account attribution",
       detail: input.summary.mergedSourceAttribution.label,
       occurredAtMillis: input.summary.createdAtMillis,
+      precedence: HISTORICAL_LIFECYCLE_PRECEDENCE.created,
       derivation: "reconstructed",
     });
   }
 
-  const sorted = events.sort((left, right) => right.occurredAtMillis - left.occurredAtMillis);
+  const sorted = events.sort(
+    (left, right) =>
+      right.occurredAtMillis - left.occurredAtMillis ||
+      right.precedence - left.precedence ||
+      left.id.localeCompare(right.id),
+  );
 
   return {
     events: sorted.slice(0, limit),
@@ -547,7 +791,7 @@ export function buildPrintRequestHistoryDetailEvents(input: {
 }
 
 export function formatPrintRequestCardCreatedLabel(millis: number): string {
-  return `Created ${formatAuditDateLabel(millis)}`;
+  return `Created ${formatAuditDateTimeLabel(millis)}`;
 }
 
 export function formatPrintRequestCardDesignCountLabel(itemCount: number): string {
@@ -555,7 +799,7 @@ export function formatPrintRequestCardDesignCountLabel(itemCount: number): strin
 }
 
 export function formatPrintRequestCardLastUpdatedLabel(millis: number): string {
-  return `Last updated ${formatAuditDateLabel(millis)}`;
+  return `Last updated ${formatAuditDateTimeLabel(millis)}`;
 }
 
 export function countDistinctQueuedPrintRequests(allocations: readonly ShowAllocation[]): number {

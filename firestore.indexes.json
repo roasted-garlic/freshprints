@@ -1,6 +1,24 @@
 {
   "indexes": [
     {
+      "collectionGroup": "printRequests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "customerId", "order": "ASCENDING" },
+        { "fieldPath": "lastLifecycleActivityAt", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "printRequestLifecycleEvents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "printRequestId", "order": "ASCENDING" },
+        { "fieldPath": "occurredAt", "order": "ASCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "designIssueReports",
       "queryScope": "COLLECTION",
       "fields": [

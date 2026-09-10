@@ -42,7 +42,7 @@ Staff review of Portal customer artwork: Pending / Excluded tabs; Send to AI Rev
 Assisted inbox with stage tabs, request details, audited start/cancel/reject/restore actions, proof staging, and customer-revision visibility. Etsy searches and Suggestions management remain separate tabs.
 
 ### Users / Settings / Dev
-Team users + customer records; **User Info modal** with Print Request History + Account Activity (WS4 DEV); **Edit customer → Quota Override** (ADR-FP-159 DEV — linked Temporary quota default + Set independently; Users-list active badge); **Transfer Username** (WS2); **Merge Accounts** (WS3); AI enrichment settings; show queue settings (incl. global `printRequestLimits`); dashboard scaffold;
+Team users + customer records; **User Info modal** with Print Request History + Account Activity (WS4 DEV); Print Request History cards use the server lifecycle clock and indexed newest-activity ordering, with lazy request-scoped Details rendered **newest → oldest**; compatibility reader remains available as rollback. **Edit customer → Quota Override** (ADR-FP-159 DEV — linked Temporary quota default + Set independently; Users-list active badge); **Transfer Username** (WS2); **Merge Accounts** (WS3); AI enrichment settings; show queue settings (incl. global `printRequestLimits`); dashboard scaffold;
 sidebar footer **Studio Updates** (desktop staff, including Helpers) is an application-level overlay;
 **Brand logos** (owner upload Studio/Portal full+collapsed PNGs + display sizes — ADR-FP-114;
 soft-deployed fresh-prints-dev); owner/dev-only **Test Data Reset**, including truthful **Legacy

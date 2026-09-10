@@ -44,6 +44,16 @@
 - Tabs (Working / Queued / Printing / Printed) are largely **derived** from allocations + production timer.
 - **Conversion (ADR-FP-141):** Customer → Internal creates a **new** IR request; original archives with `closureKind: converted_to_internal` + linkage fields (`convertedToInternalRequestId`, `convertedFromCustomerRequestId`, `convertedAt`, `convertedBy`). Portal Printed tab shows **Converted to Internal Request · Closed**. Closure fields are Admin/callable-only (Rules block client spoofing).
 
+### Print Request lifecycle ordering (ADR-FP-188 — DEV closed 2026-09-09)
+
+- Server-authored `printRequestLifecycleEvents` plus the monotonic
+  `lastLifecycleActivityAt` / tie-break mirror fields provide lifecycle evidence and card order;
+  raw `updatedAt` and scheduled-show date are not ordering authority.
+- Indexed card coverage is **8/8 (100%)** in DEV; the compatibility reader remains available as
+  rollback. Details is **newest → oldest** with lifecycle tie precedence and stable event IDs.
+- Historical mirror backfill was bounded and non-destructive; it did not invent granular historical
+  events. Two duplicate conversion events remain documented as safe historical duplicates.
+
 ## Print Request Item (dual source)
 
 | Field | Notes |

@@ -6,6 +6,7 @@ export const FIRESTORE_COLLECTIONS = {
   customers: "customers",
   customerUsernames: "customerUsernames",
   printRequests: "printRequests",
+  printRequestLifecycleEvents: "printRequestLifecycleEvents",
   printRequestItems: "printRequestItems",
   customerUploads: "customerUploads",
   customerUploadBatches: "customerUploadBatches",

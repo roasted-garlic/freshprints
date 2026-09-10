@@ -25,7 +25,7 @@ interface CustomerPrintRequestHistorySectionProps {
   canViewUpcomingShows: boolean;
   onOpenDetail: (printRequestId: string) => void;
   onCloseDetail: () => void;
-  onLoadMore: () => void;
+  onLoadMore: () => void | Promise<void>;
 }
 
 function getStatusBadgeVariant(status: PrintRequestHistoryCardSummary["status"]) {
@@ -94,7 +94,7 @@ function CustomerPrintRequestHistoryCard({
         <div className="customer-print-request-card-meta">
           <span>{formatPrintRequestCardCreatedLabel(summary.createdAtMillis)}</span>
           <span>{formatPrintRequestCardDesignCountLabel(summary.itemCount)}</span>
-          <span>{formatPrintRequestCardLastUpdatedLabel(summary.updatedAtMillis)}</span>
+          <span>{formatPrintRequestCardLastUpdatedLabel(summary.lastLifecycleActivityAtMillis)}</span>
         </div>
 
         {summary.conversion ? (

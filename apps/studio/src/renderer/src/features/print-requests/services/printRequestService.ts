@@ -47,6 +47,10 @@ import type {
   PrintRequestItem,
   PrintRequestOrigin,
 } from "@fresh-prints/shared/types/printRequest/printRequest.types";
+import type {
+  PrintRequestLifecycleEvent,
+  PrintRequestLifecycleEventType,
+} from "@fresh-prints/shared/types/printRequest/printRequestLifecycle.types";
 import type { PrintRequestListTab } from "@fresh-prints/shared/utils/printRequestListGrouping";
 import {
   hasNeedsStaffRequeueMarker,
@@ -105,6 +109,22 @@ export interface PrintRequestListPage {
   requests: PrintRequest[];
   hasMore: boolean;
   nextCursor?: PrintRequestListCursor;
+}
+
+export interface PrintRequestLifecyclePageCursor {
+  lastLifecycleActivityAtMillis: number;
+  printRequestId: string;
+}
+
+export interface PrintRequestLifecyclePage {
+  requests: PrintRequest[];
+  hasMore: boolean;
+  nextCursor?: PrintRequestLifecyclePageCursor;
+}
+
+export interface PrintRequestLifecycleEventPage {
+  events: PrintRequestLifecycleEvent[];
+  hasMore: boolean;
 }
 
 export interface CreatePrintRequestInput {
@@ -186,6 +206,9 @@ interface PrintRequestDocumentData extends DocumentData {
   needsStaffRequeueSourceShowId?: unknown;
   needsStaffRequeueSourceShowTitleSnapshot?: unknown;
   needsStaffRequeueReleasedQuantity?: unknown;
+  lastLifecycleActivityAt?: unknown;
+  lastLifecycleActivityEventId?: unknown;
+  lastLifecycleActivityPrecedence?: unknown;
   createdBy?: unknown;
   updatedBy?: unknown;
   createdAt?: unknown;
@@ -303,6 +326,17 @@ function mapPrintRequestData(printRequestId: string, data: PrintRequestDocumentD
     needsStaffRequeueReleasedQuantity:
       typeof data.needsStaffRequeueReleasedQuantity === "number"
         ? data.needsStaffRequeueReleasedQuantity
+        : undefined,
+    convertedAt: mapFirestoreTimestamp(data.convertedAt),
+    convertedBy: typeof data.convertedBy === "string" ? data.convertedBy : undefined,
+    lastLifecycleActivityAt: mapFirestoreTimestamp(data.lastLifecycleActivityAt),
+    lastLifecycleActivityEventId:
+      typeof data.lastLifecycleActivityEventId === "string"
+        ? data.lastLifecycleActivityEventId
+        : undefined,
+    lastLifecycleActivityPrecedence:
+      typeof data.lastLifecycleActivityPrecedence === "number"
+        ? data.lastLifecycleActivityPrecedence
         : undefined,
     createdBy: data.createdBy,
     updatedBy: data.updatedBy,
@@ -1007,6 +1041,134 @@ export const printRequestService = {
     return snapshot.docs.map((requestDoc) =>
       mapPrintRequestData(requestDoc.id, requestDoc.data() as PrintRequestDocumentData),
     );
+  },
+
+  async listPrintRequestsByCustomerLifecyclePage(
+    caller: User,
+    customerId: string,
+    options: {
+      limitCount?: number;
+      cursor?: PrintRequestLifecyclePageCursor;
+    } = {},
+  ): Promise<PrintRequestLifecyclePage> {
+    if (!permissionService.canViewPrintRequests(caller) || !customerId.trim()) {
+      return { requests: [], hasMore: false };
+    }
+
+    const pageSize = Math.max(1, options.limitCount ?? 15);
+    const constraints: QueryConstraint[] = [
+      where("customerId", "==", customerId),
+      orderBy("lastLifecycleActivityAt", "desc"),
+      orderBy("__name__", "desc"),
+      limit(pageSize + 1),
+    ];
+    if (options.cursor) {
+      constraints.splice(
+        3,
+        0,
+        startAfter(
+          Timestamp.fromMillis(options.cursor.lastLifecycleActivityAtMillis),
+          options.cursor.printRequestId,
+        ),
+      );
+    }
+
+    const requestsQuery = query(
+      firestoreCollectionService.getPrintRequestsCollection(),
+      ...constraints,
+    );
+    traceFirestoreOneShotStart("getDocs", "printRequests:lifecycle-page");
+    const snapshot = await getDocs(requestsQuery);
+    traceFirestoreOneShotComplete("getDocs", "printRequests:lifecycle-page", snapshot.size);
+
+    const hasMore = snapshot.docs.length > pageSize;
+    const pageDocs = hasMore ? snapshot.docs.slice(0, pageSize) : snapshot.docs;
+    const requests = pageDocs.map((requestDoc) =>
+      mapPrintRequestData(requestDoc.id, requestDoc.data() as PrintRequestDocumentData),
+    );
+    const lastRequest = requests[requests.length - 1];
+    const lifecycleMillis = lastRequest?.lastLifecycleActivityAt?.toMillis();
+
+    return {
+      requests,
+      hasMore,
+      nextCursor:
+        hasMore && lastRequest && typeof lifecycleMillis === "number"
+          ? {
+              lastLifecycleActivityAtMillis: lifecycleMillis,
+              printRequestId: lastRequest.id,
+            }
+          : undefined,
+    };
+  },
+
+  async listPrintRequestLifecycleEvents(
+    caller: User,
+    printRequestId: string,
+    limitCount = 25,
+  ): Promise<PrintRequestLifecycleEventPage> {
+    if (!permissionService.canViewPrintRequests(caller) || !printRequestId.trim()) {
+      return { events: [], hasMore: false };
+    }
+
+    const eventsQuery = query(
+      firestoreCollectionService.getPrintRequestLifecycleEventsCollection(),
+      where("printRequestId", "==", printRequestId),
+      orderBy("occurredAt", "asc"),
+      orderBy("__name__", "asc"),
+      limit(Math.max(1, limitCount) + 1),
+    );
+    traceFirestoreOneShotStart("getDocs", "printRequestLifecycleEvents:byRequest");
+    const snapshot = await getDocs(eventsQuery);
+    traceFirestoreOneShotComplete(
+      "getDocs",
+      "printRequestLifecycleEvents:byRequest",
+      snapshot.size,
+    );
+
+    const hasMore = snapshot.docs.length > limitCount;
+    const pageDocs = hasMore ? snapshot.docs.slice(0, limitCount) : snapshot.docs;
+    const events = pageDocs.flatMap((eventDoc) => {
+      const data = eventDoc.data();
+      const occurredAt = mapFirestoreTimestamp(data.occurredAt);
+      const type = data.type as PrintRequestLifecycleEventType;
+      if (
+        !occurredAt ||
+        typeof data.printRequestId !== "string" ||
+        typeof data.source !== "string" ||
+        typeof data.sourceId !== "string" ||
+        typeof data.sourceChangeId !== "string" ||
+        typeof data.precedence !== "number"
+      ) {
+        return [];
+      }
+      return [
+        {
+          id: eventDoc.id,
+          printRequestId: data.printRequestId,
+          ...(typeof data.customerId === "string" ? { customerId: data.customerId } : {}),
+          type,
+          occurredAt,
+          precedence: data.precedence,
+          source: data.source as PrintRequestLifecycleEvent["source"],
+          sourceId: data.sourceId,
+          sourceChangeId: data.sourceChangeId,
+          derivation: "forward" as const,
+          ...(typeof data.upcomingShowId === "string" ? { upcomingShowId: data.upcomingShowId } : {}),
+          ...(typeof data.showTitleSnapshot === "string"
+            ? { showTitleSnapshot: data.showTitleSnapshot }
+            : {}),
+          showScheduledStartAt: mapFirestoreTimestamp(data.showScheduledStartAt) ?? null,
+          ...(typeof data.allocationId === "string" ? { allocationId: data.allocationId } : {}),
+          ...(typeof data.relatedAllocationId === "string"
+            ? { relatedAllocationId: data.relatedAllocationId }
+            : {}),
+          ...(typeof data.detail === "string" ? { detail: data.detail } : {}),
+        } satisfies PrintRequestLifecycleEvent,
+      ];
+    });
+
+    return { events, hasMore };
   },
 
   /**

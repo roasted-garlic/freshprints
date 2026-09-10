@@ -4,26 +4,75 @@
 
 ## Current state
 
-- Active managed goal: `portal-admin-daily-show-queue`.
-- Dashboard amendment is implemented locally: sidebar/dashboard/modal + responsive mobile-first
-  polish (hamburger drawer, centered modal, themed scrollbar, compact title/metadata) +
-  `getPortalAdminUpcomingShowQueueDashboard` + `getPortalAdminShowQueueRequestDesigns`.
-- Exact next checkpoint:
-  `[NEEDS OWNER AUTHORIZATION: REDEPLOY PORTAL ADMIN SHOW QUEUE REQUEST DESIGNS FUNCTION PERFORMANCE CORRECTIVE]`.
-- Owner DEV QA is **PASS**; commit `908d9123` is pushed to `origin/development`. No Portal publish, Studio publish,
-  production action, or Function deployment occurred. The performance corrective changes Function
-  source locally; do not reuse the prior deployment authorization.
+- No active managed goal. The most recently closed goal is
+  `user-info-print-request-lifecycle-activity-ordering` — final disposition
+  **approved_with_notes**.
+- Corrective Plan + Formal Review are complete with verdict **approved_with_changes**, and the
+  owner-authorized Approach A implementation is deployed to DEV. Owner DEV re-QA returned **PASS**:
+  remove→Editing→re-add succeeded without permissions errors, partial queue, or stuck Editing, and
+  Studio reconciliation was correct. Phase 0 realistic post-unqueue
+  Rules fixtures pass 23/23; callable/Portal contracts pass 10/10; the full Rules suite is
+  174/174; and Studio source contracts pass 12/12. The exact callable export is
+  `allocateStudioPrintRequestToShow`; Studio Add to Show now submits one complete atomic plan and
+  reconciles UI state on failure/success. The narrow Rules activation fast path preserves lifecycle
+  mirror/parking immutability. The callable is ACTIVE Gen 2 `nodejs20` in `us-central1`, revision
+  `allocatestudioprintrequesttoshow-00001-lod`, latest traffic, source hash
+  `ef932a1c115c0867c783692dcd4cbb089ac51125`; Rules are released as
+  `bc9e3e7a-6597-4228-8aa7-e9f006388a26`. No indexes, Storage Rules, lifecycle redeploy,
+  Studio/Portal publish, backfill, data repair, commit, push, or production action occurred for
+  this follow-up or QA checkpoint. The corrective is accepted. The authorized tie-handling
+  correction shares the reviewed comparator with the
+  forward writer and reads forward lifecycle evidence. The bounded DEV APPLY wrote 8 request
+  mirrors, preserved all 3 equal-time trusted forward tuples, and the post-apply dry-run proposed
+  0 further mirror writes with 100% reader-eligible coverage. However, the deployed request trigger
+  created 2 unexpected lifecycle-event documents during mirror-only updates for converted historical
+  requests. No event repair or rollback was attempted. The request-trigger mirror-only equality
+  corrective is implemented, reviewed, and deployed to DEV as a single Function. The existing
+  indexed reader is now enabled in local Studio source against the verified DEV backend; the
+  compatibility reader remains intact as rollback. Owner DEV QA for the indexed reader returned
+  **PASS**; the final managed-goal Signoff is recorded below and no active corrective remains.
+- The DEV indexed User Info reader now sorts by `lastLifecycleActivityAt DESC` with stable
+  document-ID ties across logical customer streams; the compatibility reader remains the rollback
+  path. Raw `printRequests.updatedAt` is not a reliable lifecycle clock and cannot support globally
+  bounded pagination. Scheduled show date is not an ordering authority.
+- Source-only history cannot truthfully cover Studio remove-for-Editing because it deletes the
+  allocation source row. Account `customerActivityEvents` remain a separate identity/audit surface.
+- The current request-trigger/allocation/backfill corrective suite is 14/14; prior focused lifecycle
+tests 20/20, the re-add-after-editing Rules regression, Functions build, and the full Rules suite
+pass. Earlier lifecycle Rules validation was 170/170; latest re-add-corrective validation is
+174/174 across 22 suites under shell-local Microsoft OpenJDK 25.0.4.1 and Firebase CLI 15.26.0; Studio
+  typecheck retains unrelated baseline errors. The authorized DEV deployment is complete for
+  exactly the two lifecycle Functions, Firestore Rules, and lifecycle indexes. Both Functions are
+  ACTIVE Gen 2 `nodejs20` services in `us-central1` on latest traffic, Rules released as
+  `1cdf293c-18c7-41b9-a5d4-0595936c0150`, and the two lifecycle indexes are READY. The corrected
+  backfill APPLY is complete. This reader activation changed no Rules/index definitions, did not
+  repair events, commit, push, publish Studio/Portal, or touch production. The separately authorized
+  request-trigger Function deployment and reader activation are recorded below.
 
-Active artifacts:
+Closed goal artifacts:
 
-- Amended Plan: `docs/workflow/plans/2026-09-09-portal-admin-daily-show-queue-plan.md`
-- Formal Review Amendment: `docs/workflow/reviews/2026-09-09-portal-admin-show-queue-dashboard-amendment-review.md`
-- Dashboard Implementation Review: `docs/workflow/reviews/2026-09-09-portal-admin-show-queue-dashboard-implementation-review.md`
-- ADR: `docs/project/DECISIONS.md` — ADR-FP-187 (amended)
+- Plan: `docs/workflow/plans/2026-09-09-user-info-print-request-lifecycle-activity-ordering-plan.md`
+- Formal Review: `docs/workflow/reviews/2026-09-09-user-info-print-request-lifecycle-activity-ordering-review.md`
+- Test report: `docs/workflow/reviews/2026-09-09-user-info-print-request-lifecycle-activity-ordering-test-report.md`
+- Implementation Review: `docs/workflow/reviews/2026-09-09-user-info-print-request-lifecycle-activity-ordering-implementation-review.md`
+- DEV deployment record: `docs/workflow/reviews/2026-09-09-user-info-print-request-lifecycle-activity-ordering-dev-deployment.md`
+- Trigger corrective DEV deployment: `docs/workflow/reviews/2026-09-09-user-info-print-request-lifecycle-ordering-trigger-mirror-only-corrective-dev-deployment.md`
+- Indexed-reader DEV activation: `docs/workflow/reviews/2026-09-09-user-info-print-request-lifecycle-indexed-reader-dev-activation.md`
+- Final Signoff: `docs/workflow/reviews/2026-09-09-user-info-print-request-lifecycle-activity-ordering-signoff.md`
+- Corrective Plan: `docs/workflow/plans/2026-09-09-studio-editing-readd-show-queue-permissions-corrective-plan.md`
+- Corrective Formal Review: `docs/workflow/reviews/2026-09-09-studio-editing-readd-show-queue-permissions-corrective-review.md`
+- Corrective Implementation Review: `docs/workflow/reviews/2026-09-09-studio-editing-readd-show-queue-corrective-implementation-review.md`
+- Corrective Test Report: `docs/workflow/reviews/2026-09-09-studio-editing-readd-show-queue-corrective-test-report.md`
+- Corrective DEV deployment: `docs/workflow/reviews/2026-09-09-studio-editing-readd-show-queue-corrective-dev-deployment.md`
+- Corrective DEV QA: `docs/workflow/reviews/2026-09-09-studio-editing-readd-show-queue-corrective-dev-qa.md`
+- Lifecycle ordering backfill dry-run: `docs/workflow/reviews/2026-09-09-user-info-print-request-lifecycle-ordering-backfill-dry-run.md`
+- Lifecycle ordering backfill apply: `docs/workflow/reviews/2026-09-09-user-info-print-request-lifecycle-ordering-backfill-apply.md`
+- Lifecycle trigger mirror-only corrective Implementation Review: `docs/workflow/reviews/2026-09-09-user-info-print-request-lifecycle-ordering-trigger-mirror-only-corrective-implementation-review.md`
+- Lifecycle trigger mirror-only corrective DEV deployment: `docs/workflow/reviews/2026-09-09-user-info-print-request-lifecycle-ordering-trigger-mirror-only-corrective-dev-deployment.md`
 
 - The previous child goal `legacy-tag-operational-retirement-and-smart-profile-search-parity` is
-  **CLOSED** with approved signoff after Owner DEV QA **PASS** on 2026-09-09; the active goal is
-  recorded above.
+  **CLOSED** with approved signoff after Owner DEV QA **PASS** on 2026-09-09; there is no active
+  goal.
 - Commit/push is complete as `1c43f6e1` on `origin/development`; production and publish remain
   separately gated.
   The owner decisions are resolved: Halftone uses the existing `halftoneStaffDecision.value`,
@@ -40,6 +89,26 @@ Active artifacts:
 - Direct Export/Generate/Copy buttons are hidden on Working and Editing requests; existing Add to
   Show/Internal Gangsheet actions remain available there.
 - Studio publish and production remain separately gated.
+
+## Closed managed goal handoff — Print Request lifecycle activity ordering
+
+- Owner DEV QA for the indexed history reader: **PASS**.
+- Final disposition: **approved_with_notes**; the managed goal is **CLOSED** and no active
+  corrective remains.
+- Final Details ordering: **newest → oldest**. Earlier Plan/Review wording that says oldest →
+  newest remains historical and is superseded by the owner-tested final contract.
+- Reader-eligible mirror coverage: **8/8 (100%)**; both lifecycle indexes are **READY**; the
+  compatibility reader remains available as rollback.
+- The two historical duplicate conversion events remain
+  `SAFE_TO_LEAVE_AS_HISTORICAL_DUPLICATE`; they do not alter mirror ordering, Details dedupes the
+  visible row, and no cleanup is required.
+- No backfill rerun, event repair, Rules/index change, Firebase deploy, Studio publish, Portal
+  deployment, production action, commit, or push occurred in the signoff turn.
+- Signoff: `docs/workflow/reviews/2026-09-09-user-info-print-request-lifecycle-activity-ordering-signoff.md`.
+
+FreshForge is **IDLE** at `[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]`. The next checkpoint is:
+
+`[NEEDS OWNER AUTHORIZATION: COMMIT/PUSH CLOSED PRINT REQUEST LIFECYCLE GOAL]`
 
 DEV cutover evidence (2026-09-09): six explicitly allowlisted Functions were deployed to
 `fresh-prints-dev`; existing local Portal/Studio Smart Filter flags were already enabled; the
@@ -131,6 +200,8 @@ active child goal.
 | Automatic Pass 2 | **PARKED** |
 | Production promotion | **SEPARATELY GATED / NOT AUTHORIZED** |
 
-The active `portal-admin-daily-show-queue` goal is committed/pushed after Owner DEV QA PASS and is
-paused for owner authorization to redeploy the corrected dashboard/designs Functions. Do not deploy
-or sign off until authorized. Production remains separately gated.
+The prior `portal-admin-daily-show-queue` goal is closed: its two reviewed Functions are ACTIVE
+in DEV after the owner-authorized redeploy, and its signoff is `approved_with_notes`. The current
+goal is the lifecycle-history corrective above; Owner DEV re-QA is **PASS**, and the separately
+reviewed DEV backfill authorization is required before the next gate. Production remains separately
+gated.

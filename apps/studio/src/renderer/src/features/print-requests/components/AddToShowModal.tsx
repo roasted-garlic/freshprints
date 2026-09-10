@@ -52,6 +52,8 @@ interface AddToShowModalProps {
   destinationMode?: StudioDestinationTab;
   onClose: () => void;
   onAdded: () => void | Promise<void>;
+  /** Re-read request/allocation state after a failed server write before showing the error. */
+  onReconcile?: () => void | Promise<void>;
 }
 
 type StudioDestinationTab = "shows" | "staff_gang_sheet";
@@ -152,6 +154,7 @@ export function AddToShowModal({
   destinationMode,
   onClose,
   onAdded,
+  onReconcile,
 }: AddToShowModalProps) {
   const { user } = useAuth();
   const { shows, isLoading: isShowsLoading } = useUpcomingShows();
@@ -526,17 +529,14 @@ export function AddToShowModal({
       return;
     }
 
-    const steps = finalLegs.flatMap((leg) =>
-      Object.entries(leg.quantitiesByItemId).map(([itemId, quantity]) => ({
-        showId: leg.showId,
-        itemId,
-        quantity,
-      })),
-    );
-
     setIsSubmitting(true);
     setActionError(null);
-    setProgress(steps.length > 0 ? { stepIndex: 0, stepTotal: steps.length, showLabel: "", itemLabel: "" } : null);
+    setProgress({
+      stepIndex: 0,
+      stepTotal: 1,
+      showLabel: finalLegs.map((leg) => getShowLabel(leg.showId)).join(", "),
+      itemLabel: "request plan",
+    });
     setAllocatedBaselineByShowId(
       new Map([
         ...allocatableShows.map((show) => [show.id, show.allocatedQuantity] as const),
@@ -545,22 +545,19 @@ export function AddToShowModal({
     );
 
     try {
-      for (const [index, step] of steps.entries()) {
-        const design = designById?.get(items.find((item) => item.id === step.itemId)?.designId ?? "");
-
-        setProgress({
-          stepIndex: index + 1,
-          stepTotal: steps.length,
-          showLabel: getShowLabel(step.showId),
-          itemLabel: design?.title ?? "design",
-        });
-
-        await upcomingShowService.allocatePrintRequestItem(user, step.showId, {
-          printRequestId: printRequest.id,
-          printRequestItemId: step.itemId,
-          quantity: step.quantity,
-        });
-      }
+      setProgress({
+        stepIndex: 0,
+        stepTotal: 1,
+        showLabel: finalLegs.map((leg) => getShowLabel(leg.showId)).join(", "),
+        itemLabel: "request plan",
+      });
+      await upcomingShowService.allocateStudioPrintRequestToShow(user, {
+        printRequestId: printRequest.id,
+        legs: finalLegs.map((leg) => ({
+          upcomingShowId: leg.showId,
+          quantitiesByItemId: leg.quantitiesByItemId,
+        })),
+      });
 
       // Capacity celebration on the same ShowPicker instance (do not unmount the calendar).
       setProgress(null);
@@ -576,6 +573,11 @@ export function AddToShowModal({
       setSavePendingByShowId(undefined);
       setIsCelebratingSave(false);
       setAllocatedBaselineByShowId(undefined);
+      try {
+        await onReconcile?.();
+      } catch {
+        // Preserve the original allocation error; reconciliation is best-effort UI repair.
+      }
       setActionError(formatWriteErrorMessage(error));
     } finally {
       setIsSubmitting(false);
@@ -584,12 +586,11 @@ export function AddToShowModal({
   }, [
     allocatableShows,
     canConfirmFullFitDirectly,
-    designById,
     getShowLabel,
-    items,
     legs,
     onAdded,
     onClose,
+    onReconcile,
     openStaffGangSheets,
     printRequest.id,
     remainingItems,
@@ -603,6 +604,7 @@ export function AddToShowModal({
     fixedShowIsBlocked ||
     isBusy ||
     (isStaffDestination && (!isRequestEligibleForStaff || !openStaffGangSheet)) ||
+    (remainingItems.length > 0 && !canConfirmFullFitDirectly) ||
     (legs.length === 0 && !(canConfirmFullFitDirectly && remainingItems.length > 0));
 
   const staffGangSheetCapacityCard = staffCapacityPresentation ? (

@@ -894,6 +894,9 @@ service cloud.firestore {
           "needsStaffRequeueSourceShowId",
           "needsStaffRequeueSourceShowTitleSnapshot",
           "needsStaffRequeueReleasedQuantity",
+          "lastLifecycleActivityAt",
+          "lastLifecycleActivityEventId",
+          "lastLifecycleActivityPrecedence",
           "parkedByEditingRequestId",
           "parkedAt",
           "parksDraftPrintRequestId",
@@ -934,6 +937,9 @@ service cloud.firestore {
         && isOptionalString(data, "needsStaffRequeueSourceShowId")
         && isOptionalString(data, "needsStaffRequeueSourceShowTitleSnapshot")
         && isOptionalNumber(data, "needsStaffRequeueReleasedQuantity")
+        && isOptionalTimestamp(data, "lastLifecycleActivityAt")
+        && isOptionalString(data, "lastLifecycleActivityEventId")
+        && isOptionalNumber(data, "lastLifecycleActivityPrecedence")
         && isOptionalString(data, "parkedByEditingRequestId")
         && isOptionalTimestamp(data, "parkedAt")
         && isOptionalString(data, "parksDraftPrintRequestId")
@@ -952,9 +958,29 @@ service cloud.firestore {
           .hasOnly(["status", "updatedBy", "updatedAt"]);
     }
 
+    // Re-adding a request from Studio only needs to activate a previously edited request.
+    // Keep this narrow fast path ahead of the full document validator: post-unqueue requests
+    // legitimately carry lifecycle, parking, bidding, and identity snapshots, and evaluating
+    // every optional-field validator can exceed Firestore Rules' expression budget. The diff
+    // also guarantees that those server-owned fields remain unchanged by the client.
+    function staffCanActivateEditingPrintRequest() {
+      return resource.data.status == "editing"
+        && request.resource.data.status == "active"
+        && isStaff()
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(["status", "updatedBy", "updatedAt"]);
+    }
+
     function staffCanPerformGeneralPrintRequestUpdate() {
       return request.resource.data.status != "completed"
         && (resource.data.status != "completed" || request.resource.data.status == "archived")
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          "lastLifecycleActivityAt",
+          "lastLifecycleActivityEventId",
+          "lastLifecycleActivityPrecedence"
+        ])
         && optionalFieldUnchanged("queueTab")
         && optionalFieldUnchanged("showQueueBiddingAcknowledgment")
         && optionalFieldUnchanged("closureKind")
@@ -1850,12 +1876,13 @@ service cloud.firestore {
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.updatedBy == request.auth.uid;
 
-      allow update: if isStaff()
-        && printRequestRequiredFieldsValid(request.resource.data)
-        && request.resource.data.createdBy == resource.data.createdBy
-        && request.resource.data.createdAt == resource.data.createdAt
-        && request.resource.data.updatedBy == request.auth.uid
-        && (staffCanCompletePrintRequest() || staffCanPerformGeneralPrintRequestUpdate())
+      allow update: if staffCanActivateEditingPrintRequest()
+        || (isStaff()
+          && printRequestRequiredFieldsValid(request.resource.data)
+          && request.resource.data.createdBy == resource.data.createdBy
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.updatedBy == request.auth.uid
+          && (staffCanCompletePrintRequest() || staffCanPerformGeneralPrintRequestUpdate()))
         || customerCanUpdatePrintRequest()
         && printRequestRequiredFieldsValid(request.resource.data);
 
@@ -2238,6 +2265,13 @@ service cloud.firestore {
         || staffCanFinishLegacyShowAllocation();
 
       allow delete: if isStaff();
+    }
+
+    // Server-authored Print Request lifecycle evidence. Clients may read this evidence only
+    // through the existing staff User Info permission boundary; Admin SDK trigger writers bypass
+    // Rules, and direct client writes are intentionally denied by omission.
+    match /printRequestLifecycleEvents/{eventId} {
+      allow read: if isStaff();
     }
 
     function isValidWhatnotAssistedImportStatus(value) {

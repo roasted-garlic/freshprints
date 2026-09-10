@@ -36,6 +36,10 @@ export const firestoreCollectionService = {
     return this.getCollectionReference("printRequests");
   },
 
+  getPrintRequestLifecycleEventsCollection() {
+    return this.getCollectionReference("printRequestLifecycleEvents");
+  },
+
   getPrintRequestItemsCollection() {
     return this.getCollectionReference("printRequestItems");
   },

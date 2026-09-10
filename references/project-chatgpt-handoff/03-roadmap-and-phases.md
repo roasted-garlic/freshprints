@@ -1,5 +1,15 @@
 # Roadmap and Phases
 
+> 2026-09-09: **User Info Print Request lifecycle activity ordering — CLOSED (DEV)** — Goal
+> `user-info-print-request-lifecycle-activity-ordering` **CLOSED** with final disposition
+> **approved_with_notes** after Owner DEV QA **PASS** for the indexed history reader. Lifecycle
+> events/mirrors, the accepted Studio Editing→re-add corrective, mirror-only trigger corrective,
+> bounded DEV mirror backfill, and local indexed-reader activation are complete; reader coverage is
+> 8/8 and both lifecycle indexes are READY. Details is **newest → oldest**. Two historical
+> duplicate conversion events remain safely documented; no cleanup, commit/push, publish, or
+> production action occurred in the signoff turn. FreshForge **IDLE**; next checkpoint is owner
+> authorization to commit/push the closed goal.
+
 > 2026-09-09: **Legacy tag operational retirement + Smart Profile search parity — CLOSED (DEV)** — Goal `legacy-tag-operational-retirement-and-smart-profile-search-parity` **DONE**; signoff **approved** after Owner DEV QA **PASS**. Active catalog search/filter behavior is Smart Profile + category + dedicated Halftone; historical tags and compatibility exports are retained. DEV-only cutover and read-only 20-sample corrective audit passed. Commit/push **COMPLETE** as `1c43f6e1`; publish, production, and physical cleanup remain separately gated. FreshForge **IDLE**.
 
 > 2026-09-05: **Pre-WS5 Automatic Explicit Content classification — SOURCE SIGNED OFF** — Corrective **COMPLETE / APPROVED WITH NOTES — SOURCE SIGNED OFF** (not DEV-live). Signoff **approved_with_notes**. DEV deploy + Studio QA pending. Autonomous **OFF**. **WS5 BLOCKED**. Production / commit **NOT AUTHORIZED**. Parent goal continues.

@@ -1,5 +1,15 @@
 # Backend and AI Pipeline
 
+## Print Request lifecycle ordering (ADR-FP-188 — DEV closed 2026-09-09)
+
+| Area | Delivered |
+|------|-----------|
+| Admin triggers | `onPrintRequestLifecycleRequestWritten` and `onPrintRequestLifecycleAllocationWritten` write immutable request-scoped lifecycle events and monotonic mirror fields |
+| DEV reader | Indexed reader enabled in local Studio source; compatibility reader preserved as rollback |
+| DEV data/index state | Bounded mirror APPLY complete; 8/8 eligible coverage; ordering and Details indexes READY |
+| Owner QA | **PASS**; final disposition **approved_with_notes** |
+| Scope boundary | Production, Studio publish, Portal deployment, backfill rerun, event repair, commit, and push remain separately gated |
+
 ## Automatic Explicit Content classification (source signed off 2026-09-05 — not DEV-live)
 
 | Area | Contract |

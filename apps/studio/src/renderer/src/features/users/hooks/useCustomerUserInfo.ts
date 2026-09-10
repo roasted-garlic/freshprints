@@ -10,11 +10,14 @@ import type {
   PrintRequestHistoryCardSummary,
   PrintRequestHistoryDetail,
 } from "../types/customerPrintRequestHistory.types";
+import type { PrintRequestLifecyclePageCursor } from "../../print-requests/services/printRequestService";
 import {
   ACCOUNT_ACTIVITY_COUNT_CAP,
   ACCOUNT_ACTIVITY_PAGE_SIZE,
+  PRINT_REQUEST_HISTORY_INDEXED_READER_ENABLED,
   PRINT_REQUEST_HISTORY_PAGE_SIZE,
 } from "../types/customerPrintRequestHistory.types";
+import { sortPrintRequestHistorySummaries } from "../utils/buildPrintRequestHistoryCard";
 
 export interface CustomerUserInfoStats {
   printRequests: number;
@@ -24,6 +27,9 @@ export interface CustomerUserInfoStats {
 
 interface CustomerUserInfoState {
   allPrintRequestSummaries: PrintRequestHistoryCardSummary[];
+  printRequestTotalCount: number;
+  printRequestHasMore: boolean;
+  printRequestCursorByCustomerId?: Record<string, PrintRequestLifecyclePageCursor>;
   printRequestVisibleCount: number;
   selectedPrintRequestId: string | null;
   selectedDetail: PrintRequestHistoryDetail | null;
@@ -37,6 +43,9 @@ interface CustomerUserInfoState {
 
 const initialState: CustomerUserInfoState = {
   allPrintRequestSummaries: [],
+  printRequestTotalCount: 0,
+  printRequestHasMore: false,
+  printRequestCursorByCustomerId: undefined,
   printRequestVisibleCount: 0,
   selectedPrintRequestId: null,
   selectedDetail: null,
@@ -74,7 +83,7 @@ export function useCustomerUserInfo(customer: Customer | null, isEnabled: boolea
         customerPrintRequestHistoryService.loadPrintRequestHistoryPage(
           caller,
           customer,
-          Number.MAX_SAFE_INTEGER,
+          PRINT_REQUEST_HISTORY_PAGE_SIZE,
         ),
         customerAccountActivityService.loadAccountActivityPage(
           caller,
@@ -86,6 +95,9 @@ export function useCustomerUserInfo(customer: Customer | null, isEnabled: boolea
 
       setState({
         allPrintRequestSummaries: historyPage.summaries,
+        printRequestTotalCount: historyPage.totalCount,
+        printRequestHasMore: historyPage.hasMore,
+        printRequestCursorByCustomerId: historyPage.nextCursorByCustomerId,
         printRequestVisibleCount: Math.min(PRINT_REQUEST_HISTORY_PAGE_SIZE, historyPage.totalCount),
         selectedPrintRequestId: null,
         selectedDetail: null,
@@ -112,15 +124,53 @@ export function useCustomerUserInfo(customer: Customer | null, isEnabled: boolea
     }
   }, [caller, customer, isEnabled]);
 
-  const loadMorePrintRequests = useCallback(() => {
-    setState((current) => ({
-      ...current,
-      printRequestVisibleCount: Math.min(
-        current.printRequestVisibleCount + PRINT_REQUEST_HISTORY_PAGE_SIZE,
-        current.allPrintRequestSummaries.length,
-      ),
-    }));
-  }, []);
+  const loadMorePrintRequests = useCallback(async () => {
+    if (!customer || !caller) {
+      return;
+    }
+    const nextVisibleCount = state.printRequestVisibleCount + PRINT_REQUEST_HISTORY_PAGE_SIZE;
+    try {
+      const historyPage = await customerPrintRequestHistoryService.loadPrintRequestHistoryPage(
+        caller,
+        customer,
+        PRINT_REQUEST_HISTORY_INDEXED_READER_ENABLED
+          ? PRINT_REQUEST_HISTORY_PAGE_SIZE
+          : nextVisibleCount,
+        PRINT_REQUEST_HISTORY_INDEXED_READER_ENABLED
+          ? state.printRequestCursorByCustomerId
+          : undefined,
+      );
+      const summaries = PRINT_REQUEST_HISTORY_INDEXED_READER_ENABLED
+        ? sortPrintRequestHistorySummaries([
+            ...state.allPrintRequestSummaries,
+            ...historyPage.summaries,
+          ])
+        : historyPage.summaries;
+      setState((current) => ({
+        ...current,
+        allPrintRequestSummaries: summaries,
+        printRequestVisibleCount: PRINT_REQUEST_HISTORY_INDEXED_READER_ENABLED
+          ? summaries.length
+          : historyPage.visibleCount,
+        printRequestTotalCount: PRINT_REQUEST_HISTORY_INDEXED_READER_ENABLED
+          ? Math.max(current.printRequestTotalCount, summaries.length)
+          : historyPage.totalCount,
+        printRequestHasMore: historyPage.hasMore,
+        printRequestCursorByCustomerId: historyPage.nextCursorByCustomerId,
+      }));
+    } catch (error) {
+      setState((current) => ({
+        ...current,
+        error: error instanceof Error ? error.message : "Unable to load more print requests.",
+      }));
+    }
+  }, [
+    caller,
+    customer,
+    state.allPrintRequestSummaries,
+    state.printRequestCursorByCustomerId,
+    state.printRequestVisibleCount,
+  ]);
 
   const openPrintRequestDetail = useCallback(
     async (printRequestId: string) => {
@@ -187,9 +237,9 @@ export function useCustomerUserInfo(customer: Customer | null, isEnabled: boolea
 
   return {
     printRequestSummaries,
-    printRequestTotalCount: state.allPrintRequestSummaries.length,
+    printRequestTotalCount: state.printRequestTotalCount,
     printRequestVisibleCount: state.printRequestVisibleCount,
-    hasMorePrintRequests: state.printRequestVisibleCount < state.allPrintRequestSummaries.length,
+    hasMorePrintRequests: state.printRequestHasMore,
     selectedDetail: state.selectedDetail,
     selectedPrintRequestId: state.selectedPrintRequestId,
     isDetailLoading: state.isDetailLoading,

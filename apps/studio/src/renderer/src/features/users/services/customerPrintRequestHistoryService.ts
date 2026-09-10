@@ -20,6 +20,10 @@ import {
   sortPrintRequestHistorySummaries,
 } from "../utils/buildPrintRequestHistoryCard";
 import { resolveLogicalCustomerIds } from "../utils/resolveLogicalCustomerIds";
+import type { PrintRequestLifecyclePageCursor } from "../../print-requests/services/printRequestService";
+import {
+  PRINT_REQUEST_HISTORY_INDEXED_READER_ENABLED,
+} from "../types/customerPrintRequestHistory.types";
 
 interface CustomerPrintRequestHistoryContext {
   requests: PrintRequest[];
@@ -139,7 +143,59 @@ export const customerPrintRequestHistoryService = {
     caller: User,
     customer: Customer,
     visibleCount = PRINT_REQUEST_HISTORY_PAGE_SIZE,
+    cursorByCustomerId?: Readonly<Record<string, PrintRequestLifecyclePageCursor>>,
   ): Promise<PrintRequestHistoryPage> {
+    if (PRINT_REQUEST_HISTORY_INDEXED_READER_ENABLED) {
+      // Activation is intentionally gated until mirror coverage is backfilled. Keep this branch
+      // explicit so the bounded reader cannot silently become the source of truth early.
+      const logicalCustomerIds = resolveLogicalCustomerIds(customer);
+      const pages = await Promise.all(
+        logicalCustomerIds.map((customerId) =>
+          printRequestService.listPrintRequestsByCustomerLifecyclePage(caller, customerId, {
+            limitCount: visibleCount,
+            cursor: cursorByCustomerId?.[customerId],
+          }),
+        ),
+      );
+      const requests = dedupePrintRequestsById(pages.flatMap((page) => page.requests));
+      const allocations = await listAllocationsForPrintRequests(
+        caller,
+        requests.map((request) => request.id),
+      );
+      const showsById = await loadShowsById(
+        caller,
+        allocations.map((allocation) => allocation.upcomingShowId),
+      );
+      const related = await loadRelatedRequests(caller, requests);
+      const summaries = sortPrintRequestHistorySummaries(
+        requests.map((request) =>
+          buildPrintRequestHistoryCardSummary({
+            request,
+            customer,
+            allocations,
+            showsById,
+            relatedRequestNamesById: related.namesById,
+            relatedRequestsById: related.requestsById,
+          }),
+        ),
+      );
+      const nextCursorByCustomerId: Record<string, PrintRequestLifecyclePageCursor> = {};
+      pages.forEach((page, index) => {
+        const cursor = page.nextCursor;
+        if (cursor) {
+          nextCursorByCustomerId[logicalCustomerIds[index]!] = cursor;
+        }
+      });
+      return {
+        summaries,
+        totalCount: summaries.length,
+        visibleCount: summaries.length,
+        hasMore: pages.some((page) => page.hasMore),
+        nextCursorByCustomerId:
+          Object.keys(nextCursorByCustomerId).length > 0 ? nextCursorByCustomerId : undefined,
+      };
+    }
+
     const context = await loadCustomerPrintRequestHistoryContext(caller, customer);
     const summaries = sortPrintRequestHistorySummaries(
       context.requests.map((request) =>
@@ -190,6 +246,13 @@ export const customerPrintRequestHistoryService = {
       request,
       allocations: context.allocations,
       showsById: context.showsById,
+      lifecycleEvents: (
+        await printRequestService.listPrintRequestLifecycleEvents(
+          caller,
+          request.id,
+          25,
+        )
+      ).events,
     });
 
     return {

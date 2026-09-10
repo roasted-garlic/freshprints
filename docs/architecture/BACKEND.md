@@ -108,6 +108,13 @@ revalidates source items, destination customer/base-name eligibility, the contin
 guard, catalog/upload existence, and the private-upload ownership boundary immediately before
 writes. No Rules, Storage Rules, indexes, or migration changes are required for this operation.
 
+`allocateStudioPrintRequestToShow` is the trusted Studio Add-to-Show path. It authenticates active
+staff, validates every requested remaining item quantity and destination show in one Admin SDK
+transaction, creates all allocation rows, updates each show total, activates the request, clears
+editing/requeue parking, and explicitly recomputes `queueTab`. This replaces the unsafe per-item
+client sequence for full-request/re-add plans and repairs already-allocated `editing` requests
+without fabricating additional quantity. It does not change the Portal callable.
+
 Request-scoped image export and Standard gang-sheet generation remain Electron desktop operations:
 renderer → preload → validated IPC → Electron main → Firebase Storage download / Sharp / ZIP or
 compositor → native save dialog. The renderer does not gain filesystem access.
@@ -302,6 +309,7 @@ Authoritative constants: `packages/shared/src/constants/import/batchImportLimits
 | `listPortalShowCatalogDesigns` | Callable | Portal: **public** (no auth) ready catalog designs allocated to a show; guests may browse; request mutations remain login-gated |
 | `convertCustomerPrintRequestToInternal` | Callable | Studio staff: convert eligible customer request → new internal request; archive source with `closureKind`; optional cancel pending/queued allocations after confirm; blocks `in_progress`+ allocations |
 | `queuePortalPrintRequestToShow` | Callable | Portal: allocate **entire** Continuable request to **one** show atomically or reject; multiple separate requests may accumulate on the same show up to limit `L` (ADR-FP-122); rejects past Portal queue cutoff; rejects stale `selections`; no remainder; bidding ack + version (ADR-FP-102 / ADR-FP-103 / ADR-FP-122) |
+| `allocateStudioPrintRequestToShow` | Callable | Studio staff: atomically allocate a complete remaining Add-to-Show plan (including split legs), activate the request, clear editing/requeue parking, and repair a fully allocated `editing` row; rejects partial plans, closed/past/full shows, invalid request origins, and archived/completed/converted requests |
 | `submitEtsyRecommendationRequest` | Callable | Portal: create/replace one active Etsy recommendation request; returns website search URL |
 | `searchEtsyRecommendations` | Callable | Portal: Open API listing search for an owned active request (`ETSY_X_API_KEY`); persists `lastApiSearch` |
 | `staffSearchEtsyRecommendationApiResults` | Callable | Studio: staff Open API search/refresh for any request status; persists `lastApiSearch`; no customer quota charge (`ETSY_X_API_KEY`) |
@@ -332,6 +340,8 @@ Authoritative constants: `packages/shared/src/constants/import/batchImportLimits
 | `updatePrintRequestLimitSettings` | Callable | Studio owner: set dual Portal limits on `settings/printRequestLimits`; mirrors request limit into legacy Cap A field (ADR-FP-102) |
 | `updateCustomerPrintRequestQuotaOverride` | Callable | Studio **owner-only**: set/clear temporary per-customer PR and/or Show limit overrides on `customers/{id}.printRequestQuotaOverride` (optional `expiresAt`; activity events; ADR-FP-159) |
 | `onEmailDeliveryJobCreated` | Firestore create | Deliver a proof-ready or catalog-share notice from the durable outbox |
+| `onPrintRequestLifecycleRequestWritten` | Firestore write `printRequests/{printRequestId}` | Server-authored request lifecycle evidence + monotonic ordering mirror |
+| `onPrintRequestLifecycleAllocationWritten` | Firestore write `showAllocations/{allocationId}` | Server-authored show/allocation lifecycle evidence + ordering mirror advancement |
 | `enqueueAiEnrichment` | Callable | Run imported design through direct AI processing |
 | `resetAiEnrichmentForProcessing` | Callable | Return Needs Review or Rejected design to Processing for a staff-started re-run |
 | `updateAiEnrichmentSettings` | Callable | Owner/admin: set team vision model, prompt template, and tag exclusions |
@@ -344,6 +354,13 @@ Authoritative constants: `packages/shared/src/constants/import/batchImportLimits
 **AI enrichment latency observability:** Callable logs `enqueue.queued` with `loggedAtMs`; trigger logs `trigger.fired`; pipeline logs phased `durationMs` / `totalPipelineMs`; vision request logs `vision.request.started` and `vision.completion.usage` (includes `durationMs`, token counts). Settings and categories are cached per function instance (60s).
 
 Location: `functions/src/` — compiled to `functions/lib/` (gitignored). See `docs/workflow/setup/firebase-functions-setup.md`.
+
+Print Request lifecycle events are written only by these Admin SDK triggers to
+`printRequestLifecycleEvents`. The Studio reader uses the reviewed composite-index query on
+`customerId + lastLifecycleActivityAt + __name__`; the compatibility reader remains available as
+rollback. In DEV, the separately reviewed non-destructive historical mirror backfill is complete,
+the required indexes are READY, and the indexed reader is enabled in local Studio source. This
+DEV outcome does not imply a production deploy or a future backfill rerun.
 
 ---
 

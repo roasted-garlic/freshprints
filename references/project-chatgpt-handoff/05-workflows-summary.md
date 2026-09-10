@@ -237,7 +237,9 @@ One open Assisted request per customer. Helpers may read but not mutate. Cancel/
 
 ### WS4 — User Info / activity (Studio)
 
-- **Print Request History** — compact cards, lazy details, deep links (`buildPrintRequestDeepLinkPath`)
+- **Print Request History** — compact cards, lazy details, deep links (`buildPrintRequestDeepLinkPath`); cards use the server-maintained lifecycle clock with indexed newest-activity ordering and stable ties
+- Details lifecycle activity is accepted **newest → oldest**; current destination context stays on the card while prior show/removal context stays historical
+- Lifecycle evidence is Admin-trigger-only; the compatibility reader remains available as rollback
 - **Account Activity** — collapsed by default (Transfer Username, Merge Accounts, disable/restore, etc.)
 - Merged-customer history via `resolveLogicalCustomerIds` / `mergedSourceCustomerIds`
 - Did Not Print requeue: one card per PR; destination show/date as active context
