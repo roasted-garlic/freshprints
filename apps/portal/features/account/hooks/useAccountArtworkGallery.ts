@@ -13,7 +13,10 @@ export interface AccountArtworkGalleryTile extends AccountArtworkGalleryItem {
   imageUrl: string | null;
 }
 
-/** Two rows × seven columns on the account overview preview. */
+/**
+ * Account overview preview cap (desktop: two rows × seven columns).
+ * Mobile CSS hides tiles after the 8th (two rows × four) without changing this limit.
+ */
 const PREVIEW_LIMIT = 14;
 
 export function useAccountArtworkGallery(customerUid: string | undefined): {

@@ -1845,6 +1845,11 @@ a.portal-sidebar-sign-out:hover {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
+  /* Dashboard preview: two rows × four columns on mobile; desktop stays 14. */
+  .portal-account-gallery-grid > :nth-child(n + 9) {
+    display: none;
+  }
+
   .portal-account-gallery-modal-grid {
     gap: var(--space-3);
     grid-template-columns: repeat(3, minmax(0, 1fr));
