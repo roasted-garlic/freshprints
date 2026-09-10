@@ -69,8 +69,9 @@ coverage, and the two required indexes reached READY. The indexed reader is enab
 Studio source, with the compatibility reader preserved as rollback. Owner DEV QA passed and the
 managed goal closed **approved_with_notes**. Two historical duplicate conversion events from the
 pre-corrective backfill remain `SAFE_TO_LEAVE_AS_HISTORICAL_DUPLICATE`; they do not affect mirror
-ordering and require no cleanup. No production promotion, Studio publish, Portal deployment,
-commit, or push is authorized by this outcome.
+ordering and require no cleanup. No production promotion, Studio publish, or Portal deployment is
+authorized by this outcome. The owner subsequently authorized commit/push; commit `6bf7a25d` was
+pushed to `origin/development` without force-pushing.
 
 ---
 

@@ -6,7 +6,7 @@
 
 | Item | Value |
 |---|---|
-| Status | **IDLE — PRINT REQUEST LIFECYCLE ACTIVITY ORDERING CLOSED (APPROVED_WITH_NOTES)** |
+| Status | **IDLE — PRINT REQUEST LIFECYCLE ACTIVITY ORDERING COMMITTED/PUSHED (APPROVED_WITH_NOTES)** |
 | Parent | Customer Identity WS4 corrective |
 | Active child phase | None — FreshForge is idle and ready for the owner to select the next managed goal |
 | Most recently closed goal | `user-info-print-request-lifecycle-activity-ordering` — **approved_with_notes** |
@@ -14,7 +14,7 @@
 | Related closed goal | `ai-processing-live-review-auto-process-and-ui-polish` |
 | Autonomous | **OFF** (`shadow`) |
 | Production | untouched |
-| Commit/push | Show Queue commit `908d9123` and legacy tag retirement `1c43f6e1` pushed to `origin/development`; no force push |
+| Commit/push | Lifecycle commit `6bf7a25d`, Show Queue commit `908d9123`, and legacy tag retirement `1c43f6e1` pushed to `origin/development`; no force push |
 
 ## Closed managed goal — Print Request lifecycle activity ordering
 
@@ -109,10 +109,11 @@ final behavior. The two historical duplicate conversion events remain
 `SAFE_TO_LEAVE_AS_HISTORICAL_DUPLICATE`; existing Details deduplication prevents a duplicate
 visible row and no cleanup is required for this DEV goal.
 
-Owner DEV QA: **PASS**. FreshForge: **IDLE** with no active managed goal.
+Owner DEV QA: **PASS**. The owner-authorized lifecycle commit `6bf7a25d` was pushed to
+`origin/development`; no force push occurred. FreshForge: **IDLE** with no active managed goal.
 
 Next checkpoint:
-`[NEEDS OWNER AUTHORIZATION: COMMIT/PUSH CLOSED PRINT REQUEST LIFECYCLE GOAL]`
+`[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]`
 
 Workflow marker: `[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]`
 

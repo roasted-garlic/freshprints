@@ -7,6 +7,8 @@
 - No active managed goal. The most recently closed goal is
   `user-info-print-request-lifecycle-activity-ordering` — final disposition
   **approved_with_notes**.
+- Owner-authorized commit/push is complete as `6bf7a25d` on `origin/development`; no force push
+  occurred. Production, Studio publish, and Portal deployment remain separately gated.
 - Corrective Plan + Formal Review are complete with verdict **approved_with_changes**, and the
   owner-authorized Approach A implementation is deployed to DEV. Owner DEV re-QA returned **PASS**:
   remove→Editing→re-add succeeded without permissions errors, partial queue, or stuck Editing, and
@@ -103,12 +105,11 @@ Closed goal artifacts:
   `SAFE_TO_LEAVE_AS_HISTORICAL_DUPLICATE`; they do not alter mirror ordering, Details dedupes the
   visible row, and no cleanup is required.
 - No backfill rerun, event repair, Rules/index change, Firebase deploy, Studio publish, Portal
-  deployment, production action, commit, or push occurred in the signoff turn.
+  deployment, or production action occurred in the signoff turn. Commit/push was subsequently
+  authorized and completed as `6bf7a25d`.
 - Signoff: `docs/workflow/reviews/2026-09-09-user-info-print-request-lifecycle-activity-ordering-signoff.md`.
 
-FreshForge is **IDLE** at `[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]`. The next checkpoint is:
-
-`[NEEDS OWNER AUTHORIZATION: COMMIT/PUSH CLOSED PRINT REQUEST LIFECYCLE GOAL]`
+FreshForge is **IDLE** at `[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]`.
 
 DEV cutover evidence (2026-09-09): six explicitly allowlisted Functions were deployed to
 `fresh-prints-dev`; existing local Portal/Studio Smart Filter flags were already enabled; the

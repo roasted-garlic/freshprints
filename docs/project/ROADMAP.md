@@ -8,9 +8,10 @@
 > both lifecycle indexes are READY. Details is **newest → oldest**. Two historical duplicate
 > conversion events remain safely documented with no ordering impact or cleanup required. No
 > commit/push, Studio publish, Portal deployment, or production action occurred in the signoff
-> turn. FreshForge **IDLE**. Signoff:
+> turn. Owner-authorized commit/push is complete as `6bf7a25d` on `origin/development`; no force
+> push occurred. FreshForge **IDLE**. Signoff:
 > `docs/workflow/reviews/2026-09-09-user-info-print-request-lifecycle-activity-ordering-signoff.md`.
-> Next: `[NEEDS OWNER AUTHORIZATION: COMMIT/PUSH CLOSED PRINT REQUEST LIFECYCLE GOAL]`.
+> Next: `[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]`.
 
 > 2026-09-09: **Portal admin daily Show Queue — CLOSED (DEV)** — Goal
 > `portal-admin-daily-show-queue` **DONE** (Signoff **approved_with_notes**). Owner DEV QA

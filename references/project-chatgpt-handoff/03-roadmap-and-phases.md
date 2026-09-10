@@ -6,9 +6,10 @@
 > events/mirrors, the accepted Studio Editing→re-add corrective, mirror-only trigger corrective,
 > bounded DEV mirror backfill, and local indexed-reader activation are complete; reader coverage is
 > 8/8 and both lifecycle indexes are READY. Details is **newest → oldest**. Two historical
-> duplicate conversion events remain safely documented; no cleanup, commit/push, publish, or
-> production action occurred in the signoff turn. FreshForge **IDLE**; next checkpoint is owner
-> authorization to commit/push the closed goal.
+> duplicate conversion events remain safely documented; no cleanup, publish, or production action
+> occurred in the signoff turn. Owner-authorized commit/push is complete as `6bf7a25d` on
+> `origin/development`; no force push occurred. FreshForge **IDLE**; next checkpoint is
+> `[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]`.
 
 > 2026-09-09: **Legacy tag operational retirement + Smart Profile search parity — CLOSED (DEV)** — Goal `legacy-tag-operational-retirement-and-smart-profile-search-parity` **DONE**; signoff **approved** after Owner DEV QA **PASS**. Active catalog search/filter behavior is Smart Profile + category + dedicated Halftone; historical tags and compatibility exports are retained. DEV-only cutover and read-only 20-sample corrective audit passed. Commit/push **COMPLETE** as `1c43f6e1`; publish, production, and physical cleanup remain separately gated. FreshForge **IDLE**.
 

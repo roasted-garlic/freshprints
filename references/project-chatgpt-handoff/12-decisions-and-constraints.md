@@ -11,8 +11,8 @@
 - DEV mirror backfill is complete with 8/8 eligible coverage and both indexes READY. Owner DEV QA
   passed; final disposition is **approved_with_notes**.
 - Two historical duplicate conversion events are `SAFE_TO_LEAVE_AS_HISTORICAL_DUPLICATE`; no
-  ordering impact or cleanup is required. Production, publish, commit, and push remain separately
-  gated.
+  ordering impact or cleanup is required. Production and publish remain separately gated; the
+  owner-authorized commit/push is complete as `6bf7a25d`.
 
 ### Current operational boundary — legacy tag retirement (2026-09-09)
 

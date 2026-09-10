@@ -14,7 +14,8 @@
 | Notes | Two historical duplicate conversion events are `SAFE_TO_LEAVE_AS_HISTORICAL_DUPLICATE`; no mirror-order impact, Details deduplication prevents a duplicate visible row, and no cleanup is required. Studio typecheck retains unrelated baseline failures. |
 | Scope boundary | No backfill rerun, event repair, Rules/index change, Firebase deploy, Studio publish, Portal deployment, production action, commit, or push in the signoff turn |
 | Signoff | `docs/workflow/reviews/2026-09-09-user-info-print-request-lifecycle-activity-ordering-signoff.md` |
-| Next checkpoint | `[NEEDS OWNER AUTHORIZATION: COMMIT/PUSH CLOSED PRINT REQUEST LIFECYCLE GOAL]` |
+| Commit/push | **COMPLETE** — `6bf7a25d` pushed to `origin/development` |
+| Next checkpoint | `[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]` |
 
 ## 2026-09-09 - Studio Editing → Re-add Show Queue corrective — DEV QA PASS (historical corrective checkpoint)
 

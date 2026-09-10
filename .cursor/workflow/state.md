@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **IDLE — PRINT REQUEST LIFECYCLE ACTIVITY ORDERING CLOSED (APPROVED_WITH_NOTES)** |
+| Status | **IDLE — PRINT REQUEST LIFECYCLE ACTIVITY ORDERING COMMITTED/PUSHED (APPROVED_WITH_NOTES)** |
 | DONE | yes |
 | Signoff Status | `user-info-print-request-lifecycle-activity-ordering` — **approved_with_notes**; Owner DEV QA **PASS** |
 | Current Mode | idle |
@@ -14,12 +14,12 @@
 | Implementation Status | complete — lifecycle events/mirror, accepted Studio re-add corrective, mirror-only trigger corrective, backfill, and indexed reader |
 | Test Status | Studio lifecycle/indexed-reader focused 24/24; Functions trigger/backfill/allocation 14/14; latest full Rules 174/174; build/lint pass; Studio typecheck baseline failures documented |
 | Human Checkpoint Required | yes |
-| Human Checkpoint Reason | Commit/push of the closed goal requires explicit owner authorization; no implementation or production action is active. |
+| Human Checkpoint Reason | No active implementation is running; the owner must select the next managed goal or separately authorize production/publish actions. |
 | Environment | Corrective callable + Firestore Rules and lifecycle triggers deployed to `fresh-prints-dev`; Owner DEV QA PASS; mirror APPLY complete; two historical duplicate events safely documented; indexed reader enabled in local Studio source |
 | Production | untouched |
-| Commit/push | **not performed** for this goal; next checkpoint is explicit owner authorization |
+| Commit/push | **COMPLETE** — `6bf7a25d` pushed to `origin/development` |
 | Last updated | 2026-09-09 |
-| Last Completed Step | Owner DEV QA PASS recorded; final `approved_with_notes` signoff created; managed goal closed; FreshForge returned to IDLE |
+| Last Completed Step | Owner DEV QA PASS recorded; final `approved_with_notes` signoff created; `6bf7a25d` committed and pushed; FreshForge returned to IDLE |
 
 **Decision Log:**
 
@@ -223,18 +223,17 @@
   Formal Review → implement.
 
 **Allowed Actions:** Documentation/state maintenance; local tests/builds/lint; read-only inspection;
-owner selection of a new managed goal through the normal Plan → Review gates; and the separately
-authorized commit/push checkpoint.
+owner selection of a new managed goal through the normal Plan → Review gates; and separately gated
+production/publish planning.
 
 **Forbidden Actions:** Any Firebase/Rules/index/Storage/hosting/Studio/DEV/production deployment;
 backfill rerun or event repair; lifecycle mirror/event changes; disabling the accepted indexed
 reader; data changes outside local tests; starting another implementation without a new goal;
-commit or push without the explicit checkpoint authorization.
+commit or push for this closed goal; any future commit/push requires a new explicit authorization.
 Production remains separately gated.
 
 ## Next Required Step
 
-`[NEEDS OWNER AUTHORIZATION: COMMIT/PUSH CLOSED PRINT REQUEST LIFECYCLE GOAL]`
+`[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]`
 
-FreshForge is otherwise idle at `[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]`; do not
-automatically start another goal or production rehearsal.
+FreshForge is idle; do not automatically start another goal or production rehearsal.

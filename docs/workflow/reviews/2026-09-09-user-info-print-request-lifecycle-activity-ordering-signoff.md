@@ -130,8 +130,15 @@ implementation is not being changed in this signoff.
 - Owner DEV QA: **PASS**.
 - Signoff: **approved_with_notes**.
 - FreshForge: **IDLE**, with no active managed goal; ready for the owner to select the next goal.
-- Studio publish, Portal deployment, production promotion, and commit/push remain separately gated.
+- The owner-authorized commit `6bf7a25d` was pushed to `origin/development`; no force push occurred.
+- Studio publish, Portal deployment, and production promotion remain separately gated.
+
+## Post-signoff commit/push record
+
+On 2026-09-10, the owner-authorized closed-goal commit was created and pushed normally:
+
+`6bf7a25d feat(studio): add print request lifecycle ordering`
 
 Next checkpoint:
 
-`[NEEDS OWNER AUTHORIZATION: COMMIT/PUSH CLOSED PRINT REQUEST LIFECYCLE GOAL]`
+`[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]`

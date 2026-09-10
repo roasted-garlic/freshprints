@@ -8,7 +8,7 @@
 | DEV reader | Indexed reader enabled in local Studio source; compatibility reader preserved as rollback |
 | DEV data/index state | Bounded mirror APPLY complete; 8/8 eligible coverage; ordering and Details indexes READY |
 | Owner QA | **PASS**; final disposition **approved_with_notes** |
-| Scope boundary | Production, Studio publish, Portal deployment, backfill rerun, event repair, commit, and push remain separately gated |
+| Scope boundary | Production, Studio publish, Portal deployment, backfill rerun, and event repair remain separately gated; commit/push `6bf7a25d` is complete |
 
 ## Automatic Explicit Content classification (source signed off 2026-09-05 — not DEV-live)
 
