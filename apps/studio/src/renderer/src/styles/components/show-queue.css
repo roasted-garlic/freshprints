@@ -515,6 +515,35 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+  justify-content: space-between;
+}
+
+.show-detail-pill-row-start {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.show-detail-print-time {
+  align-items: center;
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.show-detail-print-time-label {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.show-detail-print-time-value {
+  font-size: var(--font-size-sm);
+  padding: 0.2rem var(--space-3);
 }
 
 .show-detail-gang-sheet-button {

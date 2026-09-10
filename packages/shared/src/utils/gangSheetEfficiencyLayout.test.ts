@@ -19,6 +19,7 @@ describe("planEfficiencyGangSheetLayout regression contract", () => {
 
     assert.deepEqual(plan.interleavedPlacementIds, ["1", "3", "2", "4"]);
     assert.equal(plan.sheetCount, 1);
+    assert.ok(plan.totalSheetHeightPx > 0);
   });
 
   it("reports multiple sheets when height cap is exceeded", () => {
@@ -34,5 +35,19 @@ describe("planEfficiencyGangSheetLayout regression contract", () => {
       plan.sheetPlacementIds.flat().length,
       plan.interleavedPlacementIds.length,
     );
+    assert.ok(plan.totalSheetHeightPx > 0);
+  });
+
+  it("sums nest sheet heights into totalSheetHeightPx", () => {
+    const plan = planEfficiencyGangSheetLayout({
+      images: [{ allocationId: "a", quantity: 1, widthPx: 900, heightPx: 900 }],
+      sheetWidthPx: 6900,
+      spacingPx: SPACING,
+      maxSheetHeightPx: 30000,
+    });
+
+    assert.equal(plan.sheetCount, 1);
+    // topBottom + height + topBottom = 150 + 900 + 150
+    assert.equal(plan.totalSheetHeightPx, SPACING.topBottomMarginPx + 900 + SPACING.topBottomMarginPx);
   });
 });

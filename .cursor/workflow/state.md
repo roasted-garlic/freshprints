@@ -2,28 +2,36 @@
 
 | Field | Value |
 |---|---|
-| Status | **IDLE BETWEEN GOALS — STUDIO DOLLAR TOTALS APPROVED; MAINTENANCE PREREQUISITE AWAITING OWNER ACCEPTANCE** |
-| DONE | yes — for `studio-show-queue-internal-sheet-dollar-totals` only |
-| Signoff Status | approved — Studio dollar-totals polish; maintenance prerequisite still pending owner acceptance |
-| Current Mode | managed-phase (idle between polish closeout and maintenance Implement) |
+| Status | **PAUSED — PRODUCTION MAINTENANCE MODE PREREQUISITE — OWNER REQUESTED PAUSE** |
+| DONE | no |
+| Signoff Status | pending — awaiting the single owner DEV-QA journey |
+| Current Mode | managed-phase |
 | Parent program | Coordinated production promotion and release readiness |
-| Current Goal | none active — next: owner accepts `production-maintenance-mode-prerequisite` then `Continue FreshForge` |
-| Current Phase | Polish signed off; maintenance prerequisite remains Formal Review `approved_with_changes`, Implement not started |
-| Plan Status | complete (polish); maintenance plan complete |
-| Review Status | polish approved; maintenance `approved_with_changes` |
-| Implementation Status | polish complete and pushed; maintenance not_started |
-| Test Status | polish passed (automated + owner PASS); maintenance not_started |
-| Human Checkpoint Required | yes — owner acceptance of maintenance prerequisite before Implement |
-| Human Checkpoint Reason | Maintenance prerequisite Formal Review is complete with changes; await owner acceptance, then `Continue FreshForge` to enter Implement. |
-| Environment | No maintenance DEV/prod mutations authorized until acceptance |
+| Current Goal | `production-maintenance-mode-prerequisite` |
+| Current Phase | DEV QA checkpoint — paused at owner request after approved DEV dependency deployment |
+| Plan Status | complete — reviewed and owner-accepted |
+| Review Status | complete — `approved_with_changes` |
+| Implementation Status | complete — reviewed maintenance capability implemented in DEV source |
+| Test Status | complete — targeted contracts, Portal typecheck, Functions build, ESLint, and full Rules suite pass; Studio repo-wide typecheck and Portal production build retain documented baseline/environment blockers |
+| Human Checkpoint Required | yes — owner DEV QA only; production remains separately blocked |
+| Human Checkpoint Reason | Owner requested a pause before DEV QA. No further implementation, deployment, QA, signoff, commit/push, activation, or parent rollout is authorized until the owner resumes. |
+| Environment | Reviewed maintenance dependencies deployed to `fresh-prints-dev`; owner DEV QA only; `fresh-prints-prod` mutations forbidden |
 | Production | untouched |
-| Commit/push | Studio dollar-totals polish authorized for commit/push on owner PASS |
+| Commit/push | Studio print-time estimate polish: owner PASS; commit/push authorized for this polish only; maintenance still paused |
 | Last updated | 2026-09-10 |
-| Last Completed Step | Owner visual QA **PASS**; signoff approved; commit/push of Studio dollar-totals polish |
-| Next Required Step | Owner accepts maintenance prerequisite scope, then `Continue FreshForge` for Implement |
-| Parallel polish | Portal dashboard gallery mobile preview `93199fca`; Studio dollar totals (this signoff) |
+| Last Completed Step | Studio print-time estimate owner visual QA PASS; signoff approved; commit/push of polish only |
+| Next Required Step | Maintenance remains paused until owner resume; then single DEV-QA journey |
+| Parallel polish | Show Queue / Internal Sheet print-time estimate — **approved** (PASS + commit/push) |
 
 **Decision Log:**
+
+- 2026-09-10 — Owner visual QA **PASS** for Est. print time (label band + ceil inches + ft
+  parentheses; status-row placement). Authorized commit/push of print-time polish only.
+  Signoff **approved**. Maintenance pause unchanged.
+
+- 2026-09-10 — Orthogonal Studio polish implemented: Est. print time on Show Queue / Internal
+  Sheet glance (Standard packing, 8 s/in). Plan/review under `docs/workflow/*show-queue-print-time-estimate*`.
+  Automated tests 7/7. Awaiting owner visual QA before commit/push. Maintenance pause unchanged.
 
 - 2026-09-10 — Owner visual QA **PASS** for Portal Request totals modal Size tiers primary
   button; authorized commit/push.
@@ -39,12 +47,41 @@
 - 2026-09-10 — Owner requested Studio visual tweak during maintenance pause: add `$` totals using
   existing gang-sheet pricing. Plan + Review **approved**; implemented locally.
 
-**Allowed Actions:** Read docs; await owner maintenance acceptance; after acceptance, Plan/Implement
-gates per maintenance review. Commit/push of this signed-off polish authorized by owner.
+- 2026-09-10 — Owner accepted the reviewed maintenance prerequisite Plan and explicitly authorized
+  `Continue FreshForge` into Implement. DEV-side implementation and verification are authorized;
+  production deployment/activation, parent rollout, candidate freeze, and unrelated work remain
+  forbidden.
 
-**Forbidden Actions:** Maintenance-mode implementation until owner acceptance; production deploy;
-unauthorized Firebase/Rules mutations; force push.
+- 2026-09-10 — Maintenance prerequisite implementation and automated Test completed in DEV
+  source. Full Firebase Rules regression is 179/179 across 24 suites; targeted maintenance Rules
+  coverage is 5/5; shared/contract tests are 6/6; Portal typecheck, Functions build, and changed
+  source ESLint pass. Studio repo-wide typecheck retains unrelated baseline errors and Portal
+  production build is blocked by EPERM on the existing `.next/trace` while a dev server is active.
+  Ready for the single owner DEV-QA journey; production remains forbidden.
+
+- 2026-09-10 — Owner DEV-QA block diagnosed as a DEV source mismatch: both maintenance callables
+  were absent from `fresh-prints-dev` and the public callable returned HTTP 404 while Portal and
+  Studio local source targeted DEV. Deployed the two maintenance callables, the 34 guard-bearing
+  customer callable revisions, and the reviewed Firestore and Storage Rules to `fresh-prints-dev`.
+  All 36 allowlisted Functions are ACTIVE; the absent `settings/portalMaintenance` document returns
+  public-safe OFF. Deployment evidence:
+  `docs/workflow/reviews/2026-09-10-production-maintenance-mode-prerequisite-dev-deployment.md`.
+  Owner DEV QA may resume; Signoff and production remain blocked.
+
+- 2026-09-10 — Owner requested a pause while making a small change. Maintenance prerequisite is
+  paused after DEV dependency deployment and before Owner DEV QA; no further QA, deployment,
+  signoff, commit/push, production activation, or parent rollout is authorized until resumed.
+
+**Allowed Actions:** None beyond preserving the paused state; resume only on an explicit owner
+instruction. After resume, the single owner DEV-QA journey and workflow-artifact updates needed to
+record it are allowed. Production, parent-rollout, candidate-freeze, unrelated polish, and
+unapproved deployment/settings mutations remain separately gated.
+
+**Forbidden Actions:** Any further QA, implementation, DEV deployment or settings mutation,
+production Functions/Rules/Storage/Hosting deploy or settings mutation; production maintenance
+activation; parent coordinated-release implementation/freeze; unrelated refactors; destructive data
+changes; commit/push; force push.
 
 ## Next Required Step
 
-`[AWAIT OWNER ACCEPTANCE OF MAINTENANCE PREREQUISITE; THEN Continue FreshForge]`
+`[PAUSED BY OWNER — DEV DEPENDENCIES DEPLOYED; DO NOT CONTINUE UNTIL RESUMED]`

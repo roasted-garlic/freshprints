@@ -1879,15 +1879,23 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                 </div>
 
                 <div className="show-detail-pill-row">
-                  {!isSelectedStaffGangSheet &&
-                  shouldShowUpcomingShowScheduleStatusBadge(selectedShow, new Date()) ? (
-                    <Badge variant={getUpcomingShowStatusBadgeVariant(selectedShow.status)}>
-                      {selectedShow.status}
-                    </Badge>
-                  ) : null}
-                  {selectedShowStatusDisplay ? (
-                    <Badge variant={selectedShowStatusDisplay.variant}>{selectedShowStatusDisplay.label}</Badge>
-                  ) : null}
+                  <div className="show-detail-pill-row-start">
+                    {!isSelectedStaffGangSheet &&
+                    shouldShowUpcomingShowScheduleStatusBadge(selectedShow, new Date()) ? (
+                      <Badge variant={getUpcomingShowStatusBadgeVariant(selectedShow.status)}>
+                        {selectedShow.status}
+                      </Badge>
+                    ) : null}
+                    {selectedShowStatusDisplay ? (
+                      <Badge variant={selectedShowStatusDisplay.variant}>{selectedShowStatusDisplay.label}</Badge>
+                    ) : null}
+                  </div>
+                  <div className="show-detail-print-time" title="Estimated print time (Standard layout)">
+                    <span className="show-detail-print-time-label">Est. print time</span>
+                    <span className="show-queue-glance-pill show-queue-glance-pill-emphasis show-detail-print-time-value">
+                      {selectedShowGlanceStats.printTimeEstimateLabel ?? "—"}
+                    </span>
+                  </div>
                 </div>
 
                 {!isSelectedStaffGangSheet && selectedShow ? (

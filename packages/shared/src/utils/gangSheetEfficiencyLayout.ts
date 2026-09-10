@@ -16,6 +16,8 @@ export interface GangSheetEfficiencyLayoutPlan {
   interleavedPlacementIds: string[];
   sheetPlacementIds: string[][];
   sheetCount: number;
+  /** Sum of each nest sheet's feed height in pixels (300 DPI for export estimates). */
+  totalSheetHeightPx: number;
   skippedIds: string[];
 }
 
@@ -57,6 +59,7 @@ export function planEfficiencyGangSheetLayout(input: {
     interleavedPlacementIds: interleaved.map((box) => box.id),
     sheetPlacementIds: nestResult.sheets.map((sheet) => sheet.placements.map((placement) => placement.id)),
     sheetCount: nestResult.sheets.length,
+    totalSheetHeightPx: nestResult.sheets.reduce((sum, sheet) => sum + sheet.sheetHeightPx, 0),
     skippedIds: nestResult.skipped.map((entry) => entry.id),
   };
 }

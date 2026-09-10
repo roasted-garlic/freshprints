@@ -6,15 +6,24 @@
 
 | Item | Value |
 |---|---|
-| Status | **IDLE BETWEEN GOALS — STUDIO DOLLAR TOTALS APPROVED; MAINTENANCE PREREQUISITE AWAITING OWNER ACCEPTANCE** |
+| Status | **PAUSED — PRODUCTION MAINTENANCE MODE PREREQUISITE — OWNER REQUESTED PAUSE** |
 | Parent | Coordinated production promotion and release readiness |
-| Active child phase | Studio dollar-totals polish signed off **approved** (owner PASS). Maintenance prerequisite Formal Review remains complete with changes (Implement not started). |
+| Active child phase | DEV dependencies deployed after automated Test; paused at owner request before QA; production remains forbidden |
 | Most recently closed goal | `studio-show-queue-internal-sheet-dollar-totals` — **approved** (prior: lifecycle ordering **approved_with_notes**) |
 | Signoff | Studio dollar totals: **approved** — Owner visual QA **PASS** (2026-09-10). Lifecycle ordering: **approved_with_notes**. Prior Portal Show Queue: **approved_with_notes**; prior Print Request: **approved** |
 | Related closed goal | `user-info-print-request-lifecycle-activity-ordering` |
 | Autonomous | **OFF** (`shadow`) |
 | Production | untouched |
-| Commit/push | Studio dollar-totals polish committed/pushed this session; prior Portal polish `93199fca`, lifecycle `6bf7a25d`, Show Queue `908d9123` on `origin/development`; no force push |
+| Commit/push | Studio print-time estimate polish: owner PASS; commit/push of this polish only; maintenance still paused; no force push |
+
+## Closed polish — Show Queue / Internal Sheet print-time estimate
+
+Owner visual QA **PASS** (2026-09-10). Signoff **approved**:
+
+- Plan: `docs/workflow/plans/2026-09-10-show-queue-print-time-estimate-plan.md`
+- Review / test / QA / signoff: `docs/workflow/reviews/2026-09-10-show-queue-print-time-estimate-*`
+- Behavior: status-row **Est. print time** from Standard feed (incl. label band) × 8 s/in,
+  inches rounded up, e.g. `16m 8s · 121 in (10.08 ft)`
 
 ## Closed polish — Studio Show Queue / Internal Sheet dollar totals
 
@@ -37,13 +46,28 @@ The reviewed design uses a private runtime `settings` control, a per-invocation 
 guard before quota/external side effects, Firestore/Storage Rules reinforcement for direct customer
 writes, a bounded Portal read-only experience, and existing owner/admin Studio Settings and Portal
 Show Queue recovery paths. Customer notification read-marker writes are blocked while ON for a
-strict read-only contract. Exact new names, Rules budgets, public no-store behavior, and the
-frozen-source mutation manifest remain `[NEEDS REPO CHECK]` gates. No implementation, DEV or
-production mutation, deployment, commit, or push occurred. Owner acceptance is required before
-Implement; the next command after acceptance is `Continue FreshForge`.
+strict read-only contract. The owner accepted the Plan and authorized this DEV-only implementation.
+Implementation and automated Test are now complete. The two maintenance Functions, all 34
+guard-bearing customer callable revisions, and reviewed Firestore/Storage Rules have since been
+deployed to `fresh-prints-dev`; production mutation,
+deployment, commit, push, candidate freeze, and parent rollout remain forbidden pending the single
+owner DEV-QA journey.
+Test report: `docs/workflow/reviews/2026-09-10-production-maintenance-mode-prerequisite-test-report.md`.
+DEV deployment evidence: `docs/workflow/reviews/2026-09-10-production-maintenance-mode-prerequisite-dev-deployment.md`.
+The full Firebase Rules regression is 179/179 across 24 suites; targeted maintenance Rules is 5/5;
+shared/source contracts are 6/6; Portal typecheck, Functions build, and changed-source ESLint pass.
+Studio repo-wide typecheck retains unrelated baseline errors; Portal production build was blocked by
+EPERM on `.next/trace` while the existing dev server was active.
+The local Portal process can converge via its bounded refresh/focus handling; the local Studio
+renderer should be reloaded/restarted because its prior denied `onSnapshot` subscription is
+terminal. The owner then requested a pause while making a small change. No further QA, deployment,
+signoff, commit/push, activation, or parent rollout is authorized until the owner resumes.
 
-The Studio dollar-totals polish that paused this prerequisite is now closed. Resume by obtaining
-owner acceptance of the reviewed maintenance scope, then `Continue FreshForge` for Implement.
+The Studio dollar-totals polish that paused this prerequisite is now closed. The owner accepted the
+reviewed maintenance scope and authorized `Continue FreshForge` for Implement. DEV-side
+implementation, verification, and the narrow dependency deployment are complete; owner DEV QA is
+the next action. Production deployment or activation, parent rollout, candidate freeze, and
+unrelated work remain forbidden.
 
 ## Parent managed goal — Coordinated production promotion and release readiness
 

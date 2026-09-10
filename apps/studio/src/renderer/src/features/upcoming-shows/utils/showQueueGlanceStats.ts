@@ -1,6 +1,7 @@
 import { planContinuousCustomerGroupedGangSheetLayout } from "@fresh-prints/shared/utils/gangSheetContinuousCustomerGroupedLayout";
 import { planEfficiencyGangSheetLayout } from "@fresh-prints/shared/utils/gangSheetEfficiencyLayout";
 import { planSheetPerCustomerGangSheetLayout } from "@fresh-prints/shared/utils/gangSheetGroupedLayout";
+import { computeGangSheetLabelBandHeightPx } from "@fresh-prints/shared/utils/gangSheetLabelRendering";
 import { computeExportTargetPixelSize } from "@fresh-prints/shared/utils/showExportFilename";
 import { resolveQueuedPrintInches } from "@fresh-prints/shared/utils/printRequestQueuedInches";
 import {
@@ -24,8 +25,16 @@ import {
 
 const GANG_SHEET_EXPORT_DPI = 300;
 
+/** Ops glance: estimated DTF print seconds per linear inch of Standard (efficiency) feed. */
+export const PRINT_SECONDS_PER_LINEAR_INCH = 8;
+
 export interface GangSheetSheetCountPreview {
   efficiencySheets: number;
+  /**
+   * Total Standard-layout feed length in inches, including per-sheet label bands
+   * (matches export PNG height sum / DPI).
+   */
+  efficiencyLinearInches: number;
   /** Sheet per Customer (`grouped_by_customer`). */
   groupedSheets: number;
   /** Grouped by Customer continuous (`customer_grouped_continuous`). */
@@ -108,11 +117,43 @@ export function estimateGangSheetSheetCounts(
     sheetLabelFontSizePx: layoutSettings.labelFontSizePx,
   });
 
+  const labelBandHeightPx = computeGangSheetLabelBandHeightPx(layoutSettings.labelFontSizePx);
+  const efficiencyTotalHeightPx =
+    efficiency.totalSheetHeightPx + efficiency.sheetCount * labelBandHeightPx;
+
   return {
     efficiencySheets: efficiency.sheetCount,
+    efficiencyLinearInches: efficiencyTotalHeightPx / GANG_SHEET_EXPORT_DPI,
     groupedSheets: grouped.sheetCount,
     continuousGroupedSheets: continuousGrouped.sheetCount,
   };
+}
+
+/**
+ * Format Standard-layout print-time estimate for Show Queue / Internal Sheet glance.
+ * Example: `12m 32s · 94 in (7.83 ft)`
+ *
+ * Inches are rounded **up** so the glance never under-plans vs final export length
+ * (remaining aspect-ratio drift after including label bands).
+ */
+export function formatShowQueuePrintTimeEstimate(linearInches: number): string {
+  const inchesRoundedUp = Math.max(0, Math.ceil(linearInches));
+  const totalSeconds = inchesRoundedUp * PRINT_SECONDS_PER_LINEAR_INCH;
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  const durationParts: string[] = [];
+  if (hours > 0) {
+    durationParts.push(`${hours}h`);
+  }
+  if (hours > 0 || minutes > 0) {
+    durationParts.push(`${minutes}m`);
+  }
+  durationParts.push(`${seconds}s`);
+
+  const feetLabel = Number((inchesRoundedUp / 12).toFixed(2)).toString();
+  return `${durationParts.join(" ")} · ${inchesRoundedUp} in (${feetLabel} ft)`;
 }
 
 function buildGroupingMetadata(
@@ -144,6 +185,8 @@ export interface ShowQueueGlanceStats {
   designCount: number;
   sizeClassCounts: PrintRequestSizeClassCounts;
   sheetCounts: GangSheetSheetCountPreview | null;
+  /** Standard (efficiency) packing only; null when no nestable exportable allocations. */
+  printTimeEstimateLabel: string | null;
 }
 
 /**
@@ -235,6 +278,11 @@ export function buildShowQueueGlanceStats(input: {
     sheetCounts = images.length > 0 ? estimateGangSheetSheetCounts(images, input.layoutSettings) : null;
   }
 
+  const printTimeEstimateLabel =
+    sheetCounts && sheetCounts.efficiencySheets > 0
+      ? formatShowQueuePrintTimeEstimate(sheetCounts.efficiencyLinearInches)
+      : null;
+
   return {
     totalPriceUsd: sumShowAllocationGroupPricesUsd([...priceByRequest.values()]),
     printRequestCount: printRequestIds.size,
@@ -242,5 +290,6 @@ export function buildShowQueueGlanceStats(input: {
     designCount: designKeys.size,
     sizeClassCounts,
     sheetCounts,
+    printTimeEstimateLabel,
   };
 }
