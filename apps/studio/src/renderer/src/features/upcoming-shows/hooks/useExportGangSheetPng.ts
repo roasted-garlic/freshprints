@@ -5,9 +5,6 @@ import { permissionService } from "../../permissions/services/permissionService"
 import { upcomingShowService } from "../services/upcomingShowService";
 import type { GangSheetSectionPricingConfig } from "@fresh-prints/shared/constants/gangSheetSectionPricingSettings.constants";
 import { buildGangSheetCacheFingerprint } from "@fresh-prints/shared/utils/gangSheetCacheFingerprint";
-import { planEfficiencyGangSheetLayout } from "@fresh-prints/shared/utils/gangSheetEfficiencyLayout";
-import { planContinuousCustomerGroupedGangSheetLayout } from "@fresh-prints/shared/utils/gangSheetContinuousCustomerGroupedLayout";
-import { planSheetPerCustomerGangSheetLayout } from "@fresh-prints/shared/utils/gangSheetGroupedLayout";
 import {
   buildGangSheetBaseFileName,
 } from "@fresh-prints/shared/utils/showExportFilename";
@@ -24,8 +21,12 @@ import type {
 } from "@fresh-prints/shared/types/export/gangSheetExportIpc.types";
 import type { ShowExportImageWarning } from "@fresh-prints/shared/types/export/showExportIpc.types";
 import { buildShowExportAllocationAssets } from "../utils/buildShowExportAllocationAssets";
+import {
+  estimateGangSheetSheetCounts,
+  type GangSheetSheetCountPreview,
+} from "../utils/showQueueGlanceStats";
 
-const GANG_SHEET_EXPORT_DPI = 300;
+export type { GangSheetSheetCountPreview };
 
 export interface GangSheetLayoutSettings {
   sheetWidthInches: number;
@@ -77,74 +78,20 @@ function resolveLayoutModeForFingerprint(
   return null;
 }
 
-export interface GangSheetSheetCountPreview {
-  efficiencySheets: number;
-  /** Sheet per Customer (`grouped_by_customer`). */
-  groupedSheets: number;
-  /** Grouped by Customer continuous (`customer_grouped_continuous`). */
-  continuousGroupedSheets: number;
-}
-
 function estimateSheetCountsFromRequests(
   imageRequests: GangSheetExportImageRequest[],
   layoutSettings: GangSheetLayoutSettings,
 ): GangSheetSheetCountPreview {
-  const sheetWidthPx = Math.round(layoutSettings.sheetWidthInches * GANG_SHEET_EXPORT_DPI);
-  const spacingPx = {
-    sideMarginPx: Math.round(layoutSettings.sideMarginInches * GANG_SHEET_EXPORT_DPI),
-    topBottomMarginPx: Math.round(layoutSettings.topBottomMarginInches * GANG_SHEET_EXPORT_DPI),
-    gutterPx: Math.round(layoutSettings.gutterInches * GANG_SHEET_EXPORT_DPI),
-  };
-  const maxSheetHeightPx = Math.round(layoutSettings.maxSheetLengthInches * GANG_SHEET_EXPORT_DPI);
-
-  const efficiency = planEfficiencyGangSheetLayout({
-    images: imageRequests.map((image) => ({
+  return estimateGangSheetSheetCounts(
+    imageRequests.map((image) => ({
       allocationId: image.allocationId,
       quantity: image.quantity,
       widthPx: image.targetWidthPx,
       heightPx: image.targetHeightPx,
+      grouping: image.grouping,
     })),
-    sheetWidthPx,
-    spacingPx,
-    maxSheetHeightPx,
-  });
-
-  const groupedImages = imageRequests
-    .filter((image) => image.grouping)
-    .map((image) => ({
-      allocationId: image.allocationId,
-      printRequestId: image.grouping!.printRequestId,
-      requestName: image.grouping!.requestName,
-      customerId: image.grouping!.customerId,
-      customerUsernameSnapshot: image.grouping!.customerUsernameSnapshot,
-      internalBaseName: image.grouping!.internalBaseName,
-      isInternal: image.grouping!.isInternal,
-      quantity: image.quantity,
-      widthPx: image.targetWidthPx,
-      heightPx: image.targetHeightPx,
-    }));
-
-  const grouped = planSheetPerCustomerGangSheetLayout({
-    images: groupedImages,
-    sheetWidthPx,
-    spacingPx,
-    maxSheetHeightPx,
-    sheetLabelFontSizePx: layoutSettings.labelFontSizePx,
-  });
-
-  const continuousGrouped = planContinuousCustomerGroupedGangSheetLayout({
-    images: groupedImages,
-    sheetWidthPx,
-    spacingPx,
-    maxSheetHeightPx,
-    sheetLabelFontSizePx: layoutSettings.labelFontSizePx,
-  });
-
-  return {
-    efficiencySheets: efficiency.sheetCount,
-    groupedSheets: grouped.sheetCount,
-    continuousGroupedSheets: continuousGrouped.sheetCount,
-  };
+    layoutSettings,
+  );
 }
 
 async function applyGangSheetCacheFromImageRequests(input: {

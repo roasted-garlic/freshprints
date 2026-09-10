@@ -1,5 +1,18 @@
 # Recent Completed Work
 
+## 2026-09-10 - Studio Show Queue / Internal Sheet dollar totals — CLOSED
+
+| Item | Status |
+|------|--------|
+| Goal | `studio-show-queue-internal-sheet-dollar-totals` |
+| Status | **CLOSED** — Signoff **approved** |
+| Owner visual QA | **PASS** (2026-09-10) |
+| Delivered | Show Queue + Internal Sheet per-PR `$`, glance stats (totals + sheet estimates + size mix), rail `$` cards, CR/IR list `$` pills; Whatnot ID replaces unused Whatnot link |
+| Validation | Helper unit tests **8/8**; owner visual QA PASS |
+| Signoff | `docs/workflow/reviews/2026-09-10-studio-show-queue-internal-sheet-dollar-totals-signoff.md` |
+| Commit/push | Authorized on PASS; pushed to `origin/development` this session |
+| Next checkpoint | Owner accepts `production-maintenance-mode-prerequisite`, then `Continue FreshForge` |
+
 ## 2026-09-09 - User Info Print Request lifecycle activity ordering — CLOSED (DEV)
 
 | Item | Status |

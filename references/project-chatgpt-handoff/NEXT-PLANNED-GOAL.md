@@ -1,12 +1,29 @@
 # Next Planned Goal
 
-**Updated:** 2026-09-09
+**Updated:** 2026-09-10
 
 ## Current state
 
-- No active managed goal. The most recently closed goal is
+- Most recently closed polish: `studio-show-queue-internal-sheet-dollar-totals` — **approved**
+  (owner visual QA **PASS** 2026-09-10); committed/pushed to `origin/development`.
+- Next managed goal: `production-maintenance-mode-prerequisite` — Formal Review complete with
+  verdict **approved_with_changes**. Awaiting owner acceptance, then `Continue FreshForge` for
+  Implement. Prior closed goal
   `user-info-print-request-lifecycle-activity-ordering` — final disposition
   **approved_with_notes**.
+- Authoritative amended Plan:
+  `docs/workflow/plans/2026-09-10-coordinated-production-promotion-release-readiness-plan.md`;
+  Formal Review:
+  `docs/workflow/reviews/2026-09-10-coordinated-production-promotion-release-readiness-review.md`.
+  This is review-complete but not implementation-authorized: production, DEV mutations,
+  maintenance implementation, candidate freeze, rehearsal applies, Portal rollout, Studio
+  publish, settings/secret/Auth changes, Function deletion, merge, commit, and push remain
+  forbidden until the owner accepts the amendments and FreshForge advances the next gate.
+- Maintenance prerequisite artifacts are complete: Plan
+  `docs/workflow/plans/2026-09-10-production-maintenance-mode-prerequisite-plan.md` and Formal
+  Review `docs/workflow/reviews/2026-09-10-production-maintenance-mode-prerequisite-review.md`.
+  Owner acceptance followed by `Continue FreshForge` enters its separately
+  gated Implement phase, then test/DEV-QA it before returning to the main candidate.
 - Owner-authorized commit/push is complete as `6bf7a25d` on `origin/development`; no force push
   occurred. Production, Studio publish, and Portal deployment remain separately gated.
 - Corrective Plan + Formal Review are complete with verdict **approved_with_changes**, and the

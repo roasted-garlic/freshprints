@@ -60,7 +60,13 @@ import { ExportGangSheetConfirmModal } from "../components/ExportGangSheetConfir
 import { GangSheetLayoutModeMenu } from "../components/GangSheetLayoutModeMenu";
 import { useExportShowZip } from "../hooks/useExportShowZip";
 import { useExportGangSheetPng, type GangSheetSheetCountPreview } from "../hooks/useExportGangSheetPng";
+import { useShowRailDollarTotals } from "../hooks/useShowRailDollarTotals";
 import { groupAllocationsByRequest } from "../utils/groupAllocationsByRequest";
+import {
+  calculateShowAllocationGroupPriceUsdFromAllocations,
+  formatShowAllocationPriceUsd,
+} from "../utils/showAllocationDollarTotals";
+import { buildShowQueueGlanceStats } from "../utils/showQueueGlanceStats";
 import {
   formatShowAllocationBlockedMessage,
   getShowAllocationBlockReason,
@@ -121,7 +127,6 @@ import type { GangSheetLayoutMode } from "@fresh-prints/shared/types/export/gang
 import { parseDateTimeInputToTimestamp, formatTimestampForDateTimeInput } from "../utils/upcomingShowDateTimeInput";
 import {
   formatUpcomingShowTimestampLabel,
-  formatUpcomingShowManualImportTimestampLabel,
   formatUpcomingShowTitle,
   formatUpcomingShowWhatnotIdentityLabel,
   getUpcomingShowStatusBadgeVariant,
@@ -791,23 +796,19 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
     canManageStaffGangSheet: canManageSelectedStaffGangSheet,
     allocationBlocked: !canAddPrintRequestToSelectedShow,
   });
-  const lastManualImportAt = useMemo(() => {
-    const showImportAt = selectedShow?.lastSeenInAssistedImportAt;
-    const latestImportAt = showQueueSettings.settings.lastWhatnotAssistedImportAt;
-
-    if (!showImportAt) {
-      return latestImportAt;
-    }
-
-    if (!latestImportAt) {
-      return showImportAt;
-    }
-
-    return showImportAt.toDate().getTime() >= latestImportAt.toDate().getTime() ? showImportAt : latestImportAt;
-  }, [selectedShow?.lastSeenInAssistedImportAt, showQueueSettings.settings.lastWhatnotAssistedImportAt]);
-
   const { allocations, reloadAllocations } = useShowAllocations(selectedShowId);
   const requestGroups = useMemo(() => groupAllocationsByRequest(allocations), [allocations]);
+  const sectionPricing = gangSheetSettings.settings.sectionPricing;
+  const requestGroupPriceById = useMemo(() => {
+    const prices = new Map<string, number | null>();
+    for (const group of requestGroups) {
+      prices.set(
+        group.printRequestId,
+        calculateShowAllocationGroupPriceUsdFromAllocations(group.allocations, sectionPricing),
+      );
+    }
+    return prices;
+  }, [requestGroups, sectionPricing]);
   const attachedRequestIds = useMemo(
     () => [...new Set(allocations.map((allocation) => allocation.printRequestId))],
     [allocations],
@@ -1138,6 +1139,29 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
     }),
     [gangSheetSettings.settings],
   );
+
+  const requestsById = useMemo(() => {
+    const map = new Map(requests.map((request) => [request.id, request]));
+    return map;
+  }, [requests]);
+  const selectedShowGlanceStats = useMemo(
+    () =>
+      buildShowQueueGlanceStats({
+        allocations,
+        requestsById,
+        sectionPricing,
+        layoutSettings: gangSheetLayoutSettings,
+        show: selectedShow,
+        now: scheduleNow,
+      }),
+    [allocations, gangSheetLayoutSettings, requestsById, scheduleNow, sectionPricing, selectedShow],
+  );
+  const railDollarTotalsByShowId = useShowRailDollarTotals({
+    shows: visibleShows,
+    sectionPricing,
+    selectedShowId,
+    selectedShowLiveTotalUsd: selectedShow ? selectedShowGlanceStats.totalPriceUsd : null,
+  });
 
   useEffect(() => {
     void refreshSelectedShowGangSheetCache({
@@ -1622,6 +1646,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
             : showCapacity.isFull
               ? " is-full"
               : "";
+      const showTotalUsd = railDollarTotalsByShowId[show.id];
 
       return (
         <button
@@ -1637,17 +1662,22 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
               <Badge variant={showStatusDisplay.variant}>{showStatusDisplay.label}</Badge>
             </div>
           </div>
-          <p className="print-requests-request-card-subtitle">
-            {queueSurface === "staff_gang_sheets"
-              ? isStaffGangSheetShow(show)
-                ? `Shared · Cycle ${show.staffGangSheetCycleNumber}`
-                : "Internal Gang Sheet"
-              : formatUpcomingShowTimestampLabel(show.scheduledStartAt)}
-          </p>
+          <div className="show-rail-card-footer">
+            <p className="print-requests-request-card-subtitle">
+              {queueSurface === "staff_gang_sheets"
+                ? isStaffGangSheetShow(show)
+                  ? `Shared · Cycle ${show.staffGangSheetCycleNumber}`
+                  : "Internal Gang Sheet"
+                : formatUpcomingShowTimestampLabel(show.scheduledStartAt)}
+            </p>
+            {typeof showTotalUsd === "number" ? (
+              <span className="show-rail-total-pill">{formatShowAllocationPriceUsd(showTotalUsd)}</span>
+            ) : null}
+          </div>
         </button>
       );
     },
-    [handleSelectShow, queueSurface, selectedShowId],
+    [handleSelectShow, queueSurface, railDollarTotalsByShowId, selectedShowId],
   );
 
   const renderShowRailPane = useCallback(
@@ -1753,6 +1783,8 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                     ) : (
                       <p className="print-requests-detail-timestamps">
                         Scheduled {formatUpcomingShowTimestampLabel(selectedShow.scheduledStartAt)}
+                        {" · "}
+                        {formatUpcomingShowWhatnotIdentityLabel(selectedShow)}
                       </p>
                     )}
                   </div>
@@ -2017,58 +2049,85 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                   </Card>
                 ) : null}
 
-                {!isSelectedStaffGangSheet ? (
-                <dl className="upcoming-show-detail-facts">
+                <dl className="show-queue-glance-stats" aria-label="Show production stats">
                   <div>
-                    <dt>Whatnot show ID</dt>
-                    <dd>{formatUpcomingShowWhatnotIdentityLabel(selectedShow)}</dd>
-                  </div>
-                  <div>
-                    <dt>Whatnot URL</dt>
+                    <dt>Total</dt>
                     <dd>
-                      {isDevFixtureShow(selectedShow) ? (
-                        "No external Whatnot URL"
-                      ) : selectedShow.whatnotUrl ? (
-                        <button
-                          className="link-button"
-                          onClick={() => void desktopAppService.openExternalLink(selectedShow.whatnotUrl!)}
-                          type="button"
-                        >
-                          {selectedShow.whatnotUrl}
-                        </button>
-                      ) : (
-                        "Not set"
-                      )}
+                      <span className="show-queue-glance-pill show-queue-glance-pill-emphasis">
+                        {formatShowAllocationPriceUsd(selectedShowGlanceStats.totalPriceUsd)}
+                      </span>
                     </dd>
                   </div>
                   <div>
-                    <dt>Last manual import</dt>
-                    <dd>{formatUpcomingShowManualImportTimestampLabel(lastManualImportAt)}</dd>
+                    <dt>Print requests</dt>
+                    <dd>
+                      <span className="show-queue-glance-pill">{selectedShowGlanceStats.printRequestCount}</span>
+                    </dd>
                   </div>
                   <div>
-                    <dt>Last seen</dt>
-                    <dd>{formatUpcomingShowTimestampLabel(selectedShow.lastSeenAt)}</dd>
+                    <dt>Print qty</dt>
+                    <dd>
+                      <span className="show-queue-glance-pill">{selectedShowGlanceStats.printQuantity}</span>
+                    </dd>
                   </div>
-                  {selectedShow.syncError ? (
-                    <div>
-                      <dt>Sync error</dt>
-                      <dd>{selectedShow.syncError}</dd>
-                    </div>
-                  ) : null}
-                  {selectedShow.notes ? (
-                    <div>
-                      <dt>Notes</dt>
-                      <dd>{selectedShow.notes}</dd>
-                    </div>
-                  ) : null}
+                  <div>
+                    <dt>Designs</dt>
+                    <dd>
+                      <span className="show-queue-glance-pill">{selectedShowGlanceStats.designCount}</span>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Standard sheets</dt>
+                    <dd>
+                      <span className="show-queue-glance-pill">
+                        {selectedShowGlanceStats.sheetCounts?.efficiencySheets ?? "—"}
+                      </span>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Grouped by customer</dt>
+                    <dd>
+                      <span className="show-queue-glance-pill">
+                        {selectedShowGlanceStats.sheetCounts?.continuousGroupedSheets ?? "—"}
+                      </span>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Sheet per customer</dt>
+                    <dd>
+                      <span className="show-queue-glance-pill">
+                        {selectedShowGlanceStats.sheetCounts?.groupedSheets ?? "—"}
+                      </span>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Size mix</dt>
+                    <dd className="show-queue-glance-size-mix">
+                      <span className="show-queue-glance-pill" title="Pocket">
+                        P x {selectedShowGlanceStats.sizeClassCounts.pocketCount}
+                      </span>
+                      <span className="show-queue-glance-pill" title="Regular full size">
+                        F x {selectedShowGlanceStats.sizeClassCounts.standardFullSizeCount}
+                      </span>
+                      <span className="show-queue-glance-pill" title="Regular oversized">
+                        O x {selectedShowGlanceStats.sizeClassCounts.standardOversizedCount}
+                      </span>
+                      <span className="show-queue-glance-pill" title="Extra oversized">
+                        E x {selectedShowGlanceStats.sizeClassCounts.extraOversizedCount}
+                      </span>
+                    </dd>
+                  </div>
                 </dl>
-                ) : selectedShow.notes ? (
-                  <dl className="upcoming-show-detail-facts">
-                    <div>
-                      <dt>Notes</dt>
-                      <dd>{selectedShow.notes}</dd>
-                    </div>
-                  </dl>
+                {selectedShow.syncError ? (
+                  <p className="print-requests-error" role="alert">
+                    Sync error: {selectedShow.syncError}
+                  </p>
+                ) : null}
+                {selectedShow.notes ? (
+                  <p className="show-queue-glance-notes">
+                    <span className="show-queue-glance-notes-label">Notes</span>
+                    {selectedShow.notes}
+                  </p>
                 ) : null}
               </Card>
 
@@ -2212,6 +2271,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                           })),
                         ),
                       );
+                      const groupPriceUsd = requestGroupPriceById.get(group.printRequestId) ?? null;
 
                       return (
                         <div
@@ -2224,10 +2284,17 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                               <strong>{group.requestNameSnapshot}</strong>
                               <ExternalLink aria-hidden="true" size={12} strokeWidth={2.2} />
                             </Link>
-                            <p>
-                              {group.allocations.length} Design{group.allocations.length === 1 ? "" : "s"} |{" "}
-                              {totalAllocated} Item{totalAllocated === 1 ? "" : "s"}
-                              {sizeClassLabel ? ` | ${sizeClassLabel}` : ""}
+                            <p className="show-allocation-row-meta">
+                              <span>
+                                {group.allocations.length} Design{group.allocations.length === 1 ? "" : "s"} |{" "}
+                                {totalAllocated} Item{totalAllocated === 1 ? "" : "s"}
+                                {sizeClassLabel ? ` | ${sizeClassLabel}` : ""}
+                              </span>
+                              {groupPriceUsd !== null ? (
+                                <span className="show-allocation-price-pill show-allocation-price-pill-emphasis">
+                                  {formatShowAllocationPriceUsd(groupPriceUsd)}
+                                </span>
+                              ) : null}
                               {!hasActiveAllocations
                                 ? (() => {
                                     const moved = movedDestinationByRequestId.get(group.printRequestId);

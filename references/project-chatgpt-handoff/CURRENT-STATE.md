@@ -1,20 +1,68 @@
 # Fresh Prints — Current State Snapshot
 
-**Last updated:** 2026-09-09
+**Last updated:** 2026-09-10
 
 ## FreshForge workflow
 
 | Item | Value |
 |---|---|
-| Status | **IDLE — PRINT REQUEST LIFECYCLE ACTIVITY ORDERING COMMITTED/PUSHED (APPROVED_WITH_NOTES)** |
-| Parent | Customer Identity WS4 corrective |
-| Active child phase | None — FreshForge is idle and ready for the owner to select the next managed goal |
-| Most recently closed goal | `user-info-print-request-lifecycle-activity-ordering` — **approved_with_notes** |
-| Signoff | Lifecycle ordering: **approved_with_notes** — Owner DEV QA **PASS** (2026-09-09). Prior Portal Show Queue: **approved_with_notes**; prior Print Request: **approved** |
-| Related closed goal | `ai-processing-live-review-auto-process-and-ui-polish` |
+| Status | **IDLE BETWEEN GOALS — STUDIO DOLLAR TOTALS APPROVED; MAINTENANCE PREREQUISITE AWAITING OWNER ACCEPTANCE** |
+| Parent | Coordinated production promotion and release readiness |
+| Active child phase | Studio dollar-totals polish signed off **approved** (owner PASS). Maintenance prerequisite Formal Review remains complete with changes (Implement not started). |
+| Most recently closed goal | `studio-show-queue-internal-sheet-dollar-totals` — **approved** (prior: lifecycle ordering **approved_with_notes**) |
+| Signoff | Studio dollar totals: **approved** — Owner visual QA **PASS** (2026-09-10). Lifecycle ordering: **approved_with_notes**. Prior Portal Show Queue: **approved_with_notes**; prior Print Request: **approved** |
+| Related closed goal | `user-info-print-request-lifecycle-activity-ordering` |
 | Autonomous | **OFF** (`shadow`) |
 | Production | untouched |
-| Commit/push | Lifecycle commit `6bf7a25d`, Show Queue commit `908d9123`, and legacy tag retirement `1c43f6e1` pushed to `origin/development`; no force push |
+| Commit/push | Studio dollar-totals polish committed/pushed this session; prior Portal polish `93199fca`, lifecycle `6bf7a25d`, Show Queue `908d9123` on `origin/development`; no force push |
+
+## Closed polish — Studio Show Queue / Internal Sheet dollar totals
+
+Owner visual QA **PASS** (2026-09-10). Signoff **approved**:
+
+- Plan: `docs/workflow/plans/2026-09-10-studio-show-queue-internal-sheet-dollar-totals-plan.md`
+- Review / test / signoff: `docs/workflow/reviews/2026-09-10-studio-show-queue-internal-sheet-dollar-totals-*`
+- Behavior: Show Queue + Internal Sheet per-PR `$`, glance stats (totals, sheet estimates, size mix),
+  rail card `$`, CR/IR list card `$`; Whatnot ID instead of unused Whatnot link.
+- Committed/pushed to `origin/development` on owner authorization after PASS.
+
+## Active managed goal — Production maintenance-mode prerequisite
+
+The separate prerequisite Plan and Formal Review are complete with verdict **approved_with_changes**:
+
+- Plan: `docs/workflow/plans/2026-09-10-production-maintenance-mode-prerequisite-plan.md`
+- Formal Review: `docs/workflow/reviews/2026-09-10-production-maintenance-mode-prerequisite-review.md`
+
+The reviewed design uses a private runtime `settings` control, a per-invocation trusted Functions
+guard before quota/external side effects, Firestore/Storage Rules reinforcement for direct customer
+writes, a bounded Portal read-only experience, and existing owner/admin Studio Settings and Portal
+Show Queue recovery paths. Customer notification read-marker writes are blocked while ON for a
+strict read-only contract. Exact new names, Rules budgets, public no-store behavior, and the
+frozen-source mutation manifest remain `[NEEDS REPO CHECK]` gates. No implementation, DEV or
+production mutation, deployment, commit, or push occurred. Owner acceptance is required before
+Implement; the next command after acceptance is `Continue FreshForge`.
+
+The Studio dollar-totals polish that paused this prerequisite is now closed. Resume by obtaining
+owner acceptance of the reviewed maintenance scope, then `Continue FreshForge` for Implement.
+
+## Parent managed goal — Coordinated production promotion and release readiness
+
+Formal Review is complete with verdict **approved_with_changes**. The authoritative amended Plan is
+`docs/workflow/plans/2026-09-10-coordinated-production-promotion-release-readiness-plan.md`, and the
+review record is `docs/workflow/reviews/2026-09-10-coordinated-production-promotion-release-readiness-review.md`.
+Production remains untouched. No maintenance implementation, candidate freeze, rehearsal apply,
+Portal rollout, Studio publish, settings/secret/Auth mutation, Function deletion, merge to
+`production`, commit, or push occurred for this goal. The maintenance prerequisite is now separately
+Plan/Formal-Review complete; the main candidate and first coordinated production mutation remain
+individually human-gated and cannot proceed until the prerequisite is implemented, tested, DEV-QA'd,
+and closed.
+
+### Parallel local polish (not release-readiness)
+
+Owner-authorized Portal dashboard gallery tweak (2026-09-10): mobile "Your designs" preview shows
+two rows of four (CSS hides tiles after the 8th under the existing mobile breakpoint); desktop
+remains 14 tiles. Owner DEV QA **PASS**. Committed/pushed as `93199fca` to `origin/development`
+(`shell.css` + `PREVIEW_LIMIT` comment only). No Portal hosting deploy.
 
 ## Closed managed goal — Print Request lifecycle activity ordering
 

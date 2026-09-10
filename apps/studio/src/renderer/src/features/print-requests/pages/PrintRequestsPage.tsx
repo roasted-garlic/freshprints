@@ -168,6 +168,28 @@ function formatRequestPrice(amount: number): string {
   return Number.isInteger(amount) ? `$${amount}` : `$${amount.toFixed(2)}`;
 }
 
+function calculatePrintRequestSummaryPriceUsd(
+  sizeClassRows: Array<{ printWidthInches: number; quantity: number }>,
+  sectionPricing: Parameters<typeof calculateGangSheetCustomerSectionSummary>[1],
+): number | null {
+  if (sizeClassRows.length === 0) {
+    return null;
+  }
+
+  try {
+    return calculateGangSheetCustomerSectionSummary(
+      sizeClassRows.map((row) => ({
+        printWidthInches: row.printWidthInches,
+        printHeightInches: 1,
+        quantity: row.quantity,
+      })),
+      sectionPricing,
+    ).totalPriceUsd;
+  } catch {
+    return null;
+  }
+}
+
 function formatRequestWeight(amount: number): string {
   return `${amount.toFixed(2)} oz`;
 }
@@ -2091,6 +2113,10 @@ export function PrintRequestsPage() {
                 const isSelected = request.id === selectedRequestId;
                 const requestSummary = summariesByRequestId[request.id] ?? emptyPrintRequestItemSummary();
                 const extraShowCount = section.extraShowCountByRequestId[request.id] ?? 0;
+                const requestPriceUsd = calculatePrintRequestSummaryPriceUsd(
+                  requestSummary.sizeClassRows,
+                  gangSheetSettings.settings.sectionPricing,
+                );
 
                 return (
                   <button
@@ -2129,6 +2155,11 @@ export function PrintRequestsPage() {
                     <div className="print-requests-request-card-counts">
                       <span>{formatDesignCountLabel(requestSummary.uniqueDesignCount)}</span>
                       <span>{formatTotalQuantityLabel(requestSummary.totalQuantity)}</span>
+                      {requestPriceUsd !== null ? (
+                        <span className="print-requests-request-card-price">
+                          {formatRequestPrice(requestPriceUsd)}
+                        </span>
+                      ) : null}
                     </div>
                   </button>
                 );
