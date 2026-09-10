@@ -943,6 +943,11 @@ a.portal-editing-mode-banner-cta:focus-visible {
   max-width: min(100%, 36rem);
 }
 
+.portal-show-price-commitment-modal-footer {
+  align-items: center;
+  justify-content: space-between;
+}
+
 .portal-show-price-commitment {
   display: flex;
   flex-direction: column;

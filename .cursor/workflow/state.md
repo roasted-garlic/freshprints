@@ -25,6 +25,9 @@
 
 **Decision Log:**
 
+- 2026-09-10 — Owner visual QA **PASS** for Portal Request totals modal Size tiers primary
+  button; authorized commit/push.
+
 - 2026-09-10 — Owner visual QA **PASS** for Studio Show Queue / Internal Sheet / CR-IR dollar
   totals and glance stats. Authorized commit/push without stopping. Signoff **approved**.
   Maintenance prerequisite remains paused at Formal Review until owner acceptance.
