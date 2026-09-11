@@ -24,6 +24,7 @@ import {
   unauthenticated,
 } from "./lib/errors";
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
+import { CUSTOMER_UPLOAD_UNPROMOTED_DONATION_RETENTION_REASON } from "../../packages/shared/src/utils/customerUploadCatalogRetention";
 
 function titleFromFilename(fileName: string): string {
   const trimmed = fileName.trim();
@@ -230,6 +231,10 @@ export const promoteCustomerUploadToAiReview = onCall(
         promotedDesignId: designId,
         catalogReviewStatus: "sent_to_ai_review",
         promotedAt: FieldValue.serverTimestamp(),
+        catalogRetentionStartedAt: FieldValue.delete(),
+        ...(upload.catalogExclusionReason === CUSTOMER_UPLOAD_UNPROMOTED_DONATION_RETENTION_REASON
+          ? { catalogExclusionReason: FieldValue.delete() }
+          : {}),
         updatedAt: FieldValue.serverTimestamp(),
       });
 

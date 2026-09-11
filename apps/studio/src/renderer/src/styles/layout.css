@@ -120,14 +120,10 @@
   flex: 1 1 auto;
   flex-direction: column;
   min-height: 0;
-  overflow: hidden;
-}
-
-.page-content-area--print-requests {
   /*
-   * Match Internal Gang Sheets (/internal-gang-sheets): outer .page-content-area scroll.
-   * Nested .print-requests-main scroll was removed; keeping overflow:hidden here clipped
-   * the item grid with no scrollbar.
+   * Outer content-area scroll for both Print Requests and Show Queue detail panes.
+   * Nested .print-requests-main scroll was removed; overflow:hidden here clipped long
+   * attached-request lists with no scrollbar.
    */
   overflow-x: hidden;
   overflow-y: auto;
@@ -136,16 +132,8 @@
 .page-content-area--print-requests > .page-layout.page-layout-shell,
 .page-content-area--show-queue > .page-layout.page-layout-shell {
   display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.page-content-area--print-requests > .page-layout.page-layout-shell {
-  /* Grow with request detail content so the content-area scrollbar can reach all items. */
   flex: 0 0 auto;
+  flex-direction: column;
   height: auto;
   min-height: 100%;
   overflow: visible;
@@ -337,6 +325,51 @@
   font-weight: 700;
   padding: 0.25rem 0.45rem;
   width: fit-content;
+}
+
+.customer-upload-intake-permission-follow-up {
+  display: grid;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.customer-upload-intake-permission-pill-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.customer-upload-intake-permission-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.customer-upload-permission-activity-modal {
+  max-width: min(28rem, calc(100vw - 1.5rem));
+}
+
+.customer-upload-permission-activity-list {
+  display: grid;
+  gap: 0.55rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.customer-upload-permission-activity-list li {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.55rem 0.65rem;
+}
+
+.customer-upload-permission-activity-list span {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
 }
 
 .customer-upload-intake-empty,

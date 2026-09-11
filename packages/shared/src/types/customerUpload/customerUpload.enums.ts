@@ -39,7 +39,7 @@ export type CustomerUploadCatalogExclusionReason =
   | "staff_review"
   | "customer_permission_denied";
 
-/** One-time customer permission follow-up lifecycle. */
+/** Customer permission follow-up lifecycle (up to two Ask Again sends). */
 export type CustomerUploadCatalogPermissionFollowUpStatus =
   | "not_requested"
   | "requested"

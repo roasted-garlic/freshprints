@@ -103,6 +103,24 @@ export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | nul
     return nextItems.filter((item) => !pending.has(item.id));
   }, []);
 
+  /**
+   * Drop pending-remove marks once the server/live list no longer contains those ids.
+   * Ending the mark immediately after the callable (old behavior) let a slightly-stale
+   * live snapshot resurrect the row ~1s later.
+   */
+  const settlePendingRemovalsAgainstServerItems = useCallback((serverItems: PrintRequestItem[]) => {
+    const pending = pendingRemovedItemIdsRef.current;
+    if (pending.size === 0) {
+      return;
+    }
+    const serverIds = new Set(serverItems.map((item) => item.id));
+    for (const itemId of [...pending]) {
+      if (!serverIds.has(itemId)) {
+        pending.delete(itemId);
+      }
+    }
+  }, []);
+
   const beginPendingItemRemovals = useCallback((itemIds: string[]) => {
     for (const itemId of itemIds) {
       const trimmed = itemId.trim();
@@ -170,6 +188,7 @@ export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | nul
         }
 
         const visibleItems = filterPendingRemoved(nextItems);
+        settlePendingRemovalsAgainstServerItems(nextItems);
         // Merge so first-create / rapid-add optimistic rows are not wiped by a
         // partial server snapshot (list lag while flushes are still in flight).
         // Never preserve local rows that belong to a different printRequestId.
@@ -242,7 +261,7 @@ export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | nul
         }
       }
     },
-    [filterPendingRemoved],
+    [filterPendingRemoved, settlePendingRemovalsAgainstServerItems],
   );
 
   useEffect(() => {
@@ -274,6 +293,76 @@ export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | nul
     workingRequestIdRef.current = nextId;
     void reloadWorkingItems();
   }, [reloadWorkingItems, resetWorkingCart, workingRequest?.id]);
+
+  // Keep the active working request and its items current without polling. The one-shot reload
+  // above remains the initial/fallback load; this bounded listener owns subsequent Studio edits.
+  useEffect(() => {
+    const linkedId = workingRequest?.id;
+    if (!linkedId) {
+      return;
+    }
+
+    let cancelled = false;
+    const unsubscribe = portalPrintRequestService.subscribePrintRequestItems(
+      linkedId,
+      (nextItems) => {
+        if (cancelled || workingRequestIdRef.current !== linkedId) {
+          return;
+        }
+        const visibleItems = filterPendingRemoved(nextItems);
+        settlePendingRemovalsAgainstServerItems(nextItems);
+        setItems((current) =>
+          mergeServerWorkingItemsWithLocal(
+            visibleItems,
+            current.filter((item) => item.id.startsWith('optimistic:')),
+            { printRequestId: linkedId },
+          ),
+        );
+        setItemsError(null);
+        setHydratedWorkingRequestId(linkedId);
+        setIsLoadingItems(false);
+
+        void Promise.all([
+          portalPrintRequestService.getDesignSummariesForItems(visibleItems),
+          portalPrintRequestService.getUploadSummariesForItems(visibleItems),
+        ]).then(([nextDesigns, nextUploads]) => {
+          if (cancelled || workingRequestIdRef.current !== linkedId) {
+            return;
+          }
+          setDesignSummaries((previous) => {
+            const next = new Map(previous);
+            for (const [designId, design] of nextDesigns.entries()) {
+              if (design) {
+                next.set(designId, design);
+              }
+            }
+            for (const designId of [...next.keys()]) {
+              if (!visibleItems.some((item) => item.designId === designId)) {
+                next.delete(designId);
+              }
+            }
+            return next;
+          });
+          setUploadSummaries(nextUploads);
+        }).catch(() => {
+          // Item hydration is authoritative even if an optional design/upload summary is absent.
+        });
+      },
+      (error) => {
+        if (cancelled || workingRequestIdRef.current !== linkedId) {
+          return;
+        }
+        setItemsError(error.message || 'Unable to load Current Request items.');
+        setHydratedWorkingRequestId(linkedId);
+        setIsLoadingItems(false);
+      },
+    );
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [filterPendingRemoved, settlePendingRemovalsAgainstServerItems, workingRequest?.id]);
 
   const aggregates: CurrentRequestAggregates = useMemo(() => {
     const pixels = new Map<string, { width: number; height: number }>();

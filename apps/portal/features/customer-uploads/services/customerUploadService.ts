@@ -22,6 +22,10 @@ import type {
   ConfirmCustomerUploadsAndAttachToRequestResponse,
 } from '@fresh-prints/shared/types/customerUpload/confirmCustomerUploadAttach.types';
 import type {
+  AttachExistingCustomerUploadsToPrintRequestRequest,
+  AttachExistingCustomerUploadsToPrintRequestResponse,
+} from '@fresh-prints/shared/types/customerUpload/attachExistingCustomerUpload.types';
+import type {
   ConfirmCustomerUploadsForDonationRequest,
   ConfirmCustomerUploadsForDonationResponse,
 } from '@fresh-prints/shared/types/customerUpload/confirmCustomerUploadDonate.types';
@@ -80,6 +84,9 @@ export interface AccountArtworkGalleryItem {
   productionStoragePath: string | null;
   /** When set, this upload was promoted into a catalog design. */
   promotedDesignId: string | null;
+  /** False = Don’t allow / personal library bucket. */
+  catalogUseAcknowledged: boolean | null;
+  catalogReviewStatus: string | null;
   createdAtMs: number;
 }
 
@@ -430,6 +437,21 @@ export const customerUploadService = {
         ConfirmCustomerUploadsAndAttachToRequestResponse
       >('confirmCustomerUploadsAndAttachToRequest', {
         source: 'customerUploadService.confirmAndAttach',
+      })(input);
+    } catch (error) {
+      throw new Error(portalAuthService.getCallableErrorMessage(error));
+    }
+  },
+
+  async attachExistingToRequest(
+    input: AttachExistingCustomerUploadsToPrintRequestRequest,
+  ): Promise<AttachExistingCustomerUploadsToPrintRequestResponse> {
+    try {
+      return await callTracedFunction<
+        AttachExistingCustomerUploadsToPrintRequestRequest,
+        AttachExistingCustomerUploadsToPrintRequestResponse
+      >('attachExistingCustomerUploadsToPrintRequest', {
+        source: 'customerUploadService.attachExistingToRequest',
       })(input);
     } catch (error) {
       throw new Error(portalAuthService.getCallableErrorMessage(error));
@@ -794,6 +816,10 @@ export const customerUploadService = {
         thumbnailStoragePath,
         productionStoragePath,
         promotedDesignId,
+        catalogUseAcknowledged:
+          typeof data.catalogUseAcknowledged === 'boolean' ? data.catalogUseAcknowledged : null,
+        catalogReviewStatus:
+          typeof data.catalogReviewStatus === 'string' ? data.catalogReviewStatus : null,
         createdAtMs,
       });
     }

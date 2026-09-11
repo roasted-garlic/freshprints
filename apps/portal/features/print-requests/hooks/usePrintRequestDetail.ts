@@ -618,6 +618,8 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
           patchWorkingItems((currentItems) =>
             currentItems.filter((item) => item.id !== itemId),
           );
+          // Keep the pending-remove mark until the live/list snapshot confirms absence —
+          // ending it here lets a stale onSnapshot resurrect the card ~1s later.
         }
         setPrintRequest((currentRequest) =>
           currentRequest
@@ -627,13 +629,13 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
               }
             : currentRequest,
         );
-      } finally {
-        setIsSaving(false);
+      } catch (error) {
         if (isViewingWorkingRequest) {
-          // Clear the pending-remove mark after the callable settles (success or error) —
-          // matches the begin/end contract useAddDesignToRequestFlow's paths already follow.
           endPendingItemRemovals([itemId]);
         }
+        throw error;
+      } finally {
+        setIsSaving(false);
       }
     },
     [

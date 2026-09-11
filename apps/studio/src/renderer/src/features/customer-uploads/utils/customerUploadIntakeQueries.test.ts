@@ -8,15 +8,24 @@ import {
   filterCatalogIntakeEligibleDocs,
   filterLegacyMissingPurposeDocs,
   mergeIntakeDocsByCreatedAtDesc,
+  resolveStudioIntakeListSortMs,
   runWithConcurrencyLimit,
 } from "./customerUploadIntakeQueries.ts";
 
-function doc(id: string, purpose: unknown, createdAtMs: number) {
+function doc(
+  id: string,
+  purpose: unknown,
+  createdAtMs: number,
+  catalogPendingQueuedAtMs?: number,
+) {
   return {
     id,
     data: () => ({
       purpose,
       createdAt: { toMillis: () => createdAtMs },
+      ...(typeof catalogPendingQueuedAtMs === "number"
+        ? { catalogPendingQueuedAt: { toMillis: () => catalogPendingQueuedAtMs } }
+        : {}),
     }),
   };
 }
@@ -77,6 +86,39 @@ test("mergeIntakeDocsByCreatedAtDesc prefers newest and caps page size", () => {
     ["p1", "legacy"],
   );
   assert.equal(CUSTOMER_UPLOAD_INTAKE_PAGE_SIZE, 50);
+});
+
+test("Ask Again → Allow re-queued uploads sort above older createdAt siblings", () => {
+  const primary = [
+    doc("older-sibling", "print_request", 200),
+    doc("reallowed", "print_request", 100, 500),
+    doc("newer-sibling", "print_request", 300),
+  ];
+  const merged = mergeIntakeDocsByCreatedAtDesc(primary, [], 10);
+  assert.deepEqual(
+    merged.map((item) => item.id),
+    ["reallowed", "newer-sibling", "older-sibling"],
+  );
+  assert.equal(resolveStudioIntakeListSortMs(primary[1]!.data()), 500);
+  assert.equal(resolveStudioIntakeListSortMs(primary[2]!.data()), 300);
+});
+
+test("Ask Again → Allow sorts by follow-up respondedAt when catalogPendingQueuedAt is missing", () => {
+  const reallowed = {
+    id: "reallowed",
+    data: () => ({
+      purpose: "print_request",
+      createdAt: { toMillis: () => 100 },
+      catalogPermissionFollowUpStatus: "approved",
+      catalogPermissionFollowUpRespondedAt: { toMillis: () => 900 },
+    }),
+  };
+  const sibling = doc("sibling", "print_request", 400);
+  const merged = mergeIntakeDocsByCreatedAtDesc([sibling, reallowed], [], 10);
+  assert.deepEqual(
+    merged.map((item) => item.id),
+    ["reallowed", "sibling"],
+  );
 });
 
 test("buildPurposeScopedIntakeQuery accepts custom page size", async () => {

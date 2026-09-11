@@ -31,16 +31,20 @@ function sliceFunctionBody(functionName: string): string {
   // updateItem grew past 4000 chars after Amendment 2's server-authoritative quantity
   // reconciliation (Plan Section 20.2/20.4) — widened accordingly. Widened again after Amendment
   // 4's clamp-bypass fix (Plan Section 22.2) added further explanatory comments.
-  return source.slice(start, start + 7000);
+  return source.slice(start, start + 10000);
 }
 
 describe('usePrintRequestDetail — items 2/5/7 structural fix (source wiring)', () => {
-  it('removeItem calls beginPendingItemRemovals before its callable and endPendingItemRemovals after', () => {
+  it('removeItem keeps pending-remove until live list confirms absence (not end-on-success)', () => {
     const removeItemBody = sliceFunctionBody('removeItem');
     assert.match(removeItemBody, /beginPendingItemRemovals\(\[itemId\]\)/);
-    assert.match(removeItemBody, /endPendingItemRemovals\(\[itemId\]\)/);
-    // beginPendingItemRemovals must run before the removal callable, not after — otherwise a
-    // concurrent reload could still resurrect the row during the callable's own round trip.
+    // Success must NOT clear the mark in finally — a stale snapshot would resurrect the row.
+    assert.doesNotMatch(
+      removeItemBody,
+      /finally\s*\{[\s\S]*endPendingItemRemovals\(\[itemId\]\)/,
+    );
+    // Failure must clear so the card can return.
+    assert.match(removeItemBody, /catch \(error\) \{\s*if \(isViewingWorkingRequest\) \{\s*endPendingItemRemovals\(\[itemId\]\)/);
     const beginIndex = removeItemBody.indexOf('beginPendingItemRemovals([itemId])');
     const callableIndex = removeItemBody.indexOf('removePrintRequestItem(');
     assert.ok(beginIndex >= 0 && callableIndex >= 0 && beginIndex < callableIndex);

@@ -93,7 +93,7 @@ interface PortalPrintRequestItemCardProps {
   exhaustedStatusText?: string | null;
   onAddToRequest?: (design: CatalogDesign) => void;
   onDuplicate: (item: PrintRequestItem) => void;
-  onRemove: (item: PrintRequestItem) => void;
+  onRemove: (item: PrintRequestItem) => void | Promise<void>;
   /**
    * Bump when a remove confirm is cancelled after qty was typed to 0,
    * so the input restores to the saved item quantity.
@@ -274,6 +274,8 @@ export function PortalPrintRequestItemCard({
     formatEditableNumber(resolveInitialHeight(item)),
   );
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [isConfirmingRemove, setIsConfirmingRemove] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
   const [isStandardSizesModalOpen, setIsStandardSizesModalOpen] = useState(false);
   const [standardSizePresetKey, setStandardSizePresetKey] = useState<string | undefined>(
     item.standardSizePresetKey,
@@ -374,10 +376,15 @@ export function PortalPrintRequestItemCard({
   }, [design, item, onOpenLightbox, upload]);
 
   useEffect(() => {
+    setIsConfirmingRemove(false);
+  }, [item.id]);
+
+  useEffect(() => {
     if (quantityResetKey < 1) {
       return;
     }
     setQuantityInput(String(item.quantity));
+    setIsConfirmingRemove(false);
   }, [item.quantity, quantityResetKey]);
 
   const parsedQuantity = parsePositiveIntegerInput(quantityInput);
@@ -556,7 +563,7 @@ export function PortalPrintRequestItemCard({
    * Size/qty stay editable while the duplicate is preparing; Duplicate/Remove stay locked
    * until the real id exists (callables reject pending ids).
    */
-  const actionsDisabled = isOptimisticItem;
+  const actionsDisabled = isOptimisticItem || isRemoving;
   const wasOptimisticRef = useRef(isOptimisticItem);
 
   useEffect(() => {
@@ -813,7 +820,7 @@ export function PortalPrintRequestItemCard({
         window.clearTimeout(saveDebounceRef.current);
         saveDebounceRef.current = null;
       }
-      onRemove(item);
+      setIsConfirmingRemove(true);
       return;
     }
 
@@ -827,7 +834,7 @@ export function PortalPrintRequestItemCard({
     }
 
     void saveDraft();
-  }, [canSave, item, onRemove, parsedQuantity, quantityInput, saveDraft, showItemEditors]);
+  }, [canSave, item, parsedQuantity, quantityInput, saveDraft, showItemEditors]);
 
   const handleFieldFocus = useCallback((event: FocusEvent<HTMLInputElement>) => {
     event.currentTarget.select();
@@ -868,11 +875,32 @@ export function PortalPrintRequestItemCard({
     nextInput.select();
   }, [handleFieldKeyDown]);
 
+  const handleConfirmRemove = useCallback(async () => {
+    if (isRemoving) {
+      return;
+    }
+    setIsRemoving(true);
+    try {
+      await Promise.all([
+        Promise.resolve(onRemove(item)),
+        new Promise<void>((resolve) => {
+          window.setTimeout(resolve, 420);
+        }),
+      ]);
+    } catch {
+      setIsRemoving(false);
+      setIsConfirmingRemove(false);
+      setQuantityInput(String(item.quantity));
+    }
+  }, [isRemoving, item, onRemove]);
+
   return (
     <>
       <article
-        aria-busy={isOptimisticItem || undefined}
-        className={`portal-request-item-editor-card${isOptimisticItem ? ' is-preparing' : ''}`}
+        aria-busy={isOptimisticItem || isRemoving || undefined}
+        className={`portal-request-item-editor-card${
+          isOptimisticItem ? ' is-preparing' : ''
+        }${isRemoving ? ' is-removing' : ''}`}
         data-print-request-item-id={item.id}
       >
         <div className="portal-request-item-editor-header">
@@ -1148,9 +1176,15 @@ export function PortalPrintRequestItemCard({
               </p>
             ) : null}
 
-            <div className="portal-request-item-editor-actions">
+            <div
+              className={`portal-request-item-editor-actions${
+                isConfirmingRemove ? ' is-confirming-remove' : ''
+              }`}
+            >
               <button
-                className="portal-button portal-button-secondary portal-button-sm portal-button-leading-icon"
+                className={`portal-button portal-button-secondary portal-button-sm${
+                  isConfirmingRemove ? '' : ' portal-button-leading-icon'
+                }`}
                 disabled={actionsDisabled || !canAddPrints}
                 onClick={() => onDuplicate(item)}
                 tabIndex={-1}
@@ -1163,21 +1197,51 @@ export function PortalPrintRequestItemCard({
                 }
                 type="button"
               >
-                <CopyIcon size={14} />
-                Duplicate
+                {!isConfirmingRemove ? <CopyIcon size={14} /> : null}
+                <span>Duplicate</span>
               </button>
 
-              <button
-                className="portal-button portal-button-danger portal-button-sm portal-button-leading-icon"
-                disabled={actionsDisabled}
-                onClick={() => onRemove(item)}
-                tabIndex={-1}
-                title={actionsDisabled ? 'Preparing duplicate…' : undefined}
-                type="button"
-              >
-                <TrashIcon size={14} />
-                Remove
-              </button>
+              {isConfirmingRemove ? (
+                <>
+                  <button
+                    className="portal-button portal-button-ghost portal-button-sm"
+                    disabled={actionsDisabled}
+                    onClick={() => {
+                      setIsConfirmingRemove(false);
+                      setQuantityInput(String(item.quantity));
+                    }}
+                    tabIndex={-1}
+                    type="button"
+                  >
+                    <span>Cancel</span>
+                  </button>
+                  <button
+                    className={`portal-button portal-button-danger portal-button-sm${
+                      isRemoving ? ' is-deleting' : ''
+                    }`}
+                    disabled={actionsDisabled}
+                    onClick={() => {
+                      void handleConfirmRemove();
+                    }}
+                    tabIndex={-1}
+                    type="button"
+                  >
+                    <span>{isRemoving ? 'Removing…' : 'Confirm'}</span>
+                  </button>
+                </>
+              ) : (
+                <button
+                  className="portal-button portal-button-danger portal-button-sm portal-button-leading-icon"
+                  disabled={actionsDisabled}
+                  onClick={() => setIsConfirmingRemove(true)}
+                  tabIndex={-1}
+                  title={actionsDisabled ? 'Preparing duplicate…' : undefined}
+                  type="button"
+                >
+                  <TrashIcon size={14} />
+                  <span>Remove</span>
+                </button>
+              )}
             </div>
           </>
         ) : null}

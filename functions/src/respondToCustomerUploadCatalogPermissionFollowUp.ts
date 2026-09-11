@@ -1,11 +1,18 @@
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { onCall } from "firebase-functions/v2/https";
 
 import { CUSTOMER_UPLOAD_COLLECTIONS } from "../../packages/shared/src/constants/customerUpload/customerUploadCollections.constants";
+import { CUSTOMER_NOTIFICATIONS_COLLECTION } from "../../packages/shared/src/types/customerNotifications/customerNotifications.types";
 import type {
   RespondToCustomerUploadCatalogPermissionFollowUpRequest,
   RespondToCustomerUploadCatalogPermissionFollowUpResponse,
 } from "../../packages/shared/src/types/customerUpload/customerUploadCatalogPermission.types";
+import { buildCustomerUploadCatalogPermissionFollowUpNotificationId } from "../../packages/shared/src/utils/customerNotifications";
+import {
+  buildCustomerUploadPermissionActivityId,
+  normalizeCustomerUploadPermissionActivity,
+  resolveCustomerUploadPermissionAskCount,
+} from "../../packages/shared/src/utils/customerUploadPermissionFollowUp";
 
 import { adminDb } from "./lib/admin";
 import { failedPrecondition, invalidArgument, permissionDenied, unauthenticated } from "./lib/errors";
@@ -30,6 +37,23 @@ function parseRequest(data: unknown): RespondToCustomerUploadCatalogPermissionFo
     throw new Error("Permission decision must be allow or decline.");
   }
   return { requestToken: requestToken.trim(), decision };
+}
+
+async function markPermissionFollowUpNotificationRead(requestToken: string): Promise<void> {
+  const notificationId = buildCustomerUploadCatalogPermissionFollowUpNotificationId(requestToken);
+  const ref = adminDb.collection(CUSTOMER_NOTIFICATIONS_COLLECTION).doc(notificationId);
+  try {
+    await ref.update({
+      readAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  } catch (error) {
+    // Missing/already-cleared alerts must not fail the customer decision write.
+    console.warn("[respondToCustomerUploadCatalogPermissionFollowUp] mark notification read skipped", {
+      notificationId,
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
 }
 
 export const respondToCustomerUploadCatalogPermissionFollowUp = onCall(
@@ -100,11 +124,41 @@ export const respondToCustomerUploadCatalogPermissionFollowUp = onCall(
       }
 
       const approved = payload.decision === "allow";
+      const attempt = (Math.max(
+        1,
+        resolveCustomerUploadPermissionAskCount({
+          catalogPermissionAskCount: upload.catalogPermissionAskCount,
+          catalogPermissionFollowUpStatus: "requested",
+        }),
+      ) === 2
+        ? 2
+        : 1) as 1 | 2;
+      const activity = normalizeCustomerUploadPermissionActivity(upload.catalogPermissionActivity);
+      const responseKind = approved ? "customer_allow" : "customer_decline";
+      const responseId = buildCustomerUploadPermissionActivityId(responseKind, attempt);
+      if (!activity.some((entry) => entry.id === responseId)) {
+        activity.push({
+          id: responseId,
+          kind: responseKind,
+          attempt,
+          // Concrete Timestamp only — FieldValue.serverTimestamp() is illegal inside arrays.
+          at: Timestamp.now(),
+          byUid: request.auth!.uid,
+        });
+      }
+
       transaction.update(uploadRef, {
         catalogPermissionFollowUpStatus: approved ? "approved" : "declined",
         catalogPermissionFollowUpRespondedAt: FieldValue.serverTimestamp(),
         catalogPermissionFollowUpRespondedBy: request.auth!.uid,
         catalogReviewStatus: approved ? "pending_staff_review" : "excluded_from_catalog",
+        catalogPermissionActivity: activity,
+        // Re-entering Pending after Ask Again must sort to the top of Studio intake
+        // (not stay at the original createdAt position in the batch).
+        ...(approved ? { catalogPendingQueuedAt: FieldValue.serverTimestamp() } : {}),
+        catalogRetentionStartedAt: approved
+          ? FieldValue.delete()
+          : FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       });
 
@@ -115,6 +169,9 @@ export const respondToCustomerUploadCatalogPermissionFollowUp = onCall(
       };
       },
     );
+
+    // Clear sticky Alerts row after Allow/Decline (idempotent path included).
+    await markPermissionFollowUpNotificationRead(payload.requestToken);
 
     return result;
   },

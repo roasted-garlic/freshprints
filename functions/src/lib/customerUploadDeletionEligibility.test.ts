@@ -35,9 +35,47 @@ test("a direct Design Library reference blocks deletion even when the upload bac
   assert.equal(blockers[0]?.code, "promoted_to_design");
 });
 
-test("only an unattached and unpromoted upload is eligible", () => {
+test("portal customers cannot self-delete donated or Allow/waiting uploads", () => {
+  assert.equal(
+    resolveCustomerUploadDeletionBlockers({
+      printRequestItemCount: 0,
+      promotedDesignId: null,
+      portalCustomerSelfDelete: true,
+      purpose: "catalog_donation",
+      catalogUseAcknowledged: true,
+    })[0]?.code,
+    "staff_managed_donation",
+  );
+  assert.equal(
+    resolveCustomerUploadDeletionBlockers({
+      printRequestItemCount: 0,
+      promotedDesignId: null,
+      portalCustomerSelfDelete: true,
+      purpose: "print_request",
+      catalogUseAcknowledged: true,
+    })[0]?.code,
+    "staff_managed_upload",
+  );
   assert.deepEqual(
-    resolveCustomerUploadDeletionBlockers({ printRequestItemCount: 0, promotedDesignId: null }),
+    resolveCustomerUploadDeletionBlockers({
+      printRequestItemCount: 0,
+      promotedDesignId: null,
+      portalCustomerSelfDelete: true,
+      purpose: "print_request",
+      catalogUseAcknowledged: false,
+    }),
+    [],
+  );
+});
+
+test("staff delete path is unchanged for donated and Allow uploads when unattached", () => {
+  assert.deepEqual(
+    resolveCustomerUploadDeletionBlockers({
+      printRequestItemCount: 0,
+      promotedDesignId: null,
+      purpose: "catalog_donation",
+      catalogUseAcknowledged: true,
+    }),
     [],
   );
 });

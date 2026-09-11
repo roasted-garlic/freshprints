@@ -66,6 +66,9 @@ export const restoreCustomerUploadCatalogEligibility = onCall(
     await uploadRef.update({
       catalogReviewStatus: "pending_staff_review",
       catalogExclusionReason: "staff_review",
+      catalogRetentionStartedAt: FieldValue.delete(),
+      // Staff restore should surface at the top of Pending like a fresh intake item.
+      catalogPendingQueuedAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     });
 

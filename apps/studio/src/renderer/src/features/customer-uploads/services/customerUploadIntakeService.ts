@@ -72,6 +72,10 @@ export interface CustomerUploadIntakeRow {
   catalogUseAcknowledged: boolean | null;
   catalogExclusionReason: "staff_review" | "customer_permission_denied" | null;
   catalogPermissionFollowUpStatus: "not_requested" | "requested" | "approved" | "declined";
+  catalogPermissionAskCount: number;
+  catalogPermissionActivity: import("@fresh-prints/shared/types/customerUpload/customerUploadCatalogPermission.types").CustomerUploadPermissionActivityEntry[];
+  catalogPermissionOriginalDeniedAtMs: number | null;
+  catalogRetentionStartedAtMs?: number | null;
   purpose: CustomerUploadPurpose;
   createdAtMs: number | null;
   /** Set when exclude purged donation full-size files (thumbnail kept). */
@@ -328,6 +332,7 @@ export const customerUploadIntakeService = {
           data.catalogPermissionFollowUpStatus === "declined"
             ? data.catalogPermissionFollowUpStatus
             : "not_requested",
+        catalogRetentionStartedAtMs: timestampMs(data.catalogRetentionStartedAt),
         purpose: resolveCustomerUploadPurpose(data.purpose),
         createdAtMs: timestampMs(data.createdAt),
         fullSizePurgedAtMs: timestampMs(data.fullSizePurgedAt),

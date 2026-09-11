@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { onCall } from "firebase-functions/v2/https";
 
 import { CUSTOMER_UPLOAD_COLLECTIONS } from "../../packages/shared/src/constants/customerUpload/customerUploadCollections.constants";
@@ -10,7 +10,14 @@ import type {
 import {
   CUSTOMER_NOTIFICATION_CUSTOMER_UPLOAD_PERMISSION_BODY,
   buildCustomerNotificationTitle,
+  buildCustomerUploadCatalogPermissionFollowUpNotificationId,
 } from "../../packages/shared/src/utils/customerNotifications";
+import {
+  buildCustomerUploadPermissionActivityId,
+  canRequestCustomerUploadPermissionFollowUp,
+  normalizeCustomerUploadPermissionActivity,
+  resolveCustomerUploadPermissionAskCount,
+} from "../../packages/shared/src/utils/customerUploadPermissionFollowUp";
 
 import { adminDb } from "./lib/admin";
 import { assertStaffCaller, loadCallerProfile } from "./lib/caller";
@@ -22,7 +29,6 @@ import { createCustomerNotification } from "./lib/customerNotifications/createCu
 import { failedPrecondition, invalidArgument, unauthenticated } from "./lib/errors";
 
 const FOLLOW_UP_TOKEN_BYTES = 24;
-const NOTIFICATION_PREFIX = "customer_upload_permission_";
 
 function newFollowUpToken(): string {
   return randomBytes(FOLLOW_UP_TOKEN_BYTES).toString("base64url");
@@ -69,25 +75,36 @@ export const requestCustomerUploadCatalogPermissionFollowUp = onCall(
           customerUid: String(upload.customerUid ?? ""),
           printRequestId: String(upload.printRequestId ?? ""),
           requestToken: existingToken,
-          notificationId: `${NOTIFICATION_PREFIX}${existingToken}`,
+          notificationId: buildCustomerUploadCatalogPermissionFollowUpNotificationId(existingToken),
           alreadyRequested: true,
         };
       }
 
-      if (existingStatus === "approved" || existingStatus === "declined") {
-        throw failedPrecondition("This upload has already received its one follow-up decision.");
-      }
       if (upload.purpose === "catalog_donation") {
         throw failedPrecondition("Catalog donations do not support permission follow-up.");
       }
-      if (upload.catalogReviewStatus !== "excluded_from_catalog") {
-        throw failedPrecondition("Only excluded uploads can request catalog permission follow-up.");
-      }
-      if (upload.catalogExclusionReason !== "customer_permission_denied") {
-        throw failedPrecondition("This upload was not excluded for customer permission denial.");
-      }
       if (upload.catalogUseAcknowledged !== false) {
         throw failedPrecondition("A customer permission denial is required.");
+      }
+
+      if (
+        !canRequestCustomerUploadPermissionFollowUp({
+          catalogReviewStatus: upload.catalogReviewStatus,
+          catalogExclusionReason: upload.catalogExclusionReason,
+          catalogPermissionFollowUpStatus: existingStatus,
+          catalogPermissionAskCount: upload.catalogPermissionAskCount,
+        })
+      ) {
+        if (existingStatus === "approved") {
+          throw failedPrecondition("This upload has already been approved for catalog review.");
+        }
+        if (resolveCustomerUploadPermissionAskCount({
+          catalogPermissionAskCount: upload.catalogPermissionAskCount,
+          catalogPermissionFollowUpStatus: existingStatus,
+        }) >= 2) {
+          throw failedPrecondition("Both permission follow-up requests have already been used.");
+        }
+        throw failedPrecondition("This upload is not eligible for another permission follow-up.");
       }
 
       const customerUid = typeof upload.customerUid === "string" ? upload.customerUid.trim() : "";
@@ -98,12 +115,41 @@ export const requestCustomerUploadCatalogPermissionFollowUp = onCall(
         throw failedPrecondition("A linked authenticated customer Print Request is required.");
       }
 
+      const priorAskCount = resolveCustomerUploadPermissionAskCount({
+        catalogPermissionAskCount: upload.catalogPermissionAskCount,
+        catalogPermissionFollowUpStatus: existingStatus === "declined" ? "declined" : "not_requested",
+      });
+      // When starting from not_requested, askCount is 0; after a decline, resolved count is prior asks.
+      const nextAttempt = (priorAskCount + 1) as 1 | 2;
       const requestToken = newFollowUpToken();
+      const activity = normalizeCustomerUploadPermissionActivity(upload.catalogPermissionActivity);
+      const activityNow = Timestamp.now();
+      if (!activity.some((entry) => entry.kind === "initial_denial")) {
+        activity.push({
+          id: buildCustomerUploadPermissionActivityId("initial_denial"),
+          kind: "initial_denial",
+          // Concrete Timestamp only — FieldValue.serverTimestamp() is illegal inside arrays.
+          at: upload.catalogPermissionOriginalDeniedAt ?? activityNow,
+          byUid: null,
+        });
+      }
+      activity.push({
+        id: buildCustomerUploadPermissionActivityId("ask_sent", nextAttempt),
+        kind: "ask_sent",
+        attempt: nextAttempt,
+        at: activityNow,
+        byUid: caller.id,
+      });
+
       transaction.update(uploadRef, {
         catalogPermissionFollowUpStatus: "requested",
         catalogPermissionFollowUpRequestToken: requestToken,
         catalogPermissionFollowUpRequestedAt: FieldValue.serverTimestamp(),
         catalogPermissionFollowUpRequestedBy: caller.id,
+        catalogPermissionAskCount: nextAttempt,
+        catalogPermissionActivity: activity,
+        // Pause retention while an ask is outstanding.
+        catalogRetentionStartedAt: FieldValue.delete(),
         updatedAt: FieldValue.serverTimestamp(),
       });
 
@@ -112,7 +158,7 @@ export const requestCustomerUploadCatalogPermissionFollowUp = onCall(
         customerUid,
         printRequestId,
         requestToken,
-        notificationId: `${NOTIFICATION_PREFIX}${requestToken}`,
+        notificationId: buildCustomerUploadCatalogPermissionFollowUpNotificationId(requestToken),
         alreadyRequested: false,
       };
     });

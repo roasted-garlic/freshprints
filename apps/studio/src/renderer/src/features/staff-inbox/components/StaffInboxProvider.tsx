@@ -34,10 +34,14 @@ import { formatStaffInboxFirestoreError } from "../utils/formatStaffInboxFiresto
 import { getStaffInboxItemNavigationPath } from "../utils/staffInboxNavigation";
 import { designIssueReportService } from "../services/designIssueReportService";
 import { staffInboxSuppressionService } from "../services/staffInboxSuppressionService";
+import {
+  isStaffInboxQueuedAlertGroupHeld,
+  STAFF_INBOX_ALERT_BATCH_WINDOW_MS,
+  STAFF_INBOX_QUEUE_ALERT_HOLD_CHANGED_EVENT,
+  STAFF_INBOX_QUEUE_ALERT_SETTLE_MS,
+} from "../utils/staffInboxQueueAlertTiming";
 
 const HIGHLIGHT_DURATION_MS = 8_000;
-/** Wide enough that queue-add + show-full Firestore emits coalesce into one sound. */
-const ALERT_BATCH_WINDOW_MS = 750;
 
 const EMPTY_SUBSCRIPTION_SNAPSHOT: StaffInboxSubscriptionSnapshot = {
   portalRequests: [],
@@ -54,6 +58,8 @@ type PendingStaffInboxAlert = Omit<StaffInboxToast, "id"> & {
   itemId: string;
   itemKind: "portal_queued" | "show_queue_full";
   occurredAtMillis: number;
+  /** Override coalesce window; queue-add uses a longer post-success settle. */
+  settleMs?: number;
 };
 
 function buildInboxErrorMessage(requestError: string | null, allocationError: string | null): string | null {
@@ -322,6 +328,13 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
 
       pendingAlertsRef.current.push(alert);
 
+      const settleMs = Math.max(
+        STAFF_INBOX_ALERT_BATCH_WINDOW_MS,
+        ...pendingAlertsRef.current.map(
+          (entry) => entry.settleMs ?? STAFF_INBOX_ALERT_BATCH_WINDOW_MS,
+        ),
+      );
+
       if (alertFlushTimeoutRef.current) {
         window.clearTimeout(alertFlushTimeoutRef.current);
       }
@@ -329,7 +342,7 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
       alertFlushTimeoutRef.current = window.setTimeout(() => {
         alertFlushTimeoutRef.current = null;
         flushPendingAlerts();
-      }, ALERT_BATCH_WINDOW_MS);
+      }, settleMs);
     },
     [flushPendingAlerts],
   );
@@ -374,6 +387,10 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
             continue;
           }
 
+          if (isStaffInboxQueuedAlertGroupHeld(groupKey)) {
+            continue;
+          }
+
           queueAlert({
             alertKind: "request_queued_to_show",
             itemId: queuedItem.id,
@@ -381,10 +398,18 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
             occurredAtMillis: queuedItem.occurredAtMillis,
             ...buildStaffInboxAlertToastCopy("portal_queued", queuedItem.title),
             navigationPath: getStaffInboxItemNavigationPath(queuedItem),
+            settleMs: STAFF_INBOX_QUEUE_ALERT_SETTLE_MS,
           });
         }
 
-        previousQueuedGroupKeysRef.current = nextQueuedGroupKeys;
+        // Held in-flight Studio Add-to-Show groups must stay "unseen" so release can alert.
+        previousQueuedGroupKeysRef.current = new Set(
+          [...nextQueuedGroupKeys].filter(
+            (groupKey) =>
+              !isStaffInboxQueuedAlertGroupHeld(groupKey) ||
+              Boolean(previousQueuedGroupKeys?.has(groupKey)),
+          ),
+        );
       }
 
       if (showSnapshotsRef.current.length === 0) {
@@ -421,6 +446,7 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
           occurredAtMillis: fullItem.occurredAtMillis,
           ...buildStaffInboxAlertToastCopy("show_queue_full", fullItem.title),
           navigationPath: getStaffInboxItemNavigationPath(fullItem),
+          settleMs: STAFF_INBOX_QUEUE_ALERT_SETTLE_MS,
         });
       }
 
@@ -430,6 +456,16 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
   );
 
   evaluateAlertsRef.current = evaluateAlerts;
+
+  useEffect(() => {
+    const onHoldChanged = () => {
+      evaluateAlertsRef.current(subscriptionSnapshotRef.current);
+    };
+    window.addEventListener(STAFF_INBOX_QUEUE_ALERT_HOLD_CHANGED_EVENT, onHoldChanged);
+    return () => {
+      window.removeEventListener(STAFF_INBOX_QUEUE_ALERT_HOLD_CHANGED_EVENT, onHoldChanged);
+    };
+  }, []);
 
   useEffect(() => {
     if (!isEnabled) {

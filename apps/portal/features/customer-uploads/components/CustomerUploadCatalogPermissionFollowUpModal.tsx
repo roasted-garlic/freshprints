@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { GetCustomerUploadCatalogPermissionFollowUpResponse } from '@fresh-prints/shared/types/customerUpload/customerUploadCatalogPermission.types';
 
+import { customerUploadService } from '../services/customerUploadService';
 import { customerNotificationsService } from '../../notifications/services/customerNotificationsService';
 
 interface CustomerUploadCatalogPermissionFollowUpModalProps {
@@ -18,6 +19,8 @@ export function CustomerUploadCatalogPermissionFollowUpModal({
   onClose,
 }: CustomerUploadCatalogPermissionFollowUpModalProps) {
   const [context, setContext] = useState<GetCustomerUploadCatalogPermissionFollowUpResponse | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingDecision, setPendingDecision] = useState<'allow' | 'decline' | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -28,17 +31,35 @@ export function CustomerUploadCatalogPermissionFollowUpModal({
     }
     let cancelled = false;
     setContext(null);
+    setPreviewUrl(null);
+    setIsPreviewLoading(false);
     setError(null);
     void customerNotificationsService
       .getCatalogPermissionFollowUp(requestToken)
-      .then((result) => {
+      .then(async (result) => {
+        if (cancelled) {
+          return;
+        }
+        setContext(result);
+        const path = result.previewStoragePath?.trim() || null;
+        if (result.previewUrl) {
+          setPreviewUrl(result.previewUrl);
+          return;
+        }
+        if (!path) {
+          return;
+        }
+        setIsPreviewLoading(true);
+        const url = await customerUploadService.getDownloadUrl(path);
         if (!cancelled) {
-          setContext(result);
+          setPreviewUrl(url);
+          setIsPreviewLoading(false);
         }
       })
       .catch((reason: unknown) => {
         if (!cancelled) {
           setError(reason instanceof Error ? reason.message : 'Unable to load this permission request.');
+          setIsPreviewLoading(false);
         }
       });
     return () => {
@@ -140,12 +161,21 @@ export function CustomerUploadCatalogPermissionFollowUpModal({
                 We’d like permission to consider <strong>{context.originalFilename}</strong> for the
                 Design Library. This does not publish the artwork or change your print request.
               </p>
-              {context.previewUrl ? (
+              {previewUrl ? (
                 <img
                   alt={`Preview of ${context.originalFilename}`}
                   className="portal-customer-upload-permission-preview"
-                  src={context.previewUrl}
+                  src={previewUrl}
+                  style={{
+                    backgroundColor:
+                      context.previewBackgroundHex?.trim() ||
+                      'var(--color-artwork-preview-bg, #e5e7eb)',
+                  }}
                 />
+              ) : isPreviewLoading ? (
+                <p className="portal-muted" role="status">
+                  Loading preview…
+                </p>
               ) : null}
               {context.printRequestName ? (
                 <p className="portal-muted">Linked request: {context.printRequestName}</p>

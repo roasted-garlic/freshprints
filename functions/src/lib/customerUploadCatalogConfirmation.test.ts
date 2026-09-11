@@ -54,6 +54,7 @@ describe("buildCatalogIntakeConfirmationPatch — Workstream E intake timing", (
     assert.equal(attach.catalogReviewStatus, "excluded_from_catalog");
     assert.equal(attach.catalogExclusionReason, "customer_permission_denied");
     assert.equal(attach.catalogPermissionOriginalDeniedAt, "NOW");
+    assert.equal(attach.studioIntakeHoldUntilShow, true);
   });
 
   it("keeps a prior follow-up approval valid on a re-attachment", () => {
@@ -90,10 +91,10 @@ describe("shouldAdvanceCustomerUploadToStaffReview — idempotent show-allocatio
 
   it("transition patch sets pending_staff_review without creating designs", () => {
     const patch = buildCustomerUploadStaffReviewTransitionPatch("NOW" as never);
-    assert.deepEqual(patch, {
-      catalogReviewStatus: "pending_staff_review",
-      updatedAt: "NOW",
-    });
+    assert.equal(patch.catalogReviewStatus, "pending_staff_review");
+    assert.equal(patch.studioIntakeReleasedAt, "NOW");
+    assert.equal(patch.updatedAt, "NOW");
+    assert.ok("studioIntakeHoldUntilShow" in patch);
     assert.equal("promotedDesignId" in patch, false);
   });
 });

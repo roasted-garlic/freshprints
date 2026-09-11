@@ -4407,6 +4407,15 @@ ADR-FP-076 reserved image donations as a separate product path from `/requests/a
 - Composite Firestore indexes required for purpose + catalogReviewStatus queries.
 - Daily abuse quotas are **purpose-split**: print-request (create 100 / finalize image 200 / ZIP 5) vs catalog-donation (create 200 / finalize image 500 / ZIP 20). Concurrent finalize leases stay shared at 8.
 
+**Amendment (2026-09-11) — gallery re-add + unpromoted donation shelf life**
+
+- Initial donate confirm still does **not** create `printRequestItems` (unchanged).
+- Portal **Your designs** may re-attach an existing `catalog_donation` (or print-request) upload via
+  `attachExistingCustomerUploadsToPrintRequest` without rewriting catalog consent / Pending fields.
+- Unpromoted donations start a **30-day** `catalogRetentionStartedAt` episode with reason
+  `unpromoted_donation` while remaining `pending_staff_review`; promote clears the clock; purge
+  under B1 removes them when due if never promoted.
+
 ---
 
 ### ADR-FP-077: Soft-quality warning for aggressive import upscales

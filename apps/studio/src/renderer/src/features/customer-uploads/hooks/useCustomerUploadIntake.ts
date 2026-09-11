@@ -1,10 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { onSnapshot, type QueryDocumentSnapshot, type Unsubscribe } from "firebase/firestore";
+import {
+  getDocs,
+  onSnapshot,
+  type QueryDocumentSnapshot,
+  type Unsubscribe,
+} from "firebase/firestore";
 
 import { CUSTOMER_UPLOAD_COLLECTIONS } from "@fresh-prints/shared/constants/customerUpload/customerUploadCollections.constants";
 import { ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK } from "@fresh-prints/shared/constants/design/artworkBackground.constants";
 import type { CustomerUploadPurpose } from "@fresh-prints/shared/types/customerUpload/customerUpload.enums";
 import { resolveCustomerUploadPurpose } from "@fresh-prints/shared/utils/customerUploadPurpose";
+import {
+  normalizeCustomerUploadPermissionActivity,
+  resolveCustomerUploadPermissionAskCount,
+} from "@fresh-prints/shared/utils/customerUploadPermissionFollowUp";
 import { resolveIntakeHalftoneStaffToggle } from "@fresh-prints/shared/utils/halftoneReviewState";
 import {
   traceFirestoreListenerAttach,
@@ -27,11 +36,14 @@ import { filterCustomersForIntakeSearch } from "../utils/customerUploadIntakeSea
 import { fetchIntakeDocsForMatchedCustomers } from "../utils/fetchIntakeDocsForMatchedCustomers";
 import {
   buildPurposeScopedIntakeQuery,
+  buildPurposeScopedDeniedCountQuery,
   buildStatusScopedCatalogReviewQuery,
   CUSTOMER_UPLOAD_INTAKE_ENRICH_CONCURRENCY,
   CUSTOMER_UPLOAD_INTAKE_PAGE_SIZE,
   filterCatalogIntakeEligibleDocs,
+  filterDeniedStudioIntakeDocs,
   filterLegacyMissingPurposeDocs,
+  filterStaffExcludedIntakeDocs,
   mergeIntakeDocsByCreatedAtDesc,
   runWithConcurrencyLimit,
 } from "../utils/customerUploadIntakeQueries";
@@ -145,6 +157,15 @@ function buildShellRow(
       data.catalogPermissionFollowUpStatus === "declined"
         ? data.catalogPermissionFollowUpStatus
         : "not_requested",
+    catalogPermissionAskCount: resolveCustomerUploadPermissionAskCount({
+      catalogPermissionAskCount: data.catalogPermissionAskCount,
+      catalogPermissionFollowUpStatus: data.catalogPermissionFollowUpStatus,
+    }),
+    catalogPermissionActivity: normalizeCustomerUploadPermissionActivity(
+      data.catalogPermissionActivity,
+    ),
+    catalogPermissionOriginalDeniedAtMs: timestampMs(data.catalogPermissionOriginalDeniedAt),
+    catalogRetentionStartedAtMs: timestampMs(data.catalogRetentionStartedAt),
     purpose: resolveCustomerUploadPurpose(data.purpose),
     createdAtMs: timestampMs(data.createdAt),
     fullSizePurgedAtMs: mapCustomerUploadPurgeTimestamp(data.fullSizePurgedAt),
@@ -178,7 +199,7 @@ function buildShellRow(
 
 /**
  * Live intake list + keyed mutation state.
- * Card actions never flip full-page loading (avoids remount / “full refresh”).
+ * Card actions never flip full-page loading (avoids remount / �full refresh�).
  * Route loading clears after purpose-scoped metadata; images fill progressively.
  */
 export function useCustomerUploadIntake(options?: {
@@ -206,7 +227,7 @@ export function useCustomerUploadIntake(options?: {
   const [pendingByUploadId, setPendingByUploadId] = useState<
     Partial<Record<string, CustomerUploadIntakePendingAction>>
   >({});
-  /** Durable metadata save failed — blocks promote until Retry succeeds. */
+  /** Durable metadata save failed � blocks promote until Retry succeeds. */
   const [metadataFailedByUploadId, setMetadataFailedByUploadId] = useState<
     Partial<Record<string, "halftone" | "artwork_background">>
   >({});
@@ -228,6 +249,7 @@ export function useCustomerUploadIntake(options?: {
   );
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [deniedCount, setDeniedCount] = useState(0);
   const enrichmentCacheRef = useRef(new Map<string, EnrichmentCacheEntry>());
   const enrichGenerationRef = useRef(0);
 
@@ -302,6 +324,24 @@ export function useCustomerUploadIntake(options?: {
     setHasMore(false);
   }, [filter, purposeScope, debouncedSearchQuery]);
 
+  const refreshDeniedCount = useCallback(async () => {
+    if (!canView || purposeScope !== "print_request") {
+      setDeniedCount(0);
+      return;
+    }
+    try {
+      const snapshot = await getDocs(buildPurposeScopedDeniedCountQuery(db, purposeScope));
+      setDeniedCount(filterDeniedStudioIntakeDocs(snapshot.docs).length);
+    } catch {
+      // Keep the intake usable if a newly required index is still provisioning.
+      setDeniedCount(0);
+    }
+  }, [canView, purposeScope]);
+
+  useEffect(() => {
+    void refreshDeniedCount();
+  }, [refreshDeniedCount]);
+
   const applyShellRowsFromDocs = useCallback((intakeDocs: IntakeDocRef[]) => {
     const shellRows = intakeDocs.map((docSnap) => {
       const base = buildShellRow(docSnap, enrichmentCacheRef.current.get(docSnap.id) ?? null);
@@ -327,6 +367,7 @@ export function useCustomerUploadIntake(options?: {
       setRows([]);
       setIsInitialLoading(false);
       setHasMore(false);
+      setDeniedCount(0);
       return;
     }
 
@@ -354,9 +395,16 @@ export function useCustomerUploadIntake(options?: {
       const intakeDocs =
         filter === "pending_staff_review"
           ? filterCatalogIntakeEligibleDocs(merged)
-          : merged;
+          : filter === "denied"
+            ? filterDeniedStudioIntakeDocs(merged)
+            : filter === "excluded_from_catalog"
+              ? filterStaffExcludedIntakeDocs(merged)
+              : merged;
       setHasMore(primarySnap.length >= pageSize);
       applyShellRowsFromDocs(intakeDocs);
+      if (purposeScope === "print_request") {
+        void refreshDeniedCount();
+      }
       setIsLoadingMore(false);
     };
 
@@ -453,6 +501,7 @@ export function useCustomerUploadIntake(options?: {
     filter,
     pageSize,
     purposeScope,
+    refreshDeniedCount,
     user,
   ]);
 
@@ -637,6 +686,7 @@ export function useCustomerUploadIntake(options?: {
     actionBusyId: null as string | null,
     error,
     notice,
+    deniedCount,
     refresh,
     promote: async (uploadId: string) => {
       const currentPending = pendingByUploadId[uploadId];
@@ -681,6 +731,7 @@ export function useCustomerUploadIntake(options?: {
           } else {
             patchRowLocally(uploadId, { catalogReviewStatus: "sent_to_ai_review" });
           }
+          void refreshDeniedCount();
         },
       );
     },
@@ -698,6 +749,7 @@ export function useCustomerUploadIntake(options?: {
           } else {
             patchRowLocally(uploadId, { catalogReviewStatus: "excluded_from_catalog" });
           }
+          void refreshDeniedCount();
         },
       ),
     requestPermissionFollowUp: (uploadId: string) =>
@@ -710,6 +762,7 @@ export function useCustomerUploadIntake(options?: {
         "Permission follow-up sent to the customer.",
         () => {
           patchRowLocally(uploadId, { catalogPermissionFollowUpStatus: "requested" });
+          void refreshDeniedCount();
         },
       ),
     restore: (uploadId: string) =>
@@ -726,6 +779,7 @@ export function useCustomerUploadIntake(options?: {
           } else {
             patchRowLocally(uploadId, { catalogReviewStatus: "pending_staff_review" });
           }
+          void refreshDeniedCount();
         },
       ),
     retry: (uploadId: string) =>
@@ -801,38 +855,36 @@ export function useCustomerUploadIntake(options?: {
 
       try {
         await customerUploadIntakeService.recordHalftoneStaffDecision(uploadId, value);
+        clearMetadataOverrideKeys(uploadId, ["halftoneStaffDecision"]);
+
+        if (shouldDefaultDarkBackground) {
+          try {
+            await customerUploadIntakeService.recordArtworkBackgroundStaffDecision(
+              uploadId,
+              ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK,
+            );
+            clearMetadataOverrideKeys(uploadId, ["artworkBackgroundHex", "artworkBackgroundSource"]);
+          } catch (err) {
+            setMetadataFailedByUploadId((current) => ({
+              ...current,
+              [uploadId]: "artwork_background",
+            }));
+            setError(
+              err instanceof Error
+                ? err.message
+                : "Unable to save artwork background decision.",
+            );
+            return false;
+          }
+        }
+        return true;
       } catch (err) {
         // Keep intended local choice + override visible; latch failed so promote is blocked until Retry.
         setMetadataFailedByUploadId((current) => ({ ...current, [uploadId]: "halftone" }));
         setError(err instanceof Error ? err.message : "Unable to save Halftone decision.");
         return false;
-      }
-
-      clearMetadataOverrideKeys(uploadId, ["halftoneStaffDecision"]);
-
-      if (!shouldDefaultDarkBackground) {
-        return true;
-      }
-
-      try {
-        await customerUploadIntakeService.recordArtworkBackgroundStaffDecision(
-          uploadId,
-          ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK,
-        );
-        clearMetadataOverrideKeys(uploadId, ["artworkBackgroundHex", "artworkBackgroundSource"]);
-        return true;
-      } catch (err) {
-        setMetadataFailedByUploadId((current) => ({
-          ...current,
-          [uploadId]: "artwork_background",
-        }));
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Unable to save artwork background decision.",
-        );
-        return false;
       } finally {
+        // Always clear — early returns previously left the row permanently disabled.
         setPending(uploadId, null);
       }
     },

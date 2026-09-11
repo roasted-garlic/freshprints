@@ -45,4 +45,9 @@ export interface ShowPickerProps {
   onClearSelection?: () => void;
   now?: Date;
   className?: string;
+  /**
+   * How to scroll the selected capacity slot into the scroll parent.
+   * Portal Add-to-Show uses `"start"` so progress + personal callout land near the top.
+   */
+  selectedSlotScrollBlock?: ScrollLogicalPosition;
 }

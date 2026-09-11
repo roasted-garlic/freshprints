@@ -85,6 +85,10 @@ import {
   type PrintRequestListQueryOptions,
   type PrintRequestQueryPlan,
 } from "../utils/printRequestQueryPlanning";
+import {
+  resolveDuplicateInsertBeforeSortOrder,
+  sortPrintRequestItemsNewestFirst,
+} from "@fresh-prints/shared/utils/printRequestItemDisplayOrder";
 import { buildPrintRequestAllocationTotalsByRequestId } from "@fresh-prints/shared/utils/showAllocationTotals";
 import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/showAllocation.types";
 import {
@@ -1396,7 +1400,7 @@ export const printRequestService = {
     const snapshot = await getDocs(itemsQuery);
     traceFirestoreOneShotComplete("getDocs", "printRequestItems:byRequest", snapshot.size);
 
-    return sortPrintRequestItemsForDisplay(
+    return sortPrintRequestItemsNewestFirst(
       snapshot.docs.flatMap((itemDoc) => {
         try {
           return [
@@ -1892,6 +1896,36 @@ export const printRequestService = {
             options?.existingItems ?? (await this.listPrintRequestItems(caller, printRequestId)),
           );
 
+    const commitItemAndParentAtomically = async (payload: Record<string, unknown>) => {
+      const requestRef = doc(
+        firestoreCollectionService.getPrintRequestsCollection(),
+        printRequestId,
+      );
+      await runTracedWrite(
+        "runTransaction",
+        () =>
+          runTransaction(db, async (transaction) => {
+            const requestSnapshot = await transaction.get(requestRef);
+            if (!requestSnapshot.exists()) {
+              throw new Error("Print request not found.");
+            }
+            transaction.set(itemRef, payload);
+            transaction.update(requestRef, {
+              itemCount: increment(1),
+              updatedBy: caller.id,
+              updatedAt: serverTimestamp(),
+            });
+          }),
+        {
+          app: "studio",
+          collection: "printRequestItems",
+          documentPathPattern: "printRequestItems/{printRequestItemId}",
+          source: "printRequestService.addPrintRequestItem.atomic",
+        },
+        { writeCount: 2 },
+      );
+    };
+
     if (isUploadItem && customerUploadId) {
       const printWidthInches = input.printWidthInches;
       const printHeightInches = input.printHeightInches;
@@ -1920,27 +1954,7 @@ export const printRequestService = {
       });
 
       assertNoUndefinedFirestoreFields(payload, "Print request item payload");
-      await runTracedWrite("setDoc", () => setDoc(itemRef, payload), {
-        app: "studio",
-        collection: "printRequestItems",
-        documentPathPattern: "printRequestItems/{printRequestItemId}",
-        source: "printRequestService.addPrintRequestItem",
-      });
-      await runTracedWrite(
-        "updateDoc",
-        () =>
-          updateDoc(doc(firestoreCollectionService.getPrintRequestsCollection(), printRequestId), {
-            itemCount: increment(1),
-            updatedBy: caller.id,
-            updatedAt: serverTimestamp(),
-          }),
-        {
-          app: "studio",
-          collection: "printRequests",
-          documentPathPattern: "printRequests/{printRequestId}",
-          source: "printRequestService.addPrintRequestItem",
-        },
-      );
+      await commitItemAndParentAtomically(payload);
 
       // Synthesize the created item from the known payload instead of a read-after-write —
       // the next authoritative load re-reads real server timestamps.
@@ -1979,28 +1993,7 @@ export const printRequestService = {
     });
 
     assertNoUndefinedFirestoreFields(payload, "Print request item payload");
-    await runTracedWrite("setDoc", () => setDoc(itemRef, payload), {
-      app: "studio",
-      collection: "printRequestItems",
-      documentPathPattern: "printRequestItems/{printRequestItemId}",
-      source: "printRequestService.addPrintRequestItem",
-    });
-
-    await runTracedWrite(
-      "updateDoc",
-      () =>
-        updateDoc(doc(firestoreCollectionService.getPrintRequestsCollection(), printRequestId), {
-          itemCount: increment(1),
-          updatedBy: caller.id,
-          updatedAt: serverTimestamp(),
-        }),
-      {
-        app: "studio",
-        collection: "printRequests",
-        documentPathPattern: "printRequests/{printRequestId}",
-        source: "printRequestService.addPrintRequestItem",
-      },
-    );
+    await commitItemAndParentAtomically(payload);
 
     // requestCount / lastRequestedAt are updated by Cloud Function onPrintRequestItemCreated.
 
@@ -2127,33 +2120,23 @@ export const printRequestService = {
 
     const item = mapPrintRequestItemData(snapshot.id, snapshot.data() as PrintRequestItemDocumentData);
     const currentItems = await this.listPrintRequestItems(caller, item.printRequestId);
-    const sortedItems = sortPrintRequestItemsForDisplay(currentItems);
-    const sourceIndex = sortedItems.findIndex((entry) => entry.id === item.id);
-    const sourceSortOrder = typeof item.sortOrder === "number" && Number.isFinite(item.sortOrder)
-      ? item.sortOrder
-      : undefined;
+    const insertOrder = resolveDuplicateInsertBeforeSortOrder({
+      sourceItemId: item.id,
+      items: currentItems.map((entry) => ({
+        id: entry.id,
+        sortOrder: entry.sortOrder,
+        createdAtMillis:
+          typeof entry.createdAt?.toMillis === "function" ? entry.createdAt.toMillis() : 0,
+      })),
+    });
+    const duplicateSortOrder = insertOrder.duplicateSortOrder;
 
-    let duplicateSortOrder = resolveNextSortOrder(currentItems);
-
-    if (sourceSortOrder !== undefined) {
-      const nextItem = sortedItems[sourceIndex + 1];
-      const nextSortOrder =
-        nextItem && typeof nextItem.sortOrder === "number" && Number.isFinite(nextItem.sortOrder)
-          ? nextItem.sortOrder
-          : undefined;
-
-      duplicateSortOrder =
-        nextSortOrder !== undefined && nextSortOrder > sourceSortOrder
-          ? (sourceSortOrder + nextSortOrder) / 2
-          : sourceSortOrder + 0.5;
-    } else if (sourceIndex >= 0) {
-      const anchoredOrder = (sourceIndex + 1) * 100;
-
+    if (insertOrder.sourceSortOrderUpdate !== undefined) {
       await runTracedWrite(
         "updateDoc",
         () =>
           updateDoc(itemRef, {
-            sortOrder: anchoredOrder,
+            sortOrder: insertOrder.sourceSortOrderUpdate,
             updatedBy: caller.id,
             updatedAt: serverTimestamp(),
           }),
@@ -2164,7 +2147,6 @@ export const printRequestService = {
           source: "printRequestService.duplicatePrintRequestItem",
         },
       );
-      duplicateSortOrder = anchoredOrder + 50;
     }
 
     const isUploadItem =

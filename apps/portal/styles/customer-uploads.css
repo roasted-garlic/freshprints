@@ -5,7 +5,8 @@
 }
 
 .portal-customer-upload-permission-preview {
-  background: var(--portal-surface-subtle, #f3f4f6);
+  /* Background comes from detector / Studio staff choice via inline style. */
+  background: var(--color-artwork-preview-bg, #e5e7eb);
   border: 1px solid var(--portal-border, rgba(0, 0, 0, 0.1));
   border-radius: 0.5rem;
   display: block;
@@ -346,7 +347,7 @@
   align-items: start;
   border-color: color-mix(in srgb, #1a7f37 45%, transparent);
   column-gap: 0;
-  grid-template-columns: 3.25rem auto 50px auto minmax(0, 1fr) auto;
+  grid-template-columns: 3.75rem auto 50px auto minmax(0, 1fr) auto;
   grid-template-areas:
     "preview name . halftone . remove"
     "preview meta meta meta meta remove";
@@ -445,19 +446,27 @@
 }
 
 .portal-customer-upload-file-preview {
-  width: 3.25rem;
-  height: 3.25rem;
+  /* Portrait-friendly frame so tall uploads (common DTF art) letterbox instead of looking cropped. */
+  align-items: center;
+  aspect-ratio: 3 / 4;
+  background: var(--color-artwork-preview-bg, #d8d8d8);
   border-radius: 0.4rem;
+  display: flex;
+  flex-shrink: 0;
+  height: 4.5rem;
+  justify-content: center;
   overflow: hidden;
-  background: rgba(0, 0, 0, 0.06);
-  display: grid;
-  place-items: center;
+  width: 3.375rem;
 }
 
 .portal-customer-upload-file-preview img {
-  width: 100%;
-  height: 100%;
+  display: block;
+  height: auto;
+  max-height: 100%;
+  max-width: 100%;
   object-fit: contain;
+  object-position: center;
+  width: auto;
 }
 
 .portal-customer-upload-file-preview-fallback {
@@ -568,7 +577,7 @@
 
   .portal-customer-upload-file-row.is-ready {
     column-gap: 0.75rem;
-    grid-template-columns: 3.25rem minmax(0, 1fr) auto;
+    grid-template-columns: 3.375rem minmax(0, 1fr) auto;
     grid-template-areas:
       "preview main remove"
       "halftone halftone halftone";

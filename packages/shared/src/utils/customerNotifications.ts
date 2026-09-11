@@ -96,3 +96,44 @@ export function buildAssistedStaffMessageNotificationId(
 ): string {
   return `msg_${requestId}_${atMillis}`;
 }
+
+/** Idempotent Alerts id for staff Ask Again catalog-permission follow-ups. */
+export function buildCustomerUploadCatalogPermissionFollowUpNotificationId(
+  actionToken: string,
+): string {
+  return `customer_upload_permission_${actionToken}`;
+}
+
+/**
+ * Permission follow-ups stay in the Alerts dropdown until Allow/Decline.
+ * Click / Mark all read must not clear them early.
+ */
+export function isCustomerNotificationStickyUntilResolved(
+  kind: CustomerNotificationKind,
+): boolean {
+  return kind === "customer_upload_catalog_permission_follow_up";
+}
+
+/**
+ * History always includes cleared alerts, plus open sticky permission requests
+ * (even while they remain unread in the live dropdown), unless the customer
+ * soft-cleared history for that row.
+ */
+export function isCustomerNotificationVisibleInHistory(item: {
+  kind: CustomerNotificationKind;
+  readAt: unknown | null;
+  clearedFromHistoryAt?: unknown | null;
+}): boolean {
+  if (item.clearedFromHistoryAt != null) {
+    return false;
+  }
+  return item.readAt != null || isCustomerNotificationStickyUntilResolved(item.kind);
+}
+
+/** Unanswered permission requests stay in Alerts + history through Clear history. */
+export function isCustomerNotificationPreservedFromHistoryClear(item: {
+  kind: CustomerNotificationKind;
+  readAt: unknown | null;
+}): boolean {
+  return isCustomerNotificationStickyUntilResolved(item.kind) && item.readAt == null;
+}

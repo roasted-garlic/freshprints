@@ -7,6 +7,7 @@ import {
   customerUploadService,
   type AccountArtworkGalleryItem,
 } from '../../customer-uploads/services/customerUploadService';
+import { isPastAccountArtworkTile } from '../utils/accountArtworkGalleryTabs';
 import { listReusableDesignsFromAccountUploads } from '../services/accountReusableDesignsService';
 
 export interface AccountArtworkGalleryTile extends AccountArtworkGalleryItem {
@@ -14,10 +15,11 @@ export interface AccountArtworkGalleryTile extends AccountArtworkGalleryItem {
 }
 
 /**
- * Account overview preview cap (desktop: two rows × seven columns).
+ * Account overview preview cap (desktop: two rows × six columns).
  * Mobile CSS hides tiles after the 8th (two rows × four) without changing this limit.
+ * Preview is the newest personal + uploaded + donated only (not Design Library).
  */
-const PREVIEW_LIMIT = 14;
+const PREVIEW_LIMIT = 12;
 
 export function useAccountArtworkGallery(customerUid: string | undefined): {
   donatedCount: number;
@@ -117,13 +119,14 @@ export function useAccountArtworkGallery(customerUid: string | undefined): {
   }, [customerUid, reloadToken]);
 
   const visibleItems = items.filter((item) => Boolean(item.imageUrl));
+  const pastItems = visibleItems.filter((item) => isPastAccountArtworkTile(item));
 
   return {
     donatedCount: items.filter((item) => item.kind === 'donation').length,
     errorMessage,
     isLoading,
     items: visibleItems,
-    previewItems: visibleItems.slice(0, PREVIEW_LIMIT),
+    previewItems: pastItems.slice(0, PREVIEW_LIMIT),
     reload,
     reusableDesigns,
     reusableErrorMessage,

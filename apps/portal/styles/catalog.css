@@ -434,13 +434,13 @@
 .request-artwork-page .portal-customer-upload-file-row {
   align-items: center;
   gap: 0.5rem;
-  grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+  grid-template-columns: 3rem minmax(0, 1fr) auto;
   padding: 0.4rem 0.5rem;
 }
 
 .request-artwork-page .portal-customer-upload-file-preview {
-  height: 2.5rem;
-  width: 2.5rem;
+  height: 4rem;
+  width: 3rem;
 }
 
 .request-artwork-page .portal-customer-upload-file-main {

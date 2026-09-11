@@ -8,12 +8,44 @@ export function resolveCustomerUploadDeletionBlockers(input: {
   printRequestItemCount: number;
   promotedDesignId: unknown;
   promotedDesignReferenceCount?: number;
+  /**
+   * When true, Portal customer self-delete: only Don’t-allow personal uploads may delete.
+   * Uploaded (Allow / waiting) and donated designs are staff-managed in Studio.
+   */
+  portalCustomerSelfDelete?: boolean;
+  purpose?: unknown;
+  catalogUseAcknowledged?: unknown;
 }): DeletionBlocker[] {
+  if (input.portalCustomerSelfDelete === true) {
+    const purpose =
+      typeof input.purpose === "string" && input.purpose.trim()
+        ? input.purpose.trim()
+        : "print_request";
+    if (purpose === "catalog_donation") {
+      return [
+        {
+          code: "staff_managed_donation",
+          message:
+            "Donated designs are managed by Fresh Prints staff and cannot be deleted from Your designs.",
+        },
+      ];
+    }
+    if (input.catalogUseAcknowledged !== false) {
+      return [
+        {
+          code: "staff_managed_upload",
+          message:
+            "Uploads waiting for the Design Library are managed by Fresh Prints staff and cannot be deleted from Your designs.",
+        },
+      ];
+    }
+  }
+
   if (input.printRequestItemCount > 0) {
     return [
       {
         code: "attached_to_print_request",
-        message: `This upload is still used by ${input.printRequestItemCount} print request item(s) and cannot be deleted.`,
+        message: `This upload is still used by ${input.printRequestItemCount} print request item(s) and cannot be deleted right now.`,
         count: input.printRequestItemCount,
         navigateHint: "Print Requests",
       },

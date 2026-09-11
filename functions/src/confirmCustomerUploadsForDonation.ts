@@ -8,7 +8,7 @@ import { resolveCustomerUploadPurpose } from "../../packages/shared/src/utils/cu
 
 import { adminDb } from "./lib/admin";
 import { validateConfirmCustomerUploadsForDonationRequest } from "./lib/confirmCustomerUploadDonateValidation";
-import { buildCatalogIntakeConfirmationPatch } from "./lib/customerUploadCatalogConfirmation";
+import { buildCatalogIntakeConfirmationPatch, buildUnpromotedDonationRetentionPatch } from "./lib/customerUploadCatalogConfirmation";
 import {
   failedPrecondition,
   internal,
@@ -98,7 +98,14 @@ export const confirmCustomerUploadsForDonation = onCall(
         });
 
         for (const uploadSnap of uploadSnaps) {
-          tx.update(uploadSnap.ref, confirmationPatch);
+          const existing = uploadSnap.data() ?? {};
+          tx.update(uploadSnap.ref, {
+            ...confirmationPatch,
+            ...buildUnpromotedDonationRetentionPatch({
+              existingUpload: existing,
+              now,
+            }),
+          });
           confirmedUploadIds.push(uploadSnap.id);
         }
 

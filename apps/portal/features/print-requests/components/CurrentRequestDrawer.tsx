@@ -296,10 +296,8 @@ export function CurrentRequestDrawer() {
           if (shouldReconcile) {
             await reloadWorkingItems({ silent: true });
           }
-          if (!removeFailed) {
-            // Clear after reconcile so a mid-flight list fetch cannot resurrect the row.
-            endPendingItemRemovals(itemIds);
-          }
+          // On success, keep the pending-remove mark until the list/live snapshot
+          // confirms absence — clearing it here lets a stale onSnapshot resurrect the row.
         }
       })();
     },

@@ -13,6 +13,11 @@ import {
   isPastScheduledShow,
 } from "../../upcoming-shows/utils/groupShowsByUpcomingPast";
 import { ShowPicker, SHOW_CAPACITY_BAR_ANIMATION_MS, buildShowPickerOptions } from "@fresh-prints/show-picker";
+import { buildStaffInboxQueuedGroupKey } from "@fresh-prints/shared/staffInbox/staffInboxItemIds";
+import {
+  holdStaffInboxQueuedAlertGroup,
+  releaseAllStaffInboxQueuedAlertGroups,
+} from "../../staff-inbox/utils/staffInboxQueueAlertTiming";
 import "@fresh-prints/show-picker/show-picker.css";
 import type { Design } from "../../designs/types/design.types";
 import { SplitDesignPickerModal } from "./SplitDesignPickerModal";
@@ -529,6 +534,13 @@ export function AddToShowModal({
       return;
     }
 
+    const heldGroupKeys = finalLegs.map((leg) =>
+      buildStaffInboxQueuedGroupKey(printRequest.id, leg.showId),
+    );
+    for (const groupKey of heldGroupKeys) {
+      holdStaffInboxQueuedAlertGroup(groupKey);
+    }
+
     setIsSubmitting(true);
     setActionError(null);
     setProgress({
@@ -567,9 +579,11 @@ export function AddToShowModal({
       await waitForNextPaint();
       await waitForCapacityBarAnimation();
 
+      releaseAllStaffInboxQueuedAlertGroups(heldGroupKeys);
       onClose();
       await onAdded();
     } catch (error) {
+      releaseAllStaffInboxQueuedAlertGroups(heldGroupKeys);
       setSavePendingByShowId(undefined);
       setIsCelebratingSave(false);
       setAllocatedBaselineByShowId(undefined);

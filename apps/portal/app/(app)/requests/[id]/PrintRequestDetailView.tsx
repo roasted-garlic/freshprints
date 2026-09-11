@@ -178,8 +178,6 @@ export default function PrintRequestDetailView() {
   const [unallocatedQuantity, setUnallocatedQuantity] = useState(0);
   const [isQueueModalOpen, setIsQueueModalOpen] = useState(false);
   const [isPriceCommitmentModalOpen, setIsPriceCommitmentModalOpen] = useState(false);
-  const [itemPendingRemoval, setItemPendingRemoval] = useState<PrintRequestItem | null>(null);
-  const [isRemovingItem, setIsRemovingItem] = useState(false);
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
   const [clearError, setClearError] = useState<string | null>(null);
   const [requestAllocations, setRequestAllocations] = useState<
@@ -192,8 +190,6 @@ export default function PrintRequestDetailView() {
     isSubmitting: isUnqueueSubmitting,
     unqueueFromShow,
   } = useUnqueuePrintRequestFromShow();
-  /** Bumped per item id when remove confirm is cancelled so qty-0 input restores. */
-  const [quantityResetKeys, setQuantityResetKeys] = useState<Record<string, number>>({});
   const [lightboxActiveItemId, setLightboxActiveItemId] = useState<string | null>(null);
   const [lightboxNavItems, setLightboxNavItems] = useState<CatalogPreviewLightboxNavItem[]>([]);
 
@@ -426,18 +422,14 @@ export default function PrintRequestDetailView() {
   const handleRemoveItem = useCallback(
     async (item: PrintRequestItem) => {
       setActionError(null);
-      setIsRemovingItem(true);
 
       try {
         // removeItem already synchronously filters both local items and workingItems on success
         // (plus its own beginPendingItemRemovals/endPendingItemRemovals guard) — no follow-up
         // reload needed; it was the actual source of the resurrection defect (Section 19.2).
         await removeItem(item.id);
-        setItemPendingRemoval(null);
       } catch (removeError) {
         setActionError(removeError instanceof Error ? removeError.message : 'Unable to remove item.');
-      } finally {
-        setIsRemovingItem(false);
       }
     },
     [removeItem],
@@ -461,16 +453,6 @@ export default function PrintRequestDetailView() {
       );
     }
   }, [clearPrintRequestItems, printRequestId, reload, workingRequest?.id]);
-
-  const pendingRemovalTitle =
-    itemPendingRemoval?.titleSnapshot ||
-    (itemPendingRemoval?.designId
-      ? designSummaries.get(itemPendingRemoval.designId)?.title
-      : undefined) ||
-    (itemPendingRemoval?.customerUploadId
-      ? uploadSummaries.get(itemPendingRemoval.customerUploadId)?.originalFilename
-      : undefined) ||
-    'this design';
 
   const totalPrintCount = useMemo(() => sumPrintRequestItemQuantities(items), [items]);
   const showPriceCommitmentSummary = useMemo(
@@ -1093,12 +1075,11 @@ export default function PrintRequestDetailView() {
                   patchArtworkEnhanceMode(nextItem.id, result);
                 }}
                 printRequestId={printRequestId}
-                onRemove={(nextItem) => setItemPendingRemoval(nextItem)}
+                onRemove={(nextItem) => void handleRemoveItem(nextItem)}
                 onUpdate={handleUpdateItem}
                 onAutosaveStateChange={updateAutosaveState}
                 onPersistenceHealthChange={handlePersistenceHealthChange}
                 onRegisterFlush={handleRegisterFlush}
-                quantityResetKey={quantityResetKeys[item.id] ?? 0}
                 readOnly={!effectiveIsEditable}
                 standardPrintSizesSettings={standardPrintSizesSettings}
               />
@@ -1183,36 +1164,6 @@ export default function PrintRequestDetailView() {
           void handleUnqueueFromShow();
         }}
       />
-
-      <PortalConfirmModal
-        cancelLabel="Keep design"
-        confirmLabel="Remove"
-        confirmVariant="danger"
-        isConfirmLoading={isRemovingItem}
-        isOpen={itemPendingRemoval !== null}
-        onCancel={() => {
-          if (!isRemovingItem) {
-            const pending = itemPendingRemoval;
-            setItemPendingRemoval(null);
-            if (pending) {
-              setQuantityResetKeys((previous) => ({
-                ...previous,
-                [pending.id]: (previous[pending.id] ?? 0) + 1,
-              }));
-            }
-          }
-        }}
-        onConfirm={() => {
-          if (itemPendingRemoval) {
-            void handleRemoveItem(itemPendingRemoval);
-          }
-        }}
-        title="Remove design?"
-      >
-        <p className="portal-muted portal-confirm-modal-message">
-          Remove <strong>{pendingRemovalTitle}</strong> from this print request? This cannot be undone.
-        </p>
-      </PortalConfirmModal>
 
       <PortalConfirmModal
         confirmLabel={addDesignFlow.isAdding ? 'Adding…' : 'Add to request'}

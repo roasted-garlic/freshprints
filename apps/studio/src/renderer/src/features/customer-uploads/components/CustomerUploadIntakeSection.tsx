@@ -1,8 +1,9 @@
 import { useRef, useState, type CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { resolveIntakeHalftoneStaffToggle } from "@fresh-prints/shared/utils/halftoneReviewState";
 import { isCustomerUploadEligibleForCatalogIntake } from "@fresh-prints/shared/utils/customerUploadCatalogIntakeEligibility";
+import { canRequestCustomerUploadPermissionFollowUp } from "@fresh-prints/shared/utils/customerUploadPermissionFollowUp";
+import { resolveIntakeHalftoneStaffToggle } from "@fresh-prints/shared/utils/halftoneReviewState";
 
 import { Button } from "../../../shared/components/Button";
 import { Card } from "../../../shared/components/Card";
@@ -15,6 +16,7 @@ import type { useCustomerUploadIntake } from "../hooks/useCustomerUploadIntake";
 import type { CustomerUploadIntakeRow } from "../services/customerUploadIntakeService";
 import { CustomerUploadDeletionDialog } from "./CustomerUploadDeletionDialog";
 import { CustomerUploadExclusionDialog } from "./CustomerUploadExclusionDialog";
+import { CustomerUploadPermissionActivityModal } from "./CustomerUploadPermissionActivityModal";
 import { CustomerUploadRestoreDialog } from "./CustomerUploadRestoreDialog";
 import { CustomerUploadIntakePreviewControls } from "./CustomerUploadIntakePreviewControls";
 import {
@@ -98,6 +100,7 @@ function IntakeDetail({
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isExcludeOpen, setIsExcludeOpen] = useState(false);
   const [isRestoreOpen, setIsRestoreOpen] = useState(false);
+  const [isPermissionActivityOpen, setIsPermissionActivityOpen] = useState(false);
   const deleteTriggerRef = useRef<HTMLButtonElement | null>(null);
   const restoreTriggerRef = useRef<HTMLButtonElement | null>(null);
   const pendingAction = intake.pendingByUploadId[row.id] ?? null;
@@ -111,6 +114,15 @@ function IntakeDetail({
     catalogPermissionFollowUpStatus: row.catalogPermissionFollowUpStatus,
   });
   const permissionDenied = row.catalogExclusionReason === "customer_permission_denied";
+  const canAskPermissionAgain =
+    permissionDenied &&
+    canRequestCustomerUploadPermissionFollowUp({
+      catalogReviewStatus: row.catalogReviewStatus,
+      catalogExclusionReason: row.catalogExclusionReason,
+      catalogPermissionFollowUpStatus: row.catalogPermissionFollowUpStatus,
+      catalogPermissionAskCount: row.catalogPermissionAskCount,
+    });
+  const showDeleteMenu = intake.canDeleteEligible && !row.promotedDesignId;
   const halftoneOn = resolveIntakeHalftoneStaffToggle({
     staffDecision: row.halftoneStaffDecision,
     submitterResponse: row.halftoneSubmitterResponse,
@@ -223,10 +235,6 @@ function IntakeDetail({
             });
           }}
         />
-        <p className="customer-upload-intake-preview-controls-help">
-          Same controls as Imports. Halftone is staff authority (applied on AI Review approve).
-          Artwork Background is display context only.
-        </p>
       </div>
 
       <div className="customer-upload-intake-actions">
@@ -300,32 +308,59 @@ function IntakeDetail({
 
         {intake.canExclude && row.catalogReviewStatus === "excluded_from_catalog" && permissionDenied ? (
           <div className="customer-upload-intake-permission-follow-up">
-            <span className="customer-upload-intake-status-badge">
-              Customer declined Design Library permission
-            </span>
-            <p className="customer-upload-intake-meta" role="status">
-              Customer permission is required before this artwork can be reviewed for the Design Library.
-            </p>
-            {row.catalogPermissionFollowUpStatus === "not_requested" ? (
+            <div className="customer-upload-intake-permission-pill-row">
+              <span className="customer-upload-intake-status-badge">
+                Customer declined Design Library permission
+              </span>
+              {showDeleteMenu ? (
+                <DangerOverflowMenu
+                  ariaLabel={`More actions for ${row.originalFilename}`}
+                  disabled={busy}
+                  items={[
+                    {
+                      id: "delete-upload",
+                      label: "Delete Upload",
+                      disabled: busy || pendingAction === "delete",
+                      onSelect: () => {
+                        setIsDeleteOpen(true);
+                      },
+                    },
+                  ]}
+                  placement="bottom"
+                  triggerRef={deleteTriggerRef}
+                />
+              ) : null}
+            </div>
+            <div className="customer-upload-intake-permission-actions">
               <Button
                 disabled={busy}
-                onClick={() => {
-                  void intake.requestPermissionFollowUp(row.id);
-                }}
+                onClick={() => setIsPermissionActivityOpen(true)}
                 size="sm"
                 variant="secondary"
               >
-                {pendingAction === "request_permission" ? "Sending…" : "Ask for permission again"}
+                Activity
               </Button>
-            ) : (
-              <p className="customer-upload-intake-meta" role="status">
-                {row.catalogPermissionFollowUpStatus === "requested"
-                  ? "Permission request sent; waiting for the customer."
-                  : row.catalogPermissionFollowUpStatus === "approved"
-                    ? "Customer approved; upload is pending staff review."
-                    : "Customer declined the follow-up request."}
-              </p>
-            )}
+              {canAskPermissionAgain ? (
+                <Button
+                  disabled={busy}
+                  onClick={() => {
+                    void intake.requestPermissionFollowUp(row.id);
+                  }}
+                  size="sm"
+                  variant="secondary"
+                >
+                  {pendingAction === "request_permission"
+                    ? "Sending…"
+                    : row.catalogPermissionAskCount >= 1
+                      ? "Ask again (2 of 2)"
+                      : "Ask for permission again"}
+                </Button>
+              ) : row.catalogPermissionFollowUpStatus === "requested" ? (
+                <p className="customer-upload-intake-meta" role="status">
+                  Waiting for the customer (ask {row.catalogPermissionAskCount || 1} of 2).
+                </p>
+              ) : null}
+            </div>
           </div>
         ) : null}
 
@@ -361,7 +396,7 @@ function IntakeDetail({
           </Button>
         ) : null}
 
-        {intake.canDeleteEligible && !row.promotedDesignId ? (
+        {showDeleteMenu && !(permissionDenied && row.catalogReviewStatus === "excluded_from_catalog") ? (
           <DangerOverflowMenu
             ariaLabel={`More actions for ${row.originalFilename}`}
             disabled={busy}
@@ -422,6 +457,14 @@ function IntakeDetail({
           }
           return succeeded;
         }}
+        title={row.originalFilename}
+      />
+
+      <CustomerUploadPermissionActivityModal
+        entries={row.catalogPermissionActivity}
+        fallbackOriginalDeniedAtMs={row.catalogPermissionOriginalDeniedAtMs}
+        isOpen={isPermissionActivityOpen}
+        onClose={() => setIsPermissionActivityOpen(false)}
         title={row.originalFilename}
       />
 
@@ -610,6 +653,21 @@ export function CustomerUploadIntakeSection({
           >
             Pending
           </button>
+          {!isDonation ? (
+            <button
+              aria-selected={intake.filter === "denied"}
+              className={`customer-upload-intake-tab${
+                intake.filter === "denied" ? " is-active" : ""
+              }`}
+              onClick={() => {
+                intake.setFilter("denied");
+              }}
+              role="tab"
+              type="button"
+            >
+              Denied{intake.deniedCount > 0 ? ` (${intake.deniedCount})` : ""}
+            </button>
+          ) : null}
           <button
             aria-selected={intake.filter === "excluded_from_catalog"}
             className={`customer-upload-intake-tab${
@@ -648,6 +706,8 @@ export function CustomerUploadIntakeSection({
                       ? isDonation
                         ? "No donations pending staff review."
                         : "No uploads pending staff review."
+                      : intake.filter === "denied"
+                        ? "No customer permission denials."
                       : isDonation
                         ? "No excluded donations."
                         : "No excluded uploads."}

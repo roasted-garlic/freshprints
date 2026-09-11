@@ -23,6 +23,8 @@ export interface CustomerNotificationRecord {
   actionToken?: string;
   createdAt?: unknown;
   readAt?: unknown | null;
+  /** Soft-hide from Notification history; open permission follow-ups are never cleared. */
+  clearedFromHistoryAt?: unknown | null;
 }
 
 export function isCustomerNotificationKind(value: unknown): value is CustomerNotificationKind {

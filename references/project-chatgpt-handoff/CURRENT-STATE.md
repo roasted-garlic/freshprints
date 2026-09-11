@@ -1,22 +1,56 @@
 # Fresh Prints — Current State Snapshot
 
-**Last updated:** 2026-09-10
+**Last updated:** 2026-09-11
 
 ## FreshForge workflow
 
 | Item | Value |
 |---|---|
-| Status | **PARENT M0 RERUN COMPLETE — CANDIDATE COMMIT/PUSH AUTHORIZATION REQUIRED** |
+| Status | **CORRECTIVE CHILD DEV DEPLOYMENT COMPLETE — OWNER DEV QA / SIGNOFF CHECKPOINT** |
 | Parent | Coordinated production promotion and release readiness |
-| Active child phase | `customer-upload-follow-up-catalog-permission` — child Signoff **approved_with_notes**; parent M0 rerun complete at dirty snapshot. Maintenance public-read fail-open: owner guest QA **PASS**. |
+| Active child phase | `pre-freeze-owner-qa-correctives-request-editing-live-sync-and-denied-intake` — Implement → Test and DEV deployment complete; Owner DEV QA / child Signoff required. |
 | Most recently closed goal | `production-maintenance-mode-prerequisite` — **approved_with_notes** (Owner DEV QA PASS 2026-09-10) |
 | Closed promotion child | `production-maintenance-mode-prerequisite-production-promotion` — **superseded_by_coordinated_candidate** (no production deployment) |
-| Current plan/review | Child Plan: `docs/workflow/plans/2026-09-10-customer-upload-follow-up-catalog-permission-plan.md`; Formal Review: **approved_with_changes — accepted by owner**; Signoff: **approved_with_notes** |
+| Current plan/review | `docs/workflow/plans/2026-09-11-pre-freeze-owner-qa-correctives-request-editing-live-sync-and-denied-intake-plan.md`; Formal Review: `docs/workflow/reviews/2026-09-11-pre-freeze-owner-qa-correctives-request-editing-live-sync-and-denied-intake-review.md`; verdict **approved_with_changes — owner accepted; Implement → Test complete** |
 | Signoff | Maintenance prerequisite: **approved_with_notes** in DEV. Strategy B parent amendment: **accepted**. Hard-delete child: **approved_with_notes**. Candidate has no Signoff. Studio dollar totals: **approved** — Owner visual QA **PASS** (2026-09-10). Lifecycle ordering: **approved_with_notes**. |
 | Related closed goal | `user-info-print-request-lifecycle-activity-ordering` |
 | Autonomous | **OFF** (`shadow`) |
 | Production | untouched |
-| Commit/push | New post-child candidate commit/push requires explicit owner authorization; prior candidate `04b9637470a16b0f4d4a1ba9f822fe9df7acca2d` is stale and must not be frozen/reused |
+| Commit/push | No commit/push authorized for this child; parent must rerun M0 after Signoff. Candidate `7c775233e05a2eae65cc4b3c519d2b62a1736b16` remains unfrozen and must not be frozen/reused. |
+
+### Active corrective child — pre-freeze Owner QA correctives
+
+Owner DEV QA passed the customer-upload follow-up core, but the overall candidate remains
+**CORRECTIVE REQUIRED / NOT PASS FOR FREEZE**. Read-only reconciliation confirmed a Portal limit
+state that can remain indefinitely in `Checking print limits…` after a failed working-item read, a
+Studio split item/parent write that can report permission failure after the item was committed, and
+one-shot Portal request/item reads that cannot reflect Studio additions without refresh. The
+repository has the signed-off typed customer-permission denial fields, but only Pending/Excluded
+intake tabs and no Denied count. Source inspection also found no automatic 14-day Excluded/Denied
+cleanup: the existing 14-day customer-upload operation is a manual full-size purge, while the
+existing hard-delete path is manual and fail-closed on request/promoted references and asset
+manifests.
+
+Plan and Formal Review were accepted with verdict **`approved_with_changes`**, and the authorized
+Implement → Test work is complete. The Portal now has bounded request/item subscriptions and a
+terminal quota read-error/retry state; Studio customer-upload item/parent writes are atomic; Denied
+intake uses classification-A list/count queries; and one bounded daily scheduler covers the shared
+14-day `catalogRetentionStartedAt` episodes for Denied and staff-Excluded uploads while reusing the
+existing safe-delete blockers. Focused contracts passed **41/41**. Functions build, Portal
+typecheck, Studio Vite build, targeted lint, and diff check passed. Broad source/emulator baselines
+are recorded in `docs/workflow/reviews/2026-09-11-pre-freeze-owner-qa-correctives-request-editing-live-sync-and-denied-intake-test-report.md`.
+Candidate `7c775233e05a2eae65cc4b3c519d2b62a1736b16` remains unfrozen. DEV-only deployment is now
+complete: the six reviewed corrective Functions are ACTIVE, both reviewed customer-upload indexes
+are READY, Portal `npm run dev:portal` serves HTTP 200 on localhost:3100, and Studio Vite serves
+the current source on localhost:5173. The retention scheduler job is PAUSED with no invocation;
+Rules/Storage were not deployed. No production deployment, data operation, commit, push, or Owner
+DEV QA occurred.
+
+Exact next checkpoint: owner performs DEV QA and, only after passing, reports `OWNER DEV QA: PASS`
+to authorize child Signoff. After Signoff, parent M0 must rerun and regenerate manifests because
+runtime source and indexes changed. No candidate freeze or production action is authorized.
+
+DEV deployment record: `docs/workflow/reviews/2026-09-11-pre-freeze-owner-qa-correctives-request-editing-live-sync-and-denied-intake-dev-deployment.md`.
 
 ### Completed managed child — customer-upload-follow-up-catalog-permission
 

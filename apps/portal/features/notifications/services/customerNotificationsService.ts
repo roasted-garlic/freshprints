@@ -64,6 +64,7 @@ export interface PortalCustomerNotification {
   actionToken?: string;
   createdAt: Date | null;
   readAt: Date | null;
+  clearedFromHistoryAt: Date | null;
 }
 
 function asDate(value: unknown): Date | null {
@@ -130,6 +131,7 @@ function mapNotification(
     actionToken: typeof data.actionToken === 'string' ? data.actionToken : undefined,
     createdAt: asDate(data.createdAt),
     readAt: asDate(data.readAt),
+    clearedFromHistoryAt: asDate(data.clearedFromHistoryAt),
   };
 }
 
@@ -244,6 +246,14 @@ export const customerNotificationsService = {
     })({ requestToken, decision });
   },
 
+  async clearHistory(): Promise<{ clearedCount: number; preservedCount: number }> {
+    return callTracedFunction<Record<string, never>, { clearedCount: number; preservedCount: number }>(
+      'clearCustomerNotificationHistory',
+      {
+        source: 'customerNotificationsService.clearHistory',
+      },
+    )({});
+  },
 
   async registerWebPushToken(
     token: string,

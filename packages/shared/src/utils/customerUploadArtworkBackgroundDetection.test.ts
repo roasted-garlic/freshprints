@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK } from "../constants/design/artworkBackground.constants";
+import {
+  ARTWORK_BACKGROUND_PRESET_GREY,
+  ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK,
+} from "../constants/design/artworkBackground.constants";
 import {
   applyCustomerUploadArtworkBackgroundDetectionToReadyPatch,
   buildCustomerUploadArtworkBackgroundDetectionFields,
+  resolveCustomerUploadPermissionPreviewBackgroundHex,
 } from "./customerUploadArtworkBackgroundDetection";
 
 describe("buildCustomerUploadArtworkBackgroundDetectionFields", () => {
@@ -50,5 +54,37 @@ describe("applyCustomerUploadArtworkBackgroundDetectionToReadyPatch", () => {
     assert.equal(patch.suggestDarkArtworkBackground, true);
     assert.equal(patch.artworkBackgroundHex, ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK);
     assert.equal(patch.artworkBackgroundSource, "code_auto");
+  });
+});
+
+describe("resolveCustomerUploadPermissionPreviewBackgroundHex", () => {
+  it("uses persisted Studio/detector hex when present", () => {
+    assert.equal(
+      resolveCustomerUploadPermissionPreviewBackgroundHex({
+        artworkBackgroundHex: ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK,
+        suggestDarkArtworkBackground: false,
+      }),
+      ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK,
+    );
+  });
+
+  it("uses dark mat from detector hint when hex is absent", () => {
+    assert.equal(
+      resolveCustomerUploadPermissionPreviewBackgroundHex({
+        suggestDarkArtworkBackground: true,
+      }),
+      ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK,
+    );
+  });
+
+  it("keeps light mat for explicit staff Light (null hex + staff_manual)", () => {
+    assert.equal(
+      resolveCustomerUploadPermissionPreviewBackgroundHex({
+        artworkBackgroundHex: null,
+        artworkBackgroundSource: "staff_manual",
+        suggestDarkArtworkBackground: true,
+      }),
+      ARTWORK_BACKGROUND_PRESET_GREY,
+    );
   });
 });

@@ -23,6 +23,7 @@ const customerMutationSources = [
   "queuePortalPrintRequestToShow.ts",
   "recordCustomerUploadHalftoneResponse.ts",
   "respondToCustomerUploadCatalogPermissionFollowUp.ts",
+  "clearCustomerNotificationHistory.ts",
   "registerCustomer.ts",
   "registerWebPushSubscription.ts",
   "removePortalPrintRequestItem.ts",

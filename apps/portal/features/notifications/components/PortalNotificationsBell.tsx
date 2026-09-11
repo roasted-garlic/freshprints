@@ -1,13 +1,14 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { Bell, X } from 'lucide-react';
+import { useEffect, useId, useRef, useState } from 'react';
+import { Bell, ChevronDown, X } from 'lucide-react';
 
 import { usePortalNotifications } from '../context/PortalNotificationsProvider';
 import type { PortalCustomerNotification } from '../services/customerNotificationsService';
 import { PortalNotificationHistoryModal } from './PortalNotificationHistoryModal';
 
 const PREVIEW_LIMIT = 6;
+const ENABLE_ALERTS_EXPANDED_KEY = 'portal-alerts-enable-cta-expanded';
 
 function formatWhen(value: Date | null): string {
   if (!value) {
@@ -21,6 +22,68 @@ function buildPanelPreview(
 ): PortalCustomerNotification[] {
   // Dropdown is unread-only. Never fall back to read items (history owns those).
   return unreadItems.slice(0, PREVIEW_LIMIT);
+}
+
+function EnableAlertsCallout({
+  onOpenSettings,
+}: {
+  onOpenSettings: () => void;
+}) {
+  const detailsId = useId();
+  const [expanded, setExpanded] = useState(() => {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+    try {
+      return window.sessionStorage.getItem(ENABLE_ALERTS_EXPANDED_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem(ENABLE_ALERTS_EXPANDED_KEY, expanded ? '1' : '0');
+    } catch {
+      // Ignore storage failures (private mode / quota).
+    }
+  }, [expanded]);
+
+  return (
+    <div className="portal-notifications-enable-callout">
+      <button
+        aria-controls={detailsId}
+        aria-expanded={expanded}
+        className="portal-notifications-enable-callout-toggle"
+        onClick={() => setExpanded((value) => !value)}
+        type="button"
+      >
+        <span>Enable alerts</span>
+        <ChevronDown
+          aria-hidden
+          className={`portal-notifications-enable-callout-chevron${expanded ? ' is-open' : ''}`}
+          size={14}
+          strokeWidth={2}
+        />
+      </button>
+      {expanded ? (
+        <div className="portal-notifications-enable-callout-body" id={detailsId}>
+          <p className="portal-muted">
+            Get notified even when Portal is in the background.
+          </p>
+          <button
+            className="portal-link-button"
+            onClick={() => {
+              void onOpenSettings();
+            }}
+            type="button"
+          >
+            Open alert settings
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function PortalNotificationsPanel() {
@@ -60,9 +123,6 @@ function PortalNotificationsPanel() {
       <header className="portal-notifications-panel-header">
         <div className="portal-notifications-panel-header-copy">
           <h2 className="portal-notifications-panel-title">Notifications</h2>
-          <p className="portal-notifications-panel-description">
-            Proofs and messages about your custom design requests.
-          </p>
         </div>
         <button
           aria-label="Close"
@@ -84,18 +144,7 @@ function PortalNotificationsPanel() {
       ) : null}
 
       {!error && isBrowserPushEnabled === false ? (
-        <p className="portal-notifications-enable-cta">
-          <button
-            className="portal-link-button"
-            onClick={() => {
-                      void openNotificationSettings();
-                    }}
-            type="button"
-          >
-            Enable alerts
-          </button>
-          <span className="portal-muted"> — get notified even when Portal is in the background.</span>
-        </p>
+        <EnableAlertsCallout onOpenSettings={openNotificationSettings} />
       ) : null}
 
       {!error && preview.length === 0 ? (

@@ -1651,6 +1651,16 @@ a.portal-sidebar-sign-out:hover {
   margin-bottom: var(--space-4);
 }
 
+.portal-account-gallery-header-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.portal-account-gallery-view-more {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 .portal-account-gallery-header .portal-account-section-title {
   margin-bottom: var(--space-1);
 }
@@ -1663,7 +1673,7 @@ a.portal-sidebar-sign-out:hover {
 .portal-account-gallery-grid {
   display: grid;
   gap: var(--space-2);
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
 .portal-account-gallery-tile-wrap {
@@ -1673,11 +1683,18 @@ a.portal-sidebar-sign-out:hover {
   min-width: 0;
 }
 
+.portal-account-gallery-tile-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  width: 100%;
+}
+
+.portal-account-gallery-tile-add,
 .portal-account-gallery-tile-delete {
   align-self: stretch;
   border: 0;
   background: transparent;
-  color: var(--color-danger, #b42318);
   cursor: pointer;
   font: inherit;
   font-size: 0.78rem;
@@ -1686,10 +1703,21 @@ a.portal-sidebar-sign-out:hover {
   text-align: center;
 }
 
+.portal-account-gallery-tile-add {
+  color: var(--color-accent-primary);
+  white-space: nowrap;
+}
+
+.portal-account-gallery-tile-delete {
+  color: var(--color-danger, #b42318);
+}
+
+.portal-account-gallery-tile-add:hover,
 .portal-account-gallery-tile-delete:hover {
   text-decoration: underline;
 }
 
+.portal-account-gallery-tile-add:focus-visible,
 .portal-account-gallery-tile-delete:focus-visible {
   outline: 2px solid var(--color-focus-ring, #2563eb);
   outline-offset: 2px;
@@ -1741,10 +1769,8 @@ a.portal-sidebar-sign-out:hover {
 }
 
 .portal-account-gallery-tile-badge {
-  background: color-mix(in srgb, var(--color-bg-primary) 88%, transparent);
-  border: 1px solid var(--color-border);
+  border: 1px solid transparent;
   border-radius: 999px;
-  color: var(--color-text-secondary);
   font-size: 0.625rem;
   font-weight: 600;
   left: 0.3rem;
@@ -1754,12 +1780,28 @@ a.portal-sidebar-sign-out:hover {
   top: 0.3rem;
 }
 
+.portal-account-gallery-tile-badge.is-upload {
+  background: color-mix(in srgb, var(--color-accent-primary, #3b82f6) 22%, var(--color-bg-primary));
+  border-color: color-mix(in srgb, var(--color-accent-primary, #3b82f6) 45%, transparent);
+  color: color-mix(in srgb, var(--color-accent-primary, #3b82f6) 85%, white);
+}
+
 .portal-account-gallery-tile-badge.is-donation {
-  color: var(--color-accent-primary);
+  background: color-mix(in srgb, #22c55e 20%, var(--color-bg-primary));
+  border-color: color-mix(in srgb, #22c55e 42%, transparent);
+  color: color-mix(in srgb, #4ade80 80%, white);
+}
+
+.portal-account-gallery-tile-badge.is-personal {
+  background: color-mix(in srgb, var(--color-warning, #f4b740) 20%, var(--color-bg-primary));
+  border-color: color-mix(in srgb, var(--color-warning, #f4b740) 48%, transparent);
+  color: color-mix(in srgb, var(--color-warning, #f4b740) 88%, white);
 }
 
 .portal-account-gallery-tile-badge.is-reusable {
-  color: var(--color-accent-primary);
+  background: color-mix(in srgb, #a78bfa 18%, var(--color-bg-primary));
+  border-color: color-mix(in srgb, #a78bfa 40%, transparent);
+  color: color-mix(in srgb, #c4b5fd 85%, white);
 }
 
 .portal-account-gallery-tile-title {
@@ -1828,6 +1870,13 @@ a.portal-sidebar-sign-out:hover {
 
 .portal-account-gallery-modal-subtitle {
   margin: 0.25rem 0 0;
+}
+
+.portal-account-gallery-modal-hint {
+  font-size: var(--font-size-sm);
+  line-height: 1.35;
+  margin: 0.35rem 0 0;
+  max-width: 36rem;
 }
 
 .portal-account-gallery-modal-close {
@@ -1930,7 +1979,7 @@ a.portal-sidebar-sign-out:hover {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
-  /* Dashboard preview: two rows × four columns on mobile; desktop stays 14. */
+  /* Dashboard preview: two rows × four columns on mobile; desktop stays 12 (6×2). */
   .portal-account-gallery-grid > :nth-child(n + 9) {
     display: none;
   }
@@ -3011,6 +3060,60 @@ a.portal-sidebar-sign-out:hover {
   margin: 0.2rem 0 0;
 }
 
+.portal-notifications-enable-callout {
+  border: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 70%, transparent);
+  border-radius: var(--radius-sm, 0.35rem);
+  margin-bottom: 0.55rem;
+  overflow: hidden;
+}
+
+.portal-notifications-enable-callout-toggle {
+  align-items: center;
+  background: color-mix(in srgb, var(--color-accent-primary, #3b82f6) 8%, transparent);
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  gap: 0.35rem;
+  justify-content: space-between;
+  padding: 0.4rem 0.55rem;
+  text-align: left;
+  width: 100%;
+}
+
+.portal-notifications-enable-callout-toggle:hover,
+.portal-notifications-enable-callout-toggle:focus-visible {
+  background: color-mix(in srgb, var(--color-accent-primary, #3b82f6) 14%, transparent);
+}
+
+.portal-notifications-enable-callout-toggle:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--color-focus-ring, #93c5fd);
+  outline: none;
+}
+
+.portal-notifications-enable-callout-chevron {
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.portal-notifications-enable-callout-chevron.is-open {
+  transform: rotate(180deg);
+}
+
+.portal-notifications-enable-callout-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.35rem 0.55rem 0.5rem;
+}
+
+.portal-notifications-enable-callout-body p {
+  margin: 0;
+}
+
 .portal-notifications-panel-close {
   align-items: center;
   background: transparent;
@@ -3042,6 +3145,13 @@ a.portal-sidebar-sign-out:hover {
 .portal-notifications-enable-cta {
   line-height: 1.4;
   margin-bottom: 0.5rem;
+}
+
+.portal-notification-history-footer {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
 
 .portal-notifications-list {
@@ -3109,6 +3219,24 @@ a.portal-sidebar-sign-out:hover {
   max-height: min(55vh, 24rem);
   overflow: auto;
   padding-right: 0.15rem;
+}
+
+/* Resting border so history rows separate; hover/focus keep a stronger edge. */
+.portal-notification-history-list .portal-notifications-item {
+  border-color: color-mix(in srgb, var(--color-border, #d1d5db) 55%, transparent);
+}
+
+.portal-notification-history-list .portal-notifications-item:hover,
+.portal-notification-history-list .portal-notifications-item:focus-visible,
+.portal-notification-history-list .portal-notifications-item:active {
+  border-color: var(--color-border, #d1d5db);
+  background: color-mix(in srgb, var(--color-border, #d1d5db) 14%, transparent);
+}
+
+.portal-notification-history-list .portal-notifications-item.is-unread:hover,
+.portal-notification-history-list .portal-notifications-item.is-unread:focus-visible,
+.portal-notification-history-list .portal-notifications-item.is-unread:active {
+  background: color-mix(in srgb, var(--color-accent-primary, #3b82f6) 18%, transparent);
 }
 
 .portal-link-button {

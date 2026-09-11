@@ -106,11 +106,36 @@ export interface CustomerUpload {
     | null;
   /** Server-authored immutable origin/follow-up audit fields. */
   catalogPermissionOriginalDeniedAt?: Timestamp | null;
+  /** Trusted start of the current Denied or staff-Excluded retention episode. */
+  catalogRetentionStartedAt?: Timestamp | null;
+  /**
+   * When true, Studio Uploaded Designs hides this print-request upload until Add to Show
+   * clears the hold (sets `studioIntakeReleasedAt`). Legacy rows omit the flag and stay visible.
+   */
+  studioIntakeHoldUntilShow?: boolean | null;
+  /**
+   * Set on successful Add to Show / allocate when releasing a held upload (or advancing to Pending).
+   */
+  studioIntakeReleasedAt?: Timestamp | null;
+  /**
+   * Studio Uploaded Designs Pending sort key. Set when an upload (re-)enters
+   * `pending_staff_review` after Ask Again → Allow or staff Restore so it appears at the top
+   * instead of keeping its original `createdAt` batch position. Missing on first-time pending
+   * rows → Studio falls back to `createdAt`.
+   */
+  catalogPendingQueuedAt?: Timestamp | null;
   catalogPermissionFollowUpRequestToken?: string | null;
   catalogPermissionFollowUpRequestedAt?: Timestamp | null;
   catalogPermissionFollowUpRequestedBy?: string | null;
   catalogPermissionFollowUpRespondedAt?: Timestamp | null;
   catalogPermissionFollowUpRespondedBy?: string | null;
+  /**
+   * Number of staff Ask Again sends (0–2). Missing on legacy rows — resolve via
+   * `resolveCustomerUploadPermissionAskCount`.
+   */
+  catalogPermissionAskCount?: number | null;
+  /** Append-only permission lifecycle for Studio Activity modal (server-authored). */
+  catalogPermissionActivity?: import("./customerUploadCatalogPermission.types").CustomerUploadPermissionActivityEntry[] | null;
   termsVersion: string | null;
   confirmedAt: Timestamp | null;
   /** Set when source + production Storage objects were purged (thumbnail/preview kept). */

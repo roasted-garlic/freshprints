@@ -1,4 +1,8 @@
-import { ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK } from "../constants/design/artworkBackground.constants";
+import {
+  ARTWORK_BACKGROUND_PRESET_GREY,
+  ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK,
+  normalizeArtworkBackgroundHex,
+} from "../constants/design/artworkBackground.constants";
 import type { ArtworkBackgroundSource } from "../types/design/artworkBackgroundSource.types";
 
 export interface CustomerUploadArtworkBackgroundDetectionFields {
@@ -52,4 +56,30 @@ export function applyCustomerUploadArtworkBackgroundDetectionToReadyPatch(
   }
   patch.artworkBackgroundHex = fields.artworkBackgroundHex;
   patch.artworkBackgroundSource = fields.artworkBackgroundSource;
+}
+
+/**
+ * CSS mat for Portal permission follow-up (and similar customer-facing previews).
+ * Prefers persisted Studio/detector hex; falls back to dark when the upload detector
+ * (or staff dark) implies it; otherwise the default light grey mat.
+ */
+export function resolveCustomerUploadPermissionPreviewBackgroundHex(input: {
+  artworkBackgroundHex?: unknown;
+  artworkBackgroundSource?: unknown;
+  suggestDarkArtworkBackground?: unknown;
+  /** When staff marked halftone on, preview uses the dark mat (parity with Studio intake). */
+  halftoneOn?: boolean;
+}): string {
+  const persisted = normalizeArtworkBackgroundHex(input.artworkBackgroundHex);
+  if (persisted) {
+    return persisted;
+  }
+  // Explicit staff Light clears hex while keeping staff_manual provenance.
+  if (input.artworkBackgroundSource === "staff_manual") {
+    return ARTWORK_BACKGROUND_PRESET_GREY;
+  }
+  if (input.halftoneOn === true || input.suggestDarkArtworkBackground === true) {
+    return ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK;
+  }
+  return ARTWORK_BACKGROUND_PRESET_GREY;
 }

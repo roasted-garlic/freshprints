@@ -4,17 +4,22 @@ import {
   doc,
   getDoc,
   getDocs,
+  onSnapshot,
   orderBy,
   query,
   serverTimestamp,
   Timestamp,
   updateDoc,
   where,
+  type Unsubscribe,
   type DocumentData,
 } from 'firebase/firestore';
 
 import {
   runTracedWrite,
+  traceFirestoreListenerAttach,
+  traceFirestoreListenerEmission,
+  traceWrappedUnsubscribe,
   traceFirestoreOneShotComplete,
   traceFirestoreOneShotStart,
 } from '@fresh-prints/shared/utils/firestoreUsageTrace';
@@ -38,6 +43,7 @@ import {
 } from '@fresh-prints/shared/utils/printRequestItemSizing';
 import { isPortalContinuablePrintRequestStatus } from '@fresh-prints/shared/utils/portalPrintRequestListTabs';
 import { resolveCatalogAddAction } from '@fresh-prints/shared/utils/currentRequestAggregates';
+import { sortPrintRequestItemsNewestFirst } from '@fresh-prints/shared/utils/printRequestItemDisplayOrder';
 import { isPortalParkedDraft, PORTAL_PARKED_DRAFT_MUTATION_REJECTED_MESSAGE } from '@fresh-prints/shared/utils/portalActiveEditablePrintRequest';
 
 import { PORTAL_FIRESTORE_COLLECTIONS } from '../../../lib/firebase/collections';
@@ -126,16 +132,6 @@ interface ShowAllocationDocumentData extends DocumentData {
   upcomingShowId?: unknown;
   allocatedQuantity?: unknown;
   status?: unknown;
-}
-
-function chunkValues<T>(values: T[], chunkSize: number): T[][] {
-  const chunks: T[][] = [];
-
-  for (let index = 0; index < values.length; index += chunkSize) {
-    chunks.push(values.slice(index, index + chunkSize));
-  }
-
-  return chunks;
 }
 
 function mapShowAllocationRecord(
@@ -383,6 +379,110 @@ function requestedSizesMatch(
 }
 
 export const portalPrintRequestService = {
+  /**
+   * Bounded live view of Portal-editable requests. Two status equality listeners are merged by
+   * id so a Studio status transition cannot leave stale Working/Editing chrome behind. The
+   * caller owns the subscription lifetime; this is deliberately not a polling loop.
+   */
+  subscribeMyContinuablePrintRequests(
+    customerId: string,
+    onRequests: (requests: PrintRequest[]) => void,
+    onError: (error: Error) => void,
+  ): Unsubscribe {
+    const snapshots = new Map<string, PrintRequest>();
+    const unsubscribers = (['draft', 'editing'] as const).map((status) => {
+      const traceMetadata = {
+        app: 'portal' as const,
+        collection: 'printRequests',
+        constraints: [`customerId==currentCustomer`, `status==${status}`],
+        source: 'portalPrintRequestService.subscribeMyContinuablePrintRequests',
+        triggerReason: 'authentication' as const,
+      };
+      traceFirestoreListenerAttach(traceMetadata);
+      return traceWrappedUnsubscribe(
+        traceMetadata,
+        onSnapshot(
+          query(
+            collection(getPortalDb(), 'printRequests'),
+            where('customerId', '==', customerId),
+            where('status', '==', status),
+          ),
+          (snapshot) => {
+            traceFirestoreListenerEmission(traceMetadata, snapshot.size);
+            const idsForStatus = new Set(snapshot.docs.map((entry) => entry.id));
+            for (const id of [...snapshots.keys()]) {
+              if (!idsForStatus.has(id) && snapshots.get(id)?.status === status) {
+                snapshots.delete(id);
+              }
+            }
+            for (const entry of snapshot.docs) {
+              try {
+                const mapped = mapPrintRequest(entry.id, entry.data() as PrintRequestDocumentData);
+                if (isPortalContinuablePrintRequestStatus(mapped.status)) {
+                  snapshots.set(mapped.id, mapped);
+                  primePortalPrintRequestReadCache(readCacheKey('request', mapped.id), mapped);
+                }
+              } catch {
+                // A malformed row must not take down the other status listener.
+              }
+            }
+            onRequests([...snapshots.values()].sort(
+              (left, right) => right.updatedAt.toMillis() - left.updatedAt.toMillis(),
+            ));
+          },
+          (error) => onError(error instanceof Error ? error : new Error('Unable to load print requests.')),
+        ),
+      );
+    });
+
+    return () => {
+      for (const unsubscribe of unsubscribers) {
+        unsubscribe();
+      }
+    };
+  },
+
+  /** Bounded live item listener for one active working request. */
+  subscribePrintRequestItems(
+    printRequestId: string,
+    onItems: (items: PrintRequestItem[]) => void,
+    onError: (error: Error) => void,
+  ): Unsubscribe {
+    const traceMetadata = {
+      app: 'portal' as const,
+      collection: 'printRequestItems',
+      constraints: [`printRequestId==${printRequestId}`, 'orderBy updatedAt desc'],
+      source: 'portalPrintRequestService.subscribePrintRequestItems',
+      triggerReason: 'authentication' as const,
+    };
+    traceFirestoreListenerAttach(traceMetadata);
+    return traceWrappedUnsubscribe(
+      traceMetadata,
+      onSnapshot(
+        query(
+          collection(getPortalDb(), 'printRequestItems'),
+          where('printRequestId', '==', printRequestId),
+          orderBy('updatedAt', 'desc'),
+        ),
+        (snapshot) => {
+          traceFirestoreListenerEmission(traceMetadata, snapshot.size);
+          const items = sortPrintRequestItemsNewestFirst(
+            snapshot.docs.flatMap((itemDoc) => {
+              try {
+                return [mapPrintRequestItem(itemDoc.id, itemDoc.data() as PrintRequestItemDocumentData)];
+              } catch {
+                return [];
+              }
+            }),
+          );
+          primePortalPrintRequestReadCache(readCacheKey('items', printRequestId), items);
+          onItems(items);
+        },
+        (error) => onError(error instanceof Error ? error : new Error('Unable to load Current Request items.')),
+      ),
+    );
+  },
+
   async createPrintRequest(input: CreatePortalPrintRequestRequest = {}): Promise<CreatePortalPrintRequestResponse> {
     try {
       return await callTracedFunction<
@@ -523,14 +623,16 @@ export const portalPrintRequestService = {
     );
     traceFirestoreOneShotComplete('getDocs', traceMetadata, snapshot.size);
 
-    return snapshot.docs.flatMap((itemDoc) => {
-      try {
-        return [mapPrintRequestItem(itemDoc.id, itemDoc.data() as PrintRequestItemDocumentData)];
-      } catch {
-        // Skip a single malformed/pending doc instead of failing the whole selection load.
-        return [];
-      }
-    });
+    return sortPrintRequestItemsNewestFirst(
+      snapshot.docs.flatMap((itemDoc) => {
+        try {
+          return [mapPrintRequestItem(itemDoc.id, itemDoc.data() as PrintRequestItemDocumentData)];
+        } catch {
+          // Skip a single malformed/pending doc instead of failing the whole selection load.
+          return [];
+        }
+      }),
+    );
       },
     );
   },
@@ -605,7 +707,9 @@ export const portalPrintRequestService = {
         for (const requestId of uniquePrintRequestIds) {
           primePortalPrintRequestReadCache(
             readCacheKey('items', requestId),
-            items.filter((item) => item.printRequestId === requestId),
+            sortPrintRequestItemsNewestFirst(
+              items.filter((item) => item.printRequestId === requestId),
+            ),
           );
         }
         return items;

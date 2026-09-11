@@ -3,6 +3,7 @@ import { getDocs, type Firestore, type QueryDocumentSnapshot } from "firebase/fi
 import type { Customer } from "@fresh-prints/shared/types/customer/customer.types";
 import type { CustomerUploadPurpose } from "@fresh-prints/shared/types/customerUpload/customerUpload.enums";
 import { isCustomerUploadEligibleForCatalogIntake } from "@fresh-prints/shared/utils/customerUploadCatalogIntakeEligibility";
+import { isCustomerUploadReleasedToStudioIntake } from "@fresh-prints/shared/utils/customerUploadStudioIntakeRelease";
 import { resolveCustomerUploadPurpose } from "@fresh-prints/shared/utils/customerUploadPurpose";
 
 import {
@@ -11,34 +12,39 @@ import {
   CUSTOMER_UPLOAD_INTAKE_ENRICH_CONCURRENCY,
   CUSTOMER_UPLOAD_INTAKE_PAGE_SIZE,
   CUSTOMER_UPLOAD_INTAKE_SEARCH_CUSTOMER_LIMIT,
+  resolveStudioIntakeListSortMs,
   runWithConcurrencyLimit,
   type CustomerUploadIntakeFilter,
 } from "./customerUploadIntakeQueries";
-
-function createdAtMs(value: unknown): number {
-  if (
-    value &&
-    typeof value === "object" &&
-    "toMillis" in value &&
-    typeof (value as { toMillis: () => number }).toMillis === "function"
-  ) {
-    return (value as { toMillis: () => number }).toMillis();
-  }
-  return 0;
-}
 
 function matchesIntakeScope(
   data: Record<string, unknown>,
   purpose: CustomerUploadPurpose,
   catalogReviewStatus: CustomerUploadIntakeFilter,
 ): boolean {
-  if (data.catalogReviewStatus !== catalogReviewStatus) {
+  const expectedStatus = catalogReviewStatus === "denied" ? "excluded_from_catalog" : catalogReviewStatus;
+  if (data.catalogReviewStatus !== expectedStatus) {
     return false;
   }
   if (resolveCustomerUploadPurpose(data.purpose) !== purpose) {
     return false;
   }
+  if (catalogReviewStatus === "denied" && data.catalogExclusionReason !== "customer_permission_denied") {
+    return false;
+  }
+  if (
+    catalogReviewStatus === "excluded_from_catalog" &&
+    data.catalogExclusionReason === "customer_permission_denied"
+  ) {
+    return false;
+  }
   if (catalogReviewStatus === "pending_staff_review" && !isCustomerUploadEligibleForCatalogIntake(data)) {
+    return false;
+  }
+  if (
+    (catalogReviewStatus === "denied" || catalogReviewStatus === "excluded_from_catalog") &&
+    !isCustomerUploadReleasedToStudioIntake(data)
+  ) {
     return false;
   }
   return true;
@@ -89,7 +95,11 @@ export async function fetchIntakeDocsForMatchedCustomers(input: {
   });
 
   const docs = [...byId.values()]
-    .sort((left, right) => createdAtMs(right.data().createdAt) - createdAtMs(left.data().createdAt))
+    .sort(
+      (left, right) =>
+        resolveStudioIntakeListSortMs(right.data() as Record<string, unknown>) -
+        resolveStudioIntakeListSortMs(left.data() as Record<string, unknown>),
+    )
     .map((docSnap) => ({
       id: docSnap.id,
       data: () => docSnap.data() as Record<string, unknown>,

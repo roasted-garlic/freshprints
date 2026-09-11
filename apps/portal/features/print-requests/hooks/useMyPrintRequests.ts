@@ -126,6 +126,39 @@ export function useMyPrintRequests() {
     void reload({ scope: 'chrome' });
   }, [reload]);
 
+  useEffect(() => {
+    if (!customer?.id) {
+      return;
+    }
+
+    const unsubscribe = portalPrintRequestService.subscribeMyContinuablePrintRequests(
+      customer.id,
+      (liveContinuable) => {
+        setRequests((current) => {
+          const liveById = new Map(liveContinuable.map((request) => [request.id, request]));
+          const retained = current.filter(
+            (request) =>
+              !isPortalContinuablePrintRequestStatus(request.status) || liveById.has(request.id),
+          );
+          const byId = new Map(retained.map((request) => [request.id, request]));
+          for (const request of liveContinuable) {
+            byId.set(request.id, request);
+          }
+          return [...byId.values()].sort(
+            (left, right) => right.updatedAt.toMillis() - left.updatedAt.toMillis(),
+          );
+        });
+        setIsLoading(false);
+        setError(null);
+      },
+      (listenerError) => {
+        setError(listenerError.message || 'Unable to live-sync print requests.');
+      },
+    );
+
+    return unsubscribe;
+  }, [customer?.id]);
+
   const pathname = usePathname();
   const previousPathnameRef = useRef<string | null>(null);
 

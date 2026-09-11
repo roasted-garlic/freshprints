@@ -68,9 +68,10 @@ export function CustomerUploadPanel({
 }: CustomerUploadPanelProps) {
   const isDonation = purpose === 'catalog_donation';
   const { firebaseUser } = useAuth();
-  const { workingRequestLimit } = usePortalPrintRequests();
+  const { workingRequestLimit, reloadWorkingItems, workingRequest } = usePortalPrintRequests();
   const isQuotaReady = isDonation || workingRequestLimit.isReady;
-  const isQuotaPending = !isDonation && !workingRequestLimit.isReady;
+  const isQuotaError = !isDonation && Boolean(workingRequestLimit.error);
+  const isQuotaPending = !isDonation && !workingRequestLimit.isReady && !isQuotaError;
   const isRequestFull =
     !isDonation && workingRequestLimit.isReady && workingRequestLimit.isRequestFull;
   const printSlotsRemaining =
@@ -201,7 +202,7 @@ export function CustomerUploadPanel({
   }, [readyPreviewKey]);
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    if (isRequestFull || isQuotaPending) {
+    if (isRequestFull || isQuotaPending || isQuotaError) {
       event.target.value = '';
       return;
     }
@@ -215,7 +216,7 @@ export function CustomerUploadPanel({
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setIsDragging(false);
-    if (isRequestFull || isQuotaPending) {
+    if (isRequestFull || isQuotaPending || isQuotaError) {
       return;
     }
     if (event.dataTransfer.files?.length) {
@@ -269,7 +270,7 @@ export function CustomerUploadPanel({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleClose, isBusy, isHalftoneHelpOpen, variant]);
 
-  const uploadBlocked = isBusy || isRequestFull || isQuotaPending;
+  const uploadBlocked = isBusy || isRequestFull || isQuotaPending || isQuotaError;
   const attachDisabledReason = resolveCustomerUploadAttachDisabledReason({
     isDonation,
     readyCount,
@@ -355,6 +356,33 @@ export function CustomerUploadPanel({
               </div>
             </div>
           ) : null}
+          {isQuotaError ? (
+            <div
+              aria-describedby="portal-customer-upload-quota-error-body"
+              aria-labelledby="portal-customer-upload-quota-error-title"
+              className="portal-customer-upload-request-full-overlay portal-customer-upload-quota-error-overlay"
+              role="alert"
+            >
+              <div className="portal-customer-upload-quota-pending-card">
+                <h2 id="portal-customer-upload-quota-error-title">We could not check print limits</h2>
+                <p id="portal-customer-upload-quota-error-body">
+                  {workingRequestLimit.error || 'Current Request items could not be loaded.'}
+                </p>
+                <button
+                  className="portal-button portal-button-secondary"
+                  disabled={isBusy}
+                  onClick={() => {
+                    if (workingRequest?.id) {
+                      void reloadWorkingItems({ printRequestId: workingRequest.id });
+                    }
+                  }}
+                  type="button"
+                >
+                  Retry
+                </button>
+              </div>
+            </div>
+          ) : null}
           {isRequestFull ? (
             <div
               aria-describedby="portal-customer-upload-full-body"
@@ -379,13 +407,13 @@ export function CustomerUploadPanel({
           ) : null}
 
           <div
-            aria-hidden={isRequestFull || isQuotaPending ? true : undefined}
-            className={`modal-body portal-customer-upload-modal-body${isRequestFull || isQuotaPending ? ' is-request-full-blocked' : ''}`}
+            aria-hidden={isRequestFull || isQuotaPending || isQuotaError ? true : undefined}
+            className={`modal-body portal-customer-upload-modal-body${isRequestFull || isQuotaPending || isQuotaError ? ' is-request-full-blocked' : ''}`}
           >
           <div
-            className={`portal-customer-upload-dropzone${isDragging ? ' is-dragging' : ''}${isRequestFull || isQuotaPending ? ' is-disabled' : ''}`}
+            className={`portal-customer-upload-dropzone${isDragging ? ' is-dragging' : ''}${isRequestFull || isQuotaPending || isQuotaError ? ' is-disabled' : ''}`}
             onDragEnter={(event) => {
-              if (isRequestFull || isQuotaPending) {
+              if (isRequestFull || isQuotaPending || isQuotaError) {
                 return;
               }
               event.preventDefault();
@@ -396,7 +424,7 @@ export function CustomerUploadPanel({
               setIsDragging(false);
             }}
             onDragOver={(event) => {
-              if (isRequestFull || isQuotaPending) {
+              if (isRequestFull || isQuotaPending || isQuotaError) {
                 return;
               }
               event.preventDefault();
@@ -539,9 +567,10 @@ export function CustomerUploadPanel({
                   {previewUrls[row.localId] ? (
                     <img
                       alt=""
-                      loading="lazy"
                       decoding="async"
+                      loading="lazy"
                       src={previewUrls[row.localId] ?? undefined}
+                      style={{ objectFit: 'contain', objectPosition: 'center' }}
                     />
                   ) : (
                     <span className="portal-customer-upload-file-preview-fallback" aria-hidden>
@@ -839,7 +868,7 @@ export function CustomerUploadPanel({
       <>
         <section
           aria-label={isDonation ? 'Donate designs' : 'Upload artwork'}
-          className={`portal-customer-upload-embedded${isRequestFull ? ' is-request-full' : ''}${isQuotaPending ? ' is-quota-pending' : ''}`}
+          className={`portal-customer-upload-embedded${isRequestFull ? ' is-request-full' : ''}${isQuotaPending ? ' is-quota-pending' : ''}${isQuotaError ? ' is-quota-error' : ''}`}
         >
           {panelBody}
         </section>

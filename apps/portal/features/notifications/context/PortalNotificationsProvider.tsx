@@ -27,6 +27,10 @@ import {
 } from '../services/portalWebPushService';
 import { locationMatchesNotificationHref } from '../utils/locationMatchesNotificationHref';
 import { selectUnreadPeerNotificationIds } from '../utils/selectUnreadPeerNotificationIds';
+import {
+  isCustomerNotificationStickyUntilResolved,
+  isCustomerNotificationVisibleInHistory,
+} from '@fresh-prints/shared/utils/customerNotifications';
 
 interface PendingMarkRead {
   id: string;
@@ -49,8 +53,11 @@ interface PortalNotificationsContextValue {
   isNotificationSettingsOpen: boolean;
   isPanelOpen: boolean;
   items: PortalCustomerNotification[];
-  /** Mark every currently loaded unread alert as read, then close the Alerts panel. */
+  /** Mark every currently loaded clearable unread alert as read, then close the Alerts panel. */
   markAllRead: () => void;
+  /** Soft-clear Notification history (keeps unanswered permission requests). */
+  clearHistory: () => void;
+  isClearingHistory: boolean;
   openHistory: () => void;
   openItem: (item: PortalCustomerNotification) => void;
   /**
@@ -58,7 +65,12 @@ interface PortalNotificationsContextValue {
    * so the modal can return to the settings selections menu.
    */
   openNotificationSettings: (options?: { onBack?: () => void }) => void;
-  /** Cleared alerts for the history modal (`readAt != null`). */
+  /**
+   * History modal rows: cleared alerts, plus open sticky permission requests
+   * (those also remain in the live dropdown until Allow/Decline).
+   */
+  historyItems: PortalCustomerNotification[];
+  /** Cleared alerts only (`readAt != null`). Prefer `historyItems` for the modal. */
   readItems: PortalCustomerNotification[];
   refreshBrowserPushEnabled: () => void;
   retry: () => void;
@@ -82,7 +94,8 @@ function sameNotificationInbox(
     return (
       other != null &&
       item.id === other.id &&
-      item.readAt?.getTime() === other.readAt?.getTime()
+      item.readAt?.getTime() === other.readAt?.getTime() &&
+      item.clearedFromHistoryAt?.getTime() === other.clearedFromHistoryAt?.getTime()
     );
   });
 }
@@ -117,6 +130,7 @@ export function PortalNotificationsProvider({ children }: { children: ReactNode 
   const [pushStatusNonce, setPushStatusNonce] = useState(0);
   /** Unread alert id queued until destination URL matches after navigate. */
   const [pendingMarkRead, setPendingMarkRead] = useState<PendingMarkRead | null>(null);
+  const [isClearingHistory, setIsClearingHistory] = useState(false);
   const flushedMarkReadIdsRef = useRef(new Set<string>());
   const refreshInFlightRef = useRef<Promise<void> | null>(null);
   const errorRef = useRef(error);
@@ -246,6 +260,10 @@ export function PortalNotificationsProvider({ children }: { children: ReactNode 
 
   const unreadItems = useMemo(() => items.filter((item) => !item.readAt), [items]);
   const readItems = useMemo(() => items.filter((item) => item.readAt != null), [items]);
+  const historyItems = useMemo(
+    () => items.filter((item) => isCustomerNotificationVisibleInHistory(item)),
+    [items],
+  );
   const closePanel = useCallback(() => setIsPanelOpen(false), []);
   const closeHistory = useCallback(() => setIsHistoryOpen(false), []);
   const closeNotificationSettings = useCallback(() => {
@@ -288,7 +306,8 @@ export function PortalNotificationsProvider({ children }: { children: ReactNode 
       // Closing the panel unmounts the pinned unread list so it cannot flash empty mid-click.
       closePanel();
       closeHistory();
-      if (!item.readAt) {
+      // Permission follow-ups stay unread until Allow/Decline (server marks read on respond).
+      if (!item.readAt && !isCustomerNotificationStickyUntilResolved(item.kind)) {
         setPendingMarkRead({
           id: item.id,
           href: item.href,
@@ -305,6 +324,7 @@ export function PortalNotificationsProvider({ children }: { children: ReactNode 
 
   const markAllRead = useCallback(() => {
     const ids = unreadItems
+      .filter((item) => !isCustomerNotificationStickyUntilResolved(item.kind))
       .map((item) => item.id)
       .filter((id) => !flushedMarkReadIdsRef.current.has(id));
     if (ids.length === 0) {
@@ -322,6 +342,25 @@ export function PortalNotificationsProvider({ children }: { children: ReactNode 
       console.error('[portalNotifications] markAllRead failed', markError);
     });
   }, [closePanel, unreadItems]);
+
+  const clearHistory = useCallback(() => {
+    if (isClearingHistory) {
+      return;
+    }
+    setIsClearingHistory(true);
+    void customerNotificationsService
+      .clearHistory()
+      .then(() => refreshInboxFromServer())
+      .catch((clearError: unknown) => {
+        console.error('[portalNotifications] clearHistory failed', clearError);
+        setError(
+          clearError instanceof Error ? clearError.message : 'Unable to clear notification history.',
+        );
+      })
+      .finally(() => {
+        setIsClearingHistory(false);
+      });
+  }, [isClearingHistory, refreshInboxFromServer]);
 
   useEffect(() => {
     if (!pendingMarkRead) {
@@ -361,9 +400,12 @@ export function PortalNotificationsProvider({ children }: { children: ReactNode 
       isPanelOpen,
       items,
       markAllRead,
+      clearHistory,
+      isClearingHistory,
       openHistory,
       openItem,
       openNotificationSettings,
+      historyItems,
       readItems,
       refreshBrowserPushEnabled,
       retry,
@@ -382,9 +424,12 @@ export function PortalNotificationsProvider({ children }: { children: ReactNode 
       isPanelOpen,
       items,
       markAllRead,
+      clearHistory,
+      isClearingHistory,
       openHistory,
       openItem,
       openNotificationSettings,
+      historyItems,
       readItems,
       refreshBrowserPushEnabled,
       retry,

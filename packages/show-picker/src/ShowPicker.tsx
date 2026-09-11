@@ -21,6 +21,7 @@ const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 function scheduleScrollSelectedSlotIntoView(
   root: HTMLElement,
   calendar: HTMLElement | null,
+  block: ScrollLogicalPosition = "end",
 ): () => void {
   let cancelled = false;
   let rafId = 0;
@@ -36,8 +37,7 @@ function scheduleScrollSelectedSlotIntoView(
       (root.querySelector(".show-picker-slots") as HTMLElement | null);
 
     if (target) {
-      // Prefer end so a taller month grid still leaves the capacity/progress bar in view.
-      target.scrollIntoView({ block: "end", inline: "nearest" });
+      target.scrollIntoView({ block, inline: "nearest" });
       return;
     }
 
@@ -233,6 +233,7 @@ export function ShowPicker({
   onClearSelection,
   now = new Date(),
   className,
+  selectedSlotScrollBlock = "end",
 }: ShowPickerProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const calendarGridRef = useRef<HTMLDivElement>(null);
@@ -397,8 +398,12 @@ export function ShowPicker({
       return;
     }
 
-    return scheduleScrollSelectedSlotIntoView(root, calendarGridRef.current);
-  }, [selectedDateKey, selectedId, viewMonth, viewYear, weeks.length]);
+    return scheduleScrollSelectedSlotIntoView(
+      root,
+      calendarGridRef.current,
+      selectedSlotScrollBlock,
+    );
+  }, [selectedDateKey, selectedId, selectedSlotScrollBlock, viewMonth, viewYear, weeks.length]);
 
   const rootClassName = className ? `show-picker ${className}` : "show-picker";
 

@@ -4,6 +4,7 @@ export { cleanupAbandonedCustomerUploads } from "./cleanupAbandonedCustomerUploa
 export { archiveStaleWorkingPrintRequests } from "./archiveStaleWorkingPrintRequests";
 export { clearPortalWorkingPrintRequest } from "./clearPortalWorkingPrintRequest";
 export { confirmCustomerUploadsAndAttachToRequest } from "./confirmCustomerUploadsAndAttachToRequest";
+export { attachExistingCustomerUploadsToPrintRequest } from "./attachExistingCustomerUploadsToPrintRequest";
 export { confirmCustomerUploadsForDonation } from "./confirmCustomerUploadsForDonation";
 export { createCustomerWithPortalInvite } from "./createCustomerWithPortalInvite";
 export { createCustomerUploadBatch } from "./createCustomerUploadBatch";
@@ -22,6 +23,7 @@ export { restoreCustomerUploadCatalogEligibility } from "./restoreCustomerUpload
 export { requestCustomerUploadCatalogPermissionFollowUp } from "./requestCustomerUploadCatalogPermissionFollowUp";
 export { getCustomerUploadCatalogPermissionFollowUp } from "./getCustomerUploadCatalogPermissionFollowUp";
 export { respondToCustomerUploadCatalogPermissionFollowUp } from "./respondToCustomerUploadCatalogPermissionFollowUp";
+export { clearCustomerNotificationHistory } from "./clearCustomerNotificationHistory";
 export { retryCustomerUploadProcessing } from "./retryCustomerUploadProcessing";
 export { getPortalShowPrintProgress } from "./getPortalShowPrintProgress";
 export { getPortalPrintRequestShowSchedules } from "./getPortalPrintRequestShowSchedules";
@@ -179,6 +181,10 @@ export { purgeArchivedDesignAssets } from "./purgeArchivedDesignAssets";
 export { deleteEligibleUnapprovedDesign } from "./deleteEligibleUnapprovedDesign";
 export { archiveStaleRejectedDesigns } from "./archiveStaleRejectedDesigns";
 export { purgeIdleCustomerUploadFullSize } from "./purgeIdleCustomerUploadFullSize";
+export {
+  purgeExpiredCustomerUploadCatalogRetention,
+  purgeExpiredCustomerUploadCatalogRetentionScheduled,
+} from "./purgeExpiredCustomerUploadCatalogRetention";
 export { purgePromotedDonationFullSize } from "./purgePromotedDonationFullSize";
 export {
   purgeExpiredAssistedCreationProofs,

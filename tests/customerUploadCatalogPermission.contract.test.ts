@@ -19,15 +19,23 @@ test("follow-up response is maintenance guarded and transactionally state-scoped
   const response = read("functions/src/respondToCustomerUploadCatalogPermissionFollowUp.ts");
 
   assert.match(request, /assertCanManageCustomerUploadIntake/);
-  assert.match(request, /catalogExclusionReason.*customer_permission_denied/);
-  assert.match(request, /catalogPermissionFollowUpStatus.*requested/);
+  assert.match(request, /canRequestCustomerUploadPermissionFollowUp/);
+  assert.match(request, /catalogPermissionAskCount/);
+  assert.match(request, /catalogPermissionActivity/);
   assert.match(request, /createCustomerNotification/);
   assert.match(request, /base64url/);
   assert.match(request, /alreadyRequested/);
-  assert.match(request, /approved.*declined/);
+  assert.match(request, /Both permission follow-up requests have already been used/);
+  assert.doesNotMatch(request, /one follow-up decision/);
+  assert.match(response, /customer_allow|customer_decline/);
+  assert.match(response, /catalogPermissionActivity/);
+  assert.match(request, /const activityNow = Timestamp\.now\(\)/);
+  assert.match(request, /at: activityNow/);
+  assert.match(response, /at: Timestamp\.now\(\)/);
   assert.match(context, /requirePortalCustomer/);
   assert.match(context, /catalogPermissionFollowUpRequestToken/);
-  assert.match(context, /getSignedUrl/);
+  assert.match(context, /previewStoragePath/);
+  assert.doesNotMatch(context, /getSignedUrl/);
   const dto = read(
     "packages/shared/src/types/customerUpload/customerUploadCatalogPermission.types.ts",
   );
@@ -35,7 +43,6 @@ test("follow-up response is maintenance guarded and transactionally state-scoped
     /export interface GetCustomerUploadCatalogPermissionFollowUpRequest[\s\S]*$/,
   )?.[0] ?? "";
   assert.doesNotMatch(publicDto, /uploadId/);
-  assert.doesNotMatch(publicDto, /StoragePath/i);
   assert.match(response, /assertPortalMaintenanceAllowsCustomerMutation/);
   assert.match(response, /adminDb\.runTransaction/);
   assert.match(response, /catalogPermissionFollowUpStatus/);
@@ -44,6 +51,8 @@ test("follow-up response is maintenance guarded and transactionally state-scoped
   assert.match(response, /customerUid !== request\.auth/);
   assert.match(response, /alreadyDecision/);
   assert.match(response, /promotedDesignId/);
+  assert.match(response, /markPermissionFollowUpNotificationRead/);
+  assert.match(response, /buildCustomerUploadCatalogPermissionFollowUpNotificationId/);
 });
 
 test("Studio exposes follow-up only for permission-denied exclusions and preserves generic Restore", () => {
@@ -58,7 +67,8 @@ test("Studio exposes follow-up only for permission-denied exclusions and preserv
   );
 
   assert.match(section, /customer_permission_denied/);
-  assert.match(section, /Ask for permission again/);
+  assert.match(section, /Ask for permission again|Ask again \(2 of 2\)/);
+  assert.match(section, /CustomerUploadPermissionActivityModal|Activity/);
   assert.match(section, /pendingAction === "request_permission"/);
   assert.match(section, /!permissionDenied/);
   assert.match(hook, /requestPermissionFollowUp/);
@@ -75,5 +85,7 @@ test("Portal deep-link host uses an opaque permissionRequest token", () => {
   assert.match(modal, /getCatalogPermissionFollowUp/);
   assert.match(modal, /respondToCatalogPermissionFollowUp/);
   assert.doesNotMatch(modal, /uploadId/);
-  assert.doesNotMatch(modal, /StoragePath/);
+  // Preview uses opaque Storage path + client getDownloadURL (no Admin signed URL).
+  assert.match(modal, /previewStoragePath/);
+  assert.match(modal, /getDownloadUrl/);
 });

@@ -46,4 +46,29 @@ describe('Portal Alerts live inbox contracts', () => {
     assert.match(bellSource, /newcomers/);
     assert.match(bellSource, /buildPanelPreview\(\[\.\.\.newcomers, \.\.\.current\]\)/);
   });
+
+  it('keeps permission follow-ups sticky until Allow/Decline and always shows them in history', () => {
+    assert.match(providerSource, /isCustomerNotificationStickyUntilResolved/);
+    assert.match(providerSource, /isCustomerNotificationVisibleInHistory/);
+    assert.match(
+      providerSource,
+      /!item\.readAt && !isCustomerNotificationStickyUntilResolved\(item\.kind\)/,
+    );
+    assert.match(
+      providerSource,
+      /\.filter\(\(item\) => !isCustomerNotificationStickyUntilResolved\(item\.kind\)\)/,
+    );
+    assert.match(providerSource, /clearHistory/);
+    assert.match(serviceSource, /clearCustomerNotificationHistory/);
+    const historySource = readFileSync(
+      resolve(import.meta.dirname, 'components/PortalNotificationHistoryModal.tsx'),
+      'utf8',
+    );
+    assert.match(historySource, /historyItems/);
+    assert.match(historySource, /Clear history/);
+    assert.match(historySource, /isCustomerNotificationPreservedFromHistoryClear/);
+    assert.match(bellSource, /EnableAlertsCallout/);
+    assert.doesNotMatch(bellSource, /Proofs and messages about your custom design requests/);
+  });
 });
+

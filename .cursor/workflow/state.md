@@ -2,29 +2,206 @@
 
 | Field | Value |
 |---|---|
-| Status | **PARENT M0 RERUN COMPLETE — CANDIDATE COMMIT/PUSH AUTHORIZATION REQUIRED** |
+| Status | **Owner DEV QA PASS** — gallery Add-to-Request / Your designs slice |
 | DONE | no |
-| Signoff Status | child `customer-upload-follow-up-catalog-permission` **approved_with_notes**; prior hard-delete child **approved_with_notes**; parent candidate Signoff pending |
+| Signoff Status | prior corrective Signoff **blocked** until Workstream D Owner QA (if still open); gallery slice ready for Test→Signoff when D cleared / owner asks |
 | Current Mode | managed-phase |
 | Parent program | Coordinated production promotion and release readiness |
-| Current Goal | `coordinated-production-promotion-release-readiness` |
-| Current Phase | Parent M0 reconciliation complete at dirty snapshot; candidate assembly boundary |
-| Plan Status | parent M0 preparation resumed; child Plan complete |
-| Review Status | parent `approved_with_changes` accepted; child `customer-upload-follow-up-catalog-permission` **approved_with_notes** |
-| Implementation Status | complete within reviewed scope |
-| Test Status | focused gate passed; unrelated baselines documented |
+| Current Goal | `customer-upload-studio-deferral-personal-library-portal-inline-remove` |
+| Current Phase | Test (gallery slice **PASS**) |
+| Plan Status | complete — `docs/workflow/plans/2026-09-11-customer-upload-studio-deferral-personal-library-portal-inline-remove-plan.md` (+ gallery add/retention slice) |
+| Review Status | `approved_with_changes` |
+| Implementation Status | complete locally + DEV Functions/indexes deployed; Personal-only delete **UI + server** on DEV |
+| Test Status | `passed_with_notes` — Owner DEV QA **PASS** 2026-09-11; see `docs/workflow/reviews/2026-09-11-gallery-add-to-request-owner-qa.md` |
 | Human Checkpoint Required | **yes** |
-| Human Checkpoint Reason | Parent candidate reassembly and M1 freeze remain later checkpoints; no production action is authorized. |
-| Blocked | **no** — M0 evidence is reconciled; owner candidate commit/push checkpoint is next |
-| Environment | DEV `getPortalMaintenanceState` redeployed with public invoker; `fresh-prints-prod` forbidden |
-| Production | untouched |
-| Commit/push | Not authorized unless owner asks |
-| Last updated | 2026-09-10 |
-| Last Completed Step | Parent M0 rerun: inventory, closure, guard, Rules/Storage, indexes, Portal/Studio, config/data, and hard-delete audits |
-| Next Required Step | **Owner authorization for the reviewed post-child candidate commit/push; then regenerate immutable manifests at the new SHA** |
-| Parallel polish | Show Queue / Internal Sheet print-time estimate — **approved** (PASS + commit/push) |
+| Human Checkpoint Reason | Confirm Workstream D QA status if still open; Signoff when ready; commit only if asked |
+| Blocked | **no** |
+| Allowed Actions | Signoff when gates met; docs; tests; no production |
+| Forbidden Actions | production deploy; Rules/Storage; commit/push unless owner asks |
+| Last Completed Step | DEV redeploy Personal-only delete server gate |
+| Next Required Step | Signoff / clear Workstream D if still open |
 
 **Decision Log:**
+
+- 2026-09-11 — Owner: “Redeploy please.” DEV redeployed
+  `previewPortalCustomerUploadDeletion` + `deletePortalCustomerUpload` for Personal-only
+  customer delete (Uploaded/Donated staff-managed).
+
+- 2026-09-11 — Owner: “I would call this a PASS.” Recorded Owner DEV QA **PASS** for gallery
+  Add-to-Request / Your designs (tabs, hints, 6-up preview, Add to request, delete copy,
+  Personal-only Delete UI). Notes:
+  `docs/workflow/reviews/2026-09-11-gallery-add-to-request-owner-qa.md`.
+
+- 2026-09-11 — Owner: “Please redeploy.” DEV redeployed
+  `previewPortalCustomerUploadDeletion` + `deletePortalCustomerUpload` for delete copy
+  ending “…cannot be deleted right now.”
+
+- 2026-09-11 — Owner: “Please dev deploy.” Deployed to `fresh-prints-dev`:
+  `attachExistingCustomerUploadsToPrintRequest` (create), `confirmCustomerUploadsForDonation`,
+  `promoteCustomerUploadToAiReview`, `purgeExpiredCustomerUploadCatalogRetention`,
+  `purgeExpiredCustomerUploadCatalogRetentionScheduled`, `firestore:indexes`. Record:
+  `docs/workflow/reviews/2026-09-11-gallery-add-to-request-donated-retention-dev-deployment.md`.
+
+- 2026-09-11 — Owner: wire Add to Request for Personal/Uploaded/Donated; donated non-promoted
+  gets same **30-day** shelf life as personal; Uploaded Allow-waiting keeps no new 30d clock.
+  Implemented `attachExistingCustomerUploadsToPrintRequest`, donate `unpromoted_donation` clock,
+  promote clears clock, purge scans donations. DEV redeploy:
+  `functions:attachExistingCustomerUploadsToPrintRequest,functions:confirmCustomerUploadsForDonation,functions:promoteCustomerUploadToAiReview,functions:purgeExpiredCustomerUploadCatalogRetention,functions:purgeExpiredCustomerUploadCatalogRetentionScheduled`
+  plus Firestore index for `catalogExclusionReason` + `catalogRetentionStartedAt`.
+
+- 2026-09-11 — Owner replied `DEV DEPLOY DON` (accepted as `DEV DEPLOY DONE`). Implemented C1
+  (personal Don’t-allow retention **30 days**, staff Excluded **14 days**, B1 unchanged) and C2
+  (Your designs modal tabs **Personal** / **Design Library**; Allow ≠ instant library listing).
+  Redeploy `purgeExpiredCustomerUploadCatalogRetention` (+ scheduled export if used on DEV) for C1.
+
+- 2026-09-11 — Owner replied `DEV DEPLOY DON` (accepted as `DEV DEPLOY DONE`). Unblocked C1 → C2 Implement.
+
+
+- 2026-09-11 — Second Ask Again failed with `internal`: Firestore rejects
+  `FieldValue.serverTimestamp()` inside `catalogPermissionActivity` arrays. Fixed to
+  `Timestamp.now()`. Redeploy `requestCustomerUploadCatalogPermissionFollowUp`,
+  `respondToCustomerUploadCatalogPermissionFollowUp`, and confirm attach if needed.
+
+- 2026-09-11 — Owner lock: up to **two** Ask Again permission sends; Activity modal for
+  initial + responses; second decline parks on **Excluded**; remove Imports help blurb;
+  overflow menu beside permission pill. Redeploy include
+  `requestCustomerUploadCatalogPermissionFollowUp` (+ confirm/respond already on allowlist).
+
+- 2026-09-11 — Notification history Clear history (callable soft-clear; keeps unanswered
+  permission requests); Alerts dropdown drops descriptive blurb; Enable alerts is a compact
+  collapsible callout. Redeploy include `clearCustomerNotificationHistory`.
+
+- 2026-09-11 — Permission Alerts stay in the dropdown until Allow/Decline (not cleared by
+  click / Mark all read); always appear in Notification history while open; server marks
+  read on respond. History modal rows get a subtle resting border with stronger hover/focus.
+  Redeploy `respondToCustomerUploadCatalogPermissionFollowUp` for the sticky clear.
+
+- 2026-09-11 — Studio intake Halftone click left `pendingByUploadId` set forever (early
+  return before finally), disabling all row buttons until restart. Fixed: always clear
+  pending in finally. Local Studio refresh only — no Functions deploy.
+
+- 2026-09-11 — Permission modal preview mat now uses upload detector / Studio staff
+  `artworkBackgroundHex` (dark for this white art) via `previewBackgroundHex` on
+  `getCustomerUploadCatalogPermissionFollowUp`. Redeploy that Function for DEV.
+
+- 2026-09-11 — Portal upload-list preview: tall/portrait art looked half-cropped in the tiny
+  square thumb. Switched to a 3:4 frame, light mat, and max-width/height contain so the full
+  design is visible (same asset already looked fine on request/Studio). No Functions change.
+
+- 2026-09-11 — Owner QA pack: (1) permission modal load — drop Admin signed URL, client
+  Storage resolve + progressive preview; (2) Saving latency — cold callable (redeploy get+respond);
+  (3) Pending sort — also use `catalogPermissionFollowUpRespondedAt` so Allow jumps to top without
+  waiting on new field alone; (4) Show Queue detail scroll restored like Print Requests;
+  (5) Add-to-Show scrolls capacity slot + personal callout into view. Redeploy include
+  `getCustomerUploadCatalogPermissionFollowUp`. C1/C2 still wait on `DEV DEPLOY DONE`.
+
+- 2026-09-11 — Owner mid-DEV-deploy tweak: Ask Again → Allow (and staff Restore) must
+  re-enter Studio Pending at the **top**, not original `createdAt` batch position. Added
+  `catalogPendingQueuedAt` on Allow/Restore + Studio intake sort fallback. Include
+  `respondToCustomerUploadCatalogPermissionFollowUp` + `restoreCustomerUploadCatalogEligibility`
+  in DEV deploy (or follow-up). C1/C2 still wait on `DEV DEPLOY DONE`.
+
+- 2026-09-11 — Owner: Confirm remove working; **pause for DEV Functions redeploy**, then continue
+  C1/C2. C2 locked: reuse dashboard **Your designs** for personal Don’t-allow uploads vs Design
+  Library / promoted tab — no new section. Checkpoint:
+  `docs/workflow/reviews/2026-09-11-customer-upload-studio-deferral-personal-library-portal-inline-remove-dev-deployment.md`.
+  Production forbidden.
+
+- 2026-09-11 — Portal Confirm remove: fixed card resurrection (~1s bounce-back) by keeping
+  pending-remove marks until live/list snapshot confirms absence (detail + drawer). Added
+  Confirm “Removing…” + card pixie-poof / button pulse feedback. Focused contracts pass.
+  No commit/push/production. C1/C2 still open.
+
+- 2026-09-11 — Implement progress: D uses `studioIntakeHoldUntilShow` on Don’t-allow until
+  Add to Show; A defers Staff Inbox queue sound ~2.6s and holds Studio Add-to-Show until
+  celebration; R replaces Portal Remove modal with inline Cancel/Confirm. C1/C2 still open.
+  No commit/push/production.
+
+- 2026-09-11 — Owner **accepted** Formal Review and added Workstream A: Studio audible
+  queue alert must wait until Add-to-Show fully completes and success UI is shown (Portal or
+  Studio). Plan/Review amended; Implement authorized (D → A → R → C1 → C2). Production forbidden.
+
+- 2026-09-11 — Owner product choices: **A1**, **B1**, **C** 30-day personal bucket + dual-tab
+  Portal (soon, sequenced in this child), **D** no Studio Pending/Denied until Add to Show.
+
+- 2026-09-11 — Hard-delete blocked while attached to a print request item is correct under B1;
+  staff should Reject/Exclude instead. Export/gangsheet must keep working for shows >14 days out.
+
+- 2026-09-11 — Owner **PASS** for Portal/Studio request-item newest-first sort; parallel polish
+  committed on `development`.
+
+- 2026-09-11 — Owner screenshot showed Portal request/cart still oldest→newest (upload
+  without `sortOrder` was clustering wrong; Studio was still ascending). Fixed shared compare so
+  missing `sortOrder` stays chronological, kept Portal newest-first, and aligned Studio request
+  grids + duplicate insert to the same newest-first order. Hard refresh Portal/Studio to verify
+  Ghost → Explorer → Kiss my grits. No commit/push/production.
+
+- 2026-09-11 — Owner reported Portal print-request images sorted incorrectly (expected
+  newest→oldest left-to-right). Parallel polish: sort list/live item loads newest-first at the
+  Portal service boundary, make the detail cart signature order-aware, assign `sortOrder` on
+  optimistic catalog adds and customer-upload/assisted attach paths. No commit, push, freeze, or
+  production action. Functions attach change needs a DEV Functions redeploy before new uploads
+  get durable `sortOrder` in the cloud environment.
+
+- 2026-09-11 — Owner accepted the amended corrective child Plan/Formal Review and authorized
+  Implement → Test. Scope includes the terminal Portal limit state, atomic Studio item/parent write,
+  bounded Portal request/item listeners, classification-A Denied tab/count, and unified Denied +
+  staff-Excluded `catalogRetentionStartedAt` retention design. Candidate
+  `7c775233e05a2eae65cc4b3c519d2b62a1736b16` remains unfrozen. No production action, scheduler
+  activation, commit, push, or candidate freeze is authorized by this checkpoint.
+
+- 2026-09-11 — Corrective child implementation and Test completed within the accepted scope. The
+  Portal now has bounded request/item listeners and a terminal quota error/retry state; Studio
+  customer-upload item/parent writes are atomic; Denied intake has classification-A list/count
+  coverage; and one shared `catalogRetentionStartedAt` scheduler path covers Denied + staff
+  Excluded with existing safe-delete blockers. Focused contracts passed 41/41, Functions build,
+  Portal typecheck, Studio Vite build, targeted lint, and diff check passed. Broad suite failures
+  are documented as unrelated source/emulator baselines in
+  `docs/workflow/reviews/2026-09-11-pre-freeze-owner-qa-correctives-request-editing-live-sync-and-denied-intake-test-report.md`.
+  No DEV/production deploy, Rules/Storage release, scheduler activation, data operation, commit,
+  push, freeze, or Owner DEV QA occurred. Owner DEV QA and child Signoff are now required before
+  parent M0 rerun.
+
+- 2026-09-11 — DEV deployment checkpoint completed for Owner QA. In `fresh-prints-dev` only,
+  explicitly deployed `confirmCustomerUploadsAndAttachToRequest`,
+  `excludeCustomerUploadFromCatalog`, `restoreCustomerUploadCatalogEligibility`,
+  `respondToCustomerUploadCatalogPermissionFollowUp`,
+  `purgeExpiredCustomerUploadCatalogRetention`, and
+  `purgeExpiredCustomerUploadCatalogRetentionScheduled`; all six are ACTIVE at the revisions in
+  `docs/workflow/reviews/2026-09-11-pre-freeze-owner-qa-correctives-request-editing-live-sync-and-denied-intake-dev-deployment.md`.
+  The two reviewed `customerUploads` composite indexes reached READY. The scheduled job was
+  immediately PAUSED without invocation because its handler is non-dry-run. Portal was restarted
+  with the repository `npm run dev:portal` workflow and returns HTTP 200 on localhost:3100;
+  Studio Vite serves the current source on localhost:5173. Rules/Storage were not deployed.
+  Production remains untouched. Owner DEV QA and child Signoff are still pending; no candidate
+  freeze, commit, push, or production action is authorized.
+
+- 2026-09-11 — Owner product decision amended this child: automatic 14-day safe retention applies
+  to both customer-permission Denied and staff-intentionally Excluded uploads. The Plan and Formal
+  Review were amended to use one shared `catalogRetentionStartedAt` episode timestamp, reason-specific
+  transitions, one bounded daily cleanup path, and the existing safe-delete blockers/helpers. Staff
+  Excluded retention now has explicit creation, Restore, and meaningful re-exclusion rules; Denied
+  Ask Again/Allow/second-Decline semantics are preserved. Excluded tab count remains a follow-up
+  recommendation unless the shared aggregate count is genuinely zero-cost. Verdict remains
+  `approved_with_changes`; owner acceptance is required before Implement → Test. No scheduler,
+  code, index, deployment, data operation, commit, push, freeze, or production action occurred.
+
+- 2026-09-11 — Owner asked for a Portal Alerts bell count that updates without a page
+  reload. Parallel polish (does not implement the locked request-editing live-sync child):
+  keep the live `customerNotifications` listener, refetch from the server on foreground FCM,
+  tab focus/visibility, and browser `online`, and prepend newly arrived unread rows while the
+  dropdown is open. No commit, push, freeze, or production action.
+
+- 2026-09-11 — New managed corrective child opened from Owner DEV QA. Customer-upload follow-up
+  core remains PASS, but overall Owner DEV QA is **CORRECTIVE REQUIRED / NOT PASS FOR FREEZE**.
+  Read-only source reconciliation confirmed the Portal limit-state liveness hole (failed item
+  hydration leaves `hydratedWorkingRequestId` undefined and the upload panel spins forever), the
+  Studio split item/parent write partial-success hazard, one-shot Portal request/item reads, the
+  existing typed customer-permission denial fields, and the absence of an automatic 14-day
+  Excluded cleanup. Plan and Formal Review are recorded at the dated 2026-09-11 artifacts with
+  verdict `approved_with_changes`; owner acceptance is required before Implement → Test. Candidate
+  `7c775233e05a2eae65cc4b3c519d2b62a1736b16` must not be frozen. No app code, Rules/indexes,
+  deployment, data operation, commit, push, or production action occurred.
 
 - 2026-09-10 — Parent M0 rerun completed after the signed-off customer-upload follow-up child.
   The current worktree is 59 status entries (43 tracked, 16 untracked); the child runtime and

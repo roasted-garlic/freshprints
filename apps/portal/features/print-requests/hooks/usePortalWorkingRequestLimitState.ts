@@ -32,6 +32,8 @@ export interface PortalWorkingRequestLimitHydration {
    * `undefined` = never hydrated; `null` = hydrated empty cart.
    */
   hydratedWorkingRequestId: string | null | undefined;
+  /** Terminal item-list failure; quota stays conservative until a retry succeeds. */
+  itemsError?: string | null;
 }
 
 export interface PortalWorkingRequestLimitState {
@@ -52,6 +54,8 @@ export interface PortalWorkingRequestLimitState {
   exhaustedHelperText: string | null;
   /** True when the Current Request has room below the request limit (false while unknown). */
   canAddPrints: boolean;
+  /** Non-null when item hydration failed and the UI should offer retry instead of spinning. */
+  error: string | null;
 }
 
 function isWorkingPrintCountKnown(hydration: PortalWorkingRequestLimitHydration): boolean {
@@ -59,6 +63,9 @@ function isWorkingPrintCountKnown(hydration: PortalWorkingRequestLimitHydration)
     return false;
   }
   if (hydration.hydratedWorkingRequestId === undefined) {
+    return false;
+  }
+  if (hydration.itemsError) {
     return false;
   }
   return hydration.hydratedWorkingRequestId === hydration.workingRequestId;
@@ -144,6 +151,7 @@ export function usePortalWorkingRequestLimitState(
       exhaustedStatusText,
       exhaustedHelperText,
       canAddPrints,
+      error: hydration.itemsError ?? null,
     };
-  }, [customerShowLimit, firebaseUser, isReady, requestLimit, workingPrintCount]);
+  }, [customerShowLimit, firebaseUser, hydration.itemsError, isReady, requestLimit, workingPrintCount]);
 }

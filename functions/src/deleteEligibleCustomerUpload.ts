@@ -84,7 +84,7 @@ async function deleteStoragePath(path: string): Promise<boolean> {
   }
 }
 
-async function buildPreview(
+export async function buildPreview(
   customerUploadId: string,
   options?: { requireOwnerUid?: string },
 ): Promise<PreviewCustomerUploadDeletionResponse> {
@@ -130,6 +130,9 @@ async function buildPreview(
     printRequestItemCount: itemRefs.size,
     promotedDesignId: data.promotedDesignId,
     promotedDesignReferenceCount: promotedDesignRefs.size,
+    portalCustomerSelfDelete: Boolean(options?.requireOwnerUid),
+    purpose: data.purpose,
+    catalogUseAcknowledged: data.catalogUseAcknowledged,
   });
   const assetManifest = resolveCustomerUploadAssetManifest(data, customerUploadId);
   if (assetManifest.blocker) {
@@ -156,7 +159,7 @@ async function buildPreview(
   };
 }
 
-async function executeEligibleHardDelete(
+export async function executeEligibleHardDelete(
   customerUploadId: string,
   options?: { requireOwnerUid?: string },
 ): Promise<DeleteEligibleCustomerUploadResponse> {

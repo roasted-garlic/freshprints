@@ -10,9 +10,13 @@ import {
   buildAssistedStaffMessageNotificationId,
   buildCustomerNotificationHref,
   buildCustomerNotificationTitle,
+  buildCustomerUploadCatalogPermissionFollowUpNotificationId,
   CUSTOMER_NOTIFICATION_CATALOG_SHARE_BODY,
   CUSTOMER_NOTIFICATION_PROOF_BODY,
   isAssistedBrowserPushOptedIn,
+  isCustomerNotificationPreservedFromHistoryClear,
+  isCustomerNotificationStickyUntilResolved,
+  isCustomerNotificationVisibleInHistory,
   truncateCustomerNotificationBody,
 } from "./customerNotifications";
 
@@ -42,6 +46,61 @@ describe("customerNotifications helpers", () => {
     assert.equal(buildAssistedProofReadyNotificationId("r1", "p1"), "proof_r1_p1");
     assert.equal(buildAssistedCatalogShareReadyNotificationId("r1", "d1"), "catalog_r1_d1");
     assert.equal(buildAssistedStaffMessageNotificationId("r1", 99), "msg_r1_99");
+    assert.equal(
+      buildCustomerUploadCatalogPermissionFollowUpNotificationId("tok"),
+      "customer_upload_permission_tok",
+    );
+  });
+
+  it("keeps permission follow-ups sticky in Alerts and always visible in history", () => {
+    assert.equal(
+      isCustomerNotificationStickyUntilResolved("customer_upload_catalog_permission_follow_up"),
+      true,
+    );
+    assert.equal(isCustomerNotificationStickyUntilResolved("assisted_proof_ready"), false);
+    assert.equal(
+      isCustomerNotificationVisibleInHistory({
+        kind: "customer_upload_catalog_permission_follow_up",
+        readAt: null,
+      }),
+      true,
+    );
+    assert.equal(
+      isCustomerNotificationVisibleInHistory({
+        kind: "assisted_proof_ready",
+        readAt: null,
+      }),
+      false,
+    );
+    assert.equal(
+      isCustomerNotificationVisibleInHistory({
+        kind: "assisted_proof_ready",
+        readAt: new Date(),
+      }),
+      true,
+    );
+    assert.equal(
+      isCustomerNotificationVisibleInHistory({
+        kind: "assisted_proof_ready",
+        readAt: new Date(),
+        clearedFromHistoryAt: new Date(),
+      }),
+      false,
+    );
+    assert.equal(
+      isCustomerNotificationPreservedFromHistoryClear({
+        kind: "customer_upload_catalog_permission_follow_up",
+        readAt: null,
+      }),
+      true,
+    );
+    assert.equal(
+      isCustomerNotificationPreservedFromHistoryClear({
+        kind: "customer_upload_catalog_permission_follow_up",
+        readAt: new Date(),
+      }),
+      false,
+    );
   });
 
   it("uses operational alert titles and fixed proof / catalog bodies", () => {

@@ -1163,6 +1163,64 @@
           "order": "ASCENDING"
         },
         {
+          "fieldPath": "catalogExclusionReason",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "customerUploads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "catalogReviewStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "catalogRetentionStartedAt",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "customerUploads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "catalogExclusionReason",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "catalogRetentionStartedAt",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "customerUploads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "purpose",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "catalogReviewStatus",
+          "order": "ASCENDING"
+        },
+        {
           "fieldPath": "createdAt",
           "order": "DESCENDING"
         }

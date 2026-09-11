@@ -17,6 +17,11 @@ import {
   useAccountArtworkGallery,
   type AccountArtworkGalleryTile,
 } from '../hooks/useAccountArtworkGallery';
+import { useAddCustomerUploadToRequestFlow } from '../hooks/useAddCustomerUploadToRequestFlow';
+import {
+  canCustomerDeleteAccountArtworkTile,
+  getAccountArtworkGalleryPastTab,
+} from '../utils/accountArtworkGalleryTabs';
 import { AccountArtworkDeletionDialog } from './AccountArtworkDeletionDialog';
 import { AccountArtworkGalleryModal } from './AccountArtworkGalleryModal';
 
@@ -95,6 +100,8 @@ export function AccountArtworkGallery({
     reloadWorkingItems,
   });
 
+  const addUploadFlow = useAddCustomerUploadToRequestFlow();
+
   useEffect(() => {
     if (isLoading) {
       return;
@@ -114,6 +121,9 @@ export function AccountArtworkGallery({
   }
 
   function handleDeleteRequest(item: AccountArtworkGalleryTile) {
+    if (!canCustomerDeleteAccountArtworkTile(item)) {
+      return;
+    }
     setStatusMessage(null);
     setPendingDelete(item);
   }
@@ -124,18 +134,18 @@ export function AccountArtworkGallery({
   const content = (
     <>
       <div className="portal-account-gallery-header">
-        <div>
+        <div className="portal-account-gallery-header-copy">
           {embedded ? (
             <h3 className="portal-account-gallery-subtitle">Your designs</h3>
           ) : (
             <h2 className="portal-account-section-title">Your designs</h2>
           )}
           <p className="portal-muted portal-account-gallery-intro">
-            Designs you have submitted for printing or donated to the catalog.
+            Browse personal, uploaded, donated, and library designs.
           </p>
         </div>
         <button
-          className="portal-button portal-button-secondary"
+          className="portal-button portal-button-secondary portal-account-gallery-view-more"
           onClick={() => setIsModalOpen(true)}
           type="button"
         >
@@ -149,45 +159,68 @@ export function AccountArtworkGallery({
         </p>
       ) : null}
 
+      {addUploadFlow.errorMessage ? (
+        <p className="portal-muted portal-account-gallery-status" role="alert">
+          {addUploadFlow.errorMessage}
+        </p>
+      ) : null}
+
       {isLoading ? (
         <p className="portal-muted">Loading your designs…</p>
       ) : errorMessage ? (
         <p className="portal-muted portal-account-gallery-empty">{errorMessage}</p>
       ) : previewItems.length === 0 ? (
         <p className="portal-muted portal-account-gallery-empty">
-          Submitted uploads and donations show up here once processing finishes. In-progress drafts
-          and catalog picks from the library are not listed.
+          Your designs show here after processing. Open View more for all tabs.
         </p>
       ) : (
         <div className="portal-account-gallery-grid">
-          {previewItems.map((item) => (
-            <div className="portal-account-gallery-tile-wrap" key={item.id}>
-              <button
-                className="portal-account-gallery-tile"
-                onClick={() => void openLightbox(item, previewItems)}
-                type="button"
-              >
-                {item.imageUrl ? (
-                  <img
-                    alt=""
-                    className="portal-account-gallery-tile-image"
-                    decoding="async"
-                    src={item.imageUrl}
-                  />
-                ) : null}
-                <span className={`portal-account-gallery-tile-badge is-${item.kind}`}>
-                  {item.kind === 'donation' ? 'Donated' : 'Upload'}
-                </span>
-              </button>
-              <button
-                className="portal-account-gallery-tile-delete"
-                onClick={() => handleDeleteRequest(item)}
-                type="button"
-              >
-                Delete
-              </button>
-            </div>
-          ))}
+          {previewItems.map((item) => {
+            const tab = getAccountArtworkGalleryPastTab(item);
+            const badgeClass =
+              tab === 'personal' ? ' is-personal' : tab === 'donated' ? ' is-donation' : ' is-upload';
+            const badgeLabel =
+              tab === 'personal' ? 'Personal' : tab === 'donated' ? 'Donated' : 'Upload';
+            return (
+              <div className="portal-account-gallery-tile-wrap" key={item.id}>
+                <button
+                  className="portal-account-gallery-tile"
+                  onClick={() => void openLightbox(item, previewItems)}
+                  type="button"
+                >
+                  {item.imageUrl ? (
+                    <img
+                      alt=""
+                      className="portal-account-gallery-tile-image"
+                      decoding="async"
+                      src={item.imageUrl}
+                    />
+                  ) : null}
+                  <span className={`portal-account-gallery-tile-badge${badgeClass}`}>
+                    {badgeLabel}
+                  </span>
+                </button>
+                <div className="portal-account-gallery-tile-actions">
+                  <button
+                    className="portal-account-gallery-tile-add"
+                    onClick={() => addUploadFlow.startAdd(item)}
+                    type="button"
+                  >
+                    Add to request
+                  </button>
+                  {canCustomerDeleteAccountArtworkTile(item) ? (
+                    <button
+                      className="portal-account-gallery-tile-delete"
+                      onClick={() => handleDeleteRequest(item)}
+                      type="button"
+                    >
+                      Delete
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -195,17 +228,20 @@ export function AccountArtworkGallery({
         isOpen={isModalOpen}
         isReusableLoading={isReusableLoading}
         items={items}
+        onAddPast={addUploadFlow.startAdd}
         onClose={() => setIsModalOpen(false)}
         onDeletePast={handleDeleteRequest}
         onSelectPast={(item, filteredPastItems) => {
           void openLightbox(item, filteredPastItems);
         }}
         onSelectReusable={(design) => {
-          setIsModalOpen(false);
           setSelectedDesign(design);
         }}
         reusableDesigns={reusableDesigns}
         reusableErrorMessage={reusableErrorMessage}
+        suppressEscapeClose={
+          selectedDesign !== null || addUploadFlow.isConfirmOpen || addUploadFlow.isPickerOpen
+        }
       />
 
       <AccountArtworkDeletionDialog
@@ -272,6 +308,24 @@ export function AccountArtworkGallery({
         <p className="portal-muted portal-confirm-modal-message">{addDesignFlow.confirmMessage}</p>
       </PortalConfirmModal>
 
+      <PortalConfirmModal
+        confirmLabel={addUploadFlow.isAdding ? 'Adding…' : 'Add to request'}
+        isConfirmLoading={addUploadFlow.isAdding}
+        isOpen={addUploadFlow.isConfirmOpen}
+        onCancel={addUploadFlow.closeConfirm}
+        onConfirm={() => {
+          void addUploadFlow.confirmAdd();
+        }}
+        title="Add to request?"
+      >
+        <p className="portal-muted portal-confirm-modal-message">{addUploadFlow.confirmMessage}</p>
+        {addUploadFlow.errorMessage ? (
+          <p className="portal-muted portal-confirm-modal-message" role="alert">
+            {addUploadFlow.errorMessage}
+          </p>
+        ) : null}
+      </PortalConfirmModal>
+
       <PortalPickContinuableRequestModal
         continuableRequests={addDesignFlow.pickerContinuableRequests}
         designTitle={addDesignFlow.pendingDesign?.title}
@@ -279,6 +333,15 @@ export function AccountArtworkGallery({
         isOpen={addDesignFlow.isPickerOpen}
         onClose={addDesignFlow.closePicker}
         onSelectRequest={addDesignFlow.confirmPickRequest}
+      />
+
+      <PortalPickContinuableRequestModal
+        continuableRequests={addUploadFlow.pickerContinuableRequests}
+        designTitle={addUploadFlow.pendingItem?.title}
+        isAdding={addUploadFlow.isAdding}
+        isOpen={addUploadFlow.isPickerOpen}
+        onClose={addUploadFlow.closePicker}
+        onSelectRequest={addUploadFlow.confirmPickRequest}
       />
     </>
   );

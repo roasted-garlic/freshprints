@@ -4,13 +4,11 @@ import { CUSTOMER_UPLOAD_COLLECTIONS } from "../../packages/shared/src/constants
 import type {
   GetCustomerUploadCatalogPermissionFollowUpResponse,
 } from "../../packages/shared/src/types/customerUpload/customerUploadCatalogPermission.types";
+import { resolveCustomerUploadPermissionPreviewBackgroundHex } from "../../packages/shared/src/utils/customerUploadArtworkBackgroundDetection";
 
-import { adminDb, adminStorage } from "./lib/admin";
+import { adminDb } from "./lib/admin";
 import { invalidArgument, permissionDenied, unauthenticated } from "./lib/errors";
 import { requirePortalCustomer } from "./lib/portalCustomer";
-import { storageObjectPath } from "./lib/storageObjectPath";
-
-const PREVIEW_URL_TTL_MS = 10 * 60 * 1000;
 
 function parseToken(data: unknown): string {
   if (!data || typeof data !== "object") {
@@ -27,6 +25,19 @@ function resolveStatus(value: unknown): GetCustomerUploadCatalogPermissionFollow
   return value === "requested" || value === "approved" || value === "declined" ? value : "not_requested";
 }
 
+function isHalftoneOn(value: unknown): boolean {
+  return Boolean(
+    value &&
+      typeof value === "object" &&
+      (value as { value?: unknown }).value === true,
+  );
+}
+
+/**
+ * Returns follow-up metadata for the Portal modal.
+ * Preview bytes are resolved client-side via Storage rules (owner read) — Admin signed-URL
+ * generation was the main intermittent latency on this path.
+ */
 export const getCustomerUploadCatalogPermissionFollowUp = onCall(
   async (request): Promise<GetCustomerUploadCatalogPermissionFollowUpResponse> => {
     if (!request.auth?.uid) {
@@ -61,31 +72,23 @@ export const getCustomerUploadCatalogPermissionFollowUp = onCall(
       throw permissionDenied("This permission request is not linked to a Print Request.");
     }
 
-    const requestSnap = await adminDb.collection("printRequests").doc(printRequestId).get();
-    const printRequestName =
-      typeof requestSnap.data()?.name === "string" ? requestSnap.data()?.name.trim() : null;
-    const previewPath =
+    const previewStoragePath =
       typeof upload.previewStoragePath === "string" && upload.previewStoragePath.trim()
         ? upload.previewStoragePath.trim()
         : typeof upload.thumbnailStoragePath === "string" && upload.thumbnailStoragePath.trim()
           ? upload.thumbnailStoragePath.trim()
           : null;
 
-    let previewUrl: string | null = null;
-    if (previewPath) {
-      try {
-        const [signedUrl] = await adminStorage.bucket().file(storageObjectPath(previewPath)).getSignedUrl({
-          action: "read",
-          expires: Date.now() + PREVIEW_URL_TTL_MS,
-        });
-        previewUrl = signedUrl ?? null;
-      } catch (error) {
-        console.warn("[getCustomerUploadCatalogPermissionFollowUp] preview signing failed", {
-          uploadId: uploadSnap.id,
-          error,
-        });
-      }
-    }
+    const requestSnap = await adminDb.collection("printRequests").doc(printRequestId).get();
+    const printRequestName =
+      typeof requestSnap.data()?.name === "string" ? requestSnap.data()?.name.trim() : null;
+
+    const previewBackgroundHex = resolveCustomerUploadPermissionPreviewBackgroundHex({
+      artworkBackgroundHex: upload.artworkBackgroundHex,
+      artworkBackgroundSource: upload.artworkBackgroundSource,
+      suggestDarkArtworkBackground: upload.suggestDarkArtworkBackground,
+      halftoneOn: isHalftoneOn(upload.halftoneStaffDecision),
+    });
 
     return {
       status: resolveStatus(upload.catalogPermissionFollowUpStatus),
@@ -93,7 +96,9 @@ export const getCustomerUploadCatalogPermissionFollowUp = onCall(
         typeof upload.originalFilename === "string" && upload.originalFilename.trim()
           ? upload.originalFilename.trim()
           : "Uploaded artwork",
-      previewUrl,
+      previewUrl: null,
+      previewStoragePath,
+      previewBackgroundHex,
       printRequestName,
       printRequestId,
     };

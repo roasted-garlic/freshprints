@@ -23,7 +23,6 @@ import type { CurrentRequestAggregates } from '@fresh-prints/shared/utils/curren
 import {
   filterLegacyContinuablePrintRequests,
   filterPortalEditableContinuablePrintRequests,
-  selectPortalWorkingPrintRequest,
 } from '@fresh-prints/shared/utils/portalPrintRequestEditability';
 import {
   selectPortalActiveEditablePrintRequest,
@@ -247,6 +246,7 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
     uploadSummaries,
     aggregates,
     isLoadingItems,
+    itemsError,
     hydratedWorkingRequestId,
     beginPendingItemRemovals,
     discardPendingWorkingItemLoads,
@@ -263,6 +263,7 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
     isItemsLoading: isLoadingItems,
     workingRequestId: workingRequest?.id ?? null,
     hydratedWorkingRequestId,
+    itemsError,
   });
 
   const resetWorkingCart = useCallback(() => {
