@@ -1303,11 +1303,14 @@ Standard Print Request item sizing rules:
 Standard Print Request item detail edits autosave for quantity and requested size. New items may
 store `sortOrder` for stable display ordering, but existing items without `sortOrder` remain
 visible. Runtime reads stay request-scoped by `printRequestId` and sort client-side by `sortOrder`
-when present, then `createdAt`, then document ID. **Studio** uses ascending order. **Portal**
-Current Request detail and cart use newest-first (`sortPrintRequestItemsNewestFirst`) so last-added
-appears first; persisted `sortOrder` values still append on create. Portal **Duplicate** inserts
-visually to the **right** of the source under newest-first via `resolveDuplicateInsertBeforeSortOrder`
-(lower fractional `sortOrder`); Studio duplicate uses insert-after with ascending display.
+when present, then `createdAt`, then document ID. **Studio** and **Portal** request design grids
+both use newest-first (`sortPrintRequestItemsNewestFirst`) so last-added appears first
+left-to-right / top-to-bottom. Portal list/subscribe paths also sort newest-first at the service
+boundary. Persisted `sortOrder` values still append on create for catalog adds, customer-upload
+attaches, and assisted proof ingest. Rows missing `sortOrder` interleave by `createdAt` (they are
+not forced to one end). **Duplicate** inserts visually to the **right** of the source under
+newest-first via `resolveDuplicateInsertBeforeSortOrder` (lower fractional `sortOrder`).
+Show-reconciliation / production nest paths may still use ascending chronological order.
 Resize/qty/size edits must not change `sortOrder` or `createdAt`. Do not add a Firestore
 `sortOrder` index unless a future implementation moves ordering server-side.
 
@@ -1569,7 +1572,14 @@ One **open** request per customer (`submitted` | `in_progress` | `proof_ready` |
 
 Per-staff unread customer-update markers live in `assistedCreationUpdateAcks/{userId__requestId}` with `readThroughAt` (legacy submitted updates plus `kind: "customer_message"` in any status when `at > readThroughAt`). Studio header **Messages** inbox (alerts-style) lists unread previews and deep-links to Custom Designs → Assisted → Messages; opening a row advances `readThroughAt` for that entry. Stage-tab and list-card unread chips were removed in favor of the inbox. Studio detail tabs: **Overview** (brief + **Request details** listing every non-empty `AssistedCreationAnswers` field via shared `buildAssistedCreationAnswerDisplayRows` — including subject extras, exact-wording notes/checkboxes when applicable, and reference usage — plus references with unavailable placeholders when Storage URLs fail + **Internal staff notes** with Save notes + primary Staff actions when Start work / Resume apply + Reject (submitted/New only)/Cancel/Restore in status-row ⋯ + **AI Context** copy-only modal; when status is `cancelled` and `customerCancelReason` is set, show **Customer cancel reason** under the status header) + **Proofs** (list + proof upload when `in_progress` + **Upload Final Artwork** when `final_source_needed`), **Messages** (capped thread + Send a message compose only). Studio stage tabs: New → In progress → Revisions → Proof ready → **Final Source Needed** → Completed. Start Work / Resume follow-navigate to the In progress tab with the same request selected. In **Messages**, each unread customer row shows a **Read** control; clicking it advances `readThroughAt` to that entry’s `at` (monotonic). The Messages header keeps a count badge only. **Requires deployed Firestore rules** for this collection on the target project (`firebase deploy --only firestore:rules --project fresh-prints-dev`); until then Studio shows a toast on mark-read permission failures.
 
-Customer-facing in-app alerts live in `customerNotifications/{id}` (Admin SDK writes on proof attach, catalog-share suggest, and staff Messages; customer may set `readAt` only). Kinds include `assisted_proof_ready`, `assisted_catalog_share_ready`, and `assisted_staff_message`. Optional browser push tokens live in `customers/{customerId}/webPushSubscriptions/{id}` (callable `registerWebPushSubscription`). Preference `assistedBrowserPushOptIn` (default on) is separate from `assistedProofEmailOptIn`. Final-ready push/email is **out of scope** for ADR-FP-110 (Portal list refresh is sufficient).
+Customer-facing in-app alerts live in `customerNotifications/{id}` (Admin SDK writes on proof attach, catalog-share suggest, and staff Messages; customer may set `readAt` only). Kinds include `assisted_proof_ready`, `assisted_catalog_share_ready`, `assisted_staff_message`, and `customer_upload_catalog_permission_follow_up`. Portal Alerts keep a live `customerNotifications` listener and also refetch from the server on foreground FCM, tab focus/visibility, and browser `online`, so the bell unread count updates without a page reload. Optional browser push tokens live in `customers/{customerId}/webPushSubscriptions/{id}` (callable `registerWebPushSubscription`). Preference `assistedBrowserPushOptIn` (default on) is separate from `assistedProofEmailOptIn`. Final-ready push/email is **out of scope** for ADR-FP-110 (Portal list refresh is sufficient).
+
+Portal print-request item grids (Current Request detail + drawer) and Studio Print Request design
+grids display **newest-added first** left-to-right / top-to-bottom via
+`sortPrintRequestItemsNewestFirst`. New catalog and customer-upload attaches persist ascending
+`sortOrder`; Portal list/subscribe paths sort newest-first at the service boundary so live
+`updatedAt` query order cannot leak into the UI. Uploads/legacy rows without `sortOrder` stay
+chronological by `createdAt` (not forced to the front).
 
 ---
 
