@@ -49,6 +49,17 @@ Guest note: Our Shows + Design Library browse are public; Add to Request / mutat
 Signed-in customers may edit **display name** and **username** in Account Settings → Profile (30-day username cooldown; DEV 2026-08-27). Username/display-name propagation updates snapshot fields on related records but **does not** change `printRequests.name`, `requestOrigin`, `isInternal`, or `customerId` (WS1 DEV 2026-08-28).
 ```
 
+### Portal maintenance mode (DEV)
+
+Owner/admin Studio Settings controls the private `settings/portalMaintenance` state. The saved
+heading/body is returned through `getPortalMaintenanceState` and rendered by Portal at runtime;
+an absent or OFF state preserves normal customer behavior. While ON, ordinary customers receive a
+full-screen read-only experience, while one trusted active linked customer may receive normal
+access plus a yellow testing banner. `listPortalMaintenanceTestCustomers` returns only active,
+linked, non-guest, non-deleted, non-disabled, non-merged customer options; the shared backend guard
+revalidates the tester before every covered customer mutation. Direct client setting writes remain
+denied, and owner/admin control stays callable-only.
+
 ### Portal Print Request editability (WS1 DEV — 2026-08-28)
 
 ADR-FP-071 still enforces **one working request per Portal customer**, but only among **Portal-editable** continuable requests:

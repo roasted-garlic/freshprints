@@ -4,28 +4,102 @@
 
 ## Current state
 
+FreshForge is at **M0 PREPARATION BLOCKED** for the accepted Strategy B
+`coordinated-production-promotion-release-readiness` candidate. The hard-delete child and the
+read-only runtime reconciliation are complete at the dirty snapshot; next checkpoint:
+`[OWNER AUTHORIZE REVIEWED COMMIT/PUSH → CLEAN SHA → REGENERATE MANIFESTS → OWNER M1 FREEZE DECISION]`.
+
+### Active goal — coordinated production promotion and release readiness (M0 preparation)
+
+- Parent Plan: `docs/workflow/plans/2026-09-10-coordinated-production-promotion-release-readiness-plan.md` —
+  Strategy B amendment accepted.
+- Parent Formal Review: `docs/workflow/reviews/2026-09-10-coordinated-production-promotion-release-readiness-review.md` —
+  **approved_with_changes; accepted**.
+- Closed child goal: `production-maintenance-mode-prerequisite-production-promotion` —
+  `superseded_by_coordinated_candidate` (no standalone production deployment).
+- M0 preparation report: `docs/workflow/reviews/2026-09-10-coordinated-production-candidate-preparation.md`
+  (rerun complete). Authoritative reconciliation packet:
+  `docs/workflow/reviews/2026-09-10-coordinated-production-m0-reconciliation.md`.
+- Hard-delete child Plan/Review:
+  `docs/workflow/plans/2026-09-10-studio-hard-delete-production-ui-gate-plan.md` and
+  `docs/workflow/reviews/2026-09-10-studio-hard-delete-production-ui-gate-review.md` —
+  **approved_with_changes; owner accepted**. Child Signoff:
+  `docs/workflow/reviews/2026-09-10-studio-hard-delete-production-ui-gate-signoff.md` —
+  **approved_with_notes**.
+- Read-only evidence: `development`/`HEAD`/`origin/development` = `b5aec1b2b1ac4eba5ab704f1db8f87ea22f1daaa`,
+  `origin/production` = `36165096f09bef6817adb5b11d496dbb1502b`; 59 tracked + 56 untracked working-tree
+  status entries (115 total); 1,877 committed paths differ from production; maintenance runtime is
+  not one immutable SHA.
+- Production baseline: 113 ACTIVE Functions, no maintenance callables, absent
+  `settings/portalMaintenance` (safe OFF), Portal build-003 at 100% traffic, Studio stable `v1.0.9`.
+- Isolation result: current Functions files, whole-file Firestore/Storage Rules, App Hosting, and
+  Studio packaging all include or expose accumulated development work; no file/component selective
+  production release mechanism was found. The owner rejected Strategy A and selected Strategy B:
+  maintenance is the first compatible safety layer of the full frozen candidate.
+- M0 inventory retains all user work: 100 entries before the preparation report and 115 current status
+  entries after child/test/signoff and read-only reconciliation continuation. The shared Studio customer directory now gates
+  `Delete Account Permanently` with the existing DEV-only project/build helper. The inherited
+  request-design parity Plan is explicitly excluded pending separate review, and the Portal admin
+  signoff is explicitly included as approved-with-notes evidence for the scoped read-only runtime.
+- Exact M1 proposal: `docs/workflow/reviews/2026-09-10-coordinated-production-candidate-freeze-proposal.md`.
+  It is prepared only; no candidate SHA, freeze, commit, push, or production action exists. The
+  Function closure, Rules, index union, Portal/Studio input, and config/data manifests are linked
+  from the M0 packet and must be regenerated at the clean SHA.
+- The parent sequence freezes one SHA, captures immutable rollback baselines, runs RC gates, deploys
+  indexes → Rules → explicit Function closure, rolls out Portal → coordinated Studio, reaches
+  `FULL MAINTENANCE CAPABILITY READY` while absent/OFF, and places any ON transition and safe-write
+  proof behind a separate owner checkpoint. No candidate SHA, branch, commit, merge, deploy,
+  publish, setting mutation or production action has occurred.
+
 - Most recently closed polish: `studio-show-queue-internal-sheet-dollar-totals` — **approved**
   (owner visual QA **PASS** 2026-09-10); committed/pushed to `origin/development`.
-- Next managed goal: `production-maintenance-mode-prerequisite` — Formal Review complete with
-  verdict **approved_with_changes**. Awaiting owner acceptance, then `Continue FreshForge` for
-  Implement. Prior closed goal
+- Most recently closed managed goal: `production-maintenance-mode-prerequisite` — corrective
+  amendment Plan and Formal Review were approved_with_changes, Implement/Test and the exact narrow
+  DEV redeployment completed, and Owner DEV QA returned **PASS**. The shared Portal/Studio copy
+  contract, native Studio Settings controls, and trusted tester eligibility are now live in DEV.
+  Production and the parent coordinated rollout remain separately gated. Prior closed goal
   `user-info-print-request-lifecycle-activity-ordering` — final disposition
   **approved_with_notes**.
-- Authoritative amended Plan:
-  `docs/workflow/plans/2026-09-10-coordinated-production-promotion-release-readiness-plan.md`;
+- Authoritative corrective amendment Plan:
+  `docs/workflow/plans/2026-09-10-production-maintenance-mode-prerequisite-corrective-amendment-plan.md`;
   Formal Review:
-  `docs/workflow/reviews/2026-09-10-coordinated-production-promotion-release-readiness-review.md`.
-  This is review-complete but not implementation-authorized: production, DEV mutations,
-  maintenance implementation, candidate freeze, rehearsal applies, Portal rollout, Studio
-  publish, settings/secret/Auth changes, Function deletion, merge, commit, and push remain
-  forbidden until the owner accepts the amendments and FreshForge advances the next gate.
-- Maintenance prerequisite artifacts are complete: Plan
+  `docs/workflow/reviews/2026-09-10-production-maintenance-mode-prerequisite-corrective-amendment-review.md`.
+  The corrective design adds a shared optional heading beside the existing message, makes Portal
+  render saved copy at runtime, reuses native Studio Settings primitives, and uses an owner/admin-only
+  candidate-list callable backed by one trusted eligibility helper. Merged, disabled, deleted,
+  guest, orphaned, and inactive-user accounts are excluded from ordinary tester options. Corrective
+  implementation, automated Test, narrow DEV redeployment, and Owner DEV QA are complete. Signoff:
+  `docs/workflow/reviews/2026-09-10-production-maintenance-mode-prerequisite-corrective-amendment-signoff.md`.
+- Prior authoritative amended Plan:
+  `docs/workflow/plans/2026-09-10-production-maintenance-mode-prerequisite-amendment-plan.md`;
+  Formal Review:
+  `docs/workflow/reviews/2026-09-10-production-maintenance-mode-prerequisite-amendment-review.md`.
+  The parent remains in M0 preparation after review acceptance: production, candidate freeze,
+  rehearsal applies, Portal rollout, Studio publish, settings/secret/Auth changes, Function deletion,
+  merge, commit, and push remain forbidden until their explicit checkpoints. The separately accepted maintenance
+  prerequisite is now closed in DEV; prior implementation, automated Test, and DEV
+  dependency deployment (two maintenance callables plus 34 guard-bearing customer callable
+  revisions) are complete. Amendment Implement/Test and narrow dependency deployment are also
+  complete. Corrective Test, narrow DEV deployment, and Owner DEV-QA are complete. Amendment Test report:
+  `docs/workflow/reviews/2026-09-10-production-maintenance-mode-prerequisite-amendment-test-report.md`.
+  Amendment Implementation Review:
+  `docs/workflow/reviews/2026-09-10-production-maintenance-mode-prerequisite-amendment-implementation-review.md`.
+  Amendment DEV deployment evidence:
+  `docs/workflow/reviews/2026-09-10-production-maintenance-mode-prerequisite-amendment-dev-deployment.md`.
+- Maintenance prerequisite original artifacts are complete: Plan
   `docs/workflow/plans/2026-09-10-production-maintenance-mode-prerequisite-plan.md` and Formal
   Review `docs/workflow/reviews/2026-09-10-production-maintenance-mode-prerequisite-review.md`.
-  Owner acceptance followed by `Continue FreshForge` enters its separately
-  gated Implement phase, then test/DEV-QA it before returning to the main candidate.
+  Amendment artifacts are:
+  `docs/workflow/plans/2026-09-10-production-maintenance-mode-prerequisite-amendment-plan.md`
+  and `docs/workflow/reviews/2026-09-10-production-maintenance-mode-prerequisite-amendment-review.md`.
+  Corrective amendment artifacts are the dated `...corrective-amendment-plan.md`,
+  `...corrective-amendment-review.md`, `...corrective-amendment-implementation-review.md`,
+  `...corrective-amendment-test-report.md`, `...corrective-amendment-dev-deployment.md`,
+  `...corrective-amendment-dev-qa.md`, and `...corrective-amendment-signoff.md`.
+  Corrective Implement/Test, narrow DEV redeployment, Owner DEV QA, and Signoff are complete.
 - Owner-authorized commit/push is complete as `6bf7a25d` on `origin/development`; no force push
-  occurred. Production, Studio publish, and Portal deployment remain separately gated.
+  occurred. The maintenance corrective remains uncommitted/unpushed by owner choice. Production,
+  Studio publish, and Portal deployment remain separately gated.
 - Corrective Plan + Formal Review are complete with verdict **approved_with_changes**, and the
   owner-authorized Approach A implementation is deployed to DEV. Owner DEV re-QA returned **PASS**:
   remove→Editing→re-add succeeded without permissions errors, partial queue, or stuck Editing, and

@@ -17,6 +17,7 @@ import {
   unauthenticated,
 } from "./lib/errors";
 import { requireCatalogDonationUploader } from "./lib/catalogDonationUploader";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 
 function mapHttpsError(error: unknown): never {
   if (error instanceof HttpsError) {
@@ -39,6 +40,7 @@ export const confirmCustomerUploadsForDonation = onCall(
         uid: request.auth.uid,
         token: request.auth.token,
       });
+      await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
       const payload = validateConfirmCustomerUploadsForDonationRequest(request.data);
       const customerUid = uploader.customerUid;
 

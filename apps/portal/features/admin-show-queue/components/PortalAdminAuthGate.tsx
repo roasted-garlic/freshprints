@@ -9,7 +9,7 @@ import { buildPortalAuthHref } from '../../auth/utils/portalReturnUrl';
 
 export function PortalAdminAuthGate({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const { bootstrapStatus, error, isInitialBootstrap, isAuthenticated, logout } = useAuth();
+  const { bootstrapStatus, isInitialBootstrap, isAuthenticated, logout } = useAuth();
 
   useEffect(() => {
     if (isInitialBootstrap || bootstrapStatus === 'loading-profile' || bootstrapStatus === 'initializing') {
@@ -34,14 +34,16 @@ export function PortalAdminAuthGate({ children }: { children: ReactNode }) {
 
   return (
     <main className="portal-admin-state" role="alert">
-      <p className="portal-eyebrow">{PORTAL_APP_NAME}</p>
-      <h1>Access denied</h1>
-      <p className="portal-lead">
-        {error ?? 'Only active Fresh Prints owners and admins can view the Show Queue.'}
-      </p>
-      <button className="portal-button portal-button-secondary" onClick={() => void logout()} type="button">
-        Sign out
-      </button>
+      <div className="portal-admin-state-card">
+        <p className="portal-eyebrow">{PORTAL_APP_NAME}</p>
+        <h1>Access denied</h1>
+        <p className="portal-lead">
+          You don’t have permission to view the Show Queue. If you need access, contact a Fresh Prints administrator.
+        </p>
+        <button className="portal-button portal-button-secondary" onClick={() => void logout()} type="button">
+          Sign out
+        </button>
+      </div>
     </main>
   );
 }

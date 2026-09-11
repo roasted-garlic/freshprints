@@ -45,6 +45,7 @@ import {
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
 import { isAnonymousAuthToken } from "./lib/catalogDonationUploader";
 import { requirePortalCustomer } from "./lib/portalCustomer";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 import { resolveCustomerUploadPurpose } from "../../packages/shared/src/utils/customerUploadPurpose";
 import { applyCustomerUploadArtworkBackgroundDetectionToReadyPatch } from "../../packages/shared/src/utils/customerUploadArtworkBackgroundDetection";
 
@@ -84,6 +85,7 @@ export const finalizeCustomerUploadZip = onCall(
       throw permissionDenied("Guest donations support image uploads only. Sign in to upload a ZIP.");
     }
     const portalCustomer = await requirePortalCustomer(request.auth.uid);
+    await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
     const customerUid = request.auth.uid;
     const batchRef = adminDb
       .collection(CUSTOMER_UPLOAD_COLLECTIONS.customerUploadBatches)

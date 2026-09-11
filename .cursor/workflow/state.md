@@ -2,28 +2,48 @@
 
 | Field | Value |
 |---|---|
-| Status | **PAUSED — PRODUCTION MAINTENANCE MODE PREREQUISITE — OWNER REQUESTED PAUSE** |
+| Status | **M0 PREPARATION BLOCKED — CLEAN CANDIDATE AND IMMUTABLE MANIFESTS** |
 | DONE | no |
-| Signoff Status | pending — awaiting the single owner DEV-QA journey |
+| Signoff Status | child `studio-hard-delete-production-ui-gate` **approved_with_notes**; parent candidate Signoff pending |
 | Current Mode | managed-phase |
 | Parent program | Coordinated production promotion and release readiness |
-| Current Goal | `production-maintenance-mode-prerequisite` |
-| Current Phase | DEV QA checkpoint — paused at owner request after approved DEV dependency deployment |
-| Plan Status | complete — reviewed and owner-accepted |
-| Review Status | complete — `approved_with_changes` |
-| Implementation Status | complete — reviewed maintenance capability implemented in DEV source |
-| Test Status | complete — targeted contracts, Portal typecheck, Functions build, ESLint, and full Rules suite pass; Studio repo-wide typecheck and Portal production build retain documented baseline/environment blockers |
-| Human Checkpoint Required | yes — owner DEV QA only; production remains separately blocked |
-| Human Checkpoint Reason | Owner requested a pause before DEV QA. No further implementation, deployment, QA, signoff, commit/push, activation, or parent rollout is authorized until the owner resumes. |
-| Environment | Reviewed maintenance dependencies deployed to `fresh-prints-dev`; owner DEV QA only; `fresh-prints-prod` mutations forbidden |
+| Current Goal | `coordinated-production-promotion-release-readiness` |
+| Current Phase | Implementation preparation — M0 remaining blockers |
+| Plan Status | accepted — Strategy B amendment in `2026-09-10-coordinated-production-promotion-release-readiness-plan.md` |
+| Review Status | parent **approved_with_changes — accepted**; child hard-delete review **approved_with_changes — accepted** |
+| Implementation Status | child UI gate complete; parent candidate implementation/freeze not started |
+| Test Status | child focused contracts 12/12, lint/build pass; Studio typecheck has documented unrelated baseline; parent M3 RC not started |
+| Human Checkpoint Required | **yes** |
+| Human Checkpoint Reason | Owner must authorize the reviewed candidate commit/push, then approve the regenerated clean candidate and exact M1 freeze proposal; production actions remain separately gated. |
+| Blocked | **yes** — clean committed candidate and immutable regenerated manifests remain unresolved before M1 freeze |
+| Environment | DEV prerequisite remains signed off; `fresh-prints-prod` remains untouched and forbidden |
 | Production | untouched |
-| Commit/push | Studio print-time estimate polish: owner PASS; commit/push authorized for this polish only; maintenance still paused |
+| Commit/push | No new commit/push/branch/merge/PR authorized for this goal; print-time polish already pushed |
 | Last updated | 2026-09-10 |
-| Last Completed Step | Studio print-time estimate owner visual QA PASS; signoff approved; commit/push of polish only |
-| Next Required Step | Maintenance remains paused until owner resume; then single DEV-QA journey |
+| Last Completed Step | Hard-delete UI child Implement → Test → Signoff; M0 runtime closure/manifests and inherited-document dispositions |
+| Next Required Step | **Owner authorize reviewed commit/push; produce a clean candidate, regenerate manifests, then present the exact M1 freeze proposal for owner approval** |
 | Parallel polish | Show Queue / Internal Sheet print-time estimate — **approved** (PASS + commit/push) |
 
 **Decision Log:**
+
+- 2026-09-10 — Owner DEV QA: maintenance tester logout still showed full-screen maintenance.
+  Fix: `AuthProvider.logout` always `router.replace('/login')`; confirm copy updated; login
+  “Browse designs” hidden while maintenance ON/unknown; maintenance state refreshes on auth
+  identity change. Awaiting re-check.
+
+- 2026-09-10 — Owner DEV-QA corrective feedback and clarification received: Studio/Portal customer
+  copy must share one source of truth; Studio maintenance controls must use native Settings
+  primitives; merged and disabled accounts must not appear as maintenance testers. Read-only source
+  and DEV data tracing proved the copy divergence and identified the selected Chris hawkins merged
+  source with an inactive linked user. Corrective Plan Amendment and Formal Review are complete with
+  verdict `approved_with_changes`; no implementation, deployment, setting mutation, Owner QA,
+  Signoff, commit, push, or production action occurred. Owner acceptance is required.
+
+- 2026-09-10 — Owner explicitly accepted the corrective amendment and authorized `Continue
+  FreshForge` into Implement. Scope is limited to the shared heading/body copy contract, native
+  Studio Settings primitives, trusted maintenance tester eligibility/candidate list, focused tests,
+  and narrow DEV redeployment. Production, parent rollout, candidate freeze, unrelated work,
+  settings mutation, commit/push, and Signoff remain forbidden.
 
 - 2026-09-10 — Owner visual QA **PASS** for Est. print time (label band + ceil inches + ft
   parentheses; status-row placement). Authorized commit/push of print-time polish only.
@@ -72,16 +92,122 @@
   paused after DEV dependency deployment and before Owner DEV QA; no further QA, deployment,
   signoff, commit/push, production activation, or parent rollout is authorized until resumed.
 
-**Allowed Actions:** None beyond preserving the paused state; resume only on an explicit owner
-instruction. After resume, the single owner DEV-QA journey and workflow-artifact updates needed to
-record it are allowed. Production, parent-rollout, candidate-freeze, unrelated polish, and
-unapproved deployment/settings mutations remain separately gated.
+- 2026-09-10 — Owner resumed `Continue FreshForge` with DEV-QA feedback requiring an amendment
+  before Signoff: centered admin Access Denied polish, full-screen customer maintenance UX, and
+  one trusted maintenance-test customer. Plan Amendment and Formal Review are complete with no
+  app/source/runtime changes; owner acceptance is required before Implement. Production remains
+  untouched and forbidden.
 
-**Forbidden Actions:** Any further QA, implementation, DEV deployment or settings mutation,
-production Functions/Rules/Storage/Hosting deploy or settings mutation; production maintenance
-activation; parent coordinated-release implementation/freeze; unrelated refactors; destructive data
-changes; commit/push; force push.
+- 2026-09-10 — Owner accepted the amended Plan and explicitly authorized `Continue FreshForge`
+  into Implement. Implement is DEV-only and limited to the reviewed tester exception, full-screen
+  customer maintenance replacement/banner, and Admin Show Queue denial polish. Test and narrow
+  dependency deployment remain required before Owner DEV QA; production remains forbidden.
+
+- 2026-09-10 — Amendment Implement and Test completed. Targeted shared/Functions/Portal/Admin
+  contracts passed 16/16; the paired Firestore/Storage Rules regression passed 182/182; Portal
+  typecheck, Functions build, changed-source lint, and `git diff --check` passed. Studio retains
+  25 unrelated baseline typecheck diagnostics; Portal production build retains the existing
+  Windows `.next/trace` EPERM condition. After the Test gate, exactly 36 named DEV Functions were
+  deployed and verified ACTIVE, followed by Firestore and Storage Rules only. The live DEV
+  maintenance document is owner-controlled and currently ON with no tester; it was not changed.
+  Amendment implementation, Test, and DEV deployment evidence are recorded in the three dated
+  amendment review artifacts. Owner DEV QA is now the only next action; Signoff and production
+  remain forbidden.
+
+- 2026-09-10 — Trusted resolver integration caught a Firestore API misuse when clearing optional
+  fields (`FieldValue.delete()` in non-merge `set()`). The write path now uses replacement
+  semantics, integration validation passes 2/2 (including invalid/inactive/deleted/disabled target
+  rejection and immediate clear), and only `updatePortalMaintenanceState` was explicitly
+  redeployed to DEV as revision `updateportalmaintenancestate-00003-zaf` (ACTIVE). No Rules or
+  other Function changed in this follow-up.
+
+- 2026-09-10 — Corrective Implement/Test completed and the reviewed exact 37-Function allowlist
+  was deployed to `fresh-prints-dev`; `firebase functions:list` verified 37/37 present and ACTIVE.
+  Key maintenance revisions are `getportalmaintenancestate-00003-kil`,
+  `updateportalmaintenancestate-00004-qub`, and `listportalmaintenancetestcustomers-00001-tez`.
+  No Rules/indexes/hosting or production action occurred. The live maintenance document remains
+  owner-controlled and present/ON; the public callable returned the safe ON projection without a
+  UID, and the unauthenticated candidate-list endpoint returned 401. Owner DEV QA is now the only
+  next action; Signoff, commit/push, and production remain forbidden.
+
+- 2026-09-10 — Owner reported final corrective DEV QA **PASS**: Studio styling and separate copy
+  fields, runtime saved-copy convergence, merged/disabled exclusion, valid active tester, ordinary
+  customer full-screen maintenance, tester banner and safe mutation, admin Show Queue access and
+  centered denial, and OFF recovery all passed. Signoff is now **approved_with_notes**. The
+  prerequisite is closed in DEV; production deployment/activation, parent rollout, publish,
+  commit, and push remain separately gated.
+
+- 2026-09-10 — New managed goal `production-maintenance-mode-prerequisite-production-promotion`
+  started. Read-only reconciliation found no immutable maintenance-only revision: 56 tracked and
+  40 untracked working-tree entries, 1,877 committed paths versus `origin/production`, 28 modified
+  guard-bearing source files (18 with nontrivial unrelated deltas), whole-file Rules drift, and no
+  selective Portal App Hosting or Studio publication mechanism. Production has 113 ACTIVE Functions,
+  no maintenance callables, absent `settings/portalMaintenance` (safe OFF), Portal build-003, and
+  Studio v1.0.9. Plan and Formal Review are complete; verdict **blocked** pending owner selection of
+  Strategy A (explicit production-based patch exception) or Strategy B (maintenance as first layer
+  of the full coordinated candidate). No implementation, branch, commit, merge, deploy, publish,
+   setting mutation, or production action occurred.
+
+- 2026-09-10 — Owner selected Strategy B for `production-maintenance-mode-prerequisite-production-
+  promotion`: no production-based hotfix branch/worktree and no standalone maintenance-only
+  release. The signed-off DEV maintenance capability is now a required first safety layer of the
+  full frozen `coordinated-production-promotion-release-readiness` candidate. Parent Plan and
+  Formal Review were amended with the reconciled Rules/Functions/Portal/Studio sequence,
+  `FULL MAINTENANCE CAPABILITY READY` OFF checkpoint, separate ON checkpoint, source-integrity and
+  rollback requirements, and the safe-write fixture proposal. Formal Review is
+  `approved_with_changes`; owner acceptance was then recorded. No implementation, candidate freeze,
+  commit, push, merge, deploy, publish, setting mutation, maintenance activation, or production
+  action occurred. The child goal was closed as `superseded_by_coordinated_candidate`; this does
+  not represent a production deployment.
+
+ - 2026-09-10 — Owner accepted the Strategy B parent Plan/ Formal Review. The child maintenance-
+  promotion goal is closed as `superseded_by_coordinated_candidate` (not a production deployment).
+  M0 preparation mechanically inventoried 100 pre-report
+  working-tree entries (101 after this documentation report), preserved all user work, and found
+  the current Studio customer-directory hard-delete action remains production-visible. A narrow
+  child Plan/Review for reusing the existing DEV-only project/build gate was prepared with verdict
+  `approved_with_changes`; owner acceptance is required before Implement → Test. Inherited request-
+  design parity and Portal admin signoff documents remain explicitly unresolved for freeze
+  disposition. No runtime implementation, candidate freeze, commit, push, merge, deploy, publish,
+ setting mutation, maintenance activation or production action occurred.
+
+- 2026-09-10 — Owner accepted the hard-delete child Plan/Review and authorized Implement → Test.
+  `CustomerDirectoryTable` now gates the hard-delete menu/callback with
+  `isOperationalWipeUiEnabled()`. Focused users/identity contracts passed 12/12; targeted ESLint,
+  Studio Vite build, and `git diff --check` passed. Studio repo typecheck retains the documented
+  unrelated baseline diagnostics. The DEV source still retains both hard-delete exports, while the
+  parent production allowlist excludes both. Child Signoff is `approved_with_notes` and recorded
+  at `docs/workflow/reviews/2026-09-10-studio-hard-delete-production-ui-gate-signoff.md`.
+  No customer mutation, deploy, publish, freeze, commit, push, or production action occurred.
+
+- 2026-09-10 — Parent M0 rerun completed after child closure. The request-design parity Plan is
+  explicitly excluded for separate review; the Portal admin Show Queue signoff is explicitly
+  included as approved-with-notes evidence for the scoped read-only admin runtime. The exact M1
+  candidate-freeze proposal is prepared, but runtime transitive closure and a clean committed
+  candidate are still required before owner freeze approval.
+
+- 2026-09-10 — Read-only M0 runtime reconciliation completed at the dirty snapshot. Deterministic
+  Function closure covers 170 current exports/120 production exports and 509 local closure paths
+  (hash `a045c0514e855a08469cffadb81b487d4f5fbfb15e5757a9a588f5b8a3720a90`), with both hard-delete
+  exports explicitly `EXCLUDE`. Whole-file Rules hashes, the 77+10 index union (legacy index
+  restored), Portal/Studio build-input manifests, and config/data dispositions are recorded in
+  `docs/workflow/reviews/2026-09-10-coordinated-production-m0-reconciliation.md` and its linked
+  artifacts. The worktree is now 115 status entries (59 tracked/56 untracked); no commit, push,
+  freeze, deploy, publish, setting mutation, or production action occurred. Owner authorization is
+  required before staging only the reviewed path set, creating/pushing one clean development SHA,
+  and regenerating the manifests at that SHA.
+
+**Allowed Actions:** Read-only source/release inspection, runtime scope/closure reconciliation,
+documentation-only updates, and preparation of the exact M1 freeze packet are allowed. Owner may
+review the M1 proposal and later approve or reject a clean candidate SHA. Production, parent-rollout,
+candidate-freeze execution, unrelated polish, and unapproved settings mutations remain separately
+gated.
+
+**Forbidden Actions:** Creating branches/worktrees for the rejected Strategy A exception; production
+Functions/Rules/Storage/Hosting deploy or setting mutation; production maintenance activation; Owner
+QA on the owner's behalf; parent coordinated-release freeze; unrelated refactors; destructive data
+changes; unapproved DEV setting mutation; commit/push/merge/PR; force push.
 
 ## Next Required Step
 
-`[PAUSED BY OWNER — DEV DEPENDENCIES DEPLOYED; DO NOT CONTINUE UNTIL RESUMED]`
+`[BLOCKED — M0 ARTIFACTS READY; OWNER AUTHORIZE REVIEWED COMMIT/PUSH, THEN CLEAN SHA + REGENERATED MANIFESTS BEFORE M1 FREEZE CHECKPOINT]`

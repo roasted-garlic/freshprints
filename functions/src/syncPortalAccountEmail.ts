@@ -9,6 +9,7 @@ import {
   normalizePortalAccountEmail,
 } from "./lib/portalAccountSettingsValidation";
 import { requirePortalCustomer } from "./lib/portalCustomer";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 
 function mapHttpsError(error: unknown): never {
   if (error instanceof HttpsError) {
@@ -58,6 +59,7 @@ export const syncPortalAccountEmail = onCall(
 
     try {
       const portalCustomer = await requirePortalCustomer(request.auth.uid);
+      await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
       const authUser = await adminAuth.getUser(request.auth.uid);
       const email = normalizePortalAccountEmail(authUser.email ?? "");
 

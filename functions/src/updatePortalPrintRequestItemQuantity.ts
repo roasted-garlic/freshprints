@@ -14,6 +14,7 @@ import {
 } from "./lib/errors";
 import { loadEffectivePrintRequestLimitsForCustomer } from "./lib/loadEffectivePrintRequestLimits";
 import { requirePortalCustomer } from "./lib/portalCustomer";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 import { assertPortalActiveEditableRequestData } from "./lib/portalContinuableParking";
 
 export interface UpdatePortalPrintRequestItemQuantityRequest {
@@ -51,6 +52,7 @@ export const updatePortalPrintRequestItemQuantity = onCall(
 
     try {
       const portalCustomer = await requirePortalCustomer(request.auth.uid);
+      await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
       const data = request.data as UpdatePortalPrintRequestItemQuantityRequest;
       const printRequestId =
         typeof data?.printRequestId === "string" ? data.printRequestId.trim() : "";

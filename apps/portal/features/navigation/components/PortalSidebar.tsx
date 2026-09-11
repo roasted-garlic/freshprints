@@ -314,8 +314,8 @@ export function PortalSidebar() {
         title="Log out?"
       >
         <p className="portal-muted portal-confirm-modal-message">
-          You can still browse designs while signed out. Sign in again to manage print requests and
-          account actions.
+          You will return to the login page. Sign in again to manage print requests and account
+          actions.
         </p>
       </PortalConfirmModal>
     </>

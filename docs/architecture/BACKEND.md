@@ -402,6 +402,8 @@ uses the same customer hosts for `metadataBase` / OG image resolution via option
 | `getPortalOgShareImage` | Public JPEG letterbox compositor (`designId` **or** validated `staticPath` + `fit=contain`) |
 | `updatePortalSocialMetaSettings` | Owner callable for title/description + letterbox + global image source + static OG snapshot finalize; clears Global OG in-process cache after write |
 | `updatePortalHelpSettings` | Owner/admin callable for Portal FAQ and How To (`settings/portalHelp`) |
+| `getPortalMaintenanceState` / `updatePortalMaintenanceState` | Portal public-state read and owner/admin control for `settings/portalMaintenance`; saved heading/body copy is customer-safe, while the configured tester UID remains private |
+| `listPortalMaintenanceTestCustomers` | Owner/admin-only read of active, linked, non-guest, non-deleted, non-disabled, non-merged customer options for the maintenance tester selector; returns safe UID/display metadata only |
 | `finalizeBrandLogoSlot` | Owner callable: finalize/clear Studio+Portal brand logo slots from Admin Storage metadata |
 | `updateBrandLogoDisplaySizes` | Owner callable: set Portal/Studio logo display heights (px) on `settings/brandLogos` |
 

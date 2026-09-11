@@ -34,6 +34,56 @@ service cloud.firestore {
       return callerIsActive() && callerRole() == "customer";
     }
 
+    // Runtime Portal emergency brake. The document is private; a missing document is the
+    // backwards-compatible OFF default. A present document must contain valid state and may
+    // permit only the one configured authenticated customer while enabled.
+    function portalMaintenanceDataIsValid(data) {
+      return data.get("enabled", null) is bool
+        && (
+          !data.keys().hasAny(["message"])
+          || (
+            data.get("message", null) == null
+            || (
+              data.get("message", null) is string
+              && data.get("message", "").size() > 0
+              && data.get("message", "").size() <= 240
+            )
+          )
+        )
+        && (
+          !data.keys().hasAny(["maintenanceTestCustomerUid"])
+          || data.get("maintenanceTestCustomerUid", null) == null
+          || (
+            data.get("maintenanceTestCustomerUid", null) is string
+            && data.get("maintenanceTestCustomerUid", "").size() > 0
+            && data.get("maintenanceTestCustomerUid", "").size() <= 128
+          )
+        );
+    }
+
+    function portalMaintenanceDataIsOff(data) {
+      return portalMaintenanceDataIsValid(data) && data.get("enabled", null) == false;
+    }
+
+    function portalMaintenanceDataAllowsCustomerMutation(data) {
+      return portalMaintenanceDataIsValid(data)
+        && (
+          data.get("enabled", null) == false
+          || (
+            isCustomer()
+            && data.get("enabled", null) == true
+            && data.get("maintenanceTestCustomerUid", null) == request.auth.uid
+          )
+        );
+    }
+
+    function portalMaintenanceAllowsCustomerMutation() {
+      return !exists(/databases/$(database)/documents/settings/portalMaintenance)
+        || portalMaintenanceDataAllowsCustomerMutation(
+          get(/databases/$(database)/documents/settings/portalMaintenance).data
+        );
+    }
+
     // #13 Addendum A — anonymous guest donation progress listeners (own docs only).
     function isAnonymousAuth() {
       return isSignedIn()
@@ -1793,18 +1843,10 @@ service cloud.firestore {
         && request.resource.data.signupSource == "studio"
         && !("printRequestQuotaOverride" in request.resource.data);
 
-      allow update: if isStaff()
-        && customerRequiredFieldsValid(request.resource.data)
-        && request.resource.data.id == customerId
-        && request.resource.data.id == resource.data.id
-        && (!("userId" in resource.data) || request.resource.data.userId == resource.data.userId)
-        && (!("isGuest" in resource.data) || request.resource.data.isGuest == resource.data.isGuest)
-        && (!("signupSource" in resource.data) || request.resource.data.signupSource == resource.data.signupSource)
-        && (!("createdAt" in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
-        && optionalFieldUnchanged("printRequestQuotaOverride")
-        || (
+      allow update: if (
           isCustomer()
           && resource.data.userId == request.auth.uid
+          && portalMaintenanceAllowsCustomerMutation()
           && request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly([
               "assistedProofEmailOptIn",
@@ -1824,6 +1866,16 @@ service cloud.firestore {
           && request.resource.data.updatedAt is timestamp
           && request.resource.data.id == resource.data.id
           && request.resource.data.userId == resource.data.userId
+        ) || (
+          isStaff()
+          && customerRequiredFieldsValid(request.resource.data)
+          && request.resource.data.id == customerId
+          && request.resource.data.id == resource.data.id
+          && (!("userId" in resource.data) || request.resource.data.userId == resource.data.userId)
+          && (!("isGuest" in resource.data) || request.resource.data.isGuest == resource.data.isGuest)
+          && (!("signupSource" in resource.data) || request.resource.data.signupSource == resource.data.signupSource)
+          && (!("createdAt" in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
+          && optionalFieldUnchanged("printRequestQuotaOverride")
         );
 
       allow delete: if false;
@@ -1837,6 +1889,7 @@ service cloud.firestore {
         allow read: if isStaff() || customerOwnsCustomerDoc(customerId);
 
         allow create: if customerOwnsCustomerDoc(customerId)
+          && portalMaintenanceAllowsCustomerMutation()
           && request.resource.data.designId == designId
           && request.resource.data.customerId == customerId
           && request.resource.data.createdBy == request.auth.uid
@@ -1845,7 +1898,10 @@ service cloud.firestore {
 
         allow update: if false;
 
-        allow delete: if isStaff() || customerOwnsCustomerDoc(customerId);
+        allow delete: if isStaff() || (
+          customerOwnsCustomerDoc(customerId)
+          && portalMaintenanceAllowsCustomerMutation()
+        );
       }
     }
 
@@ -1883,8 +1939,8 @@ service cloud.firestore {
           && request.resource.data.createdAt == resource.data.createdAt
           && request.resource.data.updatedBy == request.auth.uid
           && (staffCanCompletePrintRequest() || staffCanPerformGeneralPrintRequestUpdate()))
-        || customerCanUpdatePrintRequest()
-        && printRequestRequiredFieldsValid(request.resource.data);
+        || (portalMaintenanceAllowsCustomerMutation()
+          && customerCanUpdatePrintRequest());
 
       allow delete: if isStaff();
     }
@@ -1985,7 +2041,8 @@ service cloud.firestore {
           isUploadPrintRequestItem(resource.data)
           || isReadyDesign(request.resource.data.designId)
         )
-        || customerPrintRequestItemPortalEditableUpdate();
+        || (portalMaintenanceAllowsCustomerMutation()
+          && customerPrintRequestItemPortalEditableUpdate());
 
       allow delete: if isStaff();
       // Customer deletes go through Admin callables (Cap A print-count refund).
@@ -2434,6 +2491,13 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Private runtime Portal maintenance state. All writes go through the owner/admin callable;
+    // customer clients never receive this document directly.
+    match /settings/portalMaintenance {
+      allow read: if isOwnerOrAdmin();
+      allow write: if false;
+    }
+
     match /settings/{settingId} {
       allow read: if isStaff() && (settingId == "aiEnrichment" || settingId == "catalogAutomationHealth");
       allow write: if false;
@@ -2646,6 +2710,7 @@ service cloud.firestore {
       allow create, delete: if false;
 
       allow update: if isCustomer()
+        && portalMaintenanceAllowsCustomerMutation()
         && resource.data.customerUid == request.auth.uid
         && request.resource.data.customerUid == resource.data.customerUid
         && request.resource.data.customerId == resource.data.customerId

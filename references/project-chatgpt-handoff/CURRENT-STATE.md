@@ -6,15 +6,63 @@
 
 | Item | Value |
 |---|---|
-| Status | **PAUSED — PRODUCTION MAINTENANCE MODE PREREQUISITE — OWNER REQUESTED PAUSE** |
+| Status | **M0 PREPARATION BLOCKED — CLEAN CANDIDATE AND IMMUTABLE MANIFESTS** |
 | Parent | Coordinated production promotion and release readiness |
-| Active child phase | DEV dependencies deployed after automated Test; paused at owner request before QA; production remains forbidden |
-| Most recently closed goal | `studio-show-queue-internal-sheet-dollar-totals` — **approved** (prior: lifecycle ordering **approved_with_notes**) |
-| Signoff | Studio dollar totals: **approved** — Owner visual QA **PASS** (2026-09-10). Lifecycle ordering: **approved_with_notes**. Prior Portal Show Queue: **approved_with_notes**; prior Print Request: **approved** |
+| Active child phase | Parent `coordinated-production-promotion-release-readiness` — M0 reconciliation complete; clean candidate and immutable manifests remain |
+| Most recently closed goal | `production-maintenance-mode-prerequisite` — **approved_with_notes** (Owner DEV QA PASS 2026-09-10) |
+| Closed promotion child | `production-maintenance-mode-prerequisite-production-promotion` — **superseded_by_coordinated_candidate** (no production deployment) |
+| Current plan/review | Parent Plan/Review: **approved_with_changes — accepted**; M0 preparation rerun: `docs/workflow/reviews/2026-09-10-coordinated-production-candidate-preparation.md`; child gate Review: **approved_with_changes — accepted** |
+| Signoff | Maintenance prerequisite: **approved_with_notes** in DEV. Strategy B parent amendment: **accepted**. Hard-delete child: **approved_with_notes**. Candidate has no Signoff. Studio dollar totals: **approved** — Owner visual QA **PASS** (2026-09-10). Lifecycle ordering: **approved_with_notes**. |
 | Related closed goal | `user-info-print-request-lifecycle-activity-ordering` |
 | Autonomous | **OFF** (`shadow`) |
 | Production | untouched |
-| Commit/push | Studio print-time estimate polish: owner PASS; commit/push of this polish only; maintenance still paused; no force push |
+| Commit/push | No new commit/push/branch/merge/PR authorized for the parent candidate; prior Studio print-time polish was owner-authorized and pushed; no force push |
+
+### Active managed goal — coordinated production promotion and release readiness (M0 preparation)
+
+The owner selected Strategy B: maintenance is not a standalone production release. The signed-off
+DEV maintenance capability is a required first safety layer of the full frozen coordinated candidate.
+The accepted Strategy B parent Plan and Formal Review define the source, dependency and owner gates.
+The hard-delete UI child is closed; the read-only M0 runtime reconciliation is now complete at the
+dirty snapshot, but M0 remains blocked pending a clean committed candidate and regenerated manifests:
+
+- `development`/`HEAD`/`origin/development`: `b5aec1b2b1ac4eba5ab704f1db8f87ea22f1daaa`; `origin/production`:
+  `36165096f09bef6817adb5b11d496dbb1502b34b`.
+- Working tree: 59 tracked and 56 untracked status entries (115 total); new maintenance modules,
+  workflow evidence, and the reconciliation packet are untracked and
+  guard-bearing Functions are working-tree edits, not one immutable revision.
+- Committed tree delta: 1,877 paths; current source export comparison is 170 development vs 120
+  production-source exports (51 added, one removed). Firestore/Storage Rules are whole-file drift.
+- Production read-only baseline: 113 ACTIVE Functions, no maintenance callables, absent
+  `settings/portalMaintenance` (HTTP 404 = safe OFF), Portal build-003 at 100% traffic, and Studio
+  stable `v1.0.9`.
+- No selective App Hosting or Studio component publication exists. A scoped Functions deploy cannot
+  isolate the unrelated same-file edits in 18/28 guard-bearing source files, and Rules deploys are
+  whole-file. Strategy A hotfix branch/worktree is rejected.
+
+Parent Formal Review verdict: **approved_with_changes — accepted**. Child hard-delete UI-gate Review:
+**approved_with_changes — accepted**; Signoff is **approved_with_notes** at
+`docs/workflow/reviews/2026-09-10-studio-hard-delete-production-ui-gate-signoff.md`. The exact `FULL MAINTENANCE CAPABILITY READY`
+checkpoint occurs only after backend/Rules, Portal and Studio are live from one frozen SHA while
+production remains absent/OFF. A separate owner checkpoint is required before any production ON
+transition or safe customer write. The request-design parity Plan is explicitly excluded for separate
+review, and the Portal admin Show Queue signoff is explicitly included as approved-with-notes
+evidence for the scoped read-only admin runtime. No branch, commit, merge, deploy, publish, setting
+mutation, maintenance activation, or production action occurred.
+
+### M0 preparation result
+
+The complete pre-report working-tree snapshot contained 100 entries; the current child/test/signoff
+and reconciliation continuation is intentionally uncommitted at 115 status entries (59 tracked,
+56 untracked). All user work is retained and classified in
+`docs/workflow/reviews/2026-09-10-coordinated-production-candidate-preparation.md`. The inherited
+request-design parity Plan is explicitly excluded pending separate review; the Portal admin Show
+Queue signoff is explicitly included as evidence for the scoped admin runtime. The shared Studio
+customer directory now gates `Delete Account Permanently` with the existing DEV-only
+`isOperationalWipeUiEnabled()` helper. The exact M1 freeze proposal is prepared, but no candidate
+SHA is proposed or frozen. The complete M0 reconciliation packet is
+`docs/workflow/reviews/2026-09-10-coordinated-production-m0-reconciliation.md`, with deterministic
+Function closure, Rules, index-union, Portal, Studio, and configuration/data manifests linked there.
 
 ## Closed polish — Show Queue / Internal Sheet print-time estimate
 
@@ -35,39 +83,52 @@ Owner visual QA **PASS** (2026-09-10). Signoff **approved**:
   rail card `$`, CR/IR list card `$`; Whatnot ID instead of unused Whatnot link.
 - Committed/pushed to `origin/development` on owner authorization after PASS.
 
-## Active managed goal — Production maintenance-mode prerequisite
+## Closed managed goal — Production maintenance-mode prerequisite
 
-The separate prerequisite Plan and Formal Review are complete with verdict **approved_with_changes**:
+The original prerequisite and prior Owner DEV-QA amendment remain implemented/tested and deployed
+to DEV under their existing records:
 
-- Plan: `docs/workflow/plans/2026-09-10-production-maintenance-mode-prerequisite-plan.md`
-- Formal Review: `docs/workflow/reviews/2026-09-10-production-maintenance-mode-prerequisite-review.md`
+- Original Plan/Review: `docs/workflow/plans/2026-09-10-production-maintenance-mode-prerequisite-plan.md` and `docs/workflow/reviews/2026-09-10-production-maintenance-mode-prerequisite-review.md`
+- Prior amendment Plan/Review/Implementation/Test/Deployment: the dated `...prerequisite-amendment-*` artifacts
+- Prior gates: targeted 16/16, trusted tester integration 2/2, Rules 182/182, Portal typecheck,
+  Functions build, changed-source lint, and diff check passed; the documented Studio baseline and
+  Windows Portal `.next/trace` EPERM remain known constraints.
+- Prior DEV deployment: 36 named Functions ACTIVE, Firestore/Storage Rules released, no indexes;
+  `updatePortalMaintenanceState` follow-up revision `updateportalmaintenancestate-00003-zaf` ACTIVE.
 
-The reviewed design uses a private runtime `settings` control, a per-invocation trusted Functions
-guard before quota/external side effects, Firestore/Storage Rules reinforcement for direct customer
-writes, a bounded Portal read-only experience, and existing owner/admin Studio Settings and Portal
-Show Queue recovery paths. Customer notification read-marker writes are blocked while ON for a
-strict read-only contract. The owner accepted the Plan and authorized this DEV-only implementation.
-Implementation and automated Test are now complete. The two maintenance Functions, all 34
-guard-bearing customer callable revisions, and reviewed Firestore/Storage Rules have since been
-deployed to `fresh-prints-dev`; production mutation,
-deployment, commit, push, candidate freeze, and parent rollout remain forbidden pending the single
-owner DEV-QA journey.
-Test report: `docs/workflow/reviews/2026-09-10-production-maintenance-mode-prerequisite-test-report.md`.
-DEV deployment evidence: `docs/workflow/reviews/2026-09-10-production-maintenance-mode-prerequisite-dev-deployment.md`.
-The full Firebase Rules regression is 179/179 across 24 suites; targeted maintenance Rules is 5/5;
-shared/source contracts are 6/6; Portal typecheck, Functions build, and changed-source ESLint pass.
-Studio repo-wide typecheck retains unrelated baseline errors; Portal production build was blocked by
-EPERM on `.next/trace` while the existing dev server was active.
-The local Portal process can converge via its bounded refresh/focus handling; the local Studio
-renderer should be reloaded/restarted because its prior denied `onSnapshot` subscription is
-terminal. The owner then requested a pause while making a small change. No further QA, deployment,
-signoff, commit/push, activation, or parent rollout is authorized until the owner resumes.
+Read-only source and DEV data proved: Portal hard-coded its enabled heading/body and ignored saved
+`message`; Studio’s bare textarea omitted native Settings classes; and the selected Chris hawkins
+`merged-src-*` source is `isMerged` with an inactive linked user, while Studio’s selector omitted
+merged filtering. The live DEV maintenance document remained owner-controlled and was not mutated by
+Codex.
 
-The Studio dollar-totals polish that paused this prerequisite is now closed. The owner accepted the
-reviewed maintenance scope and authorized `Continue FreshForge` for Implement. DEV-side
-implementation, verification, and the narrow dependency deployment are complete; owner DEV QA is
-the next action. Production deployment or activation, parent rollout, candidate freeze, and
-unrelated work remain forbidden.
+Corrective Plan Amendment and Formal Review are complete with verdict **approved_with_changes**; the
+owner has now explicitly accepted them and authorized Implement:
+
+- Plan: `docs/workflow/plans/2026-09-10-production-maintenance-mode-prerequisite-corrective-amendment-plan.md`
+- Formal Review: `docs/workflow/reviews/2026-09-10-production-maintenance-mode-prerequisite-corrective-amendment-review.md`
+
+The corrective design added an optional shared `heading` beside the existing `message`, makes Portal
+render saved copy at runtime, reuses native Studio Settings primitives, and introduces a narrow
+owner/admin-only candidate-list callable backed by one trusted eligibility helper. Merged, disabled,
+deleted, guest, orphaned, and inactive-user accounts are excluded from ordinary tester options; the
+existing update callable revalidates the exact UID and the shared guard revalidates status. The
+exact 37-Function DEV deployment is verified ACTIVE.
+
+The corrective DEV deployment record is
+`docs/workflow/reviews/2026-09-10-production-maintenance-mode-prerequisite-corrective-amendment-dev-deployment.md`.
+No Rules/indexes/hosting or production action occurred. The live maintenance document remains
+owner-controlled and present/ON; the public state response is customer-safe and the unauthenticated
+candidate-list endpoint returns 401. Studio should reload its renderer and Portal may be refreshed
+before the owner begins QA. Owner DEV QA subsequently passed; see
+`docs/workflow/reviews/2026-09-10-production-maintenance-mode-prerequisite-corrective-amendment-dev-qa.md`.
+
+Owner DEV QA verified normal Studio styling, separate copy fields, runtime copy convergence without
+rebuild, merged/disabled exclusion, valid active tester configuration, ordinary-customer full-screen
+maintenance, tester banner and safe mutation, admin Show Queue access/denial styling, and OFF
+recovery. Portal auth/navigation maintenance gating is also present; its corrective source remains
+local and uncommitted pending separate owner authorization. Signoff is **approved_with_notes**. No production, parent-rollout, hosting, publish,
+commit, or push action occurred.
 
 ## Parent managed goal — Coordinated production promotion and release readiness
 

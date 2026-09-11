@@ -17,6 +17,7 @@ import {
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
 import { loadEffectivePrintRequestLimitsForCustomer } from "./lib/loadEffectivePrintRequestLimits";
 import { requirePortalCustomer } from "./lib/portalCustomer";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 import {
   assertWorkingRequestAllowsPrintAdds,
   sumWorkingRequestPrintQuantities,
@@ -81,6 +82,7 @@ export const duplicatePortalPrintRequestItem = onCall(
 
     try {
       const portalCustomer = await requirePortalCustomer(request.auth.uid);
+      await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
       const data = request.data as DuplicatePortalPrintRequestItemRequest;
       const printRequestId =
         typeof data?.printRequestId === "string" ? data.printRequestId.trim() : "";

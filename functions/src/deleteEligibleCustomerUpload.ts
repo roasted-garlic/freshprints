@@ -29,6 +29,7 @@ import {
   resolveDonationFinalizeQuotaRefundTarget,
 } from "./lib/refundDonationFinalizeQuota";
 import { storageObjectPath } from "./lib/storageObjectPath";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 
 function mapHttpsError(error: unknown): never {
   if (error instanceof HttpsError) {
@@ -363,6 +364,7 @@ export const deletePortalCustomerUpload = onCall(
       throw unauthenticated();
     }
     try {
+      await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
       const customerUploadId = parseUploadId(request.data as DeleteEligibleCustomerUploadRequest);
       requirePhrase(request.data);
       return await executeEligibleHardDelete(customerUploadId, {

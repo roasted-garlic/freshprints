@@ -13,6 +13,7 @@ import {
 } from "./lib/setPrintRequestItemArtworkEnhanceModeCore";
 import { invalidArgument, unauthenticated } from "./lib/errors";
 import { requirePortalCustomer } from "./lib/portalCustomer";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 
 export const setPrintRequestItemArtworkEnhanceMode = onCall(
   { timeoutSeconds: 300, memory: "1GiB" },
@@ -44,6 +45,7 @@ export const setPrintRequestItemArtworkEnhanceMode = onCall(
     }
 
     const portalCustomer = await requirePortalCustomer(callerUid);
+    await assertPortalMaintenanceAllowsCustomerMutation(callerUid);
     return executeSetPrintRequestItemArtworkEnhanceMode(
       {
         kind: "portal",

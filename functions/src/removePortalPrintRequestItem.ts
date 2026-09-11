@@ -10,6 +10,7 @@ import {
   unauthenticated,
 } from "./lib/errors";
 import { requirePortalCustomer } from "./lib/portalCustomer";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 import { assertPortalActiveEditableRequestData } from "./lib/portalContinuableParking";
 
 export interface RemovePortalPrintRequestItemRequest {
@@ -45,6 +46,7 @@ export const removePortalPrintRequestItem = onCall(
 
     try {
       const portalCustomer = await requirePortalCustomer(request.auth.uid);
+      await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
       const data = request.data as RemovePortalPrintRequestItemRequest;
       const printRequestId =
         typeof data?.printRequestId === "string" ? data.printRequestId.trim() : "";

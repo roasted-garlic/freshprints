@@ -5,12 +5,14 @@ import { DESIGN_ISSUE_REPORT_DAILY_LIMIT } from "../../packages/shared/src/desig
 import { adminDb } from "./lib/admin";
 import { alreadyExists, failedPrecondition, notFound, resourceExhausted, unauthenticated } from "./lib/errors";
 import { requirePortalCustomer } from "./lib/portalCustomer";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 import { chicagoDayKey, parseDesignIssueReportSubmission, safeDesignIssueHash } from "./lib/designIssueReportValidation";
 
 export const submitPortalDesignIssueReport = onCall(async (request): Promise<SubmitPortalDesignIssueReportResponse> => {
   if (!request.auth?.uid) throw unauthenticated();
   const uid = request.auth.uid;
   const customer = await requirePortalCustomer(uid);
+  await assertPortalMaintenanceAllowsCustomerMutation(uid);
   const input = parseDesignIssueReportSubmission(request.data);
   const designRef = adminDb.collection("designs").doc(input.designId);
   const reportRef = adminDb.collection("designIssueReports").doc();

@@ -6,6 +6,7 @@ import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { adminDb } from "./lib/admin";
 import { invalidArgument, unauthenticated } from "./lib/errors";
 import { requirePortalCustomer } from "./lib/etsy/requirePortalCustomer";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 
 interface ExistingSubscriptionData {
   disabledAt?: unknown;
@@ -43,6 +44,7 @@ export const registerWebPushSubscription = onCall(async (request) => {
 
   try {
     const portalCustomer = await requirePortalCustomer(request.auth.uid);
+    await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
     const data = (request.data ?? {}) as {
       token?: unknown;
       enabled?: unknown;

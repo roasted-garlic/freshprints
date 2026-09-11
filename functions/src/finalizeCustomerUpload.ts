@@ -40,6 +40,7 @@ import {
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
 import { isAnonymousAuthToken } from "./lib/catalogDonationUploader";
 import { requirePortalCustomer } from "./lib/portalCustomer";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 
 /**
  * Stage watchdog duration for the trim/normalize/preview-generation region of finalize. Set to
@@ -88,6 +89,7 @@ export const finalizeCustomerUpload = onCall(
     if (!isGuest) {
       await requirePortalCustomer(request.auth.uid);
     }
+    await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
     const customerUid = request.auth.uid;
     const uploaderType = isGuest ? ("guest" as const) : ("customer" as const);
 

@@ -1,5 +1,15 @@
 # Roadmap and Phases
 
+> 2026-09-10: **Production maintenance-mode prerequisite — CLOSED (DEV)** — Goal
+> `production-maintenance-mode-prerequisite` **DONE** with final disposition
+> **approved_with_notes** after Owner DEV QA **PASS**. The shared Portal/Studio copy contract,
+> native Studio maintenance Settings, trusted owner/admin tester list, and merged/disabled/inactive
+> eligibility guard are implemented and live on `fresh-prints-dev`. Exactly 37 reviewed Functions
+> are ACTIVE; no corrective Rules, indexes, hosting, publish, production, or parent-rollout action
+> occurred. Signoff:
+> `docs/workflow/reviews/2026-09-10-production-maintenance-mode-prerequisite-corrective-amendment-signoff.md`.
+> FreshForge **IDLE**; next: `[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]`.
+
 > 2026-09-09: **User Info Print Request lifecycle activity ordering — CLOSED (DEV)** — Goal
 > `user-info-print-request-lifecycle-activity-ordering` **CLOSED** with final disposition
 > **approved_with_notes** after Owner DEV QA **PASS** for the indexed history reader. Lifecycle

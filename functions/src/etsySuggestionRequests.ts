@@ -28,6 +28,7 @@ import {
   unauthenticated,
 } from "./lib/errors";
 import { requirePortalCustomer } from "./lib/etsy/requirePortalCustomer";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 import {
   assertNoSuggestionCollision,
   validateAddEtsyRecommendationSuggestion,
@@ -160,6 +161,7 @@ export const submitEtsySuggestionRequest = onCall(
       throw unauthenticated();
     }
     const { customerId, customerUid } = await requirePortalCustomer(request.auth.uid);
+    await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
     const validated = validateEtsySuggestionRequestInput(request.data);
 
     const existingPending = await findPendingDuplicate({

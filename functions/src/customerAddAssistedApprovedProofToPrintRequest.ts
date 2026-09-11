@@ -51,6 +51,7 @@ import { withoutUndefinedFields } from "./lib/firestoreDocument";
 import { loadEffectivePrintRequestLimitsForCustomer } from "./lib/loadEffectivePrintRequestLimits";
 import { loadStandardPrintSizesSettings } from "./lib/loadStandardPrintSizesSettings";
 import { requirePortalCustomer, type PortalCustomerContext } from "./lib/portalCustomer";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 import { assertWorkingRequestAllowsPrintAdds } from "./lib/printRequestWorkingRequestMax";
 import { resolveOrCreateWorkingPrintRequestInTransaction } from "./lib/portalWorkingPrintRequest";
 import { storageObjectPath } from "./lib/storageObjectPath";
@@ -201,6 +202,7 @@ export const customerAddAssistedApprovedProofToPrintRequest = onCall(
 
     try {
       const portalCustomer = await requirePortalCustomer(request.auth.uid);
+      await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
       const payload = validateRequest(request.data);
       const customerUid = request.auth.uid;
       const [effectiveLimits, standardPrintSizesSettings] = await Promise.all([

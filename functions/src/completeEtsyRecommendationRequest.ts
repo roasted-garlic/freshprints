@@ -17,6 +17,7 @@ import {
   unauthenticated,
 } from "./lib/errors";
 import { requirePortalCustomer } from "./lib/etsy/requirePortalCustomer";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 
 function mapHttpsError(error: unknown): never {
   if (error instanceof HttpsError) {
@@ -38,6 +39,7 @@ async function transitionOwnActiveRequest(
   }
   const requestId = requestIdRaw.trim();
   const portalCustomer = await requirePortalCustomer(uid);
+  await assertPortalMaintenanceAllowsCustomerMutation(uid);
   const ref = adminDb.collection(ETSY_RECOMMENDATION_COLLECTION).doc(requestId);
   const snap = await ref.get();
   if (!snap.exists) {

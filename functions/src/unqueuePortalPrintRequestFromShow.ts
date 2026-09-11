@@ -18,6 +18,7 @@ import { computeShowAllocatedQuantityFromAllocations } from "../../packages/shar
 import { adminDb } from "./lib/admin";
 import { failedPrecondition, internal, invalidArgument, permissionDenied, unauthenticated } from "./lib/errors";
 import { requirePortalCustomer } from "./lib/portalCustomer";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 import { recomputeAndPersistQueueTab } from "./lib/printRequestQueueTab";
 import { validateUnqueuePortalPrintRequestFromShowRequest } from "./lib/unqueuePortalPrintRequestFromShowValidation";
 import {
@@ -135,6 +136,7 @@ export const unqueuePortalPrintRequestFromShow = onCall(
 
     try {
       const customer = await requirePortalCustomer(request.auth.uid);
+      await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
       const payload = validateUnqueuePortalPrintRequestFromShowRequest(request.data);
 
       const requestRef = adminDb.collection("printRequests").doc(payload.printRequestId);

@@ -27,6 +27,7 @@ import {
   unauthenticated,
 } from "./lib/errors";
 import { requirePortalCustomer } from "./lib/etsy/requirePortalCustomer";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 
 function mapHttpsError(error: unknown): never {
   if (error instanceof HttpsError) {
@@ -46,6 +47,7 @@ export const submitEtsyRecommendationRequest = onCall(
 
     try {
       const portalCustomer = await requirePortalCustomer(request.auth.uid);
+      await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
       const data = (request.data ?? {}) as SubmitEtsyRecommendationRequestRequest;
       const answers = parseEtsyRecommendationAnswers(data.answers);
       const confirmReplaceActive = data.confirmReplaceActive === true;

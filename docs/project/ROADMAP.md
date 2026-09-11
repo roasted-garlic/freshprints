@@ -1,5 +1,18 @@
 # Fresh Prints Roadmap
 
+> 2026-09-10: **Production maintenance-mode prerequisite — CLOSED (DEV)** — Goal
+> `production-maintenance-mode-prerequisite` **DONE** with final disposition
+> **approved_with_notes** after Owner DEV QA **PASS**. Shared heading/body copy now drives the
+> Portal and Studio maintenance controls; merged, disabled, deleted, guest, orphaned, and
+> inactive-user accounts are excluded from tester selection; the trusted owner/admin candidate
+> list and maintenance guard are deployed to `fresh-prints-dev`. Exactly 37 reviewed Functions are
+> ACTIVE; Rules/indexes/hosting were not changed in the corrective deployment. Portal normal-mode,
+> full-screen maintenance, tester banner/mutation, and centered admin denial behavior all passed
+> Owner DEV QA. Production activation, production deployment, parent rollout, commit/push, and
+> Studio/Portal publishing remain separately gated. Signoff:
+> `docs/workflow/reviews/2026-09-10-production-maintenance-mode-prerequisite-corrective-amendment-signoff.md`.
+> FreshForge **IDLE**; next: `[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]`.
+
 > 2026-09-09: **User Info Print Request lifecycle activity ordering — CLOSED (DEV)** — Goal
 > `user-info-print-request-lifecycle-activity-ordering` **DONE** with final disposition
 > **approved_with_notes** after Owner DEV QA **PASS** for the indexed history reader. Lifecycle

@@ -21,6 +21,7 @@ import { UserPlusIcon } from '../../shared/components/PortalIcons';
 import { PortalUsernameField, validatePortalUsernameInput } from './PortalUsernameField';
 import { AuthBusyOverlay } from './AuthBusyOverlay';
 import { GoogleAuthButton } from './GoogleAuthButton';
+import { usePortalMaintenance } from '../../maintenance/context/PortalMaintenanceContext';
 
 interface PendingRegistration {
   email: string;
@@ -42,6 +43,8 @@ export function RegisterForm() {
     loginWithGoogle,
     register,
   } = useAuth();
+  const { enabled: maintenanceEnabled, message: maintenanceMessage, status: maintenanceStatus } =
+    usePortalMaintenance();
   const [localError, setLocalError] = useState<string | null>(null);
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [pendingRegistration, setPendingRegistration] = useState<PendingRegistration | null>(null);
@@ -81,6 +84,9 @@ export function RegisterForm() {
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (registrationBlocked) {
+      return;
+    }
     setLocalError(null);
 
     const formData = new FormData(event.currentTarget);
@@ -113,6 +119,11 @@ export function RegisterForm() {
     if (!pendingRegistration) {
       return;
     }
+    if (registrationBlocked) {
+      setLocalError(maintenanceMessage);
+      setPendingRegistration(null);
+      return;
+    }
 
     const credentials = pendingRegistration;
     // Flip busy before closing the ack modal so the form never looks idle.
@@ -135,16 +146,27 @@ export function RegisterForm() {
     isSubmitting ||
     isAuthActionLoading ||
     (bootstrapStatus === 'loading-profile' && Boolean(firebaseUser));
+  const registrationBlocked = maintenanceStatus !== 'ready' || maintenanceEnabled;
 
-  const loginHref =
-    typeof window !== 'undefined'
-      ? buildPortalAuthHref('/login', getPortalReturnToFromSearch(window.location.search))
-      : '/login';
+  const [loginHref, setLoginHref] = useState('/login');
+
+  useEffect(() => {
+    setLoginHref(buildPortalAuthHref('/login', getPortalReturnToFromSearch(window.location.search)));
+  }, []);
 
   return (
     <div className="portal-auth-stack portal-auth-stack-compact">
+      {registrationBlocked ? (
+        <p aria-live="polite" className="portal-maintenance-auth-message" role="status">
+          {maintenanceStatus === 'error'
+            ? 'Signup is paused while Portal availability is being confirmed.'
+            : maintenanceStatus === 'loading'
+              ? 'Checking whether signup is available…'
+              : maintenanceMessage}
+        </p>
+      ) : null}
       <GoogleAuthButton
-        disabled={isBusy}
+        disabled={isBusy || registrationBlocked}
         isLoading={isBusy}
         label="Continue with Google"
         loadingLabel="Creating account…"
@@ -165,7 +187,7 @@ export function RegisterForm() {
         aria-controls={emailPanelId}
         aria-expanded={showEmailForm}
         className="portal-button portal-button-secondary"
-        disabled={isBusy}
+        disabled={isBusy || registrationBlocked}
         onClick={() => setShowEmailForm((open) => !open)}
         type="button"
       >
@@ -206,7 +228,7 @@ export function RegisterForm() {
 
           <button
             className="portal-button portal-button-primary portal-button-leading-icon"
-            disabled={isBusy}
+            disabled={isBusy || registrationBlocked}
             type="submit"
           >
             <UserPlusIcon />

@@ -16,6 +16,7 @@ import {
 } from "./lib/errors";
 import { isAnonymousAuthToken } from "./lib/catalogDonationUploader";
 import { requirePortalCustomer } from "./lib/portalCustomer";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 import { resolveCustomerUploadPurpose } from "../../packages/shared/src/utils/customerUploadPurpose";
 
 const ALLOWED = new Set(["yes", "no"] as const);
@@ -46,6 +47,7 @@ export const recordCustomerUploadHalftoneResponse = onCall(
     if (!isGuest) {
       await requirePortalCustomer(request.auth.uid);
     }
+    await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
 
     let payload: RecordCustomerUploadHalftoneResponseRequest;
     try {

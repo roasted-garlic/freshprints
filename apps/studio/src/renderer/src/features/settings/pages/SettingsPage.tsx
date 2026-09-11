@@ -56,6 +56,7 @@ import { formatAiPlaygroundOutput } from "../utils/aiPlaygroundOutputFormatter";
 import { formatCombinedAiCost } from "../utils/aiPlaygroundPass2Flow";
 import { HelperSettingsPage } from "./HelperSettingsPage";
 import { AiEnrichmentTraceBrowser } from "../components/AiEnrichmentTraceBrowser";
+import { PortalMaintenanceSettingsSection } from "../components/PortalMaintenanceSettingsSection";
 
 function formatPlaygroundJson(value: unknown): string {
   return JSON.stringify(value, null, 2) ?? "N/A";
@@ -75,6 +76,7 @@ type SettingsPageTabId =
   | "faqHowTo"
   | "brandLogos"
   | "aiEnrichment"
+  | "portalMaintenance"
   | "studioUpdates";
 
 type AiEnrichmentSubTabId =
@@ -138,6 +140,10 @@ function ManageableSettingsPage() {
     permissionService.canManageStandardPrintSizes(user);
   const settingsTabs = useMemo((): SettingsPageTab[] => {
     const tabs: SettingsPageTab[] = [{ id: "gangSheetSettings", label: "Gang Sheet Settings" }];
+
+    if (canViewAdministrativeSettings) {
+      tabs.push({ id: "portalMaintenance", label: "Portal maintenance" });
+    }
 
     if (canManageEmailProviders) {
       tabs.push({ id: "emailProviders", label: "Email Providers" });
@@ -478,6 +484,17 @@ function ManageableSettingsPage() {
           role="tabpanel"
         >
           <GangSheetSettingsSection />
+        </div>
+      ) : null}
+
+      {resolvedTab === "portalMaintenance" && canViewAdministrativeSettings ? (
+        <div
+          aria-labelledby="settings-tab-portalMaintenance"
+          className="settings-page-tab-panel"
+          id="settings-tab-panel-portalMaintenance"
+          role="tabpanel"
+        >
+          <PortalMaintenanceSettingsSection />
         </div>
       ) : null}
 

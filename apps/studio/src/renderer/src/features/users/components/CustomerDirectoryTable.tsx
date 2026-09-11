@@ -15,6 +15,7 @@ import {
 } from "@fresh-prints/shared/utils/customerSignupSource";
 import { formatCustomerUsernameForDisplay } from "@fresh-prints/shared/utils/formatCustomerUsernameForDisplay";
 import { hasActivePrintRequestQuotaOverride } from "@fresh-prints/shared/utils/printRequestQuotaOverride";
+import { isOperationalWipeUiEnabled } from "../../test-data-reset/utils/operationalWipeUiGate";
 import { isReversibleDisabledCustomer } from "../utils/customerDirectoryVisibility";
 
 import type { CustomerDirectoryVisibilityTab } from "../utils/customerDirectoryVisibility";
@@ -63,6 +64,7 @@ export function CustomerDirectoryTable({
     }
     return lookup;
   }, [allCustomers]);
+  const hardDeleteUiEnabled = isOperationalWipeUiEnabled();
 
   if (isLoading) {
     return (
@@ -127,7 +129,7 @@ export function CustomerDirectoryTable({
                 !isMerged &&
                 ((canTombstoneCustomer && !isDeleted && onTombstoneCustomer) ||
                   (canDisableCustomer && onDisableCustomer) ||
-                  (canHardDeleteCustomer && onHardDeleteCustomer));
+                  (hardDeleteUiEnabled && canHardDeleteCustomer && onHardDeleteCustomer));
 
               const menuItems = [];
 
@@ -156,7 +158,12 @@ export function CustomerDirectoryTable({
                 });
               }
 
-              if (canHardDeleteCustomer && onHardDeleteCustomer && !isDeleted) {
+              if (
+                hardDeleteUiEnabled &&
+                canHardDeleteCustomer &&
+                onHardDeleteCustomer &&
+                !isDeleted
+              ) {
                 menuItems.push({
                   id: "hard-delete-customer",
                   label: "Delete Account Permanently",

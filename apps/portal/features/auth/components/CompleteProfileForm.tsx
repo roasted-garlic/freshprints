@@ -19,6 +19,7 @@ import { UserPlusIcon } from '../../shared/components/PortalIcons';
 import { PortalBiddingAcknowledgmentModal } from '../../shared/components/PortalBiddingAcknowledgmentModal';
 import { PortalUsernameField, validatePortalUsernameInput } from './PortalUsernameField';
 import { AuthBusyOverlay } from './AuthBusyOverlay';
+import { usePortalMaintenance } from '../../maintenance/context/PortalMaintenanceContext';
 
 const SETUP_PROGRESS_MESSAGES = [
   'Creating your customer account…',
@@ -45,6 +46,8 @@ export function CompleteProfileForm() {
     isInitialBootstrap,
     logout,
   } = useAuth();
+  const { enabled: maintenanceEnabled, message: maintenanceMessage, status: maintenanceStatus } =
+    usePortalMaintenance();
   const [localError, setLocalError] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState('');
   const [username, setUsername] = useState('');
@@ -99,6 +102,14 @@ export function CompleteProfileForm() {
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (maintenanceStatus !== 'ready' || maintenanceEnabled) {
+      setLocalError(
+        maintenanceStatus === 'error'
+          ? 'Account setup is paused while Portal availability is being confirmed.'
+          : maintenanceMessage,
+      );
+      return;
+    }
     setLocalError(null);
 
     const formData = new FormData(event.currentTarget);
@@ -122,6 +133,14 @@ export function CompleteProfileForm() {
   }
 
   async function runCompleteProfile(profile: PendingProfile) {
+    if (maintenanceStatus !== 'ready' || maintenanceEnabled) {
+      setLocalError(
+        maintenanceStatus === 'error'
+          ? 'Account setup is paused while Portal availability is being confirmed.'
+          : maintenanceMessage,
+      );
+      return;
+    }
     if (submitLockRef.current || isSubmitting) {
       setLocalError('Account setup is already in progress.');
       return;
@@ -186,6 +205,8 @@ export function CompleteProfileForm() {
   });
   const showProvisionOverlay = shouldShowCompleteProfileProvisionOverlay(uiMode);
   const formInteractive = isCompleteProfileFormInteractive(uiMode);
+  const maintenanceBlocksRegistration = maintenanceStatus !== 'ready' || maintenanceEnabled;
+  const effectiveFormInteractive = formInteractive && !maintenanceBlocksRegistration;
   const showTerminalFailure = uiMode === 'terminal-failure';
 
   if (uiMode === 'bootstrap-loading') {
@@ -198,6 +219,15 @@ export function CompleteProfileForm() {
 
   return (
     <div className="portal-complete-profile">
+      {maintenanceBlocksRegistration ? (
+        <p aria-live="polite" className="portal-maintenance-auth-message" role="status">
+          {maintenanceStatus === 'error'
+            ? 'Account setup is paused while Portal availability is being confirmed.'
+            : maintenanceStatus === 'loading'
+              ? 'Checking whether account setup is available…'
+              : maintenanceMessage}
+        </p>
+      ) : null}
       <form className="portal-auth-form" onSubmit={handleSubmit}>
         <p className="portal-muted">
           Signed in as <strong>{firebaseUser?.email ?? 'your Google account'}</strong>. Choose a
@@ -208,7 +238,7 @@ export function CompleteProfileForm() {
           <span>Display name</span>
           <input
             autoComplete="name"
-            disabled={!formInteractive}
+            disabled={!effectiveFormInteractive}
             name="displayName"
             onChange={(event) => setDisplayName(event.target.value)}
             required
@@ -217,13 +247,14 @@ export function CompleteProfileForm() {
           />
         </label>
 
-        <PortalUsernameField disabled={!formInteractive} onChange={setUsername} value={username} />
+        <PortalUsernameField disabled={!effectiveFormInteractive} onChange={setUsername} value={username} />
 
         {showTerminalFailure ? <p className="portal-form-error">{displayError}</p> : null}
 
         {showTerminalFailure ? (
           <button
             className="portal-button portal-button-primary portal-button-leading-icon"
+            disabled={maintenanceBlocksRegistration}
             onClick={() => {
               void handleRetry();
             }}
@@ -235,7 +266,7 @@ export function CompleteProfileForm() {
         ) : (
           <button
             className="portal-button portal-button-primary portal-button-leading-icon"
-            disabled={!formInteractive}
+            disabled={!effectiveFormInteractive}
             type="submit"
           >
             <UserPlusIcon />

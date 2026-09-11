@@ -24,6 +24,7 @@ import { withoutUndefinedFields } from "./lib/firestoreDocument";
 import { loadEffectivePrintRequestLimitsForCustomer } from "./lib/loadEffectivePrintRequestLimits";
 import { loadStandardPrintSizesSettings } from "./lib/loadStandardPrintSizesSettings";
 import { requirePortalCustomer } from "./lib/portalCustomer";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 import {
   assertWorkingRequestAllowsPrintAdds,
   sumWorkingRequestPrintQuantities,
@@ -129,6 +130,7 @@ export const addPortalCatalogDesignToPrintRequest = onCall(
     let accountingKind: "created" | "incremented" = "created";
     try {
       const portalCustomer = await requirePortalCustomer(request.auth.uid);
+      await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
       const data = request.data as AddPortalCatalogDesignToPrintRequestRequest;
       const printRequestId =
         typeof data?.printRequestId === "string" ? data.printRequestId.trim() : "";

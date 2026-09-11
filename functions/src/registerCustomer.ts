@@ -5,6 +5,7 @@ import type { RegisterCustomerResponse } from "../../packages/shared/src/types/a
 import { adminDb } from "./lib/admin";
 import { alreadyExists, internal, invalidArgument, permissionDenied, unauthenticated } from "./lib/errors";
 import { validateRegisterCustomerRequest } from "./lib/registerCustomerValidation";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 
 const staffRoles = new Set(["owner", "admin", "helper"]);
 
@@ -56,6 +57,7 @@ export const registerCustomer = onCall(async (request): Promise<RegisterCustomer
   const userRef = adminDb.collection("users").doc(userId);
 
   try {
+    await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
     const userSnapshot = await userRef.get();
 
     if (userSnapshot.exists) {

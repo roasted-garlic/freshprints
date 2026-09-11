@@ -47,6 +47,9 @@ sidebar footer **Studio Updates** (desktop staff, including Helpers) is an appli
 **Brand logos** (owner upload Studio/Portal full+collapsed PNGs + display sizes — ADR-FP-114;
 soft-deployed fresh-prints-dev); owner/dev-only **Test Data Reset**, including truthful **Legacy
 print-limit counters** cleanup for retired, unenforced Cap A documents.
+**Portal Maintenance** (DEV) provides owner/admin emergency read-only mode control, saved
+heading/body copy, and a trusted active-linked tester selector that excludes merged/disabled and
+other ineligible customer accounts.
 
 ---
 
@@ -79,6 +82,7 @@ print-limit counters** cleanup for retired, unenforced Cap A documents.
 | Design engagement analytics (GA4) | ✅ Live — modal/share `page_view` + `design_view`; public catalog IDs only (ADR-FP-138) |
 | Assisted Creation brief + submitted-only updates | ✅ Live |
 | Assisted proof / revision / approval lifecycle | ✅ Live |
+| Portal maintenance mode | ✅ **DEV** — runtime full-screen read-only state, configured tester bypass/banner, and safe OFF fallback |
 | Production App Hosting | ✅ Live at `https://myprintrequest.com` — rebuild for PR #88 content = **Gate E** |
 
 ### Customer upload limits (r7)
@@ -107,6 +111,7 @@ print-limit counters** cleanup for retired, unenforced Cap A documents.
 | Staff gang sheet complete | `completeStaffGangSheetAndOpenNext` (updated reconciliation) — **Gate D update pending** |
 | Customer uploads | `createCustomerUploadBatch`, `finalizeCustomerUpload`, `finalizeCustomerUploadZip`, `confirmCustomerUploadsAndAttachToRequest`, promote/exclude/restore/retry, cleanup/wipe helpers |
 | Assisted Creation | `submitAssistedCreationRequest`, `customerUpdateAssistedCreationRequest`, `cancelAssistedCreationRequest`, `staffUpdateAssistedCreationStatus`, `staffAddAssistedCreationProof`, `customerRespondToAssistedCreationProof` |
+| Portal maintenance | `getPortalMaintenanceState`, `updatePortalMaintenanceState`, `listPortalMaintenanceTestCustomers`; shared guard covers customer mutation callables |
 | Brand logos (ADR-FP-114) | `finalizeBrandLogoSlot`, `updateBrandLogoDisplaySizes`; OG via `getPortalGlobalOpenGraph` |
 
 ---

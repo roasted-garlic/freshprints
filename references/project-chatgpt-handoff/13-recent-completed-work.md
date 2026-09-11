@@ -1,5 +1,48 @@
 # Recent Completed Work
 
+## 2026-09-10 - Coordinated production candidate M0 reconciliation — PACKET READY, FREEZE BLOCKED
+
+| Item | Status |
+|------|--------|
+| Goal | `coordinated-production-promotion-release-readiness` |
+| Step | M0 runtime/config/package reconciliation |
+| Result | Deterministic Function closure, Rules/index, Portal/Studio build-input, and config/data manifests generated at the dirty snapshot |
+| Evidence | `docs/workflow/reviews/2026-09-10-coordinated-production-m0-reconciliation.md` and linked manifests |
+| Validation | Closure 170/120 exports, 509 local closure paths, 77+10 index union; hard-delete pair excluded; `git diff --check` PASS |
+| Boundary | No commit/push, candidate freeze, deploy, publish, maintenance activation, production mutation, or Owner QA performed |
+| Blocker | 115 status entries remain (59 tracked/56 untracked); owner must authorize the explicit reviewed commit/push, then manifests must be regenerated at the clean SHA |
+| Next checkpoint | `[OWNER AUTHORIZE REVIEWED COMMIT/PUSH → CLEAN SHA → REGENERATE MANIFESTS → OWNER M1 FREEZE DECISION]` |
+
+## 2026-09-10 - Studio hard-delete production UI gate — CLOSED (child, DEV-only)
+
+| Item | Status |
+|------|--------|
+| Goal | `studio-hard-delete-production-ui-gate` |
+| Parent | `coordinated-production-promotion-release-readiness` |
+| Status | **CLOSED** — Signoff **approved_with_notes** |
+| Delivered | Shared `CustomerDirectoryTable` requires `isOperationalWipeUiEnabled()` before exposing the hard-delete menu/callback; production-mode Studio hides `Delete Account Permanently`; allowlisted DEV behavior and owner permission remain intact |
+| Validation | Focused users/identity contracts **12/12**; targeted ESLint **PASS**; Studio Vite build **PASS**; `git diff --check` **PASS** |
+| Baseline note | Studio repo typecheck retains documented unrelated diagnostics; no changed-file diagnostic |
+| Function audit | `hardDeleteCustomerAccount` and `previewHardDeleteCustomerAccount` remain source-visible for DEV but excluded from the parent production allowlist |
+| Signoff | `docs/workflow/reviews/2026-09-10-studio-hard-delete-production-ui-gate-signoff.md` |
+| Scope boundary | No backend/auth changes, customer mutation, production deployment, Studio publish, candidate freeze, commit, or push |
+| Next checkpoint | Parent M0 runtime scope/closure reconciliation, clean candidate, then owner M1 freeze decision |
+
+## 2026-09-10 - Production maintenance-mode prerequisite — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `production-maintenance-mode-prerequisite` |
+| Status | **CLOSED** — Signoff **approved_with_notes** |
+| Owner DEV QA | **PASS** (2026-09-10) |
+| Delivered | Shared Portal/Studio maintenance heading/body copy; native Studio Settings fields; owner/admin-only trusted tester list; merged/disabled/deleted/guest/orphaned/inactive exclusion; stale tester guard revalidation; maintenance-aware Portal auth/navigation gating |
+| DEV deployment | Exactly 37 reviewed Functions ACTIVE in `fresh-prints-dev/us-central1`; no corrective Rules/index/hosting deployment |
+| Validation | Corrective contracts **10/10**; trusted resolver integration **4/4**; full Rules regression **182/182**; Portal typecheck, Functions build, targeted lint, and diff check PASS |
+| QA evidence | `docs/workflow/reviews/2026-09-10-production-maintenance-mode-prerequisite-corrective-amendment-dev-qa.md` |
+| Signoff | `docs/workflow/reviews/2026-09-10-production-maintenance-mode-prerequisite-corrective-amendment-signoff.md` |
+| Scope boundary | Production deploy/activation, parent rollout, Studio/Portal publish, data operations, commit, and push remain separately gated |
+| Next checkpoint | `[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]` |
+
 ## 2026-09-10 - Studio Show Queue / Internal Sheet dollar totals — CLOSED
 
 | Item | Status |

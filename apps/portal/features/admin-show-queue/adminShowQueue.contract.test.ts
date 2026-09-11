@@ -30,6 +30,12 @@ describe('Portal admin Show Queue architecture contracts', () => {
     assert.match(serviceSource, /getPortalAdminUpcomingShowQueueDashboard/);
     assert.match(serviceSource, /getPortalAdminShowQueueRequestDesigns/);
     assert.doesNotMatch(serviceSource, /getPortalAdminDailyShowQueue/);
+    assert.match(gateSource, /portal-admin-state-card/);
+    assert.match(gateSource, />Access denied</);
+    assert.match(gateSource, /contact a Fresh Prints administrator/);
+    assert.doesNotMatch(gateSource, /\{error\}/);
+    assert.match(styleSource, /\.portal-admin-state-card/);
+    assert.match(styleSource, /min-height: 100dvh/);
   });
 
   it('keeps the page read-only with show picker, stats, View Designs, and no inline item dumps', () => {

@@ -9,6 +9,7 @@ import {
   runIdentityPropagationWithAutoResume,
 } from "./lib/propagateCustomerIdentitySnapshots";
 import { requirePortalCustomer } from "./lib/portalCustomer";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 import { validateUpdatePortalCustomerProfileRequest } from "./lib/validateUpdatePortalCustomerProfileRequest";
 
 function mapValidationError(error: unknown): never {
@@ -28,6 +29,7 @@ export const updatePortalCustomerProfile = onCall(
     const portalCustomer = await requirePortalCustomer(request.auth.uid);
 
     try {
+      await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
       const payload = validateUpdatePortalCustomerProfileRequest(request.data);
       const updateResult = await applyCustomerProfileUpdate({
         customerId: portalCustomer.customerId,

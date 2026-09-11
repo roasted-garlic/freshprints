@@ -9,6 +9,7 @@ import {
   unauthenticated,
 } from "./lib/errors";
 import { requirePortalCustomer } from "./lib/portalCustomer";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 import { assertPortalActiveEditableRequestData } from "./lib/portalContinuableParking";
 
 export interface ClearPortalWorkingPrintRequestRequest {
@@ -98,6 +99,7 @@ export const clearPortalWorkingPrintRequest = onCall(
 
     try {
     const portalCustomer = await requirePortalCustomer(request.auth.uid);
+    await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
     const payload = parseRequest(request.data);
     const customerUid = request.auth.uid;
     const requestRef = adminDb.collection("printRequests").doc(payload.printRequestId);

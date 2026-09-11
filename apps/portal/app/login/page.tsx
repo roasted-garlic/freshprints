@@ -1,12 +1,14 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 
 import { PortalAuthBrandLogo } from '../../features/brand/components/PortalAuthBrandLogo';
 import { loadPortalGlobalSocialMeta } from '../../features/brand/portalGlobalSocialMetaService';
 import { buildPortalPageMetadata } from '../../features/brand/portalSiteMeta';
 import { LoginForm } from '../../features/auth/components/LoginForm';
+import {
+  PortalLoginBrowseDesignsAction,
+  PortalLoginMaintenanceBanner,
+} from '../../features/auth/components/PortalLoginMaintenanceNotice';
 import { RedirectAuthenticatedFromAuthPages } from '../../features/auth/components/RedirectAuthenticatedFromAuthPages';
-import { CATALOG_HOME_PATH } from '../../features/print-requests/utils/catalogSelectionNavigation';
 
 export const revalidate = 3600;
 
@@ -34,14 +36,11 @@ export default function LoginPage() {
           <p className="portal-eyebrow">Fresh Prints Portal</p>
           <h1>Login</h1>
         </div>
+        <PortalLoginMaintenanceBanner />
         <div className="portal-auth-card-body">
           <LoginForm />
         </div>
-        <div className="portal-auth-card-actions portal-login-required-actions">
-          <Link className="portal-button portal-button-secondary" href={CATALOG_HOME_PATH}>
-            Browse designs
-          </Link>
-        </div>
+        <PortalLoginBrowseDesignsAction />
       </div>
     </main>
   );

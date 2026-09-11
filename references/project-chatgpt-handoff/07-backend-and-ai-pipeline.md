@@ -1,5 +1,18 @@
 # Backend and AI Pipeline
 
+## Portal maintenance mode (DEV — closed 2026-09-10)
+
+| Area | Delivered |
+|------|-----------|
+| State | `settings/portalMaintenance`; absent/OFF is fail-safe normal mode; saved customer-safe heading/body copy is shared by Studio and Portal |
+| Callables | `getPortalMaintenanceState`, `updatePortalMaintenanceState`, and owner/admin-only `listPortalMaintenanceTestCustomers` |
+| Eligibility | One trusted helper requires active customer-role user plus exactly one linked customer that is not guest, deleted, disabled, merged, or orphaned |
+| Guard | Covered customer mutation callables revalidate the configured tester before allowing the maintenance bypass |
+| DEV deployment | Exactly 37 reviewed Functions ACTIVE in `fresh-prints-dev/us-central1`; no corrective Rules/index/hosting deployment |
+| Owner QA | **PASS**; full-screen ordinary-customer state, tester banner/mutation, saved-copy runtime convergence, and OFF recovery verified |
+| Signoff | `docs/workflow/reviews/2026-09-10-production-maintenance-mode-prerequisite-corrective-amendment-signoff.md` |
+| Production | **NOT AUTHORIZED** |
+
 ## Print Request lifecycle ordering (ADR-FP-188 — DEV closed 2026-09-09)
 
 | Area | Delivered |

@@ -26,6 +26,7 @@ import {
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
 import { requireCatalogDonationUploader } from "./lib/catalogDonationUploader";
 import { requirePortalCustomer } from "./lib/portalCustomer";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 import { resolveCustomerUploadPurpose } from "../../packages/shared/src/utils/customerUploadPurpose";
 
 export interface CreateCustomerUploadBatchResponse {
@@ -83,6 +84,8 @@ export const createCustomerUploadBatch = onCall(
       createdBy = request.auth.uid;
       uploaderType = "customer";
     }
+
+    await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
 
     if (uploaderType === "guest" && payload.mode === "zip") {
       throw invalidArgument("Guest donations support image uploads only. Sign in to upload a ZIP.");

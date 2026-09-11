@@ -9,6 +9,40 @@
     var(--color-bg-primary);
 }
 
+.portal-admin-state {
+  align-items: center;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: clamp(1.25rem, 5vw, 3rem);
+  text-align: center;
+}
+
+.portal-admin-state-card {
+  align-items: center;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md, 0 16px 48px rgb(0 0 0 / 0.18));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 32rem;
+  padding: clamp(1.5rem, 6vw, 3rem);
+  width: min(100%, 32rem);
+}
+
+.portal-admin-state-card h1,
+.portal-admin-state-card p {
+  margin: 0;
+}
+
+.portal-admin-state-card .portal-button {
+  margin-top: var(--space-2);
+}
+
 .portal-admin-header {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

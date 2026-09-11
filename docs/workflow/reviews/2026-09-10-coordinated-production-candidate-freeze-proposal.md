@@ -1,0 +1,94 @@
+# Proposed M1 candidate freeze — coordinated production promotion
+
+| Field | Value |
+|---|---|
+| Date | 2026-09-10 |
+| Parent goal | `coordinated-production-promotion-release-readiness` |
+| Gate | M1 — exact candidate freeze |
+| Status | **Prepared, not executed** |
+| Candidate SHA | **TBD — no SHA is proposed until the working tree is clean** |
+| Production | untouched |
+
+## Decision requested
+
+After M0 scope and dependency reconciliation is complete, the owner may approve:
+
+> **FREEZE MAIN CANDIDATE SHA `<SHA>`**
+
+That approval would authorize freezing the exact committed `development` SHA named in the decision
+and only the mechanically generated runtime/deployment manifests attached to it. It would not by
+itself authorize indexes, Rules, Functions, Portal traffic, Studio publication, maintenance ON,
+data operations, or any production mutation; each remains a later checkpoint in the accepted parent
+Plan.
+
+## Preconditions before presenting this proposal
+
+1. The reviewed Studio hard-delete child is closed with
+   `docs/workflow/reviews/2026-09-10-studio-hard-delete-production-ui-gate-signoff.md`.
+   `CustomerDirectoryTable` requires `isOperationalWipeUiEnabled()` for the hard-delete menu and
+   callback; both hard-delete Function exports remain excluded from the production allowlist.
+2. The inherited request-design parity Plan is explicitly excluded from this candidate and retained
+   for a separate review.
+3. The inherited Portal admin Show Queue signoff is explicitly included as approved-with-notes
+   evidence for the read-only, access-controlled admin runtime already mapped in the parent scope;
+   it is not a standalone production authorization.
+4. Every remaining runtime/config/package/Rules/index path is mapped to an accepted parent feature,
+   deferred, or excluded disposition. No unrelated work, secrets, or generated assets are silently
+   included.
+5. The candidate is one clean committed SHA on `development`, pushed through the normal reviewed
+   source path, and is not the current dirty working tree.
+
+## Exact freeze procedure (proposal only)
+
+On `development`, after the owner-approved scope is complete:
+
+```text
+git fetch origin --prune
+git status --short --untracked-files=all
+git diff --check
+git rev-parse HEAD
+git rev-parse --abbrev-ref HEAD
+git rev-parse --abbrev-ref --symbolic-full-name @{u}
+git merge-base --is-ancestor origin/development HEAD
+git diff --name-status origin/production...HEAD
+git ls-tree -r --name-only HEAD
+```
+
+The operator then records the exact SHA, tree hash, branch/upstream proof, production tree delta,
+and a zero-entry status result. At that SHA, generate and attach:
+
+- explicit Function `export → transitive import closure → changed path → action` manifest;
+- hard-delete exclusion audit proving `hardDeleteCustomerAccount` and
+  `previewHardDeleteCustomerAccount` are not production targets;
+- whole-file Firestore and Storage Rules manifest and immutable source/deployed baseline hashes;
+- additive index union retaining all 77 live definitions, with no deletion proposal and no
+  `--force`;
+- Portal/App Hosting build-input and rollback manifest (immediate rollback build-003);
+- Studio package/SHA/asset-input and rollback manifest (immediate rollback `v1.0.9`);
+- shared/package/lockfile/build-config/secret-name metadata inventory (never secret values);
+- settings, Auth, Algolia and conditional data-operation dispositions; and
+- documentation-only continuation allowlist for post-freeze workflow records.
+
+The resulting packet is the M1 freeze record. Any application, Function, Rules, index, Portal,
+Studio, shared package, lockfile, build configuration, secret/config, generated-asset or runtime
+path change after freeze invalidates the tuple and requires a new RC/freeze. Only mechanically
+verified documentation-only records may follow the frozen runtime contract.
+
+## Explicit stop conditions
+
+Do not present or execute the freeze if any status entry remains, the SHA is not the intended
+`origin/development` descendant, a dependency closure is missing, a hard-delete target appears in
+the allowlist, an index deletion is proposed, Rules/Storage baselines are incomplete, or an
+unreviewed feature/config/data operation is found. Do not commit, push, merge, deploy, publish,
+activate maintenance, or mutate production as part of preparing this proposal.
+
+## Current state
+
+The child gate and inherited-document dispositions are complete. Read-only runtime scope/closure,
+Rules/index, Portal/Studio input, and configuration/data manifests are complete at the dirty
+snapshot and linked from `docs/workflow/reviews/2026-09-10-coordinated-production-m0-reconciliation.md`.
+M0 remains blocked on a clean committed candidate and regenerated immutable manifests, so the
+candidate SHA, tree hash, and freeze approval are intentionally absent. The current worktree is 115
+status entries (59 tracked, 56 untracked). The exact next checkpoint is owner authorization for the
+explicit reviewed commit/push, followed by clean-SHA verification and regeneration of the packet;
+only then may this proposal be presented for the separate freeze decision.

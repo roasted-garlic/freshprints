@@ -77,6 +77,7 @@ import {
 import { probeAssistedFinalSourceImageBytes } from "./lib/customerUploadProcessing";
 import { storageObjectPath } from "./lib/storageObjectPath";
 import { requirePortalCustomer } from "./lib/etsy/requirePortalCustomer";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 import { loadEmailProviderSettings } from "./lib/email/emailSettings";
 import {
   createCatalogShareEmailJobId,
@@ -260,6 +261,7 @@ export const submitAssistedCreationRequest = onCall(
 
     try {
       const portalCustomer = await requirePortalCustomer(request.auth.uid);
+      await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
       const data = (request.data ?? {}) as SubmitAssistedCreationRequestRequest;
       const answers = parseAssistedCreationAnswers(data.answers);
       const requireCloneUpload = answers.referenceUsage.includes("clone_with_subtle_changes");
@@ -357,6 +359,7 @@ export const cancelAssistedCreationRequest = onCall(
 
     try {
       const portalCustomer = await requirePortalCustomer(request.auth.uid);
+      await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
       const data = (request.data ?? {}) as CancelAssistedCreationRequestRequest;
       const requestId = typeof data.requestId === "string" ? data.requestId.trim() : "";
       if (!requestId) {
@@ -417,6 +420,7 @@ export const customerUpdateAssistedCreationRequest = onCall(
 
     try {
       const portalCustomer = await requirePortalCustomer(request.auth.uid);
+      await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
       const data = (request.data ?? {}) as CustomerUpdateAssistedCreationRequestRequest;
       const requestId = typeof data.requestId === "string" ? data.requestId.trim() : "";
       if (!requestId) {
@@ -551,6 +555,7 @@ export const customerSendAssistedCreationMessage = onCall(
 
     try {
       const portalCustomer = await requirePortalCustomer(request.auth.uid);
+      await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
       const data = (request.data ?? {}) as CustomerSendAssistedCreationMessageRequest;
       const requestId = typeof data.requestId === "string" ? data.requestId.trim() : "";
       if (!requestId) {
@@ -744,6 +749,7 @@ export const customerRespondToAssistedCreationProof = onCall(
 
     try {
       const portalCustomer = await requirePortalCustomer(request.auth.uid);
+      await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
       const data = (request.data ?? {}) as CustomerRespondToAssistedCreationProofRequest;
       const requestId = typeof data.requestId === "string" ? data.requestId.trim() : "";
       if (!requestId) {

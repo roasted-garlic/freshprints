@@ -9,6 +9,7 @@ import { adminAuth, adminDb } from "./lib/admin";
 import { internal, invalidArgument, unauthenticated } from "./lib/errors";
 import { validateDeletionConfirmation } from "./lib/portalAccountSettingsValidation";
 import { requirePortalCustomer } from "./lib/portalCustomer";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 
 function mapHttpsError(error: unknown): never {
   if (error instanceof HttpsError) {
@@ -36,6 +37,7 @@ export const requestPortalAccountDeletion = onCall(
       );
 
       const portalCustomer = await requirePortalCustomer(request.auth.uid);
+      await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
       const authUser = await adminAuth.getUser(request.auth.uid);
       const email =
         typeof authUser.email === "string" ? authUser.email.trim().toLowerCase() : "";
@@ -104,6 +106,7 @@ export const cancelPortalAccountDeletionRequest = onCall(
 
     try {
       const portalCustomer = await requirePortalCustomer(request.auth.uid);
+      await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
       const deletionRef = adminDb.collection("accountDeletionRequests").doc(portalCustomer.userId);
       const customerRef = adminDb.collection("customers").doc(portalCustomer.customerId);
       const userRef = adminDb.collection("users").doc(portalCustomer.userId);

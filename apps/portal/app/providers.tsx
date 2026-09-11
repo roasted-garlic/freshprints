@@ -15,6 +15,7 @@ import { FirebaseDebugPanelMount } from '../features/firebase-debug/components/F
 import { shouldShowFloatingThemeToggle } from '../features/navigation/utils/shouldShowFloatingThemeToggle';
 import { PortalChrome } from '../features/theme/components/PortalChrome';
 import { ThemeProvider } from '../features/theme/context/ThemeProvider';
+import { PortalMaintenanceProvider } from '../features/maintenance/context/PortalMaintenanceContext';
 
 export function Providers({
   children,
@@ -44,14 +45,16 @@ export function Providers({
   return (
     <ThemeProvider>
       <AuthProvider>
-        <PortalRouteProviders>
-          <PortalAnalyticsShareTitleProvider>
-            {showFloatingThemeToggle ? <PortalChrome /> : null}
-            {children}
-            <FirebaseDebugPanelMount />
-            <PortalAnalyticsBoundary config={analyticsConfig} />
-          </PortalAnalyticsShareTitleProvider>
-        </PortalRouteProviders>
+        <PortalMaintenanceProvider>
+          <PortalRouteProviders>
+            <PortalAnalyticsShareTitleProvider>
+              {showFloatingThemeToggle ? <PortalChrome /> : null}
+              {children}
+              <FirebaseDebugPanelMount />
+              <PortalAnalyticsBoundary config={analyticsConfig} />
+            </PortalAnalyticsShareTitleProvider>
+          </PortalRouteProviders>
+        </PortalMaintenanceProvider>
       </AuthProvider>
     </ThemeProvider>
   );

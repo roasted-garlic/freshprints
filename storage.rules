@@ -27,6 +27,56 @@ service firebase.storage {
         && callerUser().role == "customer";
     }
 
+    // Runtime Portal emergency brake for direct customer Storage writes. Missing state is the
+    // backwards-compatible OFF default; a present malformed state fails closed. While enabled,
+    // only the one configured authenticated customer may pass this predicate.
+    function portalMaintenanceDataIsValid(data) {
+      return data.get("enabled", null) is bool
+        && (
+          !data.keys().hasAny(["message"])
+          || (
+            data.get("message", null) == null
+            || (
+              data.get("message", null) is string
+              && data.get("message", "").size() > 0
+              && data.get("message", "").size() <= 240
+            )
+          )
+        )
+        && (
+          !data.keys().hasAny(["maintenanceTestCustomerUid"])
+          || data.get("maintenanceTestCustomerUid", null) == null
+          || (
+            data.get("maintenanceTestCustomerUid", null) is string
+            && data.get("maintenanceTestCustomerUid", "").size() > 0
+            && data.get("maintenanceTestCustomerUid", "").size() <= 128
+          )
+        );
+    }
+
+    function portalMaintenanceDataIsOff(data) {
+      return portalMaintenanceDataIsValid(data) && data.get("enabled", null) == false;
+    }
+
+    function portalMaintenanceDataAllowsCustomerMutation(data) {
+      return portalMaintenanceDataIsValid(data)
+        && (
+          data.get("enabled", null) == false
+          || (
+            isCustomer()
+            && data.get("enabled", null) == true
+            && data.get("maintenanceTestCustomerUid", null) == request.auth.uid
+          )
+        );
+    }
+
+    function portalMaintenanceAllowsCustomerMutation() {
+      return !firestore.exists(/databases/(default)/documents/settings/portalMaintenance)
+        || portalMaintenanceDataAllowsCustomerMutation(
+          firestore.get(/databases/(default)/documents/settings/portalMaintenance).data
+        );
+    }
+
     // Leftover Anonymous Auth (no users/{uid} doc) must not break public catalog reads:
     // isStaff()/isCustomer() used to call firestore.get unconditionally and fail the whole rule.
     function isAnonymousAuth() {
@@ -135,6 +185,7 @@ service firebase.storage {
       // ZIP uploads remain registered-customer only (guests are images-only in callables).
       allow create, update: if isCustomer()
         && userId == request.auth.uid
+        && portalMaintenanceAllowsCustomerMutation()
         && isValidCustomerUploadZip();
       allow delete: if isStaff();
     }
@@ -143,6 +194,7 @@ service firebase.storage {
       allow read: if isStaff() || canAccessOwnCustomerUploadPath(userId);
 
       allow create, update: if canAccessOwnCustomerUploadPath(userId)
+        && portalMaintenanceAllowsCustomerMutation()
         && fileName == "source"
         && isValidCustomerUploadSource();
 
@@ -171,8 +223,13 @@ service firebase.storage {
       allow read: if isStaff() || (isCustomer() && userId == request.auth.uid);
       allow create, update: if isCustomer()
         && userId == request.auth.uid
+        && portalMaintenanceAllowsCustomerMutation()
         && isValidAssistedCreationImage();
-      allow delete: if isStaff() || (isCustomer() && userId == request.auth.uid);
+      allow delete: if isStaff() || (
+        isCustomer()
+        && userId == request.auth.uid
+        && portalMaintenanceAllowsCustomerMutation()
+      );
     }
 
     match /assisted-creation/{userId}/{requestId}/references/{fileId} {

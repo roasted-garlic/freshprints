@@ -124,10 +124,11 @@ export function LoginForm() {
 
   const showGlobalAuthError = Boolean(error) && !isBusy && !isAuthenticated;
 
-  const registerHref =
-    typeof window !== 'undefined'
-      ? buildPortalRegisterHref(getPortalReturnToFromSearch(window.location.search))
-      : '/register';
+  const [registerHref, setRegisterHref] = useState('/register');
+
+  useEffect(() => {
+    setRegisterHref(buildPortalRegisterHref(getPortalReturnToFromSearch(window.location.search)));
+  }, []);
 
   return (
     <div className="portal-auth-stack portal-auth-stack-compact">

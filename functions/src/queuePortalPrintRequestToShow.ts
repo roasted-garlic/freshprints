@@ -41,6 +41,7 @@ import { withoutUndefinedFields } from "./lib/firestoreDocument";
 import { loadPortalQueueCutoffHours } from "./lib/loadPortalQueueCutoffHours";
 import { loadEffectivePrintRequestLimitsForCustomer } from "./lib/loadEffectivePrintRequestLimits";
 import { requirePortalCustomer } from "./lib/portalCustomer";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 import { applyCustomerUploadStaffReviewTransitionInTransaction } from "./lib/customerUploadCatalogConfirmation";
 import { assertQueuePrintRequestItemSize } from "./lib/assertQueuePrintRequestItemSize";
 import { validateQueuePortalPrintRequestToShowRequest } from "./lib/queuePortalPrintRequestToShowValidation";
@@ -117,6 +118,7 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
 
   try {
     const customer = await requirePortalCustomer(userId);
+    await assertPortalMaintenanceAllowsCustomerMutation(userId);
     const payload = validateQueuePortalPrintRequestToShowRequest(request.data);
     const now = new Date();
     const portalQueueCutoffHours = await loadPortalQueueCutoffHours();

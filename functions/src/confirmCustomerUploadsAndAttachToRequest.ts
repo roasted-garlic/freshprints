@@ -22,6 +22,7 @@ import { withoutUndefinedFields } from "./lib/firestoreDocument";
 import { loadEffectivePrintRequestLimitsForCustomer } from "./lib/loadEffectivePrintRequestLimits";
 import { loadStandardPrintSizesSettings } from "./lib/loadStandardPrintSizesSettings";
 import { requirePortalCustomer } from "./lib/portalCustomer";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 import { assertWorkingRequestAllowsPrintAdds } from "./lib/printRequestWorkingRequestMax";
 import { resolveOrCreateWorkingPrintRequestInTransaction } from "./lib/portalWorkingPrintRequest";
 import { sumPrintRequestItemQuantities } from "../../packages/shared/src/utils/portalShowQueueCapacity";
@@ -89,6 +90,7 @@ export const confirmCustomerUploadsAndAttachToRequest = onCall(
 
     try {
       const portalCustomer = await requirePortalCustomer(request.auth.uid);
+      await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
       const payload = validateConfirmCustomerUploadsAndAttachRequest(request.data);
       const customerUid = request.auth.uid;
       const quantity = payload.defaultQuantity ?? 1;

@@ -66,6 +66,19 @@ Auth provider changes, relaxing rules, new public sensitive endpoints, secret ro
 - Hard delete Apply gated to `fresh-prints-dev` until production authorization
 - Portal cannot invoke staff identity or recovery operations
 
+## Portal maintenance mode (DEV)
+
+- `settings/portalMaintenance` is controlled only through owner/admin callables; direct client
+  writes remain denied.
+- The public state projection contains only enabled status, customer-safe heading/body copy, and a
+  caller-specific tester boolean; configured tester UIDs and audit fields never leave the trusted
+  backend.
+- Tester eligibility requires an active customer-role user with exactly one linked customer record;
+  guest, deleted, disabled, merged, orphaned, and inactive accounts are excluded.
+- The shared maintenance guard revalidates eligibility before covered customer mutations and fails
+  closed on state or eligibility read errors. The tester bypasses only the maintenance prohibition,
+  not ownership, quota, lifecycle, upload, or other business rules.
+
 ## Show Queue recovery (DEV)
 
 - `previewShowProductionRecovery` / `applyShowProductionRecovery` — trusted server boundary; customers cannot invoke
