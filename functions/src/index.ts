@@ -19,6 +19,9 @@ export { recordCustomerUploadHalftoneResponse } from "./recordCustomerUploadHalf
 export { recordCustomerUploadHalftoneStaffDecision } from "./recordCustomerUploadHalftoneStaffDecision";
 export { recordCustomerUploadArtworkBackgroundStaffDecision } from "./recordCustomerUploadArtworkBackgroundStaffDecision";
 export { restoreCustomerUploadCatalogEligibility } from "./restoreCustomerUploadCatalogEligibility";
+export { requestCustomerUploadCatalogPermissionFollowUp } from "./requestCustomerUploadCatalogPermissionFollowUp";
+export { getCustomerUploadCatalogPermissionFollowUp } from "./getCustomerUploadCatalogPermissionFollowUp";
+export { respondToCustomerUploadCatalogPermissionFollowUp } from "./respondToCustomerUploadCatalogPermissionFollowUp";
 export { retryCustomerUploadProcessing } from "./retryCustomerUploadProcessing";
 export { getPortalShowPrintProgress } from "./getPortalShowPrintProgress";
 export { getPortalPrintRequestShowSchedules } from "./getPortalPrintRequestShowSchedules";

@@ -34,6 +34,18 @@ export type CustomerUploadCatalogReviewStatus =
   | "sent_to_ai_review"
   | "excluded_from_catalog";
 
+/** Server-authored reason an upload is excluded from catalog intake. */
+export type CustomerUploadCatalogExclusionReason =
+  | "staff_review"
+  | "customer_permission_denied";
+
+/** One-time customer permission follow-up lifecycle. */
+export type CustomerUploadCatalogPermissionFollowUpStatus =
+  | "not_requested"
+  | "requested"
+  | "approved"
+  | "declined";
+
 export type CustomerUploadBatchStatus = "open" | "confirmed" | "abandoned" | "failed";
 
 /**

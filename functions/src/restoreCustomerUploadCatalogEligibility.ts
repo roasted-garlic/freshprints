@@ -44,6 +44,15 @@ export const restoreCustomerUploadCatalogEligibility = onCall(
       throw failedPrecondition("Only excluded uploads can be restored to staff review.");
     }
 
+    if (data.catalogExclusionReason === "customer_permission_denied") {
+      if (data.catalogPermissionFollowUpStatus === "approved") {
+        return { uploadId, catalogReviewStatus: "pending_staff_review" };
+      }
+      throw failedPrecondition(
+        "Customer permission is required before this upload can return to staff review.",
+      );
+    }
+
     if (typeof data.promotedDesignId === "string" && data.promotedDesignId.trim()) {
       throw failedPrecondition("Promoted uploads cannot be restored to pending review.");
     }
@@ -56,6 +65,7 @@ export const restoreCustomerUploadCatalogEligibility = onCall(
 
     await uploadRef.update({
       catalogReviewStatus: "pending_staff_review",
+      catalogExclusionReason: "staff_review",
       updatedAt: FieldValue.serverTimestamp(),
     });
 

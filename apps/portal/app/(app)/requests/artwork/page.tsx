@@ -6,6 +6,7 @@ import { useState } from 'react';
 
 import { ArtworkQualityNotice } from '../../../../features/customer-uploads/components/ArtworkQualityNotice';
 import { CustomerUploadPanel } from '../../../../features/customer-uploads/components/CustomerUploadPanel';
+import { CustomerUploadCatalogPermissionFollowUpModal } from '../../../../features/customer-uploads/components/CustomerUploadCatalogPermissionFollowUpModal';
 import { usePortalPrintRequests } from '../../../../features/print-requests/context/PortalPrintRequestContext';
 import {
   CATALOG_HOME_PATH,
@@ -27,6 +28,14 @@ export default function RequestArtworkPage() {
   const searchParams = useSearchParams();
   const { refreshRequests, workingRequest } = usePortalPrintRequests();
   const [attachedRequestId, setAttachedRequestId] = useState<string | null>(null);
+  const permissionRequestToken = searchParams.get('permissionRequest')?.trim() || null;
+
+  function closePermissionRequest() {
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete('permissionRequest');
+    const query = nextParams.toString();
+    router.replace(query ? `/requests/artwork?${query}` : '/requests/artwork');
+  }
 
   function handleBack() {
     const returnTo = sanitizePortalReturnTo(searchParams.get('returnTo'));
@@ -104,6 +113,13 @@ export default function RequestArtworkPage() {
             </button>
           </div>
         </section>
+        {permissionRequestToken ? (
+          <CustomerUploadCatalogPermissionFollowUpModal
+            isOpen
+            onClose={closePermissionRequest}
+            requestToken={permissionRequestToken}
+          />
+        ) : null}
       </main>
     );
   }
@@ -129,6 +145,13 @@ export default function RequestArtworkPage() {
         purpose="print_request"
         variant="embedded"
       />
+      {permissionRequestToken ? (
+        <CustomerUploadCatalogPermissionFollowUpModal
+          isOpen
+          onClose={closePermissionRequest}
+          requestToken={permissionRequestToken}
+        />
+      ) : null}
     </main>
   );
 }

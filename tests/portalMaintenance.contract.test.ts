@@ -22,6 +22,7 @@ const customerMutationSources = [
   "finalizeCustomerUploadZip.ts",
   "queuePortalPrintRequestToShow.ts",
   "recordCustomerUploadHalftoneResponse.ts",
+  "respondToCustomerUploadCatalogPermissionFollowUp.ts",
   "registerCustomer.ts",
   "registerWebPushSubscription.ts",
   "removePortalPrintRequestItem.ts",
@@ -70,6 +71,7 @@ test("Rules and callable response contract remain fail-closed and private", () =
   assert.match(trustedReader, /missing.*OFF|missing document.*OFF/i);
   assert.match(trustedReader, /PORTAL_MAINTENANCE_STATE_ERROR_CODE/);
   assert.match(publicCallable, /loadPortalMaintenancePublicState/);
+  assert.match(publicCallable, /invoker:\s*["']public["']/);
   assert.doesNotMatch(publicCallable, /settings\/portalMaintenance/);
   assert.match(publicCallable, /no-store|not cached|cache/i);
   assert.match(trustedReader, /maintenanceTestCustomerUid/);
@@ -99,10 +101,14 @@ test("owner control, audit, bounded refresh, and isolated recovery paths stay in
   assert.match(trustedReader, /serverTimestamp\(\)/);
   assert.match(trustedReader, /updatedBy/);
   assert.match(provider, /visibilitychange/);
-  assert.match(provider, /setInterval/);
+  assert.doesNotMatch(provider, /setInterval/);
   assert.match(provider, /setStatus\('error'\)/);
   assert.match(provider, /firebaseUser\?\.uid/);
   assert.match(shell, /isMaintenanceBlocked/);
+  assert.match(
+    shell,
+    /maintenanceStatus === 'ready' && maintenanceEnabled && !maintenanceTestAccessGranted/,
+  );
   assert.match(shell, /PortalMaintenanceTestBanner/);
   assert.match(provider, /maintenanceTestAccessGranted/);
   assert.match(provider, /heading/);

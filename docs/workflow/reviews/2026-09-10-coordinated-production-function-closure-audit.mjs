@@ -49,6 +49,19 @@ const changedRuntimePaths = [
   "functions/src/listPortalMaintenanceTestCustomers.ts",
   "functions/src/updatePortalMaintenanceState.ts",
   "packages/shared/src/constants/portal/portalMaintenance.constants.ts",
+  "functions/src/excludeCustomerUploadFromCatalog.ts",
+  "functions/src/getCustomerUploadCatalogPermissionFollowUp.ts",
+  "functions/src/requestCustomerUploadCatalogPermissionFollowUp.ts",
+  "functions/src/respondToCustomerUploadCatalogPermissionFollowUp.ts",
+  "functions/src/restoreCustomerUploadCatalogEligibility.ts",
+  "functions/src/lib/customerNotifications/createCustomerNotification.ts",
+  "functions/src/lib/customerUploadCatalogConfirmation.ts",
+  "packages/shared/src/types/customerNotifications/customerNotifications.types.ts",
+  "packages/shared/src/types/customerUpload/customerUpload.enums.ts",
+  "packages/shared/src/types/customerUpload/customerUpload.types.ts",
+  "packages/shared/src/types/customerUpload/customerUploadCatalogPermission.types.ts",
+  "packages/shared/src/utils/customerNotifications.ts",
+  "packages/shared/src/utils/customerUploadCatalogIntakeEligibility.ts",
 ];
 
 const excluded = new Set([

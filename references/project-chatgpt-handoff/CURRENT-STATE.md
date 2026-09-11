@@ -6,33 +6,64 @@
 
 | Item | Value |
 |---|---|
-| Status | **M0 PREPARATION BLOCKED — CLEAN CANDIDATE AND IMMUTABLE MANIFESTS** |
+| Status | **PARENT M0 RERUN COMPLETE — CANDIDATE COMMIT/PUSH AUTHORIZATION REQUIRED** |
 | Parent | Coordinated production promotion and release readiness |
-| Active child phase | Parent `coordinated-production-promotion-release-readiness` — M0 reconciliation complete; clean candidate and immutable manifests remain |
+| Active child phase | `customer-upload-follow-up-catalog-permission` — child Signoff **approved_with_notes**; parent M0 rerun complete at dirty snapshot. Maintenance public-read fail-open: owner guest QA **PASS**. |
 | Most recently closed goal | `production-maintenance-mode-prerequisite` — **approved_with_notes** (Owner DEV QA PASS 2026-09-10) |
 | Closed promotion child | `production-maintenance-mode-prerequisite-production-promotion` — **superseded_by_coordinated_candidate** (no production deployment) |
-| Current plan/review | Parent Plan/Review: **approved_with_changes — accepted**; M0 preparation rerun: `docs/workflow/reviews/2026-09-10-coordinated-production-candidate-preparation.md`; child gate Review: **approved_with_changes — accepted** |
+| Current plan/review | Child Plan: `docs/workflow/plans/2026-09-10-customer-upload-follow-up-catalog-permission-plan.md`; Formal Review: **approved_with_changes — accepted by owner**; Signoff: **approved_with_notes** |
 | Signoff | Maintenance prerequisite: **approved_with_notes** in DEV. Strategy B parent amendment: **accepted**. Hard-delete child: **approved_with_notes**. Candidate has no Signoff. Studio dollar totals: **approved** — Owner visual QA **PASS** (2026-09-10). Lifecycle ordering: **approved_with_notes**. |
 | Related closed goal | `user-info-print-request-lifecycle-activity-ordering` |
 | Autonomous | **OFF** (`shadow`) |
 | Production | untouched |
-| Commit/push | No new commit/push/branch/merge/PR authorized for the parent candidate; prior Studio print-time polish was owner-authorized and pushed; no force push |
+| Commit/push | New post-child candidate commit/push requires explicit owner authorization; prior candidate `04b9637470a16b0f4d4a1ba9f822fe9df7acca2d` is stale and must not be frozen/reused |
 
-### Active managed goal — coordinated production promotion and release readiness (M0 preparation)
+### Completed managed child — customer-upload-follow-up-catalog-permission
+
+Read-only source reconciliation found that an authenticated print-request upload with
+`catalogUseAcknowledged=false` currently remains `catalogReviewStatus: "not_eligible"` and is
+filtered out of Pending rather than persisted as Excluded. The existing generic staff restore
+callable does not inspect an exclusion reason, while promotion already rejects explicit false.
+The child Plan proposes a typed exclusion reason/follow-up status on `customerUploads`, preserves
+the original false answer, uses one opaque action token with the existing `customerNotifications`
+Alert/deep-link system, and adds trusted staff request, customer context, and customer response
+boundaries. Allow returns the upload to Pending without Design/AI/catalog side effects; Decline is
+terminal for v1. Anonymous/catalog-donation uploads remain out of scope because they have no
+proven authenticated Portal recipient/linkage.
+
+Plan: `docs/workflow/plans/2026-09-10-customer-upload-follow-up-catalog-permission-plan.md`
+
+Formal Review: `docs/workflow/reviews/2026-09-10-customer-upload-follow-up-catalog-permission-review.md`
+
+Formal Review verdict: **`approved_with_changes` — accepted by owner**. Implement → Test completed
+within the reviewed scope and child Signoff is **`approved_with_notes`**. No deployment,
+migration/backfill, customer mutation, commit, push, production action, or candidate freeze occurred.
+Parent M0 must reassemble and reconcile a new reviewed development SHA; the previous candidate
+`04b9637470a16b0f4d4a1ba9f822fe9df7acca2d` is stale and must not be frozen or reused.
+
+Implementation review: `docs/workflow/reviews/2026-09-10-customer-upload-follow-up-catalog-permission-implementation-review.md`
+
+Test report: `docs/workflow/reviews/2026-09-10-customer-upload-follow-up-catalog-permission-test-report.md`
+
+Signoff: `docs/workflow/reviews/2026-09-10-customer-upload-follow-up-catalog-permission-signoff.md`
+
+### Active managed goal — coordinated production promotion and release readiness (M0 candidate boundary)
 
 The owner selected Strategy B: maintenance is not a standalone production release. The signed-off
 DEV maintenance capability is a required first safety layer of the full frozen coordinated candidate.
 The accepted Strategy B parent Plan and Formal Review define the source, dependency and owner gates.
-The hard-delete UI child is closed; the read-only M0 runtime reconciliation is now complete at the
-dirty snapshot, but M0 remains blocked pending a clean committed candidate and regenerated manifests:
+The hard-delete UI child and customer-upload follow-up child are closed; the read-only M0 runtime
+reconciliation is complete at the dirty snapshot, but candidate assembly remains gated pending owner
+authorization and a clean SHA with regenerated manifests:
 
-- `development`/`HEAD`/`origin/development`: `b5aec1b2b1ac4eba5ab704f1db8f87ea22f1daaa`; `origin/production`:
+- `development`/`HEAD`/`origin/development`: `04b9637470a16b0f4d4a1ba9f822fe9df7acca2d`; `origin/production`:
   `36165096f09bef6817adb5b11d496dbb1502b34b`.
-- Working tree: 59 tracked and 56 untracked status entries (115 total); new maintenance modules,
-  workflow evidence, and the reconciliation packet are untracked and
-  guard-bearing Functions are working-tree edits, not one immutable revision.
-- Committed tree delta: 1,877 paths; current source export comparison is 170 development vs 120
-  production-source exports (51 added, one removed). Firestore/Storage Rules are whole-file drift.
+- Working tree: 34 tracked and 16 untracked status entries (50 total); the signed-off customer-upload
+  runtime, workflow evidence, and reconciliation packet are not yet one immutable revision.
+- Current source export comparison is 173 development vs 120 production-source exports (54 added,
+  one removed); deterministic local closure is 513 paths with digest
+  `32cce483f02b8d69d2fcb1e7b98daf544f33095a977cb0d80cfa161c5e7dfb1e`. Firestore/Storage Rules are
+  whole-file drift unchanged by the child.
 - Production read-only baseline: 113 ACTIVE Functions, no maintenance callables, absent
   `settings/portalMaintenance` (HTTP 404 = safe OFF), Portal build-003 at 100% traffic, and Studio
   stable `v1.0.9`.
@@ -51,6 +82,14 @@ evidence for the scoped read-only admin runtime. No branch, commit, merge, deplo
 mutation, maintenance activation, or production action occurred.
 
 ### M0 preparation result
+
+The current rerun packet is authoritative at 59 status entries (43 tracked, 16 untracked), with the
+customer-upload follow-up child included and the request-design parity Plan explicitly excluded for
+separate review. Function closure, maintenance guard, Rules/Storage, index, Portal, Studio,
+hard-delete, and config/data evidence are recorded in
+`docs/workflow/reviews/2026-09-10-coordinated-production-m0-reconciliation.md`. The 87-index union
+has no deletion and the child requires no index or Rules change. The old 115-entry section below is
+historical pre-rerun evidence; do not use its stale counts or SHA.
 
 The complete pre-report working-tree snapshot contained 100 entries; the current child/test/signoff
 and reconciliation continuation is intentionally uncommitted at 115 status entries (59 tracked,

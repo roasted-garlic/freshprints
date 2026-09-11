@@ -8,8 +8,8 @@ import { adminDb } from "./admin";
 /**
  * Shared confirmation fields when a customer confirms ownership / library consent.
  *
- * - Print-request attach / assisted: reaffirm `not_eligible` (Studio Pending waits for
- *   successful show allocation / Add to Show).
+ * - Print-request attach / assisted: affirmative consent reaffirms `not_eligible` (Studio Pending
+ *   waits for successful show allocation / Add to Show); explicit denial is Excluded.
  * - Donate confirm: set `pending_staff_review` immediately (Donated Designs intake).
  */
 export function buildCatalogIntakeConfirmationPatch(input: {
@@ -18,19 +18,41 @@ export function buildCatalogIntakeConfirmationPatch(input: {
   printRequestId: string | null;
   /**
    * When true (donate), sets `pending_staff_review`.
-   * When false (print-request attach / assisted), leaves / reaffirms `not_eligible`.
+   * When false (print-request attach / assisted), records catalog exclusion unless a prior
+   * follow-up approval is already present.
    */
   submitForStaffReview: boolean;
+  /** Existing upload data is used to preserve follow-up history on retries/re-attachments. */
+  existingUpload?: {
+    catalogPermissionOriginalDeniedAt?: unknown;
+    catalogPermissionFollowUpStatus?: unknown;
+  };
   now?: FieldValue;
 }): Record<string, unknown> {
   const now = input.now ?? FieldValue.serverTimestamp();
+  const followUpApproved = input.existingUpload?.catalogPermissionFollowUpStatus === "approved";
   return {
     ownershipConfirmed: true,
     catalogUseAcknowledged: input.catalogUseAcknowledged,
     termsVersion: input.termsVersion,
     confirmedAt: now,
     printRequestId: input.printRequestId,
-    catalogReviewStatus: input.submitForStaffReview ? "pending_staff_review" : "not_eligible",
+    catalogReviewStatus:
+      input.submitForStaffReview
+        ? "pending_staff_review"
+        : input.catalogUseAcknowledged
+          ? "not_eligible"
+          : followUpApproved
+            ? "pending_staff_review"
+            : "excluded_from_catalog",
+    ...(input.submitForStaffReview || input.catalogUseAcknowledged
+      ? {}
+      : {
+          catalogExclusionReason: "customer_permission_denied",
+          ...(input.existingUpload?.catalogPermissionOriginalDeniedAt
+            ? {}
+            : { catalogPermissionOriginalDeniedAt: now }),
+        }),
     updatedAt: now,
   };
 }

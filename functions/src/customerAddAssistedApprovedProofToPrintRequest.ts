@@ -719,6 +719,7 @@ async function ensureIngestOnWorkingRequest(input: {
       termsVersion: CUSTOMER_UPLOAD_TERMS_VERSION,
       printRequestId,
       submitForStaffReview: false,
+      existingUpload: upload,
       now,
     });
 

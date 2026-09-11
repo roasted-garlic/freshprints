@@ -17,6 +17,12 @@ import {
 
 import { CUSTOMER_NOTIFICATIONS_COLLECTION } from '@fresh-prints/shared/types/customerNotifications/customerNotifications.types';
 import type { CustomerNotificationKind } from '@fresh-prints/shared/types/customerNotifications/customerNotifications.types';
+import type {
+  GetCustomerUploadCatalogPermissionFollowUpRequest,
+  GetCustomerUploadCatalogPermissionFollowUpResponse,
+  RespondToCustomerUploadCatalogPermissionFollowUpRequest,
+  RespondToCustomerUploadCatalogPermissionFollowUpResponse,
+} from '@fresh-prints/shared/types/customerUpload/customerUploadCatalogPermission.types';
 import { isCustomerNotificationKind } from '@fresh-prints/shared/types/customerNotifications/customerNotifications.types';
 import {
   runTracedWrite,
@@ -50,6 +56,7 @@ export interface PortalCustomerNotification {
   href: string;
   requestId: string;
   proofId?: string;
+  actionToken?: string;
   createdAt: Date | null;
   readAt: Date | null;
 }
@@ -87,6 +94,7 @@ function mapNotification(
     href: data.href,
     requestId: data.requestId,
     proofId: typeof data.proofId === 'string' ? data.proofId : undefined,
+    actionToken: typeof data.actionToken === 'string' ? data.actionToken : undefined,
     createdAt: asDate(data.createdAt),
     readAt: asDate(data.readAt),
   };
@@ -184,6 +192,29 @@ export const customerNotificationsService = {
       },
       { writeCount: uniqueIds.length },
     );
+  },
+
+  async getCatalogPermissionFollowUp(
+    requestToken: string,
+  ): Promise<GetCustomerUploadCatalogPermissionFollowUpResponse> {
+    return callTracedFunction<
+      GetCustomerUploadCatalogPermissionFollowUpRequest,
+      GetCustomerUploadCatalogPermissionFollowUpResponse
+    >('getCustomerUploadCatalogPermissionFollowUp', {
+      source: 'customerNotificationsService.getCatalogPermissionFollowUp',
+    })({ requestToken });
+  },
+
+  async respondToCatalogPermissionFollowUp(
+    requestToken: string,
+    decision: 'allow' | 'decline',
+  ): Promise<RespondToCustomerUploadCatalogPermissionFollowUpResponse> {
+    return callTracedFunction<
+      RespondToCustomerUploadCatalogPermissionFollowUpRequest,
+      RespondToCustomerUploadCatalogPermissionFollowUpResponse
+    >('respondToCustomerUploadCatalogPermissionFollowUp', {
+      source: 'customerNotificationsService.respondToCatalogPermissionFollowUp',
+    })({ requestToken, decision });
   },
 
 

@@ -327,6 +327,18 @@
   margin: 0;
 }
 
+.customer-upload-intake-status-badge {
+  background: color-mix(in srgb, var(--color-warning, #f4b740) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-warning, #f4b740) 48%, var(--color-border));
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  display: inline-flex;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  padding: 0.25rem 0.45rem;
+  width: fit-content;
+}
+
 .customer-upload-intake-empty,
 .customer-upload-intake-notice {
   color: var(--color-text-secondary);

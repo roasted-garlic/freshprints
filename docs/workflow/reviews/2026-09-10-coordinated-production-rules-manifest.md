@@ -1,6 +1,10 @@
 # Coordinated Production Rules Manifest
 
-Status: read-only M0 reconciliation artifact. No Firestore or Storage Rules deployment was executed.
+Status: read-only M0 reconciliation rerun artifact. No Firestore or Storage Rules deployment was executed.
+
+Rerun snapshot: `development` dirty at `04b9637470a16b0f4d4a1ba9f822fe9df7acca2d`. The signed-off
+customer-upload follow-up child made no Rules changes; whole-file hashes and the inherited rule map
+were re-read and are unchanged. No new permission bypass or hard-delete exposure was found.
 
 ## Whole-file inputs
 
@@ -50,3 +54,8 @@ The Firestore customer-document update hunk only separates the customer branch (
 - No `--force`, deploy, data write, production activation, or DEV setting mutation occurred.
 
 These are the exact whole-file candidate manifests for later review, not authorization to deploy them.
+
+The child fields (`catalogExclusionReason`, follow-up status, timestamps, and opaque token) remain
+server-authoritative in `customerUploads`; `customerNotifications` creation remains server-only and
+the Portal client is read-state-only. The three follow-up callables do not require a Rules or
+Storage Rules edit. Any later candidate SHA must repeat this whole-file comparison.

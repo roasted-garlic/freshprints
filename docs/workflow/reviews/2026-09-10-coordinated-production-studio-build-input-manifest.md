@@ -1,6 +1,10 @@
 # Coordinated Production Studio Build-Input Manifest
 
-Status: read-only M0 reconciliation artifact; no Studio publication or release was executed.
+Status: read-only M0 reconciliation rerun artifact; no Studio publication or release was executed.
+
+Rerun snapshot: `development` dirty at `04b9637470a16b0f4d4a1ba9f822fe9df7acca2d`. The signed-off
+customer-upload follow-up child and the previously signed-off hard-delete UI gate are both included
+below; the dirty snapshot is not a release SHA.
 
 ## Exact build boundary
 
@@ -22,6 +26,20 @@ Selected build metadata hashes (current / `origin/production`) are `apps/studio/
 | Maintenance runtime | `features/settings/pages/SettingsPage.tsx`; `features/settings/components/PortalMaintenanceSettingsSection.tsx`; `features/settings/hooks/usePortalMaintenanceSettings.ts`; `features/settings/services/portalMaintenanceSettingsService.ts`; `styles/components/settings.css` | Include |
 | Hard-delete UI gate | `features/users/components/CustomerDirectoryTable.tsx`; existing `features/test-data-reset/utils/operationalWipeUiGate.ts` | Include gate; preserve existing DEV source |
 | Validation-only | `PortalMaintenanceSettingsSection.contract.test.ts`; `customerDirectoryHardDeleteGate.contract.test.ts` | Run/record; not packaged runtime inputs |
+
+## Customer-upload follow-up child additions
+
+| Area | Paths / disposition |
+|---|---|
+| Excluded-state UX | `apps/studio/src/renderer/src/features/customer-uploads/components/CustomerUploadIntakeSection.tsx`; permission-denied reason and one-time “Ask for permission again” action |
+| Service and hook | `apps/studio/src/renderer/src/features/customer-uploads/services/customerUploadIntakeService.ts`; `.../hooks/useCustomerUploadIntake.ts` |
+| Shared query validation | `apps/studio/src/renderer/src/features/customer-uploads/utils/customerUploadIntakeQueries.test.ts` — validation-only, not packaged |
+| Styling | `apps/studio/src/renderer/src/styles/layout.css` |
+
+The production build keeps `Delete Account Permanently` absent at the shared table boundary via
+`isOperationalWipeUiEnabled()`. Both `previewHardDeleteCustomerAccount` and
+`hardDeleteCustomerAccount` remain excluded from the production Function allowlist. The rollback
+target remains **Studio v1.0.9**.
 
 ## Production hard-delete gate proof
 

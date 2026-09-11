@@ -20,9 +20,19 @@ import {
 import { useAuth } from '../../auth/context/AuthContext';
 import { portalMaintenanceService } from '../services/portalMaintenanceService';
 
-const PORTAL_MAINTENANCE_REFRESH_INTERVAL_MS = 20_000;
-
 export type PortalMaintenanceLoadStatus = 'loading' | 'ready' | 'error';
+
+function samePublicState(
+  current: PortalMaintenancePublicState,
+  next: PortalMaintenancePublicState,
+): boolean {
+  return (
+    current.enabled === next.enabled &&
+    current.heading === next.heading &&
+    current.message === next.message &&
+    current.maintenanceTestAccessGranted === next.maintenanceTestAccessGranted
+  );
+}
 
 interface PortalMaintenanceContextValue {
   enabled: boolean;
@@ -58,20 +68,22 @@ export function PortalMaintenanceProvider({ children }: { children: ReactNode })
   const [isRefreshing, setIsRefreshing] = useState(false);
   const inFlightRef = useRef<Promise<void> | null>(null);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (options?: { silent?: boolean }) => {
     if (inFlightRef.current) {
       return inFlightRef.current;
     }
 
+    const silent = options?.silent === true;
     const request = portalMaintenanceService
       .loadState()
       .then((next) => {
-        setState({
+        const projected: PortalMaintenancePublicState = {
           enabled: next.enabled === true,
           heading: next.heading || PORTAL_MAINTENANCE_DEFAULT_HEADING,
           message: next.message || PORTAL_MAINTENANCE_DEFAULT_MESSAGE,
           maintenanceTestAccessGranted: next.maintenanceTestAccessGranted === true,
-        });
+        };
+        setState((current) => (samePublicState(current, projected) ? current : projected));
         setStatus('ready');
         setError(null);
       })
@@ -85,42 +97,42 @@ export function PortalMaintenanceProvider({ children }: { children: ReactNode })
       })
       .finally(() => {
         inFlightRef.current = null;
-        setIsRefreshing(false);
+        if (!silent) {
+          setIsRefreshing(false);
+        }
       });
 
     inFlightRef.current = request;
-    setIsRefreshing(true);
+    if (!silent) {
+      setIsRefreshing(true);
+    }
     return request;
   }, []);
 
   useEffect(() => {
-    void refresh();
+    void refresh({ silent: true });
 
     const refreshOnFocus = () => {
-      void refresh();
+      void refresh({ silent: true });
     };
     const refreshOnVisibility = () => {
       if (document.visibilityState === 'visible') {
-        void refresh();
+        void refresh({ silent: true });
       }
     };
 
     window.addEventListener('focus', refreshOnFocus);
     document.addEventListener('visibilitychange', refreshOnVisibility);
-    const intervalId = window.setInterval(() => {
-      void refresh();
-    }, PORTAL_MAINTENANCE_REFRESH_INTERVAL_MS);
 
     return () => {
       window.removeEventListener('focus', refreshOnFocus);
       document.removeEventListener('visibilitychange', refreshOnVisibility);
-      window.clearInterval(intervalId);
     };
   }, [refresh]);
 
   // Re-resolve tester bypass when the signed-in identity changes (login/logout).
   useEffect(() => {
-    void refresh();
+    void refresh({ silent: true });
   }, [bootstrapStatus, firebaseUser?.uid, refresh]);
 
   const value = useMemo<PortalMaintenanceContextValue>(

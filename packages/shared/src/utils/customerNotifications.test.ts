@@ -29,6 +29,13 @@ describe("customerNotifications helpers", () => {
       buildCustomerNotificationHref("assisted_catalog_share_ready"),
       buildAssistedCatalogShareReadyNotificationHref(),
     );
+    assert.equal(
+      buildCustomerNotificationHref(
+        "customer_upload_catalog_permission_follow_up",
+        "opaque-token",
+      ),
+      "/requests/artwork?permissionRequest=opaque-token",
+    );
   });
 
   it("builds stable notification ids", () => {
@@ -43,6 +50,10 @@ describe("customerNotifications helpers", () => {
     assert.equal(
       buildCustomerNotificationTitle("assisted_catalog_share_ready"),
       "Library design match",
+    );
+    assert.equal(
+      buildCustomerNotificationTitle("customer_upload_catalog_permission_follow_up"),
+      "Permission to use your artwork",
     );
     assert.equal(CUSTOMER_NOTIFICATION_PROOF_BODY, "Review the latest proof for your request.");
     assert.equal(

@@ -4,6 +4,17 @@
   padding: var(--space-3);
 }
 
+.portal-customer-upload-permission-preview {
+  background: var(--portal-surface-subtle, #f3f4f6);
+  border: 1px solid var(--portal-border, rgba(0, 0, 0, 0.1));
+  border-radius: 0.5rem;
+  display: block;
+  max-height: 15rem;
+  max-width: 100%;
+  object-fit: contain;
+  padding: 0.35rem;
+}
+
 .portal-customer-upload-modal {
   display: flex;
   flex-direction: column;
@@ -622,7 +633,7 @@
     width: 100%;
   }
 
-  .portal-customer-upload-footer-actions .portal-button {
+.portal-customer-upload-footer-actions .portal-button {
     flex: 1 1 0;
     min-width: 0;
     width: auto;

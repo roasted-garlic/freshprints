@@ -95,9 +95,22 @@ export interface CustomerUpload {
   technicalFailureCode: CustomerUploadTechnicalFailureCode | null;
   technicalFailureMessage: string | null;
   catalogReviewStatus: CustomerUploadCatalogReviewStatus;
+  /** Server-authored reason for catalog exclusion; missing on legacy rows. */
+  catalogExclusionReason?: import("./customerUpload.enums").CustomerUploadCatalogExclusionReason | null;
   promotedDesignId: string | null;
   ownershipConfirmed: boolean;
   catalogUseAcknowledged: boolean;
+  /** Missing on legacy rows; resolves to not_requested. */
+  catalogPermissionFollowUpStatus?:
+    | import("./customerUpload.enums").CustomerUploadCatalogPermissionFollowUpStatus
+    | null;
+  /** Server-authored immutable origin/follow-up audit fields. */
+  catalogPermissionOriginalDeniedAt?: Timestamp | null;
+  catalogPermissionFollowUpRequestToken?: string | null;
+  catalogPermissionFollowUpRequestedAt?: Timestamp | null;
+  catalogPermissionFollowUpRequestedBy?: string | null;
+  catalogPermissionFollowUpRespondedAt?: Timestamp | null;
+  catalogPermissionFollowUpRespondedBy?: string | null;
   termsVersion: string | null;
   confirmedAt: Timestamp | null;
   /** Set when source + production Storage objects were purged (thumbnail/preview kept). */

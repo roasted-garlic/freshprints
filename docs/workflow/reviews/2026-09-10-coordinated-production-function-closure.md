@@ -2,13 +2,13 @@
 
 Status: read-only M0 reconciliation artifact; no Functions deployment was executed and no production allowlist is authorized by this document.
 
-Snapshot: current `development` working tree at `b5aec1b2b1ac4eba5ab704f1db8f87ea22f1daaa` (dirty; `origin/development` same); production baseline `origin/production` at `36165096f09bef6817adb5b11d496dbb1502b34b`.
+Snapshot: current `development` working tree at `04b9637470a16b0f4d4a1ba9f822fe9df7acca2d` (dirty; `origin/development` same); production baseline `origin/production` at `36165096f09bef6817adb5b11d496dbb1502b34b`. This is a read-only rerun after the signed-off `customer-upload-follow-up-catalog-permission` child; the dirty snapshot is not a candidate SHA.
 
 Method: parse every named export in `functions/src/index.ts`; resolve each export module; recursively follow local relative imports and `@fresh-prints/shared` imports; union and sort all local closure paths. A changed-path hit marks an export `UPDATE`. Export names absent from the production index are `ADD`; existing names with no changed closure hit are `RETAIN LIVE VERSION`; explicit source-only/deferred names are `EXCLUDE` or `NO ACTION`.
 
 Reproducible read-only audit: `node docs/workflow/reviews/2026-09-10-coordinated-production-function-closure-audit.mjs --summary` (omit `--summary` for the complete JSON row table). The script performs no writes or deployments.
 
-Current exports: **170**; production exports: **120**; current-to-production delta: 51 additions and 1 removal. Unique local closure paths: **509**. Sorted closure-path SHA-256 (newline-terminated): `a045c0514e855a08469cffadb81b487d4f5fbfb15e5757a9a588f5b8a3720a90`.
+Current exports: **173**; production exports: **120**; current-to-production delta: **54 additions and 1 removal**. Unique local closure paths: **513**. Sorted closure-path SHA-256 (newline-terminated): `32cce483f02b8d69d2fcb1e7b98daf544f33095a977cb0d80cfa161c5e7dfb1e`.
 
 The closure is source-only by design; the Function build also requires `functions/package.json`,
 `functions/package-lock.json`, `functions/tsconfig.json`, and the workspace/shared package metadata.
@@ -52,6 +52,19 @@ the clean candidate SHA.
 | F31 | `functions/src/listPortalMaintenanceTestCustomers.ts` |
 | F32 | `functions/src/updatePortalMaintenanceState.ts` |
 | F33 | `packages/shared/src/constants/portal/portalMaintenance.constants.ts` |
+| F34 | `functions/src/excludeCustomerUploadFromCatalog.ts` |
+| F35 | `functions/src/getCustomerUploadCatalogPermissionFollowUp.ts` |
+| F36 | `functions/src/requestCustomerUploadCatalogPermissionFollowUp.ts` |
+| F37 | `functions/src/respondToCustomerUploadCatalogPermissionFollowUp.ts` |
+| F38 | `functions/src/restoreCustomerUploadCatalogEligibility.ts` |
+| F39 | `functions/src/lib/customerNotifications/createCustomerNotification.ts` |
+| F40 | `functions/src/lib/customerUploadCatalogConfirmation.ts` |
+| F41 | `packages/shared/src/types/customerNotifications/customerNotifications.types.ts` |
+| F42 | `packages/shared/src/types/customerUpload/customerUpload.enums.ts` |
+| F43 | `packages/shared/src/types/customerUpload/customerUpload.types.ts` |
+| F44 | `packages/shared/src/types/customerUpload/customerUploadCatalogPermission.types.ts` |
+| F45 | `packages/shared/src/utils/customerNotifications.ts` |
+| F46 | `packages/shared/src/utils/customerUploadCatalogIntakeEligibility.ts` |
 
 These IDs intentionally omit validation-only tests, `functions/src/index.ts`, and documentation. The source-only `etsySuggestionRequests.ts` guard is included as F12; `rebuildTaxonomyMaterializationCallable` is retained because the excluded source-only callable is the separate `rebuildTaxonomyMaterialization` export.
 
@@ -70,16 +83,16 @@ These IDs intentionally omit validation-only tests, `functions/src/index.ts`, an
 | createCustomerUploadBatch | `./createCustomerUploadBatch` | 21 | F07, F30, F33 | **UPDATE** |
 | createPortalPrintRequest | `./createPortalPrintRequest` | 20 | F08, F30, F33 | **UPDATE** |
 | duplicatePortalPrintRequestItem | `./duplicatePortalPrintRequestItem` | 37 | F11, F30, F33 | **UPDATE** |
-| excludeCustomerUploadFromCatalog | `./excludeCustomerUploadFromCatalog` | 8 | — | **RETAIN LIVE VERSION** |
+| excludeCustomerUploadFromCatalog | `./excludeCustomerUploadFromCatalog` | 8 | F34 | **UPDATE** |
 | finalizeCustomerUpload | `./finalizeCustomerUpload` | 40 | F13, F30, F33 | **UPDATE** |
 | finalizeCustomerUploadZip | `./finalizeCustomerUploadZip` | 42 | F14, F30, F33 | **UPDATE** |
 | getCustomerUploadDailyQuota | `./getCustomerUploadDailyQuota` | 15 | — | **RETAIN LIVE VERSION** |
 | inventoryCatalogImageStorage | `./inventoryCatalogImageStorage` | 8 | — | **EXCLUDE** |
-| promoteCustomerUploadToAiReview | `./promoteCustomerUploadToAiReview` | 13 | — | **RETAIN LIVE VERSION** |
+| promoteCustomerUploadToAiReview | `./promoteCustomerUploadToAiReview` | 13 | F46 | **UPDATE** |
 | recordCustomerUploadHalftoneResponse | `./recordCustomerUploadHalftoneResponse` | 13 | F16, F30, F33 | **UPDATE** |
 | recordCustomerUploadHalftoneStaffDecision | `./recordCustomerUploadHalftoneStaffDecision` | 9 | — | **RETAIN LIVE VERSION** |
 | recordCustomerUploadArtworkBackgroundStaffDecision | `./recordCustomerUploadArtworkBackgroundStaffDecision` | 9 | — | **ADD** |
-| restoreCustomerUploadCatalogEligibility | `./restoreCustomerUploadCatalogEligibility` | 8 | — | **RETAIN LIVE VERSION** |
+| restoreCustomerUploadCatalogEligibility | `./restoreCustomerUploadCatalogEligibility` | 8 | F38 | **UPDATE** |
 | retryCustomerUploadProcessing | `./retryCustomerUploadProcessing` | 31 | — | **RETAIN LIVE VERSION** |
 | getPortalShowPrintProgress | `./getPortalShowPrintProgress` | 6 | — | **RETAIN LIVE VERSION** |
 | getPortalPrintRequestShowSchedules | `./getPortalPrintRequestShowSchedules` | 8 | — | **RETAIN LIVE VERSION** |
@@ -141,6 +154,9 @@ These IDs intentionally omit validation-only tests, `functions/src/index.ts`, an
 | updatePortalMaintenanceState | `./updatePortalMaintenanceState` | 7 | F30, F32, F33 | **ADD** |
 | getPortalMaintenanceState | `./getPortalMaintenanceState` | 5 | F29, F30, F33 | **ADD** |
 | listPortalMaintenanceTestCustomers | `./listPortalMaintenanceTestCustomers` | 7 | F30, F31, F33 | **ADD** |
+| requestCustomerUploadCatalogPermissionFollowUp | `./requestCustomerUploadCatalogPermissionFollowUp` | 13 | F36, F39, F41, F42, F44, F45 | **ADD** |
+| getCustomerUploadCatalogPermissionFollowUp | `./getCustomerUploadCatalogPermissionFollowUp` | 8 | F35, F42, F44 | **ADD** |
+| respondToCustomerUploadCatalogPermissionFollowUp | `./respondToCustomerUploadCatalogPermissionFollowUp` | 9 | F30, F33, F37, F42, F44 | **ADD** |
 | getPortalAdminDailyShowQueue | `./getPortalAdminDailyShowQueue` | 10 | — | **ADD** |
 | getPortalAdminUpcomingShowQueueDashboard | `./getPortalAdminUpcomingShowQueueDashboard` | 20 | — | **ADD** |
 | getPortalAdminShowQueueRequestDesigns | `./getPortalAdminShowQueueRequestDesigns` | 24 | — | **ADD** |
@@ -197,14 +213,50 @@ These IDs intentionally omit validation-only tests, `functions/src/index.ts`, an
 - DEV/test/source-only destructive or fixture exports (`upsertDevFixtureShow`, `inventoryCatalogImageStorage`, `wipeOperationalTestData`, `ownerDeleteUser`, `rebuildTaxonomyMaterialization`, `testAiEnrichmentPlayground`, `testAiEnrichmentSemanticReviewPlayground`, `backfillPrintRequestQueueTab`) are **EXCLUDE**.
 - Deferred scheduled/catalog/Smart Profile playground exports are **NO ACTION**; they are not silently promoted by this inventory.
 
+## Signed-off child rerun overlay
+
+The following rows are the complete current closure rows hit by F34–F46. They supersede the
+changed-path cells for the corresponding historical rows above; the machine-readable audit is the
+source of truth for the full 173-row table.
+
+| Export(s) | Closure paths | Rerun changed-path IDs | Action |
+|---|---:|---|---|
+| `confirmCustomerUploadsAndAttachToRequest` | 51 | F05, F30, F33, F40, F42, F43, F46 | UPDATE |
+| `confirmCustomerUploadsForDonation` | 19 | F06, F30, F33, F40, F42, F43, F46 | UPDATE |
+| `createCustomerUploadBatch` | 21 | F07, F30, F33, F42 | UPDATE |
+| `excludeCustomerUploadFromCatalog` | 8 | F34 | UPDATE |
+| `finalizeCustomerUpload` | 40 | F13, F30, F33, F42 | UPDATE |
+| `finalizeCustomerUploadZip` | 42 | F14, F30, F33, F42 | UPDATE |
+| `getCustomerUploadDailyQuota` | 15 | F42 | UPDATE |
+| `promoteCustomerUploadToAiReview` | 13 | F46 | UPDATE |
+| `recordCustomerUploadHalftoneResponse` | 13 | F16, F30, F33, F42 | UPDATE |
+| `restoreCustomerUploadCatalogEligibility` | 8 | F38 | UPDATE |
+| `requestCustomerUploadCatalogPermissionFollowUp` | 13 | F36, F39, F41, F42, F44, F45 | ADD |
+| `getCustomerUploadCatalogPermissionFollowUp` | 8 | F35, F42, F44 | ADD |
+| `respondToCustomerUploadCatalogPermissionFollowUp` | 9 | F30, F33, F37, F42, F44 | ADD |
+| `retryCustomerUploadProcessing` | 31 | F42 | UPDATE |
+| `queuePortalPrintRequestToShow` | 54 | F15, F30, F33, F40, F46 | UPDATE |
+| assisted-creation exports (10) | 44 | F02, F30, F33, F39, F41, F42, F45 | UPDATE |
+| `customerAddAssistedApprovedProofToPrintRequest` | 70 | F09, F30, F33, F40, F42, F43, F46 | UPDATE |
+| customer-upload deletion exports (4) | 18 | F10, F30, F33, F42 | UPDATE |
+| `onShowAllocationCreated` | 9 | F40, F46 | UPDATE |
+
+The response callable’s closure includes `assertPortalMaintenanceAllowsCustomerMutation`; the
+read callable remains owner-scoped and returns the safe DTO without an upload ID or Storage path.
+No broad Functions deployment is implied by this source inventory.
+
 ## Reconciliation result
 
 | Action | Count |
 |---|---:|
-| ADD | 38 |
-| UPDATE | 41 |
-| RETAIN LIVE VERSION | 72 |
+| ADD | 41 |
+| UPDATE | 47 |
+| RETAIN LIVE VERSION | 66 |
 | EXCLUDE | 10 |
 | NO ACTION | 9 |
 
-The table is a closure inventory, not a deploy command. A future M1 packet must convert it to an explicit reviewed allowlist, preserve both hard-delete exclusions, and re-run it at the eventual clean candidate SHA.
+The table is a closure inventory, not a deploy command. The child’s shared-path propagation was
+mechanically rechecked; in addition to the direct rows above, F39–F46 update the existing upload,
+notification, assisted-creation, queue, and lifecycle rows in the JSON audit output. A future M1
+packet must convert this inventory to an explicit reviewed allowlist, preserve both hard-delete
+exclusions, and re-run it at the eventual clean candidate SHA.

@@ -5,7 +5,7 @@
 | Date | 2026-09-10 |
 | Parent goal | `coordinated-production-promotion-release-readiness` |
 | Gate | M1 — exact candidate freeze |
-| Status | **Prepared, not executed** |
+| Status | **Prepared, not executed; post-child M0 rerun pending candidate authorization** |
 | Candidate SHA | **TBD — no SHA is proposed until the working tree is clean** |
 | Production | untouched |
 
@@ -84,11 +84,12 @@ activate maintenance, or mutate production as part of preparing this proposal.
 
 ## Current state
 
-The child gate and inherited-document dispositions are complete. Read-only runtime scope/closure,
-Rules/index, Portal/Studio input, and configuration/data manifests are complete at the dirty
-snapshot and linked from `docs/workflow/reviews/2026-09-10-coordinated-production-m0-reconciliation.md`.
-M0 remains blocked on a clean committed candidate and regenerated immutable manifests, so the
-candidate SHA, tree hash, and freeze approval are intentionally absent. The current worktree is 115
-status entries (59 tracked, 56 untracked). The exact next checkpoint is owner authorization for the
-explicit reviewed commit/push, followed by clean-SHA verification and regeneration of the packet;
-only then may this proposal be presented for the separate freeze decision.
+The hard-delete gate and customer-upload follow-up child are signed off, and the inherited-document
+dispositions are complete. The post-child read-only runtime scope/closure, Rules/index,
+Portal/Studio input, and configuration/data manifests are linked from
+`docs/workflow/reviews/2026-09-10-coordinated-production-m0-reconciliation.md`.
+M0 is reconciled at the dirty snapshot but remains blocked on owner authorization for a new clean
+candidate commit/push and regenerated immutable manifests, so the candidate SHA, tree hash, and
+freeze approval are intentionally absent. The current worktree is 59 status entries (43 tracked,
+16 untracked). Only after the new SHA and manifests are verified may this proposal be presented for
+the separate freeze decision.

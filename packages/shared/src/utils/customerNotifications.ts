@@ -7,6 +7,7 @@ export const CUSTOMER_NOTIFICATION_TITLES = {
   assisted_staff_message: "New message",
   assisted_proof_ready: "New proof",
   assisted_catalog_share_ready: "Library design match",
+  customer_upload_catalog_permission_follow_up: "Permission to use your artwork",
 } as const satisfies Record<CustomerNotificationKind, string>;
 
 /** Fixed proof-alert body (do not use staff note here). */
@@ -16,6 +17,9 @@ export const CUSTOMER_NOTIFICATION_PROOF_BODY =
 /** Fixed catalog-share alert body. */
 export const CUSTOMER_NOTIFICATION_CATALOG_SHARE_BODY =
   "We found a Library design that matches your request. Approve it or request changes with a short note." as const;
+
+export const CUSTOMER_NOTIFICATION_CUSTOMER_UPLOAD_PERMISSION_BODY =
+  "Please review whether Fresh Prints may add your uploaded artwork to the shared Design Library." as const;
 
 export function buildAssistedProofReadyNotificationHref(): string {
   return `${ASSISTED_STATUS_BASE}&detailTab=proofs`;
@@ -30,12 +34,24 @@ export function buildAssistedStaffMessageNotificationHref(): string {
   return `${ASSISTED_STATUS_BASE}&detailTab=messages`;
 }
 
-export function buildCustomerNotificationHref(kind: CustomerNotificationKind): string {
+export function buildCustomerUploadCatalogPermissionFollowUpNotificationHref(
+  actionToken: string,
+): string {
+  return `/requests/artwork?permissionRequest=${encodeURIComponent(actionToken)}`;
+}
+
+export function buildCustomerNotificationHref(
+  kind: CustomerNotificationKind,
+  actionToken?: string,
+): string {
   if (kind === "assisted_proof_ready") {
     return buildAssistedProofReadyNotificationHref();
   }
   if (kind === "assisted_catalog_share_ready") {
     return buildAssistedCatalogShareReadyNotificationHref();
+  }
+  if (kind === "customer_upload_catalog_permission_follow_up") {
+    return buildCustomerUploadCatalogPermissionFollowUpNotificationHref(actionToken ?? "");
   }
   return buildAssistedStaffMessageNotificationHref();
 }

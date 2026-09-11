@@ -41,6 +41,20 @@ test("filterCatalogIntakeEligibleDocs removes customer-declined library permissi
   );
 });
 
+test("follow-up approval makes an originally denied upload visible in Pending", () => {
+  const docs = [
+    {
+      id: "approved-follow-up",
+      data: () => ({ catalogUseAcknowledged: false, catalogPermissionFollowUpStatus: "approved" }),
+    },
+    {
+      id: "declined-follow-up",
+      data: () => ({ catalogUseAcknowledged: false, catalogPermissionFollowUpStatus: "declined" }),
+    },
+  ];
+  assert.deepEqual(filterCatalogIntakeEligibleDocs(docs).map((item) => item.id), ["approved-follow-up"]);
+});
+
 test("filterLegacyMissingPurposeDocs keeps only purpose-absent docs", () => {
   const docs = [
     doc("a", undefined, 3),

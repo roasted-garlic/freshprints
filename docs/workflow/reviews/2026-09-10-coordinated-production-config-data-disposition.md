@@ -1,6 +1,11 @@
 # Coordinated Production Configuration and Data Disposition
 
-Status: read-only M0 disposition. No production data operation, setting write, secret rotation, index operation, or maintenance activation was executed.
+Status: read-only M0 disposition rerun. No production data operation, setting write, secret
+rotation, index operation, or maintenance activation was executed.
+
+Rerun snapshot: `development` dirty at `04b9637470a16b0f4d4a1ba9f822fe9df7acca2d`. The signed-off
+customer-upload follow-up child adds no migration, backfill, Auth change, secret, or production
+write. Its customer-upload fields are written only by the reviewed callables.
 
 | Surface | Disposition for M1/M2 review | M0 action |
 |---|---|---|
@@ -19,3 +24,6 @@ Status: read-only M0 disposition. No production data operation, setting write, s
 | Other settings | Preserve current production values; no broad settings normalization. | No mutation |
 
 The maintenance contract is specifically absent document → OFF, not absent document → error. If a correctly deployed implementation ever violates that contract, it is an implementation defect and the release must stop for corrective work; no manual document creation is an acceptable workaround.
+
+The owner’s overnight-window requirement for any separately approved production backfills is
+preserved as a later execution-plan constraint. No backfill is scheduled or started in M0.

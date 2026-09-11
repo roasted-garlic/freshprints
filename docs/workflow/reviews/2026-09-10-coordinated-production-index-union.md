@@ -1,6 +1,12 @@
 # Coordinated Production Firestore Index Union
 
-Status: read-only M0 reconciliation artifact. No Firestore index deployment was executed.
+Status: read-only M0 reconciliation rerun artifact. No Firestore index deployment was executed.
+
+Rerun snapshot: `development` dirty at `04b9637470a16b0f4d4a1ba9f822fe9df7acca2d`; the
+customer-upload follow-up child adds no index definition. The structural union was regenerated
+from the current file and `origin/production`; it has the same 77 production identities plus the
+same ten reviewed additions, with zero deletions or replacements. The reviewed union digest is
+unchanged.
 
 ## Inputs and exact hashes
 

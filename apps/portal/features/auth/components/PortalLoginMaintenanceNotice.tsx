@@ -22,12 +22,12 @@ export function PortalLoginMaintenanceBanner() {
 }
 
 /**
- * Hide browse while maintenance is ON/unknown so signed-out visitors are not
- * sent from login straight into the full-screen maintenance wall.
+ * Hide browse only when maintenance is confirmed ON. Loading/error fail open
+ * so guests are not sent into a false maintenance wall.
  */
 export function PortalLoginBrowseDesignsAction() {
   const { enabled, status } = usePortalMaintenance();
-  if (status !== 'ready' || enabled) {
+  if (status === 'ready' && enabled) {
     return null;
   }
 

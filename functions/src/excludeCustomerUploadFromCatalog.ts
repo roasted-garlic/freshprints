@@ -53,6 +53,7 @@ export const excludeCustomerUploadFromCatalog = onCall(
 
     await uploadRef.update({
       catalogReviewStatus: "excluded_from_catalog",
+      catalogExclusionReason: "staff_review",
       updatedAt: FieldValue.serverTimestamp(),
     });
 

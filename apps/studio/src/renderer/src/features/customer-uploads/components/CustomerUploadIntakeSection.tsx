@@ -2,6 +2,7 @@ import { useRef, useState, type CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { resolveIntakeHalftoneStaffToggle } from "@fresh-prints/shared/utils/halftoneReviewState";
+import { isCustomerUploadEligibleForCatalogIntake } from "@fresh-prints/shared/utils/customerUploadCatalogIntakeEligibility";
 
 import { Button } from "../../../shared/components/Button";
 import { Card } from "../../../shared/components/Card";
@@ -105,7 +106,11 @@ function IntakeDetail({
   const metadataSaveFailed = Boolean(intake.metadataFailedByUploadId?.[row.id]);
   const metadataBlocksPromote = metadataSavePending || metadataSaveFailed;
   const fromAssisted = Boolean(row.assistedCreationRequestId);
-  const catalogIntakeEligible = row.catalogUseAcknowledged !== false;
+  const catalogIntakeEligible = isCustomerUploadEligibleForCatalogIntake({
+    catalogUseAcknowledged: row.catalogUseAcknowledged,
+    catalogPermissionFollowUpStatus: row.catalogPermissionFollowUpStatus,
+  });
+  const permissionDenied = row.catalogExclusionReason === "customer_permission_denied";
   const halftoneOn = resolveIntakeHalftoneStaffToggle({
     staffDecision: row.halftoneStaffDecision,
     submitterResponse: row.halftoneSubmitterResponse,
@@ -293,7 +298,38 @@ function IntakeDetail({
           </Button>
         ) : null}
 
-        {intake.canExclude && row.catalogReviewStatus === "excluded_from_catalog" ? (
+        {intake.canExclude && row.catalogReviewStatus === "excluded_from_catalog" && permissionDenied ? (
+          <div className="customer-upload-intake-permission-follow-up">
+            <span className="customer-upload-intake-status-badge">
+              Customer declined Design Library permission
+            </span>
+            <p className="customer-upload-intake-meta" role="status">
+              Customer permission is required before this artwork can be reviewed for the Design Library.
+            </p>
+            {row.catalogPermissionFollowUpStatus === "not_requested" ? (
+              <Button
+                disabled={busy}
+                onClick={() => {
+                  void intake.requestPermissionFollowUp(row.id);
+                }}
+                size="sm"
+                variant="secondary"
+              >
+                {pendingAction === "request_permission" ? "Sending…" : "Ask for permission again"}
+              </Button>
+            ) : (
+              <p className="customer-upload-intake-meta" role="status">
+                {row.catalogPermissionFollowUpStatus === "requested"
+                  ? "Permission request sent; waiting for the customer."
+                  : row.catalogPermissionFollowUpStatus === "approved"
+                    ? "Customer approved; upload is pending staff review."
+                    : "Customer declined the follow-up request."}
+              </p>
+            )}
+          </div>
+        ) : null}
+
+        {intake.canExclude && row.catalogReviewStatus === "excluded_from_catalog" && !permissionDenied ? (
           <div>
             <button
               className="button button-secondary button-sm"

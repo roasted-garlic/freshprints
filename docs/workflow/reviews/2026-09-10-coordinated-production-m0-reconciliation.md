@@ -1,5 +1,129 @@
 # Coordinated Production M0 Reconciliation
 
+## Rerun — customer-upload follow-up child signed off (2026-09-10)
+
+This section is the authoritative current M0 preparation. The pre-child sections below are retained
+as historical evidence and are not a candidate disposition.
+
+| Field | Current rerun result |
+|---|---|
+| Parent goal | `coordinated-production-promotion-release-readiness` |
+| Child | `customer-upload-follow-up-catalog-permission` — Signoff `approved_with_notes` |
+| Snapshot | `development` dirty at `04b9637470a16b0f4d4a1ba9f822fe9df7acca2d`; `origin/development` same |
+| Production baseline | `origin/production` at `36165096f09bef6817adb5b11d496dbb1502b34b`; untouched |
+| Working-tree inventory | **59** status entries: **43 tracked**, **16 untracked** |
+| Candidate SHA | None; prior `04b9637470a16b0f4d4a1ba9f822fe9df7acca2d` is stale and must not be reused |
+| Freeze / deploy | Not executed; no production, DEV, hosting, Rules, Storage, index, setting, or data action |
+
+### Complete current inventory and disposition
+
+Every status entry from `git status --short --untracked-files=all` is classified below. Ignored
+local environment/build/emulator material is not a status entry and remains excluded; no secret
+value was read or staged.
+
+**Included coordinated-candidate runtime (28):**
+
+- Portal (7): `apps/portal/app/(app)/requests/artwork/page.tsx`; `apps/portal/features/auth/components/PortalLoginMaintenanceNotice.tsx`; `apps/portal/features/maintenance/context/PortalMaintenanceContext.tsx`; `apps/portal/features/navigation/components/PortalAppShell.tsx`; `apps/portal/features/notifications/services/customerNotificationsService.ts`; `apps/portal/styles/customer-uploads.css`; `apps/portal/features/customer-uploads/components/CustomerUploadCatalogPermissionFollowUpModal.tsx`.
+- Studio (4): `apps/studio/src/renderer/src/features/customer-uploads/components/CustomerUploadIntakeSection.tsx`; `apps/studio/src/renderer/src/features/customer-uploads/hooks/useCustomerUploadIntake.ts`; `apps/studio/src/renderer/src/features/customer-uploads/services/customerUploadIntakeService.ts`; `apps/studio/src/renderer/src/styles/layout.css`.
+- Functions (11): `functions/src/confirmCustomerUploadsAndAttachToRequest.ts`; `functions/src/customerAddAssistedApprovedProofToPrintRequest.ts`; `functions/src/excludeCustomerUploadFromCatalog.ts`; `functions/src/getPortalMaintenanceState.ts`; `functions/src/index.ts`; `functions/src/lib/customerNotifications/createCustomerNotification.ts`; `functions/src/lib/customerUploadCatalogConfirmation.ts`; `functions/src/restoreCustomerUploadCatalogEligibility.ts`; `functions/src/getCustomerUploadCatalogPermissionFollowUp.ts`; `functions/src/requestCustomerUploadCatalogPermissionFollowUp.ts`; `functions/src/respondToCustomerUploadCatalogPermissionFollowUp.ts`.
+- Shared (6): `packages/shared/src/types/customerNotifications/customerNotifications.types.ts`; `packages/shared/src/types/customerUpload/customerUpload.enums.ts`; `packages/shared/src/types/customerUpload/customerUpload.types.ts`; `packages/shared/src/types/customerUpload/customerUploadCatalogPermission.types.ts`; `packages/shared/src/utils/customerNotifications.ts`; `packages/shared/src/utils/customerUploadCatalogIntakeEligibility.ts`.
+
+**Validation-only (7):** `docs/workflow/reviews/2026-09-10-coordinated-production-function-closure-audit.mjs`; `functions/src/lib/customerUploadCatalogConfirmation.test.ts`; `packages/shared/src/utils/customerNotifications.test.ts`; `packages/shared/src/utils/customerUploadCatalogIntakeEligibility.test.ts`; `apps/studio/src/renderer/src/features/customer-uploads/utils/customerUploadIntakeQueries.test.ts`; `tests/portalMaintenance.contract.test.ts`; `tests/customerUploadCatalogPermission.contract.test.ts`.
+
+**Documentation/workflow (23):** `.cursor/workflow/state.md`; `references/project-chatgpt-handoff/CURRENT-STATE.md`; `docs/architecture/BACKEND.md`; `docs/architecture/DATA_MODEL.md`; `docs/project/DECISIONS.md`; `docs/workflow/plans/2026-09-10-customer-upload-follow-up-catalog-permission-plan.md`; `docs/workflow/plans/2026-09-10-portal-maintenance-public-read-fail-open-plan.md`; `docs/workflow/reviews/2026-09-10-coordinated-production-candidate-freeze-proposal.md`; `docs/workflow/reviews/2026-09-10-coordinated-production-candidate-preparation.md`; `docs/workflow/reviews/2026-09-10-coordinated-production-config-data-disposition.md`; `docs/workflow/reviews/2026-09-10-coordinated-production-function-closure.md`; `docs/workflow/reviews/2026-09-10-coordinated-production-index-union.md`; `docs/workflow/reviews/2026-09-10-coordinated-production-m0-reconciliation.md`; `docs/workflow/reviews/2026-09-10-coordinated-production-portal-build-input-manifest.md`; `docs/workflow/reviews/2026-09-10-coordinated-production-rules-manifest.md`; `docs/workflow/reviews/2026-09-10-coordinated-production-studio-build-input-manifest.md`; the four customer-upload child review/implementation/test/signoff artifacts; and the three Portal-maintenance public-read review/test/signoff artifacts.
+
+**Separately reviewable (1):** `docs/workflow/plans/2026-09-09-studio-portal-request-design-order-parity-amendment-plan.md` — explicitly excluded from this candidate.
+
+No current status entry is silently discarded, deferred, or treated as unrelated runtime. The
+previous hard-delete and maintenance runtime remain included through their already reviewed paths;
+the parity plan remains outside the candidate.
+
+### Prepared candidate assembly path set (not staged)
+
+If the owner authorizes a new post-child candidate commit, the exact status-path set prepared for
+staging is the **58 paths above**: all 28 included runtime paths, all 7 validation/evidence paths,
+and these 23 workflow/state paths:
+
+`.cursor/workflow/state.md`; `references/project-chatgpt-handoff/CURRENT-STATE.md`;
+`docs/architecture/BACKEND.md`; `docs/architecture/DATA_MODEL.md`; `docs/project/DECISIONS.md`;
+`docs/workflow/plans/2026-09-10-customer-upload-follow-up-catalog-permission-plan.md`;
+`docs/workflow/plans/2026-09-10-portal-maintenance-public-read-fail-open-plan.md`;
+`docs/workflow/reviews/2026-09-10-customer-upload-follow-up-catalog-permission-implementation-review.md`;
+`docs/workflow/reviews/2026-09-10-customer-upload-follow-up-catalog-permission-review.md`;
+`docs/workflow/reviews/2026-09-10-customer-upload-follow-up-catalog-permission-signoff.md`;
+`docs/workflow/reviews/2026-09-10-customer-upload-follow-up-catalog-permission-test-report.md`;
+`docs/workflow/reviews/2026-09-10-portal-maintenance-public-read-fail-open-review.md`;
+`docs/workflow/reviews/2026-09-10-portal-maintenance-public-read-fail-open-signoff.md`;
+`docs/workflow/reviews/2026-09-10-portal-maintenance-public-read-fail-open-test-report.md`;
+`docs/workflow/reviews/2026-09-10-coordinated-production-candidate-freeze-proposal.md`;
+`docs/workflow/reviews/2026-09-10-coordinated-production-candidate-preparation.md`;
+`docs/workflow/reviews/2026-09-10-coordinated-production-config-data-disposition.md`;
+`docs/workflow/reviews/2026-09-10-coordinated-production-function-closure.md`;
+`docs/workflow/reviews/2026-09-10-coordinated-production-index-union.md`;
+`docs/workflow/reviews/2026-09-10-coordinated-production-m0-reconciliation.md`;
+`docs/workflow/reviews/2026-09-10-coordinated-production-portal-build-input-manifest.md`;
+`docs/workflow/reviews/2026-09-10-coordinated-production-rules-manifest.md`;
+`docs/workflow/reviews/2026-09-10-coordinated-production-studio-build-input-manifest.md`.
+
+The modified closure-audit script is validation evidence in this set, not production runtime. The
+only status path intentionally omitted is
+`docs/workflow/plans/2026-09-09-studio-portal-request-design-order-parity-amendment-plan.md`,
+which remains separately reviewable. No staging, commit, push, or cleanup has occurred.
+
+### Child inclusion and regenerated M0 evidence
+
+- **Function closure:** 173 current exports, 120 production exports, 54 additions and 1 removal;
+  513 unique local closure paths; digest
+  `32cce483f02b8d69d2fcb1e7b98daf544f33095a977cb0d80cfa161c5e7dfb1e`. Action counts: ADD 41,
+  UPDATE 47, RETAIN LIVE VERSION 66, EXCLUDE 10, NO ACTION 9. The three child exports are ADD;
+  the response callable closure includes the Portal maintenance mutation guard; the read callable is
+  owner-scoped and safe. DEV/test/source-only exports remain excluded/deferred, and no broad deploy
+  is implied. Full artifact: `2026-09-10-coordinated-production-function-closure.md`.
+- **Maintenance guard inventory:** 29 customer-mutation callable modules are guarded, including
+  `respondToCustomerUploadCatalogPermissionFollowUp`, plus the shared trusted resolver in
+  `functions/src/lib/portalMaintenance.ts`. Missing maintenance state remains OFF/allowed; ON
+  blocks ordinary customer response mutation while the configured tester retains the signed-off
+  exception. The complete list was mechanically checked with `rg` and the contract test.
+- **Rules / Storage:** Firestore candidate `7c9c4a0026c4655ddedb606c043429dbf04d7a4cfe7c02a7af61ee002140612b` (production baseline `cdd4a3154733cfdceea53be9a785e39e4ea526a27da5e1046a802e33557defad`); Storage candidate `d3260351cbf12e550dd3e5e89a1e217dc4b9a0c4e2d819221d6ec8fc5d946297` (production baseline `39f17c0fbc25435eac4355ec2b5977a1aaecf3b340619b3d5f0b6d4ae22a3a36`). Whole-file hashes are unchanged from the reviewed packet; no child Rules/Storage change, bypass, or hard-delete rule was found.
+- **Indexes:** exact union remains **87** (77 production + 10 reviewed additions), with zero deletion/replacement and no child-specific index. Reviewed union digest remains `f95a9e68086203a1863a54911c812ae9b2acb73346253ab6f3b28a0081998a20`; current raw hash `6355ca54ce0c282cb6c19987a9c05c5acf8f0c0f259060f1c000c121b91f5ced`, production raw hash `8ede15025538dd4d8c96da28a24b6a8581e7425e75063632bca75b229713dcfa`.
+- **Portal:** child Alert/deep-link/modal/service/CSS paths are included; only the opaque token is
+  carried in `permissionRequest`, with no upload ID or Storage path/URL in URL or DTO. Existing
+  Alerts remain compatible; rollback is Portal build-003. No build or publication occurred. The
+  existing `.next/trace` EPERM remains an environment lock, not a pass.
+- **Studio:** child Excluded reason/follow-up action, service/hook, query validation, and styling
+  are included; the shared hard-delete UI gate remains production-hidden and both hard-delete
+  Functions remain EXCLUDE. Rollback is Studio v1.0.9. Vite build and child focused evidence carry
+  forward; unrelated Studio typecheck baseline remains documented.
+- **Config/data:** maintenance document remains absent/OFF; AI autonomy and Pass 2 remain OFF;
+  queueTab and lifecycle backfills remain deferred/conditional; Algolia and Smart Profile remain
+  conditional; no child upload migration/backfill, Auth change, secret rotation, standard-size
+  reset, production write, maintenance activation, or overnight backfill scheduling occurred.
+- **Validation carried forward:** child focused tests **36/36 PASS**, maintenance contracts **9/9
+  PASS**, Functions build **PASS**, Portal typecheck **PASS**, targeted ESLint **PASS**, and
+  `git diff --check` **PASS**. This is M0 preparation evidence only; final RC/M3 was not run.
+- **Hard-delete audit:** `functions/src/index.ts` retains both DEV exports, while neither appears in
+  `origin/production:functions/src/index.ts`; both are EXCLUDE in the closure and no production UI
+  path exposes them.
+
+### M0 boundary and next owner checkpoint
+
+M0 read-only reconciliation is complete at the dirty snapshot. A new candidate commit/push is not
+authorized by the current state, and the previous candidate SHA is stale. Do not stage, commit,
+push, freeze, deploy, publish, activate maintenance, run backfills, or mutate production in this
+turn. The next exact owner checkpoint is:
+
+> **OWNER AUTHORIZE REVIEWED POST-CHILD CANDIDATE COMMIT/PUSH** — authorize staging only the
+> reviewed coordinated-candidate path set from this rerun, creating one new `development` commit
+> with message `chore(release): assemble coordinated production candidate`, pushing only
+> `origin/development`, and regenerating immutable manifests at the resulting SHA. This does not
+> authorize M1 freeze, production deployment, Rules/Storage/index operations, hosting or Studio
+> publication, maintenance activation, data operations/backfills, or merge to production.
+
+STOP at this checkpoint. Do not present `FREEZE MAIN CANDIDATE SHA <SHA>` until a clean new SHA and
+all regenerated manifests exist.
+
+## Historical pre-child snapshot (retained for audit trail)
+
 | Field | Value |
 |---|---|
 | Parent goal | `coordinated-production-promotion-release-readiness` |

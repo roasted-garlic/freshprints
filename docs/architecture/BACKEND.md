@@ -297,7 +297,7 @@ Authoritative constants: `packages/shared/src/constants/import/batchImportLimits
 | `archiveStaleRejectedDesigns` | Callable | Owner/admin: soft-archive `status: rejected` designs older than 7 days (`dryRun` supported; ADR-FP-086) |
 | `purgeIdleCustomerUploadFullSize` | Callable | Owner/admin: purge request-upload source+production after show done/idle 14d; keep thumb/preview (`dryRun` supported; ADR-FP-086) |
 | `purgePromotedDonationFullSize` | Callable | Owner/admin: purge donation upload source+production 14d after promote; keep thumb/preview (`dryRun` supported; ADR-FP-086) |
-| `promoteCustomerUploadToAiReview` | Callable | Studio staff (owner/admin/**helper**): promote ready upload → design `imported` + enqueue AI |
+| `promoteCustomerUploadToAiReview` | Callable | Studio staff (owner/admin/**helper**): promote ready upload with current catalog permission (original true/legacy-missing or approved follow-up) → design `imported` + enqueue AI |
 | `excludeCustomerUploadFromCatalog` | Callable | Studio staff: mark upload excluded (keeps request artwork + production assets) |
 | `restoreCustomerUploadCatalogEligibility` | Callable | Studio staff: reverse exclusion → `pending_staff_review` |
 | `retryCustomerUploadProcessing` | Callable | Studio staff (owner/admin/**helper**): retry eligible technical failures |
@@ -402,8 +402,11 @@ uses the same customer hosts for `metadataBase` / OG image resolution via option
 | `getPortalOgShareImage` | Public JPEG letterbox compositor (`designId` **or** validated `staticPath` + `fit=contain`) |
 | `updatePortalSocialMetaSettings` | Owner callable for title/description + letterbox + global image source + static OG snapshot finalize; clears Global OG in-process cache after write |
 | `updatePortalHelpSettings` | Owner/admin callable for Portal FAQ and How To (`settings/portalHelp`) |
-| `getPortalMaintenanceState` / `updatePortalMaintenanceState` | Portal public-state read and owner/admin control for `settings/portalMaintenance`; saved heading/body copy is customer-safe, while the configured tester UID remains private |
+| `getPortalMaintenanceState` / `updatePortalMaintenanceState` | Portal public-state read (Gen2 `invoker: "public"` so guest CORS preflight succeeds) and owner/admin control for `settings/portalMaintenance`; saved heading/body copy is customer-safe, while the configured tester UID remains private. Portal UI shows the customer wall only after a successful ON read for a non-tester; Functions/Rules still fail closed on mutations. |
 | `listPortalMaintenanceTestCustomers` | Owner/admin-only read of active, linked, non-guest, non-deleted, non-disabled, non-merged customer options for the maintenance tester selector; returns safe UID/display metadata only |
+| `requestCustomerUploadCatalogPermissionFollowUp` | Active staff-only request for one customer permission follow-up; records an opaque token transactionally and creates one idempotent Portal Alert |
+| `getCustomerUploadCatalogPermissionFollowUp` | Authenticated owning-customer read by opaque token; returns only safe filename/request context and a short-lived preview URL |
+| `respondToCustomerUploadCatalogPermissionFollowUp` | Authenticated owning-customer Allow/Decline transaction; maintenance-guarded, preserves original denial evidence, and never creates Designs or AI work |
 | `finalizeBrandLogoSlot` | Owner callable: finalize/clear Studio+Portal brand logo slots from Admin Storage metadata |
 | `updateBrandLogoDisplaySizes` | Owner callable: set Portal/Studio logo display heights (px) on `settings/brandLogos` |
 

@@ -1,6 +1,9 @@
 # Coordinated Production Portal Build-Input Manifest
 
-Status: read-only M0 reconciliation artifact; no App Hosting build or publication was executed.
+Status: read-only M0 reconciliation rerun artifact; no App Hosting build or publication was executed.
+
+Rerun snapshot: `development` dirty at `04b9637470a16b0f4d4a1ba9f822fe9df7acca2d`. The signed-off
+customer-upload follow-up child is included below; the dirty snapshot is not a release SHA.
 
 ## Exact build boundary
 
@@ -10,7 +13,7 @@ Portal candidate input is `apps/portal/**` at the eventual clean candidate SHA, 
 |---|---|---|
 | App source | `apps/portal/**` after the App Hosting ignore set | Include at clean candidate SHA |
 | Changed Portal runtime source | Paths listed below | Include |
-| Shared runtime dependency | `packages/shared/src/**` (maintenance constants are changed at `packages/shared/src/constants/portal/portalMaintenance.constants.ts`) | Include through workspace resolution |
+| Shared runtime dependency | `packages/shared/src/**` (maintenance constants plus customer-upload notification/follow-up contracts and helpers) | Include through workspace resolution |
 | App config | `apps/portal/package.json`, `apps/portal/tsconfig.json`, `apps/portal/next.config.*` if present, `apps/portal/apphosting.yaml` | Include; package scripts/dependencies are unchanged except source inputs |
 | Workspace config | root `package.json`, `package-lock.json`, `firebase.json`, `packages/shared/package.json` | Include/revalidate; root `test:rules` change is validation-only |
 | Secret names | The 13 names in the table below | Include names only; values are not in Git or this artifact |
@@ -24,6 +27,19 @@ Portal candidate input is `apps/portal/**` at the eventual clean candidate SHA, 
 | Maintenance runtime | `apps/portal/features/maintenance/context/PortalMaintenanceContext.tsx`; `features/maintenance/services/portalMaintenanceService.ts`; `features/maintenance/components/PortalMaintenanceExperience.tsx`; `PortalMaintenanceTestBanner.tsx` |
 | Customer shell/navigation | `apps/portal/app/providers.tsx`; `features/navigation/components/PortalAppShell.tsx`; `PortalHeaderActions.tsx`; `PortalSidebar.tsx`; `styles/shell.css` |
 | Admin read-only Show Queue | `apps/portal/features/admin-show-queue/components/PortalAdminAuthGate.tsx`; `styles/admin-show-queue.css` |
+
+## Customer-upload follow-up child additions
+
+| Area | Paths / contract |
+|---|---|
+| Alert/deep link | `apps/portal/features/notifications/services/customerNotificationsService.ts`; `apps/portal/app/(app)/requests/artwork/page.tsx`; deep link query is `permissionRequest=<opaque-token>` |
+| Follow-up UI | `apps/portal/features/customer-uploads/components/CustomerUploadCatalogPermissionFollowUpModal.tsx`; `apps/portal/styles/customer-uploads.css` |
+| Shared contracts | Customer-notification action token and customer-upload follow-up types/helpers are included through `packages/shared/src/**` and the Function closure |
+
+The Portal flow carries only the opaque permission token in the URL. It does not expose an upload
+ID, Storage path, or public Storage URL in a DTO or deep link; the callable returns a short-lived
+signed preview URL. Existing Alerts remain compatible, and the rollback target remains **Portal
+build-003**.
 
 The admin route is a narrow owner/admin read-only runtime exception. Its signoff is included at `docs/workflow/reviews/2026-09-09-portal-admin-daily-show-queue-signoff.md`; request-design parity remains explicitly excluded from this candidate.
 

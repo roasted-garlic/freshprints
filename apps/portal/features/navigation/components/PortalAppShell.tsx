@@ -136,7 +136,7 @@ export function PortalAppShell({ children }: PortalAppShellProps) {
     maintenanceTestAccessGranted,
   } = usePortalMaintenance();
   const isMaintenanceBlocked =
-    maintenanceStatus !== 'ready' || (maintenanceEnabled && !maintenanceTestAccessGranted);
+    maintenanceStatus === 'ready' && maintenanceEnabled && !maintenanceTestAccessGranted;
 
   if (isMaintenanceBlocked) {
     return <PortalMaintenanceExperience />;

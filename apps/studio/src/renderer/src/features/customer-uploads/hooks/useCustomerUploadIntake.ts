@@ -39,6 +39,7 @@ import {
 export type CustomerUploadIntakePendingAction =
   | "promote"
   | "exclude"
+  | "request_permission"
   | "restore"
   | "retry"
   | "delete"
@@ -133,6 +134,17 @@ function buildShellRow(
     ownershipConfirmed: data.ownershipConfirmed === true,
     catalogUseAcknowledged:
       typeof data.catalogUseAcknowledged === "boolean" ? data.catalogUseAcknowledged : null,
+    catalogExclusionReason:
+      data.catalogExclusionReason === "staff_review" ||
+      data.catalogExclusionReason === "customer_permission_denied"
+        ? data.catalogExclusionReason
+        : null,
+    catalogPermissionFollowUpStatus:
+      data.catalogPermissionFollowUpStatus === "requested" ||
+      data.catalogPermissionFollowUpStatus === "approved" ||
+      data.catalogPermissionFollowUpStatus === "declined"
+        ? data.catalogPermissionFollowUpStatus
+        : "not_requested",
     purpose: resolveCustomerUploadPurpose(data.purpose),
     createdAtMs: timestampMs(data.createdAt),
     fullSizePurgedAtMs: mapCustomerUploadPurgeTimestamp(data.fullSizePurgedAt),
@@ -686,6 +698,18 @@ export function useCustomerUploadIntake(options?: {
           } else {
             patchRowLocally(uploadId, { catalogReviewStatus: "excluded_from_catalog" });
           }
+        },
+      ),
+    requestPermissionFollowUp: (uploadId: string) =>
+      runMutation(
+        uploadId,
+        "request_permission",
+        async () => {
+          await customerUploadIntakeService.requestPermissionFollowUp(uploadId);
+        },
+        "Permission follow-up sent to the customer.",
+        () => {
+          patchRowLocally(uploadId, { catalogPermissionFollowUpStatus: "requested" });
         },
       ),
     restore: (uploadId: string) =>

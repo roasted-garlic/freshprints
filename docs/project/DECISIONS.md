@@ -3463,7 +3463,13 @@ After a customer approves an Assisted Creation proof, they could only download i
 4. Skip customer-upload PNG / transparency / “good image” rejection gates — artwork is staff-provided.
 5. Idempotent per assisted request via denormalized `printRequestIngest` on `assistedCreationRequests`.
 6. No new `sourceType`; no auto-attach on approve; working request only.
-7. **Residual (2026-07-18):** Before first Add to Request, Portal modal asks Design Library consent. **Allow** / **Don’t allow** both proceed with the add. Values reuse the print-upload / donate intake path: `catalogUseAcknowledged` + shared `buildCatalogIntakeConfirmationPatch` → always `catalogReviewStatus: pending_staff_review` (Studio custom-design intake). Do **not** invent a parallel consent field. No auto-publish to catalog.
+7. **Residual (2026-07-18; amended by ADR-FP-074 on 2026-09-10):** Before first Add to Request,
+   Portal modal asks Design Library consent. **Allow** / **Don’t allow** both proceed with the add
+   and reuse `catalogUseAcknowledged` + shared `buildCatalogIntakeConfirmationPatch`; Allow follows
+   the existing `not_eligible` → Pending timing, while Don’t allow records
+   `excluded_from_catalog` + `customer_permission_denied` and cannot be advanced by allocation.
+   A single customer-led follow-up Allow may return it to Pending. Do **not** invent a parallel
+   consent field. No auto-publish to catalog.
 
 **Consequences**
 
@@ -4395,7 +4401,8 @@ ADR-FP-076 reserved image donations as a separate product path from `/requests/a
 
 **Consequences**
 
-- Print-request library permission remains optional (ADR-FP-074); donations require listing consent.
+- Print-request library permission remains optional (ADR-FP-074); original denial is print-only until
+  one customer-approved follow-up. Donations require listing consent and remain outside that follow-up.
 - Any authenticated Portal customer may donate (no staff feature flag in this phase).
 - Composite Firestore indexes required for purpose + catalogReviewStatus queries.
 - Daily abuse quotas are **purpose-split**: print-request (create 100 / finalize image 200 / ZIP 5) vs catalog-donation (create 200 / finalize image 500 / ZIP 20). Concurrent finalize leases stay shared at 8.
@@ -4484,7 +4491,7 @@ Standard Print Request sizing previously allowed saves down to 72 effective DPI 
 | Field | Value |
 |-------|-------|
 | Date | 2026-07-12 |
-| Status | accepted |
+| Status | accepted — amended 2026-09-10 |
 
 **Context**
 
@@ -4494,13 +4501,26 @@ Customers confirm ownership and whether Fresh Prints may use artwork in the Desi
 
 1. Ownership confirmation remains **required** to attach uploads to a print request.
 2. Design Library permission is **optional**, **checked by default** in Portal UI, and persisted as `catalogUseAcknowledged` (true/false) with terms `customer-upload-terms-v2`.
-3. Staff **may still** Send to AI Review / promote when `catalogUseAcknowledged === false`.
-4. Studio Customer Uploads intake must **surface declines** clearly so staff can decide.
+3. An authenticated print-request upload with original `catalogUseAcknowledged === false` remains
+   usable in its customer's Print Request but is `excluded_from_catalog` with reason
+   `customer_permission_denied`. Staff cannot promote it or restore it to Pending without a single
+   explicit customer follow-up approval.
+4. Studio Customer Uploads intake must surface the denial and follow-up state clearly. Staff may ask
+   once for permission again through the existing customer Notifications path; Allow moves the upload
+   to Pending without creating a Design, enqueueing AI, or publishing. A second Decline is terminal
+   for this v1 workflow. Anonymous catalog donations are outside this follow-up path.
 
 **Consequences**
 
-- Promote callables require ownership only (not library permission).
-- Product/policy follow-up may later tighten promote rules; visibility is mandatory now.
+- Promote callables require ownership and a current valid catalog permission: original true/legacy
+  missing consent, or original false with recorded follow-up approval.
+- Request-use and catalog-intake lifecycles remain independent; no migration or backfill is implied.
+- The original false answer and confirmation evidence remain unchanged for auditability.
+
+**Amendment history (2026-09-10):** The original accepted decision above permitted staff promotion
+when `catalogUseAcknowledged === false`. That sentence is retained as historical record in prior
+repository revisions; this amendment supersedes it with print-only exclusion plus one customer-led
+follow-up approval. No existing customer data is migrated by this decision.
 
 ---
 

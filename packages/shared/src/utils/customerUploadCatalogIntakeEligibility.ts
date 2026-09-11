@@ -4,6 +4,10 @@
  */
 export function isCustomerUploadEligibleForCatalogIntake(data: {
   catalogUseAcknowledged?: boolean | null;
+  catalogPermissionFollowUpStatus?: string | null;
 }): boolean {
-  return data.catalogUseAcknowledged !== false;
+  if (data.catalogUseAcknowledged !== false) {
+    return true;
+  }
+  return data.catalogPermissionFollowUpStatus === "approved";
 }

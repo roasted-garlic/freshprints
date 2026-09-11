@@ -42,7 +42,7 @@ describe("buildCatalogIntakeConfirmationPatch — Workstream E intake timing", (
     assert.equal(patch.printRequestId, null);
   });
 
-  it("declined library permission still uses the same review status branch", () => {
+  it("declined library permission enters Excluded without overwriting the original answer", () => {
     const attach = buildCatalogIntakeConfirmationPatch({
       catalogUseAcknowledged: false,
       termsVersion: "v1",
@@ -51,7 +51,22 @@ describe("buildCatalogIntakeConfirmationPatch — Workstream E intake timing", (
       now: "NOW" as never,
     });
     assert.equal(attach.catalogUseAcknowledged, false);
-    assert.equal(attach.catalogReviewStatus, "not_eligible");
+    assert.equal(attach.catalogReviewStatus, "excluded_from_catalog");
+    assert.equal(attach.catalogExclusionReason, "customer_permission_denied");
+    assert.equal(attach.catalogPermissionOriginalDeniedAt, "NOW");
+  });
+
+  it("keeps a prior follow-up approval valid on a re-attachment", () => {
+    const patch = buildCatalogIntakeConfirmationPatch({
+      catalogUseAcknowledged: false,
+      termsVersion: "v1",
+      printRequestId: "pr1",
+      submitForStaffReview: false,
+      existingUpload: { catalogPermissionFollowUpStatus: "approved", catalogPermissionOriginalDeniedAt: "ORIGINAL" },
+      now: "NOW" as never,
+    });
+    assert.equal(patch.catalogReviewStatus, "pending_staff_review");
+    assert.equal(patch.catalogPermissionOriginalDeniedAt, undefined);
   });
 });
 

@@ -2,29 +2,82 @@
 
 | Field | Value |
 |---|---|
-| Status | **M0 PREPARATION BLOCKED — CLEAN CANDIDATE AND IMMUTABLE MANIFESTS** |
+| Status | **PARENT M0 RERUN COMPLETE — CANDIDATE COMMIT/PUSH AUTHORIZATION REQUIRED** |
 | DONE | no |
-| Signoff Status | child `studio-hard-delete-production-ui-gate` **approved_with_notes**; parent candidate Signoff pending |
+| Signoff Status | child `customer-upload-follow-up-catalog-permission` **approved_with_notes**; prior hard-delete child **approved_with_notes**; parent candidate Signoff pending |
 | Current Mode | managed-phase |
 | Parent program | Coordinated production promotion and release readiness |
 | Current Goal | `coordinated-production-promotion-release-readiness` |
-| Current Phase | Implementation preparation — M0 remaining blockers |
-| Plan Status | accepted — Strategy B amendment in `2026-09-10-coordinated-production-promotion-release-readiness-plan.md` |
-| Review Status | parent **approved_with_changes — accepted**; child hard-delete review **approved_with_changes — accepted** |
-| Implementation Status | child UI gate complete; parent candidate implementation/freeze not started |
-| Test Status | child focused contracts 12/12, lint/build pass; Studio typecheck has documented unrelated baseline; parent M3 RC not started |
+| Current Phase | Parent M0 reconciliation complete at dirty snapshot; candidate assembly boundary |
+| Plan Status | parent M0 preparation resumed; child Plan complete |
+| Review Status | parent `approved_with_changes` accepted; child `customer-upload-follow-up-catalog-permission` **approved_with_notes** |
+| Implementation Status | complete within reviewed scope |
+| Test Status | focused gate passed; unrelated baselines documented |
 | Human Checkpoint Required | **yes** |
-| Human Checkpoint Reason | Owner must authorize the reviewed candidate commit/push, then approve the regenerated clean candidate and exact M1 freeze proposal; production actions remain separately gated. |
-| Blocked | **yes** — clean committed candidate and immutable regenerated manifests remain unresolved before M1 freeze |
-| Environment | DEV prerequisite remains signed off; `fresh-prints-prod` remains untouched and forbidden |
+| Human Checkpoint Reason | Parent candidate reassembly and M1 freeze remain later checkpoints; no production action is authorized. |
+| Blocked | **no** — M0 evidence is reconciled; owner candidate commit/push checkpoint is next |
+| Environment | DEV `getPortalMaintenanceState` redeployed with public invoker; `fresh-prints-prod` forbidden |
 | Production | untouched |
-| Commit/push | No new commit/push/branch/merge/PR authorized for this goal; print-time polish already pushed |
+| Commit/push | Not authorized unless owner asks |
 | Last updated | 2026-09-10 |
-| Last Completed Step | Hard-delete UI child Implement → Test → Signoff; M0 runtime closure/manifests and inherited-document dispositions |
-| Next Required Step | **Owner authorize reviewed commit/push; produce a clean candidate, regenerate manifests, then present the exact M1 freeze proposal for owner approval** |
+| Last Completed Step | Parent M0 rerun: inventory, closure, guard, Rules/Storage, indexes, Portal/Studio, config/data, and hard-delete audits |
+| Next Required Step | **Owner authorization for the reviewed post-child candidate commit/push; then regenerate immutable manifests at the new SHA** |
 | Parallel polish | Show Queue / Internal Sheet print-time estimate — **approved** (PASS + commit/push) |
 
 **Decision Log:**
+
+- 2026-09-10 — Parent M0 rerun completed after the signed-off customer-upload follow-up child.
+  The current worktree is 59 status entries (43 tracked, 16 untracked); the child runtime and
+  documentation are classified in the rerun packet, while the request-design parity Plan remains
+  separately reviewable and excluded. The deterministic Function audit reports 173 current exports,
+  120 production exports, 513 closure paths, digest
+  `32cce483f02b8d69d2fcb1e7b98daf544f33095a977cb0d80cfa161c5e7dfb1e`, and both hard-delete exports
+  EXCLUDE. Guard inventory, whole-file Rules/Storage hashes, 87-index union, Portal/Studio inputs,
+  and config/data dispositions reconcile with no child index or Rules change. M0 is complete only at
+  the dirty preparation boundary; a new candidate commit/push is not authorized. No freeze,
+  deployment, publication, maintenance activation, backfill, data mutation, or production action
+  occurred. Next checkpoint is owner authorization for the exact reviewed post-child candidate
+  commit/push.
+
+- 2026-09-10 — Customer-upload follow-up implementation and focused Test gate completed within the
+  accepted Plan/Formal Review. Original denial, one opaque-token customer follow-up, maintenance-
+  guarded response, Studio state/action gate, and Portal modal are implemented. Functions build,
+  Portal typecheck, targeted lint, and focused contracts passed; unrelated Studio/full-lint and local
+  Portal `.next/trace` build baselines are documented. Child Signoff is `approved_with_notes`.
+  Parent M0 must reassemble and reconcile a new reviewed candidate SHA. No commit, push, freeze,
+  deployment, publication, maintenance activation, migration, backfill, or production action occurred.
+
+- 2026-09-10 — Owner accepted the reviewed Plan/Formal Review for
+  `customer-upload-follow-up-catalog-permission` (`approved_with_changes`) and authorized
+  Implement → Test. Scope is limited to the typed denial/follow-up state, existing Portal Alerts,
+  trusted request/context/response callables, Studio Excluded UX, restore/promotion enforcement,
+  ADR/data-model/workflow documentation, and focused validation. The previous candidate
+  `04b9637470a16b0f4d4a1ba9f822fe9df7acca2d` is stale and must not be frozen/reused; no freeze, deployment, migration,
+  backfill, production action, or unrelated change is authorized.
+
+- 2026-09-10 — Owner hosted DEV guest homepage **PASS** after `getPortalMaintenanceState`
+  public-invoker redeploy. Maintenance public-read fail-open signoff **approved**.
+  Catalog-permission Formal Review remains waiting on owner acceptance.
+
+- 2026-09-10 — Maintenance public-read corrective complete: `invoker: "public"` on
+  `getPortalMaintenanceState`; Portal wall only when status is ready + ON + non-tester. Contracts
+  7/7. DEV Function update succeeded. Catalog-permission Formal Review unpaused (still needs
+  owner acceptance). Production untouched.
+
+- 2026-09-10 — Owner paused `customer-upload-follow-up-catalog-permission` to fix hosted DEV
+  guests seeing the maintenance wall while OFF. Cause: fail-closed UI on callable error plus
+  missing Gen2 `invoker: "public"` on `getPortalMaintenanceState`. Catalog-permission Plan/Review
+  stay accepted-pending and resume after this corrective.
+
+- 2026-09-10 — New managed child goal `customer-upload-follow-up-catalog-permission` opened under
+  `coordinated-production-promotion-release-readiness`. Read-only source reconciliation found that
+  explicit customer catalog denial currently remains `not_eligible` and the generic staff restore
+  callable does not check exclusion reason. Plan and Formal Review propose an additive typed
+  follow-up state, one opaque-token Portal Alert, trusted Allow/Decline callables, server-enforced
+  restore/promotion gates, and donation exclusion in v1. Verdict is `approved_with_changes`; owner
+  acceptance is required before implementation. Current candidate `04b9637470a16b0f4d4a1ba9f822fe9df7acca2d`
+  is provisional and must not be frozen. No app code, deploy, data operation, commit, push, or
+  production action occurred.
 
 - 2026-09-10 — Owner DEV QA: maintenance tester logout still showed full-screen maintenance.
   Fix: `AuthProvider.logout` always `router.replace('/login')`; confirm copy updated; login
@@ -197,17 +250,16 @@
   required before staging only the reviewed path set, creating/pushing one clean development SHA,
   and regenerating the manifests at that SHA.
 
-**Allowed Actions:** Read-only source/release inspection, runtime scope/closure reconciliation,
-documentation-only updates, and preparation of the exact M1 freeze packet are allowed. Owner may
-review the M1 proposal and later approve or reject a clean candidate SHA. Production, parent-rollout,
-candidate-freeze execution, unrelated polish, and unapproved settings mutations remain separately
-gated.
+**Allowed Actions:** Parent coordinated-production M0 reconciliation may resume using the signed-off
+customer-upload follow-up child disposition. Regenerate read-only closure/guard and release
+manifests, reconcile a new reviewed development candidate, and prepare (but do not execute) the M1
+freeze proposal. No production action is implied.
 
-**Forbidden Actions:** Creating branches/worktrees for the rejected Strategy A exception; production
-Functions/Rules/Storage/Hosting deploy or setting mutation; production maintenance activation; Owner
-QA on the owner's behalf; parent coordinated-release freeze; unrelated refactors; destructive data
-changes; unapproved DEV setting mutation; commit/push/merge/PR; force push.
+**Forbidden Actions:** Production Functions/Rules/Storage/Hosting deploy or setting mutation;
+production maintenance activation; Owner QA on the owner's behalf; parent coordinated-release freeze
+without explicit owner approval; candidate commit/push/merge/PR without the separate owner checkpoint;
+any data migration/backfill or customer mutation; unrelated refactors; force push.
 
 ## Next Required Step
 
-`[BLOCKED — M0 ARTIFACTS READY; OWNER AUTHORIZE REVIEWED COMMIT/PUSH, THEN CLEAN SHA + REGENERATED MANIFESTS BEFORE M1 FREEZE CHECKPOINT]`
+`RERUN COORDINATED-PRODUCTION M0 PREPARATION — CUSTOMER UPLOAD FOLLOW-UP CHILD SIGNED OFF; REASSEMBLE AND RECONCILE A NEW REVIEWED DEVELOPMENT CANDIDATE SHA`

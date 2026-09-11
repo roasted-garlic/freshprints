@@ -5,6 +5,23 @@ import { isCustomerUploadEligibleForCatalogIntake } from "./customerUploadCatalo
 
 test("isCustomerUploadEligibleForCatalogIntake treats explicit denial as ineligible", () => {
   assert.equal(isCustomerUploadEligibleForCatalogIntake({ catalogUseAcknowledged: false }), false);
+  assert.equal(
+    isCustomerUploadEligibleForCatalogIntake({
+      catalogUseAcknowledged: false,
+      catalogPermissionFollowUpStatus: "declined",
+    }),
+    false,
+  );
+});
+
+test("follow-up approval restores catalog eligibility without changing the original answer", () => {
+  assert.equal(
+    isCustomerUploadEligibleForCatalogIntake({
+      catalogUseAcknowledged: false,
+      catalogPermissionFollowUpStatus: "approved",
+    }),
+    true,
+  );
 });
 
 test("isCustomerUploadEligibleForCatalogIntake allows true and legacy missing consent", () => {

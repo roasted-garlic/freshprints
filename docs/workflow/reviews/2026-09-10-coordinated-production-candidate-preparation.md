@@ -1,5 +1,10 @@
 # Coordinated production candidate preparation — M0 disposition
 
+> **Rerun note (2026-09-10):** This artifact is retained as the pre-child preparation history. The
+> authoritative post-child rerun is in
+> `docs/workflow/reviews/2026-09-10-coordinated-production-m0-reconciliation.md` and records the
+> current 50-entry inventory, 173-export/513-path closure, and customer-upload follow-up inclusion.
+
 | Field | Value |
 |---|---|
 | Date | 2026-09-10 |

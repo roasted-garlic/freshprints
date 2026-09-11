@@ -17,6 +17,9 @@ import type {
   RestoreCustomerUploadCatalogEligibilityResponse,
   RetryCustomerUploadProcessingResponse,
 } from "@fresh-prints/shared/types/customerUpload/customerUploadStaffActions.types";
+import type {
+  RequestCustomerUploadCatalogPermissionFollowUpResponse,
+} from "@fresh-prints/shared/types/customerUpload/customerUploadCatalogPermission.types";
 import type { ArtworkBackgroundSource } from "@fresh-prints/shared/types/design/artworkBackgroundSource.types";
 import { resolveCustomerUploadPurpose } from "@fresh-prints/shared/utils/customerUploadPurpose";
 
@@ -67,6 +70,8 @@ export interface CustomerUploadIntakeRow {
   ownershipConfirmed: boolean;
   /** `null` when field missing on older docs (Studio shows Pending). */
   catalogUseAcknowledged: boolean | null;
+  catalogExclusionReason: "staff_review" | "customer_permission_denied" | null;
+  catalogPermissionFollowUpStatus: "not_requested" | "requested" | "approved" | "declined";
   purpose: CustomerUploadPurpose;
   createdAtMs: number | null;
   /** Set when exclude purged donation full-size files (thumbnail kept). */
@@ -312,6 +317,17 @@ export const customerUploadIntakeService = {
           typeof data.catalogUseAcknowledged === "boolean"
             ? data.catalogUseAcknowledged
             : null,
+        catalogExclusionReason:
+          data.catalogExclusionReason === "staff_review" ||
+          data.catalogExclusionReason === "customer_permission_denied"
+            ? data.catalogExclusionReason
+            : null,
+        catalogPermissionFollowUpStatus:
+          data.catalogPermissionFollowUpStatus === "requested" ||
+          data.catalogPermissionFollowUpStatus === "approved" ||
+          data.catalogPermissionFollowUpStatus === "declined"
+            ? data.catalogPermissionFollowUpStatus
+            : "not_requested",
         purpose: resolveCustomerUploadPurpose(data.purpose),
         createdAtMs: timestampMs(data.createdAt),
         fullSizePurgedAtMs: timestampMs(data.fullSizePurgedAt),
@@ -358,6 +374,17 @@ export const customerUploadIntakeService = {
       "excludeCustomerUploadFromCatalog",
       { source: "customerUploadIntakeService.exclude" },
     )({ uploadId });
+  },
+
+  async requestPermissionFollowUp(
+    uploadId: string,
+  ): Promise<RequestCustomerUploadCatalogPermissionFollowUpResponse> {
+    return callTracedFunction<
+      { uploadId: string },
+      RequestCustomerUploadCatalogPermissionFollowUpResponse
+    >("requestCustomerUploadCatalogPermissionFollowUp", {
+      source: "customerUploadIntakeService.requestPermissionFollowUp",
+    })({ uploadId });
   },
 
   async restore(uploadId: string): Promise<RestoreCustomerUploadCatalogEligibilityResponse> {
