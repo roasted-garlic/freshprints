@@ -10,7 +10,7 @@ import {
 } from "../../customer-uploads/services/customerUploadReadService";
 import { permissionService } from "../../permissions/services/permissionService";
 import { printRequestService } from "../services/printRequestService";
-import { sortPrintRequestItemsForDisplay } from "../utils/printRequestQueryPlanning";
+import { sortPrintRequestItemsNewestFirst } from "@fresh-prints/shared/utils/printRequestItemDisplayOrder";
 
 interface PrintRequestDetailsState {
   printRequest: PrintRequest | null;
@@ -92,7 +92,7 @@ export function usePrintRequestDetails(printRequestId: string | null) {
         printRequestService.listPrintRequestItems(user, printRequestId),
       ]);
 
-      const sortedItems = sortPrintRequestItemsForDisplay(items);
+      const sortedItems = sortPrintRequestItemsNewestFirst(items);
       const uploadSummaries = await loadUploadSummariesForItems(user, sortedItems);
 
       if (requestSequence !== loadSequenceRef.current) {
@@ -141,7 +141,7 @@ export function usePrintRequestDetails(printRequestId: string | null) {
   const replaceItem = useCallback((item: PrintRequestItem) => {
     setState((currentState) => ({
       ...currentState,
-      items: sortPrintRequestItemsForDisplay(
+      items: sortPrintRequestItemsNewestFirst(
         currentState.items.map((currentItem) => (currentItem.id === item.id ? item : currentItem)),
       ),
     }));
@@ -150,7 +150,7 @@ export function usePrintRequestDetails(printRequestId: string | null) {
   const addItem = useCallback((item: PrintRequestItem) => {
     setState((currentState) => ({
       ...currentState,
-      items: sortPrintRequestItemsForDisplay([...currentState.items, item]),
+      items: sortPrintRequestItemsNewestFirst([...currentState.items, item]),
       printRequest: currentState.printRequest
         ? {
             ...currentState.printRequest,

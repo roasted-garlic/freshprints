@@ -35,18 +35,12 @@ function compareSortAnchors(
   const leftSortOrder = getSortOrder(left);
   const rightSortOrder = getSortOrder(right);
 
-  if (leftSortOrder !== undefined || rightSortOrder !== undefined) {
-    if (leftSortOrder === undefined) {
-      return 1;
-    }
-
-    if (rightSortOrder === undefined) {
-      return -1;
-    }
-
-    if (leftSortOrder !== rightSortOrder) {
-      return leftSortOrder - rightSortOrder;
-    }
+  // Only compare by sortOrder when BOTH rows have one. Otherwise fall through to
+  // createdAt so legacy / customer-upload rows without sortOrder stay chronological
+  // (newest-first must not promote an older upload to the front just because it lacks
+  // sortOrder).
+  if (leftSortOrder !== undefined && rightSortOrder !== undefined && leftSortOrder !== rightSortOrder) {
+    return leftSortOrder - rightSortOrder;
   }
 
   const leftCreated = left.createdAtMillis ?? 0;
@@ -55,13 +49,20 @@ function compareSortAnchors(
     return leftCreated - rightCreated;
   }
 
+  // Prefer the row that has a sortOrder when timestamps tie.
+  if (leftSortOrder !== undefined && rightSortOrder === undefined) {
+    return -1;
+  }
+  if (leftSortOrder === undefined && rightSortOrder !== undefined) {
+    return 1;
+  }
+
   return left.id.localeCompare(right.id);
 }
 
 /**
- * Stable request-item display order: sortOrder asc, then createdAt asc, then id.
- * Matches DATA_MODEL / Studio. Portal Current Request / detail use
- * {@link sortPrintRequestItemsNewestFirst} instead.
+ * Ascending display order: sortOrder (when both present), then createdAt, then id.
+ * Prefer {@link sortPrintRequestItemsNewestFirst} for Studio/Portal request grids.
  */
 export function sortPrintRequestItemsForDisplay(items: PrintRequestItem[]): PrintRequestItem[] {
   return [...items].sort((left, right) =>
@@ -81,11 +82,37 @@ export function sortPrintRequestItemsForDisplay(items: PrintRequestItem[]): Prin
 }
 
 /**
- * Portal Current Request / detail: last-added first (highest sortOrder / newest createdAt).
+ * Request design grids (Portal + Studio): last-added first (highest sortOrder / newest createdAt).
  * Persisted sortOrder values remain ascending appends; this only reverses presentation.
  */
 export function sortPrintRequestItemsNewestFirst(items: PrintRequestItem[]): PrintRequestItem[] {
-  return sortPrintRequestItemsForDisplay(items).reverse();
+  return [...items].sort((left, right) =>
+    compareSortAnchors(
+      {
+        id: right.id,
+        sortOrder: right.sortOrder,
+        createdAtMillis: getTimestampMillis(right.createdAt),
+      },
+      {
+        id: left.id,
+        sortOrder: left.sortOrder,
+        createdAtMillis: getTimestampMillis(left.createdAt),
+      },
+    ),
+  );
+}
+
+/** Next append sortOrder for a new request item (1-based; gaps from duplicates are fine). */
+export function resolveNextPrintRequestItemSortOrder(
+  items: Array<{ sortOrder?: number }>,
+): number {
+  let max = 0;
+  for (const item of items) {
+    if (typeof item.sortOrder === "number" && Number.isFinite(item.sortOrder)) {
+      max = Math.max(max, item.sortOrder);
+    }
+  }
+  return max + 1;
 }
 
 /**
@@ -140,8 +167,8 @@ export function resolveDuplicateInsertAfterSortOrder(input: {
  * (descending sortOrder). Under that display, visual-right is a lower fractional
  * sortOrder than the source (insert-before in ascending sort-space).
  *
- * Portal duplicate callable + optimistic UI use this. Studio keeps
- * {@link resolveDuplicateInsertAfterSortOrder} with ascending display.
+ * Portal duplicate callable + optimistic UI use this. Studio request grids use the same
+ * newest-first display and this insert-before helper for visual-right duplicates.
  */
 export function resolveDuplicateInsertBeforeSortOrder(input: {
   sourceItemId: string;

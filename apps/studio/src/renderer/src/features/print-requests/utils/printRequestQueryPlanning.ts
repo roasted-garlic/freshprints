@@ -170,24 +170,22 @@ export function sortPrintRequestItemsForDisplay(items: PrintRequestItem[]): Prin
     const leftSortOrder = getSortOrder(left);
     const rightSortOrder = getSortOrder(right);
 
-    if (leftSortOrder !== undefined || rightSortOrder !== undefined) {
-      if (leftSortOrder === undefined) {
-        return 1;
-      }
-
-      if (rightSortOrder === undefined) {
-        return -1;
-      }
-
-      if (leftSortOrder !== rightSortOrder) {
-        return leftSortOrder - rightSortOrder;
-      }
+    // Match shared printRequestItemDisplayOrder: only compare sortOrder when both have one.
+    if (leftSortOrder !== undefined && rightSortOrder !== undefined && leftSortOrder !== rightSortOrder) {
+      return leftSortOrder - rightSortOrder;
     }
 
     const createdAtDelta = getTimestampMillis(left.createdAt) - getTimestampMillis(right.createdAt);
 
     if (createdAtDelta !== 0) {
       return createdAtDelta;
+    }
+
+    if (leftSortOrder !== undefined && rightSortOrder === undefined) {
+      return -1;
+    }
+    if (leftSortOrder === undefined && rightSortOrder !== undefined) {
+      return 1;
     }
 
     return left.id.localeCompare(right.id);

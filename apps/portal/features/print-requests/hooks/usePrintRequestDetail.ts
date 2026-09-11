@@ -35,12 +35,12 @@ import {
 } from '../utils/resolveQuantityCommitOutcome';
 
 function workingItemsSignature(items: PrintRequestItem[]): string {
+  // Preserve display order so a live re-sort still updates the detail page.
   return items
     .map(
       (item) =>
-        `${item.id}:${item.quantity}:${item.printWidthInches}x${item.printHeightInches}`,
+        `${item.id}:${item.quantity}:${item.printWidthInches}x${item.printHeightInches}:${item.sortOrder ?? ''}`,
     )
-    .sort()
     .join('|');
 }
 

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PrintRequest } from '@fresh-prints/shared/types/printRequest/printRequest.types';
 import type { PrintRequestItem } from '@fresh-prints/shared/types/printRequest/printRequest.types';
 import { resolveCatalogAddAction } from '@fresh-prints/shared/utils/currentRequestAggregates';
+import { resolveNextPrintRequestItemSortOrder } from '@fresh-prints/shared/utils/printRequestItemDisplayOrder';
 import { sumPrintRequestItemQuantities } from '@fresh-prints/shared/utils/portalShowQueueCapacity';
 import { clampItemQuantityToWorkingRequestMax } from '@fresh-prints/shared/utils/printRequestWorkingRequestMax';
 import {
@@ -373,6 +374,7 @@ export function useAddDesignToRequestFlow({
           quantity: nextQuantity,
           status: 'pending',
           addedBy: userId,
+          sortOrder: resolveNextPrintRequestItemSortOrder(items),
           createdAt: optimisticStamp,
           updatedAt: optimisticStamp,
           ...(titleSnapshot?.trim() ? { titleSnapshot: titleSnapshot.trim() } : {}),

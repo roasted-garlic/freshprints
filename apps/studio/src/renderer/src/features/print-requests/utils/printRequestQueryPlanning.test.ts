@@ -224,7 +224,8 @@ describe("print request item display ordering", () => {
 
     assert.deepEqual(
       sortPrintRequestItemsForDisplay(items).map((item) => item.id),
-      ["ordered-1", "ordered-2", "legacy-a", "legacy-b"],
+      // Legacy rows (no sortOrder) stay chronological; both-ordered rows use sortOrder.
+      ["legacy-a", "legacy-b", "ordered-1", "ordered-2"],
     );
   });
 });

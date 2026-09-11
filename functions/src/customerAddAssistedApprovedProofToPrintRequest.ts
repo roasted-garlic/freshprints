@@ -25,6 +25,7 @@ import { CUSTOMER_UPLOAD_TERMS_VERSION } from "../../packages/shared/src/types/c
 import { evaluateAssistedApprovedProofAddToRequest } from "../../packages/shared/src/utils/assistedCreationApprovedProofAddToRequest";
 import { formatFileSize } from "../../packages/shared/src/utils/formatFileSize";
 import { resolveInitialPrintRequestItemSize, resolvePrintRequestDefaultWidthInches } from "../../packages/shared/src/utils/printRequestItemSizing";
+import { resolveNextPrintRequestItemSortOrder } from "../../packages/shared/src/utils/printRequestItemDisplayOrder";
 
 import { adminDb, adminStorage } from "./lib/admin";
 import {
@@ -465,20 +466,26 @@ export const customerAddAssistedApprovedProofToPrintRequest = onCall(
 
         let currentItemCount = 0;
         let currentPrintCount = 0;
+        let nextSortOrder = 1;
         if (!resolved.created) {
           const requestSnap = await tx.get(requestRef);
           currentItemCount = Number(requestSnap.data()?.itemCount ?? 0);
           const itemsSnap = await tx.get(
             adminDb.collection("printRequestItems").where("printRequestId", "==", printRequestId),
           );
-          currentPrintCount = sumPrintRequestItemQuantities(
-            itemsSnap.docs.map((docSnap) => {
-              const qty = Number(docSnap.data()?.quantity ?? 1);
-              return {
-                quantity: Number.isFinite(qty) && qty > 0 ? Math.floor(qty) : 1,
-              };
-            }),
-          );
+          const existingItems = itemsSnap.docs.map((docSnap) => {
+            const data = docSnap.data() ?? {};
+            const qty = Number(data.quantity ?? 1);
+            return {
+              quantity: Number.isFinite(qty) && qty > 0 ? Math.floor(qty) : 1,
+              sortOrder:
+                typeof data.sortOrder === "number" && Number.isFinite(data.sortOrder)
+                  ? data.sortOrder
+                  : undefined,
+            };
+          });
+          currentPrintCount = sumPrintRequestItemQuantities(existingItems);
+          nextSortOrder = resolveNextPrintRequestItemSortOrder(existingItems);
         }
 
         const now = FieldValue.serverTimestamp();
@@ -580,6 +587,7 @@ export const customerAddAssistedApprovedProofToPrintRequest = onCall(
             quantity: 1,
             printWidthInches: printSize.printWidthInches,
             printHeightInches: printSize.printHeightInches,
+            sortOrder: nextSortOrder,
             status: "pending",
             addedBy: customerUid,
             createdAt: now,
@@ -767,20 +775,26 @@ async function ensureIngestOnWorkingRequest(input: {
 
     let currentItemCount = 0;
     let currentPrintCount = 0;
+    let nextSortOrder = 1;
     if (!resolved.created) {
       const requestSnap = await tx.get(requestRef);
       currentItemCount = Number(requestSnap.data()?.itemCount ?? 0);
       const itemsSnap = await tx.get(
         adminDb.collection("printRequestItems").where("printRequestId", "==", printRequestId),
       );
-      currentPrintCount = sumPrintRequestItemQuantities(
-        itemsSnap.docs.map((docSnap) => {
-          const qty = Number(docSnap.data()?.quantity ?? 1);
-          return {
-            quantity: Number.isFinite(qty) && qty > 0 ? Math.floor(qty) : 1,
-          };
-        }),
-      );
+      const existingItems = itemsSnap.docs.map((docSnap) => {
+        const data = docSnap.data() ?? {};
+        const qty = Number(data.quantity ?? 1);
+        return {
+          quantity: Number.isFinite(qty) && qty > 0 ? Math.floor(qty) : 1,
+          sortOrder:
+            typeof data.sortOrder === "number" && Number.isFinite(data.sortOrder)
+              ? data.sortOrder
+              : undefined,
+        };
+      });
+      currentPrintCount = sumPrintRequestItemQuantities(existingItems);
+      nextSortOrder = resolveNextPrintRequestItemSortOrder(existingItems);
     }
 
     const titleSnapshot =
@@ -806,6 +820,7 @@ async function ensureIngestOnWorkingRequest(input: {
         quantity: 1,
         printWidthInches: printSize.printWidthInches,
         printHeightInches: printSize.printHeightInches,
+        sortOrder: nextSortOrder,
         status: "pending",
         addedBy: customerUid,
         createdAt: now,

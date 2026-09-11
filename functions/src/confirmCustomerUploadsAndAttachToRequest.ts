@@ -7,6 +7,8 @@ import { CUSTOMER_UPLOAD_TERMS_VERSION } from "../../packages/shared/src/types/c
 import { resolveInitialPrintRequestItemSize, resolvePrintRequestDefaultWidthInches } from "../../packages/shared/src/utils/printRequestItemSizing";
 
 import { resolveCustomerUploadPurpose } from "../../packages/shared/src/utils/customerUploadPurpose";
+import { resolveNextPrintRequestItemSortOrder } from "../../packages/shared/src/utils/printRequestItemDisplayOrder";
+import { sumPrintRequestItemQuantities } from "../../packages/shared/src/utils/portalShowQueueCapacity";
 
 import { adminDb } from "./lib/admin";
 import { validateConfirmCustomerUploadsAndAttachRequest } from "./lib/confirmCustomerUploadValidation";
@@ -25,7 +27,6 @@ import { requirePortalCustomer } from "./lib/portalCustomer";
 import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 import { assertWorkingRequestAllowsPrintAdds } from "./lib/printRequestWorkingRequestMax";
 import { resolveOrCreateWorkingPrintRequestInTransaction } from "./lib/portalWorkingPrintRequest";
-import { sumPrintRequestItemQuantities } from "../../packages/shared/src/utils/portalShowQueueCapacity";
 
 function mapHttpsError(error: unknown): never {
   if (error instanceof HttpsError) {
@@ -161,6 +162,7 @@ export const confirmCustomerUploadsAndAttachToRequest = onCall(
         const existingByUploadId = new Map<string, string>();
         let currentItemCount = 0;
         let currentPrintCount = 0;
+        let nextSortOrder = 1;
 
         // When a request was just created, resolve helper already wrote — do not read after write.
         if (!resolved.created) {
@@ -186,14 +188,19 @@ export const confirmCustomerUploadsAndAttachToRequest = onCall(
           const allItemsSnap = await tx.get(
             adminDb.collection("printRequestItems").where("printRequestId", "==", printRequestId),
           );
-          currentPrintCount = sumPrintRequestItemQuantities(
-            allItemsSnap.docs.map((docSnap) => {
-              const qty = Number(docSnap.data()?.quantity ?? 1);
-              return {
-                quantity: Number.isFinite(qty) && qty > 0 ? Math.floor(qty) : 1,
-              };
-            }),
-          );
+          const existingItems = allItemsSnap.docs.map((docSnap) => {
+            const data = docSnap.data() ?? {};
+            const qty = Number(data.quantity ?? 1);
+            return {
+              quantity: Number.isFinite(qty) && qty > 0 ? Math.floor(qty) : 1,
+              sortOrder:
+                typeof data.sortOrder === "number" && Number.isFinite(data.sortOrder)
+                  ? data.sortOrder
+                  : undefined,
+            };
+          });
+          currentPrintCount = sumPrintRequestItemQuantities(existingItems);
+          nextSortOrder = resolveNextPrintRequestItemSortOrder(existingItems);
         }
 
         const now = FieldValue.serverTimestamp();
@@ -244,6 +251,8 @@ export const confirmCustomerUploadsAndAttachToRequest = onCall(
               ? upload.originalFilename.trim()
               : "Uploaded artwork";
           const printSize = resolveAttachPrintSize(upload, printRequestDefaultWidthInches);
+          const sortOrder = nextSortOrder;
+          nextSortOrder += 1;
 
           tx.set(
             itemRef,
@@ -256,6 +265,7 @@ export const confirmCustomerUploadsAndAttachToRequest = onCall(
               quantity,
               printWidthInches: printSize.printWidthInches,
               printHeightInches: printSize.printHeightInches,
+              sortOrder,
               status: "pending",
               addedBy: customerUid,
               createdAt: now,
