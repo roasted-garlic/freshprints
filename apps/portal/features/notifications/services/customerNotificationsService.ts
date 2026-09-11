@@ -3,6 +3,7 @@
 import {
   collection,
   doc,
+  getDocsFromServer,
   limit,
   onSnapshot,
   orderBy,
@@ -11,6 +12,8 @@ import {
   updateDoc,
   where,
   writeBatch,
+  type Query,
+  type QuerySnapshot,
   type Timestamp,
   type Unsubscribe,
 } from 'firebase/firestore';
@@ -28,6 +31,8 @@ import {
   runTracedWrite,
   traceFirestoreListenerAttach,
   traceFirestoreListenerEmission,
+  traceFirestoreOneShotComplete,
+  traceFirestoreOneShotStart,
   traceWrappedUnsubscribe,
 } from '@fresh-prints/shared/utils/firestoreUsageTrace';
 
@@ -68,6 +73,34 @@ function asDate(value: unknown): Date | null {
   return null;
 }
 
+function buildRecentNotificationsQuery(customerUid: string): Query {
+  return query(
+    collection(getPortalDb(), CUSTOMER_NOTIFICATIONS_COLLECTION),
+    where('customerUid', '==', customerUid),
+    orderBy('createdAt', 'desc'),
+    limit(CUSTOMER_NOTIFICATIONS_QUERY_LIMIT),
+  );
+}
+
+function mapQuerySnapshot(snapshot: QuerySnapshot): PortalCustomerNotification[] {
+  const items: PortalCustomerNotification[] = [];
+  let skipped = 0;
+  for (const document of snapshot.docs) {
+    const mapped = mapNotification(document.id, document.data() as Record<string, unknown>);
+    if (mapped) {
+      items.push(mapped);
+    } else {
+      skipped += 1;
+    }
+  }
+  if (skipped > 0) {
+    console.warn(
+      `[portalNotifications] skipped ${skipped} malformed customerNotifications doc(s)`,
+    );
+  }
+  return items;
+}
+
 function mapNotification(
   id: string,
   data: Record<string, unknown>,
@@ -106,34 +139,15 @@ export const customerNotificationsService = {
     onChange: (items: PortalCustomerNotification[]) => void,
     onError?: (message: string) => void,
   ): Unsubscribe {
-    const notificationsQuery = query(
-      collection(getPortalDb(), CUSTOMER_NOTIFICATIONS_COLLECTION),
-      where('customerUid', '==', customerUid),
-      orderBy('createdAt', 'desc'),
-      limit(CUSTOMER_NOTIFICATIONS_QUERY_LIMIT),
-    );
+    const notificationsQuery = buildRecentNotificationsQuery(customerUid);
 
     traceFirestoreListenerAttach(NOTIFICATIONS_TRACE);
     const unsubscribe = onSnapshot(
       notificationsQuery,
+      { includeMetadataChanges: true },
       (snapshot) => {
         traceFirestoreListenerEmission(NOTIFICATIONS_TRACE, snapshot.size);
-        const items: PortalCustomerNotification[] = [];
-        let skipped = 0;
-        for (const document of snapshot.docs) {
-          const mapped = mapNotification(document.id, document.data() as Record<string, unknown>);
-          if (mapped) {
-            items.push(mapped);
-          } else {
-            skipped += 1;
-          }
-        }
-        if (skipped > 0) {
-          console.warn(
-            `[portalNotifications] skipped ${skipped} malformed customerNotifications doc(s)`,
-          );
-        }
-        onChange(items);
+        onChange(mapQuerySnapshot(snapshot));
       },
       (error) => {
         console.error('[portalNotifications] onSnapshot error', error);
@@ -142,6 +156,19 @@ export const customerNotificationsService = {
       },
     );
     return traceWrappedUnsubscribe(NOTIFICATIONS_TRACE, unsubscribe);
+  },
+
+  async listRecent(customerUid: string): Promise<PortalCustomerNotification[]> {
+    const notificationsQuery = buildRecentNotificationsQuery(customerUid);
+    const traceMetadata = {
+      ...NOTIFICATIONS_TRACE,
+      source: 'customerNotificationsService.listRecent',
+      triggerReason: 'explicit-refresh' as const,
+    };
+    traceFirestoreOneShotStart('getDocs', traceMetadata);
+    const snapshot = await getDocsFromServer(notificationsQuery);
+    traceFirestoreOneShotComplete('getDocs', traceMetadata, snapshot.size);
+    return mapQuerySnapshot(snapshot);
   },
 
   async markRead(notificationId: string): Promise<void> {

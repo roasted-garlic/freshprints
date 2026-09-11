@@ -22,6 +22,7 @@ import {
 import {
   isPortalBrowserPushEnabled,
   startPortalForegroundPushListener,
+  subscribePortalForegroundInboxRefresh,
   syncPortalBrowserPushTokenIfGranted,
 } from '../services/portalWebPushService';
 import { locationMatchesNotificationHref } from '../utils/locationMatchesNotificationHref';
@@ -69,6 +70,23 @@ interface PortalNotificationsContextValue {
 
 const PortalNotificationsContext = createContext<PortalNotificationsContextValue | null>(null);
 
+function sameNotificationInbox(
+  current: PortalCustomerNotification[],
+  next: PortalCustomerNotification[],
+): boolean {
+  if (current.length !== next.length) {
+    return false;
+  }
+  return current.every((item, index) => {
+    const other = next[index];
+    return (
+      other != null &&
+      item.id === other.id &&
+      item.readAt?.getTime() === other.readAt?.getTime()
+    );
+  });
+}
+
 export function usePortalNotifications(): PortalNotificationsContextValue {
   const value = useContext(PortalNotificationsContext);
   if (!value) {
@@ -100,9 +118,39 @@ export function PortalNotificationsProvider({ children }: { children: ReactNode 
   /** Unread alert id queued until destination URL matches after navigate. */
   const [pendingMarkRead, setPendingMarkRead] = useState<PendingMarkRead | null>(null);
   const flushedMarkReadIdsRef = useRef(new Set<string>());
+  const refreshInFlightRef = useRef<Promise<void> | null>(null);
+  const errorRef = useRef(error);
+  errorRef.current = error;
 
   // Prefer Auth UID — must match customerNotifications.customerUid written by Functions.
   const customerUid = firebaseUser?.uid ?? user?.id ?? null;
+
+  const applyItems = useCallback((next: PortalCustomerNotification[]) => {
+    setItems((current) => (sameNotificationInbox(current, next) ? current : next));
+    setError(null);
+  }, []);
+
+  const refreshInboxFromServer = useCallback(() => {
+    if (!customerUid || !customer?.id) {
+      return;
+    }
+    if (refreshInFlightRef.current) {
+      return refreshInFlightRef.current;
+    }
+    const request = customerNotificationsService
+      .listRecent(customerUid)
+      .then((next) => {
+        applyItems(next);
+      })
+      .catch((refreshError: unknown) => {
+        console.error('[portalNotifications] listRecent failed', refreshError);
+      })
+      .finally(() => {
+        refreshInFlightRef.current = null;
+      });
+    refreshInFlightRef.current = request;
+    return request;
+  }, [applyItems, customer?.id, customerUid]);
 
   useEffect(() => {
     if (!customerUid || !customer?.id) {
@@ -114,24 +162,48 @@ export function PortalNotificationsProvider({ children }: { children: ReactNode 
     return customerNotificationsService.subscribeRecent(
       customerUid,
       (next) => {
-        setItems(next);
-        setError(null);
+        applyItems(next);
       },
       (message) => {
         console.error('[portalNotifications] subscribeRecent failed', message);
         setError(message);
       },
     );
-  }, [customer?.id, customerUid, retryNonce]);
+  }, [applyItems, customer?.id, customerUid, retryNonce]);
 
   useEffect(() => {
-    if (!error) {
+    startPortalForegroundPushListener();
+    return subscribePortalForegroundInboxRefresh(() => {
+      void refreshInboxFromServer();
+    });
+  }, [refreshInboxFromServer]);
+
+  useEffect(() => {
+    if (!customerUid || !customer?.id) {
       return;
     }
-    const onFocus = () => setRetryNonce((value) => value + 1);
-    window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
-  }, [error]);
+    const refreshIfVisible = () => {
+      if (document.visibilityState !== 'visible') {
+        return;
+      }
+      if (errorRef.current) {
+        setRetryNonce((value) => value + 1);
+      }
+      void refreshInboxFromServer();
+    };
+    const reattachListener = () => {
+      setRetryNonce((value) => value + 1);
+      void refreshInboxFromServer();
+    };
+    window.addEventListener('focus', refreshIfVisible);
+    document.addEventListener('visibilitychange', refreshIfVisible);
+    window.addEventListener('online', reattachListener);
+    return () => {
+      window.removeEventListener('focus', refreshIfVisible);
+      document.removeEventListener('visibilitychange', refreshIfVisible);
+      window.removeEventListener('online', reattachListener);
+    };
+  }, [customer?.id, customerUid, refreshInboxFromServer]);
 
   useEffect(() => {
     if (!customer?.id) {

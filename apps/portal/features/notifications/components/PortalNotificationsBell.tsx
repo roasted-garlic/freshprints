@@ -35,9 +35,21 @@ function PortalNotificationsPanel() {
     retry,
     unreadItems,
   } = usePortalNotifications();
-  // Pin unread list at open (defense in depth). Primary fix: mark-read waits until destination URL matches.
-  const [preview] = useState(() => buildPanelPreview(unreadItems));
+  // Pin unread list at open so mark-read cannot empty the dropdown mid-click.
+  // Newly arrived unread alerts still prepend while the panel stays open.
+  const [preview, setPreview] = useState(() => buildPanelPreview(unreadItems));
   const showMarkAll = preview.length > 0;
+
+  useEffect(() => {
+    setPreview((current) => {
+      const currentIds = new Set(current.map((item) => item.id));
+      const newcomers = unreadItems.filter((item) => !currentIds.has(item.id));
+      if (newcomers.length === 0) {
+        return current;
+      }
+      return buildPanelPreview([...newcomers, ...current]);
+    });
+  }, [unreadItems]);
 
   return (
     <section
