@@ -18,10 +18,13 @@
 | Blocked | **no** |
 | Allowed Actions | Signoff when gates met; docs; tests; no production |
 | Forbidden Actions | production deploy; Rules/Storage; commit/push unless owner asks |
-| Last Completed Step | DEV redeploy Personal-only delete server gate |
+| Last Completed Step | Commit + push to `origin/development` (`35d80ec7`) |
 | Next Required Step | Signoff / clear Workstream D if still open |
 
 **Decision Log:**
+
+- 2026-09-11 — Owner: “commit and push.” Committed and pushed to `origin/development`
+  (`35d80ec7` feat(portal,studio): defer upload intake, personal library, and gallery re-add).
 
 - 2026-09-11 — Owner: “Redeploy please.” DEV redeployed
   `previewPortalCustomerUploadDeletion` + `deletePortalCustomerUpload` for Personal-only
