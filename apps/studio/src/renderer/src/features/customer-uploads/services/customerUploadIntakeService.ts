@@ -22,6 +22,10 @@ import type {
 } from "@fresh-prints/shared/types/customerUpload/customerUploadCatalogPermission.types";
 import type { ArtworkBackgroundSource } from "@fresh-prints/shared/types/design/artworkBackgroundSource.types";
 import { resolveCustomerUploadPurpose } from "@fresh-prints/shared/utils/customerUploadPurpose";
+import {
+  normalizeCustomerUploadPermissionActivity,
+  resolveCustomerUploadPermissionAskCount,
+} from "@fresh-prints/shared/utils/customerUploadPermissionFollowUp";
 
 import { db, storage } from "../../../config/firebase";
 import { callTracedFunction } from "../../../config/tracedCallable";
@@ -332,6 +336,14 @@ export const customerUploadIntakeService = {
           data.catalogPermissionFollowUpStatus === "declined"
             ? data.catalogPermissionFollowUpStatus
             : "not_requested",
+        catalogPermissionAskCount: resolveCustomerUploadPermissionAskCount({
+          catalogPermissionAskCount: data.catalogPermissionAskCount,
+          catalogPermissionFollowUpStatus: data.catalogPermissionFollowUpStatus,
+        }),
+        catalogPermissionActivity: normalizeCustomerUploadPermissionActivity(
+          data.catalogPermissionActivity,
+        ),
+        catalogPermissionOriginalDeniedAtMs: timestampMs(data.catalogPermissionOriginalDeniedAt),
         catalogRetentionStartedAtMs: timestampMs(data.catalogRetentionStartedAt),
         purpose: resolveCustomerUploadPurpose(data.purpose),
         createdAtMs: timestampMs(data.createdAt),

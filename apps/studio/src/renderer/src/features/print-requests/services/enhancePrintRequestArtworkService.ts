@@ -11,7 +11,7 @@ export const enhancePrintRequestArtworkService = {
     const invoke = callTracedFunction<
       EnhancePrintRequestArtworkRequest,
       EnhancePrintRequestArtworkResponse
-    >("enhancePrintRequestArtwork", { feature: "print-requests" });
+    >("enhancePrintRequestArtwork", { logicalOperation: "print-requests.enhance-artwork" });
     return invoke(request);
   },
 };

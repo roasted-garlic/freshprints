@@ -159,7 +159,11 @@ describe("Whatnot show queue tabs", () => {
       productionStatus: "completed",
       productionResolutionKind: "unfulfilled_release",
     });
-    const display = getDerivedShowStatusDisplay("completed", null, {
+    const display = getDerivedShowStatusDisplay("completed", {
+      allocatedQuantity: 0,
+      isFull: false,
+      isOverCapacity: false,
+    }, {
       productionResolutionKind: devFixture.productionResolutionKind,
     });
     assert.equal(display.label, "DID NOT PRINT");
