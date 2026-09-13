@@ -280,7 +280,7 @@ describe("resolveExplicitContentAutomationWrite", () => {
     artworkHit: true,
     censoredTerms: ["damn"],
     matches: [{ surfaceForm: "damn", matchedVocabularyTerm: "damn" }],
-  } as const;
+  };
 
   it("writes on match without Ready gate", () => {
     const write = resolveExplicitContentAutomationWrite({

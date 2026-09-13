@@ -16,7 +16,6 @@ import { Select } from "../../../shared/components/Select";
 import { TextInput } from "../../../shared/components/TextInput";
 import { AutoResizeTextarea } from "../../../shared/components/AutoResizeTextarea";
 import { useShellHeaderConfig } from "../../../shared/hooks/useShellHeaderConfig";
-import { desktopAppService } from "../../../shared/services/desktopAppService";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
 import { clearPrintRequestsPageCache } from "../../print-requests/services/printRequestsPageReadCache";

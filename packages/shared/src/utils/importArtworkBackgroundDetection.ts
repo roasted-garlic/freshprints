@@ -82,7 +82,8 @@ function relativeLuma(r: number, g: number, b: number): number {
  * Aggregate opaque-pixel luminance stats from raw RGBA (or RGB+alpha) bytes.
  */
 export function computeOpaquePixelLumaStatsFromRgba(input: {
-  data: Uint8Array | Buffer;
+  /** Byte-like RGBA/RGB data from Node or browser canvas APIs. */
+  data: ArrayLike<number>;
   width: number;
   height: number;
   channels: number;

@@ -14,7 +14,7 @@ export const setPrintRequestItemArtworkEnhanceModeService = {
     const invoke = callTracedFunction<
       SetPrintRequestItemArtworkEnhanceModeRequest,
       SetPrintRequestItemArtworkEnhanceModeResponse
-    >("setPrintRequestItemArtworkEnhanceMode", { feature: "print-requests" }, undefined, {
+    >("setPrintRequestItemArtworkEnhanceMode", { logicalOperation: "print-requests.set-artwork-enhance-mode" }, undefined, {
       timeout: SET_PRINT_REQUEST_ITEM_ARTWORK_ENHANCE_MODE_CLIENT_TIMEOUT_MS,
     });
     return invoke(request);

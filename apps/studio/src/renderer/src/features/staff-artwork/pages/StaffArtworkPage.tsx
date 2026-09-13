@@ -1320,7 +1320,7 @@ export function StaffArtworkPage() {
       <DesignPreviewLightbox
         activeItemId={lightboxArtworkId}
         alt={lightboxArtwork ? `${lightboxArtwork.title} preview` : "Staff Artwork preview"}
-        artworkBackgroundHex={lightboxArtwork?.artworkBackgroundHex ?? null}
+        artworkBackgroundHex={lightboxArtwork?.artworkBackgroundHex ?? undefined}
         isOpen={Boolean(lightboxArtworkId && lightboxArtwork && previewUrls[lightboxArtwork.id])}
         navigationItems={lightboxNavigationItems}
         onActiveItemChange={setLightboxArtworkId}

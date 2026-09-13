@@ -157,7 +157,7 @@ export function StaffInboxPage() {
   }, []);
 
   const toggleSelectAllCompleted = useCallback(() => {
-    setSelectedCompletedIds((current) => {
+    setSelectedCompletedIds(() => {
       if (allQueueCompletedSelected) {
         return new Set();
       }

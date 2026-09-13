@@ -1,5 +1,4 @@
 import {
-  deleteDoc,
   doc,
   getDocs,
   onSnapshot,

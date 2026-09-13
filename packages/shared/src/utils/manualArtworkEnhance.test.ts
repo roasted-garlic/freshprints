@@ -7,7 +7,6 @@ import {
   resolveNativeProductionSourcePixels,
   shouldOfferManualArtworkEnhanceAction,
 } from "./manualArtworkEnhance";
-import { resolveInitialPrintRequestItemSize } from "./printRequestItemSizing";
 
 describe("resolveManualArtworkEnhanceDecision", () => {
   it("returns already_sufficient when at 15 inch target", () => {

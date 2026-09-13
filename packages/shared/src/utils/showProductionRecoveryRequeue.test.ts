@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { Timestamp } from "firebase/firestore";
 
 import type { UpcomingShow } from "../types/upcomingShow/upcomingShow.types";
 import {
@@ -37,9 +38,8 @@ import {
 } from "./showProductionRecoveryRequeue";
 import { getDerivedShowStatusDisplay } from "./showCapacityDisplay";
 
-function timestamp(iso: string) {
-  const millis = new Date(iso).getTime();
-  return { toMillis: () => millis, toDate: () => new Date(millis) };
+function timestamp(iso: string): Timestamp {
+  return Timestamp.fromDate(new Date(iso));
 }
 
 function buildAllocation(

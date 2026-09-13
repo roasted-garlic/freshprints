@@ -199,7 +199,7 @@ export function Select({
       closeMenu();
     }
 
-    function handleKeyDown(event: KeyboardEvent) {
+    function handleKeyDown(event: globalThis.KeyboardEvent) {
       if (event.key === "Escape") {
         closeMenu();
       }
