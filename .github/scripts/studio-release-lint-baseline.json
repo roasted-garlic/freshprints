@@ -1,0 +1,255 @@
+{
+  "schemaVersion": 1,
+  "diagnostics": [
+    {
+      "file": "apps/portal/features/catalog/hooks/useCatalogDesigns.ts",
+      "severity": 1,
+      "ruleId": "react-hooks/exhaustive-deps",
+      "line": 485,
+      "column": 6,
+      "endLine": 498,
+      "endColumn": 4,
+      "message": "React Hook useEffect has a missing dependency: 'options.halftoneFilterOn'. Either include it or remove the dependency array."
+    },
+    {
+      "file": "apps/studio/src/renderer/src/features/deletion/services/schedulePostAuthDeletionWarmup.contract.test.ts",
+      "severity": 2,
+      "ruleId": "no-useless-escape",
+      "line": 46,
+      "column": 42,
+      "endLine": 46,
+      "endColumn": 43,
+      "message": "Unnecessary escape character: \\/."
+    },
+    {
+      "file": "apps/studio/src/renderer/src/features/designs/components/SmartProfileDimensionListsView.tsx",
+      "severity": 1,
+      "ruleId": "react-refresh/only-export-components",
+      "line": 21,
+      "column": 17,
+      "endLine": 21,
+      "endColumn": 48,
+      "message": "Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components."
+    },
+    {
+      "file": "apps/studio/src/renderer/src/features/designs/components/SmartProfileDimensionListsView.tsx",
+      "severity": 1,
+      "ruleId": "react-refresh/only-export-components",
+      "line": 4,
+      "column": 14,
+      "endLine": 7,
+      "endColumn": 2,
+      "message": "Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components."
+    },
+    {
+      "file": "apps/studio/src/renderer/src/features/designs/components/TagManagementModal.tsx",
+      "severity": 2,
+      "ruleId": "@typescript-eslint/no-unused-vars",
+      "line": 2,
+      "column": 36,
+      "endLine": 2,
+      "endColumn": 42,
+      "message": "'_props' is defined but never used."
+    },
+    {
+      "file": "apps/studio/src/renderer/src/features/designs/hooks/useCatalogTags.ts",
+      "severity": 2,
+      "ruleId": "@typescript-eslint/no-unused-vars",
+      "line": 28,
+      "column": 32,
+      "endLine": 28,
+      "endColumn": 40,
+      "message": "'_options' is assigned a value but never used."
+    },
+    {
+      "file": "apps/studio/src/renderer/src/features/designs/hooks/useCatalogTags.ts",
+      "severity": 2,
+      "ruleId": "@typescript-eslint/no-unused-vars",
+      "line": 49,
+      "column": 7,
+      "endLine": 49,
+      "endColumn": 14,
+      "message": "'_inputs' is defined but never used."
+    },
+    {
+      "file": "apps/studio/src/renderer/src/features/designs/hooks/useCatalogTags.ts",
+      "severity": 2,
+      "ruleId": "@typescript-eslint/no-unused-vars",
+      "line": 52,
+      "column": 23,
+      "endLine": 52,
+      "endColumn": 29,
+      "message": "'_input' is defined but never used."
+    },
+    {
+      "file": "apps/studio/src/renderer/src/features/designs/hooks/useCatalogTags.ts",
+      "severity": 2,
+      "ruleId": "@typescript-eslint/no-unused-vars",
+      "line": 54,
+      "column": 24,
+      "endLine": 54,
+      "endColumn": 30,
+      "message": "'_tagId' is defined but never used."
+    },
+    {
+      "file": "apps/studio/src/renderer/src/features/designs/hooks/useCatalogTags.ts",
+      "severity": 2,
+      "ruleId": "@typescript-eslint/no-unused-vars",
+      "line": 55,
+      "column": 23,
+      "endLine": 55,
+      "endColumn": 29,
+      "message": "'_tagId' is defined but never used."
+    },
+    {
+      "file": "apps/studio/src/renderer/src/features/designs/hooks/useCatalogTags.ts",
+      "severity": 2,
+      "ruleId": "@typescript-eslint/no-unused-vars",
+      "line": 55,
+      "column": 39,
+      "endLine": 55,
+      "endColumn": 45,
+      "message": "'_input' is defined but never used."
+    },
+    {
+      "file": "apps/studio/src/renderer/src/features/designs/pages/DesignLibraryPage.tsx",
+      "severity": 1,
+      "ruleId": "react-hooks/exhaustive-deps",
+      "line": 478,
+      "column": 6,
+      "endLine": 485,
+      "endColumn": 4,
+      "message": "React Hook useMemo has an unnecessary dependency: 'managedSearchActive'. Either exclude it or remove the dependency array."
+    },
+    {
+      "file": "apps/studio/src/renderer/src/features/designs/utils/designLibrarySearch.ts",
+      "severity": 2,
+      "ruleId": "@typescript-eslint/no-unused-vars",
+      "line": 24,
+      "column": 3,
+      "endLine": 24,
+      "endColumn": 22,
+      "message": "'_retiredCatalogTags' is defined but never used."
+    },
+    {
+      "file": "apps/studio/src/renderer/src/features/staff-inbox/pages/StaffInboxPage.tsx",
+      "severity": 2,
+      "ruleId": "@typescript-eslint/no-unused-vars",
+      "line": 160,
+      "column": 30,
+      "endLine": 160,
+      "endColumn": 37,
+      "message": "'current' is defined but never used."
+    },
+    {
+      "file": "apps/studio/src/renderer/src/features/staff-inbox/services/staffInboxAlertDeliveryService.ts",
+      "severity": 2,
+      "ruleId": "@typescript-eslint/no-unused-vars",
+      "line": 2,
+      "column": 3,
+      "endLine": 2,
+      "endColumn": 12,
+      "message": "'deleteDoc' is defined but never used."
+    },
+    {
+      "file": "apps/studio/src/renderer/src/features/staff-inbox/services/staffInboxSuppressionService.ts",
+      "severity": 2,
+      "ruleId": "@typescript-eslint/no-unused-vars",
+      "line": 5,
+      "column": 3,
+      "endLine": 5,
+      "endColumn": 9,
+      "message": "'setDoc' is defined but never used."
+    },
+    {
+      "file": "apps/studio/src/renderer/src/features/upcoming-shows/hooks/useShowRailDollarTotals.ts",
+      "severity": 1,
+      "ruleId": "react-hooks/exhaustive-deps",
+      "line": 93,
+      "column": 6,
+      "endLine": 93,
+      "endColumn": 46,
+      "message": "React Hook useEffect has a missing dependency: 'input.shows'. Either include it or remove the dependency array."
+    },
+    {
+      "file": "apps/studio/src/renderer/src/features/upcoming-shows/pages/UpcomingShowsPage.tsx",
+      "severity": 2,
+      "ruleId": "@typescript-eslint/no-unused-vars",
+      "line": 19,
+      "column": 10,
+      "endLine": 19,
+      "endColumn": 27,
+      "message": "'desktopAppService' is defined but never used."
+    },
+    {
+      "file": "functions/src/lib/propagateCustomerIdentitySnapshots.ts",
+      "severity": 2,
+      "ruleId": "@typescript-eslint/no-unused-vars",
+      "line": 128,
+      "column": 33,
+      "endLine": 128,
+      "endColumn": 50,
+      "message": "'_ignoredUpdatedAt' is assigned a value but never used."
+    },
+    {
+      "file": "packages/shared/src/constants/printRequest/printRequestLimitSettingsRulesAlignment.test.ts",
+      "severity": 2,
+      "ruleId": "no-regex-spaces",
+      "line": 109,
+      "column": 5,
+      "endLine": 109,
+      "endColumn": 80,
+      "message": "Spaces are hard to count. Use {4}."
+    },
+    {
+      "file": "packages/shared/src/constants/printRequest/printRequestLimitSettingsRulesAlignment.test.ts",
+      "severity": 2,
+      "ruleId": "no-regex-spaces",
+      "line": 63,
+      "column": 5,
+      "endLine": 63,
+      "endColumn": 80,
+      "message": "Spaces are hard to count. Use {4}."
+    },
+    {
+      "file": "packages/shared/src/constants/printRequest/printRequestLimitSettingsRulesAlignment.test.ts",
+      "severity": 2,
+      "ruleId": "no-regex-spaces",
+      "line": 88,
+      "column": 5,
+      "endLine": 88,
+      "endColumn": 80,
+      "message": "Spaces are hard to count. Use {4}."
+    },
+    {
+      "file": "packages/shared/src/utils/customerUploadTransparency.test.ts",
+      "severity": 2,
+      "ruleId": "@typescript-eslint/no-unused-vars",
+      "line": 8,
+      "column": 3,
+      "endLine": 8,
+      "endColumn": 51,
+      "message": "'CUSTOMER_UPLOAD_FULL_BLEED_MAX_OPAQUE_BBOX_RATIO' is defined but never used."
+    },
+    {
+      "file": "packages/shared/src/utils/manualArtworkEnhance.test.ts",
+      "severity": 2,
+      "ruleId": "@typescript-eslint/no-unused-vars",
+      "line": 10,
+      "column": 10,
+      "endLine": 10,
+      "endColumn": 44,
+      "message": "'resolveInitialPrintRequestItemSize' is defined but never used."
+    },
+    {
+      "file": "packages/shared/src/utils/showProductionRecovery.ts",
+      "severity": 2,
+      "ruleId": "no-control-regex",
+      "line": 265,
+      "column": 7,
+      "endLine": 265,
+      "endColumn": 55,
+      "message": "Unexpected control character(s) in regular expression: \\x00, \\x08, \\x0b, \\x0c, \\x0e, \\x1f."
+    }
+  ]
+}
