@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
-import { ExternalLink, ImagePlus, Plus, RefreshCw, Search, X } from "lucide-react";
+import { ExternalLink, ImagePlus, Plus, RefreshCw, Search, X, Download, Copy, WandSparkles } from "lucide-react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 import { Button } from "../../../shared/components/Button";
@@ -18,6 +18,7 @@ import { Badge } from "../../../shared/components/Badge";
 import { useShellHeaderConfig } from "../../../shared/hooks/useShellHeaderConfig";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
+import { isActiveCustomerAccount } from "../../users/utils/customerDirectoryVisibility";
 import { convertCustomerPrintRequestService } from "../services/convertCustomerPrintRequestService";
 import { printRequestService, type UpdatePrintRequestItemInput } from "../services/printRequestService";
 import { clearPrintRequestsPageCache } from "../services/printRequestsPageReadCache";
@@ -25,18 +26,31 @@ import { usePrintRequestDetails } from "../hooks/usePrintRequestDetails";
 import { usePrintRequests } from "../hooks/usePrintRequests";
 import { useReadyDesignsForSelection } from "../hooks/useReadyDesignsForSelection";
 import { PrintRequestItemCard } from "../components/PrintRequestItemCard";
+import { PrintRequestItemsPreviewLightbox } from "../components/PrintRequestItemsPreviewLightbox";
+import { useStandardPrintSizesSettings } from "../../settings/hooks/useStandardPrintSizesSettings";
+import { useGangSheetSettings } from "../../settings/hooks/useGangSheetSettings";
+import { buildPrintRequestItemSummaries } from "../utils/printRequestQueryPlanning";
 import { AddToShowModal } from "../components/AddToShowModal";
+import { TransferPrintRequestToShowModal } from "../components/TransferPrintRequestToShowModal";
+import { formatPrintRequestShowTransferActionLabel, resolvePrintRequestShowTransferMode } from "@fresh-prints/shared/utils/printRequestShowTransfer";
 import { PrintRequestDeletionDialog } from "../components/PrintRequestDeletionDialog";
 import type { PrintRequest, PrintRequestItem } from "@fresh-prints/shared/types/printRequest/printRequest.types";
+import type { SetPrintRequestItemArtworkEnhanceModeResponse } from "@fresh-prints/shared/types/printRequest/setPrintRequestItemArtworkEnhanceMode.types";
 import type { Customer } from "@fresh-prints/shared/types/customer/customer.types";
+import { formatCustomerIdentityLabel } from "@fresh-prints/shared/utils/formatCustomerIdentityLabel";
 import { formatCustomerUsernameForDisplay } from "@fresh-prints/shared/utils/formatCustomerUsernameForDisplay";
 import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/showAllocation.types";
 import { formatInternalPrintRequestName } from "@fresh-prints/shared/utils/printRequestNaming";
+import { mergePrintRequestItemPreservingArtworkEnhanceFields } from "@fresh-prints/shared/utils/printRequestItemArtworkEnhanceFields";
 import { getPrintRequestOriginBadgeLabel } from "@fresh-prints/shared/utils/printRequestOrigin";
-import { evaluateCustomerPrintRequestConversionEligibility } from "@fresh-prints/shared/utils/printRequestConversion";
+import {
+  evaluateCustomerPrintRequestConversionEligibility,
+  getPrintRequestAllocationBlockReason,
+  isPrintRequestConvertedToInternal,
+} from "@fresh-prints/shared/utils/printRequestConversion";
 import { getPrintRequestTabHelperCopy } from "@fresh-prints/shared/staffInbox/printRequestTabHelperCopy";
 import { derivePrintRequestQueueState, isPrintRequestFullyPrinted } from "@fresh-prints/shared/utils/printRequestQueueState";
-import type { PrintRequestListTab } from "@fresh-prints/shared/utils/printRequestListGrouping";
+import { derivePrintRequestListTab, type PrintRequestListTab } from "@fresh-prints/shared/utils/printRequestListGrouping";
 import {
   getPrintRequestWorkingTriageLabel,
   isPrintRequestIncludedInListTabs,
@@ -48,13 +62,31 @@ import { groupAllocationsByShow } from "@fresh-prints/shared/utils/groupAllocati
 import {
   groupPrintRequestsByShow,
   UNASSIGNED_SHOW_SECTION_KEY,
+  type PrintRequestShowSection,
 } from "@fresh-prints/shared/utils/groupPrintRequestsByShow";
+import { assessShowCapacity } from "@fresh-prints/shared/utils/showCapacity";
+import {
+  formatShowCapacitySlotLabel,
+  getCapacityFillLevel,
+  getShowCapacityPercent,
+} from "@fresh-prints/shared/utils/showCapacityDisplay";
+import { resolveShowDisplayAllocatedQuantity } from "@fresh-prints/shared/utils/showDisplayAllocatedQuantity";
 import { canRemoveRequestFromShow } from "@fresh-prints/shared/utils/showQueueEditability";
 import {
   summarizePrintRequestPersistenceHealth,
   type PrintRequestItemPersistenceHealth,
 } from "@fresh-prints/shared/utils/printRequestItemPersistenceHealth";
-import { getPrintRequestQueueStateBadgeLabel, getPrintRequestQueueStateBadgeVariant } from "../utils/printRequestQueueBadge";
+import {
+  getPrintRequestQueueStateBadgeLabel,
+  getPrintRequestQueueStateBadgeVariant,
+  shouldShowPrintRequestQueueStateBadge,
+} from "../utils/printRequestQueueBadge";
+import {
+  getPrintRequestRequeueBadgeLabel,
+  getPrintRequestRequeueBadgeTitle,
+  getPrintRequestRequeueBadgeVariant,
+  shouldShowPrintRequestRequeueBadge,
+} from "../utils/printRequestRequeueBadge";
 import { filterPrintRequestsByListSearch } from "../utils/printRequestListSearch";
 import { filterPrintRequestsByActiveTab } from "../utils/filterPrintRequestsByActiveTab";
 import { filterPrintRequestsByRequestKind } from "../utils/filterPrintRequestsByRequestKind";
@@ -64,22 +96,37 @@ import {
   PRINT_REQUEST_TAB_QUERY_PARAM,
   PRINT_REQUEST_WORKING_FILTER_QUERY_PARAM,
   getPrintRequestsPath,
+  buildPrintRequestNavigationDeepLinkPath,
+  getPrintRequestListTabsForKind,
   isInternalFromPrintRequestListKind,
   isPrintRequestRouteTab,
   isPrintRequestWorkingFilter,
+  normalizePrintRequestListTabForKind,
   printRequestListKindFromIsInternal,
   resolveCanonicalPrintRequestsRoute,
   resolvePrintRequestListKind,
   resolveWorkingFilterClick,
   shouldReplacePrintRequestsPath,
+  type PrintRequestRouteTab,
+  type PrintRequestRouteTriageRequest,
 } from "../constants/printRequestRoutes";
 import { getDesignLibraryPath } from "../../designs/constants/designLibraryFilters";
 import { upcomingShowService } from "../../upcoming-shows/services/upcomingShowService";
 import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
 import { formatUpcomingShowTitle, formatUpcomingShowTimestampLabel } from "../../upcoming-shows/utils/upcomingShowDisplay";
 import { formatShowDateTimeLabel } from "@fresh-prints/shared/utils/showDateTimeDisplay";
-import { getUpcomingShowsPath } from "../../upcoming-shows/constants/upcomingShowRoutes";
-
+import { buildShowQueueDeepLinkPath } from "../../upcoming-shows/utils/buildShowQueueDeepLinkPath";
+import { useExportPrintRequestZip } from "../hooks/useExportPrintRequestZip";
+import { useGeneratePrintRequestGangSheet } from "../hooks/useGeneratePrintRequestGangSheet";
+import { ExportPrintRequestConfirmModal } from "../components/ExportPrintRequestConfirmModal";
+import { GeneratePrintRequestGangSheetModal } from "../components/GeneratePrintRequestGangSheetModal";
+import { CopyPrintRequestModal } from "../components/CopyPrintRequestModal";
+import { PrintRequestCostBreakdownModal } from "../components/PrintRequestCostBreakdownModal";
+import { copyStudioPrintRequestService } from "../services/copyStudioPrintRequestService";
+import {
+  calculateGangSheetCustomerSectionSummary,
+  type GangSheetCustomerSectionSummary,
+} from "@fresh-prints/shared/utils/gangSheetCustomerSectionSummary";
 type CustomerMode = "internal" | "customer";
 
 interface PrintRequestFormState {
@@ -117,6 +164,36 @@ function formatTimestampLabel(value: { toDate: () => Date } | undefined): string
   return value.toDate().toLocaleString();
 }
 
+function formatRequestPrice(amount: number): string {
+  return Number.isInteger(amount) ? `$${amount}` : `$${amount.toFixed(2)}`;
+}
+
+function calculatePrintRequestSummaryPriceUsd(
+  sizeClassRows: Array<{ printWidthInches: number; quantity: number }>,
+  sectionPricing: Parameters<typeof calculateGangSheetCustomerSectionSummary>[1],
+): number | null {
+  if (sizeClassRows.length === 0) {
+    return null;
+  }
+
+  try {
+    return calculateGangSheetCustomerSectionSummary(
+      sizeClassRows.map((row) => ({
+        printWidthInches: row.printWidthInches,
+        printHeightInches: 1,
+        quantity: row.quantity,
+      })),
+      sectionPricing,
+    ).totalPriceUsd;
+  } catch {
+    return null;
+  }
+}
+
+function formatRequestWeight(amount: number): string {
+  return `${amount.toFixed(2)} oz`;
+}
+
 function getPrintRequestCustomerLabel(
   printRequest: PrintRequest | null,
   customersById: ReadonlyMap<string, Customer>,
@@ -131,17 +208,24 @@ function getPrintRequestCustomerLabel(
 
   if (printRequest.customerId) {
     const customer = customersById.get(printRequest.customerId);
-    if (!customer) {
-      return (
-        printRequest.customerUsernameSnapshot
-          ? formatCustomerUsernameForDisplay(printRequest.customerUsernameSnapshot)
-          : printRequest.customerId
-      );
-    }
-    const username = formatCustomerUsernameForDisplay(customer.username, {
-      isDeleted: customer.isDeleted === true,
+    const usernameLabel = formatCustomerIdentityLabel({
+      currentUsername: printRequest.customerUsernameSnapshot ?? customer?.username,
+      usernameAtCreation: printRequest.customerUsernameAtCreationSnapshot,
+      currentDisplayName: printRequest.customerDisplayNameSnapshot ?? customer?.displayName,
     });
-    return `${customer.displayName} (${username})`;
+
+    if (!customer) {
+      return usernameLabel;
+    }
+
+    if (customer.isDeleted === true) {
+      const deletedUsername = formatCustomerUsernameForDisplay(customer.username, {
+        isDeleted: true,
+      });
+      return `${customer.displayName} (${deletedUsername})`;
+    }
+
+    return usernameLabel;
   }
 
   return "Unassigned";
@@ -181,6 +265,54 @@ function formatTotalQuantityLabel(quantity: number): string {
   return `${quantity} total qty`;
 }
 
+function emptyPrintRequestItemSummary(): {
+  totalQuantity: number;
+  uniqueDesignCount: number;
+  sizeClassRows: Array<{ printWidthInches: number; quantity: number }>;
+} {
+  return { totalQuantity: 0, uniqueDesignCount: 0, sizeClassRows: [] };
+}
+
+function summarizeItemsForRequest(printRequestId: string, items: PrintRequestItem[]) {
+  return (
+    buildPrintRequestItemSummaries(items)[printRequestId] ?? {
+      totalQuantity: 0,
+      uniqueDesignCount: 0,
+      sizeClassRows: [],
+    }
+  );
+}
+
+function resolveSectionShowCapacity(
+  section: PrintRequestShowSection<
+    Pick<UpcomingShow, "id" | "scheduledStartAt" | "allocatedQuantity" | "maxTotalQuantity">
+  >,
+  allocationsByRequestId: Readonly<Record<string, readonly ShowAllocation[]>>,
+) {
+  if (!section.show) {
+    return null;
+  }
+
+  const sectionAllocations = section.requests.flatMap((request) =>
+    (allocationsByRequestId[request.id] ?? []).filter(
+      (allocation) => allocation.upcomingShowId === section.show!.id,
+    ),
+  );
+  const allocatedQuantity = resolveShowDisplayAllocatedQuantity({
+    show: section.show,
+    allocations: sectionAllocations,
+  });
+
+  if (allocatedQuantity <= 0 && section.show.allocatedQuantity === 0) {
+    return null;
+  }
+
+  return assessShowCapacity({
+    maxTotalQuantity: section.show.maxTotalQuantity,
+    allocatedQuantity,
+  });
+}
+
 function hasUsableRequestSequence(printRequest: PrintRequest): boolean {
   return Number.isInteger(printRequest.requestSequenceNumber) && (printRequest.requestSequenceNumber ?? 0) >= 1;
 }
@@ -218,15 +350,19 @@ export function PrintRequestsPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
+  const { settings: standardPrintSizesSettings } = useStandardPrintSizesSettings();
+  const gangSheetSettings = useGangSheetSettings();
   const tabParam = searchParams.get(PRINT_REQUEST_TAB_QUERY_PARAM);
   const kindParam = searchParams.get(PRINT_REQUEST_KIND_QUERY_PARAM);
   const selectedRequestIdParam = searchParams.get(PRINT_REQUEST_ID_QUERY_PARAM);
   const workingFilterParam = searchParams.get(PRINT_REQUEST_WORKING_FILTER_QUERY_PARAM);
   const activeListKind = resolvePrintRequestListKind(kindParam);
   const activeIsInternal = isInternalFromPrintRequestListKind(activeListKind);
-  const activeListTab: PrintRequestListTab = isPrintRequestRouteTab(tabParam)
-    ? tabParam
-    : "working";
+  const activeListTab: PrintRequestListTab = normalizePrintRequestListTabForKind(
+    isPrintRequestRouteTab(tabParam) ? tabParam : "working",
+    activeListKind,
+  );
+  const visibleStatusTabs = getPrintRequestListTabsForKind(activeListKind);
   const workingTriageFilter: PrintRequestWorkingTriageFilter =
     isPrintRequestWorkingFilter(workingFilterParam) ? workingFilterParam : "active";
   const selectedRequestId = selectedRequestIdParam;
@@ -268,7 +404,24 @@ export function PrintRequestsPage() {
       workingFilterParam,
     ],
   );
+
+  useEffect(() => {
+    if (!activeIsInternal || tabParam !== "printing") {
+      return;
+    }
+
+    commitPrintRequestsRoute({
+      kind: activeListKind,
+      tab: "printed",
+      requestId: selectedRequestId ?? undefined,
+    });
+  }, [activeIsInternal, activeListKind, commitPrintRequestsRoute, selectedRequestId, tabParam]);
+
   const [listSearchQuery, setListSearchQuery] = useState("");
+  const previousSelectedRequestIdRef = useRef<string | null | undefined>(undefined);
+  const railListRef = useRef<HTMLDivElement | null>(null);
+  const railListScrollTopRef = useRef(0);
+  const pageContentScrollTopRef = useRef(0);
 
   const {
     allocationTotalsByRequestId,
@@ -303,6 +456,9 @@ export function PrintRequestsPage() {
   // Full customer directory is only needed for the "create request for a customer" picker —
   // loaded lazily when that form is actually shown, never on page mount.
   const [customerDirectory, setCustomerDirectory] = useState<Customer[]>([]);
+  const [customerIdsWithContinuableRequest, setCustomerIdsWithContinuableRequest] = useState<
+    Set<string>
+  >(new Set());
   const [isCustomerDirectoryLoading, setIsCustomerDirectoryLoading] = useState(false);
 
   const requestDetails = usePrintRequestDetails(selectedRequestId);
@@ -312,6 +468,11 @@ export function PrintRequestsPage() {
     () => isLoadedSelectedRequest ? requestDetails.items : [],
     [isLoadedSelectedRequest, requestDetails.items],
   );
+
+  useEffect(() => {
+    setLightboxItemId(null);
+  }, [selectedRequestId]);
+
   const selectedDesignIds = useMemo(
     () =>
       requestItems.flatMap((item) => item.designId ? [item.designId] : []),
@@ -319,17 +480,24 @@ export function PrintRequestsPage() {
   );
   const {
     designs: readyDesigns,
-    isLoading: isReadyDesignsLoading,
     reloadDesigns: reloadReadyDesigns,
+    patchDesignFromEnhanceResult,
   } = useReadyDesignsForSelection(selectedDesignIds);
   const uploadSummariesById = isLoadedSelectedRequest ? requestDetails.uploadSummaries : new Map();
+  const staffArtworkById = isLoadedSelectedRequest ? requestDetails.staffArtworkSummaries : new Map();
   const requestError = isLoadedSelectedRequest ? requestDetails.error : null;
   const isRequestLoading = requestDetails.isLoading || (Boolean(selectedRequestId) && !isLoadedSelectedRequest);
+  /**
+   * Ready-design fetches are detail-panel hydration only. Never gate the left rail on them —
+   * doing so remounted the list as a spinner on every selection and reset scroll to the top.
+   */
+  const isListLoading = isRequestsLoading;
   const reloadPrintRequest = requestDetails.reloadPrintRequest;
   const insertRequestItemAfter = requestDetails.insertItemAfter;
   const removeRequestItem = requestDetails.removeItem;
   const replaceRequestItem = requestDetails.replaceItem;
   const replaceSelectedRequest = requestDetails.replacePrintRequest;
+  const patchUploadSummaryFromEnhanceResult = requestDetails.patchUploadSummaryFromEnhanceResult;
   const visibleSelectedRequest = isRequestLoading ? null : selectedRequest;
 
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -347,6 +515,7 @@ export function PrintRequestsPage() {
   const [createRequestForm, setCreateRequestForm] = useState<PrintRequestFormState>(DEFAULT_REQUEST_FORM);
   const [isRequestDetailExpanded, setIsRequestDetailExpanded] = useState(false);
   const [successAlertSeed, setSuccessAlertSeed] = useState(0);
+  const [isRepairingQueueTab, setIsRepairingQueueTab] = useState(false);
   const [isAddToShowModalOpen, setIsAddToShowModalOpen] = useState(false);
   const [addToShowDestination, setAddToShowDestination] = useState<"shows" | "staff_gang_sheet">("shows");
   const [selectedRequestAllocations, setSelectedRequestAllocations] = useState<ShowAllocation[]>([]);
@@ -356,7 +525,24 @@ export function PrintRequestsPage() {
   const [isDeletionDialogOpen, setIsDeletionDialogOpen] = useState(false);
   const [isConvertConfirmOpen, setIsConvertConfirmOpen] = useState(false);
   const [isConvertingRequest, setIsConvertingRequest] = useState(false);
+  const [isClearAllConfirmOpen, setIsClearAllConfirmOpen] = useState(false);
+  const [isClearingAllItems, setIsClearingAllItems] = useState(false);
+  const [lightboxItemId, setLightboxItemId] = useState<string | null>(null);
+  const [clearAllError, setClearAllError] = useState<string | null>(null);
   const [convertError, setConvertError] = useState<string | null>(null);
+  const [transferShowContext, setTransferShowContext] = useState<{
+    sourceShowId: string;
+    transferQuantity: number;
+  } | null>(null);
+  const [isRequestExportModalOpen, setIsRequestExportModalOpen] = useState(false);
+  const [requestExportMultiplyByQuantity, setRequestExportMultiplyByQuantity] = useState(false);
+  const [isRequestGangSheetModalOpen, setIsRequestGangSheetModalOpen] = useState(false);
+  const [isCostBreakdownModalOpen, setIsCostBreakdownModalOpen] = useState(false);
+  const [isCopyRequestModalOpen, setIsCopyRequestModalOpen] = useState(false);
+  const [isCopyingRequest, setIsCopyingRequest] = useState(false);
+  const [copyRequestError, setCopyRequestError] = useState<string | null>(null);
+  const exportPrintRequestZipState = useExportPrintRequestZip();
+  const printRequestGangSheetState = useGeneratePrintRequestGangSheet();
 
   const reloadSelectedRequestAllocations = useCallback(async () => {
     if (!user || !visibleSelectedRequest) {
@@ -374,6 +560,10 @@ export function PrintRequestsPage() {
 
   useEffect(() => {
     setIsConfirmingShowQueueRemoval(false);
+  }, [selectedRequestId]);
+
+  useEffect(() => {
+    setIsCostBreakdownModalOpen(false);
   }, [selectedRequestId]);
 
   const selectedRequestShowGroups = useMemo(
@@ -556,10 +746,10 @@ export function PrintRequestsPage() {
 
       setIsConfirmingShowQueueRemoval(false);
       // List tabs key off persisted queueTab (detail badges already flip from live allocations).
-      // Clear remount cache, patch locally, then route to Working so the tab effect reloads fresh.
+      // Clear remount cache, patch locally, then route to Editing so the tab effect reloads fresh.
       clearPrintRequestsPageCache();
-      patchRequestLocally(requestId, { queueTab: "working", status: "editing" });
-      commitPrintRequestsRoute({ requestId, kind: activeListKind, tab: "working" });
+      patchRequestLocally(requestId, { queueTab: "editing", status: "editing" });
+      commitPrintRequestsRoute({ requestId, kind: activeListKind, tab: "editing" });
       await Promise.all([
         refreshAllocationHydration(),
         reloadAllAllocationData({ silent: true }),
@@ -589,14 +779,17 @@ export function PrintRequestsPage() {
     setSuccessMessage(null);
     resetCreateRequestForm();
     setIsCreateModalOpen(true);
-    // Lazy full customer directory load — only needed once the create form's "customer" picker
-    // is actually shown, never on page mount (Wave C hydration remediation, 2026-07-25).
-    if (user && customerDirectory.length === 0) {
-      setIsCustomerDirectoryLoading(true);
+    if (user) {
       void printRequestService
-        .listCustomers(user)
-        .then(setCustomerDirectory)
-        .finally(() => setIsCustomerDirectoryLoading(false));
+        .listCustomerIdsWithContinuableCustomerRequests(user)
+        .then((customerIds) => setCustomerIdsWithContinuableRequest(new Set(customerIds)));
+      if (customerDirectory.length === 0) {
+        setIsCustomerDirectoryLoading(true);
+        void printRequestService
+          .listCustomers(user)
+          .then(setCustomerDirectory)
+          .finally(() => setIsCustomerDirectoryLoading(false));
+      }
     }
   }, [customerDirectory.length, resetCreateRequestForm, user]);
 
@@ -625,6 +818,14 @@ export function PrintRequestsPage() {
     reloadPrintRequests,
     visibleSelectedRequest?.id,
   ]);
+
+  const reconcileAddToShowFailure = useCallback(async () => {
+    await Promise.all([
+      reloadAllAllocationData({ silent: true }),
+      reloadPrintRequests({ silent: true }),
+      refreshAllocationHydration(),
+    ]);
+  }, [refreshAllocationHydration, reloadAllAllocationData, reloadPrintRequests]);
 
   useShellHeaderConfig(
     useMemo(
@@ -671,13 +872,15 @@ export function PrintRequestsPage() {
     () =>
       customerDirectory
         .filter((customer) => !customer.isGuest)
+        .filter((customer) => isActiveCustomerAccount(customer))
+        .filter((customer) => !customerIdsWithContinuableRequest.has(customer.id))
         .map((customer) => ({
           label: customer.username
             ? `${customer.displayName} (${customer.username})`
             : `${customer.displayName} (needs username)`,
           value: customer.id,
         })),
-    [customerDirectory],
+    [customerDirectory, customerIdsWithContinuableRequest],
   );
 
   // `requests` already IS the current tab's bounded, server-filtered page (filtered by the
@@ -701,7 +904,9 @@ export function PrintRequestsPage() {
 
   const workingRequestsByFilter = useMemo(() => {
     const grouped: Record<PrintRequestWorkingTriageFilter, PrintRequest[]> = {
+      needs_requeue: [],
       active: [],
+      idle: [],
       stale: [],
       empty: [],
       all: [...activeTabRequests],
@@ -714,6 +919,7 @@ export function PrintRequestsPage() {
       const bucket = resolvePrintRequestWorkingTriageBucket({
         itemCount: request.itemCount,
         updatedAtMillis: request.updatedAt.toMillis(),
+        needsStaffRequeueAt: request.needsStaffRequeueAt,
         nowMs,
       });
       grouped[bucket].push(request);
@@ -722,13 +928,15 @@ export function PrintRequestsPage() {
   }, [activeListTab, activeTabRequests]);
 
   // Triage chip counts reflect the currently loaded Working page, not the full corpus — an exact
-  // whole-database Active/Stale count would require a second maintained field kept in sync purely
+  // whole-database Active/Idle/Stale count would require a second maintained field kept in sync purely
   // by time passing (no write event to trigger off), a materially larger mechanism than this
   // secondary in-page filter chip warrants. The primary tab counts (`countsByTab`) remain exact
   // via `getCountFromServer`.
   const workingTriageCounts = useMemo(
     () => ({
+      needs_requeue: workingRequestsByFilter.needs_requeue.length,
       active: workingRequestsByFilter.active.length,
+      idle: workingRequestsByFilter.idle.length,
       stale: workingRequestsByFilter.stale.length,
       empty: workingRequestsByFilter.empty.length,
       all: workingRequestsByFilter.all.length,
@@ -756,8 +964,12 @@ export function PrintRequestsPage() {
         requests: visibleRequests,
         allocationsByRequestId,
         showsById,
+        sectionOrder:
+          activeListKind === "internal" && activeListTab === "printed"
+            ? "staff_gang_sheet_history"
+            : "scheduled_start_asc",
       }),
-    [allocationsByRequestId, showsById, visibleRequests],
+    [activeListKind, activeListTab, allocationsByRequestId, showsById, visibleRequests],
   );
 
   // A deep-linked/selected request outside the currently loaded page is never treated as
@@ -771,6 +983,63 @@ export function PrintRequestsPage() {
   const detailsPendingForSelection =
     Boolean(selectedRequestId) && !isLoadedSelectedRequest && !requestDetails.error;
 
+  const routeTriageRequests = useMemo(() => {
+    const toTriageRequest = (request: PrintRequest): PrintRequestRouteTriageRequest => {
+      const authoritative =
+        selectedRequestId === request.id && selectedRequest ? selectedRequest : request;
+
+      return {
+        id: authoritative.id,
+        itemCount: authoritative.itemCount,
+        updatedAtMillis: authoritative.updatedAt.toMillis(),
+        needsStaffRequeueAt: authoritative.needsStaffRequeueAt,
+      };
+    };
+
+    const buckets: Record<PrintRequestRouteTab, PrintRequestRouteTriageRequest[]> = {
+      working: activeListTab === "working" ? activeTabRequests.map(toTriageRequest) : [],
+      editing: activeListTab === "editing" ? activeTabRequests.map(toTriageRequest) : [],
+      queued: activeListTab === "queued" ? activeTabRequests.map(toTriageRequest) : [],
+      printing: activeListTab === "printing" ? activeTabRequests.map(toTriageRequest) : [],
+      printed: activeListTab === "printed" ? activeTabRequests.map(toTriageRequest) : [],
+    };
+
+    if (selectedRequestId && isLoadedSelectedRequest && selectedRequest?.queueTab) {
+      const hintTab = isPrintRequestRouteTab(selectedRequest.queueTab)
+        ? normalizePrintRequestListTabForKind(selectedRequest.queueTab, activeListKind)
+        : null;
+      if (hintTab) {
+        const hint = toTriageRequest(selectedRequest);
+        if (!buckets[hintTab].some((request) => request.id === hint.id)) {
+          buckets[hintTab] = [...buckets[hintTab], hint];
+        }
+      }
+    }
+
+    return buckets;
+  }, [
+    activeListKind,
+    activeListTab,
+    activeTabRequests,
+    isLoadedSelectedRequest,
+    selectedRequest,
+    selectedRequestId,
+  ]);
+
+  const loadedRequestHint = useMemo(() => {
+    if (!selectedRequestId || !isLoadedSelectedRequest || !selectedRequest) {
+      return null;
+    }
+
+    return {
+      id: selectedRequest.id,
+      queueTab: selectedRequest.queueTab,
+      itemCount: selectedRequest.itemCount,
+      updatedAtMillis: selectedRequest.updatedAt.toMillis(),
+      needsStaffRequeueAt: selectedRequest.needsStaffRequeueAt,
+    };
+  }, [isLoadedSelectedRequest, selectedRequest, selectedRequestId]);
+
   const canonicalRoute = useMemo(
     () =>
       resolveCanonicalPrintRequestsRoute({
@@ -780,20 +1049,16 @@ export function PrintRequestsPage() {
         requestedKind: kindParam,
         requestedTab: tabParam,
         requestedWorkingFilter: workingFilterParam,
-        requestsByTab: {
-          working: activeListTab === "working" ? activeTabRequests : [],
-          queued: activeListTab === "queued" ? activeTabRequests : [],
-          printing: activeListTab === "printing" ? activeTabRequests : [],
-          printed: activeListTab === "printed" ? activeTabRequests : [],
-        },
+        requestsByTab: routeTriageRequests,
+        loadedRequestHint,
       }),
     [
-      activeListTab,
-      activeTabRequests,
       detailsPendingForSelection,
       isRequestsLoading,
       kindParam,
+      loadedRequestHint,
       routeEligibleRequests,
+      routeTriageRequests,
       selectedRequestIdParam,
       selectedRequestKindMatches,
       tabParam,
@@ -805,21 +1070,59 @@ export function PrintRequestsPage() {
     if (!selectedRequestId || !isLoadedSelectedRequest || !selectedRequest) {
       return;
     }
-    const requestKind = printRequestListKindFromIsInternal(selectedRequest.isInternal);
-    if (requestKind === activeListKind) {
+
+    const listRow = activeTabRequests.find((request) => request.id === selectedRequestId);
+    if (!listRow) {
       return;
     }
-    const queuedTab = selectedRequest.queueTab ?? null;
-    const requestTab = isPrintRequestRouteTab(queuedTab) ? queuedTab : activeListTab;
+
+    if (
+      listRow.itemCount === selectedRequest.itemCount &&
+      listRow.updatedAt.toMillis() === selectedRequest.updatedAt.toMillis()
+    ) {
+      return;
+    }
+
+    patchRequestLocally(selectedRequestId, {
+      itemCount: selectedRequest.itemCount,
+      updatedAt: selectedRequest.updatedAt,
+    });
+  }, [
+    activeTabRequests,
+    isLoadedSelectedRequest,
+    patchRequestLocally,
+    selectedRequest,
+    selectedRequestId,
+  ]);
+
+  useEffect(() => {
+    if (!selectedRequestId || !isLoadedSelectedRequest || !selectedRequest) {
+      return;
+    }
+
+    const requestKind = printRequestListKindFromIsInternal(selectedRequest.isInternal);
+    const requestTab =
+      selectedRequest.queueTab && isPrintRequestRouteTab(selectedRequest.queueTab)
+        ? normalizePrintRequestListTabForKind(selectedRequest.queueTab, requestKind)
+        : null;
+    const kindMismatch = requestKind !== activeListKind;
+    const tabMismatch = requestTab !== null && requestTab !== activeListTab;
+
+    if (!kindMismatch && !tabMismatch) {
+      return;
+    }
+
+    const targetTab = requestTab ?? activeListTab;
     commitPrintRequestsRoute({
       kind: requestKind,
-      tab: requestTab,
+      tab: targetTab,
       requestId: selectedRequest.id,
       workingFilter:
-        requestTab === "working"
+        targetTab === "working"
           ? resolvePrintRequestWorkingTriageBucket({
               itemCount: selectedRequest.itemCount,
               updatedAtMillis: selectedRequest.updatedAt.toMillis(),
+              needsStaffRequeueAt: selectedRequest.needsStaffRequeueAt,
               nowMs: Date.now(),
             })
           : undefined,
@@ -842,6 +1145,14 @@ export function PrintRequestsPage() {
 
   /** Reveal a valid routed selection hidden only by local search; never change its route filter. */
   useEffect(() => {
+    const selectionChanged =
+      previousSelectedRequestIdRef.current !== selectedRequestId;
+    previousSelectedRequestIdRef.current = selectedRequestId;
+
+    if (!selectionChanged) {
+      return;
+    }
+
     if (
       !selectedRequestId ||
       isRequestsLoading ||
@@ -862,20 +1173,92 @@ export function PrintRequestsPage() {
     visibleRequests,
   ]);
 
+  /**
+   * Keep the selected rail card in view inside `.print-requests-rail-list` only.
+   * Do not call element.scrollIntoView — with the sticky rail + page scroll shell that
+   * scrolls ancestor containers and jumps the list (or page) back to the top on click.
+   */
   useEffect(() => {
-    if (!selectedRequestId || isRequestsLoading) {
+    if (!selectedRequestId || isListLoading) {
       return;
     }
 
     const frame = window.requestAnimationFrame(() => {
-      const target = document.querySelector<HTMLElement>(
+      const list = railListRef.current;
+      if (!list) {
+        return;
+      }
+
+      const target = list.querySelector<HTMLElement>(
         `[data-print-request-id="${CSS.escape(selectedRequestId)}"]`,
       );
-      target?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      if (!target) {
+        return;
+      }
+
+      const listRect = list.getBoundingClientRect();
+      const targetRect = target.getBoundingClientRect();
+      if (targetRect.top >= listRect.top && targetRect.bottom <= listRect.bottom) {
+        railListScrollTopRef.current = list.scrollTop;
+        return;
+      }
+
+      const nextTop =
+        targetRect.top < listRect.top
+          ? list.scrollTop - (listRect.top - targetRect.top)
+          : list.scrollTop + (targetRect.bottom - listRect.bottom);
+      list.scrollTo({ top: nextTop, behavior: "smooth" });
+      railListScrollTopRef.current = nextTop;
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [isRequestsLoading, selectedRequestId, visibleRequests]);
+  }, [isListLoading, selectedRequestId, visibleRequests]);
+
+  /** Restore page-shell scroll after the detail panel finishes loading the new selection. */
+  useLayoutEffect(() => {
+    const pageContent = document.querySelector<HTMLElement>(".page-content-area--print-requests");
+    const list = railListRef.current;
+
+    if (list && railListScrollTopRef.current > 0) {
+      list.scrollTop = railListScrollTopRef.current;
+    }
+
+    if (!pageContent || pageContentScrollTopRef.current <= 0) {
+      return;
+    }
+
+    // Keep restoring while details load/collapse so the shell cannot clamp scrollTop to 0.
+    pageContent.scrollTop = pageContentScrollTopRef.current;
+  }, [isRequestLoading, selectedRequestId, visibleSelectedRequest?.id, visibleRequests]);
+
+  const capturePageContentScroll = useCallback(() => {
+    const pageContent = document.querySelector<HTMLElement>(".page-content-area--print-requests");
+    if (pageContent) {
+      pageContentScrollTopRef.current = pageContent.scrollTop;
+    }
+    if (railListRef.current) {
+      railListScrollTopRef.current = railListRef.current.scrollTop;
+    }
+  }, []);
+
+  const selectPrintRequestFromRail = useCallback(
+    (requestId: string) => {
+      capturePageContentScroll();
+      commitPrintRequestsRoute({
+        requestId,
+        kind: activeListKind,
+        tab: activeListTab,
+        workingFilter: activeListTab === "working" ? workingTriageFilter : undefined,
+      });
+    },
+    [
+      activeListKind,
+      activeListTab,
+      capturePageContentScroll,
+      commitPrintRequestsRoute,
+      workingTriageFilter,
+    ],
+  );
 
   const selectedCreateCustomer = useMemo(
     () => customerDirectory.find((customer) => customer.id === createRequestForm.customerId),
@@ -918,6 +1301,16 @@ export function PrintRequestsPage() {
   async function openAddToShow(destination: "shows" | "staff_gang_sheet") {
     if (requestItems.length === 0) {
       return;
+    }
+    if (visibleSelectedRequest) {
+      const allocationBlockReason = getPrintRequestAllocationBlockReason({
+        status: visibleSelectedRequest.status,
+        closureKind: visibleSelectedRequest.closureKind,
+      });
+      if (allocationBlockReason) {
+        setActionError(allocationBlockReason);
+        return;
+      }
     }
     if (!persistenceSummary.canOpenQueue) {
       setActionError(persistenceSummary.blockReason);
@@ -1022,20 +1415,19 @@ export function PrintRequestsPage() {
 
     setActionError(null);
     const updatedItem = await printRequestService.updatePrintRequestItem(user, item.id, input);
-    replaceRequestItem(updatedItem);
+    replaceRequestItem(
+      mergePrintRequestItemPreservingArtworkEnhanceFields(item, updatedItem),
+    );
     // Only this item's quantity changed — recompute the one affected row's summary locally
     // instead of a full-list reload (Wave C hydration remediation, 2026-07-25).
     if (visibleSelectedRequest) {
       const nextItems = requestItems.map((existing) =>
         existing.id === updatedItem.id ? updatedItem : existing,
       );
-      const uniqueDesignIds = new Set(
-        nextItems.flatMap((existing) => (existing.designId ? [existing.designId] : [])),
+      patchSummaryLocally(
+        visibleSelectedRequest.id,
+        summarizeItemsForRequest(visibleSelectedRequest.id, nextItems),
       );
-      patchSummaryLocally(visibleSelectedRequest.id, {
-        totalQuantity: nextItems.reduce((sum, existing) => sum + existing.quantity, 0),
-        uniqueDesignCount: uniqueDesignIds.size,
-      });
     }
   }, [patchSummaryLocally, requestItems, replaceRequestItem, user, visibleSelectedRequest]);
 
@@ -1081,19 +1473,67 @@ export function PrintRequestsPage() {
       removeRequestItem(item.id);
       if (visibleSelectedRequest) {
         const nextItems = requestItems.filter((existing) => existing.id !== item.id);
-        const uniqueDesignIds = new Set(
-          nextItems.flatMap((existing) => (existing.designId ? [existing.designId] : [])),
+        patchSummaryLocally(
+          visibleSelectedRequest.id,
+          summarizeItemsForRequest(visibleSelectedRequest.id, nextItems),
         );
-        patchSummaryLocally(visibleSelectedRequest.id, {
-          totalQuantity: nextItems.reduce((sum, existing) => sum + existing.quantity, 0),
-          uniqueDesignCount: uniqueDesignIds.size,
-        });
         patchRequestLocally(visibleSelectedRequest.id, {
           itemCount: Math.max(0, visibleSelectedRequest.itemCount - 1),
         });
       }
     } catch (error) {
       setActionError(formatWriteErrorMessage(error));
+      throw error;
+    }
+  }
+
+  async function handleClearAllItems() {
+    if (!user || !permissionService.canManagePrintRequestItems(user) || !visibleSelectedRequest) {
+      return;
+    }
+
+    const itemsToRemove = [...requestItems];
+    if (itemsToRemove.length === 0) {
+      return;
+    }
+
+    try {
+      setClearAllError(null);
+      setActionError(null);
+      setIsClearingAllItems(true);
+      for (const item of itemsToRemove) {
+        await printRequestService.removePrintRequestItem(user, item.id);
+        removeRequestItem(item.id);
+      }
+      patchSummaryLocally(visibleSelectedRequest.id, emptyPrintRequestItemSummary());
+      patchRequestLocally(visibleSelectedRequest.id, { itemCount: 0 });
+      setSuccessMessage("All designs removed from request.");
+      setSuccessAlertSeed((current) => current + 1);
+      setIsClearAllConfirmOpen(false);
+    } catch (error) {
+      setClearAllError(formatWriteErrorMessage(error));
+    } finally {
+      setIsClearingAllItems(false);
+    }
+  }
+
+  function handleArtworkEnhanceModeChanged(
+    item: PrintRequestItem,
+    result: SetPrintRequestItemArtworkEnhanceModeResponse,
+  ) {
+    replaceRequestItem({
+      ...item,
+      artworkEnhanceMode: result.artworkEnhanceMode,
+    });
+
+    const designId = result.designId?.trim() || item.designId?.trim();
+    if (designId) {
+      patchDesignFromEnhanceResult(designId, result);
+    }
+
+    const uploadId = result.customerUploadId?.trim() || item.customerUploadId?.trim();
+    if (uploadId) {
+      patchUploadSummaryFromEnhanceResult(uploadId, result);
     }
   }
 
@@ -1108,13 +1548,10 @@ export function PrintRequestsPage() {
       insertRequestItemAfter(item.id, createdItem);
       if (visibleSelectedRequest) {
         const nextItems = [...requestItems, createdItem];
-        const uniqueDesignIds = new Set(
-          nextItems.flatMap((existing) => (existing.designId ? [existing.designId] : [])),
+        patchSummaryLocally(
+          visibleSelectedRequest.id,
+          summarizeItemsForRequest(visibleSelectedRequest.id, nextItems),
         );
-        patchSummaryLocally(visibleSelectedRequest.id, {
-          totalQuantity: nextItems.reduce((sum, existing) => sum + existing.quantity, 0),
-          uniqueDesignCount: uniqueDesignIds.size,
-        });
         patchRequestLocally(visibleSelectedRequest.id, {
           itemCount: visibleSelectedRequest.itemCount + 1,
         });
@@ -1123,6 +1560,25 @@ export function PrintRequestsPage() {
       setActionError(formatWriteErrorMessage(error));
     }
   }
+
+  const selectedRequestCostSummary = useMemo<GangSheetCustomerSectionSummary | null>(() => {
+    if (!visibleSelectedRequest || requestItems.length === 0) {
+      return null;
+    }
+
+    try {
+      return calculateGangSheetCustomerSectionSummary(
+        requestItems.map((item) => ({
+          printWidthInches: item.printWidthInches ?? Number.NaN,
+          printHeightInches: item.printHeightInches ?? 1,
+          quantity: item.quantity,
+        })),
+        gangSheetSettings.settings.sectionPricing,
+      );
+    } catch {
+      return null;
+    }
+  }, [gangSheetSettings.settings.sectionPricing, requestItems, visibleSelectedRequest]);
 
   const openDesignLibrarySelection = useCallback(() => {
     if (!selectedRequest) {
@@ -1137,12 +1593,16 @@ export function PrintRequestsPage() {
     );
   }, [navigate, selectedRequest]);
 
+  const openStaffArtworkSelection = useCallback(() => {
+    if (!selectedRequest) return;
+    navigate(`/staff-artwork?mode=request-selection&requestId=${encodeURIComponent(selectedRequest.id)}`);
+  }, [navigate, selectedRequest]);
+
   const openUsersForCustomerCreation = useCallback(() => {
     closeCreateModal();
     navigate("/users");
   }, [closeCreateModal, navigate]);
 
-  const isLoading = isRequestsLoading || isReadyDesignsLoading;
   const loadError = requestsError ?? requestError;
   /**
    * Derived from `allocationTotalsByRequestId` (loaded once for every request and stable across
@@ -1179,7 +1639,263 @@ export function PrintRequestsPage() {
         totalPrintedQuantity: allocationTotalsByRequestId[visibleSelectedRequest.id]?.totalPrintedQuantity ?? 0,
       })
     : false;
+  const selectedRequestDerivedListTab = visibleSelectedRequest
+    ? derivePrintRequestListTab({
+        status: visibleSelectedRequest.status,
+        totalRequestedQuantity: requestItems.reduce((sum, item) => sum + item.quantity, 0),
+        totalAllocatedQuantity: allocationTotalsByRequestId[visibleSelectedRequest.id]?.totalAllocatedQuantity ?? 0,
+        totalInProgressQuantity: allocationTotalsByRequestId[visibleSelectedRequest.id]?.totalInProgressQuantity ?? 0,
+        totalPrintedQuantity: allocationTotalsByRequestId[visibleSelectedRequest.id]?.totalPrintedQuantity ?? 0,
+      })
+    : null;
+  const selectedRequestConvertedInternalId =
+    visibleSelectedRequest &&
+    !visibleSelectedRequest.isInternal &&
+    isPrintRequestConvertedToInternal(visibleSelectedRequest.closureKind)
+      ? visibleSelectedRequest.convertedToInternalRequestId?.trim() || null
+      : null;
+  const convertedInternalDeepLinkPath = selectedRequestConvertedInternalId
+    ? buildPrintRequestNavigationDeepLinkPath({
+        id: visibleSelectedRequest!.id,
+        closureKind: visibleSelectedRequest!.closureKind,
+        convertedToInternalRequestId: selectedRequestConvertedInternalId,
+        queueTab: visibleSelectedRequest!.queueTab,
+        itemCount: visibleSelectedRequest!.itemCount,
+        updatedAtMillis: visibleSelectedRequest!.updatedAt?.toMillis?.() ?? 0,
+        needsStaffRequeueAt: visibleSelectedRequest!.needsStaffRequeueAt,
+      }).path
+    : null;
+  const selectedRequestRepairTargetTab = selectedRequestDerivedListTab
+    ? normalizePrintRequestListTabForKind(selectedRequestDerivedListTab, activeListKind)
+    : null;
+  const canRepairQueueTab = Boolean(
+    user &&
+      permissionService.canManagePrintRequests(user) &&
+      visibleSelectedRequest &&
+      !selectedRequestConvertedInternalId &&
+      selectedRequestRepairTargetTab &&
+      (visibleSelectedRequest.queueTab !== selectedRequestDerivedListTab ||
+        normalizePrintRequestListTabForKind(activeListTab, activeListKind) !== selectedRequestRepairTargetTab),
+  );
+
+  const handleRepairQueueTab = useCallback(async () => {
+    if (!user || !visibleSelectedRequest || !selectedRequestDerivedListTab) {
+      return;
+    }
+
+    const repairTargetTab = normalizePrintRequestListTabForKind(
+      selectedRequestDerivedListTab,
+      activeListKind,
+    );
+
+    try {
+      setIsRepairingQueueTab(true);
+      setActionError(null);
+      const nextTab = await printRequestService.syncPrintRequestQueueTab(user, visibleSelectedRequest.id);
+      const resolvedTab = nextTab ?? selectedRequestDerivedListTab;
+
+      patchRequestLocally(visibleSelectedRequest.id, { queueTab: resolvedTab });
+
+      if (normalizePrintRequestListTabForKind(activeListTab, activeListKind) !== repairTargetTab) {
+        commitPrintRequestsRoute({
+          kind: activeListKind,
+          requestId: visibleSelectedRequest.id,
+          tab: repairTargetTab,
+        });
+      }
+
+      clearPrintRequestsPageCache();
+      await reloadPrintRequests({ silent: true });
+
+      setSuccessMessage(`Moved ${visibleSelectedRequest.name} to the ${repairTargetTab} tab.`);
+      setSuccessAlertSeed((current) => current + 1);
+    } catch (error) {
+      setActionError(formatWriteErrorMessage(error));
+    } finally {
+      setIsRepairingQueueTab(false);
+    }
+  }, [
+    activeListKind,
+    activeListTab,
+    commitPrintRequestsRoute,
+    patchRequestLocally,
+    reloadPrintRequests,
+    selectedRequestDerivedListTab,
+    user,
+    visibleSelectedRequest,
+  ]);
+
   const isSelectedRequestDetailLocked = isSelectedRequestQueueLocked || isSelectedRequestFullyPrinted;
+  const selectedRequestAllocationBlockReason = visibleSelectedRequest
+    ? getPrintRequestAllocationBlockReason({
+        status: visibleSelectedRequest.status,
+        closureKind: visibleSelectedRequest.closureKind,
+      })
+    : null;
+  const canShowAllocationActions =
+    Boolean(visibleSelectedRequest) &&
+    !isSelectedRequestDetailLocked &&
+    !selectedRequestAllocationBlockReason;
+  const canManageRequestItems = Boolean(
+    user && permissionService.canManagePrintRequestItems(user),
+  );
+  const isSelectedRequestWorkingOrEditing =
+    selectedRequestDerivedListTab === "working" || selectedRequestDerivedListTab === "editing";
+  const canShowDirectRequestActions = Boolean(
+    visibleSelectedRequest &&
+      requestItems.length > 0 &&
+      canManageRequestItems &&
+      !isSelectedRequestWorkingOrEditing,
+  );
+  const canViewUpcomingShows = user ? permissionService.canViewUpcomingShows(user) : false;
+  const requestGangSheetSettings = useMemo(() => {
+    return {
+      sheetWidthInches: gangSheetSettings.settings.gangSheetWidthInches,
+      sideMarginInches: gangSheetSettings.settings.gangSheetSideMarginInches,
+      topBottomMarginInches: gangSheetSettings.settings.gangSheetTopBottomMarginInches,
+      gutterInches: gangSheetSettings.settings.gangSheetGutterInches,
+      maxSheetLengthInches: gangSheetSettings.settings.gangSheetMaxLengthInches,
+      labelFontSizePx: gangSheetSettings.settings.gangSheetLabelFontSizePx,
+      sectionPricing: gangSheetSettings.settings.sectionPricing,
+    };
+  }, [gangSheetSettings.settings]);
+
+  const loadCustomerDirectoryForCopy = useCallback(async () => {
+    if (!user || customerDirectory.length > 0) return;
+    setIsCustomerDirectoryLoading(true);
+    try {
+      setCustomerDirectory(await printRequestService.listCustomers(user));
+    } finally {
+      setIsCustomerDirectoryLoading(false);
+    }
+  }, [customerDirectory.length, user]);
+
+  const openRequestExportModal = useCallback((multiplyByQuantity: boolean) => {
+    if (!visibleSelectedRequest || requestItems.length === 0) return;
+    exportPrintRequestZipState.reset();
+    setRequestExportMultiplyByQuantity(multiplyByQuantity);
+    setIsRequestExportModalOpen(true);
+  }, [exportPrintRequestZipState, requestItems.length, visibleSelectedRequest]);
+
+  const openRequestGangSheetModal = useCallback(() => {
+    if (!visibleSelectedRequest || requestItems.length === 0) return;
+    printRequestGangSheetState.reset();
+    setIsRequestGangSheetModalOpen(true);
+  }, [printRequestGangSheetState, requestItems.length, visibleSelectedRequest]);
+
+  const openCopyRequestModal = useCallback(() => {
+    if (!visibleSelectedRequest || requestItems.length === 0) return;
+    setCopyRequestError(null);
+    setIsCopyRequestModalOpen(true);
+    void loadCustomerDirectoryForCopy();
+  }, [loadCustomerDirectoryForCopy, requestItems.length, visibleSelectedRequest]);
+
+  const submitCopyRequest = useCallback(async (input: {
+    destinationKind: "customer" | "internal";
+    destinationCustomerId?: string;
+    destinationInternalBaseName?: string;
+  }) => {
+    if (!visibleSelectedRequest) return;
+    setIsCopyingRequest(true);
+    setCopyRequestError(null);
+    try {
+      const result = await copyStudioPrintRequestService.copy({
+        sourcePrintRequestId: visibleSelectedRequest.id,
+        ...input,
+      });
+      setIsCopyRequestModalOpen(false);
+      clearPrintRequestsPageCache();
+      await reloadPrintRequests({ silent: true });
+      navigate(getPrintRequestsPath({
+        kind: result.isInternal ? "internal" : "customer",
+        tab: "working",
+        requestId: result.printRequestId,
+      }));
+      setSuccessMessage(`Copied ${visibleSelectedRequest.name} to ${result.printRequestName}.`);
+      setSuccessAlertSeed((current) => current + 1);
+    } catch (error) {
+      setCopyRequestError(formatWriteErrorMessage(error));
+    } finally {
+      setIsCopyingRequest(false);
+    }
+  }, [navigate, reloadPrintRequests, visibleSelectedRequest]);
+
+  function renderSelectedRequestShowQueueLinks(includeTransferActions: boolean) {
+    if (!visibleSelectedRequest || selectedRequestShowGroups.length === 0) {
+      return null;
+    }
+
+    return selectedRequestShowGroups.map((group) => {
+      const show = selectedRequestShowsById.get(group.upcomingShowId);
+      const groupQuantity = group.allocations.reduce(
+        (sum, allocation) => sum + allocation.allocatedQuantity,
+        0,
+      );
+      const showTitle = show ? formatUpcomingShowTitle(show) : "Show";
+      const showDateLabel = show?.scheduledStartAt
+        ? formatShowDateTimeLabel(show.scheduledStartAt.toDate())
+        : "Not scheduled";
+      const transferMode = show ? resolvePrintRequestShowTransferMode(show) : "move";
+      const showQueuePath = show
+        ? buildShowQueueDeepLinkPath({
+            showId: group.upcomingShowId,
+            printRequestId: visibleSelectedRequest.id,
+            show,
+          })
+        : null;
+
+      const link = showQueuePath ? (
+        <Link
+          className="print-requests-show-queue-pill"
+          title={showTitle}
+          to={showQueuePath}
+        >
+          <span>{groupQuantity} qty</span>
+          <span>&middot;</span>
+          <span>{showDateLabel}</span>
+          <ExternalLink aria-hidden="true" size={12} strokeWidth={2.2} />
+        </Link>
+      ) : (
+        <span aria-busy="true" className="print-requests-show-queue-pill">
+          <span>{groupQuantity} qty</span>
+          <span>&middot;</span>
+          <span>{showDateLabel}</span>
+        </span>
+      );
+
+      if (!includeTransferActions) {
+        return (
+          <div className="print-requests-show-queue-group" key={group.upcomingShowId}>
+            {link}
+          </div>
+        );
+      }
+
+      return (
+        <div className="print-requests-show-queue-group" key={group.upcomingShowId}>
+          {link}
+          {show ? (
+            <DangerOverflowMenu
+              ariaLabel={`Actions for ${showTitle}`}
+              items={[
+                {
+                  id: "transfer",
+                  danger: false,
+                  label: formatPrintRequestShowTransferActionLabel(transferMode),
+                  onSelect: () =>
+                    setTransferShowContext({
+                      sourceShowId: group.upcomingShowId,
+                      transferQuantity: groupQuantity,
+                    }),
+                },
+              ]}
+            />
+          ) : null}
+        </div>
+      );
+    });
+  }
+
   const requestNamePreview = visibleSelectedRequest
     ? getRequestNamePreview(visibleSelectedRequest, internalBaseNameDraft)
     : "";
@@ -1237,7 +1953,7 @@ export function PrintRequestsPage() {
             </div>
           </div>
           <div aria-label="Request status" className="print-requests-tab-bar" role="tablist">
-            {(["working", "queued", "printing", "printed"] as const).map((tab) => (
+            {visibleStatusTabs.map((tab) => (
               <button
                 className={`print-requests-tab-button${activeListTab === tab ? " is-active" : ""}`}
                 key={tab}
@@ -1264,16 +1980,20 @@ export function PrintRequestsPage() {
               >
                 {tab === "working"
                   ? "Working"
-                  : tab === "queued"
-                    ? "Queued"
-                    : tab === "printing"
-                      ? "Printing"
-                      : "Printed"}{" "}
+                  : tab === "editing"
+                    ? "Editing"
+                    : tab === "queued"
+                      ? "Queued"
+                      : tab === "printing"
+                        ? "Printing"
+                        : "Printed"}{" "}
                 ({countsByTab[tab]})
               </button>
             ))}
           </div>
-          <p className="print-requests-tab-helper">{getPrintRequestTabHelperCopy(activeListTab)}</p>
+          <p className="print-requests-tab-helper">
+            {getPrintRequestTabHelperCopy(activeListTab, { isInternal: activeIsInternal })}
+          </p>
           <div className="print-requests-rail-controls">
             <label className="print-requests-rail-search">
               <span className="visually-hidden">Search print requests</span>
@@ -1318,8 +2038,14 @@ export function PrintRequestsPage() {
               </div>
             ) : null}
           </div>
-          <div className="print-requests-rail-list">
-            {isLoading ? (
+          <div
+            className="print-requests-rail-list"
+            onScroll={(event) => {
+              railListScrollTopRef.current = event.currentTarget.scrollTop;
+            }}
+            ref={railListRef}
+          >
+            {isListLoading ? (
               <div className="print-requests-loading">
                 <LoadingSpinner label="Loading print requests" />
               </div>
@@ -1328,49 +2054,96 @@ export function PrintRequestsPage() {
                 message={
                   listSearchQuery.trim()
                     ? "No print requests match this search in the current tab."
-                    : activeListTab === "working" && workingTriageFilter === "active"
-                      ? "No Active carts here. New empty carts are under Empty; older unused carts under Stale. Or choose All."
+                    : activeListTab === "working" && workingTriageFilter === "needs_requeue"
+                      ? "No requests need staff re-queue in this filter."
+                      : activeListTab === "working" && workingTriageFilter === "active"
+                      ? "No Active carts here. Check Idle (2–7 days), Stale (7+ days), Empty, or All."
+                      : activeListTab === "working" && workingTriageFilter === "idle"
+                        ? "No Idle carts here. Active is under 48 hours; Stale is 7+ days. Or choose All."
                       : activeListTab === "working" && workingTriageFilter !== "all"
-                        ? "No requests in this Working filter. Try Stale, Empty, or All."
+                        ? "No requests in this Working filter. Try Idle, Stale, Empty, or All."
                         : "No print requests in this tab yet."
                 }
                 title="Nothing here yet"
               />
             ) : (
-              visibleRequestSections.map((section) => (
+              visibleRequestSections.map((section) => {
+                const sectionCapacity = resolveSectionShowCapacity(section, allocationsByRequestId);
+
+                return (
                 <div className="print-requests-show-section" key={section.sectionKey}>
-                  <div className="print-requests-show-section-header">
-                    {section.sectionKey === UNASSIGNED_SHOW_SECTION_KEY
-                      ? "Unassigned"
-                      : section.show
-                        ? `${formatUpcomingShowTitle(section.show)} · ${formatUpcomingShowTimestampLabel(section.show.scheduledStartAt)}`
-                        : "Show"}
-                  </div>
+                  {section.sectionKey === UNASSIGNED_SHOW_SECTION_KEY || !section.show || !canViewUpcomingShows ? (
+                    <div className="print-requests-show-section-header">
+                      {section.sectionKey === UNASSIGNED_SHOW_SECTION_KEY
+                        ? "Unassigned"
+                        : section.show
+                          ? `${formatUpcomingShowTitle(section.show)} · ${formatUpcomingShowTimestampLabel(section.show.scheduledStartAt)}`
+                          : "Show"}
+                    </div>
+                  ) : (
+                    <Link
+                      className="print-requests-show-section-header print-requests-show-section-header-link"
+                      title={`Open ${formatUpcomingShowTitle(section.show)} in Show Queue`}
+                      to={buildShowQueueDeepLinkPath({
+                        showId: section.show.id,
+                        printRequestId: section.requests[0]?.id ?? "",
+                        show: section.show,
+                      })}
+                    >
+                      <span>
+                        {formatUpcomingShowTitle(section.show)} ·{" "}
+                        {formatUpcomingShowTimestampLabel(section.show.scheduledStartAt)}
+                      </span>
+                      <ExternalLink aria-hidden="true" size={12} strokeWidth={2.2} />
+                    </Link>
+                  )}
+                  {sectionCapacity ? (
+                    <div className="print-requests-show-section-capacity">
+                      <div className="show-capacity-bar-track">
+                        <div
+                          className={`show-capacity-bar-fill${
+                            getCapacityFillLevel(getShowCapacityPercent(sectionCapacity))
+                              ? ` is-${getCapacityFillLevel(getShowCapacityPercent(sectionCapacity))}`
+                              : ""
+                          }`}
+                          style={{
+                            width: `${Math.min(100, getShowCapacityPercent(sectionCapacity) ?? 0)}%`,
+                          }}
+                        />
+                      </div>
+                      <div className="show-capacity-summary">
+                        <span>{formatShowCapacitySlotLabel(sectionCapacity)}</span>
+                      </div>
+                    </div>
+                  ) : null}
                   {section.requests.map((request) => {
                 const isSelected = request.id === selectedRequestId;
-                const requestSummary = summariesByRequestId[request.id] ?? {
-                  totalQuantity: 0,
-                  uniqueDesignCount: 0,
-                };
+                const requestSummary = summariesByRequestId[request.id] ?? emptyPrintRequestItemSummary();
                 const extraShowCount = section.extraShowCountByRequestId[request.id] ?? 0;
+                const requestPriceUsd = calculatePrintRequestSummaryPriceUsd(
+                  requestSummary.sizeClassRows,
+                  gangSheetSettings.settings.sectionPricing,
+                );
 
                 return (
                   <button
                     className={`print-requests-request-card${isSelected ? " is-selected" : ""}`}
                     data-print-request-id={request.id}
                     key={request.id}
-                    onClick={() => commitPrintRequestsRoute({
-                      requestId: request.id,
-                      kind: activeListKind,
-                      tab: activeListTab,
-                      workingFilter:
-                        activeListTab === "working" ? workingTriageFilter : undefined,
-                    })}
+                    onClick={() => selectPrintRequestFromRail(request.id)}
                     type="button"
                   >
                     <div className="print-requests-request-card-title-row">
                       <strong>{request.name}</strong>
                       <div className="print-requests-request-card-badges">
+                        {shouldShowPrintRequestRequeueBadge(request) ? (
+                          <Badge
+                            title={getPrintRequestRequeueBadgeTitle(request)}
+                            variant={getPrintRequestRequeueBadgeVariant()}
+                          >
+                            {getPrintRequestRequeueBadgeLabel()}
+                          </Badge>
+                        ) : null}
                         <Badge variant="default">{getPrintRequestOriginBadgeLabel(request)}</Badge>
                         <Badge variant={getStatusBadgeVariant(request.status)}>{request.status}</Badge>
                       </div>
@@ -1389,14 +2162,20 @@ export function PrintRequestsPage() {
                     <div className="print-requests-request-card-counts">
                       <span>{formatDesignCountLabel(requestSummary.uniqueDesignCount)}</span>
                       <span>{formatTotalQuantityLabel(requestSummary.totalQuantity)}</span>
+                      {requestPriceUsd !== null ? (
+                        <span className="print-requests-request-card-price">
+                          {formatRequestPrice(requestPriceUsd)}
+                        </span>
+                      ) : null}
                     </div>
                   </button>
                 );
                   })}
                 </div>
-              ))
+                );
+              })
             )}
-            {!isLoading && hasMoreRequests && !listSearchQuery.trim() ? (
+            {!isListLoading && hasMoreRequests && !listSearchQuery.trim() ? (
               <Button
                 className="print-requests-load-more"
                 disabled={isLoadingMoreRequests}
@@ -1412,9 +2191,27 @@ export function PrintRequestsPage() {
         </aside>
 
         <section className="print-requests-main">
-          {visibleSelectedRequest && !isSelectedRequestDetailLocked ? (
+          {canShowDirectRequestActions || canShowAllocationActions ? (
             <div className="print-requests-page-actions">
-              {!visibleSelectedRequest.isInternal ? (
+              {canShowDirectRequestActions ? (
+                <>
+                  <Button className="button-leading-icon" onClick={() => openRequestExportModal(false)} type="button">
+                    <Download aria-hidden="true" size={16} /> Export Images
+                  </Button>
+                  <Button className="button-leading-icon" onClick={() => openRequestExportModal(true)} type="button" variant="secondary">
+                    <Download aria-hidden="true" size={16} /> Export x(Qty)
+                  </Button>
+                  <Button className="button-leading-icon" onClick={openRequestGangSheetModal} type="button" variant="secondary">
+                    <WandSparkles aria-hidden="true" size={16} /> Generate Gangsheet
+                  </Button>
+                  <Button className="button-leading-icon" onClick={openCopyRequestModal} type="button" variant="secondary">
+                    <Copy aria-hidden="true" size={16} /> Copy Request
+                  </Button>
+                </>
+              ) : null}
+              {canShowAllocationActions ? (
+                <>
+              {!visibleSelectedRequest!.isInternal ? (
                 <Button
                   disabled={
                     requestItems.length === 0 ||
@@ -1450,6 +2247,8 @@ export function PrintRequestsPage() {
                   Add to Internal Gangsheet
                 </Button>
               )}
+                </>
+              ) : null}
             </div>
           ) : null}
 
@@ -1476,23 +2275,103 @@ export function PrintRequestsPage() {
                       {" | "}
                       Updated {formatTimestampLabel(visibleSelectedRequest.updatedAt)}
                     </p>
+                    {selectedRequestCostSummary ? (
+                      <div className="print-requests-detail-metrics">
+                        <button
+                          aria-haspopup="dialog"
+                          aria-label={`Open total price breakdown for ${visibleSelectedRequest.name}`}
+                          className="print-requests-detail-metric-pill"
+                          onClick={() => setIsCostBreakdownModalOpen(true)}
+                          type="button"
+                        >
+                          <span>Total price</span>
+                          <strong>{formatRequestPrice(selectedRequestCostSummary.totalPriceUsd)}</strong>
+                        </button>
+                        <button
+                          aria-haspopup="dialog"
+                          aria-label={`Open total weight breakdown for ${visibleSelectedRequest.name}`}
+                          className="print-requests-detail-metric-pill"
+                          onClick={() => setIsCostBreakdownModalOpen(true)}
+                          type="button"
+                        >
+                          <span>Total weight</span>
+                          <strong>{formatRequestWeight(selectedRequestCostSummary.totalWeightOz)}</strong>
+                        </button>
+                      </div>
+                    ) : null}
                   </div>
                   <div className="print-requests-detail-actions">
                     <div className="print-requests-detail-badges">
+                      {shouldShowPrintRequestRequeueBadge(visibleSelectedRequest) ? (
+                        <Badge
+                          title={getPrintRequestRequeueBadgeTitle(visibleSelectedRequest)}
+                          variant={getPrintRequestRequeueBadgeVariant()}
+                        >
+                          {getPrintRequestRequeueBadgeLabel()}
+                        </Badge>
+                      ) : null}
                       <Badge variant="default">
                         {getPrintRequestOriginBadgeLabel(visibleSelectedRequest)}
                       </Badge>
                       <Badge variant={getStatusBadgeVariant(visibleSelectedRequest.status)}>
                         {visibleSelectedRequest.status}
                       </Badge>
-                      <Badge
-                        variant={getPrintRequestQueueStateBadgeVariant(selectedRequestQueueState ?? "not_queued")}
-                      >
-                        {getPrintRequestQueueStateBadgeLabel(selectedRequestQueueState ?? "not_queued")}
-                      </Badge>
+                      {shouldShowPrintRequestQueueStateBadge(visibleSelectedRequest.status) ? (
+                        <Badge
+                          variant={getPrintRequestQueueStateBadgeVariant(selectedRequestQueueState ?? "not_queued")}
+                        >
+                          {getPrintRequestQueueStateBadgeLabel(selectedRequestQueueState ?? "not_queued")}
+                        </Badge>
+                      ) : null}
                     </div>
                   </div>
                 </div>
+
+                {selectedRequestConvertedInternalId && convertedInternalDeepLinkPath ? (
+                  <div className="print-requests-queue-tab-repair">
+                    <p className="print-requests-modal-hint">
+                      This customer request was converted to an internal request. Open the internal
+                      request to continue working with it.
+                    </p>
+                    <Button
+                      onClick={() => navigate(convertedInternalDeepLinkPath)}
+                      type="button"
+                      variant="warning"
+                    >
+                      Open internal request
+                    </Button>
+                  </div>
+                ) : null}
+
+                {canRepairQueueTab && selectedRequestRepairTargetTab ? (
+                  <div className="print-requests-queue-tab-repair">
+                    <p className="print-requests-modal-hint">
+                      {visibleSelectedRequest.queueTab !== selectedRequestDerivedListTab ? (
+                        <>
+                          This request belongs in the <strong>{selectedRequestRepairTargetTab}</strong> tab but is
+                          still listed under <strong>{visibleSelectedRequest.queueTab ?? "unknown"}</strong>.
+                        </>
+                      ) : (
+                        <>
+                          This request belongs in the <strong>{selectedRequestRepairTargetTab}</strong> tab but you are
+                          viewing the <strong>{activeListTab}</strong> tab.
+                        </>
+                      )}
+                    </p>
+                    <Button
+                      disabled={isRepairingQueueTab}
+                      onClick={() => {
+                        void handleRepairQueueTab();
+                      }}
+                      type="button"
+                      variant="warning"
+                    >
+                      {isRepairingQueueTab
+                        ? "Moving…"
+                        : `Move to ${selectedRequestRepairTargetTab} tab`}
+                    </Button>
+                  </div>
+                ) : null}
 
                 {isRequestDetailExpanded ? (
                   <div className="print-requests-detail-form">
@@ -1551,9 +2430,18 @@ export function PrintRequestsPage() {
                 ) : (
                   <div className="print-requests-detail-actions">
                     {isSelectedRequestFullyPrinted ? (
-                      <p className="print-requests-modal-hint">
-                        This request has been fully printed and cannot be edited.
-                      </p>
+                      <div className="print-requests-show-queue-lock">
+                        <p className="print-requests-modal-hint">
+                          This request has been fully printed and cannot be edited.
+                        </p>
+                        {canViewUpcomingShows && selectedRequestShowGroups.length > 0 ? (
+                          <div className="print-requests-show-queue-row">
+                            <div className="print-requests-show-queue-links">
+                              {renderSelectedRequestShowQueueLinks(false)}
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
                     ) : isSelectedRequestQueueLocked ? (
                       <div className="print-requests-show-queue-lock">
                         <p className="print-requests-modal-hint">
@@ -1561,34 +2449,7 @@ export function PrintRequestsPage() {
                         </p>
                         <div className="print-requests-show-queue-row">
                           <div className="print-requests-show-queue-links">
-                            {selectedRequestShowGroups.map((group) => {
-                              const show = selectedRequestShowsById.get(group.upcomingShowId);
-                              const groupQuantity = group.allocations.reduce(
-                                (sum, allocation) => sum + allocation.allocatedQuantity,
-                                0,
-                              );
-                              const showTitle = show ? formatUpcomingShowTitle(show) : "Show";
-                              const showDateLabel = show?.scheduledStartAt
-                                ? formatShowDateTimeLabel(show.scheduledStartAt.toDate())
-                                : "Not scheduled";
-
-                              return (
-                                <Link
-                                  className="print-requests-show-queue-pill"
-                                  key={group.upcomingShowId}
-                                  title={showTitle}
-                                  to={getUpcomingShowsPath({
-                                    showId: group.upcomingShowId,
-                                    requestId: visibleSelectedRequest?.id,
-                                  })}
-                                >
-                                  <span>{groupQuantity} qty</span>
-                                  <span>&middot;</span>
-                                  <span>{showDateLabel}</span>
-                                  <ExternalLink aria-hidden="true" size={12} strokeWidth={2.2} />
-                                </Link>
-                              );
-                            })}
+                            {renderSelectedRequestShowQueueLinks(true)}
                           </div>
                           {!canRemoveSelectedRequestFromShowQueue ? (
                             <p className="print-requests-modal-hint">
@@ -1693,24 +2554,55 @@ export function PrintRequestsPage() {
 
               <Card className="print-requests-card">
                 <div className="print-requests-section-header">
-                  <p className="eyebrow">Request items</p>
-                  {!isSelectedRequestFullyPrinted ? (
-                    <Button
-                      className="button-leading-icon"
-                      onClick={openDesignLibrarySelection}
-                      disabled={!selectedRequest || isSelectedRequestDetailLocked}
-                      size="sm"
-                      variant="secondary"
+                  {requestItems.length > 0 &&
+                  canManageRequestItems &&
+                  !isSelectedRequestDetailLocked &&
+                  !isSelectedRequestFullyPrinted ? (
+                    <button
+                      className="print-requests-clear-all"
+                      disabled={isClearingAllItems}
+                      onClick={() => {
+                        setClearAllError(null);
+                        setIsClearAllConfirmOpen(true);
+                      }}
+                      type="button"
                     >
-                      <ImagePlus aria-hidden="true" size={16} strokeWidth={2} />
-                      Add designs
-                    </Button>
+                      {isClearingAllItems ? "Clearing..." : "Clear all"}
+                    </button>
+                  ) : (
+                    <p className="eyebrow">Request items</p>
+                  )}
+                  {!isSelectedRequestFullyPrinted ? (
+                    <div className="button-row">
+                      <Button
+                        className="button-leading-icon"
+                        onClick={openDesignLibrarySelection}
+                        disabled={!selectedRequest || isSelectedRequestDetailLocked}
+                        size="sm"
+                        variant="secondary"
+                      >
+                        <ImagePlus aria-hidden="true" size={16} strokeWidth={2} />
+                        Add designs
+                      </Button>
+                      {user && permissionService.canSelectStaffArtwork(user) ? (
+                        <Button
+                          className="button-leading-icon"
+                          onClick={openStaffArtworkSelection}
+                          disabled={!selectedRequest || isSelectedRequestDetailLocked}
+                          size="sm"
+                          variant="secondary"
+                        >
+                          <ImagePlus aria-hidden="true" size={16} strokeWidth={2} />
+                          Add private design
+                        </Button>
+                      ) : null}
+                    </div>
                   ) : null}
                 </div>
 
                 {requestItems.length === 0 ? (
                   <EmptyState
-                    message="Add an approved catalog design to start the request."
+                    message="Add an approved catalog design or artwork from the Staff Library to start the request."
                     title="No items yet"
                   />
                 ) : (
@@ -1735,6 +2627,13 @@ export function PrintRequestsPage() {
                             approvedMaxPrintWidthInches: uploadDoc.approvedMaxPrintWidthInches,
                             approvedMaxPrintHeightInches: uploadDoc.approvedMaxPrintHeightInches,
                             wasUpscaled: uploadDoc.wasUpscaled,
+                            interactiveEnhancedProductionStoragePath:
+                              uploadDoc.interactiveEnhancedProductionStoragePath,
+                            interactiveEnhancedWidthPx: uploadDoc.interactiveEnhancedWidthPx,
+                            interactiveEnhancedHeightPx: uploadDoc.interactiveEnhancedHeightPx,
+                            interactiveEnhanceGeneratedAt: uploadDoc.interactiveEnhanceGeneratedAt,
+                            fromAssistedCreation: Boolean(uploadDoc.assistedCreationRequestId),
+                            catalogUseAcknowledged: uploadDoc.catalogUseAcknowledged,
                           }
                         : item.titleSnapshot
                           ? {
@@ -1743,6 +2642,28 @@ export function PrintRequestsPage() {
                               thumbnailPath: null,
                             }
                           : null;
+                      const staffArtwork = item.staffArtworkId ? staffArtworkById.get(item.staffArtworkId) : null;
+                      const staffAsset = staffArtwork
+                        ? {
+                            title: staffArtwork.title || item.titleSnapshot || "Staff Artwork",
+                            previewPath: staffArtwork.previewStoragePath,
+                            thumbnailPath: staffArtwork.thumbnailStoragePath,
+                            printWidthInches: staffArtwork.processing?.printWidthInches,
+                            printHeightInches: staffArtwork.processing?.printHeightInches,
+                            widthPx: staffArtwork.processing?.widthPx,
+                            heightPx: staffArtwork.processing?.heightPx,
+                            approvedMaxPrintWidthInches: staffArtwork.processing?.approvedMaxPrintWidthInches,
+                            approvedMaxPrintHeightInches: staffArtwork.processing?.approvedMaxPrintHeightInches,
+                            wasUpscaled: staffArtwork.processing?.wasUpscaled,
+                            interactiveEnhancedProductionStoragePath:
+                              staffArtwork.interactiveEnhancedProductionStoragePath,
+                            interactiveEnhancedWidthPx: staffArtwork.interactiveEnhancedWidthPx,
+                            interactiveEnhancedHeightPx: staffArtwork.interactiveEnhancedHeightPx,
+                            interactiveEnhanceGeneratedAt: staffArtwork.interactiveEnhanceGeneratedAt,
+                            artworkBackgroundHex: staffArtwork.artworkBackgroundHex,
+                          }
+                        : null;
+                      const resolvedUpload = staffAsset ?? upload;
 
                       return (
                         <PrintRequestItemCard
@@ -1750,19 +2671,93 @@ export function PrintRequestsPage() {
                           item={item}
                           key={item.id}
                           onAutosaveStateChange={updateAutosaveState}
+                          onDesignArtworkEnhanced={reloadReadyDesigns}
+                          onArtworkEnhanceModeChanged={(result) =>
+                            handleArtworkEnhanceModeChanged(item, result)
+                          }
+                          onOpenPreview={
+                            design?.previewPath ||
+                            design?.thumbnailPath ||
+                            resolvedUpload?.previewPath ||
+                            resolvedUpload?.thumbnailPath
+                              ? () => setLightboxItemId(item.id)
+                              : undefined
+                          }
                           onPersistenceHealthChange={handlePersistenceHealthChange}
                           onRegisterFlush={handleRegisterFlush}
                           onDuplicate={handleDuplicateItem}
                           onRemove={handleRemoveItem}
                           onUpdate={handleUpdateItem}
+                          printRequestId={selectedRequestId ?? ""}
                           readOnly={isSelectedRequestDetailLocked}
-                          upload={upload}
+                          sectionPricing={gangSheetSettings.settings.sectionPricing}
+                          standardPrintSizesSettings={standardPrintSizesSettings}
+                          upload={resolvedUpload}
                         />
                       );
                     })}
                   </div>
                 )}
               </Card>
+
+              <PrintRequestItemsPreviewLightbox
+                activeItemId={lightboxItemId}
+                designById={designById}
+                items={requestItems}
+                onActiveItemChange={setLightboxItemId}
+                onClose={() => setLightboxItemId(null)}
+                resolveUpload={(item) => {
+                  const uploadDoc = item.customerUploadId
+                    ? uploadSummariesById.get(item.customerUploadId)
+                    : null;
+                  if (uploadDoc) {
+                    return {
+                      title:
+                        uploadDoc.originalFilename?.trim() ||
+                        item.titleSnapshot?.trim() ||
+                        "Uploaded artwork",
+                      previewPath: uploadDoc.previewStoragePath,
+                      thumbnailPath: uploadDoc.thumbnailStoragePath,
+                      printWidthInches: uploadDoc.printWidthInches,
+                      printHeightInches: uploadDoc.printHeightInches,
+                      widthPx: uploadDoc.widthPx,
+                      heightPx: uploadDoc.heightPx,
+                      approvedMaxPrintWidthInches: uploadDoc.approvedMaxPrintWidthInches,
+                      approvedMaxPrintHeightInches: uploadDoc.approvedMaxPrintHeightInches,
+                      wasUpscaled: uploadDoc.wasUpscaled,
+                      fromAssistedCreation: Boolean(uploadDoc.assistedCreationRequestId),
+                      catalogUseAcknowledged: uploadDoc.catalogUseAcknowledged,
+                    };
+                  }
+                  const staffArtwork = item.staffArtworkId ? staffArtworkById.get(item.staffArtworkId) : null;
+                  if (staffArtwork) {
+                    return {
+                      title: staffArtwork.title || item.titleSnapshot || "Staff Artwork",
+                      previewPath: staffArtwork.previewStoragePath,
+                      thumbnailPath: staffArtwork.thumbnailStoragePath,
+                      printWidthInches: staffArtwork.processing?.printWidthInches,
+                      printHeightInches: staffArtwork.processing?.printHeightInches,
+                      widthPx: staffArtwork.processing?.widthPx,
+                      heightPx: staffArtwork.processing?.heightPx,
+                      wasUpscaled: staffArtwork.processing?.wasUpscaled,
+                      interactiveEnhancedProductionStoragePath:
+                        staffArtwork.interactiveEnhancedProductionStoragePath,
+                      interactiveEnhancedWidthPx: staffArtwork.interactiveEnhancedWidthPx,
+                      interactiveEnhancedHeightPx: staffArtwork.interactiveEnhancedHeightPx,
+                      interactiveEnhanceGeneratedAt: staffArtwork.interactiveEnhanceGeneratedAt,
+                      artworkBackgroundHex: staffArtwork.artworkBackgroundHex,
+                    };
+                  }
+                  if (item.titleSnapshot) {
+                    return {
+                      title: item.titleSnapshot,
+                      previewPath: null,
+                      thumbnailPath: null,
+                    };
+                  }
+                  return null;
+                }}
+              />
             </>
           )}
         </section>
@@ -1925,9 +2920,111 @@ export function PrintRequestsPage() {
           items={requestItems}
           onAdded={handleAddedToShow}
           onClose={() => setIsAddToShowModalOpen(false)}
+          onReconcile={reconcileAddToShowFailure}
           printRequest={visibleSelectedRequest}
         />
       ) : null}
+
+      {isCostBreakdownModalOpen && visibleSelectedRequest && selectedRequestCostSummary ? (
+        <PrintRequestCostBreakdownModal
+          onClose={() => setIsCostBreakdownModalOpen(false)}
+          pricing={gangSheetSettings.settings.sectionPricing}
+          requestName={visibleSelectedRequest.name}
+          summary={selectedRequestCostSummary}
+        />
+      ) : null}
+
+      {isRequestExportModalOpen && visibleSelectedRequest ? (
+        <ExportPrintRequestConfirmModal
+          error={exportPrintRequestZipState.error}
+          isExporting={exportPrintRequestZipState.isExporting}
+          multiplyByQuantity={requestExportMultiplyByQuantity}
+          onClose={() => {
+            if (!exportPrintRequestZipState.isExporting) {
+              setIsRequestExportModalOpen(false);
+              exportPrintRequestZipState.reset();
+            }
+          }}
+          onConfirm={() => void exportPrintRequestZipState.exportPrintRequestZip(
+            visibleSelectedRequest,
+            requestItems,
+            requestExportMultiplyByQuantity,
+          )}
+          progress={exportPrintRequestZipState.progress}
+          requestName={visibleSelectedRequest.name}
+          result={exportPrintRequestZipState.result}
+        />
+      ) : null}
+
+      {isRequestGangSheetModalOpen && visibleSelectedRequest ? (
+        <GeneratePrintRequestGangSheetModal
+          error={printRequestGangSheetState.error}
+          generated={printRequestGangSheetState.generated}
+          isExporting={printRequestGangSheetState.isExporting}
+          isGenerating={printRequestGangSheetState.isGenerating}
+          lastSavedPaths={printRequestGangSheetState.lastSavedPaths}
+          onClose={() => {
+            if (!printRequestGangSheetState.isGenerating && !printRequestGangSheetState.isExporting) {
+              setIsRequestGangSheetModalOpen(false);
+              printRequestGangSheetState.reset();
+            }
+          }}
+          onDownload={(sheetIndex) => void printRequestGangSheetState.downloadSheet(sheetIndex)}
+          onExport={() => void printRequestGangSheetState.exportCached()}
+          onGenerate={() => void printRequestGangSheetState.generate(
+            visibleSelectedRequest,
+            requestItems,
+            requestGangSheetSettings,
+          )}
+          progress={printRequestGangSheetState.progress}
+          requestName={visibleSelectedRequest.name}
+          sheetWidthInches={requestGangSheetSettings.sheetWidthInches}
+          sheets={printRequestGangSheetState.sheets}
+          warnings={printRequestGangSheetState.warnings}
+        />
+      ) : null}
+
+      {isCopyRequestModalOpen && visibleSelectedRequest ? (
+        <CopyPrintRequestModal
+          customers={customerDirectory.filter((customer) => isActiveCustomerAccount(customer) && !customer.isGuest)}
+          error={copyRequestError}
+          isSubmitting={isCopyingRequest || isCustomerDirectoryLoading}
+          onClose={() => {
+            if (!isCopyingRequest) {
+              setIsCopyRequestModalOpen(false);
+              setCopyRequestError(null);
+            }
+          }}
+          onSubmit={(input) => void submitCopyRequest(input)}
+          printRequest={visibleSelectedRequest}
+        />
+      ) : null}
+
+      {transferShowContext && visibleSelectedRequest ? (() => {
+        const sourceShow = selectedRequestShowsById.get(transferShowContext.sourceShowId);
+        if (!sourceShow) {
+          return null;
+        }
+
+        return (
+          <TransferPrintRequestToShowModal
+            onClose={() => setTransferShowContext(null)}
+            onTransferred={async ({ mode }) => {
+              setTransferShowContext(null);
+              setSuccessMessage(
+                mode === "copy"
+                  ? "Request copied to the selected show."
+                  : "Request moved to the selected show.",
+              );
+              setSuccessAlertSeed((current) => current + 1);
+              await reloadAllAllocationData();
+            }}
+            printRequest={visibleSelectedRequest}
+            sourceShow={sourceShow}
+            transferQuantity={transferShowContext.transferQuantity}
+          />
+        );
+      })() : null}
 
       
       {isConvertConfirmOpen ? (
@@ -1989,6 +3086,61 @@ export function PrintRequestsPage() {
                 type="button"
               >
                 {isConvertingRequest ? "Converting..." : "Convert"}
+              </Button>
+            </ModalFooter>
+          </Modal>
+        </div>
+      ) : null}
+
+      {isClearAllConfirmOpen ? (
+        <div className="modal-overlay modal-overlay-blur">
+          <Modal
+            aria-labelledby="print-request-clear-all-title"
+            className="modal-panel modal-panel-md"
+            role="dialog"
+          >
+            <ModalHeader>
+              <div>
+                <p className="eyebrow">Request items</p>
+                <h3 id="print-request-clear-all-title">Clear all designs?</h3>
+              </div>
+              <button
+                aria-label="Close clear-all confirmation"
+                className="icon-button icon-button-md icon-button-ghost"
+                disabled={isClearingAllItems}
+                onClick={() => setIsClearAllConfirmOpen(false)}
+                type="button"
+              >
+                <X aria-hidden="true" size={18} strokeWidth={2.2} />
+              </button>
+            </ModalHeader>
+            <ModalBody>
+              <p>
+                This removes every design from this request so you can start fresh. You can add
+                designs again anytime.
+              </p>
+              {clearAllError ? (
+                <p className="auth-message auth-message-error" role="alert">
+                  {clearAllError}
+                </p>
+              ) : null}
+            </ModalBody>
+            <ModalFooter>
+              <Button
+                disabled={isClearingAllItems}
+                onClick={() => setIsClearAllConfirmOpen(false)}
+                type="button"
+                variant="secondary"
+              >
+                Keep designs
+              </Button>
+              <Button
+                disabled={isClearingAllItems}
+                onClick={() => void handleClearAllItems()}
+                type="button"
+                variant="danger"
+              >
+                {isClearingAllItems ? "Clearing..." : "Clear all"}
               </Button>
             </ModalFooter>
           </Modal>

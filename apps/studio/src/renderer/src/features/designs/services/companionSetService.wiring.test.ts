@@ -17,6 +17,8 @@ describe("companion pairwise link service wiring", () => {
     const service = readService();
 
     assert.match(service, /async linkDesign\(/);
+    assert.match(service, /async linkCompanionPeers\(/);
+    assert.match(service, /async meshAllCompanionNeighbors\(/);
     assert.match(service, /async unlinkPair\(/);
     assert.match(service, /async markNeedsCompanion\(/);
     assert.match(service, /async clearNeedsCompanionUnlinked\(/);

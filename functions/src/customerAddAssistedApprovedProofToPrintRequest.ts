@@ -1,5 +1,6 @@
 import {
   FieldValue,
+  Timestamp,
   type DocumentReference,
   type DocumentSnapshot,
 } from "firebase-admin/firestore";
@@ -20,11 +21,14 @@ import type {
   CustomerAddAssistedApprovedProofToPrintRequestRequest,
   CustomerAddAssistedApprovedProofToPrintRequestResponse,
 } from "../../packages/shared/src/types/assistedCreation/assistedCreationActions.types";
-import type { AssistedCreationProof } from "../../packages/shared/src/types/assistedCreation/assistedCreation.types";
-import { CUSTOMER_UPLOAD_TERMS_VERSION } from "../../packages/shared/src/types/customerUpload/customerUpload.types";
+import type {
+  AssistedCreationAddToRequestProgressStage,
+  AssistedCreationProof,
+} from "../../packages/shared/src/types/assistedCreation/assistedCreation.types";
 import { evaluateAssistedApprovedProofAddToRequest } from "../../packages/shared/src/utils/assistedCreationApprovedProofAddToRequest";
 import { formatFileSize } from "../../packages/shared/src/utils/formatFileSize";
-import { resolveInitialPrintRequestItemSize } from "../../packages/shared/src/utils/printRequestItemSizing";
+import { resolveInitialPrintRequestItemSize, resolvePrintRequestDefaultWidthInches } from "../../packages/shared/src/utils/printRequestItemSizing";
+import { resolveNextPrintRequestItemSortOrder } from "../../packages/shared/src/utils/printRequestItemDisplayOrder";
 
 import { adminDb, adminStorage } from "./lib/admin";
 import {
@@ -46,13 +50,18 @@ import {
   permissionDenied,
   unauthenticated,
 } from "./lib/errors";
-import { buildCatalogIntakeConfirmationPatch } from "./lib/customerUploadCatalogConfirmation";
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
-import { loadPrintRequestLimitSettings } from "./lib/loadPrintRequestLimitSettings";
+import { loadEffectivePrintRequestLimitsForCustomer } from "./lib/loadEffectivePrintRequestLimits";
+import { loadStandardPrintSizesSettings } from "./lib/loadStandardPrintSizesSettings";
 import { requirePortalCustomer, type PortalCustomerContext } from "./lib/portalCustomer";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 import { assertWorkingRequestAllowsPrintAdds } from "./lib/printRequestWorkingRequestMax";
 import { resolveOrCreateWorkingPrintRequestInTransaction } from "./lib/portalWorkingPrintRequest";
 import { storageObjectPath } from "./lib/storageObjectPath";
+import {
+  assistedUploadMatchesArtworkSource,
+  selectReusableAssistedArtworkUpload,
+} from "./lib/assistedFinalSourceAttachReuse";
 import { sumPrintRequestItemQuantities } from "../../packages/shared/src/utils/portalShowQueueCapacity";
 
 function mapHttpsError(error: unknown): never {
@@ -65,14 +74,17 @@ function mapHttpsError(error: unknown): never {
   throw internal("Unable to add this design to your request right now.");
 }
 
-function resolveAttachPrintSize(upload: {
+function resolveAttachPrintSize(
+  upload: {
   widthPx?: unknown;
   heightPx?: unknown;
   printWidthInches?: unknown;
   printHeightInches?: unknown;
   approvedMaxPrintWidthInches?: unknown;
   approvedMaxPrintHeightInches?: unknown;
-}): { printWidthInches?: number; printHeightInches?: number } {
+},
+  printRequestDefaultWidthInches?: number,
+): { printWidthInches?: number; printHeightInches?: number } {
   const widthPx = typeof upload.widthPx === "number" ? upload.widthPx : null;
   const heightPx = typeof upload.heightPx === "number" ? upload.heightPx : null;
   const defaultPrintWidthInches =
@@ -84,6 +96,7 @@ function resolveAttachPrintSize(upload: {
         pixelWidth: widthPx,
         pixelHeight: heightPx,
         defaultPrintWidthInches,
+        printRequestDefaultWidthInches,
         approvedMaxPrintWidthInches:
           typeof upload.approvedMaxPrintWidthInches === "number"
             ? upload.approvedMaxPrintWidthInches
@@ -144,20 +157,74 @@ function parseIngest(data: Record<string, unknown> | undefined): {
   };
 }
 
-function validateRequest(data: unknown): CustomerAddAssistedApprovedProofToPrintRequestRequest {
+type AssistedAddToRequestPayload = Omit<
+  CustomerAddAssistedApprovedProofToPrintRequestRequest,
+  "catalogUseAcknowledged"
+>;
+
+function validateRequest(data: unknown): AssistedAddToRequestPayload {
   if (!data || typeof data !== "object") {
     throw new Error("Request payload is required.");
   }
-  const record = data as { requestId?: unknown; catalogUseAcknowledged?: unknown };
+  const record = data as { requestId?: unknown };
   const requestId = typeof record.requestId === "string" ? record.requestId.trim() : "";
   if (!requestId) {
     throw new Error("Request id is required.");
   }
-  // Same as print-upload attach: require explicit boolean. Missing → declined (false), still intake.
-  if (typeof record.catalogUseAcknowledged !== "boolean") {
-    return { requestId, catalogUseAcknowledged: false };
+  return { requestId };
+}
+
+/**
+ * Assisted Creation artwork is produced by Fresh Prints, not uploaded by the customer. It still
+ * participates in the existing staff intake queue (`not_eligible` → Pending after Add to Show),
+ * but it never manufactures customer catalog-consent, terms, denial, follow-up, or retention
+ * fields. The trusted assisted request origin is the catalog-workflow marker.
+ */
+function buildAssistedArtworkPrivateUploadFields(printRequestId: string): Record<string, unknown> {
+  return {
+    ownershipConfirmed: true,
+    printRequestId,
+    catalogReviewStatus: "not_eligible",
+    promotedDesignId: null,
+  };
+}
+
+/** Progress is customer-safe operational state only; it never includes Storage or image details. */
+async function writeAssistedAddToRequestProgress(
+  assistedRef: DocumentReference,
+  stage: AssistedCreationAddToRequestProgressStage,
+  startedAt: Timestamp,
+): Promise<void> {
+  try {
+    await assistedRef.update({
+      addToRequestProgress: {
+        stage,
+        startedAt,
+        updatedAt: Timestamp.now(),
+      },
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  } catch (error) {
+    // Progress is observability for the customer, not an authorization or data-integrity gate.
+    console.warn(
+      "[customerAddAssistedApprovedProofToPrintRequest] progress update skipped",
+      error instanceof Error ? error.message : "unknown error",
+    );
   }
-  return { requestId, catalogUseAcknowledged: record.catalogUseAcknowledged };
+}
+
+async function clearAssistedAddToRequestProgress(assistedRef: DocumentReference): Promise<void> {
+  try {
+    await assistedRef.update({
+      addToRequestProgress: FieldValue.delete(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  } catch (error) {
+    console.warn(
+      "[customerAddAssistedApprovedProofToPrintRequest] progress clear skipped",
+      error instanceof Error ? error.message : "unknown error",
+    );
+  }
 }
 
 function resolveTitleSnapshot(
@@ -190,13 +257,35 @@ export const customerAddAssistedApprovedProofToPrintRequest = onCall(
       throw unauthenticated();
     }
 
+    let progressRef: DocumentReference | null = null;
+    let progressStartedAt: Timestamp | null = null;
+    let lastProgressStage: AssistedCreationAddToRequestProgressStage | null = null;
+
     try {
       const portalCustomer = await requirePortalCustomer(request.auth.uid);
+      await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
       const payload = validateRequest(request.data);
       const customerUid = request.auth.uid;
-      const settings = await loadPrintRequestLimitSettings();
-      const maxPerRequest = settings.maxQuantityPerPrintRequest;
+      const [effectiveLimits, standardPrintSizesSettings] = await Promise.all([
+        loadEffectivePrintRequestLimitsForCustomer(portalCustomer.customerId),
+        loadStandardPrintSizesSettings(),
+      ]);
+      const printRequestDefaultWidthInches = resolvePrintRequestDefaultWidthInches(
+        standardPrintSizesSettings,
+      );
+      const maxPerRequest = effectiveLimits.effectiveMaxQuantityPerPrintRequest;
       const assistedRef = adminDb.collection(ASSISTED_CREATION_COLLECTION).doc(payload.requestId);
+      progressRef = assistedRef;
+
+      const publishProgress = async (
+        stage: AssistedCreationAddToRequestProgressStage,
+      ): Promise<void> => {
+        if (!progressStartedAt || lastProgressStage === stage) {
+          return;
+        }
+        lastProgressStage = stage;
+        await writeAssistedAddToRequestProgress(assistedRef, stage, progressStartedAt);
+      };
 
       const assistedSnap = await assistedRef.get();
       if (!assistedSnap.exists) {
@@ -241,13 +330,27 @@ export const customerAddAssistedApprovedProofToPrintRequest = onCall(
         approvedProofId: approvedProofId || null,
         approvedAtMillis: timestampMillis(assisted.approvedAt),
         proofs: proofsToRetentionViews(proofs),
+        finalSource: hasFinalSource
+          ? {
+              id:
+                typeof (assisted.finalSource as { id?: unknown }).id === "string"
+                  ? (assisted.finalSource as { id: string }).id
+                  : "",
+              storagePath:
+                typeof (assisted.finalSource as { storagePath?: unknown }).storagePath === "string"
+                  ? (assisted.finalSource as { storagePath: string }).storagePath
+                  : "",
+              contentType:
+                typeof (assisted.finalSource as { contentType?: unknown }).contentType === "string"
+                  ? (assisted.finalSource as { contentType: string }).contentType
+                  : undefined,
+            }
+          : null,
         printRequestIngest: existingIngest,
         nowMs: Date.now(),
       });
 
-      // Prefer final source when present (ADR-FP-110); still allow legacy proof-only approvals.
-      const eligibleViaFinalSource = status === "approved" && hasFinalSource;
-      if (!eligibility.eligible && !eligibleViaFinalSource) {
+      if (!eligibility.eligible) {
         if (eligibility.reason === "not_approved") {
           throw failedPrecondition("This request is not approved yet.");
         }
@@ -256,6 +359,23 @@ export const customerAddAssistedApprovedProofToPrintRequest = onCall(
         );
       }
 
+      progressStartedAt = Timestamp.now();
+      await publishProgress("resolving_proof");
+
+      const assistedFinalSourceId =
+        hasFinalSource &&
+        assisted.finalSource &&
+        typeof assisted.finalSource === "object" &&
+        typeof (assisted.finalSource as { id?: unknown }).id === "string"
+          ? (assisted.finalSource as { id: string }).id.trim()
+          : null;
+
+      const artworkLineage = {
+        assistedFinalSourceId,
+        approvedProofId,
+        hasFinalSource: Boolean(hasFinalSource),
+      };
+
       if (existingIngest) {
         const uploadSnap = await adminDb
           .collection(CUSTOMER_UPLOAD_COLLECTIONS.customerUploads)
@@ -263,32 +383,66 @@ export const customerAddAssistedApprovedProofToPrintRequest = onCall(
           .get();
         const uploadOwned =
           uploadSnap.exists && uploadSnap.data()?.customerUid === customerUid;
+        const uploadMatchesLineage =
+          uploadOwned &&
+          assistedUploadMatchesArtworkSource(uploadSnap.data() ?? {}, artworkLineage);
 
-        if (uploadOwned) {
+        if (uploadMatchesLineage) {
+          await publishProgress("attaching");
           return await ensureIngestOnWorkingRequest({
             portalCustomer,
             customerUid,
             assistedRef,
             existingIngest,
             uploadTitleFallback: "Assisted design",
-            catalogUseAcknowledged: payload.catalogUseAcknowledged,
             uploadSnap,
             maxPerRequest,
+            printRequestDefaultWidthInches,
           });
         }
 
-        // Sticky printRequestIngest can outlive a wiped/deleted upload (ingest survives
-        // remove-from-request). Clear the orphan pointer and fall through to fresh copy.
-        await assistedRef.update({
-          printRequestIngest: FieldValue.delete(),
-          updatedAt: FieldValue.serverTimestamp(),
+        if (uploadOwned || existingIngest) {
+          // Sticky printRequestIngest can outlive a wiped/deleted upload or replaced Final Image.
+          await assistedRef.update({
+            printRequestIngest: FieldValue.delete(),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        }
+      }
+
+      const reusableUploadSnap = await findReusableAssistedArtworkUpload({
+        customerUid,
+        requestId: payload.requestId,
+        lineage: artworkLineage,
+      });
+      if (reusableUploadSnap) {
+        await publishProgress("attaching");
+        const reusableIngest = {
+          customerUploadId: reusableUploadSnap.id,
+          printRequestItemId: "",
+          printRequestId: "",
+          assistedProofId: approvedProofId,
+        };
+        return await ensureIngestOnWorkingRequest({
+          portalCustomer,
+          customerUid,
+          assistedRef,
+          existingIngest: reusableIngest,
+          uploadTitleFallback: "Assisted design",
+          uploadSnap: reusableUploadSnap,
+          maxPerRequest,
+          printRequestDefaultWidthInches,
         });
       }
 
+      const attachStartedAt = Date.now();
+
+      await publishProgress("downloading");
       const resolvedProof = await resolveAssistedCreationApprovedProofDownload({
         uid: customerUid,
         requestId: payload.requestId,
       });
+      const resolveProofMs = Date.now() - attachStartedAt;
 
       const proofFile = approvedProofStorageFile(resolvedProof.storagePath);
       const [exists] = await proofFile.exists();
@@ -321,26 +475,29 @@ export const customerAddAssistedApprovedProofToPrintRequest = onCall(
       const sourceFile = bucket.file(sourceObjectPath);
       const contentType = resolvedProof.contentType || "application/octet-stream";
 
-      // Parallel: in-bucket copy to customer-upload source + download once for derivatives.
-      const [, downloadResult] = await Promise.all([
-        proofFile.copy(sourceFile).then(() =>
-          sourceFile.setMetadata({
-            contentType,
-            cacheControl: "private, max-age=3600",
-          }),
-        ),
-        proofFile.download(),
-      ]);
-      const sourceBytes = downloadResult[0];
+      const downloadStartedAt = Date.now();
+      const [sourceBytes] = await proofFile.download();
+      const downloadMs = Date.now() - downloadStartedAt;
 
-      // Same resize/DPI/approvedMax path as normal uploads; only skip quality gates.
+      await sourceFile.save(sourceBytes, {
+        metadata: {
+          contentType,
+          cacheControl: "private, max-age=3600",
+        },
+      });
+
+      const processingStartedAt = Date.now();
       const processed = await processCustomerUploadImageBytes(sourceBytes, {
         skipCustomerQualityGates: true,
+        onStage: (stage) => publishProgress(stage),
       });
+      const processingMs = Date.now() - processingStartedAt;
       if (!processed.ok) {
         throw failedPrecondition(processed.message);
       }
 
+      const saveOutputsStartedAt = Date.now();
+      await publishProgress("saving");
       await saveCustomerUploadProcessedOutputs({
         bucket,
         sourceObjectPath,
@@ -349,6 +506,7 @@ export const customerAddAssistedApprovedProofToPrintRequest = onCall(
         thumbnailObjectPath: storageObjectPath(thumbnailStoragePath),
         processed,
       });
+      const saveOutputsMs = Date.now() - saveOutputsStartedAt;
 
       const titleSnapshot = resolveTitleSnapshot(resolvedProof.fileName, assisted);
       const printSize = resolveAttachPrintSize({
@@ -358,12 +516,14 @@ export const customerAddAssistedApprovedProofToPrintRequest = onCall(
         printHeightInches: processed.printHeightInches,
         approvedMaxPrintWidthInches: processed.approvedMaxPrintWidthInches,
         approvedMaxPrintHeightInches: processed.approvedMaxPrintHeightInches,
-      });
+      }, printRequestDefaultWidthInches);
 
       let printRequestId = "";
       let printRequestItemId = "";
       let createdFresh = false;
 
+      await publishProgress("attaching");
+      const transactionStartedAt = Date.now();
       await adminDb.runTransaction(async (tx) => {
         const freshAssisted = await tx.get(assistedRef);
         const freshIngest = parseIngest(freshAssisted.data());
@@ -384,34 +544,35 @@ export const customerAddAssistedApprovedProofToPrintRequest = onCall(
 
         let currentItemCount = 0;
         let currentPrintCount = 0;
+        let nextSortOrder = 1;
         if (!resolved.created) {
           const requestSnap = await tx.get(requestRef);
           currentItemCount = Number(requestSnap.data()?.itemCount ?? 0);
           const itemsSnap = await tx.get(
             adminDb.collection("printRequestItems").where("printRequestId", "==", printRequestId),
           );
-          currentPrintCount = sumPrintRequestItemQuantities(
-            itemsSnap.docs.map((docSnap) => {
-              const qty = Number(docSnap.data()?.quantity ?? 1);
-              return {
-                quantity: Number.isFinite(qty) && qty > 0 ? Math.floor(qty) : 1,
-              };
-            }),
-          );
+          const existingItems = itemsSnap.docs.map((docSnap) => {
+            const data = docSnap.data() ?? {};
+            const qty = Number(data.quantity ?? 1);
+            return {
+              quantity: Number.isFinite(qty) && qty > 0 ? Math.floor(qty) : 1,
+              sortOrder:
+                typeof data.sortOrder === "number" && Number.isFinite(data.sortOrder)
+                  ? data.sortOrder
+                  : undefined,
+            };
+          });
+          currentPrintCount = sumPrintRequestItemQuantities(existingItems);
+          nextSortOrder = resolveNextPrintRequestItemSortOrder(existingItems);
         }
 
         const now = FieldValue.serverTimestamp();
         const itemRef = adminDb.collection("printRequestItems").doc();
         printRequestItemId = itemRef.id;
         createdFresh = true;
-        // Same intake confirmation as print-upload attach / donate (shared helper).
-        const intakeConfirmation = buildCatalogIntakeConfirmationPatch({
-          catalogUseAcknowledged: payload.catalogUseAcknowledged,
-          termsVersion: CUSTOMER_UPLOAD_TERMS_VERSION,
-          printRequestId,
-          submitForStaffReview: false,
-          now,
-        });
+        // Fresh Prints-created artwork has no customer catalog-permission decision. Keep only the
+        // existing staff intake status/origin fields; do not call the customer-consent helper.
+        const privateAssistedUploadFields = buildAssistedArtworkPrivateUploadFields(printRequestId);
 
         assertWorkingRequestAllowsPrintAdds({
           currentPrintCount,
@@ -432,8 +593,6 @@ export const customerAddAssistedApprovedProofToPrintRequest = onCall(
             readyCount: 1,
             failedCount: 0,
             ownershipConfirmed: true,
-            catalogUseAcknowledged: payload.catalogUseAcknowledged,
-            termsVersion: CUSTOMER_UPLOAD_TERMS_VERSION,
             confirmedAt: now,
             createdBy: customerUid,
             createdAt: now,
@@ -478,11 +637,12 @@ export const customerAddAssistedApprovedProofToPrintRequest = onCall(
             technicalProgressStage: null,
             technicalFailureCode: null,
             technicalFailureMessage: null,
-            promotedDesignId: null,
-            ...intakeConfirmation,
+            ...privateAssistedUploadFields,
             assistedCreationRequestId: payload.requestId,
             assistedProofId: approvedProofId || null,
+            assistedFinalSourceId,
             createdAt: now,
+            updatedAt: now,
           }),
         );
 
@@ -497,6 +657,7 @@ export const customerAddAssistedApprovedProofToPrintRequest = onCall(
             quantity: 1,
             printWidthInches: printSize.printWidthInches,
             printHeightInches: printSize.printHeightInches,
+            sortOrder: nextSortOrder,
             status: "pending",
             addedBy: customerUid,
             createdAt: now,
@@ -516,11 +677,24 @@ export const customerAddAssistedApprovedProofToPrintRequest = onCall(
             printRequestItemId: itemRef.id,
             printRequestId,
             assistedProofId: approvedProofId,
-            catalogUseAcknowledged: payload.catalogUseAcknowledged,
             ingestedAt: now,
           },
           updatedAt: now,
         });
+      });
+      const transactionMs = Date.now() - transactionStartedAt;
+
+      console.info("[customerAddAssistedApprovedProofToPrintRequest] attach timings", {
+        requestId: payload.requestId,
+        assistedFinalSourceId,
+        sizeBytes,
+        resolveProofMs,
+        downloadMs,
+        processingMs,
+        saveOutputsMs,
+        transactionMs,
+        totalMs: Date.now() - attachStartedAt,
+        reusedExistingUpload: false,
       });
 
       if (!createdFresh) {
@@ -543,6 +717,10 @@ export const customerAddAssistedApprovedProofToPrintRequest = onCall(
       };
     } catch (error) {
       mapHttpsError(error);
+    } finally {
+      if (progressRef && progressStartedAt) {
+        await clearAssistedAddToRequestProgress(progressRef);
+      }
     }
   },
 );
@@ -559,18 +737,18 @@ async function ensureIngestOnWorkingRequest(input: {
     catalogUseAcknowledged?: boolean;
   };
   uploadTitleFallback: string;
-  catalogUseAcknowledged: boolean;
   uploadSnap: DocumentSnapshot;
   maxPerRequest: number;
+  printRequestDefaultWidthInches: number;
 }): Promise<CustomerAddAssistedApprovedProofToPrintRequestResponse> {
   const {
     portalCustomer,
     customerUid,
     assistedRef,
     existingIngest,
-    catalogUseAcknowledged,
     uploadSnap,
     maxPerRequest,
+    printRequestDefaultWidthInches,
   } = input;
 
   const upload = uploadSnap.data() ?? {};
@@ -581,16 +759,17 @@ async function ensureIngestOnWorkingRequest(input: {
       printRequestItemId,
       printRequestId,
       assistedProofId: existingIngest.assistedProofId || "",
-      catalogUseAcknowledged,
+      ...(typeof existingIngest.catalogUseAcknowledged === "boolean"
+        ? { catalogUseAcknowledged: existingIngest.catalogUseAcknowledged }
+        : {}),
       ingestedAt: FieldValue.serverTimestamp(),
     });
 
-  const buildUploadPatch = (intakeConfirmation: Record<string, unknown>) => {
+  const buildUploadPatch = () => {
     const hasOrigin =
       typeof upload.assistedCreationRequestId === "string" &&
       Boolean(String(upload.assistedCreationRequestId).trim());
     return withoutUndefinedFields({
-      ...intakeConfirmation,
       // Backfill origin marker if an older ingest doc lacked it (Custom pill).
       ...(hasOrigin
         ? {}
@@ -615,14 +794,6 @@ async function ensureIngestOnWorkingRequest(input: {
     printRequestId = resolved.printRequestId;
     const requestRef = adminDb.collection("printRequests").doc(printRequestId);
     const now = FieldValue.serverTimestamp();
-    const intakeConfirmation = buildCatalogIntakeConfirmationPatch({
-      catalogUseAcknowledged,
-      termsVersion: CUSTOMER_UPLOAD_TERMS_VERSION,
-      printRequestId,
-      submitForStaffReview: false,
-      now,
-    });
-
     if (!resolved.created) {
       const existingItemSnap = await tx.get(
         adminDb.collection("printRequestItems").doc(existingIngest.printRequestItemId),
@@ -634,7 +805,10 @@ async function ensureIngestOnWorkingRequest(input: {
       ) {
         alreadyAttached = true;
         printRequestItemId = existingItemSnap.id;
-        tx.update(uploadSnap.ref, buildUploadPatch(intakeConfirmation));
+        const uploadPatch = buildUploadPatch();
+        if (Object.keys(uploadPatch).length > 0) {
+          tx.update(uploadSnap.ref, uploadPatch);
+        }
         tx.update(assistedRef, {
           printRequestIngest: buildIngestPointer(printRequestItemId, printRequestId),
           updatedAt: now,
@@ -652,7 +826,10 @@ async function ensureIngestOnWorkingRequest(input: {
       if (!byUploadSnap.empty) {
         alreadyAttached = true;
         printRequestItemId = byUploadSnap.docs[0].id;
-        tx.update(uploadSnap.ref, buildUploadPatch(intakeConfirmation));
+        const uploadPatch = buildUploadPatch();
+        if (Object.keys(uploadPatch).length > 0) {
+          tx.update(uploadSnap.ref, uploadPatch);
+        }
         tx.update(assistedRef, {
           printRequestIngest: buildIngestPointer(printRequestItemId, printRequestId),
           updatedAt: now,
@@ -667,27 +844,33 @@ async function ensureIngestOnWorkingRequest(input: {
 
     let currentItemCount = 0;
     let currentPrintCount = 0;
+    let nextSortOrder = 1;
     if (!resolved.created) {
       const requestSnap = await tx.get(requestRef);
       currentItemCount = Number(requestSnap.data()?.itemCount ?? 0);
       const itemsSnap = await tx.get(
         adminDb.collection("printRequestItems").where("printRequestId", "==", printRequestId),
       );
-      currentPrintCount = sumPrintRequestItemQuantities(
-        itemsSnap.docs.map((docSnap) => {
-          const qty = Number(docSnap.data()?.quantity ?? 1);
-          return {
-            quantity: Number.isFinite(qty) && qty > 0 ? Math.floor(qty) : 1,
-          };
-        }),
-      );
+      const existingItems = itemsSnap.docs.map((docSnap) => {
+        const data = docSnap.data() ?? {};
+        const qty = Number(data.quantity ?? 1);
+        return {
+          quantity: Number.isFinite(qty) && qty > 0 ? Math.floor(qty) : 1,
+          sortOrder:
+            typeof data.sortOrder === "number" && Number.isFinite(data.sortOrder)
+              ? data.sortOrder
+              : undefined,
+        };
+      });
+      currentPrintCount = sumPrintRequestItemQuantities(existingItems);
+      nextSortOrder = resolveNextPrintRequestItemSortOrder(existingItems);
     }
 
     const titleSnapshot =
       typeof upload.originalFilename === "string" && upload.originalFilename.trim()
         ? upload.originalFilename.trim()
         : input.uploadTitleFallback;
-    const printSize = resolveAttachPrintSize(upload);
+    const printSize = resolveAttachPrintSize(upload, printRequestDefaultWidthInches);
 
     assertWorkingRequestAllowsPrintAdds({
       currentPrintCount,
@@ -706,6 +889,7 @@ async function ensureIngestOnWorkingRequest(input: {
         quantity: 1,
         printWidthInches: printSize.printWidthInches,
         printHeightInches: printSize.printHeightInches,
+        sortOrder: nextSortOrder,
         status: "pending",
         addedBy: customerUid,
         createdAt: now,
@@ -719,7 +903,10 @@ async function ensureIngestOnWorkingRequest(input: {
       updatedBy: customerUid,
     });
 
-    tx.update(uploadSnap.ref, buildUploadPatch(intakeConfirmation));
+    const uploadPatch = buildUploadPatch();
+    if (Object.keys(uploadPatch).length > 0) {
+      tx.update(uploadSnap.ref, uploadPatch);
+    }
 
     tx.update(assistedRef, {
       printRequestIngest: buildIngestPointer(printRequestItemId, printRequestId),
@@ -733,4 +920,42 @@ async function ensureIngestOnWorkingRequest(input: {
     customerUploadId: existingIngest.customerUploadId,
     alreadyAttached,
   };
+}
+
+async function findReusableAssistedArtworkUpload(input: {
+  customerUid: string;
+  requestId: string;
+  lineage: {
+    assistedFinalSourceId: string | null;
+    approvedProofId: string;
+    hasFinalSource: boolean;
+  };
+}): Promise<DocumentSnapshot | null> {
+  const candidates = await adminDb
+    .collection(CUSTOMER_UPLOAD_COLLECTIONS.customerUploads)
+    .where("assistedCreationRequestId", "==", input.requestId)
+    .limit(8)
+    .get();
+
+  const ownedDocs = candidates.docs.filter(
+    (docSnap) => docSnap.data()?.customerUid === input.customerUid,
+  );
+  const reusable = selectReusableAssistedArtworkUpload(ownedDocs, input.lineage);
+  if (!reusable) {
+    return null;
+  }
+
+  const productionPath =
+    typeof reusable.data()?.productionStoragePath === "string"
+      ? reusable.data()?.productionStoragePath.trim()
+      : "";
+  if (!productionPath) {
+    return null;
+  }
+
+  const [productionExists] = await adminStorage
+    .bucket()
+    .file(storageObjectPath(productionPath))
+    .exists();
+  return productionExists ? reusable : null;
 }

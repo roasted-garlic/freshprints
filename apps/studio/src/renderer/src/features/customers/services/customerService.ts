@@ -17,6 +17,7 @@ import { userService } from "../../users/services/userService";
 import type { User } from "../../users/types/user.types";
 import type { Customer } from "@fresh-prints/shared/types/customer/customer.types";
 import { parseCustomerSignupSource } from "@fresh-prints/shared/utils/customerSignupSource";
+import { readCustomerIdentityDocumentFields } from "@fresh-prints/shared/utils/readCustomerIdentityDocumentFields";
 import { requireValidCustomerUsername } from "@fresh-prints/shared/utils/customerUsername";
 
 export interface CreateCustomerRecordInput {
@@ -47,6 +48,7 @@ interface CustomerDocumentData extends DocumentData {
   totalRequests?: unknown;
   totalApprovedRequests?: unknown;
   usernameUpdatedAt?: unknown;
+  printRequestQuotaOverride?: unknown;
   isDeleted?: unknown;
   deletedAt?: unknown;
   deletedBy?: unknown;
@@ -73,6 +75,9 @@ function mapCustomerData(customerId: string, data: CustomerDocumentData): Custom
     throw new Error("A customer is incomplete.");
   }
 
+  const identityFields = readCustomerIdentityDocumentFields(data);
+  const { deletedAt: deletedAtRaw, disabledAt: disabledAtRaw, ...identityRest } = identityFields;
+
   return {
     id: customerId,
     userId: typeof data.userId === "string" ? data.userId : undefined,
@@ -89,13 +94,13 @@ function mapCustomerData(customerId: string, data: CustomerDocumentData): Custom
     totalApprovedRequests:
       typeof data.totalApprovedRequests === "number" ? data.totalApprovedRequests : undefined,
     usernameUpdatedAt: resolveRequiredTimestamp(data.usernameUpdatedAt),
-    isDeleted: data.isDeleted === true ? true : undefined,
-    deletedAt: resolveRequiredTimestamp(data.deletedAt),
-    deletedBy: typeof data.deletedBy === "string" ? data.deletedBy : undefined,
-    deletionSource:
-      data.deletionSource === "studio_owner" || data.deletionSource === "portal_request"
-        ? data.deletionSource
+    printRequestQuotaOverride:
+      data.printRequestQuotaOverride && typeof data.printRequestQuotaOverride === "object"
+        ? (data.printRequestQuotaOverride as Customer["printRequestQuotaOverride"])
         : undefined,
+    ...identityRest,
+    deletedAt: resolveRequiredTimestamp(deletedAtRaw),
+    disabledAt: resolveRequiredTimestamp(disabledAtRaw),
     createdAt,
     updatedAt,
   };
@@ -168,18 +173,34 @@ async function assertUsernameReservationAvailable(
   return reservationRef;
 }
 
+async function listAllCustomersMapped(): Promise<Customer[]> {
+  const snapshot = await getDocs(firestoreCollectionService.getCustomersCollection());
+  const customers = snapshot.docs.map((customerDoc: { id: string; data: () => DocumentData }) =>
+    mapCustomerData(customerDoc.id, customerDoc.data() as CustomerDocumentData),
+  );
+
+  return [...customers].sort((left, right) => left.displayName.localeCompare(right.displayName));
+}
+
 export const customerService = {
   async listCustomers(caller: User): Promise<Customer[]> {
     if (!permissionService.canManageCustomers(caller)) {
       return [];
     }
 
-    const snapshot = await getDocs(firestoreCollectionService.getCustomersCollection());
-    const customers = snapshot.docs.map((customerDoc: { id: string; data: () => DocumentData }) =>
-      mapCustomerData(customerDoc.id, customerDoc.data() as CustomerDocumentData),
-    );
+    return listAllCustomersMapped();
+  },
 
-    return [...customers].sort((left, right) => left.displayName.localeCompare(right.displayName));
+  /**
+   * Staff-readable customer directory for intake name/username search.
+   * Rules allow all staff to read `customers`; do not require owner/admin manage gate.
+   */
+  async listCustomersForIntakeSearch(caller: User): Promise<Customer[]> {
+    if (!permissionService.canViewCustomerUploadIntake(caller)) {
+      return [];
+    }
+
+    return listAllCustomersMapped();
   },
 
   async getCustomerById(caller: User, customerId: string): Promise<Customer> {
@@ -233,7 +254,6 @@ export const customerService = {
         signupSource: "studio",
         totalPrintRequests: 0,
         nextPrintRequestSequence: 1,
-        usernameUpdatedAt: serverTimestamp(),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });

@@ -1,47 +1,131 @@
-import type { DesignAiAnalysis, DesignAiSuggestions } from "../../../packages/shared/src/types/ai/aiProcessing.types";
-import type { SuggestedNewTag } from "../../../packages/shared/src/types/catalogTag.types";
-import type { AiEnrichmentInput, AiEnrichmentResult } from "./providers/AiEnrichmentProvider";
+import type {
+  DesignAiAnalysis,
+  DesignAiSuggestions,
+} from "../../../packages/shared/src/types/ai/aiProcessing.types";
+import type {
+  AiEnrichmentInput,
+  AiEnrichmentResult,
+} from "./providers/AiEnrichmentProvider";
 
-import {
-  SIMPLE_ENRICHMENT_MAX_SUGGESTED_TAGS,
-  SIMPLE_ENRICHMENT_MAX_TAGS,
-} from "./aiEnrichmentConfig";
 import { estimateVisionCostUsd } from "../../../packages/shared/src/constants/aiEnrichment.constants";
+import { sanitizeMeaningfulVisibleTextPhrases } from "../../../packages/shared/src/utils/visibleTextQuality";
 import {
   CATALOG_ENRICHMENT_PROMPT_VERSION,
-  normalizeAiTags,
-  resolveLeanCatalogTitle,
-  sanitizeCatalogDescription,
+  acceptCanonicalCatalogCopy,
 } from "./catalogTitleRules";
-import { filterUnsupportedHalloweenTags } from "./halloweenTagGuard";
+import {
+  VISUAL_CONTEXT_ALIAS_MAX,
+  VISUAL_CONTEXT_ARRAY_MAX,
+  VISUAL_CONTEXT_DETAILED_MAX,
+  VISUAL_CONTEXT_LINE_MAX,
+  VISUAL_CONTEXT_STRING_MAX,
+  VISUAL_CONTEXT_SUMMARY_MAX,
+  VISUAL_CONTEXT_VERSION,
+  type VisualContextProfile,
+} from "../../../packages/shared/src/types/catalog/visualContext.types";
 
 export interface SimpleCatalogEnrichmentParsed {
   category: string;
   description: string;
-  suggestedNewTags: SuggestedNewTag[];
   title: string;
-  tags: string[];
-  /**
-   * Transient readable slogan lines from the model response (not persisted on aiSuggestions).
-   */
-  readableTextLines?: string[];
   /**
    * Transient central non-text subject phrase (not persisted on aiSuggestions).
    */
   centralSubject?: string;
-  /**
-   * Raw model tag strings (lightly cleaned, not tokenized into single words). Multi-word
-   * tags/aliases like "rock and roll" are preserved so the catalog tag resolver can match
-   * them against approved names and aliases before falling back to suggestions.
-   */
-  rawTags: string[];
+  /** Smart Profile dimensions from v27+ prompt (optional for backward-compatible parses). */
+  subjects?: string[];
+  objects?: string[];
+  styles?: string[];
+  themes?: string[];
+  interests?: string[];
+  professionsGroups?: string[];
+  occasions?: string[];
+  places?: string[];
+  colors?: string[];
+  visibleText?: string[];
+  searchConcepts?: string[];
+  categoryAlternatives?: Array<{ name: string; reason?: string }>;
+  categoryGapNote?: string;
+  visualContextProfile?: VisualContextProfile;
+
+  /** @deprecated Accepted only by historical unit fixtures; never emitted by the v39 parser. */
+  tags?: string[];
+  /** @deprecated Accepted only by historical unit fixtures; never emitted by the v39 parser. */
+  rawTags?: string[];
+  /** @deprecated Accepted only by historical unit fixtures; never emitted by the v39 parser. */
+  suggestedNewTags?: unknown[];
+  /** @deprecated Bounded one-way compatibility read; visibleText is canonical. */
+  readableTextLines?: string[];
+}
+
+function normalizeVisualContextProfile(
+  value: unknown,
+): VisualContextProfile | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    return undefined;
+  const raw = value as Record<string, unknown>;
+  const summary = coerceString(raw.summary).slice(
+    0,
+    VISUAL_CONTEXT_SUMMARY_MAX,
+  );
+  const detailedDescription = coerceString(raw.detailedDescription).slice(
+    0,
+    VISUAL_CONTEXT_DETAILED_MAX,
+  );
+  if (
+    !summary ||
+    !detailedDescription ||
+    raw.version !== VISUAL_CONTEXT_VERSION
+  )
+    return undefined;
+  const profile: VisualContextProfile = {
+    version: VISUAL_CONTEXT_VERSION,
+    summary,
+    detailedDescription,
+  };
+  const arrays = [
+    "peopleCharacters",
+    "animals",
+    "objects",
+    "readableArtworkText",
+    "symbols",
+    "colors",
+    "themesInterests",
+    "professionsGroups",
+    "occasions",
+    "semanticAliases",
+    "uncertainties",
+  ] as const;
+  for (const field of arrays) {
+    const max =
+      field === "semanticAliases"
+        ? VISUAL_CONTEXT_ALIAS_MAX
+        : VISUAL_CONTEXT_ARRAY_MAX;
+    const values = normalizeStringArray(raw[field], max)?.map((item) =>
+      item.slice(0, VISUAL_CONTEXT_LINE_MAX),
+    );
+    if (values?.length) profile[field] = values;
+  }
+  const strings = [
+    "appearance",
+    "posesActions",
+    "relationships",
+    "setting",
+    "styleComposition",
+    "visualJokeOrStory",
+  ] as const;
+  for (const field of strings) {
+    const value = coerceString(raw[field]).slice(0, VISUAL_CONTEXT_STRING_MAX);
+    if (value) profile[field] = value;
+  }
+  return profile;
 }
 
 /**
  * Extract a JSON object from a model response that may include code fences or surrounding prose.
  * Returns the parsed object, or an empty object when nothing parseable is found. This replaces the
- * guarantees previously provided by `response_format: json_object`, which the v17 request drops to
- * match the lightweight Settings AI Playground request shape.
+ * The provider now requests the canonical structured-output schema, but extraction remains
+ * defensive because the parser is still the server-side source of truth.
  */
 export function extractJsonObject(raw: string): Record<string, unknown> {
   const trimmed = raw.trim();
@@ -102,97 +186,12 @@ function normalizeReadableTextLines(value: unknown): string[] | undefined {
   return lines.length > 0 ? lines : undefined;
 }
 
-function assertRequiredField(value: string, fieldName: string): void {
-  if (!value) {
-    throw new Error(`AI response is missing required field: ${fieldName}.`);
-  }
-}
-
-function normalizeSuggestedTagName(value: unknown): string {
-  if (typeof value !== "string") {
-    return "";
-  }
-
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9-]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function normalizeSuggestedAlias(value: unknown): string {
-  if (typeof value !== "string") {
-    return "";
-  }
-
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, " ");
-}
-
-function isSingleWordTagName(value: string): boolean {
-  return Boolean(value) && value.length <= 40 && !value.includes(" ") && !value.includes("/");
-}
-
-function normalizeSuggestedNewTags(value: unknown): SuggestedNewTag[] {
+function normalizeStringArray(
+  value: unknown,
+  maxItems = 24,
+): string[] | undefined {
   if (!Array.isArray(value)) {
-    return [];
-  }
-
-  const result: SuggestedNewTag[] = [];
-  const seen = new Set<string>();
-
-  for (const item of value) {
-    if (!item || typeof item !== "object" || Array.isArray(item)) {
-      continue;
-    }
-
-    const record = item as Record<string, unknown>;
-    const name = normalizeSuggestedTagName(record.name);
-    const preferredWhen = coerceString(record.preferredWhen);
-
-    if (!isSingleWordTagName(name) || !preferredWhen || seen.has(name)) {
-      continue;
-    }
-
-    const aliases = Array.isArray(record.aliases)
-      ? [
-          ...new Set(
-            record.aliases
-              .map(normalizeSuggestedAlias)
-              .filter((alias) => alias && alias !== name && alias.length <= 40 && !alias.includes("/")),
-          ),
-        ]
-      : [];
-
-    result.push({
-      aliases,
-      name,
-      preferredWhen,
-      reason: coerceString(record.reason) || "AI did not find a sufficiently relevant approved tag.",
-      source: "ai",
-    });
-    seen.add(name);
-
-    if (result.length >= SIMPLE_ENRICHMENT_MAX_SUGGESTED_TAGS) {
-      break;
-    }
-  }
-
-  return result;
-}
-
-/**
- * Lightly clean the model's raw tag strings without tokenizing them into single words.
- * Preserves multi-word tags/aliases (e.g. "rock and roll") so the downstream catalog tag
- * resolver can match them against approved tag names and aliases. Trims, lowercases, collapses
- * internal whitespace, dedupes, and drops empty or overly long entries.
- */
-function normalizeRawAiTags(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return [];
+    return undefined;
   }
 
   const result: string[] = [];
@@ -203,62 +202,153 @@ function normalizeRawAiTags(value: unknown): string[] {
       continue;
     }
 
-    const normalized = item.trim().replace(/\s+/g, " ").toLowerCase();
-
-    if (!normalized || normalized.length > 40 || normalized.includes("/") || seen.has(normalized)) {
+    const normalized = item.trim().replace(/\s+/g, " ");
+    if (!normalized) {
       continue;
     }
 
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
     result.push(normalized);
-    seen.add(normalized);
+
+    if (result.length >= maxItems) {
+      break;
+    }
   }
 
-  return result;
+  return result.length > 0 ? result : undefined;
+}
+
+function normalizeCategoryAlternativesRaw(
+  value: unknown,
+): Array<{ name: string; reason?: string }> | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const result: Array<{ name: string; reason?: string }> = [];
+
+  for (const item of value) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      continue;
+    }
+
+    const record = item as Record<string, unknown>;
+    const name =
+      typeof record.name === "string"
+        ? record.name.trim()
+        : typeof record.categoryName === "string"
+          ? record.categoryName.trim()
+          : "";
+
+    if (!name) {
+      continue;
+    }
+
+    result.push({
+      name,
+      reason:
+        typeof record.reason === "string"
+          ? record.reason.trim() || undefined
+          : undefined,
+    });
+
+    if (result.length >= 3) {
+      break;
+    }
+  }
+
+  return result.length > 0 ? result : undefined;
+}
+
+function assertRequiredField(value: string, fieldName: string): void {
+  if (!value) {
+    throw new Error(`AI response is missing required field: ${fieldName}.`);
+  }
 }
 
 /**
- * Normalize the raw simple-contract JSON. Tag normalization enforces single words, lowercase,
- * dedupe, generic-word and exclusion filtering, and the tag cap.
+ * Normalize the v39 response. AI tags and AI-halftone fields are intentionally not part of this
+ * active parser. `readableTextLines` is accepted only as a bounded historical alias for
+ * canonical `visibleText`.
  */
 export function normalizeSimpleCatalogEnrichment(
   raw: Record<string, unknown>,
-  effectiveTagExclusions: readonly string[],
 ): SimpleCatalogEnrichmentParsed {
   const category = coerceString(raw.category);
   const description = coerceString(raw.description);
   const title = coerceString(raw.title);
-  const tags = normalizeAiTags(
-    raw.tags,
-    undefined,
-    SIMPLE_ENRICHMENT_MAX_TAGS,
-    effectiveTagExclusions,
+  const legacyReadableTextLines = normalizeReadableTextLines(
+    raw.readableTextLines,
   );
-  const rawTags = normalizeRawAiTags(raw.tags);
-  const halloweenContext = {
-    description,
-    tags: [...tags, ...rawTags],
-    title,
-  };
-  const guardedTags = filterUnsupportedHalloweenTags(tags, halloweenContext);
-  const guardedRawTags = filterUnsupportedHalloweenTags(rawTags, halloweenContext);
+  const visibleText =
+    normalizeStringArray(raw.visibleText, 12) ?? legacyReadableTextLines;
 
   assertRequiredField(description, "description");
   assertRequiredField(category, "category");
   assertRequiredField(title, "title");
 
-  if (!Array.isArray(raw.tags)) {
-    throw new Error("AI response is missing required field: tags.");
-  }
-
   return {
     category,
     description,
-    suggestedNewTags: normalizeSuggestedNewTags(raw.suggestedNewTags),
     title,
-    tags: guardedTags,
-    rawTags: guardedRawTags,
-    readableTextLines: normalizeReadableTextLines(raw.readableTextLines),
     centralSubject: coerceString(raw.centralSubject) || undefined,
+    subjects: normalizeStringArray(raw.subjects),
+    objects: normalizeStringArray(raw.objects),
+    styles: normalizeStringArray(raw.styles),
+    themes: normalizeStringArray(raw.themes),
+    interests: normalizeStringArray(raw.interests),
+    professionsGroups: normalizeStringArray(raw.professionsGroups),
+    occasions: normalizeStringArray(raw.occasions),
+    places: normalizeStringArray(raw.places),
+    colors: normalizeStringArray(raw.colors),
+    visibleText,
+    searchConcepts: normalizeStringArray(raw.searchConcepts, 24),
+    categoryAlternatives: normalizeCategoryAlternativesRaw(
+      raw.categoryAlternatives,
+    ),
+    categoryGapNote: coerceString(raw.categoryGapNote) || undefined,
+    visualContextProfile: normalizeVisualContextProfile(
+      raw.visualContextProfile,
+    ),
+  };
+}
+
+/**
+ * Project a normalized parse into the canonical enrichment JSON keys only.
+ * Unknown provider keys (prompt, keywords, people, etc.) are never included.
+ */
+export function toCanonicalSimpleCatalogEnrichmentJson(
+  parsed: SimpleCatalogEnrichmentParsed,
+): Record<string, unknown> {
+  return {
+    title: parsed.title,
+    description: parsed.description,
+    category: parsed.category,
+    centralSubject: parsed.centralSubject ?? "",
+    subjects: parsed.subjects ?? [],
+    objects: parsed.objects ?? [],
+    styles: parsed.styles ?? [],
+    themes: parsed.themes ?? [],
+    interests: parsed.interests ?? [],
+    professionsGroups: parsed.professionsGroups ?? [],
+    occasions: parsed.occasions ?? [],
+    places: parsed.places ?? [],
+    colors: parsed.colors ?? [],
+    visibleText: parsed.visibleText ?? [],
+    searchConcepts: parsed.searchConcepts ?? [],
+    categoryAlternatives: (parsed.categoryAlternatives ?? []).map((entry) => ({
+      name: entry.name,
+      ...(entry.reason ? { reason: entry.reason } : {}),
+    })),
+    categoryGapNote: parsed.categoryGapNote ?? "",
+    ...(parsed.visualContextProfile
+      ? { visualContextProfile: parsed.visualContextProfile }
+      : {}),
   };
 }
 
@@ -273,42 +363,41 @@ export function buildSimpleCatalogEnrichmentResult(input: {
   promptTokens?: number | null;
   completionTokens?: number | null;
 }): AiEnrichmentResult {
-  const { parsed, enrichmentInput, modelId, providerId, promptTokens, completionTokens } = input;
+  const {
+    parsed,
+    modelId,
+    providerId,
+    promptTokens,
+    completionTokens,
+  } = input;
 
-  // Lean schema: trust a good model title. Reject style/tag-invented and description-prose
-  // titles; prefer structured readable lines or guarded description wording. Never synthesize
-  // a title by joining tags. Transient readableTextLines / centralSubject are not persisted.
-  const title = resolveLeanCatalogTitle({
-    candidateTitle: parsed.title,
-    tags: parsed.tags,
-    uploadFileStem: enrichmentInput.uploadFileStem,
-    description: parsed.description,
-    readableTextLines: parsed.readableTextLines,
-    centralSubject: parsed.centralSubject,
-  });
+  const sanitizedVisibleText = sanitizeMeaningfulVisibleTextPhrases(
+    parsed.visibleText,
+  );
 
-  // Preserve the model's description. It is required-non-empty by normalizeSimpleCatalogEnrichment,
-  // so only scrub canvas phrases and cap length — no synthesis, which cannot reconstruct full
-  // visible text from the lean schema.
-  const description = sanitizeCatalogDescription(parsed.description).slice(0, 500);
+  const explicitContentArtworkEvidence = [...(parsed.visibleText ?? [])]
+    .map((line) => (typeof line === "string" ? line.trim() : ""))
+    .filter(Boolean);
+
+  // ADR-FP-181 / owner contract: AI owns semantic title/description.
+  // Persist canonical model copy after structural validation only — no lean rewrite,
+  // slogan rebuild, subject append, or description synthesis.
+  const title = acceptCanonicalCatalogCopy("title", parsed.title);
+  const description = acceptCanonicalCatalogCopy(
+    "description",
+    parsed.description,
+  );
 
   const estimatedCostUsd =
     promptTokens != null && completionTokens != null
       ? estimateVisionCostUsd(modelId, promptTokens, completionTokens)
       : null;
 
-  // Category is not resolved here. The v18 lean prompt no longer gives the model the approved
-  // category list, so parsed.category is a freeform raw candidate — not a value that can be
-  // trusted or persisted directly. It is carried on analysis.rawCategory (transient, deleted
-  // before the design write, same as rawTags) purely as a scoring signal; the pipeline's
-  // server-side resolveThemeCategory call (run after tag resolution, using matched tags as an
-  // additional signal) sets the final categoryId/categoryName, or leaves both undefined when no
-  // approved category clears the confidence threshold.
+  // Category is checked against the loaded approved category names by candidate generation before
+  // persistence. This raw value remains transient until that authority boundary.
   const suggestions: DesignAiSuggestions = {
     title,
     description,
-    suggestedNewTags: parsed.suggestedNewTags.length > 0 ? parsed.suggestedNewTags : undefined,
-    tags: parsed.tags,
     provider: providerId ?? "google",
     model: modelId,
     promptVersion: CATALOG_ENRICHMENT_PROMPT_VERSION,
@@ -319,8 +408,30 @@ export function buildSimpleCatalogEnrichmentResult(input: {
   };
 
   const analysis: DesignAiAnalysis = {
+    visualContextProfile: parsed.visualContextProfile,
+    // Canonical evidence path: automation and persistence consume analysis.visibleText.
+    // Keep the Smart Profile parse synchronized with the same sanitized phrases.
+    visibleText: sanitizedVisibleText,
     rawCategory: parsed.category || undefined,
-    rawTags: parsed.rawTags.length > 0 ? parsed.rawTags : undefined,
+    explicitContentArtworkEvidence:
+      explicitContentArtworkEvidence.length > 0
+        ? explicitContentArtworkEvidence
+        : undefined,
+    smartProfileEnrichmentParse: {
+      subjects: parsed.subjects,
+      objects: parsed.objects,
+      styles: parsed.styles,
+      themes: parsed.themes,
+      interests: parsed.interests,
+      professionsGroups: parsed.professionsGroups,
+      occasions: parsed.occasions,
+      places: parsed.places,
+      colors: parsed.colors,
+      visibleText: sanitizedVisibleText,
+      searchConcepts: parsed.searchConcepts,
+      categoryAlternatives: parsed.categoryAlternatives,
+      categoryGapNote: parsed.categoryGapNote,
+    },
   };
 
   return { suggestions, analysis };

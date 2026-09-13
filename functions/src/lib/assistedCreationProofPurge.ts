@@ -42,6 +42,9 @@ export function proofsToRetentionViews(
     ...(proof.kind === "catalog_share" || proof.kind === "proof_image"
       ? { kind: proof.kind }
       : {}),
+    ...(typeof proof.proofRoundId === "string" && proof.proofRoundId.trim()
+      ? { proofRoundId: proof.proofRoundId.trim() }
+      : {}),
   }));
 }
 

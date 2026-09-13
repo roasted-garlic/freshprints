@@ -286,7 +286,10 @@ export async function validatePngFile(filePath: string): Promise<ValidateSelecte
     approvedMaxPrintHeightInches: sizingMeta.approvedMaxPrintHeightInches,
     sizingPolicyVersion: sizingMeta.sizingPolicyVersion,
     upscaleFactor: sizingMeta.upscaleFactor,
-    upscalePassCount: sizingMeta.upscalePassCount,
+    // The import pipeline performs at most one controlled upscale pass. Keep the
+    // import IPC result contract narrow even though persisted artwork metadata can
+    // represent later manual passes.
+    upscalePassCount: upscaleResult.upscalePassCount,
     warnings,
   };
 }

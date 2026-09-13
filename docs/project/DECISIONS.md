@@ -4,6 +4,1387 @@
 
 ---
 
+### ADR-FP-189: Atomic Studio Add-to-Show re-add and editing repair
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-09 |
+| Status | accepted with changes — implementation/tests/docs local; **STOP before DEV deploy** |
+| Related | Goal `studio-editing-readd-show-queue-permissions-corrective`; Plan/Review/Implementation Review `2026-09-09-studio-editing-readd-show-queue-*` |
+
+**Decision**
+
+1. Studio full-request and remaining-quantity Add-to-Show plans use the trusted
+   `allocateStudioPrintRequestToShow` callable. It validates active staff, request/show eligibility,
+   complete item quantities, and split legs, then atomically creates allocations, recomputes show
+   totals, activates the request, clears editing/requeue parking, and recomputes `queueTab`.
+2. A fully allocated request stranded in `editing` is repaired by the same callable's status/parking
+   reconciliation; it never fabricates allocation quantity. Production allocations in progress or
+   complete block re-add.
+3. Studio's modal no longer loops client allocation writes for this flow. It rejects incomplete
+   plans and reloads request/allocation state after callable failure or success. Portal's existing
+   Admin queue transaction remains unchanged.
+4. Firestore Rules add only a short-circuit `editing → active` client compatibility path with a
+   three-field diff. Lifecycle mirrors, queue/parking fields, bidding acknowledgements, and
+   identity snapshots remain client-immutable; no customer authority is broadened.
+
+**Consequences**
+
+- The former multi-write client sequence remains available only to narrower legacy callers and is
+  not the primary Add-to-Show path.
+- DEV Function/Rules deployment and owner re-QA require a separate exact authorization. No indexes,
+  backfill, indexed-reader activation, Studio/Portal publish, commit, push, or production action is
+  included in this corrective.
+
+---
+
+### ADR-FP-188: Server-authored Print Request lifecycle evidence and ordering mirror
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-09 |
+| Status | accepted with changes — DEV implementation, deployment, backfill, indexed-reader activation, and Owner QA complete; production/publish/commit separately gated |
+| Related | Goal `user-info-print-request-lifecycle-activity-ordering`; Plan/Review/Implementation Review `2026-09-09-user-info-print-request-lifecycle-activity-ordering-*` |
+
+**Decision**
+
+1. Add the additive `printRequestLifecycleEvents/{eventId}` collection and the server-maintained
+   `lastLifecycleActivityAt`, `lastLifecycleActivityPrecedence`, and
+   `lastLifecycleActivityEventId` mirror fields on `printRequests`.
+2. The exact reviewed Functions are the `printRequests/{printRequestId}` trigger
+   `onPrintRequestLifecycleRequestWritten` and the `showAllocations/{allocationId}` trigger
+   `onPrintRequestLifecycleAllocationWritten`. Events are immutable, idempotent, and Admin-authored;
+   the mirror is monotonic and is never a client lifecycle authority.
+3. Studio User Info cards display and order by the same lifecycle clock. Created and Last Updated
+   metadata include date and time; raw `updatedAt` is not a lifecycle display or ordering source.
+4. Existing account `customerActivityEvents` remains a separate account-audit surface. Historical
+   rows use a deterministic compatibility fallback until the separately authorized non-destructive
+   mirror backfill completes. The indexed reader is explicitly disabled until that gate is cleared.
+5. This phase includes source Rules/index definitions, tests, and documentation only. It does not
+  deploy Functions/Rules/indexes, execute a backfill, publish Studio, commit, or push.
+
+**DEV outcome (2026-09-09):** The reviewed implementation was subsequently deployed only to
+`fresh-prints-dev`; the bounded non-destructive mirror backfill completed with 8/8 eligible mirror
+coverage, and the two required indexes reached READY. The indexed reader is enabled in local
+Studio source, with the compatibility reader preserved as rollback. Owner DEV QA passed and the
+managed goal closed **approved_with_notes**. Two historical duplicate conversion events from the
+pre-corrective backfill remain `SAFE_TO_LEAVE_AS_HISTORICAL_DUPLICATE`; they do not affect mirror
+ordering and require no cleanup. No production promotion, Studio publish, or Portal deployment is
+authorized by this outcome. The owner subsequently authorized commit/push; commit `6bf7a25d` was
+pushed to `origin/development` without force-pushing.
+
+---
+
+### ADR-FP-187: Narrow Portal admin Show Queue exception
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-09 |
+| Status | accepted — dashboard amendment implemented locally; **STOP before DEV Function deploy / Owner QA** |
+| Related | Goal `portal-admin-daily-show-queue`; Plan/Review/Amendment/Implementation Review `2026-09-09-portal-admin-*` |
+
+**Context**
+
+Fresh Prints has exactly two applications. Portal remains primarily customer-facing, while the
+authoritative Show Queue is private staff data. Active owners/admins need a narrow, read-only
+mobile-first upcoming-show dashboard without converting Portal into a general staff application or
+widening shared Firestore/Storage Rules.
+
+**Decision**
+
+1. Active `owner` and `admin` users may use the Portal route `/admin/show-queue`; `helper`,
+   `customer`, anonymous, and inactive users are denied. Customer flows remain unchanged.
+2. The route uses a dedicated admin route group and `PortalAdminShell` with an admin-composed
+   upcoming-shows sidebar (`PortalAdminShowSidebar`) that reuses Portal sidebar visual tokens only.
+   It does not mount `PortalAppShell`, customer `PortalSidebar`, or customer mutation/navigation
+   providers. Staff sessions do not query or subscribe to customer documents.
+3. Trusted callables are the boundary:
+   - `getPortalAdminUpcomingShowQueueDashboard` — upcoming show metadata + selected-show stats/PR
+     summaries (no artwork)
+   - `getPortalAdminShowQueueRequestDesigns` — lazy View Designs modal items with 15-minute signed
+     derivative URLs after show+PR allocation linkage proof
+4. Upcoming membership reuses Studio Whatnot Upcoming semantics (`whatnot` + DEV-only
+   `dev_fixture`; exclude Past and `staff_gang_sheet`). Default selection is the first sorted
+   upcoming show (`resolveVisibleShowSelection` parity).
+5. Glance metrics: Design Qty = distinct non-canceled design/upload identities; Print Qty =
+   non-canceled allocated sum (capacity numerator); PR Qty = distinct active attached PRs.
+   Capacity uses `assessShowCapacity` / `getShowCapacityPercent` (over-capacity remains truthful).
+6. Minimal `showId` / `printRequestId` may appear for navigation under callable authz. Dashboard
+   and modal DTOs still omit customer IDs, design/upload IDs, allocation IDs, filenames, and raw
+   Storage paths. Artwork is derivative-only signed URLs.
+7. Firestore Rules and Storage Rules remain unchanged. Display timezone remains
+   `America/Chicago`. No production controls, realtime listeners, polling, or general staff Portal
+   conversion.
+
+**Consequences**
+
+- Portal stops using the day-flattened `getPortalAdminDailyShowQueue` client path; that export may
+  remain until an authorized DEV cleanup/redeploy replaces traffic with the dashboard callables.
+- DEV Function redeploy of the dashboard + designs callables is required before Owner DEV QA of the
+  amendment. Production remains separately gated.
+- Any broader staff Portal surface, Rules change, or production control requires a new reviewed goal.
+
+---
+
+### ADR-FP-186: Legacy tag operational retirement and Smart Profile search parity
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-09 |
+| Status | accepted — Owner DEV QA **PASS**; DEV signoff **approved**; production separately gated |
+| Related | Goal `legacy-tag-operational-retirement-and-smart-profile-search-parity`; Plan/Review/Implementation Review `2026-09-08-legacy-tag-operational-retirement-and-smart-profile-search-parity-*`; DEV cutover and signoff `2026-09-09-legacy-tag-*` |
+
+**Decision**
+
+1. Active Portal and Studio catalog discovery use Smart Profile fields, category narrowing, exact
+   IDs, copy search, and dedicated `halftoneStaffDecision.value` filtering. Legacy tags are not
+   active UI, URL, facet, display, DTO, or Algolia search authority.
+2. Studio `?tag=` and `?tags=` are retained only as safe no-op compatibility inputs; incomplete
+   Smart Profiles do not fall back to historical tags.
+3. Algolia records and settings omit `tagIds` and `tagFacetKeys` while retaining Smart Profile
+   fields and searchable `objects`, `searchConcepts`, and `visibleText`.
+4. Historical `design.tags`, `tags/*`, schema-v1 taxonomy materialization, Rules/indexes, tag
+   normalizers/import helpers, and deployed tag-trigger/archive exports remain preserved. Physical
+   cleanup or compatibility deletion requires a separately reviewed and authorized phase.
+
+**Consequences**
+
+- DEV parity is validated on `fresh-prints-dev`; the owner/admin reconcile rebuilt 350 ready
+  records and the deterministic former-term corrective audit found no material regression.
+- No Smart Profile backfill, migration, tag deletion, provider call, Portal/Studio publish, or
+  production action is implied by this decision.
+- Commit/push completed as `1c43f6e1`; production promotion remains a separate owner checkpoint.
+
+---
+
+### ADR-FP-184: Studio Print Request direct export, Standard gang sheet, and atomic copy
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-08 |
+| Status | accepted — owner-authorized implementation complete locally; **STOP before DEV deploy / Owner QA** |
+| Related | Goal `print-request-direct-export-gangsheet-and-copy`; Plan/Review/Implementation Review `2026-09-08-print-request-direct-export-gangsheet-and-copy-*`; ADR-FP-070; ADR-FP-071; ADR-FP-073; ADR-FP-141; ADR-FP-143 |
+
+**Decision**
+
+1. Request-level Export Images and Generate Gangsheet build only from the selected request's
+   `printRequestItems`; no Show Allocation is required. Both reuse the existing source-aware
+   production resolver, 300-DPI sizing, Electron download/resize, ZIP, and compositor paths.
+2. Request gang sheets expose Standard efficiency mode only. Their local cache uses an isolated
+   `print-request:<requestId>` scope and request material inputs in the fingerprint; no Firebase
+   artifact or `upcomingShows.gangSheetGenerated*` telemetry is written.
+3. Request output names use the immutable CR/IR request name. Show Queue `whatnot_<date>` names and
+   all existing Show Queue modes remain unchanged.
+4. `copyStudioPrintRequest` is the sole trusted staff copy path. One Admin SDK transaction creates
+   a fresh clean request and pending items using normal sequences, with explicit allowlists. It
+   excludes allocations and production/lifecycle history and fails atomically for a private upload
+   copied to a different Customer.
+5. Firestore Rules, Storage Rules, indexes, and migrations remain unchanged. Portal behavior and
+   permissions are unchanged.
+
+**Consequences**
+
+- Historical/Printed requests remain eligible when exact persisted assets resolve; actions never
+  reopen lifecycle state.
+- A later DEV Function deployment and Studio packaging/publish are separately gated after the
+  Implementation Review and Owner DEV QA.
+
+---
+
+### ADR-FP-185: Global Gang Sheet Settings and four-tier width pricing
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-08 |
+| Status | accepted — owner-authorized implementation complete locally; **STOP before DEV deploy / Owner QA** |
+| Related | Goal `print-request-direct-export-gangsheet-and-copy`; ADR-FP-070; ADR-FP-143; ADR-FP-184 |
+
+**Decision**
+
+1. Persist canonical global Gang Sheet Settings fields on the existing `settings/showQueue`
+   document. The existing `settings/internalGangSheet` document is a read-only compatibility
+   fallback when canonical values are absent; do not migrate or backfill it.
+2. Normalize six layout settings and four editable price/weight tiers through one resolver used
+   by Show Queue Standard, both grouped modes, Internal Gang Sheets, and Customer/Internal Print
+   Request Standard generation.
+3. Classify by saved print width only with fixed boundaries: Pocket `<=4`, Standard Full Size
+   `>4..<=11`, Standard Oversized `>11..<=14`, and Extra Oversized `>14`. Exact item quantity
+   drives price and weight totals.
+4. Put the editor under owner/admin `/settings?tab=gangSheetSettings`; local Show Queue/Internal
+   editors are retired. Request Standard sheets render request name plus price/weight summary.
+5. Include material layout/pricing settings and request identity in local cache fingerprints. The
+   only backend rule change is the narrow existing `settings/showQueue` field allowlist; no new
+   Function, Storage Rules, index, or migration is introduced.
+
+**Consequences**
+
+- Existing grouped compositor semantics and request cache isolation remain intact.
+- Owner DEV deployment and QA must validate canonical settings, fallback behavior, all six
+  generation surfaces, and direct-action visibility before release/publish.
+
+---
+
+### ADR-FP-183: Atomic AI reprocess state reconciliation
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-08 |
+| Status | accepted — owner-authorized implementation complete locally; **STOP before DEV deploy** |
+| Related | Plan/Review/Implementation Review `2026-09-08-atomic-reprocess-automation-state-reconciliation-*`; ADR-FP-172; ADR-FP-173 |
+
+**Context:** AI reprocess entrypoints cleared the last successful AI result before a
+new provider run could succeed. A failure could therefore leave no suggestions,
+Smart Profile, confidence, or review context. Direct and catalog workers also had
+no persisted design-attempt guard, so a stale completion could overwrite newer
+state.
+
+**Decision:**
+
+1. Use Option A: preserve current AI/automation output while staging a new attempt;
+   replace it only in one guarded success reconciliation.
+2. Persist `aiProcessingAttemptId` at staging and guard every stage, failure, and
+   success write. Stale attempts are no-ops.
+3. Store failure diagnostics in `aiProcessingError`; never replace
+   `aiSuggestions` or `aiAnalysis` with an error-shaped map.
+4. On successful queue-mode fresh review, clear prior review notes and approval
+   audit only inside the guarded reconciliation, then apply the new lifecycle.
+   Ready Catalog backfill preserves `ready` + `approved` and its review audit on
+   success and failure.
+5. Explicit classification remains independent of Smart Profile construction.
+   Successful omission clears current automation-owned replace-on-success fields;
+   failure preserves them. Staff, import-preset, catalog, lock, and unknown-source
+   authority remains intact.
+
+**Consequences:** Reprocess failures are recoverable and visible without losing the
+last successful result. Successful runs cannot inherit omitted optional AI fields.
+No provider, prompt, settings, vocabulary, migration, or deployment behavior is
+changed by this decision. DEV deployment remains separately owner-authorized.
+
+### ADR-FP-182: Two-pass AI enrichment — Visual Context + conditional Semantic Reviewer
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-05 |
+| Status | accepted (architecture + owner decisions locked; implementation Plan/Review next — **no code until owner proceeds**) |
+| Related | Architecture Plan/Review `2026-09-05-two-pass-ai-enrichment-context-and-semantic-verification-architecture-*`; Implementation Plan/Review `…-implementation-*`; ADR-FP-181; parent `smart-catalog-intelligence-completion-and-legacy-tag-retirement` |
+
+**Context:** Lexical Model 2 evidence (e.g. `subjects:woman` vs prose “pin-up girl”) creates false Needs Review. Owner philosophy: AI understands semantics; code enforces objective contracts. Tag AI (Rerank / Suggested Tags) is retired from active enrichment.
+
+**Decision (owner-locked):**
+
+1. **Pass 1** — one vision call: immutable `aiAnalysis.visualContextProfile` (`visual-context-v1`) + canonical title/description (ADR-FP-181) + category + Smart Profile; prompt **`catalog-enrich-v38`**.
+2. **Pass 2** — text-only, conditional, max once: adjudicate `structured_evidence_gap:*` and `subject_specificity_risk:*`; outcomes APPROVE / APPROVE_WITH_PATCH / NEEDS_REVIEW; model default `gemini-2.5-flash-lite`; setting off until DEV canary; prompt **`catalog-semantic-review-v1`**.
+3. **No** synonym dictionaries; **no** Pass 2 category/title/description/Explicit/context patches.
+4. **Category:** Pass 1 authoritative when approved exact match + empty gap note; retire `category_dominant_intent_conflict` hard block and semantic resolver overrides of valid AI category; remove `matchedTags` influence; keep existence/gap validation.
+5. **Tags:** retire from active AI path; keep `design.tags` temporarily inert; prefer remove `tags` from Pass 1 schema.
+6. **Playground:** same Pass 1/Pass 2 cores; manual Pass 2; non-persisting; Pass1/Pass2/Combined cost.
+7. **Authority:** WAA on effective post-merge profile; staff > preset > AI; narrow ordering fix only (not WS6).
+8. **visibleText:** fix canonical wiring; do not use as excuse to keep lexical evidence as final judge.
+
+**Consequences:** Larger enrichment reshape; DEV canary for cost/latency; Functions + Studio deploy when implementing; no production/Autonomous/WS6 in implementation slice without new gates.
+
+---
+
+### ADR-FP-180: Customer-upload finalize speed (sample→extract trim + concurrency)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-05 |
+| Status | accepted |
+| Related | Plan/Review `2026-09-05-customer-upload-processing-speed-*`; ADR-FP-123; r7 concurrent finalize=8 |
+
+**Context:** Multi-file Portal batches of transparent line art spent most wall clock in full-resolution PNG trim then a second PNG upscale, while the client ran **8** parallel finalize callables (r7 “speed” raise). Full-canvas trim also OOM'd 2 GiB. A first sample→extract path fixed memory but mis-cropped thin line art by clamping sharp’s negative `trimOffset*` to `0`.
+
+**Decision:**
+
+1. Keep `CUSTOMER_UPLOAD_MAX_CONCURRENT_FINALIZE` at **8** once extract-based trim is live (temporary drop to 2 during OOM remediation only).
+2. **Never** full-canvas `.trim()` to raw RGBA. Sample probe → **extract** crop → optional upscale in one pipeline; production PNG `compressionLevel: 3`. Scale trim offsets with `Math.abs` (sharp may report negative origin displacement); pad only when the probe was downsampled.
+3. Finalize / ZIP / retry memory **4GiB** as safety margin for remaining decode peaks.
+4. Do not weaken transparency or print-quality gates. ZIP in-invocation concurrency stays **3** (ADR-FP-123).
+
+**Consequences:** Parallel finalize of 8 is viable with extract-based trim; doodle crops stay correct; stuck-lease / `internal` failures from 2 GiB OOM should not recur for typical transparent batches. Requires Functions deploy for lease + Portal reload for UI concurrency.
+
+---
+
+### ADR-FP-179: Studio customer-upload intake uses import artwork-background detector
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-05 |
+| Status | accepted |
+| Related | Plan/Review `2026-09-05-studio-customer-upload-import-parity-artwork-background-auto-detect-*`; import `suggestDarkArtworkBackgroundFromPngBytes` |
+
+**Context:** Imports Auto already darkens conservative light line art via shared detector. Studio customer-upload intake reused Import preview controls but hard-coded `autoSuggestsDark=false`, so staff had to pick Dark manually. Portal customers do not need this UX.
+
+**Decision:**
+
+1. Run the **same** shared detector on customer-upload **production PNG** during finalize / ZIP finalize / retry success.
+2. Persist `suggestDarkArtworkBackground` (+ `code_auto` mat when not `staff_manual`). Fail soft → no dark.
+3. Studio wires `autoSuggestsDark` from the hint; Auto restores `code_auto` when hinted. Portal UI unchanged.
+4. Never infer halftone from dark mat. No historical bulk backfill in this slice (Retry processing covers key rows).
+
+**Consequences:** New/reprocessed uploads show correct Studio mat automatically; Functions + Studio deploys required for live effect.
+
+---
+
+### ADR-FP-181: Canonical AI title/description trust — no semantic rewrite (parity corrective)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-05 |
+| Status | accepted — source ready; **STOP before DEV deploy** |
+| Related | Playground vs Processing parity investigation; Plan/Review `2026-09-05-canonical-ai-catalog-copy-trust-corrective-*` |
+| Does not change | `catalog-enrich-v37` prompt text; smart-profile-v1; smart-profile-normalizer-v6; evidence/Model 2 |
+
+**Principle:** AI owns the semantic catalog copy. Application code validates response structure and integrity but does not rewrite the AI's title or description.
+
+**Decision:**
+
+1. Processing persists canonical model `title` / `description` after conservative structural validation only (`acceptCanonicalCatalogCopy`).
+2. Do not call `resolveLeanCatalogTitle`, `buildTitleFromReadableTextLines`, centralSubject append, description scrub/synthesize, or `resolveCatalogDescription` repair on the live Gemini enrichment persistence path.
+3. Structural invalidity fails closed (throw → enrichment failure / Needs Review). No substitute prose.
+4. Improving semantic quality belongs in prompt/model contract, not deterministic post-processing.
+
+**Consequences:** Playground and Processing display the same semantic copy class for valid model output. Historical lean-title helpers may remain for legacy/dev tests but are off the active path.
+
+---
+
+### ADR-FP-178: Catalog enrich v37 — restore categoryGapNote true-gap semantics (TD-034)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-05 |
+| Status | accepted — source ready; **STOP before DEV deploy** |
+| Related | Plan/Review `2026-09-05-v36-false-category-gap-semantics-corrective-*`; ADR-FP-177 |
+| Supersedes (prompt default) | Live default moves `catalog-enrich-v36` → `catalog-enrich-v37` after DEV deploy |
+
+**Context:** After v36 DEV deploy, cucumber `Y2IQuCgAPgnqrBIeJuap` correctly chose **Funny & Sarcastic** but hard-blocked on `category_gap_suggested` because the model filled `categoryGapNote` with category *rationale* (secondary food/pin-up). v36 omitted the prior NL definition of the field. Automation correctly hard-blocks non-empty gap notes; the signal was wrong.
+
+**Decision:**
+
+1. Ship **`catalog-enrich-v37`** = visual-first baseline + one general sentence restoring gap/alternatives semantics (no fixture examples; do not rebuild v35 rulebook).
+2. Keep `category_gap_suggested` **hard**. Do not soften, verifier-clear, or special-case categories.
+3. No resolver / schema / normalizer / automation-decision / Option B / tag changes for this defect.
+4. Evidence truncation at 240 remains intentional; not fixed this pass (false gaps should emit `""`).
+
+**Consequences:** Stock v36 Settings auto-upgrade to v37; genuine custom prompts preserved. True taxonomy gaps still Needs Review.
+
+---
+
+### ADR-FP-177: Catalog enrich v36 — visual-first default + Playground/Processing parity (TD-034)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-05 |
+| Status | accepted — **source ready; DEV deploy NOT authorized this pass** |
+| Related | Plan/Review `2026-09-05-td034-visual-first-catalog-description-and-structured-profile-consistency-*`; cucumber FAIL on v35; ADR-FP-175; ADR-FP-176 withdrawn |
+| Supersedes (prompt default) | Live default moves `catalog-enrich-v35` → `catalog-enrich-v36` after DEV deploy |
+| Does not supersede | normalizer v6, smart-profile-v1, evidence corpus, matcher, hard blockers, Model 2, Tag Rerank |
+
+**Context**
+
+Owner Playground (typed short visual-first prompt) outperformed Processing. Diagnosis: `promptVersion` is a **deployed code constant** (not prompt-text hash); Playground uses **request-body** text; Processing uses **persisted Settings**; Suggested Tags come from primary→resolve→optional Tag Rerank (`aiSuggestions.tags`). `tags: []` does **not** retire Tag Rerank.
+
+**Decision**
+
+1. Ship **`catalog-enrich-v36`** as code-owned default = owner-approved short visual-first prompt (no cucumber fixtures; no `{{excluded_tags}}` line).
+2. Required Settings placeholder = **`{{approved_categories}}` only**; `{{excluded_tags}}` optional; post-parse exclusions remain.
+3. Stamp `promptVersion` from `CATALOG_ENRICHMENT_PROMPT_VERSION` (requires Functions deploy to change label).
+4. Playground + Processing share `normalizeSimpleCatalogEnrichment` + canonical projector (strip unknown keys including AI `prompt`).
+5. Do **not** retire Tag Rerank / Suggested Tags in this pass.
+6. Keep **`smart-profile-v1`** / **`smart-profile-normalizer-v6`**; no Option B; no evidence/matcher/blocker/Model 2 changes.
+
+**Consequences**
+
+- Until DEV Function deploy, live Processing continues to stamp **v35**.
+- After deploy, stock Settings previous-defaults auto-upgrade to v36; genuine customs preserved.
+- Studio rebuild not required for prompt/playground Function changes.
+- WS6 blocked; Phase 2 registry deferred; production not authorized.
+
+---
+
+### ADR-FP-176: TD-034 Option B — prune unsupported AI-only subjects/objects before automation decision
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-05 |
+| Status | **WITHDRAWN BEFORE DEV DEPLOY** |
+| Related | Amendment Plan/Review/IR `2026-09-05-td034-post-v35-deterministic-structured-evidence-corrective-*`; cucumber FAIL on v35 |
+| Superseded by (direction) | Visual-first catalog description corrective (Plan `2026-09-05-td034-visual-first-catalog-description-and-structured-profile-consistency-plan.md`) |
+
+**Context**
+
+`catalog-enrich-v35` failed cucumber owner QA. Owner initially selected OPTION B (omit unsupported AI-only subjects/objects before automation decision). Source was implemented and Implementation-Reviewed, but **never deployed, committed, or pushed**.
+
+**Withdrawal (2026-09-05)**
+
+Owner withdrew Option B after Playground evidence showed a shorter visual-first prompt produced the desired cucumber result (`Woman` + `Cucumber` naturally supported in title/description/centralSubject). Preferred outcome is **keep accurate structured metadata via coherent visual description**, not delete `Woman` to clear the blocker.
+
+Option B source was **reverted** from the working tree. Historical Plan/Review/IR/ADR remain for audit. Option B may be reconsidered later only as a **last-resort safety net** after visual-first QA.
+
+**Original decision (historical; not live)**
+
+1. Before `computeCatalogAutomationDecision`, omit AI-owned subjects/objects failing `findStructuredEvidenceGaps`.
+2. Do not soften blocker hardness for survivors; do not invent evidence; staff/import never pruned.
+3. Diagnostics via `logPipelineEvent("smart_profile.ai_structured_token_pruned", …)`.
+
+**Consequences of withdrawal**
+
+- DEV runtime remains `catalog-enrich-v35` + normalizer v6 + profile v1 until a new prompt version is approved and deployed.
+- No prune helper in source.
+- WS6 remains blocked; Phase 2 registry remains deferred.
+
+---
+
+### ADR-FP-175: Catalog enrich v35 — structured evidence self-consistency (TD-034)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-05 |
+| Status | accepted — source; DEV deploy not yet authorized |
+| Related | Plan/Review `2026-09-05-smart-profile-evidence-friction-runtime-metadata-and-model-evaluation-*`; Luna Phase 1 Signoff; TD-034 |
+| Supersedes (prompt) | Live default moves `catalog-enrich-v34` → `catalog-enrich-v35` |
+
+**Context**
+
+TD-034 false/avoidable `structured_evidence_gap:*` hard blockers occur when the model lists meaningful subjects/objects without naming them in title/description/centralSubject. Luna Phase 1 three-model benchmark showed model switch alone does not close the friction. Phase 2 model registry deferred to next version.
+
+**Decision**
+
+1. Ship **catalog-enrich-v35** with an explicit structured evidence self-consistency contract: meaningful `subjects[]` / `objects[]` tokens must appear in natural wording in title, description, or centralSubject; searchConcepts alone is insufficient; omit minor props rather than list without support.
+2. Preserve ADR-FP-160 anti-OCR / concise catalog copy; no keyword stuffing; no OCR dumps.
+3. **Do not** change normalizer (v6), schema (v1), evidence corpus, matcher, hard-blocker hardness, or Model 2.
+4. **Do not** add searchConcepts to the evidence corpus.
+5. Metadata footer UI already satisfies Profile + Normalizer (Luna follow-up) — no UI in this corrective.
+6. Phase 2 dynamic model registry remains **next-version only**.
+
+**Consequences**
+
+- Saved Studio Settings prior defaults (including v34 text) auto-upgrade via existing previous-default resolver.
+- DEV Functions that stamp/run enrichment must redeploy before live DEV uses v35.
+- Unsupported structured claims still Needs Review; hard blockers still cannot Ready.
+
+---
+
+### ADR-FP-174: Dual-provider AI enrichment — restore OpenAI `gpt-5.6-luna` (Phase 1)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-05 |
+| Status | accepted — source Phase 1; DEV deploy separately authorized |
+| Related | Plan `2026-09-05-restore-openai-gpt-5-6-luna-ai-enrichment-plan.md`; Review `2026-09-05-restore-openai-gpt-5-6-luna-ai-enrichment-review.md`; ADR-FP-040 |
+| Amends | ADR-FP-040 (Gemini-only) — dual-provider Phase 1; Gemini remains system fallback |
+
+**Context**
+
+ADR-FP-040 removed OpenAI. Owner authorized additive restoration of `gpt-5.6-luna` for catalog enrichment quality benchmarking while keeping Gemini models selectable and `gemini-2.5-flash-lite` as system fallback.
+
+**Decision**
+
+1. Allowlist: `gemini-2.5-flash-lite`, `gemini-3.1-flash-lite`, `gpt-5.6-luna`.
+2. Sole persisted global default: `settings/aiEnrichment.visionModelId` (no per-model `isDefault`, no provider picker).
+3. Explicit code-side `modelId → provider` map (`google` | `openai`); never infer from name prefix.
+4. System fallback: missing/invalid configured model → `gemini-2.5-flash-lite` without silently rewriting Firestore.
+5. Luna pins `reasoning_effort: "low"`; never send that field to Gemini.
+6. `OPENAI_API_KEY` bound only on Cloud Functions; Studio stores model id only; OpenAI path fails closed without key.
+7. Run override (`visionModelIdOverride` / `aiRequestedVisionModelId`) is run-scoped and must not mutate Settings.
+8. Secondary AI calls (tag rerank, suggestion author, playground) follow the selected model/provider.
+9. Pricing metadata includes Luna cached-input rate for estimates only.
+10. Phase 2 Firestore dynamic model registry remains deferred.
+
+**Consequences**
+
+- Downstream Smart Profile / evidence / prompt versions unchanged (`catalog-enrich-v34`, normalizer v6, smart-profile-v1).
+- Existing installs are not auto-switched to Luna.
+
+---
+
+### ADR-FP-173: Explicit Content reprocess authority and manual automation lock
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-05 |
+| Status | accepted — owner decisions + Formal Review approved_with_changes; implement this pass |
+| Related | Plan `2026-09-05-explicit-content-reprocess-authority-corrective-plan.md`; Review `2026-09-05-explicit-content-reprocess-authority-corrective-review.md`; ADR-FP-172 |
+| Partially supersedes | ADR-FP-172 **staff permanent suppress via `explicitContentSource`** only |
+
+**Context**
+
+ADR-FP-172 treated `explicitContentSource=staff` (and legacy Explicit fields) as permanent protection against automatic Explicit writes. Owner QA C showed staff temporarily clearing Explicit then reprocessing — product desire is that reprocess may re-apply positive detection unless staff deliberately locks the design.
+
+**Decision**
+
+1. `explicitContentSource: "staff" | "automation"` is **last-writer provenance only** — it does not block future automatic Explicit classification.
+2. Permanent suppression requires deliberate per-design `explicitContentAutomationLocked: true` (absent/false = unlocked). Never inferred from toggle/terms edit/save/approve/reprocess.
+3. Positive configured-term match + unlocked + settings OK → may SET Explicit ON + terms + source automation (including after prior staff edits).
+4. Non-match → **no automated clearing** (unchanged).
+5. Unlocking does not immediately reclassify; later enrichment/reprocess may apply again.
+6. Settings-fail skip Explicit auto-write unchanged. Explicit remains non-blocking. Cucumber evidence blockers unchanged (TD-034 family).
+
+**Consequences**
+
+- Studio AI Review + Design Library: “Lock Explicit setting” control; helper copy explains reprocess vs lock.
+- Rules: additive allowlist for `explicitContentAutomationLocked`.
+- Replacement QA C after DEV deploy.
+
+#### 2026-09-07 precision-first matcher amendment
+
+The DEV `1559` / `1565` false-positive investigation and owner amendment narrowed the automatic Explicit matcher contract. The earlier generic compact/leetspeak/one-letter-hole behavior is not retained for automatic classification. Automatic matches now remain limited to exact case-insensitive whole-token/whole-phrase configured vocabulary and the explicitly enumerated B-light alias families, with whole-boundary behavior. Literal owner-configured numeric terms remain valid. This amendment preserves the historical rationale and does not change human authority, settings ownership, fail-closed behavior, lifecycle authority, category policy, Pass 1 architecture, parked Pass 2, tags, or Autonomous state.
+
+#### 2026-09-08 stale automation reconciliation amendment
+
+The precision-first matcher can correctly return no match after a previous automation run falsely classified a design. Automatic reprocess now reconciles that result by deleting `isExplicitContent`, `censoredTerms`, and `explicitContentSource` only when the prior source is explicitly `automation`, settings loaded successfully, and `explicitContentAutomationLocked` is not true. Locked designs remain untouched; staff-source and unknown-source legacy records are not guessed as automation-owned. This narrowly supersedes ADR-FP-173 / ADR-FP-172's prior blanket “non-match → no automated clearing” statement while preserving deliberate human lock authority and fail-closed behavior.
+
+---
+
+### ADR-FP-172: Explicit Content as standard enrichment metadata
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-05 |
+| Status | accepted — source + DEV deploy for enrichment timing; **staff permanent suppress via source partially superseded by ADR-FP-173** |
+| Related | Plan `2026-09-05-explicit-content-standard-enrichment-classification-plan.md`; Review `2026-09-05-explicit-content-standard-enrichment-classification-review.md` |
+| Partially supersedes | ADR-FP-169 / ADR-FP-170 **write timing / shadow root mutation only** (historical ADRs retained) |
+
+**Context**
+
+ADR-FP-169 gated root Explicit writes on Autonomous Ready (`publishReady` / `shouldPublishReady`). ADR-FP-170 added shadow preview only. Owner decided Explicit classification is standard catalog enrichment metadata (like title / Smart Profile), independent of Autonomous lifecycle. No automated Explicit clearing.
+
+**Decision**
+
+1. When enrichment detects owner-configured Explicit terms in catalog artwork and Settings load succeeds and no protected staff Explicit authority exists: persist `isExplicitContent=true`, masker-effective `censoredTerms`, and `explicitContentSource: "automation"` in the same `markAiSuccess` update — **independent of** `catalogWorkflowMode`, `catalogAutonomousLiveEnabled`, `publishReady`, Ready vs Needs Review, and unrelated hard blockers.
+2. Explicit terminology alone is **non-blocking**: it does not create a Needs Review hard blocker, force Ready, or bypass other blockers.
+3. Staff vs automation authority uses additive `explicitContentSource: "staff" | "automation"`. Legacy documents with Explicit fields but no source → treat as staff. Staff edits via Studio `designService.updateDesign` stamp `"staff"`. Staff authority wins until another staff edit.
+4. Automation may refresh automation-authored Explicit fields when a current match exists. **No automated clearing** when a later enrichment has no match.
+5. Settings load failure → skip Explicit root auto-write; preserve Autonomous fail-closed `explicit_automation_settings_unavailable`; no silent fallback vocabulary persistence.
+6. Preview/provenance may report `detected` / `applied` / `suppressedDueToHumanAuthority`; applied writes must not be described as hypothetical-only.
+7. Portal consumer unchanged (`isExplicitContent` + `censoredTerms`). Customer Print Requests unchanged. No second AI call. `catalog-enrich-v34` / `smart-profile-normalizer-v6` / `smart-profile-v1` unchanged. No tag/reranker dependency. No Rules/index/migration expected.
+
+**Consequences**
+
+- Shadow Needs Review designs may carry real Explicit root metadata.
+- Studio AI Review wording reflects detected/applied classification, not Ready-only hypotheticals.
+- WS6 remains blocked until DEV deploy + owner QA + corrective Signoff.
+
+---
+
+### ADR-FP-171: WS5 Autonomous DEV canary — Model 2 safety-invariant expectation
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-05 |
+| Status | accepted — owner decision + Formal Review approved 2026-09-05 |
+| Related | Plan amendment `2026-09-05-smart-catalog-intelligence-completion-ws5-autonomous-dev-canary-model-2-amendment-plan.md`; Review `…-model-2-amendment-review.md`; Diagnostic `2026-09-05-ws5-autonomous-canary-03cb-unexpected-blocker-diagnostic.md` |
+
+**Context**
+
+WS5 preflight used deterministic replay of persisted enrichment to predict AUTO / Needs Review classes. Fresh Gemini reruns are probabilistic and may introduce new contract-valid hard blockers (e.g. `03cb` → `structured_evidence_gap:objects:hat`) or change blocker sets while preserving class (e.g. `nff6`). Exact class reproduction as the primary pass/fail criterion caused a correct Model 1 procedural STOP that was not an Autonomous safety failure.
+
+**Decision**
+
+1. Adopt **MODEL 2 — SAFETY-INVARIANT** as the going-forward WS5 canary acceptance contract.
+2. Ready only when policy-clear (`hardBlockers.length === 0`) and existing Autonomous/publication/audit requirements pass; Ready with any hard blocker is CRITICAL FAIL.
+3. A new **valid** hard blocker routing Needs Review is a conservative PASS, even if persisted preflight predicted AUTO.
+4. Exact preflight class and exact blocker-set reproduction are **not** required.
+5. Unexplained zero-blocker Needs Review, and invalid/false blocker application, remain STOP/investigate — Model 2 is not “any Needs Review passes.”
+6. Confidence and verifier still cannot bypass hard blockers.
+7. Persisted replay remains useful for diversity/estimation/decision-code checks, but **persisted deterministic replay ≠ fresh probabilistic enrichment**.
+8. Historical Model 1 stop documentation is retained; do not rewrite history.
+9. No source, deploy, prompt v34, normalizer v6, or schema v1 changes accompany this decision.
+
+**Consequences**
+
+- Remaining unrun WS5 rows may continue only under Model 2 after separate owner authorization.
+- Visual-object lexical evidence friction (TD-034) is deferred quality — does not block WS5 and does not authorize loosening blockers in this workstream.
+
+---
+
+### ADR-FP-170: Explicit Content automation shadow preview (WS5 observability)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-05 |
+| Status | accepted — source + DEV deploy + **OWNER SHADOW QA PASS** 2026-09-05; **partially superseded by ADR-FP-172** for write timing / shadow root mutation |
+| Related | ADR-FP-169; ADR-FP-172; Plan `2026-09-05-ws5-explicit-content-shadow-preview-observability-plan.md` |
+
+**Context**
+
+ADR-FP-169 writes Explicit metadata only on Autonomous Ready (`shouldPublishReady`). In shadow, owners could not see Would Mark Explicit / proposed `censoredTerms` before enabling Autonomous.
+
+**Decision**
+
+1. Run the **same** `classifyExplicitContentAutomation` whenever automation decision + artwork evidence exist (not only when `publishReady`).
+2. Persist preview under `smartProfile.provenance.explicitAutomationPreview` (additive; no `smart-profile-v1` bump).
+3. ~~Shadow must not mutate root `isExplicitContent` / `censoredTerms`, Ready, or Algolia Ready publication.~~ **Superseded by ADR-FP-172:** shadow may mutate Explicit root metadata when allowed; Ready / Algolia Ready publication remain lifecycle-gated.
+4. Would Auto Approve is derived from existing provenance (`automationDecision` / `shadow_would_auto_approve`).
+5. Settings fail-closed uses `settingsReadFailed && wouldAutoApprove` so shadow matches Autonomous.
+6. Human/staff authority suppresses applied write with `suppressedDueToHumanAuthority`; hard blockers no longer gate Explicit root write (ADR-FP-172).
+
+**Consequences**
+
+- Historical WS5 observability Signoff remains valid for its then-current contract.
+- Studio labels updated under ADR-FP-172 (detected / auto-classified vs hypothetical Would Mark).
+- Owner vocabulary count 43 is authoritative (not a defaults drift).
+
+---
+
+### ADR-FP-169: Automatic Explicit Content classification (Autonomous Ready)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-05 |
+| Status | accepted — **source signed off** 2026-09-05 (`approved_with_notes`); **partially superseded by ADR-FP-172** for write timing / shadow root mutation |
+| Related | Pre-WS5 corrective; ADR-FP-172; Plan `2026-09-04-catalog-profanity-autonomous-safety-gate-plan.md`; Review `2026-09-05-catalog-explicit-content-automation-review.md`; Signoff `2026-09-05-catalog-explicit-content-automation-signoff.md` |
+| Supersedes (partial) | ADR-FP-131 item 2 “human classification only” / “AI never sets Explicit” |
+
+**Context**
+
+Autonomous catalog approval needed a deterministic way to mark designs with material artwork profanity as Explicit for Portal masking — without treating profanity as a Needs Review hard blocker, and without a second AI/moderation call. Per-design `censoredTerms` cannot supply the vocabulary at enrichment time.
+
+**Decision**
+
+1. Global vocabulary: `settings/aiEnrichment.explicitContentAutomationTerms` (`string[]`), owner/admin via `updateAiEnrichmentSettings`. Absent → code defaults; intentional `[]` → no auto classification (no hidden fallback).
+2. Deterministic B-light matcher over pre-sanitize artwork evidence (`visibleText` / `readableTextLines`). Title/description alone never set Explicit.
+3. ~~When `shouldPublishReady` and artwork hit and no protected human Explicit authority: same Ready `markAiSuccess` write sets `isExplicitContent=true` and masker-effective `censoredTerms`.~~ **Superseded by ADR-FP-172:** Explicit root write is standard enrichment persistence (not Ready-gated); staff vs automation distinguished by `explicitContentSource`.
+4. Settings load failure while otherwise auto-approving → fail closed to Needs Review (`explicit_automation_settings_unavailable`). Not a profanity hard blocker. ADR-FP-172 also skips Explicit auto-write on settings failure.
+5. Staff may still manually set/edit Explicit; staff-authored state (including legacy fields without source) is not overwritten by automation. **No automated clearing** when a later enrichment has no match (ADR-FP-172).
+
+**Consequences**
+
+- Studio Settings “Explicit Content Automation” UI; AI Review / Design copy updated under ADR-FP-172.
+- Portal masking unchanged (consumes existing design fields).
+- Prompt/normalizer/schema versions unchanged (`catalog-enrich-v34` / v6 / v1).
+
+---
+
+### ADR-FP-168: No-text catalog title specificity (subjects/objects enrich)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-04 |
+| Status | accepted (source; **DEV deploy pending**) |
+| Related | ADR-FP-113; ADR-FP-145; plan `2026-09-04-visual-catalog-title-specificity-plan.md` |
+
+**Context**
+
+Visual/no-text designs sometimes finalized as bare subjects (`Sloth`, `Dog`) while Smart Profile already held richer subjects/objects (poodle + glasses; sloth + tree). Lean resolver trusted short non-generic model titles. Highland-class long descriptive titles are owner-accepted and must not be rejected for length.
+
+**Decision**
+
+1. Keep prompt **catalog-enrich-v34**, normalizer **v6**, schema **smart-profile-v1**.
+2. After lean title resolution, when meaningful readable text is absent and the title has ≤2 words, deterministically enrich from Smart Profile **subjects** / **objects** only (prefer more specific subject; append up to two distinguishing objects with natural `With` / `And` phrasing).
+3. Do not use themes/styles/interests/searchConcepts/matchedTags for title enrichment.
+4. Do not rewrite titles already longer than 2 words (preserves Highland).
+5. No second AI call; no new Autonomous hard blocker in this pass (repair-before-decision is the primary fix).
+
+**Consequences**
+
+- Redeploy enrichment Functions before owner QA.
+- Unrepaired under-specific edge cases (no richer evidence) still lack a dedicated title-specificity Autonomous blocker — revisit before WS5.
+
+---
+
+### ADR-FP-167: Exact-match structured-evidence challenge + styles wiring (Cute & Whimsical)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-04 |
+| Status | accepted (source; **DEV deploy pending**) |
+| Related | ADR-FP-166; ADR-FP-165; ADR-FP-161; plan `2026-09-04-cute-whimsical-dominant-intent-and-tag-independence-plan.md` |
+
+**Context**
+
+After owner added **Cute & Whimsical** (taxonomy materialization revision 19) with reciprocal Animals wording, Highland cow `swcJl3RvjTFsf5hp04Ze` still finalized as **Animals** because exact Gemini match short-circuited and Smart Profile `styles` (cute/whimsical) were not consumed by the resolver. Fallback without styles also stayed Animals. Music-vs-Pop (ADR-FP-166) remains in place.
+
+**Decision**
+
+1. Keep prompt **catalog-enrich-v34**, normalizer **v6**, schema **smart-profile-v1** (no version bump).
+2. Wire Smart Profile **`styles`** into the durable resolver signal path (generic dimension; no schema/prompt/normalizer change).
+3. Add a **generalized** exact-match structured-evidence challenge (not an Animals→Cute pair table): after family-specific overrides, if exact is not a protected domain category, reuse name-primary scoring on durable evidence (excluding `matchedTags`); override only when a challenger wins by a material margin (≥ one priority boost) with ≥2 supporting Smart Profile/copy dimensions.
+4. Add **Cute & Whimsical** priority family; match category by **name** only (Animals reciprocal descriptions mention cute/whimsical).
+5. Protect Faith / Inspirational / Music / Occupations / School / Holiday / Family / Sports / Cannabis / Astrology / Funny / Patriotic / Awareness / Western & Country exact matches from being overturned by the challenge.
+6. Do not require `matchedTags` for the challenge (tag-retirement compatible). No second AI call.
+
+**Consequences**
+
+- Redeploy enrichment Functions bundling the resolver before owner QA.
+- Primary acceptance: Highland → Cute & Whimsical with and without tags (source + live taxonomy replay verified pre-deploy).
+
+---
+
+### ADR-FP-166: Music & Bands vs Pop Culture dominant-intent (resolver-only)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-04 |
+| Status | accepted (source; DEV deploy pending) |
+| Related | ADR-FP-161; ADR-FP-163; ADR-FP-165; plan `2026-09-04-music-vs-pop-dominant-intent-corrective-plan.md` |
+
+**Context**
+
+Exact Gemini `Pop Culture & Characters` was trusted even when Smart Profile evidence (themes/interests/searchConcepts/professionsGroups) strongly indicated Music & Bands (e.g. Judas Priest Painkiller). Fallback scoring already preferred Music; exact-match short-circuit was the defect. Live Music/Pop taxonomy descriptions were already reciprocal.
+
+**Decision**
+
+1. Keep prompt **catalog-enrich-v34**, normalizer **v6**, schema **smart-profile-v1** (no v35).
+2. Add Pop→Music dominant-intent override: exact Pop only + multi-dimension durable music evidence + music identity cue; blocked by faith/life-role dominance or strong non-music media/franchise signals.
+3. Wire **professionsGroups** into the generic resolver signal bag (no schema change).
+4. Music override evidence **must not require matchedTags** (tag-retirement compatible).
+5. Select Music categories by **name tokens** only (Pop descriptions mention Music & Bands and must not match as Music).
+
+**Consequences**
+
+- Redeploy enrichment Functions bundling the resolver before owner QA.
+- Faith exact and faith-dominant Pop cases are protected; no Faith→Music override.
+
+---
+
+### ADR-FP-165: Category descriptions in primary enrichment prompt (catalog-enrich-v34)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-04 |
+| Status | **accepted — implemented (DEV deploy pending)** |
+| Plan | `docs/workflow/plans/2026-09-04-category-descriptions-in-ai-classification-context-plan.md` |
+| Review | `docs/workflow/reviews/2026-09-04-category-descriptions-in-ai-classification-context-review.md` |
+
+**Context**
+
+ADR-FP-041 injected approved **category names only** (~+0.8% cost) and kept descriptions server-side. Owner-refined taxonomy descriptions now encode buyer-intent distinctions (Faith vs Inspirational, Music vs Pop, etc.) that the model cannot read from names alone.
+
+**Decision**
+
+1. Default enrichment prompt **catalog-enrich-v34** requires `{{approved_categories}}`, which injects `- {name} — {description}` from live taxonomy materialization (whitespace-collapsed via existing `formatCategoryContext`). No hardcoded category text; no auto-summaries.
+2. `{{approved_category_names}}` remains implemented for legacy/debug templates but is **not** required for v34.
+3. Owner **accepted** the measured cost envelope (~+4,240 est. input tokens / ~+$0.000424 per design / ~+80% primary vision-call cost vs live 3385-token baseline). Full owner descriptions must not be shortened to save cost.
+4. Previous shipped defaults including **v33** auto-upgrade to v34. Genuine custom prompts that include required placeholders are preserved. Custom prompts missing `{{approved_categories}}` are incompatible: resolve falls back to shipped default (does not inject into the custom string); Settings save rejects.
+5. Server `catalogThemeCategoryResolver` retained; normalizer stays **v6**; schema stays **smart-profile-v1**. No tag taxonomy injection.
+6. Supersedes ADR-FP-041’s “names-only in default prompt” for v34+; ADR-FP-041’s ban on full tag injection remains.
+
+**Consequences**
+
+- Higher per-design vision input cost in exchange for model access to owner buyer-intent definitions.
+- Ready Catalog reprocess snapshot target moves to `catalog-enrich-v34`.
+- DEV Functions deploy still required before live enrichment uses v34.
+
+---
+
+### ADR-FP-164: Owner Design Library “Reprocess with AI” (Ready → AI Review)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-04 |
+| Status | **accepted — implemented (DEV deploy pending)** |
+| Plan | `docs/workflow/plans/2026-09-04-design-library-ai-processing-reprocess-plan.md` |
+| Review | `docs/workflow/reviews/2026-09-04-design-library-ai-processing-reprocess-review.md` |
+
+**Context**
+
+Ready Catalog bulk reconciliation preserves Ready. Owners need a single-design path to intentionally demote Ready → AI Processing → Needs Review after taxonomy/enrichment changes.
+
+**Decision**
+
+1. Owner-only callable `reprocessReadyDesignWithAi` demotes `ready`+`approved` → `imported`+`pending`, retains root title/description/categoryId, does **not** wipe `smartProfile`.
+2. Runs queue enrichment; staff+preset merge via `mergeReadyBackfillSmartProfile` when prior profile exists.
+3. Approve may apply reviewed category/title/description; **`readyAt` is restamped on every non-ready → ready transition** (including re-approval after reprocess) so Design Library / Portal show the design as newest (Amendment 3 “most recent Ready transition”).
+4. Audit: `lastOwnerAiReprocessAt` / `lastOwnerAiReprocessBy`.
+5. Studio Design Details: **Reprocess with AI** + confirm modal (no typed phrase).
+
+**Amendment (2026-09-08):** Owner QA — do **not** preserve the prior `readyAt` on re-approval after reprocess. Catalog chronology should treat re-entry to Ready like a new Ready transition (newest-first), not restore the pre-reprocess slot.
+
+**Consequences**
+
+- Design leaves Design Library / Algolia while not Ready; print-request line items retained.
+- Re-approved reprocessed designs surface at the front of Ready browse / New This Week windows keyed on `readyAt`.
+- WS5 Autonomous still separate.
+
+---
+
+### ADR-FP-163: Plausible category preference is not a Needs Review hard blocker
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-04 |
+| Status | **accepted** |
+| Related | ADR-FP-161, ADR-FP-162; Catalog Processing Mode / automation decision |
+| Owner | Owner decision closing category/humor corrective with notes |
+
+**Context**
+
+Smart Profiling aims to automate as much catalog processing as reasonably and safely possible. F-CAW-F-class designs may resolve to Animals (defensible) while Funny & Sarcastic is owner-preferred. Perfect category ranking is not required when discovery metadata remains strong.
+
+**Decision**
+
+1. A **plausible but suboptimal** category choice alone must **not** force Needs Review.
+2. Needs Review remains for material uncertainty: unresolved/incompatible category, material category conflict, missing required enrichment, structured evidence that materially undermines confidence, safety/content issues, and other existing hard quality blockers.
+3. Do **not** add a broad “when uncertain → Needs Review” rule; do **not** loosen unrelated quality/safety gates.
+4. Category/humor corrective closed **approved_with_notes**; no further F-CAW-F/caw hardcodes or threshold chasing for this edge case.
+
+**Consequences**
+
+- WS4 Ready reconciliation may proceed to inventory/Preview under v33/v6.
+- Autonomous remains OFF until a separate owner gate.
+
+---
+
+### ADR-FP-162: Humor dominant-intent override reliability (joke-primary dual-gate)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-04 |
+| Status | **accepted — DEV deployed; owner accepted known limitation (2026-09-04)** |
+| Related | ADR-FP-161 (v33 category calibration; Animals-gated humor insufficient) |
+| Plan | `docs/workflow/plans/2026-09-03-humor-dominant-intent-override-reliability-plan.md` |
+| Review | `docs/workflow/reviews/2026-09-03-humor-dominant-intent-override-reliability-review.md` |
+| Implementation Review | `docs/workflow/reviews/2026-09-03-humor-dominant-intent-override-reliability-implementation-review.md` |
+
+**Context**
+
+Owner canary FAIL on #1 (F-CAW-F): Animals ~9/10. Root causes: humor override Animals-gated; resolver ignored enrichment-parse themes/searchConcepts; lexical threshold depended on stochastic title/desc/tags; `F-CAW-F` is not a humor token.
+
+**Decision**
+
+1. Expand category resolve signal bag with enrichment-parse **themes, subjects, objects, interests, searchConcepts** (wired in `aiEnrichmentCandidateCore` before resolve). Prompt stays **catalog-enrich-v33** (resolver-first; no prompt text change).
+2. Joke-primary dual-gate: `(humorLexicalHits >= 2 ∧ jokeStructureEvidence) ∨ (humorLexicalHits >= 3)`. May override **any non-humor** exact match. visibleText slogan alone is never enough. Life-role and cannabis-before-humor preserved.
+3. Normalizer **v6**, schema **v1** unchanged. No tag retirement.
+4. **Amendment (2026-09-04):** Owner accepted known F-CAW-F limitation (**approved_with_notes**); WS4 inventory/Preview unblocked. See ADR-FP-163.
+
+**Consequences**
+
+- CASE B incidental humor stays Animals.
+- Occasional plausible non-humor category on joke-primary art is accepted when discovery metadata is strong.
+
+---
+
+### ADR-FP-161: Category dominant-intent calibration (prompt v33 + resolver second-pass)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-03 |
+| Status | **accepted — DEV live v33; closed with notes via ADR-FP-162/163 (2026-09-04)** |
+| Related | ADR-FP-160 (v32 text quality preserved); ADR-FP-145 (subjects / floral conflict preserved) |
+| Plan | `docs/workflow/plans/2026-09-03-category-dominant-intent-calibration-plan.md` |
+| Review | `docs/workflow/reviews/2026-09-03-category-dominant-intent-calibration-review.md` |
+| Implementation Review | `docs/workflow/reviews/2026-09-03-category-dominant-intent-calibration-implementation-review.md` |
+
+**Context**
+
+WS3 Shadow sample PASS WITH NOTES: enrichment quality was generally good, but category primary selection sometimes preferred literal subject or a weak exact model pick over commercial intent (humor>animals, cannabis>humor, astrology>pop). Exact `resolveThemeCategory` match short-circuited competing signals. Process-local AI taxonomy cache (15m TTL) did not peek materialization revision within TTL, so newly curated categories could be invisible on warm workers.
+
+**Decision**
+
+1. Prompt **`catalog-enrich-v33`**: strengthen dominant commercial-intent category examples; keep lean **category-name** injection (no description dump). Previous default v32 auto-upgrades via existing Settings previous-default recognition; custom owner prompts remain custom. Raise `AI_ENRICHMENT_PROMPT_TEMPLATE_MAX_LENGTH` to **12000** so the shipped default remains saveable in Studio Settings (v33 exceeded the prior 10000 ceiling).
+2. Resolver: exact match remains strong default; **thresholded second-pass** may override for general families (humor over Animals; cannabis over humor; astrology over generic Pop Culture when franchise signals are weak). Family/Faith/Teacher goldens preserved; franchise+family wording keeps Pop Culture (#13).
+3. Taxonomy cache: within TTL, **meta-only revision peek** (`readTaxonomyMaterializationRevision`) — same revision → hit; new revision → reload corpus. No per-design full taxonomy reread on hit. No fleet-wide sync claim.
+4. Normalizer stays **`smart-profile-normalizer-v6`**. Schema stays **`smart-profile-v1`**. No tag retirement. No WS4 / Autonomous in this corrective.
+
+**Consequences**
+
+- Gate A live #9 reprocess + four-design canary require DEV Functions deploy of this source.
+- Historical profiles retain prior promptVersion provenance until re-enriched.
+- Production separately gated.
+
+---
+
+### ADR-FP-160: AI enrichment visible-text and catalog-copy quality
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-03 |
+| Status | **accepted — DEV signed off (2026-09-03)** |
+| Related | ADR-FP-145 (subjects; preserved); lean catalog enrichment title path |
+| Plan | `docs/workflow/plans/2026-09-03-ai-enrichment-visible-text-and-catalog-copy-quality-plan.md` |
+| Review | `docs/workflow/reviews/2026-09-03-ai-enrichment-visible-text-and-catalog-copy-quality-review.md` |
+| Signoff | `docs/workflow/reviews/2026-09-03-ai-enrichment-visible-text-and-catalog-copy-quality-signoff.md` |
+
+**Context**
+
+Live lean enrichment (`catalog-enrich-v31`) instructed Gemini to transcribe **all** readable text into `readableTextLines` and descriptions. Title resolution joined those lines and could **keep** dump-shaped model titles when they contained a recognized phrase. Smart Profile `visibleText` inherited that dump. Sheet-music / newspaper / book backgrounds produced OCR-like pollution while semantic identity was partly correct.
+
+**Decision**
+
+1. Prompt **`catalog-enrich-v32`**: distinguish primary/meaningful text, background/document text, and low-confidence OCR; do not bulk-transcribe documents/lyrics/notation; titles describe **what the design is**; descriptions summarize.
+2. Shared deterministic AI-only sanitizer `visibleTextQuality.ts` — extract short identity phrases from dumps; drop Class C noise; preserve false-positive slogans/dates/references.
+3. Title guard: `resolveLeanCatalogTitle` sanitizes lines and rejects OCR-dump titles even when they contain readable phrases.
+4. Description guard: strip dump sentences; synthesize only if nothing clean remains (never `join(" / ")` of noise).
+5. Normalizer **`smart-profile-normalizer-v6`**: AI merge/`normalizeDesignSmartProfile` sanitize `visibleText`. Staff `normalizeSmartProfileDimensions` unchanged.
+6. Schema remains **`smart-profile-v1`**. No `rawOcr` field. Autonomous **OFF**. No mass reprocess in this goal.
+
+**Consequences**
+
+- DEV Functions allowlist on `fresh-prints-dev`: `enqueueAiEnrichment` `00086-qet`, `onCatalogReprocessJobWritten` `00008-piw`, `startCatalogReprocessJob` `00007-viw`, `previewCatalogReprocessJob` `00007-hug`.
+- Historical pre-v32 profiles remain until targeted re-enrich / later Smart Profiling completion backfill.
+- Subject canonicalization (ADR-FP-145 / v31/v5) remains a hard regression gate — Owner canary confirmed preserved.
+- Production promotion separately gated. Autonomous remains **OFF**.
+
+---
+
+### ADR-FP-159: Customer-specific temporary Print Request + Show quota override
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-02 |
+| Status | **accepted — DEV signed off (2026-09-02)** |
+| Related | ADR-FP-102 (dual limits), ADR-FP-122 (multi-request accumulation), ADR-FP-071 (Continuable ownership) |
+| Plan | `docs/workflow/plans/2026-09-02-customer-specific-temporary-print-request-and-show-quota-override-plan.md` |
+| Review | `docs/workflow/reviews/2026-09-02-customer-specific-temporary-print-request-and-show-quota-override-review.md` |
+| Signoff | `docs/workflow/reviews/2026-09-02-customer-specific-temporary-print-request-and-show-quota-override-signoff.md` |
+
+**Context**
+
+Site-wide Portal limits live on `settings/printRequestLimits` (`maxQuantityPerPrintRequest`, `maxQuantityPerShowPerCustomer`). Owner needs temporary higher/different limits for one customer without changing globals.
+
+**Decision**
+
+1. Additive optional `customers/{id}.printRequestQuotaOverride` with independently nullable PR/Show integers (bounds 1–10000), optional `expiresAt`, audit fields.
+2. Shared `resolveEffectivePrintRequestLimits`: active override dimension ?? **current** global; expired = inactive without a scheduler (OPTION C).
+3. Owner-only mutation callable `updateCustomerPrintRequestQuotaOverride`; Rules allowlist + client-immutable; customer cannot write. Activity metadata must omit Firestore-illegal `undefined` values.
+4. All Portal PR/Show quota enforcement callables use effective limits. Studio staff / Show Move / DNP remain bypass.
+5. Studio management UI under **Users → Edit customer → Quota Override**. Default editing mode is **linked** (one Temporary quota writes both stored dimensions). **Set independently** preserves unequal/PR-only/Show-only. Compact Users-list **Quota Override** badge when clock-active. Linked Studio UX does **not** bind to global `linkPrintRequestAndCustomerShowLimits`.
+6. Audit via `customerActivityEvents`: `account.quota_override_set` / `account.quota_override_cleared`.
+7. Do not mutate existing requests/items/allocations on set/clear/expire; Cap A remains retired; physical show capacity unchanged.
+
+**Owner decisions (2026-09-02):** OD-1 OPTION C; OD-2 owner-only mutate; OD-3 Users badge yes; linked Studio UX default with independent stored dimensions preserved.
+
+**DEV status:** Rules + Functions allowlist (+ corrective callable redeploy) on `fresh-prints-dev`. Owner QA **PASS**. Production **NOT AUTHORIZED**.
+
+---
+
+### ADR-FP-158: Studio Editing lifecycle tab via `queueTab` mirror (+ Internal Printed newest-first)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-02 |
+| Status | **accepted — DEV signed off (2026-09-02)** |
+| Related | ADR-FP-052, ADR-FP-071, ADR-FP-051, Wave C queueTab |
+| Plan | `docs/workflow/plans/2026-09-02-studio-print-request-editing-tab-plan.md` |
+| Signoff | `docs/workflow/reviews/2026-09-02-studio-print-request-editing-tab-signoff.md` |
+
+**Context**
+
+Persisted `status: "editing"` already meant de-queued-for-revision, and Continuable/Portal guards already used `draft`/`editing`. Studio list tabs collapsed editing into Working because `derivePrintRequestListTab` returned `working` and `queueTab` mirrored that. Staff needed a dedicated Editing tab without a new field. Separately, Internal→Printed groups sorted by `scheduledStartAt` ASC (ID fallback when unscheduled), putting older Internal Gang Sheet #N above newer ones.
+
+**Decision**
+
+1. Extend `PrintRequestListTab` / `queueTab` with `"editing"` (no new Firestore field).
+2. Shared derive order: printed → printing → queued → **editing** → working.
+3. **Portal list tabs also expose Editing** (Working \| Editing \| Queued \| Printing \| Printed), using the same derive. ADR-FP-071 Continuable (`draft`\|`editing` one-at-a-time) is unchanged.
+4. Customer Studio tabs: Working \| Editing \| Queued \| Printing \| Printed. Internal: Working \| Editing \| Queued \| Printed.
+5. Rules allowlist `editing` on `queueTab` / staff-inbox optional tab fields. DEV reconcile via existing `backfillPrintRequestQueueTab`.
+6. Internal→Printed section order uses shared History comparator (`printFinishedAt` DESC → cycle DESC → id); other surfaces keep existing schedule sorts.
+
+**Amendment (2026-09-02):** Owner reversed the earlier “Portal folds Editing into Working” Decision 5; Portal now shows a dedicated Editing tab.
+
+**Amendment (2026-09-02, Portal tab strip):** Hide the Portal Editing tab when count is 0; when count &gt; 0, show Editing **before** Working. Membership still derives to Editing (not folded into Working).
+
+**Consequences**
+
+- Existing `status=editing` docs with `queueTab=working` need DEV backfill after Functions redeploy.
+- Production promotion later inventories Functions + Rules + Studio + Portal + shared (+ optional backfill); no new indexes.
+
+---
+
+### ADR-FP-157: Normal Show Queue MOVE (cancel + generic lineage)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-02 |
+| Status | accepted (implementing) |
+| Related | ADR-FP-156 (DNP requeue), ADR-FP-049, ADR-FP-071, ADR-FP-051 |
+| Plan | `docs/workflow/plans/2026-09-02-show-queue-move-and-combine-requests-plan.md` |
+
+**Context**
+
+Staff need to move queued Print Request allocations between upcoming Whatnot shows (wrong show, consolidate queues) without Did Not Print recovery semantics. Existing Studio transfer **deleted** source rows; DNP requeue cancels with `requeuedFromAllocationId`. Those must stay distinct.
+
+**Decision**
+
+1. Normal MOVE (individual + whole-show) uses trusted Functions `previewShowQueueMove` / `applyShowQueueMove`.
+2. Movable allocation statuses: `pending` \| `queued` only. Non-movable in scope → fail closed (all-or-nothing for whole-show).
+3. Source rows: **cancel** (retain history). Destination: **new** allocation docs. Lineage: `movedFromAllocationId` (never `requeuedFromAllocationId`).
+4. Combine model: multi-doc sum of non-canceled quantities (no single-doc merge).
+5. Surfaces V1: Whatnot → Whatnot only (no Internal Gang Sheet moves).
+6. Destination eligibility (move-specific): exclude `printing` and later/terminal/past/full/non-allocatable — more conservative than Add-to-Show.
+7. Capacity: hard block when projected over max; no new override.
+8. Atomic TX ≤ 150 source allocations; idempotency via `showQueueMoveApplications/{previewChecksum}`.
+9. Recompute both shows’ `allocatedQuantity` from non-canceled allocations. Do not mutate source show production status or `needsStaffRequeue*`.
+10. Past/locked **copy** and DNP recovery remain separate unchanged products. Remove-from-Show remains delete.
+
+**Consequences**
+
+- Harden `TransferPrintRequestToShowModal` move path onto callables; add Move All Requests UI.
+- History resolver treats `movedFromAllocationId` as moved (not DNP missed).
+- Firestore rules allowlist adds `movedFromAllocationId`. DEV Functions deploy only; production not authorized in this phase.
+
+---
+
+### ADR-FP-156: Did Not Print bulk requeue + Needs Re-queue (Show Queue)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-29 |
+| Status | **accepted — DEV QA PASS (2026-08-30)** |
+| Related | ADR-FP-149, ADR-FP-071, ADR-FP-155 |
+| Signoff | `docs/workflow/reviews/2026-08-30-show-queue-needs-attention-did-not-print-recovery-signoff.md` |
+
+**Context**
+
+Staff resolving missed shows need to move unprinted allocation quantities to another upcoming show in one trusted operation. Release-only must surface requests requiring later scheduling without breaking Portal one-continuable-request rules.
+
+**Decision**
+
+1. Add recovery action `requeue_unfulfilled` → source show `productionResolutionKind: unfulfilled_requeue` (Did Not Print).
+2. Move only finishable source allocations (`pending`/`queued`/`in_progress`); cancel source rows; create new destination rows with `requeuedFromAllocationId` lineage.
+3. Server preview checksum + single transaction apply (max 150 finishable rows); idempotency doc `showProductionRecoveryApplications/{checksum}`.
+4. Release-only sets optional `needsStaffRequeue*` on print requests; Working triage filter `needs_requeue` (rightmost Working filter); cleared on successful Add to Show allocation.
+5. Requeue path does **not** transition requests to `editing`; requests reconcile to Queued via existing tab recompute.
+
+**QA enabler (scoped, same phase)**
+
+Owner-only **Edit show** metadata on eligible Whatnot / DEV fixture shows enabled on DEV to adjust fixture schedules during recovery QA. Not a separate managed goal; production promotion requires separate review.
+
+**Consequences**
+
+- Extend `previewShowProductionRecovery` / `applyShowProductionRecovery` + Firestore rules allowlists — deployed `fresh-prints-dev` only.
+- Owner DEV QA **PASS** 2026-08-30. **Production deploy NOT AUTHORIZED** (coordinated promotion deferred).
+
+---
+
+### ADR-FP-155: DEV-only Show Queue fixture shows (`DEV-OVERRIDE`)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-29 |
+| Status | accepted |
+| Related | Show Queue allocation permission repair; ADR-FP-049 |
+
+**Context**
+
+Owners need to exercise Show Queue allocation and upcoming Did Not Print / re-queue workflows on `fresh-prints-dev` without fabricating real Whatnot URLs or external show IDs. A sentinel in the existing Whatnot URL field must not weaken production rules or pollute import matching.
+
+**Decision**
+
+1. Exact trimmed sentinel `DEV-OVERRIDE` in the Whatnot URL input on approved DEV only (`import.meta.env.DEV` + `projectId === "fresh-prints-dev"`).
+2. Persist `source: "dev_fixture"` with `devFixtureSentinel: "DEV-OVERRIDE"`; **do not** persist fake `whatnotShowId` or `whatnotUrl`.
+3. Create/update through callable `upsertDevFixtureShow` with independent `GCLOUD_PROJECT === "fresh-prints-dev"` gate and staff authorization; client Firestore rules deny client create of `dev_fixture`.
+4. Studio Show Detail displays **DEV OVERRIDE** / “No external Whatnot URL”; Whatnot import continues to match `source === "whatnot"` only.
+
+**Consequences**
+
+- Production rejects the sentinel and callable.
+- Allocation permission repair remains a separate narrow rules allowlist reconciliation (creation snapshots + production-resolution metadata).
+
+---
+
+### ADR-FP-154: Owner-authorized full customer account merge (WS3)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-29 |
+| Status | accepted |
+| Related | ADR-FP-153 (WS2 Transfer Username); ADR-FP-150; ADR-FP-151; customer identity WS3 |
+
+**Context**
+
+When two customer accounts represent the same person, WS2 **Transfer Username** is insufficient: operational history (print requests, uploads, allocations, favorites, etc.) must consolidate under one canonical survivor while preserving immutable historical truth. Merge is high-risk, resumable, and distinct from username-only transfer.
+
+**Decision**
+
+1. **Owner-only callables** — `previewCustomerAccountMerge`, `applyCustomerAccountMerge`, `getCustomerAccountMergeStatus`.
+2. **Survivor canonical** — survivor keeps `customerId`, Firebase Auth UID, login provider, and chosen username; source Auth UID is never substituted into survivor.
+3. **Source tombstone** — source `customers/{id}` remains with `isMerged: true`, `mergedIntoCustomerId`, `mergedAt`, `mergedBy`; distinct from Disabled/Closed.
+4. **Source `users/{uid}`** — retained inactive with merge metadata (not deleted in v1).
+5. **Source Auth** — permanently disabled after UID-dependent Storage migration completes; never auto-deleted in v1.
+6. **Resumable job** — `customerMergeJobs/{jobId}` with staged idempotent checkpoints; no single-transaction merge; no automatic rollback.
+7. **Identity locks** — both customers locked (`kind: merge`) during Apply; reuse WS1/WS2 lock helper.
+8. **Continuable working requests** — distinguish empty (0 `printRequestItems`) vs meaningful; both meaningful → BLOCK; empty drafts removed via trusted internal cleanup; source-only meaningful → reassign to survivor when survivor has none; Apply rechecks item counts.
+9. **Username** — default survivor keeps username; owner may choose source username via shared transactional primitives with `merged-src-*` placeholder (not `dupe-src-*`).
+10. **Immutable history** — do not rewrite `printRequests.name`, at-creation snapshots, allocation snapshots, or historical `customerActivityEvents.customerId`.
+11. **Operational migration** — batch reassign approved collections; Storage copy-verify-delete when Auth UIDs differ.
+12. **Web push** — invalidate/remove source subscriptions; do not migrate tokens.
+13. **WS4 prep** — survivor `mergedSourceCustomerIds[]` + source tombstone enable alias-aware history queries.
+14. **Studio** — distinct **Merged** directory tab; separate **Merge Accounts** wizard from **Transfer Username**.
+15. **Confirmation phrase** — `MERGE ACCOUNTS`.
+
+**Consequences**
+
+- DEV-only until coordinated identity package promotion.
+- WS4 grouped customer history depends on merge alias metadata and immutable audit events.
+
+---
+
+### ADR-FP-153: Owner-authorized verified duplicate username transfer (WS2)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-29 |
+| Status | accepted |
+| Related | ADR-FP-115; ADR-FP-150; ADR-FP-151; customer identity WS2 |
+
+**Context**
+
+Customers can create separate Fresh Prints accounts (for example email/password then Google) that retain separate `customerId` records. When the duplicate source owns the desired username reservation, the survivor cannot claim it through ordinary username change. WS3 full merge is out of scope for WS2.
+
+**Decision**
+
+1. **Owner-only** callables `previewDuplicateAccountResolution` and `transferCustomerUsername` (no admin WS2 preview/apply).
+2. **Two-tier verification** — Tier A: matching normalized verified Auth emails; Tier B: owner attestation + reason (≥8 chars). Display-name similarity never auto-verifies.
+3. **Apply confirmation phrase** — shared constant `TRANSFER USERNAME`.
+4. **Default disposition** — atomic username transfer, survivor identity propagation, then reversible disable of source (not tombstone, not hard delete).
+5. **Continuable Portal print requests** — fail-closed block when source has continuable request (disable would strand it) or when both have continuable requests; survivor-only continuable allowed.
+6. **Username transaction** — desired reservation moves source → survivor in one Firestore transaction; survivor prior reservation released; source receives server-generated `dupe-src-*` placeholder reservation.
+7. **Preview safety** — single-use 15-minute preview + checksum; Apply revalidates reservations, continuable state, verification, and identity locks.
+8. **Partial success** — if disable fails after successful transfer, return explicit partial-success contract (transfer not rolled back).
+9. **Audit** — `account.duplicate_resolution_previewed`, `account.username_transferred`, reuse `account.disabled` for disable step. No WS3 ownership reassignment.
+
+**Consequences**
+
+- Source history remains on source `customerId`; survivor login continues with desired username.
+- WS4 activity deep links and WS3 merge remain separate authorized workstreams.
+
+---
+
+### ADR-FP-151: History-free customer hard delete (dev-gated)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-28 |
+| Status | accepted |
+| Related | `customer-account-identity-management-and-audit` WS1; ADR-FP-115 |
+
+**Context**
+
+Duplicate-account cleanup may require removing a genuinely history-free customer account and releasing its username. `ownerDeleteUser` cascades all business history and is quarantined to Test Data on `fresh-prints-dev` only. Product needs a separate eligibility-gated path.
+
+**Decision**
+
+1. **Callables** `previewHardDeleteCustomerAccount` + `hardDeleteCustomerAccount` (owner only).
+2. **Fail closed** — server-side inventory of all meaningful history blockers; tombstoned/merged accounts blocked.
+3. **Apply** removes identity/bootstrap records only (Auth, `users`, `customers`, `customerUsernames`, ephemeral ops docs) — never print requests, uploads, assisted history, etc.
+4. **Preview** uses short-lived single-use preview docs + checksum bound to eligibility snapshot; Apply revalidates.
+5. **DEV gate** — `hardDeleteCustomerAccount` Apply allowed only on `fresh-prints-dev` until explicit production authorization.
+6. **Audit** — append-only `customerActivityEvents` record preview/apply with actor + checksum (audit evidence, not lifecycle source-of-truth).
+
+**Consequences**
+
+- Username released on successful history-free delete (intentional duplicate-resolution enabler).
+- Distinct confirmation phrase: `DELETE CUSTOMER`.
+
+---
+
+### ADR-FP-150: Reversible customer account disable
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-28 |
+| Status | accepted |
+| Related | ADR-FP-115 tombstone; `customer-account-identity-management-and-audit` WS1 |
+
+**Context**
+
+Duplicate resolution and investigation need a reversible sign-in block without ADR-FP-115 tombstone semantics (permanent username reservation + `isDeleted`).
+
+**Decision**
+
+1. **Fields** on `customers`: `isDisabled`, `disabledAt`, `disabledBy`, `disabledReason?`.
+2. **Callables** `disableCustomerAccount` / `restoreCustomerAccount` (owner apply only).
+3. **Auth** — disable/enable Firebase Auth; set `users.isActive` false/true; preserve all history and `customerUsernames`.
+4. **Portal gate** — `requirePortalCustomer` rejects `isDisabled`.
+5. **Tombstone** — `isDeleted` accounts cannot use reversible disable/restore.
+
+**Consequences**
+
+- Studio owner menu distinguishes reversible disable from tombstone disable.
+
+---
+
+### ADR-FP-148: Portal customer identity self-service + snapshot propagation
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-27 |
+| Status | accepted |
+| Related | `2026-08-27-portal-customer-username-change` plan + review |
+
+**Context**
+
+Portal customers requested self-service username and display-name changes. Print request `name` fields (e.g. `olduser-CR001`) must remain immutable for operational history, while searchable/display snapshots should reflect current identity with write-once at-creation preservation for historical UI (`@new · was @old at submission`).
+
+**Decision**
+
+1. **Portal callable** `updatePortalCustomerProfile` — self-only; `displayName` + `username` only; 30-day Portal username cooldown; display-name-only allowed during cooldown.
+2. **Staff parity** — `updateCustomer` delegates username/displayName to shared `applyCustomerProfileUpdate`; staff bypass cooldown; email/notes unchanged.
+3. **Canonical transaction** — single Firestore txn: customer doc, `customerUsernames` reservation swap, optional `users/{uid}` mirror, bounded `usernameHistory` append (max 10, support-only).
+4. **Propagation** — Admin SDK batch updates to `printRequests` + `designIssueReports` by `customerId`; write-once `*AtCreationSnapshot` fields; never mutate print request `name`.
+5. **Recovery** — `customers.identitySnapshotPropagation` persisted cursor/state; resumable in-callable batches (≤400 writes/batch).
+6. **No migration** — legacy records without at-creation fields render safely via shared formatter.
+7. **No new indexes** — single-field `customerId` equality queries only.
+
+**Consequences**
+
+- DEV deploy allowlist: `updatePortalCustomerProfile` + updated `updateCustomer` only.
+- `usernameHistory` not exposed in Portal UI.
+- Firestore rules unchanged (Admin SDK writes for propagation + new customer fields).
+
+---
+
+### ADR-FP-147: Ready Smart Profile visibility, owner/admin staff edit, and AI snapshot merge
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-26 |
+| Status | accepted (Slice 6 corrective) |
+| Related | ADR-FP-146; Slice 6 visibility/editing plan + review |
+
+**Context**
+
+Ready catalog designs expose Smart Profile v30/v4 in Algolia but Studio Design Details had no owner-facing visibility. Owner QA on the 3-design canary blocked on inspecting automation provenance. Staff occasionally need to correct individual Smart Profile dimensions without unpublishing Ready designs or losing corrections on future Ready backfill.
+
+**Decision**
+
+1. **Visibility:** Design Details shows Smart Catalog Profile (Missing / Older / Current from shared `resolveSmartProfilePipelineStatus()` comparing `promptVersion` + `normalizerVersion` to v30/v4). Audit & Technical Details shows technical provenance/automation diagnostics.
+2. **Edit permission:** Owner + admin only — enforced server-side in callables (`updateDesignSmartProfileDimensions`, `resetDesignSmartProfileDimension`); helpers may view but not edit. Missing Smart Profile on Ready designs is read-only (no manual creation).
+3. **Write path:** Callable/service only; client Firestore rules continue to deny `smartProfile` writes.
+4. **Staff provenance:** `smartProfile.provenance.staffEditedDimensionKeys`, `staffEditedAt`, `staffEditedBy` on each staff save; keys validated against canonical dimension enum.
+5. **AI snapshot:** Functions-owned `smartProfileAiSnapshot` updated on every successful AI Smart Profile write (queue + `ready_backfill`); represents raw AI dimensions before staff merge.
+6. **Ready backfill merge:** AI replaces non-staff-edited dimensions; dimensions listed in `staffEditedDimensionKeys` keep effective staff values; staff provenance preserved.
+7. **Reset:** Per-dimension reset restores from `smartProfileAiSnapshot` and removes key from `staffEditedDimensionKeys`.
+8. **Algolia:** Reuse existing Ready sync classifier — Smart Profile dimension edits trigger index-filter upsert; no new publisher.
+9. **Preservation diagnostic fix:** `approvalAuditUnchanged` uses semantic Firestore Timestamp equality (not object identity).
+
+**Consequences**
+
+- DEV deploy allowlist: new Smart Profile callables only (no full catalog run).
+- Card badge surfacing remains out of scope.
+
+---
+
+### ADR-FP-146: Ready Catalog backfill preservation (Slice 6)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-26 |
+| Status | accepted (implementation complete; gate unlock + DEV deploy separately gated) |
+| Related | Slice 6 plan/review; ADR-FP-144; ADR-FP-145 |
+
+**Context**
+
+Slice 5 AI Review Queue reprocess intentionally demotes designs to `imported` + `needs_review` under Shadow. Ready Catalog designs are customer-visible and Algolia-indexed; re-enrichment must regenerate Smart Profile v30/v4 without unpublishing or rewriting human approval metadata.
+
+**Decision**
+
+1. Separate **Ready-safe staging** — never reuse `buildCatalogReprocessAiClearUpdate()` for `ready_catalog`.
+2. Pipeline **`ready_backfill`** mode — success/failure preserve `status: ready` + `aiReviewStatus: approved`; no `publishReady`; approval audit and `readyAt` immutable.
+3. Success terminal **`aiProcessingStage: ready_for_review`** (AI operational stage only).
+4. Worker asserts `ready_lifecycle_violation` → soft-pause + `preservationViolations` counter.
+5. Shadow automation recorded in `smartProfile.provenance` for calibration only.
+6. Optional **`canaryDesignIds`** at Start → `boundedDesignIds` on job (max 50); required before full Ready Start per Formal Review.
+7. Gate **`CATALOG_REPROCESS_READY_CATALOG_ENABLED`** remains false until deploy-then-unlock owner sequence.
+8. No tag retirement; no Autonomous enablement in Slice 6 implement.
+
+**Consequences**
+
+- Algolia upsert on Smart Profile change while Ready is expected; non-ready status flip is P0.
+- Deploy preservation Functions before gate unlock.
+
+---
+
+### ADR-FP-145: Gate I corrective — subject anti-glue + category dominant-intent blocker
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-26 |
+| Status | accepted (DEV implemented, deployed, mini-QA’d; Slice 5 signed off) |
+| Related | Slice 5 Gate I; ADR-FP-144; plan `2026-08-26-slice-5-gate-i-corrective-plan.md`; signoff `2026-08-26-smart-catalog-intelligence-slice-5-signoff.md` |
+
+**Context**
+
+Gate I manual sample on job `zFzAwEIwCXFWC8dce0f4` (v29/v3) found a material false-positive unattended approval (fantasy/storybook art under Floral & Nature) and repeated artificial Subject compounds from title/slogan glue (`problem skeleton`, `coochie alligator`, etc.). Precision of unattended approval remains more important than approval rate.
+
+**Decision**
+
+1. Bump prompt to **`catalog-enrich-v30`** and normalizer to **`smart-profile-normalizer-v4`**.
+2. **Anti-glue subject promotion:** prefer description/centralSubject; distrust title-only adjacency when modifiers are slogan/visible-text or late in long titles; strip redundant character merges (`donald goofy` beside Donald Duck + Goofy); multi-word subjects must not self-validate solely via title glue.
+3. Preserve genuine specificity (e.g. highland cow, schnauzer, Frankenstein's monster, chimpanzee, raccoon). No curated subject allowlist.
+4. **Decision-layer** hard blocker `category_dominant_intent_conflict` when strong fantasy/story/reading profile signals conflict with a scenic category family (e.g. Floral & Nature) whose scenic tokens are weaker than the dominant family score. Do not modify category governance / CRUD.
+5. Subject `structured_evidence_gap:*` remains **hard** / verifier-unresolved.
+6. Object soft-lane **deferred**. Narrow `daisy`↔`daisies` plural equivalence shipped only.
+7. Shadow lifecycle unchanged; Ready Catalog locked; Autonomous live OFF; no production deploy in this corrective.
+
+**Consequences**
+
+- DEV deploy + mini QA completed 2026-08-26; Slice 5 signed off **approved_with_notes**.
+- Catalog reprocess pipeline snapshot records v30+v4 for any later owner-authorized re-calibration.
+- Live Autonomous, Ready Catalog unlock, Slice 6, and production remain separately gated.
+
+**Amendment — subject canonicalization + derivative suppression (2026-09-03)**
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-03 |
+| Status | accepted (implemented in-repo; DEV Functions deploy not yet authorized) |
+| Related | Goal `smart-profile-subject-canonicalization-and-derivative-suppression`; plan `2026-09-03-smart-profile-subject-canonicalization-and-derivative-suppression-plan.md` |
+
+Refine the subject contract without replacing Gate I anti-glue, without a curated subject allowlist, and without a schema change:
+
+1. Prompt **`catalog-enrich-v31`** + normalizer **`smart-profile-normalizer-v5`**. Schema remains **`smart-profile-v1`**.
+2. AI-generated `subjects` must include a reusable canonical base for each dominant depicted entity.
+3. Redundant action/style/color/mood/verb/OCR derivatives (`leaping fish`, `make fish`, `pink ghost`) are suppressed on the AI normalization path. Type+class restatements (`bass fish`) collapse to the base plus an atomic type token relocated to `searchConcepts` when already present as the modifier.
+4. Genuine atomic compounds (`highland cow`, `sea turtle`, `fire truck`, `police officer`, `hot air balloon`, `Christmas tree`, `ice cream`) are preserved. Promote remains bound-compound-only (not slogan glue, not type restatement).
+5. Visible-text fragments are not subjects unless they independently name a depicted entity. Description echo of slogan wording does not validate verb+entity subjects.
+6. AI derivative collapse does **not** rewrite staff-edited dimensions or import-preset values. Precedence remains staff edit > import preset > AI.
+7. No new hard quality gate / Needs Review reason for redundant-subject noise. Autonomous remains OFF.
+
+---
+
+### ADR-FP-144: Catalog Processing Mode and unattended catalog approval architecture
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-25 |
+| Status | accepted (architecture); **live Autonomous publication not authorized** |
+| Related | Smart Catalog Intelligence Slice 4; ADR staff-approval doctrine amendment; Catalog Reprocessing amendment |
+
+**Context**
+
+Slices 2–3 delivered Smart Profile + Search Intelligence with shadow automation evidence while every successful enrichment still routed to Needs Review. Slice 4 must ship a server-authoritative Catalog Processing Mode, evidence-based autonomy decisions, a conditional targeted verifier, Automation Health, and an owner-only durable Catalog Reprocessing control plane — without enabling live Autonomous publication by default.
+
+**Decision**
+
+1. Persist `catalogWorkflowMode` (`manual` \| `shadow` \| `autonomous`) and `catalogAutonomousLiveEnabled` (default `false`) on `settings/aiEnrichment`.
+2. Missing/invalid/unreadable mode resolves to **manual** — never Autonomous.
+3. Live Autonomous publication requires **both** mode=`autonomous` **and** `catalogAutonomousLiveEnabled=true`, with typed phrase `ENABLE AUTONOMOUS` validated server-side (owner-only).
+4. With Autonomous mode and live gate OFF: run full decision/verifier; record would-auto-approve; still Needs Review.
+5. Autonomy decisions are evidence-based (title/description/category/Smart Profile validation, contextual structured-evidence consistency, category gap, verifier when triggered, pipeline success). No single model self-score as authority. No global semantic denylist for ordinary Subjects/Objects (e.g. `people`); evaluate contextually.
+6. Catalog Reprocessing uses durable `catalogReprocessJobs` + backend worker + callable start gates; soft pause; one active job per `(projectId, targetType)`; owner-only. Slice 5/6 Start remain gated until those slices.
+7. Reuse existing Algolia sync on design ready writes; do not create a parallel publisher.
+8. ADR-FP-080 halftone remains human-authoritative.
+
+**Consequences**
+
+- Staff-only ready approval remains the default until the owner enables live Autonomous per environment.
+- Implementing ADR-FP-144 / Slice 4 is **not** authorization to enable live Autonomous in DEV or PRODUCTION.
+- DATA_MODEL / WORKFLOWS document the dual-gate exception for unattended ready transitions.
+
+**Amendment — WS1 automation calibration (2026-09-03)**
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-03 |
+| Status | accepted (DEV source); live Autonomous still **not authorized** |
+| Related | Goal `smart-catalog-intelligence-completion-and-legacy-tag-retirement` WS1 |
+
+Clarifications:
+
+1. **Title validity is a hard safety requirement.** Missing/blank effective catalog titles emit `title:title_missing` and never qualify for Autonomous Ready.
+2. **Verifier truthfulness.** Structured evidence gaps and subject-specificity risks are **hard Needs Review blockers**. They are not confirmable by re-running the same deterministic checks. Natural `verifier_confirmed` applies only to confirmable uncertainty (e.g. `automation_policy_uncertainty`). Health/UI must not imply confirmation when the natural path cannot produce it.
+3. **Dual gate unchanged.** Mode=`autonomous` alone never publishes; live flag must be explicitly true. Missing/malformed settings fail safe.
+4. **Trusted Autonomous Ready actor.** Unattended publication remains Admin `markAiSuccess` with `aiReviewedBy: system:catalog-autonomy` — distinct from staff client approval; must not broaden client authority.
+5. **Publication truthfulness.** Firestore Ready may commit before Algolia succeeds (existing sync architecture). Algolia sync failures must be recorded on the design (`portalCatalogPublication*`), counted in Automation Health (`publicationFailures`), and rethrown for platform retry. Reconcile remains durable recovery. Operators must not treat automation success as “search published” when publication status is failed.
+6. **Observability.** Automation Health `retries` / `failures` / `publicationFailures` / `hardBlockerRoutings` must derive from durable runtime evidence. Absent counters mean not tracked yet — not fabricated zeros.
+
+---
+
 ### ADR-FP-143: Studio grouped gang sheet export mode
 
 | Field | Value |
@@ -31,6 +1412,19 @@ Show Queue gang sheet generation already nests allocations for sheet efficiency.
 
 - Two layout modes in Studio; regression contract tests guard efficiency ordering and fingerprints.
 - Owner DEV QA (2026-08-23) PASS for WS5 including coexistence and naming.
+
+**Follow-up — owner product clarification (2026-08-24; refined 2026-08-27; implemented 2026-08-27 DEV)**
+
+Owner QA clarified that **three** generation modes are desired for Phase 7 Show Queue fast-follow (`show-queue-gang-sheet-three-mode-refinement`). **Implemented in DEV** (not production):
+
+1. **Standard** — unchanged efficiency packing (`layoutMode` omitted or `efficiency`).
+2. **Grouped by Customer** — `layoutMode: "customer_grouped_continuous"`: continuous multi-customer physical sheets; customer blocks + comma-joined CR headings; new customer ≠ new sheet; spill uses show heading + `CR-Continued`.
+3. **Sheet per Customer** — `layoutMode: "grouped_by_customer"`: preserve pre-change grouped export semantics (one physical sheet per customer nest segment); UI label **Sheet per Customer**.
+
+**Backward-safe enum mapping (Option A):** do not rename `grouped_by_customer` so existing Sheet-per-Customer local cache fingerprints remain valid. New continuous mode uses distinct `customer_grouped_continuous` fingerprint + base name `whatnot_MM-DD-YYYY_grouped-continuous-gang-sheet`.
+
+**Implementation artifacts:** `planContinuousCustomerGroupedGangSheetLayout`, `composeContinuousCustomerGroupedGangSheetSheets`, three-mode modal picker. Plan: `docs/workflow/plans/2026-08-27-show-queue-gang-sheet-three-mode-refinement-plan.md`. Signoff pending owner DEV QA.
+
 ---
 
 ### ADR-FP-142: Public Show Designs browse with login-gated mutations
@@ -134,6 +1528,37 @@ Studio classifies Whatnot shows as Upcoming vs Past from `scheduledStartAt` vs n
 
 - Finish is idempotent for already-completed shows so automatic and manual callers can race safely.
 - Production data repair of already-stuck shows happens through this product path after Studio rollout, not by console edits.
+
+**Cross-reference:** ADR-FP-149 extends remediation to Past + `open`/`full` via Needs Attention; ADR-FP-139 remains authoritative for Past + `printing` auto/manual Finish.
+
+---
+
+### ADR-FP-149: Past Whatnot shows need explicit remediation (Needs Attention)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-08-27 |
+| Status | accepted |
+| Related | Goal `show-queue-past-show-failsafe-and-owner-override`; ADR-FP-139, ADR-FP-071 |
+
+**Context**
+
+Calendar Past (`scheduledStartAt` elapsed) does not imply production completion. ADR-FP-139 repairs Past + `printing` only. Past + `open`/`full` with queued allocations could not Finish via client rules; empty Past shows lingered without a truthful close path.
+
+**Decision**
+
+1. **Needs Attention tab** — Past Whatnot shows with non-terminal `productionStatus` (`open`, `full`, `printing`) surface separately from terminal Past history (`completed`, `fully_printed`, `archived`, `canceled`).
+2. **Past ≠ Completed** — schedule classification never marks Printed/Completed without allocation truth or explicit staff/owner remediation.
+3. **Staff remediation (callable)** — `close_empty`, `mark_fulfilled`, `release_unfulfilled` via `previewShowProductionRecovery` / `applyShowProductionRecovery` with Admin SDK reconciliation.
+4. **Owner override** — `force_completed` owner-only; requires bounded `productionOverrideReason` (max 500 chars); shares fulfillment/release planners with audit `owner_override`.
+5. **ADR-FP-071 guard** — after release, do not `active→editing` when another `draft|editing` request exists for the customer; derive Working tab from zero allocations.
+6. **Audit fields** — optional `productionResolutionKind`, `productionResolvedAt`, `productionResolvedBy`, `productionOverrideReason` on `upcomingShows`.
+7. **Multi-show** — cancel/finish only allocations on the remediated show; global request reconciliation.
+
+**Consequences**
+
+- Functions deploy required for remediation mutations.
+- Historical stuck shows appear in Needs Attention; same per-show UI repairs them (no bulk APPLY in v1).
 
 ---
 
@@ -1926,25 +3351,26 @@ Portal briefly sorted Current Request / detail items newest-first (`createdAt` d
 | Field | Value |
 |-------|-------|
 | Date | 2026-07-18 |
-| Status | accepted |
-| Related | ADR-FP-049 (queue state), Portal show selection |
+| Status | accepted — **amended 2026-09-08** (personal-bin pricing commitment; `portal-bidding-ack-v4`) |
+| Related | ADR-FP-049 (queue state), Portal show selection, ADR-FP-185 |
 | Target | Portal + Functions on `fresh-prints-dev`; production excluded |
 
 **Context**
 
-Customers need clear understanding that designs queued to a live show are public for bidding and not reserved. Owner requires acknowledgment before account creation and again before each queue-to-show.
+Customers need clear understanding that designs queued to a live show are held in a **personal bin at tiered show prices**, not auctioned for open bidding. Owner requires acknowledgment before account creation and again before each queue-to-show, including estimated show total commitment (not a Portal charge).
 
 **Decision**
 
 1. **Signup:** After registration form submit (email or Google complete-profile), show acknowledgment modal with required checkbox. Cancel creates nothing. Only after confirm: Auth create (email) and/or `registerCustomer` with `biddingAcknowledgmentAccepted` + version. Persist `users/{uid}.portalBiddingAcknowledgments.signup`.
-2. **Add to Show:** Always require confirmation modal (even if signup ack exists). Callable `queuePortalPrintRequestToShow` rejects without accepted flag + known version. Persist binding ack on `printRequests.showQueueBiddingAcknowledgment` and `users.portalBiddingAcknowledgments.lastQueueToShow`.
-3. Shared version id `portal-bidding-ack-v3` (bumped from v2 when owner restored gang-sheet / funkyfreshprints.com exclusive-order note). Signup and Add to Show use distinct titles/body/checkbox strings plus shared exclusive-order paragraph linking `funkyfreshprints.com`. Unified wording covers singular and plural designs.
+2. **Add to Show:** Always require confirmation modal (even if signup ack exists). Callable `queuePortalPrintRequestToShow` rejects without accepted flag + known version. Persist binding ack on `printRequests.showQueueBiddingAcknowledgment` and `users.portalBiddingAcknowledgments.lastQueueToShow`. Modal shows estimated show total + tier breakdown from **shared default** gang-sheet pricing (ADR-FP-185 defaults); Portal does not read staff-only `settings/showQueue`.
+3. Shared version id `portal-bidding-ack-v4` (bumped from v3 when auction/bidding copy was replaced with personal-bin pricing commitment). Signup and Add to Show use distinct titles/body/checkbox strings plus shared exclusive-order paragraph linking `funkyfreshprints.com`.
 
 **Consequences**
 
 - Signup ack is educational; queue ack is binding and re-required every queue.
 - No client writes to `users/{uid}` (Admin only).
 - Redeploy `registerCustomer` + `queuePortalPrintRequestToShow` to `fresh-prints-dev` when the version constant changes (server rejects unknown versions).
+- If Studio customizes gang-sheet prices away from defaults, Portal display may diverge until a customer-safe pricing read is added.
 
 ---
 
@@ -2037,7 +3463,13 @@ After a customer approves an Assisted Creation proof, they could only download i
 4. Skip customer-upload PNG / transparency / “good image” rejection gates — artwork is staff-provided.
 5. Idempotent per assisted request via denormalized `printRequestIngest` on `assistedCreationRequests`.
 6. No new `sourceType`; no auto-attach on approve; working request only.
-7. **Residual (2026-07-18):** Before first Add to Request, Portal modal asks Design Library consent. **Allow** / **Don’t allow** both proceed with the add. Values reuse the print-upload / donate intake path: `catalogUseAcknowledged` + shared `buildCatalogIntakeConfirmationPatch` → always `catalogReviewStatus: pending_staff_review` (Studio custom-design intake). Do **not** invent a parallel consent field. No auto-publish to catalog.
+7. **Residual (2026-07-18; amended by ADR-FP-074 on 2026-09-10):** Before first Add to Request,
+   Portal modal asks Design Library consent. **Allow** / **Don’t allow** both proceed with the add
+   and reuse `catalogUseAcknowledged` + shared `buildCatalogIntakeConfirmationPatch`; Allow follows
+   the existing `not_eligible` → Pending timing, while Don’t allow records
+   `excluded_from_catalog` + `customer_permission_denied` and cannot be advanced by allocation.
+   A single customer-led follow-up Allow may return it to Pending. Do **not** invent a parallel
+   consent field. No auto-publish to catalog.
 
 **Consequences**
 
@@ -2070,6 +3502,8 @@ Customers need to download the final approved proof with transparency preserved.
 5. Portal download uses callable `customerGetAssistedCreationApprovedProofFile` (Admin Storage download → base64 → Portal blob + `<a download>`). GCS signed-URL navigate often **displays** PNGs in-tab; a separate HTTPS Function + browser `fetch` failed from `myprintrequest.dev` with TypeError “Failed to fetch” (CORS / Gen2 URL / undeployed proxy). Firebase callable transport avoids that. Legacy signed-URL callable remains but is unused by Portal UI. Previews/thumbnails may still use client `getDownloadURL` in `<img>`. Grey preview stays CSS-only.
 6. Legacy approved docs without `approvedAt` remain downloadable while the object exists (UI + download endpoint); purge stays fail-closed without `approvedAt`.
 7. Staff proof uploads rename Storage basename + `fileName` to `proof-{n}-{mmddyyyy}-{HHmm}.{ext}` (local upload clock, no seconds). Portal never displays the original creative filename; Download appears on Overview (approved), the approved status card, and in the Proof detail modal for the approved proof. Each proof surfaces **Fresh Prints note** + **Your notes** (Studio-linked window). Proof list/modal clearly label the approved proof as **Approved**.
+
+**Amendment (2026-09-12 — multi-proof selection):** Approve-time sibling Storage purge is **disabled**. All proof options across rounds remain visible after customer approve; reject/cancel and the 14-day approved-proof retention job still remove files.
 
 **Consequences**
 
@@ -2860,7 +4294,7 @@ Portal customers need a faster sign-up path via Google while retaining email/pas
 | Field | Value |
 |-------|-------|
 | Date | 2026-07-13 |
-| Status | accepted (amended 2026-08-20 — approved-max is not a manual save ceiling) |
+| Status | accepted (amended 2026-08-31 — interactive upscale + configurable default + 15″ automated target) |
 
 **Context**
 
@@ -2892,6 +4326,33 @@ Embedded DPI metadata is unreliable for print quality. Imports previously upscal
 - Functions deploy required for Portal finalize in shared environments so the 6× ceiling is live.
 - Production deploy remains a separate owner checkpoint.
 
+**Amendment (2026-08-30 — automated target + WS-CONFIG-DEFAULT, accepted 2026-08-31):**
+
+1. **Automated upscale target** raised from **12″** to **15″** (`AUTOMATED_UPSCALE_TARGET_WIDTH_INCHES`); policy version **`image-quality-v3`** for newly processed assets (forward-only). **15″ remains the automated import/upload target only** — not the interactive enhancement target.
+2. **Print Request default width** is a **runtime Studio setting** (`settings/standardPrintSizes.defaultPrintRequestWidthInches`), snapshot-at-create for **new items only**; existing items keep persisted dimensions; **no migration/backfill**.
+3. **System fallback** when the setting is absent or invalid: **10.5″** (`STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES`; amended 2026-09-05 from 11″, previously 10″). **`PREFERRED_PRINT_WIDTH_INCHES` / `DEFAULT_PRINT_REQUEST_WIDTH_INCHES`** remain **10″** for import messaging — distinct from the operational Print Request initializer.
+4. **Standard Size presets** and explicit requested dimensions continue to override the generic default where architecture supports them. Duplicates preserve source dimensions.
+5. **`MAX_UPSCALE_PASSES = 1`** unchanged for automated import. Cumulative **`MAX_UPSCALE_FACTOR = 6×`** measured from true native/original artwork dimensions; do not chain another 6× from an already-upscaled derivative.
+
+**Amendment (2026-08-31 — WS-TOGGLE interactive upscale, accepted 2026-08-31):**
+
+1. **Interactive enhancement** is a **per-artwork-lineage one-time non-destructive derivative** + **per-request-item ON/OFF toggle** (`artworkEnhanceMode`: absent/`baseline` vs `enhanced`). Baseline production assets are **never destructively replaced** for interactive enhancement. Supersedes destructive overwrite in legacy `enhancePrintRequestArtworkCore`.
+2. **Eligibility:** `catalog_design` and `customer_upload`; **Studio + Portal**. **No customer usage quota**; security via auth, idempotency, processing lock, Firestore/Storage rules.
+3. **Interactive target is request-driven** (~300 effective DPI at the selected physical print size), subject to cumulative ≤6× native, aspect-safe sizing, processing ceilings, and the 22″ Print Request cap. **Not fixed at 15″.**
+4. **One valid successful interactive derivative per lineage.** After it exists, OFF→ON and ON→OFF are **variant selection only** — **no regeneration** when print size increases or when enhanced DPI falls below 300. Larger sizes **reuse** the same derivative; ADR-FP-075 DPI floors apply.
+5. **Stale metadata recovery:** if derivative metadata exists but the Storage object is missing, regeneration is allowed because no valid derivative remains — recovery only, not a second valid enhancement pass.
+6. **Ordinary size edits** (width, height, Standard Size preset, quantity) **must not** auto-revert to baseline. Only explicit user actions (Upscale OFF, Reset to Default) change mode. Reset to Default may turn Upscale OFF and restore configured default physical size but **must not delete** the reusable enhanced derivative.
+7. **Production export parity:** gang sheets (Standard / Grouped by Customer / Sheet per Customer), ZIP export, manual gang-sheet builder, and Show Queue production resolution use the **active variant** selected on each item. Cache fingerprints include active production asset identity. Enhanced mode + missing derivative → **fail closed**.
+8. **Catalog:** baseline uses `design.originalPath`; enhanced uses interactive catalog derivative (`/originals/{designId}.interactive.png`). Do not mutate `design.originalPath` to switch variants. **Customer upload:** baseline uses private production asset; enhanced uses private interactive derivative — never promoted to catalog or exposed to other customers.
+9. **Storage rules:** staff production reads of interactive catalog originals (`{designId}.interactive.png`) are authorized; customer-upload private boundaries remain intact. Interactive catalog derivative creation remains server/Admin-controlled.
+
+**Amendment (2026-09-05 — Standard Size Full Back + Add to Request default recalibration):**
+
+1. **System fallback** for new Print Request / Add to Request items when `defaultPrintRequestWidthInches` is absent or invalid: **10.5″** (`STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES`).
+2. **Full Back Adult** seed widths recalibrated: M/L/XL **11″**; 2XL–5XL **12 / 13 / 14 / 15″** (XS/S unchanged at 10 / 10.5).
+3. **Full Back Youth** Y2XL seed width **11″** (was 11.5″); other youth back and all Full Front Adult/Youth seeds unchanged. Youth smallest key remains **`yxs` / YXS** (not renamed).
+4. **No migration** of existing `printRequestItems` or production Firestore settings. Saved item dimensions and persisted `settings/standardPrintSizes` overlays remain until owner Reset / re-save. Automated **15″** image-processing target and interactive enhance policy unchanged.
+
 ---
 
 ### ADR-FP-079: Working-tab triage, rail search, and soft-archive clear
@@ -2907,11 +4368,11 @@ Ecommerce-style one-open-request (ADR-FP-071) fills Studio Working with idle/emp
 
 **Decision**
 
-1. Working triage chips: **Active** (default) / **Stale** / **Empty** / **All** — Active = `itemCount > 0` and `updatedAt` within 14 days.
+1. Working triage chips: **Active** (default) / **Idle** / **Stale** / **Empty** / **All** — Active = `itemCount > 0` and `updatedAt` within **48 hours**; Idle = has items, updated **48 hours–7 days** ago; Stale = has items, updated **7+ days** ago (amended 2026-09-05; previously Active/Stale only with Active = 14 days, then Active = 48 hours with no Idle band).
 2. Soft-exclude `status: archived` from Studio list tabs.
 3. Client-side rail search on all Print Request tabs (name, id, customer fields).
 4. Portal **Clear request** → callable `clearPortalWorkingPrintRequest` deletes items and sets `itemCount: 0`, **keeping** `draft`/`editing` so the next Add reuses the same open request (amended 2026-07-18; previously archived on clear).
-5. Owner/admin callable `archiveStaleWorkingPrintRequests` auto-archives **empty** working requests older than 14 days (`dryRun` supported). Stale carts with items stay filterable only.
+5. Owner/admin callable `archiveStaleWorkingPrintRequests` auto-archives **empty** working requests older than **14 days** (`dryRun` supported). Idle/Stale carts with items stay filterable only (age triage is independent of empty auto-archive).
 
 **Consequences**
 
@@ -2942,10 +4403,20 @@ ADR-FP-076 reserved image donations as a separate product path from `/requests/a
 
 **Consequences**
 
-- Print-request library permission remains optional (ADR-FP-074); donations require listing consent.
+- Print-request library permission remains optional (ADR-FP-074); original denial is print-only until
+  one customer-approved follow-up. Donations require listing consent and remain outside that follow-up.
 - Any authenticated Portal customer may donate (no staff feature flag in this phase).
 - Composite Firestore indexes required for purpose + catalogReviewStatus queries.
 - Daily abuse quotas are **purpose-split**: print-request (create 100 / finalize image 200 / ZIP 5) vs catalog-donation (create 200 / finalize image 500 / ZIP 20). Concurrent finalize leases stay shared at 8.
+
+**Amendment (2026-09-11) — gallery re-add + unpromoted donation shelf life**
+
+- Initial donate confirm still does **not** create `printRequestItems` (unchanged).
+- Portal **Your designs** may re-attach an existing `catalog_donation` (or print-request) upload via
+  `attachExistingCustomerUploadsToPrintRequest` without rewriting catalog consent / Pending fields.
+- Unpromoted donations start a **30-day** `catalogRetentionStartedAt` episode with reason
+  `unpromoted_donation` while remaining `pending_staff_review`; promote clears the clock; purge
+  under B1 removes them when due if never promoted.
 
 ---
 
@@ -3031,7 +4502,7 @@ Standard Print Request sizing previously allowed saves down to 72 effective DPI 
 | Field | Value |
 |-------|-------|
 | Date | 2026-07-12 |
-| Status | accepted |
+| Status | accepted — amended 2026-09-10 |
 
 **Context**
 
@@ -3041,13 +4512,26 @@ Customers confirm ownership and whether Fresh Prints may use artwork in the Desi
 
 1. Ownership confirmation remains **required** to attach uploads to a print request.
 2. Design Library permission is **optional**, **checked by default** in Portal UI, and persisted as `catalogUseAcknowledged` (true/false) with terms `customer-upload-terms-v2`.
-3. Staff **may still** Send to AI Review / promote when `catalogUseAcknowledged === false`.
-4. Studio Customer Uploads intake must **surface declines** clearly so staff can decide.
+3. An authenticated print-request upload with original `catalogUseAcknowledged === false` remains
+   usable in its customer's Print Request but is `excluded_from_catalog` with reason
+   `customer_permission_denied`. Staff cannot promote it or restore it to Pending without a single
+   explicit customer follow-up approval.
+4. Studio Customer Uploads intake must surface the denial and follow-up state clearly. Staff may ask
+   once for permission again through the existing customer Notifications path; Allow moves the upload
+   to Pending without creating a Design, enqueueing AI, or publishing. A second Decline is terminal
+   for this v1 workflow. Anonymous catalog donations are outside this follow-up path.
 
 **Consequences**
 
-- Promote callables require ownership only (not library permission).
-- Product/policy follow-up may later tighten promote rules; visibility is mandatory now.
+- Promote callables require ownership and a current valid catalog permission: original true/legacy
+  missing consent, or original false with recorded follow-up approval.
+- Request-use and catalog-intake lifecycles remain independent; no migration or backfill is implied.
+- The original false answer and confirmation evidence remain unchanged for auditability.
+
+**Amendment history (2026-09-10):** The original accepted decision above permitted staff promotion
+when `catalogUseAcknowledged === false`. That sentence is retained as historical record in prior
+repository revisions; this amendment supersedes it with print-only exclusion plus one customer-led
+follow-up approval. No existing customer data is migrated by this decision.
 
 ---
 
@@ -3228,23 +4712,34 @@ The Portal catalog was a flat searchable grid. Customers needed curated discover
 | Field | Value |
 |-------|-------|
 | Date | 2026-07-11 |
-| Status | accepted |
+| Status | **accepted** (amended 2026-09-02 — active Continuable parking) |
+| Related | ADR-FP-158 (Portal Editing tab); goal `portal-editing-request-parks-current-draft` |
 
 **Context**
 
 Customers could create multiple `draft`/`editing` requests via Portal UI (“Start new”) and `createPortalPrintRequest`, which made Working-tab clutter and split unfinished carts.
 
-**Decision**
+**Decision (original)**
 
 1. A portal customer may have **at most one** continuable print request (`draft` or `editing`) at a time.
 2. **`createPortalPrintRequest`** rejects with `failed-precondition` when any such request already exists (transactional query).
 3. Portal Start/FAB/catalog actions **continue** the existing request when one exists; they never offer “Start new” beside an open draft.
 4. Queued (`active`) / printing / printed requests do not block creating a new request after the current working request is queued.
 
+**Amendment (2026-09-02) — Active Continuable parking**
+
+Lifecycle Continuable statuses remain `draft` | `editing`. Separately, a customer may have **at most one ACTIVE Portal-editable Continuable**:
+
+1. When a customer PR enters `editing` and a meaningful Portal draft already exists, the draft is **parked** (`parkedByEditingRequestId` / `parkedAt` on the draft; `parksDraftPrintRequestId` on the Editing PR) instead of `continuable_request_conflict`.
+2. Parked drafts stay `status: draft`, may remain on the Portal Working list, but are **not** active for Current Request, catalog Add, upload, mutations, or queue. Empty drafts are archived in the park TX (not parked).
+3. Editing owns Current Request until it successfully re-queues (or leaves Editing via archive/delete/convert). Clearing items while status stays `editing` does **not** restore the parked draft.
+4. Restore clears parking fields atomically when Editing ownership ends. ADR-FP-158 Portal Editing tab is unchanged — Editing membership ≠ Working membership.
+
 **Consequences**
 
 - UI and callable must stay aligned; deploy function + `customerId`+`status` index with the release.
 - Customers who already have multiple drafts can still open/pick among them but cannot create another until they are down to zero continuable.
+- Parking fields are Admin SDK / trusted-callable only (Firestore Rules `optionalFieldUnchanged`).
 
 ---
 
@@ -5336,7 +6831,7 @@ Functions redeploy required. Compare Needs Review output vs prior `gpt-4o-mini` 
 | Field | Value |
 |-------|-------|
 | Date | 2026-06-24 |
-| Status | accepted (amended 2026-07-14 — process-as-imported sequential AI) |
+| Status | accepted (amended 2026-07-14 — process-as-imported sequential AI; amended 2026-09-08 — Auto process master gate) |
 | Deciders | Product owner + architecture/security review |
 
 **Context**
@@ -5347,6 +6842,7 @@ Bulk import auto-enqueued every design, spawning up to 10 concurrent Cloud Funct
 1. **No concurrent auto-enqueue on import** — import orchestration must not fire N parallel `enqueueAiEnrichment` calls.
 2. **Processing tab queue controls** — **Auto advance** (sessionStorage): **Start AI** / **Pause AI** runs sequential queue; OFF shows **Process image with AI** for one-at-a-time manual stepping. **Default Auto advance = ON** when unset.
 3. **Process-as-imported background sequential AI (amended 2026-07-14):** As each Studio batch file finishes with derivatives ready (`pipelineSuccess`), Studio pushes that design into a session-scoped FIFO that runs **one** `enqueueAiEnrichment` at a time — while other files may still be uploading. Single PNG import still enqueues on that design’s success. Staff can stay on Imports or open AI Review early. **Auto advance** on the Processing tab only controls Start AI / Pause vs one-at-a-time manual stepping while on that page — it does not gate import enqueue.
+4. **Auto process master gate (amended 2026-09-08):** Shell-header **Auto** toggle (`localStorage` key `fresh-prints.ai-processing.auto-process`, default **ON**; hover tooltip explains behavior) gates whether designs auto-start AI when they land in Processing from import, Needs Review/Rejected reprocess, or Design Library Ready reprocess. **OFF** leaves designs awaiting Start AI / Process image with AI; Auto advance still controls batch vs one-by-one after a manual start. Distinct from catalog Autonomous (`catalogAutonomousLiveEnabled` / `catalogWorkflowMode`). Ready Library path passes `autoStart` to `reprocessReadyDesignWithAi` (demote-only when false).
 4. **Retry UX** — **Retry AI Processing** for the selected failed design only (bulk **Retry All Failed** removed in ADR-FP-017).
 5. **Concurrency** — keep Cloud Function instance limits that prevent 429 storms; sequential client enqueue remains the throughput control. Residual risk: Processing-tab Start AI and the import background pump can overlap on different designs; server `already_processing` skip mitigates double-work.
 
@@ -5645,3 +7141,22 @@ AppForge starter template ADRs (ADR-001 through ADR-004 in prior template) descr
 | 2026-06-24 | ADR-FP-009: Three-workspace model; AI Review Inbox; no persisted review drafts; confidence informational only |
 | 2026-06-24 | ADR-FP-008: Fresh Prints Studio + Fresh Prints Portal naming |
 | 2026-06-24 | Fresh Prints ADRs added; AppForge starter ADRs removed |
+
+## 2026-09-07 — Pass 1 semantic authority and parked Pass 2
+
+The active catalog Processing path is Pass 1-only. Deterministic objective
+contracts remain the Ready/Needs Review authority. `structured_evidence_gap:*`
+and `subject_specificity_risk:*` remain observable semantic diagnostics, but do
+not independently veto Ready or trigger another provider request.
+
+Semantic Review Pass 2 is preserved as an experimental, owner-only manual
+Playground path behind `settings/aiEnrichment.semanticReviewPlaygroundEnabled`,
+which defaults to false. This field is not used by Processing, reprocessing,
+Autonomous decisions, or candidate generation. The deprecated
+`semanticReviewerEnabled` field is read-only compatibility state and is not
+translated into the new gate.
+
+AI tag generation, Tag Rerank, Suggestion Author, suggested-new-tag approval,
+and `matchedTags` category/approval authority are retired from the active AI
+path. Staff tags, historical fields, taxonomy, and existing discovery behavior
+remain preserved; destructive historical cleanup requires a separate review.

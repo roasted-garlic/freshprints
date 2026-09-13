@@ -1,0 +1,3049 @@
+{
+  "projectId": "fresh-prints-dev",
+  "startedAt": "2026-08-25T22:25:19.975Z",
+  "completedAt": "2026-08-25T22:26:45.197Z",
+  "fixtureCount": 24,
+  "processedCount": 0,
+  "blockedCount": 6,
+  "passCount": 8,
+  "noteCount": 6,
+  "failCount": 10,
+  "v28ProcessedCount": 0,
+  "pairResults": [
+    {
+      "label": "Sarcastic Skeleton/Hand",
+      "left": "SrDNWipuL0kBj3EuXY2c",
+      "right": "lvTN328EOc9JWazOAs7I",
+      "theme": "sarcastic day",
+      "aggregateOverlap": 0.18181818181818182,
+      "pass": false,
+      "verdict": "FAIL",
+      "reasons": [
+        "aggregate_overlap_below_threshold:0.182<0.5",
+        "missing_core:themes:sarcastic",
+        "missing_core:themes:sarcastic"
+      ]
+    },
+    {
+      "label": "keepgrowing B/W",
+      "left": "lbbMZuHQFILqZZmsUWit",
+      "right": "S9ZeylZt0z0AyA0WFAoX",
+      "theme": "keep growing",
+      "aggregateOverlap": 0.7777777777777778,
+      "pass": false,
+      "verdict": "FAIL",
+      "reasons": [
+        "missing_core:themes:growth",
+        "missing_core:themes:growth"
+      ]
+    },
+    {
+      "label": "stonernikeswish black/white",
+      "left": "mN90KyEM2rEOmOXeIbaL",
+      "right": "yd2pLu6VsemM2mv9pYUQ",
+      "theme": "stoner nike swish",
+      "aggregateOverlap": 0.5714285714285714,
+      "pass": false,
+      "verdict": "FAIL",
+      "reasons": [
+        "missing_core:themes:stoner",
+        "missing_core:themes:stoner"
+      ]
+    }
+  ],
+  "stabilityResults": [
+    {
+      "id": "SrDNWipuL0kBj3EuXY2c",
+      "title": "Sarcastic Skeleton",
+      "aggregateOverlap": 0.36,
+      "run1CorePass": false,
+      "run2CorePass": false,
+      "verdict": "NOTE",
+      "run2Profile": {
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "automationDecision": "needs_review",
+        "populatedDimensions": [
+          "subjects",
+          "styles",
+          "themes",
+          "interests",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "populatedCount": 7,
+        "atDimCap": false,
+        "atSearchCap": false,
+        "lists": {
+          "subjects": [
+            "skeleton"
+          ],
+          "objects": [],
+          "styles": [
+            "graphic",
+            "vintage",
+            "distressed",
+            "retro",
+            "tie-dye",
+            "groovy",
+            "psychedelic",
+            "rainbow",
+            "vibrant"
+          ],
+          "themes": [
+            "humor",
+            "sarcasm",
+            "attitude",
+            "positivity"
+          ],
+          "interests": [
+            "peace",
+            "alternative"
+          ],
+          "professionsGroups": [],
+          "occasions": [],
+          "places": [],
+          "colors": [
+            "pink",
+            "purple",
+            "blue",
+            "green",
+            "yellow",
+            "orange",
+            "rainbow",
+            "holographic",
+            "iridescent"
+          ],
+          "visibleText": [
+            "HAVE",
+            "The Day",
+            "& YOU",
+            "DESERVE"
+          ],
+          "searchConcepts": [
+            "skeleton peace sign",
+            "have the day you deserve quote",
+            "sarcastic skeleton",
+            "groovy skeleton",
+            "psychedelic skeleton",
+            "holographic skeleton design",
+            "iridescent skeleton art",
+            "tie dye skeleton",
+            "attitude skeleton"
+          ]
+        }
+      }
+    },
+    {
+      "id": "Vlsg0P2CbuhTlhVmgYU8",
+      "title": "Grinch stipple",
+      "aggregateOverlap": 0.2857142857142857,
+      "run1CorePass": false,
+      "run2CorePass": true,
+      "verdict": "NOTE",
+      "run2Profile": {
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "automationDecision": "needs_review",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "occasions",
+          "colors",
+          "searchConcepts"
+        ],
+        "populatedCount": 8,
+        "atDimCap": false,
+        "atSearchCap": false,
+        "lists": {
+          "subjects": [
+            "Grinch",
+            "dog"
+          ],
+          "objects": [
+            "Christmas tree",
+            "village",
+            "reindeer antlers"
+          ],
+          "styles": [
+            "illustration",
+            "sketchy",
+            "distressed"
+          ],
+          "themes": [
+            "Christmas",
+            "holiday"
+          ],
+          "interests": [
+            "Dr. Seuss",
+            "Christmas movies"
+          ],
+          "professionsGroups": [],
+          "occasions": [
+            "Christmas"
+          ],
+          "places": [],
+          "colors": [
+            "white",
+            "black"
+          ],
+          "visibleText": [],
+          "searchConcepts": [
+            "The Grinch",
+            "Max the dog",
+            "Christmas scene",
+            "Whoville",
+            "holiday spirit",
+            "winter night",
+            "Dr. Seuss characters"
+          ]
+        }
+      }
+    },
+    {
+      "id": "4rG1uHbmqBtOevnDFon6",
+      "title": "Human Rights text",
+      "aggregateOverlap": 0.5625,
+      "run1CorePass": false,
+      "run2CorePass": false,
+      "verdict": "NOTE",
+      "run2Profile": {
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "populatedCount": 7,
+        "atDimCap": false,
+        "atSearchCap": false,
+        "lists": {
+          "subjects": [],
+          "objects": [
+            "flowers"
+          ],
+          "styles": [
+            "illustration",
+            "graphic",
+            "retro"
+          ],
+          "themes": [
+            "activism",
+            "social justice",
+            "equality",
+            "human rights"
+          ],
+          "interests": [
+            "activism",
+            "social justice"
+          ],
+          "professionsGroups": [],
+          "occasions": [],
+          "places": [],
+          "colors": [
+            "pink",
+            "coral",
+            "green",
+            "gray"
+          ],
+          "visibleText": [
+            "BASIC HUMAN RIGHTS",
+            "ARE NOT \"RADICAL\""
+          ],
+          "searchConcepts": [
+            "basic human rights",
+            "human rights are not radical",
+            "social justice",
+            "equality quote",
+            "inspirational message",
+            "activist art",
+            "political statement",
+            "floral activism",
+            "quote about rights",
+            "retro activism"
+          ]
+        }
+      }
+    },
+    {
+      "id": "NilC9nqaBALTPgDM1j4q",
+      "title": "faith floral",
+      "aggregateOverlap": 0.8461538461538461,
+      "run1CorePass": true,
+      "run2CorePass": true,
+      "verdict": "PASS",
+      "run2Profile": {
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "populatedCount": 7,
+        "atDimCap": false,
+        "atSearchCap": false,
+        "lists": {
+          "subjects": [],
+          "objects": [
+            "cross",
+            "flowers"
+          ],
+          "styles": [
+            "illustration",
+            "graphic",
+            "decorative"
+          ],
+          "themes": [
+            "faith",
+            "positivity",
+            "nature"
+          ],
+          "interests": [
+            "christianity",
+            "nature"
+          ],
+          "professionsGroups": [],
+          "occasions": [],
+          "places": [],
+          "colors": [
+            "teal",
+            "white",
+            "orange",
+            "peach",
+            "cream",
+            "green"
+          ],
+          "visibleText": [
+            "Faith"
+          ],
+          "searchConcepts": [
+            "religious typography",
+            "floral cross art",
+            "inspirational quote art",
+            "Christian flower design",
+            "faith-based art"
+          ]
+        }
+      }
+    },
+    {
+      "id": "9EGDdQJbi2q15UBqE5Sf",
+      "title": "HolyCow",
+      "aggregateOverlap": 0.47368421052631576,
+      "run1CorePass": true,
+      "run2CorePass": true,
+      "verdict": "NOTE",
+      "run2Profile": {
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "automationDecision": "needs_review",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "populatedCount": 8,
+        "atDimCap": false,
+        "atSearchCap": false,
+        "lists": {
+          "subjects": [
+            "cow"
+          ],
+          "objects": [
+            "bandana",
+            "heart",
+            "flowers",
+            "stars"
+          ],
+          "styles": [
+            "graphic",
+            "cartoon"
+          ],
+          "themes": [
+            "humor",
+            "animal humor",
+            "sarcasm",
+            "attitude"
+          ],
+          "interests": [
+            "animals",
+            "country life",
+            "pets"
+          ],
+          "professionsGroups": [],
+          "occasions": [],
+          "places": [],
+          "colors": [
+            "pink",
+            "white",
+            "black",
+            "teal",
+            "gray"
+          ],
+          "visibleText": [
+            "HOLY"
+          ],
+          "searchConcepts": [
+            "holy cow funny",
+            "cow with bandana",
+            "funny cow graphic",
+            "cute cow saying",
+            "farm humor",
+            "country saying"
+          ]
+        }
+      }
+    }
+  ],
+  "runLog": [
+    "2026-08-25T22:25:19.975Z BLOCKED yJm2VBRvecPNjx79aSnK ready/approved",
+    "2026-08-25T22:25:19.975Z BLOCKED 6x2LyTvG3ewIePeWHanV ready/approved",
+    "2026-08-25T22:25:19.975Z BLOCKED KI7Ncd1O9JCuX9uCq505 ready/approved",
+    "2026-08-25T22:25:19.975Z BLOCKED mZWO3Lsra91EhNRNEkhR ready/approved",
+    "2026-08-25T22:25:19.975Z BLOCKED W1bwk4jrCoQFn0OiyiSU ready/approved",
+    "2026-08-25T22:25:19.975Z BLOCKED ltn0gzs2YGXPADqCejr8 ready/approved",
+    "2026-08-25T22:25:20.917Z RETRY SrDNWipuL0kBj3EuXY2c",
+    "2026-08-25T22:25:20.917Z ENQUEUE SrDNWipuL0kBj3EuXY2c",
+    "2026-08-25T22:25:26.537Z DONE SrDNWipuL0kBj3EuXY2c FAIL catalog-enrich-v28",
+    "2026-08-25T22:25:26.629Z RETRY lvTN328EOc9JWazOAs7I",
+    "2026-08-25T22:25:26.629Z ENQUEUE lvTN328EOc9JWazOAs7I",
+    "2026-08-25T22:25:30.099Z DONE lvTN328EOc9JWazOAs7I FAIL catalog-enrich-v28",
+    "2026-08-25T22:25:30.173Z RETRY lbbMZuHQFILqZZmsUWit",
+    "2026-08-25T22:25:30.173Z ENQUEUE lbbMZuHQFILqZZmsUWit",
+    "2026-08-25T22:25:33.127Z DONE lbbMZuHQFILqZZmsUWit FAIL catalog-enrich-v28",
+    "2026-08-25T22:25:33.248Z RETRY S9ZeylZt0z0AyA0WFAoX",
+    "2026-08-25T22:25:33.248Z ENQUEUE S9ZeylZt0z0AyA0WFAoX",
+    "2026-08-25T22:25:36.519Z DONE S9ZeylZt0z0AyA0WFAoX FAIL catalog-enrich-v28",
+    "2026-08-25T22:25:36.613Z RETRY mN90KyEM2rEOmOXeIbaL",
+    "2026-08-25T22:25:36.613Z ENQUEUE mN90KyEM2rEOmOXeIbaL",
+    "2026-08-25T22:25:39.929Z DONE mN90KyEM2rEOmOXeIbaL FAIL catalog-enrich-v28",
+    "2026-08-25T22:25:39.995Z RETRY yd2pLu6VsemM2mv9pYUQ",
+    "2026-08-25T22:25:39.995Z ENQUEUE yd2pLu6VsemM2mv9pYUQ",
+    "2026-08-25T22:25:43.392Z DONE yd2pLu6VsemM2mv9pYUQ FAIL catalog-enrich-v28",
+    "2026-08-25T22:25:43.474Z RETRY Vlsg0P2CbuhTlhVmgYU8",
+    "2026-08-25T22:25:43.474Z ENQUEUE Vlsg0P2CbuhTlhVmgYU8",
+    "2026-08-25T22:25:47.060Z DONE Vlsg0P2CbuhTlhVmgYU8 FAIL catalog-enrich-v28",
+    "2026-08-25T22:25:47.137Z RETRY 4rG1uHbmqBtOevnDFon6",
+    "2026-08-25T22:25:47.137Z ENQUEUE 4rG1uHbmqBtOevnDFon6",
+    "2026-08-25T22:25:51.838Z DONE 4rG1uHbmqBtOevnDFon6 FAIL catalog-enrich-v28",
+    "2026-08-25T22:25:51.902Z RETRY xFrxcn48oXdCmxJCFW9x",
+    "2026-08-25T22:25:51.902Z ENQUEUE xFrxcn48oXdCmxJCFW9x",
+    "2026-08-25T22:25:55.203Z DONE xFrxcn48oXdCmxJCFW9x PASS catalog-enrich-v28",
+    "2026-08-25T22:25:55.289Z RETRY NilC9nqaBALTPgDM1j4q",
+    "2026-08-25T22:25:55.289Z ENQUEUE NilC9nqaBALTPgDM1j4q",
+    "2026-08-25T22:25:58.542Z DONE NilC9nqaBALTPgDM1j4q PASS catalog-enrich-v28",
+    "2026-08-25T22:25:58.617Z RETRY jnw12AWGtI7bCkM7y9KI",
+    "2026-08-25T22:25:58.617Z ENQUEUE jnw12AWGtI7bCkM7y9KI",
+    "2026-08-25T22:26:03.027Z DONE jnw12AWGtI7bCkM7y9KI PASS catalog-enrich-v28",
+    "2026-08-25T22:26:03.101Z RETRY vVimyNMgfF9jEbJSaNSx",
+    "2026-08-25T22:26:03.101Z ENQUEUE vVimyNMgfF9jEbJSaNSx",
+    "2026-08-25T22:26:06.775Z DONE vVimyNMgfF9jEbJSaNSx PASS catalog-enrich-v28",
+    "2026-08-25T22:26:06.836Z RETRY SToRmjOZTLwj5upzjijC",
+    "2026-08-25T22:26:06.836Z ENQUEUE SToRmjOZTLwj5upzjijC",
+    "2026-08-25T22:26:10.677Z DONE SToRmjOZTLwj5upzjijC PASS catalog-enrich-v28",
+    "2026-08-25T22:26:10.737Z RETRY F3lop71TCy9yEAVktY8s",
+    "2026-08-25T22:26:10.737Z ENQUEUE F3lop71TCy9yEAVktY8s",
+    "2026-08-25T22:26:14.298Z DONE F3lop71TCy9yEAVktY8s PASS catalog-enrich-v28",
+    "2026-08-25T22:26:14.364Z RETRY vMxoB23WlTRIiaTnLkpF",
+    "2026-08-25T22:26:14.364Z ENQUEUE vMxoB23WlTRIiaTnLkpF",
+    "2026-08-25T22:26:17.428Z DONE vMxoB23WlTRIiaTnLkpF FAIL catalog-enrich-v28",
+    "2026-08-25T22:26:17.505Z RETRY GIgIAznocv8JJi3gtVCS",
+    "2026-08-25T22:26:17.505Z ENQUEUE GIgIAznocv8JJi3gtVCS",
+    "2026-08-25T22:26:20.560Z DONE GIgIAznocv8JJi3gtVCS FAIL catalog-enrich-v28",
+    "2026-08-25T22:26:20.647Z RETRY 9EGDdQJbi2q15UBqE5Sf",
+    "2026-08-25T22:26:20.647Z ENQUEUE 9EGDdQJbi2q15UBqE5Sf",
+    "2026-08-25T22:26:23.929Z DONE 9EGDdQJbi2q15UBqE5Sf PASS catalog-enrich-v28",
+    "2026-08-25T22:26:24.018Z RETRY QdTEYMNj0GmEk80lPmGq",
+    "2026-08-25T22:26:24.018Z ENQUEUE QdTEYMNj0GmEk80lPmGq",
+    "2026-08-25T22:26:27.611Z DONE QdTEYMNj0GmEk80lPmGq PASS catalog-enrich-v28"
+  ],
+  "results": [
+    {
+      "n": 1,
+      "id": "yJm2VBRvecPNjx79aSnK",
+      "slot": "animal_highland",
+      "title": "Highland Cow With Bow",
+      "outcome": "blocked_reset",
+      "baseline": {
+        "status": "ready",
+        "aiReviewStatus": "approved",
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1"
+      },
+      "blockReason": "status=ready, aiReviewStatus=approved",
+      "eval": {
+        "verdict": "FAIL",
+        "issues": [
+          "not_v28:catalog-enrich-v27/smart-profile-normalizer-v1",
+          "missing_core:subjects:highland"
+        ],
+        "notes": [],
+        "summary": {
+          "promptVersion": "catalog-enrich-v27",
+          "normalizerVersion": "smart-profile-normalizer-v1",
+          "automationDecision": "shadow",
+          "populatedDimensions": [
+            "subjects",
+            "objects",
+            "styles",
+            "themes",
+            "colors",
+            "searchConcepts"
+          ],
+          "populatedCount": 6,
+          "atDimCap": false,
+          "atSearchCap": false,
+          "lists": {
+            "subjects": [
+              "cow"
+            ],
+            "objects": [
+              "bow"
+            ],
+            "styles": [
+              "cartoon",
+              "watercolor"
+            ],
+            "themes": [
+              "animal humor",
+              "cute"
+            ],
+            "interests": [],
+            "professionsGroups": [],
+            "occasions": [],
+            "places": [],
+            "colors": [
+              "brown",
+              "orange",
+              "red",
+              "white"
+            ],
+            "visibleText": [],
+            "searchConcepts": [
+              "Scottish cow",
+              "fluffy cow",
+              "baby cow",
+              "cow cartoon"
+            ]
+          }
+        },
+        "textCheck": {
+          "fires": false,
+          "hasMeta": false,
+          "softFail": false
+        },
+        "coreCheck": {
+          "pass": false,
+          "missing": [
+            {
+              "dimension": "subjects",
+              "concept": "highland",
+              "label": "highland specificity"
+            }
+          ]
+        },
+        "vocabReuseRate": 0.5,
+        "nearDuplicateCount": 0,
+        "readableTextSample": []
+      },
+      "verdict": "NOTE",
+      "notes": [
+        "Cannot reset approved/ready design — v28 not obtained via approved path; scored v27 baseline only"
+      ]
+    },
+    {
+      "n": 2,
+      "id": "6x2LyTvG3ewIePeWHanV",
+      "slot": "animal_jimothy",
+      "title": "Jimothy Seattle Wildlife…",
+      "outcome": "blocked_reset",
+      "baseline": {
+        "status": "ready",
+        "aiReviewStatus": "approved",
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1"
+      },
+      "blockReason": "status=ready, aiReviewStatus=approved",
+      "eval": {
+        "verdict": "FAIL",
+        "issues": [
+          "not_v28:catalog-enrich-v27/smart-profile-normalizer-v1",
+          "unsupported_people_in_subjects"
+        ],
+        "notes": [],
+        "summary": {
+          "promptVersion": "catalog-enrich-v27",
+          "normalizerVersion": "smart-profile-normalizer-v1",
+          "automationDecision": "shadow",
+          "populatedDimensions": [
+            "subjects",
+            "objects",
+            "styles",
+            "themes",
+            "interests",
+            "places",
+            "colors",
+            "visibleText",
+            "searchConcepts"
+          ],
+          "populatedCount": 9,
+          "atDimCap": false,
+          "atSearchCap": false,
+          "lists": {
+            "subjects": [
+              "raccoon",
+              "people"
+            ],
+            "objects": [
+              "cityscape",
+              "mountain",
+              "trees",
+              "water"
+            ],
+            "styles": [
+              "illustrative",
+              "vintage",
+              "distressed"
+            ],
+            "themes": [
+              "wildlife",
+              "city",
+              "nature",
+              "humor"
+            ],
+            "interests": [
+              "travel",
+              "outdoors"
+            ],
+            "professionsGroups": [],
+            "occasions": [],
+            "places": [
+              "Seattle"
+            ],
+            "colors": [
+              "red",
+              "orange",
+              "brown",
+              "green",
+              "gray",
+              "white"
+            ],
+            "visibleText": [
+              "JIMOTHY",
+              "SEATTLE WILDLIFE",
+              "DO NOT PET THE ROUND KING"
+            ],
+            "searchConcepts": [
+              "Jimothy raccoon",
+              "Seattle raccoon",
+              "round king raccoon",
+              "funny raccoon shirt",
+              "raccoon humor",
+              "Seattle wildlife shirt"
+            ]
+          }
+        },
+        "textCheck": {
+          "fires": false,
+          "hasMeta": false,
+          "softFail": false
+        },
+        "coreCheck": {
+          "pass": true,
+          "missing": []
+        },
+        "vocabReuseRate": 0.52,
+        "nearDuplicateCount": 0,
+        "readableTextSample": [
+          "JIMOTHY",
+          "SEATTLE WILDLIFE",
+          "DO NOT PET THE ROUND KING"
+        ]
+      },
+      "verdict": "NOTE",
+      "notes": [
+        "Cannot reset approved/ready design — v28 not obtained via approved path; scored v27 baseline only"
+      ]
+    },
+    {
+      "n": 3,
+      "id": "KI7Ncd1O9JCuX9uCq505",
+      "slot": "plant_humor",
+      "title": "Oops I Got Another Plant Goose",
+      "outcome": "blocked_reset",
+      "baseline": {
+        "status": "ready",
+        "aiReviewStatus": "approved",
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1"
+      },
+      "blockReason": "status=ready, aiReviewStatus=approved",
+      "eval": {
+        "verdict": "FAIL",
+        "issues": [
+          "not_v28:catalog-enrich-v27/smart-profile-normalizer-v1"
+        ],
+        "notes": [],
+        "summary": {
+          "promptVersion": "catalog-enrich-v27",
+          "normalizerVersion": "smart-profile-normalizer-v1",
+          "automationDecision": "shadow",
+          "populatedDimensions": [
+            "subjects",
+            "objects",
+            "styles",
+            "themes",
+            "interests",
+            "colors",
+            "visibleText",
+            "searchConcepts"
+          ],
+          "populatedCount": 8,
+          "atDimCap": false,
+          "atSearchCap": false,
+          "lists": {
+            "subjects": [
+              "goose"
+            ],
+            "objects": [
+              "hat",
+              "boots",
+              "potted plants",
+              "plants"
+            ],
+            "styles": [
+              "cartoon",
+              "hand-drawn"
+            ],
+            "themes": [
+              "plant obsession",
+              "gardening humor"
+            ],
+            "interests": [
+              "gardening",
+              "houseplants"
+            ],
+            "professionsGroups": [],
+            "occasions": [],
+            "places": [],
+            "colors": [
+              "black",
+              "white",
+              "green",
+              "brown"
+            ],
+            "visibleText": [
+              "OOPS! I GOT",
+              "ANOTHER PLANT"
+            ],
+            "searchConcepts": [
+              "goose with plants",
+              "plant mom",
+              "plant dad",
+              "crazy plant lady"
+            ]
+          }
+        },
+        "textCheck": {
+          "fires": false,
+          "hasMeta": false,
+          "softFail": false
+        },
+        "coreCheck": {
+          "pass": true,
+          "missing": []
+        },
+        "vocabReuseRate": 0.35294117647058826,
+        "nearDuplicateCount": 0,
+        "readableTextSample": [
+          "OOPS! I GOT",
+          "ANOTHER PLANT"
+        ]
+      },
+      "verdict": "NOTE",
+      "notes": [
+        "Cannot reset approved/ready design — v28 not obtained via approved path; scored v27 baseline only"
+      ]
+    },
+    {
+      "n": 4,
+      "id": "mZWO3Lsra91EhNRNEkhR",
+      "slot": "profession_nurse",
+      "title": "Nurse Brain…",
+      "outcome": "blocked_reset",
+      "baseline": {
+        "status": "ready",
+        "aiReviewStatus": "approved",
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1"
+      },
+      "blockReason": "status=ready, aiReviewStatus=approved",
+      "eval": {
+        "verdict": "FAIL",
+        "issues": [
+          "not_v28:catalog-enrich-v27/smart-profile-normalizer-v1"
+        ],
+        "notes": [],
+        "summary": {
+          "promptVersion": "catalog-enrich-v27",
+          "normalizerVersion": "smart-profile-normalizer-v1",
+          "automationDecision": "shadow",
+          "populatedDimensions": [
+            "subjects",
+            "objects",
+            "styles",
+            "themes",
+            "interests",
+            "professionsGroups",
+            "colors",
+            "visibleText",
+            "searchConcepts"
+          ],
+          "populatedCount": 9,
+          "atDimCap": false,
+          "atSearchCap": false,
+          "lists": {
+            "subjects": [
+              "brain"
+            ],
+            "objects": [
+              "loading bar"
+            ],
+            "styles": [
+              "cartoon",
+              "neon"
+            ],
+            "themes": [
+              "nurse humor",
+              "busy brain",
+              "overwhelmed",
+              "under construction"
+            ],
+            "interests": [
+              "nursing"
+            ],
+            "professionsGroups": [
+              "nurses"
+            ],
+            "occasions": [],
+            "places": [],
+            "colors": [
+              "orange",
+              "pink",
+              "blue",
+              "green",
+              "grey"
+            ],
+            "visibleText": [
+              "NURSE",
+              "BRAIN",
+              "PLEASE DON'T INTERRUPT."
+            ],
+            "searchConcepts": [
+              "nurse brain",
+              "busy nurse",
+              "nurse gift idea",
+              "nurse loading screen",
+              "nurse life"
+            ]
+          }
+        },
+        "textCheck": {
+          "fires": false,
+          "hasMeta": false,
+          "softFail": false
+        },
+        "coreCheck": {
+          "pass": true,
+          "missing": []
+        },
+        "vocabReuseRate": 0.2222222222222222,
+        "nearDuplicateCount": 0,
+        "readableTextSample": [
+          "NURSE",
+          "BRAIN",
+          "PLEASE DON'T INTERRUPT."
+        ]
+      },
+      "verdict": "NOTE",
+      "notes": [
+        "Cannot reset approved/ready design — v28 not obtained via approved path; scored v27 baseline only"
+      ]
+    },
+    {
+      "n": 5,
+      "id": "W1bwk4jrCoQFn0OiyiSU",
+      "slot": "holiday_santa",
+      "title": "Santa",
+      "outcome": "blocked_reset",
+      "baseline": {
+        "status": "ready",
+        "aiReviewStatus": "approved",
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1"
+      },
+      "blockReason": "status=ready, aiReviewStatus=approved",
+      "eval": {
+        "verdict": "FAIL",
+        "issues": [
+          "not_v28:catalog-enrich-v27/smart-profile-normalizer-v1"
+        ],
+        "notes": [],
+        "summary": {
+          "promptVersion": "catalog-enrich-v27",
+          "normalizerVersion": "smart-profile-normalizer-v1",
+          "automationDecision": "shadow",
+          "populatedDimensions": [
+            "subjects",
+            "objects",
+            "styles",
+            "themes",
+            "occasions",
+            "colors",
+            "visibleText",
+            "searchConcepts"
+          ],
+          "populatedCount": 8,
+          "atDimCap": false,
+          "atSearchCap": false,
+          "lists": {
+            "subjects": [
+              "Santa"
+            ],
+            "objects": [
+              "holly"
+            ],
+            "styles": [
+              "cartoon"
+            ],
+            "themes": [
+              "Christmas humor",
+              "funny holiday",
+              "sarcastic Christmas"
+            ],
+            "interests": [],
+            "professionsGroups": [],
+            "occasions": [
+              "Christmas"
+            ],
+            "places": [],
+            "colors": [
+              "red",
+              "white",
+              "green",
+              "grey"
+            ],
+            "visibleText": [
+              "I DON'T",
+              "BELIEVE",
+              "IN YOU EITHER"
+            ],
+            "searchConcepts": [
+              "Santa I don't believe",
+              "I don't believe in you either",
+              "funny Santa",
+              "Christmas saying"
+            ]
+          }
+        },
+        "textCheck": {
+          "fires": false,
+          "hasMeta": false,
+          "softFail": false
+        },
+        "coreCheck": {
+          "pass": true,
+          "missing": []
+        },
+        "vocabReuseRate": 0.14285714285714285,
+        "nearDuplicateCount": 0,
+        "readableTextSample": [
+          "I DON'T",
+          "BELIEVE",
+          "IN YOU EITHER"
+        ]
+      },
+      "verdict": "NOTE",
+      "notes": [
+        "Cannot reset approved/ready design — v28 not obtained via approved path; scored v27 baseline only"
+      ]
+    },
+    {
+      "n": 6,
+      "id": "ltn0gzs2YGXPADqCejr8",
+      "slot": "seasonal",
+      "title": "Summer Vibes Fruits",
+      "outcome": "blocked_reset",
+      "baseline": {
+        "status": "ready",
+        "aiReviewStatus": "approved",
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1"
+      },
+      "blockReason": "status=ready, aiReviewStatus=approved",
+      "eval": {
+        "verdict": "FAIL",
+        "issues": [
+          "not_v28:catalog-enrich-v27/smart-profile-normalizer-v1",
+          "missing_core:themes:summer"
+        ],
+        "notes": [],
+        "summary": {
+          "promptVersion": "catalog-enrich-v27",
+          "normalizerVersion": "smart-profile-normalizer-v1",
+          "automationDecision": "shadow",
+          "populatedDimensions": [
+            "subjects",
+            "objects",
+            "styles",
+            "themes",
+            "interests",
+            "occasions",
+            "places",
+            "colors",
+            "visibleText",
+            "searchConcepts"
+          ],
+          "populatedCount": 10,
+          "atDimCap": false,
+          "atSearchCap": false,
+          "lists": {
+            "subjects": [
+              "fruits",
+              "watermelon",
+              "pineapple",
+              "apple",
+              "orange",
+              "mango"
+            ],
+            "objects": [
+              "palm trees",
+              "flowers",
+              "sunglasses",
+              "ocean",
+              "sky"
+            ],
+            "styles": [
+              "cartoon",
+              "illustration",
+              "watercolor"
+            ],
+            "themes": [
+              "summer vacation",
+              "beach life",
+              "tropical getaway",
+              "fun in the sun"
+            ],
+            "interests": [
+              "summer",
+              "beach",
+              "travel"
+            ],
+            "professionsGroups": [],
+            "occasions": [
+              "summer"
+            ],
+            "places": [
+              "beach"
+            ],
+            "colors": [
+              "blue",
+              "green",
+              "yellow",
+              "orange",
+              "pink",
+              "purple"
+            ],
+            "visibleText": [
+              "Summer Vibes"
+            ],
+            "searchConcepts": [
+              "summer shirt",
+              "beach vibes",
+              "tropical shirt",
+              "fruity fun"
+            ]
+          }
+        },
+        "textCheck": {
+          "fires": false,
+          "hasMeta": false,
+          "softFail": false
+        },
+        "coreCheck": {
+          "pass": false,
+          "missing": [
+            {
+              "dimension": "themes",
+              "concept": "summer"
+            }
+          ]
+        },
+        "vocabReuseRate": 0.5666666666666667,
+        "nearDuplicateCount": 0,
+        "readableTextSample": [
+          "Summer Vibes"
+        ]
+      },
+      "verdict": "NOTE",
+      "notes": [
+        "Cannot reset approved/ready design — v28 not obtained via approved path; scored v27 baseline only"
+      ]
+    },
+    {
+      "n": 7,
+      "id": "SrDNWipuL0kBj3EuXY2c",
+      "slot": "color_variant_a",
+      "title": "Sarcastic Skeleton",
+      "outcome": "retried",
+      "baseline": {
+        "status": "imported",
+        "aiReviewStatus": "pending",
+        "promptVersion": null,
+        "normalizerVersion": null
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "aiProcessingStage": "ready_for_review",
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "errorMessage": null
+      },
+      "eval": {
+        "verdict": "FAIL",
+        "issues": [
+          "missing_core:themes:sarcastic"
+        ],
+        "notes": [],
+        "summary": {
+          "promptVersion": "catalog-enrich-v28",
+          "normalizerVersion": "smart-profile-normalizer-v2",
+          "automationDecision": "needs_review",
+          "populatedDimensions": [
+            "subjects",
+            "objects",
+            "styles",
+            "themes",
+            "colors",
+            "visibleText",
+            "searchConcepts"
+          ],
+          "populatedCount": 7,
+          "atDimCap": false,
+          "atSearchCap": false,
+          "lists": {
+            "subjects": [
+              "skeleton"
+            ],
+            "objects": [
+              "heart"
+            ],
+            "styles": [
+              "graphic",
+              "tie-dye",
+              "holographic"
+            ],
+            "themes": [
+              "humor",
+              "sarcasm",
+              "attitude",
+              "quote",
+              "saying"
+            ],
+            "interests": [],
+            "professionsGroups": [],
+            "occasions": [],
+            "places": [],
+            "colors": [
+              "pink",
+              "purple",
+              "blue",
+              "green",
+              "yellow",
+              "orange"
+            ],
+            "visibleText": [
+              "HAVE",
+              "The",
+              "& YOU",
+              "DESERVE"
+            ],
+            "searchConcepts": [
+              "skeleton quote",
+              "have the day you deserve quote",
+              "skeleton with peace sign",
+              "sarcastic skeleton",
+              "funny skeleton saying",
+              "holographic skeleton",
+              "rainbow skeleton",
+              "tie-dye skeleton"
+            ]
+          }
+        },
+        "textCheck": {
+          "fires": false,
+          "hasMeta": true,
+          "softFail": false
+        },
+        "coreCheck": {
+          "pass": false,
+          "missing": [
+            {
+              "dimension": "themes",
+              "concept": "sarcastic",
+              "label": "sarcasm theme"
+            }
+          ]
+        },
+        "vocabReuseRate": 0.35,
+        "nearDuplicateCount": 0,
+        "readableTextSample": [
+          "HAVE",
+          "The",
+          "& YOU"
+        ]
+      },
+      "verdict": "FAIL"
+    },
+    {
+      "n": 8,
+      "id": "lvTN328EOc9JWazOAs7I",
+      "slot": "color_variant_a",
+      "title": "Sarcastic Hand",
+      "outcome": "retried",
+      "baseline": {
+        "status": "imported",
+        "aiReviewStatus": "pending",
+        "promptVersion": null,
+        "normalizerVersion": null
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "aiProcessingStage": "ready_for_review",
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "errorMessage": null
+      },
+      "eval": {
+        "verdict": "FAIL",
+        "issues": [
+          "missing_core:themes:sarcastic"
+        ],
+        "notes": [],
+        "summary": {
+          "promptVersion": "catalog-enrich-v28",
+          "normalizerVersion": "smart-profile-normalizer-v2",
+          "automationDecision": "needs_review",
+          "populatedDimensions": [
+            "subjects",
+            "objects",
+            "styles",
+            "themes",
+            "interests",
+            "colors",
+            "searchConcepts"
+          ],
+          "populatedCount": 7,
+          "atDimCap": false,
+          "atSearchCap": false,
+          "lists": {
+            "subjects": [
+              "skeleton",
+              "hand"
+            ],
+            "objects": [
+              "roses",
+              "leaves"
+            ],
+            "styles": [
+              "graphic",
+              "illustration",
+              "holographic",
+              "iridescent"
+            ],
+            "themes": [
+              "nature",
+              "attitude"
+            ],
+            "interests": [
+              "floral",
+              "nature"
+            ],
+            "professionsGroups": [],
+            "occasions": [],
+            "places": [],
+            "colors": [
+              "pink",
+              "blue",
+              "green",
+              "yellow",
+              "purple",
+              "orange",
+              "rainbow"
+            ],
+            "visibleText": [],
+            "searchConcepts": [
+              "skeleton hand peace",
+              "skeleton hand flowers",
+              "peace sign skeleton",
+              "skeleton hand roses",
+              "holographic skeleton",
+              "iridescent skeleton",
+              "floral skeleton hand"
+            ]
+          }
+        },
+        "textCheck": {
+          "fires": false,
+          "hasMeta": false,
+          "softFail": false
+        },
+        "coreCheck": {
+          "pass": false,
+          "missing": [
+            {
+              "dimension": "themes",
+              "concept": "sarcastic",
+              "label": "sarcasm theme"
+            }
+          ]
+        },
+        "vocabReuseRate": 0.42105263157894735,
+        "nearDuplicateCount": 0,
+        "readableTextSample": []
+      },
+      "verdict": "FAIL"
+    },
+    {
+      "n": 9,
+      "id": "lbbMZuHQFILqZZmsUWit",
+      "slot": "color_variant_b",
+      "title": "keepgrowingB",
+      "outcome": "retried",
+      "baseline": {
+        "status": "imported",
+        "aiReviewStatus": "pending",
+        "promptVersion": null,
+        "normalizerVersion": null
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "aiProcessingStage": "ready_for_review",
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "errorMessage": null
+      },
+      "eval": {
+        "verdict": "FAIL",
+        "issues": [
+          "missing_core:themes:growth"
+        ],
+        "notes": [],
+        "summary": {
+          "promptVersion": "catalog-enrich-v28",
+          "normalizerVersion": "smart-profile-normalizer-v2",
+          "automationDecision": "shadow",
+          "populatedDimensions": [
+            "styles",
+            "themes",
+            "colors",
+            "visibleText",
+            "searchConcepts"
+          ],
+          "populatedCount": 5,
+          "atDimCap": false,
+          "atSearchCap": false,
+          "lists": {
+            "subjects": [],
+            "objects": [],
+            "styles": [
+              "groovy",
+              "bubbly"
+            ],
+            "themes": [
+              "positivity",
+              "personal growth",
+              "motivation"
+            ],
+            "interests": [],
+            "professionsGroups": [],
+            "occasions": [],
+            "places": [],
+            "colors": [
+              "black",
+              "gray"
+            ],
+            "visibleText": [
+              "KEEP",
+              "GROWING"
+            ],
+            "searchConcepts": [
+              "inspirational quote",
+              "motivational saying",
+              "positive affirmation",
+              "self-improvement",
+              "personal development",
+              "retro font",
+              "bubble letters"
+            ]
+          }
+        },
+        "textCheck": {
+          "fires": true,
+          "hasMeta": false,
+          "softFail": true
+        },
+        "coreCheck": {
+          "pass": false,
+          "missing": [
+            {
+              "dimension": "themes",
+              "concept": "growth",
+              "label": "growth theme"
+            }
+          ]
+        },
+        "vocabReuseRate": 0.5555555555555556,
+        "nearDuplicateCount": 0,
+        "readableTextSample": [
+          "KEEP",
+          "GROWING"
+        ]
+      },
+      "verdict": "FAIL"
+    },
+    {
+      "n": 10,
+      "id": "S9ZeylZt0z0AyA0WFAoX",
+      "slot": "color_variant_b",
+      "title": "keepgrowingW",
+      "outcome": "retried",
+      "baseline": {
+        "status": "imported",
+        "aiReviewStatus": "pending",
+        "promptVersion": null,
+        "normalizerVersion": null
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "aiProcessingStage": "ready_for_review",
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "errorMessage": null
+      },
+      "eval": {
+        "verdict": "FAIL",
+        "issues": [
+          "missing_core:themes:growth"
+        ],
+        "notes": [],
+        "summary": {
+          "promptVersion": "catalog-enrich-v28",
+          "normalizerVersion": "smart-profile-normalizer-v2",
+          "automationDecision": "shadow",
+          "populatedDimensions": [
+            "styles",
+            "themes",
+            "interests",
+            "colors",
+            "visibleText",
+            "searchConcepts"
+          ],
+          "populatedCount": 6,
+          "atDimCap": false,
+          "atSearchCap": false,
+          "lists": {
+            "subjects": [],
+            "objects": [],
+            "styles": [
+              "groovy",
+              "bubbly",
+              "retro"
+            ],
+            "themes": [
+              "positivity",
+              "motivation",
+              "personal growth"
+            ],
+            "interests": [
+              "personal growth"
+            ],
+            "professionsGroups": [],
+            "occasions": [],
+            "places": [],
+            "colors": [
+              "white",
+              "black"
+            ],
+            "visibleText": [
+              "KEEP",
+              "GROWING"
+            ],
+            "searchConcepts": [
+              "keep growing",
+              "growth mindset",
+              "positive vibes",
+              "self care",
+              "encouragement",
+              "uplifting words"
+            ]
+          }
+        },
+        "textCheck": {
+          "fires": true,
+          "hasMeta": false,
+          "softFail": true
+        },
+        "coreCheck": {
+          "pass": false,
+          "missing": [
+            {
+              "dimension": "themes",
+              "concept": "growth",
+              "label": "growth theme"
+            }
+          ]
+        },
+        "vocabReuseRate": 0.5454545454545454,
+        "nearDuplicateCount": 0,
+        "readableTextSample": [
+          "KEEP",
+          "GROWING"
+        ]
+      },
+      "verdict": "FAIL"
+    },
+    {
+      "n": 11,
+      "id": "mN90KyEM2rEOmOXeIbaL",
+      "slot": "color_variant_c",
+      "title": "stonernikeswish-black",
+      "outcome": "retried",
+      "baseline": {
+        "status": "imported",
+        "aiReviewStatus": "pending",
+        "promptVersion": null,
+        "normalizerVersion": null
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "aiProcessingStage": "ready_for_review",
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "errorMessage": null
+      },
+      "eval": {
+        "verdict": "FAIL",
+        "issues": [
+          "missing_core:objects:swoosh"
+        ],
+        "notes": [],
+        "summary": {
+          "promptVersion": "catalog-enrich-v28",
+          "normalizerVersion": "smart-profile-normalizer-v2",
+          "automationDecision": "shadow",
+          "populatedDimensions": [
+            "subjects",
+            "styles",
+            "themes",
+            "interests",
+            "colors",
+            "visibleText",
+            "searchConcepts"
+          ],
+          "populatedCount": 7,
+          "atDimCap": false,
+          "atSearchCap": false,
+          "lists": {
+            "subjects": [
+              "marijuana leaf"
+            ],
+            "objects": [],
+            "styles": [
+              "graphic",
+              "illustration"
+            ],
+            "themes": [
+              "humor",
+              "cannabis humor",
+              "parody"
+            ],
+            "interests": [
+              "cannabis",
+              "weed",
+              "smoking",
+              "cannabis culture"
+            ],
+            "professionsGroups": [],
+            "occasions": [],
+            "places": [],
+            "colors": [
+              "black",
+              "gray"
+            ],
+            "visibleText": [
+              "JUST HIT IT."
+            ],
+            "searchConcepts": [
+              "marijuana logo parody",
+              "cannabis logo parody",
+              "weed logo parody",
+              "just do it parody",
+              "stoner humor",
+              "420 humor",
+              "legal weed",
+              "funny weed shirt",
+              "cannabis shirt design"
+            ]
+          }
+        },
+        "textCheck": {
+          "fires": false,
+          "hasMeta": false,
+          "softFail": false
+        },
+        "coreCheck": {
+          "pass": false,
+          "missing": [
+            {
+              "dimension": "objects",
+              "concept": "swoosh",
+              "label": "swoosh object"
+            }
+          ]
+        },
+        "vocabReuseRate": 0.6923076923076923,
+        "nearDuplicateCount": 0,
+        "readableTextSample": [
+          "JUST HIT IT."
+        ]
+      },
+      "verdict": "FAIL"
+    },
+    {
+      "n": 12,
+      "id": "yd2pLu6VsemM2mv9pYUQ",
+      "slot": "color_variant_c",
+      "title": "stonernikeswish-white",
+      "outcome": "retried",
+      "baseline": {
+        "status": "imported",
+        "aiReviewStatus": "pending",
+        "promptVersion": null,
+        "normalizerVersion": null
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "aiProcessingStage": "ready_for_review",
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "errorMessage": null
+      },
+      "eval": {
+        "verdict": "FAIL",
+        "issues": [
+          "missing_core:objects:swoosh"
+        ],
+        "notes": [],
+        "summary": {
+          "promptVersion": "catalog-enrich-v28",
+          "normalizerVersion": "smart-profile-normalizer-v2",
+          "automationDecision": "shadow",
+          "populatedDimensions": [
+            "objects",
+            "styles",
+            "themes",
+            "interests",
+            "colors",
+            "visibleText",
+            "searchConcepts"
+          ],
+          "populatedCount": 7,
+          "atDimCap": false,
+          "atSearchCap": false,
+          "lists": {
+            "subjects": [],
+            "objects": [
+              "cannabis leaves"
+            ],
+            "styles": [
+              "graphic",
+              "parody"
+            ],
+            "themes": [
+              "humor",
+              "cannabis humor",
+              "parody"
+            ],
+            "interests": [
+              "cannabis",
+              "weed",
+              "marijuana",
+              "smoking"
+            ],
+            "professionsGroups": [],
+            "occasions": [],
+            "places": [],
+            "colors": [
+              "white",
+              "gray"
+            ],
+            "visibleText": [
+              "JUST HIT IT."
+            ],
+            "searchConcepts": [
+              "just hit it",
+              "nike parody",
+              "cannabis logo parody",
+              "weed logo parody",
+              "420",
+              "stoner humor",
+              "cannabis leaf",
+              "weed leaf",
+              "marijuana leaf",
+              "funny weed shirt",
+              "funny cannabis shirt"
+            ]
+          }
+        },
+        "textCheck": {
+          "fires": true,
+          "hasMeta": false,
+          "softFail": true
+        },
+        "coreCheck": {
+          "pass": false,
+          "missing": [
+            {
+              "dimension": "objects",
+              "concept": "swoosh",
+              "label": "swoosh object"
+            }
+          ]
+        },
+        "vocabReuseRate": 0.7692307692307693,
+        "nearDuplicateCount": 0,
+        "readableTextSample": [
+          "JUST HIT IT."
+        ]
+      },
+      "verdict": "FAIL"
+    },
+    {
+      "n": 13,
+      "id": "Vlsg0P2CbuhTlhVmgYU8",
+      "slot": "complex_illustration",
+      "title": "Grinch stipple",
+      "outcome": "retried",
+      "baseline": {
+        "status": "imported",
+        "aiReviewStatus": "pending",
+        "promptVersion": null,
+        "normalizerVersion": null
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "aiProcessingStage": "ready_for_review",
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "errorMessage": null
+      },
+      "eval": {
+        "verdict": "FAIL",
+        "issues": [
+          "missing_core:subjects:grinch"
+        ],
+        "notes": [],
+        "summary": {
+          "promptVersion": "catalog-enrich-v28",
+          "normalizerVersion": "smart-profile-normalizer-v2",
+          "automationDecision": "shadow",
+          "populatedDimensions": [
+            "subjects",
+            "objects",
+            "styles",
+            "themes",
+            "interests",
+            "occasions",
+            "places",
+            "colors",
+            "searchConcepts"
+          ],
+          "populatedCount": 9,
+          "atDimCap": false,
+          "atSearchCap": false,
+          "lists": {
+            "subjects": [
+              "The Grinch",
+              "dog"
+            ],
+            "objects": [
+              "antlers",
+              "Christmas tree",
+              "house"
+            ],
+            "styles": [
+              "illustration",
+              "vintage",
+              "distressed"
+            ],
+            "themes": [
+              "Christmas",
+              "movie"
+            ],
+            "interests": [
+              "Christmas",
+              "movies"
+            ],
+            "professionsGroups": [],
+            "occasions": [
+              "Christmas"
+            ],
+            "places": [
+              "Whoville"
+            ],
+            "colors": [
+              "white",
+              "black"
+            ],
+            "visibleText": [],
+            "searchConcepts": [
+              "Christmas movie",
+              "Grinch and Max",
+              "holiday illustration",
+              "Christmas characters"
+            ]
+          }
+        },
+        "textCheck": {
+          "fires": false,
+          "hasMeta": false,
+          "softFail": false
+        },
+        "coreCheck": {
+          "pass": false,
+          "missing": [
+            {
+              "dimension": "subjects",
+              "concept": "grinch",
+              "label": "grinch subject"
+            }
+          ]
+        },
+        "vocabReuseRate": 0.6875,
+        "nearDuplicateCount": 0,
+        "readableTextSample": []
+      },
+      "verdict": "FAIL"
+    },
+    {
+      "n": 14,
+      "id": "4rG1uHbmqBtOevnDFon6",
+      "slot": "typography_political",
+      "title": "Human Rights text",
+      "outcome": "retried",
+      "baseline": {
+        "status": "imported",
+        "aiReviewStatus": "pending",
+        "promptVersion": null,
+        "normalizerVersion": null
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "aiProcessingStage": "ready_for_review",
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "errorMessage": null
+      },
+      "eval": {
+        "verdict": "FAIL",
+        "issues": [
+          "missing_core:visibleText:rights",
+          "text_dominant_missing_meta"
+        ],
+        "notes": [],
+        "summary": {
+          "promptVersion": "catalog-enrich-v28",
+          "normalizerVersion": "smart-profile-normalizer-v2",
+          "automationDecision": "shadow",
+          "populatedDimensions": [
+            "objects",
+            "styles",
+            "themes",
+            "interests",
+            "colors",
+            "visibleText",
+            "searchConcepts"
+          ],
+          "populatedCount": 7,
+          "atDimCap": false,
+          "atSearchCap": false,
+          "lists": {
+            "subjects": [],
+            "objects": [
+              "flowers"
+            ],
+            "styles": [
+              "graphic",
+              "illustration",
+              "stylized"
+            ],
+            "themes": [
+              "activism",
+              "social justice",
+              "positivity",
+              "empowerment"
+            ],
+            "interests": [
+              "activism",
+              "social justice",
+              "human rights"
+            ],
+            "professionsGroups": [],
+            "occasions": [],
+            "places": [],
+            "colors": [
+              "pink",
+              "coral",
+              "green",
+              "gray"
+            ],
+            "visibleText": [
+              "BASIC HUMAN RIGHTS",
+              "ARE NOT \"RADICAL\""
+            ],
+            "searchConcepts": [
+              "human rights are not radical",
+              "basic human rights quote",
+              "social justice floral design",
+              "feminist slogan",
+              "activist apparel",
+              "equality statement",
+              "basic human rights flowers"
+            ]
+          }
+        },
+        "textCheck": {
+          "fires": true,
+          "hasMeta": false,
+          "softFail": true
+        },
+        "coreCheck": {
+          "pass": false,
+          "missing": [
+            {
+              "dimension": "visibleText",
+              "concept": "rights",
+              "label": "readable rights text"
+            }
+          ]
+        },
+        "vocabReuseRate": 0.29411764705882354,
+        "nearDuplicateCount": 0,
+        "readableTextSample": [
+          "BASIC HUMAN RIGHTS",
+          "ARE NOT \"RADICAL\""
+        ]
+      },
+      "verdict": "FAIL"
+    },
+    {
+      "n": 15,
+      "id": "xFrxcn48oXdCmxJCFW9x",
+      "slot": "typography_books",
+      "title": "too many books",
+      "outcome": "retried",
+      "baseline": {
+        "status": "imported",
+        "aiReviewStatus": "pending",
+        "promptVersion": null,
+        "normalizerVersion": null
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "aiProcessingStage": "ready_for_review",
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "errorMessage": null
+      },
+      "eval": {
+        "verdict": "PASS",
+        "issues": [],
+        "notes": [],
+        "summary": {
+          "promptVersion": "catalog-enrich-v28",
+          "normalizerVersion": "smart-profile-normalizer-v2",
+          "automationDecision": "needs_review",
+          "populatedDimensions": [
+            "objects",
+            "styles",
+            "themes",
+            "interests",
+            "colors",
+            "visibleText",
+            "searchConcepts"
+          ],
+          "populatedCount": 7,
+          "atDimCap": false,
+          "atSearchCap": false,
+          "lists": {
+            "subjects": [],
+            "objects": [
+              "book",
+              "flowers",
+              "butterflies"
+            ],
+            "styles": [
+              "illustration",
+              "watercolor"
+            ],
+            "themes": [
+              "reading",
+              "books"
+            ],
+            "interests": [
+              "books",
+              "reading",
+              "nature"
+            ],
+            "professionsGroups": [],
+            "occasions": [],
+            "places": [],
+            "colors": [
+              "black",
+              "green",
+              "orange",
+              "white",
+              "blue",
+              "brown",
+              "pink",
+              "yellow"
+            ],
+            "visibleText": [
+              "THERE'S NO SUCH THING",
+              "as too many books"
+            ],
+            "searchConcepts": [
+              "bookworm",
+              "reading is fundamental",
+              "book lover gift",
+              "always time for books",
+              "too many books",
+              "reading hobby",
+              "literary",
+              "garden flowers"
+            ]
+          }
+        },
+        "textCheck": {
+          "fires": false,
+          "hasMeta": false,
+          "softFail": false
+        },
+        "coreCheck": {
+          "pass": true,
+          "missing": []
+        },
+        "vocabReuseRate": 0.5,
+        "nearDuplicateCount": 0,
+        "readableTextSample": [
+          "THERE'S NO SUCH THING",
+          "as too many books"
+        ]
+      },
+      "verdict": "PASS"
+    },
+    {
+      "n": 16,
+      "id": "NilC9nqaBALTPgDM1j4q",
+      "slot": "text_plus_illustration",
+      "title": "faith floral",
+      "outcome": "retried",
+      "baseline": {
+        "status": "imported",
+        "aiReviewStatus": "pending",
+        "promptVersion": null,
+        "normalizerVersion": null
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "aiProcessingStage": "ready_for_review",
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "errorMessage": null
+      },
+      "eval": {
+        "verdict": "PASS",
+        "issues": [],
+        "notes": [],
+        "summary": {
+          "promptVersion": "catalog-enrich-v28",
+          "normalizerVersion": "smart-profile-normalizer-v2",
+          "automationDecision": "shadow",
+          "populatedDimensions": [
+            "objects",
+            "styles",
+            "themes",
+            "interests",
+            "colors",
+            "visibleText",
+            "searchConcepts"
+          ],
+          "populatedCount": 7,
+          "atDimCap": false,
+          "atSearchCap": false,
+          "lists": {
+            "subjects": [],
+            "objects": [
+              "cross",
+              "flowers"
+            ],
+            "styles": [
+              "illustration",
+              "decorative",
+              "graphic",
+              "hand-drawn"
+            ],
+            "themes": [
+              "faith",
+              "hope",
+              "positivity",
+              "nature"
+            ],
+            "interests": [
+              "christianity",
+              "nature"
+            ],
+            "professionsGroups": [],
+            "occasions": [],
+            "places": [],
+            "colors": [
+              "teal",
+              "white",
+              "orange",
+              "pink",
+              "cream",
+              "green",
+              "brown"
+            ],
+            "visibleText": [
+              "Faith"
+            ],
+            "searchConcepts": [
+              "religious",
+              "spiritual",
+              "scripture",
+              "bible verse",
+              "devotional",
+              "worship",
+              "Christian apparel",
+              "religious gift",
+              "Easter",
+              "Christmas",
+              "wedding",
+              "anniversary",
+              "floral cross",
+              "Jesus"
+            ]
+          }
+        },
+        "textCheck": {
+          "fires": false,
+          "hasMeta": false,
+          "softFail": false
+        },
+        "coreCheck": {
+          "pass": true,
+          "missing": []
+        },
+        "vocabReuseRate": 0.5,
+        "nearDuplicateCount": 0,
+        "readableTextSample": [
+          "Faith"
+        ]
+      },
+      "verdict": "PASS"
+    },
+    {
+      "n": 17,
+      "id": "jnw12AWGtI7bCkM7y9KI",
+      "slot": "illustration_only",
+      "title": "Book Reading Skeleton",
+      "outcome": "retried",
+      "baseline": {
+        "status": "imported",
+        "aiReviewStatus": "pending",
+        "promptVersion": null,
+        "normalizerVersion": null
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "aiProcessingStage": "ready_for_review",
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "errorMessage": null
+      },
+      "eval": {
+        "verdict": "PASS",
+        "issues": [],
+        "notes": [],
+        "summary": {
+          "promptVersion": "catalog-enrich-v28",
+          "normalizerVersion": "smart-profile-normalizer-v2",
+          "automationDecision": "needs_review",
+          "populatedDimensions": [
+            "subjects",
+            "objects",
+            "styles",
+            "themes",
+            "interests",
+            "occasions",
+            "colors",
+            "searchConcepts"
+          ],
+          "populatedCount": 8,
+          "atDimCap": false,
+          "atSearchCap": false,
+          "lists": {
+            "subjects": [
+              "skeleton"
+            ],
+            "objects": [
+              "book",
+              "flowers",
+              "butterflies"
+            ],
+            "styles": [
+              "illustration",
+              "line art",
+              "hand-drawn",
+              "gothic",
+              "detailed",
+              "monochromatic"
+            ],
+            "themes": [
+              "reading",
+              "nature",
+              "calm",
+              "peace",
+              "contemplation",
+              "dark humor",
+              "spooky"
+            ],
+            "interests": [
+              "reading",
+              "nature",
+              "gardening",
+              "books",
+              "goth",
+              "halloween"
+            ],
+            "professionsGroups": [],
+            "occasions": [
+              "Halloween"
+            ],
+            "places": [],
+            "colors": [
+              "black",
+              "white",
+              "gray"
+            ],
+            "visibleText": [],
+            "searchConcepts": [
+              "skeleton reading",
+              "skeleton with book",
+              "skeleton and flowers",
+              "reading skeleton illustration",
+              "gothic nature",
+              "dark academia skeleton",
+              "death positive",
+              "literary skeleton",
+              "skeleton art",
+              "calm skeleton"
+            ]
+          }
+        },
+        "textCheck": {
+          "fires": false,
+          "hasMeta": false,
+          "softFail": false
+        },
+        "coreCheck": {
+          "pass": true,
+          "missing": []
+        },
+        "vocabReuseRate": 0.8148148148148148,
+        "nearDuplicateCount": 0,
+        "readableTextSample": []
+      },
+      "verdict": "PASS"
+    },
+    {
+      "n": 18,
+      "id": "vVimyNMgfF9jEbJSaNSx",
+      "slot": "hobby_pet",
+      "title": "dog mom",
+      "outcome": "retried",
+      "baseline": {
+        "status": "imported",
+        "aiReviewStatus": "pending",
+        "promptVersion": null,
+        "normalizerVersion": null
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "aiProcessingStage": "ready_for_review",
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "errorMessage": null
+      },
+      "eval": {
+        "verdict": "PASS",
+        "issues": [],
+        "notes": [],
+        "summary": {
+          "promptVersion": "catalog-enrich-v28",
+          "normalizerVersion": "smart-profile-normalizer-v2",
+          "automationDecision": "needs_review",
+          "populatedDimensions": [
+            "subjects",
+            "objects",
+            "styles",
+            "themes",
+            "interests",
+            "colors",
+            "visibleText",
+            "searchConcepts"
+          ],
+          "populatedCount": 8,
+          "atDimCap": false,
+          "atSearchCap": false,
+          "lists": {
+            "subjects": [
+              "dog"
+            ],
+            "objects": [
+              "paw print",
+              "flowers"
+            ],
+            "styles": [
+              "graphic",
+              "decorative",
+              "illustration"
+            ],
+            "themes": [
+              "pet love",
+              "family"
+            ],
+            "interests": [
+              "dogs",
+              "pets"
+            ],
+            "professionsGroups": [],
+            "occasions": [],
+            "places": [],
+            "colors": [
+              "teal",
+              "black",
+              "pink",
+              "white"
+            ],
+            "visibleText": [
+              "DOG MOM",
+              "SOCIAL CLUB",
+              "LIFE IS BETTER WITH A DOG"
+            ],
+            "searchConcepts": [
+              "dog mom shirt",
+              "dog owner gift",
+              "dog mom club",
+              "dog mom quote",
+              "life is better with a dog",
+              "dog mom saying",
+              "dog mom apparel",
+              "dog mom gift",
+              "dog mom club shirt",
+              "dog mom design"
+            ]
+          }
+        },
+        "textCheck": {
+          "fires": false,
+          "hasMeta": false,
+          "softFail": false
+        },
+        "coreCheck": {
+          "pass": true,
+          "missing": []
+        },
+        "vocabReuseRate": 0.5294117647058824,
+        "nearDuplicateCount": 0,
+        "readableTextSample": [
+          "DOG MOM",
+          "SOCIAL CLUB",
+          "LIFE IS BETTER WITH A DOG"
+        ]
+      },
+      "verdict": "PASS"
+    },
+    {
+      "n": 19,
+      "id": "SToRmjOZTLwj5upzjijC",
+      "slot": "simple_logo",
+      "title": "HippyRikkylogo",
+      "outcome": "retried",
+      "baseline": {
+        "status": "imported",
+        "aiReviewStatus": "pending",
+        "promptVersion": null,
+        "normalizerVersion": null
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "aiProcessingStage": "ready_for_review",
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "errorMessage": null
+      },
+      "eval": {
+        "verdict": "PASS",
+        "issues": [],
+        "notes": [],
+        "summary": {
+          "promptVersion": "catalog-enrich-v28",
+          "normalizerVersion": "smart-profile-normalizer-v2",
+          "automationDecision": "needs_review",
+          "populatedDimensions": [
+            "objects",
+            "styles",
+            "themes",
+            "interests",
+            "places",
+            "colors",
+            "visibleText",
+            "searchConcepts"
+          ],
+          "populatedCount": 8,
+          "atDimCap": false,
+          "atSearchCap": false,
+          "lists": {
+            "subjects": [],
+            "objects": [
+              "peace symbol",
+              "trees",
+              "cannabis leaves"
+            ],
+            "styles": [
+              "illustration",
+              "graphic",
+              "vintage",
+              "psychedelic",
+              "groovy"
+            ],
+            "themes": [
+              "hippie",
+              "cannabis culture",
+              "peace",
+              "nature"
+            ],
+            "interests": [
+              "cannabis",
+              "weed",
+              "counterculture"
+            ],
+            "professionsGroups": [],
+            "occasions": [],
+            "places": [
+              "forest"
+            ],
+            "colors": [
+              "green",
+              "orange",
+              "yellow",
+              "brown",
+              "black"
+            ],
+            "visibleText": [
+              "HippyRikky"
+            ],
+            "searchConcepts": [
+              "hippie lifestyle",
+              "cannabis leaf logo",
+              "peace sign artwork",
+              "wood grain texture",
+              "sunset forest scene",
+              "marijuana art"
+            ]
+          }
+        },
+        "textCheck": {
+          "fires": false,
+          "hasMeta": false,
+          "softFail": false
+        },
+        "coreCheck": {
+          "pass": true,
+          "missing": []
+        },
+        "vocabReuseRate": 0.6363636363636364,
+        "nearDuplicateCount": 0,
+        "readableTextSample": [
+          "HippyRikky"
+        ]
+      },
+      "verdict": "PASS"
+    },
+    {
+      "n": 20,
+      "id": "F3lop71TCy9yEAVktY8s",
+      "slot": "humor_couple",
+      "title": "Halloween couple",
+      "outcome": "retried",
+      "baseline": {
+        "status": "imported",
+        "aiReviewStatus": "pending",
+        "promptVersion": null,
+        "normalizerVersion": null
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "aiProcessingStage": "ready_for_review",
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "errorMessage": null
+      },
+      "eval": {
+        "verdict": "PASS",
+        "issues": [],
+        "notes": [],
+        "summary": {
+          "promptVersion": "catalog-enrich-v28",
+          "normalizerVersion": "smart-profile-normalizer-v2",
+          "automationDecision": "needs_review",
+          "populatedDimensions": [
+            "subjects",
+            "objects",
+            "styles",
+            "themes",
+            "interests",
+            "occasions",
+            "colors",
+            "visibleText",
+            "searchConcepts"
+          ],
+          "populatedCount": 9,
+          "atDimCap": false,
+          "atSearchCap": false,
+          "lists": {
+            "subjects": [
+              "skeleton"
+            ],
+            "objects": [
+              "hand"
+            ],
+            "styles": [
+              "graphic",
+              "decorative"
+            ],
+            "themes": [
+              "Halloween",
+              "couples",
+              "humor"
+            ],
+            "interests": [
+              "halloween"
+            ],
+            "professionsGroups": [],
+            "occasions": [
+              "Halloween"
+            ],
+            "places": [],
+            "colors": [
+              "white"
+            ],
+            "visibleText": [
+              "I'M HIS",
+              "GHOUL"
+            ],
+            "searchConcepts": [
+              "couples halloween",
+              "his and hers halloween",
+              "halloween matching shirts",
+              "skeleton pointing",
+              "ghoul meaning"
+            ]
+          }
+        },
+        "textCheck": {
+          "fires": false,
+          "hasMeta": false,
+          "softFail": false
+        },
+        "coreCheck": {
+          "pass": true,
+          "missing": []
+        },
+        "vocabReuseRate": 0.75,
+        "nearDuplicateCount": 0,
+        "readableTextSample": [
+          "I'M HIS",
+          "GHOUL"
+        ]
+      },
+      "verdict": "PASS"
+    },
+    {
+      "n": 21,
+      "id": "vMxoB23WlTRIiaTnLkpF",
+      "slot": "humor_edgy_text",
+      "title": "Lastflyingfuck",
+      "outcome": "retried",
+      "baseline": {
+        "status": "imported",
+        "aiReviewStatus": "pending",
+        "promptVersion": null,
+        "normalizerVersion": null
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "aiProcessingStage": "ready_for_review",
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "errorMessage": null
+      },
+      "eval": {
+        "verdict": "FAIL",
+        "issues": [
+          "missing_core:visibleText:fuck"
+        ],
+        "notes": [],
+        "summary": {
+          "promptVersion": "catalog-enrich-v28",
+          "normalizerVersion": "smart-profile-normalizer-v2",
+          "automationDecision": "needs_review",
+          "populatedDimensions": [
+            "subjects",
+            "styles",
+            "themes",
+            "interests",
+            "occasions",
+            "colors",
+            "visibleText",
+            "searchConcepts"
+          ],
+          "populatedCount": 8,
+          "atDimCap": false,
+          "atSearchCap": false,
+          "lists": {
+            "subjects": [
+              "skeleton",
+              "bat"
+            ],
+            "objects": [],
+            "styles": [
+              "illustration",
+              "graphic",
+              "distressed"
+            ],
+            "themes": [
+              "humor",
+              "sarcasm",
+              "attitude",
+              "adult humor"
+            ],
+            "interests": [
+              "halloween"
+            ],
+            "professionsGroups": [],
+            "occasions": [
+              "Halloween"
+            ],
+            "places": [],
+            "colors": [
+              "black",
+              "white"
+            ],
+            "visibleText": [
+              "MY",
+              "LAST",
+              "FLYING",
+              "F*CK",
+              "THERE IT",
+              "GOES."
+            ],
+            "searchConcepts": [
+              "skeleton with bat",
+              "funny skeleton",
+              "Halloween humor",
+              "attitude saying",
+              "crude humor shirt",
+              "flying f*ck"
+            ]
+          }
+        },
+        "textCheck": {
+          "fires": false,
+          "hasMeta": false,
+          "softFail": false
+        },
+        "coreCheck": {
+          "pass": false,
+          "missing": [
+            {
+              "dimension": "visibleText",
+              "concept": "fuck",
+              "label": "edgy visible text"
+            }
+          ]
+        },
+        "vocabReuseRate": 0.5789473684210527,
+        "nearDuplicateCount": 0,
+        "readableTextSample": [
+          "MY",
+          "LAST",
+          "FLYING"
+        ]
+      },
+      "verdict": "FAIL"
+    },
+    {
+      "n": 22,
+      "id": "GIgIAznocv8JJi3gtVCS",
+      "slot": "humor_sarcasm",
+      "title": "Stop Asking… Crazy",
+      "outcome": "retried",
+      "baseline": {
+        "status": "imported",
+        "aiReviewStatus": "pending",
+        "promptVersion": null,
+        "normalizerVersion": null
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "aiProcessingStage": "ready_for_review",
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "errorMessage": null
+      },
+      "eval": {
+        "verdict": "FAIL",
+        "issues": [
+          "missing_core:themes:sarcastic",
+          "text_dominant_missing_meta"
+        ],
+        "notes": [],
+        "summary": {
+          "promptVersion": "catalog-enrich-v28",
+          "normalizerVersion": "smart-profile-normalizer-v2",
+          "automationDecision": "shadow",
+          "populatedDimensions": [
+            "styles",
+            "themes",
+            "colors",
+            "visibleText",
+            "searchConcepts"
+          ],
+          "populatedCount": 5,
+          "atDimCap": false,
+          "atSearchCap": false,
+          "lists": {
+            "subjects": [],
+            "objects": [],
+            "styles": [
+              "distressed",
+              "graphic",
+              "text-only"
+            ],
+            "themes": [
+              "humor",
+              "sarcasm",
+              "attitude"
+            ],
+            "interests": [],
+            "professionsGroups": [],
+            "occasions": [],
+            "places": [],
+            "colors": [
+              "white",
+              "black"
+            ],
+            "visibleText": [
+              "STOP ASKING WHY",
+              "I'M CRAZY",
+              "I DON'T ASK WHY",
+              "YOU'RE STUPID"
+            ],
+            "searchConcepts": [
+              "sarcastic quote",
+              "funny saying",
+              "attitude shirt",
+              "stop asking why",
+              "im crazy",
+              "youre stupid"
+            ]
+          }
+        },
+        "textCheck": {
+          "fires": true,
+          "hasMeta": false,
+          "softFail": true
+        },
+        "coreCheck": {
+          "pass": false,
+          "missing": [
+            {
+              "dimension": "themes",
+              "concept": "sarcastic",
+              "label": "sarcasm"
+            }
+          ]
+        },
+        "vocabReuseRate": 0.4166666666666667,
+        "nearDuplicateCount": 0,
+        "readableTextSample": [
+          "STOP ASKING WHY",
+          "I'M CRAZY",
+          "I DON'T ASK WHY"
+        ]
+      },
+      "verdict": "FAIL"
+    },
+    {
+      "n": 23,
+      "id": "9EGDdQJbi2q15UBqE5Sf",
+      "slot": "animal_simple",
+      "title": "HolyCow",
+      "outcome": "retried",
+      "baseline": {
+        "status": "imported",
+        "aiReviewStatus": "pending",
+        "promptVersion": null,
+        "normalizerVersion": null
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "aiProcessingStage": "ready_for_review",
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "errorMessage": null
+      },
+      "eval": {
+        "verdict": "PASS",
+        "issues": [],
+        "notes": [],
+        "summary": {
+          "promptVersion": "catalog-enrich-v28",
+          "normalizerVersion": "smart-profile-normalizer-v2",
+          "automationDecision": "needs_review",
+          "populatedDimensions": [
+            "subjects",
+            "objects",
+            "styles",
+            "themes",
+            "interests",
+            "colors",
+            "visibleText",
+            "searchConcepts"
+          ],
+          "populatedCount": 8,
+          "atDimCap": false,
+          "atSearchCap": false,
+          "lists": {
+            "subjects": [
+              "cow"
+            ],
+            "objects": [
+              "bow",
+              "heart",
+              "flowers",
+              "star"
+            ],
+            "styles": [
+              "graphic",
+              "decorative",
+              "illustration"
+            ],
+            "themes": [
+              "humor",
+              "animal humor"
+            ],
+            "interests": [
+              "country life",
+              "farm life"
+            ],
+            "professionsGroups": [],
+            "occasions": [],
+            "places": [],
+            "colors": [
+              "pink",
+              "white",
+              "black",
+              "teal"
+            ],
+            "visibleText": [
+              "HOLY"
+            ],
+            "searchConcepts": [
+              "holy cow",
+              "funny cow",
+              "cute cow",
+              "cow lover",
+              "farm humor",
+              "country cow",
+              "cow with bow",
+              "pink cow"
+            ]
+          }
+        },
+        "textCheck": {
+          "fires": false,
+          "hasMeta": false,
+          "softFail": false
+        },
+        "coreCheck": {
+          "pass": true,
+          "missing": []
+        },
+        "vocabReuseRate": 0.6470588235294118,
+        "nearDuplicateCount": 0,
+        "readableTextSample": [
+          "HOLY"
+        ]
+      },
+      "verdict": "PASS"
+    },
+    {
+      "n": 24,
+      "id": "QdTEYMNj0GmEk80lPmGq",
+      "slot": "animal_other",
+      "title": "goat-trans",
+      "outcome": "retried",
+      "baseline": {
+        "status": "imported",
+        "aiReviewStatus": "pending",
+        "promptVersion": null,
+        "normalizerVersion": null
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "aiProcessingStage": "ready_for_review",
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "errorMessage": null
+      },
+      "eval": {
+        "verdict": "PASS",
+        "issues": [],
+        "notes": [],
+        "summary": {
+          "promptVersion": "catalog-enrich-v28",
+          "normalizerVersion": "smart-profile-normalizer-v2",
+          "automationDecision": "needs_review",
+          "populatedDimensions": [
+            "subjects",
+            "styles",
+            "themes",
+            "interests",
+            "colors",
+            "searchConcepts"
+          ],
+          "populatedCount": 6,
+          "atDimCap": false,
+          "atSearchCap": false,
+          "lists": {
+            "subjects": [
+              "goat"
+            ],
+            "objects": [],
+            "styles": [
+              "illustration",
+              "graphic",
+              "detailed",
+              "textural"
+            ],
+            "themes": [
+              "animal humor",
+              "attitude"
+            ],
+            "interests": [
+              "animals"
+            ],
+            "professionsGroups": [],
+            "occasions": [],
+            "places": [],
+            "colors": [
+              "white",
+              "brown",
+              "pink",
+              "grey"
+            ],
+            "visibleText": [],
+            "searchConcepts": [
+              "surprised goat",
+              "angry goat",
+              "loud goat",
+              "distressed goat",
+              "funny goat",
+              "goat graphic",
+              "animal head art",
+              "farm animal art",
+              "wild animal illustration"
+            ]
+          }
+        },
+        "textCheck": {
+          "fires": false,
+          "hasMeta": false,
+          "softFail": false
+        },
+        "coreCheck": {
+          "pass": true,
+          "missing": []
+        },
+        "vocabReuseRate": 0.5833333333333334,
+        "nearDuplicateCount": 0,
+        "readableTextSample": []
+      },
+      "verdict": "PASS"
+    }
+  ]
+}

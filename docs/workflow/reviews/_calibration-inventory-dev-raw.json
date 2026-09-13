@@ -1,0 +1,2523 @@
+{
+  "projectId": "fresh-prints-dev",
+  "queriedAt": "2026-08-25T22:02:33.258Z",
+  "query": {
+    "collection": "designs",
+    "filter": "smartProfile.provenance.version == smart-profile-v1",
+    "limit": 500
+  },
+  "totalSampled": 75,
+  "catalogEnrichV28Count": 19,
+  "slotCandidates": {
+    "animal_jimothy": [
+      {
+        "designId": "6x2LyTvG3ewIePeWHanV",
+        "title": "Jimothy Seattle Wildlife Do Not Pet The Round King"
+      }
+    ],
+    "place": [
+      {
+        "designId": "6x2LyTvG3ewIePeWHanV",
+        "title": "Jimothy Seattle Wildlife Do Not Pet The Round King"
+      }
+    ],
+    "humor_sarcasm": [
+      {
+        "designId": "F3lop71TCy9yEAVktY8s",
+        "title": "Halloween Couple Shirt Funny Halloween Sweatshirt Spooky Season Tee I_m His Ghoul"
+      },
+      {
+        "designId": "Fjc9uzHMl1XBuafZdA9m",
+        "title": "Halloween Couple Shirt Funny Halloween Sweatshirt Spooky Season Tee Im Her Boo"
+      },
+      {
+        "designId": "SrDNWipuL0kBj3EuXY2c",
+        "title": "3_Sarcastic_HaveTheDayYouDeserve_Skeleton"
+      },
+      {
+        "designId": "lvTN328EOc9JWazOAs7I",
+        "title": "3_Sarcastic_HaveTheDayYouDeserve_Hand"
+      }
+    ],
+    "plant_humor": [
+      {
+        "designId": "KI7Ncd1O9JCuX9uCq505",
+        "title": "Oops I Got Another Plant Goose"
+      }
+    ],
+    "seasonal": [
+      {
+        "designId": "LYJcsxnfUyacRWtntEkd",
+        "title": "cow summer vibes front"
+      },
+      {
+        "designId": "lhzY65AzxTiEWppBzTQA",
+        "title": "cow summer vibes"
+      },
+      {
+        "designId": "ltn0gzs2YGXPADqCejr8",
+        "title": "Summer Vibes Fruits"
+      }
+    ],
+    "simple_logo": [
+      {
+        "designId": "SToRmjOZTLwj5upzjijC",
+        "title": "HippyRikkylogo"
+      }
+    ],
+    "holiday_santa": [
+      {
+        "designId": "W1bwk4jrCoQFn0OiyiSU",
+        "title": "I Don't Believe In You Either Santa"
+      }
+    ],
+    "profession_nurse": [
+      {
+        "designId": "mZWO3Lsra91EhNRNEkhR",
+        "title": "Nurse Brain Please Don't Interrupt"
+      }
+    ],
+    "animal_highland": [
+      {
+        "designId": "yJm2VBRvecPNjx79aSnK",
+        "title": "Highland Cow With Bow"
+      }
+    ]
+  },
+  "designs": [
+    {
+      "designId": "Bnp3NgFYPXxVQmBz392X",
+      "title": "0YF4ErPeHPKYkPPoVFPV",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "efdf34c6-6096-46b4-abf5-c1d8a9b03815",
+      "importSourceFileName": "0YF4ErPeHPKYkPPoVFPV.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "needs_review",
+        "populatedDimensions": [
+          "subjects",
+          "styles",
+          "themes",
+          "interests",
+          "professionsGroups",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "The Beatles",
+          "band members",
+          "musicians"
+        ],
+        "searchConceptSample": [
+          "John Lennon",
+          "Paul McCartney",
+          "George Harrison",
+          "Ringo Starr"
+        ]
+      }
+    },
+    {
+      "designId": "ANCENVqyinnhM5kWBxpC",
+      "title": "2",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": null,
+      "importSourceFileName": "2.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "automationDecision": "needs_review",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "places",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "raccoon"
+        ],
+        "searchConceptSample": [
+          "Timothy",
+          "Seattle",
+          "Washington",
+          "PNW"
+        ]
+      }
+    },
+    {
+      "designId": "lvTN328EOc9JWazOAs7I",
+      "title": "3_Sarcastic_HaveTheDayYouDeserve_Hand",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "3_Sarcastic_HaveTheDayYouDeserve_Hand.png",
+      "slotHints": [
+        "humor_sarcasm"
+      ],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "colors",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "hand"
+        ],
+        "searchConceptSample": [
+          "skeleton peace sign",
+          "bone hand",
+          "flower hand",
+          "rainbow skeleton"
+        ]
+      }
+    },
+    {
+      "designId": "SrDNWipuL0kBj3EuXY2c",
+      "title": "3_Sarcastic_HaveTheDayYouDeserve_Skeleton",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "3_Sarcastic_HaveTheDayYouDeserve_Skeleton.png",
+      "slotHints": [
+        "humor_sarcasm"
+      ],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "skeleton"
+        ],
+        "searchConceptSample": [
+          "have the day you deserve",
+          "skeleton peace sign",
+          "skeleton humor"
+        ]
+      }
+    },
+    {
+      "designId": "YFcNaJQUXkYy20cTuEif",
+      "title": "back",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": null,
+      "importSourceFileName": "back.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "objects",
+          "styles",
+          "themes",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [],
+        "searchConceptSample": [
+          "good vibes only design",
+          "positive energy",
+          "happy face",
+          "cute smiley"
+        ]
+      }
+    },
+    {
+      "designId": "jnw12AWGtI7bCkM7y9KI",
+      "title": "Book_Reading_Skeleton",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "Book_Reading_Skeleton.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "colors",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "skeleton"
+        ],
+        "searchConceptSample": [
+          "skeleton reading",
+          "skeleton flower",
+          "gothic nature",
+          "dark academia skeleton"
+        ]
+      }
+    },
+    {
+      "designId": "hTzv9NyK34ySVUmvMgHt",
+      "title": "but i doW",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": null,
+      "importSourceFileName": "but i doW.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "automationDecision": "needs_review",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "face"
+        ],
+        "searchConceptSample": [
+          "witty saying",
+          "funny face",
+          "humorous phrase",
+          "sarcastic smile"
+        ]
+      }
+    },
+    {
+      "designId": "lhzY65AzxTiEWppBzTQA",
+      "title": "cow summer vibes",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "cow summer vibes.png",
+      "slotHints": [
+        "seasonal"
+      ],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "occasions",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "cow"
+        ],
+        "searchConceptSample": [
+          "summer cow",
+          "cow in tube",
+          "cool cow"
+        ]
+      }
+    },
+    {
+      "designId": "LYJcsxnfUyacRWtntEkd",
+      "title": "cow summer vibes front",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "cow summer vibes front.png",
+      "slotHints": [
+        "seasonal"
+      ],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "occasions",
+          "colors",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "cow"
+        ],
+        "searchConceptSample": [
+          "highland cow sunglasses",
+          "cow chilling",
+          "cow on float",
+          "funny cow shirt"
+        ]
+      }
+    },
+    {
+      "designId": "vVimyNMgfF9jEbJSaNSx",
+      "title": "dog mom social club life is better with a dog",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "dog mom social club life is better with a dog.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "dog"
+        ],
+        "searchConceptSample": [
+          "dog mom gift",
+          "dog mom shirt",
+          "dog mom t-shirt"
+        ]
+      }
+    },
+    {
+      "designId": "NlpYlSw9nkdWPDcZXzt0",
+      "title": "dRTOFbh1IE7TrNvL7wSN",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": null,
+      "importSourceFileName": "dRTOFbh1IE7TrNvL7wSN.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "automationDecision": "needs_review",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "places",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "raccoon"
+        ],
+        "searchConceptSample": [
+          "PNW raccoon",
+          "Seattle raccoon",
+          "Washington raccoon",
+          "timothy raccoon"
+        ]
+      }
+    },
+    {
+      "designId": "mw5eiufjMAuOZPnOiMiP",
+      "title": "dRTOFbh1IE7TrNvL7wSN",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "efdf34c6-6096-46b4-abf5-c1d8a9b03815",
+      "importSourceFileName": "dRTOFbh1IE7TrNvL7wSN.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "needs_review",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "places",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "raccoon"
+        ],
+        "searchConceptSample": [
+          "Timothy raccoon",
+          "Seattle raccoon",
+          "Washington raccoon",
+          "Seattle cityscape"
+        ]
+      }
+    },
+    {
+      "designId": "gSOi9SX0F0SQmGeFmaQn",
+      "title": "F Caw F-01",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "F Caw F-01.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "occasions",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "crow",
+          "skull"
+        ],
+        "searchConceptSample": [
+          "bird skull",
+          "crow on skull",
+          "f caw f"
+        ]
+      }
+    },
+    {
+      "designId": "jXw9kUVE6hgMGDizr8D4",
+      "title": "F Caw F-02",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "F Caw F-02.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "styles",
+          "themes",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "raven"
+        ],
+        "searchConceptSample": [
+          "f caw f",
+          "raven caw",
+          "bird caw"
+        ]
+      }
+    },
+    {
+      "designId": "7bVlWMFwxECdfHH8VNPB",
+      "title": "F Caw F-03",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "F Caw F-03.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "styles",
+          "themes",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "raven",
+          "bird"
+        ],
+        "searchConceptSample": [
+          "f-caw-f",
+          "raven sound",
+          "bird call"
+        ]
+      }
+    },
+    {
+      "designId": "hrdKD6MJ48fi8UHsWhL4",
+      "title": "F Caw F-04",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "F Caw F-04.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "styles",
+          "themes",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "bird",
+          "skull"
+        ],
+        "searchConceptSample": [
+          "f caw f shirt",
+          "fuck off bird",
+          "middle finger bird",
+          "angry bird skull"
+        ]
+      }
+    },
+    {
+      "designId": "NilC9nqaBALTPgDM1j4q",
+      "title": "faith floral design",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "faith floral design.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [],
+        "searchConceptSample": [
+          "faith cross flowers",
+          "religious floral design",
+          "Christian floral art"
+        ]
+      }
+    },
+    {
+      "designId": "KUxTQzYAgCbD8MGUrO5L",
+      "title": "Fall Breeze and autumn leaves",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "Fall Breeze and autumn leaves.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "occasions",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "skeletons",
+          "people"
+        ],
+        "searchConceptSample": [
+          "dancing skeletons",
+          "skeleton halloween",
+          "pumpkin halloween",
+          "fall leaves"
+        ]
+      }
+    },
+    {
+      "designId": "AuFHznaSTUx32SXjccYC",
+      "title": "FD_ALL40_PNG",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "FD_ALL40_PNG.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [],
+        "searchConceptSample": [
+          "my husband's problem",
+          "gas station humor",
+          "vintage gas pump",
+          "funny wife gift"
+        ]
+      }
+    },
+    {
+      "designId": "E2fVUzTL8Smx0gXaGqUZ",
+      "title": "FD_M_ALL02_PNG",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "FD_M_ALL02_PNG.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "occasions",
+          "places",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "Darth Vader",
+          "Yoda",
+          "Boba Fett"
+        ],
+        "searchConceptSample": [
+          "Star Wars Father's Day",
+          "Dad I Am Their Father",
+          "I Am Your Father"
+        ]
+      }
+    },
+    {
+      "designId": "1eOWMVHDvRKY0kwYWQet",
+      "title": "FD_M_CT58_PNG",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "FD_M_CT58_PNG.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "themes",
+          "interests",
+          "occasions",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "Darth Vader",
+          "BB-8",
+          "R2-D2"
+        ],
+        "searchConceptSample": [
+          "best dad ever",
+          "super dad",
+          "dad appreciation",
+          "cool dad gift"
+        ]
+      }
+    },
+    {
+      "designId": "ZTeE1NpLYGghu7brYBpS",
+      "title": "ghostface-screamcopy",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "ghostface-screamcopy.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "styles",
+          "themes",
+          "occasions",
+          "colors",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "mask"
+        ],
+        "searchConceptSample": [
+          "Scream mask",
+          "Ghost Face"
+        ]
+      }
+    },
+    {
+      "designId": "QdTEYMNj0GmEk80lPmGq",
+      "title": "goat-trans",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": null,
+      "importSourceFileName": "goat-trans.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "automationDecision": "needs_review",
+        "populatedDimensions": [
+          "subjects",
+          "styles",
+          "themes",
+          "interests",
+          "colors",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "goat"
+        ],
+        "searchConceptSample": [
+          "screaming goat",
+          "goat head",
+          "animal roar",
+          "funny goat"
+        ]
+      }
+    },
+    {
+      "designId": "F3lop71TCy9yEAVktY8s",
+      "title": "Halloween Couple Shirt Funny Halloween Sweatshirt Spooky Season Tee I_m His Ghoul",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "Halloween Couple Shirt Funny Halloween Sweatshirt Spooky Season Tee I_m His Ghoul.png",
+      "slotHints": [
+        "humor_sarcasm"
+      ],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "occasions",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "skeleton"
+        ],
+        "searchConceptSample": [
+          "couples Halloween shirt",
+          "his ghoul",
+          "matching Halloween outfits"
+        ]
+      }
+    },
+    {
+      "designId": "Fjc9uzHMl1XBuafZdA9m",
+      "title": "Halloween Couple Shirt Funny Halloween Sweatshirt Spooky Season Tee Im Her Boo",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "Halloween Couple Shirt Funny Halloween Sweatshirt Spooky Season Tee Im Her Boo.png",
+      "slotHints": [
+        "humor_sarcasm"
+      ],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "themes",
+          "occasions",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "skeleton"
+        ],
+        "searchConceptSample": [
+          "I'm her boo",
+          "Her boo",
+          "couples Halloween",
+          "couples costume"
+        ]
+      }
+    },
+    {
+      "designId": "CrbW6Uup4UzMdnqRVGzO",
+      "title": "hBDeqlHXrv9HwmhNrioY",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "efdf34c6-6096-46b4-abf5-c1d8a9b03815",
+      "importSourceFileName": "hBDeqlHXrv9HwmhNrioY.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "needs_review",
+        "populatedDimensions": [
+          "subjects",
+          "styles",
+          "themes",
+          "interests",
+          "professionsGroups",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "people"
+        ],
+        "searchConceptSample": [
+          "linkin park band t-shirt",
+          "linkin park design",
+          "linkin park poster"
+        ]
+      }
+    },
+    {
+      "designId": "yJm2VBRvecPNjx79aSnK",
+      "title": "Highland Cow With Bow",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "importBatchId": null,
+      "importSourceFileName": "115.png",
+      "slotHints": [
+        "animal_highland"
+      ],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "colors",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "cow"
+        ],
+        "searchConceptSample": [
+          "Scottish cow",
+          "fluffy cow",
+          "baby cow",
+          "cow cartoon"
+        ]
+      }
+    },
+    {
+      "designId": "SToRmjOZTLwj5upzjijC",
+      "title": "HippyRikkylogo",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "HippyRikkylogo.png",
+      "slotHints": [
+        "simple_logo"
+      ],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "places",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "cannabis leaf"
+        ],
+        "searchConceptSample": [
+          "cannabis logo",
+          "hippie logo",
+          "marijuana leaf",
+          "peace symbol"
+        ]
+      }
+    },
+    {
+      "designId": "9EGDdQJbi2q15UBqE5Sf",
+      "title": "HolyCow",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "HolyCow.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "cow"
+        ],
+        "searchConceptSample": [
+          "holy cow saying",
+          "cow with bandana",
+          "funny cow shirt"
+        ]
+      }
+    },
+    {
+      "designId": "CHZQtAS2l2VMLdaZg4oY",
+      "title": "HW_M_JS28_PNG",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "HW_M_JS28_PNG.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "occasions",
+          "places",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "skeleton"
+        ],
+        "searchConceptSample": [
+          "nightmare before christmas",
+          "jack skeleton",
+          "tim burton",
+          "halloween movie character"
+        ]
+      }
+    },
+    {
+      "designId": "fiqqUCE2i7z5bevyQwzX",
+      "title": "HW_M_JS28_PNG1",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "HW_M_JS28_PNG1.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "occasions",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "Sally",
+          "character"
+        ],
+        "searchConceptSample": [
+          "The Nightmare Before Christmas",
+          "Sally character",
+          "Disney character",
+          "Halloween couple"
+        ]
+      }
+    },
+    {
+      "designId": "W1bwk4jrCoQFn0OiyiSU",
+      "title": "I Don't Believe In You Either Santa",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "importBatchId": null,
+      "importSourceFileName": "I_Dont_Believe_In_You_Either.png",
+      "slotHints": [
+        "holiday_santa"
+      ],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "occasions",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "Santa"
+        ],
+        "searchConceptSample": [
+          "Santa I don't believe",
+          "I don't believe in you either",
+          "funny Santa",
+          "Christmas saying"
+        ]
+      }
+    },
+    {
+      "designId": "At5hu7vLjWgduiyzZCfR",
+      "title": "I dont do matching shirtsW",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": null,
+      "importSourceFileName": "I dont do matching shirtsW.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "styles",
+          "themes",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [],
+        "searchConceptSample": [
+          "no matching outfits",
+          "sarcastic family",
+          "funny clothing statement",
+          "anti-matching"
+        ]
+      }
+    },
+    {
+      "designId": "m6lO6xxKPdoNDyzrz8qE",
+      "title": "IMG_8228",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "IMG_8228.PNG",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "occasions",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "Christmas tree"
+        ],
+        "searchConceptSample": [
+          "Knitted Christmas",
+          "Plaid Christmas"
+        ]
+      }
+    },
+    {
+      "designId": "ODQcVwjA3Z9C771C1Kiv",
+      "title": "Jennifer Cordell - Artboard 2",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": null,
+      "importSourceFileName": "Jennifer Cordell - Artboard 2.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "automationDecision": "needs_review",
+        "populatedDimensions": [
+          "subjects",
+          "styles",
+          "themes",
+          "interests",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "dog"
+        ],
+        "searchConceptSample": [
+          "poodle mom",
+          "dog owner gift",
+          "dog enthusiast",
+          "dog appreciation"
+        ]
+      }
+    },
+    {
+      "designId": "RuK2lZl6K5ewV0dTe1xI",
+      "title": "Jennifer Cordell - Artboard 2",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": null,
+      "importSourceFileName": "Jennifer Cordell - Artboard 2.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "automationDecision": "needs_review",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "dog"
+        ],
+        "searchConceptSample": [
+          "dog lover gift",
+          "poodle mom",
+          "dog owner gift",
+          "gift for poodle owner"
+        ]
+      }
+    },
+    {
+      "designId": "nPcr8RNYS3aKPXP9lqGi",
+      "title": "Jennifer Cordell - Artboard 2",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": null,
+      "importSourceFileName": "Jennifer Cordell - Artboard 2.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "automationDecision": "needs_review",
+        "populatedDimensions": [
+          "subjects",
+          "styles",
+          "themes",
+          "interests",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "dog"
+        ],
+        "searchConceptSample": [
+          "dog mom",
+          "dog owner",
+          "poodle owner",
+          "girl and dog"
+        ]
+      }
+    },
+    {
+      "designId": "6x2LyTvG3ewIePeWHanV",
+      "title": "Jimothy Seattle Wildlife Do Not Pet The Round King",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "importBatchId": null,
+      "importSourceFileName": "Jimothy Raccoon Funny Jimothy from Seattle.png",
+      "slotHints": [
+        "animal_jimothy",
+        "place"
+      ],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "places",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "raccoon",
+          "people"
+        ],
+        "searchConceptSample": [
+          "Jimothy raccoon",
+          "Seattle raccoon",
+          "round king raccoon",
+          "funny raccoon shirt"
+        ]
+      }
+    },
+    {
+      "designId": "FU1SzEPmTM66fnkzKQ4y",
+      "title": "jolly",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "jolly.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "styles",
+          "themes",
+          "occasions",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [],
+        "searchConceptSample": [
+          "Christmas knit",
+          "Festive knit"
+        ]
+      }
+    },
+    {
+      "designId": "S8mOchiVIV8G7KQkiFu7",
+      "title": "just boo it",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "just boo it.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "objects",
+          "styles",
+          "themes",
+          "occasions",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [],
+        "searchConceptSample": [
+          "just do it parody",
+          "halloween parody"
+        ]
+      }
+    },
+    {
+      "designId": "1Ws0T9fivryest6IUSbt",
+      "title": "just_hit_it",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "just_hit_it.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [],
+        "searchConceptSample": [
+          "weed logo parody",
+          "marijuana logo parody",
+          "stoner clothing",
+          "cannabis apparel"
+        ]
+      }
+    },
+    {
+      "designId": "51Oz02NfLY8vTruauW56",
+      "title": "K8qTSKz59kk14WmuNs3F",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": null,
+      "importSourceFileName": "K8qTSKz59kk14WmuNs3F.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "occasions",
+          "colors",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "Frankenstein's monster"
+        ],
+        "searchConceptSample": [
+          "Frankenstein blowing seeds",
+          "monster with dandelion",
+          "creature blowing flower",
+          "iconic monster"
+        ]
+      }
+    },
+    {
+      "designId": "GEur7i3QEJoeMLSRky81",
+      "title": "K8qTSKz59kk14WmuNs3F",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "d9992656-5f14-45db-9671-e8a9a9e58c48",
+      "importSourceFileName": "K8qTSKz59kk14WmuNs3F.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "occasions",
+          "colors",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "Frankenstein's monster"
+        ],
+        "searchConceptSample": [
+          "monster blowing dandelion",
+          "creepy but cute",
+          "Halloween monster",
+          "vintage monster art"
+        ]
+      }
+    },
+    {
+      "designId": "N6neMQX9LukEHYfgALsM",
+      "title": "K8qTSKz59kk14WmuNs3F",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "27a2add6-f3a9-4179-a7d1-b2ad582745c0",
+      "importSourceFileName": "K8qTSKz59kk14WmuNs3F.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "occasions",
+          "colors",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "Frankenstein's monster"
+        ],
+        "searchConceptSample": [
+          "frankenstein blowing dandelion",
+          "halloween monster art",
+          "scary character dandelion",
+          "horror movie monster"
+        ]
+      }
+    },
+    {
+      "designId": "h8oE0wSSMofqEYOcYk4D",
+      "title": "K8qTSKz59kk14WmuNs3F",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "efdf34c6-6096-46b4-abf5-c1d8a9b03815",
+      "importSourceFileName": "K8qTSKz59kk14WmuNs3F.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "occasions",
+          "colors",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "Frankenstein's monster"
+        ],
+        "searchConceptSample": [
+          "Frankenstein blowing dandelion",
+          "monster and dandelion",
+          "horror character gentle",
+          "pop culture horror"
+        ]
+      }
+    },
+    {
+      "designId": "lbbMZuHQFILqZZmsUWit",
+      "title": "keepgrowingB",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": null,
+      "importSourceFileName": "keepgrowingB.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "styles",
+          "themes",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [],
+        "searchConceptSample": [
+          "keep on growing",
+          "growth mindset",
+          "positive affirmation"
+        ]
+      }
+    },
+    {
+      "designId": "S9ZeylZt0z0AyA0WFAoX",
+      "title": "keepgrowingW",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": null,
+      "importSourceFileName": "keepgrowingW.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "styles",
+          "themes",
+          "interests",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [],
+        "searchConceptSample": [
+          "keep growing text",
+          "inspirational quote",
+          "retro font",
+          "groovy text"
+        ]
+      }
+    },
+    {
+      "designId": "8m0KgJEel8kLpYlmZpFb",
+      "title": "KJ3IAtTpYNodxY3MGu6f",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "27a2add6-f3a9-4179-a7d1-b2ad582745c0",
+      "importSourceFileName": "KJ3IAtTpYNodxY3MGu6f.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "styles",
+          "themes",
+          "interests",
+          "colors",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "girl",
+          "creature",
+          "dog"
+        ],
+        "searchConceptSample": [
+          "three friends",
+          "fantasy creatures",
+          "cute monsters",
+          "girl with braids"
+        ]
+      }
+    },
+    {
+      "designId": "X6sWDHZj9I6ovQhGIbM8",
+      "title": "KJ3IAtTpYNodxY3MGu6f",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "d9992656-5f14-45db-9671-e8a9a9e58c48",
+      "importSourceFileName": "KJ3IAtTpYNodxY3MGu6f.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "automationDecision": "needs_review",
+        "populatedDimensions": [
+          "subjects",
+          "styles",
+          "themes",
+          "colors",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "dog",
+          "girl"
+        ],
+        "searchConceptSample": [
+          "best friends",
+          "friendship art",
+          "cute animals",
+          "cartoon friends"
+        ]
+      }
+    },
+    {
+      "designId": "QP29pPjgb9sTOQ098bO0",
+      "title": "KJgbJ90rp6dZYYDfC5tm",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "efdf34c6-6096-46b4-abf5-c1d8a9b03815",
+      "importSourceFileName": "KJgbJ90rp6dZYYDfC5tm.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "needs_review",
+        "populatedDimensions": [
+          "subjects",
+          "styles",
+          "themes",
+          "interests",
+          "professionsGroups",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "people"
+        ],
+        "searchConceptSample": [
+          "SOAD",
+          "System of a Down merchandise",
+          "System of a Down t-shirt"
+        ]
+      }
+    },
+    {
+      "designId": "vMxoB23WlTRIiaTnLkpF",
+      "title": "Lastflyingfuck",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "Lastflyingfuck.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "styles",
+          "themes",
+          "occasions",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "skeleton",
+          "bat"
+        ],
+        "searchConceptSample": [
+          "skeleton with bat",
+          "funny skeleton",
+          "halloween skeleton",
+          "adult halloween"
+        ]
+      }
+    },
+    {
+      "designId": "Vlsg0P2CbuhTlhVmgYU8",
+      "title": "lcCfstL7rgQcBqrWSstM",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "d9992656-5f14-45db-9671-e8a9a9e58c48",
+      "importSourceFileName": "lcCfstL7rgQcBqrWSstM.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "automationDecision": "needs_review",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "occasions",
+          "colors",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "dog",
+          "character"
+        ],
+        "searchConceptSample": [
+          "Max the dog",
+          "Grinch and Max",
+          "Christmas movie characters",
+          "How the Grinch Stole Christmas"
+        ]
+      }
+    },
+    {
+      "designId": "bw92yPxUdZlLfcqEr8Mg",
+      "title": "lcCfstL7rgQcBqrWSstM",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "27a2add6-f3a9-4179-a7d1-b2ad582745c0",
+      "importSourceFileName": "lcCfstL7rgQcBqrWSstM.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "automationDecision": "needs_review",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "occasions",
+          "places",
+          "colors",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "dog",
+          "character"
+        ],
+        "searchConceptSample": [
+          "Christmas movie",
+          "Dr. Seuss characters",
+          "holiday movie",
+          "Whoville"
+        ]
+      }
+    },
+    {
+      "designId": "xTL6Enr3UzQB1ik0VJnF",
+      "title": "level_7",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "level_7.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "styles",
+          "themes",
+          "interests",
+          "occasions",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "video game controller"
+        ],
+        "searchConceptSample": [
+          "level 7 unlocked",
+          "gamer birthday",
+          "gaming controller",
+          "vintage gaming"
+        ]
+      }
+    },
+    {
+      "designId": "wWMG0PdcuZdZY8YQyzWl",
+      "title": "MD_ALL139_PNG",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "MD_ALL139_PNG.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "dog"
+        ],
+        "searchConceptSample": [
+          "dog mom shirt",
+          "dog mama gift",
+          "paw print shirt",
+          "floral dog mom"
+        ]
+      }
+    },
+    {
+      "designId": "LSYQkCI1bFLODzYArrNR",
+      "title": "monkeypeace",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "monkeypeace.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "colors",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "chimpanzee"
+        ],
+        "searchConceptSample": [
+          "hippie monkey",
+          "peace pipe monkey",
+          "stoner monkey",
+          "smoking monkey"
+        ]
+      }
+    },
+    {
+      "designId": "96v0PKuDVdDqYa8fLxS3",
+      "title": "MuAFmSRyQOyX76gH1tdn",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "d9992656-5f14-45db-9671-e8a9a9e58c48",
+      "importSourceFileName": "MuAFmSRyQOyX76gH1tdn.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "automationDecision": "needs_review",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "goose"
+        ],
+        "searchConceptSample": [
+          "porch goose",
+          "social club",
+          "dress my goose",
+          "funny goose shirt"
+        ]
+      }
+    },
+    {
+      "designId": "bTRIKv6htUWyZmqg0Qph",
+      "title": "MuAFmSRyQOyX76gH1tdn",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "27a2add6-f3a9-4179-a7d1-b2ad582745c0",
+      "importSourceFileName": "MuAFmSRyQOyX76gH1tdn.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "automationDecision": "needs_review",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "goose"
+        ],
+        "searchConceptSample": [
+          "goose social club",
+          "porch goose",
+          "dress my goose",
+          "funny goose shirt"
+        ]
+      }
+    },
+    {
+      "designId": "TEy2gddZkpKCYbKrLTOe",
+      "title": "nightmare before christmas we_re simply duo",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "nightmare before christmas we_re simply duo.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "occasions",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "skeleton"
+        ],
+        "searchConceptSample": [
+          "Nightmare Before Christmas",
+          "Jack",
+          "Skellington"
+        ]
+      }
+    },
+    {
+      "designId": "v0QGb4xnrfGszAF1PAiS",
+      "title": "nightmare before christmas we_re simply meant to be duo",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "nightmare before christmas we_re simply meant to be duo.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "occasions",
+          "places",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "Sally",
+          "character"
+        ],
+        "searchConceptSample": [
+          "Nightmare Before Christmas Sally",
+          "Sally Nightmare Before Christmas",
+          "Tim Burton Sally",
+          "Sally doll"
+        ]
+      }
+    },
+    {
+      "designId": "egGKcxPCtch0Fmc44qa9",
+      "title": "NikeHalloween",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "NikeHalloween.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "occasions",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "doll",
+          "bats"
+        ],
+        "searchConceptSample": [
+          "nike parody",
+          "voodoo nike",
+          "nike halloween",
+          "nike bats"
+        ]
+      }
+    },
+    {
+      "designId": "mZWO3Lsra91EhNRNEkhR",
+      "title": "Nurse Brain Please Don't Interrupt",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "importBatchId": null,
+      "importSourceFileName": "95 (1).png",
+      "slotHints": [
+        "profession_nurse"
+      ],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "professionsGroups",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "brain"
+        ],
+        "searchConceptSample": [
+          "nurse brain",
+          "busy nurse",
+          "nurse gift idea",
+          "nurse loading screen"
+        ]
+      }
+    },
+    {
+      "designId": "KI7Ncd1O9JCuX9uCq505",
+      "title": "Oops I Got Another Plant Goose",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "importBatchId": null,
+      "importSourceFileName": "OopsIGotAnotherPlant.png",
+      "slotHints": [
+        "plant_humor"
+      ],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "goose"
+        ],
+        "searchConceptSample": [
+          "goose with plants",
+          "plant mom",
+          "plant dad",
+          "crazy plant lady"
+        ]
+      }
+    },
+    {
+      "designId": "4rG1uHbmqBtOevnDFon6",
+      "title": "OR 05052025 VTN Basic Human Rights Are Not Radical Anti Trump",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "OR 05052025 VTN Basic Human Rights Are Not Radical Anti Trump.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [],
+        "searchConceptSample": [
+          "basic human rights statement",
+          "human rights are not radical",
+          "feminist quote",
+          "protest shirt"
+        ]
+      }
+    },
+    {
+      "designId": "TSotvFhLSVRx2k2bQ9Ze",
+      "title": "raisinghellandkidsskelmomhall",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "raisinghellandkidsskelmomhall.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "occasions",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "skeleton",
+          "woman"
+        ],
+        "searchConceptSample": [
+          "skeleton mom",
+          "coffee mom",
+          "parenting is hard",
+          "halloween mom"
+        ]
+      }
+    },
+    {
+      "designId": "mN90KyEM2rEOmOXeIbaL",
+      "title": "stonernikeswish-black",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "stonernikeswish-black.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [],
+        "searchConceptSample": [
+          "just do it parody",
+          "weed nike",
+          "marijuana swoosh"
+        ]
+      }
+    },
+    {
+      "designId": "WvRODwDMZWjvgJSljojV",
+      "title": "stonernikeswish-blue",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "stonernikeswish-blue.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "objects",
+          "themes",
+          "interests",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [],
+        "searchConceptSample": [
+          "just hit it weed",
+          "just hit it cannabis",
+          "nike weed",
+          "weed swoosh"
+        ]
+      }
+    },
+    {
+      "designId": "vLdYj2pnZEUdUgH1TKKB",
+      "title": "stonernikeswish-green",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "stonernikeswish-green.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "objects",
+          "themes",
+          "interests",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [],
+        "searchConceptSample": [
+          "just do it parody",
+          "nike weed logo",
+          "nike cannabis logo"
+        ]
+      }
+    },
+    {
+      "designId": "zGHLO3E6RLxah8cRuXCn",
+      "title": "stonernikeswish-orange",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "stonernikeswish-orange.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "objects",
+          "themes",
+          "interests",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [],
+        "searchConceptSample": [
+          "stoner humor",
+          "cannabis parody",
+          "fake nike logo",
+          "marijuana leaf logo"
+        ]
+      }
+    },
+    {
+      "designId": "yd2pLu6VsemM2mv9pYUQ",
+      "title": "stonernikeswish-white",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "stonernikeswish-white.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "styles",
+          "themes",
+          "interests",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "cannabis leaves"
+        ],
+        "searchConceptSample": [
+          "weed nike",
+          "nike weed shirt",
+          "just smoke it",
+          "420 shirt"
+        ]
+      }
+    },
+    {
+      "designId": "GIgIAznocv8JJi3gtVCS",
+      "title": "Stop Asking Me Why I'm Crazy - V 4",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": null,
+      "importSourceFileName": "Stop Asking Me Why I'm Crazy - V 4.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "styles",
+          "themes",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [],
+        "searchConceptSample": [
+          "funny saying",
+          "sarcastic quote",
+          "witty text",
+          "attitude shirt"
+        ]
+      }
+    },
+    {
+      "designId": "ltn0gzs2YGXPADqCejr8",
+      "title": "Summer Vibes Fruits",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "importBatchId": null,
+      "importSourceFileName": "39.png",
+      "slotHints": [
+        "seasonal"
+      ],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "occasions",
+          "places",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "fruits",
+          "watermelon",
+          "pineapple"
+        ],
+        "searchConceptSample": [
+          "summer shirt",
+          "beach vibes",
+          "tropical shirt",
+          "fruity fun"
+        ]
+      }
+    },
+    {
+      "designId": "xFrxcn48oXdCmxJCFW9x",
+      "title": "theres no such thing as too many books",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": "4056c29f-4a30-4989-85df-cc6824e7b6bf",
+      "importSourceFileName": "theres no such thing as too many books.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "professionsGroups",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "books"
+        ],
+        "searchConceptSample": [
+          "book lover",
+          "bibliophile"
+        ]
+      }
+    },
+    {
+      "designId": "ukIsOmtDzd2GIVwSAZhS",
+      "title": "Upscalage - Artboard 10",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": null,
+      "importSourceFileName": "Upscalage - Artboard 10.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v28",
+        "normalizerVersion": "smart-profile-normalizer-v2",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [],
+        "searchConceptSample": [
+          "pucking mom",
+          "worlds best mom hockey",
+          "hockey mom funny",
+          "mom gift sports"
+        ]
+      }
+    },
+    {
+      "designId": "VwOy984ecYHxDWopfPfk",
+      "title": "XlPQEFxCD3srtB2rh5lj",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "importBatchId": null,
+      "importSourceFileName": "XlPQEFxCD3srtB2rh5lj.png",
+      "slotHints": [],
+      "smartProfile": {
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "automationDecision": "shadow",
+        "populatedDimensions": [
+          "subjects",
+          "objects",
+          "styles",
+          "themes",
+          "interests",
+          "places",
+          "colors",
+          "visibleText",
+          "searchConcepts"
+        ],
+        "subjectSample": [
+          "figure",
+          "dragon"
+        ],
+        "searchConceptSample": [
+          "Judas Priest Painkiller",
+          "heavy metal band t-shirt",
+          "rock band graphic"
+        ]
+      }
+    }
+  ],
+  "notes": [
+    "Read-only sample; not guaranteed complete catalog coverage.",
+    "Color-variant pairs require manual pairing ΓÇö not inferred here.",
+    "Confirm derivative paths + preview availability before calibration runs."
+  ]
+}

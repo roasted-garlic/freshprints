@@ -4,10 +4,16 @@
  *
  * Uses the same environment-specific index as Portal for the active Firebase project.
  * `VITE_USE_ALGOLIA_CATALOG_SEARCH=false` is an emergency kill-switch only.
+ * `VITE_USE_SMART_FILTERS=true` opts into Smart Filters UI (default OFF).
  */
 
 export function studioAlgoliaCatalogSearchEnabled(): boolean {
   return import.meta.env.VITE_USE_ALGOLIA_CATALOG_SEARCH !== "false";
+}
+
+/** Opt-in Smart Filters for Design Library managed search. Default OFF. */
+export function studioSmartFiltersEnabled(): boolean {
+  return import.meta.env.VITE_USE_SMART_FILTERS === "true";
 }
 
 export function getStudioAlgoliaCatalogConfig(): {

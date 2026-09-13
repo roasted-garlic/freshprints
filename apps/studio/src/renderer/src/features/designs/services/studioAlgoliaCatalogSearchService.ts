@@ -1,42 +1,69 @@
 import type { PortalCatalogAlgoliaRecord } from "@fresh-prints/shared/catalog-search/portalCatalogAlgoliaRecord";
+import {
+  PORTAL_CATALOG_ALGOLIA_SMART_FACET_ATTRIBUTES,
+  type PortalCatalogAlgoliaSmartFacetAttribute,
+} from "@fresh-prints/shared/catalog-search/portalCatalogAlgoliaRecord";
 import { withPortalCatalogAlgoliaExactTokenSearchParams } from "@fresh-prints/shared/catalog-search/portalCatalogAlgoliaExactSearchParams";
 
 import type { User } from "../../users/types/user.types";
 import type { Design } from "../types/design.types";
+import { filterDesignsForLibraryScope } from "../utils/designLibraryMembership";
 import { designService } from "./designService";
 import { isStudioAlgoliaCatalogConfigured } from "./studioAlgoliaCatalogFlags";
 import { getStudioAlgoliaIndexName, getStudioAlgoliaSearchClient } from "./studioAlgoliaClient";
 import {
-  buildStudioAlgoliaFacetSearchParams,
+  buildStudioAlgoliaCategoryFacetSearchParams,
+  buildStudioAlgoliaCombinedFacetFilters,
+  buildStudioAlgoliaSmartFacetSearchParams,
   hasStudioAlgoliaFacetConstraints,
-  mergeStudioAlgoliaTagFacetDistribution,
+  mergeStudioAlgoliaCategoryFacetDistribution,
+  type StudioAlgoliaCategoryFacetOption,
   type StudioAlgoliaFacetQueryOptions,
-  type StudioAlgoliaTagFacetOption,
 } from "./studioAlgoliaCatalogFacets";
+import {
+  mergeStudioAlgoliaSmartFacetDistribution,
+  type StudioAlgoliaSmartFacetOption,
+  type StudioAlgoliaSmartFilters,
+} from "./studioAlgoliaSmartFilters";
 
-export type { StudioAlgoliaFacetQueryOptions, StudioAlgoliaTagFacetOption };
+export type { StudioAlgoliaFacetQueryOptions, StudioAlgoliaCategoryFacetOption };
+export type { StudioAlgoliaSmartFacetOption, StudioAlgoliaSmartFilters };
 export {
-  buildStudioAlgoliaFacetSearchParams,
+  buildStudioAlgoliaCategoryFacetSearchParams,
+  buildStudioAlgoliaSmartFacetSearchParams,
   hasStudioAlgoliaFacetConstraints,
-  mergeStudioAlgoliaTagFacetDistribution,
+  mergeStudioAlgoliaCategoryFacetDistribution,
 };
 
 export interface StudioAlgoliaSearchPageOptions {
   categoryId?: string;
   limit?: number;
   offset?: number;
-  selectedTags?: string[];
+  smartFilters?: StudioAlgoliaSmartFilters;
 }
 
-function buildTagAndFilters(tagIds: string[]): string[][] {
-  return [...new Set(tagIds.map((id) => id.trim()).filter(Boolean))].map((tagId) => [
-    `tagIds:${tagId}`,
-  ]);
+export type StudioAlgoliaSmartFacetMap = Record<
+  PortalCatalogAlgoliaSmartFacetAttribute,
+  StudioAlgoliaSmartFacetOption[]
+>;
+
+function emptySmartFacetMap(): StudioAlgoliaSmartFacetMap {
+  return {
+    subjects: [],
+    styles: [],
+    themes: [],
+    interests: [],
+    professionsGroups: [],
+    occasions: [],
+    places: [],
+    colors: [],
+  };
 }
 
 /**
  * Preserve Algolia hit order when hydrating Studio Design cards from Firestore by ID.
  * Missing / unauthorized docs are omitted (Firestore remains authoritative).
+ * Non-ready docs (stale Algolia objectIDs after archive) are omitted — status overrides index membership.
  */
 export async function hydrateStudioDesignsPreservingOrder(
   caller: User,
@@ -47,9 +74,10 @@ export async function hydrateStudioDesignsPreservingOrder(
   }
   const designs = await designService.getDesignsByIds(caller, orderedIds);
   const byId = new Map(designs.map((design) => [design.id, design]));
-  return orderedIds
+  const ordered = orderedIds
     .map((id) => byId.get(id))
     .filter((design): design is Design => design !== undefined);
+  return filterDesignsForLibraryScope(ordered, "ready");
 }
 
 export const studioAlgoliaCatalogSearchService = {
@@ -73,7 +101,9 @@ export const studioAlgoliaCatalogSearchService = {
     const limit = options.limit ?? 100;
     const offset = Math.max(0, options.offset ?? 0);
     const query = search.trim();
-    const facetFilters = buildTagAndFilters(options.selectedTags ?? []);
+    const facetFilters = buildStudioAlgoliaCombinedFacetFilters({
+      smartFilters: options.smartFilters,
+    });
     const filters = options.categoryId?.trim()
       ? `categoryId:${options.categoryId.trim()}`
       : undefined;
@@ -102,7 +132,13 @@ export const studioAlgoliaCatalogSearchService = {
     };
   },
 
-  async listTagFacets(): Promise<StudioAlgoliaTagFacetOption[]> {
+  /**
+   * Smart Filter facet distributions for the 8 customer-facing attributes.
+   * Refined by q + category + draft smart selections (AND).
+   */
+  async listNarrowedSmartFacets(
+    options: StudioAlgoliaFacetQueryOptions = {},
+  ): Promise<StudioAlgoliaSmartFacetMap> {
     if (!isStudioAlgoliaCatalogConfigured()) {
       throw new Error(
         "Catalog search is not configured. Add Studio Algolia search-only environment variables.",
@@ -113,39 +149,38 @@ export const studioAlgoliaCatalogSearchService = {
     const indexName = getStudioAlgoliaIndexName();
     const response = await client.searchSingleIndex({
       indexName,
-      searchParams: buildStudioAlgoliaFacetSearchParams({}),
+      searchParams: buildStudioAlgoliaSmartFacetSearchParams(options),
     });
-    return mergeStudioAlgoliaTagFacetDistribution(
-      response.facets?.tagFacetKeys as Record<string, number> | undefined,
-    );
+
+    const result = emptySmartFacetMap();
+    for (const attribute of PORTAL_CATALOG_ALGOLIA_SMART_FACET_ATTRIBUTES) {
+      result[attribute] = mergeStudioAlgoliaSmartFacetDistribution(
+        response.facets?.[attribute] as Record<string, number> | undefined,
+      );
+    }
+    return result;
   },
 
   /**
-   * Tag facets refined by the same constraints as managed catalog search
-   * (q + tag AND + category). With no constraints, equivalent to `listTagFacets()`.
+   * CategoryId facets for the Category selector — excludes selected category from constraints.
    */
-  async listNarrowedTagFacets(
-    options: StudioAlgoliaFacetQueryOptions = {},
-  ): Promise<StudioAlgoliaTagFacetOption[]> {
+  async listNarrowedCategoryFacets(
+    options: Omit<StudioAlgoliaFacetQueryOptions, "categoryId"> = {},
+  ): Promise<StudioAlgoliaCategoryFacetOption[]> {
     if (!isStudioAlgoliaCatalogConfigured()) {
       throw new Error(
         "Catalog search is not configured. Add Studio Algolia search-only environment variables.",
       );
     }
 
-    if (!hasStudioAlgoliaFacetConstraints(options)) {
-      return studioAlgoliaCatalogSearchService.listTagFacets();
-    }
-
     const client = getStudioAlgoliaSearchClient();
     const indexName = getStudioAlgoliaIndexName();
     const response = await client.searchSingleIndex({
       indexName,
-      searchParams: buildStudioAlgoliaFacetSearchParams(options),
+      searchParams: buildStudioAlgoliaCategoryFacetSearchParams(options),
     });
-
-    return mergeStudioAlgoliaTagFacetDistribution(
-      response.facets?.tagFacetKeys as Record<string, number> | undefined,
+    return mergeStudioAlgoliaCategoryFacetDistribution(
+      response.facets?.categoryId as Record<string, number> | undefined,
     );
   },
 };

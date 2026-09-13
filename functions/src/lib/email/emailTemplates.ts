@@ -86,3 +86,20 @@ export function buildCatalogShareReadyEmail(input: {
 <p><a href="${escapeEmailHtml(input.reviewUrl)}">Review the library design</a> in Fresh Prints Portal.</p>`),
   };
 }
+
+export function buildFinalArtworkReadyEmail(input: {
+  from: string;
+  to: string;
+  displayName: string;
+  reviewUrl: string;
+}): EmailMessage {
+  return {
+    from: input.from,
+    to: input.to,
+    subject: "Your Fresh Prints final artwork is ready",
+    html: appendUnmonitoredEmailFooter(`<p>Hi ${escapeEmailHtml(input.displayName)},</p>
+<p>Your Fresh Prints final artwork is ready.</p>
+<p><a href="${escapeEmailHtml(input.reviewUrl)}">View your artwork</a> in Fresh Prints Portal.</p>
+<p>You can download it or add it to a print request from the status page.</p>`),
+  };
+}

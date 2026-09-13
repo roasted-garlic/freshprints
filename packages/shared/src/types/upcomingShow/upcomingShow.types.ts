@@ -6,19 +6,22 @@ import type {
   UpcomingShowStatus,
   UpcomingShowSyncStatus,
 } from "./upcomingShow.enums";
+import type { ShowProductionResolutionKind } from "../showProductionRecovery/showProductionRecovery.types";
 
 /**
- * Combined Whatnot show / Staff Gang Sheet production lane.
+ * Combined Whatnot show / Staff Gang Sheet / DEV fixture production lane.
  * Source-conditional fields:
  * - `whatnot`: `whatnotShowId` required; Staff fields absent
  * - `staff_gang_sheet`: `staffGangSheetCycleNumber` required; shared by Studio staff
  *   (no assignee). `whatnotShowId` and `maxTotalQuantity` omitted.
  *   Legacy DEV docs may still carry optional `assignedStaffUserId` (ignored).
+ * - `dev_fixture`: DEV-only test shows without external Whatnot identity (`devFixtureSentinel`
+ *   only on fresh-prints-dev via Admin callable). `whatnotShowId` and `whatnotUrl` omitted.
  */
 export interface UpcomingShow {
   id: string;
   source: UpcomingShowSource;
-  /** Required when source === "whatnot"; omitted for staff_gang_sheet. */
+  /** Required when source === "whatnot"; omitted for staff_gang_sheet and dev_fixture. */
   whatnotShowId?: string;
   whatnotUrl?: string;
   title?: string;
@@ -52,6 +55,9 @@ export interface UpcomingShow {
   /** Staff Gang Sheet: 1-based cycle number shown as "Internal Gang Sheet #N". */
   staffGangSheetCycleNumber?: number;
 
+  /** DEV-only fixture marker when source === "dev_fixture" (exact sentinel `DEV-OVERRIDE`). */
+  devFixtureSentinel?: string;
+
   /**
    * Optional: set when staff successfully generates gang sheet PNG(s) for this show / Internal Gangsheet.
    * Not required to Mark Complete or Mark finished.
@@ -71,6 +77,13 @@ export interface UpcomingShow {
   printFinishedAt?: Timestamp;
   printFinishedBy?: string;
 
+  /** Optional audit metadata for past-show remediation (ADR-FP-149). */
+  productionResolutionKind?: ShowProductionResolutionKind;
+  productionResolvedAt?: Timestamp;
+  productionResolvedBy?: string;
+  /** Owner override reason; max length documented in DATA_MODEL. */
+  productionOverrideReason?: string;
+
   createdBy?: string;
   updatedBy?: string;
   createdAt: Timestamp;
@@ -87,6 +100,19 @@ export function isWhatnotUpcomingShow(show: {
   source: UpcomingShowSource;
 }): boolean {
   return show.source === "whatnot";
+}
+
+/** True for shows listed on the Whatnot Show Queue surface (real Whatnot + DEV fixtures). */
+export function isWhatnotQueueSurfaceShow(show: {
+  source: UpcomingShowSource;
+}): boolean {
+  return show.source === "whatnot" || show.source === "dev_fixture";
+}
+
+export function isDevFixtureShow(show: {
+  source: UpcomingShowSource;
+}): boolean {
+  return show.source === "dev_fixture";
 }
 
 /** True when staff has successfully generated a gang sheet for this production lane. */

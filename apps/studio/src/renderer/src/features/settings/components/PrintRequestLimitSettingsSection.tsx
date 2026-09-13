@@ -9,12 +9,14 @@ import {
 } from "@fresh-prints/shared/constants/printRequest/printRequestLimitSettings.constants";
 import { Button } from "../../../shared/components/Button";
 import { Checkbox } from "../../../shared/components/Checkbox";
+import { Toggle } from "../../../shared/components/Toggle";
 import { usePrintRequestLimitSettings } from "../hooks/usePrintRequestLimitSettings";
 
 type LimitDraft = {
   maxQuantityPerPrintRequest: string;
   maxQuantityPerShowPerCustomer: string;
   linkPrintRequestAndCustomerShowLimits: boolean;
+  portalInteractiveUpscaleEnabled: boolean;
 };
 
 function settingsToDraft(settings: PrintRequestLimitSettings): LimitDraft {
@@ -22,6 +24,7 @@ function settingsToDraft(settings: PrintRequestLimitSettings): LimitDraft {
     maxQuantityPerPrintRequest: String(settings.maxQuantityPerPrintRequest),
     maxQuantityPerShowPerCustomer: String(settings.maxQuantityPerShowPerCustomer),
     linkPrintRequestAndCustomerShowLimits: settings.linkPrintRequestAndCustomerShowLimits,
+    portalInteractiveUpscaleEnabled: settings.portalInteractiveUpscaleEnabled,
   };
 }
 
@@ -29,7 +32,8 @@ function draftEqualsSettings(draft: LimitDraft, settings: PrintRequestLimitSetti
   return (
     draft.maxQuantityPerPrintRequest === String(settings.maxQuantityPerPrintRequest) &&
     draft.maxQuantityPerShowPerCustomer === String(settings.maxQuantityPerShowPerCustomer) &&
-    draft.linkPrintRequestAndCustomerShowLimits === settings.linkPrintRequestAndCustomerShowLimits
+    draft.linkPrintRequestAndCustomerShowLimits === settings.linkPrintRequestAndCustomerShowLimits &&
+    draft.portalInteractiveUpscaleEnabled === settings.portalInteractiveUpscaleEnabled
   );
 }
 
@@ -82,6 +86,7 @@ function parseDraftForSave(
     maxQuantityPerPrintRequest: requestField.value,
     maxQuantityPerShowPerCustomer: showField.value,
     linkPrintRequestAndCustomerShowLimits: draft.linkPrintRequestAndCustomerShowLimits,
+    portalInteractiveUpscaleEnabled: draft.portalInteractiveUpscaleEnabled,
   });
   if (!parsed) {
     return {
@@ -234,6 +239,27 @@ export function PrintRequestLimitSettingsSection() {
                 the customer-show cap across multiple queues to the same show.
               </p>
             ) : null}
+          </fieldset>
+
+          <fieldset className="settings-control-item settings-quota-fieldset" disabled={isSaving}>
+            <legend className="settings-field-hint">Portal features</legend>
+            <Toggle
+              checked={draft.portalInteractiveUpscaleEnabled}
+              disabled={isSaving}
+              label="Allow customers to upscale artwork on print requests"
+              name="portalInteractiveUpscaleEnabled"
+              onChange={(checked) => {
+                setValidationError(null);
+                setDraft((current) => ({
+                  ...current,
+                  portalInteractiveUpscaleEnabled: checked,
+                }));
+              }}
+            />
+            <p className="settings-field-hint">
+              When enabled, Portal customers see the Upscale toggle on request items. Studio staff
+              upscale is always available. Keep off until portal self-service upscale is approved.
+            </p>
           </fieldset>
 
           <div className="settings-form-actions">

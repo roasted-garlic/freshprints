@@ -2,32 +2,8 @@ import { resolveAiReviewHalftoneStaffToggle } from "@fresh-prints/shared/utils/h
 
 import type { Design } from "../../designs/types/design.types";
 import { formatTagsInput, mapArtworkBackgroundToForm } from "../../designs/utils/designFormMapper";
-import {
-  formatTagsSanitizationNote,
-  sanitizeDesignTagsForDisplay,
-} from "../../designs/utils/designTagNormalizer";
 
 import type { AiReviewDraftForm } from "../types/aiReviewInbox.types";
-
-function buildSanitizedTagsInput(rawTags: string[]): {
-  tagsInput: string;
-  tagsAdjustmentNote?: string;
-} {
-  const sanitization = sanitizeDesignTagsForDisplay(rawTags);
-  const tagsAdjustmentNote = formatTagsSanitizationNote(sanitization) ?? undefined;
-
-  if (import.meta.env?.DEV && tagsAdjustmentNote) {
-    console.warn("[AI Review] design tags adjusted for display limits:", tagsAdjustmentNote, {
-      before: rawTags,
-      after: sanitization.tags,
-    });
-  }
-
-  return {
-    tagsInput: formatTagsInput(sanitization.tags),
-    tagsAdjustmentNote,
-  };
-}
 
 /**
  * Seeds Final Catalog Information from the same persisted `aiSuggestions` object
@@ -41,33 +17,20 @@ export function createAiReviewDraftFromDesign(design: Design): AiReviewDraftForm
   const suggestedTitle = suggestions?.title?.trim();
   const suggestedDescription = suggestions?.description?.trim();
   const suggestedCategoryId = suggestions?.categoryId?.trim();
-  const suggestedTags = suggestions?.tags?.filter((tag) => tag.trim()) ?? [];
-  // D8-A human-first union: existing designs.tags first, then genuinely new AI suggestions.
-  const rawTags =
-    hasAiSeed && suggestedTags.length > 0
-      ? [
-          ...new Set([
-            ...design.tags.map((tag) => tag.trim()).filter(Boolean),
-            ...suggestedTags,
-          ]),
-        ]
-      : design.tags;
-  const { tagsInput, tagsAdjustmentNote } = buildSanitizedTagsInput(rawTags);
-
   return {
     title: hasAiSeed && suggestedTitle ? suggestedTitle : design.title,
     description:
       hasAiSeed && suggestedDescription ? suggestedDescription : design.description ?? "",
     categoryId:
       hasAiSeed && suggestedCategoryId ? suggestedCategoryId : design.categoryId ?? "",
-    tagsInput,
-    tagsAdjustmentNote,
+    tagsInput: "",
     markAsHalftone: resolveAiReviewHalftoneStaffToggle({
       staffDecision: design.halftoneStaffDecision,
       submitterResponse: design.halftoneSubmitterResponse,
     }),
     isExplicitContent: design.isExplicitContent === true,
     censoredTermsInput: formatTagsInput(design.censoredTerms ?? []),
+    explicitContentAutomationLocked: design.explicitContentAutomationLocked === true,
     // Queue flag only — a design already linked to a companion set (no queue flag) does not seed
     // this toggle ON, since "expects companions" here means "waiting to be linked," not "linked."
     expectsCompanions: design.companionSetIncomplete === true,
@@ -80,10 +43,10 @@ export function isAiReviewDraftDirty(baseline: AiReviewDraftForm, draft: AiRevie
     baseline.title !== draft.title ||
     baseline.description !== draft.description ||
     baseline.categoryId !== draft.categoryId ||
-    baseline.tagsInput !== draft.tagsInput ||
     baseline.markAsHalftone !== draft.markAsHalftone ||
     baseline.isExplicitContent !== draft.isExplicitContent ||
     baseline.censoredTermsInput !== draft.censoredTermsInput ||
+    baseline.explicitContentAutomationLocked !== draft.explicitContentAutomationLocked ||
     baseline.expectsCompanions !== draft.expectsCompanions ||
     baseline.artworkBackgroundPreset !== draft.artworkBackgroundPreset ||
     baseline.artworkBackgroundCustomHex !== draft.artworkBackgroundCustomHex

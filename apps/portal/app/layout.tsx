@@ -6,6 +6,7 @@ import { loadPortalGlobalSocialMeta } from '../features/brand/portalGlobalSocial
 import { resolvePortalAnalyticsConfig } from '../features/analytics/services/portalAnalyticsConfig'
 import { Providers } from './providers'
 import './globals.css'
+import '../styles/hover-bubble-tooltip.css'
 import '../styles/catalog.css'
 import '../styles/requests.css'
 import '../styles/customer-uploads.css'
@@ -14,6 +15,7 @@ import '../styles/assisted-creation.css'
 import '../styles/help.css'
 import '../styles/shell.css'
 import '../styles/our-shows.css'
+import '../styles/admin-show-queue.css'
 
 /** Refresh global OG settings / hourly library image without force-dynamic on every page. */
 export const revalidate = 3600

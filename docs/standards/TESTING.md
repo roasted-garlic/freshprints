@@ -23,6 +23,41 @@ Fresh Prints is a **two-app monorepo**: Fresh Prints Studio (Electron + Vite + R
 | Studio installer | `npm run build:studio` | Electron packaging changes |
 | Unit tests | `npx tsx --test` (see below) | Logic changes with tests |
 
+### Print Request direct export / gang-sheet / copy focus
+
+```bash
+npx tsx --test \
+  packages/shared/src/utils/printRequestExportFilename.test.ts \
+  packages/shared/src/utils/resolveShowExportProductionAsset.test.ts \
+  packages/shared/src/utils/gangSheetCacheFingerprint.test.ts \
+  functions/src/lib/copyStudioPrintRequestCore.test.ts \
+  apps/studio/src/renderer/src/features/print-requests/hooks/printRequestExport.contract.test.ts \
+  apps/studio/electron/ipc/export/exportRequestValidation.test.ts
+```
+
+The focused contract set verifies request-only inputs, source-aware resolver parity, Standard-only
+request gang sheets, request cache isolation, atomic copy boundaries, and the existing Electron IPC
+validation. Existing Show Queue filename, resolver, planner, and compositor suites remain required
+regressions after this refactor.
+
+For the global Gang Sheet Settings amendment, also run:
+
+```bash
+npx tsx --test \
+  packages/shared/src/constants/gangSheetSectionPricingSettings.constants.test.ts \
+  packages/shared/src/utils/gangSheetCustomerSectionSummary.test.ts \
+  packages/shared/src/utils/gangSheetCacheFingerprint.test.ts \
+  apps/studio/electron/services/export/composeContinuousCustomerGroupedGangSheetSheets.test.ts \
+  apps/studio/electron/ipc/export/exportRequestValidation.test.ts \
+  apps/studio/src/renderer/src/features/print-requests/utils/printRequestPocketFullSizeCounts.contract.test.ts
+```
+
+These cover fixed width boundaries, canonical/legacy/default pricing fallback, exact quantity,
+weight totals, request Standard summary inputs, grouped compositor compatibility, cache material
+settings, and the retired local-editor wiring. Because the amendment changes `firestore.rules`,
+the Rules emulator suite is required; if the local Firebase emulator cannot start, record the
+exact environment blocker rather than claiming a pass.
+
 **Never claim tests passed unless they were actually run.**
 
 ---
@@ -85,6 +120,71 @@ npx tsx --test packages/shared/src/utils/firestoreUsageTrace.test.ts apps/studio
 AI enrichment reference-read diagnostics are structured Functions logs only. Correlate
 `pipeline.invocation.*`, `pipeline.terminal`, `reference_cache.*`, and `reference_query.*` by
 `invocationId`; do not add Firestore reads solely to produce diagnostics.
+
+### Category dominant-intent calibration (v33)
+
+```bash
+npx tsx --test functions/src/ai/catalogThemeCategoryResolver.test.ts
+npx tsx --test functions/src/ai/aiTaxonomyCache.test.ts
+npx tsx --test functions/src/ai/smartProfileQuality.contract.test.ts functions/src/ai/catalogTitleRules.test.ts
+npx tsx --test packages/shared/src/constants/catalogReprocess.constants.test.ts packages/shared/src/constants/aiEnrichment.constants.test.ts
+npm --prefix functions run build
+```
+
+Owner Gate A (#9) and four-design canary require DEV Functions deploy first; do not treat unit fixtures as live attribution for cannabis cache timing.
+
+### Humor dominant-intent override reliability (post-canary FAIL)
+
+```bash
+npx tsx --test functions/src/ai/catalogThemeCategoryResolver.test.ts
+npx tsx --test functions/src/ai/smartProfileQuality.contract.test.ts
+npm --prefix functions run build
+```
+
+Live acceptance after DEV deploy: **10 consecutive** reprocesses of `#1` `7bVlWMFwxECdfHH8VNPB` must all resolve primary **Funny & Sarcastic** (any Animals / Food & Drink / unrelated = FAIL). Also re-canary #9/#12/#13 once each. WS4 remains blocked until that PASS.
+
+### Music & Bands vs Pop Culture dominant-intent (resolver-only)
+
+```bash
+npx tsx --test functions/src/ai/catalogThemeCategoryResolver.test.ts
+npx tsx --test functions/src/ai/smartProfileQuality.contract.test.ts
+npm --prefix functions run build
+```
+
+Prompt stays **catalog-enrich-v34** (no v35). Owner QA after DEV deploy: `Wt5eILv4uyCnYNoJI8uZ` → Music & Bands; Scooby `0UsPRAh0tggzuX8xwWqq` stays Pop; Faith `8pSowFU1o1H1EjXBaXaA` stays Faith & Worship.
+
+### Cute & Whimsical exact-match structured-evidence challenge (resolver-only)
+
+```bash
+npx tsx --test functions/src/ai/catalogThemeCategoryResolver.test.ts
+npx tsx --test functions/src/ai/smartProfileQuality.contract.test.ts
+npm --prefix functions run build
+```
+
+Prompt stays **catalog-enrich-v34** / normalizer **v6** / schema **v1**. Requires live taxonomy **Cute & Whimsical** (materialization revision ≥ 19). After DEV deploy: Highland `swcJl3RvjTFsf5hp04Ze` → Cute & Whimsical (with and without tags); literal Animals negatives stay Animals; Music/Faith/Holiday/Occupations goldens stable.
+
+### Visual / no-text catalog title specificity (subjects/objects enrich)
+
+```bash
+npx tsx --test functions/src/ai/catalogTitleRules.test.ts
+npx tsx --test functions/src/ai/simpleCatalogEnrichmentResponse.test.ts
+npx tsx --test functions/src/ai/catalogThemeCategoryResolver.test.ts
+npm --prefix functions run build
+```
+
+Prompt stays **catalog-enrich-v34**. After DEV deploy: Sloth `7ZZIvBXvrnS2AcTVdjzl` and Poodle `rhfZm1hB37krd8QBtfm9` titles materially more specific than bare subject; Highland long descriptive title remains acceptable; text-led goldens unchanged.
+
+### Design Library → Reprocess with AI (Ready → AI Review)
+
+```bash
+npx tsx --test functions/src/ai/reprocessReadyDesignWithAiCore.test.ts
+npx tsx --test functions/src/reprocessReadyDesignWithAi.contract.test.ts
+npx tsx --test apps/studio/src/renderer/src/features/designs/components/reprocessReadyDesignWithAi.contract.test.ts
+npx tsx --test apps/studio/src/renderer/src/features/designs/utils/readyOrder.test.ts
+npm --prefix functions run build
+```
+
+Owner-only callable `reprocessReadyDesignWithAi`. Manual QA after DEV deploy: Design Details → Reprocess with AI on Ready designs `74BdnNQuNWz0N0GaL4CO`, `8QpQFWwwfM21WEimy6Vm`, `FRP1L0K6AKq2hrgGnOxX` (expect Inspirational Quotes & Affirmations after review Approve).
 
 ### Etsy recommendations (Phase 9A)
 
@@ -242,7 +342,7 @@ before running `npm run test:rules`.
 
 | Date | Summary |
 |------|---------|
-| 2026-07-29 | Test Data Reset: relabeled obsolete Cap A data as optional Legacy print-limit counters cleanup; active limit `L`, customer room, and show capacity are unaffected |
+| 2026-08-29 | Added `tests/firebase/showQueueAllocation.rules.test.ts` for Show Queue allocation sequence + DEV fixture create denial |
 | 2026-07-23 | `npm run test:rules` requires Java 21+ (Firebase CLI 15.x); documented user-scoped portable-JDK setup with no admin rights |
 | 2026-07-21 | Test Data Reset: AI Processing selective designs wipe preset/target |
 | 2026-07-18 | Test Data Reset presets + short labels; Custom/Etsy wipe expand side leftovers (incl. overlays) |
@@ -251,3 +351,10 @@ before running `npm run test:rules`.
 | 2026-07-10 | Test Data Reset page + wipeOperationalTestData callable |
 | 2026-07-08 | Phase 8 closeout — Portal commands, monorepo test paths |
 | 2026-06-24 | Initial Fresh Prints testing doc (intake) |
+# Portal admin Show Queue validation (ADR-FP-187)
+
+The Show Queue implementation requires focused shared operational-day/DST tests, callable role and
+empty-input tests, DTO privacy/allowlist tests, and Portal auth/route/page contract tests. The
+operational day is tested in `America/Chicago` on standard-time, daylight-time, spring-forward, and
+fall-back boundaries. Firestore Rules tests are not part of this feature because Rules remain
+unchanged.

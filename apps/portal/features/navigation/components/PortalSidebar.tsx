@@ -21,6 +21,10 @@ import { PortalLogo } from '../../brand/components/PortalLogo';
 import { usePortalBrandLogoSettings } from '../../brand/hooks/usePortalBrandLogoSettings';
 import { CATALOG_HOME_PATH } from '../../print-requests/utils/catalogSelectionNavigation';
 import { PortalConfirmModal } from '../../shared/components/PortalConfirmModal';
+import {
+  PortalShowSizeTiersIcon,
+  PortalShowSizeTiersTrigger,
+} from '../../print-requests/components/PortalShowSizeTiersTrigger';
 import { ThemeToggle } from '../../theme/components/ThemeToggle';
 import {
   PORTAL_ACCOUNT_HREF,
@@ -171,25 +175,37 @@ export function PortalSidebar() {
           <div className="portal-sidebar-spacer" />
 
           <div className="portal-sidebar-footer">
-            <Link
-              aria-current={pathname === '/help' || pathname.startsWith('/help/') ? 'page' : undefined}
-              className={`portal-sidebar-help-link${
-                pathname === '/help' || pathname.startsWith('/help/') ? ' is-active' : ''
-              }`}
-              href="/help"
-              onClick={closeDrawer}
-              title="Help"
-            >
-              <span className="portal-sidebar-help-link-main">
-                <CircleHelp
-                  aria-hidden
-                  className="portal-sidebar-help-icon"
-                  size={18}
-                  strokeWidth={1.75}
-                />
-                <span className="portal-sidebar-help-link-label">Help</span>
-              </span>
-            </Link>
+            <div className="portal-sidebar-footer-actions">
+              <Link
+                aria-current={pathname === '/help' || pathname.startsWith('/help/') ? 'page' : undefined}
+                className={`portal-sidebar-help-link${
+                  pathname === '/help' || pathname.startsWith('/help/') ? ' is-active' : ''
+                }`}
+                href="/help"
+                onClick={closeDrawer}
+                title="Help"
+              >
+                <span className="portal-sidebar-help-link-main">
+                  <CircleHelp
+                    aria-hidden
+                    className="portal-sidebar-help-icon"
+                    size={18}
+                    strokeWidth={1.75}
+                  />
+                  <span className="portal-sidebar-help-link-label">Help</span>
+                </span>
+              </Link>
+
+              <PortalShowSizeTiersTrigger
+                className="portal-sidebar-help-link portal-sidebar-pricing-link"
+                title="Show Prices"
+              >
+                <span className="portal-sidebar-help-link-main">
+                  <PortalShowSizeTiersIcon size={18} />
+                  <span className="portal-sidebar-help-link-label">Show Prices</span>
+                </span>
+              </PortalShowSizeTiersTrigger>
+            </div>
 
             <a
               className="portal-sidebar-whatnot-link"
@@ -298,8 +314,8 @@ export function PortalSidebar() {
         title="Log out?"
       >
         <p className="portal-muted portal-confirm-modal-message">
-          You can still browse designs while signed out. Sign in again to manage print requests and
-          account actions.
+          You will return to the login page. Sign in again to manage print requests and account
+          actions.
         </p>
       </PortalConfirmModal>
     </>

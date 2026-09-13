@@ -9,6 +9,13 @@ import { overlapsAnyOtherItem } from "@fresh-prints/shared/utils/gangSheetLayout
 import type { GangSheet, GangSheetItem } from "@fresh-prints/shared/types/gangSheet/gangSheet.types";
 import type { GangSheetShowAsset } from "./useGangSheetShowAssets";
 import { resolveQueuedPrintInches } from "@fresh-prints/shared/utils/printRequestQueuedInches";
+import {
+  resolveShowExportProductionAsset,
+  toCatalogDesignAssetInput,
+  toCustomerUploadAssetInput,
+  toStaffArtworkAssetInput,
+  toShowExportPrintRequestItemFields,
+} from "@fresh-prints/shared/utils/resolveShowExportProductionAsset";
 
 const PLACEMENT_SEARCH_STEP_INCHES = 0.5;
 
@@ -131,14 +138,54 @@ export function useGangSheetBuilder(upcomingShowId: string | null) {
         return;
       }
 
-      const isUpload = Boolean(asset.upload) || asset.allocation.sourceType === "customer_upload";
-      if (!isUpload && !asset.design) {
+      const isStaffArtwork = Boolean(asset.staffArtwork) || asset.allocation.sourceType === "staff_artwork";
+      const isUpload = !isStaffArtwork && (Boolean(asset.upload) || asset.allocation.sourceType === "customer_upload");
+      if (!isUpload && !isStaffArtwork && !asset.design) {
         return;
       }
-      if (isUpload && (!asset.upload?.productionStoragePath || !asset.allocation.customerUploadId)) {
+      if (isUpload && (!asset.upload || !asset.allocation.customerUploadId)) {
         setState((current) => ({
           ...current,
           error: "Uploaded artwork production file is missing.",
+        }));
+        return;
+      }
+      if (isStaffArtwork && !asset.staffArtwork) {
+        setState((current) => ({ ...current, error: "Staff Artwork production file is missing." }));
+        return;
+      }
+      if (!asset.printRequestItem) {
+        setState((current) => ({
+          ...current,
+          error: "Print request item is missing for this allocation.",
+        }));
+        return;
+      }
+
+      let productionStoragePath: string;
+      try {
+        const resolved = resolveShowExportProductionAsset({
+          item: toShowExportPrintRequestItemFields(asset.printRequestItem),
+          catalogDesign: !isUpload && !isStaffArtwork && asset.design ? toCatalogDesignAssetInput(asset.design) : null,
+          customerUpload: isUpload && asset.upload ? toCustomerUploadAssetInput(asset.upload) : null,
+          staffArtwork: isStaffArtwork && asset.staffArtwork ? toStaffArtworkAssetInput({
+            id: asset.staffArtwork.id,
+            productionStoragePath: asset.staffArtwork.productionStoragePath,
+            interactiveEnhancedProductionStoragePath: asset.staffArtwork.interactiveEnhancedProductionStoragePath,
+            widthPx: asset.staffArtwork.processing?.widthPx,
+            heightPx: asset.staffArtwork.processing?.heightPx,
+            interactiveEnhancedWidthPx: asset.staffArtwork.interactiveEnhancedWidthPx,
+            interactiveEnhancedHeightPx: asset.staffArtwork.interactiveEnhancedHeightPx,
+            previewStoragePath: asset.staffArtwork.previewStoragePath,
+            thumbnailStoragePath: asset.staffArtwork.thumbnailStoragePath,
+            title: asset.staffArtwork.title,
+          }) : null,
+        });
+        productionStoragePath = resolved.productionStoragePath;
+      } catch (error) {
+        setState((current) => ({
+          ...current,
+          error: formatError(error, "Unable to resolve production artwork for this item."),
         }));
         return;
       }
@@ -187,7 +234,12 @@ export function useGangSheetBuilder(upcomingShowId: string | null) {
           showAllocationId: asset.allocation.id,
           printRequestId: asset.allocation.printRequestId,
           printRequestItemId: asset.allocation.printRequestItemId,
-          ...(isUpload
+          ...(isStaffArtwork
+            ? {
+                sourceType: "staff_artwork" as const,
+                staffArtworkId: asset.allocation.staffArtworkId!,
+              }
+            : isUpload
             ? {
                 sourceType: "customer_upload" as const,
                 customerUploadId: asset.allocation.customerUploadId!,
@@ -200,11 +252,10 @@ export function useGangSheetBuilder(upcomingShowId: string | null) {
           designTitleSnapshot:
             asset.design?.title ??
             asset.upload?.originalFilename ??
+            asset.staffArtwork?.title ??
             asset.allocation.designTitleSnapshot,
           requestNameSnapshot: asset.allocation.requestNameSnapshot,
-          originalPathSnapshot: isUpload
-            ? asset.upload!.productionStoragePath!
-            : asset.design!.originalPath,
+          originalPathSnapshot: productionStoragePath,
           xInches: origin.xInches,
           yInches: origin.yInches,
           widthInches,

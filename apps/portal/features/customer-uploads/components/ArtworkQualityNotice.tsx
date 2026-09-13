@@ -5,9 +5,8 @@ import { useEffect, useId, useState } from 'react';
 
 import { useAuth } from '../../auth/context/AuthContext';
 import {
-  buildArtworkQualityModalSnoozeUntilIso,
+  dismissArtworkQualityModal,
   shouldOpenArtworkQualityModalOnMount,
-  writeArtworkQualityModalSnoozeUntil,
 } from '../utils/artworkQualityModalSnooze';
 
 type ArtworkQualityNoticePurpose = 'print_request' | 'catalog_donation';
@@ -47,10 +46,10 @@ function ArtworkQualityWarningCopy() {
 export function ArtworkQualityNotice({ purpose = 'print_request' }: ArtworkQualityNoticeProps) {
   const { isAuthenticated } = useAuth();
   const panelId = useId();
-  const snoozeCheckboxId = useId();
+  const dontShowAgainCheckboxId = useId();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [snoozeFor24Hours, setSnoozeFor24Hours] = useState(false);
+  const [dontShowAgain, setDontShowAgain] = useState(false);
   const isDonation = purpose === 'catalog_donation';
 
   useEffect(() => {
@@ -76,9 +75,9 @@ export function ArtworkQualityNotice({ purpose = 'print_request' }: ArtworkQuali
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isModalOpen]);
 
-  const dismissModal = (applySnooze: boolean) => {
-    if (applySnooze && snoozeFor24Hours) {
-      writeArtworkQualityModalSnoozeUntil(buildArtworkQualityModalSnoozeUntilIso(Date.now()));
+  const dismissModal = (applyPreference: boolean) => {
+    if (applyPreference) {
+      dismissArtworkQualityModal({ dontShowAgain });
     }
     setIsModalOpen(false);
   };
@@ -99,7 +98,7 @@ export function ArtworkQualityNotice({ purpose = 'print_request' }: ArtworkQuali
         >
           <span className="artwork-quality-notice-toggle-main">
             <TriangleAlert aria-hidden className="artwork-quality-notice-icon" size={18} strokeWidth={2} />
-            <span className="artwork-quality-notice-toggle-label">Print-ready artwork required</span>
+            <span className="artwork-quality-notice-toggle-label">Print-ready artwork requirements</span>
           </span>
           <ChevronDown
             aria-hidden
@@ -170,14 +169,14 @@ export function ArtworkQualityNotice({ purpose = 'print_request' }: ArtworkQuali
               <p className="artwork-quality-modal-confirm-hint">
                 By continuing, you confirm your files meet these artwork requirements.
               </p>
-              <label className="artwork-quality-modal-snooze" htmlFor={snoozeCheckboxId}>
+              <label className="artwork-quality-modal-snooze" htmlFor={dontShowAgainCheckboxId}>
                 <input
-                  checked={snoozeFor24Hours}
-                  id={snoozeCheckboxId}
-                  onChange={(event) => setSnoozeFor24Hours(event.target.checked)}
+                  checked={dontShowAgain}
+                  id={dontShowAgainCheckboxId}
+                  onChange={(event) => setDontShowAgain(event.target.checked)}
                   type="checkbox"
                 />
-                <span>Don&apos;t show this again for 24 hours</span>
+                <span>Don&apos;t show this again</span>
               </label>
               <button
                 className="portal-button portal-button-primary"

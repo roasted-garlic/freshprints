@@ -6,9 +6,21 @@ import { adminDb } from "../lib/admin";
 export async function updateAiProcessingStage(
   designId: string,
   stage: AiProcessingStage,
-): Promise<void> {
-  await adminDb.collection("designs").doc(designId).update({
-    aiProcessingStage: stage,
-    updatedAt: FieldValue.serverTimestamp(),
+  attemptId: string,
+): Promise<boolean> {
+  const designRef = adminDb.collection("designs").doc(designId);
+  return adminDb.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(designRef);
+    const data = snapshot.data() as { aiProcessingAttemptId?: unknown } | undefined;
+
+    if (!snapshot.exists || data?.aiProcessingAttemptId !== attemptId) {
+      return false;
+    }
+
+    transaction.update(designRef, {
+      aiProcessingStage: stage,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    return true;
   });
 }

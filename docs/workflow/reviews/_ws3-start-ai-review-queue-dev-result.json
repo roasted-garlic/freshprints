@@ -1,0 +1,19 @@
+{
+  "startedAt": "2026-09-03T22:57:07.829Z",
+  "preflight": {
+    "eligible": 165,
+    "mode": "shadow",
+    "live": false,
+    "phrase": "REPROCESS AI REVIEW QUEUE"
+  },
+  "httpStatus": 200,
+  "response": {
+    "result": {
+      "jobId": "omLhRHLnpkyvhOc8yQp9",
+      "dryRun": false,
+      "targetType": "ai_review_queue",
+      "totalEligible": 165,
+      "status": "pending"
+    }
+  }
+}

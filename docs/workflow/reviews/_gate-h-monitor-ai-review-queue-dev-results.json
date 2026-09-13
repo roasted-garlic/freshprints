@@ -1,0 +1,315 @@
+{
+  "jobId": "zFzAwEIwCXFWC8dce0f4",
+  "projectId": "fresh-prints-dev",
+  "finishedAt": "2026-08-26T04:17:21.532Z",
+  "finalJobState": "completed",
+  "jobCounters": {
+    "totalEligible": 204,
+    "processed": 204,
+    "succeeded": 204,
+    "failed": 0,
+    "skipped": 0,
+    "remainedNeedsReview": 204,
+    "wouldAutoApprove": 113,
+    "verifierInvoked": 91,
+    "verifierUnresolved": 91,
+    "hardBlocked": 91,
+    "anomalies": 0,
+    "autoApproved": 0,
+    "lastError": null,
+    "pauseRequested": false,
+    "promptVersion": "catalog-enrich-v29",
+    "normalizerVersion": "smart-profile-normalizer-v3",
+    "pipelineVersion": "catalog-enrich-v29+smart-profile-normalizer-v3",
+    "catalogWorkflowModeSnapshot": "shadow",
+    "autonomousLiveEnabledSnapshot": false
+  },
+  "outcomeSummary": {
+    "outcomeCount": 204,
+    "byStatus": {
+      "succeeded": 204
+    },
+    "wouldAutoApprove": 113,
+    "verifierInvoked": 91,
+    "verifierUnresolved": 91,
+    "hardBlocked": 91,
+    "categoryGap": 1,
+    "subjectSpecificity": 0,
+    "contextualSubject": 91,
+    "titleValidation": 0,
+    "remainedNeedsReview": 204,
+    "anomaly": 0,
+    "lifecycleOk": 204,
+    "lifecycleBad": 0,
+    "failed": []
+  },
+  "rates": {
+    "wouldAutoApproveRate": 0.553921568627451,
+    "verifierInvokedRate": 0.44607843137254904,
+    "verifierUnresolvedRate": 0.44607843137254904,
+    "hardBlockedRate": 0.44607843137254904
+  },
+  "lifecycleCorruptionCheck": {
+    "readyLeakAmongSucceededOutcomes": 0,
+    "lifecycleOk": 204,
+    "lifecycleBad": 0
+  },
+  "settingsAtEnd": {
+    "catalogWorkflowMode": "shadow",
+    "catalogAutonomousLiveEnabled": false
+  },
+  "recommendedSampleSize": 25,
+  "sampleCandidates": [
+    {
+      "strata": "wouldAutoApprove",
+      "designId": "0EHBrGD4wXNLnNNKij4N",
+      "status": "succeeded",
+      "wouldAutoApprove": true,
+      "verifierOutcome": "skipped",
+      "hardBlocked": false,
+      "promptVersion": "catalog-enrich-v29",
+      "normalizerVersion": "smart-profile-normalizer-v3"
+    },
+    {
+      "strata": "wouldAutoApprove",
+      "designId": "1Ws0T9fivryest6IUSbt",
+      "status": "succeeded",
+      "wouldAutoApprove": true,
+      "verifierOutcome": "skipped",
+      "hardBlocked": false,
+      "promptVersion": "catalog-enrich-v29",
+      "normalizerVersion": "smart-profile-normalizer-v3"
+    },
+    {
+      "strata": "wouldAutoApprove",
+      "designId": "20fv9qb9gRLSB66nS3xp",
+      "status": "succeeded",
+      "wouldAutoApprove": true,
+      "verifierOutcome": "skipped",
+      "hardBlocked": false,
+      "promptVersion": "catalog-enrich-v29",
+      "normalizerVersion": "smart-profile-normalizer-v3"
+    },
+    {
+      "strata": "verifierUnresolved",
+      "designId": "03cbj1cIFH7Bavt38XBX",
+      "status": "succeeded",
+      "wouldAutoApprove": false,
+      "verifierOutcome": "unresolved",
+      "hardBlocked": true,
+      "promptVersion": "catalog-enrich-v29",
+      "normalizerVersion": "smart-profile-normalizer-v3"
+    },
+    {
+      "strata": "verifierUnresolved",
+      "designId": "1eOWMVHDvRKY0kwYWQet",
+      "status": "succeeded",
+      "wouldAutoApprove": false,
+      "verifierOutcome": "unresolved",
+      "hardBlocked": true,
+      "promptVersion": "catalog-enrich-v29",
+      "normalizerVersion": "smart-profile-normalizer-v3"
+    },
+    {
+      "strata": "verifierUnresolved",
+      "designId": "1scpUhx0KriTBC1IfFIW",
+      "status": "succeeded",
+      "wouldAutoApprove": false,
+      "verifierOutcome": "unresolved",
+      "hardBlocked": true,
+      "promptVersion": "catalog-enrich-v29",
+      "normalizerVersion": "smart-profile-normalizer-v3"
+    },
+    {
+      "strata": "hardBlocked",
+      "designId": "03cbj1cIFH7Bavt38XBX",
+      "status": "succeeded",
+      "wouldAutoApprove": false,
+      "verifierOutcome": "unresolved",
+      "hardBlocked": true,
+      "promptVersion": "catalog-enrich-v29",
+      "normalizerVersion": "smart-profile-normalizer-v3"
+    },
+    {
+      "strata": "hardBlocked",
+      "designId": "1eOWMVHDvRKY0kwYWQet",
+      "status": "succeeded",
+      "wouldAutoApprove": false,
+      "verifierOutcome": "unresolved",
+      "hardBlocked": true,
+      "promptVersion": "catalog-enrich-v29",
+      "normalizerVersion": "smart-profile-normalizer-v3"
+    },
+    {
+      "strata": "hardBlocked",
+      "designId": "1scpUhx0KriTBC1IfFIW",
+      "status": "succeeded",
+      "wouldAutoApprove": false,
+      "verifierOutcome": "unresolved",
+      "hardBlocked": true,
+      "promptVersion": "catalog-enrich-v29",
+      "normalizerVersion": "smart-profile-normalizer-v3"
+    },
+    {
+      "strata": "categoryGap",
+      "designId": "mw5eiufjMAuOZPnOiMiP",
+      "status": "succeeded",
+      "wouldAutoApprove": false,
+      "verifierOutcome": "unresolved",
+      "hardBlocked": true,
+      "promptVersion": "catalog-enrich-v29",
+      "normalizerVersion": "smart-profile-normalizer-v3"
+    },
+    {
+      "strata": "succeeded_fill",
+      "designId": "2Nj95YLaLk6763oTrRZw",
+      "status": "succeeded",
+      "wouldAutoApprove": true,
+      "verifierOutcome": "skipped",
+      "hardBlocked": false,
+      "promptVersion": "catalog-enrich-v29",
+      "normalizerVersion": "smart-profile-normalizer-v3"
+    },
+    {
+      "strata": "succeeded_fill",
+      "designId": "2g9IrxIiuOGrUbZio4Qn",
+      "status": "succeeded",
+      "wouldAutoApprove": true,
+      "verifierOutcome": "skipped",
+      "hardBlocked": false,
+      "promptVersion": "catalog-enrich-v29",
+      "normalizerVersion": "smart-profile-normalizer-v3"
+    },
+    {
+      "strata": "succeeded_fill",
+      "designId": "2iLdJzuKCON3U2VJ6w0o",
+      "status": "succeeded",
+      "wouldAutoApprove": true,
+      "verifierOutcome": "skipped",
+      "hardBlocked": false,
+      "promptVersion": "catalog-enrich-v29",
+      "normalizerVersion": "smart-profile-normalizer-v3"
+    },
+    {
+      "strata": "succeeded_fill",
+      "designId": "2sgtK8BS0Cj8vlyPBmhm",
+      "status": "succeeded",
+      "wouldAutoApprove": false,
+      "verifierOutcome": "unresolved",
+      "hardBlocked": true,
+      "promptVersion": "catalog-enrich-v29",
+      "normalizerVersion": "smart-profile-normalizer-v3"
+    },
+    {
+      "strata": "succeeded_fill",
+      "designId": "3QNubh7l7WahljYYfgYe",
+      "status": "succeeded",
+      "wouldAutoApprove": true,
+      "verifierOutcome": "skipped",
+      "hardBlocked": false,
+      "promptVersion": "catalog-enrich-v29",
+      "normalizerVersion": "smart-profile-normalizer-v3"
+    },
+    {
+      "strata": "succeeded_fill",
+      "designId": "4rG1uHbmqBtOevnDFon6",
+      "status": "succeeded",
+      "wouldAutoApprove": true,
+      "verifierOutcome": "skipped",
+      "hardBlocked": false,
+      "promptVersion": "catalog-enrich-v29",
+      "normalizerVersion": "smart-profile-normalizer-v3"
+    },
+    {
+      "strata": "succeeded_fill",
+      "designId": "51Oz02NfLY8vTruauW56",
+      "status": "succeeded",
+      "wouldAutoApprove": true,
+      "verifierOutcome": "skipped",
+      "hardBlocked": false,
+      "promptVersion": "catalog-enrich-v29",
+      "normalizerVersion": "smart-profile-normalizer-v3"
+    },
+    {
+      "strata": "succeeded_fill",
+      "designId": "5Jype5Zc1b13XXSci5Kn",
+      "status": "succeeded",
+      "wouldAutoApprove": true,
+      "verifierOutcome": "skipped",
+      "hardBlocked": false,
+      "promptVersion": "catalog-enrich-v29",
+      "normalizerVersion": "smart-profile-normalizer-v3"
+    },
+    {
+      "strata": "succeeded_fill",
+      "designId": "5NVU91SMRiecLkZqdrN8",
+      "status": "succeeded",
+      "wouldAutoApprove": true,
+      "verifierOutcome": "skipped",
+      "hardBlocked": false,
+      "promptVersion": "catalog-enrich-v29",
+      "normalizerVersion": "smart-profile-normalizer-v3"
+    },
+    {
+      "strata": "succeeded_fill",
+      "designId": "6fBRl87jaXyYYGlhapS9",
+      "status": "succeeded",
+      "wouldAutoApprove": false,
+      "verifierOutcome": "unresolved",
+      "hardBlocked": true,
+      "promptVersion": "catalog-enrich-v29",
+      "normalizerVersion": "smart-profile-normalizer-v3"
+    },
+    {
+      "strata": "succeeded_fill",
+      "designId": "6zKWIvQyvwH5M19bCeYW",
+      "status": "succeeded",
+      "wouldAutoApprove": true,
+      "verifierOutcome": "skipped",
+      "hardBlocked": false,
+      "promptVersion": "catalog-enrich-v29",
+      "normalizerVersion": "smart-profile-normalizer-v3"
+    },
+    {
+      "strata": "succeeded_fill",
+      "designId": "7744saa9UE8UttagbY9m",
+      "status": "succeeded",
+      "wouldAutoApprove": true,
+      "verifierOutcome": "skipped",
+      "hardBlocked": false,
+      "promptVersion": "catalog-enrich-v29",
+      "normalizerVersion": "smart-profile-normalizer-v3"
+    },
+    {
+      "strata": "succeeded_fill",
+      "designId": "7BjqFQIhkavo80sv5kCp",
+      "status": "succeeded",
+      "wouldAutoApprove": false,
+      "verifierOutcome": "unresolved",
+      "hardBlocked": true,
+      "promptVersion": "catalog-enrich-v29",
+      "normalizerVersion": "smart-profile-normalizer-v3"
+    },
+    {
+      "strata": "succeeded_fill",
+      "designId": "7bVlWMFwxECdfHH8VNPB",
+      "status": "succeeded",
+      "wouldAutoApprove": false,
+      "verifierOutcome": "unresolved",
+      "hardBlocked": true,
+      "promptVersion": "catalog-enrich-v29",
+      "normalizerVersion": "smart-profile-normalizer-v3"
+    },
+    {
+      "strata": "succeeded_fill",
+      "designId": "8m0KgJEel8kLpYlmZpFb",
+      "status": "succeeded",
+      "wouldAutoApprove": false,
+      "verifierOutcome": "unresolved",
+      "hardBlocked": true,
+      "promptVersion": "catalog-enrich-v29",
+      "normalizerVersion": "smart-profile-normalizer-v3"
+    }
+  ],
+  "monitoring": false
+}

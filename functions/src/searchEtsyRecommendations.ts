@@ -37,6 +37,7 @@ import {
   readEtsyRecommendationSearchQuota,
 } from "./lib/etsy/etsyRecommendationRateLimit";
 import { requirePortalCustomer } from "./lib/etsy/requirePortalCustomer";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 import { etsyXApiKeySecret } from "./lib/secrets";
 
 function mapHttpsError(error: unknown): never {
@@ -72,6 +73,7 @@ export async function runSearchEtsyRecommendations(input: {
   client: EtsyClient | null;
 }): Promise<SearchEtsyRecommendationsResponse> {
   const portalCustomer = await requirePortalCustomer(input.uid);
+  await assertPortalMaintenanceAllowsCustomerMutation(input.uid);
 
   if (typeof input.requestId !== "string" || !input.requestId.trim()) {
     throw invalidArgument("A request id is required.");

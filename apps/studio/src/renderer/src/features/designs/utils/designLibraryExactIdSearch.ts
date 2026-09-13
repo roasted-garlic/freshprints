@@ -1,6 +1,7 @@
 import type { User } from "../../users/types/user.types";
 
 import type { Design } from "../types/design.types";
+import { isDesignVisibleInLibraryScope } from "./designLibraryMembership";
 
 /** Firestore auto-ids are 20 chars; allow a tight band so title tokens do not trigger getDoc. */
 const DESIGN_DOCUMENT_ID_MIN_LENGTH = 16;
@@ -10,7 +11,7 @@ const DESIGN_DOCUMENT_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
 export interface ExactIdLibraryVisibilityOptions {
   browsingArchived: boolean;
   categoryId?: string;
-  selectedTags?: readonly string[];
+  halftoneOnly?: boolean;
 }
 
 export type ExactIdDesignLoader = (caller: User, ids: string[]) => Promise<Design[]>;
@@ -33,13 +34,7 @@ export function designVisibleForExactIdLibrary(
   design: Design,
   browsingArchived: boolean,
 ): boolean {
-  if (design.assetsPurgedAt) {
-    return false;
-  }
-  if (browsingArchived) {
-    return design.status === "archived";
-  }
-  return design.status === "ready";
+  return isDesignVisibleInLibraryScope(design, browsingArchived ? "archived" : "ready");
 }
 
 export function exactIdDesignMatchesLibraryFilters(
@@ -52,8 +47,7 @@ export function exactIdDesignMatchesLibraryFilters(
   if (options.categoryId?.trim() && design.categoryId !== options.categoryId.trim()) {
     return false;
   }
-  const selectedTags = options.selectedTags ?? [];
-  if (selectedTags.length > 0 && !selectedTags.every((tag) => design.tags.includes(tag))) {
+  if (options.halftoneOnly && design.halftoneStaffDecision?.value !== true) {
     return false;
   }
   return true;

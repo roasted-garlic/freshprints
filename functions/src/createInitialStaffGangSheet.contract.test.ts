@@ -14,3 +14,8 @@ test("createInitialStaffGangSheet allows any staff and writes no assignee", () =
   assert.match(source, /staffGangSheetCycleNumber: cycleNumber/);
   assert.doesNotMatch(source, /assignedStaffUserId/);
 });
+
+test("createInitialStaffGangSheet persists a monotonic cycle counter", () => {
+  assert.match(source, /collection\("counters"\)\.doc\(INTERNAL_GANG_SHEET_COUNTER_ID\)/);
+  assert.match(source, /nextCycleNumber: cycleNumber \+ 1/);
+});

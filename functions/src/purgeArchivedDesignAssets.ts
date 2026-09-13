@@ -13,8 +13,10 @@ import {
   isDesignAssetsPurged,
   validatePurgeArchivedDesignAssetsRequest,
 } from "../../packages/shared/src/utils/purgeArchivedDesignAssetsValidation";
+import type { DeletionCallableWarmupResponse } from "../../packages/shared/src/types/deletion/deletionWarmup.types";
 import { adminDb, adminStorage } from "./lib/admin";
 import { loadCallerProfile } from "./lib/caller";
+import { deletionWarmupOk, isDeletionCallableWarmupRequest } from "./lib/deletionWarmup";
 import { failedPrecondition, invalidArgument, permissionDenied, unauthenticated } from "./lib/errors";
 
 const ACTIVE_ALLOCATION_STATUSES = new Set(["pending", "queued", "in_progress"]);
@@ -146,13 +148,18 @@ async function purgeOneDesign(
 
 export const purgeArchivedDesignAssets = onCall(
   { timeoutSeconds: 300, memory: "512MiB" },
-  async (request): Promise<PurgeArchivedDesignAssetsResponse> => {
+  async (
+    request,
+  ): Promise<PurgeArchivedDesignAssetsResponse | DeletionCallableWarmupResponse> => {
     if (!request.auth?.uid) {
       throw unauthenticated();
     }
 
     const caller = await loadCallerProfile(request.auth.uid);
     assertOwnerCaller(caller);
+    if (isDeletionCallableWarmupRequest(request.data)) {
+      return deletionWarmupOk();
+    }
 
     const validated = validatePurgeArchivedDesignAssetsRequest(request.data);
     if (!validated.ok || !validated.designIds) {

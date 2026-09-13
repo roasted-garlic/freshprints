@@ -27,7 +27,13 @@ import {
 } from "../constants/printRequestRoutes";
 import { upcomingShowService } from "../../upcoming-shows/services/upcomingShowService";
 
-const COUNTABLE_TABS: readonly PrintRequestListTab[] = ["working", "queued", "printing", "printed"];
+const COUNTABLE_TABS: readonly PrintRequestListTab[] = [
+  "working",
+  "editing",
+  "queued",
+  "printing",
+  "printed",
+];
 
 function buildAllocationsByRequestId(allocations: ShowAllocation[]): Record<string, ShowAllocation[]> {
   const grouped: Record<string, ShowAllocation[]> = {};
@@ -78,7 +84,7 @@ const initialState: PrintRequestsState = {
   allocationsByRequestId: {},
   showsById: {},
   customersById: {},
-  countsByTab: { working: 0, queued: 0, printing: 0, printed: 0 },
+  countsByTab: { working: 0, editing: 0, queued: 0, printing: 0, printed: 0 },
   hasMore: false,
   error: null,
   isLoading: true,

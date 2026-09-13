@@ -4,8 +4,11 @@ import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { CUSTOMER_UPLOAD_COLLECTIONS } from "../../packages/shared/src/constants/customerUpload/customerUploadCollections.constants";
 import type { ConfirmCustomerUploadsAndAttachToRequestResponse } from "../../packages/shared/src/types/customerUpload/confirmCustomerUploadAttach.types";
 import { CUSTOMER_UPLOAD_TERMS_VERSION } from "../../packages/shared/src/types/customerUpload/customerUpload.types";
-import { resolveInitialPrintRequestItemSize } from "../../packages/shared/src/utils/printRequestItemSizing";
+import { resolveInitialPrintRequestItemSize, resolvePrintRequestDefaultWidthInches } from "../../packages/shared/src/utils/printRequestItemSizing";
+
 import { resolveCustomerUploadPurpose } from "../../packages/shared/src/utils/customerUploadPurpose";
+import { resolveNextPrintRequestItemSortOrder } from "../../packages/shared/src/utils/printRequestItemDisplayOrder";
+import { sumPrintRequestItemQuantities } from "../../packages/shared/src/utils/portalShowQueueCapacity";
 
 import { adminDb } from "./lib/admin";
 import { validateConfirmCustomerUploadsAndAttachRequest } from "./lib/confirmCustomerUploadValidation";
@@ -18,11 +21,12 @@ import {
   unauthenticated,
 } from "./lib/errors";
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
-import { loadPrintRequestLimitSettings } from "./lib/loadPrintRequestLimitSettings";
+import { loadEffectivePrintRequestLimitsForCustomer } from "./lib/loadEffectivePrintRequestLimits";
+import { loadStandardPrintSizesSettings } from "./lib/loadStandardPrintSizesSettings";
 import { requirePortalCustomer } from "./lib/portalCustomer";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 import { assertWorkingRequestAllowsPrintAdds } from "./lib/printRequestWorkingRequestMax";
 import { resolveOrCreateWorkingPrintRequestInTransaction } from "./lib/portalWorkingPrintRequest";
-import { sumPrintRequestItemQuantities } from "../../packages/shared/src/utils/portalShowQueueCapacity";
 
 function mapHttpsError(error: unknown): never {
   if (error instanceof HttpsError) {
@@ -34,7 +38,10 @@ function mapHttpsError(error: unknown): never {
   throw internal("Unable to attach uploads right now.");
 }
 
-function resolveAttachPrintSize(upload: Record<string, unknown>): {
+function resolveAttachPrintSize(
+  upload: Record<string, unknown>,
+  printRequestDefaultWidthInches?: number,
+): {
   printWidthInches?: number;
   printHeightInches?: number;
 } {
@@ -49,6 +56,7 @@ function resolveAttachPrintSize(upload: Record<string, unknown>): {
         pixelWidth: widthPx,
         pixelHeight: heightPx,
         defaultPrintWidthInches,
+        printRequestDefaultWidthInches,
         approvedMaxPrintWidthInches:
           typeof upload.approvedMaxPrintWidthInches === "number"
             ? upload.approvedMaxPrintWidthInches
@@ -83,6 +91,7 @@ export const confirmCustomerUploadsAndAttachToRequest = onCall(
 
     try {
       const portalCustomer = await requirePortalCustomer(request.auth.uid);
+      await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
       const payload = validateConfirmCustomerUploadsAndAttachRequest(request.data);
       const customerUid = request.auth.uid;
       const quantity = payload.defaultQuantity ?? 1;
@@ -131,8 +140,14 @@ export const confirmCustomerUploadsAndAttachToRequest = onCall(
       const attachedItemIds: string[] = [];
       const reusedItemIds: string[] = [];
       let printRequestId = "";
-      const settings = await loadPrintRequestLimitSettings();
-      const maxPerRequest = settings.maxQuantityPerPrintRequest;
+      const [effectiveLimits, standardPrintSizesSettings] = await Promise.all([
+        loadEffectivePrintRequestLimitsForCustomer(portalCustomer.customerId),
+        loadStandardPrintSizesSettings(),
+      ]);
+      const printRequestDefaultWidthInches = resolvePrintRequestDefaultWidthInches(
+        standardPrintSizesSettings,
+      );
+      const maxPerRequest = effectiveLimits.effectiveMaxQuantityPerPrintRequest;
 
       await adminDb.runTransaction(async (tx) => {
         const resolved = await resolveOrCreateWorkingPrintRequestInTransaction(tx, {
@@ -147,6 +162,7 @@ export const confirmCustomerUploadsAndAttachToRequest = onCall(
         const existingByUploadId = new Map<string, string>();
         let currentItemCount = 0;
         let currentPrintCount = 0;
+        let nextSortOrder = 1;
 
         // When a request was just created, resolve helper already wrote — do not read after write.
         if (!resolved.created) {
@@ -172,14 +188,19 @@ export const confirmCustomerUploadsAndAttachToRequest = onCall(
           const allItemsSnap = await tx.get(
             adminDb.collection("printRequestItems").where("printRequestId", "==", printRequestId),
           );
-          currentPrintCount = sumPrintRequestItemQuantities(
-            allItemsSnap.docs.map((docSnap) => {
-              const qty = Number(docSnap.data()?.quantity ?? 1);
-              return {
-                quantity: Number.isFinite(qty) && qty > 0 ? Math.floor(qty) : 1,
-              };
-            }),
-          );
+          const existingItems = allItemsSnap.docs.map((docSnap) => {
+            const data = docSnap.data() ?? {};
+            const qty = Number(data.quantity ?? 1);
+            return {
+              quantity: Number.isFinite(qty) && qty > 0 ? Math.floor(qty) : 1,
+              sortOrder:
+                typeof data.sortOrder === "number" && Number.isFinite(data.sortOrder)
+                  ? data.sortOrder
+                  : undefined,
+            };
+          });
+          currentPrintCount = sumPrintRequestItemQuantities(existingItems);
+          nextSortOrder = resolveNextPrintRequestItemSortOrder(existingItems);
         }
 
         const now = FieldValue.serverTimestamp();
@@ -212,6 +233,7 @@ export const confirmCustomerUploadsAndAttachToRequest = onCall(
             termsVersion: CUSTOMER_UPLOAD_TERMS_VERSION,
             printRequestId,
             submitForStaffReview: false,
+            existingUpload: upload,
             now,
           });
 
@@ -228,7 +250,9 @@ export const confirmCustomerUploadsAndAttachToRequest = onCall(
             typeof upload.originalFilename === "string" && upload.originalFilename.trim()
               ? upload.originalFilename.trim()
               : "Uploaded artwork";
-          const printSize = resolveAttachPrintSize(upload);
+          const printSize = resolveAttachPrintSize(upload, printRequestDefaultWidthInches);
+          const sortOrder = nextSortOrder;
+          nextSortOrder += 1;
 
           tx.set(
             itemRef,
@@ -241,6 +265,7 @@ export const confirmCustomerUploadsAndAttachToRequest = onCall(
               quantity,
               printWidthInches: printSize.printWidthInches,
               printHeightInches: printSize.printHeightInches,
+              sortOrder,
               status: "pending",
               addedBy: customerUid,
               createdAt: now,

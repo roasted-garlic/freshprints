@@ -22,6 +22,8 @@ export interface CatalogDesign {
   description?: string;
   categoryId?: string;
   tags: string[];
+  /** Human-only Halftone classification, derived from halftoneStaffDecision (never a tag/Smart Profile facet). */
+  isHalftone?: boolean;
   thumbnailPath: string;
   previewPath?: string;
   /**
@@ -63,6 +65,10 @@ export interface CatalogDesign {
    * Not used for default library order (request counters bump this field).
    */
   updatedAtMs?: number;
+  interactiveEnhancedOriginalPath?: string;
+  interactiveEnhancedWidthPx?: number;
+  interactiveEnhancedHeightPx?: number;
+  interactiveEnhanceGeneratedAt?: unknown;
   /**
    * Staff "Explicit Content" classification (Portal term: Censored Content).
    * Always a real boolean after mapping — missing/false on the Firestore doc ⇒ `false`
@@ -106,7 +112,8 @@ export interface CatalogDesignListCursor {
 
 export interface CatalogDesignListQuery {
   categoryId?: string;
-  tag?: string;
+  /** Human-only Halftone classification; retained independently of legacy tags. */
+  halftoneOnly?: boolean;
   /** Client-side only in listReadyDesignsPage today; prefer filtering after fetch. */
   search?: string;
   limitCount?: number;

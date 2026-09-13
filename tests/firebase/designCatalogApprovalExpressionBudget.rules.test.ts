@@ -199,6 +199,49 @@ describe("catalog approve with large aiSuggestions (expression budget)", () => {
     await assertSucceeds(transitionReady());
   });
 
+  it("AI Processing preview: artworkBackgroundHex-only on enrichment-heavy imported design ALLOW", async () => {
+    await seed(
+      baseDesign({
+        aiReviewStatus: "pending",
+        aiProcessingStage: "waiting",
+      }),
+    );
+    const db = environment.authenticatedContext(OWNER).firestore();
+    await assertSucceeds(
+      updateDoc(doc(db, "designs", DESIGN), {
+        artworkBackgroundHex: "#2C2D2D",
+        artworkBackgroundSource: "staff_manual",
+        updatedBy: OWNER,
+        updatedAt: serverTimestamp(),
+      }),
+    );
+  });
+
+  it("AI Processing preview: halftone staff decision + tags on enrichment-heavy imported design ALLOW", async () => {
+    await seed(
+      baseDesign({
+        aiReviewStatus: "pending",
+        aiProcessingStage: "waiting",
+      }),
+    );
+    const db = environment.authenticatedContext(OWNER).firestore();
+    await assertSucceeds(
+      updateDoc(doc(db, "designs", DESIGN), {
+        artworkBackgroundHex: "#2C2D2D",
+        artworkBackgroundSource: "staff_manual",
+        tags: ["turtle", "funny", "halftone"],
+        halftoneStaffDecision: {
+          value: true,
+          decidedBy: OWNER,
+          isExplicitOverride: true,
+          decidedAt: Timestamp.now(),
+        },
+        updatedBy: OWNER,
+        updatedAt: serverTimestamp(),
+      }),
+    );
+  });
+
   it("AI Review draft metadata (incl. halftoneStaffDecision + censoredTerms) then ready ALLOW", async () => {
     await seed(
       baseDesign({
@@ -215,6 +258,7 @@ describe("catalog approve with large aiSuggestions (expression budget)", () => {
         categoryId: "category-fixture-1",
         tags: ["turtle", "funny", "halftone"],
         artworkBackgroundHex: "#222222",
+        artworkBackgroundSource: "staff_manual",
         isExplicitContent: true,
         censoredTerms: ["fuck", "shit"],
         halftoneStaffDecision: {
@@ -228,6 +272,23 @@ describe("catalog approve with large aiSuggestions (expression budget)", () => {
       }),
     );
     await assertSucceeds(transitionReady());
+  });
+
+  it("AI Review reject on enrichment-heavy imported design ALLOW", async () => {
+    await seed(baseDesign());
+    const db = environment.authenticatedContext(OWNER).firestore();
+    await assertSucceeds(
+      updateDoc(doc(db, "designs", DESIGN), {
+        status: "rejected",
+        aiReviewStatus: "rejected",
+        aiReviewed: false,
+        aiProcessed: true,
+        aiReviewedAt: serverTimestamp(),
+        aiReviewedBy: OWNER,
+        updatedBy: OWNER,
+        updatedAt: serverTimestamp(),
+      }),
+    );
   });
 
   it("Sequence 3 control: large aiSuggestions, no new fields → ready ALLOW", async () => {

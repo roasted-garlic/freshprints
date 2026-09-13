@@ -22,6 +22,10 @@ import type {
   ConfirmCustomerUploadsAndAttachToRequestResponse,
 } from '@fresh-prints/shared/types/customerUpload/confirmCustomerUploadAttach.types';
 import type {
+  AttachExistingCustomerUploadsToPrintRequestRequest,
+  AttachExistingCustomerUploadsToPrintRequestResponse,
+} from '@fresh-prints/shared/types/customerUpload/attachExistingCustomerUpload.types';
+import type {
   ConfirmCustomerUploadsForDonationRequest,
   ConfirmCustomerUploadsForDonationResponse,
 } from '@fresh-prints/shared/types/customerUpload/confirmCustomerUploadDonate.types';
@@ -80,6 +84,9 @@ export interface AccountArtworkGalleryItem {
   productionStoragePath: string | null;
   /** When set, this upload was promoted into a catalog design. */
   promotedDesignId: string | null;
+  /** False = Don’t allow / personal library bucket. */
+  catalogUseAcknowledged: boolean | null;
+  catalogReviewStatus: string | null;
   createdAtMs: number;
 }
 
@@ -130,6 +137,10 @@ export interface CustomerUploadDocSummary {
   approvedMaxPrintWidthInches: number | null;
   approvedMaxPrintHeightInches: number | null;
   wasUpscaled: boolean | null;
+  interactiveEnhancedProductionStoragePath?: string | null;
+  interactiveEnhancedWidthPx?: number | null;
+  interactiveEnhancedHeightPx?: number | null;
+  interactiveEnhanceGeneratedAt?: unknown;
   ownershipConfirmed: boolean;
   catalogUseAcknowledged: boolean;
   /** Set when this upload was copied from an Assisted Creation approved proof. */
@@ -154,12 +165,7 @@ function newClientRequestId(): string {
 function isAllowedImageFile(file: File): boolean {
   const name = file.name.toLowerCase();
   const type = file.type.toLowerCase();
-  return (
-    type === 'image/png' ||
-    type === 'image/webp' ||
-    name.endsWith('.png') ||
-    name.endsWith('.webp')
-  );
+  return type === 'image/png' || name.endsWith('.png');
 }
 
 function isZipFile(file: File): boolean {
@@ -230,7 +236,7 @@ export const customerUploadService = {
         continue;
       }
 
-      rejected.push(`${file.name}: use PNG, WebP, or ZIP.`);
+      rejected.push(`${file.name}: use PNG or ZIP.`);
     }
 
     return { images, zips, rejected };
@@ -437,6 +443,21 @@ export const customerUploadService = {
     }
   },
 
+  async attachExistingToRequest(
+    input: AttachExistingCustomerUploadsToPrintRequestRequest,
+  ): Promise<AttachExistingCustomerUploadsToPrintRequestResponse> {
+    try {
+      return await callTracedFunction<
+        AttachExistingCustomerUploadsToPrintRequestRequest,
+        AttachExistingCustomerUploadsToPrintRequestResponse
+      >('attachExistingCustomerUploadsToPrintRequest', {
+        source: 'customerUploadService.attachExistingToRequest',
+      })(input);
+    } catch (error) {
+      throw new Error(portalAuthService.getCallableErrorMessage(error));
+    }
+  },
+
   async confirmForDonation(
     input: ConfirmCustomerUploadsForDonationRequest,
   ): Promise<ConfirmCustomerUploadsForDonationResponse> {
@@ -496,6 +517,17 @@ export const customerUploadService = {
           ? data.approvedMaxPrintHeightInches
           : null,
       wasUpscaled: typeof data.wasUpscaled === 'boolean' ? data.wasUpscaled : null,
+      interactiveEnhancedProductionStoragePath:
+        typeof data.interactiveEnhancedProductionStoragePath === 'string'
+          ? data.interactiveEnhancedProductionStoragePath
+          : null,
+      interactiveEnhancedWidthPx:
+        typeof data.interactiveEnhancedWidthPx === 'number' ? data.interactiveEnhancedWidthPx : null,
+      interactiveEnhancedHeightPx:
+        typeof data.interactiveEnhancedHeightPx === 'number'
+          ? data.interactiveEnhancedHeightPx
+          : null,
+      interactiveEnhanceGeneratedAt: data.interactiveEnhanceGeneratedAt,
       ownershipConfirmed: data.ownershipConfirmed === true,
       catalogUseAcknowledged: data.catalogUseAcknowledged === true,
       assistedCreationRequestId:
@@ -615,6 +647,19 @@ export const customerUploadService = {
               ? data.approvedMaxPrintHeightInches
               : null,
           wasUpscaled: typeof data.wasUpscaled === 'boolean' ? data.wasUpscaled : null,
+          interactiveEnhancedProductionStoragePath:
+            typeof data.interactiveEnhancedProductionStoragePath === 'string'
+              ? data.interactiveEnhancedProductionStoragePath
+              : null,
+          interactiveEnhancedWidthPx:
+            typeof data.interactiveEnhancedWidthPx === 'number'
+              ? data.interactiveEnhancedWidthPx
+              : null,
+          interactiveEnhancedHeightPx:
+            typeof data.interactiveEnhancedHeightPx === 'number'
+              ? data.interactiveEnhancedHeightPx
+              : null,
+          interactiveEnhanceGeneratedAt: data.interactiveEnhanceGeneratedAt,
           ownershipConfirmed: data.ownershipConfirmed === true,
           catalogUseAcknowledged: data.catalogUseAcknowledged === true,
           assistedCreationRequestId:
@@ -771,6 +816,10 @@ export const customerUploadService = {
         thumbnailStoragePath,
         productionStoragePath,
         promotedDesignId,
+        catalogUseAcknowledged:
+          typeof data.catalogUseAcknowledged === 'boolean' ? data.catalogUseAcknowledged : null,
+        catalogReviewStatus:
+          typeof data.catalogReviewStatus === 'string' ? data.catalogReviewStatus : null,
         createdAtMs,
       });
     }

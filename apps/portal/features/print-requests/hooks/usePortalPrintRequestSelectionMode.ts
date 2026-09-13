@@ -3,9 +3,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { PrintRequest } from '@fresh-prints/shared/types/printRequest/printRequest.types';
+import { resolvePrintRequestDefaultWidthInches } from '@fresh-prints/shared/utils/printRequestItemSizing';
 
 import { useAuth } from '../../auth/context/AuthContext';
 import type { CatalogDesign } from '../../catalog/types/catalog.types';
+import { usePortalStandardPrintSizes } from './usePortalStandardPrintSizes';
 import { portalPrintRequestService } from '../services/portalPrintRequestService';
 import {
   awaitPendingSeedPersist,
@@ -73,6 +75,11 @@ function buildQuantitySignatureFromItems(items: Array<{ designId?: string; quant
 
 export function usePortalPrintRequestSelectionMode(printRequestId: string | null) {
   const { firebaseUser } = useAuth();
+  const { settings: standardPrintSizesSettings } = usePortalStandardPrintSizes();
+  const printRequestDefaultWidthInches = useMemo(
+    () => resolvePrintRequestDefaultWidthInches(standardPrintSizesSettings),
+    [standardPrintSizesSettings],
+  );
   const [selectedDesigns, setSelectedDesigns] = useState<SelectionState>({});
   const hydratedRequestIdRef = useRef<string | null>(null);
   const hydratedSelectionSignatureRef = useRef<string | null>(null);
@@ -326,6 +333,7 @@ export function usePortalPrintRequestSelectionMode(printRequestId: string | null
           printRequestId,
           userId: firebaseUser.uid,
           selections: dirtySelections,
+          printRequestDefaultWidthInches,
         });
       }
 
@@ -339,6 +347,7 @@ export function usePortalPrintRequestSelectionMode(printRequestId: string | null
     firebaseUser,
     flushPendingMutations,
     printRequest,
+    printRequestDefaultWidthInches,
     printRequestId,
     reload,
     selectedDesigns,

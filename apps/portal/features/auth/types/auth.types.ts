@@ -34,6 +34,7 @@ export type PortalAuthBootstrapStatus =
   | 'anonymous-guest'
   | 'loading-profile'
   | 'ready'
+  | 'portal-admin'
   | 'inactive'
   | 'staff-account'
   | 'missing-customer'
@@ -68,4 +69,8 @@ export function needsPortalCustomerProfileCompletion(
   bootstrapStatus: PortalAuthBootstrapStatus,
 ): boolean {
   return bootstrapStatus === 'missing-profile' || bootstrapStatus === 'missing-customer';
+}
+
+export function isPortalAdminBootstrapStatus(status: PortalAuthBootstrapStatus): boolean {
+  return status === 'portal-admin';
 }

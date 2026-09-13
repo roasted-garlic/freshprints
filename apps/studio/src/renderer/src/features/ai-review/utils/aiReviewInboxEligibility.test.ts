@@ -10,7 +10,10 @@ import {
   isDesignReopenableInInbox,
   isDesignRerunnableFromNeedsReview,
   isDesignRerunnableInInbox,
+  isDesignRetryableInProcessing,
+  isDesignStaleProcessingRetryable,
 } from "./aiReviewInboxEligibility";
+import { AI_ENRICHMENT_STALE_STAGE_MS } from "@fresh-prints/shared/constants/aiEnrichment.constants";
 
 function createDesign(overrides: Partial<Design> = {}): Design {
   return {
@@ -81,5 +84,29 @@ describe("aiReviewInboxEligibility", () => {
       aiSuggestions: undefined,
     });
     assert.equal(isDesignRerunnableFromNeedsReview(pending), false);
+  });
+
+  it("distinguishes failed retry from stale processing retry on processing tab", () => {
+    const staleWaiting = createDesign({
+      status: "processing",
+      aiReviewStatus: "pending",
+      aiProcessingStage: "sending_to_ai",
+      previewPath: "/previews/design-1.webp",
+      updatedAt: {
+        toMillis: () => Date.now() - AI_ENRICHMENT_STALE_STAGE_MS - 1,
+      } as Design["updatedAt"],
+    });
+    const failed = createDesign({
+      status: "processing",
+      aiReviewStatus: "pending",
+      aiProcessingStage: "failed",
+      aiSuggestions: { errorCode: "timeout", provider: "google" },
+    });
+
+    assert.equal(isDesignStaleProcessingRetryable(staleWaiting, "processing"), true);
+    assert.equal(isDesignRetryableInProcessing(staleWaiting, "processing"), false);
+    assert.equal(isDesignRetryableInProcessing(failed, "processing"), true);
+    assert.equal(isDesignStaleProcessingRetryable(failed, "processing"), false);
+    assert.equal(isDesignStaleProcessingRetryable(staleWaiting, "needs_review"), false);
   });
 });

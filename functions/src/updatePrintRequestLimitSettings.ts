@@ -37,6 +37,7 @@ export const updatePrintRequestLimitSettings = onCall(
       maxQuantityPerShowPerCustomer: settings.maxQuantityPerShowPerCustomer,
       linkPrintRequestAndCustomerShowLimits: settings.linkPrintRequestAndCustomerShowLimits,
       dailyDesignsAddedToRequestsLimit: settings.dailyDesignsAddedToRequestsLimit,
+      portalInteractiveUpscaleEnabled: settings.portalInteractiveUpscaleEnabled,
       updatedBy: settings.updatedBy,
       updatedAt: FieldValue.serverTimestamp(),
     });

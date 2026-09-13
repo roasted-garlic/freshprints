@@ -110,7 +110,7 @@ Email / Password — Portal customers and Studio staff
 Google — Portal customers only (ADR-FP-081)
 ```
 
-Portal customers may reset password and change email via Firebase Auth client APIs when a password provider is present (verify-before-update for email; profile sync via Admin callable). Google-only accounts cannot change sign-in email in-app (tied to Google; least-resistance path is a new account). Account **deletion from the customer** is request-only (`accountDeletionRequests`). Studio owners fulfill via `tombstoneCustomerAccount` (Auth **disable**, retain identity/username/history — ADR-FP-115). Destructive cascade `ownerDeleteUser` is quarantined and not exposed in Studio UI.
+Portal customers may reset password and change email via Firebase Auth client APIs when a password provider is present (verify-before-update for email; profile sync via Admin callable). Google-only accounts cannot change sign-in email in-app (tied to Google; least-resistance path is a new account). **Username and display name** self-service uses callable `updatePortalCustomerProfile` only (self-only; 30-day username cooldown; no direct client writes to `customerUsernames` or propagated snapshots). `usernameHistory` is support/audit only and is not returned in Portal UI. Account **deletion from the customer** is request-only (`accountDeletionRequests`). Studio owners fulfill via `tombstoneCustomerAccount` (Auth **disable**, retain identity/username/history — ADR-FP-115). Destructive cascade `ownerDeleteUser` is quarantined and not exposed in Studio UI.
 
 Studio staff login and Studio customer invites must not expose Google. Additional providers require approval.
 
@@ -166,6 +166,7 @@ Owners can:
 * Manage requests
 * Access audit logs
 * Use **Test Data Reset** (`/test-data-reset`) in **development Studio builds only**, and only when connected to the allowlisted Firebase project (`fresh-prints-dev`), via `wipeOperationalTestData` — owner role required; never for production project IDs; never exposed in production Studio builds
+* Apply **Force Completed** show production override (`applyShowProductionRecovery` with `force_completed`) — requires bounded reason; reconciles allocations/requests via Admin SDK (ADR-FP-149)
 
 Owners have full platform access.
 
@@ -519,9 +520,10 @@ Admins and helpers may review requests based on permissions.
   callable may still exist but is unused by Portal UI. UI gates are not the security boundary.
   Physical removal after expiry / terminal purge is the hard stop. Client Storage `getBlob` is not
   used for this flow (avoids requiring bucket CORS for Portal origins).
-* On approve, Admin SDK deletes sibling proof objects. On reject/cancel, Admin SDK deletes all
-  proof full-res objects. Daily schedule + owner/admin callable `purgeExpiredAssistedCreationProofs`
-  delete expired approved full-res and orphan leftovers on rejected/cancelled.
+* On approve, Admin SDK **does not** delete sibling proof objects (multi-proof history stays
+  visible). On reject/cancel, Admin SDK deletes all proof full-res objects. Daily schedule +
+  owner/admin callable `purgeExpiredAssistedCreationProofs` delete expired approved full-res and
+  orphan leftovers on rejected/cancelled.
 * Customers must not receive Storage paths for other customers’ proofs. Callables that set
   `approvedProofId` load ownership inside a transaction (`customerUid` match).
 * **Catalog share (ADR-FP-108):** `staffSuggestAssistedCreationCatalogDesign` is owner/admin only and
@@ -548,6 +550,43 @@ Firestore rules and `permissionService` should stay aligned:
 * Active staff may create/update/delete customer username reservation documents
 * Active staff may read/update the `counters/printRequests` internal request counter
 * Customer role has no Studio access to these collections yet
+
+### Staff Artwork source
+
+`staffArtworks/{staffArtworkId}` and `/staff-artwork/{staffArtworkId}/...` are Studio-only for
+library management. Owners/admins alone may create, process, edit metadata, archive/restore, delete
+(after a trusted preview/recheck), or promote Staff Artwork. Source client uploads must be
+`image/png` only. Helpers may read and select existing `ready`/non-archived records for print
+requests, but cannot upload or manage the library. Portal customers must not read `staffArtworks`
+Firestore documents; they may read only authenticated `preview.webp` / `thumbnail.webp` Storage
+objects by known ID so request cards can show artwork already attached to their print request.
+Production/source and interactive objects remain staff/Admin-only. This known-ID preview/thumbnail
+exposure is an owner-accepted residual risk for this release; ownership-bound signed URLs remain the
+future alternative if the risk is no longer acceptable. New customer associations reject
+merged accounts and preserve historical identity snapshots.
+
+### Portal print-request projection cutover
+
+`portalPrintRequestItems` is an Admin-maintained, customer-safe projection. Clients cannot create,
+update, or delete projection documents. The rollout is additive: transition Rules preserve the
+existing customer-owned canonical `printRequestItems` read while adding the projection read; the
+Portal prefers projections and uses a bounded, ID-unique canonical fallback until population and
+smoke evidence support the separately approved final Rules state. Final Rules deny customer
+canonical-item reads while preserving projection ownership checks and staff behavior. The production
+reconciliation runner is dry-run/verify first, one bounded page per invocation, and APPLY requires a
+separate owner checkpoint. Pre-APPLY VERIFY reports expected population deltas; post-APPLY VERIFY
+requires exact equality followed by a zero-diff DRY RUN.
+
+### Print Request lifecycle evidence
+
+`printRequestLifecycleEvents` is staff-readable for the User Info history surface. Firestore Rules
+do not permit client create, update, or delete; only the two reviewed Admin SDK triggers may write
+events. `lastLifecycleActivityAt`, `lastLifecycleActivityPrecedence`, and
+`lastLifecycleActivityEventId` on `printRequests` are server-maintained mirrors and are not accepted
+as client lifecycle authority. Historical compatibility/backfill work is non-destructive and
+separately authorized; the DEV mirror backfill and indexed-reader activation are complete, while
+the compatibility reader remains available as rollback. Production changes remain separately
+gated.
 
 ### Customer favorites (Portal)
 
@@ -948,7 +987,7 @@ Google AI (Gemini) **provider API key** for server-side AI enrichment:
 
 | Allowed | Forbidden |
 |---------|-----------|
-| Firebase Secret Manager (`GEMINI_API_KEY`) | Firestore `settings` or any document field |
+| Firebase Secret Manager (`GEMINI_API_KEY`, `OPENAI_API_KEY`) | Firestore `settings` or any document field |
 | Cloud Functions reading bound secrets | Desktop Settings page API-key fields |
 | Documented setup in `FIREBASE.md` / `DEPLOYMENT.md` | Renderer env vars, preload, or IPC exposing keys |
 
@@ -956,7 +995,7 @@ Google AI (Gemini) **provider API key** for server-side AI enrichment:
 
 **Etsy recommendations (Phase 9A, ADR-FP-087l / ADR-FP-087o):** Portal builds website search URLs client-side; listing cards come from the secret-bound Open API callable. The last normalized listing snapshot is stored on `etsyRecommendationRequests.lastApiSearch` (Admin SDK; public listing metadata only). Studio staff may refresh via `staffSearchEtsyRecommendationApiResults` (staff auth; no customer preview quota). Website scrape remains forbidden (ADR-FP-087j). Purchases happen off-platform via listing/search URLs.
 
-The Electron renderer may call `enqueueAiEnrichment` but must **never** receive the Gemini key. Development environments may run the heuristic provider without a real key; production Gemini vision requires Secret Manager configuration with human approval. As of ADR-FP-040, OpenAI is no longer used and `OPENAI_API_KEY` was removed from Cloud Function code.
+The Electron renderer may call `enqueueAiEnrichment` but must **never** receive provider API keys. Development environments may run the heuristic provider without a real Gemini key; production Gemini vision requires Secret Manager configuration with human approval. OpenAI Luna (ADR-FP-174) requires `OPENAI_API_KEY` and fails closed when that secret is missing for an OpenAI-selected model. Keys must never be logged or placed in test fixtures as real values.
 
 ---
 
@@ -1171,3 +1210,21 @@ Review-approved); none of the 24 findings were introduced by Wave C.
   `retry-request`, `teeny-request`, `uuid`) are transitive Firebase Admin/Google Cloud client library
   dependencies; documented as a known dependency-risk note, not individually blocking.
 - No `npm audit fix` or `npm audit fix --force` was run. No dependency was upgraded.
+# Portal admin Show Queue (ADR-FP-187)
+
+The Portal admin Show Queue is a constrained exception to the customer-only Portal surface. The
+`/admin/show-queue` route is available only to active `owner` and `admin` sessions. Helpers,
+customers, guests, and inactive accounts are denied. Client session gating is UX only: the
+dashboard and designs callables fresh-load `users/{uid}` and enforce the role on every request.
+
+Trusted callables:
+
+- `getPortalAdminUpcomingShowQueueDashboard` — upcoming show list + selected-show stats/PR
+  summaries; accepts optional `showId`
+- `getPortalAdminShowQueueRequestDesigns` — lazy View Designs modal; requires `showId` +
+  `printRequestId`; returns 15-minute signed derivative URLs only after allocation linkage proof
+
+Dashboard DTOs omit artwork. Modal DTOs omit Storage paths, filenames, design/upload IDs, and
+originals. Firestore and Storage Rules are unchanged. The admin route uses a separate shell/sidebar
+and does not mount customer mutation, navigation, notification, favorite, request, or upload
+providers. Staff sessions do not query or subscribe to customer documents.

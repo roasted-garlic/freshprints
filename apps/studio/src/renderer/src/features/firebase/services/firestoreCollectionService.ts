@@ -36,6 +36,10 @@ export const firestoreCollectionService = {
     return this.getCollectionReference("printRequests");
   },
 
+  getPrintRequestLifecycleEventsCollection() {
+    return this.getCollectionReference("printRequestLifecycleEvents");
+  },
+
   getPrintRequestItemsCollection() {
     return this.getCollectionReference("printRequestItems");
   },
@@ -80,6 +84,10 @@ export const firestoreCollectionService = {
     return this.getCollectionReference("staffInboxAlertDeliveries");
   },
 
+  getStaffInboxSuppressionsCollection() {
+    return this.getCollectionReference("staffInboxSuppressions");
+  },
+
   getDesignIssueReportsCollection() { return this.getCollectionReference("designIssueReports"); },
 
   getAssistedCreationUpdateAcksCollection() {
@@ -92,6 +100,10 @@ export const firestoreCollectionService = {
 
   getAuditLogsCollection() {
     return this.getCollectionReference("auditLogs");
+  },
+
+  getCustomerActivityEventsCollection() {
+    return this.getCollectionReference("customerActivityEvents");
   },
 
   /** @deprecated Legacy transitive group model — see `getCompanionLinksCollection`. */

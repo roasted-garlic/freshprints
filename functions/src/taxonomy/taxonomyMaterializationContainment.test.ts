@@ -100,7 +100,15 @@ describe("taxonomy materialization containment", () => {
 
   it("AI loader prefers materialization module", () => {
     const loader = read("functions/src/ai/loadAiCatalogReferenceSnapshot.ts");
-    assert.match(loader, /readTaxonomyMaterializationCorpus/);
+    assert.match(loader, /readTaxonomyMaterializationCategories/);
+    assert.doesNotMatch(loader, /collection\(["']tags["']\)/);
     assert.match(loader, /taxonomy-fallback-fs/);
+  });
+
+  it("category-only materialization adapter preserves schema-v1 compatibility", () => {
+    const source = read("functions/src/taxonomy/rebuildTaxonomyMaterialization.ts");
+    assert.match(source, /export async function readTaxonomyMaterializationCategories/);
+    assert.match(source, /readTaxonomyMaterializationCorpus\(\)/);
+    assert.match(source, /historical tags/);
   });
 });

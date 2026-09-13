@@ -26,6 +26,8 @@ interface ImportMetaEnv {
   readonly VITE_ALGOLIA_INDEX_NAME?: string;
   /** Emergency kill-switch; omit or any value other than "false" keeps search eligible when keys exist. */
   readonly VITE_USE_ALGOLIA_CATALOG_SEARCH?: string;
+  /** Opt-in Smart Filters UI for Design Library managed search. Default OFF; set "true" to enable. */
+  readonly VITE_USE_SMART_FILTERS?: string;
   /** When "1", retain derivative-locus diagnostics in packaged production builds (DEV evidence only). */
   readonly VITE_FP_DERIVATIVE_LOCUS_DIAG?: string;
 }

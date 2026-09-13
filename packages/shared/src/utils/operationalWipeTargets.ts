@@ -4,6 +4,7 @@ import type { OperationalWipeTarget } from "../types/admin/wipeOperationalTestDa
 export const OPERATIONAL_WIPE_DELETE_COLLECTION_ORDER = [
   "staffInboxAcks",
   "staffInboxAlertDeliveries",
+  "staffInboxSuppressions",
   "assistedCreationUpdateAcks",
   "customerNotifications",
   "emailDeliveryJobs",
@@ -13,6 +14,7 @@ export const OPERATIONAL_WIPE_DELETE_COLLECTION_ORDER = [
   "printRequestItems",
   "printRequests",
   "upcomingShows",
+  "internalGangSheets",
   "customerRequests",
   "showQueues",
   "showQueueItems",
@@ -143,6 +145,7 @@ const OPERATIONAL_WIPE_TARGETS_ORDER: OperationalWipeTarget[] = [
   "printRequests",
   "showQueueAttachments",
   "upcomingShows",
+  "internalGangSheets",
   "sequences",
   "designRequestStats",
   "designs",
@@ -181,6 +184,7 @@ export function expandOperationalWipePlan(
     if (target === "printRequests") {
       deleteSet.add("staffInboxAcks");
       deleteSet.add("staffInboxAlertDeliveries");
+      deleteSet.add("staffInboxSuppressions");
       for (const collectionName of PRINT_REQUEST_STACK_COLLECTIONS) {
         deleteSet.add(collectionName);
       }
@@ -190,6 +194,7 @@ export function expandOperationalWipePlan(
     if (target === "showQueueAttachments") {
       deleteSet.add("staffInboxAcks");
       deleteSet.add("staffInboxAlertDeliveries");
+      deleteSet.add("staffInboxSuppressions");
       for (const collectionName of SHOW_QUEUE_ATTACHMENT_COLLECTIONS) {
         deleteSet.add(collectionName);
       }
@@ -199,9 +204,15 @@ export function expandOperationalWipePlan(
     if (target === "upcomingShows") {
       deleteSet.add("staffInboxAcks");
       deleteSet.add("staffInboxAlertDeliveries");
+      deleteSet.add("staffInboxSuppressions");
       for (const collectionName of UPCOMING_SHOW_COLLECTIONS) {
         deleteSet.add(collectionName);
       }
+      continue;
+    }
+
+    if (target === "internalGangSheets") {
+      // Filtered deletion is handled by the wipe callable; this target must not delete customer shows.
       continue;
     }
 
@@ -312,6 +323,7 @@ export const ALL_OPERATIONAL_WIPE_TARGETS: OperationalWipeTarget[] = [
   "printRequests",
   "showQueueAttachments",
   "upcomingShows",
+  "internalGangSheets",
   "sequences",
   "designRequestStats",
   "designs",

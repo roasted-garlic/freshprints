@@ -33,7 +33,15 @@ export function buildCustomerUpdateSuccessMessage(
   let message = `Customer "${displayName}" was updated.`;
 
   if (result.usernameChanged) {
-    message += " Existing print request names were not renamed.";
+    message += " Historical records were updated; existing print request names were not renamed.";
+  }
+
+  if (result.propagationComplete === false) {
+    if (result.propagationWarning) {
+      message += ` ${result.propagationWarning}`;
+    } else {
+      message += " Some historical records may still be updating.";
+    }
   }
 
   if (!result.portalAuthEmailSynced) {

@@ -1,15 +1,18 @@
 import {
   isCustomerUploadPrintRequestItem,
+  isStaffArtworkPrintRequestItem,
   resolvePrintRequestItemSourceType,
   type PrintRequestItemSourceFields,
 } from "./printRequestItemSource";
+import { resolveArtworkEnhanceMode } from "./interactiveArtworkEnhance";
 
-export type PrintAssetSourceType = "catalog_design" | "customer_upload";
+export type PrintAssetSourceType = "catalog_design" | "customer_upload" | "staff_artwork";
 
 export interface ResolvedPrintAssetPaths {
   sourceType: PrintAssetSourceType;
   designId?: string;
   customerUploadId?: string;
+  staffArtworkId?: string;
   /** Production PNG path used for print/export. */
   productionStoragePath: string;
   previewStoragePath?: string;
@@ -20,6 +23,11 @@ export interface ResolvedPrintAssetPaths {
 export interface CatalogDesignAssetInput {
   designId: string;
   originalPath: string;
+  interactiveEnhancedOriginalPath?: string;
+  interactiveEnhancedWidthPx?: number;
+  interactiveEnhancedHeightPx?: number;
+  widthPx?: number;
+  heightPx?: number;
   previewPath?: string;
   thumbnailPath?: string;
   title?: string;
@@ -28,6 +36,11 @@ export interface CatalogDesignAssetInput {
 export interface CustomerUploadAssetInput {
   customerUploadId: string;
   productionStoragePath: string;
+  interactiveEnhancedProductionStoragePath?: string | null;
+  interactiveEnhancedWidthPx?: number;
+  interactiveEnhancedHeightPx?: number;
+  widthPx?: number | null;
+  heightPx?: number | null;
   previewStoragePath?: string | null;
   thumbnailStoragePath?: string | null;
   originalFilename?: string | null;
@@ -36,16 +49,34 @@ export interface CustomerUploadAssetInput {
   catalogReviewStatus?: string | null;
 }
 
+export interface StaffArtworkAssetInput {
+  staffArtworkId: string;
+  productionStoragePath: string;
+  interactiveEnhancedProductionStoragePath?: string | null;
+  interactiveEnhancedWidthPx?: number | null;
+  interactiveEnhancedHeightPx?: number | null;
+  widthPx?: number | null;
+  heightPx?: number | null;
+  previewStoragePath?: string | null;
+  thumbnailStoragePath?: string | null;
+  title?: string | null;
+}
+
 /**
  * Resolve production asset paths for a print-request / allocation line.
  * Catalog exclusion / AI review status must not affect production path selection.
  */
 export function resolvePrintAssetPaths(input: {
-  item: PrintRequestItemSourceFields & { titleSnapshot?: string };
+  item: PrintRequestItemSourceFields & {
+    titleSnapshot?: string;
+    artworkEnhanceMode?: "baseline" | "enhanced";
+  };
   catalogDesign?: CatalogDesignAssetInput | null;
   customerUpload?: CustomerUploadAssetInput | null;
+  staffArtwork?: StaffArtworkAssetInput | null;
 }): ResolvedPrintAssetPaths {
   const sourceType = resolvePrintRequestItemSourceType(input.item);
+  const artworkEnhanceMode = resolveArtworkEnhanceMode(input.item.artworkEnhanceMode);
 
   if (sourceType === "customer_upload") {
     const upload = input.customerUpload;
@@ -53,7 +84,17 @@ export function resolvePrintAssetPaths(input: {
       (typeof input.item.customerUploadId === "string" && input.item.customerUploadId.trim()) ||
       upload?.customerUploadId?.trim() ||
       "";
-    const productionStoragePath = upload?.productionStoragePath?.trim() ?? "";
+    const enhancedProductionPath = upload?.interactiveEnhancedProductionStoragePath?.trim() ?? "";
+    const baselineProductionPath = upload?.productionStoragePath?.trim() ?? "";
+    let productionStoragePath = baselineProductionPath;
+    if (artworkEnhanceMode === "enhanced") {
+      if (!enhancedProductionPath) {
+        throw new Error(
+          "Interactive enhanced artwork is unavailable for this customer upload. Turn Upscale off or re-run enhance.",
+        );
+      }
+      productionStoragePath = enhancedProductionPath;
+    }
     if (!upload || !customerUploadId || !productionStoragePath) {
       throw new Error("Customer upload production asset is missing.");
     }
@@ -72,12 +113,52 @@ export function resolvePrintAssetPaths(input: {
     };
   }
 
+  if (sourceType === "staff_artwork") {
+    const artwork = input.staffArtwork;
+    const staffArtworkId =
+      (typeof input.item.staffArtworkId === "string" && input.item.staffArtworkId.trim()) ||
+      artwork?.staffArtworkId?.trim() ||
+      "";
+    const enhancedProductionPath = artwork?.interactiveEnhancedProductionStoragePath?.trim() ?? "";
+    const baselineProductionPath = artwork?.productionStoragePath?.trim() ?? "";
+    let productionStoragePath = baselineProductionPath;
+    if (artworkEnhanceMode === "enhanced") {
+      if (!enhancedProductionPath) {
+        throw new Error(
+          "Interactive enhanced artwork is unavailable for this Staff Artwork. Turn Upscale off or re-run enhance.",
+        );
+      }
+      productionStoragePath = enhancedProductionPath;
+    }
+    if (!artwork || !staffArtworkId || !productionStoragePath) {
+      throw new Error("Staff Artwork production asset is missing.");
+    }
+    return {
+      sourceType: "staff_artwork",
+      staffArtworkId,
+      productionStoragePath,
+      previewStoragePath: artwork.previewStoragePath?.trim() || undefined,
+      thumbnailStoragePath: artwork.thumbnailStoragePath?.trim() || undefined,
+      titleSnapshot: artwork.title?.trim() || input.item.titleSnapshot?.trim() || "Staff Artwork",
+    };
+  }
+
   const design = input.catalogDesign;
   const designId =
     (typeof input.item.designId === "string" && input.item.designId.trim()) ||
     design?.designId?.trim() ||
     "";
-  const productionStoragePath = design?.originalPath?.trim() ?? "";
+  const enhancedOriginalPath = design?.interactiveEnhancedOriginalPath?.trim() ?? "";
+  const baselineOriginalPath = design?.originalPath?.trim() ?? "";
+  let productionStoragePath = baselineOriginalPath;
+  if (artworkEnhanceMode === "enhanced") {
+    if (!enhancedOriginalPath) {
+      throw new Error(
+        "Interactive enhanced artwork is unavailable for this catalog design. Turn Upscale off or re-run enhance.",
+      );
+    }
+    productionStoragePath = enhancedOriginalPath;
+  }
   if (!design || !designId || !productionStoragePath) {
     throw new Error("Catalog design production asset is missing.");
   }
@@ -96,13 +177,38 @@ export function isCustomerUploadProductionStoragePath(path: string): boolean {
   return /^\/customer-uploads\/[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+\/production\.png$/.test(path.trim());
 }
 
+export function isStaffArtworkProductionStoragePath(path: string): boolean {
+  return /^\/staff-artwork\/[A-Za-z0-9_-]+\/production\.png$/.test(path.trim());
+}
+
+export function isStaffArtworkInteractiveProductionStoragePath(path: string): boolean {
+  return /^\/staff-artwork\/[A-Za-z0-9_-]+\/production\.interactive\.png$/.test(path.trim());
+}
+
 export function isCatalogOriginalStoragePath(path: string): boolean {
   return /^\/originals\/[A-Za-z0-9_-]+\.png$/.test(path.trim());
 }
 
+export function isCatalogInteractiveOriginalStoragePath(path: string): boolean {
+  return /^\/originals\/[A-Za-z0-9_-]+\.interactive\.png$/.test(path.trim());
+}
+
+export function isCustomerUploadInteractiveProductionStoragePath(path: string): boolean {
+  return /^\/customer-uploads\/[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+\/production\.interactive\.png$/.test(
+    path.trim(),
+  );
+}
+
 export function isAllowedGangSheetOriginalPathSnapshot(path: string): boolean {
   const trimmed = path.trim();
-  return isCatalogOriginalStoragePath(trimmed) || isCustomerUploadProductionStoragePath(trimmed);
+  return (
+    isCatalogOriginalStoragePath(trimmed) ||
+    isCatalogInteractiveOriginalStoragePath(trimmed) ||
+    isCustomerUploadProductionStoragePath(trimmed) ||
+    isCustomerUploadInteractiveProductionStoragePath(trimmed) ||
+    isStaffArtworkProductionStoragePath(trimmed) ||
+    isStaffArtworkInteractiveProductionStoragePath(trimmed)
+  );
 }
 
 export function allocationSourceTypeFromItem(
@@ -118,6 +224,19 @@ export function assertItemSourceFields(item: PrintRequestItemSourceFields): void
     }
     if (typeof item.customerUploadId !== "string" || !item.customerUploadId.trim()) {
       throw new Error("Upload-backed items require customerUploadId.");
+    }
+    return;
+  }
+
+  if (isStaffArtworkPrintRequestItem(item)) {
+    if (typeof item.designId === "string" && item.designId.length > 0) {
+      throw new Error("Staff Artwork items must omit designId.");
+    }
+    if (typeof item.customerUploadId === "string" && item.customerUploadId.length > 0) {
+      throw new Error("Staff Artwork items must omit customerUploadId.");
+    }
+    if (typeof item.staffArtworkId !== "string" || !item.staffArtworkId.trim()) {
+      throw new Error("Staff Artwork items require staffArtworkId.");
     }
     return;
   }

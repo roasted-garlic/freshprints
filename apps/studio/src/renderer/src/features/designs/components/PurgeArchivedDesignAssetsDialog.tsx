@@ -5,6 +5,7 @@ import { PURGE_ARCHIVED_DESIGN_ASSETS_CONFIRMATION_PHRASE } from "@fresh-prints/
 
 import { Button } from "../../../shared/components/Button";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
+import { warmPurgeArchivedDesignAssetsCallable } from "../services/purgeArchivedDesignAssetsService";
 import type { Design } from "../types/design.types";
 
 const COPY_FEEDBACK_MS = 2000;
@@ -70,7 +71,10 @@ export function PurgeArchivedDesignAssetsDialog({
         window.clearTimeout(copyResetTimerRef.current);
         copyResetTimerRef.current = null;
       }
+      return;
     }
+    // Same-service warm for purgeArchivedDesignAssets (failures non-fatal).
+    warmPurgeArchivedDesignAssetsCallable();
   }, [isOpen]);
 
   useEffect(() => {
@@ -155,20 +159,20 @@ export function PurgeArchivedDesignAssetsDialog({
                   : `${activeQueueDesignIds.length} selected designs are on an active show queue.`}{" "}
                 Gang sheets or production that need the original file may fail after delete.
               </p>
-              <label className="purge-archived-confirm-label">
+              <label className="studio-checkbox studio-checkbox--danger purge-archived-active-queue-ack">
                 <input
                   checked={acknowledgeActiveQueue}
                   disabled={isSubmitting}
                   onChange={(event) => setAcknowledgeActiveQueue(event.target.checked)}
                   type="checkbox"
                 />
-                I understand — delete images anyway
+                <span>I understand — delete images anyway</span>
               </label>
             </div>
           ) : null}
 
           {isBulk ? (
-            <label className="purge-archived-confirm-label purge-archived-confirm-phrase">
+            <label className="form-field purge-archived-confirm-phrase" htmlFor="purge-archived-design-assets-confirm">
               <span className="purge-archived-confirm-phrase-prompt">
                 <span>
                   Type <code>{PURGE_ARCHIVED_DESIGN_ASSETS_CONFIRMATION_PHRASE}</code> to confirm
@@ -179,7 +183,7 @@ export function PurgeArchivedDesignAssetsDialog({
                       ? "Confirmation phrase copied"
                       : `Copy ${PURGE_ARCHIVED_DESIGN_ASSETS_CONFIRMATION_PHRASE}`
                   }
-                  className={`purge-archived-confirm-phrase-copy${phraseCopied ? " is-copied" : ""}`}
+                  className={`icon-button icon-button-sm icon-button-ghost purge-archived-confirm-phrase-copy${phraseCopied ? " is-copied" : ""}`}
                   disabled={isSubmitting}
                   onClick={(event) => {
                     event.preventDefault();
@@ -188,22 +192,18 @@ export function PurgeArchivedDesignAssetsDialog({
                   type="button"
                 >
                   {phraseCopied ? (
-                    <>
-                      <Check aria-hidden="true" size={14} strokeWidth={2.2} />
-                      Copied
-                    </>
+                    <Check aria-hidden="true" size={15} strokeWidth={2.2} />
                   ) : (
-                    <>
-                      <Copy aria-hidden="true" size={14} strokeWidth={2.2} />
-                      Copy
-                    </>
+                    <Copy aria-hidden="true" size={15} strokeWidth={2.2} />
                   )}
                 </button>
               </span>
               <input
                 autoComplete="off"
                 disabled={isSubmitting}
+                id="purge-archived-design-assets-confirm"
                 onChange={(event) => setConfirmationPhrase(event.target.value)}
+                placeholder={PURGE_ARCHIVED_DESIGN_ASSETS_CONFIRMATION_PHRASE}
                 spellCheck={false}
                 type="text"
                 value={confirmationPhrase}

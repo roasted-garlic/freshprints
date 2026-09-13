@@ -38,6 +38,8 @@ export function PrintRequestDeletionDialog({
     setError(null);
     setPreview(null);
     setIsLoadingPreview(true);
+    // Warm mutate Cloud Run services in parallel with real preview (failures ignored).
+    printRequestDeletionService.warmMutateCallables();
     void printRequestDeletionService
       .preview(printRequestId)
       .then((result) => {

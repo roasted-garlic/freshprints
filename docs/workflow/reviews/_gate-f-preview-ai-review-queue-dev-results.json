@@ -1,0 +1,56 @@
+{
+  "projectId": "fresh-prints-dev",
+  "startedAt": "2026-08-26T03:59:24.822Z",
+  "finishedAt": "2026-08-26T03:59:27.420Z",
+  "callable": "previewCatalogReprocessJob",
+  "request": {
+    "targetType": "ai_review_queue"
+  },
+  "response": {
+    "targetType": "ai_review_queue",
+    "environment": "dev",
+    "projectId": "fresh-prints-dev",
+    "eligibleCount": 204,
+    "catalogWorkflowMode": "shadow",
+    "autonomousLiveEnabled": false,
+    "targetEnabled": true,
+    "unavailableReason": null,
+    "requiredConfirmationPhrase": "REPROCESS AI REVIEW QUEUE",
+    "activeJobId": null,
+    "inventory": {
+      "statusDistribution": {
+        "imported": 204
+      },
+      "aiReviewStatusDistribution": {
+        "needs_review": 204
+      },
+      "promptVersionDistribution": {
+        "(missing)": 135,
+        "catalog-enrich-v27": 35,
+        "catalog-enrich-v28": 34
+      },
+      "normalizerVersionDistribution": {
+        "(missing)": 135,
+        "smart-profile-normalizer-v1": 35,
+        "smart-profile-normalizer-v2": 34
+      },
+      "alreadyV29Count": 0,
+      "missingProfileCount": 135,
+      "exclusions": {
+        "rejectedStatus": 0,
+        "readyStatus": 271,
+        "archivedStatus": 2,
+        "pendingReviewProcessing": 0,
+        "eligibleAiReviewQueue": 204
+      },
+      "aiReviewNotes": {
+        "designsScanned": 204,
+        "designsWithNonEmptyNotes": 0,
+        "maxNoteLength": 0,
+        "recommendation": "clear_ok"
+      },
+      "exclusionMethod": "indexed_status_counts"
+    }
+  },
+  "startNotCalled": true
+}

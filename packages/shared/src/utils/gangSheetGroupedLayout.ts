@@ -1,26 +1,15 @@
 import {
   nestBoxesIntoShelvesWithHeightCap,
-  type NestableBox,
   type NestingSpacingPx,
 } from "./gangSheetNesting";
 import { computeGangSheetLabelBandHeightPx } from "./gangSheetLabelRendering";
 import {
-  buildGroupedGangSheetSectionHeading,
-  resolveGangSheetProductionGroupKey,
-} from "./groupPrintRequestsByShow";
+  buildGangSheetProductionGroups,
+  countSheetPerCustomerPhysicalSheets,
+  type GangSheetProductionGroupInput,
+} from "./gangSheetProductionGroups";
 
-export interface GroupedGangSheetAllocationInput {
-  allocationId: string;
-  printRequestId: string;
-  requestName: string;
-  customerId?: string;
-  customerUsernameSnapshot?: string;
-  internalBaseName?: string;
-  isInternal: boolean;
-  quantity: number;
-  widthPx: number;
-  heightPx: number;
-}
+export type GroupedGangSheetAllocationInput = GangSheetProductionGroupInput;
 
 export interface GroupedGangSheetLayoutPlan {
   sheetCount: number;
@@ -29,47 +18,11 @@ export interface GroupedGangSheetLayoutPlan {
   sheetPlacementIds: string[][];
 }
 
-interface ProductionGroup {
-  groupKey: string;
-  heading: string;
-  boxes: NestableBox[];
-}
-
-function buildProductionGroups(images: readonly GroupedGangSheetAllocationInput[]): ProductionGroup[] {
-  const groups = new Map<string, { requestNames: Set<string>; boxes: NestableBox[] }>();
-  let placementId = 0;
-
-  for (const image of images) {
-    const groupKey = resolveGangSheetProductionGroupKey(image);
-    const existing = groups.get(groupKey) ?? { requestNames: new Set<string>(), boxes: [] };
-    existing.requestNames.add(image.requestName);
-
-    for (let copy = 0; copy < image.quantity; copy += 1) {
-      placementId += 1;
-      existing.boxes.push({
-        id: `${image.allocationId}:${copy + 1}:${placementId}`,
-        widthPx: image.widthPx,
-        heightPx: image.heightPx,
-      });
-    }
-
-    groups.set(groupKey, existing);
-  }
-
-  return [...groups.entries()]
-    .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey))
-    .map(([groupKey, value]) => ({
-      groupKey,
-      heading: buildGroupedGangSheetSectionHeading([...value.requestNames]),
-      boxes: value.boxes,
-    }));
-}
-
 /**
- * Plans grouped gang-sheet nesting by finishing one production group before starting the next.
- * Section label bands reserve vertical space using the same band-height formula as sheet labels.
+ * Plans sheet-per-customer grouped layout (one physical sheet per customer nest segment).
+ * Matches `composeGroupedGangSheetSheets` pending-sheet semantics.
  */
-export function planGroupedGangSheetLayout(input: {
+export function planSheetPerCustomerGangSheetLayout(input: {
   images: readonly GroupedGangSheetAllocationInput[];
   sheetWidthPx: number;
   spacingPx: NestingSpacingPx;
@@ -77,7 +30,7 @@ export function planGroupedGangSheetLayout(input: {
   sheetLabelFontSizePx: number;
 }): GroupedGangSheetLayoutPlan {
   const sectionLabelBandHeightPx = computeGangSheetLabelBandHeightPx(input.sheetLabelFontSizePx);
-  const productionGroups = buildProductionGroups(input.images);
+  const productionGroups = buildGangSheetProductionGroups(input.images);
 
   const sheetPlacementIds: string[][] = [];
   let currentSheetPlacements: string[] = [];
@@ -127,3 +80,12 @@ export function planGroupedGangSheetLayout(input: {
     sheetPlacementIds,
   };
 }
+
+/** @deprecated Use `planSheetPerCustomerGangSheetLayout` — alias for sheet-per-customer preview. */
+export function planGroupedGangSheetLayout(
+  input: Parameters<typeof planSheetPerCustomerGangSheetLayout>[0],
+): GroupedGangSheetLayoutPlan {
+  return planSheetPerCustomerGangSheetLayout(input);
+}
+
+export { countSheetPerCustomerPhysicalSheets };

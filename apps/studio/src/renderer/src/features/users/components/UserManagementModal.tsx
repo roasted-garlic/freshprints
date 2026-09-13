@@ -5,7 +5,7 @@ interface UserManagementModalProps {
   children: ReactNode;
   isOpen: boolean;
   onClose: () => void;
-  size?: "md" | "lg" | "xl";
+  size?: "md" | "md-lg" | "lg" | "xl";
 }
 
 export function UserManagementModal({
@@ -24,13 +24,17 @@ export function UserManagementModal({
       ? "user-management-modal-shell user-management-modal-shell-xl"
       : size === "lg"
         ? "user-management-modal-shell user-management-modal-shell-lg"
-        : "user-management-modal-shell";
+        : size === "md-lg"
+          ? "user-management-modal-shell user-management-modal-shell-md-lg"
+          : "user-management-modal-shell";
   const panelClassName =
     size === "xl"
       ? "modal-panel modal-panel-lg user-management-modal user-management-modal-lg"
       : size === "lg"
         ? "modal-panel modal-panel-lg user-management-modal user-management-modal-lg"
-        : "modal-panel modal-panel-md user-management-modal";
+        : size === "md-lg"
+          ? "modal-panel modal-panel-md user-management-modal user-management-modal-md-lg"
+          : "modal-panel modal-panel-md user-management-modal";
 
   return (
     <div className="modal-overlay modal-overlay-blur" onClick={onClose}>

@@ -1,5 +1,6 @@
 import { getDocs, query, where, type DocumentData } from "firebase/firestore";
 
+import type { CustomerActivityEventType } from "@fresh-prints/shared/types/customer/customerActivityEvent.types";
 import type { Customer } from "@fresh-prints/shared/types/customer/customer.types";
 import type { PrintRequest } from "@fresh-prints/shared/types/printRequest/printRequest.types";
 import type { ShowAllocationStatus } from "@fresh-prints/shared/types/showAllocation/showAllocation.enums";
@@ -17,7 +18,12 @@ import type { AuditTrailEntry } from "../types/auditTrail.types";
 import {
   getAuditTimestampMillis,
   isAuditTimestampAfter,
+  mergeAuditTrailEntries,
 } from "../utils/auditTrailUtils";
+import {
+  buildCustomerIdentityActivityAuditEntry,
+  isCustomerIdentityActivityEventType,
+} from "../utils/customerIdentityActivityAudit";
 
 const ACTIVE_ALLOCATION_STATUSES = new Set<ShowAllocationStatus>([
   "pending",
@@ -29,6 +35,7 @@ const ACTIVE_ALLOCATION_STATUSES = new Set<ShowAllocationStatus>([
 
 const PRINT_REQUEST_ACTIVITY_LIMIT = 20;
 const DESIGN_ACTIVITY_LIMIT = 15;
+const CUSTOMER_IDENTITY_ACTIVITY_LIMIT = 20;
 
 interface PrintRequestActivitySnapshot {
   id: string;
@@ -244,27 +251,78 @@ async function listDesignUploadActivity(caller: User, uploadedBy: string): Promi
     .slice(0, DESIGN_ACTIVITY_LIMIT);
 }
 
+async function listCustomerIdentityActivityEntries(
+  customerId: string,
+): Promise<AuditTrailEntry[]> {
+  const snapshot = await getDocs(
+    query(
+      firestoreCollectionService.getCustomerActivityEventsCollection(),
+      where("customerId", "==", customerId),
+    ),
+  );
+
+  const entries = snapshot.docs
+    .map((eventDoc) => {
+      const data = eventDoc.data();
+      const eventType = typeof data.eventType === "string" ? data.eventType : "";
+      if (!isCustomerIdentityActivityEventType(eventType)) {
+        return null;
+      }
+
+      const occurredAt = mapFirestoreTimestamp(data.occurredAt);
+      const actorUid = typeof data.actorUid === "string" ? data.actorUid : "";
+      if (!occurredAt || !actorUid) {
+        return null;
+      }
+
+      return buildCustomerIdentityActivityAuditEntry({
+        id: eventDoc.id,
+        eventType: eventType as CustomerActivityEventType,
+        occurredAtMillis: occurredAt.toMillis(),
+        actorUid,
+        metadata:
+          data.metadata && typeof data.metadata === "object"
+            ? (data.metadata as Record<string, string | string[] | number | boolean | undefined>)
+            : undefined,
+        result: typeof data.result === "string" ? data.result : undefined,
+      });
+    })
+    .filter((entry): entry is AuditTrailEntry => entry !== null);
+
+  return entries
+    .sort((left, right) => right.occurredAtMillis - left.occurredAtMillis)
+    .slice(0, CUSTOMER_IDENTITY_ACTIVITY_LIMIT);
+}
+
 export const userAuditTrailActivityService = {
   async listCustomerActivityEntries(caller: User, customer: Customer): Promise<AuditTrailEntry[]> {
-    if (!permissionService.canViewPrintRequests(caller)) {
-      return listCustomerShowAllocationActivity(caller, customer.id);
-    }
-
-    const requests = await printRequestService.listPrintRequestsByCustomer(caller, customer.id);
-
-    const sortedRequests = [...requests]
-      .sort(
-        (left, right) =>
-          getAuditTimestampMillis(right.updatedAt) - getAuditTimestampMillis(left.updatedAt),
-      )
-      .slice(0, PRINT_REQUEST_ACTIVITY_LIMIT);
-
-    const [printRequestEntries, showAllocationEntries] = await Promise.all([
-      Promise.resolve(buildPrintRequestActivityEntriesFromModels(sortedRequests)),
+    const [identityActivityEntries, printRequestEntries, showAllocationEntries] = await Promise.all([
+      listCustomerIdentityActivityEntries(customer.id),
+      permissionService.canViewPrintRequests(caller)
+        ? printRequestService
+            .listPrintRequestsByCustomer(caller, customer.id)
+            .then((requests) => {
+              const sortedRequests = [...requests]
+                .sort(
+                  (left, right) =>
+                    getAuditTimestampMillis(right.updatedAt) - getAuditTimestampMillis(left.updatedAt),
+                )
+                .slice(0, PRINT_REQUEST_ACTIVITY_LIMIT);
+              return buildPrintRequestActivityEntriesFromModels(sortedRequests);
+            })
+        : Promise.resolve([]),
       listCustomerShowAllocationActivity(caller, customer.id),
     ]);
 
-    return [...printRequestEntries, ...showAllocationEntries];
+    if (!permissionService.canViewPrintRequests(caller)) {
+      return mergeAuditTrailEntries(identityActivityEntries, showAllocationEntries);
+    }
+
+    return mergeAuditTrailEntries(
+      identityActivityEntries,
+      printRequestEntries,
+      showAllocationEntries,
+    );
   },
 
   async listTeamUserActivityEntries(caller: User, user: User): Promise<AuditTrailEntry[]> {

@@ -1,20 +1,28 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { isCustomerUploadEligibleForCatalogIntake } from "@fresh-prints/shared/utils/customerUploadCatalogIntakeEligibility";
+import { canRequestCustomerUploadPermissionFollowUp } from "@fresh-prints/shared/utils/customerUploadPermissionFollowUp";
 import { resolveIntakeHalftoneStaffToggle } from "@fresh-prints/shared/utils/halftoneReviewState";
 
 import { Button } from "../../../shared/components/Button";
 import { Card } from "../../../shared/components/Card";
 import { DangerOverflowMenu } from "../../../shared/components/DangerOverflowMenu";
+import { GlobalSearchField } from "../../../shared/components/GlobalSearchField";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
-import { Toggle } from "../../../shared/components/Toggle";
 import { DesignPreviewLightbox } from "../../designs/components/DesignPreviewLightbox";
-import { getPrintRequestsPath } from "../../print-requests/constants/printRequestRoutes";
+import { buildPrintRequestDeepLinkPath } from "../../print-requests/constants/printRequestRoutes";
 import type { useCustomerUploadIntake } from "../hooks/useCustomerUploadIntake";
 import type { CustomerUploadIntakeRow } from "../services/customerUploadIntakeService";
 import { CustomerUploadDeletionDialog } from "./CustomerUploadDeletionDialog";
 import { CustomerUploadExclusionDialog } from "./CustomerUploadExclusionDialog";
+import { CustomerUploadPermissionActivityModal } from "./CustomerUploadPermissionActivityModal";
 import { CustomerUploadRestoreDialog } from "./CustomerUploadRestoreDialog";
+import { CustomerUploadIntakePreviewControls } from "./CustomerUploadIntakePreviewControls";
+import {
+  resolveCustomerUploadBackgroundOverride,
+  resolveCustomerUploadPreviewBackgroundHex,
+} from "../utils/customerUploadPreviewBackground";
 
 type IntakeApi = ReturnType<typeof useCustomerUploadIntake>;
 
@@ -77,10 +85,14 @@ function IntakeDetail({
   row,
   intake,
   isDonation = false,
+  previewNavigationItems,
+  onPreviewNavigate,
 }: {
   row: CustomerUploadIntakeRow;
   intake: IntakeApi;
   isDonation?: boolean;
+  previewNavigationItems?: { id: string; alt: string; previewUrl: string }[];
+  onPreviewNavigate?: (itemId: string) => void;
 }) {
   const navigate = useNavigate();
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -88,15 +100,43 @@ function IntakeDetail({
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isExcludeOpen, setIsExcludeOpen] = useState(false);
   const [isRestoreOpen, setIsRestoreOpen] = useState(false);
+  const [isPermissionActivityOpen, setIsPermissionActivityOpen] = useState(false);
   const deleteTriggerRef = useRef<HTMLButtonElement | null>(null);
   const restoreTriggerRef = useRef<HTMLButtonElement | null>(null);
   const pendingAction = intake.pendingByUploadId[row.id] ?? null;
   const busy = Boolean(pendingAction);
+  const metadataSavePending = pendingAction === "halftone" || pendingAction === "artwork_background";
+  const metadataSaveFailed = Boolean(intake.metadataFailedByUploadId?.[row.id]);
+  const metadataBlocksPromote = metadataSavePending || metadataSaveFailed;
   const fromAssisted = Boolean(row.assistedCreationRequestId);
+  const catalogIntakeEligible = isCustomerUploadEligibleForCatalogIntake({
+    catalogUseAcknowledged: row.catalogUseAcknowledged,
+    catalogPermissionFollowUpStatus: row.catalogPermissionFollowUpStatus,
+  });
+  const permissionDenied = row.catalogExclusionReason === "customer_permission_denied";
+  const canAskPermissionAgain =
+    permissionDenied &&
+    canRequestCustomerUploadPermissionFollowUp({
+      catalogReviewStatus: row.catalogReviewStatus,
+      catalogExclusionReason: row.catalogExclusionReason,
+      catalogPermissionFollowUpStatus: row.catalogPermissionFollowUpStatus,
+      catalogPermissionAskCount: row.catalogPermissionAskCount,
+    });
+  const showDeleteMenu = intake.canDeleteEligible && !row.promotedDesignId;
   const halftoneOn = resolveIntakeHalftoneStaffToggle({
     staffDecision: row.halftoneStaffDecision,
     submitterResponse: row.halftoneSubmitterResponse,
   });
+  const previewBackgroundHex = resolveCustomerUploadPreviewBackgroundHex({
+    artworkBackgroundHex: row.artworkBackgroundHex,
+    artworkBackgroundSource: row.artworkBackgroundSource,
+    halftoneOn,
+    autoSuggestsDark: row.suggestDarkArtworkBackground === true,
+  });
+  const previewStyle = {
+    ["--color-artwork-preview-bg" as string]: previewBackgroundHex,
+    backgroundColor: previewBackgroundHex,
+  } as CSSProperties;
 
   return (
     <div className="customer-upload-intake-detail">
@@ -106,16 +146,21 @@ function IntakeDetail({
             aria-label={`Enlarge preview of ${row.originalFilename}`}
             className="customer-upload-intake-preview-button"
             onClick={() => setIsLightboxOpen(true)}
+            style={previewStyle}
             type="button"
           >
             <img
               alt=""
               className="customer-upload-intake-preview"
               src={row.previewUrl}
+              style={previewStyle}
             />
           </button>
         ) : (
-          <div className="customer-upload-intake-preview customer-upload-intake-preview--empty">
+          <div
+            className="customer-upload-intake-preview customer-upload-intake-preview--empty"
+            style={previewStyle}
+          >
             No preview
           </div>
         )}
@@ -130,6 +175,28 @@ function IntakeDetail({
           </p>
         </div>
         <div className="customer-upload-intake-detail-header-actions">
+          {!isDonation && row.printRequestId ? (
+            <Button
+              onClick={() => {
+                if (!row.printRequestId) {
+                  return;
+                }
+                navigate(
+                  buildPrintRequestDeepLinkPath({
+                    id: row.printRequestId,
+                    isInternal: row.printRequestIsInternal ?? undefined,
+                    queueTab: row.printRequestQueueTab,
+                    itemCount: row.printRequestItemCount ?? undefined,
+                    updatedAtMillis: row.printRequestUpdatedAtMs ?? undefined,
+                  }),
+                );
+              }}
+              size="sm"
+              variant="secondary"
+            >
+              Open linked request
+            </Button>
+          ) : null}
           <Button onClick={() => setDetailsOpen(true)} size="sm" variant="secondary">
             Technical details
           </Button>
@@ -147,40 +214,30 @@ function IntakeDetail({
         </div>
       </div>
 
-      <div className="customer-upload-intake-halftone-row">
-        <Toggle
-          checked={halftoneOn}
+      <div className="customer-upload-intake-preview-controls-row">
+        <CustomerUploadIntakePreviewControls
+          artworkBackgroundHex={row.artworkBackgroundHex}
+          artworkBackgroundSource={row.artworkBackgroundSource}
+          autoSuggestsDark={row.suggestDarkArtworkBackground === true}
           disabled={busy || !intake.canPromote}
-          label="Halftone"
-          name={`halftone-${row.id}`}
-          onChange={(checked) => {
-            void intake.setHalftoneDecision(row.id, checked);
+          halftoneOn={halftoneOn}
+          onArtworkBackgroundChange={(hex, source) => {
+            void intake.setArtworkBackgroundDecision?.(row.id, hex, source);
           }}
-          tone="success"
+          onHalftoneChange={(value) => {
+            void intake.setHalftoneDecision(row.id, value, {
+              defaultDarkBackgroundWhenAuto:
+                value &&
+                resolveCustomerUploadBackgroundOverride(
+                  row.artworkBackgroundHex,
+                  row.artworkBackgroundSource,
+                ) === "auto",
+            });
+          }}
         />
-        <p className="customer-upload-intake-halftone-help">
-          Staff override. Tag is applied only on AI Review approve.
-        </p>
       </div>
 
       <div className="customer-upload-intake-actions">
-        {!isDonation && row.printRequestId ? (
-          <Button
-            onClick={() => {
-              navigate(
-                getPrintRequestsPath({
-                  requestId: row.printRequestId ?? undefined,
-                  tab: "working",
-                }),
-              );
-            }}
-            size="sm"
-            variant="secondary"
-          >
-            Open linked request
-          </Button>
-        ) : null}
-
         {intake.canRetry && row.technicalStatus === "failed" ? (
           <Button
             disabled={busy}
@@ -194,22 +251,49 @@ function IntakeDetail({
           </Button>
         ) : null}
 
+        {metadataSaveFailed && intake.canPromote ? (
+          <Button
+            disabled={busy}
+            onClick={() => {
+              void intake.retryMetadataSave?.(row.id);
+            }}
+            size="sm"
+            variant="secondary"
+          >
+            {metadataSavePending ? "Retrying metadata…" : "Retry metadata save"}
+          </Button>
+        ) : null}
+
         {intake.canPromote &&
+        catalogIntakeEligible &&
         row.catalogReviewStatus === "pending_staff_review" &&
         row.technicalStatus === "ready" ? (
           <Button
-            disabled={busy}
+            disabled={busy || metadataBlocksPromote}
             onClick={() => {
               void intake.promote(row.id);
             }}
             size="sm"
             variant="primary"
+            title={
+              metadataSaveFailed
+                ? "Metadata save failed — retry before sending to AI Review"
+                : metadataSavePending
+                  ? "Saving Halftone or Artwork Background decision..."
+                  : undefined
+            }
           >
-            {pendingAction === "promote" ? "Sending…" : "Send to AI Review"}
+            {pendingAction === "promote"
+              ? "Sending…"
+              : metadataSavePending
+                ? "Saving..."
+                : metadataSaveFailed
+                  ? "Fix metadata to send"
+                  : "Send to AI Review"}
           </Button>
         ) : null}
 
-        {intake.canExclude && row.catalogReviewStatus === "pending_staff_review" ? (
+        {intake.canExclude && catalogIntakeEligible && row.catalogReviewStatus === "pending_staff_review" ? (
           <Button
             disabled={busy}
             onClick={() => {
@@ -222,7 +306,65 @@ function IntakeDetail({
           </Button>
         ) : null}
 
-        {intake.canExclude && row.catalogReviewStatus === "excluded_from_catalog" ? (
+        {intake.canExclude && row.catalogReviewStatus === "excluded_from_catalog" && permissionDenied ? (
+          <div className="customer-upload-intake-permission-follow-up">
+            <div className="customer-upload-intake-permission-pill-row">
+              <span className="customer-upload-intake-status-badge">
+                Customer declined Design Library permission
+              </span>
+              {showDeleteMenu ? (
+                <DangerOverflowMenu
+                  ariaLabel={`More actions for ${row.originalFilename}`}
+                  disabled={busy}
+                  items={[
+                    {
+                      id: "delete-upload",
+                      label: "Delete Upload",
+                      disabled: busy || pendingAction === "delete",
+                      onSelect: () => {
+                        setIsDeleteOpen(true);
+                      },
+                    },
+                  ]}
+                  placement="bottom"
+                  triggerRef={deleteTriggerRef}
+                />
+              ) : null}
+            </div>
+            <div className="customer-upload-intake-permission-actions">
+              <Button
+                disabled={busy}
+                onClick={() => setIsPermissionActivityOpen(true)}
+                size="sm"
+                variant="secondary"
+              >
+                Activity
+              </Button>
+              {canAskPermissionAgain ? (
+                <Button
+                  disabled={busy}
+                  onClick={() => {
+                    void intake.requestPermissionFollowUp(row.id);
+                  }}
+                  size="sm"
+                  variant="secondary"
+                >
+                  {pendingAction === "request_permission"
+                    ? "Sending…"
+                    : row.catalogPermissionAskCount >= 1
+                      ? "Ask again (2 of 2)"
+                      : "Ask for permission again"}
+                </Button>
+              ) : row.catalogPermissionFollowUpStatus === "requested" ? (
+                <p className="customer-upload-intake-meta" role="status">
+                  Waiting for the customer (ask {row.catalogPermissionAskCount || 1} of 2).
+                </p>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
+        {intake.canExclude && row.catalogReviewStatus === "excluded_from_catalog" && !permissionDenied ? (
           <div>
             <button
               className="button button-secondary button-sm"
@@ -254,7 +396,7 @@ function IntakeDetail({
           </Button>
         ) : null}
 
-        {intake.canDeleteEligible && !row.promotedDesignId ? (
+        {showDeleteMenu && !(permissionDenied && row.catalogReviewStatus === "excluded_from_catalog") ? (
           <DangerOverflowMenu
             ariaLabel={`More actions for ${row.originalFilename}`}
             disabled={busy}
@@ -315,6 +457,14 @@ function IntakeDetail({
           }
           return succeeded;
         }}
+        title={row.originalFilename}
+      />
+
+      <CustomerUploadPermissionActivityModal
+        entries={row.catalogPermissionActivity}
+        fallbackOriginalDeniedAtMs={row.catalogPermissionOriginalDeniedAtMs}
+        isOpen={isPermissionActivityOpen}
+        onClose={() => setIsPermissionActivityOpen(false)}
         title={row.originalFilename}
       />
 
@@ -428,8 +578,12 @@ function IntakeDetail({
       ) : null}
 
       <DesignPreviewLightbox
+        activeItemId={row.id}
         alt={row.originalFilename}
+        artworkBackgroundHex={previewBackgroundHex}
         isOpen={isLightboxOpen}
+        navigationItems={previewNavigationItems}
+        onActiveItemChange={onPreviewNavigate}
         onClose={() => setIsLightboxOpen(false)}
         previewUrl={row.previewUrl}
       />
@@ -445,6 +599,28 @@ export function CustomerUploadIntakeSection({
   intake: IntakeApi;
 }) {
   const isDonation = purposeScope === "catalog_donation";
+
+  const previewNavigationItems = intake.rows
+    .filter((row): row is CustomerUploadIntakeRow & { previewUrl: string } =>
+      Boolean(row.previewUrl?.trim()),
+    )
+    .map((row) => {
+      const halftoneOn = resolveIntakeHalftoneStaffToggle({
+        staffDecision: row.halftoneStaffDecision,
+        submitterResponse: row.halftoneSubmitterResponse,
+      });
+      return {
+        id: row.id,
+        alt: row.originalFilename,
+        previewUrl: row.previewUrl,
+        artworkBackgroundHex: resolveCustomerUploadPreviewBackgroundHex({
+          artworkBackgroundHex: row.artworkBackgroundHex,
+          artworkBackgroundSource: row.artworkBackgroundSource,
+          halftoneOn,
+          autoSuggestsDark: row.suggestDarkArtworkBackground === true,
+        }),
+      };
+    });
 
   if (!intake.canView) {
     return null;
@@ -477,6 +653,21 @@ export function CustomerUploadIntakeSection({
           >
             Pending
           </button>
+          {!isDonation ? (
+            <button
+              aria-selected={intake.filter === "denied"}
+              className={`customer-upload-intake-tab${
+                intake.filter === "denied" ? " is-active" : ""
+              }`}
+              onClick={() => {
+                intake.setFilter("denied");
+              }}
+              role="tab"
+              type="button"
+            >
+              Denied{intake.deniedCount > 0 ? ` (${intake.deniedCount})` : ""}
+            </button>
+          ) : null}
           <button
             aria-selected={intake.filter === "excluded_from_catalog"}
             className={`customer-upload-intake-tab${
@@ -493,56 +684,94 @@ export function CustomerUploadIntakeSection({
         </div>
 
         <div className="customer-upload-intake-panel-body" role="tabpanel">
-          {intake.isLoading && intake.rows.length === 0 ? (
-            <p>Loading {isDonation ? "donations" : "customer uploads"}…</p>
-          ) : intake.rows.length === 0 ? (
-            <p className="customer-upload-intake-empty">
-              {intake.filter === "pending_staff_review"
-                ? isDonation
-                  ? "No donations pending staff review."
-                  : "No uploads pending staff review."
-                : isDonation
-                  ? "No excluded donations."
-                  : "No excluded uploads."}
-            </p>
-          ) : (
-            <div className="customer-upload-intake-layout">
-              <ul className="customer-upload-intake-list">
-                {intake.rows.map((row) => {
-                  const customerMarked = row.halftoneSubmitterResponse?.value === "yes";
-                  return (
-                    <li key={row.id}>
-                      <button
-                        className={`customer-upload-intake-list-item${
-                          intake.selectedId === row.id ? " is-selected" : ""
-                        }`}
-                        onClick={() => {
-                          intake.setSelectedId(row.id);
-                        }}
-                        type="button"
-                      >
-                        <span className="customer-upload-intake-list-title">
-                          {row.originalFilename}
-                        </span>
-                        <span className="customer-upload-intake-list-sub">
-                          {row.customerDisplayName} · {row.technicalStatus}
-                          {customerMarked ? " · customer: halftone" : null}
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-              {intake.selected ? (
-                <IntakeDetail
-                  intake={intake}
-                  isDonation={isDonation}
-                  key={`${intake.filter}:${intake.selected.id}`}
-                  row={intake.selected}
+          <div className="customer-upload-intake-layout">
+            <div className="customer-upload-intake-list-column">
+              <div className="customer-upload-intake-list-search">
+                <GlobalSearchField
+                  clearable
+                  onChange={intake.setSearchQuery}
+                  placeholder="Search name or username…"
+                  value={intake.searchQuery}
                 />
-              ) : null}
+              </div>
+              {intake.isLoading && intake.rows.length === 0 ? (
+                <p>Loading {isDonation ? "donations" : "customer uploads"}…</p>
+              ) : intake.rows.length === 0 ? (
+                <p className="customer-upload-intake-empty">
+                  {intake.searchQuery.trim()
+                    ? isDonation
+                      ? "No donations match that name or username."
+                      : "No uploads match that name or username."
+                    : intake.filter === "pending_staff_review"
+                      ? isDonation
+                        ? "No donations pending staff review."
+                        : "No uploads pending staff review."
+                      : intake.filter === "denied"
+                        ? "No customer permission denials."
+                      : isDonation
+                        ? "No excluded donations."
+                        : "No excluded uploads."}
+                </p>
+              ) : (
+                <ul className="customer-upload-intake-list">
+                  {intake.rows.map((row) => {
+                    const customerMarked = row.halftoneSubmitterResponse?.value === "yes";
+                    return (
+                      <li key={row.id}>
+                        <button
+                          className={`customer-upload-intake-list-item${
+                            intake.selectedId === row.id ? " is-selected" : ""
+                          }`}
+                          onClick={() => {
+                            intake.setSelectedId(row.id);
+                          }}
+                          type="button"
+                        >
+                          <span className="customer-upload-intake-list-title">
+                            {row.originalFilename}
+                          </span>
+                          <span className="customer-upload-intake-list-sub">
+                            {row.customerUsername?.trim()
+                              ? `${row.customerDisplayName} (@${row.customerUsername.trim()}) · ${row.technicalStatus}`
+                              : `${row.customerDisplayName} · ${row.technicalStatus}`}
+                            {customerMarked ? " · customer: halftone" : null}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                  {intake.hasMore ? (
+                    <li className="customer-upload-intake-load-more-item">
+                      <Button
+                        className="customer-upload-intake-load-more"
+                        disabled={intake.isLoadingMore}
+                        onClick={() => intake.loadMore()}
+                        size="sm"
+                        type="button"
+                        variant="secondary"
+                      >
+                        {intake.isLoadingMore ? "Loading…" : "Load more"}
+                      </Button>
+                    </li>
+                  ) : null}
+                </ul>
+              )}
             </div>
-          )}
+            {intake.selected ? (
+              <IntakeDetail
+                intake={intake}
+                isDonation={isDonation}
+                key={`${intake.filter}:${intake.selected.id}`}
+                onPreviewNavigate={(itemId) => {
+                  intake.setSelectedId(itemId);
+                }}
+                previewNavigationItems={
+                  previewNavigationItems.length > 1 ? previewNavigationItems : undefined
+                }
+                row={intake.selected}
+              />
+            ) : null}
+          </div>
         </div>
       </div>
     </Card>

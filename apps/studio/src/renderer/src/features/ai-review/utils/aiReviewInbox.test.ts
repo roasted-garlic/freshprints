@@ -56,7 +56,14 @@ describe("buildAiReviewInboxListQuery", () => {
 
     assert.deepEqual(query.statusIn, ["imported", "processing"]);
     assert.equal(query.aiReviewStatus, "pending");
-    assert.equal(query.sortField, "updatedAt");
+    assert.equal(query.sortField, "createdAt");
+    assert.equal(query.sortDirection, "asc");
+  });
+
+  it("builds processing tab query with explicit newest sort", () => {
+    const query = buildAiReviewInboxListQuery({ tab: "processing", sortOrder: "newest" });
+
+    assert.equal(query.sortField, "createdAt");
     assert.equal(query.sortDirection, "desc");
   });
 
@@ -66,6 +73,7 @@ describe("buildAiReviewInboxListQuery", () => {
     assert.equal(query.status, "imported");
     assert.equal(query.aiReviewStatus, "needs_review");
     assert.equal(query.sortField, "updatedAt");
+    assert.equal(query.sortDirection, "desc");
   });
 
   it("builds rejected tab query", () => {
@@ -91,6 +99,10 @@ describe("aiProcessingOutput", () => {
       designHasAiSuggestions(createDesign({ aiSuggestions: { title: "Name", tags: ["art"] } })),
       true,
     );
+    assert.equal(
+      designHasAiSuggestions(createDesign({ aiSuggestions: { tags: ["legacy-only"] } })),
+      false,
+    );
   });
 
   it("returns not_generated for pending imports awaiting staff AI start", () => {
@@ -113,6 +125,24 @@ describe("aiProcessingOutput", () => {
         }),
       ),
       "ready",
+    );
+  });
+
+  it("returns not_generated for pending reset with preserved suggestions and no stage", () => {
+    assert.equal(
+      resolveAiProcessingOutputStatus(
+        createDesign({
+          status: "imported",
+          aiReviewStatus: "pending",
+          aiSuggestions: {
+            title: "Prior title",
+            provider: "google",
+            model: "gemini-2.5-flash-lite",
+            estimatedCostUsd: 0.001,
+          },
+        }),
+      ),
+      "not_generated",
     );
   });
 

@@ -19,6 +19,7 @@ export async function createCustomerNotification(input: {
   body?: string | null;
   requestId: string;
   proofId?: string;
+  actionToken?: string;
 }): Promise<void> {
   const ref = adminDb.collection(CUSTOMER_NOTIFICATIONS_COLLECTION).doc(input.id);
   const existing = await ref.get();
@@ -32,7 +33,7 @@ export async function createCustomerNotification(input: {
   }
 
   const body = truncateCustomerNotificationBody(input.body);
-  const href = buildCustomerNotificationHref(input.kind);
+  const href = buildCustomerNotificationHref(input.kind, input.actionToken);
 
   await ref.set({
     id: input.id,
@@ -44,6 +45,7 @@ export async function createCustomerNotification(input: {
     href,
     requestId: input.requestId,
     ...(input.proofId ? { proofId: input.proofId } : {}),
+    ...(input.actionToken ? { actionToken: input.actionToken } : {}),
     readAt: null,
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),

@@ -8,7 +8,7 @@ import { LoadingSpinner } from "../../../shared/components/LoadingSpinner";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
 import { getGangSheetLayoutModeOption, GANG_SHEET_LAYOUT_MODE_OPTIONS } from "../utils/gangSheetLayoutModeOptions";
 import { formatUpcomingShowTitle } from "../utils/upcomingShowDisplay";
-import { formatInchesForFilename } from "@fresh-prints/shared/utils/showExportFilename";
+import { formatGangSheetLengthInches } from "@fresh-prints/shared/utils/showExportFilename";
 import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
 import type {
   CachedGangSheetSheetMeta,
@@ -98,8 +98,41 @@ function formatByteSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function gangSheetLastDownloadStorageKey(showId: string, layoutMode: GangSheetLayoutMode): string {
+  return `freshprints.gangSheetLastDownload.${showId}.${layoutMode}`;
+}
+
+function readLastDownloadedSheetIndex(showId: string, layoutMode: GangSheetLayoutMode): number | null {
+  try {
+    const raw = window.sessionStorage.getItem(gangSheetLastDownloadStorageKey(showId, layoutMode));
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = Number(raw);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeLastDownloadedSheetIndex(
+  showId: string,
+  layoutMode: GangSheetLayoutMode,
+  sheetIndex: number,
+): void {
+  try {
+    window.sessionStorage.setItem(
+      gangSheetLastDownloadStorageKey(showId, layoutMode),
+      String(sheetIndex),
+    );
+  } catch {
+    // Best-effort recall when reopening the modal in this Studio session.
+  }
+}
+
 function formatTotalLength(totalInches: number): string {
-  const inchesLabel = formatInchesForFilename(totalInches);
+  const inchesLabel = formatGangSheetLengthInches(totalInches);
   const feetLabel = Number((totalInches / 12).toFixed(2)).toString();
   return `${inchesLabel}″ total (${feetLabel} ft)`;
 }
@@ -112,7 +145,15 @@ function estimatedSheetCount(
     return null;
   }
 
-  return layoutMode === "grouped_by_customer" ? preview.groupedSheets : preview.efficiencySheets;
+  if (layoutMode === "grouped_by_customer") {
+    return preview.groupedSheets;
+  }
+
+  if (layoutMode === "customer_grouped_continuous") {
+    return preview.continuousGroupedSheets;
+  }
+
+  return preview.efficiencySheets;
 }
 
 export function ExportGangSheetConfirmModal({
@@ -140,6 +181,10 @@ export function ExportGangSheetConfirmModal({
   const hasGenerated = hasGeneratedForLayout && Boolean(generated) && sheets.length > 0;
   const layoutOption = getGangSheetLayoutModeOption(layoutMode);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [lastDownloadedSheetIndex, setLastDownloadedSheetIndex] = useState<number | null>(() =>
+    readLastDownloadedSheetIndex(show.id, layoutMode),
+  );
+  const [areWarningsVisible, setAreWarningsVisible] = useState(true);
   const generateStartedAtRef = useRef<number | null>(null);
   const compositingStartedAtRef = useRef<number | null>(null);
   const lastSheetIndexRef = useRef<number | null>(null);
@@ -150,6 +195,21 @@ export function ExportGangSheetConfirmModal({
     [sheets],
   );
   const estimatedSheets = estimatedSheetCount(sheetCountPreview, layoutMode);
+  const warningSignature = warnings.map((warning) => `${warning.fileName}:${warning.reason}:${warning.message}`).join("|");
+
+  useEffect(() => {
+    setLastDownloadedSheetIndex(readLastDownloadedSheetIndex(show.id, layoutMode));
+  }, [layoutMode, show.id]);
+
+  useEffect(() => {
+    setAreWarningsVisible(true);
+  }, [warningSignature]);
+
+  function handleDownloadSheet(sheetIndex: number) {
+    setLastDownloadedSheetIndex(sheetIndex);
+    writeLastDownloadedSheetIndex(show.id, layoutMode, sheetIndex);
+    onDownloadSheet(sheetIndex);
+  }
 
   useEffect(() => {
     if (!isGenerating) {
@@ -310,30 +370,41 @@ export function ExportGangSheetConfirmModal({
                 {sheets.length === 1 ? "" : "s"} · {formatByteSize(generated.totalByteSize)}
               </p>
               <p className="print-requests-modal-hint">{formatTotalLength(totalLengthInches)}</p>
-              <ul className="gang-sheet-preview-list">
-                {sheets.map((sheet) => (
-                  <li className="gang-sheet-preview-row" key={sheet.fileName}>
-                    <div>
-                      <strong>
-                        Sheet {sheet.sheetIndex} of {sheet.sheetTotal}
-                      </strong>
-                      <p className="print-requests-modal-hint">
-                        Length {formatInchesForFilename(sheet.lengthInches)}″ ·{" "}
-                        {formatByteSize(sheet.byteSize)}
-                      </p>
-                      <p className="print-requests-modal-hint">{sheet.fileName}</p>
-                    </div>
-                    <Button
-                      disabled={isBusy}
-                      onClick={() => onDownloadSheet(sheet.sheetIndex)}
-                      size="sm"
-                      variant="secondary"
+              <div className="gang-sheet-preview-list-scroll">
+                <ul className="gang-sheet-preview-list">
+                  {sheets.map((sheet) => {
+                    const isLastDownloaded = lastDownloadedSheetIndex === sheet.sheetIndex;
+
+                    return (
+                    <li
+                      className={`gang-sheet-preview-row${isLastDownloaded ? " is-last-downloaded" : ""}`}
+                      key={sheet.fileName}
                     >
-                      Download
-                    </Button>
-                  </li>
-                ))}
-              </ul>
+                      <div>
+                        <strong>
+                          Sheet {sheet.sheetIndex} of {sheet.sheetTotal}
+                        </strong>
+                        <p className="print-requests-modal-hint">
+                          Length {formatGangSheetLengthInches(sheet.lengthInches)}″ ·{" "}
+                          {formatByteSize(sheet.byteSize)}
+                        </p>
+                        <p className="print-requests-modal-hint">{sheet.fileName}</p>
+                      </div>
+                      <Button
+                        aria-current={isLastDownloaded ? "true" : undefined}
+                        className={isLastDownloaded ? "is-last-downloaded" : undefined}
+                        disabled={isBusy}
+                        onClick={() => handleDownloadSheet(sheet.sheetIndex)}
+                        size="sm"
+                        variant="secondary"
+                      >
+                        Download
+                      </Button>
+                    </li>
+                    );
+                  })}
+                </ul>
+              </div>
               {lastSavedPaths.length > 0 ? (
                 <div>
                   <p>Exported {lastSavedPaths.length} file{lastSavedPaths.length === 1 ? "" : "s"}:</p>
@@ -344,12 +415,22 @@ export function ExportGangSheetConfirmModal({
                   </ul>
                 </div>
               ) : null}
-              {warnings.length > 0 ? (
+              {warnings.length > 0 && areWarningsVisible ? (
                 <div className="export-show-warnings">
-                  <p>
-                    {warnings.length} warning{warnings.length === 1 ? "" : "s"} — a warnings text file
-                    is included when you export all sheets.
-                  </p>
+                  <div className="export-show-warnings-header">
+                    <p>
+                      {warnings.length} warning{warnings.length === 1 ? "" : "s"} — a warnings text file
+                      is included when you export all sheets.
+                    </p>
+                    <button
+                      aria-label="Dismiss gang sheet warnings"
+                      className="icon-button icon-button-sm icon-button-ghost"
+                      onClick={() => setAreWarningsVisible(false)}
+                      type="button"
+                    >
+                      <X aria-hidden="true" size={16} />
+                    </button>
+                  </div>
                   <ul>
                     {warnings.map((warning) => (
                       <li key={`${warning.fileName}-${warning.reason}`}>

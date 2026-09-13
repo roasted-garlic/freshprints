@@ -8,7 +8,7 @@ import { resolveCustomerUploadPurpose } from "../../packages/shared/src/utils/cu
 
 import { adminDb } from "./lib/admin";
 import { validateConfirmCustomerUploadsForDonationRequest } from "./lib/confirmCustomerUploadDonateValidation";
-import { buildCatalogIntakeConfirmationPatch } from "./lib/customerUploadCatalogConfirmation";
+import { buildCatalogIntakeConfirmationPatch, buildUnpromotedDonationRetentionPatch } from "./lib/customerUploadCatalogConfirmation";
 import {
   failedPrecondition,
   internal,
@@ -17,6 +17,7 @@ import {
   unauthenticated,
 } from "./lib/errors";
 import { requireCatalogDonationUploader } from "./lib/catalogDonationUploader";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 
 function mapHttpsError(error: unknown): never {
   if (error instanceof HttpsError) {
@@ -39,6 +40,7 @@ export const confirmCustomerUploadsForDonation = onCall(
         uid: request.auth.uid,
         token: request.auth.token,
       });
+      await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
       const payload = validateConfirmCustomerUploadsForDonationRequest(request.data);
       const customerUid = uploader.customerUid;
 
@@ -96,7 +98,14 @@ export const confirmCustomerUploadsForDonation = onCall(
         });
 
         for (const uploadSnap of uploadSnaps) {
-          tx.update(uploadSnap.ref, confirmationPatch);
+          const existing = uploadSnap.data() ?? {};
+          tx.update(uploadSnap.ref, {
+            ...confirmationPatch,
+            ...buildUnpromotedDonationRetentionPatch({
+              existingUpload: existing,
+              now,
+            }),
+          });
           confirmedUploadIds.push(uploadSnap.id);
         }
 

@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { resolvePrintRequestDefaultWidthInches } from "@fresh-prints/shared/utils/printRequestItemSizing";
+
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
+import { useStandardPrintSizesSettings } from "../../settings/hooks/useStandardPrintSizesSettings";
 import { printRequestService } from "../services/printRequestService";
 import { usePrintRequestDetails } from "./usePrintRequestDetails";
 import type { Design } from "../../designs/types/design.types";
@@ -46,6 +49,11 @@ function buildSelectionSignature(items: PrintRequestItem[]): string {
 
 export function usePrintRequestSelectionMode(printRequestId: string | null): UsePrintRequestSelectionModeResult {
   const { user } = useAuth();
+  const { settings: standardPrintSizesSettings } = useStandardPrintSizesSettings();
+  const printRequestDefaultWidthInches = useMemo(
+    () => resolvePrintRequestDefaultWidthInches(standardPrintSizesSettings),
+    [standardPrintSizesSettings],
+  );
   const [selectedDesigns, setSelectedDesigns] = useState<SelectionState>({});
   const hydratedRequestIdRef = useRef<string | null>(null);
   const hydratedSelectionSignatureRef = useRef<string | null>(null);
@@ -201,13 +209,21 @@ export function usePrintRequestSelectionMode(printRequestId: string | null): Use
         user,
         printRequestId,
         buildDesignSelectionSavePayload(selectedDesigns),
+        { printRequestDefaultWidthInches },
       );
 
       await reloadPrintRequest();
     } finally {
       setIsSaving(false);
     }
-  }, [printRequest, printRequestId, reloadPrintRequest, selectedDesigns, user]);
+  }, [
+    printRequest,
+    printRequestDefaultWidthInches,
+    printRequestId,
+    reloadPrintRequest,
+    selectedDesigns,
+    user,
+  ]);
 
   return {
     error,

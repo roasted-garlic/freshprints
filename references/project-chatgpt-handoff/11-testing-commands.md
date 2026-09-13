@@ -1,5 +1,13 @@
 # Testing and Commands
 
+## Coordinated cutover prerequisite evidence (2026-09-12)
+
+Focused cutover/projection/Rules-contract/Staff Artwork/release-policy validation passed **87/87**;
+Functions build, Portal typecheck, targeted lint, and `git diff --check` passed. The Portal
+production `.next/trace` EPERM, full Rules expression-budget, Studio typecheck, and whole-repository
+lint results remain documented baseline/environment limitations. Studio packaging was intentionally
+not run because it invokes installer-producing tooling. Owner DEV QA then reported **PASS**.
+
 ## Required checks before signoff
 
 | Check | Typical command | When |
@@ -30,7 +38,7 @@ npx tsx --test apps/studio/src/renderer/src/features/print-requests/utils/*.test
 npx tsx --test functions/src/lib/customerUpload*.test.ts
 npx tsx --test functions/src/ai/*.test.ts
 npx tsx --test tests/firebase/printRequestCompletion.rules.test.ts
-npx tsx --test packages/shared/src/utils/operationalWipeTargets.test.ts packages/shared/src/utils/operationalWipeTargetsUiSafety.test.ts
+npx tsx --test apps/studio/src/renderer/src/features/users/utils/buildPrintRequestHistoryCard.test.ts apps/studio/src/renderer/src/features/users/utils/resolveLogicalCustomerIds.test.ts
 ```
 
 Canonical list: `docs/standards/TESTING.md`.
@@ -39,8 +47,13 @@ Canonical list: `docs/standards/TESTING.md`.
 
 Owner replies `PASS` / `FAIL` / `PASS WITH NOTES` on docs under `docs/workflow/reviews/`.
 
-Most recent completed checkpoint:
-`2026-07-29-studio-test-data-print-limit-wipe-audit-qa-checkpoint.md` — owner **PASS**
+Most recent completed checkpoints:
+- WS4 Owner DEV QA — **PASS** (2026-08-30)
+- Show Queue Did Not Print recovery — **PASS** (2026-08-30)
+
+## Firestore Rules test disposition (preserve)
+
+Focused Print Request item resize Rules: **22/22 PASS**. Full `npm run test:rules`: **169/169 PASS** (2026-09-03 closeout of `firestore-rules-print-request-item-resize-expression-budget`). Historical baseline before that goal was 158/159 with one expression-budget failure on customer resize with unchanged Interactive Upscale fields — now resolved on DEV.
 
 ## FreshForge test phase
 

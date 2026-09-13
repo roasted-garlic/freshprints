@@ -38,12 +38,17 @@ Fresh Prints uses **Firebase** as the primary backend platform for authenticatio
 | Portal account self-service (2026-07-20) | Password reset + verify-before-update email + deletion **request** callables (`syncPortalAccountEmail`, `requestPortalAccountDeletion`, `cancelPortalAccountDeletionRequest`). ADR-FP-104. |
 | Owner single-user delete (legacy) | Callable `ownerDeleteUser` remains **quarantined** (no Studio UI). Product path is `tombstoneCustomerAccount` (Users page). |
 | Customer account tombstone (2026-07-22) | Studio Users → `previewCustomerAccountDeletion` / `tombstoneCustomerAccount`. Auth disable; retain identity + username reservation + all print requests. Owner only. |
+| Customer identity WS1 (2026-08-28) | `previewHardDeleteCustomerAccount` / `hardDeleteCustomerAccount` (owner; history-free only; Apply dev-gated). `disableCustomerAccount` / `restoreCustomerAccount` (owner; reversible). Append-only `customerActivityEvents` for forensic audit. |
+| Customer identity WS2 (2026-08-29) | `previewDuplicateAccountResolution` / `transferCustomerUsername` (owner-only). Atomic username transfer from duplicate source to survivor + source placeholder + disable source. Preview uses `customerIdentityOperationPreviews` operation `duplicate_resolution` (15-minute TTL, checksum). ADR-FP-153. |
 | Eligible print request delete/archive | `previewPrintRequestDeletion` / `deleteEligiblePrintRequest` / `archivePrintRequest` — staff; server dependency recheck. |
-| Eligible upcoming show delete | `previewUpcomingShowDeletion` / `deleteEligibleUpcomingShow` — staff; empty upcoming only. |
+| Eligible upcoming show delete | `previewUpcomingShowDeletion` / `deleteEligibleUpcomingShow` — owner; empty upcoming only. |
+| Show production recovery (2026-08-27) | `previewShowProductionRecovery` / `applyShowProductionRecovery` — staff (`close_empty`, `mark_fulfilled`, `release_unfulfilled`); owner-only `force_completed`. Admin SDK reconciliation; ADR-FP-149. |
 | Eligible customer upload delete | `previewCustomerUploadDeletion` / `deleteEligibleCustomerUpload` — owner/admin only; request-item and promoted-design blockers; authoritative schema-owned path validation; retry-safe Storage cleanup and upload-specific batch-reference cleanup server-side. Successful hard delete of a charged `catalog_donation` decrements today’s `finalizeImageCountDonation` once in the same Firestore transaction (Cap L / print-request day counters unchanged). |
 | Portal customer own-upload delete (F3) | `previewPortalCustomerUploadDeletion` / `deletePortalCustomerUpload` — signed-in caller only when `customerUploads.customerUid == auth.uid`; reuses the same blockers + Storage-first / retain-on-failure + donation day refund contract as staff delete. Does **not** use staff `assertCanDeleteCustomerUpload`. |
 | Category/tag archive guards | `previewCategoryArchive` / `archiveCategoryWithGuards` / `previewTagArchive` / `archiveTagWithGuards` — owner/admin; block while designs reference. |
 | Operational wipe — AI Processing (2026-07-21) | Test Data Reset target `aiProcessingDesigns` via `wipeOperationalTestData`: deletes AI Processing inbox designs (any tab/stage) + their Storage only; keeps ready/archived catalog. Dev allowlist + owner only. |
+
+**Studio deletion first-action latency (2026-09-02):** Gen2 preview/mutate callables accept authenticated `{ warmup: true }` on the **same** Cloud Run service (auth + role assert only; no Firestore writes/deletes). Studio schedules role-gated idle warmups after auth and warms mutate callables when delete dialogs open. Includes `purgeArchivedDesignAssets` (Design Library permanent image purge; owner-approved amendment). Soft `archiveDesign` remains client Firestore — not warmed. No `minInstances` / cron keep-alive in v1.
 
 **Portal post-auth return (2026-07-17):** When `AuthGate` sends a signed-out customer to `/login`,
 it includes the protected Portal path and query string in `returnTo`. Email/password and Google login
@@ -68,6 +73,15 @@ environment variables, or secrets. Helper: `portalReturnUrl.ts`.
 
 See `DATA_MODEL.md` for entities.
 
+### Gang Sheet settings persistence
+
+Global Gang Sheet Settings use the existing trusted Studio direct Firestore path for
+`settings/showQueue`, protected by the existing owner/admin settings permission and a narrow
+Rules allowlist extension for the eight canonical price/weight fields. A renderer resolver reads
+`settings/internalGangSheet` only as a legacy fallback when canonical values are missing. No
+settings Function, Storage Rules change, index, migration, or automatic backfill is part of this
+surface.
+
 ---
 
 ## Storage (Files / Media)
@@ -88,6 +102,22 @@ Fresh Prints does not expose a separate REST API for core operations. Business l
 
 - Electron renderer services (Firebase SDK)
 - Firebase Cloud Functions (server-side operations)
+
+`copyStudioPrintRequest` is a staff-authenticated callable backed by one Admin SDK transaction. It
+revalidates source items, destination customer/base-name eligibility, the continuable customer
+guard, catalog/upload existence, and the private-upload ownership boundary immediately before
+writes. No Rules, Storage Rules, indexes, or migration changes are required for this operation.
+
+`allocateStudioPrintRequestToShow` is the trusted Studio Add-to-Show path. It authenticates active
+staff, validates every requested remaining item quantity and destination show in one Admin SDK
+transaction, creates all allocation rows, updates each show total, activates the request, clears
+editing/requeue parking, and explicitly recomputes `queueTab`. This replaces the unsafe per-item
+client sequence for full-request/re-add plans and repairs already-allocated `editing` requests
+without fabricating additional quantity. It does not change the Portal callable.
+
+Request-scoped image export and Standard gang-sheet generation remain Electron desktop operations:
+renderer → preload → validated IPC → Electron main → Firebase Storage download / Sharp / ZIP or
+compositor → native save dialog. The renderer does not gain filesystem access.
 
 ### External Integrations
 
@@ -161,13 +191,15 @@ pixel sizing). Skips customer transparency/quality gates. Idempotent via
 
 **Provider-neutral email (ADR-FP-089 / ADR-FP-090):** `functions/src/lib/email/` owns normalized
 messages, templates, provider routing, Resend + Brevo HTTP transports, recipient resolution, and
-canonical Portal URL resolution. `staffAddAssistedCreationProof` transactionally creates a
-deterministic `emailDeliveryJobs` outbox document. `onEmailDeliveryJobCreated` uses bounded attempts
+canonical Portal URL resolution. `staffAddAssistedCreationProof`, catalog-share suggest, and
+`staffAddAssistedCreationFinalSource` transactionally create deterministic `emailDeliveryJobs`
+outbox documents (`assisted_proof_ready`, `assisted_catalog_share_ready`,
+`assisted_final_artwork_ready`). `onEmailDeliveryJobCreated` uses bounded attempts
 and a lease; network/timeout/429/5xx errors retry, permanent 4xx fails safely. Before send, the
 worker honors `customers/{id}.assistedProofEmailOptIn` (missing = opted in); opted-out jobs fail
 non-retryably with `customer_opted_out`. After a successful send, the worker appends
-`revisionHistory` note `Proof-ready email sent` (`byRole: system`, `emailDeliveryJobId` for
-idempotency). Resend receives the job ID through `Idempotency-Key`; Brevo receives a UUID-shaped
+`revisionHistory` note `Proof-ready email sent` or `Final artwork email sent` (`byRole: system`,
+`emailDeliveryJobId` for idempotency). Resend receives the job ID through `Idempotency-Key`; Brevo receives a UUID-shaped
 hash in `headers.idempotencyKey`. Firestore remains the durable logical dedupe boundary. Logs
 contain IDs and safe codes only. `settings/emailProviders` independently selects invitation and
 proof-notice providers (`resend` or `brevo`). `settings/customerUploadQuotas` holds owner-tunable
@@ -178,26 +210,38 @@ Request room (`L`) is the customer cap (request-room copy only; no midnight rese
 Designs still enforces **images/day** only (footer: resets at midnight CST); upload starts and ZIP
 day counters are not charged (Studio Settings fields remain configurable). ZIP byte max is **2 GB**
 for both Upload Designs and Donate.
-`settings/printRequestLimits` holds the sole Portal limit `L` (`maxQuantityPerShowPerCustomer`:
-max Current Request prints = max per customer per show; default 20; ADR-FP-102). Legacy Cap A field
-`dailyDesignsAddedToRequestsLimit` is mirrored = `L` on save for one-release rollback and is **not**
+`settings/printRequestLimits` holds dual Portal limits (ADR-FP-102 amended 2026-07-31):
+`maxQuantityPerPrintRequest` (working request max) and `maxQuantityPerShowPerCustomer` (per-customer
+per-show cap); code default **20** each; optional `linkPrintRequestAndCustomerShowLimits`. Legacy Cap A field
+`dailyDesignsAddedToRequestsLimit` is mirrored from the request limit on save for one-release rollback and is **not**
 enforced. Cap A counters in `printRequestDesignDailyLimits` are no longer written; optional wipe
-target remains on Test Data Reset. Print-request / queue rejects may include structured `details.code`:
-`WORKING_REQUEST_PRINT_LIMIT` (request over `L`), `SHOW_CUSTOMER_LIMIT` / `SHOW_CAPACITY` /
+target remains on Test Data Reset. Optional per-customer temporary overrides live on
+`customers/{id}.printRequestQuotaOverride` (owner callable `updateCustomerPrintRequestQuotaOverride`);
+Portal callables resolve **effective** limits via `resolveEffectivePrintRequestLimits` (override ?? global;
+clock-aware expiry; no scheduler). Print-request / queue rejects may include structured `details.code`:
+`WORKING_REQUEST_PRINT_LIMIT` (request over effective PR limit), `SHOW_CUSTOMER_LIMIT` / `SHOW_CAPACITY` /
 `SHOW_ALLOCATION_BLOCKED` (`failed-precondition` on queue). Stale queue clients sending `selections`
 are rejected with soft-reload copy. Upload quota Settings remain ADR-FP-095 (enforcement narrowed as above).
+`settings/standardPrintSizes` holds owner-configured Standard Print Size preset target widths
+(structural placements/groups/presets; width-only semantics). **Fresh Prints Standard Size Defaults v1**
+(2026-08-29 corrective) defines seven placements (including **Pocket**), individual garment-size presets,
+and forward-compatible read merge via `resolveStandardPrintSizesSettings`. Owners replace saved DEV/prod
+values explicitly via Settings **Reset to Defaults → Save** (no background migration). Studio owners edit via callable
+`updateStandardPrintSizesSettings`; Portal and Studio subscribe read-only. Preset apply on a print
+request item persists optional `printRequestItems.standardSizePresetKey` alongside derived
+`printWidthInches` / `printHeightInches` / formatted `sizeLabel`.
 Product Brevo uses Secret Manager `BREVO_API_KEY` — never the
 Cursor MCP token (`BREVO_MCP_TOKEN`).
 
 **Cursor agent tooling:** Project MCP may list ScraperAPI and Brevo at `.cursor/mcp.json` (agent-only; not product email). Setup notes: `docs/workflow/setup/scraperapi-mcp-setup.md`, `docs/workflow/setup/brevo-mcp-setup.md`. Product Brevo email: `docs/workflow/setup/brevo-email-setup.md`.
 
-**AI provider secrets:** `GEMINI_API_KEY` lives in Firebase Secret Manager. Cloud Functions read it; the desktop renderer must not. Do not add provider keys to Firestore settings or the Settings UI. (As of ADR-FP-040, OpenAI is no longer used; `OPENAI_API_KEY` was removed from Cloud Function code.)
+**AI provider secrets:** `GEMINI_API_KEY` and `OPENAI_API_KEY` live in Firebase Secret Manager. Cloud Functions read them; the desktop renderer must not. Do not add provider keys to Firestore settings or the Settings UI. (ADR-FP-174 restores OpenAI for Luna Phase 1; ADR-FP-040 Gemini-only posture is amended.)
 
-**Vision model:** Configurable via Firestore `settings/aiEnrichment.visionModelId` (owner/admin updates through callable `updateAiEnrichmentSettings`). Server allowlist in `functions/src/ai/aiEnrichmentConfig.ts`: default `gemini-2.5-flash-lite`, newer alternate `gemini-3.1-flash-lite`. Both are called through Gemini's OpenAI-compatible Chat Completions endpoint.
+**Vision model:** Configurable via Firestore `settings/aiEnrichment.visionModelId` (owner/admin updates through callable `updateAiEnrichmentSettings`). Server allowlist: `gemini-2.5-flash-lite` (system fallback), `gemini-3.1-flash-lite`, `gpt-5.6-luna`. Provider is resolved from explicit model→provider metadata (`google` | `openai`). Gemini uses Google's OpenAI-compatible Chat Completions endpoint; Luna uses OpenAI Chat Completions with pinned `reasoning_effort: "low"`.
 
 **One-off AI Processing override:** The Processing tab may pass a one-off `visionModelIdOverride` value. The callable validates it, stores it only as transient processing metadata, and clears it after the run so global settings stay unchanged. Manual processing uses the current Processing override or Settings default; Auto advance snapshots the resolved value when it starts. The resolved per-run model is persisted on `aiSuggestions.model`.
 
-**Settings AI playground:** Owner/admin users can call `testAiEnrichmentPlayground` from `/settings` for one-off text + image tests. The callable validates model, prompt length, and image type/size; keeps the Gemini call server-side; does not write to `designs`; and fails safely if `GEMINI_API_KEY` is missing.
+**Settings AI playground:** Owner/admin users can call `testAiEnrichmentPlayground` from `/settings` for one-off text + image tests. The callable validates model, prompt length, and image type/size; keeps provider calls server-side; does not write to `designs`; fails safely if the secret required by the selected model's provider is missing. Playground model selection does not mutate Settings unless the owner separately saves Default AI model.
 
 As of ADR-FP-039/ADR-FP-040 / ADR-FP-113 / **ADR-FP-123 (D8-A)**, **AI Processing is a single playground-style call** (prompt version `catalog-enrich-v26`): the saved Settings prompt template is sent with `{{excluded_tags}}` replaced server-side (approved category/tag context is resolved server-side, not injected into the prompt). The model is asked for catalog fields (`description`, a raw `category` candidate, `title`, up to 8 tag candidates, plus transient `readableTextLines` / `centralSubject` used only for title finalization and not persisted on `aiSuggestions`) plus optional complete `suggestedNewTags` objects when no approved tag name or alias is relevant enough, and the default prompt requires full-image text inspection, exact readable-text inclusion in the description, and **complete text-dominant titles** that agree with that wording (contractionsions preserved; description-prose openings rejected; incomplete titles may be completed server-side from structured readable lines or guarded description wording — never the first description sentence). It does **not** send `response_format: { type: "json_object" }`; the server extracts JSON tolerantly (`extractJsonObject`, handling fenced/prose-wrapped output). One normal call per success — no empty-output retry and no quality retry; only the 429/5xx network retry remains. Server-side normalization resolves AI tags against approved global `tags` documents by name/alias, persists matches to `aiSuggestions.tags`, and stores unmatched tokens or valid nonmatching `suggestedNewTags` as `aiSuggestions.suggestedNewTags` for staff review. **D8-A:** existing human/catalog `designs.tags` do **not** consume the 8-tag AI allowance — the pipeline excludes covered concepts (exact + alias) before/after resolve and again after rerank, never removes human tags to satisfy the ceiling, and does not write `designs.tags` in `markAiSuccess`. Category resolution uses existing assigned tags ∪ new AI tags. AI never creates approved tag documents. The server-side image input keeps `detail: "high"` for both catalog enrichment and the Settings playground. Empty `message.content` responses still log usage and surface a clean `failed` state (`vision_empty_output`) for manual re-run.
 
@@ -234,6 +278,8 @@ Authoritative constants: `packages/shared/src/constants/import/batchImportLimits
 |----------|---------|---------|
 | `createTeamUser` | Callable | Create team user + invitation flow |
 | `registerCustomer` | Callable | Customer self-registration — provisions `users/{uid}` + `customers/{id}` + username reservation after Firebase Auth signup. Requires `biddingAcknowledgmentAccepted` + version; writes `portalBiddingAcknowledgments.signup`. |
+| `updatePortalCustomerProfile` | Callable | Portal customer self-service: update own `displayName` + `username` with 30-day username cooldown, reservation swap, Auth displayName sync, and resumable identity snapshot propagation (ADR-FP-148). |
+| `updateCustomer` | Callable | Studio staff: update customer profile fields (including email for Portal-linked customers); shares canonical profile txn + propagation with Portal path; staff bypass username cooldown. |
 | `updateTeamUser` | Callable | Update team user fields |
 | `createPortalPrintRequest` | Callable | Portal: create the customer's one working print request |
 | `createCustomerUploadBatch` | Callable | Portal: create customer artwork upload batch + source/ZIP paths (ADR-FP-073) |
@@ -253,7 +299,7 @@ Authoritative constants: `packages/shared/src/constants/import/batchImportLimits
 | `archiveStaleRejectedDesigns` | Callable | Owner/admin: soft-archive `status: rejected` designs older than 7 days (`dryRun` supported; ADR-FP-086) |
 | `purgeIdleCustomerUploadFullSize` | Callable | Owner/admin: purge request-upload source+production after show done/idle 14d; keep thumb/preview (`dryRun` supported; ADR-FP-086) |
 | `purgePromotedDonationFullSize` | Callable | Owner/admin: purge donation upload source+production 14d after promote; keep thumb/preview (`dryRun` supported; ADR-FP-086) |
-| `promoteCustomerUploadToAiReview` | Callable | Studio staff (owner/admin/**helper**): promote ready upload → design `imported` + enqueue AI |
+| `promoteCustomerUploadToAiReview` | Callable | Studio staff (owner/admin/**helper**): promote ready upload with current catalog permission (original true/legacy-missing or approved follow-up) → design `imported` + enqueue AI |
 | `excludeCustomerUploadFromCatalog` | Callable | Studio staff: mark upload excluded (keeps request artwork + production assets) |
 | `restoreCustomerUploadCatalogEligibility` | Callable | Studio staff: reverse exclusion → `pending_staff_review` |
 | `retryCustomerUploadProcessing` | Callable | Studio staff (owner/admin/**helper**): retry eligible technical failures |
@@ -265,6 +311,7 @@ Authoritative constants: `packages/shared/src/constants/import/batchImportLimits
 | `listPortalShowCatalogDesigns` | Callable | Portal: **public** (no auth) ready catalog designs allocated to a show; guests may browse; request mutations remain login-gated |
 | `convertCustomerPrintRequestToInternal` | Callable | Studio staff: convert eligible customer request → new internal request; archive source with `closureKind`; optional cancel pending/queued allocations after confirm; blocks `in_progress`+ allocations |
 | `queuePortalPrintRequestToShow` | Callable | Portal: allocate **entire** Continuable request to **one** show atomically or reject; multiple separate requests may accumulate on the same show up to limit `L` (ADR-FP-122); rejects past Portal queue cutoff; rejects stale `selections`; no remainder; bidding ack + version (ADR-FP-102 / ADR-FP-103 / ADR-FP-122) |
+| `allocateStudioPrintRequestToShow` | Callable | Studio staff: atomically allocate a complete remaining Add-to-Show plan (including split legs), activate the request, clear editing/requeue parking, and repair a fully allocated `editing` row; rejects partial plans, closed/past/full shows, invalid request origins, and archived/completed/converted requests |
 | `submitEtsyRecommendationRequest` | Callable | Portal: create/replace one active Etsy recommendation request; returns website search URL |
 | `searchEtsyRecommendations` | Callable | Portal: Open API listing search for an owned active request (`ETSY_X_API_KEY`); persists `lastApiSearch` |
 | `staffSearchEtsyRecommendationApiResults` | Callable | Studio: staff Open API search/refresh for any request status; persists `lastApiSearch`; no customer quota charge (`ETSY_X_API_KEY`) |
@@ -286,23 +333,36 @@ Authoritative constants: `packages/shared/src/constants/import/batchImportLimits
 | `customerAddAssistedApprovedProofToPrintRequest` | Callable | Portal: copy final source (preferred) or approved Assisted proof → private customer upload + attach to Current Request / working request (skips upload quality gates; ADR-FP-094/110); fails closed for catalog_share (use catalog Add to Request) |
 | `staffUpdateAssistedCreationStatus` | Callable | Studio: owner/admin start/resume/reject/cancel/restore, or `update_notes` (notes only, no status/history change); **reject only when current status is `submitted`** (fail closed after Start Work); resume clears catalog suggestion; reject/cancel purge all proof full-res |
 | `staffAddAssistedCreationProof` | Callable | Studio: owner/admin attach proof → `proof_ready` (`fulfillmentMode: proof_image`; clears catalog suggestion) |
-| `staffAddAssistedCreationFinalSource` | Callable | Studio: owner/admin attach final HR artwork under `final/` and complete `final_source_needed` → `approved` (ADR-FP-110) |
+| `staffAddAssistedCreationFinalSource` | Callable | Studio: owner/admin attach final HR artwork under `final/` and complete `final_source_needed` → `approved`; enqueues final-artwork-ready email + in-app alert (ADR-FP-110) |
 | `staffSuggestAssistedCreationCatalogDesign` | Callable | Studio: owner/admin suggest ready catalog design → `proof_ready` (`fulfillmentMode: catalog_share`); in-app notification + optional email outbox (ADR-FP-108). **List/search** in the Share-a-library-design modal uses Studio generated ready-index (`useReadyDesignsForAssistedCatalogPicker`), not this callable. |
 | `purgeExpiredAssistedCreationProofs` | Callable | Owner/admin: purge approved proof full-res after 14 days + orphan full-res on rejected/cancelled (`dryRun` supported; ADR-FP-093) |
 | `purgeExpiredAssistedCreationProofsScheduled` | Scheduled (daily) | Same purge logic as the callable (ADR-FP-093) |
 | `updateEmailProviderSettings` | Callable | Studio owner: select invitation and proof-notice providers (`resend` \| `brevo`) |
 | `updateCustomerUploadQuotaSettings` | Callable | Studio owner: set America/Chicago daily print-request vs donation upload caps (`settings/customerUploadQuotas`; ADR-FP-095) |
-| `updatePrintRequestLimitSettings` | Callable | Studio owner: set sole limit `L` (`maxQuantityPerShowPerCustomer`); mirrors into legacy Cap A field for one-release rollback (ADR-FP-102) |
-| `onEmailDeliveryJobCreated` | Firestore create | Deliver a proof-ready or catalog-share notice from the durable outbox |
+| `updatePrintRequestLimitSettings` | Callable | Studio owner: set dual Portal limits on `settings/printRequestLimits`; mirrors request limit into legacy Cap A field (ADR-FP-102) |
+| `updateCustomerPrintRequestQuotaOverride` | Callable | Studio **owner-only**: set/clear temporary per-customer PR and/or Show limit overrides on `customers/{id}.printRequestQuotaOverride` (optional `expiresAt`; activity events; ADR-FP-159) |
+| `onEmailDeliveryJobCreated` | Firestore create | Deliver a proof-ready, catalog-share, or final-artwork-ready notice from the durable outbox |
+| `onPrintRequestLifecycleRequestWritten` | Firestore write `printRequests/{printRequestId}` | Server-authored request lifecycle evidence + monotonic ordering mirror |
+| `onPrintRequestLifecycleAllocationWritten` | Firestore write `showAllocations/{allocationId}` | Server-authored show/allocation lifecycle evidence + ordering mirror advancement |
 | `enqueueAiEnrichment` | Callable | Run imported design through direct AI processing |
 | `resetAiEnrichmentForProcessing` | Callable | Return Needs Review or Rejected design to Processing for a staff-started re-run |
 | `updateAiEnrichmentSettings` | Callable | Owner/admin: set team vision model, prompt template, and tag exclusions |
+| `updateCatalogWorkflowMode` | Callable | **Owner-only:** Catalog Processing Mode + live Autonomous gate (`ENABLE AUTONOMOUS`) |
+| `previewCatalogReprocessJob` / `startCatalogReprocessJob` / `pauseCatalogReprocessJob` / `resumeCatalogReprocessJob` / `retryCatalogReprocessJobFailures` | Callable | **Owner-only:** Catalog Reprocessing. Slice 5: `ai_review_queue` Start (Shadow + live OFF; phrase `REPROCESS AI REVIEW QUEUE`). Slice 6: `ready_catalog` Start path implemented — Shadow + live OFF; phrase `REPROCESS READY CATALOG`; optional `canaryDesignIds` → job `boundedDesignIds`. **Gate `CATALOG_REPROCESS_READY_CATALOG_ENABLED` still false** until owner unlock after deploy. Preview returns target inventory (queue notes density; Ready tag-density + v30/v4 counts). |
+| `onCatalogReprocessJobWritten` | Firestore trigger | Durable worker; executes `ai_review_queue` (queue mode) and `ready_catalog` (`ready_backfill` + Ready-safe staging). Uses `GEMINI_API_KEY`. |
 | `testAiEnrichmentPlayground` | Callable | Owner/admin: run one-off image + prompt test against the allowlisted Gemini models |
 | `onDesignAiEnrichmentQueued` | Firestore update | Legacy compatibility trigger; live Processing flow should use direct callable execution |
 
 **AI enrichment latency observability:** Callable logs `enqueue.queued` with `loggedAtMs`; trigger logs `trigger.fired`; pipeline logs phased `durationMs` / `totalPipelineMs`; vision request logs `vision.request.started` and `vision.completion.usage` (includes `durationMs`, token counts). Settings and categories are cached per function instance (60s).
 
 Location: `functions/src/` — compiled to `functions/lib/` (gitignored). See `docs/workflow/setup/firebase-functions-setup.md`.
+
+Print Request lifecycle events are written only by these Admin SDK triggers to
+`printRequestLifecycleEvents`. The Studio reader uses the reviewed composite-index query on
+`customerId + lastLifecycleActivityAt + __name__`; the compatibility reader remains available as
+rollback. In DEV, the separately reviewed non-destructive historical mirror backfill is complete,
+the required indexes are READY, and the indexed reader is enabled in local Studio source. This
+DEV outcome does not imply a production deploy or a future backfill rerun.
 
 ---
 
@@ -344,6 +404,11 @@ uses the same customer hosts for `metadataBase` / OG image resolution via option
 | `getPortalOgShareImage` | Public JPEG letterbox compositor (`designId` **or** validated `staticPath` + `fit=contain`) |
 | `updatePortalSocialMetaSettings` | Owner callable for title/description + letterbox + global image source + static OG snapshot finalize; clears Global OG in-process cache after write |
 | `updatePortalHelpSettings` | Owner/admin callable for Portal FAQ and How To (`settings/portalHelp`) |
+| `getPortalMaintenanceState` / `updatePortalMaintenanceState` | Portal public-state read (Gen2 `invoker: "public"` so guest CORS preflight succeeds) and owner/admin control for `settings/portalMaintenance`; saved heading/body copy is customer-safe, while the configured tester UID remains private. Portal UI shows the customer wall only after a successful ON read for a non-tester; Functions/Rules still fail closed on mutations. |
+| `listPortalMaintenanceTestCustomers` | Owner/admin-only read of active, linked, non-guest, non-deleted, non-disabled, non-merged customer options for the maintenance tester selector; returns safe UID/display metadata only |
+| `requestCustomerUploadCatalogPermissionFollowUp` | Active staff-only request for one customer permission follow-up; records an opaque token transactionally and creates one idempotent Portal Alert |
+| `getCustomerUploadCatalogPermissionFollowUp` | Authenticated owning-customer read by opaque token; returns only safe filename/request context and a short-lived preview URL |
+| `respondToCustomerUploadCatalogPermissionFollowUp` | Authenticated owning-customer Allow/Decline transaction; maintenance-guarded, preserves original denial evidence, and never creates Designs or AI work |
 | `finalizeBrandLogoSlot` | Owner callable: finalize/clear Studio+Portal brand logo slots from Admin Storage metadata |
 | `updateBrandLogoDisplaySizes` | Owner callable: set Portal/Studio logo display heights (px) on `settings/brandLogos` |
 
@@ -397,6 +462,21 @@ default** when public search-only env vars are present (`NEXT_PUBLIC_ALGOLIA_APP
 sync/reconcile use Secret Manager admin key (`ALGOLIA_ADMIN_API_KEY` via
 `functions/src/algolia/algoliaSecrets.ts` — **not** shared `lib/secrets`). Index records are
 not an authorization boundary.
+
+**Slice 3 Smart Profile search (2026-08-24):** Ready-index records may include public-safe Smart
+Profile fields. Searchable attribute order: title → structured identity/intent → searchConcepts →
+visibleText → objects → legacy `searchText`/`tagFacetKeys`. Customer Smart Filters (flagged
+`NEXT_PUBLIC_USE_SMART_FILTERS` / `VITE_USE_SMART_FILTERS`, default **off**): subjects, styles,
+themes, interests, professionsGroups, occasions, places, colors. Objects/searchConcepts/visibleText
+are search-only. Classifier syncs search-relevant `smartProfile` changes on ready designs;
+provenance-only churn does not. Legacy tags coexist.
+
+**Slice 6 Smart Profile staff edit (2026-08-26):** Owner/admin callables
+`updateDesignSmartProfileDimensions` and `resetDesignSmartProfileDimension` patch dimension lists on
+Ready+approved designs with existing Smart Profile. Client rules deny direct `smartProfile` writes.
+Ready backfill merges AI output with preserved staff-edited dimensions; `smartProfileAiSnapshot`
+records raw AI output on every enrichment success. Algolia upsert follows existing classifier on
+`smartProfile` dimension changes.
 
 **Studio Design Library managed search (2026-08-10):** Studio ready-catalog text search may use the
 **same environment-specific Algolia index** as Portal via search-only Vite env:
@@ -470,4 +550,41 @@ See `docs/standards/SECURITY.md`. Firebase rules and Electron IPC security are d
 | 2026-06-29 | Added saved reasoning effort, Settings AI playground callable, and documented one-off AI Review rerun override/menu behavior |
 | 2026-06-25 | Configurable vision model via `settings/aiEnrichment` + `updateAiEnrichmentSettings` callable |
 | 2026-06-25 | Document OpenAI vision model `gpt-5.4-nano` (`OPENAI_VISION_MODEL_ID`) |
+
+## AI enrichment authority boundary (2026-09-07)
+
+Normal `enqueueAiEnrichment`, ready-design reprocess, background catalog
+reprocess, and future Autonomous processing use the shared Pass 1 candidate
+core and exactly one active provider pass. Candidate generation does not read
+or call Semantic Review. The deprecated `semanticReviewerEnabled` setting is
+compatibility/read state only.
+
+Manual Semantic Review remains available only through the owner-controlled
+`semanticReviewPlaygroundEnabled` setting under `settings/aiEnrichment`.
+Missing, malformed, or unreadable values resolve to false. The narrow server
+callable is owner-only; when false, the manual callable rejects before provider
+construction/dispatch, retry, cost, or design mutation. When true, its result
+is a non-persisting experimental preview and cannot change Processing
+authority or Ready state.
+
+The active Pass 1 persistence boundary strips historical AI tag and transient
+tag-analysis fields. Staff-owned `design.tags`, historical AI fields, taxonomy
+documents, and discovery consumers remain compatible/readable. Tag resolver,
+Tag Rerank, Suggestion Author, and matched-tag category authority are not
+reachable from active enrichment.
 | 2026-06-24 | Initial Fresh Prints backend overview; links to FIREBASE.md |
+# Portal admin Show Queue callables (ADR-FP-187)
+
+`getPortalAdminUpcomingShowQueueDashboard` is a read-only authenticated callable. It loads upcoming
+Whatnot-surface shows (plus DEV-only fixtures), selects the requested or default next upcoming show,
+loads that show’s `showAllocations`, and batch-loads required `printRequests` for kind/identity
+labels and PR summaries. It does not hydrate designs, uploads, or signed artwork URLs.
+
+`getPortalAdminShowQueueRequestDesigns` lazy-loads active allocations for a validated
+`showId` + `printRequestId` pair and returns 15-minute Admin SDK signed derivative thumbnail URLs
+after owner/admin authorization and allocation linkage proof. It does not accept client Storage
+paths and does not return originals, filenames, or raw paths.
+
+Neither callable widens Firestore or Storage Rules. No composite index is required for the selected
+single-field allocation queries. The legacy `getPortalAdminDailyShowQueue` day-flattened callable
+remains in source for historical compatibility until an authorized DEV redeploy retires client use.

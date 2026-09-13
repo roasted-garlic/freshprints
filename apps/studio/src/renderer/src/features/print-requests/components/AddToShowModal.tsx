@@ -13,6 +13,11 @@ import {
   isPastScheduledShow,
 } from "../../upcoming-shows/utils/groupShowsByUpcomingPast";
 import { ShowPicker, SHOW_CAPACITY_BAR_ANIMATION_MS, buildShowPickerOptions } from "@fresh-prints/show-picker";
+import { buildStaffInboxQueuedGroupKey } from "@fresh-prints/shared/staffInbox/staffInboxItemIds";
+import {
+  holdStaffInboxQueuedAlertGroup,
+  releaseAllStaffInboxQueuedAlertGroups,
+} from "../../staff-inbox/utils/staffInboxQueueAlertTiming";
 import "@fresh-prints/show-picker/show-picker.css";
 import type { Design } from "../../designs/types/design.types";
 import { SplitDesignPickerModal } from "./SplitDesignPickerModal";
@@ -52,6 +57,8 @@ interface AddToShowModalProps {
   destinationMode?: StudioDestinationTab;
   onClose: () => void;
   onAdded: () => void | Promise<void>;
+  /** Re-read request/allocation state after a failed server write before showing the error. */
+  onReconcile?: () => void | Promise<void>;
 }
 
 type StudioDestinationTab = "shows" | "staff_gang_sheet";
@@ -152,6 +159,7 @@ export function AddToShowModal({
   destinationMode,
   onClose,
   onAdded,
+  onReconcile,
 }: AddToShowModalProps) {
   const { user } = useAuth();
   const { shows, isLoading: isShowsLoading } = useUpcomingShows();
@@ -251,28 +259,10 @@ export function AddToShowModal({
     });
   }, [printRequest.isInternal, printRequest.requestOrigin, shows]);
 
-  const calendarShows = useMemo(() => {
-    const now = new Date();
-    const pastWindowStart = new Date(now.getFullYear(), now.getMonth() - 2, 1);
-
-    return shows.filter((show) => {
-      if (show.isArchived === true) {
-        return false;
-      }
-      // Internal Gang Sheets are Studio-only production lanes — never on the Portal-style calendar picker.
-      if (isStaffGangSheetShow(show)) {
-        return false;
-      }
-      if (show.productionStatus === "canceled" || show.productionStatus === "archived") {
-        return false;
-      }
-      if (!isPastScheduledShow(show, now)) {
-        return true;
-      }
-      const scheduled = show.scheduledStartAt?.toDate();
-      return scheduled ? scheduled.getTime() >= pastWindowStart.getTime() : false;
-    });
-  }, [shows]);
+  const calendarShows = useMemo(
+    () => allocatableShows.filter((show) => !isStaffGangSheetShow(show)),
+    [allocatableShows],
+  );
 
   const fixedShowBlockReason = useMemo(() => {
     if (!fixedShowId) {
@@ -544,17 +534,21 @@ export function AddToShowModal({
       return;
     }
 
-    const steps = finalLegs.flatMap((leg) =>
-      Object.entries(leg.quantitiesByItemId).map(([itemId, quantity]) => ({
-        showId: leg.showId,
-        itemId,
-        quantity,
-      })),
+    const heldGroupKeys = finalLegs.map((leg) =>
+      buildStaffInboxQueuedGroupKey(printRequest.id, leg.showId),
     );
+    for (const groupKey of heldGroupKeys) {
+      holdStaffInboxQueuedAlertGroup(groupKey);
+    }
 
     setIsSubmitting(true);
     setActionError(null);
-    setProgress(steps.length > 0 ? { stepIndex: 0, stepTotal: steps.length, showLabel: "", itemLabel: "" } : null);
+    setProgress({
+      stepIndex: 0,
+      stepTotal: 1,
+      showLabel: finalLegs.map((leg) => getShowLabel(leg.showId)).join(", "),
+      itemLabel: "request plan",
+    });
     setAllocatedBaselineByShowId(
       new Map([
         ...allocatableShows.map((show) => [show.id, show.allocatedQuantity] as const),
@@ -563,22 +557,19 @@ export function AddToShowModal({
     );
 
     try {
-      for (const [index, step] of steps.entries()) {
-        const design = designById?.get(items.find((item) => item.id === step.itemId)?.designId ?? "");
-
-        setProgress({
-          stepIndex: index + 1,
-          stepTotal: steps.length,
-          showLabel: getShowLabel(step.showId),
-          itemLabel: design?.title ?? "design",
-        });
-
-        await upcomingShowService.allocatePrintRequestItem(user, step.showId, {
-          printRequestId: printRequest.id,
-          printRequestItemId: step.itemId,
-          quantity: step.quantity,
-        });
-      }
+      setProgress({
+        stepIndex: 0,
+        stepTotal: 1,
+        showLabel: finalLegs.map((leg) => getShowLabel(leg.showId)).join(", "),
+        itemLabel: "request plan",
+      });
+      await upcomingShowService.allocateStudioPrintRequestToShow(user, {
+        printRequestId: printRequest.id,
+        legs: finalLegs.map((leg) => ({
+          upcomingShowId: leg.showId,
+          quantitiesByItemId: leg.quantitiesByItemId,
+        })),
+      });
 
       // Capacity celebration on the same ShowPicker instance (do not unmount the calendar).
       setProgress(null);
@@ -588,12 +579,19 @@ export function AddToShowModal({
       await waitForNextPaint();
       await waitForCapacityBarAnimation();
 
+      releaseAllStaffInboxQueuedAlertGroups(heldGroupKeys);
       onClose();
       await onAdded();
     } catch (error) {
+      releaseAllStaffInboxQueuedAlertGroups(heldGroupKeys);
       setSavePendingByShowId(undefined);
       setIsCelebratingSave(false);
       setAllocatedBaselineByShowId(undefined);
+      try {
+        await onReconcile?.();
+      } catch {
+        // Preserve the original allocation error; reconciliation is best-effort UI repair.
+      }
       setActionError(formatWriteErrorMessage(error));
     } finally {
       setIsSubmitting(false);
@@ -602,12 +600,11 @@ export function AddToShowModal({
   }, [
     allocatableShows,
     canConfirmFullFitDirectly,
-    designById,
     getShowLabel,
-    items,
     legs,
     onAdded,
     onClose,
+    onReconcile,
     openStaffGangSheets,
     printRequest.id,
     remainingItems,
@@ -621,6 +618,7 @@ export function AddToShowModal({
     fixedShowIsBlocked ||
     isBusy ||
     (isStaffDestination && (!isRequestEligibleForStaff || !openStaffGangSheet)) ||
+    (remainingItems.length > 0 && !canConfirmFullFitDirectly) ||
     (legs.length === 0 && !(canConfirmFullFitDirectly && remainingItems.length > 0));
 
   const staffGangSheetCapacityCard = staffCapacityPresentation ? (
@@ -831,8 +829,7 @@ export function AddToShowModal({
                     ) : null}
                   </>
                 )
-              ) : allocatableShows.filter((show) => !isStaffGangSheetShow(show)).length === 0 &&
-                calendarShows.length === 0 ? (
+              ) : allocatableShows.filter((show) => !isStaffGangSheetShow(show)).length === 0 ? (
                 <p className="print-requests-modal-hint">
                   {shows.filter((show) => !isStaffGangSheetShow(show)).length === 0
                     ? "Add a show in the Show Queue before attaching print requests."

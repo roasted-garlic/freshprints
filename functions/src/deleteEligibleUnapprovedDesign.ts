@@ -14,8 +14,10 @@ import {
   isDeleteEligibleUnapprovedDesignStatus,
   validateDeleteEligibleUnapprovedDesignRequest,
 } from "../../packages/shared/src/utils/deleteEligibleUnapprovedDesignValidation";
+import type { DeletionCallableWarmupResponse } from "../../packages/shared/src/types/deletion/deletionWarmup.types";
 import { adminDb, adminStorage } from "./lib/admin";
 import { loadCallerProfile } from "./lib/caller";
+import { deletionWarmupOk, isDeletionCallableWarmupRequest } from "./lib/deletionWarmup";
 import { invalidArgument, permissionDenied, unauthenticated } from "./lib/errors";
 
 function assertOwnerCaller(caller: Awaited<ReturnType<typeof loadCallerProfile>>): void {
@@ -184,13 +186,18 @@ async function deleteOneDesign(designId: string): Promise<DeleteEligibleUnapprov
 
 export const deleteEligibleUnapprovedDesign = onCall(
   { timeoutSeconds: 300, memory: "512MiB" },
-  async (request): Promise<DeleteEligibleUnapprovedDesignResponse> => {
+  async (
+    request,
+  ): Promise<DeleteEligibleUnapprovedDesignResponse | DeletionCallableWarmupResponse> => {
     if (!request.auth?.uid) {
       throw unauthenticated();
     }
 
     const caller = await loadCallerProfile(request.auth.uid);
     assertOwnerCaller(caller);
+    if (isDeletionCallableWarmupRequest(request.data)) {
+      return deletionWarmupOk();
+    }
 
     const validated = validateDeleteEligibleUnapprovedDesignRequest(request.data);
     if (!validated.ok || !validated.designIds) {

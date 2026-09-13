@@ -23,7 +23,7 @@ export function DesignCard({
   return (
     <div className={`design-card-shell${isSelectedForPurge ? " is-selected-for-purge" : ""}`}>
       {canSelectForPurge && onTogglePurgeSelection ? (
-        <label className="design-card-purge-select">
+        <label className="design-card-purge-select studio-checkbox studio-checkbox--danger studio-checkbox--overlay">
           <input
             aria-label={`Select ${design.title} for permanent delete`}
             checked={isSelectedForPurge}

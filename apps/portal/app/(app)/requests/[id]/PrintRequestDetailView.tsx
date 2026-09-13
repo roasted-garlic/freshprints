@@ -10,6 +10,11 @@ import {
   resolvePortalPrintRequestProgressLabel,
 } from '@fresh-prints/shared/utils/printRequestConversion';
 import {
+  isPortalActiveEditablePrintRequest,
+  isPortalParkedDraft,
+} from '@fresh-prints/shared/utils/portalActiveEditablePrintRequest';
+import {
+  toPortalPrintRequestListTab,
   type PortalPrintRequestListTab,
 } from '@fresh-prints/shared/utils/portalPrintRequestListTabs';
 import {
@@ -18,6 +23,9 @@ import {
   type PortalPrintProgressStage,
 } from '@fresh-prints/shared/utils/portalPrintProgressStage';
 import { formatPortalCustomerShowScheduleLabel } from '@fresh-prints/shared/utils/portalCustomerShowSchedule';
+import { isPortalCustomerOriginPrintRequest } from '@fresh-prints/shared/utils/portalPrintRequestEditability';
+import { evaluatePortalPrintRequestUnqueue } from '@fresh-prints/shared/utils/portalPrintRequestUnqueue';
+import type { ShowProductionStatus } from '@fresh-prints/shared/types/upcomingShow/upcomingShow.enums';
 import { sumPrintRequestItemQuantities } from '@fresh-prints/shared/utils/portalShowQueueCapacity';
 import {
   summarizePrintRequestPersistenceHealth,
@@ -27,7 +35,10 @@ import {
   sumAllocatedQuantityByItemId,
   sumRemainingUnallocatedQuantity,
 } from '@fresh-prints/shared/utils/portalShowQueueFit';
+import { CatalogPreviewLightbox, type CatalogPreviewLightboxNavItem } from '../../../../features/catalog/components/CatalogPreviewLightbox';
+import { catalogStorageService } from '../../../../features/catalog/services/catalogStorageService';
 import { PortalPrintRequestItemCard } from '../../../../features/print-requests/components/PortalPrintRequestItemCard';
+import { PortalUnqueueFromShowConfirmModal } from '../../../../features/print-requests/components/PortalUnqueueFromShowConfirmModal';
 import { PortalPrintRequestProgressPanel } from '../../../../features/print-requests/components/PortalPrintRequestProgressPanel';
 import { PortalPrintRequestScheduleSection } from '../../../../features/print-requests/components/PortalPrintRequestScheduleSection';
 import {
@@ -38,20 +49,40 @@ import { PrintRequestDetailGuide } from '../../../../features/print-requests/com
 import { usePortalPrintRequests } from '../../../../features/print-requests/context/PortalPrintRequestContext';
 import { useAddDesignToRequestFlow } from '../../../../features/print-requests/hooks/useAddDesignToRequestFlow';
 import { usePrintRequestDetail } from '../../../../features/print-requests/hooks/usePrintRequestDetail';
+import { usePortalStandardPrintSizes } from '../../../../features/print-requests/hooks/usePortalStandardPrintSizes';
 import { usePortalShowPrintProgress } from '../../../../features/print-requests/hooks/usePortalShowPrintProgress';
 import { usePortalPrintRequestShowSchedules } from '../../../../features/print-requests/hooks/usePortalPrintRequestShowSchedules';
+import { useUnqueuePrintRequestFromShow } from '../../../../features/print-requests/hooks/useUnqueuePrintRequestFromShow';
 import {
   portalPrintRequestService,
   printRequestItemHasCustomerUpload,
 } from '../../../../features/print-requests/services/portalPrintRequestService';
+import { clearPortalPrintRequestReadCache } from '../../../../features/print-requests/services/portalPrintRequestReadCache';
+import {
+  portalShowSelectionService,
+  prefetchPortalAllocatableShows,
+} from '../../../../features/print-requests/services/portalShowSelectionService';
 import { buildCatalogLibraryHref, buildRequestArtworkHref } from '../../../../features/print-requests/utils/catalogSelectionNavigation';
 import {
   parsePortalRequestDetailFrom,
   resolvePortalRequestDetailBack,
+  buildRequestDetailHref,
 } from '../../../../features/print-requests/utils/portalRequestDetailReturn';
+import {
+  resolveCanShowUnqueueFromShowCta,
+  resolveStuckActiveNeedsEditingHeal,
+} from '../../../../features/print-requests/utils/printRequestDetailUnqueueUi';
 import { PortalConfirmModal } from '../../../../features/shared/components/PortalConfirmModal';
 import { PortalPickContinuableRequestModal } from '../../../../features/shared/components/PortalPickContinuableRequestModal';
-import { ArrowLeftIcon, CalendarPlusIcon, ImagePlusIcon, LibraryIcon, RefreshIcon } from '../../../../features/shared/components/PortalIcons';
+import { HoverBubbleTooltip } from '../../../../features/shared/components/HoverBubbleTooltip';
+import { ArrowLeftIcon, CalendarPlusIcon, CircleHelpIcon, ImagePlusIcon, LibraryIcon, RefreshIcon } from '../../../../features/shared/components/PortalIcons';
+import { PortalEditingModeBanner } from '../../../../features/print-requests/components/PortalEditingModeBanner';
+import { PortalParkedDraftOverlay } from '../../../../features/print-requests/components/PortalParkedDraftOverlay';
+import { PortalShowPriceCommitmentModal } from '../../../../features/print-requests/components/PortalShowPriceCommitmentModal';
+import {
+  buildPortalShowPriceCommitmentSummary,
+  formatPortalShowPriceUsd,
+} from '../../../../features/print-requests/utils/buildPortalShowPriceCommitmentSummary';
 
 type AutosaveStatus = 'idle' | 'saving' | 'saved' | 'failed';
 
@@ -78,20 +109,75 @@ function getStatusLabel(status: string): string {
   }
 }
 
+function resolvePrintRequestItemPreviewPath(
+  item: PrintRequestItem,
+  designSummaries: Map<string, { previewPath?: string; thumbnailPath?: string; title?: string; artworkBackgroundHex?: string; updatedAtMs?: number } | null>,
+  uploadSummaries: Map<
+    string,
+    {
+      previewStoragePath: string | null;
+      thumbnailStoragePath: string | null;
+      originalFilename: string;
+    } | null
+  >,
+): {
+  path: string;
+  contentVersion?: number;
+  alt: string;
+  artworkBackgroundHex?: string;
+} | null {
+  if (item.sourceType === 'staff_artwork') {
+    const path =
+      item.previewStoragePath?.trim() ||
+      item.thumbnailStoragePath?.trim() ||
+      '';
+    if (!path) return null;
+    return {
+      path,
+      alt: `${item.titleSnapshot?.trim() || item.sourceLabel || 'Staff-added'} preview`,
+      artworkBackgroundHex: item.artworkBackgroundHex,
+    };
+  }
+  const design = item.designId ? designSummaries.get(item.designId) : null;
+  const upload = item.customerUploadId ? uploadSummaries.get(item.customerUploadId) : null;
+  const path =
+    design?.previewPath?.trim() ||
+    design?.thumbnailPath?.trim() ||
+    upload?.previewStoragePath?.trim() ||
+    upload?.thumbnailStoragePath?.trim() ||
+    '';
+  if (!path) {
+    return null;
+  }
+  return {
+    path,
+    contentVersion: design?.updatedAtMs,
+    alt: `${design?.title ?? upload?.originalFilename ?? item.titleSnapshot ?? 'Design'} preview`,
+    artworkBackgroundHex: design?.artworkBackgroundHex,
+  };
+}
+
 export default function PrintRequestDetailView() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
   const {
     allocationTotalsByRequestId,
+    clearPrintRequestItems,
     closeCurrentRequestDrawer,
     continuableRequests,
     createPrintRequest,
+    isClearingWorkingRequest,
+    portalEditableContinuableRequests,
     refreshRequests,
     reloadWorkingItems,
     reconcileQueuedRequest,
+    reconcileUnqueuedRequest,
     resetWorkingCart,
     summariesByRequestId,
+    workingRequest,
+    parkedDraftRequest,
+    setSelectedWorkingRequestId,
   } = usePortalPrintRequests();
   const printRequestId = params.id;
   const [actionError, setActionError] = useState<string | null>(null);
@@ -103,10 +189,21 @@ export default function PrintRequestDetailView() {
   const [isFlushingQueue, setIsFlushingQueue] = useState(false);
   const [unallocatedQuantity, setUnallocatedQuantity] = useState(0);
   const [isQueueModalOpen, setIsQueueModalOpen] = useState(false);
-  const [itemPendingRemoval, setItemPendingRemoval] = useState<PrintRequestItem | null>(null);
-  const [isRemovingItem, setIsRemovingItem] = useState(false);
-  /** Bumped per item id when remove confirm is cancelled so qty-0 input restores. */
-  const [quantityResetKeys, setQuantityResetKeys] = useState<Record<string, number>>({});
+  const [isPriceCommitmentModalOpen, setIsPriceCommitmentModalOpen] = useState(false);
+  const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
+  const [clearError, setClearError] = useState<string | null>(null);
+  const [requestAllocations, setRequestAllocations] = useState<
+    Awaited<ReturnType<typeof portalPrintRequestService.listShowAllocationsForPrintRequests>>
+  >([]);
+  const [isUnqueueModalOpen, setIsUnqueueModalOpen] = useState(false);
+  const {
+    clearError: clearUnqueueError,
+    error: unqueueError,
+    isSubmitting: isUnqueueSubmitting,
+    unqueueFromShow,
+  } = useUnqueuePrintRequestFromShow();
+  const [lightboxActiveItemId, setLightboxActiveItemId] = useState<string | null>(null);
+  const [lightboxNavItems, setLightboxNavItems] = useState<CatalogPreviewLightboxNavItem[]>([]);
 
   const {
     printRequest,
@@ -115,13 +212,16 @@ export default function PrintRequestDetailView() {
     uploadSummaries,
     isLoading,
     error,
-    isEditable,
+    reload,
     updateItem,
     duplicateItem,
     getItemClientKey,
     removeItem,
     reconcileQueued,
+    reconcileUnqueued,
+    patchArtworkEnhanceMode,
   } = usePrintRequestDetail(printRequestId);
+  const { settings: standardPrintSizesSettings } = usePortalStandardPrintSizes();
 
   const addDesignFlow = useAddDesignToRequestFlow({
     continuableRequests,
@@ -129,6 +229,67 @@ export default function PrintRequestDetailView() {
     refreshRequests,
     reloadWorkingItems,
   });
+
+  const openItemLightbox = useCallback(
+    async (itemId: string) => {
+      const resolved: Array<(CatalogPreviewLightboxNavItem & { previewUrl: string }) | null> =
+        await Promise.all(
+          items.map(async (item) => {
+            const preview = resolvePrintRequestItemPreviewPath(
+              item,
+              designSummaries,
+              uploadSummaries,
+            );
+            if (!preview) {
+              return null;
+            }
+            const previewUrl = await catalogStorageService.getDownloadUrlForCatalogPath(
+              preview.path,
+              preview.contentVersion,
+            );
+            if (!previewUrl) {
+              return null;
+            }
+            return {
+              id: item.id,
+              alt: preview.alt,
+              previewUrl,
+              artworkBackgroundHex: preview.artworkBackgroundHex,
+            };
+          }),
+        );
+      const navItems = resolved.filter(
+        (entry): entry is CatalogPreviewLightboxNavItem & { previewUrl: string } => entry !== null,
+      );
+      if (navItems.length === 0 || !navItems.some((entry) => entry.id === itemId)) {
+        return;
+      }
+      setLightboxNavItems(navItems);
+      setLightboxActiveItemId(itemId);
+    },
+    [designSummaries, items, uploadSummaries],
+  );
+
+  const closeItemLightbox = useCallback((finalItemId: string | null) => {
+    setLightboxActiveItemId(null);
+    setLightboxNavItems([]);
+    if (!finalItemId) {
+      return;
+    }
+    const card = document.querySelector<HTMLElement>(
+      `[data-print-request-item-id="${CSS.escape(finalItemId)}"]`,
+    );
+    card?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, []);
+
+  const activeLightboxItem =
+    lightboxActiveItemId === null
+      ? undefined
+      : lightboxNavItems.find((entry) => entry.id === lightboxActiveItemId);
+
+  useEffect(() => {
+    void prefetchPortalAllocatableShows();
+  }, []);
 
   useEffect(() => {
     if (searchParams.get('upload') !== '1') {
@@ -164,6 +325,7 @@ export default function PrintRequestDetailView() {
     try {
       const allocations =
         await portalPrintRequestService.listShowAllocationsForPrintRequests([printRequestId]);
+      setRequestAllocations(allocations);
       const allocatedByItemId = sumAllocatedQuantityByItemId(
         allocations.map((allocation) => ({
           printRequestItemId: allocation.printRequestItemId,
@@ -173,6 +335,7 @@ export default function PrintRequestDetailView() {
       );
       setUnallocatedQuantity(sumRemainingUnallocatedQuantity(items, allocatedByItemId));
     } catch {
+      setRequestAllocations([]);
       setUnallocatedQuantity(sumPrintRequestItemQuantities(items));
     }
   }, [items, printRequestId]);
@@ -231,7 +394,12 @@ export default function PrintRequestDetailView() {
   const handleUpdateItem = useCallback(
     async (
       item: PrintRequestItem,
-      input: { quantity: number; printWidthInches: number; printHeightInches: number },
+      input: {
+        quantity: number;
+        printWidthInches: number;
+        printHeightInches: number;
+        standardSizePresetKey?: string | null;
+      },
     ): Promise<{ quantity: number }> => {
       setActionError(null);
       // updateItem already synchronously reconciles both local items and shared workingItems
@@ -266,34 +434,43 @@ export default function PrintRequestDetailView() {
   const handleRemoveItem = useCallback(
     async (item: PrintRequestItem) => {
       setActionError(null);
-      setIsRemovingItem(true);
 
       try {
         // removeItem already synchronously filters both local items and workingItems on success
         // (plus its own beginPendingItemRemovals/endPendingItemRemovals guard) — no follow-up
         // reload needed; it was the actual source of the resurrection defect (Section 19.2).
         await removeItem(item.id);
-        setItemPendingRemoval(null);
       } catch (removeError) {
         setActionError(removeError instanceof Error ? removeError.message : 'Unable to remove item.');
-      } finally {
-        setIsRemovingItem(false);
       }
     },
     [removeItem],
   );
 
-  const pendingRemovalTitle =
-    itemPendingRemoval?.titleSnapshot ||
-    (itemPendingRemoval?.designId
-      ? designSummaries.get(itemPendingRemoval.designId)?.title
-      : undefined) ||
-    (itemPendingRemoval?.customerUploadId
-      ? uploadSummaries.get(itemPendingRemoval.customerUploadId)?.originalFilename
-      : undefined) ||
-    'this design';
+  const handleClearAllDesigns = useCallback(async () => {
+    if (!printRequestId) {
+      return;
+    }
+
+    setClearError(null);
+    try {
+      await clearPrintRequestItems(printRequestId);
+      if (workingRequest?.id !== printRequestId) {
+        await reload({ silent: true });
+      }
+      setIsClearConfirmOpen(false);
+    } catch (error) {
+      setClearError(
+        error instanceof Error ? error.message : 'Unable to clear designs from this request.',
+      );
+    }
+  }, [clearPrintRequestItems, printRequestId, reload, workingRequest?.id]);
 
   const totalPrintCount = useMemo(() => sumPrintRequestItemQuantities(items), [items]);
+  const showPriceCommitmentSummary = useMemo(
+    () => buildPortalShowPriceCommitmentSummary(items),
+    [items],
+  );
 
   const listTab = useMemo((): PortalPrintRequestListTab => {
     if (!printRequest) {
@@ -303,13 +480,15 @@ export default function PrintRequestDetailView() {
     const summary = summariesByRequestId[printRequest.id];
     const allocationTotals = allocationTotalsByRequestId[printRequest.id];
 
-    return derivePrintRequestListTab({
-      totalRequestedQuantity: summary?.totalQuantity ?? totalPrintCount,
-      totalAllocatedQuantity: allocationTotals?.totalAllocatedQuantity ?? 0,
-      totalInProgressQuantity: allocationTotals?.totalInProgressQuantity ?? 0,
-      totalPrintedQuantity: allocationTotals?.totalPrintedQuantity ?? 0,
-      status: printRequest.status,
-    });
+    return toPortalPrintRequestListTab(
+      derivePrintRequestListTab({
+        totalRequestedQuantity: summary?.totalQuantity ?? totalPrintCount,
+        totalAllocatedQuantity: allocationTotals?.totalAllocatedQuantity ?? 0,
+        totalInProgressQuantity: allocationTotals?.totalInProgressQuantity ?? 0,
+        totalPrintedQuantity: allocationTotals?.totalPrintedQuantity ?? 0,
+        status: printRequest.status,
+      }),
+    );
   }, [allocationTotalsByRequestId, printRequest, summariesByRequestId, totalPrintCount]);
 
   const returnFrom = parsePortalRequestDetailFrom(searchParams.get('from'));
@@ -328,6 +507,7 @@ export default function PrintRequestDetailView() {
   );
   const printProgress = usePortalShowPrintProgress(printRequestId, preLiveAuthority.pollingEnabled);
   const {
+    clearSchedules,
     reload: reloadRequestSchedules,
     schedules: requestSchedules,
   } = usePortalPrintRequestShowSchedules(printRequestId);
@@ -346,6 +526,83 @@ export default function PrintRequestDetailView() {
       })),
     [requestSchedules],
   );
+  const primaryScheduledShow = requestSchedules[0] ?? null;
+  const primaryShowProductionStatus = useMemo((): ShowProductionStatus => {
+    if (!primaryScheduledShow) {
+      return 'open';
+    }
+    const match = printProgress.shows.find(
+      (show) => show.showId === primaryScheduledShow.upcomingShowId,
+    );
+    return match?.productionStatus ?? 'open';
+  }, [primaryScheduledShow, printProgress.shows]);
+  const hasOtherPortalEditableContinuableRequest = useMemo(
+    () =>
+      portalEditableContinuableRequests.some(
+        (request) => request.id !== printRequestId && request.status === 'editing'
+      ),
+    [portalEditableContinuableRequests, printRequestId],
+  );
+
+  const isParkedDraft = useMemo(() => {
+    if (!printRequest) return false;
+    return isPortalParkedDraft(printRequest);
+  }, [printRequest]);
+
+  // Override isEditable from usePrintRequestDetail to use the more precise active editable check
+  const isActivelyEditable = useMemo(() => {
+    if (!printRequest) return false;
+    return isPortalActiveEditablePrintRequest(printRequest);
+  }, [printRequest]);
+
+  // Use the actively editable check instead of the base isEditable
+  const effectiveIsEditable = isActivelyEditable;
+  const unqueueEligibility = useMemo(() => {
+    if (!printRequest || !primaryScheduledShow) {
+      return evaluatePortalPrintRequestUnqueue({
+        request: {
+          id: printRequestId,
+          status: 'active',
+        },
+        showProductionStatus: 'open',
+        allocationsOnShow: [],
+        hasOtherPortalEditableContinuableRequest: false,
+      });
+    }
+
+    const allocationsOnShow = requestAllocations
+      .filter(
+        (allocation) =>
+          allocation.upcomingShowId &&
+          allocation.upcomingShowId === primaryScheduledShow.upcomingShowId,
+      )
+      .map((allocation) => ({
+        id: allocation.id,
+        upcomingShowId: allocation.upcomingShowId,
+        status: allocation.status,
+        allocatedQuantity: allocation.allocatedQuantity,
+      }));
+
+    return evaluatePortalPrintRequestUnqueue({
+      request: {
+        id: printRequest.id,
+        status: printRequest.status,
+        requestOrigin: printRequest.requestOrigin,
+        isInternal: printRequest.isInternal,
+        closureKind: printRequest.closureKind,
+      },
+      showProductionStatus: primaryShowProductionStatus,
+      allocationsOnShow,
+      hasOtherPortalEditableContinuableRequest,
+    });
+  }, [
+    hasOtherPortalEditableContinuableRequest,
+    primaryScheduledShow,
+    primaryShowProductionStatus,
+    printRequest,
+    printRequestId,
+    requestAllocations,
+  ]);
   const hasAttachedDesigns = items.length > 0;
 
   const handleQueuedToShow = useCallback(
@@ -361,20 +618,148 @@ export default function PrintRequestDetailView() {
       reconcileQueuedRequest(printRequestId, {
         totalAllocatedQuantity: result.totalAllocatedQuantity,
       });
-      void reloadRequestSchedules();
       setUnallocatedQuantity(0);
       resetWorkingCart();
       closeCurrentRequestDrawer();
+      // Drop the pre-queue empty allocation cache so Remove & Edit eligibility can see the new
+      // showAllocations immediately (30s shared read cache otherwise returns the stale empty set).
+      clearPortalPrintRequestReadCache();
+      clearUnqueueError();
+      // After Editing → show, land on the queued detail with Working return context (restored
+      // draft / Current Request), not the pre-queue Editing `from=`.
+      router.replace(buildRequestDetailHref(printRequestId, { from: 'working' }));
+      // Always silent-reload request + items after queue so customer-visible item truth cannot
+      // stick at an emptied local cart (Wave C previously skipped this read; correctness wins).
+      // Also hydrate show schedules + allocations for Remove & Edit eligibility.
+      await Promise.all([
+        reload({ silent: true }),
+        reloadRequestSchedules(),
+        loadAllocationState(),
+      ]);
     },
     [
+      clearUnqueueError,
       closeCurrentRequestDrawer,
+      loadAllocationState,
       printRequestId,
       reconcileQueued,
       reconcileQueuedRequest,
       resetWorkingCart,
+      reload,
       reloadRequestSchedules,
+      router,
     ],
   );
+
+  const canShowUnqueueFromShowCta = resolveCanShowUnqueueFromShowCta({
+    isEditable: effectiveIsEditable,
+    unqueueEligibility,
+    hasPrimaryScheduledShow: primaryScheduledShow !== null,
+  });
+
+  const hasActiveRequestAllocations = requestAllocations.some(
+    (allocation) => allocation.status !== 'canceled',
+  );
+
+  const stuckActiveNeedsEditingHeal = resolveStuckActiveNeedsEditingHeal({
+    isEditable: effectiveIsEditable,
+    requestStatus: printRequest?.status,
+    listTab,
+    isPortalCustomerOrigin: isPortalCustomerOriginPrintRequest({
+      requestOrigin: printRequest?.requestOrigin,
+      isInternal: printRequest?.isInternal === true,
+    }),
+    hasOtherPortalEditableContinuableRequest,
+    hasScheduledShows: requestSchedules.length > 0,
+    hasActiveAllocations: hasActiveRequestAllocations,
+  });
+
+  const stuckHealAttemptedRef = useRef<string | null>(null);
+
+  const applySuccessfulUnqueue = useCallback(
+    async (result: { printRequestId: string; requestStatus: 'editing' | 'active' }) => {
+      reconcileUnqueuedRequest(result.printRequestId, result.requestStatus);
+      reconcileUnqueued(result.requestStatus);
+      setRequestAllocations([]);
+      clearSchedules();
+      progressWatermarkRef.current = { printRequestId: result.printRequestId, stage: null };
+      setUnallocatedQuantity(sumPrintRequestItemQuantities(items));
+      clearPortalPrintRequestReadCache();
+      if (result.requestStatus === 'editing') {
+        setSelectedWorkingRequestId(result.printRequestId);
+      }
+      router.replace(buildRequestDetailHref(result.printRequestId, { from: 'editing' }));
+      await Promise.all([
+        reload(),
+        reloadRequestSchedules(),
+        refreshRequests({ printRequestId: result.printRequestId }),
+      ]);
+    },
+    [
+      clearSchedules,
+      items,
+      reconcileUnqueued,
+      reconcileUnqueuedRequest,
+      refreshRequests,
+      reload,
+      reloadRequestSchedules,
+      router,
+      setSelectedWorkingRequestId,
+    ],
+  );
+
+  useEffect(() => {
+    if (!printRequest || !stuckActiveNeedsEditingHeal) {
+      return;
+    }
+    if (stuckHealAttemptedRef.current === printRequest.id) {
+      return;
+    }
+    stuckHealAttemptedRef.current = printRequest.id;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const result = await portalShowSelectionService.unqueuePrintRequestFromShow({
+          printRequestId: printRequest.id,
+        });
+        if (cancelled) {
+          return;
+        }
+        await applySuccessfulUnqueue(result);
+      } catch {
+        // Leave stuck page as-is; owner can re-queue then remove again.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [applySuccessfulUnqueue, printRequest, stuckActiveNeedsEditingHeal]);
+
+  const handleUnqueueFromShow = useCallback(async () => {
+    if (!printRequest || !primaryScheduledShow) {
+      return;
+    }
+
+    clearUnqueueError();
+    try {
+      const result = await unqueueFromShow({
+        printRequestId: printRequest.id,
+        upcomingShowId: primaryScheduledShow.upcomingShowId,
+      });
+      setIsUnqueueModalOpen(false);
+      await applySuccessfulUnqueue(result);
+    } catch {
+      // surfaced via unqueueError
+    }
+  }, [
+    applySuccessfulUnqueue,
+    clearUnqueueError,
+    primaryScheduledShow,
+    printRequest,
+    unqueueFromShow,
+  ]);
 
   if (isLoading) {
     return (
@@ -404,7 +789,7 @@ export default function PrintRequestDetailView() {
 
   const designCountLabel = `${printRequest.itemCount} design${printRequest.itemCount === 1 ? '' : 's'}`;
   const printCountLabel = `${totalPrintCount} print${totalPrintCount === 1 ? '' : 's'}`;
-  const canShowQueueCta = isEditable && items.length > 0 && unallocatedQuantity > 0;
+  const canShowQueueCta = effectiveIsEditable && items.length > 0 && unallocatedQuantity > 0;
   const canQueueToShow =
     canShowQueueCta && persistenceSummary.canOpenQueue && !isFlushingQueue;
 
@@ -443,20 +828,50 @@ export default function PrintRequestDetailView() {
           <div className="portal-request-detail-title-row">
             <h1 title={printRequest.name}>{printRequest.name}</h1>
             <div className="portal-request-detail-meta-pills">
-              {!isEditable ? (
-                <span className="portal-request-detail-meta-pill">
-                  {resolvePortalPrintRequestProgressLabel({
-                    closureKind: printRequest.closureKind,
-                    status: printRequest.status,
-                    defaultLabel: getStatusLabel(printRequest.status),
-                  })}
-                </span>
-              ) : null}
+              <span className="portal-request-detail-meta-pill">
+                {resolvePortalPrintRequestProgressLabel({
+                  closureKind: printRequest.closureKind,
+                  status: printRequest.status,
+                  defaultLabel: getStatusLabel(printRequest.status),
+                })}
+              </span>
               <span className="portal-request-detail-meta-pill">{designCountLabel}</span>
               <span className="portal-request-detail-meta-pill">{printCountLabel}</span>
+              {showPriceCommitmentSummary ? (
+                <div className="portal-show-price-commitment-trigger">
+                  <HoverBubbleTooltip
+                    align="center"
+                    bubble="View show pricing and weight breakdown"
+                  >
+                    <button
+                      aria-haspopup="dialog"
+                      aria-label={`Open show pricing details for ${printRequest.name}`}
+                      className="portal-request-detail-meta-pill portal-show-price-commitment-total-pill is-button"
+                      onClick={() => setIsPriceCommitmentModalOpen(true)}
+                      type="button"
+                    >
+                      <span className="portal-show-price-commitment-pill-label">Show total</span>
+                      <strong>
+                        {formatPortalShowPriceUsd(showPriceCommitmentSummary.totalPriceUsd)}
+                      </strong>
+                    </button>
+                  </HoverBubbleTooltip>
+                  <HoverBubbleTooltip align="center" bubble="What does show pricing mean?">
+                    <button
+                      aria-haspopup="dialog"
+                      aria-label={`Explain show pricing for ${printRequest.name}`}
+                      className="portal-show-price-commitment-help"
+                      onClick={() => setIsPriceCommitmentModalOpen(true)}
+                      type="button"
+                    >
+                      <CircleHelpIcon size={18} />
+                    </button>
+                  </HoverBubbleTooltip>
+                </div>
+              ) : null}
             </div>
           </div>
-          {isEditable && hasAttachedDesigns ? (
+          {effectiveIsEditable && hasAttachedDesigns ? (
             <div className="portal-request-detail-show-hint">
               <p className="portal-muted">
                 When your request is ready, add it to a show to have your prints included.
@@ -486,8 +901,46 @@ export default function PrintRequestDetailView() {
               </p>
             )}
           </div>
+        ) : canShowUnqueueFromShowCta ? (
+          <div className="portal-request-detail-header-actions">
+            <button
+              className="portal-button portal-button-secondary"
+              disabled={isUnqueueSubmitting}
+              onClick={() => {
+                clearUnqueueError();
+                setIsUnqueueModalOpen(true);
+              }}
+              type="button"
+            >
+              Remove from Show & Edit
+            </button>
+            {unqueueError ? (
+              <p className="portal-error portal-request-detail-show-cta-hint" role="alert">
+                {unqueueError}
+              </p>
+            ) : (
+              <p className="portal-muted portal-request-detail-show-cta-hint">
+                Remove this request from the show so you can edit it again.
+              </p>
+            )}
+          </div>
         ) : null}
       </header>
+
+      {!isParkedDraft && printRequest.status === 'editing' ? (
+        <PortalEditingModeBanner hasParkedDraft={Boolean(parkedDraftRequest)} />
+      ) : null}
+
+      <div
+        className={
+          isParkedDraft
+            ? 'portal-request-detail-editor is-parked'
+            : 'portal-request-detail-editor'
+        }
+      >
+        {isParkedDraft && printRequest.parkedByEditingRequestId ? (
+          <PortalParkedDraftOverlay editingRequestId={printRequest.parkedByEditingRequestId} />
+        ) : null}
 
       {progressStage ? (
         <PortalPrintRequestProgressPanel
@@ -509,7 +962,7 @@ export default function PrintRequestDetailView() {
         </section>
       ) : null}
 
-      {isEditable ? <PrintRequestDetailGuide /> : null}
+      {effectiveIsEditable ? <PrintRequestDetailGuide /> : null}
 
       {actionError ? (
         <p className="portal-error" role="alert">
@@ -521,11 +974,11 @@ export default function PrintRequestDetailView() {
         <section className="portal-panel portal-requests-empty">
           <h2>No designs yet</h2>
           <p className="portal-muted">
-            {isEditable
+            {effectiveIsEditable
               ? 'Upload your own artwork or browse the Design Library to add designs with quantities and print sizes.'
               : 'This request has no designs.'}
           </p>
-          {isEditable ? (
+          {effectiveIsEditable ? (
             <div className="portal-requests-empty-actions">
               <Link
                 className="portal-button portal-button-primary portal-button-leading-icon"
@@ -551,13 +1004,30 @@ export default function PrintRequestDetailView() {
           ) : null}
         </section>
       ) : (
-        <section aria-label="Request items" className="portal-request-item-editor-grid">
+        <>
+          {effectiveIsEditable ? (
+            <div className="portal-request-detail-items-toolbar">
+              <button
+                className="current-request-drawer-clear"
+                disabled={isClearingWorkingRequest}
+                onClick={() => {
+                  setClearError(null);
+                  setIsClearConfirmOpen(true);
+                }}
+                type="button"
+              >
+                {isClearingWorkingRequest ? 'Clearing…' : 'Clear all designs'}
+              </button>
+            </div>
+          ) : null}
+          <section aria-label="Request items" className="portal-request-item-editor-grid">
           {items.map((item) => {
             const design = item.designId ? designSummaries.get(item.designId) : null;
             const upload = item.customerUploadId
               ? uploadSummaries.get(item.customerUploadId)
               : null;
-            const catalogReuseDesign = !isEditable ? (design ?? null) : undefined;
+            const catalogReuseDesign =
+              !effectiveIsEditable && !isParkedDraft ? (design ?? null) : undefined;
             const isAddingThisDesign =
               Boolean(catalogReuseDesign) &&
               addDesignFlow.addingDesignId === catalogReuseDesign?.id;
@@ -581,6 +1051,10 @@ export default function PrintRequestDetailView() {
                         printWidthInches: design.printWidthInches,
                         printHeightInches: design.printHeightInches,
                         updatedAtMs: design.updatedAtMs,
+                        interactiveEnhancedOriginalPath: design.interactiveEnhancedOriginalPath,
+                        interactiveEnhancedWidthPx: design.interactiveEnhancedWidthPx,
+                        interactiveEnhancedHeightPx: design.interactiveEnhancedHeightPx,
+                        interactiveEnhanceGeneratedAt: design.interactiveEnhanceGeneratedAt,
                       }
                     : null
                 }
@@ -597,6 +1071,11 @@ export default function PrintRequestDetailView() {
                         approvedMaxPrintWidthInches: upload?.approvedMaxPrintWidthInches,
                         approvedMaxPrintHeightInches: upload?.approvedMaxPrintHeightInches,
                         wasUpscaled: upload?.wasUpscaled,
+                        interactiveEnhancedProductionStoragePath:
+                          upload?.interactiveEnhancedProductionStoragePath,
+                        interactiveEnhancedWidthPx: upload?.interactiveEnhancedWidthPx,
+                        interactiveEnhancedHeightPx: upload?.interactiveEnhancedHeightPx,
+                        interactiveEnhanceGeneratedAt: upload?.interactiveEnhanceGeneratedAt,
                         fromAssistedCreation: Boolean(upload?.assistedCreationRequestId),
                       }
                     : null
@@ -606,17 +1085,25 @@ export default function PrintRequestDetailView() {
                 key={getItemClientKey(item.id)}
                 onAddToRequest={addDesignFlow.addDesign}
                 onDuplicate={(nextItem) => void handleDuplicateItem(nextItem)}
-                onRemove={(nextItem) => setItemPendingRemoval(nextItem)}
+                onOpenLightbox={(itemId) => {
+                  void openItemLightbox(itemId);
+                }}
+                onArtworkEnhanceModeChanged={(nextItem, result) => {
+                  patchArtworkEnhanceMode(nextItem.id, result);
+                }}
+                printRequestId={printRequestId}
+                onRemove={(nextItem) => void handleRemoveItem(nextItem)}
                 onUpdate={handleUpdateItem}
                 onAutosaveStateChange={updateAutosaveState}
                 onPersistenceHealthChange={handlePersistenceHealthChange}
                 onRegisterFlush={handleRegisterFlush}
-                quantityResetKey={quantityResetKeys[item.id] ?? 0}
-                readOnly={!isEditable}
+                readOnly={!effectiveIsEditable}
+                standardPrintSizesSettings={standardPrintSizesSettings}
               />
             );
           })}
-        </section>
+          </section>
+        </>
       )}
 
       {autosaveState.status !== 'idle' ? (
@@ -643,6 +1130,22 @@ export default function PrintRequestDetailView() {
           ) : null}
         </div>
       ) : null}
+      </div>
+
+      <CatalogPreviewLightbox
+        activeItemId={lightboxActiveItemId}
+        alt={activeLightboxItem?.alt ?? 'Design preview'}
+        artworkBackgroundHex={activeLightboxItem?.artworkBackgroundHex}
+        isOpen={lightboxActiveItemId !== null && Boolean(activeLightboxItem?.previewUrl)}
+        navigationItems={lightboxNavItems.length > 1 ? lightboxNavItems : undefined}
+        onActiveItemChange={setLightboxActiveItemId}
+        onClose={() => {
+          setLightboxActiveItemId(null);
+          setLightboxNavItems([]);
+        }}
+        onCloseWithFinalItemId={closeItemLightbox}
+        previewUrl={activeLightboxItem?.previewUrl ?? null}
+      />
 
       <PortalQueueToShowModal
         isOpen={isQueueModalOpen}
@@ -652,35 +1155,32 @@ export default function PrintRequestDetailView() {
         printRequest={printRequest}
       />
 
-      <PortalConfirmModal
-        cancelLabel="Keep design"
-        confirmLabel="Remove"
-        confirmVariant="danger"
-        isConfirmLoading={isRemovingItem}
-        isOpen={itemPendingRemoval !== null}
+      {showPriceCommitmentSummary ? (
+        <PortalShowPriceCommitmentModal
+          isOpen={isPriceCommitmentModalOpen}
+          onClose={() => setIsPriceCommitmentModalOpen(false)}
+          requestName={printRequest.name}
+          summary={showPriceCommitmentSummary}
+        />
+      ) : null}
+
+      <PortalUnqueueFromShowConfirmModal
+        isOpen={isUnqueueModalOpen}
+        isSubmitting={isUnqueueSubmitting}
+        showLabel={
+          primaryScheduledShow
+            ? formatPortalCustomerShowScheduleLabel(primaryScheduledShow)
+            : undefined
+        }
         onCancel={() => {
-          if (!isRemovingItem) {
-            const pending = itemPendingRemoval;
-            setItemPendingRemoval(null);
-            if (pending) {
-              setQuantityResetKeys((previous) => ({
-                ...previous,
-                [pending.id]: (previous[pending.id] ?? 0) + 1,
-              }));
-            }
+          if (!isUnqueueSubmitting) {
+            setIsUnqueueModalOpen(false);
           }
         }}
         onConfirm={() => {
-          if (itemPendingRemoval) {
-            void handleRemoveItem(itemPendingRemoval);
-          }
+          void handleUnqueueFromShow();
         }}
-        title="Remove design?"
-      >
-        <p className="portal-muted portal-confirm-modal-message">
-          Remove <strong>{pendingRemovalTitle}</strong> from this print request? This cannot be undone.
-        </p>
-      </PortalConfirmModal>
+      />
 
       <PortalConfirmModal
         confirmLabel={addDesignFlow.isAdding ? 'Adding…' : 'Add to request'}
@@ -693,8 +1193,35 @@ export default function PrintRequestDetailView() {
         <p className="portal-muted portal-confirm-modal-message">{addDesignFlow.confirmMessage}</p>
       </PortalConfirmModal>
 
+      <PortalConfirmModal
+        cancelLabel="Keep designs"
+        confirmLabel="Clear all"
+        confirmVariant="danger"
+        isConfirmLoading={isClearingWorkingRequest}
+        isOpen={isClearConfirmOpen}
+        onCancel={() => {
+          if (!isClearingWorkingRequest) {
+            setIsClearConfirmOpen(false);
+          }
+        }}
+        onConfirm={() => {
+          void handleClearAllDesigns();
+        }}
+        title="Clear all designs?"
+      >
+        <p className="portal-muted portal-confirm-modal-message">
+          This removes every design from this request so you can start fresh. You can add designs
+          again anytime.
+        </p>
+        {clearError ? (
+          <p className="portal-error" role="alert">
+            {clearError}
+          </p>
+        ) : null}
+      </PortalConfirmModal>
+
       <PortalPickContinuableRequestModal
-        continuableRequests={continuableRequests}
+        continuableRequests={addDesignFlow.pickerContinuableRequests}
         designTitle={addDesignFlow.pendingDesign?.title}
         isAdding={addDesignFlow.isAdding}
         isOpen={addDesignFlow.isPickerOpen}

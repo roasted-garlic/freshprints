@@ -10,6 +10,7 @@ import {
 } from "./lib/errors";
 import { validateCreatePortalPrintRequestRequest } from "./lib/createPortalPrintRequestValidation";
 import { createWorkingPrintRequestInTransaction } from "./lib/portalWorkingPrintRequest";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 
 function mapHttpsError(error: unknown): never {
   if (error instanceof HttpsError) {
@@ -55,6 +56,7 @@ export const createPortalPrintRequest = onCall(async (request): Promise<CreatePo
       throw permissionDenied("No customer profile is linked to this account.");
     }
 
+    await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
     const payload = validateCreatePortalPrintRequestRequest(request.data);
     const displayName =
       typeof customer.data.displayName === "string" ? customer.data.displayName : "Customer";

@@ -1,0 +1,247 @@
+{
+  "projectId": "fresh-prints-dev",
+  "runId": "mtp1wbht",
+  "finishedAt": "2026-09-06T00:06:18.793Z",
+  "settings": {
+    "catalogWorkflowMode": "shadow",
+    "catalogAutonomousLiveEnabled": false,
+    "visionModelId": "gemini-2.5-flash-lite",
+    "isDefaultAfter": true,
+    "autoUpgradedOnSave": true,
+    "saveError": null,
+    "needsDefault": true,
+    "promptHasGapSemantics": true
+  },
+  "runs": [
+    {
+      "run": 1,
+      "timedOut": false,
+      "callable": {
+        "designId": "Y2IQuCgAPgnqrBIeJuap",
+        "queued": true,
+        "completed": true,
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "promptVersion": "catalog-enrich-v37",
+      "profileVersion": "smart-profile-v1",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "category": "Funny & Sarcastic",
+      "categoryAlternatives": null,
+      "categoryGapNote": "",
+      "categoryGapSuggested": false,
+      "hardBlockers": [],
+      "wouldAutoApprove": true,
+      "automationDecision": "shadow",
+      "subjects": [
+        "woman",
+        "cucumber"
+      ],
+      "objects": [
+        "cucumber"
+      ],
+      "styles": [
+        "pin-up",
+        "retro",
+        "vintage illustration"
+      ],
+      "title": "Pin-up Woman Holding Cucumber When Life Gives You Cucumbers",
+      "description": "A smaller line of text at the bottom says \"GO FUCK YOURSELF...\". The style is reminiscent of mid-20th century advertising.",
+      "generatedAt": "2026-09-06T00:05:46.425Z"
+    },
+    {
+      "run": 2,
+      "timedOut": false,
+      "callable": {
+        "designId": "Y2IQuCgAPgnqrBIeJuap",
+        "queued": true,
+        "completed": true,
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "promptVersion": "catalog-enrich-v37",
+      "profileVersion": "smart-profile-v1",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "category": "Funny & Sarcastic",
+      "categoryAlternatives": null,
+      "categoryGapNote": "",
+      "categoryGapSuggested": false,
+      "hardBlockers": [],
+      "wouldAutoApprove": true,
+      "automationDecision": "shadow",
+      "subjects": [
+        "woman",
+        "cucumber"
+      ],
+      "objects": [
+        "cucumber"
+      ],
+      "styles": [
+        "retro",
+        "vintage",
+        "pin-up art"
+      ],
+      "title": "Retro Woman Holding Cucumber Saying Go Fuck Yourself",
+      "description": "A vintage-style illustration features a woman with retro hairstyle and makeup, holding a cucumber. The text above reads \"WHEN LIFE GIVES YOU\" and below \"CUCUMBERS GO FUCK YOURSELF...\".",
+      "generatedAt": "2026-09-06T00:05:53.350Z"
+    },
+    {
+      "run": 3,
+      "timedOut": false,
+      "callable": {
+        "designId": "Y2IQuCgAPgnqrBIeJuap",
+        "queued": true,
+        "completed": true,
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "promptVersion": "catalog-enrich-v37",
+      "profileVersion": "smart-profile-v1",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "category": "Funny & Sarcastic",
+      "categoryAlternatives": null,
+      "categoryGapNote": "",
+      "categoryGapSuggested": false,
+      "hardBlockers": [],
+      "wouldAutoApprove": true,
+      "automationDecision": "shadow",
+      "subjects": [
+        "woman",
+        "pin-up"
+      ],
+      "objects": [
+        "cucumber"
+      ],
+      "styles": [
+        "vintage",
+        "retro",
+        "pin-up art",
+        "distressed"
+      ],
+      "title": "Retro Woman With Cucumber Go Fuck Yourself",
+      "description": "A vintage-style pin-up woman with styled blonde hair and blue eyes holds a cucumber.",
+      "generatedAt": "2026-09-06T00:05:59.738Z"
+    },
+    {
+      "run": 4,
+      "timedOut": false,
+      "callable": {
+        "designId": "Y2IQuCgAPgnqrBIeJuap",
+        "queued": true,
+        "completed": true,
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "promptVersion": "catalog-enrich-v37",
+      "profileVersion": "smart-profile-v1",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "category": "Funny & Sarcastic",
+      "categoryAlternatives": null,
+      "categoryGapNote": "",
+      "categoryGapSuggested": false,
+      "hardBlockers": [],
+      "wouldAutoApprove": false,
+      "automationDecision": "needs_review",
+      "subjects": [
+        "woman",
+        "pin-up",
+        "retro",
+        "vintage"
+      ],
+      "objects": [
+        "cucumber"
+      ],
+      "styles": [
+        "pin-up art",
+        "retro illustration",
+        "vintage style",
+        "mid-century modern"
+      ],
+      "title": "When Life Gives You Cucumbers Go F*** Yourself Woman Cucumber",
+      "description": "She has a knowing smile and wears a blue collared shirt. The overall style is reminiscent of mid-century advertising and pulp art.",
+      "generatedAt": "2026-09-06T00:06:06.474Z"
+    },
+    {
+      "run": 5,
+      "timedOut": false,
+      "callable": {
+        "designId": "Y2IQuCgAPgnqrBIeJuap",
+        "queued": true,
+        "completed": true,
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "promptVersion": "catalog-enrich-v37",
+      "profileVersion": "smart-profile-v1",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "category": "Funny & Sarcastic",
+      "categoryAlternatives": null,
+      "categoryGapNote": "",
+      "categoryGapSuggested": false,
+      "hardBlockers": [],
+      "wouldAutoApprove": true,
+      "automationDecision": "shadow",
+      "subjects": [
+        "woman",
+        "Cucumber"
+      ],
+      "objects": [
+        "Cucumber"
+      ],
+      "styles": [
+        "retro",
+        "Pin-up",
+        "vintage",
+        "Comic Book"
+      ],
+      "title": "When Life Gives You Cucumbers Go Fuck Yourself Woman",
+      "description": "A vintage-style pin-up woman with styled blonde hair and bold makeup holds a cucumber. The design features retro lettering that says \"When Life Gives You Cucumbers\" and \"Go Fuck Yourself...\". The overall concept is a humorous and edgy take on a classic pin-up aesthetic.",
+      "generatedAt": "2026-09-06T00:06:13.979Z"
+    }
+  ],
+  "summary": {
+    "runCount": 5,
+    "categories": [
+      "Funny & Sarcastic",
+      "Funny & Sarcastic",
+      "Funny & Sarcastic",
+      "Funny & Sarcastic",
+      "Funny & Sarcastic"
+    ],
+    "categoryAlternatives": [
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    "categoryGapNotes": [
+      "",
+      "",
+      "",
+      "",
+      ""
+    ],
+    "categoryGapSuggestedCount": 0,
+    "categoryGapHardBlockerCount": 0,
+    "wouldAutoApprove": [
+      true,
+      true,
+      true,
+      false,
+      true
+    ],
+    "otherHardBlockers": [
+      [],
+      [],
+      [],
+      [],
+      []
+    ]
+  }
+}

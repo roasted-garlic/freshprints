@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
+import { mergeInteractiveEnhanceResultIntoAssetSummary } from "@fresh-prints/shared/utils/interactiveArtworkEnhance";
+
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
 import { designService } from "../../designs/services/designService";
@@ -62,8 +64,40 @@ export function useReadyDesignsForSelection(designIds: readonly string[] = []) {
     void loadDesigns();
   }, [loadDesigns]);
 
+  const patchDesignFromEnhanceResult = useCallback(
+    (
+      designId: string,
+      result: {
+        artworkEnhanceMode: "baseline" | "enhanced";
+        widthPx: number;
+        heightPx: number;
+      },
+    ) => {
+      const id = designId.trim();
+      if (!id) {
+        return;
+      }
+
+      setState((currentState) => {
+        const index = currentState.designs.findIndex((design) => design.id === id);
+        if (index < 0) {
+          return currentState;
+        }
+
+        const designs = [...currentState.designs];
+        const patched = mergeInteractiveEnhanceResultIntoAssetSummary(designs[index], result);
+        if (!patched) {
+          return currentState;
+        }
+        designs[index] = patched;
+        return { ...currentState, designs };
+      });
+    },
+    [],
+  );
   return {
     ...state,
     reloadDesigns: loadDesigns,
+    patchDesignFromEnhanceResult,
   };
 }

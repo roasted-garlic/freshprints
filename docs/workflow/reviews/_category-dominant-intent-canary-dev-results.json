@@ -1,0 +1,683 @@
+{
+  "projectId": "fresh-prints-dev",
+  "startedAt": "2026-09-04T01:03:29.001Z",
+  "catalogWorkflowMode": "shadow",
+  "catalogAutonomousLiveEnabled": false,
+  "activeReprocessJobs": 0,
+  "expectedPrompt": "catalog-enrich-v33",
+  "expectedNormalizer": "smart-profile-normalizer-v6",
+  "taxonomy": {
+    "revision": 11,
+    "ready": true,
+    "metaKeys": [
+      "revision",
+      "schemaVersion",
+      "chunkCount",
+      "tagCount",
+      "categoryCount",
+      "contentHash",
+      "updatedAtMs",
+      "updatedBy",
+      "ready"
+    ],
+    "corpusSource": "taxonomyMaterialization/chunk-*",
+    "cannabisPresent": true,
+    "astrologyPresent": true,
+    "categoryNameSampleCount": 21,
+    "categoryCountMeta": 21
+  },
+  "gateA": {
+    "designId": "1Ws0T9fivryest6IUSbt",
+    "taxonomy": {
+      "revision": 11,
+      "ready": true,
+      "metaKeys": [
+        "revision",
+        "schemaVersion",
+        "chunkCount",
+        "tagCount",
+        "categoryCount",
+        "contentHash",
+        "updatedAtMs",
+        "updatedBy",
+        "ready"
+      ],
+      "corpusSource": "taxonomyMaterialization/chunk-*",
+      "cannabisPresent": true,
+      "astrologyPresent": true,
+      "categoryNameSampleCount": 21,
+      "categoryCountMeta": 21
+    },
+    "before": {
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "rootTitle": "just_hit_it",
+      "aiSuggestedTitle": "Just Hit It Swoosh Logo",
+      "aiSuggestedDescription": "Below the graphic, the phrase \"JUST HIT IT\" is printed in bold green block letters.",
+      "categoryId": "S2wdfmHDdG4aDFFRfNM1",
+      "categoryName": "Cannabis & 420",
+      "categoryAlternatives": [],
+      "categoryAlternativeNames": [],
+      "subjects": [],
+      "objects": [
+        "cannabis leaves"
+      ],
+      "themes": [
+        "humor",
+        "parody",
+        "smoking",
+        "cannabis",
+        "stoner culture"
+      ],
+      "interests": [
+        "cannabis",
+        "weed",
+        "smoking",
+        "humor"
+      ],
+      "searchConcepts": [
+        "cannabis logo parody",
+        "weed swoosh",
+        "just hit it",
+        "stoner humor",
+        "marijuana leaf design"
+      ],
+      "visibleText": [
+        "JUST HIT IT"
+      ],
+      "promptVersion": "catalog-enrich-v33",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "schemaVersion": null,
+      "automationDecision": "needs_review",
+      "automationReasonCodes": [
+        "structured_evidence_gap:objects:cannabis leaves"
+      ],
+      "wouldAutoApprove": false
+    },
+    "after": {
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "rootTitle": "just_hit_it",
+      "aiSuggestedTitle": "Just Hit It Swoosh",
+      "aiSuggestedDescription": "A swoosh design featuring \"JUST HIT IT\".",
+      "categoryId": "S2wdfmHDdG4aDFFRfNM1",
+      "categoryName": "Cannabis & 420",
+      "categoryAlternatives": [],
+      "categoryAlternativeNames": [],
+      "subjects": [],
+      "objects": [
+        "cannabis leaves"
+      ],
+      "themes": [
+        "humor",
+        "cannabis",
+        "parody",
+        "smoking"
+      ],
+      "interests": [
+        "cannabis",
+        "smoking",
+        "weed"
+      ],
+      "searchConcepts": [
+        "marijuana logo parody",
+        "weed swoosh",
+        "just do it parody",
+        "cannabis culture",
+        "stoner humor",
+        "funny weed shirt",
+        "420 apparel",
+        "drug culture"
+      ],
+      "visibleText": [
+        "JUST HIT IT"
+      ],
+      "promptVersion": "catalog-enrich-v33",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "schemaVersion": null,
+      "automationDecision": "needs_review",
+      "automationReasonCodes": [
+        "structured_evidence_gap:objects:cannabis leaves"
+      ],
+      "wouldAutoApprove": false
+    },
+    "callableData": {
+      "designId": "1Ws0T9fivryest6IUSbt",
+      "queued": true,
+      "completed": true,
+      "aiProcessingStage": "ready_for_review",
+      "aiReviewStatus": "needs_review",
+      "status": "imported"
+    },
+    "evaluation": {
+      "passFail": "PASS",
+      "notes": [
+        "optional alternative \"Funny & Sarcastic\" absent (note only)",
+        "Attribution B: calibration logic required for reliable outcome; cache-only not proven as sole prior cause (historical TTL possible but not re-created)"
+      ]
+    },
+    "cacheAttribution": "B",
+    "cacheAttributionLegend": {
+      "A": "cache-only contributed materially",
+      "B": "category-calibration logic was also required",
+      "C": "cannot determine"
+    }
+  },
+  "fixtures": [
+    {
+      "slot": 1,
+      "id": "7bVlWMFwxECdfHH8VNPB",
+      "label": "F-CAW-F raven joke",
+      "expectedPrimary": "Funny & Sarcastic",
+      "forbiddenPrimary": "Animals",
+      "allowedAltIncludes": [
+        "Animals"
+      ],
+      "outcome": "enriched",
+      "before": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "rootTitle": "F Caw F-03",
+        "aiSuggestedTitle": "F-caw-f Raven",
+        "aiSuggestedDescription": "This design features a black raven with its wings spread and beak open, as if cawing.",
+        "categoryId": "tj0HemRh2RuYLfI7N6nO",
+        "categoryName": "Funny & Sarcastic",
+        "categoryAlternatives": [],
+        "categoryAlternativeNames": [],
+        "subjects": [
+          "raven"
+        ],
+        "objects": [],
+        "themes": [
+          "humor",
+          "quirky",
+          "animal humor"
+        ],
+        "interests": [
+          "animals"
+        ],
+        "searchConcepts": [
+          "crow",
+          "f-caw-f bird",
+          "raven cawing",
+          "funny bird"
+        ],
+        "visibleText": [
+          "F-CAW-F"
+        ],
+        "promptVersion": "catalog-enrich-v33",
+        "normalizerVersion": "smart-profile-normalizer-v6",
+        "schemaVersion": null,
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "shadow_would_auto_approve"
+        ],
+        "wouldAutoApprove": true
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "rootTitle": "F Caw F-03",
+        "aiSuggestedTitle": "F-caw-f Raven",
+        "aiSuggestedDescription": "Above the bird, bold, distressed text spells out \"F-CAW-F.\"",
+        "categoryId": "8RhJrdYdfjq0GECovThx",
+        "categoryName": "Food & Drink",
+        "categoryAlternatives": [],
+        "categoryAlternativeNames": [],
+        "subjects": [
+          "raven"
+        ],
+        "objects": [],
+        "themes": [
+          "humor",
+          "sarcasm"
+        ],
+        "interests": [],
+        "searchConcepts": [
+          "crow caw",
+          "animal humor",
+          "bird pun"
+        ],
+        "visibleText": [
+          "F-CAW-F"
+        ],
+        "promptVersion": "catalog-enrich-v33",
+        "normalizerVersion": "smart-profile-normalizer-v6",
+        "schemaVersion": null,
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "shadow_would_auto_approve"
+        ],
+        "wouldAutoApprove": true
+      },
+      "callableData": {
+        "designId": "7bVlWMFwxECdfHH8VNPB",
+        "queued": true,
+        "completed": true,
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "evaluation": {
+        "passFail": "FAIL",
+        "notes": [
+          "primary expected \"Funny & Sarcastic\" got \"Food & Drink\"",
+          "optional alternative \"Animals\" absent (note only)"
+        ]
+      },
+      "passFail": "FAIL"
+    },
+    {
+      "slot": 9,
+      "id": "1Ws0T9fivryest6IUSbt",
+      "label": "Just Hit It / cannabis leaves",
+      "expectedPrimary": "Cannabis & 420",
+      "forbiddenPrimary": null,
+      "allowedAltIncludes": [
+        "Funny & Sarcastic"
+      ],
+      "outcome": "reused_gate_a",
+      "before": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "rootTitle": "just_hit_it",
+        "aiSuggestedTitle": "Just Hit It Swoosh",
+        "aiSuggestedDescription": "A swoosh design featuring \"JUST HIT IT\".",
+        "categoryId": "S2wdfmHDdG4aDFFRfNM1",
+        "categoryName": "Cannabis & 420",
+        "categoryAlternatives": [],
+        "categoryAlternativeNames": [],
+        "subjects": [],
+        "objects": [
+          "cannabis leaves"
+        ],
+        "themes": [
+          "humor",
+          "cannabis",
+          "parody",
+          "smoking"
+        ],
+        "interests": [
+          "cannabis",
+          "smoking",
+          "weed"
+        ],
+        "searchConcepts": [
+          "marijuana logo parody",
+          "weed swoosh",
+          "just do it parody",
+          "cannabis culture",
+          "stoner humor",
+          "funny weed shirt",
+          "420 apparel",
+          "drug culture"
+        ],
+        "visibleText": [
+          "JUST HIT IT"
+        ],
+        "promptVersion": "catalog-enrich-v33",
+        "normalizerVersion": "smart-profile-normalizer-v6",
+        "schemaVersion": null,
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "structured_evidence_gap:objects:cannabis leaves"
+        ],
+        "wouldAutoApprove": false
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "rootTitle": "just_hit_it",
+        "aiSuggestedTitle": "Just Hit It Swoosh",
+        "aiSuggestedDescription": "A swoosh design featuring \"JUST HIT IT\".",
+        "categoryId": "S2wdfmHDdG4aDFFRfNM1",
+        "categoryName": "Cannabis & 420",
+        "categoryAlternatives": [],
+        "categoryAlternativeNames": [],
+        "subjects": [],
+        "objects": [
+          "cannabis leaves"
+        ],
+        "themes": [
+          "humor",
+          "cannabis",
+          "parody",
+          "smoking"
+        ],
+        "interests": [
+          "cannabis",
+          "smoking",
+          "weed"
+        ],
+        "searchConcepts": [
+          "marijuana logo parody",
+          "weed swoosh",
+          "just do it parody",
+          "cannabis culture",
+          "stoner humor",
+          "funny weed shirt",
+          "420 apparel",
+          "drug culture"
+        ],
+        "visibleText": [
+          "JUST HIT IT"
+        ],
+        "promptVersion": "catalog-enrich-v33",
+        "normalizerVersion": "smart-profile-normalizer-v6",
+        "schemaVersion": null,
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "structured_evidence_gap:objects:cannabis leaves"
+        ],
+        "wouldAutoApprove": false
+      },
+      "evaluation": {
+        "passFail": "PASS",
+        "notes": [
+          "optional alternative \"Funny & Sarcastic\" absent (note only)"
+        ]
+      },
+      "passFail": "PASS"
+    },
+    {
+      "slot": 12,
+      "id": "7BjqFQIhkavo80sv5kCp",
+      "label": "Aries / zodiac / ram",
+      "expectedPrimary": "Astrology & Zodiac",
+      "forbiddenPrimary": "Pop Culture & Characters",
+      "allowedAltIncludes": [],
+      "outcome": "enriched",
+      "before": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "rootTitle": "4-01",
+        "aiSuggestedTitle": "Aries Lively Versatile Passionate Courageous Positive Adventurous Ram",
+        "aiSuggestedDescription": "A ram design featuring \"Aries\" and \"Lively\".",
+        "categoryId": "iw6d1D13ZvhwgRpu9I37",
+        "categoryName": "Astrology & Zodiac",
+        "categoryAlternatives": [],
+        "categoryAlternativeNames": [],
+        "subjects": [
+          "ram"
+        ],
+        "objects": [
+          "stars"
+        ],
+        "themes": [
+          "zodiac",
+          "astrology",
+          "personality traits"
+        ],
+        "interests": [
+          "astrology",
+          "horoscope"
+        ],
+        "searchConcepts": [
+          "Aries zodiac sign",
+          "Aries ram",
+          "Aries traits",
+          "zodiac sign design",
+          "horoscope art",
+          "personality traits",
+          "bold typography",
+          "silhouette ram",
+          "Aries symbol"
+        ],
+        "visibleText": [
+          "Aries",
+          "Lively",
+          "Versatile",
+          "Passionate",
+          "Courageous",
+          "Positive",
+          "Adventurous"
+        ],
+        "promptVersion": "catalog-enrich-v33",
+        "normalizerVersion": "smart-profile-normalizer-v6",
+        "schemaVersion": null,
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "structured_evidence_gap:objects:stars"
+        ],
+        "wouldAutoApprove": false
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "rootTitle": "4-01",
+        "aiSuggestedTitle": "Aries Lively Versatile Passionate Courageous Positive Adventurous Ram",
+        "aiSuggestedDescription": "A ram design featuring \"Aries\" and \"Lively\".",
+        "categoryId": "iw6d1D13ZvhwgRpu9I37",
+        "categoryName": "Astrology & Zodiac",
+        "categoryAlternatives": [],
+        "categoryAlternativeNames": [],
+        "subjects": [
+          "ram"
+        ],
+        "objects": [
+          "stars"
+        ],
+        "themes": [
+          "astrology",
+          "zodiac",
+          "personality traits"
+        ],
+        "interests": [
+          "astrology"
+        ],
+        "searchConcepts": [
+          "aries zodiac sign",
+          "aries ram",
+          "zodiac symbol",
+          "astrology traits",
+          "fire sign",
+          "personality description"
+        ],
+        "visibleText": [
+          "Aries",
+          "Lively",
+          "Versatile",
+          "Passionate",
+          "Courageous",
+          "Positive",
+          "Adventurous"
+        ],
+        "promptVersion": "catalog-enrich-v33",
+        "normalizerVersion": "smart-profile-normalizer-v6",
+        "schemaVersion": null,
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "structured_evidence_gap:objects:stars"
+        ],
+        "wouldAutoApprove": false
+      },
+      "callableData": {
+        "designId": "7BjqFQIhkavo80sv5kCp",
+        "queued": true,
+        "completed": true,
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "evaluation": {
+        "passFail": "PASS",
+        "notes": []
+      },
+      "passFail": "PASS"
+    },
+    {
+      "slot": 13,
+      "id": "E2fVUzTL8Smx0gXaGqUZ",
+      "label": "I Am Their Father / Darth Vader",
+      "expectedPrimary": "Pop Culture & Characters",
+      "forbiddenPrimary": "Family",
+      "allowedAltIncludes": [],
+      "outcome": "enriched",
+      "before": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "rootTitle": "FD_M_ALL02_PNG",
+        "aiSuggestedTitle": "I Am Their Father Darth Vader And Star Wars Characters",
+        "aiSuggestedDescription": "The text \"I AM THEIR FATHER\" is prominently displayed below. The background includes the Death Star and celestial elements.",
+        "categoryId": "Sn9nmGJvFlIRO4DnFnIB",
+        "categoryName": "Pop Culture & Characters",
+        "categoryAlternatives": [],
+        "categoryAlternativeNames": [],
+        "subjects": [
+          "vader",
+          "darth",
+          "yoda",
+          "baby",
+          "fett",
+          "boba",
+          "Stormtrooper",
+          "BB-8"
+        ],
+        "objects": [
+          "Death Star",
+          "lightsaber",
+          "stars",
+          "Millennium Falcon"
+        ],
+        "themes": [
+          "sci-fi",
+          "movie",
+          "family",
+          "humor"
+        ],
+        "interests": [
+          "movies",
+          "sci-fi",
+          "pop culture",
+          "space"
+        ],
+        "searchConcepts": [
+          "Star Wars Father's Day",
+          "Darth Vader Father's Day",
+          "I Am Your Father",
+          "Father's Day humor",
+          "Star Wars characters",
+          "Baby Yoda Father's Day",
+          "sci-fi dad",
+          "darth",
+          "baby",
+          "boba"
+        ],
+        "visibleText": [
+          "I AM THEIR",
+          "FATHER"
+        ],
+        "promptVersion": "catalog-enrich-v33",
+        "normalizerVersion": "smart-profile-normalizer-v6",
+        "schemaVersion": null,
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "structured_evidence_gap:subjects:yoda",
+          "structured_evidence_gap:subjects:baby",
+          "structured_evidence_gap:subjects:fett",
+          "structured_evidence_gap:subjects:boba",
+          "structured_evidence_gap:subjects:stormtrooper",
+          "structured_evidence_gap:subjects:bb-8",
+          "structured_evidence_gap:objects:lightsaber",
+          "structured_evidence_gap:objects:millennium falcon"
+        ],
+        "wouldAutoApprove": false
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "rootTitle": "FD_M_ALL02_PNG",
+        "aiSuggestedTitle": "I Am Their Father Darth Vader Star Wars Design",
+        "aiSuggestedDescription": "A Darth Vader design featuring \"I AM THEIR\" and \"FATHER\".",
+        "categoryId": "Sn9nmGJvFlIRO4DnFnIB",
+        "categoryName": "Pop Culture & Characters",
+        "categoryAlternatives": [],
+        "categoryAlternativeNames": [],
+        "subjects": [
+          "vader",
+          "darth",
+          "yoda",
+          "baby",
+          "fett",
+          "boba",
+          "Stormtrooper",
+          "star",
+          "death"
+        ],
+        "objects": [
+          "lightsaber",
+          "stars",
+          "Millennium Falcon",
+          "planet",
+          "droid"
+        ],
+        "themes": [
+          "Fandom",
+          "Father's Day",
+          "humor",
+          "family",
+          "Sci-Fi"
+        ],
+        "interests": [
+          "Star Wars",
+          "movies",
+          "science fiction",
+          "fandom"
+        ],
+        "searchConcepts": [
+          "Star Wars Father's Day",
+          "Darth Vader Father's Day",
+          "I Am Your Father",
+          "Star Wars Dad",
+          "Geeky Father's Day",
+          "Funny Star Wars Dad",
+          "darth",
+          "baby",
+          "boba",
+          "death"
+        ],
+        "visibleText": [
+          "I AM THEIR",
+          "FATHER"
+        ],
+        "promptVersion": "catalog-enrich-v33",
+        "normalizerVersion": "smart-profile-normalizer-v6",
+        "schemaVersion": null,
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "structured_evidence_gap:subjects:yoda",
+          "structured_evidence_gap:subjects:baby",
+          "structured_evidence_gap:subjects:fett",
+          "structured_evidence_gap:subjects:boba",
+          "structured_evidence_gap:subjects:stormtrooper",
+          "structured_evidence_gap:subjects:death",
+          "structured_evidence_gap:objects:lightsaber",
+          "structured_evidence_gap:objects:millennium falcon",
+          "structured_evidence_gap:objects:planet",
+          "structured_evidence_gap:objects:droid"
+        ],
+        "wouldAutoApprove": false
+      },
+      "callableData": {
+        "designId": "E2fVUzTL8Smx0gXaGqUZ",
+        "queued": true,
+        "completed": true,
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "evaluation": {
+        "passFail": "PASS",
+        "notes": []
+      },
+      "passFail": "PASS"
+    }
+  ],
+  "aborted": false,
+  "finishedAt": "2026-09-04T01:03:44.497Z",
+  "summary": {
+    "pass": 3,
+    "fail": 1,
+    "readyTransitions": 0
+  }
+}

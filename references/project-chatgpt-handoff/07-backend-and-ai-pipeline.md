@@ -1,5 +1,283 @@
 # Backend and AI Pipeline
 
+## Coordinated Portal projection cutover prerequisites (repository closed 2026-09-12)
+
+- `portalPrintRequestItems` is the customer-safe, Admin-maintained projection of canonical
+  `printRequestItems`; Portal readers prefer it and use bounded canonical fallback during transition.
+- `firestore.transition.rules` preserves the customer-owned canonical read while projection rows
+  converge; authoritative `firestore.rules` is the final projection-only customer-read state.
+- `reconcile-portal-print-request-items-prod.ts` is hard-pinned to `fresh-prints-prod`, bounded to
+  one deterministic page, and separates pre-APPLY delta VERIFY, post-APPLY exact VERIFY, and the
+  required post-APPLY zero-diff DRY RUN. APPLY remains separately owner-gated and was not invoked.
+- Committed-byte manifest generation/audit proves candidate SHA and runtime-byte parity. No
+  production reads, population, Rules/Functions deployment, or publication occurred.
+
+## Staff Artwork backend (DEV closed 2026-09-12)
+
+| Area | Delivered |
+|------|-----------|
+| Entity | `staffArtworks/{staffArtworkId}` with canonical `/staff-artwork/{staffArtworkId}/` assets; staff-only Rules/Storage access |
+| Processing | Trusted create/finalize reuses the technical customer-upload image pipeline, with PNG-only input, Auto/Light/Dark background handling, and no customer quota/consent/retention side effects |
+| Request source | `staff_artwork` identity propagated through request CRUD, enhancement, allocation, queue, copy/convert, exports, ZIPs, and gang sheets |
+| Lifecycle | Owner/Admin metadata management, helper selection-only access, archive/restore, completed-show/sheet-aware safe delete, explicit idempotent AI Review promotion |
+| Portal | Neutral request projection only; no Staff Artwork document, private path, title, or pixel access |
+| DEV status | Owner DEV QA **PASS**; corrective callable and Rules redeploys complete; production remains unauthorized |
+
+## Portal maintenance mode (DEV — closed 2026-09-10)
+
+| Area | Delivered |
+|------|-----------|
+| State | `settings/portalMaintenance`; absent/OFF is fail-safe normal mode; saved customer-safe heading/body copy is shared by Studio and Portal |
+| Callables | `getPortalMaintenanceState`, `updatePortalMaintenanceState`, and owner/admin-only `listPortalMaintenanceTestCustomers` |
+| Eligibility | One trusted helper requires active customer-role user plus exactly one linked customer that is not guest, deleted, disabled, merged, or orphaned |
+| Guard | Covered customer mutation callables revalidate the configured tester before allowing the maintenance bypass |
+| DEV deployment | Exactly 37 reviewed Functions ACTIVE in `fresh-prints-dev/us-central1`; no corrective Rules/index/hosting deployment |
+| Owner QA | **PASS**; full-screen ordinary-customer state, tester banner/mutation, saved-copy runtime convergence, and OFF recovery verified |
+| Signoff | `docs/workflow/reviews/2026-09-10-production-maintenance-mode-prerequisite-corrective-amendment-signoff.md` |
+| Production | **NOT AUTHORIZED** |
+
+## Customer-upload deferral, follow-up, and personal retention (DEV — closed 2026-09-11)
+
+| Area | Delivered |
+|------|-----------|
+| Intake gate | `confirmCustomerUploadsAndAttachToPrintRequest`, `queuePortalPrintRequestToShow`, and `onShowAllocationCreated` set/clear `studioIntakeHoldUntilShow`; Studio readers/counts exclude held uploads until successful Add to Show |
+| Follow-up | `requestCustomerUploadCatalogPermissionFollowUp`, `getCustomerUploadCatalogPermissionFollowUp`, and `respondToCustomerUploadCatalogPermissionFollowUp` provide bounded Ask Again, activity, Allow/Decline, and maintenance-guarded response |
+| Retention | `purgeExpiredCustomerUploadCatalogRetention` plus scheduled wrapper enforce 30-day Personal/unpromoted-donation and 14-day staff-Excluded episodes, reusing B1 safe-delete blockers |
+| Other reviewed exports | `customerAddAssistedApprovedProofToPrintRequest`, `restoreCustomerUploadCatalogEligibility`, `clearCustomerNotificationHistory` |
+| DEV state | Reviewed DEV Functions/indexes deployed; local Portal/Studio runtime validated; scheduler remained paused |
+| Owner QA | **PASS** (`OWNER DEV QA: PASS`, 2026-09-11) |
+| Production | **NOT AUTHORIZED** |
+
+## Print Request lifecycle ordering (ADR-FP-188 — DEV closed 2026-09-09)
+
+| Area | Delivered |
+|------|-----------|
+| Admin triggers | `onPrintRequestLifecycleRequestWritten` and `onPrintRequestLifecycleAllocationWritten` write immutable request-scoped lifecycle events and monotonic mirror fields |
+| DEV reader | Indexed reader enabled in local Studio source; compatibility reader preserved as rollback |
+| DEV data/index state | Bounded mirror APPLY complete; 8/8 eligible coverage; ordering and Details indexes READY |
+| Owner QA | **PASS**; final disposition **approved_with_notes** |
+| Scope boundary | Production, Studio publish, Portal deployment, backfill rerun, and event repair remain separately gated; commit/push `6bf7a25d` is complete |
+
+## Automatic Explicit Content classification (source signed off 2026-09-05 — not DEV-live)
+
+| Area | Contract |
+|------|----------|
+| Settings | `settings/aiEnrichment.explicitContentAutomationTerms` via `updateAiEnrichmentSettings` |
+| Pipeline | After `shouldPublishReady`: classify artwork evidence; atomic Ready Explicit write in `markAiSuccess` |
+| Fail-closed | Settings load failure → Needs Review (`explicit_automation_settings_unavailable`) |
+| Versions | **catalog-enrich-v34** / **v6** / **v1** unchanged; no second AI |
+| Next deploy allowlist | `updateAiEnrichmentSettings`, `enqueueAiEnrichment`, `reprocessReadyDesignWithAi`, `onCatalogReprocessJobWritten` |
+| ADR | ADR-FP-169 |
+
+## AI enrichment visible-text + catalog-copy quality (DEV — 2026-09-03)
+
+| Area | Delivered |
+|------|-----------|
+| Prompt | **catalog-enrich-v32** |
+| Normalizer | **smart-profile-normalizer-v6** |
+| Schema | **smart-profile-v1** (unchanged) |
+| Functions (DEV) | `enqueueAiEnrichment` `00086-qet`; `onCatalogReprocessJobWritten` `00008-piw`; `startCatalogReprocessJob` `00007-viw`; `previewCatalogReprocessJob` `00007-hug` |
+| Behavior | OPTION E: prompt + AI-only visibleText sanitizer + title/description anti-OCR guards; primary typography preserved; document/OCR dumps suppressed |
+| Subjects | v31/v5 canonicalization **preserved** (Owner canary PASS) |
+| Reprocess | Targeted Owner canary only — no full AI Review / Ready backfill |
+| Autonomous | **OFF** |
+| Production | **NOT AUTHORIZED** |
+| ADR | ADR-FP-160 |
+
+## Smart Profile subject canonicalization (DEV — 2026-09-03)
+
+| Area | Delivered |
+|------|-----------|
+| Prompt | **catalog-enrich-v31** (superseded live by v32; subject contract retained) |
+| Normalizer | **smart-profile-normalizer-v5** (superseded live by v6; subject collapse retained) |
+| Schema | **smart-profile-v1** (unchanged) |
+| Functions (DEV) | Prior revisions before v32 deploy; see visible-text section for current |
+| Behavior | AI-only subject derivative collapse; staff/import presets authoritative; no new quality gate |
+| Reprocess | Targeted Owner canary only — no full AI Review / Ready backfill |
+| Autonomous | **OFF** |
+| Production | **NOT AUTHORIZED** |
+
+## Firestore Rules resize expression budget + Interactive Upscale hydration (DEV — 2026-09-03)
+
+| Area | Delivered |
+|------|-----------|
+| Rules | Customer Portal-editable Print Request item update reduced-cost path (`customerPrintRequestItemPortalEditableUpdate`); interactive-upscale metadata remains customer-immutable |
+| Rules tests | Focused resize **22/22**; full suite **169/169** |
+| DEV Rules deploy | `firebase deploy --only firestore:rules --project fresh-prints-dev` |
+| Corrective Functions | `setPrintRequestItemArtworkEnhanceMode`, `enhancePrintRequestArtwork` (shared `<250` initiation gate) |
+| Client hydrate | Portal/Studio patch design/upload `interactiveEnhanced*` after callable; Portal invalidates ready-design cache entry |
+| Storage / indexes / migration | **NO** |
+| Production | **NOT AUTHORIZED** |
+
+## Portal modal + import Smart Profile presets + intake metadata controls (DEV — 2026-09-03)
+
+| Area | Delivered |
+|------|-----------|
+| Workstream A | Portal Upload/Donate shared localStorage-only quality-notice dismissal; no Firebase deploy required |
+| Workstream B Functions | `enqueueAiEnrichment`, `onCatalogReprocessJobWritten`, `updateDesignSmartProfileDimensions`, `resetDesignSmartProfileDimension` |
+| Workstream B Rules | `firestore.rules` allowlist for optional `smartProfileImportPresets` map |
+| Workstream C Functions | `recordCustomerUploadArtworkBackgroundStaffDecision`, `promoteCustomerUploadToAiReview` |
+| Storage Rules | **NO** |
+| Indexes | **NO** |
+| Migration | **NO** |
+| Production | **NOT AUTHORIZED** |
+
+### Workstream B backend behavior
+
+- Import-time preset values persist as durable `smartProfileImportPresets`.
+- AI enrichment and ready-catalog reprocess merge preset-owned values back in after AI output.
+- Later staff Smart Profile edits and dimension resets synchronize the durable seed so removed values do not resurrect.
+
+### Workstream C backend behavior
+
+- `recordCustomerUploadArtworkBackgroundStaffDecision` is the trusted DEV callable for explicit Light/Dark background persistence and Auto clear.
+- `promoteCustomerUploadToAiReview` now copies authoritative intake Halftone/background metadata into the created design and stamps `halftoneDecisionSource: intake`.
+- The first deploy retry for `promoteCustomerUploadToAiReview` initially failed on Firebase backend-spec discovery timeout; the owner-authorized retry using shell-local `FUNCTIONS_DISCOVERY_TIMEOUT=60` succeeded and updated the live DEV function.
+
+## Customer temporary Print Request + Show quota override (ADR-FP-159 — DEV 2026-09-02)
+
+| Callable | Purpose |
+|----------|---------|
+| `updateCustomerPrintRequestQuotaOverride` | Owner-only set/clear `customers/{id}.printRequestQuotaOverride`; activity events; omit undefined metadata |
+
+Portal consumers resolve effective limits via `loadEffectivePrintRequestLimitsForCustomer`: add catalog, upload attach, duplicate, qty update, assisted proof add, `queuePortalPrintRequestToShow`. Staff / Show Move / DNP bypass unchanged. Firestore Rules: override client-immutable. Corrective DEV redeploy of owner callable for Internal Save (`expiresAtMs` omit when unset). Production **not authorized**.
+
+## Interactive artwork enhance — WS-TOGGLE (DEV — 2026-08-31)
+
+| Callable | Purpose |
+|----------|---------|
+| `setPrintRequestItemArtworkEnhanceMode` | Toggle baseline vs enhanced; first pass generates non-destructive derivative; reuse on subsequent ON |
+
+Studio Settings also persist `defaultPrintRequestWidthInches` (WS-CONFIG). Deployed on `fresh-prints-dev` with Storage rules for `{designId}.interactive.png` staff reads. Production **not authorized**.
+
+## Customer identity management — WS1–WS4 (DEV — complete 2026-08-30)
+
+| Item | Value |
+|------|--------|
+| Program | **WS1–WS4 DONE on `fresh-prints-dev`** |
+| WS4 signoff | `docs/workflow/reviews/2026-08-30-customer-account-identity-management-ws4-signoff.md` |
+| Production | **NOT authorized** |
+
+### WS2 — Transfer Username (owner)
+
+| Callable | Purpose |
+|----------|---------|
+| `previewDuplicateAccountResolution` | Verified duplicate preview |
+| `transferCustomerUsername` | Username transfer between verified duplicates |
+
+### WS3 — Merge Accounts (owner)
+
+| Callable | Purpose |
+|----------|---------|
+| `previewCustomerAccountMerge` | Merge preview + checksum |
+| `applyCustomerAccountMerge` | Resumable merge job |
+| `getCustomerAccountMergeStatus` | Job status |
+
+Job collection: `customerMergeJobs/{jobId}` (staged checkpoints).
+
+### WS4 — Customer activity (Studio read paths)
+
+No new Functions required for MVP — Studio services query `printRequests`, `showAllocations`, `customerActivityEvents` with `resolveLogicalCustomerIds` for merged survivors.
+
+### Account lifecycle callables (owner) — WS1
+
+| Callable | Role | Deploy (DEV) |
+|----------|------|--------------|
+| `disableCustomerAccount` | Reversible disable — Auth disabled, `users.isActive=false`, history + username preserved | Yes |
+| `restoreCustomerAccount` | Re-enable — clears disable fields, Auth enabled, `users.isActive=true` | Yes |
+| `previewHardDeleteCustomerAccount` | History-free delete preview + checksum (single-use) | Yes |
+| `hardDeleteCustomerAccount` | History-free Apply — identity/bootstrap only; **Apply gated to `fresh-prints-dev`** (ADR-FP-151) | Yes |
+| `updateCustomer` | Staff username/displayName + resumable `propagateCustomerIdentitySnapshots` | Yes (corrective #1) |
+| `tombstoneCustomerAccount` | Close Account Permanently — unchanged ADR-FP-115 semantics | Pre-existing |
+
+**Distinctions (do not merge):**
+
+- **Disable** — reversible; Auth disabled; all history kept; username reserved (ADR-FP-150).
+- **Close / tombstone** — one-way in normal product flow; `isDeleted`; history kept; username **permanently reserved** (ADR-FP-115).
+- **Hard delete** — only when eligibility proves **no** meaningful history; removes Auth + identity docs; **releases** username (ADR-FP-151); Apply dev-gated in WS1.
+
+Portal gate: `requirePortalCustomer` rejects disabled and tombstoned customers. Mid-session disable: client listeners sign out before Firestore `callerIsActive()` denial.
+
+**Audit:** append-only `customerActivityEvents` (staff read via Rules); not lifecycle source of truth.
+
+**Rules (DEV):** `customerRequiredFieldsValid` WS1 field whitelist; `customerActivityEvents` / preview collection rules — deployed with WS1 + corrective #1 records.
+
+### Portal working-request callables (corrective #4 DEV deploy)
+
+These three import `functions/src/lib/portalWorkingPrintRequest.ts` and resolve/create **Portal-editable** continuable requests only (`portal_customer`, not internal):
+
+| Callable | WS1 behavior |
+|----------|----------------|
+| `createPortalPrintRequest` | `createWorkingPrintRequestInTransaction` — legacy `studio_customer` drafts do **not** block Portal create |
+| `confirmCustomerUploadsAndAttachToRequest` | `resolveOrCreateWorkingPrintRequestInTransaction` |
+| `customerAddAssistedApprovedProofToPrintRequest` | same resolver |
+
+**Not redeployed in corrective #4** (unchanged bundle; inline origin guards only):
+
+- `addPortalCatalogDesignToPrintRequest`
+- `updatePortalPrintRequestItemQuantity`
+- `removePortalPrintRequestItem`
+- `duplicatePortalPrintRequestItem`
+
+### Firestore index (DEV — Studio customer picker)
+
+Composite on `printRequests` for `listCustomerIdsWithContinuableCustomerRequests`:
+
+| Field | Order |
+|-------|-------|
+| `status` | ASC |
+| `isInternal` | ASC |
+| `__name__` | ASC (Firestore-generated suffix) |
+
+Query: `status in [draft, editing]` + `isInternal == false`. Index ID on dev: `CICAgNi6rIIK` (deploy record in corrective #4 dev deploy doc). **Production:** not deployed.
+
+### Portal customer profile (prior — DEV 2026-08-27)
+
+| Callable | Purpose |
+|----------|---------|
+| `updatePortalCustomerProfile` | Self-service display name + username (30-day cooldown) |
+| `updateCustomer` | Staff path via shared `applyCustomerProfileUpdate` + propagation worker |
+
+Identity snapshots propagate resumably to `printRequests` and `designIssueReports`. Propagation updates snapshot fields only — not `name`, `requestOrigin`, `isInternal`, or `customerId`.
+
+---
+
+## Show Queue recovery + DEV fixtures (DEV — 2026-08-30)
+
+| Callable | Purpose |
+|----------|---------|
+| `previewShowProductionRecovery` | Preview Did Not Print / recovery actions incl. `requeue_unfulfilled` |
+| `applyShowProductionRecovery` | Trusted apply (move / release-only) |
+| `upsertDevFixtureShow` | DEV-only fixture show create/update (`fresh-prints-dev` gate) |
+
+**Production:** NOT authorized. Recovery extends ADR-FP-149 patterns (ADR-FP-156).
+
+## Print Request production actions (DEV — 2026-09-08)
+
+| Callable / surface | Purpose | DEV evidence |
+|--------------------|---------|--------------|
+| `copyStudioPrintRequest` | Owner/admin-authorized transactional copy of eligible Studio print requests | ACTIVE in `fresh-prints-dev`, `us-central1`, Node.js 20; revision `copystudioprintrequest-00001-yec`; source hash `6484fccde1612904191273e4e92138f1c9c780e0` |
+| Studio request actions | Direct image export, quantity export, Standard gang-sheet generation, and Copy for eligible non-working requests; allocation-only actions for Working/Editing | Owner DEV QA **PASS**; no Portal or production deployment |
+
+The shared Gang Sheet Settings resolver uses canonical `settings/showQueue` fields and the fixed
+4/11/14-inch width boundaries for price and weight. No migration, index, or Storage Rules change
+was required.
+
+---
+
+## Smart Catalog enrichment (DEV — 2026-08-27)
+
+| Item | Value |
+|------|--------|
+| Prompt | **catalog-enrich-v30** |
+| Normalizer | **smart-profile-normalizer-v4** |
+| Mode | **shadow** (Needs Review lifecycle preserved) |
+| Live Autonomous | **OFF** (`catalogAutonomousLiveEnabled=false`) |
+| Ready Catalog reprocess | **Unlocked on DEV** — Slice 6 complete; full Ready backfill done |
+| Smart Profile UI | Owner/admin editing + Design Library local reconciliation (Slice 6 corrective) |
+| Slice 6 | Signed off **approved_with_notes** on `fresh-prints-dev` (2026-08-27) |
+| Production enrichment | Untouched |
+
 ## Firebase stack
 
 | Service | Use |
@@ -88,8 +366,11 @@ Limits (shared constants): 100 files/batch, 80 MB/image (`CUSTOMER_UPLOAD_MAX_SI
 
 | Callable | Role |
 |----------|------|
-| `createPortalPrintRequest` | Start customer request (one working) |
-| `duplicatePortalPrintRequestItem` | Duplicate line for another size |
+| `createPortalPrintRequest` | Start customer request (one Portal-editable working request; ADR-FP-071) |
+| `confirmCustomerUploadsAndAttachToRequest` | Attach uploads via Portal-editable working-request resolver |
+| `customerAddAssistedApprovedProofToPrintRequest` | Assisted proof attach via same resolver |
+| `addPortalCatalogDesignToPrintRequest` | Add catalog design (inline `portal_customer` / `isInternal` guard; not in corrective #4 deploy) |
+| `updatePortalPrintRequestItemQuantity` / `removePortalPrintRequestItem` / `duplicatePortalPrintRequestItem` | Item mutations (inline origin guards; not in corrective #4 deploy) |
 | `listPortalAllocatableShows` | Shows customer may join |
 | `queuePortalPrintRequestToShow` | Attach full request to one show (no override / no re-queue) |
 | `getPortalShowPrintProgress` | Progress for Printing tab |
@@ -110,9 +391,19 @@ Proof-ready emails are the next planned backend phase. The design will put Resen
 
 ---
 
-## AI enrichment (Studio catalog)
+## Current operational boundary — legacy tag retirement (2026-09-09)
 
-Current prompt target: **`catalog-enrich-v21`** (Gemini vision; business-context framing). Provider key: Firebase Secret Manager (`GEMINI_API_KEY`). Settings: `settings/aiEnrichment` (vision model, optional tag rerank / suggestion author modes — defaults **off**).
+The active DEV catalog/Algolia path is category-only for taxonomy authority and uses Smart Profile
+fields, category, copy, exact IDs, and dedicated Halftone as applicable. It does not hydrate legacy
+tags or use tag terms for search, facets, or record-change classification. Historical tag/reranker
+material, compatibility shapes, and deployed tag-trigger/archive exports remain retained and
+deferred; this closeout did not delete them or change production.
+
+## Historical AI enrichment snapshot (retained compatibility reference)
+
+The older prompt snapshot below records the pre-retirement v21 path. Its optional tag rerank /
+suggestion-author modes are historical compatibility material, not active catalog search authority.
+Provider key: Firebase Secret Manager (`GEMINI_API_KEY`).
 
 ```
 enqueueAiEnrichment → onDesignAiEnrichmentQueued

@@ -103,8 +103,8 @@ export function TombstoneCustomerConfirmDialog({
       >
         <ModalHeader>
           <div>
-            <p className="eyebrow">Delete customer account</p>
-            <h2 id="tombstone-customer-title">Disable {customer.displayName}?</h2>
+            <p className="eyebrow">Permanent account closure</p>
+            <h2 id="tombstone-customer-title">Close Account Permanently?</h2>
           </div>
           <button
             aria-label="Close"
@@ -121,8 +121,9 @@ export function TombstoneCustomerConfirmDialog({
           {preview ? (
             <>
               <p className="tombstone-customer-modal-summary">
-                Username <strong>{usernameLabel}</strong> stays reserved. Print requests remain for
-                staff. This customer cannot sign in or create new activity.
+                <strong>{customer.displayName}</strong> will permanently lose Portal sign-in. History
+                is retained and username <strong>{usernameLabel}</strong> stays permanently reserved.
+                This cannot be reversed through normal Studio controls.
               </p>
               <dl className="tombstone-customer-impact-grid">
                 <div>
@@ -211,7 +212,7 @@ export function TombstoneCustomerConfirmDialog({
             }}
             variant="danger"
           >
-            {isSubmitting ? "Disabling…" : "Disable customer account"}
+            {isSubmitting ? "Closing…" : "Close Account Permanently"}
           </Button>
         </ModalFooter>
       </Modal>

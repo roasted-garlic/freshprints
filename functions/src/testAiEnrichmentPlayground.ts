@@ -5,9 +5,10 @@ import type {
   AiEnrichmentPlaygroundResponse,
 } from "../../packages/shared/src/types/ai/aiEnrichmentPlayground.types";
 import { runAiEnrichmentPlayground } from "./ai/aiEnrichmentPlayground";
+import { mapPlaygroundError } from "./ai/playgroundErrorMapping";
 import { loadCallerProfile } from "./lib/caller";
-import { invalidArgument, permissionDenied, unauthenticated } from "./lib/errors";
-import { geminiApiKeySecret } from "./lib/secrets";
+import { permissionDenied, unauthenticated } from "./lib/errors";
+import { geminiApiKeySecret, openAiApiKeySecret } from "./lib/secrets";
 
 function assertOwnerAdminCaller(caller: Awaited<ReturnType<typeof loadCallerProfile>>): void {
   if (!caller.isActive || !["owner", "admin"].includes(caller.role)) {
@@ -16,7 +17,7 @@ function assertOwnerAdminCaller(caller: Awaited<ReturnType<typeof loadCallerProf
 }
 
 export const testAiEnrichmentPlayground = onCall(
-  { secrets: [geminiApiKeySecret], memory: "512MiB" },
+  { secrets: [geminiApiKeySecret, openAiApiKeySecret], memory: "512MiB" },
   async (request): Promise<AiEnrichmentPlaygroundResponse> => {
     if (!request.auth?.uid) {
       throw unauthenticated();
@@ -24,18 +25,19 @@ export const testAiEnrichmentPlayground = onCall(
 
     const caller = await loadCallerProfile(request.auth.uid);
     assertOwnerAdminCaller(caller);
+    const data = request.data as AiEnrichmentPlaygroundRequest;
+    if (data.captureFullTrace && caller.role !== "owner") throw permissionDenied("Only owners may capture full AI trace content.");
 
     try {
       return await runAiEnrichmentPlayground(
-        geminiApiKeySecret.value(),
-        request.data as AiEnrichmentPlaygroundRequest,
+        {
+          geminiApiKey: geminiApiKeySecret.value(),
+          openAiApiKey: openAiApiKeySecret.value(),
+        },
+        data,
       );
     } catch (error) {
-      if (error instanceof Error) {
-        throw invalidArgument(error.message);
-      }
-
-      throw invalidArgument("Unable to run the AI playground request.");
+      throw mapPlaygroundError(error);
     }
   },
 );

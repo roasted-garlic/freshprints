@@ -4,12 +4,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { PrintRequest } from '@fresh-prints/shared/types/printRequest/printRequest.types';
 import type { PrintRequestItem } from '@fresh-prints/shared/types/printRequest/printRequest.types';
+import type { SetPrintRequestItemArtworkEnhanceModeResponse } from '@fresh-prints/shared/types/printRequest/setPrintRequestItemArtworkEnhanceMode.types';
 import { sumPrintRequestItemQuantities } from '@fresh-prints/shared/utils/portalShowQueueCapacity';
 import { clampItemQuantityToWorkingRequestMax } from '@fresh-prints/shared/utils/printRequestWorkingRequestMax';
 import { resolveDuplicateInsertBeforeSortOrder } from '@fresh-prints/shared/utils/printRequestItemDisplayOrder';
 import { formatPrintRequestItemSizeLabel } from '@fresh-prints/shared/utils/printRequestItemSizing';
+import { isPortalActiveEditablePrintRequest } from '@fresh-prints/shared/utils/portalActiveEditablePrintRequest';
+
+import { mergeInteractiveEnhanceResultIntoAssetSummary } from '@fresh-prints/shared/utils/interactiveArtworkEnhance';
 
 import { useAuth } from '../../auth/context/AuthContext';
+import { catalogService } from '../../catalog/services/catalogService';
 import {
   portalPrintRequestService,
   printRequestItemHasCustomerUpload,
@@ -30,12 +35,12 @@ import {
 } from '../utils/resolveQuantityCommitOutcome';
 
 function workingItemsSignature(items: PrintRequestItem[]): string {
+  // Preserve display order so a live re-sort still updates the detail page.
   return items
     .map(
       (item) =>
-        `${item.id}:${item.quantity}:${item.printWidthInches}x${item.printHeightInches}`,
+        `${item.id}:${item.quantity}:${item.printWidthInches}x${item.printHeightInches}:${item.sortOrder ?? ''}`,
     )
-    .sort()
     .join('|');
 }
 
@@ -289,7 +294,12 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
   const updateItem = useCallback(
     async (
       itemId: string,
-      input: { quantity: number; printWidthInches: number; printHeightInches: number },
+      input: {
+        quantity: number;
+        printWidthInches: number;
+        printHeightInches: number;
+        standardSizePresetKey?: string | null;
+      },
     ): Promise<{ quantity: number }> => {
       if (!printRequestId || !firebaseUser) {
         throw new Error('Unable to update item.');
@@ -347,6 +357,10 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
                 printWidthInches: input.printWidthInches,
                 printHeightInches: input.printHeightInches,
                 sizeLabel,
+                standardSizePresetKey:
+                  input.standardSizePresetKey === null
+                    ? undefined
+                    : input.standardSizePresetKey ?? item.standardSizePresetKey,
               }
             : item,
         );
@@ -383,6 +397,7 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
           quantity: hasKnownLimit ? optimisticQuantity : Math.max(1, Math.floor(input.quantity)),
           printWidthInches: input.printWidthInches,
           printHeightInches: input.printHeightInches,
+          standardSizePresetKey: input.standardSizePresetKey,
         });
         // Root Cause 2 (Plan Section 20.2/20.4): commit the server's authoritative accepted
         // quantity, not the client's optimistic guess — closes the "displayed 7, server capped it
@@ -603,6 +618,8 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
           patchWorkingItems((currentItems) =>
             currentItems.filter((item) => item.id !== itemId),
           );
+          // Keep the pending-remove mark until the live/list snapshot confirms absence —
+          // ending it here lets a stale onSnapshot resurrect the card ~1s later.
         }
         setPrintRequest((currentRequest) =>
           currentRequest
@@ -612,13 +629,13 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
               }
             : currentRequest,
         );
-      } finally {
-        setIsSaving(false);
+      } catch (error) {
         if (isViewingWorkingRequest) {
-          // Clear the pending-remove mark after the callable settles (success or error) —
-          // matches the begin/end contract useAddDesignToRequestFlow's paths already follow.
           endPendingItemRemovals([itemId]);
         }
+        throw error;
+      } finally {
+        setIsSaving(false);
       }
     },
     [
@@ -632,8 +649,7 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
     ],
   );
 
-  const isEditable =
-    printRequest?.status === 'draft' || printRequest?.status === 'editing';
+  const isEditable = printRequest ? isPortalActiveEditablePrintRequest(printRequest) : false;
   const reconcileQueued = useCallback(() => {
     // Queue success is a locally-known transition, not an external change: the callable response
     // already carries the authoritative outcome. Clear the working-transition flags synchronously
@@ -645,6 +661,64 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
     lastSyncedWorkingSignatureRef.current = null;
     setPrintRequest((current) => (current ? { ...current, status: 'active' } : current));
   }, []);
+
+  const reconcileUnqueued = useCallback((status: 'editing' | 'active' = 'editing') => {
+    wasViewingWorkingRef.current = false;
+    lastSyncedWorkingSignatureRef.current = null;
+    setPrintRequest((current) => (current ? { ...current, status } : current));
+  }, []);
+
+  const patchArtworkEnhanceMode = useCallback(
+    (itemId: string, result: SetPrintRequestItemArtworkEnhanceModeResponse) => {
+      const patch = (currentItems: PrintRequestItem[]) =>
+        currentItems.map((entry) =>
+          entry.id === itemId ? { ...entry, artworkEnhanceMode: result.artworkEnhanceMode } : entry,
+        );
+      setItems(patch);
+      if (isViewingWorkingRequest) {
+        patchWorkingItems(patch);
+      }
+
+      // Hydrate parent design/upload summaries with callable enhanced pixels so remounts
+      // derive DPI from persisted metadata — not card-local enhanceResultPixels.
+      const designId = result.designId?.trim();
+      if (designId) {
+        catalogService.invalidateReadyDesignById(designId);
+        setDesignSummaries((current) => {
+          const existing = current.get(designId);
+          if (!existing) {
+            return current;
+          }
+          const next = new Map(current);
+          next.set(
+            designId,
+            mergeInteractiveEnhanceResultIntoAssetSummary(existing, result) as CatalogDesign,
+          );
+          return next;
+        });
+      }
+
+      const uploadId = result.customerUploadId?.trim();
+      if (uploadId) {
+        setUploadSummaries((current) => {
+          const existing = current.get(uploadId);
+          if (!existing) {
+            return current;
+          }
+          const next = new Map(current);
+          next.set(
+            uploadId,
+            mergeInteractiveEnhanceResultIntoAssetSummary(
+              existing,
+              result,
+            ) as CustomerUploadDocSummary,
+          );
+          return next;
+        });
+      }
+    },
+    [isViewingWorkingRequest, patchWorkingItems],
+  );
 
   return {
     printRequest,
@@ -663,5 +737,7 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
     getItemClientKey,
     removeItem,
     reconcileQueued,
+    reconcileUnqueued,
+    patchArtworkEnhanceMode,
   };
 }

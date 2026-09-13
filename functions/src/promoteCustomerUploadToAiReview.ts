@@ -2,12 +2,14 @@ import { FieldValue } from "firebase-admin/firestore";
 import { onCall } from "firebase-functions/v2/https";
 
 import { CUSTOMER_UPLOAD_COLLECTIONS } from "../../packages/shared/src/constants/customerUpload/customerUploadCollections.constants";
+import { ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK } from "../../packages/shared/src/constants/design/artworkBackground.constants";
 import {
   getPreviewStoragePath,
   getOriginalStoragePath,
   getThumbnailStoragePath,
 } from "../../packages/shared/src/constants/design/designStoragePaths";
 import type { PromoteCustomerUploadToAiReviewResponse } from "../../packages/shared/src/types/customerUpload/customerUploadStaffActions.types";
+import { isCustomerUploadEligibleForCatalogIntake } from "../../packages/shared/src/utils/customerUploadCatalogIntakeEligibility";
 
 import { adminDb, adminStorage } from "./lib/admin";
 import { assertStaffCaller, loadCallerProfile } from "./lib/caller";
@@ -22,6 +24,7 @@ import {
   unauthenticated,
 } from "./lib/errors";
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
+import { CUSTOMER_UPLOAD_UNPROMOTED_DONATION_RETENTION_REASON } from "../../packages/shared/src/utils/customerUploadCatalogRetention";
 
 function titleFromFilename(fileName: string): string {
   const trimmed = fileName.trim();
@@ -128,6 +131,11 @@ export const promoteCustomerUploadToAiReview = onCall(
       if (upload.ownershipConfirmed !== true) {
         throw failedPrecondition("Customer ownership confirmation is required before promotion.");
       }
+      if (!isCustomerUploadEligibleForCatalogIntake(upload)) {
+        throw failedPrecondition(
+          "Customer declined Design Library permission; this upload is print-request only.",
+        );
+      }
       if (upload.catalogReviewStatus !== "pending_staff_review") {
         throw failedPrecondition("Only uploads pending staff review can be promoted.");
       }
@@ -189,6 +197,25 @@ export const promoteCustomerUploadToAiReview = onCall(
           halftoneDetection: upload.halftoneDetection ?? undefined,
           halftoneSubmitterResponse: upload.halftoneSubmitterResponse ?? undefined,
           halftoneStaffDecision: upload.halftoneStaffDecision ?? undefined,
+          halftoneDecisionSource:
+            upload.halftoneStaffDecision &&
+            typeof upload.halftoneStaffDecision === "object" &&
+            typeof upload.halftoneStaffDecision.value === "boolean"
+              ? "intake"
+              : undefined,
+          ...(typeof upload.artworkBackgroundSource === "string"
+            ? {
+                artworkBackgroundSource: upload.artworkBackgroundSource,
+                ...(typeof upload.artworkBackgroundHex === "string"
+                  ? { artworkBackgroundHex: upload.artworkBackgroundHex }
+                  : {}),
+              }
+            : upload.suggestDarkArtworkBackground === true
+              ? {
+                  artworkBackgroundSource: "code_auto",
+                  artworkBackgroundHex: ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK,
+                }
+              : {}),
           queueCount: 0,
           aiProcessed: false,
           aiReviewed: false,
@@ -204,6 +231,10 @@ export const promoteCustomerUploadToAiReview = onCall(
         promotedDesignId: designId,
         catalogReviewStatus: "sent_to_ai_review",
         promotedAt: FieldValue.serverTimestamp(),
+        catalogRetentionStartedAt: FieldValue.delete(),
+        ...(upload.catalogExclusionReason === CUSTOMER_UPLOAD_UNPROMOTED_DONATION_RETENTION_REASON
+          ? { catalogExclusionReason: FieldValue.delete() }
+          : {}),
         updatedAt: FieldValue.serverTimestamp(),
       });
 

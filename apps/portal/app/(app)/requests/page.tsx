@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useMemo } from 'react';
 
 import { derivePrintRequestQueueState } from '@fresh-prints/shared/utils/printRequestQueueState';
 import { getPrintRequestProgressLabel } from '@fresh-prints/shared/utils/printRequestProgressDisplay';
@@ -10,6 +11,7 @@ import { buildPortalCustomerShowScheduleCardSummary } from '@fresh-prints/shared
 import {
   PORTAL_PRINT_REQUEST_LIST_TAB_PARAM,
   getPortalPrintRequestListTabLabel,
+  getVisiblePortalPrintRequestListTabs,
   parsePortalPrintRequestListTab,
   type PortalPrintRequestListTab,
 } from '@fresh-prints/shared/utils/portalPrintRequestListTabs';
@@ -21,9 +23,8 @@ import {
   getPortalPrintRequestTabEmptyCopy,
   getPortalPrintRequestsEmptyPageCopyLines,
 } from '../../../features/print-requests/utils/portalPrintRequestTabCopy';
+import { resolvePortalPrintRequestCardLabel } from '../../../features/print-requests/utils/resolvePortalPrintRequestCardLabel';
 import { LibraryIcon, ShoppingBagIcon } from '../../../features/shared/components/PortalIcons';
-
-const PORTAL_REQUEST_TABS: PortalPrintRequestListTab[] = ['working', 'queued', 'printing', 'printed'];
 
 function buildRequestsPageHref(tab: PortalPrintRequestListTab): string {
   return `/requests?tab=${tab}`;
@@ -33,6 +34,8 @@ function getEmptyTabTitle(tab: PortalPrintRequestListTab): string {
   switch (tab) {
     case 'working':
       return 'Current Request is open';
+    case 'editing':
+      return 'No requests in Editing';
     case 'queued':
       return 'No queued requests';
     case 'printing':
@@ -63,6 +66,20 @@ export default function RequestsPage() {
     summariesByRequestId,
   } = usePortalPrintRequests();
 
+  const visibleTabs = useMemo(
+    () => getVisiblePortalPrintRequestListTabs(requestsByTab.editing.length),
+    [requestsByTab.editing.length],
+  );
+
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+    if (activeTab === 'editing' && requestsByTab.editing.length === 0) {
+      router.replace(buildRequestsPageHref('working'));
+    }
+  }, [activeTab, isLoading, requestsByTab.editing.length, router]);
+
   const visibleRequests = requestsByTab[activeTab];
   const [emptyCopyLineOne, emptyCopyLineTwo] = getPortalPrintRequestsEmptyPageCopyLines();
 
@@ -76,8 +93,8 @@ export default function RequestsPage() {
         <div>
           <h1>Print requests</h1>
           <p className="portal-muted">
-            Track requests while you build them, after they are queued to a show&apos;s print run, while they
-            print, and once production is complete.
+            Track requests while you build them, while they are back for edits, after they are queued
+            to a show&apos;s print run, while they print, and once production is complete.
           </p>
         </div>
       </header>
@@ -129,7 +146,7 @@ export default function RequestsPage() {
       ) : (
         <>
           <div className="portal-requests-tab-bar" role="tablist" aria-label="Print request filters">
-            {PORTAL_REQUEST_TABS.map((tab) => (
+            {visibleTabs.map((tab) => (
               <button
                 aria-selected={activeTab === tab}
                 className={`portal-requests-tab-button${activeTab === tab ? ' is-active' : ''}`}
@@ -178,17 +195,21 @@ export default function RequestsPage() {
                   totalInProgressQuantity: 0,
                   totalPrintedQuantity: 0,
                 };
-                const progressLabel = resolvePortalPrintRequestProgressLabel({
-                  closureKind: request.closureKind,
-                  status: request.status,
-                  defaultLabel: getPrintRequestProgressLabel(
-                    derivePrintRequestQueueState({
-                      totalRequestedQuantity: summary.totalQuantity,
-                      totalAllocatedQuantity: allocationTotals.totalAllocatedQuantity,
-                      totalInProgressQuantity: allocationTotals.totalInProgressQuantity,
-                      totalPrintedQuantity: allocationTotals.totalPrintedQuantity,
-                    }),
-                  ),
+                const progressLabel = resolvePortalPrintRequestCardLabel({
+                  listTab: activeTab,
+                  requestStatus: request.status,
+                  progressLabel: resolvePortalPrintRequestProgressLabel({
+                    closureKind: request.closureKind,
+                    status: request.status,
+                    defaultLabel: getPrintRequestProgressLabel(
+                      derivePrintRequestQueueState({
+                        totalRequestedQuantity: summary.totalQuantity,
+                        totalAllocatedQuantity: allocationTotals.totalAllocatedQuantity,
+                        totalInProgressQuantity: allocationTotals.totalInProgressQuantity,
+                        totalPrintedQuantity: allocationTotals.totalPrintedQuantity,
+                      }),
+                    ),
+                  }),
                 });
                 const scheduleLine = buildPortalCustomerShowScheduleCardSummary(
                   schedulesByRequestId[request.id] ?? [],

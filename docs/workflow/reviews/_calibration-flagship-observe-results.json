@@ -1,0 +1,1377 @@
+{
+  "projectId": "fresh-prints-dev",
+  "startedAt": "2026-08-26T01:29:29.891Z",
+  "completedAt": "2026-08-26T01:29:57.397Z",
+  "aborted": false,
+  "abortReason": null,
+  "fixtureCountAuthorized": 6,
+  "fixtureCountAttempted": 6,
+  "fixtures": [
+    {
+      "designId": "yJm2VBRvecPNjx79aSnK",
+      "baseline": {
+        "title": "Highland Cow With Bow",
+        "description": "A cartoon Highland cow with a red and white plaid bow on its head is shown with large, surprised eyes and a wide mouth. The artwork features brown and orange colors.",
+        "categoryId": "qhGPaAHPOOmPe7PvQvi0",
+        "categoryName": null,
+        "status": "ready",
+        "aiReviewStatus": "approved",
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "subjects": [
+          "cow"
+        ],
+        "objects": [
+          "bow"
+        ],
+        "themes": [
+          "animal humor",
+          "cute"
+        ],
+        "interests": [],
+        "professionsGroups": [],
+        "occasions": [],
+        "searchConcepts": [
+          "Scottish cow",
+          "fluffy cow",
+          "baby cow",
+          "cow cartoon"
+        ],
+        "visibleText": [],
+        "smartProfile": {
+          "provenance": {
+            "version": "smart-profile-v1",
+            "provider": "google",
+            "model": "gemini-2.5-flash-lite",
+            "promptVersion": "catalog-enrich-v27",
+            "generatedAt": "2026-08-24T22:17:47.659Z",
+            "titleOutcome": "first_pass",
+            "automationDecision": "shadow",
+            "automationDecisionAt": "2026-08-24T22:17:48.421Z",
+            "normalizerVersion": "smart-profile-normalizer-v1",
+            "automationReasonCodes": [
+              "shadow_would_auto_approve"
+            ]
+          },
+          "categoryId": "qhGPaAHPOOmPe7PvQvi0",
+          "categoryName": "Animals",
+          "subjects": [
+            "cow"
+          ],
+          "objects": [
+            "bow"
+          ],
+          "styles": [
+            "cartoon",
+            "watercolor"
+          ],
+          "themes": [
+            "animal humor",
+            "cute"
+          ],
+          "colors": [
+            "brown",
+            "orange",
+            "red",
+            "white"
+          ],
+          "searchConcepts": [
+            "Scottish cow",
+            "fluffy cow",
+            "baby cow",
+            "cow cartoon"
+          ]
+        }
+      },
+      "beforeHash": "e24abdf8dcc581ca02d7f3e872fc027687851d370929daba3bbd52272254234c",
+      "afterHash": "e24abdf8dcc581ca02d7f3e872fc027687851d370929daba3bbd52272254234c",
+      "immutability": "PASS",
+      "outcome": "observed",
+      "error": null,
+      "candidate": {
+        "title": "A Cartoon Illustration Of A Fluffy Brown Highland Cow With Large Expressive Eyes And A Red And White Plaid Bow On Its Head",
+        "description": "A cartoon illustration of a fluffy, brown Highland cow with large, expressive eyes and a red and white plaid bow on its head. The cow has a wide mouth and is sitting down.",
+        "categoryId": "qhGPaAHPOOmPe7PvQvi0",
+        "categoryName": "Animals",
+        "tags": [
+          "cartoon"
+        ],
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3",
+        "subjects": [
+          "highland cow",
+          "cow"
+        ],
+        "objects": [
+          "bow"
+        ],
+        "themes": [
+          "humor",
+          "animal humor"
+        ],
+        "interests": [
+          "animals",
+          "country life",
+          "farm life"
+        ],
+        "professionsGroups": [],
+        "occasions": [],
+        "searchConcepts": [
+          "highland cattle",
+          "funny cow",
+          "cute cow",
+          "farm animal",
+          "country style"
+        ],
+        "visibleText": [],
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "shadow_would_auto_approve"
+        ],
+        "provider": "google",
+        "model": "gemini-2.5-flash-lite",
+        "smartProfile": {
+          "subjects": [
+            "highland cow",
+            "cow"
+          ],
+          "objects": [
+            "bow"
+          ],
+          "styles": [
+            "illustration",
+            "cartoon",
+            "graphic",
+            "decorative"
+          ],
+          "themes": [
+            "humor",
+            "animal humor"
+          ],
+          "interests": [
+            "animals",
+            "country life",
+            "farm life"
+          ],
+          "colors": [
+            "brown",
+            "white",
+            "red",
+            "black",
+            "gray"
+          ],
+          "searchConcepts": [
+            "highland cattle",
+            "funny cow",
+            "cute cow",
+            "farm animal",
+            "country style"
+          ],
+          "categoryId": "qhGPaAHPOOmPe7PvQvi0",
+          "categoryName": "Animals",
+          "provenance": {
+            "version": "smart-profile-v1",
+            "provider": "google",
+            "model": "gemini-2.5-flash-lite",
+            "promptVersion": "catalog-enrich-v29",
+            "generatedAt": "2026-08-26T01:29:34.208Z",
+            "titleOutcome": "first_pass",
+            "automationDecision": "shadow",
+            "automationDecisionAt": "2026-08-26T01:29:30.496Z",
+            "normalizerVersion": "smart-profile-normalizer-v3",
+            "automationReasonCodes": [
+              "shadow_would_auto_approve"
+            ],
+            "verifierInvoked": false
+          }
+        }
+      },
+      "observedAt": "2026-08-26T01:29:35.358Z"
+    },
+    {
+      "designId": "6x2LyTvG3ewIePeWHanV",
+      "baseline": {
+        "title": "Jimothy Seattle Wildlife Do Not Pet The Round King",
+        "description": "The design features the text JIMOTHY, SEATTLE WILDLIFE, and DO NOT PET THE ROUND KING. It depicts a raccoon in the foreground with the Seattle skyline and Mount Rainier in the background. The style is illustrative with earthy colors and vintage font effects.",
+        "categoryId": "tj0HemRh2RuYLfI7N6nO",
+        "categoryName": null,
+        "status": "ready",
+        "aiReviewStatus": "approved",
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "subjects": [
+          "raccoon",
+          "people"
+        ],
+        "objects": [
+          "cityscape",
+          "mountain",
+          "trees",
+          "water"
+        ],
+        "themes": [
+          "wildlife",
+          "city",
+          "nature",
+          "humor"
+        ],
+        "interests": [
+          "travel",
+          "outdoors"
+        ],
+        "professionsGroups": [],
+        "occasions": [],
+        "searchConcepts": [
+          "Jimothy raccoon",
+          "Seattle raccoon",
+          "round king raccoon",
+          "funny raccoon shirt",
+          "raccoon humor",
+          "Seattle wildlife shirt"
+        ],
+        "visibleText": [
+          "JIMOTHY",
+          "SEATTLE WILDLIFE",
+          "DO NOT PET THE ROUND KING"
+        ],
+        "smartProfile": {
+          "provenance": {
+            "version": "smart-profile-v1",
+            "provider": "google",
+            "model": "gemini-2.5-flash-lite",
+            "promptVersion": "catalog-enrich-v27",
+            "generatedAt": "2026-08-24T22:32:18.949Z",
+            "titleOutcome": "first_pass",
+            "automationDecision": "shadow",
+            "automationDecisionAt": "2026-08-24T22:32:19.448Z",
+            "normalizerVersion": "smart-profile-normalizer-v1",
+            "automationReasonCodes": [
+              "shadow_would_auto_approve"
+            ]
+          },
+          "categoryId": "tj0HemRh2RuYLfI7N6nO",
+          "categoryName": "Funny & Sarcastic",
+          "subjects": [
+            "raccoon",
+            "people"
+          ],
+          "objects": [
+            "cityscape",
+            "mountain",
+            "trees",
+            "water"
+          ],
+          "styles": [
+            "illustrative",
+            "vintage",
+            "distressed"
+          ],
+          "themes": [
+            "wildlife",
+            "city",
+            "nature",
+            "humor"
+          ],
+          "interests": [
+            "travel",
+            "outdoors"
+          ],
+          "places": [
+            "Seattle"
+          ],
+          "colors": [
+            "red",
+            "orange",
+            "brown",
+            "green",
+            "gray",
+            "white"
+          ],
+          "visibleText": [
+            "JIMOTHY",
+            "SEATTLE WILDLIFE",
+            "DO NOT PET THE ROUND KING"
+          ],
+          "searchConcepts": [
+            "Jimothy raccoon",
+            "Seattle raccoon",
+            "round king raccoon",
+            "funny raccoon shirt",
+            "raccoon humor",
+            "Seattle wildlife shirt"
+          ]
+        }
+      },
+      "beforeHash": "1703a795967ad64c5d1a4e97030a6f98080b90a7d0f02ca243e61801c3d97e0b",
+      "afterHash": "1703a795967ad64c5d1a4e97030a6f98080b90a7d0f02ca243e61801c3d97e0b",
+      "immutability": "PASS",
+      "outcome": "observed",
+      "error": null,
+      "candidate": {
+        "title": "Jimothy Seattle Wildlife Do Not Pet The Round King Raccoon",
+        "description": "The design features the text JIMOTHY SEATTLE WILDLIFE and DO NOT PET THE ROUND KING. It shows a raccoon in the foreground with the Seattle skyline, including the Space Needle and Mount Rainier, in the background, framed by pine trees. The style is illustrative and graphic with dominant colors of orange, green, black, white, and grey.",
+        "categoryId": "qhGPaAHPOOmPe7PvQvi0",
+        "categoryName": "Animals",
+        "tags": [
+          "outdoors",
+          "travel",
+          "attitude"
+        ],
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3",
+        "subjects": [
+          "king raccoon",
+          "raccoon"
+        ],
+        "objects": [
+          "cityscape",
+          "trees",
+          "mountain"
+        ],
+        "themes": [
+          "humor",
+          "animal humor",
+          "attitude",
+          "wildlife"
+        ],
+        "interests": [
+          "animals",
+          "travel",
+          "nature",
+          "city life",
+          "Seattle"
+        ],
+        "professionsGroups": [],
+        "occasions": [],
+        "searchConcepts": [
+          "raccoon",
+          "Seattle wildlife",
+          "do not pet the raccoon",
+          "funny raccoon shirt",
+          "Jimothy",
+          "Space Needle",
+          "Mount Rainier",
+          "PNW",
+          "Pacific Northwest",
+          "funny animal saying",
+          "wild animal encounter"
+        ],
+        "visibleText": [
+          "JIMOTHY",
+          "SEATTLE WILDLIFE",
+          "DO NOT PET THE ROUND KING"
+        ],
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "structured_evidence_gap:objects:cityscape",
+          "structured_evidence_gap:objects:mountain",
+          "verifier_unresolved"
+        ],
+        "provider": "google",
+        "model": "gemini-2.5-flash-lite",
+        "smartProfile": {
+          "subjects": [
+            "king raccoon",
+            "raccoon"
+          ],
+          "objects": [
+            "cityscape",
+            "trees",
+            "mountain"
+          ],
+          "styles": [
+            "illustration",
+            "graphic",
+            "vintage"
+          ],
+          "themes": [
+            "humor",
+            "animal humor",
+            "attitude",
+            "wildlife"
+          ],
+          "interests": [
+            "animals",
+            "travel",
+            "nature",
+            "city life",
+            "Seattle"
+          ],
+          "places": [
+            "Seattle"
+          ],
+          "colors": [
+            "orange",
+            "green",
+            "black",
+            "white",
+            "grey"
+          ],
+          "visibleText": [
+            "JIMOTHY",
+            "SEATTLE WILDLIFE",
+            "DO NOT PET THE ROUND KING"
+          ],
+          "searchConcepts": [
+            "raccoon",
+            "Seattle wildlife",
+            "do not pet the raccoon",
+            "funny raccoon shirt",
+            "Jimothy",
+            "Space Needle",
+            "Mount Rainier",
+            "PNW",
+            "Pacific Northwest",
+            "funny animal saying",
+            "wild animal encounter"
+          ],
+          "categoryId": "qhGPaAHPOOmPe7PvQvi0",
+          "categoryName": "Animals",
+          "provenance": {
+            "version": "smart-profile-v1",
+            "provider": "google",
+            "model": "gemini-2.5-flash-lite",
+            "promptVersion": "catalog-enrich-v29",
+            "generatedAt": "2026-08-26T01:29:38.519Z",
+            "titleOutcome": "first_pass",
+            "automationDecision": "needs_review",
+            "automationDecisionAt": "2026-08-26T01:29:35.665Z",
+            "normalizerVersion": "smart-profile-normalizer-v3",
+            "automationReasonCodes": [
+              "structured_evidence_gap:objects:cityscape",
+              "structured_evidence_gap:objects:mountain",
+              "verifier_unresolved"
+            ],
+            "verifierInvoked": true
+          }
+        }
+      },
+      "observedAt": "2026-08-26T01:29:38.868Z"
+    },
+    {
+      "designId": "KI7Ncd1O9JCuX9uCq505",
+      "baseline": {
+        "title": "Oops I Got Another Plant Goose",
+        "description": "The design features a goose wearing a straw hat and green rain boots, surrounded by potted plants. It reads \"OOPS! I GOT ANOTHER PLANT\". The style is cartoonish with a hand-drawn feel, using black, white, green, and brown colors.",
+        "categoryId": "tj0HemRh2RuYLfI7N6nO",
+        "categoryName": null,
+        "status": "ready",
+        "aiReviewStatus": "approved",
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "subjects": [
+          "goose"
+        ],
+        "objects": [
+          "hat",
+          "boots",
+          "potted plants",
+          "plants"
+        ],
+        "themes": [
+          "plant obsession",
+          "gardening humor"
+        ],
+        "interests": [
+          "gardening",
+          "houseplants"
+        ],
+        "professionsGroups": [],
+        "occasions": [],
+        "searchConcepts": [
+          "goose with plants",
+          "plant mom",
+          "plant dad",
+          "crazy plant lady"
+        ],
+        "visibleText": [
+          "OOPS! I GOT",
+          "ANOTHER PLANT"
+        ],
+        "smartProfile": {
+          "provenance": {
+            "version": "smart-profile-v1",
+            "provider": "google",
+            "model": "gemini-2.5-flash-lite",
+            "promptVersion": "catalog-enrich-v27",
+            "generatedAt": "2026-08-24T22:30:55.523Z",
+            "titleOutcome": "first_pass",
+            "automationDecision": "shadow",
+            "automationDecisionAt": "2026-08-24T22:30:55.998Z",
+            "normalizerVersion": "smart-profile-normalizer-v1",
+            "automationReasonCodes": [
+              "shadow_would_auto_approve"
+            ]
+          },
+          "categoryId": "tj0HemRh2RuYLfI7N6nO",
+          "categoryName": "Funny & Sarcastic",
+          "subjects": [
+            "goose"
+          ],
+          "objects": [
+            "hat",
+            "boots",
+            "potted plants",
+            "plants"
+          ],
+          "styles": [
+            "cartoon",
+            "hand-drawn"
+          ],
+          "themes": [
+            "plant obsession",
+            "gardening humor"
+          ],
+          "interests": [
+            "gardening",
+            "houseplants"
+          ],
+          "colors": [
+            "black",
+            "white",
+            "green",
+            "brown"
+          ],
+          "visibleText": [
+            "OOPS! I GOT",
+            "ANOTHER PLANT"
+          ],
+          "searchConcepts": [
+            "goose with plants",
+            "plant mom",
+            "plant dad",
+            "crazy plant lady"
+          ]
+        }
+      },
+      "beforeHash": "41a3f03b21a07bb6bfd1ba8b24663714599eca101c5f82b53fe090c66abae1d7",
+      "afterHash": "41a3f03b21a07bb6bfd1ba8b24663714599eca101c5f82b53fe090c66abae1d7",
+      "immutability": "PASS",
+      "outcome": "observed",
+      "error": null,
+      "candidate": {
+        "title": "Oops I Got Another Plant Goose",
+        "description": "This design features a white goose wearing a straw hat adorned with daisies and green rain boots. The goose is holding a potted monstera plant and is surrounded by other potted plants, including snake plants and succulents. The text reads \"OOPS! I GOT\" above the goose and \"ANOTHER PLANT\" below. The style is illustrative with bold black lettering and muted green and brown tones.",
+        "categoryId": "xyqSfR7BFSheG6IbOc0D",
+        "categoryName": "Hobbies & Lifestyle",
+        "tags": [
+          "dad",
+          "green"
+        ],
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3",
+        "subjects": [
+          "plant goose",
+          "white goose",
+          "goose"
+        ],
+        "objects": [
+          "plants",
+          "hat",
+          "boots",
+          "monstera"
+        ],
+        "themes": [
+          "humor",
+          "plant lover"
+        ],
+        "interests": [
+          "gardening",
+          "plants"
+        ],
+        "professionsGroups": [],
+        "occasions": [],
+        "searchConcepts": [
+          "plant addiction",
+          "crazy plant lady",
+          "plant parent",
+          "gardener humor",
+          "funny goose"
+        ],
+        "visibleText": [
+          "OOPS! I GOT",
+          "ANOTHER PLANT"
+        ],
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "category_alternatives_present",
+          "shadow_would_auto_approve"
+        ],
+        "provider": "google",
+        "model": "gemini-2.5-flash-lite",
+        "smartProfile": {
+          "subjects": [
+            "plant goose",
+            "white goose",
+            "goose"
+          ],
+          "objects": [
+            "plants",
+            "hat",
+            "boots",
+            "monstera"
+          ],
+          "styles": [
+            "illustration",
+            "graphic",
+            "decorative"
+          ],
+          "themes": [
+            "humor",
+            "plant lover"
+          ],
+          "interests": [
+            "gardening",
+            "plants"
+          ],
+          "colors": [
+            "black",
+            "white",
+            "green",
+            "brown"
+          ],
+          "visibleText": [
+            "OOPS! I GOT",
+            "ANOTHER PLANT"
+          ],
+          "searchConcepts": [
+            "plant addiction",
+            "crazy plant lady",
+            "plant parent",
+            "gardener humor",
+            "funny goose"
+          ],
+          "categoryId": "xyqSfR7BFSheG6IbOc0D",
+          "categoryName": "Hobbies & Lifestyle",
+          "categoryAlternatives": [
+            {
+              "categoryName": "Funny & Sarcastic",
+              "categoryId": "tj0HemRh2RuYLfI7N6nO",
+              "reason": "The design has a humorous message and relatable theme for plant "
+            },
+            {
+              "categoryName": "Animals",
+              "categoryId": "qhGPaAHPOOmPe7PvQvi0",
+              "reason": "A goose is the central character of the design."
+            }
+          ],
+          "provenance": {
+            "version": "smart-profile-v1",
+            "provider": "google",
+            "model": "gemini-2.5-flash-lite",
+            "promptVersion": "catalog-enrich-v29",
+            "generatedAt": "2026-08-26T01:29:41.644Z",
+            "titleOutcome": "first_pass",
+            "automationDecision": "shadow",
+            "automationDecisionAt": "2026-08-26T01:29:39.178Z",
+            "normalizerVersion": "smart-profile-normalizer-v3",
+            "automationReasonCodes": [
+              "category_alternatives_present",
+              "shadow_would_auto_approve"
+            ],
+            "verifierInvoked": false
+          }
+        }
+      },
+      "observedAt": "2026-08-26T01:29:43.423Z"
+    },
+    {
+      "designId": "mZWO3Lsra91EhNRNEkhR",
+      "baseline": {
+        "title": "Nurse Brain Please Don't Interrupt",
+        "description": "The design shows the words NURSE BRAIN PLEASE DON'T INTERRUPT above a cartoon brain with a loading bar. The words are in bright, blocky letters with a neon glow effect. The brain is orange with pink outlines and has a smiling face. The loading bar below it is filled with colorful blocks. The colors are bright pink, orange, blue, and green",
+        "categoryId": "lUNc6pjkJ99WdBAGbrCF",
+        "categoryName": null,
+        "status": "ready",
+        "aiReviewStatus": "approved",
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "subjects": [
+          "brain"
+        ],
+        "objects": [
+          "loading bar"
+        ],
+        "themes": [
+          "nurse humor",
+          "busy brain",
+          "overwhelmed",
+          "under construction"
+        ],
+        "interests": [
+          "nursing"
+        ],
+        "professionsGroups": [
+          "nurses"
+        ],
+        "occasions": [],
+        "searchConcepts": [
+          "nurse brain",
+          "busy nurse",
+          "nurse gift idea",
+          "nurse loading screen",
+          "nurse life"
+        ],
+        "visibleText": [
+          "NURSE",
+          "BRAIN",
+          "PLEASE DON'T INTERRUPT."
+        ],
+        "smartProfile": {
+          "provenance": {
+            "version": "smart-profile-v1",
+            "provider": "google",
+            "model": "gemini-2.5-flash-lite",
+            "promptVersion": "catalog-enrich-v27",
+            "generatedAt": "2026-08-24T22:24:30.547Z",
+            "titleOutcome": "first_pass",
+            "automationDecision": "shadow",
+            "automationDecisionAt": "2026-08-24T22:24:31.043Z",
+            "normalizerVersion": "smart-profile-normalizer-v1",
+            "automationReasonCodes": [
+              "shadow_would_auto_approve"
+            ]
+          },
+          "categoryId": "lUNc6pjkJ99WdBAGbrCF",
+          "categoryName": "Occupations",
+          "subjects": [
+            "brain"
+          ],
+          "objects": [
+            "loading bar"
+          ],
+          "styles": [
+            "cartoon",
+            "neon"
+          ],
+          "themes": [
+            "nurse humor",
+            "busy brain",
+            "overwhelmed",
+            "under construction"
+          ],
+          "interests": [
+            "nursing"
+          ],
+          "professionsGroups": [
+            "nurses"
+          ],
+          "colors": [
+            "orange",
+            "pink",
+            "blue",
+            "green",
+            "grey"
+          ],
+          "visibleText": [
+            "NURSE",
+            "BRAIN",
+            "PLEASE DON'T INTERRUPT."
+          ],
+          "searchConcepts": [
+            "nurse brain",
+            "busy nurse",
+            "nurse gift idea",
+            "nurse loading screen",
+            "nurse life"
+          ]
+        }
+      },
+      "beforeHash": "8249b988f9c26db91a5eacf0b10bf0f9fd654fd0b2300787ece13ee91ae4f9d0",
+      "afterHash": "8249b988f9c26db91a5eacf0b10bf0f9fd654fd0b2300787ece13ee91ae4f9d0",
+      "immutability": "PASS",
+      "outcome": "observed",
+      "error": null,
+      "candidate": {
+        "title": "Nurse Brain Please Don't Interrupt",
+        "description": "The design features the words NURSE BRAIN PLEASE DON'T INTERRUPT. A cute cartoon brain is shown with a loading bar below it.",
+        "categoryId": "lUNc6pjkJ99WdBAGbrCF",
+        "categoryName": "Occupations",
+        "tags": [
+          "cute",
+          "cartoon"
+        ],
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3",
+        "subjects": [
+          "nurse brain",
+          "brain"
+        ],
+        "objects": [
+          "brain"
+        ],
+        "themes": [
+          "humor",
+          "work",
+          "attitude"
+        ],
+        "interests": [
+          "medical"
+        ],
+        "professionsGroups": [
+          "nurses"
+        ],
+        "occasions": [],
+        "searchConcepts": [
+          "nurse humor",
+          "busy nurse",
+          "brain fog",
+          "nurse life",
+          "medical humor",
+          "healthcare professional",
+          "overworked",
+          "mental load",
+          "loading bar"
+        ],
+        "visibleText": [
+          "NURSE",
+          "BRAIN",
+          "PLEASE DON'T INTERRUPT."
+        ],
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "shadow_would_auto_approve"
+        ],
+        "provider": "google",
+        "model": "gemini-2.5-flash-lite",
+        "smartProfile": {
+          "subjects": [
+            "nurse brain",
+            "brain"
+          ],
+          "objects": [
+            "brain"
+          ],
+          "styles": [
+            "cartoon",
+            "graphic"
+          ],
+          "themes": [
+            "humor",
+            "work",
+            "attitude"
+          ],
+          "interests": [
+            "medical"
+          ],
+          "professionsGroups": [
+            "nurses"
+          ],
+          "colors": [
+            "orange",
+            "pink",
+            "blue",
+            "green",
+            "yellow"
+          ],
+          "visibleText": [
+            "NURSE",
+            "BRAIN",
+            "PLEASE DON'T INTERRUPT."
+          ],
+          "searchConcepts": [
+            "nurse humor",
+            "busy nurse",
+            "brain fog",
+            "nurse life",
+            "medical humor",
+            "healthcare professional",
+            "overworked",
+            "mental load",
+            "loading bar"
+          ],
+          "categoryId": "lUNc6pjkJ99WdBAGbrCF",
+          "categoryName": "Occupations",
+          "provenance": {
+            "version": "smart-profile-v1",
+            "provider": "google",
+            "model": "gemini-2.5-flash-lite",
+            "promptVersion": "catalog-enrich-v29",
+            "generatedAt": "2026-08-26T01:29:45.988Z",
+            "titleOutcome": "first_pass",
+            "automationDecision": "shadow",
+            "automationDecisionAt": "2026-08-26T01:29:43.671Z",
+            "normalizerVersion": "smart-profile-normalizer-v3",
+            "automationReasonCodes": [
+              "shadow_would_auto_approve"
+            ],
+            "verifierInvoked": false
+          }
+        }
+      },
+      "observedAt": "2026-08-26T01:29:49.860Z"
+    },
+    {
+      "designId": "W1bwk4jrCoQFn0OiyiSU",
+      "baseline": {
+        "title": "I Don't Believe In You Either Santa",
+        "description": "The design features a cartoon illustration of Santa Claus with the text \"I DON'T BELIEVE IN YOU EITHER\" in green and red lettering. The style is playful and humorous with Santa holding up his index finger in a shushing gesture. Colors are red, white, green, and skin tones",
+        "categoryId": "Iu6YZYL4aiuAtXG6H9bI",
+        "categoryName": null,
+        "status": "ready",
+        "aiReviewStatus": "approved",
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "subjects": [
+          "Santa"
+        ],
+        "objects": [
+          "holly"
+        ],
+        "themes": [
+          "Christmas humor",
+          "funny holiday",
+          "sarcastic Christmas"
+        ],
+        "interests": [],
+        "professionsGroups": [],
+        "occasions": [
+          "Christmas"
+        ],
+        "searchConcepts": [
+          "Santa I don't believe",
+          "I don't believe in you either",
+          "funny Santa",
+          "Christmas saying"
+        ],
+        "visibleText": [
+          "I DON'T",
+          "BELIEVE",
+          "IN YOU EITHER"
+        ],
+        "smartProfile": {
+          "provenance": {
+            "version": "smart-profile-v1",
+            "provider": "google",
+            "model": "gemini-2.5-flash-lite",
+            "promptVersion": "catalog-enrich-v27",
+            "generatedAt": "2026-08-24T22:27:29.720Z",
+            "titleOutcome": "first_pass",
+            "automationDecision": "shadow",
+            "automationDecisionAt": "2026-08-24T22:27:30.213Z",
+            "normalizerVersion": "smart-profile-normalizer-v1",
+            "automationReasonCodes": [
+              "shadow_would_auto_approve"
+            ]
+          },
+          "categoryId": "Iu6YZYL4aiuAtXG6H9bI",
+          "categoryName": "Holiday & Seasonal",
+          "subjects": [
+            "Santa"
+          ],
+          "objects": [
+            "holly"
+          ],
+          "styles": [
+            "cartoon"
+          ],
+          "themes": [
+            "Christmas humor",
+            "funny holiday",
+            "sarcastic Christmas"
+          ],
+          "occasions": [
+            "Christmas"
+          ],
+          "colors": [
+            "red",
+            "white",
+            "green",
+            "grey"
+          ],
+          "visibleText": [
+            "I DON'T",
+            "BELIEVE",
+            "IN YOU EITHER"
+          ],
+          "searchConcepts": [
+            "Santa I don't believe",
+            "I don't believe in you either",
+            "funny Santa",
+            "Christmas saying"
+          ]
+        }
+      },
+      "beforeHash": "d49f87c6150197137319f032a7865ef0cf56f61bf08b8b5d3a272d9032299a0b",
+      "afterHash": "d49f87c6150197137319f032a7865ef0cf56f61bf08b8b5d3a272d9032299a0b",
+      "immutability": "PASS",
+      "outcome": "observed",
+      "error": null,
+      "candidate": {
+        "title": "I Don't Believe In You Either Santa Claus",
+        "description": "This is a graphic design featuring Santa Claus. Text reads \"I DON'T BELIEVE IN YOU EITHER\". The design is primarily illustrated with incidental text. The colors are red, white, green, and pink.",
+        "categoryId": "Iu6YZYL4aiuAtXG6H9bI",
+        "categoryName": "Holiday & Seasonal",
+        "tags": [
+          "sarcastic",
+          "quote"
+        ],
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3",
+        "subjects": [
+          "Santa Claus"
+        ],
+        "objects": [
+          "holly"
+        ],
+        "themes": [
+          "humor",
+          "Christmas"
+        ],
+        "interests": [
+          "Christmas"
+        ],
+        "professionsGroups": [],
+        "occasions": [
+          "Christmas"
+        ],
+        "searchConcepts": [
+          "funny Santa",
+          "Christmas sayings",
+          "holiday sayings",
+          "Christmas shirt",
+          "funny holiday shirt",
+          "Christmas quote",
+          "holiday quote"
+        ],
+        "visibleText": [
+          "I DON'T",
+          "BELIEVE",
+          "IN YOU EITHER"
+        ],
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "structured_evidence_gap:objects:holly",
+          "verifier_unresolved"
+        ],
+        "provider": "google",
+        "model": "gemini-2.5-flash-lite",
+        "smartProfile": {
+          "subjects": [
+            "Santa Claus"
+          ],
+          "objects": [
+            "holly"
+          ],
+          "styles": [
+            "graphic",
+            "illustration"
+          ],
+          "themes": [
+            "humor",
+            "Christmas"
+          ],
+          "interests": [
+            "Christmas"
+          ],
+          "occasions": [
+            "Christmas"
+          ],
+          "colors": [
+            "red",
+            "white",
+            "green",
+            "pink",
+            "gray"
+          ],
+          "visibleText": [
+            "I DON'T",
+            "BELIEVE",
+            "IN YOU EITHER"
+          ],
+          "searchConcepts": [
+            "funny Santa",
+            "Christmas sayings",
+            "holiday sayings",
+            "Christmas shirt",
+            "funny holiday shirt",
+            "Christmas quote",
+            "holiday quote"
+          ],
+          "categoryId": "Iu6YZYL4aiuAtXG6H9bI",
+          "categoryName": "Holiday & Seasonal",
+          "provenance": {
+            "version": "smart-profile-v1",
+            "provider": "google",
+            "model": "gemini-2.5-flash-lite",
+            "promptVersion": "catalog-enrich-v29",
+            "generatedAt": "2026-08-26T01:29:52.221Z",
+            "titleOutcome": "first_pass",
+            "automationDecision": "needs_review",
+            "automationDecisionAt": "2026-08-26T01:29:50.174Z",
+            "normalizerVersion": "smart-profile-normalizer-v3",
+            "automationReasonCodes": [
+              "structured_evidence_gap:objects:holly",
+              "verifier_unresolved"
+            ],
+            "verifierInvoked": true
+          }
+        }
+      },
+      "observedAt": "2026-08-26T01:29:52.590Z"
+    },
+    {
+      "designId": "ltn0gzs2YGXPADqCejr8",
+      "baseline": {
+        "title": "Summer Vibes Fruits",
+        "description": "The image shows a colorful beach scene with palm trees, tropical fruits, and flowers, along with the text 'Summer Vibes'. The style is playful and illustrative, with vibrant colors.",
+        "categoryId": "Iu6YZYL4aiuAtXG6H9bI",
+        "categoryName": null,
+        "status": "ready",
+        "aiReviewStatus": "approved",
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "subjects": [
+          "fruits",
+          "watermelon",
+          "pineapple",
+          "apple",
+          "orange",
+          "mango"
+        ],
+        "objects": [
+          "palm trees",
+          "flowers",
+          "sunglasses",
+          "ocean",
+          "sky"
+        ],
+        "themes": [
+          "summer vacation",
+          "beach life",
+          "tropical getaway",
+          "fun in the sun"
+        ],
+        "interests": [
+          "summer",
+          "beach",
+          "travel"
+        ],
+        "professionsGroups": [],
+        "occasions": [
+          "summer"
+        ],
+        "searchConcepts": [
+          "summer shirt",
+          "beach vibes",
+          "tropical shirt",
+          "fruity fun"
+        ],
+        "visibleText": [
+          "Summer Vibes"
+        ],
+        "smartProfile": {
+          "provenance": {
+            "version": "smart-profile-v1",
+            "provider": "google",
+            "model": "gemini-2.5-flash-lite",
+            "promptVersion": "catalog-enrich-v27",
+            "generatedAt": "2026-08-24T22:29:44.076Z",
+            "titleOutcome": "first_pass",
+            "automationDecision": "shadow",
+            "automationDecisionAt": "2026-08-24T22:29:44.557Z",
+            "normalizerVersion": "smart-profile-normalizer-v1",
+            "automationReasonCodes": [
+              "shadow_would_auto_approve"
+            ]
+          },
+          "categoryId": "Iu6YZYL4aiuAtXG6H9bI",
+          "categoryName": "Holiday & Seasonal",
+          "subjects": [
+            "fruits",
+            "watermelon",
+            "pineapple",
+            "apple",
+            "orange",
+            "mango"
+          ],
+          "objects": [
+            "palm trees",
+            "flowers",
+            "sunglasses",
+            "ocean",
+            "sky"
+          ],
+          "styles": [
+            "cartoon",
+            "illustration",
+            "watercolor"
+          ],
+          "themes": [
+            "summer vacation",
+            "beach life",
+            "tropical getaway",
+            "fun in the sun"
+          ],
+          "interests": [
+            "summer",
+            "beach",
+            "travel"
+          ],
+          "occasions": [
+            "summer"
+          ],
+          "places": [
+            "beach"
+          ],
+          "colors": [
+            "blue",
+            "green",
+            "yellow",
+            "orange",
+            "pink",
+            "purple"
+          ],
+          "visibleText": [
+            "Summer Vibes"
+          ],
+          "searchConcepts": [
+            "summer shirt",
+            "beach vibes",
+            "tropical shirt",
+            "fruity fun"
+          ]
+        }
+      },
+      "beforeHash": "864fc754beaed5ae10ab6414b63d1acb0aa5e1c5f691fd46eebd8841f2297bcc",
+      "afterHash": "864fc754beaed5ae10ab6414b63d1acb0aa5e1c5f691fd46eebd8841f2297bcc",
+      "immutability": "PASS",
+      "outcome": "observed",
+      "error": null,
+      "candidate": {
+        "title": "Summer Vibes Anthropomorphic Fruits",
+        "description": "A watercolor-style illustration of anthropomorphic fruits, including a watermelon and pineapple, enjoying a tropical sunset scene with palm trees, hibiscus flowers, and tropical fruits. The text \"Summer Vibes\" is displayed in a decorative script font.",
+        "categoryId": "Iu6YZYL4aiuAtXG6H9bI",
+        "categoryName": "Holiday & Seasonal",
+        "tags": [
+          "watercolor"
+        ],
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3",
+        "subjects": [
+          "fruits",
+          "watermelon",
+          "pineapple"
+        ],
+        "objects": [
+          "palm trees",
+          "flowers",
+          "sunglasses",
+          "fruit"
+        ],
+        "themes": [
+          "summer",
+          "vacation",
+          "tropical"
+        ],
+        "interests": [
+          "summer",
+          "beach life",
+          "travel"
+        ],
+        "professionsGroups": [],
+        "occasions": [
+          "summer"
+        ],
+        "searchConcepts": [
+          "summer vacation",
+          "tropical vibes",
+          "summertime fun",
+          "beach getaway",
+          "fruit characters",
+          "cute summer design",
+          "tropical party"
+        ],
+        "visibleText": [
+          "Summer Vibes"
+        ],
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "structured_evidence_gap:objects:sunglasses",
+          "subject_specificity_risk:fruits",
+          "verifier_unresolved"
+        ],
+        "provider": "google",
+        "model": "gemini-2.5-flash-lite",
+        "smartProfile": {
+          "subjects": [
+            "fruits",
+            "watermelon",
+            "pineapple"
+          ],
+          "objects": [
+            "palm trees",
+            "flowers",
+            "sunglasses",
+            "fruit"
+          ],
+          "styles": [
+            "watercolor",
+            "illustration",
+            "decorative",
+            "vibrant"
+          ],
+          "themes": [
+            "summer",
+            "vacation",
+            "tropical"
+          ],
+          "interests": [
+            "summer",
+            "beach life",
+            "travel"
+          ],
+          "occasions": [
+            "summer"
+          ],
+          "places": [
+            "beach"
+          ],
+          "colors": [
+            "blue",
+            "yellow",
+            "orange",
+            "pink",
+            "purple",
+            "green",
+            "black",
+            "white"
+          ],
+          "visibleText": [
+            "Summer Vibes"
+          ],
+          "searchConcepts": [
+            "summer vacation",
+            "tropical vibes",
+            "summertime fun",
+            "beach getaway",
+            "fruit characters",
+            "cute summer design",
+            "tropical party"
+          ],
+          "categoryId": "Iu6YZYL4aiuAtXG6H9bI",
+          "categoryName": "Holiday & Seasonal",
+          "provenance": {
+            "version": "smart-profile-v1",
+            "provider": "google",
+            "model": "gemini-2.5-flash-lite",
+            "promptVersion": "catalog-enrich-v29",
+            "generatedAt": "2026-08-26T01:29:55.313Z",
+            "titleOutcome": "first_pass",
+            "automationDecision": "needs_review",
+            "automationDecisionAt": "2026-08-26T01:29:52.866Z",
+            "normalizerVersion": "smart-profile-normalizer-v3",
+            "automationReasonCodes": [
+              "structured_evidence_gap:objects:sunglasses",
+              "subject_specificity_risk:fruits",
+              "verifier_unresolved"
+            ],
+            "verifierInvoked": true
+          }
+        }
+      },
+      "observedAt": "2026-08-26T01:29:57.315Z"
+    }
+  ],
+  "note": "Local JSON only. No design writes. No secrets in this file."
+}

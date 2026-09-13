@@ -4,16 +4,20 @@ import { afterEach, describe, it } from 'node:test';
 import {
   getPortalAlgoliaCatalogConfig,
   isPortalAlgoliaCatalogConfigured,
+  isPortalSmartFiltersConfigured,
   portalAlgoliaCatalogSearchEnabled,
+  portalSmartFiltersEnabled,
 } from './portalAlgoliaCatalogFlags';
 
 const FLAG = 'NEXT_PUBLIC_USE_ALGOLIA_CATALOG_SEARCH';
+const SMART_FLAG = 'NEXT_PUBLIC_USE_SMART_FILTERS';
 const APP_ID = 'NEXT_PUBLIC_ALGOLIA_APP_ID';
 const SEARCH_KEY = 'NEXT_PUBLIC_ALGOLIA_SEARCH_API_KEY';
 const INDEX = 'NEXT_PUBLIC_ALGOLIA_INDEX_NAME';
 
 const original = {
   flag: process.env[FLAG],
+  smartFlag: process.env[SMART_FLAG],
   appId: process.env[APP_ID],
   searchKey: process.env[SEARCH_KEY],
   index: process.env[INDEX],
@@ -21,6 +25,7 @@ const original = {
 
 afterEach(() => {
   restore(FLAG, original.flag);
+  restore(SMART_FLAG, original.smartFlag);
   restore(APP_ID, original.appId);
   restore(SEARCH_KEY, original.searchKey);
   restore(INDEX, original.index);
@@ -76,5 +81,34 @@ describe('portalAlgoliaCatalogFlags — default ON', () => {
     delete process.env[INDEX];
     assert.equal(getPortalAlgoliaCatalogConfig(), null);
     assert.equal(isPortalAlgoliaCatalogConfigured(), false);
+  });
+});
+
+describe('portalSmartFiltersEnabled — default OFF', () => {
+  it('is off when unset', () => {
+    delete process.env[SMART_FLAG];
+    assert.equal(portalSmartFiltersEnabled(), false);
+  });
+
+  it('is off for any value other than true', () => {
+    process.env[SMART_FLAG] = '1';
+    assert.equal(portalSmartFiltersEnabled(), false);
+    process.env[SMART_FLAG] = 'false';
+    assert.equal(portalSmartFiltersEnabled(), false);
+  });
+
+  it('is on only when exactly true', () => {
+    process.env[SMART_FLAG] = 'true';
+    assert.equal(portalSmartFiltersEnabled(), true);
+  });
+
+  it('is configured only when smart flag and Algolia credentials are ready', () => {
+    process.env[SMART_FLAG] = 'true';
+    setCredentials();
+    delete process.env[FLAG];
+    assert.equal(isPortalSmartFiltersConfigured(), true);
+
+    process.env[FLAG] = 'false';
+    assert.equal(isPortalSmartFiltersConfigured(), false);
   });
 });

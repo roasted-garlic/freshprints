@@ -17,15 +17,16 @@ interface DesignLibraryFilterControlsProps {
   onArchivedChange?: (checked: boolean) => void;
   onHalftoneFilterChange?: (on: boolean) => void;
   onNeedsCompanionFilterChange?: (on: boolean) => void;
-  onOpenTags: () => void;
+  onOpenSmartFilters?: () => void;
   onSearchChange: (value: string) => void;
   searchQuery: string;
   searchPlaceholder?: string;
-  selectedTagCount: number;
+  selectedSmartFilterCount?: number;
+  showSmartFilters?: boolean;
 }
 
 /**
- * Presentational filter controls (search, category, tags, optional Halftone).
+ * Presentational filter controls (search, category, discovery, optional Smart Filters / Halftone).
  * Renders UI only — all state lives in the page so the fixed dock and URL filters stay in sync.
  */
 export function DesignLibraryFilterControls({
@@ -39,11 +40,12 @@ export function DesignLibraryFilterControls({
   onCategoryChange,
   onHalftoneFilterChange,
   onNeedsCompanionFilterChange,
-  onOpenTags,
+  onOpenSmartFilters,
   onSearchChange,
   searchQuery,
   searchPlaceholder = "Search catalog...",
-  selectedTagCount,
+  selectedSmartFilterCount = 0,
+  showSmartFilters = false,
 }: DesignLibraryFilterControlsProps) {
   return (
     <div className="design-library-filter-controls">
@@ -84,11 +86,18 @@ export function DesignLibraryFilterControls({
         />
       ) : null}
 
-      <Button className="button-leading-icon" onClick={onOpenTags} size="sm" variant="secondary">
-        <ListFilter aria-hidden="true" size={16} strokeWidth={2} />
-        Tags
-        {selectedTagCount > 0 ? ` (${selectedTagCount})` : ""}
-      </Button>
+      {showSmartFilters && onOpenSmartFilters ? (
+        <Button
+          className="button-leading-icon"
+          onClick={onOpenSmartFilters}
+          size="sm"
+          variant="secondary"
+        >
+          <ListFilter aria-hidden="true" size={16} strokeWidth={2} />
+          Smart Filters
+          {selectedSmartFilterCount > 0 ? ` (${selectedSmartFilterCount})` : ""}
+        </Button>
+      ) : null}
 
       {showArchivedToggle && onArchivedChange ? (
         <Toggle

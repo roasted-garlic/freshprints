@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 
+import { PortalUsernameField, validatePortalUsernameInput } from '../../auth/components/PortalUsernameField';
 import { useAuth } from '../../auth/context/AuthContext';
 import {
   firebaseUserHasGoogleProvider,
@@ -19,7 +20,7 @@ interface AccountSettingsModalProps {
   onReopen?: () => void;
 }
 
-type SettingsSection = 'menu' | 'password' | 'email' | 'deletion';
+type SettingsSection = 'menu' | 'profile' | 'password' | 'email' | 'deletion';
 
 export function AccountSettingsModal({ isOpen, onClose, onReopen }: AccountSettingsModalProps) {
   const { customer, firebaseUser, refreshCustomer, user } = useAuth();
@@ -29,6 +30,8 @@ export function AccountSettingsModal({ isOpen, onClose, onReopen }: AccountSetti
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [isBusy, setIsBusy] = useState(false);
+  const [displayName, setDisplayName] = useState('');
+  const [username, setUsername] = useState('');
 
   const hasPassword = firebaseUserHasPasswordProvider(firebaseUser);
   const hasGoogle = firebaseUserHasGoogleProvider(firebaseUser);
@@ -42,7 +45,9 @@ export function AccountSettingsModal({ isOpen, onClose, onReopen }: AccountSetti
     setSection('menu');
     setError(null);
     setInfo(null);
-  }, [isOpen]);
+    setDisplayName(customer?.displayName ?? '');
+    setUsername(customer?.username ?? '');
+  }, [customer?.displayName, customer?.username, isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -63,6 +68,54 @@ export function AccountSettingsModal({ isOpen, onClose, onReopen }: AccountSetti
 
   if (!isOpen) {
     return null;
+  }
+
+  async function handleUpdateProfile(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const trimmedDisplayName = displayName.trim();
+    if (trimmedDisplayName.length < 2) {
+      setError('Display name must be at least 2 characters.');
+      return;
+    }
+
+    const usernameError = validatePortalUsernameInput(username);
+    if (usernameError) {
+      setError(usernameError);
+      return;
+    }
+
+    setIsBusy(true);
+    setError(null);
+    setInfo(null);
+
+    try {
+      const result = await portalAccountSettingsService.updateCustomerProfile({
+        displayName: trimmedDisplayName,
+        username,
+      });
+
+      await refreshCustomer();
+
+      let successMessage = 'Profile updated.';
+      if (result.usernameChanged) {
+        successMessage =
+          'Your profile username was updated. Historical print request names (for example, your old username-CR001) stay unchanged.';
+      }
+
+      if (!result.propagationComplete) {
+        successMessage +=
+          ' Some historical records are still updating — this usually finishes within a moment.';
+      }
+
+      showSuccess(successMessage);
+      setInfo(successMessage);
+      setSection('menu');
+    } catch (profileError) {
+      setError(profileError instanceof Error ? profileError.message : 'Unable to update profile.');
+    } finally {
+      setIsBusy(false);
+    }
   }
 
   async function handleSendResetEmail() {
@@ -221,6 +274,8 @@ export function AccountSettingsModal({ isOpen, onClose, onReopen }: AccountSetti
           <h2 id="account-settings-title">
             {section === 'menu'
               ? 'Account settings'
+              : section === 'profile'
+                ? 'Profile'
               : section === 'password'
                 ? 'Password'
                 : section === 'email'
@@ -232,7 +287,8 @@ export function AccountSettingsModal({ isOpen, onClose, onReopen }: AccountSetti
           {section === 'menu' ? (
             <div className="portal-account-settings-menu">
               <p className="portal-muted portal-confirm-modal-message">
-                Manage notifications, password, email, and account deletion for {profileEmail || 'your account'}.
+                Manage profile, notifications, password, email, and account deletion for{' '}
+                {profileEmail || 'your account'}.
               </p>
               {deletionPending ? (
                 <p className="portal-account-deletion-banner" role="status">
@@ -240,6 +296,20 @@ export function AccountSettingsModal({ isOpen, onClose, onReopen }: AccountSetti
                   processes it, or cancel the request below.
                 </p>
               ) : null}
+              <button
+                className="portal-button portal-button-secondary"
+                disabled={isBusy}
+                onClick={() => {
+                  setError(null);
+                  setInfo(null);
+                  setDisplayName(customer?.displayName ?? '');
+                  setUsername(customer?.username ?? '');
+                  setSection('profile');
+                }}
+                type="button"
+              >
+                Profile
+              </button>
               <button
                 className="portal-button portal-button-secondary"
                 disabled={isBusy}
@@ -301,6 +371,34 @@ export function AccountSettingsModal({ isOpen, onClose, onReopen }: AccountSetti
                 </button>
               )}
             </div>
+          ) : null}
+
+          {section === 'profile' ? (
+            <form className="portal-auth-form" onSubmit={handleUpdateProfile}>
+              <p className="portal-muted">
+                Update how your name appears in Fresh Prints. Changing your username updates future
+                requests; existing print request names stay the same.
+              </p>
+              <label className="portal-field">
+                <span>Display name</span>
+                <input
+                  autoComplete="name"
+                  name="displayName"
+                  onChange={(event) => setDisplayName(event.target.value)}
+                  required
+                  type="text"
+                  value={displayName}
+                />
+              </label>
+              <PortalUsernameField
+                disabled={isBusy}
+                onChange={setUsername}
+                value={username}
+              />
+              <button className="portal-button portal-button-primary" disabled={isBusy} type="submit">
+                {isBusy ? 'Saving…' : 'Save profile'}
+              </button>
+            </form>
           ) : null}
 
           {section === 'password' ? (

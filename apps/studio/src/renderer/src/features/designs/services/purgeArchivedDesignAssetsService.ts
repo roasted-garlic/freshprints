@@ -8,6 +8,7 @@ import type {
 
 import { db } from "../../../config/firebase";
 import { callTracedFunction } from "../../../config/tracedCallable";
+import { warmDeletionCallableBackground } from "../../deletion/services/deletionCallableWarmupService";
 
 const ACTIVE_ALLOCATION_STATUSES = new Set(["pending", "queued", "in_progress"]);
 
@@ -74,6 +75,10 @@ function getCallableErrorMessage(error: unknown, fallbackMessage: string): strin
 
       return fallbackMessage;
   }
+}
+
+export function warmPurgeArchivedDesignAssetsCallable(): void {
+  warmDeletionCallableBackground("purgeArchivedDesignAssets");
 }
 
 export async function purgeArchivedDesignAssets(

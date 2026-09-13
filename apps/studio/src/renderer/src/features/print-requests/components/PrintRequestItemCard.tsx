@@ -1,13 +1,22 @@
-import { Minus, Plus } from "lucide-react";
+import { Ban, CircleCheck, Minus, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
 
 import { Button } from "../../../shared/components/Button";
 import { Card } from "../../../shared/components/Card";
-import { DesignPreviewLightbox } from "../../designs/components/DesignPreviewLightbox";
+import { HoverBubbleTooltip } from "../../../shared/components/HoverBubbleTooltip";
+import { Toggle } from "../../../shared/components/Toggle";
 import { DesignThumbnailPanel } from "../../designs/components/DesignThumbnailPanel";
 import { useDesignDerivativeUrl } from "../../designs/hooks/useDesignDerivativeUrl";
 import type { Design } from "../../designs/types/design.types";
 import type { PrintRequestItem } from "@fresh-prints/shared/types/printRequest/printRequest.types";
+import type { StandardPrintSizesSettings } from "@fresh-prints/shared/constants/printSize/standardPrintSizesSettings.constants";
+import type { GangSheetSectionPricingConfig } from "@fresh-prints/shared/constants/gangSheetSectionPricingSettings.constants";
+import {
+  resolveGangSheetPriceTierForInches,
+  resolveGangSheetPricingForTier,
+} from "@fresh-prints/shared/utils/gangSheetCustomerSectionSummary";
+import { resolveStandardSizePresetKeyAfterManualSizeChange } from "@fresh-prints/shared/constants/printSize/standardPrintSizesSettings.constants";
+import { resolvePrintRequestItemSourcePill } from "@fresh-prints/shared/utils/printRequestItemSource";
 import {
   assessPrintRequestItemSize,
   calculateLockedHeightFromWidth,
@@ -18,8 +27,21 @@ import {
   resolvePrintRequestItemPersistenceHealth,
   type PrintRequestItemPersistenceHealth,
 } from "@fresh-prints/shared/utils/printRequestItemPersistenceHealth";
+import {
+  resolveActiveArtworkPixelDimensions,
+  resolveArtworkEnhanceMode,
+  resolveInteractiveUpscaleToggleEligibility,
+} from "@fresh-prints/shared/utils/interactiveArtworkEnhance";
+import type { SetPrintRequestItemArtworkEnhanceModeResponse } from "@fresh-prints/shared/types/printRequest/setPrintRequestItemArtworkEnhanceMode.types";
 import type { UpdatePrintRequestItemInput } from "../services/printRequestService";
+import { setPrintRequestItemArtworkEnhanceModeService } from "../services/setPrintRequestItemArtworkEnhanceModeService";
 import { resolvePrintRequestItemArtworkBackground } from "../utils/resolvePrintRequestItemArtworkBackground";
+import { resolvePrintRequestItemLibraryConsentIcon } from "../utils/printRequestCustomerUploadConsentSummary";
+import {
+  StandardPrintSizesModal,
+} from "./StandardPrintSizesModal";
+import { resolveStandardPrintSizeCardLabel } from "../utils/standardPrintSizeLabels";
+import { resolveArtworkEnhanceCallableErrorMessage } from "../utils/artworkEnhanceCallableErrorMessage";
 
 export interface PrintRequestItemUploadSummary {
   title: string;
@@ -32,13 +54,23 @@ export interface PrintRequestItemUploadSummary {
   approvedMaxPrintWidthInches?: number | null;
   approvedMaxPrintHeightInches?: number | null;
   wasUpscaled?: boolean | null;
+  fromAssistedCreation?: boolean;
+  /** Library consent from uploader; null/undefined when missing or pending. */
+  catalogUseAcknowledged?: boolean | null;
+  interactiveEnhancedProductionStoragePath?: string | null;
+  interactiveEnhancedWidthPx?: number | null;
+  interactiveEnhancedHeightPx?: number | null;
+  interactiveEnhanceGeneratedAt?: unknown;
+  /** Staff Artwork / upload preview mat when no catalog design is attached. */
+  artworkBackgroundHex?: string | null;
 }
 
 interface PrintRequestItemCardProps {
+  printRequestId: string;
   design?: Design;
   upload?: PrintRequestItemUploadSummary | null;
   item: PrintRequestItem;
-  onRemove: (item: PrintRequestItem) => void;
+  onRemove: (item: PrintRequestItem) => void | Promise<void>;
   onDuplicate: (item: PrintRequestItem) => void;
   onUpdate: (item: PrintRequestItem, input: UpdatePrintRequestItemInput) => Promise<void>;
   onAutosaveStateChange: (
@@ -48,8 +80,14 @@ interface PrintRequestItemCardProps {
   ) => void;
   onPersistenceHealthChange?: (itemId: string, health: PrintRequestItemPersistenceHealth) => void;
   onRegisterFlush?: (itemId: string, flush: (() => Promise<boolean>) | null) => void;
+  standardPrintSizesSettings: StandardPrintSizesSettings;
+  sectionPricing: GangSheetSectionPricingConfig;
   /** When true, hides edit/remove/duplicate controls because the request is locked while queued to a show. */
   readOnly?: boolean;
+  onDesignArtworkEnhanced?: () => void | Promise<void>;
+  onArtworkEnhanceModeChanged?: (result: SetPrintRequestItemArtworkEnhanceModeResponse) => void;
+  /** Parent-owned lightbox open — identity is always `item.id`. */
+  onOpenPreview?: () => void;
 }
 
 function resolveInitialWidth(item: PrintRequestItem): number {
@@ -88,6 +126,11 @@ function formatEditableNumber(value: number): string {
   return Number.isFinite(value) ? String(value) : "";
 }
 
+function formatItemCost(unitPriceUsd: number, quantity: number, totalPriceUsd: number): string {
+  const formatPrice = (amount: number) => Number.isInteger(amount) ? `$${amount}` : `$${amount.toFixed(2)}`;
+  return `${formatPrice(unitPriceUsd)} x ${quantity} = ${formatPrice(totalPriceUsd)}`;
+}
+
 function parsePositiveIntegerInput(value: string): number | null {
   const trimmedValue = value.trim();
   if (!trimmedValue) {
@@ -116,15 +159,22 @@ function parsePositiveDecimalInput(value: string): number | null {
   return parsedValue;
 }
 
-function buildItemSignature(quantity: number, width: number, height: number): string {
+function buildItemSignature(
+  quantity: number,
+  width: number,
+  height: number,
+  standardSizePresetKey?: string | null,
+): string {
   return JSON.stringify({
     quantity,
     width: Number.isFinite(width) ? Number(width.toFixed(2)) : width,
     height: Number.isFinite(height) ? Number(height.toFixed(2)) : height,
+    standardSizePresetKey: standardSizePresetKey ?? null,
   });
 }
 
 export function PrintRequestItemCard({
+  printRequestId,
   design,
   upload = null,
   item,
@@ -135,8 +185,18 @@ export function PrintRequestItemCard({
   onPersistenceHealthChange,
   onRegisterFlush,
   readOnly,
+  standardPrintSizesSettings,
+  sectionPricing,
+  onDesignArtworkEnhanced,
+  onArtworkEnhanceModeChanged,
+  onOpenPreview,
 }: PrintRequestItemCardProps) {
   const isUploadItem = item.sourceType === "customer_upload" || Boolean(item.customerUploadId);
+  const sourcePill = resolvePrintRequestItemSourcePill({
+    item,
+    fromAssistedCreation: upload?.fromAssistedCreation,
+  });
+  const libraryConsentIcon = resolvePrintRequestItemLibraryConsentIcon(item, upload);
   const title =
     design?.title ??
     upload?.title ??
@@ -148,7 +208,7 @@ export function PrintRequestItemCard({
     upload?.previewPath ??
     upload?.thumbnailPath ??
     undefined;
-  const artworkBackgroundHex = resolvePrintRequestItemArtworkBackground(design);
+  const artworkBackgroundHex = resolvePrintRequestItemArtworkBackground(design, upload);
   const [quantityInput, setQuantityInput] = useState(String(item.quantity));
   const [printWidthInput, setPrintWidthInput] = useState(
     formatEditableNumber(resolveInitialWidth(item)),
@@ -157,13 +217,18 @@ export function PrintRequestItemCard({
     formatEditableNumber(resolveInitialHeight(item)),
   );
   const [isConfirmingRemove, setIsConfirmingRemove] = useState(false);
-  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
+  const [isStandardSizesModalOpen, setIsStandardSizesModalOpen] = useState(false);
+  const [standardSizePresetKey, setStandardSizePresetKey] = useState<string | undefined>(
+    item.standardSizePresetKey,
+  );
   const { url: previewUrl } = useDesignDerivativeUrl(previewPath);
   const lastSavedSignatureRef = useRef(
     buildItemSignature(
       item.quantity,
       resolveInitialWidth(item),
       resolveInitialHeight(item),
+      item.standardSizePresetKey,
     ),
   );
   const saveDraftRef = useRef<() => Promise<boolean>>(async () => false);
@@ -172,11 +237,28 @@ export function PrintRequestItemCard({
   const saveQueuedRef = useRef(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isFailed, setIsFailed] = useState(false);
+  const [isTogglingEnhance, setIsTogglingEnhance] = useState(false);
+  const [enhanceToggleMode, setEnhanceToggleMode] = useState<"baseline" | "enhanced" | null>(null);
+  const [enhanceMessage, setEnhanceMessage] = useState<string | null>(null);
+  const [enhanceError, setEnhanceError] = useState<string | null>(null);
+  const [enhanceResultPixels, setEnhanceResultPixels] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
+  const [hiddenDpiWarningKey, setHiddenDpiWarningKey] = useState<string | null>(null);
+  const applyArtworkEnhanceRef = useRef<
+    (mode: "baseline" | "enhanced", confirmFirstEnhance?: boolean) => Promise<void>
+  >(async () => {});
 
   useEffect(() => {
     const nextWidth = resolveInitialWidth(item);
     const nextHeight = resolveInitialHeight(item);
-    const incomingSignature = buildItemSignature(item.quantity, nextWidth, nextHeight);
+    const incomingSignature = buildItemSignature(
+      item.quantity,
+      nextWidth,
+      nextHeight,
+      item.standardSizePresetKey,
+    );
 
     if (incomingSignature === lastSavedSignatureRef.current) {
       return;
@@ -185,24 +267,53 @@ export function PrintRequestItemCard({
     setQuantityInput(String(item.quantity));
     setPrintWidthInput(formatEditableNumber(nextWidth));
     setPrintHeightInput(formatEditableNumber(nextHeight));
+    setStandardSizePresetKey(item.standardSizePresetKey);
     setIsConfirmingRemove(false);
-    setIsLightboxOpen(false);
     lastSavedSignatureRef.current = incomingSignature;
   }, [design, item, upload]);
 
   const parsedQuantity = parsePositiveIntegerInput(quantityInput);
   const parsedPrintWidthInches = parsePositiveDecimalInput(printWidthInput);
   const parsedPrintHeightInches = parsePositiveDecimalInput(printHeightInput);
-  const aspectPixels = useMemo(() => resolveAspectPixels(design, upload), [design, upload]);
+  const artworkEnhanceMode = resolveArtworkEnhanceMode(item.artworkEnhanceMode);
+  const displayedArtworkEnhanceMode = enhanceToggleMode ?? artworkEnhanceMode;
+  const baselineAspectPixels = useMemo(() => resolveAspectPixels(design, upload), [design, upload]);
+  const activeAspectPixels = useMemo(() => {
+    if (!baselineAspectPixels) {
+      return null;
+    }
+
+    const active = resolveActiveArtworkPixelDimensions({
+      artworkEnhanceMode,
+      baselineWidthPx: baselineAspectPixels.width,
+      baselineHeightPx: baselineAspectPixels.height,
+      enhancedWidthPx:
+        design?.interactiveEnhancedWidthPx ??
+        upload?.interactiveEnhancedWidthPx ??
+        enhanceResultPixels?.width,
+      enhancedHeightPx:
+        design?.interactiveEnhancedHeightPx ??
+        upload?.interactiveEnhancedHeightPx ??
+        enhanceResultPixels?.height,
+    });
+
+    if (!active) {
+      return null;
+    }
+
+    return { width: active.widthPx, height: active.heightPx };
+  }, [artworkEnhanceMode, baselineAspectPixels, design, enhanceResultPixels, upload]);
+  const aspectPixels = activeAspectPixels ?? baselineAspectPixels;
+  const dpiAspectPixels = activeAspectPixels;
 
   const sizeAssessment = useMemo(() => {
-    if (!aspectPixels) {
+    if (!dpiAspectPixels) {
       return null;
     }
 
     return assessPrintRequestItemSize({
-      pixelWidth: aspectPixels.width,
-      pixelHeight: aspectPixels.height,
+      pixelWidth: dpiAspectPixels.width,
+      pixelHeight: dpiAspectPixels.height,
       printWidthInches: parsedPrintWidthInches ?? Number.NaN,
       printHeightInches: parsedPrintHeightInches ?? Number.NaN,
       approvedMaxPrintWidthInches:
@@ -211,16 +322,160 @@ export function PrintRequestItemCard({
         upload?.approvedMaxPrintHeightInches ?? design?.approvedMaxPrintHeightInches,
       wasUpscaled: upload?.wasUpscaled ?? design?.wasUpscaled,
     });
-  }, [aspectPixels, design, parsedPrintHeightInches, parsedPrintWidthInches, upload]);
+  }, [design, dpiAspectPixels, parsedPrintHeightInches, parsedPrintWidthInches, upload]);
 
   const sizeLabel =
     parsedPrintWidthInches !== null && parsedPrintHeightInches !== null
       ? formatPrintRequestItemSizeLabel(parsedPrintWidthInches, parsedPrintHeightInches)
       : "Size not set";
+  const itemCost = useMemo(() => {
+    const width = parsedPrintWidthInches ?? resolveInitialWidth(item);
+    const quantity = parsedQuantity ?? item.quantity;
+    if (!Number.isFinite(width) || width <= 0 || !Number.isInteger(quantity) || quantity <= 0) {
+      return null;
+    }
+
+    const tier = resolveGangSheetPriceTierForInches(width);
+    const tierPricing = resolveGangSheetPricingForTier(sectionPricing, tier);
+    return {
+      quantity,
+      unitPriceUsd: tierPricing.priceUsd,
+      totalPriceUsd: tierPricing.priceUsd * quantity,
+    };
+  }, [item, parsedPrintWidthInches, parsedQuantity, sectionPricing]);
   const qualityClass = sizeAssessment
     ? `print-requests-item-quality is-${sizeAssessment.qualityLevel}`
     : "print-requests-item-quality is-unavailable";
   const canSave = (sizeAssessment?.canSave ?? true) && parsedQuantity !== null;
+
+  const dpiWarningCalloutKey =
+    sizeAssessment?.warningMessage &&
+    parsedPrintWidthInches !== null &&
+    parsedPrintHeightInches !== null
+      ? `${item.id}:${sizeAssessment.warningMessage}:${parsedPrintWidthInches}:${parsedPrintHeightInches}`
+      : null;
+  const showDpiWarningCallout =
+    dpiWarningCalloutKey !== null && hiddenDpiWarningKey !== dpiWarningCalloutKey;
+  const dpiHoverBubble =
+    sizeAssessment?.warningMessage ?? sizeAssessment?.errorMessage ?? undefined;
+  const dpiHoverBubbleTone = sizeAssessment?.errorMessage ? "error" : "warning";
+
+  useEffect(() => {
+    if (!dpiWarningCalloutKey || hiddenDpiWarningKey === dpiWarningCalloutKey) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setHiddenDpiWarningKey(dpiWarningCalloutKey);
+    }, 5000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [dpiWarningCalloutKey, hiddenDpiWarningKey]);
+
+  const upscaleToggleEligibility = useMemo(() => {
+    if (!baselineAspectPixels || readOnly) {
+      return null;
+    }
+
+    const interactiveMarker =
+      design?.interactiveEnhanceGeneratedAt ??
+      upload?.interactiveEnhanceGeneratedAt ??
+      (design?.interactiveEnhancedOriginalPath || upload?.interactiveEnhancedProductionStoragePath
+        ? true
+        : null);
+
+    return resolveInteractiveUpscaleToggleEligibility({
+      asset: {
+        currentWidthPx: baselineAspectPixels.width,
+        currentHeightPx: baselineAspectPixels.height,
+        upscalePassCount: design?.upscalePassCount ?? (upload?.wasUpscaled ? 1 : 0),
+        upscaleFactor: design?.upscaleFactor,
+        nativeSourceWidthPx: design?.nativeProductionWidthPx,
+        nativeSourceHeightPx: design?.nativeProductionHeightPx,
+        interactiveEnhanceGeneratedAt: interactiveMarker,
+        enhancedWidthPx:
+          design?.interactiveEnhancedWidthPx ?? upload?.interactiveEnhancedWidthPx ?? enhanceResultPixels?.width,
+        enhancedHeightPx:
+          design?.interactiveEnhancedHeightPx ??
+          upload?.interactiveEnhancedHeightPx ??
+          enhanceResultPixels?.height,
+      },
+      printWidthInches: parsedPrintWidthInches ?? Number.NaN,
+      printHeightInches: parsedPrintHeightInches ?? Number.NaN,
+      artworkEnhanceMode,
+    });
+  }, [
+    artworkEnhanceMode,
+    baselineAspectPixels,
+    design,
+    enhanceResultPixels,
+    parsedPrintHeightInches,
+    parsedPrintWidthInches,
+    readOnly,
+    upload,
+  ]);
+
+  async function applyArtworkEnhanceMode(
+    mode: "baseline" | "enhanced",
+    confirmFirstEnhance = false,
+  ) {
+    if (!printRequestId || isTogglingEnhance) {
+      return;
+    }
+
+    setIsTogglingEnhance(true);
+    setEnhanceToggleMode(mode);
+    setEnhanceError(null);
+    setEnhanceMessage(null);
+
+    try {
+      const result = await setPrintRequestItemArtworkEnhanceModeService.setMode({
+        printRequestId,
+        itemId: item.id,
+        mode,
+        confirmFirstEnhance,
+      });
+
+      onArtworkEnhanceModeChanged?.(result);
+      if (result.artworkEnhanceMode === "enhanced") {
+        setEnhanceResultPixels({
+          width: result.widthPx,
+          height: result.heightPx,
+        });
+      } else {
+        setEnhanceResultPixels(null);
+      }
+      await onDesignArtworkEnhanced?.();
+
+      if (result.resultCode === "in_progress") {
+        setEnhanceMessage(result.message ?? "Enhancement is already in progress.");
+      } else if (mode === "enhanced") {
+        setEnhanceMessage(result.message ?? "Enhanced resolution enabled.");
+      } else {
+        setEnhanceMessage(result.message ?? "Using standard artwork at the current print size.");
+      }
+    } catch (error) {
+      setEnhanceError(resolveArtworkEnhanceCallableErrorMessage(error));
+    } finally {
+      setIsTogglingEnhance(false);
+      setEnhanceToggleMode(null);
+    }
+  }
+
+  applyArtworkEnhanceRef.current = applyArtworkEnhanceMode;
+
+  async function handleUpscaleToggle(nextMode: "baseline" | "enhanced") {
+    if (nextMode === artworkEnhanceMode) {
+      return;
+    }
+
+    const confirmFirstEnhance =
+      nextMode === "enhanced" && upscaleToggleEligibility?.state === "available";
+
+    await applyArtworkEnhanceMode(nextMode, confirmFirstEnhance);
+  }
+
+  const showUpscaleToggle = Boolean(upscaleToggleEligibility);
 
   useEffect(() => {
     return () => {
@@ -229,6 +484,28 @@ export function PrintRequestItemCard({
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!enhanceMessage) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setEnhanceMessage(null);
+    }, 2000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [enhanceMessage]);
+
+  useEffect(() => {
+    setEnhanceResultPixels(null);
+  }, [
+    design?.interactiveEnhancedWidthPx,
+    design?.interactiveEnhancedHeightPx,
+    upload?.interactiveEnhancedWidthPx,
+    upload?.interactiveEnhancedHeightPx,
+    item.id,
+  ]);
 
   function cancelScheduledSave() {
     if (saveDebounceRef.current !== null) {
@@ -255,30 +532,48 @@ export function PrintRequestItemCard({
     scheduleSave();
   }
 
+  function applyManualSize(nextWidthInput: string, nextHeightInput: string) {
+    const nextWidth = parsePositiveDecimalInput(nextWidthInput);
+    const nextHeight = parsePositiveDecimalInput(nextHeightInput);
+    if (nextWidth === null || nextHeight === null) {
+      setStandardSizePresetKey(undefined);
+      return;
+    }
+    setStandardSizePresetKey(
+      resolveStandardSizePresetKeyAfterManualSizeChange({
+        currentPresetKey: standardSizePresetKey,
+        settings: standardPrintSizesSettings,
+        printWidthInches: nextWidth,
+      }),
+    );
+  }
+
   function updateWidth(nextWidthInput: string) {
     setPrintWidthInput(nextWidthInput);
 
     const nextWidth = parsePositiveDecimalInput(nextWidthInput);
+    let nextHeightInput = printHeightInput;
     if (aspectPixels && nextWidth !== null) {
-      setPrintHeightInput(
-        formatEditableNumber(
-          calculateLockedHeightFromWidth(aspectPixels.width, aspectPixels.height, nextWidth),
-        ),
+      nextHeightInput = formatEditableNumber(
+        calculateLockedHeightFromWidth(aspectPixels.width, aspectPixels.height, nextWidth),
       );
+      setPrintHeightInput(nextHeightInput);
     }
+    applyManualSize(nextWidthInput, nextHeightInput);
   }
 
   function updateHeight(nextHeightInput: string) {
     setPrintHeightInput(nextHeightInput);
 
     const nextHeight = parsePositiveDecimalInput(nextHeightInput);
+    let nextWidthInput = printWidthInput;
     if (aspectPixels && nextHeight !== null) {
-      setPrintWidthInput(
-        formatEditableNumber(
-          calculateLockedWidthFromHeight(aspectPixels.width, aspectPixels.height, nextHeight),
-        ),
+      nextWidthInput = formatEditableNumber(
+        calculateLockedWidthFromHeight(aspectPixels.width, aspectPixels.height, nextHeight),
       );
+      setPrintWidthInput(nextWidthInput);
     }
+    applyManualSize(nextWidthInput, nextHeightInput);
   }
 
   const saveDraft = useCallback(async (): Promise<boolean> => {
@@ -295,6 +590,7 @@ export function PrintRequestItemCard({
       parsedQuantity,
       parsedPrintWidthInches,
       parsedPrintHeightInches,
+      standardSizePresetKey,
     );
 
     if (draftSignature === lastSavedSignatureRef.current) {
@@ -316,6 +612,7 @@ export function PrintRequestItemCard({
         quantity: parsedQuantity,
         printWidthInches: parsedPrintWidthInches,
         printHeightInches: parsedPrintHeightInches,
+        standardSizePresetKey: standardSizePresetKey ?? null,
       });
       lastSavedSignatureRef.current = draftSignature;
       setIsFailed(false);
@@ -345,6 +642,7 @@ export function PrintRequestItemCard({
     parsedPrintHeightInches,
     parsedPrintWidthInches,
     parsedQuantity,
+    standardSizePresetKey,
   ]);
 
   useEffect(() => {
@@ -438,36 +736,157 @@ export function PrintRequestItemCard({
     [handleFieldKeyDown],
   );
 
+  const handleConfirmRemove = useCallback(async () => {
+    if (isRemoving) {
+      return;
+    }
+    setIsRemoving(true);
+    try {
+      await Promise.all([
+        Promise.resolve(onRemove(item)),
+        new Promise<void>((resolve) => {
+          window.setTimeout(resolve, 420);
+        }),
+      ]);
+    } catch {
+      setIsRemoving(false);
+      setIsConfirmingRemove(false);
+    }
+  }, [isRemoving, item, onRemove]);
+
   return (
-    <>
-      <Card className="print-requests-item-card">
+    <div data-print-request-item-id={item.id}>
+      <Card
+        aria-busy={isRemoving || undefined}
+        className={`print-requests-item-card${isRemoving ? " is-removing" : ""}`}
+      >
         <div className="print-requests-item-card-header">
-          <DesignThumbnailPanel
-            alt={`${title} preview`}
-            artworkBackgroundHex={artworkBackgroundHex}
-            catalogPath={previewPath}
-            className="print-requests-item-card-thumbnail"
-            fallbackLabel="Preview unavailable"
-            imageFit="contain"
-            interactive={Boolean(previewUrl)}
-            loadingLabel="Loading preview"
-            onImageClick={() => setIsLightboxOpen(true)}
-          />
+          <div
+            className={`print-requests-item-card-thumb-wrap${
+              isTogglingEnhance ? " is-enhancing" : ""
+            }`}
+          >
+            <DesignThumbnailPanel
+              alt={`${title} preview`}
+              artworkBackgroundHex={artworkBackgroundHex}
+              catalogPath={previewPath}
+              className="print-requests-item-card-thumbnail"
+              fallbackLabel="Preview unavailable"
+              imageFit="contain"
+              interactive={Boolean(previewUrl) && !isTogglingEnhance && Boolean(onOpenPreview)}
+              loadingLabel="Loading preview"
+              onImageClick={onOpenPreview}
+            />
+            {isTogglingEnhance ? (
+              <div
+                aria-live="polite"
+                className={`print-requests-item-enhance-overlay${
+                  enhanceToggleMode === "baseline" ? " is-removing" : ""
+                }`}
+                role="status"
+              >
+                <span className="print-requests-item-enhance-overlay-label">
+                  {enhanceToggleMode === "baseline" ? "Removing upscale…" : "Upscaling…"}
+                </span>
+              </div>
+            ) : null}
+            {libraryConsentIcon ? (
+              <span
+                aria-label={
+                  libraryConsentIcon === "approved"
+                    ? "Uploader approved Design Library use"
+                    : "Uploader denied Design Library use"
+                }
+                className={`print-requests-item-library-consent-icon is-${libraryConsentIcon}`}
+                title={
+                  libraryConsentIcon === "approved"
+                    ? "Library approved by uploader"
+                    : "Library denied by uploader"
+                }
+              >
+                {libraryConsentIcon === "approved" ? (
+                  <CircleCheck aria-hidden="true" size={16} strokeWidth={2.5} />
+                ) : (
+                  <Ban aria-hidden="true" size={16} strokeWidth={2.5} />
+                )}
+              </span>
+            ) : null}
+            <span
+              className={`print-requests-item-source-badge is-${sourcePill.variant}`}
+            >
+              {sourcePill.label}
+            </span>
+          </div>
 
           <div className="print-requests-item-card-copy">
             <strong className="print-requests-item-card-title">{title}</strong>
             {readOnly ? (
-              <>
+              <div
+                className={`print-requests-item-readonly-meta${
+                  itemCost ? " has-cost" : ""
+                }`}
+              >
                 <span className="print-requests-item-card-meta">Qty {item.quantity}</span>
+                {itemCost ? (
+                  <span className="print-requests-item-card-meta print-requests-item-cost-label">
+                    Cost
+                  </span>
+                ) : null}
                 <span className="print-requests-item-card-meta">{sizeLabel}</span>
-              </>
+                {itemCost ? (
+                  <span className="print-requests-item-card-meta print-requests-item-cost-value">
+                    {formatItemCost(itemCost.unitPriceUsd, itemCost.quantity, itemCost.totalPriceUsd)}
+                  </span>
+                ) : null}
+              </div>
             ) : null}
           </div>
         </div>
 
         {!readOnly ? (
           <>
-            <div className="print-requests-item-size-row">
+            <button
+              className={`print-requests-standard-size-trigger${
+                standardSizePresetKey ? " is-selected" : ""
+              }`}
+              onClick={() => setIsStandardSizesModalOpen(true)}
+              type="button"
+            >
+              {resolveStandardPrintSizeCardLabel(standardPrintSizesSettings, standardSizePresetKey)}
+            </button>
+
+            <div
+              className={`print-requests-item-metrics-grid${
+                showUpscaleToggle ? " has-upscale" : ""
+              }`}
+            >
+            <div
+              className={`print-requests-item-size-row${
+                showUpscaleToggle ? " has-upscale" : ""
+              }`}
+            >
+              {showUpscaleToggle ? (
+                <div className="print-requests-item-field print-requests-item-upscale-field">
+                  <span className="print-requests-item-field-label">Upscale</span>
+                  <div
+                    className="print-requests-item-upscale-toggle-wrap"
+                    title={upscaleToggleEligibility?.helperText}
+                  >
+                    <Toggle
+                      checked={displayedArtworkEnhanceMode === "enhanced"}
+                      disabled={
+                        isTogglingEnhance || !upscaleToggleEligibility?.toggleEnabled
+                      }
+                      label="Upscale"
+                      name={`artworkEnhanceMode-${item.id}`}
+                      onChange={(checked) => {
+                        void handleUpscaleToggle(checked ? "enhanced" : "baseline");
+                      }}
+                    />
+                  </div>
+                </div>
+              ) : null}
+
               <label className="print-requests-item-field">
                 <span className="print-requests-item-field-label">Width</span>
                 <div className="print-requests-item-size-input-wrap">
@@ -511,12 +930,18 @@ export function PrintRequestItemCard({
 
             <div className="print-requests-item-meta-row">
               {sizeAssessment ? (
-                <span
-                  aria-label={`${sizeAssessment.qualityLabel}, ${sizeAssessment.effectiveDpi} DPI`}
-                  className={qualityClass}
-                >
-                  {sizeAssessment.effectiveDpi} DPI
-                </span>
+                <HoverBubbleTooltip bubble={dpiHoverBubble} tone={dpiHoverBubbleTone}>
+                  <span
+                    aria-label={
+                      dpiHoverBubble ??
+                      `${sizeAssessment.qualityLabel}, ${sizeAssessment.effectiveDpi} DPI`
+                    }
+                    className={qualityClass}
+                    tabIndex={dpiHoverBubble ? 0 : undefined}
+                  >
+                    {sizeAssessment.effectiveDpi} DPI
+                  </span>
+                </HoverBubbleTooltip>
               ) : (
                 <span className={`${qualityClass} print-requests-item-quality-compact`}>DPI unavailable</span>
               )}
@@ -555,34 +980,88 @@ export function PrintRequestItemCard({
                   <Plus aria-hidden="true" size={14} strokeWidth={2} />
                 </button>
               </div>
+              {itemCost ? (
+                <div className="print-requests-item-cost-summary">
+                  <span className="print-requests-item-field-label">Cost</span>
+                  <span className="print-requests-item-cost-value">
+                    {formatItemCost(itemCost.unitPriceUsd, itemCost.quantity, itemCost.totalPriceUsd)}
+                  </span>
+                </div>
+              ) : null}
+            </div>
             </div>
 
             {sizeAssessment?.errorMessage ? (
               <p className="auth-message auth-message-error print-requests-item-field-error" role="alert">
                 {sizeAssessment.errorMessage}
               </p>
-            ) : sizeAssessment?.warningMessage ? (
+            ) : showDpiWarningCallout && sizeAssessment?.warningMessage ? (
               <p className="auth-message auth-message-warning print-requests-item-field-error" role="status">
                 {sizeAssessment.warningMessage}
               </p>
             ) : null}
 
-            <div className="print-requests-item-editor-actions">
-              <Button onClick={() => onDuplicate(item)} size="sm" tabIndex={-1} type="button" variant="secondary">
+            {enhanceError ? (
+              <p className="auth-message auth-message-error print-requests-item-field-error" role="alert">
+                {enhanceError}
+              </p>
+            ) : enhanceMessage ? (
+              <p className="auth-message auth-message-success print-requests-item-field-error" role="status">
+                {enhanceMessage}
+              </p>
+            ) : null}
+
+            <div
+              className={`print-requests-item-editor-actions${
+                isConfirmingRemove ? " is-confirming-remove" : ""
+              }`}
+            >
+              <Button
+                disabled={isRemoving}
+                onClick={() => onDuplicate(item)}
+                size="sm"
+                tabIndex={-1}
+                type="button"
+                variant="secondary"
+              >
                 Duplicate
               </Button>
 
               {isConfirmingRemove ? (
                 <>
-                  <Button onClick={() => setIsConfirmingRemove(false)} size="sm" tabIndex={-1} type="button" variant="ghost">
+                  <Button
+                    disabled={isRemoving}
+                    onClick={() => setIsConfirmingRemove(false)}
+                    size="sm"
+                    tabIndex={-1}
+                    type="button"
+                    variant="ghost"
+                  >
                     Cancel
                   </Button>
-                  <Button onClick={() => onRemove(item)} size="sm" tabIndex={-1} type="button" variant="danger">
-                    Confirm
+                  <Button
+                    className={isRemoving ? "is-deleting" : undefined}
+                    disabled={isRemoving}
+                    onClick={() => {
+                      void handleConfirmRemove();
+                    }}
+                    size="sm"
+                    tabIndex={-1}
+                    type="button"
+                    variant="danger"
+                  >
+                    {isRemoving ? "Removing…" : "Confirm"}
                   </Button>
                 </>
               ) : (
-                <Button onClick={() => setIsConfirmingRemove(true)} size="sm" tabIndex={-1} type="button" variant="danger">
+                <Button
+                  disabled={isRemoving}
+                  onClick={() => setIsConfirmingRemove(true)}
+                  size="sm"
+                  tabIndex={-1}
+                  type="button"
+                  variant="danger"
+                >
                   Remove
                 </Button>
               )}
@@ -591,13 +1070,38 @@ export function PrintRequestItemCard({
         ) : null}
       </Card>
 
-      <DesignPreviewLightbox
-        alt={`${title} preview`}
-        artworkBackgroundHex={artworkBackgroundHex}
-        isOpen={isLightboxOpen}
-        onClose={() => setIsLightboxOpen(false)}
-        previewUrl={previewUrl ?? null}
-      />
-    </>
+      {aspectPixels ? (
+        <StandardPrintSizesModal
+          approvedMaxPrintHeightInches={
+            upload?.approvedMaxPrintHeightInches ?? design?.approvedMaxPrintHeightInches
+          }
+          approvedMaxPrintWidthInches={
+            upload?.approvedMaxPrintWidthInches ?? design?.approvedMaxPrintWidthInches
+          }
+          currentPrintHeightInches={parsedPrintHeightInches ?? resolveInitialHeight(item)}
+          currentPrintWidthInches={parsedPrintWidthInches ?? resolveInitialWidth(item)}
+          isOpen={isStandardSizesModalOpen}
+          onApply={({ printHeightInches, printWidthInches, standardSizePresetKey: nextPresetKey }) => {
+            void (async () => {
+              if (nextPresetKey === null && artworkEnhanceMode === "enhanced") {
+                await applyArtworkEnhanceMode("baseline");
+              }
+
+              setPrintWidthInput(formatEditableNumber(printWidthInches));
+              setPrintHeightInput(formatEditableNumber(printHeightInches));
+              setStandardSizePresetKey(nextPresetKey ?? undefined);
+              scheduleSave();
+            })();
+          }}
+          onClose={() => setIsStandardSizesModalOpen(false)}
+          baselinePixelHeight={baselineAspectPixels?.height}
+          baselinePixelWidth={baselineAspectPixels?.width}
+          pixelHeight={aspectPixels.height}
+          pixelWidth={aspectPixels.width}
+          settings={standardPrintSizesSettings}
+          wasUpscaled={upload?.wasUpscaled ?? design?.wasUpscaled}
+        />
+      ) : null}
+    </div>
   );
 }

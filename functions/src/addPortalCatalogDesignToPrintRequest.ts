@@ -9,6 +9,7 @@ import { resolveCatalogAddAction } from "../../packages/shared/src/utils/current
 import {
   formatPrintRequestItemSizeLabel,
   resolveInitialPrintRequestItemSize,
+  resolvePrintRequestDefaultWidthInches,
 } from "../../packages/shared/src/utils/printRequestItemSizing";
 
 import { adminDb } from "./lib/admin";
@@ -20,12 +21,15 @@ import {
   unauthenticated,
 } from "./lib/errors";
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
-import { loadPrintRequestLimitSettings } from "./lib/loadPrintRequestLimitSettings";
+import { loadEffectivePrintRequestLimitsForCustomer } from "./lib/loadEffectivePrintRequestLimits";
+import { loadStandardPrintSizesSettings } from "./lib/loadStandardPrintSizesSettings";
 import { requirePortalCustomer } from "./lib/portalCustomer";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 import {
   assertWorkingRequestAllowsPrintAdds,
   sumWorkingRequestPrintQuantities,
 } from "./lib/printRequestWorkingRequestMax";
+import { assertPortalActiveEditableRequestData } from "./lib/portalContinuableParking";
 
 function mapHttpsError(error: unknown): never {
   if (error instanceof HttpsError) {
@@ -59,6 +63,28 @@ function resolveNextSortOrder(
     }
   }
   return max + 1;
+}
+
+/** Server-authoritative initial size for a new Portal catalog line (callable create path). */
+export function resolvePortalCatalogAddLineSize(input: {
+  pixelWidth: number;
+  pixelHeight: number;
+  designPrintWidthInches?: number;
+  requestedPrintWidthInches?: number;
+  requestedPrintHeightInches?: number;
+  printRequestDefaultWidthInches?: number;
+}): { printWidthInches: number; printHeightInches: number } {
+  const defaultSize = resolveInitialPrintRequestItemSize({
+    pixelWidth: input.pixelWidth,
+    pixelHeight: input.pixelHeight,
+    defaultPrintWidthInches: input.designPrintWidthInches,
+    printRequestDefaultWidthInches: input.printRequestDefaultWidthInches,
+  });
+
+  return {
+    printWidthInches: input.requestedPrintWidthInches ?? defaultSize.printWidthInches,
+    printHeightInches: input.requestedPrintHeightInches ?? defaultSize.printHeightInches,
+  };
 }
 
 export function buildPortalCatalogAddAccounting(
@@ -104,6 +130,7 @@ export const addPortalCatalogDesignToPrintRequest = onCall(
     let accountingKind: "created" | "incremented" = "created";
     try {
       const portalCustomer = await requirePortalCustomer(request.auth.uid);
+      await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
       const data = request.data as AddPortalCatalogDesignToPrintRequestRequest;
       const printRequestId =
         typeof data?.printRequestId === "string" ? data.printRequestId.trim() : "";
@@ -132,10 +159,14 @@ export const addPortalCatalogDesignToPrintRequest = onCall(
         throw invalidArgument("Quantity must be at least 1.");
       }
 
-      const [settings, designSnap] = await Promise.all([
-        loadPrintRequestLimitSettings(),
+      const [effectiveLimits, standardPrintSizesSettings, designSnap] = await Promise.all([
+        loadEffectivePrintRequestLimitsForCustomer(portalCustomer.customerId),
+        loadStandardPrintSizesSettings(),
         adminDb.collection("designs").doc(designId).get(),
       ]);
+      const printRequestDefaultWidthInches = resolvePrintRequestDefaultWidthInches(
+        standardPrintSizesSettings,
+      );
 
       if (!designSnap.exists) {
         throw invalidArgument("Design not found.");
@@ -146,7 +177,7 @@ export const addPortalCatalogDesignToPrintRequest = onCall(
       }
 
       const customerUid = request.auth.uid;
-      const maxPerRequest = settings.maxQuantityPerPrintRequest;
+      const maxPerRequest = effectiveLimits.effectiveMaxQuantityPerPrintRequest;
       let kind: "created" | "incremented" = "created";
       let itemId = "";
       let quantity = quantityDelta;
@@ -169,6 +200,10 @@ export const addPortalCatalogDesignToPrintRequest = onCall(
           throw invalidArgument("Print request not found.");
         }
         const requestData = requestSnap.data() ?? {};
+        
+        // Assert request is active editable (not parked)
+        assertPortalActiveEditableRequestData(requestData, requestRef.id);
+        
         if (requestData.customerId !== portalCustomer.customerId) {
           throw permissionDenied("You do not own this print request.");
         }
@@ -248,14 +283,15 @@ export const addPortalCatalogDesignToPrintRequest = onCall(
           throw failedPrecondition("This design is missing dimensions.");
         }
 
-        const defaultSize = resolveInitialPrintRequestItemSize({
+        const { printWidthInches, printHeightInches } = resolvePortalCatalogAddLineSize({
           pixelWidth: design.width,
           pixelHeight: design.height,
-          defaultPrintWidthInches:
+          designPrintWidthInches:
             typeof design.printWidthInches === "number" ? design.printWidthInches : undefined,
+          requestedPrintWidthInches: requestedWidth,
+          requestedPrintHeightInches: requestedHeight,
+          printRequestDefaultWidthInches,
         });
-        const printWidthInches = requestedWidth ?? defaultSize.printWidthInches;
-        const printHeightInches = requestedHeight ?? defaultSize.printHeightInches;
         const newItemRef = adminDb.collection("printRequestItems").doc();
         const currentItemCount = Number(requestData.itemCount ?? 0);
 

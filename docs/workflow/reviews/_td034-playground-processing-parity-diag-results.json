@@ -1,0 +1,323 @@
+{
+  "projectId": "fresh-prints-dev",
+  "designId": "Y2IQuCgAPgnqrBIeJuap",
+  "finishedAt": "2026-09-06T00:31:09.414Z",
+  "settings": {
+    "catalogWorkflowMode": "shadow",
+    "catalogAutonomousLiveEnabled": false,
+    "visionModelId": "gemini-2.5-flash-lite",
+    "promptHash": "80793d340d1745ed",
+    "promptHasGapSemantics": true,
+    "promptLength": 2106
+  },
+  "image": {
+    "path": "previews/Y2IQuCgAPgnqrBIeJuap.webp",
+    "sha256_16": "be3b85384d9cbeb4",
+    "mime": "image/webp",
+    "byteLength": 305162,
+    "artworkBackgroundHex": null
+  },
+  "playgroundRuns": [
+    {
+      "run": 1,
+      "model": "gemini-2.5-flash-lite",
+      "provider": "google",
+      "promptHash": "80793d340d1745ed",
+      "imageSha": "be3b85384d9cbeb4",
+      "imagePath": "previews/Y2IQuCgAPgnqrBIeJuap.webp",
+      "rawTitle": "Retro Woman Holding Cucumber Says Go Fuck Yourself",
+      "rawDescription": "A retro-style illustration depicts a woman from the 1950s with a playful expression, holding a cucumber. She is wearing a blue collared shirt and has styled blonde hair. The artwork features text that reads 'WHEN LIFE GIVES YOU CUCUMBERS GO FUCK YOURSELF...'. The overall concept is humorous and slightly edgy, using a vintage aesthetic.",
+      "centralSubject": "Woman",
+      "subjects": [
+        "Woman"
+      ],
+      "objects": [
+        "Cucumber"
+      ],
+      "readableTextLines": [
+        "WHEN LIFE GIVES YOU",
+        "CUCUMBERS",
+        "GO FUCK YOURSELF..."
+      ],
+      "category": "Funny & Sarcastic",
+      "titleClass": "THIN/AWKWARD",
+      "descClass": "STRONG",
+      "simulatedProcessingTitle": "Retro Woman Holding Cucumber Says Go Fuck Yourself",
+      "simulatedProcessingDescription": "She is wearing a blue collared shirt and has styled blonde hair. The artwork features text that reads 'WHEN LIFE GIVES YOU CUCUMBERS GO FUCK YOURSELF...'. The overall concept is humorous and slightly edgy, using a vintage aesthetic.",
+      "simulatedTitleClass": "THIN/AWKWARD",
+      "simulatedDescClass": "THIN",
+      "titleWouldDegrade": false,
+      "fuckInRaw": true,
+      "fStarInRaw": false
+    },
+    {
+      "run": 2,
+      "model": "gemini-2.5-flash-lite",
+      "provider": "google",
+      "promptHash": "80793d340d1745ed",
+      "imageSha": "be3b85384d9cbeb4",
+      "imagePath": "previews/Y2IQuCgAPgnqrBIeJuap.webp",
+      "rawTitle": "Pin-up Woman Holding Cucumber with Sarcastic Phrase",
+      "rawDescription": "A 1950s-style pin-up woman with blonde curled hair and blue eyes smiles coyly while holding a cucumber. The design features distressed text that reads \"WHEN LIFE GIVES YOU CUCUMBERS\" and \"GO F*** YOURSELF...\". The overall concept is a humorous, slightly edgy take on a classic pin-up aesthetic.",
+      "centralSubject": "Woman",
+      "subjects": [
+        "Woman",
+        "Cucumber"
+      ],
+      "objects": [
+        "Vegetable"
+      ],
+      "readableTextLines": [
+        "WHEN LIFE GIVES YOU",
+        "Cucumbers",
+        "GO FUCK YOURSELF..."
+      ],
+      "category": "Funny & Sarcastic",
+      "titleClass": "STRONG",
+      "descClass": "STRONG",
+      "simulatedProcessingTitle": "When Life Gives You Cucumbers Go Fuck Yourself Woman",
+      "simulatedProcessingDescription": "The design features distressed text that reads \"WHEN LIFE GIVES YOU CUCUMBERS\" and \"GO F*** YOURSELF...\". The overall concept is a humorous, slightly edgy take on a classic pin-up aesthetic.",
+      "simulatedTitleClass": "THIN/AWKWARD",
+      "simulatedDescClass": "STRONG",
+      "titleWouldDegrade": true,
+      "fuckInRaw": true,
+      "fStarInRaw": true
+    },
+    {
+      "run": 3,
+      "model": "gemini-2.5-flash-lite",
+      "provider": "google",
+      "promptHash": "80793d340d1745ed",
+      "imageSha": "be3b85384d9cbeb4",
+      "imagePath": "previews/Y2IQuCgAPgnqrBIeJuap.webp",
+      "rawTitle": "Pin-up Woman with Cucumber and Sarcastic Phrase",
+      "rawDescription": "A vintage-style pin-up woman with styled blonde hair and blue eyes holds a cucumber. The design features the phrase \"WHEN LIFE GIVES YOU CUCUMBERS\" arched above her, and \"GO FUCK YOURSELF...\" below. The artwork uses a retro illustration style with a limited color palette.",
+      "centralSubject": "Woman",
+      "subjects": [
+        "Woman",
+        "Cucumber"
+      ],
+      "objects": [
+        "Cucumber"
+      ],
+      "readableTextLines": [
+        "WHEN LIFE GIVES YOU",
+        "Cucumbers",
+        "GO FUCK YOURSELF..."
+      ],
+      "category": "Funny & Sarcastic",
+      "titleClass": "STRONG",
+      "descClass": "STRONG",
+      "simulatedProcessingTitle": "When Life Gives You Cucumbers Go Fuck Yourself Woman",
+      "simulatedProcessingDescription": "A vintage-style pin-up woman with styled blonde hair and blue eyes holds a cucumber. The design features the phrase \"WHEN LIFE GIVES YOU CUCUMBERS\" arched above her, and \"GO FUCK YOURSELF...\" below. The artwork uses a retro illustration style with a limited color palette.",
+      "simulatedTitleClass": "THIN/AWKWARD",
+      "simulatedDescClass": "STRONG",
+      "titleWouldDegrade": true,
+      "fuckInRaw": true,
+      "fStarInRaw": false
+    },
+    {
+      "run": 4,
+      "model": "gemini-2.5-flash-lite",
+      "provider": "google",
+      "promptHash": "80793d340d1745ed",
+      "imageSha": "be3b85384d9cbeb4",
+      "imagePath": "previews/Y2IQuCgAPgnqrBIeJuap.webp",
+      "rawTitle": "Retro Woman Holding Cucumber with Sarcastic Saying",
+      "rawDescription": "A woman in a retro pin-up style, with styled blonde hair and blue eyes, holds a cucumber and points to it. She has a coy smile and wears a blue collared shirt. The artwork features the text \"When Life Gives You Cucumbers Go Fuck Yourself...\". The style is reminiscent of vintage advertisements and comic book art.",
+      "centralSubject": "Woman with Cucumber",
+      "subjects": [
+        "woman",
+        "pin-up girl",
+        "cucumber"
+      ],
+      "objects": [
+        "cucumber"
+      ],
+      "readableTextLines": [
+        "WHEN LIFE GIVES YOU",
+        "Cucumbers",
+        "GO FUCK YOURSELF..."
+      ],
+      "category": "Funny & Sarcastic",
+      "titleClass": "STRONG",
+      "descClass": "STRONG",
+      "simulatedProcessingTitle": "When Life Gives You Cucumbers Go Fuck Yourself Woman Cucumber",
+      "simulatedProcessingDescription": "She has a coy smile and wears a blue collared shirt. The artwork features the text \"When Life Gives You Cucumbers Go Fuck Yourself...\". The style is reminiscent of vintage advertisements and comic book art.",
+      "simulatedTitleClass": "THIN/AWKWARD",
+      "simulatedDescClass": "THIN",
+      "titleWouldDegrade": true,
+      "fuckInRaw": true,
+      "fStarInRaw": false
+    },
+    {
+      "run": 5,
+      "model": "gemini-2.5-flash-lite",
+      "provider": "google",
+      "promptHash": "80793d340d1745ed",
+      "imageSha": "be3b85384d9cbeb4",
+      "imagePath": "previews/Y2IQuCgAPgnqrBIeJuap.webp",
+      "rawTitle": "Retro Woman Holding Cucumber with Sarcastic Saying",
+      "rawDescription": "A vintage-style illustration depicts a woman with perfectly coiffed hair and a playful smile holding a cucumber.  The design features the text \"WHEN LIFE GIVES YOU CUCUMBERS\" arched above the woman and \"GO FUCK YOURSELF...\" below. The overall concept is a humorous and slightly edgy take on a common idiom, using retro pin-up art.",
+      "centralSubject": "Woman with cucumber",
+      "subjects": [
+        "Woman",
+        "Cucumber"
+      ],
+      "objects": [
+        "Cucumber"
+      ],
+      "readableTextLines": [
+        "WHEN LIFE GIVES YOU",
+        "Cucumbers",
+        "GO FUCK YOURSELF..."
+      ],
+      "category": "Funny & Sarcastic",
+      "titleClass": "STRONG",
+      "descClass": "STRONG",
+      "simulatedProcessingTitle": "When Life Gives You Cucumbers Go Fuck Yourself Woman Cucumber",
+      "simulatedProcessingDescription": "A Woman with cucumber design featuring \"WHEN LIFE GIVES YOU\" and \"Cucumbers\".",
+      "simulatedTitleClass": "THIN/AWKWARD",
+      "simulatedDescClass": "ACCEPTABLE",
+      "titleWouldDegrade": true,
+      "fuckInRaw": true,
+      "fStarInRaw": false
+    }
+  ],
+  "processingRuns": [
+    {
+      "run": 1,
+      "promptVersion": "catalog-enrich-v37",
+      "model": "gemini-2.5-flash-lite",
+      "provider": "google",
+      "finalTitle": "When Life Gives You Cucumbers Go Fuck Yourself Woman",
+      "finalDescription": "The design features text in a distressed vintage font: 'WHEN LIFE GIVES YOU CUCUMBERS GO FUCK YOURSELF...'. The overall concept is a humorous and slightly aggressive take on a common saying.",
+      "category": "Funny & Sarcastic",
+      "subjects": [
+        "woman",
+        "cucumber"
+      ],
+      "objects": [
+        "cucumber"
+      ],
+      "titleClass": "THIN/AWKWARD",
+      "descClass": "THIN",
+      "fuckInFinal": true,
+      "fStarInFinal": false,
+      "artworkBackgroundHex": null,
+      "previewPath": "/previews/Y2IQuCgAPgnqrBIeJuap.webp"
+    },
+    {
+      "run": 2,
+      "promptVersion": "catalog-enrich-v37",
+      "model": "gemini-2.5-flash-lite",
+      "provider": "google",
+      "finalTitle": "When Life Gives You Cucumbers Go F*** Yourself Woman Cucumber",
+      "finalDescription": "She is smiling coyly while pointing at the cucumber. The design features distressed text in a retro font, reading \"WHEN LIFE GIVES YOU CUCUMBERS GO F*** YOURSELF...\". The overall concept is a humorous and sarcastic take on a popular idiom.",
+      "category": "Funny & Sarcastic",
+      "subjects": [
+        "woman",
+        "Cucumber"
+      ],
+      "objects": [
+        "Vegetable"
+      ],
+      "titleClass": "THIN/AWKWARD",
+      "descClass": "STRONG",
+      "fuckInFinal": false,
+      "fStarInFinal": true,
+      "artworkBackgroundHex": null,
+      "previewPath": "/previews/Y2IQuCgAPgnqrBIeJuap.webp"
+    },
+    {
+      "run": 3,
+      "promptVersion": "catalog-enrich-v37",
+      "model": "gemini-2.5-flash-lite",
+      "provider": "google",
+      "finalTitle": "When Life Gives You Cucumbers Go Fuck Yourself Woman",
+      "finalDescription": "The overall concept is a humorous and sarcastic take on a common idiom.",
+      "category": "Funny & Sarcastic",
+      "subjects": [
+        "woman"
+      ],
+      "objects": [
+        "cucumber"
+      ],
+      "titleClass": "THIN/AWKWARD",
+      "descClass": "ACCEPTABLE",
+      "fuckInFinal": true,
+      "fStarInFinal": false,
+      "artworkBackgroundHex": null,
+      "previewPath": "/previews/Y2IQuCgAPgnqrBIeJuap.webp"
+    },
+    {
+      "run": 4,
+      "promptVersion": "catalog-enrich-v37",
+      "model": "gemini-2.5-flash-lite",
+      "provider": "google",
+      "finalTitle": "When Life Gives You Cucumbers Go F*** Yourself Woman",
+      "finalDescription": "She points to the word 'CUCUMBERS' written in a script font below her. The overall concept is humorous and slightly edgy, using a vintage aesthetic.",
+      "category": "Funny & Sarcastic",
+      "subjects": [
+        "woman"
+      ],
+      "objects": [
+        "cucumber"
+      ],
+      "titleClass": "THIN/AWKWARD",
+      "descClass": "THIN",
+      "fuckInFinal": false,
+      "fStarInFinal": true,
+      "artworkBackgroundHex": null,
+      "previewPath": "/previews/Y2IQuCgAPgnqrBIeJuap.webp"
+    },
+    {
+      "run": 5,
+      "promptVersion": "catalog-enrich-v37",
+      "model": "gemini-2.5-flash-lite",
+      "provider": "google",
+      "finalTitle": "Retro Woman Holding Cucumber Saying Go Fuck Yourself",
+      "finalDescription": "A Woman with Cucumber design featuring \"WHEN LIFE GIVES YOU\" and \"Cucumbers\".",
+      "category": "Funny & Sarcastic",
+      "subjects": [
+        "woman",
+        "Cucumber"
+      ],
+      "objects": [
+        "Cucumber"
+      ],
+      "titleClass": "THIN/AWKWARD",
+      "descClass": "ACCEPTABLE",
+      "fuckInFinal": true,
+      "fStarInFinal": false,
+      "artworkBackgroundHex": null,
+      "previewPath": "/previews/Y2IQuCgAPgnqrBIeJuap.webp"
+    }
+  ],
+  "counts": {
+    "playgroundTitle": {
+      "THIN/AWKWARD": 1,
+      "STRONG": 4
+    },
+    "playgroundDesc": {
+      "STRONG": 5
+    },
+    "simulatedProcessingTitle": {
+      "THIN/AWKWARD": 5
+    },
+    "simulatedProcessingDesc": {
+      "THIN": 2,
+      "STRONG": 2,
+      "ACCEPTABLE": 1
+    },
+    "processingFinalTitle": {
+      "THIN/AWKWARD": 5
+    },
+    "processingFinalDesc": {
+      "THIN": 2,
+      "STRONG": 1,
+      "ACCEPTABLE": 2
+    },
+    "playgroundTitleWouldDegrade": 4
+  }
+}

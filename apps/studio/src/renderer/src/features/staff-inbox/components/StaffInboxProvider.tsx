@@ -10,9 +10,14 @@ import { buildStaffInboxAlertToastCopy } from "@fresh-prints/shared/staffInbox/s
 import { compareStaffInboxAlertSoundKinds } from "@fresh-prints/shared/staffInbox/staffInboxAlertOrdering";
 import { listFullPortalShowIds } from "@fresh-prints/shared/staffInbox/staffInboxShowSnapshots";
 import type { StaffInboxCompletedItem, StaffInboxItem } from "@fresh-prints/shared/staffInbox/staffInbox.types";
+import {
+  buildStaffInboxQueuedGlanceMetrics,
+  filterAllocationsForQueuedGroup,
+} from "@fresh-prints/shared/staffInbox/staffInboxQueuedGlanceMetrics";
 
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
+import { useGangSheetSettings } from "../../settings/hooks/useGangSheetSettings";
 import { StaffInboxContext, type StaffInboxToast } from "../context/staffInboxContext";
 import type { StaffInboxSubscriptionSnapshot } from "../services/staffInboxSubscriptionService";
 import type { StaffInboxShowSnapshot } from "@fresh-prints/shared/staffInbox/staffInboxShowSnapshots";
@@ -28,10 +33,15 @@ import { staffInboxSubscriptionService } from "../services/staffInboxSubscriptio
 import { formatStaffInboxFirestoreError } from "../utils/formatStaffInboxFirestoreError";
 import { getStaffInboxItemNavigationPath } from "../utils/staffInboxNavigation";
 import { designIssueReportService } from "../services/designIssueReportService";
+import { staffInboxSuppressionService } from "../services/staffInboxSuppressionService";
+import {
+  isStaffInboxQueuedAlertGroupHeld,
+  STAFF_INBOX_ALERT_BATCH_WINDOW_MS,
+  STAFF_INBOX_QUEUE_ALERT_HOLD_CHANGED_EVENT,
+  STAFF_INBOX_QUEUE_ALERT_SETTLE_MS,
+} from "../utils/staffInboxQueueAlertTiming";
 
 const HIGHLIGHT_DURATION_MS = 8_000;
-/** Wide enough that queue-add + show-full Firestore emits coalesce into one sound. */
-const ALERT_BATCH_WINDOW_MS = 750;
 
 const EMPTY_SUBSCRIPTION_SNAPSHOT: StaffInboxSubscriptionSnapshot = {
   portalRequests: [],
@@ -48,6 +58,8 @@ type PendingStaffInboxAlert = Omit<StaffInboxToast, "id"> & {
   itemId: string;
   itemKind: "portal_queued" | "show_queue_full";
   occurredAtMillis: number;
+  /** Override coalesce window; queue-add uses a longer post-success settle. */
+  settleMs?: number;
 };
 
 function buildInboxErrorMessage(requestError: string | null, allocationError: string | null): string | null {
@@ -81,8 +93,10 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const isEnabled = Boolean(user && permissionService.canViewPrintRequests(user));
+  const gangSheetSettings = useGangSheetSettings();
 
   const [acknowledgedItemIds, setAcknowledgedItemIds] = useState<Set<string>>(() => new Set());
+  const [suppressedItemIds, setSuppressedItemIds] = useState<Set<string>>(() => new Set());
   const [completedItems, setCompletedItems] = useState<StaffInboxCompletedItem[]>([]);
   const [ackRecords, setAckRecords] = useState<StaffInboxAckRecord[]>([]);
   const [subscriptionSnapshot, setSubscriptionSnapshot] = useState(EMPTY_SUBSCRIPTION_SNAPSHOT);
@@ -94,6 +108,7 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
   const [pendingResolvedReportIds, setPendingResolvedReportIds] = useState<Set<string>>(() => new Set());
 
   const acknowledgedItemIdsRef = useRef(acknowledgedItemIds);
+  const suppressedItemIdsRef = useRef(suppressedItemIds);
   const ackRecordsRef = useRef(ackRecords);
   const showSnapshotsRef = useRef<StaffInboxShowSnapshot[]>([]);
   const showTitleByIdRef = useRef<Record<string, string>>({});
@@ -118,6 +133,10 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
   useEffect(() => {
     acknowledgedItemIdsRef.current = acknowledgedItemIds;
   }, [acknowledgedItemIds]);
+
+  useEffect(() => {
+    suppressedItemIdsRef.current = suppressedItemIds;
+  }, [suppressedItemIds]);
 
   useEffect(() => {
     ackRecordsRef.current = ackRecords;
@@ -145,6 +164,7 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
   useEffect(() => {
     if (!user?.id || !isEnabled) {
       setAcknowledgedItemIds(new Set());
+      setSuppressedItemIds(new Set());
       setCompletedItems([]);
       setAckRecords([]);
       previousAckCountRef.current = null;
@@ -158,10 +178,11 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
       void staffInboxAckService.migrateLegacyLocalStorage(user.id).catch(() => {
         // Subscription still works; legacy rows may retry on next session.
       });
+      void staffInboxAckService.migrateLegacyPerUserAcksToShared().catch(() => undefined);
+      void staffInboxAlertDeliveryService.migrateLegacyPerUserDeliveriesToShared().catch(() => undefined);
     }
 
     const unsubscribe = staffInboxAckService.subscribe(
-      user.id,
       (records) => {
         const previousCount = previousAckCountRef.current;
         previousAckCountRef.current = records.length;
@@ -193,6 +214,24 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
   }, [isEnabled, user?.id]);
 
   useEffect(() => {
+    if (!isEnabled) {
+      setSuppressedItemIds(new Set());
+      return;
+    }
+
+    const unsubscribe = staffInboxSuppressionService.subscribe(
+      (records) => {
+        setSuppressedItemIds(new Set(records.map((record) => record.itemId)));
+      },
+      (message) => {
+        setWarning(formatStaffInboxFirestoreError(message));
+      },
+    );
+
+    return unsubscribe;
+  }, [isEnabled]);
+
+  useEffect(() => {
     if (!user?.id || showSnapshots.length === 0) {
       return;
     }
@@ -202,7 +241,7 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
     );
 
     void staffInboxAckService
-      .pruneResolvedShowQueueFull(user.id, ackRecordsRef.current, fullShowIds)
+      .pruneResolvedShowQueueFull(ackRecordsRef.current, fullShowIds)
       .catch(() => {
         // Snapshot subscription remains source of truth.
       });
@@ -280,7 +319,21 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
         return;
       }
 
+      if (
+        acknowledgedItemIdsRef.current.has(alert.itemId) ||
+        suppressedItemIdsRef.current.has(alert.itemId)
+      ) {
+        return;
+      }
+
       pendingAlertsRef.current.push(alert);
+
+      const settleMs = Math.max(
+        STAFF_INBOX_ALERT_BATCH_WINDOW_MS,
+        ...pendingAlertsRef.current.map(
+          (entry) => entry.settleMs ?? STAFF_INBOX_ALERT_BATCH_WINDOW_MS,
+        ),
+      );
 
       if (alertFlushTimeoutRef.current) {
         window.clearTimeout(alertFlushTimeoutRef.current);
@@ -289,7 +342,7 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
       alertFlushTimeoutRef.current = window.setTimeout(() => {
         alertFlushTimeoutRef.current = null;
         flushPendingAlerts();
-      }, ALERT_BATCH_WINDOW_MS);
+      }, settleMs);
     },
     [flushPendingAlerts],
   );
@@ -308,6 +361,7 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
       const openItems = deriveStaffInboxItems({
         portalAllocations: snapshot.portalAllocations,
         acknowledgedItemIds: acknowledgedItemIdsRef.current,
+        suppressedItemIds: suppressedItemIdsRef.current,
         showTitleById: showTitleByIdRef.current,
         shows: showSnapshotsRef.current,
       });
@@ -333,6 +387,10 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
             continue;
           }
 
+          if (isStaffInboxQueuedAlertGroupHeld(groupKey)) {
+            continue;
+          }
+
           queueAlert({
             alertKind: "request_queued_to_show",
             itemId: queuedItem.id,
@@ -340,10 +398,18 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
             occurredAtMillis: queuedItem.occurredAtMillis,
             ...buildStaffInboxAlertToastCopy("portal_queued", queuedItem.title),
             navigationPath: getStaffInboxItemNavigationPath(queuedItem),
+            settleMs: STAFF_INBOX_QUEUE_ALERT_SETTLE_MS,
           });
         }
 
-        previousQueuedGroupKeysRef.current = nextQueuedGroupKeys;
+        // Held in-flight Studio Add-to-Show groups must stay "unseen" so release can alert.
+        previousQueuedGroupKeysRef.current = new Set(
+          [...nextQueuedGroupKeys].filter(
+            (groupKey) =>
+              !isStaffInboxQueuedAlertGroupHeld(groupKey) ||
+              Boolean(previousQueuedGroupKeys?.has(groupKey)),
+          ),
+        );
       }
 
       if (showSnapshotsRef.current.length === 0) {
@@ -380,6 +446,7 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
           occurredAtMillis: fullItem.occurredAtMillis,
           ...buildStaffInboxAlertToastCopy("show_queue_full", fullItem.title),
           navigationPath: getStaffInboxItemNavigationPath(fullItem),
+          settleMs: STAFF_INBOX_QUEUE_ALERT_SETTLE_MS,
         });
       }
 
@@ -389,6 +456,16 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
   );
 
   evaluateAlertsRef.current = evaluateAlerts;
+
+  useEffect(() => {
+    const onHoldChanged = () => {
+      evaluateAlertsRef.current(subscriptionSnapshotRef.current);
+    };
+    window.addEventListener(STAFF_INBOX_QUEUE_ALERT_HOLD_CHANGED_EVENT, onHoldChanged);
+    return () => {
+      window.removeEventListener(STAFF_INBOX_QUEUE_ALERT_HOLD_CHANGED_EVENT, onHoldChanged);
+    };
+  }, []);
 
   useEffect(() => {
     if (!isEnabled) {
@@ -441,7 +518,6 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
     }
 
     const unsubscribe = staffInboxAlertDeliveryService.subscribe(
-      user.id,
       (deliveries) => {
         soundDeliveredItemIdsRef.current = new Set(deliveries.map((entry) => entry.itemId));
         deliveriesHydratedRef.current = true;
@@ -469,6 +545,7 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
       const existing = deriveStaffInboxItems({
         portalAllocations: subscriptionSnapshot.portalAllocations,
         acknowledgedItemIds,
+        suppressedItemIds,
         showTitleById,
         shows: showSnapshots,
       });
@@ -489,10 +566,33 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
       pendingResolvedReportIds,
       showSnapshots,
       showTitleById,
+      suppressedItemIds,
       subscriptionSnapshot.designIssueReports,
       subscriptionSnapshot.portalAllocations,
     ],
   );
+
+  const enrichedCompletedItems = useMemo(() => {
+    return completedItems.map((item) => {
+      if (item.kind !== "portal_queued" || !item.printRequestId || !item.upcomingShowId) {
+        return item;
+      }
+
+      if (item.queuedGlance) {
+        return item;
+      }
+
+      const queuedGlance = buildStaffInboxQueuedGlanceMetrics(
+        filterAllocationsForQueuedGroup(
+          subscriptionSnapshot.portalAllocations,
+          item.printRequestId,
+          item.upcomingShowId,
+        ),
+      );
+
+      return queuedGlance ? { ...item, queuedGlance } : item;
+    });
+  }, [completedItems, subscriptionSnapshot.portalAllocations]);
 
   const highlightItem = useCallback((itemId: string) => {
     setHighlightedItemIds((current) => {
@@ -648,24 +748,61 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
     [clearItemHighlight, user],
   );
 
-  const restoreItem = useCallback(
-    (itemId: string) => {
-      if (!user?.id || itemId.startsWith("design_issue_report:")) {
+  const restoreItem = useCallback((itemId: string) => {
+    if (itemId.startsWith("design_issue_report:")) {
+      return;
+    }
+
+    setAcknowledgedItemIds((current) => {
+      const next = new Set(current);
+      next.delete(itemId);
+      return next;
+    });
+    setCompletedItems((current) => current.filter((entry) => entry.id !== itemId));
+
+    void staffInboxAckService.restore(itemId).catch(() => {
+      setWarning("Unable to restore inbox item. Check your connection and try again.");
+    });
+  }, []);
+
+  const deleteCompletedAlerts = useCallback(
+    (itemIds: string[]) => {
+      if (!user?.id || itemIds.length === 0) {
         return;
       }
 
+      const queueItemIds = itemIds.filter((itemId) => !itemId.startsWith("design_issue_report:"));
+
+      if (queueItemIds.length === 0) {
+        return;
+      }
+
+      const deletedIds = new Set(queueItemIds);
+      setCompletedItems((current) => current.filter((entry) => !deletedIds.has(entry.id)));
       setAcknowledgedItemIds((current) => {
         const next = new Set(current);
-        next.delete(itemId);
+        for (const itemId of queueItemIds) {
+          next.delete(itemId);
+        }
         return next;
       });
-      setCompletedItems((current) => current.filter((entry) => entry.id !== itemId));
+      setSuppressedItemIds((current) => {
+        const next = new Set(current);
+        for (const itemId of queueItemIds) {
+          next.add(itemId);
+        }
+        return next;
+      });
 
-      void staffInboxAckService.restore(user.id, itemId).catch(() => {
-        setWarning("Unable to restore inbox item. Check your connection and try again.");
+      const displayName = user.displayName?.trim() || undefined;
+      void Promise.all([
+        staffInboxAckService.deleteAcks(queueItemIds),
+        staffInboxSuppressionService.suppressItems(user.id, queueItemIds, { displayName }),
+      ]).catch(() => {
+        setWarning("Unable to delete completed inbox alerts. Check your connection and try again.");
       });
     },
-    [user?.id],
+    [user],
   );
 
   useEffect(() => {
@@ -710,17 +847,19 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
   const contextValue = useMemo(
     () => ({
       openItems,
-      completedItems,
+      completedItems: enrichedCompletedItems,
       badgeCounts,
       toasts,
       isPanelOpen,
       isEnabled,
       error,
       warning,
+      sectionPricing: gangSheetSettings.settings.sectionPricing,
       togglePanel,
       closePanel,
       acknowledgeItem,
       restoreItem,
+      deleteCompletedAlerts,
       dismissToast,
       openItem,
       isItemHighlighted,
@@ -729,9 +868,11 @@ export function StaffInboxProvider({ children }: StaffInboxProviderProps) {
       acknowledgeItem,
       badgeCounts,
       closePanel,
-      completedItems,
+      deleteCompletedAlerts,
       dismissToast,
+      enrichedCompletedItems,
       error,
+      gangSheetSettings.settings.sectionPricing,
       isEnabled,
       isItemHighlighted,
       isPanelOpen,

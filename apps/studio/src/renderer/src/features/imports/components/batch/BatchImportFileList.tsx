@@ -1,25 +1,50 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type {
   BatchImportFileManifestEntry,
   BatchImportJobId,
 } from "@fresh-prints/shared/types/import/batchImport.types";
 import type { ImportPngWarning } from "@fresh-prints/shared/types/import/importIpc.types";
+import type {
+  ImportArtworkBackgroundMode,
+  ImportHalftoneMode,
+} from "@fresh-prints/shared/types/design/artworkBackgroundSource.types";
+import type { ImportItemBackgroundOverride } from "@fresh-prints/shared/utils/resolveImportArtworkBackgroundDecision";
+import type { ImportItemHalftoneOverride } from "@fresh-prints/shared/utils/resolveImportArtworkBackgroundDecision";
+import { resolveImportPreviewBackgroundCssHex } from "@fresh-prints/shared/utils/resolveImportArtworkBackgroundDecision";
 
 import { Badge } from "../../../../shared/components/Badge";
 import { Button } from "../../../../shared/components/Button";
 import { importDesktopService } from "../../services/importDesktopService";
 import { isValidatedFileIncluded } from "../../utils/batchImportDisplay";
-import { ImportPreviewLightbox } from "../ImportPreviewLightbox";
-import { BatchImportFileValidationWarnings } from "./BatchImportFileValidationWarnings";
+import { ImportPreviewControls } from "../ImportPreviewControls";
+import {
+  ImportPreviewLightbox,
+  type ImportPreviewLightboxNavItem,
+} from "../ImportPreviewLightbox";
+import { ImportValidationWarningsTrigger } from "../ImportValidationWarningsTrigger";
 
 interface BatchImportFileListProps {
+  backgroundMode?: ImportArtworkBackgroundMode;
   emptyMessage?: string;
   excludedFilePaths?: ReadonlySet<string>;
   files: BatchImportFileManifestEntry[];
+  halftoneMode?: ImportHalftoneMode;
+  itemBackgroundOverrides?: Readonly<Record<string, ImportItemBackgroundOverride>>;
+  itemHalftoneOverrides?: Readonly<Record<string, ImportItemHalftoneOverride>>;
   jobId?: BatchImportJobId;
+  onItemBackgroundOverrideChange?: (
+    filePath: string,
+    value: ImportItemBackgroundOverride,
+  ) => void;
+  onItemHalftoneOverrideChange?: (
+    filePath: string,
+    value: ImportItemHalftoneOverride,
+  ) => void;
+  onSuggestDarkDetected?: (filePath: string, suggestDark: boolean) => void;
   onToggleFileIncluded?: (filePath: string) => void;
   omittedWarningCodes?: ReadonlySet<ImportPngWarning["code"]>;
+  suggestDarkByPath?: Readonly<Record<string, boolean>>;
   title: string;
   variant?: "default" | "rejected" | "validated";
 }
@@ -41,17 +66,46 @@ function getFileMeta(file: BatchImportFileManifestEntry): string | null {
 }
 
 function BatchImportFilePreview({
+  backgroundMode,
   file,
+  halftoneMode,
+  itemBackgroundOverride,
+  itemHalftoneOverride,
   jobId,
+  onOpenPreview,
+  onPreviewLoaded,
+  onSuggestDarkDetected,
+  previewDataUrl,
+  suggestDark,
 }: {
+  backgroundMode: ImportArtworkBackgroundMode;
   file: BatchImportFileManifestEntry;
+  halftoneMode: ImportHalftoneMode;
+  itemBackgroundOverride: ImportItemBackgroundOverride;
+  itemHalftoneOverride: ImportItemHalftoneOverride;
   jobId: BatchImportJobId | undefined;
+  onOpenPreview: (filePath: string) => void;
+  onPreviewLoaded: (filePath: string, dataUrl: string, suggestDark: boolean) => void;
+  onSuggestDarkDetected?: (filePath: string, suggestDark: boolean) => void;
+  previewDataUrl: string | null;
+  suggestDark: boolean;
 }) {
   const previewRef = useRef<HTMLDivElement | null>(null);
   const [hasBeenVisible, setHasBeenVisible] = useState(false);
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
+  const [localSuggestDark, setLocalSuggestDark] = useState(suggestDark);
   const fileLabel = getFileLabel(file);
+  const effectiveSuggestDark = suggestDark || localSuggestDark;
+  const matHex = resolveImportPreviewBackgroundCssHex({
+    backgroundMode,
+    halftoneMode,
+    autoSuggestsDark: effectiveSuggestDark,
+    itemBackgroundOverride,
+    itemHalftoneOverride,
+  });
+
+  useEffect(() => {
+    setLocalSuggestDark(suggestDark);
+  }, [suggestDark]);
 
   useEffect(() => {
     const previewElement = previewRef.current;
@@ -99,65 +153,172 @@ function BatchImportFilePreview({
           return;
         }
 
-        setPreviewDataUrl(previewResult.data.dataUrl);
+        const detected = previewResult.data.suggestDarkArtworkBackground === true;
+        setLocalSuggestDark(detected);
+        onPreviewLoaded(file.filePath, previewResult.data.dataUrl, detected);
+        onSuggestDarkDetected?.(file.filePath, detected);
       })
       .catch(() => {
-        if (isActive) {
-          setPreviewDataUrl(null);
-        }
+        // Keep placeholder when preview load fails.
       });
 
     return () => {
       isActive = false;
     };
-  }, [file.filePath, hasBeenVisible, jobId, previewDataUrl]);
-
-  if (!previewDataUrl) {
-    return (
-      <div
-        aria-hidden="true"
-        className="batch-import-file-preview-placeholder"
-        ref={previewRef}
-      />
-    );
-  }
+  }, [
+    file.filePath,
+    hasBeenVisible,
+    jobId,
+    onPreviewLoaded,
+    onSuggestDarkDetected,
+    previewDataUrl,
+  ]);
 
   return (
-    <>
-      <button
-        aria-label={`Open preview of ${fileLabel}`}
-        className="batch-import-file-preview-button"
-        onClick={() => setIsPreviewOpen(true)}
-        type="button"
-      >
-        <img
-          alt={`Preview of ${fileLabel}`}
-          className="batch-import-file-preview-image"
-          src={previewDataUrl}
+    <div
+      className="batch-import-file-preview-shell"
+      data-batch-import-file-path={file.filePath}
+      ref={previewRef}
+    >
+      {previewDataUrl ? (
+        <button
+          aria-label={`Open preview of ${fileLabel}`}
+          className="batch-import-file-preview-button"
+          onClick={() => onOpenPreview(file.filePath)}
+          style={{ background: matHex }}
+          type="button"
+        >
+          <img
+            alt={`Preview of ${fileLabel}`}
+            className="batch-import-file-preview-image"
+            src={previewDataUrl}
+            style={{ background: matHex }}
+          />
+        </button>
+      ) : (
+        <div
+          aria-hidden="true"
+          className="batch-import-file-preview-placeholder"
+          style={{ background: matHex }}
         />
-      </button>
-      <ImportPreviewLightbox
-        alt={`Preview of ${fileLabel}`}
-        isOpen={isPreviewOpen}
-        onClose={() => setIsPreviewOpen(false)}
-        previewDataUrl={previewDataUrl}
-        title={fileLabel}
-      />
-    </>
+      )}
+    </div>
   );
 }
 
 export function BatchImportFileList({
+  backgroundMode = "auto",
   emptyMessage = "No files to display.",
   excludedFilePaths,
   files,
+  halftoneMode = "normal",
+  itemBackgroundOverrides,
+  itemHalftoneOverrides,
   jobId,
+  onItemBackgroundOverrideChange,
+  onItemHalftoneOverrideChange,
+  onSuggestDarkDetected,
   onToggleFileIncluded,
   omittedWarningCodes,
+  suggestDarkByPath,
   title,
   variant = "default",
 }: BatchImportFileListProps) {
   const items = files;
+  const [previewDataUrlByPath, setPreviewDataUrlByPath] = useState<Record<string, string>>({});
+  const [lightboxFilePath, setLightboxFilePath] = useState<string | null>(null);
+
+  const handlePreviewLoaded = useCallback(
+    (filePath: string, dataUrl: string, suggestDarkDetected?: boolean) => {
+      setPreviewDataUrlByPath((current) => {
+        if (current[filePath] === dataUrl) {
+          return current;
+        }
+        return { ...current, [filePath]: dataUrl };
+      });
+      if (suggestDarkDetected === true) {
+        onSuggestDarkDetected?.(filePath, true);
+      }
+    },
+    [onSuggestDarkDetected],
+  );
+
+  const navigationItems = useMemo((): ImportPreviewLightboxNavItem[] | undefined => {
+    if (variant !== "validated") {
+      return undefined;
+    }
+
+    const navItems = files.flatMap((file) => {
+      const previewDataUrl = previewDataUrlByPath[file.filePath];
+      if (!previewDataUrl) {
+        return [];
+      }
+
+      const fileLabel = getFileLabel(file);
+      const itemBackgroundOverride = itemBackgroundOverrides?.[file.filePath] ?? "auto";
+      const itemHalftoneOverride = itemHalftoneOverrides?.[file.filePath] ?? "auto";
+      const suggestDark = suggestDarkByPath?.[file.filePath] === true;
+      const backgroundCssHex = resolveImportPreviewBackgroundCssHex({
+        backgroundMode,
+        halftoneMode,
+        autoSuggestsDark: suggestDark,
+        itemBackgroundOverride,
+        itemHalftoneOverride,
+      });
+
+      return [
+        {
+          id: file.filePath,
+          alt: `Preview of ${fileLabel}`,
+          title: fileLabel,
+          previewDataUrl,
+          backgroundCssHex,
+        },
+      ];
+    });
+
+    return navItems.length > 1 ? navItems : undefined;
+  }, [
+    backgroundMode,
+    files,
+    halftoneMode,
+    itemBackgroundOverrides,
+    itemHalftoneOverrides,
+    previewDataUrlByPath,
+    suggestDarkByPath,
+    variant,
+  ]);
+
+  const activeFile =
+    lightboxFilePath != null
+      ? files.find((file) => file.filePath === lightboxFilePath)
+      : undefined;
+  const activePreviewDataUrl =
+    lightboxFilePath != null ? previewDataUrlByPath[lightboxFilePath] ?? null : null;
+  const activeFileLabel = activeFile ? getFileLabel(activeFile) : "Preview";
+  const activeBackgroundCssHex =
+    activeFile && lightboxFilePath
+      ? resolveImportPreviewBackgroundCssHex({
+          backgroundMode,
+          halftoneMode,
+          autoSuggestsDark: suggestDarkByPath?.[lightboxFilePath] === true,
+          itemBackgroundOverride: itemBackgroundOverrides?.[lightboxFilePath] ?? "auto",
+          itemHalftoneOverride: itemHalftoneOverrides?.[lightboxFilePath] ?? "auto",
+        })
+      : undefined;
+
+  function closeLightboxWithScroll(finalItemId: string | null) {
+    setLightboxFilePath(null);
+    if (!finalItemId) {
+      return;
+    }
+    window.requestAnimationFrame(() => {
+      const target = document.querySelector<HTMLElement>(
+        `[data-batch-import-file-path="${CSS.escape(finalItemId)}"]`,
+      );
+      target?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+  }
 
   if (files.length === 0) {
     return (
@@ -174,6 +335,7 @@ export function BatchImportFileList({
       <ul>
         {items.map((file) => {
           const meta = getFileMeta(file);
+          const fileLabel = getFileLabel(file);
           const validationWarnings =
             variant === "validated" && file.validation
               ? file.validation.warnings.filter((warning) => !omittedWarningCodes?.has(warning.code))
@@ -182,6 +344,12 @@ export function BatchImportFileList({
             variant !== "validated" ||
             !excludedFilePaths ||
             isValidatedFileIncluded(file.filePath, excludedFilePaths);
+          const itemBackgroundOverride = itemBackgroundOverrides?.[file.filePath] ?? "auto";
+          const itemHalftoneOverride = itemHalftoneOverrides?.[file.filePath] ?? "auto";
+          const suggestDark = suggestDarkByPath?.[file.filePath] === true;
+          const showRowControls =
+            variant === "validated" &&
+            (Boolean(onItemBackgroundOverrideChange) || Boolean(onItemHalftoneOverrideChange));
 
           return (
             <li
@@ -193,28 +361,55 @@ export function BatchImportFileList({
               key={file.filePath}
             >
               {variant === "validated" ? (
-                <BatchImportFilePreview file={file} jobId={jobId} />
+                <BatchImportFilePreview
+                  backgroundMode={backgroundMode}
+                  file={file}
+                  halftoneMode={halftoneMode}
+                  itemBackgroundOverride={itemBackgroundOverride}
+                  itemHalftoneOverride={itemHalftoneOverride}
+                  jobId={jobId}
+                  onOpenPreview={setLightboxFilePath}
+                  onPreviewLoaded={handlePreviewLoaded}
+                  onSuggestDarkDetected={onSuggestDarkDetected}
+                  previewDataUrl={previewDataUrlByPath[file.filePath] ?? null}
+                  suggestDark={suggestDark}
+                />
               ) : null}
 
-              <div className="batch-import-file-list-entry">
-                {variant === "validated" ? (
-                  <div className="batch-import-file-list-name-row">
-                    <span aria-hidden="true" className="batch-import-file-list-validated-mark">
-                      ✓
-                    </span>
-                    <span className="batch-import-file-list-label">{getFileLabel(file)}</span>
-                  </div>
-                ) : (
+              {showRowControls ? (
+                <div className="batch-import-file-list-controls-row">
+                  <ImportPreviewControls
+                    autoSuggestsDark={suggestDark}
+                    backgroundMode={backgroundMode}
+                    halftoneMode={halftoneMode}
+                    itemBackgroundOverride={itemBackgroundOverride}
+                    itemHalftoneOverride={itemHalftoneOverride}
+                    layout="inline"
+                    onItemBackgroundOverrideChange={
+                      onItemBackgroundOverrideChange
+                        ? (value) => onItemBackgroundOverrideChange(file.filePath, value)
+                        : undefined
+                    }
+                    onItemHalftoneOverrideChange={
+                      onItemHalftoneOverrideChange
+                        ? (value) => onItemHalftoneOverrideChange(file.filePath, value)
+                        : undefined
+                    }
+                    showBackgroundPicker={Boolean(onItemBackgroundOverrideChange)}
+                  />
+                  <ImportValidationWarningsTrigger
+                    fileLabel={fileLabel}
+                    warnings={validationWarnings}
+                  />
+                </div>
+              ) : (
+                <div className="batch-import-file-list-entry">
                   <div className="batch-import-file-list-name">
-                    <div>{getFileLabel(file)}</div>
+                    <div>{fileLabel}</div>
                     {meta ? <div className="batch-import-file-list-meta">{meta}</div> : null}
                   </div>
-                )}
-
-                {variant === "validated" ? (
-                  <BatchImportFileValidationWarnings warnings={validationWarnings} />
-                ) : null}
-              </div>
+                </div>
+              )}
 
               <div className="batch-import-file-list-actions">
                 {variant === "validated" && !isIncluded ? (
@@ -237,6 +432,21 @@ export function BatchImportFileList({
           );
         })}
       </ul>
+
+      {variant === "validated" ? (
+        <ImportPreviewLightbox
+          activeItemId={lightboxFilePath}
+          alt={`Preview of ${activeFileLabel}`}
+          backgroundCssHex={activeBackgroundCssHex}
+          isOpen={Boolean(lightboxFilePath && activePreviewDataUrl)}
+          navigationItems={navigationItems}
+          onActiveItemChange={setLightboxFilePath}
+          onClose={() => setLightboxFilePath(null)}
+          onCloseWithFinalItemId={closeLightboxWithScroll}
+          previewDataUrl={activePreviewDataUrl}
+          title={activeFileLabel}
+        />
+      ) : null}
     </div>
   );
 }

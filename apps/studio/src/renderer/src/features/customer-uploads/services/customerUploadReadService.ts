@@ -16,6 +16,9 @@ export interface StudioCustomerUploadSummary {
   thumbnailStoragePath: string | null;
   printWidthInches: number | null;
   printHeightInches: number | null;
+  interactiveEnhancedProductionStoragePath?: string | null;
+  interactiveEnhancedWidthPx?: number | null;
+  interactiveEnhancedHeightPx?: number | null;
   widthPx: number | null;
   heightPx: number | null;
   approvedMaxPrintWidthInches: number | null;
@@ -23,6 +26,9 @@ export interface StudioCustomerUploadSummary {
   wasUpscaled: boolean | null;
   technicalStatus: CustomerUploadTechnicalStatus;
   catalogReviewStatus: string | null;
+  /** Library consent from uploader; null when missing on legacy docs. */
+  catalogUseAcknowledged: boolean | null;
+  assistedCreationRequestId: string | null;
 }
 
 export const customerUploadReadService = {
@@ -47,6 +53,14 @@ export const customerUploadReadService = {
       originalFilename: String(data.originalFilename ?? "Uploaded artwork"),
       productionStoragePath:
         typeof data.productionStoragePath === "string" ? data.productionStoragePath : null,
+      interactiveEnhancedProductionStoragePath:
+        typeof data.interactiveEnhancedProductionStoragePath === "string"
+          ? data.interactiveEnhancedProductionStoragePath
+          : null,
+      interactiveEnhancedWidthPx:
+        typeof data.interactiveEnhancedWidthPx === "number" ? data.interactiveEnhancedWidthPx : null,
+      interactiveEnhancedHeightPx:
+        typeof data.interactiveEnhancedHeightPx === "number" ? data.interactiveEnhancedHeightPx : null,
       previewStoragePath: typeof data.previewStoragePath === "string" ? data.previewStoragePath : null,
       thumbnailStoragePath:
         typeof data.thumbnailStoragePath === "string" ? data.thumbnailStoragePath : null,
@@ -66,6 +80,12 @@ export const customerUploadReadService = {
       technicalStatus: data.technicalStatus as CustomerUploadTechnicalStatus,
       catalogReviewStatus:
         typeof data.catalogReviewStatus === "string" ? data.catalogReviewStatus : null,
+      catalogUseAcknowledged:
+        typeof data.catalogUseAcknowledged === "boolean" ? data.catalogUseAcknowledged : null,
+      assistedCreationRequestId:
+        typeof data.assistedCreationRequestId === "string" && data.assistedCreationRequestId.trim()
+          ? data.assistedCreationRequestId.trim()
+          : null,
     };
   },
 };

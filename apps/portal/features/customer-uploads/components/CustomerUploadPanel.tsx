@@ -68,9 +68,10 @@ export function CustomerUploadPanel({
 }: CustomerUploadPanelProps) {
   const isDonation = purpose === 'catalog_donation';
   const { firebaseUser } = useAuth();
-  const { workingRequestLimit } = usePortalPrintRequests();
+  const { workingRequestLimit, reloadWorkingItems, workingRequest } = usePortalPrintRequests();
   const isQuotaReady = isDonation || workingRequestLimit.isReady;
-  const isQuotaPending = !isDonation && !workingRequestLimit.isReady;
+  const isQuotaError = !isDonation && Boolean(workingRequestLimit.error);
+  const isQuotaPending = !isDonation && !workingRequestLimit.isReady && !isQuotaError;
   const isRequestFull =
     !isDonation && workingRequestLimit.isReady && workingRequestLimit.isRequestFull;
   const printSlotsRemaining =
@@ -100,6 +101,8 @@ export function CustomerUploadPanel({
     processingCount,
     addFiles,
     removeRow,
+    removeFailed,
+    clearUploadList,
     retryFailed,
     attachToRequest,
     submitDonation,
@@ -199,7 +202,7 @@ export function CustomerUploadPanel({
   }, [readyPreviewKey]);
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    if (isRequestFull || isQuotaPending) {
+    if (isRequestFull || isQuotaPending || isQuotaError) {
       event.target.value = '';
       return;
     }
@@ -213,7 +216,7 @@ export function CustomerUploadPanel({
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setIsDragging(false);
-    if (isRequestFull || isQuotaPending) {
+    if (isRequestFull || isQuotaPending || isQuotaError) {
       return;
     }
     if (event.dataTransfer.files?.length) {
@@ -267,7 +270,7 @@ export function CustomerUploadPanel({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleClose, isBusy, isHalftoneHelpOpen, variant]);
 
-  const uploadBlocked = isBusy || isRequestFull || isQuotaPending;
+  const uploadBlocked = isBusy || isRequestFull || isQuotaPending || isQuotaError;
   const attachDisabledReason = resolveCustomerUploadAttachDisabledReason({
     isDonation,
     readyCount,
@@ -353,6 +356,33 @@ export function CustomerUploadPanel({
               </div>
             </div>
           ) : null}
+          {isQuotaError ? (
+            <div
+              aria-describedby="portal-customer-upload-quota-error-body"
+              aria-labelledby="portal-customer-upload-quota-error-title"
+              className="portal-customer-upload-request-full-overlay portal-customer-upload-quota-error-overlay"
+              role="alert"
+            >
+              <div className="portal-customer-upload-quota-pending-card">
+                <h2 id="portal-customer-upload-quota-error-title">We could not check print limits</h2>
+                <p id="portal-customer-upload-quota-error-body">
+                  {workingRequestLimit.error || 'Current Request items could not be loaded.'}
+                </p>
+                <button
+                  className="portal-button portal-button-secondary"
+                  disabled={isBusy}
+                  onClick={() => {
+                    if (workingRequest?.id) {
+                      void reloadWorkingItems({ printRequestId: workingRequest.id });
+                    }
+                  }}
+                  type="button"
+                >
+                  Retry
+                </button>
+              </div>
+            </div>
+          ) : null}
           {isRequestFull ? (
             <div
               aria-describedby="portal-customer-upload-full-body"
@@ -377,13 +407,13 @@ export function CustomerUploadPanel({
           ) : null}
 
           <div
-            aria-hidden={isRequestFull || isQuotaPending ? true : undefined}
-            className={`modal-body portal-customer-upload-modal-body${isRequestFull || isQuotaPending ? ' is-request-full-blocked' : ''}`}
+            aria-hidden={isRequestFull || isQuotaPending || isQuotaError ? true : undefined}
+            className={`modal-body portal-customer-upload-modal-body${isRequestFull || isQuotaPending || isQuotaError ? ' is-request-full-blocked' : ''}`}
           >
           <div
-            className={`portal-customer-upload-dropzone${isDragging ? ' is-dragging' : ''}${isRequestFull || isQuotaPending ? ' is-disabled' : ''}`}
+            className={`portal-customer-upload-dropzone${isDragging ? ' is-dragging' : ''}${isRequestFull || isQuotaPending || isQuotaError ? ' is-disabled' : ''}`}
             onDragEnter={(event) => {
-              if (isRequestFull || isQuotaPending) {
+              if (isRequestFull || isQuotaPending || isQuotaError) {
                 return;
               }
               event.preventDefault();
@@ -394,7 +424,7 @@ export function CustomerUploadPanel({
               setIsDragging(false);
             }}
             onDragOver={(event) => {
-              if (isRequestFull || isQuotaPending) {
+              if (isRequestFull || isQuotaPending || isQuotaError) {
                 return;
               }
               event.preventDefault();
@@ -402,7 +432,7 @@ export function CustomerUploadPanel({
             onDrop={handleDrop}
           >
             <p className="portal-customer-upload-file-limits">
-              PNG or WebP · up to {formatFileSize(sizeLimits.maxSingleImageBytes)} each · ZIP up to{' '}
+              PNG · up to {formatFileSize(sizeLimits.maxSingleImageBytes)} each · ZIP up to{' '}
               {formatFileSize(sizeLimits.maxZipBytes)} (images are discovered and listed, then
               processed) ·{' '}
               {dailyQuota?.maxConcurrentFinalize ?? CUSTOMER_UPLOAD_MAX_CONCURRENT_FINALIZE} at a
@@ -436,7 +466,7 @@ export function CustomerUploadPanel({
               </button>
             </div>
             <input
-              accept=".png,.webp,image/png,image/webp"
+              accept=".png,image/png"
               disabled={isRequestFull}
               hidden
               multiple
@@ -445,7 +475,7 @@ export function CustomerUploadPanel({
               type="file"
             />
             <input
-              accept=".png,.webp,image/png,image/webp"
+              accept=".png,image/png"
               disabled={isRequestFull}
               hidden
               // @ts-expect-error webkitdirectory is supported in Chromium browsers
@@ -480,11 +510,53 @@ export function CustomerUploadPanel({
           ) : null}
 
           {rows.length > 0 ? (
-            <div className="portal-customer-upload-summary" aria-live="polite">
-              <span>{uploadingCount} uploading</span>
-              <span>{processingCount} processing</span>
-              <span>{readyCount} ready</span>
-              <span>{failedCount} failed</span>
+            <div className="portal-customer-upload-list-toolbar">
+              <div className="portal-customer-upload-summary" aria-live="polite">
+                <span>{uploadingCount} uploading</span>
+                <span>{processingCount} processing</span>
+                <span>{readyCount} ready</span>
+                <span>{failedCount} failed</span>
+              </div>
+              <div className="portal-customer-upload-list-actions">
+                {failedCount > 0 ? (
+                  <>
+                    <button
+                      className="portal-button portal-button-secondary"
+                      disabled={uploadBlocked}
+                      onClick={() => void retryFailed()}
+                      type="button"
+                    >
+                      Retry failed
+                    </button>
+                    <button
+                      className="portal-button portal-button-secondary"
+                      disabled={isAttaching}
+                      onClick={() => {
+                        void (async () => {
+                          await removeFailed();
+                          await refreshDailyQuota();
+                        })();
+                      }}
+                      type="button"
+                    >
+                      Remove failed
+                    </button>
+                  </>
+                ) : null}
+                <button
+                  className="portal-button portal-button-secondary"
+                  disabled={isAttaching}
+                  onClick={() => {
+                    void (async () => {
+                      await clearUploadList();
+                      await refreshDailyQuota();
+                    })();
+                  }}
+                  type="button"
+                >
+                  Clear list
+                </button>
+              </div>
             </div>
           ) : null}
 
@@ -495,9 +567,10 @@ export function CustomerUploadPanel({
                   {previewUrls[row.localId] ? (
                     <img
                       alt=""
-                      loading="lazy"
                       decoding="async"
+                      loading="lazy"
                       src={previewUrls[row.localId] ?? undefined}
+                      style={{ objectFit: 'contain', objectPosition: 'center' }}
                     />
                   ) : (
                     <span className="portal-customer-upload-file-preview-fallback" aria-hidden>
@@ -617,17 +690,6 @@ export function CustomerUploadPanel({
               </li>
             ))}
           </ul>
-
-          {failedCount > 0 ? (
-            <button
-              className="portal-button portal-button-secondary"
-              disabled={uploadBlocked}
-              onClick={() => void retryFailed()}
-              type="button"
-            >
-              Retry failed
-            </button>
-          ) : null}
 
           <fieldset
             className={`portal-customer-upload-confirmations${
@@ -806,7 +868,7 @@ export function CustomerUploadPanel({
       <>
         <section
           aria-label={isDonation ? 'Donate designs' : 'Upload artwork'}
-          className={`portal-customer-upload-embedded${isRequestFull ? ' is-request-full' : ''}${isQuotaPending ? ' is-quota-pending' : ''}`}
+          className={`portal-customer-upload-embedded${isRequestFull ? ' is-request-full' : ''}${isQuotaPending ? ' is-quota-pending' : ''}${isQuotaError ? ' is-quota-error' : ''}`}
         >
           {panelBody}
         </section>

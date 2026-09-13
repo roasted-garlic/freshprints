@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import {
   getCatalogDiscoveryModeLabel,
@@ -15,26 +15,18 @@ import { CatalogDesignDetailsModal } from '../components/CatalogDesignDetailsMod
 import { CatalogFilterBar } from '../components/CatalogFilterBar';
 import { CatalogFiltersSheet } from '../components/CatalogFiltersSheet';
 import { CatalogSelectionCard } from '../components/CatalogSelectionCard';
+import { CatalogSmartFilterModal } from '../components/CatalogSmartFilterModal';
 import { designHasMatchingDesignsHint } from '../services/catalogService';
+import { isPortalSmartFiltersConfigured } from '../services/portalAlgoliaCatalogFlags';
+import {
+  countSelectedSmartFilters,
+  type PortalSmartFilters,
+} from '../services/portalAlgoliaCatalogSearchService';
 import { CATALOG_FIRST_VIEWPORT_EAGER_COUNT } from '../hooks/useCatalogDesigns';
-
-/** Bound Algolia/search requests while typing — do not fire per raw keystroke. */
-export const CATALOG_SEARCH_DEBOUNCE_MS = 300;
-import { CatalogTagFilterModal } from '../components/CatalogTagFilterModal';
 import { useCatalogDesignDeepLink } from '../hooks/useCatalogDesignDeepLink';
 import { useCatalogCategories } from '../hooks/useCatalogCategories';
-import {
-  useCatalogCategoryOptions,
-  useCatalogDesigns,
-} from '../hooks/useCatalogDesigns';
-import { useCatalogTags } from '../hooks/useCatalogTags';
-import {
-  countVisibleSelectedTags,
-  selectedTagsIncludeHalftone,
-  setHalftoneInSelectedTags,
-  sortCatalogTags,
-  visibleSelectedTags,
-} from '../utils/catalogSearch';
+import { useCatalogDesigns } from '../hooks/useCatalogDesigns';
+import { useNarrowedCatalogCategoryOptions } from '../hooks/useNarrowedCatalogCategoryOptions';
 import { shouldApplyCatalogUrlSearchToLocal } from '../utils/shouldApplyCatalogUrlSearchToLocal';
 import type { CatalogDesign } from '../types/catalog.types';
 import { usePortalPrintRequests } from '../../print-requests/context/PortalPrintRequestContext';
@@ -60,6 +52,9 @@ import {
   XIcon,
 } from '../../shared/components/PortalIcons';
 
+/** Bound Algolia/search requests while typing — do not fire per raw keystroke. */
+export const CATALOG_SEARCH_DEBOUNCE_MS = 300;
+
 export function CatalogPageContent() {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
@@ -80,8 +75,9 @@ export function CatalogPageContent() {
   /** Last `q` this page wrote via debounce or syncLibraryUrl — ignore matching URL echoes. */
   const lastSelfPushedQRef = useRef<string | null>(initialSearch.trim() ? initialSearch.trim() : null);
   const [categoryFilter, setCategoryFilter] = useState(initialCategory);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [isTagFilterModalOpen, setIsTagFilterModalOpen] = useState(false);
+  const [halftoneFilterOn, setHalftoneFilterOn] = useState(false);
+  const [smartFilters, setSmartFilters] = useState<PortalSmartFilters>({});
+  const [isSmartFilterModalOpen, setIsSmartFilterModalOpen] = useState(false);
   const [isFiltersSheetOpen, setIsFiltersSheetOpen] = useState(false);
   const [selectedDesign, setSelectedDesign] = useState<CatalogDesign | null>(null);
   const [selectionActionError, setSelectionActionError] = useState<string | null>(null);
@@ -152,19 +148,19 @@ export function CatalogPageContent() {
     : null;
 
   const { categories } = useCatalogCategories();
-  const { tags: approvedTags, error: approvedTagsError } = useCatalogTags();
   const catalogDesignsState = useCatalogDesigns({
     categoryId: categoryFilter || undefined,
     discoveryMode: showDesignLibraryView ? null : discoveryMode,
     searchQuery: debouncedSearchQuery,
-    selectedTags,
+    halftoneFilterOn,
+    smartFilters,
   });
 
   const showDesignsState = useCatalogShowDesigns({
     categoryId: categoryFilter || undefined,
     enabled: showDesignLibraryView,
     searchQuery: debouncedSearchQuery,
-    selectedTags,
+    halftoneFilterOn,
     showId,
     showsThisWeek: discoveryMode === 'showsThisWeek',
   });
@@ -182,7 +178,12 @@ export function CatalogPageContent() {
     matchingCount,
   } = showDesignLibraryView ? showDesignsState : catalogDesignsState;
 
-  const categoryOptions = useCatalogCategoryOptions(categories);
+  const categoryOptions = useNarrowedCatalogCategoryOptions({
+    categories,
+    searchQuery: debouncedSearchQuery,
+    selectedCategoryId: categoryFilter || undefined,
+    smartFilters,
+  });
   const activeCategoryName =
     categories.find((category) => category.id === categoryFilter)?.name ?? null;
   const curatedLibraryView = Boolean(discoveryMode || categoryFilter || showDesignLibraryView);
@@ -192,7 +193,8 @@ export function CatalogPageContent() {
   const hasActiveFilters = Boolean(
     searchQuery.trim() ||
       categoryFilter ||
-      selectedTags.length > 0 ||
+      halftoneFilterOn ||
+      countSelectedSmartFilters(smartFilters) > 0 ||
       discoveryMode ||
       showDesignLibraryView,
   );
@@ -229,7 +231,8 @@ export function CatalogPageContent() {
     setSearchQuery('');
     setDebouncedSearchQuery('');
     setCategoryFilter('');
-    setSelectedTags([]);
+    setHalftoneFilterOn(false);
+    setSmartFilters({});
     syncLibraryUrl({ discover: discoveryMode, search: '', categoryId: '' });
   }
 
@@ -238,19 +241,12 @@ export function CatalogPageContent() {
     syncLibraryUrl({ categoryId: nextCategoryId || null });
   }
 
-  function removeSelectedTag(tagToRemove: string) {
-    setSelectedTags((currentTags) => currentTags.filter((tag) => tag !== tagToRemove));
-  }
-
-  function handleHalftoneFilterChange(halftoneOn: boolean) {
-    setSelectedTags((currentTags) => setHalftoneInSelectedTags(currentTags, halftoneOn));
-  }
-
-  const visibleTags = useMemo(() => visibleSelectedTags(selectedTags), [selectedTags]);
-  const visibleTagCount = countVisibleSelectedTags(selectedTags);
-  const halftoneFilterOn = selectedTagsIncludeHalftone(selectedTags);
+  const smartFilterCount = countSelectedSmartFilters(smartFilters);
+  const showSmartFilters = isPortalSmartFiltersConfigured();
   const filterSheetActiveCount =
-    (categoryFilter ? 1 : 0) + (halftoneFilterOn ? 1 : 0) + visibleTagCount;
+    (categoryFilter ? 1 : 0) +
+    (halftoneFilterOn ? 1 : 0) +
+    smartFilterCount;
 
   const { resetTransientState } = addDesignFlow;
 
@@ -528,7 +524,10 @@ export function CatalogPageContent() {
           <div className="design-library-filter-dock">
             <div className="design-library-summary-row">
               <span className="design-library-count-chip">{designCountLabel}</span>
-              {searchQuery.trim() || categoryFilter || selectedTags.length > 0 ? (
+              {searchQuery.trim() ||
+              categoryFilter ||
+              halftoneFilterOn ||
+              smartFilterCount > 0 ? (
                 <button
                   className="portal-button portal-button-secondary portal-button-sm portal-button-leading-icon"
                   onClick={clearFilters}
@@ -546,33 +545,15 @@ export function CatalogPageContent() {
               filterSheetActiveCount={filterSheetActiveCount}
               halftoneFilterOn={halftoneFilterOn}
               onCategoryChange={handleCategoryChange}
-              onHalftoneFilterChange={handleHalftoneFilterChange}
+              onHalftoneFilterChange={setHalftoneFilterOn}
               onOpenFiltersSheet={() => setIsFiltersSheetOpen(true)}
-              onOpenTags={() => setIsTagFilterModalOpen(true)}
+              onOpenSmartFilters={() => setIsSmartFilterModalOpen(true)}
               onSearchChange={setSearchQuery}
               searchQuery={searchQuery}
-              selectedTagCount={visibleTagCount}
+              selectedSmartFilterCount={smartFilterCount}
+              showSmartFilters={showSmartFilters}
             />
           </div>
-
-          {visibleTags.length > 0 ? (
-            <div aria-label="Active tag filters" className="design-library-active-tags">
-              <span className="design-library-active-tags-label">Tags:</span>
-              {visibleTags.map((tag) => (
-                <span className="design-library-active-tag" key={tag}>
-                  <span>{tag}</span>
-                  <button
-                    aria-label={`Remove ${tag} tag filter`}
-                    className="design-library-active-tag-remove"
-                    onClick={() => removeSelectedTag(tag)}
-                    type="button"
-                  >
-                    <XIcon size={12} />
-                  </button>
-                </span>
-              ))}
-            </div>
-          ) : null}
 
           {isHydrating ? (
             <p className="portal-muted design-library-search-paging-hint">
@@ -603,7 +584,7 @@ export function CatalogPageContent() {
                 {hasActiveFilters
                   ? isHydrating
                     ? 'Still loading the catalog — matches may appear in a moment.'
-                    : 'Try adjusting your search, category, tag, or discovery filters.'
+                    : 'Try adjusting your search, category, Halftone, or discovery filters.'
                   : 'Designs you can use for print requests will appear here.'}
               </p>
             </div>
@@ -708,6 +689,7 @@ export function CatalogPageContent() {
             : (currentRequestAggregates.quantityByDesignId[selectedDesign.id] ?? 0) > 0)
         }
         isOpen={selectedDesign !== null}
+        navigationDesigns={displayedDesigns}
         onOpenDesign={openDesignDetails}
         onAddToRequest={
           !isAuthenticated
@@ -749,7 +731,7 @@ export function CatalogPageContent() {
       </PortalConfirmModal>
 
       <PortalPickContinuableRequestModal
-        continuableRequests={continuableRequests}
+        continuableRequests={addDesignFlow.pickerContinuableRequests}
         designTitle={addDesignFlow.pendingDesign?.title}
         isAdding={addDesignFlow.isAdding}
         isOpen={addDesignFlow.isPickerOpen}
@@ -764,24 +746,25 @@ export function CatalogPageContent() {
         isOpen={isFiltersSheetOpen}
         onCategoryChange={handleCategoryChange}
         onClose={() => setIsFiltersSheetOpen(false)}
-        onHalftoneFilterChange={handleHalftoneFilterChange}
-        onOpenTags={() => {
+        onHalftoneFilterChange={setHalftoneFilterOn}
+        onOpenSmartFilters={() => {
           setIsFiltersSheetOpen(false);
-          setIsTagFilterModalOpen(true);
+          setIsSmartFilterModalOpen(true);
         }}
-        selectedTagCount={visibleTagCount}
+        selectedSmartFilterCount={smartFilterCount}
+        showSmartFilters={showSmartFilters}
       />
 
-      <CatalogTagFilterModal
-        approvedTags={approvedTags}
-        catalogSearchQuery={debouncedSearchQuery}
-        categoryId={categoryFilter || undefined}
-        error={approvedTagsError}
-        isOpen={isTagFilterModalOpen}
-        onApply={(nextTags) => setSelectedTags(sortCatalogTags(nextTags))}
-        onClose={() => setIsTagFilterModalOpen(false)}
-        selectedTags={selectedTags}
-      />
+      {showSmartFilters ? (
+        <CatalogSmartFilterModal
+          catalogSearchQuery={debouncedSearchQuery}
+          categoryId={categoryFilter || undefined}
+          isOpen={isSmartFilterModalOpen}
+          onApply={setSmartFilters}
+          onClose={() => setIsSmartFilterModalOpen(false)}
+           smartFilters={smartFilters}
+        />
+      ) : null}
     </main>
   );
 }

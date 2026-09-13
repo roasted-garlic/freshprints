@@ -30,6 +30,12 @@ test("Windows job runs on windows-latest and Mac job on macos-latest", () => {
   assert.match(workflowSource, /build-macos:[\s\S]*?runs-on:\s*macos-latest/);
 });
 
+test("both platform jobs use the reviewed baseline-aware lint gate", () => {
+  const runner = "node .github/scripts/run-studio-release-lint.mjs";
+  assert.equal((workflowSource.match(new RegExp(runner.replaceAll(".", "\\."), "g")) || []).length, 2);
+  assert.doesNotMatch(workflowSource, /run:\s*npm run lint/);
+});
+
 test("Mac packaging builds arm64 and x64 with publish never; Windows keeps NSIS publish never", () => {
   assert.match(workflowSource, /for ARCH in arm64 x64/);
   assert.match(workflowSource, /electron-builder --mac "--\$\{ARCH\}" --publish never/);
@@ -93,19 +99,21 @@ test("stable finalize uploads assets by release id, not ambiguous shared tag", (
   assert.match(workflowSource, /UPLOAD_URL\}\?name=\$\{name\}/);
   assert.match(workflowSource, /NEVER by ambiguous shared tag_name/);
   assert.doesNotMatch(workflowSource, /^\s*gh release upload\b/m);
-  assert.match(workflowSource, /Tag \$\{TAG\} already used by release/);
+  assert.match(workflowSource, /Tag \$\{TAG\} or release name \$\{VERSION\} already used by release/);
+  assert.match(workflowSource, /GitHub assigned temporary tag \$\{UPLOAD_TAG\}/);
+  assert.match(workflowSource, /Failed to normalize draft tag from/);
 });
 
 test("stable Mac rejects signed distribution_mode until Apple credential phase (A2 gated)", () => {
   assert.match(
     workflowSource,
-    /Stable Studio Mac releases for 1\.0\.9 still require distribution_mode: internal-unsigned until Apple Developer ID secrets \(MAC_CSC_LINK \+ MAC_CSC_KEY_PASSWORD\)/,
+    /Stable Studio Mac releases for 1\.0\.10 still require distribution_mode: internal-unsigned until Apple Developer ID secrets \(MAC_CSC_LINK \+ MAC_CSC_KEY_PASSWORD\)/,
   );
   assert.match(workflowSource, /Gatekeeper/);
 });
 
-test("finalize expects Studio package version 1.0.9", () => {
-  assert.match(workflowSource, /Expected Studio version 1\.0\.9/);
+test("finalize expects Studio package version 1.0.10", () => {
+  assert.match(workflowSource, /Expected Studio version 1\.0\.10/);
 });
 
 test("shared env writer is used on both platform jobs", () => {

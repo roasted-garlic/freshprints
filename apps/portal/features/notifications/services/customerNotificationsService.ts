@@ -3,6 +3,7 @@
 import {
   collection,
   doc,
+  getDocsFromServer,
   limit,
   onSnapshot,
   orderBy,
@@ -11,17 +12,27 @@ import {
   updateDoc,
   where,
   writeBatch,
+  type Query,
+  type QuerySnapshot,
   type Timestamp,
   type Unsubscribe,
 } from 'firebase/firestore';
 
 import { CUSTOMER_NOTIFICATIONS_COLLECTION } from '@fresh-prints/shared/types/customerNotifications/customerNotifications.types';
 import type { CustomerNotificationKind } from '@fresh-prints/shared/types/customerNotifications/customerNotifications.types';
+import type {
+  GetCustomerUploadCatalogPermissionFollowUpRequest,
+  GetCustomerUploadCatalogPermissionFollowUpResponse,
+  RespondToCustomerUploadCatalogPermissionFollowUpRequest,
+  RespondToCustomerUploadCatalogPermissionFollowUpResponse,
+} from '@fresh-prints/shared/types/customerUpload/customerUploadCatalogPermission.types';
 import { isCustomerNotificationKind } from '@fresh-prints/shared/types/customerNotifications/customerNotifications.types';
 import {
   runTracedWrite,
   traceFirestoreListenerAttach,
   traceFirestoreListenerEmission,
+  traceFirestoreOneShotComplete,
+  traceFirestoreOneShotStart,
   traceWrappedUnsubscribe,
 } from '@fresh-prints/shared/utils/firestoreUsageTrace';
 
@@ -50,8 +61,10 @@ export interface PortalCustomerNotification {
   href: string;
   requestId: string;
   proofId?: string;
+  actionToken?: string;
   createdAt: Date | null;
   readAt: Date | null;
+  clearedFromHistoryAt: Date | null;
 }
 
 function asDate(value: unknown): Date | null {
@@ -59,6 +72,34 @@ function asDate(value: unknown): Date | null {
     return (value as Timestamp).toDate();
   }
   return null;
+}
+
+function buildRecentNotificationsQuery(customerUid: string): Query {
+  return query(
+    collection(getPortalDb(), CUSTOMER_NOTIFICATIONS_COLLECTION),
+    where('customerUid', '==', customerUid),
+    orderBy('createdAt', 'desc'),
+    limit(CUSTOMER_NOTIFICATIONS_QUERY_LIMIT),
+  );
+}
+
+function mapQuerySnapshot(snapshot: QuerySnapshot): PortalCustomerNotification[] {
+  const items: PortalCustomerNotification[] = [];
+  let skipped = 0;
+  for (const document of snapshot.docs) {
+    const mapped = mapNotification(document.id, document.data() as Record<string, unknown>);
+    if (mapped) {
+      items.push(mapped);
+    } else {
+      skipped += 1;
+    }
+  }
+  if (skipped > 0) {
+    console.warn(
+      `[portalNotifications] skipped ${skipped} malformed customerNotifications doc(s)`,
+    );
+  }
+  return items;
 }
 
 function mapNotification(
@@ -87,8 +128,10 @@ function mapNotification(
     href: data.href,
     requestId: data.requestId,
     proofId: typeof data.proofId === 'string' ? data.proofId : undefined,
+    actionToken: typeof data.actionToken === 'string' ? data.actionToken : undefined,
     createdAt: asDate(data.createdAt),
     readAt: asDate(data.readAt),
+    clearedFromHistoryAt: asDate(data.clearedFromHistoryAt),
   };
 }
 
@@ -98,34 +141,15 @@ export const customerNotificationsService = {
     onChange: (items: PortalCustomerNotification[]) => void,
     onError?: (message: string) => void,
   ): Unsubscribe {
-    const notificationsQuery = query(
-      collection(getPortalDb(), CUSTOMER_NOTIFICATIONS_COLLECTION),
-      where('customerUid', '==', customerUid),
-      orderBy('createdAt', 'desc'),
-      limit(CUSTOMER_NOTIFICATIONS_QUERY_LIMIT),
-    );
+    const notificationsQuery = buildRecentNotificationsQuery(customerUid);
 
     traceFirestoreListenerAttach(NOTIFICATIONS_TRACE);
     const unsubscribe = onSnapshot(
       notificationsQuery,
+      { includeMetadataChanges: true },
       (snapshot) => {
         traceFirestoreListenerEmission(NOTIFICATIONS_TRACE, snapshot.size);
-        const items: PortalCustomerNotification[] = [];
-        let skipped = 0;
-        for (const document of snapshot.docs) {
-          const mapped = mapNotification(document.id, document.data() as Record<string, unknown>);
-          if (mapped) {
-            items.push(mapped);
-          } else {
-            skipped += 1;
-          }
-        }
-        if (skipped > 0) {
-          console.warn(
-            `[portalNotifications] skipped ${skipped} malformed customerNotifications doc(s)`,
-          );
-        }
-        onChange(items);
+        onChange(mapQuerySnapshot(snapshot));
       },
       (error) => {
         console.error('[portalNotifications] onSnapshot error', error);
@@ -134,6 +158,19 @@ export const customerNotificationsService = {
       },
     );
     return traceWrappedUnsubscribe(NOTIFICATIONS_TRACE, unsubscribe);
+  },
+
+  async listRecent(customerUid: string): Promise<PortalCustomerNotification[]> {
+    const notificationsQuery = buildRecentNotificationsQuery(customerUid);
+    const traceMetadata = {
+      ...NOTIFICATIONS_TRACE,
+      source: 'customerNotificationsService.listRecent',
+      triggerReason: 'explicit-refresh' as const,
+    };
+    traceFirestoreOneShotStart('getDocs', traceMetadata);
+    const snapshot = await getDocsFromServer(notificationsQuery);
+    traceFirestoreOneShotComplete('getDocs', traceMetadata, snapshot.size);
+    return mapQuerySnapshot(snapshot);
   },
 
   async markRead(notificationId: string): Promise<void> {
@@ -186,6 +223,37 @@ export const customerNotificationsService = {
     );
   },
 
+  async getCatalogPermissionFollowUp(
+    requestToken: string,
+  ): Promise<GetCustomerUploadCatalogPermissionFollowUpResponse> {
+    return callTracedFunction<
+      GetCustomerUploadCatalogPermissionFollowUpRequest,
+      GetCustomerUploadCatalogPermissionFollowUpResponse
+    >('getCustomerUploadCatalogPermissionFollowUp', {
+      source: 'customerNotificationsService.getCatalogPermissionFollowUp',
+    })({ requestToken });
+  },
+
+  async respondToCatalogPermissionFollowUp(
+    requestToken: string,
+    decision: 'allow' | 'decline',
+  ): Promise<RespondToCustomerUploadCatalogPermissionFollowUpResponse> {
+    return callTracedFunction<
+      RespondToCustomerUploadCatalogPermissionFollowUpRequest,
+      RespondToCustomerUploadCatalogPermissionFollowUpResponse
+    >('respondToCustomerUploadCatalogPermissionFollowUp', {
+      source: 'customerNotificationsService.respondToCatalogPermissionFollowUp',
+    })({ requestToken, decision });
+  },
+
+  async clearHistory(): Promise<{ clearedCount: number; preservedCount: number }> {
+    return callTracedFunction<Record<string, never>, { clearedCount: number; preservedCount: number }>(
+      'clearCustomerNotificationHistory',
+      {
+        source: 'customerNotificationsService.clearHistory',
+      },
+    )({});
+  },
 
   async registerWebPushToken(
     token: string,

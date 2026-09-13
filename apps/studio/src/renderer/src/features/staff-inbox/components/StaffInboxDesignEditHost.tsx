@@ -6,7 +6,6 @@ import { ArchiveDesignConfirmDialog } from "../../designs/components/ArchiveDesi
 import { DesignDetailsModal } from "../../designs/components/DesignDetailsModal";
 import { EditDesignModal } from "../../designs/components/EditDesignModal";
 import { useArchiveDesign } from "../../designs/hooks/useArchiveDesign";
-import { useCatalogTags } from "../../designs/hooks/useCatalogTags";
 import { useCategories } from "../../designs/hooks/useCategories";
 import { designService } from "../../designs/services/designService";
 import type { Design } from "../../designs/types/design.types";
@@ -27,11 +26,9 @@ export function StaffInboxDesignEditHost({ designId, onClose }: StaffInboxDesign
   const [isLoadingDesign, setIsLoadingDesign] = useState(false);
 
   const taxonomyEnabled = canView && Boolean(designId);
-  const tagsEnabled = Boolean(editingDesign);
   const { categories, error: categoriesError, isLoading: categoriesLoading } = useCategories({
     enabled: taxonomyEnabled,
   });
-  const { tags, error: tagsError, isLoading: tagsLoading } = useCatalogTags({ enabled: tagsEnabled });
   const {
     archiveDesign,
     clearError: clearArchiveError,
@@ -153,33 +150,15 @@ export function StaffInboxDesignEditHost({ designId, onClose }: StaffInboxDesign
       />
 
       <EditDesignModal
-        approvedTags={tags}
         categories={categories}
         design={editingDesign}
-        isOpen={editingDesign !== null && !tagsLoading && !tagsError}
+        isOpen={editingDesign !== null}
         onClose={() => setEditingDesign(null)}
         onUpdated={async (updated) => {
           setDesign(updated);
           setEditingDesign(null);
         }}
       />
-
-      {editingDesign && tagsLoading ? (
-        <div className="staff-inbox-design-edit-host-status" role="status">
-          <p>Loading tags…</p>
-          <Button onClick={() => setEditingDesign(null)} variant="secondary">
-            Cancel
-          </Button>
-        </div>
-      ) : null}
-      {editingDesign && tagsError ? (
-        <div className="staff-inbox-design-edit-host-status" role="alert">
-          <p>{tagsError}</p>
-          <Button onClick={() => setEditingDesign(null)} variant="secondary">
-            Back
-          </Button>
-        </div>
-      ) : null}
 
       <ArchiveDesignConfirmDialog
         design={designToArchive}

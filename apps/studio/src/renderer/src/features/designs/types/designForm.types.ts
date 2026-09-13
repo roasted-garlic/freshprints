@@ -4,7 +4,9 @@ export interface DesignFormValues {
   title: string;
   description: string;
   categoryId: string;
+  /** Legacy design tags are intentionally not editable; retained only for old form callers. */
   tagsInput: string;
+  halftoneStaffDecisionValue?: boolean;
   artworkBackgroundPreset: ArtworkBackgroundPreset;
   /** Raw custom hex input when preset is `custom` (with or without `#`). */
   artworkBackgroundCustomHex: string;
@@ -27,6 +29,10 @@ export interface DesignFormValues {
    * on save. Optional so partial form literals need not supply it — read with `?? ""`.
    */
   censoredTermsInput?: string;
+  /**
+   * Deliberate lock against automatic Explicit mutation (ADR-FP-173). Optional; read with `?? false`.
+   */
+  explicitContentAutomationLocked?: boolean;
 }
 
 export const emptyDesignFormValues: DesignFormValues = {
@@ -39,6 +45,7 @@ export const emptyDesignFormValues: DesignFormValues = {
   artworkPlacement: "",
   isExplicitContent: false,
   censoredTermsInput: "",
+  explicitContentAutomationLocked: false,
 };
 
 export interface CategoryFormValues {

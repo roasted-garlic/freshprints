@@ -15,12 +15,14 @@ import {
   unauthenticated,
 } from "./lib/errors";
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
-import { loadPrintRequestLimitSettings } from "./lib/loadPrintRequestLimitSettings";
+import { loadEffectivePrintRequestLimitsForCustomer } from "./lib/loadEffectivePrintRequestLimits";
 import { requirePortalCustomer } from "./lib/portalCustomer";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 import {
   assertWorkingRequestAllowsPrintAdds,
   sumWorkingRequestPrintQuantities,
 } from "./lib/printRequestWorkingRequestMax";
+import { assertPortalActiveEditableRequestData } from "./lib/portalContinuableParking";
 
 export interface DuplicatePortalPrintRequestItemRequest {
   printRequestId: string;
@@ -80,6 +82,7 @@ export const duplicatePortalPrintRequestItem = onCall(
 
     try {
       const portalCustomer = await requirePortalCustomer(request.auth.uid);
+      await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
       const data = request.data as DuplicatePortalPrintRequestItemRequest;
       const printRequestId =
         typeof data?.printRequestId === "string" ? data.printRequestId.trim() : "";
@@ -94,8 +97,10 @@ export const duplicatePortalPrintRequestItem = onCall(
       let sourceType: "catalog_design" | "customer_upload" = "catalog_design";
       let designId: string | undefined;
       let customerUploadId: string | undefined;
-      const settings = await loadPrintRequestLimitSettings();
-      const maxPerRequest = settings.maxQuantityPerPrintRequest;
+      const effectiveLimits = await loadEffectivePrintRequestLimitsForCustomer(
+        portalCustomer.customerId,
+      );
+      const maxPerRequest = effectiveLimits.effectiveMaxQuantityPerPrintRequest;
 
       await adminDb.runTransaction(async (tx) => {
         const requestRef = adminDb.collection("printRequests").doc(printRequestId);
@@ -119,6 +124,15 @@ export const duplicatePortalPrintRequestItem = onCall(
 
         const requestData = requestSnap.data() ?? {};
         const itemData = itemSnap.data() ?? {};
+
+        // Staff Artwork is intentionally opaque to Portal customers: it may appear as a
+        // neutral request row, but Portal must not duplicate or receive its private identity.
+        if (itemData.sourceType === "staff_artwork" || itemData.staffArtworkId) {
+          throw failedPrecondition("Staff Artwork items cannot be duplicated from Portal.");
+        }
+
+        // Assert request is active editable (not parked)
+        assertPortalActiveEditableRequestData(requestData, printRequestId);
 
         if (requestData.customerId !== portalCustomer.customerId) {
           throw permissionDenied("You do not own this print request.");
@@ -145,6 +159,12 @@ export const duplicatePortalPrintRequestItem = onCall(
         const titleSnapshot =
           typeof itemData.titleSnapshot === "string" && itemData.titleSnapshot.trim()
             ? itemData.titleSnapshot.trim()
+            : undefined;
+
+        const standardSizePresetKey =
+          typeof itemData.standardSizePresetKey === "string" &&
+          itemData.standardSizePresetKey.trim()
+            ? itemData.standardSizePresetKey.trim()
             : undefined;
 
         // Newest-first Portal display: insert-before = visual right of source.
@@ -242,6 +262,7 @@ export const duplicatePortalPrintRequestItem = onCall(
                 typeof printWidthInches === "number" && typeof printHeightInches === "number"
                   ? formatPrintRequestItemSizeLabel(printWidthInches, printHeightInches)
                   : undefined,
+              ...(standardSizePresetKey ? { standardSizePresetKey } : {}),
               sortOrder,
               notes,
               status: "pending",
@@ -264,6 +285,7 @@ export const duplicatePortalPrintRequestItem = onCall(
                 typeof printWidthInches === "number" && typeof printHeightInches === "number"
                   ? formatPrintRequestItemSizeLabel(printWidthInches, printHeightInches)
                   : undefined,
+              ...(standardSizePresetKey ? { standardSizePresetKey } : {}),
               sortOrder,
               notes,
               status: "pending",

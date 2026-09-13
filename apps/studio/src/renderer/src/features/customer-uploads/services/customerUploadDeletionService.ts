@@ -5,6 +5,7 @@ import {
 } from "@fresh-prints/shared/types/deletion/deletion.types";
 
 import { callTracedFunction } from "../../../config/tracedCallable";
+import { warmDeletionCallableBackground } from "../../deletion/services/deletionCallableWarmupService";
 
 function getCallableErrorMessage(error: unknown, fallbackMessage: string): string {
   if (
@@ -21,6 +22,10 @@ function getCallableErrorMessage(error: unknown, fallbackMessage: string): strin
 
 export const customerUploadDeletionService = {
   confirmationPhrase: DELETE_CUSTOMER_UPLOAD_CONFIRMATION_PHRASE,
+
+  warmMutateCallables(): void {
+    warmDeletionCallableBackground("deleteEligibleCustomerUpload");
+  },
 
   async preview(customerUploadId: string): Promise<PreviewCustomerUploadDeletionResponse> {
     try {

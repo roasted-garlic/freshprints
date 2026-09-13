@@ -25,10 +25,13 @@ import {
   parseAiReviewInboxFilters,
 } from "../constants/aiReviewInboxConstants";
 import { AiReviewErrorBoundary } from "../components/AiReviewErrorBoundary";
+import { AiReviewInboxSortToggle } from "../components/AiReviewInboxSortToggle";
 import { AiReviewQueueList } from "../components/AiReviewQueueList";
 import { AiReviewQueueStats } from "../components/AiReviewQueueStats";
 import { AiReviewQueryErrorPanel } from "../components/AiReviewQueryErrorPanel";
 import { AiReviewWorkspace } from "../components/AiReviewWorkspace";
+import { AiProcessingSettingsModal } from "../components/AiProcessingSettingsModal";
+import { AiProcessingSettingsHeaderAccessory } from "../components/AiProcessingSettingsHeaderAccessory";
 import { useAiReviewInbox } from "../hooks/useAiReviewInbox";
 import { useAiReviewKeyboardShortcuts } from "../hooks/useAiReviewKeyboardShortcuts";
 import { useAiReviewTabCounts } from "../hooks/useAiReviewTabCounts";
@@ -37,13 +40,30 @@ import { permissionService } from "../../permissions/services/permissionService"
 import { useAiEnrichmentSettings } from "../../settings/hooks/useAiEnrichmentSettings";
 import { useAiReviewMainPanelHeight } from "../hooks/useAiReviewMainPanelHeight";
 import type { AiReviewInboxFilters, AiReviewInboxTab } from "../types/aiReviewInbox.types";
+import { resolveAiReviewInboxSortOrder } from "../utils/aiReviewInboxSort";
 import { shouldShowNeedsReviewSearchNoResults } from "../utils/aiReviewNeedsReviewSearch";
+import {
+  applyAiReviewMultiSelectRange,
+  collectSuccessfulHardDeleteIds,
+  emptyAiReviewMultiSelectState,
+  orderHardDeleteReconcileIds,
+  resolveAiReviewHardDeleteTargets,
+  seedAiReviewMultiSelectIds,
+  toggleAiReviewMultiSelectId,
+} from "../utils/aiReviewQueueMultiSelect";
+import { resolveHardDeleteTotalFailureMessage } from "../utils/resolveHardDeleteTotalFailureMessage";
+import {
+  readAiProcessingAutoProcessPreference,
+  writeAiProcessingAutoProcessPreference,
+} from "../utils/aiProcessingAutoProcessPreference";
 
 function AiReviewPageContent() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [needsReviewSearchQuery, setNeedsReviewSearchQuery] = useState("");
+  const [autoProcess, setAutoProcess] = useState(readAiProcessingAutoProcessPreference);
+  const [isProcessingSettingsOpen, setIsProcessingSettingsOpen] = useState(false);
   const filters = useMemo(() => parseAiReviewInboxFilters(searchParams), [searchParams]);
   const inboxFilters = useMemo<AiReviewInboxFilters>(
     () => ({
@@ -60,8 +80,12 @@ function AiReviewPageContent() {
     deleteDesigns: hardDeleteDesigns,
     error: hardDeleteError,
     isSubmitting: isHardDeleting,
+    reportError: reportHardDeleteError,
   } = useDeleteEligibleUnapprovedDesign();
-  const [designToHardDelete, setDesignToHardDelete] = useState<Design | null>(null);
+  const [designsToHardDelete, setDesignsToHardDelete] = useState<Design[]>([]);
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+  const [multiSelectedIds, setMultiSelectedIds] = useState<string[]>([]);
+  const [multiSelectAnchorId, setMultiSelectAnchorId] = useState<string | null>(null);
 
   // Read-only, active-only filter dropdown data — reuses the same zero-Firestore-read generated
   // client-safe taxonomy snapshot the Design Library already consumes (Wave C amendment,
@@ -85,9 +109,11 @@ function AiReviewPageContent() {
 
   const handleNavigateToTab = useCallback(
     (tab: AiReviewInboxTab) => {
-      setSearchParams(buildAiReviewInboxSearchParams({ tab }), { replace: true });
+      setSearchParams(buildAiReviewInboxSearchParams({ tab, sortOrder: filters.sortOrder }), {
+        replace: true,
+      });
     },
-    [setSearchParams],
+    [filters.sortOrder, setSearchParams],
   );
 
   const inbox = useAiReviewInbox(inboxFilters, {
@@ -138,65 +164,199 @@ function AiReviewPageContent() {
     return undefined;
   }, [inbox.draftForm, inbox.selectedDesign]);
 
+  const handleAutoProcessChange = useCallback((enabled: boolean) => {
+    writeAiProcessingAutoProcessPreference(enabled);
+    setAutoProcess(enabled);
+  }, []);
+
+  const headerAccessory = useMemo(() => {
+    if (!canManageProcessingSettings) {
+      return null;
+    }
+    return (
+      <AiProcessingSettingsHeaderAccessory
+        hasOverride={inbox.processingQueue.hasSessionOverride}
+        onOpenSettings={() => setIsProcessingSettingsOpen(true)}
+      />
+    );
+  }, [canManageProcessingSettings, inbox.processingQueue.hasSessionOverride]);
+
   const shellHeaderConfig = useMemo(
     () => ({
+      accessory: headerAccessory,
       description: AI_PROCESSING_PAGE_DESCRIPTION,
       title: AI_PROCESSING_PAGE_TITLE,
+      toggle: {
+        checked: autoProcess,
+        label: "Auto",
+        name: "aiProcessingAutoProcess",
+        onChange: handleAutoProcessChange,
+        tooltip:
+          "When on, designs that enter Processing (import or reprocess) start AI automatically. When off, wait for Start AI. Separate from Auto advance under the queue buttons.",
+      },
     }),
-    [],
+    [autoProcess, handleAutoProcessChange, headerAccessory],
   );
 
   useShellHeaderConfig(shellHeaderConfig);
 
-  const canPermanentlyDeleteSelected = Boolean(
-    canDeleteEligibleUnapprovedDesigns &&
-      (filters.tab === "processing" ||
-        filters.tab === "needs_review" ||
-        filters.tab === "rejected") &&
-      inbox.selectedDesign &&
-      isDeleteEligibleUnapprovedDesignStatus(inbox.selectedDesign.status),
+  const hardDeleteTabAllowed =
+    filters.tab === "processing" ||
+    filters.tab === "needs_review" ||
+    filters.tab === "rejected";
+
+  const designsPendingHardDelete = useMemo(
+    () =>
+      resolveAiReviewHardDeleteTargets({
+        designs: inbox.designs,
+        isMultiSelectMode,
+        multiSelectedIds,
+        selectedDesign: inbox.selectedDesign,
+      }),
+    [inbox.designs, inbox.selectedDesign, isMultiSelectMode, multiSelectedIds],
   );
 
+  const canPermanentlyDeleteSelected = Boolean(
+    canDeleteEligibleUnapprovedDesigns &&
+      hardDeleteTabAllowed &&
+      (isMultiSelectMode
+        ? designsPendingHardDelete.length > 0
+        : inbox.selectedDesign &&
+          isDeleteEligibleUnapprovedDesignStatus(inbox.selectedDesign.status)),
+  );
+
+  const handleCancelMultiSelect = useCallback(() => {
+    const cleared = emptyAiReviewMultiSelectState();
+    setIsMultiSelectMode(cleared.isMultiSelectMode);
+    setMultiSelectedIds(cleared.multiSelectedIds);
+    setMultiSelectAnchorId(null);
+  }, []);
+
+  const handleEnterMultiSelect = useCallback(() => {
+    const seededIds = seedAiReviewMultiSelectIds(inbox.selectedDesign?.id ?? null);
+    setIsMultiSelectMode(true);
+    setMultiSelectedIds(seededIds);
+    setMultiSelectAnchorId(seededIds[0] ?? null);
+  }, [inbox.selectedDesign?.id]);
+
+  const handleToggleMultiSelectDesign = useCallback((designId: string) => {
+    setMultiSelectedIds((current) => toggleAiReviewMultiSelectId(current, designId));
+    setMultiSelectAnchorId(designId);
+  }, []);
+
+  const handleRangeMultiSelectDesign = useCallback(
+    (designId: string) => {
+      const next = applyAiReviewMultiSelectRange({
+        anchorId: multiSelectAnchorId ?? multiSelectedIds[0] ?? inbox.selectedDesign?.id ?? null,
+        listIds: inbox.designs.map((design) => design.id),
+        selectedIds: multiSelectedIds,
+        targetId: designId,
+      });
+      setMultiSelectedIds(next.selectedIds);
+      setMultiSelectAnchorId(next.anchorId);
+    },
+    [inbox.designs, inbox.selectedDesign?.id, multiSelectAnchorId, multiSelectedIds],
+  );
+
+  useEffect(() => {
+    const visibleIds = new Set(inbox.designs.map((design) => design.id));
+    setMultiSelectedIds((current) => {
+      const next = current.filter((id) => visibleIds.has(id));
+      if (next.length === current.length && next.every((id, index) => id === current[index])) {
+        return current;
+      }
+      return next;
+    });
+  }, [inbox.designs]);
+
+  useEffect(() => {
+    const visibleIds = new Set(inbox.designs.map((design) => design.id));
+    setMultiSelectAnchorId((current) => {
+      if (current && visibleIds.has(current)) {
+        return current;
+      }
+      return null;
+    });
+  }, [inbox.designs]);
+
+  useEffect(() => {
+    if (!isMultiSelectMode) {
+      return;
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") {
+        return;
+      }
+      if (designsToHardDelete.length > 0) {
+        return;
+      }
+      event.preventDefault();
+      handleCancelMultiSelect();
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [designsToHardDelete.length, handleCancelMultiSelect, isMultiSelectMode]);
+
   const handleOpenPermanentDelete = useCallback(() => {
-    if (!inbox.selectedDesign || !canPermanentlyDeleteSelected) {
+    if (!canPermanentlyDeleteSelected || designsPendingHardDelete.length === 0) {
       return;
     }
     clearHardDeleteError();
-    setDesignToHardDelete(inbox.selectedDesign);
-  }, [canPermanentlyDeleteSelected, clearHardDeleteError, inbox.selectedDesign]);
+    setDesignsToHardDelete(designsPendingHardDelete);
+  }, [canPermanentlyDeleteSelected, clearHardDeleteError, designsPendingHardDelete]);
 
   const handleConfirmPermanentDelete = useCallback(
     async (input: { confirmationPhrase: string }) => {
-      if (!designToHardDelete) {
+      if (designsToHardDelete.length === 0) {
         return;
       }
 
       try {
         const result = await hardDeleteDesigns({
-          designIds: [designToHardDelete.id],
+          designIds: designsToHardDelete.map((design) => design.id),
           confirmationPhrase: input.confirmationPhrase,
         });
 
-        setDesignToHardDelete(null);
+        const successfulIds = collectSuccessfulHardDeleteIds(result.results);
+        const reconcileIds = orderHardDeleteReconcileIds({
+          deletedIds: successfulIds,
+          listIds: inbox.designs.map((design) => design.id),
+        });
 
-        if (result.failedCount > 0 && result.deletedCount === 0) {
+        if (successfulIds.length === 0) {
+          reportHardDeleteError(resolveHardDeleteTotalFailureMessage(result.results));
           return;
         }
 
-        // Local remove + advance immediately. Do not await reloadDesigns — that clears the list
-        // into a possible stale 15s page-cache hit and makes deletes appear delayed.
-        inbox.reconcileAfterHardDeleteSuccess(designToHardDelete.id);
+        setDesignsToHardDelete([]);
+
+        for (const designId of reconcileIds) {
+          inbox.reconcileAfterHardDeleteSuccess(designId);
+        }
+
+        if (isMultiSelectMode) {
+          handleCancelMultiSelect();
+        }
       } catch {
         // Error surfaced via hardDeleteError on the dialog.
       }
     },
-    [designToHardDelete, hardDeleteDesigns, inbox],
+    [
+      designsToHardDelete,
+      handleCancelMultiSelect,
+      hardDeleteDesigns,
+      inbox,
+      isMultiSelectMode,
+      reportHardDeleteError,
+    ],
   );
 
   useAiReviewKeyboardShortcuts({
     canApprove: inbox.canApprove,
     canReject: inbox.canReject,
-    isEnabled: Boolean(inbox.selectedDesign),
+    isEnabled: Boolean(inbox.selectedDesign) && !isMultiSelectMode,
     isInputFocused,
     onApprove: () => void inbox.approveSelected(),
     onNext: () => inbox.selectRelative(1),
@@ -205,7 +365,22 @@ function AiReviewPageContent() {
   });
 
   function handleTabChange(tab: AiReviewInboxTab) {
-    setSearchParams(buildAiReviewInboxSearchParams({ tab }), { replace: true });
+    if (tab !== filters.tab) {
+      handleCancelMultiSelect();
+    }
+    setSearchParams(buildAiReviewInboxSearchParams({ tab, sortOrder: filters.sortOrder }), {
+      replace: true,
+    });
+  }
+
+  const resolvedSortOrder = resolveAiReviewInboxSortOrder(filters.tab, filters.sortOrder);
+
+  function handleSortToggle() {
+    const nextSortOrder = resolvedSortOrder === "newest" ? "oldest" : "newest";
+    setSearchParams(
+      buildAiReviewInboxSearchParams({ tab: filters.tab, sortOrder: nextSortOrder }),
+      { replace: true },
+    );
   }
 
   return (
@@ -215,6 +390,16 @@ function AiReviewPageContent() {
         {!enrichmentSettings.isLoading ? (
           <p className="ai-review-vision-model-label">
             Active vision model: <span>{enrichmentSettings.visionModelLabel}</span>
+            {" · "}
+            <span>
+              Catalog Processing:{" "}
+              {enrichmentSettings.catalogWorkflowMode === "manual"
+                ? "Manual Review"
+                : enrichmentSettings.catalogWorkflowMode === "shadow"
+                  ? "Shadow Automation"
+                  : "Autonomous"}
+              {enrichmentSettings.catalogAutonomousLiveEnabled ? " (live ON)" : " (live OFF)"}
+            </span>
           </p>
         ) : null}
       </header>
@@ -260,34 +445,70 @@ function AiReviewPageContent() {
             ))}
           </div>
 
-          {filters.tab === "needs_review" ? (
-            <div className="ai-review-needs-review-search">
-              <GlobalSearchField
-                clearable
-                onChange={setNeedsReviewSearchQuery}
-                placeholder="Search title, tags, id…"
-                value={needsReviewSearchQuery}
-              />
-              {inbox.searchHydration ? (
-                <div className="ai-review-search-status">
-                  <span>
-                    Found {inbox.searchHydration.foundCount} of {inbox.searchHydration.totalCount ?? "…"}
-                    {inbox.searchHydration.canSearchMore
-                      ? ` · searched ${inbox.searchHydration.searchedCount} of ${inbox.searchHydration.totalCount ?? "…"}`
-                      : null}
-                  </span>
-                  {inbox.searchHydration.canSearchMore ? (
-                    <Button
-                      disabled={inbox.isLoadingMore}
-                      onClick={inbox.searchHydration.searchMore}
-                      size="sm"
-                      type="button"
-                      variant="secondary"
-                    >
-                      {inbox.searchHydration.isSearching ? "Searching…" : "Search more"}
-                    </Button>
-                  ) : null}
-                </div>
+          <div
+            className={[
+              "ai-review-queue-toolbar",
+              filters.tab === "needs_review" ? "" : "ai-review-queue-toolbar--sort-only",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          >
+            {filters.tab === "needs_review" ? (
+              <div className="ai-review-queue-toolbar-search">
+                <GlobalSearchField
+                  clearable
+                  onChange={setNeedsReviewSearchQuery}
+                  placeholder="Search title, description, ID…"
+                  value={needsReviewSearchQuery}
+                />
+              </div>
+            ) : null}
+            <AiReviewInboxSortToggle onToggle={handleSortToggle} sortOrder={resolvedSortOrder} />
+          </div>
+
+          {isMultiSelectMode ? (
+            <div className="ai-review-multi-select-bar">
+              <p className="ai-review-multi-select-bar-copy">
+                {multiSelectedIds.length === 1
+                  ? "1 selected"
+                  : `${multiSelectedIds.length} selected`}
+              </p>
+              <div className="ai-review-multi-select-bar-actions">
+                {canPermanentlyDeleteSelected ? (
+                  <Button
+                    onClick={handleOpenPermanentDelete}
+                    size="sm"
+                    type="button"
+                    variant="danger"
+                  >
+                    Delete
+                  </Button>
+                ) : null}
+                <Button onClick={handleCancelMultiSelect} size="sm" type="button" variant="secondary">
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          {filters.tab === "needs_review" && inbox.searchHydration ? (
+            <div className="ai-review-search-status">
+              <span>
+                Found {inbox.searchHydration.foundCount} of {inbox.searchHydration.totalCount ?? "…"}
+                {inbox.searchHydration.canSearchMore
+                  ? ` · searched ${inbox.searchHydration.searchedCount} of ${inbox.searchHydration.totalCount ?? "…"}`
+                  : null}
+              </span>
+              {inbox.searchHydration.canSearchMore ? (
+                <Button
+                  disabled={inbox.isLoadingMore}
+                  onClick={inbox.searchHydration.searchMore}
+                  size="sm"
+                  type="button"
+                  variant="secondary"
+                >
+                  {inbox.searchHydration.isSearching ? "Searching…" : "Search more"}
+                </Button>
               ) : null}
             </div>
           ) : null}
@@ -302,6 +523,10 @@ function AiReviewPageContent() {
             listRef={inbox.queueListRef}
             onLoadMore={inbox.loadMoreDesigns}
             onSelectDesign={inbox.requestSelectDesign}
+            onToggleMultiSelectDesign={handleToggleMultiSelectDesign}
+            onRangeMultiSelectDesign={handleRangeMultiSelectDesign}
+            isMultiSelectMode={isMultiSelectMode}
+            multiSelectedIds={multiSelectedIds}
             searchActive={Boolean(inboxFilters.searchQuery?.trim())}
             selectedArtworkBackgroundHex={selectedArtworkBackgroundHex}
             selectedDesignId={inbox.selectedDesign?.id ?? null}
@@ -313,28 +538,26 @@ function AiReviewPageContent() {
           <AiReviewWorkspace
             actionError={inbox.actionError}
             activeTab={inbox.activeTab}
-            approvedTags={inbox.approvedTags}
             autoAdvance={inbox.processingQueue.autoAdvance}
             canApprove={inbox.canApprove}
-            canApproveSuggestedTags={inbox.canApproveSuggestedTags}
             canEdit={inbox.canEdit}
             canSaveArtworkBackground={inbox.canSaveArtworkBackground}
-            canManageProcessingSettings={canManageProcessingSettings}
             canStopAutoQueue={inbox.processingQueue.canStopAutoQueue}
             canProcessSelected={inbox.processingQueue.canProcessSelected}
             canArchive={inbox.canArchive}
+            canEnterMultiSelect={inbox.designs.length > 0}
             canPermanentlyDelete={canPermanentlyDeleteSelected}
             canReopen={inbox.canReopen}
             canReject={inbox.canReject}
             canRerun={inbox.canRerun}
             canRetryProcessing={inbox.canRetryProcessing}
+            canRetryStaleProcessing={inbox.canRetryStaleProcessing}
             canStartAutoQueue={inbox.processingQueue.canStartAutoQueue}
             categoryOptions={categoryOptions}
-            currentVisionModelId={enrichmentSettings.visionModelId}
-            hasProcessingSettingsOverride={inbox.processingQueue.hasSessionOverride}
             draftForm={inbox.draftForm}
             isActionLoading={inbox.isActionLoading}
             isSavingArtworkBackground={inbox.isSavingArtworkBackground}
+            isSavingHalftone={inbox.isSavingHalftone}
             isAutoQueueRunning={inbox.processingQueue.isAutoQueueRunning}
             isQueueBusy={inbox.processingQueue.isQueueBusy}
             isOptimisticEnqueue={
@@ -342,35 +565,35 @@ function AiReviewPageContent() {
               Boolean(inbox.selectedDesign) &&
               inbox.processingQueue.enqueueingDesignId === inbox.selectedDesign?.id
             }
-            ignoredSuggestedTagNames={inbox.ignoredSuggestedTagNames}
+            isMultiSelectMode={isMultiSelectMode}
             onApprove={() => void inbox.approveSelected()}
-            onApproveSuggestedTag={(sourceName, input, addToDraft) =>
-              void inbox.approveSuggestedTag(sourceName, input, addToDraft)
-            }
             onAutoAdvanceChange={inbox.processingQueue.setAutoAdvance}
             onInputFocusChange={setIsInputFocused}
-            onIgnoreSuggestedTag={inbox.ignoreSuggestedTag}
             onNext={() => inbox.selectRelative(1)}
             onStopAutoQueue={inbox.processingQueue.stopAutoQueue}
             onPrevious={() => inbox.selectRelative(-1)}
             onProcessSelectedDesign={() => void inbox.processingQueue.processSelectedDesign()}
             onArchive={() => void inbox.archiveSelected()}
+            onEnterMultiSelect={handleEnterMultiSelect}
             onPermanentlyDelete={handleOpenPermanentDelete}
             onReject={() => void inbox.rejectSelected()}
             onReopen={() => void inbox.reopenSelected()}
             onRerun={() => void inbox.rerunSelected()}
             onRetryProcessing={() => void inbox.retryProcessingSelected()}
+            onRetryStaleProcessing={() => void inbox.retryStaleProcessingSelected()}
             onSaveArtworkBackground={(values) => void inbox.saveArtworkBackground(values)}
-            onApplyProcessingSettings={inbox.processingQueue.applySessionSettings}
-            onClearProcessingSettings={inbox.processingQueue.clearSessionSettings}
+            onSaveHalftoneStaffDecision={(markAsHalftone) =>
+              void inbox.saveHalftoneStaffDecision(markAsHalftone)
+            }
             onStartAutoQueue={inbox.processingQueue.startAutoQueue}
             onUpdateDraftField={inbox.updateDraftField}
             isRerunningAi={inbox.isRerunningAi}
             onRerunAiSuggestions={() => inbox.requestRerunAiSuggestions()}
             queuePositionLabel={inbox.processingQueue.queuePositionLabel}
             queueRunState={inbox.processingQueue.runState}
-            processingVisionModelId={inbox.processingQueue.resolvedSessionVisionModelId}
             selectedDesign={inbox.selectedDesign}
+            visibleDesigns={inbox.designs}
+            onSelectDesign={inbox.requestSelectDesign}
             showReadOnlySuggestions={inbox.showReadOnlySuggestions}
             reviewScrollNonce={inbox.reviewScrollNonce}
             showRerunAiButton={inbox.canRerunAiSuggestions || inbox.isRerunningAi}
@@ -394,16 +617,30 @@ function AiReviewPageContent() {
       />
 
       <DeleteEligibleUnapprovedDesignDialog
-        designs={designToHardDelete ? [designToHardDelete] : []}
+        designs={designsToHardDelete}
         error={hardDeleteError}
-        isOpen={designToHardDelete !== null}
+        isOpen={designsToHardDelete.length > 0}
         isSubmitting={isHardDeleting}
         onCancel={() => {
           clearHardDeleteError();
-          setDesignToHardDelete(null);
+          setDesignsToHardDelete([]);
         }}
         onConfirm={handleConfirmPermanentDelete}
       />
+
+      {canManageProcessingSettings ? (
+        <AiProcessingSettingsModal
+          defaultVisionModelId={enrichmentSettings.visionModelId}
+          isOpen={isProcessingSettingsOpen}
+          onApply={(visionModelId) => {
+            inbox.processingQueue.applySessionSettings(visionModelId);
+            setIsProcessingSettingsOpen(false);
+          }}
+          onCancel={() => setIsProcessingSettingsOpen(false)}
+          onUseDefaults={inbox.processingQueue.clearSessionSettings}
+          visionModelId={inbox.processingQueue.resolvedSessionVisionModelId}
+        />
+      ) : null}
     </section>
   );
 }

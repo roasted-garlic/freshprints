@@ -2,16 +2,258 @@
 
 > Full log: `docs/project/DECISIONS.md` — newest ADRs first.
 
-## Grouped gang sheets (2026-08-23 — ADR-FP-143)
+### Coordinated production cutover prerequisites (closed 2026-09-12)
+
+- Owner DEV QA explicitly passed: **`OWNER DEV QA: coordinated-production-cutover-prerequisites - PASS`**;
+  child Signoff is **approved_with_notes** and the child is terminal.
+- Production cutover is additive: deploy/populate `portalPrintRequestItems` before removing legacy
+  customer reads, with projection-preferred Portal dual-read and bounded canonical fallback during
+  transition. Final Rules are projection-only for customer reads after convergence gates.
+- The production reconciliation runner is hard-pinned to `fresh-prints-prod`; dry-run/VERIFY come
+  first, exact post-APPLY VERIFY and zero-diff DRY RUN are distinct, and APPLY/backfill is separately
+  owner-gated. Committed-byte manifests must be generated/audited from one clean candidate SHA.
+- Studio coordinated release metadata is `1.0.10`. Authenticated known-ID Staff Artwork
+  preview/thumbnail access is an accepted residual risk for this release and is synchronized in
+  `SECURITY.md`, `FIREBASE.md`, and `RISK_REGISTER.md`.
+- No production, Git promotion, candidate freeze, or parent M0 rerun occurred in the child Signoff.
+
+### Staff Artwork library and Print Request source (DEV closed 2026-09-12)
+
+- `staffArtworks/{staffArtworkId}` and `/staff-artwork/{staffArtworkId}/...` remain separate from
+  `designs` and `customerUploads`; canonical source/production/interactive/preview/thumbnail paths
+  are fail-closed and staff-only.
+- Owner/Admin manage Staff Artwork. Helpers may select existing ready/non-archived assets only when
+  they already have Print Request item-edit permission. No automatic AI, public indexing,
+  customer notification, retention scheduler, or Portal pixel access.
+- The authoritative request source is `staff_artwork` plus `staffArtworkId`; all allocation/export/
+  gang-sheet branches must preserve exactly one source identity. Portal receives only neutral
+  request-level projection.
+- Historical customer IDs/snapshots remain stable through merges; new associations target the
+  surviving customer, with no mass rewrite. Deletion is blocked until actual references are safely
+  released by completed show/internal-sheet production state.
+- Owner DEV QA passed after the reviewed allowlist and corrective redeploys. Parent M0, candidate
+  freeze, Studio publication, and production remain separately gated.
+
+### Customer-upload Studio deferral and personal retention (DEV closed 2026-09-11)
+
+- Print-request customer uploads are held with `studioIntakeHoldUntilShow` until a trusted
+  Add-to-Show/allocation succeeds; Studio Pending/Denied/Excluded readers and counts must not leak
+  held rows.
+- Personal Don’t-allow uploads use a bounded 30-day retention episode; unpromoted donations also
+  use 30 days, while staff Excluded remains 14 days. Ask Again pauses cleanup, Allow/Restore exits,
+  and a second Decline restarts the episode. B1 request/allocation blockers remain authoritative.
+- Portal reuses **Your designs** for Personal vs promoted Design Library tabs and uses inline
+  Remove confirmation. Studio queue alert presentation waits for the post-success settle window.
+- The reviewed implementation is DEV-only and closed with Owner DEV QA **PASS**; production
+  deployment, publication, candidate freeze, and destructive cleanup remain separately gated.
+
+### ADR-FP-188: Server-authored Print Request lifecycle evidence and ordering mirror (DEV closed 2026-09-09)
+
+- Lifecycle events are Admin-trigger-only; `lastLifecycleActivityAt` and its stable tie-break
+  mirrors are server-maintained and never client lifecycle authority.
+- User Info cards use indexed newest-activity ordering; Details is **newest → oldest**. The
+  compatibility reader remains available as rollback.
+- DEV mirror backfill is complete with 8/8 eligible coverage and both indexes READY. Owner DEV QA
+  passed; final disposition is **approved_with_notes**.
+- Two historical duplicate conversion events are `SAFE_TO_LEAVE_AS_HISTORICAL_DUPLICATE`; no
+  ordering impact or cleanup is required. Production and publish remain separately gated; the
+  owner-authorized commit/push is complete as `6bf7a25d`.
+
+### Current operational boundary — legacy tag retirement (2026-09-09)
+
+- Active Portal/Studio catalog discovery is Smart Profile + category + dedicated Halftone; legacy
+  tags are not active filter, facet, display, URL, or Algolia search authority.
+- `tagIds` and `tagFacetKeys` are absent from the DEV Algolia searchable/faceting settings and
+  records; `objects`, `searchConcepts`, and `visibleText` remain searchable.
+- Historical `design.tags`, `tags/*`, schema-v1 taxonomy materialization, Rules/indexes, and
+  deployed tag-trigger/archive exports remain preserved compatibility. Physical cleanup and
+  compatibility deletion require a separate approved phase.
+
+### ADR-FP-169: Automatic Explicit Content classification (source signed off 2026-09-05)
+
+- Global vocab: `settings/aiEnrichment.explicitContentAutomationTerms`; absent → defaults; `[]` intentional empty
+- Deterministic B-light matcher on pre-sanitize artwork text; Ready-path atomic Explicit write only
+- Human Explicit authority wins; settings load failure fail-closed (`explicit_automation_settings_unavailable`)
+- No profanity hard blocker; Portal/customer PR unchanged; v34/v6/v1; no second AI
+- **DEV deploy / Studio QA / WS5 still pending**
+
+### ADR-FP-160: AI enrichment visible-text and catalog-copy quality (DEV signed off 2026-09-03)
+
+- `visibleText` is semantic short intentional wording — not a raw OCR transcript
+- Background/document text understood but not bulk-transcribed; Class C OCR fragments suppressed
+- Titles describe what the design is; descriptions summarize (anti-OCR guards + AI-only sanitizer)
+- Primary typography and false-positive-safe strings preserved (dates, scripture, `Smith & Co.`, etc.)
+- Prompt **catalog-enrich-v32** / normalizer **smart-profile-normalizer-v6**; schema **smart-profile-v1**
+- Subject canonicalization (ADR-FP-145 / v31/v5) preserved; Autonomous **OFF**
+
+### ADR-FP-145 amendment (2026-09-03 — DEV signed off)
+
+- Canonical/base depicted subjects required; redundant action/style/color/OCR/type-class phrases suppressed
+- Genuine atomic compounds preserved; no curated subject allowlist
+- AI collapse does not override staff edits or import presets
+- Prompt **catalog-enrich-v31** / normalizer **smart-profile-normalizer-v5** (live stack now v32/v6; subject contract retained)
+
+### ADR-FP-159: Customer-specific temporary Print Request + Show quota override (DEV signed off 2026-09-02)
+
+- Optional `customers/{id}.printRequestQuotaOverride`; effective = active override ?? current global; clock expiry (no scheduler)
+- Owner-only callable; Rules immutable; Portal consumers use effective limits; staff bypass preserved
+- Studio Edit Customer → Quota Override: **linked** Temporary quota default; **Set independently** for unequal dimensions; Users active badge
+- Audit: `account.quota_override_set` / `_cleared`; Cap A stays retired
+- Production promotion deferred (include post-corrective callable)
+
+## Roadmap sequencing (2026-08-31 — not an ADR)
+
+Print Request **sizing + interactive upscale** (`print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale`) **DONE on DEV** (signoff 2026-08-31). **Smart Profiling** remains the next major candidate — **not started**. Production promotion separately gated.
+
+### ADR-FP-080 amendment (2026-08-31 — accepted)
+
+- Configurable Print Request default width (**10″** system fallback); **15″** automated import/upload target (`image-quality-v3`)
+- Interactive upscale: one derivative per lineage; Studio + Portal; production export parity; non-destructive baseline
+
+---
+
+## Customer identity program — WS1–WS4 complete (DEV — 2026-08-30)
+
+| Workstream | ADR / signoff | Status |
+|------------|---------------|--------|
+| WS1 Identity foundations | ADR-FP-150, ADR-FP-151, ADR-FP-148 | **DONE** |
+| WS2 Transfer Username | ADR-FP-153 | **DONE** |
+| WS3 Full Account Merge | ADR-FP-154 | **DONE** |
+| WS4 Customer Activity + Deep Linking | *(no separate ADR — UI/read model)* | **DONE** |
+
+**Production / coordinated identity promotion: NOT AUTHORIZED.**
+
+### ADR-FP-156: Did Not Print bulk requeue + Needs Re-queue
+
+Show Queue recovery: `requeue_unfulfilled`, `requeuedFromAllocationId` lineage, `needsStaffRequeue*` markers, Working `needs_requeue` triage filter.
+
+### ADR-FP-155: DEV-only Show Queue fixture shows
+
+`DEV-OVERRIDE` sentinel; `source: dev_fixture`; callable `upsertDevFixtureShow`; excluded from Whatnot sync.
+
+### ADR-FP-154: Owner-authorized full customer account merge (WS3)
+
+Resumable `customerMergeJobs`; survivor canonical; `mergedSourceCustomerIds`; source tombstone.
+
+### ADR-FP-153: Owner-authorized verified duplicate username transfer (WS2)
+
+`previewDuplicateAccountResolution` / `transferCustomerUsername`; distinct from merge.
+
+### ADR-FP-151: History-free customer hard delete (dev-gated)
+
+### ADR-FP-150: Reversible customer account disable
+
+**Note:** ADR-FP-152 does **not** exist in `docs/project/DECISIONS.md` as of 2026-08-30.
+
+---
+
+## Customer identity — WS1 detail (2026-08-28)
+
+### Account states (product distinctions)
+
+| State | ADR / source | Reversible? | Username | History |
+|-------|--------------|-------------|----------|---------|
+| **Active** | — | — | Reserved while account exists | Full |
+| **Disabled** | ADR-FP-150 | Yes — `restoreCustomerAccount` | Reserved | Full |
+| **Closed / tombstoned** | ADR-FP-115 | No via normal Studio Re-enable | **Permanently reserved** | Full |
+| **Hard deleted** | ADR-FP-151 | N/A | **Released** (history-free only) | Identity removed; business history must be absent |
+
+**Disable Account** ≠ **Close Account Permanently** ≠ **Delete Account Permanently**.
+
+### ADR-FP-150: Reversible customer account disable
+
+| Constraint | Rule |
+|------------|------|
+| Fields | `customers.isDisabled`, `disabledAt`, `disabledBy`, `disabledReason?` |
+| Callables | `disableCustomerAccount` / `restoreCustomerAccount` (owner) |
+| Auth | Disable/enable Firebase Auth; `users.isActive` false/true |
+| History | All print/upload history + `customerUsernames` preserved |
+| Tombstone | `isDeleted` accounts cannot use disable/restore |
+
+### ADR-FP-151: History-free customer hard delete (dev-gated)
+
+| Constraint | Rule |
+|------------|------|
+| Callables | `previewHardDeleteCustomerAccount` + `hardDeleteCustomerAccount` (owner) |
+| Eligibility | Fail closed — meaningful history blockers prevent Apply |
+| Apply scope | Identity/bootstrap only — never cascades print graph |
+| DEV gate | Apply on **`fresh-prints-dev` only** until explicit production authorization |
+| Username | Released on successful history-free delete |
+| Audit | `customerActivityEvents` preview/apply records |
+
+### ADR-FP-115: Tombstone (Close Account Permanently) — unchanged by WS1
+
+| Constraint | Rule |
+|------------|------|
+| Semantics | `isDeleted`; Auth **disable** (not delete); history retained |
+| Username | `customerUsernames` **not** released |
+| UI | Closed customers — no Re-enable/Restore in normal flow |
+
+### ADR-FP-148: Portal identity self-service + snapshot propagation
+
+| Constraint | Rule |
+|------------|------|
+| Portal | `updatePortalCustomerProfile` — 30-day username cooldown |
+| Propagation | Snapshot fields on `printRequests` / `designIssueReports` — resumable worker |
+| Immutable | `printRequests.name` never updated; `requestOrigin`, `isInternal`, `customerId` unchanged by username propagation |
+
+### ADR-FP-071 + WS1 Portal editability (current behavior — no separate ADR)
+
+| Constraint | Rule |
+|------------|------|
+| One working request | Per Portal customer among **Portal-editable** continuable requests |
+| Portal-editable | `status` draft\|editing + `requestOrigin == portal_customer` + `isInternal != true` |
+| `studio_customer` | Customer-owned Studio request — **not** Portal-editable |
+| `studio_internal` | Internal requests — not customer Portal path |
+| Legacy duplicates | Explicit Portal selection when multiple Portal-editable drafts exist; mutations target selection |
+| Studio guard (WS1) | Do not create a second continuable Customer CR; exclude customers with open CR from picker — **new** duplicates blocked; legacy data not auto-repaired |
+
+### Deferred (master plan — superseded)
+
+- ~~WS2 duplicate resolution~~ — **DONE** (ADR-FP-153)
+- ~~WS3 full account merge~~ — **DONE** (ADR-FP-154)
+- ~~WS4 customer activity cards~~ — **DONE** (2026-08-30 signoff)
+
+---
+
+## Gate I corrective (2026-08-26 — ADR-FP-145)
+
+| Constraint | Rule |
+|------------|------|
+| Prompt / normalizer | **catalog-enrich-v30** / **smart-profile-normalizer-v4** |
+| Subjects | Anti-glue; preserve genuine specificity; no curated allowlist |
+| Category | Decision-layer `category_dominant_intent_conflict` (resolver governance unchanged) |
+| Subject gaps | Remain **hard** |
+| Object soft-lane | Deferred except `daisy`↔`daisies` |
+| Live Autonomous / Ready Catalog / prod | Separately gated; Slice 5 closed without enabling them |
+
+Full ADR: `docs/project/DECISIONS.md` (ADR-FP-145).
+
+## Grouped gang sheets (2026-08-23 — ADR-FP-143; three-mode extension 2026-08-27)
 
 | Constraint | Rule |
 |------------|------|
 | Default | Legacy **efficiency / Standard** when `layoutMode` omitted |
-| Grouped mode | Explicit `layoutMode: "grouped_by_customer"` + `grouping` on images |
-| Cache | Separate fingerprints; Standard and Grouped coexist on disk |
-| Labels | `whatnot_MM-DD-YYYY_grouped-gang-sheet`; section headings + `-Continued` |
+| Sheet per Customer | `layoutMode: "grouped_by_customer"` — one physical sheet per customer nest segment; `whatnot_MM-DD-YYYY_grouped-gang-sheet` |
+| Grouped by Customer | `layoutMode: "customer_grouped_continuous"` — continuous multi-customer sheets; `whatnot_MM-DD-YYYY_grouped-continuous-gang-sheet` |
+| Grouping key | `customerId` → username snapshot → `internalBaseName` → `printRequestId` |
+| Cache | Pairwise distinct fingerprints; do not cross-hydrate modes in modal |
+| Labels | Section headings comma-join CR names; `-Continued` on spillover |
 
-Full ADR: `docs/project/DECISIONS.md` (ADR-FP-143).
+Full ADR + follow-up: `docs/project/DECISIONS.md` (ADR-FP-143).
+
+## Print Request production actions and Gang Sheet Settings (2026-09-08)
+
+| Constraint | Rule |
+|------------|------|
+| Canonical settings | `settings/showQueue` owns the six shared physical layout fields and four width-only price/weight tiers; legacy `settings/internalGangSheet` is read-only fallback |
+| Width tiers | Pocket ≤4″ → `$1` / `0.40 oz`; Standard Full >4–11″ → `$2` / `0.75 oz`; Standard Oversized >11–14″ → `$3` / `0.75 oz`; Extra Oversized >14″ → `$4` / `0.75 oz` |
+| Direct actions | Eligible non-working Customer/Internal requests may Export Images, Export x(Qty), Generate Standard Gang Sheet, or Copy |
+| Working / Editing | Direct production actions are hidden; existing Add to Show / Add to Internal Gangsheet actions remain |
+| Scope | Shared Show Queue, Internal Gang Sheet, and request generation use the same resolver; no migration, backfill, index, Storage Rules, Portal, or production change |
+
+DEV callable evidence: `copyStudioPrintRequest` is ACTIVE in `fresh-prints-dev` (`us-central1`,
+Node.js 20), revision `copystudioprintrequest-00001-yec`.
 
 ## Public Our Shows (2026-08-22 — ADR-FP-142)
 
@@ -129,13 +371,13 @@ Full ADR: `docs/project/DECISIONS.md` (ADR-FP-137). Details: `docs/standards/DEP
 | Deprecated on designs | `queued`, `printed` |
 | Approval | Staff AI Review / catalogApprovalService only |
 | Library scope | `ready` only by default |
-| ADR-FP-120 (amended 2026-07-31) | Failed portal-catalog publish recovery: Storage retries, catch-up loop, `retryPortalCatalogPublication`; tags/category stay full index-filter republish |
+| ADR-FP-120 (amended 2026-07-31; historical pre-retirement behavior) | Failed portal-catalog publish recovery: Storage retries, catch-up loop, `retryPortalCatalogPublication`; the former tags/category full index-filter republish behavior is retained as historical compatibility, not active DEV catalog search authority |
 
 ## Print Requests & Portal
 
 | ADR | Summary |
 |-----|---------|
-| ADR-FP-071 | **One working print request** per Portal customer |
+| ADR-FP-071 | **One working print request** per Portal customer (among Portal-editable continuable requests; `studio_customer` drafts are not Portal-editable — WS1 DEV 2026-08-28) |
 | ADR-FP-106 | **Public browse** + login-gated actions; guest overlay; guest catalog donate via Anonymous Auth + `guest` attribution (rules/Functions/Auth deploy human-gated) |
 | ADR-FP-107 | Recently Requested = `lastAddedToShowAt` via `onShowAllocationCreated` (soft-deployed fresh-prints-dev 2026-07-21) |
 | ADR-FP-103 | Portal add-to-show **cutoff hours** before show start (Studio Show Queue setting; Functions enforce; Studio staff exempt) |
@@ -166,8 +408,8 @@ Full ADR: `docs/project/DECISIONS.md` (ADR-FP-137). Details: `docs/standards/DEP
 
 | ADR | Summary |
 |-----|---------|
-| ADR-FP-044 / v21 | Business-context Gemini prompt; server-side tag/category resolve |
-| ADR-FP-042 / 043 | Optional tag rerank + suggestion author (defaults off) |
+| ADR-FP-044 / v21 (historical) | Business-context Gemini prompt; former server-side tag/category resolve path retained for compatibility; active DEV catalog authority is category-only |
+| ADR-FP-042 / 043 (historical) | Former optional tag rerank + suggestion author (defaults off); not active catalog search authority |
 | ADR-FP-040 | Gemini provider (OpenAI path removed) |
 
 ## Architecture constraints

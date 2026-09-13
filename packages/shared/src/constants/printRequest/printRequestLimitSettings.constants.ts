@@ -32,6 +32,11 @@ export interface PrintRequestLimitSettings {
    * When true, both numeric limits are kept equal. Absent in Firestore → treated as linked.
    */
   linkPrintRequestAndCustomerShowLimits: boolean;
+  /**
+   * When true, Portal customers see the interactive upscale toggle on print request items.
+   * Staff Studio upscale is unaffected. Defaults to false until explicitly enabled.
+   */
+  portalInteractiveUpscaleEnabled: boolean;
   updatedAt?: unknown;
   updatedBy?: string;
 }
@@ -41,6 +46,7 @@ export const DEFAULT_PRINT_REQUEST_LIMIT_SETTINGS: Readonly<PrintRequestLimitSet
   maxQuantityPerPrintRequest: PRINT_REQUEST_MAX_QUANTITY_PER_SHOW_PER_CUSTOMER,
   maxQuantityPerShowPerCustomer: PRINT_REQUEST_MAX_QUANTITY_PER_SHOW_PER_CUSTOMER,
   linkPrintRequestAndCustomerShowLimits: true,
+  portalInteractiveUpscaleEnabled: false,
 };
 
 function isPositiveIntInRange(value: unknown, max: number): value is number {
@@ -66,6 +72,10 @@ function resolveLinkPreference(value: unknown): boolean {
   }
   // Absent / invalid → linked (backward compatible with sole-L installs).
   return true;
+}
+
+function resolvePortalInteractiveUpscaleEnabled(value: unknown): boolean {
+  return value === true;
 }
 
 /**
@@ -103,6 +113,9 @@ export function resolvePrintRequestLimitSettings(value: unknown): PrintRequestLi
     maxQuantityPerPrintRequest,
     maxQuantityPerShowPerCustomer,
     linkPrintRequestAndCustomerShowLimits,
+    portalInteractiveUpscaleEnabled: resolvePortalInteractiveUpscaleEnabled(
+      data.portalInteractiveUpscaleEnabled,
+    ),
   };
 
   if (data.updatedAt !== undefined) {
@@ -119,6 +132,7 @@ export interface PrintRequestLimitSettingsInput {
   maxQuantityPerPrintRequest: number;
   maxQuantityPerShowPerCustomer: number;
   linkPrintRequestAndCustomerShowLimits: boolean;
+  portalInteractiveUpscaleEnabled?: boolean;
 }
 
 /**
@@ -173,7 +187,14 @@ export function parsePrintRequestLimitSettingsInput(
     maxQuantityPerShowPerCustomer,
     linkPrintRequestAndCustomerShowLimits,
     dailyDesignsAddedToRequestsLimit: maxQuantityPerPrintRequest,
+    portalInteractiveUpscaleEnabled: resolvePortalInteractiveUpscaleEnabled(
+      data.portalInteractiveUpscaleEnabled,
+    ),
   };
+}
+
+export function portalInteractiveUpscaleUiEnabled(settings: PrintRequestLimitSettings): boolean {
+  return settings.portalInteractiveUpscaleEnabled === true;
 }
 
 /** @deprecated Prefer `printRequestLimitPerRequest` / `printRequestLimitPerCustomerPerShow`. */

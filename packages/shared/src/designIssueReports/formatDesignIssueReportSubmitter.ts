@@ -1,10 +1,17 @@
+import { formatCustomerIdentityLabel } from "../utils/formatCustomerIdentityLabel";
+
 export function formatDesignIssueReportSubmitter(input: {
   customerDisplayNameSnapshot?: string | null;
   customerUsernameSnapshot?: string | null;
+  customerUsernameAtCreationSnapshot?: string | null;
+  customerDisplayNameAtCreationSnapshot?: string | null;
 }): string {
-  const displayName = typeof input.customerDisplayNameSnapshot === "string" ? input.customerDisplayNameSnapshot.trim() : "";
-  if (displayName) return displayName;
-  const username = typeof input.customerUsernameSnapshot === "string" ? input.customerUsernameSnapshot.trim() : "";
-  if (username) return username;
-  return "Anonymous";
+  const label = formatCustomerIdentityLabel({
+    currentUsername: input.customerUsernameSnapshot,
+    usernameAtCreation: input.customerUsernameAtCreationSnapshot,
+    currentDisplayName: input.customerDisplayNameSnapshot,
+    displayNameAtCreation: input.customerDisplayNameAtCreationSnapshot,
+  });
+
+  return label === "Unknown customer" ? "Anonymous" : label;
 }

@@ -53,7 +53,7 @@ export function AiProcessingSettingsModal({
 
         <div className="ai-processing-settings-modal-body">
           <Select
-            label="Vision model"
+            label="AI model for this run"
             name="processingVisionModelId"
             onChange={(event) => setSelectedModel(event.target.value)}
             options={ALL_VISION_MODEL_OPTIONS.map((option) => ({

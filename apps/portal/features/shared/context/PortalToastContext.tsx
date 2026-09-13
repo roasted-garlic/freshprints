@@ -22,6 +22,8 @@ export interface PortalToastAction {
 
 export interface PortalToastOptions {
   action?: PortalToastAction;
+  /** Override auto-dismiss; default remains TOAST_DURATION_MS (4s). */
+  durationMs?: number;
 }
 
 interface PortalToast {
@@ -29,6 +31,7 @@ interface PortalToast {
   message: string;
   tone: PortalToastTone;
   action?: PortalToastAction;
+  durationMs: number;
 }
 
 interface PortalToastContextValue {
@@ -57,11 +60,18 @@ export function PortalToastProvider({ children }: { children: ReactNode }) {
         return;
       }
       actionRef.current = options?.action;
+      const durationMs =
+        typeof options?.durationMs === 'number' &&
+        Number.isFinite(options.durationMs) &&
+        options.durationMs > 0
+          ? Math.floor(options.durationMs)
+          : TOAST_DURATION_MS;
       setToast({
         id: Date.now(),
         message: trimmed,
         tone,
         action: options?.action,
+        durationMs,
       });
     },
     [],
@@ -89,7 +99,7 @@ export function PortalToastProvider({ children }: { children: ReactNode }) {
     const timeoutId = window.setTimeout(() => {
       setToast(null);
       actionRef.current = undefined;
-    }, TOAST_DURATION_MS);
+    }, toast.durationMs);
 
     return () => window.clearTimeout(timeoutId);
   }, [toast]);

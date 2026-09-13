@@ -17,11 +17,11 @@ export const STANDARD_PRINT_WIDTH_INCHES = 8;
 export const PREFERRED_PRINT_WIDTH_INCHES = 10;
 
 /**
- * One-pass automated production upscale target width at TARGET_PRINT_DPI (ADR-FP-080 v2).
+ * One-pass automated production upscale target width at TARGET_PRINT_DPI (ADR-FP-080 v3).
  * Distinct from DEFAULT_PRINT_REQUEST_WIDTH_INCHES — retains resize headroom above the
- * normal 10″ request default without changing that default.
+ * normal Print Request default without changing request sizing directly.
  */
-export const AUTOMATED_UPSCALE_TARGET_WIDTH_INCHES = 12;
+export const AUTOMATED_UPSCALE_TARGET_WIDTH_INCHES = 15;
 
 /**
  * @deprecated ADR-FP-080 — 15″ is the approved-max width envelope, not an upscale floor.
@@ -36,8 +36,8 @@ export const IMPORT_UPSCALE_TARGET_WIDTH_INCHES = 15;
  */
 export const IMPORT_UPSCALE_SOFT_SCALE_FACTOR_THRESHOLD = 2;
 
-/** Version string persisted on processed assets (ADR-FP-080 — 12″ upscale target, ≤6×). */
-export const IMAGE_QUALITY_SIZING_POLICY_VERSION = "image-quality-v2" as const;
+/** Version string persisted on processed assets (ADR-FP-080 v3 — 15″ upscale target, ≤6× cumulative). */
+export const IMAGE_QUALITY_SIZING_POLICY_VERSION = "image-quality-v3" as const;
 
 /**
  * Normal print-request default width when approved max allows it.
@@ -87,11 +87,23 @@ export const MAX_REASONABLE_PRINT_WIDTH_INCHES = 72;
 /** Decimal places for persisted and displayed print inch values. */
 export const PRINT_INCHES_DECIMAL_PLACES = 2;
 
+/**
+ * Maximum configurable Default Print Request Width in Studio Settings (inches).
+ * Distinct from per-item physical caps (e.g. 22″).
+ */
+export const DEFAULT_PRINT_REQUEST_WIDTH_MAX_INCHES = 12;
+
 /** Effective DPI at or above this value is optimal (green). */
 export const EFFECTIVE_DPI_OPTIMAL_MIN = 300;
 
 /** Effective DPI at or above this value is good (yellow). */
 export const EFFECTIVE_DPI_GOOD_MIN = 250;
+
+/**
+ * Baseline effective DPI must be below this value before interactive upscale is offered.
+ * Processing still targets {@link TARGET_PRINT_DPI} when enhance runs.
+ */
+export const INTERACTIVE_UPSCALE_OFFER_MIN_DPI = EFFECTIVE_DPI_GOOD_MIN;
 
 /** Effective DPI at or above this value is bad (red). */
 export const EFFECTIVE_DPI_BAD_MIN = 200;

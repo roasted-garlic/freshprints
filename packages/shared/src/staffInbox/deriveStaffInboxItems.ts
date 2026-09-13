@@ -15,6 +15,7 @@ import type {
   StaffInboxPortalRequestSnapshot,
 } from "./staffInbox.types";
 import { compareStaffInboxItemsForDisplay } from "./staffInboxAlertOrdering";
+import { buildStaffInboxQueuedGlanceMetrics } from "./staffInboxQueuedGlanceMetrics";
 
 const ACTIVE_ALLOCATION_STATUSES = new Set<ShowAllocationStatus>([
   "pending",
@@ -25,10 +26,20 @@ const ACTIVE_ALLOCATION_STATUSES = new Set<ShowAllocationStatus>([
 export interface DeriveStaffInboxItemsInput {
   portalAllocations: StaffInboxPortalAllocationSnapshot[];
   acknowledgedItemIds: ReadonlySet<string>;
+  /** Owner-deleted alerts that must not reappear in Open. */
+  suppressedItemIds?: ReadonlySet<string>;
   showTitleById: Readonly<Record<string, string>>;
   shows: StaffInboxShowSnapshot[];
   /** Retained for subscription compatibility; working-tab alerts are no longer derived. */
   portalRequests?: StaffInboxPortalRequestSnapshot[];
+}
+
+function isStaffInboxItemHidden(
+  itemId: string,
+  acknowledgedItemIds: ReadonlySet<string>,
+  suppressedItemIds: ReadonlySet<string>,
+): boolean {
+  return acknowledgedItemIds.has(itemId) || suppressedItemIds.has(itemId);
 }
 
 function groupQueuedAllocations(portalAllocations: StaffInboxPortalAllocationSnapshot[]) {
@@ -39,6 +50,7 @@ function groupQueuedAllocations(portalAllocations: StaffInboxPortalAllocationSna
       upcomingShowId: string;
       requestNameSnapshot: string;
       createdAtMillis: number;
+      allocations: StaffInboxPortalAllocationSnapshot[];
     }
   >();
 
@@ -50,13 +62,21 @@ function groupQueuedAllocations(portalAllocations: StaffInboxPortalAllocationSna
     const groupKey = buildStaffInboxQueuedGroupKey(allocation.printRequestId, allocation.upcomingShowId);
     const existing = groups.get(groupKey);
 
-    if (!existing || allocation.createdAtMillis < existing.createdAtMillis) {
+    if (!existing) {
       groups.set(groupKey, {
         printRequestId: allocation.printRequestId,
         upcomingShowId: allocation.upcomingShowId,
         requestNameSnapshot: allocation.requestNameSnapshot,
         createdAtMillis: allocation.createdAtMillis,
+        allocations: [allocation],
       });
+      continue;
+    }
+
+    existing.allocations.push(allocation);
+    if (allocation.createdAtMillis < existing.createdAtMillis) {
+      existing.createdAtMillis = allocation.createdAtMillis;
+      existing.requestNameSnapshot = allocation.requestNameSnapshot;
     }
   }
 
@@ -85,11 +105,12 @@ function getLatestPortalAllocationMillisForShow(
 
 export function deriveStaffInboxItems(input: DeriveStaffInboxItemsInput): StaffInboxItem[] {
   const items: StaffInboxItem[] = [];
+  const suppressedItemIds = input.suppressedItemIds ?? new Set<string>();
 
   for (const group of groupQueuedAllocations(input.portalAllocations)) {
     const id = buildStaffInboxItemId("portal_queued", group.printRequestId, group.upcomingShowId);
 
-    if (input.acknowledgedItemIds.has(id)) {
+    if (isStaffInboxItemHidden(id, input.acknowledgedItemIds, suppressedItemIds)) {
       continue;
     }
 
@@ -97,6 +118,8 @@ export function deriveStaffInboxItems(input: DeriveStaffInboxItemsInput): StaffI
       input.showTitleById[group.upcomingShowId]?.trim() ||
       group.requestNameSnapshot ||
       "Upcoming show";
+
+    const queuedGlance = buildStaffInboxQueuedGlanceMetrics(group.allocations);
 
     items.push({
       id,
@@ -107,6 +130,7 @@ export function deriveStaffInboxItems(input: DeriveStaffInboxItemsInput): StaffI
       subtitle: `Queued to ${showTitle} — check Queued tab and Show Queue.`,
       printRequestTab: "queued",
       occurredAtMillis: group.createdAtMillis,
+      ...(queuedGlance ? { queuedGlance } : {}),
     });
   }
 
@@ -121,7 +145,7 @@ export function deriveStaffInboxItems(input: DeriveStaffInboxItemsInput): StaffI
 
     const id = buildStaffInboxItemId("show_queue_full", show.id);
 
-    if (input.acknowledgedItemIds.has(id)) {
+    if (isStaffInboxItemHidden(id, input.acknowledgedItemIds, suppressedItemIds)) {
       continue;
     }
 

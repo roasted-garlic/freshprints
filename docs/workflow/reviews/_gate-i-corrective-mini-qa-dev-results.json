@@ -1,0 +1,1100 @@
+{
+  "projectId": "fresh-prints-dev",
+  "startedAt": "2026-08-26T15:58:06.499Z",
+  "catalogWorkflowMode": "shadow",
+  "catalogAutonomousLiveEnabled": false,
+  "readyCatalogLocked": true,
+  "activeReprocessJobs": 0,
+  "fixtures": [
+    {
+      "id": "yJm2VBRvecPNjx79aSnK",
+      "qaClass": "good-specificity",
+      "label": "Highland cow",
+      "prior": "C1 fixture — must keep highland cow",
+      "outcome": "enriched",
+      "before": {
+        "status": "ready",
+        "aiReviewStatus": "approved",
+        "title": "Highland Cow With Bow",
+        "categoryId": "qhGPaAHPOOmPe7PvQvi0",
+        "categoryName": "Animals",
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "subjects": [
+          "cow"
+        ],
+        "themes": [
+          "animal humor",
+          "cute"
+        ],
+        "interests": [
+          "animals",
+          "farm life",
+          "country life"
+        ],
+        "searchConcepts": [
+          "Scottish cow",
+          "fluffy cow",
+          "baby cow",
+          "cow cartoon"
+        ],
+        "places": [],
+        "categoryAlternatives": [
+          {
+            "categoryName": "Western & Country",
+            "categoryId": "3If26Gh3JzaaWOdUmHbf",
+            "reason": "The Highland cow has a strong association with country and rusti"
+          },
+          {
+            "categoryName": "Funny & Sarcastic",
+            "categoryId": "tj0HemRh2RuYLfI7N6nO",
+            "reason": "The exaggerated features and expression suggest a humorous inten"
+          }
+        ],
+        "categoryGapSuggested": false,
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "shadow_would_auto_approve"
+        ],
+        "verifierInvoked": false,
+        "wouldAutoApprove": true
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "title": "Highland Cow With Bow",
+        "categoryId": "qhGPaAHPOOmPe7PvQvi0",
+        "categoryName": "Animals",
+        "promptVersion": "catalog-enrich-v30",
+        "normalizerVersion": "smart-profile-normalizer-v4",
+        "subjects": [
+          "Highland cow"
+        ],
+        "themes": [
+          "animal humor",
+          "cute",
+          "country life"
+        ],
+        "interests": [
+          "animals",
+          "country life"
+        ],
+        "searchConcepts": [
+          "highland cattle",
+          "scottish highland cow",
+          "funny cow",
+          "cute cow",
+          "cartoon cow",
+          "cow with bow",
+          "shaggy cow",
+          "farm humor"
+        ],
+        "places": [],
+        "categoryAlternatives": [],
+        "categoryGapSuggested": false,
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "shadow_would_auto_approve"
+        ],
+        "verifierInvoked": false,
+        "wouldAutoApprove": true
+      },
+      "callableData": {
+        "designId": "yJm2VBRvecPNjx79aSnK",
+        "queued": true,
+        "completed": true,
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "evaluation": {
+        "verdict": "PASS",
+        "notes": [],
+        "checks": {
+          "provenanceOk": true,
+          "lifecycleOk": true,
+          "hasHighlandCow": true,
+          "noArtificialCompound": true
+        }
+      },
+      "verdict": "PASS"
+    },
+    {
+      "id": "5Jype5Zc1b13XXSci5Kn",
+      "qaClass": "good-specificity",
+      "label": "Miniature schnauzer",
+      "prior": "Gate I PASS — schnauzer dog",
+      "outcome": "enriched",
+      "before": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "title": "327 Miniature Schnauzer",
+        "categoryId": "qhGPaAHPOOmPe7PvQvi0",
+        "categoryName": "Animals",
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3",
+        "subjects": [
+          "schnauzer dog",
+          "dog"
+        ],
+        "themes": [
+          "nature",
+          "animals"
+        ],
+        "interests": [
+          "animals",
+          "pets",
+          "dogs"
+        ],
+        "searchConcepts": [
+          "dog breeds",
+          "cute schnauzer",
+          "schnauzer art",
+          "dog with flowers",
+          "floral dog",
+          "dog portrait"
+        ],
+        "places": [],
+        "categoryAlternatives": [],
+        "categoryGapSuggested": false,
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "shadow_would_auto_approve"
+        ],
+        "verifierInvoked": false,
+        "wouldAutoApprove": true
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "title": "327 Miniature Schnauzer",
+        "categoryId": "qhGPaAHPOOmPe7PvQvi0",
+        "categoryName": "Animals",
+        "promptVersion": "catalog-enrich-v30",
+        "normalizerVersion": "smart-profile-normalizer-v4",
+        "subjects": [
+          "schnauzer dog",
+          "dog"
+        ],
+        "themes": [
+          "pets",
+          "nature"
+        ],
+        "interests": [
+          "animals",
+          "pets",
+          "dogs"
+        ],
+        "searchConcepts": [
+          "Schnauzer dog",
+          "dog with flowers",
+          "dog portrait",
+          "pet gift",
+          "dog owner",
+          "cute dog"
+        ],
+        "places": [],
+        "categoryAlternatives": [],
+        "categoryGapSuggested": false,
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "shadow_would_auto_approve"
+        ],
+        "verifierInvoked": false,
+        "wouldAutoApprove": true
+      },
+      "callableData": {
+        "designId": "5Jype5Zc1b13XXSci5Kn",
+        "queued": true,
+        "completed": true,
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "evaluation": {
+        "verdict": "PASS",
+        "notes": [],
+        "checks": {
+          "provenanceOk": true,
+          "lifecycleOk": true,
+          "hasSchnauzer": true,
+          "noArtificialCompound": true
+        }
+      },
+      "verdict": "PASS"
+    },
+    {
+      "id": "51Oz02NfLY8vTruauW56",
+      "qaClass": "good-specificity",
+      "label": "Frankenstein's monster",
+      "prior": "Gate I PASS — specific subject",
+      "outcome": "enriched",
+      "before": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "title": "K8qTSKz59kk14WmuNs3F",
+        "categoryId": "Iu6YZYL4aiuAtXG6H9bI",
+        "categoryName": "Holiday & Seasonal",
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3",
+        "subjects": [
+          "Frankenstein's monster"
+        ],
+        "themes": [
+          "Halloween",
+          "whimsical",
+          "humor",
+          "spooky"
+        ],
+        "interests": [
+          "halloween",
+          "horror movies"
+        ],
+        "searchConcepts": [
+          "Frankenstein monster",
+          "monster blowing dandelion",
+          "Halloween monster",
+          "spooky dandelion",
+          "horror dandelion",
+          "whimsical Halloween",
+          "creature art",
+          "horror art"
+        ],
+        "places": [],
+        "categoryAlternatives": [
+          {
+            "categoryName": "Funny & Sarcastic",
+            "categoryId": "tj0HemRh2RuYLfI7N6nO",
+            "reason": "The juxtaposition of Frankenstein's monster with a gentle act li"
+          },
+          {
+            "categoryName": "Animals",
+            "categoryId": "qhGPaAHPOOmPe7PvQvi0",
+            "reason": "While not an animal, the subject is a creature often associated "
+          }
+        ],
+        "categoryGapSuggested": false,
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "category_alternatives_present",
+          "shadow_would_auto_approve"
+        ],
+        "verifierInvoked": false,
+        "wouldAutoApprove": true
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "title": "K8qTSKz59kk14WmuNs3F",
+        "categoryId": "Iu6YZYL4aiuAtXG6H9bI",
+        "categoryName": "Holiday & Seasonal",
+        "promptVersion": "catalog-enrich-v30",
+        "normalizerVersion": "smart-profile-normalizer-v4",
+        "subjects": [
+          "Frankenstein's monster"
+        ],
+        "themes": [
+          "Halloween",
+          "whimsical",
+          "dark humor",
+          "horror"
+        ],
+        "interests": [
+          "horror movies"
+        ],
+        "searchConcepts": [
+          "Frankenstein's monster blowing dandelion",
+          "monster wishing",
+          "spooky humor",
+          "horror whimsical",
+          "classic monster",
+          "Halloween art",
+          "scary but cute"
+        ],
+        "places": [],
+        "categoryAlternatives": [],
+        "categoryGapSuggested": false,
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "shadow_would_auto_approve"
+        ],
+        "verifierInvoked": false,
+        "wouldAutoApprove": true
+      },
+      "callableData": {
+        "designId": "51Oz02NfLY8vTruauW56",
+        "queued": true,
+        "completed": true,
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "evaluation": {
+        "verdict": "PASS",
+        "notes": [],
+        "checks": {
+          "provenanceOk": true,
+          "lifecycleOk": true,
+          "hasFrankenstein": true,
+          "noArtificialCompound": true
+        }
+      },
+      "verdict": "PASS"
+    },
+    {
+      "id": "6zKWIvQyvwH5M19bCeYW",
+      "qaClass": "artificial-glue",
+      "label": "problem skeleton",
+      "prior": "Gate I PASS WITH NOTES — problem skeleton compound",
+      "outcome": "enriched",
+      "before": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "title": "That sounds (2)",
+        "categoryId": "tj0HemRh2RuYLfI7N6nO",
+        "categoryName": "Funny & Sarcastic",
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3",
+        "subjects": [
+          "problem skeleton",
+          "skeleton"
+        ],
+        "themes": [
+          "humor",
+          "sarcasm",
+          "attitude",
+          "problem"
+        ],
+        "interests": [],
+        "searchConcepts": [
+          "skeleton humor",
+          "wife problem",
+          "drink lover",
+          "funny saying",
+          "badass skeleton"
+        ],
+        "places": [],
+        "categoryAlternatives": [],
+        "categoryGapSuggested": false,
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "shadow_would_auto_approve"
+        ],
+        "verifierInvoked": false,
+        "wouldAutoApprove": true
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "title": "That sounds (2)",
+        "categoryId": "tj0HemRh2RuYLfI7N6nO",
+        "categoryName": "Funny & Sarcastic",
+        "promptVersion": "catalog-enrich-v30",
+        "normalizerVersion": "smart-profile-normalizer-v4",
+        "subjects": [
+          "skeleton"
+        ],
+        "themes": [
+          "humor",
+          "sarcasm",
+          "attitude",
+          "family"
+        ],
+        "interests": [
+          "humor",
+          "family"
+        ],
+        "searchConcepts": [
+          "skeleton humor",
+          "wife problem",
+          "husband problem shirt",
+          "attitude skeleton",
+          "sarcastic skeleton",
+          "messy bun skeleton"
+        ],
+        "places": [],
+        "categoryAlternatives": [],
+        "categoryGapSuggested": false,
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "structured_evidence_gap:objects:stars",
+          "verifier_unresolved"
+        ],
+        "verifierInvoked": true,
+        "wouldAutoApprove": false
+      },
+      "callableData": {
+        "designId": "6zKWIvQyvwH5M19bCeYW",
+        "queued": true,
+        "completed": true,
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "evaluation": {
+        "verdict": "PASS",
+        "notes": [],
+        "checks": {
+          "provenanceOk": true,
+          "lifecycleOk": true,
+          "noArtificialCompound": true,
+          "hasSkeleton": true
+        }
+      },
+      "verdict": "PASS"
+    },
+    {
+      "id": "3QNubh7l7WahljYYfgYe",
+      "qaClass": "artificial-glue",
+      "label": "coochie alligator",
+      "prior": "Gate I PASS WITH NOTES — coochie alligator compound",
+      "outcome": "enriched",
+      "before": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "title": "hotter-than-a-hoochie-coochie-png",
+        "categoryId": "tj0HemRh2RuYLfI7N6nO",
+        "categoryName": "Funny & Sarcastic",
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3",
+        "subjects": [
+          "coochie alligator",
+          "alligator"
+        ],
+        "themes": [
+          "humor",
+          "attitude",
+          "summer",
+          "sarcasm"
+        ],
+        "interests": [
+          "summer",
+          "humor"
+        ],
+        "searchConcepts": [
+          "alligator",
+          "summer heat",
+          "funny saying",
+          "pool float",
+          "sunglasses alligator",
+          "Florida vibe",
+          "quirky quote",
+          "heat wave",
+          "summer vacation",
+          "summertime fun"
+        ],
+        "places": [],
+        "categoryAlternatives": [],
+        "categoryGapSuggested": false,
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "shadow_would_auto_approve"
+        ],
+        "verifierInvoked": false,
+        "wouldAutoApprove": true
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "title": "hotter-than-a-hoochie-coochie-png",
+        "categoryId": "tj0HemRh2RuYLfI7N6nO",
+        "categoryName": "Funny & Sarcastic",
+        "promptVersion": "catalog-enrich-v30",
+        "normalizerVersion": "smart-profile-normalizer-v4",
+        "subjects": [
+          "alligator"
+        ],
+        "themes": [
+          "humor",
+          "attitude",
+          "summer",
+          "quirky"
+        ],
+        "interests": [
+          "animals",
+          "summer",
+          "humor"
+        ],
+        "searchConcepts": [
+          "alligator in a tube",
+          "summer vacation",
+          "funny summer saying",
+          "cool alligator",
+          "party vibe",
+          "pool float"
+        ],
+        "places": [],
+        "categoryAlternatives": [],
+        "categoryGapSuggested": false,
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "structured_evidence_gap:objects:inner tube",
+          "verifier_unresolved"
+        ],
+        "verifierInvoked": true,
+        "wouldAutoApprove": false
+      },
+      "callableData": {
+        "designId": "3QNubh7l7WahljYYfgYe",
+        "queued": true,
+        "completed": true,
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "evaluation": {
+        "verdict": "PASS",
+        "notes": [],
+        "checks": {
+          "provenanceOk": true,
+          "lifecycleOk": true,
+          "noArtificialCompound": true,
+          "hasAlligator": true
+        }
+      },
+      "verdict": "PASS"
+    },
+    {
+      "id": "2Nj95YLaLk6763oTrRZw",
+      "qaClass": "artificial-glue",
+      "label": "donald goofy",
+      "prior": "Gate I PASS WITH NOTES — donald goofy merge",
+      "outcome": "enriched",
+      "before": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "title": "dfdsfdsf",
+        "categoryId": "Sn9nmGJvFlIRO4DnFnIB",
+        "categoryName": "Pop Culture & Characters",
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3",
+        "subjects": [
+          "donald goofy",
+          "Mickey Mouse",
+          "Minnie Mouse",
+          "Daisy Duck",
+          "Donald Duck",
+          "Goofy"
+        ],
+        "themes": [
+          "family",
+          "grandmother"
+        ],
+        "interests": [
+          "Disney"
+        ],
+        "searchConcepts": [
+          "Gigi gift",
+          "Disney family",
+          "Grandma gift"
+        ],
+        "places": [],
+        "categoryAlternatives": [],
+        "categoryGapSuggested": false,
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "shadow_would_auto_approve"
+        ],
+        "verifierInvoked": false,
+        "wouldAutoApprove": true
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "title": "dfdsfdsf",
+        "categoryId": "Sn9nmGJvFlIRO4DnFnIB",
+        "categoryName": "Pop Culture & Characters",
+        "promptVersion": "catalog-enrich-v30",
+        "normalizerVersion": "smart-profile-normalizer-v4",
+        "subjects": [
+          "Mickey Mouse",
+          "Minnie Mouse",
+          "Donald Duck",
+          "Daisy Duck",
+          "Goofy"
+        ],
+        "themes": [
+          "family",
+          "characters"
+        ],
+        "interests": [
+          "Disney",
+          "characters"
+        ],
+        "searchConcepts": [
+          "Disney characters",
+          "Grandma gift",
+          "personalized Disney",
+          "Gigi",
+          "family member",
+          "female relative",
+          "Disney themed gift"
+        ],
+        "places": [],
+        "categoryAlternatives": [],
+        "categoryGapSuggested": false,
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "structured_evidence_gap:objects:flowers",
+          "verifier_unresolved"
+        ],
+        "verifierInvoked": true,
+        "wouldAutoApprove": false
+      },
+      "callableData": {
+        "designId": "2Nj95YLaLk6763oTrRZw",
+        "queued": true,
+        "completed": true,
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "evaluation": {
+        "verdict": "PASS",
+        "notes": [],
+        "checks": {
+          "provenanceOk": true,
+          "lifecycleOk": true,
+          "noArtificialCompound": true
+        }
+      },
+      "verdict": "PASS"
+    },
+    {
+      "id": "9bR7JWSWwv94Ofb7byC3",
+      "qaClass": "unsupported-subject",
+      "label": "MJ glove/mic person",
+      "prior": "Gate I FAIL PROFILE — unsupported person; verifier blocked",
+      "outcome": "enriched",
+      "before": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "title": "(33)",
+        "categoryId": "Sn9nmGJvFlIRO4DnFnIB",
+        "categoryName": "Pop Culture & Characters",
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3",
+        "subjects": [
+          "person"
+        ],
+        "themes": [
+          "music",
+          "performance",
+          "iconic"
+        ],
+        "interests": [
+          "music",
+          "pop music"
+        ],
+        "searchConcepts": [
+          "Michael Jackson glove",
+          "sequin glove",
+          "crystal microphone",
+          "King of Pop merchandise",
+          "music memorabilia"
+        ],
+        "places": [],
+        "categoryAlternatives": [],
+        "categoryGapSuggested": false,
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "structured_evidence_gap:subjects:person",
+          "verifier_unresolved"
+        ],
+        "verifierInvoked": true,
+        "wouldAutoApprove": false
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "title": "(33)",
+        "categoryId": "Sn9nmGJvFlIRO4DnFnIB",
+        "categoryName": "Pop Culture & Characters",
+        "promptVersion": "catalog-enrich-v30",
+        "normalizerVersion": "smart-profile-normalizer-v4",
+        "subjects": [
+          "Michael Jackson"
+        ],
+        "themes": [
+          "music",
+          "celebrity",
+          "iconic"
+        ],
+        "interests": [
+          "music",
+          "pop culture"
+        ],
+        "searchConcepts": [
+          "King of Pop",
+          "MJ",
+          "iconic glove",
+          "sparkling glove",
+          "diamond glove",
+          "music icon",
+          "signature style",
+          "singer's equipment"
+        ],
+        "places": [],
+        "categoryAlternatives": [],
+        "categoryGapSuggested": false,
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "shadow_would_auto_approve"
+        ],
+        "verifierInvoked": false,
+        "wouldAutoApprove": true
+      },
+      "callableData": {
+        "designId": "9bR7JWSWwv94Ofb7byC3",
+        "queued": true,
+        "completed": true,
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "evaluation": {
+        "verdict": "PASS WITH NOTES",
+        "notes": [
+          "would-auto-approve without person subject — review category/profile manually"
+        ],
+        "checks": {
+          "provenanceOk": true,
+          "lifecycleOk": true,
+          "notWouldAutoApprove": false,
+          "personBlocked": true
+        }
+      },
+      "verdict": "PASS WITH NOTES"
+    },
+    {
+      "id": "8m0KgJEel8kLpYlmZpFb",
+      "qaClass": "ambiguous-creature",
+      "label": "Ambiguous companions",
+      "prior": "Gate I FAIL PROFILE — noisy dog/creature subjects; verifier blocked",
+      "outcome": "enriched",
+      "before": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "title": "KJ3IAtTpYNodxY3MGu6f",
+        "categoryId": "qhGPaAHPOOmPe7PvQvi0",
+        "categoryName": "Animals",
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3",
+        "subjects": [
+          "furry creature",
+          "dog-like creature",
+          "girl",
+          "dog",
+          "creature"
+        ],
+        "themes": [
+          "friendship",
+          "whimsical",
+          "animal humor"
+        ],
+        "interests": [
+          "animals",
+          "pets"
+        ],
+        "searchConcepts": [
+          "cartoon animals",
+          "dog and girl illustration",
+          "three cartoon characters",
+          "whimsical animal art",
+          "funny animal friends",
+          "expressive cartoon faces",
+          "friends looking up"
+        ],
+        "places": [],
+        "categoryAlternatives": [],
+        "categoryGapSuggested": false,
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "structured_evidence_gap:objects:bow",
+          "verifier_unresolved"
+        ],
+        "verifierInvoked": true,
+        "wouldAutoApprove": false
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "title": "KJ3IAtTpYNodxY3MGu6f",
+        "categoryId": "AlgzH0Iw5RaVToa706Dd",
+        "categoryName": "Kids & Baby",
+        "promptVersion": "catalog-enrich-v30",
+        "normalizerVersion": "smart-profile-normalizer-v4",
+        "subjects": [
+          "girl",
+          "dog",
+          "monster"
+        ],
+        "themes": [
+          "friendship",
+          "whimsical",
+          "cute",
+          "imagination",
+          "fantasy"
+        ],
+        "interests": [
+          "animals",
+          "children",
+          "animation",
+          "fantasy"
+        ],
+        "searchConcepts": [
+          "whimsical characters",
+          "cute illustration",
+          "storybook art",
+          "animal friends",
+          "girl and creatures",
+          "playful art",
+          "black and white sketch"
+        ],
+        "places": [],
+        "categoryAlternatives": [],
+        "categoryGapSuggested": false,
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "structured_evidence_gap:subjects:dog",
+          "structured_evidence_gap:subjects:monster",
+          "verifier_unresolved"
+        ],
+        "verifierInvoked": true,
+        "wouldAutoApprove": false
+      },
+      "callableData": {
+        "designId": "8m0KgJEel8kLpYlmZpFb",
+        "queued": true,
+        "completed": true,
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "evaluation": {
+        "verdict": "PASS WITH NOTES",
+        "notes": [
+          "dog still present but blocked from unattended approval"
+        ],
+        "checks": {
+          "provenanceOk": true,
+          "lifecycleOk": true,
+          "notWouldAutoApprove": true
+        }
+      },
+      "verdict": "PASS WITH NOTES"
+    },
+    {
+      "id": "5NVU91SMRiecLkZqdrN8",
+      "qaClass": "category-false-positive",
+      "label": "Fantasy book / Floral & Nature",
+      "prior": "Gate I FAIL AUTOMATION — Floral & Nature + shadow_would_auto_approve",
+      "outcome": "enriched",
+      "before": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "title": "(8)",
+        "categoryId": "aqDBTE9a8D2R7hBwzSVD",
+        "categoryName": "Floral & Nature",
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3",
+        "subjects": [],
+        "themes": [
+          "fantasy",
+          "nature",
+          "storytelling",
+          "imagination"
+        ],
+        "interests": [
+          "reading",
+          "nature",
+          "fantasy"
+        ],
+        "searchConcepts": [
+          "magical book",
+          "story book",
+          "fantasy world",
+          "mushroom forest",
+          "enchanted forest",
+          "fairy tale book",
+          "adventure book"
+        ],
+        "places": [
+          "fantasy landscape"
+        ],
+        "categoryAlternatives": [],
+        "categoryGapSuggested": false,
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "shadow_would_auto_approve"
+        ],
+        "verifierInvoked": false,
+        "wouldAutoApprove": true
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "title": "(8)",
+        "categoryId": "aqDBTE9a8D2R7hBwzSVD",
+        "categoryName": "Floral & Nature",
+        "promptVersion": "catalog-enrich-v30",
+        "normalizerVersion": "smart-profile-normalizer-v4",
+        "subjects": [],
+        "themes": [
+          "fantasy",
+          "imagination",
+          "storytelling",
+          "dreamy",
+          "whimsical"
+        ],
+        "interests": [
+          "reading",
+          "fantasy",
+          "books"
+        ],
+        "searchConcepts": [
+          "storybook",
+          "magical world",
+          "portal",
+          "fantasy realm",
+          "enchanted forest",
+          "bookworm",
+          "escapism"
+        ],
+        "places": [
+          "fantasy landscape"
+        ],
+        "categoryAlternatives": [],
+        "categoryGapSuggested": false,
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "category_dominant_intent_conflict"
+        ],
+        "verifierInvoked": false,
+        "wouldAutoApprove": false
+      },
+      "callableData": {
+        "designId": "5NVU91SMRiecLkZqdrN8",
+        "queued": true,
+        "completed": true,
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "evaluation": {
+        "verdict": "PASS",
+        "notes": [
+          "category_dominant_intent_conflict fired as expected"
+        ],
+        "checks": {
+          "provenanceOk": true,
+          "lifecycleOk": true,
+          "notUnsafeFloralAutoApprove": true,
+          "hasConflictCode": true
+        }
+      },
+      "verdict": "PASS"
+    },
+    {
+      "id": "20fv9qb9gRLSB66nS3xp",
+      "qaClass": "text-driven-empty-subject",
+      "label": "Jesus saves / I spend",
+      "prior": "Gate I PASS — empty subjects OK",
+      "outcome": "enriched",
+      "before": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "title": "JesusSavesISpendDistressed",
+        "categoryId": "3KUsuaV9qIh88kIPF38T",
+        "categoryName": "Faith & Inspirational",
+        "promptVersion": "catalog-enrich-v29",
+        "normalizerVersion": "smart-profile-normalizer-v3",
+        "subjects": [],
+        "themes": [
+          "faith",
+          "inspirational",
+          "religious"
+        ],
+        "interests": [
+          "christianity"
+        ],
+        "searchConcepts": [
+          "jesus saves",
+          "religious quote",
+          "christian saying",
+          "faith-based",
+          "scripture inspired"
+        ],
+        "places": [],
+        "categoryAlternatives": [],
+        "categoryGapSuggested": false,
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "shadow_would_auto_approve"
+        ],
+        "verifierInvoked": false,
+        "wouldAutoApprove": true
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "title": "JesusSavesISpendDistressed",
+        "categoryId": "3KUsuaV9qIh88kIPF38T",
+        "categoryName": "Faith & Inspirational",
+        "promptVersion": "catalog-enrich-v30",
+        "normalizerVersion": "smart-profile-normalizer-v4",
+        "subjects": [],
+        "themes": [
+          "faith",
+          "inspirational"
+        ],
+        "interests": [
+          "christianity"
+        ],
+        "searchConcepts": [
+          "religious saying",
+          "Christian humor",
+          "Jesus quote",
+          "inspirational text"
+        ],
+        "places": [],
+        "categoryAlternatives": [],
+        "categoryGapSuggested": false,
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "shadow_would_auto_approve"
+        ],
+        "verifierInvoked": false,
+        "wouldAutoApprove": true
+      },
+      "callableData": {
+        "designId": "20fv9qb9gRLSB66nS3xp",
+        "queued": true,
+        "completed": true,
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "evaluation": {
+        "verdict": "PASS",
+        "notes": [],
+        "checks": {
+          "provenanceOk": true,
+          "lifecycleOk": true,
+          "emptyOrNoForcedSubject": true
+        }
+      },
+      "verdict": "PASS"
+    }
+  ],
+  "aborted": false,
+  "completedAt": "2026-08-26T15:58:53.909Z",
+  "counts": {
+    "total": 10,
+    "pass": 8,
+    "passWithNotes": 2,
+    "fail": 0
+  },
+  "overallVerdict": "PASS WITH NOTES",
+  "recommendation": "READY FOR SLICE 5 SIGNOFF REVIEW"
+}

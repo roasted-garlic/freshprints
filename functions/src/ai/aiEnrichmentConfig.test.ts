@@ -26,7 +26,12 @@ describe("resolveVisionModelId", () => {
     assert.equal(resolveVisionModelId("unknown-model"), DEFAULT_VISION_MODEL_ID);
   });
 
-  it("accepts each allowlisted model id", () => {
+  it("accepts each allowlisted model id including Luna", () => {
+    assert.deepEqual([...ALLOWED_VISION_MODEL_ID_LIST], [
+      "gemini-2.5-flash-lite",
+      "gemini-3.1-flash-lite",
+      "gpt-5.6-luna",
+    ]);
     for (const modelId of ALLOWED_VISION_MODEL_ID_LIST) {
       assert.equal(resolveVisionModelId(modelId), modelId);
       assert.equal(resolveVisionModelId(`  ${modelId}  `), modelId);
@@ -37,6 +42,20 @@ describe("resolveVisionModelId", () => {
     assert.equal(
       resolveEffectiveVisionModelId({
         configured: "gemini-2.5-flash-lite",
+        override: "gemini-3.1-flash-lite",
+      }),
+      "gemini-3.1-flash-lite",
+    );
+    assert.equal(
+      resolveEffectiveVisionModelId({
+        configured: "gemini-2.5-flash-lite",
+        override: "gpt-5.6-luna",
+      }),
+      "gpt-5.6-luna",
+    );
+    assert.equal(
+      resolveEffectiveVisionModelId({
+        configured: "gpt-5.6-luna",
         override: "gemini-3.1-flash-lite",
       }),
       "gemini-3.1-flash-lite",

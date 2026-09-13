@@ -1,3 +1,4 @@
+import { composeContinuousCustomerGroupedGangSheetSheets } from "./composeContinuousCustomerGroupedGangSheetSheets";
 import { composeGroupedGangSheetSheets } from "./composeGroupedGangSheetSheets";
 import { downloadAndResizeExportImage } from "./downloadAndResizeExportImage";
 import {
@@ -16,6 +17,14 @@ import {
   type NestableBox,
 } from "@fresh-prints/shared/utils/gangSheetNesting";
 import { buildGangSheetFilename, buildGangSheetSheetLabel } from "@fresh-prints/shared/utils/showExportFilename";
+import {
+  buildGroupedSectionHeadingSvg,
+  computeGroupedSectionLabelBandHeightPx,
+  resolveGroupedSectionLabelFontSizePx,
+  buildGangSheetLabelSvg,
+  computeGangSheetLabelBandHeightPx,
+} from "@fresh-prints/shared/utils/gangSheetLabelRendering";
+import { calculateGangSheetCustomerSectionSummary } from "@fresh-prints/shared/utils/gangSheetCustomerSectionSummary";
 import type {
   ClearGangSheetCacheRequest,
   DownloadCachedGangSheetRequest,
@@ -33,37 +42,6 @@ import type { ShowExportImageWarning } from "@fresh-prints/shared/types/export/s
 export type GangSheetExportProgressCallback = (event: GangSheetExportProgressEvent) => void;
 
 const EXPORT_DPI = 300;
-/** Clearance reserved below the label band's text before the first row of images starts. */
-const LABEL_CLEARANCE_PX = Math.round(EXPORT_DPI * 1.1);
-/** Padding above the label text, within the band, pushing it down from the very top edge. */
-const LABEL_TOP_PADDING_PX = 60;
-
-/** Label band height: padding above the text, the text's own font size, then the clearance below. */
-function computeLabelBandHeightPx(labelFontSizePx: number): number {
-  return LABEL_TOP_PADDING_PX + labelFontSizePx + LABEL_CLEARANCE_PX;
-}
-
-function escapeXmlText(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
-}
-
-function buildSheetLabelSvg(
-  label: string,
-  sheetWidthPx: number,
-  bandHeightPx: number,
-  labelFontSizePx: number,
-): string {
-  const textY = LABEL_TOP_PADDING_PX + labelFontSizePx;
-
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${sheetWidthPx}" height="${bandHeightPx}">
-    <text x="${sheetWidthPx / 2}" y="${textY}" font-family="sans-serif" font-size="${labelFontSizePx}" font-weight="bold" fill="#1a1a1a" text-anchor="middle">${escapeXmlText(label)}</text>
-  </svg>`;
-}
 
 export class AllGangSheetImagesFailedError extends Error {
   constructor() {
@@ -78,6 +56,8 @@ interface ResizedImage {
   pngBytes: Buffer;
   widthPx: number;
   heightPx: number;
+  printWidthInches: number;
+  printHeightInches: number;
 }
 
 /**
@@ -94,12 +74,16 @@ export async function generateGangSheetPng(
   let imageIndex = 0;
   let placementId = 0;
   const resizedImageGroups: ResizedImage[][] = [];
-  const resizedByAllocationId = new Map<
+  const resizedByAssetId = new Map<
     string,
-    Array<ResizedImage & { allocationId: string }>
+    Array<ResizedImage & { allocationId: string; requestItemId?: string }>
   >();
 
   for (const image of request.images) {
+    const assetId = image.requestItemId ?? image.allocationId;
+    if (!assetId) {
+      throw new Error("A gang sheet image is missing its source identity.");
+    }
     const downloadResult = await downloadAndResizeExportImage(
       image.downloadUrl,
       image.targetWidthPx,
@@ -135,14 +119,22 @@ export async function generateGangSheetPng(
         pngBytes: downloadResult.data.pngBytes,
         widthPx: image.targetWidthPx,
         heightPx: image.targetHeightPx,
+        printWidthInches: image.printWidthInches ?? image.targetWidthPx / EXPORT_DPI,
+        printHeightInches: image.printHeightInches ?? image.targetHeightPx / EXPORT_DPI,
       });
     }
 
     if (group.length > 0) {
       resizedImageGroups.push(group);
-      resizedByAllocationId.set(
-        image.allocationId,
-        group.map((entry) => ({ ...entry, allocationId: image.allocationId })),
+      resizedByAssetId.set(
+        assetId,
+        group.map((entry) => ({
+          ...entry,
+          allocationId: image.allocationId,
+          requestItemId: image.requestItemId,
+          printWidthInches: image.printWidthInches ?? entry.printWidthInches,
+          printHeightInches: image.printHeightInches ?? entry.printHeightInches,
+        })),
       );
     }
   }
@@ -155,12 +147,17 @@ export async function generateGangSheetPng(
   };
   const maxSheetHeightPx = Math.round(request.maxSheetLengthInches * EXPORT_DPI);
 
-  if (request.layoutMode === "grouped_by_customer") {
+  if (request.layoutMode === "grouped_by_customer" || request.layoutMode === "customer_grouped_continuous") {
     onProgress({ fileName: request.baseFileName, imageIndex: imageTotal, imageTotal, step: "nesting" });
 
-    const composedSheets = await composeGroupedGangSheetSheets({
+    const composeGroupedSheets =
+      request.layoutMode === "grouped_by_customer"
+        ? composeGroupedGangSheetSheets
+        : composeContinuousCustomerGroupedGangSheetSheets;
+
+    const composedSheets = await composeGroupedSheets({
       request,
-      resizedByAllocationId,
+      resizedByAllocationId: resizedByAssetId,
       sheetWidthPx,
       spacingPx,
       maxSheetHeightPx,
@@ -182,7 +179,7 @@ export async function generateGangSheetPng(
     }
 
     const fingerprint = fingerprintForRequest(request);
-    const placedImageCount = [...resizedByAllocationId.values()].reduce(
+    const placedImageCount = [...resizedByAssetId.values()].reduce(
       (sum, group) => sum + group.length,
       0,
     );
@@ -251,7 +248,20 @@ export async function generateGangSheetPng(
   }
 
   const sheetTotal = nestResult.sheets.length;
-  const labelBandHeightPx = computeLabelBandHeightPx(request.labelFontSizePx);
+  const requestSummary = request.cacheScope?.startsWith("print-request:") && request.sectionPricing
+    ? calculateGangSheetCustomerSectionSummary(
+        request.images.map((image) => ({
+          printWidthInches: image.printWidthInches ?? image.targetWidthPx / EXPORT_DPI,
+          printHeightInches: image.printHeightInches ?? image.targetHeightPx / EXPORT_DPI,
+          quantity: image.quantity,
+        })),
+        request.sectionPricing,
+      )
+    : null;
+  const summaryFontSizePx = resolveGroupedSectionLabelFontSizePx(request.labelFontSizePx);
+  const labelBandHeightPx = requestSummary
+    ? computeGroupedSectionLabelBandHeightPx(request.labelFontSizePx, summaryFontSizePx)
+    : computeGangSheetLabelBandHeightPx(request.labelFontSizePx);
   const composedSheets: Array<{ fileName: string; lengthInches: number; heightPx: number; buffer: Buffer }> = [];
 
   for (const [sheetOffset, sheet] of nestResult.sheets.entries()) {
@@ -268,8 +278,22 @@ export async function generateGangSheetPng(
     const sheetHeightPx = sheet.sheetHeightPx + labelBandHeightPx;
     const lengthInches = sheetHeightPx / EXPORT_DPI;
     const fileName = buildGangSheetFilename(request.baseFileName, sheetIndex, sheetTotal, lengthInches);
-    const label = buildGangSheetSheetLabel(request.baseFileName, sheetIndex, sheetTotal);
-    const labelSvg = buildSheetLabelSvg(label, sheetWidthPx, labelBandHeightPx, request.labelFontSizePx);
+    const label = buildGangSheetSheetLabel(request.sheetLabel ?? request.baseFileName, sheetIndex, sheetTotal);
+    const labelSvg = requestSummary
+      ? buildGroupedSectionHeadingSvg({
+          heading: label,
+          summaryLines: [requestSummary.priceLine, requestSummary.weightLine],
+          sheetWidthPx,
+          bandHeightPx: labelBandHeightPx,
+          headingFontSizePx: request.labelFontSizePx,
+          summaryFontSizePx,
+        })
+      : buildGangSheetLabelSvg({
+          label,
+          sheetWidthPx,
+          bandHeightPx: labelBandHeightPx,
+          labelFontSizePx: request.labelFontSizePx,
+        });
 
     const compositeInputs = await Promise.all(
       sheet.placements.map(async (placement) => ({

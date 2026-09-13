@@ -13,12 +13,17 @@ import {
   type EmailProviderId,
 } from "../../packages/shared/src/constants/emailProviders.constants";
 import {
+  ASSISTED_CREATION_FINAL_ARTWORK_EMAIL_SENT_NOTE,
   ASSISTED_CREATION_PROOF_EMAIL_SENT_NOTE,
   isAssistedProofEmailOptedIn,
 } from "../../packages/shared/src/utils/assistedCreationHistory";
 import { adminDb } from "./lib/admin";
 import { sendEmail } from "./lib/email/emailRouter";
-import { buildCatalogShareReadyEmail, buildProofReadyEmail } from "./lib/email/emailTemplates";
+import {
+  buildCatalogShareReadyEmail,
+  buildFinalArtworkReadyEmail,
+  buildProofReadyEmail,
+} from "./lib/email/emailTemplates";
 import { EmailDeliveryError } from "./lib/email/email.types";
 import {
   canClaimEmailJob,
@@ -38,6 +43,7 @@ interface ClaimedProofJob {
   requestId: string;
   proofId: string;
   designId: string;
+  finalSourceId: string;
   customerId: string;
   customerUid: string;
   provider: EmailProviderId;
@@ -82,6 +88,7 @@ async function claimJob(jobId: string): Promise<ClaimedProofJob | null> {
       requestId: String(data.requestId ?? ""),
       proofId: String(data.proofId ?? ""),
       designId: String(data.designId ?? ""),
+      finalSourceId: String(data.finalSourceId ?? ""),
       customerId: String(data.customerId ?? ""),
       customerUid: String(data.customerUid ?? ""),
       provider: data.provider,
@@ -155,7 +162,9 @@ async function appendProofEmailSentHistory(job: ClaimedProofJob): Promise<void> 
   const note =
     job.kind === "assisted_catalog_share_ready"
       ? "Library-match email sent"
-      : ASSISTED_CREATION_PROOF_EMAIL_SENT_NOTE;
+      : job.kind === "assisted_final_artwork_ready"
+        ? ASSISTED_CREATION_FINAL_ARTWORK_EMAIL_SENT_NOTE
+        : ASSISTED_CREATION_PROOF_EMAIL_SENT_NOTE;
   await adminDb.runTransaction(async (tx) => {
     const snap = await tx.get(docRef);
     if (!snap.exists) {
@@ -226,12 +235,19 @@ export const onEmailDeliveryJobCreated = onDocumentCreated(
               displayName: recipient.displayName,
               reviewUrl,
             })
-          : buildProofReadyEmail({
-              from: proofNoticeFromEmail.value(),
-              to: recipient.email,
-              displayName: recipient.displayName,
-              reviewUrl,
-            });
+          : job.kind === "assisted_final_artwork_ready"
+            ? buildFinalArtworkReadyEmail({
+                from: proofNoticeFromEmail.value(),
+                to: recipient.email,
+                displayName: recipient.displayName,
+                reviewUrl,
+              })
+            : buildProofReadyEmail({
+                from: proofNoticeFromEmail.value(),
+                to: recipient.email,
+                displayName: recipient.displayName,
+                reviewUrl,
+              });
       const result = await sendEmail({
         provider: job.provider,
         apiKey: resolveEmailApiKey(job.provider, {
@@ -249,6 +265,7 @@ export const onEmailDeliveryJobCreated = onDocumentCreated(
         requestId: job.requestId,
         proofId: job.proofId,
         designId: job.designId,
+        finalSourceId: job.finalSourceId,
         provider: job.provider,
       });
     } catch (unknownError) {

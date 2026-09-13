@@ -1,0 +1,528 @@
+{
+  "projectId": "fresh-prints-dev",
+  "taxonomyRevision": 17,
+  "cuteDescription": null,
+  "animalsDescription": "Use this category when an animal is the main subject, strongest visual theme, or primary reason someone would buy the design. Strong signals include dogs, cats, cows, highland cows, chickens, roosters, pigs, horses, goats, ducks, deer, bears, wolves, foxes, rabbits, birds, owls, eagles, butterflies, bees, turtles, frogs, snakes, fish, sharks, dinosaurs, zoo animals, safari animals, farm animals, woodland animals, pets, animal moms, and cute animal art. Examples include dog lover shirts, highland cow graphics, farm animal tees, butterfly designs, dinosaur shirts, cat humor, and woodland animal designs. Choose this when the animal drives the design; choose the stronger buyer-intent category when the animal is secondary to a holiday, sport, job, family role, cause, western theme, or recognizable pop culture reference.",
+  "resolverConsumesMatchedTags": true,
+  "resolverConsumesStyles": false,
+  "note": "exact replay uses live final category as raw when unknown (rawCategory not persisted). Highland uses Animals. Rough scores are token-overlap against name+description only (not full PRIORITY_FAMILY boosts).",
+  "results": [
+    {
+      "label": "highland_cow_flowers_bow",
+      "id": "swcJl3RvjTFsf5hp04Ze",
+      "title": "Highland Cow With Flowers And Bow",
+      "liveFinalCategory": "Animals",
+      "livePromptVersion": "catalog-enrich-v34",
+      "tagCount": 3,
+      "tagsSample": [
+        "cartoon",
+        "country",
+        "western"
+      ],
+      "rawUsedForExactReplay": "Animals",
+      "exactWithTags": "Animals",
+      "exactWithoutTags": "Animals",
+      "exactBranchChanged": false,
+      "fallbackWithTags": "Animals",
+      "fallbackWithoutTags": "Animals",
+      "fallbackBranchChanged": false,
+      "animalsRough": {
+        "withTags": {
+          "overlap": 22,
+          "distinctHits": 11,
+          "sampleHits": [
+            "animals",
+            "highland",
+            "cow",
+            "design",
+            "western",
+            "cute",
+            "animal",
+            "humor",
+            "pets",
+            "lover",
+            "farm"
+          ]
+        },
+        "withoutTags": {
+          "overlap": 21,
+          "distinctHits": 10,
+          "sampleHits": [
+            "animals",
+            "highland",
+            "cow",
+            "design",
+            "cute",
+            "animal",
+            "humor",
+            "pets",
+            "lover",
+            "farm"
+          ]
+        }
+      },
+      "cuteRough": {
+        "withTags": null,
+        "withoutTags": null
+      },
+      "stylesPresentButNotInResolver": [
+        "cartoon",
+        "cute",
+        "whimsical",
+        "illustration",
+        "detailed",
+        "hand-drawn"
+      ]
+    },
+    {
+      "label": "judas_priest",
+      "id": "Wt5eILv4uyCnYNoJI8uZ",
+      "title": "Judas Priest Painkiller",
+      "liveFinalCategory": "Music & Bands",
+      "livePromptVersion": "catalog-enrich-v34",
+      "tagCount": 0,
+      "tagsSample": [],
+      "rawUsedForExactReplay": "Pop Culture & Characters",
+      "exactWithTags": "Music & Bands",
+      "exactWithoutTags": "Music & Bands",
+      "exactBranchChanged": false,
+      "fallbackWithTags": "Pop Culture & Characters",
+      "fallbackWithoutTags": "Pop Culture & Characters",
+      "fallbackBranchChanged": false,
+      "animalsRough": {
+        "withTags": {
+          "overlap": 5,
+          "distinctHits": 3,
+          "sampleHits": [
+            "pop",
+            "culture",
+            "art"
+          ]
+        },
+        "withoutTags": {
+          "overlap": 5,
+          "distinctHits": 3,
+          "sampleHits": [
+            "pop",
+            "culture",
+            "art"
+          ]
+        }
+      },
+      "cuteRough": {
+        "withTags": null,
+        "withoutTags": null
+      },
+      "stylesPresentButNotInResolver": [
+        "illustration",
+        "graphic",
+        "detailed",
+        "bold",
+        "dark"
+      ]
+    },
+    {
+      "label": "dolly_music",
+      "id": "Ai4Wmfp4Vd6Ady2WCsKC",
+      "title": "Dolly Parton I Will Always Love You Sheet Music Portrait",
+      "liveFinalCategory": "Music & Bands",
+      "livePromptVersion": "catalog-enrich-v34",
+      "tagCount": 1,
+      "tagsSample": [
+        "celebrity"
+      ],
+      "rawUsedForExactReplay": "Music & Bands",
+      "exactWithTags": "Music & Bands",
+      "exactWithoutTags": "Music & Bands",
+      "exactBranchChanged": false,
+      "fallbackWithTags": "Music & Bands",
+      "fallbackWithoutTags": "Music & Bands",
+      "fallbackBranchChanged": false,
+      "animalsRough": {
+        "withTags": {
+          "overlap": 6,
+          "distinctHits": 5,
+          "sampleHits": [
+            "design",
+            "art",
+            "western",
+            "pop",
+            "culture"
+          ]
+        },
+        "withoutTags": {
+          "overlap": 6,
+          "distinctHits": 5,
+          "sampleHits": [
+            "design",
+            "art",
+            "western",
+            "pop",
+            "culture"
+          ]
+        }
+      },
+      "cuteRough": {
+        "withTags": null,
+        "withoutTags": null
+      },
+      "stylesPresentButNotInResolver": [
+        "typography",
+        "realistic",
+        "photographic"
+      ]
+    },
+    {
+      "label": "scooby_pop",
+      "id": "0UsPRAh0tggzuX8xwWqq",
+      "title": "Scooby-doo Bursting Through",
+      "liveFinalCategory": "Pop Culture & Characters",
+      "livePromptVersion": "catalog-enrich-v34",
+      "tagCount": 1,
+      "tagsSample": [
+        "soda"
+      ],
+      "rawUsedForExactReplay": "Pop Culture & Characters",
+      "exactWithTags": "Pop Culture & Characters",
+      "exactWithoutTags": "Pop Culture & Characters",
+      "exactBranchChanged": false,
+      "fallbackWithTags": "Animals",
+      "fallbackWithoutTags": "Animals",
+      "fallbackBranchChanged": false,
+      "animalsRough": {
+        "withTags": {
+          "overlap": 13,
+          "distinctHits": 8,
+          "sampleHits": [
+            "pop",
+            "culture",
+            "this",
+            "design",
+            "dog",
+            "humor",
+            "pets",
+            "dogs"
+          ]
+        },
+        "withoutTags": {
+          "overlap": 13,
+          "distinctHits": 8,
+          "sampleHits": [
+            "pop",
+            "culture",
+            "this",
+            "design",
+            "dog",
+            "humor",
+            "pets",
+            "dogs"
+          ]
+        }
+      },
+      "cuteRough": {
+        "withTags": null,
+        "withoutTags": null
+      },
+      "stylesPresentButNotInResolver": [
+        "cartoon",
+        "illustration",
+        "graphic",
+        "colorful"
+      ]
+    },
+    {
+      "label": "faith",
+      "id": "8pSowFU1o1H1EjXBaXaA",
+      "title": "I Can Do All Things Through Christ Who Strengthens Me Cross",
+      "liveFinalCategory": "Faith & Worship",
+      "livePromptVersion": "catalog-enrich-v34",
+      "tagCount": 2,
+      "tagsSample": [
+        "jesus",
+        "typography"
+      ],
+      "rawUsedForExactReplay": "Faith & Worship",
+      "exactWithTags": "Faith & Worship",
+      "exactWithoutTags": "Faith & Worship",
+      "exactBranchChanged": false,
+      "fallbackWithTags": "Faith & Worship",
+      "fallbackWithoutTags": "Faith & Worship",
+      "fallbackBranchChanged": false,
+      "animalsRough": {
+        "withTags": {
+          "overlap": 1,
+          "distinctHits": 1,
+          "sampleHits": [
+            "design"
+          ]
+        },
+        "withoutTags": {
+          "overlap": 1,
+          "distinctHits": 1,
+          "sampleHits": [
+            "design"
+          ]
+        }
+      },
+      "cuteRough": {
+        "withTags": null,
+        "withoutTags": null
+      },
+      "stylesPresentButNotInResolver": [
+        "typography",
+        "graphic",
+        "text-dominant"
+      ]
+    },
+    {
+      "label": "inspirational",
+      "id": "74BdnNQuNWz0N0GaL4CO",
+      "title": "If You See Someone Without A Smile Give Em Yours Dolly",
+      "liveFinalCategory": "Inspirational Quotes & Affirmations",
+      "livePromptVersion": "catalog-enrich-v34",
+      "tagCount": 2,
+      "tagsSample": [
+        "celebrity",
+        "southern"
+      ],
+      "rawUsedForExactReplay": "Inspirational Quotes & Affirmations",
+      "exactWithTags": "Inspirational Quotes & Affirmations",
+      "exactWithoutTags": "Inspirational Quotes & Affirmations",
+      "exactBranchChanged": false,
+      "fallbackWithTags": "Inspirational Quotes & Affirmations",
+      "fallbackWithoutTags": "Inspirational Quotes & Affirmations",
+      "fallbackBranchChanged": false,
+      "animalsRough": {
+        "withTags": {
+          "overlap": 4,
+          "distinctHits": 2,
+          "sampleHits": [
+            "someone",
+            "design"
+          ]
+        },
+        "withoutTags": {
+          "overlap": 4,
+          "distinctHits": 2,
+          "sampleHits": [
+            "someone",
+            "design"
+          ]
+        }
+      },
+      "cuteRough": {
+        "withTags": null,
+        "withoutTags": null
+      },
+      "stylesPresentButNotInResolver": [
+        "typography",
+        "cursive",
+        "script"
+      ]
+    },
+    {
+      "label": "humor_animals_fcawf",
+      "id": "7bVlWMFwxECdfHH8VNPB",
+      "title": "F Caw F-03",
+      "liveFinalCategory": "Animals",
+      "livePromptVersion": "catalog-enrich-v33",
+      "tagCount": 5,
+      "tagsSample": [
+        "teentitans",
+        "black",
+        "white",
+        "distressed",
+        "typography"
+      ],
+      "rawUsedForExactReplay": "Animals",
+      "exactWithTags": "Animals",
+      "exactWithoutTags": "Animals",
+      "exactBranchChanged": false,
+      "fallbackWithTags": "Animals",
+      "fallbackWithoutTags": "Animals",
+      "fallbackBranchChanged": false,
+      "animalsRough": {
+        "withTags": {
+          "overlap": 9,
+          "distinctHits": 4,
+          "sampleHits": [
+            "animals",
+            "humor",
+            "animal",
+            "pets"
+          ]
+        },
+        "withoutTags": {
+          "overlap": 9,
+          "distinctHits": 4,
+          "sampleHits": [
+            "animals",
+            "humor",
+            "animal",
+            "pets"
+          ]
+        }
+      },
+      "cuteRough": {
+        "withTags": null,
+        "withoutTags": null
+      },
+      "stylesPresentButNotInResolver": [
+        "illustration",
+        "distressed",
+        "typography",
+        "monochromatic"
+      ]
+    },
+    {
+      "label": "cannabis_420",
+      "id": "w4w0E66YWioBYTkR0aIH",
+      "title": "420 Weed",
+      "liveFinalCategory": "Cannabis & 420",
+      "livePromptVersion": "catalog-enrich-v33",
+      "tagCount": 1,
+      "tagsSample": [
+        "peace"
+      ],
+      "rawUsedForExactReplay": "Cannabis & 420",
+      "exactWithTags": "Cannabis & 420",
+      "exactWithoutTags": "Cannabis & 420",
+      "exactBranchChanged": false,
+      "fallbackWithTags": "Cannabis & 420",
+      "fallbackWithoutTags": "Cannabis & 420",
+      "fallbackBranchChanged": false,
+      "animalsRough": {
+        "withTags": {
+          "overlap": 5,
+          "distinctHits": 3,
+          "sampleHits": [
+            "design",
+            "this",
+            "culture"
+          ]
+        },
+        "withoutTags": {
+          "overlap": 5,
+          "distinctHits": 3,
+          "sampleHits": [
+            "design",
+            "this",
+            "culture"
+          ]
+        }
+      },
+      "cuteRough": {
+        "withTags": null,
+        "withoutTags": null
+      },
+      "stylesPresentButNotInResolver": [
+        "illustration",
+        "graphic",
+        "bold"
+      ]
+    },
+    {
+      "label": "family_only_dads",
+      "id": "EBK8d0skHLCXtHssIr9C",
+      "title": "Only Dads Man Pole",
+      "liveFinalCategory": "Funny & Sarcastic",
+      "livePromptVersion": "catalog-enrich-v33",
+      "tagCount": 5,
+      "tagsSample": [
+        "dad",
+        "dance",
+        "birthday",
+        "sarcastic",
+        "party"
+      ],
+      "rawUsedForExactReplay": "Funny & Sarcastic",
+      "exactWithTags": "Funny & Sarcastic",
+      "exactWithoutTags": "Funny & Sarcastic",
+      "exactBranchChanged": false,
+      "fallbackWithTags": "Funny & Sarcastic",
+      "fallbackWithoutTags": "Funny & Sarcastic",
+      "fallbackBranchChanged": false,
+      "animalsRough": {
+        "withTags": {
+          "overlap": 3,
+          "distinctHits": 2,
+          "sampleHits": [
+            "design",
+            "humor"
+          ]
+        },
+        "withoutTags": {
+          "overlap": 3,
+          "distinctHits": 2,
+          "sampleHits": [
+            "design",
+            "humor"
+          ]
+        }
+      },
+      "cuteRough": {
+        "withTags": null,
+        "withoutTags": null
+      },
+      "stylesPresentButNotInResolver": [
+        "silhouette",
+        "typography",
+        "humorous"
+      ]
+    },
+    {
+      "label": "occupations_nurse",
+      "id": "mZWO3Lsra91EhNRNEkhR",
+      "title": "Nurse Brain Please Don't Interrupt",
+      "liveFinalCategory": "Occupations",
+      "livePromptVersion": "catalog-enrich-v33",
+      "tagCount": 0,
+      "tagsSample": [],
+      "rawUsedForExactReplay": "Occupations",
+      "exactWithTags": "Occupations",
+      "exactWithoutTags": "Occupations",
+      "exactBranchChanged": false,
+      "fallbackWithTags": "School & Education",
+      "fallbackWithoutTags": "School & Education",
+      "fallbackBranchChanged": false,
+      "animalsRough": {
+        "withTags": {
+          "overlap": 7,
+          "distinctHits": 2,
+          "sampleHits": [
+            "theme",
+            "humor"
+          ]
+        },
+        "withoutTags": {
+          "overlap": 7,
+          "distinctHits": 2,
+          "sampleHits": [
+            "theme",
+            "humor"
+          ]
+        }
+      },
+      "cuteRough": {
+        "withTags": null,
+        "withoutTags": null
+      },
+      "stylesPresentButNotInResolver": [
+        "cartoon",
+        "bold",
+        "colorful",
+        "typography",
+        "graphic",
+        "illustration"
+      ]
+    }
+  ],
+  "summary": {
+    "cases": 10,
+    "exactCategoryChangedCount": 0,
+    "fallbackCategoryChangedCount": 0,
+    "exactChangedLabels": [],
+    "fallbackChangedLabels": [],
+    "legacyTagInfluence": "NON-MATERIAL"
+  }
+}

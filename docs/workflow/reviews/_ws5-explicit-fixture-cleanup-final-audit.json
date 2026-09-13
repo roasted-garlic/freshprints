@@ -1,0 +1,32 @@
+{
+  "designId": "N3Ag21ThKyFXLTTsKAZZ",
+  "status": "ready",
+  "aiReviewStatus": "approved",
+  "isExplicitContent": true,
+  "censoredTerms": [
+    "damn"
+  ],
+  "aiReviewedBy": "system:catalog-autonomy",
+  "readyAt": "2026-09-05T16:09:01.625Z",
+  "portalCatalogPublicationStatus": "synced",
+  "portalCatalogPublicationError": null,
+  "automationDecision": "auto_approved",
+  "promptVersion": "catalog-enrich-v34",
+  "normalizerVersion": "smart-profile-normalizer-v6",
+  "schemaVersion": "smart-profile-v1",
+  "originalPath": "/originals/N3Ag21ThKyFXLTTsKAZZ.png",
+  "previewPath": "/previews/N3Ag21ThKyFXLTTsKAZZ.webp",
+  "thumbnailPath": "/thumbnails/N3Ag21ThKyFXLTTsKAZZ.webp",
+  "ownerQa": "PASS",
+  "capturedAt": "2026-09-05T18:26:23.770Z",
+  "gate": {
+    "mode": "shadow",
+    "live": false
+  },
+  "pendingJobs": [],
+  "pubFailedSample": 0,
+  "algoliaBefore": {
+    "indexName": "portal_catalog_ready_dev",
+    "objectPresent": true
+  }
+}

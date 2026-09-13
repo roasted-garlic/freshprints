@@ -343,6 +343,26 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
     });
   }, []);
 
+  /**
+   * Insert or replace a full design in the local list (Needs Review live-return after reprocess).
+   * Unlike applyDesignPatch, this works when the design was dropped by a reload/query replace.
+   */
+  const upsertDesignIntoList = useCallback((design: Design) => {
+    clearLedgerEntry(terminalAiProcessingLedgerRef.current, design.id);
+    designService.invalidateReadCaches(design.id);
+    generationRef.current += 1;
+
+    setState((currentState) => {
+      const index = currentState.designs.findIndex((entry) => entry.id === design.id);
+      if (index < 0) {
+        return { ...currentState, designs: [design, ...currentState.designs] };
+      }
+      const nextDesigns = currentState.designs.slice();
+      nextDesigns[index] = design;
+      return { ...currentState, designs: nextDesigns };
+    });
+  }, []);
+
   const clearTerminalAiProcessingLedgerEntry = useCallback((designId: string) => {
     clearLedgerEntry(terminalAiProcessingLedgerRef.current, designId);
   }, []);
@@ -360,6 +380,7 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
     isLoading: isAwaitingCurrentQuery,
     isLoadingMore: state.isLoadingMore,
     applyDesignPatch,
+    upsertDesignIntoList,
     clearTerminalAiProcessingLedgerEntry,
     hasTerminalAiProcessingLedgerEntry,
     loadMoreDesigns,

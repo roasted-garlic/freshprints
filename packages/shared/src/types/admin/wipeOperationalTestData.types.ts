@@ -9,6 +9,7 @@ export const OPERATIONAL_WIPE_TARGETS = [
   "printRequests",
   "showQueueAttachments",
   "upcomingShows",
+  "internalGangSheets",
   "sequences",
   "designRequestStats",
   "designs",

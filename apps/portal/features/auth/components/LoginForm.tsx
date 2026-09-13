@@ -11,6 +11,7 @@ import {
   buildPortalAuthHref,
   getPortalReturnToFromSearch,
   resolvePortalPostAuthPath,
+  resolvePortalPostAuthPathForSession,
 } from '../utils/portalReturnUrl';
 import { buildPortalRegisterHref } from '../utils/requirePortalLogin';
 import { LogInIcon } from '../../shared/components/PortalIcons';
@@ -55,11 +56,24 @@ export function LoginForm() {
   }, [error]);
 
   useEffect(() => {
+    if (bootstrapStatus === 'loading-profile' || bootstrapStatus === 'initializing') {
+      return;
+    }
+
+    setIsSubmitting(false);
+  }, [bootstrapStatus]);
+
+  useEffect(() => {
     const returnTo = resolvePortalPostAuthPath(
       getPortalReturnToFromSearch(window.location.search),
     );
     if (isAuthenticated) {
-      router.replace(returnTo);
+      router.replace(
+        resolvePortalPostAuthPathForSession(
+          returnTo,
+          bootstrapStatus === 'portal-admin' ? 'admin' : 'customer',
+        ),
+      );
       return;
     }
 
@@ -108,13 +122,22 @@ export function LoginForm() {
     isAuthActionLoading ||
     (bootstrapStatus === 'loading-profile' && Boolean(firebaseUser));
 
-  const registerHref =
-    typeof window !== 'undefined'
-      ? buildPortalRegisterHref(getPortalReturnToFromSearch(window.location.search))
-      : '/register';
+  const showGlobalAuthError = Boolean(error) && !isBusy && !isAuthenticated;
+
+  const [registerHref, setRegisterHref] = useState('/register');
+
+  useEffect(() => {
+    setRegisterHref(buildPortalRegisterHref(getPortalReturnToFromSearch(window.location.search)));
+  }, []);
 
   return (
     <div className="portal-auth-stack portal-auth-stack-compact">
+      {showGlobalAuthError ? (
+        <p className="portal-form-error" role="alert">
+          {error}
+        </p>
+      ) : null}
+
       <GoogleAuthButton
         disabled={isBusy || isResetting}
         isLoading={isBusy}
@@ -152,7 +175,7 @@ export function LoginForm() {
             <input autoComplete="current-password" name="password" required type="password" />
           </label>
 
-          {error ? <p className="portal-form-error">{error}</p> : null}
+          {showGlobalAuthError ? null : error ? <p className="portal-form-error">{error}</p> : null}
 
           <button
             className="portal-button portal-button-primary portal-button-leading-icon"

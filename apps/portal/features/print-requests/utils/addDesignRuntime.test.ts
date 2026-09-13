@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  SUBMIT_NUDGE_TOAST_ACTION_LABEL,
+  SUBMIT_NUDGE_TOAST_DURATION_MS,
+  SUBMIT_NUDGE_TOAST_MESSAGE,
   announceCurrentDesignAdded,
   requireCurrentSignedIn,
 } from "./addDesignRuntime";
@@ -49,31 +52,40 @@ describe("add-design current runtime dependencies", () => {
     assert.equal(redirects.length, 1);
   });
 
-  it("uses the latest toast function and invokes the latest Undo action exactly once", () => {
+  it("announces a long-lived review/submit nudge instead of Undo", () => {
     const messages: string[] = [];
+    const optionsSeen: Array<{
+      action: { label: string; onClick: () => void };
+      durationMs?: number;
+    }> = [];
     const showSuccessRef: {
       current: (
         message: string,
-        options: { action: { label: string; onClick: () => void } },
+        options: {
+          action: { label: string; onClick: () => void };
+          durationMs?: number;
+        },
       ) => void;
     } = {
       current: () => undefined,
     };
-    let latestUndoCount = 0;
+    let reviewCount = 0;
     showSuccessRef.current = (message, options) => {
       messages.push(message);
+      optionsSeen.push(options);
       options.action.onClick();
     };
 
     announceCurrentDesignAdded({
-      title: "Cat",
       showSuccessRef,
-      onUndo: () => {
-        latestUndoCount += 1;
+      onReviewRequest: () => {
+        reviewCount += 1;
       },
     });
 
-    assert.deepEqual(messages, ["Added “Cat” to your Current Request."]);
-    assert.equal(latestUndoCount, 1);
+    assert.deepEqual(messages, [SUBMIT_NUDGE_TOAST_MESSAGE]);
+    assert.equal(optionsSeen[0]?.action.label, SUBMIT_NUDGE_TOAST_ACTION_LABEL);
+    assert.equal(optionsSeen[0]?.durationMs, SUBMIT_NUDGE_TOAST_DURATION_MS);
+    assert.equal(reviewCount, 1);
   });
 });

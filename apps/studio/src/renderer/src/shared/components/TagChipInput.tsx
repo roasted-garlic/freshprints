@@ -2,13 +2,13 @@ import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 
 import { X } from "lucide-react";
 
 import type { CatalogTag } from "../../features/designs/types/catalogTag.types";
-import { formatTagsInput, tryParseTagsInput } from "../../features/designs/utils/designFormMapper";
+import { formatTagsInput } from "../../features/designs/utils/designFormMapper";
 import { resolveCatalogTagCandidate } from "../../features/designs/utils/catalogTagNormalizer";
 import {
   buildCatalogTagSuggestions,
   type CatalogTagSuggestion,
 } from "../../features/designs/utils/catalogTagSuggestions";
-import { MAX_DESIGN_TAG_LENGTH, MAX_DESIGN_TAGS, normalizeDesignTags } from "../../features/designs/utils/designTagNormalizer";
+import { MAX_DESIGN_TAG_LENGTH, MAX_DESIGN_TAGS } from "../../features/designs/utils/designTagNormalizer";
 import { findScrollableAncestor } from "../utils/findScrollableAncestor";
 
 interface TagChipInputProps {
@@ -21,6 +21,10 @@ interface TagChipInputProps {
   approvedTags?: CatalogTag[];
   disabled?: boolean;
   label: string;
+  /** Max chips allowed. Defaults to design-tag limit (20). */
+  maxTags?: number;
+  /** Max characters per chip. Defaults to design-tag limit (40). */
+  maxTagLength?: number;
   name: string;
   onBlur?: () => void;
   onChange: (value: string) => void;
@@ -31,19 +35,50 @@ interface TagChipInputProps {
 /** Matches the CSS max-height for .tag-chip-suggestions — used to decide whether it should open upward. */
 const TAG_CHIP_SUGGESTIONS_ESTIMATED_HEIGHT_PX = 240;
 
-function tryNormalizeTag(rawTag: string): string | null {
-  const trimmedTag = rawTag.trim();
+function parseChipValues(value: string, maxTags: number, maxTagLength: number): string[] {
+  const tags: string[] = [];
+  const seen = new Set<string>();
 
-  if (!trimmedTag) {
+  for (const rawTag of value.split(",")) {
+    let normalizedTag = rawTag.trim().toLowerCase();
+    if (!normalizedTag) {
+      continue;
+    }
+
+    if (normalizedTag.length > maxTagLength) {
+      normalizedTag = normalizedTag.slice(0, maxTagLength).trim();
+      if (!normalizedTag) {
+        continue;
+      }
+    }
+
+    if (seen.has(normalizedTag)) {
+      continue;
+    }
+
+    if (tags.length >= maxTags) {
+      break;
+    }
+
+    seen.add(normalizedTag);
+    tags.push(normalizedTag);
+  }
+
+  return tags;
+}
+
+function tryNormalizeFreeformChip(rawTag: string, maxTagLength: number): string | null {
+  const normalizedTag = rawTag.trim().toLowerCase();
+
+  if (!normalizedTag) {
     return null;
   }
 
-  try {
-    const [normalizedTag] = normalizeDesignTags([trimmedTag]);
-    return normalizedTag ?? null;
-  } catch {
+  if (normalizedTag.length > maxTagLength) {
     return null;
   }
+
+  return normalizedTag;
 }
 
 export function TagChipInput({
@@ -51,6 +86,8 @@ export function TagChipInput({
   approvedTags,
   disabled = false,
   label,
+  maxTags = MAX_DESIGN_TAGS,
+  maxTagLength = MAX_DESIGN_TAG_LENGTH,
   name,
   onBlur,
   onChange,
@@ -66,7 +103,7 @@ export function TagChipInput({
   const [opensUpward, setOpensUpward] = useState(false);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
   const blurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const tags = tryParseTagsInput(value);
+  const tags = parseChipValues(value, maxTags, maxTagLength);
 
   const restrictToApproved = approvedTags !== undefined;
 
@@ -128,7 +165,7 @@ export function TagChipInput({
       return resolveCatalogTagCandidate(token, approvedTags);
     }
 
-    return tryNormalizeTag(token);
+    return tryNormalizeFreeformChip(token, maxTagLength);
   }
 
   function addResolvedTag(canonicalName: string): boolean {
@@ -136,7 +173,7 @@ export function TagChipInput({
       return true;
     }
 
-    if (tags.length >= MAX_DESIGN_TAGS) {
+    if (tags.length >= maxTags) {
       return false;
     }
 
@@ -162,13 +199,11 @@ export function TagChipInput({
       const canonicalName = resolveToken(token);
 
       if (!canonicalName) {
-        if (restrictToApproved) {
-          rejectedTokens.push(token);
-        }
+        rejectedTokens.push(token);
         continue;
       }
 
-      if (nextTags.includes(canonicalName) || nextTags.length >= MAX_DESIGN_TAGS) {
+      if (nextTags.includes(canonicalName) || nextTags.length >= maxTags) {
         continue;
       }
 
@@ -179,17 +214,23 @@ export function TagChipInput({
       emitTags(nextTags);
     }
 
-    setRejectionHint(
-      rejectedTokens.length > 0
-        ? `Not an approved tag: ${rejectedTokens.join(", ")}. Pick from the suggestions.`
-        : null,
-    );
+    if (rejectedTokens.length > 0) {
+      setRejectionHint(
+        restrictToApproved
+          ? `Not an approved tag: ${rejectedTokens.join(", ")}. Pick from the suggestions.`
+          : `Could not add: ${rejectedTokens.join(", ")}.`,
+      );
+    } else if (nextTags.length === tags.length && tokens.length > 0 && tags.length >= maxTags) {
+      setRejectionHint(`At most ${maxTags} items allowed.`);
+    } else {
+      setRejectionHint(null);
+    }
     setInputValue("");
   }
 
   function selectSuggestion(suggestion: CatalogTagSuggestion) {
     const added = addResolvedTag(suggestion.name);
-    setRejectionHint(added ? null : `A design can have at most ${MAX_DESIGN_TAGS} tags.`);
+    setRejectionHint(added ? null : `A design can have at most ${maxTags} tags.`);
     setInputValue("");
     setActiveSuggestionIndex(0);
     setIsSuggestionsOpen(false);
@@ -209,7 +250,7 @@ export function TagChipInput({
       return;
     }
 
-    if (nextValue.length > MAX_DESIGN_TAG_LENGTH) {
+    if (nextValue.length > maxTagLength) {
       return;
     }
 

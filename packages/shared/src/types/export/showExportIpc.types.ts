@@ -14,7 +14,10 @@ import type {
 
 /** One image to download, resize to a fixed 300 DPI print size, and add to the export zip. */
 export interface ShowExportImageRequest {
-  allocationId: string;
+  /** Show Queue identity. Request-scoped exports use requestItemId instead. */
+  allocationId?: string;
+  /** Request-scoped identity; never presented as an allocation ID. */
+  requestItemId?: string;
   downloadUrl: string;
   targetWidthPx: number;
   targetHeightPx: number;

@@ -30,7 +30,6 @@ import type {
   CatalogDesignListPage,
   CatalogDesignListQuery,
   CatalogDesignSortField,
-  CatalogTagOption,
 } from '../types/catalog.types';
 import { filterCatalogDesignsBySearch } from '../utils/catalogSearch';
 import {
@@ -69,7 +68,7 @@ function serializeCatalogPageCacheKey(listQuery: CatalogDesignListQuery): string
     cursor: listQuery.cursor ?? null,
     limitCount: listQuery.limitCount ?? DEFAULT_CATALOG_PAGE_SIZE,
     sortField: listQuery.sortField ?? 'readyAt',
-    tag: listQuery.tag ?? null,
+    halftoneOnly: listQuery.halftoneOnly === true,
     minFavoriteCount: listQuery.minFavoriteCount ?? null,
     requireLastAddedToShowAt: listQuery.requireLastAddedToShowAt === true,
   });
@@ -176,6 +175,11 @@ interface DesignDocumentData {
   isExplicitContent?: unknown;
   censoredTerms?: unknown;
   companionDesignIds?: unknown;
+  halftoneStaffDecision?: unknown;
+  interactiveEnhancedOriginalPath?: unknown;
+  interactiveEnhancedWidthPx?: unknown;
+  interactiveEnhancedHeightPx?: unknown;
+  interactiveEnhanceGeneratedAt?: unknown;
 }
 
 /** Filters to non-blank, trimmed string neighbor IDs — malformed entries are dropped, not fatal. */
@@ -219,6 +223,10 @@ export function mapCatalogDesign(designId: string, data: DesignDocumentData): Ca
   const tags = Array.isArray(data.tags)
     ? data.tags.filter((tag): tag is string => typeof tag === 'string')
     : [];
+  const halftoneDecision =
+    data.halftoneStaffDecision && typeof data.halftoneStaffDecision === 'object'
+      ? (data.halftoneStaffDecision as { value?: unknown })
+      : undefined;
 
   return {
     id: designId,
@@ -226,6 +234,7 @@ export function mapCatalogDesign(designId: string, data: DesignDocumentData): Ca
     description: typeof data.description === 'string' ? data.description : undefined,
     categoryId: typeof data.categoryId === 'string' ? data.categoryId : undefined,
     tags,
+    isHalftone: halftoneDecision?.value === true,
     thumbnailPath: data.thumbnailPath,
     previewPath: typeof data.previewPath === 'string' ? data.previewPath : undefined,
     artworkBackgroundHex:
@@ -238,6 +247,19 @@ export function mapCatalogDesign(designId: string, data: DesignDocumentData): Ca
     createdAtMs: timestampToMillis(data.createdAt),
     readyAtMs: timestampToMillis(data.readyAt),
     updatedAtMs: timestampToMillis(data.updatedAt),
+    interactiveEnhancedOriginalPath:
+      typeof data.interactiveEnhancedOriginalPath === 'string'
+        ? data.interactiveEnhancedOriginalPath
+        : undefined,
+    interactiveEnhancedWidthPx:
+      typeof data.interactiveEnhancedWidthPx === 'number'
+        ? data.interactiveEnhancedWidthPx
+        : undefined,
+    interactiveEnhancedHeightPx:
+      typeof data.interactiveEnhancedHeightPx === 'number'
+        ? data.interactiveEnhancedHeightPx
+        : undefined,
+    interactiveEnhanceGeneratedAt: data.interactiveEnhanceGeneratedAt,
     requestCount:
       typeof data.requestCount === 'number' && Number.isFinite(data.requestCount) && data.requestCount >= 0
         ? data.requestCount
@@ -311,8 +333,8 @@ function buildDesignFilterConstraints(listQuery: CatalogDesignListQuery): QueryC
     constraints.push(where('categoryId', '==', listQuery.categoryId.trim()));
   }
 
-  if (listQuery.tag?.trim()) {
-    constraints.push(where('tags', 'array-contains', listQuery.tag.trim().toLowerCase()));
+  if (listQuery.halftoneOnly === true) {
+    constraints.push(where('halftoneStaffDecision.value', '==', true));
   }
 
   // Discover New This Week: customer-ready window on readyAt (not import createdAt).
@@ -481,7 +503,7 @@ async function listReadyDesignsPageByClientSortedMembership(
     const membershipPage = await queryReadyDesignsPageFromFirestore(
       {
         categoryId: listQuery.categoryId,
-        tag: listQuery.tag,
+        halftoneOnly: listQuery.halftoneOnly,
         search: listQuery.search,
         minFavoriteCount: listQuery.minFavoriteCount,
         requireLastAddedToShowAt: listQuery.requireLastAddedToShowAt,
@@ -587,7 +609,7 @@ function catalogListTraceMetadata(
   const constraints = [
     'status==ready',
     listQuery.categoryId?.trim() ? 'categoryId=={categoryId}' : '',
-    listQuery.tag?.trim() ? 'tags array-contains {tag}' : '',
+    listQuery.halftoneOnly === true ? 'halftoneStaffDecision.value==true' : '',
     typeof listQuery.readyAfterMs === 'number' ? 'readyAt>={timestamp}' : '',
     typeof listQuery.createdAfterMs === 'number' ? 'createdAt>={timestamp}' : '',
     typeof listQuery.minFavoriteCount === 'number' && listQuery.minFavoriteCount > 0
@@ -715,7 +737,7 @@ export const catalogService = {
         const probe = await queryReadyDesignsPageFromFirestore(
           {
             categoryId: listQuery.categoryId,
-            tag: listQuery.tag,
+            halftoneOnly: listQuery.halftoneOnly,
             search: listQuery.search,
             sortField: 'readyAt',
             limitCount: Math.min(
@@ -1069,72 +1091,4 @@ export const catalogService = {
     return load;
   },
 
-  /**
-   * Tags for the Portal tag modal: only tags with at least one ready design, each with its
-   * ready-design count — never the full approved-tag taxonomy.
-   *
-   * Stage 4: Algolia facets when configured; otherwise fail closed (no generated Storage).
-   * No Firestore full-scan fallback.
-   */
-  async listApprovedTags(): Promise<CatalogTagOption[]> {
-    const { isPortalAlgoliaCatalogConfigured } = await import('./portalAlgoliaCatalogFlags');
-    if (!isPortalAlgoliaCatalogConfigured()) {
-      throw new Error('Tag filters are temporarily unavailable. Please try again in a moment.');
-    }
-    const { portalAlgoliaCatalogSearchService } = await import(
-      './portalAlgoliaCatalogSearchService'
-    );
-    return portalAlgoliaCatalogSearchService.listTagFacets();
-  },
-
-  /**
-   * Featured approved tags for Portal tag-modal pills (Firestore taxonomy metadata).
-   * Bounded query — not a full taxonomy scan. Algolia is not used (isFeatured is not indexed).
-   */
-  async listFeaturedApprovedTags(): Promise<CatalogTagOption[]> {
-    const { catalogTagOptionsFromFeaturedDocs } = await import('../utils/featuredCatalogTags');
-    const traceMetadata: FirestoreTraceMetadata = {
-      app: 'portal',
-      collection: PORTAL_FIRESTORE_COLLECTIONS.tags,
-      constraints: ['status==approved', 'isFeatured==true'],
-      source: 'catalogService.listFeaturedApprovedTags',
-      triggerReason: 'route',
-    };
-    traceFirestoreOneShotStart('getDocs', traceMetadata);
-    const snapshot = await getDocs(
-      query(
-        collection(getPortalDb(), PORTAL_FIRESTORE_COLLECTIONS.tags),
-        where('status', '==', 'approved'),
-        where('isFeatured', '==', true),
-      ),
-    );
-    traceFirestoreOneShotComplete('getDocs', traceMetadata, snapshot.size);
-    return catalogTagOptionsFromFeaturedDocs(
-      snapshot.docs.map((tagDoc) => ({ id: tagDoc.id, ...tagDoc.data() })),
-    );
-  },
-
-  /**
-   * Same contract as `listApprovedTags`, narrowed to the active catalog filter context.
-   *
-   * Stage 4: Algolia only — free-text `search`, selected-tag AND, and optional `categoryId`
-   * refine facet counts. Kill switch does not restore generated facet assets.
-   */
-  async listNarrowedApprovedTags(
-    selectedTags: string[],
-    options: { search?: string; categoryId?: string } = {},
-  ): Promise<CatalogTagOption[]> {
-    const { isPortalAlgoliaCatalogConfigured } = await import('./portalAlgoliaCatalogFlags');
-    if (!isPortalAlgoliaCatalogConfigured()) {
-      throw new Error('Tag filters are temporarily unavailable. Please try again in a moment.');
-    }
-    const { portalAlgoliaCatalogSearchService } = await import(
-      './portalAlgoliaCatalogSearchService'
-    );
-    return portalAlgoliaCatalogSearchService.listNarrowedTagFacets({
-      selectedTags,
-      search: options.search,
-      categoryId: options.categoryId,
-    });
-  },
 };

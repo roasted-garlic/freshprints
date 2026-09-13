@@ -172,6 +172,11 @@ export interface ReadSelectedPngFileBytesResult {
    */
   normalizedWidth?: number;
   normalizedHeight?: number;
+  /**
+   * Conservative code-first hint: light-dominant opaque art that is hard to see on the default
+   * light mat. Display only — never implies halftone. Prefer omit / false negatives.
+   */
+  suggestDarkArtworkBackground?: boolean;
   /** Present when includeDerivatives was true and generation succeeded */
   derivatives?: ReadSelectedPngFileBytesDerivatives;
   /**
@@ -211,6 +216,8 @@ export interface SelectedPngPreviewResult {
   dataUrl: string;
   previewHeight: number;
   previewWidth: number;
+  /** When true, Auto background should resolve to dark mat in Imports preview. */
+  suggestDarkArtworkBackground?: boolean;
 }
 
 export type SelectedPngPreviewRequest = string | ReadBatchValidatedPngFileBytesRequest;

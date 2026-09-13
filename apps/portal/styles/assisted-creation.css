@@ -1018,6 +1018,28 @@
   margin-bottom: var(--space-3);
 }
 
+.assisted-add-progress-details {
+  color: var(--color-text-secondary);
+  display: flex;
+  flex-direction: column;
+  font-size: var(--font-size-sm);
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+}
+
+.assisted-add-progress-details p {
+  margin: 0;
+}
+
+.assisted-add-progress-details .assisted-add-progress-current {
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.assisted-add-progress-variability {
+  font-size: var(--font-size-xs);
+}
+
 .assisted-add-progress-steps {
   color: var(--color-text-secondary);
   display: flex;
@@ -1747,4 +1769,110 @@
 
 .assisted-creation-update-save-error {
   margin: 0;
+}
+
+.assisted-creation-proof-carousel-callout {
+  margin: 0 0 var(--space-3);
+}
+
+.assisted-creation-proof-response-selection {
+  margin: 0 0 var(--space-3);
+}
+
+.assisted-creation-proof-carousel-lead {
+  margin: 0 0 var(--space-3);
+}
+
+.assisted-creation-proof-carousel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.assisted-creation-proof-carousel-meta {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: center;
+}
+
+.assisted-creation-proof-carousel-label {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.assisted-creation-proof-carousel-count {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.assisted-creation-proof-carousel-stage-row {
+  align-items: center;
+  display: flex;
+  gap: var(--space-2);
+  justify-content: center;
+  min-width: 0;
+}
+
+.assisted-creation-proof-carousel-nav {
+  flex: 0 0 auto;
+  min-height: 2.5rem;
+  min-width: 2.5rem;
+  padding: var(--space-2);
+}
+
+.assisted-creation-proof-carousel-empty {
+  align-items: center;
+  display: flex;
+  height: 100%;
+  justify-content: center;
+  margin: 0;
+  padding: var(--space-3);
+  text-align: center;
+}
+
+.assisted-creation-proof-carousel-dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: center;
+}
+
+.assisted-creation-proof-carousel-dot {
+  background: var(--color-border);
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  height: 0.55rem;
+  padding: 0;
+  width: 0.55rem;
+}
+
+.assisted-creation-proof-carousel-dot.is-selected {
+  background: var(--color-accent, var(--color-primary, #3b82f6));
+  width: 1.15rem;
+}
+
+.assisted-creation-proof-option-fieldset {
+  border: 0;
+  margin: 0 0 var(--space-4);
+  padding: 0;
+}
+
+.assisted-creation-proof-option-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.assisted-creation-proof-option-card {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  gap: var(--space-2);
 }

@@ -31,6 +31,7 @@ export function useShowAllocations(upcomingShowId: string | null) {
   const { user } = useAuth();
   const [state, setState] = useState<ShowAllocationsState>(initialState);
   const activeShowIdRef = useRef<string | null>(null);
+  const allocationsCacheRef = useRef<Map<string, ShowAllocation[]>>(new Map());
 
   useEffect(() => {
     activeShowIdRef.current = upcomingShowId;
@@ -40,7 +41,12 @@ export function useShowAllocations(upcomingShowId: string | null) {
       return;
     }
 
-    setState((currentState) => ({ ...currentState, error: null, isLoading: true }));
+    const cachedAllocations = allocationsCacheRef.current.get(upcomingShowId);
+    setState({
+      allocations: cachedAllocations ?? [],
+      error: null,
+      isLoading: cachedAllocations === undefined,
+    });
 
     const unsubscribe = upcomingShowService.subscribeToShowAllocations(
       user,
@@ -49,6 +55,7 @@ export function useShowAllocations(upcomingShowId: string | null) {
         if (activeShowIdRef.current !== upcomingShowId) {
           return;
         }
+        allocationsCacheRef.current.set(upcomingShowId, allocations);
         setState({ allocations, error: null, isLoading: false });
       },
       (message) => {

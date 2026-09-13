@@ -11,7 +11,6 @@ export interface ReadyIndexEntry {
   title: string;
   description?: string;
   categoryId?: string;
-  tags: string[];
   /** Original design-creation timestamp — immutable after creation. */
   createdAtMs: number;
 }
@@ -25,7 +24,8 @@ export function entryToFilterableDesign(entry: ReadyIndexEntry): Design {
     title: entry.title,
     description: entry.description,
     categoryId: entry.categoryId,
-    tags: entry.tags,
+    // Structural compatibility only; the retired tag taxonomy is not a picker/search authority.
+    tags: [],
     status: "ready",
     originalPath: "",
     thumbnailPath: "",
@@ -46,7 +46,6 @@ export function designToReadyIndexEntry(design: Design): ReadyIndexEntry {
     title: design.title,
     description: design.description,
     categoryId: design.categoryId,
-    tags: design.tags,
     createdAtMs: design.createdAt?.toMillis?.() ?? 0,
   };
 }
@@ -186,12 +185,11 @@ export function useGeneratedReadyDesigns(user: User | null): UseGeneratedReadyDe
       title: design.title,
       description: design.description,
       categoryId: design.categoryId,
-      tags: design.tags,
     });
     return {
       card: design,
       entry: existingEntry
-        ? { ...existingEntry, title: design.title, description: design.description, categoryId: design.categoryId, tags: design.tags }
+        ? { ...existingEntry, title: design.title, description: design.description, categoryId: design.categoryId }
         : designToReadyIndexEntry(design),
       cardCacheInvalidated: true,
       preservedSortValue: Boolean(existingEntry),

@@ -2,6 +2,11 @@ import { FirebaseError } from 'firebase/app';
 
 import { PRINT_REQUEST_QUOTA_ERROR_CODES } from '@fresh-prints/shared/constants/printRequest/printRequestQuotaErrorCodes.constants';
 import type { PrintRequestQuotaErrorDetails } from '@fresh-prints/shared/constants/printRequest/printRequestQuotaErrorCodes.constants';
+import {
+  PORTAL_UNQUEUE_CONTINUABLE_REQUEST_CONFLICT_MESSAGE,
+  PORTAL_UNQUEUE_PRINT_REQUEST_ERROR_CODES,
+} from '@fresh-prints/shared/constants/portal/portalUnqueuePrintRequestErrorCodes.constants';
+import type { PortalUnqueuePrintRequestErrorDetails } from '@fresh-prints/shared/constants/portal/portalUnqueuePrintRequestErrorCodes.constants';
 import { formatShowCustomerLimitUserMessage } from '@fresh-prints/shared/utils/printRequestQuotaUserCopy';
 import { formatWorkingRequestFullUserMessage } from '@fresh-prints/shared/utils/printRequestWorkingRequestMax';
 
@@ -31,12 +36,35 @@ function readQuotaDetails(error: FirebaseError): PrintRequestQuotaErrorDetails |
   };
 }
 
+function readUnqueueDetails(error: FirebaseError): PortalUnqueuePrintRequestErrorDetails | null {
+  const details = (error as FirebaseError & { details?: unknown }).details;
+  if (!details || typeof details !== 'object') {
+    return null;
+  }
+  const code = (details as { code?: unknown }).code;
+  if (typeof code !== 'string') {
+    return null;
+  }
+  const known = Object.values(PORTAL_UNQUEUE_PRINT_REQUEST_ERROR_CODES) as string[];
+  if (!known.includes(code)) {
+    return null;
+  }
+  return { code: code as PortalUnqueuePrintRequestErrorDetails['code'] };
+}
+
 /** Map Firebase callable errors to customer-facing messages. */
 export function mapPortalPrintRequestCallableError(error: unknown): Error {
   if (!(error instanceof FirebaseError)) {
     return new Error(
       error instanceof Error ? error.message : portalAuthService.getCallableErrorMessage(error),
     );
+  }
+
+  const unqueueDetails = readUnqueueDetails(error);
+  if (
+    unqueueDetails?.code === PORTAL_UNQUEUE_PRINT_REQUEST_ERROR_CODES.CONTINUABLE_REQUEST_CONFLICT
+  ) {
+    return new Error(PORTAL_UNQUEUE_CONTINUABLE_REQUEST_CONFLICT_MESSAGE);
   }
 
   const details = readQuotaDetails(error);

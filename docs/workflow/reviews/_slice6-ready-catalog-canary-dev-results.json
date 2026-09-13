@@ -1,0 +1,991 @@
+{
+  "projectId": "fresh-prints-dev",
+  "startedAt": "2026-08-26T18:17:18.771Z",
+  "finishedAt": "2026-08-26T18:18:40.255Z",
+  "recheck": {
+    "projectId": "fresh-prints-dev",
+    "catalogWorkflowMode": "shadow",
+    "catalogAutonomousLiveEnabled": false,
+    "activeReadyCatalogJobs": 0,
+    "activeAiReviewQueueJobs": 0
+  },
+  "selection": {
+    "canaryIds": [
+      "07ZCzmp7OFdSYKZ6hTg5",
+      "6x2LyTvG3ewIePeWHanV",
+      "0MpiuK4ERPawPEsUoZLn"
+    ],
+    "rationale": {
+      "A": {
+        "designId": "07ZCzmp7OFdSYKZ6hTg5",
+        "stratum": "missing_profile",
+        "title": "Don't Worry About What Other People Think They Don't Do It Often",
+        "categoryId": "tj0HemRh2RuYLfI7N6nO",
+        "categoryName": "Funny & Sarcastic",
+        "status": "ready",
+        "aiReviewStatus": "approved",
+        "aiReviewed": true,
+        "aiReviewedAt": "2026-08-11T16:49:21.556Z",
+        "aiReviewedBy": "4gxOZTsGmxfZIA28mxNF2Hh46fY2",
+        "readyAt": "2026-08-11T16:49:21.556Z",
+        "promptVersion": "(missing)",
+        "normalizerVersion": "(missing)",
+        "smartProfilePresent": false,
+        "tagCount": 6,
+        "tagDensityBucket": "highTags",
+        "tags": [
+          "quote",
+          "selfcare",
+          "funny",
+          "sarcastic",
+          "text",
+          "typography"
+        ],
+        "description": "The design features the text \"Don't Worry about what other people think they don't do it often\" in colorful, decorative lettering The text is presented in multiple lines and colors, including pink, te",
+        "aiProcessingStage": "ready_for_review",
+        "artworkBackgroundHex": null,
+        "artworkBackgroundSource": null,
+        "halftoneStaffDecision": {
+          "value": false,
+          "decidedBy": "4gxOZTsGmxfZIA28mxNF2Hh46fY2",
+          "isExplicitOverride": true,
+          "decidedAt": {
+            "_seconds": 1786466961,
+            "_nanoseconds": 459000000
+          }
+        },
+        "explicitContent": null,
+        "censored": null,
+        "companionSetId": null,
+        "thumbnailPath": "/thumbnails/07ZCzmp7OFdSYKZ6hTg5.webp",
+        "previewPath": "/previews/07ZCzmp7OFdSYKZ6hTg5.webp",
+        "algoliaBefore": {
+          "checked": true,
+          "indexName": "portal_catalog_ready_dev",
+          "objectPresent": true,
+          "objectID": "07ZCzmp7OFdSYKZ6hTg5",
+          "hasSmartProfileProjection": false,
+          "title": "Don't Worry About What Other People Think They Don't Do It Often"
+        }
+      },
+      "B": {
+        "designId": "6x2LyTvG3ewIePeWHanV",
+        "stratum": "old_v27_v1",
+        "title": "Jimothy Seattle Wildlife Do Not Pet The Round King",
+        "categoryId": "tj0HemRh2RuYLfI7N6nO",
+        "categoryName": "Funny & Sarcastic",
+        "status": "ready",
+        "aiReviewStatus": "approved",
+        "aiReviewed": true,
+        "aiReviewedAt": "2026-08-25T02:23:35.318Z",
+        "aiReviewedBy": "4gxOZTsGmxfZIA28mxNF2Hh46fY2",
+        "readyAt": "2026-08-25T02:23:35.318Z",
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "smartProfilePresent": true,
+        "tagCount": 2,
+        "tagDensityBucket": "lowTags",
+        "tags": [
+          "raccoon",
+          "funny"
+        ],
+        "description": "The design features the text JIMOTHY, SEATTLE WILDLIFE, and DO NOT PET THE ROUND KING. It depicts a raccoon in the foreground with the Seattle skyline and Mount Rainier in the background. The style is",
+        "aiProcessingStage": "ready_for_review",
+        "artworkBackgroundHex": null,
+        "artworkBackgroundSource": null,
+        "halftoneStaffDecision": {
+          "value": false,
+          "decidedBy": "4gxOZTsGmxfZIA28mxNF2Hh46fY2",
+          "isExplicitOverride": true,
+          "decidedAt": {
+            "_seconds": 1787624615,
+            "_nanoseconds": 156000000
+          }
+        },
+        "explicitContent": null,
+        "censored": null,
+        "companionSetId": null,
+        "thumbnailPath": "/thumbnails/6x2LyTvG3ewIePeWHanV.webp",
+        "previewPath": "/previews/6x2LyTvG3ewIePeWHanV.webp",
+        "algoliaBefore": {
+          "checked": true,
+          "indexName": "portal_catalog_ready_dev",
+          "objectPresent": true,
+          "objectID": "6x2LyTvG3ewIePeWHanV",
+          "hasSmartProfileProjection": true,
+          "title": "Jimothy Seattle Wildlife Do Not Pet The Round King"
+        }
+      },
+      "C": {
+        "designId": "0MpiuK4ERPawPEsUoZLn",
+        "stratum": "high_tags",
+        "title": "Thin Red Line American Flag",
+        "categoryId": "sUFNsCKqMFzwx77QlsEq",
+        "categoryName": "Patriotic & Americana",
+        "status": "ready",
+        "aiReviewStatus": "approved",
+        "aiReviewed": true,
+        "aiReviewedAt": "2026-08-11T16:48:21.572Z",
+        "aiReviewedBy": "4gxOZTsGmxfZIA28mxNF2Hh46fY2",
+        "readyAt": "2026-08-11T16:48:21.572Z",
+        "promptVersion": "(missing)",
+        "normalizerVersion": "(missing)",
+        "smartProfilePresent": false,
+        "tagCount": 8,
+        "tagDensityBucket": "highTags",
+        "tags": [
+          "flag",
+          "red",
+          "thinred",
+          "firefighter",
+          "support",
+          "patriotic",
+          "distressed",
+          "usa"
+        ],
+        "description": "Distressed American flag with a thin red line running vertically. Colors are white, red, and gray.",
+        "aiProcessingStage": "ready_for_review",
+        "artworkBackgroundHex": null,
+        "artworkBackgroundSource": null,
+        "halftoneStaffDecision": {
+          "value": false,
+          "decidedBy": "4gxOZTsGmxfZIA28mxNF2Hh46fY2",
+          "isExplicitOverride": true,
+          "decidedAt": {
+            "_seconds": 1786466901,
+            "_nanoseconds": 451000000
+          }
+        },
+        "explicitContent": null,
+        "censored": null,
+        "companionSetId": null,
+        "thumbnailPath": "/thumbnails/0MpiuK4ERPawPEsUoZLn.webp",
+        "previewPath": "/previews/0MpiuK4ERPawPEsUoZLn.webp",
+        "algoliaBefore": {
+          "checked": true,
+          "indexName": "portal_catalog_ready_dev",
+          "objectPresent": true,
+          "objectID": "0MpiuK4ERPawPEsUoZLn",
+          "hasSmartProfileProjection": false,
+          "title": "Thin Red Line American Flag"
+        }
+      }
+    }
+  },
+  "startPayload": {
+    "targetType": "ready_catalog",
+    "confirmationPhrase": "REPROCESS READY CATALOG",
+    "canaryDesignIds": [
+      "07ZCzmp7OFdSYKZ6hTg5",
+      "6x2LyTvG3ewIePeWHanV",
+      "0MpiuK4ERPawPEsUoZLn"
+    ]
+  },
+  "startResponse": {
+    "jobId": "w5m0vl8DviTeY7vMLrVB",
+    "dryRun": false,
+    "targetType": "ready_catalog",
+    "totalEligible": 3,
+    "status": "pending"
+  },
+  "boundedDesignIds": [
+    "07ZCzmp7OFdSYKZ6hTg5",
+    "6x2LyTvG3ewIePeWHanV",
+    "0MpiuK4ERPawPEsUoZLn"
+  ],
+  "terminalJob": {
+    "jobId": "w5m0vl8DviTeY7vMLrVB",
+    "status": "completed",
+    "targetType": "ready_catalog",
+    "totalEligible": 3,
+    "processed": 3,
+    "succeeded": 3,
+    "failed": 0,
+    "skipped": 0,
+    "remainedReady": 3,
+    "preservationViolations": 0,
+    "wouldAutoApprove": 2,
+    "verifierInvoked": 1,
+    "verifierUnresolved": 1,
+    "hardBlocked": 1,
+    "categoryDominantIntentConflict": 0,
+    "anomalies": 0
+  },
+  "outcomes": [
+    {
+      "id": "07ZCzmp7OFdSYKZ6hTg5",
+      "designId": "07ZCzmp7OFdSYKZ6hTg5",
+      "status": "succeeded",
+      "startedAt": "2026-08-26T18:18:05.522Z",
+      "completedAt": "2026-08-26T18:18:11.547Z",
+      "wouldAutoApprove": true,
+      "automationDecision": "shadow",
+      "automationReasonCodes": [
+        "shadow_would_auto_approve"
+      ],
+      "verifierInvoked": false,
+      "verifierOutcome": "skipped",
+      "hardBlocked": false,
+      "categoryGap": false,
+      "categoryDominantIntentConflict": false,
+      "titleValidationIssue": false,
+      "subjectSpecificityIssue": false,
+      "contextualSubjectIssue": false,
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "finalStatus": "ready",
+      "finalAiReviewStatus": "approved",
+      "remainedReady": true,
+      "titleUnchanged": true,
+      "categoryIdUnchanged": true,
+      "approvalAuditUnchanged": false
+    },
+    {
+      "id": "0MpiuK4ERPawPEsUoZLn",
+      "designId": "0MpiuK4ERPawPEsUoZLn",
+      "status": "succeeded",
+      "startedAt": "2026-08-26T18:18:12.778Z",
+      "completedAt": "2026-08-26T18:18:16.925Z",
+      "wouldAutoApprove": true,
+      "automationDecision": "shadow",
+      "automationReasonCodes": [
+        "shadow_would_auto_approve"
+      ],
+      "verifierInvoked": false,
+      "verifierOutcome": "skipped",
+      "hardBlocked": false,
+      "categoryGap": false,
+      "categoryDominantIntentConflict": false,
+      "titleValidationIssue": false,
+      "subjectSpecificityIssue": false,
+      "contextualSubjectIssue": false,
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "finalStatus": "ready",
+      "finalAiReviewStatus": "approved",
+      "remainedReady": true,
+      "titleUnchanged": true,
+      "categoryIdUnchanged": true,
+      "approvalAuditUnchanged": false
+    },
+    {
+      "id": "6x2LyTvG3ewIePeWHanV",
+      "designId": "6x2LyTvG3ewIePeWHanV",
+      "status": "succeeded",
+      "startedAt": "2026-08-26T18:18:17.581Z",
+      "completedAt": "2026-08-26T18:18:22.929Z",
+      "wouldAutoApprove": false,
+      "automationDecision": "needs_review",
+      "automationReasonCodes": [
+        "structured_evidence_gap:objects:cityscape",
+        "structured_evidence_gap:objects:trees",
+        "subject_specificity_risk:raccoon",
+        "verifier_unresolved"
+      ],
+      "verifierInvoked": true,
+      "verifierOutcome": "unresolved",
+      "hardBlocked": true,
+      "categoryGap": false,
+      "categoryDominantIntentConflict": false,
+      "titleValidationIssue": false,
+      "subjectSpecificityIssue": true,
+      "contextualSubjectIssue": true,
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "finalStatus": "ready",
+      "finalAiReviewStatus": "approved",
+      "remainedReady": true,
+      "titleUnchanged": true,
+      "categoryIdUnchanged": true,
+      "approvalAuditUnchanged": false
+    }
+  ],
+  "afterVerification": {
+    "A": {
+      "before": {
+        "designId": "07ZCzmp7OFdSYKZ6hTg5",
+        "stratum": "missing_profile",
+        "title": "Don't Worry About What Other People Think They Don't Do It Often",
+        "categoryId": "tj0HemRh2RuYLfI7N6nO",
+        "categoryName": "Funny & Sarcastic",
+        "status": "ready",
+        "aiReviewStatus": "approved",
+        "aiReviewed": true,
+        "aiReviewedAt": "2026-08-11T16:49:21.556Z",
+        "aiReviewedBy": "4gxOZTsGmxfZIA28mxNF2Hh46fY2",
+        "readyAt": "2026-08-11T16:49:21.556Z",
+        "promptVersion": "(missing)",
+        "normalizerVersion": "(missing)",
+        "smartProfilePresent": false,
+        "tagCount": 6,
+        "tagDensityBucket": "highTags",
+        "tags": [
+          "quote",
+          "selfcare",
+          "funny",
+          "sarcastic",
+          "text",
+          "typography"
+        ],
+        "description": "The design features the text \"Don't Worry about what other people think they don't do it often\" in colorful, decorative lettering The text is presented in multiple lines and colors, including pink, te",
+        "aiProcessingStage": "ready_for_review",
+        "artworkBackgroundHex": null,
+        "artworkBackgroundSource": null,
+        "halftoneStaffDecision": {
+          "value": false,
+          "decidedBy": "4gxOZTsGmxfZIA28mxNF2Hh46fY2",
+          "isExplicitOverride": true,
+          "decidedAt": {
+            "_seconds": 1786466961,
+            "_nanoseconds": 459000000
+          }
+        },
+        "explicitContent": null,
+        "censored": null,
+        "companionSetId": null,
+        "thumbnailPath": "/thumbnails/07ZCzmp7OFdSYKZ6hTg5.webp",
+        "previewPath": "/previews/07ZCzmp7OFdSYKZ6hTg5.webp",
+        "algoliaBefore": {
+          "checked": true,
+          "indexName": "portal_catalog_ready_dev",
+          "objectPresent": true,
+          "objectID": "07ZCzmp7OFdSYKZ6hTg5",
+          "hasSmartProfileProjection": false,
+          "title": "Don't Worry About What Other People Think They Don't Do It Often"
+        }
+      },
+      "after": {
+        "designId": "07ZCzmp7OFdSYKZ6hTg5",
+        "stratum": "missing_profile",
+        "title": "Don't Worry About What Other People Think They Don't Do It Often",
+        "categoryId": "tj0HemRh2RuYLfI7N6nO",
+        "categoryName": "Funny & Sarcastic",
+        "status": "ready",
+        "aiReviewStatus": "approved",
+        "aiReviewed": true,
+        "aiReviewedAt": "2026-08-11T16:49:21.556Z",
+        "aiReviewedBy": "4gxOZTsGmxfZIA28mxNF2Hh46fY2",
+        "readyAt": "2026-08-11T16:49:21.556Z",
+        "promptVersion": "catalog-enrich-v30",
+        "normalizerVersion": "smart-profile-normalizer-v4",
+        "smartProfilePresent": true,
+        "tagCount": 6,
+        "tagDensityBucket": "highTags",
+        "tags": [
+          "quote",
+          "selfcare",
+          "funny",
+          "sarcastic",
+          "text",
+          "typography"
+        ],
+        "description": "The design features the text \"Don't Worry about what other people think they don't do it often\" in colorful, decorative lettering The text is presented in multiple lines and colors, including pink, te",
+        "aiProcessingStage": "ready_for_review",
+        "artworkBackgroundHex": null,
+        "artworkBackgroundSource": null,
+        "halftoneStaffDecision": {
+          "value": false,
+          "decidedBy": "4gxOZTsGmxfZIA28mxNF2Hh46fY2",
+          "isExplicitOverride": true,
+          "decidedAt": {
+            "_seconds": 1786466961,
+            "_nanoseconds": 459000000
+          }
+        },
+        "explicitContent": null,
+        "censored": null,
+        "companionSetId": null,
+        "thumbnailPath": "/thumbnails/07ZCzmp7OFdSYKZ6hTg5.webp",
+        "previewPath": "/previews/07ZCzmp7OFdSYKZ6hTg5.webp"
+      },
+      "smartProfile": {
+        "subjects": null,
+        "objects": null,
+        "styles": [
+          "colorful",
+          "bold"
+        ],
+        "themes": [
+          "attitude",
+          "sarcasm",
+          "humor",
+          "quirky",
+          "positivity"
+        ],
+        "interests": null,
+        "professionsGroups": null,
+        "occasions": null,
+        "places": null,
+        "colors": [
+          "pink",
+          "teal",
+          "orange",
+          "purple",
+          "yellow",
+          "green",
+          "black",
+          "white"
+        ],
+        "visibleText": [
+          "Don't Worry",
+          "about what",
+          "other people think",
+          "they don't do it",
+          "often"
+        ],
+        "searchConcepts": [
+          "don't worry be happy",
+          "don't care what others think",
+          "unique saying",
+          "funny quote",
+          "attitude quote",
+          "colorful text"
+        ],
+        "category": null,
+        "provenance": {
+          "version": "smart-profile-v1",
+          "provider": "google",
+          "model": "gemini-2.5-flash-lite",
+          "promptVersion": "catalog-enrich-v30",
+          "generatedAt": "2026-08-26T18:18:09.163Z",
+          "titleOutcome": "first_pass",
+          "automationDecision": "shadow",
+          "automationDecisionAt": "2026-08-26T18:18:05.886Z",
+          "normalizerVersion": "smart-profile-normalizer-v4",
+          "automationReasonCodes": [
+            "shadow_would_auto_approve"
+          ],
+          "verifierInvoked": false
+        },
+        "automationDecision": null,
+        "automationReasonCodes": null
+      },
+      "preservation": {
+        "lifecycleOk": true,
+        "preservationOk": false,
+        "issues": [
+          "aiReviewedAt changed",
+          "readyAt changed",
+          "artworkBackgroundHex changed",
+          "artworkBackgroundSource changed"
+        ],
+        "outcomeStatus": "succeeded",
+        "remainedReady": true,
+        "promptVersion": "catalog-enrich-v30",
+        "normalizerVersion": "smart-profile-normalizer-v4",
+        "wouldAutoApprove": true,
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "shadow_would_auto_approve"
+        ],
+        "verifierInvoked": false,
+        "verifierOutcome": "skipped",
+        "categoryDominantIntentConflict": false,
+        "categoryGap": false,
+        "titleUnchanged": true,
+        "categoryIdUnchanged": true,
+        "approvalAuditUnchanged": false
+      },
+      "outcome": {
+        "id": "07ZCzmp7OFdSYKZ6hTg5",
+        "designId": "07ZCzmp7OFdSYKZ6hTg5",
+        "status": "succeeded",
+        "startedAt": "2026-08-26T18:18:05.522Z",
+        "completedAt": "2026-08-26T18:18:11.547Z",
+        "wouldAutoApprove": true,
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "shadow_would_auto_approve"
+        ],
+        "verifierInvoked": false,
+        "verifierOutcome": "skipped",
+        "hardBlocked": false,
+        "categoryGap": false,
+        "categoryDominantIntentConflict": false,
+        "titleValidationIssue": false,
+        "subjectSpecificityIssue": false,
+        "contextualSubjectIssue": false,
+        "promptVersion": "catalog-enrich-v30",
+        "normalizerVersion": "smart-profile-normalizer-v4",
+        "finalStatus": "ready",
+        "finalAiReviewStatus": "approved",
+        "remainedReady": true,
+        "titleUnchanged": true,
+        "categoryIdUnchanged": true,
+        "approvalAuditUnchanged": false
+      },
+      "algoliaAfter": {
+        "checked": true,
+        "indexName": "portal_catalog_ready_dev",
+        "objectPresent": true,
+        "objectID": "07ZCzmp7OFdSYKZ6hTg5",
+        "hasSmartProfileProjection": true,
+        "title": "Don't Worry About What Other People Think They Don't Do It Often"
+      }
+    },
+    "B": {
+      "before": {
+        "designId": "6x2LyTvG3ewIePeWHanV",
+        "stratum": "old_v27_v1",
+        "title": "Jimothy Seattle Wildlife Do Not Pet The Round King",
+        "categoryId": "tj0HemRh2RuYLfI7N6nO",
+        "categoryName": "Funny & Sarcastic",
+        "status": "ready",
+        "aiReviewStatus": "approved",
+        "aiReviewed": true,
+        "aiReviewedAt": "2026-08-25T02:23:35.318Z",
+        "aiReviewedBy": "4gxOZTsGmxfZIA28mxNF2Hh46fY2",
+        "readyAt": "2026-08-25T02:23:35.318Z",
+        "promptVersion": "catalog-enrich-v27",
+        "normalizerVersion": "smart-profile-normalizer-v1",
+        "smartProfilePresent": true,
+        "tagCount": 2,
+        "tagDensityBucket": "lowTags",
+        "tags": [
+          "raccoon",
+          "funny"
+        ],
+        "description": "The design features the text JIMOTHY, SEATTLE WILDLIFE, and DO NOT PET THE ROUND KING. It depicts a raccoon in the foreground with the Seattle skyline and Mount Rainier in the background. The style is",
+        "aiProcessingStage": "ready_for_review",
+        "artworkBackgroundHex": null,
+        "artworkBackgroundSource": null,
+        "halftoneStaffDecision": {
+          "value": false,
+          "decidedBy": "4gxOZTsGmxfZIA28mxNF2Hh46fY2",
+          "isExplicitOverride": true,
+          "decidedAt": {
+            "_seconds": 1787624615,
+            "_nanoseconds": 156000000
+          }
+        },
+        "explicitContent": null,
+        "censored": null,
+        "companionSetId": null,
+        "thumbnailPath": "/thumbnails/6x2LyTvG3ewIePeWHanV.webp",
+        "previewPath": "/previews/6x2LyTvG3ewIePeWHanV.webp",
+        "algoliaBefore": {
+          "checked": true,
+          "indexName": "portal_catalog_ready_dev",
+          "objectPresent": true,
+          "objectID": "6x2LyTvG3ewIePeWHanV",
+          "hasSmartProfileProjection": true,
+          "title": "Jimothy Seattle Wildlife Do Not Pet The Round King"
+        }
+      },
+      "after": {
+        "designId": "6x2LyTvG3ewIePeWHanV",
+        "stratum": "old_v27_v1",
+        "title": "Jimothy Seattle Wildlife Do Not Pet The Round King",
+        "categoryId": "tj0HemRh2RuYLfI7N6nO",
+        "categoryName": "Funny & Sarcastic",
+        "status": "ready",
+        "aiReviewStatus": "approved",
+        "aiReviewed": true,
+        "aiReviewedAt": "2026-08-25T02:23:35.318Z",
+        "aiReviewedBy": "4gxOZTsGmxfZIA28mxNF2Hh46fY2",
+        "readyAt": "2026-08-25T02:23:35.318Z",
+        "promptVersion": "catalog-enrich-v30",
+        "normalizerVersion": "smart-profile-normalizer-v4",
+        "smartProfilePresent": true,
+        "tagCount": 2,
+        "tagDensityBucket": "lowTags",
+        "tags": [
+          "raccoon",
+          "funny"
+        ],
+        "description": "The design features the text JIMOTHY, SEATTLE WILDLIFE, and DO NOT PET THE ROUND KING. It depicts a raccoon in the foreground with the Seattle skyline and Mount Rainier in the background. The style is",
+        "aiProcessingStage": "ready_for_review",
+        "artworkBackgroundHex": null,
+        "artworkBackgroundSource": null,
+        "halftoneStaffDecision": {
+          "value": false,
+          "decidedBy": "4gxOZTsGmxfZIA28mxNF2Hh46fY2",
+          "isExplicitOverride": true,
+          "decidedAt": {
+            "_seconds": 1787624615,
+            "_nanoseconds": 156000000
+          }
+        },
+        "explicitContent": null,
+        "censored": null,
+        "companionSetId": null,
+        "thumbnailPath": "/thumbnails/6x2LyTvG3ewIePeWHanV.webp",
+        "previewPath": "/previews/6x2LyTvG3ewIePeWHanV.webp"
+      },
+      "smartProfile": {
+        "subjects": [
+          "raccoon"
+        ],
+        "objects": [
+          "cityscape",
+          "Space Needle",
+          "mountains",
+          "trees"
+        ],
+        "styles": [
+          "distressed",
+          "illustration",
+          "retro",
+          "vintage",
+          "bold"
+        ],
+        "themes": [
+          "humor",
+          "wildlife",
+          "city life",
+          "quirky",
+          "animal humor"
+        ],
+        "interests": [
+          "animals",
+          "travel",
+          "nature",
+          "outdoors"
+        ],
+        "professionsGroups": null,
+        "occasions": null,
+        "places": [
+          "Seattle"
+        ],
+        "colors": [
+          "orange",
+          "black",
+          "white",
+          "gray",
+          "green",
+          "brown"
+        ],
+        "visibleText": [
+          "JIMOTHY",
+          "SEATTLE WILDLIFE",
+          "DO NOT PET THE ROUND KING"
+        ],
+        "searchConcepts": [
+          "funny raccoon",
+          "Seattle travel",
+          "wild animal warning",
+          "PNW wildlife",
+          "trash panda",
+          "Jimothy"
+        ],
+        "category": null,
+        "provenance": {
+          "version": "smart-profile-v1",
+          "provider": "google",
+          "model": "gemini-2.5-flash-lite",
+          "promptVersion": "catalog-enrich-v30",
+          "generatedAt": "2026-08-26T18:18:22.138Z",
+          "titleOutcome": "first_pass",
+          "automationDecision": "needs_review",
+          "automationDecisionAt": "2026-08-26T18:18:17.838Z",
+          "normalizerVersion": "smart-profile-normalizer-v4",
+          "automationReasonCodes": [
+            "structured_evidence_gap:objects:cityscape",
+            "structured_evidence_gap:objects:trees",
+            "subject_specificity_risk:raccoon",
+            "verifier_unresolved"
+          ],
+          "verifierInvoked": true
+        },
+        "automationDecision": null,
+        "automationReasonCodes": null
+      },
+      "preservation": {
+        "lifecycleOk": true,
+        "preservationOk": false,
+        "issues": [
+          "aiReviewedAt changed",
+          "readyAt changed",
+          "artworkBackgroundHex changed",
+          "artworkBackgroundSource changed"
+        ],
+        "outcomeStatus": "succeeded",
+        "remainedReady": true,
+        "promptVersion": "catalog-enrich-v30",
+        "normalizerVersion": "smart-profile-normalizer-v4",
+        "wouldAutoApprove": false,
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "structured_evidence_gap:objects:cityscape",
+          "structured_evidence_gap:objects:trees",
+          "subject_specificity_risk:raccoon",
+          "verifier_unresolved"
+        ],
+        "verifierInvoked": true,
+        "verifierOutcome": "unresolved",
+        "categoryDominantIntentConflict": false,
+        "categoryGap": false,
+        "titleUnchanged": true,
+        "categoryIdUnchanged": true,
+        "approvalAuditUnchanged": false
+      },
+      "outcome": {
+        "id": "6x2LyTvG3ewIePeWHanV",
+        "designId": "6x2LyTvG3ewIePeWHanV",
+        "status": "succeeded",
+        "startedAt": "2026-08-26T18:18:17.581Z",
+        "completedAt": "2026-08-26T18:18:22.929Z",
+        "wouldAutoApprove": false,
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "structured_evidence_gap:objects:cityscape",
+          "structured_evidence_gap:objects:trees",
+          "subject_specificity_risk:raccoon",
+          "verifier_unresolved"
+        ],
+        "verifierInvoked": true,
+        "verifierOutcome": "unresolved",
+        "hardBlocked": true,
+        "categoryGap": false,
+        "categoryDominantIntentConflict": false,
+        "titleValidationIssue": false,
+        "subjectSpecificityIssue": true,
+        "contextualSubjectIssue": true,
+        "promptVersion": "catalog-enrich-v30",
+        "normalizerVersion": "smart-profile-normalizer-v4",
+        "finalStatus": "ready",
+        "finalAiReviewStatus": "approved",
+        "remainedReady": true,
+        "titleUnchanged": true,
+        "categoryIdUnchanged": true,
+        "approvalAuditUnchanged": false
+      },
+      "algoliaAfter": {
+        "checked": true,
+        "indexName": "portal_catalog_ready_dev",
+        "objectPresent": true,
+        "objectID": "6x2LyTvG3ewIePeWHanV",
+        "hasSmartProfileProjection": true,
+        "title": "Jimothy Seattle Wildlife Do Not Pet The Round King"
+      }
+    },
+    "C": {
+      "before": {
+        "designId": "0MpiuK4ERPawPEsUoZLn",
+        "stratum": "high_tags",
+        "title": "Thin Red Line American Flag",
+        "categoryId": "sUFNsCKqMFzwx77QlsEq",
+        "categoryName": "Patriotic & Americana",
+        "status": "ready",
+        "aiReviewStatus": "approved",
+        "aiReviewed": true,
+        "aiReviewedAt": "2026-08-11T16:48:21.572Z",
+        "aiReviewedBy": "4gxOZTsGmxfZIA28mxNF2Hh46fY2",
+        "readyAt": "2026-08-11T16:48:21.572Z",
+        "promptVersion": "(missing)",
+        "normalizerVersion": "(missing)",
+        "smartProfilePresent": false,
+        "tagCount": 8,
+        "tagDensityBucket": "highTags",
+        "tags": [
+          "flag",
+          "red",
+          "thinred",
+          "firefighter",
+          "support",
+          "patriotic",
+          "distressed",
+          "usa"
+        ],
+        "description": "Distressed American flag with a thin red line running vertically. Colors are white, red, and gray.",
+        "aiProcessingStage": "ready_for_review",
+        "artworkBackgroundHex": null,
+        "artworkBackgroundSource": null,
+        "halftoneStaffDecision": {
+          "value": false,
+          "decidedBy": "4gxOZTsGmxfZIA28mxNF2Hh46fY2",
+          "isExplicitOverride": true,
+          "decidedAt": {
+            "_seconds": 1786466901,
+            "_nanoseconds": 451000000
+          }
+        },
+        "explicitContent": null,
+        "censored": null,
+        "companionSetId": null,
+        "thumbnailPath": "/thumbnails/0MpiuK4ERPawPEsUoZLn.webp",
+        "previewPath": "/previews/0MpiuK4ERPawPEsUoZLn.webp",
+        "algoliaBefore": {
+          "checked": true,
+          "indexName": "portal_catalog_ready_dev",
+          "objectPresent": true,
+          "objectID": "0MpiuK4ERPawPEsUoZLn",
+          "hasSmartProfileProjection": false,
+          "title": "Thin Red Line American Flag"
+        }
+      },
+      "after": {
+        "designId": "0MpiuK4ERPawPEsUoZLn",
+        "stratum": "high_tags",
+        "title": "Thin Red Line American Flag",
+        "categoryId": "sUFNsCKqMFzwx77QlsEq",
+        "categoryName": "Patriotic & Americana",
+        "status": "ready",
+        "aiReviewStatus": "approved",
+        "aiReviewed": true,
+        "aiReviewedAt": "2026-08-11T16:48:21.572Z",
+        "aiReviewedBy": "4gxOZTsGmxfZIA28mxNF2Hh46fY2",
+        "readyAt": "2026-08-11T16:48:21.572Z",
+        "promptVersion": "catalog-enrich-v30",
+        "normalizerVersion": "smart-profile-normalizer-v4",
+        "smartProfilePresent": true,
+        "tagCount": 8,
+        "tagDensityBucket": "highTags",
+        "tags": [
+          "flag",
+          "red",
+          "thinred",
+          "firefighter",
+          "support",
+          "patriotic",
+          "distressed",
+          "usa"
+        ],
+        "description": "Distressed American flag with a thin red line running vertically. Colors are white, red, and gray.",
+        "aiProcessingStage": "ready_for_review",
+        "artworkBackgroundHex": null,
+        "artworkBackgroundSource": null,
+        "halftoneStaffDecision": {
+          "value": false,
+          "decidedBy": "4gxOZTsGmxfZIA28mxNF2Hh46fY2",
+          "isExplicitOverride": true,
+          "decidedAt": {
+            "_seconds": 1786466901,
+            "_nanoseconds": 451000000
+          }
+        },
+        "explicitContent": null,
+        "censored": null,
+        "companionSetId": null,
+        "thumbnailPath": "/thumbnails/0MpiuK4ERPawPEsUoZLn.webp",
+        "previewPath": "/previews/0MpiuK4ERPawPEsUoZLn.webp"
+      },
+      "smartProfile": {
+        "subjects": null,
+        "objects": [
+          "flag"
+        ],
+        "styles": [
+          "distressed",
+          "graphic"
+        ],
+        "themes": [
+          "patriotic",
+          "support"
+        ],
+        "interests": [
+          "country life"
+        ],
+        "professionsGroups": [
+          "firefighters",
+          "first responders"
+        ],
+        "occasions": null,
+        "places": null,
+        "colors": [
+          "white",
+          "red",
+          "gray",
+          "blue"
+        ],
+        "visibleText": null,
+        "searchConcepts": [
+          "firefighter support",
+          "law enforcement support",
+          "support first responders",
+          "usa flag",
+          "american pride",
+          "united states of america flag",
+          "red line flag",
+          "distressed flag"
+        ],
+        "category": null,
+        "provenance": {
+          "version": "smart-profile-v1",
+          "provider": "google",
+          "model": "gemini-2.5-flash-lite",
+          "promptVersion": "catalog-enrich-v30",
+          "generatedAt": "2026-08-26T18:18:16.248Z",
+          "titleOutcome": "first_pass",
+          "automationDecision": "shadow",
+          "automationDecisionAt": "2026-08-26T18:18:13.047Z",
+          "normalizerVersion": "smart-profile-normalizer-v4",
+          "automationReasonCodes": [
+            "shadow_would_auto_approve"
+          ],
+          "verifierInvoked": false
+        },
+        "automationDecision": null,
+        "automationReasonCodes": null
+      },
+      "preservation": {
+        "lifecycleOk": true,
+        "preservationOk": false,
+        "issues": [
+          "aiReviewedAt changed",
+          "readyAt changed",
+          "artworkBackgroundHex changed",
+          "artworkBackgroundSource changed"
+        ],
+        "outcomeStatus": "succeeded",
+        "remainedReady": true,
+        "promptVersion": "catalog-enrich-v30",
+        "normalizerVersion": "smart-profile-normalizer-v4",
+        "wouldAutoApprove": true,
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "shadow_would_auto_approve"
+        ],
+        "verifierInvoked": false,
+        "verifierOutcome": "skipped",
+        "categoryDominantIntentConflict": false,
+        "categoryGap": false,
+        "titleUnchanged": true,
+        "categoryIdUnchanged": true,
+        "approvalAuditUnchanged": false
+      },
+      "outcome": {
+        "id": "0MpiuK4ERPawPEsUoZLn",
+        "designId": "0MpiuK4ERPawPEsUoZLn",
+        "status": "succeeded",
+        "startedAt": "2026-08-26T18:18:12.778Z",
+        "completedAt": "2026-08-26T18:18:16.925Z",
+        "wouldAutoApprove": true,
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "shadow_would_auto_approve"
+        ],
+        "verifierInvoked": false,
+        "verifierOutcome": "skipped",
+        "hardBlocked": false,
+        "categoryGap": false,
+        "categoryDominantIntentConflict": false,
+        "titleValidationIssue": false,
+        "subjectSpecificityIssue": false,
+        "contextualSubjectIssue": false,
+        "promptVersion": "catalog-enrich-v30",
+        "normalizerVersion": "smart-profile-normalizer-v4",
+        "finalStatus": "ready",
+        "finalAiReviewStatus": "approved",
+        "remainedReady": true,
+        "titleUnchanged": true,
+        "categoryIdUnchanged": true,
+        "approvalAuditUnchanged": false
+      },
+      "algoliaAfter": {
+        "checked": true,
+        "indexName": "portal_catalog_ready_dev",
+        "objectPresent": true,
+        "objectID": "0MpiuK4ERPawPEsUoZLn",
+        "hasSmartProfileProjection": true,
+        "title": "Thin Red Line American Flag"
+      }
+    }
+  },
+  "safety": {
+    "processedEqualsThree": true,
+    "remainedReadyEqualsThree": true,
+    "preservationViolationsZero": true,
+    "noExtraDesigns": true
+  }
+}

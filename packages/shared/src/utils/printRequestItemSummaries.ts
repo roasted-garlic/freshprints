@@ -12,6 +12,7 @@ export function buildPrintRequestItemSummaries(
     printRequestId: string;
     designId?: string;
     customerUploadId?: string;
+    staffArtworkId?: string;
     id?: string;
     quantity: number;
   }>,
@@ -27,6 +28,7 @@ export function buildPrintRequestItemSummaries(
     const uniqueKey =
       (typeof item.designId === "string" && item.designId.trim()) ||
       (typeof item.customerUploadId === "string" && item.customerUploadId.trim()) ||
+      (typeof item.staffArtworkId === "string" && item.staffArtworkId.trim()) ||
       (typeof item.id === "string" && item.id.trim()) ||
       `qty:${item.printRequestId}:${item.quantity}`;
 

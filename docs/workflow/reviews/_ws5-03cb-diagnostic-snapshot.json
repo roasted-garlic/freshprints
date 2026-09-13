@@ -1,0 +1,106 @@
+{
+  "gate": {
+    "mode": "shadow",
+    "live": false
+  },
+  "03cb": {
+    "status": "imported",
+    "aiReviewStatus": "needs_review",
+    "aiProcessingStage": "ready_for_review",
+    "title": "(4)",
+    "aiTitle": "Michael Jackson Dancing Watercolor Style",
+    "aiDescription": "A dynamic watercolor illustration depicts the iconic entertainer Michael Jackson in a signature dance pose. Splashes of red, blue, and white paint create an energetic and artistic effect around his figure.",
+    "categoryId": "tHt9g1RiSUKSAf8Ge8kR",
+    "categoryName": "Music & Bands",
+    "subjects": [
+      "jackson",
+      "michael"
+    ],
+    "objects": [
+      "hat"
+    ],
+    "styles": [
+      "watercolor",
+      "illustration",
+      "colorful",
+      "artistic"
+    ],
+    "themes": [
+      "iconic",
+      "dance",
+      "pop culture"
+    ],
+    "searchConcepts": [
+      "michael jackson art",
+      "king of pop",
+      "dancer",
+      "pop icon",
+      "music legend",
+      "moonwalk",
+      "dance pose",
+      "watercolor portrait",
+      "celebrity art",
+      "famous entertainer",
+      "michael"
+    ],
+    "provenance": {
+      "version": "smart-profile-v1",
+      "provider": "google",
+      "model": "gemini-2.5-flash-lite",
+      "promptVersion": "catalog-enrich-v34",
+      "generatedAt": "2026-09-05T16:10:16.615Z",
+      "titleOutcome": "first_pass",
+      "automationDecision": "needs_review",
+      "automationDecisionAt": "2026-09-05T16:10:13.759Z",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "automationReasonCodes": [
+        "structured_evidence_gap:objects:hat"
+      ],
+      "verifierInvoked": false,
+      "explicitAutomationPreview": {
+        "wouldMarkExplicitContent": false,
+        "artworkHit": false
+      }
+    },
+    "model": "gemini-2.5-flash-lite",
+    "provider": "google",
+    "generatedAt": "2026-09-05T16:10:16.615Z",
+    "previewPath": "/previews/03cbj1cIFH7Bavt38XBX.webp",
+    "thumbnailPath": "/thumbnails/03cbj1cIFH7Bavt38XBX.webp",
+    "originalPath": "/originals/03cbj1cIFH7Bavt38XBX.png"
+  },
+  "nff6": {
+    "status": "imported",
+    "aiReviewStatus": "needs_review",
+    "title": "Boston Terrier With Floral Bow Tie",
+    "subjects": [
+      "dog",
+      "terrier",
+      "boston"
+    ],
+    "objects": [
+      "bow tie",
+      "flowers"
+    ],
+    "categoryName": "Animals",
+    "provenance": {
+      "version": "smart-profile-v1",
+      "provider": "google",
+      "model": "gemini-2.5-flash-lite",
+      "promptVersion": "catalog-enrich-v34",
+      "generatedAt": "2026-09-05T16:08:57.592Z",
+      "titleOutcome": "first_pass",
+      "automationDecision": "needs_review",
+      "automationDecisionAt": "2026-09-05T16:08:54.402Z",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "automationReasonCodes": [
+        "structured_evidence_gap:objects:flowers"
+      ],
+      "verifierInvoked": false,
+      "explicitAutomationPreview": {
+        "wouldMarkExplicitContent": false,
+        "artworkHit": false
+      }
+    }
+  }
+}

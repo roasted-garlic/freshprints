@@ -3,7 +3,7 @@ import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import { recomputeAndPersistQueueTab } from "./lib/printRequestQueueTab";
 
 /**
- * Keeps `printRequests/{id}.queueTab` (Working/Queued/Printing/Printed) in sync so the Studio
+ * Keeps `printRequests/{id}.queueTab` (Working/Editing/Queued/Printing/Printed) in sync so the Studio
  * Print Requests list can filter and `getCountFromServer` exactly, with zero full-collection
  * scan (Wave C hydration remediation, 2026-07-25). Fires on both source collections whose fields
  * feed `derivePrintRequestListTab`: item quantity (create/update/delete) and allocation

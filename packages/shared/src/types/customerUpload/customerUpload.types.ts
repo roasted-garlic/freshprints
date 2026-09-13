@@ -80,15 +80,62 @@ export interface CustomerUpload {
   halftoneSubmitterResponse?: import("../halftone/halftone.types").HalftoneSubmitterResponsePersisted | null;
   /** Staff decision (authoritative for catalog). */
   halftoneStaffDecision?: import("../halftone/halftone.types").HalftoneStaffDecisionPersisted | null;
+  /** Artwork background hex for intake/review display mat (staff override or code_auto). */
+  artworkBackgroundHex?: string | null;
+  /** Source of artwork background decision. */
+  artworkBackgroundSource?: import("../design/artworkBackgroundSource.types").ArtworkBackgroundSource | null;
+  /**
+   * Server detector hint (shared import light-art → dark mat). Studio Auto uses this;
+   * Portal does not surface it. Prefer omit when false.
+   */
+  suggestDarkArtworkBackground?: boolean | null;
   technicalStatus: CustomerUploadTechnicalStatus;
   /** Live finalize progress; null when idle, ready, or failed. */
   technicalProgressStage?: CustomerUploadTechnicalProgressStage | null;
   technicalFailureCode: CustomerUploadTechnicalFailureCode | null;
   technicalFailureMessage: string | null;
   catalogReviewStatus: CustomerUploadCatalogReviewStatus;
+  /** Server-authored reason for catalog exclusion; missing on legacy rows. */
+  catalogExclusionReason?: import("./customerUpload.enums").CustomerUploadCatalogExclusionReason | null;
   promotedDesignId: string | null;
   ownershipConfirmed: boolean;
   catalogUseAcknowledged: boolean;
+  /** Missing on legacy rows; resolves to not_requested. */
+  catalogPermissionFollowUpStatus?:
+    | import("./customerUpload.enums").CustomerUploadCatalogPermissionFollowUpStatus
+    | null;
+  /** Server-authored immutable origin/follow-up audit fields. */
+  catalogPermissionOriginalDeniedAt?: Timestamp | null;
+  /** Trusted start of the current Denied or staff-Excluded retention episode. */
+  catalogRetentionStartedAt?: Timestamp | null;
+  /**
+   * When true, Studio Uploaded Designs hides this print-request upload until Add to Show
+   * clears the hold (sets `studioIntakeReleasedAt`). Legacy rows omit the flag and stay visible.
+   */
+  studioIntakeHoldUntilShow?: boolean | null;
+  /**
+   * Set on successful Add to Show / allocate when releasing a held upload (or advancing to Pending).
+   */
+  studioIntakeReleasedAt?: Timestamp | null;
+  /**
+   * Studio Uploaded Designs Pending sort key. Set when an upload (re-)enters
+   * `pending_staff_review` after Ask Again → Allow or staff Restore so it appears at the top
+   * instead of keeping its original `createdAt` batch position. Missing on first-time pending
+   * rows → Studio falls back to `createdAt`.
+   */
+  catalogPendingQueuedAt?: Timestamp | null;
+  catalogPermissionFollowUpRequestToken?: string | null;
+  catalogPermissionFollowUpRequestedAt?: Timestamp | null;
+  catalogPermissionFollowUpRequestedBy?: string | null;
+  catalogPermissionFollowUpRespondedAt?: Timestamp | null;
+  catalogPermissionFollowUpRespondedBy?: string | null;
+  /**
+   * Number of staff Ask Again sends (0–2). Missing on legacy rows — resolve via
+   * `resolveCustomerUploadPermissionAskCount`.
+   */
+  catalogPermissionAskCount?: number | null;
+  /** Append-only permission lifecycle for Studio Activity modal (server-authored). */
+  catalogPermissionActivity?: import("./customerUploadCatalogPermission.types").CustomerUploadPermissionActivityEntry[] | null;
   termsVersion: string | null;
   confirmedAt: Timestamp | null;
   /** Set when source + production Storage objects were purged (thumbnail/preview kept). */
@@ -102,6 +149,7 @@ export interface CustomerUpload {
    */
   assistedCreationRequestId?: string | null;
   assistedProofId?: string | null;
+  assistedFinalSourceId?: string | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

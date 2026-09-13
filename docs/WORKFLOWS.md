@@ -869,6 +869,8 @@ Staff starts AI (Start AI with auto advance, or Process image with AI one at a t
 Sequential enqueue → Cloud Function pipeline (maxInstances: 1)
      ↓
 AI completes → Needs Review tab (aiReviewStatus: needs_review)
+
+**Catalog Processing Mode (ADR-FP-144 / Slice 4):** Server setting `manual` \| `shadow` \| `autonomous` (fail-safe Manual). Live Autonomous publication requires a separate owner-only live gate + typed `ENABLE AUTONOMOUS`. Until live is enabled, successful enrichment always remains Needs Review (Shadow may record would-auto-approve). Catalog Reprocessing Start for AI Review Queue / Ready Catalog unlocks in Slices 5–6.
      ↓
 Staff reviews in Approval Mode, corrects metadata
      ↓
@@ -945,7 +947,7 @@ Reasoning-effort controls were removed with OpenAI support in ADR-FP-040; Gemini
 
 **Tag exclusions and server-side taxonomy resolution:** Built-in list in code (`BASE_AI_TAG_EXCLUSIONS`) plus optional `additionalTagExclusions` in Settings. The default prompt only requires `{{excluded_tags}}`; legacy owner-edited templates containing approved category/tag placeholders are still substituted for backward compatibility. Approved categories and tags are resolved server-side after the Gemini call, not injected into every default prompt. Tags are filtered again after parsing.
 
-**Needs Review / Rejected re-run:** **Re-run AI Suggestions** does not run AI on the review tab. It calls `resetAiEnrichmentForProcessing`, clears prior AI output, returns the design to Processing (`status: imported`, `aiReviewStatus: pending`), selects the same design there, and waits for staff to start processing.
+**Needs Review / Rejected re-run:** **Re-run AI Suggestions** does not run AI on the review tab. It calls `resetAiEnrichmentForProcessing`, stages a new persisted attempt, returns the design to Processing (`status: imported`, `aiReviewStatus: pending`), selects the same design there, and waits for staff to start processing. The prior successful AI output remains available until a guarded successful reconciliation; failures are shown through separate processing-error metadata.
 
 ### Tab-specific workspace (Phase 5B QA)
 
@@ -967,7 +969,7 @@ Tie-breaker: design `id` ascending.
 
 **Reopen for Review:** `status: imported`, `aiReviewStatus: needs_review`; keeps existing `aiSuggestions` / `aiAnalysis`; does not re-run AI.
 
-**Re-run AI Suggestions:** Callable `resetAiEnrichmentForProcessing`; restores `status: imported`, `aiReviewStatus: pending`, clears prior `aiSuggestions` / `aiAnalysis`, and navigates/selects the design in Processing. Staff starts the next AI run from Processing.
+**Re-run AI Suggestions:** Callable `resetAiEnrichmentForProcessing`; restores `status: imported`, `aiReviewStatus: pending`, creates a new `aiProcessingAttemptId`, preserves prior `aiSuggestions` / `aiAnalysis` / Smart Profile until success, and navigates/selects the design in Processing. Staff starts the next AI run from Processing. A successful queue-mode run replaces AI-owned output and applies the fresh review lifecycle; a failed run preserves the prior output and writes `aiProcessingError`.
 
 ### Pipeline verification logging (Phase 5B)
 
@@ -980,7 +982,8 @@ Structured events use scope `ai-pipeline`:
 
 Redeploy functions after logging changes. Do not store provider API keys in Firestore or the desktop app.
 
-* Failed AI output stays in Processing (`aiReviewStatus: pending`, `aiProcessingStage: failed`) with retry actions. Structured `errorCode` values include `openai_rate_limited`, `openai_server_error`, `openai_timeout`.
+* Failed AI output stays in Processing (`aiReviewStatus: pending`, `aiProcessingStage: failed`) with retry actions. The last successful `aiSuggestions`, `aiAnalysis`, Smart Profile, confidence, and review audit remain intact; `aiProcessingError` carries the failed attempt's `attemptId`, provider, code, message, and timestamp. Structured `errorCode` values include `openai_rate_limited`, `openai_server_error`, `openai_timeout`.
+* **Atomic reprocess reconciliation (ADR-FP-183):** Every reprocess persists an attempt identity. Stage, failure, and success writes are guarded against that identity. Staging changes operational state only. Success replaces current AI-owned fields and explicitly clears omitted replace-on-success fields; stale attempts no-op. Ready Catalog backfill preserves `ready` + `approved` and its approval audit on both success and failure.
 * **Sequential direct processing (2026-06-29):** `enqueueAiEnrichment` now runs the existing AI pipeline directly inside the callable with `timeoutSeconds: 180` and `memory: 512MiB`. Client still processes one design at a time. Gemini calls retry up to 2 times on 429/5xx. Stale active stages (>10 min) may still be restarted via the callable.
 * **Prompt contract v19 (updated 2026-07-01):** Google AI / Gemini AI Processing uses the saved Settings prompt template with `{{excluded_tags}}` replaced server-side. The default v19 prompt is small and vision-only: it requests `description`, a raw `category` candidate, `title`, up to 8 tag candidates, strict visible-text extraction into the description when readable text exists, and optional complete `suggestedNewTags` objects. Approved tag matching and approved category resolution happen deterministically server-side after the model call. Stored `aiSuggestions.promptVersion` is `catalog-enrich-v19` for Gemini and `catalog-enrich-dev-v19` for the development fallback.
 * **Approved tag normalization (2026-06-30):** Cloud Functions normalize AI tag output against approved `tags` documents. Exact approved name/alias matches remain in `aiSuggestions.tags`; unmatched AI tokens and valid AI `suggestedNewTags` become `aiSuggestions.suggestedNewTags` for owner/admin approval in Needs Review. AI does not auto-create approved tag documents.
@@ -1095,6 +1098,38 @@ Adjust quantity and requested size in the request detail item UI; edits autosave
 * Customer directory reads are ordered by `displayName` and support the indexed `isGuest` filter path.
 * Request naming does not depend on loaded request lists.
 * Origin display does not add origin filters, origin indexes, Portal behavior, customer Auth, migrations, or backfills in Phase 6.
+
+## Studio request-scoped production actions
+
+From a request detail with at least one item, staff may choose **Export Images**, **Export x(Qty)**,
+**Generate Gangsheet**, or **Copy Request** for non-Working/non-Editing requests, including
+historical/Printed requests, provided the persisted items and production assets still resolve.
+Working and Editing requests keep only their existing **Add to Show** / **Add to Internal Gangsheet**
+action surface; the direct production/copy buttons are intentionally hidden. Direct actions are
+read-only for the source request and do not require a current Show Allocation.
+
+Export and generation use the request item's saved quantity, print inches, source identity, and
+`artworkEnhanceMode`; missing source, dimensions, active pixel dimensions, enhanced derivative, or
+Storage access fails before Electron processing. Request filenames use the immutable CR/IR request
+name, not `whatnot_<date>`.
+
+Request gang sheets expose Standard efficiency mode only. Generated PNGs are cached locally under
+an isolated `print-request:<requestId>` scope and include the human-readable request name in the
+filename and rendered sheet label. No `upcomingShows` gang-sheet telemetry or Firebase artifact is
+written.
+
+All gang-sheet generation surfaces consume the normalized global Gang Sheet Settings resolver.
+The Settings page exposes six layout controls and four fixed-width price/weight tiers; Show Queue
+and Internal Gang Sheet local gang-sheet editors are retired in favor of a link to this page.
+Request Standard output renders exact request-quantity price and weight totals using saved print
+width. The canonical document is `settings/showQueue`, with non-destructive read-only fallback to
+legacy `settings/internalGangSheet` values.
+
+Copy Request creates a new clean Working/draft request and pending items through the trusted
+`copyStudioPrintRequest` transaction. It supports all four Customer/Internal direction pairs,
+allocates normal CR/IR sequences, and copies only reusable print intent. Allocations, production
+history, lifecycle lineage, and cache/artifact state are excluded. Private customer uploads cannot
+cross to a different Customer; the entire copy fails atomically if any item violates that boundary.
 
 ---
 
@@ -1652,3 +1687,25 @@ Before implementing a workflow:
 * User feedback included
 
 Every major feature should map to a documented workflow before implementation.
+
+## AI enrichment release boundary (2026-09-07)
+
+`enqueueAiEnrichment`, ready-design reprocess, and background catalog reprocess
+run the shared Pass 1 enrichment request once, then apply the deterministic
+authority decision after staff/import Smart Profile values are merged. Provider
+transport, parser/schema, title, description, category, safety, lifecycle,
+staff/import, and persistence gates remain fail-closed objective authority.
+
+Structured evidence gaps and subject-specificity risk remain visible semantic
+diagnostics but are not standalone blockers and never trigger Pass 2.
+
+Semantic Review Pass 2 is parked. The owner-only
+`semanticReviewPlaygroundEnabled` setting defaults OFF and affects only the
+manual Playground experiment. It cannot enable automatic Processing, alter
+Ready/Needs Review, or persist design changes. The old
+`semanticReviewerEnabled` field is compatibility/read-only state.
+
+AI tag generation, Tag Rerank, Suggestion Author, suggested-new-tag approval,
+and matched-tag category authority are retired from active AI enrichment.
+Existing staff tags, historical tag fields, taxonomy, and discovery remain
+available.

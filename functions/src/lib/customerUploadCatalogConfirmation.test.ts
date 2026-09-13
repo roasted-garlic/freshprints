@@ -42,7 +42,7 @@ describe("buildCatalogIntakeConfirmationPatch — Workstream E intake timing", (
     assert.equal(patch.printRequestId, null);
   });
 
-  it("declined library permission still uses the same review status branch", () => {
+  it("declined library permission enters Excluded without overwriting the original answer", () => {
     const attach = buildCatalogIntakeConfirmationPatch({
       catalogUseAcknowledged: false,
       termsVersion: "v1",
@@ -51,7 +51,23 @@ describe("buildCatalogIntakeConfirmationPatch — Workstream E intake timing", (
       now: "NOW" as never,
     });
     assert.equal(attach.catalogUseAcknowledged, false);
-    assert.equal(attach.catalogReviewStatus, "not_eligible");
+    assert.equal(attach.catalogReviewStatus, "excluded_from_catalog");
+    assert.equal(attach.catalogExclusionReason, "customer_permission_denied");
+    assert.equal(attach.catalogPermissionOriginalDeniedAt, "NOW");
+    assert.equal(attach.studioIntakeHoldUntilShow, true);
+  });
+
+  it("keeps a prior follow-up approval valid on a re-attachment", () => {
+    const patch = buildCatalogIntakeConfirmationPatch({
+      catalogUseAcknowledged: false,
+      termsVersion: "v1",
+      printRequestId: "pr1",
+      submitForStaffReview: false,
+      existingUpload: { catalogPermissionFollowUpStatus: "approved", catalogPermissionOriginalDeniedAt: "ORIGINAL" },
+      now: "NOW" as never,
+    });
+    assert.equal(patch.catalogReviewStatus, "pending_staff_review");
+    assert.equal(patch.catalogPermissionOriginalDeniedAt, undefined);
   });
 });
 
@@ -68,12 +84,17 @@ describe("shouldAdvanceCustomerUploadToStaffReview — idempotent show-allocatio
     assert.equal(shouldAdvanceCustomerUploadToStaffReview(null), false);
   });
 
+  it("does not advance when the customer declined Design Library permission", () => {
+    assert.equal(shouldAdvanceCustomerUploadToStaffReview("not_eligible", false), false);
+    assert.equal(shouldAdvanceCustomerUploadToStaffReview("not_eligible", true), true);
+  });
+
   it("transition patch sets pending_staff_review without creating designs", () => {
     const patch = buildCustomerUploadStaffReviewTransitionPatch("NOW" as never);
-    assert.deepEqual(patch, {
-      catalogReviewStatus: "pending_staff_review",
-      updatedAt: "NOW",
-    });
+    assert.equal(patch.catalogReviewStatus, "pending_staff_review");
+    assert.equal(patch.studioIntakeReleasedAt, "NOW");
+    assert.equal(patch.updatedAt, "NOW");
+    assert.ok("studioIntakeHoldUntilShow" in patch);
     assert.equal("promotedDesignId" in patch, false);
   });
 });
@@ -105,10 +126,14 @@ describe("caller wiring — attach ≠ pending, donate = pending, queue + alloca
     assert.doesNotMatch(attachSource, /submitForStaffReview:\s*true/);
   });
 
-  it("assisted Add to Request passes submitForStaffReview: false on both confirmation sites", () => {
-    const matches = assistedSource.match(/submitForStaffReview:\s*false/g) ?? [];
-    assert.equal(matches.length, 2);
-    assert.doesNotMatch(assistedSource, /submitForStaffReview:\s*true/);
+  it("assisted-created artwork bypasses customer catalog permission entirely", () => {
+    assert.doesNotMatch(assistedSource, /buildCatalogIntakeConfirmationPatch/);
+    assert.match(assistedSource, /buildAssistedArtworkPrivateUploadFields/);
+    assert.match(assistedSource, /catalogReviewStatus:\s*"not_eligible"/);
+    assert.doesNotMatch(
+      assistedSource,
+      /catalogUseAcknowledged:\s*payload\.catalogUseAcknowledged|catalogRetentionStartedAt:\s*now|studioIntakeHoldUntilShow/,
+    );
   });
 
   it("donate callable passes submitForStaffReview: true", () => {

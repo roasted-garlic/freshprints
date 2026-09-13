@@ -1,0 +1,2536 @@
+{
+  "projectId": "fresh-prints-dev",
+  "branch": "development",
+  "startedAt": "2026-08-26T20:52:37.363Z",
+  "finishedAt": "2026-08-26T21:12:17.582Z",
+  "preStartRuntime": {
+    "projectId": "fresh-prints-dev",
+    "catalogWorkflowMode": "shadow",
+    "catalogAutonomousLiveEnabled": false,
+    "readyTotal": 270,
+    "readyApprovedEligible": 270,
+    "readyNotApprovedApprox": 0,
+    "activeReadyCatalogJobs": 0,
+    "activeAiReviewQueueJobs": 0
+  },
+  "previewResponse": {
+    "targetType": "ready_catalog",
+    "environment": "dev",
+    "projectId": "fresh-prints-dev",
+    "eligibleCount": 270,
+    "catalogWorkflowMode": "shadow",
+    "autonomousLiveEnabled": false,
+    "targetEnabled": true,
+    "unavailableReason": null,
+    "requiredConfirmationPhrase": "REPROCESS READY CATALOG",
+    "activeJobId": null,
+    "readyInventory": {
+      "eligibleCount": 270,
+      "statusDistribution": {
+        "ready": 270
+      },
+      "aiReviewStatusDistribution": {
+        "approved": 270
+      },
+      "promptVersionDistribution": {
+        "catalog-enrich-v30": 3,
+        "(missing)": 263,
+        "catalog-enrich-v27": 4
+      },
+      "normalizerVersionDistribution": {
+        "smart-profile-normalizer-v4": 3,
+        "(missing)": 263,
+        "smart-profile-normalizer-v1": 4
+      },
+      "alreadyCurrentPipelineCount": 3,
+      "missingProfileCount": 263,
+      "exclusions": {
+        "importedNeedsReview": 205,
+        "rejectedStatus": 0,
+        "archivedStatus": 2,
+        "pendingReviewProcessing": 0,
+        "readyNotApproved": 0,
+        "eligibleReadyCatalog": 270
+      },
+      "tagDensityBuckets": {
+        "zeroTags": 0,
+        "lowTags": 74,
+        "highTags": 196
+      },
+      "exclusionMethod": "indexed_status_counts"
+    }
+  },
+  "previewBaselineDelta": {
+    "priorPreviewEligible": 270,
+    "currentPreviewEligible": 270,
+    "currentFirestoreReadyApproved": 270,
+    "preInventory": {
+      "totalReady": 270,
+      "readyApproved": 270,
+      "readyNotApproved": 0,
+      "v30v4": 3,
+      "missingProfile": 263,
+      "olderPipeline": 4,
+      "missingSnapshot": 270,
+      "staffEdited": 1,
+      "promptVersionDistribution": {
+        "catalog-enrich-v30": 3,
+        "(missing)": 263,
+        "catalog-enrich-v27": 4
+      },
+      "normalizerVersionDistribution": {
+        "smart-profile-normalizer-v4": 3,
+        "(missing)": 263,
+        "smart-profile-normalizer-v1": 4
+      },
+      "categoryNamesSize": 18
+    }
+  },
+  "startPayload": {
+    "targetType": "ready_catalog",
+    "confirmationPhrase": "REPROCESS READY CATALOG"
+  },
+  "startResponse": {
+    "jobId": "jcfzNjPCbcg66kkGltNn",
+    "dryRun": false,
+    "targetType": "ready_catalog",
+    "totalEligible": 270,
+    "status": "pending"
+  },
+  "jobId": "jcfzNjPCbcg66kkGltNn",
+  "boundedDesignIds": null,
+  "terminalJob": {
+    "jobId": "jcfzNjPCbcg66kkGltNn",
+    "status": "completed",
+    "targetType": "ready_catalog",
+    "totalEligible": 270,
+    "processed": 270,
+    "succeeded": 269,
+    "failed": 1,
+    "skipped": 0,
+    "remainedReady": 269,
+    "preservationViolations": 0,
+    "wouldAutoApprove": 168,
+    "verifierInvoked": 101,
+    "verifierUnresolved": 101,
+    "hardBlocked": 101,
+    "categoryDominantIntentConflict": 0,
+    "anomalies": 0,
+    "autoApproved": 0
+  },
+  "distributions": {
+    "automationDecision": {
+      "shadow": 168,
+      "needs_review": 101,
+      "(missing)": 1
+    },
+    "automationReasonCodes": {
+      "shadow_would_auto_approve": 168,
+      "structured_evidence_gap:subjects:dinosaur": 1,
+      "structured_evidence_gap:objects:trees": 5,
+      "verifier_unresolved": 101,
+      "category_alternatives_present": 37,
+      "structured_evidence_gap:subjects:character": 3,
+      "structured_evidence_gap:objects:baseball glove": 3,
+      "structured_evidence_gap:objects:baseball uniform": 1,
+      "structured_evidence_gap:subjects:people": 21,
+      "structured_evidence_gap:objects:stars": 2,
+      "subject_specificity_risk:scooby-doo": 3,
+      "structured_evidence_gap:objects:electrical outlet": 1,
+      "subject_specificity_risk:duck": 3,
+      "subject_specificity_risk:bigfoot": 7,
+      "structured_evidence_gap:objects:fishing rod": 4,
+      "subject_specificity_risk:bear": 3,
+      "structured_evidence_gap:objects:notebook": 1,
+      "structured_evidence_gap:objects:pen": 1,
+      "structured_evidence_gap:subjects:dog": 2,
+      "structured_evidence_gap:objects:cityscape": 1,
+      "subject_specificity_risk:raccoon": 1,
+      "structured_evidence_gap:objects:spoon": 1,
+      "structured_evidence_gap:objects:bottle": 1,
+      "structured_evidence_gap:objects:paw print": 1,
+      "subject_specificity_risk:donkey": 1,
+      "structured_evidence_gap:objects:roses": 1,
+      "subject_specificity_risk:alice": 2,
+      "subject_specificity_risk:character": 1,
+      "structured_evidence_gap:objects:food": 1,
+      "structured_evidence_gap:objects:heart": 4,
+      "structured_evidence_gap:objects:holly": 1,
+      "structured_evidence_gap:objects:snowflakes": 1,
+      "structured_evidence_gap:objects:hook": 2,
+      "structured_evidence_gap:objects:cocktail": 1,
+      "subject_specificity_risk:hands": 1,
+      "subject_specificity_risk:person": 1,
+      "subject_specificity_risk:tiger": 1,
+      "subject_specificity_risk:jesus": 2,
+      "structured_evidence_gap:objects:coffee cup": 3,
+      "subject_specificity_risk:cat": 1,
+      "structured_evidence_gap:objects:cannabis leaves": 2,
+      "subject_specificity_risk:ladybug": 1,
+      "structured_evidence_gap:subjects:chicken": 1,
+      "structured_evidence_gap:objects:lightning bolt": 1,
+      "subject_specificity_risk:unicorn": 1,
+      "structured_evidence_gap:objects:hat": 7,
+      "structured_evidence_gap:objects:baseball cap": 2,
+      "structured_evidence_gap:objects:cactus": 1,
+      "subject_specificity_risk:van": 1,
+      "structured_evidence_gap:objects:awareness ribbons": 1,
+      "subject_specificity_risk:horse": 1,
+      "structured_evidence_gap:objects:cannabis cigarette": 1,
+      "structured_evidence_gap:objects:fire": 1,
+      "subject_specificity_risk:girl": 1,
+      "subject_specificity_risk:man": 1,
+      "subject_specificity_risk:tigers": 1,
+      "structured_evidence_gap:objects:caution tape": 1,
+      "subject_specificity_risk:mouse": 1,
+      "subject_specificity_risk:people": 2,
+      "subject_specificity_risk:rooster": 1,
+      "subject_specificity_risk:pineapple": 1,
+      "structured_evidence_gap:subjects:bird": 1,
+      "subject_specificity_risk:snoopy": 1,
+      "structured_evidence_gap:objects:gun": 1,
+      "subject_specificity_risk:boy": 1,
+      "structured_evidence_gap:objects:pumpkins": 1,
+      "subject_specificity_risk:fish": 1,
+      "structured_evidence_gap:subjects:person": 1,
+      "structured_evidence_gap:objects:lab coat": 1,
+      "structured_evidence_gap:objects:flowers": 1,
+      "structured_evidence_gap:objects:compass": 1,
+      "structured_evidence_gap:objects:bow": 1,
+      "structured_evidence_gap:objects:lantern": 1
+    },
+    "topReasonCodes": [
+      {
+        "code": "shadow_would_auto_approve",
+        "count": 168
+      },
+      {
+        "code": "verifier_unresolved",
+        "count": 101
+      },
+      {
+        "code": "category_alternatives_present",
+        "count": 37
+      },
+      {
+        "code": "structured_evidence_gap:subjects:people",
+        "count": 21
+      },
+      {
+        "code": "subject_specificity_risk:bigfoot",
+        "count": 7
+      },
+      {
+        "code": "structured_evidence_gap:objects:hat",
+        "count": 7
+      },
+      {
+        "code": "structured_evidence_gap:objects:trees",
+        "count": 5
+      },
+      {
+        "code": "structured_evidence_gap:objects:fishing rod",
+        "count": 4
+      },
+      {
+        "code": "structured_evidence_gap:objects:heart",
+        "count": 4
+      },
+      {
+        "code": "structured_evidence_gap:subjects:character",
+        "count": 3
+      },
+      {
+        "code": "structured_evidence_gap:objects:baseball glove",
+        "count": 3
+      },
+      {
+        "code": "subject_specificity_risk:scooby-doo",
+        "count": 3
+      },
+      {
+        "code": "subject_specificity_risk:duck",
+        "count": 3
+      },
+      {
+        "code": "subject_specificity_risk:bear",
+        "count": 3
+      },
+      {
+        "code": "structured_evidence_gap:objects:coffee cup",
+        "count": 3
+      },
+      {
+        "code": "structured_evidence_gap:objects:stars",
+        "count": 2
+      },
+      {
+        "code": "structured_evidence_gap:subjects:dog",
+        "count": 2
+      },
+      {
+        "code": "subject_specificity_risk:alice",
+        "count": 2
+      },
+      {
+        "code": "structured_evidence_gap:objects:hook",
+        "count": 2
+      },
+      {
+        "code": "subject_specificity_risk:jesus",
+        "count": 2
+      },
+      {
+        "code": "structured_evidence_gap:objects:cannabis leaves",
+        "count": 2
+      },
+      {
+        "code": "structured_evidence_gap:objects:baseball cap",
+        "count": 2
+      },
+      {
+        "code": "subject_specificity_risk:people",
+        "count": 2
+      },
+      {
+        "code": "structured_evidence_gap:subjects:dinosaur",
+        "count": 1
+      },
+      {
+        "code": "structured_evidence_gap:objects:baseball uniform",
+        "count": 1
+      }
+    ],
+    "promptVersion": {
+      "catalog-enrich-v30": 269,
+      "(missing)": 1
+    },
+    "normalizerVersion": {
+      "smart-profile-normalizer-v4": 269,
+      "(missing)": 1
+    },
+    "outcomeStatus": {
+      "succeeded": 269,
+      "failed": 1
+    }
+  },
+  "lifecycleViolations": [],
+  "postInventory": {
+    "totalReady": 270,
+    "readyApproved": 270,
+    "readyNotApproved": 0,
+    "v30v4": 269,
+    "missingProfile": 1,
+    "olderPipeline": 0,
+    "missingSnapshot": 1,
+    "staffEdited": 1,
+    "promptVersionDistribution": {
+      "catalog-enrich-v30": 269,
+      "(missing)": 1
+    },
+    "normalizerVersionDistribution": {
+      "smart-profile-normalizer-v4": 269,
+      "(missing)": 1
+    },
+    "categoryNamesSize": 18
+  },
+  "algoliaSamples": [
+    {
+      "designId": "07ZCzmp7OFdSYKZ6hTg5",
+      "checked": true,
+      "objectPresent": true,
+      "hasTitle": true,
+      "hasSearchText": true,
+      "hasCategoryName": true,
+      "hasSmartProfileProjection": true
+    },
+    {
+      "designId": "6x2LyTvG3ewIePeWHanV",
+      "checked": true,
+      "objectPresent": true,
+      "hasTitle": true,
+      "hasSearchText": true,
+      "hasCategoryName": true,
+      "hasSmartProfileProjection": true
+    },
+    {
+      "designId": "ztvX5GTSctTGnAFuf8KZ",
+      "checked": true,
+      "objectPresent": true,
+      "hasTitle": true,
+      "hasSearchText": true,
+      "hasCategoryName": true,
+      "hasSmartProfileProjection": true
+    }
+  ],
+  "ownerQASample": [
+    {
+      "designId": "6x2LyTvG3ewIePeWHanV",
+      "stratum": "mustInclude",
+      "title": "Jimothy Seattle Wildlife Do Not Pet The Round King",
+      "category": "Funny & Sarcastic",
+      "tagCount": 2,
+      "tagDensity": "lowTags",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "aiProcessingStage": "ready_for_review",
+      "automationDecision": "needs_review",
+      "wouldAutoApprove": false,
+      "verifierInvoked": true,
+      "verifierOutcome": "unresolved",
+      "hardBlocked": true,
+      "automationReasonCodes": [
+        "structured_evidence_gap:objects:cityscape",
+        "structured_evidence_gap:objects:trees",
+        "subject_specificity_risk:raccoon",
+        "verifier_unresolved"
+      ],
+      "smartProfileHighlights": {
+        "subjects": [
+          "raccoon"
+        ],
+        "styles": [
+          "distressed",
+          "illustration",
+          "graphic"
+        ],
+        "themes": [
+          "humor",
+          "animal humor",
+          "city life",
+          "nature",
+          "quirky"
+        ],
+        "searchConcepts": [
+          "Jimothy",
+          "Seattle wildlife",
+          "do not pet the round king",
+          "raccoon design",
+          "funny raccoon shirt"
+        ],
+        "visibleText": [
+          "JIMOTHY",
+          "SEATTLE WILDLIFE",
+          "DO NOT PET THE ROUND KING"
+        ]
+      },
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "ownerQAQuestion": "Would I trust this Smart Profile and automation decision if this design were imported unattended today?",
+      "ownerVerdict": null
+    },
+    {
+      "designId": "0MpiuK4ERPawPEsUoZLn",
+      "stratum": "mustInclude",
+      "title": "Thin Red Line American Flag",
+      "category": "Patriotic & Americana",
+      "tagCount": 8,
+      "tagDensity": "highTags",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "aiProcessingStage": "ready_for_review",
+      "automationDecision": "shadow",
+      "wouldAutoApprove": true,
+      "verifierInvoked": false,
+      "verifierOutcome": "skipped",
+      "hardBlocked": false,
+      "automationReasonCodes": [
+        "shadow_would_auto_approve"
+      ],
+      "smartProfileHighlights": {
+        "subjects": null,
+        "styles": [
+          "distressed",
+          "graphic"
+        ],
+        "themes": [
+          "patriotic",
+          "support"
+        ],
+        "searchConcepts": [
+          "firefighter support",
+          "law enforcement support",
+          "support first responders",
+          "usa flag",
+          "american pride"
+        ],
+        "visibleText": null
+      },
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "ownerQAQuestion": "Would I trust this Smart Profile and automation decision if this design were imported unattended today?",
+      "ownerVerdict": null
+    },
+    {
+      "designId": "Ro9FE0cE6OLhj0eXvDGb",
+      "stratum": "mustInclude",
+      "title": "Roaring Cat And Dinosaur In Forest",
+      "category": "Animals",
+      "tagCount": 4,
+      "tagDensity": "highTags",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "aiProcessingStage": "failed",
+      "automationDecision": null,
+      "wouldAutoApprove": null,
+      "verifierInvoked": null,
+      "verifierOutcome": null,
+      "hardBlocked": null,
+      "automationReasonCodes": null,
+      "smartProfileHighlights": null,
+      "promptVersion": null,
+      "normalizerVersion": null,
+      "ownerQAQuestion": "Would I trust this Smart Profile and automation decision if this design were imported unattended today?",
+      "ownerVerdict": null
+    },
+    {
+      "designId": "07ZCzmp7OFdSYKZ6hTg5",
+      "stratum": "wouldAutoApprove",
+      "title": "Don't Worry About What Other People Think They Don't Do It Often",
+      "category": "Funny & Sarcastic",
+      "tagCount": 6,
+      "tagDensity": "highTags",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "aiProcessingStage": "ready_for_review",
+      "automationDecision": "shadow",
+      "wouldAutoApprove": true,
+      "verifierInvoked": false,
+      "verifierOutcome": "skipped",
+      "hardBlocked": false,
+      "automationReasonCodes": [
+        "shadow_would_auto_approve"
+      ],
+      "smartProfileHighlights": {
+        "subjects": null,
+        "styles": [
+          "colorful",
+          "graphic",
+          "decorative"
+        ],
+        "themes": [
+          "humor",
+          "attitude",
+          "sarcasm",
+          "positivity",
+          "empowerment"
+        ],
+        "searchConcepts": [
+          "self-confidence",
+          "dont worry",
+          "think",
+          "what others think",
+          "live your life"
+        ],
+        "visibleText": [
+          "Don't Worry",
+          "about what",
+          "other people think",
+          "they don't do it",
+          "often"
+        ]
+      },
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "ownerQAQuestion": "Would I trust this Smart Profile and automation decision if this design were imported unattended today?",
+      "ownerVerdict": null
+    },
+    {
+      "designId": "0LN89kU1X8FSUUs0cMjb",
+      "stratum": "wouldAutoApprove",
+      "title": "Fun Fact I Don't Really Care",
+      "category": "Funny & Sarcastic",
+      "tagCount": 7,
+      "tagDensity": "highTags",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "aiProcessingStage": "ready_for_review",
+      "automationDecision": "shadow",
+      "wouldAutoApprove": true,
+      "verifierInvoked": false,
+      "verifierOutcome": "skipped",
+      "hardBlocked": false,
+      "automationReasonCodes": [
+        "shadow_would_auto_approve"
+      ],
+      "smartProfileHighlights": {
+        "subjects": null,
+        "styles": [
+          "brush stroke",
+          "gothic",
+          "bold",
+          "graphic"
+        ],
+        "themes": [
+          "sarcasm",
+          "attitude",
+          "humor",
+          "quirky"
+        ],
+        "searchConcepts": [
+          "fun fact",
+          "i dont care",
+          "attitude saying",
+          "funny quote",
+          "brush stroke text"
+        ],
+        "visibleText": [
+          "Fun Fact",
+          "I don't really",
+          "CARE",
+          "XX"
+        ]
+      },
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "ownerQAQuestion": "Would I trust this Smart Profile and automation decision if this design were imported unattended today?",
+      "ownerVerdict": null
+    },
+    {
+      "designId": "0UsPRAh0tggzuX8xwWqq",
+      "stratum": "wouldAutoApprove",
+      "title": "Scooby-doo Bursting Through",
+      "category": "Pop Culture & Characters",
+      "tagCount": 6,
+      "tagDensity": "highTags",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "aiProcessingStage": "ready_for_review",
+      "automationDecision": "shadow",
+      "wouldAutoApprove": true,
+      "verifierInvoked": false,
+      "verifierOutcome": "skipped",
+      "hardBlocked": false,
+      "automationReasonCodes": [
+        "shadow_would_auto_approve"
+      ],
+      "smartProfileHighlights": {
+        "subjects": [
+          "dog",
+          "Scooby-Doo"
+        ],
+        "styles": [
+          "cartoon",
+          "illustration",
+          "colorful"
+        ],
+        "themes": [
+          "animation",
+          "pet love",
+          "quirky"
+        ],
+        "searchConcepts": [
+          "Scooby-Doo character",
+          "cartoon dog",
+          "dog with star tag",
+          "peeking dog",
+          "animation character"
+        ],
+        "visibleText": null
+      },
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "ownerQAQuestion": "Would I trust this Smart Profile and automation decision if this design were imported unattended today?",
+      "ownerVerdict": null
+    },
+    {
+      "designId": "0XO2ZquGgG3hsyI5Zqye",
+      "stratum": "hardBlocked",
+      "title": "Cat Taking Selfie With Dinosaur",
+      "category": "Animals",
+      "tagCount": 4,
+      "tagDensity": "highTags",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "aiProcessingStage": "ready_for_review",
+      "automationDecision": "needs_review",
+      "wouldAutoApprove": false,
+      "verifierInvoked": true,
+      "verifierOutcome": "unresolved",
+      "hardBlocked": true,
+      "automationReasonCodes": [
+        "structured_evidence_gap:subjects:dinosaur",
+        "structured_evidence_gap:objects:trees",
+        "verifier_unresolved"
+      ],
+      "smartProfileHighlights": {
+        "subjects": [
+          "tabby cat",
+          "cat",
+          "dinosaur",
+          "Tyrannosaurus Rex"
+        ],
+        "styles": [
+          "realistic",
+          "illustration",
+          "detailed",
+          "cinematic"
+        ],
+        "themes": [
+          "humor",
+          "animal humor",
+          "surprise",
+          "photobomb",
+          "fantasy"
+        ],
+        "searchConcepts": [
+          "cat selfie",
+          "dinosaur encounter",
+          "funny animal photo",
+          "cat meme",
+          "forest adventure"
+        ],
+        "visibleText": null
+      },
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "ownerQAQuestion": "Would I trust this Smart Profile and automation decision if this design were imported unattended today?",
+      "ownerVerdict": null
+    },
+    {
+      "designId": "0sZJG8QFaGKzndMx8UFB",
+      "stratum": "hardBlocked",
+      "title": "Angels #1 Hello Kitty",
+      "category": "Sports",
+      "tagCount": 5,
+      "tagDensity": "highTags",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "aiProcessingStage": "ready_for_review",
+      "automationDecision": "needs_review",
+      "wouldAutoApprove": false,
+      "verifierInvoked": true,
+      "verifierOutcome": "unresolved",
+      "hardBlocked": true,
+      "automationReasonCodes": [
+        "category_alternatives_present",
+        "structured_evidence_gap:subjects:character",
+        "structured_evidence_gap:objects:baseball glove",
+        "structured_evidence_gap:objects:baseball uniform",
+        "verifier_unresolved"
+      ],
+      "smartProfileHighlights": {
+        "subjects": [
+          "Hello Kitty",
+          "character"
+        ],
+        "styles": [
+          "cartoon",
+          "cute",
+          "graphic"
+        ],
+        "themes": [
+          "sports fan",
+          "team spirit",
+          "appreciation"
+        ],
+        "searchConcepts": [
+          "Hello Kitty Angels",
+          "Los Angeles Angels",
+          "baseball fan gear",
+          "MLB merchandise",
+          "cute sports character"
+        ],
+        "visibleText": [
+          "ANGELS",
+          "#1"
+        ]
+      },
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "ownerQAQuestion": "Would I trust this Smart Profile and automation decision if this design were imported unattended today?",
+      "ownerVerdict": null
+    },
+    {
+      "designId": "0uw7qWseEDHTQGdVL3mu",
+      "stratum": "hardBlocked",
+      "title": "Cycling Grandpa Except Much Cooler Cyclist Bicycle",
+      "category": "Hobbies & Lifestyle",
+      "tagCount": 6,
+      "tagDensity": "highTags",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "aiProcessingStage": "ready_for_review",
+      "automationDecision": "needs_review",
+      "wouldAutoApprove": false,
+      "verifierInvoked": true,
+      "verifierOutcome": "unresolved",
+      "hardBlocked": true,
+      "automationReasonCodes": [
+        "structured_evidence_gap:subjects:people",
+        "verifier_unresolved"
+      ],
+      "smartProfileHighlights": {
+        "subjects": [
+          "people"
+        ],
+        "styles": [
+          "distressed",
+          "graphic",
+          "bold"
+        ],
+        "themes": [
+          "humor",
+          "family",
+          "cycling",
+          "appreciation"
+        ],
+        "searchConcepts": [
+          "cycling grandpa",
+          "biking grandpa",
+          "funny grandpa gift",
+          "cool grandpa",
+          "grandfather"
+        ],
+        "visibleText": [
+          "CYCLING GRANDPA",
+          "JUST LIKE A NORMAL GRANDPA",
+          "EXCEPT MUCH COOLER"
+        ]
+      },
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "ownerQAQuestion": "Would I trust this Smart Profile and automation decision if this design were imported unattended today?",
+      "ownerVerdict": null
+    },
+    {
+      "designId": "1hWOXzb9VIZPI8XNFOa0",
+      "stratum": "verifierUnresolved",
+      "title": "I Got 99 Sockets But A 10mm Ain't One",
+      "category": "Hobbies & Lifestyle",
+      "tagCount": 2,
+      "tagDensity": "lowTags",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "aiProcessingStage": "ready_for_review",
+      "automationDecision": "needs_review",
+      "wouldAutoApprove": false,
+      "verifierInvoked": true,
+      "verifierOutcome": "unresolved",
+      "hardBlocked": true,
+      "automationReasonCodes": [
+        "structured_evidence_gap:objects:stars",
+        "verifier_unresolved"
+      ],
+      "smartProfileHighlights": {
+        "subjects": null,
+        "styles": [
+          "graphic",
+          "bold",
+          "distressed"
+        ],
+        "themes": [
+          "humor",
+          "automotive",
+          "mechanic humor",
+          "sarcasm",
+          "quirky"
+        ],
+        "searchConcepts": [
+          "mechanic joke",
+          "lost socket",
+          "tool pun",
+          "car guy humor",
+          "auto mechanic"
+        ],
+        "visibleText": [
+          "I GOT",
+          "99 SOCKETS",
+          "BUT A 10MM",
+          "AIN'T ONE"
+        ]
+      },
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "ownerQAQuestion": "Would I trust this Smart Profile and automation decision if this design were imported unattended today?",
+      "ownerVerdict": null
+    },
+    {
+      "designId": "39xQcqGLGRNGR25oWiCV",
+      "stratum": "verifierUnresolved",
+      "title": "Say When Man Cowboy Hat",
+      "category": "Western & Country",
+      "tagCount": 6,
+      "tagDensity": "highTags",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "aiProcessingStage": "ready_for_review",
+      "automationDecision": "needs_review",
+      "wouldAutoApprove": false,
+      "verifierInvoked": true,
+      "verifierOutcome": "unresolved",
+      "hardBlocked": true,
+      "automationReasonCodes": [
+        "structured_evidence_gap:subjects:people",
+        "verifier_unresolved"
+      ],
+      "smartProfileHighlights": {
+        "subjects": [
+          "people"
+        ],
+        "styles": [
+          "illustration",
+          "graphic",
+          "vector art"
+        ],
+        "themes": [
+          "movie quote",
+          "western"
+        ],
+        "searchConcepts": [
+          "Doc Holliday quote",
+          "Tombstone movie",
+          "Val Kilmer character",
+          "Western character",
+          "iconic movie quote"
+        ],
+        "visibleText": [
+          "Say when"
+        ]
+      },
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "ownerQAQuestion": "Would I trust this Smart Profile and automation decision if this design were imported unattended today?",
+      "ownerVerdict": null
+    },
+    {
+      "designId": "3Hu3UUNERz4BPwnx5lt8",
+      "stratum": "verifierUnresolved",
+      "title": "The Mystery Machine Scooby-doo And The Gang",
+      "category": "Pop Culture & Characters",
+      "tagCount": 4,
+      "tagDensity": "highTags",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "aiProcessingStage": "ready_for_review",
+      "automationDecision": "needs_review",
+      "wouldAutoApprove": false,
+      "verifierInvoked": true,
+      "verifierOutcome": "unresolved",
+      "hardBlocked": true,
+      "automationReasonCodes": [
+        "subject_specificity_risk:scooby-doo",
+        "verifier_unresolved"
+      ],
+      "smartProfileHighlights": {
+        "subjects": [
+          "Scooby-Doo"
+        ],
+        "styles": [
+          "cartoon",
+          "colorful",
+          "retro"
+        ],
+        "themes": [
+          "animation",
+          "cartoon",
+          "nostalgia"
+        ],
+        "searchConcepts": [
+          "Scooby-Doo gang",
+          "Mystery Machine van",
+          "animated characters",
+          "cartoon dog",
+          "mystery solving cartoon"
+        ],
+        "visibleText": [
+          "THE MYSTERY MACHINE"
+        ]
+      },
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "ownerQAQuestion": "Would I trust this Smart Profile and automation decision if this design were imported unattended today?",
+      "ownerVerdict": null
+    },
+    {
+      "designId": "1RSZqjqeAoSvnePyg14q",
+      "stratum": "animals",
+      "title": "Thin Red Line American Flag",
+      "category": "Patriotic & Americana",
+      "tagCount": 8,
+      "tagDensity": "highTags",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "aiProcessingStage": "ready_for_review",
+      "automationDecision": "shadow",
+      "wouldAutoApprove": true,
+      "verifierInvoked": false,
+      "verifierOutcome": "skipped",
+      "hardBlocked": false,
+      "automationReasonCodes": [
+        "category_alternatives_present",
+        "shadow_would_auto_approve"
+      ],
+      "smartProfileHighlights": {
+        "subjects": null,
+        "styles": [
+          "distressed",
+          "graphic"
+        ],
+        "themes": [
+          "patriotic",
+          "support"
+        ],
+        "searchConcepts": [
+          "thin red line flag",
+          "us flag",
+          "support first responders",
+          "firefighter support",
+          "police support"
+        ],
+        "visibleText": null
+      },
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "ownerQAQuestion": "Would I trust this Smart Profile and automation decision if this design were imported unattended today?",
+      "ownerVerdict": null
+    },
+    {
+      "designId": "43EJuik9jnABMW7XuZ2u",
+      "stratum": "animals",
+      "title": "Just Because I'm Awake Doesn't Mean I'm Ready To Do Things",
+      "category": "Funny & Sarcastic",
+      "tagCount": 5,
+      "tagDensity": "highTags",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "aiProcessingStage": "ready_for_review",
+      "automationDecision": "shadow",
+      "wouldAutoApprove": true,
+      "verifierInvoked": false,
+      "verifierOutcome": "skipped",
+      "hardBlocked": false,
+      "automationReasonCodes": [
+        "category_alternatives_present",
+        "shadow_would_auto_approve"
+      ],
+      "smartProfileHighlights": {
+        "subjects": null,
+        "styles": [
+          "bold",
+          "graphic",
+          "text-based"
+        ],
+        "themes": [
+          "humor",
+          "sarcasm",
+          "introvert",
+          "relatable",
+          "morning"
+        ],
+        "searchConcepts": [
+          "morning mood",
+          "witty saying",
+          "funny text",
+          "ready to do things",
+          "awake but not ready"
+        ],
+        "visibleText": [
+          "JUST BECAUSE",
+          "I'M AWAKE",
+          "DOESN'T MEAN",
+          "I'M READY TO DO THINGS"
+        ]
+      },
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "ownerQAQuestion": "Would I trust this Smart Profile and automation decision if this design were imported unattended today?",
+      "ownerVerdict": null
+    },
+    {
+      "designId": "4XTNupV16BpvjH6hfhva",
+      "stratum": "animals",
+      "title": "My Neck My Back Hurts From Cleaning All Your Plaque",
+      "category": "Funny & Sarcastic",
+      "tagCount": 4,
+      "tagDensity": "highTags",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "aiProcessingStage": "ready_for_review",
+      "automationDecision": "needs_review",
+      "wouldAutoApprove": false,
+      "verifierInvoked": true,
+      "verifierOutcome": "unresolved",
+      "hardBlocked": true,
+      "automationReasonCodes": [
+        "subject_specificity_risk:duck",
+        "verifier_unresolved"
+      ],
+      "smartProfileHighlights": {
+        "subjects": [
+          "seated ducks",
+          "duck"
+        ],
+        "styles": [
+          "cartoon",
+          "graphic"
+        ],
+        "themes": [
+          "humor",
+          "animal humor",
+          "dental humor"
+        ],
+        "searchConcepts": [
+          "funny ducks",
+          "dentist humor",
+          "cleaning teeth",
+          "dental joke",
+          "animal dentist"
+        ],
+        "visibleText": [
+          "MY NECK, MY BACK",
+          "HURTS FROM CLEANING",
+          "ALL YOUR PLAQUE"
+        ]
+      },
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "ownerQAQuestion": "Would I trust this Smart Profile and automation decision if this design were imported unattended today?",
+      "ownerVerdict": null
+    },
+    {
+      "designId": "5MGJB359n7BjcyOPaTGb",
+      "stratum": "peopleCharacters",
+      "title": "Car Ramrod",
+      "category": "Funny & Sarcastic",
+      "tagCount": 5,
+      "tagDensity": "highTags",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "aiProcessingStage": "ready_for_review",
+      "automationDecision": "needs_review",
+      "wouldAutoApprove": false,
+      "verifierInvoked": true,
+      "verifierOutcome": "unresolved",
+      "hardBlocked": true,
+      "automationReasonCodes": [
+        "structured_evidence_gap:subjects:people",
+        "structured_evidence_gap:objects:notebook",
+        "structured_evidence_gap:objects:pen",
+        "verifier_unresolved"
+      ],
+      "smartProfileHighlights": {
+        "subjects": [
+          "people"
+        ],
+        "styles": [
+          "illustration",
+          "graphic",
+          "monochromatic",
+          "bold"
+        ],
+        "themes": [
+          "humor",
+          "movie quote",
+          "comedy"
+        ],
+        "searchConcepts": [
+          "car ramrod",
+          "super troopers",
+          "movie quote",
+          "comedy quote",
+          "funny movie quote"
+        ],
+        "visibleText": [
+          "CAR",
+          "RAMROD"
+        ]
+      },
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "ownerQAQuestion": "Would I trust this Smart Profile and automation decision if this design were imported unattended today?",
+      "ownerVerdict": null
+    },
+    {
+      "designId": "9vNXeHK4XFY9N6RXKY1S",
+      "stratum": "peopleCharacters",
+      "title": "Cycling Grandpa Except Much Cooler Cyclist",
+      "category": "Hobbies & Lifestyle",
+      "tagCount": 4,
+      "tagDensity": "highTags",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "aiProcessingStage": "ready_for_review",
+      "automationDecision": "needs_review",
+      "wouldAutoApprove": false,
+      "verifierInvoked": true,
+      "verifierOutcome": "unresolved",
+      "hardBlocked": true,
+      "automationReasonCodes": [
+        "structured_evidence_gap:subjects:people",
+        "verifier_unresolved"
+      ],
+      "smartProfileHighlights": {
+        "subjects": [
+          "people"
+        ],
+        "styles": [
+          "distressed",
+          "graphic",
+          "silhouette"
+        ],
+        "themes": [
+          "humor",
+          "family",
+          "cycling",
+          "appreciation"
+        ],
+        "searchConcepts": [
+          "cycling grandpa gift",
+          "funny grandpa shirt",
+          "cycling humor",
+          "bike grandpa",
+          "cool grandpa"
+        ],
+        "visibleText": [
+          "CYCLING GRANDPA",
+          "JUST LIKE A NORMAL GRANDPA",
+          "EXCEPT MUCH COOLER"
+        ]
+      },
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "ownerQAQuestion": "Would I trust this Smart Profile and automation decision if this design were imported unattended today?",
+      "ownerVerdict": null
+    },
+    {
+      "designId": "BaRdS8Lk5wBDq21IOXcL",
+      "stratum": "peopleCharacters",
+      "title": "Adulting Is A Scam Alice",
+      "category": "Pop Culture & Characters",
+      "tagCount": 8,
+      "tagDensity": "highTags",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "aiProcessingStage": "ready_for_review",
+      "automationDecision": "needs_review",
+      "wouldAutoApprove": false,
+      "verifierInvoked": true,
+      "verifierOutcome": "unresolved",
+      "hardBlocked": true,
+      "automationReasonCodes": [
+        "structured_evidence_gap:objects:roses",
+        "subject_specificity_risk:alice",
+        "verifier_unresolved"
+      ],
+      "smartProfileHighlights": {
+        "subjects": [
+          "surround alice",
+          "Alice",
+          "Cheshire Cat"
+        ],
+        "styles": [
+          "graphic",
+          "colorful",
+          "cartoon"
+        ],
+        "themes": [
+          "humor",
+          "sarcasm",
+          "adulting",
+          "quirky",
+          "fantasy"
+        ],
+        "searchConcepts": [
+          "Alice in Wonderland theme",
+          "Cheshire cat",
+          "adulting is hard",
+          "life is a scam",
+          "funny sayings"
+        ],
+        "visibleText": [
+          "ADULTING",
+          "IS A",
+          "SCAM"
+        ]
+      },
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "ownerQAQuestion": "Would I trust this Smart Profile and automation decision if this design were imported unattended today?",
+      "ownerVerdict": null
+    },
+    {
+      "designId": "v07O3euowuLlRUzivaeS",
+      "stratum": "professionsGroups",
+      "title": "I'm Not A Proctologist But I'll Take A Look",
+      "category": "Funny & Sarcastic",
+      "tagCount": 2,
+      "tagDensity": "lowTags",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "aiProcessingStage": "ready_for_review",
+      "automationDecision": "needs_review",
+      "wouldAutoApprove": false,
+      "verifierInvoked": true,
+      "verifierOutcome": "unresolved",
+      "hardBlocked": true,
+      "automationReasonCodes": [
+        "structured_evidence_gap:subjects:person",
+        "structured_evidence_gap:objects:lab coat",
+        "verifier_unresolved"
+      ],
+      "smartProfileHighlights": {
+        "subjects": [
+          "person"
+        ],
+        "styles": [
+          "cartoon",
+          "illustration",
+          "bold"
+        ],
+        "themes": [
+          "humor",
+          "medical",
+          "sarcasm"
+        ],
+        "searchConcepts": [
+          "doctor joke",
+          "medical joke",
+          "funny profession",
+          "medical saying",
+          "doctor saying"
+        ],
+        "visibleText": [
+          "I'M NOT A",
+          "PROCTOLOGIST",
+          "BUT I'LL TAKE A LOOK"
+        ]
+      },
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "ownerQAQuestion": "Would I trust this Smart Profile and automation decision if this design were imported unattended today?",
+      "ownerVerdict": null
+    },
+    {
+      "designId": "CKUnuq4PLmXhvfrep7pi",
+      "stratum": "holidays",
+      "title": "In A World Full Of Grinches Be A Cindy Lou",
+      "category": "Holiday & Seasonal",
+      "tagCount": 6,
+      "tagDensity": "highTags",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "aiProcessingStage": "ready_for_review",
+      "automationDecision": "needs_review",
+      "wouldAutoApprove": false,
+      "verifierInvoked": true,
+      "verifierOutcome": "unresolved",
+      "hardBlocked": true,
+      "automationReasonCodes": [
+        "structured_evidence_gap:subjects:character",
+        "structured_evidence_gap:objects:heart",
+        "structured_evidence_gap:objects:holly",
+        "structured_evidence_gap:objects:snowflakes",
+        "verifier_unresolved"
+      ],
+      "smartProfileHighlights": {
+        "subjects": [
+          "the Grinch",
+          "Cindy Lou",
+          "character"
+        ],
+        "styles": [
+          "cartoon",
+          "graphic",
+          "colorful"
+        ],
+        "themes": [
+          "holiday",
+          "Christmas",
+          "whimsical",
+          "inspiration"
+        ],
+        "searchConcepts": [
+          "Grinch quote",
+          "Cindy Lou Who quote",
+          "Christmas movie quote",
+          "be a Cindy Lou",
+          "Christmas cartoon"
+        ],
+        "visibleText": [
+          "In a",
+          "world",
+          "full of",
+          "grinches,",
+          "be a"
+        ]
+      },
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "ownerQAQuestion": "Would I trust this Smart Profile and automation decision if this design were imported unattended today?",
+      "ownerVerdict": null
+    },
+    {
+      "designId": "qVhOTRvHpQhOhAJn2mV3",
+      "stratum": "holidays",
+      "title": "Ghost With Pumpkin Bucket And Dinosaur Patch",
+      "category": "Holiday & Seasonal",
+      "tagCount": 3,
+      "tagDensity": "lowTags",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "aiProcessingStage": "ready_for_review",
+      "automationDecision": "needs_review",
+      "wouldAutoApprove": false,
+      "verifierInvoked": true,
+      "verifierOutcome": "unresolved",
+      "hardBlocked": true,
+      "automationReasonCodes": [
+        "structured_evidence_gap:objects:pumpkins",
+        "structured_evidence_gap:objects:hat",
+        "verifier_unresolved"
+      ],
+      "smartProfileHighlights": {
+        "subjects": [
+          "ghost",
+          "dinosaur"
+        ],
+        "styles": [
+          "cartoon",
+          "cute",
+          "detailed"
+        ],
+        "themes": [
+          "Halloween",
+          "trick or treat",
+          "cute",
+          "whimsical"
+        ],
+        "searchConcepts": [
+          "Halloween ghost costume",
+          "trick or treat bucket",
+          "jack-o-lantern candy holder",
+          "ghost with baseball cap",
+          "dinosaur patch ghost"
+        ],
+        "visibleText": null
+      },
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "ownerQAQuestion": "Would I trust this Smart Profile and automation decision if this design were imported unattended today?",
+      "ownerVerdict": null
+    },
+    {
+      "designId": "KYgldo204fNLSjXlmakr",
+      "stratum": "faith",
+      "title": "Jesus The Way The Truth The Life John 14:6",
+      "category": "Faith & Inspirational",
+      "tagCount": 5,
+      "tagDensity": "highTags",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "aiProcessingStage": "ready_for_review",
+      "automationDecision": "needs_review",
+      "wouldAutoApprove": false,
+      "verifierInvoked": true,
+      "verifierOutcome": "unresolved",
+      "hardBlocked": true,
+      "automationReasonCodes": [
+        "subject_specificity_risk:jesus",
+        "verifier_unresolved"
+      ],
+      "smartProfileHighlights": {
+        "subjects": [
+          "Jesus"
+        ],
+        "styles": [
+          "detailed",
+          "illustration",
+          "graphic"
+        ],
+        "themes": [
+          "faith",
+          "inspiration",
+          "religious"
+        ],
+        "searchConcepts": [
+          "Jesus Christ quote",
+          "Christian apparel",
+          "religious scripture",
+          "faith based design",
+          "biblical verse"
+        ],
+        "visibleText": [
+          "JESUS",
+          "THE WAY, THE TRUTH, THE LIFE",
+          "JOHN 14:6"
+        ]
+      },
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "ownerQAQuestion": "Would I trust this Smart Profile and automation decision if this design were imported unattended today?",
+      "ownerVerdict": null
+    },
+    {
+      "designId": "Q5Rcz5AuTNQYIoVWmXYk",
+      "stratum": "faith",
+      "title": "Jesus Has Your Back",
+      "category": "Faith & Inspirational",
+      "tagCount": 5,
+      "tagDensity": "highTags",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "aiProcessingStage": "ready_for_review",
+      "automationDecision": "needs_review",
+      "wouldAutoApprove": false,
+      "verifierInvoked": true,
+      "verifierOutcome": "unresolved",
+      "hardBlocked": true,
+      "automationReasonCodes": [
+        "subject_specificity_risk:jesus",
+        "verifier_unresolved"
+      ],
+      "smartProfileHighlights": {
+        "subjects": [
+          "Jesus",
+          "devil"
+        ],
+        "styles": [
+          "retro",
+          "illustration",
+          "graphic"
+        ],
+        "themes": [
+          "faith",
+          "humor",
+          "positivity",
+          "inspiration",
+          "religious humor"
+        ],
+        "searchConcepts": [
+          "Jesus has your back humor",
+          "religious comedy",
+          "Jesus fighting evil",
+          "Christian humor",
+          "Jesus saves"
+        ],
+        "visibleText": [
+          "JESUS",
+          "HAS YOUR BACK"
+        ]
+      },
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "ownerQAQuestion": "Would I trust this Smart Profile and automation decision if this design were imported unattended today?",
+      "ownerVerdict": null
+    },
+    {
+      "designId": "0a2CnYbwv26II2rKL3mc",
+      "stratum": "humor",
+      "title": "I Have 5 Moods I'm Too Old For This Too Tired I Don't Have Time Bird",
+      "category": "Funny & Sarcastic",
+      "tagCount": 5,
+      "tagDensity": "highTags",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "aiProcessingStage": "ready_for_review",
+      "automationDecision": "shadow",
+      "wouldAutoApprove": true,
+      "verifierInvoked": false,
+      "verifierOutcome": "skipped",
+      "hardBlocked": false,
+      "automationReasonCodes": [
+        "shadow_would_auto_approve"
+      ],
+      "smartProfileHighlights": {
+        "subjects": [
+          "bird"
+        ],
+        "styles": [
+          "cartoon",
+          "graphic",
+          "colorful"
+        ],
+        "themes": [
+          "humor",
+          "sarcasm",
+          "attitude",
+          "quirky",
+          "moods"
+        ],
+        "searchConcepts": [
+          "moody bird",
+          "grumpy bird",
+          "bird humor",
+          "funny bird saying",
+          "relatable moods"
+        ],
+        "visibleText": [
+          "I HAVE 5 MOODS",
+          "I'M",
+          "too old",
+          "FOR",
+          "THIS"
+        ]
+      },
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "ownerQAQuestion": "Would I trust this Smart Profile and automation decision if this design were imported unattended today?",
+      "ownerVerdict": null
+    },
+    {
+      "designId": "1thrdY1jz0fwuqUftlz5",
+      "stratum": "humor",
+      "title": "Stop Asking Why I'm Crazy I Don't Ask Why You're Stupid",
+      "category": "Funny & Sarcastic",
+      "tagCount": 6,
+      "tagDensity": "highTags",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "aiProcessingStage": "ready_for_review",
+      "automationDecision": "shadow",
+      "wouldAutoApprove": true,
+      "verifierInvoked": false,
+      "verifierOutcome": "skipped",
+      "hardBlocked": false,
+      "automationReasonCodes": [
+        "shadow_would_auto_approve"
+      ],
+      "smartProfileHighlights": {
+        "subjects": null,
+        "styles": [
+          "distressed",
+          "bold",
+          "graphic",
+          "typography"
+        ],
+        "themes": [
+          "sarcasm",
+          "humor",
+          "attitude",
+          "quirky"
+        ],
+        "searchConcepts": [
+          "stop asking why I'm crazy",
+          "I don't ask why you're stupid",
+          "funny saying",
+          "sarcastic quote",
+          "attitude shirt"
+        ],
+        "visibleText": [
+          "STOP ASKING WHY",
+          "I'M CRAZY",
+          "I DON'T ASK WHY",
+          "YOU'RE STUPID"
+        ]
+      },
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "ownerQAQuestion": "Would I trust this Smart Profile and automation decision if this design were imported unattended today?",
+      "ownerVerdict": null
+    },
+    {
+      "designId": "BXn0lf9jKZd4b0DRVf0X",
+      "stratum": "humor",
+      "title": "Uncle Sam Smoking Joint Uncle Sam",
+      "category": "Patriotic & Americana",
+      "tagCount": 6,
+      "tagDensity": "highTags",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "aiProcessingStage": "ready_for_review",
+      "automationDecision": "shadow",
+      "wouldAutoApprove": true,
+      "verifierInvoked": false,
+      "verifierOutcome": "skipped",
+      "hardBlocked": false,
+      "automationReasonCodes": [
+        "shadow_would_auto_approve"
+      ],
+      "smartProfileHighlights": {
+        "subjects": [
+          "Uncle Sam"
+        ],
+        "styles": [
+          "illustration",
+          "detailed",
+          "realistic"
+        ],
+        "themes": [
+          "humor",
+          "cannabis humor",
+          "patriotic",
+          "political",
+          "smoking"
+        ],
+        "searchConcepts": [
+          "uncle sam pointing",
+          "uncle sam smoking weed",
+          "patriotic cannabis",
+          "4th of july humor",
+          "election humor"
+        ],
+        "visibleText": null
+      },
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "ownerQAQuestion": "Would I trust this Smart Profile and automation decision if this design were imported unattended today?",
+      "ownerVerdict": null
+    },
+    {
+      "designId": "ARc8fRO7RzIY72d5pjgN",
+      "stratum": "textHeavy",
+      "title": "If You Don't Like Me Remember That It's Mind Over Matter I Don't Mind And You Don't Matter",
+      "category": "Funny & Sarcastic",
+      "tagCount": 5,
+      "tagDensity": "highTags",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "aiProcessingStage": "ready_for_review",
+      "automationDecision": "shadow",
+      "wouldAutoApprove": true,
+      "verifierInvoked": false,
+      "verifierOutcome": "skipped",
+      "hardBlocked": false,
+      "automationReasonCodes": [
+        "shadow_would_auto_approve"
+      ],
+      "smartProfileHighlights": {
+        "subjects": null,
+        "styles": [
+          "bold",
+          "graphic"
+        ],
+        "themes": [
+          "sarcasm",
+          "attitude",
+          "humor",
+          "witty",
+          "opinionated"
+        ],
+        "searchConcepts": [
+          "sarcastic quote",
+          "attitude statement",
+          "funny saying",
+          "bold text",
+          "mind over matter"
+        ],
+        "visibleText": [
+          "IF YOU DON'T",
+          "LIKE ME,",
+          "REMEMBER THAT",
+          "it's Mind over Matter.",
+          "I don't mind and you"
+        ]
+      },
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "ownerQAQuestion": "Would I trust this Smart Profile and automation decision if this design were imported unattended today?",
+      "ownerVerdict": null
+    },
+    {
+      "designId": "B4JrE5SQGnQWvYMWlMuT",
+      "stratum": "textHeavy",
+      "title": "I Don't Give A Rat's Ass Donkey",
+      "category": "Funny & Sarcastic",
+      "tagCount": 6,
+      "tagDensity": "highTags",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "aiProcessingStage": "ready_for_review",
+      "automationDecision": "needs_review",
+      "wouldAutoApprove": false,
+      "verifierInvoked": true,
+      "verifierOutcome": "unresolved",
+      "hardBlocked": true,
+      "automationReasonCodes": [
+        "subject_specificity_risk:donkey",
+        "verifier_unresolved"
+      ],
+      "smartProfileHighlights": {
+        "subjects": [
+          "donkey",
+          "mouse"
+        ],
+        "styles": [
+          "cartoon",
+          "graphic",
+          "humorous"
+        ],
+        "themes": [
+          "humor",
+          "sarcasm",
+          "attitude",
+          "animal humor"
+        ],
+        "searchConcepts": [
+          "donkey and mouse",
+          "i don't give a",
+          "funny animal saying",
+          "sarcastic animal quote",
+          "cartoon donkey"
+        ],
+        "visibleText": [
+          "I don't give a"
+        ]
+      },
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "ownerQAQuestion": "Would I trust this Smart Profile and automation decision if this design were imported unattended today?",
+      "ownerVerdict": null
+    },
+    {
+      "designId": "BIqNObQKc5mokgoBSTB2",
+      "stratum": "textHeavy",
+      "title": "Where We're Going We Don't Roads Utv",
+      "category": "Hobbies & Lifestyle",
+      "tagCount": 4,
+      "tagDensity": "highTags",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "aiProcessingStage": "ready_for_review",
+      "automationDecision": "shadow",
+      "wouldAutoApprove": true,
+      "verifierInvoked": false,
+      "verifierOutcome": "skipped",
+      "hardBlocked": false,
+      "automationReasonCodes": [
+        "shadow_would_auto_approve"
+      ],
+      "smartProfileHighlights": {
+        "subjects": null,
+        "styles": [
+          "graphic",
+          "bold",
+          "retro"
+        ],
+        "themes": [
+          "humor",
+          "adventure",
+          "parody",
+          "travel",
+          "movie quote"
+        ],
+        "searchConcepts": [
+          "UTV",
+          "off-road vehicle",
+          "side-by-side",
+          "RZR",
+          "Can-Am"
+        ],
+        "visibleText": [
+          "WHERE",
+          "WE'RE GOING",
+          "WE",
+          "DON'T NEED",
+          "ROADS"
+        ]
+      },
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "ownerQAQuestion": "Would I trust this Smart Profile and automation decision if this design were imported unattended today?",
+      "ownerVerdict": null
+    },
+    {
+      "designId": "3QL4ZBUKyp4doCWbGqbU",
+      "stratum": "lowTagDensity",
+      "title": "Back & Body Hurts",
+      "category": "Funny & Sarcastic",
+      "tagCount": 3,
+      "tagDensity": "lowTags",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "aiProcessingStage": "ready_for_review",
+      "automationDecision": "shadow",
+      "wouldAutoApprove": true,
+      "verifierInvoked": false,
+      "verifierOutcome": "skipped",
+      "hardBlocked": false,
+      "automationReasonCodes": [
+        "shadow_would_auto_approve"
+      ],
+      "smartProfileHighlights": {
+        "subjects": null,
+        "styles": [
+          "graphic",
+          "bold"
+        ],
+        "themes": [
+          "humor",
+          "sarcasm",
+          "pain"
+        ],
+        "searchConcepts": [
+          "back pain",
+          "body ache",
+          "funny sayings",
+          "sarcastic humor",
+          "everyday struggles"
+        ],
+        "visibleText": [
+          "Back",
+          "& Body",
+          "Hurts"
+        ]
+      },
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "ownerQAQuestion": "Would I trust this Smart Profile and automation decision if this design were imported unattended today?",
+      "ownerVerdict": null
+    },
+    {
+      "designId": "4MXLzJzTXy9WWBKuJCjw",
+      "stratum": "lowTagDensity",
+      "title": "Live Laugh Toaster Bath",
+      "category": "Funny & Sarcastic",
+      "tagCount": 2,
+      "tagDensity": "lowTags",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "aiProcessingStage": "ready_for_review",
+      "automationDecision": "needs_review",
+      "wouldAutoApprove": false,
+      "verifierInvoked": true,
+      "verifierOutcome": "unresolved",
+      "hardBlocked": true,
+      "automationReasonCodes": [
+        "structured_evidence_gap:objects:electrical outlet",
+        "verifier_unresolved"
+      ],
+      "smartProfileHighlights": {
+        "subjects": [
+          "toaster"
+        ],
+        "styles": [
+          "cartoon",
+          "graphic",
+          "colorful"
+        ],
+        "themes": [
+          "humor",
+          "dark humor",
+          "sarcasm",
+          "danger",
+          "appliance humor"
+        ],
+        "searchConcepts": [
+          "Live Laugh Love parody",
+          "toaster bath danger",
+          "funny toaster joke",
+          "electric shock humor",
+          "appliance safety joke"
+        ],
+        "visibleText": [
+          "LIVE, LAUGH,",
+          "TOASTER BATH"
+        ]
+      },
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "ownerQAQuestion": "Would I trust this Smart Profile and automation decision if this design were imported unattended today?",
+      "ownerVerdict": null
+    },
+    {
+      "designId": "65XUcp7aFM8Q9ktdnXPY",
+      "stratum": "lowTagDensity",
+      "title": "Some Things Are Worth Shitting For Taco Bell Logo",
+      "category": "Food & Drink",
+      "tagCount": 3,
+      "tagDensity": "lowTags",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "aiProcessingStage": "ready_for_review",
+      "automationDecision": "shadow",
+      "wouldAutoApprove": true,
+      "verifierInvoked": false,
+      "verifierOutcome": "skipped",
+      "hardBlocked": false,
+      "automationReasonCodes": [
+        "shadow_would_auto_approve"
+      ],
+      "smartProfileHighlights": {
+        "subjects": null,
+        "styles": [
+          "distressed",
+          "illustration",
+          "realistic"
+        ],
+        "themes": [
+          "humor",
+          "sarcasm",
+          "food humor"
+        ],
+        "searchConcepts": [
+          "Taco Bell lover",
+          "funny food quote",
+          "fast food humor",
+          "food addiction",
+          "eating for a cause"
+        ],
+        "visibleText": [
+          "SOME THINGS ARE WORTH",
+          "SHITTING FOR"
+        ]
+      },
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "ownerQAQuestion": "Would I trust this Smart Profile and automation decision if this design were imported unattended today?",
+      "ownerVerdict": null
+    },
+    {
+      "designId": "0phueQlD5pIgCNBHRpvt",
+      "stratum": "highTagDensity",
+      "title": "School Is Important But Fishing Is Importanter Bass Fishing",
+      "category": "Hobbies & Lifestyle",
+      "tagCount": 8,
+      "tagDensity": "highTags",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "aiProcessingStage": "ready_for_review",
+      "automationDecision": "shadow",
+      "wouldAutoApprove": true,
+      "verifierInvoked": false,
+      "verifierOutcome": "skipped",
+      "hardBlocked": false,
+      "automationReasonCodes": [
+        "shadow_would_auto_approve"
+      ],
+      "smartProfileHighlights": {
+        "subjects": [
+          "fish"
+        ],
+        "styles": [
+          "illustrative",
+          "bold",
+          "graphic"
+        ],
+        "themes": [
+          "humor",
+          "fishing",
+          "outdoors",
+          "country life",
+          "parody"
+        ],
+        "searchConcepts": [
+          "school vs fishing",
+          "fishing humor",
+          "bass fish",
+          "fishing quote",
+          "funny fishing shirt"
+        ],
+        "visibleText": [
+          "SCHOOL IS IMPORTANT",
+          "BUT FISHING",
+          "IS IMPORTANTER"
+        ]
+      },
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "ownerQAQuestion": "Would I trust this Smart Profile and automation decision if this design were imported unattended today?",
+      "ownerVerdict": null
+    },
+    {
+      "designId": "1Toizl6B5sJP5J1LYpDJ",
+      "stratum": "highTagDensity",
+      "title": "Lookin Like A Hoochie Daddy Skeleton Hand Peace Sign",
+      "category": "Funny & Sarcastic",
+      "tagCount": 7,
+      "tagDensity": "highTags",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "aiProcessingStage": "ready_for_review",
+      "automationDecision": "shadow",
+      "wouldAutoApprove": true,
+      "verifierInvoked": false,
+      "verifierOutcome": "skipped",
+      "hardBlocked": false,
+      "automationReasonCodes": [
+        "shadow_would_auto_approve"
+      ],
+      "smartProfileHighlights": {
+        "subjects": [
+          "skeleton"
+        ],
+        "styles": [
+          "groovy",
+          "retro",
+          "decorative"
+        ],
+        "themes": [
+          "humor",
+          "sarcasm",
+          "dad humor"
+        ],
+        "searchConcepts": [
+          "skeleton peace sign",
+          "lookin like a hoochie daddy",
+          "groovy text",
+          "retro skeleton",
+          "funny dad shirt"
+        ],
+        "visibleText": [
+          "LOOKIN' LIKE A",
+          "HOOCHIE DADDY"
+        ]
+      },
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "ownerQAQuestion": "Would I trust this Smart Profile and automation decision if this design were imported unattended today?",
+      "ownerVerdict": null
+    },
+    {
+      "designId": "1ZKgsbTQRes6Vp3hkkDZ",
+      "stratum": "highTagDensity",
+      "title": "I'm Into Fitness Fit'ness Taco In My Mouth",
+      "category": "Funny & Sarcastic",
+      "tagCount": 4,
+      "tagDensity": "highTags",
+      "status": "ready",
+      "aiReviewStatus": "approved",
+      "aiProcessingStage": "ready_for_review",
+      "automationDecision": "shadow",
+      "wouldAutoApprove": true,
+      "verifierInvoked": false,
+      "verifierOutcome": "skipped",
+      "hardBlocked": false,
+      "automationReasonCodes": [
+        "shadow_would_auto_approve"
+      ],
+      "smartProfileHighlights": {
+        "subjects": null,
+        "styles": [
+          "graphic",
+          "bold"
+        ],
+        "themes": [
+          "humor",
+          "food pun",
+          "fitness humor"
+        ],
+        "searchConcepts": [
+          "funny fitness",
+          "food humor",
+          "taco lover",
+          "gym humor",
+          "play on words"
+        ],
+        "visibleText": [
+          "I'M INTO FITNESS",
+          "FIT'NESS TACO",
+          "IN MY MOUTH"
+        ]
+      },
+      "promptVersion": "catalog-enrich-v30",
+      "normalizerVersion": "smart-profile-normalizer-v4",
+      "ownerQAQuestion": "Would I trust this Smart Profile and automation decision if this design were imported unattended today?",
+      "ownerVerdict": null
+    }
+  ],
+  "pollLog": [
+    {
+      "at": "2026-08-26T20:52:37.446Z",
+      "status": "pending",
+      "processed": 0,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 0,
+      "failed": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T20:53:07.557Z",
+      "status": "running",
+      "processed": 4,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 4,
+      "failed": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T20:53:37.675Z",
+      "status": "running",
+      "processed": 11,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 11,
+      "failed": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T20:54:07.790Z",
+      "status": "running",
+      "processed": 18,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 18,
+      "failed": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T20:54:37.907Z",
+      "status": "running",
+      "processed": 25,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 25,
+      "failed": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T20:55:08.015Z",
+      "status": "running",
+      "processed": 33,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 33,
+      "failed": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T20:55:38.181Z",
+      "status": "pending",
+      "processed": 41,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 41,
+      "failed": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T20:56:08.308Z",
+      "status": "running",
+      "processed": 49,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 49,
+      "failed": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T20:56:38.411Z",
+      "status": "running",
+      "processed": 56,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 56,
+      "failed": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T20:57:08.525Z",
+      "status": "running",
+      "processed": 64,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 64,
+      "failed": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T20:57:38.625Z",
+      "status": "running",
+      "processed": 71,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 71,
+      "failed": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T20:58:08.749Z",
+      "status": "running",
+      "processed": 77,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 77,
+      "failed": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T20:58:38.878Z",
+      "status": "running",
+      "processed": 85,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 85,
+      "failed": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T20:59:08.976Z",
+      "status": "running",
+      "processed": 93,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 93,
+      "failed": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T20:59:39.117Z",
+      "status": "running",
+      "processed": 100,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 100,
+      "failed": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T21:00:09.382Z",
+      "status": "running",
+      "processed": 107,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 107,
+      "failed": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T21:00:39.486Z",
+      "status": "running",
+      "processed": 114,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 114,
+      "failed": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T21:01:09.732Z",
+      "status": "running",
+      "processed": 121,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 121,
+      "failed": 0,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T21:01:39.859Z",
+      "status": "running",
+      "processed": 129,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 128,
+      "failed": 1,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T21:02:09.966Z",
+      "status": "running",
+      "processed": 136,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 135,
+      "failed": 1,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T21:02:40.079Z",
+      "status": "running",
+      "processed": 143,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 142,
+      "failed": 1,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T21:03:10.203Z",
+      "status": "running",
+      "processed": 151,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 150,
+      "failed": 1,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T21:03:40.338Z",
+      "status": "running",
+      "processed": 158,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 157,
+      "failed": 1,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T21:04:10.544Z",
+      "status": "running",
+      "processed": 165,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 164,
+      "failed": 1,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T21:04:40.657Z",
+      "status": "running",
+      "processed": 173,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 172,
+      "failed": 1,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T21:05:10.831Z",
+      "status": "running",
+      "processed": 180,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 179,
+      "failed": 1,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T21:05:41.066Z",
+      "status": "pending",
+      "processed": 188,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 187,
+      "failed": 1,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T21:06:11.196Z",
+      "status": "running",
+      "processed": 194,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 193,
+      "failed": 1,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T21:06:41.301Z",
+      "status": "running",
+      "processed": 202,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 201,
+      "failed": 1,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T21:07:11.422Z",
+      "status": "running",
+      "processed": 209,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 208,
+      "failed": 1,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T21:07:41.538Z",
+      "status": "running",
+      "processed": 217,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 216,
+      "failed": 1,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T21:08:11.631Z",
+      "status": "running",
+      "processed": 223,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 222,
+      "failed": 1,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T21:08:41.742Z",
+      "status": "pending",
+      "processed": 230,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 229,
+      "failed": 1,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T21:09:11.870Z",
+      "status": "running",
+      "processed": 238,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 237,
+      "failed": 1,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T21:09:41.981Z",
+      "status": "running",
+      "processed": 244,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 243,
+      "failed": 1,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T21:10:12.106Z",
+      "status": "running",
+      "processed": 252,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 251,
+      "failed": 1,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T21:10:42.229Z",
+      "status": "running",
+      "processed": 260,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 259,
+      "failed": 1,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T21:11:12.350Z",
+      "status": "running",
+      "processed": 265,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 264,
+      "failed": 1,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T21:11:42.457Z",
+      "status": "running",
+      "processed": 268,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 267,
+      "failed": 1,
+      "anomalies": 0
+    },
+    {
+      "at": "2026-08-26T21:12:12.552Z",
+      "status": "completed",
+      "processed": 270,
+      "totalEligible": 270,
+      "preservationViolations": 0,
+      "remainedReady": 269,
+      "failed": 1,
+      "anomalies": 0
+    }
+  ],
+  "safetyGates": {
+    "preservationViolationsZero": true,
+    "noLifecycleDemotions": true,
+    "terminalStatusCompleted": true,
+    "unboundedJob": true,
+    "algoliaSpotChecksOk": true
+  },
+  "recommendation": "READY FOR OWNER READY-CATALOG QA",
+  "productionUntouched": true,
+  "jimothyCalibrationNote": {
+    "designId": "6x2LyTvG3ewIePeWHanV",
+    "classification": "owner-accepted false-negative / over-conservative candidate"
+  },
+  "autonomousEnabled": false,
+  "shadowMode": true
+}

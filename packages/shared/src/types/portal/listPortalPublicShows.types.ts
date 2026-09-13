@@ -4,7 +4,7 @@ export interface PortalPublicShowSummary {
   id: string;
   scheduledStartAt: string | null;
   productionStatus: ShowProductionStatus;
-  /** Distinct ready catalog designs allocated to this show (public-safe count). */
+  /** Distinct show images: ready catalog designs + all allocated customer uploads (includes non-share uploads in the count). */
   uniquePublicCatalogDesignCount: number;
 }
 

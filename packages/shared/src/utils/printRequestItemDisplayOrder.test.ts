@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import {
   resolveDuplicateInsertAfterSortOrder,
   resolveDuplicateInsertBeforeSortOrder,
+  resolveNextPrintRequestItemSortOrder,
   sortPrintRequestItemsForDisplay,
   sortPrintRequestItemsNewestFirst,
 } from "./printRequestItemDisplayOrder";
@@ -129,6 +130,53 @@ describe("sortPrintRequestItemsNewestFirst", () => {
     assert.deepEqual(
       sorted.map((item) => item.id),
       ["c", "b", "a"],
+    );
+  });
+
+  it("keeps an older upload without sortOrder after newer catalog lines", () => {
+    const sorted = sortPrintRequestItemsNewestFirst([
+      {
+        id: "kiss-upload",
+        quantity: 1,
+        printRequestId: "r",
+        status: "pending",
+        createdAt: { toMillis: () => 100 },
+      },
+      {
+        id: "explorer",
+        sortOrder: 1,
+        quantity: 1,
+        printRequestId: "r",
+        status: "pending",
+        createdAt: { toMillis: () => 200 },
+      },
+      {
+        id: "ghost",
+        sortOrder: 2,
+        quantity: 1,
+        printRequestId: "r",
+        status: "pending",
+        createdAt: { toMillis: () => 300 },
+      },
+    ] as never);
+
+    assert.deepEqual(
+      sorted.map((item) => item.id),
+      ["ghost", "explorer", "kiss-upload"],
+    );
+  });
+});
+
+describe("resolveNextPrintRequestItemSortOrder", () => {
+  it("returns 1 when no items have sortOrder", () => {
+    assert.equal(resolveNextPrintRequestItemSortOrder([]), 1);
+    assert.equal(resolveNextPrintRequestItemSortOrder([{ sortOrder: undefined }]), 1);
+  });
+
+  it("returns max existing sortOrder plus one", () => {
+    assert.equal(
+      resolveNextPrintRequestItemSortOrder([{ sortOrder: 1 }, { sortOrder: 4 }, { sortOrder: 2 }]),
+      5,
     );
   });
 });

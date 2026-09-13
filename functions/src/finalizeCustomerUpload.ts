@@ -18,6 +18,7 @@ import { formatFileSize } from "../../packages/shared/src/utils/formatFileSize";
 
 import { resolveCustomerUploadPurpose } from "../../packages/shared/src/utils/customerUploadPurpose";
 import { withCustomerUploadFinalizeWatchdog } from "../../packages/shared/src/utils/customerUploadFinalizeWatchdog";
+import { applyCustomerUploadArtworkBackgroundDetectionToReadyPatch } from "../../packages/shared/src/utils/customerUploadArtworkBackgroundDetection";
 
 import { adminDb, adminStorage } from "./lib/admin";
 import {
@@ -39,6 +40,7 @@ import {
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
 import { isAnonymousAuthToken } from "./lib/catalogDonationUploader";
 import { requirePortalCustomer } from "./lib/portalCustomer";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 
 /**
  * Stage watchdog duration for the trim/normalize/preview-generation region of finalize. Set to
@@ -70,7 +72,7 @@ export interface FinalizeCustomerUploadResponse {
 }
 
 export const finalizeCustomerUpload = onCall(
-  { timeoutSeconds: 540, memory: "2GiB" },
+  { timeoutSeconds: 540, memory: "4GiB" },
   async (request): Promise<FinalizeCustomerUploadResponse> => {
     if (!request.auth?.uid) {
       throw unauthenticated();
@@ -87,6 +89,7 @@ export const finalizeCustomerUpload = onCall(
     if (!isGuest) {
       await requirePortalCustomer(request.auth.uid);
     }
+    await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
     const customerUid = request.auth.uid;
     const uploaderType = isGuest ? ("guest" as const) : ("customer" as const);
 
@@ -281,9 +284,11 @@ export const finalizeCustomerUpload = onCall(
       await adminDb.runTransaction(async (tx) => {
         const [freshUpload, batchSnap] = await Promise.all([tx.get(uploadRef), tx.get(batchRef)]);
         const wasReady = freshUpload.data()?.technicalStatus === "ready";
-        tx.update(
-          uploadRef,
-          withoutUndefinedFields({
+        const existingArtworkBackgroundSource =
+          typeof freshUpload.data()?.artworkBackgroundSource === "string"
+            ? freshUpload.data()?.artworkBackgroundSource
+            : null;
+        const readyPatch: Record<string, unknown> = {
             technicalStatus: "ready",
             technicalProgressStage: null,
             technicalFailureCode: null,
@@ -315,8 +320,12 @@ export const finalizeCustomerUpload = onCall(
             effectiveDpi: processed.effectiveDpi,
             catalogReviewStatus: "not_eligible",
             updatedAt: FieldValue.serverTimestamp(),
-          }),
-        );
+        };
+        applyCustomerUploadArtworkBackgroundDetectionToReadyPatch(readyPatch, {
+          suggestDark: processed.suggestDarkArtworkBackground === true,
+          existingArtworkBackgroundSource,
+        });
+        tx.update(uploadRef, withoutUndefinedFields(readyPatch));
 
         if (!wasReady && batchSnap.exists) {
           const readyCount = Number(batchSnap.data()?.readyCount ?? 0);

@@ -42,6 +42,22 @@ describe("resolvePrintRequestItemArtworkBackground", () => {
     assert.equal(resolvePrintRequestItemArtworkBackground(undefined), undefined);
   });
 
+  it("uses Staff Artwork / upload artworkBackgroundHex when no catalog design is present", () => {
+    assert.equal(
+      resolvePrintRequestItemArtworkBackground(undefined, { artworkBackgroundHex: "#2c2d2d" }),
+      "#2c2d2d",
+    );
+  });
+
+  it("prefers catalog design background over upload/staff background", () => {
+    assert.equal(
+      resolvePrintRequestItemArtworkBackground(buildDesign("#ffffff"), {
+        artworkBackgroundHex: "#2c2d2d",
+      }),
+      "#ffffff",
+    );
+  });
+
   it("passes through a malformed value unchanged, deferring safe fallback to the established resolver", () => {
     // Malformed-value handling is intentionally NOT this function's responsibility — it lives in
     // the already-tested, already-correct `resolveArtworkBackgroundHex`

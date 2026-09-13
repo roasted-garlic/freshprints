@@ -162,6 +162,34 @@ test("getDerivedShowStatusDisplay: printing beats full capacity", () => {
   assert.deepEqual(display, { label: "PRINTING", variant: "info" });
 });
 
+test("getDerivedShowStatusDisplay: completed with empty_closure shows EMPTY", () => {
+  const capacity = { allocatedQuantity: 0, isFull: false, isOverCapacity: false, remainingQuantity: 200, maxTotalQuantity: 200 };
+  const display = getDerivedShowStatusDisplay("completed", capacity, {
+    productionResolutionKind: "empty_closure",
+  });
+  assert.equal(display.label, "EMPTY");
+});
+
+test("getDerivedShowStatusDisplay: completed with zero allocations and no resolution shows EMPTY", () => {
+  const capacity = { allocatedQuantity: 0, isFull: false, isOverCapacity: false, remainingQuantity: 200, maxTotalQuantity: 200 };
+  const display = getDerivedShowStatusDisplay("completed", capacity);
+  assert.equal(display.label, "EMPTY");
+});
+
+test("getDerivedShowStatusDisplay: past scheduled with zero allocations shows EMPTY", () => {
+  const capacity = { allocatedQuantity: 0, isFull: false, isOverCapacity: false, remainingQuantity: 200, maxTotalQuantity: 200 };
+  const display = getDerivedShowStatusDisplay("open", capacity, { isPastScheduled: true });
+  assert.equal(display.label, "EMPTY");
+});
+
+test("getDerivedShowStatusDisplay: completed with unfulfilled_release shows DID NOT PRINT", () => {
+  const capacity = assessShowCapacity({ maxTotalQuantity: 200, allocatedQuantity: 0 });
+  const display = getDerivedShowStatusDisplay("completed", capacity, {
+    productionResolutionKind: "unfulfilled_release",
+  });
+  assert.deepEqual(display, { label: "DID NOT PRINT", variant: "warning" });
+});
+
 test("getDerivedShowStatusDisplay: completed beats full capacity", () => {
   const capacity = assessShowCapacity({ maxTotalQuantity: 200, allocatedQuantity: 200 });
   const display = getDerivedShowStatusDisplay("completed", capacity);

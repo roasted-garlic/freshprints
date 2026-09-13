@@ -1,4 +1,5 @@
 import type { PortalCatalogCard } from "../../../packages/shared/src/catalog-snapshots/catalogSnapshot.types";
+import { projectSmartProfileForAlgoliaIndex } from "../../../packages/shared/src/catalog-search/portalCatalogAlgoliaRecord";
 
 export type PortalCatalogChangeClassification =
   | "card-only"
@@ -41,7 +42,8 @@ const INDEX_FILTER_FIELDS = [
   "title",
   "description",
   "categoryId",
-  "tags",
+  // `tags` remains a required inert Firestore field for schema compatibility, but is no longer
+  // projected into Algolia and therefore must not trigger publication work.
   "createdAt",
   // Owner QA Amendment 3: readyAt is the default catalog ordering key, so a change to it must
   // republish the generated browse order.
@@ -76,14 +78,31 @@ function isEitherSideReady(
   return before?.status === PUBLISHED_STATUS || after?.status === PUBLISHED_STATUS;
 }
 
-function indexFilterFieldsChanged(
+/**
+ * Smart Profile index projection — search/facet fields only.
+ * Provenance-only churn (shadow automation, validationWarnings) does not sync.
+ */
+function smartProfileIndexFieldsChanged(
   before: Record<string, unknown> | undefined,
   after: Record<string, unknown> | undefined,
 ): boolean {
   return (
+    stableJson(projectSmartProfileForAlgoliaIndex(before?.smartProfile)) !==
+    stableJson(projectSmartProfileForAlgoliaIndex(after?.smartProfile))
+  );
+}
+
+function indexFilterFieldsChanged(
+  before: Record<string, unknown> | undefined,
+  after: Record<string, unknown> | undefined,
+): boolean {
+  if (
     stableJson(project(before, INDEX_FILTER_FIELDS)) !==
     stableJson(project(after, INDEX_FILTER_FIELDS))
-  );
+  ) {
+    return true;
+  }
+  return smartProfileIndexFieldsChanged(before, after);
 }
 
 /**

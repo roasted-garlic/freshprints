@@ -8,6 +8,12 @@ import type {
   GangSheetExportImageRequest,
 } from "@fresh-prints/shared/types/export/gangSheetExportIpc.types";
 import type { ExportShowZipRequest, ShowExportImageRequest } from "@fresh-prints/shared/types/export/showExportIpc.types";
+import {
+  GANG_SHEET_PRICING_POLICY_VERSION,
+  isValidGangSheetTierPriceUsd,
+  isValidGangSheetTierWeightOz,
+  type GangSheetSectionPricingConfig,
+} from "@fresh-prints/shared/constants/gangSheetSectionPricingSettings.constants";
 import { importIpcFailure } from "../import/importIpcResponse";
 
 const ALLOWED_DOWNLOAD_URL_HOSTS = new Set(["firebasestorage.googleapis.com"]);
@@ -53,7 +59,7 @@ function isValidImageRequest(value: unknown): value is ShowExportImageRequest {
   const image = value as Partial<ShowExportImageRequest>;
 
   return (
-    isNonEmptyString(image.allocationId) &&
+    (isNonEmptyString(image.allocationId) || isNonEmptyString(image.requestItemId)) &&
     isAllowedDownloadUrl(image.downloadUrl) &&
     isPositiveInteger(image.targetWidthPx) &&
     isPositiveInteger(image.targetHeightPx) &&
@@ -120,7 +126,7 @@ function isValidGangSheetImageRequest(value: unknown): value is GangSheetExportI
   const image = value as Partial<GangSheetExportImageRequest>;
 
   return (
-    isNonEmptyString(image.allocationId) &&
+    (isNonEmptyString(image.allocationId) || isNonEmptyString(image.requestItemId)) &&
     isAllowedDownloadUrl(image.downloadUrl) &&
     isPositiveInteger(image.targetWidthPx) &&
     isPositiveInteger(image.targetHeightPx) &&
@@ -131,7 +137,43 @@ function isValidGangSheetImageRequest(value: unknown): value is GangSheetExportI
 }
 
 function isValidGangSheetLayoutMode(value: unknown): value is NonNullable<ExportGangSheetPngRequest["layoutMode"]> {
-  return value === undefined || value === "efficiency" || value === "grouped_by_customer";
+  return (
+    value === undefined ||
+    value === "efficiency" ||
+    value === "grouped_by_customer" ||
+    value === "customer_grouped_continuous"
+  );
+}
+
+function isGroupedGangSheetLayoutMode(
+  layoutMode: ExportGangSheetPngRequest["layoutMode"],
+): boolean {
+  return layoutMode === "grouped_by_customer" || layoutMode === "customer_grouped_continuous";
+}
+
+function isValidSectionPricing(value: unknown): value is GangSheetSectionPricingConfig {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const pricing = value as Partial<GangSheetSectionPricingConfig>;
+  if (
+    pricing.policyVersion !== GANG_SHEET_PRICING_POLICY_VERSION ||
+    pricing.sizeCutoffInches !== 4 ||
+    !pricing.pocket ||
+    !pricing.standardFullSize ||
+    !pricing.standardOversized ||
+    !pricing.extraOversized
+  ) {
+    return false;
+  }
+  return [pricing.pocket, pricing.standardFullSize, pricing.standardOversized, pricing.extraOversized].every(
+    (tier) =>
+      typeof tier.priceUsd === "number" &&
+      isValidGangSheetTierPriceUsd(tier.priceUsd) &&
+      typeof tier.weightOz === "number" &&
+      isValidGangSheetTierWeightOz(tier.weightOz),
+  );
 }
 
 export function validateExportGangSheetPngRequest(payload: unknown) {
@@ -165,11 +207,19 @@ export function validateExportGangSheetPngRequest(payload: unknown) {
     return { error: importIpcFailure("INVALID_INPUT", "A positive label font size in pixels is required.") };
   }
 
+  if (request.sheetLabel !== undefined && !isNonEmptyString(request.sheetLabel)) {
+    return { error: importIpcFailure("INVALID_INPUT", "A sheet label must be a non-empty string when provided.") };
+  }
+
+  if (request.cacheScope !== undefined && !isNonEmptyString(request.cacheScope)) {
+    return { error: importIpcFailure("INVALID_INPUT", "A cache scope must be a non-empty string when provided.") };
+  }
+
   if (!isValidGangSheetLayoutMode(request.layoutMode)) {
     return {
       error: importIpcFailure(
         "INVALID_INPUT",
-        'layoutMode must be omitted, "efficiency", or "grouped_by_customer".',
+        'layoutMode must be omitted, "efficiency", "grouped_by_customer", or "customer_grouped_continuous".',
       ),
     };
   }
@@ -182,12 +232,18 @@ export function validateExportGangSheetPngRequest(payload: unknown) {
     return { error: importIpcFailure("INVALID_INPUT", "One or more gang sheet image entries are invalid.") };
   }
 
-  if (request.layoutMode === "grouped_by_customer" && request.images.some((image) => !image.grouping)) {
+  if (isGroupedGangSheetLayoutMode(request.layoutMode) && request.images.some((image) => !image.grouping)) {
     return {
       error: importIpcFailure(
         "INVALID_INPUT",
         "Grouped gang sheet generation requires grouping metadata on every image.",
       ),
+    };
+  }
+
+  if (request.sectionPricing !== undefined && !isValidSectionPricing(request.sectionPricing)) {
+    return {
+      error: importIpcFailure("INVALID_INPUT", "Gang sheet section pricing settings are invalid."),
     };
   }
 
@@ -222,7 +278,14 @@ export function validateGenerateGangSheetPngRequest(
       gutterInches: exportRequest.gutterInches,
       maxSheetLengthInches: exportRequest.maxSheetLengthInches,
       labelFontSizePx: exportRequest.labelFontSizePx,
-      ...(exportRequest.layoutMode === "grouped_by_customer" ? { layoutMode: exportRequest.layoutMode } : {}),
+      ...(exportRequest.sheetLabel ? { sheetLabel: exportRequest.sheetLabel } : {}),
+      ...(exportRequest.cacheScope ? { cacheScope: exportRequest.cacheScope } : {}),
+      ...(exportRequest.layoutMode && exportRequest.layoutMode !== "efficiency"
+        ? { layoutMode: exportRequest.layoutMode }
+        : {}),
+      ...(exportRequest.sectionPricing
+        ? { sectionPricing: exportRequest.sectionPricing }
+        : {}),
       images: exportRequest.images,
       showId: request.showId.trim(),
     },

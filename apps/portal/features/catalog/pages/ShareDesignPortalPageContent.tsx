@@ -165,7 +165,6 @@ export function ShareDesignPortalPageContent({
   );
   const visibleTitle = design ? displayTitle : title;
   const visibleDescription = design ? displayDescription : description;
-  const tags = design?.tags?.length ? design.tags : (initialMeta?.tags ?? []);
   const previewPath = design?.previewPath ?? design?.thumbnailPath;
   const { url: previewUrl } = useCatalogDerivativeUrl(previewPath, design?.updatedAtMs);
   const designDefaultBgHex = resolveArtworkBackgroundHex(design?.artworkBackgroundHex);
@@ -358,21 +357,6 @@ export function ShareDesignPortalPageContent({
             <p className="design-details-description">{visibleDescription}</p>
           </section>
 
-          <section className="design-details-section">
-            <h3>Tags</h3>
-            {tags.length > 0 ? (
-              <div className="design-details-tags">
-                {tags.map((tag) => (
-                  <span className="design-details-tag" key={tag}>
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <p className="design-details-description">—</p>
-            )}
-          </section>
-
           {addDesignFlow.actionError ? (
             <p className="portal-form-error" role="alert">
               {addDesignFlow.actionError}
@@ -406,7 +390,7 @@ export function ShareDesignPortalPageContent({
       </PortalConfirmModal>
 
       <PortalPickContinuableRequestModal
-        continuableRequests={continuableRequests}
+        continuableRequests={addDesignFlow.pickerContinuableRequests}
         designTitle={addDesignFlow.pendingDesign?.title}
         isAdding={addDesignFlow.isAdding}
         isOpen={addDesignFlow.isPickerOpen}

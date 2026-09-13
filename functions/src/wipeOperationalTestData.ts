@@ -28,6 +28,27 @@ const INTERNAL_PRINT_REQUEST_COUNTER_ID = "printRequests";
 const BATCH_LIMIT = 400;
 const STORAGE_DELETE_BATCH = 100;
 
+async function deleteInternalGangSheets(): Promise<Record<string, number>> {
+  const shows = await adminDb.collection("upcomingShows").where("source", "==", "staff_gang_sheet").get();
+  const showIds = new Set(shows.docs.map((doc) => doc.id));
+  const counts: Record<string, number> = { upcomingShows: 0, showAllocations: 0, gangSheets: 0, gangSheetItems: 0 };
+
+  for (const collectionName of ["gangSheetItems", "gangSheets", "showAllocations", "upcomingShows"] as const) {
+    const snapshot = await adminDb.collection(collectionName).get();
+    const batch = adminDb.batch();
+    for (const document of snapshot.docs) {
+      const data = document.data();
+      if (showIds.has(typeof data.upcomingShowId === "string" ? data.upcomingShowId : "") ||
+          (collectionName === "gangSheets" && showIds.has(typeof data.upcomingShowId === "string" ? data.upcomingShowId : ""))) {
+        batch.delete(document.ref);
+        counts[collectionName] += 1;
+      }
+    }
+    if (counts[collectionName] > 0) await batch.commit();
+  }
+  return counts;
+}
+
 function assertOwnerCaller(caller: Awaited<ReturnType<typeof loadCallerProfile>>): void {
   if (!caller.isActive || caller.role !== "owner") {
     throw permissionDenied("Only owners can wipe operational test data.");
@@ -481,6 +502,9 @@ export const wipeOperationalTestData = onCall(
 
     const { targets } = parseRequest(request.data);
     const plan = expandOperationalWipePlan(targets);
+    const internalGangSheetCounts = targets.includes("internalGangSheets")
+      ? await deleteInternalGangSheets()
+      : {};
 
     if (
       plan.deleteCollections.length === 0 &&
@@ -490,7 +514,8 @@ export const wipeOperationalTestData = onCall(
       !plan.wipeAiProcessingDesigns &&
       !plan.wipeCustomerUploadStorage &&
       !plan.wipeAssistedCreationStorage &&
-      !plan.resetShowAllocationTotals
+      !plan.resetShowAllocationTotals &&
+      !targets.includes("internalGangSheets")
     ) {
       throw invalidArgument("Select at least one wipe target.");
     }
@@ -499,6 +524,9 @@ export const wipeOperationalTestData = onCall(
 
     for (const collectionName of plan.deleteCollections) {
       deleted[collectionName] = await deleteEntireCollection(collectionName);
+    }
+    for (const [collectionName, count] of Object.entries(internalGangSheetCounts)) {
+      deleted[collectionName] = (deleted[collectionName] ?? 0) + count;
     }
 
     const customersReset = plan.resetSequences ? await resetCustomerSequences() : 0;

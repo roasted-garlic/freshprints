@@ -1,0 +1,137 @@
+{
+  "designId": "1Ws0T9fivryest6IUSbt",
+  "taxonomy": {
+    "revision": 11,
+    "ready": true,
+    "metaKeys": [
+      "revision",
+      "schemaVersion",
+      "chunkCount",
+      "tagCount",
+      "categoryCount",
+      "contentHash",
+      "updatedAtMs",
+      "updatedBy",
+      "ready"
+    ],
+    "corpusSource": "taxonomyMaterialization/chunk-*",
+    "cannabisPresent": true,
+    "astrologyPresent": true,
+    "categoryNameSampleCount": 21,
+    "categoryCountMeta": 21
+  },
+  "before": {
+    "status": "imported",
+    "aiReviewStatus": "needs_review",
+    "rootTitle": "just_hit_it",
+    "aiSuggestedTitle": "Just Hit It Swoosh Logo",
+    "aiSuggestedDescription": "Below the graphic, the phrase \"JUST HIT IT\" is printed in bold green block letters.",
+    "categoryId": "S2wdfmHDdG4aDFFRfNM1",
+    "categoryName": "Cannabis & 420",
+    "categoryAlternatives": [],
+    "categoryAlternativeNames": [],
+    "subjects": [],
+    "objects": [
+      "cannabis leaves"
+    ],
+    "themes": [
+      "humor",
+      "parody",
+      "smoking",
+      "cannabis",
+      "stoner culture"
+    ],
+    "interests": [
+      "cannabis",
+      "weed",
+      "smoking",
+      "humor"
+    ],
+    "searchConcepts": [
+      "cannabis logo parody",
+      "weed swoosh",
+      "just hit it",
+      "stoner humor",
+      "marijuana leaf design"
+    ],
+    "visibleText": [
+      "JUST HIT IT"
+    ],
+    "promptVersion": "catalog-enrich-v33",
+    "normalizerVersion": "smart-profile-normalizer-v6",
+    "schemaVersion": null,
+    "automationDecision": "needs_review",
+    "automationReasonCodes": [
+      "structured_evidence_gap:objects:cannabis leaves"
+    ],
+    "wouldAutoApprove": false
+  },
+  "after": {
+    "status": "imported",
+    "aiReviewStatus": "needs_review",
+    "rootTitle": "just_hit_it",
+    "aiSuggestedTitle": "Just Hit It Swoosh",
+    "aiSuggestedDescription": "A swoosh design featuring \"JUST HIT IT\".",
+    "categoryId": "S2wdfmHDdG4aDFFRfNM1",
+    "categoryName": "Cannabis & 420",
+    "categoryAlternatives": [],
+    "categoryAlternativeNames": [],
+    "subjects": [],
+    "objects": [
+      "cannabis leaves"
+    ],
+    "themes": [
+      "humor",
+      "cannabis",
+      "parody",
+      "smoking"
+    ],
+    "interests": [
+      "cannabis",
+      "smoking",
+      "weed"
+    ],
+    "searchConcepts": [
+      "marijuana logo parody",
+      "weed swoosh",
+      "just do it parody",
+      "cannabis culture",
+      "stoner humor",
+      "funny weed shirt",
+      "420 apparel",
+      "drug culture"
+    ],
+    "visibleText": [
+      "JUST HIT IT"
+    ],
+    "promptVersion": "catalog-enrich-v33",
+    "normalizerVersion": "smart-profile-normalizer-v6",
+    "schemaVersion": null,
+    "automationDecision": "needs_review",
+    "automationReasonCodes": [
+      "structured_evidence_gap:objects:cannabis leaves"
+    ],
+    "wouldAutoApprove": false
+  },
+  "callableData": {
+    "designId": "1Ws0T9fivryest6IUSbt",
+    "queued": true,
+    "completed": true,
+    "aiProcessingStage": "ready_for_review",
+    "aiReviewStatus": "needs_review",
+    "status": "imported"
+  },
+  "evaluation": {
+    "passFail": "PASS",
+    "notes": [
+      "optional alternative \"Funny & Sarcastic\" absent (note only)",
+      "Attribution B: calibration logic required for reliable outcome; cache-only not proven as sole prior cause (historical TTL possible but not re-created)"
+    ]
+  },
+  "cacheAttribution": "B",
+  "cacheAttributionLegend": {
+    "A": "cache-only contributed materially",
+    "B": "category-calibration logic was also required",
+    "C": "cannot determine"
+  }
+}

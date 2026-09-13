@@ -152,7 +152,8 @@ function TestDataResetPageContent() {
       const clearsLocalGangSheetCache =
         selectedTargets.includes("printRequests") ||
         selectedTargets.includes("showQueueAttachments") ||
-        selectedTargets.includes("upcomingShows");
+        selectedTargets.includes("upcomingShows") ||
+        selectedTargets.includes("internalGangSheets");
 
       if (clearsLocalGangSheetCache && window.freshPrints?.export?.clearAllGangSheetCache) {
         try {

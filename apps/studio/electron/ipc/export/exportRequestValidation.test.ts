@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import { DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG } from "@fresh-prints/shared/constants/gangSheetSectionPricingSettings.constants";
+
 import { validateGenerateGangSheetPngRequest } from "./exportRequestValidation";
 
 const baseImage = {
@@ -49,6 +51,65 @@ describe("validateGenerateGangSheetPngRequest", () => {
     assert.equal(validated.request.layoutMode, undefined);
   });
 
+  it("preserves sectionPricing for standard request generates", () => {
+    const validated = validateGenerateGangSheetPngRequest({
+      ...basePayload,
+      cacheScope: "print-request:req-1",
+      sectionPricing: DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG,
+    });
+
+    assert.ok("request" in validated);
+    assert.equal(validated.request.layoutMode, undefined);
+    assert.deepEqual(validated.request.sectionPricing, DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG);
+  });
+
+  it("preserves customer_grouped_continuous layoutMode and image grouping", () => {
+    const validated = validateGenerateGangSheetPngRequest({
+      ...basePayload,
+      layoutMode: "customer_grouped_continuous",
+      baseFileName: "whatnot_08-24-2026_grouped-continuous-gang-sheet",
+    });
+
+    assert.ok("request" in validated);
+    assert.equal(validated.request.layoutMode, "customer_grouped_continuous");
+    assert.deepEqual(validated.request.images[0]?.grouping, baseImage.grouping);
+  });
+
+  it("preserves sectionPricing for grouped gang sheet generates", () => {
+    const sectionPricing = {
+      ...DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG,
+      standardOversized: {
+        ...DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG.standardOversized,
+        priceUsd: 3.5,
+      },
+    };
+
+    const validated = validateGenerateGangSheetPngRequest({
+      ...basePayload,
+      layoutMode: "customer_grouped_continuous",
+      sectionPricing,
+    });
+
+    assert.ok("request" in validated);
+    assert.deepEqual(validated.request.sectionPricing, sectionPricing);
+  });
+
+  it("rejects invalid sectionPricing", () => {
+    const validated = validateGenerateGangSheetPngRequest({
+      ...basePayload,
+      layoutMode: "grouped_by_customer",
+      sectionPricing: {
+        ...DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG,
+        extraOversized: {
+          ...DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG.extraOversized,
+          priceUsd: -1,
+        },
+      },
+    });
+
+    assert.ok("error" in validated);
+  });
+
   it("rejects grouped mode when any image is missing grouping metadata", () => {
     const validated = validateGenerateGangSheetPngRequest({
       ...basePayload,
@@ -57,5 +118,13 @@ describe("validateGenerateGangSheetPngRequest", () => {
     });
 
     assert.ok("error" in validated);
+
+    const continuousValidated = validateGenerateGangSheetPngRequest({
+      ...basePayload,
+      layoutMode: "customer_grouped_continuous",
+      images: [{ ...baseImage, grouping: undefined }],
+    });
+
+    assert.ok("error" in continuousValidated);
   });
 });

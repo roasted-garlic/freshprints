@@ -7,7 +7,16 @@ export type AssistedApprovedProofAddToRequestReason =
   | "proof_missing"
   | "purged_never_ingested"
   | "full_res_available"
+  | "final_source_available"
   | "already_ingested";
+
+export interface AssistedCreationFinalSourceView {
+  id: string;
+  storagePath: string;
+  contentType?: string;
+  widthPx?: number | null;
+  heightPx?: number | null;
+}
 
 export interface AssistedCreationPrintRequestIngestView {
   customerUploadId: string;
@@ -21,6 +30,7 @@ export interface EvaluateAssistedApprovedProofAddToRequestInput {
   approvedProofId?: string | null;
   approvedAtMillis?: number | null;
   proofs: AssistedCreationProofRetentionView[];
+  finalSource?: AssistedCreationFinalSourceView | null;
   /** Denormalized ingest on the assisted request (if any). */
   printRequestIngest?: AssistedCreationPrintRequestIngestView | null;
   nowMs: number;
@@ -70,6 +80,16 @@ export function evaluateAssistedApprovedProofAddToRequest(
       eligible: true,
       reason: "already_ingested",
       alreadyIngested: true,
+      proof: null,
+    };
+  }
+
+  const finalSourcePath = input.finalSource?.storagePath?.trim() ?? "";
+  if (input.status === "approved" && finalSourcePath) {
+    return {
+      eligible: true,
+      reason: "final_source_available",
+      alreadyIngested: false,
       proof: null,
     };
   }

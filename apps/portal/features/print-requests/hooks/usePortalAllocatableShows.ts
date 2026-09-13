@@ -3,14 +3,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { PortalAllocatableShow } from '@fresh-prints/shared/types/portal/listPortalAllocatableShows.types';
-import { DEFAULT_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START } from '@fresh-prints/shared/utils/showQueueCutoff';
 
 import { portalShowSelectionService } from '../services/portalShowSelectionService';
+import {
+  getPortalAllocatableShowsDefaultCutoffHours,
+  getPortalAllocatableShowsSessionDefaults,
+} from '../services/portalAllocatableShowsReadCache';
 
 /** Keep last successful list warm across modal open/close in the same session. */
-let sessionCachedShows: PortalAllocatableShow[] | null = null;
-let sessionCachedCutoffHours = DEFAULT_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START;
-let sessionCacheAtMs = 0;
+let sessionCachedShows: PortalAllocatableShow[] | null =
+  getPortalAllocatableShowsSessionDefaults()?.shows ?? null;
+let sessionCachedCutoffHours = getPortalAllocatableShowsDefaultCutoffHours();
+let sessionCacheAtMs = sessionCachedShows ? Date.now() : 0;
 const SESSION_CACHE_TTL_MS = 60_000;
 
 export function usePortalAllocatableShows(enabled: boolean) {

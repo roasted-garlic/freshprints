@@ -28,8 +28,7 @@ describe('Portal Phase 1A / 1B Stage 1a ordinary browse containment', () => {
     assert.match(flags, /return false/);
 
     const catalogService = read('apps/portal/features/catalog/services/catalogService.ts');
-    assert.match(catalogService, /listApprovedTags[\s\S]*listTagFacets/);
-    assert.match(catalogService, /listNarrowedApprovedTags[\s\S]*listNarrowedTagFacets/);
+    assert.doesNotMatch(catalogService, /listApprovedTags|listNarrowedApprovedTags|tagFacetKeys|tagIds/);
     assert.doesNotMatch(catalogService, /portalCatalogAssetService/);
 
     const hook = read('apps/portal/features/catalog/hooks/useCatalogDesigns.ts');

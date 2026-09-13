@@ -41,11 +41,15 @@ import {
   normalizeArtworkBackgroundHex,
 } from "@fresh-prints/shared/constants/design/artworkBackground.constants";
 import { parseArtworkPlacement } from "@fresh-prints/shared/constants/design/artworkPlacement.constants";
+import {
+  isArtworkBackgroundSource,
+  isHalftoneDecisionSource,
+} from "@fresh-prints/shared/types/design/artworkBackgroundSource.types";
 import { isCanonicalDesignStoragePath } from "../constants/designStoragePaths";
 import type { CreateDesignInput, Design, DesignAuthoritySnapshot, UpdateDesignInput } from "../types/design.types";
 import type { AiReviewStateUpdate, CatalogApprovalUpdate } from "../types/aiReview.types";
 import { isAiReviewStatus } from "../types/aiReview.types";
-import type { DesignListPage, DesignListQuery, DesignListSortDirection, DesignListSortField } from "../types/designQuery.types";
+import type { DesignListPage, DesignListQuery, DesignListSortField } from "../types/designQuery.types";
 import { isDesignStatus, isWritableDesignStatus } from "../types/designStatus.types";
 import { normalizeDesignTags } from "../utils/designTagNormalizer";
 import { mergeDesignDocumentDataAfterWrite } from "../utils/designDocumentAfterWrite";
@@ -131,14 +135,13 @@ function getDesignSortMillis(design: Design, sortField: DesignListSortField): nu
 function buildDesignFilterConstraints(listQuery: DesignListQuery = {}): QueryConstraint[] {
   const constraints: QueryConstraint[] = [];
 
-  // Field order matches composite indexes in firestore.indexes.json:
-  // categoryId → tags (array-contains) → status → aiReviewStatus → orderBy
+  // Field order follows the non-tag catalog query contract; legacy tags are never a constraint.
   if (listQuery.categoryId) {
     constraints.push(where("categoryId", "==", listQuery.categoryId));
   }
 
-  if (listQuery.tag) {
-    constraints.push(where("tags", "array-contains", listQuery.tag.trim().toLowerCase()));
+  if (listQuery.halftoneOnly) {
+    constraints.push(where("halftoneStaffDecision.value", "==", true));
   }
 
   if (listQuery.statusIn && listQuery.statusIn.length > 0) {
@@ -215,6 +218,7 @@ interface DesignDocumentData {
   thumbnailPath?: unknown;
   previewPath?: unknown;
   artworkBackgroundHex?: unknown;
+  artworkBackgroundSource?: unknown;
   artworkPlacement?: unknown;
   width?: unknown;
   height?: unknown;
@@ -230,6 +234,12 @@ interface DesignDocumentData {
   wasUpscaled?: unknown;
   upscaleFactor?: unknown;
   upscalePassCount?: unknown;
+  nativeProductionWidthPx?: unknown;
+  nativeProductionHeightPx?: unknown;
+  interactiveEnhancedOriginalPath?: unknown;
+  interactiveEnhancedWidthPx?: unknown;
+  interactiveEnhancedHeightPx?: unknown;
+  interactiveEnhanceGeneratedAt?: unknown;
   approvedMaxPrintWidthInches?: unknown;
   approvedMaxPrintHeightInches?: unknown;
   sizingPolicyVersion?: unknown;
@@ -237,10 +247,13 @@ interface DesignDocumentData {
   halftoneDetection?: unknown;
   halftoneSubmitterResponse?: unknown;
   halftoneStaffDecision?: unknown;
+  halftoneDecisionSource?: unknown;
   companionSetId?: unknown;
   companionDesignIds?: unknown;
   companionSetIncomplete?: unknown;
   isExplicitContent?: unknown;
+  explicitContentSource?: unknown;
+  explicitContentAutomationLocked?: unknown;
   censoredTerms?: unknown;
   uploadedBy?: unknown;
   requestedByCustomerId?: unknown;
@@ -257,6 +270,12 @@ interface DesignDocumentData {
   aiProcessingStage?: unknown;
   aiSuggestions?: unknown;
   aiAnalysis?: unknown;
+  smartProfile?: unknown;
+  smartProfileAiSnapshot?: unknown;
+  smartProfileImportPresets?: unknown;
+  importBatchId?: unknown;
+  importSourceFileName?: unknown;
+  importRelativePath?: unknown;
   createdBy?: unknown;
   updatedBy?: unknown;
   createdAt?: unknown;
@@ -301,6 +320,9 @@ function mapDesignDocument(designId: string, data: DesignDocumentData): Design {
     previewPath: typeof data.previewPath === "string" ? data.previewPath : undefined,
     artworkBackgroundHex:
       typeof data.artworkBackgroundHex === "string" ? data.artworkBackgroundHex : undefined,
+    artworkBackgroundSource: isArtworkBackgroundSource(data.artworkBackgroundSource)
+      ? data.artworkBackgroundSource
+      : undefined,
     artworkPlacement: parseArtworkPlacement(data.artworkPlacement),
     width: typeof data.width === "number" ? data.width : undefined,
     height: typeof data.height === "number" ? data.height : undefined,
@@ -327,7 +349,26 @@ function mapDesignDocument(designId: string, data: DesignDocumentData): Design {
     wasUpscaled: typeof data.wasUpscaled === "boolean" ? data.wasUpscaled : undefined,
     upscaleFactor: typeof data.upscaleFactor === "number" ? data.upscaleFactor : undefined,
     upscalePassCount:
-      data.upscalePassCount === 0 || data.upscalePassCount === 1 ? data.upscalePassCount : undefined,
+      data.upscalePassCount === 0 || data.upscalePassCount === 1 || data.upscalePassCount === 2
+        ? data.upscalePassCount
+        : undefined,
+    nativeProductionWidthPx:
+      typeof data.nativeProductionWidthPx === "number" ? data.nativeProductionWidthPx : undefined,
+    nativeProductionHeightPx:
+      typeof data.nativeProductionHeightPx === "number" ? data.nativeProductionHeightPx : undefined,
+    interactiveEnhancedOriginalPath:
+      typeof data.interactiveEnhancedOriginalPath === "string"
+        ? data.interactiveEnhancedOriginalPath
+        : undefined,
+    interactiveEnhancedWidthPx:
+      typeof data.interactiveEnhancedWidthPx === "number"
+        ? data.interactiveEnhancedWidthPx
+        : undefined,
+    interactiveEnhancedHeightPx:
+      typeof data.interactiveEnhancedHeightPx === "number"
+        ? data.interactiveEnhancedHeightPx
+        : undefined,
+    interactiveEnhanceGeneratedAt: data.interactiveEnhanceGeneratedAt,
     approvedMaxPrintWidthInches:
       typeof data.approvedMaxPrintWidthInches === "number"
         ? data.approvedMaxPrintWidthInches
@@ -352,6 +393,9 @@ function mapDesignDocument(designId: string, data: DesignDocumentData): Design {
       data.halftoneStaffDecision && typeof data.halftoneStaffDecision === "object"
         ? (data.halftoneStaffDecision as Design["halftoneStaffDecision"])
         : undefined,
+    halftoneDecisionSource: isHalftoneDecisionSource(data.halftoneDecisionSource)
+      ? data.halftoneDecisionSource
+      : undefined,
     companionSetId: typeof data.companionSetId === "string" ? data.companionSetId : undefined,
     companionDesignIds: Array.isArray(data.companionDesignIds)
       ? data.companionDesignIds.filter((id): id is string => typeof id === "string")
@@ -360,6 +404,14 @@ function mapDesignDocument(designId: string, data: DesignDocumentData): Design {
       typeof data.companionSetIncomplete === "boolean" ? data.companionSetIncomplete : undefined,
     isExplicitContent:
       typeof data.isExplicitContent === "boolean" ? data.isExplicitContent : undefined,
+    explicitContentSource:
+      data.explicitContentSource === "staff" || data.explicitContentSource === "automation"
+        ? data.explicitContentSource
+        : undefined,
+    explicitContentAutomationLocked:
+      typeof data.explicitContentAutomationLocked === "boolean"
+        ? data.explicitContentAutomationLocked
+        : undefined,
     censoredTerms: Array.isArray(data.censoredTerms)
       ? data.censoredTerms.filter(
           (term): term is string => typeof term === "string" && term.trim().length > 0,
@@ -380,6 +432,23 @@ function mapDesignDocument(designId: string, data: DesignDocumentData): Design {
     aiReviewConfidence:
       typeof data.aiReviewConfidence === "number" ? data.aiReviewConfidence : undefined,
     ...mapDesignAiFields(data as Record<string, unknown>),
+    smartProfile:
+      data.smartProfile && typeof data.smartProfile === "object"
+        ? (data.smartProfile as Design["smartProfile"])
+        : undefined,
+    smartProfileAiSnapshot:
+      data.smartProfileAiSnapshot && typeof data.smartProfileAiSnapshot === "object"
+        ? (data.smartProfileAiSnapshot as Design["smartProfileAiSnapshot"])
+        : undefined,
+    smartProfileImportPresets:
+      data.smartProfileImportPresets && typeof data.smartProfileImportPresets === "object"
+        ? (data.smartProfileImportPresets as Design["smartProfileImportPresets"])
+        : undefined,
+    importBatchId: typeof data.importBatchId === "string" ? data.importBatchId : undefined,
+    importSourceFileName:
+      typeof data.importSourceFileName === "string" ? data.importSourceFileName : undefined,
+    importRelativePath:
+      typeof data.importRelativePath === "string" ? data.importRelativePath : undefined,
     createdBy: typeof data.createdBy === "string" ? data.createdBy : data.uploadedBy,
     updatedBy:
       typeof data.updatedBy === "string"
@@ -471,20 +540,8 @@ function validateOptionalDerivativePath(path: string | undefined, root: "thumbna
   return trimmedPath;
 }
 
-function shouldSplitStatusQueries(listQuery: DesignListQuery): boolean {
-  return Boolean(
-    listQuery.tag?.trim() && listQuery.statusIn && listQuery.statusIn.length > 1,
-  );
-}
-
 function isFirestoreIndexError(error: unknown): boolean {
   return error instanceof Error && /index/i.test(error.message);
-}
-
-function filterDesignsByTag(designs: Design[], tag: string): Design[] {
-  const normalizedTag = tag.trim().toLowerCase();
-
-  return designs.filter((design) => design.tags.includes(normalizedTag));
 }
 
 function designListTraceMetadata(
@@ -496,7 +553,7 @@ function designListTraceMetadata(
     listQuery.statusIn?.length ? `status in ${[...listQuery.statusIn].sort().join(",")}` : "",
     listQuery.aiReviewStatus ? `aiReviewStatus==${listQuery.aiReviewStatus}` : "",
     listQuery.categoryId ? "categoryId=={categoryId}" : "",
-    listQuery.tag ? "tags array-contains {tag}" : "",
+    listQuery.halftoneOnly === true ? "halftoneStaffDecision.value==true" : "",
     listQuery.companionSetIncomplete === true ? "companionSetIncomplete==true" : "",
   ].filter(Boolean);
   const sortField = listQuery.sortField ?? "updatedAt";
@@ -512,27 +569,6 @@ function designListTraceMetadata(
     triggerReason: "route",
   };
 }
-
-function mergeDesignListPages(
-  pages: DesignListPage[],
-  pageSize: number,
-  sortField: DesignListSortField = "updatedAt",
-  sortDirection: DesignListSortDirection = "desc",
-): DesignListPage {
-  const merged = new Map<string, Design>();
-
-  for (const page of pages) {
-    for (const design of page.designs) {
-      merged.set(design.id, design);
-    }
-  }
-
-  const sortedDesigns = sortDesignsForListQuery([...merged.values()], sortField, sortDirection);
-
-  return buildDesignListPage(sortedDesigns, pageSize, sortField);
-}
-
-const TAG_FILTER_FALLBACK_LIMIT = 500;
 
 async function fetchDesignListPageUncached(
   _caller: User,
@@ -611,30 +647,7 @@ export const designService = {
       return { designs: [], hasMore: false };
     }
 
-    const pageSize = listQuery.limitCount ?? DEFAULT_LIST_LIMIT;
-
     try {
-      if (shouldSplitStatusQueries(listQuery)) {
-        const statuses = listQuery.statusIn ?? [];
-        const pages = await Promise.all(
-          statuses.map((status) =>
-            fetchDesignListPage(caller, {
-              ...listQuery,
-              status,
-              statusIn: undefined,
-              cursor: undefined,
-            }),
-          ),
-        );
-
-        return mergeDesignListPages(
-          pages,
-          pageSize,
-          listQuery.sortField ?? "updatedAt",
-          listQuery.sortDirection ?? "desc",
-        );
-      }
-
       const page = await fetchDesignListPage(caller, listQuery);
 
       // Backfill-completeness guard (Owner QA Amendment 3 correction). A Firestore
@@ -659,36 +672,6 @@ export const designService = {
         return await fetchDesignListPage(caller, { ...listQuery, sortField: "createdAt" });
       }
 
-      if (listQuery.tag?.trim() && isFirestoreIndexError(error)) {
-        const fallbackPage = await fetchDesignListPage(caller, {
-          ...listQuery,
-          tag: undefined,
-          limitCount: TAG_FILTER_FALLBACK_LIMIT,
-          cursor: undefined,
-        });
-
-        let filteredDesigns = filterDesignsByTag(fallbackPage.designs, listQuery.tag);
-
-        if (listQuery.statusIn && listQuery.statusIn.length > 0) {
-          const allowedStatuses = new Set(listQuery.statusIn);
-          filteredDesigns = filteredDesigns.filter((design) =>
-            allowedStatuses.has(design.status),
-          );
-        } else if (listQuery.status) {
-          filteredDesigns = filteredDesigns.filter((design) => design.status === listQuery.status);
-        }
-
-        return buildDesignListPage(
-          sortDesignsForListQuery(
-            filteredDesigns,
-            listQuery.sortField ?? "updatedAt",
-            listQuery.sortDirection ?? "desc",
-          ),
-          pageSize,
-          listQuery.sortField ?? "updatedAt",
-        );
-      }
-
       throw new Error(getFirestoreErrorMessage(error, "Unable to load designs. Please try again."));
     }
   },
@@ -708,20 +691,6 @@ export const designService = {
     }
 
     try {
-      if (shouldSplitStatusQueries(listQuery)) {
-        const statuses = listQuery.statusIn ?? [];
-        const counts = await Promise.all(
-          statuses.map((status) =>
-            this.countDesigns(caller, {
-              ...listQuery,
-              status,
-              statusIn: undefined,
-            }),
-          ),
-        );
-        return counts.reduce((sum, count) => sum + count, 0);
-      }
-
       return await designCountCache.get(getDesignQueryCacheKey(listQuery), async () => {
         const countQuery = query(
           firestoreCollectionService.getDesignsCollection(),
@@ -913,7 +882,34 @@ export const designService = {
       approvedMaxPrintHeightInches: input.approvedMaxPrintHeightInches,
       sizingPolicyVersion: input.sizingPolicyVersion,
       sizingWarningCode: input.sizingWarningCode,
+      artworkBackgroundHex: (() => {
+        const normalized = normalizeArtworkBackgroundHex(input.artworkBackgroundHex);
+        if (!normalized || isDefaultArtworkBackgroundHex(normalized)) {
+          return undefined;
+        }
+        return normalized;
+      })(),
+      artworkBackgroundSource: isArtworkBackgroundSource(input.artworkBackgroundSource)
+        ? input.artworkBackgroundSource
+        : undefined,
       halftoneDetection: input.halftoneDetection,
+      halftoneStaffDecision: input.halftoneStaffDecision
+        ? {
+            value: input.halftoneStaffDecision.value,
+            decidedBy: input.halftoneStaffDecision.decidedBy ?? caller.id,
+            isExplicitOverride: input.halftoneStaffDecision.isExplicitOverride ?? true,
+            decidedAt: serverTimestamp(),
+          }
+        : undefined,
+      halftoneDecisionSource: isHalftoneDecisionSource(input.halftoneDecisionSource)
+        ? input.halftoneDecisionSource
+        : undefined,
+      importBatchId: input.importBatchId?.trim() || undefined,
+      importSourceFileName: input.importSourceFileName?.trim() || undefined,
+      importRelativePath: input.importRelativePath?.trim() || undefined,
+      smartProfileImportPresets: input.smartProfileImportPresets && Object.keys(input.smartProfileImportPresets).length > 0
+        ? input.smartProfileImportPresets
+        : undefined,
       queueCount: 0,
       aiProcessed: input.aiProcessed ?? false,
       aiReviewed: input.aiReviewed ?? false,
@@ -999,10 +995,6 @@ export const designService = {
       updatePayload.categoryId = input.categoryId.trim() ? input.categoryId.trim() : deleteField();
     }
 
-    if (input.tags !== undefined) {
-      updatePayload.tags = normalizeDesignTags(input.tags);
-    }
-
     if (input.halftoneStaffDecision !== undefined) {
       updatePayload.halftoneStaffDecision = {
         value: input.halftoneStaffDecision.value,
@@ -1012,13 +1004,28 @@ export const designService = {
       };
     }
 
+    if (input.halftoneDecisionSource !== undefined) {
+      if (input.halftoneDecisionSource === null) {
+        updatePayload.halftoneDecisionSource = deleteField();
+      } else if (isHalftoneDecisionSource(input.halftoneDecisionSource)) {
+        updatePayload.halftoneDecisionSource = input.halftoneDecisionSource;
+      }
+    }
+
+    // Staff Explicit edits stamp provenance only (ADR-FP-173). Lock is a separate deliberate control.
     if (input.isExplicitContent !== undefined) {
       updatePayload.isExplicitContent = input.isExplicitContent;
+      updatePayload.explicitContentSource = "staff";
     }
 
     if (input.censoredTerms !== undefined) {
       const terms = normalizeDesignTags(input.censoredTerms);
       updatePayload.censoredTerms = terms.length > 0 ? terms : deleteField();
+      updatePayload.explicitContentSource = "staff";
+    }
+
+    if (input.explicitContentAutomationLocked !== undefined) {
+      updatePayload.explicitContentAutomationLocked = input.explicitContentAutomationLocked;
     }
 
     if (input.status !== undefined) {
@@ -1051,6 +1058,22 @@ export const designService = {
         updatePayload.artworkBackgroundHex = isDefaultArtworkBackgroundHex(normalized)
           ? deleteField()
           : normalized;
+      }
+
+      if (input.artworkBackgroundSource !== undefined) {
+        if (input.artworkBackgroundSource === null) {
+          updatePayload.artworkBackgroundSource = deleteField();
+        } else if (isArtworkBackgroundSource(input.artworkBackgroundSource)) {
+          updatePayload.artworkBackgroundSource = input.artworkBackgroundSource;
+        }
+      } else {
+        updatePayload.artworkBackgroundSource = "staff_manual";
+      }
+    } else if (input.artworkBackgroundSource !== undefined) {
+      if (input.artworkBackgroundSource === null) {
+        updatePayload.artworkBackgroundSource = deleteField();
+      } else if (isArtworkBackgroundSource(input.artworkBackgroundSource)) {
+        updatePayload.artworkBackgroundSource = input.artworkBackgroundSource;
       }
     }
 
@@ -1274,13 +1297,6 @@ export const designService = {
       aiReviewedBy: input.aiReviewedBy,
     };
 
-    // Owner QA Amendment 3: stamp the canonical ready-transition timestamp only when this write
-    // actually moves the design into `ready`. Rejections and every metadata edit leave it alone,
-    // and a reprocessed design approved back into ready is correctly re-stamped to the front.
-    if (input.status === "ready") {
-      updatePayload.readyAt = serverTimestamp();
-    }
-
     if (input.aiReviewVersion !== undefined) {
       updatePayload.aiReviewVersion = input.aiReviewVersion ? input.aiReviewVersion : deleteField();
     }
@@ -1314,6 +1330,13 @@ export const designService = {
 
       if (existingData.status === "archived") {
         throw new Error("Archived designs cannot be approved or rejected.");
+      }
+
+      // Amendment 3: readyAt is the most recent transition into Ready. Stamp on every
+      // non-ready → ready transition (including re-approval after owner "Reprocess with AI"),
+      // so Design Library / Portal show the design as newest rather than restoring the old slot.
+      if (input.status === "ready" && existingData.status !== "ready") {
+        updatePayload.readyAt = serverTimestamp();
       }
 
       if (typeof existingData.createdBy !== "string") {

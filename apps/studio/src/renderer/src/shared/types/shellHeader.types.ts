@@ -20,6 +20,8 @@ export interface ShellHeaderToggleConfig {
   label: string;
   name: string;
   onChange: (checked: boolean) => void;
+  /** Optional hover explanation shown via HoverBubbleTooltip. */
+  tooltip?: string;
 }
 
 export interface ShellHeaderPrimaryAction {
@@ -35,6 +37,11 @@ export interface ShellHeaderAction {
 }
 
 export interface ShellHeaderConfig {
+  /**
+   * Optional control cluster rendered immediately before inbox bells
+   * (e.g. Imports session settings summary + button).
+   */
+  accessory?: ReactNode | null;
   actions?: ShellHeaderAction[] | null;
   description?: string;
   filters?: ShellHeaderFilterConfig[] | null;

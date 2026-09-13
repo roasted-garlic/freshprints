@@ -25,6 +25,7 @@ describe("printRequestLimitSettings", () => {
       PRINT_REQUEST_MAX_QUANTITY_PER_SHOW_PER_CUSTOMER,
     );
     assert.equal(DEFAULT_PRINT_REQUEST_LIMIT_SETTINGS.linkPrintRequestAndCustomerShowLimits, true);
+    assert.equal(DEFAULT_PRINT_REQUEST_LIMIT_SETTINGS.portalInteractiveUpscaleEnabled, false);
     assert.equal(
       DEFAULT_PRINT_REQUEST_LIMIT_SETTINGS.dailyDesignsAddedToRequestsLimit,
       PRINT_REQUEST_DAILY_DESIGNS_ADDED_LIMIT,
@@ -65,6 +66,7 @@ describe("printRequestLimitSettings", () => {
       maxQuantityPerShowPerCustomer: 25,
       linkPrintRequestAndCustomerShowLimits: true,
       dailyDesignsAddedToRequestsLimit: 25,
+      portalInteractiveUpscaleEnabled: false,
     });
   });
 
@@ -77,6 +79,7 @@ describe("printRequestLimitSettings", () => {
       maxQuantityPerShowPerCustomer: 25,
       linkPrintRequestAndCustomerShowLimits: true,
       dailyDesignsAddedToRequestsLimit: 25,
+      portalInteractiveUpscaleEnabled: false,
     });
   });
 
@@ -98,6 +101,7 @@ describe("printRequestLimitSettings", () => {
       maxQuantityPerShowPerCustomer: 30,
       linkPrintRequestAndCustomerShowLimits: false,
       dailyDesignsAddedToRequestsLimit: 25,
+      portalInteractiveUpscaleEnabled: false,
     });
   });
 
@@ -110,5 +114,20 @@ describe("printRequestLimitSettings", () => {
     assert.equal(printRequestLimitL(resolved), 25);
     assert.equal(printRequestLimitPerRequest(resolved), 25);
     assert.equal(printRequestLimitPerCustomerPerShow(resolved), 25);
+  });
+
+  it("resolves portal interactive upscale enabled when stored true", () => {
+    const resolved = resolvePrintRequestLimitSettings({
+      portalInteractiveUpscaleEnabled: true,
+    });
+    assert.equal(resolved.portalInteractiveUpscaleEnabled, true);
+  });
+
+  it("parse preserves portal interactive upscale enabled flag", () => {
+    const ok = parsePrintRequestLimitSettingsInput({
+      maxQuantityPerPrintRequest: 25,
+      portalInteractiveUpscaleEnabled: true,
+    });
+    assert.equal(ok?.portalInteractiveUpscaleEnabled, true);
   });
 });

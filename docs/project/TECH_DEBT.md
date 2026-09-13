@@ -1,6 +1,6 @@
 # Technical Debt Register — Fresh Prints
 
-**Last reviewed:** 2026-06-24 (Existing Project Intake)
+**Last reviewed:** 2026-09-05 (TD-034: HOLD — false category-gap corrective; v37 source ready, STOP before DEV deploy)
 
 ---
 
@@ -14,6 +14,7 @@ See field definitions in template. Fixes require approved Managed Phases — **n
 
 | ID | Issue | Category | Severity | Location | Why it matters | Recommended fix | Suggested phase | Status |
 |----|-------|----------|----------|----------|----------------|-----------------|-----------------|--------|
+| TD-034 | Visual-first enrichment + false `category_gap_suggested` when model misuses `categoryGapNote` as category rationale | ai/quality | medium | DEV live **v36**; source corrective **v37** (undeployed) | Valid category hard-blocked by rationale-as-gap | Prompt-contract restore only; keep gap hard; no Option B; no tag retirement yet | smart-catalog evidence friction corrective | **HOLD — FALSE CATEGORY GAP CORRECTIVE REQUIRED** — v37 source+tests ready; STOP before DEV deploy |
 | TD-031 | Discover/View All total badge / NTW Counting stuck | ui/data | medium | Portal Discover `new`; `countReadyDesigns` + badge | Page-length badge then NTW Counting stuck | Aggregate count + NTW DESC orderBy + Count unavailable UI | `portal-discover-view-all-complete-pagination` | **resolved** 2026-08-08 — live `build-2026-08-08-004`; owner QA PASS; Signoff `docs/workflow/reviews/2026-08-08-portal-discover-view-all-complete-pagination-signoff.md` |
 
 | TD-001 | Generated build artifacts tracked in git | deployment | **high** | `release/`, `dist-electron/`, `build/icon.*` | Bloated repo, slow clones | Added to `.gitignore`; `git rm --cached` | `git-generated-output-cleanup` | **resolved** |
@@ -47,6 +48,7 @@ See field definitions in template. Fixes require approved Managed Phases — **n
 
 | ID | Issue | Resolved | Resolution notes |
 |----|-------|----------|------------------|
+| TD-033 | Interactive Upscale effective DPI wrong after remount/reload; initiation ~285 vs `<250` | 2026-09-03 | Originated as Portal/Library-only observation during Rules expression-budget DEV smoke; later reproduced in Studio customer-upload; amended to Portal+Studio, catalog+upload, hydration + eligibility. Fix: parent summary patch + Portal design-cache invalidate + Studio parent-state patch; offer gate `INTERACTIVE_UPSCALE_OFFER_MIN_DPI` (250). Owner Interactive Upscale DEV QA **PASS**. Goal `interactive-upscale-dpi-rehydration-and-eligibility` under parent `firestore-rules-print-request-item-resize-expression-budget`. Signoff `docs/workflow/reviews/2026-09-03-firestore-rules-print-request-item-resize-expression-budget-signoff.md`. **RESOLVED ON DEV** — production promotion separate. |
 | TD-R01 | ROADMAP showed Phase 1 Active | 2026-06-24 | Intake updated to Phase 3D |
 | TD-R02 | AGENTS.md/ARCHITECTURE.md wrong Electron paths | 2026-06-24 | Updated to `electron/` layout |
 | TD-R03 | AppForge doc migration incomplete | 2026-06-24 | Prior managed phase `fresh-prints-appforge-migration` |
@@ -62,6 +64,7 @@ See field definitions in template. Fixes require approved Managed Phases — **n
 
 | Date | Summary |
 |------|---------|
+| 2026-09-03 | TD-033 **RESOLVED ON DEV** — Interactive Upscale DPI hydration + `<250` eligibility; Owner QA PASS; under Rules expression-budget Signoff |
 | 2026-08-16 | TD-030 **resolved** — share/Details Working Request qty parity; owner `DEV TD-030 QA: PASS`; production App Hosting pending |
 | 2026-08-09 | TD-032 added — filtered catalog briefly shows “Loading your account...” (Algolia enable QA PASS WITH NOTES) |
 | 2026-08-08 | TD-031 **resolved** — Discover View All aggregate badge + NTW count corrective live on `build-2026-08-08-004`; owner QA PASS |

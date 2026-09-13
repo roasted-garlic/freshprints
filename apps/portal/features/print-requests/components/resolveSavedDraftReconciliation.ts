@@ -32,7 +32,13 @@ export function resolveSavedDraftReconciliation(params: {
   printHeightInches: number;
   /** What the field currently shows, before reconciliation. */
   currentQuantityInput: string;
-  buildSignature: (quantity: number, width: number, height: number) => string;
+  buildSignature: (
+    quantity: number,
+    width: number,
+    height: number,
+    standardSizePresetKey?: string | null,
+  ) => string;
+  standardSizePresetKey?: string | null;
 }): SavedDraftReconciliation {
   const {
     acceptedQuantity,
@@ -40,6 +46,7 @@ export function resolveSavedDraftReconciliation(params: {
     printHeightInches,
     currentQuantityInput,
     buildSignature,
+    standardSizePresetKey,
   } = params;
 
   const acceptedQuantityInput = String(acceptedQuantity);
@@ -49,6 +56,11 @@ export function resolveSavedDraftReconciliation(params: {
       currentQuantityInput === acceptedQuantityInput
         ? currentQuantityInput
         : acceptedQuantityInput,
-    lastSavedSignature: buildSignature(acceptedQuantity, printWidthInches, printHeightInches),
+    lastSavedSignature: buildSignature(
+      acceptedQuantity,
+      printWidthInches,
+      printHeightInches,
+      standardSizePresetKey,
+    ),
   };
 }

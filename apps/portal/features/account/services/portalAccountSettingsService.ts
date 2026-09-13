@@ -4,6 +4,10 @@ import type {
   RequestPortalAccountDeletionResponse,
   SyncPortalAccountEmailResponse,
 } from '@fresh-prints/shared/types/account/portalAccountSettings.types';
+import type {
+  UpdatePortalCustomerProfileRequest,
+  UpdatePortalCustomerProfileResponse,
+} from '@fresh-prints/shared/types/customer/updatePortalCustomerProfile.types';
 
 import { callTracedFunction } from '../../../lib/firebase/tracedCallable';
 import { portalAuthService } from '../../auth/services/authService';
@@ -41,6 +45,21 @@ export const portalAccountSettingsService = {
       >('cancelPortalAccountDeletionRequest', {
         source: 'portalAccountSettingsService.cancelAccountDeletionRequest',
       })({});
+    } catch (error) {
+      throw new Error(portalAuthService.getCallableErrorMessage(error));
+    }
+  },
+
+  async updateCustomerProfile(
+    input: UpdatePortalCustomerProfileRequest,
+  ): Promise<UpdatePortalCustomerProfileResponse> {
+    try {
+      return await callTracedFunction<
+        UpdatePortalCustomerProfileRequest,
+        UpdatePortalCustomerProfileResponse
+      >('updatePortalCustomerProfile', {
+        source: 'portalAccountSettingsService.updateCustomerProfile',
+      })(input);
     } catch (error) {
       throw new Error(portalAuthService.getCallableErrorMessage(error));
     }

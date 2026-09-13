@@ -3,12 +3,14 @@ import { onCall } from "firebase-functions/v2/https";
 
 import {
   isEmptyWorkingPrintRequestEligibleForAutoArchive,
-  PRINT_REQUEST_WORKING_STALE_AFTER_DAYS,
+  PRINT_REQUEST_WORKING_EMPTY_AUTO_ARCHIVE_AFTER_DAYS,
 } from "../../packages/shared/src/utils/printRequestWorkingTriage";
 
 import { adminDb } from "./lib/admin";
 import { assertStaffCaller, loadCallerProfile } from "./lib/caller";
 import { invalidArgument, permissionDenied, unauthenticated } from "./lib/errors";
+// Note: applyRestoreParkedDraftInTransaction could be used for editing requests,
+// but batch operations make it complex to implement safely
 
 export interface ArchiveStaleWorkingPrintRequestsRequest {
   dryRun?: boolean;
@@ -55,7 +57,7 @@ export const archiveStaleWorkingPrintRequests = onCall(
 
     const payload = parseRequest(request.data);
     const nowMs = Date.now();
-    const cutoffMs = nowMs - PRINT_REQUEST_WORKING_STALE_AFTER_DAYS * 24 * 60 * 60 * 1000;
+    const cutoffMs = nowMs - PRINT_REQUEST_WORKING_EMPTY_AUTO_ARCHIVE_AFTER_DAYS * 24 * 60 * 60 * 1000;
     const cutoff = Timestamp.fromMillis(cutoffMs);
 
     const draftSnap = await adminDb
@@ -138,7 +140,7 @@ export const archiveStaleWorkingPrintRequests = onCall(
 
     return {
       dryRun: Boolean(payload.dryRun),
-      staleAfterDays: PRINT_REQUEST_WORKING_STALE_AFTER_DAYS,
+      staleAfterDays: PRINT_REQUEST_WORKING_EMPTY_AUTO_ARCHIVE_AFTER_DAYS,
       cutoffIso: cutoff.toDate().toISOString(),
       scanned,
       archivedCount: candidates.length,

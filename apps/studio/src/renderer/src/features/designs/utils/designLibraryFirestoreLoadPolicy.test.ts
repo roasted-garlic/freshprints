@@ -8,7 +8,7 @@ test("normal browse loads the bounded Firestore ready-design page; display taxon
     getDesignLibraryFirestoreLoadPolicy({
       includeArchived: false,
     }),
-    { loadCategories: false, loadReadyDesignPage: true, loadTags: false },
+    { loadCategories: false, loadReadyDesignPage: true },
   );
 });
 
@@ -18,7 +18,7 @@ test("opening category management loads full Firestore taxonomy; design page sti
       includeArchived: false,
       requiresFullCategoryManagementData: true,
     }),
-    { loadCategories: true, loadReadyDesignPage: true, loadTags: true },
+    { loadCategories: true, loadReadyDesignPage: true },
   );
 });
 
@@ -27,7 +27,7 @@ test("archived mode loads approved+archived Firestore taxonomy paths", () => {
     getDesignLibraryFirestoreLoadPolicy({
       includeArchived: true,
     }),
-    { loadCategories: true, loadReadyDesignPage: true, loadTags: true },
+    { loadCategories: true, loadReadyDesignPage: true },
   );
 });
 

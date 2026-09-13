@@ -14,7 +14,12 @@ import {
   getDesignSortValue,
 } from '../services/catalogService';
 import { isPortalAlgoliaCatalogConfigured } from '../services/portalAlgoliaCatalogFlags';
-import { portalAlgoliaCatalogSearchService } from '../services/portalAlgoliaCatalogSearchService';
+import {
+  hasSelectedSmartFilters,
+  portalAlgoliaCatalogSearchService,
+  serializeSmartFilters,
+  type PortalSmartFilters,
+} from '../services/portalAlgoliaCatalogSearchService';
 import type {
   CatalogCategory,
   CatalogDesign,
@@ -24,15 +29,23 @@ import type {
 } from '../types/catalog.types';
 import {
   filterCatalogDesignsByCategory,
+  filterCatalogDesignsByHalftone,
   filterCatalogDesignsBySearch,
-  filterCatalogDesignsByTags,
-  getPrimaryCatalogQueryTag,
+  resolveManagedSearchClientFilters,
 } from '../utils/catalogSearch';
 import { catalogNeedsFullClientHydrate } from '../utils/catalogNeedsFullClientHydrate';
+import {
+  fetchVisibleExactIdCatalogDesign,
+  looksLikeDesignDocumentId,
+  mergeExactIdCatalogDesign,
+} from '../utils/portalCatalogExactIdSearch';
 
 export interface UseCatalogDesignsQuery {
   categoryId?: string;
-  selectedTags: string[];
+  /** Human-only Halftone classification; not a legacy tag or Smart Profile facet. */
+  halftoneFilterOn?: boolean;
+  /** Slice 3 Smart Filters — any selection requires Algolia managed search. */
+  smartFilters?: PortalSmartFilters;
   discoveryMode?: CatalogDiscoveryMode | null;
   pageSize?: number;
   searchQuery?: string;
@@ -185,7 +198,6 @@ export function sortFieldForDiscovery(mode: CatalogDiscoveryMode | null | undefi
 export function buildServerListQuery(options: UseCatalogDesignsQuery): CatalogDesignListQuery {
   const discoveryMode = options.discoveryMode ?? null;
   const sortField = sortFieldForDiscovery(discoveryMode);
-  const primaryTag = getPrimaryCatalogQueryTag(options.selectedTags);
 
   return {
     categoryId: options.categoryId?.trim() || undefined,
@@ -194,7 +206,7 @@ export function buildServerListQuery(options: UseCatalogDesignsQuery): CatalogDe
         ? Date.now() - CATALOG_NEW_THIS_WEEK_DAYS * 24 * 60 * 60 * 1000
         : undefined,
     sortField,
-    tag: primaryTag,
+    halftoneOnly: options.halftoneFilterOn === true,
     ...(discoveryMode === 'mostLiked' ? { minFavoriteCount: 1 } : {}),
     ...(discoveryMode === 'recent' ? { requireLastAddedToShowAt: true } : {}),
   };
@@ -206,7 +218,7 @@ function serializeServerListQuery(listQuery: CatalogDesignListQuery): string {
     createdAfterMs: listQuery.createdAfterMs ?? null,
     readyAfterMs: listQuery.readyAfterMs ?? null,
     sortField: listQuery.sortField ?? 'readyAt',
-    tag: listQuery.tag ?? null,
+    halftoneOnly: listQuery.halftoneOnly === true,
     minFavoriteCount: listQuery.minFavoriteCount ?? null,
     requireLastAddedToShowAt: listQuery.requireLastAddedToShowAt === true,
   });
@@ -224,19 +236,21 @@ function toFriendlyCatalogError(error: unknown): string {
 }
 
 /**
- * Phase 1A ordinary browse gate: unfiltered, category, single-tag, and discovery sorts use
+ * Phase 1A ordinary browse gate: unfiltered, category, Halftone, and discovery sorts use
  * bounded Firestore without requiring generated assets or Algolia.
  *
- * Search and multi-tag use Stage 1b managed search (Algolia) when configured.
+ * Search and Smart Filters use Stage 1b managed search (Algolia) when configured. Halftone uses
+ * its existing Firestore staff-decision semantics so it does not depend on an undeployed index
+ * projection.
  */
 export function allowsBoundedCatalogFirestoreFallback(options: UseCatalogDesignsQuery): boolean {
   const hasSearch = Boolean(options.searchQuery?.trim());
-  const isMultiTag = options.selectedTags.length > 1;
-  return !hasSearch && !isMultiTag;
+  const hasSmart = hasSelectedSmartFilters(options.smartFilters);
+  return !hasSearch && !hasSmart;
 }
 
 function requiresManagedSearchPath(options: UseCatalogDesignsQuery): boolean {
-  return !allowsBoundedCatalogFirestoreFallback(options);
+  return !allowsBoundedCatalogFirestoreFallback(options) && options.halftoneFilterOn !== true;
 }
 
 export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
@@ -271,18 +285,14 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
   const [managedSearchNextOffset, setManagedSearchNextOffset] = useState(0);
   const hydrateGenerationRef = useRef(0);
 
-  const selectedTagsKey = useMemo(
-    () => [...options.selectedTags].sort((left, right) => left.localeCompare(right)).join('\0'),
-    [options.selectedTags],
+  const smartFiltersKey = useMemo(
+    () => serializeSmartFilters(options.smartFilters),
+    [options.smartFilters],
   );
-  const selectedTagsForAssets = useMemo(
-    () => (selectedTagsKey ? selectedTagsKey.split('\0') : []),
-    [selectedTagsKey],
-  );
+  const smartFiltersForSearch = options.smartFilters;
 
   const needsFullHydrate = catalogNeedsFullClientHydrate({
     searchQuery: options.searchQuery,
-    selectedTags: options.selectedTags,
   });
   const useOrdinaryFirestore = allowsBoundedCatalogFirestoreFallback(options);
   const useManagedSearch = requiresManagedSearchPath(options);
@@ -293,9 +303,9 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
       buildServerListQuery({
         categoryId: options.categoryId,
         discoveryMode: options.discoveryMode,
-        selectedTags: options.selectedTags,
+        halftoneFilterOn: options.halftoneFilterOn,
       }),
-    [options.categoryId, options.discoveryMode, options.selectedTags],
+    [options.categoryId, options.discoveryMode, options.halftoneFilterOn],
   );
   const serverListQueryKey = useMemo(
     () => serializeServerListQuery(serverListQuery),
@@ -322,20 +332,41 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
 
       try {
         if (useManagedSearch) {
+          const searchQuery = options.searchQuery ?? '';
+          const exactIdPromise = looksLikeDesignDocumentId(searchQuery)
+            ? fetchVisibleExactIdCatalogDesign(searchQuery, {
+                categoryId: options.categoryId,
+                halftoneOnly: options.halftoneFilterOn,
+              })
+            : Promise.resolve(null);
+
           if (useAlgoliaSearch) {
             try {
-              const algoliaPage = await portalAlgoliaCatalogSearchService.listMatchingDesigns(
-                options.searchQuery ?? '',
-                selectedTagsForAssets,
-                { categoryId: options.categoryId, limit: pageSize, offset: 0 },
-              );
+              const [algoliaPage, exactIdDesign] = await Promise.all([
+                portalAlgoliaCatalogSearchService.listMatchingDesigns(
+                  searchQuery,
+                  {
+                    categoryId: options.categoryId,
+                    limit: pageSize,
+                    offset: 0,
+                    smartFilters: smartFiltersForSearch,
+                  },
+                ),
+                exactIdPromise,
+              ]);
               if (isCancelled || generation !== hydrateGenerationRef.current) return;
+              const designs = mergeExactIdCatalogDesign(algoliaPage.designs, exactIdDesign);
+              const addedExactId =
+                Boolean(exactIdDesign) &&
+                !algoliaPage.designs.some((design) => design.id === exactIdDesign?.id);
               const nextOffset = algoliaPage.hitCount;
-              setAllDesigns(algoliaPage.designs);
-              setServerTotalCount(algoliaPage.total ?? algoliaPage.designs.length);
+              const algoliaTotal = algoliaPage.total ?? algoliaPage.designs.length;
+              const total = algoliaTotal + (addedExactId ? 1 : 0);
+              setAllDesigns(designs);
+              setServerTotalCount(total);
               setCountAuthority({
                 status: 'resolved',
-                total: algoliaPage.total ?? algoliaPage.designs.length,
+                total,
               });
               setManagedSearchNextOffset(nextOffset);
               setIsFullyHydrated(nextOffset >= algoliaPage.total || algoliaPage.hitCount === 0);
@@ -343,6 +374,18 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
               setIsLoading(false);
               return;
             } catch {
+              const exactIdDesign = await exactIdPromise.catch(() => null);
+              if (!isCancelled && generation === hydrateGenerationRef.current && exactIdDesign) {
+                setAllDesigns([exactIdDesign]);
+                setServerTotalCount(1);
+                setCountAuthority({ status: 'resolved', total: 1 });
+                setManagedSearchNextOffset(0);
+                setIsFullyHydrated(true);
+                setIsManagedSearchQuery(true);
+                setIsLoading(false);
+                setError(null);
+                return;
+              }
               if (!isCancelled && generation === hydrateGenerationRef.current) {
                 setError('Catalog search is temporarily unavailable. Please try again in a moment.');
                 setAllDesigns([]);
@@ -354,7 +397,18 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
             }
           }
 
-          // Stage 4: no generated Storage fallback. Algolia off → fail closed for managed search.
+          // Stage 4: no generated Storage fallback. Algolia off → exact-id lookup only, else fail closed.
+          const exactIdDesign = await exactIdPromise.catch(() => null);
+          if (!isCancelled && generation === hydrateGenerationRef.current && exactIdDesign) {
+            setAllDesigns([exactIdDesign]);
+            setServerTotalCount(1);
+            setCountAuthority({ status: 'resolved', total: 1 });
+            setManagedSearchNextOffset(0);
+            setIsFullyHydrated(true);
+            setIsManagedSearchQuery(true);
+            setIsLoading(false);
+            return;
+          }
           if (!isCancelled && generation === hydrateGenerationRef.current) {
             setError('Catalog search is temporarily unavailable. Please try again in a moment.');
             setAllDesigns([]);
@@ -434,8 +488,8 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
     options.discoveryMode,
     options.searchQuery,
     pageSize,
-    selectedTagsForAssets,
-    selectedTagsKey,
+    smartFiltersForSearch,
+    smartFiltersKey,
     serverListQuery,
     serverListQueryKey,
     useAlgoliaSearch,
@@ -443,18 +497,24 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
     useOrdinaryFirestore,
   ]);
 
-  // Managed search (Algolia) applies q/tags/category server-side. Apply normalized search
-  // post-filter so case/separator behavior matches Firestore browse and Studio.
+  // Managed search (Algolia) already applied q/category — skip client text re-filter so
+  // Smart Profile matches are not dropped by title/description-only search.
+  const clientFilters = resolveManagedSearchClientFilters({
+    isManagedSearchQuery,
+    searchQuery: options.searchQuery,
+    categoryId: options.categoryId,
+    halftoneFilterOn: options.halftoneFilterOn === true,
+  });
   const filteredDesigns = useFilteredCatalogDesigns({
     designs: allDesigns,
-    search: options.searchQuery?.trim() ? (options.searchQuery ?? '') : '',
-    categoryId: isManagedSearchQuery ? undefined : options.categoryId,
-    selectedTags: isManagedSearchQuery ? [] : options.selectedTags,
+    search: clientFilters.search,
+    categoryId: clientFilters.categoryId,
+    halftoneFilterOn: clientFilters.halftoneFilterOn,
   });
 
   useEffect(() => {
     setVisibleCount(pageSize);
-  }, [options.searchQuery, pageSize, selectedTagsKey, serverListQueryKey]);
+  }, [options.searchQuery, pageSize, smartFiltersKey, serverListQueryKey, options.halftoneFilterOn]);
 
   const visibleDesigns = useMemo(
     () => filteredDesigns.slice(0, visibleCount),
@@ -506,11 +566,11 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
             if (useAlgoliaSearch) {
               const page = await portalAlgoliaCatalogSearchService.listMatchingDesigns(
                 options.searchQuery ?? '',
-                selectedTagsForAssets,
                 {
                   categoryId: options.categoryId,
                   limit: pageSize,
                   offset: requestOffset,
+                  smartFilters: smartFiltersForSearch,
                 },
               );
               const nextOffset = requestOffset + page.hitCount;
@@ -602,7 +662,7 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
     options.categoryId,
     options.searchQuery,
     pageSize,
-    selectedTagsForAssets,
+    smartFiltersForSearch,
     serverHasMore,
     serverListQuery,
     useAlgoliaSearch,
@@ -749,29 +809,29 @@ export function useCatalogHomeDesigns(categories: CatalogCategory[] = []): {
 /** Discover search field placeholder — aggregate count only; never home-pool length. */
 export function buildDiscoverSearchPlaceholder(readyLibraryCount: number | null): string {
   if (readyLibraryCount === null) {
-    return 'title, tag or description';
+    return 'title, description, or ID';
   }
   if (readyLibraryCount === 1) {
-    return 'Search 1 design, by title, tag or description';
+    return 'Search 1 design, by title, description, or ID';
   }
-  return `Search ${readyLibraryCount.toLocaleString()} designs, by title, tag or description`;
+  return `Search ${readyLibraryCount.toLocaleString()} designs, by title, description, or ID`;
 }
 
 export function useFilteredCatalogDesigns(options: {
   designs: CatalogDesign[];
   search: string;
   categoryId?: string;
-  selectedTags: string[];
+  halftoneFilterOn?: boolean;
 }): CatalogDesign[] {
-  const { designs, search, categoryId, selectedTags } = options;
+  const { designs, search, categoryId, halftoneFilterOn = false } = options;
 
   return useMemo(
     () =>
-      filterCatalogDesignsByTags(
+      filterCatalogDesignsByHalftone(
         filterCatalogDesignsByCategory(filterCatalogDesignsBySearch(designs, search), categoryId),
-        selectedTags,
+        halftoneFilterOn,
       ),
-    [categoryId, designs, search, selectedTags],
+    [categoryId, designs, search, halftoneFilterOn],
   );
 }
 

@@ -12,7 +12,7 @@ test("AiReviewQueueList passes artworkBackgroundHex into DesignThumbnailPanel", 
   assert.match(source, /artworkBackgroundHex=\{/);
   assert.match(
     source,
-    /isSelected\s*\?\s*selectedArtworkBackgroundHex\s*\?\?\s*design\.artworkBackgroundHex/,
+    /design\.id === selectedDesignId\s*\?\s*selectedArtworkBackgroundHex\s*\?\?\s*design\.artworkBackgroundHex/,
   );
 });
 

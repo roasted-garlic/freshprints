@@ -108,9 +108,9 @@ export const PORTAL_TEXT_FAQS: PortalHelpTextFaq[] = [
   },
   {
     id: 'request-and-show-limits',
-    question: 'What are request and show limits?',
+    question: 'What are show limits?',
     answer:
-      'Each print request and each Whatnot show has a print limit so shows stay manageable. On Current Request, open the help icon next to the prints-left banner to see Request and Show Limits with the live numbers for your account. Limits can change over time, so always use that modal for the current values. Because space is limited, only request what you expect to buy.',
+      'Each show has a per-customer print limit (usually 25). You can put that many on every show, with no daily cutoff. Requests are capped at the same number as a failsafe so one request cannot exceed a show. Open the help icon next to the prints-left banner on Current Request for the live numbers on your account. Submitting is free; you pay on the show.',
     order: 4,
   },
   {

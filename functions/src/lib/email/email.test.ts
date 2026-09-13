@@ -6,12 +6,13 @@ import {
   appendUnmonitoredEmailFooter,
   buildCatalogShareReadyEmail,
   buildCustomerInvitationEmail,
+  buildFinalArtworkReadyEmail,
   buildProofReadyEmail,
   buildTeamInvitationEmail,
   escapeEmailHtml,
 } from "./emailTemplates";
 import { canClaimEmailJob, shouldRetryEmailFailure } from "./emailDeliveryPolicy";
-import { createProofEmailJobId } from "./emailJobIdentity";
+import { createFinalArtworkEmailJobId, createProofEmailJobId } from "./emailJobIdentity";
 import {
   brevoIdempotencyKey,
   createBrevoEmailProvider,
@@ -68,12 +69,31 @@ test("unmonitored disclaimer footer is shared and present on all templates", () 
       displayName: "Di",
       reviewUrl: "https://example.com/review",
     }),
+    buildFinalArtworkReadyEmail({
+      from: "Fresh Prints <noreply@myprintrequest.com>",
+      to: "e@example.com",
+      displayName: "Ed",
+      reviewUrl: "https://example.com/review",
+    }),
   ];
 
   for (const message of templates) {
     assert.match(message.html, /not monitored/);
     assert.match(message.html, /do not reply/i);
   }
+});
+
+test("final artwork ready email escapes HTML and uses view CTA", () => {
+  const message = buildFinalArtworkReadyEmail({
+    from: "sender@example.com",
+    to: "customer@example.com",
+    displayName: "<Customer>",
+    reviewUrl: "https://example.com/?flow=assisted&step=status",
+  });
+  assert.equal(message.subject, "Your Fresh Prints final artwork is ready");
+  assert.match(message.html, /&lt;Customer&gt;/);
+  assert.match(message.html, /View your artwork/);
+  assert.match(message.html, /flow=assisted&amp;step=status/);
 });
 
 test("portal URLs are mapped by project and unknown projects fail closed", () => {
@@ -304,11 +324,21 @@ test("delivery policy reclaims stale leases and bounds attempts", () => {
 });
 
 test("proof job identity is deterministic and Firestore-safe", () => {
-  const first = createProofEmailJobId("request/a", "proof/b");
-  assert.equal(first, createProofEmailJobId("request/a", "proof/b"));
-  assert.notEqual(first, createProofEmailJobId("request/a", "proof/c"));
+  const first = createProofEmailJobId("request/a", "round/b");
+  assert.equal(first, createProofEmailJobId("request/a", "round/b"));
+  assert.notEqual(first, createProofEmailJobId("request/a", "round/c"));
   assert.equal(first.includes("/"), false);
   assert.equal(first.length, "assisted-proof-".length + 64);
+});
+
+test("final artwork job identity is deterministic and Firestore-safe", () => {
+  const first = createFinalArtworkEmailJobId("request/a", "final/b");
+  assert.equal(first, createFinalArtworkEmailJobId("request/a", "final/b"));
+  assert.notEqual(first, createFinalArtworkEmailJobId("request/a", "final/c"));
+  assert.notEqual(first, createProofEmailJobId("request/a", "final/b"));
+  assert.equal(first.startsWith("assisted-final-"), true);
+  assert.equal(first.includes("/"), false);
+  assert.equal(first.length, "assisted-final-".length + 64);
 });
 
 test("proof recipient requires matching customer linkage and validates fallback", () => {

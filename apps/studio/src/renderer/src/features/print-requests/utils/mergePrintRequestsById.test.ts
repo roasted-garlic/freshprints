@@ -49,7 +49,13 @@ describe("mergePrintRequestsById", () => {
   });
 
   it("rejects mismatched requests for all four queueTab values against every other active tab", () => {
-    const tabs: NonNullable<PrintRequest["queueTab"]>[] = ["working", "queued", "printing", "printed"];
+    const tabs: NonNullable<PrintRequest["queueTab"]>[] = [
+      "working",
+      "editing",
+      "queued",
+      "printing",
+      "printed",
+    ];
 
     for (const requestTab of tabs) {
       for (const activeTab of tabs) {

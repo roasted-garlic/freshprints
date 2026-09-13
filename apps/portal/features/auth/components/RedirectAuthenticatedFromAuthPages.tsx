@@ -8,7 +8,7 @@ import { needsPortalCustomerProfileCompletion } from '../types/auth.types';
 import {
   buildPortalAuthHref,
   getPortalReturnToFromSearch,
-  resolvePortalPostAuthPath,
+  resolvePortalPostAuthPathForSession,
 } from '../utils/portalReturnUrl';
 import { CATALOG_HOME_PATH } from '../../print-requests/utils/catalogSelectionNavigation';
 
@@ -25,10 +25,11 @@ export function RedirectAuthenticatedFromAuthPages() {
       return;
     }
 
-    const returnTo = resolvePortalPostAuthPath(
-      getPortalReturnToFromSearch(window.location.search),
+    const returnTo = getPortalReturnToFromSearch(window.location.search);
+    const destination = resolvePortalPostAuthPathForSession(
+      returnTo === '/' ? CATALOG_HOME_PATH : returnTo,
+      bootstrapStatus === 'portal-admin' ? 'admin' : 'customer',
     );
-    const destination = returnTo === '/' ? CATALOG_HOME_PATH : returnTo;
 
     if (isAuthenticated) {
       router.replace(destination);

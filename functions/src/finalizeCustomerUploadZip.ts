@@ -45,7 +45,9 @@ import {
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
 import { isAnonymousAuthToken } from "./lib/catalogDonationUploader";
 import { requirePortalCustomer } from "./lib/portalCustomer";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 import { resolveCustomerUploadPurpose } from "../../packages/shared/src/utils/customerUploadPurpose";
+import { applyCustomerUploadArtworkBackgroundDetectionToReadyPatch } from "../../packages/shared/src/utils/customerUploadArtworkBackgroundDetection";
 
 export interface FinalizeCustomerUploadZipFileResult {
   uploadId: string;
@@ -65,7 +67,7 @@ export interface FinalizeCustomerUploadZipResponse {
 }
 
 export const finalizeCustomerUploadZip = onCall(
-  { timeoutSeconds: 540, memory: "2GiB" },
+  { timeoutSeconds: 540, memory: "4GiB" },
   async (request): Promise<FinalizeCustomerUploadZipResponse> => {
     if (!request.auth?.uid) {
       throw unauthenticated();
@@ -83,6 +85,7 @@ export const finalizeCustomerUploadZip = onCall(
       throw permissionDenied("Guest donations support image uploads only. Sign in to upload a ZIP.");
     }
     const portalCustomer = await requirePortalCustomer(request.auth.uid);
+    await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
     const customerUid = request.auth.uid;
     const batchRef = adminDb
       .collection(CUSTOMER_UPLOAD_COLLECTIONS.customerUploadBatches)
@@ -262,9 +265,7 @@ export const finalizeCustomerUploadZip = onCall(
 
         await bucket.file(storageObjectPath(sourceStoragePath)).save(image.bytes, {
           resumable: false,
-          contentType: image.displayFilename.toLowerCase().endsWith(".webp")
-            ? "image/webp"
-            : "image/png",
+          contentType: "image/png",
           metadata: { cacheControl: "private, max-age=3600" },
         });
 
@@ -360,8 +361,7 @@ export const finalizeCustomerUploadZip = onCall(
             processed,
           });
 
-          await uploadRef.update(
-            withoutUndefinedFields({
+          const readyPatch: Record<string, unknown> = {
               technicalStatus: "ready",
               technicalProgressStage: null,
               technicalFailureCode: null,
@@ -383,8 +383,17 @@ export const finalizeCustomerUploadZip = onCall(
               effectiveDpi: processed.effectiveDpi,
               catalogReviewStatus: "not_eligible",
               updatedAt: FieldValue.serverTimestamp(),
-            }),
-          );
+          };
+          const existingSnap = await uploadRef.get();
+          const existingArtworkBackgroundSource =
+            typeof existingSnap.data()?.artworkBackgroundSource === "string"
+              ? existingSnap.data()?.artworkBackgroundSource
+              : null;
+          applyCustomerUploadArtworkBackgroundDetectionToReadyPatch(readyPatch, {
+            suggestDark: processed.suggestDarkArtworkBackground === true,
+            existingArtworkBackgroundSource,
+          });
+          await uploadRef.update(withoutUndefinedFields(readyPatch));
 
           return {
             uploadId: image.uploadId,

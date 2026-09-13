@@ -3,10 +3,8 @@ export async function refreshSelectedShowGangSheetCache<TShow extends { id: stri
     show: TShow | null;
     /** When set but `show` is briefly null (e.g. pending timestamp remapping), do not reset. */
     selectedShowId?: string | null;
-    isPast: boolean;
     settings: TSettings;
     reset: () => void;
-    clearForShow: (showId: string) => Promise<unknown>;
     refresh: (show: TShow, settings: TSettings) => Promise<unknown>;
   },
 ): Promise<void> {
@@ -16,10 +14,6 @@ export async function refreshSelectedShowGangSheetCache<TShow extends { id: stri
     if (!input.selectedShowId) {
       input.reset();
     }
-    return;
-  }
-  if (input.isPast) {
-    await input.clearForShow(input.show.id);
     return;
   }
   await input.refresh(input.show, input.settings);

@@ -1,6 +1,6 @@
 'use client';
 
-import { TriangleAlert } from 'lucide-react';
+import { ChevronLeft, ChevronRight, TriangleAlert } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 
@@ -18,6 +18,7 @@ import {
   resolveAssistedCatalogShareArtworkBackgroundHex,
   snapshotAssistedCatalogArtworkBackgroundHex,
 } from '@fresh-prints/shared/utils/assistedCreationCatalogShareArtworkBackground';
+import { resolveAssistedCreationCurrentRoundOptions } from '@fresh-prints/shared/utils/assistedCreationProofRounds';
 import { CatalogPreviewLightbox } from '../../catalog/components/CatalogPreviewLightbox';
 import { catalogService } from '../../catalog/services/catalogService';
 import { catalogStorageService } from '../../catalog/services/catalogStorageService';
@@ -87,6 +88,7 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
   const [revisionNote, setRevisionNote] = useState('');
   const [approvalNote, setApprovalNote] = useState('');
   const [rating, setRating] = useState<number | null>(null);
+  const [selectedProofOptionId, setSelectedProofOptionId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   /** Which proof response is in flight — drives Sending… / Approving… labels. */
   const [pendingProofAction, setPendingProofAction] = useState<'revision' | 'approve' | null>(
@@ -171,12 +173,19 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
         return;
       }
       const approvedId = latest.approvedProofId?.trim();
+      const currentRound = resolveAssistedCreationCurrentRoundOptions({
+        proofs: latest.proofs,
+        currentProofRoundId: latest.currentProofRoundId,
+      });
       const proof =
         latest.status === 'final_source_needed' && approvedId
           ? latest.proofs.find((entry) => entry.id === approvedId) ?? null
-          : latest.proofs.length > 0
-            ? latest.proofs[latest.proofs.length - 1]
-            : null;
+          : latest.status === 'proof_ready' && currentRound.options.length > 0
+            ? currentRound.options.find((entry) => entry.id === selectedProofOptionId) ??
+              (currentRound.options.length === 1 ? currentRound.options[0] : null)
+            : latest.proofs.length > 0
+              ? latest.proofs[latest.proofs.length - 1]
+              : null;
       if (!proof?.storagePath?.trim() || proof.fullSizePurgedAt != null) {
         setProofUrl(null);
         setProofImageState('unavailable');
@@ -215,7 +224,36 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
     return () => {
       cancelled = true;
     };
+  }, [latest, selectedProofOptionId]);
+
+  const proofRoundSelectionKey = useMemo(() => {
+    if (!latest || latest.status !== 'proof_ready' || latest.fulfillmentMode === 'catalog_share') {
+      return `${latest?.id ?? ''}|clear`;
+    }
+    const round = resolveAssistedCreationCurrentRoundOptions({
+      proofs: latest.proofs,
+      currentProofRoundId: latest.currentProofRoundId,
+    });
+    return `${latest.id}|${latest.currentProofRoundId ?? ''}|${round.options.map((option) => option.id).join(',')}`;
   }, [latest]);
+
+  useEffect(() => {
+    if (!latest || latest.status !== 'proof_ready' || latest.fulfillmentMode === 'catalog_share') {
+      setSelectedProofOptionId(null);
+      return;
+    }
+    const round = resolveAssistedCreationCurrentRoundOptions({
+      proofs: latest.proofs,
+      currentProofRoundId: latest.currentProofRoundId,
+    });
+    const firstOptionId = round.options[0]?.id ?? null;
+    setSelectedProofOptionId((current) => {
+      if (current && round.options.some((option) => option.id === current)) {
+        return current;
+      }
+      return firstOptionId;
+    });
+  }, [proofRoundSelectionKey, latest]);
 
   const catalogShareSnapshotArtworkBackgroundHex =
     resolveAssistedCatalogShareArtworkBackgroundHex({
@@ -311,10 +349,83 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
   const statusLead = statusMessage(latest.status, { catalogShare: catalogShareForLead });
   const showCatalogShareReviewCallout =
     latest.status === 'proof_ready' && catalogShareForLead;
+  const currentProofRound = resolveAssistedCreationCurrentRoundOptions({
+    proofs: latest.proofs,
+    currentProofRoundId: latest.currentProofRoundId,
+  });
+  const isMultiOptionRound =
+    !isCatalogShare && canRespond && currentProofRound.options.length > 1;
+  const selectedRoundProof =
+    currentProofRound.options.find((entry) => entry.id === selectedProofOptionId) ??
+    (currentProofRound.options.length === 1 ? currentProofRound.options[0] : null);
+  const selectedOptionIndex = selectedRoundProof
+    ? currentProofRound.options.findIndex((option) => option.id === selectedRoundProof.id)
+    : -1;
+  const canGoPreviousOption = isMultiOptionRound && selectedOptionIndex > 0;
+  const canGoNextOption =
+    isMultiOptionRound &&
+    selectedOptionIndex >= 0 &&
+    selectedOptionIndex < currentProofRound.options.length - 1;
+  const selectedOptionLabel =
+    selectedRoundProof?.optionLabel ??
+    (selectedOptionIndex >= 0 ? `Option ${String.fromCharCode(65 + selectedOptionIndex)}` : null);
+
+  function goToProofOption(direction: -1 | 1): void {
+    if (!isMultiOptionRound || selectedOptionIndex < 0) {
+      return;
+    }
+    const next = currentProofRound.options[selectedOptionIndex + direction];
+    if (next) {
+      setSelectedProofOptionId(next.id);
+    }
+  }
+
+  const selectionRequiredMissing = isMultiOptionRound && !selectedRoundProof;
   const latestProof =
-    !isCatalogShare && latest.proofs.length > 0
-      ? latest.proofs[latest.proofs.length - 1]
-      : null;
+    !isCatalogShare && canRespond
+      ? selectedRoundProof
+      : !isCatalogShare && latest.proofs.length > 0
+        ? latest.proofs[latest.proofs.length - 1]
+        : null;
+
+  function buildProofResponsePayload(
+    decision: 'approve' | 'request_revision',
+  ): {
+    requestId: string;
+    decision: 'approve' | 'request_revision';
+    note?: string;
+    rating?: number;
+    proofRoundId?: string;
+    selectedProofId?: string;
+  } {
+    const payload: {
+      requestId: string;
+      decision: 'approve' | 'request_revision';
+      note?: string;
+      rating?: number;
+      proofRoundId?: string;
+      selectedProofId?: string;
+    } = {
+      requestId: latest.id,
+      decision,
+    };
+    if (decision === 'request_revision') {
+      payload.note = revisionNote;
+    } else {
+      payload.note = approvalNote.trim() || undefined;
+      payload.rating = rating ?? undefined;
+    }
+    if (!isCatalogShare) {
+      const option = selectedRoundProof;
+      if (option) {
+        if (currentProofRound.proofRoundId) {
+          payload.proofRoundId = currentProofRound.proofRoundId;
+        }
+        payload.selectedProofId = option.id;
+      }
+    }
+    return payload;
+  }
   const suggestedDesign = latest.suggestedCatalogDesign;
   const resolvedCatalogArtworkBackgroundHex =
     resolveAssistedCatalogShareArtworkBackgroundHex({
@@ -375,8 +486,30 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
       {canRespond ? (
         <div className="assisted-creation-proof-panel">
           <h2 className="assisted-creation-proof-heading">
-            {isCatalogShare ? 'Library design ready for review' : 'Your proof is ready'}
+            {isCatalogShare
+              ? 'Library design ready for review'
+              : isMultiOptionRound
+                ? 'Choose a proof option'
+                : 'Your proof is ready'}
           </h2>
+          {isMultiOptionRound ? (
+            <p
+              className="etsy-questionnaire-warning assisted-creation-proof-carousel-callout"
+              role="note"
+            >
+              <TriangleAlert
+                aria-hidden
+                className="etsy-questionnaire-warning-icon"
+                size={16}
+                strokeWidth={2}
+              />
+              <span>
+                Staff sent {currentProofRound.options.length} proof options. Use the arrows or dots
+                to compare them. Your Approve or Request changes choice applies to the proof
+                currently shown.
+              </span>
+            </p>
+          ) : null}
           {isCatalogShare && suggestedDesign ? (
             <div className="assisted-creation-catalog-suggestion-card">
               <p className="assisted-creation-catalog-suggestion-title">{suggestedDesign.title}</p>
@@ -423,26 +556,100 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
                 </div>
               ) : null}
             </div>
-          ) : proofUrl ? (
-            <button
-              aria-label="Open proof preview"
-              className="assisted-creation-proof-image-button assisted-creation-proof-stage"
-              onClick={() => setProofLightboxOpen(true)}
-              type="button"
-            >
-              <img
-                alt="Design proof"
-                className="assisted-creation-proof-stage-image"
-                draggable={false}
-                src={proofUrl}
-              />
-            </button>
           ) : (
-            <p className="portal-muted">
-              {proofImageState === 'unavailable'
-                ? 'Preview unavailable.'
-                : 'Loading proof image…'}
-            </p>
+            <div
+              className={
+                isMultiOptionRound
+                  ? 'assisted-creation-proof-carousel'
+                  : 'assisted-creation-proof-carousel is-single'
+              }
+            >
+              {isMultiOptionRound ? (
+                <div className="assisted-creation-proof-carousel-meta" aria-live="polite">
+                  <span className="assisted-creation-proof-carousel-label">
+                    {selectedOptionLabel ?? 'Option'}
+                  </span>
+                  <span className="assisted-creation-proof-carousel-count">
+                    {selectedOptionIndex + 1} of {currentProofRound.options.length}
+                  </span>
+                </div>
+              ) : null}
+              <div className="assisted-creation-proof-carousel-stage-row">
+                {isMultiOptionRound ? (
+                  <button
+                    aria-label="Previous proof option"
+                    className="portal-button portal-button-secondary assisted-creation-proof-carousel-nav"
+                    disabled={busy || !canGoPreviousOption}
+                    onClick={() => goToProofOption(-1)}
+                    type="button"
+                  >
+                    <ChevronLeft aria-hidden size={20} strokeWidth={2} />
+                  </button>
+                ) : null}
+                {proofUrl ? (
+                  <button
+                    aria-label={
+                      selectedOptionLabel
+                        ? `Open preview of ${selectedOptionLabel}`
+                        : 'Open proof preview'
+                    }
+                    className="assisted-creation-proof-image-button assisted-creation-proof-stage"
+                    onClick={() => setProofLightboxOpen(true)}
+                    type="button"
+                  >
+                    <img
+                      alt={selectedOptionLabel ? `${selectedOptionLabel} proof` : 'Design proof'}
+                      className="assisted-creation-proof-stage-image"
+                      draggable={false}
+                      src={proofUrl}
+                    />
+                  </button>
+                ) : (
+                  <div className="assisted-creation-proof-stage is-empty">
+                    <p className="portal-muted assisted-creation-proof-carousel-empty">
+                      {proofImageState === 'unavailable'
+                        ? 'Preview unavailable.'
+                        : 'Loading proof image…'}
+                    </p>
+                  </div>
+                )}
+                {isMultiOptionRound ? (
+                  <button
+                    aria-label="Next proof option"
+                    className="portal-button portal-button-secondary assisted-creation-proof-carousel-nav"
+                    disabled={busy || !canGoNextOption}
+                    onClick={() => goToProofOption(1)}
+                    type="button"
+                  >
+                    <ChevronRight aria-hidden size={20} strokeWidth={2} />
+                  </button>
+                ) : null}
+              </div>
+              {isMultiOptionRound ? (
+                <div
+                  aria-label="Proof option indicators"
+                  className="assisted-creation-proof-carousel-dots"
+                  role="tablist"
+                >
+                  {currentProofRound.options.map((option, index) => {
+                    const label = option.optionLabel ?? `Option ${String.fromCharCode(65 + index)}`;
+                    const selected = option.id === selectedProofOptionId;
+                    return (
+                      <button
+                        aria-label={`Show ${label}`}
+                        aria-selected={selected}
+                        className={`assisted-creation-proof-carousel-dot${selected ? ' is-selected' : ''}`}
+                        disabled={busy}
+                        key={option.id}
+                        onClick={() => setSelectedProofOptionId(option.id)}
+                        role="tab"
+                        type="button"
+                      />
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
           )}
 
           {latestProof ? (
@@ -462,10 +669,26 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
               className="assisted-creation-proof-response-heading"
               id="assisted-creation-respond-heading"
             >
-              {isCatalogShare ? 'Respond to library design' : 'Respond to proof'}
+              {isCatalogShare
+                ? 'Respond to library design'
+                : isMultiOptionRound && selectedOptionLabel
+                  ? `Respond to ${selectedOptionLabel}`
+                  : 'Respond to proof'}
             </h3>
+            {isMultiOptionRound && selectedOptionLabel ? (
+              <p className="portal-muted assisted-creation-proof-response-selection" aria-live="polite">
+                You are about to respond to <strong>{selectedOptionLabel}</strong> — the proof
+                shown above. Use the arrows or dots if you want a different option.
+              </p>
+            ) : null}
 
-            <ExpandableBlock title="Request revisions">
+            <ExpandableBlock
+              title={
+                isMultiOptionRound && selectedOptionLabel
+                  ? `Request revisions for ${selectedOptionLabel}`
+                  : 'Request revisions'
+              }
+            >
               <div className="assisted-creation-proof-response-fields">
                 <label className="portal-field">
                   <span>What should we change?</span>
@@ -481,20 +704,16 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
                 <button
                   aria-busy={pendingProofAction === 'revision' || undefined}
                   className="portal-button assisted-creation-revision-button"
-                  disabled={busy || !revisionNote.trim()}
+                  disabled={busy || !revisionNote.trim() || selectionRequiredMissing}
                   onClick={() => {
-                    if (busy || !revisionNote.trim()) {
+                    if (busy || !revisionNote.trim() || selectionRequiredMissing) {
                       return;
                     }
                     setBusy(true);
                     setPendingProofAction('revision');
                     setActionError(null);
                     void assistedCreationService
-                      .respondToProof({
-                        requestId: latest.id,
-                        decision: 'request_revision',
-                        note: revisionNote,
-                      })
+                      .respondToProof(buildProofResponsePayload('request_revision'))
                       .then(() => setRevisionNote(''))
                       .catch((error: unknown) => {
                         setActionError(
@@ -508,7 +727,11 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
                   }}
                   type="button"
                 >
-                  {pendingProofAction === 'revision' ? 'Sending…' : 'Send revision notes'}
+                  {pendingProofAction === 'revision'
+                    ? 'Sending…'
+                    : isMultiOptionRound && selectedOptionLabel
+                      ? `Request changes for ${selectedOptionLabel}`
+                      : 'Send revision notes'}
                 </button>
                 {pendingProofAction === 'revision' ? (
                   <p aria-live="polite" className="portal-muted">
@@ -518,7 +741,13 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
               </div>
             </ExpandableBlock>
 
-            <ExpandableBlock title="Approve">
+            <ExpandableBlock
+              title={
+                isMultiOptionRound && selectedOptionLabel
+                  ? `Approve ${selectedOptionLabel}`
+                  : 'Approve'
+              }
+            >
               <div className="assisted-creation-proof-response-fields">
                 <fieldset className="assisted-creation-rating-fieldset" disabled={busy}>
                   <legend>Rate this design (optional)</legend>
@@ -554,21 +783,16 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
                   <button
                     aria-busy={pendingProofAction === 'approve' || undefined}
                     className="portal-button assisted-creation-approve-button"
-                    disabled={busy}
+                    disabled={busy || selectionRequiredMissing}
                     onClick={() => {
-                      if (busy) {
+                      if (busy || selectionRequiredMissing) {
                         return;
                       }
                       setBusy(true);
                       setPendingProofAction('approve');
                       setActionError(null);
                       void assistedCreationService
-                        .respondToProof({
-                          requestId: latest.id,
-                          decision: 'approve',
-                          note: approvalNote.trim() || undefined,
-                          rating: rating ?? undefined,
-                        })
+                        .respondToProof(buildProofResponsePayload('approve'))
                         .then(() => {
                           setApprovalNote('');
                           setRating(null);
@@ -585,7 +809,11 @@ export function AssistedCreationStatusPanel({ onStartNew }: AssistedCreationStat
                     }}
                     type="button"
                   >
-                    {pendingProofAction === 'approve' ? 'Approving…' : 'Approve & send'}
+                    {pendingProofAction === 'approve'
+                      ? 'Approving…'
+                      : isMultiOptionRound && selectedOptionLabel
+                        ? `Approve ${selectedOptionLabel}`
+                        : 'Approve & send'}
                   </button>
                 </div>
                 {pendingProofAction === 'approve' ? (

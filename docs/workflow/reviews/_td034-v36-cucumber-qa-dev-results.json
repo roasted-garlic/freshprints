@@ -1,0 +1,231 @@
+{
+  "projectId": "fresh-prints-dev",
+  "runId": "mtp0yt7m",
+  "startedAt": "2026-09-05T23:39:42.822Z",
+  "finishedAt": "2026-09-05T23:39:50.669Z",
+  "settings": {
+    "before": {
+      "length": 10780,
+      "hasApprovedCategories": true,
+      "hasExcludedTags": true,
+      "hasVisualFirst": false,
+      "hasReturnTagsEmpty": false,
+      "hasV35SelfConsistency": false,
+      "head": "You catalog DTF transfer art for apparel. Choose title, category, and tags by the design's dominant identity, main messa"
+    },
+    "isDefaultBefore": false,
+    "isPreviousDefaultBefore": true,
+    "resolvedWouldBeDefault": true,
+    "customDetected": false,
+    "useCurrentDefaultRequired": true,
+    "saveRequired": true,
+    "saveError": null,
+    "autoUpgradedOnSave": true,
+    "after": {
+      "length": 1854,
+      "hasApprovedCategories": true,
+      "hasExcludedTags": false,
+      "hasVisualFirst": true,
+      "hasReturnTagsEmpty": true,
+      "hasV35SelfConsistency": false,
+      "head": "Analyze the attached artwork for our DTF design catalog. Return ONLY valid JSON matching the supplied schema. Create a "
+    },
+    "persistedIsV36Default": true,
+    "visionModelId": "gemini-2.5-flash-lite",
+    "tagRerankMode": "auto",
+    "catalogWorkflowMode": "shadow",
+    "catalogAutonomousLiveEnabled": false
+  },
+  "playground": {
+    "elapsedMs": 10434,
+    "model": "gemini-2.5-flash-lite",
+    "provider": "google",
+    "version": "ai-playground-v1",
+    "promptTokens": 4491,
+    "completionTokens": 509,
+    "usedSavedV36Text": true,
+    "imagePath": "previews/Y2IQuCgAPgnqrBIeJuap.webp",
+    "output": {
+      "title": "Retro Woman Holding Cucumber with Sarcastic Saying",
+      "description": "A retro-style illustration depicts a woman with styled blonde hair and bright blue eyes, holding a cucumber. She is smiling coyly, pointing to the word 'Cucumbers' written in a stylized font below her. The design features a sarcastic and humorous quote, \"When life gives you you cucumbers... GO FUCK YOURSELF...\" The artwork utilizes a vintage color palette with blues, pinks, and skin tones against a grey background.",
+      "category": "Funny & Sarcastic",
+      "tags": [],
+      "readableTextLines": [
+        "WHEN LIFE GIVES YOU",
+        "Cucumbers",
+        "GO FUCK YOURSELF..."
+      ],
+      "centralSubject": "woman with cucumber",
+      "subjects": [
+        "woman",
+        "cucumber"
+      ],
+      "objects": [
+        "vegetable"
+      ],
+      "styles": [
+        "retro",
+        "vintage",
+        "pin-up"
+      ],
+      "themes": [
+        "sarcasm",
+        "humor",
+        "attitude"
+      ],
+      "interests": [
+        "retro humor",
+        "vintage style"
+      ],
+      "professionsGroups": [],
+      "occasions": [],
+      "places": [],
+      "colors": [
+        "blue",
+        "green",
+        "pink",
+        "grey",
+        "white"
+      ],
+      "searchConcepts": [
+        "funny retro",
+        "sarcastic woman",
+        "vintage pin-up",
+        "cucumber humor",
+        "rude humor"
+      ],
+      "categoryAlternatives": [],
+      "categoryGapNote": "The design uses a food item (cucumber) and a vintage illustration style, but the dominant buyer intent is the sarcastic and humorous message.",
+      "halftoneShadowLikelihood": "medium",
+      "halftoneShadowEvidence": "The artwork exhibits halftones and shading typical of vintage comic and pin-up art, particularly visible in the skin tones and hair."
+    },
+    "unexpectedKeys": [],
+    "tagsIsEmptyArray": true,
+    "hasPromptKey": false
+  },
+  "processing": {
+    "callable": {
+      "designId": "Y2IQuCgAPgnqrBIeJuap",
+      "queued": true,
+      "completed": true,
+      "aiProcessingStage": "ready_for_review",
+      "aiReviewStatus": "needs_review",
+      "status": "imported"
+    },
+    "prior": {
+      "designId": "Y2IQuCgAPgnqrBIeJuap",
+      "status": "imported",
+      "aiReviewStatus": "pending",
+      "aiProcessingStage": null,
+      "model": null,
+      "provider": null,
+      "promptVersion": null,
+      "normalizerVersion": null,
+      "profileVersion": null,
+      "generatedAt": null,
+      "title": "1 (31)",
+      "description": null,
+      "category": null,
+      "suggestedTags": null,
+      "suggestedNewTags": null,
+      "tagRerankStatus": null,
+      "tagRerankPromptVersion": null,
+      "centralSubject": null,
+      "subjects": null,
+      "objects": null,
+      "styles": null,
+      "themes": null,
+      "interests": null,
+      "professionsGroups": null,
+      "occasions": null,
+      "places": null,
+      "colors": null,
+      "searchConcepts": null,
+      "visibleText": null,
+      "hardBlockers": null,
+      "softReasons": null,
+      "wouldAutoApprove": null,
+      "automationDecision": null,
+      "explicit": true,
+      "censoredTerms": [
+        "fuck"
+      ],
+      "lifecycleStatus": "imported"
+    },
+    "capture": {
+      "designId": "Y2IQuCgAPgnqrBIeJuap",
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "aiProcessingStage": "ready_for_review",
+      "model": "gemini-2.5-flash-lite",
+      "provider": "google",
+      "promptVersion": "catalog-enrich-v36",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "profileVersion": "smart-profile-v1",
+      "generatedAt": "2026-09-05T23:39:45.661Z",
+      "title": "When Life Gives You Cucumbers Go F*** Yourself Woman",
+      "description": "The overall concept is humorous and suggestive.",
+      "category": "Funny & Sarcastic",
+      "suggestedTags": [],
+      "suggestedNewTags": null,
+      "tagRerankStatus": "failed",
+      "tagRerankPromptVersion": null,
+      "centralSubject": null,
+      "subjects": [
+        "woman"
+      ],
+      "objects": [
+        "cucumber"
+      ],
+      "styles": [
+        "retro",
+        "pin-up",
+        "vintage",
+        "illustration"
+      ],
+      "themes": [
+        "humor",
+        "suggestive",
+        "sarcasm"
+      ],
+      "interests": [
+        "vintage art",
+        "retro humor"
+      ],
+      "professionsGroups": null,
+      "occasions": null,
+      "places": null,
+      "colors": [
+        "blue",
+        "green",
+        "tan",
+        "pink"
+      ],
+      "searchConcepts": [
+        "pin-up",
+        "cucumber",
+        "funny saying",
+        "vintage woman",
+        "retro style",
+        "sarcastic humor"
+      ],
+      "visibleText": [
+        "WHEN LIFE GIVES YOU",
+        "Cucumbers",
+        "GO F*** YOURSELF..."
+      ],
+      "hardBlockers": [
+        "shadow_would_auto_approve"
+      ],
+      "softReasons": null,
+      "wouldAutoApprove": null,
+      "automationDecision": "shadow",
+      "explicit": true,
+      "censoredTerms": [
+        "fuck"
+      ],
+      "lifecycleStatus": "imported"
+    },
+    "womanGapStill": false
+  }
+}

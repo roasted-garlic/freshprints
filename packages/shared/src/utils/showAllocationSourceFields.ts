@@ -25,6 +25,7 @@ export interface ShowAllocationSourceFields {
   sourceType: PrintRequestItemSourceType;
   designId?: string;
   customerUploadId?: string;
+  staffArtworkId?: string;
   designTitleSnapshot: string;
 }
 
@@ -45,6 +46,14 @@ export function buildShowAllocationSourceFields(
       sourceType: "customer_upload",
       customerUploadId,
       designTitleSnapshot,
+    };
+  }
+
+  if (sourceType === "staff_artwork") {
+    return {
+      sourceType: "staff_artwork",
+      staffArtworkId: input.item.staffArtworkId!.trim(),
+      designTitleSnapshot: input.item.titleSnapshot?.trim() || "Staff Artwork",
     };
   }
 

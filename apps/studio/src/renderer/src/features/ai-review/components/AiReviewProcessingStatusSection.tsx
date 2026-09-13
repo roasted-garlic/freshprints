@@ -2,11 +2,6 @@ import { Check, LoaderCircle, X } from "lucide-react";
 
 import type { Design } from "../../designs/types/design.types";
 import {
-  formatAiEstimatedCost,
-  formatTagRerankStatusLabel,
-  resolveCombinedAiEstimatedCost,
-} from "../../designs/utils/aiReviewDisplay";
-import {
   applyOptimisticEnqueueStage,
   applyRerunOverlayStage,
   getAiProcessingOutputMessage,
@@ -14,6 +9,7 @@ import {
   resolveAiProcessingPipelineSteps,
   type ProcessingPipelineStep,
 } from "../utils/aiProcessingOutput";
+import { isAiProcessingStaleForRecovery, STALE_PROCESSING_STATUS_COPY } from "../utils/aiProcessingStaleRecovery";
 
 interface AiReviewProcessingStatusSectionProps {
   design: Design;
@@ -63,12 +59,16 @@ export function AiReviewProcessingStatusSection({
     : design;
   const steps = resolveAiProcessingPipelineSteps(displayDesign);
   const outputStatus = showActivePipeline ? "waiting" : resolveAiProcessingOutputStatus(design);
+  const isStaleProcessing =
+    !showActivePipeline && outputStatus === "waiting" && isAiProcessingStaleForRecovery(design);
   const statusMessage = getAiProcessingOutputMessage(outputStatus, displayDesign, {
     isOptimisticEnqueue,
     isRerunInProgress,
   });
   const errorMessage =
-    outputStatus === "failed" ? design.aiSuggestions?.errorMessage?.trim() : undefined;
+    outputStatus === "failed"
+      ? (design.aiProcessingError?.errorMessage ?? design.aiSuggestions?.errorMessage)?.trim()
+      : undefined;
   const isOverlay = variant === "overlay";
 
   return (
@@ -131,7 +131,13 @@ export function AiReviewProcessingStatusSection({
         </ol>
       )}
 
-      {outputStatus === "waiting" && statusMessage ? (
+      {outputStatus === "waiting" && isStaleProcessing ? (
+        <p className="ai-review-processing-stale-copy auth-message auth-message-warning" role="status">
+          {STALE_PROCESSING_STATUS_COPY}
+        </p>
+      ) : null}
+
+      {outputStatus === "waiting" && statusMessage && !isStaleProcessing ? (
         <p className="ai-review-processing-idle-copy">{statusMessage}</p>
       ) : null}
 
@@ -164,31 +170,6 @@ export function AiReviewProcessingStatusSection({
               <dt>Est. cost</dt>
               <dd>${design.aiSuggestions.estimatedCostUsd.toFixed(6)}</dd>
             </div>
-          ) : null}
-          {design.aiSuggestions?.tagRerankStatus && design.aiSuggestions.tagRerankStatus !== "skipped" ? (
-            <>
-              <div>
-                <dt>Tag rerank</dt>
-                <dd>{formatTagRerankStatusLabel(design.aiSuggestions.tagRerankStatus)}</dd>
-              </div>
-              {design.aiSuggestions.tagRerankEstimatedCostUsd != null ? (
-                <div>
-                  <dt>Tag rerank cost</dt>
-                  <dd>{formatAiEstimatedCost(design.aiSuggestions.tagRerankEstimatedCostUsd)}</dd>
-                </div>
-              ) : null}
-              <div>
-                <dt>Combined cost</dt>
-                <dd>
-                  {formatAiEstimatedCost(
-                    resolveCombinedAiEstimatedCost(
-                      design.aiSuggestions?.estimatedCostUsd,
-                      design.aiSuggestions.tagRerankEstimatedCostUsd,
-                    ),
-                  )}
-                </dd>
-              </div>
-            </>
           ) : null}
         </dl>
       ) : null}

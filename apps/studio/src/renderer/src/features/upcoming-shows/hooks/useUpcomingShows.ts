@@ -17,6 +17,10 @@ const initialState: UpcomingShowsState = {
   isLoading: true,
 };
 
+interface LoadUpcomingShowsOptions {
+  silent?: boolean;
+}
+
 /**
  * `liveShowId`, when provided, adds a bounded, single-document live subscription for exactly that
  * show (Plan Section 22.4/22.5, Amendment 4, Fix 3 extended) — the currently-selected Show Queue
@@ -30,13 +34,17 @@ export function useUpcomingShows(liveShowId: string | null = null) {
   const [state, setState] = useState<UpcomingShowsState>(initialState);
   const activeLiveShowIdRef = useRef<string | null>(null);
 
-  const loadUpcomingShows = useCallback(async () => {
+  const loadUpcomingShows = useCallback(async (options?: LoadUpcomingShowsOptions) => {
     if (!user || !permissionService.canViewUpcomingShows(user)) {
       setState({ shows: [], error: null, isLoading: false });
       return;
     }
 
-    setState((currentState) => ({ ...currentState, error: null, isLoading: true }));
+    setState((currentState) =>
+      options?.silent
+        ? { ...currentState, error: null }
+        : { ...currentState, error: null, isLoading: true },
+    );
 
     try {
       const shows = await upcomingShowService.listUpcomingShows(user);
@@ -85,8 +93,8 @@ export function useUpcomingShows(liveShowId: string | null = null) {
     };
   }, [liveShowId, user]);
 
-  const reloadUpcomingShows = useCallback(async () => {
-    await loadUpcomingShows();
+  const reloadUpcomingShows = useCallback(async (options?: LoadUpcomingShowsOptions) => {
+    await loadUpcomingShows(options);
   }, [loadUpcomingShows]);
 
   return {

@@ -14,6 +14,11 @@ import {
 
 import { useAuth } from '../../auth/context/AuthContext';
 import { portalPrintRequestLimitService } from '../services/portalPrintRequestLimitService';
+import { resolveEffectivePrintRequestLimits } from '@fresh-prints/shared/utils/printRequestQuotaOverride';
+import {
+  DEFAULT_PRINT_REQUEST_LIMIT_SETTINGS,
+  type PrintRequestLimitSettings,
+} from '@fresh-prints/shared/constants/printRequest/printRequestLimitSettings.constants';
 
 export interface PortalWorkingRequestLimitHydration {
   /** True while the customer's print-request list is still loading. */
@@ -27,6 +32,8 @@ export interface PortalWorkingRequestLimitHydration {
    * `undefined` = never hydrated; `null` = hydrated empty cart.
    */
   hydratedWorkingRequestId: string | null | undefined;
+  /** Terminal item-list failure; quota stays conservative until a retry succeeds. */
+  itemsError?: string | null;
 }
 
 export interface PortalWorkingRequestLimitState {
@@ -47,6 +54,8 @@ export interface PortalWorkingRequestLimitState {
   exhaustedHelperText: string | null;
   /** True when the Current Request has room below the request limit (false while unknown). */
   canAddPrints: boolean;
+  /** Non-null when item hydration failed and the UI should offer retry instead of spinning. */
+  error: string | null;
 }
 
 function isWorkingPrintCountKnown(hydration: PortalWorkingRequestLimitHydration): boolean {
@@ -56,6 +65,9 @@ function isWorkingPrintCountKnown(hydration: PortalWorkingRequestLimitHydration)
   if (hydration.hydratedWorkingRequestId === undefined) {
     return false;
   }
+  if (hydration.itemsError) {
+    return false;
+  }
   return hydration.hydratedWorkingRequestId === hydration.workingRequestId;
 }
 
@@ -63,28 +75,39 @@ export function usePortalWorkingRequestLimitState(
   workingItems: PrintRequestItem[],
   hydration: PortalWorkingRequestLimitHydration,
 ): PortalWorkingRequestLimitState {
-  const { firebaseUser } = useAuth();
-  const [requestLimit, setRequestLimit] = useState<number | null>(null);
-  const [customerShowLimit, setCustomerShowLimit] = useState<number | null>(null);
+  const { firebaseUser, customer } = useAuth();
+  const [settings, setSettings] = useState<PrintRequestLimitSettings>(
+    DEFAULT_PRINT_REQUEST_LIMIT_SETTINGS,
+  );
   const [isLimitReady, setIsLimitReady] = useState(false);
 
   useEffect(() => {
     if (!firebaseUser) {
-      setRequestLimit(null);
-      setCustomerShowLimit(null);
+      setSettings(DEFAULT_PRINT_REQUEST_LIMIT_SETTINGS);
       setIsLimitReady(true);
       return;
     }
 
     setIsLimitReady(false);
-    const unsubscribe = portalPrintRequestLimitService.subscribe((limits) => {
-      setRequestLimit(limits.requestLimit);
-      setCustomerShowLimit(limits.customerShowLimit);
+    const unsubscribe = portalPrintRequestLimitService.subscribeSettings((next) => {
+      setSettings(next);
       setIsLimitReady(true);
     });
 
     return unsubscribe;
   }, [firebaseUser]);
+
+  const { requestLimit, customerShowLimit } = useMemo(() => {
+    const effective = resolveEffectivePrintRequestLimits({
+      settings,
+      override: customer?.printRequestQuotaOverride,
+      nowMs: Date.now(),
+    });
+    return {
+      requestLimit: effective.effectiveMaxQuantityPerPrintRequest,
+      customerShowLimit: effective.effectiveMaxQuantityPerShowPerCustomer,
+    };
+  }, [customer?.printRequestQuotaOverride, settings]);
 
   const workingPrintCount = useMemo(
     () => sumPrintRequestItemQuantities(workingItems),
@@ -128,6 +151,7 @@ export function usePortalWorkingRequestLimitState(
       exhaustedStatusText,
       exhaustedHelperText,
       canAddPrints,
+      error: hydration.itemsError ?? null,
     };
-  }, [customerShowLimit, firebaseUser, isReady, requestLimit, workingPrintCount]);
+  }, [customerShowLimit, firebaseUser, hydration.itemsError, isReady, requestLimit, workingPrintCount]);
 }

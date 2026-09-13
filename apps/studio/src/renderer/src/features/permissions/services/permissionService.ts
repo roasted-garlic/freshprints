@@ -155,6 +155,16 @@ export const permissionService = {
     return hasActiveRole(user, ["owner", "admin"]);
   },
 
+  /** Owner/admin settings tabs (FAQ, AI enrichment, etc.). Helpers never get these. */
+  canViewAdministrativeSettings(user: UserLike) {
+    return this.canManageSettings(user);
+  },
+
+  /** Settings route — full settings for owner/admin; Studio updates only for helpers. */
+  canAccessSettingsPage(user: UserLike) {
+    return this.canManageSettings(user) || isHelper(user);
+  },
+
   canManageEmailProviders(user: UserLike) {
     return isOwner(user);
   },
@@ -163,8 +173,31 @@ export const permissionService = {
     return isOwner(user);
   },
 
+  /** Owner-only temporary per-customer Portal print/show quota overrides. */
+  canManageCustomerPrintRequestQuotaOverrides(user: UserLike) {
+    return isOwner(user);
+  },
+
+  canManageStandardPrintSizes(user: UserLike) {
+    return isOwner(user);
+  },
+
   /** Dev-only operational wipe; server also enforces owner + project allowlist. */
   canWipeOperationalTestData(user: UserLike) {
+    return isOwner(user);
+  },
+
+  /** Slice 4 — Catalog Reprocessing + live Autonomous enablement (owner-only). */
+  canManageCatalogReprocessing(user: UserLike) {
+    return isOwner(user);
+  },
+
+  canManageCatalogWorkflowMode(user: UserLike) {
+    return isOwner(user);
+  },
+
+  /** Owner-only: Design Library Ready → AI Processing reprocess. */
+  canReprocessReadyDesignWithAi(user: UserLike) {
     return isOwner(user);
   },
 
@@ -182,6 +215,31 @@ export const permissionService = {
     return isOwner(user);
   },
 
+  /** Owner-only history-free permanent customer deletion (dev-gated Apply). */
+  canHardDeleteCustomerAccount(user: UserLike) {
+    return isOwner(user);
+  },
+
+  /** Owner-only reversible disable / restore. */
+  canDisableCustomerAccount(user: UserLike) {
+    return isOwner(user);
+  },
+
+  /** Owner-only Transfer Username preview and apply (WS2). */
+  canResolveDuplicateCustomerAccount(user: UserLike) {
+    return isOwner(user);
+  },
+
+  /** Owner-only Merge Accounts preview and apply (WS3). */
+  canMergeCustomerAccounts(user: UserLike) {
+    return isOwner(user);
+  },
+
+  /** Owner and admin may change customer username via updateCustomer. */
+  canChangeCustomerUsername(user: UserLike) {
+    return this.canManageCustomers(user);
+  },
+
   /** Owner/admin hard delete of unattached, unpromoted customer uploads. */
   canDeleteEligibleCustomerUpload(user: UserLike) {
     return hasActiveRole(user, ["owner", "admin"]);
@@ -197,8 +255,25 @@ export const permissionService = {
     return isOwner(user);
   },
 
+  /** Owner-only manual edit of Whatnot / DEV fixture show metadata (title, schedule, notes, URL). */
+  canEditUpcomingShowMetadata(user: UserLike) {
+    return isOwner(user);
+  },
+
   canManageDesigns(user: UserLike) {
     return this.canViewDesigns(user);
+  },
+
+  canViewStaffArtwork(user: UserLike) {
+    return isStaff(user);
+  },
+
+  canSelectStaffArtwork(user: UserLike) {
+    return this.canManagePrintRequestItems(user);
+  },
+
+  canManageStaffArtwork(user: UserLike) {
+    return hasActiveRole(user, ["owner", "admin"]);
   },
 
   canViewDesigns(user: UserLike) {
@@ -211,6 +286,10 @@ export const permissionService = {
 
   canEditDesigns(user: UserLike) {
     return isStaff(user);
+  },
+
+  canEditSmartProfile(user: UserLike) {
+    return hasActiveRole(user, ["owner", "admin"]);
   },
 
   canEditDesignStatus(user: UserLike) {
@@ -296,6 +375,11 @@ export const permissionService = {
   /** Staff-assisted Whatnot Import Shows flow (not manual Add show). */
   canImportWhatnotShows(user: UserLike) {
     return hasActiveRole(user, ["owner", "admin"]);
+  },
+
+  /** Owner-only permanent delete from inbox Done history. */
+  canDeleteStaffInboxCompletedAlerts(user: UserLike) {
+    return isOwner(user);
   },
 
   /** Any active Studio staff may create the initial shared Internal Gang Sheet. */
@@ -406,6 +490,8 @@ export const permissionService = {
         return this.canManageRoles(user);
       case "manageSettings":
         return this.canManageSettings(user);
+      case "accessSettingsPage":
+        return this.canAccessSettingsPage(user);
       case "manageEmailProviders":
         return this.canManageEmailProviders(user);
       case "wipeOperationalTestData":
@@ -416,6 +502,12 @@ export const permissionService = {
         return this.canDeleteEligibleUnapprovedDesigns(user);
       case "manageDesigns":
         return this.canManageDesigns(user);
+      case "viewStaffArtwork":
+        return this.canViewStaffArtwork(user);
+      case "selectStaffArtwork":
+        return this.canSelectStaffArtwork(user);
+      case "manageStaffArtwork":
+        return this.canManageStaffArtwork(user);
       case "viewDesigns":
         return this.canViewDesigns(user);
       case "createDesigns":

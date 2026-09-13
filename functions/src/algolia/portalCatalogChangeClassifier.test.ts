@@ -14,6 +14,7 @@ const base = {
   title: "Design",
   description: "Description",
   categoryId: "cat-1",
+  // Structural compatibility remains on design documents while tags are no longer an index field.
   tags: ["tag-1"],
   createdAt: 100,
   thumbnailPath: "thumb.webp",
@@ -39,7 +40,6 @@ test("classifies search/filter/membership fields for full publication when alrea
     { title: "Changed" },
     { description: "Changed" },
     { categoryId: "cat-2" },
-    { tags: ["tag-2"] },
     { createdAt: 200 },
   ]) {
     assert.equal(
@@ -55,7 +55,6 @@ test("P4-a: non-ready index-filter churn does not schedule full publication", ()
     { title: "Changed" },
     { description: "Changed" },
     { categoryId: "cat-2" },
-    { tags: ["tag-2"] },
     { createdAt: 200 },
   ]) {
     assert.equal(
@@ -69,6 +68,14 @@ test("P4-a: non-ready index-filter churn does not schedule full publication", ()
       `expected isNonReadyIndexFilterChurn for ${JSON.stringify(update)}`,
     );
   }
+  assert.equal(
+    classifyPortalCatalogDesignChange(base, { ...base, tags: ["tag-2"] }),
+    "operational",
+  );
+  assert.equal(
+    isNonReadyIndexFilterChurn(imported, { ...imported, tags: ["tag-2"] }),
+    false,
+  );
   // Ready document title churn is not non-ready churn.
   assert.equal(isNonReadyIndexFilterChurn(base, { ...base, title: "Changed" }), false);
 });
@@ -122,15 +129,73 @@ test("does not schedule a full publication for status churn that never crosses t
   );
 });
 
-test("classifies request/show/favorite/updated metadata as operational", () => {
+test("classifies search-relevant Smart Profile changes as index-filter when ready", () => {
+  const withProfile = {
+    ...base,
+    smartProfile: {
+      subjects: ["cow"],
+      provenance: { version: "smart-profile-v1", automationDecision: "shadow" },
+    },
+  };
   assert.equal(
     classifyPortalCatalogDesignChange(base, {
       ...base,
-      requestCount: 10,
-      favoriteCount: 5,
-      lastRequestedAt: 300,
-      lastAddedToShowAt: 400,
-      updatedAt: 500,
+      smartProfile: {
+        subjects: ["highland cow"],
+        provenance: { version: "smart-profile-v1", automationDecision: "shadow" },
+      },
+    }),
+    "index-filter",
+  );
+  assert.equal(
+    classifyPortalCatalogDesignChange(withProfile, {
+      ...withProfile,
+      smartProfile: {
+        subjects: ["cow"],
+        searchConcepts: ["Scottish cow"],
+        provenance: { version: "smart-profile-v1", automationDecision: "shadow" },
+      },
+    }),
+    "index-filter",
+  );
+});
+
+test("ignores Smart Profile provenance-only churn for Algolia sync", () => {
+  const withProfile = {
+    ...base,
+    smartProfile: {
+      subjects: ["cow"],
+      provenance: {
+        version: "smart-profile-v1",
+        automationDecision: "shadow",
+        automationReasonCodes: ["shadow_would_auto_approve"],
+      },
+    },
+  };
+  assert.equal(
+    classifyPortalCatalogDesignChange(withProfile, {
+      ...withProfile,
+      smartProfile: {
+        subjects: ["cow"],
+        provenance: {
+          version: "smart-profile-v1",
+          automationDecision: "needs_review",
+          automationReasonCodes: ["category_unresolved"],
+          validationWarnings: ["title_exceeds_max_characters"],
+          automationDecisionAt: "2026-08-24T00:00:00.000Z",
+        },
+      },
+    }),
+    "operational",
+  );
+});
+
+test("P4-a: Smart Profile churn on non-ready remains operational", () => {
+  const imported = { ...base, status: "imported" };
+  assert.equal(
+    classifyPortalCatalogDesignChange(imported, {
+      ...imported,
+      smartProfile: { subjects: ["cow"], provenance: { version: "smart-profile-v1" } },
     }),
     "operational",
   );

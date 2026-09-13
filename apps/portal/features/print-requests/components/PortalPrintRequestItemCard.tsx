@@ -3,24 +3,42 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent } from 'react';
 import { Repeat } from 'lucide-react';
 
+import type { StandardPrintSizesSettings } from '@fresh-prints/shared/constants/printSize/standardPrintSizesSettings.constants';
+import { resolveStandardSizePresetKeyAfterManualSizeChange } from '@fresh-prints/shared/constants/printSize/standardPrintSizesSettings.constants';
 import type { PrintRequestItem } from '@fresh-prints/shared/types/printRequest/printRequest.types';
+import type { SetPrintRequestItemArtworkEnhanceModeResponse } from '@fresh-prints/shared/types/printRequest/setPrintRequestItemArtworkEnhanceMode.types';
+import {
+  resolveActiveArtworkPixelDimensions,
+  resolveArtworkEnhanceMode,
+  resolveInteractiveUpscaleToggleEligibility,
+} from '@fresh-prints/shared/utils/interactiveArtworkEnhance';
 import {
   assessPrintRequestItemSize,
   calculateLockedHeightFromWidth,
   calculateLockedWidthFromHeight,
 } from '@fresh-prints/shared/utils/printRequestItemSizing';
+import {
+  PortalStandardPrintSizesModal,
+  resolveStandardPrintSizeCardLabel,
+} from './PortalStandardPrintSizesModal';
 import { CatalogPreviewLightbox } from '../../catalog/components/CatalogPreviewLightbox';
 import { CatalogThumbnailPanel } from '../../catalog/components/CatalogThumbnailPanel';
 import { useCatalogDerivativeUrl } from '../../catalog/hooks/useCatalogDerivativeUrl';
 import type { CatalogDesign } from '../../catalog/types/catalog.types';
 import { CopyIcon, TrashIcon } from '../../shared/components/PortalIcons';
+import { HoverBubbleTooltip } from '../../shared/components/HoverBubbleTooltip';
+import { PortalToggle } from '../../shared/components/PortalToggle';
 import { isOptimisticPrintRequestItemId } from '../utils/optimisticPrintRequestItemId';
+import { resolveArtworkEnhanceCallableErrorMessage } from '../utils/artworkEnhanceCallableErrorMessage';
+import { setPrintRequestItemArtworkEnhanceModeService } from '../services/setPrintRequestItemArtworkEnhanceModeService';
 import { shouldAcceptIncomingItemProp } from '../utils/itemPropSyncGuard';
+import { usePortalInteractiveUpscaleEnabled } from '../hooks/usePortalInteractiveUpscaleEnabled';
 import { resolveSavedDraftReconciliation } from './resolveSavedDraftReconciliation';
 import {
   resolvePrintRequestItemPersistenceHealth,
   type PrintRequestItemPersistenceHealth,
 } from '@fresh-prints/shared/utils/printRequestItemPersistenceHealth';
+import { resolvePrintRequestItemSourcePill } from '@fresh-prints/shared/utils/printRequestItemSource';
 
 interface PortalPrintRequestItemDesign {
   id: string;
@@ -33,12 +51,17 @@ interface PortalPrintRequestItemDesign {
   printWidthInches?: number;
   printHeightInches?: number;
   updatedAtMs?: number;
+  interactiveEnhancedOriginalPath?: string;
+  interactiveEnhancedWidthPx?: number;
+  interactiveEnhancedHeightPx?: number;
+  interactiveEnhanceGeneratedAt?: unknown;
 }
 
 interface PortalPrintRequestItemUpload {
   title: string;
   previewPath?: string | null;
   thumbnailPath?: string | null;
+  artworkBackgroundHex?: string | null;
   widthPx?: number | null;
   heightPx?: number | null;
   printWidthInches?: number | null;
@@ -46,6 +69,10 @@ interface PortalPrintRequestItemUpload {
   approvedMaxPrintWidthInches?: number | null;
   approvedMaxPrintHeightInches?: number | null;
   wasUpscaled?: boolean | null;
+  interactiveEnhancedProductionStoragePath?: string | null;
+  interactiveEnhancedWidthPx?: number | null;
+  interactiveEnhancedHeightPx?: number | null;
+  interactiveEnhanceGeneratedAt?: unknown;
   /** True when sourced from Assisted Creation approved proof (badge: Custom). */
   fromAssistedCreation?: boolean;
 }
@@ -54,6 +81,7 @@ interface PortalPrintRequestItemCardProps {
   design?: PortalPrintRequestItemDesign | null;
   upload?: PortalPrintRequestItemUpload | null;
   item: PrintRequestItem;
+  printRequestId?: string;
   readOnly?: boolean;
   /**
    * Read-only catalog reuse: ready `CatalogDesign` when still in catalog;
@@ -67,7 +95,7 @@ interface PortalPrintRequestItemCardProps {
   exhaustedStatusText?: string | null;
   onAddToRequest?: (design: CatalogDesign) => void;
   onDuplicate: (item: PrintRequestItem) => void;
-  onRemove: (item: PrintRequestItem) => void;
+  onRemove: (item: PrintRequestItem) => void | Promise<void>;
   /**
    * Bump when a remove confirm is cancelled after qty was typed to 0,
    * so the input restores to the saved item quantity.
@@ -78,10 +106,20 @@ interface PortalPrintRequestItemCardProps {
    * the server may clamp it). `saveDraft` uses the returned value, not the locally typed one, to
    * reconcile its own draft state (Plan Section 21.1/21.4, Fix 1).
    */
+  standardPrintSizesSettings: StandardPrintSizesSettings;
   onUpdate: (
     item: PrintRequestItem,
-    input: { quantity: number; printWidthInches: number; printHeightInches: number },
+    input: {
+      quantity: number;
+      printWidthInches: number;
+      printHeightInches: number;
+      standardSizePresetKey?: string | null;
+    },
   ) => Promise<{ quantity: number }>;
+  onArtworkEnhanceModeChanged?: (
+    item: PrintRequestItem,
+    result: SetPrintRequestItemArtworkEnhanceModeResponse,
+  ) => void;
   onAutosaveStateChange: (
     status: 'saving' | 'saved' | 'failed',
     message?: string,
@@ -89,6 +127,11 @@ interface PortalPrintRequestItemCardProps {
   ) => void;
   onPersistenceHealthChange?: (itemId: string, health: PrintRequestItemPersistenceHealth) => void;
   onRegisterFlush?: (itemId: string, flush: (() => Promise<boolean>) | null) => void;
+  /**
+   * When provided, preview opens via the parent-owned lightbox collection (item.id identity).
+   * Local CatalogPreviewLightbox is omitted.
+   */
+  onOpenLightbox?: (itemId: string) => void;
 }
 
 function resolveAspectPixels(
@@ -150,11 +193,17 @@ function parsePositiveDecimalInput(value: string): number | null {
   return parsedValue;
 }
 
-function buildItemSignature(quantity: number, width: number, height: number): string {
+function buildItemSignature(
+  quantity: number,
+  width: number,
+  height: number,
+  standardSizePresetKey?: string | null,
+): string {
   return JSON.stringify({
     quantity,
     width: Number.isFinite(width) ? Number(width.toFixed(2)) : width,
     height: Number.isFinite(height) ? Number(height.toFixed(2)) : height,
+    standardSizePresetKey: standardSizePresetKey ?? null,
   });
 }
 
@@ -168,6 +217,7 @@ export function PortalPrintRequestItemCard({
   design,
   upload,
   item,
+  printRequestId,
   readOnly = false,
   catalogReuseDesign,
   isAddingToRequest = false,
@@ -178,27 +228,32 @@ export function PortalPrintRequestItemCard({
   onRemove,
   quantityResetKey = 0,
   onUpdate,
+  onArtworkEnhanceModeChanged,
   onAutosaveStateChange,
   onPersistenceHealthChange,
   onRegisterFlush,
+  onOpenLightbox,
+  standardPrintSizesSettings,
 }: PortalPrintRequestItemCardProps) {
+  const portalInteractiveUpscaleEnabled = usePortalInteractiveUpscaleEnabled();
   const blockedStatusText = exhaustedStatusText;
   const isUploadItem =
     item.sourceType === 'customer_upload' || Boolean(item.customerUploadId);
+  const isStaffArtworkItem = item.sourceType === 'staff_artwork';
+  const sourcePill = resolvePrintRequestItemSourcePill({
+    item,
+    fromAssistedCreation: upload?.fromAssistedCreation,
+  });
   const catalogDesignId = item.designId?.trim() ?? '';
   const showCatalogReuse =
     readOnly && catalogDesignId.length > 0 && catalogReuseDesign !== undefined;
-  const title =
-    design?.title ??
-    upload?.title ??
-    item.titleSnapshot ??
-    (isUploadItem ? 'Uploaded artwork' : 'Design');
+  const title = isStaffArtworkItem
+    ? item.titleSnapshot?.trim() || item.sourceLabel || 'Staff-added'
+    : design?.title ?? upload?.title ?? item.titleSnapshot ?? (isUploadItem ? 'Uploaded artwork' : 'Design');
   const previewPath =
-    design?.previewPath ??
-    design?.thumbnailPath ??
-    upload?.previewPath ??
-    upload?.thumbnailPath ??
-    undefined;
+    isStaffArtworkItem
+      ? item.previewStoragePath?.trim() || item.thumbnailStoragePath?.trim() || undefined
+      : design?.previewPath ?? design?.thumbnailPath ?? upload?.previewPath ?? upload?.thumbnailPath ?? undefined;
   const [quantityInput, setQuantityInputState] = useState(String(item.quantity));
   /**
    * Live mirror of `quantityInput`, updated synchronously on every change (Plan Section 22.2,
@@ -222,12 +277,19 @@ export function PortalPrintRequestItemCard({
     formatEditableNumber(resolveInitialHeight(item)),
   );
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [isConfirmingRemove, setIsConfirmingRemove] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
+  const [isStandardSizesModalOpen, setIsStandardSizesModalOpen] = useState(false);
+  const [standardSizePresetKey, setStandardSizePresetKey] = useState<string | undefined>(
+    item.standardSizePresetKey,
+  );
   const { url: previewUrl } = useCatalogDerivativeUrl(previewPath, design?.updatedAtMs);
   const lastSavedSignatureRef = useRef(
     buildItemSignature(
       item.quantity,
       resolveInitialWidth(item),
       resolveInitialHeight(item),
+      item.standardSizePresetKey,
     ),
   );
   /**
@@ -246,11 +308,42 @@ export function PortalPrintRequestItemCard({
   const saveQueuedRef = useRef(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isFailed, setIsFailed] = useState(false);
+  const [isTogglingEnhance, setIsTogglingEnhance] = useState(false);
+  const [enhanceToggleMode, setEnhanceToggleMode] = useState<'baseline' | 'enhanced' | null>(null);
+  const [enhanceError, setEnhanceError] = useState<string | null>(null);
+  const [enhanceResultPixels, setEnhanceResultPixels] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
+  const [hiddenDpiWarningKey, setHiddenDpiWarningKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Parent summary patch supersedes optimistic local pixels after remount-safe hydration.
+    if (
+      design?.interactiveEnhancedWidthPx ||
+      design?.interactiveEnhancedHeightPx ||
+      upload?.interactiveEnhancedWidthPx ||
+      upload?.interactiveEnhancedHeightPx
+    ) {
+      setEnhanceResultPixels(null);
+    }
+  }, [
+    design?.interactiveEnhancedWidthPx,
+    design?.interactiveEnhancedHeightPx,
+    upload?.interactiveEnhancedWidthPx,
+    upload?.interactiveEnhancedHeightPx,
+    item.id,
+  ]);
 
   useEffect(() => {
     const nextWidth = resolveInitialWidth(item);
     const nextHeight = resolveInitialHeight(item);
-    const incomingSignature = buildItemSignature(item.quantity, nextWidth, nextHeight);
+    const incomingSignature = buildItemSignature(
+      item.quantity,
+      nextWidth,
+      nextHeight,
+      item.standardSizePresetKey,
+    );
 
     // A signature mismatch alone doesn't prove this is a genuinely newer external change — a
     // stale reload (e.g. from a different mounted consumer's own reloadWorkingItems call) can
@@ -275,43 +368,210 @@ export function PortalPrintRequestItemCard({
     setQuantityInput(String(item.quantity));
     setPrintWidthInput(formatEditableNumber(nextWidth));
     setPrintHeightInput(formatEditableNumber(nextHeight));
-    setIsLightboxOpen(false);
+    setStandardSizePresetKey(item.standardSizePresetKey);
+    if (!onOpenLightbox) {
+      setIsLightboxOpen(false);
+    }
     lastSavedSignatureRef.current = incomingSignature;
     if (incomingUpdatedAtMs !== null) {
       lastAcceptedUpdatedAtMsRef.current = incomingUpdatedAtMs;
     }
-  }, [design, item, upload]);
+  }, [design, item, onOpenLightbox, upload]);
+
+  useEffect(() => {
+    setIsConfirmingRemove(false);
+  }, [item.id]);
 
   useEffect(() => {
     if (quantityResetKey < 1) {
       return;
     }
     setQuantityInput(String(item.quantity));
+    setIsConfirmingRemove(false);
   }, [item.quantity, quantityResetKey]);
 
   const parsedQuantity = parsePositiveIntegerInput(quantityInput);
   const parsedPrintWidthInches = parsePositiveDecimalInput(printWidthInput);
   const parsedPrintHeightInches = parsePositiveDecimalInput(printHeightInput);
+  const artworkEnhanceMode = resolveArtworkEnhanceMode(item.artworkEnhanceMode);
+  const displayedArtworkEnhanceMode = enhanceToggleMode ?? artworkEnhanceMode;
+  const baselineAspectPixels = useMemo(
+    () => {
+      if (
+        isStaffArtworkItem &&
+        typeof item.widthPx === 'number' &&
+        item.widthPx > 0 &&
+        typeof item.heightPx === 'number' &&
+        item.heightPx > 0
+      ) {
+        return { width: item.widthPx, height: item.heightPx };
+      }
+      return isStaffArtworkItem ? null : resolveAspectPixels(design, upload);
+    },
+    [design, isStaffArtworkItem, item.heightPx, item.widthPx, upload],
+  );
+  const activeAspectPixels = useMemo(() => {
+    if (!baselineAspectPixels) {
+      return null;
+    }
 
-  const aspectPixels = useMemo(() => resolveAspectPixels(design, upload), [design, upload]);
+    const active = resolveActiveArtworkPixelDimensions({
+      artworkEnhanceMode,
+      baselineWidthPx: baselineAspectPixels.width,
+      baselineHeightPx: baselineAspectPixels.height,
+      enhancedWidthPx:
+        design?.interactiveEnhancedWidthPx ??
+        upload?.interactiveEnhancedWidthPx ??
+        enhanceResultPixels?.width,
+      enhancedHeightPx:
+        design?.interactiveEnhancedHeightPx ??
+        upload?.interactiveEnhancedHeightPx ??
+        enhanceResultPixels?.height,
+    });
+
+    // Enhanced mode without hydrated dims → null (DPI unavailable), never baseline mislabel.
+    if (!active) {
+      return null;
+    }
+
+    return { width: active.widthPx, height: active.heightPx };
+  }, [artworkEnhanceMode, baselineAspectPixels, design, enhanceResultPixels, upload]);
+  // Geometry / lock fallback may use baseline; DPI assessment must not mislabel baseline as enhanced.
+  const aspectPixels = activeAspectPixels ?? baselineAspectPixels;
+  const dpiAspectPixels = activeAspectPixels;
+
+  const upscaleToggleEligibility = useMemo(() => {
+    if (!baselineAspectPixels || readOnly) {
+      return null;
+    }
+
+    const interactiveMarker =
+      design?.interactiveEnhanceGeneratedAt ??
+      upload?.interactiveEnhanceGeneratedAt ??
+      (design?.interactiveEnhancedOriginalPath || upload?.interactiveEnhancedProductionStoragePath
+        ? true
+        : null);
+
+    return resolveInteractiveUpscaleToggleEligibility({
+      asset: {
+        currentWidthPx: baselineAspectPixels.width,
+        currentHeightPx: baselineAspectPixels.height,
+        interactiveEnhanceGeneratedAt: interactiveMarker,
+        enhancedWidthPx:
+          design?.interactiveEnhancedWidthPx ??
+          upload?.interactiveEnhancedWidthPx ??
+          enhanceResultPixels?.width,
+        enhancedHeightPx:
+          design?.interactiveEnhancedHeightPx ??
+          upload?.interactiveEnhancedHeightPx ??
+          enhanceResultPixels?.height,
+      },
+      printWidthInches: parsedPrintWidthInches ?? Number.NaN,
+      printHeightInches: parsedPrintHeightInches ?? Number.NaN,
+      artworkEnhanceMode,
+    });
+  }, [
+    artworkEnhanceMode,
+    baselineAspectPixels,
+    design,
+    enhanceResultPixels,
+    parsedPrintHeightInches,
+    parsedPrintWidthInches,
+    readOnly,
+    upload,
+  ]);
+
+  const showUpscaleToggle =
+    portalInteractiveUpscaleEnabled && Boolean(upscaleToggleEligibility);
+
+  async function applyArtworkEnhanceMode(
+    mode: 'baseline' | 'enhanced',
+    confirmFirstEnhance = false,
+  ) {
+    if (!printRequestId || isTogglingEnhance) {
+      return;
+    }
+
+    setIsTogglingEnhance(true);
+    setEnhanceToggleMode(mode);
+    setEnhanceError(null);
+
+    try {
+      const result = await setPrintRequestItemArtworkEnhanceModeService.setMode({
+        printRequestId,
+        itemId: item.id,
+        mode,
+        confirmFirstEnhance,
+      });
+
+      onArtworkEnhanceModeChanged?.(item, result);
+      if (result.artworkEnhanceMode === 'enhanced') {
+        setEnhanceResultPixels({
+          width: result.widthPx,
+          height: result.heightPx,
+        });
+      } else {
+        setEnhanceResultPixels(null);
+      }
+    } catch (error) {
+      setEnhanceError(resolveArtworkEnhanceCallableErrorMessage(error));
+    } finally {
+      setIsTogglingEnhance(false);
+      setEnhanceToggleMode(null);
+    }
+  }
+
+  async function handleUpscaleToggle(nextMode: 'baseline' | 'enhanced') {
+    if (nextMode === artworkEnhanceMode) {
+      return;
+    }
+
+    const confirmFirstEnhance =
+      nextMode === 'enhanced' && upscaleToggleEligibility?.state === 'available';
+
+    await applyArtworkEnhanceMode(nextMode, confirmFirstEnhance);
+  }
 
   const sizeAssessment = useMemo(() => {
-    if (!aspectPixels) {
+    if (!dpiAspectPixels) {
       return null;
     }
 
     return assessPrintRequestItemSize({
-      pixelWidth: aspectPixels.width,
-      pixelHeight: aspectPixels.height,
+      pixelWidth: dpiAspectPixels.width,
+      pixelHeight: dpiAspectPixels.height,
       printWidthInches: parsedPrintWidthInches ?? Number.NaN,
       printHeightInches: parsedPrintHeightInches ?? Number.NaN,
       approvedMaxPrintWidthInches: upload?.approvedMaxPrintWidthInches ?? undefined,
       approvedMaxPrintHeightInches: upload?.approvedMaxPrintHeightInches ?? undefined,
       wasUpscaled: upload?.wasUpscaled ?? undefined,
     });
-  }, [aspectPixels, parsedPrintHeightInches, parsedPrintWidthInches, upload]);
+  }, [dpiAspectPixels, parsedPrintHeightInches, parsedPrintWidthInches, upload]);
 
   const isOptimisticItem = isOptimisticPrintRequestItemId(item.id);
+  const dpiWarningCalloutKey =
+    sizeAssessment?.warningMessage &&
+    parsedPrintWidthInches !== null &&
+    parsedPrintHeightInches !== null
+      ? `${item.id}:${sizeAssessment.warningMessage}:${parsedPrintWidthInches}:${parsedPrintHeightInches}`
+      : null;
+  const showDpiWarningCallout =
+    dpiWarningCalloutKey !== null && hiddenDpiWarningKey !== dpiWarningCalloutKey;
+  const dpiHoverBubble =
+    sizeAssessment?.warningMessage ?? sizeAssessment?.errorMessage ?? undefined;
+  const dpiHoverBubbleTone = sizeAssessment?.errorMessage ? 'error' : 'warning';
+
+  useEffect(() => {
+    if (!dpiWarningCalloutKey || hiddenDpiWarningKey === dpiWarningCalloutKey) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setHiddenDpiWarningKey(dpiWarningCalloutKey);
+    }, 5000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [dpiWarningCalloutKey, hiddenDpiWarningKey]);
   const canSave =
     !isOptimisticItem && (sizeAssessment?.canSave ?? true) && parsedQuantity !== null;
   /** Request submitted / non-editable — hide editors (catalog reuse path). */
@@ -320,7 +580,7 @@ export function PortalPrintRequestItemCard({
    * Size/qty stay editable while the duplicate is preparing; Duplicate/Remove stay locked
    * until the real id exists (callables reject pending ids).
    */
-  const actionsDisabled = isOptimisticItem;
+  const actionsDisabled = isOptimisticItem || isRemoving;
   const wasOptimisticRef = useRef(isOptimisticItem);
 
   useEffect(() => {
@@ -364,6 +624,7 @@ export function PortalPrintRequestItemCard({
       parsedQuantity,
       parsedPrintWidthInches,
       parsedPrintHeightInches,
+      standardSizePresetKey,
     );
 
     if (draftSignature === lastSavedSignatureRef.current) {
@@ -391,6 +652,7 @@ export function PortalPrintRequestItemCard({
         quantity: parsedQuantity,
         printWidthInches: parsedPrintWidthInches,
         printHeightInches: parsedPrintHeightInches,
+        standardSizePresetKey: standardSizePresetKey ?? null,
       });
 
       // Reconcile against the server-ACCEPTED quantity, not the locally typed/requested value —
@@ -414,6 +676,7 @@ export function PortalPrintRequestItemCard({
           printHeightInches: parsedPrintHeightInches,
           currentQuantityInput: quantityInputRef.current,
           buildSignature: buildItemSignature,
+          standardSizePresetKey,
         });
         if (reconciliation.quantityInput !== quantityInputRef.current) {
           setQuantityInput(reconciliation.quantityInput);
@@ -426,6 +689,7 @@ export function PortalPrintRequestItemCard({
           acceptedQuantity,
           parsedPrintWidthInches,
           parsedPrintHeightInches,
+          standardSizePresetKey,
         );
       }
       // This save's own correction was just applied directly above (not via the prop-sync
@@ -463,6 +727,7 @@ export function PortalPrintRequestItemCard({
     parsedPrintWidthInches,
     parsedQuantity,
     quantityInput,
+    standardSizePresetKey,
   ]);
 
   useEffect(() => {
@@ -481,6 +746,7 @@ export function PortalPrintRequestItemCard({
       parsedQuantity ?? Number.NaN,
       parsedPrintWidthInches ?? Number.NaN,
       parsedPrintHeightInches ?? Number.NaN,
+      standardSizePresetKey,
     ) !== lastSavedSignatureRef.current;
 
   const persistenceHealth = resolvePrintRequestItemPersistenceHealth({
@@ -515,30 +781,48 @@ export function PortalPrintRequestItemCard({
     }
   }
 
+  function applyManualSize(nextWidthInput: string, nextHeightInput: string) {
+    const nextWidth = parsePositiveDecimalInput(nextWidthInput);
+    const nextHeight = parsePositiveDecimalInput(nextHeightInput);
+    if (nextWidth === null || nextHeight === null) {
+      setStandardSizePresetKey(undefined);
+      return;
+    }
+    setStandardSizePresetKey(
+      resolveStandardSizePresetKeyAfterManualSizeChange({
+        currentPresetKey: standardSizePresetKey,
+        settings: standardPrintSizesSettings,
+        printWidthInches: nextWidth,
+      }),
+    );
+  }
+
   function updateWidth(nextWidthInput: string) {
     setPrintWidthInput(nextWidthInput);
 
     const nextWidth = parsePositiveDecimalInput(nextWidthInput);
+    let nextHeightInput = printHeightInput;
     if (aspectPixels && nextWidth !== null) {
-      setPrintHeightInput(
-        formatEditableNumber(
-          calculateLockedHeightFromWidth(aspectPixels.width, aspectPixels.height, nextWidth),
-        ),
+      nextHeightInput = formatEditableNumber(
+        calculateLockedHeightFromWidth(aspectPixels.width, aspectPixels.height, nextWidth),
       );
+      setPrintHeightInput(nextHeightInput);
     }
+    applyManualSize(nextWidthInput, nextHeightInput);
   }
 
   function updateHeight(nextHeightInput: string) {
     setPrintHeightInput(nextHeightInput);
 
     const nextHeight = parsePositiveDecimalInput(nextHeightInput);
+    let nextWidthInput = printWidthInput;
     if (aspectPixels && nextHeight !== null) {
-      setPrintWidthInput(
-        formatEditableNumber(
-          calculateLockedWidthFromHeight(aspectPixels.width, aspectPixels.height, nextHeight),
-        ),
+      nextWidthInput = formatEditableNumber(
+        calculateLockedWidthFromHeight(aspectPixels.width, aspectPixels.height, nextHeight),
       );
+      setPrintWidthInput(nextWidthInput);
     }
+    applyManualSize(nextWidthInput, nextHeightInput);
   }
 
   const handleFieldBlur = useCallback(() => {
@@ -553,7 +837,7 @@ export function PortalPrintRequestItemCard({
         window.clearTimeout(saveDebounceRef.current);
         saveDebounceRef.current = null;
       }
-      onRemove(item);
+      setIsConfirmingRemove(true);
       return;
     }
 
@@ -567,7 +851,7 @@ export function PortalPrintRequestItemCard({
     }
 
     void saveDraft();
-  }, [canSave, item, onRemove, parsedQuantity, quantityInput, saveDraft, showItemEditors]);
+  }, [canSave, item, parsedQuantity, quantityInput, saveDraft, showItemEditors]);
 
   const handleFieldFocus = useCallback((event: FocusEvent<HTMLInputElement>) => {
     event.currentTarget.select();
@@ -608,53 +892,85 @@ export function PortalPrintRequestItemCard({
     nextInput.select();
   }, [handleFieldKeyDown]);
 
+  const handleConfirmRemove = useCallback(async () => {
+    if (isRemoving) {
+      return;
+    }
+    setIsRemoving(true);
+    try {
+      await Promise.all([
+        Promise.resolve(onRemove(item)),
+        new Promise<void>((resolve) => {
+          window.setTimeout(resolve, 420);
+        }),
+      ]);
+    } catch {
+      setIsRemoving(false);
+      setIsConfirmingRemove(false);
+      setQuantityInput(String(item.quantity));
+    }
+  }, [isRemoving, item, onRemove]);
+
   return (
     <>
       <article
-        aria-busy={isOptimisticItem || undefined}
-        className={`portal-request-item-editor-card${isOptimisticItem ? ' is-preparing' : ''}`}
+        aria-busy={isOptimisticItem || isRemoving || undefined}
+        className={`portal-request-item-editor-card${
+          isOptimisticItem ? ' is-preparing' : ''
+        }${isRemoving ? ' is-removing' : ''}`}
+        data-print-request-item-id={item.id}
       >
         <div className="portal-request-item-editor-header">
-          <div className="portal-request-item-editor-thumb-wrap">
-            <CatalogThumbnailPanel
-              alt={`${title} preview`}
-              artworkBackgroundHex={design?.artworkBackgroundHex}
-              catalogPath={previewPath}
-              className="design-card-thumbnail"
-              contentVersion={design?.updatedAtMs}
-              fallbackLabel="Preview unavailable"
-              interactive={Boolean(previewUrl)}
-              loadingLabel="Loading preview"
-              onImageClick={() => setIsLightboxOpen(true)}
-            />
-            <span
-              className={`portal-request-item-source-badge${
-                isUploadItem
-                  ? upload?.fromAssistedCreation
-                    ? ' is-custom'
-                    : ' is-uploaded'
-                  : ' is-library'
-              }`}
-            >
-              {isUploadItem
-                ? upload?.fromAssistedCreation
-                  ? 'Custom'
-                  : 'Uploaded'
-                : 'Library'}
-            </span>
-            {sizeAssessment ? (
-              <span
-                aria-label={`${sizeAssessment.qualityLabel}, ${sizeAssessment.effectiveDpi} DPI`}
-                className={`portal-request-item-dpi-badge is-${sizeAssessment.qualityLevel}`}
-                title={
-                  sizeAssessment.warningMessage ??
-                  sizeAssessment.errorMessage ??
-                  `${sizeAssessment.qualityLabel} · ${sizeAssessment.effectiveDpi} DPI`
+          <div
+            className={`portal-request-item-editor-thumb-wrap${
+              isTogglingEnhance ? ' is-enhancing' : ''
+            }`}
+          >
+            {isStaffArtworkItem && !previewPath ? (
+              <div aria-label={title} className="design-card-thumbnail portal-request-item-neutral-thumb">
+                <span>Staff-added</span>
+              </div>
+            ) : (
+              <CatalogThumbnailPanel
+                alt={`${title} preview`}
+                artworkBackgroundHex={
+                  isStaffArtworkItem
+                    ? item.artworkBackgroundHex
+                    : design?.artworkBackgroundHex ?? upload?.artworkBackgroundHex ?? undefined
                 }
+                catalogPath={previewPath}
+                className="design-card-thumbnail"
+                contentVersion={design?.updatedAtMs}
+                fallbackLabel="Preview unavailable"
+                interactive={Boolean(previewUrl) && !isTogglingEnhance}
+                loadingLabel="Loading preview"
+                onImageClick={() => {
+                  if (onOpenLightbox) {
+                    onOpenLightbox(item.id);
+                    return;
+                  }
+                  setIsLightboxOpen(true);
+                }}
+              />
+            )}
+            {isTogglingEnhance ? (
+              <div
+                aria-live="polite"
+                className={`portal-request-item-enhance-overlay${
+                  enhanceToggleMode === 'baseline' ? ' is-removing' : ''
+                }`}
+                role="status"
               >
-                {sizeAssessment.effectiveDpi} DPI
-              </span>
+                <span className="portal-request-item-enhance-overlay-label">
+                  {enhanceToggleMode === 'baseline' ? 'Removing upscale…' : 'Upscaling…'}
+                </span>
+              </div>
             ) : null}
+            <span
+              className={`portal-request-item-source-badge is-${sourcePill.variant}`}
+            >
+              {sourcePill.label}
+            </span>
           </div>
 
           <div className="portal-request-item-editor-body">
@@ -713,8 +1029,47 @@ export function PortalPrintRequestItemCard({
 
         {showItemEditors ? (
           <>
-            <div className="portal-request-item-size-row">
-              <label className="portal-request-item-field">
+            <button
+                className={`portal-request-standard-size-trigger${
+                  standardSizePresetKey ? ' is-selected' : ''
+                }`}
+                onClick={() => setIsStandardSizesModalOpen(true)}
+                type="button"
+              >
+                {resolveStandardPrintSizeCardLabel(standardPrintSizesSettings, standardSizePresetKey)}
+              </button>
+
+            <div
+              className={`portal-request-item-metrics-grid${
+                showUpscaleToggle ? ' has-upscale' : ''
+              }`}
+            >
+              <div
+                className={`portal-request-item-size-row${
+                  showUpscaleToggle ? ' has-upscale' : ''
+                }`}
+              >
+                {showUpscaleToggle ? (
+                  <div className="portal-request-item-field portal-request-item-upscale-field">
+                    <span className="portal-request-item-field-label">Upscale</span>
+                    <div
+                      className="portal-request-item-upscale-toggle-wrap"
+                      title={upscaleToggleEligibility?.helperText}
+                    >
+                      <PortalToggle
+                        checked={displayedArtworkEnhanceMode === 'enhanced'}
+                        disabled={isTogglingEnhance || !upscaleToggleEligibility?.toggleEnabled}
+                        label="Upscale"
+                        name={`artworkEnhanceMode-${item.id}`}
+                        onChange={(checked) => {
+                          void handleUpscaleToggle(checked ? 'enhanced' : 'baseline');
+                        }}
+                      />
+                    </div>
+                  </div>
+                ) : null}
+
+                <label className="portal-request-item-field">
                 <span className="portal-request-item-field-label">Width</span>
                 <div className="portal-request-item-size-input-wrap portal-card-input-shell">
                   <input
@@ -755,101 +1110,202 @@ export function PortalPrintRequestItemCard({
               </label>
             </div>
 
+            <div className="portal-request-item-meta-row">
+              {sizeAssessment ? (
+                <HoverBubbleTooltip bubble={dpiHoverBubble} tone={dpiHoverBubbleTone}>
+                  <span
+                    aria-label={
+                      dpiHoverBubble ??
+                      `${sizeAssessment.qualityLabel}, ${sizeAssessment.effectiveDpi} DPI`
+                    }
+                    className={`portal-request-item-dpi-badge is-${sizeAssessment.qualityLevel}`}
+                    tabIndex={dpiHoverBubble ? 0 : undefined}
+                  >
+                    {sizeAssessment.effectiveDpi} DPI
+                  </span>
+                </HoverBubbleTooltip>
+              ) : (
+                <span className="portal-request-item-dpi-badge is-unavailable">DPI unavailable</span>
+              )}
+
+              <div className="portal-request-item-stepper portal-card-input-shell">
+                <button
+                  aria-label={`Decrease quantity for ${title}`}
+                  className="portal-request-item-stepper-button"
+                  onClick={() => stepQuantity((parsedQuantity ?? 1) - 1)}
+                  tabIndex={-1}
+                  type="button"
+                >
+                  −
+                </button>
+                <input
+                  aria-label={`Quantity for ${title}`}
+                  className="portal-request-item-number-input portal-request-item-stepper-input"
+                  data-portal-request-qty-input="true"
+                  inputMode="numeric"
+                  min={1}
+                  name={`quantity-${item.id}`}
+                  onBlur={handleFieldBlur}
+                  onChange={(event) => setQuantityInput(event.target.value)}
+                  onFocus={handleFieldFocus}
+                  onKeyDown={handleQuantityKeyDown}
+                  type="number"
+                  value={quantityInput}
+                />
+                <button
+                  aria-label={`Increase quantity for ${title}`}
+                  className="portal-request-item-stepper-button"
+                  disabled={!canAddPrints}
+                  onClick={() => stepQuantity((parsedQuantity ?? 0) + 1)}
+                  tabIndex={-1}
+                  title={
+                    !canAddPrints && blockedStatusText
+                      ? blockedStatusText
+                      : undefined
+                  }
+                  type="button"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+            </div>
+
+            {enhanceError ? (
+              <p className="portal-request-item-field-callout is-error" role="alert">
+                {enhanceError}
+              </p>
+            ) : null}
+
             {sizeAssessment?.errorMessage ? (
-              <p className="portal-error portal-request-item-field-error" role="alert">
+              <p
+                className="portal-request-item-field-callout is-error portal-request-item-field-error"
+                role="alert"
+              >
                 {sizeAssessment.errorMessage}
               </p>
-            ) : sizeAssessment?.warningMessage ? (
-              <p className="portal-muted portal-request-item-dpi-warning" role="status">
+            ) : showDpiWarningCallout && sizeAssessment?.warningMessage ? (
+              <p
+                className="portal-request-item-field-callout is-warning portal-request-item-field-error"
+                role="status"
+              >
                 {sizeAssessment.warningMessage}
               </p>
             ) : null}
-          </>
-        ) : null}
 
-        {showItemEditors ? (
-          <div className="portal-request-item-editor-actions">
-            <div className="portal-request-item-stepper portal-card-input-shell">
+            <div
+              className={`portal-request-item-editor-actions${
+                isConfirmingRemove ? ' is-confirming-remove' : ''
+              }`}
+            >
               <button
-                aria-label={`Decrease quantity for ${title}`}
-                className="portal-request-item-stepper-button"
-                onClick={() => stepQuantity((parsedQuantity ?? 1) - 1)}
-                tabIndex={-1}
-                type="button"
-              >
-                −
-              </button>
-              <input
-                aria-label={`Quantity for ${title}`}
-                className="portal-request-item-number-input portal-request-item-stepper-input"
-                data-portal-request-qty-input="true"
-                inputMode="numeric"
-                min={1}
-                name={`quantity-${item.id}`}
-                onBlur={handleFieldBlur}
-                onChange={(event) => setQuantityInput(event.target.value)}
-                onFocus={handleFieldFocus}
-                onKeyDown={handleQuantityKeyDown}
-                type="number"
-                value={quantityInput}
-              />
-              <button
-                aria-label={`Increase quantity for ${title}`}
-                className="portal-request-item-stepper-button"
-                disabled={!canAddPrints}
-                onClick={() => stepQuantity((parsedQuantity ?? 0) + 1)}
+                className={`portal-button portal-button-secondary portal-button-sm${
+                  isConfirmingRemove ? '' : ' portal-button-leading-icon'
+                }`}
+                disabled={actionsDisabled || !canAddPrints}
+                onClick={() => onDuplicate(item)}
                 tabIndex={-1}
                 title={
-                  !canAddPrints && blockedStatusText
-                    ? blockedStatusText
-                    : undefined
+                  actionsDisabled
+                    ? 'Preparing duplicate…'
+                    : !canAddPrints && blockedStatusText
+                      ? blockedStatusText
+                      : undefined
                 }
                 type="button"
               >
-                +
+                {!isConfirmingRemove ? <CopyIcon size={14} /> : null}
+                <span>Duplicate</span>
               </button>
+
+              {isConfirmingRemove ? (
+                <>
+                  <button
+                    className="portal-button portal-button-ghost portal-button-sm"
+                    disabled={actionsDisabled}
+                    onClick={() => {
+                      setIsConfirmingRemove(false);
+                      setQuantityInput(String(item.quantity));
+                    }}
+                    tabIndex={-1}
+                    type="button"
+                  >
+                    <span>Cancel</span>
+                  </button>
+                  <button
+                    className={`portal-button portal-button-danger portal-button-sm${
+                      isRemoving ? ' is-deleting' : ''
+                    }`}
+                    disabled={actionsDisabled}
+                    onClick={() => {
+                      void handleConfirmRemove();
+                    }}
+                    tabIndex={-1}
+                    type="button"
+                  >
+                    <span>{isRemoving ? 'Removing…' : 'Confirm'}</span>
+                  </button>
+                </>
+              ) : (
+                <button
+                  className="portal-button portal-button-danger portal-button-sm portal-button-leading-icon"
+                  disabled={actionsDisabled}
+                  onClick={() => setIsConfirmingRemove(true)}
+                  tabIndex={-1}
+                  title={actionsDisabled ? 'Preparing duplicate…' : undefined}
+                  type="button"
+                >
+                  <TrashIcon size={14} />
+                  <span>Remove</span>
+                </button>
+              )}
             </div>
-
-            <button
-              className="portal-button portal-button-secondary portal-button-sm portal-button-leading-icon"
-              disabled={actionsDisabled || !canAddPrints}
-              onClick={() => onDuplicate(item)}
-              tabIndex={-1}
-              title={
-                actionsDisabled
-                  ? 'Preparing duplicate…'
-                  : !canAddPrints && blockedStatusText
-                    ? blockedStatusText
-                    : undefined
-              }
-              type="button"
-            >
-              <CopyIcon size={14} />
-              Duplicate
-            </button>
-
-            <button
-              className="portal-button portal-button-danger portal-button-sm portal-button-leading-icon"
-              disabled={actionsDisabled}
-              onClick={() => onRemove(item)}
-              tabIndex={-1}
-              title={actionsDisabled ? 'Preparing duplicate…' : undefined}
-              type="button"
-            >
-              <TrashIcon size={14} />
-              Remove
-            </button>
-          </div>
+          </>
         ) : null}
       </article>
 
-      <CatalogPreviewLightbox
-        alt={`${title} preview`}
-        artworkBackgroundHex={design?.artworkBackgroundHex}
-        isOpen={isLightboxOpen}
-        onClose={() => setIsLightboxOpen(false)}
-        previewUrl={previewUrl}
-      />
+      {!onOpenLightbox && previewPath ? (
+        <CatalogPreviewLightbox
+          alt={`${title} preview`}
+          artworkBackgroundHex={
+            isStaffArtworkItem ? item.artworkBackgroundHex : design?.artworkBackgroundHex
+          }
+          isOpen={isLightboxOpen}
+          onClose={() => setIsLightboxOpen(false)}
+          previewUrl={previewUrl}
+        />
+      ) : null}
+
+      {aspectPixels ? (
+        <PortalStandardPrintSizesModal
+          approvedMaxPrintHeightInches={upload?.approvedMaxPrintHeightInches}
+          approvedMaxPrintWidthInches={upload?.approvedMaxPrintWidthInches}
+          currentPrintHeightInches={parsedPrintHeightInches ?? resolveInitialHeight(item)}
+          currentPrintWidthInches={parsedPrintWidthInches ?? resolveInitialWidth(item)}
+          isOpen={isStandardSizesModalOpen}
+          onApply={({ printHeightInches, printWidthInches, standardSizePresetKey: nextPresetKey }) => {
+            void (async () => {
+              if (
+                portalInteractiveUpscaleEnabled &&
+                nextPresetKey === null &&
+                artworkEnhanceMode === 'enhanced'
+              ) {
+                await applyArtworkEnhanceMode('baseline');
+              }
+
+              setPrintWidthInput(formatEditableNumber(printWidthInches));
+              setPrintHeightInput(formatEditableNumber(printHeightInches));
+              setStandardSizePresetKey(nextPresetKey ?? undefined);
+              scheduleSave();
+            })();
+          }}
+          onClose={() => setIsStandardSizesModalOpen(false)}
+          pixelHeight={aspectPixels.height}
+          pixelWidth={aspectPixels.width}
+          settings={standardPrintSizesSettings}
+          wasUpscaled={upload?.wasUpscaled}
+        />
+      ) : null}
     </>
   );
 }

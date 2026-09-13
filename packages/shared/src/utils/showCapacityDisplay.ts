@@ -1,4 +1,5 @@
 import type { ShowProductionStatus } from "../types/upcomingShow/upcomingShow.enums";
+import type { ShowProductionResolutionKind } from "../types/showProductionRecovery/showProductionRecovery.types";
 import type { ShowCapacityResult } from "./showCapacity";
 
 export type CapacityFillLevel = "low" | "medium" | "high" | "critical";
@@ -115,6 +116,8 @@ export type DerivedShowStatusLabel =
   | "PRINTING"
   | "FULLY PRINTED"
   | "COMPLETED"
+  | "DID NOT PRINT"
+  | "EMPTY"
   | "ARCHIVED"
   | "CANCELED"
   | "OVER MAX"
@@ -130,6 +133,8 @@ export interface DerivedShowStatusDisplay {
 export interface DerivedShowStatusDisplayOptions {
   /** When true, idle capacity states (OPEN/FULL/OVER MAX) display as PAST instead. */
   isPastScheduled?: boolean;
+  /** When set on a completed show, refines the staff status pill (ADR-FP-149 remediation). */
+  productionResolutionKind?: ShowProductionResolutionKind;
 }
 
 /**
@@ -145,12 +150,32 @@ export function getDerivedShowStatusDisplay(
   capacity: ShowCapacityResult,
   options?: DerivedShowStatusDisplayOptions,
 ): DerivedShowStatusDisplay {
+  const allocatedQuantity = capacity?.allocatedQuantity ?? 0;
+
   switch (productionStatus) {
     case "printing":
       return { label: "PRINTING", variant: "info" };
     case "fully_printed":
       return { label: "FULLY PRINTED", variant: "success" };
     case "completed":
+      if (options?.productionResolutionKind === "empty_closure") {
+        return { label: "EMPTY", variant: "default" };
+      }
+      if (
+        options?.productionResolutionKind === "unfulfilled_release" ||
+        options?.productionResolutionKind === "unfulfilled_requeue"
+      ) {
+        return { label: "DID NOT PRINT", variant: "warning" };
+      }
+      if (
+        options?.productionResolutionKind === "fulfilled_confirmed" ||
+        options?.productionResolutionKind === "owner_override"
+      ) {
+        return { label: "COMPLETED", variant: "success" };
+      }
+      if (allocatedQuantity === 0) {
+        return { label: "EMPTY", variant: "default" };
+      }
       return { label: "COMPLETED", variant: "success" };
     case "archived":
       return { label: "ARCHIVED", variant: "default" };
@@ -158,6 +183,10 @@ export function getDerivedShowStatusDisplay(
       return { label: "CANCELED", variant: "danger" };
     default:
       break;
+  }
+
+  if (options?.isPastScheduled && allocatedQuantity === 0) {
+    return { label: "EMPTY", variant: "default" };
   }
 
   if (options?.isPastScheduled) {

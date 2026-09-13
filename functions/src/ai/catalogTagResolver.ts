@@ -4,7 +4,13 @@ import {
   evaluateSuggestedNewTagsPolicy,
   isStrictSuggestedTagsLastResort,
 } from "../../../packages/shared/src/utils/suggestedNewTagsPolicy";
-import { tokenizeTagCandidate } from "./catalogTitleRules";
+import { tokenizeTagCandidate } from "./legacyAiTagNormalization";
+import { normalizeCatalogPhrase } from "./normalizeCatalogPhrase";
+
+/**
+ * @deprecated Compatibility-only tag resolver for historical tests/data paths.
+ * Active Pass 1 does not import or execute this module.
+ */
 
 const MAX_AI_APPROVED_TAGS = 12;
 const MAX_TAG_LENGTH = 40;
@@ -83,15 +89,7 @@ function normalizeTagCandidate(value: string): string {
  * - apostrophes removed (rock 'n' roll → rock n roll, rockin' → rockin)
  * - multiple spaces collapsed
  */
-export function normalizeForAliasMatch(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/&/g, "and")
-    .replace(/['-]/g, " ")
-    .replace(/[^a-z0-9 ]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
+export const normalizeForAliasMatch = normalizeCatalogPhrase;
 
 /**
  * Extract all contiguous word n-grams (length 1 to maxN) from a normalized string.

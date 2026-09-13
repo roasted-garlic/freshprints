@@ -2,6 +2,7 @@ import type { Design } from "../../designs/types/design.types";
 import { resolveDesignAiReviewDisplay } from "../../designs/utils/aiReviewState";
 import type { AiReviewInboxTab } from "../types/aiReviewInbox.types";
 import { designHasAiSuggestions, resolveAiProcessingOutputStatus } from "./aiProcessingOutput";
+import { isAiProcessingStaleForRecovery } from "./aiProcessingStaleRecovery";
 
 export function designMatchesInboxTab(design: Design, tab: AiReviewInboxTab): boolean {
   const review = resolveDesignAiReviewDisplay(design);
@@ -51,6 +52,10 @@ export function isDesignRerunnableInInbox(design: Design, tab: AiReviewInboxTab)
 
 export function isDesignRetryableInProcessing(design: Design, tab: AiReviewInboxTab): boolean {
   return tab === "processing" && resolveAiProcessingOutputStatus(design) === "failed";
+}
+
+export function isDesignStaleProcessingRetryable(design: Design, tab: AiReviewInboxTab): boolean {
+  return tab === "processing" && isAiProcessingStaleForRecovery(design);
 }
 
 /** Matches server isRerunFromReviewEligible + client output preconditions. */

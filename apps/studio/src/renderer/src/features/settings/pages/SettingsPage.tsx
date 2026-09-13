@@ -1,13 +1,25 @@
-import { Check, ChevronDown, Copy, Paperclip, Settings, Sparkles, X } from "lucide-react";
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { Check, ChevronDown, Copy, Paperclip, Sparkles, X } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useSearchParams } from "react-router-dom";
 
 import { AI_ENRICHMENT_PLAYGROUND_MAX_PROMPT_LENGTH } from "@fresh-prints/shared/constants/aiEnrichment.constants";
-import { Badge } from "../../../shared/components/Badge";
 import { Button } from "../../../shared/components/Button";
 import { AutoResizeTextarea } from "../../../shared/components/AutoResizeTextarea";
-import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
+import { Toggle } from "../../../shared/components/Toggle";
+import {
+  Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+} from "../../../shared/components/Modal";
 import { Select } from "../../../shared/components/Select";
-import { TagChipInput } from "../../../shared/components/TagChipInput";
 import { useShellHeaderConfig } from "../../../shared/hooks/useShellHeaderConfig";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
@@ -17,107 +29,81 @@ import { PortalSocialMetaSettingsSection } from "../components/PortalSocialMetaS
 import { PortalHelpSettingsSection } from "../components/PortalHelpSettingsSection";
 import { BrandLogoSettingsSection } from "../components/BrandLogoSettingsSection";
 import { PrintRequestLimitSettingsSection } from "../components/PrintRequestLimitSettingsSection";
+import { StandardPrintSizesSettingsSection } from "../components/StandardPrintSizesSettingsSection";
 import { StudioUpdatesSettingsSection } from "../components/StudioUpdatesSettingsSection";
+import { CatalogProcessingModeSettingsSection } from "../components/CatalogProcessingModeSettingsSection";
+import { CatalogReprocessingSettingsSection } from "../components/CatalogReprocessingSettingsSection";
+import { AutomationHealthSettingsSection } from "../components/AutomationHealthSettingsSection";
+import { GangSheetSettingsSection } from "../components/GangSheetSettingsSection";
 import {
   AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER,
-  AI_ENRICHMENT_APPROVED_CATEGORY_NAMES_PLACEHOLDER,
-  AI_ENRICHMENT_APPROVED_TAGS_PLACEHOLDER,
-  AI_ENRICHMENT_APPROVED_TAG_NAMES_PLACEHOLDER,
   AI_ENRICHMENT_PROMPT_TEMPLATE_MAX_LENGTH,
-  AI_ENRICHMENT_TAG_RERANK_PROMPT_TEMPLATE_MAX_LENGTH,
-  BASE_AI_TAG_EXCLUSIONS,
   ALL_VISION_MODEL_OPTIONS,
   DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE,
-  DEFAULT_TAG_RERANK_PROMPT_TEMPLATE,
-  SUGGESTED_NEW_TAGS_POLICY_OPTIONS,
-  SUGGESTION_AUTHOR_MODE_OPTIONS,
-  TAG_RERANK_MODE_OPTIONS,
   hasRequiredAiEnrichmentPromptPlaceholders,
   resolveClientPromptTemplate,
-  resolveClientSuggestedNewTagsPolicy,
-  resolveClientSuggestionAuthorMode,
-  resolveClientTagRerankMode,
-  resolveClientTagRerankPromptTemplate,
   resolveClientVisionModelId,
 } from "../constants/aiEnrichmentSettingsConstants";
 import { useAiEnrichmentPlayground } from "../hooks/useAiEnrichmentPlayground";
-import { useAiEnrichmentTagRerankPlayground } from "../hooks/useAiEnrichmentTagRerankPlayground";
+import { useAiEnrichmentSemanticReviewPlayground } from "../hooks/useAiEnrichmentSemanticReviewPlayground";
 import {
-  formatAdditionalTagExclusionsInput,
-  parseAdditionalTagExclusionsInput,
+  formatExplicitContentAutomationTermsInput,
+  parseExplicitContentAutomationTermsInput,
   useAiEnrichmentSettings,
 } from "../hooks/useAiEnrichmentSettings";
+import { ExplicitContentAutomationSettingsSection } from "../components/ExplicitContentAutomationSettingsSection";
 import { formatAiPlaygroundOutput } from "../utils/aiPlaygroundOutputFormatter";
+import { formatCombinedAiCost } from "../utils/aiPlaygroundPass2Flow";
+import { HelperSettingsPage } from "./HelperSettingsPage";
+import { AiEnrichmentTraceBrowser } from "../components/AiEnrichmentTraceBrowser";
+import { PortalMaintenanceSettingsSection } from "../components/PortalMaintenanceSettingsSection";
 
-/**
- * Tolerantly extract a JSON object from raw model output that may include a fenced code block
- * or surrounding prose — mirrors functions/src/ai/simpleCatalogEnrichmentResponse.ts's
- * extractJsonObject (not importable here since it lives outside shared/), so the enable/disable
- * check for "Run tag rerank" matches what the server-side callable will actually be able to
- * parse instead of requiring perfectly bare JSON.
- */
-function extractClientJsonObject(raw: string): Record<string, unknown> | null {
-  const trimmed = raw.trim();
-
-  const tryParse = (candidate: string): Record<string, unknown> | null => {
-    try {
-      const parsed = JSON.parse(candidate) as unknown;
-      return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-        ? (parsed as Record<string, unknown>)
-        : null;
-    } catch {
-      return null;
-    }
-  };
-
-  const direct = tryParse(trimmed);
-  if (direct) {
-    return direct;
-  }
-
-  const fenceMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  if (fenceMatch?.[1]) {
-    const fromFence = tryParse(fenceMatch[1].trim());
-    if (fromFence) {
-      return fromFence;
-    }
-  }
-
-  const firstBrace = trimmed.indexOf("{");
-  const lastBrace = trimmed.lastIndexOf("}");
-  if (firstBrace >= 0 && lastBrace > firstBrace) {
-    const fromBlock = tryParse(trimmed.slice(firstBrace, lastBrace + 1));
-    if (fromBlock) {
-      return fromBlock;
-    }
-  }
-
-  return null;
+function formatPlaygroundJson(value: unknown): string {
+  return JSON.stringify(value, null, 2) ?? "N/A";
 }
 
-function isValidFirstCallJson(outputText: string): boolean {
-  try {
-    const parsed = extractClientJsonObject(outputText);
-    return (
-      typeof parsed?.title === "string" &&
-      typeof parsed?.description === "string" &&
-      typeof parsed?.category === "string" &&
-      Array.isArray(parsed?.tags)
-    );
-  } catch {
-    return false;
-  }
+function formatPlaygroundCost(value: number | null | undefined): string {
+  return value == null ? "N/A" : `$${value.toFixed(6)}`;
 }
 
 type SettingsPageTabId =
+  | "gangSheetSettings"
   | "emailProviders"
   | "uploadQuotas"
   | "printRequestLimits"
+  | "standardPrintSizes"
   | "socialSharing"
   | "faqHowTo"
   | "brandLogos"
   | "aiEnrichment"
+  | "portalMaintenance"
   | "studioUpdates";
+
+type AiEnrichmentSubTabId =
+  "general" | "inspector" | "explicitContent" | "catalogReprocessing";
+
+type AiPlaygroundResultTabId =
+  "overview" | "profiles" | "response" | "semanticReview";
+
+const AI_PLAYGROUND_RESULT_TABS: ReadonlyArray<{
+  id: AiPlaygroundResultTabId;
+  label: string;
+}> = [
+  { id: "overview", label: "Overview" },
+  { id: "profiles", label: "Profiles" },
+  { id: "response", label: "Response" },
+  { id: "semanticReview", label: "Semantic Review" },
+];
+
+const AI_ENRICHMENT_SUB_TABS: ReadonlyArray<{
+  id: AiEnrichmentSubTabId;
+  label: string;
+}> = [
+  { id: "general", label: "General" },
+  { id: "explicitContent", label: "Explicit Content" },
+  { id: "catalogReprocessing", label: "Catalog Reprocessing" },
+  { id: "inspector", label: "Inspector" },
+];
 
 interface SettingsPageTab {
   id: SettingsPageTabId;
@@ -126,12 +112,38 @@ interface SettingsPageTab {
 
 export function SettingsPage() {
   const { user } = useAuth();
+
+  if (permissionService.isHelper(user)) {
+    return <HelperSettingsPage />;
+  }
+
+  if (!permissionService.canManageSettings(user)) {
+    return <HelperSettingsPage />;
+  }
+
+  return <ManageableSettingsPage />;
+}
+
+function ManageableSettingsPage() {
+  const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+
   const isOwner = permissionService.isOwner(user);
   const canManageSettings = permissionService.canManageSettings(user);
-  const canManageEmailProviders = permissionService.canManageEmailProviders(user);
-  const canManageCustomerUploadQuotas = permissionService.canManageCustomerUploadQuotas(user);
+  const canViewAdministrativeSettings =
+    permissionService.canViewAdministrativeSettings(user);
+  const canManageEmailProviders =
+    permissionService.canManageEmailProviders(user);
+  const canManageCustomerUploadQuotas =
+    permissionService.canManageCustomerUploadQuotas(user);
+  const canManageStandardPrintSizes =
+    permissionService.canManageStandardPrintSizes(user);
   const settingsTabs = useMemo((): SettingsPageTab[] => {
-    const tabs: SettingsPageTab[] = [];
+    const tabs: SettingsPageTab[] = [{ id: "gangSheetSettings", label: "Gang Sheet Settings" }];
+
+    if (canViewAdministrativeSettings) {
+      tabs.push({ id: "portalMaintenance", label: "Portal maintenance" });
+    }
 
     if (canManageEmailProviders) {
       tabs.push({ id: "emailProviders", label: "Email Providers" });
@@ -142,124 +154,137 @@ export function SettingsPage() {
       tabs.push({ id: "printRequestLimits", label: "Print request limits" });
     }
 
+    if (canManageStandardPrintSizes) {
+      tabs.push({ id: "standardPrintSizes", label: "Standard Print Sizes" });
+    }
+
     if (isOwner) {
       tabs.push({ id: "socialSharing", label: "Social sharing" });
       tabs.push({ id: "brandLogos", label: "Brand logos" });
     }
 
-    if (canManageSettings) {
+    if (canViewAdministrativeSettings) {
       tabs.push({ id: "faqHowTo", label: "FAQ and How To" });
+      tabs.push({ id: "aiEnrichment", label: "AI Enrichment" });
     }
 
-    tabs.push({ id: "aiEnrichment", label: "AI Enrichment" });
     tabs.push({ id: "studioUpdates", label: "Studio updates" });
     return tabs;
-  }, [canManageCustomerUploadQuotas, canManageEmailProviders, canManageSettings, isOwner]);
+  }, [
+    canManageCustomerUploadQuotas,
+    canManageEmailProviders,
+    canManageStandardPrintSizes,
+    canViewAdministrativeSettings,
+    isOwner,
+  ]);
   const [activeTab, setActiveTab] = useState<SettingsPageTabId | null>(null);
+  const requestedTab = searchParams.get("tab") as SettingsPageTabId | null;
   const resolvedTab: SettingsPageTabId =
-    activeTab && settingsTabs.some((tab) => tab.id === activeTab)
+    (activeTab && settingsTabs.some((tab) => tab.id === activeTab)
       ? activeTab
-      : (settingsTabs[0]?.id ?? "aiEnrichment");
+      : requestedTab && settingsTabs.some((tab) => tab.id === requestedTab)
+        ? requestedTab
+        : (settingsTabs[0]?.id ?? "studioUpdates"));
   const {
-    additionalTagExclusions,
+    explicitContentAutomationTerms,
+    semanticReviewPlaygroundEnabled,
+    semanticReviewerModelId,
     error,
     isLoading,
     isSaving,
     promptTemplate,
-    tagRerankPromptTemplate,
     saveError,
     saveSettings,
-    suggestionAuthorMode,
-    suggestedNewTagsPolicy,
-    tagRerankMode,
+    setSemanticReviewPlaygroundEnabled,
+    isUpdatingSemanticReviewPlayground,
+    semanticReviewPlaygroundError,
     visionModelId,
+    catalogWorkflowMode,
+    catalogAutonomousLiveEnabled,
   } = useAiEnrichmentSettings();
-  const playground = useAiEnrichmentPlayground();
+  const playground = useAiEnrichmentPlayground({
+    canCaptureFullTrace: isOwner,
+  });
+  const semanticReviewPlayground = useAiEnrichmentSemanticReviewPlayground({
+    pass1Result: playground.result,
+    semanticReviewerModelId,
+    semanticReviewPlaygroundEnabled,
+  });
   const { resetPlayground } = playground;
-  const tagRerankPlayground = useAiEnrichmentTagRerankPlayground();
-  const { reset: resetTagRerankPlayground } = tagRerankPlayground;
   const playgroundImageInputId = useId();
   const playgroundPromptId = useId();
   const playgroundPromptMenuId = useId();
   const playgroundTextareaRef = useRef<HTMLTextAreaElement>(null);
   const playgroundPromptMenuRef = useRef<HTMLDivElement>(null);
   const [isPromptMenuOpen, setIsPromptMenuOpen] = useState(false);
-  const [draftVisionModelId, setDraftVisionModelId] = useState<string | null>(null);
-  const [draftPromptTemplate, setDraftPromptTemplate] = useState<string | null>(null);
-  const [draftTagRerankPromptTemplate, setDraftTagRerankPromptTemplate] = useState<string | null>(
+  const [draftVisionModelId, setDraftVisionModelId] = useState<string | null>(
     null,
   );
-  const [draftAdditionalTagExclusions, setDraftAdditionalTagExclusions] = useState<string[] | null>(
+  const [draftPromptTemplate, setDraftPromptTemplate] = useState<string | null>(
     null,
   );
-  const [draftTagRerankMode, setDraftTagRerankMode] = useState<string | null>(null);
-  const [draftSuggestionAuthorMode, setDraftSuggestionAuthorMode] = useState<string | null>(null);
-  const [draftSuggestedNewTagsPolicy, setDraftSuggestedNewTagsPolicy] = useState<string | null>(
-    null,
-  );
-  const [isPromptTemplateEditorOpen, setIsPromptTemplateEditorOpen] = useState(false);
-  const [isTagRerankPromptEditorOpen, setIsTagRerankPromptEditorOpen] = useState(false);
-  const [tagRerankPlaygroundPromptOverride, setTagRerankPlaygroundPromptOverride] = useState<
-    string | null
-  >(null);
-  const [isTagRerankPlaygroundPromptModalOpen, setIsTagRerankPlaygroundPromptModalOpen] =
+  const [
+    draftExplicitContentAutomationTerms,
+    setDraftExplicitContentAutomationTerms,
+  ] = useState<string[] | null>(null);
+  const [isPromptTemplateEditorOpen, setIsPromptTemplateEditorOpen] =
     useState(false);
-  const [isTagExclusionsModalOpen, setIsTagExclusionsModalOpen] = useState(false);
   const [isPlaygroundModalOpen, setIsPlaygroundModalOpen] = useState(false);
-  const [isPlaygroundResultModalOpen, setIsPlaygroundResultModalOpen] = useState(false);
-  const [hasInjectedProcessingPrompt, setHasInjectedProcessingPrompt] = useState(false);
+  const [isPlaygroundResultModalOpen, setIsPlaygroundResultModalOpen] =
+    useState(false);
+  const [playgroundResultTab, setPlaygroundResultTab] =
+    useState<AiPlaygroundResultTabId>("overview");
+  const [hasInjectedProcessingPrompt, setHasInjectedProcessingPrompt] =
+    useState(false);
   const [copiedBlockId, setCopiedBlockId] = useState<string | null>(null);
+  const [aiEnrichmentSubTab, setAiEnrichmentSubTab] =
+    useState<AiEnrichmentSubTabId>("general");
   const playgroundResultOutputText = useMemo(
     () => formatAiPlaygroundOutput(playground.result?.outputText ?? ""),
     [playground.result?.outputText],
+  );
+  const playgroundPass1Context = playground.result?.pass1Context;
+  const semanticReviewResult = semanticReviewPlayground.result;
+  const combinedPlaygroundCost = formatCombinedAiCost(
+    playground.result?.estimatedCostUsd,
+    semanticReviewResult?.estimatedCostUsd,
   );
 
   const copyBlock = useCallback((blockId: string, text: string) => {
     void navigator.clipboard.writeText(text).then(() => {
       setCopiedBlockId(blockId);
-      setTimeout(() => setCopiedBlockId((current) => (current === blockId ? null : current)), 2000);
+      setTimeout(
+        () =>
+          setCopiedBlockId((current) => (current === blockId ? null : current)),
+        2000,
+      );
     });
   }, []);
 
-  const combinedEstimatedCostUsd = useMemo(() => {
-    const first = playground.result?.estimatedCostUsd ?? null;
-    const rerank = tagRerankPlayground.result?.estimatedCostUsd ?? null;
-
-    if (first == null && rerank == null) {
-      return null;
-    }
-
-    return (first ?? 0) + (rerank ?? 0);
-  }, [playground.result?.estimatedCostUsd, tagRerankPlayground.result?.estimatedCostUsd]);
-
   const selectedVisionModelId = draftVisionModelId ?? visionModelId;
   const selectedPromptTemplate = draftPromptTemplate ?? promptTemplate;
-  const selectedTagRerankPromptTemplate = draftTagRerankPromptTemplate ?? tagRerankPromptTemplate;
-  const selectedAdditionalTagExclusions = draftAdditionalTagExclusions ?? additionalTagExclusions;
-  const additionalTagExclusionsInput = formatAdditionalTagExclusionsInput(selectedAdditionalTagExclusions);
-  const selectedTagRerankMode = resolveClientTagRerankMode(draftTagRerankMode ?? tagRerankMode);
-  const selectedSuggestionAuthorMode = resolveClientSuggestionAuthorMode(
-    draftSuggestionAuthorMode ?? suggestionAuthorMode,
-  );
-  const selectedSuggestedNewTagsPolicy = resolveClientSuggestedNewTagsPolicy(
-    draftSuggestedNewTagsPolicy ?? suggestedNewTagsPolicy,
-  );
+  const selectedExplicitContentAutomationTerms =
+    draftExplicitContentAutomationTerms ?? explicitContentAutomationTerms;
+  const explicitContentAutomationTermsInput =
+    formatExplicitContentAutomationTermsInput(
+      selectedExplicitContentAutomationTerms,
+    );
   const hasUnsavedChanges =
     (draftVisionModelId !== null && draftVisionModelId !== visionModelId) ||
     (draftPromptTemplate !== null &&
       resolveClientPromptTemplate(draftPromptTemplate) !== promptTemplate) ||
-    (draftTagRerankPromptTemplate !== null &&
-      resolveClientTagRerankPromptTemplate(draftTagRerankPromptTemplate) !==
-        tagRerankPromptTemplate) ||
-    (draftAdditionalTagExclusions !== null &&
-      formatAdditionalTagExclusionsInput(draftAdditionalTagExclusions) !==
-        formatAdditionalTagExclusionsInput(additionalTagExclusions)) ||
-    (draftTagRerankMode !== null && draftTagRerankMode !== tagRerankMode) ||
-    (draftSuggestionAuthorMode !== null && draftSuggestionAuthorMode !== suggestionAuthorMode) ||
-    (draftSuggestedNewTagsPolicy !== null &&
-      draftSuggestedNewTagsPolicy !== suggestedNewTagsPolicy);
-  const promptTemplateError = !hasRequiredAiEnrichmentPromptPlaceholders(selectedPromptTemplate)
-    ? "Prompt must include {{excluded_tags}} and {{approved_category_names}} so server-side values are inserted."
+    (draftExplicitContentAutomationTerms !== null &&
+      formatExplicitContentAutomationTermsInput(
+        draftExplicitContentAutomationTerms,
+      ) !==
+        formatExplicitContentAutomationTermsInput(
+          explicitContentAutomationTerms,
+        )) ||
+    false;
+  const promptTemplateError = !hasRequiredAiEnrichmentPromptPlaceholders(
+    selectedPromptTemplate,
+  )
+    ? "Prompt must include {{approved_categories}} so active category descriptions are inserted."
     : null;
 
   const shellHeaderConfig = useMemo(
@@ -275,11 +300,8 @@ export function SettingsPage() {
   const closePlaygroundModal = useCallback(() => {
     setIsPlaygroundResultModalOpen(false);
     resetPlayground();
-    resetTagRerankPlayground();
-    setTagRerankPlaygroundPromptOverride(null);
-    setIsTagRerankPlaygroundPromptModalOpen(false);
     setIsPlaygroundModalOpen(false);
-  }, [resetPlayground, resetTagRerankPlayground]);
+  }, [resetPlayground]);
 
   const closePlaygroundResultModal = useCallback(() => {
     setIsPlaygroundResultModalOpen(false);
@@ -289,13 +311,6 @@ export function SettingsPage() {
     setIsPromptTemplateEditorOpen(false);
     requestAnimationFrame(() => {
       document.getElementById("settings-prompt-editor-open-button")?.focus();
-    });
-  }, []);
-
-  const handleCloseTagRerankPromptEditor = useCallback(() => {
-    setIsTagRerankPromptEditorOpen(false);
-    requestAnimationFrame(() => {
-      document.getElementById("settings-tag-rerank-prompt-editor-open-button")?.focus();
     });
   }, []);
 
@@ -315,7 +330,7 @@ export function SettingsPage() {
   }, [closePlaygroundModal, isPlaygroundModalOpen]);
 
   useEffect(() => {
-    if (!isPromptTemplateEditorOpen && !isTagRerankPromptEditorOpen && !isTagExclusionsModalOpen) {
+    if (!isPromptTemplateEditorOpen) {
       return;
     }
 
@@ -328,31 +343,18 @@ export function SettingsPage() {
         handleClosePromptTemplateEditor();
         return;
       }
-
-      if (isTagRerankPromptEditorOpen) {
-        handleCloseTagRerankPromptEditor();
-        return;
-      }
-
-      setIsTagExclusionsModalOpen(false);
     }
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [
-    handleClosePromptTemplateEditor,
-    handleCloseTagRerankPromptEditor,
-    isPromptTemplateEditorOpen,
-    isTagRerankPromptEditorOpen,
-    isTagExclusionsModalOpen,
-  ]);
+  }, [handleClosePromptTemplateEditor, isPromptTemplateEditorOpen]);
 
   useEffect(() => {
     if (playground.result) {
+      setPlaygroundResultTab("overview");
       setIsPlaygroundResultModalOpen(true);
-      resetTagRerankPlayground();
     }
-  }, [playground.result, resetTagRerankPlayground]);
+  }, [playground.result]);
 
   useEffect(() => {
     if (isPlaygroundModalOpen) {
@@ -397,46 +399,32 @@ export function SettingsPage() {
     }
 
     const separator = playground.prompt.trim() ? "\n\n" : "";
-    playground.setPrompt(`${playground.prompt}${separator}${label}:\n${placeholder}`);
+    playground.setPrompt(
+      `${playground.prompt}${separator}${label}:\n${placeholder}`,
+    );
 
     focusPlaygroundTextarea();
   }
 
   function handleInsertApprovedCategoriesPlaceholder() {
-    insertPromptPlaceholder("Approved categories", AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER);
-  }
-
-  function handleInsertApprovedCategoryNamesPlaceholder() {
-    insertPromptPlaceholder("Approved category names", AI_ENRICHMENT_APPROVED_CATEGORY_NAMES_PLACEHOLDER);
-  }
-
-  function handleInsertApprovedTagsPlaceholder() {
-    insertPromptPlaceholder("Approved tags", AI_ENRICHMENT_APPROVED_TAGS_PLACEHOLDER);
-  }
-
-  function handleInsertApprovedTagNamesPlaceholder() {
-    insertPromptPlaceholder("Approved tag names", AI_ENRICHMENT_APPROVED_TAG_NAMES_PLACEHOLDER);
+    insertPromptPlaceholder(
+      "Approved categories",
+      AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER,
+    );
   }
 
   async function handleSaveSettings() {
     await saveSettings({
       visionModelId: resolveClientVisionModelId(selectedVisionModelId),
       promptTemplate: selectedPromptTemplate,
-      tagRerankPromptTemplate: selectedTagRerankPromptTemplate,
-      additionalTagExclusions: parseAdditionalTagExclusionsInput(additionalTagExclusionsInput),
-      tagRerankMode: selectedTagRerankMode,
-      suggestionAuthorMode: selectedSuggestionAuthorMode,
-      suggestedNewTagsPolicy: selectedSuggestedNewTagsPolicy,
+      explicitContentAutomationTerms: parseExplicitContentAutomationTermsInput(
+        explicitContentAutomationTermsInput,
+      ),
     });
     setDraftVisionModelId(null);
     setDraftPromptTemplate(null);
-    setDraftTagRerankPromptTemplate(null);
-    setDraftAdditionalTagExclusions(null);
-    setDraftTagRerankMode(null);
-    setDraftSuggestionAuthorMode(null);
-    setDraftSuggestedNewTagsPolicy(null);
+    setDraftExplicitContentAutomationTerms(null);
     setIsPromptTemplateEditorOpen(false);
-    setIsTagRerankPromptEditorOpen(false);
   }
 
   function handleOpenPromptTemplateEditor() {
@@ -445,14 +433,6 @@ export function SettingsPage() {
 
   function handleUseCurrentDefaultPrompt() {
     setDraftPromptTemplate(DEFAULT_AI_ENRICHMENT_PROMPT_TEMPLATE);
-  }
-
-  function handleOpenTagRerankPromptEditor() {
-    setIsTagRerankPromptEditorOpen(true);
-  }
-
-  function handleUseCurrentDefaultTagRerankPrompt() {
-    setDraftTagRerankPromptTemplate(DEFAULT_TAG_RERANK_PROMPT_TEMPLATE);
   }
 
   return (
@@ -469,26 +449,54 @@ export function SettingsPage() {
         </p>
       ) : null}
 
-      <div
-        aria-label="Settings sections"
-        className="settings-page-tab-bar"
-        role="tablist"
-      >
-        {settingsTabs.map((tab) => (
-          <button
-            aria-controls={`settings-tab-panel-${tab.id}`}
-            aria-selected={resolvedTab === tab.id}
-            className={`settings-page-tab${resolvedTab === tab.id ? " is-active" : ""}`}
-            id={`settings-tab-${tab.id}`}
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            role="tab"
-            type="button"
+      <div className="settings-page-layout">
+        <aside className="settings-page-sidebar">
+          <nav
+            aria-label="Settings sections"
+            className="settings-page-tab-bar"
+            role="tablist"
+            aria-orientation="vertical"
           >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+            {settingsTabs.map((tab) => (
+              <button
+                aria-controls={`settings-tab-panel-${tab.id}`}
+                aria-selected={resolvedTab === tab.id}
+                className={`settings-page-tab${resolvedTab === tab.id ? " is-active" : ""}`}
+                id={`settings-tab-${tab.id}`}
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                role="tab"
+                type="button"
+              >
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+        </aside>
+
+        <div className="settings-page-content">
+
+      {resolvedTab === "gangSheetSettings" ? (
+        <div
+          aria-labelledby="settings-tab-gangSheetSettings"
+          className="settings-page-tab-panel"
+          id="settings-tab-panel-gangSheetSettings"
+          role="tabpanel"
+        >
+          <GangSheetSettingsSection />
+        </div>
+      ) : null}
+
+      {resolvedTab === "portalMaintenance" && canViewAdministrativeSettings ? (
+        <div
+          aria-labelledby="settings-tab-portalMaintenance"
+          className="settings-page-tab-panel"
+          id="settings-tab-panel-portalMaintenance"
+          role="tabpanel"
+        >
+          <PortalMaintenanceSettingsSection />
+        </div>
+      ) : null}
 
       {resolvedTab === "emailProviders" && canManageEmailProviders ? (
         <div
@@ -523,6 +531,17 @@ export function SettingsPage() {
         </div>
       ) : null}
 
+      {resolvedTab === "standardPrintSizes" && canManageStandardPrintSizes ? (
+        <div
+          aria-labelledby="settings-tab-standardPrintSizes"
+          className="settings-page-tab-panel"
+          id="settings-tab-panel-standardPrintSizes"
+          role="tabpanel"
+        >
+          <StandardPrintSizesSettingsSection />
+        </div>
+      ) : null}
+
       {resolvedTab === "socialSharing" && isOwner ? (
         <div
           aria-labelledby="settings-tab-socialSharing"
@@ -534,7 +553,7 @@ export function SettingsPage() {
         </div>
       ) : null}
 
-      {resolvedTab === "faqHowTo" && canManageSettings ? (
+      {resolvedTab === "faqHowTo" && canViewAdministrativeSettings ? (
         <div
           aria-labelledby="settings-tab-faqHowTo"
           className="settings-page-tab-panel"
@@ -556,204 +575,279 @@ export function SettingsPage() {
         </div>
       ) : null}
 
-      {resolvedTab === "aiEnrichment" ? (
+      {resolvedTab === "aiEnrichment" && canViewAdministrativeSettings ? (
         <div
           aria-labelledby="settings-tab-aiEnrichment"
           className="settings-page-tab-panel"
           id="settings-tab-panel-aiEnrichment"
           role="tabpanel"
         >
-          <section aria-labelledby="ai-enrichment-settings-title" className="card settings-section">
-            <header className="settings-section-header">
-              <h2 className="settings-section-title" id="ai-enrichment-settings-title">
-                AI Enrichment
-              </h2>
-              <p className="settings-section-description">
-                Choose the Google AI vision model and team tag exclusions used for catalog title,
-                description, category, tags, and OCR. Applies on the next AI processing run.
-              </p>
-            </header>
+          <div
+            aria-label="AI Enrichment sections"
+            className="settings-page-subtab-bar"
+            role="tablist"
+          >
+            {AI_ENRICHMENT_SUB_TABS.map((subTab) => (
+              <button
+                aria-controls={`ai-enrichment-subtab-panel-${subTab.id}`}
+                aria-selected={aiEnrichmentSubTab === subTab.id}
+                className={`settings-page-subtab${aiEnrichmentSubTab === subTab.id ? " is-active" : ""}`}
+                id={`ai-enrichment-subtab-${subTab.id}`}
+                key={subTab.id}
+                onClick={() => setAiEnrichmentSubTab(subTab.id)}
+                role="tab"
+                type="button"
+              >
+                {subTab.label}
+              </button>
+            ))}
+          </div>
 
-            {isLoading ? (
-              <p className="settings-section-status">Loading AI enrichment settings…</p>
-            ) : (
-              <div className="settings-form-grid">
-                <div className="settings-control-grid">
-                  <div className="settings-control-item">
-                    <Select
-                      disabled={!canManageSettings || isSaving}
-                      label="Vision model"
-                      name="visionModelId"
-                      onChange={(event) => setDraftVisionModelId(event.target.value)}
-                      options={ALL_VISION_MODEL_OPTIONS.map((option) => ({
-                        label: option.label,
-                        value: option.value,
-                      }))}
-                      value={selectedVisionModelId}
-                    />
-
-                    <p className="settings-field-hint">
-                      {ALL_VISION_MODEL_OPTIONS.find((option) => option.value === selectedVisionModelId)
-                        ?.hint ?? selectedVisionModelId}
-                    </p>
-                  </div>
-
-                  <div className="settings-control-item">
-                    <Select
-                      disabled={!canManageSettings || isSaving}
-                      label="Tag reranker"
-                      name="tagRerankMode"
-                      onChange={(event) => setDraftTagRerankMode(event.target.value)}
-                      options={TAG_RERANK_MODE_OPTIONS.map((option) => ({
-                        label: option.label,
-                        value: option.value,
-                      }))}
-                      value={selectedTagRerankMode}
-                    />
-
-                    <p className="settings-field-hint">
-                      {TAG_RERANK_MODE_OPTIONS.find((option) => option.value === selectedTagRerankMode)
-                        ?.hint ?? selectedTagRerankMode}
-                    </p>
-                  </div>
-
-                  <div className="settings-control-item">
-                    <Select
-                      disabled={!canManageSettings || isSaving}
-                      label="Suggested new tags"
-                      name="suggestedNewTagsPolicy"
-                      onChange={(event) => setDraftSuggestedNewTagsPolicy(event.target.value)}
-                      options={SUGGESTED_NEW_TAGS_POLICY_OPTIONS.map((option) => ({
-                        label: option.label,
-                        value: option.value,
-                      }))}
-                      value={selectedSuggestedNewTagsPolicy}
-                    />
-
-                    <p className="settings-field-hint">
-                      {SUGGESTED_NEW_TAGS_POLICY_OPTIONS.find(
-                        (option) => option.value === selectedSuggestedNewTagsPolicy,
-                      )?.hint ?? selectedSuggestedNewTagsPolicy}
-                    </p>
-                  </div>
-
-                  <div className="settings-control-item">
-                    <Select
-                      disabled={!canManageSettings || isSaving}
-                      label="Suggested-tag writing"
-                      name="suggestionAuthorMode"
-                      onChange={(event) => setDraftSuggestionAuthorMode(event.target.value)}
-                      options={SUGGESTION_AUTHOR_MODE_OPTIONS.map((option) => ({
-                        label: option.label,
-                        value: option.value,
-                      }))}
-                      value={selectedSuggestionAuthorMode}
-                    />
-
-                    <p className="settings-field-hint">
-                      {SUGGESTION_AUTHOR_MODE_OPTIONS.find(
-                        (option) => option.value === selectedSuggestionAuthorMode,
-                      )?.hint ?? selectedSuggestionAuthorMode}
-                    </p>
-                  </div>
-                </div>
-
-                {isOwner ? (
-                  <div className="settings-prompt-template-block settings-prompt-template-danger">
-                    <div className="settings-prompt-template-summary">
-                      <div className="settings-prompt-template-copy">
-                        <h3 className="settings-subsection-title">AI Processing prompt</h3>
-                        <p className="settings-field-hint">
-                          This prompt drives live AI Processing output. Keep it collapsed unless you are
-                          intentionally changing the production prompt.
-                        </p>
-                      </div>
-
-                      <Button
-                        disabled={!canManageSettings || isSaving}
-                        id="settings-prompt-editor-open-button"
-                        onClick={handleOpenPromptTemplateEditor}
-                        variant="warning"
-                      >
-                        Edit prompt
-                      </Button>
-                    </div>
-
-                    {promptTemplateError ? (
-                      <p className="auth-message auth-message-error" role="alert">
-                        {promptTemplateError}
-                      </p>
-                    ) : null}
-                  </div>
-                ) : null}
-
-                {isOwner ? (
-                  <div className="settings-prompt-template-block settings-prompt-template-danger">
-                    <div className="settings-prompt-template-summary">
-                      <div className="settings-prompt-template-copy">
-                        <h3 className="settings-subsection-title">Tag rerank prompt</h3>
-                        <p className="settings-field-hint">
-                          Instructional rules for the optional second-call tag reranker. Only used when
-                          the tag reranker runs (see &quot;Tag reranker&quot; mode above).
-                        </p>
-                      </div>
-
-                      <Button
-                        disabled={!canManageSettings || isSaving}
-                        id="settings-tag-rerank-prompt-editor-open-button"
-                        onClick={handleOpenTagRerankPromptEditor}
-                        variant="warning"
-                      >
-                        Edit prompt
-                      </Button>
-                    </div>
-                  </div>
-                ) : null}
-
-                <div className="settings-tag-exclusions-block">
-                  <div className="settings-tag-exclusions-copy">
-                    <h3 className="settings-subsection-title">Tag exclusions</h3>
-                    <p className="settings-field-hint">
-                      Built-in: {BASE_AI_TAG_EXCLUSIONS.length} | Additional:{" "}
-                      {selectedAdditionalTagExclusions.length}
-                    </p>
-                  </div>
-
-                  <Button
-                    disabled={!canManageSettings || isSaving}
-                    onClick={() => setIsTagExclusionsModalOpen(true)}
-                    variant="secondary"
+          {aiEnrichmentSubTab === "general" ? (
+            <div
+              aria-labelledby="ai-enrichment-subtab-general"
+              className="settings-page-subtab-panel"
+              id="ai-enrichment-subtab-panel-general"
+              role="tabpanel"
+            >
+              <section
+                aria-labelledby="ai-enrichment-settings-title"
+                className="card settings-section"
+              >
+                <header className="settings-section-header">
+                  <h2
+                    className="settings-section-title"
+                    id="ai-enrichment-settings-title"
                   >
-                    Manage exclusions
+                    AI Enrichment
+                  </h2>
+                  <p className="settings-section-description">
+                    Choose the Google AI vision model and visual catalog prompt
+                    used on the next AI processing run.
+                  </p>
+                </header>
+
+                {isLoading ? (
+                  <p className="settings-section-status">
+                    Loading AI enrichment settings…
+                  </p>
+                ) : (
+                  <div className="settings-form-grid">
+                    <div className="settings-control-grid">
+                      <div className="settings-control-item">
+                        <Select
+                          disabled={!canManageSettings || isSaving}
+                          label="Default AI model"
+                          name="visionModelId"
+                          onChange={(event) =>
+                            setDraftVisionModelId(event.target.value)
+                          }
+                          options={ALL_VISION_MODEL_OPTIONS.map((option) => ({
+                            label: option.label,
+                            value: option.value,
+                          }))}
+                          value={selectedVisionModelId}
+                        />
+
+                        <p className="settings-field-hint">
+                          {ALL_VISION_MODEL_OPTIONS.find(
+                            (option) => option.value === selectedVisionModelId,
+                          )?.hint ?? selectedVisionModelId}
+                        </p>
+                      </div>
+                    </div>
+
+                    {isOwner ? (
+                      <div className="settings-prompt-template-block settings-prompt-template-danger">
+                        <div className="settings-prompt-template-summary">
+                          <div className="settings-prompt-template-copy">
+                            <h3 className="settings-subsection-title">
+                              AI Processing prompt
+                            </h3>
+                            <p className="settings-field-hint">
+                              This prompt drives live AI Processing output. Keep
+                              it collapsed unless you are intentionally changing
+                              the production prompt.
+                            </p>
+                          </div>
+
+                          <Button
+                            disabled={!canManageSettings || isSaving}
+                            id="settings-prompt-editor-open-button"
+                            onClick={handleOpenPromptTemplateEditor}
+                            variant="warning"
+                          >
+                            Edit prompt
+                          </Button>
+                        </div>
+
+                        {promptTemplateError ? (
+                          <p
+                            className="auth-message auth-message-error"
+                            role="alert"
+                          >
+                            {promptTemplateError}
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    <section
+                      aria-labelledby="semantic-review-experimental-title"
+                      className="settings-prompt-template-block"
+                    >
+                      <div className="settings-prompt-template-summary">
+                        <div className="settings-prompt-template-copy">
+                          <h3
+                            className="settings-subsection-title"
+                            id="semantic-review-experimental-title"
+                          >
+                            Pass 2 experimental testing
+                          </h3>
+                          <p className="settings-field-hint">
+                            Owner-only manual Semantic Review for Playground
+                            experiments. This never enables automatic
+                            Processing, changes Ready authority, or adds cost
+                            when it is OFF.
+                          </p>
+                        </div>
+                        {isOwner ? (
+                          <Toggle
+                            checked={semanticReviewPlaygroundEnabled}
+                            disabled={isUpdatingSemanticReviewPlayground}
+                            id="semanticReviewPlaygroundEnabled"
+                            label={
+                              semanticReviewPlaygroundEnabled ? "ON" : "OFF"
+                            }
+                            name="semanticReviewPlaygroundEnabled"
+                            onChange={(enabled) =>
+                              void setSemanticReviewPlaygroundEnabled(enabled)
+                            }
+                          />
+                        ) : (
+                          <span className="settings-field-hint">
+                            {semanticReviewPlaygroundEnabled ? "ON" : "OFF"}
+                          </span>
+                        )}
+                      </div>
+                      {semanticReviewPlaygroundError ? (
+                        <p
+                          className="auth-message auth-message-error"
+                          role="alert"
+                        >
+                          {semanticReviewPlaygroundError}
+                        </p>
+                      ) : null}
+                    </section>
+
+                    {canManageSettings ? (
+                      <div className="settings-card-footer">
+                        <div className="settings-form-actions">
+                          <Button
+                            disabled={
+                              !hasUnsavedChanges ||
+                              isSaving ||
+                              Boolean(promptTemplateError)
+                            }
+                            onClick={() => void handleSaveSettings()}
+                            variant="primary"
+                          >
+                            {isSaving
+                              ? "Saving…"
+                              : "Save AI enrichment settings"}
+                          </Button>
+                        </div>
+
+                        <div className="settings-card-aside">
+                          <Button
+                            onClick={() => setIsPlaygroundModalOpen(true)}
+                            variant="secondary"
+                          >
+                            Open AI Playground
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="settings-section-status">
+                        Only owners and admins can change AI enrichment
+                        settings.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </section>
+
+              <CatalogProcessingModeSettingsSection
+                catalogAutonomousLiveEnabled={catalogAutonomousLiveEnabled}
+                catalogWorkflowMode={catalogWorkflowMode}
+                isLoading={isLoading}
+              />
+              <AutomationHealthSettingsSection
+                catalogAutonomousLiveEnabled={catalogAutonomousLiveEnabled}
+                catalogWorkflowMode={catalogWorkflowMode}
+                isLoading={isLoading}
+              />
+            </div>
+          ) : null}
+
+          {aiEnrichmentSubTab === "inspector" ? (
+            <div
+              aria-labelledby="ai-enrichment-subtab-inspector"
+              className="settings-page-subtab-panel"
+              id="ai-enrichment-subtab-panel-inspector"
+              role="tabpanel"
+            >
+              <AiEnrichmentTraceBrowser />
+            </div>
+          ) : null}
+
+          {aiEnrichmentSubTab === "explicitContent" ? (
+            <div
+              aria-labelledby="ai-enrichment-subtab-explicitContent"
+              className="settings-page-subtab-panel"
+              id="ai-enrichment-subtab-panel-explicitContent"
+              role="tabpanel"
+            >
+              <ExplicitContentAutomationSettingsSection
+                canEdit={canManageSettings && !isLoading}
+                onChange={(nextValue) =>
+                  setDraftExplicitContentAutomationTerms(
+                    parseExplicitContentAutomationTermsInput(nextValue),
+                  )
+                }
+                termsInput={explicitContentAutomationTermsInput}
+              />
+              {canManageSettings ? (
+                <div className="settings-form-actions">
+                  <Button
+                    disabled={
+                      !hasUnsavedChanges ||
+                      isSaving ||
+                      Boolean(promptTemplateError)
+                    }
+                    onClick={() => void handleSaveSettings()}
+                    variant="primary"
+                  >
+                    {isSaving ? "Saving…" : "Save AI enrichment settings"}
                   </Button>
                 </div>
+              ) : null}
+            </div>
+          ) : null}
 
-                {canManageSettings ? (
-                  <div className="settings-card-footer">
-                    <div className="settings-form-actions">
-                      <Button
-                        disabled={!hasUnsavedChanges || isSaving || Boolean(promptTemplateError)}
-                        onClick={() => void handleSaveSettings()}
-                        variant="primary"
-                      >
-                        {isSaving ? "Saving…" : "Save AI enrichment settings"}
-                      </Button>
-                    </div>
-
-                    <div className="settings-card-aside">
-                      <Button onClick={() => setIsPlaygroundModalOpen(true)} variant="secondary">
-                        Open AI Playground
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="settings-section-status">
-                    Only owners and admins can change AI enrichment settings.
-                  </p>
-                )}
-              </div>
-            )}
-          </section>
+          {aiEnrichmentSubTab === "catalogReprocessing" ? (
+            <div
+              aria-labelledby="ai-enrichment-subtab-catalogReprocessing"
+              className="settings-page-subtab-panel"
+              id="ai-enrichment-subtab-panel-catalogReprocessing"
+              role="tabpanel"
+            >
+              <CatalogReprocessingSettingsSection
+                catalogAutonomousLiveEnabled={catalogAutonomousLiveEnabled}
+                catalogWorkflowMode={catalogWorkflowMode}
+              />
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -767,9 +861,14 @@ export function SettingsPage() {
           <StudioUpdatesSettingsSection />
         </div>
       ) : null}
+        </div>
+      </div>
 
       {isOwner && isPromptTemplateEditorOpen ? (
-        <div className="modal-overlay modal-overlay-blur" onClick={handleClosePromptTemplateEditor}>
+        <div
+          className="modal-overlay modal-overlay-blur"
+          onClick={handleClosePromptTemplateEditor}
+        >
           <div
             className="settings-editor-modal-shell"
             onClick={(event) => event.stopPropagation()}
@@ -782,12 +881,16 @@ export function SettingsPage() {
             >
               <ModalHeader className="settings-editor-modal-header">
                 <div className="settings-editor-modal-title-group">
-                  <h2 className="settings-section-title" id="settings-prompt-editor-title">
+                  <h2
+                    className="settings-section-title"
+                    id="settings-prompt-editor-title"
+                  >
                     AI Processing prompt
                   </h2>
                   <p className="settings-section-description">
-                    Editing this prompt changes live catalog suggestions generated for future designs.
-                    Saving still happens from the main Settings page.
+                    Editing this prompt changes live catalog suggestions
+                    generated for future designs. Saving still happens from the
+                    main Settings page.
                   </p>
                 </div>
 
@@ -817,13 +920,15 @@ export function SettingsPage() {
                   maxAutoHeightPx={420}
                   maxLength={AI_ENRICHMENT_PROMPT_TEMPLATE_MAX_LENGTH}
                   name="promptTemplate"
-                  onChange={(event) => setDraftPromptTemplate(event.target.value)}
+                  onChange={(event) =>
+                    setDraftPromptTemplate(event.target.value)
+                  }
                   value={selectedPromptTemplate}
                 />
 
                 <p className="settings-field-hint">
-                  This prompt is used by AI Processing only. The AI Playground remains a one-off test
-                  tool.
+                  This prompt is used by AI Processing only. The AI Playground
+                  remains a one-off test tool.
                 </p>
 
                 {promptTemplateError ? (
@@ -834,163 +939,11 @@ export function SettingsPage() {
               </ModalBody>
 
               <ModalFooter>
-                <Button onClick={handleClosePromptTemplateEditor} variant="secondary">
-                  Close (Save on Settings page)
-                </Button>
-              </ModalFooter>
-            </Modal>
-          </div>
-        </div>
-      ) : null}
-
-      {isOwner && isTagRerankPromptEditorOpen ? (
-        <div className="modal-overlay modal-overlay-blur" onClick={handleCloseTagRerankPromptEditor}>
-          <div
-            className="settings-editor-modal-shell"
-            onClick={(event) => event.stopPropagation()}
-            role="presentation"
-          >
-            <Modal
-              aria-labelledby="settings-tag-rerank-prompt-editor-title"
-              className="settings-editor-modal settings-prompt-editor-modal"
-              role="dialog"
-            >
-              <ModalHeader className="settings-editor-modal-header">
-                <div className="settings-editor-modal-title-group">
-                  <h2 className="settings-section-title" id="settings-tag-rerank-prompt-editor-title">
-                    Tag rerank prompt
-                  </h2>
-                  <p className="settings-section-description">
-                    Editing this prompt changes the optional second-call tag reranker used for future
-                    designs. Saving still happens from the main Settings page.
-                  </p>
-                </div>
-
                 <Button
-                  aria-label="Close tag rerank prompt editor"
-                  onClick={handleCloseTagRerankPromptEditor}
-                  variant="ghost"
+                  onClick={handleClosePromptTemplateEditor}
+                  variant="secondary"
                 >
-                  <X aria-hidden="true" size={18} strokeWidth={2} />
-                </Button>
-              </ModalHeader>
-
-              <ModalBody className="settings-editor-modal-body">
-                <div className="settings-form-actions">
-                  <Button
-                    disabled={!canManageSettings || isSaving}
-                    onClick={handleUseCurrentDefaultTagRerankPrompt}
-                    variant="secondary"
-                  >
-                    Use current default
-                  </Button>
-                </div>
-
-                <AutoResizeTextarea
-                  disabled={!canManageSettings || isSaving}
-                  label="Tag rerank prompt"
-                  maxAutoHeightPx={420}
-                  maxLength={AI_ENRICHMENT_TAG_RERANK_PROMPT_TEMPLATE_MAX_LENGTH}
-                  name="tagRerankPromptTemplate"
-                  onChange={(event) => setDraftTagRerankPromptTemplate(event.target.value)}
-                  value={selectedTagRerankPromptTemplate}
-                />
-
-                <p className="settings-field-hint">
-                  This prompt is used by the tag reranker in AI Processing only. The AI Playground
-                  tag rerank test has its own one-off override below and does not save here.
-                </p>
-              </ModalBody>
-
-              <ModalFooter>
-                <Button onClick={handleCloseTagRerankPromptEditor} variant="secondary">
                   Close (Save on Settings page)
-                </Button>
-              </ModalFooter>
-            </Modal>
-          </div>
-        </div>
-      ) : null}
-
-      {canManageSettings && isTagExclusionsModalOpen ? (
-        <div
-          className="modal-overlay modal-overlay-blur"
-          onClick={() => setIsTagExclusionsModalOpen(false)}
-        >
-          <div
-            className="settings-editor-modal-shell"
-            onClick={(event) => event.stopPropagation()}
-            role="presentation"
-          >
-            <Modal
-              aria-labelledby="settings-tag-exclusions-title"
-              className="settings-editor-modal settings-tag-exclusions-modal"
-              role="dialog"
-            >
-              <ModalHeader className="settings-editor-modal-header">
-                <div className="settings-editor-modal-title-group">
-                  <h2 className="settings-section-title" id="settings-tag-exclusions-title">
-                    Tag exclusions
-                  </h2>
-                  <p className="settings-section-description">
-                    Built-in exclusions always apply. Add team-specific single-word tags to block from
-                    AI suggestions.
-                  </p>
-                </div>
-
-                <Button
-                  aria-label="Close tag exclusions"
-                  onClick={() => setIsTagExclusionsModalOpen(false)}
-                  variant="ghost"
-                >
-                  <X aria-hidden="true" size={18} strokeWidth={2} />
-                </Button>
-              </ModalHeader>
-
-              <ModalBody className="settings-editor-modal-body">
-                <section className="settings-modal-section" aria-labelledby="built-in-exclusions-title">
-                  <div className="settings-modal-section-header">
-                    <h3 className="settings-subsection-title" id="built-in-exclusions-title">
-                      Built-in exclusions
-                    </h3>
-                    <p className="settings-field-hint">{BASE_AI_TAG_EXCLUSIONS.length} always active</p>
-                  </div>
-
-                  <div className="settings-tag-chip-row" aria-label="Built-in tag exclusions">
-                    {BASE_AI_TAG_EXCLUSIONS.map((tag: string) => (
-                      <Badge key={tag} variant="default">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                </section>
-
-                <section className="settings-modal-section" aria-labelledby="additional-exclusions-title">
-                  <div className="settings-modal-section-header">
-                    <h3 className="settings-subsection-title" id="additional-exclusions-title">
-                      Additional exclusions
-                    </h3>
-                    <p className="settings-field-hint">
-                      {selectedAdditionalTagExclusions.length} team-specific exclusions
-                    </p>
-                  </div>
-
-                  <TagChipInput
-                    adjustmentHint="Single-word lowercase tags only. Duplicates and built-in exclusions are ignored."
-                    disabled={!canManageSettings || isSaving}
-                    label="Additional exclusions"
-                    name="additionalTagExclusions"
-                    onChange={(value) =>
-                      setDraftAdditionalTagExclusions(parseAdditionalTagExclusionsInput(value))
-                    }
-                    value={additionalTagExclusionsInput}
-                  />
-                </section>
-              </ModalBody>
-
-              <ModalFooter>
-                <Button onClick={() => setIsTagExclusionsModalOpen(false)} variant="secondary">
-                  Done
                 </Button>
               </ModalFooter>
             </Modal>
@@ -1015,12 +968,15 @@ export function SettingsPage() {
             >
               <ModalHeader className="settings-playground-modal-header">
                 <div className="settings-playground-modal-title-group">
-                  <h2 className="settings-section-title" id="ai-playground-title">
+                  <h2
+                    className="settings-section-title"
+                    id="ai-playground-title"
+                  >
                     AI Playground
                   </h2>
                   <p className="settings-section-description">
-                    Test a one-off text + image prompt through Cloud Functions. This does not change
-                    saved AI settings or write to designs.
+                    Test a one-off text + image prompt through Cloud Functions.
+                    This does not change saved AI settings or write to designs.
                   </p>
                 </div>
 
@@ -1041,32 +997,64 @@ export function SettingsPage() {
                       disabled={playground.isRunning}
                       label="Playground model"
                       name="playgroundVisionModelId"
-                      onChange={(event) => playground.setVisionModelId(event.target.value)}
+                      onChange={(event) =>
+                        playground.setVisionModelId(event.target.value)
+                      }
                       options={ALL_VISION_MODEL_OPTIONS.map((option) => ({
                         label: option.label,
                         value: option.value,
                       }))}
                       value={playground.visionModelId}
                     />
+
+                    {isOwner ? (
+                      <div className="settings-playground-trace-toggle">
+                        <Toggle
+                          checked={playground.captureFullTrace}
+                          disabled={playground.isRunning}
+                          id="playgroundCaptureFullTrace"
+                          label="Capture full diagnostic trace"
+                          name="captureFullTrace"
+                          onChange={playground.setCaptureFullTrace}
+                        />
+                        <small className="settings-playground-trace-toggle-help">
+                          Includes the effective prompt and raw provider
+                          response for this owner-only run.
+                        </small>
+                      </div>
+                    ) : null}
                   </div>
 
                   <div className="settings-playground-composer">
                     <div className="settings-playground-prompt-field">
                       <div className="settings-playground-prompt-header">
                         <label htmlFor={playgroundPromptId}>Prompt</label>
-                        <div className="settings-playground-prompt-menu-shell" ref={playgroundPromptMenuRef}>
+                        <div
+                          className="settings-playground-prompt-menu-shell"
+                          ref={playgroundPromptMenuRef}
+                        >
                           <Button
                             aria-controls={playgroundPromptMenuId}
                             aria-expanded={isPromptMenuOpen}
                             aria-haspopup="menu"
                             disabled={playground.isRunning}
-                            onClick={() => setIsPromptMenuOpen((current) => !current)}
+                            onClick={() =>
+                              setIsPromptMenuOpen((current) => !current)
+                            }
                             size="sm"
                             variant="secondary"
                           >
-                            <Sparkles aria-hidden="true" size={14} strokeWidth={2.1} />
+                            <Sparkles
+                              aria-hidden="true"
+                              size={14}
+                              strokeWidth={2.1}
+                            />
                             <span>Insert prompt</span>
-                            <ChevronDown aria-hidden="true" size={14} strokeWidth={2.4} />
+                            <ChevronDown
+                              aria-hidden="true"
+                              size={14}
+                              strokeWidth={2.4}
+                            />
                           </Button>
 
                           {isPromptMenuOpen ? (
@@ -1083,7 +1071,11 @@ export function SettingsPage() {
                                 role="menuitem"
                                 type="button"
                               >
-                                <Sparkles aria-hidden="true" size={14} strokeWidth={2.1} />
+                                <Sparkles
+                                  aria-hidden="true"
+                                  size={14}
+                                  strokeWidth={2.1}
+                                />
                                 <span>Use prompt</span>
                               </button>
                               <button
@@ -1091,48 +1083,18 @@ export function SettingsPage() {
                                 disabled={playground.prompt.includes(
                                   AI_ENRICHMENT_APPROVED_CATEGORIES_PLACEHOLDER,
                                 )}
-                                onClick={handleInsertApprovedCategoriesPlaceholder}
+                                onClick={
+                                  handleInsertApprovedCategoriesPlaceholder
+                                }
                                 role="menuitem"
                                 type="button"
                               >
-                                <Sparkles aria-hidden="true" size={14} strokeWidth={2.1} />
+                                <Sparkles
+                                  aria-hidden="true"
+                                  size={14}
+                                  strokeWidth={2.1}
+                                />
                                 <span>Use categories</span>
-                              </button>
-                              <button
-                                className="settings-playground-prompt-menu-option"
-                                disabled={playground.prompt.includes(
-                                  AI_ENRICHMENT_APPROVED_CATEGORY_NAMES_PLACEHOLDER,
-                                )}
-                                onClick={handleInsertApprovedCategoryNamesPlaceholder}
-                                role="menuitem"
-                                type="button"
-                              >
-                                <Sparkles aria-hidden="true" size={14} strokeWidth={2.1} />
-                                <span>Use category names</span>
-                              </button>
-                              <button
-                                className="settings-playground-prompt-menu-option"
-                                disabled={playground.prompt.includes(
-                                  AI_ENRICHMENT_APPROVED_TAGS_PLACEHOLDER,
-                                )}
-                                onClick={handleInsertApprovedTagsPlaceholder}
-                                role="menuitem"
-                                type="button"
-                              >
-                                <Sparkles aria-hidden="true" size={14} strokeWidth={2.1} />
-                                <span>Use tags</span>
-                              </button>
-                              <button
-                                className="settings-playground-prompt-menu-option"
-                                disabled={playground.prompt.includes(
-                                  AI_ENRICHMENT_APPROVED_TAG_NAMES_PLACEHOLDER,
-                                )}
-                                onClick={handleInsertApprovedTagNamesPlaceholder}
-                                role="menuitem"
-                                type="button"
-                              >
-                                <Sparkles aria-hidden="true" size={14} strokeWidth={2.1} />
-                                <span>Use tag names</span>
                               </button>
                             </div>
                           ) : null}
@@ -1147,7 +1109,9 @@ export function SettingsPage() {
                         maxAutoHeightPx={360}
                         maxLength={AI_ENRICHMENT_PLAYGROUND_MAX_PROMPT_LENGTH}
                         name="playgroundPrompt"
-                        onChange={(event) => playground.setPrompt(event.target.value)}
+                        onChange={(event) =>
+                          playground.setPrompt(event.target.value)
+                        }
                         placeholder="Describe the artwork, extract text, or request JSON output for inspection."
                         scrollToCaretOnInput
                         value={playground.prompt}
@@ -1162,11 +1126,15 @@ export function SettingsPage() {
                         id={playgroundImageInputId}
                         name="playgroundImage"
                         onChange={(event) => {
-                          playground.setSelectedImage(event.target.files?.[0] ?? null);
+                          playground.setSelectedImage(
+                            event.target.files?.[0] ?? null,
+                          );
                           event.currentTarget.value = "";
 
                           requestAnimationFrame(() => {
-                            playgroundTextareaRef.current?.focus({ preventScroll: true });
+                            playgroundTextareaRef.current?.focus({
+                              preventScroll: true,
+                            });
                             playgroundTextareaRef.current?.scrollIntoView({
                               block: "nearest",
                             });
@@ -1180,16 +1148,21 @@ export function SettingsPage() {
                         className="icon-button icon-button-md icon-button-ghost settings-playground-attach-button"
                         htmlFor={playgroundImageInputId}
                       >
-                        <Paperclip aria-hidden="true" size={18} strokeWidth={2.2} />
+                        <Paperclip
+                          aria-hidden="true"
+                          size={18}
+                          strokeWidth={2.2}
+                        />
                       </label>
                     </div>
 
                     <div className="settings-playground-composer-footer">
                       <div className="settings-playground-upload-state">
                         <p className="settings-field-hint">
-                          Image optional — attach a PNG, JPEG, or WebP up to 50 MB to test vision
-                          prompts, or leave it empty for a text-only prompt test. The file is
-                          processed transiently on the server and is not stored.
+                          Image optional — attach a PNG, JPEG, or WebP up to 50
+                          MB to test vision prompts, or leave it empty for a
+                          text-only prompt test. The file is processed
+                          transiently on the server and is not stored.
                         </p>
 
                         {playground.imageName && playground.imageSizeLabel ? (
@@ -1223,7 +1196,9 @@ export function SettingsPage() {
                           onClick={() => void playground.runPlayground()}
                           variant="primary"
                         >
-                          {playground.isRunning ? "Running…" : "Run AI playground"}
+                          {playground.isRunning
+                            ? "Running…"
+                            : "Run AI playground"}
                         </Button>
                       </div>
                     </div>
@@ -1234,7 +1209,6 @@ export function SettingsPage() {
                       {playground.error}
                     </p>
                   ) : null}
-
                 </div>
               </ModalBody>
             </Modal>
@@ -1259,7 +1233,10 @@ export function SettingsPage() {
             >
               <ModalHeader className="settings-playground-result-modal-header">
                 <div className="settings-playground-modal-title-group">
-                  <h2 className="settings-section-title" id="ai-playground-result-title">
+                  <h2
+                    className="settings-section-title"
+                    id="ai-playground-result-title"
+                  >
                     AI Playground Result
                   </h2>
                   <p className="settings-section-description">
@@ -1278,275 +1255,488 @@ export function SettingsPage() {
               </ModalHeader>
 
               <ModalBody className="settings-playground-result-modal-body">
-                <section className="settings-playground-result" aria-label="AI playground result">
-                  <dl className="settings-playground-result-meta">
-                    <div>
-                      <dt>Provider</dt>
-                      <dd>{playground.result.provider}</dd>
-                    </div>
-                    <div>
-                      <dt>Model used</dt>
-                      <dd>{playground.result.visionModelId}</dd>
-                    </div>
-                    <div>
-                      <dt>Elapsed</dt>
-                      <dd>{playground.result.elapsedMs} ms</dd>
-                    </div>
-                    <div>
-                      <dt>Input tokens</dt>
-                      <dd>{playground.result.promptTokens ?? "N/A"}</dd>
-                    </div>
-                    <div>
-                      <dt>Output tokens</dt>
-                      <dd>{playground.result.completionTokens ?? "N/A"}</dd>
-                    </div>
-                    <div>
-                      <dt>Estimated cost</dt>
-                      <dd>
-                        {playground.result.estimatedCostUsd != null
-                          ? `$${playground.result.estimatedCostUsd.toFixed(6)}`
-                          : "N/A"}
-                      </dd>
-                    </div>
-                  </dl>
+                <div
+                  aria-label="AI playground result sections"
+                  className="settings-playground-result-tabs"
+                  role="tablist"
+                >
+                  {AI_PLAYGROUND_RESULT_TABS.map((tab) => (
+                    <button
+                      aria-controls={`ai-playground-result-panel-${tab.id}`}
+                      aria-selected={playgroundResultTab === tab.id}
+                      className={`settings-playground-result-tab${playgroundResultTab === tab.id ? " is-active" : ""}`}
+                      id={`ai-playground-result-tab-${tab.id}`}
+                      key={tab.id}
+                      onClick={() => setPlaygroundResultTab(tab.id)}
+                      role="tab"
+                      type="button"
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
 
-                  <div className="settings-playground-output">
-                    <div className="settings-playground-output-header">
-                      <h3 className="settings-subsection-title">Response output</h3>
-                      <button
-                        aria-label="Copy response output"
-                        className="icon-button icon-button-sm icon-button-ghost"
-                        onClick={() => copyBlock("first-call", playgroundResultOutputText)}
-                        type="button"
-                      >
-                        {copiedBlockId === "first-call"
-                          ? <Check aria-hidden="true" size={15} strokeWidth={2.2} />
-                          : <Copy aria-hidden="true" size={15} strokeWidth={2.2} />}
-                      </button>
-                    </div>
-                    <pre>{playgroundResultOutputText}</pre>
-                  </div>
+                <section
+                  aria-labelledby={`ai-playground-result-tab-${playgroundResultTab}`}
+                  className="settings-playground-result settings-playground-result-stack"
+                  aria-label="AI playground result"
+                  id={`ai-playground-result-panel-${playgroundResultTab}`}
+                  role="tabpanel"
+                >
+                  {playgroundResultTab !== "semanticReview" ? (
+                    <section className="settings-playground-stage-card">
+                      <div className="settings-playground-stage-header">
+                        <div>
+                          <span className="settings-playground-stage-label">
+                            Pass 1
+                          </span>
+                          <h3 className="settings-subsection-title">
+                            Visual enrichment result
+                          </h3>
+                        </div>
+                        <span className="settings-playground-stage-status">
+                          COMPLETE
+                        </span>
+                      </div>
 
-                  <div className="settings-playground-tag-rerank">
-                    <div className="settings-form-actions">
-                      <Button
-                        disabled={
-                          !canManageSettings ||
-                          tagRerankPlayground.isRunning ||
-                          !isValidFirstCallJson(playground.result.outputText)
-                        }
-                        onClick={() =>
-                          void tagRerankPlayground.runTagRerank(
-                            playground.result?.outputText ?? "",
-                            playground.result?.visionModelId ?? playground.visionModelId,
-                            tagRerankPlaygroundPromptOverride?.trim() || undefined,
-                          )
-                        }
-                        variant="secondary"
-                      >
-                        {tagRerankPlayground.isRunning ? "Running tag rerank…" : "Run tag rerank"}
-                      </Button>
-
-                      <button
-                        aria-label="Edit tag rerank prompt override for this playground run"
-                        className="icon-button icon-button-sm icon-button-ghost"
-                        disabled={tagRerankPlayground.isRunning}
-                        onClick={() => {
-                          setTagRerankPlaygroundPromptOverride(
-                            (current) => current ?? tagRerankPromptTemplate,
-                          );
-                          setIsTagRerankPlaygroundPromptModalOpen(true);
-                        }}
-                        title="Tag rerank prompt override (optional, one-off — does not save)"
-                        type="button"
-                      >
-                        <Settings aria-hidden="true" size={16} strokeWidth={2} />
-                      </button>
-
-                      {tagRerankPlaygroundPromptOverride?.trim() ? (
-                        <p className="settings-field-hint">Prompt override active for this run.</p>
-                      ) : null}
-                      {combinedEstimatedCostUsd != null ? (
-                        <p className="settings-field-hint settings-playground-combined-cost">
-                          Combined cost (both runs): ${combinedEstimatedCostUsd.toFixed(6)}
-                        </p>
-                      ) : null}
-                      {!isValidFirstCallJson(playground.result.outputText) ? (
-                        <p className="settings-field-hint">
-                          The response above must be valid JSON with title, description, category,
-                          and tags before the tag rerank can run.
-                        </p>
-                      ) : null}
-                    </div>
-
-                    {tagRerankPlayground.error ? (
-                      <p className="auth-message auth-message-error" role="alert">
-                        {tagRerankPlayground.error}
-                      </p>
-                    ) : null}
-
-                    {tagRerankPlayground.result ? (
-                      <section
-                        aria-label="AI tag rerank result"
-                        className="settings-playground-result settings-playground-tag-rerank-result"
-                      >
-                        <h3 className="settings-subsection-title">Tag rerank result</h3>
+                      {playgroundResultTab === "overview" ? (
                         <dl className="settings-playground-result-meta">
                           <div>
+                            <dt>Provider</dt>
+                            <dd>{playground.result.provider}</dd>
+                          </div>
+                          <div>
+                            <dt>Model used</dt>
+                            <dd>{playground.result.visionModelId}</dd>
+                          </div>
+                          <div>
                             <dt>Elapsed</dt>
-                            <dd>{tagRerankPlayground.result.elapsedMs} ms</dd>
+                            <dd>{playground.result.elapsedMs} ms</dd>
                           </div>
                           <div>
                             <dt>Input tokens</dt>
-                            <dd>{tagRerankPlayground.result.promptTokens ?? "N/A"}</dd>
+                            <dd>{playground.result.promptTokens ?? "N/A"}</dd>
                           </div>
                           <div>
                             <dt>Output tokens</dt>
-                            <dd>{tagRerankPlayground.result.completionTokens ?? "N/A"}</dd>
+                            <dd>
+                              {playground.result.completionTokens ?? "N/A"}
+                            </dd>
                           </div>
                           <div>
-                            <dt>Estimated cost</dt>
+                            <dt>Pass 1 cost</dt>
                             <dd>
-                              {tagRerankPlayground.result.estimatedCostUsd != null
-                                ? `$${tagRerankPlayground.result.estimatedCostUsd.toFixed(6)}`
-                                : "N/A"}
+                              {formatPlaygroundCost(
+                                playground.result.estimatedCostUsd,
+                              )}
                             </dd>
                           </div>
                         </dl>
+                      ) : null}
 
+                      {playgroundPass1Context ? (
+                        <>
+                          {playgroundResultTab === "overview" ? (
+                            <div className="settings-playground-context-grid">
+                              <div className="settings-playground-detail-card">
+                                <h4>Catalog fields</h4>
+                                <dl className="settings-playground-detail-list">
+                                  <div>
+                                    <dt>Title</dt>
+                                    <dd>
+                                      {playgroundPass1Context.normalized.title}
+                                    </dd>
+                                  </div>
+                                  <div>
+                                    <dt>Description</dt>
+                                    <dd>
+                                      {
+                                        playgroundPass1Context.normalized
+                                          .description
+                                      }
+                                    </dd>
+                                  </div>
+                                  <div>
+                                    <dt>Category</dt>
+                                    <dd>
+                                      {playgroundPass1Context.categoryName ??
+                                        playgroundPass1Context.normalized
+                                          .category}
+                                    </dd>
+                                  </div>
+                                  <div>
+                                    <dt>Visible text</dt>
+                                    <dd>
+                                      {playgroundPass1Context.normalized.visibleText.join(
+                                        ", ",
+                                      ) || "None detected"}
+                                    </dd>
+                                  </div>
+                                </dl>
+                              </div>
+                              <div className="settings-playground-detail-card">
+                                <h4>Decision preview</h4>
+                                <dl className="settings-playground-detail-list">
+                                  <div>
+                                    <dt>WAA decision</dt>
+                                    <dd>
+                                      {
+                                        playgroundPass1Context
+                                          .automationDecision.decision
+                                      }
+                                    </dd>
+                                  </div>
+                                  <div>
+                                    <dt>Hard blockers</dt>
+                                    <dd>
+                                      {playgroundPass1Context.objectiveBlockers.join(
+                                        ", ",
+                                      ) || "None"}
+                                    </dd>
+                                  </div>
+                                  <div>
+                                    <dt>Semantic blockers</dt>
+                                    <dd>
+                                      {playgroundPass1Context.semanticBlockers.join(
+                                        ", ",
+                                      ) || "None"}
+                                    </dd>
+                                  </div>
+                                  <div>
+                                      <dt>Pass 2 experimental</dt>
+                                      <dd>
+                                      {playgroundPass1Context.semanticReviewPlaygroundEnabled
+                                        ? "ON — manual testing only"
+                                        : "OFF"}
+                                      </dd>
+                                  </div>
+                                </dl>
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {playgroundResultTab === "profiles" ? (
+                            <div className="settings-playground-profile-grid">
+                              <div className="settings-playground-detail-card settings-playground-profile-card">
+                                <h4>Smart Profile</h4>
+                                <pre>
+                                  {formatPlaygroundJson(
+                                    playgroundPass1Context.originalSmartProfile,
+                                  )}
+                                </pre>
+                              </div>
+                              <div className="settings-playground-detail-card settings-playground-profile-card">
+                                <h4>Visual Context Profile</h4>
+                                <pre>
+                                  {formatPlaygroundJson(
+                                    playgroundPass1Context.normalized
+                                      .visualContextProfile,
+                                  )}
+                                </pre>
+                              </div>
+                            </div>
+                          ) : null}
+                        </>
+                      ) : (
+                        <p className="settings-field-hint">
+                          This result was produced by an older Playground
+                          callable and did not include the typed Pass 1 context
+                          required for Semantic Review.
+                        </p>
+                      )}
+
+                      {playgroundResultTab === "response" ? (
                         <div className="settings-playground-output settings-playground-output-compact">
                           <div className="settings-playground-output-header">
-                            <h4 className="settings-subsection-title">
-                              Approved tag candidates sent ({tagRerankPlayground.result.approvedTagCandidates.length})
-                            </h4>
+                            <h4>Canonical response output</h4>
                             <button
-                              aria-label="Copy approved tag candidates"
+                              aria-label="Copy response output"
                               className="icon-button icon-button-sm icon-button-ghost"
                               onClick={() =>
                                 copyBlock(
-                                  "candidates",
-                                  JSON.stringify(tagRerankPlayground.result?.approvedTagCandidates, null, 2),
+                                  "first-call",
+                                  playgroundResultOutputText,
                                 )
                               }
                               type="button"
                             >
-                              {copiedBlockId === "candidates"
-                                ? <Check aria-hidden="true" size={15} strokeWidth={2.2} />
-                                : <Copy aria-hidden="true" size={15} strokeWidth={2.2} />}
+                              {copiedBlockId === "first-call" ? (
+                                <Check
+                                  aria-hidden="true"
+                                  size={15}
+                                  strokeWidth={2.2}
+                                />
+                              ) : (
+                                <Copy
+                                  aria-hidden="true"
+                                  size={15}
+                                  strokeWidth={2.2}
+                                />
+                              )}
                             </button>
                           </div>
-                          <pre>
-                            {JSON.stringify(tagRerankPlayground.result.approvedTagCandidates, null, 2)}
-                          </pre>
+                          <pre>{playgroundResultOutputText}</pre>
                         </div>
+                      ) : null}
+                    </section>
+                  ) : null}
 
-                        <div className="settings-playground-output">
-                          <div className="settings-playground-output-header">
-                            <h4 className="settings-subsection-title">Reranker output</h4>
-                            <button
-                              aria-label="Copy reranker output"
-                              className="icon-button icon-button-sm icon-button-ghost"
-                              onClick={() =>
-                                copyBlock(
-                                  "reranker",
-                                  formatAiPlaygroundOutput(tagRerankPlayground.result?.outputText ?? ""),
-                                )
-                              }
-                              type="button"
-                            >
-                              {copiedBlockId === "reranker"
-                                ? <Check aria-hidden="true" size={15} strokeWidth={2.2} />
-                                : <Copy aria-hidden="true" size={15} strokeWidth={2.2} />}
-                            </button>
+                  {playgroundResultTab === "semanticReview" ? (
+                    <>
+                      <section className="settings-playground-stage-card settings-playground-semantic-stage">
+                        <div className="settings-playground-stage-header">
+                          <div>
+                            <span className="settings-playground-stage-label">
+                              Pass 2
+                            </span>
+                            <h3 className="settings-subsection-title">
+                              Semantic Review
+                            </h3>
                           </div>
-                          <pre>{formatAiPlaygroundOutput(tagRerankPlayground.result.outputText)}</pre>
+                          {playgroundPass1Context ? (
+                            <span className="settings-playground-stage-status">
+                              {playgroundPass1Context.pass2Eligibility.replace(
+                                /_/g,
+                                " ",
+                              )}
+                            </span>
+                          ) : null}
                         </div>
 
-                        {tagRerankPlayground.result.discardedTags.length > 0 ? (
+                        {!playgroundPass1Context ? (
                           <p className="settings-field-hint">
-                            Discarded tags not in the approved shortlist:{" "}
-                            {tagRerankPlayground.result.discardedTags.join(", ")}
+                            Semantic Review is unavailable until a current Pass
+                            1 context is returned.
+                          </p>
+                        ) : !semanticReviewPlaygroundEnabled ? (
+                          <p className="settings-field-hint">
+                            Pass 2 experimental testing is OFF. Enable it in
+                            AI Enrichment settings to run manual Semantic
+                            Review. Processing remains Pass 1-only.
+                          </p>
+                        ) : playgroundPass1Context.pass2Eligibility ===
+                          "eligible" ? (
+                          <>
+                            <p className="settings-field-hint">
+                              Eligible semantic blockers were found. This
+                              explicit text-only review uses the configured
+                              Semantic Reviewer model and never resends the
+                              image.
+                            </p>
+                            <div className="settings-form-actions">
+                              <Button
+                                disabled={
+                                  semanticReviewPlayground.attempted ||
+                                  semanticReviewPlayground.isRunning
+                                }
+                                onClick={() =>
+                                  void semanticReviewPlayground.runReview()
+                                }
+                                variant="primary"
+                              >
+                                {semanticReviewPlayground.isRunning
+                                  ? "Running Semantic Review…"
+                                  : semanticReviewPlayground.attempted
+                                    ? "Semantic Review attempted"
+                                    : "Run Semantic Review"}
+                              </Button>
+                            </div>
+                          </>
+                        ) : playgroundPass1Context.pass2Eligibility ===
+                          "not_needed" ? (
+                          <p className="settings-field-hint">
+                            Semantic Review is not needed because no eligible
+                            semantic blockers were returned.
+                          </p>
+                        ) : playgroundPass1Context.pass2Eligibility ===
+                          "blocked_by_objective" ? (
+                          <p className="settings-field-hint">
+                            Semantic Review is blocked by objective issues:{" "}
+                            {playgroundPass1Context.objectiveBlockers.join(
+                              ", ",
+                            )}
+                            .
+                          </p>
+                        ) : (
+                          <p className="settings-field-hint">
+                            Semantic Review is unavailable because the required
+                            Visual Context Profile is incomplete. The workflow
+                            fails closed.
+                          </p>
+                        )}
+
+                        {semanticReviewPlayground.error ? (
+                          <p
+                            className="auth-message auth-message-error"
+                            role="alert"
+                          >
+                            Semantic Review failed:{" "}
+                            {semanticReviewPlayground.error}
                           </p>
                         ) : null}
                       </section>
-                    ) : null}
-                  </div>
+
+                      {semanticReviewResult ? (
+                        <section className="settings-playground-stage-card settings-playground-effective-stage">
+                          <div className="settings-playground-stage-header">
+                            <div>
+                              <span className="settings-playground-stage-label">
+                                Effective result
+                              </span>
+                              <h3 className="settings-subsection-title">
+                                Semantic Review outcome
+                              </h3>
+                            </div>
+                            <span className="settings-playground-stage-status">
+                              {semanticReviewResult.result.decision}
+                            </span>
+                          </div>
+
+                          <dl className="settings-playground-result-meta">
+                            <div>
+                              <dt>Provider</dt>
+                              <dd>{semanticReviewResult.provider}</dd>
+                            </div>
+                            <div>
+                              <dt>Model used</dt>
+                              <dd>{semanticReviewResult.model}</dd>
+                            </div>
+                            <div>
+                              <dt>Prompt version</dt>
+                              <dd>{semanticReviewResult.promptVersion}</dd>
+                            </div>
+                            <div>
+                              <dt>Input tokens</dt>
+                              <dd>
+                                {semanticReviewResult.promptTokens ?? "N/A"}
+                              </dd>
+                            </div>
+                            <div>
+                              <dt>Output tokens</dt>
+                              <dd>
+                                {semanticReviewResult.completionTokens ?? "N/A"}
+                              </dd>
+                            </div>
+                            <div>
+                              <dt>Pass 2 cost</dt>
+                              <dd>
+                                {formatPlaygroundCost(
+                                  semanticReviewResult.estimatedCostUsd,
+                                )}
+                              </dd>
+                            </div>
+                            <div>
+                              <dt>Combined AI cost</dt>
+                              <dd>{combinedPlaygroundCost}</dd>
+                            </div>
+                            <div>
+                              <dt>Final WAA decision</dt>
+                              <dd>
+                                {
+                                  semanticReviewResult.finalAutomationDecision
+                                    .decision
+                                }
+                              </dd>
+                            </div>
+                          </dl>
+
+                          <div className="settings-playground-context-grid">
+                            <div className="settings-playground-detail-card">
+                              <h4>Decision</h4>
+                              <dl className="settings-playground-detail-list">
+                                <div>
+                                  <dt>Reason</dt>
+                                  <dd>{semanticReviewResult.result.reason}</dd>
+                                </div>
+                                <div>
+                                  <dt>Resolved blockers</dt>
+                                  <dd>
+                                    {semanticReviewResult.deterministicBlockersResolved.join(
+                                      ", ",
+                                    ) || "None"}
+                                  </dd>
+                                </div>
+                                <div>
+                                  <dt>Unresolved blockers</dt>
+                                  <dd>
+                                    {semanticReviewResult.deterministicBlockersUnresolved.join(
+                                      ", ",
+                                    ) || "None"}
+                                  </dd>
+                                </div>
+                                <div>
+                                  <dt>Final objective blockers</dt>
+                                  <dd>
+                                    {semanticReviewResult.finalObjectiveBlockers.join(
+                                      ", ",
+                                    ) || "None"}
+                                  </dd>
+                                </div>
+                                <div>
+                                  <dt>Final semantic blockers</dt>
+                                  <dd>
+                                    {semanticReviewResult.finalSemanticBlockers.join(
+                                      ", ",
+                                    ) || "None"}
+                                  </dd>
+                                </div>
+                                <div>
+                                  <dt>Reviewer-reported blockers (audit)</dt>
+                                  <dd>
+                                    resolved:{" "}
+                                    {semanticReviewResult.reviewerReportedBlockers.resolved.join(
+                                      ", ",
+                                    ) || "None"}
+                                    ; unresolved:{" "}
+                                    {semanticReviewResult.reviewerReportedBlockers.unresolved.join(
+                                      ", ",
+                                    ) || "None"}
+                                  </dd>
+                                </div>
+                              </dl>
+                            </div>
+                            <div className="settings-playground-detail-card settings-playground-profile-card">
+                              <h4>Validated patches</h4>
+                              <pre>
+                                {formatPlaygroundJson(
+                                  semanticReviewResult.result.patches ?? [],
+                                )}
+                              </pre>
+                            </div>
+                          </div>
+
+                          <div className="settings-playground-profile-grid settings-playground-effective-detail-grid">
+                            <div className="settings-playground-detail-card settings-playground-profile-card">
+                              <h4>Original Smart Profile</h4>
+                              <pre>
+                                {formatPlaygroundJson(
+                                  semanticReviewResult.originalSmartProfile,
+                                )}
+                              </pre>
+                            </div>
+                            <div className="settings-playground-detail-card settings-playground-profile-card">
+                              <h4>Effective Smart Profile</h4>
+                              <pre>
+                                {formatPlaygroundJson(
+                                  semanticReviewResult.effectiveSmartProfile,
+                                )}
+                              </pre>
+                            </div>
+                            <div className="settings-playground-detail-card settings-playground-profile-card">
+                              <h4>Final WAA preview</h4>
+                              <pre>
+                                {formatPlaygroundJson(
+                                  semanticReviewResult.finalAutomationDecision,
+                                )}
+                              </pre>
+                            </div>
+                          </div>
+                        </section>
+                      ) : null}
+                    </>
+                  ) : null}
                 </section>
               </ModalBody>
-            </Modal>
-          </div>
-        </div>
-      ) : null}
-
-      {canManageSettings && isTagRerankPlaygroundPromptModalOpen ? (
-        <div
-          className="modal-overlay modal-overlay-blur"
-          onClick={() => setIsTagRerankPlaygroundPromptModalOpen(false)}
-        >
-          <div
-            className="settings-editor-modal-shell"
-            onClick={(event) => event.stopPropagation()}
-            role="presentation"
-          >
-            <Modal
-              aria-labelledby="tag-rerank-playground-prompt-modal-title"
-              className="settings-editor-modal settings-prompt-editor-modal"
-              role="dialog"
-            >
-              <ModalHeader className="settings-editor-modal-header">
-                <div className="settings-editor-modal-title-group">
-                  <h2 className="settings-section-title" id="tag-rerank-playground-prompt-modal-title">
-                    Tag rerank prompt override
-                  </h2>
-                  <p className="settings-section-description">
-                    One-off override for this Playground run only. Does not save to Settings.
-                  </p>
-                </div>
-
-                <Button
-                  aria-label="Close tag rerank prompt override editor"
-                  onClick={() => setIsTagRerankPlaygroundPromptModalOpen(false)}
-                  variant="ghost"
-                >
-                  <X aria-hidden="true" size={18} strokeWidth={2} />
-                </Button>
-              </ModalHeader>
-
-              <ModalBody className="settings-editor-modal-body">
-                <div className="settings-form-actions">
-                  <Button
-                    disabled={tagRerankPlayground.isRunning}
-                    onClick={() => setTagRerankPlaygroundPromptOverride(tagRerankPromptTemplate)}
-                    variant="secondary"
-                  >
-                    Reset to live prompt
-                  </Button>
-                </div>
-
-                <AutoResizeTextarea
-                  disabled={tagRerankPlayground.isRunning}
-                  label="Tag rerank prompt override"
-                  maxAutoHeightPx={420}
-                  maxLength={AI_ENRICHMENT_TAG_RERANK_PROMPT_TEMPLATE_MAX_LENGTH}
-                  name="tagRerankPlaygroundPromptOverride"
-                  onChange={(event) => setTagRerankPlaygroundPromptOverride(event.target.value)}
-                  value={tagRerankPlaygroundPromptOverride ?? tagRerankPromptTemplate}
-                />
-
-                <p className="settings-field-hint">
-                  Pre-filled with the live tag rerank prompt from Settings. Edit freely — changes
-                  here only affect this playground run and are not saved.
-                </p>
-              </ModalBody>
-
-              <ModalFooter>
-                <Button
-                  onClick={() => setIsTagRerankPlaygroundPromptModalOpen(false)}
-                  variant="secondary"
-                >
-                  Done
-                </Button>
-              </ModalFooter>
             </Modal>
           </div>
         </div>

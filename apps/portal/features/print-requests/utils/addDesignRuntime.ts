@@ -2,6 +2,14 @@ export interface CurrentRef<T> {
   current: T;
 }
 
+/** Longer dwell so customers see the review/submit nudge after adding to Current Request. */
+export const SUBMIT_NUDGE_TOAST_DURATION_MS = 8_000;
+
+export const SUBMIT_NUDGE_TOAST_MESSAGE =
+  "You're not done yet — review and submit your request when you're ready.";
+
+export const SUBMIT_NUDGE_TOAST_ACTION_LABEL = "Review request";
+
 export function requireCurrentSignedIn<TUser, TRouter>(input: {
   userRef: CurrentRef<TUser | null>;
   routerRef: CurrentRef<TRouter>;
@@ -21,20 +29,27 @@ export function requireCurrentSignedIn<TUser, TRouter>(input: {
   return false;
 }
 
+/**
+ * After a first-add to Current Request, nudge review/submit instead of Undo.
+ * Navigates to the request detail (or /requests if id is unavailable).
+ */
 export function announceCurrentDesignAdded(input: {
-  title: string;
   showSuccessRef: CurrentRef<
     (
       message: string,
-      options: { action: { label: string; onClick: () => void } },
+      options: {
+        action: { label: string; onClick: () => void };
+        durationMs?: number;
+      },
     ) => void
   >;
-  onUndo: () => void;
+  onReviewRequest: () => void;
 }): void {
-  input.showSuccessRef.current(`Added “${input.title}” to your Current Request.`, {
+  input.showSuccessRef.current(SUBMIT_NUDGE_TOAST_MESSAGE, {
+    durationMs: SUBMIT_NUDGE_TOAST_DURATION_MS,
     action: {
-      label: "Undo",
-      onClick: input.onUndo,
+      label: SUBMIT_NUDGE_TOAST_ACTION_LABEL,
+      onClick: input.onReviewRequest,
     },
   });
 }

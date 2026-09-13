@@ -42,7 +42,7 @@ function resolveProductionStatus(value: unknown): ShowProductionStatus {
 
 /**
  * Public-safe catalog design gallery for a Portal-visible show.
- * No auth required; never returns customer-upload artwork or PII.
+ * No auth required; only ready design-library designs are returned (not raw customer uploads).
  */
 export const listPortalShowCatalogDesigns = onCall(
   async (request): Promise<ListPortalShowCatalogDesignsResponse> => {

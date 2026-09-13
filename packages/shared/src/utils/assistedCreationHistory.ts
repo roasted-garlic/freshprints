@@ -5,6 +5,7 @@ export const ASSISTED_CREATION_UPDATE_ACKS_COLLECTION = "assistedCreationUpdateA
 
 export const ASSISTED_CREATION_REQUEST_UPDATED_NOTE = "Request updated" as const;
 export const ASSISTED_CREATION_PROOF_EMAIL_SENT_NOTE = "Proof-ready email sent" as const;
+export const ASSISTED_CREATION_FINAL_ARTWORK_EMAIL_SENT_NOTE = "Final artwork email sent" as const;
 export const ASSISTED_CREATION_CUSTOMER_MESSAGE_TITLE = "Message" as const;
 export const ASSISTED_CREATION_STAFF_MESSAGE_TITLE = "Message" as const;
 
@@ -74,7 +75,9 @@ export function isAssistedCreationProofEmailSentEntry(
   const note = entry.note?.trim() ?? "";
   return (
     note === ASSISTED_CREATION_PROOF_EMAIL_SENT_NOTE ||
-    (entry.byRole === "system" && /^Proof-ready email sent/i.test(note))
+    note === ASSISTED_CREATION_FINAL_ARTWORK_EMAIL_SENT_NOTE ||
+    (entry.byRole === "system" && /^Proof-ready email sent/i.test(note)) ||
+    (entry.byRole === "system" && /^Final artwork email sent/i.test(note))
   );
 }
 

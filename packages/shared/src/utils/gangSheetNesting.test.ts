@@ -317,3 +317,42 @@ describe("nestBoxesIntoShelvesWithHeightCap", () => {
     }
   });
 });
+
+describe("standard gang sheet two-up at 300 DPI", () => {
+  const EXPORT_DPI = 300;
+  const sideMarginInches = 0.25;
+  const gutterInches = 0.5;
+  const sheetWidthInches = 23;
+  const spacing = {
+    sideMarginPx: Math.round(sideMarginInches * EXPORT_DPI),
+    topBottomMarginPx: Math.round(0.5 * EXPORT_DPI),
+    gutterPx: Math.round(gutterInches * EXPORT_DPI),
+  };
+  const sheetWidthPx = Math.round(sheetWidthInches * EXPORT_DPI);
+
+  it("fits two 11 inch prints side by side on the standard 23 inch sheet", () => {
+    const elevenInchesPx = Math.round(11 * EXPORT_DPI);
+    const boxes: NestableBox[] = [
+      { id: "a", widthPx: elevenInchesPx, heightPx: 1200 },
+      { id: "b", widthPx: elevenInchesPx, heightPx: 1200 },
+    ];
+    const result = nestBoxesIntoShelves(boxes, sheetWidthPx, spacing);
+
+    assert.equal(result.skipped.length, 0);
+    assert.equal(result.placements.length, 2);
+    assert.equal(result.placements[0]?.y, result.placements[1]?.y);
+  });
+
+  it("does not place two 12 inch prints in the same row on the standard sheet", () => {
+    const twelveInchesPx = Math.round(12 * EXPORT_DPI);
+    const boxes: NestableBox[] = [
+      { id: "a", widthPx: twelveInchesPx, heightPx: 1200 },
+      { id: "b", widthPx: twelveInchesPx, heightPx: 1200 },
+    ];
+    const result = nestBoxesIntoShelves(boxes, sheetWidthPx, spacing);
+
+    assert.equal(result.skipped.length, 0);
+    assert.equal(result.placements.length, 2);
+    assert.notEqual(result.placements[0]?.y, result.placements[1]?.y);
+  });
+});

@@ -8,6 +8,7 @@ import { useAuth } from '../../auth/context/AuthContext';
 import { isPortalPublicBrowsePath } from '../../auth/utils/portalPublicBrowsePath';
 import { PortalAboutFirstVisitModal } from '../../help/components/PortalAboutFirstVisitModal';
 import { CurrentRequestDrawer } from '../../print-requests/components/CurrentRequestDrawer';
+import { PortalSiteWideEditingModeBanner } from '../../print-requests/components/PortalSiteWideEditingModeBanner';
 import { PortalWorkingRequestLimitBanner } from '../../print-requests/components/PortalWorkingRequestLimitBanner';
 import { PortalPrintRequestProvider } from '../../print-requests/context/PortalPrintRequestContext';
 import { FavoritesProvider } from '../../favorites/context/FavoritesProvider';
@@ -18,6 +19,9 @@ import { PortalAppHeader } from './PortalAppHeader';
 import { PortalBottomNav } from './PortalBottomNav';
 import { PortalScrollReset } from './PortalScrollReset';
 import { PortalSidebar } from './PortalSidebar';
+import { PortalMaintenanceExperience } from '../../maintenance/components/PortalMaintenanceExperience';
+import { PortalMaintenanceTestBanner } from '../../maintenance/components/PortalMaintenanceTestBanner';
+import { usePortalMaintenance } from '../../maintenance/context/PortalMaintenanceContext';
 
 interface PortalAppShellProps {
   children: ReactNode;
@@ -61,20 +65,28 @@ function useSyncPortalStickyTopOffset(topRef: RefObject<HTMLDivElement | null>) 
 function PortalAppShellContent({ children }: PortalAppShellProps) {
   const pathname = usePathname();
   const { bootstrapStatus, isAuthenticated } = useAuth();
+  const {
+    status: maintenanceStatus,
+    enabled: maintenanceEnabled,
+    maintenanceTestAccessGranted,
+  } = usePortalMaintenance();
   const { closeDrawer, isDrawerOpen } = usePortalDrawer();
   const stickyTopRef = useRef<HTMLDivElement>(null);
   useSyncPortalStickyTopOffset(stickyTopRef);
   const showGuestAuthOverlay =
     !isAuthenticated &&
     isGuestBrowseSession(bootstrapStatus) &&
-    !isPortalPublicBrowsePath(pathname);
+    !isPortalPublicBrowsePath(pathname) &&
+    maintenanceStatus === 'ready' &&
+    !maintenanceEnabled;
   const aboutModalEligible =
     (bootstrapStatus === 'ready' ||
       bootstrapStatus === 'unauthenticated' ||
       bootstrapStatus === 'anonymous-guest') &&
     isPortalPublicBrowsePath(pathname) &&
+    maintenanceStatus === 'ready' &&
+    !maintenanceEnabled &&
     !showGuestAuthOverlay;
-
   return (
     <div className="portal-app-shell">
       <PortalSidebar />
@@ -90,7 +102,11 @@ function PortalAppShellContent({ children }: PortalAppShellProps) {
       <div className="portal-app-main">
         <PortalScrollReset />
         <div className="portal-app-top" ref={stickyTopRef}>
+          {maintenanceEnabled && maintenanceTestAccessGranted ? (
+            <PortalMaintenanceTestBanner />
+          ) : null}
           <PortalAppHeader />
+          <PortalSiteWideEditingModeBanner />
           <PortalWorkingRequestLimitBanner />
         </div>
         <div className={`portal-app-content${showGuestAuthOverlay ? ' has-guest-auth-overlay' : ''}`}>
@@ -114,6 +130,18 @@ function PortalAppShellContent({ children }: PortalAppShellProps) {
 }
 
 export function PortalAppShell({ children }: PortalAppShellProps) {
+  const {
+    status: maintenanceStatus,
+    enabled: maintenanceEnabled,
+    maintenanceTestAccessGranted,
+  } = usePortalMaintenance();
+  const isMaintenanceBlocked =
+    maintenanceStatus === 'ready' && maintenanceEnabled && !maintenanceTestAccessGranted;
+
+  if (isMaintenanceBlocked) {
+    return <PortalMaintenanceExperience />;
+  }
+
   return (
     <PortalDrawerProvider>
       <PortalToastProvider>

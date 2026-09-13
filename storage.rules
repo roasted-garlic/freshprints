@@ -27,6 +27,56 @@ service firebase.storage {
         && callerUser().role == "customer";
     }
 
+    // Runtime Portal emergency brake for direct customer Storage writes. Missing state is the
+    // backwards-compatible OFF default; a present malformed state fails closed. While enabled,
+    // only the one configured authenticated customer may pass this predicate.
+    function portalMaintenanceDataIsValid(data) {
+      return data.get("enabled", null) is bool
+        && (
+          !data.keys().hasAny(["message"])
+          || (
+            data.get("message", null) == null
+            || (
+              data.get("message", null) is string
+              && data.get("message", "").size() > 0
+              && data.get("message", "").size() <= 240
+            )
+          )
+        )
+        && (
+          !data.keys().hasAny(["maintenanceTestCustomerUid"])
+          || data.get("maintenanceTestCustomerUid", null) == null
+          || (
+            data.get("maintenanceTestCustomerUid", null) is string
+            && data.get("maintenanceTestCustomerUid", "").size() > 0
+            && data.get("maintenanceTestCustomerUid", "").size() <= 128
+          )
+        );
+    }
+
+    function portalMaintenanceDataIsOff(data) {
+      return portalMaintenanceDataIsValid(data) && data.get("enabled", null) == false;
+    }
+
+    function portalMaintenanceDataAllowsCustomerMutation(data) {
+      return portalMaintenanceDataIsValid(data)
+        && (
+          data.get("enabled", null) == false
+          || (
+            isCustomer()
+            && data.get("enabled", null) == true
+            && data.get("maintenanceTestCustomerUid", null) == request.auth.uid
+          )
+        );
+    }
+
+    function portalMaintenanceAllowsCustomerMutation() {
+      return !firestore.exists(/databases/(default)/documents/settings/portalMaintenance)
+        || portalMaintenanceDataAllowsCustomerMutation(
+          firestore.get(/databases/(default)/documents/settings/portalMaintenance).data
+        );
+    }
+
     // Leftover Anonymous Auth (no users/{uid} doc) must not break public catalog reads:
     // isStaff()/isCustomer() used to call firestore.get unconditionally and fail the whole rule.
     function isAnonymousAuth() {
@@ -51,7 +101,17 @@ service firebase.storage {
     }
 
     function isCanonicalOriginalFileName(fileName) {
-      return fileName.matches('[A-Za-z0-9_-]+\\.png');
+      return fileName.matches('[A-Za-z0-9_-]+\\.png')
+        && !fileName.matches('.*\\.interactive\\.png$');
+    }
+
+    function isCanonicalInteractiveOriginalFileName(fileName) {
+      return fileName.matches('[A-Za-z0-9_-]+\\.interactive\\.png');
+    }
+
+    function isStaffReadableOriginalFileName(fileName) {
+      return isCanonicalOriginalFileName(fileName)
+        || isCanonicalInteractiveOriginalFileName(fileName);
     }
 
     function isCanonicalDerivativeFileName(fileName) {
@@ -70,14 +130,14 @@ service firebase.storage {
     }
 
     match /originals/{fileName} {
-      allow read: if isStaff() && isCanonicalOriginalFileName(fileName);
+      allow read: if isStaff() && isStaffReadableOriginalFileName(fileName);
       allow create: if isStaff()
         && isCanonicalOriginalFileName(fileName)
         && isValidOriginalUpload();
       allow update: if isStaff()
         && isCanonicalOriginalFileName(fileName)
         && isValidOriginalUpload();
-      allow delete: if isStaff() && isCanonicalOriginalFileName(fileName);
+      allow delete: if isStaff() && isStaffReadableOriginalFileName(fileName);
     }
 
     match /thumbnails/{fileName} {
@@ -108,7 +168,7 @@ service firebase.storage {
     // packages/shared/.../customerUploadLimits.constants.ts
     function isValidCustomerUploadSource() {
       return request.resource.size < 80 * 1024 * 1024
-        && request.resource.contentType in ["image/png", "image/webp"];
+        && request.resource.contentType == "image/png";
     }
 
     function isValidCustomerUploadZip() {
@@ -125,6 +185,7 @@ service firebase.storage {
       // ZIP uploads remain registered-customer only (guests are images-only in callables).
       allow create, update: if isCustomer()
         && userId == request.auth.uid
+        && portalMaintenanceAllowsCustomerMutation()
         && isValidCustomerUploadZip();
       allow delete: if isStaff();
     }
@@ -133,10 +194,27 @@ service firebase.storage {
       allow read: if isStaff() || canAccessOwnCustomerUploadPath(userId);
 
       allow create, update: if canAccessOwnCustomerUploadPath(userId)
+        && portalMaintenanceAllowsCustomerMutation()
         && fileName == "source"
         && isValidCustomerUploadSource();
 
       allow delete: if isStaff();
+    }
+
+    // Staff Artwork: owner/admin uploads source; production derivatives stay Admin/staff-only.
+    // Authenticated customers may read only the customer-facing preview/thumbnail objects.
+    // Residual risk (accepted): a customer who learns another staffArtworkId could fetch that preview/thumb.
+    match /staff-artwork/{staffArtworkId}/{fileName} {
+      allow read: if isStaff()
+        || (
+          isCustomer()
+          && fileName in ["preview.webp", "thumbnail.webp"]
+        );
+      allow create, update: if isOwnerOrAdmin()
+        && fileName == "source"
+        && request.resource.size < 80 * 1024 * 1024
+        && request.resource.contentType == "image/png";
+      allow delete: if isOwnerOrAdmin();
     }
 
     // Assisted Creation reference / proof assets (Phase 9C).
@@ -161,8 +239,13 @@ service firebase.storage {
       allow read: if isStaff() || (isCustomer() && userId == request.auth.uid);
       allow create, update: if isCustomer()
         && userId == request.auth.uid
+        && portalMaintenanceAllowsCustomerMutation()
         && isValidAssistedCreationImage();
-      allow delete: if isStaff() || (isCustomer() && userId == request.auth.uid);
+      allow delete: if isStaff() || (
+        isCustomer()
+        && userId == request.auth.uid
+        && portalMaintenanceAllowsCustomerMutation()
+      );
     }
 
     match /assisted-creation/{userId}/{requestId}/references/{fileId} {

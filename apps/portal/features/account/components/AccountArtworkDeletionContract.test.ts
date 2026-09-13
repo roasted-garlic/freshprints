@@ -34,6 +34,8 @@ describe('Portal account artwork self-delete (F3)', () => {
     assert.match(gallery, /invalidateDailyQuota/);
     assert.match(gallery, /getDailyQuota\('catalog_donation'\)/);
     assert.match(gallery, /reload\(\)/);
+    assert.match(gallery, /canCustomerDeleteAccountArtworkTile/);
+    assert.match(modal, /canCustomerDeleteAccountArtworkTile/);
     assert.match(modal, /onDeletePast/);
     assert.match(dialog, /previewOwnUploadDeletion/);
     assert.match(dialog, /deleteOwnUpload/);

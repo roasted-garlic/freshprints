@@ -7,6 +7,10 @@ export interface DesignIssueReport {
   customerId: string;
   customerDisplayNameSnapshot: string;
   customerUsernameSnapshot: string;
+  /** Write-once username at first identity propagation after creation. */
+  customerUsernameAtCreationSnapshot?: string;
+  /** Write-once display name at first identity propagation after creation. */
+  customerDisplayNameAtCreationSnapshot?: string;
   description: string;
   status: DesignIssueReportStatus;
   designTitleSnapshot: string;

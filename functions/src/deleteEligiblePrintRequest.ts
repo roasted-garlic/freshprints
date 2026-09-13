@@ -11,18 +11,21 @@ import {
   type PreviewPrintRequestDeletionRequest,
   type PreviewPrintRequestDeletionResponse,
 } from "../../packages/shared/src/types/deletion/deletion.types";
+import type { DeletionCallableWarmupResponse } from "../../packages/shared/src/types/deletion/deletionWarmup.types";
 import { adminDb } from "./lib/admin";
 import { loadCallerProfile } from "./lib/caller";
 import {
   isWorkingPrintRequestStatus,
   itemStatusBlocksHardDelete,
 } from "./lib/deletionEligibility";
+import { deletionWarmupOk, isDeletionCallableWarmupRequest } from "./lib/deletionWarmup";
 import {
   failedPrecondition,
   invalidArgument,
   permissionDenied,
   unauthenticated,
 } from "./lib/errors";
+import { applyRestoreParkedDraftInTransaction } from "./lib/portalContinuableParking";
 
 const BATCH_LIMIT = 400;
 
@@ -94,9 +97,11 @@ async function loadAllocationBlockers(printRequestId: string): Promise<{
     ),
   ];
 
-  const labels: string[] = [];
-  for (const showId of showIds.slice(0, 8)) {
-    const showSnap = await adminDb.collection("upcomingShows").doc(showId).get();
+  const labelTargets = showIds.slice(0, 8);
+  const labelSnaps = await Promise.all(
+    labelTargets.map((showId) => adminDb.collection("upcomingShows").doc(showId).get()),
+  );
+  const labels: string[] = labelSnaps.map((showSnap) => {
     const title =
       typeof showSnap.data()?.title === "string"
         ? showSnap.data()?.title
@@ -109,14 +114,12 @@ async function loadAllocationBlockers(printRequestId: string): Promise<{
         : typeof showSnap.data()?.dateLabel === "string"
           ? showSnap.data()?.dateLabel
           : null;
-    labels.push(
-      typeof title === "string" && title.trim()
-        ? showDate
-          ? `${title.trim()} (${showDate})`
-          : title.trim()
-        : "Assigned show",
-    );
-  }
+    return typeof title === "string" && title.trim()
+      ? showDate
+        ? `${title.trim()} (${showDate})`
+        : title.trim()
+      : "Assigned show";
+  });
 
   return {
     allocationCount: allocations.size,
@@ -225,14 +228,17 @@ async function buildPreview(
   const name =
     typeof data.name === "string" && data.name.trim() ? data.name.trim() : "Print request";
   const status = data.status;
-  const { allocationCount, blockers: allocationBlockers } =
-    await loadAllocationBlockers(printRequestId);
+  // Independent equality queries — parallelize for warm-path latency (semantics unchanged).
+  const [allocationResult, itemResult] = await Promise.all([
+    loadAllocationBlockers(printRequestId),
+    loadItemHardDeleteBlockers(printRequestId),
+  ]);
+  const { allocationCount, blockers: allocationBlockers } = allocationResult;
+  const { itemCount, hasProductionHistory, blockers: itemBlockers } = itemResult;
   // One allocations query (allocationCount docs) plus one upcomingShows get per resolved label.
   track(1, allocationCount);
   const showLabelReads = allocationBlockers[0]?.labels?.length ?? 0;
   track(showLabelReads, showLabelReads);
-  const { itemCount, hasProductionHistory, blockers: itemBlockers } =
-    await loadItemHardDeleteBlockers(printRequestId);
   track(1, itemCount);
 
   if (allocationBlockers.length > 0) {
@@ -323,7 +329,9 @@ async function deleteItemsForRequest(
 }
 
 export const previewPrintRequestDeletion = onCall(
-  async (request): Promise<PreviewPrintRequestDeletionResponse> => {
+  async (
+    request,
+  ): Promise<PreviewPrintRequestDeletionResponse | DeletionCallableWarmupResponse> => {
     if (!request.auth?.uid) {
       throw unauthenticated();
     }
@@ -333,6 +341,9 @@ export const previewPrintRequestDeletion = onCall(
     try {
       const caller = await loadCallerProfile(request.auth.uid);
       assertOwnerCaller(caller);
+      if (isDeletionCallableWarmupRequest(request.data)) {
+        return deletionWarmupOk();
+      }
       const preview = await buildPreview(
         parsePrintRequestId(request.data as PreviewPrintRequestDeletionRequest),
         accounting,
@@ -353,7 +364,9 @@ export const previewPrintRequestDeletion = onCall(
 );
 
 export const deleteEligiblePrintRequest = onCall(
-  async (request): Promise<DeleteEligiblePrintRequestResponse> => {
+  async (
+    request,
+  ): Promise<DeleteEligiblePrintRequestResponse | DeletionCallableWarmupResponse> => {
     if (!request.auth?.uid) {
       throw unauthenticated();
     }
@@ -363,6 +376,9 @@ export const deleteEligiblePrintRequest = onCall(
     try {
       const caller = await loadCallerProfile(request.auth.uid);
       assertOwnerCaller(caller);
+      if (isDeletionCallableWarmupRequest(request.data)) {
+        return deletionWarmupOk();
+      }
       const printRequestId = parsePrintRequestId(request.data);
       requirePhrase(request.data, DELETE_PRINT_REQUEST_CONFIRMATION_PHRASE);
 
@@ -430,13 +446,16 @@ export const deleteEligiblePrintRequest = onCall(
 );
 
 export const archivePrintRequest = onCall(
-  async (request): Promise<ArchivePrintRequestResponse> => {
+  async (request): Promise<ArchivePrintRequestResponse | DeletionCallableWarmupResponse> => {
     if (!request.auth?.uid) {
       throw unauthenticated();
     }
     try {
       const caller = await loadCallerProfile(request.auth.uid);
       assertOwnerCaller(caller);
+      if (isDeletionCallableWarmupRequest(request.data)) {
+        return deletionWarmupOk();
+      }
       const printRequestId = parsePrintRequestId(request.data as ArchivePrintRequestRequest);
       requirePhrase(request.data, ARCHIVE_PRINT_REQUEST_CONFIRMATION_PHRASE);
 
@@ -471,14 +490,27 @@ export const archivePrintRequest = onCall(
         };
       }
 
-      await ref.set(
-        {
-          status: "archived",
-          updatedAt: FieldValue.serverTimestamp(),
-          updatedBy: request.auth.uid,
-        },
-        { merge: true },
-      );
+      await adminDb.runTransaction(async (transaction) => {
+        const freshSnap = await transaction.get(ref);
+        const freshData = freshSnap.data() ?? {};
+        
+        // Restore parked draft if this request was editing with a parked draft
+        await applyRestoreParkedDraftInTransaction(transaction, {
+          editingRequestRef: ref,
+          editingData: { ...freshData, status: freshData.status || "draft" },
+          actorId: request.auth!.uid,
+        });
+
+        transaction.set(
+          ref,
+          {
+            status: "archived",
+            updatedAt: FieldValue.serverTimestamp(),
+            updatedBy: request.auth!.uid,
+          },
+          { merge: true },
+        );
+      });
 
       return {
         outcome: "archive",

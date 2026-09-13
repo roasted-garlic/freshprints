@@ -1,5 +1,348 @@
 # Fresh Prints Roadmap
 
+> 2026-09-13: **Rules rollback evidence CLOSED; final parent M0 Classification A** — Current
+> production Firestore/Storage release metadata and source hashes are captured. Corrected source
+> reconciles with zero unexplained paths; next checkpoint is **OWNER AUTHORIZE REPLACEMENT CANDIDATE
+> COMMIT/PUSH**. No production deployment or mutation occurred.
+
+> 2026-09-13: **Studio release-pipeline corrective CLOSED — approved_with_notes** — All 29
+> typecheck diagnostics are resolved; automated/package evidence and owner install/launch/version
+> checks pass. DEV identity is expected for prerelease validation; production QA is deferred by
+> design to the canonical stable gate. The Rules rollback snapshot (`403 service-disabled/no-quota-
+> project`) remains the sole pre-GO blocker. After human access, run final parent M0.
+
+> 2026-09-13: **Production-configured Studio RC blocked** — The prior prerelease installer is
+> DEV-configured because the existing writer maps all non-stable releases to DEV Firebase. The
+> canonical production Studio path requires stable release input and source ancestry on
+> `production`; no alternate production-configured RC mode will be introduced. Finish the Rules
+> blocker, assemble/freeze the replacement candidate, approve GO, merge to `production`, then use
+> the existing stable Studio `1.0.10` release path.
+
+> 2026-09-13: **Studio 1.0.10 RC package validation PASS — Owner QA pending** — The consolidated
+> typecheck corrective resolved all 29 reviewed diagnostics (hard gate 0). Corrective suites are
+> 49/49 PASS, targeted validation 198/198 PASS, and baseline-aware lint reports
+> `current=19 baseline=25 new=0 removed=6`. Exact SHA `5bf477fcf676f37265018262268ee5e8734e8eff`
+> passed workflow `34739620667` on Windows and macOS as `1.0.10` / `internal-unsigned` with
+> verified artifacts. Next checkpoint: **OWNER QA: STUDIO 1.0.10 RC INSTALL / UPDATE**. No stable
+> publication, development merge, freeze, or production action occurred.
+
+> 2026-09-12: **Consolidated Studio release-pipeline typecheck stabilization — Plan/Formal Review
+> complete** — The existing Studio release blocker is fully inventoried as **29 TypeScript
+> diagnostics across 16 files** (runtime/shared contracts, unused declarations/imports, and
+> test-only fixtures). One bounded corrective is reviewed as `approved_with_changes`; TypeScript
+> remains a real release gate and no bypass is authorized. The accepted lint corrective (49/49,
+> Windows/macOS lint PASS) will be carried into consolidated Signoff after packaging. Exact next
+> checkpoint: **OWNER ACCEPT CONSOLIDATED STUDIO RELEASE PIPELINE CORRECTIVE + AUTHORIZE IMPLEMENT**.
+
+> 2026-09-12: **Studio lint-gate corrective — RC lint PASS; packaging blocked by existing typecheck
+> baseline** — Temporary validation branch `rc/studio-release-lint-gate-validation` at
+> `b8d8d80cc1cab5bdb2aed1889730205e0a8046f3` ran as prerelease `1.0.10` / `internal-unsigned`.
+> Windows and macOS lint passed; both packaging jobs stopped at the existing Studio TypeScript
+> baseline during `npx tsc` before artifact creation (classification B, not a corrective
+> regression). No artifacts, hashes, install/update evidence, stable publication, or merge exists.
+> Exact next checkpoint: **OWNER DECIDE EXISTING STUDIO TYPECHECK BASELINE / CORRECTIVE SIGNOFF PATH**.
+
+> 2026-09-12: **Historical Studio lint-gate corrective — Implement/Test complete; RC evidence then pending** —
+> The approved workflow-only corrective is implemented in both Studio release jobs with an exact
+> 25-finding deterministic baseline. Automated validation is **49/49 PASS**; Studio runtime source
+> and coordinated feature scope are unchanged. Prerelease packaging/install/update evidence remains
+> pending because candidate commit/push is explicitly not yet authorized. Next checkpoint:
+> **OWNER DECIDE CORRECTIVE RC VALIDATION SOURCE / AUTHORIZE NEXT GATE**.
+
+> 2026-09-12: **Historical Studio release workflow corrective — Plan/Formal Review complete** — Owner
+> invalidated former M1 SHA `ff533c835508e65bb3cfd9d2739f72bafe1fc895` for production release
+> purposes while preserving historical evidence. Child `studio-release-workflow-baseline-aware-lint-gate`
+> selected a deterministic checked-in whole-repository lint baseline comparator; Formal Review was
+> `approved_with_changes` and was subsequently accepted for implementation. No Studio runtime
+> behavior or production state changed. This entry is superseded by the RC validation entry above.
+
+> 2026-09-12: **Coordinated production frozen-candidate RC revalidation — C / NO-GO** —
+> Owner-authorized validation completed against frozen SHA
+> `ff533c835508e65bb3cfd9d2739f72bafe1fc895`. Freeze integrity and source manifests reconcile; a
+> clean detached checkout passed the Portal production build with synthetic non-production public
+> placeholders (build ID `ieL4DZ0JURjcMgcb-S0q4`; `.next/trace` EPERM absent). Read-only baseline
+> remains 113/113 ACTIVE Functions, 77/77 READY indexes, Portal build-003 at 100%/HTTP 200, stable
+> Studio v1.0.9, and absent/OFF maintenance settings. Focused validation is 87/87 PASS with
+> Functions build, Portal typecheck, targeted lint, and diff check passing. Real Studio workflow run
+> `34735296362` failed the existing whole-repository lint gate on Windows and macOS before packaging;
+> no 1.0.10 artifact/install/update evidence exists. Remote Rules release snapshot retries returned
+> 403 service-disabled/no-quota-project. Production state/data/configuration was not changed; only
+> authorized read-only baseline queries ran. Owner-directed Studio-first sequencing is documented as
+> a docs-only amendment. Exact next checkpoint: **OWNER DECIDE INVALIDATE FROZEN CANDIDATE / RETURN TO
+> M0-M1 FOR STUDIO RC REMEDIATION**. See the RC and GO/NO-GO packet under
+> `docs/workflow/reviews/2026-09-12-coordinated-production-*`.
+
+> 2026-09-12: **Coordinated production candidate — M1 FROZEN** — Owner authorized
+> `FREEZE MAIN CANDIDATE SHA ff533c835508e65bb3cfd9d2739f72bafe1fc895`. The immutable runtime/config
+> contract is frozen; documentation-only evidence updates may continue. Production, deployment,
+> publication, maintenance, runner, data operations, and runtime/config changes remain unauthorized.
+> Next checkpoint: **FROZEN-CANDIDATE RC VALIDATION / PRODUCTION GO-NO-GO PREPARATION**.
+
+> 2026-09-12: **Historical pre-freeze candidate assembly checkpoint** — Owner
+> authorized one exact Classification-A candidate commit/push at
+> `ff533c835508e65bb3cfd9d2739f72bafe1fc895` (`chore(release): assemble coordinated production
+> candidate`), pushed only to `origin/development`. Git-object commit-byte manifests are regenerated
+> and audited; this entry is superseded by the authoritative M1 freeze record above.
+
+> 2026-09-12: **Coordinated production promotion readiness — final parent M0 COMPLETE (A)** —
+> Owner authorized the read-only **RERUN FINAL PARENT M0 / COMMIT-BYTE CANDIDATE RECONCILIATION**.
+> The complete `development` tree reconciles at 256 status paths (134 tracked, 122 untracked),
+> with no unexplained paths; Function closure is 186/120 exports and the additive index union is
+> 95/77 with zero removals/replacements. Final/transition Rules, Portal/Studio manifests, config/
+> data disposition, Studio `1.0.10`, security-risk sync, and commit-byte tooling are recorded.
+> Classification: **A — READY FOR REVIEWED CANDIDATE COMMIT/PUSH**. Production, staging, commit,
+> push, freeze, deployment, publication, maintenance, runner, and data/settings actions remain
+> untouched and unauthorized. The candidate commit/push checkpoint is now complete; see the
+> authoritative M1 freeze checkpoint above.
+
+> 2026-09-12: **Coordinated production cutover prerequisites — CLOSED (repository readiness)** —
+> Goal `coordinated-production-cutover-prerequisites` is **DONE** with disposition
+> **approved_with_notes** after explicit Owner DEV QA **PASS**. The complete gate chain
+> Plan → Formal Review (**approved_with_changes**) → Implement → Test → Owner DEV QA PASS →
+> Signoff is recorded. Deterministic transition/final Rules, projection-preferred Portal dual-read
+> with bounded canonical fallback, production-hard-pinned reconciliation and committed-byte manifest
+> contracts, Studio `1.0.10`, and synchronized security/risk docs are complete. Production,
+> deployment/publication, candidate freeze, and parent M0 rerun remain separately gated. Active
+> parent: `coordinated-production-promotion-release-readiness`. Next checkpoint: **RERUN FINAL
+> PARENT M0 / COMMIT-BYTE CANDIDATE RECONCILIATION**. Signoff:
+> `docs/workflow/reviews/2026-09-12-coordinated-production-cutover-prerequisites-signoff.md`.
+
+> 2026-09-12: **Assisted multi-proof selection — CLOSED (DEV)** — Goal
+> `assisted-creation-multi-proof-selection` is **DONE** with disposition **approved_with_notes**
+> after Owner DEV QA **PASS**. Multi-option proof rounds (Studio upload + Portal carousel),
+> round-scoped email/notifications, preserved final-artwork/Add paths; approve-time sibling
+> proof purge disabled so all options stay visible. Signoff:
+> `docs/workflow/reviews/2026-09-12-assisted-creation-multi-proof-selection-signoff.md`.
+> Production untouched. **Next:** return to parent and rerun coordinated-production **M0** /
+> freeze prep under separate owner authorization.
+
+> 2026-09-12: **Portal post-queue items + submit nudge corrective — CLOSED (DEV)** — Goal
+> `portal-post-queue-items-and-submit-nudge-corrective` is **DONE** with disposition
+> **approved_with_notes** after Owner DEV QA **PASS**. Post-queue item reload, 8s submit-nudge
+> toast (mobile layout), and Clear-request pending-removal fix validated. Signoff:
+> `docs/workflow/reviews/2026-09-12-portal-post-queue-items-and-submit-nudge-corrective-signoff.md`.
+> Production untouched.
+
+> 2026-09-12: **Assisted multi-proof selection — Classification-B Plan amendment applied (docs only)** —
+> Goal `assisted-creation-multi-proof-selection` Plan status
+> `amended_classification_b_awaiting_owner_accept`. Progress/re-add + sentinel + final-artwork-ready
+> email coexistence noted; Decisions A–E intact; no Rules/Storage/index/migration; Implement **not**
+> authorized. Await:
+> `OWNER ACCEPT MULTI-PROOF PLAN AMENDMENT + AUTHORIZE IMPLEMENT`. Sole remaining pre-freeze child
+> before parent M0/freeze prep. Do not resume parent M0 yet.
+
+> 2026-09-12: **Portal Assisted final artwork add retention sentinel — CLOSED (DEV)** — Goal
+> `portal-assisted-final-artwork-add-retention-sentinel-corrective` is **DONE** with final
+> disposition **approved_with_notes** after Owner DEV QA **PASS**. Direct Assisted Add-to-Request
+> (no catalog-permission modal); no fake consent/retention sentinels on fresh create; Assisted
+> origin + `not_eligible`; no auto Design publish; ordinary upload/donation/permission paths
+> unchanged; production untouched. Signoff:
+> `docs/workflow/reviews/2026-09-12-portal-assisted-final-artwork-add-retention-sentinel-corrective-signoff.md`.
+> Remaining pre-freeze child before parent M0/freeze prep:
+> `assisted-creation-multi-proof-selection` (Plan amendment Classification B → owner accept →
+> Implement → …). Do not resume parent M0 yet.
+
+> 2026-09-12: **Assisted final artwork ready email — CLOSED (DEV)** — Goal
+> `assisted-final-artwork-ready-email` is **DONE** with final disposition **approved** after Owner
+> DEV QA **PASS**. Final-source attach enqueues `assisted_final_artwork_ready` email + in-app alert
+> (status deep-link); reuses proof-email opt-out; DEV Functions
+> `staffAddAssistedCreationFinalSource` + `onEmailDeliveryJobCreated` deployed. Signoff:
+> `docs/workflow/reviews/2026-09-12-assisted-final-artwork-ready-email-signoff.md`.
+> Remaining pre-freeze children: Assisted retention-sentinel QA/Signoff and multi-proof Plan
+> amendment → Implement → Test → Owner QA → Signoff. Do not resume parent M0 yet.
+
+> 2026-09-12: **Portal Staff Artwork projection corrective — CLOSED (DEV)** — Goal
+> `portal-staff-artwork-neutral-projection-corrective` is **DONE** with final disposition
+> **approved_with_notes** after Owner DEV QA **PASS**. Portal Staff Artwork rows use Admin
+> `portalPrintRequestItems` projections with preview/title/DPI; Firestore `staffArtworks` stays
+> customer-denied; Storage allows customer preview/thumb only; Upscale remains deferred; production
+> untouched. Signoff:
+> `docs/workflow/reviews/2026-09-12-portal-staff-artwork-neutral-projection-corrective-signoff.md`.
+> Remaining pre-freeze children: Assisted retention-sentinel QA/Signoff and multi-proof Plan
+> amendment → Implement → Test → Owner QA → Signoff. Do not resume parent M0 yet.
+
+> 2026-09-12: **Studio Staff Artwork library and Print Request source — CLOSED (DEV)** — Goal
+> `studio-staff-artwork-library-and-print-request-source` is **DONE** with final disposition
+> **approved_with_notes** after Owner DEV QA **PASS**. The private Staff Artwork entity, PNG-only
+> processing, Auto/Light/Dark background handling, request source propagation, queue/allocation/
+> export/gang-sheet paths, safe deletion, AI Review promotion, Portal projection, and corrective
+> Rules paths are deployed to `fresh-prints-dev`. Source-focused contracts pass 31/31 and the
+> emulator-backed Staff Artwork/catalog create Rules suites pass 11/11; Functions build, Portal
+> typecheck, and diff check pass. The repository-wide Rules command retains a documented legacy
+> expression-budget baseline. No production deployment, publication, migration/backfill, commit,
+> push, or candidate freeze occurred. Signoff:
+> `docs/workflow/reviews/2026-09-12-studio-staff-artwork-library-and-print-request-source-signoff.md`.
+> Next: rerun coordinated-production M0 and prepare a new candidate/freeze proposal under separate
+> owner authorization.
+
+> 2026-09-11: **Customer-upload Studio deferral, personal library, and Portal inline Remove — CLOSED (DEV)** — Goal
+> `customer-upload-studio-deferral-personal-library-portal-inline-remove` is **DONE** with final
+> disposition **approved_with_notes** after Owner DEV QA **PASS**. Studio customer-upload intake is
+> held until Add to Show; queue alerts settle after success UI; Portal Remove uses inline
+> Cancel/Confirm; Your designs provides Personal and Design Library tabs with the reviewed retention
+> policy. The reviewed DEV Functions/indexes and local Portal/Studio runtimes were validated; the
+> retention scheduler remained paused. Focused rerun was 92 passing / 1 known unrelated
+> deletion-eligibility manifest baseline failure. Runtime is present in owner-authorized
+> `35d80ec7` on `origin/development`; no production deployment, publication, freeze, backfill, or
+> maintenance activation occurred. Signoff:
+> `docs/workflow/reviews/2026-09-11-customer-upload-studio-deferral-personal-library-portal-inline-remove-signoff.md`.
+> Next: rerun coordinated-production M0 and prepare a new candidate/freeze proposal under separate
+> owner authorization.
+
+> 2026-09-10: **Production maintenance-mode prerequisite — CLOSED (DEV)** — Goal
+> `production-maintenance-mode-prerequisite` **DONE** with final disposition
+> **approved_with_notes** after Owner DEV QA **PASS**. Shared heading/body copy now drives the
+> Portal and Studio maintenance controls; merged, disabled, deleted, guest, orphaned, and
+> inactive-user accounts are excluded from tester selection; the trusted owner/admin candidate
+> list and maintenance guard are deployed to `fresh-prints-dev`. Exactly 37 reviewed Functions are
+> ACTIVE; Rules/indexes/hosting were not changed in the corrective deployment. Portal normal-mode,
+> full-screen maintenance, tester banner/mutation, and centered admin denial behavior all passed
+> Owner DEV QA. Production activation, production deployment, parent rollout, commit/push, and
+> Studio/Portal publishing remain separately gated. Signoff:
+> `docs/workflow/reviews/2026-09-10-production-maintenance-mode-prerequisite-corrective-amendment-signoff.md`.
+> FreshForge **IDLE**; next: `[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]`.
+
+> 2026-09-09: **User Info Print Request lifecycle activity ordering — CLOSED (DEV)** — Goal
+> `user-info-print-request-lifecycle-activity-ordering` **DONE** with final disposition
+> **approved_with_notes** after Owner DEV QA **PASS** for the indexed history reader. Lifecycle
+> events/mirrors, the accepted Studio Editing→re-add and mirror-only trigger correctives, bounded
+> DEV mirror backfill, and local indexed-reader activation are complete; reader coverage is 8/8 and
+> both lifecycle indexes are READY. Details is **newest → oldest**. Two historical duplicate
+> conversion events remain safely documented with no ordering impact or cleanup required. No
+> commit/push, Studio publish, Portal deployment, or production action occurred in the signoff
+> turn. Owner-authorized commit/push is complete as `6bf7a25d` on `origin/development`; no force
+> push occurred. FreshForge **IDLE**. Signoff:
+> `docs/workflow/reviews/2026-09-09-user-info-print-request-lifecycle-activity-ordering-signoff.md`.
+> Next: `[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]`.
+
+> 2026-09-09: **Portal admin daily Show Queue — CLOSED (DEV)** — Goal
+> `portal-admin-daily-show-queue` **DONE** (Signoff **approved_with_notes**). Owner DEV QA
+> **PASS**. The read-only mobile-first Portal admin dashboard (`/admin/show-queue`) delivers
+> isolated owner/admin access, upcoming-show selection, capacity and request summaries, and lazy
+> authorized design-preview viewing. Exactly two reviewed Functions were deployed to
+> `fresh-prints-dev`: `getPortalAdminUpcomingShowQueueDashboard`
+> (`…-00003-fug`) and `getPortalAdminShowQueueRequestDesigns` (`…-00005-fad`), both ACTIVE
+> on latest traffic. No Rules, indexes, hosting, Studio, data, or production action. The
+> documented Windows Portal build EPERM baseline remains a separate follow-up. Signoff:
+> `docs/workflow/reviews/2026-09-09-portal-admin-daily-show-queue-signoff.md`. Next:
+> `user-info-print-request-lifecycle-activity-ordering` Plan + Formal Review only.
+
+> 2026-09-09: **Legacy tag operational retirement + Smart Profile search parity — CLOSED (DEV)** — Goal `legacy-tag-operational-retirement-and-smart-profile-search-parity` **DONE** (Signoff **approved**). Owner DEV QA **PASS**. Portal/Studio active tag authority, tag search corpus, and tag facets retired; Smart Profile search and eight facets retained; exactly six reviewed Functions deployed to `fresh-prints-dev`; DEV Algolia reconcile processed 350 ready records. The deterministic read-only corrective audit found 20 former tag-name/alias samples with no preserved Ready-design baseline and no material regression. Historical `design.tags`, `tags/*`, taxonomy compatibility, Rules/indexes, and deployed tag-trigger/archive Functions remain preserved. Production, Portal/Studio publish, and physical cleanup remain **NOT AUTHORIZED**. Commit/push **COMPLETE** as `1c43f6e1` on `origin/development`. Autonomous **OFF**; Pass 2 **PARKED**; WS6 **NOT STARTED**. FreshForge **IDLE**. Signoff: `docs/workflow/reviews/2026-09-09-legacy-tag-operational-retirement-and-smart-profile-search-parity-signoff.md`. Next: `[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]`.
+
+> 2026-09-08: **Portal show price commitment acknowledgment — CLOSED** — Goal `portal-show-price-commitment-ack` **DONE** (Signoff **approved_with_notes**). Review Show total + breakdown; Add to Show ack `portal-bidding-ack-v4`; Show Prices sidebar/FAQ/Show Limits; owner visual QA **PASS**. Functions DEV redeploy for live v4 **NOT AUTHORIZED** by this signoff. Commit/push and production **NOT AUTHORIZED**. FreshForge **IDLE**. Signoff: `docs/workflow/reviews/2026-09-08-portal-show-price-commitment-ack-signoff.md`.
+>
+> 2026-09-08: **Print request upload library consent icons — CLOSED** — Goal `print-request-upload-library-consent-detail` **DONE** (Signoff **approved**). Print Request item thumbs show green `CircleCheck` / red `Ban` for Design Library consent on customer uploads only. Owner visual QA **PASS**. Commit/push and Studio publish **NOT AUTHORIZED**. FreshForge **IDLE**. Signoff: `docs/workflow/reviews/2026-09-08-print-request-upload-library-consent-detail-signoff.md`.
+>
+> 2026-09-08: **Customer upload / donation intake Load More + search — CLOSED** — Goal `customer-upload-intake-load-more-and-search` **DONE** (Signoff **approved**). Uploaded and Donated Designs: Load more + name/username search beyond the first page; search above list; Load more inside list. Owner visual QA **PASS**. Commit/push and Studio publish **NOT AUTHORIZED**. FreshForge **IDLE**. Signoff: `docs/workflow/reviews/2026-09-08-customer-upload-intake-load-more-and-search-signoff.md`.
+>
+> 2026-09-08: **Staff Inbox queued alert glance metrics — CLOSED** — Goal `staff-inbox-queued-alert-glance-metrics` **DONE** (Signoff **approved**). Portal QUEUED inbox cards show design qty, print qty, and total price (allocation-scoped; Gang Sheet Settings pricing). Owner visual QA **PASS**. Commit/push and Studio publish **NOT AUTHORIZED**. FreshForge **IDLE**. Signoff: `docs/workflow/reviews/2026-09-08-staff-inbox-queued-alert-glance-metrics-signoff.md`.
+>
+> 2026-09-08: **Hide Add to Show for archived / converted requests — CLOSED** — Goal `hide-add-to-show-for-archived-converted-requests` **DONE** (Signoff **approved**). Studio hides Add to Show / Internal Gangsheet for archived, completed, or converted-to-internal requests; service reject; hide Working queue pill when archived. Owner combined DEV QA **PASS**. Production Studio publish **NOT AUTHORIZED** by this signoff. FreshForge **IDLE**. Parked: `print-request-direct-export-gangsheet-and-copy`. Signoff: `docs/workflow/reviews/2026-09-08-hide-add-to-show-for-archived-converted-requests-signoff.md`.
+>
+> 2026-09-07: **Pass 2 toggle Cloud Run invoker / Auth readiness corrective — CLOSED (DEV)** — Goal `pass2-toggle-auth-token-readiness-fix` **DONE** (Signoff **approved**). Root cause: missing `allUsers` `run.invoker` on isolated `updateSemanticReviewPlaygroundSetting` deploy (OPTIONS 403 / empty Authorization). DEV IAM repaired; source pins `invoker: "public"`; Studio Auth-readiness retained. Owner toggle QA **PASS**. Autonomous **OFF**; production / commit **NOT AUTHORIZED**. Signoff: `docs/workflow/reviews/2026-09-07-pass2-toggle-auth-token-readiness-fix-signoff.md`.
+>
+> 2026-09-05: **Standard Size + Add to Request default recalibration — SOURCE CLOSED** — Goal `standard-size-preset-and-add-to-request-default-recalibration` **DONE** (Signoff **approved_with_notes**). Full Back Adult M/L/XL → 11″; 2XL–5XL → 12/13/14/15″; Youth Y2XL back → 11″; system fallback **10.5″**; keep `YXS`. No Firestore/production writes. Owner may Reset Studio Standard Size defaults on DEV if overlays remain. Signoff: `docs/workflow/reviews/2026-09-05-standard-size-preset-and-add-to-request-default-recalibration-signoff.md`. TD-034 still parked pending DEV deploy auth.
+>
+> 2026-09-05: **Restore OpenAI GPT-5.6 Luna AI enrichment — Phase 1 CLOSED (DEV)** — Goal `restore-openai-gpt-5-6-luna-ai-enrichment` **DONE**. Signoff **approved_with_notes**. Owner Studio QA **PASS**. Additive `gpt-5.6-luna` + Gemini 2.5/3.1; dual-provider DEV Functions; Default AI model = `visionModelId`; system fallback Gemini 2.5; Luna `reasoning_effort: low`. Three-model benchmark recorded (TD-034 not closed by Luna). Smart Profile footer shows Profile + Normalizer. Autonomous **OFF**. Phase 2 registry **DEFERRED**. Production **NOT AUTHORIZED**. Signoff: `docs/workflow/reviews/2026-09-05-restore-openai-gpt-5-6-luna-ai-enrichment-signoff.md`.
+>
+> 2026-09-05: **Smart Catalog Intelligence completion — WS5 CLOSED (DEV)** — Goal `smart-catalog-intelligence-completion-and-legacy-tag-retirement` **WS5 COMPLETE / PASS UNDER MODEL 2** (Signoff **approved_with_notes**). Bounded Autonomous canary + Explicit path proved; dual gate restored **shadow / live false**. ADR-FP-171 Model 2 safety-invariant canary. Explicit fixture cleaned up. **TD-034** deferred. **WS6 NOT STARTED** (requires new Plan/Review + owner auth). Autonomous **OFF**. Production / commit **NOT AUTHORIZED**. Signoff: `docs/workflow/reviews/2026-09-05-smart-catalog-intelligence-completion-ws5-autonomous-dev-canary-signoff.md`.
+>
+> 2026-09-05: **Pre-WS5 Automatic Explicit Content classification — SOURCE SIGNED OFF** — Corrective `pre-ws5-catalog-profanity-autonomous-safety-gate` **COMPLETE / APPROVED WITH NOTES — SOURCE SIGNED OFF** (later DEV-live via WS5 path). Signoff **approved_with_notes**. Global vocab `settings/aiEnrichment.explicitContentAutomationTerms`; Ready-path Explicit only; no profanity hard blocker; v34/v6/v1 unchanged. Autonomous **OFF**. Production / commit **NOT AUTHORIZED**. Signoff: `docs/workflow/reviews/2026-09-05-catalog-explicit-content-automation-signoff.md`.
+>
+> 2026-09-04: **Smart Catalog Intelligence completion — WS4 CLOSED (DEV)** — Goal `smart-catalog-intelligence-completion-and-legacy-tag-retirement` **WS4 COMPLETE / PASS WITH NOTES**. Title specificity Signoff **approved_with_notes** (owner QA **PASS**). Ready reprocess 359/359; calibrations (v34 categories, Faith/Inspirational/Music, Music-vs-Pop, Cute + exact-match challenge, title specificity) signed off. Legacy tags **NON-MATERIAL**. Live DEV: **catalog-enrich-v34** / **v6** / **v1**; **shadow**; Autonomous **OFF**. **WS5 BLOCKED** on Explicit automation DEV deploy + QA (source signed off 2026-09-05). Production / commit **NOT AUTHORIZED**. Signoffs: `docs/workflow/reviews/2026-09-04-visual-catalog-title-specificity-signoff.md`, `docs/workflow/reviews/2026-09-04-smart-catalog-intelligence-completion-ws4-signoff.md`.
+>
+> 2026-09-03: **AI enrichment visible-text + catalog-copy quality — CLOSED (DEV)** — Goal `ai-enrichment-visible-text-and-catalog-copy-quality` **DONE**. Signoff **approved_with_notes**. Owner canary **PASS**. Live DEV: **catalog-enrich-v32** / **smart-profile-normalizer-v6** on allowlist (`enqueueAiEnrichment` `00086-qet`, `onCatalogReprocessJobWritten` `00008-piw`, `startCatalogReprocessJob` `00007-viw`, `previewCatalogReprocessJob` `00007-hug`). Schema `smart-profile-v1`; ADR-FP-160. No mass reprocess; Autonomous **OFF**; production **NOT AUTHORIZED**. FreshForge **IDLE**. Next queued: Smart Profiling completion (not started). Batch-allocation **DEFERRED**. Signoff: `docs/workflow/reviews/2026-09-03-ai-enrichment-visible-text-and-catalog-copy-quality-signoff.md`.
+>
+> 2026-09-03: **AI enrichment visible-text + catalog-copy quality — DEV DEPLOYED; OWNER CANARY PENDING** — Goal `ai-enrichment-visible-text-and-catalog-copy-quality`. Live DEV: **catalog-enrich-v32** / **smart-profile-normalizer-v6** on allowlist (`enqueueAiEnrichment` `00086-qet`, `onCatalogReprocessJobWritten` `00008-piw`, `startCatalogReprocessJob` `00007-viw`, `previewCatalogReprocessJob` `00007-hug`). No mass reprocess. Autonomous **OFF**. Production **NOT AUTHORIZED**. Owner ≤10-design canary pending. Deploy: `docs/workflow/reviews/2026-09-03-ai-enrichment-visible-text-and-catalog-copy-quality-dev-deploy-record.md`. Canary: `docs/workflow/reviews/2026-09-03-ai-enrichment-visible-text-and-catalog-copy-quality-owner-canary-checkpoint.md`.
+>
+> 2026-09-03: **AI enrichment visible-text + catalog-copy quality — IMPLEMENT + TEST + IR (STOP before deploy)** — Goal `ai-enrichment-visible-text-and-catalog-copy-quality`. Code: **catalog-enrich-v32** + **smart-profile-normalizer-v6** (OPTION E). Implementation Review **approved_with_notes**. Tests: focused + 184 Smart Profile + 52 Gate I/shadow; Functions build PASS. Live DEV still **v31/v5** (not deployed). Autonomous **OFF**. Production **NOT AUTHORIZED**. Next: owner-authorized DEV Functions allowlist + ≤10 canary. Smart Profiling completion remains queued after this goal. IR: `docs/workflow/reviews/2026-09-03-ai-enrichment-visible-text-and-catalog-copy-quality-implementation-review.md`.
+>
+> 2026-09-03: **AI enrichment visible-text + catalog-copy quality — PLAN + FORMAL REVIEW (STOP)** — Goal `ai-enrichment-visible-text-and-catalog-copy-quality`. Review **approved_with_changes**. OPTION E → proposed **catalog-enrich-v32** + **smart-profile-normalizer-v6**. No implement/deploy/reprocess. Live DEV remains **v31/v5**. Autonomous **OFF**. Production **NOT AUTHORIZED**. Smart Profiling completion **queued next** (do not auto-start). Batch-allocation **DEFERRED**. Plan: `docs/workflow/plans/2026-09-03-ai-enrichment-visible-text-and-catalog-copy-quality-plan.md`. Review: `docs/workflow/reviews/2026-09-03-ai-enrichment-visible-text-and-catalog-copy-quality-review.md`.
+>
+> 2026-09-03: **AI Processing queue multi-select — CLOSED** — Goal `ai-processing-queue-multi-select` **DONE**. Signoff **approved**. Owner QA **PASS**. Studio: ⋯ Multiple select, click/Shift+click range, Cancel, owner bulk Delete via existing `deleteEligibleUnapprovedDesign` (max 25), wider scrolling truncated title dialog. No new Functions. Production / Studio publish **NOT AUTHORIZED**. FreshForge **IDLE**. Smart Profiling **PARKED**; batch-allocation **DEFERRED**. Signoff: `docs/workflow/reviews/2026-09-03-ai-processing-queue-multi-select-signoff.md`.
+>
+> 2026-09-03: **Smart Profile subject canonicalization + derivative suppression — CLOSED (DEV)** — Goal `smart-profile-subject-canonicalization-and-derivative-suppression` **DONE**. Signoff **approved_with_notes**. Prompt **catalog-enrich-v31** + normalizer **smart-profile-normalizer-v5** on `fresh-prints-dev` (`enqueueAiEnrichment`, `onCatalogReprocessJobWritten`, `startCatalogReprocessJob`, `previewCatalogReprocessJob`). Owner subject canary **PASS**. Schema `smart-profile-v1` unchanged; ADR-FP-145 amended. No mass reprocess; Autonomous **OFF**; production **NOT AUTHORIZED**. Next queued: Smart Profiling completion (not started). Batch-allocation **DEFERRED**. Signoff: `docs/workflow/reviews/2026-09-03-smart-profile-subject-canonicalization-and-derivative-suppression-signoff.md`.
+>
+> 2026-09-03: **Firestore Rules Print Request item resize expression budget + Interactive Upscale DPI corrective — CLOSED (DEV)** — Parent goal `firestore-rules-print-request-item-resize-expression-budget` **DONE**. Blocking corrective `interactive-upscale-dpi-rehydration-and-eligibility` (TD-033) **DONE**. Focused Rules **22/22**; full Rules **169/169**; DEV `firestore:rules` deployed; Owner Rules QA **PASS WITH NOTE** then corrective Owner Interactive Upscale DEV QA **PASS**. Shared/Portal/Studio hydration + `<250` eligibility; Functions `setPrintRequestItemArtworkEnhanceMode` + `enhancePrintRequestArtwork` on `fresh-prints-dev`. Signoff **approved_with_notes**. TD-033 **RESOLVED ON DEV**. Production / App Hosting / Studio publish **NOT AUTHORIZED**. FreshForge **IDLE**. Smart Profiling **PARKED**; batch-allocation **DEFERRED**. Signoff: `docs/workflow/reviews/2026-09-03-firestore-rules-print-request-item-resize-expression-budget-signoff.md`.
+>
+> 2026-09-03: **Portal modal + import Smart Profile presets + intake metadata controls — CLOSED (DEV)** — Goal `portal-modal-dont-show-again-and-import-smart-profile-presets` **DONE**. Owner QA **PASS** across Workstreams A/B/C, including Workstream C end-to-end DEV promotion QA. Signoff **approved_with_notes**. Workstream A: shared Portal Upload/Donate "Don't show again" localStorage dismissal. Workstream B: Studio Import Session Smart Profile presets tab, durable `smartProfileImportPresets`, provenance tracking, post-AI merge, reprocess/staff-edit preservation, Firestore Rules allowlist, exact 4 Functions on `fresh-prints-dev`. Workstream C: Studio per-design Auto/Light/Dark/Halftone controls, trusted background callable, authoritative promotion via `promoteCustomerUploadToAiReview`, `halftoneDecisionSource: intake`, `artworkBackgroundSource: staff_manual`; exact 2 Functions on `fresh-prints-dev`. First C promotion deploy timed out on Firebase discovery; retry with shell-local `FUNCTIONS_DISCOVERY_TIMEOUT=60` succeeded. Full Rules remain **158/159** with one known unrelated expression-budget failure in `tests/firebase/printRequestItemResize.rules.test.ts`; next owner-selected goal recorded as `firestore-rules-print-request-item-resize-expression-budget`. Production / App Hosting / Studio publish **NOT AUTHORIZED**. Smart Profiling **PARKED**; `show-queue-batch-allocation-performance` **DEFERRED**. Signoff: `docs/workflow/reviews/2026-09-03-portal-modal-dont-show-again-and-import-smart-profile-presets-signoff.md`.
+>
+> 2026-09-02: **Customer-specific temporary Print Request + Show quota override — CLOSED (DEV)** — Goal `customer-specific-temporary-print-request-and-show-quota-override` **DONE**. Owner QA **PASS** (A–Q incl. linked UX + Internal Save fix). Signoff **approved**; final DEV **APPROVED**. Optional `customers/{id}.printRequestQuotaOverride`; effective limits; owner callable; Rules; Portal consumers; Studio Edit Customer linked Quota Override + Users badge; ADR-FP-159. DEV Rules + 7 Functions + corrective `updateCustomerPrintRequestQuotaOverride` on `fresh-prints-dev`. **Production NOT AUTHORIZED** (future: Shared + Studio + Portal + Functions + Rules; Storage/indexes/migration NO; promote corrective callable). FreshForge **IDLE**. Smart Profiling **PARKED**; `show-queue-batch-allocation-performance` **DEFERRED**. Signoff: `docs/workflow/reviews/2026-09-02-customer-specific-temporary-print-request-and-show-quota-override-signoff.md`.
+>
+> 2026-09-02: **Cross-app lightbox Previous/Next — CLOSED (DEV)** — Goal `cross-app-lightbox-previous-next-navigation` **DONE**. Owner QA **PASS** (A–H). Signoff **approved**; final DEV **APPROVED**. Shared nav helper + Studio/Portal lightbox Prev/Next on Formal Review included surfaces; mat/image commit-together polish. Firebase **NONE**. **Production NOT AUTHORIZED** (future: Studio + Portal + shared). FreshForge **IDLE**. Smart Profiling **PARKED**; batch-allocation **DEFERRED**. Signoff: `docs/workflow/reviews/2026-09-02-cross-app-lightbox-previous-next-navigation-signoff.md`.
+>
+> 2026-09-02: **Cross-app lightbox Previous/Next — IMPLEMENT COMPLETE / OWNER QA** — *(superseded by CLOSED banner above)*
+>
+> 2026-09-02: **Portal Editing parks current draft — CLOSED (DEV)** — Goal `portal-editing-request-parks-current-draft` **DONE**. Continuable parking + Studio trusted remove + Portal UX (banner/overlay/tab strip). Corrective Owner QA **PASS**; polish **PASS**. DEV Functions + Rules (initial) + corrective Functions redeploy. **Production NOT AUTHORIZED**. FreshForge **IDLE**. Smart Profiling **PARKED**. Signoff: `docs/workflow/reviews/2026-09-02-portal-editing-request-parks-current-draft-signoff.md`.
+>
+> 2026-09-02: **Portal Editing parks current draft — IMPL REVIEW / DEV DEPLOY GATE** — *(superseded by CLOSED banner above)*
+>
+> 2026-09-02: **Portal Editing parks current draft — PLAN + FORMAL REVIEW** — *(superseded)*
+>
+> 2026-09-02: **Studio + Portal Print Request Editing tab — CLOSED (DEV)** — Goal `studio-print-request-editing-tab` **DONE**. `queueTab: "editing"`; Customer Working\|Editing\|Queued\|Printing\|Printed; Internal Working\|Editing\|Queued\|Printed; Portal Editing tab (Decision 5 reverse); Internal→Printed newest-first History sort. Owner QA **PASS**. DEV Functions + Rules + reconcile complete. **Production NOT AUTHORIZED**. FreshForge **IDLE**. Next queued: `portal-editing-request-parks-current-draft` (not started). Smart Profiling **PARKED**; batch-allocation **DEFERRED**. Signoff: `docs/workflow/reviews/2026-09-02-studio-print-request-editing-tab-signoff.md`.
+>
+> 2026-09-02: **Show Queue Move / Combine Requests — CLOSED (DEV)** — Goal `show-queue-move-and-combine-requests` **DONE**. Authoritative `previewShowQueueMove` / `applyShowQueueMove`; source cancel + `movedFromAllocationId`; multi-doc combine (e.g. 3+5→8); Move All all-or-nothing (≤150); Whatnot→Whatnot only. Owner QA **PASS**. DEV Functions + Firestore Rules deployed. **Production NOT AUTHORIZED** (future inventory: Functions + Rules + Studio + shared; no Storage/indexes/migration/Portal). FreshForge **IDLE**. Smart Profiling **PARKED**; `show-queue-batch-allocation-performance` **DEFERRED**. Signoff: `docs/workflow/reviews/2026-09-02-show-queue-move-and-combine-requests-signoff.md`.
+>
+> 2026-09-02: **Studio Design Library archive / search consistency — CLOSED (DEV)** — Goal `studio-design-library-archive-search-consistency` **DONE**. Firestore-authoritative ready membership after Algolia hydrate; archive immediately reconciles managed search; ADR-FP-084 purged Archive-browse hide preserved; Algolia reconcile **NOT RUN**. Owner QA **PASS**. **Production NOT AUTHORIZED**. FreshForge **IDLE**. Smart Profiling **PARKED**; `show-queue-batch-allocation-performance` **DEFERRED**. Signoff: `docs/workflow/reviews/2026-09-02-studio-design-library-archive-search-consistency-signoff.md`.
+>
+> 2026-09-02: **Studio Companion Design card title truncation — CLOSED (DEV)** — Goal `studio-companion-design-card-title-truncation` **DONE**. CSS shrink-chain fix (`align-items: stretch`, title `flex:1; min-width:0`, ellipsis retained); native `title` tooltip preserved; Owner QA **PASS**. **Production NOT AUTHORIZED**. FreshForge **IDLE**. Smart Profiling **PARKED**; `show-queue-batch-allocation-performance` **DEFERRED**. Signoff: `docs/workflow/reviews/2026-09-02-studio-companion-design-card-title-truncation-signoff.md`.
+>
+> 2026-09-02: **Studio History newest-first + Pocket/Full Size counts — CLOSED (DEV)** — Goal `studio-history-newest-first-ordering` **DONE** with amendment `print-request-pocket-fullsize-counts`. Internal Gang Sheet History `printFinishedAt` DESC; Current/Past/Upcoming unchanged; width-only `Pocket N · Full Size M` pill (Show vs Internal cutoffs); pricing classifier unchanged; Print Request outer-scroll-only. Owner QA **PASS** (History + corrective). **Production NOT AUTHORIZED** (future Studio promote only — no Functions/Rules/indexes/migration). FreshForge **IDLE**. Smart Profiling **PARKED**; `show-queue-batch-allocation-performance` **DEFERRED**. Signoff: `docs/workflow/reviews/2026-09-02-studio-history-newest-first-ordering-signoff.md`.
+
+> 2026-09-02: **Portal Upcoming Shows calendar polish + performance — CLOSED (DEV)** — Goal `portal-upcoming-shows-calendar-polish-and-performance` **DONE**. Shell-first `/shows` calendar; soft upcoming green; today strongest highlight; cache snapshot SWR; Owner QA **PASS**. **Production NOT AUTHORIZED** (future Portal hosting promote only — no Functions/Rules/indexes). FreshForge **IDLE**. Smart Profiling **PARKED**; `show-queue-batch-allocation-performance` **DEFERRED**. Signoff: `docs/workflow/reviews/2026-09-02-portal-upcoming-shows-calendar-polish-and-performance-signoff.md`.
+
+> 2026-09-02: **Studio Delete First-Action Latency — CLOSED (DEV)** — Goal `studio-delete-first-action-latency` **DONE**. Same-service Gen2 warmup for deletion (+ purge) and show production recovery preview/apply; flicker fix for Mark as Fulfilled impact preview. Owner QA **PASS**. **Production NOT AUTHORIZED.** FreshForge **IDLE**. Smart Profiling **PARKED**; `show-queue-batch-allocation-performance` **DEFERRED**. Signoff: `docs/workflow/reviews/2026-09-02-studio-delete-first-action-latency-signoff.md`.
+>
+> 2026-08-31: **Print Request Sizing + Interactive Upscale — CLOSED (DEV)** — Goal `print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale` **DONE**. Signoff **approved**; owner DEV QA **PASS**. Configurable PR default (10″ fallback); 15″ automated upscale; WS-TOGGLE interactive enhance; production export parity on `fresh-prints-dev`. **Production NOT AUTHORIZED.** FreshForge **IDLE**. Smart Profiling **NOT STARTED.** Signoff: `docs/workflow/reviews/2026-08-31-print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale-signoff.md`.
+>
+> 2026-08-30: **Print Request 11″ Default + 15″ Upscale + Legacy Art Upscale — PLAN + FORMAL REVIEW** — *(superseded by 2026-08-31 signoff banner above)*
+>
+> 2026-08-30: **Customer Account Identity WS4 — CLOSED (DEV)** — Goal `customer-account-identity-management-ws4-customer-activity-and-deep-linking` **DONE**. Owner DEV QA **PASS**. Print Request History + Account Activity + deep linking in Studio User Info. **WS1–WS4 complete on DEV.** Production **NOT AUTHORIZED.** Signoff: `docs/workflow/reviews/2026-08-30-customer-account-identity-management-ws4-signoff.md`.
+>
+> 2026-08-30: **Show Queue Did Not Print Re-queue Recovery — CLOSED (DEV)** — Goal `show-queue-needs-attention-did-not-print-recovery` **DONE**. Owner DEV QA **PASS** (primary Move + secondary Release-only + DEV fixture + allocation permissions + scoped Owner Edit Show enabler). `requeue_unfulfilled`, Needs Re-queue triage, `requeuedFromAllocationId` lineage on `fresh-prints-dev`. **Production / Studio publish NOT AUTHORIZED.** Signoff: `docs/workflow/reviews/2026-08-30-show-queue-needs-attention-did-not-print-recovery-signoff.md`.
+>
+> 2026-08-29: **Show Queue DEV Override + Allocation Permission Repair — CLOSED (DEV)** — Goal `show-queue-dev-override-and-allocation-permission-repair` **DONE**. Owner DEV QA **PASS** (incl. Needs Attention corrective). Rules allowlist repair; `DEV-OVERRIDE` / `dev_fixture`; recovery callables on `fresh-prints-dev`. **Production / Studio publish NOT AUTHORIZED.** Signoff: `docs/workflow/reviews/2026-08-29-show-queue-dev-override-and-allocation-permission-repair-signoff.md`.
+>
+> 2026-08-29: **Show Queue Did Not Print Re-queue Recovery — PLAN + REVIEW** — *(superseded)* Formal Review **approved_with_changes**.
+>
+> 2026-08-29: **Customer Account Identity Management — WS2 CLOSED (DEV)** — Goal `customer-account-identity-management-ws2-duplicate-resolution` **DONE**. Owner DEV QA **PASS**; Studio product name **Transfer Username**. Functions on `fresh-prints-dev`: `previewDuplicateAccountResolution`, `transferCustomerUsername`. **No WS3 merge; no history reassignment.** Production / Studio publish / Portal **NOT AUTHORIZED** (coordinated identity promotion deferred). Signoff: `docs/workflow/reviews/2026-08-29-customer-account-identity-management-ws2-signoff.md`.
+>
+> 2026-08-29: **Customer Account Identity WS3 IMPLEMENTED (DEV source)** — *(superseded by WS3 CLOSED banner above)* Merge Accounts callables + Studio wizard + Merged tab. Stage-order QA corrective documented.
+>
+> 2026-08-29: **Print Request Standard Size Presets — CLOSED (DEV)** — Goal `print-request-standard-size-presets` **DONE**. Signoff **approved**; owner focused corrective re-QA **PASS**. Standard Sizes settings + modal (v1 defaults, Pocket, Adult/Youth/Toddler/Infant + Hat sub-tabs) on `fresh-prints-dev`. **Production / Studio publish / Portal App Hosting NOT AUTHORIZED.** Signoff: `docs/workflow/reviews/2026-08-29-print-request-standard-size-presets-signoff.md`. Production **NOT AUTHORIZED**.
+>
+> 2026-08-28: **Customer Account Identity Management — WS1 CLOSED (DEV)** — Goal `customer-account-identity-management-and-audit` **WS1 DONE**. Signoff **approved**; owner DEV QA **PASS** (correctives #1–#5). Reversible disable, hard-delete preview/apply (dev-gated), Change Username UX, Portal-editable PR contract, duplicate-CR guards on `fresh-prints-dev`. **WS2–WS4 not started.** Production / Studio publish / Portal App Hosting **not authorized**. Signoff: `docs/workflow/reviews/2026-08-28-customer-account-identity-management-ws1-signoff.md`. FreshForge **IDLE**. Phase 9 **PARKED**.
+>
+> 2026-08-28: **Phase 7 Show Queue past-show failsafe — CLOSED (DEV)** — Goal `show-queue-past-show-failsafe-and-owner-override` **DONE**. Signoff **approved_with_notes**; owner DEV QA **PASS**. Needs Attention tab; staff remediation + owner override v1; recovery callables on `fresh-prints-dev` only. Session corrective: Show Queue tab URL sync; Portal show-list caches. **Production / Studio publish not authorized.** Signoff: `docs/workflow/reviews/2026-08-28-show-queue-past-show-failsafe-and-owner-override-signoff.md`. FreshForge **IDLE**. Phase 9 **PARKED**.
+>
+> 2026-08-27: **DEV work closeout — owner acceptance** — Portal customer username change **DONE** (DEV QA PASS; production promotion deferred). Smart Catalog Intelligence **Slice 6 SIGNOFF approved_with_notes (DEV)** — Ready preservation passed; full Ready Catalog backfill on `fresh-prints-dev`; Smart Profile visibility/editing/reconciliation accepted; **1 failed enrichment design** + calibration notes retained. Shadow ON; Autonomous OFF; production untouched. Signoffs: `docs/workflow/reviews/2026-08-27-portal-customer-username-change-signoff.md`, `docs/workflow/reviews/2026-08-26-smart-catalog-intelligence-slice-6-signoff.md`. FreshForge **IDLE**.
+
+> 2026-08-27: **Phase 7 Show Queue gang-sheet three-mode refinement — CLOSED (DEV)** — Goal `show-queue-gang-sheet-three-mode-refinement` **DONE**. Signoff **approved**; owner DEV QA **PASS**. Three modes: Standard · Grouped by Customer (`customer_grouped_continuous`) · Sheet per Customer (`grouped_by_customer`). Studio + shared only; **no Studio publish / production**. Signoff: `docs/workflow/reviews/2026-08-27-show-queue-gang-sheet-three-mode-refinement-signoff.md`. Phase 9 **PARKED**.
+
+> 2026-08-27: **Phase 7 Show Queue gang-sheet modes — owner refinement (docs only)** — Queued goal product spec refined (superseded by formal plan). Phase 9 **PARKED**.
+>
+> 2026-08-26: **Smart Catalog Intelligence — Slice 6 SIGNOFF approved_with_notes (DEV)** — *(see 2026-08-27 closeout banner above)* Ready Catalog reprocess preservation + full DEV backfill; Smart Profile visibility/editing/reconciliation; gate unlocked on DEV. ADR-FP-146, ADR-FP-147. Phase 9 **PARKED**.
+
+> 2026-08-26: **Smart Catalog Intelligence — Slice 6 PLAN ready (Formal Review approved_with_changes)** — *(superseded by implement banner above)* Ready Catalog reprocess planned. Phase 9 **PARKED**.
+
+> 2026-08-26: **Smart Catalog Intelligence — Slice 5 SIGNOFF approved_with_notes (DEV)** — Goal `smart-catalog-intelligence-unattended-enrichment` **Slice 5 DONE**. AI Review Queue reprocess + Shadow calibration (Gate H 204/204) + Gate I catch-and-correct (**catalog-enrich-v30** + **smart-profile-normalizer-v4**; `category_dominant_intent_conflict` + subject anti-glue). Mini QA **PASS WITH NOTES**. Ready Catalog locked; Autonomous OFF; production untouched. **Slice 6 planning authorized separately.** Signoff: `docs/workflow/reviews/2026-08-26-smart-catalog-intelligence-slice-5-signoff.md`. Phase 9 **PARKED**.
+
+> 2026-08-26: **Smart Catalog Intelligence — Slice 5 Gate I CORRECTIVE implemented (code only)** — *(superseded by Slice 5 signoff banner above)* Gate I owner sample **NEEDS CORRECTIVE**; corrective v30/v4 shipped then DEV-deployed + mini-QA’d. Plan: `docs/workflow/plans/2026-08-26-slice-5-gate-i-corrective-plan.md`. Phase 9 **PARKED**.
+
+> 2026-08-25: **Smart Catalog Intelligence — Slice 5 IMPLEMENTATION REVIEW approved (code only)** — Goal `smart-catalog-intelligence-unattended-enrichment` **Slice 5 Gate C DONE** (Implement + Test + Implementation Review). AI Review Queue unlock + eligibility/preview/worker/outcomes/Shadow preflight on control plane; Ready Catalog still gated; Autonomous OFF; **no DEV deploy / no job Start**. Next: owner Gate E deploy authorize. Review: `docs/workflow/reviews/2026-08-25-smart-catalog-intelligence-slice-5-implementation-review.md`. Phase 9 **PARKED**.
+
+> 2026-08-25: **Smart Profile Quality + Canonicalization (+ Import Background) refinement — SIGNOFF approved_with_notes (DEV)** — Goal `smart-catalog-intelligence-unattended-enrichment` refinement **DONE**. Prompt **catalog-enrich-v29** + **smart-profile-normalizer-v3** (C1 Highland specificity) on DEV `enqueueAiEnrichment`; import Auto background C2b accepted (PASS WITH NOTES; further detector tuning deferred). Live smoke PASS; Autonomous OFF; production untouched. **Slice 5 unblocked** (not started). Signoff: `docs/workflow/reviews/2026-08-25-smart-profile-quality-canonicalization-and-import-background-signoff.md`. Phase 9 **PARKED**.
+
+> 2026-08-25: **Smart Catalog Intelligence — Slice 4 SIGNOFF approved_with_notes (DEV)** — Goal `smart-catalog-intelligence-unattended-enrichment` **Slice 4 DONE**. Catalog Processing Mode + dual Autonomous gate (live OFF) + autonomy/verifier + Automation Health + Catalog Reprocessing control plane (Start gated) on `fresh-prints-dev`. Owner QA **PASS WITH NOTES**. **Slice 5 blocked** until Smart Profile Quality + Canonicalization (+ import background/halftone) refinement signed off. No production / live Autonomous. Signoff: `docs/workflow/reviews/2026-08-25-smart-catalog-intelligence-slice-4-signoff.md`. Phase 9 **PARKED**.
+
+> 2026-08-25: **Smart Catalog Intelligence — Catalog Reprocessing amendment (docs)** — Owner-required cross-slice capability: Settings → AI Enrichment → Catalog Reprocessing (owner-only; DEV+PROD). Slice 4 owns control plane/job architecture; Slice 5 **Reprocess AI Review Queue**; Slice 6 **Reprocess Ready Catalog**. Master plan §11a. Phase 9 **PARKED**.
+>
+> 2026-08-25: **Smart Catalog Intelligence — Slice 3 SIGNOFF approved_with_notes (DEV)** — Goal `smart-catalog-intelligence-unattended-enrichment` **Slice 3 DONE**. Search Intelligence + Algolia Smart Profile fields + Smart Filters (flag default OFF) + Category↔search/Smart reciprocal narrowing on `fresh-prints-dev`. Owner final QA **PASS**. Correctives: Portal post-filter skip, Filters CSS, category facets. **Slice 4 not started.** No production. Signoff: `docs/workflow/reviews/2026-08-25-smart-catalog-intelligence-slice-3-signoff.md`. Phase 9 **PARKED**.
+>
+> 2026-08-24: **Phase 7 Show Queue gang-sheet three-mode refinement — QUEUED ONLY (docs)** — Future managed goal `show-queue-gang-sheet-three-mode-refinement` recorded; **not started**. Owner product clarification: modal eventually exposes **Standard**, **Grouped by Customer** (continuous multi-customer sheets with CR headings; new customer ≠ new sheet), and **Separate by Customer** (preserve today’s isolated-per-request sheet sets). Not part of Smart Catalog Intelligence Slices 3–6. No runtime work. Brief: `docs/workflow/plans/2026-08-24-show-queue-gang-sheet-three-mode-refinement-queued-goal.md`. ADR-FP-143 follow-up note in `docs/project/DECISIONS.md`. Phase 9 **PARKED**.
+>
+> 2026-08-24: **Smart Catalog Intelligence — Slice 2 SIGNOFF approved_with_notes (DEV)** — Goal `smart-catalog-intelligence-unattended-enrichment` **Slice 2 DONE**. Smart Profile `smart-profile-v1`, prompt **catalog-enrich-v27**, import provenance fields, shadow automation (Needs Review only), persistence corrective on `fresh-prints-dev`. Owner DEV QA **PASS WITH NOTES**; **PROVENANCE PASS**. Calibration notes retained for Slices 3–4. **Slice 3 not started.** No auto-approval / tag retirement / backfill / prod. Signoff: `docs/workflow/reviews/2026-08-24-smart-catalog-intelligence-slice-2-signoff.md`. Phase 9 **PARKED**.
+>
 > 2026-08-24: **Portal Discover show-rail loading + order polish — SIGNOFF approved (DEV)** — Goal `portal-discover-show-rails-loading-and-order-polish` **DONE**. Independent Next Show / This Week Discover loading; compact This Week rail presentation reversed; View All canonical order unchanged. Owner `OWNER DEV QA: PASS`. Production untouched. Signoff: `docs/workflow/reviews/2026-08-24-portal-discover-show-rails-loading-and-order-polish-signoff.md`. Phase 9 **PARKED**.
 >
 > 2026-08-24: **Production promote Portal + Studio 1.0.9 — CLOSED** — Goal `production-promote-portal-and-studio-2026-08-23` **DONE**. PR **#88** @ `94a1ed0`; PR **#89** hotfix @ `f35c96d`. Gate D Firebase live. Portal **`build-2026-08-24-002`**. Studio **1.0.9** published release **375869566** / run [32754684436](https://github.com/roasted-garlic/freshprints/actions/runs/32754684436). Signoff: `docs/workflow/reviews/2026-08-24-production-promote-portal-and-studio-signoff.md`. Phase 9 **PARKED**.
@@ -1003,7 +1346,7 @@ Phase 3 complete when:
 
 ---
 
-## Phase 4 — Catalog Cleanup (2026-06-24)
+## Phase 4 — Catalog Cleanup (2026-06-24; historical baseline before 2026-09-09 tag retirement)
 
 **Delivered:**
 
@@ -1025,7 +1368,7 @@ Phase 3 complete when:
 
 ---
 
-# Phase 4
+# Phase 4 (historical baseline before 2026-09-09 tag retirement)
 
 ## Catalog Search And Organization
 
@@ -1042,6 +1385,9 @@ Make the **approved design catalog** easy to search and browse. Design Library i
 ---
 
 ## Objectives
+
+> The following Phase 4 bullets are retained as historical scope and are superseded for current
+> operational catalog behavior by Smart Profile + category + dedicated Halftone filtering.
 
 Build:
 
@@ -1496,6 +1842,43 @@ nice-to-have after Portal; auto-nested export already covers production file nee
 **Signed off 2026-07-07** — production-file export (zip + gang sheet PNG):
 `docs/workflow/reviews/2026-07-07-show-queue-export-and-production-files-signoff.md`
 
+### Phase 7 fast-follow — Show Queue gang-sheet generation modes (CLOSED DEV 2026-08-27)
+
+| Field | Value |
+|-------|-------|
+| Status | **DONE (DEV)** — signoff **approved** 2026-08-27 |
+| Managed goal id | `show-queue-gang-sheet-three-mode-refinement` |
+| Phase alignment | Phase 7 — Show Queue / production workflow refinement |
+| Plan | `docs/workflow/plans/2026-08-27-show-queue-gang-sheet-three-mode-refinement-plan.md` |
+| Review | `docs/workflow/reviews/2026-08-27-show-queue-gang-sheet-three-mode-refinement-review.md` (**approved_with_changes**) |
+| Signoff | `docs/workflow/reviews/2026-08-27-show-queue-gang-sheet-three-mode-refinement-signoff.md` (**approved**) |
+| Owner DEV QA | **PASS** |
+| Superseded brief | `docs/workflow/plans/2026-08-24-show-queue-gang-sheet-three-mode-refinement-queued-goal.md` |
+| Baseline | ADR-FP-143 + WS5 signoff 2026-08-23 |
+
+**Three modal options (shipped in repo):**
+
+1. **Standard** — `efficiency` (omitted on wire); unchanged efficiency packing.
+2. **Grouped by Customer** — `customer_grouped_continuous`; continuous multi-customer sheets with CR headings.
+3. **Sheet per Customer** — `grouped_by_customer`; per-customer physical sheet sets (preserved legacy grouped behavior).
+
+**Production / Studio publish:** not authorized — separate promote when owner approves.
+
+---
+
+### Phase 7 corrective — Show Queue past-show failsafe (PLAN + REVIEW 2026-08-27)
+
+| Field | Value |
+|-------|-------|
+| Status | **PLAN + REVIEW complete** — implementation **not authorized** |
+| Managed goal id | `show-queue-past-show-failsafe-and-owner-override` |
+| Plan | `docs/workflow/plans/2026-08-27-show-queue-past-show-failsafe-and-owner-override-plan.md` |
+| Review | `docs/workflow/reviews/2026-08-27-show-queue-past-show-failsafe-and-owner-override-review.md` (**approved_with_changes**) |
+
+**Problem:** Past schedule ≠ production completion; queued PRs can strand on Past shows with `open`/`full` (ADR-FP-139 covers Past+`printing` only).
+
+**Planned:** Needs Attention tab; Close Empty Show; Mark Fulfilled / Release paths; owner-only override; Functions callables.
+
 ---
 
 ## Deliverables
@@ -1807,5 +2190,3 @@ Fresh Prints succeeds when:
 * The platform remains maintainable for years.
 
 Every feature should move the project toward these goals.
-
-

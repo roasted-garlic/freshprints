@@ -31,6 +31,13 @@ export const OPERATIONAL_WIPE_TARGET_OPTIONS: OperationalWipeTargetOption[] = [
       "Deletes upcoming shows, remaining allocations/Firestore gang sheets, and staff inbox Done history, and clears this computer’s local gang sheet PNG cache. Keeps print requests.",
   },
   {
+    id: "internalGangSheets",
+    label: "Internal Gang Sheets",
+    summary: "Internal gang sheets and their queue attachments; keeps requests and customer shows.",
+    description:
+      "Deletes Internal Gang Sheet records, their allocations, gang sheets, and gang sheet items. Keeps internal print requests, customer requests, and Whatnot shows. The durable internal gangsheet numbering counter is preserved.",
+  },
+  {
     id: "sequences",
     label: "Sequences",
     summary: "Request name counters restart at 001.",

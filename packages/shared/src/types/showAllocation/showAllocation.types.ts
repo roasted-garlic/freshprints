@@ -15,13 +15,15 @@ export interface ShowAllocation {
   printRequestId: string;
   printRequestItemId: string;
   /**
-   * Catalog design id. Required for catalog allocations; omitted for customer_upload.
+   * Catalog design id. Required for catalog allocations; omitted for customer_upload/staff_artwork.
    */
   designId?: string;
   /** Defaults to catalog_design when absent (legacy). */
-  sourceType?: "catalog_design" | "customer_upload";
+  sourceType?: "catalog_design" | "customer_upload" | "staff_artwork";
   /** Required when sourceType is customer_upload. */
   customerUploadId?: string;
+  /** Required when sourceType is staff_artwork. */
+  staffArtworkId?: string;
   customerId?: string;
   requestNameSnapshot: string;
   requestOriginSnapshot?: PrintRequestOrigin;
@@ -45,6 +47,13 @@ export interface ShowAllocation {
   completedBy?: string;
   canceledAt?: Timestamp;
   canceledBy?: string;
+  /** When set, this allocation was created by Did Not Print requeue from the referenced source row. */
+  requeuedFromAllocationId?: string;
+  /**
+   * When set, this allocation was created by a normal Show Queue MOVE from the referenced source row.
+   * Distinct from `requeuedFromAllocationId` (Did Not Print recovery only).
+   */
+  movedFromAllocationId?: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

@@ -12,8 +12,10 @@ import {
   permissionDenied,
   unauthenticated,
 } from "./lib/errors";
-import { loadPrintRequestLimitSettings } from "./lib/loadPrintRequestLimitSettings";
+import { loadEffectivePrintRequestLimitsForCustomer } from "./lib/loadEffectivePrintRequestLimits";
 import { requirePortalCustomer } from "./lib/portalCustomer";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
+import { assertPortalActiveEditableRequestData } from "./lib/portalContinuableParking";
 
 export interface UpdatePortalPrintRequestItemQuantityRequest {
   printRequestId: string;
@@ -50,6 +52,7 @@ export const updatePortalPrintRequestItemQuantity = onCall(
 
     try {
       const portalCustomer = await requirePortalCustomer(request.auth.uid);
+      await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
       const data = request.data as UpdatePortalPrintRequestItemQuantityRequest;
       const printRequestId =
         typeof data?.printRequestId === "string" ? data.printRequestId.trim() : "";
@@ -64,8 +67,10 @@ export const updatePortalPrintRequestItemQuantity = onCall(
       }
 
       const customerUid = request.auth.uid;
-      const settings = await loadPrintRequestLimitSettings();
-      const maxPerRequest = settings.maxQuantityPerPrintRequest;
+      const effectiveLimits = await loadEffectivePrintRequestLimitsForCustomer(
+        portalCustomer.customerId,
+      );
+      const maxPerRequest = effectiveLimits.effectiveMaxQuantityPerPrintRequest;
       let quantity = nextQuantity;
 
       await adminDb.runTransaction(async (tx) => {
@@ -90,6 +95,9 @@ export const updatePortalPrintRequestItemQuantity = onCall(
 
         const requestData = requestSnap.data() ?? {};
         const itemData = itemSnap.data() ?? {};
+
+        // Assert request is active editable (not parked)
+        assertPortalActiveEditableRequestData(requestData, printRequestId);
 
         if (requestData.customerId !== portalCustomer.customerId) {
           throw permissionDenied("You do not own this print request.");

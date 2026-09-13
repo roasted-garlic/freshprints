@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import {
   isCatalogDesignPrintRequestItem,
   isCustomerUploadPrintRequestItem,
+  resolvePrintRequestItemSourcePill,
   resolvePrintRequestItemSourceType,
   shouldIncrementDesignRequestCount,
 } from "./printRequestItemSource";
@@ -15,6 +16,31 @@ describe("printRequestItemSource", () => {
       "catalog_design",
     );
     assert.equal(isCatalogDesignPrintRequestItem({ designId: "d1" }), true);
+  });
+
+  it("falls back to staff_artwork when only staffArtworkId is present", () => {
+    assert.equal(
+      resolvePrintRequestItemSourceType({ staffArtworkId: "sa-1" }),
+      "staff_artwork",
+    );
+  });
+
+  it("falls back to customer_upload when only customerUploadId is present", () => {
+    assert.equal(
+      resolvePrintRequestItemSourceType({ customerUploadId: "u-1" }),
+      "customer_upload",
+    );
+  });
+
+  it("prefers explicit sourceType over identity IDs", () => {
+    assert.equal(
+      resolvePrintRequestItemSourceType({
+        sourceType: "catalog_design",
+        designId: "d1",
+        staffArtworkId: "sa-ignored",
+      }),
+      "catalog_design",
+    );
   });
 
   it("recognizes customer_upload sourceType", () => {
@@ -46,5 +72,27 @@ describe("printRequestItemSource", () => {
     assert.equal(resolvePrintRequestItemSourceType(source), "catalog_design");
     assert.equal(isCatalogDesignPrintRequestItem(source), true);
     assert.equal(shouldIncrementDesignRequestCount(source), true);
+  });
+
+  it("resolves source pills for library, upload, and custom assisted flows", () => {
+    assert.deepEqual(
+      resolvePrintRequestItemSourcePill({
+        item: { designId: "d1", sourceType: "catalog_design" },
+      }),
+      { label: "Library", variant: "library" },
+    );
+    assert.deepEqual(
+      resolvePrintRequestItemSourcePill({
+        item: { sourceType: "customer_upload", customerUploadId: "u1" },
+      }),
+      { label: "Uploaded", variant: "uploaded" },
+    );
+    assert.deepEqual(
+      resolvePrintRequestItemSourcePill({
+        item: { sourceType: "customer_upload", customerUploadId: "u1" },
+        fromAssistedCreation: true,
+      }),
+      { label: "Custom", variant: "custom" },
+    );
   });
 });

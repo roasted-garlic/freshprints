@@ -1,5 +1,187 @@
 # Roadmap and Phases
 
+> 2026-09-13: **Rules rollback evidence CLOSED; final parent M0 Classification A** — Read-only
+> Firestore/Storage Rules releases, ruleset IDs, source exports, timestamps, and hashes are captured
+> for `fresh-prints-prod`. Final M0 against corrected Studio SHA `5bf477fcf676f37265018262268ee5e8734e8eff`
+> has zero unexplained paths and is **READY FOR REPLACEMENT CANDIDATE COMMIT/PUSH AUTHORIZATION**.
+> Exact next checkpoint: **OWNER AUTHORIZE REPLACEMENT CANDIDATE COMMIT/PUSH**.
+
+> 2026-09-13: **Studio typecheck stabilization CLOSED — approved_with_notes** — Owner confirmed
+> prerelease Studio `1.0.10` install, launch, and version checks. DEV identity is expected under the
+> existing prerelease contract; production environment QA is deferred by design to the canonical
+> stable production gate. Rules rollback snapshot retrieval (`403 service-disabled/no-quota-project`)
+> is the only remaining pre-GO blocker. Next: human Rules access → final parent M0.
+
+> 2026-09-13: **Production-configured Studio RC blocked by canonical release path** — Owner QA
+> confirmed the prior `prerelease + internal-unsigned` artifact is DEV-configured and reads DEV
+> Firestore. Inspection proves the canonical stable Studio path requires `release_type=stable` and
+> a ref on `production` or an exact SHA reachable from `origin/production`; no alternate RC mode
+> will be created. Shortest safe path: finish the Rules blocker, assemble/freeze replacement
+> candidate, approve GO, merge to `production`, then build Studio `1.0.10` through the existing
+> stable path.
+
+> 2026-09-13: **Studio 1.0.10 RC package validation PASS — Owner QA pending** — All 29 reviewed
+> TypeScript diagnostics are resolved (hard gate 0); corrective suites 49/49 and targeted
+> validation 198/198 pass. Exact SHA `5bf477fcf676f37265018262268ee5e8734e8eff` succeeded in
+> workflow `34739620667` as `1.0.10` / `internal-unsigned` on Windows and macOS with verified
+> artifacts. Consolidated Signoff awaits **`OWNER QA: STUDIO 1.0.10 RC INSTALL / UPDATE`**.
+> Production, stable publication, development merge, freeze, and parent M0 remain unauthorized.
+
+> 2026-09-12: **Consolidated Studio release-pipeline typecheck stabilization — Plan/Formal Review
+> complete** — The complete existing Studio blocker is **29 TypeScript diagnostics across 16 files**.
+> One bounded corrective is reviewed as `approved_with_changes`; TypeScript remains a real release
+> gate with no bypass. Accepted lint evidence (49/49, Windows/macOS lint PASS) carries forward to
+> consolidated Signoff after packaging. Exact next checkpoint: **OWNER ACCEPT CONSOLIDATED STUDIO
+> RELEASE PIPELINE CORRECTIVE + AUTHORIZE IMPLEMENT**.
+
+> 2026-09-12: **Studio lint-gate corrective — RC lint PASS; packaging blocked by existing typecheck
+> baseline** — Temporary validation branch `rc/studio-release-lint-gate-validation` at
+> `b8d8d80cc1cab5bdb2aed1889730205e0a8046f3` ran as prerelease `1.0.10` / `internal-unsigned`.
+> Windows and macOS lint passed; both packaging jobs stopped at the existing Studio TypeScript
+> baseline during `npx tsc` before artifact creation (classification B, not a corrective
+> regression). No artifacts, hashes, install/update evidence, stable publication, or merge exists.
+> Exact next checkpoint: **OWNER DECIDE EXISTING STUDIO TYPECHECK BASELINE / CORRECTIVE SIGNOFF PATH**.
+
+> 2026-09-12: **Historical Studio lint-gate corrective — Implement/Test complete; RC evidence then pending** —
+> Owner-authorized workflow-only implementation adds a deterministic exact-25 finding baseline and
+> comparator to both Studio release jobs. Automated validation is **49/49 PASS** and the helper
+> reports `current=25 baseline=25 new=0 removed=0`; Studio runtime source is unchanged. Remote
+> prerelease packaging is pending because owner policy forbids candidate commit/push before
+> corrective Signoff and parent M0. Exact next checkpoint: **OWNER DECIDE CORRECTIVE RC VALIDATION
+> SOURCE / AUTHORIZE NEXT GATE**.
+
+> 2026-09-12: **Studio release workflow corrective — Plan/Formal Review complete** — Owner
+> invalidated former M1 SHA `ff533c835508e65bb3cfd9d2739f72bafe1fc895` for production release
+> purposes while preserving historical evidence. Child `studio-release-workflow-baseline-aware-lint-gate`
+> had a bounded Plan and Formal Review (`approved_with_changes`) for a deterministic checked-in
+> whole-repository lint baseline comparator; owner acceptance and implementation followed. No
+> Studio runtime behavior or production action occurred. This entry is superseded by the RC
+> validation entry above.
+
+> 2026-09-12: **Coordinated production frozen-candidate RC revalidation — C / NO-GO** — Read-only
+> checks against frozen SHA `ff533c835508e65bb3cfd9d2739f72bafe1fc895` passed freeze integrity and
+> manifests; a clean detached checkout passed the Portal production build (synthetic public
+> placeholders; build ID `ieL4DZ0JURjcMgcb-S0q4`; prior `.next/trace` EPERM absent). Production
+> baseline remains 113/113 ACTIVE Functions, 77/77 READY indexes, Portal build-003 at 100%/HTTP 200,
+> stable Studio v1.0.9, and absent/OFF maintenance settings. Focused validation is 87/87 PASS with
+> Functions build, Portal typecheck, targeted lint, and diff check passing. Real Studio workflow run
+> `34735296362` failed the existing whole-repository lint gate on Windows and macOS before packaging;
+> no 1.0.10 artifact/install/update evidence exists. Remote Rules release metadata retries returned
+> 403 service-disabled/no-quota-project. Production state/data/configuration was not changed; only
+> authorized read-only baseline queries ran. Owner-directed Studio-first sequencing is documented as
+> a docs-only amendment. Exact next checkpoint: **OWNER DECIDE INVALIDATE FROZEN CANDIDATE / RETURN TO
+> M0-M1 FOR STUDIO RC REMEDIATION**. Packet:
+> `docs/workflow/reviews/2026-09-12-coordinated-production-go-no-go-packet.md`.
+
+> 2026-09-12: **Coordinated production candidate — M1 FROZEN** — Owner authorized
+> `FREEZE MAIN CANDIDATE SHA ff533c835508e65bb3cfd9d2739f72bafe1fc895`. The immutable
+> runtime/config contract is frozen; documentation-only evidence updates may continue. Production,
+> deployment, publication, maintenance, runner, data operations, and runtime/config changes remain
+> unauthorized. Next checkpoint: **FROZEN-CANDIDATE RC VALIDATION / PRODUCTION GO-NO-GO
+> PREPARATION**.
+
+> 2026-09-12: **Historical pre-freeze candidate assembly checkpoint** — Owner
+> authorized the reviewed Classification-A candidate commit/push at
+> `ff533c835508e65bb3cfd9d2739f72bafe1fc895` (`chore(release): assemble coordinated production
+> candidate`), pushed only to `origin/development`; immutable commit-byte manifests were regenerated
+> and audited from Git objects. This entry is superseded by the authoritative M1 freeze record above.
+
+> 2026-09-12: **Coordinated production cutover prerequisites — CLOSED (repository readiness)** —
+> Goal `coordinated-production-cutover-prerequisites` is **CLOSED** with Signoff
+> **approved_with_notes** after Owner DEV QA **PASS**. Transition/final Firestore Rules,
+> projection-preferred Portal dual-read/fallback, production-hard-pinned reconciliation and
+> committed-byte manifest contracts, Studio `1.0.10`, and synchronized security/risk docs are
+> complete. The final read-only parent M0 was **A — READY FOR REVIEWED CANDIDATE COMMIT/PUSH** and
+> is now followed by the frozen candidate checkpoint;
+> production, deployment, publication, candidate freeze, staging, commit, and push remain separately
+> gated. Active parent: `coordinated-production-promotion-release-readiness`; the child is terminal.
+
+> 2026-09-12: **Studio Staff Artwork library and Print Request source — CLOSED (DEV)** — Goal
+> `studio-staff-artwork-library-and-print-request-source` is **DONE** with Signoff
+> **approved_with_notes** after Owner DEV QA **PASS**. DEV deployment and corrective redeploys are
+> complete; source-focused contracts 31/31 and emulator-backed Rules suites 11/11 pass. The parent
+> M0 has since rerun read-only and is classified A; candidate freeze or production action remains
+> separately gated.
+
+> 2026-09-11: **Customer-upload Studio deferral, personal library, and Portal inline Remove — CLOSED (DEV)** — Goal
+> `customer-upload-studio-deferral-personal-library-portal-inline-remove` **DONE**;
+> Signoff **approved_with_notes** after Owner DEV QA **PASS**. Workstreams D/A/R/C1/C2 are live in
+> the reviewed DEV source: Studio intake waits for Add to Show, queue alerts settle after success,
+> Portal removal is inline-confirmed, and Your designs separates Personal from promoted Design
+> Library artwork with bounded retention. Focused rerun: 92 pass / 1 known unrelated manifest
+> baseline. No production action, publication, candidate freeze, or backfill. Signoff:
+> `docs/workflow/reviews/2026-09-11-customer-upload-studio-deferral-personal-library-portal-inline-remove-signoff.md`.
+> Next parent checkpoint: rerun coordinated-production M0 and prepare a new candidate/freeze proposal.
+
+> 2026-09-10: **Production maintenance-mode prerequisite — CLOSED (DEV)** — Goal
+> `production-maintenance-mode-prerequisite` **DONE** with final disposition
+> **approved_with_notes** after Owner DEV QA **PASS**. The shared Portal/Studio copy contract,
+> native Studio maintenance Settings, trusted owner/admin tester list, and merged/disabled/inactive
+> eligibility guard are implemented and live on `fresh-prints-dev`. Exactly 37 reviewed Functions
+> are ACTIVE; no corrective Rules, indexes, hosting, publish, production, or parent-rollout action
+> occurred. Signoff:
+> `docs/workflow/reviews/2026-09-10-production-maintenance-mode-prerequisite-corrective-amendment-signoff.md`.
+> FreshForge **IDLE**; next: `[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]`.
+
+> 2026-09-09: **User Info Print Request lifecycle activity ordering — CLOSED (DEV)** — Goal
+> `user-info-print-request-lifecycle-activity-ordering` **CLOSED** with final disposition
+> **approved_with_notes** after Owner DEV QA **PASS** for the indexed history reader. Lifecycle
+> events/mirrors, the accepted Studio Editing→re-add corrective, mirror-only trigger corrective,
+> bounded DEV mirror backfill, and local indexed-reader activation are complete; reader coverage is
+> 8/8 and both lifecycle indexes are READY. Details is **newest → oldest**. Two historical
+> duplicate conversion events remain safely documented; no cleanup, publish, or production action
+> occurred in the signoff turn. Owner-authorized commit/push is complete as `6bf7a25d` on
+> `origin/development`; no force push occurred. FreshForge **IDLE**; next checkpoint is
+> `[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]`.
+
+> 2026-09-09: **Legacy tag operational retirement + Smart Profile search parity — CLOSED (DEV)** — Goal `legacy-tag-operational-retirement-and-smart-profile-search-parity` **DONE**; signoff **approved** after Owner DEV QA **PASS**. Active catalog search/filter behavior is Smart Profile + category + dedicated Halftone; historical tags and compatibility exports are retained. DEV-only cutover and read-only 20-sample corrective audit passed. Commit/push **COMPLETE** as `1c43f6e1`; publish, production, and physical cleanup remain separately gated. FreshForge **IDLE**.
+
+> 2026-09-05: **Pre-WS5 Automatic Explicit Content classification — SOURCE SIGNED OFF** — Corrective **COMPLETE / APPROVED WITH NOTES — SOURCE SIGNED OFF** (not DEV-live). Signoff **approved_with_notes**. DEV deploy + Studio QA pending. Autonomous **OFF**. **WS5 BLOCKED**. Production / commit **NOT AUTHORIZED**. Parent goal continues.
+>
+> 2026-09-03: **AI enrichment visible-text + catalog-copy quality — CLOSED (DEV)** — Goal `ai-enrichment-visible-text-and-catalog-copy-quality` **DONE**. Signoff **approved_with_notes**. Owner canary **PASS**. Live DEV: **catalog-enrich-v32** / **smart-profile-normalizer-v6**. Autonomous **OFF**. Production **NOT AUTHORIZED**. FreshForge **IDLE**. Next queued: Smart Profiling completion (not started).
+>
+> 2026-09-03: **AI enrichment visible-text + catalog-copy quality — DEV DEPLOYED; OWNER CANARY PENDING** — Live DEV v32/v6 on four Functions. Owner ≤10-design canary pending. No mass reprocess. Autonomous OFF. Production NOT AUTHORIZED. Smart Profiling completion remains next after this goal closes.
+>
+> 2026-09-03: **AI enrichment visible-text + catalog-copy quality — IMPLEMENT + TEST + IR (STOP before deploy)** — Code v32/v6. IR **approved_with_notes**. Live DEV still v31/v5. Await owner DEV deploy + canary. Smart Profiling completion remains next after this goal closes.
+>
+> 2026-09-03: **AI enrichment visible-text + catalog-copy quality — PLAN + FORMAL REVIEW (STOP)** — Goal `ai-enrichment-visible-text-and-catalog-copy-quality`. Review **approved_with_changes**. Proposed v32/v6. No implement. Smart Profiling completion remains next after this goal closes. Production **NOT AUTHORIZED**.
+>
+> 2026-09-03: **AI Processing queue multi-select — CLOSED** — Goal `ai-processing-queue-multi-select` **DONE**. Signoff **approved**. Owner QA **PASS**. Studio multi-select + Shift+click range + owner bulk Delete (existing callable). No Firebase deploy. Production **NOT AUTHORIZED**. FreshForge **IDLE**. Smart Profiling **PARKED**.
+>
+> 2026-09-03: **Smart Profile subject canonicalization + derivative suppression — CLOSED (DEV)** — Goal `smart-profile-subject-canonicalization-and-derivative-suppression` **DONE**. Signoff **approved_with_notes**. Live DEV: **catalog-enrich-v31** / **smart-profile-normalizer-v5**. Owner canary **PASS**. Autonomous **OFF**. Production **NOT AUTHORIZED**. Next queued: Smart Profiling completion (not started).
+>
+> 2026-09-03: **Firestore Rules resize expression budget + Interactive Upscale DPI corrective — CLOSED (DEV)** — Goal `firestore-rules-print-request-item-resize-expression-budget` **DONE**; corrective `interactive-upscale-dpi-rehydration-and-eligibility` / TD-033 **COMPLETE**. Focused Rules **22/22**; full **169/169**; DEV Rules + two enhance callables on `fresh-prints-dev`. Owner Interactive Upscale DEV QA **PASS**. Signoff **approved_with_notes**. Production **NOT AUTHORIZED**. FreshForge **IDLE**. Smart Profiling **PARKED**; batch-allocation **DEFERRED**.
+>
+> 2026-09-03: **Portal modal + import Smart Profile presets + intake metadata controls — CLOSED (DEV)** — Goal `portal-modal-dont-show-again-and-import-smart-profile-presets` **DONE**. Signoff **approved_with_notes**; owner QA **PASS** across Workstreams A/B/C. Workstream A: shared Portal Upload/Donate informational notice dismissal via localStorage only. Workstream B: Studio Import Session Smart Profile presets tab, durable `smartProfileImportPresets`, provenance tracking, post-AI merge, reprocess/staff-edit preservation, 4 DEV Functions + Firestore Rules live on `fresh-prints-dev`. Workstream C: Studio Auto/Light/Dark/Halftone intake controls, trusted background save, authoritative promotion with `halftoneDecisionSource: intake` and `artworkBackgroundSource: staff_manual`; `recordCustomerUploadArtworkBackgroundStaffDecision` + `promoteCustomerUploadToAiReview` live on `fresh-prints-dev`. First C promotion deploy timed out on Firebase discovery; shell-local `FUNCTIONS_DISCOVERY_TIMEOUT=60` retry succeeded. Production / App Hosting / Studio publish **NOT AUTHORIZED**. FreshForge **IDLE**. Smart Profiling **PARKED**; batch-allocation **DEFERRED**.
+>
+> 2026-09-02: **Customer-specific temporary Print Request + Show quota override — CLOSED (DEV)** — Goal `customer-specific-temporary-print-request-and-show-quota-override` **DONE**. Signoff **approved**; Owner QA **PASS**. ADR-FP-159. DEV Rules + Functions (+ corrective callable) on `fresh-prints-dev`. Production **NOT AUTHORIZED**. FreshForge **IDLE**. Smart Profiling **PARKED**; batch-allocation **DEFERRED**.
+>
+> 2026-09-02: **Portal Editing parks current draft — CLOSED (DEV)** — Goal `portal-editing-request-parks-current-draft` **DONE**. Signoff **approved_with_notes**; corrective + polish Owner QA **PASS**. Production **NOT AUTHORIZED**. FreshForge **IDLE**. Smart Profiling **PARKED**.
+>
+> 2026-08-31: **Print Request sizing + interactive upscale — CLOSED (DEV)** — Goal `print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale` **DONE**. Signoff **approved**; owner DEV QA **PASS**. Configurable PR default (10″ fallback); 15″ automated upscale; WS-TOGGLE interactive enhance Studio+Portal; production export parity. DEV Firebase deployed (`fresh-prints-dev`). Production **NOT AUTHORIZED**. FreshForge **IDLE**. Smart Profiling **NOT STARTED**.
+>
+> 2026-08-30: **Print Request 11″ + 15″ upscale + legacy enhance — IMPLEMENT COMPLETE (local)** — *(superseded by 2026-08-31 signoff banner above)*
+>
+> 2026-08-30: **Customer Identity WS1–WS4 — COMPLETE (DEV)** — WS4 signoff **approved**; owner DEV QA **PASS**. Production / Studio / Portal hosting **not authorized**. FreshForge active on sizing goal.
+>
+> 2026-08-30: **Show Queue Did Not Print recovery — CLOSED (DEV)** — Move-to-another-show + Release-only → Needs Re-queue; DEV fixture repair; Owner Edit Show scoped enabler. Signoff approved.
+>
+> 2026-08-28: **Customer Account Identity Management — WS1 CLOSED (DEV)** — *(superseded by WS1–WS4 complete banner above)*
+
+> 2026-08-28: **Show Queue past-show failsafe CLOSED (DEV)** — Goal `show-queue-past-show-failsafe-and-owner-override` **DONE**. Signoff **approved_with_notes**; owner DEV QA **PASS**. Recovery callables on `fresh-prints-dev`; production / Studio publish not authorized. FreshForge **IDLE**. Phase 9 **PARKED**.
+
+> 2026-08-27: **Show Queue past-show failsafe — PLAN + REVIEW (STOP)** — *(superseded by 2026-08-28 signoff banner above)*
+
+> 2026-08-27: **Show Queue gang-sheet three-mode refinement CLOSED (DEV)** — Signoff **approved**; owner DEV QA **PASS**. FreshForge **IDLE** until next goal. No Studio publish / production.
+
+> 2026-08-27: **Show Queue gang-sheet three-mode refinement — IMPLEMENT COMPLETE (DEV)** — Goal implemented; owner DEV QA pending. **No production / Studio publish.**
+
+> 2026-08-27: **Portal customer username change CLOSED (DEV)** — Signoff **approved**; self-service profile + cooldown on `fresh-prints-dev`. Production deferred.
+
+> 2026-08-27: **Smart Catalog Intelligence Slice 6 CLOSED (DEV)** — Signoff **approved_with_notes**; Ready Catalog backfill + Smart Profile visibility on `fresh-prints-dev`. Shadow ON; Autonomous OFF; production untouched.
+
+> 2026-08-26: **Smart Catalog Intelligence — Slice 5 SIGNOFF approved_with_notes (DEV)** — **Slice 5 DONE**. AI Review Queue reprocess + Shadow calibration + Gate I corrective (v30/v4). Ready Catalog locked; Autonomous OFF; production untouched. Signoff: `docs/workflow/reviews/2026-08-26-smart-catalog-intelligence-slice-5-signoff.md`. Phase 9 **PARKED**.
+
 > 2026-08-24: **Portal Discover show-rail loading + order polish CLOSED (DEV)** — Goal `portal-discover-show-rails-loading-and-order-polish` **DONE**. Signoff **approved**; owner `OWNER DEV QA: PASS`. Independent Next Show / This Week loading on Discover; compact This Week rail presentation reversed; View All unchanged. Production untouched. Phase 9 **PARKED**. FreshForge **IDLE**.
 >
 > 2026-08-24: **Portal Upcoming Shows theme toggle CLOSED (DEV)** — Signoff **approved**; owner local `PASS`. Sidebar theme toggle restored on `/shows`. Production PR + App Hosting next. Parent promote Gate F parked. Phase 9 PARKED.
@@ -41,7 +223,19 @@
 
 > Align all work with the current phase / active managed goal. Do not jump ahead.
 
-## Current status (2026-07-31)
+## Immediate sequence (2026-08-30)
+
+| # | Goal | Status |
+|---|------|--------|
+| 1 | Customer Identity WS1–WS4 | **DONE on DEV** |
+| 2 | Show Queue recovery + DEV fixture | **DONE on DEV** |
+| 3 | Print Request 11″ default + 15″ upscale + legacy enhance | **Implement complete locally — DEV deploy + QA pending** |
+| 4 | Smart Profiling completion / tag retirement | **After #3** |
+| 5 | Coordinated production promotion | **Later — not authorized** |
+
+---
+
+## Current status (2026-08-30)
 
 | Item | Status |
 |------|--------|
@@ -109,7 +303,7 @@ Catalog CRUD, categories, grid, search foundation.
 ZIP/folder import, validation, derivatives, print-size math, upscale/trim.
 
 ### Phase 4 — Catalog Search & Organization
-Library = approved `ready` only; tag filters; archived toggle.
+Library = approved `ready` only; Smart Profile/category filters; dedicated Halftone; archived toggle.
 
 ### Phase 5 — AI Processing / Catalog Approval
 AI Review workspace; staff-controlled enrichment (now **catalog-enrich-v21**); approve/reject.

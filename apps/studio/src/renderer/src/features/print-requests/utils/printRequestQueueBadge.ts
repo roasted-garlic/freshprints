@@ -1,6 +1,14 @@
 import type { BadgeVariant } from "../../../shared/components/Badge";
 import type { PrintRequestQueueState } from "@fresh-prints/shared/utils/printRequestQueueState";
 
+/**
+ * Archived requests are historical — the status badge already says archived.
+ * Do not show a derived Working/Queued/Printed pill that contradicts closure.
+ */
+export function shouldShowPrintRequestQueueStateBadge(status: string): boolean {
+  return status !== "archived";
+}
+
 export function getPrintRequestQueueStateBadgeLabel(state: PrintRequestQueueState): string {
   switch (state) {
     case "not_queued":

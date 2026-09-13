@@ -48,5 +48,13 @@ export function useCustomersDirectory() {
   return {
     ...state,
     reloadCustomers: loadCustomers,
+    patchCustomer: (customerId: string, patch: Partial<Customer>) => {
+      setState((currentState) => ({
+        ...currentState,
+        customers: currentState.customers.map((customer) =>
+          customer.id === customerId ? { ...customer, ...patch } : customer,
+        ),
+      }));
+    },
   };
 }

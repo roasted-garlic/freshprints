@@ -1,9 +1,11 @@
+import { randomUUID } from "node:crypto";
+
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { onCall } from "firebase-functions/v2/https";
 
 import { assertStaffCaller, loadCallerProfile } from "./lib/caller";
 import { failedPrecondition, invalidArgument, unauthenticated } from "./lib/errors";
-import { geminiApiKeySecret } from "./lib/secrets";
+import { geminiApiKeySecret, openAiApiKeySecret } from "./lib/secrets";
 import { adminDb } from "./lib/admin";
 import { runAiEnrichmentPipeline } from "./ai/aiEnrichmentPipeline";
 import {
@@ -44,7 +46,7 @@ function isStaleAiProcessing(design: Record<string, unknown>): boolean {
 }
 
 export const enqueueAiEnrichment = onCall(
-  { secrets: [geminiApiKeySecret], timeoutSeconds: 180, memory: "512MiB" },
+  { secrets: [geminiApiKeySecret, openAiApiKeySecret], timeoutSeconds: 180, memory: "512MiB" },
   async (request) => {
     if (!request.auth?.uid) {
       throw unauthenticated();
@@ -150,19 +152,16 @@ export const enqueueAiEnrichment = onCall(
       return { designId, queued: false, reason: "already_processing" };
     }
 
+    const attemptId = randomUUID();
     const updatePayload: Record<string, unknown> = {
+      aiProcessingAttemptId: attemptId,
       aiProcessingStage: "queued",
       aiReviewStatus: "pending",
       aiProcessed: false,
       aiReviewed: false,
       aiRequestedVisionModelId: visionModelIdOverride ?? FieldValue.delete(),
       aiRequestedReasoningEffort: FieldValue.delete(),
-      aiSuggestions: FieldValue.delete(),
-      aiAnalysis: FieldValue.delete(),
-      aiReviewedAt: FieldValue.delete(),
-      aiReviewedBy: FieldValue.delete(),
-      aiReviewNotes: FieldValue.delete(),
-      aiReviewConfidence: FieldValue.delete(),
+      aiProcessingError: FieldValue.delete(),
       updatedAt: FieldValue.serverTimestamp(),
     };
 
@@ -170,7 +169,21 @@ export const enqueueAiEnrichment = onCall(
       updatePayload.status = "imported";
     }
 
+    // Durable retry evidence: prior failure, explicit staff re-run, or stale active-stage reclaim.
+    const countsAsAutomationRetry =
+      currentStage === "failed" ||
+      isRerun ||
+      (Boolean(currentStage) &&
+        currentStage !== "failed" &&
+        currentStage !== "ready_for_review" &&
+        currentStage !== "queued");
+
     await designRef.update(updatePayload);
+
+    if (countsAsAutomationRetry) {
+      const { incrementCatalogAutomationHealth } = await import("./ai/catalogAutomationHealth");
+      await incrementCatalogAutomationHealth({ retries: 1 });
+    }
 
     const eventName = rerunFromReview
       ? "enqueue.rerun_from_review"
@@ -183,7 +196,10 @@ export const enqueueAiEnrichment = onCall(
       callerUid: request.auth.uid,
       visionModelIdOverride: visionModelIdOverride ?? null,
     });
-    await runAiEnrichmentPipeline(designId, geminiApiKeySecret.value());
+    await runAiEnrichmentPipeline(designId, geminiApiKeySecret.value(), {
+      openAiApiKey: openAiApiKeySecret.value(),
+      attemptId,
+    });
     const completedSnapshot = await designRef.get();
     const completedDesign = completedSnapshot.data() ?? {};
 

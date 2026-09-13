@@ -10,6 +10,8 @@ import {
   unauthenticated,
 } from "./lib/errors";
 import { requirePortalCustomer } from "./lib/portalCustomer";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
+import { assertPortalActiveEditableRequestData } from "./lib/portalContinuableParking";
 
 export interface RemovePortalPrintRequestItemRequest {
   printRequestId: string;
@@ -44,6 +46,7 @@ export const removePortalPrintRequestItem = onCall(
 
     try {
       const portalCustomer = await requirePortalCustomer(request.auth.uid);
+      await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
       const data = request.data as RemovePortalPrintRequestItemRequest;
       const printRequestId =
         typeof data?.printRequestId === "string" ? data.printRequestId.trim() : "";
@@ -70,6 +73,10 @@ export const removePortalPrintRequestItem = onCall(
         }
 
         const requestData = requestSnap.data() ?? {};
+        
+        // Assert request is active editable (not parked)
+        assertPortalActiveEditableRequestData(requestData, printRequestId);
+        
         if (requestData.customerId !== portalCustomer.customerId) {
           throw permissionDenied("You do not own this print request.");
         }

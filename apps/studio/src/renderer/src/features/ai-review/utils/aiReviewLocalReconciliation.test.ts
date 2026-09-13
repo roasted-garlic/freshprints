@@ -292,12 +292,14 @@ describe("reprocess to Processing local reconciliation", () => {
     assert.deepEqual(computeReprocessToProcessingCountDeltas("processing"), {});
   });
 
-  it("builds patch only from reset callable fields and leaves source tab", () => {
+  it("builds patch that clears pipeline stage while preserving tab membership move", () => {
     const patch = buildDesignPatchFromResetForProcessingResult({
       aiReviewStatus: "pending",
       status: "imported",
     });
-    const local = { ...createDesign({ status: "rejected", aiReviewStatus: "needs_review" }), ...patch };
+    assert.equal(patch.aiProcessingStage, undefined);
+    assert.equal(patch.aiProcessed, false);
+    const local = { ...createDesign({ status: "rejected", aiReviewStatus: "needs_review", aiProcessingStage: "ready_for_review" }), ...patch };
     assert.equal(designMatchesInboxTab(local, "needs_review"), false);
     assert.equal(designMatchesInboxTab(local, "rejected"), false);
     assert.equal(designMatchesInboxTab(local, "processing"), true);
@@ -359,7 +361,14 @@ describe("reprocess to Processing local reconciliation", () => {
     assert.equal(pendingAdvance, 2);
     assert.deepEqual(patched, {
       id: "design-a",
-      patch: { aiReviewStatus: "pending", status: "imported" },
+      patch: {
+        aiReviewStatus: "pending",
+        status: "imported",
+        aiProcessed: false,
+        aiReviewed: false,
+        aiProcessingStage: undefined,
+        aiProcessingError: undefined,
+      },
     });
     assert.deepEqual(deltas, { rejected: -1, processing: 1 });
     assert.equal(reloadCalls, 0);

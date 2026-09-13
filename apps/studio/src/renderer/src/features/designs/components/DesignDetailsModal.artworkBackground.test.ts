@@ -44,6 +44,6 @@ describe("DesignThumbnailPanel / DesignPreviewLightbox resolve via shared helper
       "utf8",
     );
     assert.match(thumb, /resolveArtworkBackgroundHex\(artworkBackgroundHex\)/);
-    assert.match(light, /resolveArtworkBackgroundHex\(artworkBackgroundHex\)/);
+    assert.match(light, /resolveArtworkBackgroundHex\(\s*presentation\.artworkBackgroundHex/);
   });
 });

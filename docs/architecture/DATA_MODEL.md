@@ -292,6 +292,13 @@ export interface Design {
   artworkBackgroundHex?: string;
 
   /**
+   * Provenance for how `artworkBackgroundHex` was set (2026-08-25 import bg/halftone).
+   * Display-only; never treat as halftone evidence.
+   * `import_override` | `import_halftone_default` | `code_auto` | `staff_manual`.
+   */
+  artworkBackgroundSource?: "import_override" | "import_halftone_default" | "code_auto" | "staff_manual";
+
+  /**
    * Optional staff-managed artwork garment placement (display label "Placement", 2026-08-10).
    * Missing → "Unspecified". Allowlisted values only (`front`, `back`, `front_back`, `pocket`,
    * `sleeve`); unknown/legacy strings map to undefined on read — no migration/backfill. Edited
@@ -350,14 +357,28 @@ export interface Design {
   companionSetIncomplete?: boolean;
 
   /**
-   * Staff Explicit Content classification (human only). Missing/undefined/false ⇒ not explicit.
-   * Portal presents as Censored Content by default. Not access control.
+   * Explicit Content flag for Portal Censored presentation. Missing/undefined/false ⇒ not explicit.
+   * Not access control. May be set by staff OR by catalog enrichment when owner-configured
+   * artwork-text terms match (ADR-FP-172; independent of Autonomous Ready). Staff-authored values
+   * are not overwritten by automation.
    */
   isExplicitContent?: boolean;
   /**
-   * Staff words/phrases masked in Portal title/description while Censored mode is on and
+   * Who last authored Explicit root fields. `"staff"` | `"automation"`.
+   * Provenance only (ADR-FP-173) — does not permanently suppress automatic classification.
+   * No migration / backfill required.
+   */
+  explicitContentSource?: "staff" | "automation";
+  /**
+   * When true, enrichment/reprocess must not mutate Explicit root fields (ADR-FP-173).
+   * Absent/false = unlocked. Never inferred from staff Explicit edits alone.
+   */
+  explicitContentAutomationLocked?: boolean;
+  /**
+   * Words/phrases masked in Portal title/description while Censored mode is on and
    * `isExplicitContent` is true. Missing/empty = no text masking. Kept when Explicit is turned
    * off (inactive until Explicit is on again). Does not alter stored title/description.
+   * May be staff-entered or automation-populated with masker-effective surface forms (ADR-FP-172).
    */
   censoredTerms?: string[];
 
@@ -390,6 +411,12 @@ export interface Design {
   aiReviewNotes?: string;
 
   aiReviewConfidence?: number;
+
+  /** Persisted identity for the currently queued AI attempt. */
+  aiProcessingAttemptId?: string;
+
+  /** Failure diagnostics for the current attempt; prior AI output remains separate. */
+  aiProcessingError?: DesignAiProcessingError;
 
   createdBy: string;
   updatedBy: string;
@@ -500,7 +527,11 @@ Acceptance thresholds (enforced at import validation; updated Phase 3D Step 3 co
 
 ### AI review foundation (Phase 3D Step 5)
 
-AI review state is **separate** from operational `status`. A design is not catalog-ready until AI review approves it and a future workflow promotes `status` to `ready`.
+AI review state is **separate** from operational `status`. A design is not catalog-ready until AI review is approved **and** `status` is `ready`.
+
+**Default path:** Staff approve via `catalogApprovalService.approveDesignForCatalog`.
+
+**ADR-FP-144 exception (Slice 4+):** When Catalog Processing Mode is `autonomous` **and** `catalogAutonomousLiveEnabled` is true, the enrichment pipeline may set `status: ready` + `aiReviewStatus: approved` with `aiReviewedBy: system:catalog-autonomy` for designs that pass the evidence-based automation policy. Live Autonomous remains owner-gated per environment and is **not** enabled by implementing Slice 4.
 
 | Field | Type | Purpose |
 | --- | --- | --- |
@@ -533,9 +564,18 @@ AI enrichment writes versioned fields on `designs/{id}`:
 | Field | Type | Writer | Purpose |
 | --- | --- | --- | --- |
 | `aiProcessingStage` | enum | Cloud Function | Live pipeline stage for Processing Status UI |
+| `aiProcessingAttemptId` | string | Cloud Function | Persisted attempt identity used to guard stage, failure, and success writes |
+| `aiProcessingError` | object | Cloud Function | Separate failure metadata; does not replace the last successful AI output |
 | `aiRequestedVisionModelId` | string | Cloud Function callable | Transient one-off AI re-run override while queued/in flight |
 | `aiSuggestions` | object | Cloud Function | AI catalog suggestions (separate from approved fields) |
-| `aiAnalysis` | object | Cloud Function | Rich analysis metadata for future features |
+| `aiAnalysis` | object | Cloud Function | Rich analysis metadata (includes optional shadow halftone assessment) |
+| `smartProfile` | object | Cloud Function + owner/admin callable | Versioned Smart Profile / search intelligence (`smart-profile-v1`); shadow automation in Slice 2; **Slice 3** indexes public-safe dimensions into Algolia (search + Smart Filters). Provenance includes automation fields, **Slice 6** staff edit metadata (`staffEditedDimensionKeys`, `staffEditedAt`, `staffEditedBy`), and Explicit automation preview (`explicitAutomationPreview`: wouldMarkExplicitContent / applied / detected / proposedCensoredTerms / artworkHit / suppressedDueToHumanAuthority). Preview is staff-only; not Portal/Algolia search metadata. **ADR-FP-172:** root `isExplicitContent` / `censoredTerms` / `explicitContentSource` may be written on Needs Review and Ready enrichment paths when classification allows (not Ready-gated). |
+| `smartProfileAiSnapshot` | object | Cloud Function only | Last raw AI-generated dimension lists before staff merge; used for per-dimension Reset to AI. Staff/client cannot write. |
+
+**Catalog search permanence (Slice 3):** `title` and `description` are permanent core catalog search inputs (title is a top Algolia searchable attribute; description is included in flattened `searchText`). They are **not** “legacy.” Legacy migration refers to approved-tag / `tagFacetKeys` / tag-derived corpus only — future tag retirement must not remove or de-prioritize title/description search.
+| `importBatchId` | string | Studio import | Optional batch job id (folder/ZIP/multi-PNG) |
+| `importSourceFileName` | string | Studio import | Original source filename at import |
+| `importRelativePath` | string | Studio import | Optional relative path within batch manifest |
 
 ```ts
 export type AiProcessingStage =
@@ -546,6 +586,14 @@ export type AiProcessingStage =
   | "validating_response"
   | "ready_for_review"
   | "failed";
+
+export interface DesignAiProcessingError {
+  attemptId: string;
+  errorCode: string;
+  errorMessage: string;
+  provider?: string;
+  occurredAt: string;
+}
 
 export interface DesignAiSuggestions {
   title?: string;
@@ -583,13 +631,13 @@ export interface DesignAiAnalysis {
 }
 ```
 
-**Re-run AI Suggestions:** Needs Review or Rejected calls `resetAiEnrichmentForProcessing`. Design returns to `status: imported`, `aiReviewStatus: pending`; prior `aiSuggestions` and `aiAnalysis` are **deleted**. Studio keeps staff on the current Needs Review or Rejected tab and reconciles the source list immediately; staff open the Processing tab manually to run the next AI pass (no suggestion versioning in Phase 5B).
+**Re-run AI Suggestions:** Needs Review or Rejected calls `resetAiEnrichmentForProcessing`. Design returns to `status: imported`, `aiReviewStatus: pending`, and receives a new `aiProcessingAttemptId`; prior `aiSuggestions`, `aiAnalysis`, `smartProfile`, confidence, and review audit fields remain available while the attempt runs. A successful fresh-review reconciliation replaces current AI-owned output and applies the new lifecycle; a failure writes separate `aiProcessingError` metadata and retains the prior output. Studio keeps staff on the current Needs Review or Rejected tab and reconciles the source list immediately; staff open the Processing tab manually to run the next AI pass.
 
 **Reopen for review (rejected):** `status: imported`, `aiReviewStatus: needs_review`; preserves existing `aiSuggestions` / `aiAnalysis`; does not enqueue AI.
 
-**One-off processing override (2026-06-29):** AI Processing may send `visionModelIdOverride` and `reasoningEffortOverride` on processing requests. The callable validates them against server allowlists, writes transient `aiRequestedVisionModelId` / `aiRequestedReasoningEffort`, the pipeline prefers those values for the current run, and success/failure cleanup deletes the fields. This does not mutate `settings/aiEnrichment`.
+**One-off processing override (2026-06-29; amended ADR-FP-174):** AI Processing may send `visionModelIdOverride` on processing requests. The callable validates it against the server allowlist, writes transient `aiRequestedVisionModelId`, the pipeline prefers that value for the current run, and success/failure cleanup deletes the field. This does not mutate `settings/aiEnrichment`. Reasoning-effort UI/overrides are not exposed in Phase 1; Luna pins `reasoning_effort: "low"` server-side only.
 
-**Writes:** Cloud Function only for `aiSuggestions`, `aiAnalysis`, and `aiProcessingStage`. Client rules block mutations.
+**Writes:** Cloud Function only for `aiSuggestions`, `aiAnalysis`, `smartProfile`, and `aiProcessingStage`. Client rules block mutations.
 
 ### AI suggestions (Phase 5 — planned)
 
@@ -903,8 +951,8 @@ export interface Customer {
   totalApprovedRequests?: number;
 
   /**
-   * When false, skip Assisted Creation proof-ready email notices.
-   * Missing / undefined means opted in.
+   * When false, skip Assisted Creation proof-ready, catalog-share, and
+   * final-artwork-ready email notices. Missing / undefined means opted in.
    */
   assistedProofEmailOptIn?: boolean;
   assistedProofEmailOptInUpdatedAt?: Timestamp;
@@ -925,7 +973,48 @@ export interface Customer {
   deletedBy?: string;
   deletionSource?: "studio_owner" | "portal_request";
 
+  /**
+   * Reversible owner disable (ADR-FP-150). Distinct from tombstone. History and
+   * username reservation preserved; Auth disabled until restore.
+   */
+  isDisabled?: boolean;
+  disabledAt?: Timestamp;
+  disabledBy?: string;
+  disabledReason?: string;
+
+  /** Short-lived lock during destructive identity operations (Admin SDK only). */
+  identityOperationLock?: {
+    kind: "hard_delete" | "disable" | "merge" | "username_transfer";
+    lockedAt: Timestamp;
+    lockedBy: string;
+    previewChecksum?: string;
+  };
+
+  /** WS3 merge tombstone fields (ADR-FP-154). */
+  isMerged?: boolean;
+  mergedIntoCustomerId?: string;
+  mergedAt?: Timestamp;
+  mergedBy?: string;
+  /** Survivor-only: source customer IDs merged into this account (WS4 alias queries). */
+  mergedSourceCustomerIds?: string[];
+
   usernameUpdatedAt?: Timestamp;
+  /** Support/audit only — append-only, max 10 entries (Admin SDK). Not exposed in Portal UI. */
+  usernameHistory?: Array<{ username: string; changedAt: Timestamp }>;
+  /** Resumable identity snapshot propagation state (Admin SDK only). */
+  identitySnapshotPropagation?: {
+    status: "idle" | "in_progress" | "completed" | "failed";
+    targetUsername: string;
+    targetDisplayName: string;
+    stage?: "printRequests" | "designIssueReports";
+    printRequestCursor?: string | null;
+    designIssueReportCursor?: string | null;
+    printRequestsUpdated: number;
+    designIssueReportsUpdated: number;
+    startedAt: Timestamp;
+    updatedAt: Timestamp;
+    lastError?: string;
+  };
 
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -1002,6 +1091,13 @@ printRequests/{printRequestId}
 
 A Print Request is a **named list of catalog designs** for a customer, guest, or internal staff use. It is **not an order** — no payment, checkout, or shipping fields.
 
+Studio-only request actions (Export Images, Standard Generate Gangsheet, and Copy Request) are
+derived operations over the existing request and item documents. They do not add fields or
+collections. Export/generation reads the exact saved item quantity, requested inches, source
+identity, and artwork enhancement mode. Copy creates a new normal Working/draft request with fresh
+IDs and sequence state; it does not copy allocation, completion, conversion, parking, cache, or
+audit fields.
+
 ```ts
 export type PrintRequestStatus =
   | "draft"
@@ -1026,6 +1122,10 @@ export interface PrintRequest {
   requestSequenceNumber?: number;
   customerUsernameSnapshot?: string;
   customerDisplayNameSnapshot?: string;
+  /** Write-once username at first identity propagation after profile change (ADR-FP-148). */
+  customerUsernameAtCreationSnapshot?: string;
+  /** Write-once display name at first identity propagation after profile change (ADR-FP-148). */
+  customerDisplayNameAtCreationSnapshot?: string;
   internalBaseName?: string;
   nameFormatVersion?: "legacy-v1" | "cr-ir-v1";
   notes?: string;
@@ -1046,6 +1146,17 @@ export interface PrintRequest {
   convertedFromCustomerRequestId?: string;
   convertedAt?: Timestamp;
   convertedBy?: string;
+  /** Server-authored lifecycle ordering mirror; absent on legacy rows until compatibility backfill. */
+  lastLifecycleActivityAt?: Timestamp;
+  lastLifecycleActivityEventId?: string;
+  lastLifecycleActivityPrecedence?: number;
+  /**
+   * Continuable parking (ADR-FP-071 amend 2026-09-02). Admin SDK / trusted callables only.
+   * Parked draft: parkedByEditingRequestId + parkedAt. Editing PR: parksDraftPrintRequestId.
+   */
+  parkedByEditingRequestId?: string;
+  parkedAt?: Timestamp;
+  parksDraftPrintRequestId?: string;
   createdBy: string;
   updatedBy: string;
   createdAt: Timestamp;
@@ -1053,7 +1164,20 @@ export interface PrintRequest {
 }
 ```
 
-Portal customers must acknowledge public bidding understanding before signup account create and again before each Add to Show. Signup ack lives on `users/{uid}.portalBiddingAcknowledgments.signup`; queue ack is stored on the print request (above) and mirrored to `users/{uid}.portalBiddingAcknowledgments.lastQueueToShow`. Version constant: `portal-bidding-ack-v3`.
+## Print Request Lifecycle Events
+
+Collection: `printRequestLifecycleEvents/{eventId}`
+
+Lifecycle events are immutable, server-authored forward evidence for request and allocation
+transitions. The event ID is deterministic from the request, event type, source, and source change,
+so retries are idempotent. Each event stores `occurredAt`, causal `precedence`, source/source ID,
+optional show snapshot (`upcomingShowId`, title, scheduled start), and optional allocation linkage.
+Staff may read this collection through the Studio history service; clients cannot create, update, or
+delete events. The request mirror fields above provide the same deterministic activity clock for
+card display and indexed ordering. Historical mirror values are backfilled separately and do not
+invent forward events.
+
+Portal customers must acknowledge show / personal-bin pricing understanding before signup account create and again before each Add to Show. Signup ack lives on `users/{uid}.portalBiddingAcknowledgments.signup`; queue ack is stored on the print request (above) and mirrored to `users/{uid}.portalBiddingAcknowledgments.lastQueueToShow`. Version constant: `portal-bidding-ack-v4`. Portal displays estimated show totals from shared default four-tier gang-sheet pricing (not a Portal charge).
 
 New Phase 6 request names are generated by service-owned Firestore transactions:
 
@@ -1110,13 +1234,17 @@ export interface PrintRequestItem {
    */
   designId?: string;
   /** Defaults to catalog_design when absent (legacy). See ADR-FP-073. */
-  sourceType?: "catalog_design" | "customer_upload";
+  sourceType?: "catalog_design" | "customer_upload" | "staff_artwork";
   customerUploadId?: string;
+  /** Staff Artwork identity; owner-approved on Portal projection (do not show as title). */
+  staffArtworkId?: string;
   titleSnapshot?: string;
   quantity: number;
   printWidthInches?: number;
   printHeightInches?: number;
   sizeLabel?: string;
+  /** Optional preset key from Standard Print Sizes settings (target width only). */
+  standardSizePresetKey?: string;
   sortOrder?: number;
   notes?: string;
   status: PrintRequestItemStatus;
@@ -1136,7 +1264,33 @@ export interface PrintRequestItem {
 }
 ```
 
+**Proposed (2026-08-30 amendment — not implemented):** Interactive upscale toggle per item:
+
+- `artworkEnhanceMode?: 'baseline' | 'enhanced'` — absent ≡ baseline OFF
+- `preEnhancePrintWidthInches?`, `preEnhancePrintHeightInches?` — captured on first successful ON; restored on OFF
+
+**Proposed (2026-08-30 — configurable default width):** On `settings/standardPrintSizes` (`StandardPrintSizesSettings`):
+
+- `defaultPrintRequestWidthInches?: number` — global operational default for **new** item init only; fallback **10.5″** when absent (`STANDARD_PRINT_REQUEST_INITIAL_WIDTH_INCHES`); owner-writable via `updateStandardPrintSizesSettings`; signed-in read (Portal presets + default).
+
+Asset documents (`designs`, `customerUploads`) gain additive interactive-derivative path + provenance fields; see plan amendment. Callable-only writes for toggle mode. No migration — legacy items default OFF.
+
 **Source model (ADR-FP-073):** Catalog-backed items remain the default. Sub-phase C attaches upload-backed items via Admin callable (`confirmCustomerUploadsAndAttachToRequest`) with `sourceType: customer_upload`, non-empty `customerUploadId`, and **no `designId` field**. Client create of print request items remains catalog/`designId`+ready only. Sub-phase D makes show/gang/export resolvers source-aware. Do not increment `designs.requestCount` for customer-upload-only items. Until D, `queuePortalPrintRequestToShow` fail-closes if any item is upload-backed.
+
+**Staff Artwork source (2026-09-12 projection amendment):** Studio owners/admins may create private `staffArtworks/{staffArtworkId}` records and upload PNG source bytes under `/staff-artwork/{staffArtworkId}/source`. Trusted processing writes `production.png`, optional `production.interactive.png`, `preview.webp`, and `thumbnail.webp`. A Staff Artwork print-request item stores `sourceType: staff_artwork`, `staffArtworkId`, and a title snapshot; it has no catalog `designId` or customer-upload ID. Portal customers do **not** read `staffArtworks` documents. Instead, Admin projection writes customer-safe fields onto `portalPrintRequestItems` (including `sourceLabel: "Staff-added"`, `titleSnapshot`, `staffArtworkId`, preview/thumbnail paths, `widthPx`/`heightPx`, optional `artworkBackgroundHex`). Authenticated customers may Storage-read only `preview.webp` / `thumbnail.webp` under `/staff-artwork/{id}/` (production/source denied). Historical `customerId` and display/username snapshots remain immutable on the private Staff Artwork record.
+
+## Staff Artwork collection
+
+Collection: `staffArtworks/{staffArtworkId}`. Statuses are `processing`, `ready`, `failed`, and `archived`.
+The document stores title/description, source and derivative paths, processing dimensions/quality metadata,
+optional customer ownership snapshots, and AI-review promotion linkage. Firestore client writes are denied;
+the six owner/admin callables in `functions/src/staffArtwork.ts` are the write boundary. Deletion is preview-
+then-confirm and fails closed while the artwork is still on a print request that has **not** been allocated
+to a show or internal sheet with `productionStatus: "completed"`. Historical attachments on completed
+shows/sheets do not block delete (or promote-removal). Unexpected storage paths still fail closed.
+Portal request cards read Staff Artwork title, preview, DPI pixels, and a Staff-added source badge
+from `portalPrintRequestItems` (Admin-enriched). Customers cannot `get`/`list` `staffArtworks`
+documents. Storage allows customer read of `preview.webp`/`thumbnail.webp` only.
 
 Standard Print Request item sizing rules:
 
@@ -1166,11 +1320,14 @@ Standard Print Request item sizing rules:
 Standard Print Request item detail edits autosave for quantity and requested size. New items may
 store `sortOrder` for stable display ordering, but existing items without `sortOrder` remain
 visible. Runtime reads stay request-scoped by `printRequestId` and sort client-side by `sortOrder`
-when present, then `createdAt`, then document ID. **Studio** uses ascending order. **Portal**
-Current Request detail and cart use newest-first (`sortPrintRequestItemsNewestFirst`) so last-added
-appears first; persisted `sortOrder` values still append on create. Portal **Duplicate** inserts
-visually to the **right** of the source under newest-first via `resolveDuplicateInsertBeforeSortOrder`
-(lower fractional `sortOrder`); Studio duplicate uses insert-after with ascending display.
+when present, then `createdAt`, then document ID. **Studio** and **Portal** request design grids
+both use newest-first (`sortPrintRequestItemsNewestFirst`) so last-added appears first
+left-to-right / top-to-bottom. Portal list/subscribe paths also sort newest-first at the service
+boundary. Persisted `sortOrder` values still append on create for catalog adds, customer-upload
+attaches, and assisted proof ingest. Rows missing `sortOrder` interleave by `createdAt` (they are
+not forced to one end). **Duplicate** inserts visually to the **right** of the source under
+newest-first via `resolveDuplicateInsertBeforeSortOrder` (lower fractional `sortOrder`).
+Show-reconciliation / production nest paths may still use ascending chronological order.
 Resize/qty/size edits must not change `sortOrder` or `createdAt`. Do not add a Firestore
 `sortOrder` index unless a future implementation moves ordering server-side.
 
@@ -1188,9 +1345,20 @@ customerUploadFinalizeLeases
 customerUploadIdempotency
 ```
 
-Customer-provided artwork for **print requests** and **catalog donations** (ADR-FP-073, ADR-FP-078). Independent of catalog `designs` until staff promotes. **Not** Phase 9 `customRequests`. Optional audit fields `assistedCreationRequestId` / `assistedProofId` mark uploads server-copied from an Assisted approved proof (ADR-FP-094). After Add to Request consent, those uploads use the **same Studio custom-design intake fields** as print-upload attach / donate (`catalogUseAcknowledged`, ownership/terms via `buildCatalogIntakeConfirmationPatch`) — not a parallel consent model. **Intake timing (Workstream E):** print-request attach / assisted confirm reaffirm `catalogReviewStatus: not_eligible` (Studio Pending waits until the Print Request is **successfully added to a show** — Portal `queuePortalPrintRequestToShow` TX and/or `onShowAllocationCreated` for Studio allocate). **Donate confirm** still sets `pending_staff_review` immediately. De-allocation does **not** rewind review status. Studio intake surfaces a **Custom** badge (Portal-aligned purple) when `assistedCreationRequestId` is set so staff can distinguish assisted designs from ordinary uploads.
+Customer-provided artwork for **print requests** and **catalog donations** (ADR-FP-073, ADR-FP-078). Independent of catalog `designs` until staff promotes. **Not** Phase 9 `customRequests`. Optional audit fields `assistedCreationRequestId` / `assistedProofId` mark uploads server-copied from an Assisted approved proof (ADR-FP-094). After Add to Request consent, those uploads use the **same Studio custom-design intake fields** as print-upload attach / donate (`catalogUseAcknowledged`, ownership/terms via `buildCatalogIntakeConfirmationPatch`) — not a parallel consent model. **Intake timing (Workstream E / 2026-09-11 deferral):** affirmative print-request attach / assisted
+confirm uses `catalogReviewStatus: not_eligible` (Studio Pending waits until the Print Request is
+**successfully added to a show**). Customer Don’t-allow may write `excluded_from_catalog` +
+`customer_permission_denied` immediately for personal-bucket / retention purposes, but Studio
+Uploaded Designs (**Pending**, **Denied**, and **Excluded**) stay empty for that row until
+`studioIntakeHoldUntilShow: true` for Don’t-allow attaches; Add to Show clears the hold and sets
+`studioIntakeReleasedAt` while advancing Allow uploads to `pending_staff_review` (Portal
+`queuePortalPrintRequestToShow` TX and/or `onShowAllocationCreated` for Studio allocate). Legacy
+Denied/Excluded rows without the hold flag remain visible. De-allocation does **not** rewind review
+status or re-hold intake. **Donate confirm** still sets `pending_staff_review` immediately.
+Studio intake surfaces a **Custom** badge (Portal-aligned purple) when `assistedCreationRequestId`
+is set so staff can distinguish assisted designs from ordinary uploads.
 
-**Purpose:** `print_request` | `catalog_donation` (missing on legacy docs ≡ `print_request`). Donations never set `printRequestId` or create `printRequestItems`.
+**Purpose:** `print_request` | `catalog_donation` (missing on legacy docs ≡ `print_request`). Initial **donate confirm** still does not create `printRequestItems`. Portal **Your designs** may later re-attach an existing donation (or print-request upload) onto a Continuable request via `attachExistingCustomerUploadsToPrintRequest` (sets `printRequestId` on the upload + creates a `customer_upload` item) without rewriting catalog consent / Pending fields.
 
 **Studio intake / sidebar badges (Workstream H):** Uploaded Designs and Donated Designs list queries are server-scoped by `purpose` + `catalogReviewStatus` (+ `createdAt` desc, page size 50). Sidebar badges count **Pending only** (`pending_staff_review`) per purpose — not `not_eligible`, not Excluded. Legacy docs missing `purpose` are still treated as print-request via a metadata-only status companion filtered before enrichment (Firestore equality cannot return missing fields).
 
@@ -1203,13 +1371,19 @@ Customer-provided artwork for **print requests** and **catalog donations** (ADR-
 **Technical progress stage (optional, live during finalize):** `reading_upload` | `checking_format` | `checking_transparency` | `preparing_artwork` | `checking_print_size` | `creating_previews` | `saving` — written by finalize/retry callables; cleared (`null`) when `ready` or `failed`. Portal maps these to customer-facing labels via `getCustomerUploadProgressLabel`.
 
 **Catalog review status:** `not_eligible` | `pending_staff_review` | `sent_to_ai_review` | `excluded_from_catalog`  
-(Promotion link: `promotedDesignId` — no `promoted_to_design` status.) Print-request artwork enters `pending_staff_review` on **successful show allocation** (not on attach). Donate enters on donate confirm.
+(Promotion link: `promotedDesignId` — no `promoted_to_design` status.) Print-request artwork enters `pending_staff_review` on **successful show allocation** (not on attach). Donate enters on donate confirm. For an authenticated print-request confirmation with `catalogUseAcknowledged: false`, the upload remains usable by its own request but enters `excluded_from_catalog` with `catalogExclusionReason: "customer_permission_denied"`; a single customer-approved follow-up may move it to Pending.
+
+**Catalog permission follow-up (amended ADR-FP-074 + 2026-09-11 two-ask):** New fields are additive and server-authored:
+`catalogExclusionReason` (`staff_review` | `customer_permission_denied`),
+`catalogPermissionFollowUpStatus` (`not_requested` | `requested` | `approved` | `declined`; missing = `not_requested`),
+`catalogPermissionAskCount` (0–2 Ask Again sends), append-only `catalogPermissionActivity` (initial denial + ask/response rows),
+`catalogPermissionOriginalDeniedAt`, `catalogRetentionStartedAt`, `catalogPermissionFollowUpRequestToken`, and requested/responded actor/time fields. Staff may Ask Again **up to twice**; a second customer Decline is terminal and Studio parks the row on **Excluded** (Denied stays actionable only). Customer Allow on Ask Again (and staff Restore to Pending) also sets `catalogPendingQueuedAt` so Studio Uploaded Designs sorts the row to the top of Pending. `catalogRetentionStartedAt` is a trusted server timestamp for the current retention episode: **30 days** for `customer_permission_denied` (personal Don’t-allow bucket), **30 days** for `unpromoted_donation` (Donated Designs still `pending_staff_review` until promoted or purged), and **14 days** for staff `staff_review` Excluded. Hard delete still requires B1 eligibility (`deleteEligibleCustomerUpload` / no active-future allocations). Ask Again pauses Denied cleanup; Allow or staff Restore clears the active episode; Decline restarts it. Promote clears the unpromoted-donation clock. The original `catalogUseAcknowledged: false`, terms, and confirmation evidence are never overwritten. Generic Restore cannot bypass permission-denied state, promotion requires current permission, and donation **permission follow-up** stays outside the Ask Again workflow (donations already consented at donate).
 
 When staff promotes via `promoteCustomerUploadToAiReview`, a `designs` document is created with `status: imported`, `sourceCustomerUploadId`, and assets copied to canonical design storage paths. The upload moves to `sent_to_ai_review` with `promotedDesignId` set. Catalog exclusion does **not** remove request items or delete production Storage objects.
 
 After AI Review **approve** or **reject**, the upload document remains `catalogReviewStatus: sent_to_ai_review` (outcome lives on `designs.status` / `aiReviewStatus`). Rejection must not unlink `printRequestItems` or delete upload production assets.
 
-Staff intake callables (Admin SDK writes only): `promoteCustomerUploadToAiReview`, `excludeCustomerUploadFromCatalog`, `restoreCustomerUploadCatalogEligibility`, `retryCustomerUploadProcessing`.
+Staff intake callables (Admin SDK writes only): `promoteCustomerUploadToAiReview`, `excludeCustomerUploadFromCatalog`, `restoreCustomerUploadCatalogEligibility`, `retryCustomerUploadProcessing`, `requestCustomerUploadCatalogPermissionFollowUp`. Customer context/response use the trusted `getCustomerUploadCatalogPermissionFollowUp` and `respondToCustomerUploadCatalogPermissionFollowUp` callables; the latter is maintenance-guarded.
 
 **Request-upload full-size retention (ADR-FP-086 §3):** Owner/admin callable `purgeIdleCustomerUploadFullSize` deletes `source` + `production` Storage when the upload is eligible (no active allocations; not on a working print request; either linked shows are completed/canceled/archived, or never-queued + idle 14 days). Sets `fullSizePurgedAt` / `fullSizePurgedBy` and nulls source/production paths. **Keeps** thumbnail and preview.
 
@@ -1237,10 +1411,15 @@ Finalize and Studio import persist sizing fields (policy `image-quality-v2`): `u
 | Field | Purpose |
 |-------|---------|
 | `halftoneSubmitterResponse` | Customer optional Yes/No evidence (`value`, `respondedAt`, `respondedBy`). Does not add catalog tags. |
-| `halftoneStaffDecision` | Explicit staff boolean (`true`/`false`), including overrides; copied to `designs` on promote; authoritative for AI Review toggle and tag sync on approve. |
+| `halftoneStaffDecision` | Explicit staff boolean (`true`/`false`), including overrides; copied to `designs` on promote; authoritative for AI Review toggle and tag sync on approve. Import batch “All halftones” writes this at create time (staff authority; ADR-FP-080). |
+| `halftoneDecisionSource` | Optional provenance: `import_batch` \| `ai_review` \| `intake` \| `customer`. |
 | `halftoneDetection` | **Deprecated / historical only.** May exist on older docs; do not write new detector metadata; UI and processing ignore it. |
 
-Portal always offers an optional “This artwork is a halftone design.” control (default off). Studio import does not interrupt for halftone. Intake and AI Review use the green Halftone toggle (staff → customer yes → off). Approve with toggle on adds canonical `"halftone"` tag; off removes it.
+Portal always offers an optional “This artwork is a halftone design.” control (default off). Studio **batch** import may set staff halftone via session “All halftones” (not inferred from dark background). Intake and AI Review use the green Halftone toggle (staff → customer yes → off). Approve with toggle on adds canonical `"halftone"` tag; off removes it.
+
+**Artwork background vs halftone:** `artworkBackgroundHex` / `artworkBackgroundSource` are display mats only. Dark mat (`#2c2d2d`) does **not** imply or set halftone. Import precedence: explicit background override → all-halftone dark default → code-auto detector → default light (omit field).
+
+**Studio customer-upload intake (import detector parity):** On successful finalize / ZIP finalize / staff retry processing, Functions run the same shared light-art → dark mat detector used on Imports (`suggestDarkArtworkBackgroundFromPngBytes`) against production PNG bytes. Persist `suggestDarkArtworkBackground: true` when suggested (omit/clear when not). When not already `staff_manual`, also write `artworkBackgroundHex` + `artworkBackgroundSource: "code_auto"`. Studio intake Auto uses the hint (`autoSuggestsDark`); Portal customer UI does **not** surface this. Staff Light/Dark remain `staff_manual`; Auto restores `code_auto` when the hint is true.
 
 ---
 
@@ -1410,19 +1589,27 @@ Proof objects are the **raw staff upload** (JPEG/PNG/WebP). There is no separate
 proof-{n}-{mmddyyyy}-{HHmm}.{ext}
 ```
 
+**Multi-proof rounds (2026-09-12):** `proofs[]` remains the option store. Additive optional fields on image proofs: `proofRoundId`, `optionOrder` (0-based), server-derived `optionLabel` (`Option A`…). Request `currentProofRoundId` marks the active customer round (cleared after approve/revision). History may include `proofRoundId` / `selectedProofId` / `selectedOptionOrder`. Legacy rows without round metadata are implicit one-option rounds (no migration/backfill). One proof-ready email/notification per round (`proofRoundId` identity); final-artwork-ready notices remain separate.
 Portal/Studio proof **previews** load via authenticated `getBytes` → object URL (not a durable signed URL in `img src`). Explicit customer download of final artwork uses a friendly basename (`Fresh-Prints-Final-Artwork.{ext}`) only after `approved` with `finalSource`.
 
 **Final source (ADR-FP-110):** optional `finalSource` (`id`, `storagePath`, friendly `fileName`, `contentType`, `sizeBytes`, `uploadedByUid`, `uploadedAt`). Staff callable `staffAddAssistedCreationFinalSource` attaches metadata and transitions `final_source_needed` → `approved` atomically. Force-complete without final source is forbidden.
 
-**Full-res retention (ADR-FP-093):** on customer **approve** (proof_image → `final_source_needed`), set `approvedProofId` + `approvedAt` and **physically delete** other proofs’ Storage objects (set per-proof `fullSizePurgedAt`). On terminal **without** an approved downloadable proof (`rejected` / `cancelled`), delete **all** proof full-res objects. After staff completes with `finalSource`, Portal Download / Add to Request prefer the final artwork. The approved proof full-res remains within the **14-day** window (`ASSISTED_CREATION_APPROVED_PROOF_RETENTION_DAYS`), then `purgeExpiredAssistedCreationProofs` / scheduled job deletes it and sets `fullSizePurgedAt`. Legacy `approved` docs without `approvedProofId`/`approvedAt` fail closed (no download) unless `finalSource` is present. Portal Download is on the Overview **Approved design** card (via Admin-streamed file callable). The Proofs list and modal title label the approved proof with an **Approved** badge.
+**Full-res retention (ADR-FP-093, multi-proof amendment):** on customer **approve** (proof_image → `final_source_needed`), set `approvedProofId` + `approvedAt` and **do not** delete other proof Storage objects — all options across rounds stay visible in Studio/Portal history. On terminal **without** an approved downloadable proof (`rejected` / `cancelled`), delete **all** proof full-res objects. After staff completes with `finalSource`, Portal Download / Add to Request prefer the final artwork. The approved proof full-res remains within the **14-day** window (`ASSISTED_CREATION_APPROVED_PROOF_RETENTION_DAYS`), then `purgeExpiredAssistedCreationProofs` / scheduled job deletes it and sets `fullSizePurgedAt`. Legacy `approved` docs without `approvedProofId`/`approvedAt` fail closed (no download) unless `finalSource` is present. Portal Download is on the Overview **Approved design** card (via Admin-streamed file callable). The Proofs list and modal title label the approved proof with an **Approved** badge.
 
-**Add to Request (ADR-FP-094 / ADR-FP-110):** Portal callable `customerAddAssistedApprovedProofToPrintRequest` server-copies the **final source when present**, else the approved proof, into `customer-uploads/...` (source + production + preview + thumbnail), creates a `customerUploads` doc (`purpose: print_request`, audit fields `assistedCreationRequestId` / `assistedProofId`), and attaches a `printRequestItems` row (`sourceType: customer_upload`, qty 1, size from pixels) to the working Current Request (lazy-create). Skips customer-upload transparency / quality rejection gates (staff-provided art). **Library listing consent (residual):** before add, Portal modal Allow / Don’t allow maps to `catalogUseAcknowledged: true | false` — the same field as print-upload attach and donate. Server applies shared `buildCatalogIntakeConfirmationPatch` with `submitForStaffReview: false` so both choices reaffirm `catalogReviewStatus: not_eligible` (Studio Pending only after successful Add to Show), plus `ownershipConfirmed`, `termsVersion`, `confirmedAt`. Allow → staff may promote later after show allocation; Don’t allow → after show submit, intake still sees the row with Design Library permission **Declined** (no auto-publish either way). Skip modal when already in working request. Denormalizes `printRequestIngest` (optional `catalogUseAcknowledged`) on the assisted request for idempotency and “Already in request” UX. Assisted 14-day proof purge does **not** delete the copied upload assets.
+**Add to Request (ADR-FP-094 / ADR-FP-110):** Portal callable `customerAddAssistedApprovedProofToPrintRequest` server-copies the **final source when present**, else the approved proof, into `customer-uploads/...` (source + production + preview + thumbnail), creates a `customerUploads` doc (`purpose: print_request`, audit fields `assistedCreationRequestId` / `assistedProofId`), and attaches a `printRequestItems` row (`sourceType: customer_upload`, qty 1, size from pixels) to the working Current Request (lazy-create). Skips customer-upload transparency / quality rejection gates (staff-provided art). **Library listing consent (amended ADR-FP-074):** before add, Portal modal Allow / Don’t allow maps to `catalogUseAcknowledged: true | false` — the same field as print-upload attach and donate. Server applies shared `buildCatalogIntakeConfirmationPatch` with `submitForStaffReview: false`: Allow reaffirms `catalogReviewStatus: not_eligible` (Studio Pending only after successful Add to Show), while Don’t allow writes `excluded_from_catalog` + `customer_permission_denied` and is not advanced by allocation. Both preserve `ownershipConfirmed`, `termsVersion`, and `confirmedAt`; only one later customer follow-up Allow can return a denied upload to Pending, and no auto-publish occurs. Skip modal when already in working request. Denormalizes `printRequestIngest` (optional `catalogUseAcknowledged`) on the assisted request for idempotency and “Already in request” UX. Assisted 14-day proof purge does **not** delete the copied upload assets.
 
-One **open** request per customer (`submitted` | `in_progress` | `proof_ready` | `revision_requested` | `final_source_needed`). Status machine supports staff proofing, customer approve → Final Source Needed, staff final upload → `approved`, and revision-with-notes (also `rejected` / `cancelled`). **Staff reject** is allowed only from **`submitted`** (New tab / before Start Work); after Start Work, staff must **cancel** instead (shared `assertAssistedCreationTransition` + `staffUpdateAssistedCreationStatus` fail closed). Staff cancel remains available from open statuses; customer cancel and owner restore are unchanged. While status is **`submitted`** only, the customer may update `answers` and `referenceImages` (callable `customerUpdateAssistedCreationRequest`); content updates are locked once staff marks `in_progress`. Customer cancel (`cancelAssistedCreationRequest`) requires a non-empty `reason` (max revision-note length); the server persists `customerCancelReason` and appends a status history note. Staff cancel/reject/restore still require a reason in history only (no `customerCancelReason`). Separately, `customerSendAssistedCreationMessage` and `staffSendAssistedCreationMessage` append text-only chat notes **only while the request is open** (`canSendAssistedCreationMessage`); terminal statuses (`approved` | `rejected` | `cancelled`) reject new sends with `failed-precondition` (“Messaging is closed for completed requests.”). Entries are same-status and never reopen or transition the request. Messages are trimmed, required, capped at 2,000 characters, and limited to one per actor role per request per 10 seconds. Customer update history notes use `Request updated` (optional staff-visible detail after an em dash). Chat rows use structural `kind: "customer_message"` or `kind: "staff_message"`; `AssistedCreationRevisionEntry.kind` is optional for legacy records and also supports `status`, `request_update`, and `proof_email_sent`. When a proof-ready email delivery job completes successfully, the worker appends a system history entry `Proof-ready email sent` (with optional `emailDeliveryJobId` for idempotency). On approve, customer may optionally set `customerRating` (1–5) and `customerApprovalNote` (short text), plus `approvedProofId` / `approvedAt`. Client Firestore writes denied; callables only. Helper may read; owner/admin mutate status, attach proofs / final artwork, and send staff Messages on open requests (ADR-FP-088, ADR-FP-092, ADR-FP-093, ADR-FP-094, ADR-FP-110). Owner wipe on `fresh-prints-dev` uses Test Data Reset target `assistedCreationRequests` (`wipeOperationalTestData`) and clears Storage under `assisted-creation/` (including `final/`).
+One **open** request per customer (`submitted` | `in_progress` | `proof_ready` | `revision_requested` | `final_source_needed`). Status machine supports staff proofing, customer approve → Final Source Needed, staff final upload → `approved`, and revision-with-notes (also `rejected` / `cancelled`). **Staff reject** is allowed only from **`submitted`** (New tab / before Start Work); after Start Work, staff must **cancel** instead (shared `assertAssistedCreationTransition` + `staffUpdateAssistedCreationStatus` fail closed). Staff cancel remains available from open statuses; customer cancel and owner restore are unchanged. While status is **`submitted`** only, the customer may update `answers` and `referenceImages` (callable `customerUpdateAssistedCreationRequest`); content updates are locked once staff marks `in_progress`. Customer cancel (`cancelAssistedCreationRequest`) requires a non-empty `reason` (max revision-note length); the server persists `customerCancelReason` and appends a status history note. Staff cancel/reject/restore still require a reason in history only (no `customerCancelReason`). Separately, `customerSendAssistedCreationMessage` and `staffSendAssistedCreationMessage` append text-only chat notes **only while the request is open** (`canSendAssistedCreationMessage`); terminal statuses (`approved` | `rejected` | `cancelled`) reject new sends with `failed-precondition` (“Messaging is closed for completed requests.”). Entries are same-status and never reopen or transition the request. Messages are trimmed, required, capped at 2,000 characters, and limited to one per actor role per request per 10 seconds. Customer update history notes use `Request updated` (optional staff-visible detail after an em dash). Chat rows use structural `kind: "customer_message"` or `kind: "staff_message"`; `AssistedCreationRevisionEntry.kind` is optional for legacy records and also supports `status`, `request_update`, and `proof_email_sent`. When a proof-ready or final-artwork email delivery job completes successfully, the worker appends a system history entry (`Proof-ready email sent` or `Final artwork email sent`, with optional `emailDeliveryJobId` for idempotency). On approve, customer may optionally set `customerRating` (1–5) and `customerApprovalNote` (short text), plus `approvedProofId` / `approvedAt`. Client Firestore writes denied; callables only. Helper may read; owner/admin mutate status, attach proofs / final artwork, and send staff Messages on open requests (ADR-FP-088, ADR-FP-092, ADR-FP-093, ADR-FP-094, ADR-FP-110). Owner wipe on `fresh-prints-dev` uses Test Data Reset target `assistedCreationRequests` (`wipeOperationalTestData`) and clears Storage under `assisted-creation/` (including `final/`).
 
 Per-staff unread customer-update markers live in `assistedCreationUpdateAcks/{userId__requestId}` with `readThroughAt` (legacy submitted updates plus `kind: "customer_message"` in any status when `at > readThroughAt`). Studio header **Messages** inbox (alerts-style) lists unread previews and deep-links to Custom Designs → Assisted → Messages; opening a row advances `readThroughAt` for that entry. Stage-tab and list-card unread chips were removed in favor of the inbox. Studio detail tabs: **Overview** (brief + **Request details** listing every non-empty `AssistedCreationAnswers` field via shared `buildAssistedCreationAnswerDisplayRows` — including subject extras, exact-wording notes/checkboxes when applicable, and reference usage — plus references with unavailable placeholders when Storage URLs fail + **Internal staff notes** with Save notes + primary Staff actions when Start work / Resume apply + Reject (submitted/New only)/Cancel/Restore in status-row ⋯ + **AI Context** copy-only modal; when status is `cancelled` and `customerCancelReason` is set, show **Customer cancel reason** under the status header) + **Proofs** (list + proof upload when `in_progress` + **Upload Final Artwork** when `final_source_needed`), **Messages** (capped thread + Send a message compose only). Studio stage tabs: New → In progress → Revisions → Proof ready → **Final Source Needed** → Completed. Start Work / Resume follow-navigate to the In progress tab with the same request selected. In **Messages**, each unread customer row shows a **Read** control; clicking it advances `readThroughAt` to that entry’s `at` (monotonic). The Messages header keeps a count badge only. **Requires deployed Firestore rules** for this collection on the target project (`firebase deploy --only firestore:rules --project fresh-prints-dev`); until then Studio shows a toast on mark-read permission failures.
 
-Customer-facing in-app alerts live in `customerNotifications/{id}` (Admin SDK writes on proof attach, catalog-share suggest, and staff Messages; customer may set `readAt` only). Kinds include `assisted_proof_ready`, `assisted_catalog_share_ready`, and `assisted_staff_message`. Optional browser push tokens live in `customers/{customerId}/webPushSubscriptions/{id}` (callable `registerWebPushSubscription`). Preference `assistedBrowserPushOptIn` (default on) is separate from `assistedProofEmailOptIn`. Final-ready push/email is **out of scope** for ADR-FP-110 (Portal list refresh is sufficient).
+Customer-facing in-app alerts live in `customerNotifications/{id}` (Admin SDK writes on proof attach, catalog-share suggest, final artwork attach, staff Messages, and catalog-permission Ask Again; customer may set `readAt` only via client Rules). Kinds include `assisted_proof_ready`, `assisted_catalog_share_ready`, `assisted_final_artwork_ready`, `assisted_staff_message`, and `customer_upload_catalog_permission_follow_up`. Portal Alerts keep a live `customerNotifications` listener and also refetch from the server on foreground FCM, tab focus/visibility, and browser `online`, so the bell unread count updates without a page reload. `customer_upload_catalog_permission_follow_up` stays unread in the live dropdown until Allow/Decline (`respondToCustomerUploadCatalogPermissionFollowUp` sets `readAt`); click / Mark all read do not clear it early, and Notification history always includes open permission requests as well as cleared alerts. Customers can soft-clear history via callable `clearCustomerNotificationHistory` (`clearedFromHistoryAt`); unanswered permission requests are preserved. Optional browser push tokens live in `customers/{customerId}/webPushSubscriptions/{id}` (callable `registerWebPushSubscription`). Preference `assistedBrowserPushOptIn` (default on) is separate from `assistedProofEmailOptIn`. Final-artwork-ready email + in-app alert enqueue from `staffAddAssistedCreationFinalSource` (same opt-out as proof notices); dedicated FCM template beyond the shared notification create path remains optional.
+
+Portal print-request item grids (Current Request detail + drawer) and Studio Print Request design
+grids display **newest-added first** left-to-right / top-to-bottom via
+`sortPrintRequestItemsNewestFirst`. New catalog and customer-upload attaches persist ascending
+`sortOrder`; Portal list/subscribe paths sort newest-first at the service boundary so live
+`updatedAt` query order cannot leak into the UI. Uploads/legacy rows without `sortOrder` stay
+chronological by `createdAt` (not forced to the front).
 
 ---
 
@@ -1628,7 +1815,7 @@ upcomingShows/{upcomingShowId}
 ## Upcoming Show Interface
 
 ```ts
-export type UpcomingShowSource = "whatnot" | "staff_gang_sheet";
+export type UpcomingShowSource = "whatnot" | "staff_gang_sheet" | "dev_fixture";
 
 /** Whatnot schedule/source status — never mixed with production completion. */
 export type UpcomingShowStatus =
@@ -1664,10 +1851,12 @@ export interface UpcomingShow {
   source: UpcomingShowSource;
   /**
    * Required when `source === "whatnot"`.
-   * Omitted when `source === "staff_gang_sheet"` (never fabricate Whatnot IDs).
+   * Omitted when `source === "staff_gang_sheet"` or `source === "dev_fixture"` (never fabricate Whatnot IDs).
    */
   whatnotShowId?: string;
   whatnotUrl?: string;
+  /** Present when `source === "dev_fixture"`; literal `DEV-OVERRIDE` sentinel — not a Whatnot identity. */
+  devFixtureSentinel?: "DEV-OVERRIDE";
   title?: string;
   scheduledStartAt?: Timestamp;
   status: UpcomingShowStatus;
@@ -1709,6 +1898,13 @@ export interface UpcomingShow {
   printFinishedAt?: Timestamp;
   printFinishedBy?: string;
 
+  /** Past-show remediation audit (ADR-FP-149). Optional; backward compatible. */
+  productionResolutionKind?: "empty_closure" | "fulfilled_confirmed" | "unfulfilled_release" | "owner_override";
+  productionResolvedAt?: Timestamp;
+  productionResolvedBy?: string;
+  /** Owner Force Completed reason; max 500 characters, trimmed, no control chars. */
+  productionOverrideReason?: string;
+
   createdBy?: string;
   updatedBy?: string;
   createdAt: Timestamp;
@@ -1717,6 +1913,8 @@ export interface UpcomingShow {
 ```
 
 > **Studio 1.0.6 — Staff Gang Sheets (shared):** `source` may be `staff_gang_sheet`. Those sheets reuse `upcomingShows` + `showAllocations`, omit `whatnotShowId`, default `maxTotalQuantity` to **200** (editable), require `staffGangSheetCycleNumber`, and do **not** require `assignedStaffUserId` (shared by Studio staff). Exactly one active shared sheet (`open`/`full`/`printing`) is allowed. Eligibility is `requestOrigin === "studio_internal"` or legacy `isInternal === true` (customer origins denied). Deny Portal allocation; skip Recently Requested popularity bumps. Any active Studio staff may create when **no** active sheet exists (cycle = max(existing)+1); while one is open, **Mark Complete** opens the next cycle. Add-to-Internal can pick among multiple actives if they exist (legacy/recovery). Studio Print Requests use separate **Add to Show** / **Add to Internal Gangsheet** actions; Internal Sheets live on their own nav route.
+
+> **DEV fixture shows (`fresh-prints-dev` only):** `source === "dev_fixture"` records are created/updated only through the trusted callable `upsertDevFixtureShow` (Admin SDK). Client Firestore rules deny client **create** of `dev_fixture`. They persist `devFixtureSentinel: "DEV-OVERRIDE"` and **never** persist `whatnotShowId` or `whatnotUrl`. Studio Show Queue treats them like other queue-surface shows for allocation lifecycle; Whatnot assisted import matching excludes them (`source === "whatnot"` filter only).
 
 Upsert rule: match existing **Whatnot** records by `source + whatnotShowId`; update mutable upstream fields
 (`title`, `whatnotUrl`, `scheduledStartAt`, `lastSeenAt`) on a match instead of creating a duplicate.
@@ -1745,8 +1943,11 @@ appears in the list.
 Allocates some or all of a Print Request item's quantity to a show. A Print Request may be split across
 multiple shows when it exceeds a single show's remaining capacity — the same `printRequestItemId` can
 have multiple `showAllocations` records across different shows. Each allocation is a
-snapshot-plus-reference created via `upcomingShowService.allocatePrintRequestItem()` — it never mutates
-the source `printRequestItems`, `printRequests`, or `designs` documents. Production status
+snapshot-plus-reference. Portal creates a complete request through
+`queuePortalPrintRequestToShow`; Studio Add-to-Show/re-add creates a complete remaining plan through
+the trusted `allocateStudioPrintRequestToShow` transaction (the legacy per-item client writer is
+not the primary Add-to-Show path). Neither flow mutates the source `printRequestItems` or `designs`
+documents. Production status
 (`pending` → `queued` → `in_progress` → `printed`/`done`/`canceled`) lives only on `showAllocations`;
 **`designs.status` must never receive a production write.**
 
@@ -1802,6 +2003,10 @@ export interface ShowAllocation {
   completedBy?: string;
   canceledAt?: Timestamp;
   canceledBy?: string;
+  /** Did Not Print recovery lineage only (ADR-FP-156). */
+  requeuedFromAllocationId?: string;
+  /** Normal Show Queue MOVE lineage (ADR-FP-157). */
+  movedFromAllocationId?: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
@@ -1825,12 +2030,20 @@ Working/Queued/Printed list tabs are derived the same way, via
 
 `upcomingShows.allocatedQuantity` is a denormalized total that must always be **recomputed from the
 show's non-canceled `showAllocations`, never incrementally adjusted**, whenever an allocation is added
-or removed. `upcomingShowService.recalculateShowAllocatedQuantity()` is the single implementation of
-this; `removeShowAllocation()` and `removeShowAllocationsForRequest()` both call it after deleting
-allocation records, so the show's capacity display can never drift from its actual allocation records
-— see ADR-FP-051. Removing an allocation (individually or for a whole request) is blocked once the
-show's `productionStatus` is `printing`, `fully_printed`, `completed`, or `archived` — see
-`shared/utils/showQueueEditability.ts`'s `canRemoveRequestFromShow()`.
+or removed. `upcomingShowService.recalculateShowAllocatedQuantity()` is the client maintenance
+implementation; trusted Functions, including Studio Add-to-Show, reconcile inside their transactions.
+
+### Normal Show Queue MOVE (ADR-FP-157)
+
+Staff **Move to Another Show** / **Move All Requests** (Whatnot → Whatnot only):
+
+- Movable statuses: `pending` \| `queued` only (all-or-nothing if any scoped row is non-movable).
+- Source rows: **canceled** (retained). Destination: **new** docs with `movedFromAllocationId`.
+- Never sets `requeuedFromAllocationId`, Did Not Print resolution, or `needsStaffRequeue*`.
+- Combine: multi-doc **sum** of non-canceled quantities (no single-doc merge).
+- Destination excludes `printing` and later/terminal (move-specific helper; Add-to-Show unchanged).
+- Callables: `previewShowQueueMove` / `applyShowQueueMove`; idempotency `showQueueMoveApplications/{checksum}`; max 150 source allocations per TX.
+- Distinct from **Remove from Show** (delete), **Did Not Print requeue** (ADR-FP-156), and past/locked **copy**.
 
 `printRequests.status` gains automatic transitions driven by `upcomingShowService`, so its persisted
 status never misleadingly contradicts the request's actual queue state:
@@ -1841,8 +2054,10 @@ status never misleadingly contradicts the request's actual queue state:
   it is removed from every show it was queued to, with no allocations remaining anywhere) — see
   `markPrintRequestEditingIfNoActiveAllocations()`, called from both `removeShowAllocation()` and
   `removeShowAllocationsForRequest()`. `editing` means "was queued, now back with staff for revision,"
-  distinct from `draft` ("never queued yet"); the Print Requests page treats a request in `editing`
-  as fully editable again, same as `draft`.
+  distinct from `draft` ("never queued yet"). Studio Print Requests list tabs treat `status: "editing"`
+  as the **Editing** lifecycle tab via `derivePrintRequestListTab` → persisted mirror `queueTab: "editing"`
+  (mutually exclusive from Working). Portal `/requests` uses the same derive and also shows an
+  **Editing** tab. Continuable create/edit still allows at most one `draft`/`editing` request (ADR-FP-071).
 - Portal customers may have **at most one** `draft` or `editing` request at a time (`createPortalPrintRequest`
   enforces this; see ADR-FP-071). Queuing to a show (`active`) frees the customer to start another.
 - `active`/`editing` → `completed` once every unit of the request's requested quantity has been
@@ -1853,7 +2068,9 @@ status never misleadingly contradicts the request's actual queue state:
 open as `draft`/`editing` so the next Add reuses the same id (ADR-FP-071). Owner/admin **empty
 stale archive** (`archiveStaleWorkingPrintRequests`, 14-day empty working carts) sets `archived`.
 It is never a synonym for printed. Studio Working triage defaults to **Active** carts (has items,
-updated within 14 days); Stale / Empty / All chips + rail search cover the rest (ADR-FP-079).
+updated within 48 hours); **Idle** (2–7 days) / **Stale** (7+ days) / Empty / All chips + rail
+search cover the rest (ADR-FP-079).
+Empty working carts may be owner/admin auto-archived after 14 days of no updates.
 None of these transitions touch `designs.status`.
 
 ---
@@ -1893,20 +2110,36 @@ export interface AppSettings {
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `visionModelId` | string | One of server allowlist: `gpt-5.4-nano-2026-03-17` (default), `gpt-5-nano-2025-08-07`, `gpt-5.4-mini-2026-03-17` |
-| `reasoningEffort` | string | One of `none`, `minimal`, `low`, `medium`, `high`; default `medium`; server may retry with `low` for request-path compatibility only |
-| `promptTemplate` | string | Owner/admin-editable AI Processing prompt template. Must contain `{{approved_categories}}`, `{{approved_tags}}`, and `{{excluded_tags}}`; default asks for `description`, one approved `category`, `title`, up to 8 approved tag names, strict visible-text extraction in the description, and complete `suggestedNewTags` objects when approved tags are not relevant enough |
-| `additionalTagExclusions` | string[] | Optional owner/admin tags merged with `BASE_AI_TAG_EXCLUSIONS` (lowercase single words, max 50) |
+| `visionModelId` | string | One of server allowlist (see BACKEND) |
+| `promptTemplate` | string | Owner/admin-editable AI Processing prompt template |
+| `tagRerankPromptTemplate` | string | Optional tag rerank prompt |
+| `additionalTagExclusions` | string[] | Optional owner/admin tags merged with base exclusions |
+| `tagRerankMode` / `suggestionAuthorMode` / `suggestedNewTagsPolicy` | string | Pipeline policy knobs |
+| `catalogWorkflowMode` | `manual` \| `shadow` \| `autonomous` | Slice 4 Catalog Processing Mode; absent/invalid → **manual** |
+| `catalogAutonomousLiveEnabled` | boolean | Slice 4 live publication gate; default **false** |
+| `catalogAutonomousLiveEnabledAt` / `By` | Timestamp / string | Audit when live gate enabled |
 | `updatedAt` | Timestamp | Last change |
-| `updatedBy` | string | UID of owner/admin who saved |
+| `updatedBy` | string | UID of last updater |
 
-**Permissions:** Staff may read (AI Processing label). Writes only via callable `updateAiEnrichmentSettings` (owner/admin). No API keys in this document.
+**Permissions:** Staff may read (AI Processing label). Model/prompt/tag fields: callable `updateAiEnrichmentSettings` (owner/admin). Catalog Processing Mode + live Autonomous: callable `updateCatalogWorkflowMode` (**owner-only**). No API keys in this document.
+
+### `settings/catalogAutomationHealth` (Slice 4)
+
+Lightweight Automation Health counters (`analyzed`, `wouldAutoApprove`, `actuallyAutoApproved`, verifier metrics, `routedNeedsReview`, `categoryGap`, etc.). Staff read; Admin SDK write only.
+
+### `catalogReprocessJobs` (Slice 4 control plane; Slice 5 AI Review execution)
+
+Durable Catalog Reprocessing jobs. Client write denied; **owner** read for progress. Started via owner callables with typed confirmation. Soft pause; one active job per `(projectId, targetType)`.
+
+**Slice 5 (`ai_review_queue`):** Start enabled when `CATALOG_REPROCESS_AI_REVIEW_QUEUE_ENABLED`. Server Start requires Catalog Processing Mode **shadow** and `catalogAutonomousLiveEnabled === false`. Eligibility: `status == imported` AND `aiReviewStatus == needs_review`. Worker stages only operational state with a new `aiProcessingAttemptId`, preserves current AI blobs and review audit fields until guarded success, runs the live enrichment pipeline (`catalog-enrich-v30` + `smart-profile-normalizer-v4`) in **queue** mode, and records per-design outcomes under `catalogReprocessJobs/{jobId}/outcomes/{designId}`. Shadow success must remain `imported` + `needs_review`; lifecycle anomalies soft-pause the job. Failure metadata is separate from retained AI output, and stale attempts become no-ops.
+
+**Slice 6 (`ready_catalog`) — implemented; Start gate still `CATALOG_REPROCESS_READY_CATALOG_ENABLED = false` until owner unlock after DEV deploy:** Eligibility: `status == ready` AND `aiReviewStatus == approved`. Worker uses **Ready-safe staging** (`buildReadyCatalogReprocessAiStageUpdate`) — never writes `imported`, `pending`, or `needs_review`; preserves `aiReviewed*`, `readyAt`, root title/description/categoryId/tags, and `aiReviewNotes`; does **not** delete `smartProfile` before enrich (atomic replace on success). Pipeline runs in **`ready_backfill`** mode: success sets `aiProcessingStage: ready_for_review` while keeping `status: ready` and `aiReviewStatus: approved`; failure sets `aiProcessingStage: failed` without demoting lifecycle. Catalog Processing Mode records Shadow automation provenance only — **no** `publishReady` / Autonomous lifecycle mutation. Outcomes track `remainedReady`, `preservationViolations` (on `ready_lifecycle_violation`), and optional bounded `canaryDesignIds` → job `boundedDesignIds`. Algolia: Smart Profile index-field changes on `status: ready` upsert via existing sync; any non-ready write deletes index object (P0 violation). Terminal success stage: **`ready_for_review`** (same as queue pipeline success stage; does not change operational `status`).
 
 **Per-design audit:** `designs.aiSuggestions.model` records the resolved model used for each enrichment run, including one-off AI Processing overrides. `aiSuggestions.tags` are filtered server-side against base + additional exclusions and resolved against approved tag names/aliases.
 
 **Prompt taxonomy context (2026-06-30):** Cloud Functions replace `{{approved_categories}}` with active category names plus descriptions, `{{approved_tags}}` with approved tag names plus aliases and preferred-when guidance, and `{{excluded_tags}}` with the effective exclusion list. AI should choose one approved category and approved tag names first, inspect the full image for readable text, include exact readable text in the description when present, and return `suggestedNewTags` only when no approved name or alias is relevant enough. Each suggestion must include `name`, `aliases`, `preferredWhen`, and `reason` for owner/admin review.
 
-**Needs Review / Rejected re-run:** `resetAiEnrichmentForProcessing` clears suggestions and sends the design back to Processing. No AI call runs on the review tab. Studio stays on the source tab after a successful reset; Processing is opened manually.
+**Needs Review / Rejected re-run:** `resetAiEnrichmentForProcessing` stages a new attempt and sends the design back to Processing without clearing the prior AI result. No AI call runs on the review tab. Studio stays on the source tab after a successful reset; Processing is opened manually. The active stage takes precedence in the UI, so retained output is not presented as the new result while processing.
 
 **Settings AI playground:** No playground prompt text, image payload, or response output is persisted in Firestore for this slice. Playground requests are transient callable invocations only.
 
@@ -1963,13 +2196,32 @@ interface ShowQueueSettings {
   gangSheetGutterInches?: number;
   gangSheetMaxLengthInches?: number;
   gangSheetLabelFontSizePx?: number;
+  // Canonical global Gang Sheet Settings price/weight fields. Breakpoints are fixed policy.
+  gangSheetPocketPriceUsd?: number;
+  gangSheetPocketWeightOz?: number;
+  gangSheetStandardFullSizePriceUsd?: number;
+  gangSheetStandardFullSizeWeightOz?: number;
+  gangSheetStandardOversizedPriceUsd?: number;
+  gangSheetStandardOversizedWeightOz?: number;
+  gangSheetExtraOversizedPriceUsd?: number;
+  gangSheetExtraOversizedWeightOz?: number;
+  // Legacy two-tier fields remain readable only for fallback compatibility.
+  gangSheetSectionPriceCutoffInches?: number;
+  gangSheetSmallTierPriceUsd?: number;
+  gangSheetSmallTierWeightOz?: number;
+  gangSheetLargeTierPriceUsd?: number;
+  gangSheetLargeTierWeightOz?: number;
   // … Whatnot assisted-import audit fields …
   updatedAt: Timestamp;
   updatedBy: string;
 }
 ```
 
-Cutoff math uses absolute Timestamps (`cutoffAt = scheduledStartAt − N hours`). Display labels use the browser locale; America/Chicago applies to other day-bucket features, not this offset. Staff configure via Show Queue settings modal. Clients may not bypass — `listPortalAllocatableShows` / `queuePortalPrintRequestToShow` enforce.
+Cutoff math uses absolute Timestamps (`cutoffAt = scheduledStartAt − N hours`). Display labels use the browser locale; America/Chicago applies to other day-bucket features, not this offset. Staff configure Gang Sheet fields under `/settings?tab=gangSheetSettings`; unrelated Show Queue settings remain in the Show Queue modal. Clients may not bypass — `listPortalAllocatableShows` / `queuePortalPrintRequestToShow` enforce.
+
+The normalized pricing policy is width-only with fixed boundaries `<=4`, `<=11`, and `<=14`
+inches. Defaults are `$1/0.40oz`, `$2/0.75oz`, `$3/0.75oz`, and `$4/0.75oz` respectively.
+Canonical fields win individually over legacy fallback fields; no migration or backfill is performed.
 
 ### `settings/printRequestLimits`
 
@@ -2002,6 +2254,14 @@ requests — ADR-FP-122). Missing fields resolve via `resolvePrintRequestLimitSe
 request limit falls back to customer-show when absent).
 Signed-in users may read; writes use `updatePrintRequestLimitSettings` (mirrors request limit into legacy Cap A).
 Bounds: integers 1–10000.
+
+Optional **customer-specific temporary override** on `customers/{customerId}.printRequestQuotaOverride`
+(owner-only Admin callable `updateCustomerPrintRequestQuotaOverride`; ADR-FP-159). Independently nullable
+`maxQuantityPerPrintRequest` / `maxQuantityPerShowPerCustomer`, optional `expiresAt`, plus `updatedAt` /
+`updatedBy`. Effective limits = active override dimension ?? current global
+(`resolveEffectivePrintRequestLimits`). Expired overrides are inactive without a scheduler. Studio
+editing may **link** both dimensions in the UI while still storing independent fields. Does not
+mutate existing requests/allocations. Cap A / `printRequestDesignDailyLimits` remain retired.
 
 ### `settings/portalHelp`
 
@@ -2148,14 +2408,15 @@ slots → apps use bundled/`public/brand` static fallbacks. When
 
 ### `emailDeliveryJobs`
 
-Server-only durable outbox for Assisted Creation proof-ready notices. The deterministic document ID
-is a fixed-length SHA-256 identity derived from `{requestId, proofId}` so client-controlled IDs
-cannot introduce Firestore path separators.
+Server-only durable outbox for Assisted Creation customer notices (proof-ready, catalog-share, and
+final-artwork-ready). The deterministic document ID is a fixed-length SHA-256 identity derived from
+`{requestId, proofId|designId|finalSourceId}` (kind-specific) so client-controlled IDs cannot
+introduce Firestore path separators.
 
 | Field | Purpose |
 |-------|---------|
-| `id`, `kind` | Stable identity; kind is `assisted_proof_ready` or `assisted_catalog_share_ready` |
-| `requestId`, `proofId` | Source proof identity |
+| `id`, `kind` | Stable identity; kind is `assisted_proof_ready`, `assisted_catalog_share_ready`, or `assisted_final_artwork_ready` |
+| `requestId`, `proofId` / `designId` / `finalSourceId` | Source asset identity (field present depends on kind) |
 | `customerId`, `customerUid` | Trusted recipient linkage; no recipient email copy |
 | `provider` | Provider snapshot (`resend` \| `brevo`) |
 | `status` | `pending` → `sending` → `sent` or `failed` |
@@ -2165,6 +2426,40 @@ cannot introduce Firestore path separators.
 
 All client reads and writes are denied. No backfill, destructive migration, or composite index is
 required.
+
+---
+
+# Customer Activity Events (identity audit evidence)
+
+Append-only audit trail for customer identity operations. **Not** lifecycle source-of-truth — canonical state remains on `customers`, `printRequests`, and other domain entities.
+
+```txt
+customerActivityEvents/{eventId}
+```
+
+```ts
+export interface CustomerActivityEvent {
+  customerId: string;
+  eventType:
+    | "account.username_changed"
+    | "account.username_transferred"
+    | "account.duplicate_resolution_previewed"
+    | "account.disabled"
+    | "account.restored"
+    | "account.hard_delete_previewed"
+    | "account.hard_delete_applied";
+  occurredAt: Timestamp;
+  actorUid: string;
+  actorRole: "owner" | "admin" | "system";
+  derivation: "live" | "reconstructed";
+  result?: "success" | "blocked" | "already_done" | "failed";
+  metadata?: Record<string, unknown>; // no secrets; may include previewChecksum
+}
+```
+
+Writes: Admin SDK / trusted callables only. Staff read.
+
+Short-lived `customerIdentityOperationPreviews/{previewId}` docs support single-use identity Apply validation (operations: `hard_delete`, `duplicate_resolution`; no client access). WS2 duplicate resolution stores source/survivor ids, desired username, verification mode, checksum, and 15-minute expiry.
 
 ---
 
@@ -2496,3 +2791,25 @@ Before creating a new document type:
 * Keeps files in Storage
 
 All applications must follow this document exactly.
+
+## AI enrichment release fields (2026-09-07)
+
+`settings/aiEnrichment.semanticReviewPlaygroundEnabled` is an optional boolean
+with a fail-closed default of `false`. It is written only by the owner-only
+server callable and controls manual Playground experimentation; it is not a
+Processing or approval flag. `semanticReviewerEnabled` remains a deprecated
+compatibility/read field and is never copied into the new field.
+
+`designs.aiSuggestions` and `designs.aiAnalysis` may contain historical
+tag-related fields for compatibility. New Pass 1 writes do not produce or
+persist AI tags, suggested-new-tags, Tag Rerank/Suggestion Author metadata, or
+transient raw tag/category analysis. Staff `designs.tags` and taxonomy data
+remain part of the existing product model and are not deleted by this release.
+# Portal admin Show Queue response (ADR-FP-187)
+
+The Portal admin Show Queue is a derived response, not a persisted collection or read model. Its
+shared DTO contains operational-day metadata, lifecycle/totals for matching Whatnot/DEV-fixture
+shows, request groups, and allocation rows. It intentionally omits all document identifiers,
+customer/upload/design identifiers, private artwork metadata, filenames, URLs, paths, and lineage
+IDs. Customer-upload rows use the literal `Customer upload` label. Canceled allocation rows remain
+historical evidence while active-work totals exclude them.

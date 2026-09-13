@@ -984,6 +984,25 @@ Or paste URLs into [Facebook Sharing Debugger](https://developers.facebook.com/t
 
 ---
 
+## DEV-only pending production promotion inventory
+
+Track Firestore Rules, Functions, indexes, Storage Rules, and Studio releases that passed **DEV** QA but are **not** yet on `fresh-prints-prod`. Add rows when a standalone corrective or goal ships to DEV; remove rows only after owner-authorized production promotion and deploy record.
+
+| Date | Item | DEV deploy | Owner DEV QA | Production |
+|------|------|------------|--------------|------------|
+| 2026-09-01 | **AI Review Approve/Reject Rules** — allow `artworkBackgroundSource` on `catalogMetadataOnlyUpdate` (`firestore.rules`) | `firebase deploy --only firestore:rules --project fresh-prints-dev` — **done** | **PASS** (Approve + Reject) | **Pending** — include in next owner-authorized Rules promotion |
+| 2026-09-01 | **WS3 Show Queue gang-sheet pricing/weight fields** — `settings/showQueue` allowlist (`firestore.rules` @ `40fe7fd0`) | `firebase deploy --only firestore:rules --project fresh-prints-dev` — **done** | WS3 **PASS** | **Pending** — include in next owner-authorized Rules promotion |
+| 2026-09-01 | **Internal Gang Sheet settings Rules** — `settings/internalGangSheet` + `internalGangSheetSettingsFieldsValid` (`firestore.rules` @ `fe500975`) | `firebase deploy --only firestore:rules --project fresh-prints-dev` — **done** | WS3 **PASS** | **Pending** — include in coordinated Rules promotion |
+| 2026-09-01 | **Pre–Smart Profiling managed goal** (WS1–WS3) — Portal + Studio + Functions deltas on `development` | Partial (WS2 Functions on DEV; WS1/WS3 Studio+Portal source partially uncommitted) | WS1 **PASS**, WS2 **PASS**, WS3 **PASS** | **Not authorized** — coordinated promotion after managed goal signoff + commit scope resolved |
+
+Deploy record (AI Review Rules): `docs/workflow/reviews/2026-09-01-ai-review-artwork-background-source-rules-dev-deploy-record.md` — corrective source commit `bea7f18b`.
+
+Deploy record (WS3 Show Queue pricing Rules): `docs/workflow/reviews/2026-09-01-pre-smart-profiling-ws3-configurable-gang-sheet-pricing-dev-rules-deploy-record.md` — source `40fe7fd0`.
+
+Deploy record (Internal Gang Sheet settings Rules): `docs/workflow/reviews/2026-09-01-pre-smart-profiling-internal-gang-sheet-settings-dev-rules-deploy-record.md` — live DEV deploy from working tree; git aligned in commit `fix: commit internal gang sheet settings rules`.
+
+---
+
 ## Production Release Checklist
 
 ### Wave C dev snapshot checkpoint
@@ -1192,16 +1211,20 @@ node .github/scripts/publish-studio-stable-github-release.mjs \
   --sha <40-character-build-sha>
 ```
 
-The helper PATCHes `draft=false`, `make_latest=true`, and **final** release copy (version, platforms, source SHA, Windows auto-update, Mac `internal-unsigned` / manual DMG). It then fail-closed verifies:
+The helper PATCHes `tag_name=vX.Y.Z`, `draft=false`, `make_latest=true`, and **final** release copy (version, platforms, source SHA, Windows auto-update, Mac `internal-unsigned` / manual DMG). It then fail-closed verifies:
 
 | Check | Required |
 |-------|----------|
 | `draft` | `false` |
 | `name` / version | `X.Y.Z` |
+| `tag_name` | **`vX.Y.Z`** (not `untagged-*`; publish helper sets this on release) |
 | `target_commitish` | exact build SHA |
 | asset count | **8** |
 | GitHub Latest | `GET /releases/latest` `id` equals this release |
+| release URL | `https://github.com/roasted-garlic/freshprints/releases/tag/vX.Y.Z` resolves |
 | body | no `DRAFT` / `do not publish` (or equivalent) |
+
+**Draft finalize note (2026-08-24):** If GitHub assigns an `untagged-*` slug during draft create, `studio-release.yml` normalizes the draft to `vX.Y.Z-SHORT_SHA`. The publish helper still sets **`vX.Y.Z`** on release. If a published stable release ever ships with a non-`vX.Y.Z` tag, use owner-gated in-place retag (see `docs/workflow/reviews/2026-08-24-studio-1.0.9-release-tag-retag-record.md`).
 
 A stable Studio release is **not** signoff-complete until that checklist is recorded. Raw PATCH or GitHub UI “publish draft” without Latest + final copy is insufficient.
 
@@ -1249,3 +1272,15 @@ Report under `docs/workflow/reviews/`.
 | 2026-07-16 | Provider-neutral Resend invitations + proof-ready outbox; selective dev deploy checkpoint |
 | 2026-06-24 | Git artifact cleanup; Storage deploy commands; packaging icon note |
 | 2026-06-24 | Initial Fresh Prints deployment doc |
+# Portal admin Show Queue release boundary (ADR-FP-187)
+
+The owner-authorized DEV deployment completed on 2026-09-09 for exactly one callable Function:
+
+`firebase deploy --only functions:getPortalAdminDailyShowQueue --project fresh-prints-dev`
+
+`getPortalAdminDailyShowQueue` is `ACTIVE` in `fresh-prints-dev` / `us-central1` on Node.js 20,
+revision `getportaladmindailyshowqueue-00001-nux`, with latest-revision traffic enabled. No Rules,
+Storage Rules, indexes, DEV App Hosting, Studio publish, or production deployment was part of this
+checkpoint. The first Owner DEV QA failed on a Portal loading lifecycle defect; the corrective is
+local-only and awaits Owner DEV re-QA. See
+`docs/workflow/reviews/2026-09-09-portal-admin-daily-show-queue-dev-deployment.md`.

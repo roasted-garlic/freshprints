@@ -1,10 +1,15 @@
 import { Clapperboard, FileText, Image, ListTree } from "lucide-react";
 
-import type { AuditTrailActivityStats, AuditTrailProfileSummary } from "../utils/buildAuditTrailProfile";
+import type { AuditTrailProfileSummary } from "../utils/buildAuditTrailProfile";
 
 interface UserAuditTrailProfileCardProps {
   profile: AuditTrailProfileSummary;
-  stats: AuditTrailActivityStats;
+  stats: {
+    printRequests: number;
+    queuedShows: number;
+    accountActivity: number;
+    designsUploaded?: number;
+  };
 }
 
 interface StatItem {
@@ -13,19 +18,22 @@ interface StatItem {
   value: number;
 }
 
-function buildStatItems(profile: AuditTrailProfileSummary, stats: AuditTrailActivityStats): StatItem[] {
+function buildStatItems(
+  profile: AuditTrailProfileSummary,
+  stats: UserAuditTrailProfileCardProps["stats"],
+): StatItem[] {
   if (profile.kind === "team_user") {
     return [
       { icon: FileText, label: "Print requests", value: stats.printRequests },
-      { icon: Image, label: "Designs uploaded", value: stats.designsUploaded },
-      { icon: ListTree, label: "Recent events", value: stats.recentEvents },
+      { icon: Image, label: "Designs uploaded", value: stats.designsUploaded ?? 0 },
+      { icon: ListTree, label: "Recent events", value: stats.accountActivity },
     ];
   }
 
   return [
     { icon: FileText, label: "Print requests", value: stats.printRequests },
     { icon: Clapperboard, label: "Queued to show", value: stats.queuedShows },
-    { icon: ListTree, label: "Recent events", value: stats.recentEvents },
+    { icon: ListTree, label: "Account activity", value: stats.accountActivity },
   ];
 }
 

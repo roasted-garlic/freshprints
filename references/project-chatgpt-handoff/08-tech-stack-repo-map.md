@@ -60,7 +60,7 @@ fresh-prints/
 │       ├── electron/           # Main process (import, export, sharp)
 │       └── src/renderer/src/
 │           └── features/       # designs, imports, ai-review, print-requests,
-│                               # upcoming-shows, customer-uploads, users, …
+│                               # upcoming-shows, customer-uploads, users/ (WS4 PR history), …
 ├── packages/
 │   ├── shared/src/             # types, utils, constants (incl. customerUpload/)
 │   └── show-picker/

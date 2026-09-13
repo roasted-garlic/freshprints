@@ -8,6 +8,7 @@ import {
   type PreviewCustomerUploadDeletionRequest,
   type PreviewCustomerUploadDeletionResponse,
 } from "../../packages/shared/src/types/deletion/deletion.types";
+import type { DeletionCallableWarmupResponse } from "../../packages/shared/src/types/deletion/deletionWarmup.types";
 import { adminDb, adminStorage } from "./lib/admin";
 import { loadCallerProfile } from "./lib/caller";
 import {
@@ -16,6 +17,7 @@ import {
   resolveCustomerUploadDeletionBlockers,
 } from "./lib/customerUploadDeletionEligibility";
 import { assertCanDeleteCustomerUpload } from "./lib/customerUploadStaffAuth";
+import { deletionWarmupOk, isDeletionCallableWarmupRequest } from "./lib/deletionWarmup";
 import {
   failedPrecondition,
   invalidArgument,
@@ -27,6 +29,7 @@ import {
   resolveDonationFinalizeQuotaRefundTarget,
 } from "./lib/refundDonationFinalizeQuota";
 import { storageObjectPath } from "./lib/storageObjectPath";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 
 function mapHttpsError(error: unknown): never {
   if (error instanceof HttpsError) {
@@ -81,7 +84,7 @@ async function deleteStoragePath(path: string): Promise<boolean> {
   }
 }
 
-async function buildPreview(
+export async function buildPreview(
   customerUploadId: string,
   options?: { requireOwnerUid?: string },
 ): Promise<PreviewCustomerUploadDeletionResponse> {
@@ -127,6 +130,9 @@ async function buildPreview(
     printRequestItemCount: itemRefs.size,
     promotedDesignId: data.promotedDesignId,
     promotedDesignReferenceCount: promotedDesignRefs.size,
+    portalCustomerSelfDelete: Boolean(options?.requireOwnerUid),
+    purpose: data.purpose,
+    catalogUseAcknowledged: data.catalogUseAcknowledged,
   });
   const assetManifest = resolveCustomerUploadAssetManifest(data, customerUploadId);
   if (assetManifest.blocker) {
@@ -153,7 +159,7 @@ async function buildPreview(
   };
 }
 
-async function executeEligibleHardDelete(
+export async function executeEligibleHardDelete(
   customerUploadId: string,
   options?: { requireOwnerUid?: string },
 ): Promise<DeleteEligibleCustomerUploadResponse> {
@@ -296,13 +302,18 @@ async function executeEligibleHardDelete(
 }
 
 export const previewCustomerUploadDeletion = onCall(
-  async (request): Promise<PreviewCustomerUploadDeletionResponse> => {
+  async (
+    request,
+  ): Promise<PreviewCustomerUploadDeletionResponse | DeletionCallableWarmupResponse> => {
     if (!request.auth?.uid) {
       throw unauthenticated();
     }
     try {
       const caller = await loadCallerProfile(request.auth.uid);
       assertCanDeleteCustomerUpload(caller);
+      if (isDeletionCallableWarmupRequest(request.data)) {
+        return deletionWarmupOk();
+      }
       return await buildPreview(parseUploadId(request.data as PreviewCustomerUploadDeletionRequest));
     } catch (error) {
       mapHttpsError(error);
@@ -311,13 +322,18 @@ export const previewCustomerUploadDeletion = onCall(
 );
 
 export const deleteEligibleCustomerUpload = onCall(
-  async (request): Promise<DeleteEligibleCustomerUploadResponse> => {
+  async (
+    request,
+  ): Promise<DeleteEligibleCustomerUploadResponse | DeletionCallableWarmupResponse> => {
     if (!request.auth?.uid) {
       throw unauthenticated();
     }
     try {
       const caller = await loadCallerProfile(request.auth.uid);
       assertCanDeleteCustomerUpload(caller);
+      if (isDeletionCallableWarmupRequest(request.data)) {
+        return deletionWarmupOk();
+      }
       const customerUploadId = parseUploadId(request.data as DeleteEligibleCustomerUploadRequest);
       requirePhrase(request.data);
       return await executeEligibleHardDelete(customerUploadId);
@@ -351,6 +367,7 @@ export const deletePortalCustomerUpload = onCall(
       throw unauthenticated();
     }
     try {
+      await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
       const customerUploadId = parseUploadId(request.data as DeleteEligibleCustomerUploadRequest);
       requirePhrase(request.data);
       return await executeEligibleHardDelete(customerUploadId, {

@@ -26,6 +26,7 @@ export const printRequestLimitSettingsService = {
         maxQuantityPerPrintRequest: number;
         maxQuantityPerShowPerCustomer: number;
         linkPrintRequestAndCustomerShowLimits: boolean;
+        portalInteractiveUpscaleEnabled: boolean;
       },
       PrintRequestLimitSettings
     >("updatePrintRequestLimitSettings", {
@@ -34,6 +35,7 @@ export const printRequestLimitSettingsService = {
       maxQuantityPerPrintRequest: settings.maxQuantityPerPrintRequest,
       maxQuantityPerShowPerCustomer: settings.maxQuantityPerShowPerCustomer,
       linkPrintRequestAndCustomerShowLimits: settings.linkPrintRequestAndCustomerShowLimits,
+      portalInteractiveUpscaleEnabled: settings.portalInteractiveUpscaleEnabled,
     });
     return resolvePrintRequestLimitSettings(response);
   },

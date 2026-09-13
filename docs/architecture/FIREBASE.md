@@ -1022,8 +1022,31 @@ storage.rules
 | `/customer-uploads/{uid}/{uploadId}/source` | PNG/WebP | 80 MB | Owner customer write; owner/staff read |
 | `/customer-uploads/{uid}/{uploadId}/production.png` (and preview/thumbnail) | PNG/WebP | n/a (Admin write) | Owner/staff read; customer write denied |
 | `/customer-uploads/{uid}/batches/{batchId}/archive.zip` | ZIP | Storage + Functions **2 GB** ceiling for print-request and donation | Owner customer write; owner/staff read |
+| `/staff-artwork/{staffArtworkId}/source` | PNG | 80 MB | Owner/admin write; active staff read |
+| `/staff-artwork/{staffArtworkId}/production.png` (and optional interactive/preview/thumbnail) | PNG/WebP | n/a (Admin write) | Active staff read; client writes denied |
 
 Customer access to **catalog** derivatives remains via ready-design helpers only. Unapproved customer uploads never use those public-read patterns.
+
+### Staff Artwork (2026-09-11)
+
+`staffArtworks/{staffArtworkId}` is a private Studio-only artwork library. Owners/admins create the
+processing record, upload only the canonical `source` object, and invoke `finalizeStaffArtwork`; the
+trusted pipeline reuses customer-upload normalization to write production and preview derivatives.
+Helpers can select existing ready/non-archived records through the Studio request-item service but cannot
+upload, edit, archive, delete, or promote them. `promoteStaffArtworkToAiReview` copies independent
+catalog assets and leaves Portal projections neutral. Portal customers do not read the `staffArtworks`
+Firestore collection; they may read only authenticated, already-attached
+`/staff-artwork/{staffArtworkId}/preview.webp` and `thumbnail.webp` objects. Production/source and
+interactive objects remain staff/Admin-only. The accepted known-ID residual risk is recorded in the
+Risk Register and may later be replaced by ownership-bound signed URLs under a separate review.
+
+For the `portalPrintRequestItems` rollout, deploy additive indexes and synchronizer Functions with
+the **transition** Rules artifact, keep Portal projection-first with bounded canonical fallback,
+complete local/production-gated population DRY RUN and VERIFY, then obtain a separate owner approval
+before deploying final `firestore.rules` (which denies customer canonical-item reads). Transition and
+final Rules are byte-stable artifacts and must never be reconstructed by hand. The transition artifact
+is selected by the checked-in `firebase.transition.json` configuration for a separately reviewed
+Rules-only deployment; the default `firebase.json` always points to final `firestore.rules`.
 
 Wired in `firebase.json` for deployment with `firebase deploy --only storage`. Rules are not live until deployed.
 

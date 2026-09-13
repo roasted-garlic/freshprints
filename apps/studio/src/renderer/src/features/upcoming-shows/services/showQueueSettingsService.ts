@@ -9,10 +9,28 @@ import {
   isValidPortalQueueCutoffHours,
 } from "@fresh-prints/shared/utils/showQueueCutoff";
 
+import {
+  DEFAULT_GANG_SHEET_EXTRA_OVERSIZED_PRICE_USD,
+  DEFAULT_GANG_SHEET_EXTRA_OVERSIZED_WEIGHT_OZ,
+  DEFAULT_GANG_SHEET_LARGE_TIER_PRICE_USD,
+  DEFAULT_GANG_SHEET_LARGE_TIER_WEIGHT_OZ,
+  DEFAULT_GANG_SHEET_SECTION_PRICE_CUTOFF_INCHES,
+  DEFAULT_GANG_SHEET_SMALL_TIER_PRICE_USD,
+  DEFAULT_GANG_SHEET_SMALL_TIER_WEIGHT_OZ,
+  DEFAULT_GANG_SHEET_POCKET_PRICE_USD,
+  DEFAULT_GANG_SHEET_POCKET_WEIGHT_OZ,
+  DEFAULT_GANG_SHEET_STANDARD_FULL_SIZE_PRICE_USD,
+  DEFAULT_GANG_SHEET_STANDARD_FULL_SIZE_WEIGHT_OZ,
+  DEFAULT_GANG_SHEET_STANDARD_OVERSIZED_PRICE_USD,
+  DEFAULT_GANG_SHEET_STANDARD_OVERSIZED_WEIGHT_OZ,
+} from "@fresh-prints/shared/constants/gangSheetSectionPricingSettings.constants";
+
 import { db } from "../../../config/firebase";
 import { assertNoUndefinedFirestoreFields, withoutUndefinedFields } from "../../firebase/utils/firestoreDocument";
 import { permissionService } from "../../permissions/services/permissionService";
 import type { User } from "../../users/types/user.types";
+
+import { assertGangSheetLayoutAndPricingSettingsInput } from "./gangSheetSettingsFields";
 
 const SHOW_QUEUE_SETTINGS_DOC_ID = "showQueue";
 
@@ -58,6 +76,20 @@ export interface ShowQueueSettings {
   gangSheetMaxLengthInches?: number;
   /** Sheet label text font size in pixels; defaults to `DEFAULT_GANG_SHEET_LABEL_FONT_SIZE_PX`. */
   gangSheetLabelFontSizePx?: number;
+  gangSheetPocketPriceUsd?: number;
+  gangSheetPocketWeightOz?: number;
+  gangSheetStandardFullSizePriceUsd?: number;
+  gangSheetStandardFullSizeWeightOz?: number;
+  gangSheetStandardOversizedPriceUsd?: number;
+  gangSheetStandardOversizedWeightOz?: number;
+  gangSheetExtraOversizedPriceUsd?: number;
+  gangSheetExtraOversizedWeightOz?: number;
+  /** Legacy two-tier cutoff retained for read-only fallback compatibility. */
+  gangSheetSectionPriceCutoffInches?: number;
+  gangSheetSmallTierPriceUsd?: number;
+  gangSheetSmallTierWeightOz?: number;
+  gangSheetLargeTierPriceUsd?: number;
+  gangSheetLargeTierWeightOz?: number;
 }
 
 export const DEFAULT_GANG_SHEET_WIDTH_INCHES = 23;
@@ -78,6 +110,22 @@ export const MAX_GANG_SHEET_MAX_LENGTH_INCHES = 300;
 export const DEFAULT_GANG_SHEET_LABEL_FONT_SIZE_PX = 120;
 export const MIN_GANG_SHEET_LABEL_FONT_SIZE_PX = 20;
 export const MAX_GANG_SHEET_LABEL_FONT_SIZE_PX = 300;
+
+export {
+  DEFAULT_GANG_SHEET_SECTION_PRICE_CUTOFF_INCHES,
+  DEFAULT_GANG_SHEET_SMALL_TIER_PRICE_USD,
+  DEFAULT_GANG_SHEET_SMALL_TIER_WEIGHT_OZ,
+  DEFAULT_GANG_SHEET_LARGE_TIER_PRICE_USD,
+  DEFAULT_GANG_SHEET_LARGE_TIER_WEIGHT_OZ,
+  DEFAULT_GANG_SHEET_POCKET_PRICE_USD,
+  DEFAULT_GANG_SHEET_POCKET_WEIGHT_OZ,
+  DEFAULT_GANG_SHEET_STANDARD_FULL_SIZE_PRICE_USD,
+  DEFAULT_GANG_SHEET_STANDARD_FULL_SIZE_WEIGHT_OZ,
+  DEFAULT_GANG_SHEET_STANDARD_OVERSIZED_PRICE_USD,
+  DEFAULT_GANG_SHEET_STANDARD_OVERSIZED_WEIGHT_OZ,
+  DEFAULT_GANG_SHEET_EXTRA_OVERSIZED_PRICE_USD,
+  DEFAULT_GANG_SHEET_EXTRA_OVERSIZED_WEIGHT_OZ,
+};
 
 function mapWhatnotAssistedImportSummary(value: unknown): WhatnotAssistedImportSummary | undefined {
   if (!value || typeof value !== "object") {
@@ -133,11 +181,35 @@ function mapShowQueueSettings(data: Record<string, unknown> | undefined): ShowQu
       typeof data?.gangSheetMaxLengthInches === "number" ? data.gangSheetMaxLengthInches : undefined,
     gangSheetLabelFontSizePx:
       typeof data?.gangSheetLabelFontSizePx === "number" ? data.gangSheetLabelFontSizePx : undefined,
+    gangSheetPocketPriceUsd:
+      typeof data?.gangSheetPocketPriceUsd === "number" ? data.gangSheetPocketPriceUsd : undefined,
+    gangSheetPocketWeightOz:
+      typeof data?.gangSheetPocketWeightOz === "number" ? data.gangSheetPocketWeightOz : undefined,
+    gangSheetStandardFullSizePriceUsd:
+      typeof data?.gangSheetStandardFullSizePriceUsd === "number" ? data.gangSheetStandardFullSizePriceUsd : undefined,
+    gangSheetStandardFullSizeWeightOz:
+      typeof data?.gangSheetStandardFullSizeWeightOz === "number" ? data.gangSheetStandardFullSizeWeightOz : undefined,
+    gangSheetStandardOversizedPriceUsd:
+      typeof data?.gangSheetStandardOversizedPriceUsd === "number" ? data.gangSheetStandardOversizedPriceUsd : undefined,
+    gangSheetStandardOversizedWeightOz:
+      typeof data?.gangSheetStandardOversizedWeightOz === "number" ? data.gangSheetStandardOversizedWeightOz : undefined,
+    gangSheetExtraOversizedPriceUsd:
+      typeof data?.gangSheetExtraOversizedPriceUsd === "number" ? data.gangSheetExtraOversizedPriceUsd : undefined,
+    gangSheetExtraOversizedWeightOz:
+      typeof data?.gangSheetExtraOversizedWeightOz === "number" ? data.gangSheetExtraOversizedWeightOz : undefined,
+    gangSheetSectionPriceCutoffInches:
+      typeof data?.gangSheetSectionPriceCutoffInches === "number"
+        ? data.gangSheetSectionPriceCutoffInches
+        : undefined,
+    gangSheetSmallTierPriceUsd:
+      typeof data?.gangSheetSmallTierPriceUsd === "number" ? data.gangSheetSmallTierPriceUsd : undefined,
+    gangSheetSmallTierWeightOz:
+      typeof data?.gangSheetSmallTierWeightOz === "number" ? data.gangSheetSmallTierWeightOz : undefined,
+    gangSheetLargeTierPriceUsd:
+      typeof data?.gangSheetLargeTierPriceUsd === "number" ? data.gangSheetLargeTierPriceUsd : undefined,
+    gangSheetLargeTierWeightOz:
+      typeof data?.gangSheetLargeTierWeightOz === "number" ? data.gangSheetLargeTierWeightOz : undefined,
   };
-}
-
-function isWithinRange(value: number | undefined, min: number, max: number): boolean {
-  return value === undefined || (value >= min && value <= max);
 }
 
 export const showQueueSettingsService = {
@@ -158,14 +230,26 @@ export const showQueueSettingsService = {
       gangSheetGutterInches?: number;
       gangSheetMaxLengthInches?: number;
       gangSheetLabelFontSizePx?: number;
+      gangSheetPocketPriceUsd?: number;
+      gangSheetPocketWeightOz?: number;
+      gangSheetStandardFullSizePriceUsd?: number;
+      gangSheetStandardFullSizeWeightOz?: number;
+      gangSheetStandardOversizedPriceUsd?: number;
+      gangSheetStandardOversizedWeightOz?: number;
+      gangSheetExtraOversizedPriceUsd?: number;
+      gangSheetExtraOversizedWeightOz?: number;
+      gangSheetSectionPriceCutoffInches?: number;
+      gangSheetSmallTierPriceUsd?: number;
+      gangSheetSmallTierWeightOz?: number;
+      gangSheetLargeTierPriceUsd?: number;
+      gangSheetLargeTierWeightOz?: number;
     },
   ): Promise<ShowQueueSettings> {
     if (!permissionService.canManageShowQueueSettings(caller)) {
       throw new Error("You do not have permission to manage Show Queue settings.");
     }
 
-    if (
-      input.portalQueueCutoffHoursBeforeStart !== undefined &&
+    if (input.portalQueueCutoffHoursBeforeStart !== undefined &&
       !isValidPortalQueueCutoffHours(input.portalQueueCutoffHoursBeforeStart)
     ) {
       throw new Error(
@@ -173,49 +257,7 @@ export const showQueueSettingsService = {
       );
     }
 
-    if (!isWithinRange(input.gangSheetWidthInches, MIN_GANG_SHEET_WIDTH_INCHES, MAX_GANG_SHEET_WIDTH_INCHES)) {
-      throw new Error(
-        `Gang sheet width must be between ${MIN_GANG_SHEET_WIDTH_INCHES}" and ${MAX_GANG_SHEET_WIDTH_INCHES}".`,
-      );
-    }
-
-    if (
-      !isWithinRange(input.gangSheetSideMarginInches, MIN_GANG_SHEET_SPACING_INCHES, MAX_GANG_SHEET_SPACING_INCHES) ||
-      !isWithinRange(
-        input.gangSheetTopBottomMarginInches,
-        MIN_GANG_SHEET_SPACING_INCHES,
-        MAX_GANG_SHEET_SPACING_INCHES,
-      ) ||
-      !isWithinRange(input.gangSheetGutterInches, MIN_GANG_SHEET_SPACING_INCHES, MAX_GANG_SHEET_SPACING_INCHES)
-    ) {
-      throw new Error(
-        `Gang sheet spacing values must be between ${MIN_GANG_SHEET_SPACING_INCHES}" and ${MAX_GANG_SHEET_SPACING_INCHES}".`,
-      );
-    }
-
-    if (
-      !isWithinRange(
-        input.gangSheetMaxLengthInches,
-        MIN_GANG_SHEET_MAX_LENGTH_INCHES,
-        MAX_GANG_SHEET_MAX_LENGTH_INCHES,
-      )
-    ) {
-      throw new Error(
-        `Gang sheet max length must be between ${MIN_GANG_SHEET_MAX_LENGTH_INCHES}" and ${MAX_GANG_SHEET_MAX_LENGTH_INCHES}".`,
-      );
-    }
-
-    if (
-      !isWithinRange(
-        input.gangSheetLabelFontSizePx,
-        MIN_GANG_SHEET_LABEL_FONT_SIZE_PX,
-        MAX_GANG_SHEET_LABEL_FONT_SIZE_PX,
-      )
-    ) {
-      throw new Error(
-        `Gang sheet label font size must be between ${MIN_GANG_SHEET_LABEL_FONT_SIZE_PX}px and ${MAX_GANG_SHEET_LABEL_FONT_SIZE_PX}px.`,
-      );
-    }
+    assertGangSheetLayoutAndPricingSettingsInput(input);
 
     const payload = withoutUndefinedFields({
       defaultMaxTotalQuantity: input.defaultMaxTotalQuantity,
@@ -227,6 +269,19 @@ export const showQueueSettingsService = {
       gangSheetGutterInches: input.gangSheetGutterInches,
       gangSheetMaxLengthInches: input.gangSheetMaxLengthInches,
       gangSheetLabelFontSizePx: input.gangSheetLabelFontSizePx,
+      gangSheetPocketPriceUsd: input.gangSheetPocketPriceUsd,
+      gangSheetPocketWeightOz: input.gangSheetPocketWeightOz,
+      gangSheetStandardFullSizePriceUsd: input.gangSheetStandardFullSizePriceUsd,
+      gangSheetStandardFullSizeWeightOz: input.gangSheetStandardFullSizeWeightOz,
+      gangSheetStandardOversizedPriceUsd: input.gangSheetStandardOversizedPriceUsd,
+      gangSheetStandardOversizedWeightOz: input.gangSheetStandardOversizedWeightOz,
+      gangSheetExtraOversizedPriceUsd: input.gangSheetExtraOversizedPriceUsd,
+      gangSheetExtraOversizedWeightOz: input.gangSheetExtraOversizedWeightOz,
+      gangSheetSectionPriceCutoffInches: input.gangSheetSectionPriceCutoffInches,
+      gangSheetSmallTierPriceUsd: input.gangSheetSmallTierPriceUsd,
+      gangSheetSmallTierWeightOz: input.gangSheetSmallTierWeightOz,
+      gangSheetLargeTierPriceUsd: input.gangSheetLargeTierPriceUsd,
+      gangSheetLargeTierWeightOz: input.gangSheetLargeTierWeightOz,
       updatedBy: caller.id,
       updatedAt: serverTimestamp(),
     });

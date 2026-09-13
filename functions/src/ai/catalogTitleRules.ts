@@ -1,10 +1,115 @@
-import { buildTagExclusionPromptSection, filterExcludedAiTags, mergeTagExclusions } from "./aiTagExclusions";
+import {
+  looksLikeOcrDumpTitle,
+  sanitizeMeaningfulVisibleTextPhrases,
+} from "../../../packages/shared/src/utils/visibleTextQuality";
 
 const VERSION_PATTERN = /[\s-]+(?:v|version)\s*\d+$/i;
 const TRAILING_NUMBER_PATTERN = /\s+\d+$/;
-const TITLE_TOKEN_EDGE_PUNCTUATION = /^['"'""–—|,:;.,!?/\\-]+|['"'""–—|,:;.,!?/\\-]+$/g;
+const TITLE_TOKEN_EDGE_PUNCTUATION =
+  /^['"'""–—|,:;.,!?/\\-]+|['"'""–—|,:;.,!?/\\-]+$/g;
 const TRAILING_TITLE_PUNCTUATION = /[\s–—|:;.,!?'"/\\]+$/;
 const SEPARATOR_ONLY_TOKEN = /^[–—|-]+$/;
+
+/**
+ * Owner contract (ADR-FP-181): structural integrity only — not semantic quality.
+ * Reject missing/empty, placeholder tokens, JSON/fence leakage, control corruption,
+ * and symbol-dominated garbage. Allow Unicode, punctuation, profanity, slogans.
+ */
+const STRUCTURAL_PLACEHOLDER_COPY = new Set([
+  "-",
+  "—",
+  "–",
+  ".",
+  "...",
+  "n/a",
+  "na",
+  "none",
+  "null",
+  "undefined",
+]);
+
+export function isStructurallyValidCatalogCopy(value: unknown): boolean {
+  if (typeof value !== "string") {
+    return false;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return false;
+  }
+
+  if (STRUCTURAL_PLACEHOLDER_COPY.has(trimmed.toLowerCase())) {
+    return false;
+  }
+
+  // Markdown / code-fence leakage.
+  if (/```/.test(trimmed)) {
+    return false;
+  }
+
+  // Raw JSON object/array as the field value.
+  if (
+    /^\s*(?:\{|\[)[\s\S]*(?:\}|\])\s*$/.test(trimmed) &&
+    [...trimmed].some((character) => "{}[]:,\"".includes(character))
+  ) {
+    const letterCount = (trimmed.match(/\p{L}/gu) ?? []).length;
+    const structuralChars = [...trimmed].filter((character) =>
+      "{}[]:,\"".includes(character),
+    ).length;
+    if (structuralChars >= 4 && structuralChars >= letterCount) {
+      return false;
+    }
+  }
+
+  if (/"title"\s*:|"description"\s*:/.test(trimmed) && /[{}]/.test(trimmed)) {
+    return false;
+  }
+
+  // Control characters (allow tab/newline/carriage return).
+  // eslint-disable-next-line no-control-regex
+  if (/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(trimmed)) {
+    return false;
+  }
+
+  const letters = (trimmed.match(/\p{L}/gu) ?? []).length;
+  if (letters < 2) {
+    return false;
+  }
+
+  // Underscore-run garbage dominating the string.
+  const underscores = (trimmed.match(/_/g) ?? []).length;
+  if (underscores >= 4 && underscores > letters) {
+    return false;
+  }
+
+  // Symbol soup: far more exotic symbols than letters (normal punctuation is fine).
+  const exotic = (
+    trimmed.match(/[^\p{L}\p{N}\s'''ʼ''""\-\u2013\u2014&.,:;!?()/]/gu) ?? []
+  ).length;
+  if (exotic > 12 && exotic > letters * 2) {
+    return false;
+  }
+
+  return true;
+}
+
+export function acceptCanonicalCatalogCopy(
+  field: "title" | "description",
+  value: unknown,
+): string {
+  if (typeof value !== "string") {
+    throw new Error(
+      `AI response ${field} is structurally invalid (non-string).`,
+    );
+  }
+
+  const trimmed = value.trim();
+  if (!isStructurallyValidCatalogCopy(trimmed)) {
+    throw new Error(`AI response ${field} is structurally invalid.`);
+  }
+
+  return trimmed;
+}
 
 export function stripTrailingTitlePunctuation(title: string): string {
   return title.replace(TRAILING_TITLE_PUNCTUATION, "").trim();
@@ -24,75 +129,9 @@ function hasTrailingTitlePunctuation(rawTitle: string): boolean {
   return TRAILING_TITLE_PUNCTUATION.test(rawTitle.trim());
 }
 
-export const CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-v26";
-export const DEVELOPMENT_CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-dev-v26";
-
-/**
- * Prompt version for the optional text-only tag reranker second call. Independent of
- * CATALOG_ENRICHMENT_PROMPT_VERSION since the reranker is a separate, optional call with its own
- * contract — recorded on aiSuggestions.tagRerankPromptVersion only when the reranker actually ran.
- */
-export const CATALOG_TAG_RERANK_PROMPT_VERSION = "catalog-tag-rerank-v1";
-
-const CATALOG_ENRICHMENT_SYSTEM_PROMPT_BODY = `Analyze one printable apparel artwork image for catalog enrichment. Base every field only on the image. Do not use the filename, outside context, or filler. Read all visible text first, then derive metadata grounded in what you observe. If a detail is uncertain, omit it or lower confidence instead of inventing it.
-
-Return JSON only. No markdown, comments, or extra text.
-
-Required JSON keys and formats:
-title: string.
-description: string.
-categoryName: string.
-tags: array of 5 to 12 lowercase single-word strings.
-primarySubject: string (main subject, or for text-only artwork the message topic).
-theme: string (e.g. motherhood, humor, faith, animals, western, music, holiday).
-style: string (e.g. cartoon, retro, vintage, minimal, bold typography, line art).
-audience: string (e.g. moms, teachers, nurses, kids, animal lovers, music fans).
-colorPalette: array of simple printable artwork color names only.
-artworkContainsText: boolean. true if any readable letters, words, numbers, or typography appear; false only when there is no readable text.
-visibleText: array of readable text phrases or lines.
-visibleTextColor: array of the main printable text ink color names only.
-textOnlyArtwork: boolean. true only when readable text is the entire design with no characters, illustrations, icons, logos, banners, shapes, or decorations.
-textRecognitionConfidence: number from 0 to 1.
-overallConfidence: number from 0 to 1.
-
-Canvas rule:
-The artwork may sit on a neutral grey, white, black, or transparent analysis canvas used only for OCR. That canvas is not part of the artwork. Never mention canvas, background, backdrop, matte, border, grey, gray, white, or black in title, description, tags, categoryName, or colorPalette unless that color is clearly printable ink in the artwork. Describe only printable artwork colors. If the only visible color is the canvas, return colorPalette as [].
-
-OCR rules:
-Transcribe every readable word exactly as printed. Do not rewrite, correct spelling, or guess. Inspect short bold words letter by letter, and read curved or arched text in full reading order before choosing the main phrase. If letters are uncertain, keep only the readable portion and lower textRecognitionConfidence.
-
-visibleText rules:
-Always an array; return [] if no readable text. Include every distinct readable phrase or line in reading order (top arc or line first, then middle, then lower, then small supporting text). One entry per arc, line, or dash-separated segment; never merge separate arcs or lines into one string. Preserve printed spelling, word boundaries, capitalization, and punctuation. The first entry must be the primary slogan or headline exactly as shown.
-
-Title rules:
-If readable text exists, build the title from visibleText[0] only, up to the first 6 meaningful words, in Title Case, with no trailing punctuation or separators. If there is no readable text, title the main artwork subject. Never use the filename and never use a generic title such as Text, Typography, Quote, Design, Graphic, Artwork, Print, Shirt, Tee, DTF, Transfer, or PNG. Add "Black Text" or "White Text" only when textOnlyArtwork is true and all text is that single ink color.
-
-Description rules:
-Always return a non-empty description in complete sentences. Never return "", "-", "N/A", "none", or punctuation only. Never mention the canvas or background. If artworkContainsText is true: sentence 1 transcribes every visibleText phrase in order joined with " / ", and sentence 2 describes only the supporting artwork (characters, icons, props, banners, shapes, style, or notable ink colors). If artworkContainsText is false: write at least one sentence naming the subject, style, and notable details.
-
-categoryName:
-Choose the single best category from the message, theme, subject, and likely buyer; prefer the message or audience over a small supporting object. If an allowed category list is provided, categoryName must exactly match one allowed category.
-
-tags:
-Return 5 to 12 lowercase single reusable words. No spaces, hashtags, or punctuation. Do not copy full phrases from visibleText, title, or description. Use searchable words based on subject, theme, style, audience, and mood (e.g. funny, mama, western, cowgirl, raccoon, cartoon, retro, faith, teacher, nurse, spooky, floral). Do not use generic words such as tshirt, shirt, tee, design, print, png, dtf, transfer, image, artwork, graphic, text, quote, slogan, typography, background, or canvas.
-
-Confidence:
-Lower both confidence values when text is blurry, distorted, curved, partially hidden, stylized, or hard to separate from artwork. Do not pretend uncertain text is certain.`;
-
-export const CATALOG_ENRICHMENT_SYSTEM_PROMPT = buildCatalogEnrichmentSystemPrompt();
-
-export function buildCatalogEnrichmentSystemPrompt(
-  exclusions: readonly string[] = mergeTagExclusions(),
-): string {
-  return `${CATALOG_ENRICHMENT_SYSTEM_PROMPT_BODY}${buildTagExclusionPromptSection(exclusions)}`;
-}
-
-export function buildCatalogEnrichmentUserPrompt(categoryList: string): string {
-  return `Allowed categories: ${categoryList}.
-
-Analyze the provided image only. Read all visible text character by character before naming the artwork, and do not invent unreadable words or extra slogan lines. Return categoryName as an exact match from the allowed categories when categories are provided. Always return a non-empty description, ignore the analysis canvas, apply the tag exclusion list, and return valid JSON only.`;
-}
-
+export const CATALOG_ENRICHMENT_PROMPT_VERSION = "catalog-enrich-v39";
+export const DEVELOPMENT_CATALOG_ENRICHMENT_PROMPT_VERSION =
+  "catalog-enrich-dev-v39";
 const BACKGROUND_PHRASE_PATTERNS = [
   /(?:^|\s+)on a (?:light |dark )?(?:gray|grey|white|black|neutral|charcoal)(?:\s+\w+)?\s+(?:background|backdrop|canvas|matte)\.?/gi,
   /(?:^|\s+)against a (?:light |dark )?(?:gray|grey|white|black|neutral|charcoal)(?:\s+\w+)?\s+(?:background|backdrop|canvas|matte)\.?/gi,
@@ -122,19 +161,17 @@ export function sanitizeCatalogDescription(text: string): string {
     sanitized = sanitized.replace(pattern, "");
   }
 
-  return sanitized.replace(/\s{2,}/g, " ").replace(/\s+([,.!?])/g, "$1").trim();
+  return sanitized
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s+([,.!?])/g, "$1")
+    .trim();
 }
 
 export type CatalogDescriptionFallbackReason =
-  | "placeholder"
-  | "empty_after_sanitize"
-  | "missing_field";
+  "placeholder" | "empty_after_sanitize" | "missing_field";
 
 export type CatalogDescriptionFallbackTier =
-  | "visible_text"
-  | "subject_style"
-  | "title"
-  | "generic";
+  "visible_text" | "subject_style" | "title" | "generic";
 
 const PLACEHOLDER_DESCRIPTION_VALUES = new Set([
   "-",
@@ -147,7 +184,9 @@ const PLACEHOLDER_DESCRIPTION_VALUES = new Set([
   "...",
 ]);
 
-export function isPlaceholderCatalogDescription(text: string | undefined): boolean {
+export function isPlaceholderCatalogDescription(
+  text: string | undefined,
+): boolean {
   if (!text?.trim()) {
     return true;
   }
@@ -176,7 +215,10 @@ function capitalizeDescriptionSentence(text: string): string {
   return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
 }
 
-function pickDistinctiveDescriptionTags(tags: string[] | undefined, limit = 2): string[] {
+function pickDistinctiveDescriptionTags(
+  tags: string[] | undefined,
+  limit = 2,
+): string[] {
   return (tags ?? [])
     .filter((tag) => tag.length > 2 && !isGenericCatalogTitle(tag))
     .slice(0, limit);
@@ -191,7 +233,8 @@ function synthesizeCatalogDescription(input: {
   visibleText?: string[];
   artworkContainsText?: boolean;
 }): { description: string; tier: CatalogDescriptionFallbackTier } {
-  const visiblePhrases = input.visibleText?.map((phrase) => phrase.trim()).filter(Boolean) ?? [];
+  const visiblePhrases =
+    input.visibleText?.map((phrase) => phrase.trim()).filter(Boolean) ?? [];
 
   if (visiblePhrases.length > 0) {
     const transcription = visiblePhrases.join(" / ");
@@ -222,7 +265,9 @@ function synthesizeCatalogDescription(input: {
           : " Supporting illustrated artwork completes the design.";
 
       return {
-        description: capitalizeDescriptionSentence(`${transcription}.${sentence2}`),
+        description: capitalizeDescriptionSentence(
+          `${transcription}.${sentence2}`,
+        ),
         tier: "visible_text",
       };
     }
@@ -299,7 +344,9 @@ export interface ResolveCatalogDescriptionResult {
 export function resolveCatalogDescription(
   input: ResolveCatalogDescriptionInput,
 ): ResolveCatalogDescriptionResult {
-  const sanitized = sanitizeCatalogDescription(input.candidateDescription ?? "");
+  const sanitized = sanitizeCatalogDescription(
+    input.candidateDescription ?? "",
+  );
   let fallbackReason: CatalogDescriptionFallbackReason | undefined;
 
   if (!input.candidateDescription?.trim()) {
@@ -318,7 +365,10 @@ export function resolveCatalogDescription(
   }
 
   const synthesized = synthesizeCatalogDescription(input);
-  const final = sanitizeCatalogDescription(synthesized.description).slice(0, 500);
+  const final = sanitizeCatalogDescription(synthesized.description).slice(
+    0,
+    500,
+  );
 
   if (isPlaceholderCatalogDescription(final)) {
     return {
@@ -388,11 +438,17 @@ export function filterBackgroundColorsFromPalette(
         return false;
       }
 
-      if (/\b(background|backdrop|canvas|matte|surrounding|neutral)\b/i.test(lower)) {
+      if (
+        /\b(background|backdrop|canvas|matte|surrounding|neutral)\b/i.test(
+          lower,
+        )
+      ) {
         return false;
       }
 
-      if (/^(?:light |dark )?(?:gray|grey|white|black|charcoal)\b/i.test(lower)) {
+      if (
+        /^(?:light |dark )?(?:gray|grey|white|black|charcoal)\b/i.test(lower)
+      ) {
         return false;
       }
 
@@ -485,34 +541,6 @@ const GENERIC_CATALOG_TITLE_TOKENS = new Set([
   "typography design",
 ]);
 
-export const GENERIC_CATALOG_TAGS = new Set([
-  "shirt",
-  "tshirt",
-  "tee",
-  "design",
-  "print",
-  "png",
-  "dtf",
-  "transfer",
-  "image",
-  "artwork",
-  "graphic",
-  "background",
-  "canvas",
-  "quote",
-  "saying",
-  "slogan",
-  "typography",
-  "lettering",
-  "text",
-  "words",
-  "word",
-  "label",
-  "font",
-  "type",
-  "caption",
-]);
-
 export function isGenericCatalogTitle(title: string): boolean {
   const comparable = normalizeComparableTitle(title);
 
@@ -526,7 +554,10 @@ export function isGenericCatalogTitle(title: string): boolean {
 
   const words = comparable.split(" ").filter(Boolean);
 
-  if (words.length <= 2 && words.every((word) => GENERIC_CATALOG_TITLE_TOKENS.has(word))) {
+  if (
+    words.length <= 2 &&
+    words.every((word) => GENERIC_CATALOG_TITLE_TOKENS.has(word))
+  ) {
     return true;
   }
 
@@ -602,7 +633,10 @@ const DECORATIVE_SUBJECT_TOKENS = new Set([
  * searchable catalog title. Matches known boilerplate openings and common prose shapes.
  */
 export function isDescriptionLikeCatalogTitle(title: string): boolean {
-  const trimmed = title.trim().replace(/^[\s"'“”‘’]+/u, "").trim();
+  const trimmed = title
+    .trim()
+    .replace(/^[\s"'“”‘’]+/u, "")
+    .trim();
 
   if (!trimmed) {
     return false;
@@ -610,11 +644,17 @@ export function isDescriptionLikeCatalogTitle(title: string): boolean {
 
   const lower = trimmed.toLowerCase().replace(/\s+/g, " ");
 
-  if (DESCRIPTION_LIKE_TITLE_OPENINGS.some((opening) => lower.startsWith(opening))) {
+  if (
+    DESCRIPTION_LIKE_TITLE_OPENINGS.some((opening) => lower.startsWith(opening))
+  ) {
     return true;
   }
 
-  if (/^(?:the|this|an|a)\s+(?:design|image|artwork|graphic|illustration)\b/i.test(trimmed)) {
+  if (
+    /^(?:the|this|an|a)\s+(?:design|image|artwork|graphic|illustration)\b/i.test(
+      trimmed,
+    )
+  ) {
     return true;
   }
 
@@ -671,12 +711,17 @@ function extractSloganLikeLeadingTranscription(description: string): string {
 /**
  * Strip decorative detail tokens from a subject phrase (bow, polka, sparkles, colors, etc.).
  */
-export function sanitizeCentralSubjectPhrase(subject: string | undefined): string {
+export function sanitizeCentralSubjectPhrase(
+  subject: string | undefined,
+): string {
   if (!subject?.trim()) {
     return "";
   }
 
-  if (isDescriptionLikeCatalogTitle(subject) || isGenericCatalogTitle(subject)) {
+  if (
+    isDescriptionLikeCatalogTitle(subject) ||
+    isGenericCatalogTitle(subject)
+  ) {
     return "";
   }
 
@@ -705,6 +750,34 @@ export function sanitizeCentralSubjectPhrase(subject: string | undefined): strin
   return stripTrailingTitlePunctuation(cleaned);
 }
 
+function titleSharesMeaningfulReadableTokens(
+  title: string,
+  readableLines: readonly string[] | undefined,
+): boolean {
+  if (!readableLines?.length) {
+    return false;
+  }
+  const titleTokens = new Set(
+    normalizeComparableTitle(title)
+      .split(" ")
+      .filter((token) => token.length > 2),
+  );
+  if (titleTokens.size === 0) {
+    return false;
+  }
+  let overlap = 0;
+  for (const line of readableLines) {
+    for (const token of normalizeComparableTitle(line)
+      .split(" ")
+      .filter((item) => item.length > 2)) {
+      if (titleTokens.has(token)) {
+        overlap += 1;
+      }
+    }
+  }
+  return overlap >= 2;
+}
+
 /**
  * Join readable text lines into a title foundation without paraphrasing.
  */
@@ -729,7 +802,11 @@ export function buildTitleFromReadableTextLines(
 
   const foundation = normalizeCatalogTitle(segments.join(" "), maxWords);
 
-  if (!foundation || isDescriptionLikeCatalogTitle(foundation) || isGenericCatalogTitle(foundation)) {
+  if (
+    !foundation ||
+    isDescriptionLikeCatalogTitle(foundation) ||
+    isGenericCatalogTitle(foundation)
+  ) {
     return "";
   }
 
@@ -766,7 +843,10 @@ function isSloganLikeQuotedPhrase(phrase: string): boolean {
   // Drop meta/style fragments often quoted in prose ("bold", "distressed", "text").
   if (words.length === 1) {
     const word = words[0] ?? "";
-    if (BANNED_TITLE_STYLE_WORDS.has(word) || GENERIC_CATALOG_TITLE_TOKENS.has(word)) {
+    if (
+      BANNED_TITLE_STYLE_WORDS.has(word) ||
+      GENERIC_CATALOG_TITLE_TOKENS.has(word)
+    ) {
       return false;
     }
   }
@@ -774,7 +854,10 @@ function isSloganLikeQuotedPhrase(phrase: string): boolean {
   return true;
 }
 
-function phraseAlreadyCovered(existing: readonly string[], candidate: string): boolean {
+function phraseAlreadyCovered(
+  existing: readonly string[],
+  candidate: string,
+): boolean {
   const candidateComparable = normalizeComparableTitle(candidate);
 
   if (!candidateComparable) {
@@ -791,10 +874,17 @@ function phraseAlreadyCovered(existing: readonly string[], candidate: string): b
   });
 }
 
-function appendUniqueSloganPhrases(target: string[], candidates: readonly string[]): void {
+function appendUniqueSloganPhrases(
+  target: string[],
+  candidates: readonly string[],
+): void {
   for (const candidate of candidates) {
     const trimmed = candidate.trim();
-    if (!trimmed || !isSloganLikeQuotedPhrase(trimmed) || phraseAlreadyCovered(target, trimmed)) {
+    if (
+      !trimmed ||
+      !isSloganLikeQuotedPhrase(trimmed) ||
+      phraseAlreadyCovered(target, trimmed)
+    ) {
       continue;
     }
     target.push(trimmed);
@@ -853,7 +943,11 @@ export function extractNarratedReadablePhrases(description: string): string[] {
     let match: RegExpExecArray | null;
     while ((match = pattern.exec(description)) !== null) {
       const phrase = (match[1] ?? "").replace(/\s+/g, " ").trim();
-      if (phrase && isSloganLikeQuotedPhrase(phrase) && !isDescriptionLikeCatalogTitle(phrase)) {
+      if (
+        phrase &&
+        isSloganLikeQuotedPhrase(phrase) &&
+        !isDescriptionLikeCatalogTitle(phrase)
+      ) {
         appendUniqueSloganPhrases(phrases, [phrase]);
       }
     }
@@ -901,7 +995,11 @@ export function extractProseContinuationPhrases(description: string): string[] {
     pattern.lastIndex = 0;
     let match: RegExpExecArray | null;
     while ((match = pattern.exec(description)) !== null) {
-      const words = (match[1] ?? "").replace(/\s+/g, " ").trim().split(/\s+/).filter(Boolean);
+      const words = (match[1] ?? "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
       const kept: string[] = [];
       for (const word of words) {
         if (styleCutWords.has(word.toLowerCase()) && kept.length >= 2) {
@@ -923,7 +1021,9 @@ export function extractProseContinuationPhrases(description: string): string[] {
  * Slash- or pipe-joined transcriptions in the leading description text
  * (`Sarcasm / Just one of my many talents`).
  */
-export function extractSlashJoinedReadableSegments(description: string): string[] {
+export function extractSlashJoinedReadableSegments(
+  description: string,
+): string[] {
   const lead = description.split(/[.!?]/)[0] ?? description;
   if (!/\s[|/]\s/.test(lead)) {
     return [];
@@ -988,12 +1088,21 @@ export function extractPrimaryWordingFromDescription(
 
   // Continuation-only narration ("appears above a second line that reads …") often omits the
   // headline from the capture group — prepend a leading quoted/single-token headline when present.
-  if (continuations.length > 0 && quoted.length === 0 && narrated.length === 0 && slashSegments.length === 0) {
+  if (
+    continuations.length > 0 &&
+    quoted.length === 0 &&
+    narrated.length === 0 &&
+    slashSegments.length === 0
+  ) {
     const leadMatch = description.match(
       /^[\s\S]{0,80}?\b([A-Za-z][A-Za-z0-9'\u2019]{1,24})\b(?=\s+(?:appears|sits|reads|says|above|over|in\b))/i,
     );
     const lead = leadMatch?.[1]?.trim() ?? "";
-    if (lead && isSloganLikeQuotedPhrase(lead) && !phraseAlreadyCovered(segments, lead)) {
+    if (
+      lead &&
+      isSloganLikeQuotedPhrase(lead) &&
+      !phraseAlreadyCovered(segments, lead)
+    ) {
       segments.unshift(lead);
     }
   }
@@ -1037,14 +1146,22 @@ const EXTRA_NON_SLOGAN_TRAILING_WORDS = [
 
 function isNonSloganTrailingWord(word: string): boolean {
   const lower = word.toLowerCase();
-  return BANNED_TITLE_STYLE_WORDS.has(lower) || EXTRA_NON_SLOGAN_TRAILING_WORDS.includes(lower as (typeof EXTRA_NON_SLOGAN_TRAILING_WORDS)[number]);
+  return (
+    BANNED_TITLE_STYLE_WORDS.has(lower) ||
+    EXTRA_NON_SLOGAN_TRAILING_WORDS.includes(
+      lower as (typeof EXTRA_NON_SLOGAN_TRAILING_WORDS)[number],
+    )
+  );
 }
 
 /**
  * When the title is a short headline token, find extra slogan wording later in the
  * description that is not merely style/canvas narration (covers unquoted continuations).
  */
-function extractTrailingSloganAfterTitle(description: string, title: string): string {
+function extractTrailingSloganAfterTitle(
+  description: string,
+  title: string,
+): string {
   const titleComparable = normalizeComparableTitle(title);
   const titleWords = titleComparable.split(" ").filter(Boolean);
 
@@ -1052,7 +1169,9 @@ function extractTrailingSloganAfterTitle(description: string, title: string): st
     return "";
   }
 
-  const escaped = titleWords.map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s+");
+  const escaped = titleWords
+    .map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("\\s+");
   const afterTitle = new RegExp(`${escaped}\\b([\\s\\S]{0,200})`, "i");
   const match = description.match(afterTitle);
 
@@ -1062,7 +1181,10 @@ function extractTrailingSloganAfterTitle(description: string, title: string): st
 
   const remainder = match[1]
     .replace(/["\u201C\u201D]/g, " ")
-    .replace(/\b(?:below|under|underneath|beneath|smaller|larger|bold|distressed|lettering|typography|decorative|stars?|sparkles?|lines?|borders?|appears|above|reads?|says?|reading|text|in|the|a|an|with|and|it|that|this|line|second|on|apparel)\b/gi, " ")
+    .replace(
+      /\b(?:below|under|underneath|beneath|smaller|larger|bold|distressed|lettering|typography|decorative|stars?|sparkles?|lines?|borders?|appears|above|reads?|says?|reading|text|in|the|a|an|with|and|it|that|this|line|second|on|apparel)\b/gi,
+      " ",
+    )
     .replace(/[^a-zA-Z0-9'\u2019]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -1086,7 +1208,10 @@ function extractTrailingSloganAfterTitle(description: string, title: string): st
     return "";
   }
 
-  return normalizeCatalogTitle(`${title} ${sloganTail}`, LEAN_CATALOG_TITLE_MAX_WORDS);
+  return normalizeCatalogTitle(
+    `${title} ${sloganTail}`,
+    LEAN_CATALOG_TITLE_MAX_WORDS,
+  );
 }
 
 /**
@@ -1108,11 +1233,18 @@ export function resolveReadableWordingForTitle(
   const titleComparable = normalizeComparableTitle(candidateTitle);
   const primaryComparable = normalizeComparableTitle(primary);
 
-  if (primaryComparable && titleComparable && primaryComparable !== titleComparable) {
+  if (
+    primaryComparable &&
+    titleComparable &&
+    primaryComparable !== titleComparable
+  ) {
     return primary;
   }
 
-  const recovered = extractTrailingSloganAfterTitle(description, candidateTitle);
+  const recovered = extractTrailingSloganAfterTitle(
+    description,
+    candidateTitle,
+  );
   return recovered || primary;
 }
 
@@ -1129,11 +1261,19 @@ export function isIncompleteTitleVsDescription(
     return false;
   }
 
-  const wording = resolveReadableWordingForTitle(description, title, LEAN_CATALOG_TITLE_MAX_WORDS);
+  const wording = resolveReadableWordingForTitle(
+    description,
+    title,
+    LEAN_CATALOG_TITLE_MAX_WORDS,
+  );
   const titleComparable = normalizeComparableTitle(title);
   const wordingComparable = normalizeComparableTitle(wording);
 
-  if (!titleComparable || !wordingComparable || titleComparable === wordingComparable) {
+  if (
+    !titleComparable ||
+    !wordingComparable ||
+    titleComparable === wordingComparable
+  ) {
     return false;
   }
 
@@ -1145,7 +1285,10 @@ export function isIncompleteTitleVsDescription(
   }
 
   // One short token (or OCR clip of "I'm" → "I") while description has a multiword phrase.
-  if (titleWords.length === 1 && wordingComparable.startsWith(`${titleComparable} `)) {
+  if (
+    titleWords.length === 1 &&
+    wordingComparable.startsWith(`${titleComparable} `)
+  ) {
     return true;
   }
 
@@ -1159,10 +1302,22 @@ export function isIncompleteTitleVsDescription(
 
   // Title matches only the first quoted/slash segment while additional slogan segments exist.
   const segments: string[] = [];
-  appendUniqueSloganPhrases(segments, extractQuotedReadablePhrases(description));
-  appendUniqueSloganPhrases(segments, extractNarratedReadablePhrases(description));
-  appendUniqueSloganPhrases(segments, extractProseContinuationPhrases(description));
-  appendUniqueSloganPhrases(segments, extractSlashJoinedReadableSegments(description));
+  appendUniqueSloganPhrases(
+    segments,
+    extractQuotedReadablePhrases(description),
+  );
+  appendUniqueSloganPhrases(
+    segments,
+    extractNarratedReadablePhrases(description),
+  );
+  appendUniqueSloganPhrases(
+    segments,
+    extractProseContinuationPhrases(description),
+  );
+  appendUniqueSloganPhrases(
+    segments,
+    extractSlashJoinedReadableSegments(description),
+  );
 
   if (segments.length >= 2) {
     const firstComparable = normalizeComparableTitle(segments[0] ?? "");
@@ -1239,7 +1394,9 @@ export function isStyleWordHeavyTitle(title: string): boolean {
     return false;
   }
 
-  const styleWordCount = words.filter((word) => BANNED_TITLE_STYLE_WORDS.has(word)).length;
+  const styleWordCount = words.filter((word) =>
+    BANNED_TITLE_STYLE_WORDS.has(word),
+  ).length;
 
   if (styleWordCount >= 3) {
     return true;
@@ -1260,7 +1417,10 @@ export function titleLacksDescriptionReadableOverlap(
     return false;
   }
 
-  const wording = extractPrimaryWordingFromDescription(description, LEAN_CATALOG_TITLE_MAX_WORDS);
+  const wording = extractPrimaryWordingFromDescription(
+    description,
+    LEAN_CATALOG_TITLE_MAX_WORDS,
+  );
   const wordingComparable = normalizeComparableTitle(wording);
 
   if (!wordingComparable) {
@@ -1290,7 +1450,10 @@ export function titleLacksDescriptionReadableOverlap(
   return overlap / wordingWords.length < 0.35;
 }
 
-export function isFilenameLikeTitle(suggestedTitle: string, uploadFileStem: string): boolean {
+export function isFilenameLikeTitle(
+  suggestedTitle: string,
+  uploadFileStem: string,
+): boolean {
   const suggested = normalizeComparableTitle(suggestedTitle);
   const upload = normalizeComparableTitle(uploadFileStem);
 
@@ -1313,24 +1476,12 @@ export function isFilenameLikeTitle(suggestedTitle: string, uploadFileStem: stri
     return false;
   }
 
-  const overlap = uploadTokens.filter((token) => suggestedTokens.has(token)).length;
+  const overlap = uploadTokens.filter((token) =>
+    suggestedTokens.has(token),
+  ).length;
   const overlapRatio = overlap / uploadTokens.length;
 
   return overlapRatio >= 0.75 && uploadTokens.length >= 2;
-}
-
-/**
- * @deprecated Do not use for catalog titles. Kept only for legacy test references; resolvers
- * must never synthesize titles by joining tags.
- */
-export function buildTitleFromTags(tags: string[]): string {
-  const words = tags
-    .flatMap((tag) => tag.split(/\s+/))
-    .map((word) => word.trim())
-    .filter(Boolean)
-    .slice(0, 6);
-
-  return normalizeCatalogTitle(words.join(" "));
 }
 
 type VisibleTextColor = "black" | "white" | "mixed" | "unknown";
@@ -1358,7 +1509,11 @@ function startsWithComparableTitle(title: string, prefix: string): boolean {
   const comparableTitle = normalizeComparableTitle(title);
   const comparablePrefix = normalizeComparableTitle(prefix);
 
-  return Boolean(comparableTitle && comparablePrefix && comparableTitle.startsWith(comparablePrefix));
+  return Boolean(
+    comparableTitle &&
+    comparablePrefix &&
+    comparableTitle.startsWith(comparablePrefix),
+  );
 }
 
 function buildSupportingTitleWords(input: {
@@ -1367,14 +1522,23 @@ function buildSupportingTitleWords(input: {
   tags?: string[];
   visibleTextTitle: string;
 }): string {
-  const candidates = [input.candidateTitle, input.primarySubject, ...(input.tags ?? [])];
-  const visibleTokens = new Set(normalizeComparableTitle(input.visibleTextTitle).split(" "));
+  const candidates = [
+    input.candidateTitle,
+    input.primarySubject,
+    ...(input.tags ?? []),
+  ];
+  const visibleTokens = new Set(
+    normalizeComparableTitle(input.visibleTextTitle).split(" "),
+  );
   const supportingWords: string[] = [];
 
   for (const candidate of candidates) {
     const normalized = normalizeCatalogTitle(candidate ?? "");
 
-    if (!normalized || startsWithComparableTitle(normalized, input.visibleTextTitle)) {
+    if (
+      !normalized ||
+      startsWithComparableTitle(normalized, input.visibleTextTitle)
+    ) {
       continue;
     }
 
@@ -1394,7 +1558,11 @@ function buildSupportingTitleWords(input: {
         continue;
       }
 
-      if (!supportingWords.some((existing) => normalizeComparableTitle(existing) === comparableWord)) {
+      if (
+        !supportingWords.some(
+          (existing) => normalizeComparableTitle(existing) === comparableWord,
+        )
+      ) {
         supportingWords.push(word);
       }
 
@@ -1422,7 +1590,9 @@ function candidateMatchesLaterVisibleSegment(
   }
 
   for (const phrase of visibleText.slice(1)) {
-    const segmentTitle = normalizeComparableTitle(normalizeCatalogTitle(phrase));
+    const segmentTitle = normalizeComparableTitle(
+      normalizeCatalogTitle(phrase),
+    );
 
     if (!segmentTitle) {
       continue;
@@ -1454,7 +1624,10 @@ function buildTitleFromVisibleText(input: {
   const rawCandidate = (input.candidateTitle ?? "").trim();
   const candidateTitle = normalizeCatalogTitle(rawCandidate);
 
-  if (candidateTitle && startsWithComparableTitle(candidateTitle, visibleTextTitle)) {
+  if (
+    candidateTitle &&
+    startsWithComparableTitle(candidateTitle, visibleTextTitle)
+  ) {
     return stripTrailingTitlePunctuation(candidateTitle);
   }
 
@@ -1503,7 +1676,11 @@ function appendTextColorSuffix(
 
   const suffix = visibleTextColor === "black" ? "Black Text" : "White Text";
 
-  if (normalizeComparableTitle(cleanedTitle).endsWith(normalizeComparableTitle(suffix))) {
+  if (
+    normalizeComparableTitle(cleanedTitle).endsWith(
+      normalizeComparableTitle(suffix),
+    )
+  ) {
     return cleanedTitle;
   }
 
@@ -1581,7 +1758,9 @@ export function resolveCatalogTitle(input: {
     Boolean(input.description?.trim());
 
   if (textIndicated) {
-    const descriptionTitle = extractPrimaryWordingFromDescription(input.description);
+    const descriptionTitle = extractPrimaryWordingFromDescription(
+      input.description,
+    );
 
     if (descriptionTitle && !isGenericCatalogTitle(descriptionTitle)) {
       return appendTextColorSuffix(
@@ -1599,16 +1778,28 @@ export function resolveCatalogTitle(input: {
   for (const candidate of candidates) {
     const normalized = normalizeCatalogTitle(candidate);
 
-    if (!normalized || isGenericCatalogTitle(normalized) || isStyleWordHeavyTitle(normalized)) {
+    if (
+      !normalized ||
+      isGenericCatalogTitle(normalized) ||
+      isStyleWordHeavyTitle(normalized)
+    ) {
       continue;
     }
 
     if (!isFilenameLikeTitle(normalized, input.uploadFileStem)) {
-      return appendTextColorSuffix(normalized, input.visibleTextColor, input.textOnlyArtwork);
+      return appendTextColorSuffix(
+        normalized,
+        input.visibleTextColor,
+        input.textOnlyArtwork,
+      );
     }
   }
 
-  return appendTextColorSuffix("Artwork Design", input.visibleTextColor, input.textOnlyArtwork);
+  return appendTextColorSuffix(
+    "Artwork Design",
+    input.visibleTextColor,
+    input.textOnlyArtwork,
+  );
 }
 
 /**
@@ -1621,6 +1812,10 @@ export function resolveCatalogTitle(input: {
  * description extraction — never a description first-sentence copy). Optionally appends one
  * concise central subject. Never synthesizes a title by joining tags.
  *
+ * For no-visible-text artwork, a short non-generic model title may still be materially
+ * under-specific when Smart Profile subjects/objects already carry a richer identity — in that
+ * case a deterministic enrich/rebuild runs (subjects/objects only; not themes/styles/tags).
+ *
  * Intentionally does not replace a non-style title merely because it differs from the
  * description's leading transcription (e.g. keep "Motherhood Skeleton Rock On" when the
  * description leads with a longer slogan).
@@ -1632,15 +1827,24 @@ export function resolveLeanCatalogTitle(input: {
   description?: string;
   readableTextLines?: string[];
   centralSubject?: string;
+  /** Smart Profile subjects — used only for no-text under-specific title enrichment. */
+  subjects?: readonly string[];
+  /** Smart Profile objects — used only for no-text under-specific title enrichment. */
+  objects?: readonly string[];
 }): string {
-  const fromReadableLines = buildTitleFromReadableTextLines(
+  const sanitizedLines = sanitizeMeaningfulVisibleTextPhrases(
     input.readableTextLines,
+  );
+  const hasMeaningfulReadableText = Boolean(sanitizedLines?.length);
+
+  const fromReadableLines = buildTitleFromReadableTextLines(
+    sanitizedLines,
     input.centralSubject,
     LEAN_CATALOG_TITLE_MAX_WORDS,
   );
 
   const readablePhraseOnly = buildTitleFromReadableTextLines(
-    input.readableTextLines,
+    sanitizedLines,
     undefined,
     LEAN_CATALOG_TITLE_MAX_WORDS,
   );
@@ -1656,7 +1860,11 @@ export function resolveLeanCatalogTitle(input: {
     isFilenameLikeTitle(normalizedCandidate, input.uploadFileStem) ||
     isStyleWordHeavyTitle(normalizedCandidate) ||
     isDescriptionLikeCatalogTitle(normalizedCandidate) ||
-    isIncompleteTitleVsDescription(normalizedCandidate, input.description);
+    isIncompleteTitleVsDescription(normalizedCandidate, input.description) ||
+    looksLikeOcrDumpTitle(input.candidateTitle) ||
+    looksLikeOcrDumpTitle(normalizedCandidate);
+
+  let resolved: string;
 
   if (fromReadableLines) {
     const candidateIncludesReadable =
@@ -1666,59 +1874,389 @@ export function resolveLeanCatalogTitle(input: {
         normalizeComparableTitle(readablePhraseOnly),
       );
 
+    const candidateTokenOverlap =
+      Boolean(normalizedCandidate) &&
+      Boolean(sanitizedLines?.length) &&
+      titleSharesMeaningfulReadableTokens(normalizedCandidate, sanitizedLines);
+
     if (
       !candidateUnusable &&
-      candidateIncludesReadable &&
+      (candidateIncludesReadable || candidateTokenOverlap) &&
       !isDescriptionLikeCatalogTitle(normalizedCandidate)
     ) {
-      return stripTrailingTitlePunctuation(normalizedCandidate);
+      resolved = stripTrailingTitlePunctuation(normalizedCandidate);
+    } else {
+      resolved = fromReadableLines;
     }
+  } else if (!candidateUnusable) {
+    resolved = stripTrailingTitlePunctuation(normalizedCandidate);
+  } else {
+    const fromDescription = resolveReadableWordingForTitle(
+      input.description,
+      normalizedCandidate,
+      LEAN_CATALOG_TITLE_MAX_WORDS,
+    );
 
-    return fromReadableLines;
+    const fromDescriptionWithSubject = fromDescription
+      ? buildTitleFromReadableTextLines(
+          [fromDescription],
+          input.centralSubject,
+          LEAN_CATALOG_TITLE_MAX_WORDS,
+        ) || fromDescription
+      : "";
+
+    if (
+      fromDescriptionWithSubject &&
+      !isGenericCatalogTitle(fromDescriptionWithSubject) &&
+      !isStyleWordHeavyTitle(fromDescriptionWithSubject) &&
+      !isDescriptionLikeCatalogTitle(fromDescriptionWithSubject) &&
+      !looksLikeOcrDumpTitle(fromDescriptionWithSubject)
+    ) {
+      resolved = stripTrailingTitlePunctuation(fromDescriptionWithSubject);
+    } else if (
+      normalizedCandidate &&
+      !isGenericCatalogTitle(normalizedCandidate) &&
+      !isFilenameLikeTitle(normalizedCandidate, input.uploadFileStem) &&
+      !isStyleWordHeavyTitle(normalizedCandidate) &&
+      !isDescriptionLikeCatalogTitle(normalizedCandidate) &&
+      !looksLikeOcrDumpTitle(normalizedCandidate)
+    ) {
+      resolved = stripTrailingTitlePunctuation(normalizedCandidate);
+    } else {
+      const subjectOnly = sanitizeCentralSubjectPhrase(input.centralSubject);
+      if (
+        subjectOnly &&
+        !isGenericCatalogTitle(subjectOnly) &&
+        !looksLikeOcrDumpTitle(subjectOnly)
+      ) {
+        resolved = stripTrailingTitlePunctuation(
+          normalizeCatalogTitle(subjectOnly, LEAN_CATALOG_TITLE_MAX_WORDS),
+        );
+      } else {
+        resolved = "Artwork Design";
+      }
+    }
   }
 
-  if (!candidateUnusable) {
-    return stripTrailingTitlePunctuation(normalizedCandidate);
+  if (hasMeaningfulReadableText) {
+    return resolved;
   }
 
-  const fromDescription = resolveReadableWordingForTitle(
-    input.description,
-    normalizedCandidate,
-    LEAN_CATALOG_TITLE_MAX_WORDS,
-  );
-
-  const fromDescriptionWithSubject = fromDescription
-    ? buildTitleFromReadableTextLines(
-        [fromDescription],
-        input.centralSubject,
-        LEAN_CATALOG_TITLE_MAX_WORDS,
-      ) || fromDescription
-    : "";
-
-  if (
-    fromDescriptionWithSubject &&
-    !isGenericCatalogTitle(fromDescriptionWithSubject) &&
-    !isStyleWordHeavyTitle(fromDescriptionWithSubject) &&
-    !isDescriptionLikeCatalogTitle(fromDescriptionWithSubject)
-  ) {
-    return stripTrailingTitlePunctuation(fromDescriptionWithSubject);
-  }
-
-  // Incomplete candidate still beats Artwork Design when description wording is unusable.
-  if (
-    normalizedCandidate &&
-    !isGenericCatalogTitle(normalizedCandidate) &&
-    !isFilenameLikeTitle(normalizedCandidate, input.uploadFileStem) &&
-    !isStyleWordHeavyTitle(normalizedCandidate) &&
-    !isDescriptionLikeCatalogTitle(normalizedCandidate)
-  ) {
-    return stripTrailingTitlePunctuation(normalizedCandidate);
-  }
-
-  return "Artwork Design";
+  return enrichUnderSpecificNoTextCatalogTitle({
+    title: resolved,
+    subjects: input.subjects,
+    objects: input.objects,
+  });
 }
 
-export function normalizeVisibleTextPhrases(value: unknown): string[] | undefined {
+/** Weak / non-identity subject tokens that must not drive title enrichment. */
+const WEAK_TITLE_ENRICHMENT_SUBJECT_TOKENS = new Set([
+  "person",
+  "people",
+  "man",
+  "woman",
+  "human",
+  "figure",
+  "figures",
+  "character",
+  "characters",
+]);
+
+/** Low-value objects that must not be appended as distinguishing title features. */
+const WEAK_TITLE_ENRICHMENT_OBJECT_TOKENS = new Set([
+  "background",
+  "foreground",
+  "sky",
+  "ground",
+  "floor",
+  "shadow",
+  "shadows",
+  "border",
+  "frame",
+  "mat",
+  "canvas",
+  "backdrop",
+  "sparkle",
+  "sparkles",
+  "star",
+  "stars",
+  "line",
+  "lines",
+]);
+
+const MAX_TITLE_ENRICHMENT_OBJECTS = 2;
+
+/**
+ * Titles with more than this many comparable words are treated as already specific enough
+ * for the no-text under-specific enricher (preserves Highland-class long descriptive titles).
+ */
+const UNDER_SPECIFIC_TITLE_MAX_WORDS = 2;
+
+function isWeakTitleEnrichmentSubject(comparable: string): boolean {
+  const words = comparable.split(" ").filter(Boolean);
+  return (
+    words.length > 0 &&
+    words.every((word) => WEAK_TITLE_ENRICHMENT_SUBJECT_TOKENS.has(word))
+  );
+}
+
+function isWeakTitleEnrichmentObject(comparable: string): boolean {
+  const words = comparable.split(" ").filter(Boolean);
+  return (
+    words.length > 0 &&
+    words.every((word) => WEAK_TITLE_ENRICHMENT_OBJECT_TOKENS.has(word))
+  );
+}
+
+const INVARIANT_PLURAL_OBJECT_TOKENS = new Set([
+  "glasses",
+  "sunglasses",
+  "pants",
+  "jeans",
+  "shorts",
+  "scissors",
+  "tweezers",
+  "clothes",
+  "binoculars",
+]);
+
+function singularizeTitleObjectToken(token: string): string {
+  if (token.length <= 3) {
+    return token;
+  }
+  if (INVARIANT_PLURAL_OBJECT_TOKENS.has(token)) {
+    return token;
+  }
+  if (token.endsWith("ss") || token.endsWith("us") || token.endsWith("is")) {
+    return token;
+  }
+  if (token.endsWith("ies") && token.length > 4) {
+    return `${token.slice(0, -3)}y`;
+  }
+  if (
+    token.endsWith("ses") ||
+    token.endsWith("xes") ||
+    token.endsWith("zes") ||
+    token.endsWith("ches") ||
+    token.endsWith("shes")
+  ) {
+    return token.slice(0, -2);
+  }
+  if (token.endsWith("s")) {
+    return token.slice(0, -1);
+  }
+  return token;
+}
+
+function titleCaseEnrichmentPhrase(phrase: string): string {
+  return normalizeCatalogTitle(phrase, LEAN_CATALOG_TITLE_MAX_WORDS);
+}
+
+/**
+ * Prefer a subject that is a richer identity than the short title (e.g. poodle over dog,
+ * highland cow over cow). Does not invent identities absent from subjects.
+ */
+export function selectMoreSpecificSubjectForTitle(
+  subjects: readonly string[] | undefined,
+  titleComparable: string,
+): string | undefined {
+  if (!subjects?.length || !titleComparable) {
+    return undefined;
+  }
+
+  const normalized = subjects
+    .map((raw) => ({
+      raw: raw.trim(),
+      comparable: normalizeComparableTitle(raw),
+    }))
+    .filter(
+      (entry) =>
+        entry.raw &&
+        entry.comparable &&
+        !isWeakTitleEnrichmentSubject(entry.comparable),
+    );
+
+  if (normalized.length === 0) {
+    return undefined;
+  }
+
+  const titleWords = titleComparable.split(" ").filter(Boolean);
+
+  // Compound subject that contains the title tokens as a proper subset (cow → highland cow).
+  const compounds = normalized.filter((entry) => {
+    if (entry.comparable === titleComparable) {
+      return false;
+    }
+    const words = entry.comparable.split(" ").filter(Boolean);
+    return (
+      titleWords.length > 0 &&
+      titleWords.every((word) => words.includes(word)) &&
+      words.length > titleWords.length
+    );
+  });
+  if (compounds.length > 0) {
+    compounds.sort(
+      (a, b) => b.comparable.split(" ").length - a.comparable.split(" ").length,
+    );
+    return compounds[0]?.raw;
+  }
+
+  // Title matches one subject exactly; another distinct subject exists (dog + poodle).
+  const titleIsSubject = normalized.some(
+    (entry) => entry.comparable === titleComparable,
+  );
+  const others = normalized.filter(
+    (entry) => entry.comparable !== titleComparable,
+  );
+  if (titleIsSubject && others.length > 0) {
+    others.sort(
+      (a, b) => b.comparable.split(" ").length - a.comparable.split(" ").length,
+    );
+    return others[0]?.raw;
+  }
+
+  return undefined;
+}
+
+function selectDistinguishingObjectsForTitle(
+  objects: readonly string[] | undefined,
+  titleComparable: string,
+  subjectComparable: string,
+): string[] {
+  if (!objects?.length) {
+    return [];
+  }
+
+  const selected: string[] = [];
+  for (const raw of objects) {
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      continue;
+    }
+    const comparable = normalizeComparableTitle(trimmed);
+    if (!comparable || isWeakTitleEnrichmentObject(comparable)) {
+      continue;
+    }
+    if (
+      titleComparable.includes(comparable) ||
+      subjectComparable.includes(comparable)
+    ) {
+      continue;
+    }
+    const singularWords = comparable
+      .split(" ")
+      .filter(Boolean)
+      .map(singularizeTitleObjectToken)
+      .join(" ");
+    if (!singularWords) {
+      continue;
+    }
+    if (
+      selected.some(
+        (existing) => normalizeComparableTitle(existing) === singularWords,
+      )
+    ) {
+      continue;
+    }
+    selected.push(singularWords);
+    if (selected.length >= MAX_TITLE_ENRICHMENT_OBJECTS) {
+      break;
+    }
+  }
+  return selected;
+}
+
+/**
+ * When a no-text lean title collapses known visual identity to a broader/generic subject,
+ * rebuild from Smart Profile subjects/objects only. Preserves titles that are already
+ * sufficiently specific (including long descriptive Highland-class titles).
+ */
+export function enrichUnderSpecificNoTextCatalogTitle(input: {
+  title: string;
+  subjects?: readonly string[];
+  objects?: readonly string[];
+}): string {
+  const original = stripTrailingTitlePunctuation(input.title?.trim() ?? "");
+  if (!original || original === "Artwork Design") {
+    return original || "Artwork Design";
+  }
+
+  const titleComparable = normalizeComparableTitle(original);
+  const titleWords = titleComparable.split(" ").filter(Boolean);
+
+  // Already specific enough (incl. long / sentence-like descriptive titles).
+  if (titleWords.length > UNDER_SPECIFIC_TITLE_MAX_WORDS) {
+    return original;
+  }
+
+  const moreSpecificSubject = selectMoreSpecificSubjectForTitle(
+    input.subjects,
+    titleComparable,
+  );
+  const subjectForObjects =
+    moreSpecificSubject ??
+    (input.subjects ?? []).find(
+      (subject) => normalizeComparableTitle(subject) === titleComparable,
+    ) ??
+    original;
+  const subjectComparable = normalizeComparableTitle(subjectForObjects);
+  const distinguishingObjects = selectDistinguishingObjectsForTitle(
+    input.objects,
+    titleComparable,
+    subjectComparable,
+  );
+
+  const needsSubjectUpgrade = Boolean(
+    moreSpecificSubject &&
+    normalizeComparableTitle(moreSpecificSubject) !== titleComparable,
+  );
+  const needsObjectEnrichment = distinguishingObjects.length > 0;
+
+  if (!needsSubjectUpgrade && !needsObjectEnrichment) {
+    return original;
+  }
+
+  let rebuilt = titleCaseEnrichmentPhrase(
+    needsSubjectUpgrade ? moreSpecificSubject! : original,
+  );
+  if (needsObjectEnrichment) {
+    const objectPhrase =
+      distinguishingObjects.length === 1
+        ? titleCaseEnrichmentPhrase(distinguishingObjects[0]!)
+        : titleCaseEnrichmentPhrase(
+            `${distinguishingObjects[0]} And ${distinguishingObjects[1]}`,
+          );
+    rebuilt = titleCaseEnrichmentPhrase(`${rebuilt} With ${objectPhrase}`);
+  }
+
+  if (
+    !rebuilt ||
+    isGenericCatalogTitle(rebuilt) ||
+    isDescriptionLikeCatalogTitle(rebuilt) ||
+    isStyleWordHeavyTitle(rebuilt) ||
+    looksLikeOcrDumpTitle(rebuilt)
+  ) {
+    return original;
+  }
+
+  if (normalizeComparableTitle(rebuilt) === titleComparable) {
+    return original;
+  }
+
+  // Prefer the enriched title only when it clearly adds identity (more tokens or upgraded subject).
+  const rebuiltWords = normalizeComparableTitle(rebuilt)
+    .split(" ")
+    .filter(Boolean);
+  if (rebuiltWords.length < titleWords.length) {
+    return original;
+  }
+
+  return stripTrailingTitlePunctuation(rebuilt);
+}
+
+export function normalizeVisibleTextPhrases(
+  value: unknown,
+): string[] | undefined {
   if (!Array.isArray(value)) {
     return undefined;
   }
@@ -1732,7 +2270,9 @@ export function normalizeVisibleTextPhrases(value: unknown): string[] | undefine
   return phrases.length > 0 ? phrases : undefined;
 }
 
-export function normalizeVisibleTextColor(value: unknown): VisibleTextColor | undefined {
+export function normalizeVisibleTextColor(
+  value: unknown,
+): VisibleTextColor | undefined {
   if (typeof value !== "string") {
     return undefined;
   }
@@ -1749,92 +2289,4 @@ export function normalizeVisibleTextColor(value: unknown): VisibleTextColor | un
   }
 
   return undefined;
-}
-
-const MAX_AI_TAG_LENGTH = 40;
-
-const TAG_STOPWORDS = new Set([
-  "a",
-  "an",
-  "and",
-  "are",
-  "as",
-  "at",
-  "be",
-  "been",
-  "being",
-  "but",
-  "by",
-  "for",
-  "from",
-  "he",
-  "her",
-  "him",
-  "his",
-  "i",
-  "if",
-  "im",
-  "in",
-  "is",
-  "it",
-  "its",
-  "me",
-  "my",
-  "not",
-  "of",
-  "on",
-  "or",
-  "our",
-  "she",
-  "so",
-  "that",
-  "the",
-  "their",
-  "them",
-  "they",
-  "this",
-  "to",
-  "was",
-  "we",
-  "were",
-  "with",
-  "you",
-  "your",
-]);
-
-export function tokenizeTagCandidate(value: string): string[] {
-  const normalized = value.toLowerCase().replace(/['’]/g, " ").trim();
-
-  return normalized
-    .split(/[^a-z0-9-]+/)
-    .map((token) => token.trim())
-    .filter(
-      (token) =>
-        token.length > 1 && token.length <= MAX_AI_TAG_LENGTH && !TAG_STOPWORDS.has(token),
-    );
-}
-
-function pushNormalizedTag(normalizedTags: string[], value: string): void {
-  normalizedTags.push(...tokenizeTagCandidate(value));
-}
-
-export function normalizeAiTags(
-  value: unknown,
-  _visibleText?: string[],
-  maxTags = 20,
-  exclusions: readonly string[] = mergeTagExclusions(),
-): string[] {
-  const normalizedTags: string[] = [];
-
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      if (typeof item === "string") {
-        pushNormalizedTag(normalizedTags, item);
-      }
-    }
-  }
-
-  const deduped = [...new Set(normalizedTags)].filter((tag) => !GENERIC_CATALOG_TAGS.has(tag));
-
-  return filterExcludedAiTags(deduped, exclusions).slice(0, maxTags);
 }

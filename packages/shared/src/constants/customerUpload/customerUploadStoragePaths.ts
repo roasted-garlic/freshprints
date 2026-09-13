@@ -8,6 +8,7 @@ export const CUSTOMER_UPLOAD_STORAGE_ROOT = "customer-uploads" as const;
 export const CUSTOMER_UPLOAD_OWNED_STORAGE_PATH_FIELDS = [
   "sourceStoragePath",
   "productionStoragePath",
+  "interactiveEnhancedProductionStoragePath",
   "previewStoragePath",
   "thumbnailStoragePath",
 ] as const;
@@ -16,6 +17,7 @@ export type CustomerUploadOwnedStoragePathField =
   (typeof CUSTOMER_UPLOAD_OWNED_STORAGE_PATH_FIELDS)[number];
 
 const PRODUCTION_NAME = "production.png";
+const INTERACTIVE_PRODUCTION_NAME = "production.interactive.png";
 const PREVIEW_NAME = "preview.webp";
 const THUMBNAIL_NAME = "thumbnail.webp";
 const SOURCE_NAME = "source";
@@ -37,6 +39,16 @@ export function getCustomerUploadSourceStoragePath(
   const uid = assertNonEmptyId(customerUid, "customerUid");
   const id = assertNonEmptyId(uploadId, "uploadId");
   return `/${CUSTOMER_UPLOAD_STORAGE_ROOT}/${uid}/${id}/${SOURCE_NAME}`;
+}
+
+/** `/customer-uploads/{customerUid}/{uploadId}/production.interactive.png` */
+export function getCustomerUploadInteractiveProductionStoragePath(
+  customerUid: string,
+  uploadId: string,
+): string {
+  const uid = assertNonEmptyId(customerUid, "customerUid");
+  const id = assertNonEmptyId(uploadId, "uploadId");
+  return `/${CUSTOMER_UPLOAD_STORAGE_ROOT}/${uid}/${id}/${INTERACTIVE_PRODUCTION_NAME}`;
 }
 
 /** `/customer-uploads/{customerUid}/{uploadId}/production.png` */
@@ -80,7 +92,7 @@ export function getCustomerUploadBatchZipStoragePath(
 }
 
 const UPLOAD_OBJECT_PATTERN =
-  /^\/customer-uploads\/([A-Za-z0-9_-]+)\/([A-Za-z0-9_-]+)\/(source|production\.png|preview\.webp|thumbnail\.webp)$/;
+  /^\/customer-uploads\/([A-Za-z0-9_-]+)\/([A-Za-z0-9_-]+)\/(source|production\.png|production\.interactive\.png|preview\.webp|thumbnail\.webp)$/;
 
 const BATCH_ZIP_PATTERN =
   /^\/customer-uploads\/([A-Za-z0-9_-]+)\/batches\/([A-Za-z0-9_-]+)\/archive\.zip$/;

@@ -28,6 +28,20 @@ function item(
 }
 
 describe('mergeServerWorkingItemsWithLocal', () => {
+  it('keeps hydrated real rows when the server snapshot is still empty', () => {
+    const local = [
+      item({ id: 'real-b', designId: 'design-b', createdAt: stamp(200) }),
+      item({ id: 'real-a', designId: 'design-a', createdAt: stamp(100) }),
+    ];
+
+    const merged = mergeServerWorkingItemsWithLocal([], local);
+
+    assert.deepEqual(
+      merged.map((entry) => entry.id),
+      ['real-b', 'real-a'],
+    );
+  });
+
   it('keeps optimistic catalog stubs when the server snapshot is still empty', () => {
     const local = [
       item({ id: 'optimistic:design-b', designId: 'design-b', createdAt: stamp(200) }),
@@ -250,5 +264,33 @@ describe('mergeServerWorkingItemsWithLocal', () => {
         false,
       );
     });
+  });
+
+  it('discards local rows from a different printRequestId on ownership switch', () => {
+    const localFromA = [
+      item({
+        id: 'a-item',
+        printRequestId: 'req-a',
+        designId: 'design-a',
+        createdAt: stamp(100),
+      }),
+    ];
+    const serverForB = [
+      item({
+        id: 'b-item',
+        printRequestId: 'req-b',
+        designId: 'design-b',
+        createdAt: stamp(200),
+      }),
+    ];
+
+    const merged = mergeServerWorkingItemsWithLocal(serverForB, localFromA, {
+      printRequestId: 'req-b',
+    });
+
+    assert.deepEqual(
+      merged.map((entry) => entry.id),
+      ['b-item'],
+    );
   });
 });

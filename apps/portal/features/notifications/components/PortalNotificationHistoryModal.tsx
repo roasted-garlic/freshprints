@@ -7,6 +7,7 @@ import {
   CUSTOMER_NOTIFICATIONS_QUERY_LIMIT,
   type PortalCustomerNotification,
 } from '../services/customerNotificationsService';
+import { isCustomerNotificationPreservedFromHistoryClear } from '@fresh-prints/shared/utils/customerNotifications';
 
 function formatWhen(value: Date | null): string {
   if (!value) {
@@ -36,8 +37,16 @@ function HistoryRow({
 }
 
 export function PortalNotificationHistoryModal() {
-  const { closeHistory, error, isHistoryOpen, openItem, readItems, retry } =
-    usePortalNotifications();
+  const {
+    clearHistory,
+    closeHistory,
+    error,
+    historyItems,
+    isClearingHistory,
+    isHistoryOpen,
+    openItem,
+    retry,
+  } = usePortalNotifications();
 
   useEffect(() => {
     if (!isHistoryOpen) {
@@ -55,6 +64,10 @@ export function PortalNotificationHistoryModal() {
   if (!isHistoryOpen) {
     return null;
   }
+
+  const canClearHistory = historyItems.some(
+    (item) => !isCustomerNotificationPreservedFromHistoryClear(item),
+  );
 
   return (
     <div
@@ -74,7 +87,8 @@ export function PortalNotificationHistoryModal() {
 
         <div className="modal-body portal-notification-history-body">
           <p className="portal-muted portal-notification-history-caption">
-            Cleared alerts from your last {CUSTOMER_NOTIFICATIONS_QUERY_LIMIT} notifications.
+            Recent alerts from your last {CUSTOMER_NOTIFICATIONS_QUERY_LIMIT} notifications.
+            Clear history keeps open permission requests.
           </p>
 
           {error ? (
@@ -86,13 +100,13 @@ export function PortalNotificationHistoryModal() {
             </div>
           ) : null}
 
-          {!error && readItems.length === 0 ? (
+          {!error && historyItems.length === 0 ? (
             <p className="portal-muted">No cleared notifications yet.</p>
           ) : null}
 
-          {readItems.length > 0 ? (
+          {historyItems.length > 0 ? (
             <ul className="portal-notifications-list portal-notification-history-list">
-              {readItems.map((item) => (
+              {historyItems.map((item) => (
                 <li key={item.id}>
                   <HistoryRow item={item} onOpen={openItem} />
                 </li>
@@ -101,7 +115,19 @@ export function PortalNotificationHistoryModal() {
           ) : null}
         </div>
 
-        <footer className="modal-footer">
+        <footer className="modal-footer portal-notification-history-footer">
+          {canClearHistory ? (
+            <button
+              className="portal-link-button"
+              disabled={isClearingHistory}
+              onClick={() => clearHistory()}
+              type="button"
+            >
+              {isClearingHistory ? 'Clearing…' : 'Clear history'}
+            </button>
+          ) : (
+            <span />
+          )}
           <button className="portal-button portal-button-secondary" onClick={closeHistory} type="button">
             Close
           </button>

@@ -22,6 +22,8 @@ import type {
   CustomerAddAssistedApprovedProofToPrintRequestResponse,
   CustomerGetAssistedCreationApprovedProofFileRequest,
   CustomerGetAssistedCreationApprovedProofFileResponse,
+  CustomerGetAssistedCreationApprovedProofDownloadUrlRequest,
+  CustomerGetAssistedCreationApprovedProofDownloadUrlResponse,
   CustomerRespondToAssistedCreationProofRequest,
   CustomerRespondToAssistedCreationProofResponse,
   CustomerSendAssistedCreationMessageRequest,
@@ -33,6 +35,7 @@ import type {
 } from '@fresh-prints/shared/types/assistedCreation/assistedCreationActions.types';
 import type {
   AssistedCreationAnswers,
+  AssistedCreationAddToRequestProgress,
   AssistedCreationFinalSource,
   AssistedCreationFulfillmentMode,
   AssistedCreationPrintRequestIngest,
@@ -45,6 +48,9 @@ import {
   traceFirestoreListenerEmission,
   traceWrappedUnsubscribe,
 } from '@fresh-prints/shared/utils/firestoreUsageTrace';
+import type {
+  AssistedCreationArtworkDownloadTarget,
+} from '@fresh-prints/shared/utils/assistedCreationArtworkDownload';
 import { buildAssistedCreationFinalArtworkDownloadFileName } from '@fresh-prints/shared/utils/assistedCreationProofFileName';
 import { snapshotAssistedCatalogArtworkBackgroundHex } from '@fresh-prints/shared/utils/assistedCreationCatalogShareArtworkBackground';
 import { withTimeout } from '@fresh-prints/shared/utils/withTimeout';
@@ -189,6 +195,71 @@ function parsePrintRequestIngest(
   };
 }
 
+const ASSISTED_ADD_PROGRESS_STAGES = new Set([
+  'resolving_proof',
+  'downloading',
+  'checking_format',
+  'checking_transparency',
+  'converting_format',
+  'trimming',
+  'upscaling',
+  'preparing_artwork',
+  'checking_print_size',
+  'creating_previews',
+  'saving',
+  'attaching',
+]);
+
+const ASSISTED_ADD_PROGRESS_STALE_AFTER_MS = 15 * 60 * 1000;
+
+function progressTimestampMillis(value: unknown): number | null {
+  if (value && typeof value === 'object' && 'toMillis' in value && typeof value.toMillis === 'function') {
+    const millis = value.toMillis();
+    return typeof millis === 'number' && Number.isFinite(millis) ? millis : null;
+  }
+  if (value && typeof value === 'object' && 'toDate' in value && typeof value.toDate === 'function') {
+    const date = value.toDate();
+    return date instanceof Date && !Number.isNaN(date.getTime()) ? date.getTime() : null;
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const millis = Date.parse(value);
+    return Number.isNaN(millis) ? null : millis;
+  }
+  return null;
+}
+
+function parseAssistedAddToRequestProgress(
+  value: unknown,
+): AssistedCreationAddToRequestProgress | null | undefined {
+  if (value == null) {
+    return value === null ? null : undefined;
+  }
+  if (typeof value !== 'object' || Array.isArray(value)) {
+    return undefined;
+  }
+  const record = value as Record<string, unknown>;
+  const stage = typeof record.stage === 'string' ? record.stage.trim() : '';
+  if (!ASSISTED_ADD_PROGRESS_STAGES.has(stage)) {
+    return undefined;
+  }
+  const startedAt = record.startedAt ?? null;
+  const startedAtMillis = progressTimestampMillis(startedAt);
+  if (
+    startedAtMillis != null &&
+    Date.now() - startedAtMillis > ASSISTED_ADD_PROGRESS_STALE_AFTER_MS
+  ) {
+    return undefined;
+  }
+  return {
+    stage: stage as AssistedCreationAddToRequestProgress['stage'],
+    startedAt,
+    updatedAt: record.updatedAt ?? null,
+  };
+}
+
 function parseRequestDoc(
   id: string,
   data: Record<string, unknown> | undefined,
@@ -240,6 +311,13 @@ function parseRequestDoc(
         : undefined,
     approvedAt: data.approvedAt ?? undefined,
     printRequestIngest: parsePrintRequestIngest(data.printRequestIngest),
+    addToRequestProgress: parseAssistedAddToRequestProgress(data.addToRequestProgress),
+    currentProofRoundId:
+      typeof data.currentProofRoundId === 'string' && data.currentProofRoundId.trim()
+        ? data.currentProofRoundId.trim()
+        : data.currentProofRoundId === null
+          ? null
+          : undefined,
     createdAt: data.createdAt ?? null,
     updatedAt: data.updatedAt ?? null,
   };
@@ -521,39 +599,97 @@ export const assistedCreationService = {
   },
 
   /**
-   * Download approved proof full-res via callable (Admin bytes → base64 → blob).
-   * AuthZ + 14-day eligibility enforced server-side. Avoids GCS in-tab PNG and CORS fetch failures.
+   * Download staff Final Artwork only. Never falls back to approved proof bytes.
+   */
+  async downloadFinalArtwork(requestId: string): Promise<void> {
+    await this.downloadAssistedArtwork(requestId, 'final_artwork');
+  },
+
+  /**
+   * Download the approved proof file (historical proof asset), not Final Artwork.
    */
   async downloadApprovedProof(requestId: string): Promise<void> {
+    await this.downloadAssistedArtwork(requestId, 'approved_proof');
+  },
+
+  async downloadAssistedArtwork(
+    requestId: string,
+    downloadTarget: AssistedCreationArtworkDownloadTarget,
+  ): Promise<void> {
     const trimmedId = requestId.trim();
     if (!trimmedId) {
       throw new Error('Request id is required.');
     }
     try {
-      const result = await callTracedFunction<
-        CustomerGetAssistedCreationApprovedProofFileRequest,
-        CustomerGetAssistedCreationApprovedProofFileResponse
-      >('customerGetAssistedCreationApprovedProofFile', {
-        source: 'assistedCreationService.downloadApprovedProof',
-      })({ requestId: trimmedId });
-      const { contentBase64, contentType, fileName } = result;
-      if (!contentBase64?.trim()) {
+      const signed = await callTracedFunction<
+        CustomerGetAssistedCreationApprovedProofDownloadUrlRequest,
+        CustomerGetAssistedCreationApprovedProofDownloadUrlResponse
+      >('customerGetAssistedCreationApprovedProofDownloadUrl', {
+        source: 'assistedCreationService.downloadAssistedArtwork',
+      })({ requestId: trimmedId, downloadTarget });
+      if (!signed.downloadUrl?.trim()) {
         throw new Error('Unable to download.');
       }
-      const blob = base64ToBlob(contentBase64, contentType);
-      this.triggerBrowserDownloadFromBlob(blob, fileName || 'proof.png');
-    } catch (error) {
-      throw mapCallableError(error);
+      await this.triggerBrowserDownloadFromSignedUrl(
+        signed.downloadUrl.trim(),
+        signed.fileName || 'assisted-artwork.png',
+        signed.contentType,
+      );
+      return;
+    } catch (signedUrlError) {
+      try {
+        const result = await callTracedFunction<
+          CustomerGetAssistedCreationApprovedProofFileRequest,
+          CustomerGetAssistedCreationApprovedProofFileResponse
+        >('customerGetAssistedCreationApprovedProofFile', {
+          source: 'assistedCreationService.downloadAssistedArtwork',
+        })({ requestId: trimmedId, downloadTarget });
+        const { contentBase64, contentType, fileName } = result;
+        if (!contentBase64?.trim()) {
+          throw new Error('Unable to download.');
+        }
+        const blob = base64ToBlob(contentBase64, contentType);
+        this.triggerBrowserDownloadFromBlob(blob, fileName || 'proof.png');
+      } catch (bytesError) {
+        throw mapCallableError(bytesError ?? signedUrlError);
+      }
     }
   },
 
-  /**
-   * Copy approved proof into Current Request and Studio custom-design intake.
-   * `catalogUseAcknowledged` matches print-upload / donate consent (same intake fields).
-   */
+  async triggerBrowserDownloadFromSignedUrl(
+    downloadUrl: string,
+    fileName: string,
+    contentType?: string,
+  ): Promise<void> {
+    try {
+      const response = await fetch(downloadUrl);
+      if (!response.ok) {
+        throw new Error('Unable to download.');
+      }
+      const blob = await response.blob();
+      this.triggerBrowserDownloadFromBlob(
+        blob.type ? blob : new Blob([blob], { type: contentType?.trim() || 'application/octet-stream' }),
+        fileName,
+      );
+    } catch {
+      this.triggerBrowserDownloadFromUrl(downloadUrl, fileName);
+    }
+  },
+
+  triggerBrowserDownloadFromUrl(downloadUrl: string, fileName: string): void {
+    const safeName = fileName.trim() || 'assisted-artwork.png';
+    const anchor = document.createElement('a');
+    anchor.href = downloadUrl;
+    anchor.download = safeName;
+    anchor.rel = 'noopener noreferrer';
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+  },
+
+  /** Copy Fresh Prints-created approved artwork into the customer's Current Request. */
   async addApprovedProofToPrintRequest(
     requestId: string,
-    options: { catalogUseAcknowledged: boolean },
   ): Promise<CustomerAddAssistedApprovedProofToPrintRequestResponse> {
     const trimmedId = requestId.trim();
     if (!trimmedId) {
@@ -561,13 +697,12 @@ export const assistedCreationService = {
     }
     try {
       return await callTracedFunction<
-        CustomerAddAssistedApprovedProofToPrintRequestRequest,
+        Omit<CustomerAddAssistedApprovedProofToPrintRequestRequest, 'catalogUseAcknowledged'>,
         CustomerAddAssistedApprovedProofToPrintRequestResponse
       >('customerAddAssistedApprovedProofToPrintRequest', {
         source: 'assistedCreationService.addApprovedProofToPrintRequest',
       })({
         requestId: trimmedId,
-        catalogUseAcknowledged: options.catalogUseAcknowledged === true,
       });
     } catch (error) {
       throw mapCallableError(error);

@@ -27,6 +27,7 @@ import {
 import { formatPortalQueueCutoffMeta } from '@fresh-prints/shared/utils/showQueueCutoff';
 
 import { PortalBiddingAcknowledgmentModal } from '../../shared/components/PortalBiddingAcknowledgmentModal';
+import { PortalBusyOverlay } from '../../shared/components/PortalBusyOverlay';
 import { usePortalAllocatableShows } from '../hooks/usePortalAllocatableShows';
 import { useQueuePrintRequestToShow } from '../hooks/useQueuePrintRequestToShow';
 import { PortalLoadingPanel } from '../../shared/components/PortalLoadingPanel';
@@ -37,6 +38,7 @@ import {
   canSubmitPortalShowDestination,
   resolvePortalShowInspectionActivation,
 } from '../utils/portalHistoricalShowInspection';
+import { buildPortalShowPriceCommitmentSummary } from '../utils/buildPortalShowPriceCommitmentSummary';
 
 function waitForCapacityBarAnimation(): Promise<void> {
   return new Promise((resolve) => {
@@ -99,6 +101,7 @@ export function PortalQueueToShowModal({
   const [allocatedByItemId, setAllocatedByItemId] = useState<Map<string, number>>(() => new Map());
   const [isLoadingAllocations, setIsLoadingAllocations] = useState(false);
   const [countdownNowMs, setCountdownNowMs] = useState(() => Date.now());
+  const personalUsageCalloutRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!isOpen) {
@@ -124,10 +127,12 @@ export function PortalQueueToShowModal({
           item.quantity,
           allocatedByItemId.get(item.id) ?? 0,
         ),
-        title:
-          item.titleSnapshot?.trim() ||
-          item.sizeLabel?.trim() ||
-          `Design ${item.id.slice(0, 6)}`,
+          title:
+          item.sourceType === "staff_artwork"
+            ? item.titleSnapshot?.trim() || item.sourceLabel || "Staff-added"
+            : item.titleSnapshot?.trim() ||
+              item.sizeLabel?.trim() ||
+              "Design",
       }))
       .filter((entry) => entry.remainingQuantity > 0);
   }, [allocatedByItemId, items]);
@@ -146,6 +151,17 @@ export function PortalQueueToShowModal({
   const acknowledgmentCopy = useMemo(
     () => buildPortalBiddingAcknowledgmentCopy(),
     [],
+  );
+
+  const priceCommitmentSummary = useMemo(
+    () =>
+      buildPortalShowPriceCommitmentSummary(items, (item) =>
+        remainingUnallocatedQuantityForItem(
+          item.quantity,
+          allocatedByItemId.get(item.id) ?? 0,
+        ),
+      ),
+    [allocatedByItemId, items],
   );
 
   const showPickerOptions = useMemo(
@@ -293,6 +309,31 @@ export function PortalQueueToShowModal({
     totalRemainingQuantity > 0;
 
   const wasOpenRef = useRef(false);
+
+  useEffect(() => {
+    if (!isOpen || !personalUsage) {
+      return;
+    }
+    // After capacity + personal callout paint, keep the callout in view (with the progress bar
+    // above it via selectedSlotScrollBlock="start" on ShowPicker).
+    let cancelled = false;
+    const frame = window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        if (cancelled) {
+          return;
+        }
+        personalUsageCalloutRef.current?.scrollIntoView({
+          block: 'nearest',
+          inline: 'nearest',
+          behavior: 'smooth',
+        });
+      });
+    });
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(frame);
+    };
+  }, [effectiveInspectedId, isOpen, personalUsage]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -485,7 +526,7 @@ export function PortalQueueToShowModal({
           </header>
 
           <div className="modal-body portal-queue-to-show-body">
-            {isLoading || isLoadingAllocations ? (
+            {isLoading ? (
               <PortalLoadingPanel label="Loading show dates…" />
             ) : loadError ? (
               <p className="portal-error" role="alert">
@@ -495,9 +536,9 @@ export function PortalQueueToShowModal({
               <p className="portal-muted">No upcoming shows are available right now. Try again later.</p>
             ) : (
               <>
-                {isCelebratingSave ? (
+                {isLoadingAllocations ? (
                   <p className="portal-muted portal-queue-to-show-summary" role="status">
-                    Updating show capacity…
+                    Loading your queue limits…
                   </p>
                 ) : null}
                 <ShowPicker
@@ -536,6 +577,7 @@ export function PortalQueueToShowModal({
                   }
                   options={showPickerOptions}
                   selectedId={effectiveSelectedId}
+                  selectedSlotScrollBlock="start"
                 />
                 {inspectedShow?.isAllocatable === false ? (
                   <div className="portal-queue-fit-callout" role="status">
@@ -550,7 +592,11 @@ export function PortalQueueToShowModal({
                   </div>
                 ) : null}
                 {personalUsage ? (
-                  <div className="portal-queue-fit-callout" role="status">
+                  <div
+                    className="portal-queue-fit-callout"
+                    ref={personalUsageCalloutRef}
+                    role="status"
+                  >
                     <div className="portal-queue-fit-callout-copy">
                       <p className="portal-queue-fit-callout-text">{personalUsage.usedLabel}</p>
                       {personalUsage.remainingLabel ? (
@@ -648,6 +694,15 @@ export function PortalQueueToShowModal({
         onConfirm={() => {
           void handleConfirmAcknowledgment();
         }}
+        priceCommitmentSummary={priceCommitmentSummary}
+        requestName={printRequest.name}
+      />
+
+      <PortalBusyOverlay
+        description="Please wait while we add this request to the show's print run."
+        isOpen={isBusy}
+        title="Adding to show…"
+        titleId="portal-queue-to-show-busy-title"
       />
     </>
   );

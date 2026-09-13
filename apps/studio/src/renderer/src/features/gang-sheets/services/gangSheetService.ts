@@ -75,6 +75,7 @@ interface GangSheetItemDocumentData extends DocumentData {
   designId?: unknown;
   sourceType?: unknown;
   customerUploadId?: unknown;
+  staffArtworkId?: unknown;
   copyIndex?: unknown;
   sourceQuantitySnapshot?: unknown;
   designTitleSnapshot?: unknown;
@@ -151,14 +152,19 @@ function mapGangSheetItemData(gangSheetItemId: string, data: GangSheetItemDocume
   const timestamps = resolveDesignDocumentTimestamps(data);
 
   const sourceType =
-    data.sourceType === "customer_upload" || data.sourceType === "catalog_design"
+    data.sourceType === "customer_upload" || data.sourceType === "catalog_design" || data.sourceType === "staff_artwork"
       ? data.sourceType
       : undefined;
   const customerUploadId =
     typeof data.customerUploadId === "string" && data.customerUploadId.trim()
       ? data.customerUploadId.trim()
       : undefined;
+  const staffArtworkId =
+    typeof data.staffArtworkId === "string" && data.staffArtworkId.trim()
+      ? data.staffArtworkId.trim()
+      : undefined;
   const isUploadItem = sourceType === "customer_upload" || Boolean(customerUploadId);
+  const isStaffArtworkItem = sourceType === "staff_artwork" || Boolean(staffArtworkId);
   const designId =
     typeof data.designId === "string" && data.designId.trim() ? data.designId.trim() : undefined;
 
@@ -189,6 +195,8 @@ function mapGangSheetItemData(gangSheetItemId: string, data: GangSheetItemDocume
     if (!customerUploadId) {
       throw new Error("A gang sheet item record is incomplete.");
     }
+  } else if (isStaffArtworkItem) {
+    if (!staffArtworkId) throw new Error("A gang sheet item record is incomplete.");
   } else if (!designId) {
     throw new Error("A gang sheet item record is incomplete.");
   }
@@ -200,13 +208,14 @@ function mapGangSheetItemData(gangSheetItemId: string, data: GangSheetItemDocume
     showAllocationId: data.showAllocationId,
     printRequestId: data.printRequestId,
     printRequestItemId: data.printRequestItemId,
-    ...(designId ? { designId } : {}),
+    ...(isStaffArtworkItem ? {} : designId ? { designId } : {}),
     ...(sourceType
       ? { sourceType }
       : isUploadItem
         ? { sourceType: "customer_upload" as const }
         : {}),
     ...(customerUploadId ? { customerUploadId } : {}),
+    ...(staffArtworkId ? { staffArtworkId } : {}),
     copyIndex: data.copyIndex,
     sourceQuantitySnapshot: data.sourceQuantitySnapshot,
     designTitleSnapshot: typeof data.designTitleSnapshot === "string" ? data.designTitleSnapshot : undefined,
@@ -230,8 +239,9 @@ export interface CreateGangSheetItemInput {
   printRequestId: string;
   printRequestItemId: string;
   designId?: string;
-  sourceType?: "catalog_design" | "customer_upload";
+  sourceType?: "catalog_design" | "customer_upload" | "staff_artwork";
   customerUploadId?: string;
+  staffArtworkId?: string;
   copyIndex: number;
   sourceQuantitySnapshot: number;
   designTitleSnapshot?: string;
@@ -407,6 +417,7 @@ export const gangSheetService = {
       designId: input.designId,
       sourceType: input.sourceType,
       customerUploadId: input.customerUploadId,
+      staffArtworkId: input.staffArtworkId,
       copyIndex: input.copyIndex,
       sourceQuantitySnapshot: input.sourceQuantitySnapshot,
       designTitleSnapshot: input.designTitleSnapshot,

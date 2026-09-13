@@ -5,17 +5,27 @@ import { isMissingCustomerUploadPurpose } from "@fresh-prints/shared/utils/custo
 
 import {
   CUSTOMER_UPLOAD_INTAKE_PAGE_SIZE,
+  filterCatalogIntakeEligibleDocs,
   filterLegacyMissingPurposeDocs,
   mergeIntakeDocsByCreatedAtDesc,
+  resolveStudioIntakeListSortMs,
   runWithConcurrencyLimit,
 } from "./customerUploadIntakeQueries.ts";
 
-function doc(id: string, purpose: unknown, createdAtMs: number) {
+function doc(
+  id: string,
+  purpose: unknown,
+  createdAtMs: number,
+  catalogPendingQueuedAtMs?: number,
+) {
   return {
     id,
     data: () => ({
       purpose,
       createdAt: { toMillis: () => createdAtMs },
+      ...(typeof catalogPendingQueuedAtMs === "number"
+        ? { catalogPendingQueuedAt: { toMillis: () => catalogPendingQueuedAtMs } }
+        : {}),
     }),
   };
 }
@@ -26,6 +36,32 @@ test("isMissingCustomerUploadPurpose covers blank legacy purpose fields", () => 
   assert.equal(isMissingCustomerUploadPurpose(""), true);
   assert.equal(isMissingCustomerUploadPurpose("print_request"), false);
   assert.equal(isMissingCustomerUploadPurpose("catalog_donation"), false);
+});
+
+test("filterCatalogIntakeEligibleDocs removes customer-declined library permission uploads", () => {
+  const docs = [
+    { id: "allowed", data: () => ({ catalogUseAcknowledged: true }) },
+    { id: "denied", data: () => ({ catalogUseAcknowledged: false }) },
+    { id: "legacy", data: () => ({}) },
+  ];
+  assert.deepEqual(
+    filterCatalogIntakeEligibleDocs(docs).map((item) => item.id),
+    ["allowed", "legacy"],
+  );
+});
+
+test("follow-up approval makes an originally denied upload visible in Pending", () => {
+  const docs = [
+    {
+      id: "approved-follow-up",
+      data: () => ({ catalogUseAcknowledged: false, catalogPermissionFollowUpStatus: "approved" }),
+    },
+    {
+      id: "declined-follow-up",
+      data: () => ({ catalogUseAcknowledged: false, catalogPermissionFollowUpStatus: "declined" }),
+    },
+  ];
+  assert.deepEqual(filterCatalogIntakeEligibleDocs(docs).map((item) => item.id), ["approved-follow-up"]);
 });
 
 test("filterLegacyMissingPurposeDocs keeps only purpose-absent docs", () => {
@@ -50,6 +86,45 @@ test("mergeIntakeDocsByCreatedAtDesc prefers newest and caps page size", () => {
     ["p1", "legacy"],
   );
   assert.equal(CUSTOMER_UPLOAD_INTAKE_PAGE_SIZE, 50);
+});
+
+test("Ask Again → Allow re-queued uploads sort above older createdAt siblings", () => {
+  const primary = [
+    doc("older-sibling", "print_request", 200),
+    doc("reallowed", "print_request", 100, 500),
+    doc("newer-sibling", "print_request", 300),
+  ];
+  const merged = mergeIntakeDocsByCreatedAtDesc(primary, [], 10);
+  assert.deepEqual(
+    merged.map((item) => item.id),
+    ["reallowed", "newer-sibling", "older-sibling"],
+  );
+  assert.equal(resolveStudioIntakeListSortMs(primary[1]!.data()), 500);
+  assert.equal(resolveStudioIntakeListSortMs(primary[2]!.data()), 300);
+});
+
+test("Ask Again → Allow sorts by follow-up respondedAt when catalogPendingQueuedAt is missing", () => {
+  const reallowed = {
+    id: "reallowed",
+    data: () => ({
+      purpose: "print_request",
+      createdAt: { toMillis: () => 100 },
+      catalogPermissionFollowUpStatus: "approved",
+      catalogPermissionFollowUpRespondedAt: { toMillis: () => 900 },
+    }),
+  };
+  const sibling = doc("sibling", "print_request", 400);
+  const merged = mergeIntakeDocsByCreatedAtDesc([sibling, reallowed], [], 10);
+  assert.deepEqual(
+    merged.map((item) => item.id),
+    ["reallowed", "sibling"],
+  );
+});
+
+test("buildPurposeScopedIntakeQuery accepts custom page size", async () => {
+  const { buildPurposeScopedIntakeQuery } = await import("./customerUploadIntakeQueries.ts");
+  // Smoke: helper remains exported for load-more pageSize wiring.
+  assert.equal(typeof buildPurposeScopedIntakeQuery, "function");
 });
 
 test("runWithConcurrencyLimit never exceeds concurrency and covers all items", async () => {

@@ -12,8 +12,9 @@ interface CatalogFiltersSheetProps {
   onCategoryChange: (value: string) => void;
   onClose: () => void;
   onHalftoneFilterChange: (on: boolean) => void;
-  onOpenTags: () => void;
-  selectedTagCount: number;
+  onOpenSmartFilters?: () => void;
+  selectedSmartFilterCount?: number;
+  showSmartFilters?: boolean;
 }
 
 /**
@@ -28,8 +29,9 @@ export function CatalogFiltersSheet({
   onCategoryChange,
   onClose,
   onHalftoneFilterChange,
-  onOpenTags,
-  selectedTagCount,
+  onOpenSmartFilters,
+  selectedSmartFilterCount = 0,
+  showSmartFilters = false,
 }: CatalogFiltersSheetProps) {
   const { setShowExplicitContent, showExplicitContent } = useExplicitContentPreference();
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
@@ -171,23 +173,28 @@ export function CatalogFiltersSheet({
             </div>
           </section>
 
-          <section aria-labelledby="catalog-filters-tags-heading" className="catalog-filters-sheet-section">
-            <h3 className="catalog-filters-sheet-section-title" id="catalog-filters-tags-heading">
-              Tags
-            </h3>
-            <button
-              className="portal-button portal-button-secondary portal-button-leading-icon catalog-filters-tags-button"
-              onClick={onOpenTags}
-              type="button"
+          {showSmartFilters && onOpenSmartFilters ? (
+            <section
+              aria-labelledby="catalog-filters-smart-heading"
+              className="catalog-filters-sheet-section"
             >
-              <FilterIcon />
-              <span>
-                {selectedTagCount > 0
-                  ? `Choose tags (${selectedTagCount} selected)`
-                  : 'Choose tags'}
-              </span>
-            </button>
-          </section>
+              <h3 className="catalog-filters-sheet-section-title" id="catalog-filters-smart-heading">
+                Smart Filters
+              </h3>
+              <button
+                className="portal-button portal-button-secondary portal-button-leading-icon catalog-filters-smart-button"
+                onClick={onOpenSmartFilters}
+                type="button"
+              >
+                <FilterIcon />
+                <span>
+                  {selectedSmartFilterCount > 0
+                    ? `Choose smart filters (${selectedSmartFilterCount} selected)`
+                    : 'Choose smart filters'}
+                </span>
+              </button>
+            </section>
+          ) : null}
         </div>
 
         <footer className="modal-footer modal-footer-tag-filter catalog-filters-sheet-footer">

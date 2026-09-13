@@ -2,11 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Timestamp } from "firebase/firestore";
 
 import { categoryService } from "../services/categoryService";
-import { catalogTagService } from "../services/catalogTagService";
 import { clearStudioTaxonomyCaches } from "../services/taxonomyCacheControl";
 import { loadStudioTaxonomyPreferringMaterialization } from "../services/taxonomyMaterializationService";
-import type { CatalogTag } from "../types/catalogTag.types";
 import type { Category } from "../types/category.types";
+import type { CatalogTag } from "../types/catalogTag.types";
 import type { User } from "../../users/types/user.types";
 
 interface TaxonomyState {
@@ -26,13 +25,12 @@ const initialState: TaxonomyState = {
 };
 
 /**
- * Categories + approved tags for Design Library / AI Review.
+ * Categories for Design Library / AI Review. Legacy tag payloads remain only as an inert cache
+ * compatibility shape and are never read or exposed to active callers.
  *
  * Prefers compact `taxonomyMaterialization` (revision short-circuit + local cache).
- * Falls back to Firestore listCategories/listTags when materialization is not bootstrapped.
+ * Falls back to Firestore listCategories when materialization is not bootstrapped.
  *
- * After Tag Management writes, call `reloadFromAuthoritativeSource` so newly created tags
- * appear in design-form suggestions before Cloud Function materialization catches up.
  */
 export function useGeneratedDesignLibraryTaxonomy(user: User | null): TaxonomyState & {
   reloadFromAuthoritativeSource: () => Promise<void>;
@@ -65,7 +63,7 @@ export function useGeneratedDesignLibraryTaxonomy(user: User | null): TaxonomySt
         }));
         setState({
           categories,
-          tags: preferred.tags,
+          tags: [],
           isLoading: false,
           isUnavailable: false,
           status: "ready",
@@ -74,14 +72,11 @@ export function useGeneratedDesignLibraryTaxonomy(user: User | null): TaxonomySt
       }
 
       // Pre-bootstrap / unavailable materialization → legacy FS lists (RC4).
-      const [categories, tags] = await Promise.all([
-        categoryService.listCategories(user),
-        catalogTagService.listTags(user),
-      ]);
+      const categories = await categoryService.listCategories(user);
       if (isCancelled() || generation !== generationRef.current) return;
       setState({
         categories,
-        tags,
+        tags: [],
         isLoading: false,
         isUnavailable: false,
         status: "ready",
@@ -124,8 +119,7 @@ export function useGeneratedDesignLibraryTaxonomy(user: User | null): TaxonomySt
       return;
     }
 
-    // Drop disk/list caches so Tag Management creates/updates are visible immediately
-    // (materialization CF rebuild can lag a few seconds).
+    // Drop local taxonomy caches before refreshing the authoritative category list.
     clearStudioTaxonomyCaches();
     const generation = ++generationRef.current;
     setState((current) => ({
@@ -136,14 +130,11 @@ export function useGeneratedDesignLibraryTaxonomy(user: User | null): TaxonomySt
     }));
 
     try {
-      const [categories, tags] = await Promise.all([
-        categoryService.listCategories(user),
-        catalogTagService.listTags(user),
-      ]);
+      const categories = await categoryService.listCategories(user);
       if (generation !== generationRef.current) return;
       setState({
         categories,
-        tags,
+        tags: [],
         isLoading: false,
         isUnavailable: false,
         status: "ready",

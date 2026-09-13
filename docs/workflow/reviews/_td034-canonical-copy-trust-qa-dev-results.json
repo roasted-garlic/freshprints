@@ -1,0 +1,290 @@
+{
+  "projectId": "fresh-prints-dev",
+  "designId": "Y2IQuCgAPgnqrBIeJuap",
+  "finishedAt": "2026-09-06T00:56:23.022Z",
+  "settings": {
+    "catalogWorkflowMode": "shadow",
+    "catalogAutonomousLiveEnabled": false,
+    "visionModelId": "gemini-2.5-flash-lite"
+  },
+  "image": {
+    "path": "previews/Y2IQuCgAPgnqrBIeJuap.webp",
+    "mime": "image/webp",
+    "sha": "be3b85384d9cbeb4",
+    "byteLength": 305162
+  },
+  "playgroundRuns": [
+    {
+      "run": 1,
+      "canonicalTitle": "Retro Woman Holding Cucumber with Sarcastic Saying",
+      "wouldPersistTitle": "Retro Woman Holding Cucumber with Sarcastic Saying",
+      "titleSemanticMutation": "NO",
+      "canonicalDescription": "A retro-style illustration depicts a smiling woman with meticulously styled hair, holding a cucumber. The artwork features a distressed, vintage aesthetic with bold lines and muted colors. Prominent text overlays read \"WHEN LIFE GIVES YOU CUCUMBERS\" and \"GO FUCK YOURSELF...\". The overall concept is humorous and sarcastic, playing on a common idiom.",
+      "wouldPersistDescription": "A retro-style illustration depicts a smiling woman with meticulously styled hair, holding a cucumber. The artwork features a distressed, vintage aesthetic with bold lines and muted colors. Prominent text overlays read \"WHEN LIFE GIVES YOU CUCUMBERS\" and \"GO FUCK YOURSELF...\". The overall concept is humorous and sarcastic, playing on a common idiom.",
+      "descriptionSemanticMutation": "NO",
+      "category": "Funny & Sarcastic",
+      "categoryGapNote": "",
+      "centralSubject": "Retro woman with a cucumber",
+      "subjects": [
+        "woman",
+        "cucumber"
+      ],
+      "objects": [
+        "cucumber"
+      ],
+      "fuckInCanonical": true,
+      "fStarInCanonical": false
+    },
+    {
+      "run": 2,
+      "canonicalTitle": "Pin-up Girl Holding Cucumber with Sarcastic Saying",
+      "wouldPersistTitle": "Pin-up Girl Holding Cucumber with Sarcastic Saying",
+      "titleSemanticMutation": "NO",
+      "canonicalDescription": "A vintage-style illustration features a smiling pin-up woman with styled hair, holding a cucumber and pointing at it. The design includes the text \"WHEN LIFE GIVES YOU CUCUMBERS GO F*** YOURSELF...\" in a distressed font. The overall concept is a humorous and edgy take on a common idiom, using retro aesthetics.",
+      "wouldPersistDescription": "A vintage-style illustration features a smiling pin-up woman with styled hair, holding a cucumber and pointing at it. The design includes the text \"WHEN LIFE GIVES YOU CUCUMBERS GO F*** YOURSELF...\" in a distressed font. The overall concept is a humorous and edgy take on a common idiom, using retro aesthetics.",
+      "descriptionSemanticMutation": "NO",
+      "category": "Funny & Sarcastic",
+      "categoryGapNote": "",
+      "centralSubject": "Woman with Cucumber",
+      "subjects": [
+        "Woman",
+        "Cucumber"
+      ],
+      "objects": [
+        "Cucumber"
+      ],
+      "fuckInCanonical": false,
+      "fStarInCanonical": true
+    },
+    {
+      "run": 3,
+      "canonicalTitle": "Pin-up Woman Holding Cucumber with Sarcastic Saying",
+      "wouldPersistTitle": "Pin-up Woman Holding Cucumber with Sarcastic Saying",
+      "titleSemanticMutation": "NO",
+      "canonicalDescription": "A stylized pin-up woman with retro hairstyle and makeup holds a cucumber and points to it. She has a cheeky grin and blue eyes. The design features the phrase \"WHEN LIFE GIVES YOU CUCUMBERS GO FUCK YOURSELF...\" in distressed blue lettering. The overall concept is a humorous and slightly edgy take on a classic idiom, presented in a vintage illustration style.",
+      "wouldPersistDescription": "A stylized pin-up woman with retro hairstyle and makeup holds a cucumber and points to it. She has a cheeky grin and blue eyes. The design features the phrase \"WHEN LIFE GIVES YOU CUCUMBERS GO FUCK YOURSELF...\" in distressed blue lettering. The overall concept is a humorous and slightly edgy take on a classic idiom, presented in a vintage illustration style.",
+      "descriptionSemanticMutation": "NO",
+      "category": "Funny & Sarcastic",
+      "categoryGapNote": "",
+      "centralSubject": "Woman with Cucumber",
+      "subjects": [
+        "Woman",
+        "Cucumber"
+      ],
+      "objects": [
+        "Vegetable"
+      ],
+      "fuckInCanonical": true,
+      "fStarInCanonical": false
+    }
+  ],
+  "processingRuns": [
+    {
+      "run": 1,
+      "promptVersion": "catalog-enrich-v37",
+      "profileVersion": "smart-profile-v1",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "canonicalAiTitle": "Retro Pin-Up Girl Holding Cucumber with Sarcastic Phrase",
+      "finalProcessingTitle": "Retro Pin-Up Girl Holding Cucumber with Sarcastic Phrase",
+      "titleSemanticMutation": "NO",
+      "legacyLeanWouldProduce": "When Life Gives You Cucumbers Go Fuck Yourself Woman",
+      "sloganRebuildFromVisible": "When Life Gives You Cucumbers Go Fuck Yourself Woman",
+      "leanRewriteStillForced": false,
+      "canonicalAiDescription": "A retro-style illustration features a pin-up girl with meticulously styled hair, holding a cucumber and pointing to it. The artwork incorporates text that reads 'WHEN LIFE GIVES YOU CUCUMBERS GO FUCK YOURSELF...', conveying a sarcastic and defiant message. The dominant colors are blues, greens, and skin tones, rendered in a comic-book-like style.",
+      "finalProcessingDescription": "A retro-style illustration features a pin-up girl with meticulously styled hair, holding a cucumber and pointing to it. The artwork incorporates text that reads 'WHEN LIFE GIVES YOU CUCUMBERS GO FUCK YOURSELF...', conveying a sarcastic and defiant message. The dominant colors are blues, greens, and skin tones, rendered in a comic-book-like style.",
+      "descriptionSemanticMutation": "NO",
+      "descriptionLooksSynthesized": false,
+      "centralSubject": "woman",
+      "subjects": [
+        "woman",
+        "cucumber"
+      ],
+      "objects": [
+        "cucumber"
+      ],
+      "category": "Funny & Sarcastic",
+      "categoryGapNote": "",
+      "categoryGapSuggested": false,
+      "hardBlockers": [
+        "structured_evidence_gap:subjects:woman"
+      ],
+      "wouldAutoApprove": false,
+      "automationDecision": "needs_review",
+      "fuckInFinal": true,
+      "fStarInFinal": false,
+      "deterministicProfanityMutation": "NO"
+    },
+    {
+      "run": 2,
+      "promptVersion": "catalog-enrich-v37",
+      "profileVersion": "smart-profile-v1",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "canonicalAiTitle": "Retro Woman With Cucumber \"Go Fuck Yourself\"",
+      "finalProcessingTitle": "Retro Woman With Cucumber \"Go Fuck Yourself\"",
+      "titleSemanticMutation": "NO",
+      "legacyLeanWouldProduce": "Retro Woman With Cucumber Go Fuck Yourself",
+      "sloganRebuildFromVisible": "When Life Gives You Cucumbers Go Fuck Yourself Woman",
+      "leanRewriteStillForced": false,
+      "canonicalAiDescription": "A vintage-style illustration features a smiling woman with retro curled hair and blue eyes holding a cucumber. The text above reads \"WHEN LIFE GIVES YOU\", and the word \"CUCUMBERS\" is prominently displayed in a cursive font below. Underneath \"CUCUMBERS\", the phrase \"GO FUCK YOURSELF...\" is written in a distressed, blocky font.",
+      "finalProcessingDescription": "A vintage-style illustration features a smiling woman with retro curled hair and blue eyes holding a cucumber. The text above reads \"WHEN LIFE GIVES YOU\", and the word \"CUCUMBERS\" is prominently displayed in a cursive font below. Underneath \"CUCUMBERS\", the phrase \"GO FUCK YOURSELF...\" is written in a distressed, blocky font.",
+      "descriptionSemanticMutation": "NO",
+      "descriptionLooksSynthesized": false,
+      "centralSubject": "woman",
+      "subjects": [
+        "woman",
+        "Cucumber"
+      ],
+      "objects": [
+        "Cucumber"
+      ],
+      "category": "Funny & Sarcastic",
+      "categoryGapNote": "",
+      "categoryGapSuggested": false,
+      "hardBlockers": [],
+      "wouldAutoApprove": true,
+      "automationDecision": "shadow",
+      "fuckInFinal": true,
+      "fStarInFinal": false,
+      "deterministicProfanityMutation": "NO"
+    },
+    {
+      "run": 3,
+      "promptVersion": "catalog-enrich-v37",
+      "profileVersion": "smart-profile-v1",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "canonicalAiTitle": "Woman Holding Cucumber with Sarcastic Saying",
+      "finalProcessingTitle": "Woman Holding Cucumber with Sarcastic Saying",
+      "titleSemanticMutation": "NO",
+      "legacyLeanWouldProduce": "When Life Gives You Cucumbers Go Fuck Yourself Woman",
+      "sloganRebuildFromVisible": "When Life Gives You Cucumbers Go Fuck Yourself Woman",
+      "leanRewriteStillForced": false,
+      "canonicalAiDescription": "A retro-style pin-up woman with styled blonde hair and blue eyes holds a cucumber and points to it. The design features the text \"WHEN LIFE GIVES YOU CUCUMBERS GO FUCK YOURSELF...\". The overall concept is a humorous and sarcastic take on a common idiom.",
+      "finalProcessingDescription": "A retro-style pin-up woman with styled blonde hair and blue eyes holds a cucumber and points to it. The design features the text \"WHEN LIFE GIVES YOU CUCUMBERS GO FUCK YOURSELF...\". The overall concept is a humorous and sarcastic take on a common idiom.",
+      "descriptionSemanticMutation": "NO",
+      "descriptionLooksSynthesized": false,
+      "centralSubject": "woman",
+      "subjects": [
+        "woman",
+        "cucumber"
+      ],
+      "objects": [
+        "cucumber"
+      ],
+      "category": "Funny & Sarcastic",
+      "categoryGapNote": "",
+      "categoryGapSuggested": false,
+      "hardBlockers": [],
+      "wouldAutoApprove": true,
+      "automationDecision": "shadow",
+      "fuckInFinal": true,
+      "fStarInFinal": false,
+      "deterministicProfanityMutation": "NO"
+    },
+    {
+      "run": 4,
+      "promptVersion": "catalog-enrich-v37",
+      "profileVersion": "smart-profile-v1",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "canonicalAiTitle": "Retro Woman Holding Cucumber with Sarcastic Quote",
+      "finalProcessingTitle": "Retro Woman Holding Cucumber with Sarcastic Quote",
+      "titleSemanticMutation": "NO",
+      "legacyLeanWouldProduce": "When Life Gives You Cucumbers Go Fuck Yourself Woman",
+      "sloganRebuildFromVisible": "When Life Gives You Cucumbers Go Fuck Yourself Woman",
+      "leanRewriteStillForced": false,
+      "canonicalAiDescription": "A vintage-style illustration depicts a woman with styled hair and a retro outfit holding a cucumber. The design features a sarcastic and humorous message, using a classic pin-up art style with bold lines and a limited color palette.",
+      "finalProcessingDescription": "A vintage-style illustration depicts a woman with styled hair and a retro outfit holding a cucumber. The design features a sarcastic and humorous message, using a classic pin-up art style with bold lines and a limited color palette.",
+      "descriptionSemanticMutation": "NO",
+      "descriptionLooksSynthesized": false,
+      "centralSubject": "woman",
+      "subjects": [
+        "woman",
+        "cucumber"
+      ],
+      "objects": [
+        "cucumber"
+      ],
+      "category": "Funny & Sarcastic",
+      "categoryGapNote": "",
+      "categoryGapSuggested": false,
+      "hardBlockers": [],
+      "wouldAutoApprove": true,
+      "automationDecision": "shadow",
+      "fuckInFinal": false,
+      "fStarInFinal": false,
+      "deterministicProfanityMutation": "NO"
+    },
+    {
+      "run": 5,
+      "promptVersion": "catalog-enrich-v37",
+      "profileVersion": "smart-profile-v1",
+      "normalizerVersion": "smart-profile-normalizer-v6",
+      "canonicalAiTitle": "Retro Woman With Cucumber Saying Go Fuck Yourself",
+      "finalProcessingTitle": "Retro Woman With Cucumber Saying Go Fuck Yourself",
+      "titleSemanticMutation": "NO",
+      "legacyLeanWouldProduce": "Retro Woman With Cucumber Saying Go Fuck Yourself",
+      "sloganRebuildFromVisible": "When Life Gives You Cucumbers Go Fuck Yourself Woman",
+      "leanRewriteStillForced": false,
+      "canonicalAiDescription": "A vintage-style pin-up woman with styled blonde hair holds a cucumber and points to it. The design uses a retro, illustrative style with bold lines and colors. Text above reads 'WHEN LIFE GIVES YOU' and text below the cucumber reads 'CUCUMBERS GO FUCK YOURSELF...'",
+      "finalProcessingDescription": "A vintage-style pin-up woman with styled blonde hair holds a cucumber and points to it. The design uses a retro, illustrative style with bold lines and colors. Text above reads 'WHEN LIFE GIVES YOU' and text below the cucumber reads 'CUCUMBERS GO FUCK YOURSELF...'",
+      "descriptionSemanticMutation": "NO",
+      "descriptionLooksSynthesized": false,
+      "centralSubject": "woman",
+      "subjects": [
+        "woman",
+        "cucumber"
+      ],
+      "objects": [
+        "cucumber"
+      ],
+      "category": "Funny & Sarcastic",
+      "categoryGapNote": "",
+      "categoryGapSuggested": false,
+      "hardBlockers": [],
+      "wouldAutoApprove": true,
+      "automationDecision": "shadow",
+      "fuckInFinal": true,
+      "fStarInFinal": false,
+      "deterministicProfanityMutation": "NO"
+    }
+  ],
+  "summary": {
+    "processingRuns": 5,
+    "titleSemanticMutationCount": 0,
+    "descriptionSemanticMutationCount": 0,
+    "centralSubjectAppendObserved": false,
+    "sloganReconstructionObserved": false,
+    "descriptionSynthesisObserved": false,
+    "deterministicProfanityMutationObserved": false,
+    "categoryGapSuggestedCount": 0,
+    "categories": [
+      "Funny & Sarcastic",
+      "Funny & Sarcastic",
+      "Funny & Sarcastic",
+      "Funny & Sarcastic",
+      "Funny & Sarcastic"
+    ],
+    "categoryGapNotes": [
+      "",
+      "",
+      "",
+      "",
+      ""
+    ],
+    "wouldAutoApprove": [
+      false,
+      true,
+      true,
+      true,
+      true
+    ],
+    "promptVersions": [
+      "catalog-enrich-v37"
+    ],
+    "profileVersions": [
+      "smart-profile-v1"
+    ],
+    "normalizerVersions": [
+      "smart-profile-normalizer-v6"
+    ]
+  }
+}

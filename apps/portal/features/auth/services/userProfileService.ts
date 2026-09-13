@@ -1,4 +1,4 @@
-import { doc, getDoc, type DocumentData } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, type DocumentData } from 'firebase/firestore';
 
 import type { UserProfile } from '@fresh-prints/shared/types/user/user.types';
 import { isUserRole } from '@fresh-prints/shared/types/user/user.types';
@@ -68,5 +68,30 @@ export const userProfileService = {
     }
 
     return mapUserProfile(snapshot.id, snapshot.data() as UserDocumentData);
+  },
+
+  subscribeToUserProfile(
+    userId: string,
+    onChange: (profile: UserProfile) => void,
+    onError?: (error: Error) => void,
+  ): () => void {
+    return onSnapshot(
+      doc(getPortalDb(), 'users', userId),
+      (snapshot) => {
+        if (!snapshot.exists()) {
+          onError?.(new Error('No Fresh Prints user profile was found for this account.'));
+          return;
+        }
+
+        try {
+          onChange(mapUserProfile(snapshot.id, snapshot.data() as UserDocumentData));
+        } catch (error) {
+          onError?.(error instanceof Error ? error : new Error('Unable to read user profile.'));
+        }
+      },
+      (error) => {
+        onError?.(error instanceof Error ? error : new Error('Unable to read user profile.'));
+      },
+    );
   },
 };

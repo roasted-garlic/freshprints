@@ -100,6 +100,7 @@ describe("customerUploadZip helpers", () => {
   it("detects nested zip and image candidates", () => {
     assert.equal(isNestedZipEntryName("inner.zip"), true);
     assert.equal(isCandidateImageEntryName("a.PNG"), true);
+    assert.equal(isCandidateImageEntryName("a.webp"), false);
     assert.equal(isCandidateImageEntryName("notes.txt"), false);
   });
 

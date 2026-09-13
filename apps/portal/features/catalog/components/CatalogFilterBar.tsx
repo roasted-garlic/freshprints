@@ -12,10 +12,11 @@ interface CatalogFilterBarProps {
   onCategoryChange: (value: string) => void;
   onHalftoneFilterChange: (on: boolean) => void;
   onOpenFiltersSheet: () => void;
-  onOpenTags: () => void;
+  onOpenSmartFilters?: () => void;
   onSearchChange: (value: string) => void;
   searchQuery: string;
-  selectedTagCount: number;
+  selectedSmartFilterCount?: number;
+  showSmartFilters?: boolean;
 }
 
 export function CatalogFilterBar({
@@ -26,10 +27,11 @@ export function CatalogFilterBar({
   onCategoryChange,
   onHalftoneFilterChange,
   onOpenFiltersSheet,
-  onOpenTags,
+  onOpenSmartFilters,
   onSearchChange,
   searchQuery,
-  selectedTagCount,
+  selectedSmartFilterCount = 0,
+  showSmartFilters = false,
 }: CatalogFilterBarProps) {
   const { setShowExplicitContent, showExplicitContent } = useExplicitContentPreference();
 
@@ -44,7 +46,7 @@ export function CatalogFilterBar({
             <input
               className="global-search-input"
               onChange={(event) => onSearchChange(event.target.value)}
-              placeholder="Search catalog..."
+              placeholder="Search catalog or paste a design ID..."
               type="search"
               value={searchQuery}
             />
@@ -114,16 +116,19 @@ export function CatalogFilterBar({
           </span>
         </label>
 
-        <button
-          className="portal-button portal-button-secondary portal-button-sm portal-button-leading-icon design-library-filter-tags-button"
-          onClick={onOpenTags}
-          type="button"
-        >
-          <FilterIcon />
-          <span className="design-library-filter-tags-button-label">
-            Tags{selectedTagCount > 0 ? ` (${selectedTagCount})` : ''}
-          </span>
-        </button>
+        {showSmartFilters && onOpenSmartFilters ? (
+          <button
+            className="portal-button portal-button-secondary portal-button-sm portal-button-leading-icon design-library-filter-smart-button"
+            onClick={onOpenSmartFilters}
+            type="button"
+          >
+            <FilterIcon />
+            <span className="design-library-filter-smart-button-label">
+              Smart Filters
+              {selectedSmartFilterCount > 0 ? ` (${selectedSmartFilterCount})` : ''}
+            </span>
+          </button>
+        ) : null}
       </div>
     </div>
   );

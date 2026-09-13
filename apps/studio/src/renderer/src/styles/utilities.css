@@ -35,6 +35,12 @@
   color: var(--color-warning-text);
 }
 
+.auth-message-info {
+  background: color-mix(in srgb, var(--color-accent-primary) 10%, var(--color-bg-tertiary));
+  border-color: color-mix(in srgb, var(--color-accent-primary) 28%, var(--color-border));
+  color: var(--color-text-primary);
+}
+
 .dismissible-success-alert {
   overflow: hidden;
   padding-bottom: calc(var(--space-3) + 3px);

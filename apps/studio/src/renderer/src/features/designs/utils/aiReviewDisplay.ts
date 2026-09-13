@@ -31,7 +31,9 @@ export function getAiReviewStatusBadgeVariant(
   }
 }
 
-export function formatAiReviewConfidence(confidence: number | undefined): string {
+export function formatAiReviewConfidence(
+  confidence: number | undefined,
+): string {
   if (confidence === undefined) {
     return "—";
   }
@@ -40,36 +42,8 @@ export function formatAiReviewConfidence(confidence: number | undefined): string
 }
 
 /** Matches the Settings AI Playground result formatting (`$X.XXXXXX`, 6 decimal places). */
-export function formatAiEstimatedCost(value: number | null | undefined): string {
-  return value != null ? `$${value.toFixed(6)}` : "N/A";
-}
-
-/**
- * Combined cost across the first AI call and the optional tag rerank second call. Returns null
- * when neither cost is known (distinct from "N/A" display — callers decide how to render null).
- */
-export function resolveCombinedAiEstimatedCost(
-  firstCallCostUsd: number | null | undefined,
-  tagRerankCostUsd: number | null | undefined,
-): number | null {
-  if (firstCallCostUsd == null && tagRerankCostUsd == null) {
-    return null;
-  }
-
-  return (firstCallCostUsd ?? 0) + (tagRerankCostUsd ?? 0);
-}
-
-export function formatTagRerankStatusLabel(
-  status: "skipped" | "succeeded" | "failed" | undefined,
+export function formatAiEstimatedCost(
+  value: number | null | undefined,
 ): string {
-  switch (status) {
-    case "succeeded":
-      return "Succeeded";
-    case "failed":
-      return "Failed";
-    case "skipped":
-      return "Skipped";
-    default:
-      return "—";
-  }
+  return value != null ? `$${value.toFixed(6)}` : "N/A";
 }

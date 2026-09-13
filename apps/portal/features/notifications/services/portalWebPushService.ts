@@ -19,6 +19,25 @@ const MESSAGING_SW_URL = '/api/firebase-messaging-sw';
 let foregroundUnsubscribe: Unsubscribe | null = null;
 let sessionTokenSyncStarted = false;
 
+type PortalForegroundInboxRefreshListener = () => void;
+const foregroundInboxRefreshListeners = new Set<PortalForegroundInboxRefreshListener>();
+
+function notifyPortalForegroundInboxRefresh(): void {
+  for (const listener of foregroundInboxRefreshListeners) {
+    listener();
+  }
+}
+
+/** In-app Alerts inbox should refetch when a foreground FCM payload arrives. */
+export function subscribePortalForegroundInboxRefresh(
+  listener: PortalForegroundInboxRefreshListener,
+): () => void {
+  foregroundInboxRefreshListeners.add(listener);
+  return () => {
+    foregroundInboxRefreshListeners.delete(listener);
+  };
+}
+
 function getMessagingApp() {
   return getApps().length > 0 ? getApp() : initializeApp(getPortalFirebaseConfig());
 }
@@ -236,7 +255,8 @@ export async function syncPortalBrowserPushTokenIfGranted(): Promise<void> {
 /**
  * When the Portal tab is focused, FCM delivers via onMessage (no OS notification
  * unless we show one). Show a browser notification so "browser alerts" still fire.
- * In-app Alerts continue to update via Firestore regardless.
+ * Also ping the in-app Alerts inbox so the bell count updates even if the
+ * Firestore listener missed the write.
  */
 export function startPortalForegroundPushListener(): void {
   if (typeof window === 'undefined') {
@@ -272,6 +292,7 @@ export function startPortalForegroundPushListener(): void {
           title,
           hasDataTitle: typeof data.title === 'string',
         });
+        notifyPortalForegroundInboxRefresh();
         void (async () => {
           try {
             const registration =

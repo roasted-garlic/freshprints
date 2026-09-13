@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { mergeInteractiveEnhanceResultIntoAssetSummary } from "@fresh-prints/shared/utils/interactiveArtworkEnhance";
+import type { PrintRequest, PrintRequestItem } from "@fresh-prints/shared/types/printRequest/printRequest.types";
+
 import { useAuth } from "../../auth/hooks/useAuth";
 import {
   customerUploadReadService,
@@ -7,13 +10,15 @@ import {
 } from "../../customer-uploads/services/customerUploadReadService";
 import { permissionService } from "../../permissions/services/permissionService";
 import { printRequestService } from "../services/printRequestService";
-import { sortPrintRequestItemsForDisplay } from "../utils/printRequestQueryPlanning";
-import type { PrintRequest, PrintRequestItem } from "@fresh-prints/shared/types/printRequest/printRequest.types";
+import { sortPrintRequestItemsNewestFirst } from "@fresh-prints/shared/utils/printRequestItemDisplayOrder";
+import type { StaffArtwork } from "@fresh-prints/shared/types/staffArtwork/staffArtwork.types";
+import { staffArtworkService } from "../../staff-artwork/services/staffArtworkService";
 
 interface PrintRequestDetailsState {
   printRequest: PrintRequest | null;
   items: PrintRequestItem[];
   uploadSummaries: Map<string, StudioCustomerUploadSummary | null>;
+  staffArtworkSummaries: Map<string, StaffArtwork | null>;
   error: string | null;
   isLoading: boolean;
   loadedRequestId: string | null;
@@ -23,6 +28,7 @@ const initialState: PrintRequestDetailsState = {
   printRequest: null,
   items: [],
   uploadSummaries: new Map(),
+  staffArtworkSummaries: new Map(),
   error: null,
   isLoading: true,
   loadedRequestId: null,
@@ -58,6 +64,18 @@ async function loadUploadSummariesForItems(
   return new Map(summaries);
 }
 
+async function loadStaffArtworkForItems(
+  user: Parameters<typeof staffArtworkService.getById>[0],
+  items: PrintRequestItem[],
+): Promise<Map<string, StaffArtwork | null>> {
+  const ids = [...new Set(items.map((item) => item.staffArtworkId?.trim()).filter((id): id is string => Boolean(id)))];
+  const entries = await Promise.all(ids.map(async (id) => {
+    try { return [id, await staffArtworkService.getById(user, id)] as const; }
+    catch { return [id, null] as const; }
+  }));
+  return new Map(entries);
+}
+
 export function usePrintRequestDetails(printRequestId: string | null) {
   const { user } = useAuth();
   const [state, setState] = useState<PrintRequestDetailsState>(initialState);
@@ -71,6 +89,7 @@ export function usePrintRequestDetails(printRequestId: string | null) {
         printRequest: null,
         items: [],
         uploadSummaries: new Map(),
+        staffArtworkSummaries: new Map(),
         error: null,
         isLoading: false,
         loadedRequestId: null,
@@ -90,8 +109,11 @@ export function usePrintRequestDetails(printRequestId: string | null) {
         printRequestService.listPrintRequestItems(user, printRequestId),
       ]);
 
-      const sortedItems = sortPrintRequestItemsForDisplay(items);
-      const uploadSummaries = await loadUploadSummariesForItems(user, sortedItems);
+      const sortedItems = sortPrintRequestItemsNewestFirst(items);
+      const [uploadSummaries, staffArtworkSummaries] = await Promise.all([
+        loadUploadSummariesForItems(user, sortedItems),
+        loadStaffArtworkForItems(user, sortedItems),
+      ]);
 
       if (requestSequence !== loadSequenceRef.current) {
         return;
@@ -101,6 +123,7 @@ export function usePrintRequestDetails(printRequestId: string | null) {
         printRequest,
         items: sortedItems,
         uploadSummaries,
+        staffArtworkSummaries,
         error: null,
         isLoading: false,
         loadedRequestId: printRequestId,
@@ -114,6 +137,7 @@ export function usePrintRequestDetails(printRequestId: string | null) {
         printRequest: null,
         items: [],
         uploadSummaries: new Map(),
+        staffArtworkSummaries: new Map(),
         error: error instanceof Error ? error.message : "Unable to load print request details.",
         isLoading: false,
         loadedRequestId: printRequestId,
@@ -139,7 +163,7 @@ export function usePrintRequestDetails(printRequestId: string | null) {
   const replaceItem = useCallback((item: PrintRequestItem) => {
     setState((currentState) => ({
       ...currentState,
-      items: sortPrintRequestItemsForDisplay(
+      items: sortPrintRequestItemsNewestFirst(
         currentState.items.map((currentItem) => (currentItem.id === item.id ? item : currentItem)),
       ),
     }));
@@ -148,7 +172,7 @@ export function usePrintRequestDetails(printRequestId: string | null) {
   const addItem = useCallback((item: PrintRequestItem) => {
     setState((currentState) => ({
       ...currentState,
-      items: sortPrintRequestItemsForDisplay([...currentState.items, item]),
+      items: sortPrintRequestItemsNewestFirst([...currentState.items, item]),
       printRequest: currentState.printRequest
         ? {
             ...currentState.printRequest,
@@ -165,6 +189,15 @@ export function usePrintRequestDetails(printRequestId: string | null) {
           return { ...currentState, uploadSummaries: next };
         });
       });
+    }
+    if (item.staffArtworkId && user) {
+      void staffArtworkService.getById(user, item.staffArtworkId).then((artwork) => {
+        setState((currentState) => {
+          const next = new Map(currentState.staffArtworkSummaries);
+          next.set(item.staffArtworkId!, artwork);
+          return { ...currentState, staffArtworkSummaries: next };
+        });
+      }).catch(() => undefined);
     }
   }, [user]);
 
@@ -200,6 +233,15 @@ export function usePrintRequestDetails(printRequestId: string | null) {
         });
       });
     }
+    if (item.staffArtworkId && user) {
+      void staffArtworkService.getById(user, item.staffArtworkId).then((artwork) => {
+        setState((currentState) => {
+          const next = new Map(currentState.staffArtworkSummaries);
+          next.set(item.staffArtworkId!, artwork);
+          return { ...currentState, staffArtworkSummaries: next };
+        });
+      }).catch(() => undefined);
+    }
   }, [user]);
 
   const removeItem = useCallback((itemId: string) => {
@@ -215,10 +257,43 @@ export function usePrintRequestDetails(printRequestId: string | null) {
     }));
   }, []);
 
+  const patchUploadSummaryFromEnhanceResult = useCallback(
+    (
+      uploadId: string,
+      result: {
+        artworkEnhanceMode: "baseline" | "enhanced";
+        widthPx: number;
+        heightPx: number;
+      },
+    ) => {
+      const id = uploadId.trim();
+      if (!id) {
+        return;
+      }
+
+      setState((currentState) => {
+        const existing = currentState.uploadSummaries.get(id);
+        if (!existing) {
+          return currentState;
+        }
+
+        const next = new Map(currentState.uploadSummaries);
+        const patched = mergeInteractiveEnhanceResultIntoAssetSummary(existing, result);
+        if (!patched) {
+          return currentState;
+        }
+        next.set(id, patched);
+        return { ...currentState, uploadSummaries: next };
+      });
+    },
+    [],
+  );
+
   return {
     ...state,
     addItem,
     insertItemAfter,
+    patchUploadSummaryFromEnhanceResult,
     reloadPrintRequest,
     removeItem,
     replaceItem,

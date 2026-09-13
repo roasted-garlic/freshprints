@@ -6,7 +6,7 @@
 | Goal | `production-promote-portal-and-studio-2026-08-23` |
 | Authorization | `APPROVE PRODUCTION APP HOSTING ROLLOUT: production-promote-portal-and-studio-2026-08-23` |
 | Production source SHA | **`94a1ed0009deab775d8b0c60be44ca931c0ad291`** |
-| Status | **BUILD LIVE** — automated/read-only smoke **PASS WITH NOTES**; **owner Portal QA required** |
+| Status | **SUPERSEDED by build-2026-08-24-002** — see hotfix record below |
 | Checkpoint | `docs/workflow/reviews/2026-08-24-production-promote-portal-and-studio-gate-e-app-hosting-checkpoint.md` |
 
 ---
@@ -102,3 +102,9 @@ AUTHORIZE STUDIO 1.0.9 RELEASE DISPATCH: STABLE INTERNAL-UNSIGNED FROM PRODUCTIO
 ```
 
 Do **not** publish until a later `APPROVE STUDIO PUBLISH: 1.0.9`.
+
+---
+
+## Supplement — PR #89 hotfix rollout (2026-08-24)
+
+Traffic moved to **`fresh-prints-portal-build-2026-08-24-002`** @ **`f35c96dda23ce83f99f75ab3f942c5edfcfcfdd2`**. Full record: `docs/workflow/reviews/2026-08-24-production-promote-portal-and-studio-gate-e-hotfix-rollout-record.md`.

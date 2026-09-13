@@ -7,6 +7,9 @@ import type {
 } from "@fresh-prints/shared/types/import/batchImport.types";
 
 import type { BatchImportUploadReport } from "./batchImportOrchestration.types";
+import type { ImportSessionSettings } from "../constants/importSessionSettings";
+import type { ImportItemBackgroundOverride } from "@fresh-prints/shared/utils/resolveImportArtworkBackgroundDecision";
+import type { ImportItemHalftoneOverride } from "@fresh-prints/shared/utils/resolveImportArtworkBackgroundDecision";
 
 export type BatchImportHookPhase =
   | "idle"
@@ -44,6 +47,12 @@ export interface UseBatchImportState {
   progress: BatchImportHookProgress | null;
   /** Validated file paths excluded from upload before batch starts (UI state only). */
   excludedFilePaths: string[];
+  /** Per-file Auto detector hints from preview IPC (filePath → dark). */
+  suggestDarkByPath: Record<string, boolean>;
+  /** Per-file quick picker (filePath → auto|light|dark). Missing = auto. */
+  itemBackgroundOverrides: Record<string, ImportItemBackgroundOverride>;
+  /** Per-file halftone toggle (filePath → auto|on|off). Missing = auto. */
+  itemHalftoneOverrides: Record<string, ImportItemHalftoneOverride>;
 }
 
 export interface UseBatchImportActions {
@@ -58,6 +67,15 @@ export interface UseBatchImportActions {
   toggleFileIncluded: (filePath: string) => void;
   includeAllValidatedFiles: () => void;
   excludeAllValidatedFiles: () => void;
+  setItemBackgroundOverride: (
+    filePath: string,
+    value: ImportItemBackgroundOverride,
+  ) => void;
+  setItemHalftoneOverride: (
+    filePath: string,
+    value: ImportItemHalftoneOverride,
+  ) => void;
+  recordSuggestDarkForFile: (filePath: string, suggestDark: boolean) => void;
 }
 
 export type UseBatchImportReturn = UseBatchImportState &
@@ -66,3 +84,8 @@ export type UseBatchImportReturn = UseBatchImportState &
   };
 
 export type BatchImportFatalError = BatchJobErrorEvent;
+
+export type UseBatchImportOptions = {
+  /** Page-visit import settings (single + batch). Defaults to normal / auto. */
+  getSessionSettings?: () => ImportSessionSettings;
+};

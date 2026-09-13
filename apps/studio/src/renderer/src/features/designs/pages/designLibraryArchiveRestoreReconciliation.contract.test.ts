@@ -37,6 +37,29 @@ describe("Design Library archive purge / restore local reconciliation", () => {
       /const handleRestoreDesign = useCallback\([\s\S]*?await refreshCatalog\(\);[\s\S]*?showSuccessMessage\(`\$\{design\.title\} restored/,
     );
   });
+
+  it("archive success locally reconciles Firestore list and managed search without refresh-only", () => {
+    const library = read(
+      "apps/studio/src/renderer/src/features/designs/pages/DesignLibraryPage.tsx",
+    );
+    const handlerStart = library.indexOf("const handleArchiveConfirm = useCallback");
+    assert.ok(handlerStart >= 0);
+    const handlerBlock = library.slice(handlerStart, handlerStart + 1200);
+
+    assert.match(handlerBlock, /removeDesignFromList\(designBeingArchived\.id\)/);
+    assert.match(handlerBlock, /applyManagedSearchPatch\(archived\)/);
+    assert.match(handlerBlock, /setLibraryTotal/);
+    assert.doesNotMatch(handlerBlock, /await refreshCatalog\(\)/);
+    assert.doesNotMatch(handlerBlock, /window\.location\.reload/);
+  });
+
+  it("ready and archive browse use shared library membership helper", () => {
+    const library = read(
+      "apps/studio/src/renderer/src/features/designs/pages/DesignLibraryPage.tsx",
+    );
+    assert.match(library, /isDesignVisibleInLibraryScope\(design, "ready"\)/);
+    assert.match(library, /isDesignVisibleInLibraryScope\(design, "archived"\)/);
+  });
 });
 
 describe("Design Library Needs Companion Load More (Firestore path)", () => {

@@ -9,6 +9,8 @@ import {
   unauthenticated,
 } from "./lib/errors";
 import { requirePortalCustomer } from "./lib/portalCustomer";
+import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
+import { assertPortalActiveEditableRequestData } from "./lib/portalContinuableParking";
 
 export interface ClearPortalWorkingPrintRequestRequest {
   printRequestId: string;
@@ -97,6 +99,7 @@ export const clearPortalWorkingPrintRequest = onCall(
 
     try {
     const portalCustomer = await requirePortalCustomer(request.auth.uid);
+    await assertPortalMaintenanceAllowsCustomerMutation(request.auth.uid);
     const payload = parseRequest(request.data);
     const customerUid = request.auth.uid;
     const requestRef = adminDb.collection("printRequests").doc(payload.printRequestId);
@@ -107,6 +110,10 @@ export const clearPortalWorkingPrintRequest = onCall(
     }
 
     const data = requestSnap.data() ?? {};
+    
+    // Assert request is active editable (not parked)
+    assertPortalActiveEditableRequestData(data, payload.printRequestId);
+    
     if (data.customerId !== portalCustomer.customerId) {
       throw permissionDenied("You do not own this print request.");
     }

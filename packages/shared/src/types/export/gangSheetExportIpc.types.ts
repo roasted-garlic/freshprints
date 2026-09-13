@@ -1,6 +1,7 @@
+import type { GangSheetSectionPricingConfig } from "../../constants/gangSheetSectionPricingSettings.constants";
 import type { ShowExportImageWarning } from "./showExportIpc.types";
 
-export type GangSheetLayoutMode = "efficiency" | "grouped_by_customer";
+export type GangSheetLayoutMode = "efficiency" | "grouped_by_customer" | "customer_grouped_continuous";
 
 export interface GangSheetExportImageGrouping {
   printRequestId: string;
@@ -13,14 +14,22 @@ export interface GangSheetExportImageGrouping {
 
 /** One design to place on the gang sheet, repeated `quantity` times during nesting. */
 export interface GangSheetExportImageRequest {
+  /** Legacy Show Queue identity. Request-scoped generation supplies a compatibility token; requestItemId is authoritative. */
   allocationId: string;
+  /** Request-scoped identity; never presented as an allocation ID. */
+  requestItemId?: string;
   downloadUrl: string;
+  /** Stable storage path for the active production asset (baseline or enhanced). */
+  productionStoragePath: string;
   targetWidthPx: number;
   targetHeightPx: number;
   fileName: string;
   quantity: number;
   /** Present for grouped-by-customer layout mode only. */
   grouping?: GangSheetExportImageGrouping;
+  /** Persisted allocation print inches — used for grouped section price/weight summaries. */
+  printWidthInches?: number;
+  printHeightInches?: number;
 }
 
 export interface ExportGangSheetPngRequest {
@@ -36,8 +45,14 @@ export interface ExportGangSheetPngRequest {
   maxSheetLengthInches: number;
   /** Sheet label text font size in pixels. */
   labelFontSizePx: number;
+  /** Optional human-readable label for request-scoped sheets; Show Queue keeps base filename labels. */
+  sheetLabel?: string;
+  /** Optional cache scope identity; Show Queue leaves this unset. */
+  cacheScope?: string;
   /** Omitted or `efficiency` preserves the legacy auto-nested exporter. */
   layoutMode?: GangSheetLayoutMode;
+  /** Resolved global Gang Sheet pricing/weight tiers. */
+  sectionPricing?: GangSheetSectionPricingConfig;
   images: GangSheetExportImageRequest[];
 }
 

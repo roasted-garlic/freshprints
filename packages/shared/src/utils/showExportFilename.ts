@@ -27,11 +27,15 @@ export function buildExportZipFilename(scheduledStartAt: Date): string {
  */
 export function buildGangSheetBaseFileName(
   scheduledStartAt: Date,
-  layoutMode: "efficiency" | "grouped_by_customer" = "efficiency",
+  layoutMode: "efficiency" | "grouped_by_customer" | "customer_grouped_continuous" = "efficiency",
 ): string {
   const dateSegment = formatExportZipDateTime(scheduledStartAt);
   if (layoutMode === "grouped_by_customer") {
     return `whatnot_${dateSegment}_grouped-gang-sheet`;
+  }
+
+  if (layoutMode === "customer_grouped_continuous") {
+    return `whatnot_${dateSegment}_grouped-continuous-gang-sheet`;
   }
 
   return `whatnot_${dateSegment}_gang-sheet`;
@@ -84,6 +88,11 @@ export function sanitizeFilenameSegment(value: string): string {
 /** Formats an inches value trimmed of unnecessary trailing zeros, e.g. `10` not `10.00`. */
 export function formatInchesForFilename(inches: number): string {
   return Number(inches.toFixed(2)).toString();
+}
+
+/** Formats a gang-sheet length for UI display with exactly two decimal places. */
+export function formatGangSheetLengthInches(inches: number): string {
+  return inches.toFixed(2);
 }
 
 export interface ExportImageFilenameInput {

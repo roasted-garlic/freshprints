@@ -10,6 +10,14 @@ export function assertCanManageCustomers(caller: TeamUserProfile): void {
   }
 }
 
+/** Owner or admin — Smart Profile staff edits on Ready catalog designs. */
+export function assertOwnerOrAdminCaller(caller: TeamUserProfile): void {
+  assertStaffCaller(caller);
+  if (caller.role !== "owner" && caller.role !== "admin") {
+    throw permissionDenied("Only owners and admins can edit Smart Profile metadata.");
+  }
+}
+
 export function assertTeamUserRole(role: unknown): asserts role is TeamUserRole {
   if (role !== "owner" && role !== "admin" && role !== "helper") {
     throw permissionDenied("Role must be owner, admin, or helper.");

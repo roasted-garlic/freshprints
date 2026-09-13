@@ -10,6 +10,7 @@ import {
   computeExportTargetPixelSize,
   formatExportZipDateTime,
   formatInchesForFilename,
+  formatGangSheetLengthInches,
   sanitizeFilenameSegment,
   withMultiplyByQuantitySuffix,
 } from "./showExportFilename";
@@ -50,6 +51,14 @@ describe("buildGangSheetBaseFileName", () => {
     assert.equal(
       buildGangSheetBaseFileName(date, "grouped_by_customer"),
       "whatnot_07-06-2026_grouped-gang-sheet",
+    );
+  });
+
+  it("inserts grouped-continuous into the base name for customer_grouped_continuous layout", () => {
+    const date = new Date(2026, 6, 6, 14, 0);
+    assert.equal(
+      buildGangSheetBaseFileName(date, "customer_grouped_continuous"),
+      "whatnot_07-06-2026_grouped-continuous-gang-sheet",
     );
   });
 });
@@ -110,6 +119,13 @@ describe("formatInchesForFilename", () => {
 
   it("keeps meaningful decimals rounded to two places", () => {
     assert.equal(formatInchesForFilename(8.333333), "8.33");
+  });
+});
+
+describe("formatGangSheetLengthInches", () => {
+  it("keeps exactly two decimal places for modal length display", () => {
+    assert.equal(formatGangSheetLengthInches(44.973333333333336), "44.97");
+    assert.equal(formatGangSheetLengthInches(10), "10.00");
   });
 });
 

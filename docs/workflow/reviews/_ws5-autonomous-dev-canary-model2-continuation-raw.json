@@ -1,0 +1,303 @@
+{
+  "projectId": "fresh-prints-dev",
+  "model": "MODEL_2_SAFETY_INVARIANT",
+  "startedAt": "2026-09-05T18:16:50.598Z",
+  "runId": "mtopfqfq",
+  "aborted": false,
+  "rows": [
+    {
+      "label": "MODEL2 CONT 1 — LYJ",
+      "id": "LYJcsxnfUyacRWtntEkd",
+      "historicalContext": "Needs Review / subject_specificity_risk:cow",
+      "before": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewedBy": null,
+        "readyAt": null,
+        "isExplicitContent": null,
+        "censoredTerms": null,
+        "portalCatalogPublicationStatus": null,
+        "portalCatalogPublicationError": null,
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "subject_specificity_risk:cow"
+        ],
+        "hardBlockers": [
+          "subject_specificity_risk:cow"
+        ],
+        "promptVersion": "catalog-enrich-v32",
+        "normalizerVersion": "smart-profile-normalizer-v6",
+        "schemaVersion": "smart-profile-v1",
+        "model": "gemini-2.5-flash-lite",
+        "staffEditedKeys": null,
+        "hasImportPreset": false,
+        "title": "cow summer vibes front",
+        "aiTitle": "Highland Cow Relaxing In Inner Tube With Sunglasses"
+      },
+      "enqueueResponse": {
+        "designId": "LYJcsxnfUyacRWtntEkd",
+        "queued": true,
+        "completed": true,
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewedBy": null,
+        "readyAt": null,
+        "isExplicitContent": null,
+        "censoredTerms": null,
+        "portalCatalogPublicationStatus": null,
+        "portalCatalogPublicationError": null,
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "structured_evidence_gap:objects:stars"
+        ],
+        "hardBlockers": [
+          "structured_evidence_gap:objects:stars"
+        ],
+        "promptVersion": "catalog-enrich-v34",
+        "normalizerVersion": "smart-profile-normalizer-v6",
+        "schemaVersion": "smart-profile-v1",
+        "model": "gemini-2.5-flash-lite",
+        "staffEditedKeys": null,
+        "hasImportPreset": false,
+        "title": "cow summer vibes front",
+        "aiTitle": "Highland Cow In Pink Inner Tube With Sunglasses"
+      },
+      "publication": {
+        "waited": false,
+        "reason": "not_ready"
+      },
+      "algolia": {
+        "checked": false,
+        "reason": "not_required"
+      },
+      "evaluation": {
+        "model2Class": "Needs Review",
+        "disposition": "PASS — CONSERVATIVE BLOCK",
+        "hardBlockers": [
+          "structured_evidence_gap:objects:stars"
+        ],
+        "pass": true,
+        "failures": []
+      }
+    },
+    {
+      "label": "MODEL2 CONT 2 — Dr8",
+      "id": "Dr8lcyPE8imTQlNESP8X",
+      "historicalContext": "Ready",
+      "before": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewedBy": null,
+        "readyAt": null,
+        "isExplicitContent": null,
+        "censoredTerms": null,
+        "portalCatalogPublicationStatus": null,
+        "portalCatalogPublicationError": null,
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "shadow_would_auto_approve"
+        ],
+        "hardBlockers": [],
+        "promptVersion": "catalog-enrich-v34",
+        "normalizerVersion": "smart-profile-normalizer-v6",
+        "schemaVersion": "smart-profile-v1",
+        "model": "gemini-2.5-flash-lite",
+        "staffEditedKeys": null,
+        "hasImportPreset": false,
+        "title": "(5)",
+        "aiTitle": "Fantasy Castle Opens From Enchanted Book"
+      },
+      "enqueueResponse": {
+        "designId": "Dr8lcyPE8imTQlNESP8X",
+        "queued": true,
+        "completed": true,
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewedBy": null,
+        "readyAt": null,
+        "isExplicitContent": null,
+        "censoredTerms": null,
+        "portalCatalogPublicationStatus": null,
+        "portalCatalogPublicationError": null,
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "structured_evidence_gap:objects:flowers"
+        ],
+        "hardBlockers": [
+          "structured_evidence_gap:objects:flowers"
+        ],
+        "promptVersion": "catalog-enrich-v34",
+        "normalizerVersion": "smart-profile-normalizer-v6",
+        "schemaVersion": "smart-profile-v1",
+        "model": "gemini-2.5-flash-lite",
+        "staffEditedKeys": null,
+        "hasImportPreset": false,
+        "title": "(5)",
+        "aiTitle": "Open Book Fairytale Castle"
+      },
+      "publication": {
+        "waited": false,
+        "reason": "not_ready"
+      },
+      "algolia": {
+        "checked": false,
+        "reason": "not_required"
+      },
+      "evaluation": {
+        "model2Class": "Needs Review",
+        "disposition": "PASS — CONSERVATIVE BLOCK",
+        "hardBlockers": [
+          "structured_evidence_gap:objects:flowers"
+        ],
+        "pass": true,
+        "failures": []
+      }
+    },
+    {
+      "label": "MODEL2 CONT 3 — 1Ws",
+      "id": "1Ws0T9fivryest6IUSbt",
+      "historicalContext": "Ready",
+      "before": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewedBy": null,
+        "readyAt": null,
+        "isExplicitContent": null,
+        "censoredTerms": null,
+        "portalCatalogPublicationStatus": null,
+        "portalCatalogPublicationError": null,
+        "automationDecision": "shadow",
+        "automationReasonCodes": [
+          "shadow_would_auto_approve"
+        ],
+        "hardBlockers": [],
+        "promptVersion": "catalog-enrich-v34",
+        "normalizerVersion": "smart-profile-normalizer-v6",
+        "schemaVersion": "smart-profile-v1",
+        "model": "gemini-2.5-flash-lite",
+        "staffEditedKeys": null,
+        "hasImportPreset": false,
+        "title": "just_hit_it",
+        "aiTitle": "Just Hit It Cannabis Leaves"
+      },
+      "enqueueResponse": {
+        "designId": "1Ws0T9fivryest6IUSbt",
+        "queued": true,
+        "completed": true,
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewStatus": "needs_review",
+        "status": "imported"
+      },
+      "after": {
+        "status": "imported",
+        "aiReviewStatus": "needs_review",
+        "aiProcessingStage": "ready_for_review",
+        "aiReviewedBy": null,
+        "readyAt": null,
+        "isExplicitContent": null,
+        "censoredTerms": null,
+        "portalCatalogPublicationStatus": null,
+        "portalCatalogPublicationError": null,
+        "automationDecision": "needs_review",
+        "automationReasonCodes": [
+          "structured_evidence_gap:objects:cannabis leaves"
+        ],
+        "hardBlockers": [
+          "structured_evidence_gap:objects:cannabis leaves"
+        ],
+        "promptVersion": "catalog-enrich-v34",
+        "normalizerVersion": "smart-profile-normalizer-v6",
+        "schemaVersion": "smart-profile-v1",
+        "model": "gemini-2.5-flash-lite",
+        "staffEditedKeys": null,
+        "hasImportPreset": false,
+        "title": "just_hit_it",
+        "aiTitle": "Just Hit It Cannabis Leaf"
+      },
+      "publication": {
+        "waited": false,
+        "reason": "not_ready"
+      },
+      "algolia": {
+        "checked": false,
+        "reason": "not_required"
+      },
+      "evaluation": {
+        "model2Class": "Needs Review",
+        "disposition": "PASS — CONSERVATIVE BLOCK",
+        "hardBlockers": [
+          "structured_evidence_gap:objects:cannabis leaves"
+        ],
+        "pass": true,
+        "failures": []
+      }
+    }
+  ],
+  "preflight": {
+    "gate": {
+      "catalogWorkflowMode": "shadow",
+      "catalogAutonomousLiveEnabled": false,
+      "termsCount": 43,
+      "hasDamn": true
+    }
+  },
+  "enablement": {
+    "step1": {
+      "response": {
+        "catalogWorkflowMode": "autonomous",
+        "catalogAutonomousLiveEnabled": false
+      },
+      "verified": {
+        "catalogWorkflowMode": "autonomous",
+        "catalogAutonomousLiveEnabled": false,
+        "termsCount": 43,
+        "hasDamn": true
+      },
+      "at": "2026-09-05T18:17:00.669Z"
+    },
+    "step2": {
+      "response": {
+        "catalogWorkflowMode": "autonomous",
+        "catalogAutonomousLiveEnabled": true
+      },
+      "verified": {
+        "catalogWorkflowMode": "autonomous",
+        "catalogAutonomousLiveEnabled": true,
+        "termsCount": 43,
+        "hasDamn": true
+      },
+      "at": "2026-09-05T18:17:01.082Z"
+    }
+  },
+  "rollback": {
+    "reason": "model2_continuation_complete",
+    "response": {
+      "catalogWorkflowMode": "shadow",
+      "catalogAutonomousLiveEnabled": false
+    },
+    "verified": {
+      "catalogWorkflowMode": "shadow",
+      "catalogAutonomousLiveEnabled": false,
+      "termsCount": 43,
+      "hasDamn": true
+    },
+    "at": "2026-09-05T18:17:20.595Z"
+  },
+  "mechanicalPass": true,
+  "finishedAt": "2026-09-05T18:17:20.595Z"
+}

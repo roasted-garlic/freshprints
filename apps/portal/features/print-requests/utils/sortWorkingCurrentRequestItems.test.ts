@@ -77,4 +77,17 @@ describe('sortWorkingCurrentRequestItems', () => {
       ['newer-left-if-createdAt', 'older-but-last'],
     );
   });
+
+  it('keeps an older upload without sortOrder after newer catalog lines', () => {
+    const sorted = sortWorkingCurrentRequestItems([
+      item({ id: 'kiss-upload', createdAt: stamp(100) }),
+      item({ id: 'explorer', sortOrder: 1, createdAt: stamp(200) }),
+      item({ id: 'ghost', sortOrder: 2, createdAt: stamp(300) }),
+    ]);
+
+    assert.deepEqual(
+      sorted.map((entry) => entry.id),
+      ['ghost', 'explorer', 'kiss-upload'],
+    );
+  });
 });

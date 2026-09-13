@@ -58,12 +58,11 @@ describe("Design Library design-list source is unconditionally Firestore-authori
 
     const refreshCatalogBlock = source.slice(
       source.indexOf("const refreshCatalog = useCallback("),
-      source.indexOf("}, [includeArchived, reloadCategories, reloadDesigns, reloadDisplayTaxonomy, reloadTags]);") +
+      source.indexOf("}, [includeArchived, reloadCategories, reloadDesigns, reloadDisplayTaxonomy]);") +
         80,
     );
     assert.match(refreshCatalogBlock, /reloadDesigns\(\)/);
     assert.match(refreshCatalogBlock, /reloadCategories\(\)/);
-    assert.match(refreshCatalogBlock, /reloadTags\(\)/);
     assert.match(refreshCatalogBlock, /reloadDisplayTaxonomy\(\)/);
     assert.doesNotMatch(
       refreshCatalogBlock,
@@ -82,10 +81,7 @@ describe("Design Library design-list source is unconditionally Firestore-authori
       source,
       /const categories = includeArchived \? firestoreCategories : displayCategories;/,
     );
-    assert.match(
-      source,
-      /const catalogTags = includeArchived \? firestoreCatalogTags : displayTags;/,
-    );
+    assert.doesNotMatch(source, /catalogTags|firestoreCatalogTags|displayTags/);
     assert.doesNotMatch(source, /usingGeneratedCatalog/);
   });
 
@@ -121,10 +117,12 @@ describe("Design Library design-list source is unconditionally Firestore-authori
     );
 
     assert.match(source, /applyManagedSearchPatch\(updated\)/);
-    assert.match(source, /reloadManagedSearch\(\)/);
+    assert.match(source, /applyManagedSearchPatch\(archived\)/);
     assert.match(hook, /designMatchesSearchQuery/);
     assert.match(hook, /refreshNonce/);
     assert.match(hook, /applyDesignPatch/);
+    assert.match(hook, /isDesignVisibleInLibraryScope\(updated, "ready"\)/);
+    assert.match(hook, /designMatchesSmartFilters/);
   });
 
   it("useGeneratedReadyDesigns remains for Assisted Creation and uses Firestore pagination", () => {

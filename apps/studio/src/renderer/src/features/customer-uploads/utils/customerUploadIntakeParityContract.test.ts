@@ -41,10 +41,15 @@ test("catalog-ineligible records are outside Pending and Excluded queries", () =
 
 test("intake queries purpose-scope server-side and clears loading before image enrichment", () => {
   assert.match(hook, /buildPurposeScopedIntakeQuery/);
+  assert.match(hook, /filterCatalogIntakeEligibleDocs/);
   assert.match(hook, /setIsInitialLoading\(false\)/);
   assert.match(hook, /enrichDocsProgressively/);
   assert.match(hook, /buildShellRow/);
   assert.doesNotMatch(hook, /mapped\.filter\(\(row\) => row\.purpose/);
+});
+
+test("sidebar pending counts exclude customer-declined library permission uploads", () => {
+  assert.match(countsHook, /isCustomerUploadEligibleForCatalogIntake/);
 });
 
 test("sidebar pending counts are purpose-scoped and ignore not_eligible", () => {

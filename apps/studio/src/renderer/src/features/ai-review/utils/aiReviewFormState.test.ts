@@ -34,13 +34,13 @@ function createDesign(overrides: Partial<Design> = {}): Design {
 }
 
 describe("createAiReviewDraftFromDesign", () => {
-  it("seeds Final Catalog fields from persisted aiSuggestions with human-first tag union", () => {
+  it("seeds Final Catalog fields without retired AI tags", () => {
     const draft = createAiReviewDraftFromDesign(createDesign());
 
     assert.equal(draft.title, "Hot Mess Highland Cow");
     assert.equal(draft.description, 'Highland cow wearing a "Hot Mess" cap');
     assert.equal(draft.categoryId, "category-ai");
-    assert.equal(draft.tagsInput, "imported-tag, cow, hot mess");
+    assert.equal(draft.tagsInput, "imported-tag");
   });
 
   it("keeps existing human tags when AI suggestions omit them", () => {
@@ -56,7 +56,7 @@ describe("createAiReviewDraftFromDesign", () => {
       }),
     );
 
-    assert.equal(draft.tagsInput, "manual-cow, staff-only, cow, hot mess");
+    assert.equal(draft.tagsInput, "manual-cow, staff-only");
   });
 
   it("falls back to catalog fields when suggestion fields are empty", () => {
@@ -77,17 +77,18 @@ describe("createAiReviewDraftFromDesign", () => {
     assert.equal(draft.tagsAdjustmentNote, undefined);
   });
 
-  it("sanitizes long AI tag phrases without throwing", () => {
+  it("sanitizes long staff tag phrases without throwing", () => {
     const longPhrase =
       "you haven't lived until you had dee's nuts in your mouth";
 
     const draft = createAiReviewDraftFromDesign(
       createDesign({
+        tags: [longPhrase, "peanut"],
         aiSuggestions: {
           title: "Dee's Nuts",
           description: "Farmer logo",
           categoryId: "category-ai",
-          tags: [longPhrase, "peanut"],
+          tags: ["legacy-ai-tag"],
         },
       }),
     );

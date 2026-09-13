@@ -14,7 +14,7 @@ export type PrintRequestClosureKind = "converted_to_internal";
  * Provenance of a print request line item.
  * Missing `sourceType` on legacy docs means `catalog_design`.
  */
-export type PrintRequestItemSourceType = "catalog_design" | "customer_upload";
+export type PrintRequestItemSourceType = "catalog_design" | "customer_upload" | "staff_artwork";
 
 export interface PrintRequest {
   id: string;
@@ -38,6 +38,10 @@ export interface PrintRequest {
   requestSequenceNumber?: number;
   customerUsernameSnapshot?: string;
   customerDisplayNameSnapshot?: string;
+  /** Write-once username at first identity propagation after creation. */
+  customerUsernameAtCreationSnapshot?: string;
+  /** Write-once display name at first identity propagation after creation. */
+  customerDisplayNameAtCreationSnapshot?: string;
   internalBaseName?: string;
   nameFormatVersion?: "legacy-v1" | "cr-ir-v1";
   notes?: string;
@@ -54,10 +58,27 @@ export interface PrintRequest {
   };
   /** Terminal closure reason when a request is closed without being printed. */
   closureKind?: PrintRequestClosureKind;
+  /** Set when release-only Did Not Print recovery left unfulfilled qty needing staff requeue. */
+  needsStaffRequeueAt?: Timestamp;
+  needsStaffRequeueSourceShowId?: string;
+  needsStaffRequeueSourceShowTitleSnapshot?: string;
+  needsStaffRequeueReleasedQuantity?: number;
   convertedToInternalRequestId?: string;
   convertedFromCustomerRequestId?: string;
   convertedAt?: Timestamp;
   convertedBy?: string;
+  /** Server-maintained lifecycle ordering mirror; never a client lifecycle authority. */
+  lastLifecycleActivityAt?: Timestamp;
+  /** Stable tie-break for the lifecycle ordering mirror. */
+  lastLifecycleActivityEventId?: string;
+  /** Causal tie-break for same-timestamp lifecycle activity. */
+  lastLifecycleActivityPrecedence?: number;
+  /** Server-authored: ID of the editing request that parked this draft. */
+  parkedByEditingRequestId?: string;
+  /** Server-authored: timestamp when this draft was parked. */
+  parkedAt?: Timestamp;
+  /** Server-authored: ID of the draft request this editing request parks. */
+  parksDraftPrintRequestId?: string;
   createdBy: string;
   updatedBy: string;
   createdAt: Timestamp;
@@ -70,22 +91,43 @@ export interface PrintRequestItem {
   /**
    * Catalog design id.
    * Required when `sourceType` is absent or `catalog_design`.
-   * Must be **omitted** when `sourceType` is `customer_upload` (never empty string).
+   * Must be **omitted** when `sourceType` is `customer_upload` or `staff_artwork` (never empty string).
    */
   designId?: string;
   /** Defaults to `catalog_design` when absent (legacy documents). */
   sourceType?: PrintRequestItemSourceType;
   /** Required when `sourceType` is `customer_upload`. */
   customerUploadId?: string;
-  /** Display fallback for upload-backed items. */
+  /** Required when `sourceType` is `staff_artwork`. */
+  staffArtworkId?: string;
+  /** Customer-safe neutral label for Staff Artwork projection rows. */
+  sourceLabel?: "Staff-added";
+  /** Display title (Staff Artwork artwork title or upload/catalog snapshot). */
   titleSnapshot?: string;
+  /** Staff Artwork customer-safe preview path projected for Portal. */
+  previewStoragePath?: string;
+  /** Staff Artwork customer-safe thumbnail path projected for Portal. */
+  thumbnailStoragePath?: string;
+  /** Baseline pixel width projected for Staff Artwork DPI assessment. */
+  widthPx?: number;
+  /** Baseline pixel height projected for Staff Artwork DPI assessment. */
+  heightPx?: number;
+  /** Optional Staff Artwork mat background projected for Portal. */
+  artworkBackgroundHex?: string;
   quantity: number;
   printWidthInches?: number;
   printHeightInches?: number;
   sizeLabel?: string;
+  /** When set, width was last applied from this Standard Size preset key. */
+  standardSizePresetKey?: string;
   sortOrder?: number;
   notes?: string;
   status: PrintRequestItemStatus;
+  /** Absent or `baseline` = baseline production asset (legacy default). */
+  artworkEnhanceMode?: "baseline" | "enhanced";
+  /** Captured on first successful interactive enhance ON; restored on OFF. */
+  preEnhancePrintWidthInches?: number;
+  preEnhancePrintHeightInches?: number;
   addedBy: string;
   printedAt?: Timestamp;
   printedBy?: string;

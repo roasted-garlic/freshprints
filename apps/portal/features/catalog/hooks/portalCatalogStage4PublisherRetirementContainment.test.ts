@@ -48,7 +48,7 @@ describe('Stage 4 publisher retirement containment', () => {
     assert.doesNotMatch(hook, /generatedPortalCatalogEnabled/);
     assert.doesNotMatch(service, /portalCatalogAssetService/);
     assert.match(hook, /Catalog search is temporarily unavailable/);
-    assert.match(service, /Tag filters are temporarily unavailable/);
+    assert.doesNotMatch(service, /Tag filters are temporarily unavailable|listApprovedTags|listNarrowedApprovedTags/);
   });
 
   it('generatedPortalCatalogEnabled cannot re-enable Storage reads', () => {

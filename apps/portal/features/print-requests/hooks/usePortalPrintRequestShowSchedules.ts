@@ -31,9 +31,13 @@ export function usePortalPrintRequestShowSchedules(printRequestId: string | unde
     }
   }, [printRequestId]);
 
+  const clearSchedules = useCallback(() => {
+    setSchedules([]);
+  }, []);
+
   useEffect(() => {
     void reload();
   }, [reload]);
 
-  return { isLoading, reload, schedules };
+  return { clearSchedules, isLoading, reload, schedules };
 }

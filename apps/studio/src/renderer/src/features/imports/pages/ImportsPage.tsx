@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef, useState, useEffect } from "react";
 
 import { FileImage } from "lucide-react";
 
@@ -9,9 +9,13 @@ import { isElectronDesktop } from "../../../shared/utils/isElectronDesktop";
 import { BatchImportPanel } from "../components/batch/BatchImportPanel";
 import { ImportMethodCardOverlay } from "../components/ImportMethodCardOverlay";
 import { ImportResultPanel } from "../components/ImportResultPanel";
+import { ImportSessionSettingsHeaderAccessory } from "../components/ImportSessionSettingsHeaderAccessory";
+import { ImportSessionSettingsModal } from "../components/ImportSessionSettingsModal";
 import { useBatchImport } from "../hooks/useBatchImport";
+import { useImportSessionSettings } from "../hooks/useImportSessionSettings";
 import { useSinglePngImport } from "../hooks/useSinglePngImport";
 import { enqueueImportedDesignsForBackgroundAi } from "../services/importAiBackgroundQueue";
+import type { ImportSessionSettings } from "../constants/importSessionSettings";
 
 function getSelectButtonLabel(
   isBusy: boolean,
@@ -45,7 +49,19 @@ function isBatchImportBlockingSingleImport(
 
 export function ImportsPage() {
   const isDesktop = isElectronDesktop();
-  const batchImport = useBatchImport();
+  const sessionSettings = useImportSessionSettings();
+  const { clearSmartProfilePresets } = sessionSettings;
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+
+  const getSessionSettings = useCallback((): ImportSessionSettings => {
+    return {
+      halftoneMode: sessionSettings.halftoneMode,
+      backgroundMode: sessionSettings.backgroundMode,
+      smartProfilePresets: sessionSettings.smartProfilePresets,
+    };
+  }, [sessionSettings.halftoneMode, sessionSettings.backgroundMode, sessionSettings.smartProfilePresets]);
+
+  const batchImport = useBatchImport({ getSessionSettings });
   const {
     canUpload,
     cancelImport: cancelSingleImport,
@@ -55,15 +71,26 @@ export function ImportsPage() {
     previewDataUrl,
     selectAndValidatePng,
     selectionCanceled,
+    setItemBackgroundOverride,
+    setItemHalftoneOverride,
+    suggestDarkArtworkBackground,
+    itemBackgroundOverride,
+    itemHalftoneOverride,
     uploadError,
     uploadResult,
     uploadValidatedPng,
     uploadWarning,
     validationError,
     validationResult,
-  } = useSinglePngImport();
+  } = useSinglePngImport({ getSessionSettings });
 
   const singleAutoStartRef = useRef<string | null>(null);
+  const openSettings = useCallback(() => setSettingsModalOpen(true), []);
+
+  const headerAccessory = useMemo(
+    () => <ImportSessionSettingsHeaderAccessory onOpenSettings={openSettings} />,
+    [openSettings],
+  );
 
   useShellHeaderConfig(
     useMemo(
@@ -73,8 +100,9 @@ export function ImportsPage() {
           "Import single PNG files or run batch discovery from multiple files, folders, or ZIP archives.",
         search: null,
         primaryAction: null,
+        accessory: headerAccessory,
       }),
-      [],
+      [headerAccessory],
     ),
   );
 
@@ -87,7 +115,36 @@ export function ImportsPage() {
     }
     singleAutoStartRef.current = uploadResult.designId;
     enqueueImportedDesignsForBackgroundAi([uploadResult.designId]);
-  }, [uploadResult]);
+    // Import session complete — clear transient presets so the next import starts clean.
+    clearSmartProfilePresets();
+  }, [uploadResult, clearSmartProfilePresets]);
+
+  useEffect(() => {
+    if (batchImport.phase !== "completed") {
+      return;
+    }
+    clearSmartProfilePresets();
+  }, [batchImport.phase, clearSmartProfilePresets]);
+
+  const cancelSingleImportAndClearPresets = useCallback(async () => {
+    await cancelSingleImport();
+    clearSmartProfilePresets();
+  }, [cancelSingleImport, clearSmartProfilePresets]);
+
+  const batchImportWithPresetClear = useMemo(
+    () => ({
+      ...batchImport,
+      cancelImport: async () => {
+        await batchImport.cancelImport();
+        clearSmartProfilePresets();
+      },
+      reset: async () => {
+        await batchImport.reset();
+        clearSmartProfilePresets();
+      },
+    }),
+    [batchImport, clearSmartProfilePresets],
+  );
 
   const showCancelSingleImport =
     uploadResult === null &&
@@ -103,9 +160,14 @@ export function ImportsPage() {
   const singleImportBlockingMessage = "Cancel batch import before using single PNG import.";
   const batchImportBlockingMessage = "Cancel the single PNG import before starting a batch import.";
   const singleMethodCardHasOverlay = singleImportBlocked || showCancelSingleImport;
+  const settingsDisabled = batchImport.phase === "uploading" || isUploading;
 
   return (
     <main className="page-layout page-layout-shell imports-page">
+      <p className="imports-session-status" title={sessionSettings.summaryText}>
+        {sessionSettings.summaryText}
+      </p>
+
       <div className="imports-entry-grid">
         <Card
           className={`imports-phase-card imports-method-card${
@@ -146,7 +208,7 @@ export function ImportsPage() {
             <ImportMethodCardOverlay>
               <Button
                 onClick={() => {
-                  void cancelSingleImport();
+                  void cancelSingleImportAndClearPresets();
                 }}
                 variant="secondary"
               >
@@ -157,26 +219,47 @@ export function ImportsPage() {
         </Card>
 
         <BatchImportPanel
-          batchImport={batchImport}
+          backgroundMode={sessionSettings.backgroundMode}
+          batchImport={batchImportWithPresetClear}
           blockingMessage={batchImportBlocked ? batchImportBlockingMessage : null}
           disabled={batchImportBlocked}
+          halftoneMode={sessionSettings.halftoneMode}
         />
       </div>
 
       <ImportResultPanel
+        backgroundMode={sessionSettings.backgroundMode}
         canUpload={canUpload}
+        halftoneMode={sessionSettings.halftoneMode}
         isUploading={isUploading}
+        itemBackgroundOverride={itemBackgroundOverride}
+        itemHalftoneOverride={itemHalftoneOverride}
+        onItemBackgroundOverrideChange={setItemBackgroundOverride}
+        onItemHalftoneOverrideChange={setItemHalftoneOverride}
         onUpload={() => {
           void uploadValidatedPng();
         }}
         phase={phase}
         previewDataUrl={previewDataUrl}
         selectionCanceled={selectionCanceled}
+        suggestDarkArtworkBackground={suggestDarkArtworkBackground}
         uploadError={uploadError}
         uploadResult={uploadResult}
         uploadWarning={uploadWarning}
         validationError={validationError}
         validationResult={validationResult}
+      />
+
+      <ImportSessionSettingsModal
+        backgroundMode={sessionSettings.backgroundMode}
+        disabled={settingsDisabled}
+        halftoneMode={sessionSettings.halftoneMode}
+        isOpen={settingsModalOpen}
+        smartProfilePresets={sessionSettings.smartProfilePresets}
+        onBackgroundModeChange={sessionSettings.setBackgroundMode}
+        onClose={() => setSettingsModalOpen(false)}
+        onHalftoneModeChange={sessionSettings.setHalftoneMode}
+        onSmartProfilePresetsChange={sessionSettings.setSmartProfilePresets}
       />
     </main>
   );

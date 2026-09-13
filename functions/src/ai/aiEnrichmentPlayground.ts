@@ -1,17 +1,19 @@
 import { randomUUID } from "node:crypto";
 
 import type {
+  AiEnrichmentPlaygroundPass1Context,
   AiEnrichmentPlaygroundRequest,
   AiEnrichmentPlaygroundResponse,
-  AiEnrichmentTagRerankPlaygroundRequest,
-  AiEnrichmentTagRerankPlaygroundResponse,
 } from "../../../packages/shared/src/types/ai/aiEnrichmentPlayground.types";
+import type { DesignAiSuggestions } from "../../../packages/shared/src/types/ai/aiProcessing.types";
 import {
   AI_ENRICHMENT_PLAYGROUND_IMAGE_CONTENT_TYPES,
   AI_ENRICHMENT_PLAYGROUND_MAX_IMAGE_BYTES,
   AI_ENRICHMENT_PLAYGROUND_MAX_PROMPT_LENGTH,
   AI_ENRICHMENT_PLAYGROUND_VERSION,
+  OPENAI_LUNA_REASONING_EFFORT,
   estimateVisionCostUsd,
+  visionModelRequiresReasoningEffort,
 } from "../../../packages/shared/src/constants/aiEnrichment.constants";
 import { logPipelineEvent } from "../lib/pipelineLog";
 import { prepareAiAnalysisImage } from "./prepareAiAnalysisImage";
@@ -25,22 +27,32 @@ import {
   assertVisionCompletionHasContent,
   extractVisionCompletionUsage,
 } from "./visionCompletion";
-import { fetchVisionWithRetry } from "./visionRequestRetry";
+import { fetchVisionWithRetry, VisionRequestError } from "./visionRequestRetry";
 import {
   loadCachedActiveCategories,
   loadCachedAiEnrichmentSettings,
-  loadCachedApprovedTags,
   type AiEnrichmentReadDiagnosticContext,
 } from "./aiEnrichmentRuntimeCache";
+import { loadSmartProfileVocabSnapshot } from "./loadSmartProfileVocabSnapshot";
 import {
   buildSimpleCatalogEnrichmentSystemPrompt,
   buildSimpleCatalogEnrichmentUserPrompt,
 } from "./simpleCatalogEnrichmentPrompt";
-import { resolveProviderTarget } from "./providers/resolveProviderTarget";
-import { extractJsonObject, normalizeSimpleCatalogEnrichment } from "./simpleCatalogEnrichmentResponse";
-import { resolveAiCatalogTags } from "./catalogTagResolver";
-import { resolveThemeCategory } from "./catalogThemeCategoryResolver";
-import { callTagRerank, CATALOG_TAG_RERANK_PROMPT_VERSION } from "./catalogTagRerankProvider";
+import { resolveVisionProviderCredentials } from "./resolveVisionProviderCredentials";
+import {
+  extractJsonObject,
+  normalizeSimpleCatalogEnrichment,
+  toCanonicalSimpleCatalogEnrichmentJson,
+} from "./simpleCatalogEnrichmentResponse";
+import { buildSimpleCatalogEnrichmentResponseFormat } from "./simpleCatalogEnrichmentSchema";
+import { writeAiEnrichmentTrace } from "./aiEnrichmentTraceStore";
+import { buildDesignSmartProfile } from "./smartProfileBuilder";
+import { computeCatalogAutomationDecision } from "./automationDecisionShadow";
+import {
+  getSemanticReviewEligibleBlockers,
+  getSemanticReviewObjectiveBlockers,
+} from "../../../packages/shared/src/utils/semanticReviewPolicy";
+import { CATALOG_ENRICHMENT_PROMPT_VERSION } from "./catalogTitleRules";
 
 const ALLOWED_PLAYGROUND_IMAGE_CONTENT_TYPES = new Set<string>(
   AI_ENRICHMENT_PLAYGROUND_IMAGE_CONTENT_TYPES,
@@ -49,7 +61,8 @@ const ALLOWED_PLAYGROUND_IMAGE_CONTENT_TYPES = new Set<string>(
 interface PreparedAiEnrichmentPlaygroundRequest {
   /** Undefined when the request is text-only (no image provided). */
   imageBytes: Buffer | undefined;
-  imageContentType: (typeof AI_ENRICHMENT_PLAYGROUND_IMAGE_CONTENT_TYPES)[number] | undefined;
+  imageContentType:
+    (typeof AI_ENRICHMENT_PLAYGROUND_IMAGE_CONTENT_TYPES)[number] | undefined;
   prompt: string;
   visionModelId: AllowedVisionModelId;
 }
@@ -89,6 +102,156 @@ function decodeBase64Image(rawBase64: string): Buffer {
   return imageBytes;
 }
 
+function projectNormalizedResult(
+  parsed: ReturnType<typeof normalizeSimpleCatalogEnrichment>,
+): AiEnrichmentPlaygroundPass1Context["normalized"] {
+  return {
+    title: parsed.title,
+    description: parsed.description,
+    category: parsed.category,
+    centralSubject: parsed.centralSubject,
+    subjects: parsed.subjects ?? [],
+    objects: parsed.objects ?? [],
+    styles: parsed.styles ?? [],
+    themes: parsed.themes ?? [],
+    interests: parsed.interests ?? [],
+    professionsGroups: parsed.professionsGroups ?? [],
+    occasions: parsed.occasions ?? [],
+    places: parsed.places ?? [],
+    colors: parsed.colors ?? [],
+    visibleText: parsed.visibleText ?? [],
+    searchConcepts: parsed.searchConcepts ?? [],
+    categoryAlternatives: parsed.categoryAlternatives ?? [],
+    categoryGapNote: parsed.categoryGapNote,
+    visualContextProfile: parsed.visualContextProfile,
+  };
+}
+
+function failClosedForSettingsRead(
+  decision: ReturnType<typeof computeCatalogAutomationDecision>,
+  settingsReadFailed: boolean,
+): ReturnType<typeof computeCatalogAutomationDecision> {
+  if (!settingsReadFailed || !decision.wouldAutoApprove) {
+    return decision;
+  }
+
+  return {
+    ...decision,
+    decision: "needs_review",
+    wouldAutoApprove: false,
+    shouldPublishReady: false,
+    reasonCodes: [
+      ...new Set([
+        ...decision.reasonCodes.filter(
+          (code) =>
+            code !== "shadow_would_auto_approve" && code !== "auto_approved",
+        ),
+        "explicit_automation_settings_unavailable",
+      ]),
+    ],
+  };
+}
+
+export function resolveAiEnrichmentPlaygroundPass2Eligibility(input: {
+  objectiveBlockers: readonly string[];
+  semanticBlockers: readonly string[];
+  visualContextProfile?: { summary?: string; detailedDescription?: string };
+}): AiEnrichmentPlaygroundPass1Context["pass2Eligibility"] {
+  const hasCompleteVcp = Boolean(
+    input.visualContextProfile?.summary &&
+    input.visualContextProfile.detailedDescription,
+  );
+
+  if (input.objectiveBlockers.length > 0) {
+    return "blocked_by_objective";
+  }
+  if (!hasCompleteVcp) {
+    return "unavailable";
+  }
+  return input.semanticBlockers.length > 0 ? "eligible" : "not_needed";
+}
+
+export function buildPass1Context(input: {
+  parsed: ReturnType<typeof normalizeSimpleCatalogEnrichment>;
+  providerId: string;
+  modelId: string;
+  categories: Awaited<ReturnType<typeof loadCachedActiveCategories>>;
+  smartProfileVocab: Awaited<ReturnType<typeof loadSmartProfileVocabSnapshot>>;
+  settings: Awaited<ReturnType<typeof loadCachedAiEnrichmentSettings>>;
+}): AiEnrichmentPlaygroundPass1Context {
+  const exactCategory = input.categories.categories.find(
+    (category) =>
+      category.name.trim().toLowerCase() ===
+      input.parsed.category.trim().toLowerCase(),
+  );
+  const categoryId = exactCategory?.id;
+  const categoryName = exactCategory?.name;
+  const suggestions: DesignAiSuggestions = {
+    title: input.parsed.title,
+    description: input.parsed.description,
+    categoryId,
+    categoryName,
+    provider: input.providerId,
+    model: input.modelId,
+    promptVersion: CATALOG_ENRICHMENT_PROMPT_VERSION,
+    generatedAt: new Date().toISOString(),
+  };
+  const smartProfile = buildDesignSmartProfile({
+    parsed: input.parsed,
+    suggestions,
+    categoryId,
+    categoryName,
+    categoryIdsByName: input.categories.idsByName,
+    smartProfileVocab: input.smartProfileVocab.lists,
+  });
+  const computedDecision = computeCatalogAutomationDecision({
+    smartProfile,
+    title: input.parsed.title,
+    categoryId,
+    categoryName,
+    description: input.parsed.description,
+    visibleText: input.parsed.visibleText,
+    visualContextProfile: input.parsed.visualContextProfile,
+    catalogWorkflowMode: input.settings.catalogWorkflowMode,
+    catalogAutonomousLiveEnabled: input.settings.catalogAutonomousLiveEnabled,
+  });
+  const automationDecision = failClosedForSettingsRead(
+    computedDecision,
+    input.settings.settingsReadFailed,
+  );
+  const semanticBlockers = getSemanticReviewEligibleBlockers(
+    automationDecision.reasonCodes,
+  );
+  const objectiveBlockers = getSemanticReviewObjectiveBlockers(
+    automationDecision.hardBlockers,
+  );
+  const pass2Eligibility = resolveAiEnrichmentPlaygroundPass2Eligibility({
+    objectiveBlockers,
+    semanticBlockers,
+    visualContextProfile: input.parsed.visualContextProfile,
+  });
+
+  smartProfile.provenance.automationDecision = automationDecision.decision;
+  smartProfile.provenance.automationReasonCodes =
+    automationDecision.reasonCodes;
+  smartProfile.provenance.automationDecisionAt = new Date().toISOString();
+  smartProfile.provenance.verifierInvoked = automationDecision.verifier.invoked;
+
+  return {
+    normalized: projectNormalizedResult(input.parsed),
+    originalSmartProfile: smartProfile,
+    categoryId,
+    categoryName,
+    blockers: automationDecision.reasonCodes,
+    objectiveBlockers,
+    semanticBlockers,
+    pass2Eligibility,
+    automationDecision,
+    semanticReviewPlaygroundEnabled:
+      input.settings.semanticReviewPlaygroundEnabled,
+  };
+}
+
 export function validateAiEnrichmentPlaygroundRequest(
   input: unknown,
 ): PreparedAiEnrichmentPlaygroundRequest {
@@ -97,12 +260,17 @@ export function validateAiEnrichmentPlaygroundRequest(
   }
 
   const imageBase64 =
-    "imageBase64" in input && typeof input.imageBase64 === "string" ? input.imageBase64.trim() : "";
+    "imageBase64" in input && typeof input.imageBase64 === "string"
+      ? input.imageBase64.trim()
+      : "";
   const imageContentType =
     "imageContentType" in input && typeof input.imageContentType === "string"
       ? input.imageContentType.trim().toLowerCase()
       : "";
-  const prompt = "prompt" in input && typeof input.prompt === "string" ? input.prompt.trim() : "";
+  const prompt =
+    "prompt" in input && typeof input.prompt === "string"
+      ? input.prompt.trim()
+      : "";
   const requestedVisionModelId =
     "visionModelId" in input && typeof input.visionModelId === "string"
       ? input.visionModelId.trim()
@@ -112,7 +280,10 @@ export function validateAiEnrichmentPlaygroundRequest(
   // provided, it must still be one of the allowed content types.
   const hasImage = imageBase64.length > 0;
 
-  if (hasImage && !ALLOWED_PLAYGROUND_IMAGE_CONTENT_TYPES.has(imageContentType)) {
+  if (
+    hasImage &&
+    !ALLOWED_PLAYGROUND_IMAGE_CONTENT_TYPES.has(imageContentType)
+  ) {
     throw new Error("Playground image must be PNG, JPEG, or WebP.");
   }
 
@@ -121,7 +292,9 @@ export function validateAiEnrichmentPlaygroundRequest(
   }
 
   if (prompt.length > AI_ENRICHMENT_PLAYGROUND_MAX_PROMPT_LENGTH) {
-    throw new Error(`Prompt must be ${AI_ENRICHMENT_PLAYGROUND_MAX_PROMPT_LENGTH.toLocaleString()} characters or fewer.`);
+    throw new Error(
+      `Prompt must be ${AI_ENRICHMENT_PLAYGROUND_MAX_PROMPT_LENGTH.toLocaleString()} characters or fewer.`,
+    );
   }
 
   const visionModelId = resolveVisionModelId(requestedVisionModelId);
@@ -164,9 +337,10 @@ export function buildAiEnrichmentPlaygroundRequestBody(
     });
   }
 
-  return JSON.stringify({
+  const body: Record<string, unknown> = {
     model: input.visionModelId,
     max_completion_tokens: VISION_MAX_COMPLETION_TOKENS,
+    response_format: buildSimpleCatalogEnrichmentResponseFormat(),
     messages: [
       {
         role: "system",
@@ -177,7 +351,13 @@ export function buildAiEnrichmentPlaygroundRequestBody(
         content: userContent,
       },
     ],
-  });
+  };
+
+  if (visionModelRequiresReasoningEffort(input.visionModelId)) {
+    body.reasoning_effort = OPENAI_LUNA_REASONING_EFFORT;
+  }
+
+  return JSON.stringify(body);
 }
 
 async function requestPlaygroundCompletion(
@@ -212,42 +392,115 @@ async function requestPlaygroundCompletion(
 }
 
 export async function runAiEnrichmentPlayground(
-  geminiApiKey: string,
+  keys: { geminiApiKey: string; openAiApiKey?: string },
   request: AiEnrichmentPlaygroundRequest,
 ): Promise<AiEnrichmentPlaygroundResponse> {
   const validatedRequest = validateAiEnrichmentPlaygroundRequest(request);
-  const providerTarget = resolveProviderTarget();
-
-  if (!geminiApiKey.trim()) {
-    throw new Error(
-      "The AI playground is unavailable because GEMINI_API_KEY is not configured for this environment.",
-    );
-  }
+  const { providerTarget, apiKey } = resolveVisionProviderCredentials(
+    validatedRequest.visionModelId,
+    {
+      geminiApiKey: keys.geminiApiKey,
+      openAiApiKey: keys.openAiApiKey,
+    },
+  );
 
   const diagnosticContext: AiEnrichmentReadDiagnosticContext = {
     functionName: "runAiEnrichmentPlayground",
     invocationId: randomUUID(),
   };
-  const [preparedImage, categories, approvedTags, enrichmentSettings] = await Promise.all([
-    validatedRequest.imageBytes ? prepareAiAnalysisImage(validatedRequest.imageBytes) : null,
-    loadCachedActiveCategories(diagnosticContext),
-    loadCachedApprovedTags(diagnosticContext),
-    loadCachedAiEnrichmentSettings(diagnosticContext),
-  ]);
+  const [preparedImage, categories, smartProfileVocabSnapshot, settings] =
+    await Promise.all([
+      validatedRequest.imageBytes
+        ? prepareAiAnalysisImage(validatedRequest.imageBytes)
+        : null,
+      loadCachedActiveCategories(diagnosticContext),
+      loadSmartProfileVocabSnapshot(),
+      loadCachedAiEnrichmentSettings(diagnosticContext),
+    ]);
 
   const expandedPrompt = buildSimpleCatalogEnrichmentUserPrompt({
     approvedCategories: categories.categories,
     approvedCategoryNames: categories.names,
-    approvedTags,
-    approvedTagNames: approvedTags.map((tag) => tag.name),
-    effectiveTagExclusions: enrichmentSettings.effectiveTagExclusions,
     promptTemplate: validatedRequest.prompt,
+    smartProfileVocab: smartProfileVocabSnapshot.lists,
   });
   const systemPrompt = buildSimpleCatalogEnrichmentSystemPrompt();
 
-  const base64Image = preparedImage ? preparedImage.bytes.toString("base64") : undefined;
+  const base64Image = preparedImage
+    ? preparedImage.bytes.toString("base64")
+    : undefined;
   const imageContentType = preparedImage?.contentType;
   const startedAt = Date.now();
+  const traceId = randomUUID();
+  const traceStartedAt = new Date().toISOString();
+  const traceStages: Array<{
+    stage:
+      | "created"
+      | "prompt_ready"
+      | "request_sent"
+      | "provider_response"
+      | "provider_error"
+      | "parsed"
+      | "complete"
+      | "failed";
+    at: string;
+    data?: Record<string, unknown>;
+  }> = [
+    { stage: "created", at: traceStartedAt },
+    {
+      stage: "prompt_ready",
+      at: new Date().toISOString(),
+      data: { effectivePrompt: expandedPrompt },
+    },
+  ];
+  const traceBase = {
+    schemaVersion: 1 as const,
+    traceId,
+    source: "PLAYGROUND" as const,
+    pass: "PASS 1" as const,
+    captureFullTrace: request.captureFullTrace === true,
+    startedAt: traceStartedAt,
+    provider: providerTarget.providerId,
+    model: validatedRequest.visionModelId,
+    prompt: {
+      storedTemplate: validatedRequest.prompt,
+      effectiveSystem: systemPrompt,
+      effectiveUser: expandedPrompt,
+    },
+    responseContract:
+      buildSimpleCatalogEnrichmentResponseFormat() as unknown as Record<
+        string,
+        unknown
+      >,
+    requestMetadata: {
+      hasImage: Boolean(preparedImage),
+      imageCount: preparedImage ? 1 : 0,
+      maxCompletionTokens: VISION_MAX_COMPLETION_TOKENS,
+    },
+  };
+  const persistTrace = async (
+    lifecycleState:
+      | "prompt_ready"
+      | "request_sent"
+      | "provider_error"
+      | "provider_response"
+      | "parsed"
+      | "complete"
+      | "failed",
+    extra: Record<string, unknown> = {},
+  ) => {
+    await writeAiEnrichmentTrace({
+      ...traceBase,
+      ...extra,
+      lifecycleState,
+      completedAt:
+        lifecycleState === "complete" || lifecycleState === "failed"
+          ? new Date().toISOString()
+          : undefined,
+      stages: [...traceStages],
+    });
+  };
+  await persistTrace("prompt_ready");
 
   logPipelineEvent("settings.ai_playground.started", {
     providerId: providerTarget.providerId,
@@ -255,175 +508,154 @@ export async function runAiEnrichmentPlayground(
     promptLength: validatedRequest.prompt.length,
     hasImage: Boolean(preparedImage),
     approvedCategoryCount: categories.categories.length,
-    approvedTagCount: approvedTags.length,
-    effectiveTagExclusionCount: enrichmentSettings.effectiveTagExclusions.length,
   });
 
-  const payload = await requestPlaygroundCompletion(
-    geminiApiKey,
-    providerTarget.baseUrl,
-    validatedRequest,
-    base64Image,
-    imageContentType,
-    expandedPrompt,
-    systemPrompt,
-  );
-  const outputText = assertVisionCompletionHasContent(payload);
-  const elapsedMs = Date.now() - startedAt;
-  const usage = extractVisionCompletionUsage(payload);
-
-  logPipelineEvent("settings.ai_playground.completed", {
-    providerId: providerTarget.providerId,
-    modelId: validatedRequest.visionModelId,
-    elapsedMs,
-    promptTokens: usage.promptTokens,
-    completionTokens: usage.completionTokens,
+  traceStages.push({
+    stage: "request_sent",
+    at: new Date().toISOString(),
+    data: { responseFormat: traceBase.responseContract },
   });
+  await persistTrace("request_sent");
 
-  return {
-    elapsedMs,
-    outputText,
-    provider: providerTarget.providerId,
-    visionModelId: validatedRequest.visionModelId,
-    version: AI_ENRICHMENT_PLAYGROUND_VERSION,
-    promptTokens: usage.promptTokens,
-    completionTokens: usage.completionTokens,
-    estimatedCostUsd: estimateVisionCostUsd(
+  try {
+    const payload = await requestPlaygroundCompletion(
+      apiKey,
+      providerTarget.baseUrl,
+      validatedRequest,
+      base64Image,
+      imageContentType,
+      expandedPrompt,
+      systemPrompt,
+    );
+    const rawOutputText = assertVisionCompletionHasContent(payload);
+    const elapsedMs = Date.now() - startedAt;
+    const usage = extractVisionCompletionUsage(payload);
+
+    // Canonicalize through the same parser as production enrichment so Playground cannot
+    // surface invented keys (prompt, keywords, etc.) as if they were Smart Profile fields.
+    const rawObject = extractJsonObject(rawOutputText);
+    const parsed = normalizeSimpleCatalogEnrichment(rawObject);
+    const canonicalOutputText = JSON.stringify(
+      toCanonicalSimpleCatalogEnrichmentJson(parsed),
+      null,
+      2,
+    );
+    const estimatedCostUsd = estimateVisionCostUsd(
       validatedRequest.visionModelId,
       usage.promptTokens,
       usage.completionTokens,
-    ),
-  };
-}
-
-function validateTagRerankPlaygroundRequest(input: unknown): AiEnrichmentTagRerankPlaygroundRequest {
-  if (!input || typeof input !== "object") {
-    throw new Error("Playground tag rerank request data is required.");
-  }
-
-  const firstResponseOutputText =
-    "firstResponseOutputText" in input && typeof input.firstResponseOutputText === "string"
-      ? input.firstResponseOutputText.trim()
-      : "";
-
-  if (!firstResponseOutputText) {
-    throw new Error("A first-call vision response is required before running the tag rerank.");
-  }
-
-  const requestedVisionModelId =
-    "visionModelId" in input && typeof input.visionModelId === "string"
-      ? input.visionModelId.trim()
-      : "";
-  const visionModelId = resolveVisionModelId(requestedVisionModelId);
-
-  if (visionModelId !== requestedVisionModelId) {
-    throw new Error("The selected vision model is not allowed.");
-  }
-
-  const promptTemplate =
-    "promptTemplate" in input && typeof input.promptTemplate === "string"
-      ? input.promptTemplate.trim() || undefined
-      : undefined;
-
-  return { firstResponseOutputText, promptTemplate, visionModelId };
-}
-
-/**
- * Playground-only entry point for the optional text-only tag reranker, per the user's request to
- * be able to test the reranker workflow against real designs before enabling it in production.
- * Does not write to `designs` and does not persist the uploaded image — the first-call vision
- * response is passed back in as text only, exactly as production would receive it from the first
- * call in the real pipeline. Requires a valid, already-parseable first-call JSON response (same
- * normalizeSimpleCatalogEnrichment validation the real pipeline applies) before rerank is possible.
- */
-export async function runAiEnrichmentTagRerankPlayground(
-  geminiApiKey: string,
-  request: AiEnrichmentTagRerankPlaygroundRequest,
-): Promise<AiEnrichmentTagRerankPlaygroundResponse> {
-  const validatedRequest = validateTagRerankPlaygroundRequest(request);
-  const providerTarget = resolveProviderTarget();
-
-  if (!geminiApiKey.trim()) {
-    throw new Error(
-      "The AI playground is unavailable because GEMINI_API_KEY is not configured for this environment.",
     );
-  }
-
-  const diagnosticContext: AiEnrichmentReadDiagnosticContext = {
-    functionName: "runAiEnrichmentTagRerankPlayground",
-    invocationId: randomUUID(),
-  };
-  const [approvedTags, categories, enrichmentSettings] = await Promise.all([
-    loadCachedApprovedTags(diagnosticContext),
-    loadCachedActiveCategories(diagnosticContext),
-    loadCachedAiEnrichmentSettings(diagnosticContext),
-  ]);
-
-  const raw = extractJsonObject(validatedRequest.firstResponseOutputText);
-  const parsed = normalizeSimpleCatalogEnrichment(raw, enrichmentSettings.effectiveTagExclusions);
-
-  const resolvedTags = resolveAiCatalogTags({
-    approvedTags,
-    candidates: parsed.rawTags.length > 0 ? parsed.rawTags : parsed.tags,
-    suggestedNewTagsPolicy: enrichmentSettings.suggestedNewTagsPolicy,
-  });
-
-  const resolvedCategory = resolveThemeCategory(
-    {
-      rawCategory: parsed.category,
-      title: parsed.title,
-      description: parsed.description,
-      matchedTags: resolvedTags.tags,
-      approvedCategories: categories.categories,
-    },
-    categories.idsByName,
-  );
-
-  const startedAt = Date.now();
-
-  logPipelineEvent("settings.ai_playground.tag_rerank.started", {
-    providerId: providerTarget.providerId,
-    modelId: validatedRequest.visionModelId,
-    candidateCount: resolvedTags.approvedTagCandidates.length,
-  });
-
-  const rerankResult = await callTagRerank(
-    geminiApiKey,
-    providerTarget,
-    validatedRequest.visionModelId,
-    {
-      approvedTagCandidates: resolvedTags.approvedTagCandidates,
-      firstResponse: {
-        category: parsed.category,
-        description: parsed.description,
-        tags: resolvedTags.tags,
-        title: parsed.title,
+    traceStages.push({
+      stage: "provider_response",
+      at: new Date(Date.now() - elapsedMs).toISOString(),
+      data: {
+        source: providerTarget.providerId,
+        usage: usage as unknown as Record<string, unknown>,
       },
-      promptTemplate: validatedRequest.promptTemplate ?? enrichmentSettings.tagRerankPromptTemplate,
-      resolvedCategoryName: resolvedCategory.categoryName,
-    },
-    { designId: "playground" },
-  );
+    });
+    traceStages.push({
+      stage: "parsed",
+      at: new Date().toISOString(),
+      data: { normalized: parsed as unknown as Record<string, unknown> },
+    });
+    traceStages.push({
+      stage: "complete",
+      at: new Date().toISOString(),
+      data: { actual: parsed as unknown as Record<string, unknown> },
+    });
+    await persistTrace("complete", {
+      completedAt: new Date().toISOString(),
+      providerResponse: {
+        raw: payload,
+        usage: usage as unknown as Record<string, unknown>,
+      },
+      normalized: parsed as unknown as Record<string, unknown>,
+      costs: {
+        pass1:
+          estimatedCostUsd === null
+            ? undefined
+            : { totalUsd: estimatedCostUsd },
+      },
+    });
 
-  const elapsedMs = Date.now() - startedAt;
+    logPipelineEvent("settings.ai_playground.completed", {
+      providerId: providerTarget.providerId,
+      modelId: validatedRequest.visionModelId,
+      elapsedMs,
+      promptTokens: usage.promptTokens,
+      completionTokens: usage.completionTokens,
+      strippedUnknownKeys: Object.keys(rawObject).filter(
+        (key) =>
+          ![
+            "title",
+            "description",
+            "category",
+            "centralSubject",
+            "subjects",
+            "objects",
+            "styles",
+            "themes",
+            "interests",
+            "professionsGroups",
+            "occasions",
+            "places",
+            "colors",
+            "searchConcepts",
+            "categoryAlternatives",
+            "categoryGapNote",
+            "visibleText",
+            "visualContextProfile",
+          ].includes(key),
+      ),
+    });
 
-  logPipelineEvent("settings.ai_playground.tag_rerank.completed", {
-    providerId: providerTarget.providerId,
-    modelId: validatedRequest.visionModelId,
-    elapsedMs,
-    finalTagCount: rerankResult.tags.length,
-    discardedTagCount: rerankResult.discardedTags.length,
-  });
-
-  return {
-    approvedTagCandidates: resolvedTags.approvedTagCandidates,
-    discardedTags: rerankResult.discardedTags,
-    elapsedMs,
-    estimatedCostUsd: rerankResult.estimatedCostUsd,
-    outputText: JSON.stringify({ tags: rerankResult.tags, uncoveredConcepts: rerankResult.uncoveredConcepts }),
-    promptTokens: rerankResult.promptTokens,
-    completionTokens: rerankResult.completionTokens,
-    uncoveredConcepts: rerankResult.uncoveredConcepts,
-    version: CATALOG_TAG_RERANK_PROMPT_VERSION,
-  };
+    return {
+      elapsedMs,
+      outputText: canonicalOutputText,
+      provider: providerTarget.providerId,
+      visionModelId: validatedRequest.visionModelId,
+      version: AI_ENRICHMENT_PLAYGROUND_VERSION,
+      promptTokens: usage.promptTokens,
+      completionTokens: usage.completionTokens,
+      estimatedCostUsd,
+      traceId,
+      captureFullTrace: request.captureFullTrace === true,
+      pass1Context: buildPass1Context({
+        parsed,
+        providerId: providerTarget.providerId,
+        modelId: validatedRequest.visionModelId,
+        categories,
+        smartProfileVocab: smartProfileVocabSnapshot,
+        settings,
+      }),
+    };
+  } catch (error) {
+    const providerError =
+      error instanceof VisionRequestError ? error.providerError : undefined;
+    traceStages.push({
+      stage: "provider_error",
+      at: new Date().toISOString(),
+      data: providerError ?? {
+        classification: "ai_processing_failed",
+        message: "Provider request failed.",
+      },
+    });
+    traceStages.push({
+      stage: "failed",
+      at: new Date().toISOString(),
+      data: {
+        parser: "NOT REACHED",
+        normalized: "NOT REACHED",
+        vcp: "NOT REACHED",
+        candidate: "NOT REACHED",
+        persistence: "NOT REACHED",
+      },
+    });
+    await persistTrace("failed", {
+      providerError: providerError ?? {
+        classification: "ai_processing_failed",
+      },
+    });
+    throw error;
+  }
 }

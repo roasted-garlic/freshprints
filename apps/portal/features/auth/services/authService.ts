@@ -20,6 +20,7 @@ import {
 
 import { getPortalAuth } from '../../../lib/firebase/client';
 import type { LoginCredentials, RegisterCredentials } from '../types/auth.types';
+import { PORTAL_ACCOUNT_DISABLED_MESSAGE } from '../constants/portalAuthBlockedMessages';
 
 type AuthStateObserver = (user: FirebaseUser | null) => void;
 
@@ -40,7 +41,7 @@ function getAuthErrorMessage(error: unknown): string {
     case 'auth/weak-password':
       return 'Password must be at least 6 characters.';
     case 'auth/user-disabled':
-      return 'This account has been disabled.';
+      return PORTAL_ACCOUNT_DISABLED_MESSAGE;
     case 'auth/too-many-requests':
       return 'Too many attempts. Wait a moment and try again.';
     case 'auth/network-request-failed':

@@ -1,16 +1,747 @@
 # Recent Completed Work
 
-## 2026-08-24 - Portal Discover show-rail loading + order polish — SIGNOFF / CLOSED (DEV)
+## 2026-09-13 - Rules rollback snapshot + final parent M0 — COMPLETE (Classification A)
+
+Owner-authorized read-only Rules API access succeeded for `fresh-prints-prod`. Firestore release
+`cloud.firestore` → ruleset `42adfbb5-9f5d-4d22-a07b-e38078aba074`, source SHA
+`cdd4a3154733cfdceea53be9a785e39e4ea526a27da5e1046a802e33557defad`; Storage release
+`firebase.storage/fresh-prints-prod.firebasestorage.app` → ruleset
+`0c911fca-b6bf-48cd-83c8-e0622f334767`, source SHA
+`69ca680a7018ed48a9b46dc9cefd239ed0b5ea94ef50c57c3b75a9689f108306`. Full metadata is in the
+Rules snapshot artifact.
+
+The final parent M0 against corrected Studio SHA `5bf477fcf676f37265018262268ee5e8734e8eff` is
+**A — READY FOR REPLACEMENT CANDIDATE COMMIT/PUSH AUTHORIZATION**. Current dirty paths: 24,
+all classified documentation/evidence; unexplained paths: 0. No production deployment, mutation,
+runner, maintenance, merge, freeze, commit, or push occurred.
+
+Exact next checkpoint: **OWNER AUTHORIZE REPLACEMENT CANDIDATE COMMIT/PUSH**.
+
+## 2026-09-13 - Studio release-pipeline typecheck stabilization — CLOSED (approved_with_notes)
+
+Consolidated corrective Signoff is **approved_with_notes**. All 29 reviewed Studio TypeScript
+diagnostics are resolved; TypeScript reports zero diagnostics; corrective suites are 49/49 PASS;
+targeted validation is 198/198 PASS; baseline-aware lint, Windows/macOS packaging, artifact
+verification, and owner install/launch/version checks pass for Studio 1.0.10. The prerelease DEV
+title and DEV Firestore are expected by the existing environment-selection contract; production
+environment QA is deferred by design to the canonical stable production release after GO and merge.
+
+The sole remaining pre-GO blocker is immutable Firestore/Storage Rules rollback evidence. Read-only
+retrieval attempts returned 403 service-disabled/no-quota-project. No production mutation, deployment,
+stable publication, merge, freeze, runner, or data action occurred.
+
+## 2026-09-12 - Coordinated production parent final M0 — COMPLETE (classification A)
+
+Owner authorized **RERUN FINAL PARENT M0 / COMMIT-BYTE CANDIDATE RECONCILIATION**. The read-only
+reconciliation covers the complete current `development` tree: 256 status paths (134 tracked,
+122 untracked), no unexplained paths, sorted path digest
+`bfd1a1911d94449dee74dea0134061744814f42b51b80f90014bc38f357da0ac`, Function closure 186/120
+exports, additive 95/77 index union with zero removals/replacements, final/transition Rules,
+Portal/Studio manifests, config/data disposition, Studio `1.0.10`, and synchronized security/risk
+evidence. Result: **A — READY FOR REVIEWED CANDIDATE COMMIT/PUSH**. The tree remains dirty and no
+candidate SHA is frozen. Production was untouched; no reads, runner, DRY RUN/VERIFY/APPLY,
+deployment, publication, maintenance, settings/data mutation, staging, commit, or push occurred.
+
+Exact next checkpoint: **OWNER AUTHORIZE FINAL REVIEWED CANDIDATE COMMIT/PUSH**.
+
+## 2026-09-12 - Coordinated production cutover prerequisites — CLOSED (approved_with_notes)
+
+Owner explicitly reported **`OWNER DEV QA: coordinated-production-cutover-prerequisites - PASS`**.
+The complete gate chain is closed: Plan → Formal Review (**approved_with_changes**) → Implement →
+Test → Owner DEV QA PASS → Signoff (**approved_with_notes**). Delivered deterministic transition and
+authoritative final Firestore Rules, projection-preferred Portal dual-read with bounded canonical
+fallback, a production-hard-pinned reconciliation runner with distinct VERIFY/DRY RUN semantics,
+committed-byte manifest tooling, Studio `1.0.10`, and synchronized SECURITY/FIREBASE/RISK_REGISTER
+documentation including the accepted authenticated preview/thumbnail known-ID residual risk.
+
+Focused validation passed **87/87**; Functions build, Portal typecheck, targeted lint, and diff
+check passed. Existing Portal `.next/trace` EPERM, Rules expression-budget, Studio typecheck, and
+whole-repository lint baselines remain documented; Studio packaging was intentionally not run.
+Production was untouched: no production reads, runner invocation, DRY RUN/VERIFY/APPLY, deployment,
+publication, maintenance activation, settings/data mutation, staging, commit, push, freeze, or
+parent M0 rerun. Signoff:
+`docs/workflow/reviews/2026-09-12-coordinated-production-cutover-prerequisites-signoff.md`.
+
+Active control returns to `coordinated-production-promotion-release-readiness`. The later final
+parent M0 is authoritative; exact next checkpoint: **OWNER AUTHORIZE FINAL REVIEWED CANDIDATE
+COMMIT/PUSH**.
+
+## 2026-09-12 - Portal post-queue items + submit nudge corrective — CLOSED (approved_with_notes)
+
+Owner reported **PASS on everything**. Signoff:
+`docs/workflow/reviews/2026-09-12-portal-post-queue-items-and-submit-nudge-corrective-signoff.md`.
+
+Post-queue silent item reload; catalog submit-nudge toast (8s, mobile full-width CTA); Clear
+request pending-removal so drawer/detail do not leave leftover designs until refresh. Production
+untouched.
+
+## 2026-09-12 - Portal Staff Artwork projection corrective — CLOSED (approved_with_notes)
+
+Owner DEV QA **PASS**. Signoff:
+`docs/workflow/reviews/2026-09-12-portal-staff-artwork-neutral-projection-corrective-signoff.md`.
+
+Customer-visible Staff Artwork preview/title/DPI via Admin `portalPrintRequestItems` supersedes the
+earlier neutral-only contract. `staffArtworkId` may exist on the projection but is not the title.
+Firestore `staffArtworks` remains customer-denied; Storage customer access is preview/thumb only
+(accepted residual known-ID risk). Upscale deferred. Portal production-build EPERM not claimed
+resolved. Production untouched. No staging/commit/push/freeze/parent M0.
+
+Remaining pre-freeze children: Assisted retention-sentinel Owner QA → Signoff; multi-proof Plan
+amendment → Implement → Test → Owner QA → Signoff.
+
+Exact next checkpoint: **OWNER DEV QA: portal-assisted-final-artwork-add-retention-sentinel-corrective**.
+
+## 2026-09-12 - Portal Staff Artwork neutral projection corrective — IMPLEMENTED/TESTED, OWNER DEV QA PENDING
+
+Owner accepted the reviewed mapper visibility corrective and authorized implementation. The Portal
+`mapPrintRequestItem()` guard now exempts only `staff_artwork` from the catalog `designId` requirement;
+catalog and customer-upload validation remain unchanged. A named mapper export was added solely for
+direct test coverage, and the existing Staff Artwork security contract now asserts the source-specific
+guard.
+
+Focused mapper/security/projection/trigger/sizing contracts passed **9/9**; Portal typecheck and
+targeted ESLint passed; `git diff --check` passed. The existing localhost Portal at
+`http://localhost:3100` returned HTTP 200. No Functions/Rules/Storage/index deployment, population
+rerun, data mutation, App Hosting action, staging, commit, push, freeze, or production action was
+performed. Implementation/Test evidence:
+
+- `docs/workflow/reviews/2026-09-12-portal-staff-artwork-neutral-projection-corrective-visibility-implementation-review.md`
+- `docs/workflow/reviews/2026-09-12-portal-staff-artwork-neutral-projection-corrective-visibility-test-report.md`
+
+Exact next checkpoint: **OWNER DEV QA: portal-staff-artwork-neutral-projection-corrective**. Signoff
+must remain uncreated until the owner explicitly supplies PASS or PASS WITH NOTES.
+
+## 2026-09-12 - Portal Staff Artwork neutral projection corrective — OWNER DEV QA FAIL, MAPPER VISIBILITY CORRECTIVE OPEN
+
+Owner DEV QA **FAIL**ed after the bounded DEV population, Rules, and Storage cutover because a Staff
+Artwork item present in Studio was absent in Portal. Read-only tracing confirmed the canonical item,
+same-ID safe projection, shared projection mapper result, and `portalPrintRequestItems` query were all
+present; all five inspected DEV Staff Artwork canonical items had matching projections. The Portal
+`mapPrintRequestItem()` catalog-only `!designId` guard throws for `staff_artwork`, and list/subscription
+readers catch and drop the item before neutral detail/drawer/queue rendering. No private Staff Artwork
+fields or library reads cross the Portal boundary.
+
+This is Outcome A (runtime mapper visibility defect): no population APPLY rerun, Rules/index change,
+or projection-shape change is warranted. The smallest reviewed correction is to exempt
+`isStaffArtworkItem` from that catalog guard while preserving upload/catalog validation. Formal Review
+is **`approved_with_changes`**, but implementation still requires explicit owner acceptance.
+
+Plan: `docs/workflow/plans/2026-09-12-portal-staff-artwork-neutral-projection-corrective-visibility-plan.md`
+
+Formal Review: `docs/workflow/reviews/2026-09-12-portal-staff-artwork-neutral-projection-corrective-visibility-review.md`
+
+Exact next checkpoint: **OWNER ACCEPT PORTAL STAFF ARTWORK PROJECTION MAPPER VISIBILITY CORRECTIVE +
+AUTHORIZE IMPLEMENT**. No implementation, deploy, additional data mutation, Signoff, staging, commit,
+push, freeze, or production action occurred.
+
+## 2026-09-12 - Portal Staff Artwork neutral projection corrective — POPULATION AMENDMENT PREPARED, SCRIPT NOT AUTHORIZED
+
+Owner accepted the Plan/Formal Review and authorized Implement → Test → DEV preparation. The local
+typed `portalPrintRequestItems` projection, trusted Staff Artwork size callable, neutral Portal
+detail/drawer/queue rows, and Firestore/Storage customer boundary are implemented. Focused shared/
+Functions contracts, Firestore 6/6, Storage 1/1, Functions build, Portal typecheck, lint, and diff
+check pass. A docs-only Plan/Formal Review amendment now specifies the mapper-driven,
+all-canonical-item, cursor-bounded, strict-`fresh-prints-dev`, dry-run/apply population runner with
+fail-closed malformed handling and verification. Owner acceptance is required before script
+implementation; no script, DEV deployment/data mutation, staging, commit, push, freeze, or
+production action occurred. Evidence: `docs/workflow/reviews/2026-09-12-portal-staff-artwork-neutral-
+projection-corrective-implementation-review.md`, `docs/workflow/reviews/2026-09-12-portal-staff-artwork-
+neutral-projection-corrective-test-report.md`, and the population amendment Plan/Review.
+
+Exact next checkpoint: **OWNER ACCEPT BOUNDED DEV PORTAL PROJECTION POPULATION AMENDMENT + AUTHORIZE
+SCRIPT IMPLEMENTATION**.
+
+## 2026-09-12 - Portal Assisted final-artwork progress and re-add corrective — CLOSED (DEV)
 
 | Item | Status |
 |------|--------|
-| Goal | `portal-discover-show-rails-loading-and-order-polish` — **DONE (DEV)** |
+| Goal | `portal-assisted-final-artwork-progress-and-readd-corrective` |
+| Status | **CLOSED** — Signoff **approved_with_notes** |
+| Owner DEV QA | **PASS** — owner verified live server stages, elapsed/step/remaining feedback, first Add, remove, and re-add |
+| Delivered | Empty-patch guards at every existing-upload update site; legacy origin backfill preserved; server-owned real-stage progress with stale cleanup; customer-safe Portal progress modal |
+| DEV evidence | `customerAddAssistedApprovedProofToPrintRequest` ACTIVE in `fresh-prints-dev` at revision `customeraddassistedapprovedprooftoprintrequest-00037-juk`; Portal remains localhost-only |
+| Validation | Focused corrective **10/10**; combined regression **25/25**; lineage/eligibility **28/28**; Functions build, Portal typecheck, targeted lint, and diff check PASS |
+| Signoff | `docs/workflow/reviews/2026-09-12-portal-assisted-final-artwork-progress-and-readd-corrective-signoff.md` |
+| Scope boundary | No production deployment, parent M0, candidate freeze, staging, commit, push, migration/backfill, or multi-proof/Staff Artwork runtime |
+| Next checkpoint | Resolve remaining Staff Artwork, sentinel QA, and multi-proof pre-freeze children before parent M0 |
+
+## 2026-09-12 - Portal Assisted final-artwork retention sentinel — QA RECONCILIATION OPEN
+
+The later progress/re-add Owner QA PASS confirms the overlapping direct Add-to-Request behavior, but
+the sentinel-specific manual checklist still lacks explicit queue/staff-intake, final-source/
+sizing/quantity/request-count, maintenance/ownership, separate donation/follow-up/Restore/
+staff-promotion, and direct document-inspection checks. Its Signoff remains intentionally uncreated.
+See `docs/workflow/reviews/2026-09-12-portal-assisted-final-artwork-add-retention-sentinel-corrective-test-report.md`.
+
+## 2026-09-12 - Studio Staff Artwork library and Print Request source — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `studio-staff-artwork-library-and-print-request-source` |
+| Status | **CLOSED** — Signoff **approved_with_notes** |
+| Owner DEV QA | **PASS** — owner reported full testing and that this is a pass (2026-09-12) |
+| Delivered | Private Staff Artwork library, PNG-only processing with Auto/Light/Dark background handling, third Print Request source, request/queue/allocation/export/gang-sheet propagation, safe deletion, AI Review promotion, Portal-safe projection, and corrective Rules paths |
+| DEV evidence | Authorized Functions, Firestore/Storage Rules, indexes, and follow-up callable redeploys completed in `fresh-prints-dev`; deployment record documents each correction |
+| Validation | Source-focused contracts **31/31**; emulator-backed Staff Artwork/catalog create Rules suites **11/11**; Functions build, Portal typecheck, and diff check PASS; legacy Rules expression-budget baseline documented |
+| Signoff | `docs/workflow/reviews/2026-09-12-studio-staff-artwork-library-and-print-request-source-signoff.md` |
+| Scope boundary | No production deployment, Studio publication, migration/backfill, candidate freeze, commit, or push |
+| Next checkpoint | Rerun coordinated-production M0, regenerate manifests, and request separate owner M1 freeze authorization |
+
+## 2026-09-11 - Customer-upload Studio deferral, personal library, and Portal inline Remove — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `customer-upload-studio-deferral-personal-library-portal-inline-remove` |
+| Status | **CLOSED** — Signoff **approved_with_notes** |
+| Owner DEV QA | **PASS** — owner reported `OWNER DEV QA: PASS` (2026-09-11); gallery Add-to-Request / Your designs QA also PASS |
+| Delivered | Studio intake held until successful Add to Show; post-success queue-alert settle; Portal inline Remove; Personal / Design Library tabs; bounded 30-day Personal and 14-day staff-Excluded retention |
+| DEV evidence | Reviewed Functions/indexes deployed; local Portal and Studio runtimes served current source; retention scheduler remained paused |
+| Validation | Focused rerun **92 pass / 1 known unrelated deletion-eligibility manifest baseline**; prior Functions build, Portal typecheck, Studio Vite build, targeted lint, and diff check passed |
+| Signoff | `docs/workflow/reviews/2026-09-11-customer-upload-studio-deferral-personal-library-portal-inline-remove-signoff.md`; Test: `docs/workflow/reviews/2026-09-11-customer-upload-studio-deferral-personal-library-portal-inline-remove-test-report.md` |
+| Scope boundary | No production deployment, publication, candidate freeze, backfill, maintenance activation, or destructive cleanup |
+| Next checkpoint | Rerun coordinated-production M0 and prepare a new candidate/freeze proposal under separate owner authorization |
+
+## 2026-09-10 - Coordinated production candidate M0 reconciliation — PACKET READY, FREEZE BLOCKED
+
+| Item | Status |
+|------|--------|
+| Goal | `coordinated-production-promotion-release-readiness` |
+| Step | M0 runtime/config/package reconciliation |
+| Result | Deterministic Function closure, Rules/index, Portal/Studio build-input, and config/data manifests generated at the dirty snapshot |
+| Evidence | `docs/workflow/reviews/2026-09-10-coordinated-production-m0-reconciliation.md` and linked manifests |
+| Validation | Closure 170/120 exports, 509 local closure paths, 77+10 index union; hard-delete pair excluded; `git diff --check` PASS |
+| Boundary | No commit/push, candidate freeze, deploy, publish, maintenance activation, production mutation, or Owner QA performed |
+| Blocker | 115 status entries remain (59 tracked/56 untracked); owner must authorize the explicit reviewed commit/push, then manifests must be regenerated at the clean SHA |
+| Next checkpoint | `[OWNER AUTHORIZE REVIEWED COMMIT/PUSH → CLEAN SHA → REGENERATE MANIFESTS → OWNER M1 FREEZE DECISION]` |
+
+## 2026-09-10 - Studio hard-delete production UI gate — CLOSED (child, DEV-only)
+
+| Item | Status |
+|------|--------|
+| Goal | `studio-hard-delete-production-ui-gate` |
+| Parent | `coordinated-production-promotion-release-readiness` |
+| Status | **CLOSED** — Signoff **approved_with_notes** |
+| Delivered | Shared `CustomerDirectoryTable` requires `isOperationalWipeUiEnabled()` before exposing the hard-delete menu/callback; production-mode Studio hides `Delete Account Permanently`; allowlisted DEV behavior and owner permission remain intact |
+| Validation | Focused users/identity contracts **12/12**; targeted ESLint **PASS**; Studio Vite build **PASS**; `git diff --check` **PASS** |
+| Baseline note | Studio repo typecheck retains documented unrelated diagnostics; no changed-file diagnostic |
+| Function audit | `hardDeleteCustomerAccount` and `previewHardDeleteCustomerAccount` remain source-visible for DEV but excluded from the parent production allowlist |
+| Signoff | `docs/workflow/reviews/2026-09-10-studio-hard-delete-production-ui-gate-signoff.md` |
+| Scope boundary | No backend/auth changes, customer mutation, production deployment, Studio publish, candidate freeze, commit, or push |
+| Next checkpoint | Parent M0 runtime scope/closure reconciliation, clean candidate, then owner M1 freeze decision |
+
+## 2026-09-10 - Production maintenance-mode prerequisite — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `production-maintenance-mode-prerequisite` |
+| Status | **CLOSED** — Signoff **approved_with_notes** |
+| Owner DEV QA | **PASS** (2026-09-10) |
+| Delivered | Shared Portal/Studio maintenance heading/body copy; native Studio Settings fields; owner/admin-only trusted tester list; merged/disabled/deleted/guest/orphaned/inactive exclusion; stale tester guard revalidation; maintenance-aware Portal auth/navigation gating |
+| DEV deployment | Exactly 37 reviewed Functions ACTIVE in `fresh-prints-dev/us-central1`; no corrective Rules/index/hosting deployment |
+| Validation | Corrective contracts **10/10**; trusted resolver integration **4/4**; full Rules regression **182/182**; Portal typecheck, Functions build, targeted lint, and diff check PASS |
+| QA evidence | `docs/workflow/reviews/2026-09-10-production-maintenance-mode-prerequisite-corrective-amendment-dev-qa.md` |
+| Signoff | `docs/workflow/reviews/2026-09-10-production-maintenance-mode-prerequisite-corrective-amendment-signoff.md` |
+| Scope boundary | Production deploy/activation, parent rollout, Studio/Portal publish, data operations, commit, and push remain separately gated |
+| Next checkpoint | `[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]` |
+
+## 2026-09-10 - Studio Show Queue / Internal Sheet dollar totals — CLOSED
+
+| Item | Status |
+|------|--------|
+| Goal | `studio-show-queue-internal-sheet-dollar-totals` |
+| Status | **CLOSED** — Signoff **approved** |
+| Owner visual QA | **PASS** (2026-09-10) |
+| Delivered | Show Queue + Internal Sheet per-PR `$`, glance stats (totals + sheet estimates + size mix), rail `$` cards, CR/IR list `$` pills; Whatnot ID replaces unused Whatnot link |
+| Validation | Helper unit tests **8/8**; owner visual QA PASS |
+| Signoff | `docs/workflow/reviews/2026-09-10-studio-show-queue-internal-sheet-dollar-totals-signoff.md` |
+| Commit/push | Authorized on PASS; pushed to `origin/development` this session |
+| Next checkpoint | Owner accepts `production-maintenance-mode-prerequisite`, then `Continue FreshForge` |
+
+## 2026-09-09 - User Info Print Request lifecycle activity ordering — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `user-info-print-request-lifecycle-activity-ordering` |
+| Status | **CLOSED** — Signoff **approved_with_notes** |
+| Owner DEV QA | **PASS** (2026-09-09) for `PRINT REQUEST LIFECYCLE INDEXED HISTORY READER` |
+| Accepted behavior | Lifecycle activity drives card order; one logical card per request; current show context and historical removal/show context reconcile; Details is **newest → oldest**; remove → Editing → re-add succeeds without permission error or partial queue |
+| Reader | Indexed reader enabled in local Studio source; compatibility reader preserved as rollback |
+| DEV evidence | 8/8 (100%) reader-eligible mirror coverage; ordering and Details indexes READY; post-backfill dry-run proposed 0 writes; mirror-only trigger corrective deployed; no post-corrective mirror-only lifecycle events observed |
+| Validation | Indexed lifecycle/reader focused suite **24/24**; trigger/allocation/backfill corrective suite **14/14**; latest full Rules **174/174**; Functions build, targeted lint, and `git diff --check` PASS |
+| Notes | Two historical duplicate conversion events are `SAFE_TO_LEAVE_AS_HISTORICAL_DUPLICATE`; no mirror-order impact, Details deduplication prevents a duplicate visible row, and no cleanup is required. Studio typecheck retains unrelated baseline failures. |
+| Scope boundary | No backfill rerun, event repair, Rules/index change, Firebase deploy, Studio publish, Portal deployment, production action, commit, or push in the signoff turn |
+| Signoff | `docs/workflow/reviews/2026-09-09-user-info-print-request-lifecycle-activity-ordering-signoff.md` |
+| Commit/push | **COMPLETE** — `6bf7a25d` pushed to `origin/development` |
+| Next checkpoint | `[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]` |
+
+## 2026-09-09 - Studio Editing → Re-add Show Queue corrective — DEV QA PASS (historical corrective checkpoint)
+
+| Item | Status |
+|------|--------|
+| Goal | `user-info-print-request-lifecycle-activity-ordering` (parent later closed by final signoff) |
+| Corrective | `studio-editing-readd-show-queue-permissions-corrective` |
+| Owner DEV re-QA | **PASS** (2026-09-09) |
+| Verified | Remove→Editing; re-add without permission error; no partial queue; exits Editing; Add to Show and Studio reconciliation correct |
+| Deployment | `allocateStudioPrintRequestToShow` ACTIVE in `fresh-prints-dev/us-central1`; Rules release `bc9e3e7a-6597-4228-8aa7-e9f006388a26` |
+| Evidence | `docs/workflow/reviews/2026-09-09-studio-editing-readd-show-queue-corrective-dev-qa.md` |
+| Scope boundary | No backfill, indexed-reader activation, additional deployment, Studio/Portal publish, production action, data repair, commit, or push |
+| Follow-up | Owner-authorized mirror APPLY wrote 8 requests; post-apply mirror dry-run proposed 0; 3 trusted tuples preserved; 2 unexpected events documented; mirror-only trigger corrective deployed as `onprintrequestlifecyclerequestwritten-00002-fuy`; indexed reader enabled locally with 24/24 focused tests passing |
+| Next checkpoint | Indexed-reader Owner DEV QA **PASS** and final lifecycle signoff recorded above |
+
+## 2026-09-09 - Portal admin daily Show Queue — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `portal-admin-daily-show-queue` |
+| Status | **CLOSED** — Signoff **approved_with_notes** |
+| Owner DEV QA | **PASS** (2026-09-09) |
+| Signoff | `docs/workflow/reviews/2026-09-09-portal-admin-daily-show-queue-signoff.md` |
+| Delivered | Isolated owner/admin Portal Show Queue dashboard, next-upcoming-show default, capacity/request summaries, mobile sidebar/drawer, and lazy View Designs modal |
+| DEV deploy | `getPortalAdminUpcomingShowQueueDashboard` `…-00003-fug` and `getPortalAdminShowQueueRequestDesigns` `…-00005-fad`, ACTIVE in `fresh-prints-dev/us-central1` with latest traffic |
+| Validation | Focused 33/33; admin lifecycle 13/13; designs performance 3/3; Portal typecheck, Functions build, targeted lint, and deploy prebuild PASS |
+| Scope boundary | No Rules, indexes, Storage Rules, migration/backfill, data, Portal App Hosting, Studio publish, or production action |
+| Notes | Portal production build retains the documented Windows `.next/trace` EPERM baseline; Functions Node 20 requires a future compatibility migration |
+| Commit/push | **COMPLETE** — `908d9123` previously pushed to `origin/development`; signoff docs are uncommitted |
+| Next checkpoint | `user-info-print-request-lifecycle-activity-ordering` — Plan + Formal Review only |
+
+## 2026-09-09 - Legacy tag operational retirement and Smart Profile search parity — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `legacy-tag-operational-retirement-and-smart-profile-search-parity` |
+| Status | **CLOSED** — Signoff **approved** |
+| Owner DEV QA | **PASS** (2026-09-09) |
+| Signoff | `docs/workflow/reviews/2026-09-09-legacy-tag-operational-retirement-and-smart-profile-search-parity-signoff.md` |
+| Delivered | Active Portal/Studio legacy tag authority, tag search corpus, and tag facets retired; Smart Profile search, eight facets, category, exact ID, pagination, zero-count behavior, and dedicated Halftone retained |
+| DEV evidence | `fresh-prints-dev`; Algolia `WQ6OPP2E6Z` / `portal_catalog_ready_dev`; six reviewed Functions; existing reconcile processed 350 ready records |
+| Corrective audit | Read-only 20-sample former tag-name/alias audit: 20 had no preserved Ready-design baseline; 0 material regressions |
+| Compatibility | Historical `design.tags`, `tags/*`, taxonomy schema-v1, Rules/indexes, and tag-trigger/archive Functions preserved |
+| Scope boundary | No tag deletion, migration/backfill, provider call, Rules/index deploy, Portal/Studio publish, or production action |
+| Autonomous / Pass 2 / WS6 | **OFF** / **PARKED** / **NOT STARTED** |
+| Commit/push | **COMPLETE** — `1c43f6e1` pushed to `origin/development` |
+| Next checkpoint | `[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]` |
+
+## 2026-09-08 - Print Request direct export, gang sheets, copy, and global settings — CLOSED
+
+| Item | Status |
+|------|--------|
+| Goal | `print-request-direct-export-gangsheet-and-copy` |
+| Status | **CLOSED** — Signoff **approved** |
+| Owner DEV QA | **PASS** (2026-09-08) |
+| Signoff | `docs/workflow/reviews/2026-09-08-print-request-direct-export-gangsheet-and-copy-signoff.md` |
+| DEV evidence | Firestore Rules ruleset `0d32ca64-8cfc-4bd8-bd56-b34f426d47bd`; `copyStudioPrintRequest` ACTIVE, `us-central1`, Node.js 20, revision `copystudioprintrequest-00001-yec`, source hash `6484fccde1612904191273e4e92138f1c9c780e0` |
+| Validation | Rules **169/169 across 22 suites**; Show Queue, request Export, Copy, focused amended tests, Functions/Vite builds, targeted lint, and diff check **PASS** |
+| Scope | No Storage Rules, indexes, migration/backfill, Portal, Studio publish, or production action |
+| Autonomous / Pass 2 | **OFF** / **PARKED** |
+| Commit/push | **COMPLETE** — `ab319468` pushed to `origin/development` |
+| Next checkpoint | `[READY FOR OWNER TO SELECT NEXT MANAGED GOAL]` |
+
+## 2026-09-08 - Atomic reprocess automation-state reconciliation — CLOSED
+
+| Item | Status |
+|------|--------|
+| Goal | `atomic-reprocess-automation-state-reconciliation` |
+| Status | **CLOSED** — Signoff **approved** |
+| Owner DEV QA | **PASS** |
+| Signoff | `2026-09-08-atomic-reprocess-automation-state-reconciliation-signoff.md` |
+| Deployment | DEV-only; exactly four authorized Functions verified ACTIVE at 100% |
+| Delivered | Attempt identity guards, failure metadata preservation, and atomic success reconciliation |
+| Autonomous / Pass 2 | **OFF** / **PARKED** |
+| Production | **UNTOUCHED**; promotion remains separately gated |
+
+## 2026-09-05 - Canonical AI catalog copy trust (ADR-FP-181) — SIGNED OFF
+
+| Item | Status |
+|------|--------|
+| Goal | Canonical AI title/description trust corrective |
+| Status | **DONE** — Signoff **approved_with_notes** |
+| Owner DEV QA | **PASS WITH NOTES** |
+| Signoff | `2026-09-05-canonical-ai-catalog-copy-trust-corrective-signoff.md` |
+| Delivered | No semantic rewrite of title/description; structural fail-closed; Processing/Playground parity for copy class |
+| Note | 1/5 cucumber blocked by lexical `structured_evidence_gap:subjects:woman` — deferred to two-pass architecture |
+| Follow-up | Architecture investigation Plan/Review (no implement yet) |
+| Production / commit | **NOT AUTHORIZED** / not committed |
+
+## 2026-09-05 - Standard Size + Add to Request default recalibration — SOURCE CLOSED
+
+| Item | Status |
+|------|--------|
+| Goal | `standard-size-preset-and-add-to-request-default-recalibration` |
+| Status | **DONE** — Signoff **approved_with_notes** |
+| Delivered | Full Back Adult M/L/XL → 11″; 2XL–5XL → 12/13/14/15″; Youth Y2XL back → 11″; system fallback **10.5″**; keep `YXS` |
+| Tests | 87/87 unit; Functions build PASS; Portal typecheck PASS |
+| Firebase / production | **No writes, no deploys** |
+| Signoff | `2026-09-05-standard-size-preset-and-add-to-request-default-recalibration-signoff.md` |
+| Follow-up | Owner may Reset Studio Standard Size defaults on DEV if Firestore overlays remain |
+| Parked | TD-034 still awaiting DEV deploy auth |
+
+## 2026-09-05 - Restore OpenAI GPT-5.6 Luna AI enrichment — Phase 1 CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `restore-openai-gpt-5-6-luna-ai-enrichment` |
+| Status | **DONE** — Signoff **approved_with_notes** |
+| Owner Studio QA | **PASS** |
+| Signoff | `2026-09-05-restore-openai-gpt-5-6-luna-ai-enrichment-signoff.md` |
+| Delivered | Additive `gpt-5.6-luna` + Gemini 2.5/3.1; dual-provider DEV; Settings default + overrides; Luna `reasoning_effort: low` |
+| Benchmark | Three-model DEV report recorded; TD-034 not closed by Luna |
+| UI polish | Smart Profile footer: Profile + Normalizer versions |
+| Gate | **shadow / live false**; Autonomous **OFF** |
+| Phase 2 registry | **DEFERRED** |
+| Production | **NOT AUTHORIZED** |
+
+## 2026-09-05 - WS5 Autonomous DEV Canary — CLOSED (PASS UNDER MODEL 2)
+
+| Item | Status |
+|------|--------|
+| Goal (parent) | `smart-catalog-intelligence-completion-and-legacy-tag-retirement` — **continues** |
+| Workstream | WS5 Autonomous DEV Canary |
+| Status | **COMPLETE / PASS UNDER MODEL 2** — Signoff **approved_with_notes** |
+| Signoff | `2026-09-05-smart-catalog-intelligence-completion-ws5-autonomous-dev-canary-signoff.md` |
+| Gate | **shadow / live false**; Autonomous **OFF** |
+| Explicit fixture | Cleaned up (`N3Ag21ThKyFXLTTsKAZZ`); vocab unchanged |
+| Deferred | TD-034 visual-object lexical evidence friction |
+| WS6 | **NOT STARTED** (needs new Plan/Review + owner auth) |
+| Production / commit | **NOT AUTHORIZED** / not committed |
+
+## 2026-09-05 - Automatic Explicit Content classification — SOURCE SIGNED OFF
+
+| Item | Status |
+|------|--------|
+| Goal (parent) | `smart-catalog-intelligence-completion-and-legacy-tag-retirement` — **continues** |
+| Corrective | `pre-ws5-catalog-profanity-autonomous-safety-gate` |
+| Status | Source signed off → DEV Functions deployed → **Owner QA PASS** |
+| Signoff | **approved_with_notes** (`2026-09-05-catalog-explicit-content-automation-signoff.md`) |
+| DEV deploy | 4 Functions (`updateAiEnrichmentSettings`, `enqueueAiEnrichment`, `reprocessReadyDesignWithAi`, `onCatalogReprocessJobWritten`) |
+| Owner QA | **PASS** (`2026-09-05-catalog-explicit-content-automation-owner-qa-checkpoint.md`) |
+| Contract | Global vocab on `settings/aiEnrichment.explicitContentAutomationTerms`; Ready-path Explicit; B-light aliases; human authority wins; settings fail-closed |
+| Versions | **catalog-enrich-v34** / **v6** / **v1** unchanged; no second AI; no tag dependency |
+| Autonomous | **OFF**; WS5 **BLOCKED** pending narrow enablement-checkpoint refresh |
+| Production / commit | **NOT AUTHORIZED** / not committed |
+
+## 2026-09-04 - Visual catalog title specificity + WS4 closeout — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal (parent) | `smart-catalog-intelligence-completion-and-legacy-tag-retirement` — **continues** |
+| Title Signoff | **approved_with_notes** (`2026-09-04-visual-catalog-title-specificity-signoff.md`) |
+| Owner title QA | **PASS** (Sloth/Poodle/Highland accepted; no hallucination) |
+| WS4 | **COMPLETE / PASS WITH NOTES** (`2026-09-04-smart-catalog-intelligence-completion-ws4-signoff.md`) |
+| Pipeline | **catalog-enrich-v34** + **smart-profile-normalizer-v6** (`smart-profile-v1`) |
+| Behavior | No-text ≤2-word titles enrich from subjects/objects; visibleText path unchanged; no second AI call |
+| Legacy tags | **NON-MATERIAL** — do not block WS5; retirement deferred |
+| Autonomous | **OFF** (shadow); WS5 **READY FOR OWNER AUTHORIZATION** only |
+| Production / commit | **NOT AUTHORIZED** / not committed this pass |
+
+## 2026-09-03 - AI enrichment visible-text + catalog-copy quality — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `ai-enrichment-visible-text-and-catalog-copy-quality` — **DONE** |
+| Signoff | **approved_with_notes** |
+| Owner canary | **PASS** |
+| Pipeline | **catalog-enrich-v32** + **smart-profile-normalizer-v6** (`smart-profile-v1`) |
+| DEV Functions | `enqueueAiEnrichment` `00086-qet`; `onCatalogReprocessJobWritten` `00008-piw`; `startCatalogReprocessJob` `00007-viw`; `previewCatalogReprocessJob` `00007-hug` |
+| Behavior | Semantic visibleText; background/document text not bulk-transcribed; title/description anti-OCR guards; v31/v5 subjects preserved |
+| Automated | focused PASS; regression 184/184 + 52/52; Functions build pass |
+| Mass reprocess / tags / production | **NO** / **NO** / **NOT AUTHORIZED** |
+| Autonomous | **OFF** |
+| Next queued | Smart Profiling completion (not started) |
+| Signoff | `docs/workflow/reviews/2026-09-03-ai-enrichment-visible-text-and-catalog-copy-quality-signoff.md` |
+
+## 2026-09-03 - AI Processing queue multi-select — CLOSED (DEV / local Studio)
+
+| Item | Status |
+|------|--------|
+| Goal | `ai-processing-queue-multi-select` — **DONE** |
 | Signoff | **approved** |
-| Owner QA | `OWNER DEV QA: PASS` |
-| Delivered | Discover catalog rails no longer blocked on show-rail load; Next Show + This Week independent localized loading; compact This Week rail presentation reversed; View All canonical order unchanged; non-mutating presentation helper |
-| Production | **untouched** — DEV/source signoff only |
-| ADR-FP-142 | unchanged — public show browse only; no customer-upload exposure |
+| Owner QA | **PASS** |
+| Delivered | ⋯ Multiple select; click highlight; Shift+click inclusive range on loaded rows; Cancel; owner Delete on the set via existing callable; wider scrolling truncated title dialog |
+| Firebase | **NONE** |
+| Production | **NOT AUTHORIZED** |
+| Smart Profiling | **PARKED** |
+| Batch allocation | **DEFERRED** |
+| Signoff | `docs/workflow/reviews/2026-09-03-ai-processing-queue-multi-select-signoff.md` |
+
+## 2026-09-03 - Smart Profile subject canonicalization + derivative suppression — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `smart-profile-subject-canonicalization-and-derivative-suppression` — **DONE** |
+| Signoff | **approved_with_notes** |
+| Owner canary | **PASS** |
+| Pipeline | **catalog-enrich-v31** + **smart-profile-normalizer-v5** (`smart-profile-v1`) |
+| DEV Functions | `enqueueAiEnrichment`, `onCatalogReprocessJobWritten`, `startCatalogReprocessJob`, `previewCatalogReprocessJob` |
+| Automated | focused 181/181; regression 52/52; Functions build pass |
+| Mass reprocess / tags / production | **NO** / **NO** / **NOT AUTHORIZED** |
+| Autonomous | **OFF** |
+| Next queued | Smart Profiling completion (not started) |
+| Signoff | `docs/workflow/reviews/2026-09-03-smart-profile-subject-canonicalization-and-derivative-suppression-signoff.md` |
+
+## 2026-09-03 - Firestore Rules resize expression budget + Interactive Upscale DPI corrective — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `firestore-rules-print-request-item-resize-expression-budget` — **DONE** |
+| Corrective | `interactive-upscale-dpi-rehydration-and-eligibility` (TD-033) — **COMPLETE** |
+| Signoff | **approved_with_notes** |
+| Owner Rules QA | **PASS WITH NOTE** (note closed by corrective) |
+| Owner Interactive Upscale QA | **PASS** (Portal+Studio; Library+upload; remount/nav/reload/multi-item; 249/250/>250; existing ON; 200/300) |
+| Rules | focused **22/22**; full **169/169**; DEV `firestore:rules` deployed |
+| Corrective Functions (DEV) | `setPrintRequestItemArtworkEnhanceMode` (`…-00008-yob`); `enhancePrintRequestArtwork` (`…-00003-xut`) |
+| Delivered | Customer Portal-editable resize reduced-cost Rules path; enhanced DPI parent-summary hydration; offer gate `<250`; TD-033 **RESOLVED ON DEV** |
+| Production | **NOT AUTHORIZED** |
+| Smart Profiling | **PARKED** |
+| Batch allocation | **DEFERRED** |
+| Signoff | `docs/workflow/reviews/2026-09-03-firestore-rules-print-request-item-resize-expression-budget-signoff.md` |
+
+## 2026-09-03 - Portal modal + import Smart Profile presets + intake metadata controls — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `portal-modal-dont-show-again-and-import-smart-profile-presets` — **DONE** |
+| Signoff | **approved_with_notes** |
+| Owner QA | **PASS** — Workstream A PASS; Workstream B DEV QA PASS; Workstream C UI/metadata PASS; Workstream C end-to-end DEV QA PASS |
+| Final DEV | **APPROVED** |
+| Workstream A | Shared Portal Upload/Donate informational quality-notice dismissal via localStorage only |
+| Workstream B | Dedicated Smart Profile presets modal tab; Studio-themed controls; responsive/internal-scroll UI; durable `smartProfileImportPresets`; provenance tracking; post-AI merge; reprocess and staff-edit/removal preservation |
+| Workstream C | Studio per-row Auto/Light/Dark/Halftone controls for Customer Uploads and Donated Designs; instant optimistic first Halftone click; preview/lightbox repaint; stale-send block + retry; trusted background save; authoritative promote with `halftoneDecisionSource: intake` and `artworkBackgroundSource: staff_manual` |
+| DEV Firebase | Workstream B: `enqueueAiEnrichment`, `onCatalogReprocessJobWritten`, `updateDesignSmartProfileDimensions`, `resetDesignSmartProfileDimension`, plus `firestore.rules`; Workstream C: `recordCustomerUploadArtworkBackgroundStaffDecision`, `promoteCustomerUploadToAiReview` |
+| Deploy notes | First Workstream C promote deploy failed on Firebase backend-spec discovery timeout; owner-authorized shell-local `FUNCTIONS_DISCOVERY_TIMEOUT=60` retry succeeded |
+| Full Rules | **158/159** at that closeout — later resolved by `firestore-rules-print-request-item-resize-expression-budget` (169/169) |
+| Production | **NOT AUTHORIZED** |
+| Smart Profiling | **PARKED** |
+| Batch allocation | **DEFERRED** |
+| Signoff | `docs/workflow/reviews/2026-09-03-portal-modal-dont-show-again-and-import-smart-profile-presets-signoff.md` |
+
+## 2026-09-02 - Customer-specific temporary PR + Show quota override — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `customer-specific-temporary-print-request-and-show-quota-override` — **DONE** |
+| Signoff | **approved** |
+| Owner QA | **PASS** (A–Q incl. linked UX + Internal Save fix) |
+| Final DEV | **APPROVED** |
+| Delivered | `customers/{id}.printRequestQuotaOverride`; effective limits; owner callable; Rules; six Portal consumers; Studio linked Quota Override + badge; ADR-FP-159 |
+| DEV Firebase | Rules + 7 Functions + corrective `updateCustomerPrintRequestQuotaOverride` on `fresh-prints-dev` |
+| Production | **NOT AUTHORIZED** (future: Shared/Studio/Portal/Functions/Rules; promote corrective callable) |
+| Smart Profiling | **PARKED** |
+| Batch allocation | **DEFERRED** |
+| Working tree | Dirty/uncommitted until Owner authorizes commit/push |
+| Signoff | `docs/workflow/reviews/2026-09-02-customer-specific-temporary-print-request-and-show-quota-override-signoff.md` |
+
+## 2026-09-02 - Cross-app lightbox Previous/Next — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `cross-app-lightbox-previous-next-navigation` — **DONE** |
+| Signoff | **approved** |
+| Owner QA | **PASS** (A–H) |
+| Final DEV | **APPROVED** |
+| Delivered | Shared nav helper; Studio/Portal lightbox Prev/Next on included collections; `item.id` PR nav; final-item close anchor; mat/image commit-together polish |
+| Firebase | **NONE** (no Functions/Rules/indexes/migration) |
+| Production | **NOT AUTHORIZED** (future: Studio + Portal + shared) |
+| Smart Profiling | **PARKED** |
+| Working tree | Committed + pushed to `development` |
+| Application commit | `9e356809` |
+| Signoff | `docs/workflow/reviews/2026-09-02-cross-app-lightbox-previous-next-navigation-signoff.md` |
+
+## 2026-09-02 - Portal Editing parks current draft — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `portal-editing-request-parks-current-draft` — **DONE** |
+| Signoff | **approved_with_notes** |
+| Owner QA | Initial **FAIL** preserved; corrective **PASS**; polish **PASS** |
+| Delivered | Continuable parking; Studio trusted remove; Portal cancel+park; requeue TX fix; site-wide Editing strip; parked overlay; Editing tab hide/front; `from=editing` unqueue / `from=working` requeue |
+| DEV Firebase | Initial Rules+Functions + corrective 5 Functions on `fresh-prints-dev` |
+| Production | **NOT AUTHORIZED** |
+| Smart Profiling | **PARKED** |
+| Signoff | `docs/workflow/reviews/2026-09-02-portal-editing-request-parks-current-draft-signoff.md` |
+
+## 2026-09-02 - Studio + Portal Print Request Editing tab — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `studio-print-request-editing-tab` — **DONE** |
+| Signoff | **approved** |
+| Owner DEV QA | **PASS** |
+| Delivered | `queueTab: "editing"`; Studio Customer/Internal Editing tabs (nowrap); Portal Editing list tab; Internal→Printed newest-first via History sort helper |
+| DEV Firebase | Rules + Functions (10) + reconcile no-op on `fresh-prints-dev` |
+| Production | **NOT AUTHORIZED** |
+| Smart Profiling | **PARKED** |
+| Next queued | `portal-editing-request-parks-current-draft` (**closed**) |
+| Signoff | `docs/workflow/reviews/2026-09-02-studio-print-request-editing-tab-signoff.md` |
+
+## 2026-08-31 - Print Request sizing + interactive upscale — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale` — **DONE** |
+| Signoff | **approved** |
+| Owner DEV QA | **PASS** |
+| Delivered | Configurable PR default (10″ fallback); 15″ automated upscale; interactive upscale Studio+Portal; production export parity; Storage/Firestore security |
+| Production | **NOT AUTHORIZED** |
+| Smart Profiling | **NOT STARTED** |
+| Signoff | `docs/workflow/reviews/2026-08-31-print-request-11-inch-default-15-inch-upscale-and-legacy-art-upscale-signoff.md` |
+
+## 2026-08-30 - Customer Account Identity WS4 — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `customer-account-identity-management-ws4-customer-activity-and-deep-linking` — **DONE** |
+| Signoff | **approved** |
+| Owner DEV QA | **PASS** — 9 scenarios incl. Did Not Print → requeue |
+| Delivered | Print Request History cards + lazy details; Account Activity (collapsed); deep links; merged-customer history |
+| Program | **WS1–WS4 complete on DEV** |
+| Production | **NOT AUTHORIZED** |
+| Signoff | `docs/workflow/reviews/2026-08-30-customer-account-identity-management-ws4-signoff.md` |
+
+## 2026-08-30 - Show Queue Did Not Print requeue recovery — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `show-queue-needs-attention-did-not-print-recovery` — **DONE** |
+| Owner DEV QA | **PASS** |
+| Delivered | Move unprinted to another show; Release-only → Needs Re-queue; `requeuedFromAllocationId`; Owner Edit Show scoped enabler |
+| Signoff | `docs/workflow/reviews/2026-08-30-show-queue-needs-attention-did-not-print-recovery-signoff.md` |
+
+## 2026-08-29 - Show Queue DEV fixture + allocation permission repair — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `show-queue-dev-override-and-allocation-permission-repair` — **DONE** |
+| Delivered | `DEV-OVERRIDE` / `dev_fixture`; allocation Rules allowlist repair; Needs Attention for fixtures |
+| Signoff | `docs/workflow/reviews/2026-08-29-show-queue-dev-override-and-allocation-permission-repair-signoff.md` |
+
+## 2026-08-29 - Print Request Standard Size presets — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `print-request-standard-size-presets` — **DONE** |
+| Delivered | Standard Sizes settings + modal (Adult/Youth/Toddler/Infant + Hat); v1 width table |
+| Signoff | `docs/workflow/reviews/2026-08-29-print-request-standard-size-presets-signoff.md` |
+
+## 2026-08-29 - Customer Account Identity WS3 — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `customer-account-identity-management-ws3-full-account-merge` — **DONE** |
+| Delivered | Merge Accounts wizard; `mergedSourceCustomerIds`; survivor-only history |
+| Signoff | `docs/workflow/reviews/2026-08-29-customer-account-identity-management-ws3-signoff.md` |
+
+## 2026-08-29 - Customer Account Identity WS2 — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `customer-account-identity-management-ws2-duplicate-resolution` — **DONE** |
+| Delivered | Transfer Username; `previewDuplicateAccountResolution` / `transferCustomerUsername` |
+| Signoff | `docs/workflow/reviews/2026-08-29-customer-account-identity-management-ws2-signoff.md` |
+
+## 2026-08-28 - Customer Account Identity Management — WS1 — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `customer-account-identity-management-and-audit` — **WS1 DONE** |
+| Signoff | **approved** |
+| Owner DEV QA | **PASS** — correctives #1–#5 |
+| Delivered | Reversible disable/restore; hard-delete preview/apply (dev-gated); Change Username UX; Active/Disabled/Closed directory tabs; Portal disabled-login + session invalidation; Portal-editable PR contract; Studio duplicate-CR guard; `customerActivityEvents` |
+| DEV deploy | Identity callables + Rules + 3 Portal working-request Functions + `printRequests` index on `fresh-prints-dev` |
+| WS2–WS4 | **NOT STARTED** |
+| Production / Studio / Portal hosting | Untouched — not authorized |
+| Signoff | `docs/workflow/reviews/2026-08-28-customer-account-identity-management-ws1-signoff.md` |
+
+## 2026-08-28 - Show Queue past-show failsafe + owner override — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `show-queue-past-show-failsafe-and-owner-override` — **DONE (DEV)** |
+| Signoff | **approved_with_notes** |
+| Owner DEV QA | **PASS** — recovery flows, tab navigation, Portal loading polish |
+| DEV Functions | `previewShowProductionRecovery`, `applyShowProductionRecovery` on `fresh-prints-dev` |
+| Delivered | Needs Attention tab; staff remediation (close empty / fulfilled / release); owner override v1; ADR-FP-149; ADR-FP-071 guard; recovery dialogs |
+| Session corrective | Show Queue / Internal Sheets tab URL sync; Portal Discover/Shows cache; Add to Show modal prefetch + split loading |
+| Production | Untouched — recovery callables + Studio publish not authorized |
+| Signoff | `docs/workflow/reviews/2026-08-28-show-queue-past-show-failsafe-and-owner-override-signoff.md` |
+| DEV deploy | `docs/workflow/reviews/2026-08-27-show-queue-past-show-failsafe-dev-deploy.md` |
+
+## 2026-08-27 - Show Queue gang-sheet three-mode refinement — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `show-queue-gang-sheet-three-mode-refinement` — **DONE (DEV)** |
+| Signoff | **approved** |
+| Owner DEV QA | **PASS** |
+| Delivered | Three modal modes: Standard · Grouped by Customer (`customer_grouped_continuous`) · Sheet per Customer (`grouped_by_customer`); continuous planner + compositor; preview/export parity; pairwise cache fingerprints |
+| Tests | 50 targeted gang-sheet tests **PASS** |
+| Production | Untouched — no Studio publish |
+| Signoff | `docs/workflow/reviews/2026-08-27-show-queue-gang-sheet-three-mode-refinement-signoff.md` |
+
+## 2026-08-27 - Portal customer username change — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `portal-customer-username-change` — **DONE (DEV)** |
+| Signoff | **approved** |
+| Owner QA | *"This is working exactly how we want it to."* + closeout *"Everything so far is working good."* |
+| Delivered | Portal Account Settings profile edit; `updatePortalCustomerProfile`; shared `applyCustomerProfileUpdate`; 30-day username cooldown; identity snapshot propagation; Studio/Portal historical `@new · was @old` labels |
+| Production | Deferred |
+| Signoff | `docs/workflow/reviews/2026-08-27-portal-customer-username-change-signoff.md` |
+
+## 2026-08-27 - Smart Catalog Intelligence Slice 6 — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `smart-catalog-intelligence-unattended-enrichment` — **Slice 6 DONE (DEV)** |
+| Signoff | **approved_with_notes** |
+| Owner closeout | **PASS** — *"Everything so far is working good."* |
+| Pipeline | **catalog-enrich-v30** + **smart-profile-normalizer-v4** |
+| Ready Catalog | Gate unlocked; Preview + canary + full Ready backfill on `fresh-prints-dev` |
+| Smart Profile | Visibility/editing + local Design Library reconciliation corrective |
+| Runtime | Shadow; Autonomous OFF; production untouched |
+| Signoff | `docs/workflow/reviews/2026-08-26-smart-catalog-intelligence-slice-6-signoff.md` |
+
+## 2026-08-26 - Smart Catalog Intelligence Slice 5 — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `smart-catalog-intelligence-unattended-enrichment` — **Slice 5 DONE (DEV)** |
+| Signoff | **approved_with_notes** |
+| Pipeline | **catalog-enrich-v30** + **smart-profile-normalizer-v4** |
+| Gate H | 204/204 AI Review Queue reprocess; all `imported` + `needs_review` |
+| Gate I → corrective | Material Floral & Nature FP fixed (`category_dominant_intent_conflict`); subject anti-glue |
+| Mini QA | **PASS WITH NOTES** (10 targeted designs) |
+| Runtime | Shadow; Autonomous OFF; Ready Catalog locked; production untouched |
+| Next | Slice 6 Plan only with **separate** owner authorization |
+| Signoff | `docs/workflow/reviews/2026-08-26-smart-catalog-intelligence-slice-5-signoff.md` |
+
+## 2026-08-25 - Smart Catalog Intelligence Slice 4 — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `smart-catalog-intelligence-unattended-enrichment` — **Slice 4 DONE (DEV)** |
+| Signoff | **approved_with_notes** |
+| Owner QA | **PASS WITH NOTES** |
+| Deploy | `fresh-prints-dev` only (Functions allowlist + rules + index) |
+| Notes | Profiler quality + import background/halftone planned next; **blocks Slice 5** |
+| Signoff | `docs/workflow/reviews/2026-08-25-smart-catalog-intelligence-slice-4-signoff.md` |
+| Next plan | `docs/workflow/plans/2026-08-25-smart-profile-quality-canonicalization-and-import-background-plan.md` |
+
+## 2026-08-24 - Portal Discover show-rail loading + order polish — CLOSED / LIVE
+
+| Item | Status |
+|------|--------|
+| Goal | `portal-discover-show-rails-loading-and-order-polish` — **DONE (LIVE)** |
+| Signoff | **approved** |
+| Owner DEV QA | `OWNER DEV QA: PASS` |
+| Owner prod smoke | **`PROD SMOKE: PASS WITH NOTES`** — transient stale client-chunk on View All immediately post-rollout; hard refresh cleared; no code fix |
+| Git production | **`36165096f09bef6817adb5b11d496dbb1502b34b`** (PR **#90**) |
+| App Hosting | **`fresh-prints-portal-build-2026-08-24-003`** @ 100% |
+| Rollback | `build-2026-08-24-002` @ `f35c96d` |
+| Delivered | Discover catalog rails no longer blocked on show-rail load; Next Show + This Week independent localized loading; compact This Week rail presentation reversed; View All canonical order unchanged |
+| ADR-FP-142 | unchanged |
 | Signoff | `docs/workflow/reviews/2026-08-24-portal-discover-show-rails-loading-and-order-polish-signoff.md` |
+| Rollout | `docs/workflow/reviews/2026-08-24-portal-discover-show-rails-loading-and-order-polish-app-hosting-rollout-record.md` |
 
 ## 2026-08-24 - Production promote Portal + Studio 1.0.9 — CLOSED
 
@@ -1824,3 +2555,15 @@ See `CURRENT-STATE.md` for live status.
 - Safe blockers preserved (any print-request item; promoted design); deletion allowlists four asset paths. Exclusion is now reversible metadata-only catalog state and performs no Storage cleanup.
 - Focused 43/43, Studio/Functions builds, Studio package, lint, whitespace PASS. Manual development QA pending. Functions source changed but no deployment occurred.
 - Production diff/PR/merge/combined installer not started; Whatnot QA remains separate; no production/Stage 2/domain action.
+# 2026-09-13 — Studio release-pipeline typecheck stabilization CLOSED
+
+Consolidated corrective Signoff is **approved_with_notes**. All 29 reviewed Studio TypeScript
+diagnostics are resolved; TypeScript reports zero diagnostics; corrective suites are 49/49 PASS;
+targeted validation is 198/198 PASS; baseline-aware lint, Windows/macOS packaging, artifact
+verification, and owner install/launch/version checks pass for Studio 1.0.10. The prerelease DEV
+title and DEV Firestore are expected by the existing environment-selection contract; production
+environment QA is deferred by design to the canonical stable production release after GO and merge.
+
+The sole remaining pre-GO blocker is immutable Firestore/Storage Rules rollback evidence. Read-only
+retrieval attempts returned 403 service-disabled/no-quota-project. No production mutation, deployment,
+stable publication, merge, freeze, runner, or data action occurred.

@@ -56,6 +56,25 @@ describe("storage.rules alignment", () => {
     );
   });
 
+  it("allows staff read of interactive catalog originals", async () => {
+    const rulesPath = path.join(REPO_ROOT, "storage.rules");
+    const rules = await readFile(rulesPath, "utf8");
+
+    assert.ok(
+      rules.includes("isCanonicalInteractiveOriginalFileName"),
+      "storage.rules must define isCanonicalInteractiveOriginalFileName",
+    );
+    assert.ok(
+      rules.includes("isStaffReadableOriginalFileName"),
+      "storage.rules must define isStaffReadableOriginalFileName",
+    );
+    assert.match(
+      rules,
+      /allow read: if isStaff\(\) && isStaffReadableOriginalFileName\(fileName\);/,
+      "storage.rules must allow staff read of interactive originals",
+    );
+  });
+
   it("allows public read of ready design derivatives without requiring isCustomer()", async () => {
     const rulesPath = path.join(REPO_ROOT, "storage.rules");
     const rules = await readFile(rulesPath, "utf8");

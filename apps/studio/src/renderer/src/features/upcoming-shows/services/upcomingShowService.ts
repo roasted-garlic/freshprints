@@ -11,9 +11,11 @@ import {
   setDoc,
   updateDoc,
   where,
+  limit,
   runTransaction,
   writeBatch,
   type DocumentData,
+  type Timestamp,
   type Unsubscribe,
 } from "firebase/firestore";
 
@@ -31,6 +33,7 @@ import { createSharedFirestoreSubscription } from "../../firebase/utils/createSh
 import { permissionService } from "../../permissions/services/permissionService";
 import type { User } from "../../users/types/user.types";
 import { isPrintRequestOrigin } from "@fresh-prints/shared/utils/printRequestOrigin";
+import { getPrintRequestAllocationBlockReason } from "@fresh-prints/shared/utils/printRequestConversion";
 import { planAllocationSplit } from "@fresh-prints/shared/utils/showCapacity";
 import {
   formatShowAllocationBlockedMessage,
@@ -49,7 +52,7 @@ import type {
   UpcomingShowSyncStatus,
 } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.enums";
 import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
-import { isStaffGangSheetShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
+import { isStaffGangSheetShow, isDevFixtureShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
 import {
   canAllocateOriginToShowSource,
   DEFAULT_INTERNAL_GANG_SHEET_MAX_TOTAL_QUANTITY,
@@ -58,10 +61,13 @@ import {
   resolveInternalGangSheetMaxTotalQuantity,
   resolveNextStaffGangSheetCycleNumber,
 } from "@fresh-prints/shared/utils/staffGangSheet";
-import type { ShowAllocationStatus } from "@fresh-prints/shared/types/showAllocation/showAllocation.enums";
+import type { ShowProductionResolutionKind } from "@fresh-prints/shared/types/showProductionRecovery/showProductionRecovery.types";
 import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/showAllocation.types";
+import type { ShowAllocationStatus } from "@fresh-prints/shared/types/showAllocation/showAllocation.enums";
 import { findMatchingUpcomingShow } from "../utils/upcomingShowUpsert";
 import { canStartShowPrinting, canAllocatePrintRequestToShow, PAST_SHOW_READ_ONLY_MESSAGE } from "../utils/groupShowsByUpcomingPast";
+import { resolvePrintRequestShowTransferMode, type PrintRequestShowTransferMode } from "@fresh-prints/shared/utils/printRequestShowTransfer";
+import { showQueueMoveService } from "./showQueueMoveService";
 import { sortUpcomingShowsForDisplay } from "../utils/upcomingShowListSort";
 import {
   diagnoseShowAllocationForTimer,
@@ -75,6 +81,8 @@ import {
 } from "../utils/showCompletionReconciliation";
 import { showQueueSettingsService } from "./showQueueSettingsService";
 import { ProductionDiagnosticWarningDeduper } from "../utils/productionDiagnosticWarningDeduper";
+import { shouldTransitionActiveRequestToEditing } from "@fresh-prints/shared/utils/showProductionRecovery";
+import { parseWhatnotShowUrl } from "@fresh-prints/shared/utils/whatnotShowUrl";
 import { reconcileShowCompletionWithCommittedVerification } from "../utils/postFinishCommittedVerification";
 import { resolveShowFinishMutationPlan } from "../utils/showFinishMutationPlan";
 import {
@@ -196,6 +204,13 @@ export interface UpdateUpcomingShowInput {
   notes?: string;
 }
 
+export interface UpdateUpcomingShowMetadataInput {
+  title?: string;
+  whatnotUrl?: string;
+  scheduledStartAt: Timestamp;
+  notes?: string;
+}
+
 export interface SetShowMaxQuantityInput {
   maxTotalQuantity?: number;
   /** Required when the new max would be below the current allocated quantity. */
@@ -209,6 +224,25 @@ export interface AllocatePrintRequestItemInput {
   quantity?: number;
   /** Staff-only danger override to exceed remaining show capacity. */
   overrideCapacity?: boolean;
+}
+
+export interface AllocateStudioPrintRequestToShowLeg {
+  upcomingShowId: string;
+  quantitiesByItemId: Record<string, number>;
+}
+
+export interface AllocateStudioPrintRequestToShowInput {
+  printRequestId: string;
+  legs: AllocateStudioPrintRequestToShowLeg[];
+}
+
+export interface AllocateStudioPrintRequestToShowResult {
+  printRequestId: string;
+  allocationIds: string[];
+  totalAllocatedQuantity: number;
+  remainingUnallocatedQuantity: number;
+  isFullyQueued: boolean;
+  repairedExistingAllocationState: boolean;
 }
 
 interface UpcomingShowDocumentData extends DocumentData {
@@ -239,8 +273,13 @@ interface UpcomingShowDocumentData extends DocumentData {
   printFinishedBy?: unknown;
   gangSheetGeneratedAt?: unknown;
   gangSheetGeneratedBy?: unknown;
+  productionResolutionKind?: unknown;
+  productionResolvedAt?: unknown;
+  productionResolvedBy?: unknown;
+  productionOverrideReason?: unknown;
   assignedStaffUserId?: unknown;
   staffGangSheetCycleNumber?: unknown;
+  devFixtureSentinel?: unknown;
   createdBy?: unknown;
   updatedBy?: unknown;
   createdAt?: unknown;
@@ -255,6 +294,7 @@ export interface ShowAllocationDocumentData extends DocumentData {
   designId?: unknown;
   sourceType?: unknown;
   customerUploadId?: unknown;
+  staffArtworkId?: unknown;
   customerId?: unknown;
   requestNameSnapshot?: unknown;
   requestOriginSnapshot?: unknown;
@@ -276,11 +316,13 @@ export interface ShowAllocationDocumentData extends DocumentData {
   completedBy?: unknown;
   canceledAt?: unknown;
   canceledBy?: unknown;
+  requeuedFromAllocationId?: unknown;
+  movedFromAllocationId?: unknown;
   createdAt?: unknown;
   updatedAt?: unknown;
 }
 
-const VALID_SOURCES: UpcomingShowSource[] = ["whatnot", "staff_gang_sheet"];
+const VALID_SOURCES: UpcomingShowSource[] = ["whatnot", "staff_gang_sheet", "dev_fixture"];
 const VALID_STATUSES: UpcomingShowStatus[] = [
   "scheduled",
   "rescheduled",
@@ -308,6 +350,13 @@ const VALID_ALLOCATION_STATUSES: ShowAllocationStatus[] = [
   "done",
   "canceled",
 ];
+const VALID_PRODUCTION_RESOLUTION_KINDS: ShowProductionResolutionKind[] = [
+  "empty_closure",
+  "fulfilled_confirmed",
+  "unfulfilled_release",
+  "unfulfilled_requeue",
+  "owner_override",
+];
 const PRINTED_ALLOCATION_STATUSES: ShowAllocationStatus[] = ["printed", "done"];
 const STARTABLE_ALLOCATION_STATUSES: ShowAllocationStatus[] = ["pending", "queued"];
 const FINISHABLE_ALLOCATION_STATUSES: ShowAllocationStatus[] = ["pending", "queued", "in_progress"];
@@ -326,6 +375,13 @@ function isUpcomingShowSyncStatus(value: unknown): value is UpcomingShowSyncStat
 
 function isShowProductionStatus(value: unknown): value is ShowProductionStatus {
   return typeof value === "string" && VALID_PRODUCTION_STATUSES.includes(value as ShowProductionStatus);
+}
+
+function isShowProductionResolutionKind(value: unknown): value is ShowProductionResolutionKind {
+  return (
+    typeof value === "string" &&
+    VALID_PRODUCTION_RESOLUTION_KINDS.includes(value as ShowProductionResolutionKind)
+  );
 }
 
 function isShowAllocationStatus(value: unknown): value is ShowAllocationStatus {
@@ -389,6 +445,14 @@ function mapUpcomingShowData(showId: string, data: UpcomingShowDocumentData): Up
     printFinishedBy: typeof data.printFinishedBy === "string" ? data.printFinishedBy : undefined,
     gangSheetGeneratedAt: mapFirestoreTimestamp(data.gangSheetGeneratedAt),
     gangSheetGeneratedBy: typeof data.gangSheetGeneratedBy === "string" ? data.gangSheetGeneratedBy : undefined,
+    productionResolutionKind: isShowProductionResolutionKind(data.productionResolutionKind)
+      ? data.productionResolutionKind
+      : undefined,
+    productionResolvedAt: mapFirestoreTimestamp(data.productionResolvedAt),
+    productionResolvedBy:
+      typeof data.productionResolvedBy === "string" ? data.productionResolvedBy : undefined,
+    productionOverrideReason:
+      typeof data.productionOverrideReason === "string" ? data.productionOverrideReason : undefined,
     createdBy: typeof data.createdBy === "string" ? data.createdBy : undefined,
     updatedBy: typeof data.updatedBy === "string" ? data.updatedBy : undefined,
     createdAt,
@@ -423,6 +487,21 @@ function mapUpcomingShowData(showId: string, data: UpcomingShowDocumentData): Up
     };
   }
 
+  if (data.source === "dev_fixture") {
+    if (typeof data.whatnotShowId === "string" && data.whatnotShowId.trim()) {
+      throw new Error("DEV fixture show records must not include a Whatnot show ID.");
+    }
+    if (data.devFixtureSentinel !== "DEV-OVERRIDE") {
+      throw new Error("A DEV fixture show record is incomplete.");
+    }
+
+    return {
+      ...base,
+      source: "dev_fixture",
+      devFixtureSentinel: "DEV-OVERRIDE",
+    };
+  }
+
   if (typeof data.whatnotShowId !== "string" || !data.whatnotShowId.trim()) {
     throw new Error("An upcoming show record is incomplete.");
   }
@@ -444,14 +523,19 @@ export function mapShowAllocationData(allocationId: string, data: ShowAllocation
   const updatedAt = mapFirestoreTimestamp(data.updatedAt);
 
   const sourceType =
-    data.sourceType === "customer_upload" || data.sourceType === "catalog_design"
+    data.sourceType === "customer_upload" || data.sourceType === "catalog_design" || data.sourceType === "staff_artwork"
       ? data.sourceType
       : undefined;
   const customerUploadId =
     typeof data.customerUploadId === "string" && data.customerUploadId.trim()
       ? data.customerUploadId.trim()
       : undefined;
+  const staffArtworkId =
+    typeof data.staffArtworkId === "string" && data.staffArtworkId.trim()
+      ? data.staffArtworkId.trim()
+      : undefined;
   const isUploadAllocation = sourceType === "customer_upload" || Boolean(customerUploadId);
+  const isStaffArtworkAllocation = sourceType === "staff_artwork" || Boolean(staffArtworkId);
   const designId =
     typeof data.designId === "string" && data.designId.trim() ? data.designId.trim() : undefined;
 
@@ -475,6 +559,8 @@ export function mapShowAllocationData(allocationId: string, data: ShowAllocation
     if (!customerUploadId) {
       throw new Error("A show allocation record is incomplete.");
     }
+  } else if (isStaffArtworkAllocation) {
+    if (!staffArtworkId) throw new Error("A show allocation record is incomplete.");
   } else if (!designId) {
     throw new Error("A show allocation record is incomplete.");
   }
@@ -484,13 +570,14 @@ export function mapShowAllocationData(allocationId: string, data: ShowAllocation
     upcomingShowId: data.upcomingShowId,
     printRequestId: data.printRequestId,
     printRequestItemId: data.printRequestItemId,
-    ...(designId ? { designId } : {}),
+    ...(isStaffArtworkAllocation ? {} : designId ? { designId } : {}),
     ...(sourceType
       ? { sourceType }
       : isUploadAllocation
         ? { sourceType: "customer_upload" as const }
         : {}),
     ...(customerUploadId ? { customerUploadId } : {}),
+    ...(staffArtworkId ? { staffArtworkId } : {}),
     customerId: typeof data.customerId === "string" ? data.customerId : undefined,
     requestNameSnapshot: data.requestNameSnapshot,
     requestOriginSnapshot: isPrintRequestOrigin(data.requestOriginSnapshot) ? data.requestOriginSnapshot : undefined,
@@ -512,6 +599,14 @@ export function mapShowAllocationData(allocationId: string, data: ShowAllocation
     completedBy: typeof data.completedBy === "string" ? data.completedBy : undefined,
     canceledAt: mapFirestoreTimestamp(data.canceledAt),
     canceledBy: typeof data.canceledBy === "string" ? data.canceledBy : undefined,
+    requeuedFromAllocationId:
+      typeof data.requeuedFromAllocationId === "string" && data.requeuedFromAllocationId.trim()
+        ? data.requeuedFromAllocationId.trim()
+        : undefined,
+    movedFromAllocationId:
+      typeof data.movedFromAllocationId === "string" && data.movedFromAllocationId.trim()
+        ? data.movedFromAllocationId.trim()
+        : undefined,
     createdAt,
     updatedAt,
   };
@@ -854,6 +949,35 @@ export const upcomingShowService = {
     return this.getUpcomingShowById(caller, showRef.id);
   },
 
+  async upsertDevFixtureShow(
+    caller: User,
+    input: {
+      title?: string;
+      scheduledStartAt: Timestamp;
+      notes?: string;
+      upcomingShowId?: string;
+    },
+  ): Promise<UpcomingShow> {
+    if (!permissionService.canManageUpcomingShows(caller)) {
+      throw new Error("You do not have permission to manage upcoming shows.");
+    }
+
+    const result = await callTracedFunction<
+      { title?: string; scheduledStartAtIso: string; notes?: string; upcomingShowId?: string },
+      { showId: string }
+    >(
+      "upsertDevFixtureShow",
+      { source: "upcomingShowService.upsertDevFixtureShow" },
+    )({
+      scheduledStartAtIso: input.scheduledStartAt.toDate().toISOString(),
+      ...(input.title ? { title: input.title } : {}),
+      ...(input.notes ? { notes: input.notes } : {}),
+      ...(input.upcomingShowId ? { upcomingShowId: input.upcomingShowId } : {}),
+    });
+
+    return this.getUpcomingShowById(caller, result.showId);
+  },
+
   /**
    * Any active Studio staff: create a shared Internal Gang Sheet when none is active.
    * Cycle number is computed as max(existing)+1. Prefers the trusted callable; falls back to a
@@ -1040,6 +1164,48 @@ export const upcomingShowService = {
         source: "upcomingShowService.updateUpcomingShowFromWhatnotImport",
       },
     );
+  },
+
+  async updateUpcomingShowMetadata(
+    caller: User,
+    upcomingShowId: string,
+    input: UpdateUpcomingShowMetadataInput,
+  ): Promise<UpcomingShow> {
+    if (!permissionService.canEditUpcomingShowMetadata(caller)) {
+      throw new Error("Only owners can edit show details.");
+    }
+
+    const show = await this.getUpcomingShowById(caller, upcomingShowId);
+    if (isStaffGangSheetShow(show)) {
+      throw new Error("Internal Gang Sheets cannot be edited here.");
+    }
+    if (show.source !== "whatnot" && !isDevFixtureShow(show)) {
+      throw new Error("This show cannot be edited.");
+    }
+
+    let whatnotUrl: string | undefined;
+    if (show.source === "whatnot") {
+      const trimmedUrl = input.whatnotUrl?.trim() ?? "";
+      if (trimmedUrl) {
+        const parsed = parseWhatnotShowUrl(trimmedUrl);
+        if (!parsed) {
+          throw new Error("Enter a valid Whatnot live show URL.");
+        }
+        if (parsed.whatnotShowId !== show.whatnotShowId) {
+          throw new Error("Whatnot URL must refer to the same show ID as this record.");
+        }
+        whatnotUrl = parsed.whatnotUrl;
+      } else if (show.whatnotUrl) {
+        whatnotUrl = show.whatnotUrl;
+      }
+    }
+
+    return this.updateUpcomingShow(caller, upcomingShowId, {
+      title: input.title?.trim() || undefined,
+      scheduledStartAt: input.scheduledStartAt,
+      notes: input.notes?.trim() || undefined,
+      whatnotUrl,
+    });
   },
 
   async updateUpcomingShow(
@@ -1309,6 +1475,14 @@ export const upcomingShowService = {
       this.listShowAllocations(caller, upcomingShowId),
     ]);
 
+    const allocationBlockReason = getPrintRequestAllocationBlockReason({
+      status: printRequest.status,
+      closureKind: printRequest.closureKind,
+    });
+    if (allocationBlockReason) {
+      throw new Error(allocationBlockReason);
+    }
+
     if (isStaffGangSheetShow(show) && !permissionService.canManageStaffGangSheetShow(caller, show)) {
       throw new Error("You can only add requests to Internal Gang Sheets assigned to you.");
     }
@@ -1436,8 +1610,34 @@ export const upcomingShowService = {
       "upcomingShowService.allocatePrintRequestItem",
     );
 
+    if (printRequest.needsStaffRequeueAt != null) {
+      await printRequestService.clearNeedsStaffRequeueMarker(caller, printRequest.id);
+    }
+
     const createdSnapshot = await getDoc(allocationRef);
     return mapShowAllocationData(createdSnapshot.id, createdSnapshot.data() as ShowAllocationDocumentData);
+  },
+
+  /**
+   * Atomically allocates a complete Add-to-Show plan and activates the request. This is the
+   * trusted staff path used by Studio re-add/editing flows; the legacy per-item client writer
+   * remains available only for narrower maintenance callers.
+   */
+  async allocateStudioPrintRequestToShow(
+    caller: User,
+    input: AllocateStudioPrintRequestToShowInput,
+  ): Promise<AllocateStudioPrintRequestToShowResult> {
+    if (!permissionService.canManageUpcomingShows(caller)) {
+      throw new Error("You do not have permission to manage show allocations.");
+    }
+
+    const callable = callTracedFunction<
+      AllocateStudioPrintRequestToShowInput,
+      AllocateStudioPrintRequestToShowResult
+    >("allocateStudioPrintRequestToShow", {
+      source: "upcomingShowService.allocateStudioPrintRequestToShow",
+    });
+    return callable(input);
   },
 
   async updateShowAllocationStatus(
@@ -2161,6 +2361,40 @@ export const upcomingShowService = {
       throw new Error("This show has already started printing. Removing allocations requires an admin correction.");
     }
 
+    // Check if this is a customer request - use callable for whole request on show removal
+    // for parking atomicity (single allocation removal uses whole-request-on-show callable)
+    const printRequest = await printRequestService.getPrintRequestById(caller, allocation.printRequestId);
+    const isCustomerRequest = printRequest.customerId && !printRequest.isInternal;
+
+    if (isCustomerRequest) {
+      // Use trusted callable for customer requests to handle parking atomically
+      // Note: This removes all allocations for the request on this show, not just the single allocation,
+      // but this ensures parking atomicity for customer requests.
+      try {
+        await callTracedFunction<
+          { printRequestId: string; upcomingShowId: string },
+          { success: boolean }
+        >('unqueueStudioCustomerPrintRequestFromShow', {
+          source: 'upcomingShowService.removeShowAllocation',
+        })({
+          printRequestId: allocation.printRequestId,
+          upcomingShowId: allocation.upcomingShowId,
+        });
+        
+        // Sync queue tab state after callable success
+        await this.syncPrintRequestQueueTabBestEffort(
+          allocation.printRequestId,
+          "upcomingShowService.removeShowAllocation",
+        );
+        return;
+      } catch (error) {
+        throw new Error(
+          error instanceof Error ? error.message : 'Unable to remove customer request allocation.'
+        );
+      }
+    }
+
+    // For internal requests, use existing client path
     await runTracedWrite("deleteDoc", () => deleteDoc(allocationRef), {
       app: "studio",
       collection: "showAllocations",
@@ -2194,8 +2428,55 @@ export const upcomingShowService = {
       throw new Error("This show has already started printing. Removing allocations requires an admin correction.");
     }
 
+    // Check if this is a customer request - use callable for atomic parking
+    const printRequest = await printRequestService.getPrintRequestById(caller, printRequestId);
+    const isCustomerRequest = printRequest.customerId && !printRequest.isInternal;
+
+    if (isCustomerRequest) {
+      // Use trusted callable for customer requests to handle parking atomically
+      try {
+        await callTracedFunction<
+          { printRequestId: string; upcomingShowId: string },
+          { success: boolean }
+        >('unqueueStudioCustomerPrintRequestFromShow', {
+          source: 'upcomingShowService.removeShowAllocationsForRequest',
+        })({
+          printRequestId,
+          upcomingShowId,
+        });
+        
+        // Sync queue tab state after callable success
+        await this.syncPrintRequestQueueTabBestEffort(
+          printRequestId,
+          "upcomingShowService.removeShowAllocationsForRequest",
+        );
+        return;
+      } catch (error) {
+        throw new Error(
+          error instanceof Error ? error.message : 'Unable to remove customer request from show.'
+        );
+      }
+    }
+
+    // For internal requests, use existing client path
+    await this.deleteShowAllocationsForRequestOnShow(caller, upcomingShowId, printRequestId);
+    await this.recalculateShowAllocatedQuantity(caller, upcomingShowId);
+    await this.markPrintRequestEditingIfNoActiveAllocations(caller, printRequestId);
+    await this.syncPrintRequestQueueTabBestEffort(
+      printRequestId,
+      "upcomingShowService.removeShowAllocationsForRequest",
+    );
+  },
+
+  async deleteShowAllocationsForRequestOnShow(
+    caller: User,
+    upcomingShowId: string,
+    printRequestId: string,
+  ): Promise<void> {
     const allocations = await this.listShowAllocations(caller, upcomingShowId);
-    const allocationsForRequest = allocations.filter((allocation) => allocation.printRequestId === printRequestId);
+    const allocationsForRequest = allocations.filter(
+      (allocation) => allocation.printRequestId === printRequestId && allocation.status !== "canceled",
+    );
 
     await Promise.all(
       allocationsForRequest.map((allocation) =>
@@ -2206,18 +2487,220 @@ export const upcomingShowService = {
             app: "studio",
             collection: "showAllocations",
             documentPathPattern: "showAllocations/{showAllocationId}",
-            source: "upcomingShowService.removeShowAllocationsForRequest",
+            source: "upcomingShowService.deleteShowAllocationsForRequestOnShow",
           },
         ),
       ),
     );
+  },
 
-    await this.recalculateShowAllocatedQuantity(caller, upcomingShowId);
-    await this.markPrintRequestEditingIfNoActiveAllocations(caller, printRequestId);
-    await this.syncPrintRequestQueueTabBestEffort(
-      printRequestId,
-      "upcomingShowService.removeShowAllocationsForRequest",
+  /**
+   * Moves (upcoming source) or copies (aired/locked source) every allocation for a Print Request
+   * on one show to another upcoming show.
+   * MOVE uses trusted Functions preview/apply (cancel + movedFromAllocationId).
+   * COPY duplicates the Print Request then allocates (unchanged past/locked path).
+   */
+  async transferPrintRequestBetweenShows(
+    caller: User,
+    input: {
+      printRequestId: string;
+      sourceShowId: string;
+      destinationShowId: string;
+    },
+  ): Promise<{
+    mode: PrintRequestShowTransferMode;
+    transferredQuantity: number;
+    destinationPrintRequestId: string;
+  }> {
+    if (!permissionService.canManageUpcomingShows(caller)) {
+      throw new Error("You do not have permission to manage show allocations.");
+    }
+
+    const { printRequestId, sourceShowId, destinationShowId } = input;
+    if (!printRequestId.trim() || !sourceShowId.trim() || !destinationShowId.trim()) {
+      throw new Error("A print request and both shows are required.");
+    }
+
+    if (sourceShowId === destinationShowId) {
+      throw new Error("Choose a different destination show.");
+    }
+
+    const [sourceShow, destinationShow, printRequest, sourceAllocations] = await Promise.all([
+      this.getUpcomingShowById(caller, sourceShowId),
+      this.getUpcomingShowById(caller, destinationShowId),
+      printRequestService.getPrintRequestById(caller, printRequestId),
+      this.listShowAllocations(caller, sourceShowId),
+    ]);
+
+    const allocationsToTransfer = sourceAllocations.filter(
+      (allocation) => allocation.printRequestId === printRequestId && allocation.status !== "canceled",
     );
+
+    if (allocationsToTransfer.length === 0) {
+      throw new Error("This print request is not on the source show.");
+    }
+
+    const mode = resolvePrintRequestShowTransferMode(sourceShow);
+
+    if (mode === "move") {
+      const preview = await showQueueMoveService.preview({
+        scope: "print_request",
+        sourceShowId,
+        destinationShowId,
+        printRequestId,
+      });
+      if (!preview.canApply || !preview.previewChecksum) {
+        throw new Error(preview.blockers[0]?.message ?? "Unable to move this request.");
+      }
+      const applied = await showQueueMoveService.apply({
+        scope: "print_request",
+        sourceShowId,
+        destinationShowId,
+        printRequestId,
+        previewChecksum: preview.previewChecksum,
+      });
+      return {
+        mode: "move",
+        transferredQuantity: applied.totalMoveQuantity,
+        destinationPrintRequestId: printRequestId,
+      };
+    }
+
+    const transferredQuantity = allocationsToTransfer.reduce(
+      (sum, allocation) => sum + allocation.allocatedQuantity,
+      0,
+    );
+
+    let destinationPrintRequestId = printRequestId;
+    let destinationPrintRequestName = printRequest.name;
+    let destinationPrintRequestOrigin = printRequest.requestOrigin;
+    let destinationCustomerId = printRequest.customerId;
+    const itemIdBySourceItemId = new Map<string, string>();
+
+    {
+      const sourceItems = await printRequestService.listPrintRequestItems(caller, printRequestId);
+      const duplicated = await printRequestService.duplicatePrintRequestForShowTransferCopy(
+        caller,
+        printRequest,
+        sourceItems,
+      );
+      destinationPrintRequestId = duplicated.printRequestId;
+      destinationPrintRequestName = duplicated.printRequestName;
+      destinationPrintRequestOrigin = duplicated.requestOrigin;
+      destinationCustomerId = duplicated.customerId;
+      for (const [sourceItemId, destinationItemId] of Object.entries(
+        duplicated.itemIdBySourceItemId,
+      )) {
+        itemIdBySourceItemId.set(sourceItemId, destinationItemId);
+      }
+    }
+
+    if (isStaffGangSheetShow(destinationShow) && !permissionService.canManageStaffGangSheetShow(caller, destinationShow)) {
+      throw new Error("You can only add requests to Internal Gang Sheets assigned to you.");
+    }
+
+    if (
+      !canAllocateOriginToShowSource({
+        source: destinationShow.source,
+        requestOrigin: destinationPrintRequestOrigin ?? printRequest.requestOrigin,
+        isInternal: printRequest.isInternal,
+      })
+    ) {
+      throw new Error("Only Internal print requests can be added to Internal Gangsheets.");
+    }
+
+    const now = new Date();
+    const blockReason = getShowAllocationBlockReason(
+      {
+        scheduledStartAt: destinationShow.scheduledStartAt,
+        productionStatus: destinationShow.productionStatus,
+        maxTotalQuantity: destinationShow.maxTotalQuantity,
+        allocatedQuantity: destinationShow.allocatedQuantity,
+      },
+      now,
+    );
+
+    if (blockReason) {
+      throw new Error(formatShowAllocationBlockedMessage(blockReason));
+    }
+
+    if (!canAllocatePrintRequestToShow(destinationShow, now)) {
+      throw new Error(PAST_SHOW_READ_ONLY_MESSAGE);
+    }
+
+    if (destinationShow.maxTotalQuantity !== undefined) {
+      const remainingCapacity = destinationShow.maxTotalQuantity - destinationShow.allocatedQuantity;
+      if (transferredQuantity > remainingCapacity) {
+        throw new Error(SHOW_QUEUE_FULL_MESSAGE);
+      }
+    }
+
+    const batch = writeBatch(db);
+
+    for (const allocation of allocationsToTransfer) {
+      const destinationPrintRequestItemId = itemIdBySourceItemId.get(allocation.printRequestItemId);
+
+      if (!destinationPrintRequestItemId) {
+        throw new Error("Unable to map print request items for copy.");
+      }
+
+      const allocationRef = doc(firestoreCollectionService.getShowAllocationsCollection());
+      const payload = withoutUndefinedFields({
+        upcomingShowId: destinationShowId,
+        printRequestId: destinationPrintRequestId,
+        printRequestItemId: destinationPrintRequestItemId,
+        ...(allocation.designId ? { designId: allocation.designId } : {}),
+        ...(allocation.sourceType ? { sourceType: allocation.sourceType } : {}),
+        ...(allocation.customerUploadId ? { customerUploadId: allocation.customerUploadId } : {}),
+        ...(allocation.staffArtworkId ? { staffArtworkId: allocation.staffArtworkId } : {}),
+        customerId: destinationCustomerId ?? allocation.customerId,
+        requestNameSnapshot: destinationPrintRequestName,
+        requestOriginSnapshot: destinationPrintRequestOrigin ?? allocation.requestOriginSnapshot,
+        designTitleSnapshot: allocation.designTitleSnapshot,
+        allocatedQuantity: allocation.allocatedQuantity,
+        sourceItemQuantitySnapshot: allocation.sourceItemQuantitySnapshot,
+        printWidthInches: allocation.printWidthInches,
+        printHeightInches: allocation.printHeightInches,
+        sizeLabel: allocation.sizeLabel,
+        notes: allocation.notes,
+        status: "pending" as const,
+        addedBy: caller.id,
+        updatedBy: caller.id,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      assertNoUndefinedFirestoreFields(payload, "Transferred show allocation payload");
+      batch.set(allocationRef, payload);
+    }
+
+    batch.update(doc(firestoreCollectionService.getUpcomingShowsCollection(), destinationShowId), {
+      allocatedQuantity: destinationShow.allocatedQuantity + transferredQuantity,
+      updatedBy: caller.id,
+      updatedAt: serverTimestamp(),
+    });
+
+    await runTracedWrite("writeBatch", () => batch.commit(), {
+      app: "studio",
+      collection: "showAllocations",
+      documentPathPattern: "showAllocations/{showAllocationId}",
+      source: "upcomingShowService.transferPrintRequestBetweenShows",
+    });
+
+    await this.syncPrintRequestQueueTabBestEffort(
+      destinationPrintRequestId,
+      "upcomingShowService.transferPrintRequestBetweenShows",
+    );
+
+    const destinationPrintRequest = await printRequestService.getPrintRequestById(
+      caller,
+      destinationPrintRequestId,
+    );
+    if (destinationPrintRequest.needsStaffRequeueAt != null) {
+      await printRequestService.clearNeedsStaffRequeueMarker(caller, destinationPrintRequestId);
+    }
+
+    return { mode, transferredQuantity, destinationPrintRequestId };
   },
 
   /**
@@ -2260,15 +2743,41 @@ export const upcomingShowService = {
       this.listShowAllocationsForPrintRequest(caller, printRequestId),
     ]);
 
-    if (printRequest.status !== "active") {
+    const hasActiveAllocation = allocations.some((allocation) => allocation.status !== "canceled");
+
+    if (
+      !shouldTransitionActiveRequestToEditing({
+        requestStatus: printRequest.status,
+        hasActiveAllocationsGlobally: hasActiveAllocation,
+        hasOtherContinuableRequest: printRequest.customerId
+          ? await this.customerHasOtherContinuablePrintRequest(
+              caller,
+              printRequest.customerId,
+              printRequestId,
+            )
+          : false,
+        isInternal: printRequest.isInternal,
+      })
+    ) {
       return;
     }
 
-    const hasActiveAllocation = allocations.some((allocation) => allocation.status !== "canceled");
+    await printRequestService.updatePrintRequest(caller, printRequestId, { status: "editing" });
+  },
 
-    if (!hasActiveAllocation) {
-      await printRequestService.updatePrintRequest(caller, printRequestId, { status: "editing" });
-    }
+  async customerHasOtherContinuablePrintRequest(
+    _caller: User,
+    customerId: string,
+    excludePrintRequestId: string,
+  ): Promise<boolean> {
+    const continuableQuery = query(
+      firestoreCollectionService.getPrintRequestsCollection(),
+      where("customerId", "==", customerId),
+      where("status", "in", ["draft", "editing"]),
+      limit(2),
+    );
+    const snapshot = await getDocs(continuableQuery);
+    return snapshot.docs.some((doc) => doc.id !== excludePrintRequestId);
   },
 
   /**

@@ -2,16 +2,12 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
-  CATALOG_ENRICHMENT_SYSTEM_PROMPT,
   CATALOG_ENRICHMENT_PROMPT_VERSION,
-  buildCatalogEnrichmentSystemPrompt,
-  buildCatalogEnrichmentUserPrompt,
   descriptionLacksVisibleTextOverlap,
   extractPrimaryWordingFromDescription,
   isFilenameLikeTitle,
   isGenericCatalogTitle,
   isPlaceholderCatalogDescription,
-  normalizeAiTags,
   normalizeCatalogTitle,
   resolveCatalogDescription,
   resolveCatalogTitle,
@@ -20,39 +16,11 @@ import {
   filterBackgroundColorsFromPalette,
   stripTrailingTitlePunctuation,
 } from "./catalogTitleRules";
+import { normalizeAiTags } from "./legacyAiTagNormalization";
 
 describe("catalogTitleRules", () => {
-  it("uses prompt version v26", () => {
-    assert.equal(CATALOG_ENRICHMENT_PROMPT_VERSION, "catalog-enrich-v26");
-  });
-
-  it("keeps the JSON contract, OCR, canvas, and description rules in the trimmed prompt", () => {
-    // Required JSON keys the downstream parser depends on must still be requested.
-    for (const key of [
-      "title",
-      "description",
-      "categoryName",
-      "tags",
-      "artworkContainsText",
-      "visibleText",
-      "textOnlyArtwork",
-      "textRecognitionConfidence",
-      "overallConfidence",
-    ]) {
-      assert.match(CATALOG_ENRICHMENT_SYSTEM_PROMPT, new RegExp(`\\b${key}\\b`));
-    }
-
-    assert.match(CATALOG_ENRICHMENT_SYSTEM_PROMPT, /Return JSON only/i);
-    assert.match(CATALOG_ENRICHMENT_SYSTEM_PROMPT, /5 to 12 lowercase single-word strings/i);
-    assert.match(CATALOG_ENRICHMENT_SYSTEM_PROMPT, /one entry per arc/i);
-    assert.match(CATALOG_ENRICHMENT_SYSTEM_PROMPT, /Always return a non-empty description/i);
-    assert.match(CATALOG_ENRICHMENT_SYSTEM_PROMPT, /Canvas rule:/i);
-    assert.match(CATALOG_ENRICHMENT_SYSTEM_PROMPT, /lower confidence instead of inventing it/i);
-
-    assert.match(buildCatalogEnrichmentUserPrompt("Animals"), /character by character/i);
-    assert.match(buildCatalogEnrichmentUserPrompt("Animals"), /Analyze the provided image only/i);
-    assert.match(buildCatalogEnrichmentUserPrompt("Animals"), /do not invent unreadable words/i);
-    assert.match(buildCatalogEnrichmentSystemPrompt(["witch"]), /\bwitch\b/);
+  it("uses prompt version v39", () => {
+    assert.equal(CATALOG_ENRICHMENT_PROMPT_VERSION, "catalog-enrich-v39");
   });
 
   it("sanitizeCatalogDescription removes gray background phrases", () => {
@@ -131,25 +99,45 @@ describe("catalogTitleRules", () => {
       "skeleton",
       "dance",
     ]);
-    assert.deepEqual(normalizeAiTags(["witch", "dance"], undefined, 20, ["witch", "death"]), ["dance"]);
+    assert.deepEqual(
+      normalizeAiTags(["witch", "dance"], undefined, 20, ["witch", "death"]),
+      ["dance"],
+    );
   });
 
   it("filterBackgroundColorsFromPalette removes canvas-related colors", () => {
     assert.deepEqual(
-      filterBackgroundColorsFromPalette(["purple", "gray", "gray background", "yellow"]),
+      filterBackgroundColorsFromPalette([
+        "purple",
+        "gray",
+        "gray background",
+        "yellow",
+      ]),
       ["purple", "yellow"],
     );
   });
 
   it("normalizes title case and trims version suffixes", () => {
-    assert.equal(normalizeCatalogTitle("hot mess highland cow"), "Hot Mess Highland Cow");
-    assert.equal(normalizeCatalogTitle("Connie VanEtta - V 2"), "Connie Vanetta");
+    assert.equal(
+      normalizeCatalogTitle("hot mess highland cow"),
+      "Hot Mess Highland Cow",
+    );
+    assert.equal(
+      normalizeCatalogTitle("Connie VanEtta - V 2"),
+      "Connie Vanetta",
+    );
   });
 
   it("strips trailing punctuation and separator tokens from titles", () => {
-    assert.equal(normalizeCatalogTitle("Some Days It Rocks Me -"), "Some Days It Rocks Me");
+    assert.equal(
+      normalizeCatalogTitle("Some Days It Rocks Me -"),
+      "Some Days It Rocks Me",
+    );
     assert.equal(normalizeCatalogTitle("Foo Bar |"), "Foo Bar");
-    assert.equal(stripTrailingTitlePunctuation("Faith Over Fear."), "Faith Over Fear");
+    assert.equal(
+      stripTrailingTitlePunctuation("Faith Over Fear."),
+      "Faith Over Fear",
+    );
   });
 
   it("prefers first visibleText segment when candidate is wrong segment with trailing dash", () => {
@@ -179,7 +167,7 @@ describe("catalogTitleRules", () => {
     );
     assert.equal(
       descriptionLacksVisibleTextOverlap(
-        'SOME DAYS I ROCK IT / SOME DAYS IT ROCKS ME / MOTHERHOOD. Skeleton mom design.',
+        "SOME DAYS I ROCK IT / SOME DAYS IT ROCKS ME / MOTHERHOOD. Skeleton mom design.",
         ["SOME DAYS I ROCK IT", "MOTHERHOOD"],
       ),
       false,
@@ -187,8 +175,14 @@ describe("catalogTitleRules", () => {
   });
 
   it("detects filename-like titles", () => {
-    assert.equal(isFilenameLikeTitle("Connie VanEtta - V 2", "Connie VanEtta - V 2"), true);
-    assert.equal(isFilenameLikeTitle("Hot Mess Highland Cow", "Connie VanEtta - V 2"), false);
+    assert.equal(
+      isFilenameLikeTitle("Connie VanEtta - V 2", "Connie VanEtta - V 2"),
+      true,
+    );
+    assert.equal(
+      isFilenameLikeTitle("Hot Mess Highland Cow", "Connie VanEtta - V 2"),
+      false,
+    );
   });
 
   it("falls back to primary subject when candidate matches upload stem", () => {
@@ -210,7 +204,10 @@ describe("catalogTitleRules", () => {
         primarySubject: "Smiling boy holding a peanut",
         tags: ["peanut", "cartoon", "logo"],
         uploadFileStem: "Dees Nuts - V 1",
-        visibleText: ["Dee's Nuts", "You haven't lived until you had Dee's Nuts in your mouth"],
+        visibleText: [
+          "Dee's Nuts",
+          "You haven't lived until you had Dee's Nuts in your mouth",
+        ],
       }),
       "Dee's Nuts Farmer Logo",
     );
@@ -286,7 +283,14 @@ describe("catalogTitleRules", () => {
 
   it("filters generic production tags while keeping searchable tokens", () => {
     assert.deepEqual(
-      normalizeAiTags(["shirt", "typography", "mama", "coffee", "funny", "nurse"]),
+      normalizeAiTags([
+        "shirt",
+        "typography",
+        "mama",
+        "coffee",
+        "funny",
+        "nurse",
+      ]),
       ["mama", "coffee", "funny", "nurse"],
     );
   });
@@ -299,11 +303,10 @@ describe("catalogTitleRules", () => {
   });
 
   it("does not add visible text phrases as tags", () => {
-    assert.deepEqual(normalizeAiTags(["peanut", "farmer", "funny"], ["Dee's Nuts"]), [
-      "peanut",
-      "farmer",
-      "funny",
-    ]);
+    assert.deepEqual(
+      normalizeAiTags(["peanut", "farmer", "funny"], ["Dee's Nuts"]),
+      ["peanut", "farmer", "funny"],
+    );
   });
 
   it("splits phrase tags into single words and drops stopwords", () => {
@@ -323,7 +326,8 @@ describe("catalogTitleRules", () => {
     assert.equal(
       resolveCatalogTitle({
         candidateTitle: "Text",
-        description: "The design reads \"I'm not arguing, I'm just explaining why I'm right!\"",
+        description:
+          "The design reads \"I'm not arguing, I'm just explaining why I'm right!\"",
         uploadFileStem: "upload",
         visibleText: ["I'M NOT ARGUING I'M JUST EXPLAINING WHY I'M RIGHT"],
         artworkContainsText: true,
@@ -345,10 +349,7 @@ describe("catalogTitleRules", () => {
   });
 
   it("blocks generic candidate titles when artwork contains text", () => {
-    assert.equal(
-      isGenericCatalogTitle("Text"),
-      true,
-    );
+    assert.equal(isGenericCatalogTitle("Text"), true);
     assert.equal(
       resolveCatalogTitle({
         candidateTitle: "Typography",
@@ -365,7 +366,9 @@ describe("catalogTitleRules", () => {
 
   it("extracts quoted wording from descriptions", () => {
     assert.equal(
-      extractPrimaryWordingFromDescription('The shirt says "Hot Mess Highland Cow" in rustic font.'),
+      extractPrimaryWordingFromDescription(
+        'The shirt says "Hot Mess Highland Cow" in rustic font.',
+      ),
       "Hot Mess Highland Cow",
     );
   });
@@ -401,7 +404,14 @@ describe("resolveLeanCatalogTitle", () => {
     assert.equal(
       resolveLeanCatalogTitle({
         candidateTitle: "Sarcastic Funny Attitude Statement Retro Distressed",
-        tags: ["sarcastic", "funny", "attitude", "statement", "retro", "distressed"],
+        tags: [
+          "sarcastic",
+          "funny",
+          "attitude",
+          "statement",
+          "retro",
+          "distressed",
+        ],
         uploadFileStem: "upload",
         description:
           '"Kinda Give A Damn Kinda Don\'t Care" in distressed lettering with decorative stars.',
@@ -461,7 +471,11 @@ describe("resolveLeanCatalogTitle", () => {
 
   it("falls back to Artwork Design when title and description are unusable", () => {
     assert.equal(
-      resolveLeanCatalogTitle({ candidateTitle: "Design", tags: [], uploadFileStem: "upload" }),
+      resolveLeanCatalogTitle({
+        candidateTitle: "Design",
+        tags: [],
+        uploadFileStem: "upload",
+      }),
       "Artwork Design",
     );
   });
@@ -472,7 +486,8 @@ describe("resolveLeanCatalogTitle", () => {
         candidateTitle: "I",
         tags: ["funny"],
         uploadFileStem: "upload",
-        description: '"I\'m Fine The Rest of You Need Therapy" in bold lettering.',
+        description:
+          '"I\'m Fine The Rest of You Need Therapy" in bold lettering.',
       }),
       "I'm Fine The Rest Of You Need Therapy",
     );
@@ -484,7 +499,8 @@ describe("resolveLeanCatalogTitle", () => {
         candidateTitle: "I'm Fine The Rest of You Need Therapy",
         tags: ["funny"],
         uploadFileStem: "upload",
-        description: '"I\'m Fine The Rest of You Need Therapy" in bold lettering.',
+        description:
+          '"I\'m Fine The Rest of You Need Therapy" in bold lettering.',
       }),
       "I'm Fine The Rest Of You Need Therapy",
     );
@@ -510,7 +526,7 @@ describe("resolveLeanCatalogTitle", () => {
         tags: ["funny"],
         uploadFileStem: "upload",
         description:
-          '"I\'m Not Arguing, I\'m Just Explaining Right" in bold stacked typography.',
+          "\"I'm Not Arguing, I'm Just Explaining Right\" in bold stacked typography.",
       }),
       "I'm Not Arguing I'm Just Explaining Right",
     );
@@ -575,7 +591,8 @@ describe("resolveLeanCatalogTitle", () => {
         candidateTitle: "Sarcasm",
         tags: ["funny"],
         uploadFileStem: "upload",
-        description: 'The design reads "Sarcasm Just one of my many talents" in two lines.',
+        description:
+          'The design reads "Sarcasm Just one of my many talents" in two lines.',
       }),
       "Sarcasm Just One Of My Many Talents",
     );
@@ -612,7 +629,8 @@ describe("resolveLeanCatalogTitle", () => {
         candidateTitle: "Faith Over Fear",
         tags: ["faith"],
         uploadFileStem: "upload",
-        description: 'The shirt says "Faith Over Fear" in a "bold" "distressed" style.',
+        description:
+          'The shirt says "Faith Over Fear" in a "bold" "distressed" style.',
       }),
       "Faith Over Fear",
     );
@@ -792,9 +810,178 @@ describe("resolveLeanCatalogTitle", () => {
         tags: ["christmas"],
         uploadFileStem: "upload",
         readableTextLines: [],
-        description: "Mouse ears with a red and white polka dot bow and Christmas accents.",
+        description:
+          "Mouse ears with a red and white polka dot bow and Christmas accents.",
       }),
       "Mouse Ears With Holiday Bow",
     );
+  });
+
+  it("rejects dump-shaped model titles even when they contain a readable phrase", () => {
+    const title = resolveLeanCatalogTitle({
+      candidateTitle:
+        "182 Freely I Will Always Love You Dolly Parton NC If Would",
+      tags: ["music"],
+      uploadFileStem: "upload",
+      readableTextLines: [
+        "182 (freely) I WILL ALWAYS LOVE YOU - DOLLY PARTON N.C. if ____ would ____",
+      ],
+      centralSubject: "Dolly Parton portrait",
+    });
+
+    assert.match(title, /i will always love you/i);
+    assert.match(title, /dolly parton/i);
+    assert.doesNotMatch(title, /182|freely|____|\bnc\b/i);
+  });
+
+  it("keeps a semantic Dolly sheet-music portrait title", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle:
+          "Dolly Parton I Will Always Love You Sheet Music Portrait",
+        tags: ["music"],
+        uploadFileStem: "upload",
+        readableTextLines: ["I Will Always Love You", "Dolly Parton"],
+        centralSubject: "Dolly Parton",
+      }),
+      "Dolly Parton I Will Always Love You Sheet Music Portrait",
+    );
+  });
+});
+
+describe("resolveLeanCatalogTitle — no-text under-specific enrichment (subjects/objects)", () => {
+  const highlandAccepted =
+    "A Charming Illustrated Highland Cow With Large Expressive Eyes Is Depicted Resting Its Chin On Its Hand";
+
+  it("Sloth + tree object → materially more specific than bare Sloth", () => {
+    const title = resolveLeanCatalogTitle({
+      candidateTitle: "Sloth",
+      tags: [],
+      uploadFileStem: "upload",
+      description:
+        "This design features a detailed illustration of a sloth clinging to a tree trunk.",
+      subjects: ["sloth", "person"],
+      objects: ["trees"],
+    });
+
+    assert.notEqual(title, "Sloth");
+    assert.match(title, /sloth/i);
+    assert.match(title, /tree/i);
+    assert.doesNotMatch(title, /\bperson\b/i);
+  });
+
+  it("Poodle: Dog + dog/poodle subjects + heart/glasses → not bare Dog", () => {
+    const title = resolveLeanCatalogTitle({
+      candidateTitle: "Dog",
+      tags: [],
+      uploadFileStem: "upload",
+      description:
+        "A detailed illustration of a black poodle wearing light blue heart-shaped glasses.",
+      subjects: ["dog", "poodle"],
+      objects: ["glasses", "heart"],
+    });
+
+    assert.notEqual(title, "Dog");
+    assert.match(title, /poodle/i);
+    assert.match(title, /glasses/i);
+    assert.match(title, /heart/i);
+    assert.doesNotMatch(title, /\bglass\b/i);
+    assert.doesNotMatch(title, /^dog$/i);
+  });
+
+  it("Highland accepted long descriptive title remains unchanged", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: highlandAccepted,
+        tags: [],
+        uploadFileStem: "upload",
+        description: "A charming illustrated highland cow.",
+        subjects: ["cow", "Highland cow"],
+        objects: ["flowers", "bow"],
+      }),
+      highlandAccepted,
+    );
+  });
+
+  it("legitimate generic Cat with no richer evidence stays Cat", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: "Cat",
+        tags: [],
+        uploadFileStem: "upload",
+        description: "A cat.",
+        subjects: ["cat"],
+        objects: [],
+      }),
+      "Cat",
+    );
+  });
+
+  it("no-hallucination: Dog without poodle/glasses evidence stays Dog", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: "Dog",
+        tags: [],
+        uploadFileStem: "upload",
+        description: "A dog portrait.",
+        subjects: ["dog"],
+        objects: [],
+      }),
+      "Dog",
+    );
+  });
+
+  it("subject promotion: Dog + dog/poodle without objects → Poodle", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: "Dog",
+        tags: [],
+        uploadFileStem: "upload",
+        subjects: ["dog", "poodle"],
+        objects: [],
+      }),
+      "Poodle",
+    );
+  });
+
+  it("decorative object restraint: does not append every weak object", () => {
+    const title = resolveLeanCatalogTitle({
+      candidateTitle: "Fox",
+      tags: [],
+      uploadFileStem: "upload",
+      subjects: ["fox"],
+      objects: ["stars", "sparkles", "border", "tree"],
+    });
+
+    assert.match(title, /fox/i);
+    assert.match(title, /tree/i);
+    assert.doesNotMatch(title, /star|sparkle|border/i);
+  });
+
+  it("visibleText-led slogan path is not replaced by subjects/objects", () => {
+    assert.equal(
+      resolveLeanCatalogTitle({
+        candidateTitle: "Sarcasm",
+        tags: [],
+        uploadFileStem: "upload",
+        readableTextLines: ["Sarcasm", "Just one of my many talents"],
+        subjects: ["skeleton"],
+        objects: ["stars"],
+      }),
+      "Sarcasm Just One Of My Many Talents",
+    );
+  });
+
+  it("works with matchedTags empty (tag-retirement compatible)", () => {
+    const title = resolveLeanCatalogTitle({
+      candidateTitle: "Dog",
+      tags: [],
+      uploadFileStem: "upload",
+      subjects: ["dog", "poodle"],
+      objects: ["glasses", "heart"],
+    });
+
+    assert.match(title, /poodle/i);
+    assert.match(title, /glasses/i);
   });
 });

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  ASSISTED_CREATION_FINAL_ARTWORK_EMAIL_SENT_NOTE,
   ASSISTED_CREATION_PROOF_EMAIL_SENT_NOTE,
   ASSISTED_CREATION_REQUEST_UPDATED_NOTE,
   buildAssistedCreationHistoryTitles,
@@ -158,11 +159,18 @@ describe("assistedCreationHistory helpers", () => {
     assert.equal(countUnreadAssistedCreationCustomerUpdates([staffMessage], null), 0);
   });
 
-  it("recognizes proof-ready email sent history", () => {
+  it("recognizes proof-ready and final-artwork email sent history", () => {
     assert.equal(
       isAssistedCreationProofEmailSentEntry({
         byRole: "system",
         note: ASSISTED_CREATION_PROOF_EMAIL_SENT_NOTE,
+      }),
+      true,
+    );
+    assert.equal(
+      isAssistedCreationProofEmailSentEntry({
+        byRole: "system",
+        note: ASSISTED_CREATION_FINAL_ARTWORK_EMAIL_SENT_NOTE,
       }),
       true,
     );

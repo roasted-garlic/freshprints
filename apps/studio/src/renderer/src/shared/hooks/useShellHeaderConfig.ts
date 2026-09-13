@@ -67,7 +67,13 @@ function toggleEqual(
     return false;
   }
 
-  return a.checked === b.checked && a.label === b.label && a.name === b.name && a.onChange === b.onChange;
+  return (
+    a.checked === b.checked &&
+    a.label === b.label &&
+    a.name === b.name &&
+    a.onChange === b.onChange &&
+    a.tooltip === b.tooltip
+  );
 }
 
 function filtersEqual(
@@ -107,6 +113,7 @@ function shellHeaderConfigsEqual(a: ShellHeaderConfig, b: ShellHeaderConfig): bo
   return (
     a.title === b.title &&
     a.description === b.description &&
+    a.accessory === b.accessory &&
     actionsEqual(a.actions, b.actions) &&
     primaryActionEqual(a.primaryAction, b.primaryAction) &&
     searchEqual(a.search, b.search) &&

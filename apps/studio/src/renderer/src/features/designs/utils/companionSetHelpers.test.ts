@@ -6,6 +6,8 @@ import {
   buildCompanionLinkId,
   compareDesignsForCompanionLinkPicker,
   filterEligibleCompanionLinkTargets,
+  listCompanionPeerLinkPairs,
+  listFullMeshLinkPairs,
   removeCompanionNeighbor,
   resolveCompanionSetStatusLabel,
   sortedCompanionPair,
@@ -117,6 +119,33 @@ describe("filterEligibleCompanionLinkTargets", () => {
       eligible.map((design) => design.id),
       ["existing-neighbor", "other", "waiting", "linked-elsewhere"],
     );
+  });
+});
+
+describe("listCompanionPeerLinkPairs", () => {
+  it("links each peer to the anchor and meshes peers within the batch only", () => {
+    assert.deepEqual(listCompanionPeerLinkPairs("parent", ["red", "blue", "green"]), [
+      ["parent", "red"],
+      ["red", "blue"],
+      ["red", "green"],
+      ["parent", "blue"],
+      ["blue", "green"],
+      ["parent", "green"],
+    ]);
+  });
+
+  it("ignores duplicate peer ids and the anchor id", () => {
+    assert.deepEqual(listCompanionPeerLinkPairs("parent", ["parent", "red", "red"]), [["parent", "red"]]);
+  });
+});
+
+describe("listFullMeshLinkPairs", () => {
+  it("returns every unordered pair in the group", () => {
+    assert.deepEqual(listFullMeshLinkPairs(["a", "b", "c"]), [
+      ["a", "b"],
+      ["a", "c"],
+      ["b", "c"],
+    ]);
   });
 });
 

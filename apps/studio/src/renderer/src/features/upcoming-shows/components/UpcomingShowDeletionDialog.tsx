@@ -38,6 +38,7 @@ export function UpcomingShowDeletionDialog({
     setError(null);
     setPreview(null);
     setIsLoadingPreview(true);
+    upcomingShowDeletionService.warmMutateCallables();
     void upcomingShowDeletionService
       .preview(upcomingShowId)
       .then((result) => {

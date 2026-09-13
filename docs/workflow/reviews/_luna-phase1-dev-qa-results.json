@@ -1,0 +1,127 @@
+{
+  "projectId": "fresh-prints-dev",
+  "startedAt": "2026-09-05T20:28:25.986Z",
+  "runId": "mtou4yi4",
+  "revisions": {
+    "enqueueAiEnrichment": "enqueueaienrichment-00099-cuv",
+    "testAiEnrichmentPlayground": "testaienrichmentplayground-00059-kuw",
+    "testAiEnrichmentTagRerank": "testaienrichmenttagrerank-00021-tox",
+    "reprocessReadyDesignWithAi": "reprocessreadydesignwithai-00010-hab",
+    "onCatalogReprocessJobWritten": "oncatalogreprocessjobwritten-00021-naw"
+  },
+  "priorVisionModelId": "gemini-2.5-flash-lite",
+  "catalogWorkflowMode": "shadow",
+  "catalogAutonomousLiveEnabled": false,
+  "qaUserUid": "VjyACHwbv2ZHAJ2MXJ8HIkiawDF3",
+  "geminiPlayground": {
+    "ok": true,
+    "provider": "google",
+    "visionModelId": "gemini-2.5-flash-lite",
+    "elapsedMs": 1087,
+    "outputPreview": "{\"title\":\"\",\"description\":\"\",\"category\":\"Animals\",\"tags\":[\"dog\",\"paw print\",\"love\",\"pet\"],\"readableTextLines\":[],\"centra"
+  },
+  "geminiDefaultPersist": true,
+  "geminiEnrichment": {
+    "designId": "iKrclxMB0EMTB9asYhL4",
+    "stage": "ready_for_review",
+    "reviewStatus": "needs_review",
+    "provider": "google",
+    "model": "gemini-2.5-flash-lite",
+    "promptVersion": "catalog-enrich-v34"
+  },
+  "lunaPlayground": {
+    "ok": true,
+    "provider": "openai",
+    "visionModelId": "gpt-5.6-luna",
+    "elapsedMs": 4161,
+    "outputPreview": "{\"title\":\"Blank White Canvas\",\"description\":\"A plain white square centered on a neutral gray background with no visible ",
+    "firstResponseChars": 914
+  },
+  "playgroundDidNotMutateSettings": true,
+  "lunaDefaultPersist": true,
+  "lunaEnrichment": {
+    "designId": "pG0Js3cQWB6o4NLe6POA",
+    "stage": "ready_for_review",
+    "reviewStatus": "needs_review",
+    "provider": "google",
+    "model": "gemini-2.5-flash-lite",
+    "promptVersion": "catalog-enrich-v34"
+  },
+  "overrideIsolation": {
+    "designId": "K5n09pGLP02iC1dAWqsK",
+    "runProvider": "google",
+    "runModel": "gemini-3.1-flash-lite",
+    "settingsVisionModelId": "gpt-5.6-luna",
+    "settingsRemainedLuna": true
+  },
+  "lunaTagRerankPlayground": {
+    "ok": true,
+    "visionModelId": "gpt-5.6-luna",
+    "elapsedMs": 2413,
+    "approvedCandidateCount": 2,
+    "discardedTagCount": 0
+  },
+  "secondaryModes": {
+    "tagRerankMode": "auto",
+    "suggestionAuthorMode": "auto",
+    "note": "Pipeline secondary calls inherit resolved provider/model; Playground tag-rerank exercised Luna path above."
+  },
+  "reprocess": {
+    "ok": true,
+    "callable": {
+      "designId": "pG0Js3cQWB6o4NLe6POA",
+      "demoted": true,
+      "status": "imported",
+      "aiReviewStatus": "needs_review",
+      "aiProcessingStage": "ready_for_review",
+      "readyAtPreserved": true
+    },
+    "provider": "openai",
+    "model": "gpt-5.6-luna",
+    "stage": "ready_for_review",
+    "reviewStatus": "needs_review"
+  },
+  "providerSelectedLogs": [
+    {
+      "event": "provider.selected",
+      "providerId": "google",
+      "modelId": "gemini-3.1-flash-lite",
+      "reasoningEffort": null,
+      "timestamp": "2026-09-05T20:28:46.915980Z"
+    },
+    {
+      "event": "provider.selected",
+      "providerId": "google",
+      "modelId": "gemini-2.5-flash-lite",
+      "reasoningEffort": null,
+      "timestamp": "2026-09-05T20:28:42.235703Z"
+    },
+    {
+      "event": "provider.selected",
+      "providerId": "google",
+      "modelId": "gemini-2.5-flash-lite",
+      "reasoningEffort": null,
+      "timestamp": "2026-09-05T20:28:31.366483Z"
+    },
+    {
+      "event": "provider.selected",
+      "providerId": "google",
+      "modelId": "gemini-2.5-flash-lite",
+      "reasoningEffort": null,
+      "timestamp": "2026-09-05T20:26:04.589457Z"
+    },
+    {
+      "event": "provider.selected",
+      "providerId": "google",
+      "modelId": "gemini-2.5-flash-lite",
+      "reasoningEffort": null,
+      "timestamp": "2026-09-05T20:25:35.271051Z"
+    }
+  ],
+  "finalVisionModelId": "gemini-2.5-flash-lite",
+  "restoredPriorDefault": true,
+  "keepLunaRequested": false,
+  "qaUserCleanup": "deleted",
+  "endedAt": "2026-09-05T20:29:04.926Z",
+  "phase1ReadyForOwnerSignoff": false
+}

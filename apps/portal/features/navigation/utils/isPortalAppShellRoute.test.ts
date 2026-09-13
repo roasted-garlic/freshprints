@@ -22,10 +22,11 @@ describe('isPortalAppShellRoute', () => {
     assert.equal(isPortalAppShellRoute('/custom-designs'), true);
   });
 
-  it('leaves auth and non-shell pages for floating PortalChrome', () => {
+  it('treats auth and unknown paths as non-shell routes', () => {
     assert.equal(isPortalAppShellRoute('/login'), false);
     assert.equal(isPortalAppShellRoute('/register'), false);
     assert.equal(isPortalAppShellRoute('/login-required'), false);
+    assert.equal(isPortalAppShellRoute('/admin/show-queue'), false);
     assert.equal(isPortalAppShellRoute('/showsomething'), false);
   });
 });

@@ -18,6 +18,16 @@ test("Studio Print Requests splits Add to Show and Add to Internal Gangsheet", (
   assert.match(pageSource, /destinationMode=\{addToShowDestination\}/);
 });
 
+test("Studio Print Requests hides allocation actions when request cannot be allocated", () => {
+  assert.match(pageSource, /getPrintRequestAllocationBlockReason/);
+  assert.match(pageSource, /canShowAllocationActions/);
+  assert.match(pageSource, /selectedRequestAllocationBlockReason/);
+});
+
+test("Studio Print Requests hides queue-state badge when archived", () => {
+  assert.match(pageSource, /shouldShowPrintRequestQueueStateBadge/);
+});
+
 test("AddToShowModal locks destination via destinationMode without requiring tabs", () => {
   assert.match(modalSource, /destinationMode\?:/);
   assert.match(modalSource, /showDestinationTabs/);
@@ -36,4 +46,17 @@ test("AddToShowModal Staff destination does not auto-create and shows capacity U
   assert.match(modalSource, /AnimatedShowCapacityBar/);
   assert.match(modalSource, /staffCapacityPresentation/);
   assert.match(modalSource, /savePendingByShowId/);
+});
+
+test("AddToShowModal calendar lists only open allocatable shows", () => {
+  assert.match(modalSource, /const calendarShows = useMemo\(\s*\(\) => allocatableShows\.filter/);
+  assert.doesNotMatch(modalSource, /pastWindowStart/);
+});
+
+test("AddToShowModal submits one complete trusted plan and reconciles failures", () => {
+  assert.match(modalSource, /allocateStudioPrintRequestToShow/);
+  assert.doesNotMatch(modalSource, /for \(const \[index, step\] of steps\.entries\(\)/);
+  assert.match(modalSource, /onReconcile\?:/);
+  assert.match(modalSource, /await onReconcile\?\.\(\)/);
+  assert.match(modalSource, /remainingItems\.length > 0 && !canConfirmFullFitDirectly/);
 });

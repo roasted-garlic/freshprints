@@ -53,6 +53,14 @@ export interface CustomerListQueryOptions {
 export interface PrintRequestItemSummary {
   totalQuantity: number;
   uniqueDesignCount: number;
+  /**
+   * Eligible printable rows for width-only four-tier size counts (valid width + qty; excludes canceled).
+   * Counts are derived from the canonical fixed width tiers — not stored as fixed totals.
+   */
+  sizeClassRows: Array<{
+    printWidthInches: number;
+    quantity: number;
+  }>;
 }
 
 function countDefinedRequestFilters(options: PrintRequestListQueryOptions): number {
@@ -162,24 +170,22 @@ export function sortPrintRequestItemsForDisplay(items: PrintRequestItem[]): Prin
     const leftSortOrder = getSortOrder(left);
     const rightSortOrder = getSortOrder(right);
 
-    if (leftSortOrder !== undefined || rightSortOrder !== undefined) {
-      if (leftSortOrder === undefined) {
-        return 1;
-      }
-
-      if (rightSortOrder === undefined) {
-        return -1;
-      }
-
-      if (leftSortOrder !== rightSortOrder) {
-        return leftSortOrder - rightSortOrder;
-      }
+    // Match shared printRequestItemDisplayOrder: only compare sortOrder when both have one.
+    if (leftSortOrder !== undefined && rightSortOrder !== undefined && leftSortOrder !== rightSortOrder) {
+      return leftSortOrder - rightSortOrder;
     }
 
     const createdAtDelta = getTimestampMillis(left.createdAt) - getTimestampMillis(right.createdAt);
 
     if (createdAtDelta !== 0) {
       return createdAtDelta;
+    }
+
+    if (leftSortOrder !== undefined && rightSortOrder === undefined) {
+      return -1;
+    }
+    if (leftSortOrder === undefined && rightSortOrder !== undefined) {
+      return 1;
     }
 
     return left.id.localeCompare(right.id);
@@ -204,6 +210,10 @@ export function buildPrintRequestItemSummaries(
 ): Record<string, PrintRequestItemSummary> {
   const designIdsByRequestId = new Map<string, Set<string>>();
   const totalQuantityByRequestId = new Map<string, number>();
+  const sizeClassRowsByRequestId = new Map<
+    string,
+    Array<{ printWidthInches: number; quantity: number }>
+  >();
 
   for (const item of items) {
     if (!designIdsByRequestId.has(item.printRequestId)) {
@@ -219,6 +229,22 @@ export function buildPrintRequestItemSummaries(
       item.printRequestId,
       (totalQuantityByRequestId.get(item.printRequestId) ?? 0) + quantity,
     );
+
+    if (
+      item.status !== "canceled" &&
+      Number.isFinite(item.quantity) &&
+      item.quantity > 0 &&
+      typeof item.printWidthInches === "number" &&
+      Number.isFinite(item.printWidthInches) &&
+      item.printWidthInches > 0
+    ) {
+      const rows = sizeClassRowsByRequestId.get(item.printRequestId) ?? [];
+      rows.push({
+        printWidthInches: item.printWidthInches,
+        quantity: item.quantity,
+      });
+      sizeClassRowsByRequestId.set(item.printRequestId, rows);
+    }
   }
 
   return Object.fromEntries(
@@ -227,6 +253,7 @@ export function buildPrintRequestItemSummaries(
       {
         totalQuantity: totalQuantityByRequestId.get(printRequestId) ?? 0,
         uniqueDesignCount: designIds.size,
+        sizeClassRows: sizeClassRowsByRequestId.get(printRequestId) ?? [],
       },
     ]),
   );

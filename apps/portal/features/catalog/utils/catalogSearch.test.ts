@@ -4,17 +4,11 @@ import { describe, it } from 'node:test';
 import { CATALOG_SUMMER_SEARCH_PARITY_FIXTURES } from '@fresh-prints/shared/utils/catalogDesignTextSearch';
 
 import {
-  buildApprovedCatalogTagOptions,
-  buildCatalogTagOptions,
-  countVisibleSelectedTags,
   filterCatalogDesignsByCategory,
   filterCatalogDesignsBySearch,
-  filterCatalogDesignsByTags,
-  getPrimaryCatalogQueryTag,
-  selectedTagsIncludeHalftone,
-  setHalftoneInSelectedTags,
-  visibleSelectedTags,
+  resolveManagedSearchClientFilters,
 } from './catalogSearch';
+import { filterCatalogDesignsByHalftone } from './catalogSearch';
 import type { CatalogDesign } from '../types/catalog.types';
 
 function createDesign(overrides: Partial<CatalogDesign> = {}): CatalogDesign {
@@ -31,6 +25,52 @@ function createDesign(overrides: Partial<CatalogDesign> = {}): CatalogDesign {
   };
 }
 
+describe('resolveManagedSearchClientFilters', () => {
+  it('clears local text/category/Halftone filters when Algolia owns the query', () => {
+    assert.deepEqual(
+      resolveManagedSearchClientFilters({
+        isManagedSearchQuery: true,
+        searchQuery: 'Scottish cow',
+        categoryId: 'cat-1',
+        halftoneFilterOn: true,
+      }),
+      { search: '', categoryId: undefined, halftoneFilterOn: false },
+    );
+  });
+
+  it('preserves browse post-filters when not on managed search', () => {
+    assert.deepEqual(
+      resolveManagedSearchClientFilters({
+        isManagedSearchQuery: false,
+        searchQuery: 'summer',
+        categoryId: 'cat-1',
+        halftoneFilterOn: true,
+      }),
+      { search: 'summer', categoryId: 'cat-1', halftoneFilterOn: true },
+    );
+  });
+
+  it('does not drop Smart Profile hits that fail title-only search', () => {
+    const highland = createDesign({
+      id: 'yJm2VBRvecPNjx79aSnK',
+      title: 'Highland Cow With Bow',
+      tags: [],
+    });
+    const query = 'Scottish cow';
+    assert.equal(
+      filterCatalogDesignsBySearch([highland], query).length,
+      0,
+      'legacy title filter alone would hide Algolia Smart Profile matches',
+    );
+    const client = resolveManagedSearchClientFilters({
+      isManagedSearchQuery: true,
+      searchQuery: query,
+      halftoneFilterOn: false,
+    });
+    assert.deepEqual(filterCatalogDesignsBySearch([highland], client.search), [highland]);
+  });
+});
+
 describe('filterCatalogDesignsBySearch', () => {
   it('returns all designs when search is empty', () => {
     const designs = [createDesign(), createDesign({ id: 'design-2', title: 'Mountain' })];
@@ -38,21 +78,26 @@ describe('filterCatalogDesignsBySearch', () => {
     assert.deepEqual(filterCatalogDesignsBySearch(designs, '   '), designs);
   });
 
-  it('matches title, description, and tags', () => {
+  it('matches title, description, and design id but not legacy tags', () => {
     const designs = [
       createDesign(),
       createDesign({ id: 'design-2', title: 'Forest', description: 'Pine trees', tags: ['nature'] }),
+      createDesign({ id: 'yJm2VBRvecPNjx79aSnK', title: 'Highland Cow', tags: [] }),
     ];
 
-    assert.deepEqual(filterCatalogDesignsBySearch(designs, 'ocean').map((design) => design.id), [
-      'design-1',
-    ]);
+    assert.deepEqual(filterCatalogDesignsBySearch(designs, 'ocean').map((design) => design.id), []);
     assert.deepEqual(filterCatalogDesignsBySearch(designs, 'pine').map((design) => design.id), [
       'design-2',
     ]);
-    assert.deepEqual(filterCatalogDesignsBySearch(designs, 'nature').map((design) => design.id), [
-      'design-2',
-    ]);
+    assert.deepEqual(filterCatalogDesignsBySearch(designs, 'nature').map((design) => design.id), []);
+    assert.deepEqual(
+      filterCatalogDesignsBySearch(designs, 'yJm2VBRvecPNjx79aSnK').map((design) => design.id),
+      ['yJm2VBRvecPNjx79aSnK'],
+    );
+    assert.deepEqual(
+      filterCatalogDesignsBySearch(designs, 'vecPNjx').map((design) => design.id),
+      ['yJm2VBRvecPNjx79aSnK'],
+    );
   });
 
   it('matches summer progressive substring parity with Studio Design Library', () => {
@@ -82,89 +127,12 @@ describe('filterCatalogDesignsByCategory', () => {
   });
 });
 
-describe('filterCatalogDesignsByTags', () => {
-  it('requires every selected tag', () => {
+describe('Halftone filter', () => {
+  it('uses the staff classification and ignores legacy tags', () => {
     const designs = [
-      createDesign({ tags: ['ocean', 'sunset'] }),
-      createDesign({ id: 'design-2', tags: ['ocean'] }),
+      createDesign({ id: 'staff', isHalftone: true }),
+      createDesign({ id: 'tag-only', tags: ['halftone'], isHalftone: false }),
     ];
-
-    assert.deepEqual(
-      filterCatalogDesignsByTags(designs, ['ocean', 'sunset']).map((design) => design.id),
-      ['design-1'],
-    );
-  });
-
-  it('filters by canonical halftone tag', () => {
-    const designs = [
-      createDesign({ tags: ['ocean', 'halftone'] }),
-      createDesign({ id: 'design-2', tags: ['ocean'] }),
-    ];
-
-    assert.deepEqual(
-      filterCatalogDesignsByTags(designs, ['halftone']).map((design) => design.id),
-      ['design-1'],
-    );
-  });
-});
-
-describe('halftone filter helpers', () => {
-  it('adds and removes the canonical halftone tag', () => {
-    assert.deepEqual(setHalftoneInSelectedTags(['ocean'], true), ['halftone', 'ocean']);
-    assert.deepEqual(setHalftoneInSelectedTags(['ocean', 'halftone'], false), ['ocean']);
-    assert.equal(selectedTagsIncludeHalftone(['Halftone']), true);
-  });
-
-  it('exposes visible tags without halftone', () => {
-    assert.deepEqual(visibleSelectedTags(['ocean', 'halftone']), ['ocean']);
-    assert.equal(countVisibleSelectedTags(['ocean', 'halftone']), 1);
-  });
-
-  it('hides halftone from tag filter options', () => {
-    const designs = [
-      createDesign({ tags: ['ocean', 'halftone'] }),
-      createDesign({ id: 'design-2', tags: ['sunset', 'halftone'] }),
-    ];
-
-    const options = buildCatalogTagOptions(designs, [], '');
-    assert.deepEqual(
-      options.map((option) => option.tag),
-      ['ocean', 'sunset'],
-    );
-  });
-
-  it('picks primary server query tag preferring halftone', () => {
-    assert.equal(getPrimaryCatalogQueryTag(['ocean', 'halftone']), 'halftone');
-    assert.equal(getPrimaryCatalogQueryTag(['ocean', 'zebra']), 'ocean');
-    assert.equal(getPrimaryCatalogQueryTag([]), undefined);
-  });
-
-  it('lists approved tags without design counts when none are supplied', () => {
-    assert.deepEqual(
-      buildApprovedCatalogTagOptions(
-        [{ name: 'sunset' }, { name: 'ocean' }, { name: 'halftone' }],
-        ['ocean'],
-        'o',
-      ),
-      [{ tag: 'ocean', count: undefined, isSelected: true }],
-    );
-  });
-
-  it('carries each tag design count through to the modal option list', () => {
-    assert.deepEqual(
-      buildApprovedCatalogTagOptions(
-        [
-          { name: 'sunset', count: 12 },
-          { name: 'ocean', count: 3 },
-          { name: 'halftone', count: 99 },
-        ],
-        [],
-        '',
-      ),
-      [
-        { tag: 'ocean', count: 3, isSelected: false },
-        { tag: 'sunset', count: 12, isSelected: false },
-      ],
-    );
+    assert.deepEqual(filterCatalogDesignsByHalftone(designs, true).map((design) => design.id), ['staff']);
   });
 });

@@ -25,13 +25,14 @@ export interface DesignListQuery {
    * Used by Design Library Needs Companion Firestore browse so pagination `hasMore` is authoritative.
    */
   companionSetIncomplete?: boolean;
+  /** Human-only Halftone classification from `halftoneStaffDecision.value`. */
+  halftoneOnly?: boolean;
   cursor?: DesignListCursor;
   limitCount?: number;
   /** Single status equality — used by AI Review and legacy callers */
   status?: DesignStatus;
   /** Catalog browse: `ready` (approved) or `archived` (archived catalog toggle) */
   statusIn?: DesignStatus[];
-  tag?: string;
   sortField?: DesignListSortField;
   sortDirection?: DesignListSortDirection;
 }

@@ -1,10 +1,8 @@
 import { randomUUID } from "node:crypto";
 
 import { loadAiEnrichmentSettings, type AiEnrichmentSettingsLoaded } from "./loadAiEnrichmentSettings";
-import type { CatalogTag } from "../../../packages/shared/src/types/catalogTag.types";
 import { logPipelineEvent } from "../lib/pipelineLog";
 import {
-  aiSnapshotTagsToCatalogTags,
   clearAiCatalogReferenceSnapshotCache,
   loadAiCatalogReferenceSnapshot,
 } from "./loadAiCatalogReferenceSnapshot";
@@ -31,6 +29,7 @@ export interface AiEnrichmentReadDiagnosticContext {
   functionName: string;
   invocationId: string;
   designId?: string;
+  attemptId?: string;
 }
 
 function logSettingsRead(
@@ -45,6 +44,7 @@ function logSettingsRead(
     functionName: context?.functionName ?? "unknown",
     invocationId: context?.invocationId ?? "unknown",
     designId: context?.designId ?? null,
+    attemptId: context?.attemptId ?? null,
     ...extra,
   });
   isColdStart = false;
@@ -53,6 +53,11 @@ function logSettingsRead(
 export function clearAiEnrichmentRuntimeCache(): void {
   settingsCache = null;
   clearAiCatalogReferenceSnapshotCache();
+}
+
+/** Drop only settings TTL so visionModelId/provider changes apply on the next enrichment run. */
+export function clearAiEnrichmentSettingsCache(): void {
+  settingsCache = null;
 }
 
 export async function loadCachedAiEnrichmentSettings(
@@ -106,15 +111,4 @@ export async function loadCachedActiveCategories(
     names: snapshot.categoryNames,
     idsByName: snapshot.categoryIdsByName,
   };
-}
-
-/**
- * Thin adapter over the sole taxonomy TTL/in-flight boundary in
- * `loadAiCatalogReferenceSnapshot`. No independent tags TTL.
- */
-export async function loadCachedApprovedTags(
-  context?: AiEnrichmentReadDiagnosticContext,
-): Promise<CatalogTag[]> {
-  const snapshot = await loadAiCatalogReferenceSnapshot(context);
-  return aiSnapshotTagsToCatalogTags(snapshot);
 }

@@ -16,6 +16,24 @@ export interface StaffInboxPortalAllocationSnapshot {
   requestNameSnapshot: string;
   status: string;
   createdAtMillis: number;
+  /** Allocated print quantity for this row (required for glance metrics). */
+  allocatedQuantity?: number;
+  printRequestItemId?: string;
+  designId?: string;
+  customerUploadId?: string;
+  printWidthInches?: number;
+  printHeightInches?: number;
+}
+
+/** At-a-glance metrics for a `portal_queued` alert (request+show allocation scope). */
+export interface StaffInboxQueuedGlanceMetrics {
+  designCount: number;
+  printQuantity: number;
+  pricingUnits: Array<{
+    printWidthInches: number;
+    printHeightInches: number;
+    quantity: number;
+  }>;
 }
 
 export interface StaffInboxItem {
@@ -27,6 +45,8 @@ export interface StaffInboxItem {
   subtitle: string;
   printRequestTab?: PrintRequestListTab;
   occurredAtMillis: number;
+  /** Present on `portal_queued` when live allocations can be summarized. */
+  queuedGlance?: StaffInboxQueuedGlanceMetrics;
   designIssueReport?: import("../designIssueReports/designIssueReport.types").DesignIssueReport;
 }
 

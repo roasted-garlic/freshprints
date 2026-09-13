@@ -38,6 +38,11 @@ export function AuthGate({ children }: AuthGateProps) {
       return;
     }
 
+    if (bootstrapStatus === 'portal-admin') {
+      router.replace('/admin/show-queue');
+      return;
+    }
+
     if (needsPortalCustomerProfileCompletion(bootstrapStatus)) {
       const returnTo = getCurrentPortalPath(window.location);
       router.replace(buildPortalAuthHref('/complete-profile', returnTo));
@@ -56,6 +61,14 @@ export function AuthGate({ children }: AuthGateProps) {
     return (
       <main className="portal-shell">
         <p className="portal-muted">Finishing account setup…</p>
+      </main>
+    );
+  }
+
+  if (bootstrapStatus === 'portal-admin') {
+    return (
+      <main className="portal-shell">
+        <p className="portal-muted">Opening the staff queue…</p>
       </main>
     );
   }

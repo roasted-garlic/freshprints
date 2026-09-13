@@ -7,8 +7,8 @@
  */
 
 import {
+  analyzeTransparencyCanvas,
   assessMeaningfulTransparency,
-  CUSTOMER_UPLOAD_MIN_TRANSPARENT_PIXEL_RATIO,
   CUSTOMER_UPLOAD_TRANSPARENT_ALPHA_MAX,
   type AssessMeaningfulTransparencyResult,
   type CustomerUploadTransparencyFailureCode,
@@ -33,12 +33,12 @@ export type MeaningfulTransparencyMeasurement = AssessMeaningfulTransparencyResu
   failureCode?: CustomerUploadTransparencyFailureCode;
 };
 
-async function countTransparentPixelsSampled(
+async function sampleRgbaBuffer(
   sharp: SharpFactory,
   input: Buffer,
   sourceWidth: number,
   sourceHeight: number,
-): Promise<{ hasAlpha: boolean; transparentPixelCount: number; sampleWidth: number; sampleHeight: number }> {
+): Promise<{ data: Buffer; width: number; height: number; hasAlpha: boolean }> {
   const maxSide = Math.max(sourceWidth, sourceHeight);
   const sampleMax = 800;
   let pipeline = sharp(input, { failOn: "error" }).ensureAlpha();
@@ -52,82 +52,12 @@ async function countTransparentPixelsSampled(
   }
 
   const { data, info } = await pipeline.raw().toBuffer({ resolveWithObject: true });
-  if (info.channels < 4) {
-    return {
-      hasAlpha: false,
-      transparentPixelCount: 0,
-      sampleWidth: info.width,
-      sampleHeight: info.height,
-    };
-  }
-
-  const earlyExitCount = Math.ceil(info.width * info.height * CUSTOMER_UPLOAD_MIN_TRANSPARENT_PIXEL_RATIO);
-  let transparentPixelCount = 0;
-  for (let i = 3; i < data.length; i += info.channels) {
-    if (data[i] < CUSTOMER_UPLOAD_TRANSPARENT_ALPHA_MAX) {
-      transparentPixelCount += 1;
-      if (transparentPixelCount >= earlyExitCount) {
-        return {
-          hasAlpha: true,
-          transparentPixelCount,
-          sampleWidth: info.width,
-          sampleHeight: info.height,
-        };
-      }
-    }
-  }
-
   return {
-    hasAlpha: true,
-    transparentPixelCount,
-    sampleWidth: info.width,
-    sampleHeight: info.height,
+    data,
+    width: info.width,
+    height: info.height,
+    hasAlpha: info.channels >= 4,
   };
-}
-
-async function trimTransparentEdgesForProbe(
-  sharp: SharpFactory,
-  input: Buffer,
-  originalWidth: number,
-  originalHeight: number,
-  decodeMaxInputPixels: number,
-): Promise<{
-  width: number;
-  height: number;
-  wasTrimmed: boolean;
-  originalWidth: number;
-  originalHeight: number;
-}> {
-  try {
-    const { info } = await sharp(input, {
-      failOn: "error",
-      limitInputPixels: decodeMaxInputPixels,
-    })
-      .ensureAlpha()
-      .trim({ background: { r: 0, g: 0, b: 0, alpha: 0 } })
-      .png()
-      .toBuffer({ resolveWithObject: true });
-
-    const width = info.width ?? originalWidth;
-    const height = info.height ?? originalHeight;
-    const wasTrimmed = width !== originalWidth || height !== originalHeight;
-
-    return {
-      width: wasTrimmed ? width : originalWidth,
-      height: wasTrimmed ? height : originalHeight,
-      wasTrimmed,
-      originalWidth,
-      originalHeight,
-    };
-  } catch {
-    return {
-      width: originalWidth,
-      height: originalHeight,
-      wasTrimmed: false,
-      originalWidth,
-      originalHeight,
-    };
-  }
 }
 
 /**
@@ -157,6 +87,7 @@ export async function measureMeaningfulTransparency(
     return {
       passed: false,
       transparentPixelRatio: 0,
+      exteriorTransparentRatio: 0,
       hasAlphaMeta: false,
       failureCode: "transparency_check_failed",
     };
@@ -166,79 +97,48 @@ export async function measureMeaningfulTransparency(
   const sourceHeightPx = metadata.height ?? 0;
   const hasAlphaMeta = Boolean(metadata.hasAlpha);
 
-  let transparency = assessMeaningfulTransparency({
-    hasAlphaChannel: hasAlphaMeta,
-    widthPx: sourceWidthPx,
-    heightPx: sourceHeightPx,
-    transparentPixelCount: 0,
-  });
-
-  if (hasAlphaMeta && !skipQualityGates) {
-    try {
-      const sample = await countTransparentPixelsSampled(sharp, sourceBytes, sourceWidthPx, sourceHeightPx);
-      transparency = assessMeaningfulTransparency({
-        hasAlphaChannel: sample.hasAlpha || hasAlphaMeta,
-        widthPx: sample.sampleWidth,
-        heightPx: sample.sampleHeight,
-        transparentPixelCount: sample.transparentPixelCount,
-      });
-    } catch {
-      return {
-        passed: false,
-        transparentPixelRatio: 0,
-        hasAlphaMeta,
-        failureCode: "transparency_check_failed",
-      };
-    }
+  if (!hasAlphaMeta && !skipQualityGates) {
+    const failed = assessMeaningfulTransparency({
+      hasAlphaChannel: false,
+      widthPx: sourceWidthPx,
+      heightPx: sourceHeightPx,
+      transparentPixelCount: 0,
+      exteriorTransparentPixelCount: 0,
+      opaqueBoundingBoxCoverageRatio: 1,
+    });
+    return { ...failed, hasAlphaMeta };
   }
 
-  if (!transparency.passed && !skipQualityGates) {
-    try {
-      const trimmedProbe = await trimTransparentEdgesForProbe(
-        sharp,
-        sourceBytes,
-        sourceWidthPx,
-        sourceHeightPx,
-        decodeMaxInputPixels,
-      );
-      const trimShrinkRatioWidth =
-        trimmedProbe.originalWidth > 0
-          ? (trimmedProbe.originalWidth - trimmedProbe.width) / trimmedProbe.originalWidth
-          : 0;
-      const trimShrinkRatioHeight =
-        trimmedProbe.originalHeight > 0
-          ? (trimmedProbe.originalHeight - trimmedProbe.height) / trimmedProbe.originalHeight
-          : 0;
-
-      transparency = assessMeaningfulTransparency({
-        hasAlphaChannel: hasAlphaMeta || trimmedProbe.wasTrimmed,
-        widthPx: sourceWidthPx,
-        heightPx: sourceHeightPx,
-        transparentPixelCount: 0,
-        trimShrinkRatioWidth,
-        trimShrinkRatioHeight,
-      });
-    } catch {
-      return {
-        passed: false,
-        transparentPixelRatio: 0,
-        hasAlphaMeta,
-        failureCode: "transparency_check_failed",
-      };
-    }
-  }
-
-  if (!transparency.passed && skipQualityGates) {
+  if (skipQualityGates) {
     return {
       passed: true,
-      transparentPixelRatio: transparency.transparentPixelRatio,
+      transparentPixelRatio: 0,
+      exteriorTransparentRatio: 0,
       hasAlphaMeta,
     };
   }
 
-  return {
-    ...transparency,
-    hasAlphaMeta,
-    failureCode: transparency.failureCode,
-  };
+  try {
+    const sample = await sampleRgbaBuffer(sharp, sourceBytes, sourceWidthPx, sourceHeightPx);
+    const analysis = analyzeTransparencyCanvas(
+      sample.data,
+      sample.width,
+      sample.height,
+      sample.hasAlpha || hasAlphaMeta,
+      CUSTOMER_UPLOAD_TRANSPARENT_ALPHA_MAX,
+    );
+    const result = assessMeaningfulTransparency({
+      ...analysis,
+      hasAlphaChannel: analysis.hasAlphaChannel || hasAlphaMeta,
+    });
+    return { ...result, hasAlphaMeta, failureCode: result.failureCode };
+  } catch {
+    return {
+      passed: false,
+      transparentPixelRatio: 0,
+      exteriorTransparentRatio: 0,
+      hasAlphaMeta,
+      failureCode: "transparency_check_failed",
+    };
+  }
 }

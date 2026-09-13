@@ -2,11 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "../../auth/hooks/useAuth";
 import { designDocumentSubscriptionService } from "../../designs/services/designDocumentSubscriptionService";
-import { catalogTagService } from "../../designs/services/catalogTagService";
 import { designService } from "../../designs/services/designService";
 import { useDesigns } from "../../designs/hooks/useDesigns";
-import { useGeneratedDesignLibraryTaxonomy } from "../../designs/hooks/useGeneratedDesignLibraryTaxonomy";
-import type { CreateCatalogTagInput } from "../../designs/types/catalogTag.types";
 import { permissionService } from "../../permissions/services/permissionService";
 import type { Design } from "../../designs/types/design.types";
 import { buildAiReviewInboxListQuery } from "../constants/aiReviewInboxConstants";
@@ -19,6 +16,7 @@ import {
   isAiReviewDraftDirty,
 } from "../utils/aiReviewFormState";
 import { designHasAiSuggestions } from "../utils/aiProcessingOutput";
+import { STALE_PROCESSING_ALREADY_PROCESSING_MESSAGE } from "../utils/aiProcessingStaleRecovery";
 import { sortInboxDesigns } from "../utils/aiReviewInboxSort";
 import {
   canEditCatalogInInbox,
@@ -30,6 +28,7 @@ import {
   isDesignRerunnableFromNeedsReview,
   isDesignRerunnableInInbox,
   isDesignRetryableInProcessing,
+  isDesignStaleProcessingRetryable,
 } from "../utils/aiReviewInboxEligibility";
 import { filterDesignsByAiReviewStatus } from "../../designs/utils/designLibrarySearch";
 import {
@@ -48,10 +47,6 @@ import {
 } from "../../imports/services/importAiBackgroundQueue";
 import { reconcileBackgroundAiQueueEvent } from "../utils/backgroundAiQueueReconciliation";
 import { useAiProcessingQueue } from "./useAiProcessingQueue";
-import {
-  addApprovedSuggestedTagToDraftTags,
-  normalizeSuggestedTagKey,
-} from "../utils/suggestedNewTags";
 import {
   resolveAdvanceIndexAfterInboxRemoval,
   resolveIsPinnedNeedsReviewDesign,
@@ -72,6 +67,12 @@ import {
   type AiReviewInboxManualAction,
   type AiReviewTabCountDeltas,
 } from "../utils/aiReviewLocalReconciliation";
+import { readAiProcessingAutoProcessPreference } from "../utils/aiProcessingAutoProcessPreference";
+import {
+  computeTrackedReprocessReturnCountDeltas,
+  resolveTrackedReprocessTerminal,
+  shouldUpsertTrackedReprocessReturn,
+} from "../utils/trackedReprocessReturn";
 
 export interface UseAiReviewInboxOptions {
   defaultVisionModelId: string;
@@ -108,34 +109,17 @@ export function useAiReviewInbox(
     loadMoreDesigns,
     reloadDesigns,
     removeDesignFromList,
+    upsertDesignIntoList,
   } = useDesigns(listQuery, {
     loadAll: needsReviewSearchActive,
     maxLoadAll: NEEDS_REVIEW_SEARCH_HYDRATION_CAP,
   });
-  // Approved-tag display/autocomplete for normal review needs only id/name/aliases/status — the
-  // generated client-safe taxonomy covers that with zero Firestore reads. The previous
-  // `useCatalogTags({ includeArchived: true })` paged the entire ~1,122-doc tag corpus on every
-  // AI Review mount (owner live-test evidence, 2026-07-25). Tag management keeps its own
-  // Firestore-backed hooks; a tag approved mid-session enters the draft via the callable's own
-  // returned name and appears in this list after the next snapshot republish.
-  const generatedTaxonomy = useGeneratedDesignLibraryTaxonomy(user);
+  // Legacy tag autocomplete and tag writes are retired from AI Review. Historical tag fields on
+  // designs remain readable by the service mapper but are never seeded into or persisted from the
+  // review form.
 
   const [selectedDesignId, setSelectedDesignId] = useState<string | null>(null);
   const [liveDesign, setLiveDesign] = useState<Design | null>(null);
-  const [ignoredTagsByDesignId, setIgnoredTagsByDesignId] = useState<Map<string, string[]>>(
-    () => {
-      try {
-        const raw = sessionStorage.getItem("aiReview.ignoredTags");
-        if (raw) {
-          const parsed = JSON.parse(raw) as Record<string, string[]>;
-          return new Map(Object.entries(parsed));
-        }
-      } catch {
-        // corrupt storage — start fresh
-      }
-      return new Map();
-    },
-  );
   const [pendingRerun, setPendingRerun] = useState(false);
 
   const [pendingSelection, setPendingSelection] = useState<PendingSelectionChange | null>(null);
@@ -175,6 +159,18 @@ export function useAiReviewInbox(
    * how many times `liveDesign`'s own object reference changes in the meantime.
    */
   const alreadyReconciledLiveDesignIdRef = useRef<string | null>(null);
+  /** Session-tracked design IDs sent back to Processing from Needs Review / Rejected. */
+  const [trackedReprocessIds, setTrackedReprocessIds] = useState<string[]>([]);
+
+  const trackReprocessReturn = useCallback((designId: string) => {
+    setTrackedReprocessIds((current) =>
+      current.includes(designId) ? current : [...current, designId],
+    );
+  }, []);
+
+  const untrackReprocessReturn = useCallback((designId: string) => {
+    setTrackedReprocessIds((current) => current.filter((id) => id !== designId));
+  }, []);
 
   const isPinnedNeedsReviewDesign = resolveIsPinnedNeedsReviewDesign({
     tab: filters.tab,
@@ -190,7 +186,7 @@ export function useAiReviewInbox(
       filtered = filterDesignsByAiReviewStatus(filtered, "pending");
     }
 
-    const sorted = sortInboxDesigns(filtered, filters.tab);
+    const sorted = sortInboxDesigns(filtered, filters.tab, filters.sortOrder);
 
     if (
       shouldPrependPinnedDesignToInbox({
@@ -213,7 +209,7 @@ export function useAiReviewInbox(
     }
 
     return sorted.map((design, index) => (index === liveIndex ? liveDesign : design));
-  }, [filters.tab, isPinnedNeedsReviewDesign, liveDesign, rawDesigns]);
+  }, [filters.sortOrder, filters.tab, isPinnedNeedsReviewDesign, liveDesign, rawDesigns]);
 
   const tabMatchedDesigns = useMemo(() => {
     let filtered = rawDesigns.filter((design) => designMatchesInboxTab(design, filters.tab));
@@ -234,11 +230,12 @@ export function useAiReviewInbox(
       filterNeedsReviewDesignsBySearch(
         tabMatchedDesigns,
         filters.searchQuery ?? "",
-        generatedTaxonomy.tags,
+        [],
       ),
       filters.tab,
+      filters.sortOrder,
     );
-  }, [designs, filters.searchQuery, filters.tab, generatedTaxonomy.tags, tabMatchedDesigns]);
+  }, [designs, filters.searchQuery, filters.sortOrder, filters.tab, tabMatchedDesigns]);
   designsRef.current = visibleDesigns;
 
   const [draftForm, setDraftForm] = useState<AiReviewDraftForm | null>(null);
@@ -246,6 +243,7 @@ export function useAiReviewInbox(
   const [actionError, setActionError] = useState<string | null>(null);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [isSavingArtworkBackground, setIsSavingArtworkBackground] = useState(false);
+  const [isSavingHalftone, setIsSavingHalftone] = useState(false);
   const [isSendingBackToProcessing, setIsSendingBackToProcessing] = useState(false);
   /** Amendment 9 P0 scroll correction: bump only after successful approve/reject/archive. */
   const [reviewScrollNonce, setReviewScrollNonce] = useState(0);
@@ -262,7 +260,6 @@ export function useAiReviewInbox(
   const canManageCatalog = Boolean(user && permissionService.canEditAiReviewInbox(user));
   const canApprove = Boolean(user && permissionService.canApproveDesignForCatalog(user));
   const canReject = Boolean(user && permissionService.canRejectDesignFromCatalog(user));
-  const canApproveSuggestedTags = Boolean(user && permissionService.canApproveSuggestedTags(user));
 
   const needsReviewHydratedCount =
     filters.tab === "needs_review" ? tabMatchedDesigns.length : 0;
@@ -381,6 +378,9 @@ export function useAiReviewInbox(
   );
   const canRetryProcessingSelected = Boolean(
     user && selectedDesign && isDesignRetryableInProcessing(selectedDesign, filters.tab),
+  );
+  const canRetryStaleProcessingSelected = Boolean(
+    user && selectedDesign && isDesignStaleProcessingRetryable(selectedDesign, filters.tab),
   );
   const canRerunAiSuggestions = Boolean(
     user &&
@@ -542,6 +542,19 @@ export function useAiReviewInbox(
     return designDocumentSubscriptionService.subscribeToDesign(
       selectedDesignId,
       (design) => {
+        if (!design) {
+          liveDesignRef.current = null;
+          setLiveDesign(null);
+          return;
+        }
+        const previous = liveDesignRef.current;
+        if (
+          previous?.id === design.id &&
+          previous.updatedAt.toMillis() > design.updatedAt.toMillis()
+        ) {
+          return;
+        }
+
         liveDesignRef.current = design;
         setLiveDesign(design);
       },
@@ -554,6 +567,71 @@ export function useAiReviewInbox(
       },
     );
   }, [selectedDesignId, user]);
+
+  // Live return: subscribe tracked reprocess IDs while staff stay on Needs Review / Rejected.
+  useEffect(() => {
+    if (!user || trackedReprocessIds.length === 0) {
+      return;
+    }
+
+    const unsubscribers = trackedReprocessIds.map((designId) =>
+      designDocumentSubscriptionService.subscribeToDesign(
+        designId,
+        (design) => {
+          if (!design) {
+            untrackReprocessReturn(designId);
+            return;
+          }
+
+          const terminal = resolveTrackedReprocessTerminal(design);
+          if (terminal.kind === "still_in_flight") {
+            return;
+          }
+
+          if (terminal.kind === "failed") {
+            untrackReprocessReturn(designId);
+            return;
+          }
+
+          const reviewTab = terminal.reviewTab!;
+          const activeTab = filters.tab;
+          if (
+            shouldUpsertTrackedReprocessReturn({
+              activeTab,
+              reviewTab,
+            })
+          ) {
+            upsertDesignIntoList(design);
+            optionsRef.current?.onInboxCountsDelta?.(
+              computeTrackedReprocessReturnCountDeltas({
+                activeTab,
+                reviewTab,
+              }),
+            );
+          } else {
+            // Staff left the source review tab — authoritative count refresh, no list upsert.
+            optionsRef.current?.onQueueChanged?.();
+          }
+          untrackReprocessReturn(designId);
+        },
+        (subscriptionError) => {
+          if (import.meta.env.DEV) {
+            console.warn(
+              "[AI Processing] tracked reprocess subscription failed",
+              designId,
+              subscriptionError,
+            );
+          }
+        },
+      ),
+    );
+
+    return () => {
+      for (const unsubscribe of unsubscribers) {
+        unsubscribe();
+      }
+    };
+  }, [filters.tab, trackedReprocessIds, untrackReprocessReturn, upsertDesignIntoList, user]);
 
   useEffect(() => {
     if (!selectedDesign || selectedDesign.id !== selectedDesignId || isDraftDirty || !canEditSelected) {
@@ -929,9 +1007,22 @@ export function useAiReviewInbox(
 
     try {
       const resetResult = await aiReviewInboxService.rerunAiFromInbox(user, designId);
+      // Resetting only makes the design eligible for Processing. When Auto process is ON,
+      // start the queue callable in the background. When OFF, staff start via Start AI.
+      // Live reconciliation owns the eventual Processing → Needs Review/Rejected update.
+      if (readAiProcessingAutoProcessPreference()) {
+        void aiEnrichmentEnqueueService.enqueueForProcessing(designId).catch((enqueueError) => {
+          setActionError(
+            enqueueError instanceof Error
+              ? enqueueError.message
+              : "AI processing could not be started in the background.",
+          );
+        });
+      }
       // Clear any prior terminal-leave ledger entry so this design may legitimately reappear as
       // pending when the staff member later opens Processing.
       clearTerminalAiProcessingLedgerEntry(designId);
+      trackReprocessReturn(designId);
       setDraftForm(null);
       setBaselineForm(null);
       // Stay on the current Needs Review / Rejected tab: patch-primary local reconcile (no list
@@ -975,6 +1066,7 @@ export function useAiReviewInbox(
     filters.tab,
     selectedDesign,
     selectedIndex,
+    trackReprocessReturn,
     user,
   ]);
 
@@ -1051,6 +1143,7 @@ export function useAiReviewInbox(
           selectedDesign.id,
           values,
         );
+        applyDesignPatch(updated.id, updated);
         liveDesignRef.current = updated;
         setLiveDesign(updated);
         setDraftForm((currentDraft) =>
@@ -1074,14 +1167,61 @@ export function useAiReviewInbox(
       } catch (saveError) {
         setActionError(
           saveError instanceof Error
-            ? saveError.message
+            ? saveError.message.includes("permission")
+              ? `${saveError.message} If this persists on AI Processing, redeploy firestore.rules to DEV (preview-control fast path).`
+              : saveError.message
             : "Unable to save artwork background.",
         );
       } finally {
         setIsSavingArtworkBackground(false);
       }
     },
-    [canSaveArtworkBackground, selectedDesign, user],
+    [applyDesignPatch, canSaveArtworkBackground, selectedDesign, user],
+  );
+
+  const saveHalftoneStaffDecision = useCallback(
+    async (markAsHalftone: boolean) => {
+      if (!user || !selectedDesign || !canSaveArtworkBackground) {
+        return;
+      }
+
+      setIsSavingHalftone(true);
+      setActionError(null);
+
+      try {
+        const updated = await aiReviewInboxService.updateHalftoneFromInbox(
+          user,
+          selectedDesign,
+          markAsHalftone,
+        );
+        applyDesignPatch(updated.id, updated);
+        liveDesignRef.current = updated;
+        setLiveDesign(updated);
+        setDraftForm((currentDraft) =>
+          currentDraft
+            ? {
+                ...currentDraft,
+                markAsHalftone,
+              }
+            : currentDraft,
+        );
+        setBaselineForm((currentBaseline) =>
+          currentBaseline
+            ? {
+                ...currentBaseline,
+                markAsHalftone,
+              }
+            : currentBaseline,
+        );
+      } catch (saveError) {
+        setActionError(
+          saveError instanceof Error ? saveError.message : "Unable to update halftone.",
+        );
+      } finally {
+        setIsSavingHalftone(false);
+      }
+    },
+    [applyDesignPatch, canSaveArtworkBackground, selectedDesign, user],
   );
 
   const runInboxAction = useCallback(
@@ -1294,76 +1434,59 @@ export function useAiReviewInbox(
     user,
   ]);
 
-  const ignoreSuggestedTag = useCallback(
-    (name: string) => {
-      const normalizedName = normalizeSuggestedTagKey(name);
+  const retryStaleProcessingSelected = useCallback(async () => {
+    if (!user || !selectedDesign || !canRetryStaleProcessingSelected) {
+      return;
+    }
 
-      if (!normalizedName || !selectedDesignId) {
-        return;
-      }
+    setIsActionLoading(true);
+    setActionError(null);
 
-      setIgnoredTagsByDesignId((currentMap) => {
-        const existing = currentMap.get(selectedDesignId) ?? [];
+    try {
+      clearTerminalAiProcessingLedgerEntry(selectedDesign.id);
 
-        if (existing.includes(normalizedName)) {
-          return currentMap;
-        }
-
-        const nextMap = new Map(currentMap);
-        nextMap.set(selectedDesignId, [...existing, normalizedName]);
-
-        try {
-          sessionStorage.setItem(
-            "aiReview.ignoredTags",
-            JSON.stringify(Object.fromEntries(nextMap)),
-          );
-        } catch {
-          // storage unavailable — ignore
-        }
-
-        return nextMap;
+      const result = await aiEnrichmentEnqueueService.enqueueForProcessing(selectedDesign.id, {
+        visionModelIdOverride: processingQueue.resolvedSessionVisionModelId,
       });
-    },
-    [selectedDesignId],
-  );
 
-  const approveSuggestedTag = useCallback(
-    async (sourceName: string, input: CreateCatalogTagInput, addToDraft: boolean) => {
-      if (!user || !canApproveSuggestedTags) {
-        return;
-      }
-
-      setIsActionLoading(true);
-      setActionError(null);
-
-      try {
-        // Lazy, on-demand mutation — does not require the tag corpus to be preloaded.
-        const approvedTag = await catalogTagService.approveSuggestedTag(user, input);
-        ignoreSuggestedTag(sourceName);
-
-        if (addToDraft) {
-          setDraftForm((currentDraft) =>
-            currentDraft ? addApprovedSuggestedTagToDraftTags(currentDraft, approvedTag.name) : currentDraft,
-          );
+      if (!result.queued) {
+        if (result.reason === "already_processing") {
+          setActionError(STALE_PROCESSING_ALREADY_PROCESSING_MESSAGE);
+          return;
         }
-      } catch (approvalError) {
-        setActionError(
-          approvalError instanceof Error ? approvalError.message : "Unable to approve suggested tag.",
-        );
-      } finally {
-        setIsActionLoading(false);
-      }
-    },
-    [canApproveSuggestedTags, ignoreSuggestedTag, user],
-  );
 
-  const ignoredSuggestedTagNames = selectedDesignId
-    ? (ignoredTagsByDesignId.get(selectedDesignId) ?? [])
-    : [];
+        throw new Error("AI processing could not be queued. Please try again.");
+      }
+
+      const patch = buildDesignPatchFromEnqueueResult(result);
+
+      if (patch) {
+        applyDesignPatch(selectedDesign.id, patch);
+      }
+
+      setLiveDesign(null);
+      await reloadDesigns();
+      options?.onQueueChanged?.();
+    } catch (retryError) {
+      setActionError(
+        retryError instanceof Error ? retryError.message : "Unable to retry AI processing.",
+      );
+    } finally {
+      setIsActionLoading(false);
+    }
+  }, [
+    applyDesignPatch,
+    canRetryStaleProcessingSelected,
+    clearTerminalAiProcessingLedgerEntry,
+    options,
+    processingQueue.resolvedSessionVisionModelId,
+    reloadDesigns,
+    selectedDesign,
+    user,
+  ]);
 
   return {
     actionError,
-    approvedTags: generatedTaxonomy.tags,
     baselineForm,
     canApprove: canApproveSelected,
     canArchive: canArchiveSelected,
@@ -1373,8 +1496,8 @@ export function useAiReviewInbox(
     canReopen: canReopenSelected,
     canRerun: canRerunSelected,
     canRetryProcessing: canRetryProcessingSelected,
+    canRetryStaleProcessing: canRetryStaleProcessingSelected,
     canRerunAiSuggestions,
-    canApproveSuggestedTags,
     showReadOnlySuggestions,
     activeTab: filters.tab,
     cancelPendingSelection,
@@ -1387,11 +1510,11 @@ export function useAiReviewInbox(
     hasMore,
     isActionLoading,
     isSavingArtworkBackground,
+    isSavingHalftone,
     isDraftDirty,
     isLoading,
     isLoadingMore,
     isRerunningAi: isSendingBackToProcessing,
-    ignoredSuggestedTagNames,
     listQuery,
     loadMoreDesigns,
     pendingSelection,
@@ -1412,9 +1535,9 @@ export function useAiReviewInbox(
     rerunSelected,
     requestRerunAiSuggestions,
     retryProcessingSelected,
-    approveSuggestedTag,
-    ignoreSuggestedTag,
+    retryStaleProcessingSelected,
     saveArtworkBackground,
+    saveHalftoneStaffDecision,
     updateDraftField,
     processingQueue,
   };

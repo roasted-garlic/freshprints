@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 
-import { buildPortalAlgoliaFacetSearchParams } from './portalAlgoliaCatalogSearchService.ts';
+import { buildPortalAlgoliaSmartFacetSearchParams } from './portalAlgoliaCatalogSearchService.ts';
 
 function readService(): string {
   return readFileSync(
@@ -20,18 +20,18 @@ describe('Portal Algolia exact-token search params', () => {
   });
 
   it('facet builder applies exact params for Kill and not for empty query', () => {
-    const withQuery = buildPortalAlgoliaFacetSearchParams({ search: 'Kill' });
+    const withQuery = buildPortalAlgoliaSmartFacetSearchParams({ search: 'Kill' });
     assert.equal(withQuery.typoTolerance, false);
     assert.equal(withQuery.queryType, 'prefixLast');
     assert.equal(withQuery.query, 'Kill');
 
-    const empty = buildPortalAlgoliaFacetSearchParams({ search: '' });
+    const empty = buildPortalAlgoliaSmartFacetSearchParams({ search: '' });
     assert.equal(empty.typoTolerance, undefined);
     assert.equal(empty.queryType, undefined);
   });
 
   it('Kill exactness contract: typoTolerance off and prefixLast (kil typeahead; not fuzzy Will)', () => {
-    const params = buildPortalAlgoliaFacetSearchParams({ search: 'Kill' });
+    const params = buildPortalAlgoliaSmartFacetSearchParams({ search: 'Kill' });
     assert.equal(params.typoTolerance, false, 'Kill must not typo-match Will');
     assert.equal(params.queryType, 'prefixLast', 'prefixLast; typoTolerance blocks Will');
   });
@@ -41,6 +41,6 @@ describe('Portal Algolia exact-token search params', () => {
     const listIdx = source.indexOf('async listMatchingDesigns');
     const listBlock = source.slice(listIdx, listIdx + 1600);
     assert.match(listBlock, /withPortalCatalogAlgoliaExactTokenSearchParams/);
-    assert.match(source, /buildPortalAlgoliaFacetSearchParams[\s\S]*withPortalCatalogAlgoliaExactTokenSearchParams/);
+    assert.match(source, /buildPortalAlgoliaSmartFacetSearchParams[\s\S]*withPortalCatalogAlgoliaExactTokenSearchParams/);
   });
 });
