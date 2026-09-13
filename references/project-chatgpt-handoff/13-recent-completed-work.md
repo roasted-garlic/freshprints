@@ -1,5 +1,35 @@
 # Recent Completed Work
 
+## 2026-09-13 - Rules rollback snapshot + final parent M0 — COMPLETE (Classification A)
+
+Owner-authorized read-only Rules API access succeeded for `fresh-prints-prod`. Firestore release
+`cloud.firestore` → ruleset `42adfbb5-9f5d-4d22-a07b-e38078aba074`, source SHA
+`cdd4a3154733cfdceea53be9a785e39e4ea526a27da5e1046a802e33557defad`; Storage release
+`firebase.storage/fresh-prints-prod.firebasestorage.app` → ruleset
+`0c911fca-b6bf-48cd-83c8-e0622f334767`, source SHA
+`69ca680a7018ed48a9b46dc9cefd239ed0b5ea94ef50c57c3b75a9689f108306`. Full metadata is in the
+Rules snapshot artifact.
+
+The final parent M0 against corrected Studio SHA `5bf477fcf676f37265018262268ee5e8734e8eff` is
+**A — READY FOR REPLACEMENT CANDIDATE COMMIT/PUSH AUTHORIZATION**. Current dirty paths: 24,
+all classified documentation/evidence; unexplained paths: 0. No production deployment, mutation,
+runner, maintenance, merge, freeze, commit, or push occurred.
+
+Exact next checkpoint: **OWNER AUTHORIZE REPLACEMENT CANDIDATE COMMIT/PUSH**.
+
+## 2026-09-13 - Studio release-pipeline typecheck stabilization — CLOSED (approved_with_notes)
+
+Consolidated corrective Signoff is **approved_with_notes**. All 29 reviewed Studio TypeScript
+diagnostics are resolved; TypeScript reports zero diagnostics; corrective suites are 49/49 PASS;
+targeted validation is 198/198 PASS; baseline-aware lint, Windows/macOS packaging, artifact
+verification, and owner install/launch/version checks pass for Studio 1.0.10. The prerelease DEV
+title and DEV Firestore are expected by the existing environment-selection contract; production
+environment QA is deferred by design to the canonical stable production release after GO and merge.
+
+The sole remaining pre-GO blocker is immutable Firestore/Storage Rules rollback evidence. Read-only
+retrieval attempts returned 403 service-disabled/no-quota-project. No production mutation, deployment,
+stable publication, merge, freeze, runner, or data action occurred.
+
 ## 2026-09-12 - Coordinated production parent final M0 — COMPLETE (classification A)
 
 Owner authorized **RERUN FINAL PARENT M0 / COMMIT-BYTE CANDIDATE RECONCILIATION**. The read-only
@@ -2525,3 +2555,15 @@ See `CURRENT-STATE.md` for live status.
 - Safe blockers preserved (any print-request item; promoted design); deletion allowlists four asset paths. Exclusion is now reversible metadata-only catalog state and performs no Storage cleanup.
 - Focused 43/43, Studio/Functions builds, Studio package, lint, whitespace PASS. Manual development QA pending. Functions source changed but no deployment occurred.
 - Production diff/PR/merge/combined installer not started; Whatnot QA remains separate; no production/Stage 2/domain action.
+# 2026-09-13 — Studio release-pipeline typecheck stabilization CLOSED
+
+Consolidated corrective Signoff is **approved_with_notes**. All 29 reviewed Studio TypeScript
+diagnostics are resolved; TypeScript reports zero diagnostics; corrective suites are 49/49 PASS;
+targeted validation is 198/198 PASS; baseline-aware lint, Windows/macOS packaging, artifact
+verification, and owner install/launch/version checks pass for Studio 1.0.10. The prerelease DEV
+title and DEV Firestore are expected by the existing environment-selection contract; production
+environment QA is deferred by design to the canonical stable production release after GO and merge.
+
+The sole remaining pre-GO blocker is immutable Firestore/Storage Rules rollback evidence. Read-only
+retrieval attempts returned 403 service-disabled/no-quota-project. No production mutation, deployment,
+stable publication, merge, freeze, runner, or data action occurred.

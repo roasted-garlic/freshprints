@@ -1,5 +1,89 @@
 # Fresh Prints Roadmap
 
+> 2026-09-13: **Rules rollback evidence CLOSED; final parent M0 Classification A** — Current
+> production Firestore/Storage release metadata and source hashes are captured. Corrected source
+> reconciles with zero unexplained paths; next checkpoint is **OWNER AUTHORIZE REPLACEMENT CANDIDATE
+> COMMIT/PUSH**. No production deployment or mutation occurred.
+
+> 2026-09-13: **Studio release-pipeline corrective CLOSED — approved_with_notes** — All 29
+> typecheck diagnostics are resolved; automated/package evidence and owner install/launch/version
+> checks pass. DEV identity is expected for prerelease validation; production QA is deferred by
+> design to the canonical stable gate. The Rules rollback snapshot (`403 service-disabled/no-quota-
+> project`) remains the sole pre-GO blocker. After human access, run final parent M0.
+
+> 2026-09-13: **Production-configured Studio RC blocked** — The prior prerelease installer is
+> DEV-configured because the existing writer maps all non-stable releases to DEV Firebase. The
+> canonical production Studio path requires stable release input and source ancestry on
+> `production`; no alternate production-configured RC mode will be introduced. Finish the Rules
+> blocker, assemble/freeze the replacement candidate, approve GO, merge to `production`, then use
+> the existing stable Studio `1.0.10` release path.
+
+> 2026-09-13: **Studio 1.0.10 RC package validation PASS — Owner QA pending** — The consolidated
+> typecheck corrective resolved all 29 reviewed diagnostics (hard gate 0). Corrective suites are
+> 49/49 PASS, targeted validation 198/198 PASS, and baseline-aware lint reports
+> `current=19 baseline=25 new=0 removed=6`. Exact SHA `5bf477fcf676f37265018262268ee5e8734e8eff`
+> passed workflow `34739620667` on Windows and macOS as `1.0.10` / `internal-unsigned` with
+> verified artifacts. Next checkpoint: **OWNER QA: STUDIO 1.0.10 RC INSTALL / UPDATE**. No stable
+> publication, development merge, freeze, or production action occurred.
+
+> 2026-09-12: **Consolidated Studio release-pipeline typecheck stabilization — Plan/Formal Review
+> complete** — The existing Studio release blocker is fully inventoried as **29 TypeScript
+> diagnostics across 16 files** (runtime/shared contracts, unused declarations/imports, and
+> test-only fixtures). One bounded corrective is reviewed as `approved_with_changes`; TypeScript
+> remains a real release gate and no bypass is authorized. The accepted lint corrective (49/49,
+> Windows/macOS lint PASS) will be carried into consolidated Signoff after packaging. Exact next
+> checkpoint: **OWNER ACCEPT CONSOLIDATED STUDIO RELEASE PIPELINE CORRECTIVE + AUTHORIZE IMPLEMENT**.
+
+> 2026-09-12: **Studio lint-gate corrective — RC lint PASS; packaging blocked by existing typecheck
+> baseline** — Temporary validation branch `rc/studio-release-lint-gate-validation` at
+> `b8d8d80cc1cab5bdb2aed1889730205e0a8046f3` ran as prerelease `1.0.10` / `internal-unsigned`.
+> Windows and macOS lint passed; both packaging jobs stopped at the existing Studio TypeScript
+> baseline during `npx tsc` before artifact creation (classification B, not a corrective
+> regression). No artifacts, hashes, install/update evidence, stable publication, or merge exists.
+> Exact next checkpoint: **OWNER DECIDE EXISTING STUDIO TYPECHECK BASELINE / CORRECTIVE SIGNOFF PATH**.
+
+> 2026-09-12: **Historical Studio lint-gate corrective — Implement/Test complete; RC evidence then pending** —
+> The approved workflow-only corrective is implemented in both Studio release jobs with an exact
+> 25-finding deterministic baseline. Automated validation is **49/49 PASS**; Studio runtime source
+> and coordinated feature scope are unchanged. Prerelease packaging/install/update evidence remains
+> pending because candidate commit/push is explicitly not yet authorized. Next checkpoint:
+> **OWNER DECIDE CORRECTIVE RC VALIDATION SOURCE / AUTHORIZE NEXT GATE**.
+
+> 2026-09-12: **Historical Studio release workflow corrective — Plan/Formal Review complete** — Owner
+> invalidated former M1 SHA `ff533c835508e65bb3cfd9d2739f72bafe1fc895` for production release
+> purposes while preserving historical evidence. Child `studio-release-workflow-baseline-aware-lint-gate`
+> selected a deterministic checked-in whole-repository lint baseline comparator; Formal Review was
+> `approved_with_changes` and was subsequently accepted for implementation. No Studio runtime
+> behavior or production state changed. This entry is superseded by the RC validation entry above.
+
+> 2026-09-12: **Coordinated production frozen-candidate RC revalidation — C / NO-GO** —
+> Owner-authorized validation completed against frozen SHA
+> `ff533c835508e65bb3cfd9d2739f72bafe1fc895`. Freeze integrity and source manifests reconcile; a
+> clean detached checkout passed the Portal production build with synthetic non-production public
+> placeholders (build ID `ieL4DZ0JURjcMgcb-S0q4`; `.next/trace` EPERM absent). Read-only baseline
+> remains 113/113 ACTIVE Functions, 77/77 READY indexes, Portal build-003 at 100%/HTTP 200, stable
+> Studio v1.0.9, and absent/OFF maintenance settings. Focused validation is 87/87 PASS with
+> Functions build, Portal typecheck, targeted lint, and diff check passing. Real Studio workflow run
+> `34735296362` failed the existing whole-repository lint gate on Windows and macOS before packaging;
+> no 1.0.10 artifact/install/update evidence exists. Remote Rules release snapshot retries returned
+> 403 service-disabled/no-quota-project. Production state/data/configuration was not changed; only
+> authorized read-only baseline queries ran. Owner-directed Studio-first sequencing is documented as
+> a docs-only amendment. Exact next checkpoint: **OWNER DECIDE INVALIDATE FROZEN CANDIDATE / RETURN TO
+> M0-M1 FOR STUDIO RC REMEDIATION**. See the RC and GO/NO-GO packet under
+> `docs/workflow/reviews/2026-09-12-coordinated-production-*`.
+
+> 2026-09-12: **Coordinated production candidate — M1 FROZEN** — Owner authorized
+> `FREEZE MAIN CANDIDATE SHA ff533c835508e65bb3cfd9d2739f72bafe1fc895`. The immutable runtime/config
+> contract is frozen; documentation-only evidence updates may continue. Production, deployment,
+> publication, maintenance, runner, data operations, and runtime/config changes remain unauthorized.
+> Next checkpoint: **FROZEN-CANDIDATE RC VALIDATION / PRODUCTION GO-NO-GO PREPARATION**.
+
+> 2026-09-12: **Historical pre-freeze candidate assembly checkpoint** — Owner
+> authorized one exact Classification-A candidate commit/push at
+> `ff533c835508e65bb3cfd9d2739f72bafe1fc895` (`chore(release): assemble coordinated production
+> candidate`), pushed only to `origin/development`. Git-object commit-byte manifests are regenerated
+> and audited; this entry is superseded by the authoritative M1 freeze record above.
+
 > 2026-09-12: **Coordinated production promotion readiness — final parent M0 COMPLETE (A)** —
 > Owner authorized the read-only **RERUN FINAL PARENT M0 / COMMIT-BYTE CANDIDATE RECONCILIATION**.
 > The complete `development` tree reconciles at 256 status paths (134 tracked, 122 untracked),
@@ -8,7 +92,8 @@
 > data disposition, Studio `1.0.10`, security-risk sync, and commit-byte tooling are recorded.
 > Classification: **A — READY FOR REVIEWED CANDIDATE COMMIT/PUSH**. Production, staging, commit,
 > push, freeze, deployment, publication, maintenance, runner, and data/settings actions remain
-> untouched and unauthorized. Next checkpoint: **OWNER AUTHORIZE FINAL REVIEWED CANDIDATE COMMIT/PUSH**.
+> untouched and unauthorized. The candidate commit/push checkpoint is now complete; see the
+> authoritative M1 freeze checkpoint above.
 
 > 2026-09-12: **Coordinated production cutover prerequisites — CLOSED (repository readiness)** —
 > Goal `coordinated-production-cutover-prerequisites` is **DONE** with disposition
