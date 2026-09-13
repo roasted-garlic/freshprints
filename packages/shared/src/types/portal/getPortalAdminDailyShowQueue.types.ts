@@ -4,7 +4,7 @@ import type { ShowProductionStatus, UpcomingShowStatus } from "../upcomingShow/u
 export type GetPortalAdminDailyShowQueueRequest = Record<string, never>;
 
 export type PortalAdminShowQueueRequestKind = "customer" | "internal" | "unknown";
-export type PortalAdminShowQueueItemSource = "catalog_design" | "customer_upload";
+export type PortalAdminShowQueueItemSource = "catalog_design" | "customer_upload" | "staff_artwork";
 export type PortalAdminShowQueueItemOrigin = "standard" | "requeued" | "moved";
 
 export interface PortalAdminDailyShowQueueResponse {

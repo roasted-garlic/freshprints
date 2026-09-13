@@ -15,6 +15,9 @@ function isCatalogOptimisticStubId(itemId: string): boolean {
  *
  * When `printRequestId` is provided, local rows belonging to a different request
  * are discarded (active Continuable ownership switch must never mix carts).
+ *
+ * Empty server snapshots still preserve scoped local rows (projection lag). Callers must
+ * exclude pending-removed ids from `localItems` so intentional deletes are not resurrected.
  */
 export function mergeServerWorkingItemsWithLocal(
   serverItems: PrintRequestItem[],

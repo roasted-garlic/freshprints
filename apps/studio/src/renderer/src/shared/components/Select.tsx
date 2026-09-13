@@ -190,7 +190,7 @@ export function Select({
       return;
     }
 
-    function handlePointerDown(event: MouseEvent) {
+    function handlePointerDown(event: PointerEvent) {
       const target = event.target as Node;
       if (shellRef.current?.contains(target) || menuRef.current?.contains(target)) {
         return;
@@ -199,17 +199,26 @@ export function Select({
       closeMenu();
     }
 
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        closeMenu();
+      }
+    }
+
     function handleViewportChange() {
       updateMenuPosition();
     }
 
-    document.addEventListener("mousedown", handlePointerDown);
+    // Capture phase so clicks on modal chrome / other fields close the menu reliably.
+    document.addEventListener("pointerdown", handlePointerDown, true);
+    document.addEventListener("keydown", handleKeyDown, true);
     window.addEventListener("resize", handleViewportChange);
     // Capture scroll from nested overflow ancestors (e.g. modal body) so the portaled menu stays aligned.
     window.addEventListener("scroll", handleViewportChange, true);
 
     return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("pointerdown", handlePointerDown, true);
+      document.removeEventListener("keydown", handleKeyDown, true);
       window.removeEventListener("resize", handleViewportChange);
       window.removeEventListener("scroll", handleViewportChange, true);
     };

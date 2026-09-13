@@ -1,5 +1,61 @@
 # Coordinated Production Studio Build-Input Manifest
 
+## Authoritative final parent M0 Studio input reconciliation — 2026-09-12
+
+The reviewed dirty snapshot contains 786 Studio app/renderer/Electron/build inputs + 345 shared + 9
+show-picker + 5 common/workspace manifests = **1,145**; digest
+`bc72d879dd17beca0bc85c83de7526c0eda16ebb27fc19b2eec0c0853ae09aea`. Current status paths under
+`apps/studio` are 35 (33 runtime, 2 tests). All coordinated release metadata is **`1.0.10`**;
+`1.0.9` remains rollback-only. No packaging build, installer-producing tooling, publication, or
+production action occurred.
+
+## Authoritative corrected build boundary — 2026-09-12
+
+The prior 1,019-file manifest was stale and incomplete: its count omitted 104 Electron files,
+seven build scripts, two package icons, and the direct `@fresh-prints/show-picker` workspace
+dependency even though those are release inputs. The corrected dirty-snapshot method includes all
+non-test, non-ignored Studio renderer/Electron/scripts/icons/config/public inputs;
+`packages/shared/src/**`; `packages/show-picker/src/**`; root `package.json`, `package-lock.json`,
+and `firebase.json`; and both workspace package manifests.
+
+| Input class | Files |
+|---|---:|
+| Studio app/renderer/Electron/build inputs | 786 |
+| Shared runtime | 345 |
+| Show Picker runtime | 9 |
+| Common/workspace manifests | 5 |
+| **Total** | **1,145** |
+
+Digest (sorted path + NUL + raw bytes + NUL):
+`bc72d879dd17beca0bc85c83de7526c0eda16ebb27fc19b2eec0c0853ae09aea`.
+
+There are 34 dirty Studio status paths (32 runtime, 2 tests). Studio still declares version
+`1.0.9`, which is already the production rollback release, and the release workflow enforces that
+version. M1 requires an owner-selected next semver (recommendation: `1.0.10`) and reviewed package,
+lockfile, workflow, test, and release-document alignment. No package build/publication occurred.
+
+## Authoritative post-Staff-Artwork M0 rerun — 2026-09-12
+
+The earlier inventory is retained below. The current deterministic manifest is authoritative for the
+dirty reconciliation at `development` `a76d8be218571e1260bdb983f86ee5cf86563e1b`.
+
+The manifest includes sorted, non-test runtime files under `apps/studio/**`, shared runtime files
+under `packages/shared/src/**`, and `package.json`, `package-lock.json`, `firebase.json`, and
+`packages/shared/package.json`. It excludes dependency/build/release/generated output, local env
+files, logs, and `.test.`/`.spec.` files. Digest algorithm: SHA-256 over each sorted relative path,
+NUL, raw file bytes, NUL.
+
+| Input set | Files | Digest |
+|---|---:|---|
+| Studio app runtime/build inputs | 673 app + 342 shared + 4 common = **1,019** | `676bf86df0d4c048fd9b5fdb642c63d4bb23950e6ddc494d3a3b342d73f81312` |
+
+The 27 changed Studio status paths cover request-detail/source propagation, queue/allocation/export/
+gang-sheet resolution, artwork-background handling, permission types, shared navigation/styles, and
+the new Staff Artwork library, customer picker, AI Review confirmation, permission contract, and
+Staff Artwork styling. Staff Artwork management remains owner/admin-only; helper access is
+selection-only and the Portal projection remains customer-safe. The production rollback target is
+Studio v1.0.9. No Studio publication occurred.
+
 Status: read-only M0 reconciliation rerun artifact; no Studio publication or release was executed.
 
 Rerun snapshot: `development` dirty at `04b9637470a16b0f4d4a1ba9f822fe9df7acca2d`. The signed-off

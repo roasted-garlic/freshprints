@@ -3,6 +3,10 @@ import { FieldValue, Timestamp, type DocumentReference } from "firebase-admin/fi
 import { CUSTOMER_UPLOAD_COLLECTIONS } from "../../../packages/shared/src/constants/customerUpload/customerUploadCollections.constants";
 import { getCustomerUploadInteractiveProductionStoragePath } from "../../../packages/shared/src/constants/customerUpload/customerUploadStoragePaths";
 import {
+  getStaffArtworkInteractiveProductionStoragePath,
+  getStaffArtworkProductionStoragePath,
+} from "../../../packages/shared/src/constants/staffArtwork/staffArtworkStoragePaths";
+import {
   getInteractiveOriginalStoragePath,
   getOriginalStoragePath,
 } from "../../../packages/shared/src/constants/design/designStoragePaths";
@@ -23,6 +27,7 @@ import {
 } from "../../../packages/shared/src/utils/manualArtworkEnhance";
 import { isPortalEditablePrintRequest } from "../../../packages/shared/src/utils/portalPrintRequestEditability";
 import { assessPrintRequestItemSize } from "../../../packages/shared/src/utils/printRequestItemSizing";
+import { resolvePrintRequestItemSourceType } from "../../../packages/shared/src/utils/printRequestItemSource";
 
 import { adminDb, adminStorage } from "./admin";
 import { processArtworkEnhancePng } from "./artworkEnhanceProcessing";
@@ -195,7 +200,85 @@ interface UploadAssetContext {
   upscalePassCount: ArtworkUpscalePassCount;
 }
 
-type AssetContext = CatalogAssetContext | UploadAssetContext;
+interface StaffArtworkAssetContext {
+  sourceType: "staff_artwork";
+  staffArtworkId: string;
+  staffArtworkRef: DocumentReference;
+  staffArtwork: Record<string, unknown>;
+  baselineWidthPx: number;
+  baselineHeightPx: number;
+  baselineProductionPath: string;
+  interactivePath: string;
+  enhancedWidthPx?: number;
+  enhancedHeightPx?: number;
+  hasDerivative: boolean;
+  nativeWidthPx: number;
+  nativeHeightPx: number;
+  upscalePassCount: ArtworkUpscalePassCount;
+}
+
+type AssetContext = CatalogAssetContext | UploadAssetContext | StaffArtworkAssetContext;
+
+async function loadStaffArtworkAssetContext(staffArtworkId: string): Promise<StaffArtworkAssetContext> {
+  const staffArtworkRef = adminDb.collection("staffArtworks").doc(staffArtworkId);
+  const staffArtworkSnap = await staffArtworkRef.get();
+  if (!staffArtworkSnap.exists) {
+    throw invalidArgument("Staff Artwork was not found.");
+  }
+
+  const staffArtwork = staffArtworkSnap.data() ?? {};
+  const status = typeof staffArtwork.status === "string" ? staffArtwork.status : "";
+  if (status !== "ready" && status !== "archived") {
+    throw failedPrecondition("Staff Artwork must finish processing before enhancement.");
+  }
+
+  const processing =
+    staffArtwork.processing && typeof staffArtwork.processing === "object"
+      ? (staffArtwork.processing as Record<string, unknown>)
+      : {};
+  const baselineWidthPx = readPositiveNumber(processing.widthPx) ?? 0;
+  const baselineHeightPx = readPositiveNumber(processing.heightPx) ?? 0;
+  if (baselineWidthPx <= 0 || baselineHeightPx <= 0) {
+    throw failedPrecondition("Staff Artwork pixel dimensions are required before enhancement.");
+  }
+
+  const baselineProductionPath =
+    typeof staffArtwork.productionStoragePath === "string" && staffArtwork.productionStoragePath.trim()
+      ? staffArtwork.productionStoragePath.trim()
+      : getStaffArtworkProductionStoragePath(staffArtworkId);
+  const interactivePath =
+    typeof staffArtwork.interactiveEnhancedProductionStoragePath === "string" &&
+    staffArtwork.interactiveEnhancedProductionStoragePath.trim()
+      ? staffArtwork.interactiveEnhancedProductionStoragePath.trim()
+      : getStaffArtworkInteractiveProductionStoragePath(staffArtworkId);
+
+  const metadataClaimsDerivative = hasInteractiveArtworkDerivative({
+    currentWidthPx: baselineWidthPx,
+    currentHeightPx: baselineHeightPx,
+    interactiveEnhanceGeneratedAt: staffArtwork.interactiveEnhanceGeneratedAt,
+  });
+  const hasDerivative =
+    metadataClaimsDerivative && (await canonicalStorageObjectExists(interactivePath));
+
+  const nativeWidthPx = readPositiveNumber(processing.sourceWidthPx) ?? baselineWidthPx;
+  const nativeHeightPx = readPositiveNumber(processing.sourceHeightPx) ?? baselineHeightPx;
+  return {
+    sourceType: "staff_artwork",
+    staffArtworkId,
+    staffArtworkRef,
+    staffArtwork,
+    baselineWidthPx,
+    baselineHeightPx,
+    baselineProductionPath,
+    interactivePath,
+    enhancedWidthPx: readPositiveNumber(staffArtwork.interactiveEnhancedWidthPx),
+    enhancedHeightPx: readPositiveNumber(staffArtwork.interactiveEnhancedHeightPx),
+    hasDerivative,
+    nativeWidthPx,
+    nativeHeightPx,
+    upscalePassCount: readUpscalePassCount(processing.upscalePassCount),
+  };
+}
 
 async function loadCatalogAssetContext(
   designId: string,
@@ -388,6 +471,7 @@ function buildResponse(
     sourceType: asset.sourceType,
     designId: asset.sourceType === "catalog_design" ? asset.designId : undefined,
     customerUploadId: asset.sourceType === "customer_upload" ? asset.customerUploadId : undefined,
+    staffArtworkId: asset.sourceType === "staff_artwork" ? asset.staffArtworkId : undefined,
     artworkEnhanceMode: mode,
     widthPx: pixels.widthPx,
     heightPx: pixels.heightPx,
@@ -522,7 +606,11 @@ async function generateInteractiveDerivative(
   }
 
   const lockField =
-    asset.sourceType === "catalog_design" ? asset.design.artworkEnhanceLockUntil : asset.upload.artworkEnhanceLockUntil;
+    asset.sourceType === "catalog_design"
+      ? asset.design.artworkEnhanceLockUntil
+      : asset.sourceType === "customer_upload"
+        ? asset.upload.artworkEnhanceLockUntil
+        : asset.staffArtwork.artworkEnhanceLockUntil;
   const lockUntilMs = readLockUntilMillis(lockField);
   if (lockUntilMs !== null && lockUntilMs > Date.now()) {
     return buildResponse(
@@ -534,7 +622,12 @@ async function generateInteractiveDerivative(
     );
   }
 
-  const assetRef = asset.sourceType === "catalog_design" ? asset.designRef : asset.uploadRef;
+  const assetRef =
+    asset.sourceType === "catalog_design"
+      ? asset.designRef
+      : asset.sourceType === "customer_upload"
+        ? asset.uploadRef
+        : asset.staffArtworkRef;
 
   await assetRef.update({
     artworkEnhanceLockUntil: Timestamp.fromMillis(Date.now() + ENHANCE_LOCK_MS),
@@ -599,20 +692,12 @@ async function generateInteractiveDerivative(
 
     await itemRef.update(itemUpdate);
 
-    const updatedAsset: AssetContext =
-      asset.sourceType === "catalog_design"
-        ? {
-            ...asset,
-            hasDerivative: true,
-            enhancedWidthPx: processed.widthPx,
-            enhancedHeightPx: processed.heightPx,
-          }
-        : {
-            ...asset,
-            hasDerivative: true,
-            enhancedWidthPx: processed.widthPx,
-            enhancedHeightPx: processed.heightPx,
-          };
+    const updatedAsset: AssetContext = {
+      ...asset,
+      hasDerivative: true,
+      enhancedWidthPx: processed.widthPx,
+      enhancedHeightPx: processed.heightPx,
+    };
 
     const updatedItem = {
       ...item,
@@ -665,8 +750,27 @@ export async function executeSetPrintRequestItemArtworkEnhanceMode(
     assertPortalOwnership(printRequest, caller.customerId);
   }
 
-  const sourceType =
-    typeof item.sourceType === "string" ? item.sourceType : "catalog_design";
+  const designIdHint =
+    typeof item.designId === "string" && item.designId.trim() ? item.designId.trim() : undefined;
+  const customerUploadIdHint =
+    typeof item.customerUploadId === "string" && item.customerUploadId.trim()
+      ? item.customerUploadId.trim()
+      : undefined;
+  const staffArtworkIdHint =
+    typeof item.staffArtworkId === "string" && item.staffArtworkId.trim()
+      ? item.staffArtworkId.trim()
+      : undefined;
+  const sourceType = resolvePrintRequestItemSourceType({
+    sourceType:
+      item.sourceType === "customer_upload" ||
+      item.sourceType === "staff_artwork" ||
+      item.sourceType === "catalog_design"
+        ? item.sourceType
+        : undefined,
+    designId: designIdHint,
+    customerUploadId: customerUploadIdHint,
+    staffArtworkId: staffArtworkIdHint,
+  });
 
   let asset: AssetContext;
   if (sourceType === "customer_upload") {
@@ -678,6 +782,18 @@ export async function executeSetPrintRequestItemArtworkEnhanceMode(
       throw invalidArgument("This item is not linked to a customer upload.");
     }
     asset = await loadUploadAssetContext(customerUploadId);
+  } else if (sourceType === "staff_artwork") {
+    if (caller.kind === "portal") {
+      throw permissionDenied("Staff Artwork enhancement is available to Studio staff only.");
+    }
+    const staffArtworkId =
+      typeof item.staffArtworkId === "string" && item.staffArtworkId.trim()
+        ? item.staffArtworkId.trim()
+        : "";
+    if (!staffArtworkId) {
+      throw invalidArgument("This item is not linked to Staff Artwork.");
+    }
+    asset = await loadStaffArtworkAssetContext(staffArtworkId);
   } else {
     const designId =
       typeof item.designId === "string" && item.designId.trim() ? item.designId.trim() : "";

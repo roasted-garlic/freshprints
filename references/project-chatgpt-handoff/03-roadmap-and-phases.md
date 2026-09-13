@@ -1,5 +1,32 @@
 # Roadmap and Phases
 
+> 2026-09-12: **Coordinated production cutover prerequisites — CLOSED (repository readiness)** —
+> Goal `coordinated-production-cutover-prerequisites` is **CLOSED** with Signoff
+> **approved_with_notes** after Owner DEV QA **PASS**. Transition/final Firestore Rules,
+> projection-preferred Portal dual-read/fallback, production-hard-pinned reconciliation and
+> committed-byte manifest contracts, Studio `1.0.10`, and synchronized security/risk docs are
+> complete. The final read-only parent M0 is now **A — READY FOR REVIEWED CANDIDATE COMMIT/PUSH**;
+> production, deployment, publication, candidate freeze, staging, commit, and push remain separately
+> gated. Active parent: `coordinated-production-promotion-release-readiness`. Next checkpoint:
+> **OWNER AUTHORIZE FINAL REVIEWED CANDIDATE COMMIT/PUSH**.
+
+> 2026-09-12: **Studio Staff Artwork library and Print Request source — CLOSED (DEV)** — Goal
+> `studio-staff-artwork-library-and-print-request-source` is **DONE** with Signoff
+> **approved_with_notes** after Owner DEV QA **PASS**. DEV deployment and corrective redeploys are
+> complete; source-focused contracts 31/31 and emulator-backed Rules suites 11/11 pass. The parent
+> M0 has since rerun read-only and is classified A; candidate freeze or production action remains
+> separately gated.
+
+> 2026-09-11: **Customer-upload Studio deferral, personal library, and Portal inline Remove — CLOSED (DEV)** — Goal
+> `customer-upload-studio-deferral-personal-library-portal-inline-remove` **DONE**;
+> Signoff **approved_with_notes** after Owner DEV QA **PASS**. Workstreams D/A/R/C1/C2 are live in
+> the reviewed DEV source: Studio intake waits for Add to Show, queue alerts settle after success,
+> Portal removal is inline-confirmed, and Your designs separates Personal from promoted Design
+> Library artwork with bounded retention. Focused rerun: 92 pass / 1 known unrelated manifest
+> baseline. No production action, publication, candidate freeze, or backfill. Signoff:
+> `docs/workflow/reviews/2026-09-11-customer-upload-studio-deferral-personal-library-portal-inline-remove-signoff.md`.
+> Next parent checkpoint: rerun coordinated-production M0 and prepare a new candidate/freeze proposal.
+
 > 2026-09-10: **Production maintenance-mode prerequisite — CLOSED (DEV)** — Goal
 > `production-maintenance-mode-prerequisite` **DONE** with final disposition
 > **approved_with_notes** after Owner DEV QA **PASS**. The shared Portal/Studio copy contract,

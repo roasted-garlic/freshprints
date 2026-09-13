@@ -1,15 +1,48 @@
 # Next Planned Goal
 
-**Updated:** 2026-09-10
+**Updated:** 2026-09-12
 
 ## Current state
 
-FreshForge is at **M0 PREPARATION BLOCKED** for the accepted Strategy B
-`coordinated-production-promotion-release-readiness` candidate. The hard-delete child and the
-read-only runtime reconciliation are complete at the dirty snapshot; next checkpoint:
-`[OWNER AUTHORIZE REVIEWED COMMIT/PUSH → CLEAN SHA → REGENERATE MANIFESTS → OWNER M1 FREEZE DECISION]`.
+FreshForge completed the owner-authorized read-only final parent M0 reconciliation after the bounded
+`coordinated-production-cutover-prerequisites` Plan → Formal Review → Implement → Test → Signoff
+sequence. All planned pre-freeze children are closed or explicitly dispositioned, including the
+owner-accepted `studio-permission-two-ask-activity-excluded-handoff` umbrella evidence. Active
+control remains with parent `coordinated-production-promotion-release-readiness`.
 
-### Active goal — coordinated production promotion and release readiness (M0 preparation)
+The final M0 inventory contains **256** status paths (134 tracked modifications, 122 untracked), no
+unexplained paths, and sorted path digest
+`bfd1a1911d94449dee74dea0134061744814f42b51b80f90014bc38f357da0ac`. Function closure is 186/120
+exports with 530 local closure paths; the additive index union is 95/77 with zero removals or
+replacements. Rules, Portal/Studio input manifests, config/data disposition, Studio `1.0.10`,
+security-risk synchronization, and commit-byte tooling are reconciled. M0 classification is
+**A — READY FOR REVIEWED CANDIDATE COMMIT/PUSH**; the tree is still dirty and no candidate is frozen.
+
+Exact next checkpoint: **OWNER AUTHORIZE FINAL REVIEWED CANDIDATE COMMIT/PUSH**. Do not stage, commit,
+push, assemble/freeze a candidate, deploy, publish, activate maintenance, invoke the runner, or
+access/mutate production without that separate authorization.
+
+Required implementation constraint from Review: pre-APPLY VERIFY may report expected missing/stale
+projection rows as population deltas, while malformed/unsafe/unclassified drift fails closed;
+post-APPLY VERIFY must prove exact equality and be followed by a zero-diff DRY RUN.
+
+> The detailed parent/child history below predates this completed M0 rerun. It remains evidence, but
+> the current-state text above is authoritative where checkpoints differ.
+
+### Current cutover-prerequisites evidence — 2026-09-12
+
+- Implementation review: `docs/workflow/reviews/2026-09-12-coordinated-production-cutover-prerequisites-implementation-review.md`.
+- Test report: `docs/workflow/reviews/2026-09-12-coordinated-production-cutover-prerequisites-test-report.md`.
+- Signoff preparation (not a Signoff): `docs/workflow/reviews/2026-09-12-coordinated-production-cutover-prerequisites-signoff-preparation.md`.
+- Final Signoff: `docs/workflow/reviews/2026-09-12-coordinated-production-cutover-prerequisites-signoff.md` —
+  **approved_with_notes** after `OWNER DEV QA: coordinated-production-cutover-prerequisites - PASS`.
+- Focused automated suites passed 87/87; Functions build, Portal typecheck, targeted lint, and
+  diff checks passed. Portal build, Rules emulator, Studio typecheck, and whole-repo lint baseline /
+  environment failures are documented in the Test Report.
+- No production runner or data action, deployment, publication, staging, commit, push, freeze, or
+  maintenance activation occurred.
+
+### Historical parent detail — coordinated production promotion and release readiness
 
 - Parent Plan: `docs/workflow/plans/2026-09-10-coordinated-production-promotion-release-readiness-plan.md` —
   Strategy B amendment accepted.
@@ -17,19 +50,22 @@ read-only runtime reconciliation are complete at the dirty snapshot; next checkp
   **approved_with_changes; accepted**.
 - Closed child goal: `production-maintenance-mode-prerequisite-production-promotion` —
   `superseded_by_coordinated_candidate` (no standalone production deployment).
-- M0 preparation report: `docs/workflow/reviews/2026-09-10-coordinated-production-candidate-preparation.md`
-  (rerun complete). Authoritative reconciliation packet:
-  `docs/workflow/reviews/2026-09-10-coordinated-production-m0-reconciliation.md`.
+- Prior M0 preparation/reconciliation reports:
+  `docs/workflow/reviews/2026-09-10-coordinated-production-candidate-preparation.md` and
+  `docs/workflow/reviews/2026-09-10-coordinated-production-m0-reconciliation.md`. They are evidence
+  for the prior snapshot; rerun M0 after the 2026-09-11 child signoff before treating any packet as
+  authoritative for a candidate.
 - Hard-delete child Plan/Review:
   `docs/workflow/plans/2026-09-10-studio-hard-delete-production-ui-gate-plan.md` and
   `docs/workflow/reviews/2026-09-10-studio-hard-delete-production-ui-gate-review.md` —
   **approved_with_changes; owner accepted**. Child Signoff:
   `docs/workflow/reviews/2026-09-10-studio-hard-delete-production-ui-gate-signoff.md` —
   **approved_with_notes**.
-- Read-only evidence: `development`/`HEAD`/`origin/development` = `b5aec1b2b1ac4eba5ab704f1db8f87ea22f1daaa`,
-  `origin/production` = `36165096f09bef6817adb5b11d496dbb1502b`; 59 tracked + 56 untracked working-tree
-  status entries (115 total); 1,877 committed paths differ from production; maintenance runtime is
-  not one immutable SHA.
+- Read-only evidence: runtime candidate tip `development`/`HEAD`/`origin/development` =
+  `a76d8be218571e1260bdb983f86ee5cf86563e1b` (runtime feature commit `35d80ec7`),
+  `origin/production` = `36165096f09bef6817adb5b11d496dbb1502b`; current signoff documentation is
+  being refreshed locally. The parent candidate remains unfrozen and must be reassembled from a
+  fresh M0 snapshot.
 - Production baseline: 113 ACTIVE Functions, no maintenance callables, absent
   `settings/portalMaintenance` (safe OFF), Portal build-003 at 100% traffic, Studio stable `v1.0.9`.
 - Isolation result: current Functions files, whole-file Firestore/Storage Rules, App Hosting, and
@@ -45,13 +81,43 @@ read-only runtime reconciliation are complete at the dirty snapshot; next checkp
   It is prepared only; no candidate SHA, freeze, commit, push, or production action exists. The
   Function closure, Rules, index union, Portal/Studio input, and config/data manifests are linked
   from the M0 packet and must be regenerated at the clean SHA.
+- Newly closed child: `portal-assisted-final-artwork-progress-and-readd-corrective` —
+  **approved_with_notes** after Owner DEV QA **PASS** (2026-09-12). Empty existing-upload updates
+  are guarded; real server progress is visible in the localhost Portal; DEV callable revision
+  `customeraddassistedapprovedprooftoprintrequest-00037-juk` is ACTIVE. Signoff:
+  `docs/workflow/reviews/2026-09-12-portal-assisted-final-artwork-progress-and-readd-corrective-signoff.md`.
+- Sentinel child: `portal-assisted-final-artwork-add-retention-sentinel-corrective` remains
+  implemented and automated-tested, but its Signoff is pending explicit live checks for queue/staff
+  intake, final-source/sizing/quantity/request-count, maintenance/ownership, separate donation/
+  follow-up/Restore/staff-promotion, and direct document-field inspection.
+ - Staff Artwork neutral-projection corrective: owner accepted the base and visibility Plan/Formal
+   Review and authorized Implement → Test → DEV preparation. The mapper now exempts only
+   `staff_artwork` from the catalog-only `!designId` guard; focused mapper/security/projection tests,
+   Portal typecheck, and targeted lint pass. The bounded population APPLY and DEV Rules/Storage
+   cutover remain complete; this is Outcome A with no population APPLY rerun and no Rules/index
+   change. Implementation/Test evidence:
+   `docs/workflow/reviews/2026-09-12-portal-staff-artwork-neutral-projection-corrective-visibility-implementation-review.md`
+   and `docs/workflow/reviews/2026-09-12-portal-staff-artwork-neutral-projection-corrective-visibility-test-report.md`.
+   Next checkpoint: **OWNER DEV QA: portal-staff-artwork-neutral-projection-corrective**.
+- Multi-proof child: `assisted-creation-multi-proof-selection` remains implementation-unauthorized;
+  read-only source reconciliation is **B — PLAN NEEDS MINOR AMENDMENT**. Preserve the signed-off
+  progress parser/modal, direct no-consent Add-to-Request wiring, and final-source authority. See
+  `docs/workflow/reviews/2026-09-12-assisted-creation-multi-proof-selection-source-delta-reconciliation.md`.
 - The parent sequence freezes one SHA, captures immutable rollback baselines, runs RC gates, deploys
   indexes → Rules → explicit Function closure, rolls out Portal → coordinated Studio, reaches
   `FULL MAINTENANCE CAPABILITY READY` while absent/OFF, and places any ON transition and safe-write
   proof behind a separate owner checkpoint. No candidate SHA, branch, commit, merge, deploy,
   publish, setting mutation or production action has occurred.
 
-- Most recently closed polish: `studio-show-queue-internal-sheet-dollar-totals` — **approved**
+ - Most recently closed child: `customer-upload-studio-deferral-personal-library-portal-inline-remove` —
+   **approved_with_notes** after Owner DEV QA **PASS** (2026-09-11); signoff is recorded in
+   `docs/workflow/reviews/2026-09-11-customer-upload-studio-deferral-personal-library-portal-inline-remove-signoff.md`.
+   Runtime is present in `35d80ec7` / `origin/development`; no production action occurred.
+ - Newly closed child: `studio-staff-artwork-library-and-print-request-source` —
+   **approved_with_notes** after Owner DEV QA **PASS** (2026-09-12). DEV allowlist and corrective
+   redeploys are complete; no production action occurred. Signoff:
+   `docs/workflow/reviews/2026-09-12-studio-staff-artwork-library-and-print-request-source-signoff.md`.
+ - Most recently closed polish: `studio-show-queue-internal-sheet-dollar-totals` — **approved**
   (owner visual QA **PASS** 2026-09-10); committed/pushed to `origin/development`.
 - Most recently closed managed goal: `production-maintenance-mode-prerequisite` — corrective
   amendment Plan and Formal Review were approved_with_changes, Implement/Test and the exact narrow

@@ -18,6 +18,31 @@ describe("printRequestItemSource", () => {
     assert.equal(isCatalogDesignPrintRequestItem({ designId: "d1" }), true);
   });
 
+  it("falls back to staff_artwork when only staffArtworkId is present", () => {
+    assert.equal(
+      resolvePrintRequestItemSourceType({ staffArtworkId: "sa-1" }),
+      "staff_artwork",
+    );
+  });
+
+  it("falls back to customer_upload when only customerUploadId is present", () => {
+    assert.equal(
+      resolvePrintRequestItemSourceType({ customerUploadId: "u-1" }),
+      "customer_upload",
+    );
+  });
+
+  it("prefers explicit sourceType over identity IDs", () => {
+    assert.equal(
+      resolvePrintRequestItemSourceType({
+        sourceType: "catalog_design",
+        designId: "d1",
+        staffArtworkId: "sa-ignored",
+      }),
+      "catalog_design",
+    );
+  });
+
   it("recognizes customer_upload sourceType", () => {
     const item = {
       designId: "",

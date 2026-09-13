@@ -58,7 +58,6 @@ import {
   AssistedAddToRequestProgressModal,
   type AssistedAddToRequestProgressPhase,
 } from './AssistedAddToRequestProgressModal';
-import { AssistedLibraryListingConsentModal } from './AssistedLibraryListingConsentModal';
 
 function catalogShareArtworkPreviewStyle(hex?: string | null): CSSProperties | undefined {
   const resolved = resolveAssistedCatalogShareArtworkBackgroundHex({
@@ -508,7 +507,6 @@ export function AssistedApprovedDesignCard({ request }: { request: AssistedCreat
   const [addBusy, setAddBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [addSuccess, setAddSuccess] = useState<string | null>(null);
-  const [libraryConsentOpen, setLibraryConsentOpen] = useState(false);
   const [addProgressOpen, setAddProgressOpen] = useState(false);
   const [addProgressPhase, setAddProgressPhase] =
     useState<AssistedAddToRequestProgressPhase>('preparing');
@@ -644,12 +642,11 @@ export function AssistedApprovedDesignCard({ request }: { request: AssistedCreat
     return null;
   }
 
-  const runAddToRequest = (catalogUseAcknowledged: boolean) => {
+  const runAddToRequest = () => {
     const requestId = request.id?.trim();
     if (!requestId || addBusy || alreadyInRequest) {
       return;
     }
-    setLibraryConsentOpen(false);
     setAddBusy(true);
     setActionError(null);
     setAddSuccess(null);
@@ -658,7 +655,7 @@ export function AssistedApprovedDesignCard({ request }: { request: AssistedCreat
     setAddProgressOpen(true);
 
     void assistedCreationService
-      .addApprovedProofToPrintRequest(requestId, { catalogUseAcknowledged })
+      .addApprovedProofToPrintRequest(requestId)
       .then(async (result) => {
         setAddProgressPhase('adding');
         setAddSuccess(
@@ -781,7 +778,7 @@ export function AssistedApprovedDesignCard({ request }: { request: AssistedCreat
                   return;
                 }
                 setActionError(null);
-                setLibraryConsentOpen(true);
+                runAddToRequest();
               }}
               title={
                 !workingRequestLimit.canAddPrints && workingRequestLimit.exhaustedHelperText
@@ -806,17 +803,6 @@ export function AssistedApprovedDesignCard({ request }: { request: AssistedCreat
       ) : null}
       {addSuccess ? <p className="portal-muted">{addSuccess}</p> : null}
       {actionError ? <p className="portal-form-error">{actionError}</p> : null}
-      <AssistedLibraryListingConsentModal
-        isBusy={addBusy}
-        isOpen={libraryConsentOpen}
-        onAllow={() => runAddToRequest(true)}
-        onDecline={() => runAddToRequest(false)}
-        onDismiss={() => {
-          if (!addBusy) {
-            setLibraryConsentOpen(false);
-          }
-        }}
-      />
       <AssistedAddToRequestProgressModal
         artworkKind={hasFinalSource ? 'final' : 'proof'}
         errorMessage={addProgressError}
@@ -830,6 +816,7 @@ export function AssistedApprovedDesignCard({ request }: { request: AssistedCreat
           }
         }}
         phase={addProgressPhase}
+        serverProgress={request.addToRequestProgress}
       />
     </section>
   );

@@ -1,5 +1,40 @@
 # Proposed M1 candidate freeze — coordinated production promotion
 
+> **Final parent M0 — 2026-09-12:** Owner-authorized read-only reconciliation is complete and
+> classified **A — READY FOR REVIEWED CANDIDATE COMMIT/PUSH**. The current tree has 256 status paths
+> (134 tracked, 122 untracked), no unexplained paths, and no candidate SHA because it is dirty. All
+> prior blockers (stray file, umbrella closure, additive dual-read/production-locked runner,
+> Studio `1.0.10`, and SECURITY/FIREBASE/RISK synchronization) are resolved in reviewed evidence.
+> This proposal still does **not** authorize freeze, staging, commit, push, deployment, publication,
+> maintenance, runner invocation, or production access. Exact next checkpoint:
+> **OWNER AUTHORIZE FINAL REVIEWED CANDIDATE COMMIT/PUSH**.
+
+> **2026-09-12 M0 rerun:** This proposal is **not ready to present**. The M0 evidence snapshot had
+> 231 status paths (125 tracked, 106 untracked); mandatory reporting then made the live worktree 232
+> paths (126 tracked, 106 untracked). There is no candidate SHA, and pre-M1 decisions remain open.
+> The 59-path statement later in this historical proposal is superseded.
+
+## New preconditions before candidate assembly
+
+1. Owner disposition of the unexplained zero-byte untracked root file `{console.error(e)`.
+2. Owner disposition of the accepted-but-not-independently-signed-off
+   `studio-permission-two-ask-activity-excluded-handoff` work (accept umbrella closure or require a
+   separate terminal Signoff).
+3. Accepted parent amendment/Formal Review for the `portalPrintRequestItems` cutover: additive index,
+   compatible projection producers, bounded production population/verify, transitional Rules, Portal
+   rollout, stale-client/grace decision, then final Rules tightening with coupled rollback.
+4. A reviewed production-locked projection population runner and its tests; no production APPLY is
+   authorized by implementation or freeze.
+5. Owner selection of the next Studio semver (recommendation `1.0.10`) and reviewed package/lock/
+   workflow/test alignment.
+6. Security/Firebase/risk documentation synchronized to the accepted enriched projection and
+   preview/thumbnail known-ID residual risk.
+7. A checked-in, tested commit-byte manifest generator that includes Portal public assets, Studio
+   Electron/build inputs, `packages/shared`, and `packages/show-picker`.
+
+Until these are closed, do not stage, commit, push, freeze, deploy, publish, mutate data, or present
+`FREEZE MAIN CANDIDATE SHA <SHA>`.
+
 | Field | Value |
 |---|---|
 | Date | 2026-09-10 |

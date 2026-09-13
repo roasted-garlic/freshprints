@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import {
   buildAssistedCatalogShareReadyNotificationHref,
   buildAssistedCatalogShareReadyNotificationId,
+  buildAssistedFinalArtworkReadyNotificationId,
   buildAssistedProofReadyNotificationHref,
   buildAssistedProofReadyNotificationId,
   buildAssistedStaffMessageNotificationHref,
@@ -12,6 +13,7 @@ import {
   buildCustomerNotificationTitle,
   buildCustomerUploadCatalogPermissionFollowUpNotificationId,
   CUSTOMER_NOTIFICATION_CATALOG_SHARE_BODY,
+  CUSTOMER_NOTIFICATION_FINAL_ARTWORK_BODY,
   CUSTOMER_NOTIFICATION_PROOF_BODY,
   isAssistedBrowserPushOptedIn,
   isCustomerNotificationPreservedFromHistoryClear,
@@ -34,6 +36,10 @@ describe("customerNotifications helpers", () => {
       buildAssistedCatalogShareReadyNotificationHref(),
     );
     assert.equal(
+      buildCustomerNotificationHref("assisted_final_artwork_ready"),
+      buildAssistedCatalogShareReadyNotificationHref(),
+    );
+    assert.equal(
       buildCustomerNotificationHref(
         "customer_upload_catalog_permission_follow_up",
         "opaque-token",
@@ -43,8 +49,9 @@ describe("customerNotifications helpers", () => {
   });
 
   it("builds stable notification ids", () => {
-    assert.equal(buildAssistedProofReadyNotificationId("r1", "p1"), "proof_r1_p1");
+    assert.equal(buildAssistedProofReadyNotificationId("r1", "round1"), "proof_r1_round1");
     assert.equal(buildAssistedCatalogShareReadyNotificationId("r1", "d1"), "catalog_r1_d1");
+    assert.equal(buildAssistedFinalArtworkReadyNotificationId("r1", "f1"), "final_r1_f1");
     assert.equal(buildAssistedStaffMessageNotificationId("r1", 99), "msg_r1_99");
     assert.equal(
       buildCustomerUploadCatalogPermissionFollowUpNotificationId("tok"),
@@ -111,6 +118,10 @@ describe("customerNotifications helpers", () => {
       "Library design match",
     );
     assert.equal(
+      buildCustomerNotificationTitle("assisted_final_artwork_ready"),
+      "Final artwork ready",
+    );
+    assert.equal(
       buildCustomerNotificationTitle("customer_upload_catalog_permission_follow_up"),
       "Permission to use your artwork",
     );
@@ -118,6 +129,10 @@ describe("customerNotifications helpers", () => {
     assert.equal(
       CUSTOMER_NOTIFICATION_CATALOG_SHARE_BODY,
       "We found a Library design that matches your request. Approve it or request changes with a short note.",
+    );
+    assert.equal(
+      CUSTOMER_NOTIFICATION_FINAL_ARTWORK_BODY,
+      "Your final artwork is ready to view, download, or add to a print request.",
     );
   });
 

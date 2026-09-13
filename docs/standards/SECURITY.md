@@ -520,9 +520,10 @@ Admins and helpers may review requests based on permissions.
   callable may still exist but is unused by Portal UI. UI gates are not the security boundary.
   Physical removal after expiry / terminal purge is the hard stop. Client Storage `getBlob` is not
   used for this flow (avoids requiring bucket CORS for Portal origins).
-* On approve, Admin SDK deletes sibling proof objects. On reject/cancel, Admin SDK deletes all
-  proof full-res objects. Daily schedule + owner/admin callable `purgeExpiredAssistedCreationProofs`
-  delete expired approved full-res and orphan leftovers on rejected/cancelled.
+* On approve, Admin SDK **does not** delete sibling proof objects (multi-proof history stays
+  visible). On reject/cancel, Admin SDK deletes all proof full-res objects. Daily schedule +
+  owner/admin callable `purgeExpiredAssistedCreationProofs` delete expired approved full-res and
+  orphan leftovers on rejected/cancelled.
 * Customers must not receive Storage paths for other customers’ proofs. Callables that set
   `approvedProofId` load ownership inside a transaction (`customerUid` match).
 * **Catalog share (ADR-FP-108):** `staffSuggestAssistedCreationCatalogDesign` is owner/admin only and
@@ -549,6 +550,32 @@ Firestore rules and `permissionService` should stay aligned:
 * Active staff may create/update/delete customer username reservation documents
 * Active staff may read/update the `counters/printRequests` internal request counter
 * Customer role has no Studio access to these collections yet
+
+### Staff Artwork source
+
+`staffArtworks/{staffArtworkId}` and `/staff-artwork/{staffArtworkId}/...` are Studio-only for
+library management. Owners/admins alone may create, process, edit metadata, archive/restore, delete
+(after a trusted preview/recheck), or promote Staff Artwork. Source client uploads must be
+`image/png` only. Helpers may read and select existing `ready`/non-archived records for print
+requests, but cannot upload or manage the library. Portal customers must not read `staffArtworks`
+Firestore documents; they may read only authenticated `preview.webp` / `thumbnail.webp` Storage
+objects by known ID so request cards can show artwork already attached to their print request.
+Production/source and interactive objects remain staff/Admin-only. This known-ID preview/thumbnail
+exposure is an owner-accepted residual risk for this release; ownership-bound signed URLs remain the
+future alternative if the risk is no longer acceptable. New customer associations reject
+merged accounts and preserve historical identity snapshots.
+
+### Portal print-request projection cutover
+
+`portalPrintRequestItems` is an Admin-maintained, customer-safe projection. Clients cannot create,
+update, or delete projection documents. The rollout is additive: transition Rules preserve the
+existing customer-owned canonical `printRequestItems` read while adding the projection read; the
+Portal prefers projections and uses a bounded, ID-unique canonical fallback until population and
+smoke evidence support the separately approved final Rules state. Final Rules deny customer
+canonical-item reads while preserving projection ownership checks and staff behavior. The production
+reconciliation runner is dry-run/verify first, one bounded page per invocation, and APPLY requires a
+separate owner checkpoint. Pre-APPLY VERIFY reports expected population deltas; post-APPLY VERIFY
+requires exact equality followed by a zero-diff DRY RUN.
 
 ### Print Request lifecycle evidence
 

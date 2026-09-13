@@ -3,9 +3,11 @@ import {
   resolvePrintAssetPaths,
   type CatalogDesignAssetInput,
   type CustomerUploadAssetInput,
+  type StaffArtworkAssetInput,
 } from "./printAssetResolution";
 import {
   isCustomerUploadPrintRequestItem,
+  isStaffArtworkPrintRequestItem,
   type PrintRequestItemSourceFields,
 } from "./printRequestItemSource";
 
@@ -29,29 +31,41 @@ export function resolveShowExportProductionAsset(input: {
   item: ShowExportPrintRequestItemFields;
   catalogDesign?: CatalogDesignAssetInput | null;
   customerUpload?: CustomerUploadAssetInput | null;
+  staffArtwork?: StaffArtworkAssetInput | null;
 }): ResolvedShowExportProductionAsset {
   const resolved = resolvePrintAssetPaths({
     item: input.item,
     catalogDesign: input.catalogDesign,
     customerUpload: input.customerUpload,
+    staffArtwork: input.staffArtwork,
   });
 
   const isUpload = isCustomerUploadPrintRequestItem(input.item);
   const catalogDesign = input.catalogDesign;
   const customerUpload = input.customerUpload;
+  const staffArtwork = input.staffArtwork;
 
+  const isStaffArtwork = isStaffArtworkPrintRequestItem(input.item);
   const baselineWidthPx = isUpload
     ? (customerUpload?.widthPx ?? 0)
-    : (catalogDesign?.widthPx ?? 0);
+    : isStaffArtwork
+      ? (staffArtwork?.widthPx ?? 0)
+      : (catalogDesign?.widthPx ?? 0);
   const baselineHeightPx = isUpload
     ? (customerUpload?.heightPx ?? 0)
-    : (catalogDesign?.heightPx ?? 0);
+    : isStaffArtwork
+      ? (staffArtwork?.heightPx ?? 0)
+      : (catalogDesign?.heightPx ?? 0);
   const enhancedWidthPx = isUpload
     ? customerUpload?.interactiveEnhancedWidthPx
-    : catalogDesign?.interactiveEnhancedWidthPx;
+    : isStaffArtwork
+      ? staffArtwork?.interactiveEnhancedWidthPx ?? undefined
+      : catalogDesign?.interactiveEnhancedWidthPx;
   const enhancedHeightPx = isUpload
     ? customerUpload?.interactiveEnhancedHeightPx
-    : catalogDesign?.interactiveEnhancedHeightPx;
+    : isStaffArtwork
+      ? staffArtwork?.interactiveEnhancedHeightPx ?? undefined
+      : catalogDesign?.interactiveEnhancedHeightPx;
 
   const active = resolveActiveArtworkPixelDimensions({
     artworkEnhanceMode: input.item.artworkEnhanceMode,
@@ -67,7 +81,11 @@ export function resolveShowExportProductionAsset(input: {
         ? input.item.artworkEnhanceMode === "enhanced"
           ? "Enhanced customer upload pixel dimensions are missing or invalid."
           : "Customer upload artwork pixel dimensions are missing or invalid."
-        : input.item.artworkEnhanceMode === "enhanced"
+        : isStaffArtwork
+          ? input.item.artworkEnhanceMode === "enhanced"
+            ? "Enhanced Staff Artwork pixel dimensions are missing or invalid."
+            : "Staff Artwork pixel dimensions are missing or invalid."
+          : input.item.artworkEnhanceMode === "enhanced"
           ? "Enhanced catalog design pixel dimensions are missing or invalid."
           : "Catalog design artwork pixel dimensions are missing or invalid.",
     );
@@ -135,10 +153,37 @@ export function toCustomerUploadAssetInput(upload: {
   };
 }
 
+export function toStaffArtworkAssetInput(artwork: {
+  id: string;
+  productionStoragePath?: string | null;
+  interactiveEnhancedProductionStoragePath?: string | null;
+  interactiveEnhancedWidthPx?: number | null;
+  interactiveEnhancedHeightPx?: number | null;
+  widthPx?: number | null;
+  heightPx?: number | null;
+  previewStoragePath?: string | null;
+  thumbnailStoragePath?: string | null;
+  title?: string | null;
+}): StaffArtworkAssetInput {
+  return {
+    staffArtworkId: artwork.id,
+    productionStoragePath: artwork.productionStoragePath?.trim() ?? "",
+    interactiveEnhancedProductionStoragePath: artwork.interactiveEnhancedProductionStoragePath,
+    interactiveEnhancedWidthPx: artwork.interactiveEnhancedWidthPx ?? undefined,
+    interactiveEnhancedHeightPx: artwork.interactiveEnhancedHeightPx ?? undefined,
+    widthPx: artwork.widthPx,
+    heightPx: artwork.heightPx,
+    previewStoragePath: artwork.previewStoragePath,
+    thumbnailStoragePath: artwork.thumbnailStoragePath,
+    title: artwork.title,
+  };
+}
+
 export function toShowExportPrintRequestItemFields(item: {
-  sourceType?: "catalog_design" | "customer_upload";
+  sourceType?: "catalog_design" | "customer_upload" | "staff_artwork";
   designId?: string;
   customerUploadId?: string;
+  staffArtworkId?: string;
   titleSnapshot?: string;
   artworkEnhanceMode?: "baseline" | "enhanced";
 }): ShowExportPrintRequestItemFields {
@@ -146,6 +191,7 @@ export function toShowExportPrintRequestItemFields(item: {
     sourceType: item.sourceType,
     designId: item.designId,
     customerUploadId: item.customerUploadId,
+    staffArtworkId: item.staffArtworkId,
     titleSnapshot: item.titleSnapshot,
     artworkEnhanceMode: item.artworkEnhanceMode,
   };

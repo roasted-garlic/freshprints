@@ -201,6 +201,22 @@ service firebase.storage {
       allow delete: if isStaff();
     }
 
+    // Staff Artwork: owner/admin uploads source; production derivatives stay Admin/staff-only.
+    // Authenticated customers may read only the customer-facing preview/thumbnail objects.
+    // Residual risk (accepted): a customer who learns another staffArtworkId could fetch that preview/thumb.
+    match /staff-artwork/{staffArtworkId}/{fileName} {
+      allow read: if isStaff()
+        || (
+          isCustomer()
+          && fileName in ["preview.webp", "thumbnail.webp"]
+        );
+      allow create, update: if isOwnerOrAdmin()
+        && fileName == "source"
+        && request.resource.size < 80 * 1024 * 1024
+        && request.resource.contentType == "image/png";
+      allow delete: if isOwnerOrAdmin();
+    }
+
     // Assisted Creation reference / proof assets (Phase 9C).
     // Sync limits with packages/shared/.../assistedCreation.constants.ts
     function isOwnerOrAdmin() {

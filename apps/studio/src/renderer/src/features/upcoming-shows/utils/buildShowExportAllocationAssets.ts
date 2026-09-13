@@ -8,6 +8,7 @@ import {
   resolveShowExportProductionAsset,
   toCatalogDesignAssetInput,
   toCustomerUploadAssetInput,
+  toStaffArtworkAssetInput,
   toShowExportPrintRequestItemFields,
 } from "@fresh-prints/shared/utils/resolveShowExportProductionAsset";
 
@@ -21,6 +22,8 @@ import {
   type StudioCustomerUploadSummary,
 } from "../../customer-uploads/services/customerUploadReadService";
 import type { Design } from "../../designs/types/design.types";
+import type { StaffArtwork } from "@fresh-prints/shared/types/staffArtwork/staffArtwork.types";
+import { staffArtworkService } from "../../staff-artwork/services/staffArtworkService";
 import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
 import {
   filterShowExportAllocations,
@@ -86,9 +89,10 @@ async function resolveAllocationExportAsset(input: {
   printRequestItem: PrintRequestItem | null;
   design: Design | null;
   upload: StudioCustomerUploadSummary | null;
+  staffArtwork: StaffArtwork | null;
   printRequest: PrintRequest | null;
 }): Promise<ResolvedShowExportAllocationAsset> {
-  const { allocation, printRequestItem, design, upload, printRequest } = input;
+  const { allocation, printRequestItem, design, upload, staffArtwork, printRequest } = input;
 
   if (!printRequestItem) {
     throw new Error(
@@ -98,11 +102,22 @@ async function resolveAllocationExportAsset(input: {
 
   const isUpload =
     allocation.sourceType === "customer_upload" || Boolean(allocation.customerUploadId);
+  const isStaffArtwork = allocation.sourceType === "staff_artwork" || Boolean(allocation.staffArtworkId);
 
   const resolvedAsset = resolveShowExportProductionAsset({
     item: toShowExportPrintRequestItemFields(printRequestItem),
-    catalogDesign: !isUpload && design ? toCatalogDesignAssetInput(design) : null,
+    catalogDesign: !isUpload && !isStaffArtwork && design ? toCatalogDesignAssetInput(design) : null,
     customerUpload: isUpload && upload ? toCustomerUploadAssetInput(upload) : null,
+    staffArtwork: isStaffArtwork && staffArtwork ? toStaffArtworkAssetInput({
+      id: staffArtwork.id,
+      productionStoragePath: staffArtwork.productionStoragePath,
+      interactiveEnhancedProductionStoragePath: staffArtwork.interactiveEnhancedProductionStoragePath,
+      widthPx: staffArtwork.processing?.widthPx,
+      heightPx: staffArtwork.processing?.heightPx,
+      interactiveEnhancedWidthPx: staffArtwork.interactiveEnhancedWidthPx,
+      interactiveEnhancedHeightPx: staffArtwork.interactiveEnhancedHeightPx,
+      title: staffArtwork.title,
+    }) : null,
   });
 
   const downloadUrl = await designDerivativeUrlService.getDownloadUrlForCatalogPath(
@@ -131,7 +146,7 @@ async function resolveAllocationExportAsset(input: {
     design?.title ??
     upload?.originalFilename ??
     allocation.designTitleSnapshot ??
-    (isUpload ? "upload" : "design");
+    (isStaffArtwork ? "staff-artwork" : isUpload ? "upload" : "design");
 
   return {
     allocationId: allocation.id,
@@ -191,12 +206,20 @@ export async function buildShowExportAllocationAssets(
 
     let design: Design | null = null;
     let upload: StudioCustomerUploadSummary | null = null;
+    let staffArtwork: StaffArtwork | null = null;
+    const isStaffArtwork = allocation.sourceType === "staff_artwork" || Boolean(allocation.staffArtworkId);
 
     if (isUpload && allocation.customerUploadId) {
       try {
         upload = await customerUploadReadService.getUploadById(user, allocation.customerUploadId);
       } catch {
         upload = null;
+      }
+    } else if (isStaffArtwork && allocation.staffArtworkId) {
+      try {
+        staffArtwork = await staffArtworkService.getById(user, allocation.staffArtworkId);
+      } catch {
+        staffArtwork = null;
       }
     } else if (allocation.designId) {
       try {
@@ -213,6 +236,7 @@ export async function buildShowExportAllocationAssets(
         printRequestItem,
         design,
         upload,
+        staffArtwork,
         printRequest: printRequestsById.get(allocation.printRequestId) ?? null,
       });
       assets.push(resolved);

@@ -30,6 +30,14 @@ export const ASSISTED_CREATION_ALLOWED_REFERENCE_TYPES = [
 ] as const;
 
 export const ASSISTED_CREATION_MAX_PROOF_BYTES = 80 * 1024 * 1024;
+/** Max proof options staff may send in one multi-proof round (Option A…). */
+export const ASSISTED_CREATION_MAX_PROOF_OPTIONS_PER_ROUND = 5;
+/**
+ * Combined byte ceiling for one proof round (all options). Matches max options × per-file max so
+ * each option may be at the individual ceiling.
+ */
+export const ASSISTED_CREATION_MAX_PROOF_ROUND_TOTAL_BYTES =
+  ASSISTED_CREATION_MAX_PROOF_OPTIONS_PER_ROUND * ASSISTED_CREATION_MAX_PROOF_BYTES;
 export const ASSISTED_CREATION_ALLOWED_PROOF_TYPES = [
   "image/jpeg",
   "image/png",

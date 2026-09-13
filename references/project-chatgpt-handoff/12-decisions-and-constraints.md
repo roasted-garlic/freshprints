@@ -2,6 +2,51 @@
 
 > Full log: `docs/project/DECISIONS.md` — newest ADRs first.
 
+### Coordinated production cutover prerequisites (closed 2026-09-12)
+
+- Owner DEV QA explicitly passed: **`OWNER DEV QA: coordinated-production-cutover-prerequisites - PASS`**;
+  child Signoff is **approved_with_notes** and the child is terminal.
+- Production cutover is additive: deploy/populate `portalPrintRequestItems` before removing legacy
+  customer reads, with projection-preferred Portal dual-read and bounded canonical fallback during
+  transition. Final Rules are projection-only for customer reads after convergence gates.
+- The production reconciliation runner is hard-pinned to `fresh-prints-prod`; dry-run/VERIFY come
+  first, exact post-APPLY VERIFY and zero-diff DRY RUN are distinct, and APPLY/backfill is separately
+  owner-gated. Committed-byte manifests must be generated/audited from one clean candidate SHA.
+- Studio coordinated release metadata is `1.0.10`. Authenticated known-ID Staff Artwork
+  preview/thumbnail access is an accepted residual risk for this release and is synchronized in
+  `SECURITY.md`, `FIREBASE.md`, and `RISK_REGISTER.md`.
+- No production, Git promotion, candidate freeze, or parent M0 rerun occurred in the child Signoff.
+
+### Staff Artwork library and Print Request source (DEV closed 2026-09-12)
+
+- `staffArtworks/{staffArtworkId}` and `/staff-artwork/{staffArtworkId}/...` remain separate from
+  `designs` and `customerUploads`; canonical source/production/interactive/preview/thumbnail paths
+  are fail-closed and staff-only.
+- Owner/Admin manage Staff Artwork. Helpers may select existing ready/non-archived assets only when
+  they already have Print Request item-edit permission. No automatic AI, public indexing,
+  customer notification, retention scheduler, or Portal pixel access.
+- The authoritative request source is `staff_artwork` plus `staffArtworkId`; all allocation/export/
+  gang-sheet branches must preserve exactly one source identity. Portal receives only neutral
+  request-level projection.
+- Historical customer IDs/snapshots remain stable through merges; new associations target the
+  surviving customer, with no mass rewrite. Deletion is blocked until actual references are safely
+  released by completed show/internal-sheet production state.
+- Owner DEV QA passed after the reviewed allowlist and corrective redeploys. Parent M0, candidate
+  freeze, Studio publication, and production remain separately gated.
+
+### Customer-upload Studio deferral and personal retention (DEV closed 2026-09-11)
+
+- Print-request customer uploads are held with `studioIntakeHoldUntilShow` until a trusted
+  Add-to-Show/allocation succeeds; Studio Pending/Denied/Excluded readers and counts must not leak
+  held rows.
+- Personal Don’t-allow uploads use a bounded 30-day retention episode; unpromoted donations also
+  use 30 days, while staff Excluded remains 14 days. Ask Again pauses cleanup, Allow/Restore exits,
+  and a second Decline restarts the episode. B1 request/allocation blockers remain authoritative.
+- Portal reuses **Your designs** for Personal vs promoted Design Library tabs and uses inline
+  Remove confirmation. Studio queue alert presentation waits for the post-success settle window.
+- The reviewed implementation is DEV-only and closed with Owner DEV QA **PASS**; production
+  deployment, publication, candidate freeze, and destructive cleanup remain separately gated.
+
 ### ADR-FP-188: Server-authored Print Request lifecycle evidence and ordering mirror (DEV closed 2026-09-09)
 
 - Lifecycle events are Admin-trigger-only; `lastLifecycleActivityAt` and its stable tie-break

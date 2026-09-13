@@ -168,6 +168,11 @@ export interface ProcessCustomerUploadImageOptions {
    * Implies skipCustomerQualityGates.
    */
   assistedProofFastIngest?: boolean;
+  /**
+   * Skip import-style dark-mat suggestion scanning.
+   * Staff Artwork chooses preview mat explicitly; detection is unused there.
+   */
+  skipDarkMatSuggestion?: boolean;
 }
 
 function fail(
@@ -971,11 +976,13 @@ export async function processCustomerUploadImageBytes(
   }
 
   let suggestDarkArtworkBackground = false;
-  try {
-    suggestDarkArtworkBackground =
-      (await suggestDarkArtworkBackgroundFromPngBytes(getSharp(), upscaled.bytes)) === true;
-  } catch {
-    suggestDarkArtworkBackground = false;
+  if (!options.skipDarkMatSuggestion) {
+    try {
+      suggestDarkArtworkBackground =
+        (await suggestDarkArtworkBackgroundFromPngBytes(getSharp(), upscaled.bytes)) === true;
+    } catch {
+      suggestDarkArtworkBackground = false;
+    }
   }
 
   return {

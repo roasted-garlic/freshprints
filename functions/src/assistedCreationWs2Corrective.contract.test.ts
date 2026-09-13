@@ -31,4 +31,35 @@ describe('customerAddAssistedApprovedProofToPrintRequest WS2 corrective contract
     assert.match(source, /reusedExistingUpload: false/);
     assert.doesNotMatch(source, /proofFile\.copy\(sourceFile\)/);
   });
+
+  it('guards every existing-upload update against an empty patch', () => {
+    const source = readFileSync(
+      resolve(import.meta.dirname, './customerAddAssistedApprovedProofToPrintRequest.ts'),
+      'utf8',
+    );
+
+    const patchComputations = source.match(/const uploadPatch = buildUploadPatch\(\);/g) ?? [];
+    assert.equal(patchComputations.length, 3);
+    assert.equal(
+      (source.match(/if \(Object\.keys\(uploadPatch\)\.length > 0\) \{/g) ?? []).length,
+      3,
+    );
+    assert.doesNotMatch(source, /tx\.update\(uploadSnap\.ref, buildUploadPatch\(\)\)/);
+  });
+
+  it('publishes real server stages and clears ephemeral progress', () => {
+    const source = readFileSync(
+      resolve(import.meta.dirname, './customerAddAssistedApprovedProofToPrintRequest.ts'),
+      'utf8',
+    );
+
+    assert.match(source, /writeAssistedAddToRequestProgress/);
+    assert.match(source, /onStage:\s*\(stage\) => publishProgress\(stage\)/);
+    assert.match(source, /publishProgress\("saving"\)/);
+    assert.match(source, /publishProgress\("attaching"\)/);
+    assert.match(source, /clearAssistedAddToRequestProgress/);
+    assert.match(source, /addToRequestProgress:\s*FieldValue\.delete\(\)/);
+    assert.match(source, /lastProgressStage === stage/);
+    assert.doesNotMatch(source, /addToRequestProgress[\s\S]{0,240}(storagePath|sourceBytes|stack)/i);
+  });
 });

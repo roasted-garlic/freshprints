@@ -69,6 +69,7 @@ type SidebarItem = SidebarRouteItem | SidebarActionItem;
 
 const sidebarItems: SidebarRouteItem[] = [
   { kind: "route", icon: Images, label: "Design Library", to: "/designs", permission: "viewDesigns" },
+  { kind: "route", icon: Upload, label: "Staff Library", to: "/staff-artwork", permission: "viewStaffArtwork" },
   {
     kind: "route",
     icon: Bell,

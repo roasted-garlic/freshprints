@@ -7,6 +7,7 @@ export const CUSTOMER_NOTIFICATION_TITLES = {
   assisted_staff_message: "New message",
   assisted_proof_ready: "New proof",
   assisted_catalog_share_ready: "Library design match",
+  assisted_final_artwork_ready: "Final artwork ready",
   customer_upload_catalog_permission_follow_up: "Permission to use your artwork",
 } as const satisfies Record<CustomerNotificationKind, string>;
 
@@ -17,6 +18,9 @@ export const CUSTOMER_NOTIFICATION_PROOF_BODY =
 /** Fixed catalog-share alert body. */
 export const CUSTOMER_NOTIFICATION_CATALOG_SHARE_BODY =
   "We found a Library design that matches your request. Approve it or request changes with a short note." as const;
+
+export const CUSTOMER_NOTIFICATION_FINAL_ARTWORK_BODY =
+  "Your final artwork is ready to view, download, or add to a print request." as const;
 
 export const CUSTOMER_NOTIFICATION_CUSTOMER_UPLOAD_PERMISSION_BODY =
   "Please review whether Fresh Prints may add your uploaded artwork to the shared Design Library." as const;
@@ -47,7 +51,7 @@ export function buildCustomerNotificationHref(
   if (kind === "assisted_proof_ready") {
     return buildAssistedProofReadyNotificationHref();
   }
-  if (kind === "assisted_catalog_share_ready") {
+  if (kind === "assisted_catalog_share_ready" || kind === "assisted_final_artwork_ready") {
     return buildAssistedCatalogShareReadyNotificationHref();
   }
   if (kind === "customer_upload_catalog_permission_follow_up") {
@@ -79,8 +83,11 @@ export function isAssistedBrowserPushOptedIn(value: unknown): boolean {
   return value !== false;
 }
 
-export function buildAssistedProofReadyNotificationId(requestId: string, proofId: string): string {
-  return `proof_${requestId}_${proofId}`;
+export function buildAssistedProofReadyNotificationId(
+  requestId: string,
+  proofRoundId: string,
+): string {
+  return `proof_${requestId}_${proofRoundId}`;
 }
 
 export function buildAssistedCatalogShareReadyNotificationId(
@@ -88,6 +95,13 @@ export function buildAssistedCatalogShareReadyNotificationId(
   designId: string,
 ): string {
   return `catalog_${requestId}_${designId}`;
+}
+
+export function buildAssistedFinalArtworkReadyNotificationId(
+  requestId: string,
+  finalSourceId: string,
+): string {
+  return `final_${requestId}_${finalSourceId}`;
 }
 
 export function buildAssistedStaffMessageNotificationId(

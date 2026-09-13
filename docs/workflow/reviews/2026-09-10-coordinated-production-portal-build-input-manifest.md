@@ -1,5 +1,100 @@
 # Coordinated Production Portal Build-Input Manifest
 
+## Authoritative final parent M0 Portal input reconciliation — 2026-09-12
+
+The reviewed dirty snapshot contains 388 Portal app/runtime/config/public inputs + 345 shared + 9
+show-picker + 5 common/workspace manifests = **747**; digest
+`cf8c36d25807fa1195744a9952b1e65d3e923fbaabd6e4df25ab72025db62f2a`. Current status paths under
+`apps/portal` are 29 (21 runtime, 8 tests). The source uses projection-preferred
+`portalPrintRequestItems` dual-read with bounded canonical fallback; build-003 remains a coupled
+rollback anchor after final Rules tightening. No build, App Hosting publication, traffic change, or
+production action occurred.
+
+## Authoritative corrected build boundary — 2026-09-12
+
+The prior 725-file manifest was both stale and incomplete: its documented `apps/portal/**` method
+omitted nine checked-in public assets, and it omitted the direct `@fresh-prints/show-picker`
+workspace dependency. The corrected dirty-snapshot method includes all non-test, non-ignored Portal
+runtime/config/public inputs; `packages/shared/src/**`; `packages/show-picker/src/**`; root
+`package.json`, `package-lock.json`, and `firebase.json`; and both workspace package manifests.
+
+| Input class | Files |
+|---|---:|
+| Portal app/runtime/config/public | 388 |
+| Shared runtime | 345 |
+| Show Picker runtime | 9 |
+| Common/workspace manifests | 5 |
+| **Total** | **747** |
+
+Digest (sorted path + NUL + raw bytes + NUL):
+`cf8c36d25807fa1195744a9952b1e65d3e923fbaabd6e4df25ab72025db62f2a`.
+
+There are 27 dirty Portal status paths (20 runtime, 7 tests). The accepted Staff Artwork projection
+contract is enriched preview/title/DPI through `portalPrintRequestItems`; Portal does not read
+`staffArtworks` documents. The older Outcome B neutral/no-image section below is historical and was
+resolved by the signed-off projection corrective and amendments.
+
+The rollback statement must be amended with the projection cutover: build-003 is a standalone
+rollback only while old customer canonical-item reads remain allowed. After final Rules remove those
+reads, rollback is coupled—restore transitional/prior Rules before routing traffic to build-003.
+No App Hosting build, rollout, traffic change, or production action occurred.
+
+## Authoritative post-Staff-Artwork M0 rerun — 2026-09-12
+
+The earlier input inventory is retained below. The current deterministic manifest is authoritative
+for the dirty reconciliation at `development` `a76d8be218571e1260bdb983f86ee5cf86563e1b`.
+
+The manifest includes the sorted, non-test runtime files under `apps/portal/**`, the shared runtime
+files under `packages/shared/src/**`, and `package.json`, `package-lock.json`, `firebase.json`, and
+`packages/shared/package.json`. It excludes dependency/build/release/generated output, local env
+files, logs, and `.test.`/`.spec.` files. Digest algorithm: SHA-256 over each sorted relative path,
+NUL, raw file bytes, NUL.
+
+| Input set | Files | Digest |
+|---|---:|---|
+| Portal app runtime/build inputs | 379 app + 342 shared + 4 common = **725** | `d17fc13606a1357abb7bbeeeecfb546b575d25c35717e835087e3fdafabdbe46` |
+
+The eight changed Portal status paths are `dashboard/page.tsx`, `PrintRequestDetailView.tsx`,
+`PortalAdminViewDesignsModal.tsx`, `CurrentRequestDrawer.tsx`, `PortalPrintRequestItemCard.tsx`,
+`PortalQueueToShowModal.tsx`, `usePrintRequestDetail.ts`, and `portalPrintRequestService.ts`.
+Staff Artwork is customer-safe projection only: ready artwork may render preview/thumbnail and the
+source badge/title/DPI, while private Staff Artwork management metadata, customer identity, and raw
+Storage paths remain absent. The existing rollback target is Portal build-003. No App Hosting build
+or publication occurred.
+
+## Boundary audit — Outcome B / candidate blocked — 2026-09-12
+
+The sentence above is **superseded as an unapproved disposition**. A mechanical source audit against
+the accepted neutral no-image contract found runtime drift; this is not documentation-only staleness.
+Candidate assembly and the commit/push checkpoint are blocked until a reviewed corrective child is
+planned, reviewed, implemented, tested, and signed off.
+
+| Offending source | Evidence | Contract violation |
+|---|---|---|
+| `apps/portal/features/print-requests/services/portalPrintRequestService.ts:90-118, 251-302` | `mapPrintRequestItem` carries `staffArtworkId` and `titleSnapshot`; `PortalStaffArtworkDocSummary` includes `id`, title, preview/thumbnail paths, background, pixel/print dimensions, approved maxima, upscale state, enhanced Storage path/dimensions, and timestamp. | Staff Artwork ID/title/private metadata cross the Portal DTO boundary. |
+| `apps/portal/features/print-requests/services/portalPrintRequestService.ts:331-361` | `loadProductionPixelsForItem` directly calls `getDoc(getPortalDb(), 'staffArtworks', item.staffArtworkId)` for dimensions. | Portal customer directly reads `staffArtworks`; library read is forbidden. |
+| `apps/portal/features/print-requests/services/portalPrintRequestService.ts:926-1003` | `getStaffArtworkSummariesForItems` directly reads each `staffArtworks/{id}` document and returns private fields. | Direct per-item Staff Artwork reads and private DTO exposure. |
+| `apps/portal/features/print-requests/hooks/usePrintRequestDetail.ts:68-70, 121-135, 181-210, 764` | Loads and returns Staff Artwork summaries for request items. | Private summary is retained in Portal state. |
+| `apps/portal/app/(app)/requests/[id]/PrintRequestDetailView.tsx:138-153, 252-286` | Uses preview/thumbnail Storage paths and calls `catalogStorageService.getDownloadUrlForCatalogPath` for lightbox navigation. | Preview image and Storage-derived URL are exposed. |
+| `apps/portal/app/(app)/requests/[id]/PrintRequestDetailView.tsx:1040-1097` | Converts Staff Artwork summary into the card `upload` prop, including title, preview/thumbnail paths, background, pixel/DPI inputs, maxima, and enhanced Storage path. | Title, image, DPI, and private Storage metadata reach UI props. |
+| `apps/portal/features/print-requests/components/PortalPrintRequestItemCard.tsx:242-260, 919-957, 1094-1108` | Uses Staff Artwork title/fallback, preview path, `CatalogThumbnailPanel`, source badge, and effective DPI badge. | Image/preview, title, and DPI are rendered; source label is `Staff Library`. |
+| `apps/portal/features/print-requests/components/CurrentRequestDrawer.tsx:542-557` | Derives `/staff-artwork/{staffArtworkId}/preview.webp` and passes it to `CatalogThumbnailPanel`; title fallback is `Staff Artwork`. | Direct Storage path construction and thumbnail resolution in Current Request drawer. |
+| `apps/portal/features/print-requests/components/PortalQueueToShowModal.tsx:122-138` | Uses `item.titleSnapshot` for Staff Artwork queue entries. | Private Staff Artwork title can appear in queue UI. |
+
+`useWorkingCurrentRequestItems.ts` does not fetch Staff Artwork summaries, but its raw `workingItems`
+still carry the mapped source fields consumed by `CurrentRequestDrawer`. The Portal admin Show Queue
+callable is a separate owner/admin DTO and deliberately returns no Staff Artwork `imageUrl`; it is not
+the source of this customer-facing defect. No Portal `collection('staffArtworks')` browse was found,
+but the two direct `getDoc` reads above still violate the no-read boundary.
+
+No Portal description or customer-association field was observed in these paths, but the Staff Artwork
+ID, title, preview/thumbnail paths, image URL resolution, pixel/DPI data, background, and enhanced
+Storage metadata do cross the boundary. The smallest corrective scope is a reviewed Portal neutral
+projection: retain only `sourceType: 'staff_artwork'`, request item ID, quantity, requested size, and
+minimum request state; strip Staff Artwork ID/titleSnapshot and remove all Staff Artwork document and
+Storage reads from Portal. The client-side size/DPI validation path must be redesigned to use
+request-safe fields or server validation without reading `staffArtworks`.
+
 Status: read-only M0 reconciliation rerun artifact; no App Hosting build or publication was executed.
 
 Rerun snapshot: `development` dirty at `04b9637470a16b0f4d4a1ba9f822fe9df7acca2d`. The signed-off

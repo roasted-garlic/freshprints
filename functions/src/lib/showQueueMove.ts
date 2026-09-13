@@ -38,6 +38,7 @@ export interface MoveAllocationFull extends ShowQueueMoveAllocationSnapshot {
   designId?: string;
   sourceType?: string;
   customerUploadId?: string;
+  staffArtworkId?: string;
   customerId?: string;
   requestOriginSnapshot?: string;
   designTitleSnapshot?: string;
@@ -81,6 +82,7 @@ function mapAllocationDoc(
     designId: readOptionalString(data.designId),
     sourceType: readOptionalString(data.sourceType),
     customerUploadId: readOptionalString(data.customerUploadId),
+    staffArtworkId: readOptionalString(data.staffArtworkId),
     customerId: readOptionalString(data.customerId),
     requestNameSnapshot: readOptionalString(data.requestNameSnapshot),
     requestOriginSnapshot: readOptionalString(data.requestOriginSnapshot),
@@ -212,6 +214,7 @@ function cloneAllocationForMove(input: {
     designId: input.sourceAllocation.designId,
     sourceType: input.sourceAllocation.sourceType,
     customerUploadId: input.sourceAllocation.customerUploadId,
+    staffArtworkId: input.sourceAllocation.staffArtworkId,
     customerId: input.sourceAllocation.customerId,
     requestNameSnapshot:
       input.sourceAllocation.requestNameSnapshot?.trim() || input.sourceAllocation.printRequestId,

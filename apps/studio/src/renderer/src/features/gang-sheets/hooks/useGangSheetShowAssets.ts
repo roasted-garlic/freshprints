@@ -13,12 +13,15 @@ import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/s
 import type { PrintRequestItem } from "@fresh-prints/shared/types/printRequest/printRequest.types";
 import type { Design } from "../../designs/types/design.types";
 import { printRequestService } from "../../print-requests/services/printRequestService";
+import { staffArtworkService } from "../../staff-artwork/services/staffArtworkService";
+import type { StaffArtwork } from "@fresh-prints/shared/types/staffArtwork/staffArtwork.types";
 
 export interface GangSheetShowAsset {
   allocation: ShowAllocation;
   printRequestItem: PrintRequestItem | null;
   design: Design | null;
   upload: StudioCustomerUploadSummary | null;
+  staffArtwork: StaffArtwork | null;
   thumbnailUrl: string | null;
 }
 
@@ -38,6 +41,10 @@ function isUploadAllocation(allocation: ShowAllocation): boolean {
   return (
     allocation.sourceType === "customer_upload" || Boolean(allocation.customerUploadId)
   );
+}
+
+function isStaffArtworkAllocation(allocation: ShowAllocation): boolean {
+  return allocation.sourceType === "staff_artwork" || Boolean(allocation.staffArtworkId);
 }
 
 /**
@@ -90,7 +97,17 @@ export function useGangSheetShowAssets(upcomingShowId: string | null) {
                 ? await designDerivativeUrlService.getDownloadUrlForCatalogPath(thumbnailPath)
                 : null;
 
-              return { allocation, printRequestItem, design: null, upload, thumbnailUrl };
+              return { allocation, printRequestItem, design: null, upload, staffArtwork: null, thumbnailUrl };
+            }
+
+            if (isStaffArtworkAllocation(allocation) && allocation.staffArtworkId) {
+              let staffArtwork: StaffArtwork | null = null;
+              try { staffArtwork = await staffArtworkService.getById(user, allocation.staffArtworkId); } catch { staffArtwork = null; }
+              const thumbnailPath = staffArtwork?.thumbnailStoragePath ?? staffArtwork?.previewStoragePath ?? undefined;
+              const thumbnailUrl = thumbnailPath
+                ? await designDerivativeUrlService.getDownloadUrlForCatalogPath(thumbnailPath)
+                : null;
+              return { allocation, printRequestItem, design: null, upload: null, staffArtwork, thumbnailUrl };
             }
 
             let design: Design | null = null;
@@ -103,7 +120,7 @@ export function useGangSheetShowAssets(upcomingShowId: string | null) {
             }
 
             const thumbnailUrl = design ? await designDerivativeUrlService.getThumbnailUrl(design) : null;
-            return { allocation, printRequestItem, design, upload: null, thumbnailUrl };
+            return { allocation, printRequestItem, design, upload: null, staffArtwork: null, thumbnailUrl };
           }),
         );
 

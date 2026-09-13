@@ -1,5 +1,176 @@
 # Recent Completed Work
 
+## 2026-09-12 - Coordinated production parent final M0 — COMPLETE (classification A)
+
+Owner authorized **RERUN FINAL PARENT M0 / COMMIT-BYTE CANDIDATE RECONCILIATION**. The read-only
+reconciliation covers the complete current `development` tree: 256 status paths (134 tracked,
+122 untracked), no unexplained paths, sorted path digest
+`bfd1a1911d94449dee74dea0134061744814f42b51b80f90014bc38f357da0ac`, Function closure 186/120
+exports, additive 95/77 index union with zero removals/replacements, final/transition Rules,
+Portal/Studio manifests, config/data disposition, Studio `1.0.10`, and synchronized security/risk
+evidence. Result: **A — READY FOR REVIEWED CANDIDATE COMMIT/PUSH**. The tree remains dirty and no
+candidate SHA is frozen. Production was untouched; no reads, runner, DRY RUN/VERIFY/APPLY,
+deployment, publication, maintenance, settings/data mutation, staging, commit, or push occurred.
+
+Exact next checkpoint: **OWNER AUTHORIZE FINAL REVIEWED CANDIDATE COMMIT/PUSH**.
+
+## 2026-09-12 - Coordinated production cutover prerequisites — CLOSED (approved_with_notes)
+
+Owner explicitly reported **`OWNER DEV QA: coordinated-production-cutover-prerequisites - PASS`**.
+The complete gate chain is closed: Plan → Formal Review (**approved_with_changes**) → Implement →
+Test → Owner DEV QA PASS → Signoff (**approved_with_notes**). Delivered deterministic transition and
+authoritative final Firestore Rules, projection-preferred Portal dual-read with bounded canonical
+fallback, a production-hard-pinned reconciliation runner with distinct VERIFY/DRY RUN semantics,
+committed-byte manifest tooling, Studio `1.0.10`, and synchronized SECURITY/FIREBASE/RISK_REGISTER
+documentation including the accepted authenticated preview/thumbnail known-ID residual risk.
+
+Focused validation passed **87/87**; Functions build, Portal typecheck, targeted lint, and diff
+check passed. Existing Portal `.next/trace` EPERM, Rules expression-budget, Studio typecheck, and
+whole-repository lint baselines remain documented; Studio packaging was intentionally not run.
+Production was untouched: no production reads, runner invocation, DRY RUN/VERIFY/APPLY, deployment,
+publication, maintenance activation, settings/data mutation, staging, commit, push, freeze, or
+parent M0 rerun. Signoff:
+`docs/workflow/reviews/2026-09-12-coordinated-production-cutover-prerequisites-signoff.md`.
+
+Active control returns to `coordinated-production-promotion-release-readiness`. The later final
+parent M0 is authoritative; exact next checkpoint: **OWNER AUTHORIZE FINAL REVIEWED CANDIDATE
+COMMIT/PUSH**.
+
+## 2026-09-12 - Portal post-queue items + submit nudge corrective — CLOSED (approved_with_notes)
+
+Owner reported **PASS on everything**. Signoff:
+`docs/workflow/reviews/2026-09-12-portal-post-queue-items-and-submit-nudge-corrective-signoff.md`.
+
+Post-queue silent item reload; catalog submit-nudge toast (8s, mobile full-width CTA); Clear
+request pending-removal so drawer/detail do not leave leftover designs until refresh. Production
+untouched.
+
+## 2026-09-12 - Portal Staff Artwork projection corrective — CLOSED (approved_with_notes)
+
+Owner DEV QA **PASS**. Signoff:
+`docs/workflow/reviews/2026-09-12-portal-staff-artwork-neutral-projection-corrective-signoff.md`.
+
+Customer-visible Staff Artwork preview/title/DPI via Admin `portalPrintRequestItems` supersedes the
+earlier neutral-only contract. `staffArtworkId` may exist on the projection but is not the title.
+Firestore `staffArtworks` remains customer-denied; Storage customer access is preview/thumb only
+(accepted residual known-ID risk). Upscale deferred. Portal production-build EPERM not claimed
+resolved. Production untouched. No staging/commit/push/freeze/parent M0.
+
+Remaining pre-freeze children: Assisted retention-sentinel Owner QA → Signoff; multi-proof Plan
+amendment → Implement → Test → Owner QA → Signoff.
+
+Exact next checkpoint: **OWNER DEV QA: portal-assisted-final-artwork-add-retention-sentinel-corrective**.
+
+## 2026-09-12 - Portal Staff Artwork neutral projection corrective — IMPLEMENTED/TESTED, OWNER DEV QA PENDING
+
+Owner accepted the reviewed mapper visibility corrective and authorized implementation. The Portal
+`mapPrintRequestItem()` guard now exempts only `staff_artwork` from the catalog `designId` requirement;
+catalog and customer-upload validation remain unchanged. A named mapper export was added solely for
+direct test coverage, and the existing Staff Artwork security contract now asserts the source-specific
+guard.
+
+Focused mapper/security/projection/trigger/sizing contracts passed **9/9**; Portal typecheck and
+targeted ESLint passed; `git diff --check` passed. The existing localhost Portal at
+`http://localhost:3100` returned HTTP 200. No Functions/Rules/Storage/index deployment, population
+rerun, data mutation, App Hosting action, staging, commit, push, freeze, or production action was
+performed. Implementation/Test evidence:
+
+- `docs/workflow/reviews/2026-09-12-portal-staff-artwork-neutral-projection-corrective-visibility-implementation-review.md`
+- `docs/workflow/reviews/2026-09-12-portal-staff-artwork-neutral-projection-corrective-visibility-test-report.md`
+
+Exact next checkpoint: **OWNER DEV QA: portal-staff-artwork-neutral-projection-corrective**. Signoff
+must remain uncreated until the owner explicitly supplies PASS or PASS WITH NOTES.
+
+## 2026-09-12 - Portal Staff Artwork neutral projection corrective — OWNER DEV QA FAIL, MAPPER VISIBILITY CORRECTIVE OPEN
+
+Owner DEV QA **FAIL**ed after the bounded DEV population, Rules, and Storage cutover because a Staff
+Artwork item present in Studio was absent in Portal. Read-only tracing confirmed the canonical item,
+same-ID safe projection, shared projection mapper result, and `portalPrintRequestItems` query were all
+present; all five inspected DEV Staff Artwork canonical items had matching projections. The Portal
+`mapPrintRequestItem()` catalog-only `!designId` guard throws for `staff_artwork`, and list/subscription
+readers catch and drop the item before neutral detail/drawer/queue rendering. No private Staff Artwork
+fields or library reads cross the Portal boundary.
+
+This is Outcome A (runtime mapper visibility defect): no population APPLY rerun, Rules/index change,
+or projection-shape change is warranted. The smallest reviewed correction is to exempt
+`isStaffArtworkItem` from that catalog guard while preserving upload/catalog validation. Formal Review
+is **`approved_with_changes`**, but implementation still requires explicit owner acceptance.
+
+Plan: `docs/workflow/plans/2026-09-12-portal-staff-artwork-neutral-projection-corrective-visibility-plan.md`
+
+Formal Review: `docs/workflow/reviews/2026-09-12-portal-staff-artwork-neutral-projection-corrective-visibility-review.md`
+
+Exact next checkpoint: **OWNER ACCEPT PORTAL STAFF ARTWORK PROJECTION MAPPER VISIBILITY CORRECTIVE +
+AUTHORIZE IMPLEMENT**. No implementation, deploy, additional data mutation, Signoff, staging, commit,
+push, freeze, or production action occurred.
+
+## 2026-09-12 - Portal Staff Artwork neutral projection corrective — POPULATION AMENDMENT PREPARED, SCRIPT NOT AUTHORIZED
+
+Owner accepted the Plan/Formal Review and authorized Implement → Test → DEV preparation. The local
+typed `portalPrintRequestItems` projection, trusted Staff Artwork size callable, neutral Portal
+detail/drawer/queue rows, and Firestore/Storage customer boundary are implemented. Focused shared/
+Functions contracts, Firestore 6/6, Storage 1/1, Functions build, Portal typecheck, lint, and diff
+check pass. A docs-only Plan/Formal Review amendment now specifies the mapper-driven,
+all-canonical-item, cursor-bounded, strict-`fresh-prints-dev`, dry-run/apply population runner with
+fail-closed malformed handling and verification. Owner acceptance is required before script
+implementation; no script, DEV deployment/data mutation, staging, commit, push, freeze, or
+production action occurred. Evidence: `docs/workflow/reviews/2026-09-12-portal-staff-artwork-neutral-
+projection-corrective-implementation-review.md`, `docs/workflow/reviews/2026-09-12-portal-staff-artwork-
+neutral-projection-corrective-test-report.md`, and the population amendment Plan/Review.
+
+Exact next checkpoint: **OWNER ACCEPT BOUNDED DEV PORTAL PROJECTION POPULATION AMENDMENT + AUTHORIZE
+SCRIPT IMPLEMENTATION**.
+
+## 2026-09-12 - Portal Assisted final-artwork progress and re-add corrective — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `portal-assisted-final-artwork-progress-and-readd-corrective` |
+| Status | **CLOSED** — Signoff **approved_with_notes** |
+| Owner DEV QA | **PASS** — owner verified live server stages, elapsed/step/remaining feedback, first Add, remove, and re-add |
+| Delivered | Empty-patch guards at every existing-upload update site; legacy origin backfill preserved; server-owned real-stage progress with stale cleanup; customer-safe Portal progress modal |
+| DEV evidence | `customerAddAssistedApprovedProofToPrintRequest` ACTIVE in `fresh-prints-dev` at revision `customeraddassistedapprovedprooftoprintrequest-00037-juk`; Portal remains localhost-only |
+| Validation | Focused corrective **10/10**; combined regression **25/25**; lineage/eligibility **28/28**; Functions build, Portal typecheck, targeted lint, and diff check PASS |
+| Signoff | `docs/workflow/reviews/2026-09-12-portal-assisted-final-artwork-progress-and-readd-corrective-signoff.md` |
+| Scope boundary | No production deployment, parent M0, candidate freeze, staging, commit, push, migration/backfill, or multi-proof/Staff Artwork runtime |
+| Next checkpoint | Resolve remaining Staff Artwork, sentinel QA, and multi-proof pre-freeze children before parent M0 |
+
+## 2026-09-12 - Portal Assisted final-artwork retention sentinel — QA RECONCILIATION OPEN
+
+The later progress/re-add Owner QA PASS confirms the overlapping direct Add-to-Request behavior, but
+the sentinel-specific manual checklist still lacks explicit queue/staff-intake, final-source/
+sizing/quantity/request-count, maintenance/ownership, separate donation/follow-up/Restore/
+staff-promotion, and direct document-inspection checks. Its Signoff remains intentionally uncreated.
+See `docs/workflow/reviews/2026-09-12-portal-assisted-final-artwork-add-retention-sentinel-corrective-test-report.md`.
+
+## 2026-09-12 - Studio Staff Artwork library and Print Request source — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `studio-staff-artwork-library-and-print-request-source` |
+| Status | **CLOSED** — Signoff **approved_with_notes** |
+| Owner DEV QA | **PASS** — owner reported full testing and that this is a pass (2026-09-12) |
+| Delivered | Private Staff Artwork library, PNG-only processing with Auto/Light/Dark background handling, third Print Request source, request/queue/allocation/export/gang-sheet propagation, safe deletion, AI Review promotion, Portal-safe projection, and corrective Rules paths |
+| DEV evidence | Authorized Functions, Firestore/Storage Rules, indexes, and follow-up callable redeploys completed in `fresh-prints-dev`; deployment record documents each correction |
+| Validation | Source-focused contracts **31/31**; emulator-backed Staff Artwork/catalog create Rules suites **11/11**; Functions build, Portal typecheck, and diff check PASS; legacy Rules expression-budget baseline documented |
+| Signoff | `docs/workflow/reviews/2026-09-12-studio-staff-artwork-library-and-print-request-source-signoff.md` |
+| Scope boundary | No production deployment, Studio publication, migration/backfill, candidate freeze, commit, or push |
+| Next checkpoint | Rerun coordinated-production M0, regenerate manifests, and request separate owner M1 freeze authorization |
+
+## 2026-09-11 - Customer-upload Studio deferral, personal library, and Portal inline Remove — CLOSED (DEV)
+
+| Item | Status |
+|------|--------|
+| Goal | `customer-upload-studio-deferral-personal-library-portal-inline-remove` |
+| Status | **CLOSED** — Signoff **approved_with_notes** |
+| Owner DEV QA | **PASS** — owner reported `OWNER DEV QA: PASS` (2026-09-11); gallery Add-to-Request / Your designs QA also PASS |
+| Delivered | Studio intake held until successful Add to Show; post-success queue-alert settle; Portal inline Remove; Personal / Design Library tabs; bounded 30-day Personal and 14-day staff-Excluded retention |
+| DEV evidence | Reviewed Functions/indexes deployed; local Portal and Studio runtimes served current source; retention scheduler remained paused |
+| Validation | Focused rerun **92 pass / 1 known unrelated deletion-eligibility manifest baseline**; prior Functions build, Portal typecheck, Studio Vite build, targeted lint, and diff check passed |
+| Signoff | `docs/workflow/reviews/2026-09-11-customer-upload-studio-deferral-personal-library-portal-inline-remove-signoff.md`; Test: `docs/workflow/reviews/2026-09-11-customer-upload-studio-deferral-personal-library-portal-inline-remove-test-report.md` |
+| Scope boundary | No production deployment, publication, candidate freeze, backfill, maintenance activation, or destructive cleanup |
+| Next checkpoint | Rerun coordinated-production M0 and prepare a new candidate/freeze proposal under separate owner authorization |
+
 ## 2026-09-10 - Coordinated production candidate M0 reconciliation — PACKET READY, FREEZE BLOCKED
 
 | Item | Status |

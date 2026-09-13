@@ -230,6 +230,9 @@ export const convertCustomerPrintRequestToInternal = onCall(
           if (sourceType === "customer_upload") {
             payload.customerUploadId = item.customerUploadId;
             payload.titleSnapshot = item.titleSnapshot;
+          } else if (sourceType === "staff_artwork") {
+            payload.staffArtworkId = item.staffArtworkId;
+            payload.titleSnapshot = item.titleSnapshot;
           } else {
             payload.designId = item.designId;
           }

@@ -1,0 +1,3130 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function callerUser() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function callerIsActive() {
+      return isSignedIn() && callerUser().isActive == true;
+    }
+
+    function callerRole() {
+      return callerUser().role;
+    }
+
+    function isOwner() {
+      return callerIsActive() && callerRole() == "owner";
+    }
+
+    function isAdmin() {
+      return callerIsActive() && callerRole() == "admin";
+    }
+
+    function isStaff() {
+      return callerIsActive() && callerRole() in ["owner", "admin", "helper"];
+    }
+
+    function isCustomer() {
+      return callerIsActive() && callerRole() == "customer";
+    }
+
+    // Runtime Portal emergency brake. The document is private; a missing document is the
+    // backwards-compatible OFF default. A present document must contain valid state and may
+    // permit only the one configured authenticated customer while enabled.
+    function portalMaintenanceDataIsValid(data) {
+      return data.get("enabled", null) is bool
+        && (
+          !data.keys().hasAny(["message"])
+          || (
+            data.get("message", null) == null
+            || (
+              data.get("message", null) is string
+              && data.get("message", "").size() > 0
+              && data.get("message", "").size() <= 240
+            )
+          )
+        )
+        && (
+          !data.keys().hasAny(["maintenanceTestCustomerUid"])
+          || data.get("maintenanceTestCustomerUid", null) == null
+          || (
+            data.get("maintenanceTestCustomerUid", null) is string
+            && data.get("maintenanceTestCustomerUid", "").size() > 0
+            && data.get("maintenanceTestCustomerUid", "").size() <= 128
+          )
+        );
+    }
+
+    function portalMaintenanceDataIsOff(data) {
+      return portalMaintenanceDataIsValid(data) && data.get("enabled", null) == false;
+    }
+
+    function portalMaintenanceDataAllowsCustomerMutation(data) {
+      return portalMaintenanceDataIsValid(data)
+        && (
+          data.get("enabled", null) == false
+          || (
+            isCustomer()
+            && data.get("enabled", null) == true
+            && data.get("maintenanceTestCustomerUid", null) == request.auth.uid
+          )
+        );
+    }
+
+    function portalMaintenanceAllowsCustomerMutation() {
+      return !exists(/databases/$(database)/documents/settings/portalMaintenance)
+        || portalMaintenanceDataAllowsCustomerMutation(
+          get(/databases/$(database)/documents/settings/portalMaintenance).data
+        );
+    }
+
+    // #13 Addendum A — anonymous guest donation progress listeners (own docs only).
+    function isAnonymousAuth() {
+      return isSignedIn()
+        && request.auth.token.firebase.sign_in_provider == "anonymous";
+    }
+
+    function isOwnGuestUpload() {
+      return isAnonymousAuth()
+        && resource.data.customerUid == request.auth.uid
+        && resource.data.uploaderType == "guest";
+    }
+
+    // Public catalog browse (#13): unauthenticated read of ready/active/approved only.
+    // Same field surface authenticated customers already had; originals stay Storage staff-only.
+    function isPublicCatalogDesign() {
+      return resource.data.status == "ready";
+    }
+
+    function isPublicCatalogCategory() {
+      return resource.data.isActive == true;
+    }
+
+    function isPublicCatalogTag() {
+      return resource.data.status == "approved";
+    }
+
+    function isCustomerReadableDesign() {
+      return isCustomer() && isPublicCatalogDesign();
+    }
+
+    function isCustomerReadableCategory() {
+      return isCustomer() && isPublicCatalogCategory();
+    }
+
+    function isCustomerReadableTag() {
+      return isCustomer() && isPublicCatalogTag();
+    }
+
+    function customerOwnsCustomerDoc(customerId) {
+      return isCustomer()
+        && customerId is string
+        && customerId.size() > 0
+        && exists(/databases/$(database)/documents/customers/$(customerId))
+        && get(/databases/$(database)/documents/customers/$(customerId)).data.userId == request.auth.uid;
+    }
+
+    function customerOwnsPrintRequestData(data) {
+      return isCustomer()
+        && data.customerId is string
+        && data.customerId.size() > 0
+        && get(/databases/$(database)/documents/customers/$(data.customerId)).data.userId == request.auth.uid;
+    }
+
+    function customerOwnsPrintRequestById(printRequestId) {
+      return exists(/databases/$(database)/documents/printRequests/$(printRequestId))
+        && customerOwnsPrintRequestData(
+          get(/databases/$(database)/documents/printRequests/$(printRequestId)).data
+        );
+    }
+
+    function isPrintRequestParked(data) {
+      return data.keys().hasAny(["parkedByEditingRequestId"])
+        && data.parkedByEditingRequestId is string
+        && data.parkedByEditingRequestId.size() > 0;
+    }
+
+    function isCustomerEditablePrintRequestStatus(status) {
+      return status in ["draft", "editing"];
+    }
+
+    function optionalFieldUnchanged(field) {
+      return (!(field in resource.data) && !(field in request.resource.data))
+        || (field in resource.data
+          && field in request.resource.data
+          && request.resource.data[field] == resource.data[field]);
+    }
+
+    function customerCanUpdatePrintRequest() {
+      return customerOwnsPrintRequestData(resource.data)
+        && isCustomerEditablePrintRequestStatus(resource.data.status)
+        && isCustomerEditablePrintRequestStatus(request.resource.data.status)
+        && !isPrintRequestParked(resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(["itemCount", "notes", "updatedBy", "updatedAt"])
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.itemCount is int
+        && request.resource.data.itemCount >= 0
+        && optionalFieldUnchanged("parkedByEditingRequestId")
+        && optionalFieldUnchanged("parkedAt")
+        && optionalFieldUnchanged("parksDraftPrintRequestId");
+    }
+
+    function customerCanCreatePrintRequestItem(printRequestId) {
+      return customerOwnsPrintRequestById(printRequestId)
+        && isCustomerEditablePrintRequestStatus(
+          get(/databases/$(database)/documents/printRequests/$(printRequestId)).data.status
+        )
+        && !isPrintRequestParked(
+          get(/databases/$(database)/documents/printRequests/$(printRequestId)).data
+        );
+    }
+
+    function customerCanMutatePrintRequestItem() {
+      return customerOwnsPrintRequestById(resource.data.printRequestId)
+        && isCustomerEditablePrintRequestStatus(
+          get(/databases/$(database)/documents/printRequests/$(resource.data.printRequestId)).data.status
+        )
+        && !isPrintRequestParked(
+          get(/databases/$(database)/documents/printRequests/$(resource.data.printRequestId)).data
+        );
+    }
+
+    // Customer printRequestItems updates: cheap affectedKeys allowlist first so size-only
+    // writes with unchanged interactive-upscale fields stay under the 1000-expression budget.
+    // Protected fields (quantity, source identity, upscale metadata, server markers) are
+    // immutable by omission. After-image key allowlist preserves deny of unknown/legacy extra
+    // keys without re-running the full staff/create field-type validator.
+    function customerPrintRequestItemPortalEditableUpdate() {
+      return isCustomer()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly([
+            "printWidthInches",
+            "printHeightInches",
+            "sizeLabel",
+            "standardSizePresetKey",
+            "sortOrder",
+            "notes",
+            "updatedAt"
+          ])
+        && printRequestItemKeysAllowed(request.resource.data)
+        && customerCanMutatePrintRequestItem()
+        && isOptionalPositiveStandardPrintInches(request.resource.data, "printWidthInches")
+        && isOptionalPositiveStandardPrintInches(request.resource.data, "printHeightInches")
+        && isOptionalString(request.resource.data, "sizeLabel")
+        && isOptionalString(request.resource.data, "standardSizePresetKey")
+        && isOptionalNumber(request.resource.data, "sortOrder")
+        && isOptionalString(request.resource.data, "notes")
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.quantity is int
+        && request.resource.data.quantity > 0
+        && (
+          (
+            isUploadPrintRequestItem(resource.data)
+            && isUploadPrintRequestItem(request.resource.data)
+          )
+          || (
+            isCatalogPrintRequestItem(resource.data)
+            && isReadyDesign(request.resource.data.designId)
+          )
+        );
+    }
+
+    function isOwnerOrAdmin() {
+      return callerIsActive() && callerRole() in ["owner", "admin"];
+    }
+
+    function isSelf(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isReadableTeamProfile(role) {
+      return role in ["owner", "admin", "helper"];
+    }
+
+    function isValidDesignStatus(status) {
+      // Catalog statuses plus deprecated queued/printed for legacy document reads.
+      return status in ["imported", "processing", "ready", "rejected", "archived", "queued", "printed"];
+    }
+
+    function isOptionalString(data, field) {
+      return !(field in data) || data[field] == null || data[field] is string;
+    }
+
+    function isOptionalNumber(data, field) {
+      return !(field in data) || data[field] == null || data[field] is number;
+    }
+
+    function isOptionalPositiveStandardPrintInches(data, field) {
+      return !(field in data)
+        || data[field] == null
+        || (data[field] is number && data[field] > 0 && data[field] <= 22);
+    }
+
+    function isOptionalArtworkEnhanceMode(data, field) {
+      return !(field in data) || data[field] == null || data[field] in ["baseline", "enhanced"];
+    }
+
+    function isOptionalBool(data, field) {
+      return !(field in data) || data[field] == null || data[field] is bool;
+    }
+
+    function isOptionalArtworkBackgroundSource(data, field) {
+      return !(field in data)
+        || data[field] == null
+        || data[field] in ["import_override", "import_halftone_default", "code_auto", "staff_manual"];
+    }
+
+    function isOptionalTimestamp(data, field) {
+      return !(field in data) || data[field] == null || data[field] is timestamp;
+    }
+
+    // Rules cannot iterate list elements (no forEach); size-only validation, same pattern as
+    // isValidTagStringList below. Client-side companionSetService owns element shape (string IDs).
+    function isValidCompanionDesignIdsList(values) {
+      return values is list && values.size() <= 50;
+    }
+
+    function isOptionalCompanionDesignIdsList(data, field) {
+      return !(field in data) || data[field] == null || isValidCompanionDesignIdsList(data[field]);
+    }
+
+    function isValidAiReviewStatus(status) {
+      return status in ["pending", "approved", "rejected", "needs_review"];
+    }
+
+    function isOptionalMap(data, field) {
+      return !(field in data) || data[field] is map;
+    }
+
+    // Use affectedKeys — never deep-compare aiSuggestions/aiAnalysis maps. Deep == on large
+    // enrichment payloads exceeds Firestore's 1000-expression evaluation limit and denies
+    // otherwise-valid updates (e.g. catalog approve → status ready after isExplicitContent /
+    // companion denorm writes) as permission-denied.
+    function clientAiFieldsUnchanged() {
+      return !request.resource.data.diff(resource.data).affectedKeys()
+        .hasAny(["aiSuggestions", "aiAnalysis", "aiProcessingStage", "smartProfile"]);
+    }
+
+    // Fast path for companionSetService denorm writes only. Full `designRequiredFieldsValid` on
+    // ready designs with many optional AI/sizing/halftone fields can exceed the 1000-expression
+    // budget (seen after unlink clears companion keys, then Mark needs / Link re-adds them).
+    // `||` short-circuits: this must stay first in `allow update` so companion-only updates never
+    // pay the full validator cost. Does not allow status or other lifecycle field changes.
+    // `companionSetId` is included only so the pairwise service can heal (deleteField) a stale
+    // legacy pointer in the same write — no product code writes it a non-null value anymore.
+    // Fast path for companionSetService denorm writes only. Full `designRequiredFieldsValid` on
+    // ready designs with many optional AI/sizing/halftone fields can exceed the 1000-expression
+    // budget (seen after unlink clears companion keys, then Mark needs / Link re-adds them).
+    // `||` short-circuits: this must stay first in `allow update` so companion-only updates never
+    // pay the full validator cost. Does not allow status or other lifecycle field changes.
+    // `companionSetId` is included only so the pairwise service can heal (deleteField) a stale
+    // legacy pointer in the same write — no product code writes it a non-null value anymore.
+    function companionDenormOnlyUpdate() {
+      // Status compare first — approve→ready must not pay diff() here on large aiSuggestions maps.
+      return request.resource.data.status == resource.data.status
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(["companionDesignIds", "companionSetId", "companionSetIncomplete", "updatedAt", "updatedBy"])
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.uploadedBy == resource.data.uploadedBy
+        && (!("createdBy" in resource.data) || request.resource.data.createdBy == resource.data.createdBy)
+        && (!("createdAt" in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedAt is timestamp
+        && isOptionalCompanionDesignIdsList(request.resource.data, "companionDesignIds")
+        && isOptionalString(request.resource.data, "companionSetId")
+        && isOptionalBool(request.resource.data, "companionSetIncomplete");
+    }
+
+    // Fast path for AI Processing / Inbox preview controls (background mat + halftone staff
+    // decision + canonical halftone tag). Avoids catalogMetadataOnly title validators and the
+    // full enrichment-heavy `designRequiredFieldsValid` expression budget on processing designs.
+    function designInboxPreviewControlUpdate() {
+      return request.resource.data.status == resource.data.status
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly([
+            "artworkBackgroundHex",
+            "artworkBackgroundSource",
+            "halftoneStaffDecision",
+            "tags",
+            "updatedAt",
+            "updatedBy",
+            "createdBy"
+          ])
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.uploadedBy == resource.data.uploadedBy
+        && (!("createdBy" in resource.data) || request.resource.data.createdBy == resource.data.createdBy)
+        && (!("createdAt" in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedAt is timestamp
+        && isOptionalString(request.resource.data, "artworkBackgroundHex")
+        && isOptionalArtworkBackgroundSource(request.resource.data, "artworkBackgroundSource")
+        && isOptionalMap(request.resource.data, "halftoneStaffDecision")
+        && request.resource.data.tags is list;
+    }
+
+    function isOptionalCensoredTermsList(data, field) {
+      return !(field in data) || data[field] == null || isValidTagStringList(data[field]);
+    }
+
+    // ADR-FP-172: staff vs automation Explicit authorship. Absent is valid (legacy).
+    function isOptionalExplicitContentSource(data, field) {
+      return !(field in data)
+        || data[field] == null
+        || data[field] in ["staff", "automation"];
+    }
+
+    // Fast path for Studio Edit Design catalog metadata + Placement-only writes.
+    // Covers tags/title/category/description/background/placement/explicit/censoredTerms/
+    // AI Review draft Halftone decision + audit.
+    // Same expression-budget failure mode as companion denorm: full `designRequiredFieldsValid`
+    // on enrichment-heavy ready designs denies otherwise-valid Edit Design / Placement saves.
+    // Does not allow status or AI pipeline field changes. `createdBy` is included so
+    // designService can heal legacy docs missing that field.
+    //
+    // Reject status changes with a string compare BEFORE diff() so approve→ready does not pay
+    // a second expensive diff() on large aiSuggestions maps (companion already diff'd above).
+    // Placement-only writes are a subset of this hasOnly list.
+    // `halftoneStaffDecision` must be included — AI Review approve drafts it before status ready;
+    // omitting it forced the full validator and reintroduced permission-denied on enrichment-heavy rows.
+    function catalogMetadataOnlyUpdate() {
+      return request.resource.data.status == resource.data.status
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly([
+            "title",
+            "description",
+            "categoryId",
+            "tags",
+            "artworkBackgroundHex",
+            "artworkBackgroundSource",
+            "artworkPlacement",
+            "isExplicitContent",
+            "censoredTerms",
+            "explicitContentSource",
+            "explicitContentAutomationLocked",
+            "halftoneStaffDecision",
+            "updatedAt",
+            "updatedBy",
+            "createdBy"
+          ])
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.uploadedBy == resource.data.uploadedBy
+        && (!("createdBy" in resource.data) || request.resource.data.createdBy == resource.data.createdBy)
+        && (!("createdAt" in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 200
+        && request.resource.data.tags is list
+        && isOptionalString(request.resource.data, "description")
+        && isOptionalString(request.resource.data, "categoryId")
+        && isOptionalString(request.resource.data, "artworkBackgroundHex")
+        && isOptionalArtworkBackgroundSource(request.resource.data, "artworkBackgroundSource")
+        && isOptionalString(request.resource.data, "artworkPlacement")
+        && isOptionalBool(request.resource.data, "isExplicitContent")
+        && isOptionalCensoredTermsList(request.resource.data, "censoredTerms")
+        && isOptionalExplicitContentSource(request.resource.data, "explicitContentSource")
+        && isOptionalBool(request.resource.data, "explicitContentAutomationLocked")
+        && isOptionalMap(request.resource.data, "halftoneStaffDecision");
+    }
+
+    // Fast path for catalog approve / reject / reopen status transitions
+    // (`applyCatalogApprovalUpdate`, `applyReopenFromRejectedUpdate`).
+    // Status MUST change — first compare fails cheaply for metadata/companion writes so this
+    // third OR branch does not burn the expression budget on non-approval updates.
+    // When it matches, short-circuits before full `designRequiredFieldsValid` (the path that
+    // previously denied enrichment-heavy approve→ready as permission-denied).
+    // Archive transitions are handled by `designArchiveStatusOnlyUpdate` (earlier OR branch) —
+    // fail cheap here when the target status is archived so archive never pays this diff().
+    function catalogApprovalStatusOnlyUpdate() {
+      return request.resource.data.status != resource.data.status
+        && request.resource.data.status != "archived"
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly([
+            "status",
+            "aiReviewStatus",
+            "aiReviewed",
+            "aiProcessed",
+            "aiReviewedAt",
+            "aiReviewedBy",
+            "aiReviewVersion",
+            "aiReviewNotes",
+            "aiReviewConfidence",
+            "readyAt",
+            "updatedAt",
+            "updatedBy",
+            "createdBy"
+          ])
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.uploadedBy == resource.data.uploadedBy
+        && (!("createdBy" in resource.data) || request.resource.data.createdBy == resource.data.createdBy)
+        && (!("createdAt" in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedAt is timestamp
+        && isValidDesignStatus(request.resource.data.status)
+        && request.resource.data.aiReviewed is bool
+        && request.resource.data.aiProcessed is bool
+        && isOptionalString(request.resource.data, "aiReviewStatus")
+        && (!("aiReviewStatus" in request.resource.data) || isValidAiReviewStatus(request.resource.data.aiReviewStatus))
+        && isOptionalString(request.resource.data, "aiReviewedBy")
+        && isOptionalString(request.resource.data, "aiReviewVersion")
+        && isOptionalString(request.resource.data, "aiReviewNotes")
+        && isOptionalNumber(request.resource.data, "aiReviewConfidence")
+        && isOptionalTimestamp(request.resource.data, "aiReviewedAt")
+        && isOptionalTimestamp(request.resource.data, "readyAt");
+    }
+
+    // Fast path for soft-archive (`designService.archiveDesign`). Without this branch, archive
+    // falls through to full `designRequiredFieldsValid` after still evaluating the approval
+    // allowlist diff — enrichment-heavy rejected designs hit the 1000-expression budget and
+    // deny as permission-denied (Studio 1.0.4 smoke Defect B).
+    function designArchiveStatusOnlyUpdate() {
+      return resource.data.status != "archived"
+        && request.resource.data.status == "archived"
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly([
+            "status",
+            "previousStatus",
+            "archivedAt",
+            "archivedBy",
+            "updatedAt",
+            "updatedBy"
+          ])
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.uploadedBy == resource.data.uploadedBy
+        && (!("createdBy" in resource.data) || request.resource.data.createdBy == resource.data.createdBy)
+        && (!("createdAt" in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
+        && request.resource.data.previousStatus == resource.data.status
+        && request.resource.data.archivedBy == request.auth.uid
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.archivedAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.get("assetsPurgedAt", null) == resource.data.get("assetsPurgedAt", null)
+        && request.resource.data.get("assetsPurgedBy", null) == resource.data.get("assetsPurgedBy", null);
+    }
+
+    // Fast path for soft-restore (`designService.restoreDesign`). Mirrors archive: without this
+    // branch, enrichment-heavy archived → operational status hits the expression budget and
+    // denies as permission-denied. Owner/admin only (matches permissionService.canRestoreDesigns).
+    // Archive audit fields must be deleted (absent on request.resource); purge markers immutable.
+    function designRestoreStatusOnlyUpdate() {
+      return isOwnerOrAdmin()
+        && resource.data.status == "archived"
+        && request.resource.data.status in ["imported", "processing", "ready", "rejected"]
+        && (
+          (!("previousStatus" in resource.data) || resource.data.previousStatus == null)
+            ? request.resource.data.status == "imported"
+            : request.resource.data.status == resource.data.previousStatus
+        )
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly([
+            "status",
+            "previousStatus",
+            "archivedAt",
+            "archivedBy",
+            "updatedAt",
+            "updatedBy"
+          ])
+        && !("previousStatus" in request.resource.data)
+        && !("archivedAt" in request.resource.data)
+        && !("archivedBy" in request.resource.data)
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.uploadedBy == resource.data.uploadedBy
+        && (!("createdBy" in resource.data) || request.resource.data.createdBy == resource.data.createdBy)
+        && (!("createdAt" in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.get("assetsPurgedAt", null) == resource.data.get("assetsPurgedAt", null)
+        && request.resource.data.get("assetsPurgedBy", null) == resource.data.get("assetsPurgedBy", null);
+    }
+
+    // Fast path for Studio import derivative completion
+    // (`designReadyService.markDesignDerivativesComplete` → `designService.updateDesign`).
+    // Without this branch, processing→imported + canonical thumbnailPath/previewPath falls through
+    // approval allowlist + full `designRequiredFieldsValid` and denies as permission-denied on
+    // enrichment-heavy / import-shaped docs (Studio 1.0.4 P4 / CASE 1).
+    // Source status must be imported or processing; target status must be imported; only path +
+    // audit fields (optional createdBy heal) may change; originalPath and unrelated fields immutable.
+    // Purged designs cannot repopulate derivative paths through this path.
+    function designDerivativeCompletionUpdate() {
+      return resource.data.status in ["imported", "processing"]
+        && request.resource.data.status == "imported"
+        && !("assetsPurgedAt" in resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly([
+            "status",
+            "thumbnailPath",
+            "previewPath",
+            "updatedAt",
+            "updatedBy",
+            "createdBy"
+          ])
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.uploadedBy == resource.data.uploadedBy
+        && request.resource.data.originalPath == resource.data.originalPath
+        && (!("createdAt" in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
+        && (
+          !("createdBy" in resource.data)
+          || request.resource.data.createdBy == resource.data.createdBy
+        )
+        && (
+          ("createdBy" in resource.data)
+          || !("createdBy" in request.resource.data)
+          || (
+            request.resource.data.createdBy is string
+            && request.resource.data.createdBy.size() > 0
+          )
+        )
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.thumbnailPath is string
+        && request.resource.data.thumbnailPath == "/thumbnails/" + request.resource.data.id + ".webp"
+        && request.resource.data.previewPath is string
+        && request.resource.data.previewPath == "/previews/" + request.resource.data.id + ".webp"
+        && request.resource.data.get("assetsPurgedAt", null) == resource.data.get("assetsPurgedAt", null)
+        && request.resource.data.get("assetsPurgedBy", null) == resource.data.get("assetsPurgedBy", null);
+    }
+
+    // Owner purge sets these via Admin SDK only — clients must not forge purge state.
+    function clientDesignPurgeFieldsUnchanged() {
+      return request.resource.data.get("assetsPurgedAt", null) == resource.data.get("assetsPurgedAt", null)
+        && request.resource.data.get("assetsPurgedBy", null) == resource.data.get("assetsPurgedBy", null);
+    }
+
+    // After assets are purged, clients cannot alter Storage path fields on the design.
+    function clientDesignPurgedAssetPathsUnchanged() {
+      return !("assetsPurgedAt" in resource.data)
+        || (
+          request.resource.data.originalPath == resource.data.originalPath
+          && request.resource.data.thumbnailPath == resource.data.thumbnailPath
+          && request.resource.data.get("previewPath", null) == resource.data.get("previewPath", null)
+        );
+    }
+
+    function designRequiredFieldsValid(data) {
+      return data.keys().hasAll([
+          "id",
+          "title",
+          "tags",
+          "status",
+          "originalPath",
+          "thumbnailPath",
+          "uploadedBy",
+          "createdBy",
+          "updatedBy",
+          "queueCount",
+          "aiProcessed",
+          "aiReviewed",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.id is string
+        && data.title is string
+        && data.title.size() > 0
+        && data.title.size() <= 200
+        && data.tags is list
+        && data.status is string
+        && isValidDesignStatus(data.status)
+        && data.originalPath is string
+        && data.thumbnailPath is string
+        && data.uploadedBy is string
+        && data.createdBy is string
+        && data.updatedBy is string
+        && data.queueCount is int
+        && data.queueCount >= 0
+        && data.aiProcessed is bool
+        && data.aiReviewed is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && isOptionalString(data, "description")
+        && isOptionalString(data, "categoryId")
+        && isOptionalString(data, "previewPath")
+        && isOptionalString(data, "requestedByCustomerId")
+        && isOptionalNumber(data, "width")
+        && isOptionalNumber(data, "height")
+        && isOptionalNumber(data, "dpi")
+        && isOptionalNumber(data, "printWidthInches")
+        && isOptionalNumber(data, "printHeightInches")
+        && isOptionalBool(data, "printAspectRatioLocked")
+        && isOptionalNumber(data, "metadataDpiX")
+        && isOptionalNumber(data, "metadataDpiY")
+        && isOptionalNumber(data, "effectiveDpi")
+        && isOptionalNumber(data, "requestCount")
+        && isOptionalNumber(data, "favoriteCount")
+        && isOptionalTimestamp(data, "lastRequestedAt")
+        && isOptionalString(data, "printSizeSource")
+        // Optional staff-managed artwork placement (display label "Placement"). Client
+        // allowlists the value on read/write (parseArtworkPlacement) — Rules only validate the
+        // type, matching printSizeSource above.
+        && isOptionalString(data, "artworkPlacement")
+        && isOptionalString(data, "aiReviewStatus")
+        && (!("aiReviewStatus" in data) || isValidAiReviewStatus(data.aiReviewStatus))
+        && isOptionalTimestamp(data, "readyAt")
+        && isOptionalTimestamp(data, "aiReviewedAt")
+        && isOptionalString(data, "aiReviewedBy")
+        && isOptionalString(data, "aiReviewVersion")
+        && isOptionalString(data, "aiReviewNotes")
+        && isOptionalNumber(data, "aiReviewConfidence")
+        && isOptionalString(data, "previousStatus")
+        && isOptionalTimestamp(data, "archivedAt")
+        && isOptionalString(data, "archivedBy")
+        && isOptionalTimestamp(data, "assetsPurgedAt")
+        && isOptionalString(data, "assetsPurgedBy")
+        && isOptionalString(data, "aiProcessingStage")
+        && isOptionalMap(data, "aiSuggestions")
+        && isOptionalMap(data, "aiAnalysis")
+        && isOptionalMap(data, "smartProfile")
+        && isOptionalMap(data, "smartProfileImportPresets")
+        && isOptionalString(data, "importBatchId")
+        && isOptionalString(data, "importSourceFileName")
+        && isOptionalString(data, "importRelativePath")
+        && isOptionalString(data, "companionSetId")
+        && isOptionalCompanionDesignIdsList(data, "companionDesignIds")
+        && isOptionalBool(data, "companionSetIncomplete")
+        && isOptionalBool(data, "isExplicitContent")
+        && isOptionalCensoredTermsList(data, "censoredTerms")
+        && isOptionalExplicitContentSource(data, "explicitContentSource")
+        && isOptionalBool(data, "explicitContentAutomationLocked");
+    }
+
+    // Rules cannot iterate list elements (no forEach); size-only validation mirrors the existing
+    // isValidTagStringList pattern above. Client-side companionSetService owns element shape.
+    function isValidCompanionSetMemberDesignIds(values) {
+      return values is list && values.size() > 0;
+    }
+
+    function companionSetRequiredFieldsValid(data) {
+      return data.keys().hasOnly([
+          "id",
+          "memberDesignIds",
+          "complete",
+          "createdBy",
+          "updatedBy",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.id is string
+        && data.id.size() > 0
+        && isValidCompanionSetMemberDesignIds(data.memberDesignIds)
+        && data.complete is bool
+        && data.createdBy is string
+        && data.createdBy.size() > 0
+        && data.updatedBy is string
+        && data.updatedBy.size() > 0
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // Pairwise (non-transitive) companion edge — exactly two designs. `id` must be the
+    // deterministic `${min(a,b)}_${max(a,b)}` pair key, `designIds` must be that exact pair
+    // sorted ascending, and both must agree with the document ID. Immutable once created (the
+    // service only creates or deletes edges, never updates one) — see `allow update: if false`
+    // on the match below.
+    function companionLinkRequiredFieldsValid(data, linkId) {
+      return data.keys().hasOnly([
+          "id",
+          "designIds",
+          "createdBy",
+          "updatedBy",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.id is string
+        && data.id == linkId
+        && data.designIds is list
+        && data.designIds.size() == 2
+        && data.designIds[0] is string
+        && data.designIds[1] is string
+        && data.designIds[0].size() > 0
+        && data.designIds[1].size() > 0
+        && data.designIds[0] < data.designIds[1]
+        && data.id == (data.designIds[0] + "_" + data.designIds[1])
+        && data.createdBy is string
+        && data.createdBy.size() > 0
+        && data.updatedBy is string
+        && data.updatedBy.size() > 0
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function categoryRequiredFieldsValid(data) {
+      return data.keys().hasAll([
+          "id",
+          "name",
+          "sortOrder",
+          "isActive",
+          "createdBy",
+          "updatedBy",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.id is string
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 80
+        && data.sortOrder is int
+        && data.isActive is bool
+        && data.createdBy is string
+        && data.updatedBy is string
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && isOptionalString(data, "description");
+    }
+
+    function isValidCatalogTagStatus(status) {
+      return status in ["approved", "archived"];
+    }
+
+    function isValidTagStringList(values) {
+      return values is list
+        && values.size() <= 50;
+    }
+
+    function tagRequiredFieldsValid(data) {
+      return data.keys().hasOnly([
+          "id",
+          "name",
+          "aliases",
+          "preferredWhen",
+          "status",
+          "isFeatured",
+          "createdBy",
+          "updatedBy",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.keys().hasAll([
+          "id",
+          "name",
+          "aliases",
+          "preferredWhen",
+          "status",
+          "createdBy",
+          "updatedBy",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.id is string
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 40
+        && isValidTagStringList(data.aliases)
+        && data.preferredWhen is string
+        && data.preferredWhen.size() > 0
+        && data.preferredWhen.size() <= 500
+        && data.status is string
+        && isValidCatalogTagStatus(data.status)
+        && (!("isFeatured" in data) || data.isFeatured is bool)
+        && data.createdBy is string
+        && data.updatedBy is string
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPrintRequestStatus(status) {
+      return status in ["draft", "active", "editing", "completed", "archived"];
+    }
+
+    function isValidPrintRequestOrigin(origin) {
+      return origin in ["studio_internal", "studio_customer", "portal_customer"];
+    }
+
+    function isValidPrintRequestQueueTab(queueTab) {
+      return queueTab in ["working", "editing", "queued", "printing", "printed"];
+    }
+
+    function isValidShowQueueBiddingAcknowledgment(acknowledgment) {
+      return acknowledgment is map
+        && acknowledgment.keys().hasOnly([
+          "accepted",
+          "acceptedAt",
+          "acceptedByUid",
+          "version",
+          "upcomingShowId"
+        ])
+        && acknowledgment.accepted == true
+        && acknowledgment.acceptedAt is timestamp
+        && acknowledgment.acceptedByUid is string
+        && acknowledgment.acceptedByUid.size() > 0
+        && acknowledgment.version is string
+        && acknowledgment.version.size() > 0
+        && acknowledgment.upcomingShowId is string
+        && acknowledgment.upcomingShowId.size() > 0;
+    }
+
+    function isValidPrintRequestItemStatus(status) {
+      return status in ["pending", "queued", "in_progress", "printed", "done", "canceled"];
+    }
+
+    function isValidCustomerUsername(username) {
+      return username is string
+        && username.size() >= 3
+        && username.size() <= 32
+        && username.matches("^[a-z0-9][a-z0-9_-]{1,30}[a-z0-9]$")
+        && !(username in [
+          "internal",
+          "admin",
+          "owner",
+          "support",
+          "portal",
+          "print",
+          "prints",
+          "customer",
+          "customers",
+          "staff",
+          "team",
+          "freshprints",
+          "funkyfreshprints"
+        ]);
+    }
+
+    function isValidCustomerSignupSource(source) {
+      return source in ["studio", "portal"];
+    }
+
+    function isOptionalCustomerSignupSource(data, field) {
+      return !(field in data) || isValidCustomerSignupSource(data[field]);
+    }
+
+    function isValidPrintRequestAssignment(data) {
+      return (data.isInternal == true && !("customerId" in data) && !("guestCustomerId" in data))
+        || (data.isInternal == false
+          && (
+            (("customerId" in data) && !("guestCustomerId" in data) && data.customerId is string && data.customerId.size() > 0)
+            || (!("customerId" in data) && ("guestCustomerId" in data) && data.guestCustomerId is string && data.guestCustomerId.size() > 0)
+          ));
+    }
+
+    function isValidPrintRequestOriginAssignment(data) {
+      return !("requestOrigin" in data)
+        || (data.requestOrigin == "studio_internal"
+          && data.isInternal == true
+          && !("customerId" in data)
+          && !("guestCustomerId" in data))
+        || ((data.requestOrigin == "studio_customer" || data.requestOrigin == "portal_customer")
+          && data.isInternal == false
+          && (
+            (("customerId" in data) && !("guestCustomerId" in data) && data.customerId is string && data.customerId.size() > 0)
+            || (!("customerId" in data) && ("guestCustomerId" in data) && data.guestCustomerId is string && data.guestCustomerId.size() > 0)
+          ));
+    }
+
+    function printRequestRequiredFieldsValid(data) {
+      return data.keys().hasOnly([
+          "name",
+          "customerId",
+          "guestCustomerId",
+          "isInternal",
+          "requestOrigin",
+          "status",
+          "itemCount",
+          "queueTab",
+          "requestSequenceNumber",
+          "customerUsernameSnapshot",
+          "customerDisplayNameSnapshot",
+          "customerUsernameAtCreationSnapshot",
+          "customerDisplayNameAtCreationSnapshot",
+          "internalBaseName",
+          "nameFormatVersion",
+          "notes",
+          "showQueueBiddingAcknowledgment",
+          "closureKind",
+          "convertedToInternalRequestId",
+          "convertedFromCustomerRequestId",
+          "convertedAt",
+          "convertedBy",
+          "needsStaffRequeueAt",
+          "needsStaffRequeueSourceShowId",
+          "needsStaffRequeueSourceShowTitleSnapshot",
+          "needsStaffRequeueReleasedQuantity",
+          "lastLifecycleActivityAt",
+          "lastLifecycleActivityEventId",
+          "lastLifecycleActivityPrecedence",
+          "parkedByEditingRequestId",
+          "parkedAt",
+          "parksDraftPrintRequestId",
+          "createdBy",
+          "updatedBy",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 200
+        && isOptionalString(data, "customerId")
+        && isOptionalString(data, "guestCustomerId")
+        && data.isInternal is bool
+        && (!("requestOrigin" in data) || (data.requestOrigin is string && isValidPrintRequestOrigin(data.requestOrigin)))
+        && data.status is string
+        && isValidPrintRequestStatus(data.status)
+        && data.itemCount is int
+        && data.itemCount >= 0
+        && (!("queueTab" in data)
+          || (data.queueTab is string && isValidPrintRequestQueueTab(data.queueTab)))
+        && isOptionalNumber(data, "requestSequenceNumber")
+        && isOptionalString(data, "customerUsernameSnapshot")
+        && isOptionalString(data, "customerDisplayNameSnapshot")
+        && isOptionalString(data, "customerUsernameAtCreationSnapshot")
+        && isOptionalString(data, "customerDisplayNameAtCreationSnapshot")
+        && isOptionalString(data, "internalBaseName")
+        && isOptionalString(data, "nameFormatVersion")
+        && isOptionalString(data, "notes")
+        && (!("showQueueBiddingAcknowledgment" in data)
+          || isValidShowQueueBiddingAcknowledgment(data.showQueueBiddingAcknowledgment))
+        && (!("closureKind" in data) || data.closureKind == "converted_to_internal")
+        && isOptionalString(data, "convertedToInternalRequestId")
+        && isOptionalString(data, "convertedFromCustomerRequestId")
+        && isOptionalTimestamp(data, "convertedAt")
+        && isOptionalString(data, "convertedBy")
+        && isOptionalTimestamp(data, "needsStaffRequeueAt")
+        && isOptionalString(data, "needsStaffRequeueSourceShowId")
+        && isOptionalString(data, "needsStaffRequeueSourceShowTitleSnapshot")
+        && isOptionalNumber(data, "needsStaffRequeueReleasedQuantity")
+        && isOptionalTimestamp(data, "lastLifecycleActivityAt")
+        && isOptionalString(data, "lastLifecycleActivityEventId")
+        && isOptionalNumber(data, "lastLifecycleActivityPrecedence")
+        && isOptionalString(data, "parkedByEditingRequestId")
+        && isOptionalTimestamp(data, "parkedAt")
+        && isOptionalString(data, "parksDraftPrintRequestId")
+        && data.createdBy is string
+        && data.updatedBy is string
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && isValidPrintRequestAssignment(data)
+        && isValidPrintRequestOriginAssignment(data);
+    }
+
+    function staffCanCompletePrintRequest() {
+      return resource.data.status in ["active", "editing"]
+        && request.resource.data.status == "completed"
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(["status", "updatedBy", "updatedAt"]);
+    }
+
+    // Re-adding a request from Studio only needs to activate a previously edited request.
+    // Keep this narrow fast path ahead of the full document validator: post-unqueue requests
+    // legitimately carry lifecycle, parking, bidding, and identity snapshots, and evaluating
+    // every optional-field validator can exceed Firestore Rules' expression budget. The diff
+    // also guarantees that those server-owned fields remain unchanged by the client.
+    function staffCanActivateEditingPrintRequest() {
+      return resource.data.status == "editing"
+        && request.resource.data.status == "active"
+        && isStaff()
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(["status", "updatedBy", "updatedAt"]);
+    }
+
+    // Narrow fast path for Studio item-add transactions (itemCount + audit only). Avoids the
+    // full printRequestRequiredFieldsValid budget when requests carry many lifecycle fields.
+    function staffCanAdjustPrintRequestItemCount() {
+      return isStaff()
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(["itemCount", "updatedBy", "updatedAt"])
+        && request.resource.data.itemCount is int
+        && request.resource.data.itemCount >= 0
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt;
+    }
+
+    function staffCanPerformGeneralPrintRequestUpdate() {
+      return request.resource.data.status != "completed"
+        && (resource.data.status != "completed" || request.resource.data.status == "archived")
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          "lastLifecycleActivityAt",
+          "lastLifecycleActivityEventId",
+          "lastLifecycleActivityPrecedence"
+        ])
+        && optionalFieldUnchanged("queueTab")
+        && optionalFieldUnchanged("showQueueBiddingAcknowledgment")
+        && optionalFieldUnchanged("closureKind")
+        && optionalFieldUnchanged("convertedToInternalRequestId")
+        && optionalFieldUnchanged("convertedFromCustomerRequestId")
+        && optionalFieldUnchanged("convertedAt")
+        && optionalFieldUnchanged("convertedBy")
+        && optionalFieldUnchanged("parkedByEditingRequestId")
+        && optionalFieldUnchanged("parkedAt")
+        && optionalFieldUnchanged("parksDraftPrintRequestId");
+    }
+
+    function isCatalogPrintRequestItem(data) {
+      return !("sourceType" in data) || data.sourceType == "catalog_design";
+    }
+
+    function isUploadPrintRequestItem(data) {
+      return data.sourceType == "customer_upload";
+    }
+
+    function isStaffArtworkPrintRequestItem(data) {
+      return data.sourceType == "staff_artwork";
+    }
+
+    function printRequestItemKeysAllowed(data) {
+      return data.keys().hasOnly([
+          "id",
+          "printRequestId",
+          "designId",
+          "sourceType",
+          "customerUploadId",
+          "staffArtworkId",
+          "titleSnapshot",
+          "quantity",
+          "printWidthInches",
+          "printHeightInches",
+          "sizeLabel",
+          "standardSizePresetKey",
+          "sortOrder",
+          "notes",
+          "status",
+          "artworkEnhanceMode",
+          "preEnhancePrintWidthInches",
+          "preEnhancePrintHeightInches",
+          "addedBy",
+          "printedAt",
+          "printedBy",
+          "completedAt",
+          "createdAt",
+          "updatedAt",
+          // Server-only Wave C idempotency marker (onPrintRequestItemCreated).
+          "requestCountApplied",
+          // Legacy callable-only audit field (not part of client item schema).
+          "updatedBy"
+        ]);
+    }
+
+    function printRequestItemRequiredFieldsValid(data) {
+      return printRequestItemKeysAllowed(data)
+        && data.id is string
+        && data.id.size() > 0
+        && data.printRequestId is string
+        && data.printRequestId.size() > 0
+        && data.quantity is int
+        && data.quantity > 0
+        && isOptionalPositiveStandardPrintInches(data, "printWidthInches")
+        && isOptionalPositiveStandardPrintInches(data, "printHeightInches")
+        && isOptionalString(data, "sizeLabel")
+        && isOptionalString(data, "standardSizePresetKey")
+        && isOptionalNumber(data, "sortOrder")
+        && isOptionalString(data, "notes")
+        && isOptionalArtworkEnhanceMode(data, "artworkEnhanceMode")
+        && isOptionalPositiveStandardPrintInches(data, "preEnhancePrintWidthInches")
+        && isOptionalPositiveStandardPrintInches(data, "preEnhancePrintHeightInches")
+        && data.status is string
+        && isValidPrintRequestItemStatus(data.status)
+        && data.addedBy is string
+        && data.addedBy.size() > 0
+        && isOptionalTimestamp(data, "printedAt")
+        && isOptionalString(data, "printedBy")
+        && isOptionalTimestamp(data, "completedAt")
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && isOptionalBool(data, "requestCountApplied")
+        && isOptionalString(data, "updatedBy")
+        && (
+          (
+            isCatalogPrintRequestItem(data)
+            && data.designId is string
+            && data.designId.size() > 0
+            && !("customerUploadId" in data)
+          )
+          || (
+            isUploadPrintRequestItem(data)
+            && !("designId" in data)
+            && !("staffArtworkId" in data)
+            && data.customerUploadId is string
+            && data.customerUploadId.size() > 0
+              && isOptionalString(data, "titleSnapshot")
+          )
+          || (
+            isStaffArtworkPrintRequestItem(data)
+            && !("designId" in data)
+            && !("customerUploadId" in data)
+            && data.staffArtworkId is string
+            && data.staffArtworkId.size() > 0
+            && isOptionalString(data, "titleSnapshot")
+          )
+        );
+    }
+
+    function printRequestParentExists(printRequestId) {
+      return exists(/databases/$(database)/documents/printRequests/$(printRequestId));
+    }
+
+    function isReadyDesign(designId) {
+      return exists(/databases/$(database)/documents/designs/$(designId))
+        && get(/databases/$(database)/documents/designs/$(designId)).data.status == "ready";
+    }
+
+    function staffArtworkExists(staffArtworkId) {
+      return staffArtworkId is string
+        && staffArtworkId.size() > 0
+        && exists(/databases/$(database)/documents/staffArtworks/$(staffArtworkId))
+        && get(/databases/$(database)/documents/staffArtworks/$(staffArtworkId)).data.status in ["ready", "archived"];
+    }
+
+    function staffArtworkSelectable(staffArtworkId) {
+      return staffArtworkId is string
+        && staffArtworkId.size() > 0
+        && exists(/databases/$(database)/documents/staffArtworks/$(staffArtworkId))
+        && get(/databases/$(database)/documents/staffArtworks/$(staffArtworkId)).data.status == "ready";
+    }
+
+    function customerRequiredFieldsValid(data) {
+      return data.keys().hasOnly([
+          "id",
+          "userId",
+          "displayName",
+          "username",
+          "email",
+          "notes",
+          "isGuest",
+          "totalPrintRequests",
+          "nextPrintRequestSequence",
+          "totalRequests",
+          "totalApprovedRequests",
+          "usernameUpdatedAt",
+          "usernameHistory",
+          "signupSource",
+          "assistedProofEmailOptIn",
+          "assistedProofEmailOptInUpdatedAt",
+          "assistedBrowserPushOptIn",
+          "assistedBrowserPushOptInUpdatedAt",
+          "accountDeletionRequest",
+          "isDeleted",
+          "deletedAt",
+          "deletedBy",
+          "deletionSource",
+          "isDisabled",
+          "disabledAt",
+          "disabledBy",
+          "disabledReason",
+          "identityOperationLock",
+          "isMerged",
+          "mergedIntoCustomerId",
+          "mergedAt",
+          "mergedBy",
+          "mergeJobId",
+          "mergedSourceCustomerIds",
+          "identitySnapshotPropagation",
+          "printRequestQuotaOverride",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.id is string
+        && data.id.size() > 0
+        && data.displayName is string
+        && data.displayName.size() > 0
+        && isValidCustomerUsername(data.username)
+        && data.isGuest is bool
+        && data.totalPrintRequests is int
+        && data.totalPrintRequests >= 0
+        && (!("assistedProofEmailOptIn" in data) || data.assistedProofEmailOptIn is bool)
+        && (!("assistedProofEmailOptInUpdatedAt" in data) || data.assistedProofEmailOptInUpdatedAt is timestamp)
+        && (!("assistedBrowserPushOptIn" in data) || data.assistedBrowserPushOptIn is bool)
+        && (!("assistedBrowserPushOptInUpdatedAt" in data) || data.assistedBrowserPushOptInUpdatedAt is timestamp)
+        && data.nextPrintRequestSequence is int
+        && data.nextPrintRequestSequence >= 1
+        && isOptionalString(data, "userId")
+        && isOptionalString(data, "email")
+        && isOptionalString(data, "notes")
+        && isOptionalNumber(data, "totalRequests")
+        && isOptionalNumber(data, "totalApprovedRequests")
+        && isOptionalTimestamp(data, "usernameUpdatedAt")
+        && isOptionalCustomerSignupSource(data, "signupSource")
+        && (!("usernameHistory" in data) || data.usernameHistory is list)
+        && (!("accountDeletionRequest" in data) || data.accountDeletionRequest is map)
+        && (!("isDeleted" in data) || data.isDeleted is bool)
+        && isOptionalTimestamp(data, "deletedAt")
+        && isOptionalString(data, "deletedBy")
+        && isOptionalString(data, "deletionSource")
+        && (!("isDisabled" in data) || data.isDisabled is bool)
+        && isOptionalTimestamp(data, "disabledAt")
+        && isOptionalString(data, "disabledBy")
+        && isOptionalString(data, "disabledReason")
+        && (!("identityOperationLock" in data) || data.identityOperationLock is map)
+        && (!("isMerged" in data) || data.isMerged is bool)
+        && isOptionalString(data, "mergedIntoCustomerId")
+        && isOptionalTimestamp(data, "mergedAt")
+        && isOptionalString(data, "mergedBy")
+        && isOptionalString(data, "mergeJobId")
+        && (!("mergedSourceCustomerIds" in data) || data.mergedSourceCustomerIds is list)
+        && (!("identitySnapshotPropagation" in data) || data.identitySnapshotPropagation is map)
+        && (!("printRequestQuotaOverride" in data) || data.printRequestQuotaOverride is map)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function customerUsernameReservationFieldsValid(data, username) {
+      return data.keys().hasOnly([
+          "customerId",
+          "createdAt",
+          "updatedAt"
+        ])
+        && isValidCustomerUsername(username)
+        && data.customerId is string
+        && data.customerId.size() > 0
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function printRequestCounterFieldsValid(data) {
+      return data.keys().hasOnly([
+          "nextInternalRequestSequence",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.nextInternalRequestSequence is int
+        && data.nextInternalRequestSequence >= 1
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidUpcomingShowSource(source) {
+      return source in ["whatnot", "staff_gang_sheet", "dev_fixture"];
+    }
+
+    function isValidShowProductionResolutionKind(kind) {
+      return kind in ["empty_closure", "fulfilled_confirmed", "unfulfilled_release", "unfulfilled_requeue", "owner_override"];
+    }
+
+    function isOptionalShowProductionResolutionKind(data, field) {
+      return !(field in data)
+        || (data[field] is string && isValidShowProductionResolutionKind(data[field]));
+    }
+
+    function isValidUpcomingShowStatus(status) {
+      return status in ["scheduled", "rescheduled", "live", "completed", "canceled", "missing_upstream", "archived"];
+    }
+
+    function isValidUpcomingShowSyncStatus(syncStatus) {
+      return syncStatus in ["idle", "syncing", "succeeded", "failed"];
+    }
+
+    function isValidShowProductionStatus(status) {
+      return status in ["open", "full", "printing", "fully_printed", "completed", "archived", "canceled"];
+    }
+
+    function upcomingShowCommonFieldsValid(data) {
+      return isOptionalString(data, "whatnotUrl")
+        && isOptionalString(data, "title")
+        && isOptionalTimestamp(data, "scheduledStartAt")
+        && isValidUpcomingShowStatus(data.status)
+        && isValidUpcomingShowSyncStatus(data.syncStatus)
+        && isOptionalString(data, "syncError")
+        && isOptionalTimestamp(data, "lastSyncedAt")
+        && isOptionalTimestamp(data, "lastSeenAt")
+        && isOptionalString(data, "sourceBaseUrlSnapshot")
+        && isOptionalTimestamp(data, "lastSeenInAssistedImportAt")
+        && isOptionalString(data, "notes")
+        && data.isArchived is bool
+        && isValidShowProductionStatus(data.productionStatus)
+        && data.maxQuantityOverridden is bool
+        && data.allocatedQuantity is number
+        && data.allocatedQuantity >= 0
+        && isOptionalNumber(data, "accumulatedPrintMs")
+        && (!("accumulatedPrintMs" in data) || data.accumulatedPrintMs >= 0)
+        && isOptionalTimestamp(data, "activePrintStartedAt")
+        && isOptionalTimestamp(data, "printStartedAt")
+        && isOptionalTimestamp(data, "printPausedAt")
+        && isOptionalTimestamp(data, "printFinishedAt")
+        && isOptionalString(data, "printFinishedBy")
+        && isOptionalTimestamp(data, "gangSheetGeneratedAt")
+        && isOptionalString(data, "gangSheetGeneratedBy")
+        && isOptionalShowProductionResolutionKind(data, "productionResolutionKind")
+        && isOptionalTimestamp(data, "productionResolvedAt")
+        && isOptionalString(data, "productionResolvedBy")
+        && isOptionalString(data, "productionOverrideReason")
+        && isOptionalString(data, "createdBy")
+        && isOptionalString(data, "updatedBy")
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function whatnotUpcomingShowFieldsValid(data) {
+      return data.keys().hasOnly([
+          "source",
+          "whatnotShowId",
+          "whatnotUrl",
+          "title",
+          "scheduledStartAt",
+          "status",
+          "syncStatus",
+          "syncError",
+          "lastSyncedAt",
+          "lastSeenAt",
+          "sourceBaseUrlSnapshot",
+          "lastSeenInAssistedImportAt",
+          "notes",
+          "isArchived",
+          "productionStatus",
+          "maxTotalQuantity",
+          "maxQuantityOverridden",
+          "allocatedQuantity",
+          "accumulatedPrintMs",
+          "activePrintStartedAt",
+          "printStartedAt",
+          "printPausedAt",
+          "printFinishedAt",
+          "printFinishedBy",
+          "gangSheetGeneratedAt",
+          "gangSheetGeneratedBy",
+          "productionResolutionKind",
+          "productionResolvedAt",
+          "productionResolvedBy",
+          "productionOverrideReason",
+          "createdBy",
+          "updatedBy",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.source == "whatnot"
+        && data.whatnotShowId is string
+        && data.whatnotShowId.size() > 0
+        && isOptionalNumber(data, "maxTotalQuantity")
+        && upcomingShowCommonFieldsValid(data);
+    }
+
+    function staffGangSheetUpcomingShowFieldsValid(data) {
+      return data.keys().hasOnly([
+          "source",
+          "whatnotUrl",
+          "title",
+          "scheduledStartAt",
+          "status",
+          "syncStatus",
+          "syncError",
+          "lastSyncedAt",
+          "lastSeenAt",
+          "sourceBaseUrlSnapshot",
+          "lastSeenInAssistedImportAt",
+          "notes",
+          "isArchived",
+          "productionStatus",
+          "maxTotalQuantity",
+          "maxQuantityOverridden",
+          "allocatedQuantity",
+          "accumulatedPrintMs",
+          "activePrintStartedAt",
+          "printStartedAt",
+          "printPausedAt",
+          "printFinishedAt",
+          "printFinishedBy",
+          "gangSheetGeneratedAt",
+          "gangSheetGeneratedBy",
+          "productionResolutionKind",
+          "productionResolvedAt",
+          "productionResolvedBy",
+          "productionOverrideReason",
+          "assignedStaffUserId",
+          "staffGangSheetCycleNumber",
+          "createdBy",
+          "updatedBy",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.source == "staff_gang_sheet"
+        && !("whatnotShowId" in data)
+        && isOptionalNumber(data, "maxTotalQuantity")
+        && (
+          !("assignedStaffUserId" in data)
+          || (
+            data.assignedStaffUserId is string
+            && data.assignedStaffUserId.size() > 0
+          )
+        )
+        && data.staffGangSheetCycleNumber is number
+        && data.staffGangSheetCycleNumber == int(data.staffGangSheetCycleNumber)
+        && data.staffGangSheetCycleNumber >= 1
+        && upcomingShowCommonFieldsValid(data);
+    }
+
+    function devFixtureUpcomingShowFieldsValid(data) {
+      return data.keys().hasOnly([
+          "source",
+          "devFixtureSentinel",
+          "title",
+          "scheduledStartAt",
+          "status",
+          "syncStatus",
+          "syncError",
+          "lastSyncedAt",
+          "lastSeenAt",
+          "sourceBaseUrlSnapshot",
+          "lastSeenInAssistedImportAt",
+          "notes",
+          "isArchived",
+          "productionStatus",
+          "maxTotalQuantity",
+          "maxQuantityOverridden",
+          "allocatedQuantity",
+          "accumulatedPrintMs",
+          "activePrintStartedAt",
+          "printStartedAt",
+          "printPausedAt",
+          "printFinishedAt",
+          "printFinishedBy",
+          "gangSheetGeneratedAt",
+          "gangSheetGeneratedBy",
+          "productionResolutionKind",
+          "productionResolvedAt",
+          "productionResolvedBy",
+          "productionOverrideReason",
+          "createdBy",
+          "updatedBy",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.source == "dev_fixture"
+        && data.devFixtureSentinel == "DEV-OVERRIDE"
+        && !("whatnotShowId" in data)
+        && !("whatnotUrl" in data)
+        && isOptionalNumber(data, "maxTotalQuantity")
+        && upcomingShowCommonFieldsValid(data);
+    }
+
+    function upcomingShowRequiredFieldsValid(data) {
+      return isValidUpcomingShowSource(data.source)
+        && (
+          whatnotUpcomingShowFieldsValid(data)
+          || staffGangSheetUpcomingShowFieldsValid(data)
+          || devFixtureUpcomingShowFieldsValid(data)
+        );
+    }
+
+    function staffCanCreateUpcomingShow() {
+      // Whatnot shows and Internal Gang Sheets: any active Studio staff may create.
+      // Uniqueness for Internal sheets is enforced in createInitialStaffGangSheet / client create.
+      return isStaff();
+    }
+
+    function staffCanUpdateUpcomingShow() {
+      return request.resource.data.source == "whatnot"
+        || request.resource.data.source == "dev_fixture"
+        ? isStaff()
+        : (
+          isOwnerOrAdmin()
+          || (
+            isStaff()
+            && resource.data.source == "staff_gang_sheet"
+            && request.resource.data.staffGangSheetCycleNumber == resource.data.staffGangSheetCycleNumber
+          )
+        );
+    }
+
+    function ownerCanUpdateUpcomingShowMetadata() {
+      return isOwner()
+        && request.resource.data.source == resource.data.source
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "title",
+          "whatnotUrl",
+          "scheduledStartAt",
+          "notes",
+          "updatedBy",
+          "updatedAt",
+        ])
+        && isOptionalString(request.resource.data, "title")
+        && isOptionalTimestamp(request.resource.data, "scheduledStartAt")
+        && isOptionalString(request.resource.data, "notes")
+        && isOptionalString(request.resource.data, "whatnotUrl")
+        && request.resource.data.productionStatus == resource.data.productionStatus
+        && request.resource.data.allocatedQuantity == resource.data.allocatedQuantity
+        && optionalFieldUnchanged("productionResolutionKind")
+        && optionalFieldUnchanged("productionResolvedAt")
+        && optionalFieldUnchanged("productionResolvedBy")
+        && optionalFieldUnchanged("productionOverrideReason")
+        && (
+          resource.data.source != "whatnot"
+          || request.resource.data.whatnotShowId == resource.data.whatnotShowId
+        )
+        && (
+          resource.data.source != "dev_fixture"
+          || (
+            request.resource.data.devFixtureSentinel == resource.data.devFixtureSentinel
+            && !("whatnotShowId" in request.resource.data)
+            && !("whatnotUrl" in request.resource.data)
+          )
+        );
+    }
+
+    function showProductionStatusTransitionValid() {
+      return request.resource.data.productionStatus == resource.data.productionStatus
+        || (
+          resource.data.productionStatus in ["open", "full"]
+          && request.resource.data.productionStatus == "printing"
+        )
+        || (
+          resource.data.productionStatus == "printing"
+          && request.resource.data.productionStatus == "completed"
+        )
+        || (
+          // Staff Gang Sheet Mark Complete may finish an open/full lane without a separate Start.
+          resource.data.source == "staff_gang_sheet"
+          && resource.data.productionStatus in ["open", "full"]
+          && request.resource.data.productionStatus == "completed"
+        );
+    }
+
+    // Timer-only compatibility path for older show documents that may retain fields outside the
+    // current full-document allowlist. The legacy field is preserved, never introduced or changed:
+    // only the exact production-timer fields below may differ.
+    function staffCanUpdateShowProductionTimerOnLegacyDocument() {
+      return isStaff()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "productionStatus",
+          "accumulatedPrintMs",
+          "activePrintStartedAt",
+          "printStartedAt",
+          "printPausedAt",
+          "printFinishedAt",
+          "printFinishedBy",
+          "updatedBy",
+          "updatedAt"
+        ])
+        && showProductionStatusTransitionValid()
+        && isValidShowProductionStatus(request.resource.data.productionStatus)
+        && isOptionalNumber(request.resource.data, "accumulatedPrintMs")
+        && (!("accumulatedPrintMs" in request.resource.data)
+          || request.resource.data.accumulatedPrintMs >= 0)
+        && isOptionalTimestamp(request.resource.data, "activePrintStartedAt")
+        && isOptionalTimestamp(request.resource.data, "printStartedAt")
+        && isOptionalTimestamp(request.resource.data, "printPausedAt")
+        && isOptionalTimestamp(request.resource.data, "printFinishedAt")
+        && isOptionalString(request.resource.data, "printFinishedBy")
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    function isValidShowAllocationStatus(status) {
+      return status in ["pending", "queued", "in_progress", "printed", "done", "canceled"];
+    }
+
+    function isCatalogShowAllocation(data) {
+      return !("sourceType" in data) || data.sourceType == "catalog_design";
+    }
+
+    function isUploadShowAllocation(data) {
+      return data.sourceType == "customer_upload";
+    }
+
+    function isStaffArtworkShowAllocation(data) {
+      return data.sourceType == "staff_artwork";
+    }
+
+    function showAllocationRequiredFieldsValid(data) {
+      return data.keys().hasOnly([
+          "upcomingShowId",
+          "printRequestId",
+          "printRequestItemId",
+          "designId",
+          "sourceType",
+          "customerUploadId",
+          "staffArtworkId",
+          "customerId",
+          "requestNameSnapshot",
+          "requestOriginSnapshot",
+          "designTitleSnapshot",
+          "allocatedQuantity",
+          "sourceItemQuantitySnapshot",
+          "printWidthInches",
+          "printHeightInches",
+          "sizeLabel",
+          "notes",
+          "status",
+          "addedBy",
+          "updatedBy",
+          "queuedAt",
+          "queuedBy",
+          "printedAt",
+          "printedBy",
+          "completedAt",
+          "completedBy",
+          "canceledAt",
+          "canceledBy",
+          "requeuedFromAllocationId",
+          "movedFromAllocationId",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.upcomingShowId is string
+        && data.upcomingShowId.size() > 0
+        && data.printRequestId is string
+        && data.printRequestId.size() > 0
+        && data.printRequestItemId is string
+        && data.printRequestItemId.size() > 0
+        && isOptionalString(data, "customerId")
+        && data.requestNameSnapshot is string
+        && data.requestNameSnapshot.size() > 0
+        && (!("requestOriginSnapshot" in data) || isValidPrintRequestOrigin(data.requestOriginSnapshot))
+        && isOptionalString(data, "designTitleSnapshot")
+        && data.allocatedQuantity is int
+        && data.allocatedQuantity > 0
+        && data.sourceItemQuantitySnapshot is int
+        && data.sourceItemQuantitySnapshot > 0
+        && isOptionalPositiveStandardPrintInches(data, "printWidthInches")
+        && isOptionalPositiveStandardPrintInches(data, "printHeightInches")
+        && isOptionalString(data, "sizeLabel")
+        && isOptionalString(data, "notes")
+        && isValidShowAllocationStatus(data.status)
+        && data.addedBy is string
+        && data.addedBy.size() > 0
+        && data.updatedBy is string
+        && data.updatedBy.size() > 0
+        && isOptionalTimestamp(data, "queuedAt")
+        && isOptionalString(data, "queuedBy")
+        && isOptionalTimestamp(data, "printedAt")
+        && isOptionalString(data, "printedBy")
+        && isOptionalTimestamp(data, "completedAt")
+        && isOptionalString(data, "completedBy")
+        && isOptionalTimestamp(data, "canceledAt")
+        && isOptionalString(data, "canceledBy")
+        && isOptionalString(data, "requeuedFromAllocationId")
+        && isOptionalString(data, "movedFromAllocationId")
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && (
+          (
+            isCatalogShowAllocation(data)
+            && data.designId is string
+            && data.designId.size() > 0
+            && !("customerUploadId" in data)
+          )
+          || (
+            isUploadShowAllocation(data)
+            && !("designId" in data)
+            && !("staffArtworkId" in data)
+            && data.customerUploadId is string
+            && data.customerUploadId.size() > 0
+          )
+          || (
+            isStaffArtworkShowAllocation(data)
+            && !("designId" in data)
+            && !("customerUploadId" in data)
+            && data.staffArtworkId is string
+            && data.staffArtworkId.size() > 0
+            && staffArtworkExists(data.staffArtworkId)
+          )
+        );
+    }
+
+    // Start-printing compatibility for parsed historical allocations that preserve fields outside
+    // today's full-document allowlist. Only the exact timer transition may differ; legacy fields
+    // are preserved but cannot be introduced or changed.
+    function staffCanStartLegacyShowAllocation() {
+      return isStaff()
+        && resource.data.status in ["pending", "queued"]
+        && request.resource.data.status == "in_progress"
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "status",
+          "updatedBy",
+          "updatedAt"
+        ])
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    function staffCanFinishLegacyShowAllocation() {
+      return isStaff()
+        && resource.data.status in ["pending", "queued", "in_progress"]
+        && request.resource.data.status == "done"
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "status",
+          "completedAt",
+          "completedBy",
+          "updatedBy",
+          "updatedAt"
+        ])
+        && request.resource.data.completedBy == request.auth.uid
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.completedAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    match /users/{userId} {
+      allow read: if isSelf(userId)
+        || (isOwner() && isReadableTeamProfile(resource.data.role))
+        || (isAdmin() && resource.data.role in ["admin", "helper"]);
+
+      allow create, update, delete: if false;
+    }
+
+    match /designs/{designId} {
+      allow read: if isStaff() || isPublicCatalogDesign();
+
+      allow create: if isStaff()
+        && designRequiredFieldsValid(request.resource.data)
+        && request.resource.data.id == designId
+        && request.resource.data.uploadedBy == request.auth.uid
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.updatedBy == request.auth.uid
+        && !("assetsPurgedAt" in request.resource.data)
+        && !("assetsPurgedBy" in request.resource.data);
+
+      // Narrow metadata fast paths first (short-circuit) — companion denorm, then catalog
+      // metadata/Placement (tags/title/Halftone draft/etc.), then soft-archive, then soft-restore,
+      // then import derivative completion (processing|imported → imported + canonical paths), then
+      // catalog approval status transitions. Archive/restore MUST stay before approval so
+      // enrichment-heavy status-only writes never pay the approval allowlist diff() or full
+      // validator. Derivative completion MUST stay before approval so processing→imported + paths
+      // never pays the approval allowlist / full validator (Studio 1.0.4 P4).
+      // Approval path MUST stay after the status-unchanged fast paths and must fail on
+      // `status !=` first so non-approval writes do not pay its diff().
+      allow update: if isStaff() && (
+        companionDenormOnlyUpdate()
+        || designInboxPreviewControlUpdate()
+        || catalogMetadataOnlyUpdate()
+        || designArchiveStatusOnlyUpdate()
+        || designRestoreStatusOnlyUpdate()
+        || designDerivativeCompletionUpdate()
+        || catalogApprovalStatusOnlyUpdate()
+        || (
+          designRequiredFieldsValid(request.resource.data)
+          && request.resource.data.id == designId
+          && request.resource.data.id == resource.data.id
+          && request.resource.data.uploadedBy == resource.data.uploadedBy
+          && (!("createdBy" in resource.data) || request.resource.data.createdBy == resource.data.createdBy)
+          && (!("createdAt" in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
+          && request.resource.data.updatedBy == request.auth.uid
+          && clientAiFieldsUnchanged()
+          && clientDesignPurgeFieldsUnchanged()
+          && clientDesignPurgedAssetPathsUnchanged()
+        )
+      );
+
+      allow delete: if false;
+    }
+
+    // DEPRECATED (2026-08-09) — legacy transitive companion sets (arbitrary-N), replaced by
+    // pairwise `companionLinks` below. No product code creates or joins these anymore; the
+    // match stays only so staff can still read/delete leftover DEV documents during cleanup.
+    // Staff-only — never customer or public readable, since membership can include non-ready
+    // designs.
+    match /companionSets/{companionSetId} {
+      allow read: if isStaff();
+
+      allow create: if isStaff()
+        && companionSetRequiredFieldsValid(request.resource.data)
+        && request.resource.data.id == companionSetId
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      allow update: if isStaff()
+        && companionSetRequiredFieldsValid(request.resource.data)
+        && request.resource.data.id == companionSetId
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      allow delete: if isStaff();
+    }
+
+    // Pairwise (non-transitive) companion links — the canonical edge between exactly two
+    // designs, replacing `companionSets` above. Staff-only — never customer/public readable.
+    // Portal discovers ready peers only by hydrating a design's own `companionDesignIds` (direct
+    // neighbors) and getting those designs by ID, never by reading or querying this collection.
+    // Immutable once created: the service only ever creates or deletes an edge, so `update` is
+    // denied outright.
+    match /companionLinks/{linkId} {
+      allow read: if isStaff();
+
+      allow create: if isStaff()
+        && companionLinkRequiredFieldsValid(request.resource.data, linkId)
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      allow update: if false;
+
+      allow delete: if isStaff();
+    }
+
+    match /categories/{categoryId} {
+      allow read: if isStaff() || isPublicCatalogCategory();
+
+      allow create: if isOwnerOrAdmin()
+        && categoryRequiredFieldsValid(request.resource.data)
+        && request.resource.data.id == categoryId
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      allow update: if isOwnerOrAdmin()
+        && categoryRequiredFieldsValid(request.resource.data)
+        && request.resource.data.id == categoryId
+        && request.resource.data.id == resource.data.id
+        && (!("createdBy" in resource.data) || request.resource.data.createdBy == resource.data.createdBy)
+        && (!("createdAt" in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      allow delete: if false;
+    }
+
+    match /tags/{tagId} {
+      allow read: if isStaff() || isPublicCatalogTag();
+
+      allow create: if isOwnerOrAdmin()
+        && tagRequiredFieldsValid(request.resource.data)
+        && request.resource.data.id == tagId
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      allow update: if isOwnerOrAdmin()
+        && tagRequiredFieldsValid(request.resource.data)
+        && request.resource.data.id == tagId
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      allow delete: if false;
+    }
+
+    match /customers/{customerId} {
+      allow read: if isStaff()
+        || (isCustomer() && resource.data.userId == request.auth.uid);
+
+      allow create: if isStaff()
+        && customerRequiredFieldsValid(request.resource.data)
+        && request.resource.data.id == customerId
+        && request.resource.data.signupSource == "studio"
+        && !("printRequestQuotaOverride" in request.resource.data);
+
+      allow update: if (
+          isCustomer()
+          && resource.data.userId == request.auth.uid
+          && portalMaintenanceAllowsCustomerMutation()
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly([
+              "assistedProofEmailOptIn",
+              "assistedProofEmailOptInUpdatedAt",
+              "assistedBrowserPushOptIn",
+              "assistedBrowserPushOptInUpdatedAt",
+              "updatedAt",
+            ])
+          && (!("assistedProofEmailOptIn" in request.resource.data)
+            || request.resource.data.assistedProofEmailOptIn is bool)
+          && (!("assistedProofEmailOptInUpdatedAt" in request.resource.data)
+            || request.resource.data.assistedProofEmailOptInUpdatedAt is timestamp)
+          && (!("assistedBrowserPushOptIn" in request.resource.data)
+            || request.resource.data.assistedBrowserPushOptIn is bool)
+          && (!("assistedBrowserPushOptInUpdatedAt" in request.resource.data)
+            || request.resource.data.assistedBrowserPushOptInUpdatedAt is timestamp)
+          && request.resource.data.updatedAt is timestamp
+          && request.resource.data.id == resource.data.id
+          && request.resource.data.userId == resource.data.userId
+        ) || (
+          isStaff()
+          && customerRequiredFieldsValid(request.resource.data)
+          && request.resource.data.id == customerId
+          && request.resource.data.id == resource.data.id
+          && (!("userId" in resource.data) || request.resource.data.userId == resource.data.userId)
+          && (!("isGuest" in resource.data) || request.resource.data.isGuest == resource.data.isGuest)
+          && (!("signupSource" in resource.data) || request.resource.data.signupSource == resource.data.signupSource)
+          && (!("createdAt" in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
+          && optionalFieldUnchanged("printRequestQuotaOverride")
+        );
+
+      allow delete: if false;
+
+      match /webPushSubscriptions/{subscriptionId} {
+        allow read: if isStaff() || customerOwnsCustomerDoc(customerId);
+        allow create, update, delete: if false;
+      }
+
+      match /favorites/{designId} {
+        allow read: if isStaff() || customerOwnsCustomerDoc(customerId);
+
+        allow create: if customerOwnsCustomerDoc(customerId)
+          && portalMaintenanceAllowsCustomerMutation()
+          && request.resource.data.designId == designId
+          && request.resource.data.customerId == customerId
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.createdAt is timestamp
+          && request.resource.data.keys().hasOnly(["designId", "customerId", "createdAt", "createdBy"]);
+
+        allow update: if false;
+
+        allow delete: if isStaff() || (
+          customerOwnsCustomerDoc(customerId)
+          && portalMaintenanceAllowsCustomerMutation()
+        );
+      }
+    }
+
+    match /customerUsernames/{username} {
+      allow read: if isStaff();
+
+      allow create, update: if isStaff()
+        && customerUsernameReservationFieldsValid(request.resource.data, username);
+
+      allow delete: if isStaff();
+    }
+
+    match /counters/{counterId} {
+      allow read: if isStaff() && counterId == "printRequests";
+
+      allow create, update: if isStaff()
+        && counterId == "printRequests"
+        && printRequestCounterFieldsValid(request.resource.data);
+
+      allow delete: if false;
+    }
+
+    match /printRequests/{printRequestId} {
+      allow read: if isStaff() || customerOwnsPrintRequestData(resource.data);
+
+      allow create: if isStaff()
+        && printRequestRequiredFieldsValid(request.resource.data)
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      allow update: if staffCanActivateEditingPrintRequest()
+        || staffCanAdjustPrintRequestItemCount()
+        || (isStaff()
+          && printRequestRequiredFieldsValid(request.resource.data)
+          && request.resource.data.createdBy == resource.data.createdBy
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.updatedBy == request.auth.uid
+          && (staffCanCompletePrintRequest() || staffCanPerformGeneralPrintRequestUpdate()))
+        || (portalMaintenanceAllowsCustomerMutation()
+          && customerCanUpdatePrintRequest());
+
+      allow delete: if isStaff();
+    }
+
+    function customerOwnsCustomerUpload(uploadId) {
+      return exists(/databases/$(database)/documents/customerUploads/$(uploadId))
+        && get(/databases/$(database)/documents/customerUploads/$(uploadId)).data.customerUid
+          == request.auth.uid;
+    }
+
+    function customerUploadLinkedToPrintRequest(uploadId, printRequestId) {
+      return exists(/databases/$(database)/documents/customerUploads/$(uploadId))
+        && get(/databases/$(database)/documents/customerUploads/$(uploadId)).data.printRequestId
+          == printRequestId;
+    }
+
+    function customerCanCreateUploadPrintRequestItem(data) {
+      return isCustomer()
+        && printRequestItemRequiredFieldsValid(data)
+        && isUploadPrintRequestItem(data)
+        && data.id is string
+        && data.addedBy == request.auth.uid
+        && data.status == "pending"
+        && customerCanCreatePrintRequestItem(data.printRequestId)
+        && customerOwnsCustomerUpload(data.customerUploadId)
+        && customerUploadLinkedToPrintRequest(data.customerUploadId, data.printRequestId);
+    }
+
+    function staffArtworkPrintRequestItemCreateFieldsValid(data) {
+      // Lean create allowlist for Staff Artwork items. The shared printRequestItemRequiredFieldsValid
+      // validator is too expensive when create OR-branches evaluate multiple source types and can
+      // exceed Firestore's 1000-expression budget (surfaces as permission-denied).
+      return data.keys().hasOnly([
+          "id",
+          "printRequestId",
+          "sourceType",
+          "staffArtworkId",
+          "titleSnapshot",
+          "quantity",
+          "printWidthInches",
+          "printHeightInches",
+          "sizeLabel",
+          "standardSizePresetKey",
+          "sortOrder",
+          "notes",
+          "status",
+          "addedBy",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.id is string
+        && data.id.size() > 0
+        && data.printRequestId is string
+        && data.printRequestId.size() > 0
+        && data.sourceType == "staff_artwork"
+        && data.staffArtworkId is string
+        && data.staffArtworkId.size() > 0
+        && !("designId" in data)
+        && !("customerUploadId" in data)
+        && data.quantity is int
+        && data.quantity > 0
+        && isOptionalPositiveStandardPrintInches(data, "printWidthInches")
+        && isOptionalPositiveStandardPrintInches(data, "printHeightInches")
+        && isOptionalString(data, "sizeLabel")
+        && isOptionalString(data, "standardSizePresetKey")
+        && isOptionalNumber(data, "sortOrder")
+        && isOptionalString(data, "notes")
+        && isOptionalString(data, "titleSnapshot")
+        && data.status == "pending"
+        && data.addedBy is string
+        && data.addedBy.size() > 0
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function catalogPrintRequestItemCreateFieldsValid(data) {
+      // Lean create path for Design Library items. Same expression-budget risk as Staff Artwork:
+      // printRequestItemRequiredFieldsValid is shared with update and is too heavy for create.
+      return data.keys().hasOnly([
+          "id",
+          "printRequestId",
+          "designId",
+          "sourceType",
+          "quantity",
+          "printWidthInches",
+          "printHeightInches",
+          "sizeLabel",
+          "standardSizePresetKey",
+          "sortOrder",
+          "notes",
+          "status",
+          "addedBy",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.id is string
+        && data.id.size() > 0
+        && data.printRequestId is string
+        && data.printRequestId.size() > 0
+        && (!("sourceType" in data) || data.sourceType == "catalog_design")
+        && data.designId is string
+        && data.designId.size() > 0
+        && !("customerUploadId" in data)
+        && !("staffArtworkId" in data)
+        && data.quantity is int
+        && data.quantity > 0
+        && isOptionalPositiveStandardPrintInches(data, "printWidthInches")
+        && isOptionalPositiveStandardPrintInches(data, "printHeightInches")
+        && isOptionalString(data, "sizeLabel")
+        && isOptionalString(data, "standardSizePresetKey")
+        && isOptionalNumber(data, "sortOrder")
+        && isOptionalString(data, "notes")
+        && data.status == "pending"
+        && data.addedBy is string
+        && data.addedBy.size() > 0
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function uploadPrintRequestItemCreateFieldsValid(data) {
+      return data.keys().hasOnly([
+          "id",
+          "printRequestId",
+          "sourceType",
+          "customerUploadId",
+          "titleSnapshot",
+          "quantity",
+          "printWidthInches",
+          "printHeightInches",
+          "sizeLabel",
+          "standardSizePresetKey",
+          "sortOrder",
+          "notes",
+          "status",
+          "addedBy",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.id is string
+        && data.id.size() > 0
+        && data.printRequestId is string
+        && data.printRequestId.size() > 0
+        && data.sourceType == "customer_upload"
+        && data.customerUploadId is string
+        && data.customerUploadId.size() > 0
+        && !("designId" in data)
+        && !("staffArtworkId" in data)
+        && data.quantity is int
+        && data.quantity > 0
+        && isOptionalPositiveStandardPrintInches(data, "printWidthInches")
+        && isOptionalPositiveStandardPrintInches(data, "printHeightInches")
+        && isOptionalString(data, "sizeLabel")
+        && isOptionalString(data, "standardSizePresetKey")
+        && isOptionalNumber(data, "sortOrder")
+        && isOptionalString(data, "notes")
+        && isOptionalString(data, "titleSnapshot")
+        && data.status == "pending"
+        && data.addedBy is string
+        && data.addedBy.size() > 0
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function staffCanCreateUploadPrintRequestItem(data) {
+      return isUploadPrintRequestItem(data)
+        && isStaff()
+        && data.id is string
+        && data.addedBy == request.auth.uid
+        && printRequestParentExists(data.printRequestId)
+        && exists(/databases/$(database)/documents/customerUploads/$(data.customerUploadId))
+        && uploadPrintRequestItemCreateFieldsValid(data);
+    }
+
+    function staffCanCreateCatalogPrintRequestItem(data) {
+      return isCatalogPrintRequestItem(data)
+        && isStaff()
+        && data.id is string
+        && data.addedBy == request.auth.uid
+        && printRequestParentExists(data.printRequestId)
+        && isReadyDesign(data.designId)
+        && catalogPrintRequestItemCreateFieldsValid(data);
+    }
+
+    function staffCanCreateStaffArtworkPrintRequestItem(data) {
+      return isStaffArtworkPrintRequestItem(data)
+        && isStaff()
+        && data.id is string
+        && data.addedBy == request.auth.uid
+        && printRequestParentExists(data.printRequestId)
+        && staffArtworkSelectable(data.staffArtworkId)
+        && staffArtworkPrintRequestItemCreateFieldsValid(data);
+    }
+
+    function showAllocationSourceIdentityUnchanged() {
+      return (
+          isCatalogShowAllocation(resource.data)
+          && isCatalogShowAllocation(request.resource.data)
+          && request.resource.data.designId == resource.data.designId
+        )
+        || (
+          isUploadShowAllocation(resource.data)
+          && isUploadShowAllocation(request.resource.data)
+          && request.resource.data.customerUploadId == resource.data.customerUploadId
+        )
+        || (
+          isStaffArtworkShowAllocation(resource.data)
+          && isStaffArtworkShowAllocation(request.resource.data)
+          && request.resource.data.staffArtworkId == resource.data.staffArtworkId
+        );
+    }
+
+    function gangSheetItemSourceIdentityUnchanged() {
+      return (
+          (!("sourceType" in resource.data) || resource.data.sourceType == "catalog_design")
+          && (!("sourceType" in request.resource.data) || request.resource.data.sourceType == "catalog_design")
+          && request.resource.data.designId == resource.data.designId
+        )
+        || (
+          resource.data.sourceType == "customer_upload"
+          && request.resource.data.sourceType == "customer_upload"
+          && request.resource.data.customerUploadId == resource.data.customerUploadId
+        )
+        || (
+          resource.data.sourceType == "staff_artwork"
+          && request.resource.data.sourceType == "staff_artwork"
+          && request.resource.data.staffArtworkId == resource.data.staffArtworkId
+        );
+    }
+
+    // TRANSITION STATE: customer canonical reads remain available while projections converge.
+    // Projection writes remain Admin-only; generate this artifact from final firestore.rules.
+    match /printRequestItems/{printRequestItemId} {
+      allow read: if isStaff()
+        || (isCustomer() && customerOwnsPrintRequestById(resource.data.printRequestId));
+
+      allow create: if request.resource.data.id == printRequestItemId
+        && (
+          // Catalog first: most common Studio path; each branch uses a lean create validator
+          // so we stay under Firestore's 1000-expression budget.
+          staffCanCreateCatalogPrintRequestItem(request.resource.data)
+          || staffCanCreateStaffArtworkPrintRequestItem(request.resource.data)
+          || staffCanCreateUploadPrintRequestItem(request.resource.data)
+        );
+      // Customer creates go through Admin callables (Cap A daily design limit).
+
+      allow update: if isStaff()
+        && printRequestItemRequiredFieldsValid(request.resource.data)
+        && request.resource.data.id == printRequestItemId
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.printRequestId == resource.data.printRequestId
+        && request.resource.data.get("designId", "") == resource.data.get("designId", "")
+        && request.resource.data.get("sourceType", "") == resource.data.get("sourceType", "")
+        && request.resource.data.get("customerUploadId", "") == resource.data.get("customerUploadId", "")
+        && request.resource.data.get("staffArtworkId", "") == resource.data.get("staffArtworkId", "")
+        && request.resource.data.addedBy == resource.data.addedBy
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt is timestamp
+        && optionalFieldUnchanged("requestCountApplied")
+        && optionalFieldUnchanged("updatedBy")
+        && optionalFieldUnchanged("artworkEnhanceMode")
+        && optionalFieldUnchanged("preEnhancePrintWidthInches")
+        && optionalFieldUnchanged("preEnhancePrintHeightInches")
+        && printRequestParentExists(request.resource.data.printRequestId)
+        && (
+          isUploadPrintRequestItem(resource.data)
+          || isReadyDesign(request.resource.data.designId)
+          || (isStaffArtworkPrintRequestItem(resource.data) && staffArtworkExists(request.resource.data.staffArtworkId))
+        )
+        || (portalMaintenanceAllowsCustomerMutation()
+          && customerPrintRequestItemPortalEditableUpdate());
+
+      allow delete: if isStaff();
+      // Customer deletes go through Admin callables (Cap A print-count refund).
+    }
+
+    // Customer-safe, server-maintained projection. Admin SDK trigger owns all writes.
+    match /portalPrintRequestItems/{itemId} {
+      allow read: if isStaff()
+        || (isCustomer() && customerOwnsPrintRequestById(resource.data.printRequestId));
+      allow create, update, delete: if false;
+    }
+
+    match /upcomingShows/{upcomingShowId} {
+      allow read: if isStaff();
+
+      // Whatnot and Internal Gang Sheets: any active Studio staff may create.
+      // Internal uniqueness is enforced in createInitialStaffGangSheet / client create.
+      allow create: if staffCanCreateUpcomingShow()
+        && upcomingShowRequiredFieldsValid(request.resource.data)
+        && request.resource.data.source != "dev_fixture"
+        && request.resource.data.updatedBy == request.auth.uid
+        && (
+          request.resource.data.source != "staff_gang_sheet"
+          || !("assignedStaffUserId" in request.resource.data)
+        );
+
+      allow update: if ownerCanUpdateUpcomingShowMetadata()
+        || (
+          staffCanUpdateUpcomingShow()
+          && upcomingShowRequiredFieldsValid(request.resource.data)
+          && request.resource.data.source == resource.data.source
+          && (
+            resource.data.source == "whatnot"
+              ? request.resource.data.whatnotShowId == resource.data.whatnotShowId
+              : resource.data.source == "dev_fixture"
+                ? (
+                  request.resource.data.devFixtureSentinel == resource.data.devFixtureSentinel
+                  && !("whatnotShowId" in request.resource.data)
+                  && !("whatnotUrl" in request.resource.data)
+                )
+              : (
+                request.resource.data.staffGangSheetCycleNumber == resource.data.staffGangSheetCycleNumber
+                && (
+                  !("assignedStaffUserId" in resource.data)
+                    ? !("assignedStaffUserId" in request.resource.data)
+                    : request.resource.data.assignedStaffUserId == resource.data.assignedStaffUserId
+                )
+              )
+          )
+          && (!("createdBy" in resource.data) || request.resource.data.createdBy == resource.data.createdBy)
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.updatedBy == request.auth.uid
+        )
+        || staffCanUpdateShowProductionTimerOnLegacyDocument();
+
+      allow delete: if isOwnerOrAdmin()
+        || (
+          isStaff()
+          && resource.data.source == "whatnot"
+        );
+    }
+
+    function isValidGangSheetStatus(status) {
+      return status in ["draft", "ready", "printing", "paused", "finished", "archived"];
+    }
+
+    function gangSheetRequiredFieldsValid(data) {
+      return data.keys().hasOnly([
+          "upcomingShowId",
+          "title",
+          "status",
+          "sheetWidthInches",
+          "sheetHeightInches",
+          "dpi",
+          "backgroundColor",
+          "itemCount",
+          "totalQuantity",
+          "accumulatedPrintMs",
+          "activePrintStartedAt",
+          "printStartedAt",
+          "printPausedAt",
+          "printFinishedAt",
+          "printFinishedBy",
+          "lastResetAt",
+          "lastResetBy",
+          "lastExportedAt",
+          "lastExportedBy",
+          "lastExportFileName",
+          "sheetNumber",
+          "createdBy",
+          "updatedBy",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.upcomingShowId is string
+        && data.upcomingShowId.size() > 0
+        && isOptionalString(data, "title")
+        && isValidGangSheetStatus(data.status)
+        && data.sheetWidthInches is number
+        && data.sheetWidthInches > 0
+        && data.sheetHeightInches is number
+        && data.sheetHeightInches > 0
+        && data.dpi is number
+        && data.dpi > 0
+        && isOptionalString(data, "backgroundColor")
+        && data.itemCount is int
+        && data.itemCount >= 0
+        && data.totalQuantity is int
+        && data.totalQuantity >= 0
+        && data.accumulatedPrintMs is number
+        && data.accumulatedPrintMs >= 0
+        && isOptionalTimestamp(data, "activePrintStartedAt")
+        && isOptionalTimestamp(data, "printStartedAt")
+        && isOptionalTimestamp(data, "printPausedAt")
+        && isOptionalTimestamp(data, "printFinishedAt")
+        && isOptionalString(data, "printFinishedBy")
+        && isOptionalTimestamp(data, "lastResetAt")
+        && isOptionalString(data, "lastResetBy")
+        && isOptionalTimestamp(data, "lastExportedAt")
+        && isOptionalString(data, "lastExportedBy")
+        && isOptionalString(data, "lastExportFileName")
+        && data.sheetNumber is int
+        && data.sheetNumber > 0
+        && data.createdBy is string
+        && data.updatedBy is string
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function gangSheetItemRequiredFieldsValid(data) {
+      return data.keys().hasOnly([
+          "gangSheetId",
+          "upcomingShowId",
+          "showAllocationId",
+          "printRequestId",
+          "printRequestItemId",
+          "designId",
+          "sourceType",
+          "customerUploadId",
+          "staffArtworkId",
+          "copyIndex",
+          "sourceQuantitySnapshot",
+          "designTitleSnapshot",
+          "requestNameSnapshot",
+          "originalPathSnapshot",
+          "xInches",
+          "yInches",
+          "widthInches",
+          "heightInches",
+          "rotationDegrees",
+          "flipHorizontal",
+          "flipVertical",
+          "zIndex",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.gangSheetId is string
+        && data.gangSheetId.size() > 0
+        && data.upcomingShowId is string
+        && data.upcomingShowId.size() > 0
+        && data.showAllocationId is string
+        && data.showAllocationId.size() > 0
+        && data.printRequestId is string
+        && data.printRequestId.size() > 0
+        && data.printRequestItemId is string
+        && data.printRequestItemId.size() > 0
+        && data.copyIndex is int
+        && data.copyIndex >= 0
+        && data.sourceQuantitySnapshot is int
+        && data.sourceQuantitySnapshot > 0
+        && isOptionalString(data, "designTitleSnapshot")
+        && data.requestNameSnapshot is string
+        && data.requestNameSnapshot.size() > 0
+        && data.originalPathSnapshot is string
+        && (
+          data.originalPathSnapshot.matches("^/originals/[A-Za-z0-9_-]+\\.png$")
+          || data.originalPathSnapshot.matches("^/originals/[A-Za-z0-9_-]+\\.interactive\\.png$")
+          || data.originalPathSnapshot.matches("^/customer-uploads/[A-Za-z0-9_-]+/[A-Za-z0-9_-]+/production\\.png$")
+          || data.originalPathSnapshot.matches("^/customer-uploads/[A-Za-z0-9_-]+/[A-Za-z0-9_-]+/production\\.interactive\\.png$")
+        )
+        && (
+          (
+            (!("sourceType" in data) || data.sourceType == "catalog_design")
+            && data.designId is string
+            && data.designId.size() > 0
+            && !("customerUploadId" in data)
+            && (
+              data.originalPathSnapshot.matches("^/originals/[A-Za-z0-9_-]+\\.png$")
+              || data.originalPathSnapshot.matches("^/originals/[A-Za-z0-9_-]+\\.interactive\\.png$")
+            )
+          )
+          || (
+            data.sourceType == "customer_upload"
+            && !("designId" in data)
+            && data.customerUploadId is string
+            && data.customerUploadId.size() > 0
+            && (
+              data.originalPathSnapshot.matches("^/customer-uploads/[A-Za-z0-9_-]+/[A-Za-z0-9_-]+/production\\.png$")
+              || data.originalPathSnapshot.matches("^/customer-uploads/[A-Za-z0-9_-]+/[A-Za-z0-9_-]+/production\\.interactive\\.png$")
+            )
+          )
+          || (
+            data.sourceType == "staff_artwork"
+            && !("designId" in data)
+            && !("customerUploadId" in data)
+            && data.staffArtworkId is string
+            && data.staffArtworkId.size() > 0
+            && (
+              data.originalPathSnapshot.matches("^/staff-artwork/[A-Za-z0-9_-]+/production\\.png$")
+              || data.originalPathSnapshot.matches("^/staff-artwork/[A-Za-z0-9_-]+/production\\.interactive\\.png$")
+            )
+          )
+        )
+        && data.xInches is number
+        && data.xInches >= 0
+        && data.yInches is number
+        && data.yInches >= 0
+        && data.widthInches is number
+        && data.widthInches > 0
+        && data.heightInches is number
+        && data.heightInches > 0
+        && data.rotationDegrees is number
+        && data.flipHorizontal is bool
+        && data.flipVertical is bool
+        && data.zIndex is int
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    match /gangSheets/{gangSheetId} {
+      allow read: if isStaff();
+
+      allow create: if isStaff()
+        && gangSheetRequiredFieldsValid(request.resource.data)
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      allow update: if isStaff()
+        && gangSheetRequiredFieldsValid(request.resource.data)
+        && request.resource.data.upcomingShowId == resource.data.upcomingShowId
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      allow delete: if isStaff();
+    }
+
+    match /gangSheetItems/{gangSheetItemId} {
+      allow read: if isStaff();
+
+      allow create: if isStaff()
+        && gangSheetItemRequiredFieldsValid(request.resource.data);
+
+      allow update: if isStaff()
+        && gangSheetItemRequiredFieldsValid(request.resource.data)
+        && request.resource.data.gangSheetId == resource.data.gangSheetId
+        && request.resource.data.upcomingShowId == resource.data.upcomingShowId
+        && request.resource.data.showAllocationId == resource.data.showAllocationId
+        && gangSheetItemSourceIdentityUnchanged()
+        && request.resource.data.createdAt == resource.data.createdAt;
+
+      allow delete: if isStaff();
+    }
+
+    match /showAllocations/{showAllocationId} {
+      allow read: if isStaff()
+        || (isCustomer() && customerOwnsPrintRequestById(resource.data.printRequestId));
+
+      allow create: if isStaff()
+        && showAllocationRequiredFieldsValid(request.resource.data)
+        && request.resource.data.addedBy == request.auth.uid
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      allow update: if (
+          isStaff()
+          && showAllocationRequiredFieldsValid(request.resource.data)
+          && request.resource.data.upcomingShowId == resource.data.upcomingShowId
+          && request.resource.data.printRequestId == resource.data.printRequestId
+          && request.resource.data.printRequestItemId == resource.data.printRequestItemId
+          && showAllocationSourceIdentityUnchanged()
+          && request.resource.data.addedBy == resource.data.addedBy
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.updatedBy == request.auth.uid
+          // Timer-start transitions must use the narrow compatibility branch below so both current
+          // and legacy allocation shapes preserve every field except the three timer-owned fields.
+          && !(
+            resource.data.status in ["pending", "queued"]
+            && request.resource.data.status == "in_progress"
+          )
+          && !(
+            resource.data.status in ["pending", "queued", "in_progress"]
+            && request.resource.data.status == "done"
+          )
+        )
+        || staffCanStartLegacyShowAllocation()
+        || staffCanFinishLegacyShowAllocation();
+
+      allow delete: if isStaff();
+    }
+
+    // Server-authored Print Request lifecycle evidence. Clients may read this evidence only
+    // through the existing staff User Info permission boundary; Admin SDK trigger writers bypass
+    // Rules, and direct client writes are intentionally denied by omission.
+    match /printRequestLifecycleEvents/{eventId} {
+      allow read: if isStaff();
+    }
+
+    function isValidWhatnotAssistedImportStatus(value) {
+      return value == "succeeded" || value == "failed";
+    }
+
+    function isOptionalWhatnotAssistedImportStatus(data, field) {
+      return !(field in data) || isValidWhatnotAssistedImportStatus(data[field]);
+    }
+
+    function showQueueSettingsFieldsValid(data) {
+      return data.keys().hasOnly([
+          "defaultMaxTotalQuantity",
+          "whatnotShowBaseUrl",
+          "portalQueueCutoffHoursBeforeStart",
+          "lastWhatnotAssistedImportAt",
+          "lastWhatnotAssistedImportStatus",
+          "lastWhatnotAssistedImportSummary",
+          "lastWhatnotAssistedImportError",
+          "gangSheetWidthInches",
+          "gangSheetSideMarginInches",
+          "gangSheetTopBottomMarginInches",
+          "gangSheetGutterInches",
+          "gangSheetMaxLengthInches",
+          "gangSheetLabelFontSizePx",
+          "gangSheetPocketPriceUsd",
+          "gangSheetPocketWeightOz",
+          "gangSheetStandardFullSizePriceUsd",
+          "gangSheetStandardFullSizeWeightOz",
+          "gangSheetStandardOversizedPriceUsd",
+          "gangSheetStandardOversizedWeightOz",
+          "gangSheetExtraOversizedPriceUsd",
+          "gangSheetExtraOversizedWeightOz",
+          "gangSheetSectionPriceCutoffInches",
+          "gangSheetSmallTierPriceUsd",
+          "gangSheetSmallTierWeightOz",
+          "gangSheetLargeTierPriceUsd",
+          "gangSheetLargeTierWeightOz",
+          "updatedBy",
+          "updatedAt"
+        ])
+        && isOptionalNumber(data, "defaultMaxTotalQuantity")
+        && isOptionalString(data, "whatnotShowBaseUrl")
+        && isOptionalNumber(data, "portalQueueCutoffHoursBeforeStart")
+        && isOptionalTimestamp(data, "lastWhatnotAssistedImportAt")
+        && isOptionalWhatnotAssistedImportStatus(data, "lastWhatnotAssistedImportStatus")
+        && isOptionalMap(data, "lastWhatnotAssistedImportSummary")
+        && isOptionalString(data, "lastWhatnotAssistedImportError")
+        && isOptionalNumber(data, "gangSheetWidthInches")
+        && isOptionalNumber(data, "gangSheetSideMarginInches")
+        && isOptionalNumber(data, "gangSheetTopBottomMarginInches")
+        && isOptionalNumber(data, "gangSheetGutterInches")
+        && isOptionalNumber(data, "gangSheetMaxLengthInches")
+        && isOptionalNumber(data, "gangSheetLabelFontSizePx")
+        && isOptionalNumber(data, "gangSheetPocketPriceUsd")
+        && isOptionalNumber(data, "gangSheetPocketWeightOz")
+        && isOptionalNumber(data, "gangSheetStandardFullSizePriceUsd")
+        && isOptionalNumber(data, "gangSheetStandardFullSizeWeightOz")
+        && isOptionalNumber(data, "gangSheetStandardOversizedPriceUsd")
+        && isOptionalNumber(data, "gangSheetStandardOversizedWeightOz")
+        && isOptionalNumber(data, "gangSheetExtraOversizedPriceUsd")
+        && isOptionalNumber(data, "gangSheetExtraOversizedWeightOz")
+        && isOptionalNumber(data, "gangSheetSectionPriceCutoffInches")
+        && isOptionalNumber(data, "gangSheetSmallTierPriceUsd")
+        && isOptionalNumber(data, "gangSheetSmallTierWeightOz")
+        && isOptionalNumber(data, "gangSheetLargeTierPriceUsd")
+        && isOptionalNumber(data, "gangSheetLargeTierWeightOz")
+        && isOptionalString(data, "updatedBy")
+        && data.updatedAt is timestamp;
+    }
+
+    function internalGangSheetSettingsFieldsValid(data) {
+      return data.keys().hasOnly([
+          "gangSheetWidthInches",
+          "gangSheetSideMarginInches",
+          "gangSheetTopBottomMarginInches",
+          "gangSheetGutterInches",
+          "gangSheetMaxLengthInches",
+          "gangSheetLabelFontSizePx",
+          "gangSheetSectionPriceCutoffInches",
+          "gangSheetSmallTierPriceUsd",
+          "gangSheetSmallTierWeightOz",
+          "gangSheetLargeTierPriceUsd",
+          "gangSheetLargeTierWeightOz",
+          "updatedBy",
+          "updatedAt"
+        ])
+        && isOptionalNumber(data, "gangSheetWidthInches")
+        && isOptionalNumber(data, "gangSheetSideMarginInches")
+        && isOptionalNumber(data, "gangSheetTopBottomMarginInches")
+        && isOptionalNumber(data, "gangSheetGutterInches")
+        && isOptionalNumber(data, "gangSheetMaxLengthInches")
+        && isOptionalNumber(data, "gangSheetLabelFontSizePx")
+        && isOptionalNumber(data, "gangSheetSectionPriceCutoffInches")
+        && isOptionalNumber(data, "gangSheetSmallTierPriceUsd")
+        && isOptionalNumber(data, "gangSheetSmallTierWeightOz")
+        && isOptionalNumber(data, "gangSheetLargeTierPriceUsd")
+        && isOptionalNumber(data, "gangSheetLargeTierWeightOz")
+        && isOptionalString(data, "updatedBy")
+        && data.updatedAt is timestamp;
+    }
+
+    match /settings/showQueue {
+      allow read: if isStaff();
+
+      allow create, update: if isOwnerOrAdmin()
+        && showQueueSettingsFieldsValid(request.resource.data)
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      allow delete: if false;
+    }
+
+    match /settings/internalGangSheet {
+      allow read: if isStaff();
+
+      allow create, update: if isOwnerOrAdmin()
+        && internalGangSheetSettingsFieldsValid(request.resource.data)
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      allow delete: if false;
+    }
+
+    match /settings/emailProviders {
+      allow read: if isOwner();
+      allow write: if false;
+    }
+
+    match /settings/customerUploadQuotas {
+      allow read: if isOwner();
+      allow write: if false;
+    }
+
+    // Sole limit L is non-sensitive policy; Portal customers need it for Current Request gates.
+    // Writes remain Admin callable only (updatePrintRequestLimitSettings).
+    match /settings/printRequestLimits {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    match /settings/standardPrintSizes {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // Portal Open Graph title/description (owner-editable). Writes via Admin callable only.
+    match /settings/portalSocialMeta {
+      allow read: if isOwner();
+      allow write: if false;
+    }
+
+    // Public brand logo download URLs (Studio + Portal). Writes via finalizeBrandLogoSlot only.
+    match /settings/brandLogos {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Public Portal FAQ and How To copy (non-sensitive). Writes via updatePortalHelpSettings only.
+    match /settings/portalHelp {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Private runtime Portal maintenance state. All writes go through the owner/admin callable;
+    // customer clients never receive this document directly.
+    match /settings/portalMaintenance {
+      allow read: if isOwnerOrAdmin();
+      allow write: if false;
+    }
+
+    match /settings/{settingId} {
+      allow read: if isStaff() && (settingId == "aiEnrichment" || settingId == "catalogAutomationHealth");
+      allow write: if false;
+    }
+
+    match /aiEnrichmentTraces/{traceId} {
+      allow read: if isOwner() || isAdmin();
+      allow write: if false;
+    }
+    match /aiEnrichmentTraceFull/{traceId} {
+      allow read: if isOwner();
+      allow write: if false;
+    }
+
+    // Catalog Reprocessing durable jobs (Slice 4+). Writes Admin/callable only; owner read for progress UI.
+    match /catalogReprocessJobs/{jobId} {
+      allow read: if isOwner();
+      allow write: if false;
+
+      match /outcomes/{designId} {
+        allow read: if isOwner();
+        allow write: if false;
+      }
+    }
+
+    function isValidStaffInboxAckKind(kind) {
+      return kind in ["portal_queued", "show_queue_full"];
+    }
+
+    function isOptionalPrintRequestListTab(data, field) {
+      return !(field in data)
+        || data[field] in ["working", "editing", "queued", "printing", "printed"];
+    }
+
+    function staffInboxAckFieldsValid(data) {
+      return data.keys().hasOnly([
+          "itemId",
+          "kind",
+          "title",
+          "subtitle",
+          "printRequestId",
+          "upcomingShowId",
+          "printRequestTab",
+          "occurredAtMillis",
+          "acknowledgedByUserId",
+          "acknowledgedByDisplayName",
+          "acknowledgedAt",
+          "createdAt",
+          "updatedAt",
+          "userId"
+        ])
+        && data.itemId is string
+        && data.itemId.size() > 0
+        && isValidStaffInboxAckKind(data.kind)
+        && data.title is string
+        && data.title.size() > 0
+        && data.subtitle is string
+        && data.subtitle.size() > 0
+        && isOptionalString(data, "printRequestId")
+        && isOptionalString(data, "upcomingShowId")
+        && isOptionalPrintRequestListTab(data, "printRequestTab")
+        && data.occurredAtMillis is number
+        && data.occurredAtMillis >= 0
+        && data.acknowledgedByUserId is string
+        && data.acknowledgedByUserId.size() > 0
+        && (
+          !("acknowledgedByDisplayName" in data)
+          || (
+            data.acknowledgedByDisplayName is string
+            && data.acknowledgedByDisplayName.size() > 0
+            && data.acknowledgedByDisplayName.size() <= 120
+          )
+        )
+        && (
+          !("userId" in data)
+          || (
+            data.userId is string
+            && data.userId.size() > 0
+          )
+        )
+        && data.acknowledgedAt is timestamp
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function staffInboxAlertDeliveryFieldsValid(data) {
+      return data.keys().hasOnly([
+          "itemId",
+          "kind",
+          "occurredAtMillis",
+          "soundPlayedAt",
+          "createdAt",
+          "updatedAt",
+          "deliveredByUserId",
+          "userId"
+        ])
+        && data.itemId is string
+        && data.itemId.size() > 0
+        && isValidStaffInboxAckKind(data.kind)
+        && data.occurredAtMillis is number
+        && data.occurredAtMillis >= 0
+        && (
+          !("deliveredByUserId" in data)
+          || (
+            data.deliveredByUserId is string
+            && data.deliveredByUserId.size() > 0
+          )
+        )
+        && (
+          !("userId" in data)
+          || (
+            data.userId is string
+            && data.userId.size() > 0
+          )
+        )
+        && data.soundPlayedAt is timestamp
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function staffInboxSuppressionFieldsValid(data) {
+      return data.keys().hasOnly([
+          "itemId",
+          "deletedByUserId",
+          "deletedByDisplayName",
+          "deletedAt",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.itemId is string
+        && data.itemId.size() > 0
+        && data.deletedByUserId is string
+        && data.deletedByUserId.size() > 0
+        && (
+          !("deletedByDisplayName" in data)
+          || (
+            data.deletedByDisplayName is string
+            && data.deletedByDisplayName.size() > 0
+            && data.deletedByDisplayName.size() <= 120
+          )
+        )
+        && data.deletedAt is timestamp
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    match /staffInboxAcks/{ackId} {
+      allow read: if isStaff();
+
+      allow create: if isStaff()
+        && request.resource.data.acknowledgedByUserId == request.auth.uid
+        && staffInboxAckFieldsValid(request.resource.data);
+
+      allow update: if false;
+
+      allow delete: if isStaff();
+    }
+
+    function assistedCreationUpdateAckFieldsValid(data) {
+      return data.keys().hasOnly([
+          "userId",
+          "requestId",
+          "readThroughAt",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.userId is string
+        && data.userId.size() > 0
+        && data.requestId is string
+        && data.requestId.size() > 0
+        && data.readThroughAt is timestamp
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    match /assistedCreationUpdateAcks/{ackId} {
+      // Doc ids are `{userId}__{requestId}`. Allow get of missing docs on the
+      // caller's own id prefix (resource is null when the ack does not exist yet).
+      allow get: if isStaff()
+        && (
+          ackId.matches('^' + request.auth.uid + '__.*')
+          || (resource != null && resource.data.userId == request.auth.uid)
+        );
+
+      allow list: if isStaff()
+        && resource.data.userId == request.auth.uid;
+
+      allow create: if isStaff()
+        && request.resource.data.userId == request.auth.uid
+        && ackId == request.resource.data.userId + '__' + request.resource.data.requestId
+        && assistedCreationUpdateAckFieldsValid(request.resource.data);
+
+      allow update: if isStaff()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.requestId == resource.data.requestId
+        && request.resource.data.createdAt == resource.data.createdAt
+        && ackId == resource.data.userId + '__' + resource.data.requestId
+        && assistedCreationUpdateAckFieldsValid(request.resource.data);
+
+      allow delete: if isStaff()
+        && resource.data.userId == request.auth.uid
+        && ackId == resource.data.userId + '__' + resource.data.requestId;
+    }
+
+    match /customerNotifications/{notificationId} {
+      allow read: if isCustomer()
+        && resource.data.customerUid == request.auth.uid;
+
+      allow create, delete: if false;
+
+      allow update: if isCustomer()
+        && portalMaintenanceAllowsCustomerMutation()
+        && resource.data.customerUid == request.auth.uid
+        && request.resource.data.customerUid == resource.data.customerUid
+        && request.resource.data.customerId == resource.data.customerId
+        && request.resource.data.kind == resource.data.kind
+        && request.resource.data.title == resource.data.title
+        && request.resource.data.body == resource.data.body
+        && request.resource.data.href == resource.data.href
+        && request.resource.data.requestId == resource.data.requestId
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(["readAt", "updatedAt"])
+        && request.resource.data.readAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    match /staffInboxAlertDeliveries/{deliveryId} {
+      allow read: if isStaff();
+
+      allow create: if isStaff()
+        && staffInboxAlertDeliveryFieldsValid(request.resource.data)
+        && (
+          !("deliveredByUserId" in request.resource.data)
+          || request.resource.data.deliveredByUserId == request.auth.uid
+        );
+
+      allow update: if isStaff()
+        && staffInboxAlertDeliveryFieldsValid(request.resource.data)
+        && request.resource.data.itemId == resource.data.itemId
+        && request.resource.data.kind == resource.data.kind;
+
+      allow delete: if isStaff();
+    }
+
+    match /staffInboxSuppressions/{suppressionId} {
+      allow read: if isStaff();
+
+      allow create: if isOwner()
+        && request.resource.data.deletedByUserId == request.auth.uid
+        && staffInboxSuppressionFieldsValid(request.resource.data);
+
+      allow update: if false;
+
+      allow delete: if isOwner();
+    }
+
+    // Customer uploads (ADR-FP-073) — Admin SDK / callables own all writes.
+    match /customerUploads/{uploadId} {
+      allow read: if isStaff()
+        || (isCustomer() && resource.data.customerUid == request.auth.uid)
+        || isOwnGuestUpload();
+      allow create, update, delete: if false;
+    }
+
+    // Staff Artwork is a private Studio library. Clients never write; only staff may read it.
+    // Portal customers receive neutral request-item projections and never access this collection.
+    match /staffArtworks/{staffArtworkId} {
+      allow get: if isStaff();
+      allow list: if isStaff();
+      allow create, update, delete: if false;
+    }
+
+    match /customerUploadBatches/{batchId} {
+      allow read: if isStaff()
+        || (isCustomer() && resource.data.customerUid == request.auth.uid)
+        || isOwnGuestUpload();
+      allow create, update, delete: if false;
+    }
+
+    match /customerUploadRateLimits/{docId} {
+      allow read, write: if false;
+    }
+
+    match /customerUploadFinalizeLeases/{leaseId} {
+      allow read, write: if false;
+    }
+
+    match /customerUploadIdempotency/{docId} {
+      allow read, write: if false;
+    }
+
+    match /etsyRecommendationRequests/{requestId} {
+      allow read: if isStaff()
+        || (isCustomer() && resource.data.customerUid == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+
+    match /etsyRecommendationRateLimits/{docId} {
+      allow read, write: if false;
+    }
+
+    match /etsyRecommendationConfig/{docId} {
+      allow read, write: if false;
+    }
+
+    // Admin-added Subject / Tone overlays for Portal Etsy wizard autocomplete.
+    // Writes only via Admin SDK callables (owner/admin).
+    match /etsyRecommendationSuggestions/{suggestionId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if false;
+    }
+
+    // Customer suggestion requests awaiting Studio review (Customer Requests).
+    // Writes only via Admin SDK callables.
+    match /etsySuggestionRequests/{requestId} {
+      allow read: if isStaff();
+      allow create, update, delete: if false;
+    }
+
+    match /etsyWebsiteSearchCache/{docId} {
+      allow read, write: if false;
+    }
+
+    // Assisted Creation requests (Phase 9C). Writes only via Admin SDK callables.
+    match /assistedCreationRequests/{requestId} {
+      allow read: if isStaff()
+        || (isCustomer() && resource.data.customerUid == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+
+    match /emailDeliveryJobs/{jobId} {
+      allow read, write: if false;
+    }
+
+    // Portal account deletion requests (customer request-only). Writes via Admin SDK.
+    match /accountDeletionRequests/{userId} {
+      allow read: if isStaff() || (isCustomer() && request.auth.uid == userId);
+      allow create, update, delete: if false;
+    }
+
+    // Customer-authored reports are created and resolved only by trusted callables.
+    match /designIssueReports/{reportId} {
+      allow read: if isStaff();
+      allow create, update, delete: if false;
+    }
+
+    // Immutable customer identity audit evidence (Admin SDK writes only).
+    match /customerActivityEvents/{eventId} {
+      allow read: if isStaff();
+      allow create, update, delete: if false;
+    }
+
+    // Short-lived identity operation previews (hard delete Apply validation).
+    match /customerIdentityOperationPreviews/{previewId} {
+      allow read, write: if false;
+    }
+
+    // Resumable customer account merge jobs (Admin SDK / Functions only).
+    match /customerMergeJobs/{jobId} {
+      allow read, write: if false;
+    }
+    match /designIssueReportIntents/{docId} { allow read, write: if false; }
+    match /designIssueReportOpenGuards/{docId} { allow read, write: if false; }
+    match /designIssueReportDailyQuotas/{docId} { allow read, write: if false; }
+
+    // Stage 5 / taxonomy spike elimination: derived compact taxonomy (approved tags +
+    // active categories). Staff read only; client writes denied — Admin/Functions write.
+    // Do not revive generated/portal-catalog or generated/catalog-reference.
+    match /taxonomyMaterialization/{docId} {
+      allow read: if isStaff();
+      allow create, update, delete: if false;
+    }
+
+    // Stage 5 (2026-08-07): snapshotPublicationState match removed after publisher
+    // retirement (Stage 4). Orphan docs cleaned via ops script; access falls through
+    // to default-deny below. Do not re-add without a new managed Stage.
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

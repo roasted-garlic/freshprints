@@ -14,7 +14,7 @@ export type PrintRequestClosureKind = "converted_to_internal";
  * Provenance of a print request line item.
  * Missing `sourceType` on legacy docs means `catalog_design`.
  */
-export type PrintRequestItemSourceType = "catalog_design" | "customer_upload";
+export type PrintRequestItemSourceType = "catalog_design" | "customer_upload" | "staff_artwork";
 
 export interface PrintRequest {
   id: string;
@@ -91,15 +91,29 @@ export interface PrintRequestItem {
   /**
    * Catalog design id.
    * Required when `sourceType` is absent or `catalog_design`.
-   * Must be **omitted** when `sourceType` is `customer_upload` (never empty string).
+   * Must be **omitted** when `sourceType` is `customer_upload` or `staff_artwork` (never empty string).
    */
   designId?: string;
   /** Defaults to `catalog_design` when absent (legacy documents). */
   sourceType?: PrintRequestItemSourceType;
   /** Required when `sourceType` is `customer_upload`. */
   customerUploadId?: string;
-  /** Display fallback for upload-backed items. */
+  /** Required when `sourceType` is `staff_artwork`. */
+  staffArtworkId?: string;
+  /** Customer-safe neutral label for Staff Artwork projection rows. */
+  sourceLabel?: "Staff-added";
+  /** Display title (Staff Artwork artwork title or upload/catalog snapshot). */
   titleSnapshot?: string;
+  /** Staff Artwork customer-safe preview path projected for Portal. */
+  previewStoragePath?: string;
+  /** Staff Artwork customer-safe thumbnail path projected for Portal. */
+  thumbnailStoragePath?: string;
+  /** Baseline pixel width projected for Staff Artwork DPI assessment. */
+  widthPx?: number;
+  /** Baseline pixel height projected for Staff Artwork DPI assessment. */
+  heightPx?: number;
+  /** Optional Staff Artwork mat background projected for Portal. */
+  artworkBackgroundHex?: string;
   quantity: number;
   printWidthInches?: number;
   printHeightInches?: number;

@@ -2,6 +2,20 @@
 
 > Full doc: `docs/standards/SECURITY.md`
 
+## Coordinated projection cutover (closed 2026-09-12)
+
+- `portalPrintRequestItems` is the least-privilege customer projection; writes are Admin-only and
+  Portal never reads `staffArtworks` directly.
+- The transition Rules artifact retains the customer-owned canonical item read while projection rows
+  converge. The authoritative final Rules state permits projection reads and denies that canonical
+  customer read after the rollout gates pass.
+- Authenticated customers may access only Staff Artwork preview/thumbnail derivatives by known ID;
+  the owner accepted this residual risk for this release. Originals, interactive assets, private
+  metadata, and Staff Artwork Firestore documents remain denied. `SECURITY.md`, `FIREBASE.md`, and
+  `RISK_REGISTER.md` carry the synchronized record.
+- The production runner is hard-pinned and APPLY is separately owner-gated; no production access or
+  mutation occurred during this closed repository-readiness child.
+
 ## Core principles
 
 1. Never trust client input — validate in rules and/or Cloud Functions  

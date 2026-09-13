@@ -23,6 +23,7 @@ export interface SetPrintRequestItemArtworkEnhanceModeResponse {
   sourceType: PrintRequestItemSourceType;
   designId?: string;
   customerUploadId?: string;
+  staffArtworkId?: string;
   artworkEnhanceMode: ArtworkEnhanceMode;
   widthPx: number;
   heightPx: number;

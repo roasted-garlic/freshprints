@@ -1,5 +1,141 @@
 # Coordinated Production Function Closure Manifest
 
+## Final parent M0 linkage — 2026-09-12
+
+This production-relative closure manifest is the Function evidence consumed by the final parent M0
+reconciliation. It remains read-only at `development` `a76d8be218571e1260bdb983f86ee5cf86563e1b`:
+186 current exports versus 120 production exports, 530 unique local closure paths, and action
+counts ADD 54 / UPDATE 110 / RETAIN LIVE VERSION 3 / EXCLUDE 10 / NO ACTION 9. The projection
+synchronizer/refresh Functions are included; hard-delete and DEV/test-only exports remain excluded.
+No Function deployment or production runner invocation occurred. Immutable commit-byte manifests
+remain deferred until the separately authorized clean candidate commit.
+
+## Authoritative full production-relative M0 rerun — 2026-09-12
+
+This section supersedes the older dirty-overlay snapshots below. The reproducible audit script now
+derives the complete `origin/production` → current-worktree Function/shared source delta, adds
+untracked current source, excludes tests/specs and deleted paths, and computes each current export's
+transitive local closure. No deployment allowlist was executed.
+
+| Measure | Current result |
+|---|---:|
+| Current exported names | **186** |
+| Production-source exported names | **120** |
+| Added / removed names | **67 / 1** |
+| Unique local transitive closure paths | **530** |
+| Sorted closure-path SHA-256 | `22e56a4810c0714999f6793a350bb67c22215b0ec556179524948552812f9fbc` |
+
+| Action | Count |
+|---|---:|
+| `ADD` | 54 |
+| `UPDATE` | 110 |
+| `RETAIN LIVE VERSION` | 3 |
+| `EXCLUDE` | 10 |
+| `NO ACTION` | 9 |
+
+The earlier dirty-overlay-only method materially undercounted `UPDATE` actions. The only unchanged
+retained exports are `getPortalOgShareImage`, `onCustomerFavoriteCreated`, and
+`onCustomerFavoriteDeleted`. The 54 ADD names are the current-only names not separately classified
+as EXCLUDE/NO ACTION. The removed source name is `testAiEnrichmentTagRerank`; it is not live and no
+production deletion is authorized.
+
+The explicit EXCLUDE set remains: `upsertDevFixtureShow`, `inventoryCatalogImageStorage`,
+`testAiEnrichmentPlayground`, `testAiEnrichmentSemanticReviewPlayground`,
+`wipeOperationalTestData`, `ownerDeleteUser`, `previewHardDeleteCustomerAccount`,
+`hardDeleteCustomerAccount`, `rebuildTaxonomyMaterialization`, and
+`backfillPrintRequestQueueTab`. The nine NO ACTION names remain the semantic-playground setting,
+scheduled Smart Profile vocabulary refresh, six catalog-reprocess exports, and
+`resetDesignSmartProfileDimension`.
+
+New reviewed candidate entries since the prior packet include
+`updatePortalStaffArtworkPrintRequestItemSize`, `onPrintRequestItemPortalProjectionWritten`, and
+`onStaffArtworkPortalProjectionRefreshWritten`; assisted-creation proof/final-source and email
+exports are production-existing `UPDATE` actions. There are now 32 guard-bearing customer mutation
+callable modules plus `functions/src/lib/portalMaintenance.ts`.
+
+Status: read-only evidence only. Regenerate at a clean committed SHA after the parent amendment and
+owner candidate-assembly checkpoint; do not use this dirty-snapshot result as a deploy command.
+
+## Authoritative post-Staff-Artwork M0 rerun — 2026-09-12
+
+The earlier snapshot below is retained as history. The current read-only result is authoritative
+for the next owner checkpoint: `development` is dirty at `a76d8be218571e1260bdb983f86ee5cf86563e1b`,
+`origin/development` is the same SHA, and `origin/production` is
+`36165096f09bef6817adb5b11d496dbb1502b34b`. No Functions deployment, staging, commit, push, freeze,
+or production action occurred.
+
+The reproducible audit script in this directory now uses the current 31 changed runtime source
+paths, including the Staff Artwork source, shared types/utilities, queue/allocation/export branches,
+and the current source registry. Four changed tests are validation-only and are not closure inputs.
+
+| Measure | Current result |
+|---|---:|
+| Current exported names | **183** |
+| Production-source exported names | **120** |
+| Unique local transitive closure paths | **523** |
+| Sorted closure-path SHA-256 (newline-terminated) | `a5feabf0e4e02e954e520758706f3ff833b32cf1cee6a0f4303b77540f4be715` |
+| Changed runtime source paths | **31** |
+
+| Action | Count |
+|---|---:|
+| `ADD` | 51 |
+| `UPDATE` | 30 |
+| `RETAIN LIVE VERSION` | 83 |
+| `EXCLUDE` | 10 |
+| `NO ACTION` | 9 |
+
+### Complete action disposition
+
+- **ADD (51):** `attachExistingCustomerUploadsToPrintRequest`, `createStaffArtworkUpload`,
+  `finalizeStaffArtwork`, `updateStaffArtwork`, `setStaffArtworkArchiveState`,
+  `deleteEligibleStaffArtwork`, `promoteStaffArtworkToAiReview`,
+  `recordCustomerUploadArtworkBackgroundStaffDecision`, `requestCustomerUploadCatalogPermissionFollowUp`,
+  `getCustomerUploadCatalogPermissionFollowUp`, `respondToCustomerUploadCatalogPermissionFollowUp`,
+  `clearCustomerNotificationHistory`, `allocateStudioPrintRequestToShow`,
+  `unqueuePortalPrintRequestFromShow`, `unqueueStudioCustomerPrintRequestFromShow`,
+  `copyStudioPrintRequest`, `updatePortalCustomerProfile`, `reprocessReadyDesignWithAi`,
+  `getAiEnrichmentTrace`, `listAiEnrichmentTraces`, `clearAiEnrichmentTraces`,
+  `refreshSmartProfileVocabSnapshotCallable`, `updateCatalogWorkflowMode`,
+  `updateDesignSmartProfileDimensions`, `updateCustomerPrintRequestQuotaOverride`,
+  `updateStandardPrintSizesSettings`, `enhancePrintRequestArtwork`,
+  `setPrintRequestItemArtworkEnhanceMode`, `updatePortalMaintenanceState`, `getPortalMaintenanceState`,
+  `listPortalMaintenanceTestCustomers`, `getPortalAdminDailyShowQueue`,
+  `getPortalAdminUpcomingShowQueueDashboard`, `getPortalAdminShowQueueRequestDesigns`,
+  `disableCustomerAccount`, `restoreCustomerAccount`, `previewDuplicateAccountResolution`,
+  `transferCustomerUsername`, `previewCustomerAccountMerge`, `applyCustomerAccountMerge`,
+  `getCustomerAccountMergeStatus`, `previewShowProductionRecovery`, `applyShowProductionRecovery`,
+  `previewShowQueueMove`, `applyShowQueueMove`, `purgeExpiredCustomerUploadCatalogRetention`,
+  `purgeExpiredCustomerUploadCatalogRetentionScheduled`, `onPrintRequestEditingExitRestoreParked`,
+  `onPrintRequestStatusQueueTabInputWritten`, `onPrintRequestLifecycleRequestWritten`,
+  `onPrintRequestLifecycleAllocationWritten`.
+- **UPDATE (30):** `addPortalCatalogDesignToPrintRequest`, `clearPortalWorkingPrintRequest`,
+  `confirmCustomerUploadsAndAttachToRequest`, `createPortalPrintRequest`,
+  `duplicatePortalPrintRequestItem`, `finalizeCustomerUpload`, `finalizeCustomerUploadZip`,
+  `retryCustomerUploadProcessing`, `queuePortalPrintRequestToShow`,
+  `completeStaffGangSheetAndOpenNext`, `convertCustomerPrintRequestToInternal`,
+  `createInitialStaffGangSheet`, `removePortalPrintRequestItem`, `updatePortalPrintRequestItemQuantity`,
+  `submitAssistedCreationRequest`, `cancelAssistedCreationRequest`,
+  `customerUpdateAssistedCreationRequest`, `customerSendAssistedCreationMessage`,
+  `customerRespondToAssistedCreationProof`, `staffSendAssistedCreationMessage`,
+  `staffUpdateAssistedCreationStatus`, `staffAddAssistedCreationProof`,
+  `staffAddAssistedCreationFinalSource`, `staffSuggestAssistedCreationCatalogDesign`,
+  `customerAddAssistedApprovedProofToPrintRequest`, `previewPrintRequestDeletion`,
+  `deleteEligiblePrintRequest`, `archivePrintRequest`, `onPrintRequestItemCreated`, `onShowAllocationCreated`.
+- **EXCLUDE (10):** `upsertDevFixtureShow`, `inventoryCatalogImageStorage`,
+  `testAiEnrichmentPlayground`, `testAiEnrichmentSemanticReviewPlayground`,
+  `wipeOperationalTestData`, `ownerDeleteUser`, `previewHardDeleteCustomerAccount`,
+  `hardDeleteCustomerAccount`, `rebuildTaxonomyMaterialization`, `backfillPrintRequestQueueTab`.
+- **NO ACTION (9):** `updateSemanticReviewPlaygroundSetting`, `refreshSmartProfileVocabSnapshotScheduled`,
+  `previewCatalogReprocessJob`, `startCatalogReprocessJob`, `pauseCatalogReprocessJob`,
+  `resumeCatalogReprocessJob`, `retryCatalogReprocessJobFailures`, `onCatalogReprocessJobWritten`,
+  `resetDesignSmartProfileDimension`.
+
+The six Staff Artwork callables are `ADD`. Their closure includes the Staff Artwork callable module,
+`functions/src/lib/customerUploadProcessing.ts`,
+`packages/shared/src/utils/staffArtworkDeletionEligibility.ts`, and
+`packages/shared/src/constants/staffArtwork/staffArtworkStoragePaths.ts`. The two destructive
+hard-delete exports remain explicit `EXCLUDE`; no production allowlist is implied.
+
 Status: read-only M0 reconciliation artifact; no Functions deployment was executed and no production allowlist is authorized by this document.
 
 Snapshot: current `development` working tree at `04b9637470a16b0f4d4a1ba9f822fe9df7acca2d` (dirty; `origin/development` same); production baseline `origin/production` at `36165096f09bef6817adb5b11d496dbb1502b34b`. This is a read-only rerun after the signed-off `customer-upload-follow-up-catalog-permission` child; the dirty snapshot is not a candidate SHA.

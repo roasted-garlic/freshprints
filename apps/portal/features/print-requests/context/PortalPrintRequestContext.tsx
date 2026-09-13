@@ -363,17 +363,23 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
 
       setIsClearingWorkingRequest(true);
       try {
+        // Mark every current row pending-removed before the callable returns. Live projection
+        // deletes arrive one-by-one; without this, subscribe merge rehydrates leftovers and the
+        // drawer/detail can close with 1–2 designs still highlighted until a hard refresh.
+        if (workingRequest?.id === clearedRequestId && workingItems.length > 0) {
+          beginPendingItemRemovals(workingItems.map((item) => item.id));
+          discardPendingWorkingItemLoads();
+          patchWorkingItems([]);
+        }
+
         const result = await portalPrintRequestService.clearWorkingPrintRequest(clearedRequestId);
         // Keep ensure cache + pending id so next Add reuses this request during list lag.
         // Do not call resetWorkingCart() — that clears the id (queue-to-show only).
         ensuredWorkingRequestIdRef.current = clearedRequestId;
         setPendingWorkingRequestId(clearedRequestId);
         if (workingRequest?.id === clearedRequestId) {
-          // Post-clear state is fully known from the callable: reconcile locally with zero refetch
-          // reads, and invalidate any pre-clear in-flight item load so a late resolve cannot
-          // resurrect the cleared rows (owner live-test evidence: cart/detail stayed full until a
-          // browser refresh — the 30s read cache had been serving the pre-clear items back to the
-          // silent reloads this block previously awaited).
+          // Post-clear state is fully known from the callable: keep local empty and invalidate
+          // any pre-clear in-flight item load so a late resolve cannot resurrect cleared rows.
           discardPendingWorkingItemLoads();
           patchWorkingItems([]);
         }
@@ -383,10 +389,12 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
       }
     },
     [
+      beginPendingItemRemovals,
       discardPendingWorkingItemLoads,
       isClearingWorkingRequest,
       patchWorkingItems,
       reconcileClearedRequest,
+      workingItems,
       workingRequest?.id,
     ],
   );

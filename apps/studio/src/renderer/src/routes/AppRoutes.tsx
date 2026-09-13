@@ -12,6 +12,7 @@ import { DonatedDesignsPage } from "../features/customer-uploads/pages/DonatedDe
 import { ImportsPage } from "../features/imports/pages/ImportsPage";
 import { PrintRequestsPage } from "../features/print-requests/pages/PrintRequestsPage";
 import { StaffInboxPage } from "../features/staff-inbox/pages/StaffInboxPage";
+import { StaffArtworkPage } from "../features/staff-artwork/pages/StaffArtworkPage";
 import { SettingsPage } from "../features/settings/pages/SettingsPage";
 import { TestDataResetPage } from "../features/test-data-reset/pages/TestDataResetPage";
 import { UpcomingShowsPage } from "../features/upcoming-shows/pages/UpcomingShowsPage";
@@ -31,6 +32,14 @@ export function AppRoutes() {
             element={
               <ProtectedRoute permission="viewDesigns">
                 <DesignLibraryPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/staff-artwork"
+            element={
+              <ProtectedRoute permission="viewStaffArtwork">
+                <StaffArtworkPage />
               </ProtectedRoute>
             }
           />

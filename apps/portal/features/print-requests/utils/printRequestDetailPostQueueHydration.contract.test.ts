@@ -4,18 +4,21 @@ import { resolve } from 'node:path';
 import { describe, it } from 'node:test';
 
 describe('print request detail post-queue hydration contract', () => {
-  it('hydrates schedules and allocations before the queue-success handler settles', () => {
+  it('silent-reloads items after queue and hydrates schedules/allocations before settle', () => {
     const source = readFileSync(
       resolve(import.meta.dirname, '../../../app/(app)/requests/[id]/PrintRequestDetailView.tsx'),
       'utf8',
     );
 
     assert.match(source, /clearPortalPrintRequestReadCache\(\)/);
-    assert.match(source, /buildRequestDetailHref\([^,]+,\s*\{\s*from:\s*'editing'\s*\}\)/);
-    assert.match(source, /setSelectedWorkingRequestId\(result\.printRequestId\)/);
+    assert.match(source, /buildRequestDetailHref\([^,]+,\s*\{\s*from:\s*'working'\s*\}\)/);
     assert.match(
       source,
-      /await Promise\.all\(\[\s*reload\(\),\s*reloadRequestSchedules\(\),\s*refreshRequests/,
+      /await Promise\.all\(\[\s*reload\(\{\s*silent:\s*true\s*\}\),\s*reloadRequestSchedules\(\),\s*loadAllocationState\(\),\s*\]\)/,
+    );
+    assert.match(
+      source,
+      /Always silent-reload request \+ items after queue so customer-visible item truth/,
     );
   });
 

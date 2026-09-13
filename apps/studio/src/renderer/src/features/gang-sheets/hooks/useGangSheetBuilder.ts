@@ -13,6 +13,7 @@ import {
   resolveShowExportProductionAsset,
   toCatalogDesignAssetInput,
   toCustomerUploadAssetInput,
+  toStaffArtworkAssetInput,
   toShowExportPrintRequestItemFields,
 } from "@fresh-prints/shared/utils/resolveShowExportProductionAsset";
 
@@ -137,8 +138,9 @@ export function useGangSheetBuilder(upcomingShowId: string | null) {
         return;
       }
 
-      const isUpload = Boolean(asset.upload) || asset.allocation.sourceType === "customer_upload";
-      if (!isUpload && !asset.design) {
+      const isStaffArtwork = Boolean(asset.staffArtwork) || asset.allocation.sourceType === "staff_artwork";
+      const isUpload = !isStaffArtwork && (Boolean(asset.upload) || asset.allocation.sourceType === "customer_upload");
+      if (!isUpload && !isStaffArtwork && !asset.design) {
         return;
       }
       if (isUpload && (!asset.upload || !asset.allocation.customerUploadId)) {
@@ -146,6 +148,10 @@ export function useGangSheetBuilder(upcomingShowId: string | null) {
           ...current,
           error: "Uploaded artwork production file is missing.",
         }));
+        return;
+      }
+      if (isStaffArtwork && !asset.staffArtwork) {
+        setState((current) => ({ ...current, error: "Staff Artwork production file is missing." }));
         return;
       }
       if (!asset.printRequestItem) {
@@ -160,8 +166,20 @@ export function useGangSheetBuilder(upcomingShowId: string | null) {
       try {
         const resolved = resolveShowExportProductionAsset({
           item: toShowExportPrintRequestItemFields(asset.printRequestItem),
-          catalogDesign: !isUpload && asset.design ? toCatalogDesignAssetInput(asset.design) : null,
+          catalogDesign: !isUpload && !isStaffArtwork && asset.design ? toCatalogDesignAssetInput(asset.design) : null,
           customerUpload: isUpload && asset.upload ? toCustomerUploadAssetInput(asset.upload) : null,
+          staffArtwork: isStaffArtwork && asset.staffArtwork ? toStaffArtworkAssetInput({
+            id: asset.staffArtwork.id,
+            productionStoragePath: asset.staffArtwork.productionStoragePath,
+            interactiveEnhancedProductionStoragePath: asset.staffArtwork.interactiveEnhancedProductionStoragePath,
+            widthPx: asset.staffArtwork.processing?.widthPx,
+            heightPx: asset.staffArtwork.processing?.heightPx,
+            interactiveEnhancedWidthPx: asset.staffArtwork.interactiveEnhancedWidthPx,
+            interactiveEnhancedHeightPx: asset.staffArtwork.interactiveEnhancedHeightPx,
+            previewStoragePath: asset.staffArtwork.previewStoragePath,
+            thumbnailStoragePath: asset.staffArtwork.thumbnailStoragePath,
+            title: asset.staffArtwork.title,
+          }) : null,
         });
         productionStoragePath = resolved.productionStoragePath;
       } catch (error) {
@@ -216,7 +234,12 @@ export function useGangSheetBuilder(upcomingShowId: string | null) {
           showAllocationId: asset.allocation.id,
           printRequestId: asset.allocation.printRequestId,
           printRequestItemId: asset.allocation.printRequestItemId,
-          ...(isUpload
+          ...(isStaffArtwork
+            ? {
+                sourceType: "staff_artwork" as const,
+                staffArtworkId: asset.allocation.staffArtworkId!,
+              }
+            : isUpload
             ? {
                 sourceType: "customer_upload" as const,
                 customerUploadId: asset.allocation.customerUploadId!,
@@ -229,6 +252,7 @@ export function useGangSheetBuilder(upcomingShowId: string | null) {
           designTitleSnapshot:
             asset.design?.title ??
             asset.upload?.originalFilename ??
+            asset.staffArtwork?.title ??
             asset.allocation.designTitleSnapshot,
           requestNameSnapshot: asset.allocation.requestNameSnapshot,
           originalPathSnapshot: productionStoragePath,

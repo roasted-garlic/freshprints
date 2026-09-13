@@ -537,24 +537,30 @@ export function CurrentRequestDrawer() {
                   isCustomerUploadPrintRequestItem(item) && item.customerUploadId
                     ? uploadSummariesById.get(item.customerUploadId)
                     : null;
+                const isStaffArtwork = item.sourceType === 'staff_artwork';
                 const design =
-                  item.designId && !isCustomerUploadPrintRequestItem(item)
+                  item.designId && !isCustomerUploadPrintRequestItem(item) && !isStaffArtwork
                     ? designSummariesById.get(item.designId)
                     : null;
-                const title =
-                  design?.title ??
-                  upload?.originalFilename ??
-                  item.titleSnapshot ??
-                  'Untitled artwork';
-                const catalogPath = design?.thumbnailPath ?? design?.previewPath;
+                const title = isStaffArtwork
+                  ? item.titleSnapshot?.trim() || item.sourceLabel || 'Staff-added'
+                  : design?.title ??
+                    upload?.originalFilename ??
+                    item.titleSnapshot ??
+                    'Untitled artwork';
+                const catalogPath = isStaffArtwork
+                  ? item.thumbnailStoragePath?.trim() || item.previewStoragePath?.trim() || undefined
+                  : design?.thumbnailPath ?? design?.previewPath;
                 const uploadUrl =
-                  item.customerUploadId && uploadThumbUrls[item.customerUploadId]
+                  !isStaffArtwork && item.customerUploadId && uploadThumbUrls[item.customerUploadId]
                     ? uploadThumbUrls[item.customerUploadId]
                     : null;
 
                 const isUpload = isCustomerUploadPrintRequestItem(item);
                 const fromAssisted = Boolean(upload?.assistedCreationRequestId);
-                const sourceLabel = isUpload
+                const sourceLabel = isStaffArtwork
+                  ? 'Staff-added'
+                  : isUpload
                   ? fromAssisted
                     ? 'Custom'
                     : 'Uploaded'
@@ -568,7 +574,9 @@ export function CurrentRequestDrawer() {
                       {catalogPath ? (
                         <CatalogThumbnailPanel
                           alt=""
-                          artworkBackgroundHex={design?.artworkBackgroundHex}
+                          artworkBackgroundHex={
+                            isStaffArtwork ? item.artworkBackgroundHex : design?.artworkBackgroundHex
+                          }
                           catalogPath={catalogPath}
                           className="current-request-drawer-thumb"
                           contentVersion={design?.updatedAtMs}
@@ -578,6 +586,10 @@ export function CurrentRequestDrawer() {
                         />
                       ) : uploadUrl ? (
                         <img alt="" className="current-request-drawer-thumb-img" src={uploadUrl} />
+                      ) : isStaffArtwork ? (
+                        <div aria-label="Staff-added" className="current-request-drawer-thumb current-request-drawer-neutral-thumb">
+                          Staff-added
+                        </div>
                       ) : (
                         <div aria-hidden className="current-request-drawer-thumb" />
                       )}
@@ -601,11 +613,11 @@ export function CurrentRequestDrawer() {
                           <p className="current-request-drawer-meta-line">{sizeMeta}</p>
                           <span
                             className={`current-request-drawer-source-pill${
-                              isUpload
-                                ? fromAssisted
-                                  ? ' current-request-drawer-source-pill-custom'
-                                  : ' current-request-drawer-source-pill-upload'
-                                : ' current-request-drawer-source-pill-library'
+                              isStaffArtwork || (isUpload && fromAssisted)
+                                ? ' current-request-drawer-source-pill-custom'
+                                : isUpload
+                                  ? ' current-request-drawer-source-pill-upload'
+                                  : ' current-request-drawer-source-pill-library'
                             }`}
                           >
                             {sourceLabel}

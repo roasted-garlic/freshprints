@@ -191,13 +191,15 @@ pixel sizing). Skips customer transparency/quality gates. Idempotent via
 
 **Provider-neutral email (ADR-FP-089 / ADR-FP-090):** `functions/src/lib/email/` owns normalized
 messages, templates, provider routing, Resend + Brevo HTTP transports, recipient resolution, and
-canonical Portal URL resolution. `staffAddAssistedCreationProof` transactionally creates a
-deterministic `emailDeliveryJobs` outbox document. `onEmailDeliveryJobCreated` uses bounded attempts
+canonical Portal URL resolution. `staffAddAssistedCreationProof`, catalog-share suggest, and
+`staffAddAssistedCreationFinalSource` transactionally create deterministic `emailDeliveryJobs`
+outbox documents (`assisted_proof_ready`, `assisted_catalog_share_ready`,
+`assisted_final_artwork_ready`). `onEmailDeliveryJobCreated` uses bounded attempts
 and a lease; network/timeout/429/5xx errors retry, permanent 4xx fails safely. Before send, the
 worker honors `customers/{id}.assistedProofEmailOptIn` (missing = opted in); opted-out jobs fail
 non-retryably with `customer_opted_out`. After a successful send, the worker appends
-`revisionHistory` note `Proof-ready email sent` (`byRole: system`, `emailDeliveryJobId` for
-idempotency). Resend receives the job ID through `Idempotency-Key`; Brevo receives a UUID-shaped
+`revisionHistory` note `Proof-ready email sent` or `Final artwork email sent` (`byRole: system`,
+`emailDeliveryJobId` for idempotency). Resend receives the job ID through `Idempotency-Key`; Brevo receives a UUID-shaped
 hash in `headers.idempotencyKey`. Firestore remains the durable logical dedupe boundary. Logs
 contain IDs and safe codes only. `settings/emailProviders` independently selects invitation and
 proof-notice providers (`resend` or `brevo`). `settings/customerUploadQuotas` holds owner-tunable
@@ -331,7 +333,7 @@ Authoritative constants: `packages/shared/src/constants/import/batchImportLimits
 | `customerAddAssistedApprovedProofToPrintRequest` | Callable | Portal: copy final source (preferred) or approved Assisted proof → private customer upload + attach to Current Request / working request (skips upload quality gates; ADR-FP-094/110); fails closed for catalog_share (use catalog Add to Request) |
 | `staffUpdateAssistedCreationStatus` | Callable | Studio: owner/admin start/resume/reject/cancel/restore, or `update_notes` (notes only, no status/history change); **reject only when current status is `submitted`** (fail closed after Start Work); resume clears catalog suggestion; reject/cancel purge all proof full-res |
 | `staffAddAssistedCreationProof` | Callable | Studio: owner/admin attach proof → `proof_ready` (`fulfillmentMode: proof_image`; clears catalog suggestion) |
-| `staffAddAssistedCreationFinalSource` | Callable | Studio: owner/admin attach final HR artwork under `final/` and complete `final_source_needed` → `approved` (ADR-FP-110) |
+| `staffAddAssistedCreationFinalSource` | Callable | Studio: owner/admin attach final HR artwork under `final/` and complete `final_source_needed` → `approved`; enqueues final-artwork-ready email + in-app alert (ADR-FP-110) |
 | `staffSuggestAssistedCreationCatalogDesign` | Callable | Studio: owner/admin suggest ready catalog design → `proof_ready` (`fulfillmentMode: catalog_share`); in-app notification + optional email outbox (ADR-FP-108). **List/search** in the Share-a-library-design modal uses Studio generated ready-index (`useReadyDesignsForAssistedCatalogPicker`), not this callable. |
 | `purgeExpiredAssistedCreationProofs` | Callable | Owner/admin: purge approved proof full-res after 14 days + orphan full-res on rejected/cancelled (`dryRun` supported; ADR-FP-093) |
 | `purgeExpiredAssistedCreationProofsScheduled` | Scheduled (daily) | Same purge logic as the callable (ADR-FP-093) |
@@ -339,7 +341,7 @@ Authoritative constants: `packages/shared/src/constants/import/batchImportLimits
 | `updateCustomerUploadQuotaSettings` | Callable | Studio owner: set America/Chicago daily print-request vs donation upload caps (`settings/customerUploadQuotas`; ADR-FP-095) |
 | `updatePrintRequestLimitSettings` | Callable | Studio owner: set dual Portal limits on `settings/printRequestLimits`; mirrors request limit into legacy Cap A field (ADR-FP-102) |
 | `updateCustomerPrintRequestQuotaOverride` | Callable | Studio **owner-only**: set/clear temporary per-customer PR and/or Show limit overrides on `customers/{id}.printRequestQuotaOverride` (optional `expiresAt`; activity events; ADR-FP-159) |
-| `onEmailDeliveryJobCreated` | Firestore create | Deliver a proof-ready or catalog-share notice from the durable outbox |
+| `onEmailDeliveryJobCreated` | Firestore create | Deliver a proof-ready, catalog-share, or final-artwork-ready notice from the durable outbox |
 | `onPrintRequestLifecycleRequestWritten` | Firestore write `printRequests/{printRequestId}` | Server-authored request lifecycle evidence + monotonic ordering mirror |
 | `onPrintRequestLifecycleAllocationWritten` | Firestore write `showAllocations/{allocationId}` | Server-authored show/allocation lifecycle evidence + ordering mirror advancement |
 | `enqueueAiEnrichment` | Callable | Run imported design through direct AI processing |

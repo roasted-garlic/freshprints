@@ -38,6 +38,7 @@ import {
   resolvePrintRequestItemPersistenceHealth,
   type PrintRequestItemPersistenceHealth,
 } from '@fresh-prints/shared/utils/printRequestItemPersistenceHealth';
+import { resolvePrintRequestItemSourcePill } from '@fresh-prints/shared/utils/printRequestItemSource';
 
 interface PortalPrintRequestItemDesign {
   id: string;
@@ -60,6 +61,7 @@ interface PortalPrintRequestItemUpload {
   title: string;
   previewPath?: string | null;
   thumbnailPath?: string | null;
+  artworkBackgroundHex?: string | null;
   widthPx?: number | null;
   heightPx?: number | null;
   printWidthInches?: number | null;
@@ -237,20 +239,21 @@ export function PortalPrintRequestItemCard({
   const blockedStatusText = exhaustedStatusText;
   const isUploadItem =
     item.sourceType === 'customer_upload' || Boolean(item.customerUploadId);
+  const isStaffArtworkItem = item.sourceType === 'staff_artwork';
+  const sourcePill = resolvePrintRequestItemSourcePill({
+    item,
+    fromAssistedCreation: upload?.fromAssistedCreation,
+  });
   const catalogDesignId = item.designId?.trim() ?? '';
   const showCatalogReuse =
     readOnly && catalogDesignId.length > 0 && catalogReuseDesign !== undefined;
-  const title =
-    design?.title ??
-    upload?.title ??
-    item.titleSnapshot ??
-    (isUploadItem ? 'Uploaded artwork' : 'Design');
+  const title = isStaffArtworkItem
+    ? item.titleSnapshot?.trim() || item.sourceLabel || 'Staff-added'
+    : design?.title ?? upload?.title ?? item.titleSnapshot ?? (isUploadItem ? 'Uploaded artwork' : 'Design');
   const previewPath =
-    design?.previewPath ??
-    design?.thumbnailPath ??
-    upload?.previewPath ??
-    upload?.thumbnailPath ??
-    undefined;
+    isStaffArtworkItem
+      ? item.previewStoragePath?.trim() || item.thumbnailStoragePath?.trim() || undefined
+      : design?.previewPath ?? design?.thumbnailPath ?? upload?.previewPath ?? upload?.thumbnailPath ?? undefined;
   const [quantityInput, setQuantityInputState] = useState(String(item.quantity));
   /**
    * Live mirror of `quantityInput`, updated synchronously on every change (Plan Section 22.2,
@@ -392,7 +395,21 @@ export function PortalPrintRequestItemCard({
   const parsedPrintHeightInches = parsePositiveDecimalInput(printHeightInput);
   const artworkEnhanceMode = resolveArtworkEnhanceMode(item.artworkEnhanceMode);
   const displayedArtworkEnhanceMode = enhanceToggleMode ?? artworkEnhanceMode;
-  const baselineAspectPixels = useMemo(() => resolveAspectPixels(design, upload), [design, upload]);
+  const baselineAspectPixels = useMemo(
+    () => {
+      if (
+        isStaffArtworkItem &&
+        typeof item.widthPx === 'number' &&
+        item.widthPx > 0 &&
+        typeof item.heightPx === 'number' &&
+        item.heightPx > 0
+      ) {
+        return { width: item.widthPx, height: item.heightPx };
+      }
+      return isStaffArtworkItem ? null : resolveAspectPixels(design, upload);
+    },
+    [design, isStaffArtworkItem, item.heightPx, item.widthPx, upload],
+  );
   const activeAspectPixels = useMemo(() => {
     if (!baselineAspectPixels) {
       return null;
@@ -909,23 +926,33 @@ export function PortalPrintRequestItemCard({
               isTogglingEnhance ? ' is-enhancing' : ''
             }`}
           >
-            <CatalogThumbnailPanel
-              alt={`${title} preview`}
-              artworkBackgroundHex={design?.artworkBackgroundHex}
-              catalogPath={previewPath}
-              className="design-card-thumbnail"
-              contentVersion={design?.updatedAtMs}
-              fallbackLabel="Preview unavailable"
-              interactive={Boolean(previewUrl) && !isTogglingEnhance}
-              loadingLabel="Loading preview"
-              onImageClick={() => {
-                if (onOpenLightbox) {
-                  onOpenLightbox(item.id);
-                  return;
+            {isStaffArtworkItem && !previewPath ? (
+              <div aria-label={title} className="design-card-thumbnail portal-request-item-neutral-thumb">
+                <span>Staff-added</span>
+              </div>
+            ) : (
+              <CatalogThumbnailPanel
+                alt={`${title} preview`}
+                artworkBackgroundHex={
+                  isStaffArtworkItem
+                    ? item.artworkBackgroundHex
+                    : design?.artworkBackgroundHex ?? upload?.artworkBackgroundHex ?? undefined
                 }
-                setIsLightboxOpen(true);
-              }}
-            />
+                catalogPath={previewPath}
+                className="design-card-thumbnail"
+                contentVersion={design?.updatedAtMs}
+                fallbackLabel="Preview unavailable"
+                interactive={Boolean(previewUrl) && !isTogglingEnhance}
+                loadingLabel="Loading preview"
+                onImageClick={() => {
+                  if (onOpenLightbox) {
+                    onOpenLightbox(item.id);
+                    return;
+                  }
+                  setIsLightboxOpen(true);
+                }}
+              />
+            )}
             {isTogglingEnhance ? (
               <div
                 aria-live="polite"
@@ -940,19 +967,9 @@ export function PortalPrintRequestItemCard({
               </div>
             ) : null}
             <span
-              className={`portal-request-item-source-badge${
-                isUploadItem
-                  ? upload?.fromAssistedCreation
-                    ? ' is-custom'
-                    : ' is-uploaded'
-                  : ' is-library'
-              }`}
+              className={`portal-request-item-source-badge is-${sourcePill.variant}`}
             >
-              {isUploadItem
-                ? upload?.fromAssistedCreation
-                  ? 'Custom'
-                  : 'Uploaded'
-                : 'Library'}
+              {sourcePill.label}
             </span>
           </div>
 
@@ -1013,14 +1030,14 @@ export function PortalPrintRequestItemCard({
         {showItemEditors ? (
           <>
             <button
-              className={`portal-request-standard-size-trigger${
-                standardSizePresetKey ? ' is-selected' : ''
-              }`}
-              onClick={() => setIsStandardSizesModalOpen(true)}
-              type="button"
-            >
-              {resolveStandardPrintSizeCardLabel(standardPrintSizesSettings, standardSizePresetKey)}
-            </button>
+                className={`portal-request-standard-size-trigger${
+                  standardSizePresetKey ? ' is-selected' : ''
+                }`}
+                onClick={() => setIsStandardSizesModalOpen(true)}
+                type="button"
+              >
+                {resolveStandardPrintSizeCardLabel(standardPrintSizesSettings, standardSizePresetKey)}
+              </button>
 
             <div
               className={`portal-request-item-metrics-grid${
@@ -1247,10 +1264,12 @@ export function PortalPrintRequestItemCard({
         ) : null}
       </article>
 
-      {!onOpenLightbox ? (
+      {!onOpenLightbox && previewPath ? (
         <CatalogPreviewLightbox
           alt={`${title} preview`}
-          artworkBackgroundHex={design?.artworkBackgroundHex}
+          artworkBackgroundHex={
+            isStaffArtworkItem ? item.artworkBackgroundHex : design?.artworkBackgroundHex
+          }
           isOpen={isLightboxOpen}
           onClose={() => setIsLightboxOpen(false)}
           previewUrl={previewUrl}

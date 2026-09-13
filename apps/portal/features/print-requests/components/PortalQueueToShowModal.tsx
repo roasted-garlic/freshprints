@@ -127,10 +127,12 @@ export function PortalQueueToShowModal({
           item.quantity,
           allocatedByItemId.get(item.id) ?? 0,
         ),
-        title:
-          item.titleSnapshot?.trim() ||
-          item.sizeLabel?.trim() ||
-          `Design ${item.id.slice(0, 6)}`,
+          title:
+          item.sourceType === "staff_artwork"
+            ? item.titleSnapshot?.trim() || item.sourceLabel || "Staff-added"
+            : item.titleSnapshot?.trim() ||
+              item.sizeLabel?.trim() ||
+              "Design",
       }))
       .filter((entry) => entry.remainingQuantity > 0);
   }, [allocatedByItemId, items]);

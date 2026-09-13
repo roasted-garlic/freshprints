@@ -15,13 +15,15 @@ export interface ShowAllocation {
   printRequestId: string;
   printRequestItemId: string;
   /**
-   * Catalog design id. Required for catalog allocations; omitted for customer_upload.
+   * Catalog design id. Required for catalog allocations; omitted for customer_upload/staff_artwork.
    */
   designId?: string;
   /** Defaults to catalog_design when absent (legacy). */
-  sourceType?: "catalog_design" | "customer_upload";
+  sourceType?: "catalog_design" | "customer_upload" | "staff_artwork";
   /** Required when sourceType is customer_upload. */
   customerUploadId?: string;
+  /** Required when sourceType is staff_artwork. */
+  staffArtworkId?: string;
   customerId?: string;
   requestNameSnapshot: string;
   requestOriginSnapshot?: PrintRequestOrigin;

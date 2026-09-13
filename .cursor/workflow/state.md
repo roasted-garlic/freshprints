@@ -2,26 +2,59 @@
 
 | Field | Value |
 |---|---|
-| Status | **Owner DEV QA PASS** — gallery Add-to-Request / Your designs slice |
-| DONE | no |
-| Signoff Status | prior corrective Signoff **blocked** until Workstream D Owner QA (if still open); gallery slice ready for Test→Signoff when D cleared / owner asks |
+| Status | **OPEN — parent final M0 complete; awaiting owner candidate commit/push authorization** |
+| DONE | **no — child closed; parent remains active** |
+| Signoff Status | child **approved_with_notes / CLOSED**; parent M0 **A / ready for reviewed candidate commit/push** |
 | Current Mode | managed-phase |
 | Parent program | Coordinated production promotion and release readiness |
-| Current Goal | `customer-upload-studio-deferral-personal-library-portal-inline-remove` |
-| Current Phase | Test (gallery slice **PASS**) |
-| Plan Status | complete — `docs/workflow/plans/2026-09-11-customer-upload-studio-deferral-personal-library-portal-inline-remove-plan.md` (+ gallery add/retention slice) |
-| Review Status | `approved_with_changes` |
-| Implementation Status | complete locally + DEV Functions/indexes deployed; Personal-only delete **UI + server** on DEV |
-| Test Status | `passed_with_notes` — Owner DEV QA **PASS** 2026-09-11; see `docs/workflow/reviews/2026-09-11-gallery-add-to-request-owner-qa.md` |
+| Current Goal | `coordinated-production-promotion-release-readiness` |
+| Current Phase | Parent M0 complete; reviewed candidate commit/push checkpoint |
+| Plan Status | **complete** — parent `docs/workflow/plans/2026-09-10-coordinated-production-promotion-release-readiness-plan.md`; child Plan terminal |
+| Review Status | **approved_with_changes** — parent `docs/workflow/reviews/2026-09-10-coordinated-production-promotion-release-readiness-review.md`; child Review terminal |
+| Implementation Status | **complete** — reviewed scope plus Required Change 1 |
+| Test Status | **passed_with_notes** — focused validation 87/87 plus Owner DEV QA PASS; existing baselines documented |
 | Human Checkpoint Required | **yes** |
-| Human Checkpoint Reason | Confirm Workstream D QA status if still open; Signoff when ready; commit only if asked |
-| Blocked | **no** |
-| Allowed Actions | Signoff when gates met; docs; tests; no production |
-| Forbidden Actions | production deploy; Rules/Storage; commit/push unless owner asks |
-| Last Completed Step | Commit + push to `origin/development` (`35d80ec7`) |
-| Next Required Step | Signoff / clear Workstream D if still open |
+| Human Checkpoint Reason | Final read-only parent M0 is complete; stop for explicit owner authorization before any candidate commit/push. Production/data/settings/secret/Auth and release actions remain unauthorized |
+| Blocked | **yes — parent M0 awaits the next explicit owner checkpoint** |
+| Allowed Actions | Await owner authorization; after explicit authorization, stage only approved paths, create one development commit, push only origin/development, verify clean SHA/upstream, and regenerate immutable manifests; no production actions |
+| Forbidden Actions | Any staging/commit/push before owner authorization; candidate assembly or freeze; deploy/publish; production/data/settings/secret/Auth actions; maintenance activation; runner invocation; M1 or parent rerun beyond this completed M0 |
+| Last Completed Step | Final read-only parent M0 reconciliation; classification **A — READY FOR REVIEWED CANDIDATE COMMIT/PUSH** |
+| Next Required Step | **OWNER AUTHORIZE FINAL REVIEWED CANDIDATE COMMIT/PUSH** |
 
 **Decision Log:**
+
+- 2026-09-12 — Formal Review of `coordinated-production-cutover-prerequisites` returned
+  **approved_with_changes**. Required Change 1 distinguishes pre-APPLY population-delta VERIFY from
+  post-APPLY exact-equality VERIFY plus repeat zero-diff DRY RUN. No production, data, Git promotion,
+  freeze, deploy, publish, runner, or release action occurred or is authorized.
+
+- 2026-09-12 — Owner authorized implementation of the reviewed cutover-prerequisites Plan plus
+  Required Change 1. Authorization remains repository-only: no production reads/writes, runner
+  invocation, deployment, publication, Git promotion, staging, commit, push, freeze, or release
+  action. Owner DEV QA remains required before Signoff.
+
+- 2026-09-12 — Implementation and automated Test phase completed within the approved scope. Focused
+  suites passed 87/87, Functions build, Portal typecheck, targeted lint, and diff checks passed.
+  Portal production build, Firestore Rules emulator suite, Studio typecheck, and whole-repository
+  lint retain documented baseline/environment failures. No production read/write, runner invocation,
+  deployment, publication, staging, commit, push, freeze, or release action occurred.
+
+- 2026-09-12 — Owner explicitly reported **`OWNER DEV QA: coordinated-production-cutover-prerequisites - PASS`**.
+  The child Signoff was created with disposition **`approved_with_notes`**. The child is CLOSED and
+  active control returns to `coordinated-production-promotion-release-readiness`. No production
+  reads or writes, runner invocation, DRY RUN/VERIFY/APPLY, Rules/Functions deployment, Portal/Studio
+  publication, maintenance activation, settings/data mutation, staging, commit, push, candidate
+  freeze, or parent M0 rerun occurred. Exact next checkpoint: **RERUN FINAL PARENT M0 / COMMIT-BYTE
+  CANDIDATE RECONCILIATION**.
+
+- 2026-09-12 — Owner authorized and the parent final M0 was rerun read-only. The current
+  `development` tree is 256 status paths (134 tracked, 122 untracked), with no unexplained paths;
+  Function closure is 186/120 exports and the additive index union is 95/77 with zero removals or
+  replacements. Rules, Portal, Studio, config/data, and commit-byte tooling evidence reconcile with
+  the completed child scope; Studio is `1.0.10` and accepted preview/thumbnail risk documentation
+  is synchronized. Classification: **A — READY FOR REVIEWED CANDIDATE COMMIT/PUSH**. No staging,
+  commit, push, freeze, deploy, publish, maintenance, runner, production read/write, or data/settings
+  mutation occurred. Exact next checkpoint: **OWNER AUTHORIZE FINAL REVIEWED CANDIDATE COMMIT/PUSH**.
 
 - 2026-09-11 — Owner: “commit and push.” Committed and pushed to `origin/development`
   (`35d80ec7` feat(portal,studio): defer upload intake, personal library, and gallery re-add).
@@ -430,16 +463,25 @@
   required before staging only the reviewed path set, creating/pushing one clean development SHA,
   and regenerating the manifests at that SHA.
 
-**Allowed Actions:** Parent coordinated-production M0 reconciliation may resume using the signed-off
-customer-upload follow-up child disposition. Regenerate read-only closure/guard and release
-manifests, reconcile a new reviewed development candidate, and prepare (but do not execute) the M1
-freeze proposal. No production action is implied.
+**Allowed Actions:** Review the Test Report; perform only owner-directed DEV/local QA; update
+state/handoff after the checkpoint; no production or Git promotion actions.
 
-**Forbidden Actions:** Production Functions/Rules/Storage/Hosting deploy or setting mutation;
-production maintenance activation; Owner QA on the owner's behalf; parent coordinated-release freeze
-without explicit owner approval; candidate commit/push/merge/PR without the separate owner checkpoint;
-any data migration/backfill or customer mutation; unrelated refactors; force push.
+**Forbidden Actions:** Signoff before Owner DEV QA; production Functions/Rules/Storage/Hosting deploy or
+setting mutation; production maintenance activation; production reads/writes or runner invocation;
+candidate freeze; staging, commit, push, merge, PR, or publication; any data migration/backfill or
+customer mutation; unrelated refactors; force push.
+
+## Current cutover-prerequisites outcome — 2026-09-12
+
+Implementation and automated Test are complete within the approved Plan plus Review Required Change 1.
+The final/transition Rules pair, projection-preferred Portal dual-read with canonical fallback,
+production-locked runner contract, commit-byte manifest tooling, Studio 1.0.10 metadata, and synchronized
+security/risk documentation are recorded in the implementation review and Test Report. Focused tests
+passed 87/87; manual Owner DEV QA remains pending.
 
 ## Next Required Step
 
-`RERUN COORDINATED-PRODUCTION M0 PREPARATION — CUSTOMER UPLOAD FOLLOW-UP CHILD SIGNED OFF; REASSEMBLE AND RECONCILE A NEW REVIEWED DEVELOPMENT CANDIDATE SHA`
+Owner DEV QA: exercise projection-first, canonical-fallback, delayed/stale, duplicate/order,
+error-fallback, and Staff Artwork preview/thumbnail behavior in DEV/local only. If PASS, explicitly
+authorize the child Signoff. Until then, no Signoff, production action, runner execution, deployment,
+publication, staging, commit, push, freeze, maintenance activation, or live Rules change.

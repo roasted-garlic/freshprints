@@ -41,6 +41,7 @@ import { permissionService } from "../../permissions/services/permissionService"
 import type { User } from "../../users/types/user.types";
 import { designService } from "../../designs/services/designService";
 import type { Customer } from "@fresh-prints/shared/types/customer/customer.types";
+import type { StaffArtwork } from "@fresh-prints/shared/types/staffArtwork/staffArtwork.types";
 import type { PrintRequestItemStatus } from "@fresh-prints/shared/types/printRequest/printRequest.enums";
 import type {
   PrintRequest,
@@ -156,7 +157,8 @@ export interface UpdatePrintRequestDetailInput {
 export interface CreatePrintRequestItemInput {
   designId?: string;
   customerUploadId?: string;
-  sourceType?: "catalog_design" | "customer_upload";
+  staffArtworkId?: string;
+  sourceType?: "catalog_design" | "customer_upload" | "staff_artwork";
   titleSnapshot?: string;
   quantity: number;
   printWidthInches?: number;
@@ -225,6 +227,7 @@ interface PrintRequestItemDocumentData extends DocumentData {
   designId?: unknown;
   sourceType?: unknown;
   customerUploadId?: unknown;
+  staffArtworkId?: unknown;
   titleSnapshot?: unknown;
   quantity?: unknown;
   printWidthInches?: unknown;
@@ -366,7 +369,7 @@ function mapPrintRequestItemData(
   }
 
   const sourceType =
-    data.sourceType === "customer_upload" || data.sourceType === "catalog_design"
+    data.sourceType === "customer_upload" || data.sourceType === "catalog_design" || data.sourceType === "staff_artwork"
       ? data.sourceType
       : undefined;
   const customerUploadId =
@@ -374,13 +377,26 @@ function mapPrintRequestItemData(
       ? data.customerUploadId.trim()
       : undefined;
   const isUploadItem = sourceType === "customer_upload" || Boolean(customerUploadId);
+  const staffArtworkId =
+    typeof data.staffArtworkId === "string" && data.staffArtworkId.trim()
+      ? data.staffArtworkId.trim()
+      : undefined;
+  const isStaffArtworkItem = sourceType === "staff_artwork" || Boolean(staffArtworkId);
   const designId =
     typeof data.designId === "string" && data.designId.trim() ? data.designId.trim() : undefined;
 
+  if (isUploadItem && isStaffArtworkItem) {
+    throw new Error("A print request item cannot mix artwork source identities.");
+  }
+  if (isStaffArtworkItem && designId) {
+    throw new Error("A Staff Artwork item cannot include a catalog design identity.");
+  }
   if (isUploadItem) {
     if (!customerUploadId) {
       throw new Error("A print request item record is incomplete.");
     }
+  } else if (isStaffArtworkItem) {
+    if (!staffArtworkId) throw new Error("A Staff Artwork item record is incomplete.");
   } else if (!designId) {
     throw new Error("A print request item record is incomplete.");
   }
@@ -395,6 +411,7 @@ function mapPrintRequestItemData(
         ? { sourceType: "customer_upload" as const }
         : {}),
     ...(customerUploadId ? { customerUploadId } : {}),
+    ...(staffArtworkId ? { staffArtworkId } : {}),
     ...(typeof data.titleSnapshot === "string" && data.titleSnapshot.trim()
       ? { titleSnapshot: data.titleSnapshot.trim() }
       : {}),
@@ -603,6 +620,19 @@ function resolveRequestedItemSize(
   };
 }
 
+async function loadStaffArtwork(caller: User, staffArtworkId: string): Promise<StaffArtwork> {
+  if (!permissionService.canSelectStaffArtwork(caller)) {
+    throw new Error("You do not have permission to use Staff Artwork.");
+  }
+  const snapshot = await getDoc(doc(db, "staffArtworks", staffArtworkId));
+  if (!snapshot.exists()) throw new Error("Staff Artwork was not found.");
+  const data = snapshot.data() as Partial<StaffArtwork>;
+  if (data.status !== "ready" && data.status !== "archived") {
+    throw new Error("Staff Artwork is still processing.");
+  }
+  return { ...data, id: snapshot.id } as StaffArtwork;
+}
+
 export async function assertPersistedPrintRequestItemSize(
   caller: User,
   item: PrintRequestItem,
@@ -641,6 +671,14 @@ export async function assertPersistedPrintRequestItemSize(
     }
     pixelWidth = upload.widthPx;
     pixelHeight = upload.heightPx;
+  } else if (item.sourceType === "staff_artwork" || item.staffArtworkId) {
+    if (!item.staffArtworkId) throw new Error("Staff Artwork pixel dimensions are required to validate requested size.");
+    const artwork = await loadStaffArtwork(caller, item.staffArtworkId);
+    const pixelWidth = artwork.processing?.widthPx ?? 0;
+    const pixelHeight = artwork.processing?.heightPx ?? 0;
+    if (pixelWidth <= 0 || pixelHeight <= 0) throw new Error("Staff Artwork pixel dimensions are required to validate requested size.");
+    requireSavablePrintRequestItemSize({ pixelWidth, pixelHeight, printWidthInches, printHeightInches });
+    return { printWidthInches, printHeightInches };
   } else {
     if (!item.designId) {
       throw new Error("Design pixel dimensions are required to validate requested size.");
@@ -1864,12 +1902,21 @@ export const printRequestService = {
     const customerUploadId = input.customerUploadId?.trim() || undefined;
     const isUploadItem =
       input.sourceType === "customer_upload" || Boolean(customerUploadId);
+    const staffArtworkId = input.staffArtworkId?.trim() || undefined;
+    const isStaffArtworkItem =
+      input.sourceType === "staff_artwork" || Boolean(staffArtworkId);
     const designId = input.designId?.trim() || undefined;
+
+    if ((isUploadItem && isStaffArtworkItem) || (isUploadItem && designId) || (isStaffArtworkItem && designId)) {
+      throw new Error("A print request item cannot mix artwork source identities.");
+    }
 
     if (isUploadItem) {
       if (!customerUploadId) {
         throw new Error("A customer upload is required.");
       }
+    } else if (isStaffArtworkItem) {
+      if (!staffArtworkId) throw new Error("A Staff Artwork item is required.");
     } else if (!designId) {
       throw new Error("A design is required.");
     }
@@ -1966,6 +2013,69 @@ export const printRequestService = {
       } as unknown as PrintRequestItemDocumentData);
     }
 
+    if (isStaffArtworkItem && staffArtworkId) {
+      const artwork = await loadStaffArtwork(caller, staffArtworkId);
+      if (artwork.status !== "ready") {
+        throw new Error("Only ready, non-archived Staff Artwork can be added to a request.");
+      }
+      const pixelWidth = artwork.processing?.widthPx ?? 0;
+      const pixelHeight = artwork.processing?.heightPx ?? 0;
+      if (!Number.isFinite(pixelWidth) || pixelWidth <= 0 || !Number.isFinite(pixelHeight) || pixelHeight <= 0) {
+        throw new Error("Staff Artwork pixel dimensions are required.");
+      }
+      // Match catalog-design defaults: clamp to the standard request width (not native
+      // processing inches). Oversized native envelopes were failing Firestore's ≤22″
+      // create rule and surfacing as permission-denied.
+      const fallbackSize = resolveInitialPrintRequestItemSize({
+        pixelWidth,
+        pixelHeight,
+        defaultPrintWidthInches: artwork.processing?.printWidthInches,
+        printRequestDefaultWidthInches: options?.printRequestDefaultWidthInches,
+        approvedMaxPrintWidthInches: artwork.processing?.approvedMaxPrintWidthInches,
+        approvedMaxPrintHeightInches: artwork.processing?.approvedMaxPrintHeightInches,
+      });
+      const printWidthInches = input.printWidthInches ?? fallbackSize.printWidthInches;
+      const printHeightInches = input.printHeightInches ?? fallbackSize.printHeightInches;
+      requireSavablePrintRequestItemSize({
+        pixelWidth,
+        pixelHeight,
+        printWidthInches,
+        printHeightInches,
+        approvedMaxPrintWidthInches: artwork.processing?.approvedMaxPrintWidthInches,
+        approvedMaxPrintHeightInches: artwork.processing?.approvedMaxPrintHeightInches,
+        wasUpscaled: artwork.processing?.wasUpscaled,
+      });
+      const quantity = Math.max(1, Math.trunc(input.quantity));
+      const payload = withoutUndefinedFields({
+        id: itemRef.id,
+        printRequestId,
+        sourceType: "staff_artwork" as const,
+        staffArtworkId,
+        titleSnapshot: input.titleSnapshot?.trim() || artwork.title || "Staff Artwork",
+        quantity,
+        printWidthInches,
+        printHeightInches,
+        sizeLabel: formatPrintRequestItemSizeLabel(printWidthInches, printHeightInches),
+        ...(input.standardSizePresetKey?.trim()
+          ? { standardSizePresetKey: input.standardSizePresetKey.trim() }
+          : {}),
+        sortOrder,
+        notes: input.notes?.trim() || undefined,
+        status: "pending" as const,
+        addedBy: caller.id,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      assertNoUndefinedFirestoreFields(payload, "Print request item payload");
+      await commitItemAndParentAtomically(payload);
+      const nowTimestamp = Timestamp.now();
+      return mapPrintRequestItemData(itemRef.id, {
+        ...payload,
+        createdAt: nowTimestamp,
+        updatedAt: nowTimestamp,
+      } as unknown as PrintRequestItemDocumentData);
+    }
+
     const design = await loadPrintableDesign(caller, designId!);
     const requestedSize = resolveRequestedItemSize(
       design,
@@ -2029,6 +2139,8 @@ export const printRequestService = {
 
     const isUploadItem =
       current.sourceType === "customer_upload" || Boolean(current.customerUploadId);
+    const isStaffArtworkItem =
+      current.sourceType === "staff_artwork" || Boolean(current.staffArtworkId);
 
     let requestedSize: {
       printWidthInches: number;
@@ -2042,6 +2154,25 @@ export const printRequestService = {
       if (typeof printWidthInches !== "number" || typeof printHeightInches !== "number") {
         throw new Error("Print size is required.");
       }
+      requestedSize = {
+        printWidthInches,
+        printHeightInches,
+        sizeLabel: formatPrintRequestItemSizeLabel(printWidthInches, printHeightInches),
+      };
+    } else if (isStaffArtworkItem) {
+      if (!current.staffArtworkId) throw new Error("Staff Artwork item is missing its source artwork.");
+      const artwork = await loadStaffArtwork(caller, current.staffArtworkId);
+      const printWidthInches = input.printWidthInches ?? current.printWidthInches ?? artwork.processing?.printWidthInches;
+      const printHeightInches = input.printHeightInches ?? current.printHeightInches ?? artwork.processing?.printHeightInches;
+      if (typeof printWidthInches !== "number" || typeof printHeightInches !== "number") {
+        throw new Error("Staff Artwork print dimensions are required.");
+      }
+      requireSavablePrintRequestItemSize({
+        pixelWidth: artwork.processing?.widthPx ?? 0,
+        pixelHeight: artwork.processing?.heightPx ?? 0,
+        printWidthInches,
+        printHeightInches,
+      });
       requestedSize = {
         printWidthInches,
         printHeightInches,
@@ -2152,6 +2283,9 @@ export const printRequestService = {
     const isUploadItem =
       item.sourceType === "customer_upload" || Boolean(item.customerUploadId);
 
+    const isStaffArtworkItem =
+      item.sourceType === "staff_artwork" || Boolean(item.staffArtworkId);
+
     if (isUploadItem) {
       if (!item.customerUploadId) {
         throw new Error("Uploaded artwork is missing its source upload.");
@@ -2160,6 +2294,21 @@ export const printRequestService = {
       return this.addPrintRequestItem(caller, item.printRequestId, {
         sourceType: "customer_upload",
         customerUploadId: item.customerUploadId,
+        titleSnapshot: item.titleSnapshot,
+        quantity: item.quantity,
+        printWidthInches: item.printWidthInches,
+        printHeightInches: item.printHeightInches,
+        standardSizePresetKey: item.standardSizePresetKey,
+        sortOrder: duplicateSortOrder,
+        notes: item.notes,
+      });
+    }
+
+    if (isStaffArtworkItem) {
+      if (!item.staffArtworkId) throw new Error("Staff Artwork is missing its source artwork.");
+      return this.addPrintRequestItem(caller, item.printRequestId, {
+        sourceType: "staff_artwork",
+        staffArtworkId: item.staffArtworkId,
         titleSnapshot: item.titleSnapshot,
         quantity: item.quantity,
         printWidthInches: item.printWidthInches,

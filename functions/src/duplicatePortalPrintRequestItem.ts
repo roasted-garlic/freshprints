@@ -125,6 +125,12 @@ export const duplicatePortalPrintRequestItem = onCall(
         const requestData = requestSnap.data() ?? {};
         const itemData = itemSnap.data() ?? {};
 
+        // Staff Artwork is intentionally opaque to Portal customers: it may appear as a
+        // neutral request row, but Portal must not duplicate or receive its private identity.
+        if (itemData.sourceType === "staff_artwork" || itemData.staffArtworkId) {
+          throw failedPrecondition("Staff Artwork items cannot be duplicated from Portal.");
+        }
+
         // Assert request is active editable (not parked)
         assertPortalActiveEditableRequestData(requestData, printRequestId);
 

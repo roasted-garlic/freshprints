@@ -5,6 +5,7 @@ import {
 import {
   isCatalogDesignPrintRequestItem,
   isCustomerUploadPrintRequestItem,
+  isStaffArtworkPrintRequestItem,
 } from "./printRequestItemSource";
 
 export type CurrentRequestAttentionReason =
@@ -23,7 +24,8 @@ export interface CurrentRequestItemLike {
   id: string;
   designId?: string;
   customerUploadId?: string;
-  sourceType?: "catalog_design" | "customer_upload";
+  staffArtworkId?: string;
+  sourceType?: "catalog_design" | "customer_upload" | "staff_artwork";
   quantity: number;
   printWidthInches?: number;
   printHeightInches?: number;
@@ -52,6 +54,9 @@ function identityKey(item: CurrentRequestItemLike): string {
   }
   if (isCustomerUploadPrintRequestItem(item) && item.customerUploadId?.trim()) {
     return `upload:${item.customerUploadId.trim()}`;
+  }
+  if (isStaffArtworkPrintRequestItem(item) && item.staffArtworkId?.trim()) {
+    return `staff-artwork:${item.staffArtworkId.trim()}`;
   }
   return `item:${item.id}`;
 }

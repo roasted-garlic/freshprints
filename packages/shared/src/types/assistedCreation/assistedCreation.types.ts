@@ -10,6 +10,7 @@ import type {
   AssistedCreationStylePreference,
   AssistedCreationTransitionActor,
 } from "../../constants/assistedCreation/assistedCreation.constants";
+import type { CustomerUploadTechnicalProgressStage } from "../customerUpload/customerUpload.enums";
 
 export interface AssistedCreationAnswers {
   answersVersion: 1;
@@ -94,6 +95,15 @@ export interface AssistedCreationProof {
   catalogPreviewImageUrl?: string;
   /** Snapshot of design artwork mat color for catalog_share preview mats. */
   catalogArtworkBackgroundHex?: string;
+  /**
+   * Opaque UUID shared by every option sent together in one staff proof round.
+   * Absent on legacy one-proof rows (treated as an implicit single-option round).
+   */
+  proofRoundId?: string;
+  /** 0-based order within the round; server-authoritative. */
+  optionOrder?: number;
+  /** Server-derived label e.g. "Option A"; never trust client-supplied labels. */
+  optionLabel?: string;
 }
 
 export type AssistedCreationRevisionKind =
@@ -115,6 +125,12 @@ export interface AssistedCreationRevisionEntry {
   kind?: AssistedCreationRevisionKind;
   /** Set when a proof-ready email delivery job successfully sends. */
   emailDeliveryJobId?: string;
+  /** Proof round identity for multi-option send / customer response. */
+  proofRoundId?: string;
+  /** Selected option id when the customer approved or requested revision. */
+  selectedProofId?: string;
+  /** Selected option order within the round (0-based). */
+  selectedOptionOrder?: number;
 }
 
 export type AssistedCreationCustomerRating = 1 | 2 | 3 | 4 | 5;
@@ -135,6 +151,22 @@ export interface AssistedCreationFinalSource {
   uploadedAt: unknown;
   widthPx?: number;
   heightPx?: number;
+}
+
+/** Customer-safe, server-authored progress while approved artwork is added to a Print Request. */
+export type AssistedCreationAddToRequestProgressStage =
+  | "resolving_proof"
+  | "downloading"
+  | CustomerUploadTechnicalProgressStage
+  | "attaching";
+
+export interface AssistedCreationAddToRequestProgress {
+  /** Real server stage; the Portal maps this to customer-facing copy. */
+  stage: AssistedCreationAddToRequestProgressStage;
+  /** Server timestamp for the beginning of this Add-to-Request operation. */
+  startedAt: unknown;
+  /** Server timestamp of the latest real stage transition. */
+  updatedAt: unknown;
 }
 
 /**
@@ -207,6 +239,13 @@ export interface AssistedCreationRequest {
    * Not used for catalog_share approvals (Add to Request uses catalog attach).
    */
   printRequestIngest?: AssistedCreationPrintRequestIngest | null;
+  /** Ephemeral server-owned progress for the current approved-artwork Add-to-Request operation. */
+  addToRequestProgress?: AssistedCreationAddToRequestProgress | null;
+  /**
+   * Active proof round awaiting customer response. Cleared after approve/revision.
+   * Absent on legacy docs / after response.
+   */
+  currentProofRoundId?: string | null;
   /** Server Timestamp or ISO string in DTOs. */
   createdAt: unknown;
   /** Server Timestamp or ISO string in DTOs. */

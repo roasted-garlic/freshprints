@@ -61,6 +61,8 @@ export interface PrintRequestItemUploadSummary {
   interactiveEnhancedWidthPx?: number | null;
   interactiveEnhancedHeightPx?: number | null;
   interactiveEnhanceGeneratedAt?: unknown;
+  /** Staff Artwork / upload preview mat when no catalog design is attached. */
+  artworkBackgroundHex?: string | null;
 }
 
 interface PrintRequestItemCardProps {
@@ -68,7 +70,7 @@ interface PrintRequestItemCardProps {
   design?: Design;
   upload?: PrintRequestItemUploadSummary | null;
   item: PrintRequestItem;
-  onRemove: (item: PrintRequestItem) => void;
+  onRemove: (item: PrintRequestItem) => void | Promise<void>;
   onDuplicate: (item: PrintRequestItem) => void;
   onUpdate: (item: PrintRequestItem, input: UpdatePrintRequestItemInput) => Promise<void>;
   onAutosaveStateChange: (
@@ -206,7 +208,7 @@ export function PrintRequestItemCard({
     upload?.previewPath ??
     upload?.thumbnailPath ??
     undefined;
-  const artworkBackgroundHex = resolvePrintRequestItemArtworkBackground(design);
+  const artworkBackgroundHex = resolvePrintRequestItemArtworkBackground(design, upload);
   const [quantityInput, setQuantityInput] = useState(String(item.quantity));
   const [printWidthInput, setPrintWidthInput] = useState(
     formatEditableNumber(resolveInitialWidth(item)),
@@ -215,6 +217,7 @@ export function PrintRequestItemCard({
     formatEditableNumber(resolveInitialHeight(item)),
   );
   const [isConfirmingRemove, setIsConfirmingRemove] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
   const [isStandardSizesModalOpen, setIsStandardSizesModalOpen] = useState(false);
   const [standardSizePresetKey, setStandardSizePresetKey] = useState<string | undefined>(
     item.standardSizePresetKey,
@@ -733,9 +736,30 @@ export function PrintRequestItemCard({
     [handleFieldKeyDown],
   );
 
+  const handleConfirmRemove = useCallback(async () => {
+    if (isRemoving) {
+      return;
+    }
+    setIsRemoving(true);
+    try {
+      await Promise.all([
+        Promise.resolve(onRemove(item)),
+        new Promise<void>((resolve) => {
+          window.setTimeout(resolve, 420);
+        }),
+      ]);
+    } catch {
+      setIsRemoving(false);
+      setIsConfirmingRemove(false);
+    }
+  }, [isRemoving, item, onRemove]);
+
   return (
     <div data-print-request-item-id={item.id}>
-      <Card className="print-requests-item-card">
+      <Card
+        aria-busy={isRemoving || undefined}
+        className={`print-requests-item-card${isRemoving ? " is-removing" : ""}`}
+      >
         <div className="print-requests-item-card-header">
           <div
             className={`print-requests-item-card-thumb-wrap${
@@ -987,22 +1011,57 @@ export function PrintRequestItemCard({
               </p>
             ) : null}
 
-            <div className="print-requests-item-editor-actions">
-              <Button onClick={() => onDuplicate(item)} size="sm" tabIndex={-1} type="button" variant="secondary">
+            <div
+              className={`print-requests-item-editor-actions${
+                isConfirmingRemove ? " is-confirming-remove" : ""
+              }`}
+            >
+              <Button
+                disabled={isRemoving}
+                onClick={() => onDuplicate(item)}
+                size="sm"
+                tabIndex={-1}
+                type="button"
+                variant="secondary"
+              >
                 Duplicate
               </Button>
 
               {isConfirmingRemove ? (
                 <>
-                  <Button onClick={() => setIsConfirmingRemove(false)} size="sm" tabIndex={-1} type="button" variant="ghost">
+                  <Button
+                    disabled={isRemoving}
+                    onClick={() => setIsConfirmingRemove(false)}
+                    size="sm"
+                    tabIndex={-1}
+                    type="button"
+                    variant="ghost"
+                  >
                     Cancel
                   </Button>
-                  <Button onClick={() => onRemove(item)} size="sm" tabIndex={-1} type="button" variant="danger">
-                    Confirm
+                  <Button
+                    className={isRemoving ? "is-deleting" : undefined}
+                    disabled={isRemoving}
+                    onClick={() => {
+                      void handleConfirmRemove();
+                    }}
+                    size="sm"
+                    tabIndex={-1}
+                    type="button"
+                    variant="danger"
+                  >
+                    {isRemoving ? "Removing…" : "Confirm"}
                   </Button>
                 </>
               ) : (
-                <Button onClick={() => setIsConfirmingRemove(true)} size="sm" tabIndex={-1} type="button" variant="danger">
+                <Button
+                  disabled={isRemoving}
+                  onClick={() => setIsConfirmingRemove(true)}
+                  size="sm"
+                  tabIndex={-1}
+                  type="button"
+                  variant="danger"
+                >
                   Remove
                 </Button>
               )}

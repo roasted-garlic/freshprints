@@ -68,7 +68,7 @@ export function PrintRequestItemsPreviewLightbox({
         {
           id: item.id,
           alt: `${resolveItemTitle(item, design, upload)} preview`,
-          artworkBackgroundHex: resolvePrintRequestItemArtworkBackground(design),
+          artworkBackgroundHex: resolvePrintRequestItemArtworkBackground(design, upload),
           previewPath,
         },
       ];

@@ -57,11 +57,12 @@ export interface GangSheetItem {
   printRequestId: string;
   printRequestItemId: string;
   /**
-   * Catalog design id. Required for catalog placements; omitted for customer_upload.
+   * Catalog design id. Required for catalog placements; omitted for customer_upload/staff_artwork.
    */
   designId?: string;
-  sourceType?: "catalog_design" | "customer_upload";
+  sourceType?: "catalog_design" | "customer_upload" | "staff_artwork";
   customerUploadId?: string;
+  staffArtworkId?: string;
 
   copyIndex: number;
   sourceQuantitySnapshot: number;
@@ -72,6 +73,7 @@ export interface GangSheetItem {
    * Production asset path snapshot.
    * Catalog: `/originals/{designId}.png`
    * Upload: `/customer-uploads/{uid}/{uploadId}/production.png`
+   * Staff Artwork: `/staff-artwork/{staffArtworkId}/production.png`
    */
   originalPathSnapshot: string;
 

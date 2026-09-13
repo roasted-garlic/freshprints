@@ -1,8 +1,25 @@
 # Features Inventory
 
+> 2026-09-12: **Coordinated cutover repository readiness — CLOSED** — Owner DEV QA **PASS**.
+> Portal print-request reads now have projection-preferred dual-read compatibility with bounded
+> canonical fallback during transition; final Rules deny direct customer canonical reads only after
+> convergence. The production-locked runner and committed-byte manifest contracts are documented,
+> and authoritative Studio release metadata is `1.0.10`. Production publication/deployment and
+> parent M0 remain separately gated.
+
 > 2026-08-24: Upcoming Shows (`/shows`) uses the **sidebar footer** theme toggle (same as other app-shell pages). Production App Hosting still `build-2026-08-24-001` until the chrome hotfix rolls out. Show discovery + Studio workflow/grouped sheets + **1.0.9** pins are on production Git (PR #88 @ `94a1ed0`). Published Studio remains **1.0.8** until Gate F.
 
 ## Fresh Prints Studio
+
+### Staff Artwork (`/staff-artwork`) — DEV closed 2026-09-12
+
+Private reusable request-artwork library separate from Imports, AI Review, and Design Library.
+Owner/Admin manage PNG-only uploads, Auto/Light/Dark background handling, metadata, customer
+association, archive/restore, safe deletion, and explicit Send to AI Review promotion. Active
+Helpers may select existing ready/non-archived assets while editing requests but cannot manage the
+library. Print Request direct attachment and request-selection mode preserve the `staff_artwork`
+source through sizing, enhancement, Show Queue, allocations, exports, and gang sheets. Owner DEV QA
+passed; Portal shows only a neutral request row without Staff Artwork pixels or private metadata.
 
 ### Authentication
 Login/logout, profile bootstrap, protected routes via permissions.
@@ -36,7 +53,7 @@ Global Gang Sheet Settings on `settings/showQueue` provide six layout fields plu
 Account Settings → Profile: self-service **display name** and **username** with 30-day username cooldown (staff bypass); identity snapshots propagate to print requests and design issue reports (DEV — `portal-customer-username-change`).
 
 ### Customer Uploads (intake)
-Staff review of Portal customer artwork: Pending / Excluded tabs; Send to AI Review; exclude/restore; retry processing; surface library-permission declined (ADR-FP-074). Customer Uploads and Donated Designs now share per-row **Auto · Light · Dark · Halftone** controls before Send to AI Review. Halftone-on from Auto defaults that row to Dark, explicit Light/Dark remains preserved while Halftone stays on, row previews and lightbox repaint, pending/failed metadata writes block stale promotion, retry is available, and promoted designs carry authoritative Halftone/background metadata.
+Staff review of Portal customer artwork: Pending / Denied / Excluded tabs; Send to AI Review; exclude/restore; retry processing; surface library-permission declined (ADR-FP-074). Print-request uploads remain hidden from Studio intake until their request is successfully added to a show (`studioIntakeHoldUntilShow`); after release, Allow rows enter Pending and Don’t-allow rows enter Denied. Customer Uploads and Donated Designs now share per-row **Auto · Light · Dark · Halftone** controls before Send to AI Review. Halftone-on from Auto defaults that row to Dark, explicit Light/Dark remains preserved while Halftone stays on, row previews and lightbox repaint, pending/failed metadata writes block stale promotion, retry is available, and promoted designs carry authoritative Halftone/background metadata.
 
 ### Custom Designs
 Assisted inbox with stage tabs, request details, audited start/cancel/reject/restore actions, proof staging, and customer-revision visibility. Etsy searches and Suggestions management remain separate tabs.
@@ -59,6 +76,7 @@ other ineligible customer accounts.
 |---------|--------|
 | Customer register / login | ✅ Live — username field accepts mixed case; normalizes to lowercase; Whatnot guidance |
 | Account Settings profile | ✅ **DEV** — display name + username self-service; 30-day username cooldown (`portal-customer-username-change`) |
+| **Your designs** | ✅ **DEV** — Personal (Uploaded/Donated) and Design Library tabs; Add to Request; personal retention hints; staff-managed uploads are not customer-deletable |
 | Auth return-to / deep-link | ✅ Live — return after login to public browse / show paths |
 | **Public browse (guest)** | ✅ Live — catalog/home without sign-in (ADR-FP-106) |
 | Guest auth overlay (gated routes) | ✅ Live — in-shell dimmed overlay; Sign in / Register / Browse designs |

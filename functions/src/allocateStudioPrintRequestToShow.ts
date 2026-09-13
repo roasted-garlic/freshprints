@@ -2,6 +2,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 
 import { buildShowAllocationSourceFields } from "../../packages/shared/src/utils/showAllocationSourceFields";
+import { resolvePrintRequestItemSourceType } from "../../packages/shared/src/utils/printRequestItemSource";
 import { canAllocateOriginToShowSource, isStaffGangSheetSource } from "../../packages/shared/src/utils/staffGangSheet";
 import {
   formatShowAllocationBlockedMessage,
@@ -39,9 +40,10 @@ export interface AllocateStudioPrintRequestToShowResponse {
 interface ItemLine {
   id: string;
   quantity: number;
-  sourceType: "catalog_design" | "customer_upload";
+  sourceType: "catalog_design" | "customer_upload" | "staff_artwork";
   designId?: string;
   customerUploadId?: string;
+  staffArtworkId?: string;
   titleSnapshot?: string;
   printWidthInches?: number;
   printHeightInches?: number;
@@ -119,14 +121,28 @@ function readItemLines(
       throw invalidArgument("Print request item data is incomplete.");
     }
 
-    const sourceType = data.sourceType === "customer_upload" ? "customer_upload" : "catalog_design";
     const designId = typeof data.designId === "string" ? data.designId.trim() : undefined;
     const customerUploadId = typeof data.customerUploadId === "string" ? data.customerUploadId.trim() : undefined;
+    const staffArtworkId = typeof data.staffArtworkId === "string" ? data.staffArtworkId.trim() : undefined;
+    const sourceType = resolvePrintRequestItemSourceType({
+      sourceType:
+        data.sourceType === "customer_upload" ||
+        data.sourceType === "staff_artwork" ||
+        data.sourceType === "catalog_design"
+          ? data.sourceType
+          : undefined,
+      designId,
+      customerUploadId,
+      staffArtworkId,
+    });
     if (sourceType === "catalog_design" && !designId) {
       throw invalidArgument("Catalog print request item data is incomplete.");
     }
     if (sourceType === "customer_upload" && !customerUploadId) {
       throw invalidArgument("Uploaded print request item data is incomplete.");
+    }
+    if (sourceType === "staff_artwork" && !staffArtworkId) {
+      throw invalidArgument("Staff Artwork print request item data is incomplete.");
     }
 
     return {
@@ -135,6 +151,7 @@ function readItemLines(
       sourceType,
       ...(designId ? { designId } : {}),
       ...(customerUploadId ? { customerUploadId } : {}),
+      ...(staffArtworkId ? { staffArtworkId } : {}),
       ...(typeof data.titleSnapshot === "string" ? { titleSnapshot: data.titleSnapshot.trim() } : {}),
       ...(typeof data.printWidthInches === "number" ? { printWidthInches: data.printWidthInches } : {}),
       ...(typeof data.printHeightInches === "number" ? { printHeightInches: data.printHeightInches } : {}),
@@ -240,6 +257,22 @@ export const allocateStudioPrintRequestToShow = onCall(
         }
         const allocatedByItemId = sumByItem(activeAllocations);
         const itemById = new Map(items.map((item) => [item.id, item] as const));
+        const staffArtworkIds = [
+          ...new Set(
+            items
+              .filter((item) => item.sourceType === "staff_artwork")
+              .map((item) => item.staffArtworkId)
+              .filter((id): id is string => Boolean(id)),
+          ),
+        ];
+        const staffArtworkSnapshots = await Promise.all(
+          staffArtworkIds.map((id) => transaction.get(adminDb.collection("staffArtworks").doc(id))),
+        );
+        for (const artworkSnapshot of staffArtworkSnapshots) {
+          if (!artworkSnapshot.exists || !["ready", "archived"].includes(String(artworkSnapshot.data()?.status))) {
+            throw failedPrecondition("Only ready Staff Artwork can be added to a show.");
+          }
+        }
         const remainingByItemId = new Map(
           items.map((item) => [item.id, Math.max(0, item.quantity - (allocatedByItemId.get(item.id) ?? 0))] as const),
         );
@@ -352,9 +385,10 @@ export const allocateStudioPrintRequestToShow = onCall(
             allocationIds.push(allocationRef.id);
             const sourceFields = buildShowAllocationSourceFields({
               item: {
-                sourceType: item.sourceType === "customer_upload" ? "customer_upload" : undefined,
+                sourceType: item.sourceType,
                 designId: item.designId,
                 customerUploadId: item.customerUploadId,
+                staffArtworkId: item.staffArtworkId,
                 titleSnapshot: item.titleSnapshot,
                 quantity: item.quantity,
                 printWidthInches: item.printWidthInches,

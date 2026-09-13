@@ -1,5 +1,28 @@
 # Backend and AI Pipeline
 
+## Coordinated Portal projection cutover prerequisites (repository closed 2026-09-12)
+
+- `portalPrintRequestItems` is the customer-safe, Admin-maintained projection of canonical
+  `printRequestItems`; Portal readers prefer it and use bounded canonical fallback during transition.
+- `firestore.transition.rules` preserves the customer-owned canonical read while projection rows
+  converge; authoritative `firestore.rules` is the final projection-only customer-read state.
+- `reconcile-portal-print-request-items-prod.ts` is hard-pinned to `fresh-prints-prod`, bounded to
+  one deterministic page, and separates pre-APPLY delta VERIFY, post-APPLY exact VERIFY, and the
+  required post-APPLY zero-diff DRY RUN. APPLY remains separately owner-gated and was not invoked.
+- Committed-byte manifest generation/audit proves candidate SHA and runtime-byte parity. No
+  production reads, population, Rules/Functions deployment, or publication occurred.
+
+## Staff Artwork backend (DEV closed 2026-09-12)
+
+| Area | Delivered |
+|------|-----------|
+| Entity | `staffArtworks/{staffArtworkId}` with canonical `/staff-artwork/{staffArtworkId}/` assets; staff-only Rules/Storage access |
+| Processing | Trusted create/finalize reuses the technical customer-upload image pipeline, with PNG-only input, Auto/Light/Dark background handling, and no customer quota/consent/retention side effects |
+| Request source | `staff_artwork` identity propagated through request CRUD, enhancement, allocation, queue, copy/convert, exports, ZIPs, and gang sheets |
+| Lifecycle | Owner/Admin metadata management, helper selection-only access, archive/restore, completed-show/sheet-aware safe delete, explicit idempotent AI Review promotion |
+| Portal | Neutral request projection only; no Staff Artwork document, private path, title, or pixel access |
+| DEV status | Owner DEV QA **PASS**; corrective callable and Rules redeploys complete; production remains unauthorized |
+
 ## Portal maintenance mode (DEV — closed 2026-09-10)
 
 | Area | Delivered |
@@ -11,6 +34,18 @@
 | DEV deployment | Exactly 37 reviewed Functions ACTIVE in `fresh-prints-dev/us-central1`; no corrective Rules/index/hosting deployment |
 | Owner QA | **PASS**; full-screen ordinary-customer state, tester banner/mutation, saved-copy runtime convergence, and OFF recovery verified |
 | Signoff | `docs/workflow/reviews/2026-09-10-production-maintenance-mode-prerequisite-corrective-amendment-signoff.md` |
+| Production | **NOT AUTHORIZED** |
+
+## Customer-upload deferral, follow-up, and personal retention (DEV — closed 2026-09-11)
+
+| Area | Delivered |
+|------|-----------|
+| Intake gate | `confirmCustomerUploadsAndAttachToPrintRequest`, `queuePortalPrintRequestToShow`, and `onShowAllocationCreated` set/clear `studioIntakeHoldUntilShow`; Studio readers/counts exclude held uploads until successful Add to Show |
+| Follow-up | `requestCustomerUploadCatalogPermissionFollowUp`, `getCustomerUploadCatalogPermissionFollowUp`, and `respondToCustomerUploadCatalogPermissionFollowUp` provide bounded Ask Again, activity, Allow/Decline, and maintenance-guarded response |
+| Retention | `purgeExpiredCustomerUploadCatalogRetention` plus scheduled wrapper enforce 30-day Personal/unpromoted-donation and 14-day staff-Excluded episodes, reusing B1 safe-delete blockers |
+| Other reviewed exports | `customerAddAssistedApprovedProofToPrintRequest`, `restoreCustomerUploadCatalogEligibility`, `clearCustomerNotificationHistory` |
+| DEV state | Reviewed DEV Functions/indexes deployed; local Portal/Studio runtime validated; scheduler remained paused |
+| Owner QA | **PASS** (`OWNER DEV QA: PASS`, 2026-09-11) |
 | Production | **NOT AUTHORIZED** |
 
 ## Print Request lifecycle ordering (ADR-FP-188 — DEV closed 2026-09-09)

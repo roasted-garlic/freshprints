@@ -28,6 +28,20 @@ function item(
 }
 
 describe('mergeServerWorkingItemsWithLocal', () => {
+  it('keeps hydrated real rows when the server snapshot is still empty', () => {
+    const local = [
+      item({ id: 'real-b', designId: 'design-b', createdAt: stamp(200) }),
+      item({ id: 'real-a', designId: 'design-a', createdAt: stamp(100) }),
+    ];
+
+    const merged = mergeServerWorkingItemsWithLocal([], local);
+
+    assert.deepEqual(
+      merged.map((entry) => entry.id),
+      ['real-b', 'real-a'],
+    );
+  });
+
   it('keeps optimistic catalog stubs when the server snapshot is still empty', () => {
     const local = [
       item({ id: 'optimistic:design-b', designId: 'design-b', createdAt: stamp(200) }),

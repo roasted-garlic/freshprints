@@ -39,7 +39,6 @@ import { buildAssistedCreationReferenceImageLabel } from "@fresh-prints/shared/u
 import {
   assistedCreationCatalogShareProofTitle,
   chronologicalAssistedCreationImageProofNumber,
-  countAssistedCreationImageProofs,
   isAssistedCreationCatalogShareProof,
 } from "@fresh-prints/shared/utils/assistedCreationProofKind";
 
@@ -842,8 +841,8 @@ function AssistedDetail({
   const [finalSourcePreview, setFinalSourcePreview] = useState<AssistedMediaPreview | null>(null);
   const [selectedProofId, setSelectedProofId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
-  const [pendingProofFile, setPendingProofFile] = useState<File | null>(null);
-  const [pendingProofPreviewUrl, setPendingProofPreviewUrl] = useState<string | null>(null);
+  const [pendingProofFiles, setPendingProofFiles] = useState<File[]>([]);
+  const [pendingProofPreviewUrls, setPendingProofPreviewUrls] = useState<string[]>([]);
   const [catalogPickerOpen, setCatalogPickerOpen] = useState(false);
   const [reasonModal, setReasonModal] = useState<"reject" | "cancel" | "restore" | null>(null);
   const [actionReason, setActionReason] = useState("");
@@ -870,14 +869,14 @@ function AssistedDetail({
 
   useEffect(() => {
     return () => {
-      if (pendingProofPreviewUrl) {
-        URL.revokeObjectURL(pendingProofPreviewUrl);
+      for (const url of pendingProofPreviewUrls) {
+        URL.revokeObjectURL(url);
       }
       if (pendingFinalPreviewUrl) {
         URL.revokeObjectURL(pendingFinalPreviewUrl);
       }
     };
-  }, [pendingFinalPreviewUrl, pendingProofPreviewUrl]);
+  }, [pendingFinalPreviewUrl, pendingProofPreviewUrls]);
 
   const refFingerprint = useMemo(
     () => assistedMediaFingerprint(item.referenceImages),
@@ -1393,30 +1392,50 @@ function AssistedDetail({
   }
 
   function clearPendingProof(): void {
-    if (pendingProofPreviewUrl) {
-      URL.revokeObjectURL(pendingProofPreviewUrl);
+    for (const url of pendingProofPreviewUrls) {
+      URL.revokeObjectURL(url);
     }
-    setPendingProofFile(null);
-    setPendingProofPreviewUrl(null);
+    setPendingProofFiles([]);
+    setPendingProofPreviewUrls([]);
     setProofNote("");
   }
 
+  function movePendingProof(index: number, direction: -1 | 1): void {
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= pendingProofFiles.length) {
+      return;
+    }
+    const nextFiles = [...pendingProofFiles];
+    const nextUrls = [...pendingProofPreviewUrls];
+    const [file] = nextFiles.splice(index, 1);
+    const [url] = nextUrls.splice(index, 1);
+    if (!file || url === undefined) {
+      return;
+    }
+    nextFiles.splice(nextIndex, 0, file);
+    nextUrls.splice(nextIndex, 0, url);
+    setPendingProofFiles(nextFiles);
+    setPendingProofPreviewUrls(nextUrls);
+  }
+
   async function submitPendingProof(): Promise<void> {
-    if (!pendingProofFile || !canMutate) {
+    if (pendingProofFiles.length === 0 || !canMutate) {
       return;
     }
     setBusy(true);
     setError(null);
     try {
-      await assistedCreationRequestsService.uploadAndAttachProof({
+      const optionCount = pendingProofFiles.length;
+      await assistedCreationRequestsService.uploadAndAttachProofRound({
         requestId: item.id,
         customerUid: item.customerUid,
-        file: pendingProofFile,
-        proofNumber: countAssistedCreationImageProofs(item.proofs) + 1,
+        files: pendingProofFiles,
         note: proofNote.trim() || undefined,
       });
       clearPendingProof();
-      onToast("Proof submitted to customer");
+      onToast(
+        optionCount > 1 ? "Proof round submitted to customer" : "Proof submitted to customer",
+      );
       onFollowRequest(item.id, "proof_ready");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to submit proof.");
@@ -1991,39 +2010,70 @@ function AssistedDetail({
                 <input
                   accept="image/jpeg,image/png,image/webp"
                   className="visually-hidden"
+                  multiple
                   onChange={(event) => {
-                    const file = event.target.files?.[0];
+                    const selected = Array.from(event.target.files ?? []);
                     event.target.value = "";
-                    if (!file) {
+                    if (selected.length === 0) {
                       return;
                     }
-                    if (pendingProofPreviewUrl) {
-                      URL.revokeObjectURL(pendingProofPreviewUrl);
+                    for (const url of pendingProofPreviewUrls) {
+                      URL.revokeObjectURL(url);
                     }
-                    setPendingProofFile(file);
-                    setPendingProofPreviewUrl(URL.createObjectURL(file));
+                    setPendingProofFiles(selected);
+                    setPendingProofPreviewUrls(selected.map((file) => URL.createObjectURL(file)));
                     setError(null);
                   }}
                   ref={fileInputRef}
                   type="file"
                 />
-                {!pendingProofFile ? (
+                {pendingProofFiles.length === 0 ? (
                   <Button disabled={busy} onClick={() => fileInputRef.current?.click()}>
-                    Choose proof image
+                    Choose proof image(s)
                   </Button>
                 ) : (
                   <div className="customer-requests-assisted-proof-pending">
-                    {pendingProofPreviewUrl ? (
-                      <div className="customer-requests-assisted-proof-pending-preview">
-                        <img alt="Pending proof preview" src={pendingProofPreviewUrl} />
-                      </div>
-                    ) : null}
-                    <p
-                      className="customer-requests-assisted-proof-pending-name"
-                      title={pendingProofFile.name}
-                    >
-                      {pendingProofFile.name}
-                    </p>
+                    <ul className="customer-requests-assisted-proof-pending-list">
+                      {pendingProofFiles.map((file, index) => (
+                        <li
+                          className="customer-requests-assisted-proof-pending-item"
+                          key={`${file.name}-${index}`}
+                        >
+                          {pendingProofPreviewUrls[index] ? (
+                            <div className="customer-requests-assisted-proof-pending-preview">
+                              <img
+                                alt={`Pending proof option ${String.fromCharCode(65 + index)}`}
+                                src={pendingProofPreviewUrls[index]}
+                              />
+                            </div>
+                          ) : null}
+                          <p
+                            className="customer-requests-assisted-proof-pending-name"
+                            title={file.name}
+                          >
+                            Option {String.fromCharCode(65 + index)} — {file.name}
+                          </p>
+                          {pendingProofFiles.length > 1 ? (
+                            <div className="customer-requests-assisted-action-row">
+                              <Button
+                                disabled={busy || index === 0}
+                                onClick={() => movePendingProof(index, -1)}
+                                variant="secondary"
+                              >
+                                Move up
+                              </Button>
+                              <Button
+                                disabled={busy || index === pendingProofFiles.length - 1}
+                                onClick={() => movePendingProof(index, 1)}
+                                variant="secondary"
+                              >
+                                Move down
+                              </Button>
+                            </div>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
                     <label className="form-field">
                       <span>Proof note (optional)</span>
                       <textarea
@@ -2043,7 +2093,7 @@ function AssistedDetail({
                         Clear
                       </Button>
                       <Button disabled={busy} onClick={() => void submitPendingProof()}>
-                        Submit to customer
+                        {pendingProofFiles.length > 1 ? "Send proof round" : "Submit to customer"}
                       </Button>
                     </div>
                   </div>

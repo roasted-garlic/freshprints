@@ -3503,6 +3503,8 @@ Customers need to download the final approved proof with transparency preserved.
 6. Legacy approved docs without `approvedAt` remain downloadable while the object exists (UI + download endpoint); purge stays fail-closed without `approvedAt`.
 7. Staff proof uploads rename Storage basename + `fileName` to `proof-{n}-{mmddyyyy}-{HHmm}.{ext}` (local upload clock, no seconds). Portal never displays the original creative filename; Download appears on Overview (approved), the approved status card, and in the Proof detail modal for the approved proof. Each proof surfaces **Fresh Prints note** + **Your notes** (Studio-linked window). Proof list/modal clearly label the approved proof as **Approved**.
 
+**Amendment (2026-09-12 — multi-proof selection):** Approve-time sibling Storage purge is **disabled**. All proof options across rounds remain visible after customer approve; reject/cancel and the 14-day approved-proof retention job still remove files.
+
 **Consequences**
 
 - Deploy updated assisted callables + purge callable/schedule + download HTTP Function to `fresh-prints-dev`.

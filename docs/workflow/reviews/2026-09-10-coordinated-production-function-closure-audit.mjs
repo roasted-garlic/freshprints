@@ -15,54 +15,26 @@ const root = path.resolve(scriptDir, "../../..");
 const functionsRoot = path.join(root, "functions", "src");
 const sharedRoot = path.join(root, "packages", "shared", "src");
 
+// Full production-source -> current-worktree runtime delta for the coordinated candidate.
+// This deliberately includes committed development changes plus the dirty overlay, while excluding
+// tests/specs and deleted paths that cannot participate in the current import closure.
+function gitPathList(args) {
+  return execFileSync("git", args, { encoding: "utf8", cwd: root })
+    .split("\0")
+    .filter(Boolean)
+    .map((file) => file.replaceAll("\\", "/"));
+}
+
+const candidateScopes = ["functions/src", "packages/shared/src"];
 const changedRuntimePaths = [
-  "functions/src/addPortalCatalogDesignToPrintRequest.ts",
-  "functions/src/assistedCreationRequests.ts",
-  "functions/src/clearPortalWorkingPrintRequest.ts",
-  "functions/src/completeEtsyRecommendationRequest.ts",
-  "functions/src/confirmCustomerUploadsAndAttachToRequest.ts",
-  "functions/src/confirmCustomerUploadsForDonation.ts",
-  "functions/src/createCustomerUploadBatch.ts",
-  "functions/src/createPortalPrintRequest.ts",
-  "functions/src/customerAddAssistedApprovedProofToPrintRequest.ts",
-  "functions/src/deleteEligibleCustomerUpload.ts",
-  "functions/src/duplicatePortalPrintRequestItem.ts",
-  "functions/src/etsySuggestionRequests.ts",
-  "functions/src/finalizeCustomerUpload.ts",
-  "functions/src/finalizeCustomerUploadZip.ts",
-  "functions/src/queuePortalPrintRequestToShow.ts",
-  "functions/src/recordCustomerUploadHalftoneResponse.ts",
-  "functions/src/registerCustomer.ts",
-  "functions/src/registerWebPushSubscription.ts",
-  "functions/src/removePortalPrintRequestItem.ts",
-  "functions/src/requestPortalAccountDeletion.ts",
-  "functions/src/searchEtsyRecommendations.ts",
-  "functions/src/setPrintRequestItemArtworkEnhanceMode.ts",
-  "functions/src/submitEtsyRecommendationRequest.ts",
-  "functions/src/submitPortalDesignIssueReport.ts",
-  "functions/src/syncPortalAccountEmail.ts",
-  "functions/src/unqueuePortalPrintRequestFromShow.ts",
-  "functions/src/updatePortalCustomerProfile.ts",
-  "functions/src/updatePortalPrintRequestItemQuantity.ts",
-  "functions/src/getPortalMaintenanceState.ts",
-  "functions/src/lib/portalMaintenance.ts",
-  "functions/src/listPortalMaintenanceTestCustomers.ts",
-  "functions/src/updatePortalMaintenanceState.ts",
-  "packages/shared/src/constants/portal/portalMaintenance.constants.ts",
-  "functions/src/excludeCustomerUploadFromCatalog.ts",
-  "functions/src/getCustomerUploadCatalogPermissionFollowUp.ts",
-  "functions/src/requestCustomerUploadCatalogPermissionFollowUp.ts",
-  "functions/src/respondToCustomerUploadCatalogPermissionFollowUp.ts",
-  "functions/src/restoreCustomerUploadCatalogEligibility.ts",
-  "functions/src/lib/customerNotifications/createCustomerNotification.ts",
-  "functions/src/lib/customerUploadCatalogConfirmation.ts",
-  "packages/shared/src/types/customerNotifications/customerNotifications.types.ts",
-  "packages/shared/src/types/customerUpload/customerUpload.enums.ts",
-  "packages/shared/src/types/customerUpload/customerUpload.types.ts",
-  "packages/shared/src/types/customerUpload/customerUploadCatalogPermission.types.ts",
-  "packages/shared/src/utils/customerNotifications.ts",
-  "packages/shared/src/utils/customerUploadCatalogIntakeEligibility.ts",
-];
+  ...new Set([
+    ...gitPathList(["diff", "--name-only", "-z", "origin/production", "--", ...candidateScopes]),
+    ...gitPathList(["ls-files", "-z", "--others", "--exclude-standard", "--", ...candidateScopes]),
+  ]),
+]
+  .filter((file) => fs.existsSync(path.join(root, file)))
+  .filter((file) => !/\.(?:test|spec)\.[^.]+$/.test(file))
+  .sort();
 
 const excluded = new Set([
   "hardDeleteCustomerAccount",
@@ -194,7 +166,7 @@ const result = {
 };
 
 if (process.argv.includes("--summary")) {
-  const { rows: _rows, ...summary } = result;
+  const { rows: _rows, changedRuntimePaths: _changedRuntimePaths, ...summary } = result;
   console.log(JSON.stringify(summary, null, 2));
 } else {
   console.log(JSON.stringify(result, null, 2));

@@ -1,5 +1,109 @@
 # Fresh Prints Roadmap
 
+> 2026-09-12: **Coordinated production promotion readiness — final parent M0 COMPLETE (A)** —
+> Owner authorized the read-only **RERUN FINAL PARENT M0 / COMMIT-BYTE CANDIDATE RECONCILIATION**.
+> The complete `development` tree reconciles at 256 status paths (134 tracked, 122 untracked),
+> with no unexplained paths; Function closure is 186/120 exports and the additive index union is
+> 95/77 with zero removals/replacements. Final/transition Rules, Portal/Studio manifests, config/
+> data disposition, Studio `1.0.10`, security-risk sync, and commit-byte tooling are recorded.
+> Classification: **A — READY FOR REVIEWED CANDIDATE COMMIT/PUSH**. Production, staging, commit,
+> push, freeze, deployment, publication, maintenance, runner, and data/settings actions remain
+> untouched and unauthorized. Next checkpoint: **OWNER AUTHORIZE FINAL REVIEWED CANDIDATE COMMIT/PUSH**.
+
+> 2026-09-12: **Coordinated production cutover prerequisites — CLOSED (repository readiness)** —
+> Goal `coordinated-production-cutover-prerequisites` is **DONE** with disposition
+> **approved_with_notes** after explicit Owner DEV QA **PASS**. The complete gate chain
+> Plan → Formal Review (**approved_with_changes**) → Implement → Test → Owner DEV QA PASS →
+> Signoff is recorded. Deterministic transition/final Rules, projection-preferred Portal dual-read
+> with bounded canonical fallback, production-hard-pinned reconciliation and committed-byte manifest
+> contracts, Studio `1.0.10`, and synchronized security/risk docs are complete. Production,
+> deployment/publication, candidate freeze, and parent M0 rerun remain separately gated. Active
+> parent: `coordinated-production-promotion-release-readiness`. Next checkpoint: **RERUN FINAL
+> PARENT M0 / COMMIT-BYTE CANDIDATE RECONCILIATION**. Signoff:
+> `docs/workflow/reviews/2026-09-12-coordinated-production-cutover-prerequisites-signoff.md`.
+
+> 2026-09-12: **Assisted multi-proof selection — CLOSED (DEV)** — Goal
+> `assisted-creation-multi-proof-selection` is **DONE** with disposition **approved_with_notes**
+> after Owner DEV QA **PASS**. Multi-option proof rounds (Studio upload + Portal carousel),
+> round-scoped email/notifications, preserved final-artwork/Add paths; approve-time sibling
+> proof purge disabled so all options stay visible. Signoff:
+> `docs/workflow/reviews/2026-09-12-assisted-creation-multi-proof-selection-signoff.md`.
+> Production untouched. **Next:** return to parent and rerun coordinated-production **M0** /
+> freeze prep under separate owner authorization.
+
+> 2026-09-12: **Portal post-queue items + submit nudge corrective — CLOSED (DEV)** — Goal
+> `portal-post-queue-items-and-submit-nudge-corrective` is **DONE** with disposition
+> **approved_with_notes** after Owner DEV QA **PASS**. Post-queue item reload, 8s submit-nudge
+> toast (mobile layout), and Clear-request pending-removal fix validated. Signoff:
+> `docs/workflow/reviews/2026-09-12-portal-post-queue-items-and-submit-nudge-corrective-signoff.md`.
+> Production untouched.
+
+> 2026-09-12: **Assisted multi-proof selection — Classification-B Plan amendment applied (docs only)** —
+> Goal `assisted-creation-multi-proof-selection` Plan status
+> `amended_classification_b_awaiting_owner_accept`. Progress/re-add + sentinel + final-artwork-ready
+> email coexistence noted; Decisions A–E intact; no Rules/Storage/index/migration; Implement **not**
+> authorized. Await:
+> `OWNER ACCEPT MULTI-PROOF PLAN AMENDMENT + AUTHORIZE IMPLEMENT`. Sole remaining pre-freeze child
+> before parent M0/freeze prep. Do not resume parent M0 yet.
+
+> 2026-09-12: **Portal Assisted final artwork add retention sentinel — CLOSED (DEV)** — Goal
+> `portal-assisted-final-artwork-add-retention-sentinel-corrective` is **DONE** with final
+> disposition **approved_with_notes** after Owner DEV QA **PASS**. Direct Assisted Add-to-Request
+> (no catalog-permission modal); no fake consent/retention sentinels on fresh create; Assisted
+> origin + `not_eligible`; no auto Design publish; ordinary upload/donation/permission paths
+> unchanged; production untouched. Signoff:
+> `docs/workflow/reviews/2026-09-12-portal-assisted-final-artwork-add-retention-sentinel-corrective-signoff.md`.
+> Remaining pre-freeze child before parent M0/freeze prep:
+> `assisted-creation-multi-proof-selection` (Plan amendment Classification B → owner accept →
+> Implement → …). Do not resume parent M0 yet.
+
+> 2026-09-12: **Assisted final artwork ready email — CLOSED (DEV)** — Goal
+> `assisted-final-artwork-ready-email` is **DONE** with final disposition **approved** after Owner
+> DEV QA **PASS**. Final-source attach enqueues `assisted_final_artwork_ready` email + in-app alert
+> (status deep-link); reuses proof-email opt-out; DEV Functions
+> `staffAddAssistedCreationFinalSource` + `onEmailDeliveryJobCreated` deployed. Signoff:
+> `docs/workflow/reviews/2026-09-12-assisted-final-artwork-ready-email-signoff.md`.
+> Remaining pre-freeze children: Assisted retention-sentinel QA/Signoff and multi-proof Plan
+> amendment → Implement → Test → Owner QA → Signoff. Do not resume parent M0 yet.
+
+> 2026-09-12: **Portal Staff Artwork projection corrective — CLOSED (DEV)** — Goal
+> `portal-staff-artwork-neutral-projection-corrective` is **DONE** with final disposition
+> **approved_with_notes** after Owner DEV QA **PASS**. Portal Staff Artwork rows use Admin
+> `portalPrintRequestItems` projections with preview/title/DPI; Firestore `staffArtworks` stays
+> customer-denied; Storage allows customer preview/thumb only; Upscale remains deferred; production
+> untouched. Signoff:
+> `docs/workflow/reviews/2026-09-12-portal-staff-artwork-neutral-projection-corrective-signoff.md`.
+> Remaining pre-freeze children: Assisted retention-sentinel QA/Signoff and multi-proof Plan
+> amendment → Implement → Test → Owner QA → Signoff. Do not resume parent M0 yet.
+
+> 2026-09-12: **Studio Staff Artwork library and Print Request source — CLOSED (DEV)** — Goal
+> `studio-staff-artwork-library-and-print-request-source` is **DONE** with final disposition
+> **approved_with_notes** after Owner DEV QA **PASS**. The private Staff Artwork entity, PNG-only
+> processing, Auto/Light/Dark background handling, request source propagation, queue/allocation/
+> export/gang-sheet paths, safe deletion, AI Review promotion, Portal projection, and corrective
+> Rules paths are deployed to `fresh-prints-dev`. Source-focused contracts pass 31/31 and the
+> emulator-backed Staff Artwork/catalog create Rules suites pass 11/11; Functions build, Portal
+> typecheck, and diff check pass. The repository-wide Rules command retains a documented legacy
+> expression-budget baseline. No production deployment, publication, migration/backfill, commit,
+> push, or candidate freeze occurred. Signoff:
+> `docs/workflow/reviews/2026-09-12-studio-staff-artwork-library-and-print-request-source-signoff.md`.
+> Next: rerun coordinated-production M0 and prepare a new candidate/freeze proposal under separate
+> owner authorization.
+
+> 2026-09-11: **Customer-upload Studio deferral, personal library, and Portal inline Remove — CLOSED (DEV)** — Goal
+> `customer-upload-studio-deferral-personal-library-portal-inline-remove` is **DONE** with final
+> disposition **approved_with_notes** after Owner DEV QA **PASS**. Studio customer-upload intake is
+> held until Add to Show; queue alerts settle after success UI; Portal Remove uses inline
+> Cancel/Confirm; Your designs provides Personal and Design Library tabs with the reviewed retention
+> policy. The reviewed DEV Functions/indexes and local Portal/Studio runtimes were validated; the
+> retention scheduler remained paused. Focused rerun was 92 passing / 1 known unrelated
+> deletion-eligibility manifest baseline failure. Runtime is present in owner-authorized
+> `35d80ec7` on `origin/development`; no production deployment, publication, freeze, backfill, or
+> maintenance activation occurred. Signoff:
+> `docs/workflow/reviews/2026-09-11-customer-upload-studio-deferral-personal-library-portal-inline-remove-signoff.md`.
+> Next: rerun coordinated-production M0 and prepare a new candidate/freeze proposal under separate
+> owner authorization.
+
 > 2026-09-10: **Production maintenance-mode prerequisite — CLOSED (DEV)** — Goal
 > `production-maintenance-mode-prerequisite` **DONE** with final disposition
 > **approved_with_notes** after Owner DEV QA **PASS**. Shared heading/body copy now drives the

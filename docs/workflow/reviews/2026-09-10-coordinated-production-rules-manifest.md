@@ -1,5 +1,66 @@
 # Coordinated Production Rules Manifest
 
+## Authoritative final parent M0 Rules reconciliation — 2026-09-12
+
+| File | Production baseline SHA-256 | Current bytes | Current lines | Current SHA-256 |
+|---|---|---:|---:|---|
+| `firestore.rules` (authoritative final) | `cdd4a3154733cfdceea53be9a785e39e4ea526a27da5e1046a802e33557defad` | 127,614 | 2,867 | `dc4fc83dcf36382aa7d2273dc4e35bd6e41b3da02b33e85a3bd21c710204d2ee` |
+| `firestore.transition.rules` (transition artifact) | — | 127,701 | 2,868 | `8a50d5bb85fa41fca82652582730940fb1a936cb0aae059a0b05e59099db9945` |
+| `storage.rules` | `39f17c0fbc25435eac4355ec2b5977a1aaecf3b340619b3d5f0b6d4ae22a3a36` | 13,502 | 298 | `f35c049fe4991e05dd73a8e6b2165ee3d24874ee3a081599894ee979abba1795` |
+| `firebase.transition.json` | — | 108 | 6 | `c07e7c2772b6fcf94b14f42af211883f248952d28bddd6e40c9efe6c8aef0c03` |
+
+The transition artifact widens only the canonical customer read boundary needed during additive
+`portalPrintRequestItems` dual-read. The final state retains staff-only raw
+`printRequestItems`/`staffArtworks`, permits customer-owned projection reads with client writes
+denied, and permits only authenticated known-ID Staff Artwork preview/thumbnail reads. No hard-delete
+or DEV-only production path is present. Rules deployment did not occur; transition precedes final
+tightening in the reviewed cutover and remains owner-gated.
+
+## Authoritative post-pre-freeze-child M0 rerun — 2026-09-12
+
+| File | Production-source SHA-256 | Current SHA-256 | Current lines | Production→current diff |
+|---|---|---|---:|---:|
+| `firestore.rules` | `cdd4a3154733cfdceea53be9a785e39e4ea526a27da5e1046a802e33557defad` | `35f6567cfd21268c65f7ebc53310065e60faa90540d5de15c39b7c7afceed459` | 3,127 | +900 / -108 |
+| `storage.rules` | `39f17c0fbc25435eac4355ec2b5977a1aaecf3b340619b3d5f0b6d4ae22a3a36` | `f35c049fe4991e05dd73a8e6b2165ee3d24874ee3a081599894ee979abba1795` | 345 | +88 / -5 |
+
+The current Rules preserve staff-only raw `printRequestItems` and `staffArtworks` access, expose
+customer-owned `portalPrintRequestItems` reads with client writes denied, and allow customer reads
+only for Staff Artwork `preview.webp` / `thumbnail.webp` objects. No `hardDelete` or
+`previewHardDelete` rule path exists.
+
+**Release blocker:** these final Rules cannot safely precede the new Portal. The production Portal
+still reads raw `printRequestItems`, while the final candidate Rules deny that customer read; the
+production-source Rules do not yet authorize the projection collection used by the new Portal.
+The parent Plan must be amended and reviewed to introduce a compatibility sequence (transitional
+dual-read Rules, projection trigger deployment, production population + verification, Portal
+rollout, then final raw-read tightening) or another explicitly reviewed atomic strategy. No Rules
+deployment occurred in M0.
+
+## Authoritative post-Staff-Artwork M0 rerun — 2026-09-12
+
+The earlier snapshot is retained below. This current whole-file hash map is authoritative for the
+dirty M0 reconciliation at `development` `a76d8be218571e1260bdb983f86ee5cf86563e1b` (same as
+`origin/development`); `origin/production` remains `36165096f09bef6817adb5b11d496dbb1502b34b`.
+No Rules deployment or production mutation occurred.
+
+| File | Production baseline SHA-256 | Current working-tree SHA-256 | Current lines |
+|---|---|---|---:|
+| `firestore.rules` | `cdd4a3154733cfdceea53be9a785e39e4ea526a27da5e1046a802e33557defad` | `3d1da896e731de9de9f1bf6aae6d3991bf7b4de718d719618613e4a2c618f28c` | 3,128 |
+| `storage.rules` | `39f17c0fbc25435eac4355ec2b5977a1aaecf3b340619b3d5f0b6d4ae22a3a36` | `2fac70564dd6ac208c138950988c67692787855e70b140eb1392f3c7226dd28b` | 341 |
+
+These are whole-file inputs, not patch fragments. Relative to the production baseline, the current
+working tree is `899/106` added/deleted lines for Firestore and `84/5` for Storage. Relative to
+`HEAD`, the current dirty delta is `264/13` and `12/0`, respectively. The accumulated rule scope
+includes the accepted maintenance, customer-upload, lifecycle, queue, AI/catalog, identity, and
+Staff Artwork branches; it is not silently narrowed to the last child.
+
+Staff Artwork adds private `staffArtworks` document access, canonical `/staff-artwork/{id}/...`
+Storage paths, source-specific request/allocation/gang-sheet checks, and lean catalog/request-item
+create validators. The customer mutation maintenance guard remains absent/OFF-compatible and is
+resolved by the trusted `portalMaintenance` helper. No hard-delete or DEV-only rule path is present.
+The 11 focused emulator-backed Staff Artwork/catalog create Rules suites passed; the repository-wide
+command retains the known legacy expression-budget baseline.
+
 Status: read-only M0 reconciliation rerun artifact. No Firestore or Storage Rules deployment was executed.
 
 Rerun snapshot: `development` dirty at `04b9637470a16b0f4d4a1ba9f822fe9df7acca2d`. The signed-off

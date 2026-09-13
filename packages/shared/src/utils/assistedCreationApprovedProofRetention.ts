@@ -26,6 +26,8 @@ export interface AssistedCreationProofRetentionView {
   fullSizePurgedAtMillis?: number | null;
   /** When `catalog_share`, never purge Storage (no assisted proof object). */
   kind?: "proof_image" | "catalog_share";
+  /** Multi-proof round id; used to keep prior rounds visible after approve. */
+  proofRoundId?: string | null;
 }
 
 export interface AssistedCreationApprovedProofDownloadInput {
@@ -198,15 +200,22 @@ export function evaluateAssistedCreationApprovedProofPurge(
 
 /**
  * Proof ids whose full-res Storage objects should be deleted when a request reaches
- * a terminal status (approve keeps only approvedProofId).
+ * a terminal (or approve → final_source_needed) purge point.
+ *
+ * - `rejected_or_cancelled`: purge every image proof that still has Storage.
+ * - `approved`: purge **nothing** at approve time. Multi-proof history (all options in
+ *   every round) must stay visible in Studio/Portal; the approved proof still expires
+ *   later via the 14-day retention job. `approvedProofId` is unused for selection here
+ *   but kept on the API for callers/docs compatibility.
  */
 export function selectAssistedCreationProofIdsToPurgeOnTerminal(input: {
   terminalKind: "approved" | "rejected_or_cancelled";
   approvedProofId?: string | null;
   proofs: AssistedCreationProofRetentionView[];
 }): string[] {
-  const keepId =
-    input.terminalKind === "approved" ? input.approvedProofId?.trim() || "" : "";
+  if (input.terminalKind === "approved") {
+    return [];
+  }
 
   return input.proofs
     .filter((proof) => {
@@ -214,9 +223,6 @@ export function selectAssistedCreationProofIdsToPurgeOnTerminal(input: {
         return false;
       }
       if (proof.kind === "catalog_share") {
-        return false;
-      }
-      if (keepId && proof.id === keepId) {
         return false;
       }
       if (proof.fullSizePurgedAtMillis != null) {

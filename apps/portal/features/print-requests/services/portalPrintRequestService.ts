@@ -4,6 +4,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  limit,
   onSnapshot,
   orderBy,
   query,
@@ -58,6 +59,10 @@ import {
   primePortalPrintRequestReadCache,
 } from './portalPrintRequestReadCache';
 import { enqueuePortalPrintRequestMutation } from './portalPrintRequestMutationQueue';
+import { mergeProjectionPreferredPrintRequestItems } from '../utils/mergeProjectionPreferredPrintRequestItems';
+
+/** Transition-only canonical fallback bound. Production request limits are below this ceiling. */
+export const PORTAL_CANONICAL_FALLBACK_LIMIT = 200;
 
 function readCacheKey(kind: string, value: string): string {
   return `${getPortalAuth().currentUser?.uid ?? 'signed-out'}:${kind}:${value}`;
@@ -87,7 +92,14 @@ interface PrintRequestItemDocumentData extends DocumentData {
   designId?: unknown;
   sourceType?: unknown;
   customerUploadId?: unknown;
+  staffArtworkId?: unknown;
+  sourceLabel?: unknown;
   titleSnapshot?: unknown;
+  previewStoragePath?: unknown;
+  thumbnailStoragePath?: unknown;
+  widthPx?: unknown;
+  heightPx?: unknown;
+  artworkBackgroundHex?: unknown;
   quantity?: unknown;
   printWidthInches?: unknown;
   printHeightInches?: unknown;
@@ -218,7 +230,7 @@ function mapPrintRequest(printRequestId: string, data: PrintRequestDocumentData)
   };
 }
 
-function mapPrintRequestItem(itemId: string, data: PrintRequestItemDocumentData): PrintRequestItem {
+export function mapPrintRequestItem(itemId: string, data: PrintRequestItemDocumentData): PrintRequestItem {
   // Fresh writes with serverTimestamp() can leave both audit fields pending/null in the
   // local cache — same race as mapPrintRequest after "Add to request" seed persist.
   const resolvedTimestamps = resolveDesignDocumentTimestamps(data);
@@ -227,14 +239,19 @@ function mapPrintRequestItem(itemId: string, data: PrintRequestItemDocumentData)
   const updatedAt = resolvedTimestamps?.updatedAt ?? fallbackNow;
 
   const sourceType =
-    data.sourceType === 'customer_upload' || data.sourceType === 'catalog_design'
+    data.sourceType === 'customer_upload' || data.sourceType === 'catalog_design' || data.sourceType === 'staff_artwork'
       ? data.sourceType
       : undefined;
   const customerUploadId =
     typeof data.customerUploadId === 'string' && data.customerUploadId.trim()
       ? data.customerUploadId.trim()
       : undefined;
-  const isUploadItem = sourceType === 'customer_upload' || Boolean(customerUploadId);
+  const staffArtworkId =
+    typeof data.staffArtworkId === 'string' && data.staffArtworkId.trim()
+      ? data.staffArtworkId.trim()
+      : undefined;
+  const isStaffArtworkItem = sourceType === 'staff_artwork';
+  const isUploadItem = !isStaffArtworkItem && (sourceType === 'customer_upload' || Boolean(customerUploadId));
   const designId =
     typeof data.designId === 'string' && data.designId.trim() ? data.designId.trim() : undefined;
 
@@ -251,19 +268,47 @@ function mapPrintRequestItem(itemId: string, data: PrintRequestItemDocumentData)
     if (!customerUploadId) {
       throw new Error('Print request item data is incomplete.');
     }
-  } else if (!designId) {
+  } else if (isStaffArtworkItem && !staffArtworkId) {
+    throw new Error('Print request item data is incomplete.');
+  } else if (!isStaffArtworkItem && !designId) {
     throw new Error('Print request item data is incomplete.');
   }
 
   return {
     id: itemId,
     printRequestId: data.printRequestId,
-    ...(designId ? { designId } : {}),
-    ...(sourceType ? { sourceType } : isUploadItem ? { sourceType: 'customer_upload' as const } : {}),
-    ...(customerUploadId ? { customerUploadId } : {}),
-    ...(typeof data.titleSnapshot === 'string' && data.titleSnapshot.trim()
-      ? { titleSnapshot: data.titleSnapshot.trim() }
-      : {}),
+    ...(isStaffArtworkItem
+      ? {
+          sourceType: 'staff_artwork' as const,
+          ...(data.sourceLabel === 'Staff-added' ? { sourceLabel: data.sourceLabel } : {}),
+          ...(staffArtworkId ? { staffArtworkId } : {}),
+          ...(typeof data.titleSnapshot === 'string' && data.titleSnapshot.trim()
+            ? { titleSnapshot: data.titleSnapshot.trim() }
+            : {}),
+          ...(typeof data.previewStoragePath === 'string' && data.previewStoragePath.trim()
+            ? { previewStoragePath: data.previewStoragePath.trim() }
+            : {}),
+          ...(typeof data.thumbnailStoragePath === 'string' && data.thumbnailStoragePath.trim()
+            ? { thumbnailStoragePath: data.thumbnailStoragePath.trim() }
+            : {}),
+          ...(typeof data.widthPx === 'number' && Number.isFinite(data.widthPx) && data.widthPx > 0
+            ? { widthPx: Math.floor(data.widthPx) }
+            : {}),
+          ...(typeof data.heightPx === 'number' && Number.isFinite(data.heightPx) && data.heightPx > 0
+            ? { heightPx: Math.floor(data.heightPx) }
+            : {}),
+          ...(typeof data.artworkBackgroundHex === 'string' && data.artworkBackgroundHex.trim()
+            ? { artworkBackgroundHex: data.artworkBackgroundHex.trim() }
+            : {}),
+        }
+      : {
+          ...(designId ? { designId } : {}),
+          ...(sourceType ? { sourceType } : isUploadItem ? { sourceType: 'customer_upload' as const } : {}),
+          ...(customerUploadId ? { customerUploadId } : {}),
+          ...(typeof data.titleSnapshot === 'string' && data.titleSnapshot.trim()
+            ? { titleSnapshot: data.titleSnapshot.trim() }
+            : {}),
+        }),
     quantity: data.quantity,
     printWidthInches: typeof data.printWidthInches === 'number' ? data.printWidthInches : undefined,
     printHeightInches: typeof data.printHeightInches === 'number' ? data.printHeightInches : undefined,
@@ -273,13 +318,27 @@ function mapPrintRequestItem(itemId: string, data: PrintRequestItemDocumentData)
         ? data.standardSizePresetKey.trim()
         : undefined,
     sortOrder: typeof data.sortOrder === 'number' ? data.sortOrder : undefined,
-    notes: typeof data.notes === 'string' ? data.notes : undefined,
-    ...readPrintRequestItemArtworkEnhanceFields(data),
+    notes: !isStaffArtworkItem && typeof data.notes === 'string' ? data.notes : undefined,
+    // Staff Artwork enhancement/upscale state remains deferred / trusted-server-only.
+    ...(isStaffArtworkItem ? {} : readPrintRequestItemArtworkEnhanceFields(data)),
     status: data.status as PrintRequestItem['status'],
     addedBy: data.addedBy,
     createdAt,
     updatedAt,
   };
+}
+
+function mapPrintRequestItemSnapshot(snapshot: {
+  docs: Array<{ id: string; data: () => DocumentData }>;
+}): PrintRequestItem[] {
+  return snapshot.docs.flatMap((itemDoc) => {
+    try {
+      return [mapPrintRequestItem(itemDoc.id, itemDoc.data() as PrintRequestItemDocumentData)];
+    } catch {
+      // A malformed/pending row must not erase valid projection rows during transition.
+      return [];
+    }
+  });
 }
 
 export function printRequestItemHasCustomerUpload(item: Pick<PrintRequestItem, 'sourceType' | 'customerUploadId'>): boolean {
@@ -290,6 +349,9 @@ async function loadProductionPixelsForItem(item: PrintRequestItem): Promise<{
   pixelWidth: number;
   pixelHeight: number;
 }> {
+  if (item.sourceType === 'staff_artwork') {
+    throw new Error('Staff Artwork size changes must use the trusted Portal action.');
+  }
   if (printRequestItemHasCustomerUpload(item) && item.customerUploadId) {
     const snapshot = await getDoc(
       doc(getPortalDb(), CUSTOMER_UPLOAD_COLLECTIONS.customerUploads, item.customerUploadId),
@@ -442,45 +504,99 @@ export const portalPrintRequestService = {
     };
   },
 
-  /** Bounded live item listener for one active working request. */
+  /**
+   * Bounded live dual-read listener for one active working request. Projection rows are preferred;
+   * canonical rows are a transition fallback only and are denied again by the final Rules state.
+   */
   subscribePrintRequestItems(
     printRequestId: string,
     onItems: (items: PrintRequestItem[]) => void,
     onError: (error: Error) => void,
   ): Unsubscribe {
-    const traceMetadata = {
+    const projectionTraceMetadata = {
       app: 'portal' as const,
-      collection: 'printRequestItems',
+      collection: PORTAL_FIRESTORE_COLLECTIONS.portalPrintRequestItems,
       constraints: [`printRequestId==${printRequestId}`, 'orderBy updatedAt desc'],
       source: 'portalPrintRequestService.subscribePrintRequestItems',
       triggerReason: 'authentication' as const,
     };
-    traceFirestoreListenerAttach(traceMetadata);
-    return traceWrappedUnsubscribe(
-      traceMetadata,
+    const canonicalTraceMetadata = {
+      app: 'portal' as const,
+      collection: 'printRequestItems',
+      constraints: [`printRequestId==${printRequestId}`, `limit ${PORTAL_CANONICAL_FALLBACK_LIMIT}`],
+      source: 'portalPrintRequestService.subscribePrintRequestItems.canonicalFallback',
+      triggerReason: 'authentication' as const,
+    };
+    let projectionItems: PrintRequestItem[] | null = null;
+    let canonicalItems: PrintRequestItem[] | null = null;
+    let projectionError: Error | null = null;
+    let canonicalError: Error | null = null;
+
+    const emit = () => {
+      if (projectionItems === null && canonicalItems === null) {
+        if (projectionError && canonicalError) {
+          onError(projectionError);
+        }
+        return;
+      }
+      const items = mergeProjectionPreferredPrintRequestItems(
+        projectionItems ?? [],
+        canonicalItems ?? [],
+      );
+      primePortalPrintRequestReadCache(readCacheKey('items', printRequestId), items);
+      onItems(items);
+      // A final-state canonical permission error is expected once projections are complete. Do
+      // not surface it after a successful projection emission; only report when both reads fail.
+    };
+
+    traceFirestoreListenerAttach(projectionTraceMetadata);
+    const projectionUnsubscribe = traceWrappedUnsubscribe(
+      projectionTraceMetadata,
       onSnapshot(
         query(
-          collection(getPortalDb(), 'printRequestItems'),
+          collection(getPortalDb(), PORTAL_FIRESTORE_COLLECTIONS.portalPrintRequestItems),
           where('printRequestId', '==', printRequestId),
           orderBy('updatedAt', 'desc'),
         ),
         (snapshot) => {
-          traceFirestoreListenerEmission(traceMetadata, snapshot.size);
-          const items = sortPrintRequestItemsNewestFirst(
-            snapshot.docs.flatMap((itemDoc) => {
-              try {
-                return [mapPrintRequestItem(itemDoc.id, itemDoc.data() as PrintRequestItemDocumentData)];
-              } catch {
-                return [];
-              }
-            }),
-          );
-          primePortalPrintRequestReadCache(readCacheKey('items', printRequestId), items);
-          onItems(items);
+          traceFirestoreListenerEmission(projectionTraceMetadata, snapshot.size);
+          projectionError = null;
+          projectionItems = sortPrintRequestItemsNewestFirst(mapPrintRequestItemSnapshot(snapshot));
+          emit();
         },
-        (error) => onError(error instanceof Error ? error : new Error('Unable to load Current Request items.')),
+        (error) => {
+          projectionError = error instanceof Error ? error : new Error('Unable to load Current Request items.');
+          emit();
+        },
       ),
     );
+
+    traceFirestoreListenerAttach(canonicalTraceMetadata);
+    const canonicalUnsubscribe = traceWrappedUnsubscribe(
+      canonicalTraceMetadata,
+      onSnapshot(
+        query(
+          collection(getPortalDb(), 'printRequestItems'),
+          where('printRequestId', '==', printRequestId),
+          limit(PORTAL_CANONICAL_FALLBACK_LIMIT),
+        ),
+        (snapshot) => {
+          traceFirestoreListenerEmission(canonicalTraceMetadata, snapshot.size);
+          canonicalError = null;
+          canonicalItems = sortPrintRequestItemsNewestFirst(mapPrintRequestItemSnapshot(snapshot));
+          emit();
+        },
+        (error) => {
+          canonicalError = error instanceof Error ? error : new Error('Unable to load Current Request items.');
+          emit();
+        },
+      ),
+    );
+
+    return () => {
+      projectionUnsubscribe();
+      canonicalUnsubscribe();
+    };
   },
 
   async createPrintRequest(input: CreatePortalPrintRequestRequest = {}): Promise<CreatePortalPrintRequestResponse> {
@@ -605,34 +721,60 @@ export const portalPrintRequestService = {
     return loadPortalPrintRequestReadCached(
       readCacheKey('items', printRequestId),
       async () => {
-    const traceMetadata = {
-      app: 'portal' as const,
-      collection: 'printRequestItems',
-      constraints: ['printRequestId==workingRequest'],
-      orderBy: ['updatedAt desc'],
-      source: 'portalPrintRequestService.listPrintRequestItems',
-      triggerReason: 'authentication' as const,
-    };
-    traceFirestoreOneShotStart('getDocs', traceMetadata);
-    const snapshot = await getDocs(
-      query(
-        collection(getPortalDb(), 'printRequestItems'),
-        where('printRequestId', '==', printRequestId),
-        orderBy('updatedAt', 'desc'),
-      ),
-    );
-    traceFirestoreOneShotComplete('getDocs', traceMetadata, snapshot.size);
+        const projectionTraceMetadata = {
+          app: 'portal' as const,
+          collection: PORTAL_FIRESTORE_COLLECTIONS.portalPrintRequestItems,
+          constraints: [`printRequestId==${printRequestId}`],
+          orderBy: ['updatedAt desc'],
+          source: 'portalPrintRequestService.listPrintRequestItems',
+          triggerReason: 'authentication' as const,
+        };
+        const canonicalTraceMetadata = {
+          app: 'portal' as const,
+          collection: 'printRequestItems',
+          constraints: [`printRequestId==${printRequestId}`, `limit ${PORTAL_CANONICAL_FALLBACK_LIMIT}`],
+          source: 'portalPrintRequestService.listPrintRequestItems.canonicalFallback',
+          triggerReason: 'authentication' as const,
+        };
 
-    return sortPrintRequestItemsNewestFirst(
-      snapshot.docs.flatMap((itemDoc) => {
+        let projectionItems: PrintRequestItem[] | null = null;
+        let projectionError: unknown;
         try {
-          return [mapPrintRequestItem(itemDoc.id, itemDoc.data() as PrintRequestItemDocumentData)];
-        } catch {
-          // Skip a single malformed/pending doc instead of failing the whole selection load.
-          return [];
+          traceFirestoreOneShotStart('getDocs', projectionTraceMetadata);
+          const snapshot = await getDocs(
+            query(
+              collection(getPortalDb(), PORTAL_FIRESTORE_COLLECTIONS.portalPrintRequestItems),
+              where('printRequestId', '==', printRequestId),
+              orderBy('updatedAt', 'desc'),
+            ),
+          );
+          traceFirestoreOneShotComplete('getDocs', projectionTraceMetadata, snapshot.size);
+          projectionItems = sortPrintRequestItemsNewestFirst(mapPrintRequestItemSnapshot(snapshot));
+        } catch (error) {
+          projectionError = error;
         }
-      }),
-    );
+
+        let canonicalItems: PrintRequestItem[] = [];
+        let canonicalError: unknown;
+        try {
+          traceFirestoreOneShotStart('getDocs', canonicalTraceMetadata);
+          const snapshot = await getDocs(
+            query(
+              collection(getPortalDb(), 'printRequestItems'),
+              where('printRequestId', '==', printRequestId),
+              limit(PORTAL_CANONICAL_FALLBACK_LIMIT),
+            ),
+          );
+          traceFirestoreOneShotComplete('getDocs', canonicalTraceMetadata, snapshot.size);
+          canonicalItems = sortPrintRequestItemsNewestFirst(mapPrintRequestItemSnapshot(snapshot));
+        } catch (error) {
+          canonicalError = error;
+        }
+
+        if (projectionItems === null && canonicalError && canonicalItems.length === 0) {
+          throw projectionError ?? canonicalError;
+        }
+        return mergeProjectionPreferredPrintRequestItems(projectionItems ?? [], canonicalItems);
       },
     );
   },
@@ -642,20 +784,43 @@ export const portalPrintRequestService = {
     if (!trimmed) {
       return null;
     }
-    const traceMetadata = {
+    const projectionTraceMetadata = {
       app: 'portal' as const,
-      collection: 'printRequestItems',
-      documentPathPattern: 'printRequestItems/{itemId}',
+      collection: PORTAL_FIRESTORE_COLLECTIONS.portalPrintRequestItems,
+      documentPathPattern: 'portalPrintRequestItems/{itemId}',
       source: 'portalPrintRequestService.getPrintRequestItem',
       triggerReason: 'route' as const,
     };
-    traceFirestoreOneShotStart('getDoc', traceMetadata);
-    const itemSnapshot = await getDoc(doc(getPortalDb(), 'printRequestItems', trimmed));
-    traceFirestoreOneShotComplete('getDoc', traceMetadata, itemSnapshot.exists() ? 1 : 0);
-    if (!itemSnapshot.exists()) {
-      return null;
-    }
     try {
+      traceFirestoreOneShotStart('getDoc', projectionTraceMetadata);
+      const itemSnapshot = await getDoc(doc(getPortalDb(), PORTAL_FIRESTORE_COLLECTIONS.portalPrintRequestItems, trimmed));
+      traceFirestoreOneShotComplete('getDoc', projectionTraceMetadata, itemSnapshot.exists() ? 1 : 0);
+      if (itemSnapshot.exists()) {
+        try {
+          return mapPrintRequestItem(
+            itemSnapshot.id,
+            itemSnapshot.data() as PrintRequestItemDocumentData,
+          );
+        } catch {
+          // Fall through to the canonical transition fallback for malformed projection rows.
+        }
+      }
+    } catch {
+      // The canonical read remains available during the additive transition.
+    }
+
+    const canonicalTraceMetadata = {
+      app: 'portal' as const,
+      collection: 'printRequestItems',
+      documentPathPattern: 'printRequestItems/{itemId}',
+      source: 'portalPrintRequestService.getPrintRequestItem.canonicalFallback',
+      triggerReason: 'route' as const,
+    };
+    try {
+      traceFirestoreOneShotStart('getDoc', canonicalTraceMetadata);
+      const itemSnapshot = await getDoc(doc(getPortalDb(), 'printRequestItems', trimmed));
+      traceFirestoreOneShotComplete('getDoc', canonicalTraceMetadata, itemSnapshot.exists() ? 1 : 0);
+      if (!itemSnapshot.exists()) return null;
       return mapPrintRequestItem(
         itemSnapshot.id,
         itemSnapshot.data() as PrintRequestItemDocumentData,
@@ -677,29 +842,47 @@ export const portalPrintRequestService = {
       async () => {
         const itemLists = await Promise.all(
           uniquePrintRequestIds.map(async (printRequestId) => {
-            const traceMetadata = {
+            const projectionTraceMetadata = {
               app: 'portal' as const,
-              collection: 'printRequestItems',
+              collection: PORTAL_FIRESTORE_COLLECTIONS.portalPrintRequestItems,
               constraints: ['printRequestId=={printRequestId}'],
               source: 'portalPrintRequestService.listPrintRequestItemsForRequests',
               triggerReason: 'authentication' as const,
             };
-            traceFirestoreOneShotStart('getDocs', traceMetadata);
-            const snapshot = await getDocs(
-              query(
-                collection(getPortalDb(), 'printRequestItems'),
-                where('printRequestId', '==', printRequestId),
-              ),
-            );
-            traceFirestoreOneShotComplete('getDocs', traceMetadata, snapshot.size);
-
-            return snapshot.docs.flatMap((itemDoc) => {
-              try {
-                return [mapPrintRequestItem(itemDoc.id, itemDoc.data() as PrintRequestItemDocumentData)];
-              } catch {
-                return [];
-              }
-            });
+            const canonicalTraceMetadata = {
+              app: 'portal' as const,
+              collection: 'printRequestItems',
+              constraints: [`printRequestId==${printRequestId}`, `limit ${PORTAL_CANONICAL_FALLBACK_LIMIT}`],
+              source: 'portalPrintRequestService.listPrintRequestItemsForRequests.canonicalFallback',
+              triggerReason: 'authentication' as const,
+            };
+            const projectionResult = await Promise.resolve().then(async () => {
+              traceFirestoreOneShotStart('getDocs', projectionTraceMetadata);
+              const snapshot = await getDocs(
+                query(
+                  collection(getPortalDb(), PORTAL_FIRESTORE_COLLECTIONS.portalPrintRequestItems),
+                  where('printRequestId', '==', printRequestId),
+                ),
+              );
+              traceFirestoreOneShotComplete('getDocs', projectionTraceMetadata, snapshot.size);
+              return sortPrintRequestItemsNewestFirst(mapPrintRequestItemSnapshot(snapshot));
+            }).catch(() => null);
+            const canonicalResult = await Promise.resolve().then(async () => {
+              traceFirestoreOneShotStart('getDocs', canonicalTraceMetadata);
+              const snapshot = await getDocs(
+                query(
+                  collection(getPortalDb(), 'printRequestItems'),
+                  where('printRequestId', '==', printRequestId),
+                  limit(PORTAL_CANONICAL_FALLBACK_LIMIT),
+                ),
+              );
+              traceFirestoreOneShotComplete('getDocs', canonicalTraceMetadata, snapshot.size);
+              return sortPrintRequestItemsNewestFirst(mapPrintRequestItemSnapshot(snapshot));
+            }).catch(() => null);
+            if (projectionResult === null && canonicalResult === null) {
+              throw new Error('Unable to load Current Request items.');
+            }
+            return mergeProjectionPreferredPrintRequestItems(projectionResult ?? [], canonicalResult ?? []);
           }),
         );
 
@@ -1063,20 +1246,50 @@ export const portalPrintRequestService = {
 
     const itemTraceMetadata = {
       app: 'portal' as const,
-      collection: 'printRequestItems',
-      documentPathPattern: 'printRequestItems/{itemId}',
+      collection: PORTAL_FIRESTORE_COLLECTIONS.portalPrintRequestItems,
+      documentPathPattern: 'portalPrintRequestItems/{itemId}',
       source: 'portalPrintRequestService.updatePrintRequestItem',
       triggerReason: 'explicit-refresh' as const,
     };
-    traceFirestoreOneShotStart('getDoc', itemTraceMetadata);
-    const itemSnapshot = await getDoc(doc(getPortalDb(), 'printRequestItems', input.itemId));
-    traceFirestoreOneShotComplete('getDoc', itemTraceMetadata, itemSnapshot.exists() ? 1 : 0);
-
-    if (!itemSnapshot.exists()) {
-      throw new Error('Print request item not found.');
+    let current: PrintRequestItem | null = null;
+    try {
+      traceFirestoreOneShotStart('getDoc', itemTraceMetadata);
+      const itemSnapshot = await getDoc(doc(getPortalDb(), PORTAL_FIRESTORE_COLLECTIONS.portalPrintRequestItems, input.itemId));
+      traceFirestoreOneShotComplete('getDoc', itemTraceMetadata, itemSnapshot.exists() ? 1 : 0);
+      if (itemSnapshot.exists()) {
+        try {
+          current = mapPrintRequestItem(itemSnapshot.id, itemSnapshot.data() as PrintRequestItemDocumentData);
+        } catch {
+          // Fall through to the canonical transition fallback for malformed projection rows.
+        }
+      }
+    } catch {
+      // The canonical read remains available during the additive transition.
     }
 
-    const current = mapPrintRequestItem(itemSnapshot.id, itemSnapshot.data() as PrintRequestItemDocumentData);
+    if (!current) {
+      const canonicalTraceMetadata = {
+        app: 'portal' as const,
+        collection: 'printRequestItems',
+        documentPathPattern: 'printRequestItems/{itemId}',
+        source: 'portalPrintRequestService.updatePrintRequestItem.canonicalFallback',
+        triggerReason: 'explicit-refresh' as const,
+      };
+      try {
+        traceFirestoreOneShotStart('getDoc', canonicalTraceMetadata);
+        const itemSnapshot = await getDoc(doc(getPortalDb(), 'printRequestItems', input.itemId));
+        traceFirestoreOneShotComplete('getDoc', canonicalTraceMetadata, itemSnapshot.exists() ? 1 : 0);
+        if (itemSnapshot.exists()) {
+          current = mapPrintRequestItem(itemSnapshot.id, itemSnapshot.data() as PrintRequestItemDocumentData);
+        }
+      } catch {
+        // A final-state canonical permission error is expected once projection convergence is complete.
+      }
+    }
+
+    if (!current) {
+      throw new Error('Print request item not found.');
+    }
     const nextQuantity = Math.floor(input.quantity ?? current.quantity);
     const nextWidth = input.printWidthInches ?? current.printWidthInches;
     const nextHeight = input.printHeightInches ?? current.printHeightInches;
@@ -1098,13 +1311,15 @@ export const portalPrintRequestService = {
       throw new Error('Requested print size must be greater than 0 inches.');
     }
 
-    const pixels = await loadProductionPixelsForItem(current);
-    requireSavablePrintRequestItemSize({
-      pixelWidth: pixels.pixelWidth,
-      pixelHeight: pixels.pixelHeight,
-      printWidthInches: nextWidth,
-      printHeightInches: nextHeight,
-    });
+    if (current.sourceType !== 'staff_artwork') {
+      const pixels = await loadProductionPixelsForItem(current);
+      requireSavablePrintRequestItemSize({
+        pixelWidth: pixels.pixelWidth,
+        pixelHeight: pixels.pixelHeight,
+        printWidthInches: nextWidth,
+        printHeightInches: nextHeight,
+      });
+    }
 
     // Quantity changes charge/refund Cap A via callable; size-only updates stay client-side.
     // The callable's response carries the server-authoritative (transaction-clamped) quantity,
@@ -1130,6 +1345,30 @@ export const portalPrintRequestService = {
       nextHeight === current.printHeightInches &&
       !presetKeyChanged
     ) {
+      return { quantity: authoritativeQuantity };
+    }
+
+    if (current.sourceType === 'staff_artwork') {
+      await callTracedFunction<
+        {
+          printRequestId: string;
+          itemId: string;
+          printWidthInches: number;
+          printHeightInches: number;
+          standardSizePresetKey?: string | null;
+        },
+        unknown
+      >('updatePortalStaffArtworkPrintRequestItemSize', {
+        source: 'portalPrintRequestService.updatePrintRequestItem.staffArtworkSize',
+      })({
+        printRequestId: input.printRequestId,
+        itemId: input.itemId,
+        printWidthInches: nextWidth,
+        printHeightInches: nextHeight,
+        ...(input.standardSizePresetKey !== undefined
+          ? { standardSizePresetKey: input.standardSizePresetKey }
+          : {}),
+      });
       return { quantity: authoritativeQuantity };
     }
 

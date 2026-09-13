@@ -1023,6 +1023,21 @@ service cloud.firestore {
           .hasOnly(["status", "updatedBy", "updatedAt"]);
     }
 
+    // Narrow fast path for Studio item-add transactions (itemCount + audit only). Avoids the
+    // full printRequestRequiredFieldsValid budget when requests carry many lifecycle fields.
+    function staffCanAdjustPrintRequestItemCount() {
+      return isStaff()
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(["itemCount", "updatedBy", "updatedAt"])
+        && request.resource.data.itemCount is int
+        && request.resource.data.itemCount >= 0
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt;
+    }
+
     function staffCanPerformGeneralPrintRequestUpdate() {
       return request.resource.data.status != "completed"
         && (resource.data.status != "completed" || request.resource.data.status == "archived")
@@ -1051,6 +1066,10 @@ service cloud.firestore {
       return data.sourceType == "customer_upload";
     }
 
+    function isStaffArtworkPrintRequestItem(data) {
+      return data.sourceType == "staff_artwork";
+    }
+
     function printRequestItemKeysAllowed(data) {
       return data.keys().hasOnly([
           "id",
@@ -1058,6 +1077,7 @@ service cloud.firestore {
           "designId",
           "sourceType",
           "customerUploadId",
+          "staffArtworkId",
           "titleSnapshot",
           "quantity",
           "printWidthInches",
@@ -1121,8 +1141,17 @@ service cloud.firestore {
           || (
             isUploadPrintRequestItem(data)
             && !("designId" in data)
+            && !("staffArtworkId" in data)
             && data.customerUploadId is string
             && data.customerUploadId.size() > 0
+              && isOptionalString(data, "titleSnapshot")
+          )
+          || (
+            isStaffArtworkPrintRequestItem(data)
+            && !("designId" in data)
+            && !("customerUploadId" in data)
+            && data.staffArtworkId is string
+            && data.staffArtworkId.size() > 0
             && isOptionalString(data, "titleSnapshot")
           )
         );
@@ -1135,6 +1164,20 @@ service cloud.firestore {
     function isReadyDesign(designId) {
       return exists(/databases/$(database)/documents/designs/$(designId))
         && get(/databases/$(database)/documents/designs/$(designId)).data.status == "ready";
+    }
+
+    function staffArtworkExists(staffArtworkId) {
+      return staffArtworkId is string
+        && staffArtworkId.size() > 0
+        && exists(/databases/$(database)/documents/staffArtworks/$(staffArtworkId))
+        && get(/databases/$(database)/documents/staffArtworks/$(staffArtworkId)).data.status in ["ready", "archived"];
+    }
+
+    function staffArtworkSelectable(staffArtworkId) {
+      return staffArtworkId is string
+        && staffArtworkId.size() > 0
+        && exists(/databases/$(database)/documents/staffArtworks/$(staffArtworkId))
+        && get(/databases/$(database)/documents/staffArtworks/$(staffArtworkId)).data.status == "ready";
     }
 
     function customerRequiredFieldsValid(data) {
@@ -1576,6 +1619,10 @@ service cloud.firestore {
       return data.sourceType == "customer_upload";
     }
 
+    function isStaffArtworkShowAllocation(data) {
+      return data.sourceType == "staff_artwork";
+    }
+
     function showAllocationRequiredFieldsValid(data) {
       return data.keys().hasOnly([
           "upcomingShowId",
@@ -1584,6 +1631,7 @@ service cloud.firestore {
           "designId",
           "sourceType",
           "customerUploadId",
+          "staffArtworkId",
           "customerId",
           "requestNameSnapshot",
           "requestOriginSnapshot",
@@ -1656,8 +1704,17 @@ service cloud.firestore {
           || (
             isUploadShowAllocation(data)
             && !("designId" in data)
+            && !("staffArtworkId" in data)
             && data.customerUploadId is string
             && data.customerUploadId.size() > 0
+          )
+          || (
+            isStaffArtworkShowAllocation(data)
+            && !("designId" in data)
+            && !("customerUploadId" in data)
+            && data.staffArtworkId is string
+            && data.staffArtworkId.size() > 0
+            && staffArtworkExists(data.staffArtworkId)
           )
         );
     }
@@ -1933,6 +1990,7 @@ service cloud.firestore {
         && request.resource.data.updatedBy == request.auth.uid;
 
       allow update: if staffCanActivateEditingPrintRequest()
+        || staffCanAdjustPrintRequestItemCount()
         || (isStaff()
           && printRequestRequiredFieldsValid(request.resource.data)
           && request.resource.data.createdBy == resource.data.createdBy
@@ -1969,14 +2027,169 @@ service cloud.firestore {
         && customerUploadLinkedToPrintRequest(data.customerUploadId, data.printRequestId);
     }
 
+    function staffArtworkPrintRequestItemCreateFieldsValid(data) {
+      // Lean create allowlist for Staff Artwork items. The shared printRequestItemRequiredFieldsValid
+      // validator is too expensive when create OR-branches evaluate multiple source types and can
+      // exceed Firestore's 1000-expression budget (surfaces as permission-denied).
+      return data.keys().hasOnly([
+          "id",
+          "printRequestId",
+          "sourceType",
+          "staffArtworkId",
+          "titleSnapshot",
+          "quantity",
+          "printWidthInches",
+          "printHeightInches",
+          "sizeLabel",
+          "standardSizePresetKey",
+          "sortOrder",
+          "notes",
+          "status",
+          "addedBy",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.id is string
+        && data.id.size() > 0
+        && data.printRequestId is string
+        && data.printRequestId.size() > 0
+        && data.sourceType == "staff_artwork"
+        && data.staffArtworkId is string
+        && data.staffArtworkId.size() > 0
+        && !("designId" in data)
+        && !("customerUploadId" in data)
+        && data.quantity is int
+        && data.quantity > 0
+        && isOptionalPositiveStandardPrintInches(data, "printWidthInches")
+        && isOptionalPositiveStandardPrintInches(data, "printHeightInches")
+        && isOptionalString(data, "sizeLabel")
+        && isOptionalString(data, "standardSizePresetKey")
+        && isOptionalNumber(data, "sortOrder")
+        && isOptionalString(data, "notes")
+        && isOptionalString(data, "titleSnapshot")
+        && data.status == "pending"
+        && data.addedBy is string
+        && data.addedBy.size() > 0
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function catalogPrintRequestItemCreateFieldsValid(data) {
+      // Lean create path for Design Library items. Same expression-budget risk as Staff Artwork:
+      // printRequestItemRequiredFieldsValid is shared with update and is too heavy for create.
+      return data.keys().hasOnly([
+          "id",
+          "printRequestId",
+          "designId",
+          "sourceType",
+          "quantity",
+          "printWidthInches",
+          "printHeightInches",
+          "sizeLabel",
+          "standardSizePresetKey",
+          "sortOrder",
+          "notes",
+          "status",
+          "addedBy",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.id is string
+        && data.id.size() > 0
+        && data.printRequestId is string
+        && data.printRequestId.size() > 0
+        && (!("sourceType" in data) || data.sourceType == "catalog_design")
+        && data.designId is string
+        && data.designId.size() > 0
+        && !("customerUploadId" in data)
+        && !("staffArtworkId" in data)
+        && data.quantity is int
+        && data.quantity > 0
+        && isOptionalPositiveStandardPrintInches(data, "printWidthInches")
+        && isOptionalPositiveStandardPrintInches(data, "printHeightInches")
+        && isOptionalString(data, "sizeLabel")
+        && isOptionalString(data, "standardSizePresetKey")
+        && isOptionalNumber(data, "sortOrder")
+        && isOptionalString(data, "notes")
+        && data.status == "pending"
+        && data.addedBy is string
+        && data.addedBy.size() > 0
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function uploadPrintRequestItemCreateFieldsValid(data) {
+      return data.keys().hasOnly([
+          "id",
+          "printRequestId",
+          "sourceType",
+          "customerUploadId",
+          "titleSnapshot",
+          "quantity",
+          "printWidthInches",
+          "printHeightInches",
+          "sizeLabel",
+          "standardSizePresetKey",
+          "sortOrder",
+          "notes",
+          "status",
+          "addedBy",
+          "createdAt",
+          "updatedAt"
+        ])
+        && data.id is string
+        && data.id.size() > 0
+        && data.printRequestId is string
+        && data.printRequestId.size() > 0
+        && data.sourceType == "customer_upload"
+        && data.customerUploadId is string
+        && data.customerUploadId.size() > 0
+        && !("designId" in data)
+        && !("staffArtworkId" in data)
+        && data.quantity is int
+        && data.quantity > 0
+        && isOptionalPositiveStandardPrintInches(data, "printWidthInches")
+        && isOptionalPositiveStandardPrintInches(data, "printHeightInches")
+        && isOptionalString(data, "sizeLabel")
+        && isOptionalString(data, "standardSizePresetKey")
+        && isOptionalNumber(data, "sortOrder")
+        && isOptionalString(data, "notes")
+        && isOptionalString(data, "titleSnapshot")
+        && data.status == "pending"
+        && data.addedBy is string
+        && data.addedBy.size() > 0
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
     function staffCanCreateUploadPrintRequestItem(data) {
-      return isStaff()
-        && printRequestItemRequiredFieldsValid(data)
-        && isUploadPrintRequestItem(data)
+      return isUploadPrintRequestItem(data)
+        && isStaff()
         && data.id is string
         && data.addedBy == request.auth.uid
         && printRequestParentExists(data.printRequestId)
-        && exists(/databases/$(database)/documents/customerUploads/$(data.customerUploadId));
+        && exists(/databases/$(database)/documents/customerUploads/$(data.customerUploadId))
+        && uploadPrintRequestItemCreateFieldsValid(data);
+    }
+
+    function staffCanCreateCatalogPrintRequestItem(data) {
+      return isCatalogPrintRequestItem(data)
+        && isStaff()
+        && data.id is string
+        && data.addedBy == request.auth.uid
+        && printRequestParentExists(data.printRequestId)
+        && isReadyDesign(data.designId)
+        && catalogPrintRequestItemCreateFieldsValid(data);
+    }
+
+    function staffCanCreateStaffArtworkPrintRequestItem(data) {
+      return isStaffArtworkPrintRequestItem(data)
+        && isStaff()
+        && data.id is string
+        && data.addedBy == request.auth.uid
+        && printRequestParentExists(data.printRequestId)
+        && staffArtworkSelectable(data.staffArtworkId)
+        && staffArtworkPrintRequestItemCreateFieldsValid(data);
     }
 
     function showAllocationSourceIdentityUnchanged() {
@@ -1989,6 +2202,11 @@ service cloud.firestore {
           isUploadShowAllocation(resource.data)
           && isUploadShowAllocation(request.resource.data)
           && request.resource.data.customerUploadId == resource.data.customerUploadId
+        )
+        || (
+          isStaffArtworkShowAllocation(resource.data)
+          && isStaffArtworkShowAllocation(request.resource.data)
+          && request.resource.data.staffArtworkId == resource.data.staffArtworkId
         );
     }
 
@@ -2002,22 +2220,27 @@ service cloud.firestore {
           resource.data.sourceType == "customer_upload"
           && request.resource.data.sourceType == "customer_upload"
           && request.resource.data.customerUploadId == resource.data.customerUploadId
+        )
+        || (
+          resource.data.sourceType == "staff_artwork"
+          && request.resource.data.sourceType == "staff_artwork"
+          && request.resource.data.staffArtworkId == resource.data.staffArtworkId
         );
     }
 
+    // FINAL STATE: customer reads use portalPrintRequestItems only after the additive transition
+    // has completed population/verification. Canonical printRequestItems remain staff-only.
     match /printRequestItems/{printRequestItemId} {
-      allow read: if isStaff()
-        || (isCustomer() && customerOwnsPrintRequestById(resource.data.printRequestId));
+      allow read: if isStaff();
 
-      allow create: if isStaff()
-        && printRequestItemRequiredFieldsValid(request.resource.data)
-        && isCatalogPrintRequestItem(request.resource.data)
-        && request.resource.data.id == printRequestItemId
-        && request.resource.data.addedBy == request.auth.uid
-        && printRequestParentExists(request.resource.data.printRequestId)
-        && isReadyDesign(request.resource.data.designId)
-        || staffCanCreateUploadPrintRequestItem(request.resource.data)
-        && request.resource.data.id == printRequestItemId;
+      allow create: if request.resource.data.id == printRequestItemId
+        && (
+          // Catalog first: most common Studio path; each branch uses a lean create validator
+          // so we stay under Firestore's 1000-expression budget.
+          staffCanCreateCatalogPrintRequestItem(request.resource.data)
+          || staffCanCreateStaffArtworkPrintRequestItem(request.resource.data)
+          || staffCanCreateUploadPrintRequestItem(request.resource.data)
+        );
       // Customer creates go through Admin callables (Cap A daily design limit).
 
       allow update: if isStaff()
@@ -2028,6 +2251,7 @@ service cloud.firestore {
         && request.resource.data.get("designId", "") == resource.data.get("designId", "")
         && request.resource.data.get("sourceType", "") == resource.data.get("sourceType", "")
         && request.resource.data.get("customerUploadId", "") == resource.data.get("customerUploadId", "")
+        && request.resource.data.get("staffArtworkId", "") == resource.data.get("staffArtworkId", "")
         && request.resource.data.addedBy == resource.data.addedBy
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.updatedAt is timestamp
@@ -2040,12 +2264,20 @@ service cloud.firestore {
         && (
           isUploadPrintRequestItem(resource.data)
           || isReadyDesign(request.resource.data.designId)
+          || (isStaffArtworkPrintRequestItem(resource.data) && staffArtworkExists(request.resource.data.staffArtworkId))
         )
         || (portalMaintenanceAllowsCustomerMutation()
           && customerPrintRequestItemPortalEditableUpdate());
 
       allow delete: if isStaff();
       // Customer deletes go through Admin callables (Cap A print-count refund).
+    }
+
+    // Customer-safe, server-maintained projection. Admin SDK trigger owns all writes.
+    match /portalPrintRequestItems/{itemId} {
+      allow read: if isStaff()
+        || (isCustomer() && customerOwnsPrintRequestById(resource.data.printRequestId));
+      allow create, update, delete: if false;
     }
 
     match /upcomingShows/{upcomingShowId} {
@@ -2175,6 +2407,7 @@ service cloud.firestore {
           "designId",
           "sourceType",
           "customerUploadId",
+          "staffArtworkId",
           "copyIndex",
           "sourceQuantitySnapshot",
           "designTitleSnapshot",
@@ -2234,6 +2467,17 @@ service cloud.firestore {
             && (
               data.originalPathSnapshot.matches("^/customer-uploads/[A-Za-z0-9_-]+/[A-Za-z0-9_-]+/production\\.png$")
               || data.originalPathSnapshot.matches("^/customer-uploads/[A-Za-z0-9_-]+/[A-Za-z0-9_-]+/production\\.interactive\\.png$")
+            )
+          )
+          || (
+            data.sourceType == "staff_artwork"
+            && !("designId" in data)
+            && !("customerUploadId" in data)
+            && data.staffArtworkId is string
+            && data.staffArtworkId.size() > 0
+            && (
+              data.originalPathSnapshot.matches("^/staff-artwork/[A-Za-z0-9_-]+/production\\.png$")
+              || data.originalPathSnapshot.matches("^/staff-artwork/[A-Za-z0-9_-]+/production\\.interactive\\.png$")
             )
           )
         )
@@ -2762,6 +3006,14 @@ service cloud.firestore {
       allow read: if isStaff()
         || (isCustomer() && resource.data.customerUid == request.auth.uid)
         || isOwnGuestUpload();
+      allow create, update, delete: if false;
+    }
+
+    // Staff Artwork is a private Studio library. Clients never write; only staff may read it.
+    // Portal customers receive neutral request-item projections and never access this collection.
+    match /staffArtworks/{staffArtworkId} {
+      allow get: if isStaff();
+      allow list: if isStaff();
       allow create, update, delete: if false;
     }
 

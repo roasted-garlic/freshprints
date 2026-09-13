@@ -101,13 +101,13 @@ test("stable finalize uploads assets by release id, not ambiguous shared tag", (
 test("stable Mac rejects signed distribution_mode until Apple credential phase (A2 gated)", () => {
   assert.match(
     workflowSource,
-    /Stable Studio Mac releases for 1\.0\.9 still require distribution_mode: internal-unsigned until Apple Developer ID secrets \(MAC_CSC_LINK \+ MAC_CSC_KEY_PASSWORD\)/,
+    /Stable Studio Mac releases for 1\.0\.10 still require distribution_mode: internal-unsigned until Apple Developer ID secrets \(MAC_CSC_LINK \+ MAC_CSC_KEY_PASSWORD\)/,
   );
   assert.match(workflowSource, /Gatekeeper/);
 });
 
-test("finalize expects Studio package version 1.0.9", () => {
-  assert.match(workflowSource, /Expected Studio version 1\.0\.9/);
+test("finalize expects Studio package version 1.0.10", () => {
+  assert.match(workflowSource, /Expected Studio version 1\.0\.10/);
 });
 
 test("shared env writer is used on both platform jobs", () => {

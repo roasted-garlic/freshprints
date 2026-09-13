@@ -6,7 +6,7 @@ export interface ShowAllocationAttachmentLineInput {
   printHeightInches?: number;
   printWidthInches?: number;
   sizeLabel?: string;
-  sourceType?: "catalog_design" | "customer_upload";
+  sourceType?: "catalog_design" | "customer_upload" | "staff_artwork";
   status: ShowAllocationStatus;
 }
 
@@ -41,7 +41,11 @@ export function formatShowAllocationAttachmentLine(
 ): string {
   const title =
     allocation.designTitleSnapshot?.trim() ||
-    (allocation.sourceType === "customer_upload" ? "Customer upload" : "Design");
+    (allocation.sourceType === "customer_upload"
+      ? "Customer upload"
+      : allocation.sourceType === "staff_artwork"
+        ? "Staff Artwork"
+        : "Design");
   const size =
     allocation.sizeLabel?.trim() ||
     (allocation.printWidthInches && allocation.printHeightInches

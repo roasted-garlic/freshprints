@@ -10,6 +10,7 @@ export type PortalAdminMetricAllocation = {
   sourceType?: string | null;
   designId?: string | null;
   customerUploadId?: string | null;
+  staffArtworkId?: string | null;
   /** Fallback uniqueness when identity fields are missing. */
   allocationId: string;
 };
@@ -25,6 +26,13 @@ export function resolvePortalAdminDesignIdentity(allocation: PortalAdminMetricAl
   if (isUpload) {
     const uploadId = allocation.customerUploadId?.trim();
     return uploadId ? `upload:${uploadId}` : `allocation:${allocation.allocationId}`;
+  }
+  if (
+    allocation.sourceType === "staff_artwork" ||
+    (typeof allocation.staffArtworkId === "string" && allocation.staffArtworkId.trim().length > 0)
+  ) {
+    const staffArtworkId = allocation.staffArtworkId?.trim();
+    return staffArtworkId ? `staff-artwork:${staffArtworkId}` : `allocation:${allocation.allocationId}`;
   }
   const designId = allocation.designId?.trim();
   return designId ? `design:${designId}` : `allocation:${allocation.allocationId}`;

@@ -12,6 +12,14 @@ export { createPortalPrintRequest } from "./createPortalPrintRequest";
 export { duplicatePortalPrintRequestItem } from "./duplicatePortalPrintRequestItem";
 export { excludeCustomerUploadFromCatalog } from "./excludeCustomerUploadFromCatalog";
 export { finalizeCustomerUpload } from "./finalizeCustomerUpload";
+export {
+  createStaffArtworkUpload,
+  finalizeStaffArtwork,
+  updateStaffArtwork,
+  setStaffArtworkArchiveState,
+  deleteEligibleStaffArtwork,
+  promoteStaffArtworkToAiReview,
+} from "./staffArtwork";
 export { finalizeCustomerUploadZip } from "./finalizeCustomerUploadZip";
 export { getCustomerUploadDailyQuota } from "./getCustomerUploadDailyQuota";
 export { inventoryCatalogImageStorage } from "./inventoryCatalogImageStorage";
@@ -40,6 +48,9 @@ export { copyStudioPrintRequest } from "./copyStudioPrintRequest";
 export { createInitialStaffGangSheet } from "./createInitialStaffGangSheet";
 export { removePortalPrintRequestItem } from "./removePortalPrintRequestItem";
 export { updatePortalPrintRequestItemQuantity } from "./updatePortalPrintRequestItemQuantity";
+export { updatePortalStaffArtworkPrintRequestItemSize } from "./updatePortalStaffArtworkPrintRequestItemSize";
+export { onPrintRequestItemPortalProjectionWritten } from "./onPrintRequestItemPortalProjectionWritten";
+export { onStaffArtworkPortalProjectionRefreshWritten } from "./onStaffArtworkPortalProjectionRefreshWritten";
 export { createTeamUser } from "./createTeamUser";
 export { registerCustomer } from "./registerCustomer";
 export { updateCustomer } from "./updateCustomer";

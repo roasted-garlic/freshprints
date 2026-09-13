@@ -98,11 +98,14 @@ async function resolveUploadArtworkAsset(uploadId: string): Promise<ArtworkAsset
 
 async function resolveArtworkPreview(
   data: Record<string, unknown>,
-  source: "catalog_design" | "customer_upload",
+  source: "catalog_design" | "customer_upload" | "staff_artwork",
   expiresAtMs: number,
   artworkCache: Map<string, Promise<ArtworkAsset>>,
 ): Promise<ArtworkPreview> {
   try {
+    if (source === "staff_artwork") {
+      return {};
+    }
     const objectId = nonEmptyStringExport(source === "catalog_design" ? data.designId : data.customerUploadId);
     if (!objectId) {
       return {};

@@ -113,16 +113,16 @@ export default function DashboardPage() {
         <section className="portal-panel portal-account-panel portal-account-quick-links-panel">
           <h2 className="portal-account-section-title">Quick links</h2>
           <div className="portal-account-link-grid">
-            <Link className="portal-account-quick-link" href={CATALOG_HOME_PATH}>
-              <span className="portal-account-quick-link-label">Browse designs</span>
+            <Link className="portal-account-quick-link" href="/requests?tab=working">
+              <span className="portal-account-quick-link-label">My print requests</span>
               <span className="portal-account-quick-link-description">
-                Explore the catalog and start a new print request.
+                Continue drafts or review queued and printed work.
               </span>
             </Link>
-            <Link className="portal-account-quick-link" href={uploadHref}>
-              <span className="portal-account-quick-link-label">Upload designs</span>
+            <Link className="portal-account-quick-link" href="/shows">
+              <span className="portal-account-quick-link-label">Upcoming Shows</span>
               <span className="portal-account-quick-link-description">
-                Add your own artwork to a current print request.
+                See what&apos;s on the calendar and browse designs for each show.
               </span>
             </Link>
             <Link className="portal-account-quick-link" href={PORTAL_FAVORITES_HREF}>
@@ -131,10 +131,16 @@ export default function DashboardPage() {
                 Designs you&apos;ve hearted — open them anytime while they&apos;re in the catalog.
               </span>
             </Link>
-            <Link className="portal-account-quick-link" href="/requests?tab=working">
-              <span className="portal-account-quick-link-label">My print requests</span>
+            <Link className="portal-account-quick-link" href={uploadHref}>
+              <span className="portal-account-quick-link-label">Upload designs</span>
               <span className="portal-account-quick-link-description">
-                Continue drafts or review queued and printed work.
+                Add your own artwork to a current print request.
+              </span>
+            </Link>
+            <Link className="portal-account-quick-link" href={CATALOG_HOME_PATH}>
+              <span className="portal-account-quick-link-label">Browse designs</span>
+              <span className="portal-account-quick-link-description">
+                Explore the catalog and start a new print request.
               </span>
             </Link>
           </div>

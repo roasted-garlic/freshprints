@@ -126,6 +126,18 @@ function resolvePrintRequestItemPreviewPath(
   alt: string;
   artworkBackgroundHex?: string;
 } | null {
+  if (item.sourceType === 'staff_artwork') {
+    const path =
+      item.previewStoragePath?.trim() ||
+      item.thumbnailStoragePath?.trim() ||
+      '';
+    if (!path) return null;
+    return {
+      path,
+      alt: `${item.titleSnapshot?.trim() || item.sourceLabel || 'Staff-added'} preview`,
+      artworkBackgroundHex: item.artworkBackgroundHex,
+    };
+  }
   const design = item.designId ? designSummaries.get(item.designId) : null;
   const upload = item.customerUploadId ? uploadSummaries.get(item.customerUploadId) : null;
   const path =
@@ -616,10 +628,14 @@ export default function PrintRequestDetailView() {
       // After Editing → show, land on the queued detail with Working return context (restored
       // draft / Current Request), not the pre-queue Editing `from=`.
       router.replace(buildRequestDetailHref(printRequestId, { from: 'working' }));
-      // The Remove & Edit action needs both the selected show and its real allocation records.
-      // The status-change effect intentionally skips its allocation reread after queue success,
-      // so hydrate these two action dependencies explicitly before this success handler settles.
-      await Promise.all([reloadRequestSchedules(), loadAllocationState()]);
+      // Always silent-reload request + items after queue so customer-visible item truth cannot
+      // stick at an emptied local cart (Wave C previously skipped this read; correctness wins).
+      // Also hydrate show schedules + allocations for Remove & Edit eligibility.
+      await Promise.all([
+        reload({ silent: true }),
+        reloadRequestSchedules(),
+        loadAllocationState(),
+      ]);
     },
     [
       clearUnqueueError,
@@ -629,6 +645,7 @@ export default function PrintRequestDetailView() {
       reconcileQueued,
       reconcileQueuedRequest,
       resetWorkingCart,
+      reload,
       reloadRequestSchedules,
       router,
     ],

@@ -9,12 +9,14 @@ import {
   type Timestamp,
   type Unsubscribe,
 } from "firebase/firestore";
-import { getBytes, getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { getBytes, getDownloadURL, ref, uploadBytes, deleteObject } from "firebase/storage";
 
 import {
   ASSISTED_CREATION_ALLOWED_PROOF_TYPES,
   ASSISTED_CREATION_COLLECTION,
   ASSISTED_CREATION_MAX_PROOF_BYTES,
+  ASSISTED_CREATION_MAX_PROOF_OPTIONS_PER_ROUND,
+  ASSISTED_CREATION_MAX_PROOF_ROUND_TOTAL_BYTES,
   formatAssistedCreationStatus,
   type AssistedCreationStatus,
 } from "@fresh-prints/shared/constants/assistedCreation/assistedCreation.constants";
@@ -119,6 +121,7 @@ export interface AssistedCreationRequestListItem {
   staffNotes: string;
   customerCancelReason: string;
   approvedProofId: string | null;
+  currentProofRoundId: string | null;
   finalSource: AssistedCreationFinalSource | null;
   fulfillmentMode: AssistedCreationFulfillmentMode | null;
   suggestedCatalogDesign: AssistedCreationSuggestedCatalogDesign | null;
@@ -210,6 +213,10 @@ function mapDoc(
     approvedProofId:
       typeof data.approvedProofId === "string" && data.approvedProofId.trim()
         ? data.approvedProofId.trim()
+        : null,
+    currentProofRoundId:
+      typeof data.currentProofRoundId === "string" && data.currentProofRoundId.trim()
+        ? data.currentProofRoundId.trim()
         : null,
     finalSource: parseFinalSource(data.finalSource),
     fulfillmentMode:
@@ -376,36 +383,85 @@ export const assistedCreationRequestsService = {
     proofNumber: number;
     note?: string;
   }): Promise<StaffAddAssistedCreationProofResponse> {
-    if (!(ASSISTED_CREATION_ALLOWED_PROOF_TYPES as readonly string[]).includes(input.file.type)) {
-      throw new Error("Proof must be JPEG, PNG, or WebP.");
+    return this.uploadAndAttachProofRound({
+      requestId: input.requestId,
+      customerUid: input.customerUid,
+      files: [input.file],
+      note: input.note,
+    });
+  },
+
+  async uploadAndAttachProofRound(input: {
+    requestId: string;
+    customerUid: string;
+    files: File[];
+    note?: string;
+  }): Promise<StaffAddAssistedCreationProofResponse> {
+    const files = input.files.filter(Boolean);
+    if (files.length === 0) {
+      throw new Error("Choose at least one proof image.");
     }
-    if (input.file.size <= 0 || input.file.size > ASSISTED_CREATION_MAX_PROOF_BYTES) {
+    if (files.length > ASSISTED_CREATION_MAX_PROOF_OPTIONS_PER_ROUND) {
       throw new Error(
-        `Proof must be ${ASSISTED_CREATION_MAX_PROOF_BYTES / (1024 * 1024)} MB or smaller.`,
+        `At most ${ASSISTED_CREATION_MAX_PROOF_OPTIONS_PER_ROUND} proof options can be sent in one round.`,
       );
     }
-    const proofId = crypto.randomUUID();
-    // Opaque Storage object id (no extension); contentType set on the object.
-    const objectId = buildAssistedCreationOpaqueProofObjectId();
-    const storagePath = `assisted-creation/${input.customerUid}/${input.requestId}/proofs/${objectId}`;
-    await uploadBytes(ref(storage, storagePath), input.file, { contentType: input.file.type });
+    let totalBytes = 0;
+    for (const file of files) {
+      if (!(ASSISTED_CREATION_ALLOWED_PROOF_TYPES as readonly string[]).includes(file.type)) {
+        throw new Error("Proof must be JPEG, PNG, or WebP.");
+      }
+      if (file.size <= 0 || file.size > ASSISTED_CREATION_MAX_PROOF_BYTES) {
+        throw new Error(
+          `Each proof must be ${ASSISTED_CREATION_MAX_PROOF_BYTES / (1024 * 1024)} MB or smaller.`,
+        );
+      }
+      totalBytes += file.size;
+    }
+    if (totalBytes > ASSISTED_CREATION_MAX_PROOF_ROUND_TOTAL_BYTES) {
+      throw new Error("This proof round exceeds the maximum total file size.");
+    }
 
-    return callTracedFunction<
-      StaffAddAssistedCreationProofRequest,
-      StaffAddAssistedCreationProofResponse
-    >("staffAddAssistedCreationProof", {
-      source: "assistedCreationRequestsService.uploadAndAttachProof",
-    })({
-      requestId: input.requestId,
-      proof: {
-        id: proofId,
-        storagePath,
-        fileName: objectId,
-        contentType: input.file.type,
-        sizeBytes: input.file.size,
-        note: input.note,
-      },
-    });
+    const uploadedPaths: string[] = [];
+    try {
+      const proofs = [];
+      for (const file of files) {
+        const proofId = crypto.randomUUID();
+        const objectId = buildAssistedCreationOpaqueProofObjectId();
+        const storagePath = `assisted-creation/${input.customerUid}/${input.requestId}/proofs/${objectId}`;
+        await uploadBytes(ref(storage, storagePath), file, { contentType: file.type });
+        uploadedPaths.push(storagePath);
+        proofs.push({
+          id: proofId,
+          storagePath,
+          fileName: objectId,
+          contentType: file.type,
+          sizeBytes: file.size,
+          ...(input.note ? { note: input.note } : {}),
+        });
+      }
+
+      return await callTracedFunction<
+        StaffAddAssistedCreationProofRequest,
+        StaffAddAssistedCreationProofResponse
+      >("staffAddAssistedCreationProof", {
+        source: "assistedCreationRequestsService.uploadAndAttachProofRound",
+      })({
+        requestId: input.requestId,
+        proofs,
+      });
+    } catch (error) {
+      await Promise.all(
+        uploadedPaths.map(async (storagePath) => {
+          try {
+            await deleteObject(ref(storage, storagePath));
+          } catch {
+            // Best-effort orphan cleanup after failed attach.
+          }
+        }),
+      );
+      throw error;
+    }
   },
 
   async uploadAndAttachFinalSource(input: {

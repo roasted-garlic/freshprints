@@ -294,6 +294,7 @@ export interface ShowAllocationDocumentData extends DocumentData {
   designId?: unknown;
   sourceType?: unknown;
   customerUploadId?: unknown;
+  staffArtworkId?: unknown;
   customerId?: unknown;
   requestNameSnapshot?: unknown;
   requestOriginSnapshot?: unknown;
@@ -522,14 +523,19 @@ export function mapShowAllocationData(allocationId: string, data: ShowAllocation
   const updatedAt = mapFirestoreTimestamp(data.updatedAt);
 
   const sourceType =
-    data.sourceType === "customer_upload" || data.sourceType === "catalog_design"
+    data.sourceType === "customer_upload" || data.sourceType === "catalog_design" || data.sourceType === "staff_artwork"
       ? data.sourceType
       : undefined;
   const customerUploadId =
     typeof data.customerUploadId === "string" && data.customerUploadId.trim()
       ? data.customerUploadId.trim()
       : undefined;
+  const staffArtworkId =
+    typeof data.staffArtworkId === "string" && data.staffArtworkId.trim()
+      ? data.staffArtworkId.trim()
+      : undefined;
   const isUploadAllocation = sourceType === "customer_upload" || Boolean(customerUploadId);
+  const isStaffArtworkAllocation = sourceType === "staff_artwork" || Boolean(staffArtworkId);
   const designId =
     typeof data.designId === "string" && data.designId.trim() ? data.designId.trim() : undefined;
 
@@ -553,6 +559,8 @@ export function mapShowAllocationData(allocationId: string, data: ShowAllocation
     if (!customerUploadId) {
       throw new Error("A show allocation record is incomplete.");
     }
+  } else if (isStaffArtworkAllocation) {
+    if (!staffArtworkId) throw new Error("A show allocation record is incomplete.");
   } else if (!designId) {
     throw new Error("A show allocation record is incomplete.");
   }
@@ -562,13 +570,14 @@ export function mapShowAllocationData(allocationId: string, data: ShowAllocation
     upcomingShowId: data.upcomingShowId,
     printRequestId: data.printRequestId,
     printRequestItemId: data.printRequestItemId,
-    ...(designId ? { designId } : {}),
+    ...(isStaffArtworkAllocation ? {} : designId ? { designId } : {}),
     ...(sourceType
       ? { sourceType }
       : isUploadAllocation
         ? { sourceType: "customer_upload" as const }
         : {}),
     ...(customerUploadId ? { customerUploadId } : {}),
+    ...(staffArtworkId ? { staffArtworkId } : {}),
     customerId: typeof data.customerId === "string" ? data.customerId : undefined,
     requestNameSnapshot: data.requestNameSnapshot,
     requestOriginSnapshot: isPrintRequestOrigin(data.requestOriginSnapshot) ? data.requestOriginSnapshot : undefined,
@@ -2643,6 +2652,7 @@ export const upcomingShowService = {
         ...(allocation.designId ? { designId: allocation.designId } : {}),
         ...(allocation.sourceType ? { sourceType: allocation.sourceType } : {}),
         ...(allocation.customerUploadId ? { customerUploadId: allocation.customerUploadId } : {}),
+        ...(allocation.staffArtworkId ? { staffArtworkId: allocation.staffArtworkId } : {}),
         customerId: destinationCustomerId ?? allocation.customerId,
         requestNameSnapshot: destinationPrintRequestName,
         requestOriginSnapshot: destinationPrintRequestOrigin ?? allocation.requestOriginSnapshot,

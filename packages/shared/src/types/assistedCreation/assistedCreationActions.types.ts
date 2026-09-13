@@ -80,6 +80,16 @@ export interface CustomerRespondToAssistedCreationProofRequest {
   note?: string;
   /** Optional 1–5 star rating when decision is approve. */
   rating?: number;
+  /**
+   * Active proof round id. Required for multi-option rounds; optional for legacy /
+   * one-option rounds (server may infer the sole current option).
+   */
+  proofRoundId?: string;
+  /**
+   * Selected option proof id. Required for multi-option rounds; optional when the
+   * current round has exactly one option.
+   */
+  selectedProofId?: string;
 }
 
 export interface CustomerRespondToAssistedCreationProofResponse {
@@ -113,22 +123,38 @@ export interface StaffUpdateAssistedCreationStatusResponse {
   status: AssistedCreationStatus;
 }
 
+export interface StaffAssistedCreationProofInput {
+  id: string;
+  storagePath: string;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  note?: string;
+}
+
 export interface StaffAddAssistedCreationProofRequest {
   requestId: string;
-  proof: {
-    id: string;
-    storagePath: string;
-    fileName: string;
-    contentType: string;
-    sizeBytes: number;
-    note?: string;
-  };
+  /**
+   * Legacy singular proof. Normalized to a one-entry `proofs` list when `proofs` is omitted.
+   * Prefer `proofs` for multi-option rounds.
+   */
+  proof?: StaffAssistedCreationProofInput;
+  /**
+   * Ordered batch of proof options for one round (1..N). Server assigns round id,
+   * optionOrder, and Option A/B/C labels from this order.
+   */
+  proofs?: StaffAssistedCreationProofInput[];
 }
 
 export interface StaffAddAssistedCreationProofResponse {
   requestId: string;
   status: "proof_ready";
+  /** First / only proof id (legacy callers). */
   proofId: string;
+  /** Server-owned round id for this attach. */
+  proofRoundId: string;
+  /** All attached proof ids in option order. */
+  proofIds: string[];
 }
 
 /** Staff: upload final HR artwork and complete (`final_source_needed` → `approved`). */

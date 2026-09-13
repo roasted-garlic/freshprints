@@ -5,6 +5,8 @@ interface AiReviewPreviewBackgroundToggleProps {
   disabled?: boolean;
   isSaving?: boolean;
   onChange: (values: ArtworkBackgroundFieldsValues) => void;
+  /** When false, only the color swatch is shown. Defaults to true. */
+  showLabel?: boolean;
   values: ArtworkBackgroundFieldsValues;
 }
 
@@ -12,6 +14,7 @@ export function AiReviewPreviewBackgroundToggle({
   disabled = false,
   isSaving = false,
   onChange,
+  showLabel = true,
   values,
 }: AiReviewPreviewBackgroundToggleProps) {
   const isDark = values.artworkBackgroundPreset === "lightBlack";
@@ -30,7 +33,8 @@ export function AiReviewPreviewBackgroundToggle({
       aria-pressed={isDark}
       className={
         "ai-review-preview-control-toggle ai-review-preview-bg-toggle" +
-        (isDark ? " is-active" : "")
+        (isDark ? " is-active" : "") +
+        (showLabel ? "" : " is-swatch-only")
       }
       disabled={!isInteractive}
       onClick={() =>
@@ -46,7 +50,9 @@ export function AiReviewPreviewBackgroundToggle({
         className="ai-review-preview-control-toggle-swatch"
         style={{ backgroundColor: swatchHex }}
       />
-      <span className="ai-review-preview-control-toggle-label">Background</span>
+      {showLabel ? (
+        <span className="ai-review-preview-control-toggle-label">Background</span>
+      ) : null}
     </button>
   );
 }

@@ -1,5 +1,6 @@
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
+import { randomUUID } from "node:crypto";
 
 import {
   ASSISTED_CREATION_ALLOWED_PROOF_TYPES,
@@ -46,6 +47,12 @@ import type {
 } from "../../packages/shared/src/types/assistedCreation/assistedCreation.types";
 import { buildAssistedCatalogShareArtworkBackgroundSnapshots } from "../../packages/shared/src/utils/assistedCreationCatalogShareArtworkBackground";
 import { buildAssistedCreationFinalArtworkDownloadFileName } from "../../packages/shared/src/utils/assistedCreationProofFileName";
+import {
+  deriveAssistedCreationProofOptionLabel,
+  isAssistedCreationProofFullSizePurged,
+  normalizeStaffAssistedCreationProofBatch,
+  resolveAssistedCreationCurrentRoundOptions,
+} from "../../packages/shared/src/utils/assistedCreationProofRounds";
 import { EMAIL_DELIVERY_JOBS_COLLECTION } from "../../packages/shared/src/constants/emailProviders.constants";
 import { formatAssistedCreationRequestUpdatedNote } from "../../packages/shared/src/utils/assistedCreationHistory";
 import {
@@ -81,15 +88,18 @@ import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaint
 import { loadEmailProviderSettings } from "./lib/email/emailSettings";
 import {
   createCatalogShareEmailJobId,
+  createFinalArtworkEmailJobId,
   createProofEmailJobId,
 } from "./lib/email/emailJobIdentity";
 import { createCustomerNotification } from "./lib/customerNotifications/createCustomerNotification";
 import {
   buildAssistedCatalogShareReadyNotificationId,
+  buildAssistedFinalArtworkReadyNotificationId,
   buildAssistedProofReadyNotificationId,
   buildAssistedStaffMessageNotificationId,
   buildCustomerNotificationTitle,
   CUSTOMER_NOTIFICATION_CATALOG_SHARE_BODY,
+  CUSTOMER_NOTIFICATION_FINAL_ARTWORK_BODY,
   CUSTOMER_NOTIFICATION_PROOF_BODY,
 } from "../../packages/shared/src/utils/customerNotifications";
 
@@ -788,9 +798,7 @@ export const customerRespondToAssistedCreationProof = onCall(
       }
 
       const docRef = adminDb.collection(ASSISTED_CREATION_COLLECTION).doc(requestId);
-      let approvedProofId: string | null = null;
       let resultStatus: AssistedCreationStatus = "revision_requested";
-      let shouldPurgeSiblingProofs = false;
       await adminDb.runTransaction(async (tx) => {
         const snap = await tx.get(docRef);
         if (!snap.exists) {
@@ -811,7 +819,6 @@ export const customerRespondToAssistedCreationProof = onCall(
               : "final_source_needed"
             : "revision_requested";
         resultStatus = toStatus;
-        shouldPurgeSiblingProofs = toStatus === "final_source_needed" && !catalogShare;
         assertAssistedCreationTransition({
           fromStatus,
           toStatus,
@@ -819,10 +826,77 @@ export const customerRespondToAssistedCreationProof = onCall(
           revisionNote,
         });
         const history = Array.isArray(current.revisionHistory) ? current.revisionHistory : [];
+        const proofs = Array.isArray(current.proofs)
+          ? (current.proofs as AssistedCreationProof[])
+          : [];
+        const currentRoundId =
+          typeof current.currentProofRoundId === "string" && current.currentProofRoundId.trim()
+            ? current.currentProofRoundId.trim()
+            : null;
+        const round = resolveAssistedCreationCurrentRoundOptions({
+          proofs,
+          currentProofRoundId: currentRoundId,
+        });
+        if (round.options.length === 0 && !catalogShare) {
+          throw failedPrecondition("There is no proof to respond to.");
+        }
+
+        const submittedRoundId =
+          typeof data.proofRoundId === "string" ? data.proofRoundId.trim() : "";
+        const submittedProofId =
+          typeof data.selectedProofId === "string" ? data.selectedProofId.trim() : "";
+
+        let selectedProof: AssistedCreationProof | null = null;
+        if (!catalogShare) {
+          if (round.options.length > 1) {
+            if (!submittedRoundId || !submittedProofId) {
+              throw invalidArgument("Select one proof option from the current round.");
+            }
+            if (round.proofRoundId && submittedRoundId !== round.proofRoundId) {
+              throw failedPrecondition("That proof round is no longer active.");
+            }
+            if (currentRoundId && submittedRoundId !== currentRoundId) {
+              throw failedPrecondition("That proof round is no longer active.");
+            }
+            selectedProof =
+              round.options.find((option) => option.id === submittedProofId) ?? null;
+            if (!selectedProof) {
+              throw failedPrecondition("That proof is not part of the current round.");
+            }
+          } else {
+            const sole = round.options[0] ?? null;
+            if (!sole) {
+              throw failedPrecondition("There is no proof to respond to.");
+            }
+            if (submittedRoundId && round.proofRoundId && submittedRoundId !== round.proofRoundId) {
+              throw failedPrecondition("That proof round is no longer active.");
+            }
+            if (submittedProofId && submittedProofId !== sole.id) {
+              throw failedPrecondition("That proof is not part of the current round.");
+            }
+            selectedProof = sole;
+          }
+          if (isAssistedCreationProofFullSizePurged(selectedProof)) {
+            throw failedPrecondition("That proof is no longer available.");
+          }
+        }
+
+        const selectedOptionOrder =
+          selectedProof && typeof selectedProof.optionOrder === "number"
+            ? selectedProof.optionOrder
+            : selectedProof
+              ? round.options.findIndex((option) => option.id === selectedProof!.id)
+              : undefined;
+        const historyRoundId =
+          submittedRoundId ||
+          round.proofRoundId ||
+          (typeof selectedProof?.proofRoundId === "string" ? selectedProof.proofRoundId : undefined);
+
         const historyNote =
           data.decision === "approve"
             ? [
                 catalogShare ? "Customer approved library design" : "Customer approved proof",
+                selectedProof?.optionLabel ? `(${selectedProof.optionLabel})` : null,
                 rating != null ? `(rated ${rating}/5)` : null,
                 approvalNote ? `— ${approvalNote}` : null,
               ]
@@ -831,12 +905,18 @@ export const customerRespondToAssistedCreationProof = onCall(
             : (revisionNote ?? "");
         const update: Record<string, unknown> = {
           status: toStatus,
+          currentProofRoundId: null,
           revisionHistory: appendRevision(history, {
             byUid: portalCustomer.customerUid,
             byRole: "customer",
             note: historyNote,
             fromStatus,
             toStatus,
+            ...(historyRoundId ? { proofRoundId: historyRoundId } : {}),
+            ...(selectedProof?.id ? { selectedProofId: selectedProof.id } : {}),
+            ...(typeof selectedOptionOrder === "number" && selectedOptionOrder >= 0
+              ? { selectedOptionOrder }
+              : {}),
           }),
           updatedAt: FieldValue.serverTimestamp(),
         };
@@ -866,15 +946,10 @@ export const customerRespondToAssistedCreationProof = onCall(
               update.customerApprovalNote = approvalNote;
             }
           } else {
-            const proofs = Array.isArray(current.proofs)
-              ? (current.proofs as AssistedCreationProof[])
-              : [];
-            const latestProof = proofs.length > 0 ? proofs[proofs.length - 1] : null;
-            if (!latestProof?.id) {
+            if (!selectedProof?.id) {
               throw failedPrecondition("There is no proof to approve.");
             }
-            approvedProofId = latestProof.id;
-            update.approvedProofId = latestProof.id;
+            update.approvedProofId = selectedProof.id;
             update.approvedAt = FieldValue.serverTimestamp();
             if (rating != null) {
               update.customerRating = rating;
@@ -887,15 +962,8 @@ export const customerRespondToAssistedCreationProof = onCall(
         tx.update(docRef, update);
       });
 
-      // Sibling proof purge on proof-image approve (keeps approvedProofId); same as former terminal approve.
-      if (shouldPurgeSiblingProofs) {
-        await purgeProofsAfterTerminal({
-          requestId,
-          terminalKind: "approved",
-          approvedProofId,
-        });
-      }
-
+      // Do not purge sibling proof Storage on approve — multi-option / prior-round history
+      // must stay visible. Reject/cancel and the 14-day retention job still remove files.
       return { requestId, status: resultStatus };
     } catch (error) {
       mapHttpsError(error, "Unable to save your proof response right now.");
@@ -1071,49 +1139,41 @@ export const staffAddAssistedCreationProof = onCall(
       if (!requestId) {
         throw invalidArgument("Request id is required.");
       }
-      const proofIn = data.proof;
-      if (!proofIn || typeof proofIn !== "object") {
-        throw invalidArgument("Proof details are required.");
+
+      let batch;
+      try {
+        batch = normalizeStaffAssistedCreationProofBatch({
+          proof: data.proof,
+          proofs: data.proofs,
+        });
+      } catch (error) {
+        throw invalidArgument(error instanceof Error ? error.message : "Invalid proof batch.");
       }
 
-      const proofId = typeof proofIn.id === "string" ? proofIn.id.trim() : "";
-      const storagePath = typeof proofIn.storagePath === "string" ? proofIn.storagePath.trim() : "";
-      const fileName = typeof proofIn.fileName === "string" ? proofIn.fileName.trim() : "";
-      const contentType =
-        typeof proofIn.contentType === "string" ? proofIn.contentType.trim() : "";
-      const sizeBytes =
-        typeof proofIn.sizeBytes === "number" && Number.isFinite(proofIn.sizeBytes)
-          ? Math.floor(proofIn.sizeBytes)
-          : -1;
-      const note = asTrimmedOptional(
-        proofIn.note,
+      const roundNote = asTrimmedOptional(
+        batch.find((entry) => entry.note)?.note,
         ASSISTED_CREATION_FIELD_LIMITS.staffNote,
         "Proof note",
       );
-
-      if (!proofId || !storagePath || !fileName || !contentType || sizeBytes <= 0) {
-        throw invalidArgument("Proof metadata is incomplete.");
-      }
-      if (!(ASSISTED_CREATION_ALLOWED_PROOF_TYPES as readonly string[]).includes(contentType)) {
-        throw invalidArgument("Proof must be JPEG, PNG, or WebP.");
-      }
-      if (sizeBytes > ASSISTED_CREATION_MAX_PROOF_BYTES) {
-        throw invalidArgument("Proof file is too large.");
-      }
 
       const emailSettings = await loadEmailProviderSettings();
       console.info("[staffAddAssistedCreationProof] proof email provider snapshot", {
         requestId,
         proofNoticeProvider: emailSettings.proofNoticeProvider,
         inviteProvider: emailSettings.inviteProvider,
+        optionCount: batch.length,
       });
       const docRef = adminDb.collection(ASSISTED_CREATION_COLLECTION).doc(requestId);
-      const deliveryJobId = createProofEmailJobId(requestId, proofId);
+      const proofRoundId = randomUUID();
+      const deliveryJobId = createProofEmailJobId(requestId, proofRoundId);
       const deliveryJobRef = adminDb
         .collection(EMAIL_DELIVERY_JOBS_COLLECTION)
         .doc(deliveryJobId);
+      const legacyProofId = batch[0]!.id;
+      const proofIds = batch.map((entry) => entry.id);
       let notifyCustomerId = "";
       let notifyCustomerUid = "";
+
       await adminDb.runTransaction(async (tx) => {
         const snap = await tx.get(docRef);
         if (!snap.exists) {
@@ -1129,8 +1189,11 @@ export const staffAddAssistedCreationProof = onCall(
         notifyCustomerId = customerId;
         notifyCustomerUid = customerUid;
         const expectedPrefix = `assisted-creation/${customerUid}/${requestId}/proofs/`;
-        if (!storagePath.startsWith(expectedPrefix)) {
-          throw invalidArgument("Invalid proof storage path.");
+
+        for (const entry of batch) {
+          if (!entry.storagePath.startsWith(expectedPrefix)) {
+            throw invalidArgument("Invalid proof storage path.");
+          }
         }
 
         assertAssistedCreationTransition({
@@ -1143,33 +1206,50 @@ export const staffAddAssistedCreationProof = onCall(
         const existingProofs = Array.isArray(current.proofs)
           ? (current.proofs as AssistedCreationProof[])
           : [];
-        if (existingProofs.some((p) => p.id === proofId || p.storagePath === storagePath)) {
-          throw failedPrecondition("This proof was already attached.");
+        for (const entry of batch) {
+          if (
+            existingProofs.some(
+              (proof) => proof.id === entry.id || proof.storagePath === entry.storagePath,
+            )
+          ) {
+            throw failedPrecondition("This proof was already attached.");
+          }
         }
 
-        const proof: AssistedCreationProof = {
-          id: proofId,
-          storagePath,
-          fileName,
-          contentType,
-          sizeBytes,
-          ...(note ? { note } : {}),
+        const now = Timestamp.now();
+        const newProofs: AssistedCreationProof[] = batch.map((entry, index) => ({
+          id: entry.id,
+          storagePath: entry.storagePath,
+          fileName: entry.fileName,
+          contentType: entry.contentType,
+          sizeBytes: entry.sizeBytes,
+          ...(roundNote ? { note: roundNote } : {}),
           createdBy: caller.id,
-          createdAt: Timestamp.now(),
-        };
+          createdAt: now,
+          proofRoundId,
+          optionOrder: index,
+          optionLabel: deriveAssistedCreationProofOptionLabel(index),
+        }));
 
         const history = Array.isArray(current.revisionHistory) ? current.revisionHistory : [];
+        const historyNote =
+          roundNote ??
+          (batch.length === 1
+            ? "Proof sent to customer"
+            : `Proof round sent to customer (${batch.length} options)`);
         tx.update(docRef, {
           status: "proof_ready",
           fulfillmentMode: "proof_image",
           suggestedCatalogDesign: null,
-          proofs: [...existingProofs, proof],
+          currentProofRoundId: proofRoundId,
+          proofs: [...existingProofs, ...newProofs],
           revisionHistory: appendRevision(history, {
             byUid: caller.id,
             byRole: "staff",
-            note: note ?? "Proof sent to customer",
+            note: historyNote,
             fromStatus,
             toStatus: "proof_ready",
+            proofRoundId,
           }),
           updatedAt: FieldValue.serverTimestamp(),
         });
@@ -1177,7 +1257,8 @@ export const staffAddAssistedCreationProof = onCall(
           id: deliveryJobId,
           kind: "assisted_proof_ready",
           requestId,
-          proofId,
+          proofId: legacyProofId,
+          proofRoundId,
           customerId,
           customerUid,
           provider: emailSettings.proofNoticeProvider,
@@ -1191,7 +1272,7 @@ export const staffAddAssistedCreationProof = onCall(
       });
 
       try {
-        const notificationId = buildAssistedProofReadyNotificationId(requestId, proofId);
+        const notificationId = buildAssistedProofReadyNotificationId(requestId, proofRoundId);
         await createCustomerNotification({
           id: notificationId,
           customerId: notifyCustomerId,
@@ -1200,25 +1281,33 @@ export const staffAddAssistedCreationProof = onCall(
           title: buildCustomerNotificationTitle("assisted_proof_ready"),
           body: CUSTOMER_NOTIFICATION_PROOF_BODY,
           requestId,
-          proofId,
+          proofId: legacyProofId,
         });
         console.info("[staffAddAssistedCreationProof] notification ok", {
           requestId,
-          proofId,
+          proofRoundId,
+          proofId: legacyProofId,
           notificationId,
           customerUid: notifyCustomerUid,
         });
       } catch (notifyError) {
         console.error("[staffAddAssistedCreationProof] notification failed", {
           requestId,
-          proofId,
+          proofRoundId,
+          proofId: legacyProofId,
           customerUid: notifyCustomerUid,
           customerId: notifyCustomerId,
           error: notifyError,
         });
       }
 
-      return { requestId, status: "proof_ready", proofId };
+      return {
+        requestId,
+        status: "proof_ready",
+        proofId: legacyProofId,
+        proofRoundId,
+        proofIds,
+      };
     } catch (error) {
       mapHttpsError(error, "Unable to attach proof right now.");
     }
@@ -1465,7 +1554,15 @@ export const staffAddAssistedCreationFinalSource = onCall(
         .download();
       const probe = await probeAssistedFinalSourceImageBytes(finalSourceBytes);
 
+      const emailSettings = await loadEmailProviderSettings();
       const docRef = adminDb.collection(ASSISTED_CREATION_COLLECTION).doc(requestId);
+      const deliveryJobId = createFinalArtworkEmailJobId(requestId, sourceId);
+      const deliveryJobRef = adminDb
+        .collection(EMAIL_DELIVERY_JOBS_COLLECTION)
+        .doc(deliveryJobId);
+      let notifyCustomerId = "";
+      let notifyCustomerUid = "";
+
       await adminDb.runTransaction(async (tx) => {
         const snap = await tx.get(docRef);
         if (!snap.exists) {
@@ -1474,9 +1571,12 @@ export const staffAddAssistedCreationFinalSource = onCall(
         const current = snap.data()!;
         const fromStatus = current.status as AssistedCreationStatus;
         const customerUid = String(current.customerUid ?? "");
-        if (!customerUid) {
+        const customerId = String(current.customerId ?? "");
+        if (!customerUid || !customerId) {
           throw failedPrecondition("This request is missing its customer linkage.");
         }
+        notifyCustomerId = customerId;
+        notifyCustomerUid = customerUid;
         const expectedPrefix = `assisted-creation/${customerUid}/${requestId}/final/`;
         if (!storagePath.startsWith(expectedPrefix)) {
           throw invalidArgument("Invalid final artwork storage path.");
@@ -1517,7 +1617,49 @@ export const staffAddAssistedCreationFinalSource = onCall(
           }),
           updatedAt: FieldValue.serverTimestamp(),
         });
+        tx.create(deliveryJobRef, {
+          id: deliveryJobId,
+          kind: "assisted_final_artwork_ready",
+          requestId,
+          finalSourceId: sourceId,
+          customerId,
+          customerUid,
+          provider: emailSettings.proofNoticeProvider,
+          status: "pending",
+          attemptCount: 0,
+          maxAttempts: 5,
+          createdBy: caller.id,
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
       });
+
+      try {
+        const notificationId = buildAssistedFinalArtworkReadyNotificationId(requestId, sourceId);
+        await createCustomerNotification({
+          id: notificationId,
+          customerId: notifyCustomerId,
+          customerUid: notifyCustomerUid,
+          kind: "assisted_final_artwork_ready",
+          title: buildCustomerNotificationTitle("assisted_final_artwork_ready"),
+          body: CUSTOMER_NOTIFICATION_FINAL_ARTWORK_BODY,
+          requestId,
+        });
+        console.info("[staffAddAssistedCreationFinalSource] notification ok", {
+          requestId,
+          finalSourceId: sourceId,
+          notificationId,
+          customerUid: notifyCustomerUid,
+        });
+      } catch (notifyError) {
+        console.error("[staffAddAssistedCreationFinalSource] notification failed", {
+          requestId,
+          finalSourceId: sourceId,
+          customerUid: notifyCustomerUid,
+          customerId: notifyCustomerId,
+          error: notifyError,
+        });
+      }
 
       return { requestId, status: "approved", finalSourceId: sourceId };
     } catch (error) {

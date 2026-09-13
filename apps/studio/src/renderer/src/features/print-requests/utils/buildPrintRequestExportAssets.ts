@@ -5,17 +5,20 @@ import {
   resolveShowExportProductionAsset,
   toCatalogDesignAssetInput,
   toCustomerUploadAssetInput,
+  toStaffArtworkAssetInput,
   toShowExportPrintRequestItemFields,
 } from "@fresh-prints/shared/utils/resolveShowExportProductionAsset";
 
 import type { User } from "../../users/types/user.types";
 import type { Design } from "../../designs/types/design.types";
+import type { StaffArtwork } from "@fresh-prints/shared/types/staffArtwork/staffArtwork.types";
 import { designService } from "../../designs/services/designService";
 import { designDerivativeUrlService } from "../../designs/services/designDerivativeUrlService";
 import {
   customerUploadReadService,
   type StudioCustomerUploadSummary,
 } from "../../customer-uploads/services/customerUploadReadService";
+import { staffArtworkService } from "../../staff-artwork/services/staffArtworkService";
 
 export interface ResolvedPrintRequestExportAsset {
   requestItemId: string;
@@ -54,8 +57,9 @@ export async function resolvePrintRequestExportAsset(input: {
   item: PrintRequestItem;
   design: Design | null;
   upload: StudioCustomerUploadSummary | null;
+  staffArtwork?: StaffArtwork | null;
 }): Promise<ResolvedPrintRequestExportAsset> {
-  const { printRequest, item, design, upload } = input;
+  const { printRequest, item, design, upload, staffArtwork = null } = input;
   const printWidthInches = requirePositiveNumber(item.printWidthInches, "print width");
   const printHeightInches = requirePositiveNumber(item.printHeightInches, "print height");
   const quantity = requirePositiveNumber(item.quantity, "quantity");
@@ -64,10 +68,21 @@ export async function resolvePrintRequestExportAsset(input: {
   }
 
   const isUpload = item.sourceType === "customer_upload" || Boolean(item.customerUploadId);
+  const isStaffArtwork = item.sourceType === "staff_artwork" || Boolean(item.staffArtworkId);
   const resolvedAsset = resolveShowExportProductionAsset({
     item: toShowExportPrintRequestItemFields(item),
-    catalogDesign: !isUpload && design ? toCatalogDesignAssetInput(design) : null,
+    catalogDesign: !isUpload && !isStaffArtwork && design ? toCatalogDesignAssetInput(design) : null,
     customerUpload: isUpload && upload ? toCustomerUploadAssetInput(upload) : null,
+    staffArtwork: isStaffArtwork && staffArtwork ? toStaffArtworkAssetInput({
+      id: staffArtwork.id,
+      productionStoragePath: staffArtwork.productionStoragePath,
+      interactiveEnhancedProductionStoragePath: staffArtwork.interactiveEnhancedProductionStoragePath,
+      widthPx: staffArtwork.processing?.widthPx,
+      heightPx: staffArtwork.processing?.heightPx,
+      interactiveEnhancedWidthPx: staffArtwork.interactiveEnhancedWidthPx,
+      interactiveEnhancedHeightPx: staffArtwork.interactiveEnhancedHeightPx,
+      title: staffArtwork.title,
+    }) : null,
   });
   const downloadUrl = await designDerivativeUrlService.getDownloadUrlForCatalogPath(
     resolvedAsset.productionStoragePath,
@@ -98,7 +113,7 @@ export async function resolvePrintRequestExportAsset(input: {
       item.titleSnapshot?.trim() ||
       design?.title?.trim() ||
       upload?.originalFilename?.trim() ||
-      (isUpload ? "upload" : "design"),
+      (isStaffArtwork ? "staff-artwork" : isUpload ? "upload" : "design"),
     quantity,
     grouping: buildGroupingMetadata(printRequest),
   };
@@ -117,18 +132,23 @@ export async function buildPrintRequestExportAssets(
   for (const item of items) {
     let design: Design | null = null;
     let upload: StudioCustomerUploadSummary | null = null;
+    let staffArtwork: StaffArtwork | null = null;
     const isUpload = item.sourceType === "customer_upload" || Boolean(item.customerUploadId);
+    const isStaffArtwork = item.sourceType === "staff_artwork" || Boolean(item.staffArtworkId);
 
     try {
       if (isUpload) {
         if (!item.customerUploadId) throw new Error(`Request item ${item.id} is missing its customer upload.`);
         upload = await customerUploadReadService.getUploadById(user, item.customerUploadId);
+      } else if (isStaffArtwork) {
+        if (!item.staffArtworkId) throw new Error(`Request item ${item.id} is missing its Staff Artwork.`);
+        staffArtwork = await staffArtworkService.getById(user, item.staffArtworkId);
       } else {
         if (!item.designId) throw new Error(`Request item ${item.id} is missing its catalog design.`);
         design = await designService.getDesignById(user, item.designId);
       }
 
-      assets.push(await resolvePrintRequestExportAsset({ user, printRequest, item, design, upload }));
+      assets.push(await resolvePrintRequestExportAsset({ user, printRequest, item, design, upload, staffArtwork }));
     } catch (error) {
       return {
         assets: [],

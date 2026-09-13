@@ -1,5 +1,13 @@
 # Testing and Commands
 
+## Coordinated cutover prerequisite evidence (2026-09-12)
+
+Focused cutover/projection/Rules-contract/Staff Artwork/release-policy validation passed **87/87**;
+Functions build, Portal typecheck, targeted lint, and `git diff --check` passed. The Portal
+production `.next/trace` EPERM, full Rules expression-budget, Studio typecheck, and whole-repository
+lint results remain documented baseline/environment limitations. Studio packaging was intentionally
+not run because it invokes installer-producing tooling. Owner DEV QA then reported **PASS**.
+
 ## Required checks before signoff
 
 | Check | Typical command | When |

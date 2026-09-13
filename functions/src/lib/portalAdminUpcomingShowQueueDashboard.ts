@@ -129,6 +129,9 @@ export function resolveAllocationStatus(value: unknown): ShowAllocationStatus {
 }
 
 export function resolveItemSource(data: Record<string, unknown>): PortalAdminShowQueueItemSource {
+  if (data.sourceType === "staff_artwork" || nonEmptyString(data.staffArtworkId)) {
+    return "staff_artwork";
+  }
   return data.sourceType === "customer_upload" || nonEmptyString(data.customerUploadId)
     ? "customer_upload"
     : "catalog_design";
@@ -280,6 +283,7 @@ function toMetricAllocation(document: PortalAdminQueueDocument): PortalAdminMetr
     sourceType: nonEmptyString(document.data.sourceType),
     designId: nonEmptyString(document.data.designId),
     customerUploadId: nonEmptyString(document.data.customerUploadId),
+    staffArtworkId: nonEmptyString(document.data.staffArtworkId),
   };
 }
 
@@ -463,7 +467,11 @@ export function buildPortalAdminUpcomingShowQueueDashboard(
 
 export function mapDesignItemLabel(data: Record<string, unknown>): string {
   const source = resolveItemSource(data);
-  return source === "customer_upload" ? "Uploaded" : "Design Library";
+  return source === "customer_upload"
+    ? "Uploaded"
+    : source === "staff_artwork"
+      ? "Staff-added"
+      : "Design Library";
 }
 
 export function toMillisExport(value: unknown): number | null {

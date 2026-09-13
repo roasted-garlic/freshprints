@@ -91,8 +91,11 @@ function notifyObservers(event: BackgroundAiQueueEvent): void {
   }
 }
 
-export function enqueueImportedDesignsForBackgroundAi(designIds: readonly string[]): void {
-  if (!readAiProcessingAutoProcessPreference()) {
+export function enqueueImportedDesignsForBackgroundAi(
+  designIds: readonly string[],
+  options: { force?: boolean } = {},
+): void {
+  if (!options.force && !readAiProcessingAutoProcessPreference()) {
     logPipelineEvent("import.ai_background.skipped_auto_process_off", {
       requested: designIds.length,
     });

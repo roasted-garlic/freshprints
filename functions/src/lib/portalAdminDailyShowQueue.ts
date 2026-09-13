@@ -95,6 +95,9 @@ function resolveAllocationStatus(value: unknown): ShowAllocationStatus {
 }
 
 function resolveSource(data: Record<string, unknown>): PortalAdminShowQueueItemSource {
+  if (data.sourceType === "staff_artwork" || nonEmptyString(data.staffArtworkId)) {
+    return "staff_artwork";
+  }
   return data.sourceType === "customer_upload" || nonEmptyString(data.customerUploadId)
     ? "customer_upload"
     : "catalog_design";
@@ -172,7 +175,12 @@ function mapAllocation(document: PortalAdminQueueDocument): InternalAllocation |
     quantity: toQuantity(data.allocatedQuantity),
     status,
     source,
-    label: source === "customer_upload" ? "Customer upload" : nonEmptyString(data.designTitleSnapshot) ?? "Catalog design",
+    label:
+      source === "customer_upload"
+        ? "Customer upload"
+        : source === "staff_artwork"
+          ? "Staff-added"
+          : nonEmptyString(data.designTitleSnapshot) ?? "Catalog design",
     ...(Number.isFinite(width) ? { width } : {}),
     ...(Number.isFinite(height) ? { height } : {}),
     ...(nonEmptyString(data.sizeLabel) ? { sizeLabel: nonEmptyString(data.sizeLabel) } : {}),

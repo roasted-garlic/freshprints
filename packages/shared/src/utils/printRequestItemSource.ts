@@ -5,16 +5,28 @@ import type {
 
 export type PrintRequestItemSourceFields = Pick<
   PrintRequestItem,
-  "sourceType" | "designId" | "customerUploadId"
+  "sourceType" | "designId" | "customerUploadId" | "staffArtworkId" | "sourceLabel"
 >;
 
 /**
- * Resolves item provenance. Legacy docs without `sourceType` are catalog designs.
+ * Resolves item provenance.
+ * Explicit `sourceType` wins when set. Legacy docs without `sourceType` fall back to
+ * identity IDs (`staffArtworkId` / `customerUploadId`), then catalog design.
  */
 export function resolvePrintRequestItemSourceType(
   item: PrintRequestItemSourceFields,
 ): PrintRequestItemSourceType {
-  if (item.sourceType === "customer_upload") {
+  if (
+    item.sourceType === "customer_upload" ||
+    item.sourceType === "staff_artwork" ||
+    item.sourceType === "catalog_design"
+  ) {
+    return item.sourceType;
+  }
+  if (typeof item.staffArtworkId === "string" && item.staffArtworkId.trim()) {
+    return "staff_artwork";
+  }
+  if (typeof item.customerUploadId === "string" && item.customerUploadId.trim()) {
     return "customer_upload";
   }
   return "catalog_design";
@@ -32,6 +44,12 @@ export function isCustomerUploadPrintRequestItem(
   return resolvePrintRequestItemSourceType(item) === "customer_upload";
 }
 
+export function isStaffArtworkPrintRequestItem(
+  item: PrintRequestItemSourceFields,
+): boolean {
+  return resolvePrintRequestItemSourceType(item) === "staff_artwork";
+}
+
 /**
  * Whether popularity (`designs.requestCount`) should increment for this item.
  * Customer-upload-only items must not inflate catalog popularity.
@@ -47,7 +65,7 @@ export function shouldIncrementDesignRequestCount(
 
 /** Matches Portal `printRequestItemHasCustomerUpload` for display parity. */
 export function isUploadLikePrintRequestItem(
-  item: Pick<PrintRequestItem, "sourceType" | "customerUploadId">,
+  item: PrintRequestItemSourceFields,
 ): boolean {
   return item.sourceType === "customer_upload" || Boolean(item.customerUploadId?.trim());
 }
@@ -56,9 +74,12 @@ export type PrintRequestItemSourcePillVariant = "library" | "uploaded" | "custom
 
 /** Label + variant for Portal/Studio source pills (Library · Uploaded · Custom). */
 export function resolvePrintRequestItemSourcePill(input: {
-  item: Pick<PrintRequestItem, "sourceType" | "customerUploadId">;
+  item: Pick<PrintRequestItem, "sourceType" | "designId" | "customerUploadId" | "staffArtworkId" | "sourceLabel">;
   fromAssistedCreation?: boolean;
 }): { label: string; variant: PrintRequestItemSourcePillVariant } {
+  if (input.item.sourceType === "staff_artwork" || input.item.staffArtworkId) {
+    return { label: input.item.sourceLabel ?? "Staff-added", variant: "custom" };
+  }
   if (!isUploadLikePrintRequestItem(input.item)) {
     return { label: "Library", variant: "library" };
   }

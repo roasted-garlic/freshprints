@@ -410,6 +410,12 @@
   width: 100%;
 }
 
+.ai-review-preview-control-toggle.is-swatch-only {
+  justify-content: center;
+  padding: 0.35rem;
+  width: auto;
+}
+
 .ai-review-preview-control-toggle:hover:not(:disabled) {
   background: color-mix(in srgb, var(--color-bg-secondary) 94%, transparent);
   border-color: color-mix(in srgb, var(--color-border) 80%, transparent);

@@ -1,15 +1,24 @@
 # Data Model Essentials
 
+## Portal projection cutover (repository closed 2026-09-12)
+
+`portalPrintRequestItems/{itemId}` is a strict, server-owned projection of
+`printRequestItems/{itemId}`. It uses the canonical item ID, is readable by the owning customer,
+and is writable only by trusted Admin synchronizers. Portal reads prefer the projection and may use
+bounded canonical fallback during transition; final Rules deny direct customer canonical-item reads
+after convergence. No schema migration or production population was run in this child.
+
 ## Core collections
 
 | Collection | Purpose |
 |------------|---------|
 | `users` | Team + customer Auth profiles (`role`, `isActive`) — client cannot write roles |
 | `designs` | Staff catalog metadata |
+| `staffArtworks` | Private staff-managed request artwork; never a public catalog or customer upload |
 | `categories` / catalog tags | Organization |
 | `customers` | Customer business records (Portal linked); optional `printRequestQuotaOverride` (ADR-FP-159) |
 | `printRequests` | Named request lists (working / queued derived) |
-| `printRequestItems` | Line items: catalog design **or** customer upload |
+| `printRequestItems` | Line items: catalog design, customer upload, **or** private Staff Artwork |
 | `customerUploads` | Customer artwork for requests (ADR-FP-073) |
 | `customerUploadBatches` | Upload sessions / ZIP batches |
 | `customerUploadRateLimits` / leases / idempotency | Abuse controls |
@@ -54,13 +63,14 @@
 - Historical mirror backfill was bounded and non-destructive; it did not invent granular historical
   events. Two duplicate conversion events remain documented as safe historical duplicates.
 
-## Print Request Item (dual source)
+## Print Request Item (three sources)
 
 | Field | Notes |
 |-------|-------|
-| `sourceType` | `catalog_design` (default/legacy) \| `customer_upload` |
-| `designId` | Required for catalog items; **absent** for upload-backed items |
-| `customerUploadId` | Set for upload-backed items |
+| `sourceType` | `catalog_design` (default/legacy) \| `customer_upload` \| `staff_artwork` |
+| `designId` | Required for catalog items; absent for upload-backed or Staff Artwork items |
+| `customerUploadId` | Set for customer-upload items only |
+| `staffArtworkId` | Set for Staff Artwork items only; authoritative private identity |
 | `quantity` | ≥ 1 |
 | `printWidthInches` / `printHeightInches` | Aspect-locked; standard cap 22″ |
 | `sizeLabel` | Display string |
@@ -70,6 +80,16 @@
 **Save floor:** effective DPI must be **≥ 200** (`MIN_PRINT_REQUEST_EFFECTIVE_DPI`). Soft warn 200–299; optimal ≥ 300. ADR-FP-075.
 
 Do **not** increment `designs.requestCount` for customer-upload-only items.
+
+## Staff Artwork
+
+`staffArtworks/{staffArtworkId}` is a staff-only, persistent request-artwork record with technical
+processing status (`processing` / `ready` / `failed` / `archived`), PNG production/preview/thumbnail
+metadata, optional interactive derivative metadata, customer association snapshots, and promotion
+state. Canonical Storage paths are `/staff-artwork/{staffArtworkId}/source`, `production.png`,
+optional `production.interactive.png`, `preview.webp`, and `thumbnail.webp`. Historical customer
+IDs/snapshots remain stable across merges; new associations target the surviving customer. No
+automatic retention or public catalog indexing applies.
 
 ## Customer Uploads
 
@@ -86,6 +106,18 @@ Do **not** increment `designs.requestCount` for customer-upload-only items.
 
 After staff promote → creates/links a `designs` doc and existing AI enqueue; request items keep working.
 
+### Customer-upload intake release and retention (DEV — 2026-09-11)
+
+- Print-request uploads may carry `studioIntakeHoldUntilShow: true`; trusted Add-to-Show paths
+  clear the hold. Studio list/count readers exclude held uploads, so they do not appear in Pending
+  or Denied before a successful show submission.
+- `catalogRetentionStartedAt` is the trusted start of the current retention episode: 30 days for
+  customer permission-denied Personal uploads, 30 days for unpromoted donations, and 14 days for
+  staff Excluded. `catalogPendingQueuedAt` provides newest-first Pending placement after Allow or
+  Restore. Ask Again pauses cleanup; Allow/Restore clears the episode; a second Decline restarts it.
+- Request items and active/future allocations remain hard-delete blockers under B1. Retention purge
+  is bounded and scheduler-controlled; no physical deletion occurs for protected artwork.
+
 ## Smart Profile import presets (DEV)
 
 - `designs.smartProfileImportPresets` stores the durable import-time preset seed for owner-approved editable Smart Profile dimensions only.
@@ -95,7 +127,10 @@ After staff promote → creates/links a `designs` doc and existing AI enqueue; r
 
 ## Show allocations
 
-Link `printRequest` / `printRequestItem` quantities to an `upcomingShow`. Source-aware resolvers support catalog originals **and** customer-upload production paths for export/gang sheets. **`artworkEnhanceMode`** on each item selects baseline vs interactive enhanced derivative at export time (gang sheets, ZIP, manual builder).
+Link `printRequest` / `printRequestItem` quantities to an `upcomingShow`. Source-aware resolvers
+support catalog originals, customer-upload production paths, and private Staff Artwork production
+paths for export/gang sheets. **`artworkEnhanceMode`** on each item selects baseline vs interactive
+enhanced derivative at export time (gang sheets, ZIP, manual builder).
 
 | Field | Notes |
 |-------|-------|

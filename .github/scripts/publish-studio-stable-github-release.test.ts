@@ -16,7 +16,7 @@ import {
 } from "./publish-studio-stable-github-release.mjs";
 
 const SHA = "32101904b29476e514d0f9a9e8fd5c5b508a7d14";
-const VERSION = "1.0.9";
+const VERSION = "1.0.10";
 
 function eightAssets() {
   return Array.from({ length: REQUIRED_STABLE_ASSET_COUNT }, (_, i) => ({
@@ -27,7 +27,7 @@ function eightAssets() {
 
 test("draft body keeps the pre-publish warning and sha", () => {
   const body = draftBody(VERSION, SHA);
-  assert.match(body, /Fresh Prints Studio 1\.0\.9/);
+  assert.match(body, /Fresh Prints Studio 1\.0\.10/);
   assert.match(body, /DRAFT/);
   assert.match(body, /do not publish/);
   assert.match(body, new RegExp(SHA));
@@ -36,7 +36,7 @@ test("draft body keeps the pre-publish warning and sha", () => {
 
 test("final body includes version and sha and is not draft copy", () => {
   const body = finalBody(VERSION, SHA);
-  assert.match(body, /Fresh Prints Studio 1\.0\.9/);
+  assert.match(body, /Fresh Prints Studio 1\.0\.10/);
   assert.match(body, /Windows \+ Mac x64 \+ Mac arm64/);
   assert.match(body, new RegExp(`Source: ${SHA}`));
   assert.match(body, /automatic updates supported/);
@@ -53,7 +53,7 @@ test("assertPublishedCopy rejects DRAFT and do not publish", () => {
 
 test("publish PATCH payload sets tag_name, draft false, make_latest true, and final body", () => {
   const patch = buildPublishPatch(VERSION, SHA);
-  assert.equal(patch.tag_name, "v1.0.9");
+  assert.equal(patch.tag_name, "v1.0.10");
   assert.equal(patch.draft, false);
   assert.equal(patch.make_latest, "true");
   assert.equal(patch.prerelease, false);

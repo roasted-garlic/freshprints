@@ -11,11 +11,14 @@ import {
 import { permissionService } from "../../permissions/services/permissionService";
 import { printRequestService } from "../services/printRequestService";
 import { sortPrintRequestItemsNewestFirst } from "@fresh-prints/shared/utils/printRequestItemDisplayOrder";
+import type { StaffArtwork } from "@fresh-prints/shared/types/staffArtwork/staffArtwork.types";
+import { staffArtworkService } from "../../staff-artwork/services/staffArtworkService";
 
 interface PrintRequestDetailsState {
   printRequest: PrintRequest | null;
   items: PrintRequestItem[];
   uploadSummaries: Map<string, StudioCustomerUploadSummary | null>;
+  staffArtworkSummaries: Map<string, StaffArtwork | null>;
   error: string | null;
   isLoading: boolean;
   loadedRequestId: string | null;
@@ -25,6 +28,7 @@ const initialState: PrintRequestDetailsState = {
   printRequest: null,
   items: [],
   uploadSummaries: new Map(),
+  staffArtworkSummaries: new Map(),
   error: null,
   isLoading: true,
   loadedRequestId: null,
@@ -60,6 +64,18 @@ async function loadUploadSummariesForItems(
   return new Map(summaries);
 }
 
+async function loadStaffArtworkForItems(
+  user: Parameters<typeof staffArtworkService.getById>[0],
+  items: PrintRequestItem[],
+): Promise<Map<string, StaffArtwork | null>> {
+  const ids = [...new Set(items.map((item) => item.staffArtworkId?.trim()).filter((id): id is string => Boolean(id)))];
+  const entries = await Promise.all(ids.map(async (id) => {
+    try { return [id, await staffArtworkService.getById(user, id)] as const; }
+    catch { return [id, null] as const; }
+  }));
+  return new Map(entries);
+}
+
 export function usePrintRequestDetails(printRequestId: string | null) {
   const { user } = useAuth();
   const [state, setState] = useState<PrintRequestDetailsState>(initialState);
@@ -73,6 +89,7 @@ export function usePrintRequestDetails(printRequestId: string | null) {
         printRequest: null,
         items: [],
         uploadSummaries: new Map(),
+        staffArtworkSummaries: new Map(),
         error: null,
         isLoading: false,
         loadedRequestId: null,
@@ -93,7 +110,10 @@ export function usePrintRequestDetails(printRequestId: string | null) {
       ]);
 
       const sortedItems = sortPrintRequestItemsNewestFirst(items);
-      const uploadSummaries = await loadUploadSummariesForItems(user, sortedItems);
+      const [uploadSummaries, staffArtworkSummaries] = await Promise.all([
+        loadUploadSummariesForItems(user, sortedItems),
+        loadStaffArtworkForItems(user, sortedItems),
+      ]);
 
       if (requestSequence !== loadSequenceRef.current) {
         return;
@@ -103,6 +123,7 @@ export function usePrintRequestDetails(printRequestId: string | null) {
         printRequest,
         items: sortedItems,
         uploadSummaries,
+        staffArtworkSummaries,
         error: null,
         isLoading: false,
         loadedRequestId: printRequestId,
@@ -116,6 +137,7 @@ export function usePrintRequestDetails(printRequestId: string | null) {
         printRequest: null,
         items: [],
         uploadSummaries: new Map(),
+        staffArtworkSummaries: new Map(),
         error: error instanceof Error ? error.message : "Unable to load print request details.",
         isLoading: false,
         loadedRequestId: printRequestId,
@@ -168,6 +190,15 @@ export function usePrintRequestDetails(printRequestId: string | null) {
         });
       });
     }
+    if (item.staffArtworkId && user) {
+      void staffArtworkService.getById(user, item.staffArtworkId).then((artwork) => {
+        setState((currentState) => {
+          const next = new Map(currentState.staffArtworkSummaries);
+          next.set(item.staffArtworkId!, artwork);
+          return { ...currentState, staffArtworkSummaries: next };
+        });
+      }).catch(() => undefined);
+    }
   }, [user]);
 
   const insertItemAfter = useCallback((afterItemId: string, item: PrintRequestItem) => {
@@ -201,6 +232,15 @@ export function usePrintRequestDetails(printRequestId: string | null) {
           return { ...currentState, uploadSummaries: next };
         });
       });
+    }
+    if (item.staffArtworkId && user) {
+      void staffArtworkService.getById(user, item.staffArtworkId).then((artwork) => {
+        setState((currentState) => {
+          const next = new Map(currentState.staffArtworkSummaries);
+          next.set(item.staffArtworkId!, artwork);
+          return { ...currentState, staffArtworkSummaries: next };
+        });
+      }).catch(() => undefined);
     }
   }, [user]);
 

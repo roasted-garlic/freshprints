@@ -54,6 +54,7 @@ export interface RequeueAllocationFull extends RequeueAllocationSnapshot {
   designId?: string;
   sourceType?: string;
   customerUploadId?: string;
+  staffArtworkId?: string;
   customerId?: string;
   requestOriginSnapshot?: string;
   designTitleSnapshot?: string;
@@ -118,6 +119,7 @@ export async function loadFullAllocationsForShow(
       designId: readOptionalString(data.designId),
       sourceType: readOptionalString(data.sourceType),
       customerUploadId: readOptionalString(data.customerUploadId),
+      staffArtworkId: readOptionalString(data.staffArtworkId),
       customerId: readOptionalString(data.customerId),
       requestNameSnapshot: readOptionalString(data.requestNameSnapshot),
       requestOriginSnapshot: readOptionalString(data.requestOriginSnapshot),
@@ -367,6 +369,7 @@ function cloneAllocationForRequeue(input: {
     designId: sourceAllocation.designId,
     sourceType: sourceAllocation.sourceType,
     customerUploadId: sourceAllocation.customerUploadId,
+    staffArtworkId: sourceAllocation.staffArtworkId,
     customerId: sourceAllocation.customerId,
     requestNameSnapshot:
       sourceAllocation.requestNameSnapshot?.trim() || sourceAllocation.printRequestId,
@@ -506,6 +509,7 @@ export async function applyRequeueUnfulfilledRecovery(input: {
         designId: readOptionalString(data.designId),
         sourceType: readOptionalString(data.sourceType),
         customerUploadId: readOptionalString(data.customerUploadId),
+        staffArtworkId: readOptionalString(data.staffArtworkId),
         customerId: readOptionalString(data.customerId),
         requestNameSnapshot: readOptionalString(data.requestNameSnapshot),
         requestOriginSnapshot: readOptionalString(data.requestOriginSnapshot),

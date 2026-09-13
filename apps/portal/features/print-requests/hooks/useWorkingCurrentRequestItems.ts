@@ -311,10 +311,13 @@ export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | nul
         }
         const visibleItems = filterPendingRemoved(nextItems);
         settlePendingRemovalsAgainstServerItems(nextItems);
+        // Merge full local cart (not only optimistic stubs). An empty/partial projection
+        // snapshot must not wipe hydrated server rows. Pending removals stay excluded so
+        // deleted lines are not resurrected while waiting for a non-empty authoritative list.
         setItems((current) =>
           mergeServerWorkingItemsWithLocal(
             visibleItems,
-            current.filter((item) => item.id.startsWith('optimistic:')),
+            current.filter((item) => !pendingRemovedItemIdsRef.current.has(item.id.trim())),
             { printRequestId: linkedId },
           ),
         );

@@ -32,6 +32,7 @@ import {
   wouldExceedPerShowCustomerCap,
 } from "../../packages/shared/src/utils/printRequestPerShowCustomerCap";
 import { buildShowAllocationSourceFields } from "../../packages/shared/src/utils/showAllocationSourceFields";
+import { resolvePrintRequestItemSourceType } from "../../packages/shared/src/utils/printRequestItemSource";
 import {
   formatWorkingRequestOverLimitForQueueMessage,
 } from "../../packages/shared/src/utils/printRequestWorkingRequestMax";
@@ -183,11 +184,21 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
         throw invalidArgument("Print request item data is incomplete.");
       }
 
-      const sourceType =
-        data.sourceType === "customer_upload" ? ("customer_upload" as const) : ("catalog_design" as const);
       const customerUploadId =
         typeof data.customerUploadId === "string" ? data.customerUploadId.trim() : undefined;
       const designId = typeof data.designId === "string" ? data.designId.trim() : undefined;
+      const staffArtworkId = typeof data.staffArtworkId === "string" ? data.staffArtworkId.trim() : undefined;
+      const sourceType = resolvePrintRequestItemSourceType({
+        sourceType:
+          data.sourceType === "customer_upload" ||
+          data.sourceType === "staff_artwork" ||
+          data.sourceType === "catalog_design"
+            ? data.sourceType
+            : undefined,
+        designId,
+        customerUploadId,
+        staffArtworkId,
+      });
       const titleSnapshot =
         typeof data.titleSnapshot === "string" ? data.titleSnapshot.trim() : undefined;
 
@@ -198,6 +209,7 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
         sourceType,
         customerUploadId,
         designId,
+        staffArtworkId,
         titleSnapshot,
         quantity: data.quantity as number,
         printWidthInches: typeof data.printWidthInches === "number" ? data.printWidthInches : undefined,
@@ -383,6 +395,13 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
           .filter((id): id is string => Boolean(id)),
       ),
     ];
+    const staffArtworkIds = [
+      ...new Set(
+        queueLines.filter((line) => line.item.sourceType === "staff_artwork")
+          .map((line) => line.item.staffArtworkId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
 
     const uploadSnaps = await Promise.all(
       uploadIds.map((id) =>
@@ -392,6 +411,12 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
     uploadDocumentsReturned = uploadSnaps.filter((snap) => snap.exists).length;
     const uploadById = new Map(
       uploadSnaps.map((snap) => [snap.id, snap.exists ? snap.data() : null] as const),
+    );
+    const staffArtworkSnaps = await Promise.all(
+      staffArtworkIds.map((id) => adminDb.collection("staffArtworks").doc(id).get()),
+    );
+    const staffArtworkById = new Map(
+      staffArtworkSnaps.map((snap) => [snap.id, snap.exists ? snap.data() : null] as const),
     );
 
     for (const line of queueLines) {
@@ -414,6 +439,17 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
         continue;
       }
 
+      if (item.sourceType === "staff_artwork") {
+        const artwork = item.staffArtworkId ? staffArtworkById.get(item.staffArtworkId) : null;
+        if (!artwork || !["ready", "archived"].includes(String(artwork.status))) {
+          throw failedPrecondition("Only ready Staff Artwork can be queued to a show.");
+        }
+        if (typeof artwork.productionStoragePath !== "string" || !artwork.productionStoragePath) {
+          throw failedPrecondition("Staff Artwork production artwork is missing.");
+        }
+        continue;
+      }
+
       if (!item.designId) {
         throw invalidArgument("Print request item data is incomplete.");
       }
@@ -422,7 +458,7 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
     const catalogDesignIds = [
       ...new Set(
         queueLines
-          .filter((line) => line.item.sourceType !== "customer_upload")
+          .filter((line) => line.item.sourceType === "catalog_design")
           .map((line) => line.item.designId)
           .filter((id): id is string => Boolean(id)),
       ),
@@ -442,6 +478,10 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
         const upload = item.customerUploadId ? uploadById.get(item.customerUploadId) : null;
         pixelWidth = typeof upload?.widthPx === "number" ? upload.widthPx : undefined;
         pixelHeight = typeof upload?.heightPx === "number" ? upload.heightPx : undefined;
+      } else if (item.sourceType === "staff_artwork") {
+        const artwork = item.staffArtworkId ? staffArtworkById.get(item.staffArtworkId) : null;
+        pixelWidth = typeof artwork?.processing?.widthPx === "number" ? artwork.processing.widthPx : undefined;
+        pixelHeight = typeof artwork?.processing?.heightPx === "number" ? artwork.processing.heightPx : undefined;
       } else {
         const design = item.designId ? designById.get(item.designId) : null;
         pixelWidth = typeof design?.width === "number" ? design.width : undefined;
@@ -665,9 +705,10 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
             : null;
         const sourceFields = buildShowAllocationSourceFields({
           item: {
-            sourceType: line.item.sourceType === "customer_upload" ? "customer_upload" : undefined,
+            sourceType: line.item.sourceType,
             designId: line.item.designId,
             customerUploadId: line.item.customerUploadId,
+            staffArtworkId: line.item.staffArtworkId,
             titleSnapshot: line.item.titleSnapshot,
             quantity: line.quantity,
             printWidthInches: line.item.printWidthInches,

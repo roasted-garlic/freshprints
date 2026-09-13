@@ -28,8 +28,12 @@ function formatDesignSizeTierLabel(printWidthInches: number | undefined): string
   return GANG_SHEET_PRICING_TIER_LABELS[resolveGangSheetPriceTierForInches(printWidthInches)];
 }
 
-function formatDesignSourceLabel(source: 'catalog_design' | 'customer_upload'): string {
-  return source === 'customer_upload' ? 'Uploaded' : 'Design Library';
+function formatDesignSourceLabel(source: 'catalog_design' | 'customer_upload' | 'staff_artwork'): string {
+  return source === 'customer_upload'
+    ? 'Uploaded'
+    : source === 'staff_artwork'
+      ? 'Staff-added'
+      : 'Design Library';
 }
 
 export function PortalAdminViewDesignsModal({
@@ -191,7 +195,11 @@ export function PortalAdminViewDesignsModal({
                         {[
                           formatDesignSizeTierLabel(item.printWidthInches),
                           item.origin !== 'standard' ? item.origin : null,
-                          item.source === 'customer_upload' ? 'upload' : 'catalog',
+                          item.source === 'customer_upload'
+                            ? 'upload'
+                            : item.source === 'staff_artwork'
+                              ? 'staff'
+                              : 'catalog',
                         ]
                           .filter(Boolean)
                           .join(' · ')}

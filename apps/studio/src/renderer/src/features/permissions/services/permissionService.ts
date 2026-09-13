@@ -264,6 +264,18 @@ export const permissionService = {
     return this.canViewDesigns(user);
   },
 
+  canViewStaffArtwork(user: UserLike) {
+    return isStaff(user);
+  },
+
+  canSelectStaffArtwork(user: UserLike) {
+    return this.canManagePrintRequestItems(user);
+  },
+
+  canManageStaffArtwork(user: UserLike) {
+    return hasActiveRole(user, ["owner", "admin"]);
+  },
+
   canViewDesigns(user: UserLike) {
     return isStaff(user);
   },
@@ -490,6 +502,12 @@ export const permissionService = {
         return this.canDeleteEligibleUnapprovedDesigns(user);
       case "manageDesigns":
         return this.canManageDesigns(user);
+      case "viewStaffArtwork":
+        return this.canViewStaffArtwork(user);
+      case "selectStaffArtwork":
+        return this.canSelectStaffArtwork(user);
+      case "manageStaffArtwork":
+        return this.canManageStaffArtwork(user);
       case "viewDesigns":
         return this.canViewDesigns(user);
       case "createDesigns":

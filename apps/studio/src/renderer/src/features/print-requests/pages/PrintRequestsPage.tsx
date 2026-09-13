@@ -484,6 +484,7 @@ export function PrintRequestsPage() {
     patchDesignFromEnhanceResult,
   } = useReadyDesignsForSelection(selectedDesignIds);
   const uploadSummariesById = isLoadedSelectedRequest ? requestDetails.uploadSummaries : new Map();
+  const staffArtworkById = isLoadedSelectedRequest ? requestDetails.staffArtworkSummaries : new Map();
   const requestError = isLoadedSelectedRequest ? requestDetails.error : null;
   const isRequestLoading = requestDetails.isLoading || (Boolean(selectedRequestId) && !isLoadedSelectedRequest);
   /**
@@ -1482,6 +1483,7 @@ export function PrintRequestsPage() {
       }
     } catch (error) {
       setActionError(formatWriteErrorMessage(error));
+      throw error;
     }
   }
 
@@ -1589,6 +1591,11 @@ export function PrintRequestsPage() {
         requestId: selectedRequest.id,
       }),
     );
+  }, [navigate, selectedRequest]);
+
+  const openStaffArtworkSelection = useCallback(() => {
+    if (!selectedRequest) return;
+    navigate(`/staff-artwork?mode=request-selection&requestId=${encodeURIComponent(selectedRequest.id)}`);
   }, [navigate, selectedRequest]);
 
   const openUsersForCustomerCreation = useCallback(() => {
@@ -2566,22 +2573,36 @@ export function PrintRequestsPage() {
                     <p className="eyebrow">Request items</p>
                   )}
                   {!isSelectedRequestFullyPrinted ? (
-                    <Button
-                      className="button-leading-icon"
-                      onClick={openDesignLibrarySelection}
-                      disabled={!selectedRequest || isSelectedRequestDetailLocked}
-                      size="sm"
-                      variant="secondary"
-                    >
-                      <ImagePlus aria-hidden="true" size={16} strokeWidth={2} />
-                      Add designs
-                    </Button>
+                    <div className="button-row">
+                      <Button
+                        className="button-leading-icon"
+                        onClick={openDesignLibrarySelection}
+                        disabled={!selectedRequest || isSelectedRequestDetailLocked}
+                        size="sm"
+                        variant="secondary"
+                      >
+                        <ImagePlus aria-hidden="true" size={16} strokeWidth={2} />
+                        Add designs
+                      </Button>
+                      {user && permissionService.canSelectStaffArtwork(user) ? (
+                        <Button
+                          className="button-leading-icon"
+                          onClick={openStaffArtworkSelection}
+                          disabled={!selectedRequest || isSelectedRequestDetailLocked}
+                          size="sm"
+                          variant="secondary"
+                        >
+                          <ImagePlus aria-hidden="true" size={16} strokeWidth={2} />
+                          Add private design
+                        </Button>
+                      ) : null}
+                    </div>
                   ) : null}
                 </div>
 
                 {requestItems.length === 0 ? (
                   <EmptyState
-                    message="Add an approved catalog design to start the request."
+                    message="Add an approved catalog design or artwork from the Staff Library to start the request."
                     title="No items yet"
                   />
                 ) : (
@@ -2621,6 +2642,28 @@ export function PrintRequestsPage() {
                               thumbnailPath: null,
                             }
                           : null;
+                      const staffArtwork = item.staffArtworkId ? staffArtworkById.get(item.staffArtworkId) : null;
+                      const staffAsset = staffArtwork
+                        ? {
+                            title: staffArtwork.title || item.titleSnapshot || "Staff Artwork",
+                            previewPath: staffArtwork.previewStoragePath,
+                            thumbnailPath: staffArtwork.thumbnailStoragePath,
+                            printWidthInches: staffArtwork.processing?.printWidthInches,
+                            printHeightInches: staffArtwork.processing?.printHeightInches,
+                            widthPx: staffArtwork.processing?.widthPx,
+                            heightPx: staffArtwork.processing?.heightPx,
+                            approvedMaxPrintWidthInches: staffArtwork.processing?.approvedMaxPrintWidthInches,
+                            approvedMaxPrintHeightInches: staffArtwork.processing?.approvedMaxPrintHeightInches,
+                            wasUpscaled: staffArtwork.processing?.wasUpscaled,
+                            interactiveEnhancedProductionStoragePath:
+                              staffArtwork.interactiveEnhancedProductionStoragePath,
+                            interactiveEnhancedWidthPx: staffArtwork.interactiveEnhancedWidthPx,
+                            interactiveEnhancedHeightPx: staffArtwork.interactiveEnhancedHeightPx,
+                            interactiveEnhanceGeneratedAt: staffArtwork.interactiveEnhanceGeneratedAt,
+                            artworkBackgroundHex: staffArtwork.artworkBackgroundHex,
+                          }
+                        : null;
+                      const resolvedUpload = staffAsset ?? upload;
 
                       return (
                         <PrintRequestItemCard
@@ -2635,8 +2678,8 @@ export function PrintRequestsPage() {
                           onOpenPreview={
                             design?.previewPath ||
                             design?.thumbnailPath ||
-                            upload?.previewPath ||
-                            upload?.thumbnailPath
+                            resolvedUpload?.previewPath ||
+                            resolvedUpload?.thumbnailPath
                               ? () => setLightboxItemId(item.id)
                               : undefined
                           }
@@ -2649,7 +2692,7 @@ export function PrintRequestsPage() {
                           readOnly={isSelectedRequestDetailLocked}
                           sectionPricing={gangSheetSettings.settings.sectionPricing}
                           standardPrintSizesSettings={standardPrintSizesSettings}
-                          upload={upload}
+                          upload={resolvedUpload}
                         />
                       );
                     })}
@@ -2684,6 +2727,25 @@ export function PrintRequestsPage() {
                       wasUpscaled: uploadDoc.wasUpscaled,
                       fromAssistedCreation: Boolean(uploadDoc.assistedCreationRequestId),
                       catalogUseAcknowledged: uploadDoc.catalogUseAcknowledged,
+                    };
+                  }
+                  const staffArtwork = item.staffArtworkId ? staffArtworkById.get(item.staffArtworkId) : null;
+                  if (staffArtwork) {
+                    return {
+                      title: staffArtwork.title || item.titleSnapshot || "Staff Artwork",
+                      previewPath: staffArtwork.previewStoragePath,
+                      thumbnailPath: staffArtwork.thumbnailStoragePath,
+                      printWidthInches: staffArtwork.processing?.printWidthInches,
+                      printHeightInches: staffArtwork.processing?.printHeightInches,
+                      widthPx: staffArtwork.processing?.widthPx,
+                      heightPx: staffArtwork.processing?.heightPx,
+                      wasUpscaled: staffArtwork.processing?.wasUpscaled,
+                      interactiveEnhancedProductionStoragePath:
+                        staffArtwork.interactiveEnhancedProductionStoragePath,
+                      interactiveEnhancedWidthPx: staffArtwork.interactiveEnhancedWidthPx,
+                      interactiveEnhancedHeightPx: staffArtwork.interactiveEnhancedHeightPx,
+                      interactiveEnhanceGeneratedAt: staffArtwork.interactiveEnhanceGeneratedAt,
+                      artworkBackgroundHex: staffArtwork.artworkBackgroundHex,
                     };
                   }
                   if (item.titleSnapshot) {

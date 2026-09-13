@@ -125,14 +125,14 @@ describe("evaluateAssistedCreationApprovedProofPurge", () => {
 });
 
 describe("selectAssistedCreationProofIdsToPurgeOnTerminal", () => {
-  it("keeps only the approved proof on approve", () => {
+  it("purges no proofs on approve so multi-option history stays visible", () => {
     assert.deepEqual(
       selectAssistedCreationProofIdsToPurgeOnTerminal({
         terminalKind: "approved",
         approvedProofId: "p2",
         proofs,
       }),
-      ["p1"],
+      [],
     );
   });
 
@@ -176,6 +176,46 @@ describe("selectAssistedCreationProofIdsToPurgeOnTerminal", () => {
         ],
       }),
       ["p1"],
+    );
+  });
+
+  it("on approve with round metadata, keeps unselected options in every round", () => {
+    assert.deepEqual(
+      selectAssistedCreationProofIdsToPurgeOnTerminal({
+        terminalKind: "approved",
+        approvedProofId: "r2-b",
+        proofs: [
+          {
+            id: "r1-a",
+            storagePath: "assisted-creation/u1/r1/proofs/a",
+            fileName: "a",
+            contentType: "image/png",
+            proofRoundId: "round-1",
+          },
+          {
+            id: "r1-b",
+            storagePath: "assisted-creation/u1/r1/proofs/b",
+            fileName: "b",
+            contentType: "image/png",
+            proofRoundId: "round-1",
+          },
+          {
+            id: "r2-a",
+            storagePath: "assisted-creation/u1/r1/proofs/c",
+            fileName: "c",
+            contentType: "image/png",
+            proofRoundId: "round-2",
+          },
+          {
+            id: "r2-b",
+            storagePath: "assisted-creation/u1/r1/proofs/d",
+            fileName: "d",
+            contentType: "image/png",
+            proofRoundId: "round-2",
+          },
+        ],
+      }),
+      [],
     );
   });
 });

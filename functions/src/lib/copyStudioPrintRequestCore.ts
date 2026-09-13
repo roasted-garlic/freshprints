@@ -21,6 +21,7 @@ interface RawItem extends DocumentData {
   sourceType?: unknown;
   designId?: unknown;
   customerUploadId?: unknown;
+  staffArtworkId?: unknown;
   titleSnapshot?: unknown;
   quantity?: unknown;
   printWidthInches?: unknown;
@@ -64,11 +65,13 @@ function readPositiveNumber(value: unknown, field: string): number {
 
 function readItemIdentity(item: RawItem, index: number):
   | { sourceType: "catalog_design"; designId: string }
-  | { sourceType: "customer_upload"; customerUploadId: string } {
+  | { sourceType: "customer_upload"; customerUploadId: string }
+  | { sourceType: "staff_artwork"; staffArtworkId: string } {
   if (
     item.sourceType !== undefined &&
     item.sourceType !== "catalog_design" &&
-    item.sourceType !== "customer_upload"
+    item.sourceType !== "customer_upload" &&
+    item.sourceType !== "staff_artwork"
   ) {
     throw failedPrecondition(`Source item ${index + 1} has an invalid source type.`);
   }
@@ -78,7 +81,10 @@ function readItemIdentity(item: RawItem, index: number):
   if (item.sourceType === "customer_upload" && item.designId) {
     throw failedPrecondition(`Source item ${index + 1} has conflicting source identity fields.`);
   }
-  const sourceType = item.sourceType ?? (item.customerUploadId ? "customer_upload" : "catalog_design");
+  if (item.sourceType === "staff_artwork" && (item.designId || item.customerUploadId)) {
+    throw failedPrecondition(`Source item ${index + 1} has conflicting source identity fields.`);
+  }
+  const sourceType = item.sourceType ?? (item.customerUploadId ? "customer_upload" : item.staffArtworkId ? "staff_artwork" : "catalog_design");
 
   if (sourceType === "customer_upload") {
     const customerUploadId = readNonEmptyString(item.customerUploadId);
@@ -86,6 +92,14 @@ function readItemIdentity(item: RawItem, index: number):
       throw failedPrecondition(`Source item ${index + 1} has an invalid customer-upload identity.`);
     }
     return { sourceType, customerUploadId };
+  }
+
+  if (sourceType === "staff_artwork") {
+    const staffArtworkId = readNonEmptyString(item.staffArtworkId);
+    if (!staffArtworkId || readNonEmptyString(item.designId) || readNonEmptyString(item.customerUploadId)) {
+      throw failedPrecondition(`Source item ${index + 1} has an invalid Staff Artwork identity.`);
+    }
+    return { sourceType, staffArtworkId };
   }
 
   const designId = readNonEmptyString(item.designId);
@@ -117,6 +131,10 @@ function buildItemPayload(
 
   if (identity.sourceType === "customer_upload") {
     payload.customerUploadId = identity.customerUploadId;
+    const titleSnapshot = readNonEmptyString(item.titleSnapshot);
+    if (titleSnapshot) payload.titleSnapshot = titleSnapshot;
+  } else if (identity.sourceType === "staff_artwork") {
+    payload.staffArtworkId = identity.staffArtworkId;
     const titleSnapshot = readNonEmptyString(item.titleSnapshot);
     if (titleSnapshot) payload.titleSnapshot = titleSnapshot;
   } else {
@@ -252,10 +270,14 @@ export async function copyStudioPrintRequestInTransaction(
   const sourceDesignIds = identities.flatMap((identity) =>
     identity.sourceType === "catalog_design" ? [identity.designId] : [],
   );
+  const sourceStaffArtworkIds = identities.flatMap((identity) =>
+    identity.sourceType === "staff_artwork" ? [identity.staffArtworkId] : [],
+  );
 
-  const [uploadSnapshots, designSnapshots] = await Promise.all([
+  const [uploadSnapshots, designSnapshots, staffArtworkSnapshots] = await Promise.all([
     Promise.all(sourceUploadIds.map((id) => transaction.get(adminDb.collection("customerUploads").doc(id)))),
     Promise.all(sourceDesignIds.map((id) => transaction.get(adminDb.collection("designs").doc(id)))),
+    Promise.all(sourceStaffArtworkIds.map((id) => transaction.get(adminDb.collection("staffArtworks").doc(id)))),
   ]);
 
   for (let index = 0; index < identities.length; index += 1) {
@@ -274,6 +296,11 @@ export async function copyStudioPrintRequestInTransaction(
         throw failedPrecondition(
           `Customer upload ${identity.customerUploadId} is private to another customer; the copy was rejected atomically.`,
         );
+      }
+    } else if (identity.sourceType === "staff_artwork") {
+      const artworkSnapshot = staffArtworkSnapshots[sourceStaffArtworkIds.indexOf(identity.staffArtworkId)];
+      if (!artworkSnapshot?.exists || !["ready", "archived"].includes(String(artworkSnapshot.data()?.status))) {
+        throw failedPrecondition(`Staff Artwork ${identity.staffArtworkId} is no longer available.`);
       }
     } else {
       const designSnapshot = designSnapshots[sourceDesignIds.indexOf(identity.designId)];

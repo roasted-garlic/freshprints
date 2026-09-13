@@ -2,6 +2,12 @@
 
 > This is the primary “how the app works” guide for external AI. Prefer this file when explaining customer or staff request flows.
 
+> 2026-09-12 cutover note: Portal request list, current-request drawer, detail, and queue reads
+> prefer the Admin-maintained `portalPrintRequestItems` projection. During the additive transition,
+> bounded canonical `printRequestItems` fallback fills missing rows; stable IDs prevent duplicates
+> and ordering churn. The final Rules state removes direct customer canonical reads only after
+> projection population and verification. Owner DEV QA **PASS**; production remains untouched.
+
 ---
 
 ## A. Customer print-request flow (Portal) — CURRENT
@@ -49,6 +55,21 @@ Guest note: Our Shows + Design Library browse are public; Add to Request / mutat
 Signed-in customers may edit **display name** and **username** in Account Settings → Profile (30-day username cooldown; DEV 2026-08-27). Username/display-name propagation updates snapshot fields on related records but **does not** change `printRequests.name`, `requestOrigin`, `isInternal`, or `customerId` (WS1 DEV 2026-08-28).
 ```
 
+### Customer-upload follow-up and retention (DEV — closed 2026-09-11)
+
+Print-request uploads that are still waiting for a successful Add to Show stay out of Studio
+Pending/Denied/Excluded intake. The trusted attach/queue/allocation paths set and clear
+`studioIntakeHoldUntilShow`; once released, Allow enters Pending and Don’t-allow enters Denied.
+Personal Don’t-allow uploads remain reusable in **Your designs → Personal** for the reviewed 30-day
+window, while promoted artwork appears in **Design Library**. Staff Excluded remains a separate
+14-day retention episode. Ask Again is bounded and pauses cleanup; Allow/Restore exits the episode;
+second Decline re-starts the clock. Safe-delete blockers still protect any request or allocation
+history.
+
+Portal per-item Remove follows the Studio inline pattern: Remove → Cancel / Confirm, with the
+existing request-item mutation and restoration behavior preserved. Staff Inbox queue sounds/toasts
+wait for the post-Add-to-Show success settle window.
+
 ### Portal maintenance mode (DEV)
 
 Owner/admin Studio Settings controls the private `settings/portalMaintenance` state. The saved
@@ -87,6 +108,19 @@ Short explainer (collapsed by default): a print request is the customer’s list
 - Upload and Donate share a browser-local informational quality-notice dismissal; this affects notice visibility only and is not a permission or validation boundary.
 
 ---
+
+## Private Staff Artwork workflow (Studio) — DEV closed 2026-09-12
+
+Owner/Admin upload PNG artwork in the Staff Artwork library or from the request workflow. The
+trusted finalize path reuses technical customer-upload processing while excluding customer quota,
+consent, catalog-intake, notification, and retention behavior. Staff may associate real customers
+or leave artwork unassigned; historical merged/closed customer identity remains staff-visible.
+
+Helpers can select existing ready/non-archived Staff Artwork when they have request item-edit
+permission, but cannot upload, edit, associate, archive, delete, or promote it. Request attachment
+uses the authoritative `staff_artwork` source and continues through sizing, enhancement, allocation,
+exports, ZIPs, and gang sheets. Portal reads only request-level neutral data and never Staff Artwork
+documents, paths, or pixels. Owner DEV QA passed; no automatic AI, public indexing, or retention runs.
 
 ## B. Staff catalog lifecycle (Studio)
 

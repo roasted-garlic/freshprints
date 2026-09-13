@@ -154,7 +154,6 @@ function readPrimaryQuantity(items: PrintRequestItem[], designId: string): numbe
  * Success toast fires only when a design is newly added (0 → in request).
  */
 export function useAddDesignToRequestFlow({
-  continuableRequests,
   loginReturnTo,
   onBeforeNavigate,
   refreshRequests,
@@ -179,6 +178,7 @@ export function useAddDesignToRequestFlow({
     setSelectedWorkingRequestId,
     selectedWorkingRequestId,
     workingItems,
+    workingRequest,
     workingRequestLimit,
   } = usePortalPrintRequests();
   const [pendingDesign, setPendingDesign] = useState<CatalogDesign | null>(null);
@@ -258,17 +258,25 @@ export function useAddDesignToRequestFlow({
   }, []);
 
   const announceDesignAdded = useCallback(
-    (design: CatalogDesign) => {
+    (_design: CatalogDesign) => {
       announceCurrentDesignAdded({
-        title: design.title,
         showSuccessRef,
-        onUndo: () => {
-          adjustQuantityRef.current(design, -1);
+        onReviewRequest: () => {
+          const requestId =
+            workingRequest?.id?.trim() ||
+            selectedWorkingRequestId?.trim() ||
+            pendingWorkingRequestId?.trim() ||
+            '';
+          if (requestId) {
+            routerRef.current.push(`/requests/${encodeURIComponent(requestId)}`);
+            return;
+          }
+          routerRef.current.push('/requests');
         },
       });
-      suggestMatchingCompanions(design);
+      suggestMatchingCompanions(_design);
     },
-    [suggestMatchingCompanions],
+    [pendingWorkingRequestId, selectedWorkingRequestId, suggestMatchingCompanions, workingRequest?.id],
   );
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -543,13 +551,25 @@ export function useAddDesignToRequestFlow({
 
       if (wasAbsent && nextQuantity >= 1) {
         if (input.announceAdd) {
-          const title = input.title ?? input.catalogDesign?.title;
           if (input.catalogDesign) {
             announceDesignAdded(input.catalogDesign);
           } else {
-            showSuccess(
-              title ? `Added “${title}” to your Current Request.` : 'Added to your Current Request.',
-            );
+            announceCurrentDesignAdded({
+              showSuccessRef,
+              onReviewRequest: () => {
+                const requestId =
+                  input.printRequestId?.trim() ||
+                  workingRequest?.id?.trim() ||
+                  selectedWorkingRequestId?.trim() ||
+                  pendingWorkingRequestId?.trim() ||
+                  '';
+                if (requestId) {
+                  routerRef.current.push(`/requests/${encodeURIComponent(requestId)}`);
+                  return;
+                }
+                routerRef.current.push('/requests');
+              },
+            });
           }
         }
         input.onAdded?.();
@@ -561,9 +581,11 @@ export function useAddDesignToRequestFlow({
       applyDesiredPrimaryQuantity,
       announceDesignAdded,
       ensureDesignSummaries,
+      pendingWorkingRequestId,
       scheduleQuantityFlush,
       seedDesignSummary,
-      showSuccess,
+      selectedWorkingRequestId,
+      workingRequest?.id,
     ],
   );
 

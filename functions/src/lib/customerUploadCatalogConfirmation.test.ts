@@ -126,10 +126,14 @@ describe("caller wiring — attach ≠ pending, donate = pending, queue + alloca
     assert.doesNotMatch(attachSource, /submitForStaffReview:\s*true/);
   });
 
-  it("assisted Add to Request passes submitForStaffReview: false on both confirmation sites", () => {
-    const matches = assistedSource.match(/submitForStaffReview:\s*false/g) ?? [];
-    assert.equal(matches.length, 2);
-    assert.doesNotMatch(assistedSource, /submitForStaffReview:\s*true/);
+  it("assisted-created artwork bypasses customer catalog permission entirely", () => {
+    assert.doesNotMatch(assistedSource, /buildCatalogIntakeConfirmationPatch/);
+    assert.match(assistedSource, /buildAssistedArtworkPrivateUploadFields/);
+    assert.match(assistedSource, /catalogReviewStatus:\s*"not_eligible"/);
+    assert.doesNotMatch(
+      assistedSource,
+      /catalogUseAcknowledged:\s*payload\.catalogUseAcknowledged|catalogRetentionStartedAt:\s*now|studioIntakeHoldUntilShow/,
+    );
   });
 
   it("donate callable passes submitForStaffReview: true", () => {
