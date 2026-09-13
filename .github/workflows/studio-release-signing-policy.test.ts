@@ -30,6 +30,12 @@ test("Windows job runs on windows-latest and Mac job on macos-latest", () => {
   assert.match(workflowSource, /build-macos:[\s\S]*?runs-on:\s*macos-latest/);
 });
 
+test("both platform jobs use the reviewed baseline-aware lint gate", () => {
+  const runner = "node .github/scripts/run-studio-release-lint.mjs";
+  assert.equal((workflowSource.match(new RegExp(runner.replaceAll(".", "\\."), "g")) || []).length, 2);
+  assert.doesNotMatch(workflowSource, /run:\s*npm run lint/);
+});
+
 test("Mac packaging builds arm64 and x64 with publish never; Windows keeps NSIS publish never", () => {
   assert.match(workflowSource, /for ARCH in arm64 x64/);
   assert.match(workflowSource, /electron-builder --mac "--\$\{ARCH\}" --publish never/);
