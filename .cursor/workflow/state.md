@@ -8,18 +8,18 @@
 | Current Mode | managed-phase |
 | Parent program | Coordinated production promotion and release readiness |
 | Current Goal | `coordinated-production-promotion-release-readiness` |
-| Current Phase | Owner DEV QA **PASS** — approved Algolia/Smart Filter/Print Requests scroll/Portal companion corrective is ready for final verification, development commit/push, production-reachable source integration, and unpublished Smart Filters-OFF Studio draft; maintenance ON |
+| Current Phase | Owner DEV QA **PASS** — final verification complete; narrow cascade follow-up is corrected, and the approved source is ready for production-reachable integration/freeze and unpublished Smart Filters-OFF Studio draft preparation; maintenance ON |
 | Plan Status | **amended — Formal Review complete** — `docs/workflow/plans/2026-09-13-production-algolia-reconcile-studio-access-corrective-plan.md` |
 | Review Status | **approved_with_changes** — `docs/workflow/reviews/2026-09-13-production-algolia-reconcile-studio-access-smart-filter-formal-review.md` |
 | Implementation Status | **complete for approved corrective** — final source includes the accepted Algolia access, Smart Filter configuration, Print Requests scroll containment, and Portal companion corrections |
-| Test Status | Final targeted verification and independent implementation review in progress after Owner DEV QA PASS; prior focused contracts/typechecks/build/lint/diff evidence remains reusable |
+| Test Status | Final targeted verification PASS: focused scope 61/61, independent scope review 160/160, follow-up Print Requests suites 34/34, Portal/Studio typechecks PASS, Functions build PASS, targeted ESLint PASS, renderer/Vite build PASS, workflow/env tests 36/36, and diff check PASS |
 | Human Checkpoint Required | **yes** |
 | Human Checkpoint Reason | Owner DEV QA PASS authorizes the reviewed local/source promotion sequence. The next human gate is owner QA of the unpublished production-configured Studio draft, followed by the separately authorized production Algolia Preview/APPLY gate. |
 | Blocked | **no — final verification, source promotion, freeze, and unpublished draft preparation are authorized** |
 | Allowed Actions | Final targeted verification, independent review, state/handoff updates, staging/commit/push to development, reviewed production-reachable source integration, exact SHA freeze, Smart Filters-OFF production-configured unpublished Studio draft preparation, and artifact verification |
 | Forbidden Actions | Production Algolia Preview/APPLY, Smart Filter enablement, Portal deploy/publication, Studio publication, maintenance OFF, autonomy/Pass 2 enablement, tag deletion, unrelated production settings/data changes, Functions/Rules deploy, production data mutation, or live cutover |
 | Last Completed Step | **OWNER DEV QA: PRODUCTION ALGOLIA ACCESS + SMART FILTER + PRINT REQUEST SCROLL + PORTAL COMPANION CORRECTIVE — PASS** |
-| Next Required Step | Final targeted verification and independent implementation review, then commit/push the approved corrective and prepare the unpublished production-configured Studio draft; stop at owner draft QA / Algolia cutover gate |
+| Next Required Step | Merge the reviewed `development` source through the production PR, freeze the exact production-reachable SHA, then prepare the unpublished production-configured Studio `1.0.11` draft with Smart Filters OFF; stop at owner draft QA / Algolia cutover gate |
 
 ## Authoritative Owner DEV QA PASS — 2026-09-13
 
@@ -34,6 +34,16 @@ Final verification, development commit/push, reviewed production-reachable sourc
 exact SHA freeze, and preparation of an unpublished production-configured Studio stable draft are
 authorized. Studio publication, Portal deployment, production Algolia Preview/APPLY, Smart Filter
 enablement, maintenance OFF, and all other live cutover actions remain unauthorized.
+
+## Authoritative final verification follow-up — 2026-09-13
+
+Independent implementation review identified a narrow-window cascade issue in the last-loaded
+`utilities.css`: its unconditional `!important` row and rail-height rules could override the
+responsive Print Requests `auto minmax(0,1fr)` rows and capped rail height. Follow-up commit
+`cd989979` restores those responsive rules in the final cascade and extends the scroll contract to
+assert them. The follow-up Print Requests suites pass **34/34**; Studio typecheck, targeted lint,
+and `git diff --check` pass. This is a source correction within the already accepted scope; no new
+Plan/Review loop or production action occurred.
 
 ## Authoritative Owner DEV QA correction cycle — 2026-09-13
 

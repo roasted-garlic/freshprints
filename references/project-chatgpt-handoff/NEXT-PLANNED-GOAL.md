@@ -21,6 +21,9 @@ Stop at:
 **`OWNER QA: UNPUBLISHED PRODUCTION-CONFIGURED STUDIO DRAFT / PROD ALGOLIA PREVIEW-APPLY —
 CHECKPOINT`**.
 
+The final verification follow-up commit is `cd989979`; it preserves the narrow stacked Print
+Requests layout in the last-loaded utility cascade. Follow-up Print Requests tests pass **34/34**.
+
 ## Authoritative next checkpoint — Owner DEV QA after bounded corrections
 
 Owner DEV QA recorded **`OWNER DEV QA — CORRECTIONS REQUIRED`**. The accepted Algolia Settings DEV

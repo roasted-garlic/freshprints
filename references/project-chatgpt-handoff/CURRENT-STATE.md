@@ -21,6 +21,12 @@ enablement, production data/settings mutation, Rules/Functions deployment, tag d
 other live cutover. The next human gate is owner QA of the unpublished draft, followed by the exact
 production Algolia Preview/APPLY checkpoint.
 
+Independent final review then found and corrected one narrow-window cascade issue: the final
+`utilities.css` layer now explicitly restores the responsive Print Requests `auto minmax(0,1fr)`
+rows and capped rail height at `≤1024px` (`cd989979`). The follow-up Print Requests suites pass
+**34/34**, with Studio typecheck, targeted lint, and diff check passing. No production action was
+performed.
+
 ## Authoritative Owner DEV QA correction cycle — 2026-09-13
 
 Owner recorded **`OWNER DEV QA — CORRECTIONS REQUIRED`**. Algolia Settings DEV behavior is a PASS
