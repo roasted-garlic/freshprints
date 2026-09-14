@@ -2,6 +2,38 @@
 
 **Updated:** 2026-09-14
 
+## Current owner-authorized gate — Smart Filter production Studio build/release — 2026-09-14
+
+Owner reports the production Algolia Smart Profile reconcile/apply PASS and authorizes:
+**`OWNER AUTHORIZE SMART FILTER PRODUCTION BUILDS / RELEASES`**. Aggregate Algolia counts were not
+provided in that report and are intentionally not inferred.
+
+Run the established stable Studio workflow from production SHA
+`f1001332574b8891b2a59c14985e5c00cdbceb09` with `release_type=stable`,
+`distribution_mode=internal-unsigned`, and `smart_filters=on`. It should replace/finalize the
+same-SHA `1.0.11` draft and leave it unpublished. Verify all eight assets and the ON env bake.
+Publishing remains separately gated by dual-platform smoke and
+**`APPROVE STUDIO PUBLISH: 1.0.11`**, using the reviewed helper only.
+
+Do not create/change the production Smart Filter secret, deploy Portal/App Hosting, enable the
+Portal flag, turn Maintenance OFF, enable Autonomy/Pass 2, or perform unrelated production action.
+
+Exact next checkpoint after the ON draft is verified: **`APPROVE STUDIO PUBLISH: 1.0.11`** (after
+Windows/Mac arm64/Mac x64 smoke), followed by a separate Portal Smart Filter flag/App Hosting
+rollout authorization.
+
+## Current owner-authorized gate — production Algolia reconcile/apply — 2026-09-14
+
+Owner authorization received:
+**`OWNER AUTHORIZE PROD ALGOLIA SMART PROFILE SEARCH RECONCILE/APPLY`**.
+
+Use only the owner/admin-authenticated Studio `1.0.11` draft: Settings → AI Enrichment → Algolia
+Reconcile. Verify the exact production target (`fresh-prints-prod`, `Z1FVCM5QUX`,
+`portal_catalog_ready_prod`), run Preview (read-only), capture scanned/upserted/current-hit
+aggregates, then tick the explicit clear/rebuild confirmation and Apply. No alternate CLI/token
+path is approved. This shell cannot supply the owner Firebase Auth session, so no production
+callable or Algolia operation has been executed here.
+
 ## Authoritative next step after Owner DEV QA PASS — 2026-09-13
 
 Owner recorded:

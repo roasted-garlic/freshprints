@@ -2,6 +2,44 @@
 
 **Last updated:** 2026-09-14
 
+## Authoritative production Algolia PASS and Smart Filter release authorization — 2026-09-14
+
+The owner reports the authorized production Algolia Smart Profile reconcile/apply was run manually
+and **PASSED**. The owner message did not include aggregate Preview/Apply counts, so none are
+invented here. This shell did not invoke the callable or access Algolia and exposed no secret.
+
+Owner authorization now received:
+**`OWNER AUTHORIZE SMART FILTER PRODUCTION BUILDS / RELEASES`**.
+
+Run only the established stable Studio workflow from frozen production SHA
+`f1001332574b8891b2a59c14985e5c00cdbceb09` with `release_type=stable`,
+`distribution_mode=internal-unsigned`, and `smart_filters=on`; finalize/replace the same-SHA
+`1.0.11` draft and keep it unpublished pending documented release gates. After dual-platform smoke,
+the separate required publish phrase remains **`APPROVE STUDIO PUBLISH: 1.0.11`**, using the
+reviewed publish helper only.
+
+Portal Smart Filter secret/flag/App Hosting rollout remains a separate owner checkpoint and is not
+authorized here. Maintenance remains ON; Catalog Processing Mode is `shadow`; Autonomous and Pass
+2 remain OFF.
+
+## Authoritative production Algolia reconcile authorization — 2026-09-14
+
+Owner authorization received:
+**`OWNER AUTHORIZE PROD ALGOLIA SMART PROFILE SEARCH RECONCILE/APPLY`**.
+
+Execution remains bound to the owner/admin-authenticated Studio Settings → AI Enrichment →
+Algolia Reconcile control in the unpublished production-configured Studio `1.0.11` draft. The
+control must run Preview (`{ dryRun: true }`) first against the exact target
+`fresh-prints-prod` / `Z1FVCM5QUX` / `portal_catalog_ready_prod`, verify finite counts and the
+search-only hit count, then require the explicit destructive confirmation before Apply
+(`{ dryRun: false }`).
+
+This shell has no owner Firebase Auth session and no approved alternate token/CLI path. No
+callable invocation, production Algolia read, clear, settings change, record write, or rebuild was
+performed. The owner must execute the reviewed control and return Preview/Apply aggregates; stop
+on any target mismatch, malformed data, or error. Portal Smart Filters remain OFF, Maintenance ON,
+and Autonomous/Pass 2 OFF.
+
 ## Authoritative Owner DEV QA PASS and approved promotion sequence — 2026-09-13
 
 Owner recorded:

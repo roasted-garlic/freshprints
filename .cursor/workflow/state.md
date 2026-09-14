@@ -2,24 +2,24 @@
 
 | Field | Value |
 |---|---|
-| Status | **OPEN — OWNER DEV QA PASS recorded; production source frozen and unpublished Studio draft ready for owner QA** |
+| Status | **OPEN — owner-reported production Algolia reconcile/apply PASS; Smart Filter production build/release authorized; ON build pending** |
 | DONE | **no — parent remains active; Studio corrective and Rules evidence child are terminal** |
 | Signoff Status | cutover child **approved_with_notes / CLOSED**; Studio typecheck corrective **approved_with_notes / CLOSED**; Rules snapshot **CLOSED** |
 | Current Mode | managed-phase |
 | Parent program | Coordinated production promotion and release readiness |
 | Current Goal | `coordinated-production-promotion-release-readiness` |
-| Current Phase | Owner DEV QA **PASS** — production-reachable source frozen; unpublished Smart Filters-OFF Studio `1.0.11` draft is ready; stopped for owner draft QA; maintenance ON |
+| Current Phase | Rebuild the reviewed stable Studio `1.0.11` release with Smart Filters ON from the frozen production source; keep Portal flag/rollout separately gated; maintenance ON |
 | Plan Status | **amended — Formal Review complete** — `docs/workflow/plans/2026-09-13-production-algolia-reconcile-studio-access-corrective-plan.md` |
 | Review Status | **approved_with_changes** — `docs/workflow/reviews/2026-09-13-production-algolia-reconcile-studio-access-smart-filter-formal-review.md` |
 | Implementation Status | **complete for approved corrective** — final source includes the accepted Algolia access, Smart Filter configuration, Print Requests scroll containment, and Portal companion corrections |
 | Test Status | Final targeted verification PASS: focused scope 61/61, independent scope review 160/160, follow-up Print Requests suites 34/34, Portal/Studio typechecks PASS, Functions build PASS, targeted ESLint PASS, renderer/Vite build PASS, workflow/env tests 36/36, and diff check PASS |
 | Human Checkpoint Required | **yes** |
-| Human Checkpoint Reason | Owner DEV QA PASS authorized the reviewed promotion sequence. The unpublished production-configured Studio draft is ready; owner QA must complete before the separately gated production Algolia Preview/APPLY. |
+| Human Checkpoint Reason | Owner reports the reviewed production Algolia reconcile/apply PASS and authorized `OWNER AUTHORIZE SMART FILTER PRODUCTION BUILDS / RELEASES`; stable ON publication still requires the documented `APPROVE STUDIO PUBLISH: 1.0.11` gate after dual-platform smoke. |
 | Blocked | **no — final verification, source promotion, freeze, and unpublished draft preparation are authorized** |
-| Allowed Actions | Owner QA of the unpublished Studio draft and the separately authorized production Algolia Preview/APPLY checkpoint; no live cutover is implied by this state |
-| Forbidden Actions | Production Algolia Preview/APPLY, Smart Filter enablement, Portal deploy/publication, Studio publication, maintenance OFF, autonomy/Pass 2 enablement, tag deletion, unrelated production settings/data changes, Functions/Rules deploy, production data mutation, or live cutover |
-| Last Completed Step | **OWNER DEV QA: PRODUCTION ALGOLIA ACCESS + SMART FILTER + PRINT REQUEST SCROLL + PORTAL COMPANION CORRECTIVE — PASS** |
-| Next Required Step | **OWNER QA: UNPUBLISHED PRODUCTION-CONFIGURED STUDIO DRAFT / PROD ALGOLIA PREVIEW-APPLY — CHECKPOINT**; after owner approval, use the separate `OWNER AUTHORIZE PROD ALGOLIA SMART PROFILE SEARCH RECONCILE/APPLY` gate |
+| Allowed Actions | Run the established stable Studio workflow from `production` with `smart_filters=on`, finalize/replace the same-SHA `1.0.11` draft, and perform documented release verification; no Portal flag/secret rollout |
+| Forbidden Actions | Portal Smart Filter secret creation/enablement/deploy, raw GitHub release PATCH, Studio publication before the explicit publish gate and dual-platform smoke, maintenance OFF, autonomy/Pass 2 enablement, tag deletion, unrelated production settings/data changes, Functions/Rules deploy, or any out-of-scope production mutation |
+| Last Completed Step | **OWNER AUTHORIZE SMART FILTER PRODUCTION BUILDS / RELEASES**; owner also reported production Algolia reconcile/apply PASS |
+| Next Required Step | Run the reviewed stable Studio `1.0.11` workflow with `smart_filters=on` against frozen SHA `f1001332574b8891b2a59c14985e5c00cdbceb09`; verify the resulting draft and stop for `APPROVE STUDIO PUBLISH: 1.0.11` plus dual-platform smoke |
 
 ## Authoritative Owner DEV QA PASS — 2026-09-13
 
@@ -70,6 +70,44 @@ spot-check companion quantity/Add/Done behavior. Do not publish, deploy Portal, 
 Exact next checkpoint: **`OWNER QA: UNPUBLISHED PRODUCTION-CONFIGURED STUDIO DRAFT / PROD ALGOLIA
 PREVIEW-APPLY — CHECKPOINT`**, followed only after approval by
 **`OWNER AUTHORIZE PROD ALGOLIA SMART PROFILE SEARCH RECONCILE/APPLY`**.
+
+## Authoritative production Algolia reconcile authorization — 2026-09-14
+
+Owner authorization received:
+**`OWNER AUTHORIZE PROD ALGOLIA SMART PROFILE SEARCH RECONCILE/APPLY`**.
+
+The only reviewed execution path is the owner/admin-authenticated Studio Settings → AI Enrichment
+→ Algolia Reconcile control in the unpublished production-configured `1.0.11` draft. It must first
+invoke Preview (`{ dryRun: true }`), verify target identity exactly as `fresh-prints-prod` /
+`Z1FVCM5QUX` / `portal_catalog_ready_prod`, confirm finite scanned/upserted counts and the
+search-only hit count, then require the explicit destructive checkbox before Apply (`{ dryRun:
+false }`). The callable clears and rebuilds only the reviewed production Algolia index from Ready
+Firestore designs; Portal Smart Filters remain OFF.
+
+This shell has no owner Firebase Auth session and no approved alternate token/CLI path. No
+callable invocation (authenticated or unauthenticated), production Algolia read, clear, settings
+change, record write, or rebuild was performed. The owner must run the reviewed control in the draft
+and return the Preview/Apply aggregates; stop immediately on target mismatch, malformed data, or
+error. No production mutation has occurred in this turn.
+
+## Authoritative production Algolia PASS and Smart Filter release authorization — 2026-09-14
+
+The owner reports that the authorized production Algolia Smart Profile reconcile/apply was run
+manually and **PASSED**. Aggregate Preview/Apply counts were not supplied in the owner message;
+this record does not invent them. No Algolia callable was invoked by this shell and no secret or
+credential was exposed. The owner then authorized:
+**`OWNER AUTHORIZE SMART FILTER PRODUCTION BUILDS / RELEASES`**.
+
+Proceed only with the established stable Studio workflow from the frozen production source
+`f1001332574b8891b2a59c14985e5c00cdbceb09`, using `release_type=stable`,
+`distribution_mode=internal-unsigned`, and `smart_filters=on`. The workflow must replace/finalize
+the same-SHA `1.0.11` draft and keep it unpublished. The documented publish gate remains separate:
+after Windows/Mac arm64/Mac x64 smoke, use only the owner-gated helper following
+`APPROVE STUDIO PUBLISH: 1.0.11`.
+
+Portal Smart Filter secret creation, flag enablement, App Hosting deployment, and Portal
+publication remain separately unauthorized. Maintenance remains ON; Catalog Processing Mode is
+`shadow`; Autonomous and Pass 2 remain OFF.
 
 ## Authoritative final verification follow-up — 2026-09-13
 
