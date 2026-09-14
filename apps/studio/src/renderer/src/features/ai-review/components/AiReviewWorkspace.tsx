@@ -83,6 +83,8 @@ interface AiReviewWorkspaceProps {
   showRerunAiButton: boolean;
   /** Amendment 9 P0 scroll correction — increments after successful approve/reject/archive. */
   reviewScrollNonce?: number;
+  /** When set, workspace focuses the current bulk-reprocess design and shows progress under preview. */
+  bulkReprocessProgress?: { current: number; total: number } | null;
 }
 
 export function AiReviewWorkspace({
@@ -141,6 +143,7 @@ export function AiReviewWorkspace({
   showReadOnlySuggestions,
   showRerunAiButton,
   reviewScrollNonce = 0,
+  bulkReprocessProgress = null,
 }: AiReviewWorkspaceProps) {
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [activeReviewInfoTab, setActiveReviewInfoTab] = useState<"catalog" | "profile">("catalog");
@@ -277,7 +280,7 @@ export function AiReviewWorkspace({
   return (
     <div className="ai-review-workspace" ref={workspaceTopRef}>
       <section aria-label="Design preview" className="ai-review-workspace-preview">
-        {overflowItems.length > 0 ? (
+        {overflowItems.length > 0 && !bulkReprocessProgress ? (
           <div className="ai-review-preview-overflow-menu">
             <DangerOverflowMenu
               ariaLabel="Design actions"
@@ -286,7 +289,7 @@ export function AiReviewWorkspace({
             />
           </div>
         ) : null}
-        {canSaveArtworkBackground ? (
+        {canSaveArtworkBackground && !bulkReprocessProgress ? (
           <div className="ai-review-preview-controls">
             <AiReviewPreviewBackgroundToggle
               disabled={isActionLoading}
@@ -310,12 +313,18 @@ export function AiReviewWorkspace({
             catalogPath={previewPath}
             className="ai-review-preview-image"
             imageFit="contain"
-            interactive
+            interactive={!bulkReprocessProgress}
             onImageClick={() => previewUrl && setIsLightboxOpen(true)}
           />
         </div>
+        {bulkReprocessProgress ? (
+          <p aria-live="polite" className="ai-review-bulk-reprocess-progress" role="status">
+            Reprocessing {bulkReprocessProgress.current} of {bulkReprocessProgress.total}
+          </p>
+        ) : null}
       </section>
 
+      {bulkReprocessProgress ? null : (
       <div className="ai-review-workspace-flow">
           {activeTab === "processing" ? (
             <AiReviewProcessingStatusSection
@@ -621,6 +630,7 @@ export function AiReviewWorkspace({
               </div>
           </section>
       </div>
+      )}
 
       <DesignPreviewLightbox
         activeItemId={selectedDesign.id}

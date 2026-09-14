@@ -5,6 +5,7 @@ import { isDeleteEligibleUnapprovedDesignStatus } from "@fresh-prints/shared/uti
 
 import { ConfirmLeaveDialog } from "../../../shared/components/ConfirmLeaveDialog";
 import { Button } from "../../../shared/components/Button";
+import { DismissibleSuccessAlert } from "../../../shared/components/DismissibleSuccessAlert";
 import { GlobalSearchField } from "../../../shared/components/GlobalSearchField";
 import type { SelectOption } from "../../../shared/components/Select";
 import { useShellHeaderConfig } from "../../../shared/hooks/useShellHeaderConfig";
@@ -41,6 +42,7 @@ import { useAiEnrichmentSettings } from "../../settings/hooks/useAiEnrichmentSet
 import { useAiReviewMainPanelHeight } from "../hooks/useAiReviewMainPanelHeight";
 import type { AiReviewInboxFilters, AiReviewInboxTab } from "../types/aiReviewInbox.types";
 import { resolveAiReviewInboxSortOrder } from "../utils/aiReviewInboxSort";
+import { isDesignRerunnableFromNeedsReview } from "../utils/aiReviewInboxEligibility";
 import { shouldShowNeedsReviewSearchNoResults } from "../utils/aiReviewNeedsReviewSearch";
 import {
   applyAiReviewMultiSelectRange,
@@ -86,6 +88,11 @@ function AiReviewPageContent() {
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [multiSelectedIds, setMultiSelectedIds] = useState<string[]>([]);
   const [multiSelectAnchorId, setMultiSelectAnchorId] = useState<string | null>(null);
+  const [bulkReprocessToast, setBulkReprocessToast] = useState<string | null>(null);
+  const [bulkReprocessIssues, setBulkReprocessIssues] = useState<{
+    failures: Array<{ designId: string; message: string }>;
+    warnings: Array<{ designId: string; message: string }>;
+  } | null>(null);
 
   // Read-only, active-only filter dropdown data — reuses the same zero-Firestore-read generated
   // client-safe taxonomy snapshot the Design Library already consumes (Wave C amendment,
@@ -225,12 +232,53 @@ function AiReviewPageContent() {
           isDeleteEligibleUnapprovedDesignStatus(inbox.selectedDesign.status)),
   );
 
+  const bulkReprocessDesigns = useMemo(
+    () =>
+      filters.tab === "needs_review"
+        ? inbox.designs.filter(
+            (design) => multiSelectedIds.includes(design.id) && isDesignRerunnableFromNeedsReview(design),
+          )
+        : [],
+    [filters.tab, inbox.designs, multiSelectedIds],
+  );
+  const canBulkReprocess = isMultiSelectMode && bulkReprocessDesigns.length > 0;
+
   const handleCancelMultiSelect = useCallback(() => {
     const cleared = emptyAiReviewMultiSelectState();
     setIsMultiSelectMode(cleared.isMultiSelectMode);
     setMultiSelectedIds(cleared.multiSelectedIds);
     setMultiSelectAnchorId(null);
   }, []);
+
+  const dismissBulkReprocessToast = useCallback(() => {
+    setBulkReprocessToast(null);
+    inbox.clearBulkReprocessResult();
+  }, [inbox]);
+
+  const handleBulkReprocess = useCallback(async () => {
+    if (!canBulkReprocess) {
+      return;
+    }
+    setBulkReprocessIssues(null);
+    const result = await inbox.reprocessSelectedNeedsReview(
+      bulkReprocessDesigns.map((design) => design.id),
+    );
+    if (!result) {
+      return;
+    }
+    setBulkReprocessToast(
+      `${result.successfulIds.length} sent to Processing · ${result.failures.length} failed`,
+    );
+    if (result.failures.length > 0 || result.warnings.length > 0) {
+      setBulkReprocessIssues({
+        failures: result.failures,
+        warnings: result.warnings,
+      });
+    }
+    if (result.failures.length === 0) {
+      handleCancelMultiSelect();
+    }
+  }, [bulkReprocessDesigns, canBulkReprocess, handleCancelMultiSelect, inbox]);
 
   const handleEnterMultiSelect = useCallback(() => {
     const seededIds = seedAiReviewMultiSelectIds(inbox.selectedDesign?.id ?? null);
@@ -383,8 +431,28 @@ function AiReviewPageContent() {
     );
   }
 
+  const bulkReprocessRunning = inbox.bulkReprocessState.status === "running";
+  const workspaceSelectedDesign =
+    bulkReprocessRunning && inbox.bulkReprocessState.activeDesign
+      ? inbox.bulkReprocessState.activeDesign
+      : inbox.selectedDesign;
+  const bulkReprocessProgress =
+    bulkReprocessRunning && inbox.bulkReprocessState.current > 0
+      ? {
+          current: inbox.bulkReprocessState.current,
+          total: inbox.bulkReprocessState.total,
+        }
+      : null;
+
   return (
     <section className="ai-review-page">
+      {bulkReprocessToast ? (
+        <DismissibleSuccessAlert
+          message={bulkReprocessToast}
+          onDismiss={dismissBulkReprocessToast}
+        />
+      ) : null}
+
       <header className="ai-review-intro">
         <p className="ai-review-intro-copy">{getAiReviewTabDescription(filters.tab)}</p>
         {!enrichmentSettings.isLoading ? (
@@ -474,6 +542,19 @@ function AiReviewPageContent() {
                   : `${multiSelectedIds.length} selected`}
               </p>
               <div className="ai-review-multi-select-bar-actions">
+                {filters.tab === "needs_review" ? (
+                  <Button
+                    disabled={!canBulkReprocess || inbox.bulkReprocessState.status === "running"}
+                    onClick={() => void handleBulkReprocess()}
+                    size="sm"
+                    type="button"
+                    variant="primary"
+                  >
+                    {inbox.bulkReprocessState.status === "running"
+                      ? "Sending"
+                      : "Reprocess"}
+                  </Button>
+                ) : null}
                 {canPermanentlyDeleteSelected ? (
                   <Button
                     onClick={handleOpenPermanentDelete}
@@ -488,6 +569,29 @@ function AiReviewPageContent() {
                   Cancel
                 </Button>
               </div>
+            </div>
+          ) : null}
+
+          {bulkReprocessIssues ? (
+            <div className="ai-review-bulk-reprocess-result" role="alert">
+              {bulkReprocessIssues.failures.length > 0 ? (
+                <ul>
+                  {bulkReprocessIssues.failures.map((failure) => (
+                    <li key={failure.designId}>
+                      {failure.designId}: {failure.message}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {bulkReprocessIssues.warnings.length > 0 ? (
+                <ul>
+                  {bulkReprocessIssues.warnings.map((warning) => (
+                    <li key={`warning-${warning.designId}`}>
+                      {warning.designId}: {warning.message}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </div>
           ) : null}
 
@@ -562,10 +666,11 @@ function AiReviewPageContent() {
             isQueueBusy={inbox.processingQueue.isQueueBusy}
             isOptimisticEnqueue={
               inbox.activeTab === "processing" &&
-              Boolean(inbox.selectedDesign) &&
-              inbox.processingQueue.enqueueingDesignId === inbox.selectedDesign?.id
+              Boolean(workspaceSelectedDesign) &&
+              inbox.processingQueue.enqueueingDesignId === workspaceSelectedDesign?.id
             }
             isMultiSelectMode={isMultiSelectMode}
+            bulkReprocessProgress={bulkReprocessProgress}
             onApprove={() => void inbox.approveSelected()}
             onAutoAdvanceChange={inbox.processingQueue.setAutoAdvance}
             onInputFocusChange={setIsInputFocused}
@@ -591,7 +696,7 @@ function AiReviewPageContent() {
             onRerunAiSuggestions={() => inbox.requestRerunAiSuggestions()}
             queuePositionLabel={inbox.processingQueue.queuePositionLabel}
             queueRunState={inbox.processingQueue.runState}
-            selectedDesign={inbox.selectedDesign}
+            selectedDesign={workspaceSelectedDesign}
             visibleDesigns={inbox.designs}
             onSelectDesign={inbox.requestSelectDesign}
             showReadOnlySuggestions={inbox.showReadOnlySuggestions}

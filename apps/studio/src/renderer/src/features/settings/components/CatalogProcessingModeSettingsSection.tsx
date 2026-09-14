@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { createPortal } from "react-dom";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   CATALOG_WORKFLOW_MODE_LABELS,
@@ -9,6 +10,7 @@ import {
 import { Badge } from "../../../shared/components/Badge";
 import { Button } from "../../../shared/components/Button";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
+import { useModalFocusContainment } from "../../../shared/hooks/useModalFocusContainment";
 import { Select } from "../../../shared/components/Select";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
@@ -31,6 +33,52 @@ export function CatalogProcessingModeSettingsSection({
   const [error, setError] = useState<string | null>(null);
   const [liveModalOpen, setLiveModalOpen] = useState(false);
   const [confirmationPhrase, setConfirmationPhrase] = useState("");
+  const [phraseCopied, setPhraseCopied] = useState(false);
+  const modalOverlayRef = useRef<HTMLDivElement>(null);
+  const confirmationInputRef = useRef<HTMLInputElement>(null);
+
+  const closeLiveModal = useCallback(() => {
+    if (isSaving) return;
+    setLiveModalOpen(false);
+    setConfirmationPhrase("");
+    setPhraseCopied(false);
+  }, [isSaving]);
+
+  useModalFocusContainment({
+    containerRef: modalOverlayRef,
+    initialFocusRef: confirmationInputRef,
+    isOpen: liveModalOpen,
+    onEscape: closeLiveModal,
+  });
+
+  useEffect(() => {
+    if (!phraseCopied) return undefined;
+    const timeoutId = window.setTimeout(() => setPhraseCopied(false), 2000);
+    return () => window.clearTimeout(timeoutId);
+  }, [phraseCopied]);
+
+  const copyConfirmationPhrase = useCallback(async () => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(ENABLE_AUTONOMOUS_CONFIRMATION_PHRASE);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = ENABLE_AUTONOMOUS_CONFIRMATION_PHRASE;
+        textarea.setAttribute("readonly", "true");
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        const copied = document.execCommand("copy");
+        textarea.remove();
+        if (!copied) throw new Error("Clipboard access is unavailable.");
+      }
+      setPhraseCopied(true);
+    } catch (copyError) {
+      setPhraseCopied(false);
+      setError(copyError instanceof Error ? copyError.message : "Unable to copy confirmation phrase.");
+    }
+  }, []);
 
   async function saveMode(nextMode: CatalogWorkflowMode, enableLive?: boolean) {
     setIsSaving(true);
@@ -144,25 +192,39 @@ export function CatalogProcessingModeSettingsSection({
         </div>
       )}
 
-      {liveModalOpen ? (
-        <div
-          aria-modal="true"
-          className="modal-overlay modal-overlay-blur"
-          role="dialog"
-          onClick={() => {
-            setLiveModalOpen(false);
-            setConfirmationPhrase("");
-          }}
-        >
-          <div onClick={(event) => event.stopPropagation()} role="presentation">
-            <Modal aria-labelledby="enable-autonomous-title">
+      {liveModalOpen
+        ? createPortal(
+            <div
+              className="modal-overlay modal-overlay-blur"
+              onClick={closeLiveModal}
+              ref={modalOverlayRef}
+              role="presentation"
+            >
+              <Modal
+                aria-labelledby="enable-autonomous-title"
+                aria-modal="true"
+                onClick={(event) => event.stopPropagation()}
+                role="dialog"
+              >
               <ModalHeader>
                 <h3 id="enable-autonomous-title">Enable live Autonomous</h3>
               </ModalHeader>
               <ModalBody>
                 <p>
                   This allows qualifying designs to become catalog-ready without staff approval when
-                  Mode is Autonomous. Type <strong>{ENABLE_AUTONOMOUS_CONFIRMATION_PHRASE}</strong>{" "}
+                  Mode is Autonomous. Type {" "}
+                  <span className="catalog-autonomous-confirmation-phrase-row">
+                    <strong>{ENABLE_AUTONOMOUS_CONFIRMATION_PHRASE}</strong>
+                    <Button
+                      aria-label={phraseCopied ? "Autonomous confirmation phrase copied" : "Copy autonomous confirmation phrase"}
+                      onClick={() => void copyConfirmationPhrase()}
+                      size="sm"
+                      type="button"
+                      variant="secondary"
+                    >
+                      {phraseCopied ? "Copied" : "Copy"}
+                    </Button>
+                  </span>{" "}
                   to confirm. Implementation of this setting is not itself authorization for
                   production use.
                 </p>
@@ -174,14 +236,14 @@ export function CatalogProcessingModeSettingsSection({
                   className="settings-text-input"
                   id="enable-autonomous-phrase"
                   onChange={(event) => setConfirmationPhrase(event.target.value)}
+                  ref={confirmationInputRef}
                   value={confirmationPhrase}
                 />
               </ModalBody>
               <ModalFooter>
                 <Button
                   onClick={() => {
-                    setLiveModalOpen(false);
-                    setConfirmationPhrase("");
+                    closeLiveModal();
                   }}
                   type="button"
                   variant="secondary"
@@ -196,10 +258,11 @@ export function CatalogProcessingModeSettingsSection({
                   Enable
                 </Button>
               </ModalFooter>
-            </Modal>
-          </div>
-        </div>
-      ) : null}
+              </Modal>
+            </div>,
+            document.body,
+          )
+        : null}
     </section>
   );
 }

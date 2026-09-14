@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import type { Design } from "../../designs/types/design.types";
 import {
   computeTrackedReprocessReturnCountDeltas,
+  resolveTrackedReprocessTerminalWithBaseline,
   resolveTrackedReprocessTerminal,
   shouldUpsertTrackedReprocessReturn,
 } from "./trackedReprocessReturn";
@@ -58,6 +59,48 @@ describe("trackedReprocessReturn", () => {
       createDesign({ aiReviewStatus: "pending", aiProcessingStage: "queued" }),
     );
     assert.equal(result.kind, "still_in_flight");
+  });
+
+  it("ignores a cached pre-reset terminal snapshot at the baseline timestamp", () => {
+    const result = resolveTrackedReprocessTerminalWithBaseline(
+      createDesign({ aiReviewStatus: "needs_review", aiProcessed: true }),
+      1,
+    );
+    assert.equal(result.kind, "still_in_flight");
+  });
+
+  it("fails closed when a tracked rerun has no usable timestamp baseline", () => {
+    const result = resolveTrackedReprocessTerminalWithBaseline(
+      createDesign({ aiReviewStatus: "needs_review", aiProcessed: true }),
+      null,
+    );
+    assert.equal(result.kind, "still_in_flight");
+  });
+
+  it("accepts a newer terminal snapshot without requiring an observed pending snapshot", () => {
+    const result = resolveTrackedReprocessTerminalWithBaseline(
+      createDesign({
+        aiReviewStatus: "needs_review",
+        aiProcessed: true,
+        updatedAt: { toMillis: () => 2, toDate: () => new Date() } as Design["updatedAt"],
+      }),
+      1,
+    );
+    assert.equal(result.kind, "returned_to_review");
+  });
+
+  it("keeps three rapid pre-reset snapshots out of the rail until each has a newer update", () => {
+    const designs = ["a", "b", "c"].map((id) =>
+      createDesign({
+        id,
+        aiReviewStatus: "needs_review",
+        updatedAt: { toMillis: () => 10, toDate: () => new Date() } as Design["updatedAt"],
+      }),
+    );
+    assert.deepEqual(
+      designs.map((design) => resolveTrackedReprocessTerminalWithBaseline(design, 10).kind),
+      ["still_in_flight", "still_in_flight", "still_in_flight"],
+    );
   });
 
   it("upserts only when active tab matches return tab", () => {

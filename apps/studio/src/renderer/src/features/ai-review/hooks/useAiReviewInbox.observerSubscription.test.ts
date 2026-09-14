@@ -112,12 +112,12 @@ describe("AI queue observer subscription: dependency-identity regression (Owner 
     // hook and is not immediately preceded by "useEffect(() => {" on an adjacent line.
     assert.match(source, /^\s*optionsRef\.current = options;\s*$/m);
     assert.match(source, /^\s*selectedDesignIdRef\.current = selectedDesignId;\s*$/m);
-    assert.match(source, /^\s*designsRef\.current = designs;\s*$/m);
+    assert.match(source, /^\s*designsRef\.current = visibleDesigns;\s*$/m);
 
     const firstUseEffectIndex = source.indexOf("useEffect(");
     const optionsRefAssignIndex = source.indexOf("optionsRef.current = options;");
     const selectedDesignIdRefAssignIndex = source.indexOf("selectedDesignIdRef.current = selectedDesignId;");
-    const designsRefAssignIndex = source.indexOf("designsRef.current = designs;");
+    const designsRefAssignIndex = source.indexOf("designsRef.current = visibleDesigns;");
 
     assert.ok(optionsRefAssignIndex >= 0 && optionsRefAssignIndex < firstUseEffectIndex);
     assert.ok(

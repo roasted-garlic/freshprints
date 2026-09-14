@@ -2,24 +2,34 @@
 
 | Field | Value |
 |---|---|
-| Status | **CLOSED — coordinated rollout signoff complete; final public reopen verified** |
-| DONE | **yes — coordinated production promotion/release readiness signoff recorded** |
-| Signoff Status | cutover child **approved_with_notes / CLOSED**; Studio typecheck corrective **approved_with_notes / CLOSED**; Rules snapshot **CLOSED** |
+| Status | **PASS — Owner QA complete; release continuation authorized** |
+| DONE | **no — release closeout in progress** |
+| Signoff Status | Owner QA **PASS**; FreshForge signoff approved_with_notes |
 | Current Mode | managed-phase |
-| Parent program | Coordinated production promotion and release readiness |
-| Current Goal | `coordinated-production-promotion-release-readiness` |
-| Current Phase | Final public reopen verified; coordinated rollout signoff |
-| Plan Status | **amended — Formal Review complete** — `docs/workflow/plans/2026-09-13-production-algolia-reconcile-studio-access-corrective-plan.md` |
-| Review Status | **approved_with_changes** — `docs/workflow/reviews/2026-09-13-production-algolia-reconcile-studio-access-smart-filter-formal-review.md` |
-| Implementation Status | **complete for approved corrective** — final source includes the accepted Algolia access, Smart Filter configuration, Print Requests scroll containment, and Portal companion corrections |
-| Test Status | Final targeted verification PASS: focused scope 61/61, independent scope review 160/160, follow-up Print Requests suites 34/34, Portal/Studio typechecks PASS, Functions build PASS, targeted ESLint PASS, renderer/Vite build PASS, workflow/env tests 36/36, and diff check PASS |
-| Human Checkpoint Required | **no — owner QA and final reopen authorization received** |
-| Human Checkpoint Reason | Owner confirmed Portal Smart Filter/companion smoke PASS, Studio 1.0.11 PASS, and authorized Maintenance Mode OFF / final public reopen. |
+| Parent program | `smart-catalog-intelligence-completion-and-legacy-tag-retirement` |
+| Current Goal | `studio-ai-review-reprocess-bulk-and-autonomous-modal-corrective` |
+| Current Phase | Signoff complete; commit/push → PR/merge → stable release closeout |
+| Plan Status | **complete** — `docs/workflow/plans/2026-09-14-studio-ai-review-bulk-reprocess-autonomous-modal-corrective-plan.md` |
+| Review Status | **approved_with_changes** — `docs/workflow/reviews/2026-09-14-studio-ai-review-bulk-reprocess-autonomous-modal-corrective-formal-review.md` |
+| Implementation Status | **complete — renderer-only; no backend or release change** (+ owner QA polish: single-select bulk label) |
+| Test Status | Clean DEV restart/white-screen preflight **PASS**; focused suites **67/67 PASS** (current rerun: 34 assertions); release-contract/publish tests **50/50 PASS**; Studio TypeScript **PASS**; targeted ESLint **PASS**; Vite renderer/electron/preload builds **PASS**; electron-builder timed out during existing Windows packaging/EPERM environment step; diff check **PASS**. |
+| Human Checkpoint Required | **no — explicit owner release authorization received** |
+| Human Checkpoint Reason | Owner supplied `OWNER QA: STUDIO 1.0.12 CORRECTIVE — PASS` and `OWNER AUTHORIZE END-TO-END STUDIO 1.0.12 RELEASE`. |
 | Blocked | **no** |
-| Allowed Actions | No further action in this completed rollout goal; start a new Plan → Review cycle for any later change. |
-| Forbidden Actions | Any unplanned production mutation, Algolia rerun, Studio rebuild/republish, Portal revision change, Functions/Rules/Storage deploy, Autonomy/Pass 2 enablement, or secret value exposure |
-| Last Completed Step | **OWNER AUTHORIZE MAINTENANCE MODE OFF / FINAL PUBLIC REOPEN**; public maintenance read verified `enabled=false` and tester bypass false |
-| Next Required Step | **None — coordinated rollout signoff complete** |
+| Allowed Actions | Explicitly authorized commit/push, PR/merge, Studio 1.0.12 workflow, artifact verification, stable publication, and release closeout. |
+| Forbidden Actions | Backend/Portal deploy, Rules/index/schema/migration/secret changes, Algolia rebuild, catalog backfill, Pass 2 change, or mutation of Studio 1.0.11. |
+| Last Completed Step | Owner QA PASS, clean DEV restart after stale-HMR white-screen incident, FreshForge signoff, release-policy checks, focused suites, TypeScript, ESLint, Vite, and diff hygiene passed. |
+| Next Required Step | Allowlisted corrective commit, push, PR/merge, frozen-source release workflow, publication, and post-release verification. |
+| Decision Log | 2026-09-13 — Owner directed: Needs Review multi-select primary button label is always `Reprocess` (no selected-count suffix); selection count stays in the existing counter. Owner confirmed after Studio restart. 2026-09-14 — Owner directed: bulk reprocess summary uses auto-dismiss `DismissibleSuccessAlert` toast (not a sticky banner); failure/warning detail lists remain only when present. 2026-09-14 — Owner directed: during bulk reprocess, workspace cycles each design preview with `Reprocessing N of M` under the image; action-bar button shows `Sending`. |
+
+## Active Owner QA checkpoint — Studio 1.0.12 corrective
+
+Artifact: `docs/workflow/reviews/2026-09-14-studio-ai-review-bulk-reprocess-autonomous-modal-corrective-dev-qa-preparation.md`
+
+Owner QA result: **`OWNER QA: STUDIO 1.0.12 CORRECTIVE — PASS`**.
+
+This phase is renderer-only. Production resources, published Studio 1.0.11, Autonomous policy,
+Pass 2, Functions, Rules, indexes, schemas, migrations, secrets, and Portal were not changed.
 
 ## Final coordinated rollout signoff — 2026-09-14
 

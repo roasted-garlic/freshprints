@@ -2,6 +2,84 @@
 
 **Last updated:** 2026-09-14
 
+## Studio 1.0.12 corrective — Owner QA PASS / release continuation — 2026-09-14
+
+The current bounded Studio corrective is implemented locally and is ready for manual DEV QA. The
+proven stale Needs Review race was the tracked reprocess listener accepting a cached pre-reset
+`needs_review` snapshot after patch-primary local removal; rapid subscription recreation amplified
+the ghost-row reinsert. Renderer fixes add an `updatedAt` freshness barrier and consumed-run guard,
+preserve immediate single-item reconciliation, and add serial, deduplicated `Reprocess Selected`
+using the existing page-owned multi-selection controller. Bulk success/failure/progress, final
+selection settlement, and asynchronous Header Auto-start warnings are visible; failed rows remain
+available. No backend change was needed.
+
+The Autonomous confirmation modal now portals to `document.body` so the existing fixed overlay
+centers against the usable Studio viewport, uses shared focus containment, and offers a Copy button
+for the authoritative `ENABLE_AUTONOMOUS_CONFIRMATION_PHRASE` without autofilling the input or
+changing the exact typed guard.
+
+Owner QA passed the rapid single/bulk flow and modal behavior. Clean DEV restart/white-screen
+preflight also passed: the prior blank screen was stale Vite HMR state serving an empty
+`AiReviewPage` module; a fresh Studio/Vite/Electron chain with the correct Electron environment
+loaded cleanly with no uncaught renderer error, and no source workaround was required. Focused
+suites are **67/67 PASS**; Studio TypeScript and targeted ESLint pass; Vite renderer/
+electron/preload builds pass. The full `npm run build:studio` reached electron-builder packaging
+but timed out during the existing Windows packaging/EPERM environment step. No production resource,
+published Studio 1.0.11 release, Functions, Rules, indexes, schema, migration, secret, Autonomous
+policy, Pass 2, Portal, or production setting was changed.
+
+Artifacts:
+
+- Plan: `docs/workflow/plans/2026-09-14-studio-ai-review-bulk-reprocess-autonomous-modal-corrective-plan.md`
+- Formal Review: `docs/workflow/reviews/2026-09-14-studio-ai-review-bulk-reprocess-autonomous-modal-corrective-formal-review.md`
+- Independent Review: `docs/workflow/reviews/2026-09-14-studio-ai-review-bulk-reprocess-autonomous-modal-corrective-implementation-review.md`
+- Test Report: `docs/workflow/reviews/2026-09-14-studio-ai-review-bulk-reprocess-autonomous-modal-corrective-test-report.md`
+- DEV QA Preparation: `docs/workflow/reviews/2026-09-14-studio-ai-review-bulk-reprocess-autonomous-modal-corrective-dev-qa-preparation.md`
+
+Explicit owner authorization now permits the standard commit/push, production PR/merge, frozen-source
+stable workflow, artifact verification, publication, and final release closeout. Do not mutate
+Studio 1.0.11 or any backend/Portal/Algolia/Pass 2 surface.
+
+## Current-stack Autonomous rollout — production enablement PASS — 2026-09-14
+
+Owner authorization was received and the exact current source closure was promoted only to the
+three Functions exercised by the direct canary: `enqueueAiEnrichment`,
+`updateCatalogWorkflowMode`, and `syncPortalCatalogDesignToAlgolia`. The closure digest is
+`bd0f8f52344f3c12c90e8e289e2ad9c9cacc8c263c2b2331552911165b691c44`. DEV hashes changed as
+follows: enqueue `17d8aec…` → `ad5c176e…`, mode `1734bfe…` → `7a56af9…`, and Algolia sync
+`ec72b48…` → `edae8dd…`; reprocess-job Functions were deliberately excluded.
+
+The stale Smart Profile normalizer-v6 assertion was corrected to v7. The current-contract suite is
+88/88 PASS and the Functions TypeScript build is PASS. The canary temporarily enabled the dual
+gate, processed all four supplied IDs, and unconditionally restored DEV to `shadow`, Autonomous
+live false, and Pass 2 false. Clean and import-preset rows reached Ready/approved with
+`system:catalog-autonomy`, current v39/v7/v1 provenance, synced publication, and Algolia hits.
+
+The owner-authorized final continuation created exactly one disposable DEV-only fixture:
+`dev-autonomous-hard-blocker-mu0pc81q`. The current source hard blocker was
+`category_unresolved`, caused by an empty category ID. At the explicitly authorized decision
+boundary, the current v39/v7/v1 profile returned `needs_review`, hard blocker
+`category_unresolved`, and `shouldPublishReady=false` with Autonomous gates enabled.
+
+The fixture remained imported/Needs Review, had no system approval or publication, and was absent
+from `portal_catalog_ready_dev`. DEV was restored to shadow/Autonomous-off/Pass-2-off. Firestore
+fixture, temporary Auth, and all other artifacts were confirmed deleted; no storage was used.
+
+The owner-authorized production enablement used only the existing owner-gated
+`updateCatalogWorkflowMode` callable. It first set `catalogWorkflowMode=autonomous` with live
+false, then enabled live using the exact phrase `ENABLE AUTONOMOUS`.
+
+Final production state is `catalogWorkflowMode=autonomous`,
+`catalogAutonomousLiveEnabled=true`, and Pass 2/semantic review playground false. Postflight
+confirmed 2,733 Ready/approved designs, all current v39/v7/v1 and publication-synced; zero active
+jobs, processing rows, stale/missing profiles, or failures; required Functions ACTIVE and unchanged;
+Algolia app `Z1FVCM5QUX` / index `portal_catalog_ready_prod`; Portal revision
+`fresh-prints-portal-build-2026-09-14-001` at 100%; and Studio 1.0.11 unchanged. No backfill,
+Algolia rebuild/reconcile, release, or unrelated production mutation occurred. No rollback was
+required.
+
+Exact rollout result: **`PRODUCTION AUTONOMOUS ENABLEMENT — PASS`**.
+
 ## Final coordinated rollout signoff — 2026-09-14
 
 Owner records:
