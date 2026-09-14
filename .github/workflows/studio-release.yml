@@ -40,9 +40,9 @@ on:
         required: true
         type: choice
         options:
-          - off
-          - on
-        default: off
+          - "off"
+          - "on"
+        default: "off"
 
 permissions:
   contents: write

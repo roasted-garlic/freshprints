@@ -117,7 +117,7 @@ test("finalize expects Studio package version 1.0.11", () => {
 });
 
 test("workflow exposes an explicit Smart Filters build input and passes it to both env writers", () => {
-  assert.match(workflowSource, /smart_filters:[\s\S]*?- off[\s\S]*?- on[\s\S]*?default: off/);
+  assert.match(workflowSource, /smart_filters:[\s\S]*?- ["']off["'][\s\S]*?- ["']on["'][\s\S]*?default: ["']off["']/);
   assert.equal((workflowSource.match(/STUDIO_SMART_FILTERS:\s*\$\{\{ inputs\.smart_filters \}\}/g) || []).length, 2);
 });
 
