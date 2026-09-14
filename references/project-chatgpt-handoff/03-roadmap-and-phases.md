@@ -1,5 +1,33 @@
 # Roadmap and Phases
 
+> 2026-09-13: **Production rollout STOPPED at Function preflight** — Additive index deployment
+> completed with 94 composite indexes READY, including `portalPrintRequestItems`, and no
+> removals/replacements. The explicit 164-target Function allowlist stopped before mutation because
+> `OPENAI_API_KEY` is absent in `fresh-prints-prod` (404 NOT_FOUND). Do not continue to Rules,
+> production merge, Studio, Portal, or runner. Next: **OWNER AUTHORIZE RESOLUTION OF MISSING
+> PRODUCTION OPENAI_API_KEY / FUNCTION PREFLIGHT RETRY**.
+
+> 2026-09-13: **M1 replacement candidate FROZEN** — Owner authorized freezing
+> `7b8462a0fe60e484a937a7c88fc37e7c938fff6d` on `development`. `origin/development` matches
+> (`0/0`); Core/Portal/Studio Git-object manifests audit with zero mismatches. Studio corrective
+> evidence is authoritative at zero TypeScript diagnostics, packaging PASS, artifact verification
+> PASS, and version `1.0.10`; old typecheck-baseline wording is historical and superseded. No
+> production action occurred. Next: **FOCUSED FINAL PRODUCTION GO/NO-GO REVIEW**.
+
+> 2026-09-13: **Focused final production GO/NO-GO — B / GO WITH NOTES** — Freeze integrity and
+> minimum production continuity checks passed: 113/113 Functions ACTIVE, 77/77 indexes READY,
+> Portal rollback revisions present, Studio rollback releases present, Rules identities unchanged,
+> and maintenance absent/OFF. Notes: stable-release Studio environment QA is intentionally deferred;
+> accepted authenticated Staff Artwork preview/thumbnail known-ID residual risk remains. Next:
+> **OWNER AUTHORIZE PRODUCTION GO**.
+
+> Historical 2026-09-13: **Replacement candidate assembled and pushed — M1 freeze pending** — Owner
+> authorized candidate commit/push. Reviewed RC commits were cherry-picked onto `development`;
+> candidate SHA is `7b8462a0fe60e484a937a7c88fc37e7c938fff6d`, and `origin/development` matches it
+> (ahead/behind `0/0`). Git-object Core/Portal/Studio manifests audit with zero mismatches; Portal
+> is 747 inputs and Studio is 1,145 inputs at version `1.0.10`. No production action occurred.
+> This checkpoint was superseded by the subsequent authorized M1 freeze and focused GO/NO-GO.
+
 > 2026-09-13: **Rules rollback evidence CLOSED; final parent M0 Classification A** — Read-only
 > Firestore/Storage Rules releases, ruleset IDs, source exports, timestamps, and hashes are captured
 > for `fresh-prints-prod`. Final M0 against corrected Studio SHA `5bf477fcf676f37265018262268ee5e8734e8eff`

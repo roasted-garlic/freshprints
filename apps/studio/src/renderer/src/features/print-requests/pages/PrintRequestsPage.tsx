@@ -421,7 +421,6 @@ export function PrintRequestsPage() {
   const previousSelectedRequestIdRef = useRef<string | null | undefined>(undefined);
   const railListRef = useRef<HTMLDivElement | null>(null);
   const railListScrollTopRef = useRef(0);
-  const pageContentScrollTopRef = useRef(0);
 
   const {
     allocationTotalsByRequestId,
@@ -1214,28 +1213,16 @@ export function PrintRequestsPage() {
     return () => window.cancelAnimationFrame(frame);
   }, [isListLoading, selectedRequestId, visibleRequests]);
 
-  /** Restore page-shell scroll after the detail panel finishes loading the new selection. */
+  /** Keep the rail list scroll position when switching selection; page shell no longer scrolls. */
   useLayoutEffect(() => {
-    const pageContent = document.querySelector<HTMLElement>(".page-content-area--print-requests");
     const list = railListRef.current;
 
     if (list && railListScrollTopRef.current > 0) {
       list.scrollTop = railListScrollTopRef.current;
     }
-
-    if (!pageContent || pageContentScrollTopRef.current <= 0) {
-      return;
-    }
-
-    // Keep restoring while details load/collapse so the shell cannot clamp scrollTop to 0.
-    pageContent.scrollTop = pageContentScrollTopRef.current;
   }, [isRequestLoading, selectedRequestId, visibleSelectedRequest?.id, visibleRequests]);
 
   const capturePageContentScroll = useCallback(() => {
-    const pageContent = document.querySelector<HTMLElement>(".page-content-area--print-requests");
-    if (pageContent) {
-      pageContentScrollTopRef.current = pageContent.scrollTop;
-    }
     if (railListRef.current) {
       railListScrollTopRef.current = railListRef.current.scrollTop;
     }
@@ -1920,7 +1907,11 @@ export function PrintRequestsPage() {
         </p>
       ) : null}
 
-      <div className="print-requests-layout">
+      <div
+        className="print-requests-layout"
+        data-print-request-kind={activeListKind}
+        data-print-request-tab={activeListTab}
+      >
         <aside className="print-requests-rail">
           <div className="print-requests-kind-switch">
             <div aria-label="Request type" className="print-requests-kind-tab-bar" role="tablist">

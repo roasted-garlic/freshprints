@@ -2,7 +2,130 @@
 
 **Updated:** 2026-09-13
 
-## Superseded production-configured RC disposition — 2026-09-13
+## Authoritative next step after Owner DEV QA PASS — 2026-09-13
+
+Owner recorded:
+**`OWNER DEV QA: PRODUCTION ALGOLIA ACCESS + SMART FILTER + PRINT REQUEST SCROLL + PORTAL
+COMPANION CORRECTIVE — PASS`**.
+
+Continue without another Plan/Review loop. Run final targeted verification and independent review,
+commit/push the approved corrective to `development`, integrate the exact reviewed source into the
+established production-reachable path, freeze/report the exact source SHA, resolve Studio stable
+version `1.0.11` unless source evidence requires another version, verify the Portal App Hosting
+Smart Filter mapping source without creating/changing the production secret, and prepare an
+unpublished production-configured Studio stable draft with Smart Filters explicitly OFF.
+
+Do not publish Studio, deploy Portal, run production Algolia Preview/APPLY, enable production Smart
+Filters, turn Maintenance OFF, enable Autonomous/Pass 2, or perform unrelated production actions.
+Stop at:
+**`OWNER QA: UNPUBLISHED PRODUCTION-CONFIGURED STUDIO DRAFT / PROD ALGOLIA PREVIEW-APPLY —
+CHECKPOINT`**.
+
+The final verification follow-up commit is `cd989979`; it preserves the narrow stacked Print
+Requests layout in the last-loaded utility cascade. Follow-up Print Requests tests pass **34/34**.
+
+## Authoritative next checkpoint — Owner DEV QA after bounded corrections
+
+Owner DEV QA recorded **`OWNER DEV QA — CORRECTIONS REQUIRED`**. The accepted Algolia Settings DEV
+guard is PASS and Smart Filters remain a regression PASS. The bounded corrections are now complete:
+Working/Editing editable Print Requests no longer defeat the responsive grid's bounded detail
+scroll, and Customer/Internal status coverage is explicit; companion steppers use aligned shared
+geometry and the suggestion footer changes **Not now** to **Done** only after confirmed server
+success. Focused correction validation is **61/61 PASS**; typechecks, Functions build, targeted
+lint, Studio renderer/Vite build, and diff-check pass. Portal production build remains blocked by
+the existing `.next/trace` EPERM environment issue. Fresh independent Implementation Review
+rechecked **25/25** targeted tests and found no blocking defect; only runtime browser smoke remains
+for Owner DEV QA. Production remains untouched. The next checkpoint is:
+
+**`OWNER DEV QA: PRODUCTION ALGOLIA ACCESS + SMART FILTER + PRINT REQUEST SCROLL + PORTAL
+COMPANION CORRECTIVE — PASS`**
+
+## Authoritative next checkpoint — Owner DEV QA for final bounded corrective
+
+Owner authorization **`OWNER ACCEPT PRODUCTION ALGOLIA ACCESS + SMART FILTER + PRINT REQUEST
+SCROLL FORMAL REVIEW / AUTHORIZE FINAL COMPANION AMENDMENT + SELF-REVIEW + IMPLEMENT + TEST`** is
+recorded. The existing Formal Review remains `approved_with_changes`. Studio Algolia owner/admin
+Settings access, explicit Smart Filter OFF/ON release input and Studio `1.0.11`, Portal App Hosting
+flag mapping, Print Requests route-scoped scroll ownership, and Portal companion Add feedback/
+quantity controls are implemented and locally tested. Production remains untouched; no Algolia,
+Firebase, deployment, publication, staging, commit, push, freeze, or merge action occurred.
+
+Independent Implementation Review passed with no blocking defect; the exact next checkpoint is:
+**`OWNER DEV QA: PRODUCTION ALGOLIA ACCESS + SMART FILTER + PRINT REQUEST SCROLL + PORTAL
+COMPANION CORRECTIVE — PASS`**.
+
+## Historical next checkpoint — accept production Algolia/Smart Filter/Print Requests scroll Formal Review
+
+The minimum reviewed production reprocess-control allowlist and Smart Profile backfill are complete
+in `fresh-prints-prod`; 2,734/2,734 Ready+approved designs are current at v39/v7 with maintenance
+ON, shadow mode, autonomy OFF, and Pass 2 OFF. Owner authorization remains recorded for
+`OWNER AUTHORIZE PROD ALGOLIA SMART PROFILE SEARCH RECONCILE/APPLY`. Repository investigation found
+no normal production Studio owner/admin screen for that operation. The only consumer is the
+`window.freshPrintsDev` installer in `portalCatalogAlgoliaReconcileAdminService.ts`; its gate
+requires a development build and `fresh-prints-dev`. Production also suppresses the DevTools
+sidebar action and packaged Electron IPC. The existing callable remains owner/admin-authenticated
+and untouched.
+
+The amended Plan is recorded in
+`docs/workflow/plans/2026-09-13-production-algolia-reconcile-studio-access-corrective-plan.md`.
+Formal Review is **approved_with_changes** in
+`docs/workflow/reviews/2026-09-13-production-algolia-reconcile-studio-access-smart-filter-formal-review.md`.
+It confirms the existing Portal/Studio Smart Filter implementations match the shared eight-facet
+contract and contain no legacy tag authority in enabled paths. Required implementation changes are
+limited to the production Settings reconcile control, explicit Studio OFF/ON build-flag injection,
+the Portal production App Hosting flag mapping, stale Studio “tags” copy, and ephemeral APPLY
+guards. The established stable workflow can supply an unpublished production-configured draft with
+Smart Filters OFF for owner QA, then one published stable build with the flag ON after Algolia
+convergence; no production RC mode is created. The final bounded amendment adds a DEV-first Studio
+Print Requests duplicate-scroll correction. Frozen-source tracing proves the outer
+`.page-content-area--print-requests` scroll plus the intentional `.print-requests-rail-list`
+scroller; `.print-requests-main` currently has no vertical overflow rule. The proposed correction
+is Print Requests-scoped: constrain the shell/grid, remove only the outer content-area scroll,
+restore route-scoped detail scrolling, retain the rail-list scroller, update the existing scroll
+contract, and require long/short/empty/resize plus Show Queue regression QA. No callable, Algolia
+read/write, or production mutation occurred. Historical next checkpoint (now satisfied): **OWNER
+ACCEPT PRODUCTION ALGOLIA ACCESS + SMART FILTER + PRINT REQUEST SCROLL FORMAL REVIEW / AUTHORIZE
+IMPLEMENT**.
+
+## Authoritative next checkpoint — Smart Profile reprocess APPLY
+
+Production maintenance is ON under owner authorization and remains ON. Read-only inventory found
+2,734 eligible Ready designs, all missing Smart Profile fields; expected provider calls are 2,734
+using `gemini-2.5-flash-lite`. Autonomy and Pass 2 are OFF. Verified Algolia is
+`portal_catalog_ready_prod` with 2,734 legacy-shaped records and only `tagFacetKeys` currently
+faceted. The exact Smart Filters flag is `NEXT_PUBLIC_USE_SMART_FILTERS`; it is absent/false in
+production and requires a new Portal build after the indexed reconcile.
+
+Evidence: `docs/workflow/reviews/2026-09-13-coordinated-production-maintenance-smart-profile-algolia-preview.md`.
+
+Exact next checkpoint: **`OWNER AUTHORIZE PROD FULL ELIGIBLE-DESIGN SMART PROFILE REPROCESS/BACKFILL`**.
+
+## Authoritative next checkpoint — production maintenance authorization
+
+The owner-authorized replacement candidate remains frozen on `development` at
+`7b8462a0fe60e484a937a7c88fc37e7c938fff6d`; `origin/development` matches and ahead/behind is `0/0`.
+Core/Portal/Studio Git-object manifests audit with zero mismatches. Production GO and the reviewed
+rollout sequence have executed; only the separately gated projection APPLY remains.
+
+Production GO has been executed. The reviewed Functions and final Firestore Rules are PASS, PR #93
+merged the exact frozen candidate, and stable Studio workflow `34762807770` published
+`v1.0.10-f615c38`. Owner recorded **`OWNER QA: PROD STUDIO HISTORICAL PRINT REQUEST HISTORY —
+PASS`** after the lifecycle mirror APPLY (203 writes; 206/206 coverage; post-APPLY dry run 0
+proposals). Portal rollout `build-2026-09-13-001` is serving 100% traffic and hosted smoke is PASS.
+Maintenance remains absent/OFF; **FULL MAINTENANCE CAPABILITY READY — PASS (OFF)** is recorded.
+
+Owner-authorized projection APPLY completed in the hard-pinned runner across nine bounded pages:
+1,680 rows scanned, 1,668 creates, 12 already-correct, 0 updates/errors, and 1,668 writes. The
+population grew by five rows during execution and was reconciled as legitimate concurrent activity.
+Post-APPLY exact VERIFY passed 1,680/1,680 equality; the mandatory zero-diff DRY RUN passed with
+CREATE 0, UPDATE 0, errors 0, and `hasMore=false`. Final Rules deployment created ruleset
+`dbd35333-5156-4ebe-ae48-92cb7b829741`; the Rules API export reproduced the reviewed final
+SHA-256 exactly. Public Portal smoke and the Rules boundary contract passed; maintenance remains
+absent/OFF. The exact next checkpoint is **`OWNER AUTHORIZE PRODUCTION MAINTENANCE ON`**.
+
+Evidence: `docs/workflow/reviews/2026-09-13-coordinated-production-final-firestore-rules-cutover.md`.
+
+## Historical production-configured RC disposition — superseded
 
 Owner QA is blocked with the exact disposition: **`OWNER QA: STUDIO 1.0.10 RC INSTALL / UPDATE -
 BLOCKED: RC installer is DEV-configured and connects to DEV Firestore.`** Repository inspection
@@ -22,7 +145,7 @@ deployment, or data mutation occurred.
 Rules access has been provided; the deployed Firestore/Storage release and ruleset evidence is now
 captured and the blocker is closed.
 
-## Authoritative next checkpoint — 2026-09-13
+## Historical pre-candidate checkpoint — superseded
 
 Final parent M0 is **Classification A — READY FOR REPLACEMENT CANDIDATE COMMIT/PUSH AUTHORIZATION**.
 The exact next checkpoint is **`OWNER AUTHORIZE REPLACEMENT CANDIDATE COMMIT/PUSH`**. Do not commit,

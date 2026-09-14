@@ -548,6 +548,17 @@
   overflow-y: auto;
 }
 
+/* Print Requests: never allow the page-shell scroller (the 3rd bar on Working/Editing).
+   Queued/Printing/Printed hide it only because their detail is short; Working/Editing must
+   bound the shell so tall editable detail cannot re-open this scroller. */
+.app-main > .page-content-area.page-content-area--print-requests {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden !important;
+}
+
 .page-content-area--ai-review {
   min-height: 0;
   overflow-y: auto;

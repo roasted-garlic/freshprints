@@ -231,7 +231,7 @@ export function DesignLibrarySmartFilterModal({
           <h2 id="design-library-smart-filter-title">Smart Filters</h2>
           <p className="design-library-tag-filter-description">
             Select one or more values per dimension. Designs must match every selected filter,
-            together with tags, category, and search.
+            together with category and search.
           </p>
         </div>
 

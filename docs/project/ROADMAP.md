@@ -1,5 +1,62 @@
 # Fresh Prints Roadmap
 
+> 2026-09-13: **Ready Catalog Smart Profile reprocess COMPLETE; Algolia gated** — Job
+> `GB4fUzW0Om10xev21Yd4` processed 2,736 attempts for 2,734 unique eligible Ready designs (2
+> retries), all successful; failed/unprocessed, malformed/unsafe, anomalies, and preservation
+> violations are zero. Frozen candidate source and accepted later AI work prove authoritative
+> provenance is `catalog-enrich-v39` / `smart-profile-normalizer-v7`; earlier v37/v6 snapshot
+> labels are historical/superseded. Fresh inventory confirms 2,734/2,734 Ready+approved designs
+> current. Shadow mode, autonomy OFF, Pass 2 OFF, and maintenance ON remain active. Next:
+> **OWNER AUTHORIZE PROD ALGOLIA SMART PROFILE SEARCH RECONCILE/APPLY**.
+
+> 2026-09-13: **Smart Profile reprocess controls deployed; authenticated preview pending** — The
+> owner-authorized six-function production allowlist is ACTIVE. No job or provider call started;
+> preview requires Firebase owner authentication. In Studio use `/settings?tab=aiEnrichment` →
+> **Catalog Reprocessing** → **Ready Catalog → Preview**. Maintenance remains ON. Next:
+> **OWNER AUTHENTICATED PREVIEW**.
+
+> 2026-09-13: **Production maintenance ON; Smart Profile/Algolia previews pending** — Owner
+> authorization activated the reviewed maintenance control path. Read-only inventory found 2,734
+> eligible Ready designs, all requiring the reviewed Smart Profile reprocess; autonomy and Pass 2
+> remain OFF. Verified Algolia `portal_catalog_ready_prod` has 2,734 legacy-shaped records and only
+> `tagFacetKeys` currently faceted. Next: **OWNER AUTHORIZE PROD FULL ELIGIBLE-DESIGN SMART PROFILE
+> REPROCESS/BACKFILL**.
+
+> 2026-09-13: **Final Firestore Rules cutover PASS; maintenance ON gated** — Owner authorized the
+> reviewed final Firestore Rules. Ruleset `dbd35333-5156-4ebe-ae48-92cb7b829741` is released as
+> `cloud.firestore`; API-exported source matches SHA-256 `dc4fc83dcf36382aa7d2273dc4e35bd6e41b3da02b33e85a3bd21c710204d2ee`.
+> Projection exact VERIFY/zero-diff and Portal public smoke pass; maintenance remains OFF. Next:
+> **OWNER AUTHORIZE PRODUCTION MAINTENANCE ON**.
+
+> Historical 2026-09-13: **Studio/Portal production rollout PASS; projection APPLY gated** — Owner confirmed
+> **`OWNER QA: PROD STUDIO HISTORICAL PRINT REQUEST HISTORY — PASS`** after 203 lifecycle mirror-only
+> writes and 206/206 coverage. Stable Studio `1.0.10` (`v1.0.10-f615c38`) is published. Portal
+> rollout `build-2026-09-13-001` serves 100% traffic and hosted smoke is PASS. Maintenance remains
+> OFF; **FULL MAINTENANCE CAPABILITY READY — PASS (OFF)**. Owner-authorized projection APPLY completed
+> across nine bounded pages: 1,680 scanned, 1,668 creates, 12 already-correct, 0 updates/errors,
+> and 1,668 writes. Post-APPLY VERIFY and zero-diff DRY RUN are PASS (1,680/1,680 exact; CREATE/
+> UPDATE/errors 0). Next: **OWNER AUTHORIZE FINAL FIRESTORE RULES CUTOVER**.
+
+> 2026-09-13: **M1 replacement candidate FROZEN** — Owner authorized candidate
+> `7b8462a0fe60e484a937a7c88fc37e7c938fff6d` on `development`; `origin/development` matches at
+> `0/0`. Core/Portal/Studio Git-object manifests audit with zero mismatches. Studio `1.0.10`
+> corrective evidence is authoritative with zero TypeScript diagnostics and packaging/artifact
+> verification PASS; old typecheck-baseline wording is historical and superseded. No production
+> action occurred. Next: **FOCUSED FINAL PRODUCTION GO/NO-GO REVIEW**.
+
+> 2026-09-13: **Focused final production GO/NO-GO — B / GO WITH NOTES** — Frozen SHA integrity,
+> immutable manifests, and minimum production continuity checks pass (113/113 Functions ACTIVE,
+> 77/77 indexes READY, Portal/Studio rollback anchors present, Rules identities unchanged,
+> maintenance absent/OFF). Notes: stable-release Studio environment QA is intentionally deferred;
+> accepted authenticated Staff Artwork preview/thumbnail known-ID residual risk remains. Next:
+> **OWNER AUTHORIZE PRODUCTION GO**.
+
+> Historical 2026-09-13: **Replacement candidate assembled/pushed — M1 freeze pending** — The owner-authorized
+> replacement candidate is `7b8462a0fe60e484a937a7c88fc37e7c938fff6d` on `development`, with
+> `origin/development` synchronized and ahead/behind `0/0`. Core/Portal/Studio Git-object manifests
+> audit with zero mismatches (10/10, 747, 1,145); Studio version is `1.0.10`. No production action
+> occurred. This checkpoint was superseded by the authorized M1 freeze and focused GO/NO-GO.
+
 > 2026-09-13: **Rules rollback evidence CLOSED; final parent M0 Classification A** — Current
 > production Firestore/Storage release metadata and source hashes are captured. Corrected source
 > reconciles with zero unexplained paths; next checkpoint is **OWNER AUTHORIZE REPLACEMENT CANDIDATE

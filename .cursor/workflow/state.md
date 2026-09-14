@@ -2,24 +2,279 @@
 
 | Field | Value |
 |---|---|
-| Status | **OPEN — FINAL PARENT M0 COMPLETE (A); replacement candidate commit/push authorization pending** |
+| Status | **OPEN — OWNER DEV QA PASS recorded; final verification and approved source promotion in progress** |
 | DONE | **no — parent remains active; Studio corrective and Rules evidence child are terminal** |
 | Signoff Status | cutover child **approved_with_notes / CLOSED**; Studio typecheck corrective **approved_with_notes / CLOSED**; Rules snapshot **CLOSED** |
 | Current Mode | managed-phase |
 | Parent program | Coordinated production promotion and release readiness |
 | Current Goal | `coordinated-production-promotion-release-readiness` |
-| Current Phase | Final parent M0 read-only reconciliation complete; replacement candidate authorization pending |
-| Plan Status | **complete** — `docs/workflow/plans/2026-09-12-studio-release-pipeline-typecheck-stabilization-plan.md` |
-| Review Status | **approved_with_changes** — `docs/workflow/reviews/2026-09-12-studio-release-pipeline-typecheck-stabilization-review.md`; owner accepted |
-| Implementation Status | **complete** for typecheck corrective; no new production-configured RC mode created after canonical-path finding |
-| Test Status | Studio TypeScript **0 diagnostics**; corrective suites **49/49 PASS**; targeted validation **198/198 PASS**; targeted lint and diff check PASS; RC workflow PASS |
+| Current Phase | Owner DEV QA **PASS** — final verification complete; narrow cascade follow-up is corrected, and the approved source is ready for production-reachable integration/freeze and unpublished Smart Filters-OFF Studio draft preparation; maintenance ON |
+| Plan Status | **amended — Formal Review complete** — `docs/workflow/plans/2026-09-13-production-algolia-reconcile-studio-access-corrective-plan.md` |
+| Review Status | **approved_with_changes** — `docs/workflow/reviews/2026-09-13-production-algolia-reconcile-studio-access-smart-filter-formal-review.md` |
+| Implementation Status | **complete for approved corrective** — final source includes the accepted Algolia access, Smart Filter configuration, Print Requests scroll containment, and Portal companion corrections |
+| Test Status | Final targeted verification PASS: focused scope 61/61, independent scope review 160/160, follow-up Print Requests suites 34/34, Portal/Studio typechecks PASS, Functions build PASS, targeted ESLint PASS, renderer/Vite build PASS, workflow/env tests 36/36, and diff check PASS |
 | Human Checkpoint Required | **yes** |
-| Human Checkpoint Reason | M0 is Classification A and requires explicit owner authorization before replacement candidate commit/push. Production Studio QA remains deferred to canonical stable release. |
-| Blocked | **yes — awaiting `OWNER AUTHORIZE REPLACEMENT CANDIDATE COMMIT/PUSH`** |
-| Allowed Actions | Documentation and owner authorization only |
-| Forbidden Actions | Production reads/writes, runner DRY RUN/VERIFY/APPLY/backfill, Rules/Functions deployment, Portal/Studio publication, maintenance, stable release/tag, development merge/candidate freeze, staging, commit, or push |
-| Last Completed Step | Rules rollback evidence captured; FINAL PARENT M0 classification **A** |
-| Next Required Step | **OWNER AUTHORIZE REPLACEMENT CANDIDATE COMMIT/PUSH** |
+| Human Checkpoint Reason | Owner DEV QA PASS authorizes the reviewed local/source promotion sequence. The next human gate is owner QA of the unpublished production-configured Studio draft, followed by the separately authorized production Algolia Preview/APPLY gate. |
+| Blocked | **no — final verification, source promotion, freeze, and unpublished draft preparation are authorized** |
+| Allowed Actions | Final targeted verification, independent review, state/handoff updates, staging/commit/push to development, reviewed production-reachable source integration, exact SHA freeze, Smart Filters-OFF production-configured unpublished Studio draft preparation, and artifact verification |
+| Forbidden Actions | Production Algolia Preview/APPLY, Smart Filter enablement, Portal deploy/publication, Studio publication, maintenance OFF, autonomy/Pass 2 enablement, tag deletion, unrelated production settings/data changes, Functions/Rules deploy, production data mutation, or live cutover |
+| Last Completed Step | **OWNER DEV QA: PRODUCTION ALGOLIA ACCESS + SMART FILTER + PRINT REQUEST SCROLL + PORTAL COMPANION CORRECTIVE — PASS** |
+| Next Required Step | Merge the reviewed `development` source through the production PR, freeze the exact production-reachable SHA, then prepare the unpublished production-configured Studio `1.0.11` draft with Smart Filters OFF; stop at owner draft QA / Algolia cutover gate |
+
+## Authoritative Owner DEV QA PASS — 2026-09-13
+
+Owner recorded:
+**`OWNER DEV QA: PRODUCTION ALGOLIA ACCESS + SMART FILTER + PRINT REQUEST SCROLL + PORTAL COMPANION CORRECTIVE — PASS`**.
+
+The approved corrective is accepted without another Plan/Review loop. Scope includes the reviewed
+owner/admin Algolia Settings access guard, Smart Filters-OFF/ON release inputs and Portal App
+Hosting mapping source, Print Requests Working/Editing bounded scroll containment with Queued/
+Printing/Printed regression preserved, and Portal companion quantity/Add feedback corrections.
+Final verification, development commit/push, reviewed production-reachable source integration,
+exact SHA freeze, and preparation of an unpublished production-configured Studio stable draft are
+authorized. Studio publication, Portal deployment, production Algolia Preview/APPLY, Smart Filter
+enablement, maintenance OFF, and all other live cutover actions remain unauthorized.
+
+## Authoritative final verification follow-up — 2026-09-13
+
+Independent implementation review identified a narrow-window cascade issue in the last-loaded
+`utilities.css`: its unconditional `!important` row and rail-height rules could override the
+responsive Print Requests `auto minmax(0,1fr)` rows and capped rail height. Follow-up commit
+`cd989979` restores those responsive rules in the final cascade and extends the scroll contract to
+assert them. The follow-up Print Requests suites pass **34/34**; Studio typecheck, targeted lint,
+and `git diff --check` pass. This is a source correction within the already accepted scope; no new
+Plan/Review loop or production action occurred.
+
+## Authoritative Owner DEV QA correction cycle — 2026-09-13
+
+Owner recorded **`OWNER DEV QA — CORRECTIONS REQUIRED`**. Algolia Settings DEV and Smart Filter
+regression remain PASS.
+
+**Print Requests scroll: OWNER STILL FAIL (2026-09-13 evening).** Working/Editing still show the
+unwanted 3rd whole-page scrollbar; Queued/Printing/Printed do not. Multiple CSS containment
+attempts and a local Electron fixture probe were insufficient for owner runtime. Owner handed the
+fix to another agent.
+
+Handoff (read first):
+`docs/workflow/reviews/2026-09-13-print-requests-scroll-handoff-still-failing.md`
+
+Companion qty/`Done` changes exist in the working tree but were not the focus of the final owner
+rejection. Production untouched.
+
+## Authoritative Studio/Portal/projection readiness — 2026-09-13
+
+Owner recorded **`OWNER QA: PROD STUDIO HISTORICAL PRINT REQUEST HISTORY — PASS`** after the
+lifecycle mirror correction (203 mirror-only writes; 206/206 eligible coverage; post-APPLY dry run
+zero proposals; missing evidence and malformed/unsafe counts zero). Stable Studio `1.0.10` is
+published as `v1.0.10-f615c38` from production merge SHA
+`f615c38dbe15c37c494ce057544463843ead866e` (workflow `34762807770`, eight assets).
+
+Portal rollout `build-2026-09-13-001` succeeded from the same SHA; revision
+`fresh-prints-portal-build-2026-09-13-001` serves 100% traffic. Hosted smoke returned HTTP 200 for
+`/`, `/catalog`, `/robots.txt`, and `/sitemap.xml` with no `fresh-prints-dev` marker. The production
+maintenance document remains absent (`settings/portalMaintenance` metadata `exists=false`), so
+**FULL MAINTENANCE CAPABILITY READY — PASS (OFF)** is recorded without activating maintenance.
+
+The production-locked projection runner completed read-only bounded checks across nine pages against
+`fresh-prints-prod` and the frozen candidate: DRY RUN and pre-APPLY VERIFY each scanned 1,675 rows,
+proposed 1,668 creates, found 7 already-correct rows and zero errors, and performed zero writes;
+both converged with `hasMore=false`. No projection APPLY,
+final Rules deployment, maintenance ON, or other deferred operation occurred.
+
+Evidence: `docs/workflow/reviews/2026-09-13-coordinated-production-studio-portal-projection-readiness.md`.
+
+## Authoritative final Print Requests scroll amendment — 2026-09-13
+
+Owner-directed Plan/Formal Review amendment captured the production Studio report of two vertical
+scrollbars. Frozen-candidate tracing proves the route hierarchy and identifies the repository-level
+contexts: the outer `.page-content-area--print-requests` scroll plus the intentional bounded
+`.print-requests-rail-list` scroll. The page shell is currently `flex: 0 0 auto; height: auto;
+min-height: 100%; overflow: visible`, and `.print-requests-main` has no vertical overflow rule.
+History attributes the outer-scroll choice to `fe28bf98` and its generalization to Show Queue to
+`35d80ec7`. `html`, `body`, `#root`, `.app-shell`, `.app-main`, and Electron BrowserWindow sizing
+do not show a source-level defect.
+
+The approved bounded correction is DEV-first and Print Requests-scoped: constrain the route page
+shell/grid to the existing viewport flex chain, remove only its outer content-area scroll, restore
+route-scoped `.print-requests-main` detail scrolling, and retain the rail-list scroller. Update the
+existing Print Requests scroll contract, run renderer/typecheck/lint/diff validation, sample Show
+Queue if shared selectors are touched, and obtain mandatory Owner DEV QA for long, short/empty,
+resize, controls, reachability, and no-outer-scroll behavior. No implementation or production
+action occurred. The correction may ride the existing Smart Filters-OFF stable draft and final
+stable release (recommended `1.0.11`); no new RC mode or hotfix is created.
+
+Evidence: `docs/workflow/plans/2026-09-13-production-algolia-reconcile-studio-access-corrective-plan.md`;
+`docs/workflow/reviews/2026-09-13-production-algolia-reconcile-studio-access-smart-filter-formal-review.md`.
+
+Historical next checkpoint (now satisfied): **OWNER ACCEPT PRODUCTION ALGOLIA ACCESS + SMART
+FILTER + PRINT REQUEST SCROLL FORMAL REVIEW / AUTHORIZE IMPLEMENT**.
+
+## Authoritative final bounded implementation and Test — 2026-09-13
+
+Owner authorization recorded:
+**`OWNER ACCEPT PRODUCTION ALGOLIA ACCESS + SMART FILTER + PRINT REQUEST SCROLL FORMAL REVIEW /
+AUTHORIZE FINAL COMPANION AMENDMENT + SELF-REVIEW + IMPLEMENT + TEST`**. The existing Formal
+Review remains `approved_with_changes`; no new managed goal was created.
+
+Implemented repository scope:
+
+- owner/admin-only Studio Settings → AI Enrichment → Algolia Reconcile control with exact
+  `fresh-prints-prod` / `Z1FVCM5QUX` / `portal_catalog_ready_prod` target guard;
+- read-only Preview, search-only `nbHits`, proposed-settings labeling, ephemeral confirmation,
+  target recheck, single-flight Apply, and existing DEV bridge preserved;
+- explicit Studio Smart Filter OFF/ON release input with fail-closed env writer, Studio version
+  `1.0.11`, Portal App Hosting `NEXT_PUBLIC_USE_SMART_FILTERS` mapping, and stale “tags” copy
+  correction;
+- Print Requests route-scoped scroll ownership: bounded shell/grid, hidden outer content-area
+  scroll, detail-pane scroll, and retained rail-list scroll;
+- Portal companion Add feedback/quantity correction: shared quantity controls across suggestion and
+  Design Details surfaces, primary-quantity precedence, pending/Added state, callback only after
+  server quantity settlement, failure recovery, and duplicate-tap guard.
+
+Validation evidence: focused Portal companion suites **18/18 PASS** (plus companion quantity
+contract **3/3 PASS**); Studio Settings/Algolia, env-writer, workflow, and Print Requests contracts
+**46/46 PASS**; Functions build **PASS**; Portal typecheck **PASS**; Studio typecheck **PASS**;
+targeted ESLint **PASS**; `git diff --check` **PASS** with line-ending warnings only. Portal
+production build is an existing environment limitation (`EPERM` opening `apps/portal/.next/trace`),
+not a newly introduced source failure. Adjacent `portalPrelaunchCensorUx` retains two unrelated
+baseline failures in CatalogPreviewLightbox assertions; they predate this amendment and are not
+caused by the changed files.
+
+Production boundary: production untouched. No production reads/callables, Algolia operations,
+Secret Manager changes, Firestore/Storage/Auth/settings mutation, Smart Profile/provider call,
+maintenance mutation, flag enablement, Portal/Studio rollout or publication, Functions/Rules
+deployment, staging, commit, push, candidate freeze, or production merge occurred.
+
+Independent Implementation Review passed with no blocking defect. Next gate is Owner DEV QA covering owner/admin access,
+Smart Filter OFF/ON release inputs, Print Requests long/short/empty/resize/Show Queue regression,
+and companion Add/Adding/success/failure/quantity/remove/re-add behavior on both Portal surfaces
+and Design Details. Exact checkpoint:
+**`OWNER DEV QA: PRODUCTION ALGOLIA ACCESS + SMART FILTER + PRINT REQUEST SCROLL + PORTAL
+COMPANION CORRECTIVE — PASS`**.
+
+Independent review evidence: targeted contracts **25/25 PASS**; Portal typecheck, Studio
+TypeScript, targeted ESLint, and `git diff --check` passed. The reviewer found no auth/secret
+leakage or blocking functional defect. Non-blocking residuals are recorded in the Formal Review:
+the separately scheduled/manual Algolia callable has no new distributed lock in this bounded UI
+scope (avoid overlap during later APPLY), and Preview intentionally fails closed when search-only
+`nbHits` cannot be obtained. Owner DEV QA should exercise target-change/remount, failure/retry,
+parallel-instance operational behavior, and responsive scroll/companion interactions.
+
+## Authoritative projection population APPLY — 2026-09-13
+
+Owner authorized the existing production-locked runner. Nine explicit bounded APPLY pages against
+`fresh-prints-prod` wrote 1,668 `portalPrintRequestItems` documents (1,680 scanned; 12 already
+correct; updates, skips, malformed/unsafe rows, errors, and deletes all zero). The population grew
+by five rows during execution and was reconciled as legitimate concurrent activity.
+
+Post-APPLY exact-equality VERIFY passed across all pages: 1,680/1,680 projections correct, missing
+0, stale 0, malformed 0, unsafe 0, errors 0. The mandatory zero-diff DRY RUN also passed with
+CREATE 0, UPDATE 0, errors 0, and `hasMore=false`. Canonical and projection counts both read 1,680.
+Portal smoke passed, Studio remains healthy, and maintenance remains absent/OFF.
+
+Evidence: `docs/workflow/reviews/2026-09-13-coordinated-production-projection-population-apply.md`.
+
+## Authoritative production lifecycle mirror APPLY — 2026-09-13
+
+Owner authorized the existing reviewed runner for production APPLY. Pre-APPLY integrity and dry-run
+checks passed. APPLY wrote exactly 203 documents, limited to `lastLifecycleActivityAt`,
+`lastLifecycleActivityEventId`, and `lastLifecycleActivityPrecedence`; skipped, missing-evidence,
+malformed/unsafe, anomalous, and error counts were all 0. No lifecycle events were created and no
+other production fields or collections were changed.
+
+Immediate post-APPLY dry run passed with `proposedWrites=0`, `missingMirrors=0`,
+`missingEvidence=0`, `anomalies=0`, and `actualWrites=0`. Independent verification confirms
+206/206 reader-eligible requests mirrored and the indexed User Info query retrieves historical
+records. The Studio QA blocker is ready for owner recheck; Studio remains unpublished and Portal
+rollout/projection population remain stopped.
+
+Evidence: `docs/workflow/reviews/2026-09-13-coordinated-production-lifecycle-mirror-backfill-apply.md`.
+
+## Historical pre-APPLY production Studio QA blocker — lifecycle mirror dry run — 2026-09-13
+
+Owner production Studio QA is **FAIL / BLOCKED**: historical Print Request History cards are absent
+until a request is touched by a current lifecycle action. The existing reviewed runner
+`functions/scripts/backfill-print-request-lifecycle-ordering-dev.ts` was reused in production dry
+run mode only (`FIREBASE_PROJECT_ID=fresh-prints-prod`, `ALLOW_NON_DEV=1`, no `APPLY`). It scanned
+219 requests (206 reader-eligible); 16 eligible requests have forward mirrors, 190 eligible
+historical requests lack mirrors and propose updates. Total proposed mirror writes are 203,
+skipped/malformed/unsafe/missing-evidence counts are 0, and actual writes are 0.
+
+The runner proposes only `lastLifecycleActivityAt`, `lastLifecycleActivityEventId`, and
+`lastLifecycleActivityPrecedence`; it does not create lifecycle events or alter statuses,
+allocations, items, shows, customers, queue state, or artwork. Both lifecycle triggers are ACTIVE,
+and the indexed reader depends on the mirror fields. Compatibility fallback remains necessary until
+an owner-authorized APPLY reaches 100% eligible coverage and a zero-write post-APPLY dry run.
+
+Evidence: `docs/workflow/reviews/2026-09-13-coordinated-production-lifecycle-mirror-backfill-dry-run.md`.
+
+## Authoritative Functions/Rules/Studio rollout checkpoint — 2026-09-13
+
+Owner confirmed `OPENAI_API_KEY` metadata readiness. The reviewed explicit Functions deployment
+completed: 167/167 Gen2 Functions are ACTIVE (164 targets plus 3 retained), both projection
+triggers are ACTIVE, and all 10 excluded Functions are absent. Transition Firestore Rules deployed
+from the reviewed `8a50d5…db9945` artifact. PR #93 merged the exact frozen candidate into
+`production` at `f615c38dbe15c37c494ce057544463843ead866e`.
+
+Canonical stable Studio workflow `34762807770` passed Windows, macOS, and finalization from
+production and created draft `v1.0.10-f615c38`. The draft is intentionally unpublished. Manual
+production Studio install/launch/sign-in QA is the active owner checkpoint; no Portal rollout,
+maintenance activation, projection DRY RUN/VERIFY, or APPLY has occurred.
+
+Evidence: `docs/workflow/reviews/2026-09-13-coordinated-production-functions-rules-studio-rollout-checkpoint.md`.
+
+## Authoritative `OPENAI_API_KEY` prerequisite verification — 2026-09-13
+
+Owner authorization to resolve the missing production secret was received. Read-only verification
+against frozen candidate `7b8462a0fe60e484a937a7c88fc37e7c938fff6d` confirmed that
+`OPENAI_API_KEY` is absent from `fresh-prints-prod` (`gcloud secrets describe` returned
+`NOT_FOUND`), the frozen Functions source binds exactly `OPENAI_API_KEY` for the OpenAI provider,
+and no alternate reviewed production secret name exists. No source/config byte change is needed.
+
+The owner-interactive command is `firebase functions:secrets:set OPENAI_API_KEY --project
+fresh-prints-prod`; the agent did not run it and has not seen or handled the value. Await owner
+metadata confirmation before retrying only the reviewed 164-target Function deployment. Until then,
+production Functions remain 113/113 ACTIVE and projection triggers remain absent. No Rules,
+Studio, Portal, maintenance, runner, merge, staging, commit, push, or other production action is
+authorized or performed.
+
+Evidence: `docs/workflow/reviews/2026-09-13-coordinated-production-openai-secret-prerequisite.md`.
+
+## Authoritative production rollout stop — 2026-09-13
+
+Production GO was authorized for the frozen SHA. Step 1 additive indexes completed without
+`--force`; 94 composite indexes are READY and `portalPrintRequestItems` is READY. Step 2 was an
+explicit 164-target Function allowlist (54 ADD + 110 UPDATE), but Firebase preflight stopped before
+deployment because `OPENAI_API_KEY` is absent in `fresh-prints-prod` (404 NOT_FOUND). Production
+Function inventory remains 113/113 ACTIVE and projection triggers are absent, confirming no Function
+mutation. Do not continue to Rules, merge, Studio, Portal, runner, or later steps. Await separate
+owner authorization for the secret prerequisite; Auth/secrets/settings remain unchanged.
+
+## Authoritative focused final GO/NO-GO — 2026-09-13
+
+The frozen candidate passed freeze integrity, immutable-manifest audits, and minimum read-only
+production continuity checks: 113/113 Functions ACTIVE, 77/77 indexes READY, Portal build-003/
+build-002 present, Studio v1.0.9/v1.0.8 available, Rules identities unchanged, and maintenance
+absent/OFF. Classification is **B — GO WITH NOTES**. Notes are the intentionally deferred
+production Studio environment QA until canonical stable `1.0.10` and the accepted authenticated
+Staff Artwork preview/thumbnail known-ID residual risk; neither is a newly discovered blocker.
+
+No production action occurred. The first production mutation after a separate owner GO is the
+reviewed additive index deployment. Await **`OWNER AUTHORIZE PRODUCTION GO`**.
+
+## Authoritative replacement candidate M1 freeze — 2026-09-13
+
+M1 is frozen under explicit owner authorization. `development` and `origin/development` both point
+to `7b8462a0fe60e484a937a7c88fc37e7c938fff6d` (ahead/behind `0/0`); `origin/production` remains
+`36165096f09bef6817adb5b11d496dbb1502b34b`. Core, Portal, and Studio Git-object manifests audit
+with zero mismatches (10/10, 747, and 1,145 inputs respectively). Functions remain 186/120 exports
+and 530 closure paths; Rules/index/rollback evidence remains as documented in the immutable M1
+freeze artifact. No runtime/config delta occurred after the candidate SHA; subsequent edits are
+documentation-only workflow records.
+
+No production reads/writes, runner DRY RUN/VERIFY/APPLY/backfill, Rules/Functions deployment,
+Portal/Studio publication, maintenance activation, production merge, GO execution, or data/settings
+mutation is authorized by this state. Prepare only the focused final GO/NO-GO review.
 
 ## Authoritative FINAL PARENT M0 — 2026-09-13
 
@@ -215,6 +470,17 @@ candidate commit occurred.
 Exact next checkpoint: **`OWNER DECIDE EXISTING STUDIO TYPECHECK BASELINE / CORRECTIVE SIGNOFF PATH`**.
 
 **Decision Log:**
+
+- 2026-09-13 — Owner directed one final bounded amendment before implementation authorization for
+  `production-algolia-reconcile-studio-access-corrective`: investigate and correct the Studio Print
+  Requests duplicate vertical scroll. Frozen-source tracing proved the outer
+  `.page-content-area--print-requests` scroll plus the intentional `.print-requests-rail-list`
+  scroller; `.print-requests-main` currently has no vertical overflow rule. The proposed DEV-first
+  route-scoped CSS ownership correction, contract-test update, mandatory Owner DEV QA, and same
+  stable-release integration are recorded in the amended Plan/Formal Review. No implementation,
+  production read/write, Algolia operation, build, publication, staging, commit, or push occurred.
+  Exact next checkpoint: **OWNER ACCEPT PRODUCTION ALGOLIA ACCESS + SMART FILTER + PRINT REQUEST
+  SCROLL FORMAL REVIEW / AUTHORIZE IMPLEMENT**.
 
 - 2026-09-12 — Owner authorized **`FREEZE MAIN CANDIDATE SHA ff533c835508e65bb3cfd9d2739f72bafe1fc895`**;
   this M1 is now superseded for production release purposes by the corrective-child invalidation.

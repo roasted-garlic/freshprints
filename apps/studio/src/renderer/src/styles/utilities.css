@@ -152,3 +152,75 @@
 .success-text {
   color: var(--color-success-text);
 }
+
+/*
+ * FINAL Print Requests scroll containment (utilities.css loads last).
+ *
+ * Conflict that caused Working/Editing-only page scroll:
+ * - Base `.page-content-area { overflow-y: auto }` always provides a page scroller.
+ * - Base `.print-requests-layout { height: auto }` (legacy) let tall editable detail grow the page.
+ * - Queued/Printing/Printed detail is compact/locked, so that page scroller stayed idle.
+ * - Working/Editing detail is tall/editable, so the same page scroller appeared as a 3rd bar.
+ *
+ * This block must win the cascade: hide the page scroller; size layout from the viewport;
+ * keep list + detail scroll only.
+ */
+.app-main > .page-content-area.page-content-area--print-requests {
+  overflow: hidden !important;
+  overflow-x: hidden !important;
+  overflow-y: hidden !important;
+}
+
+.app-main
+  > .page-content-area.page-content-area--print-requests
+  > .page-layout.page-layout-shell.print-requests-page {
+  display: flex !important;
+  flex: 1 1 auto !important;
+  flex-direction: column !important;
+  height: 0 !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.app-main > .page-content-area.page-content-area--print-requests .print-requests-layout {
+  align-items: stretch !important;
+  display: grid !important;
+  flex: 1 1 auto !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+  height: 0 !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.app-main > .page-content-area.page-content-area--print-requests .print-requests-rail {
+  align-self: stretch !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  position: relative !important;
+  top: auto !important;
+}
+
+.app-main > .page-content-area.page-content-area--print-requests .print-requests-main {
+  align-self: stretch !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+}
+
+/* Keep the final cascade kill-switch aligned with Print Requests' narrow stacked layout. */
+@media (max-width: 1024px) {
+  .app-main > .page-content-area.page-content-area--print-requests .print-requests-layout {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto minmax(0, 1fr) !important;
+  }
+
+  .app-main > .page-content-area.page-content-area--print-requests .print-requests-rail {
+    max-height: min(38vh, calc(100vh - 10rem)) !important;
+  }
+}

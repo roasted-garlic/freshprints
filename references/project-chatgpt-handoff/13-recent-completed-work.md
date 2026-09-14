@@ -1,5 +1,54 @@
 # Recent Completed Work
 
+## 2026-09-13 - Production rollout STOPPED at Function preflight
+
+Owner-authorized production GO began the frozen rollout. Additive Firestore indexes deployed from
+the candidate hash and reached READY: 94 composite indexes, including `portalPrintRequestItems`,
+with no removals/replacements or `--force`. The explicit 164-target Function deployment then
+stopped in Firebase preflight before mutation because `OPENAI_API_KEY` is absent in
+`fresh-prints-prod` (404 NOT_FOUND). Production Functions remain 113/113 ACTIVE and projection
+triggers remain absent. No Rules, Functions, production Git merge, Studio, Portal, runner, or later
+action occurred. Next checkpoint: **OWNER AUTHORIZE RESOLUTION OF MISSING PRODUCTION
+OPENAI_API_KEY / FUNCTION PREFLIGHT RETRY**.
+
+## 2026-09-13 - Replacement candidate M1 freeze — COMPLETE
+
+Owner authorized and the workflow recorded M1 freeze for candidate
+`7b8462a0fe60e484a937a7c88fc37e7c938fff6d` on `development`. `origin/development` matches at
+ahead/behind `0/0`; production baseline remains `36165096f09bef6817adb5b11d496dbb1502b34b`.
+Core 10/10, Portal 747, and Studio 1,145 Git-object manifests re-audit with zero mismatches.
+Studio evidence is authoritative as TypeScript PASS/zero diagnostics, baseline-aware lint PASS,
+49/49 corrective tests, 198/198 targeted validation, Windows/macOS packaging PASS, and artifact
+verification PASS for `1.0.10`; prior typecheck-baseline failure wording is superseded historical
+evidence.
+
+No production reads/writes, deployment, publication, runner DRY RUN/VERIFY/APPLY/backfill,
+maintenance, merge, GO execution, or settings/data mutation occurred. Next checkpoint: **FOCUSED
+FINAL PRODUCTION GO/NO-GO REVIEW**.
+
+## 2026-09-13 - Focused final production GO/NO-GO — B / GO WITH NOTES
+
+The frozen candidate passed exact-SHA integrity, zero-diff runtime/config checks, immutable
+Git-object audits, and minimum read-only production continuity checks: 113/113 Functions ACTIVE,
+77/77 indexes READY, Portal build-003/build-002 present, Studio v1.0.9/v1.0.8 available, Rules
+identities unchanged, and maintenance absent/OFF. Classification is **B — GO WITH NOTES**. Notes
+are the intentional stable-release Studio environment QA deferral and the accepted authenticated
+Staff Artwork preview/thumbnail known-ID residual risk; historical typecheck failures are not
+current blockers. No production action occurred. Next checkpoint: **OWNER AUTHORIZE PRODUCTION GO**.
+
+## Historical 2026-09-13 - Replacement candidate assembled/pushed — superseded by M1 freeze
+
+Owner authorization for replacement-candidate commit/push was executed on `development`. The two
+reviewed RC commits were cherry-picked without squashing, and the explicit evidence set was
+committed as `chore(release): assemble coordinated production replacement candidate` at
+`7b8462a0fe60e484a937a7c88fc37e7c938fff6d`. `origin/development` matches (`0/0` ahead/behind);
+`origin/production` remains `36165096f09bef6817adb5b11d496dbb1502b34b`. Core 10/10, Portal 747,
+and Studio 1,145 Git-object manifest audits are zero-mismatch; Studio is `1.0.10`.
+
+The candidate was assembled and pushed before the later authorized freeze. No production reads/writes, deployments,
+publication, runner DRY RUN/VERIFY/APPLY/backfill, maintenance, merge, GO, or data/settings
+mutation occurred. The later M1 freeze and focused GO/NO-GO records supersede this checkpoint.
+
 ## 2026-09-13 - Rules rollback snapshot + final parent M0 — COMPLETE (Classification A)
 
 Owner-authorized read-only Rules API access succeeded for `fresh-prints-prod`. Firestore release

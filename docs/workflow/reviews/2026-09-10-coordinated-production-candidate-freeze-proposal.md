@@ -271,3 +271,33 @@ candidate commit/push and regenerated immutable manifests, so the candidate SHA,
 freeze approval are intentionally absent. The current worktree is 59 status entries (43 tracked,
 16 untracked). Only after the new SHA and manifests are verified may this proposal be presented for
 the separate freeze decision.
+
+## Authoritative replacement candidate assembly — 2026-09-13
+
+Owner authorization was received for replacement-candidate commit/push. The reviewed RC commits
+were integrated onto `development` by cherry-picking `b8d8d80cc1cab5bdb2aed1889730205e0a8046f3`
+and `5bf477fcf676f37265018262268ee5e8734e8eff`, preserving audit history. The evidence/state
+paths were then explicitly staged in the candidate assembly commit:
+
+| Field | Result |
+|---|---|
+| Replacement candidate SHA | `7b8462a0fe60e484a937a7c88fc37e7c938fff6d` |
+| Commit message | `chore(release): assemble coordinated production replacement candidate` |
+| Branch / remote | `development`; `origin/development` is the same SHA; ahead/behind `0/0` |
+| Production baseline | `origin/production` `36165096f09bef6817adb5b11d496dbb1502b34b` |
+| Core Git-object manifest | 10/10 members; audit `mismatches: []` |
+| Portal Git-object inputs | 747 files; digest `ca7f240987d8ddf118b51f069a180b6f13f06ea9ed70c44563f329c152e643b5`; audit 0 mismatches |
+| Studio Git-object inputs | 1,145 files; digest `77b05f84745d1a38eeb830e656e015fc2a20c8f40b03ad77ba14a295514efb5f`; audit 0 mismatches; version `1.0.10` |
+| Functions closure | 186 current / 120 production exports; 530 closure paths; prior path/action topology remains byte-equivalent in scope; digest `22e56a4810c0714999f6793a350bb67c22215b0ec556179524948552812f9fbc` |
+| Candidate Rules/config | final `firestore.rules` `dc4fc83dcf36382aa7d2273dc4e35bd6e41b3da02b33e85a3bd21c710204d2ee`; transition `8a50d5bb85fa41fca82652582730940fb1a936cb0aae059a0b05e59099db9945`; `storage.rules` `c537183f41d95ade7b6cdf80ea2cbb9241804d7a40c87b4185d3496070d9077a`; `firebase.transition.json` `c07e7c2772b6fcf94b14f42af211883f248952d28bddd6e40c9efe6c8aef0c03` |
+| Index disposition | 95 current / 77 production; 18 additive; zero removals/replacements; no `--force` |
+
+The prior focused validation remains valid (87/87, Functions build, Portal typecheck, targeted lint,
+and `git diff --check` PASS; documented environment/baseline limitations are not newly introduced).
+Production rollback identities/hashes remain the read-only snapshot in
+`2026-09-13-coordinated-production-rules-rollback-snapshot.md`. The owner has now authorized and
+the workflow has recorded the M1 freeze for this exact SHA. No production reads or writes,
+deployment, publication, runner, DRY RUN/VERIFY/APPLY, maintenance activation, settings/data
+mutation, or production merge occurred. The next owner checkpoint is:
+
+> **FOCUSED FINAL PRODUCTION GO/NO-GO REVIEW**

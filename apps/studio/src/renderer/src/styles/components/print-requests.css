@@ -24,9 +24,12 @@
   flex: 1 1 auto;
   gap: var(--space-5);
   grid-template-columns: minmax(300px, 1fr) minmax(0, 1.8fr);
-  /* Auto height so detail content is not clipped inside a 100%-tall overflow-hidden shell. */
-  height: auto;
   min-height: 0;
+}
+
+/* Show Queue still grows with content and uses the outer page scroller. */
+.page-content-area--show-queue .print-requests-layout {
+  height: auto;
 }
 
 .print-requests-rail,
@@ -51,8 +54,46 @@
 }
 
 .print-requests-main {
-  /* Outer page/shell scroll owns vertical navigation — do not nest a second detail scrollbar. */
   min-height: 0;
+}
+
+/*
+ * All status tabs share this layout. Queued/Printing/Printed usually fit the viewport so the
+ * page-level scroller stays idle. Working/Editing render taller editable cards, which used to
+ * grow this grid (height:auto) and open that 3rd page scrollbar.
+ *
+ * height:0 + flex:1 makes the grid fill the shell from the viewport; detail scrolls inside
+ * .print-requests-main — same visual result as Queued/Printing/Printed, for tall content too.
+ */
+.page-content-area--print-requests .print-requests-layout {
+  align-items: stretch;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(300px, 1fr) minmax(0, 1.8fr);
+  grid-template-rows: minmax(0, 1fr);
+  height: 0;
+  max-height: none;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.page-content-area--print-requests .print-requests-rail {
+  align-self: stretch;
+  height: auto;
+  max-height: 100%;
+  min-height: 0;
+  /* Override shared sticky/100vh rail (that model assumed the page itself scrolled). */
+  position: relative;
+  top: auto;
+}
+
+.page-content-area--print-requests .print-requests-main {
+  align-self: stretch;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .print-requests-rail-header {
@@ -1700,10 +1741,23 @@
     grid-template-rows: auto minmax(0, 1fr);
   }
 
+  /* Match the generic stacked rows at equal specificity so Working/Editing cannot expand an
+     implicit auto second row the way Queued/Printing/Printed avoid by staying short. */
+  .page-content-area--print-requests .print-requests-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
   .print-requests-rail {
     max-height: min(38vh, calc(100vh - 10rem));
     position: sticky;
     top: 0;
+  }
+
+  .page-content-area--print-requests .print-requests-rail {
+    max-height: min(38vh, calc(100vh - 10rem));
+    position: relative;
+    top: auto;
   }
 
   .print-requests-item-editor-grid {

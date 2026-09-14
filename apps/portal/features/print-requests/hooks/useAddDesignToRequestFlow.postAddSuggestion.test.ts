@@ -1,17 +1,15 @@
 /**
- * Post-add "Matching designs" suppression fix — companions already in the working Current
- * Request must be excluded from a new suggestion (suppressing the modal entirely when none
- * remain), and adding a companion directly from the open suggestion modal must never toast or
- * open a second/nested suggestion.
+ * Post-add "Matching designs" behavior — companions already in the working Current Request are
+ * excluded from a new suggestion, while an added companion stays mounted long enough to show
+ * server-confirmed success and the real quantity controls.
  *
  * useAddDesignToRequestFlow is a stateful React hook (useState/useEffect/context) and this repo
  * has no DOM-rendering test convention (docs/standards/TESTING.md). The exclusion/inclusion
  * decision itself is covered behaviorally in companionSuggestionWorkingItemsFilter.test.ts against
  * the exact pure function the hook imports and calls. This file proves the hook actually wires
- * that pure function into both the gate before opening a NEW suggestion and the trim-in-place
- * after a non-announcing add, and that the non-announcing add path is exposed and wired from both
- * catalog pages — by reading the shipped source, per the same convention already established by
- * CatalogCompanionSuggestionModal.test.ts.
+ * that pure function into the gate before opening a NEW suggestion, and that the non-announcing
+ * add path is exposed and wired from both catalog pages — by reading the shipped source, per the
+ * same convention already established by CatalogCompanionSuggestionModal.test.ts.
  */
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -71,50 +69,42 @@ describe('addDesignFromCompanionSuggestion — non-announcing add path', () => {
 
   it('routes through the same add path (adjustQuantity) with announce explicitly disabled', () => {
     const body = extractFunctionBody(hookSource, 'addDesignFromCompanionSuggestion');
-    assert.match(body, /adjustQuantity\(design, 1, \{ announce: false \}\)/);
+    assert.match(body, /beginCompanionAdd\(design\.id\)/);
+    assert.match(body, /adjustQuantity\(design, 1, \{[\s\S]*announce: false,[\s\S]*onFailure:[\s\S]*onSuccess:/);
   });
 
-  it('adjustQuantity never calls announceDesignAdded (and therefore never suggestMatchingCompanions) when announce is false', () => {
+  it('adjustQuantity keeps companion success callbacks behind the server flush', () => {
     const body = extractFunctionBody(hookSource, 'adjustQuantity');
-    // The create-branch add must explicitly branch announce vs. the non-announcing refresh path.
+    // Companion adds do not announce or open another suggestion from the optimistic patch.
     assert.match(
       body,
-      /if\s*\(announce\)\s*\{\s*announceDesignAdded\(design\);\s*\}\s*else\s*\{\s*refreshCompanionSuggestionAfterAdd\(\);\s*\}/,
+      /if\s*\(announce\)\s*\{\s*announceDesignAdded\(design\);\s*\}/,
     );
-    // The existing-request branch must thread `announce` into queuePrimaryQuantity's announceAdd,
-    // not hardcode true, and must never pass an onAdded refresh callback when announcing.
+    assert.doesNotMatch(body, /refreshCompanionSuggestionAfterAdd/);
+    // Existing-request adds thread callbacks into the queued service flush.
     assert.match(body, /announceAdd:\s*announce,/);
-    assert.match(body, /onAdded:\s*announce \? undefined : refreshCompanionSuggestionAfterAdd,/);
+    assert.match(body, /callbacks:\s*options,/);
   });
 
-  it('queuePrimaryQuantity only announces (and never fires onAdded) when announceAdd is explicitly true', () => {
+  it('queuePrimaryQuantity schedules callbacks and the flush invokes success only after service success', () => {
     const body = extractFunctionBody(hookSource, 'queuePrimaryQuantity');
+    assert.match(body, /callbacks\?:\s*AddActionCallbacks/);
     assert.match(
       body,
-      /if\s*\(wasAbsent && nextQuantity >= 1\)\s*\{\s*if\s*\(input\.announceAdd\)\s*\{/,
-      'announce must be conditional on input.announceAdd inside the shared wasAbsent gate',
+      /scheduleQuantityFlush\([\s\S]*nextQuantity >= 1[\s\S]*input\.callbacks[\s\S]*quantityCallbacksRef\.current/,
     );
-    assert.match(body, /input\.onAdded\?\.\(\);/);
+    const flushBody = extractFunctionBody(hookSource, 'flushDesiredQuantity');
+    assert.match(flushBody, /callbacks\?\.onSuccess\?\.\(\);/);
+    assert.match(flushBody, /callbacks\?\.onFailure\?\.\(\);/);
   });
 });
 
-describe('refreshCompanionSuggestionAfterAdd — trims the open suggestion, never opens a new one', () => {
-  it('re-filters the CURRENT suggestion companions against the latest working items', () => {
-    const body = extractFunctionBody(hookSource, 'refreshCompanionSuggestionAfterAdd');
-    assert.match(body, /excludeDesignsInWorkingItems\(\s*current\.companions,\s*workingItemsSnapshotRef\.current,?\s*\)/);
-    assert.doesNotMatch(
-      body,
-      /listReadyCompanionDesignsByIds/,
-      'must not re-fetch or replace the suggestion with a fresh lookup',
-    );
-  });
-
-  it('dismisses (returns null) once no companions remain, otherwise keeps the modal open with the remainder', () => {
-    const body = extractFunctionBody(hookSource, 'refreshCompanionSuggestionAfterAdd');
-    assert.match(
-      body,
-      /return remaining\.length > 0 \? \{ \.\.\.current, companions: remaining \} : null;/,
-    );
+describe('companion status and shared quantity behavior', () => {
+  it('exposes pending/added action state and clears it after the success transition', () => {
+    assert.match(hookSource, /companionActionStateById/);
+    assert.match(hookSource, /setCompanionActionStateById\(\(current\) => \(\{ \.\.\.current, \[designId\]: 'pending' \}\)\)/);
+    assert.match(hookSource, /setCompanionActionStateById\(\(current\) => \(\{ \.\.\.current, \[designId\]: 'added' \}\)\)/);
+    assert.match(hookSource, /setTimeout\(\(\) => clearCompanionActionState\(designId\), 900\)/);
   });
 });
 

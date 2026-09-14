@@ -383,10 +383,17 @@ export function CatalogHomePageContent() {
       {addDesignFlow.companionSuggestion ? (
         <CatalogCompanionSuggestionModal
           addingDesignId={addDesignFlow.addingDesignId}
+          companionActionStateById={addDesignFlow.companionActionStateById}
+          companionQuantities={{
+            ...currentRequestAggregates.quantityByDesignId,
+            ...currentRequestAggregates.primaryQuantityByDesignId,
+          }}
           canAdd={isAuthenticated && addDesignFlow.canAddPrints}
           onAdd={addDesignFlow.addDesignFromCompanionSuggestion}
           onDismiss={addDesignFlow.dismissCompanionSuggestion}
           onOpenDetails={openDesignDetails}
+          onQuantityChange={isAuthenticated ? addDesignFlow.setQuantity : undefined}
+          onRemove={isAuthenticated ? addDesignFlow.removeDesign : undefined}
           suggestion={addDesignFlow.companionSuggestion}
         />
       ) : null}
@@ -424,6 +431,11 @@ export function CatalogHomePageContent() {
 
       <CatalogDesignDetailsModal
         addingDesignId={addDesignFlow.addingDesignId}
+        companionActionStateById={addDesignFlow.companionActionStateById}
+        companionQuantities={{
+          ...currentRequestAggregates.quantityByDesignId,
+          ...currentRequestAggregates.primaryQuantityByDesignId,
+        }}
         canAddPrints={addDesignFlow.canAddPrints}
         currentRequestQuantity={
           selectedDesign === null
@@ -447,6 +459,9 @@ export function CatalogHomePageContent() {
         navigationDesigns={navigationDesigns}
         onOpenDesign={openDesignDetails}
         onAddToRequest={isAuthenticated ? addDesignFlow.addDesign : undefined}
+        onAddCompanionToRequest={
+          isAuthenticated ? addDesignFlow.addDesignFromCompanionSuggestion : undefined
+        }
         onClose={closeDesignDetails}
         onQuantityChange={isAuthenticated ? addDesignFlow.setQuantity : undefined}
         onRemoveFromRequest={isAuthenticated ? addDesignFlow.removeDesign : undefined}

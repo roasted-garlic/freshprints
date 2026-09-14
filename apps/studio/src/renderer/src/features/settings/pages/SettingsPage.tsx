@@ -33,6 +33,7 @@ import { StandardPrintSizesSettingsSection } from "../components/StandardPrintSi
 import { StudioUpdatesSettingsSection } from "../components/StudioUpdatesSettingsSection";
 import { CatalogProcessingModeSettingsSection } from "../components/CatalogProcessingModeSettingsSection";
 import { CatalogReprocessingSettingsSection } from "../components/CatalogReprocessingSettingsSection";
+import { PortalCatalogAlgoliaReconcileSettingsSection } from "../components/PortalCatalogAlgoliaReconcileSettingsSection";
 import { AutomationHealthSettingsSection } from "../components/AutomationHealthSettingsSection";
 import { GangSheetSettingsSection } from "../components/GangSheetSettingsSection";
 import {
@@ -80,7 +81,11 @@ type SettingsPageTabId =
   | "studioUpdates";
 
 type AiEnrichmentSubTabId =
-  "general" | "inspector" | "explicitContent" | "catalogReprocessing";
+  | "general"
+  | "inspector"
+  | "explicitContent"
+  | "catalogReprocessing"
+  | "algoliaReconcile";
 
 type AiPlaygroundResultTabId =
   "overview" | "profiles" | "response" | "semanticReview";
@@ -102,6 +107,7 @@ const AI_ENRICHMENT_SUB_TABS: ReadonlyArray<{
   { id: "general", label: "General" },
   { id: "explicitContent", label: "Explicit Content" },
   { id: "catalogReprocessing", label: "Catalog Reprocessing" },
+  { id: "algoliaReconcile", label: "Algolia Reconcile" },
   { id: "inspector", label: "Inspector" },
 ];
 
@@ -846,6 +852,17 @@ function ManageableSettingsPage() {
                 catalogAutonomousLiveEnabled={catalogAutonomousLiveEnabled}
                 catalogWorkflowMode={catalogWorkflowMode}
               />
+            </div>
+          ) : null}
+
+          {aiEnrichmentSubTab === "algoliaReconcile" ? (
+            <div
+              aria-labelledby="ai-enrichment-subtab-algoliaReconcile"
+              className="settings-page-subtab-panel"
+              id="ai-enrichment-subtab-panel-algoliaReconcile"
+              role="tabpanel"
+            >
+              <PortalCatalogAlgoliaReconcileSettingsSection />
             </div>
           ) : null}
         </div>
