@@ -2,24 +2,24 @@
 
 | Field | Value |
 |---|---|
-| Status | **PASS — Owner QA complete; release continuation authorized** |
-| DONE | **no — release closeout in progress** |
-| Signoff Status | Owner QA **PASS**; FreshForge signoff approved_with_notes |
+| Status | **PASS — Studio 1.0.12 stable release published and verified** |
+| DONE | **yes — release closeout complete** |
+| Signoff Status | Owner QA **PASS**; FreshForge signoff approved_with_notes; release publication verified |
 | Current Mode | managed-phase |
 | Parent program | `smart-catalog-intelligence-completion-and-legacy-tag-retirement` |
 | Current Goal | `studio-ai-review-reprocess-bulk-and-autonomous-modal-corrective` |
-| Current Phase | Signoff complete; commit/push → PR/merge → stable release closeout |
+| Current Phase | Release closeout complete |
 | Plan Status | **complete** — `docs/workflow/plans/2026-09-14-studio-ai-review-bulk-reprocess-autonomous-modal-corrective-plan.md` |
 | Review Status | **approved_with_changes** — `docs/workflow/reviews/2026-09-14-studio-ai-review-bulk-reprocess-autonomous-modal-corrective-formal-review.md` |
 | Implementation Status | **complete — renderer-only; no backend or release change** (+ owner QA polish: single-select bulk label) |
-| Test Status | Clean DEV restart/white-screen preflight **PASS**; focused suites **67/67 PASS** (current rerun: 34 assertions); release-contract/publish tests **50/50 PASS**; Studio TypeScript **PASS**; targeted ESLint **PASS**; Vite renderer/electron/preload builds **PASS**; electron-builder timed out during existing Windows packaging/EPERM environment step; diff check **PASS**. |
+| Test Status | Clean DEV restart/white-screen preflight **PASS**; current corrective suite **34/34 PASS**; release-contract/publish tests **50/50 PASS**; Studio TypeScript **PASS**; targeted ESLint **PASS**; Vite renderer/electron/preload builds **PASS**; CI workflow run `34856480204` **PASS**; eight stable assets verified; electron-builder local Windows packaging remains environment-limited by EPERM; diff check **PASS**. |
 | Human Checkpoint Required | **no — explicit owner release authorization received** |
 | Human Checkpoint Reason | Owner supplied `OWNER QA: STUDIO 1.0.12 CORRECTIVE — PASS` and `OWNER AUTHORIZE END-TO-END STUDIO 1.0.12 RELEASE`. |
 | Blocked | **no** |
 | Allowed Actions | Explicitly authorized commit/push, PR/merge, Studio 1.0.12 workflow, artifact verification, stable publication, and release closeout. |
 | Forbidden Actions | Backend/Portal deploy, Rules/index/schema/migration/secret changes, Algolia rebuild, catalog backfill, Pass 2 change, or mutation of Studio 1.0.11. |
-| Last Completed Step | Owner QA PASS, clean DEV restart after stale-HMR white-screen incident, FreshForge signoff, release-policy checks, focused suites, TypeScript, ESLint, Vite, and diff hygiene passed. |
-| Next Required Step | Allowlisted corrective commit, push, PR/merge, frozen-source release workflow, publication, and post-release verification. |
+| Last Completed Step | Owner QA PASS, clean DEV restart after stale-HMR white-screen incident, allowlisted commit `fe402e89f01f3f18b760c35f7ff6a55f483f6672`, PR #96 merge `840d596b058b3f7bef2dae886154aa667f9e2a57`, successful stable workflow `34856480204`, and published/verified release `v1.0.12`. |
+| Next Required Step | None — owner-authorized Studio 1.0.12 release is closed. |
 | Decision Log | 2026-09-13 — Owner directed: Needs Review multi-select primary button label is always `Reprocess` (no selected-count suffix); selection count stays in the existing counter. Owner confirmed after Studio restart. 2026-09-14 — Owner directed: bulk reprocess summary uses auto-dismiss `DismissibleSuccessAlert` toast (not a sticky banner); failure/warning detail lists remain only when present. 2026-09-14 — Owner directed: during bulk reprocess, workspace cycles each design preview with `Reprocessing N of M` under the image; action-bar button shows `Sending`. |
 
 ## Active Owner QA checkpoint — Studio 1.0.12 corrective

@@ -2,6 +2,31 @@
 
 **Last updated:** 2026-09-14
 
+## Studio 1.0.12 release — PASS / closeout complete — 2026-09-14
+
+The owner-authorized end-to-end Studio release completed after a clean DEV restart. The stale
+Vite HMR white screen was confirmed as a tooling/runtime incident; the fresh Vite/Electron chain
+loaded with no uncaught renderer errors and no source workaround was needed. Corrective commit
+`fe402e89f01f3f18b760c35f7ff6a55f483f6672` was pushed in PR #96 and merged to production at the
+frozen source SHA `840d596b058b3f7bef2dae886154aa667f9e2a57`.
+
+The established stable workflow run `34856480204` passed Windows and macOS builds, source/version
+guards, lint, Functions build, Portal typecheck, updater tests, renderer/main/preload builds, and
+artifact verification. Draft release `388479761` was verified with exactly eight required assets,
+then published as stable release `v1.0.12` (not draft, not prerelease), targeting the frozen SHA.
+`latest.yml` and `latest-mac.yml` report version 1.0.12 and the expected platform artifacts.
+Studio `1.0.11` remains unchanged with its original tag, target SHA, and eight assets.
+
+Current corrective tests were 34/34 PASS; release-contract/publish tests were 50/50 PASS; Studio
+TypeScript, targeted ESLint, Vite builds, and diff hygiene passed. The local electron-builder
+Windows packaging limitation remains an existing EPERM environment issue; the authoritative CI
+workflow passed. Production Autonomous remains ON, Pass 2 remains OFF, and read-only postflight
+continues to show no Portal, backend, Functions, Algolia, Rules, index, schema, migration, secret,
+or production data/settings mutation from this Studio release. The only later development commit
+is this documentation closeout; production remains frozen at `840d596b...`.
+
+Exact result: **`STUDIO 1.0.12 RELEASE — PASS`**.
+
 ## Studio 1.0.12 corrective — Owner QA PASS / release continuation — 2026-09-14
 
 The current bounded Studio corrective is implemented locally and is ready for manual DEV QA. The
