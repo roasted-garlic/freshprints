@@ -2,24 +2,50 @@
 
 | Field | Value |
 |---|---|
-| Status | **OPEN — Portal Smart Filter rollout succeeded at the reviewed SHA; authenticated production UI smoke remains owner-gated** |
-| DONE | **no — parent remains active; Studio corrective and Rules evidence child are terminal** |
+| Status | **CLOSED — coordinated rollout signoff complete; final public reopen verified** |
+| DONE | **yes — coordinated production promotion/release readiness signoff recorded** |
 | Signoff Status | cutover child **approved_with_notes / CLOSED**; Studio typecheck corrective **approved_with_notes / CLOSED**; Rules snapshot **CLOSED** |
 | Current Mode | managed-phase |
 | Parent program | Coordinated production promotion and release readiness |
 | Current Goal | `coordinated-production-promotion-release-readiness` |
-| Current Phase | Owner-authenticated production smoke for Smart Filters and companion controls; maintenance ON |
+| Current Phase | Final public reopen verified; coordinated rollout signoff |
 | Plan Status | **amended — Formal Review complete** — `docs/workflow/plans/2026-09-13-production-algolia-reconcile-studio-access-corrective-plan.md` |
 | Review Status | **approved_with_changes** — `docs/workflow/reviews/2026-09-13-production-algolia-reconcile-studio-access-smart-filter-formal-review.md` |
 | Implementation Status | **complete for approved corrective** — final source includes the accepted Algolia access, Smart Filter configuration, Print Requests scroll containment, and Portal companion corrections |
 | Test Status | Final targeted verification PASS: focused scope 61/61, independent scope review 160/160, follow-up Print Requests suites 34/34, Portal/Studio typechecks PASS, Functions build PASS, targeted ESLint PASS, renderer/Vite build PASS, workflow/env tests 36/36, and diff check PASS |
-| Human Checkpoint Required | **yes** |
-| Human Checkpoint Reason | Owner authorized the Portal rollout. Revision is healthy at 100% traffic, but this environment has no connected browser session for authenticated UI smoke; owner QA is required before final reopen. |
-| Blocked | **yes — authenticated interactive production smoke cannot be completed without a connected browser; owner QA required** |
-| Allowed Actions | Owner-authenticated Portal/companion smoke on the live revision; after smoke PASS, proceed to `OWNER AUTHORIZE MAINTENANCE MODE OFF / FINAL PUBLIC REOPEN` |
-| Forbidden Actions | Maintenance OFF before smoke/reopen authorization, Autonomy/Pass 2 enablement, Algolia rerun, Studio rebuild/republish, Functions/Rules/Storage deploy, secret value exposure, or unrelated production mutation |
-| Last Completed Step | **OWNER AUTHORIZE PORTAL SMART FILTER PRODUCTION ROLLOUT**; exact-SHA rollout `build-2026-09-14-001` succeeded at 100% traffic |
-| Next Required Step | **`OWNER QA: PROD PORTAL SMART FILTER + COMPANION SMOKE — PASS`**; then `OWNER AUTHORIZE MAINTENANCE MODE OFF / FINAL PUBLIC REOPEN` |
+| Human Checkpoint Required | **no — owner QA and final reopen authorization received** |
+| Human Checkpoint Reason | Owner confirmed Portal Smart Filter/companion smoke PASS, Studio 1.0.11 PASS, and authorized Maintenance Mode OFF / final public reopen. |
+| Blocked | **no** |
+| Allowed Actions | No further action in this completed rollout goal; start a new Plan → Review cycle for any later change. |
+| Forbidden Actions | Any unplanned production mutation, Algolia rerun, Studio rebuild/republish, Portal revision change, Functions/Rules/Storage deploy, Autonomy/Pass 2 enablement, or secret value exposure |
+| Last Completed Step | **OWNER AUTHORIZE MAINTENANCE MODE OFF / FINAL PUBLIC REOPEN**; public maintenance read verified `enabled=false` and tester bypass false |
+| Next Required Step | **None — coordinated rollout signoff complete** |
+
+## Final coordinated rollout signoff — 2026-09-14
+
+Owner records:
+
+- **`OWNER QA: PROD PORTAL SMART FILTER + COMPANION SMOKE — PASS`**
+- **`OWNER QA: PROD STUDIO 1.0.11 — PASS`**
+- **`OWNER AUTHORIZE MAINTENANCE MODE OFF / FINAL PUBLIC REOPEN`**
+
+The established production control resulted in Maintenance Mode **OFF**. The public
+`getPortalMaintenanceState` read for `fresh-prints-prod` returned `enabled=false` and
+`maintenanceTestAccessGranted=false`; no tester bypass is required. The owner-authenticated
+control was used outside this shell; this agent did not write Firestore directly or expose any
+credential.
+
+Final production verification: the unchanged Portal revision
+`fresh-prints-portal-build-2026-09-14-001` remains Ready/Active at 100% traffic, and `/`,
+`/catalog`, and `/requests` each return HTTP 200 with no maintenance markers in the served HTML.
+Owner QA PASS covers Smart Filter visibility/functionality, all eight facets, combined search and
+category browsing, reset, companion Add/Adding/Added and quantity/remove behavior, and narrow-layout
+sanity. Studio `1.0.11` remains published from source
+`f1001332574b8891b2a59c14985e5c00cdbceb09` with its validated eight assets and no release change.
+
+Catalog Processing Mode remains `shadow`; Autonomous and Pass 2 remain OFF. Algolia was not rerun,
+and no Portal revision, Functions, Rules, Storage, or unrelated production resource was changed.
+The coordinated rollout signoff is complete; no further action is authorized in this goal.
 
 ## Authoritative Owner DEV QA PASS — 2026-09-13
 

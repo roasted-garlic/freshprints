@@ -2,6 +2,24 @@
 
 **Updated:** 2026-09-14
 
+## Coordinated rollout signoff — 2026-09-14
+
+Owner QA and authorization recorded:
+
+- **`OWNER QA: PROD PORTAL SMART FILTER + COMPANION SMOKE — PASS`**
+- **`OWNER QA: PROD STUDIO 1.0.11 — PASS`**
+- **`OWNER AUTHORIZE MAINTENANCE MODE OFF / FINAL PUBLIC REOPEN`**
+
+Final public reopen is verified. `fresh-prints-prod` reports Maintenance Mode `enabled=false`
+with `maintenanceTestAccessGranted=false`; the Portal revision remains
+`fresh-prints-portal-build-2026-09-14-001` at 100% traffic, and public root/catalog/requests checks
+returned HTTP 200 without maintenance markers. Owner QA covers the complete Smart Filter and
+companion smoke. Studio `1.0.11` remains published and unchanged at the reviewed source SHA
+`f1001332574b8891b2a59c14985e5c00cdbceb09`.
+
+Catalog Processing Mode remains `shadow`; Autonomous and Pass 2 remain OFF. Algolia was not rerun.
+Coordinated rollout signoff is complete and there is no next planned goal in this rollout.
+
 ## Portal Smart Filter rollout result — 2026-09-14
 
 Owner confirmed the exact production Smart Filter secret is ready with value `true` and backend

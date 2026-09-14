@@ -8,7 +8,7 @@
 | Reviewed source | `f1001332574b8891b2a59c14985e5c00cdbceb09` |
 | Firebase project | `fresh-prints-prod` |
 | App Hosting backend | `fresh-prints-portal` (`./apps/portal`) |
-| Status | **ROLLOUT SUCCEEDED — authenticated production UI smoke pending** |
+| Status | **FINAL PUBLIC REOPEN VERIFIED — coordinated rollout signoff complete** |
 
 ## Read-only prechecks
 
@@ -78,3 +78,35 @@ unchanged. Maintenance remains ON; Autonomous and Pass 2 remain OFF.
 
 Exact next checkpoint: **`OWNER QA: PROD PORTAL SMART FILTER + COMPANION SMOKE — PASS`**, then
 **`OWNER AUTHORIZE MAINTENANCE MODE OFF / FINAL PUBLIC REOPEN`**.
+
+## Final public reopen and coordinated rollout signoff — 2026-09-14
+
+Owner records:
+
+- **`OWNER QA: PROD PORTAL SMART FILTER + COMPANION SMOKE — PASS`**
+- **`OWNER QA: PROD STUDIO 1.0.11 — PASS`**
+- **`OWNER AUTHORIZE MAINTENANCE MODE OFF / FINAL PUBLIC REOPEN`**
+
+Maintenance Mode is now **OFF**. The public `getPortalMaintenanceState` read for
+`fresh-prints-prod` returned `enabled=false` and `maintenanceTestAccessGranted=false`. The
+established owner/admin control is the only approved write path; this shell did not issue a direct
+Firestore write, read any credential, or expose any secret.
+
+Final production checks:
+
+| Check | Result |
+|---|---|
+| Public root, `/catalog`, `/requests` | HTTP 200; no maintenance markers in served HTML |
+| Portal revision | `fresh-prints-portal-build-2026-09-14-001`, Ready/Active, 100% traffic |
+| Smart Filters and companion controls | **Owner QA PASS** — visibility/functionality, eight facets, combined search/category/filter/reset, Add/Adding/Added, quantity increment/decrement/remove, Not now → Done, narrow layout |
+| Studio | `1.0.11` published and unchanged; source `f1001332574b8891b2a59c14985e5c00cdbceb09`; eight assets intact |
+| Catalog Processing Mode | `shadow` |
+| Autonomous / Pass 2 | OFF / OFF |
+| Algolia | Not rerun |
+| Maintenance | OFF; no tester bypass required |
+
+No Portal revision change, Studio rebuild/republish, Functions/Rules/Storage deployment, unrelated
+settings/secret change, or production data mutation occurred in this final reopen step. The
+coordinated rollout signoff is complete and this goal is closed.
+
+**Next checkpoint:** None — start a new Plan → Review cycle for any later change.

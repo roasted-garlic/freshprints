@@ -2,6 +2,32 @@
 
 **Last updated:** 2026-09-14
 
+## Final coordinated rollout signoff — 2026-09-14
+
+Owner records:
+
+- **`OWNER QA: PROD PORTAL SMART FILTER + COMPANION SMOKE — PASS`**
+- **`OWNER QA: PROD STUDIO 1.0.11 — PASS`**
+- **`OWNER AUTHORIZE MAINTENANCE MODE OFF / FINAL PUBLIC REOPEN`**
+
+Maintenance Mode is **OFF** in `fresh-prints-prod`. The public
+`getPortalMaintenanceState` read returned `enabled=false` and
+`maintenanceTestAccessGranted=false`, confirming normal public access without a tester bypass.
+No direct Firestore write or credential exposure occurred in this shell.
+
+The unchanged Portal revision `fresh-prints-portal-build-2026-09-14-001` remains Ready/Active at
+100% traffic. The hosted root, `/catalog`, and `/requests` each returned HTTP 200 with no
+maintenance markers in served HTML. Owner QA PASS covers Smart Filter visibility/functionality,
+all eight facets, combined search/category browsing and reset, companion Add/Adding/Added and
+quantity/remove behavior, and narrow-layout sanity. Studio `1.0.11` remains published and
+unchanged from source SHA `f1001332574b8891b2a59c14985e5c00cdbceb09` with its validated eight assets.
+
+Catalog Processing Mode remains `shadow`; Autonomous and Pass 2 remain OFF. Algolia was not rerun,
+and no Portal revision, Functions, Rules, Storage, or unrelated production resource was changed.
+**Coordinated rollout signoff is complete; this goal is closed.**
+
+**Next checkpoint:** None — start a new Plan → Review cycle for any later change.
+
 ## Portal Smart Filter rollout result — 2026-09-14
 
 Owner confirmed the production `NEXT_PUBLIC_USE_SMART_FILTERS` secret is present with value `true`
