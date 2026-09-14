@@ -2,24 +2,24 @@
 
 | Field | Value |
 |---|---|
-| Status | **OPEN — owner-reported production Algolia reconcile/apply PASS; Smart Filter production build/release authorized; ON build pending** |
+| Status | **OPEN — owner-reported Algolia PASS; Smart Filters-ON Studio 1.0.11 draft rebuilt successfully; awaiting dual-platform owner smoke/publish gate** |
 | DONE | **no — parent remains active; Studio corrective and Rules evidence child are terminal** |
 | Signoff Status | cutover child **approved_with_notes / CLOSED**; Studio typecheck corrective **approved_with_notes / CLOSED**; Rules snapshot **CLOSED** |
 | Current Mode | managed-phase |
 | Parent program | Coordinated production promotion and release readiness |
 | Current Goal | `coordinated-production-promotion-release-readiness` |
-| Current Phase | Rebuild the reviewed stable Studio `1.0.11` release with Smart Filters ON from the frozen production source; keep Portal flag/rollout separately gated; maintenance ON |
+| Current Phase | Owner smoke of the Smart Filters-ON Studio `1.0.11` draft, then documented `APPROVE STUDIO PUBLISH: 1.0.11`; keep Portal flag/rollout separately gated; maintenance ON |
 | Plan Status | **amended — Formal Review complete** — `docs/workflow/plans/2026-09-13-production-algolia-reconcile-studio-access-corrective-plan.md` |
 | Review Status | **approved_with_changes** — `docs/workflow/reviews/2026-09-13-production-algolia-reconcile-studio-access-smart-filter-formal-review.md` |
 | Implementation Status | **complete for approved corrective** — final source includes the accepted Algolia access, Smart Filter configuration, Print Requests scroll containment, and Portal companion corrections |
 | Test Status | Final targeted verification PASS: focused scope 61/61, independent scope review 160/160, follow-up Print Requests suites 34/34, Portal/Studio typechecks PASS, Functions build PASS, targeted ESLint PASS, renderer/Vite build PASS, workflow/env tests 36/36, and diff check PASS |
 | Human Checkpoint Required | **yes** |
 | Human Checkpoint Reason | Owner reports the reviewed production Algolia reconcile/apply PASS and authorized `OWNER AUTHORIZE SMART FILTER PRODUCTION BUILDS / RELEASES`; stable ON publication still requires the documented `APPROVE STUDIO PUBLISH: 1.0.11` gate after dual-platform smoke. |
-| Blocked | **no — final verification, source promotion, freeze, and unpublished draft preparation are authorized** |
-| Allowed Actions | Run the established stable Studio workflow from `production` with `smart_filters=on`, finalize/replace the same-SHA `1.0.11` draft, and perform documented release verification; no Portal flag/secret rollout |
+| Blocked | **no — Smart Filters-ON draft build and verification completed; waiting for owner smoke/publish checkpoint** |
+| Allowed Actions | Owner download/smoke of the Smart Filters-ON draft; after explicit `APPROVE STUDIO PUBLISH: 1.0.11`, use only the reviewed publish helper; no Portal flag/secret rollout |
 | Forbidden Actions | Portal Smart Filter secret creation/enablement/deploy, raw GitHub release PATCH, Studio publication before the explicit publish gate and dual-platform smoke, maintenance OFF, autonomy/Pass 2 enablement, tag deletion, unrelated production settings/data changes, Functions/Rules deploy, or any out-of-scope production mutation |
 | Last Completed Step | **OWNER AUTHORIZE SMART FILTER PRODUCTION BUILDS / RELEASES**; owner also reported production Algolia reconcile/apply PASS |
-| Next Required Step | Run the reviewed stable Studio `1.0.11` workflow with `smart_filters=on` against frozen SHA `f1001332574b8891b2a59c14985e5c00cdbceb09`; verify the resulting draft and stop for `APPROVE STUDIO PUBLISH: 1.0.11` plus dual-platform smoke |
+| Next Required Step | Owner dual-platform smoke of draft `388096160`, then explicit `APPROVE STUDIO PUBLISH: 1.0.11`; publish helper only after that gate, followed by separate Portal flag/App Hosting authorization |
 
 ## Authoritative Owner DEV QA PASS — 2026-09-13
 
@@ -108,6 +108,27 @@ after Windows/Mac arm64/Mac x64 smoke, use only the owner-gated helper following
 Portal Smart Filter secret creation, flag enablement, App Hosting deployment, and Portal
 publication remain separately unauthorized. Maintenance remains ON; Catalog Processing Mode is
 `shadow`; Autonomous and Pass 2 remain OFF.
+
+## Smart Filters-ON production Studio draft — 2026-09-14
+
+The owner-authorized established stable workflow completed successfully:
+`34796621223` (`https://github.com/roasted-garlic/freshprints/actions/runs/34796621223`). It built
+Windows plus Mac arm64/x64 from the exact production SHA
+`f1001332574b8891b2a59c14985e5c00cdbceb09`, with `release_type=stable`,
+`distribution_mode=internal-unsigned`, and `smart_filters=on`. Workflow logs show
+`STUDIO_SMART_FILTERS: on`; the reviewed writer maps that input to
+`VITE_USE_SMART_FILTERS=true` without exposing secrets.
+
+Finalize replaced the same-SHA GitHub Release draft id `388096160`, Studio version `1.0.11`,
+tag `v1.0.11-f100133`, with all eight required Windows/Mac assets. The release remains
+`draft=true`; the workflow explicitly does not publish. The draft body still carries the required
+warning. No Portal Smart Filter secret, Portal flag, App Hosting rollout, or production runtime
+change occurred.
+
+The next required human gate is dual-platform owner smoke followed by the exact documented
+**`APPROVE STUDIO PUBLISH: 1.0.11`** checkpoint. Use only
+`.github/scripts/publish-studio-stable-github-release.mjs` after that approval; do not raw-PATCH the
+release. Portal Smart Filter enablement remains a separate owner authorization.
 
 ## Authoritative final verification follow-up — 2026-09-13
 

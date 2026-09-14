@@ -22,6 +22,25 @@ Portal Smart Filter secret/flag/App Hosting rollout remains a separate owner che
 authorized here. Maintenance remains ON; Catalog Processing Mode is `shadow`; Autonomous and Pass
 2 remain OFF.
 
+## Smart Filters-ON production Studio draft — 2026-09-14
+
+Owner-authorized stable workflow run `34796621223`
+(`https://github.com/roasted-garlic/freshprints/actions/runs/34796621223`) completed successfully
+for Windows and Mac arm64/x64. It used the exact frozen production SHA
+`f1001332574b8891b2a59c14985e5c00cdbceb09`, `release_type=stable`,
+`distribution_mode=internal-unsigned`, and `smart_filters=on`. Logs show
+`STUDIO_SMART_FILTERS: on`; the reviewed writer emits `VITE_USE_SMART_FILTERS=true`.
+
+The same-SHA draft release id `388096160` (Studio `1.0.11`, tag `v1.0.11-f100133`) was replaced
+with all eight required assets and remains unpublished (`draft=true`). No Portal Smart Filter
+secret/flag/App Hosting rollout or production runtime change occurred. The workflow’s finalize
+step explicitly leaves the release as a draft.
+
+Owner must smoke the Windows/Mac assets, then provide the exact documented
+**`APPROVE STUDIO PUBLISH: 1.0.11`** checkpoint before the reviewed publish helper may run.
+Portal Smart Filter enablement remains a separate owner checkpoint. Maintenance remains ON;
+Catalog Processing Mode is `shadow`; Autonomous and Pass 2 remain OFF.
+
 ## Authoritative production Algolia reconcile authorization — 2026-09-14
 
 Owner authorization received:
