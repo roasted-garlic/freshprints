@@ -2,6 +2,26 @@
 
 **Updated:** 2026-09-14
 
+## Portal Smart Filter rollout result — 2026-09-14
+
+Owner confirmed the exact production Smart Filter secret is ready with value `true` and backend
+access granted. Metadata-only check found enabled version `1` without exposing the value.
+
+Rollout `build-2026-09-14-001` and build `build-2026-09-14-001` completed `SUCCEEDED`/`READY` from
+source SHA `f1001332574b8891b2a59c14985e5c00cdbceb09`. Cloud Run revision
+`fresh-prints-portal-build-2026-09-14-001` is Ready/Active with 100% traffic (tag `t-3570725422`),
+and the hosted URL returned HTTP 200.
+
+Static served-bundle checks found Smart Filter, facet, and companion markers with no
+`tagIds`/`tagFacetKeys` markers. Interactive authenticated smoke is still pending because no
+browser session is connected here; do not treat static checks as the requested UI PASS. No
+Functions, Rules, Storage, or Algolia action occurred. Studio `1.0.11` remains unchanged.
+
+Maintenance remains ON; Autonomy and Pass 2 remain OFF.
+
+Next exact checkpoint: **`OWNER QA: PROD PORTAL SMART FILTER + COMPANION SMOKE — PASS`**, then
+**`OWNER AUTHORIZE MAINTENANCE MODE OFF / FINAL PUBLIC REOPEN`**.
+
 ## Current owner-authorized gate — Portal Smart Filter production rollout — 2026-09-14
 
 Owner authorization received:

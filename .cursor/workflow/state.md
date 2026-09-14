@@ -2,24 +2,24 @@
 
 | Field | Value |
 |---|---|
-| Status | **OPEN — Portal Smart Filter rollout authorized; exact production secret is absent and awaits owner-interactive creation** |
+| Status | **OPEN — Portal Smart Filter rollout succeeded at the reviewed SHA; authenticated production UI smoke remains owner-gated** |
 | DONE | **no — parent remains active; Studio corrective and Rules evidence child are terminal** |
 | Signoff Status | cutover child **approved_with_notes / CLOSED**; Studio typecheck corrective **approved_with_notes / CLOSED**; Rules snapshot **CLOSED** |
 | Current Mode | managed-phase |
 | Parent program | Coordinated production promotion and release readiness |
 | Current Goal | `coordinated-production-promotion-release-readiness` |
-| Current Phase | Owner must create the exact Portal Smart Filter secret interactively, then grant App Hosting access; deployment/smoke follow afterward; maintenance ON |
+| Current Phase | Owner-authenticated production smoke for Smart Filters and companion controls; maintenance ON |
 | Plan Status | **amended — Formal Review complete** — `docs/workflow/plans/2026-09-13-production-algolia-reconcile-studio-access-corrective-plan.md` |
 | Review Status | **approved_with_changes** — `docs/workflow/reviews/2026-09-13-production-algolia-reconcile-studio-access-smart-filter-formal-review.md` |
 | Implementation Status | **complete for approved corrective** — final source includes the accepted Algolia access, Smart Filter configuration, Print Requests scroll containment, and Portal companion corrections |
 | Test Status | Final targeted verification PASS: focused scope 61/61, independent scope review 160/160, follow-up Print Requests suites 34/34, Portal/Studio typechecks PASS, Functions build PASS, targeted ESLint PASS, renderer/Vite build PASS, workflow/env tests 36/36, and diff check PASS |
 | Human Checkpoint Required | **yes** |
-| Human Checkpoint Reason | Owner authorized `OWNER AUTHORIZE PORTAL SMART FILTER PRODUCTION ROLLOUT`; the required secret value cannot be supplied by this agent and must be entered interactively by the owner. |
-| Blocked | **yes — owner-interactive Secret Manager value entry required before rollout can proceed** |
-| Allowed Actions | Owner runs the reviewed interactive secret command (literal `true` entered only at the prompt), grants backend access, then agent verifies metadata and may run the exact-SHA Portal rollout |
-| Forbidden Actions | Agent handling/printing the secret value, secret value in args/logs/docs, generic or unbound Portal deploy, Functions/Rules/Storage deploy, Studio rebuild/republish, Algolia rerun, maintenance OFF, autonomy/Pass 2 enablement, or unrelated production mutation |
-| Last Completed Step | **OWNER AUTHORIZE PORTAL SMART FILTER PRODUCTION ROLLOUT**; source/mapping guards PASS; secret metadata read-only check reports NOT_FOUND |
-| Next Required Step | Owner executes `firebase apphosting:secrets:set NEXT_PUBLIC_USE_SMART_FILTERS --project fresh-prints-prod` interactively (enter literal `true`), then grants backend access and returns metadata-ready confirmation |
+| Human Checkpoint Reason | Owner authorized the Portal rollout. Revision is healthy at 100% traffic, but this environment has no connected browser session for authenticated UI smoke; owner QA is required before final reopen. |
+| Blocked | **yes — authenticated interactive production smoke cannot be completed without a connected browser; owner QA required** |
+| Allowed Actions | Owner-authenticated Portal/companion smoke on the live revision; after smoke PASS, proceed to `OWNER AUTHORIZE MAINTENANCE MODE OFF / FINAL PUBLIC REOPEN` |
+| Forbidden Actions | Maintenance OFF before smoke/reopen authorization, Autonomy/Pass 2 enablement, Algolia rerun, Studio rebuild/republish, Functions/Rules/Storage deploy, secret value exposure, or unrelated production mutation |
+| Last Completed Step | **OWNER AUTHORIZE PORTAL SMART FILTER PRODUCTION ROLLOUT**; exact-SHA rollout `build-2026-09-14-001` succeeded at 100% traffic |
+| Next Required Step | **`OWNER QA: PROD PORTAL SMART FILTER + COMPANION SMOKE — PASS`**; then `OWNER AUTHORIZE MAINTENANCE MODE OFF / FINAL PUBLIC REOPEN` |
 
 ## Authoritative Owner DEV QA PASS — 2026-09-13
 
@@ -176,6 +176,31 @@ After owner metadata-ready confirmation, verify the secret exists with an enable
 only the exact-SHA Portal rollout:
 `firebase apphosting:rollouts:create fresh-prints-portal --project fresh-prints-prod --git-commit
 f1001332574b8891b2a59c14985e5c00cdbceb09 --force`. No rollout or Portal mutation has occurred yet.
+
+## Portal Smart Filter rollout result — 2026-09-14
+
+Owner confirmed `NEXT_PUBLIC_USE_SMART_FILTERS` exists in `fresh-prints-prod` with value `true` and
+backend access granted. Metadata-only verification found enabled version `1`; the value was never
+read or exposed by this agent.
+
+The exact-SHA rollout completed:
+
+- rollout `build-2026-09-14-001`: `SUCCEEDED`;
+- build `build-2026-09-14-001`: `READY`;
+- source commit/hash: `f1001332574b8891b2a59c14985e5c00cdbceb09`;
+- Cloud Run revision `fresh-prints-portal-build-2026-09-14-001`: `Ready=True`, `Active=True`;
+- traffic: 100% to that revision (`t-3570725422`);
+- hosted URL returned HTTP 200.
+
+Static production checks found Smart Filter/facet/companion markers and no `tagIds`/`tagFacetKeys`
+markers in the served JavaScript. Authenticated interactive smoke could not be run because no
+browser session is connected in this environment; therefore Smart Filter visibility, facet
+population, combined filtering, reset, and companion mutation flows remain owner-QA pending. No
+Functions, Rules, Storage, or Algolia deployment/action occurred. Studio `1.0.11` is unchanged.
+Maintenance remains ON; Autonomous and Pass 2 remain OFF.
+
+Exact next checkpoint: **`OWNER QA: PROD PORTAL SMART FILTER + COMPANION SMOKE — PASS`**, then
+**`OWNER AUTHORIZE MAINTENANCE MODE OFF / FINAL PUBLIC REOPEN`**.
 
 ## Authoritative final verification follow-up — 2026-09-13
 

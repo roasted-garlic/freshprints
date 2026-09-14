@@ -8,7 +8,7 @@
 | Reviewed source | `f1001332574b8891b2a59c14985e5c00cdbceb09` |
 | Firebase project | `fresh-prints-prod` |
 | App Hosting backend | `fresh-prints-portal` (`./apps/portal`) |
-| Status | **BLOCKED — required owner-interactive Secret Manager creation pending** |
+| Status | **ROLLOUT SUCCEEDED — authenticated production UI smoke pending** |
 
 ## Read-only prechecks
 
@@ -51,3 +51,30 @@ firebase apphosting:rollouts:create fresh-prints-portal --project fresh-prints-p
 Verify the rollout is READY/SUCCEEDED, receives 100% traffic, and returns HTTP 200 before the
 reviewed production smoke. Do not deploy Functions, Rules, Storage, or unrelated resources. Do not
 rerun Algolia, rebuild/republish Studio, turn Maintenance OFF, enable Autonomy, or enable Pass 2.
+
+## Rollout result — 2026-09-14
+
+Owner confirmed the secret was created with value `true` and access granted. Metadata-only
+verification found enabled version `1`; the value was not read or exposed by this agent.
+
+The exact-SHA rollout completed successfully:
+
+| Check | Result |
+|---|---|
+| Rollout | `build-2026-09-14-001` — **SUCCEEDED** |
+| Build | `build-2026-09-14-001` — **READY** |
+| Source commit/hash | `f1001332574b8891b2a59c14985e5c00cdbceb09` |
+| Cloud Run revision | `fresh-prints-portal-build-2026-09-14-001` — Ready/Active |
+| Traffic | 100% (`t-3570725422`) |
+| Hosted URL | HTTP 200 |
+| Secret binding | `NEXT_PUBLIC_USE_SMART_FILTERS` mounted as a secret-backed env entry |
+
+Served-bundle static checks found Smart Filter, facet, and companion-control markers and no
+`tagIds`/`tagFacetKeys` markers. Authenticated interactive smoke could not be completed because no
+browser session is connected in this environment; visibility, facet population, combined
+search/category/filter behavior, reset, and companion Add/quantity flows therefore remain
+owner-QA pending. No Functions, Rules, Storage, or Algolia action occurred. Studio `1.0.11` is
+unchanged. Maintenance remains ON; Autonomous and Pass 2 remain OFF.
+
+Exact next checkpoint: **`OWNER QA: PROD PORTAL SMART FILTER + COMPANION SMOKE — PASS`**, then
+**`OWNER AUTHORIZE MAINTENANCE MODE OFF / FINAL PUBLIC REOPEN`**.

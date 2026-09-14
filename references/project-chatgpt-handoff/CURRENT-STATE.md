@@ -2,6 +2,30 @@
 
 **Last updated:** 2026-09-14
 
+## Portal Smart Filter rollout result — 2026-09-14
+
+Owner confirmed the production `NEXT_PUBLIC_USE_SMART_FILTERS` secret is present with value `true`
+and access granted to `fresh-prints-portal`. Metadata-only verification found enabled version `1`;
+the value was never read or exposed by this agent.
+
+Exact-SHA App Hosting rollout completed successfully:
+
+- rollout/build: `build-2026-09-14-001` (`SUCCEEDED` / `READY`);
+- source commit/hash: `f1001332574b8891b2a59c14985e5c00cdbceb09`;
+- revision: `fresh-prints-portal-build-2026-09-14-001` (`Ready=True`, `Active=True`);
+- traffic: 100% to revision tag `t-3570725422`;
+- hosted URL: HTTP 200.
+
+Served JavaScript contains Smart Filter, facet, and companion-control markers and no
+`tagIds`/`tagFacetKeys` markers. Authenticated interactive production smoke could not be completed
+because no browser session is connected in this environment, so visibility, facet population,
+combined search/filter/reset, and companion mutation flows remain owner-QA pending. No Functions,
+Rules, Storage, or Algolia action occurred; Studio `1.0.11` is unchanged. Maintenance remains ON;
+Autonomous and Pass 2 remain OFF.
+
+Next checkpoint: **`OWNER QA: PROD PORTAL SMART FILTER + COMPANION SMOKE — PASS`**, then
+**`OWNER AUTHORIZE MAINTENANCE MODE OFF / FINAL PUBLIC REOPEN`**.
+
 ## Portal Smart Filter rollout authorization — 2026-09-14
 
 Owner authorization received:
