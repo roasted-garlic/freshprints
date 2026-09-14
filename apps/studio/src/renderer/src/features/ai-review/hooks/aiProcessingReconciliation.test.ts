@@ -51,8 +51,28 @@ describe("AI Processing reconciliation — reprocess stays on source tab with lo
     assert.ok(depsMatch, "expected to find the useCallback dependency array");
     assert.match(depsMatch![1]!, /applyDesignPatch/);
     assert.match(depsMatch![1]!, /filters\.tab/);
-    assert.match(depsMatch![1]!, /selectedIndex/);
+    assert.match(depsMatch![1]!, /selectedDesign/);
+    assert.doesNotMatch(depsMatch![1]!, /selectedIndex/);
     assert.doesNotMatch(depsMatch![1]!, /reloadDesigns/);
+  });
+
+  it("bulk reprocess has a synchronous whole-run guard and uses serial orchestration", () => {
+    const source = read(
+      "apps/studio/src/renderer/src/features/ai-review/hooks/useAiReviewInbox.ts",
+    );
+    assert.match(source, /const bulkReprocessRunningRef = useRef\(false\)/);
+    assert.match(source, /bulkReprocessRunningRef\.current\) \{/);
+    assert.match(source, /runAiReviewBulkReprocess\(/);
+    assert.match(source, /bulkReprocessRunningRef\.current = false/);
+    const bulkBlock = source.slice(
+      source.indexOf("const reprocessSelectedNeedsReview = useCallback("),
+      source.indexOf("const confirmPendingRerun = useCallback("),
+    );
+    assert.ok(
+      bulkBlock.indexOf("reconcileSuccessfulReprocess({") <
+        bulkBlock.indexOf("aiEnrichmentEnqueueService.enqueueForProcessing"),
+      "bulk reset success must reconcile locally before optional Auto start settles",
+    );
   });
 });
 

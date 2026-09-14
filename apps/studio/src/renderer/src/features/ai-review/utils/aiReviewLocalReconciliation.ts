@@ -197,12 +197,14 @@ export function reconcileSuccessfulReprocess(input: {
   deps: SuccessfulReprocessReconcileDeps;
   designId: string;
   resetResult: { aiReviewStatus: "pending"; status: "imported" };
-  selectedIndex: number;
+  selectedIndex: number | null;
   sourceTab: AiReviewInboxTab;
 }): void {
   input.deps.invalidateReadCaches(input.designId);
   input.deps.clearLiveDesign();
-  input.deps.setPendingAdvanceIndex(input.selectedIndex);
+  if (input.selectedIndex !== null) {
+    input.deps.setPendingAdvanceIndex(input.selectedIndex);
+  }
   input.deps.applyDesignPatch(
     input.designId,
     buildDesignPatchFromResetForProcessingResult(input.resetResult),

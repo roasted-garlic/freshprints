@@ -516,6 +516,13 @@
   width: min(100%, 28rem);
 }
 
+.ai-review-bulk-reprocess-progress {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  margin: var(--space-3) 0 0;
+  text-align: center;
+}
+
 .artwork-bg-preview-control {
   position: relative;
 }

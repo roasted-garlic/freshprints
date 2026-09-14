@@ -22,6 +22,30 @@ export function resolveTrackedReprocessTerminal(design: Design): {
   return { kind: "still_in_flight", reviewTab: null };
 }
 
+export function getDesignUpdatedAtMillis(design: Design): number | null {
+  const millis = design.updatedAt?.toMillis?.();
+  return typeof millis === "number" && Number.isFinite(millis) ? millis : null;
+}
+
+export function resolveTrackedReprocessTerminalWithBaseline(
+  design: Design,
+  minimumUpdatedAtMillis: number | null,
+): {
+  kind: "returned_to_review" | "failed" | "still_in_flight";
+  reviewTab: "needs_review" | "rejected" | null;
+} {
+  const currentUpdatedAtMillis = getDesignUpdatedAtMillis(design);
+  if (
+    minimumUpdatedAtMillis === null ||
+    currentUpdatedAtMillis === null ||
+    currentUpdatedAtMillis <= minimumUpdatedAtMillis
+  ) {
+    return { kind: "still_in_flight", reviewTab: null };
+  }
+
+  return resolveTrackedReprocessTerminal(design);
+}
+
 export function computeTrackedReprocessReturnCountDeltas(input: {
   activeTab: AiReviewInboxTab;
   reviewTab: "needs_review" | "rejected";

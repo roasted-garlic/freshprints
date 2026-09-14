@@ -70,9 +70,11 @@ import {
 import { readAiProcessingAutoProcessPreference } from "../utils/aiProcessingAutoProcessPreference";
 import {
   computeTrackedReprocessReturnCountDeltas,
-  resolveTrackedReprocessTerminal,
+  getDesignUpdatedAtMillis,
+  resolveTrackedReprocessTerminalWithBaseline,
   shouldUpsertTrackedReprocessReturn,
 } from "../utils/trackedReprocessReturn";
+import { runAiReviewBulkReprocess, type AiReviewBulkReprocessResult } from "../utils/aiReviewBulkReprocess";
 
 export interface UseAiReviewInboxOptions {
   defaultVisionModelId: string;
@@ -161,14 +163,28 @@ export function useAiReviewInbox(
   const alreadyReconciledLiveDesignIdRef = useRef<string | null>(null);
   /** Session-tracked design IDs sent back to Processing from Needs Review / Rejected. */
   const [trackedReprocessIds, setTrackedReprocessIds] = useState<string[]>([]);
+  const trackedReprocessBaselinesRef = useRef(new Map<string, number | null>());
+  const pendingReprocessIdsRef = useRef(new Set<string>());
+  const bulkReprocessRunningRef = useRef(false);
+  const bulkReprocessWarningsRef = useRef<Array<{ designId: string; message: string }>>([]);
+  const [bulkReprocessState, setBulkReprocessState] = useState<{
+    status: "idle" | "running" | "complete";
+    completed: number;
+    current: number;
+    total: number;
+    activeDesign: Design | null;
+    result: AiReviewBulkReprocessResult | null;
+  }>({ status: "idle", completed: 0, current: 0, total: 0, activeDesign: null, result: null });
 
-  const trackReprocessReturn = useCallback((designId: string) => {
+  const trackReprocessReturn = useCallback((designId: string, baselineUpdatedAtMillis: number | null) => {
+    trackedReprocessBaselinesRef.current.set(designId, baselineUpdatedAtMillis);
     setTrackedReprocessIds((current) =>
       current.includes(designId) ? current : [...current, designId],
     );
   }, []);
 
   const untrackReprocessReturn = useCallback((designId: string) => {
+    trackedReprocessBaselinesRef.current.delete(designId);
     setTrackedReprocessIds((current) => current.filter((id) => id !== designId));
   }, []);
 
@@ -578,12 +594,18 @@ export function useAiReviewInbox(
       designDocumentSubscriptionService.subscribeToDesign(
         designId,
         (design) => {
+          if (!trackedReprocessBaselinesRef.current.has(designId)) {
+            return;
+          }
           if (!design) {
             untrackReprocessReturn(designId);
             return;
           }
 
-          const terminal = resolveTrackedReprocessTerminal(design);
+          const terminal = resolveTrackedReprocessTerminalWithBaseline(
+            design,
+            trackedReprocessBaselinesRef.current.get(designId) ?? null,
+          );
           if (terminal.kind === "still_in_flight") {
             return;
           }
@@ -595,6 +617,9 @@ export function useAiReviewInbox(
 
           const reviewTab = terminal.reviewTab!;
           const activeTab = filters.tab;
+          // Mark this run consumed before any list/count side effects. Old callbacks from a
+          // replaced subscription therefore cannot re-upsert or decrement counts twice.
+          untrackReprocessReturn(designId);
           if (
             shouldUpsertTrackedReprocessReturn({
               activeTab,
@@ -612,7 +637,6 @@ export function useAiReviewInbox(
             // Staff left the source review tab — authoritative count refresh, no list upsert.
             optionsRef.current?.onQueueChanged?.();
           }
-          untrackReprocessReturn(designId);
         },
         (subscriptionError) => {
           if (import.meta.env.DEV) {
@@ -914,7 +938,7 @@ export function useAiReviewInbox(
   }, [applySelection, designs, filters.tab, isLoading, selectedDesignId]);
 
   useEffect(() => {
-    if (pendingAdvanceIndexRef.current !== null || isLoading) {
+    if (pendingAdvanceIndexRef.current !== null || isLoading || bulkReprocessRunningRef.current) {
       return;
     }
 
@@ -1000,6 +1024,11 @@ export function useAiReviewInbox(
     }
 
     const designId = selectedDesign.id;
+    if (pendingReprocessIdsRef.current.has(designId)) {
+      return;
+    }
+    pendingReprocessIdsRef.current.add(designId);
+    const baselineUpdatedAtMillis = getDesignUpdatedAtMillis(selectedDesign);
 
     setIsActionLoading(true);
     setIsSendingBackToProcessing(true);
@@ -1022,7 +1051,7 @@ export function useAiReviewInbox(
       // Clear any prior terminal-leave ledger entry so this design may legitimately reappear as
       // pending when the staff member later opens Processing.
       clearTerminalAiProcessingLedgerEntry(designId);
-      trackReprocessReturn(designId);
+      trackReprocessReturn(designId, baselineUpdatedAtMillis);
       setDraftForm(null);
       setBaselineForm(null);
       // Stay on the current Needs Review / Rejected tab: patch-primary local reconcile (no list
@@ -1031,7 +1060,10 @@ export function useAiReviewInbox(
         designId,
         resetResult,
         sourceTab: filters.tab,
-        selectedIndex,
+        selectedIndex: (() => {
+          const index = designsRef.current.findIndex((design) => design.id === designId);
+          return index >= 0 ? index : null;
+        })(),
         deps: {
           clearLiveDesign: () => {
             setLiveDesign(null);
@@ -1055,6 +1087,7 @@ export function useAiReviewInbox(
           : "Unable to send this design back to Processing.",
       );
     } finally {
+      pendingReprocessIdsRef.current.delete(designId);
       setIsSendingBackToProcessing(false);
       setIsActionLoading(false);
     }
@@ -1065,7 +1098,6 @@ export function useAiReviewInbox(
     clearTerminalAiProcessingLedgerEntry,
     filters.tab,
     selectedDesign,
-    selectedIndex,
     trackReprocessReturn,
     user,
   ]);
@@ -1082,6 +1114,178 @@ export function useAiReviewInbox(
 
     void executeRerunToProcessing();
   }, [canRerunAiSuggestions, canRerunSelected, executeRerunToProcessing, isDraftDirty]);
+
+  const reprocessSelectedNeedsReview = useCallback(
+    async (designIds: readonly string[]) => {
+      if (!user || filters.tab !== "needs_review" || bulkReprocessRunningRef.current) {
+        return null;
+      }
+      bulkReprocessRunningRef.current = true;
+      bulkReprocessWarningsRef.current = [];
+
+      const eligibleIds = [...new Set(designIds)].filter((designId) => {
+        const design = designsRef.current.find((entry) => entry.id === designId);
+        return Boolean(design && isDesignRerunnableFromNeedsReview(design));
+      });
+      const designSnapshots = new Map(
+        eligibleIds.flatMap((designId) => {
+          const design = designsRef.current.find((entry) => entry.id === designId);
+          return design ? [[designId, design] as const] : [];
+        }),
+      );
+      setBulkReprocessState({
+        status: "running",
+        completed: 0,
+        current: 0,
+        total: eligibleIds.length,
+        activeDesign: null,
+        result: null,
+      });
+
+      let result: AiReviewBulkReprocessResult;
+      try {
+        result = await runAiReviewBulkReprocess({
+          designIds: eligibleIds,
+          reprocessOne: async (designId) => {
+          if (pendingReprocessIdsRef.current.has(designId)) {
+            return { ok: false as const, message: "Already being reprocessed." };
+          }
+          const design = designsRef.current.find((entry) => entry.id === designId);
+          if (!design || !isDesignRerunnableFromNeedsReview(design)) {
+            return { ok: false as const, message: "Design is no longer eligible." };
+          }
+          pendingReprocessIdsRef.current.add(designId);
+          const baselineUpdatedAtMillis = getDesignUpdatedAtMillis(design);
+          try {
+            const resetResult = await aiReviewInboxService.rerunAiFromInbox(user, designId);
+            clearTerminalAiProcessingLedgerEntry(designId);
+            trackReprocessReturn(designId, baselineUpdatedAtMillis);
+            reconcileSuccessfulReprocess({
+              designId,
+              resetResult,
+              selectedIndex: null,
+              sourceTab: filters.tab,
+              deps: {
+                clearLiveDesign: () => setLiveDesign(null),
+                setPendingAdvanceIndex: (index) => {
+                  pendingAdvanceIndexRef.current = index;
+                },
+                applyDesignPatch,
+                invalidateReadCaches: (id) => designService.invalidateReadCaches(id),
+                onInboxCountsDelta: (deltas) => optionsRef.current?.onInboxCountsDelta?.(deltas),
+              },
+            });
+            if (readAiProcessingAutoProcessPreference()) {
+              void aiEnrichmentEnqueueService.enqueueForProcessing(designId).catch((enqueueError) => {
+                const warning = {
+                  designId,
+                  message:
+                    enqueueError instanceof Error
+                      ? `Auto start failed: ${enqueueError.message}`
+                      : "Auto start failed after sending to Processing.",
+                };
+                bulkReprocessWarningsRef.current.push(warning);
+                setBulkReprocessState((current) =>
+                  current.result
+                    ? {
+                        ...current,
+                        result: {
+                          ...current.result,
+                          warnings: [...current.result.warnings, warning],
+                        },
+                      }
+                    : current,
+                );
+              });
+            }
+            return { ok: true as const };
+          } catch (error) {
+            return {
+              ok: false as const,
+              message: error instanceof Error ? error.message : "Unable to reprocess design.",
+            };
+          } finally {
+            pendingReprocessIdsRef.current.delete(designId);
+          }
+          },
+          onProgress: ({ completed, current, total, designId, phase }) => {
+            if (phase === "start") {
+              const snapshot =
+                designsRef.current.find((entry) => entry.id === designId) ??
+                designSnapshots.get(designId) ??
+                null;
+              if (snapshot) {
+                applySelection(snapshot);
+              }
+              setBulkReprocessState((previous) => ({
+                ...previous,
+                status: "running",
+                completed,
+                current,
+                total,
+                activeDesign: snapshot,
+              }));
+              return;
+            }
+            setBulkReprocessState((previous) => ({
+              ...previous,
+              completed,
+              current,
+              total,
+            }));
+          },
+        });
+      } catch (error) {
+        bulkReprocessRunningRef.current = false;
+        throw error;
+      }
+
+      setBulkReprocessState({
+        status: "complete",
+        completed: result.attemptedIds.length,
+        current: result.attemptedIds.length,
+        total: result.attemptedIds.length,
+        activeDesign: null,
+        result: {
+          ...result,
+          warnings: [...result.warnings, ...bulkReprocessWarningsRef.current],
+        },
+      });
+      return result;
+    },
+    [
+      applyDesignPatch,
+      applySelection,
+      clearTerminalAiProcessingLedgerEntry,
+      filters.tab,
+      trackReprocessReturn,
+      user,
+    ],
+  );
+
+  useEffect(() => {
+    if (bulkReprocessState.status !== "complete" || !bulkReprocessRunningRef.current) {
+      return;
+    }
+    const failedIds = new Set(
+      bulkReprocessState.result?.failures.map((failure) => failure.designId),
+    );
+    const nextDesign =
+      designsRef.current.find((design) => failedIds.has(design.id)) ?? designsRef.current[0] ?? null;
+    applySelection(nextDesign);
+    bulkReprocessRunningRef.current = false;
+  }, [applySelection, bulkReprocessState.result, bulkReprocessState.status]);
+
+  const clearBulkReprocessResult = useCallback(() => {
+    setBulkReprocessState({
+      status: "idle",
+      completed: 0,
+      current: 0,
+      total: 0,
+      activeDesign: null,
+      result: null,
+    });
+  }, []);
 
   const confirmPendingRerun = useCallback(() => {
     setPendingRerun(false);
@@ -1534,6 +1738,9 @@ export function useAiReviewInbox(
     reopenSelected,
     rerunSelected,
     requestRerunAiSuggestions,
+    reprocessSelectedNeedsReview,
+    bulkReprocessState,
+    clearBulkReprocessResult,
     retryProcessingSelected,
     retryStaleProcessingSelected,
     saveArtworkBackground,
