@@ -1,6 +1,6 @@
 # Fresh Prints — Current State Snapshot
 
-**Last updated:** 2026-09-13
+**Last updated:** 2026-09-14
 
 ## Authoritative Owner DEV QA PASS and approved promotion sequence — 2026-09-13
 
@@ -26,6 +26,36 @@ Independent final review then found and corrected one narrow-window cascade issu
 rows and capped rail height at `≤1024px` (`cd989979`). The follow-up Print Requests suites pass
 **34/34**, with Studio typecheck, targeted lint, and diff check passing. No production action was
 performed.
+
+## Authoritative production promotion and unpublished Studio draft — 2026-09-14
+
+Final targeted verification and independent implementation review passed. Approved corrective
+development head: `e337937fc33ee03ac661b2ad98ad09eda64f519f`; first production merge:
+`e54ce0404a948f3cc5540d16548a7d7285b0d879`. A quote-only workflow correction was required because
+GitHub parsed unquoted Smart Filter choice values as booleans; commit
+`170e36f3b10550a9360a606a516a5b979940d33a` merged via PR #95. Final production-reachable/frozen
+SHA: `f1001332574b8891b2a59c14985e5c00cdbceb09`.
+
+Initial stable draft run `34794707446` failed closed with `STUDIO_SMART_FILTERS=false` before
+artifact/release creation. Corrected stable run `34794957200` succeeded with literal
+`smart_filters=off`, `distribution_mode=internal-unsigned`, and Studio `1.0.11`. It produced
+unpublished GitHub Release draft id `388096160`, tag `v1.0.11-f100133`, pinned to the final SHA,
+with all eight required Windows/Mac assets. Smart Filters remain OFF (`STUDIO_SMART_FILTERS: off`;
+the shared env writer emits `VITE_USE_SMART_FILTERS=false`). No publication occurred.
+
+Portal App Hosting Smart Filter mapping source is verified; Portal typecheck passed and no
+production secret changed. Portal production build remains subject only to the existing
+`.next/trace` EPERM environment limitation. Production Algolia Preview/APPLY, Smart Filter
+enablement, Portal deploy, Studio publication, Rules/Functions deploy, maintenance change, and
+production data/settings mutation remain undone. Maintenance is ON; Autonomous and Pass 2 are OFF.
+
+Owner QA: download both platform assets, verify the package targets `fresh-prints-prod`, Smart
+Filters are OFF, check Print Requests Working/Editing has only bounded list/detail scrollbars, and
+spot-check companion quantity/Add/Done behavior. Do not publish or run Algolia.
+
+Exact next checkpoint: **`OWNER QA: UNPUBLISHED PRODUCTION-CONFIGURED STUDIO DRAFT / PROD ALGOLIA
+PREVIEW-APPLY — CHECKPOINT`**; then the separate
+**`OWNER AUTHORIZE PROD ALGOLIA SMART PROFILE SEARCH RECONCILE/APPLY`** gate.
 
 ## Authoritative Owner DEV QA correction cycle — 2026-09-13
 

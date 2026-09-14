@@ -1,6 +1,6 @@
 # Next Planned Goal
 
-**Updated:** 2026-09-13
+**Updated:** 2026-09-14
 
 ## Authoritative next step after Owner DEV QA PASS — 2026-09-13
 
@@ -20,6 +20,28 @@ Filters, turn Maintenance OFF, enable Autonomous/Pass 2, or perform unrelated pr
 Stop at:
 **`OWNER QA: UNPUBLISHED PRODUCTION-CONFIGURED STUDIO DRAFT / PROD ALGOLIA PREVIEW-APPLY —
 CHECKPOINT`**.
+
+## Current stop state — production draft ready — 2026-09-14
+
+The approved corrective is promoted and frozen at production-reachable SHA
+`f1001332574b8891b2a59c14985e5c00cdbceb09` (development corrective head
+`e337937fc33ee03ac661b2ad98ad09eda64f519f`; workflow-input fix
+`170e36f3b10550a9360a606a516a5b979940d33a` merged via PR #95). The established stable Studio
+workflow run `34794957200` succeeded for Studio `1.0.11` with literal Smart Filters OFF and
+created unpublished draft release id `388096160`, tag `v1.0.11-f100133`, with eight required
+Windows/Mac assets. The earlier run `34794707446` failed closed on the now-corrected GitHub
+`off`/boolean serialization mismatch and created no artifact or release.
+
+Portal App Hosting mapping source is verified; Portal typecheck passed; no production secret was
+changed. The known `.next/trace` EPERM remains an environment-only Portal production-build limit.
+Production Algolia Preview/APPLY, Smart Filter enablement, Portal deploy, Studio publication,
+maintenance changes, Autonomous/Pass 2 enablement, and production data/settings mutation remain
+forbidden. Maintenance remains ON; Autonomous and Pass 2 remain OFF.
+
+Immediate checkpoint: **`OWNER QA: UNPUBLISHED PRODUCTION-CONFIGURED STUDIO DRAFT / PROD ALGOLIA
+PREVIEW-APPLY — CHECKPOINT`**. After owner QA approval, the exact production Algolia gate is
+**`OWNER AUTHORIZE PROD ALGOLIA SMART PROFILE SEARCH RECONCILE/APPLY`**. Do not publish or run
+Algolia in this turn.
 
 The final verification follow-up commit is `cd989979`; it preserves the narrow stacked Print
 Requests layout in the last-loaded utility cascade. Follow-up Print Requests tests pass **34/34**.
