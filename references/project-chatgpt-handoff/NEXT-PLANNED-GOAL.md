@@ -22,20 +22,22 @@ Exact next checkpoint after the ON draft is verified: **`APPROVE STUDIO PUBLISH:
 Windows/Mac arm64/Mac x64 smoke), followed by a separate Portal Smart Filter flag/App Hosting
 rollout authorization.
 
-## Smart Filters-ON draft build result — 2026-09-14
+## Published Studio Smart Filters-ON release — 2026-09-14
 
 Workflow `34796621223` completed **PASS** for Windows and Mac arm64/x64 from frozen production SHA
 `f1001332574b8891b2a59c14985e5c00cdbceb09`; inputs were stable, internal-unsigned, and
-`smart_filters=on`. The same-SHA Studio `1.0.11` draft release `388096160` now has all eight
-assets, remains `draft=true`, and is not published. Logs prove `STUDIO_SMART_FILTERS: on`; the
-writer contract emits `VITE_USE_SMART_FILTERS=true`.
+`smart_filters=on`. Owner approval **`APPROVE STUDIO PUBLISH: 1.0.11`** was recorded and the
+reviewed publish helper published release `388096160`. Post-publication verification passed:
+canonical tag `v1.0.11`, `draft=false`, GitHub Latest points to this release, exact source SHA is
+preserved, and all eight expected assets are present with no extras. Logs prove
+`STUDIO_SMART_FILTERS: on`; the writer contract emits `VITE_USE_SMART_FILTERS=true`.
 
 No Portal Smart Filter secret/flag change or App Hosting rollout occurred. Maintenance remains ON,
 Catalog Processing Mode is `shadow`, and Autonomous/Pass 2 remain OFF.
 
-Next exact checkpoint: owner dual-platform smoke followed by **`APPROVE STUDIO PUBLISH: 1.0.11`**;
-then use the reviewed publish helper only. A separate owner authorization is still required for
-Portal Smart Filter flag/secret/App Hosting rollout.
+Next exact checkpoint: **`OWNER AUTHORIZE PORTAL SMART FILTER PRODUCTION ROLLOUT`**. Do not create or
+change the Portal Smart Filter secret, enable the Portal flag, or deploy App Hosting before that
+authorization.
 
 ## Current owner-authorized gate — production Algolia reconcile/apply — 2026-09-14
 

@@ -22,7 +22,7 @@ Portal Smart Filter secret/flag/App Hosting rollout remains a separate owner che
 authorized here. Maintenance remains ON; Catalog Processing Mode is `shadow`; Autonomous and Pass
 2 remain OFF.
 
-## Smart Filters-ON production Studio draft — 2026-09-14
+## Published Studio Smart Filters-ON release — 2026-09-14
 
 Owner-authorized stable workflow run `34796621223`
 (`https://github.com/roasted-garlic/freshprints/actions/runs/34796621223`) completed successfully
@@ -31,15 +31,20 @@ for Windows and Mac arm64/x64. It used the exact frozen production SHA
 `distribution_mode=internal-unsigned`, and `smart_filters=on`. Logs show
 `STUDIO_SMART_FILTERS: on`; the reviewed writer emits `VITE_USE_SMART_FILTERS=true`.
 
-The same-SHA draft release id `388096160` (Studio `1.0.11`, tag `v1.0.11-f100133`) was replaced
-with all eight required assets and remains unpublished (`draft=true`). No Portal Smart Filter
-secret/flag/App Hosting rollout or production runtime change occurred. The workflow’s finalize
-step explicitly leaves the release as a draft.
+Owner approval **`APPROVE STUDIO PUBLISH: 1.0.11`** was then recorded. The reviewed publish helper
+published release id `388096160` as Studio `1.0.11`, canonical tag `v1.0.11`, with all eight assets.
+Post-publication checks passed: `draft=false`, `prerelease=false`, GitHub Latest points to this
+release, the release target and canonical tag commit both equal
+`f1001332574b8891b2a59c14985e5c00cdbceb09`, and the final copy contains no draft warning.
 
-Owner must smoke the Windows/Mac assets, then provide the exact documented
-**`APPROVE STUDIO PUBLISH: 1.0.11`** checkpoint before the reviewed publish helper may run.
+The validated build logs show `STUDIO_SMART_FILTERS: on`; the reviewed writer emits
+`VITE_USE_SMART_FILTERS=true`. No Portal Smart Filter secret/flag/App Hosting rollout or
+production runtime change occurred.
+
 Portal Smart Filter enablement remains a separate owner checkpoint. Maintenance remains ON;
 Catalog Processing Mode is `shadow`; Autonomous and Pass 2 remain OFF.
+
+Exact next checkpoint: **`OWNER AUTHORIZE PORTAL SMART FILTER PRODUCTION ROLLOUT`**.
 
 ## Authoritative production Algolia reconcile authorization — 2026-09-14
 

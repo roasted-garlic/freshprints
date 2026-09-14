@@ -44,7 +44,7 @@ Run the established stable Studio workflow from frozen production SHA
 the separate documented **`APPROVE STUDIO PUBLISH: 1.0.11`** gate follows Windows/Mac arm64/Mac
 x64 smoke. Portal Smart Filter secret/flag/App Hosting rollout remains separately unauthorized.
 
-## Smart Filters-ON build result — 2026-09-14
+## Smart Filters-ON build and publication result — 2026-09-14
 
 Owner authorization **`OWNER AUTHORIZE SMART FILTER PRODUCTION BUILDS / RELEASES`** was exercised
 through established workflow run `34796621223`. Windows and Mac arm64/x64 packaging and finalization
@@ -52,10 +52,16 @@ completed successfully from frozen SHA `f1001332574b8891b2a59c14985e5c00cdbceb09
 `internal-unsigned` inputs and `smart_filters=on`. Logs show `STUDIO_SMART_FILTERS: on`; the shared
 environment writer contract maps this to `VITE_USE_SMART_FILTERS=true`.
 
-The same-SHA Studio `1.0.11` GitHub Release draft id `388096160` (tag `v1.0.11-f100133`) now has
-all eight required assets and remains `draft=true`. The workflow explicitly does not publish. No
-Portal Smart Filter secret/flag/App Hosting rollout or production runtime mutation occurred.
+The same-SHA Studio `1.0.11` GitHub Release draft id `388096160` (tag `v1.0.11-f100133`) had all
+eight required assets. Owner approval **`APPROVE STUDIO PUBLISH: 1.0.11`** was then received and
+the reviewed publish helper published that release. Post-publication verification passed:
+`draft=false`, `prerelease=false`, canonical tag `v1.0.11`, GitHub Latest id `388096160`, exact
+`target_commitish`/tag commit `f1001332574b8891b2a59c14985e5c00cdbceb09`, eight expected assets,
+and final copy without draft warning. No unexpected release artifact was added or removed.
 
-The documented publication gate remains separate: after owner Windows/Mac arm64/Mac x64 smoke,
-receive **`APPROVE STUDIO PUBLISH: 1.0.11`** and use only the reviewed publish helper. Portal
-Smart Filter enablement remains a later separate owner checkpoint.
+The validated build logs show `STUDIO_SMART_FILTERS: on`; the shared environment writer contract
+maps that to `VITE_USE_SMART_FILTERS=true`. Portal Smart Filter secret/flag/App Hosting rollout
+remains a later separate owner checkpoint. Maintenance remains ON; Catalog Processing Mode is
+`shadow`; Autonomous and Pass 2 remain OFF.
+
+Exact next checkpoint: **`OWNER AUTHORIZE PORTAL SMART FILTER PRODUCTION ROLLOUT`**.
