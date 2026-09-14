@@ -5,9 +5,17 @@ import { artworkPlacementLabel } from '@fresh-prints/shared/constants/design/art
 import { PlusIcon } from '../../shared/components/PortalIcons';
 import type { CatalogDesign } from '../types/catalog.types';
 import { usePortalCensoredDesignText } from '../utils/portalCensoredDesignText';
+import {
+  CatalogRequestQuantityControls,
+  type CatalogRequestQuantityChangeHandler,
+} from './CatalogRequestQuantityControls';
 import { CatalogThumbnailPanel } from './CatalogThumbnailPanel';
 
 interface CatalogMatchingDesignsSectionProps {
+  /** Design ids currently in the working request, keyed to their real quantity. */
+  companionQuantities?: Readonly<Record<string, number>>;
+  /** Brief status while a companion add is awaiting the server, then the success transition. */
+  companionActionStateById?: Readonly<Record<string, 'pending' | 'added'>>;
   addingDesignId?: string | null;
   /** Omit for guests — hides per-item Add actions (thumbnails + titles still shown). */
   canAdd?: boolean;
@@ -15,6 +23,8 @@ interface CatalogMatchingDesignsSectionProps {
   error?: string | null;
   isLoading?: boolean;
   onAdd?: (design: CatalogDesign) => void;
+  onQuantityChange?: CatalogRequestQuantityChangeHandler;
+  onRemove?: (designId: string) => void;
   onOpenDetails?: (design: CatalogDesign) => void;
   title?: string;
 }
@@ -27,12 +37,16 @@ interface CatalogMatchingDesignsSectionProps {
  */
 export function CatalogMatchingDesignsSection({
   addingDesignId = null,
+  companionActionStateById,
+  companionQuantities,
   canAdd = false,
   companionDesigns,
   error = null,
   isLoading = false,
   onAdd,
   onOpenDetails,
+  onQuantityChange,
+  onRemove,
   title = 'Matching designs',
 }: CatalogMatchingDesignsSectionProps) {
   if (!isLoading && !error && companionDesigns.length === 0) {
@@ -56,11 +70,15 @@ export function CatalogMatchingDesignsSection({
           {companionDesigns.map((companion) => (
             <MatchingDesignListItem
               addingDesignId={addingDesignId}
+              actionState={companionActionStateById?.[companion.id]}
               canAdd={canAdd}
+              quantity={companionQuantities?.[companion.id] ?? 0}
               companion={companion}
               key={companion.id}
               onAdd={onAdd}
               onOpenDetails={onOpenDetails}
+              onQuantityChange={onQuantityChange}
+              onRemove={onRemove}
             />
           ))}
         </ul>
@@ -70,17 +88,25 @@ export function CatalogMatchingDesignsSection({
 }
 
 function MatchingDesignListItem({
+  actionState,
   addingDesignId,
   canAdd,
   companion,
+  quantity,
   onAdd,
   onOpenDetails,
+  onQuantityChange,
+  onRemove,
 }: {
+  actionState?: 'pending' | 'added';
   addingDesignId: string | null;
   canAdd: boolean;
   companion: CatalogDesign;
+  quantity: number;
   onAdd?: (design: CatalogDesign) => void;
   onOpenDetails?: (design: CatalogDesign) => void;
+  onQuantityChange?: CatalogRequestQuantityChangeHandler;
+  onRemove?: (designId: string) => void;
 }) {
   const { title: displayTitle } = usePortalCensoredDesignText(companion);
 
@@ -113,16 +139,41 @@ function MatchingDesignListItem({
         ) : null}
       </button>
 
-      {canAdd && onAdd ? (
+      {actionState === 'pending' ? (
+        <button
+          aria-label={`Adding ${displayTitle} to request`}
+          className="portal-button portal-button-secondary portal-button-sm portal-button-leading-icon design-matching-designs-add-btn"
+          disabled
+          type="button"
+        >
+          <PlusIcon size={14} />
+          Adding…
+        </button>
+      ) : actionState === 'added' ? (
+        <span aria-live="polite" className="design-matching-designs-added" role="status">
+          Added
+        </span>
+      ) : quantity > 0 && onQuantityChange && onRemove ? (
+        <CatalogRequestQuantityControls
+          canAddPrints={canAdd}
+          className="design-matching-designs-qty-controls design-selection-card-qty-controls portal-request-item-stepper portal-card-input-shell"
+          designId={companion.id}
+          designTitle={displayTitle}
+          disabled={actionState === 'pending'}
+          onQuantityChange={onQuantityChange}
+          onRemove={onRemove}
+          quantity={quantity}
+        />
+      ) : canAdd && onAdd ? (
         <button
           aria-label={`Add ${displayTitle} to request`}
           className="portal-button portal-button-secondary portal-button-sm portal-button-leading-icon design-matching-designs-add-btn"
-          disabled={addingDesignId === companion.id}
+          disabled={addingDesignId === companion.id || actionState === 'pending'}
           onClick={() => onAdd(companion)}
           type="button"
         >
           <PlusIcon size={14} />
-          {addingDesignId === companion.id ? 'Adding…' : 'Add'}
+          {addingDesignId === companion.id || actionState === 'pending' ? 'Adding…' : 'Add'}
         </button>
       ) : null}
     </li>

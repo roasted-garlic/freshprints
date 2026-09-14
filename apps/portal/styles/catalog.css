@@ -3518,6 +3518,66 @@
   width: 100%;
 }
 
+/* Compact companion cards reuse the Design Details / selection-card stepper; only shrink the
+   center track so the shared control still fits ~6.5rem card width without misaligned icons. */
+.design-matching-designs-qty-controls.portal-request-item-stepper {
+  grid-template-columns: 2.25rem minmax(0, 1fr) 2.25rem;
+  width: 100%;
+}
+
+.design-matching-designs-qty-controls .portal-request-item-stepper-button {
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  padding: 0;
+}
+
+.design-matching-designs-qty-controls .portal-request-item-stepper-button svg {
+  display: block;
+}
+
+.design-matching-designs-qty-controls .portal-request-item-stepper-input {
+  align-self: stretch;
+  border-left: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  line-height: normal;
+  min-height: 0;
+  padding: 0;
+  text-align: center;
+}
+
+.design-matching-designs-added {
+  align-items: center;
+  animation: design-matching-added-in 220ms ease-out;
+  background: color-mix(in srgb, var(--color-success) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-success) 34%, transparent);
+  border-radius: var(--radius-md);
+  color: var(--color-success-text);
+  display: inline-flex;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  justify-content: center;
+  min-height: 2rem;
+  width: 100%;
+}
+
+@keyframes design-matching-added-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.2rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .design-matching-designs-added {
+    animation: none;
+  }
+}
+
 /* Presentation-only Placement badge (never a filter/facet) — Unspecified renders nothing. */
 .design-matching-designs-placement-badge {
   background: var(--color-accent-primary-soft);

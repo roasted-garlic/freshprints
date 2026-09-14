@@ -67,6 +67,11 @@ env:
     availability:
       - BUILD
       - RUNTIME
+  - variable: NEXT_PUBLIC_USE_SMART_FILTERS
+    secret: NEXT_PUBLIC_USE_SMART_FILTERS
+    availability:
+      - BUILD
+      - RUNTIME
   - variable: NEXT_PUBLIC_ALGOLIA_APP_ID
     secret: NEXT_PUBLIC_ALGOLIA_APP_ID
     availability:

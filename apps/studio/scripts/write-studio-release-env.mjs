@@ -15,6 +15,15 @@ const outPath = path.join(studioRoot, ".env.local");
 
 const releaseType = process.env.RELEASE_TYPE || "";
 const isStable = releaseType === "stable";
+const smartFilters = String(process.env.STUDIO_SMART_FILTERS || "off").trim().toLowerCase();
+if (smartFilters !== "on" && smartFilters !== "off") {
+  console.error(`STUDIO_SMART_FILTERS must be either on or off. Got: ${smartFilters}`);
+  process.exit(1);
+}
+if (smartFilters === "on" && !isStable) {
+  console.error("Smart Filters may be enabled only for the stable post-reconcile Studio release.");
+  process.exit(1);
+}
 
 function required(name) {
   const value = process.env[name];
@@ -59,6 +68,7 @@ const lines = [
   `VITE_FIREBASE_STORAGE_BUCKET=${storageBucket}`,
   `VITE_FIREBASE_MESSAGING_SENDER_ID=${senderId}`,
   `VITE_FIREBASE_APP_ID=${appId}`,
+  `VITE_USE_SMART_FILTERS=${smartFilters === "on" ? "true" : "false"}`,
 ];
 
 const algoliaAppId = required(`${algoliaPrefix}APP_ID`);

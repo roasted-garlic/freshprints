@@ -1,17 +1,22 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { XIcon } from '../../shared/components/PortalIcons';
 import type { CatalogCompanionSuggestion } from '../../print-requests/hooks/useAddDesignToRequestFlow';
+import { XIcon } from '../../shared/components/PortalIcons';
 import type { CatalogDesign } from '../types/catalog.types';
 import { usePortalCensoredDesignText } from '../utils/portalCensoredDesignText';
 import { CatalogMatchingDesignsSection } from './CatalogMatchingDesignsSection';
+import type { CatalogRequestQuantityChangeHandler } from './CatalogRequestQuantityControls';
 
 interface CatalogCompanionSuggestionModalProps {
+  companionActionStateById?: Readonly<Record<string, 'pending' | 'added'>>;
+  companionQuantities?: Readonly<Record<string, number>>;
   addingDesignId?: string | null;
   canAdd?: boolean;
   onAdd: (design: CatalogDesign) => void;
+  onQuantityChange?: CatalogRequestQuantityChangeHandler;
+  onRemove?: (designId: string) => void;
   onDismiss: () => void;
   onOpenDetails?: (design: CatalogDesign) => void;
   suggestion: CatalogCompanionSuggestion;
@@ -23,13 +28,48 @@ interface CatalogCompanionSuggestionModalProps {
  */
 export function CatalogCompanionSuggestionModal({
   addingDesignId = null,
+  companionActionStateById,
+  companionQuantities,
   canAdd = true,
   onAdd,
   onDismiss,
   onOpenDetails,
+  onQuantityChange,
+  onRemove,
   suggestion,
 }: CatalogCompanionSuggestionModalProps) {
   const { title: sourceTitle } = usePortalCensoredDesignText(suggestion.sourceDesign);
+  const suggestionIdentity = useMemo(
+    () =>
+      `${suggestion.sourceDesign.id}:${suggestion.companions
+        .map(({ id }) => id)
+        .sort()
+        .join(',')}`,
+    [suggestion.companions, suggestion.sourceDesign.id],
+  );
+  const seenSuggestionIdentityRef = useRef<string | null>(null);
+  const [hasConfirmedCompanionAdd, setHasConfirmedCompanionAdd] = useState(false);
+
+  useEffect(() => {
+    const companionIds = new Set(suggestion.companions.map(({ id }) => id));
+    const hasMatchingCompanionAdd = Object.entries(companionActionStateById ?? {}).some(
+      ([designId, state]) => companionIds.has(designId) && state === 'added',
+    );
+
+    if (seenSuggestionIdentityRef.current !== suggestionIdentity) {
+      seenSuggestionIdentityRef.current = suggestionIdentity;
+      if (hasMatchingCompanionAdd) {
+        setHasConfirmedCompanionAdd(true);
+      } else {
+        setHasConfirmedCompanionAdd(false);
+      }
+      return;
+    }
+
+    if (hasMatchingCompanionAdd) {
+      setHasConfirmedCompanionAdd(true);
+    }
+  }, [companionActionStateById, suggestion.companions, suggestionIdentity]);
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -85,17 +125,21 @@ export function CatalogCompanionSuggestionModal({
         <div className="modal-body design-companion-suggestion-modal-body">
           <CatalogMatchingDesignsSection
             addingDesignId={addingDesignId}
+            companionActionStateById={companionActionStateById}
+            companionQuantities={companionQuantities}
             canAdd={canAdd}
             companionDesigns={suggestion.companions}
             onAdd={onAdd}
             onOpenDetails={onOpenDetails ? handleOpenDetails : undefined}
+            onQuantityChange={onQuantityChange}
+            onRemove={onRemove}
             title="Ready companions"
           />
         </div>
 
         <footer className="modal-footer design-companion-suggestion-modal-footer">
           <button className="portal-button portal-button-secondary" onClick={onDismiss} type="button">
-            Not now
+            {hasConfirmedCompanionAdd ? 'Done' : 'Not now'}
           </button>
         </footer>
       </div>

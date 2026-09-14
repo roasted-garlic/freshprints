@@ -565,10 +565,17 @@ export function CatalogPageContent() {
         {addDesignFlow.companionSuggestion ? (
           <CatalogCompanionSuggestionModal
             addingDesignId={addDesignFlow.addingDesignId}
+            companionActionStateById={addDesignFlow.companionActionStateById}
+            companionQuantities={{
+              ...currentRequestAggregates.quantityByDesignId,
+              ...currentRequestAggregates.primaryQuantityByDesignId,
+            }}
             canAdd={isAuthenticated && addDesignFlow.canAddPrints}
             onAdd={addDesignFlow.addDesignFromCompanionSuggestion}
             onDismiss={addDesignFlow.dismissCompanionSuggestion}
             onOpenDetails={openDesignDetails}
+            onQuantityChange={isAuthenticated ? addDesignFlow.setQuantity : undefined}
+            onRemove={isAuthenticated ? addDesignFlow.removeDesign : undefined}
             suggestion={addDesignFlow.companionSuggestion}
           />
         ) : null}
@@ -662,6 +669,22 @@ export function CatalogPageContent() {
 
       <CatalogDesignDetailsModal
         addingDesignId={selectionModeActive ? null : addDesignFlow.addingDesignId}
+        companionActionStateById={
+          selectionModeActive ? undefined : addDesignFlow.companionActionStateById
+        }
+        companionQuantities={
+          selectionModeActive
+            ? Object.fromEntries(
+                Object.entries(selectionMode.selectedDesigns).map(([designId, selection]) => [
+                  designId,
+                  selection.quantity,
+                ]),
+              )
+            : {
+                ...currentRequestAggregates.quantityByDesignId,
+                ...currentRequestAggregates.primaryQuantityByDesignId,
+              }
+        }
         canAddPrints={addDesignFlow.canAddPrints}
         currentRequestQuantity={
           selectedDesign === null
@@ -699,6 +722,13 @@ export function CatalogPageContent() {
                   addDesignToSelection(design);
                 }
               : addDesignFlow.addDesign
+        }
+        onAddCompanionToRequest={
+          !isAuthenticated
+            ? undefined
+            : selectionModeActive
+              ? addDesignToSelection
+              : addDesignFlow.addDesignFromCompanionSuggestion
         }
         onClose={closeDesignDetails}
         onQuantityChange={

@@ -85,6 +85,32 @@ export const studioAlgoliaCatalogSearchService = {
     return isStudioAlgoliaCatalogConfigured();
   },
 
+  /**
+   * Read the current Algolia hit count using the search-only client.
+   * This is intentionally not an admin-settings read and never exposes credentials.
+   */
+  async getCurrentIndexHitCount(): Promise<number> {
+    if (!isStudioAlgoliaCatalogConfigured()) {
+      throw new Error(
+        "Catalog search is not configured. Add Studio Algolia search-only environment variables.",
+      );
+    }
+
+    const client = getStudioAlgoliaSearchClient();
+    const indexName = getStudioAlgoliaIndexName();
+    const response = await client.searchSingleIndex({
+      indexName,
+      searchParams: {
+        query: "",
+        hitsPerPage: 0,
+      },
+    });
+    if (typeof response.nbHits !== "number" || !Number.isFinite(response.nbHits)) {
+      throw new Error("Algolia did not return a valid current hit count.");
+    }
+    return response.nbHits;
+  },
+
   async listMatchingDesigns(
     caller: User,
     search: string,

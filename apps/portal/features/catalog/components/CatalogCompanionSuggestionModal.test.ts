@@ -24,6 +24,19 @@ describe('CatalogCompanionSuggestionModal', () => {
     assert.match(modal, /Close matching designs/);
   });
 
+  it('changes Not now to Done only after a matching companion reaches confirmed added state', () => {
+    assert.match(modal, /useState\(false\)/);
+    assert.match(modal, /state === 'added'/);
+    assert.match(modal, /setHasConfirmedCompanionAdd\(true\)/);
+    assert.match(modal, /\{hasConfirmedCompanionAdd \? 'Done' : 'Not now'\}/);
+    assert.match(modal, /setHasConfirmedCompanionAdd\(false\)/);
+    assert.ok(
+      modal.indexOf('const hasMatchingCompanionAdd') <
+        modal.indexOf('if (seenSuggestionIdentityRef.current !== suggestionIdentity)'),
+      'initial identity handling must observe an already-confirmed added state',
+    );
+  });
+
   it('is wired from Home and Design Library add flows', () => {
     assert.match(home, /CatalogCompanionSuggestionModal/);
     assert.match(library, /CatalogCompanionSuggestionModal/);

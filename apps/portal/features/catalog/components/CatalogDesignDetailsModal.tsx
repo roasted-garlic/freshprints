@@ -37,6 +37,8 @@ function isCatalogDesignPreviewable(design: CatalogDesign): boolean {
 interface CatalogDesignDetailsModalProps {
   /** In-flight designId from the add flow — powers the busy state on Matching designs Add buttons. */
   addingDesignId?: string | null;
+  companionActionStateById?: Readonly<Record<string, 'pending' | 'added'>>;
+  companionQuantities?: Readonly<Record<string, number>>;
   /** When false, Add to request is disabled (request full or Cap A exhausted). Favorite stays enabled. */
   canAddPrints?: boolean;
   /**
@@ -58,6 +60,7 @@ interface CatalogDesignDetailsModalProps {
   navigationDesigns?: readonly CatalogDesign[];
   /** When omitted for guests, modal shows Sign in to add to a request CTA. */
   onAddToRequest?: (design: CatalogDesign) => void;
+  onAddCompanionToRequest?: (design: CatalogDesign) => void;
   onClose: () => void;
   /** Swap the modal to show a different design — used by Matching designs and lightbox nav. */
   onOpenDesign?: (design: CatalogDesign) => void;
@@ -76,6 +79,8 @@ function CloseIcon() {
 
 export function CatalogDesignDetailsModal({
   addingDesignId = null,
+  companionActionStateById,
+  companionQuantities,
   canAddPrints = true,
   currentRequestQuantity = 0,
   design,
@@ -85,6 +90,7 @@ export function CatalogDesignDetailsModal({
   isOpen,
   navigationDesigns,
   onAddToRequest,
+  onAddCompanionToRequest,
   onClose,
   onOpenDesign,
   onQuantityChange,
@@ -334,12 +340,16 @@ export function CatalogDesignDetailsModal({
             {design.companionDesignIds?.length ? (
               <CatalogMatchingDesignsSection
                 addingDesignId={addingDesignId}
+                companionActionStateById={companionActionStateById}
+                companionQuantities={companionQuantities}
                 canAdd={Boolean(onAddToRequest) && canAddPrints}
                 companionDesigns={companionDesigns}
                 error={companionError}
                 isLoading={isLoadingCompanions}
-                onAdd={onAddToRequest}
+                onAdd={onAddCompanionToRequest ?? onAddToRequest}
                 onOpenDetails={onOpenDesign}
+                onQuantityChange={onQuantityChange}
+                onRemove={onRemoveFromRequest}
               />
             ) : null}
           </div>

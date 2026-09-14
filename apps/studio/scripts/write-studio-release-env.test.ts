@@ -41,6 +41,39 @@ test("stable env writer accepts production Firebase + Algolia", () => {
   assert.match(contents, /VITE_FIREBASE_PROJECT_ID=fresh-prints-prod/);
   assert.match(contents, /VITE_ALGOLIA_INDEX_NAME=portal_catalog_ready_prod/);
   assert.match(contents, /VITE_ALGOLIA_APP_ID=Z1FVCM5QUX/);
+  assert.match(contents, /VITE_USE_SMART_FILTERS=false/);
+  rmSync(studioDir, { recursive: true, force: true });
+});
+
+test("stable env writer enables Smart Filters only when explicitly requested", () => {
+  const { result, studioDir } = runWriter({ ...prodFirebase, STUDIO_SMART_FILTERS: "on" });
+  assert.equal(result.status, 0, result.stderr);
+  const contents = readFileSync(path.join(studioDir, ".env.local"), "utf8");
+  assert.match(contents, /VITE_USE_SMART_FILTERS=true/);
+  rmSync(studioDir, { recursive: true, force: true });
+});
+
+test("env writer rejects an invalid Smart Filters input", () => {
+  const { result, studioDir } = runWriter({ ...prodFirebase, STUDIO_SMART_FILTERS: "maybe" });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /STUDIO_SMART_FILTERS.*on.*off/);
+  rmSync(studioDir, { recursive: true, force: true });
+});
+
+test("prerelease env writer rejects Smart Filters ON", () => {
+  const { result, studioDir } = runWriter({
+    ...prodFirebase,
+    RELEASE_TYPE: "prerelease",
+    DEV_FIREBASE_API_KEY: "k",
+    DEV_FIREBASE_AUTH_DOMAIN: "fresh-prints-dev.firebaseapp.com",
+    DEV_FIREBASE_PROJECT_ID: "fresh-prints-dev",
+    DEV_FIREBASE_STORAGE_BUCKET: "fresh-prints-dev.appspot.com",
+    DEV_FIREBASE_MESSAGING_SENDER_ID: "1",
+    DEV_FIREBASE_APP_ID: "1:1:web:1",
+    STUDIO_SMART_FILTERS: "on",
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /only for the stable/);
   rmSync(studioDir, { recursive: true, force: true });
 });
 

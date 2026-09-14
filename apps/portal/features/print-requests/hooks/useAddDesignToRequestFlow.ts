@@ -39,6 +39,13 @@ export interface CatalogCompanionSuggestion {
   companions: CatalogDesign[];
 }
 
+export type CompanionAddActionState = 'pending' | 'added';
+
+interface AddActionCallbacks {
+  onFailure?: () => void;
+  onSuccess?: () => void;
+}
+
 interface UseAddDesignToRequestFlowOptions {
   continuableRequests: PrintRequest[];
   /** @deprecated Prefer context ensureWorkingPrintRequestId — kept for call-site compatibility. */
@@ -188,12 +195,18 @@ export function useAddDesignToRequestFlow({
   const [companionSuggestion, setCompanionSuggestion] = useState<CatalogCompanionSuggestion | null>(
     null,
   );
+  const [companionActionStateById, setCompanionActionStateById] = useState<
+    Record<string, CompanionAddActionState>
+  >({});
+  const companionActionStateRef = useRef(new Map<string, CompanionAddActionState>());
+  const companionAddedTimersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const adjustQuantityRef = useRef<(design: CatalogDesign, delta: 1 | -1) => void>(() => {});
   const firebaseUserRef = useRef(firebaseUser);
   const routerRef = useRef(router);
   const showSuccessRef = useRef(showSuccess);
   /** Whether the design pending a request-picker choice should announce/suggest once added. */
   const pendingAddAnnounceRef = useRef(true);
+  const pendingAddCallbacksRef = useRef<AddActionCallbacks | null>(null);
 
   firebaseUserRef.current = firebaseUser;
   routerRef.current = router;
@@ -239,22 +252,55 @@ export function useAddDesignToRequestFlow({
     setCompanionSuggestion(null);
   }, []);
 
-  /**
-   * Re-filters the currently open companion suggestion against the latest working items after
-   * adding a design directly from that modal — never opens/replaces it with a new suggestion.
-   * Dismisses the modal once no companions remain.
-   */
-  const refreshCompanionSuggestionAfterAdd = useCallback(() => {
-    setCompanionSuggestion((current) => {
-      if (!current) {
+  const clearCompanionActionState = useCallback((designId: string) => {
+    const timer = companionAddedTimersRef.current.get(designId);
+    if (timer) {
+      clearTimeout(timer);
+      companionAddedTimersRef.current.delete(designId);
+    }
+    companionActionStateRef.current.delete(designId);
+    setCompanionActionStateById((current) => {
+      if (!(designId in current)) {
         return current;
       }
-      const remaining = excludeDesignsInWorkingItems(
-        current.companions,
-        workingItemsSnapshotRef.current,
-      );
-      return remaining.length > 0 ? { ...current, companions: remaining } : null;
+      const next = { ...current };
+      delete next[designId];
+      return next;
     });
+  }, []);
+
+  const beginCompanionAdd = useCallback((designId: string): boolean => {
+    if (companionActionStateRef.current.get(designId) === 'pending') {
+      return false;
+    }
+    companionActionStateRef.current.set(designId, 'pending');
+    setCompanionActionStateById((current) => ({ ...current, [designId]: 'pending' }));
+    return true;
+  }, []);
+
+  const completeCompanionAdd = useCallback((designId: string) => {
+    companionActionStateRef.current.set(designId, 'added');
+    setCompanionActionStateById((current) => ({ ...current, [designId]: 'added' }));
+    const previousTimer = companionAddedTimersRef.current.get(designId);
+    if (previousTimer) {
+      clearTimeout(previousTimer);
+    }
+    const timer = setTimeout(() => clearCompanionActionState(designId), 900);
+    companionAddedTimersRef.current.set(designId, timer);
+  }, [clearCompanionActionState]);
+
+  const failCompanionAdd = useCallback((designId: string) => {
+    clearCompanionActionState(designId);
+  }, [clearCompanionActionState]);
+
+  useEffect(() => {
+    const timers = companionAddedTimersRef.current;
+    return () => {
+      for (const timer of timers.values()) {
+        clearTimeout(timer);
+      }
+      timers.clear();
+    };
   }, []);
 
   const announceDesignAdded = useCallback(
@@ -286,6 +332,8 @@ export function useAddDesignToRequestFlow({
   const qtyGenerationRef = useRef(new Map<string, number>());
   const flushTimersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const flushingDesignIdsRef = useRef(new Set<string>());
+  /** Callbacks for a companion's first write survive coalesced quantity generations. */
+  const quantityCallbacksRef = useRef(new Map<string, AddActionCallbacks>());
   /** Snapshot of working items for coalescing without waiting on React state. */
   const workingItemsSnapshotRef = useRef<PrintRequestItem[]>(workingItems);
 
@@ -322,11 +370,19 @@ export function useAddDesignToRequestFlow({
     desiredPrimaryQtyRef.current.clear();
     qtyGenerationRef.current.clear();
     flushingDesignIdsRef.current.clear();
+    quantityCallbacksRef.current.clear();
     setBusyDesignId(null);
     setIsPickerOpen(false);
     setIsConfirmOpen(false);
     setPendingDesign(null);
     setCompanionSuggestion(null);
+    pendingAddCallbacksRef.current = null;
+    for (const timer of companionAddedTimersRef.current.values()) {
+      clearTimeout(timer);
+    }
+    companionAddedTimersRef.current.clear();
+    companionActionStateRef.current.clear();
+    setCompanionActionStateById({});
   }, []);
 
   const syncWorkingItems = useCallback(async () => {
@@ -402,7 +458,13 @@ export function useAddDesignToRequestFlow({
   );
 
   const flushDesiredQuantity = useCallback(
-    async (designId: string, printRequestId: string, userId: string, generation: number) => {
+    async (
+      designId: string,
+      printRequestId: string,
+      userId: string,
+      generation: number,
+      callbacks?: AddActionCallbacks,
+    ) => {
       if (qtyGenerationRef.current.get(designId) !== generation) {
         return;
       }
@@ -468,12 +530,16 @@ export function useAddDesignToRequestFlow({
         }
 
         desiredPrimaryQtyRef.current.delete(designId);
+        quantityCallbacksRef.current.delete(designId);
+        callbacks?.onSuccess?.();
         // Skip silent reload while settled — optimistic state already matches the write.
         // Reloading here races with rapid follow-up taps and can flash old qty.
       } catch (error: unknown) {
         if (qtyGenerationRef.current.get(designId) === generation) {
           desiredPrimaryQtyRef.current.delete(designId);
+          quantityCallbacksRef.current.delete(designId);
           setActionError(mapPortalPrintRequestCallableError(error).message);
+          callbacks?.onFailure?.();
           await syncWorkingItems();
         }
       } finally {
@@ -484,7 +550,13 @@ export function useAddDesignToRequestFlow({
           latestGeneration !== generation &&
           desiredPrimaryQtyRef.current.has(designId)
         ) {
-          void flushDesiredQuantity(designId, printRequestId, userId, latestGeneration);
+          void flushDesiredQuantity(
+            designId,
+            printRequestId,
+            userId,
+            latestGeneration,
+            quantityCallbacksRef.current.get(designId),
+          );
         }
       }
     },
@@ -496,7 +568,15 @@ export function useAddDesignToRequestFlow({
   );
 
   const scheduleQuantityFlush = useCallback(
-    (designId: string, printRequestId: string, userId: string) => {
+    (
+      designId: string,
+      printRequestId: string,
+      userId: string,
+      callbacks?: AddActionCallbacks,
+    ) => {
+      if (callbacks) {
+        quantityCallbacksRef.current.set(designId, callbacks);
+      }
       const generation = (qtyGenerationRef.current.get(designId) ?? 0) + 1;
       qtyGenerationRef.current.set(designId, generation);
 
@@ -508,7 +588,13 @@ export function useAddDesignToRequestFlow({
       // Short coalesce window so rapid taps batch into one absolute write.
       const timer = setTimeout(() => {
         flushTimersRef.current.delete(designId);
-        void flushDesiredQuantity(designId, printRequestId, userId, generation);
+        void flushDesiredQuantity(
+          designId,
+          printRequestId,
+          userId,
+          generation,
+          callbacks,
+        );
       }, 80);
       flushTimersRef.current.set(designId, timer);
     },
@@ -524,14 +610,21 @@ export function useAddDesignToRequestFlow({
       announceAdd?: boolean;
       title?: string;
       catalogDesign?: CatalogDesign;
-      /** Fires once on a 0 → in-request transition, regardless of announceAdd. */
-      onAdded?: () => void;
+      callbacks?: AddActionCallbacks;
     }) => {
       const previousDesired =
         desiredPrimaryQtyRef.current.get(input.designId) ??
         readPrimaryQuantity(workingItemsSnapshotRef.current, input.designId);
       const wasAbsent = previousDesired < 1;
       const nextQuantity = Math.max(0, Math.floor(input.nextQuantity));
+
+      if (nextQuantity < 1) {
+        // A removal supersedes any pending companion-add transition; never surface Added after
+        // the item has been removed.
+        const pendingCallbacks = quantityCallbacksRef.current.get(input.designId);
+        quantityCallbacksRef.current.delete(input.designId);
+        pendingCallbacks?.onFailure?.();
+      }
 
       if (input.catalogDesign && nextQuantity >= 1) {
         seedDesignSummary?.(input.designId, toSeedDesignSummary(input.catalogDesign));
@@ -572,10 +665,16 @@ export function useAddDesignToRequestFlow({
             });
           }
         }
-        input.onAdded?.();
       }
 
-      scheduleQuantityFlush(input.designId, input.printRequestId, input.userId);
+      scheduleQuantityFlush(
+        input.designId,
+        input.printRequestId,
+        input.userId,
+        nextQuantity >= 1
+          ? input.callbacks ?? quantityCallbacksRef.current.get(input.designId)
+          : undefined,
+      );
     },
     [
       applyDesiredPrimaryQuantity,
@@ -590,7 +689,11 @@ export function useAddDesignToRequestFlow({
   );
 
   const adjustQuantity = useCallback(
-    (design: CatalogDesign, delta: 1 | -1, options?: { announce?: boolean }) => {
+    (
+      design: CatalogDesign,
+      delta: 1 | -1,
+      options?: { announce?: boolean } & AddActionCallbacks,
+    ) => {
       setActionError(null);
       // Only add-flows (delta > 0) consult this — decrements never announce/suggest.
       const announce = options?.announce ?? true;
@@ -602,6 +705,7 @@ export function useAddDesignToRequestFlow({
           workingRequestLimit.exhaustedMessage ??
             'This request is full. Add your Current Request to a show before adding more.',
         );
+        options?.onFailure?.();
         return;
       }
 
@@ -653,6 +757,7 @@ export function useAddDesignToRequestFlow({
             setActionError(
               'Finish editing your current request before adding designs to another request.',
             );
+            options?.onFailure?.();
             return;
           }
           onBeforeNavigate?.();
@@ -662,6 +767,7 @@ export function useAddDesignToRequestFlow({
         }
 
         if (!requireSignedIn(design.id) || !firebaseUser) {
+          options?.onFailure?.();
           return;
         }
 
@@ -682,11 +788,15 @@ export function useAddDesignToRequestFlow({
           setActionError(
             'Finish editing your current request before adding designs to another request.',
           );
+          options?.onFailure?.();
           return;
         }
         onBeforeNavigate?.();
         // confirmPickRequest reads this once the user picks a request to add into.
         pendingAddAnnounceRef.current = announce;
+        pendingAddCallbacksRef.current = options
+          ? { onFailure: options.onFailure, onSuccess: options.onSuccess }
+          : null;
         setPendingDesign(design);
         setIsPickerOpen(true);
         return;
@@ -694,6 +804,7 @@ export function useAddDesignToRequestFlow({
 
       if (branch.kind === 'create') {
         if (!requireSignedIn(design.id) || !firebaseUser) {
+          options?.onFailure?.();
           return;
         }
 
@@ -717,8 +828,6 @@ export function useAddDesignToRequestFlow({
         if (wasAbsent) {
           if (announce) {
             announceDesignAdded(design);
-          } else {
-            refreshCompanionSuggestionAfterAdd();
           }
         }
 
@@ -734,7 +843,13 @@ export function useAddDesignToRequestFlow({
                   : item,
               ),
             );
-            await flushDesiredQuantity(design.id, printRequestId, firebaseUser.uid, generation);
+            await flushDesiredQuantity(
+              design.id,
+              printRequestId,
+              firebaseUser.uid,
+              generation,
+              options,
+            );
             // List only — optimistic/real cart rows are already patched; a silent items
             // reload here races concurrent first-adds and flashes highlight/drawer.
             void refreshRequests({ silent: true, printRequestId, skipWorkingItems: true });
@@ -745,11 +860,13 @@ export function useAddDesignToRequestFlow({
               items.filter((item) => !isCatalogDesignItem(item, design.id)),
             );
             setActionError(mapPortalPrintRequestCallableError(error).message);
+            options?.onFailure?.();
           });
         return;
       }
 
       if (!requireSignedIn(design.id) || !firebaseUser) {
+        options?.onFailure?.();
         return;
       }
 
@@ -764,7 +881,7 @@ export function useAddDesignToRequestFlow({
         announceAdd: announce,
         title: design.title,
         catalogDesign: design,
-        onAdded: announce ? undefined : refreshCompanionSuggestionAfterAdd,
+        callbacks: options,
       });
     },
     [
@@ -776,7 +893,6 @@ export function useAddDesignToRequestFlow({
       onBeforeNavigate,
       patchItemsAndSnapshot,
       queuePrimaryQuantity,
-      refreshCompanionSuggestionAfterAdd,
       refreshRequests,
       requireSignedIn,
       resolveBranch,
@@ -806,13 +922,20 @@ export function useAddDesignToRequestFlow({
   /**
    * Adds a companion directly from the open "Matching designs" suggestion modal — same add path
    * as `addDesign`, but never toasts/announces and never triggers a nested `suggestMatchingCompanions`
-   * lookup. The open suggestion is instead trimmed in place (see `refreshCompanionSuggestionAfterAdd`).
+   * lookup. The open suggestion remains mounted so the card can transition to quantity controls.
    */
   const addDesignFromCompanionSuggestion = useCallback(
     (design: CatalogDesign) => {
-      adjustQuantity(design, 1, { announce: false });
+      if (!beginCompanionAdd(design.id)) {
+        return;
+      }
+      adjustQuantity(design, 1, {
+        announce: false,
+        onFailure: () => failCompanionAdd(design.id),
+        onSuccess: () => completeCompanionAdd(design.id),
+      });
     },
-    [adjustQuantity],
+    [adjustQuantity, beginCompanionAdd, completeCompanionAdd, failCompanionAdd],
   );
 
   const setQuantity = useCallback(
@@ -942,6 +1065,8 @@ export function useAddDesignToRequestFlow({
     }
     setIsPickerOpen(false);
     setPendingDesign(null);
+    pendingAddCallbacksRef.current?.onFailure?.();
+    pendingAddCallbacksRef.current = null;
   }, [isBusy]);
 
   const confirmPickRequest = useCallback(
@@ -950,6 +1075,8 @@ export function useAddDesignToRequestFlow({
         return;
       }
       if (!requireSignedIn(pendingDesign.id) || !firebaseUser) {
+        pendingAddCallbacksRef.current?.onFailure?.();
+        pendingAddCallbacksRef.current = null;
         return;
       }
 
@@ -972,15 +1099,19 @@ export function useAddDesignToRequestFlow({
           if (pendingAddAnnounceRef.current) {
             announceDesignAdded(design);
           } else {
-            refreshCompanionSuggestionAfterAdd();
+            pendingAddCallbacksRef.current?.onSuccess?.();
           }
         })
         .catch((error: unknown) => {
           setActionError(mapPortalPrintRequestCallableError(error).message);
+          if (!pendingAddAnnounceRef.current) {
+            pendingAddCallbacksRef.current?.onFailure?.();
+          }
         })
         .finally(() => {
           setBusyDesignId(null);
           setPendingDesign(null);
+          pendingAddCallbacksRef.current = null;
         });
     },
     [
@@ -988,7 +1119,6 @@ export function useAddDesignToRequestFlow({
       firebaseUser,
       isBusy,
       pendingDesign,
-      refreshCompanionSuggestionAfterAdd,
       refreshRequests,
       requireSignedIn,
       setSelectedWorkingRequestId,
@@ -1003,11 +1133,12 @@ export function useAddDesignToRequestFlow({
     pickerContinuableRequests: filterPortalActiveEditablePrintRequests(
       portalEditableContinuableRequests,
     ),
-    /** Non-announcing add for the open companion suggestion modal — trims that suggestion in place. */
+    /** Non-announcing add for the open companion suggestion modal — shows server-backed feedback. */
     addDesignFromCompanionSuggestion,
     adjustQuantity,
     /** False when the Current Request is full (no room below L). */
     canAddPrints: workingRequestLimit.canAddPrints,
+    companionActionStateById,
     closeConfirm,
     closePicker,
     /** Non-blocking "Matching designs available" nudge shown after a successful add — never auto-added. */
