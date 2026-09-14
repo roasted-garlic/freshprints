@@ -212,3 +212,15 @@
   overflow-y: auto !important;
   overscroll-behavior: contain !important;
 }
+
+/* Keep the final cascade kill-switch aligned with Print Requests' narrow stacked layout. */
+@media (max-width: 1024px) {
+  .app-main > .page-content-area.page-content-area--print-requests .print-requests-layout {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto minmax(0, 1fr) !important;
+  }
+
+  .app-main > .page-content-area.page-content-area--print-requests .print-requests-rail {
+    max-height: min(38vh, calc(100vh - 10rem)) !important;
+  }
+}

@@ -118,6 +118,14 @@ describe("print-requests detail scroll contract", () => {
       utilitiesCss,
       /\.app-main\s*>\s*\.page-content-area\.page-content-area--print-requests\s+\.print-requests-main\s*\{[^}]*overflow-y\s*:\s*auto\s*!important/s,
     );
+    assert.match(
+      utilitiesCss,
+      /@media\s*\(max-width:\s*1024px\)[\s\S]*?\.app-main\s*>\s*\.page-content-area\.page-content-area--print-requests\s+\.print-requests-layout\s*\{[^}]*grid-template-rows\s*:\s*auto\s+minmax\(0,\s*1fr\)\s*!important/s,
+    );
+    assert.match(
+      utilitiesCss,
+      /@media\s*\(max-width:\s*1024px\)[\s\S]*?\.app-main\s*>\s*\.page-content-area\.page-content-area--print-requests\s+\.print-requests-rail\s*\{[^}]*max-height\s*:\s*min\(38vh,\s*calc\(100vh\s*-\s*10rem\)\)\s*!important/s,
+    );
     // Legacy height:auto must not remain the Print Requests default (Show Queue opts in).
     assert.match(
       printRequestsCss,
