@@ -1,0 +1,53 @@
+# Portal Smart Filter Production Rollout — Owner Authorization Record
+
+| Field | Value |
+|---|---|
+| Date | 2026-09-14 |
+| Parent goal | `coordinated-production-promotion-release-readiness` |
+| Authorization | `OWNER AUTHORIZE PORTAL SMART FILTER PRODUCTION ROLLOUT` |
+| Reviewed source | `f1001332574b8891b2a59c14985e5c00cdbceb09` |
+| Firebase project | `fresh-prints-prod` |
+| App Hosting backend | `fresh-prints-portal` (`./apps/portal`) |
+| Status | **BLOCKED — required owner-interactive Secret Manager creation pending** |
+
+## Read-only prechecks
+
+- `origin/production` remains exactly `f1001332574b8891b2a59c14985e5c00cdbceb09`.
+- Production `apps/portal/apphosting.yaml` maps `NEXT_PUBLIC_USE_SMART_FILTERS` to the same
+  Secret Manager name with availability `BUILD` and `RUNTIME`.
+- `firebase.json` maps App Hosting backend `fresh-prints-portal` to root `./apps/portal`.
+- `gcloud secrets describe NEXT_PUBLIC_USE_SMART_FILTERS --project=fresh-prints-prod` returned
+  `NOT_FOUND`; versions listing returned no versions.
+- No alternate reviewed Smart Filter secret/name exists. The separate
+  `NEXT_PUBLIC_USE_ALGOLIA_CATALOG_SEARCH` secret is not a substitute.
+- No secret value was read, printed, logged, or written by this agent.
+
+## Owner action required
+
+The owner must run this exact command in an interactive terminal and enter the literal value
+`true` only at the prompt (never in chat, an argument, logs, or documentation):
+
+```text
+firebase apphosting:secrets:set NEXT_PUBLIC_USE_SMART_FILTERS --project fresh-prints-prod
+```
+
+Then grant backend access if the set flow does not grant it automatically:
+
+```text
+firebase apphosting:secrets:grantaccess NEXT_PUBLIC_USE_SMART_FILTERS --backend fresh-prints-portal --project fresh-prints-prod
+```
+
+Return metadata-only confirmation that the secret exists with an enabled version and that backend
+access is granted. Do not provide the value.
+
+## Deferred rollout command
+
+After metadata confirmation, run only the exact-SHA App Hosting rollout:
+
+```text
+firebase apphosting:rollouts:create fresh-prints-portal --project fresh-prints-prod --git-commit f1001332574b8891b2a59c14985e5c00cdbceb09 --force
+```
+
+Verify the rollout is READY/SUCCEEDED, receives 100% traffic, and returns HTTP 200 before the
+reviewed production smoke. Do not deploy Functions, Rules, Storage, or unrelated resources. Do not
+rerun Algolia, rebuild/republish Studio, turn Maintenance OFF, enable Autonomy, or enable Pass 2.

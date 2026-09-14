@@ -2,24 +2,24 @@
 
 | Field | Value |
 |---|---|
-| Status | **OPEN — Studio 1.0.11 Smart Filters-ON release published and verified; awaiting Portal Smart Filter rollout authorization** |
+| Status | **OPEN — Portal Smart Filter rollout authorized; exact production secret is absent and awaits owner-interactive creation** |
 | DONE | **no — parent remains active; Studio corrective and Rules evidence child are terminal** |
 | Signoff Status | cutover child **approved_with_notes / CLOSED**; Studio typecheck corrective **approved_with_notes / CLOSED**; Rules snapshot **CLOSED** |
 | Current Mode | managed-phase |
 | Parent program | Coordinated production promotion and release readiness |
 | Current Goal | `coordinated-production-promotion-release-readiness` |
-| Current Phase | Portal Smart Filter production secret/flag/App Hosting rollout remains separately owner-gated; maintenance ON |
+| Current Phase | Owner must create the exact Portal Smart Filter secret interactively, then grant App Hosting access; deployment/smoke follow afterward; maintenance ON |
 | Plan Status | **amended — Formal Review complete** — `docs/workflow/plans/2026-09-13-production-algolia-reconcile-studio-access-corrective-plan.md` |
 | Review Status | **approved_with_changes** — `docs/workflow/reviews/2026-09-13-production-algolia-reconcile-studio-access-smart-filter-formal-review.md` |
 | Implementation Status | **complete for approved corrective** — final source includes the accepted Algolia access, Smart Filter configuration, Print Requests scroll containment, and Portal companion corrections |
 | Test Status | Final targeted verification PASS: focused scope 61/61, independent scope review 160/160, follow-up Print Requests suites 34/34, Portal/Studio typechecks PASS, Functions build PASS, targeted ESLint PASS, renderer/Vite build PASS, workflow/env tests 36/36, and diff check PASS |
 | Human Checkpoint Required | **yes** |
-| Human Checkpoint Reason | Owner reports the reviewed production Algolia reconcile/apply PASS and authorized `OWNER AUTHORIZE SMART FILTER PRODUCTION BUILDS / RELEASES`; stable ON publication still requires the documented `APPROVE STUDIO PUBLISH: 1.0.11` gate after dual-platform smoke. |
-| Blocked | **no — Studio publication complete; waiting for Portal rollout checkpoint** |
-| Allowed Actions | Owner/production Studio smoke of published `1.0.11`; prepare only the reviewed Portal Smart Filter rollout after explicit owner authorization; no Portal mutation yet |
-| Forbidden Actions | Portal Smart Filter secret creation/enablement/deploy, raw GitHub release PATCH, Studio publication before the explicit publish gate and dual-platform smoke, maintenance OFF, autonomy/Pass 2 enablement, tag deletion, unrelated production settings/data changes, Functions/Rules deploy, or any out-of-scope production mutation |
-| Last Completed Step | **APPROVE STUDIO PUBLISH: 1.0.11** — helper published and verified release `388096160` |
-| Next Required Step | **`OWNER AUTHORIZE PORTAL SMART FILTER PRODUCTION ROLLOUT`**; do not create/change the Portal secret or deploy App Hosting before that gate |
+| Human Checkpoint Reason | Owner authorized `OWNER AUTHORIZE PORTAL SMART FILTER PRODUCTION ROLLOUT`; the required secret value cannot be supplied by this agent and must be entered interactively by the owner. |
+| Blocked | **yes — owner-interactive Secret Manager value entry required before rollout can proceed** |
+| Allowed Actions | Owner runs the reviewed interactive secret command (literal `true` entered only at the prompt), grants backend access, then agent verifies metadata and may run the exact-SHA Portal rollout |
+| Forbidden Actions | Agent handling/printing the secret value, secret value in args/logs/docs, generic or unbound Portal deploy, Functions/Rules/Storage deploy, Studio rebuild/republish, Algolia rerun, maintenance OFF, autonomy/Pass 2 enablement, or unrelated production mutation |
+| Last Completed Step | **OWNER AUTHORIZE PORTAL SMART FILTER PRODUCTION ROLLOUT**; source/mapping guards PASS; secret metadata read-only check reports NOT_FOUND |
+| Next Required Step | Owner executes `firebase apphosting:secrets:set NEXT_PUBLIC_USE_SMART_FILTERS --project fresh-prints-prod` interactively (enter literal `true`), then grants backend access and returns metadata-ready confirmation |
 
 ## Authoritative Owner DEV QA PASS — 2026-09-13
 
@@ -150,6 +150,32 @@ id `388096160` from the validated draft. Post-publication verification passed:
 No rebuild from another SHA, Algolia rerun, Portal secret/flag change, Portal deploy, production
 data mutation, Maintenance change, Autonomous enablement, or Pass 2 enablement occurred. The exact
 next checkpoint is **`OWNER AUTHORIZE PORTAL SMART FILTER PRODUCTION ROLLOUT`**.
+
+## Portal Smart Filter rollout authorization — 2026-09-14
+
+Owner authorization received:
+**`OWNER AUTHORIZE PORTAL SMART FILTER PRODUCTION ROLLOUT`**.
+
+Read-only prechecks pass at production source SHA
+`f1001332574b8891b2a59c14985e5c00cdbceb09`: `apps/portal/apphosting.yaml` maps
+`NEXT_PUBLIC_USE_SMART_FILTERS` to the same Secret Manager name with `BUILD` and `RUNTIME`
+availability; `firebase.json` binds backend `fresh-prints-portal` to `./apps/portal`.
+
+The exact production secret `NEXT_PUBLIC_USE_SMART_FILTERS` is currently **NOT_FOUND** in project
+`fresh-prints-prod`; no enabled version exists. No alternate reviewed Smart Filter secret exists.
+No secret value was read, printed, logged, or changed by this agent. The owner must enter the
+literal value `true` interactively using the reviewed command:
+
+`firebase apphosting:secrets:set NEXT_PUBLIC_USE_SMART_FILTERS --project fresh-prints-prod`
+
+Then grant backend access (if the set flow does not do so automatically):
+
+`firebase apphosting:secrets:grantaccess NEXT_PUBLIC_USE_SMART_FILTERS --backend fresh-prints-portal --project fresh-prints-prod`
+
+After owner metadata-ready confirmation, verify the secret exists with an enabled version, then run
+only the exact-SHA Portal rollout:
+`firebase apphosting:rollouts:create fresh-prints-portal --project fresh-prints-prod --git-commit
+f1001332574b8891b2a59c14985e5c00cdbceb09 --force`. No rollout or Portal mutation has occurred yet.
 
 ## Authoritative final verification follow-up — 2026-09-13
 

@@ -2,6 +2,29 @@
 
 **Updated:** 2026-09-14
 
+## Current owner-authorized gate — Portal Smart Filter production rollout — 2026-09-14
+
+Owner authorization received:
+**`OWNER AUTHORIZE PORTAL SMART FILTER PRODUCTION ROLLOUT`**.
+
+Production source remains `f1001332574b8891b2a59c14985e5c00cdbceb09`. Mapping is verified in
+`apps/portal/apphosting.yaml`: `NEXT_PUBLIC_USE_SMART_FILTERS` references the same secret with
+`BUILD` and `RUNTIME` availability; backend is `fresh-prints-portal` rooted at `./apps/portal`.
+
+Read-only Secret Manager metadata reports the exact secret is **NOT_FOUND** in `fresh-prints-prod`.
+Owner must create it interactively (enter literal `true` only at the prompt):
+
+`firebase apphosting:secrets:set NEXT_PUBLIC_USE_SMART_FILTERS --project fresh-prints-prod`
+
+Then grant App Hosting access if not automatic:
+
+`firebase apphosting:secrets:grantaccess NEXT_PUBLIC_USE_SMART_FILTERS --backend fresh-prints-portal --project fresh-prints-prod`
+
+Return metadata-ready confirmation without exposing the value. Only then run the exact-SHA rollout:
+`firebase apphosting:rollouts:create fresh-prints-portal --project fresh-prints-prod --git-commit
+f1001332574b8891b2a59c14985e5c00cdbceb09 --force`, verify READY/SUCCEEDED, 100% traffic, HTTP 200,
+and perform the reviewed production smoke. No Portal deployment or secret mutation has occurred yet.
+
 ## Current owner-authorized gate — Smart Filter production Studio build/release — 2026-09-14
 
 Owner reports the production Algolia Smart Profile reconcile/apply PASS and authorizes:
