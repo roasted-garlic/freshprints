@@ -4,7 +4,10 @@ import { compareStaffGangSheetHistoryOrder } from "./staffGangSheetHistorySort";
 
 export const UNASSIGNED_SHOW_SECTION_KEY = "unassigned";
 
-export type PrintRequestShowSectionOrder = "scheduled_start_asc" | "staff_gang_sheet_history";
+export type PrintRequestShowSectionOrder =
+  | "scheduled_start_asc"
+  | "scheduled_start_desc"
+  | "staff_gang_sheet_history";
 
 export interface PrintRequestShowSectionShow {
   id: string;
@@ -132,7 +135,7 @@ export function groupPrintRequestsByShow<TShow extends PrintRequestShowSectionSh
   allocationsByRequestId: Readonly<Record<string, readonly ShowAllocation[]>>;
   showsById: Readonly<Record<string, TShow>>;
   now?: Date;
-  /** Default: upcoming-schedule ASC. Use `staff_gang_sheet_history` for Internal→Printed. */
+  /** Default: upcoming-schedule ASC. Use desc for Customer Printing/Printed, or staff history for Internal→Printed. */
   sectionOrder?: PrintRequestShowSectionOrder;
 }): PrintRequestShowSection<TShow>[] {
   const sectionOrder = input.sectionOrder ?? "scheduled_start_asc";
@@ -190,6 +193,10 @@ export function groupPrintRequestsByShow<TShow extends PrintRequestShowSectionSh
 
     if (sectionOrder === "staff_gang_sheet_history") {
       return compareSectionsByStaffGangSheetHistory(left, right);
+    }
+
+    if (sectionOrder === "scheduled_start_desc") {
+      return compareSectionsByScheduledStartAsc(right, left);
     }
 
     return compareSectionsByScheduledStartAsc(left, right);

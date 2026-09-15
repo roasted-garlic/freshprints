@@ -1,5 +1,20 @@
 # Recent Completed Work
 
+## 2026-09-15 - Studio pre-release Design Navigation + Print Request refinements — SIGNOFF COMPLETE (DEV)
+
+Goal `studio-pre-release-design-navigation-and-print-request-list-refinements` is **DONE**.
+Owner DEV QA recorded **PASS** for Workstreams A–F and the regression sweep. Design Details
+navigation/UI placement, Portal show-management parity for qualifying Studio-created customer
+requests, scoped Print Request isolation/search/grouping/totals/order, and integrated customer
+picker search were completed within the reviewed constraints.
+
+Final evidence: affected corrective suite **132/132 PASS**; F-focused suite **22/22 PASS**;
+Studio/Portal typechecks, Functions build, targeted ESLint, and `git diff --check` PASS. The full
+repository lint retains 14 unrelated pre-existing errors outside this goal. Earlier scoped DEV
+Functions deployment completed with 7 deployed and 0 errored/aborted. No production deployment,
+Portal publication, Studio release, schema change, Rules change, or unrelated refactor occurred.
+Signoff: `docs/workflow/reviews/2026-09-14-studio-pre-release-design-navigation-and-print-request-list-refinements-signoff.md`.
+
 ## 2026-09-13 - Production rollout STOPPED at Function preflight
 
 Owner-authorized production GO began the frozen rollout. Additive Firestore indexes deployed from

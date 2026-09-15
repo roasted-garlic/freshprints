@@ -2,7 +2,7 @@ import type { ShowAllocationStatus } from "../types/showAllocation/showAllocatio
 import type { ShowProductionStatus } from "../types/upcomingShow/upcomingShow.enums";
 import type { PrintRequestClosureKind, PrintRequestOrigin } from "../types/printRequest/printRequest.types";
 import { isPrintRequestConvertedToInternal } from "./printRequestConversion";
-import { isPortalCustomerOriginPrintRequest } from "./portalPrintRequestEditability";
+import { isPortalShowManagementEligiblePrintRequest } from "./portalPrintRequestShowManagement";
 import { canRemoveRequestFromShow } from "./showQueueEditability";
 
 const CANCELABLE_ALLOCATION_STATUSES: ShowAllocationStatus[] = ["pending", "queued"];
@@ -49,10 +49,7 @@ export function evaluatePortalPrintRequestUnqueue(input: {
   /** Conflict ONLY when another ACTIVE Editing Continuable exists (not when a parkable draft exists) */
   hasOtherPortalEditableContinuableRequest: boolean;
 }): EvaluatePortalPrintRequestUnqueueResult {
-  if (!isPortalCustomerOriginPrintRequest({
-    requestOrigin: input.request.requestOrigin,
-    isInternal: input.request.isInternal === true,
-  })) {
+  if (!isPortalShowManagementEligiblePrintRequest(input.request)) {
     return {
       eligible: false,
       reason: "not_portal_customer",

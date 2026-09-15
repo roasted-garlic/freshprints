@@ -1,5 +1,11 @@
 # Roadmap and Phases
 
+## 2026-09-15 — Managed goal closed
+
+`studio-pre-release-design-navigation-and-print-request-list-refinements` is signed off in DEV
+with Owner DEV QA **PASS** for A–F and regression. No production, Portal publication, or Studio
+release action is part of the closeout; Phase 9 remains parked.
+
 > 2026-09-13: **Production rollout STOPPED at Function preflight** — Additive index deployment
 > completed with 94 composite indexes READY, including `portalPrintRequestItems`, and no
 > removals/replacements. The explicit 164-target Function allowlist stopped before mutation because

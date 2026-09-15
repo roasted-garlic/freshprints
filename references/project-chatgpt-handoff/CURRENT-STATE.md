@@ -2,28 +2,30 @@
 
 **Last updated:** 2026-09-15
 
-## CURRENT AUTHORITATIVE PHASE — Contextual Smart Filter narrowing — OWNER QA PASS / development push complete
+## CURRENT AUTHORITATIVE PHASE — Studio pre-release Design Navigation + Print Request refinements — SIGNOFF COMPLETE (DEV)
 
-The owner recorded `OWNER QA: SMART FILTER SAME-DIMENSION OR + LOWERCASE SUBJECTS — PASS` and
-`OWNER QA: CONTEXTUAL SMART FILTER NARROWING — PASS`, closing
-the prior phase. The new bounded corrective intentionally supersedes same-dimension OR with
-cumulative narrowing and contextual counts.
+The owner recorded `OWNER DEV QA: PASS` for all Workstreams A–F and the regression sweep for
+`studio-pre-release-design-navigation-and-print-request-list-refinements`. FreshForge Signoff is
+complete and this managed goal is closed. The final implementation preserves the reviewed
+constraints: shared Design Details navigation and embedded lightbox behavior; narrow
+`studio_customer` Portal show-management/editability parity; local show isolation and scoped
+search; show-scoped customer grouping/totals; Printing/Printed newest-show-first ordering; and
+eligible-customer search integrated into the open Studio dropdown with clear/reset behavior.
 
-DEV read-only proof: `cow=14`, `highland cow=12`, exact intersection `12`, union `14`; all 12
-Highland-cow records also contain `cow`. The reviewed query is
-`[["subjects:cow"],["subjects:highland cow"]]`; facet distributions retain all active filters,
-so the narrowed cohort reports `cow=12` and `highland cow=12`.
+Final evidence is recorded in
+`docs/workflow/reviews/2026-09-14-studio-pre-release-design-navigation-and-print-request-list-refinements-test-report.md`
+and the Signoff artifact. The affected corrective suite is **132/132 PASS**; the final F-focused
+suite is **22/22 PASS**; Studio/Portal typechecks, Functions build, targeted ESLint, and
+`git diff --check` pass. The full repository lint still reports the same 14 unrelated
+pre-existing errors outside this goal and is noted, not presented as a goal failure.
 
-The contextual implementation is local and adversarially reviewed: shared singleton facet groups,
-Studio every-value hydration matching, cumulative modal copy, contextual counts, and selected-value
-retention at zero-count intersections. Focused contextual validation is **152/152 tests, 38 suites
-PASS**; Studio/Portal typechecks, Functions build, Studio packaged build, targeted ESLint, and diff
-check pass. No production mutation occurred.
+The scoped DEV Functions deployment used for earlier Owner QA completed with **7 Functions
+deployed, 0 errored, 0 aborted**. No production deployment, Portal publication, Studio release,
+schema change, Rules change, or unrelated refactor occurred. No next step remains in this goal;
+new work requires a new todo and managed Plan.
 
-Owner QA checklist: `docs/workflow/reviews/2026-09-15-contextual-smart-filter-narrowing-dev-qa-preparation.md`.
-The reviewed development commit/push is complete: `a5862d1537190a6e87a588a2a6ae9f74e606dfec`
-(`fix: close catalog copy and contextual smart filters`). Local `HEAD` and `origin/development`
-are aligned. Production promotion remains a separate owner checkpoint.
+The completed development commit/push is recorded in the Signoff artifact. Production promotion
+and any Portal/Studio release remain separately unauthorized.
 
 ## Historical snapshot — Smart Filter OR + lowercase Subjects
 

@@ -1,5 +1,11 @@
 # Features Inventory
 
+> 2026-09-15: **Studio pre-release Print Request refinements — CLOSED (DEV)** — Owner DEV QA
+> **PASS** for Design Details navigation/presentation, customer-request show management and
+> Portal editability, show isolation/search, show-scoped customer grouping/totals,
+> Printing/Printed newest-show-first ordering, and Create Customer Request customer search with
+> dropdown-integrated placement. No production/publication/release action occurred.
+
 > 2026-09-12: **Coordinated cutover repository readiness — CLOSED** — Owner DEV QA **PASS**.
 > Portal print-request reads now have projection-preferred dual-read compatibility with bounded
 > canonical fallback during transition; final Rules deny direct customer canonical reads only after

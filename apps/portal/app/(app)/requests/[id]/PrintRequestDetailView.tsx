@@ -24,6 +24,7 @@ import {
 } from '@fresh-prints/shared/utils/portalPrintProgressStage';
 import { formatPortalCustomerShowScheduleLabel } from '@fresh-prints/shared/utils/portalCustomerShowSchedule';
 import { isPortalCustomerOriginPrintRequest } from '@fresh-prints/shared/utils/portalPrintRequestEditability';
+import { isPortalShowManagementEligiblePrintRequest } from '@fresh-prints/shared/utils/portalPrintRequestShowManagement';
 import { evaluatePortalPrintRequestUnqueue } from '@fresh-prints/shared/utils/portalPrintRequestUnqueue';
 import type { ShowProductionStatus } from '@fresh-prints/shared/types/upcomingShow/upcomingShow.enums';
 import { sumPrintRequestItemQuantities } from '@fresh-prints/shared/utils/portalShowQueueCapacity';
@@ -789,7 +790,8 @@ export default function PrintRequestDetailView() {
 
   const designCountLabel = `${printRequest.itemCount} design${printRequest.itemCount === 1 ? '' : 's'}`;
   const printCountLabel = `${totalPrintCount} print${totalPrintCount === 1 ? '' : 's'}`;
-  const canShowQueueCta = effectiveIsEditable && items.length > 0 && unallocatedQuantity > 0;
+  const canShowShowManagement = isPortalShowManagementEligiblePrintRequest(printRequest);
+  const canShowQueueCta = canShowShowManagement && items.length > 0 && unallocatedQuantity > 0;
   const canQueueToShow =
     canShowQueueCta && persistenceSummary.canOpenQueue && !isFlushingQueue;
 

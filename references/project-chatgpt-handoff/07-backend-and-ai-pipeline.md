@@ -1,5 +1,15 @@
 # Backend and AI Pipeline
 
+## Studio Print Request refinements (DEV — signed off 2026-09-15)
+
+- Narrow Portal show-management/editability parity accepts only owned, non-internal qualifying
+  `studio_customer` requests in Editing while preserving existing lifecycle, validation,
+  capacity, authorization, and origin-snapshot protections.
+- Show isolation, customer grouping/totals, and Printing/Printed ordering remain local/shared
+  reader behavior; no schema or Rules changes were required.
+- Earlier Owner QA DEV deployment updated the seven reviewed queue/item mutation Functions; it
+  completed with 7 deployed, 0 errored, and 0 aborted. No production deployment occurred.
+
 ## Coordinated Portal projection cutover prerequisites (repository closed 2026-09-12)
 
 - `portalPrintRequestItems` is the customer-safe, Admin-maintained projection of canonical

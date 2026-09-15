@@ -249,4 +249,30 @@ describe("groupPrintRequestsByShow", () => {
       ["s-early", "s-late"],
     );
   });
+
+  it("supports scheduled_start_desc with deterministic section-key ties", () => {
+    const sections = groupPrintRequestsByShow({
+      requests: [
+        mockRequest({ id: "a", name: "a" }),
+        mockRequest({ id: "b", name: "b" }),
+        mockRequest({ id: "c", name: "c" }),
+      ],
+      allocationsByRequestId: {
+        a: [mockAllocation({ id: "aa", printRequestId: "a", upcomingShowId: "show-a" })],
+        b: [mockAllocation({ id: "bb", printRequestId: "b", upcomingShowId: "show-b" })],
+        c: [mockAllocation({ id: "cc", printRequestId: "c", upcomingShowId: "show-c" })],
+      },
+      showsById: {
+        "show-a": { id: "show-a", scheduledStartAt: new Date("2026-08-20T18:00:00Z") },
+        "show-b": { id: "show-b", scheduledStartAt: new Date("2026-08-20T18:00:00Z") },
+        "show-c": { id: "show-c", scheduledStartAt: new Date("2026-08-25T18:00:00Z") },
+      },
+      sectionOrder: "scheduled_start_desc",
+    });
+
+    assert.deepEqual(
+      sections.map((section) => section.sectionKey),
+      ["show-c", "show-b", "show-a"],
+    );
+  });
 });

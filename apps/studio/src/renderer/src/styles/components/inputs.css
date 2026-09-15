@@ -209,6 +209,7 @@
 
 .form-select-search-wrap {
   flex: 0 0 auto;
+  position: relative;
   padding: var(--space-1);
 }
 
@@ -220,8 +221,17 @@
   font: inherit;
   font-size: var(--font-size-sm);
   line-height: var(--line-height-normal);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-2) calc(var(--space-3) + 1.75rem) var(--space-2) var(--space-3);
   width: 100%;
+}
+
+.form-select-search-clear {
+  align-items: center;
+  display: inline-flex;
+  position: absolute;
+  right: var(--space-2);
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .form-select-search:focus {

@@ -71,4 +71,10 @@ describe('ADR-FP-122 — one-request-per-show uniqueness removed from queuePorta
     assert.match(source, /hasExistingAllocation/);
     assert.match(source, /freshRequestHasAllocation/);
   });
+
+  it('keeps the narrow customer show-management origin gate and preserves origin snapshots', () => {
+    assert.match(source, /isPortalShowManagementEligiblePrintRequest/);
+    assert.match(source, /requestOriginSnapshot/);
+    assert.doesNotMatch(source, /requestOriginSnapshot:\s*"portal_customer"/);
+  });
 });

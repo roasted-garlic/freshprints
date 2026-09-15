@@ -1,5 +1,7 @@
 # Fresh Prints Roadmap
 
+> 2026-09-15: **Studio pre-release Design Navigation + Print Request refinements — SIGNOFF approved_with_notes (DEV)** — Goal `studio-pre-release-design-navigation-and-print-request-list-refinements` **DONE**. Owner DEV QA **PASS** for A–F and the regression sweep. Final evidence: affected corrective suite **132/132 PASS**, F-focused suite **22/22 PASS**, Studio/Portal typechecks, Functions build, targeted ESLint, and `git diff --check` PASS. The known full-repository lint baseline remains 14 unrelated pre-existing errors outside this goal. Scoped DEV Functions were deployed earlier for QA; no production deployment, Portal publication, or Studio release occurred or is authorized. Signoff: `docs/workflow/reviews/2026-09-14-studio-pre-release-design-navigation-and-print-request-list-refinements-signoff.md`.
+
 > 2026-09-13: **Ready Catalog Smart Profile reprocess COMPLETE; Algolia gated** — Job
 > `GB4fUzW0Om10xev21Yd4` processed 2,736 attempts for 2,734 unique eligible Ready designs (2
 > retries), all successful; failed/unprocessed, malformed/unsafe, anomalies, and preservation
@@ -646,7 +648,7 @@ Current Goal:
 
 **Small Managed Items Backlog:** #5–**#14** **Done** (2026-07-21). See [Small Managed Items Backlog](#small-managed-items-backlog-2026-07-18) below.
 
-**Active managed goal:** none (**IDLE**). Last closed: `portal-ga4-production-enablement` (2026-08-17; Signoff approved; `PROD GA4 QA: PASS`; live `build-2026-08-17-002` @ `124c6fa`). Cutover remains **CLOSED** (do not reopen). Phase 9 remains **PARKED**. Historical Goal #13 row below is not an open DNS task.
+**Active managed goal:** none (**IDLE**). Last closed: `studio-pre-release-design-navigation-and-print-request-list-refinements` (2026-09-15; Owner DEV QA **PASS**; Signoff approved_with_notes). Cutover remains **CLOSED** (do not reopen). Phase 9 remains **PARKED**. Historical Goal #13 row below is not an open DNS task.
 
 **Prior note (superseded for current workflow):** Goal #13 — prelaunch companion/censored **production promote signed off** (2026-08-10; `PROD COMPANION CENSORED PROMOTE SMOKE: PASS`; Studio v1.0.2). Placement-default **DEFERRED**. Stage 2 smoke **PASS** / **READY FOR CUSTOMERS** on hosted.app; cutover still awaits `APPROVE MYPRINTREQUEST.COM CUTOVER`.
 `production-studio-assisted-library-design-search-empty` **signed off** (owner Studio QA **PASS**).

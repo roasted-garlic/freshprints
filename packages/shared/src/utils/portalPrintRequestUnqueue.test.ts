@@ -138,14 +138,13 @@ describe("evaluatePortalPrintRequestUnqueue", () => {
     assert.equal(result.reason, "show_not_removable");
   });
 
-  it("blocks studio_customer origin", () => {
+  it("allows studio_customer origin for show management", () => {
     const result = evaluatePortalPrintRequestUnqueue({
       request: { ...portalRequest, requestOrigin: "studio_customer" },
       showProductionStatus: "open",
       allocationsOnShow: [allocation()],
       hasOtherPortalEditableContinuableRequest: false,
     });
-    assert.equal(result.eligible, false);
-    assert.equal(result.reason, "not_portal_customer");
+    assert.equal(result.eligible, true);
   });
 });

@@ -33,6 +33,7 @@ import {
 } from "../../packages/shared/src/utils/printRequestPerShowCustomerCap";
 import { buildShowAllocationSourceFields } from "../../packages/shared/src/utils/showAllocationSourceFields";
 import { resolvePrintRequestItemSourceType } from "../../packages/shared/src/utils/printRequestItemSource";
+import { isPortalShowManagementEligiblePrintRequest } from "../../packages/shared/src/utils/portalPrintRequestShowManagement";
 import {
   formatWorkingRequestOverLimitForQueueMessage,
 } from "../../packages/shared/src/utils/printRequestWorkingRequestMax";
@@ -142,10 +143,15 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
       throw failedPrecondition("You can only queue your own print requests.");
     }
 
-    if (requestData.requestOrigin !== "portal_customer" || requestData.isInternal === true) {
+    if (!isPortalShowManagementEligiblePrintRequest({
+      requestOrigin: requestData.requestOrigin,
+      isInternal: requestData.isInternal === true,
+    })) {
       validationStage = "request-not-portal";
       throw failedPrecondition("This request cannot be queued from the portal.");
     }
+
+    const requestOriginSnapshot = requestData.requestOrigin as "portal_customer" | "studio_customer";
 
     if (!CONTINUABLE_STATUSES.has(String(requestData.status))) {
       validationStage = "request-not-working";
@@ -728,7 +734,7 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
             ...sourceFields,
             customerId: customer.customerId,
             requestNameSnapshot: requestName,
-            requestOriginSnapshot: "portal_customer",
+            requestOriginSnapshot,
             allocatedQuantity: line.quantity,
             sourceItemQuantitySnapshot: line.quantity,
             printWidthInches: line.item.printWidthInches,

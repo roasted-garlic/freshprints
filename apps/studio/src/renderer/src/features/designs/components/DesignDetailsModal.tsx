@@ -1,4 +1,4 @@
-import { Info, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Info, X } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "../../../shared/components/Button";
@@ -30,6 +30,7 @@ import { resolveDesignAiReviewDisplay } from "../utils/aiReviewState";
 import type { DesignSmartProfile } from "@fresh-prints/shared/types/catalog/smartProfile.types";
 import { resolveCompanionSetStatusLabel } from "../utils/companionSetHelpers";
 import { formatAiEstimatedCost } from "../utils/aiReviewDisplay";
+import { getPreviewLightboxNavigationState } from "@fresh-prints/shared/utils/previewLightboxNavigation";
 import { CompanionSetPanel } from "./CompanionSetPanel";
 import {
   DesignSmartProfileAuditSection,
@@ -140,6 +141,11 @@ export function DesignDetailsModal({
           }))
       : undefined;
 
+  const detailsNavigationState = getPreviewLightboxNavigationState(
+    lightboxNavigationItems?.map((item) => item.id) ?? [],
+    design?.id ?? null,
+  );
+
   if (!design) {
     return null;
   }
@@ -244,13 +250,59 @@ export function DesignDetailsModal({
         ariaLabelledBy="design-details-title"
         isOpen={isOpen}
         onClose={onClose}
+        shellClassName={
+          detailsNavigationState.total > 1
+            ? "design-details-modal-shell--navigable"
+            : undefined
+        }
+        shellContent={
+          detailsNavigationState.total > 1 ? (
+            <div
+              aria-label="Design details navigation"
+              className="design-details-modal-navigation"
+            >
+              <span
+                aria-live="polite"
+                className="design-details-modal-navigation-position"
+              >
+                {detailsNavigationState.positionLabel}
+              </span>
+              <button
+                aria-label="Previous design"
+                className="icon-button icon-button-md icon-button-ghost design-details-modal-navigation-button design-details-modal-navigation-button--previous"
+                disabled={!detailsNavigationState.canGoPrevious}
+                onClick={() => {
+                  if (detailsNavigationState.previousId) {
+                    onPreviewNavigate?.(detailsNavigationState.previousId);
+                  }
+                }}
+                type="button"
+              >
+                <ChevronLeft aria-hidden="true" size={20} strokeWidth={2.2} />
+              </button>
+              <button
+                aria-label="Next design"
+                className="icon-button icon-button-md icon-button-ghost design-details-modal-navigation-button design-details-modal-navigation-button--next"
+                disabled={!detailsNavigationState.canGoNext}
+                onClick={() => {
+                  if (detailsNavigationState.nextId) {
+                    onPreviewNavigate?.(detailsNavigationState.nextId);
+                  }
+                }}
+                type="button"
+              >
+                <ChevronRight aria-hidden="true" size={20} strokeWidth={2.2} />
+              </button>
+            </div>
+          ) : undefined
+        }
       >
         <ModalHeader>
           <div className="design-details-header">
             <div className="design-details-header-copy">
               <p className="eyebrow">Design details</p>
               <h2 id="design-details-title">{design.title}</h2>
-              <div className="design-details-header-pills">
+            <div className="design-details-header-pills">
                 <Badge variant={getDesignStatusBadgeVariant(design.status)}>
                   {formatDesignStatusLabel(design.status)}
                 </Badge>
@@ -272,9 +324,9 @@ export function DesignDetailsModal({
                   type="button"
                 >
                   <Info aria-hidden="true" size={18} strokeWidth={2.2} />
-                </button>
-              </div>
+              </button>
             </div>
+          </div>
 
             <div className="design-details-header-media">
               <DesignThumbnailPanel

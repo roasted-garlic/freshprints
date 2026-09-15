@@ -1,6 +1,13 @@
 # Next Planned Goal
 
-**Updated:** 2026-09-14
+**Updated:** 2026-09-15
+
+## Studio pre-release Design Navigation + Print Request refinements — CLOSED
+
+`studio-pre-release-design-navigation-and-print-request-list-refinements` is signed off in DEV
+after Owner DEV QA **PASS** for A–F and regression. There is no follow-on action in this goal;
+begin a new managed Plan for the next todo. Production deployment, Portal publication, and Studio
+release remain separately unauthorized.
 
 ## Coordinated rollout signoff — 2026-09-14
 

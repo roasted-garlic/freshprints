@@ -100,6 +100,25 @@ describe("previewLightboxNavigation Studio caller contracts", () => {
     assert.match(page, /previewNavigationDesigns=\{/);
   });
 
+  it("Design Details adds modal navigation without replacing the existing lightbox", () => {
+    const details = readStudioSource("designs", "components", "DesignDetailsModal.tsx");
+    const css = readFileSync(
+      path.resolve(studioFeaturesRoot, "../styles/components/design-library.css"),
+      "utf8",
+    );
+
+    assert.match(details, /getPreviewLightboxNavigationState/);
+    assert.match(details, /aria-label="Previous design"/);
+    assert.match(details, /aria-label="Next design"/);
+    assert.match(details, /onPreviewNavigate\?\.\(detailsNavigationState\.previousId\)/);
+    assert.match(details, /onPreviewNavigate\?\.\(detailsNavigationState\.nextId\)/);
+    assert.match(details, /<DesignPreviewLightbox/);
+    assert.match(css, /\.design-details-modal-navigation/);
+    assert.match(css, /\.design-details-modal-navigation-button--previous/);
+    assert.match(css, /\.design-details-modal-navigation-button--next/);
+    assert.match(css, /\.design-details-modal-navigation-position/);
+  });
+
   it("Companion, intake, and batch import wire continuous or local+close nav collections", () => {
     const companion = readStudioSource("designs", "components", "CompanionSetPanel.tsx");
     const intake = readStudioSource(

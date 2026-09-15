@@ -2,25 +2,25 @@
 
 | Field | Value |
 |---|---|
-| Status | **COMPLETE — Autonomous catalog-copy, lowercase Subjects, and contextual Smart Filter correctives signed off and pushed** |
-| DONE | **yes — owner QA passed; development commit/push complete** |
-| Signoff Status | Title-authority owner QA **PASS**; Smart Filter lowercase/OR owner QA **PASS**; contextual narrowing owner QA **PASS**. |
+| Status | **CLOSED — Studio pre-release design/navigation and Print Request refinements signed off in DEV** |
+| DONE | **yes — Owner DEV QA PASS; Signoff complete** |
+| Signoff Status | **approved_with_notes** — Owner DEV QA PASS for A–F and regression; known full-repository lint baseline remains outside-scope. |
 | Current Mode | managed-phase |
-| Parent program | `smart-catalog-intelligence-completion-and-legacy-tag-retirement` |
-| Current Goal | `contextual-smart-filter-narrowing-corrective` |
-| Current Phase | Contextual narrowing implemented, runtime-proven in DEV, adversarially reviewed, and owner-QA passed |
-| Plan Status | **approved_with_changes** — `docs/workflow/plans/2026-09-15-contextual-smart-filter-narrowing-corrective-plan.md` |
-| Review Status | **approved_with_changes** — `docs/workflow/reviews/2026-09-15-contextual-smart-filter-narrowing-formal-review.md` |
-| Implementation Status | **committed and pushed** — shared cumulative singleton facet builder, Studio every-value matcher, contextual counts, selected-value retention, and cumulative modal copy; no production change |
-| Test Status | Contextual focused suites **152/152 PASS** (38 suites); Studio/Portal typechecks, Functions build, Studio packaged build, targeted ESLint, and git diff --check PASS. Portal Next build remains environment-limited by existing `.next/trace` EPERM. |
-| Human Checkpoint Required | **no — this corrective is signed off; production promotion remains a separate checkpoint** |
-| Human Checkpoint Reason | DEV readback verifies `shadow` / live `false`, Pass 2 OFF, and no active jobs; owner QA passed cumulative result and contextual count behavior in Studio/Portal. |
-| Blocked | **no — development commit/push is authorized; production remains untouched** |
+| Parent program | `fresh-prints-studio-pre-release-refinements` |
+| Current Goal | `studio-pre-release-design-navigation-and-print-request-list-refinements` |
+| Current Phase | **Signoff complete — Owner DEV QA PASS; managed goal closed** |
+| Plan Status | **approved_with_changes** — `docs/workflow/plans/2026-09-14-studio-pre-release-design-navigation-and-print-request-list-refinements-plan.md` |
+| Review Status | **approved_with_changes; owner accepted and authorized implementation** — `docs/workflow/reviews/2026-09-14-studio-pre-release-design-navigation-and-print-request-list-refinements-formal-review.md` |
+| Implementation Status | **complete; committed/pushed to development** — A-D, bounded UI polish, Owner DEV QA corrections B/E/F, and F-only dropdown placement; scoped DEV Functions were deployed earlier for QA; no production/publication/Studio release authorized |
+| Test Status | Affected corrective suite **132/132 PASS**; F-focused suite **22/22 PASS**; Studio/Portal typechecks, Functions build, targeted ESLint, and diff check PASS. Full repository lint retains the same 14 unrelated pre-existing errors outside this change. |
+| Human Checkpoint Required | **no — Owner DEV QA PASS recorded; production/release remains separately unauthorized** |
+| Human Checkpoint Reason | Owner explicitly accepted the reviewed Plan/Formal Review, authorized Implement → Test, and recorded Owner DEV QA PASS for A–F plus regression. |
+| Blocked | **no — goal closed; production remains untouched** |
 | Allowed Actions | Local reviewed implementation, tests/builds, read-only DEV/production inventories, source/runtime parity analysis, adversarial review, DEV QA preparation, and state/handoff updates. |
 | Forbidden Actions | Bypass owner authentication; direct Admin settings/data writes; mutate DEV/Algolia outside the established owner path; any production settings/data/Algolia/Function/design mutation; Pass 2 changes; historical Ready backfill. |
-| Last Completed Step | Title owner QA PASS plus clean 110-row DEV soak and 537/537 parity; prior Smart Filter OR + lowercase Subjects owner QA PASS; contextual DEV proof 14/12/12/14 and cumulative singleton implementation validated. |
-| Next Required Step | Separate owner-authorized production promotion/release checkpoint. Historical lowercase repair/reindex remains a separate owner-authorized operation. |
-| Decision Log | 2026-09-15 — Prior Smart Filter OR + lowercase Subjects owner QA PASS. 2026-09-15 — DEV proof: cow 14, highland cow 12, intersection 12, union 14; all Highland-cow records contain cow. 2026-09-15 — Contextual plan/review approved_with_changes; singleton cumulative builder, Studio every matcher, contextual count contracts, and selected-zero retention implemented. 2026-09-15 — Contextual focused suites 152/152 PASS; Studio/Portal typechecks, Functions build, Studio packaged build, targeted ESLint, and diff check PASS; no production mutation. 2026-09-15 — DEV readback verifies shadow/live=false, Pass 2 OFF, no active jobs. 2026-09-15 — Coordinated corrective commit `a5862d1537190a6e87a588a2a6ae9f74e606dfec` pushed to `origin/development`; local and remote aligned. |
+| Last Completed Step | **Signoff** — Owner DEV QA PASS for A–F and regression; final evidence recorded; commit/push complete; no production mutation. |
+| Next Required Step | **None — goal closed. New work requires a new managed Plan.** |
+| Decision Log | 2026-09-15 — Prior Smart Filter OR + lowercase Subjects owner QA PASS. 2026-09-15 — DEV proof: cow 14, highland cow 12, intersection 12, union 14; all Highland-cow records contain cow. 2026-09-15 — Contextual plan/review approved_with_changes; singleton cumulative builder, Studio every matcher, contextual count contracts, and selected-zero retention implemented. 2026-09-15 — Contextual focused suites 152/152 PASS; Studio/Portal typechecks, Functions build, Studio packaged build, targeted ESLint, and diff check PASS; no production mutation. 2026-09-15 — DEV readback verifies shadow/live=false, Pass 2 OFF, no active jobs. 2026-09-15 — Coordinated corrective commit `a5862d1537190a6e87a588a2a6ae9f74e606dfec` pushed to `origin/development`; local and remote aligned. 2026-09-15 — Owner DEV QA corrections B/E/F amended, implemented, and tested: 132/132 affected tests PASS; no schema/Rules/prod change; returned to Owner DEV QA. 2026-09-15 — Owner-authorized scoped DEV Functions deployment completed successfully for `unqueuePortalPrintRequestFromShow`, `queuePortalPrintRequestToShow`, `addPortalCatalogDesignToPrintRequest`, `duplicatePortalPrintRequestItem`, `removePortalPrintRequestItem`, `updatePortalPrintRequestItemQuantity`, and `updatePortalStaffArtworkPrintRequestItemSize`; 7/7 updated on `fresh-prints-dev`; no production/publication/Studio release action. 2026-09-15 — Owner DEV QA F-only UI placement corrective implemented: search now renders inside the existing open Customer Select menu with identity search metadata and in-menu X clear; F-focused suite 22/22 PASS; no backend/schema/Rules/authorization change; returned to Owner DEV QA F only. 2026-09-15 — Owner DEV QA recorded PASS for A–F and regression; managed goal closed at Signoff with no production/publication/release action. |
 
 ## Active Owner QA checkpoint — Studio 1.0.12 corrective
 

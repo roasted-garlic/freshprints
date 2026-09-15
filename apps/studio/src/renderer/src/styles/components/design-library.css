@@ -623,6 +623,70 @@
   width: min(100%, 42rem);
 }
 
+.design-details-modal-shell--navigable {
+  box-sizing: border-box;
+  padding: 2.75rem 3.5rem;
+  position: relative;
+  width: min(100%, 49rem);
+}
+
+.design-details-modal-shell--navigable .design-library-modal-panel {
+  max-height: calc(min(90vh, 48rem) - 5.5rem);
+  width: 100%;
+}
+
+.design-details-modal-navigation {
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 1;
+}
+
+.design-details-modal-navigation-position {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-variant-numeric: tabular-nums;
+  left: 50%;
+  position: absolute;
+  top: 0.35rem;
+  transform: translateX(-50%);
+}
+
+.design-details-modal-navigation-button {
+  min-width: 2.5rem;
+  pointer-events: auto;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.design-details-modal-navigation-button--previous {
+  left: 0.35rem;
+}
+
+.design-details-modal-navigation-button--next {
+  right: 0.35rem;
+}
+
+.design-details-modal-navigation-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+@media (max-width: 40rem) {
+  .design-details-modal-shell--navigable {
+    padding-inline: 3rem;
+  }
+
+  .design-details-modal-navigation-button--previous {
+    left: 0.15rem;
+  }
+
+  .design-details-modal-navigation-button--next {
+    right: 0.15rem;
+  }
+}
+
 .design-library-modal-panel {
   display: flex;
   flex: 1;

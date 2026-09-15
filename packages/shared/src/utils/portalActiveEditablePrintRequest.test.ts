@@ -92,9 +92,14 @@ describe("portalActiveEditablePrintRequest", () => {
       })), false);
     });
 
-    it("rejects studio_customer origin", () => {
+    it("allows an unparked Editing Studio-created request", () => {
       assert.equal(isPortalActiveEditablePrintRequest(makeRequest({ 
-        requestOrigin: "studio_customer" 
+        requestOrigin: "studio_customer",
+        status: "editing",
+      })), true);
+      assert.equal(isPortalActiveEditablePrintRequest(makeRequest({
+        requestOrigin: "studio_customer",
+        status: "draft",
       })), false);
     });
 
@@ -120,11 +125,11 @@ describe("portalActiveEditablePrintRequest", () => {
         makeRequest({ id: "active-draft", status: "draft" }),
         makeRequest({ id: "parked-draft", status: "draft", parkedByEditingRequestId: "pr-editing" }),
         makeRequest({ id: "editing", status: "editing" }),
-        makeRequest({ id: "studio", requestOrigin: "studio_customer" }),
+        makeRequest({ id: "studio", requestOrigin: "studio_customer", status: "editing" }),
       ];
 
       const active = filterPortalActiveEditablePrintRequests(requests);
-      assert.deepEqual(active.map(r => r.id), ["active-draft", "editing"]);
+      assert.deepEqual(active.map(r => r.id), ["active-draft", "editing", "studio"]);
     });
   });
 
@@ -225,10 +230,11 @@ describe("portalActiveEditablePrintRequest", () => {
       const studioRequest = makeRequest({
         id: "studio",
         requestOrigin: "studio_customer",
+        status: "editing",
       });
 
       const selected = selectPortalActiveEditablePrintRequest([parkedDraft, studioRequest], null);
-      assert.equal(selected, null);
+      assert.equal(selected?.id, "studio");
     });
   });
 
@@ -238,16 +244,16 @@ describe("portalActiveEditablePrintRequest", () => {
         makeRequest({ id: "active-draft" }),
         makeRequest({ id: "parked-draft", parkedByEditingRequestId: "pr-editing" }),
         makeRequest({ id: "editing", status: "editing" }),
-        makeRequest({ id: "studio", requestOrigin: "studio_customer" }),
+        makeRequest({ id: "studio", requestOrigin: "studio_customer", status: "editing" }),
       ];
 
-      assert.equal(countPortalActiveEditablePrintRequests(requests), 2);
+      assert.equal(countPortalActiveEditablePrintRequests(requests), 3);
     });
 
     it("returns zero when all requests are parked or non-portal", () => {
       const requests = [
         makeRequest({ id: "parked", parkedByEditingRequestId: "pr-editing" }),
-        makeRequest({ id: "studio", requestOrigin: "studio_customer" }),
+        makeRequest({ id: "studio", requestOrigin: "studio_customer", status: "draft" }),
         makeRequest({ id: "internal", isInternal: true }),
       ];
 

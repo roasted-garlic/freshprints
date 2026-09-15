@@ -1,7 +1,7 @@
 import type { SelectOption } from "./Select";
 
 /**
- * Local, case-insensitive, partial label filter for Select options.
+ * Local, case-insensitive, partial filter for Select options and optional search metadata.
  * Pure in-memory filter only — no network or service imports.
  */
 export function filterSelectOptionsByLabel(
@@ -13,5 +13,7 @@ export function filterSelectOptionsByLabel(
     return [...options];
   }
 
-  return options.filter((option) => option.label.toLowerCase().includes(normalizedQuery));
+  return options.filter((option) =>
+    (option.searchText ?? option.label).toLowerCase().includes(normalizedQuery),
+  );
 }
