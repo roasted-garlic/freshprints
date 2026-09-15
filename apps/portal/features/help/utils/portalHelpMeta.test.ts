@@ -11,7 +11,12 @@ describe('buildPortalHelpPageMetadata', () => {
     })
 
     assert.equal(meta.title, 'FAQ and How To')
-    assert.deepEqual(meta.robots, { index: false, follow: true })
+    assert.deepEqual(meta.robots, {
+      index: false,
+      follow: false,
+      noarchive: true,
+      nosnippet: true,
+    })
     assert.equal(
       meta.alternates && 'canonical' in meta.alternates ? meta.alternates.canonical : undefined,
       'https://myprintrequest.dev/help',

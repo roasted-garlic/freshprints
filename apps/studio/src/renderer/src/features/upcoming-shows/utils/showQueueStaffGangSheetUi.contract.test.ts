@@ -47,8 +47,9 @@ test("past shows can still export images and gang sheets", () => {
 });
 
 test("Staff Gang Sheet keeps a single Add Request on the request list header", () => {
-  assert.match(pageSource, /!isSelectedStaffGangSheet \? \([\s\S]*Add Request/);
   assert.match(pageSource, /Attached print requests[\s\S]*openAddRequestModal/);
+  assert.match(pageSource, /isSelectedStaffGangSheet \? \([\s\S]*Plus[\s\S]*Add Request/);
+  assert.equal((pageSource.match(/\bAdd Request\b/g) ?? []).length, 1);
 });
 
 test("Staff Gang Sheet hides production timer card", () => {
@@ -87,5 +88,12 @@ test("Removing a request from Internal Sheets clears Print Requests page cache",
   assert.match(
     pageSource,
     /removeShowAllocationsForRequest[\s\S]*clearPrintRequestsPageCache/,
+  );
+});
+
+test("Mark Complete clears Print Requests page cache after Internal Gang Sheet completion", () => {
+  assert.match(
+    pageSource,
+    /completeStaffGangSheetAndOpenNext[\s\S]*clearPrintRequestsPageCache/,
   );
 });

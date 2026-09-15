@@ -28,3 +28,9 @@ test("complete callable allows any staff caller (no assignee gate)", () => {
   assert.match(source, /assertStaffCaller/);
   assert.doesNotMatch(source, /assignedStaffUserId !== caller\.id/);
 });
+
+test("complete callable finishes allocations then reconciles print requests and returns IDs", () => {
+  assert.match(source, /finishShowAllocationsInTransaction/);
+  assert.match(source, /reconcilePrintRequestsAfterShowFinish/);
+  assert.match(source, /reconciledPrintRequestIds/);
+});

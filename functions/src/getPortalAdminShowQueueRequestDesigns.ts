@@ -1,4 +1,5 @@
 import { onCall } from "firebase-functions/v2/https";
+import { logger } from "firebase-functions";
 
 import { normalizeArtworkBackgroundHex } from "../../packages/shared/src/constants/design/artworkBackground.constants";
 import type {
@@ -32,6 +33,7 @@ type ArtworkAsset = {
 type ArtworkPreview = {
   imageUrl?: string;
   artworkBackgroundHex?: string;
+  previewUnavailableReason?: PortalAdminShowQueueDesignItem["previewUnavailableReason"];
 };
 
 function resolveProjectId(): string {
@@ -51,6 +53,11 @@ function mapHttpsError(error: unknown): never {
     throw internal(error.message);
   }
   throw internal("Unable to load Show Queue designs right now.");
+}
+
+function isSigningFailure(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return /signBlob|SigningError|iam\.serviceAccounts\.signBlob|Permission.*denied/i.test(message);
 }
 
 async function signDerivativeUrl(storagePath: string, expiresAtMs: number): Promise<string> {
@@ -96,6 +103,21 @@ async function resolveUploadArtworkAsset(uploadId: string): Promise<ArtworkAsset
   return { storagePath };
 }
 
+async function resolveStaffArtworkArtworkAsset(staffArtworkId: string): Promise<ArtworkAsset> {
+  const snapshot = await adminDb.collection("staffArtworks").doc(staffArtworkId).get();
+  if (!snapshot.exists) {
+    return { storagePath: null };
+  }
+  const data = snapshot.data() as Record<string, unknown>;
+  // Derivatives only — never production/original paths (ADR-FP-187).
+  const storagePath =
+    nonEmptyStringExport(data.previewStoragePath) ??
+    nonEmptyStringExport(data.thumbnailStoragePath) ??
+    null;
+  const artworkBackgroundHex = normalizeArtworkBackgroundHex(data.artworkBackgroundHex) ?? undefined;
+  return { storagePath, ...(artworkBackgroundHex ? { artworkBackgroundHex } : {}) };
+}
+
 async function resolveArtworkPreview(
   data: Record<string, unknown>,
   source: "catalog_design" | "customer_upload" | "staff_artwork",
@@ -103,32 +125,46 @@ async function resolveArtworkPreview(
   artworkCache: Map<string, Promise<ArtworkAsset>>,
 ): Promise<ArtworkPreview> {
   try {
-    if (source === "staff_artwork") {
-      return {};
-    }
-    const objectId = nonEmptyStringExport(source === "catalog_design" ? data.designId : data.customerUploadId);
+    const objectId = nonEmptyStringExport(
+      source === "catalog_design"
+        ? data.designId
+        : source === "customer_upload"
+          ? data.customerUploadId
+          : data.staffArtworkId,
+    );
     if (!objectId) {
-      return {};
+      return { previewUnavailableReason: "unresolved" };
     }
     let assetPromise = artworkCache.get(`${source}:${objectId}`);
     if (!assetPromise) {
       assetPromise =
         source === "catalog_design"
           ? resolveCatalogArtworkAsset(objectId)
-          : resolveUploadArtworkAsset(objectId);
+          : source === "customer_upload"
+            ? resolveUploadArtworkAsset(objectId)
+            : resolveStaffArtworkArtworkAsset(objectId);
       artworkCache.set(`${source}:${objectId}`, assetPromise);
     }
     const asset = await assetPromise;
     if (!asset.storagePath) {
-      return asset.artworkBackgroundHex ? { artworkBackgroundHex: asset.artworkBackgroundHex } : {};
+      return {
+        previewUnavailableReason: "missing_object",
+        ...(asset.artworkBackgroundHex ? { artworkBackgroundHex: asset.artworkBackgroundHex } : {}),
+      };
     }
     const imageUrl = await signDerivativeUrl(asset.storagePath, expiresAtMs);
     return {
       imageUrl,
       ...(asset.artworkBackgroundHex ? { artworkBackgroundHex: asset.artworkBackgroundHex } : {}),
     };
-  } catch {
-    return {};
+  } catch (error) {
+    const reason = isSigningFailure(error) ? "signing_failed" : "missing_object";
+    logger.error("portal-admin-show-queue preview unavailable", {
+      source,
+      reason,
+      message: error instanceof Error ? error.message : String(error ?? ""),
+    });
+    return { previewUnavailableReason: reason };
   }
 }
 
@@ -218,6 +254,11 @@ export const getPortalAdminShowQueueRequestDesigns = onCall(
               : {}),
             origin: resolveItemOrigin(data),
             ...(preview.imageUrl ? { imageUrl: preview.imageUrl, imageExpiresAtMs } : {}),
+            ...(preview.previewUnavailableReason
+              ? { previewUnavailableReason: preview.previewUnavailableReason }
+              : !preview.imageUrl
+                ? { previewUnavailableReason: "unresolved" as const }
+                : {}),
             ...(preview.artworkBackgroundHex
               ? { artworkBackgroundHex: preview.artworkBackgroundHex }
               : {}),
@@ -242,3 +283,10 @@ export {
   PORTAL_ADMIN_SHOW_QUEUE_IMAGE_TTL_MS,
   validatePortalAdminShowQueueRequestDesignsRequest,
 };
+
+/** Test seam for preview failure classification (no Storage I/O). */
+export function classifyPortalAdminShowQueuePreviewFailure(
+  error: unknown,
+): "signing_failed" | "missing_object" {
+  return isSigningFailure(error) ? "signing_failed" : "missing_object";
+}

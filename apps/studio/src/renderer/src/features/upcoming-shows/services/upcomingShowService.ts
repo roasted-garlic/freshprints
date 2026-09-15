@@ -193,6 +193,8 @@ export interface CompleteStaffGangSheetResult {
   nextShowId: string;
   nextCycleNumber: number;
   alreadyCompleted: boolean;
+  /** Present on current callables; empty/absent on older deploys. */
+  reconciledPrintRequestIds?: string[];
 }
 
 export interface UpdateUpcomingShowInput {
@@ -1116,10 +1118,20 @@ export const upcomingShowService = {
     }
 
     try {
-      return await callTracedFunction<{ upcomingShowId: string }, CompleteStaffGangSheetResult>(
+      const result = await callTracedFunction<{ upcomingShowId: string }, CompleteStaffGangSheetResult>(
         "completeStaffGangSheetAndOpenNext",
         { source: "upcomingShowService.completeStaffGangSheetAndOpenNext" },
       )({ upcomingShowId });
+
+      // Belt-and-suspenders with server recompute + triggers (parity with Whatnot Finish sync).
+      for (const printRequestId of result.reconciledPrintRequestIds ?? []) {
+        await this.syncPrintRequestQueueTabBestEffort(
+          printRequestId,
+          "upcomingShowService.completeStaffGangSheetAndOpenNext",
+        );
+      }
+
+      return result;
     } catch (error) {
       if (error instanceof Error && error.message.trim()) {
         throw error;

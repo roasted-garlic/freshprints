@@ -2339,6 +2339,23 @@ On **`fresh-prints-dev`**, initial FAQ list may be seeded with
 `npx tsx functions/scripts/seed-portal-help-faqs.ts` (`videos: []`) so Studio shows
 editable saved items matching bundled defaults (ADR-FP-118).
 
+### `settings/portalDevCustomerAccess`
+
+```ts
+interface PortalDevCustomerAccessSettings {
+  approvedEmails: string[]; // normalized lowercase, de-duped; max 200
+  updatedAt?: Timestamp;
+  updatedBy?: string;
+}
+```
+
+DEV-only approved customer email allowlist (`fresh-prints-dev`). Owner/admin manage in Studio
+**Settings → Portal maintenance** (section beside Portal maintenance). Writes via
+`updatePortalDevCustomerAccessSettings` (callable; client writes denied). Firestore: owner/admin
+read. Missing doc → empty allowlist (fail closed on DEV). Production Functions short-circuit
+enforcement (`GCLOUD_PROJECT` / `GCP_PROJECT` ≠ `fresh-prints-dev`). Staff roles bypass the
+customer allowlist. Does not auto-delete Auth users or customer records.
+
 ### `settings/portalSocialMeta`
 
 ```ts

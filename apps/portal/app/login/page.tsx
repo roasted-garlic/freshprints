@@ -3,6 +3,8 @@ import type { Metadata } from 'next';
 import { PortalAuthBrandLogo } from '../../features/brand/components/PortalAuthBrandLogo';
 import { loadPortalGlobalSocialMeta } from '../../features/brand/portalGlobalSocialMetaService';
 import { buildPortalPageMetadata } from '../../features/brand/portalSiteMeta';
+import { shouldShowPortalDevelopmentAuthOverlay } from '../../features/brand/portalSearchIndexing';
+import { PortalDevelopmentAuthOverlay } from '../../features/auth/components/PortalDevelopmentAuthOverlay';
 import { LoginForm } from '../../features/auth/components/LoginForm';
 import {
   PortalLoginBrowseDesignsAction,
@@ -27,8 +29,11 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default function LoginPage() {
+  const showDevAuthOverlay = shouldShowPortalDevelopmentAuthOverlay();
+
   return (
     <main className="portal-shell portal-shell-narrow portal-shell-auth portal-login-required">
+      <PortalDevelopmentAuthOverlay enabled={showDevAuthOverlay} />
       <RedirectAuthenticatedFromAuthPages />
       <div className="portal-auth-card portal-login-required-card">
         <div className="portal-auth-brand portal-auth-card-brand portal-login-required-brand">

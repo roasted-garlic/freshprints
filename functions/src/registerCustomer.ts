@@ -5,6 +5,7 @@ import type { RegisterCustomerResponse } from "../../packages/shared/src/types/a
 import { adminDb } from "./lib/admin";
 import { alreadyExists, internal, invalidArgument, permissionDenied, unauthenticated } from "./lib/errors";
 import { validateRegisterCustomerRequest } from "./lib/registerCustomerValidation";
+import { assertPortalDevCustomerAccessAllowsEmail } from "./lib/portalDevCustomerAccess";
 import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 
 const staffRoles = new Set(["owner", "admin", "helper"]);
@@ -78,6 +79,15 @@ export const registerCustomer = onCall(async (request): Promise<RegisterCustomer
               ? request.auth.token.email.trim().toLowerCase()
               : "";
 
+          // DEV allowlist applies to already-provisioned customers too (no Auth/user delete).
+          await assertPortalDevCustomerAccessAllowsEmail(
+            email ||
+              (typeof customerData?.email === "string" ? customerData.email : undefined) ||
+              (typeof userSnapshot.data()?.email === "string"
+                ? userSnapshot.data()!.email
+                : undefined),
+          );
+
           return {
             userId,
             customerId: existingCustomerId,
@@ -97,6 +107,7 @@ export const registerCustomer = onCall(async (request): Promise<RegisterCustomer
 
     const payload = validateRegisterCustomerRequest(request.data, request.auth.token.email);
 
+    await assertPortalDevCustomerAccessAllowsEmail(payload.email);
     await assertEmailAvailableForCustomerRegistration(payload.email, userId);
 
     const customerRef = adminDb.collection("customers").doc();

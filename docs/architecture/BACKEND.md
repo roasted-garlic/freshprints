@@ -278,7 +278,7 @@ Authoritative constants: `packages/shared/src/constants/import/batchImportLimits
 | Function | Trigger | Purpose |
 |----------|---------|---------|
 | `createTeamUser` | Callable | Create team user + invitation flow |
-| `registerCustomer` | Callable | Customer self-registration — provisions `users/{uid}` + `customers/{id}` + username reservation after Firebase Auth signup. Requires `biddingAcknowledgmentAccepted` + version; writes `portalBiddingAcknowledgments.signup`. |
+| `registerCustomer` | Callable | Customer self-registration — provisions `users/{uid}` + `customers/{id}` + username reservation after Firebase Auth signup. Requires `biddingAcknowledgmentAccepted` + version; writes `portalBiddingAcknowledgments.signup`. On `fresh-prints-dev` only, rejects unapproved emails (including alreadyProvisioned); production short-circuits. |
 | `updatePortalCustomerProfile` | Callable | Portal customer self-service: update own `displayName` + `username` with 30-day username cooldown, reservation swap, Auth displayName sync, and resumable identity snapshot propagation (ADR-FP-148). |
 | `updateCustomer` | Callable | Studio staff: update customer profile fields (including email for Portal-linked customers); shares canonical profile txn + propagation with Portal path; staff bypass username cooldown. |
 | `updateTeamUser` | Callable | Update team user fields |
@@ -408,6 +408,15 @@ uses the same customer hosts for `metadataBase` / OG image resolution via option
 | `updatePortalHelpSettings` | Owner/admin callable for Portal FAQ and How To (`settings/portalHelp`) |
 | `getPortalMaintenanceState` / `updatePortalMaintenanceState` | Portal public-state read (Gen2 `invoker: "public"` so guest CORS preflight succeeds) and owner/admin control for `settings/portalMaintenance`; saved heading/body copy is customer-safe, while the configured tester UID remains private. Portal UI shows the customer wall only after a successful ON read for a non-tester; Functions/Rules still fail closed on mutations. |
 | `listPortalMaintenanceTestCustomers` | Owner/admin-only read of active, linked, non-guest, non-deleted, non-disabled, non-merged customer options for the maintenance tester selector; returns safe UID/display metadata only |
+| `getPortalDevCustomerAccessSettings` / `updatePortalDevCustomerAccessSettings` | Owner/admin manage `settings/portalDevCustomerAccess` approved email list (DEV allowlist). Client writes denied. |
+| `checkPortalDevCustomerAccess` | Authenticated Portal bootstrap check; production short-circuits to allowed; staff roles bypass; unapproved customers get `{ allowed: false }` without membership enumeration. |
+
+**DEV Portal auth overlay / access gate (2026-09-15):** Authoritative enforcement uses the
+`fresh-prints-dev` project signal (not `NODE_ENV` alone). DEV Portal UI is exercised via
+**localhost `:3100`** and the **`myprintrequest.dev` tunnel** to that local process — not a
+separate DEV App Hosting deploy. Production App Hosting publication (`myprintrequest.com`)
+remains a separately gated promotion step. The `/login` and `/register` warning overlay
+appears on every visit when the DEV gate is on (visit-only dismiss).
 | `requestCustomerUploadCatalogPermissionFollowUp` | Active staff-only request for one customer permission follow-up; records an opaque token transactionally and creates one idempotent Portal Alert |
 | `getCustomerUploadCatalogPermissionFollowUp` | Authenticated owning-customer read by opaque token; returns only safe filename/request context and a short-lived preview URL |
 | `respondToCustomerUploadCatalogPermissionFollowUp` | Authenticated owning-customer Allow/Decline transaction; maintenance-guarded, preserves original denial evidence, and never creates Designs or AI work |

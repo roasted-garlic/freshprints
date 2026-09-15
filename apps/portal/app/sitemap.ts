@@ -2,7 +2,10 @@ import type { MetadataRoute } from 'next'
 
 import { buildPortalDesignSharePath } from '../features/catalog/utils/portalDesignShareUrls'
 import { loadReadyDesignSitemapEntries } from '../features/catalog/services/portalSitemapService'
-import { portalSitemapStaticPaths } from '../features/brand/portalSearchIndexing'
+import {
+  isPortalSearchIndexingEnabled,
+  portalSitemapStaticPaths,
+} from '../features/brand/portalSearchIndexing'
 import { getPortalSiteOrigin } from '../features/brand/portalSiteMeta'
 
 /** Newly approved designs appear in the sitemap within this window (seconds). */
@@ -17,6 +20,11 @@ function staticPriority(path: string): number {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // Do not advertise DEV / non-prod URLs to crawlers.
+  if (!isPortalSearchIndexingEnabled()) {
+    return []
+  }
+
   const origin = getPortalSiteOrigin()
   const now = new Date()
 

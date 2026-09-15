@@ -62,7 +62,12 @@ describe('buildPortalRootMetadata', () => {
     });
 
     assert.equal(meta.metadataBase?.toString(), 'https://myprintrequest.dev/');
-    assert.deepEqual(meta.robots, { index: false, follow: true });
+    assert.deepEqual(meta.robots, {
+      index: false,
+      follow: false,
+      noarchive: true,
+      nosnippet: true,
+    });
     assert.equal(meta.manifest, '/site.webmanifest');
     assert.ok(meta.icons);
     const icons = meta.icons && typeof meta.icons === 'object' && 'icon' in meta.icons ? meta.icons.icon : undefined;

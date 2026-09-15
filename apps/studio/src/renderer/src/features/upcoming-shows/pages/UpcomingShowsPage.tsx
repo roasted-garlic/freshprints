@@ -34,6 +34,7 @@ import {
   OwnerShowProductionOverrideDialog,
   ShowProductionRecoveryDialog,
 } from "../components/ShowProductionRecoveryDialog";
+import { InternalGangSheetHistoricalReconciliationDialog } from "../components/InternalGangSheetHistoricalReconciliationDialog";
 import { useUpcomingShows } from "../hooks/useUpcomingShows";
 import { useShowAllocations } from "../hooks/useShowAllocations";
 import { printRequestService } from "../../print-requests/services/printRequestService";
@@ -265,6 +266,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
   );
   const [isDidNotPrintDialogOpen, setIsDidNotPrintDialogOpen] = useState(false);
   const [isOwnerOverrideDialogOpen, setIsOwnerOverrideDialogOpen] = useState(false);
+  const [isHistoricalReconciliationOpen, setIsHistoricalReconciliationOpen] = useState(false);
 
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [defaultCapacityInput, setDefaultCapacityInput] = useState("");
@@ -915,6 +917,16 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
   const hasActiveAllocationsForSelectedShow = useMemo(
     () => (selectedShow?.allocatedQuantity ?? 0) > 0,
     [selectedShow?.allocatedQuantity],
+  );
+  const hasFinishableAllocationsForSelectedShow = useMemo(
+    () =>
+      allocations.some(
+        (allocation) =>
+          allocation.status === "pending" ||
+          allocation.status === "queued" ||
+          allocation.status === "in_progress",
+      ),
+    [allocations],
   );
   const hasExportableAllocationsForSelectedShow = useMemo(
     () =>
@@ -1907,6 +1919,20 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                           variant="primary"
                         >
                           Mark Complete
+                        </Button>
+                      ) : null}
+                      {isSelectedStaffGangSheet &&
+                      selectedShow.productionStatus === "completed" &&
+                      hasFinishableAllocationsForSelectedShow &&
+                      permissionService.canReconcileHistoricalInternalGangSheets(user) ? (
+                        <Button
+                          onClick={() => setIsHistoricalReconciliationOpen(true)}
+                          size="sm"
+                          title="Preview and repair finishable allocations left on this completed History sheet."
+                          type="button"
+                          variant="secondary"
+                        >
+                          Reconcile unfinished
                         </Button>
                       ) : null}
                       {showDetailOverflowMenuItems.length > 0 ? (
@@ -3152,6 +3178,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                         user,
                         selectedShow.id,
                       );
+                      clearPrintRequestsPageCache();
                       setCompleteConfirmKind(null);
                       setSuccessMessage(
                         result.alreadyCompleted
@@ -3241,6 +3268,21 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
         show={selectedShow}
         showLabel={selectedShow ? formatUpcomingShowTitle(selectedShow) : "Show"}
         upcomingShowId={selectedShow?.id ?? null}
+      />
+
+      <InternalGangSheetHistoricalReconciliationDialog
+        isOpen={isHistoricalReconciliationOpen}
+        onCancel={() => setIsHistoricalReconciliationOpen(false)}
+        onCompleted={(message) => {
+          setIsHistoricalReconciliationOpen(false);
+          setSuccessMessage(message);
+          setSuccessAlertSeed((current) => current + 1);
+          clearPrintRequestsPageCache();
+          void reloadUpcomingShows();
+          void reloadAllocationTotals();
+        }}
+        sheetLabel={selectedShow ? formatUpcomingShowTitle(selectedShow) : "Internal Gang Sheet"}
+        upcomingShowId={selectedShow?.id ?? ""}
       />
 
       <OwnerShowProductionOverrideDialog

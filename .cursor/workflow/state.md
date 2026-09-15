@@ -4,21 +4,23 @@
 |---|---|
 | Status | **IDLE** |
 | DONE | **yes** |
-| Signoff Status | **approved_with_notes** |
-| Current Mode | managed-phase (idle) |
-| Parent program | Phase 7 / Show Queue operational refinement |
-| Current Goal | `studio-staff-show-capacity-allocation-override` — **CLOSED** |
-| Current Phase | **Signoff complete** |
-| Plan Status | **complete** — `docs/workflow/plans/2026-09-15-studio-staff-show-capacity-allocation-override-plan.md` |
-| Review Status | **approved_with_changes; owner accepted** |
-| Implementation Status | **complete** |
-| Test Status | **passed_with_notes** — automated 79/79; Owner DEV QA **PASS** |
+| Signoff Status | **approved** |
+| Current Mode | managed-phase (complete) |
+| Parent program | Pre-production reliability / safety |
+| Current Goal | `historical-internal-reconciliation-admin-artwork-previews-and-dev-access-hardening` |
+| Current Phase | **signoff** (complete) |
+| Plan Status | complete |
+| Review Status | approved_with_changes (owner accepted) |
+| Implementation Status | complete |
+| Test Status | **passed** (automated passed_with_notes; Owner DEV QA **PASS**) |
 | Human Checkpoint Required | **no** |
 | Human Checkpoint Reason | — |
 | Blocked | **no** |
-| Allowed Actions | New managed Plan when owner starts next goal; commit/push only if owner asks. |
-| Forbidden Actions | Production deploy / Portal publication / Studio release / Rules / schema without new authorization. |
-| Last Completed Step | Signoff `approved_with_notes` after Owner DEV QA PASS. |
-| Next Required Step | Idle — await owner for next managed goal (optional commit/push of this work). |
-| Decision Log | 2026-09-15 — Owner accepted Formal Review and authorized Implement→Test. Implement delivered capacity-only override. Automated tests 79/79. Owner: `OWNER DEV QA: SHOW CAPACITY OVERRIDE — PASS`. Signoff closed. |
-| Artifacts | Plan; Formal Review; Test report; DEV QA prep; Signoff `docs/workflow/reviews/2026-09-15-studio-staff-show-capacity-allocation-override-signoff.md`; ADR-FP-182 |
+| Allowed Actions | Read docs; await next owner goal. |
+| Forbidden Actions | Production IAM/deploy; Portal production App Hosting; Studio release; production History Apply; Identity Platform config — until separately authorized. |
+| Last Completed Step | Signoff **approved** after Owner DEV QA PASS. |
+| Next Required Step | Idle — await next owner-directed goal or production promotion authorization. |
+| Decision Log | 2026-09-15 — Owner DEV QA PASS. Signoff approved. Production remains unauthorized. |
+| Artifacts | Plan; Formal Review; Test report; DEV QA; Signoff; cumulative Promotion Manifest |
+| Signoff | `docs/workflow/reviews/2026-09-15-historical-internal-reconciliation-admin-artwork-previews-and-dev-access-hardening-signoff.md` |
+| Manifest | `docs/workflow/reviews/2026-09-pre-production-promotion-manifest.md` |

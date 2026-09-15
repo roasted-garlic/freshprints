@@ -4,7 +4,10 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 
 import { resolveArtworkBackgroundHex } from '@fresh-prints/shared/constants/design/artworkBackground.constants';
-import type { PortalAdminShowQueueRequestDesignsResponse } from '@fresh-prints/shared/types/portal/getPortalAdminShowQueueRequestDesigns.types';
+import type {
+  PortalAdminShowQueueDesignItem,
+  PortalAdminShowQueueRequestDesignsResponse,
+} from '@fresh-prints/shared/types/portal/getPortalAdminShowQueueRequestDesigns.types';
 import { resolveGangSheetPriceTierForInches } from '@fresh-prints/shared/utils/gangSheetCustomerSectionSummary';
 import { GANG_SHEET_PRICING_TIER_LABELS } from '@fresh-prints/shared/utils/gangSheetPricingTierDisplay';
 
@@ -34,6 +37,19 @@ function formatDesignSourceLabel(source: 'catalog_design' | 'customer_upload' | 
     : source === 'staff_artwork'
       ? 'Staff-added'
       : 'Design Library';
+}
+
+function formatPreviewUnavailableLabel(
+  reason: PortalAdminShowQueueDesignItem['previewUnavailableReason'] | undefined,
+): string {
+  switch (reason) {
+    case 'signing_failed':
+      return 'Preview unavailable (signing)'
+    case 'missing_object':
+      return 'Preview unavailable'
+    default:
+      return 'No preview'
+  }
 }
 
 export function PortalAdminViewDesignsModal({
@@ -179,7 +195,7 @@ export function PortalAdminViewDesignsModal({
                           <img alt="" src={item.imageUrl} />
                         </button>
                       ) : (
-                        <span>No preview</span>
+                        <span>{formatPreviewUnavailableLabel(item.previewUnavailableReason)}</span>
                       )}
                     </div>
                     <div className="portal-admin-design-copy">

@@ -47,5 +47,7 @@ function’s service config before binding.
 ## Related
 
 - Callable: `customerGetAssistedCreationApprovedProofDownloadUrl`
+- Callable: `getPortalAdminShowQueueRequestDesigns` (Portal Admin Show Queue View Designs)
 - ADR-FP-093
+- ADR-FP-187
 - Optional Storage CORS backup: `docs/workflow/setup/firebase-storage-cors.md`

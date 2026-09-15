@@ -2769,6 +2769,12 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // DEV Portal customer email allowlist. Writes via updatePortalDevCustomerAccessSettings only.
+    match /settings/portalDevCustomerAccess {
+      allow read: if isOwnerOrAdmin();
+      allow write: if false;
+    }
+
     match /settings/{settingId} {
       allow read: if isStaff() && (settingId == "aiEnrichment" || settingId == "catalogAutomationHealth");
       allow write: if false;

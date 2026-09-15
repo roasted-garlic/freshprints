@@ -1,5 +1,25 @@
 # Recent Completed Work
 
+## 2026-09-15 - Historical Internal reconciliation / Admin Staff Artwork / DEV access — SIGNOFF COMPLETE (DEV)
+
+Goal `historical-internal-reconciliation-admin-artwork-previews-and-dev-access-hardening` is **DONE**.
+Owner DEV QA **PASS**. Signoff **approved**. A: owner History Preview→Apply (reuse finish/reconcile;
+no N+1). B: Admin View Designs Staff Artwork derivatives (ADR-FP-187). C: DEV overlay every
+login/register visit + approved-email gate (`fresh-prints-dev`; localhost + tunnel; production open).
+Focused tests **50/50** (+ correctives). Functions+Rules on DEV. No production / App Hosting /
+Studio release / IAM. Signoff:
+`docs/workflow/reviews/2026-09-15-historical-internal-reconciliation-admin-artwork-previews-and-dev-access-hardening-signoff.md`.
+Manifest: `docs/workflow/reviews/2026-09-pre-production-promotion-manifest.md`.
+
+## 2026-09-15 - Pre-release lifecycle / image parity / DEV hardening — SIGNOFF COMPLETE (DEV)
+
+Goal `pre-release-lifecycle-image-parity-and-dev-environment-hardening` is **DONE**. Owner DEV QA
+**PASS WITH NOTES**. Forward Internal Gang Sheet Mark Complete → Printed verified on DEV (production
+historical Queued-on-completed sheets deferred). Portal Admin View Designs signing-failure honesty
+delivered; Staff Artwork previews deferred. DEV banner + explicit noindex (Allow:/, empty sitemap,
+X-Robots-Tag) **PASS**. Focused tests **76/76 PASS**. No production IAM/deploy/Rules. Signoff:
+`docs/workflow/reviews/2026-09-15-pre-release-lifecycle-image-parity-and-dev-environment-hardening-signoff.md`.
+
 ## 2026-09-15 - Studio staff show-capacity allocation override — SIGNOFF COMPLETE (DEV)
 
 Goal `studio-staff-show-capacity-allocation-override` is **DONE**. Owner DEV QA **PASS**.

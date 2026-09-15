@@ -29,6 +29,8 @@ export interface CompleteStaffGangSheetAndOpenNextResponse {
   nextShowId: string;
   nextCycleNumber: number;
   alreadyCompleted: boolean;
+  /** Print requests whose allocations were finished (or re-finished) for post-complete verify/sync. */
+  reconciledPrintRequestIds: string[];
 }
 
 function mapHttpsError(error: unknown): never {
@@ -135,6 +137,7 @@ export const completeStaffGangSheetAndOpenNext = onCall(
                 nextShowId: next.id,
                 nextCycleNumber: nextCycle,
                 alreadyCompleted: true,
+                reconciledPrintRequestIds: affectedPrintRequestIds,
               },
               printRequestIds: affectedPrintRequestIds,
             };
@@ -212,6 +215,7 @@ export const completeStaffGangSheetAndOpenNext = onCall(
             nextShowId: nextRef.id,
             nextCycleNumber,
             alreadyCompleted: false,
+            reconciledPrintRequestIds: affectedPrintRequestIds,
           },
           printRequestIds: affectedPrintRequestIds,
         };
@@ -219,7 +223,10 @@ export const completeStaffGangSheetAndOpenNext = onCall(
 
       await reconcilePrintRequestsAfterShowFinish(printRequestIds, caller.id);
 
-      return response;
+      return {
+        ...response,
+        reconciledPrintRequestIds: printRequestIds,
+      };
     } catch (error) {
       mapHttpsError(error);
     }

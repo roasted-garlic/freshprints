@@ -1,3 +1,5 @@
+import { PORTAL_DEV_CUSTOMER_ACCESS_RESTRICTED_MESSAGE as SHARED_PORTAL_DEV_CUSTOMER_ACCESS_RESTRICTED_MESSAGE } from '@fresh-prints/shared/constants/portal/portalDevCustomerAccess.constants';
+
 /** Customer-facing message when reversible disable blocks Portal sign-in. */
 export const PORTAL_ACCOUNT_DISABLED_MESSAGE =
   'This account has been disabled. Please contact Fresh Prints if you believe this is a mistake.';
@@ -9,3 +11,7 @@ export const PORTAL_ACCOUNT_CLOSED_MESSAGE =
 /** Legacy inactive users doc without disabled/tombstone flags on customer. */
 export const PORTAL_ACCOUNT_INACTIVE_MESSAGE =
   'This account is inactive. Please contact Fresh Prints if you need help.';
+
+/** DEV allowlist denial — generic; never enumerate membership. */
+export const PORTAL_DEV_CUSTOMER_ACCESS_RESTRICTED_MESSAGE =
+  SHARED_PORTAL_DEV_CUSTOMER_ACCESS_RESTRICTED_MESSAGE;

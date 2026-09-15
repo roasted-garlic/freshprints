@@ -58,6 +58,7 @@ import { formatCombinedAiCost } from "../utils/aiPlaygroundPass2Flow";
 import { HelperSettingsPage } from "./HelperSettingsPage";
 import { AiEnrichmentTraceBrowser } from "../components/AiEnrichmentTraceBrowser";
 import { PortalMaintenanceSettingsSection } from "../components/PortalMaintenanceSettingsSection";
+import { PortalDevCustomerAccessSettingsSection } from "../components/PortalDevCustomerAccessSettingsSection";
 
 function formatPlaygroundJson(value: unknown): string {
   return JSON.stringify(value, null, 2) ?? "N/A";
@@ -501,6 +502,7 @@ function ManageableSettingsPage() {
           role="tabpanel"
         >
           <PortalMaintenanceSettingsSection />
+          <PortalDevCustomerAccessSettingsSection />
         </div>
       ) : null}
 

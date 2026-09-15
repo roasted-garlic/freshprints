@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 
 import { portalThemeInitScript } from '../features/theme/themeInitScript'
 import { buildPortalRootMetadata } from '../features/brand/portalSiteMeta'
+import { shouldShowPortalDevelopmentServerBanner } from '../features/brand/portalSearchIndexing'
+import { PortalDevelopmentServerBanner } from '../features/brand/components/PortalDevelopmentServerBanner'
 import { loadPortalGlobalSocialMeta } from '../features/brand/portalGlobalSocialMetaService'
 import { resolvePortalAnalyticsConfig } from '../features/analytics/services/portalAnalyticsConfig'
 import { Providers } from './providers'
@@ -31,6 +33,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const analyticsConfig = resolvePortalAnalyticsConfig(process.env)
+  const showDevelopmentBanner = shouldShowPortalDevelopmentServerBanner(process.env)
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -38,6 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: portalThemeInitScript }} />
       </head>
       <body suppressHydrationWarning>
+        {showDevelopmentBanner ? <PortalDevelopmentServerBanner /> : null}
         <Providers analyticsConfig={analyticsConfig}>{children}</Providers>
       </body>
     </html>

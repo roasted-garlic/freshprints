@@ -4,11 +4,15 @@
 
 ## FreshForge IDLE — no active managed goal
 
-Last closed: `studio-staff-show-capacity-allocation-override` (Signoff **approved_with_notes**,
-Owner DEV QA **PASS**). Await owner direction for the next managed Plan.
+Last closed: `historical-internal-reconciliation-admin-artwork-previews-and-dev-access-hardening`
+(Signoff **approved**, Owner DEV QA **PASS**). Await owner direction for the next managed Plan
+or separately gated production promotion (see
+`docs/workflow/reviews/2026-09-pre-production-promotion-manifest.md`).
 
-Optional residual (not started): commit/push of capacity-override working tree; production
-promotion of `allocateStudioPrintRequestToShow` + Studio UI; transfer/move capacity override (out of v1).
+## Historical Internal reconciliation / Admin Staff Artwork / DEV access — CLOSED
+
+Delivered on DEV. Production Functions/Rules/Portal App Hosting/Studio release/History Apply/IAM
+remain unauthorized until explicitly approved.
 
 ## Studio pre-release Design Navigation + Print Request refinements — CLOSED
 
