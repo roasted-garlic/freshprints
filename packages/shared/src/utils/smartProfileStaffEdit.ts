@@ -6,6 +6,7 @@ import type {
   DesignSmartProfile,
   SmartProfileDimensionLists,
 } from "../types/catalog/smartProfile.types";
+import { normalizeSmartProfileSubjectList } from "./smartProfileNormalization";
 
 const EDITABLE_KEY_SET = new Set<string>(SMART_PROFILE_EDITABLE_DIMENSION_KEYS);
 
@@ -75,7 +76,9 @@ export function mergeAiSmartProfileWithStaffPreserved(input: {
   for (const key of input.staffEditedDimensionKeys) {
     const preserved = input.priorProfile[key];
     if (Array.isArray(preserved)) {
-      merged[key] = preserved.filter((item): item is string => typeof item === "string");
+      const values = preserved.filter((item): item is string => typeof item === "string");
+      merged[key] =
+        key === "subjects" ? normalizeSmartProfileSubjectList(values) : values;
     } else {
       delete merged[key];
     }
@@ -107,7 +110,7 @@ export function applyStaffDimensionPatch(input: {
     } else if (values.length === 0) {
       delete next[key];
     } else {
-      next[key] = values;
+      next[key] = key === "subjects" ? normalizeSmartProfileSubjectList(values) ?? [] : values;
       editedKeys.add(key);
     }
   }
@@ -137,7 +140,10 @@ export function resetStaffEditedDimension(input: {
 
   const snapshotValues = input.snapshot[input.dimensionKey];
   if (Array.isArray(snapshotValues) && snapshotValues.length > 0) {
-    next[input.dimensionKey] = snapshotValues;
+    next[input.dimensionKey] =
+      input.dimensionKey === "subjects"
+        ? normalizeSmartProfileSubjectList(snapshotValues)
+        : snapshotValues;
   } else {
     delete next[input.dimensionKey];
   }

@@ -26,7 +26,7 @@ describe("aggregateSmartProfileVocabFromProfiles", () => {
     );
 
     assert.equal(result.sampleSize, 4);
-    assert.deepEqual(result.lists.subjects, ["Highland Cow", "cow"]);
+    assert.deepEqual(result.lists.subjects, ["highland cow", "cow"]);
     assert.deepEqual(result.lists.styles, ["cute", "sarcastic"]);
     assert.deepEqual(result.lists.objects, ["hat"]);
   });

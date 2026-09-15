@@ -15,13 +15,17 @@ import type {
 import type { ArtworkPlacement } from "@fresh-prints/shared/constants/design/artworkPlacement.constants";
 import type { AiReviewStatus } from "./aiReview.types";
 import type { DesignStatus } from "./designStatus.types";
+import type { CatalogTitleSource } from "@fresh-prints/shared/types/design/catalogTitleSource.types";
 
 export type { PrintSizeSource } from "@fresh-prints/shared/types/printSize/printSize.types";
 export type { ArtworkPlacement } from "@fresh-prints/shared/constants/design/artworkPlacement.constants";
+export type { CatalogTitleSource } from "@fresh-prints/shared/types/design/catalogTitleSource.types";
 
 export interface Design {
   id: string;
   title: string;
+  /** Provenance for the canonical catalog title; optional on legacy records. */
+  catalogTitleSource?: CatalogTitleSource;
   description?: string;
   categoryId?: string;
   tags: string[];
@@ -211,6 +215,7 @@ export interface Design {
 export interface CreateDesignInput {
   id?: string;
   title: string;
+  catalogTitleSource?: CatalogTitleSource;
   description?: string;
   categoryId?: string;
   tags?: string[];

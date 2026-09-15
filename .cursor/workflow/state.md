@@ -2,25 +2,25 @@
 
 | Field | Value |
 |---|---|
-| Status | **PASS — Studio 1.0.12 stable release published and verified** |
-| DONE | **yes — release closeout complete** |
-| Signoff Status | Owner QA **PASS**; FreshForge signoff approved_with_notes; release publication verified |
+| Status | **COMPLETE — Autonomous catalog-copy, lowercase Subjects, and contextual Smart Filter correctives signed off** |
+| DONE | **yes — owner QA passed and reviewed changes are ready for development commit/push** |
+| Signoff Status | Title-authority owner QA **PASS**; Smart Filter lowercase/OR owner QA **PASS**; contextual narrowing owner QA **PASS**. |
 | Current Mode | managed-phase |
 | Parent program | `smart-catalog-intelligence-completion-and-legacy-tag-retirement` |
-| Current Goal | `studio-ai-review-reprocess-bulk-and-autonomous-modal-corrective` |
-| Current Phase | Release closeout complete |
-| Plan Status | **complete** — `docs/workflow/plans/2026-09-14-studio-ai-review-bulk-reprocess-autonomous-modal-corrective-plan.md` |
-| Review Status | **approved_with_changes** — `docs/workflow/reviews/2026-09-14-studio-ai-review-bulk-reprocess-autonomous-modal-corrective-formal-review.md` |
-| Implementation Status | **complete — renderer-only; no backend or release change** (+ owner QA polish: single-select bulk label) |
-| Test Status | Clean DEV restart/white-screen preflight **PASS**; current corrective suite **34/34 PASS**; release-contract/publish tests **50/50 PASS**; Studio TypeScript **PASS**; targeted ESLint **PASS**; Vite renderer/electron/preload builds **PASS**; CI workflow run `34856480204` **PASS**; eight stable assets verified; electron-builder local Windows packaging remains environment-limited by EPERM; diff check **PASS**. |
-| Human Checkpoint Required | **no — explicit owner release authorization received** |
-| Human Checkpoint Reason | Owner supplied `OWNER QA: STUDIO 1.0.12 CORRECTIVE — PASS` and `OWNER AUTHORIZE END-TO-END STUDIO 1.0.12 RELEASE`. |
-| Blocked | **no** |
-| Allowed Actions | Explicitly authorized commit/push, PR/merge, Studio 1.0.12 workflow, artifact verification, stable publication, and release closeout. |
-| Forbidden Actions | Backend/Portal deploy, Rules/index/schema/migration/secret changes, Algolia rebuild, catalog backfill, Pass 2 change, or mutation of Studio 1.0.11. |
-| Last Completed Step | Owner QA PASS, clean DEV restart after stale-HMR white-screen incident, allowlisted commit `fe402e89f01f3f18b760c35f7ff6a55f483f6672`, PR #96 merge `840d596b058b3f7bef2dae886154aa667f9e2a57`, successful stable workflow `34856480204`, and published/verified release `v1.0.12`. |
-| Next Required Step | None — owner-authorized Studio 1.0.12 release is closed. |
-| Decision Log | 2026-09-13 — Owner directed: Needs Review multi-select primary button label is always `Reprocess` (no selected-count suffix); selection count stays in the existing counter. Owner confirmed after Studio restart. 2026-09-14 — Owner directed: bulk reprocess summary uses auto-dismiss `DismissibleSuccessAlert` toast (not a sticky banner); failure/warning detail lists remain only when present. 2026-09-14 — Owner directed: during bulk reprocess, workspace cycles each design preview with `Reprocessing N of M` under the image; action-bar button shows `Sending`. |
+| Current Goal | `contextual-smart-filter-narrowing-corrective` |
+| Current Phase | Contextual narrowing implemented, runtime-proven in DEV, adversarially reviewed, and owner-QA passed |
+| Plan Status | **approved_with_changes** — `docs/workflow/plans/2026-09-15-contextual-smart-filter-narrowing-corrective-plan.md` |
+| Review Status | **approved_with_changes** — `docs/workflow/reviews/2026-09-15-contextual-smart-filter-narrowing-formal-review.md` |
+| Implementation Status | **complete locally** — shared cumulative singleton facet builder, Studio every-value matcher, contextual counts, selected-value retention, and cumulative modal copy; no production change |
+| Test Status | Contextual focused suites **152/152 PASS** (38 suites); Studio/Portal typechecks, Functions build, Studio packaged build, targeted ESLint, and git diff --check PASS. Portal Next build remains environment-limited by existing `.next/trace` EPERM. |
+| Human Checkpoint Required | **no — this corrective is signed off; production promotion remains a separate checkpoint** |
+| Human Checkpoint Reason | DEV readback verifies `shadow` / live `false`, Pass 2 OFF, and no active jobs; owner QA passed cumulative result and contextual count behavior in Studio/Portal. |
+| Blocked | **no — development commit/push is authorized; production remains untouched** |
+| Allowed Actions | Local reviewed implementation, tests/builds, read-only DEV/production inventories, source/runtime parity analysis, adversarial review, DEV QA preparation, and state/handoff updates. |
+| Forbidden Actions | Bypass owner authentication; direct Admin settings/data writes; mutate DEV/Algolia outside the established owner path; any production settings/data/Algolia/Function/design mutation; Pass 2 changes; historical Ready backfill. |
+| Last Completed Step | Title owner QA PASS plus clean 110-row DEV soak and 537/537 parity; prior Smart Filter OR + lowercase Subjects owner QA PASS; contextual DEV proof 14/12/12/14 and cumulative singleton implementation validated. |
+| Next Required Step | Commit and push the reviewed development scope. Any production promotion or historical lowercase repair/reindex remains a separate owner-authorized operation. |
+| Decision Log | 2026-09-15 — Prior Smart Filter OR + lowercase Subjects owner QA PASS. 2026-09-15 — DEV proof: cow 14, highland cow 12, intersection 12, union 14; all Highland-cow records contain cow. 2026-09-15 — Contextual plan/review approved_with_changes; singleton cumulative builder, Studio every matcher, contextual count contracts, and selected-zero retention implemented. 2026-09-15 — Contextual focused suites 152/152 PASS; Studio/Portal typechecks, Functions build, Studio packaged build, targeted ESLint, and diff check PASS; no production mutation. 2026-09-15 — DEV readback verifies shadow/live=false, Pass 2 OFF, no active jobs. |
 
 ## Active Owner QA checkpoint — Studio 1.0.12 corrective
 

@@ -69,6 +69,7 @@ describe("buildOwnerReadyAiReprocessDemotionUpdate", () => {
     assert.equal(Object.prototype.hasOwnProperty.call(update, "aiReviewNotes"), false);
     assert.equal(Object.prototype.hasOwnProperty.call(update, "aiReviewedBy"), false);
     assert.equal(Object.prototype.hasOwnProperty.call(update, "aiReviewedAt"), false);
+    assert.equal(Object.prototype.hasOwnProperty.call(update, "catalogTitleSource"), false);
 
     for (const key of OWNER_READY_AI_REPROCESS_PRESERVED_FIELD_KEYS) {
       assert.equal(

@@ -26,7 +26,7 @@ function createDesign(overrides: Partial<CatalogDesign> = {}): CatalogDesign {
 }
 
 describe('resolveManagedSearchClientFilters', () => {
-  it('clears local text/category/Halftone filters when Algolia owns the query', () => {
+  it('clears local text/category but retains the staff Halftone post-filter when Algolia owns the query', () => {
     assert.deepEqual(
       resolveManagedSearchClientFilters({
         isManagedSearchQuery: true,
@@ -34,7 +34,7 @@ describe('resolveManagedSearchClientFilters', () => {
         categoryId: 'cat-1',
         halftoneFilterOn: true,
       }),
-      { search: '', categoryId: undefined, halftoneFilterOn: false },
+      { search: '', categoryId: undefined, halftoneFilterOn: true },
     );
   });
 

@@ -200,7 +200,7 @@ describe("createImportPresetSeed", () => {
 describe("syncImportPresetSeedOnStaffEdit", () => {
   it("clears a preset dimension from the seed when staff removes values", () => {
     const result = syncImportPresetSeedOnStaffEdit({
-      seed: { subjects: ["Dolly Parton"], places: ["Pensacola, FL"] },
+      seed: { subjects: ["dolly parton"], places: ["Pensacola, FL"] },
       importPresetDimensionKeys: ["subjects", "places"],
       patch: { subjects: [] },
     });
@@ -209,16 +209,16 @@ describe("syncImportPresetSeedOnStaffEdit", () => {
 
   it("updates seed values when staff edits a tracked dimension", () => {
     const result = syncImportPresetSeedOnStaffEdit({
-      seed: { subjects: ["Dolly Parton"] },
+      seed: { subjects: ["dolly parton"] },
       importPresetDimensionKeys: ["subjects"],
       patch: { subjects: ["Johnny Cash"] },
     });
-    expect(result).toEqual({ subjects: ["Johnny Cash"] });
+    expect(result).toEqual({ subjects: ["johnny cash"] });
   });
 
   it("returns null when staff clears the last seeded dimension", () => {
     const result = syncImportPresetSeedOnStaffEdit({
-      seed: { subjects: ["Dolly Parton"] },
+      seed: { subjects: ["dolly parton"] },
       importPresetDimensionKeys: ["subjects"],
       patch: { subjects: undefined },
     });
@@ -227,10 +227,10 @@ describe("syncImportPresetSeedOnStaffEdit", () => {
 
   it("does not mutate untracked dimensions from an unrelated staff patch", () => {
     const result = syncImportPresetSeedOnStaffEdit({
-      seed: { subjects: ["Dolly Parton"] },
+      seed: { subjects: ["dolly parton"] },
       importPresetDimensionKeys: ["subjects"],
       patch: { themes: ["Country"] },
     });
-    expect(result).toEqual({ subjects: ["Dolly Parton"] });
+      expect(result).toEqual({ subjects: ["dolly parton"] });
   });
 });

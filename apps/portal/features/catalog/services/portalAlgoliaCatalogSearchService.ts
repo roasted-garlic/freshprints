@@ -1,5 +1,7 @@
 import {
+  buildPortalCatalogAlgoliaSmartFacetFilters,
   PORTAL_CATALOG_ALGOLIA_SMART_FACET_ATTRIBUTES,
+  normalizePortalCatalogAlgoliaSmartFilterValues,
   type PortalCatalogAlgoliaRecord,
   type PortalCatalogAlgoliaSmartFacetAttribute,
 } from '@fresh-prints/shared/catalog-search/portalCatalogAlgoliaRecord';
@@ -16,6 +18,13 @@ export const SMART_FACET_ATTRIBUTES = PORTAL_CATALOG_ALGOLIA_SMART_FACET_ATTRIBU
 
 export type PortalSmartFilters = Partial<Record<SmartFacetAttr, string[]>>;
 
+export function normalizePortalSmartFilterValues(
+  attribute: SmartFacetAttr,
+  values: readonly string[] | undefined,
+): string[] {
+  return normalizePortalCatalogAlgoliaSmartFilterValues(attribute, values);
+}
+
 export interface PortalAlgoliaSearchPageOptions {
   categoryId?: string;
   limit?: number;
@@ -23,7 +32,7 @@ export interface PortalAlgoliaSearchPageOptions {
   smartFilters?: PortalSmartFilters;
 }
 
-/** Constraints that must refine tag / smart facet distribution (Stage 1b-C / Slice 3). */
+/** Constraints that refine Smart Profile facet distributions (Stage 1b-C / Slice 3). */
 export interface PortalAlgoliaFacetQueryOptions {
   search?: string;
   categoryId?: string;
@@ -40,24 +49,14 @@ export type PortalSmartFacetDistributions = Partial<
 >;
 
 /**
- * Build Algolia `facetFilters` AND groups for Smart Filters.
- * One inner array per selected value (AND semantics), e.g. `[['subjects:cow'], ['styles:cartoon']]`.
+ * Build cumulative Algolia facet groups: selected values and dimensions are ANDed.
  * Never includes objects / searchConcepts / visibleText.
  */
 export function buildSmartFacetAndFilters(smartFilters?: PortalSmartFilters): string[][] {
-  if (!smartFilters) return [];
-  const filters: string[][] = [];
-  for (const attr of SMART_FACET_ATTRIBUTES) {
-    const values = smartFilters[attr];
-    if (!values?.length) continue;
-    for (const value of [...new Set(values.map((entry) => entry.trim()).filter(Boolean))]) {
-      filters.push([`${attr}:${value}`]);
-    }
-  }
-  return filters;
+  return buildPortalCatalogAlgoliaSmartFacetFilters(smartFilters);
 }
 
-/** Build the Smart facet AND groups used by catalog/search/category queries. */
+/** Build the Smart facet groups used by catalog/search/category queries. */
 export function buildPortalAlgoliaCombinedFacetFilters(options: {
   smartFilters?: PortalSmartFilters;
 }): string[][] {
@@ -68,9 +67,7 @@ export function countSelectedSmartFilters(smartFilters?: PortalSmartFilters): nu
   if (!smartFilters) return 0;
   let count = 0;
   for (const attr of SMART_FACET_ATTRIBUTES) {
-    const values = smartFilters[attr];
-    if (!values?.length) continue;
-    count += values.map((entry) => entry.trim()).filter(Boolean).length;
+    count += normalizePortalCatalogAlgoliaSmartFilterValues(attr, smartFilters[attr]).length;
   }
   return count;
 }
@@ -83,10 +80,9 @@ export function hasSelectedSmartFilters(smartFilters?: PortalSmartFilters): bool
 export function serializeSmartFilters(smartFilters?: PortalSmartFilters): string {
   if (!smartFilters) return '';
   return SMART_FACET_ATTRIBUTES.map((attr) => {
-    const values = smartFilters[attr] ?? [];
-    const sorted = [
-      ...new Set(values.map((entry) => entry.trim()).filter(Boolean)),
-    ].sort((left, right) => left.localeCompare(right));
+    const sorted = normalizePortalCatalogAlgoliaSmartFilterValues(attr, smartFilters[attr]).sort(
+      (left, right) => left.localeCompare(right),
+    );
     return sorted.length > 0 ? `${attr}=${sorted.join('\u0001')}` : '';
   })
     .filter(Boolean)
@@ -217,10 +213,19 @@ export function buildNarrowedCatalogCategoryOptions(args: {
 /** Convert a single Smart facet attribute distribution into sorted options. */
 export function mergePortalAlgoliaSmartFacetDistribution(
   distribution: Record<string, number> | undefined,
+  attribute?: SmartFacetAttr,
 ): PortalSmartFacetOption[] {
   if (!distribution) return [];
-  return Object.entries(distribution)
-    .filter(([, count]) => count > 0)
+  const merged = new Map<string, number>();
+  for (const [value, count] of Object.entries(distribution)) {
+    if (count <= 0) continue;
+    const canonical = attribute
+      ? normalizePortalSmartFilterValues(attribute, [value])[0]
+      : value;
+    if (!canonical) continue;
+    merged.set(canonical, (merged.get(canonical) ?? 0) + count);
+  }
+  return [...merged.entries()]
     .map(([value, count]) => ({ value, count }))
     .sort((left, right) => left.value.localeCompare(right.value));
 }
@@ -231,7 +236,7 @@ export function mergePortalAlgoliaSmartFacetDistributions(
   if (!facets) return {};
   const result: PortalSmartFacetDistributions = {};
   for (const attr of SMART_FACET_ATTRIBUTES) {
-    result[attr] = mergePortalAlgoliaSmartFacetDistribution(facets[attr]);
+    result[attr] = mergePortalAlgoliaSmartFacetDistribution(facets[attr], attr);
   }
   return result;
 }
@@ -295,7 +300,7 @@ export const portalAlgoliaCatalogSearchService = {
 
   /**
    * Smart Filter facet distributions for the 8 customer dimensions.
-   * Refined by q + category + current smart selections (AND).
+   * Refined by q + category + all current smart selections (contextual cumulative counts).
    */
   async listSmartFacetDistributions(
     options: PortalAlgoliaFacetQueryOptions = {},

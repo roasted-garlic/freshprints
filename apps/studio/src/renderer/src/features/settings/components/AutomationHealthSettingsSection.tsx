@@ -32,6 +32,10 @@ interface HealthCounters {
   publicationFailures?: number;
   categoryGap?: number;
   hardBlockerRoutings?: number;
+  catalogCopyHardBlockers?: number;
+  catalogCopyTitleFallbacks?: number;
+  catalogCopyDescriptionMissing?: number;
+  catalogCopyCategoryUnresolved?: number;
 }
 
 function asCount(value: unknown): number | null {
@@ -69,6 +73,22 @@ export function AutomationHealthSettingsSection({
     ["Actually auto-approved", formatTrackedCount(asCount(health.actuallyAutoApproved), "WS1+")],
     ["Routed to Needs Review", formatTrackedCount(asCount(health.routedNeedsReview), "WS1+")],
     ["Hard-blocker routings", formatTrackedCount(asCount(health.hardBlockerRoutings), "WS1+")],
+    [
+      "Catalog-copy hard blockers",
+      formatTrackedCount(asCount(health.catalogCopyHardBlockers), "canonical-copy gate"),
+    ],
+    [
+      "Catalog title fallbacks",
+      formatTrackedCount(asCount(health.catalogCopyTitleFallbacks), "canonical-copy gate"),
+    ],
+    [
+      "Catalog descriptions missing",
+      formatTrackedCount(asCount(health.catalogCopyDescriptionMissing), "canonical-copy gate"),
+    ],
+    [
+      "Catalog categories unresolved",
+      formatTrackedCount(asCount(health.catalogCopyCategoryUnresolved), "canonical-copy gate"),
+    ],
     ["Retries", formatTrackedCount(asCount(health.retries), "WS1+ enqueue/vision retries")],
     ["Pipeline failures", formatTrackedCount(asCount(health.failures), "WS1+")],
     [

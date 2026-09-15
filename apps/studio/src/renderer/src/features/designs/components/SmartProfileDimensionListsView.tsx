@@ -1,5 +1,6 @@
 import type { DesignSmartProfile } from "@fresh-prints/shared/types/catalog/smartProfile.types";
 import { SMART_PROFILE_EDITABLE_DIMENSION_KEYS } from "@fresh-prints/shared/constants/smartProfile.constants";
+import { normalizeSmartProfileSubjectList } from "@fresh-prints/shared/utils/smartProfileNormalization";
 
 export const SMART_PROFILE_DIMENSION_LABELS: Record<
   (typeof SMART_PROFILE_EDITABLE_DIMENSION_KEYS)[number],
@@ -22,15 +23,16 @@ export function formatSmartProfileDimensionList(
   key: (typeof SMART_PROFILE_EDITABLE_DIMENSION_KEYS)[number],
   values: string[] | undefined,
 ): string {
-  if (!values || values.length === 0) {
+  const displayValues = key === "subjects" ? normalizeSmartProfileSubjectList(values) : values;
+  if (!displayValues || displayValues.length === 0) {
     return "—";
   }
 
   if (key === "visibleText") {
-    return values.join(" ");
+    return displayValues.join(" ");
   }
 
-  return values.join(", ");
+  return displayValues.join(", ");
 }
 
 interface SmartProfileDimensionListsViewProps {

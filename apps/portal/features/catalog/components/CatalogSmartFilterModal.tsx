@@ -6,6 +6,7 @@ import { CheckIcon, XIcon } from '../../shared/components/PortalIcons';
 import {
   SMART_FACET_ATTRIBUTES,
   countSelectedSmartFilters,
+  normalizePortalSmartFilterValues,
   portalAlgoliaCatalogSearchService,
   type PortalSmartFacetDistributions,
   type PortalSmartFilters,
@@ -44,15 +45,16 @@ function emptySmartFilters(): PortalSmartFilters {
 function cloneSmartFilters(filters: PortalSmartFilters): PortalSmartFilters {
   const next: PortalSmartFilters = {};
   for (const attr of SMART_FACET_ATTRIBUTES) {
-    const values = filters[attr];
+    const values = normalizeDraftValues(filters[attr], attr);
     if (values?.length) {
-      next[attr] = [...values];
+      next[attr] = values;
     }
   }
   return next;
 }
 
-function normalizeDraftValues(values: string[] | undefined): string[] {
+function normalizeDraftValues(values: string[] | undefined, attribute?: SmartFacetAttr): string[] {
+  if (attribute) return normalizePortalSmartFilterValues(attribute, values);
   return [...new Set((values ?? []).map((value) => value.trim()).filter(Boolean))].sort((left, right) =>
     left.localeCompare(right),
   );
@@ -135,7 +137,7 @@ export function CatalogSmartFilterModal({
 
   const draftKey = useMemo(() => {
     return SMART_FACET_ATTRIBUTES.map((attr) => {
-      const values = normalizeDraftValues(draftFilters[attr]);
+      const values = normalizeDraftValues(draftFilters[attr], attr);
       return values.length > 0 ? `${attr}=${values.join('\u0001')}` : '';
     })
       .filter(Boolean)
@@ -194,7 +196,7 @@ export function CatalogSmartFilterModal({
     () => distributions?.[activeAttr] ?? [],
     [distributions, activeAttr],
   );
-  const activeSelected = normalizeDraftValues(draftFilters[activeAttr]);
+  const activeSelected = normalizeDraftValues(draftFilters[activeAttr], activeAttr);
   const displayOptions = useMemo(
     () =>
       buildSmartFacetDisplayOptions({
@@ -214,7 +216,7 @@ export function CatalogSmartFilterModal({
 
   function toggleValue(attr: SmartFacetAttr, value: string) {
     setDraftFilters((current) => {
-      const existing = normalizeDraftValues(current[attr]);
+      const existing = normalizeDraftValues(current[attr], attr);
       const nextValues = existing.includes(value)
         ? existing.filter((entry) => entry !== value)
         : [...existing, value].sort((left, right) => left.localeCompare(right));
@@ -248,8 +250,8 @@ export function CatalogSmartFilterModal({
             <p className="portal-eyebrow">Catalog filters</p>
             <h2 id="catalog-smart-filter-title">Smart Filters</h2>
             <p className="design-library-tag-filter-description">
-              Select values across subjects, styles, themes, and more. Designs must match every
-              selection.
+              Choose one or more values. Each selected value narrows the results; across dimensions,
+              all selected values must match.
             </p>
           </div>
           <button
@@ -266,7 +268,7 @@ export function CatalogSmartFilterModal({
           <div aria-label="Smart filter dimensions" className="tag-filter-featured" role="tablist">
             <div className="tag-filter-featured-pills" role="presentation">
               {SMART_FACET_ATTRIBUTES.map((attr) => {
-                const count = normalizeDraftValues(draftFilters[attr]).length;
+                const count = normalizeDraftValues(draftFilters[attr], attr).length;
                 const isActive = activeAttr === attr;
                 return (
                   <button

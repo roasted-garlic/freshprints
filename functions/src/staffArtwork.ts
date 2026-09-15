@@ -536,6 +536,7 @@ export const promoteStaffArtworkToAiReview = onCall(
     tx.set(designRef, withoutUndefinedFields({
       id: designId,
       title: typeof artwork.title === "string" ? artwork.title : "Staff Artwork",
+      catalogTitleSource: "staff",
       description: typeof artwork.description === "string" ? artwork.description : undefined,
       tags: [],
       status: "imported",

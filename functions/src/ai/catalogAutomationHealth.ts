@@ -21,6 +21,11 @@ export interface CatalogAutomationHealthIncrements {
   publicationFailures?: number;
   categoryGap?: number;
   hardBlockerRoutings?: number;
+  /** Final canonical catalog-copy gate outcomes. */
+  catalogCopyHardBlockers?: number;
+  catalogCopyTitleFallbacks?: number;
+  catalogCopyDescriptionMissing?: number;
+  catalogCopyCategoryUnresolved?: number;
 }
 
 /** Lightweight counters on settings/catalogAutomationHealth (Admin write only). */

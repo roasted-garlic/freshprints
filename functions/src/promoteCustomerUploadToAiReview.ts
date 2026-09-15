@@ -159,6 +159,7 @@ export const promoteCustomerUploadToAiReview = onCall(
         withoutUndefinedFields({
           id: designId,
           title,
+          catalogTitleSource: "import_filename",
           tags: [],
           status: "imported",
           originalPath,

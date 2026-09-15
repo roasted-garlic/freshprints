@@ -329,6 +329,13 @@ export interface Design {
 
   requestedByCustomerId?: string;
 
+  /**
+   * Canonical title provenance. Optional on legacy records; imports stamp `import_filename`,
+   * authenticated staff edits stamp `staff`, and Autonomous writes stamp `ai_generated` when the
+   * AI candidate replaces an untrusted import/basename title.
+   */
+  catalogTitleSource?: "staff" | "trusted_import" | "import_filename" | "ai_generated" | "legacy_unknown";
+
   /** Present when promoted from a Portal customer upload (Sub-phase E). */
   sourceCustomerUploadId?: string;
 
@@ -576,6 +583,7 @@ AI enrichment writes versioned fields on `designs/{id}`:
 | `importBatchId` | string | Studio import | Optional batch job id (folder/ZIP/multi-PNG) |
 | `importSourceFileName` | string | Studio import | Original source filename at import |
 | `importRelativePath` | string | Studio import | Optional relative path within batch manifest |
+| `catalogTitleSource` | enum | Studio/Cloud Function | Title authority provenance; optional on legacy records |
 
 ```ts
 export type AiProcessingStage =
@@ -637,7 +645,10 @@ export interface DesignAiAnalysis {
 
 **One-off processing override (2026-06-29; amended ADR-FP-174):** AI Processing may send `visionModelIdOverride` on processing requests. The callable validates it against the server allowlist, writes transient `aiRequestedVisionModelId`, the pipeline prefers that value for the current run, and success/failure cleanup deletes the field. This does not mutate `settings/aiEnrichment`. Reasoning-effort UI/overrides are not exposed in Phase 1; Luna pins `reasoning_effort: "low"` server-side only.
 
-**Writes:** Cloud Function only for `aiSuggestions`, `aiAnalysis`, `smartProfile`, and `aiProcessingStage`. Client rules block mutations.
+**Writes:** Cloud Function only for `aiSuggestions`, `aiAnalysis`, `smartProfile`, and
+`aiProcessingStage`; in the live Autonomous queue path, the same guarded transaction may also
+write the resolved canonical root `title`, `description`, and `categoryId` when it atomically
+records Ready/system approval. Client rules block these mutations.
 
 ### AI suggestions (Phase 5 — planned)
 
@@ -670,6 +681,17 @@ export interface DesignAiSuggestions {
 **Writes:** Cloud Function only for `aiSuggestions`, `aiAnalysis`, and processing state; client services must not fabricate AI output.
 
 **Catalog title vs upload name:** `aiSuggestions.title` is a shopper-facing catalog title generated from artwork (prompt v2 — must not echo upload filename). `design.title` at import is a filename placeholder; `originalPath` / storage paths are never overwritten by AI. Staff approval copies the reviewed title into catalog `title`.
+
+**Autonomous canonical-copy exception (2026-09-14; DEV corrective):** When Catalog Processing Mode
+is `autonomous`, `catalogAutonomousLiveEnabled` is true, and the final policy passes, the queue
+pipeline resolves the effective catalog title/description/category after Smart Profile and import
+authority merge, then writes those root fields atomically with `status: ready`,
+`aiReviewStatus: approved`, and `aiReviewedBy: system:catalog-autonomy`. A complete non-placeholder
+staff root field remains authoritative; only a proven import filename/default or missing/invalid
+field is filled from a valid AI candidate. The candidate is validated independently, active
+categories are required, and any invalid final copy or candidate hard blocker routes to Needs
+Review without system approval. The historical `ready_backfill` path intentionally preserves Ready
+root authority and does not perform this approval gate.
 
 **Future enhancement:** Hidden `searchTitle` (or equivalent normalized search field) on `aiSuggestions` for extra keywords — not in Phase 5B scope.
 

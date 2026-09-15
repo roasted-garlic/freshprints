@@ -12,6 +12,7 @@ import {
   type SmartProfileVocabAggregateDim,
   type SmartProfileVocabLists,
 } from "./smartProfileVocab";
+import { normalizeSmartProfileSubjectList } from "./smartProfileNormalization";
 
 export type SmartProfileVocabCountMaps = Record<
   SmartProfileVocabAggregateDim,
@@ -50,7 +51,9 @@ export function accumulateSmartProfileVocabCounts(
     }
     for (const value of values) {
       if (typeof value === "string") {
-        bumpCount(maps[dim], value);
+        const canonical =
+          dim === "subjects" ? normalizeSmartProfileSubjectList([value])?.[0] : value.trim();
+        if (canonical) bumpCount(maps[dim], canonical);
       }
     }
   }

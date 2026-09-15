@@ -22,6 +22,7 @@ import type { AiEnrichmentReadDiagnosticContext } from "./aiEnrichmentRuntimeCac
 import {
   clearAiEnrichmentSettingsCache,
   loadCachedAiEnrichmentSettings,
+  loadCachedActiveCategories,
 } from "./aiEnrichmentRuntimeCache";
 import { maybeRefreshSmartProfileVocabSnapshot } from "./refreshSmartProfileVocabSnapshot";
 import { PipelinePhaseTimer } from "./pipelineTiming";
@@ -44,6 +45,11 @@ import {
 } from "../../../packages/shared/src/utils/explicitContentAutomation";
 import { logVcpRuntimeDiagnostic } from "./vcpRuntimeDiagnostics";
 import { writeAiEnrichmentTrace } from "./aiEnrichmentTraceStore";
+import {
+  resolveFinalCatalogCopy,
+  type FinalCatalogCopyResolution,
+} from "./finalCatalogCopy";
+import type { CatalogAutomationDecisionResult } from "./automationDecisionShadow";
 
 export type AiEnrichmentPipelineMode = "queue" | "ready_backfill";
 
@@ -193,6 +199,12 @@ function stripTransientAiAnalysisFields(analysis: DesignAiAnalysis): DesignAiAna
   return persistedAnalysis;
 }
 
+interface AiSuccessPersistenceResult {
+  reconciled: boolean;
+  automationDecision?: CatalogAutomationDecisionResult;
+  finalCatalogCopy?: FinalCatalogCopyResolution;
+}
+
 async function markAiSuccess(
   designId: string,
   attemptId: string,
@@ -204,7 +216,7 @@ async function markAiSuccess(
     mode?: AiEnrichmentPipelineMode;
     explicitContentAutomation?: ExplicitContentAutomationWrite;
   },
-): Promise<boolean> {
+): Promise<AiSuccessPersistenceResult> {
   const firestoreSuggestions = removeUndefinedFields(
     stripRetiredAiSuggestionFields(suggestions),
   );
@@ -219,7 +231,18 @@ async function markAiSuccess(
         designId,
       })
     : undefined;
+  const activeCategories = smartProfile && mode === "queue"
+    ? (await loadCachedActiveCategories({
+        functionName: "markAiSuccess",
+        invocationId: randomUUID(),
+        designId,
+        attemptId,
+      })).categories
+    : [];
   const designRef = adminDb.collection("designs").doc(designId);
+
+  let reconciledAutomationDecision: CatalogAutomationDecisionResult | undefined;
+  let reconciledFinalCatalogCopy: FinalCatalogCopyResolution | undefined;
 
   const reconciled = await adminDb.runTransaction(async (transaction) => {
     const priorSnap = await transaction.get(designRef);
@@ -289,19 +312,115 @@ async function markAiSuccess(
 
     // Re-evaluate WAA only after staff/import authority has been merged into the effective profile.
     if (persistedSmartProfile && mode === "queue" && settings) {
+      const finalCatalogCopy = resolveFinalCatalogCopy({
+        root: {
+          title: priorData?.title,
+          description: priorData?.description,
+          categoryId: priorData?.categoryId,
+          catalogTitleSource: priorData?.catalogTitleSource,
+          sourceStaffArtworkId: priorData?.sourceStaffArtworkId,
+          sourceCustomerUploadId: priorData?.sourceCustomerUploadId,
+          createdBy: priorData?.createdBy,
+          updatedBy: priorData?.updatedBy,
+        },
+        candidate: {
+          title: suggestions.title,
+          description: suggestions.description,
+          categoryId: suggestions.categoryId,
+        },
+        importSourceFileName: priorData?.importSourceFileName,
+        sourceCustomerUploadId: priorData?.sourceCustomerUploadId,
+        sourceStaffArtworkId: priorData?.sourceStaffArtworkId,
+        createdBy: priorData?.createdBy,
+        updatedBy: priorData?.updatedBy,
+        categories: activeCategories,
+      });
       const effectiveDecision = computeCatalogAutomationDecision({
         smartProfile: persistedSmartProfile,
-        title: suggestions.title,
-        categoryId: suggestions.categoryId,
-        categoryName: suggestions.categoryName ?? persistedSmartProfile.categoryName,
-        description: suggestions.description,
+        title: finalCatalogCopy.title,
+        categoryId: finalCatalogCopy.categoryId,
+        categoryName:
+          finalCatalogCopy.categoryName ?? persistedSmartProfile.categoryName,
+        description: finalCatalogCopy.description,
         visibleText: analysis.visibleText,
         catalogWorkflowMode: settings.catalogWorkflowMode,
         catalogAutonomousLiveEnabled: settings.catalogAutonomousLiveEnabled,
       });
-      publishReady = effectiveDecision.shouldPublishReady;
-      persistedSmartProfile.provenance.automationDecision = effectiveDecision.decision;
-      persistedSmartProfile.provenance.automationReasonCodes = effectiveDecision.reasonCodes;
+      const candidateDecision = computeCatalogAutomationDecision({
+        smartProfile: persistedSmartProfile,
+        title: suggestions.title,
+        categoryId: suggestions.categoryId,
+        categoryName:
+          suggestions.categoryName ?? persistedSmartProfile.categoryName,
+        description: suggestions.description,
+        visibleText: analysis.visibleText,
+        catalogWorkflowMode: settings.catalogWorkflowMode,
+        catalogAutonomousLiveEnabled:
+          settings.catalogAutonomousLiveEnabled,
+      });
+      // Validate the provider candidate independently as well. A complete trusted root may fill
+      // a missing field for the final record, but it must not hide malformed candidate output from
+      // the fail-closed Autonomous policy.
+      const candidateCatalogCopy = resolveFinalCatalogCopy({
+        root: {},
+        candidate: {
+          title: suggestions.title,
+          description: suggestions.description,
+          categoryId: suggestions.categoryId,
+        },
+        importSourceFileName: priorData?.importSourceFileName,
+        sourceCustomerUploadId: priorData?.sourceCustomerUploadId,
+        sourceStaffArtworkId: priorData?.sourceStaffArtworkId,
+        createdBy: priorData?.createdBy,
+        updatedBy: priorData?.updatedBy,
+        categories: activeCategories,
+      });
+      const finalReasonCodes = [
+        ...new Set([
+          ...effectiveDecision.reasonCodes,
+          ...(candidateDecision?.hardBlockers ?? []),
+          ...finalCatalogCopy.reasonCodes,
+          ...candidateCatalogCopy.reasonCodes,
+        ]),
+      ];
+      const finalHardBlockers = [
+        ...new Set([
+          ...effectiveDecision.hardBlockers,
+          ...(candidateDecision?.hardBlockers ?? []),
+          ...finalCatalogCopy.reasonCodes,
+          ...candidateCatalogCopy.reasonCodes,
+        ]),
+      ];
+      const finalDecision: CatalogAutomationDecisionResult =
+        finalHardBlockers.length > 0
+          ? {
+              ...effectiveDecision,
+              decision: "needs_review",
+              reasonCodes: finalReasonCodes.filter(
+                (code) => code !== "auto_approved",
+              ),
+              wouldAutoApprove: false,
+              shouldPublishReady: false,
+              hardBlockers: finalHardBlockers,
+            }
+          : effectiveDecision;
+      publishReady = finalDecision.shouldPublishReady;
+      reconciledAutomationDecision = finalDecision;
+      reconciledFinalCatalogCopy = finalCatalogCopy;
+      persistedSmartProfile.provenance.automationDecision = finalDecision.decision;
+      persistedSmartProfile.provenance.automationReasonCodes =
+        finalDecision.reasonCodes;
+      logPipelineEvent("catalog.automation.final_catalog_gate", {
+        designId,
+        attemptId,
+        decision: finalDecision.decision,
+        publishReady: finalDecision.shouldPublishReady,
+        reasonCodes: finalDecision.reasonCodes,
+        titleSource: finalCatalogCopy.titleSource,
+        descriptionSource: finalCatalogCopy.descriptionSource,
+        categorySource: finalCatalogCopy.categorySource,
+        finalCatalogValid: finalCatalogCopy.valid,
+      });
     }
 
     const mayWriteExplicit =
@@ -353,6 +472,24 @@ async function markAiSuccess(
       ? { aiReviewVersion: suggestions.promptVersion }
       : { aiReviewVersion: FieldValue.delete() };
 
+    const finalCatalogEligible = publishReady;
+    const finalCatalogFields =
+      mode === "queue" &&
+      finalCatalogEligible &&
+      reconciledFinalCatalogCopy?.valid &&
+      reconciledFinalCatalogCopy.title &&
+      reconciledFinalCatalogCopy.description &&
+      reconciledFinalCatalogCopy.categoryId
+        ? {
+            title: reconciledFinalCatalogCopy.title,
+            description: reconciledFinalCatalogCopy.description,
+            categoryId: reconciledFinalCatalogCopy.categoryId,
+            ...(reconciledFinalCatalogCopy.catalogTitleSource
+              ? { catalogTitleSource: reconciledFinalCatalogCopy.catalogTitleSource }
+              : {}),
+          }
+        : {};
+
     if (mode === "ready_backfill") {
       transaction.update(designRef, {
         aiProcessingStage: "ready_for_review",
@@ -365,6 +502,7 @@ async function markAiSuccess(
         aiAnalysis: firestoreAnalysis,
         ...currentProfileFields,
         ...currentSnapshotFields,
+        ...finalCatalogFields,
         ...(explicitWrite ?? explicitClear ?? {}),
         updatedAt: FieldValue.serverTimestamp(),
       });
@@ -394,6 +532,7 @@ async function markAiSuccess(
         aiAnalysis: firestoreAnalysis,
         ...currentProfileFields,
         ...currentSnapshotFields,
+        ...finalCatalogFields,
         ...(explicitWrite ?? explicitClear ?? {}),
         updatedAt: FieldValue.serverTimestamp(),
       });
@@ -403,7 +542,7 @@ async function markAiSuccess(
 
   if (!reconciled) {
     logPipelineEvent("pipeline.reconciliation_stale_attempt", { designId, attemptId });
-    return false;
+    return { reconciled: false };
   }
 
   logVcpRuntimeDiagnostic("vcp_diagnostic.persistence", {
@@ -413,7 +552,11 @@ async function markAiSuccess(
       firestoreAnalysis.visualContextProfile,
     ),
   });
-  return true;
+  return {
+    reconciled: true,
+    automationDecision: reconciledAutomationDecision,
+    finalCatalogCopy: reconciledFinalCatalogCopy,
+  };
 }
 
 const activeDesignInvocations = new Map<string, number>();
@@ -556,23 +699,7 @@ async function runAiEnrichmentPipelineInternal(
       },
     });
 
-    if (candidate.automationDecision) {
-      const automationDecision = candidate.automationDecision;
-      await incrementCatalogAutomationHealth({
-        analyzed: 1,
-        wouldAutoApprove: automationDecision.wouldAutoApprove ? 1 : 0,
-        actuallyAutoApproved: automationDecision.shouldPublishReady ? 1 : 0,
-        routedNeedsReview: automationDecision.shouldPublishReady ? 0 : 1,
-        categoryGap: automationDecision.reasonCodes.includes(
-          "category_gap_suggested",
-        )
-          ? 1
-          : 0,
-        hardBlockerRoutings: automationDecision.hardBlockers.length > 0 ? 1 : 0,
-      });
-    }
-
-    const successPersisted = await markAiSuccess(
+    const persistenceResult = await markAiSuccess(
       designId,
       attemptId,
       candidate.suggestions,
@@ -585,8 +712,54 @@ async function runAiEnrichmentPipelineInternal(
         explicitContentAutomation: candidate.explicitContentAutomation,
       },
     );
-    if (!successPersisted) {
+    if (!persistenceResult.reconciled) {
       return false;
+    }
+
+    const automationDecision =
+      persistenceResult.automationDecision ?? candidate.automationDecision;
+    if (automationDecision && mode === "queue") {
+      const finalReasonCodes = automationDecision.reasonCodes;
+      try {
+        await incrementCatalogAutomationHealth({
+          analyzed: 1,
+          wouldAutoApprove: automationDecision.wouldAutoApprove ? 1 : 0,
+          actuallyAutoApproved: automationDecision.shouldPublishReady ? 1 : 0,
+          routedNeedsReview: automationDecision.shouldPublishReady ? 0 : 1,
+          categoryGap: automationDecision.reasonCodes.includes(
+            "category_gap_suggested",
+          )
+            ? 1
+            : 0,
+          hardBlockerRoutings: automationDecision.hardBlockers.length > 0 ? 1 : 0,
+          catalogCopyHardBlockers: finalReasonCodes.some((code) =>
+            code.startsWith("catalog_copy_"),
+          )
+            ? 1
+            : 0,
+          catalogCopyTitleFallbacks:
+            persistenceResult.finalCatalogCopy?.titleSource === "candidate" ||
+            finalReasonCodes.includes("catalog_copy_title_placeholder")
+            ? 1
+            : 0,
+          catalogCopyDescriptionMissing: finalReasonCodes.includes(
+            "catalog_copy_description_missing",
+          )
+            ? 1
+            : 0,
+          catalogCopyCategoryUnresolved: finalReasonCodes.includes(
+            "catalog_copy_category_unresolved",
+          )
+            ? 1
+            : 0,
+        });
+      } catch (healthError) {
+        // Health telemetry must not demote a successfully persisted Ready record.
+        logPipelineEvent("catalog.automation.health_write_failed", {
+          designId,
+          message: healthError instanceof Error ? healthError.message : "unknown_error",
+        });
+      }
     }
 
     if (candidate.smartProfile) {
@@ -635,10 +808,17 @@ async function runAiEnrichmentPipelineInternal(
     if (!failurePersisted) {
       return false;
     }
-    await incrementCatalogAutomationHealth({
-      analyzed: 1,
-      failures: 1,
-    });
+    try {
+      await incrementCatalogAutomationHealth({
+        analyzed: 1,
+        failures: 1,
+      });
+    } catch (healthError) {
+      logPipelineEvent("catalog.automation.health_write_failed", {
+        designId,
+        message: healthError instanceof Error ? healthError.message : "unknown_error",
+      });
+    }
     await writeAiEnrichmentTrace({
       schemaVersion: 1,
       traceId: diagnosticContext.invocationId,

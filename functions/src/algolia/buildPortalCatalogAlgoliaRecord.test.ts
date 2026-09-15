@@ -82,7 +82,7 @@ describe('buildPortalCatalogAlgoliaRecord', () => {
     });
 
     assert.ok(record);
-    assert.deepEqual(record!.subjects, ['cow', 'Highland Cow']);
+    assert.deepEqual(record!.subjects, ['cow', 'highland cow']);
     assert.deepEqual(record!.objects, ['bow']);
     assert.deepEqual(record!.styles, ['cartoon']);
     assert.deepEqual(record!.searchConcepts, ['Scottish cow', 'fluffy cow']);

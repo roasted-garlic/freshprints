@@ -88,6 +88,7 @@ export function buildOwnerReadyAiReprocessDemotionUpdate(input: {
 /** Fields that must never appear in the demotion payload. */
 export const OWNER_READY_AI_REPROCESS_PRESERVED_FIELD_KEYS = [
   "title",
+  "catalogTitleSource",
   "description",
   "categoryId",
   "tags",

@@ -7,7 +7,7 @@ import {
   type StudioAlgoliaSmartFilters,
 } from "./studioAlgoliaSmartFilters";
 
-/** Constraints that refine smart facet distribution. */
+/** Constraints that refine smart facet distribution (cumulative values and dimensions are ANDed). */
 export interface StudioAlgoliaFacetQueryOptions {
   search?: string;
   categoryId?: string;

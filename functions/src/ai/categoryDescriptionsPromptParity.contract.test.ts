@@ -74,14 +74,14 @@ describe("v36 category-description prompt path parity", () => {
     );
   });
 
-  it("prompt and normalizer/schema versions stay on the v39 / v6 / v1 contract", () => {
+  it("prompt and normalizer/schema versions stay on the v39 / v7 / v1 contract", () => {
     assert.match(
       read("packages/shared/src/constants/smartProfile.constants.ts"),
       /CURRENT_CATALOG_ENRICH_PROMPT_VERSION\s*=\s*[\s\S]*"catalog-enrich-v39"/,
     );
     assert.match(
       read("packages/shared/src/constants/smartProfile.constants.ts"),
-      /SMART_PROFILE_NORMALIZER_VERSION = "smart-profile-normalizer-v6"/,
+      /SMART_PROFILE_NORMALIZER_VERSION = "smart-profile-normalizer-v7"/,
     );
     assert.match(
       read("functions/src/ai/catalogTitleRules.ts"),

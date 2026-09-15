@@ -182,6 +182,24 @@ export function normalizeSmartProfileStringList(
 
 
 
+/** Normalize Subjects to lowercase after whitespace canonicalization and dedupe. */
+export function normalizeSmartProfileSubjectList(
+  values: readonly string[] | undefined,
+  options: NormalizeSmartProfileStringListOptions = {},
+): string[] | undefined {
+  const normalized = normalizeSmartProfileStringList(values, options);
+  if (!normalized) return undefined;
+  const result: string[] = [];
+  const seen = new Set<string>();
+  for (const value of normalized) {
+    const canonical = collapseWhitespace(value).toLowerCase();
+    if (!canonical || seen.has(canonical)) continue;
+    seen.add(canonical);
+    result.push(canonical);
+  }
+  return result.length > 0 ? result : undefined;
+}
+
 export function normalizeSmartProfileCategoryAlternatives(
 
   values: readonly SmartProfileCategoryAlternative[] | undefined,
@@ -310,7 +328,7 @@ export function normalizeSmartProfileDimensions(
 
   return {
 
-    subjects: normalizeSmartProfileStringList(input.subjects, { canonicalVocab: vocab?.subjects }),
+    subjects: normalizeSmartProfileSubjectList(input.subjects, { canonicalVocab: vocab?.subjects }),
 
     objects: normalizeSmartProfileStringList(input.objects, { canonicalVocab: vocab?.objects }),
 
@@ -478,5 +496,4 @@ export function normalizeDesignSmartProfile(
   };
 
 }
-
 

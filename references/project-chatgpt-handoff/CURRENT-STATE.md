@@ -1,6 +1,124 @@
 # Fresh Prints — Current State Snapshot
 
-**Last updated:** 2026-09-14
+**Last updated:** 2026-09-15
+
+## CURRENT AUTHORITATIVE PHASE — Contextual Smart Filter narrowing — OWNER QA PASS / development push pending
+
+The owner recorded `OWNER QA: SMART FILTER SAME-DIMENSION OR + LOWERCASE SUBJECTS — PASS` and
+`OWNER QA: CONTEXTUAL SMART FILTER NARROWING — PASS`, closing
+the prior phase. The new bounded corrective intentionally supersedes same-dimension OR with
+cumulative narrowing and contextual counts.
+
+DEV read-only proof: `cow=14`, `highland cow=12`, exact intersection `12`, union `14`; all 12
+Highland-cow records also contain `cow`. The reviewed query is
+`[["subjects:cow"],["subjects:highland cow"]]`; facet distributions retain all active filters,
+so the narrowed cohort reports `cow=12` and `highland cow=12`.
+
+The contextual implementation is local and adversarially reviewed: shared singleton facet groups,
+Studio every-value hydration matching, cumulative modal copy, contextual counts, and selected-value
+retention at zero-count intersections. Focused contextual validation is **152/152 tests, 38 suites
+PASS**; Studio/Portal typechecks, Functions build, Studio packaged build, targeted ESLint, and diff
+check pass. No production mutation occurred.
+
+Owner QA checklist: `docs/workflow/reviews/2026-09-15-contextual-smart-filter-narrowing-dev-qa-preparation.md`.
+The reviewed development commit/push is now authorized. Production promotion remains a separate
+owner checkpoint.
+
+## Historical snapshot — Smart Filter OR + lowercase Subjects
+
+The owner recorded `OWNER QA: AUTONOMOUS CATALOG-COPY FAIL-CLOSED CORRECTIVE — PASS`. The frozen
+110-row DEV third-soak cohort is mechanically clean (110 attempted; 108 Ready/approved; 2 Needs
+Review; zero failures, malformed/fallback-title Ready, blank descriptions, unresolved categories,
+Smart Profile failures, publication failures, or stale attempts). Six prior bad canaries are
+corrected, and the full DEV Ready inventory is 537/537 exact Firestore↔`portal_catalog_ready_dev`
+parity. Three malformed Ready rows remain historical and outside the cohort; no repair was run.
+
+The follow-up Smart Filter implementation is local and reviewed: the shared builder now emits one
+OR group within each selected Smart Profile dimension and ANDs dimensions; Studio hydration matching,
+Portal/Studio facet counts, category disjunctive narrowing, exact-token behavior, no-legacy-tag
+constraints, Subject lowercase/collapse/dedupe, Smart+Halftone managed search, and exact-ID
+fail-closed behavior are covered. Expanded focused validation is **150/150 tests, 35 suites PASS**;
+Functions AI is **441/441** and Functions Algolia is **18/18**;
+Portal typecheck, Studio TypeScript, Functions build, Studio build, targeted ESLint, and diff check
+pass. Portal Next build is limited by the existing Windows `.next/trace` EPERM while dev servers
+hold generated files.
+
+Read-only DEV inventories found 145 mixed-case Subject-bearing designs and 94 mixed-case/whitespace
+facet values; 143/537 Ready index projections remain noncanonical because deployed DEV sync/reconcile
+Functions predate this source change and the classifier ignores case-only transitions. Historical
+convergence therefore needs a separate owner-authorized DEV Function promotion plus deterministic
+metadata repair and explicit Algolia reindex/reconcile. Production remains untouched and is not
+classified as healthy or unaffected.
+
+The owner has now restored DEV through Studio. Fresh read-only readback verifies
+`catalogWorkflowMode=shadow`, `catalogAutonomousLiveEnabled=false`, Pass 2 OFF, and no active jobs.
+Title closeout is therefore contained; the remaining owner gate is the short Smart Filter QA
+checklist in `docs/workflow/reviews/2026-09-15-smart-filter-studio-or-lowercase-subjects-dev-qa-preparation.md`.
+Stop at `OWNER QA REQUIRED — SMART FILTER SAME-DIMENSION OR CORRECTIVE` after that checklist.
+
+Production promotion/repair/reindex is a separate owner checkpoint: deploy the reviewed Function
+sync/reconcile and client closure through the reviewed PR/release path, verify source parity, then
+inventory and deterministically repair lowercase Subjects (with explicit Algolia reindex), without
+full AI re-enrichment unless a later review finds semantic damage. Nothing in this phase authorizes
+production mutation.
+
+## HISTORICAL SNAPSHOT — DEV Autonomous canonical-copy corrective — SECOND SOAK FAILED / OVER-PRESERVATION
+
+The active request is a DEV-only corrective in `fresh-prints-dev`. The observed malformed
+Autonomous catalog records are DEV evidence and are not proof of a production incident. The first
+post-deploy live Processing-queue soak is **FAIL / INCOMPLETE**: descriptions, categories, Smart
+Profiles, and publication synced, but filename-like root titles (`PNG 4`, `PNG 6`, `ProjectWhite`,
+`M4170303i1mimi`, and similar legacy values) intermittently survived Ready persistence. The reviewed
+title-authority closure is now deployed to DEV and independently source verified. Current DEV
+readback was `catalogWorkflowMode=shadow`, `catalogAutonomousLiveEnabled=false`, Pass 2 OFF, with no
+active AI stage before the second run. The second soak then produced six Ready rows whose valid AI
+candidates were overridden by low-quality `legacy_unknown` roots; complete pre-mutation evidence is
+in `docs/workflow/reviews/2026-09-14-smart-catalog-autonomous-title-authority-second-soak-failure.md`.
+DEV was restored by the owner at `2026-09-14T22:44:14.840Z` and read back as
+`catalogWorkflowMode=shadow`, `catalogAutonomousLiveEnabled=false`, Pass 2 OFF, with no active
+AI stage. No production
+settings, Functions, designs, catalog data, or Algolia were mutated in this phase. Production safety
+is not inferred from DEV evidence; production remains outside the implementation/test scope and
+requires a separate owner-authorized promotion checkpoint.
+
+The root-cause transition is proven: provider/parser/normalizer → valid candidate title,
+description, category, and Smart Profile → resolver authority merge treated source-less
+`legacy_unknown` roots as usable → automation decision and atomic persistence selected
+`titleSource=root` → Ready/system approval and Algolia publication mirrored the bad root.
+The deployed correction now protects an existing title only with explicit `staff`,
+`trusted_import`, or `ai_generated` provenance; `import_filename` and
+`legacy_unknown` roots yield to a valid candidate and fail closed when no candidate exists.
+Description/category/Smart Profile merge, candidate blockers, atomic Ready persistence, and
+Shadow no-write behavior remain unchanged. Invalid outcomes remain Needs Review. Health telemetry
+is post-persistence and fail-soft. `ready_backfill` remains intentionally historical/non-approval and
+out of scope. The title-specific follow-up is formally reviewed in
+`docs/workflow/plans/2026-09-14-smart-catalog-autonomous-title-authority-corrective-plan.md` and
+`docs/workflow/reviews/2026-09-14-smart-catalog-autonomous-title-authority-corrective-formal-review.md`.
+It adds optional `catalogTitleSource` provenance, stamps import/staff/AI boundaries, and the new
+over-preservation review now requires explicit-provenance-only authority: `legacy_unknown` and
+`import_filename` roots never override a valid AI candidate. The over-preservation Formal Review is
+`APPROVED WITH CHANGES`; the reviewed closure is deployed and source-verified in DEV.
+
+Local and deployed gates are clear: focused title/persistence/reprocess/authority contracts
+**25/25**, full Functions AI **440/440**, DEV design Rules slice **70/70**, Functions build,
+Studio TypeScript, targeted ESLint, diff hygiene, and deterministic compiled resolver checks
+**PASS**. The reviewed over-preservation closure is deployed to DEV and all 28 extracted
+function/archive artifact comparisons are identical; Firestore Rules readback is IDENTICAL.
+The fresh third-soak baseline is **110/110 imported pending**, Smart Profile present **110/110**,
+no active stages, with the exact cohort recorded in the baseline artifact.
+
+The owner confirmed the DEV Compute Engine API prerequisite was enabled. The reviewed closure now
+contains five Functions (`enqueueAiEnrichment`, `reprocessReadyDesignWithAi`,
+`onCatalogReprocessJobWritten`, `promoteCustomerUploadToAiReview`, and
+`promoteStaffArtworkToAiReview`) plus Firestore Rules. Current revisions, source labels, and archive
+hashes are recorded in `docs/workflow/reviews/2026-09-14-smart-catalog-autonomous-title-authority-corrective-dev-deployment.md`;
+Ruleset `2cf0d9d8-427a-4ee9-838d-32205805e08d` is byte-identical to local Rules. The title-authority
+over-preservation corrective, next soak, live adversarial review, and OWNER QA remain open. No
+browser or callable owner session is available in this shell, so no Admin bypass or direct
+settings/data write was made.
+Do not mutate production from this phase. If a later owner-authorized production
+checkpoint is reached, first obtain a fresh owner-gated settings readback/containment and then
+follow the exact reviewed promotion and validation plan.
 
 ## Studio 1.0.12 release — PASS / closeout complete — 2026-09-14
 
@@ -20,7 +138,9 @@ Studio `1.0.11` remains unchanged with its original tag, target SHA, and eight a
 Current corrective tests were 34/34 PASS; release-contract/publish tests were 50/50 PASS; Studio
 TypeScript, targeted ESLint, Vite builds, and diff hygiene passed. The local electron-builder
 Windows packaging limitation remains an existing EPERM environment issue; the authoritative CI
-workflow passed. Production Autonomous remains ON, Pass 2 remains OFF, and read-only postflight
+workflow passed. **Historical snapshot only:** Production Autonomous was recorded ON at that
+earlier Studio release checkpoint; the current authoritative phase header above supersedes this
+line for present handling. Pass 2 remains OFF, and read-only postflight
 continues to show no Portal, backend, Functions, Algolia, Rules, index, schema, migration, secret,
 or production data/settings mutation from this Studio release. The only later development commit
 is this documentation closeout; production remains frozen at `840d596b...`.
@@ -1511,3 +1631,49 @@ Artifacts:
 Next action: owner may select a new managed goal. The parent program may retain
 parked or deferred work, but there is no active implementation phase. Production
 promotion, Autonomous enablement, and automatic Pass 2 remain separately gated.
+
+## 2026-09-14 — DEV Autonomous canonical catalog-copy corrective — IN PROGRESS / CANARY BLOCKED
+
+Corrected incident framing: the malformed Autonomous catalog records were observed in
+`fresh-prints-dev`; they are not proof of a production incident. DEV readback is contained at
+`catalogWorkflowMode=shadow`, `catalogAutonomousLiveEnabled=false`, and Pass 2 OFF. Production was
+not mutated and remains outside this implementation/test phase; it is not classified as proven safe
+or unaffected.
+
+The exact loss is proven in `markAiSuccess`: provider/parser/normalizer produced valid candidate
+title, description, category, and Smart Profile; the automation decision evaluated those candidate
+fields; the persistence update omitted root `title`, `description`, and `categoryId`; imported
+filename/blank/unknown roots therefore survived Ready approval and were indexed by Algolia. Owner
+Ready reprocessing preserves those roots and reuses the same queue path, reproducing the mismatch.
+
+Source implementation is complete locally under the approved bounded plan/review:
+
+- `functions/src/ai/finalCatalogCopy.ts` resolves the final canonical copy, preserving complete
+  staff authority and filling only proven import placeholders/missing/invalid fields from a valid
+  candidate; active categories are required and Uncategorized is rejected.
+- `functions/src/ai/aiEnrichmentPipeline.ts` applies the final gate after authority merge, retains
+  candidate hard blockers, writes final root fields atomically with Queue Ready/system approval,
+  and routes invalid outcomes to Needs Review. `ready_backfill` remains intentionally historical
+  and non-approval.
+- Automation Health counters/readout are bounded; counters are updated after guarded persistence,
+  and telemetry writes are fail-soft. Provider payloads, image bytes, secrets, and unbounded traces
+  are not added.
+
+Validation: full Functions AI **429/429 PASS**; corrective/persistence/explicit contracts **16/16**;
+targeted decision/reprocess/Algolia/shared suites **64/64**; Functions build, Studio TypeScript,
+targeted ESLint, and `git diff --check` **PASS**. Pure resolver simulation across 23 current v39
+rows for 1,000 iterations each produced **23,000/23,000 valid** outcomes. Static adversarial review
+is **PASS WITH OWNER-AUTHENTICATED DEV CANARY BLOCKER**.
+
+The owner confirmed the DEV Compute Engine API was enabled, and the reviewed narrow DEV deployment
+then succeeded for exactly `enqueueAiEnrichment`, `reprocessReadyDesignWithAi`, and
+`onCatalogReprocessJobWritten`. Each is ACTIVE on 100% latest traffic with source label
+`516c7e41dcfefcffe978abc00a41dbd363b0e743`; exact revisions and build IDs are recorded in the
+deployment artifact. Live same-design DEV reproduction, fail-closed cases, queue/reprocess parity,
+unattended soak, live adversarial review, and OWNER QA remain open.
+
+Required next checkpoint: an owner uses the authenticated DEV Studio control, requeues the selected
+same-design sample, types `ENABLE AUTONOMOUS`, and runs the deterministic Shadow→Autonomous canary,
+bounded unattended DEV soak, and OWNER QA with settings restored to Shadow/live false. Stop before
+any production Function deployment, settings change, repair, reprocessing, or Algolia mutation;
+return the exact production promotion/validation plan for a separate owner authorization.

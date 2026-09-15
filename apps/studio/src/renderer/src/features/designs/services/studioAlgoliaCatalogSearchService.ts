@@ -160,7 +160,7 @@ export const studioAlgoliaCatalogSearchService = {
 
   /**
    * Smart Filter facet distributions for the 8 customer-facing attributes.
-   * Refined by q + category + draft smart selections (AND).
+   * Refined by q + category + all draft smart selections (contextual cumulative counts).
    */
   async listNarrowedSmartFacets(
     options: StudioAlgoliaFacetQueryOptions = {},
@@ -182,6 +182,7 @@ export const studioAlgoliaCatalogSearchService = {
     for (const attribute of PORTAL_CATALOG_ALGOLIA_SMART_FACET_ATTRIBUTES) {
       result[attribute] = mergeStudioAlgoliaSmartFacetDistribution(
         response.facets?.[attribute] as Record<string, number> | undefined,
+        attribute,
       );
     }
     return result;

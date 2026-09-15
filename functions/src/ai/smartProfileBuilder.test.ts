@@ -129,7 +129,7 @@ describe("buildDesignSmartProfile", () => {
 
     assert.equal(profile.provenance.version, SMART_PROFILE_VERSION);
 
-    assert.deepEqual(profile.subjects, ["Raccoon"]);
+    assert.deepEqual(profile.subjects, ["raccoon"]);
 
     assert.ok(profile.searchConcepts?.includes("trash panda"));
 
@@ -483,5 +483,4 @@ describe("stripEmptySmartProfileDimensions", () => {
   });
 
 });
-
 

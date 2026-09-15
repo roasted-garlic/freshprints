@@ -5,6 +5,7 @@ import {
   parseStaffEditedDimensionKeys,
 } from "../../../packages/shared/src/utils/smartProfileStaffEdit";
 import { mergeSmartProfileImportPresets } from "../../../packages/shared/src/utils/smartProfileImportPresets";
+import { normalizeSmartProfileSubjectList } from "../../../packages/shared/src/utils/smartProfileNormalization";
 import { stripEmptySmartProfileDimensions } from "./smartProfileBuilder";
 
 export function buildSmartProfileAiSnapshot(
@@ -30,7 +31,8 @@ export function buildSmartProfileAiSnapshot(
   for (const key of keys) {
     const value = profile[key];
     if (Array.isArray(value) && value.length > 0) {
-      snapshot[key] = value.filter((item): item is string => typeof item === "string");
+      const values = value.filter((item): item is string => typeof item === "string");
+      snapshot[key] = key === "subjects" ? normalizeSmartProfileSubjectList(values) ?? [] : values;
     }
   }
   return Object.keys(snapshot).length > 0 ? snapshot : undefined;
@@ -56,7 +58,8 @@ export function parseImportPresetSeed(value: unknown): Partial<SmartProfileDimen
   ] as const) {
     const entry = (value as Record<string, unknown>)[key];
     if (Array.isArray(entry) && entry.length > 0) {
-      out[key] = entry.filter((item): item is string => typeof item === "string");
+      const values = entry.filter((item): item is string => typeof item === "string");
+      out[key] = key === "subjects" ? normalizeSmartProfileSubjectList(values) ?? [] : values;
     }
   }
   return Object.keys(out).length > 0 ? out : undefined;
@@ -138,14 +141,17 @@ export function buildSmartProfileWithHumanAuthorityOnly(input: {
     const priorValues = prior[key];
     if (staffEditedKeySet.has(key)) {
       if (Array.isArray(priorValues) && priorValues.length > 0) {
-        next[key] = priorValues.filter((value): value is string => typeof value === "string");
+        const values = priorValues.filter((value): value is string => typeof value === "string");
+        next[key] =
+          key === "subjects" ? normalizeSmartProfileSubjectList(values) : values;
       }
       continue;
     }
 
     const presetValues = input.importPresets?.[key];
     if (Array.isArray(presetValues) && presetValues.length > 0) {
-      next[key] = presetValues.filter((value): value is string => typeof value === "string");
+      const values = presetValues.filter((value): value is string => typeof value === "string");
+      next[key] = key === "subjects" ? normalizeSmartProfileSubjectList(values) : values;
     }
   }
 
