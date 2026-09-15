@@ -1717,7 +1717,10 @@ UI/flow polish, implemented 2026-07-05 after a second manual QA pass:
 * Removing a Print Request from a show requires a two-step confirm, matching the existing Print
   Request item removal pattern
 * A Show Queue settings cog exposes a staff-configurable default max quantity for new shows
-  (`settings/showQueue`, direct client read/write), applied only at show-creation time
+  (`settings/showQueue`). Create-time snapshot for Whatnot/DEV fixture shows; optional explicit
+  owner/admin “Apply this quota to existing shows” on Save updates eligible Upcoming shows via
+  trusted callable `applyShowQueueDefaultMaxToEligibleShows` (ADR-FP-160). Unchecked Save remains
+  global-default-only.
 * Intro/"How it works" copy removed from Print Requests and Show Queue for a more compact workspace;
   `Add to Show` moved to a prominent upper action area and disabled until the request has items
 * Show Detail status pills align horizontally; Request Detail uses a bottom-right `Edit` button

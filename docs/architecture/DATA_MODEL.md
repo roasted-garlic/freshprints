@@ -1892,8 +1892,10 @@ export interface UpcomingShow {
   /** A Whatnot show / Staff Gang Sheet is the print run — this is the only production entity. */
   productionStatus: ShowProductionStatus;
   /**
-   * Staff-set capacity. Whatnot: undefined means no cap until set.
-   * Internal Gang Sheets default to 200 (`DEFAULT_INTERNAL_GANG_SHEET_MAX_TOTAL_QUANTITY`).
+   * Staff-set capacity. Whatnot / DEV fixture: snapshotted from
+   * `settings/showQueue.defaultMaxTotalQuantity` at create (optional apply-to-existing
+   * via ADR-FP-160). Internal Gang Sheets default to 200
+   * (`DEFAULT_INTERNAL_GANG_SHEET_MAX_TOTAL_QUANTITY`).
    */
   maxTotalQuantity?: number;
   /** True when staff used the danger override to exceed `maxTotalQuantity`. Portal customers may never set this. */
@@ -2204,6 +2206,12 @@ Bounds: integers 1–10000 (ZIP fields max 500). Counter docs remain `customerUp
 
 ```ts
 interface ShowQueueSettings {
+  /**
+   * Default show capacity applied at create for Whatnot / DEV fixture shows.
+   * Existing shows keep their snapshot unless an owner/admin checks
+   * “Apply this quota to existing shows” on Save (callable
+   * `applyShowQueueDefaultMaxToEligibleShows` — ADR-FP-160).
+   */
   defaultMaxTotalQuantity?: number;
   whatnotShowBaseUrl?: string;
   /**

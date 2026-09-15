@@ -14,6 +14,7 @@ import { LoadingSpinner } from "../../../shared/components/LoadingSpinner";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
 import { Select } from "../../../shared/components/Select";
 import { TextInput } from "../../../shared/components/TextInput";
+import { Toggle } from "../../../shared/components/Toggle";
 import { AutoResizeTextarea } from "../../../shared/components/AutoResizeTextarea";
 import { useShellHeaderConfig } from "../../../shared/hooks/useShellHeaderConfig";
 import { useAuth } from "../../auth/hooks/useAuth";
@@ -48,6 +49,10 @@ import {
   MAX_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START,
   MIN_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START,
 } from "../services/showQueueSettingsService";
+import {
+  formatApplyDefaultMaxSuccessMessage,
+  planShowQueueSettingsSave,
+} from "../utils/planShowQueueSettingsSave";
 import { useWhatnotShowImport, type WhatnotShowImportSummary } from "../hooks/useWhatnotShowImport";
 import { useShowQueuePrintRequests } from "../hooks/useShowQueuePrintRequests";
 import { usePrintRequestAllocationTotals } from "../../print-requests/hooks/usePrintRequestAllocationTotals";
@@ -263,6 +268,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
 
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [defaultCapacityInput, setDefaultCapacityInput] = useState("");
+  const [applyDefaultMaxToExistingShows, setApplyDefaultMaxToExistingShows] = useState(false);
   const [whatnotBaseUrlInput, setWhatnotBaseUrlInput] = useState("");
   const [portalCutoffHoursInput, setPortalCutoffHoursInput] = useState("");
   const [isSavingSettings, setIsSavingSettings] = useState(false);
@@ -348,6 +354,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
       setActionError(null);
 
       setDefaultCapacityInput(showQueueSettings.settings.defaultMaxTotalQuantity?.toString() ?? "");
+      setApplyDefaultMaxToExistingShows(false);
       setWhatnotBaseUrlInput(showQueueSettings.settings.whatnotShowBaseUrl ?? DEFAULT_WHATNOT_SHOW_BASE_URL);
       setPortalCutoffHoursInput(
         (
@@ -373,6 +380,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
 
   const closeSettingsModal = useCallback(() => {
     setIsSettingsModalOpen(false);
+    setApplyDefaultMaxToExistingShows(false);
     setActionError(null);
   }, []);
 
@@ -1448,18 +1456,52 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
 
     const trimmed = defaultCapacityInput.trim();
     const parsedDefault = trimmed ? Number(trimmed) : undefined;
+    if (
+      trimmed &&
+      (parsedDefault === undefined ||
+        !Number.isFinite(parsedDefault) ||
+        !Number.isInteger(parsedDefault) ||
+        parsedDefault < 0)
+    ) {
+      setActionError("Default max quantity must be a whole number of 0 or greater, or left blank for no default limit.");
+      return;
+    }
+
+    const savePlan = planShowQueueSettingsSave({
+      applyToExistingShows: applyDefaultMaxToExistingShows,
+      defaultMaxTotalQuantity: parsedDefault,
+      whatnotShowBaseUrl: parsedWhatnotBaseUrl?.normalizedUrl,
+      portalQueueCutoffHoursBeforeStart: parsedPortalCutoffHours,
+    });
 
     try {
       setActionError(null);
       setIsSavingSettings(true);
-      await showQueueSettings.updateSettings({
-        defaultMaxTotalQuantity: parsedDefault,
-        whatnotShowBaseUrl: parsedWhatnotBaseUrl?.normalizedUrl,
-        portalQueueCutoffHoursBeforeStart: parsedPortalCutoffHours,
-      });
+
+      await showQueueSettings.updateSettings(savePlan.clientSettingsUpdate);
+
+      if (savePlan.invokeApplyCallable && savePlan.applyPayload) {
+        const applyResult = await showQueueSettings.applyDefaultMaxToEligibleShows(
+          savePlan.applyPayload,
+        );
+        invalidateGangSheetExportCache();
+        setSuccessMessage(
+          formatApplyDefaultMaxSuccessMessage({
+            updatedShowCount: applyResult.updatedShowCount,
+            skippedBelowAllocatedCount: applyResult.skippedBelowAllocatedCount,
+          }),
+        );
+        setSuccessAlertSeed((current) => current + 1);
+        setApplyDefaultMaxToExistingShows(false);
+        closeSettingsModal();
+        await reloadUpcomingShows();
+        return;
+      }
+
       invalidateGangSheetExportCache();
       setSuccessMessage("Show Queue settings updated. Regenerate gang sheets to apply new pricing.");
       setSuccessAlertSeed((current) => current + 1);
+      setApplyDefaultMaxToExistingShows(false);
       closeSettingsModal();
     } catch (error) {
       setActionError(formatWriteErrorMessage(error));
@@ -2935,8 +2977,20 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                           : showQueueSettings.settings.defaultMaxTotalQuantity === undefined
                             ? "No default limit"
                             : showQueueSettings.settings.defaultMaxTotalQuantity}
-                        . Applied only to new shows going forward.
+                        . Applied to new Whatnot and DEV fixture shows going forward.
                       </p>
+                      <div className="show-queue-settings-apply-existing">
+                        <Toggle
+                          checked={applyDefaultMaxToExistingShows}
+                          disabled={isSavingSettings}
+                          label="Apply this quota to existing shows"
+                          name="applyDefaultMaxToExistingShows"
+                          onChange={setApplyDefaultMaxToExistingShows}
+                        />
+                        <p className="print-requests-modal-hint">
+                          Updates eligible Upcoming shows only. Resets when this dialog closes.
+                        </p>
+                      </div>
                     </div>
 
                     <div className="show-queue-settings-field">

@@ -1,4 +1,5 @@
 export { upsertDevFixtureShow } from "./upsertDevFixtureShow";
+export { applyShowQueueDefaultMaxToEligibleShows } from "./applyShowQueueDefaultMaxToEligibleShows";
 export { addPortalCatalogDesignToPrintRequest } from "./addPortalCatalogDesignToPrintRequest";
 export { cleanupAbandonedCustomerUploads } from "./cleanupAbandonedCustomerUploads";
 export { archiveStaleWorkingPrintRequests } from "./archiveStaleWorkingPrintRequests";

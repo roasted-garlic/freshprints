@@ -2,30 +2,29 @@
 
 **Last updated:** 2026-09-15
 
-## CURRENT AUTHORITATIVE PHASE — Studio pre-release Design Navigation + Print Request refinements — SIGNOFF COMPLETE (DEV)
+## CURRENT AUTHORITATIVE PHASE — Show Queue global allocation quota apply-to-existing — SIGNOFF COMPLETE (DEV)
+
+Managed goal: `show-queue-global-allocation-quota-apply-existing-shows` is **CLOSED**.
+
+Owner recorded `OWNER DEV QA: SHOW QUEUE QUOTA APPLY — PASS`. Signoff is
+**approved_with_notes**. Studio Settings Toggle can optionally apply the saved global default max
+to eligible Upcoming Whatnot/DEV fixture shows via trusted callable
+`applyShowQueueDefaultMaxToEligibleShows`. Unchecked Save remains global-only. Automated focused
+suites **33/33 PASS**. No production deployment, Portal publication, Studio release, Rules, or
+schema change occurred. Working-tree commit/push was not performed unless separately requested.
+
+Signoff: `docs/workflow/reviews/2026-09-15-show-queue-global-allocation-quota-apply-existing-shows-signoff.md`
+
+No next step remains in this goal; new work requires a new managed Plan. Production promotion of
+the callable + Studio UI remains separately unauthorized.
+
+## Historical snapshot — Studio pre-release Design Navigation + Print Request refinements — SIGNOFF COMPLETE (DEV)
 
 The owner recorded `OWNER DEV QA: PASS` for all Workstreams A–F and the regression sweep for
 `studio-pre-release-design-navigation-and-print-request-list-refinements`. FreshForge Signoff is
-complete and this managed goal is closed. The final implementation preserves the reviewed
-constraints: shared Design Details navigation and embedded lightbox behavior; narrow
-`studio_customer` Portal show-management/editability parity; local show isolation and scoped
-search; show-scoped customer grouping/totals; Printing/Printed newest-show-first ordering; and
-eligible-customer search integrated into the open Studio dropdown with clear/reset behavior.
-
-Final evidence is recorded in
-`docs/workflow/reviews/2026-09-14-studio-pre-release-design-navigation-and-print-request-list-refinements-test-report.md`
-and the Signoff artifact. The affected corrective suite is **132/132 PASS**; the final F-focused
-suite is **22/22 PASS**; Studio/Portal typechecks, Functions build, targeted ESLint, and
-`git diff --check` pass. The full repository lint still reports the same 14 unrelated
-pre-existing errors outside this goal and is noted, not presented as a goal failure.
-
-The scoped DEV Functions deployment used for earlier Owner QA completed with **7 Functions
-deployed, 0 errored, 0 aborted**. No production deployment, Portal publication, Studio release,
-schema change, Rules change, or unrelated refactor occurred. No next step remains in this goal;
-new work requires a new todo and managed Plan.
-
-The completed development commit/push is recorded in the Signoff artifact. Production promotion
-and any Portal/Studio release remain separately unauthorized.
+complete and that managed goal is closed. Final evidence is in the dated 2026-09-14 test report and
+Signoff; affected suite **132/132**, F-focused **22/22**. Production promotion remains separately
+unauthorized.
 
 ## Historical snapshot — Smart Filter OR + lowercase Subjects
 

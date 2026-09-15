@@ -1,5 +1,14 @@
 # Recent Completed Work
 
+## 2026-09-15 - Show Queue global allocation quota apply-to-existing — SIGNOFF COMPLETE (DEV)
+
+Goal `show-queue-global-allocation-quota-apply-existing-shows` is **DONE**. Owner DEV QA
+**PASS**. Show Queue Settings Toggle optionally applies the saved global default max to eligible
+Upcoming Whatnot/DEV fixture shows via callable `applyShowQueueDefaultMaxToEligibleShows`.
+Unchecked Save remains global-default-only. Focused tests **33/33 PASS**. ADR-FP-160 recorded.
+No production/Portal/Studio release, Rules, or schema change. Signoff:
+`docs/workflow/reviews/2026-09-15-show-queue-global-allocation-quota-apply-existing-shows-signoff.md`.
+
 ## 2026-09-15 - Studio pre-release Design Navigation + Print Request refinements — SIGNOFF COMPLETE (DEV)
 
 Goal `studio-pre-release-design-navigation-and-print-request-list-refinements` is **DONE**.

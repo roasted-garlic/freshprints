@@ -195,6 +195,21 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.show-queue-settings-apply-existing {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.15rem;
+}
+
+.show-queue-settings-apply-existing .form-toggle {
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.show-queue-settings-apply-existing .print-requests-modal-hint {
+  margin: 0;
+}
+
 .show-queue-settings-field {
   display: flex;
   flex-direction: column;

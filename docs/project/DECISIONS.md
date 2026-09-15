@@ -919,6 +919,41 @@ Live lean enrichment (`catalog-enrich-v31`) instructed Gemini to transcribe **al
 
 ---
 
+### ADR-FP-160: Show Queue default max — opt-in apply to eligible existing shows
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-15 |
+| Status | accepted (DEV implementation; production separately gated) |
+| Related | Show Queue settings; `settings/showQueue.defaultMaxTotalQuantity`; `upcomingShows.maxTotalQuantity` |
+| Plan | `docs/workflow/plans/2026-09-15-show-queue-global-allocation-quota-apply-existing-shows-plan.md` |
+| Review | `docs/workflow/reviews/2026-09-15-show-queue-global-allocation-quota-apply-existing-shows-formal-review.md` |
+
+**Context**
+
+Changing the Show Queue global default max only affected newly created Whatnot/DEV fixture shows.
+Owners needed an explicit way to push a new default onto already-created eligible shows without
+rewriting historical/terminal capacity or Internal Gang Sheet defaults.
+
+**Decision**
+
+1. Add ephemeral checkbox **Apply this quota to existing shows** (default unchecked; not persisted).
+2. Unchecked Save keeps the existing client `settings/showQueue` write for the default.
+3. Checked Save: non-quota settings still use the client path; **`applyShowQueueDefaultMaxToEligibleShows`**
+   (owner/admin) is the sole writer of `defaultMaxTotalQuantity` and updates eligible shows.
+4. Eligible: Upcoming schedule + `productionStatus` ∈ {open, full, printing} + source ∈ {whatnot, dev_fixture}.
+5. Excluded: Past / Needs Attention, terminal production statuses, `staff_gang_sheet`, archived.
+6. Skip + report when finite new max &lt; `allocatedQuantity`; reset `maxQuantityOverridden` to false on updates;
+   clear show max when applying no-limit.
+7. Orthogonal: ADR-FP-159 customer temporary overrides and `settings/printRequestLimits` unchanged.
+
+**Consequences**
+
+- Allocation continues to enforce per-show `maxTotalQuantity` snapshots after apply.
+- No Firestore Rules/schema/migration change required for the Admin callable path.
+
+---
+
 ### ADR-FP-159: Customer-specific temporary Print Request + Show quota override
 
 | Field | Value |

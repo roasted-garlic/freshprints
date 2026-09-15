@@ -340,6 +340,7 @@ Authoritative constants: `packages/shared/src/constants/import/batchImportLimits
 | `updateEmailProviderSettings` | Callable | Studio owner: select invitation and proof-notice providers (`resend` \| `brevo`) |
 | `updateCustomerUploadQuotaSettings` | Callable | Studio owner: set America/Chicago daily print-request vs donation upload caps (`settings/customerUploadQuotas`; ADR-FP-095) |
 | `updatePrintRequestLimitSettings` | Callable | Studio owner: set dual Portal limits on `settings/printRequestLimits`; mirrors request limit into legacy Cap A field (ADR-FP-102) |
+| `applyShowQueueDefaultMaxToEligibleShows` | Callable | Studio owner/admin: write `settings/showQueue.defaultMaxTotalQuantity` and optionally overwrite eligible Upcoming Whatnot/DEV fixture show `maxTotalQuantity` (ADR-FP-160) |
 | `updateCustomerPrintRequestQuotaOverride` | Callable | Studio **owner-only**: set/clear temporary per-customer PR and/or Show limit overrides on `customers/{id}.printRequestQuotaOverride` (optional `expiresAt`; activity events; ADR-FP-159) |
 | `onEmailDeliveryJobCreated` | Firestore create | Deliver a proof-ready, catalog-share, or final-artwork-ready notice from the durable outbox |
 | `onPrintRequestLifecycleRequestWritten` | Firestore write `printRequests/{printRequestId}` | Server-authored request lifecycle evidence + monotonic ordering mirror |
