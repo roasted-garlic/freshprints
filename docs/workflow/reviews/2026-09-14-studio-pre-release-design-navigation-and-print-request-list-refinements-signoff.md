@@ -8,6 +8,7 @@
 | Formal Review | `docs/workflow/reviews/2026-09-14-studio-pre-release-design-navigation-and-print-request-list-refinements-formal-review.md` |
 | Test Report | `docs/workflow/reviews/2026-09-14-studio-pre-release-design-navigation-and-print-request-list-refinements-test-report.md` |
 | Goal | `studio-pre-release-design-navigation-and-print-request-list-refinements` |
+| Development commit/push | `b26fb3d8` — `chore: sign off studio print request refinements` — pushed to `origin/development` |
 | Final status | **approved_with_notes — CLOSED** |
 
 ## Completion summary
