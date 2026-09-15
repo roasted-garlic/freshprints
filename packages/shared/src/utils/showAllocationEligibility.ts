@@ -6,12 +6,12 @@ import {
   type ShowWithScheduledStart,
 } from "./showScheduleGrouping";
 
-const DONE_OR_CLOSED_STATUSES: ReadonlySet<ShowProductionStatus> = new Set([
+/** Terminal / finished production — never overridable via show-capacity override. */
+const TERMINAL_PRODUCTION_STATUSES: ReadonlySet<ShowProductionStatus> = new Set([
   "completed",
   "fully_printed",
   "archived",
   "canceled",
-  "full",
 ]);
 
 export const SHOW_QUEUE_FULL_MESSAGE = "This show is already full — no more requests can be added.";
@@ -23,23 +23,39 @@ export interface ShowAllocationEligibilityInput extends ShowWithScheduledStart {
   allocatedQuantity?: number;
 }
 
+export interface ShowAllocationBlockReasonOptions {
+  /**
+   * When true, capacity-driven full (including productionStatus `"full"`) is allowed so staff may
+   * explicitly exceed `maxTotalQuantity`. Past schedule and terminal statuses still block.
+   */
+  allowCapacityFullOverride?: boolean;
+}
+
 export type ShowAllocationBlockReason = "past" | "done" | "full" | null;
 
 /**
  * Whether staff or Portal may add new print-request quantity to a show.
  * Blocks past schedule, finished/full production status, and capacity-full shows.
+ * Pass `allowCapacityFullOverride: true` only on the trusted Studio capacity-override path.
  */
 export function getShowAllocationBlockReason(
   show: ShowAllocationEligibilityInput,
   now: Date = new Date(),
+  options: ShowAllocationBlockReasonOptions = {},
 ): ShowAllocationBlockReason {
   if (!canAllocatePrintRequestToShow(show, now)) {
     return "past";
   }
 
   const status = show.productionStatus;
-  if (typeof status === "string" && DONE_OR_CLOSED_STATUSES.has(status as ShowProductionStatus)) {
-    return status === "full" ? "full" : "done";
+  if (typeof status === "string" && TERMINAL_PRODUCTION_STATUSES.has(status as ShowProductionStatus)) {
+    return "done";
+  }
+
+  const allowCapacityFullOverride = options.allowCapacityFullOverride === true;
+
+  if (status === "full" && !allowCapacityFullOverride) {
+    return "full";
   }
 
   const capacity = assessShowCapacity({
@@ -47,7 +63,7 @@ export function getShowAllocationBlockReason(
     allocatedQuantity: show.allocatedQuantity ?? 0,
   });
 
-  if (capacity.isFull) {
+  if (capacity.isFull && !allowCapacityFullOverride) {
     return "full";
   }
 
@@ -72,4 +88,35 @@ export function formatShowAllocationBlockedMessage(reason: ShowAllocationBlockRe
     default:
       return "This show is not accepting new requests.";
   }
+}
+
+export interface ShowCapacityOverrideSummary {
+  currentAllocated: number;
+  maxTotalQuantity: number;
+  addingQuantity: number;
+  newTotal: number;
+}
+
+export function buildShowCapacityOverrideSummary(input: {
+  currentAllocated: number;
+  maxTotalQuantity: number;
+  addingQuantity: number;
+}): ShowCapacityOverrideSummary {
+  return {
+    currentAllocated: input.currentAllocated,
+    maxTotalQuantity: input.maxTotalQuantity,
+    addingQuantity: input.addingQuantity,
+    newTotal: input.currentAllocated + input.addingQuantity,
+  };
+}
+
+export function wouldExceedShowCapacity(input: {
+  maxTotalQuantity?: number;
+  currentAllocated: number;
+  addingQuantity: number;
+}): boolean {
+  if (input.maxTotalQuantity === undefined) {
+    return false;
+  }
+  return input.currentAllocated + input.addingQuantity > input.maxTotalQuantity;
 }

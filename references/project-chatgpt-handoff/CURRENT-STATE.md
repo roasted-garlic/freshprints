@@ -2,7 +2,32 @@
 
 **Last updated:** 2026-09-15
 
-## CURRENT AUTHORITATIVE PHASE — Show Queue global allocation quota apply-to-existing — SIGNOFF COMPLETE (DEV)
+## CURRENT AUTHORITATIVE PHASE — IDLE
+
+FreshForge is **IDLE**. Last closed goal:
+`studio-staff-show-capacity-allocation-override` (Signoff **approved_with_notes**).
+
+Owner recorded `OWNER DEV QA: SHOW CAPACITY OVERRIDE — PASS`. Studio staff may explicitly
+**Allocate Anyway** over show `maxTotalQuantity` via trusted
+`allocateStudioPrintRequestToShow` + `overrideShowCapacity: true` (ADR-FP-182). Configured max
+unchanged; Portal remains strict. Automated focused suites **79/79 PASS**. No production
+deployment, Portal publication, Studio release, Rules, or schema change occurred.
+
+Signoff: `docs/workflow/reviews/2026-09-15-studio-staff-show-capacity-allocation-override-signoff.md`
+
+Exact next checkpoint: **await owner for next managed goal** (optional commit/push of this work;
+production promotion separately gated).
+
+## Historical snapshot — Studio staff show-capacity allocation override — SIGNOFF COMPLETE (DEV)
+
+Managed goal: `studio-staff-show-capacity-allocation-override` is **CLOSED**.
+
+Staff Add-to-Show confirmation sends `overrideShowCapacity: true` only as boolean true; bypasses
+only capacity ceiling / capacity-operational full; never Past/terminal/other guards; does not
+mutate `maxTotalQuantity` or misuse `maxQuantityOverridden`. Transfer/move override remains out of
+v1. Coexists with ADR-FP-160 Apply skip-below-allocated.
+
+## Historical snapshot — Show Queue global allocation quota apply-to-existing — SIGNOFF COMPLETE (DEV)
 
 Managed goal: `show-queue-global-allocation-quota-apply-existing-shows` is **CLOSED**.
 
@@ -14,9 +39,6 @@ suites **33/33 PASS**. No production deployment, Portal publication, Studio rele
 schema change occurred. Working-tree commit/push was not performed unless separately requested.
 
 Signoff: `docs/workflow/reviews/2026-09-15-show-queue-global-allocation-quota-apply-existing-shows-signoff.md`
-
-No next step remains in this goal; new work requires a new managed Plan. Production promotion of
-the callable + Studio UI remains separately unauthorized.
 
 ## Historical snapshot — Studio pre-release Design Navigation + Print Request refinements — SIGNOFF COMPLETE (DEV)
 

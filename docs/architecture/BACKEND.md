@@ -111,9 +111,10 @@ writes. No Rules, Storage Rules, indexes, or migration changes are required for 
 `allocateStudioPrintRequestToShow` is the trusted Studio Add-to-Show path. It authenticates active
 staff, validates every requested remaining item quantity and destination show in one Admin SDK
 transaction, creates all allocation rows, updates each show total, activates the request, clears
-editing/requeue parking, and explicitly recomputes `queueTab`. This replaces the unsafe per-item
-client sequence for full-request/re-add plans and repairs already-allocated `editing` requests
-without fabricating additional quantity. It does not change the Portal callable.
+editing/requeue parking, and explicitly recomputes `queueTab`. Optional request field
+`overrideShowCapacity: true` (literal boolean only) permits exceeding `maxTotalQuantity` after
+explicit Studio confirmation; Past/terminal and unrelated guards still apply. It does not change the
+Portal callable.
 
 Request-scoped image export and Standard gang-sheet generation remain Electron desktop operations:
 renderer → preload → validated IPC → Electron main → Firebase Storage download / Sharp / ZIP or
@@ -311,7 +312,7 @@ Authoritative constants: `packages/shared/src/constants/import/batchImportLimits
 | `listPortalShowCatalogDesigns` | Callable | Portal: **public** (no auth) ready catalog designs allocated to a show; guests may browse; request mutations remain login-gated |
 | `convertCustomerPrintRequestToInternal` | Callable | Studio staff: convert eligible customer request → new internal request; archive source with `closureKind`; optional cancel pending/queued allocations after confirm; blocks `in_progress`+ allocations |
 | `queuePortalPrintRequestToShow` | Callable | Portal: allocate **entire** Continuable request to **one** show atomically or reject; multiple separate requests may accumulate on the same show up to limit `L` (ADR-FP-122); rejects past Portal queue cutoff; rejects stale `selections`; no remainder; bidding ack + version (ADR-FP-102 / ADR-FP-103 / ADR-FP-122) |
-| `allocateStudioPrintRequestToShow` | Callable | Studio staff: atomically allocate a complete remaining Add-to-Show plan (including split legs), activate the request, clear editing/requeue parking, and repair a fully allocated `editing` row; rejects partial plans, closed/past/full shows, invalid request origins, and archived/completed/converted requests |
+| `allocateStudioPrintRequestToShow` | Callable | Studio staff: atomically allocate a complete remaining Add-to-Show plan (including split legs), activate the request, clear editing/requeue parking, and repair a fully allocated `editing` row; rejects partial plans, closed/past/full shows, invalid request origins, and archived/completed/converted requests; optional `overrideShowCapacity: true` bypasses only show-capacity ceiling / capacity-operational full |
 | `submitEtsyRecommendationRequest` | Callable | Portal: create/replace one active Etsy recommendation request; returns website search URL |
 | `searchEtsyRecommendations` | Callable | Portal: Open API listing search for an owned active request (`ETSY_X_API_KEY`); persists `lastApiSearch` |
 | `staffSearchEtsyRecommendationApiResults` | Callable | Studio: staff Open API search/refresh for any request status; persists `lastApiSearch`; no customer quota charge (`ETSY_X_API_KEY`) |

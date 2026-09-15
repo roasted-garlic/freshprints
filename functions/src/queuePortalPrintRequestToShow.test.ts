@@ -78,3 +78,12 @@ describe('ADR-FP-122 — one-request-per-show uniqueness removed from queuePorta
     assert.doesNotMatch(source, /requestOriginSnapshot:\s*"portal_customer"/);
   });
 });
+
+describe('ADR-FP-182 — Portal queue stays capacity-strict (no staff override)', () => {
+  it('does not accept overrideShowCapacity and still enforces show capacity', () => {
+    assert.doesNotMatch(source, /overrideShowCapacity/);
+    assert.match(source, /canFitPrintRequestOnShow/);
+    assert.match(source, /getShowAllocationBlockReason/);
+    assert.match(source, /formatShowCapacityExceededMessage/);
+  });
+});

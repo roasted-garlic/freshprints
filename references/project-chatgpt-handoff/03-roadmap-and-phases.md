@@ -1,10 +1,14 @@
 # Roadmap and Phases
 
-## 2026-09-15 — Managed goal closed
+## 2026-09-15 — Managed goals closed (DEV)
 
-`studio-pre-release-design-navigation-and-print-request-list-refinements` is signed off in DEV
-with Owner DEV QA **PASS** for A–F and regression. No production, Portal publication, or Studio
-release action is part of the closeout; Phase 9 remains parked.
+- `studio-staff-show-capacity-allocation-override` — Signoff **approved_with_notes**; Owner DEV QA
+  **PASS**; ADR-FP-182; focused tests **79/79**. FreshForge **IDLE**.
+- `studio-pre-release-design-navigation-and-print-request-list-refinements` — signed off earlier
+  the same day with Owner DEV QA **PASS** for A–F and regression.
+
+No production, Portal publication, or Studio release is authorized by these closeouts; Phase 9
+remains parked.
 
 > 2026-09-13: **Production rollout STOPPED at Function preflight** — Additive index deployment
 > completed with 94 composite indexes READY, including `portalPrintRequestItems`, and no

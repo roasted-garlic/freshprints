@@ -22,7 +22,7 @@ after convergence. No schema migration or production population was run in this 
 | `customerUploads` | Customer artwork for requests (ADR-FP-073) |
 | `customerUploadBatches` | Upload sessions / ZIP batches |
 | `customerUploadRateLimits` / leases / idempotency | Abuse controls |
-| `upcomingShows` / `showAllocations` / print runs | Show Queue |
+| `upcomingShows` / `showAllocations` / print runs | Show Queue; optional `showAllocations.showCapacityOverride` when staff Allocate Anyway (ADR-FP-182); does not change show `maxTotalQuantity` |
 | `staffInboxAcks` | Per-staff Done state for inbox |
 | `assistedCreationRequests` | Customer Assisted Creation brief, references, proofs, and revision history |
 | `settings` | AI enrichment, show queue, etc. |

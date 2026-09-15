@@ -2031,16 +2031,26 @@ export interface ShowAllocation {
   requeuedFromAllocationId?: string;
   /** Normal Show Queue MOVE lineage (ADR-FP-157). */
   movedFromAllocationId?: string;
+  /**
+   * Optional Admin-written audit when Studio staff allocated with explicit `overrideShowCapacity: true`
+   * (ADR-FP-182). Does not change show `maxTotalQuantity`.
+   */
+  showCapacityOverride?: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
 ```
 
 Capacity rule: a show's `maxTotalQuantity` is optional (undefined = no cap). Allocating a quantity that
-would exceed the show's remaining capacity (`maxTotalQuantity - allocatedQuantity`) is blocked unless
-staff confirm a danger override (`overrideCapacity: true`), which also sets
-`upcomingShows.maxQuantityOverridden`. Portal customers never call allocation methods, so there is no
-separate customer-facing override path to guard.
+would exceed the show's remaining capacity (`maxTotalQuantity - allocatedQuantity`) is blocked by default.
+Authorized Studio staff (owner/admin/helper) may explicitly confirm **Allocate Anyway**, which sends
+`overrideShowCapacity: true` on the trusted `allocateStudioPrintRequestToShow` callable. That flag bypasses
+**only** the numeric show-capacity ceiling and capacity-driven/`productionStatus: "full"` operational
+blocking — not Past schedule, terminal production statuses, quantity integrity, or unrelated guards.
+Override does **not** change `maxTotalQuantity` and does **not** set `maxQuantityOverridden` (that flag
+means staff lowered the configured max below already-allocated quantity). Optional Admin-written
+`showAllocations.showCapacityOverride: true` may mark rows created under an explicit override. Portal
+`queuePortalPrintRequestToShow` remains strict with no override input.
 
 Print Request queue/print state is **derived from allocations, not persisted** on `printRequests`. See
 `shared/utils/printRequestQueueState.ts`'s `derivePrintRequestQueueState()`: it compares a request's

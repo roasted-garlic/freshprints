@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  buildShowCapacityOverrideSummary,
   canAcceptNewShowAllocations,
   getShowAllocationBlockReason,
+  wouldExceedShowCapacity,
 } from "./showAllocationEligibility";
 
 function timestamp(iso: string) {
@@ -89,6 +91,94 @@ describe("canAcceptNewShowAllocations", () => {
         now,
       ),
       "full",
+    );
+  });
+
+  it("allowCapacityFullOverride permits capacity/production full but not terminal or past", () => {
+    assert.equal(
+      getShowAllocationBlockReason(
+        {
+          scheduledStartAt: timestamp("2026-08-01T00:00:00Z"),
+          productionStatus: "open",
+          maxTotalQuantity: 50,
+          allocatedQuantity: 50,
+        },
+        now,
+        { allowCapacityFullOverride: true },
+      ),
+      null,
+    );
+    assert.equal(
+      getShowAllocationBlockReason(
+        {
+          scheduledStartAt: timestamp("2026-08-01T00:00:00Z"),
+          productionStatus: "full",
+          maxTotalQuantity: 50,
+          allocatedQuantity: 50,
+        },
+        now,
+        { allowCapacityFullOverride: true },
+      ),
+      null,
+    );
+    assert.equal(
+      getShowAllocationBlockReason(
+        {
+          scheduledStartAt: timestamp("2026-08-01T00:00:00Z"),
+          productionStatus: "completed",
+          maxTotalQuantity: 50,
+          allocatedQuantity: 50,
+        },
+        now,
+        { allowCapacityFullOverride: true },
+      ),
+      "done",
+    );
+    assert.equal(
+      getShowAllocationBlockReason(
+        {
+          scheduledStartAt: timestamp("2026-06-01T00:00:00Z"),
+          productionStatus: "open",
+          maxTotalQuantity: 50,
+          allocatedQuantity: 50,
+        },
+        now,
+        { allowCapacityFullOverride: true },
+      ),
+      "past",
+    );
+  });
+
+  it("wouldExceedShowCapacity and override summary support already-full and overflow", () => {
+    assert.equal(
+      wouldExceedShowCapacity({ maxTotalQuantity: 25, currentAllocated: 25, addingQuantity: 4 }),
+      true,
+    );
+    assert.equal(
+      wouldExceedShowCapacity({ maxTotalQuantity: 25, currentAllocated: 20, addingQuantity: 4 }),
+      false,
+    );
+    assert.equal(
+      wouldExceedShowCapacity({ maxTotalQuantity: 25, currentAllocated: 22, addingQuantity: 4 }),
+      true,
+    );
+    assert.equal(
+      wouldExceedShowCapacity({ currentAllocated: 10, addingQuantity: 99 }),
+      false,
+    );
+
+    assert.deepEqual(
+      buildShowCapacityOverrideSummary({
+        currentAllocated: 4,
+        maxTotalQuantity: 5,
+        addingQuantity: 3,
+      }),
+      {
+        currentAllocated: 4,
+        maxTotalQuantity: 5,
+        addingQuantity: 3,
+        newTotal: 7,
+      },
     );
   });
 });

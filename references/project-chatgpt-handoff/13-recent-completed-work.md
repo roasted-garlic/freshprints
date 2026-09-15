@@ -1,5 +1,14 @@
 # Recent Completed Work
 
+## 2026-09-15 - Studio staff show-capacity allocation override — SIGNOFF COMPLETE (DEV)
+
+Goal `studio-staff-show-capacity-allocation-override` is **DONE**. Owner DEV QA **PASS**.
+Studio **Allocate Anyway** sends `overrideShowCapacity: true` on
+`allocateStudioPrintRequestToShow` (boolean true only); bypasses only show-capacity ceiling /
+capacity-operational full; max unchanged; Portal strict; ADR-FP-182. Focused tests **79/79 PASS**.
+No production/Portal/Studio release, Rules, or schema change. Signoff:
+`docs/workflow/reviews/2026-09-15-studio-staff-show-capacity-allocation-override-signoff.md`.
+
 ## 2026-09-15 - Show Queue global allocation quota apply-to-existing — SIGNOFF COMPLETE (DEV)
 
 Goal `show-queue-global-allocation-quota-apply-existing-shows` is **DONE**. Owner DEV QA

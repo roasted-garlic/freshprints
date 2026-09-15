@@ -1,5 +1,7 @@
 # Fresh Prints Roadmap
 
+> 2026-09-15: **Studio staff show-capacity allocation override — CLOSED (DEV)** — Goal `studio-staff-show-capacity-allocation-override` **DONE**. Signoff **approved_with_notes**. Owner DEV QA **PASS**. Staff Allocate Anyway sends `overrideShowCapacity: true` on `allocateStudioPrintRequestToShow`; max unchanged; Portal strict; ADR-FP-182. Focused tests **79/79 PASS**. No production / Portal / Studio release / Rules / schema. Signoff: `docs/workflow/reviews/2026-09-15-studio-staff-show-capacity-allocation-override-signoff.md`. FreshForge **IDLE**.
+
 > 2026-09-15: **Studio pre-release Design Navigation + Print Request refinements — SIGNOFF approved_with_notes (DEV)** — Goal `studio-pre-release-design-navigation-and-print-request-list-refinements` **DONE**. Owner DEV QA **PASS** for A–F and the regression sweep. Final evidence: affected corrective suite **132/132 PASS**, F-focused suite **22/22 PASS**, Studio/Portal typechecks, Functions build, targeted ESLint, and `git diff --check` PASS. The known full-repository lint baseline remains 14 unrelated pre-existing errors outside this goal. Scoped DEV Functions were deployed earlier for QA; no production deployment, Portal publication, or Studio release occurred or is authorized. Signoff: `docs/workflow/reviews/2026-09-14-studio-pre-release-design-navigation-and-print-request-list-refinements-signoff.md`.
 
 > 2026-09-13: **Ready Catalog Smart Profile reprocess COMPLETE; Algolia gated** — Job
@@ -1733,7 +1735,9 @@ manual QA pass:
 
 * Real split allocation flow: staff choose exactly which designs/quantities go to the first show,
   the app computes the remainder, and staff choose another show (or repeat) until the request is
-  fully allocated or they cancel; a danger override can still force the full request onto one show
+  fully allocated or they cancel; Studio staff may explicitly **Allocate Anyway** with
+  `overrideShowCapacity: true` on `allocateStudioPrintRequestToShow` to exceed configured show
+  capacity without changing `maxTotalQuantity` (ADR-FP-182; Portal remains strict)
 * Removing a Print Request from a show deletes every allocation for that request on that show in one
   operation and recomputes the show's `allocatedQuantity` from the remaining allocations, instead of
   incrementally subtracting — this also clears an over-capacity state caused by the removed request

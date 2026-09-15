@@ -47,7 +47,9 @@ Internal + customer requests in **separate lists** (Customer Requests default; I
 Eligible non-working requests also expose direct **Export Images**, **Export x(Qty)**, **Generate Standard Gang Sheet**, and **Copy** actions. Working and Editing requests retain only their existing Add to Show / Add to Internal Gangsheet actions. Request totals and card costs use the shared four-tier Gang Sheet Settings resolver.
 
 ### Show Queue (`/show-queue`)
-Upcoming/Past shows; capacity; attach requests; Working triage **Active · Stale · Empty · All · Needs Re-queue** (rightmost); **NEEDS RE-QUEUE** badge; Whatnot assisted
+Upcoming/Past shows; capacity; attach requests; staff may **Allocate Anyway** to exceed configured
+`maxTotalQuantity` after confirmation (`overrideShowCapacity` on `allocateStudioPrintRequestToShow`,
+ADR-FP-182; max unchanged; Portal remains strict); Working triage **Active · Stale · Empty · All · Needs Re-queue** (rightmost); **NEEDS RE-QUEUE** badge; Whatnot assisted
 import; **DEV fixture shows** (`DEV-OVERRIDE`, `source: dev_fixture` — DEV-only, not Whatnot sync); zip export @ 300 DPI; gang sheet PNG via **Generate** menu (**three modes**, ADR-FP-143):
 - **Standard** — efficiency nesting (`layoutMode` omitted / `efficiency`; default)
 - **Grouped by Customer** — `customer_grouped_continuous`: customer section headings; multiple customers may share one physical sheet

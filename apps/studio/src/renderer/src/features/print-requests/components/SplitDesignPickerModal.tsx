@@ -118,8 +118,8 @@ export function SplitDesignPickerModal({
 
           {exceedsShowCapacity ? (
             <p className="auth-message auth-message-error" role="alert">
-              This exceeds the show's remaining capacity. Lower the quantities below, or use the staff
-              override on the previous step to allow it anyway.
+              This exceeds the show's remaining capacity. Lower the quantities below, or use Allocate
+              Anyway on the previous step to allow it anyway.
             </p>
           ) : null}
 

@@ -2,6 +2,14 @@
 
 > Full log: `docs/project/DECISIONS.md` — newest ADRs first.
 
+### ADR-FP-182: Studio staff show-capacity allocation override (DEV closed 2026-09-15)
+
+- Staff Allocate Anyway sends `overrideShowCapacity: true` (literal boolean only) on
+  `allocateStudioPrintRequestToShow`; roles match existing allocators (owner/admin/helper).
+- Bypasses only show-capacity ceiling and capacity-operational `full`; never Past/terminal/other guards.
+- Does not change `maxTotalQuantity` or set `maxQuantityOverridden`; Portal queue stays strict.
+- Transfer/move override out of v1. Coexists with ADR-FP-160 skip-below-allocated.
+
 ### Coordinated production cutover prerequisites (closed 2026-09-12)
 
 - Owner DEV QA explicitly passed: **`OWNER DEV QA: coordinated-production-cutover-prerequisites - PASS`**;

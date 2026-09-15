@@ -2,6 +2,14 @@
 
 **Updated:** 2026-09-15
 
+## FreshForge IDLE — no active managed goal
+
+Last closed: `studio-staff-show-capacity-allocation-override` (Signoff **approved_with_notes**,
+Owner DEV QA **PASS**). Await owner direction for the next managed Plan.
+
+Optional residual (not started): commit/push of capacity-override working tree; production
+promotion of `allocateStudioPrintRequestToShow` + Studio UI; transfer/move capacity override (out of v1).
+
 ## Studio pre-release Design Navigation + Print Request refinements — CLOSED
 
 `studio-pre-release-design-navigation-and-print-request-list-refinements` is signed off in DEV

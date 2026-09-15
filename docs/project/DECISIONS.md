@@ -327,6 +327,31 @@ changed by this decision. DEV deployment remains separately owner-authorized.
 
 ---
 
+### ADR-FP-182: Studio staff show-capacity allocation override
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-15 |
+| Status | accepted (DEV source; production not authorized) |
+| Related | Plan/Review `2026-09-15-studio-staff-show-capacity-allocation-override-*`; ADR-FP-160 (apply default max); ADR-FP-159 (customer print limits — distinct) |
+| Callable | `allocateStudioPrintRequestToShow` |
+
+**Context:** Staff sometimes need to place remaining Print Request quantity onto a show that is at or near `maxTotalQuantity`. The trusted callable hard-rejected over-capacity plans; Portal must stay strict; configured max should remain truthful so UI can show e.g. `29 / 25`.
+
+**Decision:**
+
+1. Studio Add-to-Show confirmation (**Allocate Anyway**) sends `overrideShowCapacity: true` only after explicit Cancel / Confirm.
+2. Server accepts override only when the value is boolean `true`; staff auth via existing `assertStaffCaller` (owner/admin/helper).
+3. Bypass **only** the numeric capacity ceiling and capacity-driven/`productionStatus: "full"` eligibility blocks. Do **not** bypass Past, terminal statuses, quantity integrity, sizing/DPI, maintenance, customer quotas, or unrelated guards.
+4. Do **not** mutate `maxTotalQuantity` or set `maxQuantityOverridden`.
+5. Optional Admin field `showAllocations.showCapacityOverride: true` for audit; no Rules change.
+6. Portal `queuePortalPrintRequestToShow` unchanged (no override). Transfer/move override out of v1.
+7. ADR-FP-160 Apply-to-existing still skips shows whose allocated quantity already exceeds a proposed lower max.
+
+**Consequences:** Over-capacity allocations are intentional and visible; coexistence with global Apply remains correct. Production Functions/Studio release separately gated.
+
+---
+
 ### ADR-FP-181: Canonical AI title/description trust — no semantic rewrite (parity corrective)
 
 | Field | Value |

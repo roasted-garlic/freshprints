@@ -1,5 +1,14 @@
 # Backend and AI Pipeline
 
+## Studio staff show-capacity allocation override (DEV — signed off 2026-09-15)
+
+- Callable `allocateStudioPrintRequestToShow` accepts optional `overrideShowCapacity: true`
+  (literal boolean only) for owner/admin/helper staff after Studio Allocate Anyway confirmation.
+- Bypasses only the numeric show-capacity ceiling and capacity-operational full eligibility;
+  Past/terminal and unrelated guards remain. Does not mutate `maxTotalQuantity`.
+- Portal `queuePortalPrintRequestToShow` unchanged (no override). ADR-FP-182.
+- Production Functions/Studio release not authorized by this closeout.
+
 ## Studio Print Request refinements (DEV — signed off 2026-09-15)
 
 - Narrow Portal show-management/editability parity accepts only owned, non-internal qualifying
