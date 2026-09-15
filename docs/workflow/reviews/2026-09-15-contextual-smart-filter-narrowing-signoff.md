@@ -13,3 +13,8 @@ and lowercase-Subjects corrective signoffs remain referenced in the current hand
 The reviewed source and workflow records are authorized for one development-branch commit and push.
 No production merge, release, deployment, data repair, Algolia reconcile/reindex, or AI backfill is
 authorized by this signoff.
+
+## Development delivery
+
+Commit `a5862d1537190a6e87a588a2a6ae9f74e606dfec` (`fix: close catalog copy and contextual smart
+filters`) was pushed normally to `origin/development`; local and remote refs are aligned.

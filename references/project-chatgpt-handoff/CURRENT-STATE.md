@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-09-15
 
-## CURRENT AUTHORITATIVE PHASE — Contextual Smart Filter narrowing — OWNER QA PASS / development push pending
+## CURRENT AUTHORITATIVE PHASE — Contextual Smart Filter narrowing — OWNER QA PASS / development push complete
 
 The owner recorded `OWNER QA: SMART FILTER SAME-DIMENSION OR + LOWERCASE SUBJECTS — PASS` and
 `OWNER QA: CONTEXTUAL SMART FILTER NARROWING — PASS`, closing
@@ -21,8 +21,9 @@ PASS**; Studio/Portal typechecks, Functions build, Studio packaged build, target
 check pass. No production mutation occurred.
 
 Owner QA checklist: `docs/workflow/reviews/2026-09-15-contextual-smart-filter-narrowing-dev-qa-preparation.md`.
-The reviewed development commit/push is now authorized. Production promotion remains a separate
-owner checkpoint.
+The reviewed development commit/push is complete: `a5862d1537190a6e87a588a2a6ae9f74e606dfec`
+(`fix: close catalog copy and contextual smart filters`). Local `HEAD` and `origin/development`
+are aligned. Production promotion remains a separate owner checkpoint.
 
 ## Historical snapshot — Smart Filter OR + lowercase Subjects
 
