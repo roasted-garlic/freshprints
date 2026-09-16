@@ -33,6 +33,24 @@
   padding: var(--space-3) var(--space-4);
 }
 
+.design-library-ai-selection-toolbar {
+  align-items: center;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-accent-primary);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+}
+
+.design-library-ai-selection-copy {
+  color: var(--color-text-secondary);
+  flex: 1 1 18rem;
+  font-size: var(--font-size-sm);
+}
+
 /* Shared filter controls (search + category + tags + optional archive toggle) */
 .design-library-filter-controls {
   align-items: center;
@@ -290,6 +308,20 @@
   display: grid;
   gap: var(--space-4);
   grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+}
+
+.design-card-shell.is-selected-for-ai-reprocess {
+  border-radius: var(--radius-lg);
+  box-shadow:
+    0 0 0 2px var(--color-accent-primary),
+    0 0 16px 2px color-mix(in srgb, var(--color-accent-primary) 22%, transparent);
+}
+
+.design-card-ai-select {
+  position: absolute;
+  right: var(--space-3);
+  top: var(--space-3);
+  z-index: 1;
 }
 
 .design-selection-card {
@@ -621,6 +653,70 @@
   display: flex;
   max-height: min(90vh, 48rem);
   width: min(100%, 42rem);
+}
+
+.design-details-modal-shell--navigable {
+  box-sizing: border-box;
+  padding: 2.75rem 3.5rem;
+  position: relative;
+  width: min(100%, 49rem);
+}
+
+.design-details-modal-shell--navigable .design-library-modal-panel {
+  max-height: calc(min(90vh, 48rem) - 5.5rem);
+  width: 100%;
+}
+
+.design-details-modal-navigation {
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 1;
+}
+
+.design-details-modal-navigation-position {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-variant-numeric: tabular-nums;
+  left: 50%;
+  position: absolute;
+  top: 0.35rem;
+  transform: translateX(-50%);
+}
+
+.design-details-modal-navigation-button {
+  min-width: 2.5rem;
+  pointer-events: auto;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.design-details-modal-navigation-button--previous {
+  left: 0.35rem;
+}
+
+.design-details-modal-navigation-button--next {
+  right: 0.35rem;
+}
+
+.design-details-modal-navigation-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+@media (max-width: 40rem) {
+  .design-details-modal-shell--navigable {
+    padding-inline: 3rem;
+  }
+
+  .design-details-modal-navigation-button--previous {
+    left: 0.15rem;
+  }
+
+  .design-details-modal-navigation-button--next {
+    right: 0.15rem;
+  }
 }
 
 .design-library-modal-panel {

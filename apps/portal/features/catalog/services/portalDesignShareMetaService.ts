@@ -9,7 +9,11 @@ import {
   PORTAL_OG_IMAGE_PATH,
   type PortalSiteEnv,
 } from '../../brand/portalSiteMeta'
-import { isPortalSearchIndexingEnabled } from '../../brand/portalSearchIndexing'
+import {
+  buildPortalDisabledIndexingRobots,
+  buildPortalEnabledIndexingRobots,
+  isPortalSearchIndexingEnabled,
+} from '../../brand/portalSearchIndexing'
 import { tryGetPortalAdminDb } from '../../../lib/firebase/admin'
 import { PORTAL_FIRESTORE_COLLECTIONS } from '../../../lib/firebase/collections'
 import {
@@ -237,7 +241,7 @@ export function buildPortalDesignShareMetadata(
       title: PORTAL_APP_NAME,
       description: PORTAL_DEFAULT_DESCRIPTION,
       alternates: { canonical: pageUrl },
-      robots: { index: false, follow: false },
+      robots: buildPortalDisabledIndexingRobots(),
       openGraph: {
         type: 'website',
         siteName: PORTAL_APP_NAME,
@@ -265,8 +269,8 @@ export function buildPortalDesignShareMetadata(
     description: meta.description,
     alternates: { canonical: pageUrl },
     robots: canIndex
-      ? { index: true, follow: true }
-      : { index: false, follow: true },
+      ? buildPortalEnabledIndexingRobots()
+      : buildPortalDisabledIndexingRobots(),
     openGraph: {
       type: 'website',
       siteName: PORTAL_APP_NAME,

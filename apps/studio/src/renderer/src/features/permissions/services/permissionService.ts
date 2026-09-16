@@ -316,6 +316,11 @@ export const permissionService = {
     return isOwner(user);
   },
 
+  /** Owner-only historical Internal Gang Sheet finish/reconcile repair (History). */
+  canReconcileHistoricalInternalGangSheets(user: UserLike) {
+    return isOwner(user);
+  },
+
   canApproveSuggestedTags(user: UserLike) {
     return this.canManageTags(user);
   },

@@ -329,6 +329,13 @@ export interface Design {
 
   requestedByCustomerId?: string;
 
+  /**
+   * Canonical title provenance. Optional on legacy records; imports stamp `import_filename`,
+   * authenticated staff edits stamp `staff`, and Autonomous writes stamp `ai_generated` when the
+   * AI candidate replaces an untrusted import/basename title.
+   */
+  catalogTitleSource?: "staff" | "trusted_import" | "import_filename" | "ai_generated" | "legacy_unknown";
+
   /** Present when promoted from a Portal customer upload (Sub-phase E). */
   sourceCustomerUploadId?: string;
 
@@ -576,6 +583,7 @@ AI enrichment writes versioned fields on `designs/{id}`:
 | `importBatchId` | string | Studio import | Optional batch job id (folder/ZIP/multi-PNG) |
 | `importSourceFileName` | string | Studio import | Original source filename at import |
 | `importRelativePath` | string | Studio import | Optional relative path within batch manifest |
+| `catalogTitleSource` | enum | Studio/Cloud Function | Title authority provenance; optional on legacy records |
 
 ```ts
 export type AiProcessingStage =
@@ -637,7 +645,10 @@ export interface DesignAiAnalysis {
 
 **One-off processing override (2026-06-29; amended ADR-FP-174):** AI Processing may send `visionModelIdOverride` on processing requests. The callable validates it against the server allowlist, writes transient `aiRequestedVisionModelId`, the pipeline prefers that value for the current run, and success/failure cleanup deletes the field. This does not mutate `settings/aiEnrichment`. Reasoning-effort UI/overrides are not exposed in Phase 1; Luna pins `reasoning_effort: "low"` server-side only.
 
-**Writes:** Cloud Function only for `aiSuggestions`, `aiAnalysis`, `smartProfile`, and `aiProcessingStage`. Client rules block mutations.
+**Writes:** Cloud Function only for `aiSuggestions`, `aiAnalysis`, `smartProfile`, and
+`aiProcessingStage`; in the live Autonomous queue path, the same guarded transaction may also
+write the resolved canonical root `title`, `description`, and `categoryId` when it atomically
+records Ready/system approval. Client rules block these mutations.
 
 ### AI suggestions (Phase 5 — planned)
 
@@ -670,6 +681,17 @@ export interface DesignAiSuggestions {
 **Writes:** Cloud Function only for `aiSuggestions`, `aiAnalysis`, and processing state; client services must not fabricate AI output.
 
 **Catalog title vs upload name:** `aiSuggestions.title` is a shopper-facing catalog title generated from artwork (prompt v2 — must not echo upload filename). `design.title` at import is a filename placeholder; `originalPath` / storage paths are never overwritten by AI. Staff approval copies the reviewed title into catalog `title`.
+
+**Autonomous canonical-copy exception (2026-09-14; DEV corrective):** When Catalog Processing Mode
+is `autonomous`, `catalogAutonomousLiveEnabled` is true, and the final policy passes, the queue
+pipeline resolves the effective catalog title/description/category after Smart Profile and import
+authority merge, then writes those root fields atomically with `status: ready`,
+`aiReviewStatus: approved`, and `aiReviewedBy: system:catalog-autonomy`. A complete non-placeholder
+staff root field remains authoritative; only a proven import filename/default or missing/invalid
+field is filled from a valid AI candidate. The candidate is validated independently, active
+categories are required, and any invalid final copy or candidate hard blocker routes to Needs
+Review without system approval. The historical `ready_backfill` path intentionally preserves Ready
+root authority and does not perform this approval gate.
 
 **Future enhancement:** Hidden `searchTitle` (or equivalent normalized search field) on `aiSuggestions` for extra keywords — not in Phase 5B scope.
 
@@ -1263,6 +1285,26 @@ export interface PrintRequestItem {
   requestCountApplied?: boolean;
 }
 ```
+
+## Print Request count contract (2026-09-16)
+
+Display counts are derived from the current item documents, not from the persisted `itemCount`
+mirror. **Items** is the sum of each current item's finite, non-negative `quantity`. **Designs** is
+the count of distinct source-aware logical identities among those rows:
+
+* `design:<designId>` for catalog artwork
+* `upload:<customerUploadId>` for customer-upload artwork
+* `staff-artwork:<staffArtworkId>` for Staff Artwork
+* `item:<itemId>` as the deterministic malformed/legacy fallback
+
+`sourceType` takes precedence when it is present; the shared resolver also infers a source from the
+available identity fields for legacy rows. Repeated rows for one artwork (including same artwork at
+different sizes) contribute their quantities but count as one Design. `itemCount` remains a persisted
+compatibility/write-path mirror and is not authoritative for display.
+
+The shared implementation is `packages/shared/src/utils/printRequestItemSource.ts` plus
+`packages/shared/src/utils/printRequestItemSummaries.ts`. It is used by Studio, Portal, Staff Inbox,
+Portal Admin, and customer history surfaces.
 
 **Proposed (2026-08-30 amendment — not implemented):** Interactive upscale toggle per item:
 
@@ -1870,8 +1912,10 @@ export interface UpcomingShow {
   /** A Whatnot show / Staff Gang Sheet is the print run — this is the only production entity. */
   productionStatus: ShowProductionStatus;
   /**
-   * Staff-set capacity. Whatnot: undefined means no cap until set.
-   * Internal Gang Sheets default to 200 (`DEFAULT_INTERNAL_GANG_SHEET_MAX_TOTAL_QUANTITY`).
+   * Staff-set capacity. Whatnot / DEV fixture: snapshotted from
+   * `settings/showQueue.defaultMaxTotalQuantity` at create (optional apply-to-existing
+   * via ADR-FP-160). Internal Gang Sheets default to 200
+   * (`DEFAULT_INTERNAL_GANG_SHEET_MAX_TOTAL_QUANTITY`).
    */
   maxTotalQuantity?: number;
   /** True when staff used the danger override to exceed `maxTotalQuantity`. Portal customers may never set this. */
@@ -1979,7 +2023,14 @@ export interface ShowAllocation {
   upcomingShowId: string;
   printRequestId: string;
   printRequestItemId: string;
-  designId: string;
+  /** Catalog design id. Required for catalog allocations; omitted for customer-upload/Staff Artwork. */
+  designId?: string;
+  /** Defaults to catalog_design when absent (legacy). */
+  sourceType?: "catalog_design" | "customer_upload" | "staff_artwork";
+  /** Required when sourceType is customer_upload. */
+  customerUploadId?: string;
+  /** Required when sourceType is staff_artwork. */
+  staffArtworkId?: string;
   customerId?: string;
   requestNameSnapshot: string;
   requestOriginSnapshot?: PrintRequestOrigin;
@@ -2007,16 +2058,43 @@ export interface ShowAllocation {
   requeuedFromAllocationId?: string;
   /** Normal Show Queue MOVE lineage (ADR-FP-157). */
   movedFromAllocationId?: string;
+  /**
+   * Optional Admin-written audit when Studio staff allocated with explicit `overrideShowCapacity: true`
+   * (ADR-FP-182). Does not change show `maxTotalQuantity`.
+   */
+  showCapacityOverride?: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
 ```
 
+## Show Queue count contract (2026-09-16)
+
+Show Queue operational **Designs**, **Items**, size tiers, and price all use the same current
+allocation set: rows whose `status` is not `canceled`. Canceled rows remain in `showAllocations` as
+history, but a group containing only canceled rows has zero current Designs, zero current Items,
+zero tiers, and no current price. Items is the sum of finite, non-negative `allocatedQuantity` values;
+Designs uses the same source-aware identity namespaces as Print Request items. This keeps split,
+move, remove/re-add, and Did Not Print requeue history from inflating live counters.
+
+Portal customer unqueue and Studio staff remove-from-show both **soft-cancel** allocations (they do
+not delete the documents). Personal per-show customer caps and denormalized show `allocatedQuantity`
+also exclude canceled rows.
+
+The shared implementation is `packages/shared/src/utils/showAllocationSummaries.ts`. The existing
+`upcomingShows.allocatedQuantity` denormalized field remains a maintenance/capacity field and is not
+used as an alternate display-count definition.
+
 Capacity rule: a show's `maxTotalQuantity` is optional (undefined = no cap). Allocating a quantity that
-would exceed the show's remaining capacity (`maxTotalQuantity - allocatedQuantity`) is blocked unless
-staff confirm a danger override (`overrideCapacity: true`), which also sets
-`upcomingShows.maxQuantityOverridden`. Portal customers never call allocation methods, so there is no
-separate customer-facing override path to guard.
+would exceed the show's remaining capacity (`maxTotalQuantity - allocatedQuantity`) is blocked by default.
+Authorized Studio staff (owner/admin/helper) may explicitly confirm **Allocate Anyway**, which sends
+`overrideShowCapacity: true` on the trusted `allocateStudioPrintRequestToShow` callable. That flag bypasses
+**only** the numeric show-capacity ceiling and capacity-driven/`productionStatus: "full"` operational
+blocking — not Past schedule, terminal production statuses, quantity integrity, or unrelated guards.
+Override does **not** change `maxTotalQuantity` and does **not** set `maxQuantityOverridden` (that flag
+means staff lowered the configured max below already-allocated quantity). Optional Admin-written
+`showAllocations.showCapacityOverride: true` may mark rows created under an explicit override. Portal
+`queuePortalPrintRequestToShow` remains strict with no override input.
 
 Print Request queue/print state is **derived from allocations, not persisted** on `printRequests`. See
 `shared/utils/printRequestQueueState.ts`'s `derivePrintRequestQueueState()`: it compares a request's
@@ -2182,6 +2260,12 @@ Bounds: integers 1–10000 (ZIP fields max 500). Counter docs remain `customerUp
 
 ```ts
 interface ShowQueueSettings {
+  /**
+   * Default show capacity applied at create for Whatnot / DEV fixture shows.
+   * Existing shows keep their snapshot unless an owner/admin checks
+   * “Apply this quota to existing shows” on Save (callable
+   * `applyShowQueueDefaultMaxToEligibleShows` — ADR-FP-160).
+   */
   defaultMaxTotalQuantity?: number;
   whatnotShowBaseUrl?: string;
   /**
@@ -2298,6 +2382,23 @@ page H1/SEO title **FAQ and How To**; sidebar nav label **Help** (ADR-FP-118).
 On **`fresh-prints-dev`**, initial FAQ list may be seeded with
 `npx tsx functions/scripts/seed-portal-help-faqs.ts` (`videos: []`) so Studio shows
 editable saved items matching bundled defaults (ADR-FP-118).
+
+### `settings/portalDevCustomerAccess`
+
+```ts
+interface PortalDevCustomerAccessSettings {
+  approvedEmails: string[]; // normalized lowercase, de-duped; max 200
+  updatedAt?: Timestamp;
+  updatedBy?: string;
+}
+```
+
+DEV-only approved customer email allowlist (`fresh-prints-dev`). Owner/admin manage in Studio
+**Settings → Portal maintenance** (section beside Portal maintenance). Writes via
+`updatePortalDevCustomerAccessSettings` (callable; client writes denied). Firestore: owner/admin
+read. Missing doc → empty allowlist (fail closed on DEV). Production Functions short-circuit
+enforcement (`GCLOUD_PROJECT` / `GCP_PROJECT` ≠ `fresh-prints-dev`). Staff roles bypass the
+customer allowlist. Does not auto-delete Auth users or customer records.
 
 ### `settings/portalSocialMeta`
 

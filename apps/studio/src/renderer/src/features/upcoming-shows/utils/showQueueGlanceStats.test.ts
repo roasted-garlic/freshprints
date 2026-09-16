@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG } from "@fresh-prints/shared/constants/gangSheetSectionPricingSettings.constants";
+import { buildProductionShapedShowAllocations } from "@fresh-prints/shared/utils/printRequestCountParity.fixture";
 import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/showAllocation.types";
 
 import {
@@ -153,5 +154,35 @@ describe("showQueueGlanceStats", () => {
 
     assert.equal(stats.printTimeEstimateLabel, null);
     assert.equal(stats.sheetCounts, null);
+  });
+
+  it("keeps operational glance counts aligned with active tiers and price", () => {
+    const stats = buildShowQueueGlanceStats({
+      allocations: buildProductionShapedShowAllocations().map((source) =>
+        allocation({
+          id: source.allocationId,
+          printRequestId: source.printRequestId,
+          printRequestItemId: source.printRequestItemId,
+          sourceType: source.sourceType,
+          designId: source.designId,
+          customerUploadId: source.customerUploadId,
+          upcomingShowId: source.upcomingShowId,
+          status: source.status,
+          allocatedQuantity: source.allocatedQuantity,
+          printWidthInches: source.printWidthInches,
+          printHeightInches: source.printHeightInches,
+        }),
+      ),
+      requestsById: new Map(),
+      sectionPricing: DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG,
+      layoutSettings,
+      show: { scheduledStartAt: { toDate: () => new Date("2099-01-01T00:00:00.000Z") } },
+    });
+
+    assert.equal(stats.designCount, 19);
+    assert.equal(stats.printQuantity, 25);
+    assert.equal(stats.sizeClassCounts.standardFullSizeCount, 19);
+    assert.equal(stats.sizeClassCounts.standardOversizedCount, 6);
+    assert.equal(stats.totalPriceUsd, 56);
   });
 });

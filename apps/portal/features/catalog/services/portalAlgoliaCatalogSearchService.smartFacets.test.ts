@@ -17,7 +17,7 @@ import {
 } from './portalAlgoliaCatalogSearchService';
 
 describe('buildSmartFacetAndFilters', () => {
-  it('builds one AND group per selected value', () => {
+  it('builds cumulative singleton groups within and across dimensions', () => {
     assert.deepEqual(
       buildSmartFacetAndFilters({
         subjects: ['cow', 'dog'],
@@ -60,12 +60,21 @@ describe('buildSmartFacetAndFilters', () => {
 });
 
 describe('buildPortalAlgoliaCombinedFacetFilters', () => {
-  it('builds Smart Profile AND groups without legacy tag constraints', () => {
+  it('builds Smart Profile groups without legacy tag constraints', () => {
     assert.deepEqual(
       buildPortalAlgoliaCombinedFacetFilters({
         smartFilters: { subjects: ['cow'] },
       }),
       [['subjects:cow']],
+    );
+  });
+
+  it('canonicalizes Subject selections before exact grouped filtering', () => {
+    assert.deepEqual(
+      buildPortalAlgoliaCombinedFacetFilters({
+        smartFilters: { subjects: [' Cow ', 'Highland  Cow', 'highland cow'] },
+      }),
+      [['subjects:cow'], ['subjects:highland cow']],
     );
   });
 });
@@ -92,6 +101,12 @@ describe('smart facet search params', () => {
       hasPortalAlgoliaFacetConstraints({ smartFilters: { subjects: ['cow'] } }),
       true,
     );
+  });
+
+  it('preserves more than twelve selected values', () => {
+    const subjects = Array.from({ length: 13 }, (_, index) => `subject-${index + 1}`);
+    assert.equal(countSelectedSmartFilters({ subjects }), 13);
+    assert.equal(buildSmartFacetAndFilters({ subjects }).length, 13);
   });
 });
 

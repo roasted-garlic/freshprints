@@ -51,14 +51,14 @@ test("tab panels remain mounted so tab changes preserve session and editor state
 });
 
 test("preset add normalizes and dedupes while removal stays dimension-local", () => {
-  const subjects = addSmartProfilePresetValue([], "  Dolly Parton  ");
-  const dedupedSubjects = addSmartProfilePresetValue(subjects, "dolly parton");
+  const subjects = addSmartProfilePresetValue([], "  Dolly Parton  ", "subjects");
+  const dedupedSubjects = addSmartProfilePresetValue(subjects, "dolly parton", "subjects");
   const places = addSmartProfilePresetValue([], "Pensacola, FL");
 
-  assert.deepEqual(subjects, ["Dolly Parton"]);
-  assert.deepEqual(dedupedSubjects, ["Dolly Parton"]);
+  assert.deepEqual(subjects, ["dolly parton"]);
+  assert.deepEqual(dedupedSubjects, ["dolly parton"]);
   assert.deepEqual(places, ["Pensacola, FL"]);
-  assert.deepEqual(removeSmartProfilePresetValue(subjects, "Dolly Parton"), []);
+  assert.deepEqual(removeSmartProfilePresetValue(subjects, "Dolly Parton", "subjects"), []);
   assert.deepEqual(places, ["Pensacola, FL"]);
 });
 

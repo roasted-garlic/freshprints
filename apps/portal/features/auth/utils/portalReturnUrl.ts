@@ -113,7 +113,11 @@ export function resolvePortalPostAuthPathForSession(
     resolved === '/admin/show-queue' ||
     resolved.startsWith('/admin/show-queue?') ||
     resolved.startsWith('/admin/show-queue#');
-  if (session === 'admin' && !isAdminQueuePath) {
+  const isAdminStaffArtworkPath =
+    resolved === '/admin/staff-artwork' ||
+    resolved.startsWith('/admin/staff-artwork?') ||
+    resolved.startsWith('/admin/staff-artwork#');
+  if (session === 'admin' && !isAdminQueuePath && !isAdminStaffArtworkPath) {
     return '/admin/show-queue';
   }
   return resolved;

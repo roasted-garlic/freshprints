@@ -111,13 +111,18 @@ writes. No Rules, Storage Rules, indexes, or migration changes are required for 
 `allocateStudioPrintRequestToShow` is the trusted Studio Add-to-Show path. It authenticates active
 staff, validates every requested remaining item quantity and destination show in one Admin SDK
 transaction, creates all allocation rows, updates each show total, activates the request, clears
-editing/requeue parking, and explicitly recomputes `queueTab`. This replaces the unsafe per-item
-client sequence for full-request/re-add plans and repairs already-allocated `editing` requests
-without fabricating additional quantity. It does not change the Portal callable.
+editing/requeue parking, and explicitly recomputes `queueTab`. Optional request field
+`overrideShowCapacity: true` (literal boolean only) permits exceeding `maxTotalQuantity` after
+explicit Studio confirmation; Past/terminal and unrelated guards still apply. It does not change the
+Portal callable.
 
 Request-scoped image export and Standard gang-sheet generation remain Electron desktop operations:
-renderer → preload → validated IPC → Electron main → Firebase Storage download / Sharp / ZIP or
-compositor → native save dialog. The renderer does not gain filesystem access.
+renderer → preload → validated IPC → Electron main → Firebase Storage download / Sharp / single PNG,
+ZIP, or compositor → native save dialog. The per-item single-PNG operation reuses the existing
+`downloadAndResizeExportImage` helper, validates the Firebase Storage URL, target pixels, and PNG
+filename, and writes exactly one resized PNG. It accepts no quantity, allocation ID, raw Storage
+path, arbitrary URL, or renderer filesystem path. The renderer does not gain filesystem access;
+no Function, Rules, Storage Rules, schema, index, migration, or backfill is required.
 
 ### External Integrations
 
@@ -277,12 +282,14 @@ Authoritative constants: `packages/shared/src/constants/import/batchImportLimits
 | Function | Trigger | Purpose |
 |----------|---------|---------|
 | `createTeamUser` | Callable | Create team user + invitation flow |
-| `registerCustomer` | Callable | Customer self-registration — provisions `users/{uid}` + `customers/{id}` + username reservation after Firebase Auth signup. Requires `biddingAcknowledgmentAccepted` + version; writes `portalBiddingAcknowledgments.signup`. |
+| `registerCustomer` | Callable | Customer self-registration — provisions `users/{uid}` + `customers/{id}` + username reservation after Firebase Auth signup. Requires `biddingAcknowledgmentAccepted` + version; writes `portalBiddingAcknowledgments.signup`. On `fresh-prints-dev` only, rejects unapproved emails (including alreadyProvisioned); production short-circuits. |
 | `updatePortalCustomerProfile` | Callable | Portal customer self-service: update own `displayName` + `username` with 30-day username cooldown, reservation swap, Auth displayName sync, and resumable identity snapshot propagation (ADR-FP-148). |
 | `updateCustomer` | Callable | Studio staff: update customer profile fields (including email for Portal-linked customers); shares canonical profile txn + propagation with Portal path; staff bypass username cooldown. |
 | `updateTeamUser` | Callable | Update team user fields |
 | `createPortalPrintRequest` | Callable | Portal: create the customer's one working print request |
 | `createCustomerUploadBatch` | Callable | Portal: create customer artwork upload batch + source/ZIP paths (ADR-FP-073) |
+| `createStaffArtworkUpload` | Callable | Portal Admin owner/admin: create one Staff Artwork source-upload record and canonical source path |
+| `finalizeStaffArtwork` | Callable | Portal Admin owner/admin: validate the PNG source and run existing Staff Artwork normalization/derivative processing |
 | `getCustomerUploadDailyQuota` | Callable | Portal: remaining quota buckets + size limits. Customer-facing: Donate shows images/day; Upload Designs shows Current Request room (`L`) instead. Functions charge donation `finalizeImage` only; print-request day buckets and donation starts/ZIP are not charged. |
 | `addPortalCatalogDesignToPrintRequest` | Callable | Portal: add/increment catalog design; working-request max = `L` |
 | `updatePortalPrintRequestItemQuantity` | Callable | Portal: set item qty; clamps to working-request max `L` |
@@ -311,7 +318,7 @@ Authoritative constants: `packages/shared/src/constants/import/batchImportLimits
 | `listPortalShowCatalogDesigns` | Callable | Portal: **public** (no auth) ready catalog designs allocated to a show; guests may browse; request mutations remain login-gated |
 | `convertCustomerPrintRequestToInternal` | Callable | Studio staff: convert eligible customer request → new internal request; archive source with `closureKind`; optional cancel pending/queued allocations after confirm; blocks `in_progress`+ allocations |
 | `queuePortalPrintRequestToShow` | Callable | Portal: allocate **entire** Continuable request to **one** show atomically or reject; multiple separate requests may accumulate on the same show up to limit `L` (ADR-FP-122); rejects past Portal queue cutoff; rejects stale `selections`; no remainder; bidding ack + version (ADR-FP-102 / ADR-FP-103 / ADR-FP-122) |
-| `allocateStudioPrintRequestToShow` | Callable | Studio staff: atomically allocate a complete remaining Add-to-Show plan (including split legs), activate the request, clear editing/requeue parking, and repair a fully allocated `editing` row; rejects partial plans, closed/past/full shows, invalid request origins, and archived/completed/converted requests |
+| `allocateStudioPrintRequestToShow` | Callable | Studio staff: atomically allocate a complete remaining Add-to-Show plan (including split legs), activate the request, clear editing/requeue parking, and repair a fully allocated `editing` row; rejects partial plans, closed/past/full shows, invalid request origins, and archived/completed/converted requests; optional `overrideShowCapacity: true` bypasses only show-capacity ceiling / capacity-operational full |
 | `submitEtsyRecommendationRequest` | Callable | Portal: create/replace one active Etsy recommendation request; returns website search URL |
 | `searchEtsyRecommendations` | Callable | Portal: Open API listing search for an owned active request (`ETSY_X_API_KEY`); persists `lastApiSearch` |
 | `staffSearchEtsyRecommendationApiResults` | Callable | Studio: staff Open API search/refresh for any request status; persists `lastApiSearch`; no customer quota charge (`ETSY_X_API_KEY`) |
@@ -340,11 +347,13 @@ Authoritative constants: `packages/shared/src/constants/import/batchImportLimits
 | `updateEmailProviderSettings` | Callable | Studio owner: select invitation and proof-notice providers (`resend` \| `brevo`) |
 | `updateCustomerUploadQuotaSettings` | Callable | Studio owner: set America/Chicago daily print-request vs donation upload caps (`settings/customerUploadQuotas`; ADR-FP-095) |
 | `updatePrintRequestLimitSettings` | Callable | Studio owner: set dual Portal limits on `settings/printRequestLimits`; mirrors request limit into legacy Cap A field (ADR-FP-102) |
+| `applyShowQueueDefaultMaxToEligibleShows` | Callable | Studio owner/admin: write `settings/showQueue.defaultMaxTotalQuantity` and optionally overwrite eligible Upcoming Whatnot/DEV fixture show `maxTotalQuantity` (ADR-FP-160) |
 | `updateCustomerPrintRequestQuotaOverride` | Callable | Studio **owner-only**: set/clear temporary per-customer PR and/or Show limit overrides on `customers/{id}.printRequestQuotaOverride` (optional `expiresAt`; activity events; ADR-FP-159) |
 | `onEmailDeliveryJobCreated` | Firestore create | Deliver a proof-ready, catalog-share, or final-artwork-ready notice from the durable outbox |
 | `onPrintRequestLifecycleRequestWritten` | Firestore write `printRequests/{printRequestId}` | Server-authored request lifecycle evidence + monotonic ordering mirror |
 | `onPrintRequestLifecycleAllocationWritten` | Firestore write `showAllocations/{allocationId}` | Server-authored show/allocation lifecycle evidence + ordering mirror advancement |
 | `enqueueAiEnrichment` | Callable | Run imported design through direct AI processing |
+| `reprocessReadyDesignWithAi` | Callable | Owner-only: demote a Ready+approved design into the normal AI Processing/Review lifecycle; normal approval returns it to Ready |
 | `resetAiEnrichmentForProcessing` | Callable | Return Needs Review or Rejected design to Processing for a staff-started re-run |
 | `updateAiEnrichmentSettings` | Callable | Owner/admin: set team vision model, prompt template, and tag exclusions |
 | `updateCatalogWorkflowMode` | Callable | **Owner-only:** Catalog Processing Mode + live Autonomous gate (`ENABLE AUTONOMOUS`) |
@@ -406,6 +415,15 @@ uses the same customer hosts for `metadataBase` / OG image resolution via option
 | `updatePortalHelpSettings` | Owner/admin callable for Portal FAQ and How To (`settings/portalHelp`) |
 | `getPortalMaintenanceState` / `updatePortalMaintenanceState` | Portal public-state read (Gen2 `invoker: "public"` so guest CORS preflight succeeds) and owner/admin control for `settings/portalMaintenance`; saved heading/body copy is customer-safe, while the configured tester UID remains private. Portal UI shows the customer wall only after a successful ON read for a non-tester; Functions/Rules still fail closed on mutations. |
 | `listPortalMaintenanceTestCustomers` | Owner/admin-only read of active, linked, non-guest, non-deleted, non-disabled, non-merged customer options for the maintenance tester selector; returns safe UID/display metadata only |
+| `getPortalDevCustomerAccessSettings` / `updatePortalDevCustomerAccessSettings` | Owner/admin manage `settings/portalDevCustomerAccess` approved email list (DEV allowlist). Client writes denied. |
+| `checkPortalDevCustomerAccess` | Authenticated Portal bootstrap check; production short-circuits to allowed; staff roles bypass; unapproved customers get `{ allowed: false }` without membership enumeration. |
+
+**DEV Portal auth overlay / access gate (2026-09-15):** Authoritative enforcement uses the
+`fresh-prints-dev` project signal (not `NODE_ENV` alone). DEV Portal UI is exercised via
+**localhost `:3100`** and the **`myprintrequest.dev` tunnel** to that local process — not a
+separate DEV App Hosting deploy. Production App Hosting publication (`myprintrequest.com`)
+remains a separately gated promotion step. The `/login` and `/register` warning overlay
+appears on every visit when the DEV gate is on (visit-only dismiss).
 | `requestCustomerUploadCatalogPermissionFollowUp` | Active staff-only request for one customer permission follow-up; records an opaque token transactionally and creates one idempotent Portal Alert |
 | `getCustomerUploadCatalogPermissionFollowUp` | Authenticated owning-customer read by opaque token; returns only safe filename/request context and a short-lived preview URL |
 | `respondToCustomerUploadCatalogPermissionFollowUp` | Authenticated owning-customer Allow/Decline transaction; maintenance-guarded, preserves original denial evidence, and never creates Designs or AI work |
@@ -572,6 +590,21 @@ tag-analysis fields. Staff-owned `design.tags`, historical AI fields, taxonomy
 documents, and discovery consumers remain compatible/readable. Tag resolver,
 Tag Rerank, Suggestion Author, and matched-tag category authority are not
 reachable from active enrichment.
+
+## Portal Admin Staff Artwork and canonical AI Review lifecycle (ADR-FP-190)
+
+`/admin/staff-artwork` is an upload-only Portal Admin route for active owners/admins. The client
+calls `createStaffArtworkUpload` and `finalizeStaffArtwork`, uploads only canonical PNG source
+bytes, and processes files sequentially with failed-only retry. It does not query the
+`staffArtworks` collection or fetch/mint derivative URLs.
+
+`reprocessReadyDesignWithAi` and `enqueueAiEnrichment` reuse the existing AI candidate/persistence
+pipeline and `settings/aiEnrichment.auto-process` preference. A Ready + approved design is demoted
+to the normal `imported` + `pending` AI Review lifecycle and leaves the Design Library until normal
+approval returns it to Ready. The active contract has no `aiReprocessState` dual-visibility seam or
+`ready_reprocess` mode; the ordinary queue and separate `ready_backfill` catalog worker remain
+unchanged. `promoteStaffArtworkToAiReview` retains owner/admin, deletion-blocker, and idempotent
+promotion boundaries while returning bounded diagnostic details for safe failures.
 | 2026-06-24 | Initial Fresh Prints backend overview; links to FIREBASE.md |
 # Portal admin Show Queue callables (ADR-FP-187)
 

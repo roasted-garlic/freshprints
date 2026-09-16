@@ -885,16 +885,19 @@ Expected exports include `enqueueAiEnrichment` and `onDesignAiEnrichmentQueued`.
 
 See `docs/architecture/FIREBASE.md`. Never commit secrets.
 
-### Portal SEO foundations (2026-07-22)
+### Portal SEO foundations (2026-07-22; DEV hardening 2026-09-15)
 
 | Endpoint | Purpose |
 |----------|---------|
-| `/robots.txt` | Crawl rules. **Fail closed:** `Disallow: /` unless origin host is `myprintrequest.com` (or `www.`). Dev (`myprintrequest.dev`) and localhost stay non-indexable but the file is still fetchable for testing. |
-| `/sitemap.xml` | Static public URLs (`/`, `/catalog`, `/catalog/library`, `/help`) + one `/share/design/{id}` per **ready** design. Revalidates every **3600s (1 hour)** so newly approved designs appear within about an hour when Admin credentials are available. Without Admin (typical local), returns HTTP **200** with static URLs only. |
+| `/robots.txt` | Crawl rules. **Production:** allow/disallow lists + sitemap URL when origin host is `myprintrequest.com` (or `www.`). **DEV / non-prod:** `Allow: /` (no `Disallow: /`) so compliant crawlers can fetch pages and observe explicit **noindex**; **no sitemap** advertisement. |
+| `/sitemap.xml` | **Production only:** static public URLs (`/`, `/catalog`, `/catalog/library`, `/help`) + one `/share/design/{id}` per **ready** design. Revalidates every **3600s (1 hour)**. **DEV / non-prod:** returns an **empty** sitemap (`[]`) so DEV URLs are not advertised. |
+| HTML robots meta | **Production:** `{ index: true, follow: true }`. **DEV / non-prod:** `{ index: false, follow: false, noarchive: true, nosnippet: true }`. |
+| `X-Robots-Tag` | Set to `noindex, nofollow, noarchive, nosnippet` on DEV / non-prod responses via Portal middleware. Unset on production indexing hosts. |
+| DEV banner | Sticky root-layout banner `THIS IS A DEVELOPMENT SERVER` when indexing is disabled **or** `NEXT_PUBLIC_FIREBASE_PROJECT_ID === fresh-prints-dev`. Absent on production. |
 | `/share/design/{id}` | Canonical **SSR** design landing (image, title, description, category/tags, CTAs). Not meta-only; no automatic client redirect. |
 | `/help` | Public **FAQ and How To** (text accordion + How To videos). Content from Firestore `settings/portalHelp` (Studio Settings, owner/admin callable `updatePortalHelpSettings`); missing/empty FAQs → bundled Portal FAQ defaults; empty videos → Coming soon. Guest-browsable under the Portal shell. Indexed only when the production indexing gate is on. |
 
-**Indexing gate:** `isPortalSearchIndexingEnabled()` — only `myprintrequest.com`. Do not enable indexing on `.dev` via env alone. When indexing is enabled, `robots.txt` allow includes `/`, `/catalog`, `/help`, `/share/design`.
+**Indexing gate:** `isPortalSearchIndexingEnabled()` — only `myprintrequest.com`. Do not enable indexing on `.dev` via env alone. **Authoritative DEV search-removal control is explicit noindex** (meta + `X-Robots-Tag`), not robots.txt crawl-blocking.
 
 **Set on App Hosting:** `NEXT_PUBLIC_PORTAL_ORIGIN=https://myprintrequest.com` (prod) or `https://myprintrequest.dev` (dev) so robots/sitemap/canonical absolute URLs match the public host.
 

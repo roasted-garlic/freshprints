@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { mergeInteractiveEnhanceResultIntoAssetSummary } from "@fresh-prints/shared/utils/interactiveArtworkEnhance";
 import type { PrintRequest, PrintRequestItem } from "@fresh-prints/shared/types/printRequest/printRequest.types";
+import { sortPrintRequestItemsNewestFirst } from "@fresh-prints/shared/utils/printRequestItemDisplayOrder";
 
 import { useAuth } from "../../auth/hooks/useAuth";
 import {
@@ -10,7 +11,6 @@ import {
 } from "../../customer-uploads/services/customerUploadReadService";
 import { permissionService } from "../../permissions/services/permissionService";
 import { printRequestService } from "../services/printRequestService";
-import { sortPrintRequestItemsNewestFirst } from "@fresh-prints/shared/utils/printRequestItemDisplayOrder";
 import type { StaffArtwork } from "@fresh-prints/shared/types/staffArtwork/staffArtwork.types";
 import { staffArtworkService } from "../../staff-artwork/services/staffArtworkService";
 
@@ -80,9 +80,34 @@ export function usePrintRequestDetails(printRequestId: string | null) {
   const { user } = useAuth();
   const [state, setState] = useState<PrintRequestDetailsState>(initialState);
   const loadSequenceRef = useRef(0);
+  const hasRequestSnapshotRef = useRef(false);
+  const hasItemsSnapshotRef = useRef(false);
 
-  const loadDetails = useCallback(async (options?: LoadPrintRequestDetailsOptions) => {
+  const hydrateAssetSummaries = useCallback(
+    async (requestSequence: number, items: PrintRequestItem[]) => {
+      if (!user) {
+        return;
+      }
+      const [uploadSummaries, staffArtworkSummaries] = await Promise.all([
+        loadUploadSummariesForItems(user, items),
+        loadStaffArtworkForItems(user, items),
+      ]);
+      if (requestSequence !== loadSequenceRef.current) {
+        return;
+      }
+      setState((current) => ({
+        ...current,
+        uploadSummaries,
+        staffArtworkSummaries,
+      }));
+    },
+    [user],
+  );
+
+  useEffect(() => {
     const requestSequence = ++loadSequenceRef.current;
+    hasRequestSnapshotRef.current = false;
+    hasItemsSnapshotRef.current = false;
 
     if (!user || !permissionService.canViewPrintRequests(user) || !printRequestId) {
       setState({
@@ -97,61 +122,99 @@ export function usePrintRequestDetails(printRequestId: string | null) {
       return;
     }
 
-    setState((currentState) => ({
-      ...currentState,
+    setState((current) => ({
+      ...current,
       error: null,
-      isLoading: options?.silent ? currentState.isLoading : true,
+      isLoading: true,
+      loadedRequestId: printRequestId,
     }));
 
-    try {
-      const [printRequest, items] = await Promise.all([
-        printRequestService.getPrintRequestById(user, printRequestId),
-        printRequestService.listPrintRequestItems(user, printRequestId),
-      ]);
-
-      const sortedItems = sortPrintRequestItemsNewestFirst(items);
-      const [uploadSummaries, staffArtworkSummaries] = await Promise.all([
-        loadUploadSummariesForItems(user, sortedItems),
-        loadStaffArtworkForItems(user, sortedItems),
-      ]);
-
-      if (requestSequence !== loadSequenceRef.current) {
+    const markSettledIfReady = () => {
+      if (!hasRequestSnapshotRef.current || !hasItemsSnapshotRef.current) {
         return;
       }
+      setState((current) =>
+        current.isLoading
+          ? {
+              ...current,
+              isLoading: false,
+            }
+          : current,
+      );
+    };
 
-      setState({
-        printRequest,
-        items: sortedItems,
-        uploadSummaries,
-        staffArtworkSummaries,
-        error: null,
-        isLoading: false,
-        loadedRequestId: printRequestId,
-      });
-    } catch (error) {
-      if (requestSequence !== loadSequenceRef.current) {
-        return;
-      }
+    const unsubscribeRequest = printRequestService.subscribePrintRequest(
+      user,
+      printRequestId,
+      (printRequest) => {
+        if (requestSequence !== loadSequenceRef.current) {
+          return;
+        }
+        hasRequestSnapshotRef.current = true;
+        setState((current) => ({
+          ...current,
+          printRequest,
+          error: printRequest ? null : current.error ?? "Print request not found.",
+          loadedRequestId: printRequestId,
+        }));
+        markSettledIfReady();
+      },
+      (message) => {
+        if (requestSequence !== loadSequenceRef.current) {
+          return;
+        }
+        hasRequestSnapshotRef.current = true;
+        setState((current) => ({
+          ...current,
+          error: message,
+          isLoading: false,
+          loadedRequestId: printRequestId,
+        }));
+      },
+    );
 
-      setState({
-        printRequest: null,
-        items: [],
-        uploadSummaries: new Map(),
-        staffArtworkSummaries: new Map(),
-        error: error instanceof Error ? error.message : "Unable to load print request details.",
-        isLoading: false,
-        loadedRequestId: printRequestId,
-      });
-    }
-  }, [printRequestId, user]);
+    const unsubscribeItems = printRequestService.subscribePrintRequestItems(
+      user,
+      printRequestId,
+      (items) => {
+        if (requestSequence !== loadSequenceRef.current) {
+          return;
+        }
+        hasItemsSnapshotRef.current = true;
+        const sortedItems = sortPrintRequestItemsNewestFirst(items);
+        setState((current) => ({
+          ...current,
+          items: sortedItems,
+          loadedRequestId: printRequestId,
+        }));
+        markSettledIfReady();
+        void hydrateAssetSummaries(requestSequence, sortedItems);
+      },
+      (message) => {
+        if (requestSequence !== loadSequenceRef.current) {
+          return;
+        }
+        hasItemsSnapshotRef.current = true;
+        setState((current) => ({
+          ...current,
+          error: message,
+          isLoading: false,
+          loadedRequestId: printRequestId,
+        }));
+      },
+    );
 
-  useEffect(() => {
-    void loadDetails();
-  }, [loadDetails]);
+    return () => {
+      unsubscribeRequest();
+      unsubscribeItems();
+    };
+  }, [hydrateAssetSummaries, printRequestId, user]);
 
   const reloadPrintRequest = useCallback(async (options?: LoadPrintRequestDetailsOptions) => {
-    await loadDetails(options);
-  }, [loadDetails]);
+    // Live listeners keep the selected request fresh; retained for callers that expect a refresh API.
+    void options;
+    await Promise.resolve();
+  }, []);
 
   const replacePrintRequest = useCallback((printRequest: PrintRequest) => {
     setState((currentState) => ({

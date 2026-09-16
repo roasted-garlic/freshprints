@@ -1,6 +1,25 @@
 # Next Planned Goal
 
-**Updated:** 2026-09-14
+**Updated:** 2026-09-16
+
+## FreshForge IDLE — no active managed goal
+
+Last closed: `studio-pre-release-pr-item-download-and-intake-navigation`
+(Signoff **approved_with_notes**, Owner DEV QA **PASS**). Await owner direction for the next managed Plan
+or separately gated production promotion (see
+`docs/workflow/reviews/2026-09-pre-production-promotion-manifest.md`).
+
+## Historical Internal reconciliation / Admin Staff Artwork / DEV access — CLOSED
+
+Delivered on DEV. Production Functions/Rules/Portal App Hosting/Studio release/History Apply/IAM
+remain unauthorized until explicitly approved.
+
+## Studio pre-release Design Navigation + Print Request refinements — CLOSED
+
+`studio-pre-release-design-navigation-and-print-request-list-refinements` is signed off in DEV
+after Owner DEV QA **PASS** for A–F and regression. There is no follow-on action in this goal;
+begin a new managed Plan for the next todo. Production deployment, Portal publication, and Studio
+release remain separately unauthorized.
 
 ## Coordinated rollout signoff — 2026-09-14
 

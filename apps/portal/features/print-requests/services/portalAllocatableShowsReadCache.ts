@@ -12,10 +12,26 @@ let cachedResponse: CachedAllocatableShows | null = null;
 let cachedAtMs = 0;
 let inFlight: Promise<CachedAllocatableShows> | null = null;
 
+/** Optional hook-session clearer registered by `usePortalAllocatableShows` (avoids service→hook imports). */
+let sessionCacheClearer: (() => void) | null = null;
+
 export function clearPortalAllocatableShowsReadCache(): void {
   cachedResponse = null;
   cachedAtMs = 0;
   inFlight = null;
+}
+
+export function registerPortalAllocatableShowsSessionCacheClearer(clearer: (() => void) | null): void {
+  sessionCacheClearer = clearer;
+}
+
+/**
+ * Drop TTL read cache and any registered hook session cache so the next list load cannot
+ * return pre-queue/unqueue capacity or personal-spot usage.
+ */
+export function invalidatePortalAllocatableShowsCaches(): void {
+  clearPortalAllocatableShowsReadCache();
+  sessionCacheClearer?.();
 }
 
 export async function readPortalAllocatableShowsCached(

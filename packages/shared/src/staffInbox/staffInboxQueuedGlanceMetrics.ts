@@ -2,6 +2,7 @@ import type {
   StaffInboxPortalAllocationSnapshot,
   StaffInboxQueuedGlanceMetrics,
 } from "./staffInbox.types";
+import { buildShowAllocationOperationalSummary } from "../utils/showAllocationSummaries";
 
 export type { StaffInboxQueuedGlanceMetrics };
 
@@ -9,25 +10,6 @@ const ACTIVE_ALLOCATION_STATUSES = new Set(["pending", "queued", "in_progress"])
 
 function isActiveAllocationStatus(status: string): boolean {
   return ACTIVE_ALLOCATION_STATUSES.has(status);
-}
-
-function allocationDesignKey(allocation: StaffInboxPortalAllocationSnapshot): string {
-  const designId = allocation.designId?.trim();
-  if (designId) {
-    return `design:${designId}`;
-  }
-
-  const customerUploadId = allocation.customerUploadId?.trim();
-  if (customerUploadId) {
-    return `upload:${customerUploadId}`;
-  }
-
-  const printRequestItemId = allocation.printRequestItemId?.trim();
-  if (printRequestItemId) {
-    return `item:${printRequestItemId}`;
-  }
-
-  return `qty:${allocation.printRequestId}:${allocation.upcomingShowId}:${allocation.allocatedQuantity}`;
 }
 
 /**
@@ -42,42 +24,12 @@ export function buildStaffInboxQueuedGlanceMetrics(
     return null;
   }
 
-  const designKeys = new Set<string>();
-  let printQuantity = 0;
-  const pricingUnits: StaffInboxQueuedGlanceMetrics["pricingUnits"] = [];
-
-  for (const allocation of active) {
-    designKeys.add(allocationDesignKey(allocation));
-
-    const quantity =
-      typeof allocation.allocatedQuantity === "number" && Number.isFinite(allocation.allocatedQuantity)
-        ? allocation.allocatedQuantity
-        : 0;
-    printQuantity += quantity;
-
-    const width = allocation.printWidthInches;
-    const height = allocation.printHeightInches;
-    if (
-      quantity > 0 &&
-      typeof width === "number" &&
-      Number.isFinite(width) &&
-      width > 0 &&
-      typeof height === "number" &&
-      Number.isFinite(height) &&
-      height > 0
-    ) {
-      pricingUnits.push({
-        printWidthInches: width,
-        printHeightInches: height,
-        quantity,
-      });
-    }
-  }
+  const summary = buildShowAllocationOperationalSummary(active);
 
   return {
-    designCount: designKeys.size,
-    printQuantity,
-    pricingUnits,
+    designCount: summary.uniqueDesignCount,
+    printQuantity: summary.totalQuantity,
+    pricingUnits: summary.pricingUnits,
   };
 }
 

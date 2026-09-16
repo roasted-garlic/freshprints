@@ -33,7 +33,10 @@ import {
   PORTAL_ACCOUNT_CLOSED_MESSAGE,
   PORTAL_ACCOUNT_DISABLED_MESSAGE,
   PORTAL_ACCOUNT_INACTIVE_MESSAGE,
+  PORTAL_DEV_CUSTOMER_ACCESS_RESTRICTED_MESSAGE,
 } from '../constants/portalAuthBlockedMessages';
+import { portalDevCustomerAccessService } from '../services/portalDevCustomerAccessService';
+import { shouldShowPortalDevelopmentAuthOverlay } from '../../brand/portalSearchIndexing';
 import {
   CompleteProfileInProgressError,
   type CompleteProfileStage,
@@ -146,6 +149,43 @@ async function loadPortalSession(firebaseUser: FirebaseUser): Promise<PortalAuth
   }
 
   return getReadyState(firebaseUser, user, customer);
+}
+
+/**
+ * DEV-only allowlist for customer bootstrap. Production never calls the callable.
+ * Staff portal-admin / staff-account paths are skipped (staff governed separately).
+ */
+async function enforcePortalDevCustomerAccessIfNeeded(
+  nextState: PortalAuthState,
+): Promise<PortalAuthState> {
+  if (!shouldShowPortalDevelopmentAuthOverlay()) {
+    return nextState;
+  }
+
+  const status = nextState.bootstrapStatus;
+  const needsCustomerAllowlistCheck =
+    status === 'ready' ||
+    status === 'missing-customer' ||
+    status === 'missing-profile';
+
+  if (!needsCustomerAllowlistCheck || !nextState.firebaseUser) {
+    return nextState;
+  }
+
+  try {
+    const result = await portalDevCustomerAccessService.checkAccess();
+    if (result.allowed) {
+      return nextState;
+    }
+  } catch {
+    // Fail closed on DEV when the check cannot be completed.
+  }
+
+  return getBlockedState(
+    nextState.firebaseUser,
+    'inactive',
+    PORTAL_DEV_CUSTOMER_ACCESS_RESTRICTED_MESSAGE,
+  );
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
@@ -300,6 +340,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }, PORTAL_AUTH_BOOTSTRAP_TIMEOUT_MS);
 
         void loadPortalSession(firebaseUser)
+          .then((nextState) => enforcePortalDevCustomerAccessIfNeeded(nextState))
           .then(async (nextState) => {
             if (!isCurrentSubscription) {
               return;
@@ -322,7 +363,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
               ),
             });
           })
-          .catch((error: unknown) => {
+          .catch(async (error: unknown) => {
             if (!isCurrentSubscription) {
               return;
             }
@@ -333,12 +374,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 : 'Unable to load your portal profile. Contact support.';
             const isMissingProfile = message.includes('No Fresh Prints user profile');
 
-            const blocked = getBlockedState(
-              firebaseUser,
-              isMissingProfile ? 'missing-profile' : 'error',
-              // Missing profile is the normal Google first-login path — no error banner.
-              isMissingProfile ? null : message,
+            const blocked = await enforcePortalDevCustomerAccessIfNeeded(
+              getBlockedState(
+                firebaseUser,
+                isMissingProfile ? 'missing-profile' : 'error',
+                // Missing profile is the normal Google first-login path — no error banner.
+                isMissingProfile ? null : message,
+              ),
             );
+
+            if (
+              blocked.bootstrapStatus === 'inactive' &&
+              blocked.error === PORTAL_DEV_CUSTOMER_ACCESS_RESTRICTED_MESSAGE
+            ) {
+              await finalizeBlockedLogin(PORTAL_DEV_CUSTOMER_ACCESS_RESTRICTED_MESSAGE);
+              return;
+            }
 
             setAuthState({
               ...blocked,
@@ -492,9 +543,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
           lastStage = 'session_reload_started';
           reportCompleteProfileStage('session_reload_started');
           try {
-            const nextState = await loadPortalSession(signedInUser);
+            const nextState = await enforcePortalDevCustomerAccessIfNeeded(
+              await loadPortalSession(signedInUser),
+            );
             lastStage = 'session_reload_succeeded';
             reportCompleteProfileStage('session_reload_succeeded');
+            if (
+              nextState.bootstrapStatus === 'inactive' &&
+              nextState.error === PORTAL_DEV_CUSTOMER_ACCESS_RESTRICTED_MESSAGE
+            ) {
+              await finalizeBlockedLogin(PORTAL_DEV_CUSTOMER_ACCESS_RESTRICTED_MESSAGE);
+              lastStage = 'completed';
+              reportCompleteProfileStage('completed', 'email_register');
+              return;
+            }
             setAuthState(nextState);
             lastStage = 'completed';
             reportCompleteProfileStage('completed', 'email_register');
@@ -530,7 +592,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } finally {
       registrationInProgressRef.current = false;
     }
-  }, []);
+  }, [finalizeBlockedLogin]);
 
   const completeCustomerProfile = useCallback(
     async (input: CompleteCustomerProfileInput, options?: CompleteCustomerProfileOptions) => {
@@ -612,9 +674,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
             reportCompleteProfileStage('session_reload_started');
             options?.onProgress?.('Loading your portal…');
             try {
-              const nextState = await loadPortalSession(signedInUser);
+              const nextState = await enforcePortalDevCustomerAccessIfNeeded(
+                await loadPortalSession(signedInUser),
+              );
               lastStage = 'session_reload_succeeded';
               reportCompleteProfileStage('session_reload_succeeded');
+              if (
+                nextState.bootstrapStatus === 'inactive' &&
+                nextState.error === PORTAL_DEV_CUSTOMER_ACCESS_RESTRICTED_MESSAGE
+              ) {
+                await finalizeBlockedLogin(PORTAL_DEV_CUSTOMER_ACCESS_RESTRICTED_MESSAGE);
+                lastStage = 'completed';
+                reportCompleteProfileStage('completed', 'complete_profile');
+                return;
+              }
               setAuthState({
                 ...nextState,
                 isAuthActionLoading: false,
@@ -653,7 +726,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         registrationInProgressRef.current = false;
       }
     },
-    [],
+    [finalizeBlockedLogin],
   );
 
   const logout = useCallback(async () => {

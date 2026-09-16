@@ -1,5 +1,38 @@
 # Features Inventory
 
+> 2026-09-16: **Print Request count parity + unqueue cache/cancel parity — CLOSED (DEV)** —
+> Full-request Print Request counts use source-aware logical Designs plus live item quantity;
+> selected Show Queue/Staff Inbox/Portal Admin counts use active non-canceled allocation identity
+> and quantity, with tiers, price, capacity, and status sharing that active set. Portal request
+> list/detail/queue-planning/history labels and Studio request summaries use the same contract.
+> Portal queue/unqueue clears allocatable-show caches, and Studio staff removal preserves canceled
+> History-only allocation rows. Owner DEV QA **PASS WITH NOTES**; focused parity **115/115 PASS**.
+> Studio release, Portal App Hosting, and the changed existing Functions remain separately gated
+> for production; no production action occurred.
+
+> 2026-09-16: **Studio pre-release Print Request download + intake navigation — CLOSED (DEV)** —
+> Goal `studio-pre-release-pr-item-download-and-intake-navigation` is signed off
+> **approved_with_notes** after Owner DEV QA **PASS**. Print Request cards now support independent
+> per-item native PNG download from current saved dimensions with source-aware resolution,
+> quantity-safe single-file behavior, bounded failure handling, and dismissible success feedback.
+> Uploaded Designs and Donated Designs move the active loaded list selection with ArrowUp/ArrowDown
+> while preserving boundary, editable-focus, and lightbox/modal guards. Studio release remains
+> separately gated for production; no Portal publication or backend deployment occurred.
+
+> 2026-09-15: **Portal Admin Staff Artwork + Studio AI Review — CLOSED (DEV)** — Goal
+> `portal-admin-staff-artwork-upload` is signed off **approved_with_notes** after Owner DEV QA
+> **PASS**. Portal owners/admins can upload valid PNGs through `/admin/staff-artwork`; Studio
+> Design Library and Staff Artwork Multiple Select use full-card selection with modal/preview
+> suppression and immediate normal-click restoration. Ready reprocess uses the normal
+> `imported`/`pending` AI Review lifecycle and returns to Ready only after approval. Production
+> publication/release remains separately gated.
+
+> 2026-09-15: **Studio pre-release Print Request refinements — CLOSED (DEV)** — Owner DEV QA
+> **PASS** for Design Details navigation/presentation, customer-request show management and
+> Portal editability, show isolation/search, show-scoped customer grouping/totals,
+> Printing/Printed newest-show-first ordering, and Create Customer Request customer search with
+> dropdown-integrated placement. No production/publication/release action occurred.
+
 > 2026-09-12: **Coordinated cutover repository readiness — CLOSED** — Owner DEV QA **PASS**.
 > Portal print-request reads now have projection-preferred dual-read compatibility with bounded
 > canonical fallback during transition; final Rules deny direct customer canonical reads only after
@@ -41,7 +74,9 @@ Internal + customer requests in **separate lists** (Customer Requests default; I
 Eligible non-working requests also expose direct **Export Images**, **Export x(Qty)**, **Generate Standard Gang Sheet**, and **Copy** actions. Working and Editing requests retain only their existing Add to Show / Add to Internal Gangsheet actions. Request totals and card costs use the shared four-tier Gang Sheet Settings resolver.
 
 ### Show Queue (`/show-queue`)
-Upcoming/Past shows; capacity; attach requests; Working triage **Active · Stale · Empty · All · Needs Re-queue** (rightmost); **NEEDS RE-QUEUE** badge; Whatnot assisted
+Upcoming/Past shows; capacity; attach requests; staff may **Allocate Anyway** to exceed configured
+`maxTotalQuantity` after confirmation (`overrideShowCapacity` on `allocateStudioPrintRequestToShow`,
+ADR-FP-182; max unchanged; Portal remains strict); Working triage **Active · Stale · Empty · All · Needs Re-queue** (rightmost); **NEEDS RE-QUEUE** badge; Whatnot assisted
 import; **DEV fixture shows** (`DEV-OVERRIDE`, `source: dev_fixture` — DEV-only, not Whatnot sync); zip export @ 300 DPI; gang sheet PNG via **Generate** menu (**three modes**, ADR-FP-143):
 - **Standard** — efficiency nesting (`layoutMode` omitted / `efficiency`; default)
 - **Grouped by Customer** — `customer_grouped_continuous`: customer section headings; multiple customers may share one physical sheet

@@ -7,7 +7,11 @@ import type {
   GetGangSheetCacheStatusRequest,
   GangSheetExportImageRequest,
 } from "@fresh-prints/shared/types/export/gangSheetExportIpc.types";
-import type { ExportShowZipRequest, ShowExportImageRequest } from "@fresh-prints/shared/types/export/showExportIpc.types";
+import type {
+  DownloadExportImageRequest,
+  ExportShowZipRequest,
+  ShowExportImageRequest,
+} from "@fresh-prints/shared/types/export/showExportIpc.types";
 import {
   GANG_SHEET_PRICING_POLICY_VERSION,
   isValidGangSheetTierPriceUsd,
@@ -174,6 +178,48 @@ function isValidSectionPricing(value: unknown): value is GangSheetSectionPricing
       typeof tier.weightOz === "number" &&
       isValidGangSheetTierWeightOz(tier.weightOz),
   );
+}
+
+function isSafePngFileName(value: unknown): value is string {
+  return (
+    isNonEmptyString(value) &&
+    value === value.trim() &&
+    value.length <= 180 &&
+    value.toLowerCase().endsWith(".png") &&
+    !/[<>:"/\\|?*]/u.test(value) &&
+    ![...value].some((character) => character.charCodeAt(0) <= 0x1f)
+  );
+}
+
+function isValidDownloadExportImageRequest(value: unknown): value is DownloadExportImageRequest {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const request = value as Partial<DownloadExportImageRequest>;
+  return (
+    !("quantity" in request) &&
+    !("allocationId" in request) &&
+    !("storagePath" in request) &&
+    isNonEmptyString(request.requestItemId) &&
+    isAllowedDownloadUrl(request.downloadUrl) &&
+    isPositiveInteger(request.targetWidthPx) &&
+    isPositiveInteger(request.targetHeightPx) &&
+    isSafePngFileName(request.fileName)
+  );
+}
+
+export function validateDownloadExportImageRequest(payload: unknown) {
+  if (!isValidDownloadExportImageRequest(payload)) {
+    return {
+      error: importIpcFailure(
+        "INVALID_INPUT",
+        "A valid request item, Firebase Storage URL, PNG file name, and positive target size are required.",
+      ),
+    };
+  }
+
+  return { request: payload as DownloadExportImageRequest };
 }
 
 export function validateExportGangSheetPngRequest(payload: unknown) {

@@ -143,6 +143,7 @@ function mapPortalRequestSnapshot(
 
 function mapPortalAllocationSnapshot(
   data: DocumentData,
+  allocationId?: string,
 ): StaffInboxPortalAllocationSnapshot | null {
   if (
     typeof data.printRequestId !== "string" ||
@@ -158,10 +159,17 @@ function mapPortalAllocationSnapshot(
   const createdAt = mapFirestoreTimestamp(data.createdAt);
 
   return {
+    allocationId,
     printRequestId: data.printRequestId,
     upcomingShowId: data.upcomingShowId,
     requestNameSnapshot: data.requestNameSnapshot,
     status: data.status,
+    sourceType:
+      data.sourceType === "catalog_design" ||
+      data.sourceType === "customer_upload" ||
+      data.sourceType === "staff_artwork"
+        ? data.sourceType
+        : undefined,
     createdAtMillis: createdAt?.toMillis() ?? 0,
     allocatedQuantity:
       typeof data.allocatedQuantity === "number" && Number.isFinite(data.allocatedQuantity)
@@ -175,6 +183,10 @@ function mapPortalAllocationSnapshot(
     customerUploadId:
       typeof data.customerUploadId === "string" && data.customerUploadId.trim()
         ? data.customerUploadId
+        : undefined,
+    staffArtworkId:
+      typeof data.staffArtworkId === "string" && data.staffArtworkId.trim()
+        ? data.staffArtworkId
         : undefined,
     printWidthInches:
       typeof data.printWidthInches === "number" && Number.isFinite(data.printWidthInches)
@@ -207,7 +219,7 @@ function mapAllocationSnapshot(
   const allocations: StaffInboxPortalAllocationSnapshot[] = [];
 
   for (const document of querySnapshot.docs) {
-    const mapped = mapPortalAllocationSnapshot(document.data());
+    const mapped = mapPortalAllocationSnapshot(document.data(), document.id);
 
     if (mapped) {
       allocations.push(mapped);

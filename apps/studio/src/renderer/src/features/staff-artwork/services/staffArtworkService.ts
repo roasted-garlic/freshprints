@@ -16,6 +16,7 @@ import { db, functions, storage } from "../../../config/firebase";
 import type { User } from "../../users/types/user.types";
 import { permissionService } from "../../permissions/services/permissionService";
 import { mapFirestoreTimestamp } from "../../firebase/utils/firestoreTimestamp";
+import { resolveStaffArtworkCallableErrorMessage } from "../utils/staffArtworkCallableErrorMessage";
 
 const COLLECTION = "staffArtworks";
 
@@ -228,8 +229,12 @@ export const staffArtworkService = {
   async promote(caller: User, staffArtworkId: string): Promise<{ designId: string; alreadyPromoted: boolean }> {
     if (!permissionService.canManageStaffArtwork(caller)) throw new Error("Only owners and admins may promote Staff Artwork.");
     const call = httpsCallable<unknown, { designId: string; alreadyPromoted: boolean }>(functions, "promoteStaffArtworkToAiReview");
-    const result = await call({ staffArtworkId });
-    return result.data;
+    try {
+      const result = await call({ staffArtworkId });
+      return result.data;
+    } catch (cause) {
+      throw new Error(resolveStaffArtworkCallableErrorMessage(cause));
+    }
   },
 
   async getPreviewUrl(caller: User, path: string | null | undefined): Promise<string | null> {

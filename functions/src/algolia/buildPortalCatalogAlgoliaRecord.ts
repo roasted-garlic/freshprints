@@ -1,5 +1,6 @@
 import {
   buildPortalCatalogSearchText,
+  normalizePortalCatalogAlgoliaSubjectList,
   normalizePortalCatalogAlgoliaStringList,
   type PortalCatalogAlgoliaRecord,
 } from '../../../packages/shared/src/catalog-search/portalCatalogAlgoliaRecord';
@@ -34,7 +35,7 @@ function appendSmartProfileFields(
       ? (profile.provenance as Record<string, unknown>)
       : undefined;
 
-  const subjects = normalizePortalCatalogAlgoliaStringList(profile.subjects);
+  const subjects = normalizePortalCatalogAlgoliaSubjectList(profile.subjects);
   const objects = normalizePortalCatalogAlgoliaStringList(profile.objects);
   const styles = normalizePortalCatalogAlgoliaStringList(profile.styles);
   const themes = normalizePortalCatalogAlgoliaStringList(profile.themes);

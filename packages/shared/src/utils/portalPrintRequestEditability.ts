@@ -8,7 +8,7 @@ export type PortalPrintRequestEditabilityFields = Pick<
   "status" | "requestOrigin" | "isInternal" | "parkedByEditingRequestId"
 >;
 
-/** Portal item callables only mutate customer requests created in Portal. */
+/** Requests created by the Portal itself. Kept separate from the broader editability contract. */
 export function isPortalCustomerOriginPrintRequest(
   request: Pick<PrintRequest, "requestOrigin" | "isInternal">,
 ): boolean {
@@ -24,7 +24,9 @@ export function isPortalEditablePrintRequest(
 ): boolean {
   return (
     isPortalContinuablePrintRequestStatus(request.status) &&
-    isPortalCustomerOriginPrintRequest(request)
+    request.isInternal !== true &&
+    (isPortalCustomerOriginPrintRequest(request) ||
+      (request.requestOrigin === "studio_customer" && request.status === "editing"))
   );
 }
 
@@ -38,7 +40,7 @@ export function filterLegacyContinuablePrintRequests(requests: PrintRequest[]): 
   return requests.filter(
     (request) =>
       isPortalContinuablePrintRequestStatus(request.status) &&
-      !isPortalCustomerOriginPrintRequest(request),
+      !isPortalEditablePrintRequest(request),
   );
 }
 
@@ -87,8 +89,8 @@ export function explainPortalPrintRequestEditability(
     return "Internal requests cannot be edited in the Portal.";
   }
 
-  if (request.requestOrigin === "studio_customer") {
-    return "This request was created in Studio and cannot be edited from the Portal.";
+  if (request.requestOrigin === "studio_customer" && request.status !== "editing") {
+    return "This Studio-created request can only be edited after it enters Editing.";
   }
 
   if (request.requestOrigin === "studio_internal") {

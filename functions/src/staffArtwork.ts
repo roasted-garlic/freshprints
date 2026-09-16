@@ -76,6 +76,16 @@ function staffArtworkRef(id: string): DocumentReference {
   return adminDb.collection(COLLECTION).doc(id);
 }
 
+function promotionRecordState(artwork: Record<string, unknown>): Record<string, unknown> {
+  return {
+    status: typeof artwork.status === "string" ? artwork.status : null,
+    promotionStatus:
+      typeof artwork.promotionStatus === "string" ? artwork.promotionStatus : null,
+    hasProductionStoragePath: typeof artwork.productionStoragePath === "string" &&
+      artwork.productionStoragePath.trim().length > 0,
+  };
+}
+
 export interface CreateStaffArtworkUploadResponse {
   staffArtworkId: string;
   sourceStoragePath: string;
@@ -479,13 +489,32 @@ export const promoteStaffArtworkToAiReview = onCall(
   const id = stringId(data.staffArtworkId, "staffArtworkId");
   const ref = staffArtworkRef(id);
   const preSnap = await ref.get();
-  if (!preSnap.exists) throw notFound("Staff Artwork was not found.");
+  if (!preSnap.exists) {
+    console.warn("Staff Artwork AI promotion rejected.", {
+      staffArtworkId: id,
+      errorCode: "not-found",
+      message: "Staff Artwork was not found.",
+      details: { reason: "missing_record" },
+    });
+    throw notFound("Staff Artwork was not found.");
+  }
   const preArtwork = preSnap.data() ?? {};
   const blockers = await collectStaffArtworkDeletionBlockers(id, preArtwork);
   if (blockers.length > 0) {
-    throw failedPrecondition(
-      `Cannot send to AI Review while this artwork is still used (${describeStaffArtworkDeletionBlockers(blockers)}).`,
-    );
+      const message =
+      `Cannot send to AI Review while this artwork is still attached to an active show or print request (${describeStaffArtworkDeletionBlockers(blockers)}).`;
+    const details = {
+      reason: "deletion_blockers",
+      blockers,
+      recordState: promotionRecordState(preArtwork),
+    };
+    console.warn("Staff Artwork AI promotion rejected.", {
+      staffArtworkId: id,
+      errorCode: "failed-precondition",
+      message,
+      details,
+    });
+    throw failedPrecondition(message, details);
   }
 
   const designRef = adminDb.collection("designs").doc();
@@ -526,7 +555,18 @@ export const promoteStaffArtworkToAiReview = onCall(
       };
     }
     if (artwork.status !== "ready" || typeof artwork.productionStoragePath !== "string") {
-      throw failedPrecondition("Only ready Staff Artwork can be sent to AI Review.");
+      const message = "Only ready Staff Artwork can be sent to AI Review.";
+      const details = {
+        reason: "invalid_lifecycle",
+        recordState: promotionRecordState(artwork),
+      };
+      console.warn("Staff Artwork AI promotion rejected.", {
+        staffArtworkId: id,
+        errorCode: "failed-precondition",
+        message,
+        details,
+      });
+      throw failedPrecondition(message, details);
     }
     const designId = designRef.id;
     const artworkBackgroundHex =
@@ -536,6 +576,7 @@ export const promoteStaffArtworkToAiReview = onCall(
     tx.set(designRef, withoutUndefinedFields({
       id: designId,
       title: typeof artwork.title === "string" ? artwork.title : "Staff Artwork",
+      catalogTitleSource: "staff",
       description: typeof artwork.description === "string" ? artwork.description : undefined,
       tags: [],
       status: "imported",

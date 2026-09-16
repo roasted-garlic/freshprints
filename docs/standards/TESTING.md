@@ -8,6 +8,61 @@
 
 Fresh Prints is a **two-app monorepo**: Fresh Prints Studio (Electron + Vite + React) and Fresh Prints Portal (Next.js), with shared packages and Firebase Cloud Functions. Run applicable checks before signoff on code changes.
 
+### Print Request count parity focus (2026-09-16)
+
+Count-parity changes must cover the shared production-shaped fixture and every consumer that renders
+request or show totals:
+
+```bash
+npx tsx --test \
+  packages/shared/src/utils/printRequestItemSource.test.ts \
+  packages/shared/src/utils/printRequestItemSummaries.test.ts \
+  packages/shared/src/utils/showAllocationSummaries.test.ts \
+  packages/shared/src/utils/portalAdminShowQueueMetrics.test.ts \
+  packages/shared/src/staffInbox/staffInboxQueuedGlanceMetrics.test.ts \
+  apps/studio/src/renderer/src/features/upcoming-shows/utils/showAllocationDollarTotals.test.ts \
+  apps/studio/src/renderer/src/features/upcoming-shows/utils/showQueueGlanceStats.test.ts \
+  apps/studio/src/renderer/src/features/users/utils/buildPrintRequestHistoryCard.test.ts \
+  apps/portal/features/print-requests/hooks/useMyPrintRequests.test.ts \
+  apps/portal/features/print-requests/hooks/useQueuePrintRequestToShow.test.ts \
+  functions/src/lib/portalAdminUpcomingShowQueueDashboard.test.ts
+```
+
+The fixture is `packages/shared/src/utils/printRequestCountParity.fixture.ts`: 20 request rows,
+25 current prints, 19 logical Designs; 34 allocation-history rows, 25 current allocated prints,
+19 current logical Designs, 19 Regular Full, 6 Regular Oversize, and $56. Tests must also cover
+duplicate artwork rows, source-namespace collisions, malformed fallbacks, canceled-only groups,
+split/move/requeue history, and the invariant that current tiers/pricing use the same active set as
+current Designs/Items.
+
+### Portal unqueue cache + Studio cancel parity (2026-09-16)
+
+```bash
+npx tsx --test \
+  apps/portal/features/print-requests/services/portalAllocatableShowsReadCache.test.ts \
+  apps/portal/features/print-requests/services/portalShowSelectionService.cacheInvalidation.contract.test.ts \
+  apps/portal/features/print-requests/hooks/usePortalAllocatableShows.sessionCache.contract.test.ts \
+  functions/src/unqueueStudioCustomerPrintRequestFromShow.contract.test.ts
+```
+
+Covers allocatable-shows cache invalidation after queue/unqueue and Studio staff remove soft-cancel
+(not delete) parity with Portal customer unqueue.
+
+### Selected Print Request live sync (2026-09-16)
+
+```bash
+npx tsx --test \
+  apps/studio/src/renderer/src/features/print-requests/hooks/usePrintRequestDetails.liveSync.contract.test.ts \
+  apps/portal/features/print-requests/hooks/usePrintRequestDetail.liveSync.contract.test.ts \
+  packages/shared/src/utils/printRequestItemPropSyncGuard.test.ts \
+  apps/portal/features/print-requests/utils/printRequestCountParity.contract.test.ts \
+  apps/portal/features/print-requests/utils/itemPropSyncGuard.test.ts
+```
+
+Covers request-scoped Studio/Portal subscribe attach/detach for the open or selected Print Request,
+Portal detail header preferring live item summaries, and item-card prop-sync guards (stale snapshot +
+pending local edit).
+
 ---
 
 ## Required Checks Before Signoff
@@ -34,6 +89,29 @@ npx tsx --test \
   apps/studio/src/renderer/src/features/print-requests/hooks/printRequestExport.contract.test.ts \
   apps/studio/electron/ipc/export/exportRequestValidation.test.ts
 ```
+
+For the Studio pre-release per-item Download and intake keyboard refinement, include the shared
+filename/resolver/navigation coverage and Studio caller contracts:
+
+```bash
+npx tsx --test \
+  packages/shared/src/utils/printRequestExportFilename.test.ts \
+  packages/shared/src/utils/resolveShowExportProductionAsset.test.ts \
+  packages/shared/src/utils/printAssetResolution.test.ts \
+  packages/shared/src/utils/previewLightboxNavigation.test.ts \
+  apps/studio/electron/ipc/export/exportRequestValidation.test.ts \
+  apps/studio/src/renderer/src/features/designs/utils/previewLightboxNavigation.contract.test.ts \
+  apps/studio/src/renderer/src/features/customer-uploads/utils/customerUploadIntakeParityContract.test.ts \
+  apps/studio/src/renderer/src/features/print-requests/hooks/printRequestExport.contract.test.ts
+```
+
+The Download path must additionally be checked for saved-size freshness, catalog/customer-upload/
+Staff Artwork parity, enhanced fail-closed behavior, one-PNG/no-quantity semantics, URL/target/
+filename validation, native cancellation, truthful resize/write errors, independent item state,
+and a non-fatal upscale warning. The lightbox path must retain Left/Right/Escape, the editable
+target guard, first/last no-wrap boundaries, current loaded previewable rows, selection
+synchronization, Uploaded/Donated purpose scopes, removals, unrelated Studio lightboxes, and
+Portal behavior.
 
 The focused contract set verifies request-only inputs, source-aware resolver parity, Standard-only
 request gang sheets, request cache isolation, atomic copy boundaries, and the existing Electron IPC
@@ -358,3 +436,32 @@ empty-input tests, DTO privacy/allowlist tests, and Portal auth/route/page contr
 operational day is tested in `America/Chicago` on standard-time, daylight-time, spring-forward, and
 fall-back boundaries. Firestore Rules tests are not part of this feature because Rules remain
 unchanged.
+
+# Portal Admin Staff Artwork and canonical AI Review lifecycle validation (ADR-FP-190)
+
+The combined goal requires the following focused coverage before Owner DEV QA and Signoff:
+
+```bash
+npx tsx --test \
+  apps/portal/features/admin-show-queue/adminShowQueue.contract.test.ts \
+  apps/portal/features/auth/utils/portalReturnUrl.admin.test.ts \
+  apps/portal/features/admin-staff-artwork/adminStaffArtworkUpload.contract.test.ts \
+  functions/src/ai/enqueueAiEnrichmentValidation.test.ts \
+  functions/src/ai/reprocessReadyDesignWithAiCore.test.ts \
+  functions/src/reprocessReadyDesignWithAi.contract.test.ts \
+  apps/studio/src/renderer/src/features/ai-review/utils/aiReviewInbox.test.ts \
+  apps/studio/src/renderer/src/features/ai-review/utils/aiReviewInboxEligibility.test.ts \
+  apps/studio/src/renderer/src/features/designs/components/reprocessReadyDesignWithAi.contract.test.ts \
+  apps/studio/src/renderer/src/features/staff-artwork/pages/staffArtworkAiReview.contract.test.ts \
+  apps/studio/src/renderer/src/features/designs/components/designCardMultiSelect.contract.test.ts \
+  apps/studio/src/renderer/src/features/staff-artwork/utils/staffArtworkCallableErrorMessage.test.ts \
+  apps/studio/src/renderer/src/features/ai-review/utils/aiReviewQueueMultiSelect.test.ts \
+  apps/studio/src/renderer/src/features/permissions/services/permissionService.staffArtwork.test.ts
+```
+
+Also run the Portal and Studio typechecks, the Functions build, targeted lint, and the existing
+Staff Artwork Firestore/Storage emulator regression suite. The Studio package has no dedicated
+`typecheck` script, so use `npx tsc --noEmit -p apps/studio/tsconfig.json`. No Rules/index change
+is expected for the canonical lifecycle; a Rules test failure must be recorded, not worked around
+by changing Rules in this goal. The final Workstream B focused run passed 86/86, followed by Owner
+DEV QA **PASS**.

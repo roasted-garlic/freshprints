@@ -6,6 +6,7 @@ interface DesignLibraryModalProps {
   isOpen: boolean;
   onClose: () => void;
   shellClassName?: string;
+  shellContent?: ReactNode;
 }
 
 export function DesignLibraryModal({
@@ -14,6 +15,7 @@ export function DesignLibraryModal({
   isOpen,
   onClose,
   shellClassName,
+  shellContent,
 }: DesignLibraryModalProps) {
   if (!isOpen) {
     return null;
@@ -26,6 +28,7 @@ export function DesignLibraryModal({
         onClick={(event) => event.stopPropagation()}
         role="presentation"
       >
+        {shellContent}
         <section
           aria-labelledby={ariaLabelledBy}
           className="modal-panel modal-panel-lg design-library-modal-panel"

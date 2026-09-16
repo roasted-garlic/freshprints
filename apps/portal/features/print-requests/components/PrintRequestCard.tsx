@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 
 import type { PrintRequest } from '@fresh-prints/shared/types/printRequest/printRequest.types';
+import type { PrintRequestItemSummary } from '@fresh-prints/shared/utils/printRequestItemSummaries';
 import type { PortalPrintRequestListTab } from '@fresh-prints/shared/utils/portalPrintRequestListTabs';
 import type { Timestamp } from 'firebase/firestore';
 import { isPortalParkedDraft } from '@fresh-prints/shared/utils/portalActiveEditablePrintRequest';
@@ -39,11 +40,12 @@ function getStatusLabel(status: PrintRequest['status']): string {
 interface PrintRequestCardProps {
   fromTab?: PortalPrintRequestListTab;
   request: PrintRequest;
+  summary: PrintRequestItemSummary;
   progressLabel?: string;
   scheduleLine?: string | null;
 }
 
-export function PrintRequestCard({ fromTab, request, progressLabel, scheduleLine }: PrintRequestCardProps) {
+export function PrintRequestCard({ fromTab, request, progressLabel, scheduleLine, summary }: PrintRequestCardProps) {
   const label = progressLabel ?? getStatusLabel(request.status);
   const isParked = isPortalParkedDraft(request);
 
@@ -67,7 +69,8 @@ export function PrintRequestCard({ fromTab, request, progressLabel, scheduleLine
         </div>
       </div>
       <p className="portal-muted">
-        {request.itemCount} design{request.itemCount === 1 ? '' : 's'} · Updated{' '}
+        {summary.uniqueDesignCount} design{summary.uniqueDesignCount === 1 ? '' : 's'} · {summary.totalQuantity}{' '}
+        print{summary.totalQuantity === 1 ? '' : 's'} · Updated{' '}
         {formatUpdatedDate(request.updatedAt)}
       </p>
       {scheduleLine ? <p className="portal-muted portal-request-card-schedule">{scheduleLine}</p> : null}

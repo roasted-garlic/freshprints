@@ -23,6 +23,7 @@ function createDesign(overrides: Partial<Design> = {}): Design {
     status: "imported",
     originalPath: "/originals/design-1.png",
     thumbnailPath: "/thumbnails/design-1.webp",
+    previewPath: "/previews/design-1.webp",
     uploadedBy: "user-1",
     queueCount: 0,
     aiProcessed: true,
@@ -87,13 +88,14 @@ describe("aiReviewInboxEligibility", () => {
   });
 
   it("distinguishes failed retry from stale processing retry on processing tab", () => {
+    const staleUpdatedAtMs = Date.now() - AI_ENRICHMENT_STALE_STAGE_MS - 1_000;
     const staleWaiting = createDesign({
       status: "processing",
       aiReviewStatus: "pending",
       aiProcessingStage: "sending_to_ai",
       previewPath: "/previews/design-1.webp",
       updatedAt: {
-        toMillis: () => Date.now() - AI_ENRICHMENT_STALE_STAGE_MS - 1,
+        toMillis: () => staleUpdatedAtMs,
       } as Design["updatedAt"],
     });
     const failed = createDesign({

@@ -30,6 +30,7 @@ import {
   sumWorkingRequestPrintQuantities,
 } from "./lib/printRequestWorkingRequestMax";
 import { assertPortalActiveEditableRequestData } from "./lib/portalContinuableParking";
+import { isPortalEditablePrintRequest } from "../../packages/shared/src/utils/portalPrintRequestEditability";
 
 function mapHttpsError(error: unknown): never {
   if (error instanceof HttpsError) {
@@ -207,7 +208,11 @@ export const addPortalCatalogDesignToPrintRequest = onCall(
         if (requestData.customerId !== portalCustomer.customerId) {
           throw permissionDenied("You do not own this print request.");
         }
-        if (requestData.requestOrigin !== "portal_customer" || requestData.isInternal === true) {
+        if (!isPortalEditablePrintRequest({
+          status: requestData.status,
+          requestOrigin: requestData.requestOrigin,
+          isInternal: requestData.isInternal,
+        })) {
           throw failedPrecondition("This request cannot be edited from the portal.");
         }
         const status = requestData.status;

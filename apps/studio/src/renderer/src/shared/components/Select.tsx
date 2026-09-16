@@ -1,4 +1,4 @@
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -24,6 +24,8 @@ export interface SelectOption {
   label: string;
   value: string;
   disabled?: boolean;
+  /** Optional text used for local search without changing the visible option label. */
+  searchText?: string;
 }
 
 interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, "onChange" | "children"> {
@@ -37,6 +39,8 @@ interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, "onC
   searchPlaceholder?: string;
   /** Quiet empty state when a search matches nothing. Only used when searchable. */
   searchEmptyMessage?: string;
+  /** Accessible label for the searchable menu's clear control. */
+  searchClearLabel?: string;
 }
 
 interface MenuPosition {
@@ -85,6 +89,7 @@ export function Select({
   searchable = false,
   searchPlaceholder = "Search...",
   searchEmptyMessage = "No options found",
+  searchClearLabel = "Clear search",
   value,
 }: SelectProps) {
   const selectId = id ?? name;
@@ -396,6 +401,20 @@ export function Select({
               type="search"
               value={searchQuery}
             />
+            {searchQuery ? (
+              <button
+                aria-label={searchClearLabel}
+                className="form-select-search-clear icon-button icon-button-sm icon-button-ghost"
+                onClick={() => {
+                  setSearchQuery("");
+                  searchInputRef.current?.focus();
+                }}
+                onMouseDown={(event) => event.preventDefault()}
+                type="button"
+              >
+                <X aria-hidden="true" size={14} strokeWidth={2.2} />
+              </button>
+            ) : null}
           </div>
         ) : null}
 

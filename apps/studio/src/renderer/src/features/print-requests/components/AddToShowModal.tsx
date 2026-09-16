@@ -28,10 +28,11 @@ import {
   getShowCapacityPercent,
 } from "@fresh-prints/shared/utils/showCapacityDisplay";
 import {
-  canAcceptNewShowAllocations,
+  buildShowCapacityOverrideSummary,
   formatShowAllocationBlockedMessage,
   getShowAllocationBlockReason,
   SHOW_QUEUE_FULL_MESSAGE,
+  wouldExceedShowCapacity,
 } from "@fresh-prints/shared/utils/showAllocationEligibility";
 import { formatShowDateTimeLabel } from "@fresh-prints/shared/utils/showDateTimeDisplay";
 import { formatPrintRequestAllocationSummary } from "@fresh-prints/shared/utils/printRequestSummaryCopy";
@@ -43,6 +44,7 @@ import {
 import type { PrintRequest, PrintRequestItem } from "@fresh-prints/shared/types/printRequest/printRequest.types";
 import { canAllocateOriginToShowSource, formatStaffGangSheetTitle, isStaffGangSheetActiveProductionStatus } from "@fresh-prints/shared/utils/staffGangSheet";
 import { isStaffGangSheetShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
+import { buildPrintRequestItemSummaries } from "@fresh-prints/shared/utils/printRequestItemSummaries";
 
 interface AddToShowModalProps {
   printRequest: PrintRequest;
@@ -169,6 +171,7 @@ export function AddToShowModal({
     destinationMode ?? "shows",
   );
   const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [isCapacityOverrideConfirmOpen, setIsCapacityOverrideConfirmOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [progress, setProgress] = useState<AllocationProgress | null>(null);
@@ -180,6 +183,7 @@ export function AddToShowModal({
 
   useEffect(() => {
     setIsPickerOpen(false);
+    setIsCapacityOverrideConfirmOpen(false);
     setActionError(null);
   }, [selectedShowId]);
 
@@ -247,14 +251,18 @@ export function AddToShowModal({
       ) {
         return false;
       }
-      return canAcceptNewShowAllocations(
-        {
-          scheduledStartAt: show.scheduledStartAt,
-          productionStatus: show.productionStatus,
-          maxTotalQuantity: show.maxTotalQuantity,
-          allocatedQuantity: show.allocatedQuantity,
-        },
-        now,
+      // Include capacity-full shows so staff can still choose Allocate Anyway; Past/terminal stay out.
+      return (
+        getShowAllocationBlockReason(
+          {
+            scheduledStartAt: show.scheduledStartAt,
+            productionStatus: show.productionStatus,
+            maxTotalQuantity: show.maxTotalQuantity,
+            allocatedQuantity: show.allocatedQuantity,
+          },
+          now,
+          { allowCapacityFullOverride: true },
+        ) === null
       );
     });
   }, [printRequest.isInternal, printRequest.requestOrigin, shows]);
@@ -282,12 +290,21 @@ export function AddToShowModal({
         allocatedQuantity: show.allocatedQuantity,
       },
       new Date(),
+      { allowCapacityFullOverride: true },
     );
   }, [fixedShowId, shows]);
 
   const fixedShowIsBlocked = fixedShowBlockReason !== null;
 
-  const totalRequestedQuantity = useMemo(() => items.reduce((sum, item) => sum + item.quantity, 0), [items]);
+  const requestSummary = useMemo(
+    () =>
+      buildPrintRequestItemSummaries(items)[printRequest.id] ?? {
+        totalQuantity: 0,
+        uniqueDesignCount: 0,
+        sizeClassRows: [],
+      },
+    [items, printRequest.id],
+  );
 
   const allocatedByItemId = useMemo(() => {
     const map = new Map<string, number>();
@@ -441,6 +458,33 @@ export function AddToShowModal({
    */
   const isSelectedShowFull = Boolean(splitPlan && splitPlan.fittingQuantity === 0 && remainingTotalQuantity > 0);
 
+  const capacityOverrideSummary = useMemo(() => {
+    if (
+      !selectedShowId ||
+      !selectedCapacity ||
+      selectedCapacity.maxTotalQuantity === undefined ||
+      remainingTotalQuantity <= 0
+    ) {
+      return null;
+    }
+    if (
+      !wouldExceedShowCapacity({
+        maxTotalQuantity: selectedCapacity.maxTotalQuantity,
+        currentAllocated: selectedCapacity.allocatedQuantity,
+        addingQuantity: remainingTotalQuantity,
+      })
+    ) {
+      return null;
+    }
+    return buildShowCapacityOverrideSummary({
+      currentAllocated: selectedCapacity.allocatedQuantity,
+      maxTotalQuantity: selectedCapacity.maxTotalQuantity,
+      addingQuantity: remainingTotalQuantity,
+    });
+  }, [remainingTotalQuantity, selectedCapacity, selectedShowId]);
+
+  const canOfferCapacityOverride = Boolean(capacityOverrideSummary && selectedShowId && remainingItems.length > 0);
+
   const handleAddLegForFullRemainder = useCallback(() => {
     if (!selectedShowId || remainingItems.length === 0) {
       return;
@@ -512,13 +556,14 @@ export function AddToShowModal({
           selectedShowId === fixedShowId)),
   );
 
-  const handleConfirm = useCallback(async () => {
+  const handleConfirm = useCallback(async (options?: { overrideShowCapacity?: boolean }) => {
     if (!user) {
       return;
     }
 
+    const overrideShowCapacity = options?.overrideShowCapacity === true;
     const finalLegs =
-      canConfirmFullFitDirectly && selectedShowId && remainingItems.length > 0
+      (canConfirmFullFitDirectly || overrideShowCapacity) && selectedShowId && remainingItems.length > 0
         ? [
             ...legs,
             {
@@ -541,6 +586,7 @@ export function AddToShowModal({
       holdStaffInboxQueuedAlertGroup(groupKey);
     }
 
+    setIsCapacityOverrideConfirmOpen(false);
     setIsSubmitting(true);
     setActionError(null);
     setProgress({
@@ -569,6 +615,7 @@ export function AddToShowModal({
           upcomingShowId: leg.showId,
           quantitiesByItemId: leg.quantitiesByItemId,
         })),
+        ...(overrideShowCapacity ? { overrideShowCapacity: true } : {}),
       });
 
       // Capacity celebration on the same ShowPicker instance (do not unmount the calendar).
@@ -704,7 +751,10 @@ export function AddToShowModal({
             </div>
           ) : (
             <p className="print-requests-modal-hint">
-              {formatPrintRequestAllocationSummary(items.length, totalRequestedQuantity)}
+              {formatPrintRequestAllocationSummary(
+                requestSummary.uniqueDesignCount,
+                requestSummary.totalQuantity,
+              )}
             </p>
           )}
 
@@ -820,11 +870,22 @@ export function AddToShowModal({
                                 totalQuantity: remainingTotalQuantity,
                               })}
                         </p>
-                        {isSelectedShowFull ? null : (
-                          <Button onClick={() => setIsPickerOpen(true)} type="button" variant="secondary">
-                            Choose designs for this sheet
-                          </Button>
-                        )}
+                        <div className="show-allocation-decision-actions">
+                          {isSelectedShowFull ? null : (
+                            <Button onClick={() => setIsPickerOpen(true)} type="button" variant="secondary">
+                              Choose designs for this sheet
+                            </Button>
+                          )}
+                          {canOfferCapacityOverride ? (
+                            <Button
+                              onClick={() => setIsCapacityOverrideConfirmOpen(true)}
+                              type="button"
+                              variant="secondary"
+                            >
+                              Allocate Anyway
+                            </Button>
+                          ) : null}
+                        </div>
                       </div>
                     ) : null}
                   </>
@@ -871,17 +932,27 @@ export function AddToShowModal({
                               totalQuantity: remainingTotalQuantity,
                             })}
                       </p>
-                      {isSelectedShowFull ? (
-                        <p className="print-requests-modal-hint">
-                          Choose a different show that still has capacity.
-                        </p>
-                      ) : (
-                        <div className="show-allocation-decision-actions">
+                      <div className="show-allocation-decision-actions">
+                        {isSelectedShowFull ? null : (
                           <Button onClick={() => setIsPickerOpen(true)} type="button" variant="secondary">
                             Choose designs for this show
                           </Button>
-                        </div>
-                      )}
+                        )}
+                        {canOfferCapacityOverride ? (
+                          <Button
+                            onClick={() => setIsCapacityOverrideConfirmOpen(true)}
+                            type="button"
+                            variant="secondary"
+                          >
+                            Allocate Anyway
+                          </Button>
+                        ) : null}
+                      </div>
+                      {isSelectedShowFull && !canOfferCapacityOverride ? (
+                        <p className="print-requests-modal-hint">
+                          Choose a different show that still has capacity.
+                        </p>
+                      ) : null}
                     </div>
                   ) : null}
                 </>
@@ -908,6 +979,59 @@ export function AddToShowModal({
           </Button>
         </ModalFooter>
       </Modal>
+
+      {isCapacityOverrideConfirmOpen && capacityOverrideSummary ? (
+        <div className="modal-overlay modal-overlay-blur">
+          <Modal
+            aria-labelledby="show-capacity-override-title"
+            className="modal-panel modal-panel-md"
+            role="dialog"
+          >
+            <ModalHeader>
+              <div>
+                <p className="eyebrow">Show capacity</p>
+                <h2 id="show-capacity-override-title">Allocate over capacity?</h2>
+              </div>
+              <button
+                aria-label="Close"
+                className="icon-button icon-button-md icon-button-ghost"
+                disabled={isBusy}
+                onClick={() => setIsCapacityOverrideConfirmOpen(false)}
+                type="button"
+              >
+                <X aria-hidden="true" size={18} strokeWidth={2.2} />
+              </button>
+            </ModalHeader>
+            <ModalBody>
+              <p>
+                This show is currently at {capacityOverrideSummary.currentAllocated} of{" "}
+                {capacityOverrideSummary.maxTotalQuantity}. Allocating{" "}
+                {capacityOverrideSummary.addingQuantity} more print
+                {capacityOverrideSummary.addingQuantity === 1 ? "" : "s"} will put it at{" "}
+                {capacityOverrideSummary.newTotal} of {capacityOverrideSummary.maxTotalQuantity}. The
+                configured max stays {capacityOverrideSummary.maxTotalQuantity}.
+              </p>
+            </ModalBody>
+            <ModalFooter>
+              <Button
+                disabled={isBusy}
+                onClick={() => setIsCapacityOverrideConfirmOpen(false)}
+                variant="secondary"
+              >
+                Cancel
+              </Button>
+              <Button
+                disabled={isBusy}
+                onClick={() => void handleConfirm({ overrideShowCapacity: true })}
+                type="button"
+                variant="danger"
+              >
+                {isBusy ? "Allocating..." : "Allocate Anyway"}
+              </Button>
+            </ModalFooter>
+          </Modal>
+        </div>
+      ) : null}
 
       {isPickerOpen && selectedShowId ? (
         <SplitDesignPickerModal

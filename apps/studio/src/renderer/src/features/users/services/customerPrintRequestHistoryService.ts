@@ -1,5 +1,6 @@
 import type { Customer } from "@fresh-prints/shared/types/customer/customer.types";
 import type { PrintRequest } from "@fresh-prints/shared/types/printRequest/printRequest.types";
+import type { PrintRequestItemSummary } from "@fresh-prints/shared/utils/printRequestItemSummaries";
 import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/showAllocation.types";
 import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
 
@@ -31,6 +32,7 @@ interface CustomerPrintRequestHistoryContext {
   showsById: Map<string, UpcomingShow>;
   relatedRequestNamesById: Map<string, string>;
   relatedRequestsById: Map<string, PrintRequest>;
+  summariesByRequestId: Record<string, PrintRequestItemSummary>;
   queuedPrintRequestCount: number;
 }
 
@@ -126,7 +128,13 @@ async function loadCustomerPrintRequestHistoryContext(
 
   const showIds = allocations.map((allocation) => allocation.upcomingShowId);
   const related = await loadRelatedRequests(caller, requests);
-  const [showsById] = await Promise.all([loadShowsById(caller, showIds)]);
+  const [showsById, summariesByRequestId] = await Promise.all([
+    loadShowsById(caller, showIds),
+    printRequestService.listPrintRequestItemSummariesForRequests(
+      caller,
+      requests.map((request) => request.id),
+    ),
+  ]);
 
   return {
     requests,
@@ -134,6 +142,7 @@ async function loadCustomerPrintRequestHistoryContext(
     showsById,
     relatedRequestNamesById: related.namesById,
     relatedRequestsById: related.requestsById,
+    summariesByRequestId,
     queuedPrintRequestCount: countDistinctQueuedPrintRequests(allocations),
   };
 }
@@ -167,6 +176,10 @@ export const customerPrintRequestHistoryService = {
         allocations.map((allocation) => allocation.upcomingShowId),
       );
       const related = await loadRelatedRequests(caller, requests);
+      const summariesByRequestId = await printRequestService.listPrintRequestItemSummariesForRequests(
+        caller,
+        requests.map((request) => request.id),
+      );
       const summaries = sortPrintRequestHistorySummaries(
         requests.map((request) =>
           buildPrintRequestHistoryCardSummary({
@@ -176,6 +189,7 @@ export const customerPrintRequestHistoryService = {
             showsById,
             relatedRequestNamesById: related.namesById,
             relatedRequestsById: related.requestsById,
+            itemSummary: summariesByRequestId[request.id],
           }),
         ),
       );
@@ -206,6 +220,7 @@ export const customerPrintRequestHistoryService = {
           showsById: context.showsById,
           relatedRequestNamesById: context.relatedRequestNamesById,
           relatedRequestsById: context.relatedRequestsById,
+          itemSummary: context.summariesByRequestId[request.id],
         }),
       ),
     );
@@ -239,6 +254,7 @@ export const customerPrintRequestHistoryService = {
       showsById: context.showsById,
       relatedRequestNamesById: context.relatedRequestNamesById,
       relatedRequestsById: context.relatedRequestsById,
+      itemSummary: context.summariesByRequestId[request.id],
     });
 
     const detailEvents = buildPrintRequestHistoryDetailEvents({

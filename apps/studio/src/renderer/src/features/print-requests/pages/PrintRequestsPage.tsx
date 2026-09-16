@@ -87,7 +87,13 @@ import {
   getPrintRequestRequeueBadgeVariant,
   shouldShowPrintRequestRequeueBadge,
 } from "../utils/printRequestRequeueBadge";
-import { filterPrintRequestsByListSearch } from "../utils/printRequestListSearch";
+import {
+  clipAllocationsToShow,
+  filterPrintRequestsByShow,
+  filterPrintRequestsForShowAndSearch,
+  groupPrintRequestsByCustomerWithinShow,
+  type PrintRequestCustomerGroup,
+} from "../utils/printRequestShowCustomerGrouping";
 import { filterPrintRequestsByActiveTab } from "../utils/filterPrintRequestsByActiveTab";
 import { filterPrintRequestsByRequestKind } from "../utils/filterPrintRequestsByRequestKind";
 import {
@@ -117,6 +123,7 @@ import { formatUpcomingShowTitle, formatUpcomingShowTimestampLabel } from "../..
 import { formatShowDateTimeLabel } from "@fresh-prints/shared/utils/showDateTimeDisplay";
 import { buildShowQueueDeepLinkPath } from "../../upcoming-shows/utils/buildShowQueueDeepLinkPath";
 import { useExportPrintRequestZip } from "../hooks/useExportPrintRequestZip";
+import { useDownloadPrintRequestItem } from "../hooks/useDownloadPrintRequestItem";
 import { useGeneratePrintRequestGangSheet } from "../hooks/useGeneratePrintRequestGangSheet";
 import { ExportPrintRequestConfirmModal } from "../components/ExportPrintRequestConfirmModal";
 import { GeneratePrintRequestGangSheetModal } from "../components/GeneratePrintRequestGangSheetModal";
@@ -418,6 +425,8 @@ export function PrintRequestsPage() {
   }, [activeIsInternal, activeListKind, commitPrintRequestsRoute, selectedRequestId, tabParam]);
 
   const [listSearchQuery, setListSearchQuery] = useState("");
+  const [isolatedShowId, setIsolatedShowId] = useState<string | null>(null);
+  const listSearchInputRef = useRef<HTMLInputElement | null>(null);
   const previousSelectedRequestIdRef = useRef<string | null | undefined>(undefined);
   const railListRef = useRef<HTMLDivElement | null>(null);
   const railListScrollTopRef = useRef(0);
@@ -541,6 +550,7 @@ export function PrintRequestsPage() {
   const [isCopyingRequest, setIsCopyingRequest] = useState(false);
   const [copyRequestError, setCopyRequestError] = useState<string | null>(null);
   const exportPrintRequestZipState = useExportPrintRequestZip();
+  const printRequestItemDownloadState = useDownloadPrintRequestItem();
   const printRequestGangSheetState = useGeneratePrintRequestGangSheet();
 
   const reloadSelectedRequestAllocations = useCallback(async () => {
@@ -877,8 +887,18 @@ export function PrintRequestsPage() {
           label: customer.username
             ? `${customer.displayName} (${customer.username})`
             : `${customer.displayName} (needs username)`,
+          searchText: [customer.displayName, customer.username ?? "", customer.email ?? ""].join(" "),
           value: customer.id,
         })),
+    [customerDirectory, customerIdsWithContinuableRequest],
+  );
+
+  const eligibleCustomerCount = useMemo(
+    () =>
+      customerDirectory
+        .filter((customer) => !customer.isGuest)
+        .filter((customer) => isActiveCustomerAccount(customer))
+        .filter((customer) => !customerIdsWithContinuableRequest.has(customer.id)).length,
     [customerDirectory, customerIdsWithContinuableRequest],
   );
 
@@ -949,27 +969,91 @@ export function PrintRequestsPage() {
     [activeListTab, activeTabRequests, workingRequestsByFilter, workingTriageFilter],
   );
 
-  const visibleRequests = useMemo(() => {
-    return filterPrintRequestsByListSearch(routeEligibleRequests, listSearchQuery, customersByIdMap);
-  }, [
-    customersByIdMap,
-    listSearchQuery,
-    routeEligibleRequests,
-  ]);
+  const canIsolateShow =
+    activeListTab === "queued" || activeListTab === "printing" || activeListTab === "printed";
+
+  useEffect(() => {
+    setIsolatedShowId(null);
+  }, [activeListKind, activeListTab]);
+
+  const visibleRequests = useMemo(
+    () =>
+      filterPrintRequestsForShowAndSearch({
+        requests: routeEligibleRequests,
+        allocationsByRequestId,
+        showId: canIsolateShow ? isolatedShowId : null,
+        query: listSearchQuery,
+        customersById: customersByIdMap,
+      }),
+    [
+      allocationsByRequestId,
+      canIsolateShow,
+      customersByIdMap,
+      isolatedShowId,
+      listSearchQuery,
+      routeEligibleRequests,
+    ],
+  );
+
+  const visibleAllocationsByRequestId = useMemo(
+    () =>
+      clipAllocationsToShow({
+        requests: visibleRequests,
+        allocationsByRequestId,
+        showId: canIsolateShow ? isolatedShowId : null,
+      }),
+    [allocationsByRequestId, canIsolateShow, isolatedShowId, visibleRequests],
+  );
 
   const visibleRequestSections = useMemo(
     () =>
       groupPrintRequestsByShow({
         requests: visibleRequests,
-        allocationsByRequestId,
+        allocationsByRequestId: visibleAllocationsByRequestId,
         showsById,
         sectionOrder:
           activeListKind === "internal" && activeListTab === "printed"
             ? "staff_gang_sheet_history"
+            : activeListKind === "customer" &&
+                (activeListTab === "printing" || activeListTab === "printed")
+              ? "scheduled_start_desc"
             : "scheduled_start_asc",
       }),
-    [activeListKind, activeListTab, allocationsByRequestId, showsById, visibleRequests],
+    [activeListKind, activeListTab, showsById, visibleAllocationsByRequestId, visibleRequests],
   );
+
+  const shouldGroupCustomerRequests =
+    activeListKind === "customer" &&
+    (activeListTab === "queued" || activeListTab === "printing" || activeListTab === "printed");
+
+  const customerGroupsBySectionKey = useMemo<Map<string, PrintRequestCustomerGroup[]>>(() => {
+    if (!shouldGroupCustomerRequests) {
+      return new Map<string, PrintRequestCustomerGroup[]>();
+    }
+
+    return new Map(
+      visibleRequestSections.map((section) => [
+        section.sectionKey,
+        groupPrintRequestsByCustomerWithinShow({
+          requests: section.requests,
+          summariesByRequestId: summariesByRequestId,
+          getRequestPriceUsd: (request) => {
+            const requestSummary =
+              summariesByRequestId[request.id] ?? emptyPrintRequestItemSummary();
+            return calculatePrintRequestSummaryPriceUsd(
+              requestSummary.sizeClassRows,
+              gangSheetSettings.settings.sectionPricing,
+            );
+          },
+        }),
+      ]),
+    );
+  }, [
+    gangSheetSettings.settings.sectionPricing,
+    shouldGroupCustomerRequests,
+    summariesByRequestId,
+    visibleRequestSections,
+  ]);
 
   // A deep-linked/selected request outside the currently loaded page is never treated as
   // "route-illegal" — `ensureRequestLoaded` (above) fetches it directly by ID, and once loaded it
@@ -1161,10 +1245,23 @@ export function PrintRequestsPage() {
       return;
     }
 
+    if (
+      isolatedShowId &&
+      filterPrintRequestsByShow({
+        requests: routeEligibleRequests.filter((request) => request.id === selectedRequestId),
+        allocationsByRequestId,
+        showId: isolatedShowId,
+      }).length === 0
+    ) {
+      setIsolatedShowId(null);
+    }
+
     if (listSearchQuery.trim()) {
       setListSearchQuery("");
     }
   }, [
+    allocationsByRequestId,
+    isolatedShowId,
     isRequestsLoading,
     listSearchQuery,
     routeEligibleRequests,
@@ -1416,6 +1513,7 @@ export function PrintRequestsPage() {
         summarizeItemsForRequest(visibleSelectedRequest.id, nextItems),
       );
     }
+    return updatedItem;
   }, [patchSummaryLocally, requestItems, replaceRequestItem, user, visibleSelectedRequest]);
 
   async function handleSaveRequestDetail() {
@@ -1883,6 +1981,67 @@ export function PrintRequestsPage() {
     });
   }
 
+  function renderRequestCard(
+    request: PrintRequest,
+    section: PrintRequestShowSection<
+      Pick<UpcomingShow, "id" | "scheduledStartAt" | "allocatedQuantity" | "maxTotalQuantity">
+    >,
+  ) {
+    const isSelected = request.id === selectedRequestId;
+    const requestSummary = summariesByRequestId[request.id] ?? emptyPrintRequestItemSummary();
+    const extraShowCount = section.extraShowCountByRequestId[request.id] ?? 0;
+    const requestPriceUsd = calculatePrintRequestSummaryPriceUsd(
+      requestSummary.sizeClassRows,
+      gangSheetSettings.settings.sectionPricing,
+    );
+
+    return (
+      <button
+        className={`print-requests-request-card${isSelected ? " is-selected" : ""}`}
+        data-print-request-id={request.id}
+        key={request.id}
+        onClick={() => selectPrintRequestFromRail(request.id)}
+        type="button"
+      >
+        <div className="print-requests-request-card-title-row">
+          <strong>{request.name}</strong>
+          <div className="print-requests-request-card-badges">
+            {shouldShowPrintRequestRequeueBadge(request) ? (
+              <Badge
+                title={getPrintRequestRequeueBadgeTitle(request)}
+                variant={getPrintRequestRequeueBadgeVariant()}
+              >
+                {getPrintRequestRequeueBadgeLabel()}
+              </Badge>
+            ) : null}
+            <Badge variant="default">{getPrintRequestOriginBadgeLabel(request)}</Badge>
+            <Badge variant={getStatusBadgeVariant(request.status)}>{request.status}</Badge>
+          </div>
+        </div>
+        <p className="print-requests-request-card-subtitle">
+          {request.isInternal
+            ? request.notes?.trim() || "No notes"
+            : getPrintRequestCustomerLabel(request, customersByIdMap)}
+          {extraShowCount > 0 ? (
+            <span className="print-requests-request-card-extra-shows">
+              {" "}
+              +{extraShowCount} more show{extraShowCount === 1 ? "" : "s"}
+            </span>
+          ) : null}
+        </p>
+        <div className="print-requests-request-card-counts">
+          <span>{formatDesignCountLabel(requestSummary.uniqueDesignCount)}</span>
+          <span>{formatTotalQuantityLabel(requestSummary.totalQuantity)}</span>
+          {requestPriceUsd !== null ? (
+            <span className="print-requests-request-card-price">
+              {formatRequestPrice(requestPriceUsd)}
+            </span>
+          ) : null}
+        </div>
+      </button>
+    );
+  }
+
   const requestNamePreview = visibleSelectedRequest
     ? getRequestNamePreview(visibleSelectedRequest, internalBaseNameDraft)
     : "";
@@ -1993,10 +2152,39 @@ export function PrintRequestsPage() {
                 className="print-requests-rail-search-input"
                 onChange={(event) => setListSearchQuery(event.target.value)}
                 placeholder="Search name, customer, id…"
+                ref={listSearchInputRef}
                 type="search"
                 value={listSearchQuery}
               />
+              {listSearchQuery ? (
+                <button
+                  aria-label="Clear print request search"
+                  className="icon-button icon-button-sm icon-button-ghost print-requests-rail-search-clear"
+                  onClick={() => {
+                    setListSearchQuery("");
+                    listSearchInputRef.current?.focus();
+                  }}
+                  onMouseDown={(event) => event.preventDefault()}
+                  type="button"
+                >
+                  <X aria-hidden="true" size={14} strokeWidth={2.2} />
+                </button>
+              ) : null}
             </label>
+            {isolatedShowId ? (
+              <div className="print-requests-show-scope" role="status">
+                <span>
+                  Showing only {showsById[isolatedShowId] ? formatUpcomingShowTitle(showsById[isolatedShowId]) : "selected show"}
+                </span>
+                <button
+                  className="print-requests-show-scope-clear"
+                  onClick={() => setIsolatedShowId(null)}
+                  type="button"
+                >
+                  Show all
+                </button>
+              </div>
+            ) : null}
             {activeListTab === "working" ? (
               <div aria-label="Working triage" className="print-requests-triage-bar" role="group">
                 {PRINT_REQUEST_WORKING_TRIAGE_FILTERS.map((filter) => (
@@ -2059,35 +2247,54 @@ export function PrintRequestsPage() {
               />
             ) : (
               visibleRequestSections.map((section) => {
-                const sectionCapacity = resolveSectionShowCapacity(section, allocationsByRequestId);
+                const sectionCapacity = resolveSectionShowCapacity(
+                  section,
+                  visibleAllocationsByRequestId,
+                );
+                const customerGroups = shouldGroupCustomerRequests
+                  ? customerGroupsBySectionKey.get(section.sectionKey) ?? []
+                  : null;
+                const showLabel =
+                  section.sectionKey === UNASSIGNED_SHOW_SECTION_KEY
+                    ? "Unassigned"
+                    : section.show
+                      ? `${formatUpcomingShowTitle(section.show)} · ${formatUpcomingShowTimestampLabel(section.show.scheduledStartAt)}`
+                      : "Show";
+                const showCanBeIsolated =
+                  canIsolateShow &&
+                  Boolean(section.show) &&
+                  section.sectionKey !== UNASSIGNED_SHOW_SECTION_KEY;
 
                 return (
                 <div className="print-requests-show-section" key={section.sectionKey}>
-                  {section.sectionKey === UNASSIGNED_SHOW_SECTION_KEY || !section.show || !canViewUpcomingShows ? (
-                    <div className="print-requests-show-section-header">
-                      {section.sectionKey === UNASSIGNED_SHOW_SECTION_KEY
-                        ? "Unassigned"
-                        : section.show
-                          ? `${formatUpcomingShowTitle(section.show)} · ${formatUpcomingShowTimestampLabel(section.show.scheduledStartAt)}`
-                          : "Show"}
-                    </div>
-                  ) : (
-                    <Link
-                      className="print-requests-show-section-header print-requests-show-section-header-link"
-                      title={`Open ${formatUpcomingShowTitle(section.show)} in Show Queue`}
-                      to={buildShowQueueDeepLinkPath({
-                        showId: section.show.id,
-                        printRequestId: section.requests[0]?.id ?? "",
-                        show: section.show,
-                      })}
-                    >
-                      <span>
-                        {formatUpcomingShowTitle(section.show)} ·{" "}
-                        {formatUpcomingShowTimestampLabel(section.show.scheduledStartAt)}
-                      </span>
-                      <ExternalLink aria-hidden="true" size={12} strokeWidth={2.2} />
-                    </Link>
-                  )}
+                  <div className="print-requests-show-section-header-row">
+                    {section.sectionKey === UNASSIGNED_SHOW_SECTION_KEY || !section.show || !canViewUpcomingShows ? (
+                      <div className="print-requests-show-section-header">{showLabel}</div>
+                    ) : (
+                      <Link
+                        className="print-requests-show-section-header print-requests-show-section-header-link"
+                        title={`Open ${formatUpcomingShowTitle(section.show)} in Show Queue`}
+                        to={buildShowQueueDeepLinkPath({
+                          showId: section.show.id,
+                          printRequestId: section.requests[0]?.id ?? "",
+                          show: section.show,
+                        })}
+                      >
+                        <span>{showLabel}</span>
+                        <ExternalLink aria-hidden="true" size={12} strokeWidth={2.2} />
+                      </Link>
+                    )}
+                    {showCanBeIsolated ? (
+                      <button
+                        aria-pressed={isolatedShowId === section.show?.id}
+                        className={`print-requests-show-isolate-button${isolatedShowId === section.show?.id ? " is-active" : ""}`}
+                        onClick={() => setIsolatedShowId((current) => (current === section.show?.id ? null : section.show?.id ?? null))}
+                        type="button"
+                      >
+                        {isolatedShowId === section.show?.id ? "Show all" : "Show only"}
+                      </button>
+                    ) : null}
+                  </div>
                   {sectionCapacity ? (
                     <div className="print-requests-show-section-capacity">
                       <div className="show-capacity-bar-track">
@@ -2107,61 +2314,33 @@ export function PrintRequestsPage() {
                       </div>
                     </div>
                   ) : null}
-                  {section.requests.map((request) => {
-                const isSelected = request.id === selectedRequestId;
-                const requestSummary = summariesByRequestId[request.id] ?? emptyPrintRequestItemSummary();
-                const extraShowCount = section.extraShowCountByRequestId[request.id] ?? 0;
-                const requestPriceUsd = calculatePrintRequestSummaryPriceUsd(
-                  requestSummary.sizeClassRows,
-                  gangSheetSettings.settings.sectionPricing,
-                );
-
-                return (
-                  <button
-                    className={`print-requests-request-card${isSelected ? " is-selected" : ""}`}
-                    data-print-request-id={request.id}
-                    key={request.id}
-                    onClick={() => selectPrintRequestFromRail(request.id)}
-                    type="button"
-                  >
-                    <div className="print-requests-request-card-title-row">
-                      <strong>{request.name}</strong>
-                      <div className="print-requests-request-card-badges">
-                        {shouldShowPrintRequestRequeueBadge(request) ? (
-                          <Badge
-                            title={getPrintRequestRequeueBadgeTitle(request)}
-                            variant={getPrintRequestRequeueBadgeVariant()}
-                          >
-                            {getPrintRequestRequeueBadgeLabel()}
-                          </Badge>
-                        ) : null}
-                        <Badge variant="default">{getPrintRequestOriginBadgeLabel(request)}</Badge>
-                        <Badge variant={getStatusBadgeVariant(request.status)}>{request.status}</Badge>
-                      </div>
+                  {customerGroups ? (
+                    <div className="print-requests-customer-groups">
+                      {customerGroups.map((group) => (
+                        <div className="print-requests-customer-group" key={group.key}>
+                          <div className="print-requests-customer-group-header">
+                            <div>
+                              <strong>
+                                {getPrintRequestCustomerLabel(group.requests[0], customersByIdMap)}
+                              </strong>
+                              <span className="print-requests-customer-group-request-count">
+                                {group.requests.length} request{group.requests.length === 1 ? "" : "s"}
+                              </span>
+                            </div>
+                            <div className="print-requests-customer-group-total">
+                              <span>{formatTotalQuantityLabel(group.totalQuantity)}</span>
+                              {group.totalPriceUsd !== null ? (
+                                <strong>{formatRequestPrice(group.totalPriceUsd)}</strong>
+                              ) : null}
+                            </div>
+                          </div>
+                          {group.requests.map((request) => renderRequestCard(request, section))}
+                        </div>
+                      ))}
                     </div>
-                    <p className="print-requests-request-card-subtitle">
-                      {request.isInternal
-                        ? request.notes?.trim() || "No notes"
-                        : getPrintRequestCustomerLabel(request, customersByIdMap)}
-                      {extraShowCount > 0 ? (
-                        <span className="print-requests-request-card-extra-shows">
-                          {" "}
-                          +{extraShowCount} more show{extraShowCount === 1 ? "" : "s"}
-                        </span>
-                      ) : null}
-                    </p>
-                    <div className="print-requests-request-card-counts">
-                      <span>{formatDesignCountLabel(requestSummary.uniqueDesignCount)}</span>
-                      <span>{formatTotalQuantityLabel(requestSummary.totalQuantity)}</span>
-                      {requestPriceUsd !== null ? (
-                        <span className="print-requests-request-card-price">
-                          {formatRequestPrice(requestPriceUsd)}
-                        </span>
-                      ) : null}
-                    </div>
-                  </button>
-                );
-                  })}
+                  ) : (
+                    section.requests.map((request) => renderRequestCard(request, section))
+                  )}
                 </div>
                 );
               })
@@ -2659,12 +2838,16 @@ export function PrintRequestsPage() {
                       return (
                         <PrintRequestItemCard
                           design={design}
+                          downloadState={printRequestItemDownloadState.statesByItemId[item.id]}
                           item={item}
                           key={item.id}
                           onAutosaveStateChange={updateAutosaveState}
                           onDesignArtworkEnhanced={reloadReadyDesigns}
                           onArtworkEnhanceModeChanged={(result) =>
                             handleArtworkEnhanceModeChanged(item, result)
+                          }
+                          onDismissDownloadState={() =>
+                            printRequestItemDownloadState.dismissItemDownloadState(item.id)
                           }
                           onOpenPreview={
                             design?.previewPath ||
@@ -2677,6 +2860,16 @@ export function PrintRequestsPage() {
                           onPersistenceHealthChange={handlePersistenceHealthChange}
                           onRegisterFlush={handleRegisterFlush}
                           onDuplicate={handleDuplicateItem}
+                          onDownload={
+                            visibleSelectedRequest
+                              ? () => {
+                                  void printRequestItemDownloadState.downloadPrintRequestItem(
+                                    visibleSelectedRequest,
+                                    item,
+                                  );
+                                }
+                              : undefined
+                          }
                           onRemove={handleRemoveItem}
                           onUpdate={handleUpdateItem}
                           printRequestId={selectedRequestId ?? ""}
@@ -2804,19 +2997,25 @@ export function PrintRequestsPage() {
                   />
 
                   {createRequestForm.customerMode === "customer" ? (
-                    <Select
-                      disabled={isCustomerDirectoryLoading}
-                      label={isCustomerDirectoryLoading ? "Customer (loading…)" : "Customer"}
-                      name="customerId"
-                      onChange={(event) =>
-                        setCreateRequestForm((current) => ({
-                          ...current,
-                          customerId: event.target.value,
-                        }))
-                      }
-                      options={[{ label: "Choose a customer", value: "" }, ...customerOptions]}
-                      value={createRequestForm.customerId}
-                    />
+                    <div className="print-requests-customer-picker">
+                      <Select
+                        disabled={isCustomerDirectoryLoading || eligibleCustomerCount === 0}
+                        label={isCustomerDirectoryLoading ? "Customer (loading…)" : "Customer"}
+                        name="customerId"
+                        onChange={(event) =>
+                          setCreateRequestForm((current) => ({
+                            ...current,
+                            customerId: event.target.value,
+                          }))
+                        }
+                        options={[{ label: "Choose a customer", value: "" }, ...customerOptions]}
+                        searchable
+                        searchClearLabel="Clear customer search"
+                        searchEmptyMessage="No eligible customers match this search."
+                        searchPlaceholder="Search name, username, or email…"
+                        value={createRequestForm.customerId}
+                      />
+                    </div>
                   ) : null}
                 </div>
 
@@ -2836,7 +3035,7 @@ export function PrintRequestsPage() {
 
                 {createRequestForm.customerMode === "customer" ? (
                   <>
-                    {customerOptions.length === 0 ? (
+                    {eligibleCustomerCount === 0 ? (
                       <div className="print-requests-modal-helper">
                         <p className="print-requests-modal-hint">
                           Create a customer before creating customer requests.

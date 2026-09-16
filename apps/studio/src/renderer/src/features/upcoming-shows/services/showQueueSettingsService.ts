@@ -1,6 +1,10 @@
 import { doc, getDoc, serverTimestamp, setDoc, Timestamp } from "firebase/firestore";
 
 import { runTracedWrite } from "@fresh-prints/shared/utils/firestoreUsageTrace";
+import type {
+  ApplyShowQueueDefaultMaxToEligibleShowsRequest,
+  ApplyShowQueueDefaultMaxToEligibleShowsResponse,
+} from "@fresh-prints/shared/types/upcomingShow/applyShowQueueDefaultMax.types";
 
 import {
   DEFAULT_PORTAL_QUEUE_CUTOFF_HOURS_BEFORE_START,
@@ -26,6 +30,7 @@ import {
 } from "@fresh-prints/shared/constants/gangSheetSectionPricingSettings.constants";
 
 import { db } from "../../../config/firebase";
+import { callTracedFunction } from "../../../config/tracedCallable";
 import { assertNoUndefinedFirestoreFields, withoutUndefinedFields } from "../../firebase/utils/firestoreDocument";
 import { permissionService } from "../../permissions/services/permissionService";
 import type { User } from "../../users/types/user.types";
@@ -50,7 +55,11 @@ export interface WhatnotAssistedImportSummary {
 }
 
 export interface ShowQueueSettings {
-  /** Applied to newly created shows only; existing shows are never retroactively changed. */
+  /**
+   * Applied to newly created Whatnot/DEV fixture shows at create time.
+   * Existing shows are unchanged unless an owner/admin explicitly applies the default
+   * via `applyDefaultMaxToEligibleShows` on Save.
+   */
   defaultMaxTotalQuantity?: number;
   updatedBy?: string;
   /** Staff-configurable; defaults to the hardcoded constant client-side when unset. */
@@ -299,6 +308,26 @@ export const showQueueSettingsService = {
     );
 
     return this.getSettings();
+  },
+
+  /**
+   * Owner/admin trusted path: write `defaultMaxTotalQuantity` and optionally overwrite
+   * eligible existing show max values. Sole writer of the global default when Apply is checked.
+   */
+  async applyDefaultMaxToEligibleShows(
+    caller: User,
+    input: ApplyShowQueueDefaultMaxToEligibleShowsRequest,
+  ): Promise<ApplyShowQueueDefaultMaxToEligibleShowsResponse> {
+    if (!permissionService.canManageShowQueueSettings(caller)) {
+      throw new Error("You do not have permission to manage Show Queue settings.");
+    }
+
+    return callTracedFunction<
+      ApplyShowQueueDefaultMaxToEligibleShowsRequest,
+      ApplyShowQueueDefaultMaxToEligibleShowsResponse
+    >("applyShowQueueDefaultMaxToEligibleShows", {
+      source: "showQueueSettingsService.applyDefaultMaxToEligibleShows",
+    })(input);
   },
 
   /** Records the outcome of a staff-assisted Whatnot import. Never called by the settings-editing UI. */

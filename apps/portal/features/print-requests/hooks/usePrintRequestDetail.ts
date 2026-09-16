@@ -207,6 +207,47 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
   // reads the viewing state at apply time, not a stale value closed over at call time.
   isViewingWorkingRequestRef.current = isViewingWorkingRequest;
 
+  // Live open-request document (Studio ↔ Portal) — request-scoped only.
+  useEffect(() => {
+    if (!printRequestId) {
+      return;
+    }
+
+    return portalPrintRequestService.subscribePrintRequest(
+      printRequestId,
+      (nextRequest) => {
+        setPrintRequest(nextRequest);
+        setIsLoading(false);
+        if (!nextRequest) {
+          setError('Print request not found.');
+        } else {
+          setError(null);
+        }
+      },
+      (subscribeError) => {
+        setError(subscribeError.message);
+        setIsLoading(false);
+      },
+    );
+  }, [printRequestId]);
+
+  // Live items when this page is not already driven by the Working cart subscription.
+  useEffect(() => {
+    if (!printRequestId || isViewingWorkingRequest) {
+      return;
+    }
+
+    return portalPrintRequestService.subscribePrintRequestItems(
+      printRequestId,
+      (nextItems) => {
+        setItems(sortWorkingCurrentRequestItems(nextItems));
+      },
+      (subscribeError) => {
+        setError(subscribeError.message);
+      },
+    );
+  }, [isViewingWorkingRequest, printRequestId]);
+
   const cartSignature = useMemo(
     () => (isViewingWorkingRequest ? workingItemsSignature(workingItems) : null),
     [isViewingWorkingRequest, workingItems],

@@ -21,6 +21,10 @@ export const PORTAL_CATALOG_ALGOLIA_SMART_FACET_ATTRIBUTES = [
 export type PortalCatalogAlgoliaSmartFacetAttribute =
   (typeof PORTAL_CATALOG_ALGOLIA_SMART_FACET_ATTRIBUTES)[number];
 
+export type PortalCatalogAlgoliaSmartFilterSelections = Partial<
+  Record<PortalCatalogAlgoliaSmartFacetAttribute, string[]>
+>;
+
 /**
  * Searchable attribute order encodes the evidence hierarchy:
  * title → structured identity/intent → searchConcepts → visibleText → objects → search copy.
@@ -129,6 +133,54 @@ export function normalizePortalCatalogAlgoliaStringList(
   return result.length > 0 ? result : undefined;
 }
 
+/** Normalize public Smart Profile Subjects to one lowercase, whitespace-canonical facet token. */
+export function normalizePortalCatalogAlgoliaSubjectList(
+  value: unknown,
+  maxItems = 12,
+): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const result: string[] = [];
+  const seen = new Set<string>();
+  for (const item of value) {
+    if (typeof item !== 'string') continue;
+    const canonical = item.trim().replace(/\s+/g, ' ').toLowerCase();
+    if (!canonical || seen.has(canonical)) continue;
+    seen.add(canonical);
+    result.push(canonical);
+    if (result.length >= maxItems) break;
+  }
+  return result.length > 0 ? result : undefined;
+}
+
+/** Normalize selected Smart Filter values while preserving exact-token semantics. */
+export function normalizePortalCatalogAlgoliaSmartFilterValues(
+  attribute: PortalCatalogAlgoliaSmartFacetAttribute,
+  values: readonly string[] | undefined,
+  maxItems = 2000,
+): string[] {
+  if (attribute === 'subjects') {
+    return normalizePortalCatalogAlgoliaSubjectList(values, maxItems) ?? [];
+  }
+  return normalizePortalCatalogAlgoliaStringList(values, maxItems) ?? [];
+}
+
+/** Build cumulative Algolia facet groups: every selected value and dimension is ANDed. */
+export function buildPortalCatalogAlgoliaSmartFacetFilters(
+  smartFilters?: PortalCatalogAlgoliaSmartFilterSelections,
+): string[][] {
+  if (!smartFilters) return [];
+  const groups: string[][] = [];
+  for (const attribute of PORTAL_CATALOG_ALGOLIA_SMART_FACET_ATTRIBUTES) {
+    const values = normalizePortalCatalogAlgoliaSmartFilterValues(attribute, smartFilters[attribute]);
+    if (values.length > 0) {
+      for (const value of values) {
+        groups.push([`${attribute}:${value}`]);
+      }
+    }
+  }
+  return groups;
+}
+
 /**
  * Project only search/facet-relevant Smart Profile fields for change classification.
  * Provenance automation/shadow fields are ignored so they do not thrash Algolia.
@@ -144,7 +196,7 @@ export function projectSmartProfileForAlgoliaIndex(smartProfile: unknown): Recor
       : undefined;
 
   const projected: Record<string, unknown> = {
-    subjects: normalizePortalCatalogAlgoliaStringList(profile.subjects) ?? null,
+    subjects: normalizePortalCatalogAlgoliaSubjectList(profile.subjects) ?? null,
     objects: normalizePortalCatalogAlgoliaStringList(profile.objects) ?? null,
     styles: normalizePortalCatalogAlgoliaStringList(profile.styles) ?? null,
     themes: normalizePortalCatalogAlgoliaStringList(profile.themes) ?? null,

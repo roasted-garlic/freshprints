@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  describeStaffArtworkActiveShowBlockNotice,
   describeStaffArtworkDeletionBlockers,
   resolveStaffArtworkDeletionBlockers,
 } from "./staffArtworkDeletionEligibility";
@@ -83,6 +84,17 @@ describe("resolveStaffArtworkDeletionBlockers", () => {
     assert.match(
       describeStaffArtworkDeletionBlockers(["print_request_item"]),
       /completed show or internal sheet/,
+    );
+  });
+
+  it("uses short active-show copy for AI promotion notices", () => {
+    assert.match(
+      describeStaffArtworkActiveShowBlockNotice(["show_allocation"]),
+      /Still on an active show or print request/,
+    );
+    assert.match(
+      describeStaffArtworkActiveShowBlockNotice(["print_request_item", "gang_sheet_item"]),
+      /sending to AI Review/,
     );
   });
 });

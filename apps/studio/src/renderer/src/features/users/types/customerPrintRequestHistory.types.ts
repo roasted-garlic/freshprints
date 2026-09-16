@@ -53,6 +53,10 @@ export interface PrintRequestHistoryCardSummary {
   lastLifecycleActivityPrecedence: number;
   lastLifecycleActivityEventId: string;
   itemCount: number;
+  /** Live source-aware full-request design count. */
+  uniqueDesignCount: number;
+  /** Live full-request print quantity. */
+  totalQuantity: number;
   showContext?: PrintRequestHistoryShowContext;
   /** Canceled source show when the request was requeued after Did Not Print. */
   missedShowContext?: PrintRequestHistoryShowContext;

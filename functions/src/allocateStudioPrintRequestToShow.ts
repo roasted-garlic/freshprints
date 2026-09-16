@@ -26,6 +26,11 @@ export interface AllocateStudioPrintRequestToShowLeg {
 export interface AllocateStudioPrintRequestToShowRequest {
   printRequestId: string;
   legs: AllocateStudioPrintRequestToShowLeg[];
+  /**
+   * Explicit staff confirmation to exceed show `maxTotalQuantity` only.
+   * Only boolean `true` is accepted; omit/false preserves the capacity ceiling.
+   */
+  overrideShowCapacity?: boolean;
 }
 
 export interface AllocateStudioPrintRequestToShowResponse {
@@ -108,7 +113,18 @@ export function parseAllocateStudioPrintRequestToShowRequest(
     return { upcomingShowId, quantitiesByItemId };
   });
 
-  return { printRequestId, legs };
+  const overrideShowCapacity = resolveOverrideShowCapacity(input.overrideShowCapacity);
+
+  return {
+    printRequestId,
+    legs,
+    ...(overrideShowCapacity ? { overrideShowCapacity: true } : {}),
+  };
+}
+
+/** Only literal boolean `true` enables capacity override; everything else is false. */
+export function resolveOverrideShowCapacity(value: unknown): boolean {
+  return value === true;
 }
 
 function readItemLines(
@@ -359,6 +375,7 @@ export const allocateStudioPrintRequestToShow = onCall(
             }),
             showId,
           );
+          const overrideShowCapacity = payload.overrideShowCapacity === true;
           const blockReason = getShowAllocationBlockReason(
             {
               scheduledStartAt: showData.scheduledStartAt,
@@ -367,11 +384,16 @@ export const allocateStudioPrintRequestToShow = onCall(
               allocatedQuantity: currentAllocated,
             },
             now,
+            { allowCapacityFullOverride: overrideShowCapacity },
           );
           if (blockReason) {
             throw failedPrecondition(formatShowAllocationBlockedMessage(blockReason));
           }
-          if (showCapacity !== undefined && currentAllocated + requestedOnShow > showCapacity) {
+          if (
+            !overrideShowCapacity &&
+            showCapacity !== undefined &&
+            currentAllocated + requestedOnShow > showCapacity
+          ) {
             throw failedPrecondition("This show does not have enough remaining capacity.");
           }
           addedByShowId.set(showId, requestedOnShow);
@@ -412,6 +434,7 @@ export const allocateStudioPrintRequestToShow = onCall(
                 printHeightInches: item.printHeightInches,
                 sizeLabel: item.sizeLabel,
                 status: "pending",
+                ...(payload.overrideShowCapacity === true ? { showCapacityOverride: true } : {}),
                 addedBy: caller.id,
                 updatedBy: caller.id,
                 createdAt: timestamp,

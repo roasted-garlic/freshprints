@@ -1082,6 +1082,10 @@ Adjust quantity and requested size in the request detail item UI; edits autosave
   thumbnails open an enlarged preview lightbox using `previewPath` when present, otherwise
   `thumbnailPath`. Missing or unavailable images keep the fallback thumbnail state and do not open a
   broken preview.
+* Request-facing Designs and Items labels are live summaries over current `printRequestItems`:
+  distinct source-aware artwork identities and the sum of finite, non-negative item quantities.
+  Persisted `itemCount` is not authoritative for display. Duplicate rows for the same artwork count
+  once as Designs and retain all row quantities as Items.
 * Catalog design print dimensions and image files are not mutated when a design is added to a
   Print Request or when a request item is resized.
 * Same-design items with different requested sizes persist as separate `printRequestItems`.
@@ -1112,6 +1116,24 @@ Export and generation use the request item's saved quantity, print inches, sourc
 `artworkEnhanceMode`; missing source, dimensions, active pixel dimensions, enhanced derivative, or
 Storage access fails before Electron processing. Request filenames use the immutable CR/IR request
 name, not `whatnot_<date>`.
+
+Each request item also has a read-only **Download** action for Working, Editing, Queued, Printing,
+and Printed detail when its saved requested width/height and source identity are valid. It resolves
+one catalog, customer-upload, or Staff Artwork production asset through the same source-aware
+resolver, computes the fixed 300-DPI target from the saved `printWidthInches` and
+`printHeightInches`, and saves exactly one PNG. Quantity is not multiplied; no ZIP, gang sheet,
+cache, allocation, status, production-history, or request mutation occurs. The action is disabled
+while the item size draft is dirty, invalid, saving, or failed. Enhanced mode fails closed when its
+required derivative is unavailable, and download/resize/write failures are shown as bounded item
+errors; an upscale warning is non-fatal. Filename segments use the item/design title, saved size,
+and an `item-` identity without allocation or ZIP sequence labels.
+
+In Studio Uploaded Designs and Donated Designs, the existing lightbox keeps Previous/Next,
+ArrowLeft/ArrowRight, Escape, visible controls, position text, loaded previewable ordering, and
+no-wrap boundaries. ArrowUp invokes Previous and ArrowDown invokes Next through the same callbacks.
+The existing editable-target guard protects inputs, textareas, selects, contenteditable/textbox/
+spinbutton controls. Donated Designs continues to use `purposeScope="catalog_donation"`; no
+auto-load-more or Portal lightbox behavior is introduced.
 
 Request gang sheets expose Standard efficiency mode only. Generated PNGs are cached locally under
 an isolated `print-request:<requestId>` scope and include the human-readable request name in the
@@ -1235,14 +1257,40 @@ quantities are local component state until staff click its confirm button.
 
 Removing a Print Request from a show requires a two-step confirm (Remove, then Cancel/Confirm),
 matching the existing Print Request item removal pattern. Confirming calls
-`removeShowAllocationsForRequest()`, which deletes every allocation belonging to that request from
-that show in one operation and then recomputes the show's `allocatedQuantity` from what remains
-(`recalculateShowAllocatedQuantity()`) — it never subtracts a remembered total, so the show's capacity
-display cannot drift out of sync with its actual allocation records. If the show was only over capacity
-because of the removed request, the over-capacity state clears immediately. Removal (and any other
-allocation edit) is blocked once the show's `productionStatus` is `printing`, `fully_printed`,
-`completed`, or `archived` — see `shared/utils/showQueueEditability.ts`'s `canRemoveRequestFromShow()`;
-beyond that point an admin correction path is required.
+`removeShowAllocationsForRequest()` → staff callable `unqueueStudioCustomerPrintRequestFromShow`,
+which **cancels** every non-canceled allocation for that request on that show (retaining the rows as
+`status: "canceled"` with audit timestamps — same history trail as Portal customer unqueue) and then
+recomputes the show's `allocatedQuantity` from non-canceled allocations
+(`recalculateShowAllocatedQuantity()` / `computeShowAllocatedQuantityFromAllocations`) — it never
+subtracts a remembered total, so the show's capacity display cannot drift out of sync with its
+actual allocation records. Canceled rows remain visible on Show Queue as history-only when no
+active allocations remain for that request on the show; they never inflate Designs, Items, tiers,
+price, or personal/show capacity counters. If the show was only over capacity because of the removed
+request, the over-capacity state clears immediately. Removal (and any other allocation edit) is
+blocked once the show's `productionStatus` is `printing`, `fully_printed`, `completed`, or
+`archived` — see `shared/utils/showQueueEditability.ts`'s `canRemoveRequestFromShow()`; beyond that
+point an admin correction path is required.
+
+Show Queue glance counters follow the same non-canceled allocation scope as tier counts and pricing.
+Distinct Designs use the source-aware identity (`design:`, `upload:`, `staff-artwork:`, or the item
+fallback namespace), while Items sums finite, non-negative `allocatedQuantity` values. Canceled rows
+remain available for history and requeue/move lineage but never inflate current counters. A
+canceled-only request/show group is explicitly history-only for current counter and price display.
+
+## Selected Print Request live sync (Studio ↔ Portal)
+
+When a Print Request is **selected in Studio** or **open on Portal detail**, request-scoped Firestore
+listeners keep that document (and its items / allocations as needed) fresh across apps without a
+full page refresh. Listeners attach only for the open/selected id and detach on navigation or
+selection change — not collection-wide for all customers or all shows. Working Portal carts already
+use item listeners; detail pages additionally live-subscribe the request document and, when not
+driven by the Working cart, the items query, plus allocations for unallocated/show chrome.
+
+Portal detail header design/print counts prefer the open page's live `items` summary over any
+stale list-cache `summariesByRequestId` entry. Item cards on both apps apply remote snapshots only
+when the local draft is clean (no debounce / in-flight / queued save and signature matches last
+saved); otherwise remote wins only after the local edit settles
+(`shared/utils/printRequestItemPropSyncGuard.ts`).
 
 ## Show Queue capacity defaults
 

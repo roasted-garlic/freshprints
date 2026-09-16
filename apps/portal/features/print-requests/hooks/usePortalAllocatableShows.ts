@@ -8,6 +8,7 @@ import { portalShowSelectionService } from '../services/portalShowSelectionServi
 import {
   getPortalAllocatableShowsDefaultCutoffHours,
   getPortalAllocatableShowsSessionDefaults,
+  registerPortalAllocatableShowsSessionCacheClearer,
 } from '../services/portalAllocatableShowsReadCache';
 
 /** Keep last successful list warm across modal open/close in the same session. */
@@ -16,6 +17,14 @@ let sessionCachedShows: PortalAllocatableShow[] | null =
 let sessionCachedCutoffHours = getPortalAllocatableShowsDefaultCutoffHours();
 let sessionCacheAtMs = sessionCachedShows ? Date.now() : 0;
 const SESSION_CACHE_TTL_MS = 60_000;
+
+function clearPortalAllocatableShowsSessionCache(): void {
+  sessionCachedShows = null;
+  sessionCachedCutoffHours = getPortalAllocatableShowsDefaultCutoffHours();
+  sessionCacheAtMs = 0;
+}
+
+registerPortalAllocatableShowsSessionCacheClearer(clearPortalAllocatableShowsSessionCache);
 
 export function usePortalAllocatableShows(enabled: boolean) {
   const [shows, setShows] = useState<PortalAllocatableShow[]>(() => sessionCachedShows ?? []);

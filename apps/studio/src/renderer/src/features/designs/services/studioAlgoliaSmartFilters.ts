@@ -1,5 +1,7 @@
 import {
+  buildPortalCatalogAlgoliaSmartFacetFilters,
   PORTAL_CATALOG_ALGOLIA_SMART_FACET_ATTRIBUTES,
+  normalizePortalCatalogAlgoliaSmartFilterValues,
   type PortalCatalogAlgoliaSmartFacetAttribute,
 } from "@fresh-prints/shared/catalog-search/portalCatalogAlgoliaRecord";
 
@@ -13,6 +15,25 @@ export type StudioAlgoliaSmartFilters = Partial<
 export interface StudioAlgoliaSmartFacetOption {
   value: string;
   count: number;
+}
+
+export function buildStudioSmartFacetDisplayOptions(args: {
+  distribution: StudioAlgoliaSmartFacetOption[];
+  searchQuery?: string;
+  selectedValues?: readonly string[];
+}): Array<StudioAlgoliaSmartFacetOption & { isSelected: boolean }> {
+  const selected = new Set(normalizeStudioAlgoliaSmartFilterValues(args.selectedValues ?? []));
+  const query = args.searchQuery?.trim().toLowerCase() ?? "";
+  const candidates = args.distribution
+    .filter((option) => !query || option.value.toLowerCase().includes(query))
+    .map((option) => ({ ...option }));
+  const visible = new Set(candidates.map((option) => option.value));
+  for (const value of selected) {
+    if (!visible.has(value) && (!query || value.includes(query))) {
+      candidates.push({ value, count: 0 });
+    }
+  }
+  return candidates.map((option) => ({ ...option, isSelected: selected.has(option.value) }));
 }
 
 export const STUDIO_SMART_FILTER_DIMENSIONS: ReadonlyArray<{
@@ -39,6 +60,13 @@ export function normalizeStudioAlgoliaSmartFilterValues(values: readonly string[
   );
 }
 
+export function normalizeStudioAlgoliaSmartFilterValuesForAttribute(
+  attribute: PortalCatalogAlgoliaSmartFacetAttribute,
+  values: readonly string[],
+): string[] {
+  return normalizePortalCatalogAlgoliaSmartFilterValues(attribute, values);
+}
+
 export function hasStudioAlgoliaSmartFilterSelections(
   smartFilters: StudioAlgoliaSmartFilters | undefined,
 ): boolean {
@@ -54,7 +82,10 @@ export function countStudioAlgoliaSmartFilterSelections(
   if (!smartFilters) return 0;
   let total = 0;
   for (const attribute of PORTAL_CATALOG_ALGOLIA_SMART_FACET_ATTRIBUTES) {
-    total += normalizeStudioAlgoliaSmartFilterValues(smartFilters[attribute] ?? []).length;
+    total += normalizeStudioAlgoliaSmartFilterValuesForAttribute(
+      attribute,
+      smartFilters[attribute] ?? [],
+    ).length;
   }
   return total;
 }
@@ -65,35 +96,40 @@ export function serializeStudioAlgoliaSmartFilters(
 ): string {
   if (!smartFilters) return "";
   return PORTAL_CATALOG_ALGOLIA_SMART_FACET_ATTRIBUTES.map((attribute) => {
-    const values = normalizeStudioAlgoliaSmartFilterValues(smartFilters[attribute] ?? []);
+    const values = normalizeStudioAlgoliaSmartFilterValuesForAttribute(
+      attribute,
+      smartFilters[attribute] ?? [],
+    ).sort((left, right) => left.localeCompare(right));
     return `${attribute}=${values.join("\u0001")}`;
   }).join("\u0000");
 }
 
 /**
- * Algolia facetFilters AND groups for Smart dimensions.
- * Within a dimension every selected value is required (AND).
+ * Algolia facet filter groups for Smart dimensions.
+ * Within a dimension selected values are cumulative (AND); dimensions remain AND.
  * Objects / searchConcepts / visibleText are never faceted here.
  */
 export function buildStudioAlgoliaSmartFacetFilters(
   smartFilters: StudioAlgoliaSmartFilters | undefined,
 ): string[][] {
-  if (!smartFilters) return [];
-  const filters: string[][] = [];
-  for (const attribute of PORTAL_CATALOG_ALGOLIA_SMART_FACET_ATTRIBUTES) {
-    for (const value of normalizeStudioAlgoliaSmartFilterValues(smartFilters[attribute] ?? [])) {
-      filters.push([`${attribute}:${value}`]);
-    }
-  }
-  return filters;
+  return buildPortalCatalogAlgoliaSmartFacetFilters(smartFilters);
 }
 
 export function mergeStudioAlgoliaSmartFacetDistribution(
   distribution: Record<string, number> | undefined,
+  attribute?: PortalCatalogAlgoliaSmartFacetAttribute,
 ): StudioAlgoliaSmartFacetOption[] {
   if (!distribution) return [];
-  return Object.entries(distribution)
-    .filter(([, count]) => count > 0)
+  const merged = new Map<string, number>();
+  for (const [value, count] of Object.entries(distribution)) {
+    if (count <= 0) continue;
+    const canonical = attribute
+      ? normalizeStudioAlgoliaSmartFilterValuesForAttribute(attribute, [value])[0]
+      : value;
+    if (!canonical) continue;
+    merged.set(canonical, (merged.get(canonical) ?? 0) + count);
+  }
+  return [...merged.entries()]
     .map(([value, count]) => ({ value, count }))
     .sort((left, right) => left.value.localeCompare(right.value));
 }
@@ -107,9 +143,15 @@ export function designMatchesSmartFilters(
   }
   const profile = design.smartProfile;
   for (const attribute of PORTAL_CATALOG_ALGOLIA_SMART_FACET_ATTRIBUTES) {
-    const selected = normalizeStudioAlgoliaSmartFilterValues(smartFilters?.[attribute] ?? []);
+    const selected = normalizeStudioAlgoliaSmartFilterValuesForAttribute(
+      attribute,
+      smartFilters?.[attribute] ?? [],
+    );
     if (selected.length === 0) continue;
-    const values = profile?.[attribute] ?? [];
+    const values = normalizeStudioAlgoliaSmartFilterValuesForAttribute(
+      attribute,
+      profile?.[attribute] ?? [],
+    );
     if (!selected.every((value) => values.includes(value))) {
       return false;
     }
@@ -126,7 +168,8 @@ export function listActiveStudioSmartFilterChips(
     value: string;
   }> = [];
   for (const dimension of STUDIO_SMART_FILTER_DIMENSIONS) {
-    for (const value of normalizeStudioAlgoliaSmartFilterValues(
+    for (const value of normalizeStudioAlgoliaSmartFilterValuesForAttribute(
+      dimension.attribute,
       smartFilters[dimension.attribute] ?? [],
     )) {
       chips.push({

@@ -281,6 +281,20 @@ service cloud.firestore {
         || data[field] in ["import_override", "import_halftone_default", "code_auto", "staff_manual"];
     }
 
+    function isOptionalCatalogTitleSource(data, field) {
+      return !(field in data)
+        || data[field] == null
+        || data[field] in ["staff", "trusted_import", "import_filename", "ai_generated", "legacy_unknown"];
+    }
+
+    // AI/legacy provenance is server-owned. Client design writes may establish only staff or
+    // import provenance through the existing create/edit services.
+    function isClientCatalogTitleSource(data, field) {
+      return !(field in data)
+        || data[field] == null
+        || data[field] in ["staff", "trusted_import", "import_filename"];
+    }
+
     function isOptionalTimestamp(data, field) {
       return !(field in data) || data[field] == null || data[field] is timestamp;
     }
@@ -395,9 +409,14 @@ service cloud.firestore {
     // omitting it forced the full validator and reintroduced permission-denied on enrichment-heavy rows.
     function catalogMetadataOnlyUpdate() {
       return request.resource.data.status == resource.data.status
+        && (!("catalogTitleSource" in request.resource.data)
+          || request.resource.data.catalogTitleSource == "staff"
+          || (("catalogTitleSource" in resource.data)
+            && request.resource.data.catalogTitleSource == resource.data.catalogTitleSource))
         && request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly([
             "title",
+            "catalogTitleSource",
             "description",
             "categoryId",
             "tags",
@@ -422,11 +441,14 @@ service cloud.firestore {
         && request.resource.data.title is string
         && request.resource.data.title.size() > 0
         && request.resource.data.title.size() <= 200
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(["title"])
+          || request.resource.data.catalogTitleSource == "staff")
         && request.resource.data.tags is list
         && isOptionalString(request.resource.data, "description")
         && isOptionalString(request.resource.data, "categoryId")
         && isOptionalString(request.resource.data, "artworkBackgroundHex")
         && isOptionalArtworkBackgroundSource(request.resource.data, "artworkBackgroundSource")
+        && isOptionalCatalogTitleSource(request.resource.data, "catalogTitleSource")
         && isOptionalString(request.resource.data, "artworkPlacement")
         && isOptionalBool(request.resource.data, "isExplicitContent")
         && isOptionalCensoredTermsList(request.resource.data, "censoredTerms")
@@ -682,6 +704,7 @@ service cloud.firestore {
         && isOptionalMap(data, "aiAnalysis")
         && isOptionalMap(data, "smartProfile")
         && isOptionalMap(data, "smartProfileImportPresets")
+        && isOptionalCatalogTitleSource(data, "catalogTitleSource")
         && isOptionalString(data, "importBatchId")
         && isOptionalString(data, "importSourceFileName")
         && isOptionalString(data, "importRelativePath")
@@ -1765,6 +1788,7 @@ service cloud.firestore {
 
       allow create: if isStaff()
         && designRequiredFieldsValid(request.resource.data)
+        && isClientCatalogTitleSource(request.resource.data, "catalogTitleSource")
         && request.resource.data.id == designId
         && request.resource.data.uploadedBy == request.auth.uid
         && request.resource.data.createdBy == request.auth.uid
@@ -1791,6 +1815,9 @@ service cloud.firestore {
         || catalogApprovalStatusOnlyUpdate()
         || (
           designRequiredFieldsValid(request.resource.data)
+          && isClientCatalogTitleSource(request.resource.data, "catalogTitleSource")
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(["title"])
+            || request.resource.data.catalogTitleSource == "staff")
           && request.resource.data.id == designId
           && request.resource.data.id == resource.data.id
           && request.resource.data.uploadedBy == resource.data.uploadedBy
@@ -2738,6 +2765,12 @@ service cloud.firestore {
     // Private runtime Portal maintenance state. All writes go through the owner/admin callable;
     // customer clients never receive this document directly.
     match /settings/portalMaintenance {
+      allow read: if isOwnerOrAdmin();
+      allow write: if false;
+    }
+
+    // DEV Portal customer email allowlist. Writes via updatePortalDevCustomerAccessSettings only.
+    match /settings/portalDevCustomerAccess {
       allow read: if isOwnerOrAdmin();
       allow write: if false;
     }

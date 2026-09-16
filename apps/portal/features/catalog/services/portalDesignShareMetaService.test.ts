@@ -24,7 +24,12 @@ describe('buildPortalDesignShareMetadata', () => {
       meta.alternates?.canonical,
       'https://myprintrequest.dev/share/design/design1',
     )
-    assert.deepEqual(meta.robots, { index: false, follow: true })
+    assert.deepEqual(meta.robots, {
+      index: false,
+      follow: false,
+      noarchive: true,
+      nosnippet: true,
+    })
     const images =
       meta.openGraph && 'images' in meta.openGraph ? meta.openGraph.images : undefined
     const first = Array.isArray(images) ? images[0] : images
@@ -47,7 +52,12 @@ describe('buildPortalDesignShareMetadata', () => {
     const meta = buildPortalDesignShareMetadata('missing', null, {
       NEXT_PUBLIC_PORTAL_ORIGIN: 'https://myprintrequest.com',
     })
-    assert.deepEqual(meta.robots, { index: false, follow: false })
+    assert.deepEqual(meta.robots, {
+      index: false,
+      follow: false,
+      noarchive: true,
+      nosnippet: true,
+    })
   })
 })
 

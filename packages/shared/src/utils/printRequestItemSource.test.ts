@@ -5,6 +5,7 @@ import {
   isCatalogDesignPrintRequestItem,
   isCustomerUploadPrintRequestItem,
   resolvePrintRequestItemSourcePill,
+  resolvePrintRequestItemIdentity,
   resolvePrintRequestItemSourceType,
   shouldIncrementDesignRequestCount,
 } from "./printRequestItemSource";
@@ -72,6 +73,49 @@ describe("printRequestItemSource", () => {
     assert.equal(resolvePrintRequestItemSourceType(source), "catalog_design");
     assert.equal(isCatalogDesignPrintRequestItem(source), true);
     assert.equal(shouldIncrementDesignRequestCount(source), true);
+  });
+
+  it("uses namespaced source identities and preserves explicit source precedence", () => {
+    assert.equal(
+      resolvePrintRequestItemIdentity({
+        id: "catalog-row",
+        sourceType: "catalog_design",
+        designId: "same-id",
+        customerUploadId: "ignored-upload",
+      }),
+      "design:same-id",
+    );
+    assert.equal(
+      resolvePrintRequestItemIdentity({
+        id: "upload-row",
+        sourceType: "customer_upload",
+        customerUploadId: "same-id",
+        designId: "ignored-design",
+      }),
+      "upload:same-id",
+    );
+    assert.equal(
+      resolvePrintRequestItemIdentity({
+        id: "staff-row",
+        sourceType: "staff_artwork",
+        staffArtworkId: "same-id",
+      }),
+      "staff-artwork:same-id",
+    );
+    assert.equal(
+      resolvePrintRequestItemIdentity({
+        id: "legacy-staff-row",
+        staffArtworkId: "staff-1",
+      }),
+      "staff-artwork:staff-1",
+    );
+    assert.equal(
+      resolvePrintRequestItemIdentity({
+        id: "malformed-row",
+        sourceType: "customer_upload",
+      }),
+      "item:malformed-row",
+    );
   });
 
   it("resolves source pills for library, upload, and custom assisted flows", () => {

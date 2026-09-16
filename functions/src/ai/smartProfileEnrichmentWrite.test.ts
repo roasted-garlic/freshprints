@@ -76,7 +76,7 @@ describe("mergeReadyBackfillSmartProfile", () => {
       },
       importPresets: { subjects: ["Dolly Parton"], places: ["Pensacola, FL"] },
     });
-    assert.deepEqual(merged.smartProfile.subjects, ["Dolly Parton"]);
+    assert.deepEqual(merged.smartProfile.subjects, ["dolly parton"]);
     assert.deepEqual(merged.smartProfile.places, ["Pensacola, FL"]);
     assert.deepEqual(merged.smartProfile.styles, ["retro"]);
     assert.deepEqual(merged.smartProfile.provenance.importPresetDimensionKeys, [
@@ -130,5 +130,10 @@ describe("buildSmartProfileWithHumanAuthorityOnly", () => {
     });
 
     assert.equal(profile?.subjects, undefined);
+  });
+
+  it("canonicalizes Subject casing in the persisted AI snapshot", () => {
+    const snapshot = buildSmartProfileAiSnapshot({ subjects: ["Highland Cow", "highland cow"] });
+    assert.deepEqual(snapshot?.subjects, ["highland cow"]);
   });
 });

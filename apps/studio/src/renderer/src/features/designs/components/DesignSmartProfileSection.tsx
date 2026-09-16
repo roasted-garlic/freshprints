@@ -7,6 +7,7 @@ import {
   type SmartProfileEditableDimensionKey,
 } from "@fresh-prints/shared/constants/smartProfile.constants";
 import type { DesignSmartProfile, SmartProfileDimensionLists } from "@fresh-prints/shared/types/catalog/smartProfile.types";
+import { normalizeSmartProfileSubjectList } from "@fresh-prints/shared/utils/smartProfileNormalization";
 import { resolveSmartProfilePipelineStatus } from "@fresh-prints/shared/utils/resolveSmartProfilePipelineStatus";
 
 import { Badge } from "../../../shared/components/Badge";
@@ -76,10 +77,11 @@ function buildDimensionFormState(
 ): Record<SmartProfileEditableDimensionKey, string> {
   const state = {} as Record<SmartProfileEditableDimensionKey, string>;
   for (const key of SMART_PROFILE_EDITABLE_DIMENSION_KEYS) {
+    const values = key === "subjects" ? normalizeSmartProfileSubjectList(profile[key]) : profile[key];
     state[key] =
       key === "visibleText"
-        ? visibleTextToFormInput(profile[key])
-        : dimensionValuesToInput(profile[key]);
+        ? visibleTextToFormInput(values)
+        : dimensionValuesToInput(values);
   }
   return state;
 }

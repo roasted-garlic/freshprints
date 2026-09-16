@@ -148,7 +148,6 @@ export const reprocessReadyDesignWithAi = onCall(
           typeof after.aiReviewStatus === "string" ? after.aiReviewStatus : null,
         aiProcessingStage:
           typeof after.aiProcessingStage === "string" ? after.aiProcessingStage : null,
-        readyAtPreserved: after.readyAt != null,
         autoStarted: false as const,
       };
     }
@@ -186,7 +185,6 @@ export const reprocessReadyDesignWithAi = onCall(
       status: after.status ?? "imported",
       aiReviewStatus: after.aiReviewStatus ?? null,
       aiProcessingStage: after.aiProcessingStage ?? null,
-      readyAtPreserved: after.readyAt != null,
       autoStarted: true as const,
     };
   },

@@ -9,6 +9,7 @@ import {
 import type { CatalogDesign } from '../types/catalog.types';
 import {
   allowsBoundedCatalogFirestoreFallback,
+  allowsExactIdCatalogFallback,
   appendCatalogDesignPageWithoutDuplicates,
   buildDiscoverSearchPlaceholder,
   buildServerListQuery,
@@ -83,6 +84,18 @@ test('keeps search and Smart Filters off the ordinary Firestore path', () => {
     allowsBoundedCatalogFirestoreFallback({ smartFilters: { subjects: ['cow'] } }),
     false,
   );
+  assert.equal(
+    allowsBoundedCatalogFirestoreFallback({
+      halftoneFilterOn: true,
+      smartFilters: { subjects: ['cow'] },
+    }),
+    false,
+  );
+});
+
+test('fails closed for exact-ID fallback when Smart Filters are selected', () => {
+  assert.equal(allowsExactIdCatalogFallback({}), true);
+  assert.equal(allowsExactIdCatalogFallback({ smartFilters: { subjects: ['cow'] } }), false);
 });
 
 test('Discover new uses readyAt sort and readyAfterMs membership window', () => {

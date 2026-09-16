@@ -52,7 +52,7 @@ describe("assertReadyDesignEligibleForOwnerAiReprocess", () => {
 });
 
 describe("buildOwnerReadyAiReprocessDemotionUpdate", () => {
-  it("demotes lifecycle and clears AI blobs without touching preserved keys", () => {
+  it("demotes to the normal imported/pending lifecycle and clears AI blobs", () => {
     const update = buildOwnerReadyAiReprocessDemotionUpdate({
       callerUid: "owner-1",
       attemptId: "attempt-ready",
@@ -61,6 +61,7 @@ describe("buildOwnerReadyAiReprocessDemotionUpdate", () => {
 
     assert.equal(update.status, "imported");
     assert.equal(update.aiReviewStatus, "pending");
+    assert.equal(typeof update.aiReprocessState, "object");
     assert.equal(update.aiProcessingStage, "queued");
     assert.equal(update.lastOwnerAiReprocessBy, "owner-1");
     assert.equal(update.aiProcessingAttemptId, "attempt-ready");
@@ -69,6 +70,7 @@ describe("buildOwnerReadyAiReprocessDemotionUpdate", () => {
     assert.equal(Object.prototype.hasOwnProperty.call(update, "aiReviewNotes"), false);
     assert.equal(Object.prototype.hasOwnProperty.call(update, "aiReviewedBy"), false);
     assert.equal(Object.prototype.hasOwnProperty.call(update, "aiReviewedAt"), false);
+    assert.equal(Object.prototype.hasOwnProperty.call(update, "catalogTitleSource"), false);
 
     for (const key of OWNER_READY_AI_REPROCESS_PRESERVED_FIELD_KEYS) {
       assert.equal(
@@ -89,6 +91,7 @@ describe("buildOwnerReadyAiReprocessDemotionUpdate", () => {
 
     assert.equal(update.status, "imported");
     assert.equal(update.aiReviewStatus, "pending");
+    assert.equal(typeof update.aiReprocessState, "object");
     assert.notEqual(update.aiProcessingStage, "queued");
     // FieldValue.delete() sentinel — not a string stage
     assert.equal(typeof update.aiProcessingStage, "object");

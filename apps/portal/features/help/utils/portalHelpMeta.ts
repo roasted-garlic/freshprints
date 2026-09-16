@@ -1,6 +1,10 @@
 import type { Metadata } from 'next'
 
-import { isPortalSearchIndexingEnabled } from '../../brand/portalSearchIndexing'
+import {
+  buildPortalDisabledIndexingRobots,
+  buildPortalEnabledIndexingRobots,
+  isPortalSearchIndexingEnabled,
+} from '../../brand/portalSearchIndexing'
 import {
   buildPortalPageMetadata,
   getPortalSiteOrigin,
@@ -35,7 +39,7 @@ export function buildPortalHelpPageMetadata(input?: {
     }),
     alternates: { canonical: pageUrl },
     robots: indexingEnabled
-      ? { index: true, follow: true }
-      : { index: false, follow: true },
+      ? buildPortalEnabledIndexingRobots()
+      : buildPortalDisabledIndexingRobots(),
   }
 }

@@ -193,6 +193,8 @@ export interface CompleteStaffGangSheetResult {
   nextShowId: string;
   nextCycleNumber: number;
   alreadyCompleted: boolean;
+  /** Present on current callables; empty/absent on older deploys. */
+  reconciledPrintRequestIds?: string[];
 }
 
 export interface UpdateUpcomingShowInput {
@@ -222,7 +224,7 @@ export interface AllocatePrintRequestItemInput {
   printRequestItemId: string;
   /** Defaults to the full remaining source item quantity when omitted. */
   quantity?: number;
-  /** Staff-only danger override to exceed remaining show capacity. */
+  /** @deprecated Dormant client path — live override is `overrideShowCapacity` on allocateStudioPrintRequestToShow. */
   overrideCapacity?: boolean;
 }
 
@@ -234,6 +236,8 @@ export interface AllocateStudioPrintRequestToShowLeg {
 export interface AllocateStudioPrintRequestToShowInput {
   printRequestId: string;
   legs: AllocateStudioPrintRequestToShowLeg[];
+  /** Explicit staff confirm to exceed show maxTotalQuantity; only `true` is sent to the callable. */
+  overrideShowCapacity?: boolean;
 }
 
 export interface AllocateStudioPrintRequestToShowResult {
@@ -1114,10 +1118,20 @@ export const upcomingShowService = {
     }
 
     try {
-      return await callTracedFunction<{ upcomingShowId: string }, CompleteStaffGangSheetResult>(
+      const result = await callTracedFunction<{ upcomingShowId: string }, CompleteStaffGangSheetResult>(
         "completeStaffGangSheetAndOpenNext",
         { source: "upcomingShowService.completeStaffGangSheetAndOpenNext" },
       )({ upcomingShowId });
+
+      // Belt-and-suspenders with server recompute + triggers (parity with Whatnot Finish sync).
+      for (const printRequestId of result.reconciledPrintRequestIds ?? []) {
+        await this.syncPrintRequestQueueTabBestEffort(
+          printRequestId,
+          "upcomingShowService.completeStaffGangSheetAndOpenNext",
+        );
+      }
+
+      return result;
     } catch (error) {
       if (error instanceof Error && error.message.trim()) {
         throw error;
@@ -1453,9 +1467,10 @@ export const upcomingShowService = {
 
   /**
    * Allocates some or all of a Print Request item's quantity to a show. When `quantity` is
-   * omitted, allocates the item's full remaining unallocated quantity. Exceeding the show's
-   * remaining capacity is blocked unless `overrideCapacity` is set (a staff-only danger action);
-   * the model supports the same item being allocated across multiple shows via separate
+   * omitted, allocates the item's full remaining unallocated quantity. This legacy client writer
+   * always enforces capacity (dormant `overrideCapacity` is not wired). Prefer
+   * `allocateStudioPrintRequestToShow` with optional `overrideShowCapacity: true` for Studio Add-to-Show.
+   * The model supports the same item being allocated across multiple shows via separate
    * `showAllocations` records, so a Print Request can be split without any change to
    * `printRequestItems`, `printRequests`, or `designs`.
    */
@@ -1637,7 +1652,11 @@ export const upcomingShowService = {
     >("allocateStudioPrintRequestToShow", {
       source: "upcomingShowService.allocateStudioPrintRequestToShow",
     });
-    return callable(input);
+    return callable({
+      printRequestId: input.printRequestId,
+      legs: input.legs,
+      ...(input.overrideShowCapacity === true ? { overrideShowCapacity: true } : {}),
+    });
   },
 
   async updateShowAllocationStatus(

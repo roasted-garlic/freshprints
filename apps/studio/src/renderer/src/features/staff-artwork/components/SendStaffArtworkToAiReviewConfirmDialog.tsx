@@ -60,8 +60,9 @@ export function SendStaffArtworkToAiReviewConfirmDialog({
             this Staff Artwork library.
           </p>
           <p className="design-details-muted">
-            Catalog publication still requires normal AI Review approval. You cannot send artwork that
-            is already on a print request, show allocation, or gang sheet.
+            Catalog publication still requires normal AI Review approval. Artwork still attached to
+            an active show or print request cannot be sent until it is removed or that show is
+            completed.
           </p>
           {error ? (
             <p className="auth-message auth-message-error" role="alert">

@@ -41,7 +41,11 @@ export function resolveManagedSearchClientFilters(options: {
   halftoneFilterOn: boolean;
 } {
   if (options.isManagedSearchQuery) {
-    return { search: '', categoryId: undefined, halftoneFilterOn: false };
+    return {
+      search: '',
+      categoryId: undefined,
+      halftoneFilterOn: options.halftoneFilterOn === true,
+    };
   }
   return {
     search: options.searchQuery?.trim() ? (options.searchQuery ?? '') : '',

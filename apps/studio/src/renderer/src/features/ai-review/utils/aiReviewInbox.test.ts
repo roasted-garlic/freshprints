@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { buildAiReviewInboxListQuery, getAiReviewEmptyState } from "../constants/aiReviewInboxConstants";
+import {
+  buildAiReviewInboxListQuery,
+  getAiReviewEmptyState,
+} from "../constants/aiReviewInboxConstants";
 import {
   createAiReviewDraftFromDesign,
   isAiReviewDraftDirty,
@@ -82,6 +85,7 @@ describe("buildAiReviewInboxListQuery", () => {
     assert.equal(query.status, "rejected");
     assert.equal(query.aiReviewStatus, undefined);
   });
+
 });
 
 describe("getAiReviewEmptyState", () => {

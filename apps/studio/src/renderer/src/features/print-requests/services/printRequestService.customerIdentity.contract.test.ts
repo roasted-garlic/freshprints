@@ -28,4 +28,8 @@ test("PrintRequestsPage filters inactive customers from new request picker", () 
     "utf8",
   );
   assert.match(source, /isActiveCustomerAccount/);
+  assert.match(source, /customerDirectory[\s\S]*customerIdsWithContinuableRequest[\s\S]*searchText/);
+  assert.match(source, /searchable/);
+  assert.match(source, /Clear customer search/);
+  assert.match(source, /No eligible customers match this search/);
 });

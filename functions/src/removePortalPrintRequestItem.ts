@@ -12,6 +12,7 @@ import {
 import { requirePortalCustomer } from "./lib/portalCustomer";
 import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 import { assertPortalActiveEditableRequestData } from "./lib/portalContinuableParking";
+import { isPortalEditablePrintRequest } from "../../packages/shared/src/utils/portalPrintRequestEditability";
 
 export interface RemovePortalPrintRequestItemRequest {
   printRequestId: string;
@@ -80,7 +81,11 @@ export const removePortalPrintRequestItem = onCall(
         if (requestData.customerId !== portalCustomer.customerId) {
           throw permissionDenied("You do not own this print request.");
         }
-        if (requestData.requestOrigin !== "portal_customer" || requestData.isInternal === true) {
+        if (!isPortalEditablePrintRequest({
+          status: requestData.status,
+          requestOrigin: requestData.requestOrigin,
+          isInternal: requestData.isInternal,
+        })) {
           throw failedPrecondition("This request cannot be edited from the portal.");
         }
         const status = requestData.status;

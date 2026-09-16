@@ -223,8 +223,17 @@ describe("staff and preset paths skip AI derivative collapse", () => {
       },
       { subjects: ["Dolly Parton"] },
     );
-    assert.ok(merged.subjects?.includes("Dolly Parton"));
-    assert.equal(merged.subjects?.[0], "Dolly Parton");
+    assert.ok(merged.subjects?.includes("dolly parton"));
+    assert.equal(merged.subjects?.[0], "dolly parton");
+  });
+
+  it("canonicalizes Subject casing and dedupes after lowercasing", () => {
+    const profile = normalizeAi({
+      subjects: ["Highland Cow", "highland Cow", "COW", "cow"],
+      title: "Highland Cow",
+      description: "A highland cow.",
+    });
+    assert.deepEqual(profile.subjects, ["highland cow", "cow"]);
   });
 });
 

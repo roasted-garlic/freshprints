@@ -12,6 +12,7 @@ import { failedPrecondition, internal, invalidArgument, permissionDenied, unauth
 import { requirePortalCustomer } from "./lib/portalCustomer";
 import { assertPortalMaintenanceAllowsCustomerMutation } from "./lib/portalMaintenance";
 import { assertPortalActiveEditableRequestData } from "./lib/portalContinuableParking";
+import { isPortalEditablePrintRequest } from "../../packages/shared/src/utils/portalPrintRequestEditability";
 
 export interface UpdatePortalStaffArtworkPrintRequestItemSizeRequest {
   printRequestId: string;
@@ -71,7 +72,11 @@ export const updatePortalStaffArtworkPrintRequestItemSize = onCall(
         });
         assertPortalActiveEditableRequestData(requestData, printRequestId);
         if (requestData.customerId !== portalCustomer.customerId) throw permissionDenied("You do not own this print request.");
-        if (requestData.requestOrigin !== "portal_customer" || requestData.isInternal === true) throw failedPrecondition("This request cannot be edited from the portal.");
+        if (!isPortalEditablePrintRequest({
+          status: requestData.status,
+          requestOrigin: requestData.requestOrigin,
+          isInternal: requestData.isInternal,
+        })) throw failedPrecondition("This request cannot be edited from the portal.");
         if (requestData.status !== "draft" && requestData.status !== "editing") throw failedPrecondition("This print request can no longer be edited.");
         if (itemData.printRequestId !== printRequestId || itemSourceType !== "staff_artwork" || !staffArtworkId) {
           throw failedPrecondition("This item is not Staff Artwork.");

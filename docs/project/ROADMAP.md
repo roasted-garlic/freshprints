@@ -1,5 +1,62 @@
 # Fresh Prints Roadmap
 
+> 2026-09-16: **Studio Print Request item Download dirty-preset fix — CLOSED (DEV)** — Goal
+> `studio-print-request-item-download-dirty-preset-fix` is **DONE** with Signoff **approved**.
+> Items with a `standardSizePresetKey` no longer look permanently unsaved, so per-item Download
+> works again for clean/eligible designs. Export contracts **8/8**; Studio typecheck PASS. No
+> production / Studio release. Signoff:
+> `docs/workflow/reviews/2026-09-16-studio-print-request-item-download-dirty-preset-fix-signoff.md`.
+> FreshForge **IDLE**.
+
+> 2026-09-16: **Selected Print Request live sync (Studio ↔ Portal) — CLOSED (DEV)** — Goal
+> `selected-print-request-live-sync-studio-portal` is **DONE** with Signoff **approved** after Owner
+> DEV QA **PASS** (incl. header live counts + rapid +/- follow-up re-test). Request-scoped listeners
+> for Studio selected detail and Portal open detail; Portal header prefers live items; shared
+> prop-sync guard holds remote apply while local edits are pending. Focused contracts **17/17 PASS**;
+> Portal+Studio typecheck PASS. No production / Functions / Portal App Hosting / Studio release.
+> Signoff: `docs/workflow/reviews/2026-09-16-selected-print-request-live-sync-studio-portal-signoff.md`.
+> FreshForge **IDLE**.
+
+> 2026-09-16: **Print Request count parity + unqueue cache/cancel parity — CLOSED (DEV)** —
+> Goals `print-request-count-parity-across-show-queue-and-summary-surfaces` and
+> `portal-unqueue-capacity-cache-and-studio-cancel-parity` are **DONE** with Signoff
+> **approved_with_notes** after Owner DEV QA **PASS WITH NOTES**. Canonical source-aware
+> Designs/Items contract; Portal allocatable-shows cache invalidation on queue/unqueue; Studio
+> staff remove soft-cancels; Show Queue remove Confirm busy state. Focused parity **115/115 PASS**;
+> no production action. Signoffs:
+> `docs/workflow/reviews/2026-09-16-print-request-count-parity-across-show-queue-and-summary-surfaces-signoff.md`,
+> `docs/workflow/reviews/2026-09-16-portal-unqueue-capacity-cache-and-studio-cancel-parity-signoff.md`.
+> FreshForge **IDLE**; live-sync follow-on closed same day (see entry above).
+
+> 2026-09-16: **Studio pre-release Print Request download + intake navigation — CLOSED (DEV)** —
+> Goal `studio-pre-release-pr-item-download-and-intake-navigation` is **DONE** with Signoff
+> **approved_with_notes** after Owner DEV QA **PASS**. Delivered independent per-item saved-size
+> PNG downloads with dismissible success feedback, plus Uploaded/Donated list ArrowUp/ArrowDown
+> selection navigation with lightbox/editable guards. Focused tests **70/70**, regression tests
+> **85/85**, Studio typecheck, targeted lint, build/package, and diff check passed. Studio release
+> is required for later production promotion; no Portal publication, backend deployment, or
+> production action occurred. Signoff:
+> `docs/workflow/reviews/2026-09-16-studio-pre-release-pr-item-download-and-intake-navigation-signoff.md`.
+> FreshForge **IDLE**.
+
+> 2026-09-15: **Portal Admin Staff Artwork + Studio AI Review — CLOSED (DEV)** — Goal
+> `portal-admin-staff-artwork-upload` is **DONE** with Signoff **approved_with_notes** after Owner
+> DEV QA **PASS**, including corrective retests. Delivered upload-only Portal Admin Staff Artwork,
+> full-card Design Library/Staff Artwork Multiple Select, canonical Ready → AI Review → Ready
+> lifecycle, safe Staff Artwork promotion diagnostics, and truthful retry accounting. Latest
+> Workstream B focused tests **86/86 PASS**; exact changed DEV Functions are ACTIVE. Production
+> Functions, Portal App Hosting, Studio release, Rules, indexes, migrations, backfills, and data
+> mutation remain separately gated. Signoff:
+> `docs/workflow/reviews/2026-09-15-portal-admin-staff-artwork-upload-signoff.md`. FreshForge **IDLE**.
+
+> 2026-09-15: **Historical Internal reconciliation / Admin Staff Artwork previews / DEV access hardening — CLOSED (DEV)** — Goal `historical-internal-reconciliation-admin-artwork-previews-and-dev-access-hardening` **DONE**. Signoff **approved**. Owner DEV QA **PASS**. A owner History Preview→Apply; B Staff Artwork derivative previews; C DEV overlay (every login/register visit; localhost + tunnel) + approved-email gate. Focused tests **50/50** (+ correctives). Functions+Rules on `fresh-prints-dev`. No production / Portal App Hosting / Studio release / IAM. Signoff: `docs/workflow/reviews/2026-09-15-historical-internal-reconciliation-admin-artwork-previews-and-dev-access-hardening-signoff.md`. Manifest: `docs/workflow/reviews/2026-09-pre-production-promotion-manifest.md`. FreshForge **IDLE**.
+
+> 2026-09-15: **Pre-release lifecycle / image parity / DEV hardening — CLOSED (DEV)** — Goal `pre-release-lifecycle-image-parity-and-dev-environment-hardening` **DONE**. Signoff **approved_with_notes**. Owner DEV QA **PASS WITH NOTES**. Forward Internal Mark Complete → Printed PASS (note: production historical Queued-on-completed sheets need separate reconciliation). Admin View Designs failure honesty PASS (Staff Artwork previews deferred). DEV banner + explicit noindex PASS. Focused tests **76/76**. No production / IAM / Rules. Signoff: `docs/workflow/reviews/2026-09-15-pre-release-lifecycle-image-parity-and-dev-environment-hardening-signoff.md`. Next: `historical-internal-reconciliation-admin-artwork-previews-and-dev-access-hardening`.
+
+> 2026-09-15: **Studio staff show-capacity allocation override — CLOSED (DEV)** — Goal `studio-staff-show-capacity-allocation-override` **DONE**. Signoff **approved_with_notes**. Owner DEV QA **PASS**. Staff Allocate Anyway sends `overrideShowCapacity: true` on `allocateStudioPrintRequestToShow`; max unchanged; Portal strict; ADR-FP-182. Focused tests **79/79 PASS**. No production / Portal / Studio release / Rules / schema. Signoff: `docs/workflow/reviews/2026-09-15-studio-staff-show-capacity-allocation-override-signoff.md`. FreshForge **IDLE**.
+
+> 2026-09-15: **Studio pre-release Design Navigation + Print Request refinements — SIGNOFF approved_with_notes (DEV)** — Goal `studio-pre-release-design-navigation-and-print-request-list-refinements` **DONE**. Owner DEV QA **PASS** for A–F and the regression sweep. Final evidence: affected corrective suite **132/132 PASS**, F-focused suite **22/22 PASS**, Studio/Portal typechecks, Functions build, targeted ESLint, and `git diff --check` PASS. The known full-repository lint baseline remains 14 unrelated pre-existing errors outside this goal. Scoped DEV Functions were deployed earlier for QA; no production deployment, Portal publication, or Studio release occurred or is authorized. Signoff: `docs/workflow/reviews/2026-09-14-studio-pre-release-design-navigation-and-print-request-list-refinements-signoff.md`.
+
 > 2026-09-13: **Ready Catalog Smart Profile reprocess COMPLETE; Algolia gated** — Job
 > `GB4fUzW0Om10xev21Yd4` processed 2,736 attempts for 2,734 unique eligible Ready designs (2
 > retries), all successful; failed/unprocessed, malformed/unsafe, anomalies, and preservation
@@ -646,7 +703,7 @@ Current Goal:
 
 **Small Managed Items Backlog:** #5–**#14** **Done** (2026-07-21). See [Small Managed Items Backlog](#small-managed-items-backlog-2026-07-18) below.
 
-**Active managed goal:** none (**IDLE**). Last closed: `portal-ga4-production-enablement` (2026-08-17; Signoff approved; `PROD GA4 QA: PASS`; live `build-2026-08-17-002` @ `124c6fa`). Cutover remains **CLOSED** (do not reopen). Phase 9 remains **PARKED**. Historical Goal #13 row below is not an open DNS task.
+**Active managed goal:** none (**IDLE**). Last closed: `selected-print-request-live-sync-studio-portal` (2026-09-16; Owner DEV QA **PASS**; Signoff approved). Cutover remains **CLOSED** (do not reopen). Phase 9 remains **PARKED**. Historical Goal #13 row below is not an open DNS task.
 
 **Prior note (superseded for current workflow):** Goal #13 — prelaunch companion/censored **production promote signed off** (2026-08-10; `PROD COMPANION CENSORED PROMOTE SMOKE: PASS`; Studio v1.0.2). Placement-default **DEFERRED**. Stage 2 smoke **PASS** / **READY FOR CUSTOMERS** on hosted.app; cutover still awaits `APPROVE MYPRINTREQUEST.COM CUTOVER`.
 `production-studio-assisted-library-design-search-empty` **signed off** (owner Studio QA **PASS**).
@@ -1715,7 +1772,10 @@ UI/flow polish, implemented 2026-07-05 after a second manual QA pass:
 * Removing a Print Request from a show requires a two-step confirm, matching the existing Print
   Request item removal pattern
 * A Show Queue settings cog exposes a staff-configurable default max quantity for new shows
-  (`settings/showQueue`, direct client read/write), applied only at show-creation time
+  (`settings/showQueue`). Create-time snapshot for Whatnot/DEV fixture shows; optional explicit
+  owner/admin “Apply this quota to existing shows” on Save updates eligible Upcoming shows via
+  trusted callable `applyShowQueueDefaultMaxToEligibleShows` (ADR-FP-160). Unchecked Save remains
+  global-default-only.
 * Intro/"How it works" copy removed from Print Requests and Show Queue for a more compact workspace;
   `Add to Show` moved to a prominent upper action area and disabled until the request has items
 * Show Detail status pills align horizontally; Request Detail uses a bottom-right `Edit` button
@@ -1728,7 +1788,9 @@ manual QA pass:
 
 * Real split allocation flow: staff choose exactly which designs/quantities go to the first show,
   the app computes the remainder, and staff choose another show (or repeat) until the request is
-  fully allocated or they cancel; a danger override can still force the full request onto one show
+  fully allocated or they cancel; Studio staff may explicitly **Allocate Anyway** with
+  `overrideShowCapacity: true` on `allocateStudioPrintRequestToShow` to exceed configured show
+  capacity without changing `maxTotalQuantity` (ADR-FP-182; Portal remains strict)
 * Removing a Print Request from a show deletes every allocation for that request on that show in one
   operation and recomputes the show's `allocatedQuantity` from the remaining allocations, instead of
   incrementally subtracting — this also clears an over-capacity state caused by the removed request

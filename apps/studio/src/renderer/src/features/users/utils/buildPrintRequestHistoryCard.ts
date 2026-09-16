@@ -3,6 +3,7 @@ import type { PrintRequest } from "@fresh-prints/shared/types/printRequest/print
 import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/showAllocation.types";
 import type { UpcomingShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
 import type { PrintRequestLifecycleEvent } from "@fresh-prints/shared/types/printRequest/printRequestLifecycle.types";
+import type { PrintRequestItemSummary } from "@fresh-prints/shared/utils/printRequestItemSummaries";
 import { formatShowDateTimeLabel } from "@fresh-prints/shared/utils/showDateTimeDisplay";
 import { getPrintRequestOriginBadgeLabel } from "@fresh-prints/shared/utils/printRequestOrigin";
 
@@ -314,6 +315,7 @@ export function buildPrintRequestHistoryCardSummary(input: {
   showsById: ReadonlyMap<string, UpcomingShow>;
   relatedRequestNamesById: ReadonlyMap<string, string>;
   relatedRequestsById?: ReadonlyMap<string, PrintRequest>;
+  itemSummary?: Pick<PrintRequestItemSummary, "uniqueDesignCount" | "totalQuantity">;
 }): PrintRequestHistoryCardSummary {
   const { request, customer, allocations, showsById, relatedRequestNamesById, relatedRequestsById } =
     input;
@@ -321,6 +323,10 @@ export function buildPrintRequestHistoryCardSummary(input: {
   const missedShowContext = buildMissedShowContextForRequest(request, allocations, showsById);
   const mergedSourceAttribution = buildMergedSourceAttribution(request, customer);
   const lifecycleActivity = resolveSummaryLifecycleActivity({ request, allocations });
+  const itemSummary = input.itemSummary ?? {
+    uniqueDesignCount: request.itemCount,
+    totalQuantity: 0,
+  };
 
   const conversion =
     request.closureKind === "converted_to_internal" && request.convertedToInternalRequestId
@@ -388,6 +394,8 @@ export function buildPrintRequestHistoryCardSummary(input: {
     lastLifecycleActivityPrecedence: lifecycleActivity.precedence,
     lastLifecycleActivityEventId: lifecycleActivity.eventId,
     itemCount: request.itemCount,
+    uniqueDesignCount: itemSummary.uniqueDesignCount,
+    totalQuantity: itemSummary.totalQuantity,
     showContext,
     missedShowContext,
     conversion,
@@ -718,7 +726,7 @@ export function buildPrintRequestHistoryDetailEvents(input: {
     events.push({
       id: `${input.request.id}:created`,
       label: "Print request created",
-      detail: `${input.summary.name} · ${input.summary.itemCount} design${input.summary.itemCount === 1 ? "" : "s"}`,
+      detail: `${input.summary.name} · ${input.summary.uniqueDesignCount} design${input.summary.uniqueDesignCount === 1 ? "" : "s"}`,
       occurredAtMillis: input.summary.createdAtMillis,
       precedence: HISTORICAL_LIFECYCLE_PRECEDENCE.created,
       derivation: "reconstructed",
@@ -794,8 +802,12 @@ export function formatPrintRequestCardCreatedLabel(millis: number): string {
   return `Created ${formatAuditDateTimeLabel(millis)}`;
 }
 
-export function formatPrintRequestCardDesignCountLabel(itemCount: number): string {
-  return `${itemCount} design${itemCount === 1 ? "" : "s"}`;
+export function formatPrintRequestCardDesignCountLabel(designCount: number): string {
+  return `${designCount} design${designCount === 1 ? "" : "s"}`;
+}
+
+export function formatPrintRequestCardPrintCountLabel(totalQuantity: number): string {
+  return `${totalQuantity} print${totalQuantity === 1 ? "" : "s"}`;
 }
 
 export function formatPrintRequestCardLastUpdatedLabel(millis: number): string {

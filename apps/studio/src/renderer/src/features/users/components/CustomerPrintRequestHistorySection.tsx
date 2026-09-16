@@ -10,6 +10,7 @@ import type {
 import {
   formatPrintRequestCardCreatedLabel,
   formatPrintRequestCardDesignCountLabel,
+  formatPrintRequestCardPrintCountLabel,
   formatPrintRequestCardLastUpdatedLabel,
 } from "../utils/buildPrintRequestHistoryCard";
 import { CustomerPrintRequestHistoryDetailModal } from "./CustomerPrintRequestHistoryDetailModal";
@@ -93,7 +94,8 @@ function CustomerPrintRequestHistoryCard({
 
         <div className="customer-print-request-card-meta">
           <span>{formatPrintRequestCardCreatedLabel(summary.createdAtMillis)}</span>
-          <span>{formatPrintRequestCardDesignCountLabel(summary.itemCount)}</span>
+          <span>{formatPrintRequestCardDesignCountLabel(summary.uniqueDesignCount)}</span>
+          <span>{formatPrintRequestCardPrintCountLabel(summary.totalQuantity)}</span>
           <span>{formatPrintRequestCardLastUpdatedLabel(summary.lastLifecycleActivityAtMillis)}</span>
         </div>
 

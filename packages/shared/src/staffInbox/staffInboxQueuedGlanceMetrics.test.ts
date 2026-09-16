@@ -87,6 +87,29 @@ describe("staffInboxQueuedGlanceMetrics", () => {
     assert.equal(metrics?.pricingUnits.length, 0);
   });
 
+  it("counts Staff Artwork by namespaced identity", () => {
+    const metrics = buildStaffInboxQueuedGlanceMetrics([
+      allocation({
+        printRequestId: "req-1",
+        upcomingShowId: "show-1",
+        status: "queued",
+        sourceType: "staff_artwork",
+        staffArtworkId: "same",
+        printRequestItemId: "staff-item-1",
+      }),
+      allocation({
+        printRequestId: "req-1",
+        upcomingShowId: "show-1",
+        status: "queued",
+        sourceType: "catalog_design",
+        designId: "same",
+        printRequestItemId: "catalog-item-1",
+      }),
+    ]);
+
+    assert.equal(metrics?.designCount, 2);
+  });
+
   it("returns null when no active allocations remain", () => {
     assert.equal(
       buildStaffInboxQueuedGlanceMetrics([

@@ -15,8 +15,9 @@ import {
 } from "../services/studioAlgoliaCatalogSearchService";
 import {
   countStudioAlgoliaSmartFilterSelections,
+  buildStudioSmartFacetDisplayOptions,
   emptyStudioAlgoliaSmartFilters,
-  normalizeStudioAlgoliaSmartFilterValues,
+  normalizeStudioAlgoliaSmartFilterValuesForAttribute,
   STUDIO_SMART_FILTER_DIMENSIONS,
 } from "../services/studioAlgoliaSmartFilters";
 import { DesignLibraryModal } from "./DesignLibraryModal";
@@ -35,7 +36,10 @@ interface DesignLibrarySmartFilterModalProps {
 function cloneSmartFilters(filters: StudioAlgoliaSmartFilters): StudioAlgoliaSmartFilters {
   const next: StudioAlgoliaSmartFilters = {};
   for (const dimension of STUDIO_SMART_FILTER_DIMENSIONS) {
-    const values = normalizeStudioAlgoliaSmartFilterValues(filters[dimension.attribute] ?? []);
+    const values = normalizeStudioAlgoliaSmartFilterValuesForAttribute(
+      dimension.attribute,
+      filters[dimension.attribute] ?? [],
+    );
     if (values.length > 0) {
       next[dimension.attribute] = values;
     }
@@ -142,17 +146,17 @@ export function DesignLibrarySmartFilterModal({
   );
 
   const activeOptions = useMemo(() => {
-    const options = facetMap?.[activeDimension] ?? [];
-    const selected = new Set(
-      normalizeStudioAlgoliaSmartFilterValues(draftFilters[activeDimension] ?? []),
-    );
-    const query = searchQuery.trim().toLowerCase();
-    return options
-      .filter((option) => !query || option.value.toLowerCase().includes(query))
-      .map((option) => ({
-        ...option,
-        isSelected: selected.has(option.value),
-      }));
+    const options = (facetMap?.[activeDimension] ?? []).map((option) => ({
+      ...option,
+      value:
+        normalizeStudioAlgoliaSmartFilterValuesForAttribute(activeDimension, [option.value])[0] ??
+        option.value,
+    }));
+    return buildStudioSmartFacetDisplayOptions({
+      distribution: options,
+      selectedValues: draftFilters[activeDimension] ?? [],
+      searchQuery,
+    });
   }, [activeDimension, draftFilters, facetMap, searchQuery]);
 
   const hasAnyOptions = useMemo(() => {
@@ -163,11 +167,14 @@ export function DesignLibrarySmartFilterModal({
 
   const toggleValue = (value: string) => {
     setDraftFilters((current) => {
-      const existing = normalizeStudioAlgoliaSmartFilterValues(current[activeDimension] ?? []);
+      const existing = normalizeStudioAlgoliaSmartFilterValuesForAttribute(
+        activeDimension,
+        current[activeDimension] ?? [],
+      );
       const isSelected = existing.includes(value);
       const nextValues = isSelected
         ? existing.filter((entry) => entry !== value)
-        : normalizeStudioAlgoliaSmartFilterValues([...existing, value]);
+        : normalizeStudioAlgoliaSmartFilterValuesForAttribute(activeDimension, [...existing, value]);
       const next = { ...current };
       if (nextValues.length === 0) {
         delete next[activeDimension];
@@ -177,7 +184,7 @@ export function DesignLibrarySmartFilterModal({
       return next;
     });
 
-    if (!normalizeStudioAlgoliaSmartFilterValues(draftFilters[activeDimension] ?? []).includes(value)) {
+    if (!normalizeStudioAlgoliaSmartFilterValuesForAttribute(activeDimension, draftFilters[activeDimension] ?? []).includes(value)) {
       setSearchQuery("");
     }
   };
@@ -230,8 +237,8 @@ export function DesignLibrarySmartFilterModal({
           <p className="eyebrow">Catalog filters</p>
           <h2 id="design-library-smart-filter-title">Smart Filters</h2>
           <p className="design-library-tag-filter-description">
-            Select one or more values per dimension. Designs must match every selected filter,
-            together with category and search.
+            Choose one or more values. Each selected value narrows the results; across dimensions,
+            all selected values must match, together with category and search.
           </p>
         </div>
 

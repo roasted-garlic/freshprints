@@ -45,3 +45,9 @@ test("complete+next uses trusted callable", () => {
   assert.match(serviceSource, /completeStaffGangSheetAndOpenNext/);
   assert.match(serviceSource, /callTracedFunction/);
 });
+
+test("complete+next best-effort syncs queueTab for reconciled print request IDs", () => {
+  const completeSlice = serviceSource.slice(completeStart, completeStart + 1800);
+  assert.match(completeSlice, /reconciledPrintRequestIds/);
+  assert.match(completeSlice, /syncPrintRequestQueueTabBestEffort/);
+});

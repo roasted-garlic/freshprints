@@ -8,7 +8,30 @@
 > and ordering churn. The final Rules state removes direct customer canonical reads only after
 > projection population and verification. Owner DEV QA **PASS**; production remains untouched.
 
+## Portal Admin Staff Artwork + Studio AI Review — CLOSED DEV workflow (2026-09-15)
+
+Active owners/admins use Portal `/admin/staff-artwork` to select valid PNGs, upload through the
+existing create → Storage source → finalize path, and observe Queued → Uploading → Processing →
+Ready. The route is upload-only and does not browse Staff Artwork documents or derivatives.
+
+In Studio, owner Design Library and owner/admin Staff Artwork Multiple Select use full-card
+selection; image/title/content clicks toggle selection and normal details/preview behavior is
+suppressed until the mode exits. A Ready approved design sent to AI Review leaves the normal Design
+Library, enters the canonical `imported` + `pending` Processing/Needs Review/Rejected flow, and
+returns to `ready` + `approved` through normal approval. Auto-process ON/OFF uses existing queue
+settings. Helpers remain denied management/promotion access.
+
 ---
+
+## Studio Print Request refinements — closed 2026-09-15
+
+Studio Print Requests preserve show isolation before request search and show-scoped
+customer grouping/totals for the relevant lifecycle tabs. Printing/Printed use deterministic
+newest-show-first ordering. Staff-created customer requests retain `studio_customer` identity
+while qualifying Editing requests use the narrow Portal show-management/editability path.
+Create Customer Request customer search remains local, eligible-directory-only,
+identity-based, partial/case-insensitive, and contained inside the open customer dropdown with
+X clear/reset. Owner DEV QA **PASS**; no production/publication.
 
 ## A. Customer print-request flow (Portal) — CURRENT
 
@@ -88,8 +111,8 @@ ADR-FP-071 still enforces **one working request per Portal customer**, but only 
 | Rule | Detail |
 |------|--------|
 | Continuable status | `draft` or `editing` |
-| Portal-editable | `requestOrigin == portal_customer` **and** `isInternal != true` |
-| **Not** Portal-editable | `studio_customer` drafts (Studio-created customer requests) — customer-owned but Portal callables reject mutations |
+| Portal-editable | `portal_customer` requests in `draft`/`editing`, plus owned non-internal `studio_customer` requests in `editing` |
+| **Not** Portal-editable | `studio_customer` drafts, internal/parked/terminal/printing requests, and requests not owned by the signed-in customer |
 | Picker / Working Request UI | Must **not** offer a non–Portal-editable request as an editable Working Request |
 | Legacy duplicates | If multiple Portal-editable continuable requests exist, customer **explicitly selects** one; add / increment / decrement / remove all target that selection consistently |
 | Historical names | `printRequests.name` (e.g. `olduser-CR001`) stays immutable when username changes |

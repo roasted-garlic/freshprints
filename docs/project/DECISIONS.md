@@ -4,6 +4,50 @@
 
 ---
 
+### ADR-FP-190: Portal Admin Staff Artwork upload and canonical AI Review lifecycle
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-15 |
+| Status | **approved_with_notes — DEV Owner QA PASS; production promotion separately gated** |
+| Related | Goal `portal-admin-staff-artwork-upload`; Plan/Formal Review `2026-09-15-portal-admin-staff-artwork-upload-*` |
+
+**Decision**
+
+1. Portal adds `/admin/staff-artwork` as an owner/admin-only, upload-only surface. It uses the
+   existing `createStaffArtworkUpload` and `finalizeStaffArtwork` callable boundaries, uploads
+   `image/png` source files to the canonical Staff Artwork path, processes sequentially, and
+   retries only failed files. It does not read `staffArtworks`, mint derivative URLs, or expose
+   production/source paths as a library surface.
+2. Studio Design Library gains a separate owner-only Multiple Select mode for eligible Ready,
+   approved, non-archived catalog designs. Staff Artwork gains a separate owner/admin Multiple
+   Select mode that reuses existing per-item promotion and then the existing non-forced AI queue.
+   Print Request selection remains independent in both surfaces.
+3. Sending an existing `ready` + `approved` Design Library design back to AI Review uses the
+   canonical lifecycle: demote to `imported` + `pending`, leave the normal Design Library browse,
+   enter the existing AI Processing / Needs Review / Rejected workflow, and return to `ready` +
+   `approved` only through normal approval. No dual-visibility `aiReprocessState` or
+   `ready_reprocess` mode is part of the active contract. Auto-process ON uses the existing queue;
+   OFF waits for normal manual Start AI.
+4. No second AI pipeline, durable batch/job architecture, lifecycle, Firestore/Storage Rules,
+   composite index, migration/backfill, secret, IAM, or external service is introduced.
+5. In either Studio library, active Multiple Select makes the full eligible card the selection
+   target, suppresses normal details/preview behavior, exposes selected state, and restores normal
+   card behavior immediately when exited. Existing Print Request selection remains independent.
+
+**Consequences**
+
+- Reprocessed designs are authoritative in normal AI Review while active and re-enter the Design
+  Library only after approval. Existing approval/rejection, retry, delete/archive, attempt guards,
+  and queue/settings boundaries remain authoritative.
+- Safe Staff Artwork promotion diagnostics expose bounded failure reason/blocker/state details while
+  keeping deletion safety, idempotency, and owner/admin authorization intact.
+- DEV QA passed after deployment of the exact changed Functions. Production Functions, Portal App
+  Hosting, Studio release, Rules, indexes, migrations, IAM, and data mutation remain separately
+  gated.
+
+---
+
 ### ADR-FP-189: Atomic Studio Add-to-Show re-add and editing repair
 
 | Field | Value |
@@ -324,6 +368,31 @@ changed by this decision. DEV deployment remains separately owner-authorized.
 4. Never infer halftone from dark mat. No historical bulk backfill in this slice (Retry processing covers key rows).
 
 **Consequences:** New/reprocessed uploads show correct Studio mat automatically; Functions + Studio deploys required for live effect.
+
+---
+
+### ADR-FP-182: Studio staff show-capacity allocation override
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-15 |
+| Status | accepted (DEV source; production not authorized) |
+| Related | Plan/Review `2026-09-15-studio-staff-show-capacity-allocation-override-*`; ADR-FP-160 (apply default max); ADR-FP-159 (customer print limits — distinct) |
+| Callable | `allocateStudioPrintRequestToShow` |
+
+**Context:** Staff sometimes need to place remaining Print Request quantity onto a show that is at or near `maxTotalQuantity`. The trusted callable hard-rejected over-capacity plans; Portal must stay strict; configured max should remain truthful so UI can show e.g. `29 / 25`.
+
+**Decision:**
+
+1. Studio Add-to-Show confirmation (**Allocate Anyway**) sends `overrideShowCapacity: true` only after explicit Cancel / Confirm.
+2. Server accepts override only when the value is boolean `true`; staff auth via existing `assertStaffCaller` (owner/admin/helper).
+3. Bypass **only** the numeric capacity ceiling and capacity-driven/`productionStatus: "full"` eligibility blocks. Do **not** bypass Past, terminal statuses, quantity integrity, sizing/DPI, maintenance, customer quotas, or unrelated guards.
+4. Do **not** mutate `maxTotalQuantity` or set `maxQuantityOverridden`.
+5. Optional Admin field `showAllocations.showCapacityOverride: true` for audit; no Rules change.
+6. Portal `queuePortalPrintRequestToShow` unchanged (no override). Transfer/move override out of v1.
+7. ADR-FP-160 Apply-to-existing still skips shows whose allocated quantity already exceeds a proposed lower max.
+
+**Consequences:** Over-capacity allocations are intentional and visible; coexistence with global Apply remains correct. Production Functions/Studio release separately gated.
 
 ---
 
@@ -916,6 +985,41 @@ Live lean enrichment (`catalog-enrich-v31`) instructed Gemini to transcribe **al
 - Historical pre-v32 profiles remain until targeted re-enrich / later Smart Profiling completion backfill.
 - Subject canonicalization (ADR-FP-145 / v31/v5) remains a hard regression gate — Owner canary confirmed preserved.
 - Production promotion separately gated. Autonomous remains **OFF**.
+
+---
+
+### ADR-FP-160: Show Queue default max — opt-in apply to eligible existing shows
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-15 |
+| Status | accepted (DEV implementation; production separately gated) |
+| Related | Show Queue settings; `settings/showQueue.defaultMaxTotalQuantity`; `upcomingShows.maxTotalQuantity` |
+| Plan | `docs/workflow/plans/2026-09-15-show-queue-global-allocation-quota-apply-existing-shows-plan.md` |
+| Review | `docs/workflow/reviews/2026-09-15-show-queue-global-allocation-quota-apply-existing-shows-formal-review.md` |
+
+**Context**
+
+Changing the Show Queue global default max only affected newly created Whatnot/DEV fixture shows.
+Owners needed an explicit way to push a new default onto already-created eligible shows without
+rewriting historical/terminal capacity or Internal Gang Sheet defaults.
+
+**Decision**
+
+1. Add ephemeral checkbox **Apply this quota to existing shows** (default unchecked; not persisted).
+2. Unchecked Save keeps the existing client `settings/showQueue` write for the default.
+3. Checked Save: non-quota settings still use the client path; **`applyShowQueueDefaultMaxToEligibleShows`**
+   (owner/admin) is the sole writer of `defaultMaxTotalQuantity` and updates eligible shows.
+4. Eligible: Upcoming schedule + `productionStatus` ∈ {open, full, printing} + source ∈ {whatnot, dev_fixture}.
+5. Excluded: Past / Needs Attention, terminal production statuses, `staff_gang_sheet`, archived.
+6. Skip + report when finite new max &lt; `allocatedQuantity`; reset `maxQuantityOverridden` to false on updates;
+   clear show max when applying no-limit.
+7. Orthogonal: ADR-FP-159 customer temporary overrides and `settings/printRequestLimits` unchanged.
+
+**Consequences**
+
+- Allocation continues to enforce per-show `maxTotalQuantity` snapshots after apply.
+- No Firestore Rules/schema/migration change required for the Admin callable path.
 
 ---
 

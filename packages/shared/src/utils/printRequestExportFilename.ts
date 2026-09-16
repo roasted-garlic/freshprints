@@ -17,6 +17,16 @@ export function buildPrintRequestExportImageFilename(input: {
   return `${sequence}_QTY-${input.quantity}_${size}_${sanitizeFilenameSegment(input.designTitle)}_item-${sanitizeFilenameSegment(input.itemId.slice(0, 12))}.png`;
 }
 
+export function buildPrintRequestExportItemFilename(input: {
+  printWidthInches: number;
+  printHeightInches: number;
+  designTitle: string;
+  itemId: string;
+}): string {
+  const size = `${formatInchesForFilename(input.printWidthInches)}x${formatInchesForFilename(input.printHeightInches)}`;
+  return `${sanitizeFilenameSegment(input.designTitle)}_${size}_item-${sanitizeFilenameSegment(input.itemId.slice(0, 12))}.png`;
+}
+
 export function buildPrintRequestGangSheetBaseFileName(requestName: string): string {
   return `${sanitizeFilenameSegment(requestName)}_gang-sheet`;
 }

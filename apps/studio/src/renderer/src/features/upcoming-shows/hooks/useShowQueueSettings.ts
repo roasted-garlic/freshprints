@@ -6,6 +6,10 @@ import {
   type ShowQueueSettings,
   type WhatnotAssistedImportSummary,
 } from "../services/showQueueSettingsService";
+import type {
+  ApplyShowQueueDefaultMaxToEligibleShowsRequest,
+  ApplyShowQueueDefaultMaxToEligibleShowsResponse,
+} from "@fresh-prints/shared/types/upcomingShow/applyShowQueueDefaultMax.types";
 
 interface ShowQueueSettingsState {
   settings: ShowQueueSettings;
@@ -78,6 +82,22 @@ export function useShowQueueSettings() {
     [user],
   );
 
+  const applyDefaultMaxToEligibleShows = useCallback(
+    async (
+      input: ApplyShowQueueDefaultMaxToEligibleShowsRequest,
+    ): Promise<ApplyShowQueueDefaultMaxToEligibleShowsResponse> => {
+      if (!user) {
+        throw new Error("You must be signed in to update Show Queue settings.");
+      }
+
+      const result = await showQueueSettingsService.applyDefaultMaxToEligibleShows(user, input);
+      const settings = await showQueueSettingsService.getSettings();
+      setState((currentState) => ({ ...currentState, settings }));
+      return result;
+    },
+    [user],
+  );
+
   const recordAssistedImportResult = useCallback(
     async (
       result:
@@ -98,6 +118,7 @@ export function useShowQueueSettings() {
   return {
     ...state,
     updateSettings,
+    applyDefaultMaxToEligibleShows,
     recordAssistedImportResult,
   };
 }

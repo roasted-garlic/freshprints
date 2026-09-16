@@ -57,4 +57,10 @@ describe('PrintRequestDetailView hook-order contract', () => {
     assert.match(source, /CircleHelpIcon/);
     assert.doesNotMatch(source, /PortalShowPriceCommitmentPanel/);
   });
+
+  it('separates show-management eligibility from normal Portal content editability', () => {
+    assert.match(source, /isPortalShowManagementEligiblePrintRequest/);
+    assert.match(source, /const canShowShowManagement = isPortalShowManagementEligiblePrintRequest/);
+    assert.match(source, /const effectiveIsEditable = isActivelyEditable/);
+  });
 });

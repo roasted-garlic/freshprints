@@ -23,6 +23,7 @@ import {
   sumWorkingRequestPrintQuantities,
 } from "./lib/printRequestWorkingRequestMax";
 import { assertPortalActiveEditableRequestData } from "./lib/portalContinuableParking";
+import { isPortalEditablePrintRequest } from "../../packages/shared/src/utils/portalPrintRequestEditability";
 
 export interface DuplicatePortalPrintRequestItemRequest {
   printRequestId: string;
@@ -136,6 +137,14 @@ export const duplicatePortalPrintRequestItem = onCall(
 
         if (requestData.customerId !== portalCustomer.customerId) {
           throw permissionDenied("You do not own this print request.");
+        }
+
+        if (!isPortalEditablePrintRequest({
+          status: requestData.status,
+          requestOrigin: requestData.requestOrigin,
+          isInternal: requestData.isInternal,
+        })) {
+          throw failedPrecondition("This request cannot be edited from the portal.");
         }
 
         const status = requestData.status;

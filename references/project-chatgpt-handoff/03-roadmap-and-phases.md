@@ -1,5 +1,58 @@
 # Roadmap and Phases
 
+## 2026-09-16 — Print Request count parity + unqueue cache/cancel parity — CLOSED (DEV)
+
+- Goals `print-request-count-parity-across-show-queue-and-summary-surfaces` and
+  `portal-unqueue-capacity-cache-and-studio-cancel-parity` are **DONE**; parent Signoff
+  **approved_with_notes** after Owner DEV QA **PASS WITH NOTES**.
+- Full-request source-aware Designs/Items and selected-show active-allocation parity are aligned
+  across Studio, Portal, Staff Inbox, Portal Admin, Add-to-Show, queue planning, and history.
+- Portal queue/unqueue cache invalidation and Studio staff soft-cancel/history parity are included.
+- Focused parity **115/115 PASS** and follow-up contracts **6/6 PASS**; no production action.
+- Production promotion remains separately gated: Studio release, Portal App Hosting, and the two
+  changed existing Functions are required; Rules, Storage Rules, indexes, migrations, backfills,
+  and data repair are **NONE**. The `sassymommasam-CR002` smoke is post-promotion only.
+- Signoffs:
+  `docs/workflow/reviews/2026-09-16-print-request-count-parity-across-show-queue-and-summary-surfaces-signoff.md`
+  and `docs/workflow/reviews/2026-09-16-portal-unqueue-capacity-cache-and-studio-cancel-parity-signoff.md`.
+- FreshForge is **IDLE**; the next planned live-sync goal is parked pending owner direction.
+
+## 2026-09-16 — Studio pre-release Print Request download + intake navigation — CLOSED (DEV)
+
+- Goal `studio-pre-release-pr-item-download-and-intake-navigation` — Signoff
+  **approved_with_notes**; Owner DEV QA **PASS** with no notes.
+- Delivered saved-size/source-aware per-item PNG download in Studio Print Requests with dismissible
+  success feedback, plus Uploaded/Donated list ArrowUp/ArrowDown selection navigation with
+  lightbox and editable-target guards.
+- Focused tests **70/70 PASS**; export/gang-sheet/copy regressions **85/85 PASS**; Studio
+  typecheck, targeted lint, build/package, and diff check pass. No production or backend action.
+- Studio release is required for later separately authorized production promotion. FreshForge is
+  **IDLE**.
+- Signoff: `docs/workflow/reviews/2026-09-16-studio-pre-release-pr-item-download-and-intake-navigation-signoff.md`.
+
+## 2026-09-15 — Portal Admin Staff Artwork + Studio AI Review — CLOSED (DEV)
+
+- Goal `portal-admin-staff-artwork-upload` — Signoff **approved_with_notes**; Owner DEV QA
+  **PASS** after Portal upload and Workstream B corrective retests.
+- Delivered upload-only Portal Admin Staff Artwork route, full-card Multiple Select in Design
+  Library and Staff Artwork, canonical Ready → AI Review → Ready lifecycle, safe Staff Artwork
+  promotion diagnostics, and truthful bulk retry accounting.
+- Final Workstream B focused tests **86/86 PASS**; typechecks, Functions build, targeted lint,
+  and diff check pass. Exact DEV Functions are deployed and ACTIVE; no production promotion,
+  Portal App Hosting, Studio release, Rules, indexes, migration, backfill, or data mutation.
+- Signoff: `docs/workflow/reviews/2026-09-15-portal-admin-staff-artwork-upload-signoff.md`.
+  FreshForge is **IDLE**.
+
+## 2026-09-15 — Managed goals closed (DEV)
+
+- `studio-staff-show-capacity-allocation-override` — Signoff **approved_with_notes**; Owner DEV QA
+  **PASS**; ADR-FP-182; focused tests **79/79**. FreshForge **IDLE**.
+- `studio-pre-release-design-navigation-and-print-request-list-refinements` — signed off earlier
+  the same day with Owner DEV QA **PASS** for A–F and regression.
+
+No production, Portal publication, or Studio release is authorized by these closeouts; Phase 9
+remains parked.
+
 > 2026-09-13: **Production rollout STOPPED at Function preflight** — Additive index deployment
 > completed with 94 composite indexes READY, including `portalPrintRequestItems`, and no
 > removals/replacements. The explicit 164-target Function allowlist stopped before mutation because

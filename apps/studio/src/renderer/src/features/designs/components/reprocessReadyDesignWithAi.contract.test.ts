@@ -42,7 +42,7 @@ describe("Studio Reprocess with AI contracts", () => {
     assert.doesNotMatch(actionStack, /Reprocess with AI/);
   });
 
-  it("Design Library immediately drops reprocessed designs without navigating away", () => {
+  it("Design Library removes reprocessed designs from the Ready browse", () => {
     const library = read(
       "apps/studio/src/renderer/src/features/designs/pages/DesignLibraryPage.tsx",
     );
@@ -54,9 +54,7 @@ describe("Studio Reprocess with AI contracts", () => {
     assert.match(handler, /applyManagedSearchPatch\(/);
     assert.match(handler, /status: "imported"/);
     assert.match(handler, /aiReviewStatus: "pending"/);
-    assert.match(handler, /setExactIdDesign/);
-    assert.doesNotMatch(handler, /navigate\(/);
-    assert.doesNotMatch(handler, /AI_REVIEW_PATH/);
+    assert.doesNotMatch(handler, /aiReprocessState/);
   });
 
   it("confirmation modal has no typed phrase requirement", () => {
@@ -87,18 +85,18 @@ describe("Studio Reprocess with AI contracts", () => {
     assert.match(modal, /readAiProcessingAutoProcessPreference/);
     assert.match(modal, /autoStart:\s*false/);
     assert.match(modal, /enqueueForProcessing\(designId\)/);
+    assert.doesNotMatch(modal, /readyReprocess/);
     assert.match(modal, /if \(autoStart\)/);
     assert.match(modal, /setIsReprocessSubmitting\(true\)/);
     assert.match(modal, /setTimeout\(resolve, 900\)/);
-    assert.match(modal, /onReprocessedWithAi\?\.\(designId, \{ autoStart \}\)/);
+    assert.match(modal, /onReprocessedWithAi\?\.\(designId, \{/);
     assert.match(dialog, /Reprocessing/);
   });
 
-  it("approve path restamps readyAt on re-entry to Ready after demotion", () => {
+  it("approval retains the existing canonical transition behavior", () => {
     const designService = read(
       "apps/studio/src/renderer/src/features/designs/services/designService.ts",
     );
     assert.match(designService, /existingData\.status !== "ready"/);
-    assert.match(designService, /updatePayload\.readyAt = serverTimestamp\(\)/);
   });
 });

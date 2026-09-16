@@ -41,6 +41,15 @@ test("no-results returns an empty array (UI shows quiet empty state)", () => {
   assert.deepEqual(filterSelectOptionsByLabel(OPTIONS, "zzzz-nope"), []);
 });
 
+test("matches optional search text without changing the visible label", () => {
+  const filtered = filterSelectOptionsByLabel(
+    [{ label: "Alex Customer", searchText: "Alex Customer alex@example.com", value: "alex" }],
+    "EXAMPLE.COM",
+  );
+
+  assert.deepEqual(filtered.map((option) => option.value), ["alex"]);
+});
+
 test("filter path is pure — same input yields same output without mutating options", () => {
   const before = OPTIONS.map((option) => ({ ...option }));
   filterSelectOptionsByLabel(OPTIONS, "ani");

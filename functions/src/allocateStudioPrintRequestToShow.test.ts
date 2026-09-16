@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   parseAllocateStudioPrintRequestToShowRequest,
+  resolveOverrideShowCapacity,
   validateStudioAllocationLegTotals,
   type AllocateStudioPrintRequestToShowLeg,
 } from "./allocateStudioPrintRequestToShow";
@@ -32,6 +33,46 @@ describe("allocateStudioPrintRequestToShow contract", () => {
 
     assert.equal(parsed.printRequestId, "request-1");
     assert.deepEqual(parsed.legs[1]?.quantitiesByItemId, { "item-1": 1, "item-2": 3 });
+    assert.equal(parsed.overrideShowCapacity, undefined);
+  });
+
+  it("accepts only literal boolean true for overrideShowCapacity", () => {
+    const enabled = parseAllocateStudioPrintRequestToShowRequest({
+      printRequestId: "request-1",
+      legs: [{ upcomingShowId: "show-1", quantitiesByItemId: { "item-1": 1 } }],
+      overrideShowCapacity: true,
+    });
+    assert.equal(enabled.overrideShowCapacity, true);
+
+    for (const spoof of [false, "true", 1, { ok: true }, null, undefined] as const) {
+      const parsed = parseAllocateStudioPrintRequestToShowRequest({
+        printRequestId: "request-1",
+        legs: [{ upcomingShowId: "show-1", quantitiesByItemId: { "item-1": 1 } }],
+        overrideShowCapacity: spoof as never,
+      });
+      assert.equal(parsed.overrideShowCapacity, undefined);
+    }
+
+    assert.equal(resolveOverrideShowCapacity(true), true);
+    assert.equal(resolveOverrideShowCapacity("true"), false);
+    assert.equal(resolveOverrideShowCapacity(1), false);
+  });
+
+  it("capacity override bypasses only ceiling and capacity-full eligibility in source", () => {
+    const source = readFileSync(
+      path.join(path.dirname(fileURLToPath(import.meta.url)), "allocateStudioPrintRequestToShow.ts"),
+      "utf8",
+    );
+    assert.match(source, /overrideShowCapacity/);
+    assert.match(source, /allowCapacityFullOverride: overrideShowCapacity/);
+    assert.match(source, /!overrideShowCapacity &&/);
+    assert.match(source, /This show does not have enough remaining capacity/);
+    assert.match(source, /showCapacityOverride: true/);
+    assert.doesNotMatch(source, /maxQuantityOverridden:\s*true/);
+    assert.ok(
+      !/transaction\.update\(\s*showSnap\.ref,\s*\{[^}]*maxTotalQuantity/s.test(source),
+      "show update must not write maxTotalQuantity",
+    );
   });
 
   it("rejects zero, fractional, empty, and partial plans before any Admin write", () => {

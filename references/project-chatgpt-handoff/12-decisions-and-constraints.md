@@ -2,6 +2,49 @@
 
 > Full log: `docs/project/DECISIONS.md` — newest ADRs first.
 
+### Print Request count parity + unqueue cache/cancel parity (DEV closed 2026-09-16)
+
+- Full-request **Designs** are distinct source-aware identities from current `printRequestItems`;
+  **Items** are summed current quantities. Persisted `itemCount` remains compatibility/navigation
+  state and is not display authority.
+- Selected-show operational **Designs/Items**, tiers, price, capacity, and status use one active
+  allocation set (`status !== canceled`); canceled rows remain available for History-only context.
+- Portal queue/unqueue clears allocatable-show read and session caches after successful mutation.
+  Studio staff remove soft-cancels allocations with actor/timestamp audit fields, matching Portal.
+- Signoff is **approved_with_notes** after Owner DEV QA **PASS WITH NOTES**. Exact production smoke
+  of `sassymommasam-CR002` remains post-promotion and read-only; no production action occurred.
+
+### Studio pre-release Print Request download + intake navigation (DEV closed 2026-09-16)
+
+- Signoff is **approved_with_notes** after Owner DEV QA **PASS** with no notes.
+- Per-item download is intentionally a narrow Studio/Electron operation: use the latest saved item
+  dimensions and existing source-aware production resolver; do not route through quantity, ZIP,
+  gang-sheet cache, allocation, or lifecycle mutation paths.
+- ArrowUp/ArrowDown on Uploaded/Donated Designs changes the active loaded **list selection**, not
+  merely the scrollbar and not lightbox vertical navigation; no wraparound or auto-load-more.
+- No Portal behavior, backend contract, Rules/index/schema/migration, or production state changes
+  are included. Production Studio release remains separately owner-authorized.
+
+### ADR-FP-190: Portal Admin Staff Artwork + canonical AI Review lifecycle (DEV closed 2026-09-15)
+
+- Owner DEV QA **PASS**; Signoff **approved_with_notes**.
+- Portal upload-only `/admin/staff-artwork` reuses trusted Staff Artwork create/finalize boundaries.
+- Studio Multiple Select is a separate full-card interaction in Design Library and Staff Artwork;
+  normal details/preview clicks are suppressed while active and restored on exit.
+- Existing Ready reprocess follows `ready + approved` → `imported + pending` normal AI Review →
+  approval → `ready + approved`. The rejected Ready-preserving dual-visibility design and
+  `aiReprocessState`/`ready_reprocess` UI contract are historical only.
+- Production Functions, Portal App Hosting, Studio release, Rules, indexes, migrations, and
+  backfills remain separately gated/none as applicable.
+
+### ADR-FP-182: Studio staff show-capacity allocation override (DEV closed 2026-09-15)
+
+- Staff Allocate Anyway sends `overrideShowCapacity: true` (literal boolean only) on
+  `allocateStudioPrintRequestToShow`; roles match existing allocators (owner/admin/helper).
+- Bypasses only show-capacity ceiling and capacity-operational `full`; never Past/terminal/other guards.
+- Does not change `maxTotalQuantity` or set `maxQuantityOverridden`; Portal queue stays strict.
+- Transfer/move override out of v1. Coexists with ADR-FP-160 skip-below-allocated.
+
 ### Coordinated production cutover prerequisites (closed 2026-09-12)
 
 - Owner DEV QA explicitly passed: **`OWNER DEV QA: coordinated-production-cutover-prerequisites - PASS`**;

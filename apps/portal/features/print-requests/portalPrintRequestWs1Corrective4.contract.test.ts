@@ -30,14 +30,14 @@ describe("portal print request WS1 corrective #4 contracts", () => {
 
   it("uses one portal-editable working-request resolver in context and add flow", () => {
     assert.match(contextSource, /filterPortalEditableContinuablePrintRequests/);
-    assert.match(contextSource, /selectPortalWorkingPrintRequest/);
+    assert.match(contextSource, /selectPortalActiveEditablePrintRequest/);
     assert.match(contextSource, /selectedWorkingRequestId/);
     assert.match(addFlowSource, /resolvePortalWorkingRequestBranch/);
     assert.match(addFlowSource, /setSelectedWorkingRequestId\(printRequestId\)/);
   });
 
   it("aligns detail editability with portal origin policy", () => {
-    assert.match(detailHookSource, /isPortalEditablePrintRequest/);
+    assert.match(detailHookSource, /isPortalActiveEditablePrintRequest/);
   });
 
   it("blocks Studio duplicate continuable customer request creation", () => {

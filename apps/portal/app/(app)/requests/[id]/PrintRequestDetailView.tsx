@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { PrintRequestItem } from '@fresh-prints/shared/types/printRequest/printRequest.types';
+import { buildPrintRequestItemSummaries } from '@fresh-prints/shared/utils/printRequestItemSummaries';
 import { derivePrintRequestListTab } from '@fresh-prints/shared/utils/printRequestListGrouping';
 import {
   resolvePortalPrintRequestProgressLabel,
@@ -24,6 +25,7 @@ import {
 } from '@fresh-prints/shared/utils/portalPrintProgressStage';
 import { formatPortalCustomerShowScheduleLabel } from '@fresh-prints/shared/utils/portalCustomerShowSchedule';
 import { isPortalCustomerOriginPrintRequest } from '@fresh-prints/shared/utils/portalPrintRequestEditability';
+import { isPortalShowManagementEligiblePrintRequest } from '@fresh-prints/shared/utils/portalPrintRequestShowManagement';
 import { evaluatePortalPrintRequestUnqueue } from '@fresh-prints/shared/utils/portalPrintRequestUnqueue';
 import type { ShowProductionStatus } from '@fresh-prints/shared/types/upcomingShow/upcomingShow.enums';
 import { sumPrintRequestItemQuantities } from '@fresh-prints/shared/utils/portalShowQueueCapacity';
@@ -316,6 +318,36 @@ export default function PrintRequestDetailView() {
   // fresh navigation stay authoritative.
   const skipAllocationLoadAfterQueueRef = useRef(false);
 
+  // Live allocations for this open request (Studio queue/unqueue ↔ Portal detail).
+  useEffect(() => {
+    if (!printRequestId) {
+      setRequestAllocations([]);
+      setUnallocatedQuantity(0);
+      return;
+    }
+
+    return portalPrintRequestService.subscribeShowAllocationsForPrintRequest(
+      printRequestId,
+      (allocations) => {
+        setRequestAllocations(allocations);
+      },
+      () => {
+        setRequestAllocations([]);
+      },
+    );
+  }, [printRequestId]);
+
+  useEffect(() => {
+    const allocatedByItemId = sumAllocatedQuantityByItemId(
+      requestAllocations.map((allocation) => ({
+        printRequestItemId: allocation.printRequestItemId,
+        allocatedQuantity: allocation.allocatedQuantity,
+        status: allocation.status,
+      })),
+    );
+    setUnallocatedQuantity(sumRemainingUnallocatedQuantity(items, allocatedByItemId));
+  }, [items, requestAllocations]);
+
   const loadAllocationState = useCallback(async () => {
     if (!printRequestId) {
       setUnallocatedQuantity(0);
@@ -339,14 +371,6 @@ export default function PrintRequestDetailView() {
       setUnallocatedQuantity(sumPrintRequestItemQuantities(items));
     }
   }, [items, printRequestId]);
-
-  useEffect(() => {
-    if (skipAllocationLoadAfterQueueRef.current) {
-      skipAllocationLoadAfterQueueRef.current = false;
-      return;
-    }
-    void loadAllocationState();
-  }, [loadAllocationState, printRequest?.status, printRequest?.itemCount, items]);
 
   const updateAutosaveState = useCallback(
     (status: Exclude<AutosaveStatus, 'idle'>, message?: string, retry?: () => Promise<void>) => {
@@ -482,14 +506,16 @@ export default function PrintRequestDetailView() {
 
     return toPortalPrintRequestListTab(
       derivePrintRequestListTab({
-        totalRequestedQuantity: summary?.totalQuantity ?? totalPrintCount,
+        // Prefer live detail items once loaded; fall back to list-cache summary during empty/loading.
+        totalRequestedQuantity:
+          items.length > 0 ? totalPrintCount : (summary?.totalQuantity ?? totalPrintCount),
         totalAllocatedQuantity: allocationTotals?.totalAllocatedQuantity ?? 0,
         totalInProgressQuantity: allocationTotals?.totalInProgressQuantity ?? 0,
         totalPrintedQuantity: allocationTotals?.totalPrintedQuantity ?? 0,
         status: printRequest.status,
       }),
     );
-  }, [allocationTotalsByRequestId, printRequest, summariesByRequestId, totalPrintCount]);
+  }, [allocationTotalsByRequestId, items.length, printRequest, summariesByRequestId, totalPrintCount]);
 
   const returnFrom = parsePortalRequestDetailFrom(searchParams.get('from'));
   const { href: backHref, label: backLabel } = resolvePortalRequestDetailBack(returnFrom, listTab);
@@ -787,9 +813,19 @@ export default function PrintRequestDetailView() {
     );
   }
 
-  const designCountLabel = `${printRequest.itemCount} design${printRequest.itemCount === 1 ? '' : 's'}`;
-  const printCountLabel = `${totalPrintCount} print${totalPrintCount === 1 ? '' : 's'}`;
-  const canShowQueueCta = effectiveIsEditable && items.length > 0 && unallocatedQuantity > 0;
+  // Prefer live open-detail items over list-cache summaries so header counts track qty edits
+  // without waiting for a full page refresh / list re-aggregation.
+  const requestSummary =
+    buildPrintRequestItemSummaries(items)[printRequest.id] ??
+    summariesByRequestId[printRequest.id] ?? {
+      totalQuantity: totalPrintCount,
+      uniqueDesignCount: 0,
+      sizeClassRows: [],
+    };
+  const designCountLabel = `${requestSummary.uniqueDesignCount} design${requestSummary.uniqueDesignCount === 1 ? '' : 's'}`;
+  const printCountLabel = `${requestSummary.totalQuantity} print${requestSummary.totalQuantity === 1 ? '' : 's'}`;
+  const canShowShowManagement = isPortalShowManagementEligiblePrintRequest(printRequest);
+  const canShowQueueCta = canShowShowManagement && items.length > 0 && unallocatedQuantity > 0;
   const canQueueToShow =
     canShowQueueCta && persistenceSummary.canOpenQueue && !isFlushingQueue;
 

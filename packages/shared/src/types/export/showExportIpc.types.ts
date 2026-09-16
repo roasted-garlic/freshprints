@@ -33,6 +33,22 @@ export interface ExportShowZipRequest {
   multiplyByQuantity: boolean;
 }
 
+/** One request item to resize and save as a single PNG outside the ZIP/gang-sheet pipelines. */
+export interface DownloadExportImageRequest {
+  requestItemId: string;
+  downloadUrl: string;
+  targetWidthPx: number;
+  targetHeightPx: number;
+  fileName: string;
+}
+
+export interface DownloadExportImageResult {
+  canceled: boolean;
+  savedFilePath?: string;
+  /** Informational warning, such as an upscale, for an otherwise successful save. */
+  warning?: ShowExportImageWarning;
+}
+
 export interface ShowExportImageWarning {
   fileName: string;
   reason: "download_failed" | "resize_failed" | "upscaled" | "too_wide_for_sheet";
@@ -60,6 +76,9 @@ export interface ShowExportProgressEvent {
 
 export interface FreshPrintsExportApi {
   exportShowZip(request: ExportShowZipRequest): Promise<ImportIpcResult<ExportShowZipResult>>;
+  downloadExportImage(
+    request: DownloadExportImageRequest,
+  ): Promise<ImportIpcResult<DownloadExportImageResult>>;
   onExportProgress(callback: (event: ShowExportProgressEvent) => void): () => void;
   generateGangSheetPng(
     request: GenerateGangSheetPngRequest,

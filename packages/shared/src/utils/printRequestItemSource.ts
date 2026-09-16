@@ -8,6 +8,11 @@ export type PrintRequestItemSourceFields = Pick<
   "sourceType" | "designId" | "customerUploadId" | "staffArtworkId" | "sourceLabel"
 >;
 
+export type PrintRequestItemIdentityFields = Pick<
+  PrintRequestItem,
+  "id" | "sourceType" | "designId" | "customerUploadId" | "staffArtworkId"
+>;
+
 /**
  * Resolves item provenance.
  * Explicit `sourceType` wins when set. Legacy docs without `sourceType` fall back to
@@ -30,6 +35,28 @@ export function resolvePrintRequestItemSourceType(
     return "customer_upload";
   }
   return "catalog_design";
+}
+
+/**
+ * Stable, namespaced identity for one logical artwork in a print request.
+ * Rows for the same source artwork intentionally share an identity even when
+ * they represent different requested sizes or quantities.
+ */
+export function resolvePrintRequestItemIdentity(item: PrintRequestItemIdentityFields): string {
+  const sourceType = resolvePrintRequestItemSourceType(item);
+
+  if (sourceType === "customer_upload") {
+    const uploadId = item.customerUploadId?.trim();
+    return uploadId ? `upload:${uploadId}` : `item:${item.id}`;
+  }
+
+  if (sourceType === "staff_artwork") {
+    const staffArtworkId = item.staffArtworkId?.trim();
+    return staffArtworkId ? `staff-artwork:${staffArtworkId}` : `item:${item.id}`;
+  }
+
+  const designId = item.designId?.trim();
+  return designId ? `design:${designId}` : `item:${item.id}`;
 }
 
 export function isCatalogDesignPrintRequestItem(

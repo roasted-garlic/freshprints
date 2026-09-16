@@ -34,10 +34,14 @@ describe("portalPrintRequestEditability", () => {
     assert.equal(isPortalEditablePrintRequest(makeRequest({ status: "editing" })), true);
   });
 
-  it("rejects studio_customer and internal continuable requests", () => {
+  it("allows only Editing Studio-created customer requests", () => {
     assert.equal(
-      isPortalEditablePrintRequest(makeRequest({ requestOrigin: "studio_customer" })),
+      isPortalEditablePrintRequest(makeRequest({ requestOrigin: "studio_customer", status: "draft" })),
       false,
+    );
+    assert.equal(
+      isPortalEditablePrintRequest(makeRequest({ requestOrigin: "studio_customer", status: "editing" })),
+      true,
     );
     assert.equal(isPortalEditablePrintRequest(makeRequest({ isInternal: true })), false);
   });
@@ -75,10 +79,10 @@ describe("portalPrintRequestEditability", () => {
     assert.equal(selectPortalWorkingPrintRequest([older, newer], null)?.id, "newer");
   });
 
-  it("explains studio_customer non-editability without implying username issues", () => {
+  it("explains that Studio-created requests require Editing before Portal edits", () => {
     assert.match(
-      explainPortalPrintRequestEditability(makeRequest({ requestOrigin: "studio_customer" })),
-      /Studio/,
+      explainPortalPrintRequestEditability(makeRequest({ requestOrigin: "studio_customer", status: "draft" })),
+      /Editing/,
     );
   });
 
@@ -93,7 +97,7 @@ describe("portalPrintRequestEditability", () => {
   it("counts portal-editable continuable requests for create gates", () => {
     const requests = [
       makeRequest({ id: "portal" }),
-      makeRequest({ id: "studio", requestOrigin: "studio_customer" }),
+      makeRequest({ id: "studio", requestOrigin: "studio_customer", status: "draft" }),
     ];
     assert.equal(countPortalEditableContinuableRequests(requests), 1);
   });

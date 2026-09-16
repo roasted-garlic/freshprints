@@ -61,7 +61,7 @@ export function buildOwnerReadyAiReprocessDemotionUpdate(input: {
   attemptId: string;
   /** Prefer FieldValue.serverTimestamp() from Admin SDK. */
   now: ReturnType<typeof FieldValue.serverTimestamp>;
-  /** When false, demote only — leave awaiting Start AI. Default true. */
+  /** When false, delete stage so the design is Start-AI-eligible (`not_generated`). */
   autoStart?: boolean;
 }): Record<string, unknown> {
   const autoStart = input.autoStart !== false;
@@ -71,6 +71,7 @@ export function buildOwnerReadyAiReprocessDemotionUpdate(input: {
     aiReviewStatus: "pending",
     aiProcessed: false,
     aiReviewed: false,
+    aiReprocessState: FieldValue.delete(),
     aiProcessingAttemptId: input.attemptId,
     aiProcessingStage: autoStart ? "queued" : FieldValue.delete(),
     aiProcessingError: FieldValue.delete(),
@@ -88,6 +89,7 @@ export function buildOwnerReadyAiReprocessDemotionUpdate(input: {
 /** Fields that must never appear in the demotion payload. */
 export const OWNER_READY_AI_REPROCESS_PRESERVED_FIELD_KEYS = [
   "title",
+  "catalogTitleSource",
   "description",
   "categoryId",
   "tags",

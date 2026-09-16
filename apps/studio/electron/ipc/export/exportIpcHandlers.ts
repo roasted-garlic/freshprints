@@ -4,6 +4,7 @@ import { EXPORT_IPC_CHANNELS } from "./exportIpcChannels";
 import { emitExportProgress, emitGangSheetExportProgress } from "./exportEvents";
 import {
   validateClearGangSheetCacheRequest,
+  validateDownloadExportImageRequest,
   validateDownloadCachedGangSheetRequest,
   validateExportCachedGangSheetsRequest,
   validateExportShowZipRequest,
@@ -12,6 +13,7 @@ import {
 } from "./exportRequestValidation";
 import { importIpcFailure, importIpcSuccess } from "../import/importIpcResponse";
 import { AllExportImagesFailedError, exportShowZip } from "../../services/export/exportShowZip";
+import { exportSingleImage } from "../../services/export/exportSingleImage";
 import {
   AllGangSheetImagesFailedError,
   clearAllGangSheetCache,
@@ -42,6 +44,23 @@ export function registerExportIpcHandlers(): void {
 
       const message = error instanceof Error ? error.message : "An unexpected error occurred during export.";
       return importIpcFailure("INTERNAL_ERROR", message);
+    }
+  });
+
+  ipcMain.handle(EXPORT_IPC_CHANNELS.DOWNLOAD_EXPORT_IMAGE, async (_event, payload: unknown) => {
+    const validated = validateDownloadExportImageRequest(payload);
+
+    if ("error" in validated) {
+      return validated.error;
+    }
+
+    try {
+      return importIpcSuccess(await exportSingleImage(validated.request));
+    } catch (error) {
+      return importIpcFailure(
+        "INTERNAL_ERROR",
+        error instanceof Error ? error.message : "Unable to save the resized PNG.",
+      );
     }
   });
 

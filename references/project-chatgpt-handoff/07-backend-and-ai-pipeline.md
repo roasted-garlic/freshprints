@@ -1,5 +1,60 @@
 # Backend and AI Pipeline
 
+## Print Request count parity + unqueue cache/cancel parity (DEV closed 2026-09-16)
+
+- Shared source-aware item/allocation summaries are used by existing Studio, Portal, Staff Inbox,
+  Portal Admin, and request-planning readers; no new callable, DTO, query, schema, Rules, index,
+  migration, backfill, or data-repair path was added.
+- Existing `getPortalAdminUpcomingShowQueueDashboard` changed only to carry the existing
+  `printRequestItemId` into active metric aggregation. Existing
+  `unqueueStudioCustomerPrintRequestFromShow` now audited-soft-cancels allocations instead of
+  deleting them, matching Portal history semantics.
+- Exact production Function promotion requirement is therefore those two existing Functions.
+  Portal cache invalidation ships with the changed Portal App Hosting bundle; Studio release is
+  also required. None was deployed to production.
+
+## Studio pre-release Print Request download + intake navigation (DEV closed 2026-09-16)
+
+- This goal changed Studio renderer/Electron export behavior only; no Functions, callable, AI,
+  Firestore Rules, Storage Rules, schema, index, migration, or backend deployment changed.
+- Per-item PNG download reuses the existing source-aware production asset resolver and the existing
+  image download/resize utility, with a narrow native save IPC operation and validation at the
+  renderer/main boundary.
+- The cumulative promotion manifest records a later Studio release as **REQUIRED** and all
+  backend/data categories as **NONE from this goal**.
+
+## Portal Admin Staff Artwork + canonical AI Review lifecycle (DEV closed 2026-09-15)
+
+- Portal upload reuses `createStaffArtworkUpload` and `finalizeStaffArtwork`; no Portal upload
+  Function runtime changed. Studio Staff Artwork promotion remains owner/admin-only,
+  deletion-blocker protected, idempotent, and sequential in bulk. `promoteStaffArtworkToAiReview`
+  returns bounded safe diagnostic details for precondition failures.
+- `reprocessReadyDesignWithAi` demotes Ready + approved designs into the normal imported + pending
+  AI lifecycle. `enqueueAiEnrichment` and the shared pipeline retain existing Auto-process,
+  attempt-guard, retry, and approval behavior. No `ready_reprocess` mode or dual-visibility marker
+  is active.
+- Exact DEV deployment: `promoteStaffArtworkToAiReview`, `reprocessReadyDesignWithAi`, and
+  `enqueueAiEnrichment`; all ACTIVE. Production Functions promotion is separately gated.
+
+## Studio staff show-capacity allocation override (DEV — signed off 2026-09-15)
+
+- Callable `allocateStudioPrintRequestToShow` accepts optional `overrideShowCapacity: true`
+  (literal boolean only) for owner/admin/helper staff after Studio Allocate Anyway confirmation.
+- Bypasses only the numeric show-capacity ceiling and capacity-operational full eligibility;
+  Past/terminal and unrelated guards remain. Does not mutate `maxTotalQuantity`.
+- Portal `queuePortalPrintRequestToShow` unchanged (no override). ADR-FP-182.
+- Production Functions/Studio release not authorized by this closeout.
+
+## Studio Print Request refinements (DEV — signed off 2026-09-15)
+
+- Narrow Portal show-management/editability parity accepts only owned, non-internal qualifying
+  `studio_customer` requests in Editing while preserving existing lifecycle, validation,
+  capacity, authorization, and origin-snapshot protections.
+- Show isolation, customer grouping/totals, and Printing/Printed ordering remain local/shared
+  reader behavior; no schema or Rules changes were required.
+- Earlier Owner QA DEV deployment updated the seven reviewed queue/item mutation Functions; it
+  completed with 7 deployed, 0 errored, and 0 aborted. No production deployment occurred.
+
 ## Coordinated Portal projection cutover prerequisites (repository closed 2026-09-12)
 
 - `portalPrintRequestItems` is the customer-safe, Admin-maintained projection of canonical

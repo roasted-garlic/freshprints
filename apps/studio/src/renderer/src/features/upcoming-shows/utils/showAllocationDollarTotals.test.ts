@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG } from "@fresh-prints/shared/constants/gangSheetSectionPricingSettings.constants";
+import { buildProductionShapedShowAllocations } from "@fresh-prints/shared/utils/printRequestCountParity.fixture";
 
 import {
   calculateShowAllocationGroupPriceUsd,
@@ -94,5 +95,14 @@ describe("showAllocationDollarTotals", () => {
   it("formats whole-dollar amounts without decimals", () => {
     assert.equal(formatShowAllocationPriceUsd(24), "$24");
     assert.equal(formatShowAllocationPriceUsd(24.5), "$24.50");
+  });
+
+  it("keeps the production-shaped active price at $56 despite canceled history", () => {
+    const total = calculateShowAllocationGroupPriceUsd(
+      buildProductionShapedShowAllocations(),
+      DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG,
+    );
+
+    assert.equal(total, 56);
   });
 });

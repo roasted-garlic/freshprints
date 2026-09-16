@@ -3,7 +3,10 @@ import { describe, it } from "node:test";
 
 import { DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG } from "@fresh-prints/shared/constants/gangSheetSectionPricingSettings.constants";
 
-import { validateGenerateGangSheetPngRequest } from "./exportRequestValidation";
+import {
+  validateDownloadExportImageRequest,
+  validateGenerateGangSheetPngRequest,
+} from "./exportRequestValidation";
 
 const baseImage = {
   allocationId: "alloc-1",
@@ -126,5 +129,33 @@ describe("validateGenerateGangSheetPngRequest", () => {
     });
 
     assert.ok("error" in continuousValidated);
+  });
+});
+
+describe("validateDownloadExportImageRequest", () => {
+  const baseRequest = {
+    requestItemId: "item-1",
+    downloadUrl: "https://firebasestorage.googleapis.com/v0/b/example/o/design.png?alt=media",
+    targetWidthPx: 3000,
+    targetHeightPx: 3600,
+    fileName: "design_10x12_item-item-1.png",
+  };
+
+  it("accepts one validated PNG request without quantity or allocation fields", () => {
+    const validated = validateDownloadExportImageRequest(baseRequest);
+    if (!("request" in validated) || !validated.request) {
+      assert.fail("expected the single-image request to validate");
+    }
+    assert.equal(validated.request.requestItemId, "item-1");
+  });
+
+  it("rejects arbitrary URLs, invalid targets, unsafe names, and quantity fields", () => {
+    assert.ok("error" in validateDownloadExportImageRequest({
+      ...baseRequest,
+      downloadUrl: "https://example.com/design.png",
+    }));
+    assert.ok("error" in validateDownloadExportImageRequest({ ...baseRequest, targetWidthPx: 0 }));
+    assert.ok("error" in validateDownloadExportImageRequest({ ...baseRequest, fileName: "../design.png" }));
+    assert.ok("error" in validateDownloadExportImageRequest({ ...baseRequest, quantity: 3 }));
   });
 });

@@ -31,6 +31,13 @@ test("Select closes by clearing the transient search query", () => {
   assert.match(selectSource, /const closeMenu = useCallback\(\(\) => \{[\s\S]*setSearchQuery\(""\)/);
 });
 
+test("Select searchable menus provide an in-menu clear control and separate search text", () => {
+  assert.match(selectSource, /searchText\?: string/);
+  assert.match(selectSource, /searchClearLabel = "Clear search"/);
+  assert.match(selectSource, /form-select-search-clear/);
+  assert.match(filterSource, /option\.searchText \?\? option\.label/);
+});
+
 test("DesignFormFields Category opts into searchable", () => {
   const categoryBlock = designFormFields.slice(
     designFormFields.indexOf('label="Category"'),

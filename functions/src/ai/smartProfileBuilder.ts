@@ -9,6 +9,7 @@ import { SMART_PROFILE_VERSION } from "../../../packages/shared/src/types/catalo
 import {
   mergeVisibleTextFromReadableLines,
   normalizeDesignSmartProfile,
+  normalizeSmartProfileSubjectList,
 } from "../../../packages/shared/src/utils/smartProfileNormalization";
 import { buildSmartProfileDimensionVocab } from "../../../packages/shared/src/utils/smartProfileVocab";
 import type { SmartProfileVocabLists } from "../../../packages/shared/src/utils/smartProfileVocab";
@@ -209,7 +210,8 @@ export function stripEmptySmartProfileDimensions(
   for (const field of listFields) {
     const value = profile[field];
     if (value && value.length > 0) {
-      output[field] = value;
+      output[field] =
+        field === "subjects" ? normalizeSmartProfileSubjectList(value) : value;
     }
   }
 

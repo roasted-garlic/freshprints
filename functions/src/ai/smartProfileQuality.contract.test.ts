@@ -78,9 +78,9 @@ describe("smart profile quality contract", () => {
       smartProfileVocab: { subjects: ["Highland Cow"] },
     });
 
-    assert.deepEqual(profile.subjects, ["Highland Cow", "Jimothy"]);
+    assert.deepEqual(profile.subjects, ["highland cow", "jimothy"]);
     assert.ok(profile.searchConcepts?.includes("funny highland cow shirt"));
-    assert.match(profile.provenance.normalizerVersion ?? "", /normalizer-v6/);
+    assert.match(profile.provenance.normalizerVersion ?? "", /normalizer-v7/);
   });
 
   it("promotes highland cow into subjects when model emits only cow", () => {

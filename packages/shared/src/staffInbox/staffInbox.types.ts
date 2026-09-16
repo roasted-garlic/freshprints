@@ -11,6 +11,7 @@ export interface StaffInboxPortalRequestSnapshot {
 }
 
 export interface StaffInboxPortalAllocationSnapshot {
+  allocationId?: string;
   printRequestId: string;
   upcomingShowId: string;
   requestNameSnapshot: string;
@@ -21,6 +22,8 @@ export interface StaffInboxPortalAllocationSnapshot {
   printRequestItemId?: string;
   designId?: string;
   customerUploadId?: string;
+  staffArtworkId?: string;
+  sourceType?: "catalog_design" | "customer_upload" | "staff_artwork";
   printWidthInches?: number;
   printHeightInches?: number;
 }

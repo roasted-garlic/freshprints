@@ -47,8 +47,9 @@ test("past shows can still export images and gang sheets", () => {
 });
 
 test("Staff Gang Sheet keeps a single Add Request on the request list header", () => {
-  assert.match(pageSource, /!isSelectedStaffGangSheet \? \([\s\S]*Add Request/);
   assert.match(pageSource, /Attached print requests[\s\S]*openAddRequestModal/);
+  assert.match(pageSource, /isSelectedStaffGangSheet \? \([\s\S]*Plus[\s\S]*Add Request/);
+  assert.equal((pageSource.match(/\bAdd Request\b/g) ?? []).length, 1);
 });
 
 test("Staff Gang Sheet hides production timer card", () => {
@@ -88,4 +89,52 @@ test("Removing a request from Internal Sheets clears Print Requests page cache",
     pageSource,
     /removeShowAllocationsForRequest[\s\S]*clearPrintRequestsPageCache/,
   );
+});
+
+test("Show Queue remove confirm shows busy feedback while the remove is in flight", () => {
+  assert.match(pageSource, /const \[removingRequestId, setRemovingRequestId\]/);
+  assert.match(pageSource, /setRemovingRequestId\(printRequestId\)/);
+  assert.match(pageSource, /isRemovingRequest \? "Removing…" : "Confirm"/);
+  assert.match(pageSource, /disabled=\{isRemovingRequest\}/);
+});
+
+test("Mark Complete clears Print Requests page cache after Internal Gang Sheet completion", () => {
+  assert.match(
+    pageSource,
+    /completeStaffGangSheetAndOpenNext[\s\S]*clearPrintRequestsPageCache/,
+  );
+});
+
+test("selected Show Queue capacity and status use the settled active allocation quantity", () => {
+  assert.match(
+    pageSource,
+    /const selectedShowAllocationSummary = useMemo\([\s\S]*buildShowAllocationOperationalSummary\(allocations\)/,
+  );
+  assert.match(
+    pageSource,
+    /const selectedShowActiveAllocatedQuantity = isAllocationsLoading[\s\S]*selectedShowAllocationSummary\.totalQuantity;/,
+  );
+
+  const capacityAndStatusSource = pageSource.match(
+    /const capacity = selectedShow[\s\S]*?const pendingMaxQuantity/,
+  )?.[0];
+  assert.ok(capacityAndStatusSource);
+  assert.match(capacityAndStatusSource, /allocatedQuantity: selectedShowActiveAllocatedQuantity/);
+  assert.match(capacityAndStatusSource, /getDerivedShowStatusDisplay\(selectedShow\.productionStatus, capacity/);
+  assert.match(
+    pageSource,
+    /const allocatedQuantity = isSelected \? selectedShowActiveAllocatedQuantity : show\.allocatedQuantity;/,
+  );
+  assert.match(
+    pageSource,
+    /assessShowCapacity\(\{\s*maxTotalQuantity: show\.maxTotalQuantity,\s*allocatedQuantity,\s*\}\)/,
+  );
+});
+
+test("Show Queue request rows use the shared operational allocation summary", () => {
+  assert.match(pageSource, /const allocationSummary = buildShowAllocationOperationalSummary\(group\.allocations\)/);
+  assert.match(pageSource, /allocationSummary\.uniqueDesignCount/);
+  assert.match(pageSource, /allocationSummary\.totalQuantity/);
+  assert.match(pageSource, /allocationSummary\.sizeClassRows/);
+  assert.match(pageSource, /!hasActiveAllocations \? " \| History only" : ""/);
 });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
 
 import { PORTAL_APP_NAME } from '../../brand/portalBrand';
@@ -9,6 +9,7 @@ import { buildPortalAuthHref } from '../../auth/utils/portalReturnUrl';
 
 export function PortalAdminAuthGate({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { bootstrapStatus, isInitialBootstrap, isAuthenticated, logout } = useAuth();
 
   useEffect(() => {
@@ -16,9 +17,13 @@ export function PortalAdminAuthGate({ children }: { children: ReactNode }) {
       return;
     }
     if (bootstrapStatus === 'unauthenticated' || bootstrapStatus === 'anonymous-guest') {
-      router.replace(buildPortalAuthHref('/login', '/admin/show-queue'));
+      if (pathname === '/admin/staff-artwork') {
+        router.replace(buildPortalAuthHref('/login', '/admin/staff-artwork'));
+      } else {
+        router.replace(buildPortalAuthHref('/login', '/admin/show-queue'));
+      }
     }
-  }, [bootstrapStatus, isInitialBootstrap, router]);
+  }, [bootstrapStatus, isInitialBootstrap, pathname, router]);
 
   if (isInitialBootstrap || bootstrapStatus === 'initializing' || bootstrapStatus === 'loading-profile') {
     return <main className="portal-admin-state"><p className="portal-muted">Checking staff access…</p></main>;
@@ -38,7 +43,7 @@ export function PortalAdminAuthGate({ children }: { children: ReactNode }) {
         <p className="portal-eyebrow">{PORTAL_APP_NAME}</p>
         <h1>Access denied</h1>
         <p className="portal-lead">
-          You don’t have permission to view the Show Queue. If you need access, contact a Fresh Prints administrator.
+          You don’t have permission to view this staff page. If you need access, contact a Fresh Prints administrator.
         </p>
         <button className="portal-button portal-button-secondary" onClick={() => void logout()} type="button">
           Sign out

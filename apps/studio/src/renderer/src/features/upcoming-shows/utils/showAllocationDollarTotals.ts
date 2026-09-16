@@ -1,6 +1,10 @@
 import type { GangSheetSectionPricingConfig } from "@fresh-prints/shared/constants/gangSheetSectionPricingSettings.constants";
 import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/showAllocation.types";
 import { calculateGangSheetCustomerSectionSummary } from "@fresh-prints/shared/utils/gangSheetCustomerSectionSummary";
+import {
+  buildShowAllocationOperationalSummary,
+  filterCurrentShowAllocations,
+} from "@fresh-prints/shared/utils/showAllocationSummaries";
 
 export interface ShowAllocationPriceUnitInput {
   printWidthInches?: number;
@@ -18,17 +22,26 @@ export function calculateShowAllocationGroupPriceUsd(
   allocations: ShowAllocationPriceUnitInput[],
   pricing: GangSheetSectionPricingConfig,
 ): number | null {
-  const activeUnits = allocations
-    .filter((allocation) => allocation.status !== "canceled")
-    .map((allocation) => ({
-      printWidthInches: allocation.printWidthInches ?? Number.NaN,
-      printHeightInches: allocation.printHeightInches ?? 1,
-      quantity: allocation.allocatedQuantity,
-    }));
+  const activeAllocations = filterCurrentShowAllocations(allocations);
 
-  if (activeUnits.length === 0) {
+  if (activeAllocations.length === 0) {
     return null;
   }
+
+  // Keep pricing fail-closed for an active row with no usable width. The
+  // operational summary and pricing therefore use the same active set.
+  if (
+    activeAllocations.some(
+      (allocation) =>
+        typeof allocation.printWidthInches !== "number" ||
+        !Number.isFinite(allocation.printWidthInches) ||
+        allocation.printWidthInches <= 0,
+    )
+  ) {
+    return null;
+  }
+
+  const activeUnits = buildShowAllocationOperationalSummary(activeAllocations).pricingUnits;
 
   try {
     return calculateGangSheetCustomerSectionSummary(activeUnits, pricing).totalPriceUsd;

@@ -1,5 +1,16 @@
 # Data Model Essentials
 
+## Portal Admin Staff Artwork + canonical Design AI lifecycle — DEV closed 2026-09-15
+
+- Portal `/admin/staff-artwork` creates the existing private `staffArtworks/{staffArtworkId}`
+  record through trusted callables and canonical source storage; no new collection or fields are
+  required by the upload route.
+- Ready Design Library reprocess uses existing `designs` statuses: `ready` + `approved` is
+  demoted to `imported` + `pending`, is absent from the normal Library while active, and returns
+  only after the existing approval transition. No active `aiReprocessState` dual-visibility field
+  or `ready_reprocess` mode is part of the contract.
+- Firestore/Storage Rules, indexes, migrations, and backfills are unchanged by this goal.
+
 ## Portal projection cutover (repository closed 2026-09-12)
 
 `portalPrintRequestItems/{itemId}` is a strict, server-owned projection of
@@ -22,7 +33,7 @@ after convergence. No schema migration or production population was run in this 
 | `customerUploads` | Customer artwork for requests (ADR-FP-073) |
 | `customerUploadBatches` | Upload sessions / ZIP batches |
 | `customerUploadRateLimits` / leases / idempotency | Abuse controls |
-| `upcomingShows` / `showAllocations` / print runs | Show Queue |
+| `upcomingShows` / `showAllocations` / print runs | Show Queue; optional `showAllocations.showCapacityOverride` when staff Allocate Anyway (ADR-FP-182); does not change show `maxTotalQuantity` |
 | `staffInboxAcks` | Per-staff Done state for inbox |
 | `assistedCreationRequests` | Customer Assisted Creation brief, references, proofs, and revision history |
 | `settings` | AI enrichment, show queue, etc. |

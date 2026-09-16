@@ -1,5 +1,118 @@
 # Recent Completed Work
 
+## 2026-09-16 - Print Request count parity + unqueue cache/cancel parity — SIGNOFF COMPLETE (DEV)
+
+Goals `print-request-count-parity-across-show-queue-and-summary-surfaces` (**approved_with_notes**)
+and `portal-unqueue-capacity-cache-and-studio-cancel-parity` (**approved_with_notes**) are
+**DONE**. Owner DEV QA **PASS WITH NOTES** accepted the remove→re-add historical-allocation
+scenario in DEV and confirmed current Show Queue Designs/Items did not inflate from canceled
+history. Delivered canonical source-aware Designs/Items across Show Queue and summary surfaces;
+Portal allocatable-shows cache invalidation on queue/unqueue; Studio staff remove soft-cancel
+(History only) parity with Portal; and Show Queue remove Confirm **Removing…** busy feedback.
+Focused parity/cross-surface tests **115/115 PASS**; follow-up contracts **6/6 PASS**. Portal,
+Studio, and Functions typechecks, changed-file lint, Studio build, Functions build, and diff check
+passed; documented Portal-build and full-lint limitations remain. No production Functions/Portal/
+Studio release, deployment, smoke, or data action occurred. FreshForge is **IDLE**; the next plan
+is parked pending owner direction.
+
+Signoffs:
+`docs/workflow/reviews/2026-09-16-print-request-count-parity-across-show-queue-and-summary-surfaces-signoff.md`,
+`docs/workflow/reviews/2026-09-16-portal-unqueue-capacity-cache-and-studio-cancel-parity-signoff.md`.
+
+Preserved Signoff note: the exact historical production record cannot be live-validated with
+corrected runtime code until production promotion. Root cause was proven through read-only
+production evidence, automated production-shaped regression coverage passed, and Owner DEV QA
+validated the remove/re-add historical-allocation scenario in DEV. Production smoke must confirm
+the originally affected card after promotion.
+
+## 2026-09-16 - Studio pre-release Print Request download + intake navigation — SIGNOFF COMPLETE (DEV)
+
+Goal `studio-pre-release-pr-item-download-and-intake-navigation` is **DONE** with Signoff
+**approved_with_notes** after Owner DEV QA **PASS** with no notes. Studio Print Request cards now
+download exactly one native PNG per selected item using the latest saved dimensions and the existing
+source-aware production resolver; dirty/saving/failed-size guards, enhanced fail-closed behavior,
+bounded errors, and dismissible timed success feedback are preserved. Uploaded Designs and Donated
+Designs now move the active loaded list selection with ArrowUp/ArrowDown, with no wraparound or
+auto-load-more and with editable-target/lightbox guards intact.
+
+Focused tests **70/70 PASS**; export/gang-sheet/copy regressions **85/85 PASS**; Studio typecheck,
+targeted changed-file lint, build/package, and diff check pass. Build warnings and Windows
+electron-builder rename retries were non-fatal and documented. No Portal publication, Functions/
+Rules/Storage deployment, migration, backfill, data mutation, IAM, secret, or production action
+occurred. The cumulative manifest records Studio release **REQUIRED** and all backend/data
+categories **NONE from this goal**. Reviewed commit/push completed on `development`.
+
+Signoff: `docs/workflow/reviews/2026-09-16-studio-pre-release-pr-item-download-and-intake-navigation-signoff.md`.
+
+## 2026-09-15 - Portal Admin Staff Artwork + Studio AI Review — SIGNOFF COMPLETE (DEV)
+
+Goal `portal-admin-staff-artwork-upload` is **DONE** with Signoff **approved_with_notes** after
+Owner DEV QA **PASS**, including corrective retests. Delivered the upload-only Portal Admin
+`/admin/staff-artwork` route; full-card Design Library and Staff Artwork Multiple Select with modal/
+preview suppression; canonical Ready → imported/pending AI Review → approved → Ready lifecycle;
+truthful bulk retry classification; and bounded Staff Artwork promotion diagnostics.
+
+Final Workstream B focused validation is **86/86 PASS** (55 Studio, 31 Functions), with Portal and
+Studio typechecks, Functions build, changed-file lint, and `git diff --check` passing. DEV Functions
+`promoteStaffArtworkToAiReview`, `reprocessReadyDesignWithAi`, and `enqueueAiEnrichment` are ACTIVE
+in `fresh-prints-dev` at the revisions recorded in the Signoff/Test Report. No production deploy,
+Portal App Hosting, Studio release, Rules/index/migration/backfill action, data mutation, or IAM
+change occurred. Signoff:
+`docs/workflow/reviews/2026-09-15-portal-admin-staff-artwork-upload-signoff.md`.
+
+## 2026-09-15 - Historical Internal reconciliation / Admin Staff Artwork / DEV access — SIGNOFF COMPLETE (DEV)
+
+Goal `historical-internal-reconciliation-admin-artwork-previews-and-dev-access-hardening` is **DONE**.
+Owner DEV QA **PASS**. Signoff **approved**. A: owner History Preview→Apply (reuse finish/reconcile;
+no N+1). B: Admin View Designs Staff Artwork derivatives (ADR-FP-187). C: DEV overlay every
+login/register visit + approved-email gate (`fresh-prints-dev`; localhost + tunnel; production open).
+Focused tests **50/50** (+ correctives). Functions+Rules on DEV. No production / App Hosting /
+Studio release / IAM. Signoff:
+`docs/workflow/reviews/2026-09-15-historical-internal-reconciliation-admin-artwork-previews-and-dev-access-hardening-signoff.md`.
+Manifest: `docs/workflow/reviews/2026-09-pre-production-promotion-manifest.md`.
+
+## 2026-09-15 - Pre-release lifecycle / image parity / DEV hardening — SIGNOFF COMPLETE (DEV)
+
+Goal `pre-release-lifecycle-image-parity-and-dev-environment-hardening` is **DONE**. Owner DEV QA
+**PASS WITH NOTES**. Forward Internal Gang Sheet Mark Complete → Printed verified on DEV (production
+historical Queued-on-completed sheets deferred). Portal Admin View Designs signing-failure honesty
+delivered; Staff Artwork previews deferred. DEV banner + explicit noindex (Allow:/, empty sitemap,
+X-Robots-Tag) **PASS**. Focused tests **76/76 PASS**. No production IAM/deploy/Rules. Signoff:
+`docs/workflow/reviews/2026-09-15-pre-release-lifecycle-image-parity-and-dev-environment-hardening-signoff.md`.
+
+## 2026-09-15 - Studio staff show-capacity allocation override — SIGNOFF COMPLETE (DEV)
+
+Goal `studio-staff-show-capacity-allocation-override` is **DONE**. Owner DEV QA **PASS**.
+Studio **Allocate Anyway** sends `overrideShowCapacity: true` on
+`allocateStudioPrintRequestToShow` (boolean true only); bypasses only show-capacity ceiling /
+capacity-operational full; max unchanged; Portal strict; ADR-FP-182. Focused tests **79/79 PASS**.
+No production/Portal/Studio release, Rules, or schema change. Signoff:
+`docs/workflow/reviews/2026-09-15-studio-staff-show-capacity-allocation-override-signoff.md`.
+
+## 2026-09-15 - Show Queue global allocation quota apply-to-existing — SIGNOFF COMPLETE (DEV)
+
+Goal `show-queue-global-allocation-quota-apply-existing-shows` is **DONE**. Owner DEV QA
+**PASS**. Show Queue Settings Toggle optionally applies the saved global default max to eligible
+Upcoming Whatnot/DEV fixture shows via callable `applyShowQueueDefaultMaxToEligibleShows`.
+Unchecked Save remains global-default-only. Focused tests **33/33 PASS**. ADR-FP-160 recorded.
+No production/Portal/Studio release, Rules, or schema change. Signoff:
+`docs/workflow/reviews/2026-09-15-show-queue-global-allocation-quota-apply-existing-shows-signoff.md`.
+
+## 2026-09-15 - Studio pre-release Design Navigation + Print Request refinements — SIGNOFF COMPLETE (DEV)
+
+Goal `studio-pre-release-design-navigation-and-print-request-list-refinements` is **DONE**.
+Owner DEV QA recorded **PASS** for Workstreams A–F and the regression sweep. Design Details
+navigation/UI placement, Portal show-management parity for qualifying Studio-created customer
+requests, scoped Print Request isolation/search/grouping/totals/order, and integrated customer
+picker search were completed within the reviewed constraints.
+
+Final evidence: affected corrective suite **132/132 PASS**; F-focused suite **22/22 PASS**;
+Studio/Portal typechecks, Functions build, targeted ESLint, and `git diff --check` PASS. The full
+repository lint retains 14 unrelated pre-existing errors outside this goal. Earlier scoped DEV
+Functions deployment completed with 7 deployed and 0 errored/aborted. No production deployment,
+Portal publication, Studio release, schema change, Rules change, or unrelated refactor occurred.
+Signoff: `docs/workflow/reviews/2026-09-14-studio-pre-release-design-navigation-and-print-request-list-refinements-signoff.md`.
+
 ## 2026-09-13 - Production rollout STOPPED at Function preflight
 
 Owner-authorized production GO began the frozen rollout. Additive Firestore indexes deployed from

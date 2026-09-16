@@ -12,11 +12,14 @@ export default function robots(): MetadataRoute.Robots {
   const indexingEnabled = isPortalSearchIndexingEnabled()
 
   if (!indexingEnabled) {
-    // Fail closed for .dev / local / staging — still a real robots.txt for testing.
+    // DEV / non-prod: allow crawlers to fetch pages so they can observe noindex
+    // (HTML robots meta + X-Robots-Tag). Do not use Disallow:/ as the primary
+    // search-removal strategy — blocked URLs may remain as URL-only results.
+    // No sitemap advertisement.
     return {
       rules: {
         userAgent: '*',
-        disallow: '/',
+        allow: '/',
       },
     }
   }

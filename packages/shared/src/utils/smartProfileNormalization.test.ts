@@ -6,7 +6,11 @@ import {
   matchExactCanonicalDisplay,
   smartCanonicalKey,
 } from "./smartCanonicalKey";
-import { normalizeSmartProfileStringList, normalizeSmartProfileCategoryAlternatives } from "./smartProfileNormalization";
+import {
+  normalizeSmartProfileStringList,
+  normalizeSmartProfileSubjectList,
+  normalizeSmartProfileCategoryAlternatives,
+} from "./smartProfileNormalization";
 import {
   SMART_PROFILE_MAX_CATEGORY_REASON_LENGTH,
   SMART_PROFILE_MAX_STRING_LENGTH,
@@ -55,6 +59,13 @@ describe("exact canonical vocab match", () => {
       canonicalVocab: vocab,
     });
     assert.deepEqual(result, ["Highland Cow", "cow"]);
+  });
+
+  it("normalizes Subject casing after whitespace collapse and dedupe", () => {
+    assert.deepEqual(
+      normalizeSmartProfileSubjectList([" Highland  Cow ", "highland Cow", "COW"]),
+      ["highland cow", "cow"],
+    );
   });
 
   it("does not depend on a curated seed list when vocab is empty", () => {

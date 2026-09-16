@@ -26,6 +26,7 @@ import {
   type FirestoreTraceMetadata,
 } from "@fresh-prints/shared/utils/firestoreUsageTrace";
 import { createBoundedAsyncCache } from "@fresh-prints/shared/utils/boundedAsyncCache";
+import { normalizeSmartProfileSubjectList } from "@fresh-prints/shared/utils/smartProfileNormalization";
 
 import { getFirestoreErrorMessage } from "../../firebase/utils/firestoreErrorMessage";
 import {
@@ -47,6 +48,7 @@ import {
 } from "@fresh-prints/shared/types/design/artworkBackgroundSource.types";
 import { isCanonicalDesignStoragePath } from "../constants/designStoragePaths";
 import type { CreateDesignInput, Design, DesignAuthoritySnapshot, UpdateDesignInput } from "../types/design.types";
+import { isCatalogTitleSource } from "@fresh-prints/shared/types/design/catalogTitleSource.types";
 import type { AiReviewStateUpdate, CatalogApprovalUpdate } from "../types/aiReview.types";
 import { isAiReviewStatus } from "../types/aiReview.types";
 import type { DesignListPage, DesignListQuery, DesignListSortField } from "../types/designQuery.types";
@@ -62,6 +64,19 @@ import { getDesignListQueryCacheKey } from "../utils/designListQueryIdentity";
 const DEFAULT_LIST_LIMIT = 100;
 export const DESIGN_LIST_PAGE_SIZE = DEFAULT_LIST_LIMIT;
 const MAX_TITLE_LENGTH = 200;
+
+function normalizeImportPresetSeed(
+  presets: CreateDesignInput["smartProfileImportPresets"],
+): CreateDesignInput["smartProfileImportPresets"] {
+  if (!presets || typeof presets !== "object") return presets;
+  const subjects = presets.subjects;
+  return {
+    ...presets,
+    ...(Array.isArray(subjects)
+      ? { subjects: normalizeSmartProfileSubjectList(subjects) }
+      : {}),
+  };
+}
 const designPageCache = createBoundedAsyncCache<DesignListPage>({
   maxEntries: 64,
   onEvent: (event) => traceFirestoreCacheEvent(
@@ -210,6 +225,7 @@ function buildDesignListPage(
 interface DesignDocumentData {
   id?: unknown;
   title?: unknown;
+  catalogTitleSource?: unknown;
   description?: unknown;
   categoryId?: unknown;
   tags?: unknown;
@@ -311,6 +327,9 @@ function mapDesignDocument(designId: string, data: DesignDocumentData): Design {
   return {
     id: designId,
     title: data.title,
+    catalogTitleSource: isCatalogTitleSource(data.catalogTitleSource)
+      ? data.catalogTitleSource
+      : undefined,
     description: typeof data.description === "string" ? data.description : undefined,
     categoryId: typeof data.categoryId === "string" ? data.categoryId : undefined,
     tags,
@@ -852,10 +871,20 @@ export const designService = {
       validateOptionalDerivativePath(input.thumbnailPath, "thumbnails", designId) ?? "";
     const previewPath = validateOptionalDerivativePath(input.previewPath, "previews", designId);
     const tags = normalizeDesignTags(input.tags ?? []);
+    const requestedCatalogTitleSource = input.catalogTitleSource;
+    const catalogTitleSource =
+      requestedCatalogTitleSource === "staff" ||
+      requestedCatalogTitleSource === "trusted_import" ||
+      requestedCatalogTitleSource === "import_filename"
+        ? requestedCatalogTitleSource
+        : input.importSourceFileName?.trim()
+          ? "import_filename"
+          : "staff";
 
     const designRecord = withoutUndefinedFields({
       id: designId,
       title,
+      catalogTitleSource,
       description: input.description?.trim() || undefined,
       categoryId: input.categoryId?.trim() || undefined,
       tags,
@@ -908,7 +937,7 @@ export const designService = {
       importSourceFileName: input.importSourceFileName?.trim() || undefined,
       importRelativePath: input.importRelativePath?.trim() || undefined,
       smartProfileImportPresets: input.smartProfileImportPresets && Object.keys(input.smartProfileImportPresets).length > 0
-        ? input.smartProfileImportPresets
+        ? normalizeImportPresetSeed(input.smartProfileImportPresets)
         : undefined,
       queueCount: 0,
       aiProcessed: input.aiProcessed ?? false,
@@ -985,6 +1014,8 @@ export const designService = {
 
     if (input.title !== undefined) {
       updatePayload.title = validateTitle(input.title);
+      // Authenticated Studio title edits are explicit staff authority.
+      updatePayload.catalogTitleSource = "staff";
     }
 
     if (input.description !== undefined) {

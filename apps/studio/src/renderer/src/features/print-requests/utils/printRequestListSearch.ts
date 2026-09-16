@@ -22,6 +22,40 @@ export interface PrintRequestListSearchCustomer {
   username?: string | null;
 }
 
+function getCustomerSearchHaystacks(
+  request: PrintRequestListSearchable,
+  customersById: ReadonlyMap<string, PrintRequestListSearchCustomer>,
+): string[] {
+  const haystacks: string[] = [
+    request.customerId ?? "",
+    request.customerUsernameSnapshot ?? "",
+    request.customerDisplayNameSnapshot ?? "",
+  ];
+
+  if (request.customerId) {
+    const customer = customersById.get(request.customerId);
+    if (customer) {
+      haystacks.push(customer.displayName ?? "", customer.username ?? "");
+    }
+  }
+
+  return haystacks;
+}
+
+export function printRequestMatchesCustomerListSearch(
+  request: PrintRequestListSearchable,
+  normalizedQuery: string,
+  customersById: ReadonlyMap<string, PrintRequestListSearchCustomer>,
+): boolean {
+  if (!normalizedQuery) {
+    return true;
+  }
+
+  return getCustomerSearchHaystacks(request, customersById).some((value) =>
+    value.toLowerCase().includes(normalizedQuery),
+  );
+}
+
 export function printRequestMatchesListSearch(
   request: PrintRequestListSearchable,
   normalizedQuery: string,
@@ -34,18 +68,9 @@ export function printRequestMatchesListSearch(
   const haystacks: string[] = [
     request.id,
     request.name,
-    request.customerId ?? "",
-    request.customerUsernameSnapshot ?? "",
-    request.customerDisplayNameSnapshot ?? "",
     request.notes ?? "",
+    ...getCustomerSearchHaystacks(request, customersById),
   ];
-
-  if (request.customerId) {
-    const customer = customersById.get(request.customerId);
-    if (customer) {
-      haystacks.push(customer.displayName ?? "", customer.username ?? "");
-    }
-  }
 
   return haystacks.some((value) => value.toLowerCase().includes(normalizedQuery));
 }

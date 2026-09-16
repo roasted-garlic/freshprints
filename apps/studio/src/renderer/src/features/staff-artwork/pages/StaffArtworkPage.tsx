@@ -1,5 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
-import { BrushCleaning, ChevronLeft, ChevronRight, Minus, Plus, RefreshCw, Trash2, X, ArrowLeft } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type KeyboardEvent,
+} from "react";
+import { ArrowLeft, BrushCleaning, ChevronLeft, ChevronRight, ListChecks, Minus, Plus, RefreshCw, Trash2, X } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import {
@@ -11,10 +19,14 @@ import type {
   StaffArtworkStatus,
   StaffArtworkSummary,
 } from "@fresh-prints/shared/types/staffArtwork/staffArtwork.types";
-import { describeStaffArtworkDeletionBlockers } from "@fresh-prints/shared/utils/staffArtworkDeletionEligibility";
+import {
+  describeStaffArtworkActiveShowBlockNotice,
+  describeStaffArtworkDeletionBlockers,
+} from "@fresh-prints/shared/utils/staffArtworkDeletionEligibility";
 import type { ImportItemBackgroundOverride } from "@fresh-prints/shared/utils/resolveImportArtworkBackgroundDecision";
 
 import { Button } from "../../../shared/components/Button";
+import { DismissibleSuccessAlert } from "../../../shared/components/DismissibleSuccessAlert";
 import { EmptyState } from "../../../shared/components/EmptyState";
 import { ErrorState } from "../../../shared/components/ErrorState";
 import { GlobalSearchField } from "../../../shared/components/GlobalSearchField";
@@ -33,6 +45,8 @@ import type { ArtworkBackgroundFieldsValues } from "../../designs/components/Art
 import { DesignPreviewLightbox } from "../../designs/components/DesignPreviewLightbox";
 import { ImportArtworkBackgroundQuickPicker } from "../../imports/components/ImportArtworkBackgroundQuickPicker";
 import { enqueueImportedDesignsForBackgroundAi } from "../../imports/services/importAiBackgroundQueue";
+import { readAiProcessingAutoProcessPreference } from "../../ai-review/utils/aiProcessingAutoProcessPreference";
+import { runAiReviewBulkReprocess, type AiReviewBulkReprocessResult } from "../../ai-review/utils/aiReviewBulkReprocess";
 import { permissionService } from "../../permissions/services/permissionService";
 import { getPrintRequestsPath } from "../../print-requests/constants/printRequestRoutes";
 import { printRequestService } from "../../print-requests/services/printRequestService";
@@ -204,8 +218,15 @@ export function StaffArtworkPage() {
   const [promoteError, setPromoteError] = useState<string | null>(null);
   const [isPromoting, setIsPromoting] = useState(false);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
+  const dismissSuccessNotice = useCallback(() => {
+    setSuccessNotice(null);
+  }, []);
+  const [isAiMultiSelectMode, setIsAiMultiSelectMode] = useState(false);
+  const [selectedAiArtworkIds, setSelectedAiArtworkIds] = useState<Set<string>>(new Set());
+  const [isBulkPromoting, setIsBulkPromoting] = useState(false);
+  const [bulkPromotionResult, setBulkPromotionResult] = useState<AiReviewBulkReprocessResult | null>(null);
   const [deletionEligibilityById, setDeletionEligibilityById] = useState<
-    Record<string, { canDelete: boolean; reason: string }>
+    Record<string, { canDelete: boolean; reason: string; blockers: string[] }>
   >({});
 
   const canManage = permissionService.canManageStaffArtwork(user);
@@ -218,6 +239,7 @@ export function StaffArtworkPage() {
   const queuedCount = pendingUploads.filter((item) => item.status !== "done").length;
   const canSubmitUploads = queuedCount > 0 && !modalBusy;
   const selectedCount = selectedIds.size;
+  const canBulkPromote = canManage && !selectionMode;
   const selectedQuantityTotal = useMemo(
     () =>
       [...selectedIds].reduce(
@@ -340,13 +362,21 @@ export function StaffArtworkPage() {
               ? ""
               : describeStaffArtworkDeletionBlockers(preview.blockers) ||
                 preview.blockers.join(", ");
-            return [artwork.id, { canDelete: preview.canDelete, reason }] as const;
+            return [
+              artwork.id,
+              {
+                canDelete: preview.canDelete,
+                reason,
+                blockers: preview.blockers,
+              },
+            ] as const;
           } catch {
             return [
               artwork.id,
               {
                 canDelete: false,
                 reason: "Unable to verify whether this artwork can be deleted right now.",
+                blockers: [],
               },
             ] as const;
           }
@@ -360,6 +390,21 @@ export function StaffArtworkPage() {
       cancelled = true;
     };
   }, [artworks, canManage, user]);
+
+  useEffect(() => {
+    setSelectedAiArtworkIds((current) => {
+      const next = new Set(
+        [...current].filter((id) => {
+          const eligibility = deletionEligibilityById[id];
+          return !eligibility || eligibility.canDelete;
+        }),
+      );
+      if (next.size === current.size) {
+        return current;
+      }
+      return next;
+    });
+  }, [deletionEligibilityById]);
 
   const handleRefresh = useCallback(() => {
     if (isRefreshing) return;
@@ -903,7 +948,8 @@ export function StaffArtworkPage() {
       const promotedId = promotingArtwork.id;
       const promotedTitle = promotingArtwork.title;
       const result = await staffArtworkService.promote(user, promotedId);
-      enqueueImportedDesignsForBackgroundAi([result.designId], { force: true });
+      const autoStart = readAiProcessingAutoProcessPreference();
+      enqueueImportedDesignsForBackgroundAi([result.designId]);
       setArtworks((current) => current.filter((entry) => entry.id !== promotedId));
       setPreviewUrls((current) => {
         const next = { ...current };
@@ -912,8 +958,12 @@ export function StaffArtworkPage() {
       });
       setSuccessNotice(
         result.alreadyPromoted
-          ? `"${promotedTitle}" was already in AI Review. Removed from Staff Artwork and queued again.`
-          : `"${promotedTitle}" sent to AI Review and removed from this library. Processing starts in the background.`,
+          ? `"${promotedTitle}" was already in AI Review. Removed from Staff Artwork.${
+              autoStart ? " Processing continues in the background." : " Start AI when ready."
+            }`
+          : `"${promotedTitle}" sent to AI Review and removed from this library.${
+              autoStart ? " Processing starts in the background." : " Start AI when ready."
+            }`,
       );
       setPromotingArtwork(null);
       await refresh({ fromServer: true });
@@ -926,6 +976,118 @@ export function StaffArtworkPage() {
       setIsPromoting(false);
     }
   };
+
+  const toggleAiArtworkSelection = useCallback((artworkId: string) => {
+    setSelectedAiArtworkIds((current) => {
+      const next = new Set(current);
+      if (next.has(artworkId)) {
+        next.delete(artworkId);
+      } else {
+        next.add(artworkId);
+      }
+      return next;
+    });
+    setError(null);
+    setSuccessNotice(null);
+  }, []);
+
+  const enterAiMultiSelectMode = useCallback(() => {
+    if (!canBulkPromote) {
+      return;
+    }
+    setSuccessNotice(null);
+    setError(null);
+    setBulkPromotionResult(null);
+    setSelectedAiArtworkIds(new Set());
+    setIsAiMultiSelectMode(true);
+  }, [canBulkPromote]);
+
+  const cancelAiMultiSelectMode = useCallback(() => {
+    setIsAiMultiSelectMode(false);
+    setSelectedAiArtworkIds(new Set());
+    setBulkPromotionResult(null);
+  }, []);
+
+  const submitAiMultiSelect = useCallback(async () => {
+    if (!user || !canBulkPromote || !isAiMultiSelectMode || isBulkPromoting || selectedAiArtworkIds.size === 0) {
+      return;
+    }
+
+    const selectedIdsForRun = [...selectedAiArtworkIds];
+    const autoStart = readAiProcessingAutoProcessPreference();
+    setIsBulkPromoting(true);
+    setError(null);
+    setSuccessNotice(null);
+
+    try {
+      const result = await runAiReviewBulkReprocess({
+        designIds: selectedIdsForRun,
+        reprocessOne: async (artworkId) => {
+          const artwork = artworks.find((entry) => entry.id === artworkId);
+          if (!artwork || artwork.status !== "ready") {
+            return { ok: false as const, message: "This artwork is no longer Ready." };
+          }
+
+          try {
+            const promoted = await staffArtworkService.promote(user, artworkId);
+            enqueueImportedDesignsForBackgroundAi([promoted.designId]);
+            setArtworks((current) => current.filter((entry) => entry.id !== artworkId));
+            setPreviewUrls((current) => {
+              const next = { ...current };
+              delete next[artworkId];
+              return next;
+            });
+
+            const alreadyCurrentWarning = promoted.alreadyPromoted
+              ? "Already in AI Review; no duplicate catalog design was created."
+              : undefined;
+            const autoWarning = autoStart
+              ? undefined
+              : "Auto-process is off; start AI from the Processing tab when ready.";
+            return {
+              ok: true as const,
+              warning: [alreadyCurrentWarning, autoWarning].filter(Boolean).join(" ") || undefined,
+            };
+          } catch (cause) {
+            return {
+              ok: false as const,
+              message: cause instanceof Error ? cause.message : "Unable to promote Staff Artwork.",
+            };
+          }
+        },
+      });
+
+      const failedIds = new Set(result.failures.map((failure) => failure.designId));
+      setSelectedAiArtworkIds(new Set(selectedIdsForRun.filter((id) => failedIds.has(id))));
+      setBulkPromotionResult(result);
+      if (result.failures.length === 0) {
+        setSuccessNotice(
+          `${result.successfulIds.length} artwork${result.successfulIds.length === 1 ? "" : "s"} sent to AI Review.${
+            autoStart ? " Processing starts in the background." : " Start AI when ready."
+          }`,
+        );
+      } else {
+        const failureDetails = result.failures
+          .map((failure) => failure.message)
+          .filter(Boolean)
+          .join(" ");
+        setError(
+          `${result.successfulIds.length} succeeded; ${result.failures.length} failed. ${failureDetails} Select Retry failed to try only the failures.`,
+        );
+      }
+      await refresh({ fromServer: true, clearPreviews: false });
+    } finally {
+      setIsBulkPromoting(false);
+    }
+  }, [
+    artworks,
+    canBulkPromote,
+    isAiMultiSelectMode,
+    isBulkPromoting,
+    refresh,
+    selectedAiArtworkIds,
+    user,
+  ]);
 
   const deleteArtwork = async (artworkId: string) => {
     if (!user) return;
@@ -1012,12 +1174,59 @@ export function StaffArtworkPage() {
       ) : null}
 
       {successNotice ? (
-        <p className="auth-message auth-message-success" role="status">
-          {successNotice}
-        </p>
+        <DismissibleSuccessAlert message={successNotice} onDismiss={dismissSuccessNotice} />
       ) : null}
 
       <div className="staff-artwork-filter-dock">
+        {isAiMultiSelectMode ? (
+          <>
+            <div className="staff-artwork-ai-selection-toolbar" role="status">
+              <span className="staff-artwork-selection-count">
+                {selectedAiArtworkIds.size} selected
+              </span>
+              <span className="staff-artwork-ai-selection-copy">
+                {bulkPromotionResult
+                  ? "Only failed items remain selected."
+                  : "Artwork still on an active show or print request cannot be selected."}
+              </span>
+              <div className="staff-artwork-selection-bar-actions">
+                <Button onClick={cancelAiMultiSelectMode} size="sm" variant="ghost">
+                  Cancel
+                </Button>
+                <Button
+                  className="button-leading-icon"
+                  disabled={isBulkPromoting || selectedAiArtworkIds.size === 0}
+                  onClick={() => void submitAiMultiSelect()}
+                  size="sm"
+                >
+                  <ListChecks aria-hidden="true" size={14} strokeWidth={2} />
+                  {isBulkPromoting
+                    ? "Sending…"
+                    : bulkPromotionResult
+                      ? "Retry failed"
+                      : "Send to AI Review"}
+                </Button>
+              </div>
+            </div>
+            <details className="staff-artwork-ai-show-block-help">
+              <summary>About artwork on an active show</summary>
+              <p>
+                Still on an active show or print request — remove it or wait until that show is
+                completed before sending to AI Review.
+              </p>
+            </details>
+          </>
+        ) : canBulkPromote ? (
+          <Button
+            className="button-leading-icon"
+            onClick={enterAiMultiSelectMode}
+            size="sm"
+            variant="secondary"
+          >
+            <ListChecks aria-hidden="true" size={14} strokeWidth={2} />
+            Multiple Select
+          </Button>
+        ) : null}
         <div className="staff-artwork-filter-controls">
           <div className="staff-artwork-filter-controls-search">
             <GlobalSearchField
@@ -1070,20 +1279,58 @@ export function StaffArtworkPage() {
             const deletionEligibility = deletionEligibilityById[artwork.id];
             const deleteBlocked =
               deletionEligibility != null && deletionEligibility.canDelete === false;
-            const deleteBlockedReason =
-              deleteBlocked && deletionEligibility.reason
+            const aiSelectable =
+              canBulkPromote && artwork.status === "ready" && !deleteBlocked;
+            const promoteBlockedReason = deleteBlocked
+              ? describeStaffArtworkActiveShowBlockNotice(deletionEligibility.blockers) ||
+                deletionEligibility.reason
+              : undefined;
+            const deleteBlockedReason = deleteBlocked
+              ? deletionEligibility.reason
                 ? `Cannot delete: ${deletionEligibility.reason}`
-                : deleteBlocked
-                  ? "Cannot delete while this artwork is still on an active print request."
-                  : undefined;
+                : "Cannot delete while this artwork is still on an active print request."
+              : undefined;
 
             return (
               <article
                 aria-busy={isRemoving || undefined}
+                aria-disabled={isAiMultiSelectMode && !aiSelectable ? true : undefined}
+                aria-pressed={
+                  isAiMultiSelectMode && aiSelectable
+                    ? selectedAiArtworkIds.has(artwork.id)
+                    : undefined
+                }
                 className={`staff-artwork-card${selected ? " is-selected" : ""}${
                   isRemoving ? " is-removing" : ""
-                }${isConfirmingDelete ? " is-confirming-delete" : ""}`}
+                }${isConfirmingDelete ? " is-confirming-delete" : ""}${
+                  isAiMultiSelectMode && aiSelectable && selectedAiArtworkIds.has(artwork.id)
+                    ? " is-ai-selected"
+                    : ""
+                }`}
                 key={artwork.id}
+                onClick={(event) => {
+                  if (!isAiMultiSelectMode || !aiSelectable || isRemoving) {
+                    return;
+                  }
+                  if ((event.target as HTMLElement).closest("button, input, a")) {
+                    return;
+                  }
+                  toggleAiArtworkSelection(artwork.id);
+                }}
+                onKeyDown={(event: KeyboardEvent<HTMLElement>) => {
+                  if (
+                    !isAiMultiSelectMode ||
+                    !aiSelectable ||
+                    isRemoving ||
+                    (event.key !== "Enter" && event.key !== " ")
+                  ) {
+                    return;
+                  }
+                  event.preventDefault();
+                  toggleAiArtworkSelection(artwork.id);
+                }}
+                role={isAiMultiSelectMode && aiSelectable ? "button" : undefined}
+                tabIndex={isAiMultiSelectMode && aiSelectable ? 0 : undefined}
               >
                 <div
                   className="staff-artwork-card-media"
@@ -1093,7 +1340,21 @@ export function StaffArtworkPage() {
                     <button
                       type="button"
                       className="staff-artwork-card-preview-button"
-                      onClick={() => setLightboxArtworkId(artwork.id)}
+                      onClick={(event) => {
+                        if (isAiMultiSelectMode) {
+                          event.stopPropagation();
+                          if (aiSelectable && !isRemoving) {
+                            toggleAiArtworkSelection(artwork.id);
+                          }
+                          return;
+                        }
+                        setLightboxArtworkId(artwork.id);
+                      }}
+                      onKeyDown={(event) => {
+                        if (isAiMultiSelectMode) {
+                          event.stopPropagation();
+                        }
+                      }}
                       aria-label={`View ${artwork.title} preview`}
                       disabled={isRemoving}
                     >
@@ -1121,6 +1382,28 @@ export function StaffArtworkPage() {
                     >
                       <BrushCleaning aria-hidden="true" size={15} strokeWidth={2} />
                     </button>
+                  ) : null}
+                  {isAiMultiSelectMode && aiSelectable ? (
+                    <button
+                      aria-label={`${selectedAiArtworkIds.has(artwork.id) ? "Deselect" : "Select"} ${artwork.title} for AI Review`}
+                      className="staff-artwork-ai-select-overlay"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        toggleAiArtworkSelection(artwork.id);
+                      }}
+                      onKeyDown={(event) => event.stopPropagation()}
+                      type="button"
+                    >
+                      {selectedAiArtworkIds.has(artwork.id) ? "Selected" : "Select"}
+                    </button>
+                  ) : null}
+                  {isAiMultiSelectMode && artwork.status === "ready" && deleteBlocked ? (
+                    <div
+                      className="staff-artwork-ai-blocked-overlay"
+                      title={promoteBlockedReason}
+                    >
+                      On Active Show
+                    </div>
                   ) : null}
                 </div>
 
@@ -1215,7 +1498,7 @@ export function StaffArtworkPage() {
                     </div>
                   ) : null}
 
-                  {canManage && !selectionMode ? (
+                  {canManage && !selectionMode && !isAiMultiSelectMode ? (
                     <div
                       className={`staff-artwork-card-actions${
                         isConfirmingDelete ? " is-confirming-delete" : ""
@@ -1253,7 +1536,8 @@ export function StaffArtworkPage() {
                             setPromoteError(null);
                             setPromotingArtwork(artwork);
                           }}
-                          disabled={isRemoving || isPromoting}
+                          disabled={isRemoving || isPromoting || deleteBlocked}
+                          title={promoteBlockedReason}
                         >
                           Send to AI Review
                         </Button>

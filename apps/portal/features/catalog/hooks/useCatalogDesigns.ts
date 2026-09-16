@@ -239,9 +239,9 @@ function toFriendlyCatalogError(error: unknown): string {
  * Phase 1A ordinary browse gate: unfiltered, category, Halftone, and discovery sorts use
  * bounded Firestore without requiring generated assets or Algolia.
  *
- * Search and Smart Filters use Stage 1b managed search (Algolia) when configured. Halftone uses
- * its existing Firestore staff-decision semantics so it does not depend on an undeployed index
- * projection.
+ * Search and Smart Filters use Stage 1b managed search (Algolia) when configured. Halftone-only
+ * browse keeps its existing Firestore staff-decision semantics; when combined with Smart Filters,
+ * Algolia supplies Smart Profile membership and the staff decision remains a client post-filter.
  */
 export function allowsBoundedCatalogFirestoreFallback(options: UseCatalogDesignsQuery): boolean {
   const hasSearch = Boolean(options.searchQuery?.trim());
@@ -249,8 +249,18 @@ export function allowsBoundedCatalogFirestoreFallback(options: UseCatalogDesigns
   return !hasSearch && !hasSmart;
 }
 
+/** Exact-ID Firestore fallback cannot prove Smart Profile membership; fail closed when selected. */
+export function allowsExactIdCatalogFallback(
+  options: Pick<UseCatalogDesignsQuery, 'smartFilters'>,
+): boolean {
+  return !hasSelectedSmartFilters(options.smartFilters);
+}
+
 function requiresManagedSearchPath(options: UseCatalogDesignsQuery): boolean {
-  return !allowsBoundedCatalogFirestoreFallback(options) && options.halftoneFilterOn !== true;
+  // Smart Filters must stay on the managed path even when Halftone is also selected. Algolia
+  // applies the Smart Profile facets; the existing client post-filter applies the staff Halftone
+  // decision after hydration.
+  return !allowsBoundedCatalogFirestoreFallback(options);
 }
 
 export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
@@ -333,7 +343,11 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
       try {
         if (useManagedSearch) {
           const searchQuery = options.searchQuery ?? '';
-          const exactIdPromise = looksLikeDesignDocumentId(searchQuery)
+          // An exact-ID Firestore fallback cannot prove Smart Profile membership because the
+          // public CatalogDesign projection intentionally omits smartProfile. When Smart Filters
+          // are selected, fail closed and let the Algolia query be the membership authority.
+          const exactIdPromise = looksLikeDesignDocumentId(searchQuery) &&
+            allowsExactIdCatalogFallback({ smartFilters: smartFiltersForSearch })
             ? fetchVisibleExactIdCatalogDesign(searchQuery, {
                 categoryId: options.categoryId,
                 halftoneOnly: options.halftoneFilterOn,
@@ -486,6 +500,7 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
     needsFullHydrate,
     options.categoryId,
     options.discoveryMode,
+    options.halftoneFilterOn,
     options.searchQuery,
     pageSize,
     smartFiltersForSearch,
@@ -497,8 +512,9 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
     useOrdinaryFirestore,
   ]);
 
-  // Managed search (Algolia) already applied q/category — skip client text re-filter so
-  // Smart Profile matches are not dropped by title/description-only search.
+  // Managed search (Algolia) already applied q/category/Smart Profile facets — skip local text
+  // and category re-filters so Smart Profile matches are not dropped by title-only search. Keep
+  // Halftone as a client post-filter because it is a staff decision, not an Algolia facet.
   const clientFilters = resolveManagedSearchClientFilters({
     isManagedSearchQuery,
     searchQuery: options.searchQuery,
@@ -542,6 +558,8 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
   const matchingCount = isManagedSearchQuery
     ? needsFullHydrate && isLoading
       ? null
+      : clientFilters.halftoneFilterOn
+        ? null
       : (serverTotalCount ?? filteredDesigns.length)
     : resolveOrdinaryMatchingCount({
         countAuthority,
@@ -549,12 +567,12 @@ export function useCatalogDesigns(options: UseCatalogDesignsQuery): {
         isFullyHydrated,
       });
 
-  const isCountUnavailable =
-    !isManagedSearchQuery &&
-    shouldShowOrdinaryCountUnavailable({
-      countAuthority,
-      matchingCount,
-    });
+  const isCountUnavailable = isManagedSearchQuery
+    ? clientFilters.halftoneFilterOn && !isLoading
+    : shouldShowOrdinaryCountUnavailable({
+        countAuthority,
+        matchingCount,
+      });
 
   const loadMoreDesigns = useCallback(() => {
     if (isManagedSearchQuery) {

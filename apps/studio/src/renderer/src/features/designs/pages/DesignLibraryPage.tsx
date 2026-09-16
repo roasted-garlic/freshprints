@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { ArrowLeft, FolderCog, Save, Trash2, X } from "lucide-react";
+import { ArrowLeft, FolderCog, ListChecks, Save, Trash2, X } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { withFirebaseTraceAction } from "@fresh-prints/shared/utils/firestoreUsageTrace";
@@ -50,6 +50,8 @@ import { useGeneratedDesignLibraryTaxonomy } from "../hooks/useGeneratedDesignLi
 import { usePurgeArchivedDesignAssets } from "../hooks/usePurgeArchivedDesignAssets";
 import { useRestoreDesign } from "../hooks/useRestoreDesign";
 import { designService } from "../services/designService";
+import { designReprocessWithAiService } from "../services/designReprocessWithAiService";
+import { aiEnrichmentEnqueueService } from "../../ai-review/services/aiEnrichmentEnqueueService";
 import { findDesignIdsOnActiveShowQueue } from "../services/purgeArchivedDesignAssetsService";
 import type { DesignSmartProfile } from "@fresh-prints/shared/types/catalog/smartProfile.types";
 import type { Design } from "../types/design.types";
@@ -71,6 +73,12 @@ import {
   filterDesignsBySearch,
 } from "../utils/designLibrarySearch";
 import { getDesignLibraryFirestoreLoadPolicy } from "../utils/designLibraryFirestoreLoadPolicy";
+import { isDesignEligibleForReadyAiReprocess } from "../utils/designAiReprocessEligibility";
+import { readAiProcessingAutoProcessPreference } from "../../ai-review/utils/aiProcessingAutoProcessPreference";
+import {
+  runAiReviewBulkReprocess,
+  type AiReviewBulkReprocessResult,
+} from "../../ai-review/utils/aiReviewBulkReprocess";
 
 const ALL_FILTER_VALUE = "all";
 
@@ -118,6 +126,10 @@ export function DesignLibraryPage() {
   const [designsToPurge, setDesignsToPurge] = useState<Design[]>([]);
   const [activeQueueDesignIds, setActiveQueueDesignIds] = useState<string[]>([]);
   const [selectedPurgeIds, setSelectedPurgeIds] = useState<string[]>([]);
+  const [isAiMultiSelectMode, setIsAiMultiSelectMode] = useState(false);
+  const [selectedAiDesigns, setSelectedAiDesigns] = useState<Design[]>([]);
+  const [isBulkAiSubmitting, setIsBulkAiSubmitting] = useState(false);
+  const [bulkAiResult, setBulkAiResult] = useState<AiReviewBulkReprocessResult | null>(null);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -479,7 +491,6 @@ export function DesignLibraryPage() {
     algoliaCategoryFacetIds,
     categories,
     categoryFilter,
-    managedSearchActive,
     needsAlgoliaCategoryNarrowing,
     searchMatchedDesigns,
   ]);
@@ -595,6 +606,169 @@ export function DesignLibraryPage() {
   const showSuccessMessage = useCallback((message: string) => {
     setSuccessMessage(message);
   }, []);
+
+  const canUseAiMultiSelect =
+    !includeArchived &&
+    !selectionModeActive &&
+    permissionService.canReprocessReadyDesignWithAi(user);
+  const aiReprocessEligibleIds = useMemo(
+    () => new Set(filteredDesigns.filter(isDesignEligibleForReadyAiReprocess).map((design) => design.id)),
+    [filteredDesigns],
+  );
+  const enterAiMultiSelectMode = useCallback(() => {
+    if (!canUseAiMultiSelect) {
+      return;
+    }
+    setSuccessMessage(null);
+    setActionError(null);
+    setBulkAiResult(null);
+    setSelectedAiDesigns([]);
+    setIsAiMultiSelectMode(true);
+  }, [canUseAiMultiSelect]);
+  const cancelAiMultiSelectMode = useCallback(() => {
+    setIsAiMultiSelectMode(false);
+    setSelectedAiDesigns([]);
+    setBulkAiResult(null);
+  }, []);
+  const toggleAiDesignSelection = useCallback(
+    (design: Design) => {
+      if (!isDesignEligibleForReadyAiReprocess(design)) {
+        return;
+      }
+      setSelectedAiDesigns((current) =>
+        current.some((entry) => entry.id === design.id)
+          ? current.filter((entry) => entry.id !== design.id)
+          : [...current, design],
+      );
+      setActionError(null);
+    },
+    [],
+  );
+  const submitAiMultiSelect = useCallback(async () => {
+    if (
+      !user ||
+      !canUseAiMultiSelect ||
+      !isAiMultiSelectMode ||
+      isBulkAiSubmitting ||
+      selectedAiDesigns.length === 0
+    ) {
+      return;
+    }
+
+    const retryOnly = Boolean(bulkAiResult);
+    const selected = [...selectedAiDesigns];
+    const autoStart = readAiProcessingAutoProcessPreference();
+    setIsBulkAiSubmitting(true);
+    setActionError(null);
+
+    try {
+      const result = await runAiReviewBulkReprocess({
+        designIds: selected.map((design) => design.id),
+        reprocessOne: async (designId) => {
+          const snapshot = selected.find((design) => design.id === designId);
+          if (!snapshot) {
+            return { ok: false as const, message: "The selected design is no longer available." };
+          }
+
+          try {
+            let status: string | null = null;
+            let aiReviewStatus: string | null = null;
+            let aiProcessingStage: string | null = null;
+
+            if (retryOnly) {
+              const retryResult = await aiEnrichmentEnqueueService.retryFailedProcessing(designId);
+              if (!retryResult.queued && retryResult.reason !== "already_terminal") {
+                return { ok: false as const, message: "AI processing could not be queued. Please try again." };
+              }
+              status = retryResult.status ?? null;
+              aiReviewStatus = retryResult.aiReviewStatus ?? null;
+              aiProcessingStage = retryResult.aiProcessingStage ?? null;
+            } else {
+              const reprocessResult =
+                await designReprocessWithAiService.reprocessReadyDesignWithAi(user, designId, {
+                  autoStart: false,
+                });
+              status = reprocessResult.status;
+              aiReviewStatus = reprocessResult.aiReviewStatus;
+              aiProcessingStage = reprocessResult.aiProcessingStage;
+
+              if (autoStart) {
+                const enqueueResult = await aiEnrichmentEnqueueService.enqueueForProcessing(designId);
+                if (!enqueueResult.queued && enqueueResult.reason !== "already_terminal") {
+                  return { ok: false as const, message: "AI processing could not be queued. Please try again." };
+                }
+                status = enqueueResult.status ?? status;
+                aiReviewStatus = enqueueResult.aiReviewStatus ?? aiReviewStatus;
+                aiProcessingStage = enqueueResult.aiProcessingStage ?? aiProcessingStage;
+              }
+            }
+
+            const returnedToLibrary = status === "ready" && aiReviewStatus === "approved";
+            if (!returnedToLibrary) {
+              removeDesignFromList(designId);
+              const candidate =
+                managedSearchDesigns.find((design) => design.id === designId) ??
+                (snapshot.id === designId ? snapshot : null);
+              if (candidate) {
+                applyManagedSearchPatch({
+                  ...candidate,
+                  status: (status ?? "imported") as Design["status"],
+                  aiReviewStatus: (aiReviewStatus ?? "pending") as Design["aiReviewStatus"],
+                  aiProcessingStage: (aiProcessingStage ?? undefined) as Design["aiProcessingStage"],
+                });
+              }
+              setLibraryTotal((current) => (current === null ? null : Math.max(0, current - 1)));
+            }
+
+            if (status === "failed" || aiProcessingStage === "failed") {
+              return { ok: false as const, message: "AI processing failed. Retry this item from AI Processing." };
+            }
+
+            return {
+              ok: true as const,
+              warning:
+                !retryOnly && !autoStart
+                  ? "Auto-process is off; start AI from the Processing tab when ready."
+                  : undefined,
+            };
+          } catch (error) {
+            return {
+              ok: false as const,
+              message: error instanceof Error ? error.message : "Unable to send this design to AI Review.",
+            };
+          }
+        },
+      });
+
+      const failedIds = new Set(result.failures.map((failure) => failure.designId));
+      setSelectedAiDesigns(selected.filter((design) => failedIds.has(design.id)));
+      setBulkAiResult(result);
+      if (result.failures.length === 0) {
+        showSuccessMessage(
+          autoStart
+            ? `${result.successfulIds.length} design${result.successfulIds.length === 1 ? "" : "s"} sent through AI Review.`
+            : `${result.successfulIds.length} design${result.successfulIds.length === 1 ? "" : "s"} queued for AI Review.`,
+        );
+      } else {
+        setActionError(
+          `${result.successfulIds.length} succeeded; ${result.failures.length} failed. Select Retry failed to try only the failures.`,
+        );
+      }
+    } finally {
+      setIsBulkAiSubmitting(false);
+    }
+  }, [
+    applyManagedSearchPatch,
+    bulkAiResult,
+    canUseAiMultiSelect,
+    isAiMultiSelectMode,
+    isBulkAiSubmitting,
+    managedSearchDesigns,
+    removeDesignFromList,
+    selectedAiDesigns,
+    showSuccessMessage,
+    user,
+  ]);
 
   const openCategoryModal = useCallback(() => {
     setSuccessMessage(null);
@@ -1108,6 +1282,36 @@ export function DesignLibraryPage() {
 
       <section className="design-library-section">
         <div className="design-library-fixed-region">
+          {isAiMultiSelectMode ? (
+            <div className="design-library-ai-selection-toolbar" role="status">
+              <span className="design-library-count-chip">
+                {selectedAiDesigns.length} selected
+              </span>
+              <span className="design-library-ai-selection-copy">
+                {bulkAiResult
+                  ? "Only failed items remain selected."
+                  : "Ready approved designs stay visible while they enter AI Review."}
+              </span>
+              <div className="design-library-summary-actions">
+                <Button onClick={cancelAiMultiSelectMode} size="sm" variant="ghost">
+                  Cancel
+                </Button>
+                <Button
+                  className="button-leading-icon"
+                  disabled={isBulkAiSubmitting || selectedAiDesigns.length === 0}
+                  onClick={() => void submitAiMultiSelect()}
+                  size="sm"
+                >
+                  <ListChecks aria-hidden="true" size={14} strokeWidth={2} />
+                  {isBulkAiSubmitting
+                    ? "Sending…"
+                    : bulkAiResult
+                      ? "Retry failed"
+                      : "Send to AI Review"}
+                </Button>
+              </div>
+            </div>
+          ) : null}
           {selectionModeActive && selectionMode.printRequest ? (
             <Card className="design-library-selection-tray">
               <div className="design-library-selection-tray-top">
@@ -1165,6 +1369,17 @@ export function DesignLibraryPage() {
                 ) : null}
               </div>
               <div className="design-library-summary-actions">
+                {canUseAiMultiSelect && !isAiMultiSelectMode ? (
+                  <Button
+                    className="button-leading-icon"
+                    onClick={enterAiMultiSelectMode}
+                    size="sm"
+                    variant="secondary"
+                  >
+                    <ListChecks aria-hidden="true" size={14} strokeWidth={2} />
+                    Multiple Select
+                  </Button>
+                ) : null}
                 {includeArchived &&
                 !selectionModeActive &&
                 canPurgeArchivedDesignAssets &&
@@ -1249,6 +1464,15 @@ export function DesignLibraryPage() {
             hasActiveFilters={hasActiveFilters}
             isLoading={isLoading}
             onSelectDesign={openDesignDetails}
+            aiReprocessSelection={
+              isAiMultiSelectMode
+                ? {
+                    isEligible: (designId) => aiReprocessEligibleIds.has(designId),
+                    isSelected: (designId) => selectedAiDesigns.some((design) => design.id === designId),
+                    onToggle: toggleAiDesignSelection,
+                  }
+                : undefined
+            }
             purgeSelection={
               includeArchived && !selectionModeActive && canPurgeArchivedDesignAssets
                 ? {
@@ -1296,10 +1520,8 @@ export function DesignLibraryPage() {
           void openPurgeDesigns([design]);
         }}
         onReprocessedWithAi={(designId, options) => {
-          // Firestore browse list (when managed search is off).
+          // Demotion removes the design from the Ready browse in both Firestore and managed search.
           removeDesignFromList(designId);
-          // Managed Algolia grid owns search/filter results — removeDesignFromList alone
-          // leaves the card visible until navigate/refresh (same pattern as archive).
           const candidate =
             managedSearchDesigns.find((design) => design.id === designId) ??
             (selectedDesign?.id === designId ? selectedDesign : null) ??

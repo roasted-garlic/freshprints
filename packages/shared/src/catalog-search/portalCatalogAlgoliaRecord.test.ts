@@ -7,6 +7,8 @@ import {
   PORTAL_CATALOG_ALGOLIA_SEARCHABLE_ATTRIBUTES,
   PORTAL_CATALOG_ALGOLIA_SMART_FACET_ATTRIBUTES,
   normalizePortalCatalogAlgoliaStringList,
+  normalizePortalCatalogAlgoliaSubjectList,
+  buildPortalCatalogAlgoliaSmartFacetFilters,
   projectSmartProfileForAlgoliaIndex,
 } from './portalCatalogAlgoliaRecord';
 
@@ -93,6 +95,44 @@ describe('portalCatalogAlgoliaRecord Slice 3 helpers', () => {
     assert.ok(
       PORTAL_CATALOG_ALGOLIA_RECORD_SIZE_SOFT_MAX_BYTES >= 10_000,
     );
+  });
+
+  it('canonicalizes Subjects to lowercase, collapsed whitespace, and unique tokens', () => {
+    assert.deepEqual(
+      normalizePortalCatalogAlgoliaSubjectList([' Highland  Cow ', 'highland cow', 'COW']),
+      ['highland cow', 'cow'],
+    );
+    assert.deepEqual(
+      buildPortalCatalogAlgoliaSmartFacetFilters({ subjects: ['Cow', 'Highland Cow'] }),
+      [['subjects:cow'], ['subjects:highland cow']],
+    );
+  });
+
+  it('groups every customer facet dimension independently', () => {
+    const filters = buildPortalCatalogAlgoliaSmartFacetFilters({
+      subjects: ['cow', 'highland cow'],
+      styles: ['watercolor', 'whimsical'],
+      themes: ['humor'],
+      interests: ['coffee'],
+      professionsGroups: ['nurses', 'teachers'],
+      occasions: ['christmas'],
+      places: ['farm'],
+      colors: ['black', 'pink'],
+    });
+    assert.deepEqual(filters, [
+      ['subjects:cow'], ['subjects:highland cow'],
+      ['styles:watercolor'], ['styles:whimsical'],
+      ['themes:humor'], ['interests:coffee'],
+      ['professionsGroups:nurses'], ['professionsGroups:teachers'],
+      ['occasions:christmas'], ['places:farm'],
+      ['colors:black'], ['colors:pink'],
+    ]);
+  });
+
+  it('does not truncate selected facet values at the record projection cap', () => {
+    const subjects = Array.from({ length: 13 }, (_, index) => `subject-${index + 1}`);
+    const filters = buildPortalCatalogAlgoliaSmartFacetFilters({ subjects });
+    assert.equal(filters.length, 13);
   });
 
   it('builds search text without legacy tag names or aliases', async () => {

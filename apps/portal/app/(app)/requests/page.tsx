@@ -189,7 +189,11 @@ export default function RequestsPage() {
           ) : (
             <section className="portal-request-list" role="list">
               {visibleRequests.map((request) => {
-                const summary = summariesByRequestId[request.id] ?? { totalQuantity: 0, uniqueDesignCount: 0 };
+                const summary = summariesByRequestId[request.id] ?? {
+                  totalQuantity: 0,
+                  uniqueDesignCount: 0,
+                  sizeClassRows: [],
+                };
                 const allocationTotals = allocationTotalsByRequestId[request.id] ?? {
                   totalAllocatedQuantity: 0,
                   totalInProgressQuantity: 0,
@@ -221,6 +225,7 @@ export default function RequestsPage() {
                       fromTab={activeTab}
                       progressLabel={progressLabel}
                       request={request}
+                      summary={summary}
                       scheduleLine={scheduleLine}
                     />
                   </div>

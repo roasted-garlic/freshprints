@@ -3,6 +3,7 @@ import type { KeyboardEvent } from "react";
 
 import type { SmartProfileEditableDimensionKey } from "@fresh-prints/shared/constants/smartProfile.constants";
 import type { SmartProfileDimensionLists } from "@fresh-prints/shared/types/catalog/smartProfile.types";
+import { normalizeSmartProfileSubjectList } from "@fresh-prints/shared/utils/smartProfileNormalization";
 import {
   SMART_PROFILE_DIMENSION_DISPLAY_ORDER,
   SMART_PROFILE_DIMENSION_LABELS,
@@ -65,8 +66,13 @@ export function SmartProfilePresetsEditor({
             disabled={disabled}
             key={key}
             label={SMART_PROFILE_DIMENSION_LABELS[key]}
+            dimension={key}
             onChange={(values) => handleDimensionChange(key, values)}
-            values={presets?.[key] ?? []}
+            values={
+              key === "subjects"
+                ? normalizeSmartProfileSubjectList(presets?.[key]) ?? []
+                : presets?.[key] ?? []
+            }
           />
         ))}
       </div>
@@ -76,6 +82,7 @@ export function SmartProfilePresetsEditor({
 
 interface SmartProfilePresetDimensionEditorProps {
   disabled: boolean;
+  dimension: SmartProfileEditableDimensionKey;
   label: string;
   values: string[];
   onChange: (values: string[]) => void;
@@ -83,6 +90,7 @@ interface SmartProfilePresetDimensionEditorProps {
 
 function SmartProfilePresetDimensionEditor({
   disabled,
+  dimension,
   label,
   values,
   onChange,
@@ -91,7 +99,7 @@ function SmartProfilePresetDimensionEditor({
   const inputId = `import-preset-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 
   const addValue = () => {
-    const nextValues = addSmartProfilePresetValue(values, inputValue);
+    const nextValues = addSmartProfilePresetValue(values, inputValue, dimension);
     if (nextValues.length !== values.length) {
       onChange(nextValues);
       setInputValue("");
@@ -139,7 +147,7 @@ function SmartProfilePresetDimensionEditor({
                 aria-label={`Remove ${value} from ${label}`}
                 className="tag-chip-remove"
                 disabled={disabled}
-                onClick={() => onChange(removeSmartProfilePresetValue(values, value))}
+                onClick={() => onChange(removeSmartProfilePresetValue(values, value, dimension))}
                 type="button"
               >
                 ×

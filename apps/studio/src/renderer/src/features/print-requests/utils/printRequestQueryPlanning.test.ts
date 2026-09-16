@@ -149,7 +149,7 @@ describe("print request item summaries", () => {
     });
   });
 
-  it("collects sizeClassRows only for eligible printable items", () => {
+  it("collects sizeClassRows for printable items regardless of item status", () => {
     const summaries = buildPrintRequestItemSummaries([
       buildItem({
         id: "item-1",
@@ -182,6 +182,7 @@ describe("print request item summaries", () => {
 
     assert.deepEqual(summaries["request-1"]?.sizeClassRows, [
       { printWidthInches: 4, quantity: 3 },
+      { printWidthInches: 6, quantity: 1 },
     ]);
   });
 
@@ -203,11 +204,17 @@ describe("print request item summaries", () => {
         quantity: 3,
       }),
       buildItem({ id: "legacy-missing", printRequestId: "request-1", quantity: 4 }),
+      buildItem({
+        id: "staff-1",
+        printRequestId: "request-1",
+        sourceType: "staff_artwork",
+        quantity: 1,
+      }),
     ]);
 
     assert.deepEqual(summaries["request-1"], {
-      totalQuantity: 10,
-      uniqueDesignCount: 3,
+      totalQuantity: 11,
+      uniqueDesignCount: 4,
       sizeClassRows: [],
     });
   });

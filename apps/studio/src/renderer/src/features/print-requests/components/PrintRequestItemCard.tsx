@@ -1,8 +1,9 @@
-import { Ban, CircleCheck, Minus, Plus } from "lucide-react";
+import { Ban, CircleCheck, Download, Minus, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
 
 import { Button } from "../../../shared/components/Button";
 import { Card } from "../../../shared/components/Card";
+import { DismissibleSuccessAlert } from "../../../shared/components/DismissibleSuccessAlert";
 import { HoverBubbleTooltip } from "../../../shared/components/HoverBubbleTooltip";
 import { Toggle } from "../../../shared/components/Toggle";
 import { DesignThumbnailPanel } from "../../designs/components/DesignThumbnailPanel";
@@ -33,7 +34,9 @@ import {
   resolveInteractiveUpscaleToggleEligibility,
 } from "@fresh-prints/shared/utils/interactiveArtworkEnhance";
 import type { SetPrintRequestItemArtworkEnhanceModeResponse } from "@fresh-prints/shared/types/printRequest/setPrintRequestItemArtworkEnhanceMode.types";
+import { shouldAcceptIncomingItemProp } from "@fresh-prints/shared/utils/printRequestItemPropSyncGuard";
 import type { UpdatePrintRequestItemInput } from "../services/printRequestService";
+import type { PrintRequestItemDownloadState } from "../hooks/useDownloadPrintRequestItem";
 import { setPrintRequestItemArtworkEnhanceModeService } from "../services/setPrintRequestItemArtworkEnhanceModeService";
 import { resolvePrintRequestItemArtworkBackground } from "../utils/resolvePrintRequestItemArtworkBackground";
 import { resolvePrintRequestItemLibraryConsentIcon } from "../utils/printRequestCustomerUploadConsentSummary";
@@ -72,7 +75,10 @@ interface PrintRequestItemCardProps {
   item: PrintRequestItem;
   onRemove: (item: PrintRequestItem) => void | Promise<void>;
   onDuplicate: (item: PrintRequestItem) => void;
-  onUpdate: (item: PrintRequestItem, input: UpdatePrintRequestItemInput) => Promise<void>;
+  onUpdate: (
+    item: PrintRequestItem,
+    input: UpdatePrintRequestItemInput,
+  ) => Promise<PrintRequestItem | void>;
   onAutosaveStateChange: (
     status: "saving" | "saved" | "failed",
     message?: string,
@@ -88,6 +94,9 @@ interface PrintRequestItemCardProps {
   onArtworkEnhanceModeChanged?: (result: SetPrintRequestItemArtworkEnhanceModeResponse) => void;
   /** Parent-owned lightbox open — identity is always `item.id`. */
   onOpenPreview?: () => void;
+  onDownload?: () => void;
+  downloadState?: PrintRequestItemDownloadState;
+  onDismissDownloadState?: () => void;
 }
 
 function resolveInitialWidth(item: PrintRequestItem): number {
@@ -173,6 +182,10 @@ function buildItemSignature(
   });
 }
 
+function resolveItemUpdatedAtMs(item: PrintRequestItem): number | null {
+  return typeof item.updatedAt?.toMillis === "function" ? item.updatedAt.toMillis() : null;
+}
+
 export function PrintRequestItemCard({
   printRequestId,
   design,
@@ -190,6 +203,9 @@ export function PrintRequestItemCard({
   onDesignArtworkEnhanced,
   onArtworkEnhanceModeChanged,
   onOpenPreview,
+  onDownload,
+  downloadState,
+  onDismissDownloadState,
 }: PrintRequestItemCardProps) {
   const isUploadItem = item.sourceType === "customer_upload" || Boolean(item.customerUploadId);
   const sourcePill = resolvePrintRequestItemSourcePill({
@@ -209,19 +225,39 @@ export function PrintRequestItemCard({
     upload?.thumbnailPath ??
     undefined;
   const artworkBackgroundHex = resolvePrintRequestItemArtworkBackground(design, upload);
-  const [quantityInput, setQuantityInput] = useState(String(item.quantity));
-  const [printWidthInput, setPrintWidthInput] = useState(
+  const [quantityInput, setQuantityInputState] = useState(String(item.quantity));
+  const quantityInputRef = useRef(String(item.quantity));
+  function setQuantityInput(value: string) {
+    quantityInputRef.current = value;
+    setQuantityInputState(value);
+  }
+  const [printWidthInput, setPrintWidthInputState] = useState(
     formatEditableNumber(resolveInitialWidth(item)),
   );
-  const [printHeightInput, setPrintHeightInput] = useState(
+  const [printHeightInput, setPrintHeightInputState] = useState(
     formatEditableNumber(resolveInitialHeight(item)),
   );
+  const printWidthInputRef = useRef(printWidthInput);
+  const printHeightInputRef = useRef(printHeightInput);
+  function setPrintWidthInput(value: string) {
+    printWidthInputRef.current = value;
+    setPrintWidthInputState(value);
+  }
+  function setPrintHeightInput(value: string) {
+    printHeightInputRef.current = value;
+    setPrintHeightInputState(value);
+  }
   const [isConfirmingRemove, setIsConfirmingRemove] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
   const [isStandardSizesModalOpen, setIsStandardSizesModalOpen] = useState(false);
-  const [standardSizePresetKey, setStandardSizePresetKey] = useState<string | undefined>(
+  const [standardSizePresetKey, setStandardSizePresetKeyState] = useState<string | undefined>(
     item.standardSizePresetKey,
   );
+  const standardSizePresetKeyRef = useRef(standardSizePresetKey);
+  function setStandardSizePresetKey(value: string | undefined) {
+    standardSizePresetKeyRef.current = value;
+    setStandardSizePresetKeyState(value);
+  }
   const { url: previewUrl } = useDesignDerivativeUrl(previewPath);
   const lastSavedSignatureRef = useRef(
     buildItemSignature(
@@ -231,6 +267,7 @@ export function PrintRequestItemCard({
       item.standardSizePresetKey,
     ),
   );
+  const lastAcceptedUpdatedAtMsRef = useRef(resolveItemUpdatedAtMs(item));
   const saveDraftRef = useRef<() => Promise<boolean>>(async () => false);
   const saveDebounceRef = useRef<number | null>(null);
   const saveInFlightRef = useRef(false);
@@ -260,7 +297,28 @@ export function PrintRequestItemCard({
       item.standardSizePresetKey,
     );
 
-    if (incomingSignature === lastSavedSignatureRef.current) {
+    const incomingUpdatedAtMs = resolveItemUpdatedAtMs(item);
+    const localDraftSignature = buildItemSignature(
+      parsePositiveIntegerInput(quantityInputRef.current) ?? Number.NaN,
+      parsePositiveDecimalInput(printWidthInputRef.current) ?? Number.NaN,
+      parsePositiveDecimalInput(printHeightInputRef.current) ?? Number.NaN,
+      standardSizePresetKeyRef.current,
+    );
+    const hasPendingLocalEdit =
+      saveInFlightRef.current ||
+      saveQueuedRef.current ||
+      saveDebounceRef.current !== null ||
+      localDraftSignature !== lastSavedSignatureRef.current;
+
+    if (
+      !shouldAcceptIncomingItemProp({
+        incomingSignature,
+        lastSavedSignature: lastSavedSignatureRef.current,
+        incomingUpdatedAtMs,
+        lastAcceptedUpdatedAtMs: lastAcceptedUpdatedAtMsRef.current,
+        hasPendingLocalEdit,
+      })
+    ) {
       return;
     }
 
@@ -270,6 +328,9 @@ export function PrintRequestItemCard({
     setStandardSizePresetKey(item.standardSizePresetKey);
     setIsConfirmingRemove(false);
     lastSavedSignatureRef.current = incomingSignature;
+    if (incomingUpdatedAtMs !== null) {
+      lastAcceptedUpdatedAtMsRef.current = incomingUpdatedAtMs;
+    }
   }, [design, item, upload]);
 
   const parsedQuantity = parsePositiveIntegerInput(quantityInput);
@@ -608,13 +669,20 @@ export function PrintRequestItemCard({
     onAutosaveStateChange("saving");
 
     try {
-      await onUpdate(item, {
+      const updatedItem = await onUpdate(item, {
         quantity: parsedQuantity,
         printWidthInches: parsedPrintWidthInches,
         printHeightInches: parsedPrintHeightInches,
         standardSizePresetKey: standardSizePresetKey ?? null,
       });
+      // Record this write's signature. Advance lastAccepted from the server item's updatedAt
+      // (not Date.now()) so a lagging older snapshot cannot clobber this save, while a genuine
+      // newer cross-app write with a later server timestamp can still apply.
       lastSavedSignatureRef.current = draftSignature;
+      const acceptedUpdatedAtMs = updatedItem ? resolveItemUpdatedAtMs(updatedItem) : null;
+      if (acceptedUpdatedAtMs !== null) {
+        lastAcceptedUpdatedAtMsRef.current = acceptedUpdatedAtMs;
+      }
       setIsFailed(false);
       onAutosaveStateChange("saved");
       return true;
@@ -661,6 +729,7 @@ export function PrintRequestItemCard({
       parsedQuantity ?? Number.NaN,
       parsedPrintWidthInches ?? Number.NaN,
       parsedPrintHeightInches ?? Number.NaN,
+      standardSizePresetKey,
     ) !== lastSavedSignatureRef.current;
 
   const persistenceHealth = resolvePrintRequestItemPersistenceHealth({
@@ -671,6 +740,59 @@ export function PrintRequestItemCard({
     canSave,
   });
 
+  const hasSavedPrintSize =
+    typeof item.printWidthInches === "number" &&
+    Number.isFinite(item.printWidthInches) &&
+    item.printWidthInches > 0 &&
+    typeof item.printHeightInches === "number" &&
+    Number.isFinite(item.printHeightInches) &&
+    item.printHeightInches > 0;
+  const hasSourceIdentity = Boolean(item.designId || item.customerUploadId || item.staffArtworkId);
+  const downloadStatus = downloadState?.status ?? "idle";
+  const isDownloading = downloadStatus === "downloading";
+  const downloadDisabled = Boolean(
+    !onDownload ||
+      !hasSavedPrintSize ||
+      !hasSourceIdentity ||
+      !canSave ||
+      isDirty ||
+      isSaving ||
+      isFailed ||
+      isRemoving ||
+      isDownloading,
+  );
+  const downloadButton = onDownload ? (
+    <Button
+      aria-busy={isDownloading || undefined}
+      aria-label={`Download ${title}`}
+      className="button-leading-icon"
+      disabled={downloadDisabled}
+      onClick={onDownload}
+      size="sm"
+      type="button"
+      variant="secondary"
+    >
+      <Download aria-hidden="true" size={15} />
+      {isDownloading ? "Downloading…" : "Download"}
+    </Button>
+  ) : null;
+  const downloadMessage =
+    downloadState?.message && downloadStatus === "success" && onDismissDownloadState ? (
+      <DismissibleSuccessAlert
+        message={downloadState.message}
+        onDismiss={onDismissDownloadState}
+      />
+    ) : downloadState?.message ? (
+      <p
+        className={`auth-message print-requests-item-field-error${
+          downloadStatus === "error" ? " auth-message-error" : " auth-message-success"
+        }`}
+        role={downloadStatus === "error" ? "alert" : "status"}
+      >
+        {downloadState.message}
+      </p>
+    ) : null;
+
   useEffect(() => {
     onPersistenceHealthChange?.(item.id, persistenceHealth);
   }, [item.id, onPersistenceHealthChange, persistenceHealth]);
@@ -680,10 +802,11 @@ export function PrintRequestItemCard({
       parsedQuantity ?? Number.NaN,
       parsedPrintWidthInches ?? Number.NaN,
       parsedPrintHeightInches ?? Number.NaN,
+      standardSizePresetKey,
     );
 
     return draftSignature !== lastSavedSignatureRef.current;
-  }, [parsedPrintHeightInches, parsedPrintWidthInches, parsedQuantity]);
+  }, [parsedPrintHeightInches, parsedPrintWidthInches, parsedQuantity, standardSizePresetKey]);
 
   const handleFieldBlur = useCallback(() => {
     if (readOnly || !canSave || !hasUnsavedDraft()) {
@@ -1016,6 +1139,7 @@ export function PrintRequestItemCard({
                 isConfirmingRemove ? " is-confirming-remove" : ""
               }`}
             >
+              {downloadButton}
               <Button
                 disabled={isRemoving}
                 onClick={() => onDuplicate(item)}
@@ -1068,6 +1192,12 @@ export function PrintRequestItemCard({
             </div>
           </>
         ) : null}
+        {readOnly && downloadButton ? (
+          <div className="print-requests-item-editor-actions print-requests-item-download-actions">
+            {downloadButton}
+          </div>
+        ) : null}
+        {downloadMessage}
       </Card>
 
       {aspectPixels ? (

@@ -3,6 +3,7 @@ import type {
   SmartProfileProvenance,
 } from "../types/catalog/smartProfile.types";
 import { SMART_PROFILE_EDITABLE_DIMENSION_KEYS } from "../constants/smartProfile.constants";
+import { normalizeSmartProfileSubjectList } from "./smartProfileNormalization";
 
 /**
  * Merges Smart Profile import presets with AI-generated Smart Profile data.
@@ -22,7 +23,10 @@ export function mergeSmartProfileImportPresets(
   for (const key of SMART_PROFILE_EDITABLE_DIMENSION_KEYS) {
     const presetValue = importPresets[key];
     if (presetValue && Array.isArray(presetValue) && presetValue.length > 0) {
-      filteredPresets[key] = presetValue;
+      filteredPresets[key] =
+        key === "subjects"
+          ? normalizeSmartProfileSubjectList(presetValue) ?? []
+          : presetValue;
       appliedPresetKeys.push(key);
     }
   }
@@ -50,7 +54,8 @@ export function mergeSmartProfileImportPresets(
           combined.push(aiValue);
         }
       }
-      (merged as unknown as Record<string, unknown>)[key] = combined;
+      (merged as unknown as Record<string, unknown>)[key] =
+        key === "subjects" ? normalizeSmartProfileSubjectList(combined) : combined;
     }
   }
 
@@ -82,7 +87,8 @@ export function createImportPresetSeed(
   for (const key of presetKeys) {
     const value = smartProfile?.[key as keyof SmartProfileDimensionLists];
     if (Array.isArray(value) && value.length > 0) {
-      (seed as Record<string, unknown>)[key] = [...value];
+      (seed as Record<string, unknown>)[key] =
+        key === "subjects" ? normalizeSmartProfileSubjectList(value) : [...value];
     }
   }
 
@@ -115,7 +121,7 @@ export function syncImportPresetSeedOnStaffEdit(input: {
     if (!values || values.length === 0) {
       delete next[key];
     } else {
-      next[key] = [...values];
+      next[key] = key === "subjects" ? normalizeSmartProfileSubjectList(values) : [...values];
     }
   }
   return Object.keys(next).length > 0 ? next : null;

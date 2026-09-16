@@ -26,6 +26,17 @@ const customerUpload = {
   originalFilename: "art.png",
 };
 
+const staffArtwork = {
+  staffArtworkId: "staff1",
+  productionStoragePath: "/staff-artwork/staff1/production.png",
+  interactiveEnhancedProductionStoragePath: "/staff-artwork/staff1/production.interactive.png",
+  interactiveEnhancedWidthPx: 4800,
+  interactiveEnhancedHeightPx: 3600,
+  widthPx: 1600,
+  heightPx: 1200,
+  title: "Staff Art",
+};
+
 describe("resolveShowExportProductionAsset", () => {
   it("1. catalog baseline mode → baseline path", () => {
     const resolved = resolveShowExportProductionAsset({
@@ -121,6 +132,21 @@ describe("resolveShowExportProductionAsset", () => {
     );
   });
 
+  it("6c. Staff Artwork selects the private baseline or enhanced production path", () => {
+    const baseline = resolveShowExportProductionAsset({
+      item: { sourceType: "staff_artwork", staffArtworkId: "staff1" },
+      staffArtwork,
+    });
+    const enhanced = resolveShowExportProductionAsset({
+      item: { sourceType: "staff_artwork", staffArtworkId: "staff1", artworkEnhanceMode: "enhanced" },
+      staffArtwork,
+    });
+
+    assert.equal(baseline.productionStoragePath, staffArtwork.productionStoragePath);
+    assert.equal(enhanced.productionStoragePath, staffArtwork.interactiveEnhancedProductionStoragePath);
+    assert.equal(enhanced.sourceWidthPx, staffArtwork.interactiveEnhancedWidthPx);
+  });
+
   it("7. same design, baseline vs enhanced items → distinct assets", () => {
     const baseline = resolveShowExportProductionAsset({
       item: { designId: "d1", artworkEnhanceMode: "baseline" },
@@ -180,5 +206,17 @@ describe("resolveShowExportProductionAsset", () => {
     });
     const target = computeExportTargetPixelSize(18, 12, enhanced.sourceWidthPx, enhanced.sourceHeightPx);
     assert.equal(target.needsUpscale, false);
+  });
+
+  it("24. a saved size change produces a new 300-DPI target", () => {
+    const resolved = resolveShowExportProductionAsset({
+      item: { designId: "d1" },
+      catalogDesign,
+    });
+    const first = computeExportTargetPixelSize(10, 12, resolved.sourceWidthPx, resolved.sourceHeightPx);
+    const second = computeExportTargetPixelSize(11, 13.2, resolved.sourceWidthPx, resolved.sourceHeightPx);
+
+    assert.deepEqual(first, { targetWidthPx: 3000, targetHeightPx: 3600, needsUpscale: true });
+    assert.deepEqual(second, { targetWidthPx: 3300, targetHeightPx: 3960, needsUpscale: true });
   });
 });
