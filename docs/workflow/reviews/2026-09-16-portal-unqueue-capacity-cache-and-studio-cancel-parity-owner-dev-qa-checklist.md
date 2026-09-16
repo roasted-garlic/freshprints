@@ -28,3 +28,6 @@
 * Owner notes: Confirmed designs vs prints distinction; remove Confirm busy feedback verified via follow-up fix during QA.
 * Follow-up fixes required: none outstanding for this goal
 * Promotion authorization: `NOT REQUESTED / NOT GRANTED`
+
+Follow-up Signoff is recorded at
+`docs/workflow/reviews/2026-09-16-portal-unqueue-capacity-cache-and-studio-cancel-parity-signoff.md`.

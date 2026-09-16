@@ -2,21 +2,23 @@
 
 **Last updated:** 2026-09-16
 
-## CURRENT AUTHORITATIVE PHASE — PLAN READY FOR REVIEW — `selected-print-request-live-sync-studio-portal`
+## CURRENT AUTHORITATIVE PHASE — SIGNOFF COMPLETE / IDLE — `print-request-count-parity-across-show-queue-and-summary-surfaces`
 
-Prior goals signed off (count parity + unqueue cache/cancel parity). New goal opened at owner
-request: scoped live sync for the **selected/open** Print Request between Studio and Portal.
+The parent goal and its scoped follow-up are **DONE in DEV**. Signoff is
+**approved_with_notes** after Owner DEV QA **PASS WITH NOTES**. The exact historical production
+record remains promotion-gated; no production smoke, deployment, publication, release, or data
+action was performed.
 
-- Plan: `docs/workflow/plans/2026-09-16-selected-print-request-live-sync-studio-portal-plan.md`
-- Next: Formal Review of that plan
+- Parent Signoff: `docs/workflow/reviews/2026-09-16-print-request-count-parity-across-show-queue-and-summary-surfaces-signoff.md`
+- Follow-up Signoff: `docs/workflow/reviews/2026-09-16-portal-unqueue-capacity-cache-and-studio-cancel-parity-signoff.md`
+- Test Report: `docs/workflow/reviews/2026-09-16-print-request-count-parity-across-show-queue-and-summary-surfaces-test-report.md`
+- Owner DEV QA: parent **PASS WITH NOTES**; remove→re-add historical-allocation behavior accepted
+  in DEV; focused parity suite **115/115 PASS**.
+- Promotion Manifest: `docs/workflow/reviews/2026-09-pre-production-promotion-manifest.md`
 
-No production promotion/deploys authorized.
-
-## Historical snapshot — SIGNOFF COMPLETE — `portal-unqueue-capacity-cache-and-studio-cancel-parity` + parent count parity
-
-- Follow-up Signoff **approved**; parent Signoff **approved_with_notes**
-- Owner DEV QA PASS (follow-up); parent PASS WITH NOTES
-- Signoffs and QA checklists under `docs/workflow/reviews/2026-09-16-*`
+Production promotion remains separately unauthorized. The next planned goal
+`selected-print-request-live-sync-studio-portal` is parked for future owner direction; it is not
+active and has not passed Formal Review.
 
 ## Historical snapshot — Signoff complete / IDLE — `studio-pre-release-pr-item-download-and-intake-navigation`
 

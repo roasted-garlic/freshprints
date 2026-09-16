@@ -6,21 +6,21 @@ App Hosting publication applies to **production** (`myprintrequest.com`) only.
 
 ---
 
-## 2026-09-16 — `print-request-count-parity-across-show-queue-and-summary-surfaces` — READY FOR OWNER DEV QA / production promotion pending
+## 2026-09-16 — `print-request-count-parity-across-show-queue-and-summary-surfaces` — CLOSED DEV / production promotion pending
 
 | Kind | Final production promotion requirement / actual scope |
 |------|-------------------------------------------------------|
-| Studio release | **Required for production**: source-aware full-request Designs/Items summaries, active-allocation Show Queue counters/tier/price parity, Staff Inbox glance parity, Add-to-Show summary parity, and customer history card labels. |
-| Portal App Hosting | **Required for production**: request list/detail card counts, queue-to-show remaining summary, and continuable-request picker counts. DEV remains localhost + `myprintrequest.dev` tunnel; no DEV App Hosting step. |
-| Functions | **Required for production**: existing `getPortalAdminUpcomingShowQueueDashboard` runtime changed to carry `printRequestItemId` into the shared active metric summary; callable/DTO shape unchanged. |
+| Studio release | **REQUIRED**: Studio Show Queue active counters/tier/price/capacity parity; source-aware Print Request/Add-to-Show summaries; Staff Inbox glance; customer history labels. The Studio staff remove behavior also requires the updated callable bundle below in the environment used by the release. |
+| Portal App Hosting | **REQUIRED**: request list/detail counts, queue-to-show remaining summary, continuable-request picker counts, and successful queue/unqueue cache invalidation. DEV remains localhost + `myprintrequest.dev` tunnel; no DEV App Hosting step. |
+| Functions | **REQUIRED — exact existing Functions**: `getPortalAdminUpcomingShowQueueDashboard` (adapter now carries existing `printRequestItemId` into shared active metrics) and `unqueueStudioCustomerPrintRequestFromShow` (staff remove now audited soft-cancels allocations). Callable/DTO shape remains unchanged for the dashboard; no new Function was added. |
 | Firestore Rules | **NONE** |
 | Storage Rules | **NONE** |
 | Indexes | **NONE** |
 | Schema migration | **NONE** |
 | Backfill | **NONE** |
 | Production data mutation | **NONE** |
-| Minimal production smoke | Not authorized in this goal. If separately approved later: one request with duplicate artwork rows and canceled allocation history; verify full-request 19/25 and selected-show active 19/25 with matching tiers and `$56`, plus history-only behavior. |
-| Boundary | Owner DEV QA and repository Signoff are still pending. No production deploy, data write, release, commit, or push occurred. |
+| Minimal production smoke | **Required after separately authorized promotion; not performed now**: (1) open `sassymommasam-CR002` and its affected Show Queue card; (2) confirm `19 Designs | 25 Items`; (3) confirm `Reg Full 19 · Reg Oversize 6`; (4) confirm `$56`; (5) confirm canceled historical allocations remain available for History and do not inflate current counters; (6) spot-check one additional canceled/re-added request if available; (7) because Portal runtime changed, confirm Portal/Studio count parity on one request. Verification only — no writes or repairs. |
+| Boundary | Owner DEV QA **PASS WITH NOTES** and repository Signoff **approved_with_notes** are complete. Production deployment, Portal publication, Studio release, Functions deployment, data writes, and production smoke remain separately authorized checkpoints. Commit/push is limited to this reviewed `development` closeout. |
 
 ---
 

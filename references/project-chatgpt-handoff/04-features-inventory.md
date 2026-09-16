@@ -1,5 +1,15 @@
 # Features Inventory
 
+> 2026-09-16: **Print Request count parity + unqueue cache/cancel parity — CLOSED (DEV)** —
+> Full-request Print Request counts use source-aware logical Designs plus live item quantity;
+> selected Show Queue/Staff Inbox/Portal Admin counts use active non-canceled allocation identity
+> and quantity, with tiers, price, capacity, and status sharing that active set. Portal request
+> list/detail/queue-planning/history labels and Studio request summaries use the same contract.
+> Portal queue/unqueue clears allocatable-show caches, and Studio staff removal preserves canceled
+> History-only allocation rows. Owner DEV QA **PASS WITH NOTES**; focused parity **115/115 PASS**.
+> Studio release, Portal App Hosting, and the changed existing Functions remain separately gated
+> for production; no production action occurred.
+
 > 2026-09-16: **Studio pre-release Print Request download + intake navigation — CLOSED (DEV)** —
 > Goal `studio-pre-release-pr-item-download-and-intake-navigation` is signed off
 > **approved_with_notes** after Owner DEV QA **PASS**. Print Request cards now support independent

@@ -1,74 +1,57 @@
-# Signoff: Portal unqueue capacity cache + Studio cancel-parity remove
+# Signoff: Portal Unqueue Capacity Cache and Studio Cancel Parity
 
 | Field | Value |
-|---|---|
+|-------|-------|
 | Date | 2026-09-16 |
-| Signoff by | Signoff Agent |
+| Signoff by | Owner DEV QA + Signoff Agent |
 | Plan | `docs/workflow/plans/2026-09-16-portal-unqueue-capacity-cache-and-studio-cancel-parity-plan.md` |
-| Review | `docs/workflow/reviews/2026-09-16-portal-unqueue-capacity-cache-and-studio-cancel-parity-formal-review.md` |
+| Formal Review | `docs/workflow/reviews/2026-09-16-portal-unqueue-capacity-cache-and-studio-cancel-parity-formal-review.md` |
 | Test report | `docs/workflow/reviews/2026-09-16-portal-unqueue-capacity-cache-and-studio-cancel-parity-test-report.md` |
-| Owner DEV QA | `docs/workflow/reviews/2026-09-16-portal-unqueue-capacity-cache-and-studio-cancel-parity-owner-dev-qa-checklist.md` |
-| Final status | **approved** |
-
----
+| Owner DEV QA | **PASS** — follow-up remove/re-add validation accepted as part of the parent QA result |
+| Final status | **approved_with_notes** |
 
 ## Summary
 
-Closed the Owner DEV QA follow-up to print-request count parity: Portal Add-to-Show no longer keeps stale capacity/personal-spot usage after unqueue, Studio staff remove soft-cancels allocations like Portal (History only), and Show Queue remove Confirm shows busy feedback while the remove runs.
-
----
+The narrow follow-up is complete in DEV and its blocker on the parent count-parity goal is closed.
+Successful Portal queue/unqueue mutations invalidate both allocatable-show cache layers. Studio
+staff customer-request removal now soft-cancels allocations with audit fields, preserving the
+same History-only trail as Portal while active capacity and counters continue to exclude canceled
+rows.
 
 ## Changes Delivered
 
-### Behavior
-- Successful Portal queue/unqueue invalidates allocatable-shows read + session caches.
-- Studio `unqueueStudioCustomerPrintRequestFromShow` cancels allocations (audit timestamps) instead of deleting them; active counts still exclude canceled.
-- Show Queue remove Confirm → **Removing…** + disabled Cancel/Confirm until complete.
-- Durable docs updated for cancel parity and focused tests.
+- Unified Portal read/session cache invalidation at successful queue and unqueue boundaries.
+- Studio staff remove changed from allocation deletion to audited cancellation.
+- Existing active-only quantity recomputation and canceled-history display semantics preserved.
+- Focused cache and callable contract coverage added; no Rules, schema, migration, or data change.
 
-### Files Created
-- Follow-up plan, formal review, test report, owner QA checklist, signoff
-- Portal cache invalidation / session / service contract tests
-- Functions Studio unqueue cancel contract test
+## Evidence
 
-### Files Modified
-- Portal allocatable-shows cache, hook, show-selection service
-- `functions/src/unqueueStudioCustomerPrintRequestFromShow.ts`
-- Studio `UpcomingShowsPage.tsx` remove busy state
-- `docs/WORKFLOWS.md`, `DATA_MODEL.md`, `TESTING.md`
-- Show Queue staff UI contract tests
+- Follow-up focused contracts: **6/6 PASS**.
+- Portal and Functions typechecks: **PASS**.
+- Changed-file ESLint: **PASS**.
+- Owner DEV QA accepted the remove → re-add scenario and confirmed current counts did not inflate
+  from canceled historical rows.
 
-### Documentation Updated
-- WORKFLOWS, DATA_MODEL, TESTING, workflow artifacts, promotion manifest notes as applicable
+## Production Boundary
 
----
+No production deploy, Portal publication, Functions deployment, data mutation, migration,
+backfill, Rules/Storage Rules change, index change, IAM change, or secret/configuration change
+occurred. The exact production record remains deferred to the parent manifest’s post-promotion
+read-only smoke.
 
-## Tests
+## Verdict
 
-### Automated
-- Focused suite: **6 passed / 0 failed** (cache + cancel contracts)
-- Show Queue UI contract suite: **15 passed / 0 failed** (includes remove busy feedback)
-- Portal + Functions typecheck: pass
-- Changed-file ESLint: pass
+**approved_with_notes**
 
-### Manual
-- Owner DEV QA: **PASS** (2026-09-16)
+The exact historical production record cannot be live-validated with corrected runtime code until
+production promotion. Root cause was proven through read-only production evidence, automated
+production-shaped regression coverage passed, and Owner DEV QA validated the remove/re-add
+historical-allocation scenario in DEV. Production smoke must confirm the originally affected card
+after promotion.
 
-### Human approvals
-- Owner product direction: keep canceled history; staff/customer remove parity; canceled must not affect counts
-- Owner DEV QA PASS
-- Production deploy: **not requested / not granted**
+## Workflow Complete
 
----
-
-## Risks and Follow-ups
-
-- Studio cancel-parity in shared DEV/prod requires Functions deploy of the updated callable (unauthorized in this goal).
-- Portal cache fix is client-side and ships with Portal App Hosting promotion when authorized.
-- Next goal: selected Print Request live sync Studio ↔ Portal (scoped listeners).
-
----
-
-## Final Status
-
-**approved** — goal complete. Parent count-parity Signoff coordinated as approved with notes via this follow-up.
+- [x] Follow-up state reconciled through the parent Signoff
+- [x] Parent handoff and cumulative promotion manifest updated
+- [x] No production action performed

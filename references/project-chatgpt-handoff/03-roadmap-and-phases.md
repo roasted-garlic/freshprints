@@ -1,5 +1,22 @@
 # Roadmap and Phases
 
+## 2026-09-16 — Print Request count parity + unqueue cache/cancel parity — CLOSED (DEV)
+
+- Goals `print-request-count-parity-across-show-queue-and-summary-surfaces` and
+  `portal-unqueue-capacity-cache-and-studio-cancel-parity` are **DONE**; parent Signoff
+  **approved_with_notes** after Owner DEV QA **PASS WITH NOTES**.
+- Full-request source-aware Designs/Items and selected-show active-allocation parity are aligned
+  across Studio, Portal, Staff Inbox, Portal Admin, Add-to-Show, queue planning, and history.
+- Portal queue/unqueue cache invalidation and Studio staff soft-cancel/history parity are included.
+- Focused parity **115/115 PASS** and follow-up contracts **6/6 PASS**; no production action.
+- Production promotion remains separately gated: Studio release, Portal App Hosting, and the two
+  changed existing Functions are required; Rules, Storage Rules, indexes, migrations, backfills,
+  and data repair are **NONE**. The `sassymommasam-CR002` smoke is post-promotion only.
+- Signoffs:
+  `docs/workflow/reviews/2026-09-16-print-request-count-parity-across-show-queue-and-summary-surfaces-signoff.md`
+  and `docs/workflow/reviews/2026-09-16-portal-unqueue-capacity-cache-and-studio-cancel-parity-signoff.md`.
+- FreshForge is **IDLE**; the next planned live-sync goal is parked pending owner direction.
+
 ## 2026-09-16 — Studio pre-release Print Request download + intake navigation — CLOSED (DEV)
 
 - Goal `studio-pre-release-pr-item-download-and-intake-navigation` — Signoff

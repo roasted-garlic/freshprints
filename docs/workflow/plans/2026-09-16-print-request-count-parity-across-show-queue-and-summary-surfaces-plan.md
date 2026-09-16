@@ -4,7 +4,7 @@
 |---|---|
 | Date | 2026-09-16 |
 | Author | Planning Agent |
-| Status | accepted_with_changes — implementation complete; Owner DEV QA pending |
+| Status | **closed_dev — Signoff approved_with_notes** |
 | Workflow | managed-phase (Plan → Formal Review → Implement → Test → Owner DEV QA → Signoff) |
 | Goal | `print-request-count-parity-across-show-queue-and-summary-surfaces` |
 | Related | `printRequestItems`, `showAllocations`, Studio Show Queue, Portal request summaries, Portal Admin Show Queue, Staff Inbox |

@@ -3,17 +3,27 @@
 ## 2026-09-16 - Print Request count parity + unqueue cache/cancel parity — SIGNOFF COMPLETE (DEV)
 
 Goals `print-request-count-parity-across-show-queue-and-summary-surfaces` (**approved_with_notes**)
-and `portal-unqueue-capacity-cache-and-studio-cancel-parity` (**approved**) are **DONE**. Owner DEV
-QA PASS on the follow-up closes parent FAIL WITH FOLLOW-UPS. Delivered canonical Designs/Items
-across Show Queue and summary surfaces; Portal allocatable-shows cache invalidation on
-queue/unqueue; Studio staff remove soft-cancel (History only) parity with Portal; Show Queue remove
-Confirm **Removing…** busy feedback. Focused follow-up tests **6/6**; Show Queue UI contracts
-**15/15**. No production Functions/Portal/Studio release. Next planned:
-`selected-print-request-live-sync-studio-portal`.
+and `portal-unqueue-capacity-cache-and-studio-cancel-parity` (**approved_with_notes**) are
+**DONE**. Owner DEV QA **PASS WITH NOTES** accepted the remove→re-add historical-allocation
+scenario in DEV and confirmed current Show Queue Designs/Items did not inflate from canceled
+history. Delivered canonical source-aware Designs/Items across Show Queue and summary surfaces;
+Portal allocatable-shows cache invalidation on queue/unqueue; Studio staff remove soft-cancel
+(History only) parity with Portal; and Show Queue remove Confirm **Removing…** busy feedback.
+Focused parity/cross-surface tests **115/115 PASS**; follow-up contracts **6/6 PASS**. Portal,
+Studio, and Functions typechecks, changed-file lint, Studio build, Functions build, and diff check
+passed; documented Portal-build and full-lint limitations remain. No production Functions/Portal/
+Studio release, deployment, smoke, or data action occurred. FreshForge is **IDLE**; the next plan
+is parked pending owner direction.
 
 Signoffs:
 `docs/workflow/reviews/2026-09-16-print-request-count-parity-across-show-queue-and-summary-surfaces-signoff.md`,
 `docs/workflow/reviews/2026-09-16-portal-unqueue-capacity-cache-and-studio-cancel-parity-signoff.md`.
+
+Preserved Signoff note: the exact historical production record cannot be live-validated with
+corrected runtime code until production promotion. Root cause was proven through read-only
+production evidence, automated production-shaped regression coverage passed, and Owner DEV QA
+validated the remove/re-add historical-allocation scenario in DEV. Production smoke must confirm
+the originally affected card after promotion.
 
 ## 2026-09-16 - Studio pre-release Print Request download + intake navigation — SIGNOFF COMPLETE (DEV)
 

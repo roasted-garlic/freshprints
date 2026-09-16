@@ -36,5 +36,5 @@ Record Pass/Fail and a short note for each item. This checklist is intentionally
 * Follow-up fixes required: completed (see follow-up signoff)
 * Promotion authorization: `NOT REQUESTED / NOT GRANTED`
 
-After the owner completes this checklist, return the result for the separate Signoff gate. Do not
-close the goal from this document alone.
+Owner DEV QA is complete. The separate Signoff is recorded at
+`docs/workflow/reviews/2026-09-16-print-request-count-parity-across-show-queue-and-summary-surfaces-signoff.md`.

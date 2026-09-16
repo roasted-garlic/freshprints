@@ -7,7 +7,7 @@
 | Plan | `docs/workflow/plans/2026-09-16-print-request-count-parity-across-show-queue-and-summary-surfaces-plan.md` |
 | Formal Review | `docs/workflow/reviews/2026-09-16-print-request-count-parity-across-show-queue-and-summary-surfaces-formal-review.md` |
 | Test gate | **Passed with documented repository/tooling limitations** |
-| Workflow position | Ready for Owner DEV QA; not signed off |
+| Workflow position | **Owner DEV QA complete; Signoff approved_with_notes** |
 
 ## Automated results
 
@@ -59,7 +59,7 @@ configuration change is included.
 ## Owner DEV QA disposition
 
 Automated checks are complete, with the Portal build and repository-wide lint limitations recorded
-above. At handoff, the local Portal endpoint (`localhost:3100`) and Studio Vite endpoint
-(`localhost:5173`) responded with HTTP 200; this confirms local reachability only, not visual or
-data QA. The next gate is the Owner DEV QA checklist. Do not mark this goal closed or promote any
-runtime until the owner records DEV QA results and separately authorizes the required promotion.
+above. Owner DEV QA accepted the remove → re-add historical-allocation scenario in DEV and
+confirmed current Designs/Items did not inflate from canceled history. The exact historical
+production record remains deferred to the promotion manifest's post-promotion read-only smoke.
+Signoff is recorded as **approved_with_notes**; no runtime promotion is authorized by this report.

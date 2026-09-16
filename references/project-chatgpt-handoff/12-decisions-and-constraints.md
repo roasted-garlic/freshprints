@@ -2,6 +2,18 @@
 
 > Full log: `docs/project/DECISIONS.md` — newest ADRs first.
 
+### Print Request count parity + unqueue cache/cancel parity (DEV closed 2026-09-16)
+
+- Full-request **Designs** are distinct source-aware identities from current `printRequestItems`;
+  **Items** are summed current quantities. Persisted `itemCount` remains compatibility/navigation
+  state and is not display authority.
+- Selected-show operational **Designs/Items**, tiers, price, capacity, and status use one active
+  allocation set (`status !== canceled`); canceled rows remain available for History-only context.
+- Portal queue/unqueue clears allocatable-show read and session caches after successful mutation.
+  Studio staff remove soft-cancels allocations with actor/timestamp audit fields, matching Portal.
+- Signoff is **approved_with_notes** after Owner DEV QA **PASS WITH NOTES**. Exact production smoke
+  of `sassymommasam-CR002` remains post-promotion and read-only; no production action occurred.
+
 ### Studio pre-release Print Request download + intake navigation (DEV closed 2026-09-16)
 
 - Signoff is **approved_with_notes** after Owner DEV QA **PASS** with no notes.

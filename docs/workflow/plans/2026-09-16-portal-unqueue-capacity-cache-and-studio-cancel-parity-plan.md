@@ -4,7 +4,7 @@
 |---|---|
 | Date | 2026-09-16 |
 | Author | Planning Agent |
-| Status | accepted_with_changes — implementation complete; Owner DEV QA pending |
+| Status | **closed_dev — Signoff approved_with_notes** |
 | Workflow | managed-phase (narrow follow-up from Owner DEV QA) |
 | Goal | `portal-unqueue-capacity-cache-and-studio-cancel-parity` |
 | Parent | `print-request-count-parity-across-show-queue-and-summary-surfaces` (Owner DEV QA FAIL WITH FOLLOW-UPS) |

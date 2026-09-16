@@ -6,13 +6,14 @@
 | Tester | Test Agent |
 | Plan | `docs/workflow/plans/2026-09-16-portal-unqueue-capacity-cache-and-studio-cancel-parity-plan.md` |
 | Formal Review | `docs/workflow/reviews/2026-09-16-portal-unqueue-capacity-cache-and-studio-cancel-parity-formal-review.md` |
-| Overall | **passed_with_notes** — automated focused suite/typecheck/lint pass; Owner DEV QA required for UI remove/re-add; Studio cancel fix requires updated Functions in the environment under test |
+| Overall | **passed_with_notes** — automated focused suite/typecheck/lint pass; Owner DEV QA accepted the remove/re-add behavior; Signoff approved_with_notes |
 
 ---
 
 ## Summary
 
-Implementation of cache invalidation and Studio soft-cancel passed focused automated checks. Manual Owner DEV QA is required before Signoff. No production deploy was performed.
+Implementation of cache invalidation and Studio soft-cancel passed focused automated checks. Owner
+DEV QA accepted the remove/re-add behavior in DEV. No production deploy was performed.
 
 ---
 
@@ -50,9 +51,9 @@ None.
 
 | Test | Status | Notes |
 |---|---|---|
-| Portal remove → immediate Add to Show capacity/personal spots | pending | Owner DEV QA checklist |
-| Studio staff remove → canceled / History only | pending | Requires Functions with this callable build |
-| Cap math still blocks 25 when 4 spots used | pending | Expected correct behavior |
+| Portal remove → immediate Add to Show capacity/personal spots | PASS | Owner DEV QA, 2026-09-16 |
+| Studio staff remove → canceled / History only | PASS | Owner DEV QA, 2026-09-16 |
+| Cap math still blocks 25 when 4 spots used | PASS | Owner DEV QA, 2026-09-16 |
 
 Checklist: `docs/workflow/reviews/2026-09-16-portal-unqueue-capacity-cache-and-studio-cancel-parity-owner-dev-qa-checklist.md`
 
@@ -60,6 +61,7 @@ Checklist: `docs/workflow/reviews/2026-09-16-portal-unqueue-capacity-cache-and-s
 
 ## Notes for Signoff
 
-- Parent count-parity Signoff remains blocked until this follow-up Owner DEV QA completes (or owner explicitly defers).
+- Parent count-parity Signoff is no longer blocked; this follow-up is closed through the parent
+  Signoff.
 - Portal cache fix is client-only (no Functions deploy required for that half).
 - Studio cancel parity requires the updated `unqueueStudioCustomerPrintRequestFromShow` in the Functions environment Studio calls.

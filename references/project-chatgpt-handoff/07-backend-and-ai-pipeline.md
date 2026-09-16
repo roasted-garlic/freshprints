@@ -1,5 +1,18 @@
 # Backend and AI Pipeline
 
+## Print Request count parity + unqueue cache/cancel parity (DEV closed 2026-09-16)
+
+- Shared source-aware item/allocation summaries are used by existing Studio, Portal, Staff Inbox,
+  Portal Admin, and request-planning readers; no new callable, DTO, query, schema, Rules, index,
+  migration, backfill, or data-repair path was added.
+- Existing `getPortalAdminUpcomingShowQueueDashboard` changed only to carry the existing
+  `printRequestItemId` into active metric aggregation. Existing
+  `unqueueStudioCustomerPrintRequestFromShow` now audited-soft-cancels allocations instead of
+  deleting them, matching Portal history semantics.
+- Exact production Function promotion requirement is therefore those two existing Functions.
+  Portal cache invalidation ships with the changed Portal App Hosting bundle; Studio release is
+  also required. None was deployed to production.
+
 ## Studio pre-release Print Request download + intake navigation (DEV closed 2026-09-16)
 
 - This goal changed Studio renderer/Electron export behavior only; no Functions, callable, AI,
