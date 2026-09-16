@@ -72,3 +72,29 @@ deletion or invocation of reconciliation Apply is permitted.
   self-binding of `roles/iam.serviceAccountTokenCreator` to that same runtime
   service account, if applied before the bounded Staff Artwork smoke. No other
   IAM grant is allowed.
+
+## Post-mutation readback and current recovery position
+
+The frozen candidate merged through protected PR #97 as
+`3802ff8564efb0d24e6c783a23c4b4b65d7cef8f`. The rollout reached the following
+read-back state before the Studio release gate hard-stopped:
+
+- Firestore Ruleset: `3ca899da-de8c-43bb-b651-7cdcc033601a`; source hash
+  `c1df84ad2c3774fc3446932116cd359999f45f1458f526050baff93f56f943de`.
+- Functions: exact 58 ADD/UPDATE allowlist deployed successfully; all targets
+  are `ACTIVE` in `us-central1`; no scoped deletion was performed.
+- Portal: rollout `build-2026-09-16-001` is `SUCCEEDED`; revision
+  `fresh-prints-portal-build-2026-09-16-001` has 100% traffic. The pre-rollout
+  revision `fresh-prints-portal-build-2026-09-14-001` remains the recorded
+  rollback anchor.
+- IAM: one exact self-binding only, runtime service account
+  `473623863375-compute@developer.gserviceaccount.com` as
+  `roles/iam.serviceAccountTokenCreator`.
+- Studio: no candidate release was created; published stable remains
+  `v1.0.12` at the pre-rollout production SHA.
+
+No rollback mutation has been performed. The current state is intentionally
+partial: Rules, the reviewed Functions allowlist, IAM prerequisite, and Portal
+rollout are healthy, while Studio remains on v1.0.12. Do not retry Studio,
+change the lint baseline, or roll back the healthy runtime surfaces without a
+reviewed correction or explicit rollback direction.

@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from 'next/server'
+import { NextResponse } from 'next/server'
 
 import {
   isPortalSearchIndexingEnabled,
@@ -10,7 +10,7 @@ import {
  * page (including non-HTML) observe explicit noindex. Production indexing hosts
  * leave the header unset.
  */
-export function middleware(_request: NextRequest) {
+export function middleware() {
   const response = NextResponse.next()
   if (!isPortalSearchIndexingEnabled()) {
     response.headers.set('X-Robots-Tag', PORTAL_DISABLED_INDEXING_X_ROBOTS_TAG)

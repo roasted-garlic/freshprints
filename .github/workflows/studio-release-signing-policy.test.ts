@@ -6,6 +6,7 @@ import test from "node:test";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const workflowSource = readFileSync(path.join(__dirname, "studio-release.yml"), "utf8");
+const packageManifest = JSON.parse(readFileSync(path.join(__dirname, "../../package.json"), "utf8"));
 const builderSource = readFileSync(
   path.join(__dirname, "../../apps/studio/electron-builder.json5"),
   "utf8",
@@ -31,9 +32,13 @@ test("Windows job runs on windows-latest and Mac job on macos-latest", () => {
 });
 
 test("both platform jobs use the reviewed baseline-aware lint gate", () => {
-  const runner = "node .github/scripts/run-studio-release-lint.mjs";
+  const runner = "npm run lint:release";
   assert.equal((workflowSource.match(new RegExp(runner.replaceAll(".", "\\."), "g")) || []).length, 2);
-  assert.doesNotMatch(workflowSource, /run:\s*npm run lint/);
+  assert.doesNotMatch(workflowSource, /run:\s*npm run lint(?:\s|$)/);
+});
+
+test("local release preparation exposes the same canonical lint gate", () => {
+  assert.equal(packageManifest.scripts["lint:release"], "node .github/scripts/run-studio-release-lint.mjs");
 });
 
 test("Mac packaging builds arm64 and x64 with publish never; Windows keeps NSIS publish never", () => {

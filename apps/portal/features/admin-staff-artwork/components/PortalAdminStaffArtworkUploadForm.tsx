@@ -50,7 +50,6 @@ function PortalAdminStaffArtworkFileThumbnail({ file }: { file: File }) {
 
   return (
     // Filename is already announced in the row; keep the image decorative.
-    // eslint-disable-next-line @next/next/no-img-element
     <img alt="" className="portal-admin-upload-thumb" src={previewUrl} />
   );
 }
