@@ -4,7 +4,7 @@
 |---|---|
 | Date | 2026-09-16 |
 | Author | Planning Agent |
-| Status | ready_for_review |
+| Status | accepted_with_changes — Formal Review approved; Signoff **approved** (CLOSED) |
 | Workflow | managed-phase |
 | Goal | `selected-print-request-live-sync-studio-portal` |
 | Related | Prior count-parity + unqueue-cache goals; Portal `subscribePrintRequestItems` / `subscribeMyContinuablePrintRequests`; Studio Show Queue selected-show subscriptions |

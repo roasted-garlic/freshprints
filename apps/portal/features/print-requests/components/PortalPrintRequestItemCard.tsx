@@ -270,19 +270,34 @@ export function PortalPrintRequestItemCard({
     quantityInputRef.current = value;
     setQuantityInputState(value);
   }
-  const [printWidthInput, setPrintWidthInput] = useState(
+  const [printWidthInput, setPrintWidthInputState] = useState(
     formatEditableNumber(resolveInitialWidth(item)),
   );
-  const [printHeightInput, setPrintHeightInput] = useState(
+  const [printHeightInput, setPrintHeightInputState] = useState(
     formatEditableNumber(resolveInitialHeight(item)),
   );
+  const printWidthInputRef = useRef(printWidthInput);
+  const printHeightInputRef = useRef(printHeightInput);
+  function setPrintWidthInput(value: string) {
+    printWidthInputRef.current = value;
+    setPrintWidthInputState(value);
+  }
+  function setPrintHeightInput(value: string) {
+    printHeightInputRef.current = value;
+    setPrintHeightInputState(value);
+  }
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [isConfirmingRemove, setIsConfirmingRemove] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
   const [isStandardSizesModalOpen, setIsStandardSizesModalOpen] = useState(false);
-  const [standardSizePresetKey, setStandardSizePresetKey] = useState<string | undefined>(
+  const [standardSizePresetKey, setStandardSizePresetKeyState] = useState<string | undefined>(
     item.standardSizePresetKey,
   );
+  const standardSizePresetKeyRef = useRef(standardSizePresetKey);
+  function setStandardSizePresetKey(value: string | undefined) {
+    standardSizePresetKeyRef.current = value;
+    setStandardSizePresetKeyState(value);
+  }
   const { url: previewUrl } = useCatalogDerivativeUrl(previewPath, design?.updatedAtMs);
   const lastSavedSignatureRef = useRef(
     buildItemSignature(
@@ -349,17 +364,30 @@ export function PortalPrintRequestItemCard({
     // stale reload (e.g. from a different mounted consumer's own reloadWorkingItems call) can
     // deliver a prop carrying pre-save values with a signature that also differs from the last
     // saved one. shouldAcceptIncomingItemProp distinguishes "stale reload of pre-save data" from
-    // "genuine newer external edit" via a monotonic updatedAt comparison (Plan Section 19.2 item
-    // 2 / 19.1 second contributing cause); falls back to signature-only behavior when either
-    // side lacks updatedAt (e.g. optimistic rows).
+    // "genuine newer external edit" via a monotonic updatedAt comparison; falls back to
+    // signature-only behavior when either side lacks updatedAt (e.g. optimistic rows). Hold
+    // remote apply while this card still has a pending local edit (debounce / in-flight / dirty).
     const incomingUpdatedAtMs = resolveItemUpdatedAtMs(item);
     const lastAcceptedUpdatedAtMs = lastAcceptedUpdatedAtMsRef.current;
+    const localDraftSignature = buildItemSignature(
+      parsePositiveIntegerInput(quantityInputRef.current) ?? Number.NaN,
+      parsePositiveDecimalInput(printWidthInputRef.current) ?? Number.NaN,
+      parsePositiveDecimalInput(printHeightInputRef.current) ?? Number.NaN,
+      standardSizePresetKeyRef.current,
+    );
+    const hasPendingLocalEdit =
+      saveInFlightRef.current ||
+      saveQueuedRef.current ||
+      saveDebounceRef.current !== null ||
+      localDraftSignature !== lastSavedSignatureRef.current;
+
     if (
       !shouldAcceptIncomingItemProp({
         incomingSignature,
         lastSavedSignature: lastSavedSignatureRef.current,
         incomingUpdatedAtMs,
         lastAcceptedUpdatedAtMs,
+        hasPendingLocalEdit,
       })
     ) {
       return;

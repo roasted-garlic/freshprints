@@ -48,6 +48,21 @@ npx tsx --test \
 Covers allocatable-shows cache invalidation after queue/unqueue and Studio staff remove soft-cancel
 (not delete) parity with Portal customer unqueue.
 
+### Selected Print Request live sync (2026-09-16)
+
+```bash
+npx tsx --test \
+  apps/studio/src/renderer/src/features/print-requests/hooks/usePrintRequestDetails.liveSync.contract.test.ts \
+  apps/portal/features/print-requests/hooks/usePrintRequestDetail.liveSync.contract.test.ts \
+  packages/shared/src/utils/printRequestItemPropSyncGuard.test.ts \
+  apps/portal/features/print-requests/utils/printRequestCountParity.contract.test.ts \
+  apps/portal/features/print-requests/utils/itemPropSyncGuard.test.ts
+```
+
+Covers request-scoped Studio/Portal subscribe attach/detach for the open or selected Print Request,
+Portal detail header preferring live item summaries, and item-card prop-sync guards (stale snapshot +
+pending local edit).
+
 ---
 
 ## Required Checks Before Signoff

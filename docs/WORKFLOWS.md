@@ -1277,6 +1277,21 @@ fallback namespace), while Items sums finite, non-negative `allocatedQuantity` v
 remain available for history and requeue/move lineage but never inflate current counters. A
 canceled-only request/show group is explicitly history-only for current counter and price display.
 
+## Selected Print Request live sync (Studio ↔ Portal)
+
+When a Print Request is **selected in Studio** or **open on Portal detail**, request-scoped Firestore
+listeners keep that document (and its items / allocations as needed) fresh across apps without a
+full page refresh. Listeners attach only for the open/selected id and detach on navigation or
+selection change — not collection-wide for all customers or all shows. Working Portal carts already
+use item listeners; detail pages additionally live-subscribe the request document and, when not
+driven by the Working cart, the items query, plus allocations for unallocated/show chrome.
+
+Portal detail header design/print counts prefer the open page's live `items` summary over any
+stale list-cache `summariesByRequestId` entry. Item cards on both apps apply remote snapshots only
+when the local draft is clean (no debounce / in-flight / queued save and signature matches last
+saved); otherwise remote wins only after the local edit settles
+(`shared/utils/printRequestItemPropSyncGuard.ts`).
+
 ## Show Queue capacity defaults
 
 Staff can set a default max quantity for newly created shows via the settings cog next to `Add show`.

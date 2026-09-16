@@ -2,24 +2,17 @@
 
 **Last updated:** 2026-09-16
 
-## CURRENT AUTHORITATIVE PHASE — SIGNOFF COMPLETE / IDLE — `print-request-count-parity-across-show-queue-and-summary-surfaces`
+## CURRENT AUTHORITATIVE PHASE — OWNER DEV QA — `selected-print-request-live-sync-studio-portal`
 
-The parent goal and its scoped follow-up are **DONE in DEV**. Signoff is
-**approved_with_notes** after Owner DEV QA **PASS WITH NOTES**. The exact historical production
-record remains promotion-gated; no production smoke, deployment, publication, release, or data
-action was performed.
+Formal Review approved_with_changes; Implement + automated Test complete. Waiting on Owner DEV QA.
 
-- Parent Signoff: `docs/workflow/reviews/2026-09-16-print-request-count-parity-across-show-queue-and-summary-surfaces-signoff.md`
-- Follow-up Signoff: `docs/workflow/reviews/2026-09-16-portal-unqueue-capacity-cache-and-studio-cancel-parity-signoff.md`
-- Test Report: `docs/workflow/reviews/2026-09-16-print-request-count-parity-across-show-queue-and-summary-surfaces-test-report.md`
-- Owner DEV QA: parent **PASS WITH NOTES**; remove→re-add historical-allocation behavior accepted
-  in DEV; focused parity suite **115/115 PASS**.
-- Promotion Manifest: `docs/workflow/reviews/2026-09-pre-production-promotion-manifest.md`
+- Plan: `docs/workflow/plans/2026-09-16-selected-print-request-live-sync-studio-portal-plan.md`
+- Formal Review: `docs/workflow/reviews/2026-09-16-selected-print-request-live-sync-studio-portal-formal-review.md`
+- Test Report: `docs/workflow/reviews/2026-09-16-selected-print-request-live-sync-studio-portal-test-report.md`
+- Owner DEV QA checklist: `docs/workflow/reviews/2026-09-16-selected-print-request-live-sync-studio-portal-owner-dev-qa-checklist.md`
 
-Production promotion remains separately unauthorized. The next planned goal
-`selected-print-request-live-sync-studio-portal` is parked for future owner direction; it is not
-active and has not passed Formal Review.
+Shipped in checkout (not production-deployed): request-scoped Firestore listeners for Studio
+selected Print Request detail and Portal open detail (request doc, items when not Working-cart-driven,
+allocations). Automated liveSync contracts **5/5**. No Functions deploy required.
 
-## Historical snapshot — Signoff complete / IDLE — `studio-pre-release-pr-item-download-and-intake-navigation`
-
-The prior goal remains signed off as recorded in ROADMAP and `13-recent-completed-work.md`.
+Production promotion remains unauthorized.

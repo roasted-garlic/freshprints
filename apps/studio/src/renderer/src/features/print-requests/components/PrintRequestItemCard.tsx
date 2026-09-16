@@ -34,6 +34,7 @@ import {
   resolveInteractiveUpscaleToggleEligibility,
 } from "@fresh-prints/shared/utils/interactiveArtworkEnhance";
 import type { SetPrintRequestItemArtworkEnhanceModeResponse } from "@fresh-prints/shared/types/printRequest/setPrintRequestItemArtworkEnhanceMode.types";
+import { shouldAcceptIncomingItemProp } from "@fresh-prints/shared/utils/printRequestItemPropSyncGuard";
 import type { UpdatePrintRequestItemInput } from "../services/printRequestService";
 import type { PrintRequestItemDownloadState } from "../hooks/useDownloadPrintRequestItem";
 import { setPrintRequestItemArtworkEnhanceModeService } from "../services/setPrintRequestItemArtworkEnhanceModeService";
@@ -74,7 +75,10 @@ interface PrintRequestItemCardProps {
   item: PrintRequestItem;
   onRemove: (item: PrintRequestItem) => void | Promise<void>;
   onDuplicate: (item: PrintRequestItem) => void;
-  onUpdate: (item: PrintRequestItem, input: UpdatePrintRequestItemInput) => Promise<void>;
+  onUpdate: (
+    item: PrintRequestItem,
+    input: UpdatePrintRequestItemInput,
+  ) => Promise<PrintRequestItem | void>;
   onAutosaveStateChange: (
     status: "saving" | "saved" | "failed",
     message?: string,
@@ -178,6 +182,10 @@ function buildItemSignature(
   });
 }
 
+function resolveItemUpdatedAtMs(item: PrintRequestItem): number | null {
+  return typeof item.updatedAt?.toMillis === "function" ? item.updatedAt.toMillis() : null;
+}
+
 export function PrintRequestItemCard({
   printRequestId,
   design,
@@ -217,19 +225,39 @@ export function PrintRequestItemCard({
     upload?.thumbnailPath ??
     undefined;
   const artworkBackgroundHex = resolvePrintRequestItemArtworkBackground(design, upload);
-  const [quantityInput, setQuantityInput] = useState(String(item.quantity));
-  const [printWidthInput, setPrintWidthInput] = useState(
+  const [quantityInput, setQuantityInputState] = useState(String(item.quantity));
+  const quantityInputRef = useRef(String(item.quantity));
+  function setQuantityInput(value: string) {
+    quantityInputRef.current = value;
+    setQuantityInputState(value);
+  }
+  const [printWidthInput, setPrintWidthInputState] = useState(
     formatEditableNumber(resolveInitialWidth(item)),
   );
-  const [printHeightInput, setPrintHeightInput] = useState(
+  const [printHeightInput, setPrintHeightInputState] = useState(
     formatEditableNumber(resolveInitialHeight(item)),
   );
+  const printWidthInputRef = useRef(printWidthInput);
+  const printHeightInputRef = useRef(printHeightInput);
+  function setPrintWidthInput(value: string) {
+    printWidthInputRef.current = value;
+    setPrintWidthInputState(value);
+  }
+  function setPrintHeightInput(value: string) {
+    printHeightInputRef.current = value;
+    setPrintHeightInputState(value);
+  }
   const [isConfirmingRemove, setIsConfirmingRemove] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
   const [isStandardSizesModalOpen, setIsStandardSizesModalOpen] = useState(false);
-  const [standardSizePresetKey, setStandardSizePresetKey] = useState<string | undefined>(
+  const [standardSizePresetKey, setStandardSizePresetKeyState] = useState<string | undefined>(
     item.standardSizePresetKey,
   );
+  const standardSizePresetKeyRef = useRef(standardSizePresetKey);
+  function setStandardSizePresetKey(value: string | undefined) {
+    standardSizePresetKeyRef.current = value;
+    setStandardSizePresetKeyState(value);
+  }
   const { url: previewUrl } = useDesignDerivativeUrl(previewPath);
   const lastSavedSignatureRef = useRef(
     buildItemSignature(
@@ -239,6 +267,7 @@ export function PrintRequestItemCard({
       item.standardSizePresetKey,
     ),
   );
+  const lastAcceptedUpdatedAtMsRef = useRef(resolveItemUpdatedAtMs(item));
   const saveDraftRef = useRef<() => Promise<boolean>>(async () => false);
   const saveDebounceRef = useRef<number | null>(null);
   const saveInFlightRef = useRef(false);
@@ -268,7 +297,28 @@ export function PrintRequestItemCard({
       item.standardSizePresetKey,
     );
 
-    if (incomingSignature === lastSavedSignatureRef.current) {
+    const incomingUpdatedAtMs = resolveItemUpdatedAtMs(item);
+    const localDraftSignature = buildItemSignature(
+      parsePositiveIntegerInput(quantityInputRef.current) ?? Number.NaN,
+      parsePositiveDecimalInput(printWidthInputRef.current) ?? Number.NaN,
+      parsePositiveDecimalInput(printHeightInputRef.current) ?? Number.NaN,
+      standardSizePresetKeyRef.current,
+    );
+    const hasPendingLocalEdit =
+      saveInFlightRef.current ||
+      saveQueuedRef.current ||
+      saveDebounceRef.current !== null ||
+      localDraftSignature !== lastSavedSignatureRef.current;
+
+    if (
+      !shouldAcceptIncomingItemProp({
+        incomingSignature,
+        lastSavedSignature: lastSavedSignatureRef.current,
+        incomingUpdatedAtMs,
+        lastAcceptedUpdatedAtMs: lastAcceptedUpdatedAtMsRef.current,
+        hasPendingLocalEdit,
+      })
+    ) {
       return;
     }
 
@@ -278,6 +328,9 @@ export function PrintRequestItemCard({
     setStandardSizePresetKey(item.standardSizePresetKey);
     setIsConfirmingRemove(false);
     lastSavedSignatureRef.current = incomingSignature;
+    if (incomingUpdatedAtMs !== null) {
+      lastAcceptedUpdatedAtMsRef.current = incomingUpdatedAtMs;
+    }
   }, [design, item, upload]);
 
   const parsedQuantity = parsePositiveIntegerInput(quantityInput);
@@ -616,13 +669,20 @@ export function PrintRequestItemCard({
     onAutosaveStateChange("saving");
 
     try {
-      await onUpdate(item, {
+      const updatedItem = await onUpdate(item, {
         quantity: parsedQuantity,
         printWidthInches: parsedPrintWidthInches,
         printHeightInches: parsedPrintHeightInches,
         standardSizePresetKey: standardSizePresetKey ?? null,
       });
+      // Record this write's signature. Advance lastAccepted from the server item's updatedAt
+      // (not Date.now()) so a lagging older snapshot cannot clobber this save, while a genuine
+      // newer cross-app write with a later server timestamp can still apply.
       lastSavedSignatureRef.current = draftSignature;
+      const acceptedUpdatedAtMs = updatedItem ? resolveItemUpdatedAtMs(updatedItem) : null;
+      if (acceptedUpdatedAtMs !== null) {
+        lastAcceptedUpdatedAtMsRef.current = acceptedUpdatedAtMs;
+      }
       setIsFailed(false);
       onAutosaveStateChange("saved");
       return true;

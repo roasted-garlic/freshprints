@@ -1513,6 +1513,7 @@ export function PrintRequestsPage() {
         summarizeItemsForRequest(visibleSelectedRequest.id, nextItems),
       );
     }
+    return updatedItem;
   }, [patchSummaryLocally, requestItems, replaceRequestItem, user, visibleSelectedRequest]);
 
   async function handleSaveRequestDetail() {

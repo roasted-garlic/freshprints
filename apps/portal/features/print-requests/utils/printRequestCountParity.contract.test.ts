@@ -40,6 +40,10 @@ describe('Portal Print Request count parity contracts', () => {
   it('uses the canonical live summary for both detail header counts', () => {
     assert.match(detailSource, /buildPrintRequestItemSummaries/);
     assert.match(detailSource, /const requestSummary =/);
+    assert.match(
+      detailSource,
+      /buildPrintRequestItemSummaries\(items\)\[printRequest\.id\]\s*\?\?[\s\S]*summariesByRequestId\[printRequest\.id\]/,
+    );
     assert.match(detailSource, /requestSummary\.uniqueDesignCount/);
     assert.match(detailSource, /const printCountLabel = `\$\{requestSummary\.totalQuantity\} print/);
     assert.doesNotMatch(detailSource, /const printCountLabel = `\$\{totalPrintCount\}/);

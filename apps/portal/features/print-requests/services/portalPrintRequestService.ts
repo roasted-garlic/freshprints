@@ -717,6 +717,53 @@ export const portalPrintRequestService = {
     );
   },
 
+  /**
+   * Live open-request document (selected detail). Detach when leaving the page.
+   */
+  subscribePrintRequest(
+    printRequestId: string,
+    onRequest: (request: PrintRequest | null) => void,
+    onError: (error: Error) => void,
+  ): Unsubscribe {
+    const id = printRequestId.trim();
+    if (!id) {
+      onRequest(null);
+      return () => undefined;
+    }
+
+    const traceMetadata = {
+      app: 'portal' as const,
+      collection: 'printRequests',
+      documentPathPattern: 'printRequests/{printRequestId}',
+      source: 'portalPrintRequestService.subscribePrintRequest',
+      triggerReason: 'route' as const,
+    };
+    traceFirestoreListenerAttach(traceMetadata);
+    return traceWrappedUnsubscribe(
+      traceMetadata,
+      onSnapshot(
+        doc(getPortalDb(), 'printRequests', id),
+        (snapshot) => {
+          traceFirestoreListenerEmission(traceMetadata, snapshot.exists() ? 1 : 0);
+          if (!snapshot.exists()) {
+            onRequest(null);
+            return;
+          }
+          try {
+            const mapped = mapPrintRequest(snapshot.id, snapshot.data() as PrintRequestDocumentData);
+            primePortalPrintRequestReadCache(readCacheKey('request', id), mapped);
+            onRequest(mapped);
+          } catch (error) {
+            onError(error instanceof Error ? error : new Error('Unable to load print request.'));
+          }
+        },
+        (error) => {
+          onError(error instanceof Error ? error : new Error('Unable to load print request.'));
+        },
+      ),
+    );
+  },
+
   async listPrintRequestItems(printRequestId: string): Promise<PrintRequestItem[]> {
     return loadPortalPrintRequestReadCached(
       readCacheKey('items', printRequestId),
@@ -945,6 +992,51 @@ export const portalPrintRequestService = {
 
         return allocationLists.flat();
       },
+    );
+  },
+
+  /**
+   * Live allocations for one open print request (selected detail). Request-scoped only.
+   */
+  subscribeShowAllocationsForPrintRequest(
+    printRequestId: string,
+    onAllocations: (allocations: PortalShowAllocationRecord[]) => void,
+    onError: (error: Error) => void,
+  ): Unsubscribe {
+    const id = printRequestId.trim();
+    if (!id) {
+      onAllocations([]);
+      return () => undefined;
+    }
+
+    const traceMetadata = {
+      app: 'portal' as const,
+      collection: 'showAllocations',
+      constraints: [`printRequestId==${id}`],
+      source: 'portalPrintRequestService.subscribeShowAllocationsForPrintRequest',
+      triggerReason: 'route' as const,
+    };
+    traceFirestoreListenerAttach(traceMetadata);
+    return traceWrappedUnsubscribe(
+      traceMetadata,
+      onSnapshot(
+        query(collection(getPortalDb(), 'showAllocations'), where('printRequestId', '==', id)),
+        (snapshot) => {
+          traceFirestoreListenerEmission(traceMetadata, snapshot.size);
+          const allocations = snapshot.docs.flatMap((allocationDoc) => {
+            const mapped = mapShowAllocationRecord(
+              allocationDoc.id,
+              allocationDoc.data() as ShowAllocationDocumentData,
+            );
+            return mapped ? [mapped] : [];
+          });
+          primePortalPrintRequestReadCache(readCacheKey('allocations', id), allocations);
+          onAllocations(allocations);
+        },
+        (error) => {
+          onError(error instanceof Error ? error : new Error('Unable to load show allocations.'));
+        },
+      ),
     );
   },
 

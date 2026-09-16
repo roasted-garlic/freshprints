@@ -1,5 +1,14 @@
 # Fresh Prints Roadmap
 
+> 2026-09-16: **Selected Print Request live sync (Studio ↔ Portal) — CLOSED (DEV)** — Goal
+> `selected-print-request-live-sync-studio-portal` is **DONE** with Signoff **approved** after Owner
+> DEV QA **PASS** (incl. header live counts + rapid +/- follow-up re-test). Request-scoped listeners
+> for Studio selected detail and Portal open detail; Portal header prefers live items; shared
+> prop-sync guard holds remote apply while local edits are pending. Focused contracts **17/17 PASS**;
+> Portal+Studio typecheck PASS. No production / Functions / Portal App Hosting / Studio release.
+> Signoff: `docs/workflow/reviews/2026-09-16-selected-print-request-live-sync-studio-portal-signoff.md`.
+> FreshForge **IDLE**.
+
 > 2026-09-16: **Print Request count parity + unqueue cache/cancel parity — CLOSED (DEV)** —
 > Goals `print-request-count-parity-across-show-queue-and-summary-surfaces` and
 > `portal-unqueue-capacity-cache-and-studio-cancel-parity` are **DONE** with Signoff
@@ -9,8 +18,7 @@
 > no production action. Signoffs:
 > `docs/workflow/reviews/2026-09-16-print-request-count-parity-across-show-queue-and-summary-surfaces-signoff.md`,
 > `docs/workflow/reviews/2026-09-16-portal-unqueue-capacity-cache-and-studio-cancel-parity-signoff.md`.
-> FreshForge **IDLE**; next plan `selected-print-request-live-sync-studio-portal` is parked pending
-> owner direction.
+> FreshForge **IDLE**; live-sync follow-on closed same day (see entry above).
 
 > 2026-09-16: **Studio pre-release Print Request download + intake navigation — CLOSED (DEV)** —
 > Goal `studio-pre-release-pr-item-download-and-intake-navigation` is **DONE** with Signoff
@@ -687,7 +695,7 @@ Current Goal:
 
 **Small Managed Items Backlog:** #5–**#14** **Done** (2026-07-21). See [Small Managed Items Backlog](#small-managed-items-backlog-2026-07-18) below.
 
-**Active managed goal:** none (**IDLE**). Last closed: `studio-pre-release-design-navigation-and-print-request-list-refinements` (2026-09-15; Owner DEV QA **PASS**; Signoff approved_with_notes). Cutover remains **CLOSED** (do not reopen). Phase 9 remains **PARKED**. Historical Goal #13 row below is not an open DNS task.
+**Active managed goal:** none (**IDLE**). Last closed: `selected-print-request-live-sync-studio-portal` (2026-09-16; Owner DEV QA **PASS**; Signoff approved). Cutover remains **CLOSED** (do not reopen). Phase 9 remains **PARKED**. Historical Goal #13 row below is not an open DNS task.
 
 **Prior note (superseded for current workflow):** Goal #13 — prelaunch companion/censored **production promote signed off** (2026-08-10; `PROD COMPANION CENSORED PROMOTE SMOKE: PASS`; Studio v1.0.2). Placement-default **DEFERRED**. Stage 2 smoke **PASS** / **READY FOR CUSTOMERS** on hosted.app; cutover still awaits `APPROVE MYPRINTREQUEST.COM CUTOVER`.
 `production-studio-assisted-library-design-search-empty` **signed off** (owner Studio QA **PASS**).

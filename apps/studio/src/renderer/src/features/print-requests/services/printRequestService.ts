@@ -9,6 +9,7 @@ import {
   getDocsFromServer,
   increment,
   limit,
+  onSnapshot,
   orderBy,
   query,
   runTransaction,
@@ -22,10 +23,12 @@ import {
   type DocumentData,
   type QueryConstraint,
   type Transaction,
+  type Unsubscribe,
 } from "firebase/firestore";
 
 import {
   runTracedWrite,
+  traceFirestoreListenerEmission,
   traceFirestoreOneShotComplete,
   traceFirestoreOneShotStart,
 } from "@fresh-prints/shared/utils/firestoreUsageTrace";
@@ -37,6 +40,7 @@ import { mapFirestoreTimestamp, resolveDesignDocumentTimestamps } from "../../fi
 import { assertNoUndefinedFirestoreFields, withoutUndefinedFields } from "../../firebase/utils/firestoreDocument";
 import { db } from "../../../config/firebase";
 import { firestoreCollectionService } from "../../firebase/services/firestoreCollectionService";
+import { createSharedFirestoreSubscription } from "../../firebase/utils/createSharedFirestoreSubscription";
 import { permissionService } from "../../permissions/services/permissionService";
 import type { User } from "../../users/types/user.types";
 import { designService } from "../../designs/services/designService";
@@ -971,6 +975,111 @@ async function duplicatePrintRequestForShowTransferCopyInTransaction(
   };
 }
 
+const printRequestSubscriptionsById = new Map<
+  string,
+  ReturnType<typeof createSharedFirestoreSubscription<PrintRequest | null>>
+>();
+const printRequestItemsSubscriptionsById = new Map<
+  string,
+  ReturnType<typeof createSharedFirestoreSubscription<PrintRequestItem[]>>
+>();
+
+function getOrCreatePrintRequestSubscription(printRequestId: string) {
+  const existing = printRequestSubscriptionsById.get(printRequestId);
+  if (existing) {
+    return existing;
+  }
+
+  const traceMetadata = {
+    app: "studio" as const,
+    collection: "printRequests",
+    constraints: [`doc == ${printRequestId}`],
+    source: "printRequestService.subscribePrintRequest",
+    triggerReason: "route" as const,
+  };
+
+  const shared = createSharedFirestoreSubscription<PrintRequest | null>({
+    traceKey: `printRequest:${printRequestId}`,
+    traceMetadata,
+    start: ({ next, error }) => {
+      return onSnapshot(
+        doc(firestoreCollectionService.getPrintRequestsCollection(), printRequestId),
+        (snapshot) => {
+          traceFirestoreListenerEmission(traceMetadata, snapshot.exists() ? 1 : 0);
+          if (!snapshot.exists()) {
+            next(null);
+            return;
+          }
+          try {
+            next(mapPrintRequestData(snapshot.id, snapshot.data() as PrintRequestDocumentData));
+          } catch (mapError) {
+            error(mapError instanceof Error ? mapError.message : "Unable to load print request.");
+          }
+        },
+        (snapshotError) => {
+          error(snapshotError instanceof Error ? snapshotError.message : "Unable to load print request.");
+        },
+      );
+    },
+  });
+
+  printRequestSubscriptionsById.set(printRequestId, shared);
+  return shared;
+}
+
+function getOrCreatePrintRequestItemsSubscription(printRequestId: string) {
+  const existing = printRequestItemsSubscriptionsById.get(printRequestId);
+  if (existing) {
+    return existing;
+  }
+
+  const traceMetadata = {
+    app: "studio" as const,
+    collection: "printRequestItems",
+    constraints: [`printRequestId == ${printRequestId}`],
+    source: "printRequestService.subscribePrintRequestItems",
+    triggerReason: "route" as const,
+  };
+
+  const shared = createSharedFirestoreSubscription<PrintRequestItem[]>({
+    traceKey: `printRequestItems:${printRequestId}`,
+    traceMetadata,
+    start: ({ next, error }) => {
+      const itemsQuery = query(
+        firestoreCollectionService.getPrintRequestItemsCollection(),
+        ...buildFirestoreQueryConstraints(buildPrintRequestItemsQueryPlan(printRequestId, {})),
+      );
+      return onSnapshot(
+        itemsQuery,
+        (snapshot) => {
+          traceFirestoreListenerEmission(traceMetadata, snapshot.size);
+          next(
+            sortPrintRequestItemsNewestFirst(
+              snapshot.docs.flatMap((itemDoc) => {
+                try {
+                  return [
+                    mapPrintRequestItemData(itemDoc.id, itemDoc.data() as PrintRequestItemDocumentData),
+                  ];
+                } catch {
+                  return [];
+                }
+              }),
+            ),
+          );
+        },
+        (snapshotError) => {
+          error(
+            snapshotError instanceof Error ? snapshotError.message : "Unable to load print request items.",
+          );
+        },
+      );
+    },
+  });
+
+  printRequestItemsSubscriptionsById.set(printRequestId, shared);
+  return shared;
+}
+
 export const printRequestService = {
   /**
    * Server-paginated request list — bounded to `PRINT_REQUEST_LIST_PAGE_SIZE` (+1 peek to detect
@@ -1453,6 +1562,40 @@ export const printRequestService = {
         }
       }),
     );
+  },
+
+  /**
+   * Live selected-request document. One shared listener per request id while any UI is subscribed.
+   */
+  subscribePrintRequest(
+    caller: User,
+    printRequestId: string,
+    onChange: (printRequest: PrintRequest | null) => void,
+    onError?: (message: string) => void,
+  ): Unsubscribe {
+    if (!permissionService.canViewPrintRequests(caller) || !printRequestId.trim()) {
+      onChange(null);
+      return () => undefined;
+    }
+
+    return getOrCreatePrintRequestSubscription(printRequestId.trim()).subscribe(onChange, onError);
+  },
+
+  /**
+   * Live selected-request items. One shared listener per request id while any UI is subscribed.
+   */
+  subscribePrintRequestItems(
+    caller: User,
+    printRequestId: string,
+    onChange: (items: PrintRequestItem[]) => void,
+    onError?: (message: string) => void,
+  ): Unsubscribe {
+    if (!permissionService.canViewPrintRequests(caller) || !printRequestId.trim()) {
+      onChange([]);
+      return () => undefined;
+    }
+
+    return getOrCreatePrintRequestItemsSubscription(printRequestId.trim()).subscribe(onChange, onError);
   },
 
   /** @deprecated Full customer scan — retained only for surfaces that genuinely need every
