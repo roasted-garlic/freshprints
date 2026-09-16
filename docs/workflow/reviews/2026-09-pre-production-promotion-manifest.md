@@ -6,6 +6,22 @@ App Hosting publication applies to **production** (`myprintrequest.com`) only.
 
 ---
 
+## 2026-09-16 — `studio-pre-release-pr-item-download-and-intake-navigation` — CLOSED DEV / production promotion pending
+
+| Kind | Final production promotion requirement / actual scope |
+|------|-------------------------------------------------------|
+| Studio release | **Required for production**: Print Request per-item native PNG download using the saved-size/source-aware export path, dismissible success feedback, and Uploaded/Donated list ArrowUp/ArrowDown selection navigation. |
+| Portal App Hosting | **NONE from this goal** |
+| Functions | **NONE** |
+| Firestore Rules | **NONE** |
+| Storage Rules | **NONE** |
+| Indexes | **NONE** |
+| Schema migration | **NONE** |
+| Backfill | **NONE** |
+| Production data mutation | **NONE** |
+| Minimal production smoke | Studio Print Request catalog/upload/Staff Artwork download dimensions and cancellation/failure handling; Uploaded and Donated list selection boundaries, lightbox guards, and editable-focus behavior. |
+| Boundary | Owner DEV QA **PASS** and repository Signoff are complete. Studio release and all production promotion remain separately owner-authorized; no production action occurred. |
+
 ## 2026-09-15 — `portal-admin-staff-artwork-upload` — CLOSED DEV / production promotion pending
 
 | Kind | Final production promotion requirement / actual scope |

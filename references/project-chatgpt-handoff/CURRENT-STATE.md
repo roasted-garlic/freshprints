@@ -1,61 +1,43 @@
 # Fresh Prints — Current State Snapshot
 
-**Last updated:** 2026-09-15
+**Last updated:** 2026-09-16
 
-## CURRENT AUTHORITATIVE PHASE — CLOSED / IDLE — `portal-admin-staff-artwork-upload`
+## CURRENT AUTHORITATIVE PHASE — SIGNOFF COMPLETE / IDLE — `studio-pre-release-pr-item-download-and-intake-navigation`
 
-FreshForge is **IDLE**. Managed goal `portal-admin-staff-artwork-upload` is closed with Signoff
-**approved_with_notes** after Owner DEV QA **PASS**.
+FreshForge is **IDLE**. The combined Plan and Formal Review were accepted, the approved
+implementation is complete, automated Test passed, Owner DEV QA replied **PASS** on 2026-09-16,
+and Signoff is complete with disposition **approved_with_notes**. The reviewed commit/push was
+completed on the existing `development` branch.
 
-The historical Owner DEV QA FAIL for Staff Artwork bulk Send to AI Review and the rejected
-Ready-preserving Design Library lifecycle remain documented in the workflow artifacts. The final
-corrective retests passed.
-
-- Plan: `docs/workflow/plans/2026-09-15-portal-admin-staff-artwork-upload-plan.md`
-- Formal Review: `docs/workflow/reviews/2026-09-15-portal-admin-staff-artwork-upload-formal-review.md`
+- Plan: `docs/workflow/plans/2026-09-15-studio-pre-release-pr-item-download-and-intake-navigation-plan.md`
+- Formal Review: `docs/workflow/reviews/2026-09-15-studio-pre-release-pr-item-download-and-intake-navigation-formal-review.md`
+- Test report: `docs/workflow/reviews/2026-09-15-studio-pre-release-pr-item-download-and-intake-navigation-test-report.md`
+- Owner QA checklist: `docs/workflow/reviews/2026-09-15-studio-pre-release-pr-item-download-and-intake-navigation-owner-dev-qa-checklist.md`
+- Signoff: `docs/workflow/reviews/2026-09-16-studio-pre-release-pr-item-download-and-intake-navigation-signoff.md`
 - Manifest: `docs/workflow/reviews/2026-09-pre-production-promotion-manifest.md`
-- Test report: `docs/workflow/reviews/2026-09-15-portal-admin-staff-artwork-upload-test-report.md`
-- Owner QA checklist: `docs/workflow/reviews/2026-09-15-portal-admin-staff-artwork-upload-owner-dev-qa-checklist.md`
 
-Final delivered contract:
-- **Workstream A:** Portal Admin Staff Artwork Upload + Admin navigation; prior Portal no-op
-  corrective remains complete and tested.
-- **Workstream B:** Studio Design Library + Staff Artwork Multiple Select → Send to AI Review,
-  using existing per-item boundaries, bounded sequential orchestration, and existing AI settings.
-- **Design lifecycle:** `ready + approved` → normal `imported + pending` AI Processing/AI Review →
-  normal approval → `ready + approved`; no simultaneous Design Library and AI Processing authority.
-  Obsolete `aiReprocessState` query/display/eligibility special cases and `ready_reprocess` mode are
-  removed; leftover markers are cleared by the demotion write.
-- **Card interaction:** active Multiple Select makes the full eligible Design Library and Staff
-  Artwork card toggle selection, suppresses normal details/preview behavior, exposes selected state,
-  and restores normal click behavior immediately on exit.
+Reviewed contract:
+- **Workstream A:** Studio Print Request item Download uses the current saved item dimensions,
+  fixed 300-DPI target, existing source-aware production resolver, and one new narrow single-PNG
+  Electron save operation. Quantity, ZIP, gang-sheet cache, allocations, and lifecycle writes are
+  excluded.
+- **Workstream B:** Studio Uploaded Designs and Donated Designs map ArrowUp/ArrowDown to the
+  existing Previous/Next callbacks through the current `CustomerUploadIntakeSection` rows. No
+  wraparound, auto-load, visible Up/Down buttons, second ordering model, or Portal change.
+- **Review conditions:** disable Download for dirty/invalid/saving/failed size drafts; resolve from
+  the latest saved item snapshot; preserve enhanced fail-closed and private-source boundaries;
+  surface non-fatal warnings and failures; keep vertical navigation opt-in to the intake lightbox.
 
-Actual Staff Artwork evidence: bulk and single both call `promoteStaffArtworkToAiReview` with the
-same `{ staffArtworkId }` payload. Historic DEV traces prove authenticated HTTP 400 responses but
-did not retain request bodies or app-level details, so the exact historic ID is unavailable. The
-proven server failure class is `failed-precondition` for active deletion blockers or invalid
-Ready/production-path lifecycle. Five current DEV ready records with active references were
-inspected read-only and are listed in the Test Report; none was mutated.
+Test gate: **passed_with_notes**. Focused coverage is **70/70** and export/gang-sheet/copy
+regression coverage is **85/85**. Studio typecheck, targeted changed-file lint,
+`npm run build:studio`, and `git diff --check` passed. The build had only non-fatal existing
+bundler warnings and Windows electron-builder rename retries. Owner DEV QA is **PASS** with no
+notes. No production deployment, Studio release, Functions/Rules deployment, schema/index/
+migration change, or data mutation occurred. Functions, Rules/Storage Rules, schema/index/
+migration, and data mutation remain out of scope.
 
-Test gate: **passed with notes** — latest Workstream B focused run is **86/86** (55 Studio-side,
-31 Functions-side). Studio and Portal typechecks, Functions build, changed TypeScript lint, and
-`git diff --check` passed. The exact changed Functions were deployed to `fresh-prints-dev` and are
-ACTIVE:
-
-- `promoteStaffArtworkToAiReview` — `promotestaffartworktoaireview-00008-daj`
-- `reprocessReadyDesignWithAi` — `reprocessreadydesignwithai-00032-gab`
-- `enqueueAiEnrichment` — `enqueueaienrichment-00127-vod`
-
-Safe unauthenticated POST probes returned expected 401s for all three. No authenticated mutation
-was attempted. The Portal production build remains noted as Windows `EPERM` on ignored generated
-`apps/portal/.next/trace`; no workaround or Portal App Hosting publish was made. Broader
-Studio-directory lint retains pre-existing errors in unmodified files; changed-file TypeScript
-lint is clean.
-
-Checkout: work on `development`. Corrective implementation, tests, exact DEV deployment, Owner DEV
-QA PASS, Signoff, and durable documentation are complete. No production deployment, Portal App
-Hosting, Studio release, Rules/Storage Rules deployment, migration, data mutation, or IAM change
-occurred. FreshForge is IDLE pending a new goal or separately authorized production promotion.
+Checkout remains `development`; the reviewed commit/push is complete. Production IAM/deploy, Portal
+App Hosting, Studio release, and production promotion remain separately gated and unauthorized.
 
 ## Historical snapshot — Pre-release lifecycle / image parity / DEV hardening — SIGNOFF COMPLETE (DEV)
 

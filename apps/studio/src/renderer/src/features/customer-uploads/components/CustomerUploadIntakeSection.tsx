@@ -1,9 +1,13 @@
-import { useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { isCustomerUploadEligibleForCatalogIntake } from "@fresh-prints/shared/utils/customerUploadCatalogIntakeEligibility";
 import { canRequestCustomerUploadPermissionFollowUp } from "@fresh-prints/shared/utils/customerUploadPermissionFollowUp";
 import { resolveIntakeHalftoneStaffToggle } from "@fresh-prints/shared/utils/halftoneReviewState";
+import {
+  getPreviewLightboxNavigationState,
+  isPreviewLightboxEditableKeyboardTarget,
+} from "@fresh-prints/shared/utils/previewLightboxNavigation";
 
 import { Button } from "../../../shared/components/Button";
 import { Card } from "../../../shared/components/Card";
@@ -85,18 +89,15 @@ function IntakeDetail({
   row,
   intake,
   isDonation = false,
-  previewNavigationItems,
-  onPreviewNavigate,
+  onOpenPreview,
 }: {
   row: CustomerUploadIntakeRow;
   intake: IntakeApi;
   isDonation?: boolean;
-  previewNavigationItems?: { id: string; alt: string; previewUrl: string }[];
-  onPreviewNavigate?: (itemId: string) => void;
+  onOpenPreview?: () => void;
 }) {
   const navigate = useNavigate();
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isExcludeOpen, setIsExcludeOpen] = useState(false);
   const [isRestoreOpen, setIsRestoreOpen] = useState(false);
@@ -145,7 +146,7 @@ function IntakeDetail({
           <button
             aria-label={`Enlarge preview of ${row.originalFilename}`}
             className="customer-upload-intake-preview-button"
-            onClick={() => setIsLightboxOpen(true)}
+            onClick={() => onOpenPreview?.()}
             style={previewStyle}
             type="button"
           >
@@ -576,17 +577,6 @@ function IntakeDetail({
           </Modal>
         </div>
       ) : null}
-
-      <DesignPreviewLightbox
-        activeItemId={row.id}
-        alt={row.originalFilename}
-        artworkBackgroundHex={previewBackgroundHex}
-        isOpen={isLightboxOpen}
-        navigationItems={previewNavigationItems}
-        onActiveItemChange={onPreviewNavigate}
-        onClose={() => setIsLightboxOpen(false)}
-        previewUrl={row.previewUrl}
-      />
     </div>
   );
 }
@@ -599,6 +589,7 @@ export function CustomerUploadIntakeSection({
   intake: IntakeApi;
 }) {
   const isDonation = purposeScope === "catalog_donation";
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
   const previewNavigationItems = intake.rows
     .filter((row): row is CustomerUploadIntakeRow & { previewUrl: string } =>
@@ -621,6 +612,66 @@ export function CustomerUploadIntakeSection({
         }),
       };
     });
+
+  const selectedPreviewItem =
+    previewNavigationItems.find((item) => item.id === intake.selectedId) ?? null;
+
+  const listItemIds = intake.rows.map((row) => row.id);
+  const listNavigationState = getPreviewLightboxNavigationState(listItemIds, intake.selectedId);
+
+  useEffect(() => {
+    setIsLightboxOpen(false);
+  }, [intake.filter]);
+
+  useEffect(() => {
+    if (!selectedPreviewItem) {
+      setIsLightboxOpen(false);
+    }
+  }, [selectedPreviewItem]);
+
+  useEffect(() => {
+    if (listItemIds.length === 0) {
+      return;
+    }
+
+    function handleListKeyDown(event: KeyboardEvent) {
+      if (event.key !== "ArrowUp" && event.key !== "ArrowDown") {
+        return;
+      }
+
+      if (isPreviewLightboxEditableKeyboardTarget(event.target)) {
+        return;
+      }
+
+      // Leave arrows alone while lightbox/modals own the keyboard surface.
+      if (document.querySelector(".modal-overlay")) {
+        return;
+      }
+
+      const nextId =
+        event.key === "ArrowUp" ? listNavigationState.previousId : listNavigationState.nextId;
+      if (!nextId) {
+        event.preventDefault();
+        return;
+      }
+
+      event.preventDefault();
+      intake.setSelectedId(nextId);
+      const target = document.querySelector<HTMLElement>(
+        `[data-customer-upload-intake-id="${CSS.escape(nextId)}"]`,
+      );
+      target?.focus({ preventScroll: true });
+      target?.scrollIntoView({ block: "nearest" });
+    }
+
+    window.addEventListener("keydown", handleListKeyDown);
+    return () => window.removeEventListener("keydown", handleListKeyDown);
+  }, [
+    intake.setSelectedId,
+    listItemIds.length,
+    listNavigationState.nextId,
+    listNavigationState.previousId,
+  ]);
 
   if (!intake.canView) {
     return null;
@@ -722,6 +773,7 @@ export function CustomerUploadIntakeSection({
                           className={`customer-upload-intake-list-item${
                             intake.selectedId === row.id ? " is-selected" : ""
                           }`}
+                          data-customer-upload-intake-id={row.id}
                           onClick={() => {
                             intake.setSelectedId(row.id);
                           }}
@@ -762,11 +814,10 @@ export function CustomerUploadIntakeSection({
                 intake={intake}
                 isDonation={isDonation}
                 key={`${intake.filter}:${intake.selected.id}`}
-                onPreviewNavigate={(itemId) => {
-                  intake.setSelectedId(itemId);
-                }}
-                previewNavigationItems={
-                  previewNavigationItems.length > 1 ? previewNavigationItems : undefined
+                onOpenPreview={
+                  intake.selected.previewUrl?.trim()
+                    ? () => setIsLightboxOpen(true)
+                    : undefined
                 }
                 row={intake.selected}
               />
@@ -774,6 +825,19 @@ export function CustomerUploadIntakeSection({
           </div>
         </div>
       </div>
+
+      <DesignPreviewLightbox
+        activeItemId={selectedPreviewItem?.id ?? null}
+        alt={selectedPreviewItem?.alt ?? "Upload preview"}
+        artworkBackgroundHex={selectedPreviewItem?.artworkBackgroundHex}
+        isOpen={isLightboxOpen && Boolean(selectedPreviewItem)}
+        navigationItems={
+          previewNavigationItems.length > 1 ? previewNavigationItems : undefined
+        }
+        onActiveItemChange={intake.setSelectedId}
+        onClose={() => setIsLightboxOpen(false)}
+        previewUrl={selectedPreviewItem?.previewUrl ?? null}
+      />
     </Card>
   );
 }

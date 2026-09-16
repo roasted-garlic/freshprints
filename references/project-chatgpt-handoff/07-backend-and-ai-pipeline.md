@@ -1,5 +1,15 @@
 # Backend and AI Pipeline
 
+## Studio pre-release Print Request download + intake navigation (DEV closed 2026-09-16)
+
+- This goal changed Studio renderer/Electron export behavior only; no Functions, callable, AI,
+  Firestore Rules, Storage Rules, schema, index, migration, or backend deployment changed.
+- Per-item PNG download reuses the existing source-aware production asset resolver and the existing
+  image download/resize utility, with a narrow native save IPC operation and validation at the
+  renderer/main boundary.
+- The cumulative promotion manifest records a later Studio release as **REQUIRED** and all
+  backend/data categories as **NONE from this goal**.
+
 ## Portal Admin Staff Artwork + canonical AI Review lifecycle (DEV closed 2026-09-15)
 
 - Portal upload reuses `createStaffArtworkUpload` and `finalizeStaffArtwork`; no Portal upload

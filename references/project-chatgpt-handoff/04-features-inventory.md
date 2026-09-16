@@ -1,5 +1,14 @@
 # Features Inventory
 
+> 2026-09-16: **Studio pre-release Print Request download + intake navigation — CLOSED (DEV)** —
+> Goal `studio-pre-release-pr-item-download-and-intake-navigation` is signed off
+> **approved_with_notes** after Owner DEV QA **PASS**. Print Request cards now support independent
+> per-item native PNG download from current saved dimensions with source-aware resolution,
+> quantity-safe single-file behavior, bounded failure handling, and dismissible success feedback.
+> Uploaded Designs and Donated Designs move the active loaded list selection with ArrowUp/ArrowDown
+> while preserving boundary, editable-focus, and lightbox/modal guards. Studio release remains
+> separately gated for production; no Portal publication or backend deployment occurred.
+
 > 2026-09-15: **Portal Admin Staff Artwork + Studio AI Review — CLOSED (DEV)** — Goal
 > `portal-admin-staff-artwork-upload` is signed off **approved_with_notes** after Owner DEV QA
 > **PASS**. Portal owners/admins can upload valid PNGs through `/admin/staff-artwork`; Studio

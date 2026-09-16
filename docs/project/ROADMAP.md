@@ -1,5 +1,16 @@
 # Fresh Prints Roadmap
 
+> 2026-09-16: **Studio pre-release Print Request download + intake navigation — CLOSED (DEV)** —
+> Goal `studio-pre-release-pr-item-download-and-intake-navigation` is **DONE** with Signoff
+> **approved_with_notes** after Owner DEV QA **PASS**. Delivered independent per-item saved-size
+> PNG downloads with dismissible success feedback, plus Uploaded/Donated list ArrowUp/ArrowDown
+> selection navigation with lightbox/editable guards. Focused tests **70/70**, regression tests
+> **85/85**, Studio typecheck, targeted lint, build/package, and diff check passed. Studio release
+> is required for later production promotion; no Portal publication, backend deployment, or
+> production action occurred. Signoff:
+> `docs/workflow/reviews/2026-09-16-studio-pre-release-pr-item-download-and-intake-navigation-signoff.md`.
+> FreshForge **IDLE**.
+
 > 2026-09-15: **Portal Admin Staff Artwork + Studio AI Review — CLOSED (DEV)** — Goal
 > `portal-admin-staff-artwork-upload` is **DONE** with Signoff **approved_with_notes** after Owner
 > DEV QA **PASS**, including corrective retests. Delivered upload-only Portal Admin Staff Artwork,

@@ -14,6 +14,25 @@ test("request export builds from request items and keeps x(Qty) on the shared ZI
   assert.doesNotMatch(source, /listShowAllocations|upcomingShowService/);
 });
 
+test("per-item request download uses one saved item and the single PNG bridge", () => {
+  const source = readFileSync(join(here, "useDownloadPrintRequestItem.ts"), "utf8");
+  const cardSource = readFileSync(
+    join(here, "../components/PrintRequestItemCard.tsx"),
+    "utf8",
+  );
+  assert.match(source, /buildPrintRequestExportAssets\(user, printRequest, \[item\]\)/);
+  assert.match(source, /downloadExportImage/);
+  assert.match(source, /buildPrintRequestExportItemFilename/);
+  assert.match(source, /dismissItemDownloadState/);
+  assert.doesNotMatch(source, /multiplyByQuantity|exportShowZip|gangSheetCache/);
+  assert.match(cardSource, /isDirty/);
+  assert.match(cardSource, /isSaving/);
+  assert.match(cardSource, /isFailed/);
+  assert.match(cardSource, /Downloading…/);
+  assert.match(cardSource, /DismissibleSuccessAlert/);
+  assert.match(cardSource, /onDismissDownloadState/);
+});
+
 test("request gang sheet is Standard-only, request-scoped, and has no Show telemetry", () => {
   const source = readFileSync(join(here, "useGeneratePrintRequestGangSheet.ts"), "utf8");
   assert.match(source, /buildPrintRequestGangSheetCacheScope/);

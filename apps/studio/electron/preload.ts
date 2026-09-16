@@ -95,6 +95,8 @@ import type {
   WhatnotShowImportConfirmedEvent,
 } from "@fresh-prints/shared/types/whatnotImport/whatnotImport.types";
 import type {
+  DownloadExportImageRequest,
+  DownloadExportImageResult,
   ExportShowZipRequest,
   ExportShowZipResult,
   ShowExportProgressEvent,
@@ -630,6 +632,15 @@ contextBridge.exposeInMainWorld("freshPrints", {
   export: {
     exportShowZip(request: ExportShowZipRequest): Promise<ImportIpcResult<ExportShowZipResult>> {
       return invokeExportChannel<ExportShowZipResult>(EXPORT_IPC_CHANNELS.EXPORT_SHOW_ZIP, request);
+    },
+
+    downloadExportImage(
+      request: DownloadExportImageRequest,
+    ): Promise<ImportIpcResult<DownloadExportImageResult>> {
+      return invokeExportChannel<DownloadExportImageResult>(
+        EXPORT_IPC_CHANNELS.DOWNLOAD_EXPORT_IMAGE,
+        request,
+      );
     },
 
     onExportProgress(callback: (event: ShowExportProgressEvent) => void): () => void {

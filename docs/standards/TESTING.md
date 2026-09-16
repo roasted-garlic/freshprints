@@ -35,6 +35,29 @@ npx tsx --test \
   apps/studio/electron/ipc/export/exportRequestValidation.test.ts
 ```
 
+For the Studio pre-release per-item Download and intake keyboard refinement, include the shared
+filename/resolver/navigation coverage and Studio caller contracts:
+
+```bash
+npx tsx --test \
+  packages/shared/src/utils/printRequestExportFilename.test.ts \
+  packages/shared/src/utils/resolveShowExportProductionAsset.test.ts \
+  packages/shared/src/utils/printAssetResolution.test.ts \
+  packages/shared/src/utils/previewLightboxNavigation.test.ts \
+  apps/studio/electron/ipc/export/exportRequestValidation.test.ts \
+  apps/studio/src/renderer/src/features/designs/utils/previewLightboxNavigation.contract.test.ts \
+  apps/studio/src/renderer/src/features/customer-uploads/utils/customerUploadIntakeParityContract.test.ts \
+  apps/studio/src/renderer/src/features/print-requests/hooks/printRequestExport.contract.test.ts
+```
+
+The Download path must additionally be checked for saved-size freshness, catalog/customer-upload/
+Staff Artwork parity, enhanced fail-closed behavior, one-PNG/no-quantity semantics, URL/target/
+filename validation, native cancellation, truthful resize/write errors, independent item state,
+and a non-fatal upscale warning. The lightbox path must retain Left/Right/Escape, the editable
+target guard, first/last no-wrap boundaries, current loaded previewable rows, selection
+synchronization, Uploaded/Donated purpose scopes, removals, unrelated Studio lightboxes, and
+Portal behavior.
+
 The focused contract set verifies request-only inputs, source-aware resolver parity, Standard-only
 request gang sheets, request cache isolation, atomic copy boundaries, and the existing Electron IPC
 validation. Existing Show Queue filename, resolver, planner, and compositor suites remain required

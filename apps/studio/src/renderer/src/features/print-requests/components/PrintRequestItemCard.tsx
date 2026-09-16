@@ -1,8 +1,9 @@
-import { Ban, CircleCheck, Minus, Plus } from "lucide-react";
+import { Ban, CircleCheck, Download, Minus, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
 
 import { Button } from "../../../shared/components/Button";
 import { Card } from "../../../shared/components/Card";
+import { DismissibleSuccessAlert } from "../../../shared/components/DismissibleSuccessAlert";
 import { HoverBubbleTooltip } from "../../../shared/components/HoverBubbleTooltip";
 import { Toggle } from "../../../shared/components/Toggle";
 import { DesignThumbnailPanel } from "../../designs/components/DesignThumbnailPanel";
@@ -34,6 +35,7 @@ import {
 } from "@fresh-prints/shared/utils/interactiveArtworkEnhance";
 import type { SetPrintRequestItemArtworkEnhanceModeResponse } from "@fresh-prints/shared/types/printRequest/setPrintRequestItemArtworkEnhanceMode.types";
 import type { UpdatePrintRequestItemInput } from "../services/printRequestService";
+import type { PrintRequestItemDownloadState } from "../hooks/useDownloadPrintRequestItem";
 import { setPrintRequestItemArtworkEnhanceModeService } from "../services/setPrintRequestItemArtworkEnhanceModeService";
 import { resolvePrintRequestItemArtworkBackground } from "../utils/resolvePrintRequestItemArtworkBackground";
 import { resolvePrintRequestItemLibraryConsentIcon } from "../utils/printRequestCustomerUploadConsentSummary";
@@ -88,6 +90,9 @@ interface PrintRequestItemCardProps {
   onArtworkEnhanceModeChanged?: (result: SetPrintRequestItemArtworkEnhanceModeResponse) => void;
   /** Parent-owned lightbox open — identity is always `item.id`. */
   onOpenPreview?: () => void;
+  onDownload?: () => void;
+  downloadState?: PrintRequestItemDownloadState;
+  onDismissDownloadState?: () => void;
 }
 
 function resolveInitialWidth(item: PrintRequestItem): number {
@@ -190,6 +195,9 @@ export function PrintRequestItemCard({
   onDesignArtworkEnhanced,
   onArtworkEnhanceModeChanged,
   onOpenPreview,
+  onDownload,
+  downloadState,
+  onDismissDownloadState,
 }: PrintRequestItemCardProps) {
   const isUploadItem = item.sourceType === "customer_upload" || Boolean(item.customerUploadId);
   const sourcePill = resolvePrintRequestItemSourcePill({
@@ -671,6 +679,59 @@ export function PrintRequestItemCard({
     canSave,
   });
 
+  const hasSavedPrintSize =
+    typeof item.printWidthInches === "number" &&
+    Number.isFinite(item.printWidthInches) &&
+    item.printWidthInches > 0 &&
+    typeof item.printHeightInches === "number" &&
+    Number.isFinite(item.printHeightInches) &&
+    item.printHeightInches > 0;
+  const hasSourceIdentity = Boolean(item.designId || item.customerUploadId || item.staffArtworkId);
+  const downloadStatus = downloadState?.status ?? "idle";
+  const isDownloading = downloadStatus === "downloading";
+  const downloadDisabled = Boolean(
+    !onDownload ||
+      !hasSavedPrintSize ||
+      !hasSourceIdentity ||
+      !canSave ||
+      isDirty ||
+      isSaving ||
+      isFailed ||
+      isRemoving ||
+      isDownloading,
+  );
+  const downloadButton = onDownload ? (
+    <Button
+      aria-busy={isDownloading || undefined}
+      aria-label={`Download ${title}`}
+      className="button-leading-icon"
+      disabled={downloadDisabled}
+      onClick={onDownload}
+      size="sm"
+      type="button"
+      variant="secondary"
+    >
+      <Download aria-hidden="true" size={15} />
+      {isDownloading ? "Downloading…" : "Download"}
+    </Button>
+  ) : null;
+  const downloadMessage =
+    downloadState?.message && downloadStatus === "success" && onDismissDownloadState ? (
+      <DismissibleSuccessAlert
+        message={downloadState.message}
+        onDismiss={onDismissDownloadState}
+      />
+    ) : downloadState?.message ? (
+      <p
+        className={`auth-message print-requests-item-field-error${
+          downloadStatus === "error" ? " auth-message-error" : " auth-message-success"
+        }`}
+        role={downloadStatus === "error" ? "alert" : "status"}
+      >
+        {downloadState.message}
+      </p>
+    ) : null;
+
   useEffect(() => {
     onPersistenceHealthChange?.(item.id, persistenceHealth);
   }, [item.id, onPersistenceHealthChange, persistenceHealth]);
@@ -1016,6 +1077,7 @@ export function PrintRequestItemCard({
                 isConfirmingRemove ? " is-confirming-remove" : ""
               }`}
             >
+              {downloadButton}
               <Button
                 disabled={isRemoving}
                 onClick={() => onDuplicate(item)}
@@ -1068,6 +1130,12 @@ export function PrintRequestItemCard({
             </div>
           </>
         ) : null}
+        {readOnly && downloadButton ? (
+          <div className="print-requests-item-editor-actions print-requests-item-download-actions">
+            {downloadButton}
+          </div>
+        ) : null}
+        {downloadMessage}
       </Card>
 
       {aspectPixels ? (

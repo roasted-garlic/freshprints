@@ -117,8 +117,12 @@ explicit Studio confirmation; Past/terminal and unrelated guards still apply. It
 Portal callable.
 
 Request-scoped image export and Standard gang-sheet generation remain Electron desktop operations:
-renderer → preload → validated IPC → Electron main → Firebase Storage download / Sharp / ZIP or
-compositor → native save dialog. The renderer does not gain filesystem access.
+renderer → preload → validated IPC → Electron main → Firebase Storage download / Sharp / single PNG,
+ZIP, or compositor → native save dialog. The per-item single-PNG operation reuses the existing
+`downloadAndResizeExportImage` helper, validates the Firebase Storage URL, target pixels, and PNG
+filename, and writes exactly one resized PNG. It accepts no quantity, allocation ID, raw Storage
+path, arbitrary URL, or renderer filesystem path. The renderer does not gain filesystem access;
+no Function, Rules, Storage Rules, schema, index, migration, or backfill is required.
 
 ### External Integrations
 

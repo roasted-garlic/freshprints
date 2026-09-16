@@ -87,6 +87,28 @@ describe("previewLightboxNavigation Studio caller contracts", () => {
     assert.match(lightbox, /design-preview-lightbox-position/);
   });
 
+  it("intake list uses ArrowUp/ArrowDown for selection, not lightbox vertical aliases", () => {
+    const lightbox = readStudioSource("designs", "components", "DesignPreviewLightbox.tsx");
+    const intake = readStudioSource(
+      "customer-uploads",
+      "components",
+      "CustomerUploadIntakeSection.tsx",
+    );
+
+    assert.doesNotMatch(lightbox, /enableVerticalNavigation/);
+    assert.doesNotMatch(intake, /enableVerticalNavigation/);
+    assert.match(intake, /event\.key !== "ArrowUp" && event\.key !== "ArrowDown"/);
+    assert.match(intake, /getPreviewLightboxNavigationState\(listItemIds, intake\.selectedId\)/);
+    assert.match(intake, /isPreviewLightboxEditableKeyboardTarget/);
+    assert.match(intake, /data-customer-upload-intake-id=\{row\.id\}/);
+    assert.match(intake, /intake\.setSelectedId\(nextId\)/);
+    assert.match(intake, /document\.querySelector\("\.modal-overlay"\)/);
+    assert.match(intake, /previewNavigationItems/);
+    assert.match(intake, /onActiveItemChange=\{intake\.setSelectedId\}/);
+    assert.match(intake, /isLightboxOpen && Boolean\(selectedPreviewItem\)/);
+    assert.match(intake, /onOpenPreview=/);
+  });
+
   it("Design Library browse wires filteredDesigns continuous selection and final scroll ref", () => {
     const details = readStudioSource("designs", "components", "DesignDetailsModal.tsx");
     const page = readStudioSource("designs", "pages", "DesignLibraryPage.tsx");
@@ -130,8 +152,9 @@ describe("previewLightboxNavigation Studio caller contracts", () => {
 
     assert.match(companion, /onActiveItemChange=\{handleLightboxActiveItemChange\}/);
     assert.match(companion, /setLightboxMember\(nextMember\)/);
-    assert.match(intake, /intake\.setSelectedId\(itemId\)/);
+    assert.match(intake, /onActiveItemChange=\{intake\.setSelectedId\}/);
     assert.match(intake, /previewNavigationItems/);
+    assert.match(intake, /isLightboxOpen && Boolean\(selectedPreviewItem\)/);
     assert.match(batch, /id: file\.filePath/);
     assert.match(batch, /onActiveItemChange=\{setLightboxFilePath\}/);
     assert.match(batch, /data-batch-import-file-path/);

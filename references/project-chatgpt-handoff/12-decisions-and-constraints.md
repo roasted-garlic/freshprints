@@ -2,6 +2,17 @@
 
 > Full log: `docs/project/DECISIONS.md` — newest ADRs first.
 
+### Studio pre-release Print Request download + intake navigation (DEV closed 2026-09-16)
+
+- Signoff is **approved_with_notes** after Owner DEV QA **PASS** with no notes.
+- Per-item download is intentionally a narrow Studio/Electron operation: use the latest saved item
+  dimensions and existing source-aware production resolver; do not route through quantity, ZIP,
+  gang-sheet cache, allocation, or lifecycle mutation paths.
+- ArrowUp/ArrowDown on Uploaded/Donated Designs changes the active loaded **list selection**, not
+  merely the scrollbar and not lightbox vertical navigation; no wraparound or auto-load-more.
+- No Portal behavior, backend contract, Rules/index/schema/migration, or production state changes
+  are included. Production Studio release remains separately owner-authorized.
+
 ### ADR-FP-190: Portal Admin Staff Artwork + canonical AI Review lifecycle (DEV closed 2026-09-15)
 
 - Owner DEV QA **PASS**; Signoff **approved_with_notes**.

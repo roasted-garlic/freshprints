@@ -767,6 +767,20 @@ and Editing requests; those requests retain their existing Add to Show/Internal 
 Customer-upload and catalog-backed items use the same baseline / enhanced source selection and
 fail-closed preflight as Show Queue.
 
+Each request item also exposes a read-only single-PNG Download action when its saved requested
+dimensions and source identity are valid. The renderer resolves exactly one current saved item
+through the same production resolver, then calls a dedicated typed preload/IPC operation that
+reuses the main-process `downloadAndResizeExportImage` helper and native save dialog. This path
+does not use quantity, ZIP generation, gang-sheet generation, cache, allocation, or lifecycle
+telemetry. Dirty, invalid, saving, or failed size drafts disable the action; a later click uses
+the replaced saved item so a successful size change cannot leave a stale target.
+
+Studio Uploaded Designs and Donated Designs use the existing `CustomerUploadIntakeSection` →
+`DesignPreviewLightbox` navigation collection. The lightbox's opt-in vertical keyboard capability
+maps ArrowUp/ArrowDown to the existing Previous/Next callbacks, while the shared editable-target
+guard, current loaded previewable ordering, no-wrap boundaries, and selected-ID synchronization
+remain authoritative. Portal's separate `CatalogPreviewLightbox` is unchanged.
+
 Request gang sheets use Standard efficiency mode only. Their local Electron cache scope is prefixed
 `print-request:<requestId>` and their fingerprint includes request scope, request name, layout, item
 identity, active production path, target pixels, and quantity. Request generation never writes a

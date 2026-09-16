@@ -1,4 +1,5 @@
 export const EXPORT_SHOW_ZIP = "fresh-prints:export:export-show-zip" as const;
+export const DOWNLOAD_EXPORT_IMAGE = "fresh-prints:export:download-export-image" as const;
 export const EXPORT_PROGRESS = "fresh-prints:export:progress" as const;
 export const GENERATE_GANG_SHEET_PNG = "fresh-prints:export:generate-gang-sheet-png" as const;
 export const EXPORT_CACHED_GANG_SHEETS = "fresh-prints:export:export-cached-gang-sheets" as const;
@@ -13,6 +14,7 @@ export const EXPORT_GANG_SHEET_PNG = "fresh-prints:export:export-gang-sheet-png"
 
 export const EXPORT_IPC_CHANNELS = {
   EXPORT_SHOW_ZIP,
+  DOWNLOAD_EXPORT_IMAGE,
   GENERATE_GANG_SHEET_PNG,
   EXPORT_CACHED_GANG_SHEETS,
   DOWNLOAD_CACHED_GANG_SHEET,

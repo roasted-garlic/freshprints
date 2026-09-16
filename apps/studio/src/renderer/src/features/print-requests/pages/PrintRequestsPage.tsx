@@ -123,6 +123,7 @@ import { formatUpcomingShowTitle, formatUpcomingShowTimestampLabel } from "../..
 import { formatShowDateTimeLabel } from "@fresh-prints/shared/utils/showDateTimeDisplay";
 import { buildShowQueueDeepLinkPath } from "../../upcoming-shows/utils/buildShowQueueDeepLinkPath";
 import { useExportPrintRequestZip } from "../hooks/useExportPrintRequestZip";
+import { useDownloadPrintRequestItem } from "../hooks/useDownloadPrintRequestItem";
 import { useGeneratePrintRequestGangSheet } from "../hooks/useGeneratePrintRequestGangSheet";
 import { ExportPrintRequestConfirmModal } from "../components/ExportPrintRequestConfirmModal";
 import { GeneratePrintRequestGangSheetModal } from "../components/GeneratePrintRequestGangSheetModal";
@@ -549,6 +550,7 @@ export function PrintRequestsPage() {
   const [isCopyingRequest, setIsCopyingRequest] = useState(false);
   const [copyRequestError, setCopyRequestError] = useState<string | null>(null);
   const exportPrintRequestZipState = useExportPrintRequestZip();
+  const printRequestItemDownloadState = useDownloadPrintRequestItem();
   const printRequestGangSheetState = useGeneratePrintRequestGangSheet();
 
   const reloadSelectedRequestAllocations = useCallback(async () => {
@@ -2835,12 +2837,16 @@ export function PrintRequestsPage() {
                       return (
                         <PrintRequestItemCard
                           design={design}
+                          downloadState={printRequestItemDownloadState.statesByItemId[item.id]}
                           item={item}
                           key={item.id}
                           onAutosaveStateChange={updateAutosaveState}
                           onDesignArtworkEnhanced={reloadReadyDesigns}
                           onArtworkEnhanceModeChanged={(result) =>
                             handleArtworkEnhanceModeChanged(item, result)
+                          }
+                          onDismissDownloadState={() =>
+                            printRequestItemDownloadState.dismissItemDownloadState(item.id)
                           }
                           onOpenPreview={
                             design?.previewPath ||
@@ -2853,6 +2859,16 @@ export function PrintRequestsPage() {
                           onPersistenceHealthChange={handlePersistenceHealthChange}
                           onRegisterFlush={handleRegisterFlush}
                           onDuplicate={handleDuplicateItem}
+                          onDownload={
+                            visibleSelectedRequest
+                              ? () => {
+                                  void printRequestItemDownloadState.downloadPrintRequestItem(
+                                    visibleSelectedRequest,
+                                    item,
+                                  );
+                                }
+                              : undefined
+                          }
                           onRemove={handleRemoveItem}
                           onUpdate={handleUpdateItem}
                           printRequestId={selectedRequestId ?? ""}

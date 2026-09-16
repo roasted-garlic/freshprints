@@ -1113,6 +1113,24 @@ Export and generation use the request item's saved quantity, print inches, sourc
 Storage access fails before Electron processing. Request filenames use the immutable CR/IR request
 name, not `whatnot_<date>`.
 
+Each request item also has a read-only **Download** action for Working, Editing, Queued, Printing,
+and Printed detail when its saved requested width/height and source identity are valid. It resolves
+one catalog, customer-upload, or Staff Artwork production asset through the same source-aware
+resolver, computes the fixed 300-DPI target from the saved `printWidthInches` and
+`printHeightInches`, and saves exactly one PNG. Quantity is not multiplied; no ZIP, gang sheet,
+cache, allocation, status, production-history, or request mutation occurs. The action is disabled
+while the item size draft is dirty, invalid, saving, or failed. Enhanced mode fails closed when its
+required derivative is unavailable, and download/resize/write failures are shown as bounded item
+errors; an upscale warning is non-fatal. Filename segments use the item/design title, saved size,
+and an `item-` identity without allocation or ZIP sequence labels.
+
+In Studio Uploaded Designs and Donated Designs, the existing lightbox keeps Previous/Next,
+ArrowLeft/ArrowRight, Escape, visible controls, position text, loaded previewable ordering, and
+no-wrap boundaries. ArrowUp invokes Previous and ArrowDown invokes Next through the same callbacks.
+The existing editable-target guard protects inputs, textareas, selects, contenteditable/textbox/
+spinbutton controls. Donated Designs continues to use `purposeScope="catalog_donation"`; no
+auto-load-more or Portal lightbox behavior is introduced.
+
 Request gang sheets expose Standard efficiency mode only. Generated PNGs are cached locally under
 an isolated `print-request:<requestId>` scope and include the human-readable request name in the
 filename and rendered sheet label. No `upcomingShows` gang-sheet telemetry or Firebase artifact is

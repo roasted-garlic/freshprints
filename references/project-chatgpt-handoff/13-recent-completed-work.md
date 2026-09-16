@@ -1,5 +1,24 @@
 # Recent Completed Work
 
+## 2026-09-16 - Studio pre-release Print Request download + intake navigation — SIGNOFF COMPLETE (DEV)
+
+Goal `studio-pre-release-pr-item-download-and-intake-navigation` is **DONE** with Signoff
+**approved_with_notes** after Owner DEV QA **PASS** with no notes. Studio Print Request cards now
+download exactly one native PNG per selected item using the latest saved dimensions and the existing
+source-aware production resolver; dirty/saving/failed-size guards, enhanced fail-closed behavior,
+bounded errors, and dismissible timed success feedback are preserved. Uploaded Designs and Donated
+Designs now move the active loaded list selection with ArrowUp/ArrowDown, with no wraparound or
+auto-load-more and with editable-target/lightbox guards intact.
+
+Focused tests **70/70 PASS**; export/gang-sheet/copy regressions **85/85 PASS**; Studio typecheck,
+targeted changed-file lint, build/package, and diff check pass. Build warnings and Windows
+electron-builder rename retries were non-fatal and documented. No Portal publication, Functions/
+Rules/Storage deployment, migration, backfill, data mutation, IAM, secret, or production action
+occurred. The cumulative manifest records Studio release **REQUIRED** and all backend/data
+categories **NONE from this goal**. Reviewed commit/push completed on `development`.
+
+Signoff: `docs/workflow/reviews/2026-09-16-studio-pre-release-pr-item-download-and-intake-navigation-signoff.md`.
+
 ## 2026-09-15 - Portal Admin Staff Artwork + Studio AI Review — SIGNOFF COMPLETE (DEV)
 
 Goal `portal-admin-staff-artwork-upload` is **DONE** with Signoff **approved_with_notes** after

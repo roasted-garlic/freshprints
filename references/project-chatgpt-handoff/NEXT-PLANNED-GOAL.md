@@ -1,10 +1,10 @@
 # Next Planned Goal
 
-**Updated:** 2026-09-15
+**Updated:** 2026-09-16
 
 ## FreshForge IDLE — no active managed goal
 
-Last closed: `portal-admin-staff-artwork-upload`
+Last closed: `studio-pre-release-pr-item-download-and-intake-navigation`
 (Signoff **approved_with_notes**, Owner DEV QA **PASS**). Await owner direction for the next managed Plan
 or separately gated production promotion (see
 `docs/workflow/reviews/2026-09-pre-production-promotion-manifest.md`).
