@@ -23,10 +23,7 @@ import { CustomerUploadExclusionDialog } from "./CustomerUploadExclusionDialog";
 import { CustomerUploadPermissionActivityModal } from "./CustomerUploadPermissionActivityModal";
 import { CustomerUploadRestoreDialog } from "./CustomerUploadRestoreDialog";
 import { CustomerUploadIntakePreviewControls } from "./CustomerUploadIntakePreviewControls";
-import {
-  resolveCustomerUploadBackgroundOverride,
-  resolveCustomerUploadPreviewBackgroundHex,
-} from "../utils/customerUploadPreviewBackground";
+import { resolveCustomerUploadPreviewBackgroundHex } from "../utils/customerUploadPreviewBackground";
 
 type IntakeApi = ReturnType<typeof useCustomerUploadIntake>;
 
@@ -226,14 +223,7 @@ function IntakeDetail({
             void intake.setArtworkBackgroundDecision?.(row.id, hex, source);
           }}
           onHalftoneChange={(value) => {
-            void intake.setHalftoneDecision(row.id, value, {
-              defaultDarkBackgroundWhenAuto:
-                value &&
-                resolveCustomerUploadBackgroundOverride(
-                  row.artworkBackgroundHex,
-                  row.artworkBackgroundSource,
-                ) === "auto",
-            });
+            void intake.setHalftoneDecision(row.id, value);
           }}
         />
       </div>

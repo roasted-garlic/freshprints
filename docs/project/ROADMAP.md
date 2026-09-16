@@ -1,5 +1,27 @@
 # Fresh Prints Roadmap
 
+> 2026-09-16: **Studio Halftone/background toggle synchronization — IN PROGRESS (DEV)** —
+> Owner-requested hotfix `studio-halftone-background-toggle-hotfix-2026-09-16`: enabling Halftone
+> seeds the light-black artwork background and disabling it restores the default state across
+> Imports, Customer Upload Intake, AI Processing, and Design Edit. Artwork Background remains
+> independently selectable afterward. Existing Studio-only fields/save paths are used; no Functions,
+> Rules, indexes, Portal, migration, or production action is in scope. The bounded hotfix addition
+> also fixes Print Request rail selection across lifecycle tabs by preventing stale detail state from
+> bouncing a second click during route canonicalization. Plan/review:
+> `docs/workflow/plans/2026-09-16-studio-halftone-background-toggle-hotfix-plan.md` and
+> `docs/workflow/reviews/2026-09-16-studio-halftone-background-toggle-hotfix-review.md`.
+
+> 2026-09-16: **Coordinated production promotion — Studio v1.0.13 COMPLETE; owner smoke pending** —
+> The reviewed candidate and owner-authorized lint corrective are live at production SHA
+> `ccad1920bf382947dbc5d48d997f16fa037a0277`; Studio stable `v1.0.13` is published/latest and
+> includes the `standardSizePresetKey` Print Request item Download fix. Workflow run
+> `35141319164` passed Windows, macOS, and finalization. The existing Ruleset, exact 58-function
+> deployment, IAM self-binding, 94 READY indexes, and Portal rollout
+> `build-2026-09-16-001` were verified; no corrective backend or Portal redeploy occurred. Rules
+> remain the owner-accepted **179/182** with the three known transition-baseline
+> 1,000-expression emulator failures. AI remains shadow / Autonomous OFF / Pass 2 OFF. Next:
+> **OWNER PRODUCTION SMOKE**, beginning with **Autonomous AI Review**.
+
 > 2026-09-16: **Studio Print Request item Download dirty-preset fix — CLOSED (DEV)** — Goal
 > `studio-print-request-item-download-dirty-preset-fix` is **DONE** with Signoff **approved**.
 > Items with a `standardSizePresetKey` no longer look permanently unsaved, so per-item Download

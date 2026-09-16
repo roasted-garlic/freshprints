@@ -1406,6 +1406,8 @@ export function useAiReviewInbox(
             ? {
                 ...currentDraft,
                 markAsHalftone,
+                artworkBackgroundPreset: markAsHalftone ? "lightBlack" : "grey",
+                artworkBackgroundCustomHex: "",
               }
             : currentDraft,
         );
@@ -1414,6 +1416,8 @@ export function useAiReviewInbox(
             ? {
                 ...currentBaseline,
                 markAsHalftone,
+                artworkBackgroundPreset: markAsHalftone ? "lightBlack" : "grey",
+                artworkBackgroundCustomHex: "",
               }
             : currentBaseline,
         );

@@ -807,7 +807,6 @@ export function useCustomerUploadIntake(options?: {
     setHalftoneDecision: async (
       uploadId: string,
       value: boolean,
-      options?: { defaultDarkBackgroundWhenAuto?: boolean },
     ) => {
       if (pendingByUploadId[uploadId]) {
         return false;
@@ -829,53 +828,45 @@ export function useCustomerUploadIntake(options?: {
         isExplicitOverride: true,
         decidedBy: user?.id ?? null,
       } as CustomerUploadIntakeRow["halftoneStaffDecision"];
-      const shouldDefaultDarkBackground = value && options?.defaultDarkBackgroundWhenAuto === true;
+      const artworkBackgroundHex = value ? ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK : null;
+      const artworkBackgroundSource = value ? ("staff_manual" as const) : null;
 
       metadataOverridesRef.current.set(uploadId, {
         ...metadataOverridesRef.current.get(uploadId),
         halftoneStaffDecision: optimisticDecision,
-        ...(shouldDefaultDarkBackground
-          ? {
-              artworkBackgroundHex: ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK,
-              artworkBackgroundSource: "staff_manual" as const,
-            }
-          : {}),
+        artworkBackgroundHex,
+        artworkBackgroundSource,
       });
 
       // OPTIMISTIC: Patch locally FIRST (before any await).
       patchRowLocally(uploadId, {
         halftoneStaffDecision: optimisticDecision,
-        ...(shouldDefaultDarkBackground
-          ? {
-              artworkBackgroundHex: ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK,
-              artworkBackgroundSource: "staff_manual" as const,
-            }
-          : {}),
+        artworkBackgroundHex,
+        artworkBackgroundSource,
       });
 
       try {
         await customerUploadIntakeService.recordHalftoneStaffDecision(uploadId, value);
         clearMetadataOverrideKeys(uploadId, ["halftoneStaffDecision"]);
 
-        if (shouldDefaultDarkBackground) {
-          try {
-            await customerUploadIntakeService.recordArtworkBackgroundStaffDecision(
-              uploadId,
-              ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK,
-            );
-            clearMetadataOverrideKeys(uploadId, ["artworkBackgroundHex", "artworkBackgroundSource"]);
-          } catch (err) {
-            setMetadataFailedByUploadId((current) => ({
-              ...current,
-              [uploadId]: "artwork_background",
-            }));
-            setError(
-              err instanceof Error
-                ? err.message
-                : "Unable to save artwork background decision.",
-            );
-            return false;
-          }
+        try {
+          await customerUploadIntakeService.recordArtworkBackgroundStaffDecision(
+            uploadId,
+            artworkBackgroundHex,
+            { clearArtworkBackground: !value },
+          );
+          clearMetadataOverrideKeys(uploadId, ["artworkBackgroundHex", "artworkBackgroundSource"]);
+        } catch (err) {
+          setMetadataFailedByUploadId((current) => ({
+            ...current,
+            [uploadId]: "artwork_background",
+          }));
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Unable to save artwork background decision.",
+          );
+          return false;
         }
         return true;
       } catch (err) {
@@ -966,22 +957,36 @@ export function useCustomerUploadIntake(options?: {
         setPending(uploadId, "halftone");
         try {
           await customerUploadIntakeService.recordHalftoneStaffDecision(uploadId, value);
-          if (row.artworkBackgroundSource === "staff_manual") {
+          clearMetadataOverrideKeys(uploadId, ["halftoneStaffDecision"]);
+
+          const artworkBackgroundHex = value ? ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK : null;
+          try {
             await customerUploadIntakeService.recordArtworkBackgroundStaffDecision(
               uploadId,
-              row.artworkBackgroundHex ?? null,
+              artworkBackgroundHex,
+              { clearArtworkBackground: !value },
             );
-            clearMetadataOverrideKeys(uploadId, [
-              "artworkBackgroundHex",
-              "artworkBackgroundSource",
-            ]);
+          } catch (err) {
+            setMetadataFailedByUploadId((current) => ({
+              ...current,
+              [uploadId]: "artwork_background",
+            }));
+            setError(
+              err instanceof Error
+                ? err.message
+                : "Unable to save artwork background decision.",
+            );
+            return false;
           }
+          clearMetadataOverrideKeys(uploadId, [
+            "artworkBackgroundHex",
+            "artworkBackgroundSource",
+          ]);
           setMetadataFailedByUploadId((current) => {
             const next = { ...current };
             delete next[uploadId];
             return next;
           });
-          clearMetadataOverrideKeys(uploadId, ["halftoneStaffDecision"]);
           setNotice("Halftone decision saved.");
           return true;
         } catch (err) {

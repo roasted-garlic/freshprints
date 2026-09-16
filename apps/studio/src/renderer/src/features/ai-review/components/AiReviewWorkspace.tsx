@@ -204,6 +204,10 @@ export function AiReviewWorkspace({
   }
 
   function handlePreviewHalftoneChange(markAsHalftone: boolean): void {
+    setPendingPreviewBackgroundValues({
+      artworkBackgroundPreset: markAsHalftone ? "lightBlack" : "grey",
+      artworkBackgroundCustomHex: "",
+    });
     onSaveHalftoneStaffDecision(markAsHalftone);
   }
 

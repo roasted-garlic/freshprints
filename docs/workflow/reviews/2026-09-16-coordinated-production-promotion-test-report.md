@@ -6,7 +6,7 @@
 | Goal | `coordinated-production-promotion-2026-09-16` |
 | Plan | `docs/workflow/plans/2026-09-16-coordinated-production-promotion-plan.md` |
 | Review | `docs/workflow/reviews/2026-09-16-coordinated-production-promotion-formal-review.md` |
-| Candidate status | Frozen candidate promoted to production; rollout hard-stopped at the Studio release lint gate before Studio publication. |
+| Candidate status | Corrective candidate promoted to production; Studio v1.0.13 published successfully; owner production smoke remains pending. |
 
 ## Reviewed correction checks
 
@@ -87,16 +87,15 @@ v1.0.12 remains the published Studio release. This is an explicit hard stop:
 do not change or auto-expand the lint baseline, retry around the gate, or
 publish until a reviewed correction/disposition is recorded.
 
-## Disposition
+## Disposition at the initial lint stop
 
-The Studio fix and reviewed deterministic release corrections pass their
-focused checks, and the candidate was frozen and promoted through the
+The Studio fix and reviewed deterministic release corrections passed their
+focused checks, and the initial candidate was frozen and promoted through the
 protected PR path. Backend and Portal production promotion completed with the
-recorded readbacks, but the coordinated rollout is not complete because the
-Studio release lint gate failed. The goal remains open at this hard stop; a
-new reviewed correction/disposition is required before re-freezing a candidate
-and retrying Studio. The owner-accepted 179/182 Rules limitation remains
-unchanged and is not the blocker.
+recorded readbacks, but the coordinated rollout was incomplete at this point
+because the Studio release lint gate failed. The owner-accepted 179/182 Rules
+limitation remained unchanged and was not the blocker. The subsequent
+owner-authorized corrective and retry are recorded below.
 
 ## Corrective revalidation
 
@@ -122,7 +121,57 @@ Functions, Rules, Portal App Hosting, IAM, index, Storage Rules, schema,
 secret, or production-data delta. Existing live surfaces must not be
 redeployed for this corrective.
 
-The candidate is ready to commit on `development`, promote through the
-protected path, and dispatch the stable Studio workflow from the new exact
-production SHA. The accepted Rules limitation remains exactly 179/182 and is
-unchanged.
+The corrective passed review and was committed on `development`, promoted
+through the protected path, and dispatched from the new exact production SHA.
+The accepted Rules limitation remains exactly 179/182 and is unchanged.
+
+## Corrective production publication and machine verification
+
+The owner-authorized corrective was committed as
+`2bf6c59c599ccd702eba4523a035e7d7954aab62` and merged through protected PR
+[#98](https://github.com/roasted-garlic/freshprints/pull/98). The resulting
+production merge SHA is
+`ccad1920bf382947dbc5d48d997f16fa037a0277`, with the original production
+candidate `3802ff8564efb0d24e6c783a23c4b4b65d7cef8f` as an ancestor.
+
+The corrective diff is limited to the reviewed Portal/Studio lint-safe source
+cleanup, the canonical release-lint invocation, and workflow evidence. The
+protected runtime files (`functions/src/index.ts`, `firestore.rules`,
+`storage.rules`, `firestore.indexes.json`, and `firebase.json`) are unchanged
+relative to `3802ff8`; no Functions, Rules, Portal App Hosting, IAM, index,
+Storage Rules, schema, secret, or production-data redeploy was performed for
+the corrective. The live Portal rollout remains
+`build-2026-09-16-001` / revision
+`fresh-prints-portal-build-2026-09-16-001` at 100% traffic.
+
+Studio workflow run `35141319164` completed successfully for the exact
+production SHA. Windows, macOS arm64/x64 packaging, and finalization all
+passed. The canonical helper then published GitHub stable release `v1.0.13`
+(`1.0.13`) as latest, targeting the exact production SHA, with the eight
+required Windows/macOS installer, archive, blockmap, and update-manifest
+assets. Stable `v1.0.12` remains available at
+`840d596b058b3f7bef2dae886154aa667f9e2a57`.
+
+Final read-only machine verification passed:
+
+- production checkout and remote branch are clean at `ccad1920`;
+- all 179 listed production Functions are `ACTIVE`, including the exact six
+  newly added targets; all 94 composite indexes are `READY`;
+- IAM has exactly one binding, the reviewed self-binding of
+  `roles/iam.serviceAccountTokenCreator`;
+- Portal latest-ready revision is the existing 2026-09-16 revision with 100%
+  traffic; public `/`, `/login`, `/register`, `/robots.txt`,
+  `/admin/show-queue`, and `/admin/staff-artwork` checks returned HTTP 200 with
+  no known application-error marker;
+- the active Firestore release points to Ruleset
+  `3ca899da-de8c-43bb-b651-7cdcc033601a`; Rules remain the accepted exact
+  `179/182` result with only the three known 1,000-expression transition
+  baseline failures;
+- production AI settings remain `catalogWorkflowMode=shadow`,
+  `catalogAutonomousLiveEnabled=false`, `visionModelId=gemini-2.5-flash-lite`,
+  and absent `semanticReviewPlaygroundEnabled`; maintenance is OFF and
+  `settings/portalDevCustomerAccess` remains absent.
+
+The automated production rollout is complete. The remaining gate is Owner
+Production Smoke; no data repair, backfill, Apply, AI-setting change, or other
+runtime mutation is authorized by this record.

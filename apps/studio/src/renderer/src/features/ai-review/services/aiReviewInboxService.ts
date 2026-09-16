@@ -1,6 +1,7 @@
 import { catalogApprovalService } from "../../designs/services/catalogApprovalService";
 import { companionSetService } from "../../designs/services/companionSetService";
 import { designService } from "../../designs/services/designService";
+import { ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK } from "@fresh-prints/shared/constants/design/artworkBackground.constants";
 import type { Design } from "../../designs/types/design.types";
 import type { DesignListPage, DesignListQuery } from "../../designs/types/designQuery.types";
 import {
@@ -146,6 +147,7 @@ export const aiReviewInboxService = {
     }
 
     return designService.updateDesign(caller, design.id, {
+      artworkBackgroundHex: markAsHalftone ? ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK : null,
       halftoneStaffDecision: {
         value: markAsHalftone,
         decidedBy: caller.id,

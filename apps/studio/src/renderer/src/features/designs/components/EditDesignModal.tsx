@@ -88,6 +88,8 @@ export function EditDesignModal({
     setFormValues((currentValues) => ({
       ...currentValues,
       halftoneStaffDecisionValue: checked,
+      artworkBackgroundPreset: checked ? "lightBlack" : "grey",
+      artworkBackgroundCustomHex: "",
     }));
   }
 

@@ -20,7 +20,11 @@ export function useImportSessionSettings() {
   const [settings, setSettings] = useState<ImportSessionSettings>(IMPORT_SESSION_DEFAULT_SETTINGS);
 
   const setHalftoneMode = useCallback((halftoneMode: ImportHalftoneMode) => {
-    setSettings((current) => ({ ...current, halftoneMode }));
+    setSettings((current) => ({
+      ...current,
+      halftoneMode,
+      backgroundMode: halftoneMode === "all_halftones" ? "all_dark" : "auto",
+    }));
   }, []);
 
   const setBackgroundMode = useCallback((backgroundMode: ImportArtworkBackgroundMode) => {
