@@ -618,6 +618,7 @@ export function CustomerUploadIntakeSection({
 
   const listItemIds = intake.rows.map((row) => row.id);
   const listNavigationState = getPreviewLightboxNavigationState(listItemIds, intake.selectedId);
+  const setSelectedId = intake.setSelectedId;
 
   useEffect(() => {
     setIsLightboxOpen(false);
@@ -656,7 +657,7 @@ export function CustomerUploadIntakeSection({
       }
 
       event.preventDefault();
-      intake.setSelectedId(nextId);
+      setSelectedId(nextId);
       const target = document.querySelector<HTMLElement>(
         `[data-customer-upload-intake-id="${CSS.escape(nextId)}"]`,
       );
@@ -667,7 +668,7 @@ export function CustomerUploadIntakeSection({
     window.addEventListener("keydown", handleListKeyDown);
     return () => window.removeEventListener("keydown", handleListKeyDown);
   }, [
-    intake.setSelectedId,
+    setSelectedId,
     listItemIds.length,
     listNavigationState.nextId,
     listNavigationState.previousId,

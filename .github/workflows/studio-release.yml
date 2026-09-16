@@ -113,7 +113,7 @@ jobs:
         run: node scripts/generate-packaged-build-config.mjs
 
       - name: Lint
-        run: node .github/scripts/run-studio-release-lint.mjs
+        run: npm run lint:release
 
       - name: Build Functions
         run: npm --prefix functions run build
@@ -357,7 +357,7 @@ jobs:
         run: node scripts/generate-packaged-build-config.mjs
 
       - name: Lint
-        run: node .github/scripts/run-studio-release-lint.mjs
+        run: npm run lint:release
 
       - name: Build Functions
         run: npm --prefix functions run build

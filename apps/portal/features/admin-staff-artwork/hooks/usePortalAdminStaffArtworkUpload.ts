@@ -111,13 +111,14 @@ export function usePortalAdminStaffArtworkUpload() {
         }
       } finally {
         processingRef.current = false;
-        if (!mountedRef.current) return;
-        setIsProcessing(false);
-        if (readyInBatch > 0) {
-          setSuccessMessage(
-            `${readyInBatch} file${readyInBatch === 1 ? '' : 's'} ready in Studio Staff Artwork.`,
-          );
-          setItems((current) => current.filter((item) => item.status !== 'ready'));
+        if (mountedRef.current) {
+          setIsProcessing(false);
+          if (readyInBatch > 0) {
+            setSuccessMessage(
+              `${readyInBatch} file${readyInBatch === 1 ? '' : 's'} ready in Studio Staff Artwork.`,
+            );
+            setItems((current) => current.filter((item) => item.status !== 'ready'));
+          }
         }
       }
     },

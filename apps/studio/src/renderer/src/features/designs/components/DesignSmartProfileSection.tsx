@@ -24,11 +24,9 @@ import {
   buildSmartProfileAutomationSummary,
   buildSmartProfileProvenanceFields,
 } from "../utils/smartProfileDisplay";
+import { SMART_PROFILE_DIMENSION_LABELS } from "../utils/smartProfileDimensionLists";
 import { DesignLibraryModal } from "./DesignLibraryModal";
-import {
-  SMART_PROFILE_DIMENSION_LABELS,
-  SmartProfileDimensionListsView,
-} from "./SmartProfileDimensionListsView";
+import { SmartProfileDimensionListsView } from "./SmartProfileDimensionListsView";
 
 interface DesignSmartProfileSectionProps {
   canEdit: boolean;

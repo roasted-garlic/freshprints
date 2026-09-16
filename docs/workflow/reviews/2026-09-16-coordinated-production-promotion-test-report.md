@@ -97,3 +97,32 @@ Studio release lint gate failed. The goal remains open at this hard stop; a
 new reviewed correction/disposition is required before re-freezing a candidate
 and retrying Studio. The owner-accepted 179/182 Rules limitation remains
 unchanged and is not the blocker.
+
+## Corrective revalidation
+
+The owner-authorized bounded corrective was implemented under the focused
+review. The canonical lint comparator now passes locally with `current=15`,
+`baseline=25`, `new=0`, and `removed=10`; the checked-in baseline was not
+changed. The release workflow and local package script both use the same
+`npm run lint:release` command.
+
+| Check | Result |
+|---|---|
+| Canonical `npm run lint:release` | **pass** — zero new diagnostics; six workflow findings resolved |
+| Lint runner and release-policy contracts | **40/40 pass** |
+| Affected Portal/Studio regression contracts | **75/75 pass** |
+| Portal typecheck | **pass** |
+| Studio typecheck | **pass** |
+| Studio local build/package preflight | **pass** — renderer, Electron main/preload, Windows installer, and blockmap completed |
+| `git diff --check` | **pass** |
+
+The corrective delta is limited to Portal/Studio client lint-safe cleanup,
+root/release workflow lint invocation parity, and workflow evidence. It has no
+Functions, Rules, Portal App Hosting, IAM, index, Storage Rules, schema,
+secret, or production-data delta. Existing live surfaces must not be
+redeployed for this corrective.
+
+The candidate is ready to commit on `development`, promote through the
+protected path, and dispatch the stable Studio workflow from the new exact
+production SHA. The accepted Rules limitation remains exactly 179/182 and is
+unchanged.
