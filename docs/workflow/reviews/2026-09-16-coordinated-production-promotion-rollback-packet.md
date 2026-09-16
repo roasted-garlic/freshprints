@@ -72,4 +72,3 @@ deletion or invocation of reconciliation Apply is permitted.
   self-binding of `roles/iam.serviceAccountTokenCreator` to that same runtime
   service account, if applied before the bounded Staff Artwork smoke. No other
   IAM grant is allowed.
-
