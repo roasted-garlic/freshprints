@@ -33,6 +33,24 @@
   padding: var(--space-3) var(--space-4);
 }
 
+.design-library-ai-selection-toolbar {
+  align-items: center;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-accent-primary);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+}
+
+.design-library-ai-selection-copy {
+  color: var(--color-text-secondary);
+  flex: 1 1 18rem;
+  font-size: var(--font-size-sm);
+}
+
 /* Shared filter controls (search + category + tags + optional archive toggle) */
 .design-library-filter-controls {
   align-items: center;
@@ -290,6 +308,20 @@
   display: grid;
   gap: var(--space-4);
   grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+}
+
+.design-card-shell.is-selected-for-ai-reprocess {
+  border-radius: var(--radius-lg);
+  box-shadow:
+    0 0 0 2px var(--color-accent-primary),
+    0 0 16px 2px color-mix(in srgb, var(--color-accent-primary) 22%, transparent);
+}
+
+.design-card-ai-select {
+  position: absolute;
+  right: var(--space-3);
+  top: var(--space-3);
+  z-index: 1;
 }
 
 .design-selection-card {

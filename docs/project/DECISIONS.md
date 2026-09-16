@@ -4,6 +4,50 @@
 
 ---
 
+### ADR-FP-190: Portal Admin Staff Artwork upload and canonical AI Review lifecycle
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-15 |
+| Status | **approved_with_notes — DEV Owner QA PASS; production promotion separately gated** |
+| Related | Goal `portal-admin-staff-artwork-upload`; Plan/Formal Review `2026-09-15-portal-admin-staff-artwork-upload-*` |
+
+**Decision**
+
+1. Portal adds `/admin/staff-artwork` as an owner/admin-only, upload-only surface. It uses the
+   existing `createStaffArtworkUpload` and `finalizeStaffArtwork` callable boundaries, uploads
+   `image/png` source files to the canonical Staff Artwork path, processes sequentially, and
+   retries only failed files. It does not read `staffArtworks`, mint derivative URLs, or expose
+   production/source paths as a library surface.
+2. Studio Design Library gains a separate owner-only Multiple Select mode for eligible Ready,
+   approved, non-archived catalog designs. Staff Artwork gains a separate owner/admin Multiple
+   Select mode that reuses existing per-item promotion and then the existing non-forced AI queue.
+   Print Request selection remains independent in both surfaces.
+3. Sending an existing `ready` + `approved` Design Library design back to AI Review uses the
+   canonical lifecycle: demote to `imported` + `pending`, leave the normal Design Library browse,
+   enter the existing AI Processing / Needs Review / Rejected workflow, and return to `ready` +
+   `approved` only through normal approval. No dual-visibility `aiReprocessState` or
+   `ready_reprocess` mode is part of the active contract. Auto-process ON uses the existing queue;
+   OFF waits for normal manual Start AI.
+4. No second AI pipeline, durable batch/job architecture, lifecycle, Firestore/Storage Rules,
+   composite index, migration/backfill, secret, IAM, or external service is introduced.
+5. In either Studio library, active Multiple Select makes the full eligible card the selection
+   target, suppresses normal details/preview behavior, exposes selected state, and restores normal
+   card behavior immediately when exited. Existing Print Request selection remains independent.
+
+**Consequences**
+
+- Reprocessed designs are authoritative in normal AI Review while active and re-enter the Design
+  Library only after approval. Existing approval/rejection, retry, delete/archive, attempt guards,
+  and queue/settings boundaries remain authoritative.
+- Safe Staff Artwork promotion diagnostics expose bounded failure reason/blocker/state details while
+  keeping deletion safety, idempotency, and owner/admin authorization intact.
+- DEV QA passed after deployment of the exact changed Functions. Production Functions, Portal App
+  Hosting, Studio release, Rules, indexes, migrations, IAM, and data mutation remain separately
+  gated.
+
+---
+
 ### ADR-FP-189: Atomic Studio Add-to-Show re-add and editing repair
 
 | Field | Value |

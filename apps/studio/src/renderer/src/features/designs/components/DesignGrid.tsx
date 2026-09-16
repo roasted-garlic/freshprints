@@ -20,6 +20,11 @@ interface DesignGridProps {
     isSelected: (designId: string) => boolean;
     onToggle: (design: Design) => void;
   };
+  aiReprocessSelection?: {
+    isEligible: (designId: string) => boolean;
+    isSelected: (designId: string) => boolean;
+    onToggle: (design: Design) => void;
+  };
   requestSelection?: {
     getSelection: (designId: string) => { isExistingSelection: boolean; isSelected: boolean; quantity: number } | null;
     onAdd: (design: Design) => void;
@@ -70,6 +75,7 @@ export function DesignGrid({
   hasActiveFilters,
   isLoading,
   purgeSelection,
+  aiReprocessSelection,
   requestSelection,
   onSelectDesign,
 }: DesignGridProps) {
@@ -141,6 +147,7 @@ export function DesignGrid({
       <div className="design-grid" role="list">
         {designs.map((design) => {
           const selection = requestSelection?.getSelection(design.id);
+          const aiReprocessEligible = aiReprocessSelection?.isEligible(design.id) ?? false;
 
           return (
             <div data-design-id={design.id} key={design.id} role="listitem">
@@ -162,8 +169,15 @@ export function DesignGrid({
               ) : (
                 <DesignCard
                   design={design}
+                  isSelectedForAiReprocess={
+                    aiReprocessEligible && (aiReprocessSelection?.isSelected(design.id) ?? false)
+                  }
+                  isAiReprocessSelectable={aiReprocessEligible}
                   isSelectedForPurge={purgeSelection?.isSelected(design.id) ?? false}
                   onSelect={onSelectDesign}
+                  onToggleAiReprocessSelection={
+                    aiReprocessSelection?.onToggle
+                  }
                   onTogglePurgeSelection={purgeSelection?.onToggle}
                   showPurgeSelection={Boolean(purgeSelection)}
                 />

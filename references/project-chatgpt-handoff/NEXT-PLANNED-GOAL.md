@@ -4,8 +4,8 @@
 
 ## FreshForge IDLE — no active managed goal
 
-Last closed: `historical-internal-reconciliation-admin-artwork-previews-and-dev-access-hardening`
-(Signoff **approved**, Owner DEV QA **PASS**). Await owner direction for the next managed Plan
+Last closed: `portal-admin-staff-artwork-upload`
+(Signoff **approved_with_notes**, Owner DEV QA **PASS**). Await owner direction for the next managed Plan
 or separately gated production promotion (see
 `docs/workflow/reviews/2026-09-pre-production-promotion-manifest.md`).
 

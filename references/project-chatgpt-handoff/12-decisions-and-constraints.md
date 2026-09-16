@@ -2,6 +2,18 @@
 
 > Full log: `docs/project/DECISIONS.md` — newest ADRs first.
 
+### ADR-FP-190: Portal Admin Staff Artwork + canonical AI Review lifecycle (DEV closed 2026-09-15)
+
+- Owner DEV QA **PASS**; Signoff **approved_with_notes**.
+- Portal upload-only `/admin/staff-artwork` reuses trusted Staff Artwork create/finalize boundaries.
+- Studio Multiple Select is a separate full-card interaction in Design Library and Staff Artwork;
+  normal details/preview clicks are suppressed while active and restored on exit.
+- Existing Ready reprocess follows `ready + approved` → `imported + pending` normal AI Review →
+  approval → `ready + approved`. The rejected Ready-preserving dual-visibility design and
+  `aiReprocessState`/`ready_reprocess` UI contract are historical only.
+- Production Functions, Portal App Hosting, Studio release, Rules, indexes, migrations, and
+  backfills remain separately gated/none as applicable.
+
 ### ADR-FP-182: Studio staff show-capacity allocation override (DEV closed 2026-09-15)
 
 - Staff Allocate Anyway sends `overrideShowCapacity: true` (literal boolean only) on

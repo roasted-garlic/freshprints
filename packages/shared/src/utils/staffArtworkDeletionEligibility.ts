@@ -102,11 +102,11 @@ export function describeStaffArtworkDeletionBlockers(
   const labels = blockers.map((code) => {
     switch (code) {
       case "print_request_item":
-        return "still on a print request that is not on a completed show or internal sheet";
+        return "still attached to a print request that is not on a completed show or internal sheet";
       case "show_allocation":
-        return "still allocated to a show or internal sheet that is not completed";
+        return "still allocated to an active show or internal sheet (not completed)";
       case "gang_sheet_item":
-        return "still placed on a gang sheet for a show or internal sheet that is not completed";
+        return "still placed on a gang sheet for an active show or internal sheet (not completed)";
       case "unexpected_storage_path":
         return "has an unexpected storage path";
       default:
@@ -114,4 +114,21 @@ export function describeStaffArtworkDeletionBlockers(
     }
   });
   return labels.join("; ");
+}
+
+/** Short card/toolbar copy when Staff Artwork cannot leave the library yet. */
+export function describeStaffArtworkActiveShowBlockNotice(
+  blockers: readonly string[] = [],
+): string {
+  if (
+    blockers.includes("show_allocation") ||
+    blockers.includes("print_request_item") ||
+    blockers.includes("gang_sheet_item")
+  ) {
+    return "Still on an active show or print request — remove it or wait until that show is completed before sending to AI Review.";
+  }
+  const detailed = describeStaffArtworkDeletionBlockers(blockers);
+  return detailed
+    ? `Cannot send to AI Review: ${detailed}.`
+    : "Cannot send to AI Review while this artwork is still in use.";
 }

@@ -8,6 +8,19 @@
 > and ordering churn. The final Rules state removes direct customer canonical reads only after
 > projection population and verification. Owner DEV QA **PASS**; production remains untouched.
 
+## Portal Admin Staff Artwork + Studio AI Review — CLOSED DEV workflow (2026-09-15)
+
+Active owners/admins use Portal `/admin/staff-artwork` to select valid PNGs, upload through the
+existing create → Storage source → finalize path, and observe Queued → Uploading → Processing →
+Ready. The route is upload-only and does not browse Staff Artwork documents or derivatives.
+
+In Studio, owner Design Library and owner/admin Staff Artwork Multiple Select use full-card
+selection; image/title/content clicks toggle selection and normal details/preview behavior is
+suppressed until the mode exits. A Ready approved design sent to AI Review leaves the normal Design
+Library, enters the canonical `imported` + `pending` Processing/Needs Review/Rejected flow, and
+returns to `ready` + `approved` through normal approval. Auto-process ON/OFF uses existing queue
+settings. Helpers remain denied management/promotion access.
+
 ---
 
 ## Studio Print Request refinements — closed 2026-09-15

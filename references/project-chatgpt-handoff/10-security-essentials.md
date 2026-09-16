@@ -2,6 +2,17 @@
 
 > Full doc: `docs/standards/SECURITY.md`
 
+## Portal Admin Staff Artwork + Studio AI Review — DEV closed 2026-09-15
+
+- `/admin/staff-artwork` is restricted to active owner/admin sessions, with callable
+  revalidation; upload-only UI does not read private Staff Artwork documents or expose derivatives.
+- Staff Artwork promotion retains deletion-blocker checks, owner/admin authority, helper denial,
+  idempotency, and no-duplicate catalog behavior. Diagnostics are bounded to safe reason/blocker/
+  lifecycle details.
+- Design Library Ready reprocess is owner-only and uses the normal imported/pending AI Review
+  lifecycle; no dual Ready + AI Review authority or active `aiReprocessState` routing seam exists.
+- No Rules, index, migration, secret, IAM, or production action was performed.
+
 ## Coordinated projection cutover (closed 2026-09-12)
 
 - `portalPrintRequestItems` is the least-privilege customer projection; writes are Admin-only and

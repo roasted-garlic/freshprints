@@ -224,14 +224,15 @@ async function markAiSuccess(
     stripTransientAiAnalysisFields(analysis),
   );
   const mode = options?.mode ?? "queue";
-  const settings = smartProfile && mode === "queue"
+  const isLiveQueueMode = mode === "queue";
+  const settings = smartProfile && isLiveQueueMode
     ? await loadCachedAiEnrichmentSettings({
         functionName: "markAiSuccess",
         invocationId: randomUUID(),
         designId,
       })
     : undefined;
-  const activeCategories = smartProfile && mode === "queue"
+  const activeCategories = smartProfile && isLiveQueueMode
     ? (await loadCachedActiveCategories({
         functionName: "markAiSuccess",
         invocationId: randomUUID(),
@@ -256,7 +257,7 @@ async function markAiSuccess(
       priorData?.smartProfile && typeof priorData.smartProfile === "object"
         ? (priorData.smartProfile as DesignSmartProfile)
         : undefined;
-    let publishReady = mode === "queue" && options?.publishReady === true;
+    let publishReady = isLiveQueueMode && options?.publishReady === true;
     let persistedSmartProfile: DesignSmartProfile | undefined;
     let smartProfileAiSnapshot: ReturnType<typeof buildSmartProfileAiSnapshot> =
       undefined;
@@ -311,7 +312,7 @@ async function markAiSuccess(
     }
 
     // Re-evaluate WAA only after staff/import authority has been merged into the effective profile.
-    if (persistedSmartProfile && mode === "queue" && settings) {
+    if (persistedSmartProfile && isLiveQueueMode && settings) {
       const finalCatalogCopy = resolveFinalCatalogCopy({
         root: {
           title: priorData?.title,
@@ -474,7 +475,7 @@ async function markAiSuccess(
 
     const finalCatalogEligible = publishReady;
     const finalCatalogFields =
-      mode === "queue" &&
+      isLiveQueueMode &&
       finalCatalogEligible &&
       reconciledFinalCatalogCopy?.valid &&
       reconciledFinalCatalogCopy.title &&

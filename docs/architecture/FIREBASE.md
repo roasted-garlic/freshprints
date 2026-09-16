@@ -1040,6 +1040,14 @@ Firestore collection; they may read only authenticated, already-attached
 interactive objects remain staff/Admin-only. The accepted known-ID residual risk is recorded in the
 Risk Register and may later be replaced by ownership-bound signed URLs under a separate review.
 
+The Portal Admin route `/admin/staff-artwork` is upload-only. Active owners/admins use the existing
+`createStaffArtworkUpload` and `finalizeStaffArtwork` callables, upload `image/png` source bytes
+under the canonical `/staff-artwork/{staffArtworkId}/source` path, and do not read the
+`staffArtworks` collection or request derivative URLs. Studio Ready reprocess uses the normal
+`imported` + `pending` AI Review lifecycle, leaves the normal Ready browse while active, and
+returns through normal approval; no `aiReprocessState` dual-visibility field or new Rules/index is
+required.
+
 For the `portalPrintRequestItems` rollout, deploy additive indexes and synchronizer Functions with
 the **transition** Rules artifact, keep Portal projection-first with bounded canonical fallback,
 complete local/production-gated population DRY RUN and VERIFY, then obtain a separate owner approval

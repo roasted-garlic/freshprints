@@ -358,3 +358,32 @@ empty-input tests, DTO privacy/allowlist tests, and Portal auth/route/page contr
 operational day is tested in `America/Chicago` on standard-time, daylight-time, spring-forward, and
 fall-back boundaries. Firestore Rules tests are not part of this feature because Rules remain
 unchanged.
+
+# Portal Admin Staff Artwork and canonical AI Review lifecycle validation (ADR-FP-190)
+
+The combined goal requires the following focused coverage before Owner DEV QA and Signoff:
+
+```bash
+npx tsx --test \
+  apps/portal/features/admin-show-queue/adminShowQueue.contract.test.ts \
+  apps/portal/features/auth/utils/portalReturnUrl.admin.test.ts \
+  apps/portal/features/admin-staff-artwork/adminStaffArtworkUpload.contract.test.ts \
+  functions/src/ai/enqueueAiEnrichmentValidation.test.ts \
+  functions/src/ai/reprocessReadyDesignWithAiCore.test.ts \
+  functions/src/reprocessReadyDesignWithAi.contract.test.ts \
+  apps/studio/src/renderer/src/features/ai-review/utils/aiReviewInbox.test.ts \
+  apps/studio/src/renderer/src/features/ai-review/utils/aiReviewInboxEligibility.test.ts \
+  apps/studio/src/renderer/src/features/designs/components/reprocessReadyDesignWithAi.contract.test.ts \
+  apps/studio/src/renderer/src/features/staff-artwork/pages/staffArtworkAiReview.contract.test.ts \
+  apps/studio/src/renderer/src/features/designs/components/designCardMultiSelect.contract.test.ts \
+  apps/studio/src/renderer/src/features/staff-artwork/utils/staffArtworkCallableErrorMessage.test.ts \
+  apps/studio/src/renderer/src/features/ai-review/utils/aiReviewQueueMultiSelect.test.ts \
+  apps/studio/src/renderer/src/features/permissions/services/permissionService.staffArtwork.test.ts
+```
+
+Also run the Portal and Studio typechecks, the Functions build, targeted lint, and the existing
+Staff Artwork Firestore/Storage emulator regression suite. The Studio package has no dedicated
+`typecheck` script, so use `npx tsc --noEmit -p apps/studio/tsconfig.json`. No Rules/index change
+is expected for the canonical lifecycle; a Rules test failure must be recorded, not worked around
+by changing Rules in this goal. The final Workstream B focused run passed 86/86, followed by Owner
+DEV QA **PASS**.

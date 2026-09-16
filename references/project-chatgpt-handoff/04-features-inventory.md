@@ -1,5 +1,13 @@
 # Features Inventory
 
+> 2026-09-15: **Portal Admin Staff Artwork + Studio AI Review — CLOSED (DEV)** — Goal
+> `portal-admin-staff-artwork-upload` is signed off **approved_with_notes** after Owner DEV QA
+> **PASS**. Portal owners/admins can upload valid PNGs through `/admin/staff-artwork`; Studio
+> Design Library and Staff Artwork Multiple Select use full-card selection with modal/preview
+> suppression and immediate normal-click restoration. Ready reprocess uses the normal
+> `imported`/`pending` AI Review lifecycle and returns to Ready only after approval. Production
+> publication/release remains separately gated.
+
 > 2026-09-15: **Studio pre-release Print Request refinements — CLOSED (DEV)** — Owner DEV QA
 > **PASS** for Design Details navigation/presentation, customer-request show management and
 > Portal editability, show isolation/search, show-scoped customer grouping/totals,

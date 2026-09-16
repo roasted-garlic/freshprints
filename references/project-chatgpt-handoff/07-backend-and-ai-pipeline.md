@@ -1,5 +1,18 @@
 # Backend and AI Pipeline
 
+## Portal Admin Staff Artwork + canonical AI Review lifecycle (DEV closed 2026-09-15)
+
+- Portal upload reuses `createStaffArtworkUpload` and `finalizeStaffArtwork`; no Portal upload
+  Function runtime changed. Studio Staff Artwork promotion remains owner/admin-only,
+  deletion-blocker protected, idempotent, and sequential in bulk. `promoteStaffArtworkToAiReview`
+  returns bounded safe diagnostic details for precondition failures.
+- `reprocessReadyDesignWithAi` demotes Ready + approved designs into the normal imported + pending
+  AI lifecycle. `enqueueAiEnrichment` and the shared pipeline retain existing Auto-process,
+  attempt-guard, retry, and approval behavior. No `ready_reprocess` mode or dual-visibility marker
+  is active.
+- Exact DEV deployment: `promoteStaffArtworkToAiReview`, `reprocessReadyDesignWithAi`, and
+  `enqueueAiEnrichment`; all ACTIVE. Production Functions promotion is separately gated.
+
 ## Studio staff show-capacity allocation override (DEV — signed off 2026-09-15)
 
 - Callable `allocateStudioPrintRequestToShow` accepts optional `overrideShowCapacity: true`

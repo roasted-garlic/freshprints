@@ -93,6 +93,16 @@ describe('Portal admin Show Queue architecture contracts', () => {
     assert.doesNotMatch(styleSource, /translateX\(-100%\)/);
   });
 
+  it('exposes the separate Staff Artwork Upload admin destination', () => {
+    assert.match(shellSource, /aria-label="Admin destinations"/);
+    assert.match(shellSource, /href="\/admin\/show-queue"/);
+    assert.match(shellSource, /href="\/admin\/staff-artwork"/);
+    assert.match(shellSource, /Staff Artwork Upload/);
+    assert.match(shellSource, /aria-current=\{isStaffArtworkUpload \? 'page' : undefined\}/);
+    assert.match(shellSource, /pathname === '\/admin\/staff-artwork'/);
+    assert.match(styleSource, /\.portal-admin-nav/);
+  });
+
   it('re-arms the mount guard so settled loads clear loading after a development remount', () => {
     assert.match(hookSource, /armPortalAdminShowQueueMount\(mountedRef\)/);
     assert.match(hookSource, /refreshPortalAdminShowQueue\(/);

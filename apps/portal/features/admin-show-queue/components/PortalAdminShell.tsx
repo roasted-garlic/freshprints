@@ -1,6 +1,8 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 import { PortalLogo } from '../../brand/components/PortalLogo';
 import { ThemeToggle } from '../../theme/components/ThemeToggle';
@@ -30,13 +32,18 @@ function ShowPickerMenuButton({ className }: { className?: string }) {
 
 function PortalAdminShellChrome({ children }: { children: ReactNode }) {
   const { user, logout, isAuthActionLoading } = useAuth();
+  const pathname = usePathname();
+  const isStaffArtworkUpload = pathname === '/admin/staff-artwork';
+  const isShowQueue = !isStaffArtworkUpload;
 
   return (
     <div className="portal-admin-shell">
       <header className="portal-admin-header">
         <div className="portal-admin-header-side portal-admin-header-start">
-          <ShowPickerMenuButton className="portal-admin-menu-button-start" />
-          <h1 className="portal-admin-header-title">Admin · Show Queue</h1>
+          {isShowQueue ? <ShowPickerMenuButton className="portal-admin-menu-button-start" /> : null}
+          <h1 className="portal-admin-header-title">
+            {isStaffArtworkUpload ? 'Admin · Staff Artwork Upload' : 'Admin · Show Queue'}
+          </h1>
         </div>
 
         <div className="portal-admin-header-brand">
@@ -44,7 +51,7 @@ function PortalAdminShellChrome({ children }: { children: ReactNode }) {
         </div>
 
         <div className="portal-admin-header-side portal-admin-header-end">
-          <ShowPickerMenuButton className="portal-admin-menu-button-toolbar" />
+          {isShowQueue ? <ShowPickerMenuButton className="portal-admin-menu-button-toolbar" /> : null}
           <div className="portal-admin-header-actions">
             <ThemeToggle compact />
             <span className="portal-admin-identity">{user?.displayName ?? 'Staff'}</span>
@@ -59,6 +66,22 @@ function PortalAdminShellChrome({ children }: { children: ReactNode }) {
           </div>
         </div>
       </header>
+      <nav aria-label="Admin destinations" className="portal-admin-nav">
+        <Link
+          aria-current={isShowQueue ? 'page' : undefined}
+          className={`portal-admin-nav-link${isShowQueue ? ' is-active' : ''}`}
+          href="/admin/show-queue"
+        >
+          Show Queue
+        </Link>
+        <Link
+          aria-current={isStaffArtworkUpload ? 'page' : undefined}
+          className={`portal-admin-nav-link${isStaffArtworkUpload ? ' is-active' : ''}`}
+          href="/admin/staff-artwork"
+        >
+          Staff Artwork Upload
+        </Link>
+      </nav>
       <div className="portal-admin-body">{children}</div>
     </div>
   );

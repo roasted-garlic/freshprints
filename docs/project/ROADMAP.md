@@ -1,5 +1,15 @@
 # Fresh Prints Roadmap
 
+> 2026-09-15: **Portal Admin Staff Artwork + Studio AI Review — CLOSED (DEV)** — Goal
+> `portal-admin-staff-artwork-upload` is **DONE** with Signoff **approved_with_notes** after Owner
+> DEV QA **PASS**, including corrective retests. Delivered upload-only Portal Admin Staff Artwork,
+> full-card Design Library/Staff Artwork Multiple Select, canonical Ready → AI Review → Ready
+> lifecycle, safe Staff Artwork promotion diagnostics, and truthful retry accounting. Latest
+> Workstream B focused tests **86/86 PASS**; exact changed DEV Functions are ACTIVE. Production
+> Functions, Portal App Hosting, Studio release, Rules, indexes, migrations, backfills, and data
+> mutation remain separately gated. Signoff:
+> `docs/workflow/reviews/2026-09-15-portal-admin-staff-artwork-upload-signoff.md`. FreshForge **IDLE**.
+
 > 2026-09-15: **Historical Internal reconciliation / Admin Staff Artwork previews / DEV access hardening — CLOSED (DEV)** — Goal `historical-internal-reconciliation-admin-artwork-previews-and-dev-access-hardening` **DONE**. Signoff **approved**. Owner DEV QA **PASS**. A owner History Preview→Apply; B Staff Artwork derivative previews; C DEV overlay (every login/register visit; localhost + tunnel) + approved-email gate. Focused tests **50/50** (+ correctives). Functions+Rules on `fresh-prints-dev`. No production / Portal App Hosting / Studio release / IAM. Signoff: `docs/workflow/reviews/2026-09-15-historical-internal-reconciliation-admin-artwork-previews-and-dev-access-hardening-signoff.md`. Manifest: `docs/workflow/reviews/2026-09-pre-production-promotion-manifest.md`. FreshForge **IDLE**.
 
 > 2026-09-15: **Pre-release lifecycle / image parity / DEV hardening — CLOSED (DEV)** — Goal `pre-release-lifecycle-image-parity-and-dev-environment-hardening` **DONE**. Signoff **approved_with_notes**. Owner DEV QA **PASS WITH NOTES**. Forward Internal Mark Complete → Printed PASS (note: production historical Queued-on-completed sheets need separate reconciliation). Admin View Designs failure honesty PASS (Staff Artwork previews deferred). DEV banner + explicit noindex PASS. Focused tests **76/76**. No production / IAM / Rules. Signoff: `docs/workflow/reviews/2026-09-15-pre-release-lifecycle-image-parity-and-dev-environment-hardening-signoff.md`. Next: `historical-internal-reconciliation-admin-artwork-previews-and-dev-access-hardening`.

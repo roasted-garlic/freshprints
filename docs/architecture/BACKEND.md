@@ -284,6 +284,8 @@ Authoritative constants: `packages/shared/src/constants/import/batchImportLimits
 | `updateTeamUser` | Callable | Update team user fields |
 | `createPortalPrintRequest` | Callable | Portal: create the customer's one working print request |
 | `createCustomerUploadBatch` | Callable | Portal: create customer artwork upload batch + source/ZIP paths (ADR-FP-073) |
+| `createStaffArtworkUpload` | Callable | Portal Admin owner/admin: create one Staff Artwork source-upload record and canonical source path |
+| `finalizeStaffArtwork` | Callable | Portal Admin owner/admin: validate the PNG source and run existing Staff Artwork normalization/derivative processing |
 | `getCustomerUploadDailyQuota` | Callable | Portal: remaining quota buckets + size limits. Customer-facing: Donate shows images/day; Upload Designs shows Current Request room (`L`) instead. Functions charge donation `finalizeImage` only; print-request day buckets and donation starts/ZIP are not charged. |
 | `addPortalCatalogDesignToPrintRequest` | Callable | Portal: add/increment catalog design; working-request max = `L` |
 | `updatePortalPrintRequestItemQuantity` | Callable | Portal: set item qty; clamps to working-request max `L` |
@@ -347,6 +349,7 @@ Authoritative constants: `packages/shared/src/constants/import/batchImportLimits
 | `onPrintRequestLifecycleRequestWritten` | Firestore write `printRequests/{printRequestId}` | Server-authored request lifecycle evidence + monotonic ordering mirror |
 | `onPrintRequestLifecycleAllocationWritten` | Firestore write `showAllocations/{allocationId}` | Server-authored show/allocation lifecycle evidence + ordering mirror advancement |
 | `enqueueAiEnrichment` | Callable | Run imported design through direct AI processing |
+| `reprocessReadyDesignWithAi` | Callable | Owner-only: demote a Ready+approved design into the normal AI Processing/Review lifecycle; normal approval returns it to Ready |
 | `resetAiEnrichmentForProcessing` | Callable | Return Needs Review or Rejected design to Processing for a staff-started re-run |
 | `updateAiEnrichmentSettings` | Callable | Owner/admin: set team vision model, prompt template, and tag exclusions |
 | `updateCatalogWorkflowMode` | Callable | **Owner-only:** Catalog Processing Mode + live Autonomous gate (`ENABLE AUTONOMOUS`) |
@@ -583,6 +586,21 @@ tag-analysis fields. Staff-owned `design.tags`, historical AI fields, taxonomy
 documents, and discovery consumers remain compatible/readable. Tag resolver,
 Tag Rerank, Suggestion Author, and matched-tag category authority are not
 reachable from active enrichment.
+
+## Portal Admin Staff Artwork and canonical AI Review lifecycle (ADR-FP-190)
+
+`/admin/staff-artwork` is an upload-only Portal Admin route for active owners/admins. The client
+calls `createStaffArtworkUpload` and `finalizeStaffArtwork`, uploads only canonical PNG source
+bytes, and processes files sequentially with failed-only retry. It does not query the
+`staffArtworks` collection or fetch/mint derivative URLs.
+
+`reprocessReadyDesignWithAi` and `enqueueAiEnrichment` reuse the existing AI candidate/persistence
+pipeline and `settings/aiEnrichment.auto-process` preference. A Ready + approved design is demoted
+to the normal `imported` + `pending` AI Review lifecycle and leaves the Design Library until normal
+approval returns it to Ready. The active contract has no `aiReprocessState` dual-visibility seam or
+`ready_reprocess` mode; the ordinary queue and separate `ready_backfill` catalog worker remain
+unchanged. `promoteStaffArtworkToAiReview` retains owner/admin, deletion-blocker, and idempotent
+promotion boundaries while returning bounded diagnostic details for safe failures.
 | 2026-06-24 | Initial Fresh Prints backend overview; links to FIREBASE.md |
 # Portal admin Show Queue callables (ADR-FP-187)
 

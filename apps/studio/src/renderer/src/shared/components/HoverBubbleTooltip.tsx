@@ -12,9 +12,12 @@ import { createPortal } from "react-dom";
 type HoverBubbleTooltipTone = "default" | "warning" | "error";
 type HoverBubbleTooltipAlign = "start" | "center" | "end";
 
+type HoverBubbleTooltipPlacement = "above" | "below";
+
 interface HoverBubbleTooltipPosition {
   arrowLeft: number;
   left: number;
+  placement: HoverBubbleTooltipPlacement;
   top: number;
 }
 
@@ -23,18 +26,22 @@ interface HoverBubbleTooltipProps {
   bubble?: string;
   children: ReactNode;
   className?: string;
+  /** Hover open delay in ms. Keyboard focus still opens after a short delay. */
+  showDelayMs?: number;
   tone?: HoverBubbleTooltipTone;
 }
 
 const VIEWPORT_PADDING_PX = 8;
 const BUBBLE_GAP_PX = 8;
-const HOVER_SHOW_DELAY_MS = 500;
+const DEFAULT_HOVER_SHOW_DELAY_MS = 700;
+const FOCUS_SHOW_DELAY_MS = 400;
 
 export function HoverBubbleTooltip({
   align = "start",
   bubble,
   children,
   className = "",
+  showDelayMs = DEFAULT_HOVER_SHOW_DELAY_MS,
   tone = "default",
 }: HoverBubbleTooltipProps) {
   const triggerRef = useRef<HTMLSpanElement>(null);
@@ -76,14 +83,39 @@ export function HoverBubbleTooltip({
       Math.min(left, window.innerWidth - bubbleWidth - VIEWPORT_PADDING_PX),
     );
 
-    const preferredTop = triggerRect.top - bubbleHeight - BUBBLE_GAP_PX;
-    const top = Math.max(VIEWPORT_PADDING_PX, preferredTop);
+    const preferredTopAbove = triggerRect.top - bubbleHeight - BUBBLE_GAP_PX;
+    const preferredTopBelow = triggerRect.bottom + BUBBLE_GAP_PX;
+    const fitsAbove = preferredTopAbove >= VIEWPORT_PADDING_PX;
+    const fitsBelow =
+      preferredTopBelow + bubbleHeight <= window.innerHeight - VIEWPORT_PADDING_PX;
+
+    // Prefer above; flip below when the header/top of viewport would clamp the bubble
+    // over the trigger (the Auto toggle case).
+    let placement: HoverBubbleTooltipPlacement = "above";
+    let top = preferredTopAbove;
+    if (!fitsAbove && fitsBelow) {
+      placement = "below";
+      top = preferredTopBelow;
+    } else if (!fitsAbove && !fitsBelow) {
+      const spaceAbove = triggerRect.top - VIEWPORT_PADDING_PX;
+      const spaceBelow = window.innerHeight - triggerRect.bottom - VIEWPORT_PADDING_PX;
+      if (spaceBelow > spaceAbove) {
+        placement = "below";
+        top = Math.min(
+          preferredTopBelow,
+          window.innerHeight - bubbleHeight - VIEWPORT_PADDING_PX,
+        );
+      } else {
+        top = VIEWPORT_PADDING_PX;
+      }
+    }
+
     const arrowLeft = Math.min(
       Math.max(triggerRect.left + triggerRect.width / 2 - left, 12),
       bubbleWidth - 12,
     );
 
-    setPosition({ arrowLeft, left, top });
+    setPosition({ arrowLeft, left, placement, top });
   }, [align]);
 
   useLayoutEffect(() => {
@@ -127,22 +159,17 @@ export function HoverBubbleTooltip({
     }
   };
 
-  const show = () => {
-    clearShowTimeout();
-    setIsVisible(true);
-  };
-
   const hide = () => {
     clearShowTimeout();
     setIsVisible(false);
   };
 
-  const scheduleShow = () => {
+  const scheduleShow = (delayMs: number) => {
     clearShowTimeout();
     showTimeoutRef.current = setTimeout(() => {
       showTimeoutRef.current = null;
       setIsVisible(true);
-    }, HOVER_SHOW_DELAY_MS);
+    }, delayMs);
   };
 
   const handleBlur = (event: FocusEvent<HTMLSpanElement>) => {
@@ -155,11 +182,13 @@ export function HoverBubbleTooltip({
     return <>{children}</>;
   }
 
+  const placementClass = position?.placement === "below" ? "is-below" : "is-above";
+
   const portalBubble =
     isMounted && isVisible
       ? createPortal(
           <span
-            className={`hover-bubble-tooltip__bubble is-portal is-${tone}`}
+            className={`hover-bubble-tooltip__bubble is-portal is-${tone} ${placementClass}`}
             ref={bubbleRef}
             role="tooltip"
             style={{
@@ -184,8 +213,8 @@ export function HoverBubbleTooltip({
       <span
         className={`hover-bubble-tooltip ${className}`.trim()}
         onBlur={handleBlur}
-        onFocusCapture={show}
-        onMouseEnter={scheduleShow}
+        onFocusCapture={() => scheduleShow(FOCUS_SHOW_DELAY_MS)}
+        onMouseEnter={() => scheduleShow(showDelayMs)}
         onMouseLeave={hide}
         ref={triggerRef}
       >

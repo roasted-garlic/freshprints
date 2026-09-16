@@ -40,14 +40,25 @@
 
 .hover-bubble-tooltip__arrow {
   background: inherit;
-  border-bottom: 1px solid;
   border-color: inherit;
-  border-right: 1px solid;
-  bottom: -0.3125rem;
   height: 0.5rem;
   position: absolute;
   transform: translateX(-50%) rotate(45deg);
   width: 0.5rem;
+}
+
+.hover-bubble-tooltip__bubble.is-above .hover-bubble-tooltip__arrow {
+  border-bottom: 1px solid;
+  border-right: 1px solid;
+  bottom: -0.3125rem;
+  top: auto;
+}
+
+.hover-bubble-tooltip__bubble.is-below .hover-bubble-tooltip__arrow {
+  border-left: 1px solid;
+  border-top: 1px solid;
+  bottom: auto;
+  top: -0.3125rem;
 }
 
 .hover-bubble-tooltip:focus-within {

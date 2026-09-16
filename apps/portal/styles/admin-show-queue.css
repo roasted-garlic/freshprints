@@ -209,6 +209,226 @@
   padding-top: 2.5rem;
 }
 
+.portal-admin-nav {
+  align-items: center;
+  background: color-mix(in srgb, var(--color-bg-secondary) 94%, transparent);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  gap: 0.25rem;
+  overflow-x: auto;
+  padding: 0.35rem 0.75rem;
+  position: sticky;
+  top: 5.35rem;
+  z-index: 25;
+}
+
+.portal-admin-nav-link {
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  min-height: 2.25rem;
+  padding: 0.55rem 0.75rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.portal-admin-nav-link:hover,
+.portal-admin-nav-link.is-active {
+  background: color-mix(in srgb, var(--color-accent-primary) 14%, transparent);
+  color: var(--color-text-primary);
+}
+
+.portal-admin-nav-link:focus-visible {
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+  outline: none;
+}
+
+.portal-admin-upload-card {
+  box-sizing: border-box;
+  margin: 0 auto;
+  max-width: 58rem;
+  padding: 1.25rem 0.75rem 2rem;
+  width: 100%;
+}
+
+.portal-admin-upload-heading {
+  align-items: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+.portal-admin-upload-heading h2 {
+  color: var(--color-text-primary);
+  font-size: clamp(1.2rem, 5vw, 1.75rem);
+  margin: 0;
+}
+
+.portal-admin-upload-heading .portal-lead {
+  margin-bottom: 0;
+  max-width: 42rem;
+}
+
+.portal-admin-upload-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.portal-admin-upload-actions .portal-button {
+  flex: 1 1 10rem;
+  min-height: 2.75rem;
+}
+
+.portal-admin-upload-list {
+  display: grid;
+  gap: var(--space-2);
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+}
+
+.portal-admin-upload-list-toolbar {
+  align-items: center;
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+  margin-top: var(--space-4);
+}
+
+.portal-admin-upload-list-count {
+  margin: 0;
+}
+
+.portal-admin-upload-clear-all {
+  flex: 0 0 auto;
+}
+
+.portal-admin-upload-item {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+}
+
+.portal-admin-upload-item.is-ready {
+  border-color: color-mix(in srgb, var(--color-success) 55%, var(--color-border));
+}
+
+.portal-admin-upload-item.is-failed {
+  border-color: color-mix(in srgb, var(--color-danger) 55%, var(--color-border));
+}
+
+.portal-admin-upload-item-main {
+  align-items: center;
+  display: flex;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.portal-admin-upload-thumb {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  flex: 0 0 auto;
+  height: 2.75rem;
+  object-fit: contain;
+  width: 2.75rem;
+}
+
+.portal-admin-upload-thumb--empty {
+  display: inline-block;
+}
+
+.portal-admin-upload-item-copy {
+  align-items: baseline;
+  display: flex;
+  flex: 1 1 auto;
+  gap: var(--space-3);
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.portal-admin-upload-item-copy strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.portal-admin-upload-item-meta {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  gap: var(--space-2);
+}
+
+.portal-admin-upload-item-meta span {
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+}
+
+.portal-admin-upload-status.is-processing {
+  animation: portal-admin-upload-processing-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes portal-admin-upload-processing-pulse {
+  0%,
+  100% {
+    opacity: 0.72;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.portal-admin-upload-remove {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: 0.75rem;
+  line-height: 1;
+  min-height: 1.75rem;
+  padding: 0.35rem 0.55rem;
+}
+
+.portal-admin-upload-remove:hover,
+.portal-admin-upload-remove:focus-visible {
+  border-color: color-mix(in srgb, var(--color-danger) 45%, var(--color-border));
+  color: var(--color-danger);
+  outline: none;
+}
+
+.portal-admin-upload-item .portal-form-error {
+  margin: var(--space-2) 0 0;
+}
+
+.portal-admin-upload-empty {
+  background: var(--color-bg-secondary);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  margin-top: var(--space-4);
+  padding: var(--space-5);
+  text-align: center;
+}
+
+.portal-admin-upload-retry {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: space-between;
+  margin-top: var(--space-4);
+}
+
+.portal-admin-upload-retry p {
+  margin: 0;
+}
+
 .portal-admin-dashboard {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -691,6 +911,33 @@
 
   .portal-admin-body {
     padding-top: 3.5rem;
+  }
+
+  .portal-admin-nav {
+    padding-inline: clamp(1.25rem, 4vw, 2.5rem);
+    top: 6.35rem;
+  }
+
+  .portal-admin-upload-card {
+    padding:
+      1.75rem
+      clamp(var(--space-4), 4vw, var(--space-8))
+      clamp(var(--space-5), 5vw, var(--space-8));
+  }
+
+  .portal-admin-upload-heading {
+    align-items: end;
+    flex-direction: row;
+    justify-content: space-between;
+  }
+
+  .portal-admin-upload-actions {
+    flex: 0 0 auto;
+    justify-content: flex-end;
+  }
+
+  .portal-admin-upload-actions .portal-button {
+    flex: 0 0 auto;
   }
 
   .portal-admin-queue {

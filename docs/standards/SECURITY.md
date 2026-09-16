@@ -1228,3 +1228,20 @@ Dashboard DTOs omit artwork. Modal DTOs omit Storage paths, filenames, design/up
 originals. Firestore and Storage Rules are unchanged. The admin route uses a separate shell/sidebar
 and does not mount customer mutation, navigation, notification, favorite, request, or upload
 providers. Staff sessions do not query or subscribe to customer documents.
+
+# Portal Admin Staff Artwork upload and canonical AI Review lifecycle (ADR-FP-190)
+
+`/admin/staff-artwork` is restricted to active `owner` and `admin` sessions. The route's client
+gate is UX only; `createStaffArtworkUpload` and `finalizeStaffArtwork` re-check authorization in
+Functions. The upload surface accepts only `image/png` source files up to the existing 80 MB
+limit, uses the canonical source path returned by the trusted create callable, and never reads
+the `staffArtworks` collection or exposes derivative/production URLs as a browse surface. Upload
+and finalize retries are bounded and failed-only; a known created ID is reused for finalize retry
+so a double click cannot create a second record.
+
+Ready Design reprocess is owner-only from Studio Design Library and demotes raw
+`status: "ready"` + `aiReviewStatus: "approved"` to the normal `imported` + `pending` AI
+Processing/Review lifecycle. The design leaves the normal Library browse while active and returns
+only through normal approval. No dual-visibility `aiReprocessState` or `ready_reprocess` mode is
+active. Existing owner/admin callable revalidation, deletion blockers, attempt guards, queue
+settings, and no-new-Rules/index/migration/secret/IAM boundaries remain in force.

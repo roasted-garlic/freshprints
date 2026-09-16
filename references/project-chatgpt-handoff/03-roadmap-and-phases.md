@@ -1,5 +1,18 @@
 # Roadmap and Phases
 
+## 2026-09-15 — Portal Admin Staff Artwork + Studio AI Review — CLOSED (DEV)
+
+- Goal `portal-admin-staff-artwork-upload` — Signoff **approved_with_notes**; Owner DEV QA
+  **PASS** after Portal upload and Workstream B corrective retests.
+- Delivered upload-only Portal Admin Staff Artwork route, full-card Multiple Select in Design
+  Library and Staff Artwork, canonical Ready → AI Review → Ready lifecycle, safe Staff Artwork
+  promotion diagnostics, and truthful bulk retry accounting.
+- Final Workstream B focused tests **86/86 PASS**; typechecks, Functions build, targeted lint,
+  and diff check pass. Exact DEV Functions are deployed and ACTIVE; no production promotion,
+  Portal App Hosting, Studio release, Rules, indexes, migration, backfill, or data mutation.
+- Signoff: `docs/workflow/reviews/2026-09-15-portal-admin-staff-artwork-upload-signoff.md`.
+  FreshForge is **IDLE**.
+
 ## 2026-09-15 — Managed goals closed (DEV)
 
 - `studio-staff-show-capacity-allocation-override` — Signoff **approved_with_notes**; Owner DEV QA

@@ -14,4 +14,19 @@ describe('Portal admin post-auth destinations', () => {
     assert.equal(resolvePortalPostAuthPathForSession('/admin/show-queue?focus=1', 'admin'), '/admin/show-queue?focus=1');
     assert.equal(resolvePortalPostAuthPathForSession('/admin/show-queue-evil', 'admin'), '/admin/show-queue');
   });
+
+  it('preserves the Staff Artwork Upload return path for admins', () => {
+    assert.equal(
+      resolvePortalPostAuthPathForSession('/admin/staff-artwork', 'admin'),
+      '/admin/staff-artwork',
+    );
+    assert.equal(
+      resolvePortalPostAuthPathForSession('/admin/staff-artwork?batch=1', 'admin'),
+      '/admin/staff-artwork?batch=1',
+    );
+    assert.equal(
+      resolvePortalPostAuthPathForSession('/admin/staff-artwork-evil', 'admin'),
+      '/admin/show-queue',
+    );
+  });
 });

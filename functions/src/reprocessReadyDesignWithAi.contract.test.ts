@@ -1,5 +1,5 @@
 /**
- * Contract: owner Ready reprocess callable export + auth + demotion preserves.
+ * Contract: owner Ready reprocess callable export + auth + canonical AI Review lifecycle.
  * Run from repo root: npx tsx --test functions/src/reprocessReadyDesignWithAi.contract.test.ts
  */
 import assert from "node:assert/strict";
@@ -45,12 +45,14 @@ describe("reprocessReadyDesignWithAi contracts", () => {
     }
   });
 
-  it("runs queue enrichment pipeline after demotion when autoStart is on", () => {
+  it("runs the existing enrichment pipeline after demoting into the normal lifecycle", () => {
     const src = read("functions/src/reprocessReadyDesignWithAi.ts");
     assert.match(src, /runAiEnrichmentPipeline/);
     assert.match(src, /mode:\s*"queue"/);
     assert.match(src, /if \(!autoStart\)/);
     assert.match(src, /autoStarted: false/);
+    assert.match(src, /demoted: true/);
+    assert.match(src, /status: typeof after\.status === "string" \? after\.status : "imported"/);
   });
 
   it("accepts optional autoStart and defaults missing to true", () => {
@@ -59,15 +61,17 @@ describe("reprocessReadyDesignWithAi contracts", () => {
     assert.match(src, /typeof \(data as \{ autoStart\?: unknown \}\)\.autoStart === "boolean"/);
   });
 
-  it("demotion-only path deletes stage when autoStart is false", () => {
+  it("awaiting-start path deletes stage when autoStart is false", () => {
     const core = read("functions/src/ai/reprocessReadyDesignWithAiCore.ts");
     assert.match(core, /autoStart !== false/);
     assert.match(core, /autoStart \? "queued" : FieldValue\.delete\(\)/);
   });
 
-  it("queue write path preserves staff when prior smartProfile exists", () => {
+  it("normal queue write path keeps staff profile behavior and does not add a second pipeline", () => {
     const pipeline = read("functions/src/ai/aiEnrichmentPipeline.ts");
     assert.match(pipeline, /mode === "ready_backfill" \|\| priorProfile/);
     assert.match(pipeline, /mergeReadyBackfillSmartProfile/);
+    assert.doesNotMatch(pipeline, /ready_reprocess/);
+    assert.doesNotMatch(pipeline, /mode:\s*"ready_backfill"/);
   });
 });

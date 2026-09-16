@@ -1,5 +1,21 @@
 # Recent Completed Work
 
+## 2026-09-15 - Portal Admin Staff Artwork + Studio AI Review — SIGNOFF COMPLETE (DEV)
+
+Goal `portal-admin-staff-artwork-upload` is **DONE** with Signoff **approved_with_notes** after
+Owner DEV QA **PASS**, including corrective retests. Delivered the upload-only Portal Admin
+`/admin/staff-artwork` route; full-card Design Library and Staff Artwork Multiple Select with modal/
+preview suppression; canonical Ready → imported/pending AI Review → approved → Ready lifecycle;
+truthful bulk retry classification; and bounded Staff Artwork promotion diagnostics.
+
+Final Workstream B focused validation is **86/86 PASS** (55 Studio, 31 Functions), with Portal and
+Studio typechecks, Functions build, changed-file lint, and `git diff --check` passing. DEV Functions
+`promoteStaffArtworkToAiReview`, `reprocessReadyDesignWithAi`, and `enqueueAiEnrichment` are ACTIVE
+in `fresh-prints-dev` at the revisions recorded in the Signoff/Test Report. No production deploy,
+Portal App Hosting, Studio release, Rules/index/migration/backfill action, data mutation, or IAM
+change occurred. Signoff:
+`docs/workflow/reviews/2026-09-15-portal-admin-staff-artwork-upload-signoff.md`.
+
 ## 2026-09-15 - Historical Internal reconciliation / Admin Staff Artwork / DEV access — SIGNOFF COMPLETE (DEV)
 
 Goal `historical-internal-reconciliation-admin-artwork-previews-and-dev-access-hardening` is **DONE**.
