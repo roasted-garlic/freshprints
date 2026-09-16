@@ -5,6 +5,10 @@ import { computeGangSheetLabelBandHeightPx } from "@fresh-prints/shared/utils/ga
 import { computeExportTargetPixelSize } from "@fresh-prints/shared/utils/showExportFilename";
 import { resolveQueuedPrintInches } from "@fresh-prints/shared/utils/printRequestQueuedInches";
 import {
+  buildShowAllocationOperationalSummary,
+  filterCurrentShowAllocations,
+} from "@fresh-prints/shared/utils/showAllocationSummaries";
+import {
   resolvePrintRequestSizeClassCounts,
   type PrintRequestSizeClassCounts,
 } from "@fresh-prints/shared/utils/printRequestPocketFullSizeCounts";
@@ -208,7 +212,7 @@ export function buildShowQueueGlanceStats(input: {
     useHistoricalPastExport,
   });
 
-  const activeForMoney = input.allocations.filter((allocation) => allocation.status !== "canceled");
+  const activeForMoney = filterCurrentShowAllocations(input.allocations);
   const priceByRequest = new Map<string, ReturnType<typeof calculateShowAllocationGroupPriceUsd>>();
   for (const allocation of activeForMoney) {
     if (!priceByRequest.has(allocation.printRequestId)) {
@@ -222,29 +226,11 @@ export function buildShowQueueGlanceStats(input: {
     }
   }
 
-  const printRequestIds = new Set(exportableAllocations.map((allocation) => allocation.printRequestId));
-  const designKeys = new Set(
-    exportableAllocations.map(
-      (allocation) =>
-        allocation.printRequestItemId ||
-        allocation.designId ||
-        allocation.customerUploadId ||
-        allocation.id,
-    ),
-  );
-  const printQuantity = exportableAllocations.reduce(
-    (sum, allocation) => sum + allocation.allocatedQuantity,
-    0,
-  );
+  const operationalSummary = buildShowAllocationOperationalSummary(activeForMoney);
+  const printRequestIds = new Set(activeForMoney.map((allocation) => allocation.printRequestId));
+  const printQuantity = operationalSummary.totalQuantity;
 
-  const sizeClassCounts = resolvePrintRequestSizeClassCounts(
-    exportableAllocations.map((allocation) => ({
-      printWidthInches: allocation.printWidthInches,
-      printHeightInches: allocation.printHeightInches,
-      quantity: allocation.allocatedQuantity,
-      status: useHistoricalPastExport ? null : allocation.status,
-    })),
-  );
+  const sizeClassCounts = resolvePrintRequestSizeClassCounts(operationalSummary.sizeClassRows);
 
   let sheetCounts: GangSheetSheetCountPreview | null = null;
   if (exportableAllocations.length > 0) {
@@ -287,7 +273,7 @@ export function buildShowQueueGlanceStats(input: {
     totalPriceUsd: sumShowAllocationGroupPricesUsd([...priceByRequest.values()]),
     printRequestCount: printRequestIds.size,
     printQuantity,
-    designCount: designKeys.size,
+    designCount: operationalSummary.uniqueDesignCount,
     sizeClassCounts,
     sheetCounts,
     printTimeEstimateLabel,

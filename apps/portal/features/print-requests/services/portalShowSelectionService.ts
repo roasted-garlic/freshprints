@@ -29,6 +29,7 @@ import { mapPortalPrintRequestCallableError } from '../utils/mapPortalPrintReque
 import { sharePortalPrintRequestScheduleLoad } from './portalPrintRequestScheduleLoadOwner';
 import { sharePortalShowQueueSubmission } from './portalShowQueueSubmissionOwner';
 import {
+  invalidatePortalAllocatableShowsCaches,
   readPortalAllocatableShowsCached,
 } from './portalAllocatableShowsReadCache';
 
@@ -162,7 +163,7 @@ export const portalShowSelectionService = {
         input.printRequestId,
         input.upcomingShowId,
       ].join(':');
-      return await sharePortalShowQueueSubmission(key, () =>
+      const result = await sharePortalShowQueueSubmission(key, () =>
         callTracedFunction<
           QueuePortalPrintRequestToShowRequest,
           QueuePortalPrintRequestToShowResponse
@@ -170,6 +171,8 @@ export const portalShowSelectionService = {
           source: 'portalShowSelectionService.queuePrintRequestToShow',
         })(input),
       );
+      invalidatePortalAllocatableShowsCaches();
+      return result;
     } catch (error) {
       throw mapCallableError(error);
     }
@@ -179,12 +182,14 @@ export const portalShowSelectionService = {
     input: UnqueuePortalPrintRequestFromShowRequest,
   ): Promise<UnqueuePortalPrintRequestFromShowResponse> {
     try {
-      return await callTracedFunction<
+      const result = await callTracedFunction<
         UnqueuePortalPrintRequestFromShowRequest,
         UnqueuePortalPrintRequestFromShowResponse
       >('unqueuePortalPrintRequestFromShow', {
         source: 'portalShowSelectionService.unqueuePrintRequestFromShow',
       })(input);
+      invalidatePortalAllocatableShowsCaches();
+      return result;
     } catch (error) {
       throw mapCallableError(error);
     }

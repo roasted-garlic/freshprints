@@ -1,5 +1,15 @@
 # Fresh Prints Roadmap
 
+> 2026-09-16: **Print Request count parity + unqueue cache/cancel parity — CLOSED (DEV)** —
+> Goals `print-request-count-parity-across-show-queue-and-summary-surfaces` (**approved_with_notes**)
+> and follow-up `portal-unqueue-capacity-cache-and-studio-cancel-parity` (**approved**) are **DONE**.
+> Owner DEV QA PASS on the follow-up (parent PASS WITH NOTES). Canonical Designs/Items contract;
+> Portal allocatable-shows cache invalidate on queue/unqueue; Studio staff remove soft-cancels;
+> Show Queue remove Confirm busy state. No production deploy. Signoffs:
+> `docs/workflow/reviews/2026-09-16-print-request-count-parity-across-show-queue-and-summary-surfaces-signoff.md`,
+> `docs/workflow/reviews/2026-09-16-portal-unqueue-capacity-cache-and-studio-cancel-parity-signoff.md`.
+> Next: `selected-print-request-live-sync-studio-portal`.
+
 > 2026-09-16: **Studio pre-release Print Request download + intake navigation — CLOSED (DEV)** —
 > Goal `studio-pre-release-pr-item-download-and-intake-navigation` is **DONE** with Signoff
 > **approved_with_notes** after Owner DEV QA **PASS**. Delivered independent per-item saved-size

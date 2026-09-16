@@ -72,4 +72,31 @@ describe("portalAdminShowQueueMetrics", () => {
     assert.equal(sumPortalAdminPrintQty(allocations), 2);
     assert.equal(countPortalAdminDesignQty(allocations), 1);
   });
+
+  it("counts Staff Artwork and keeps source namespaces distinct", () => {
+    const allocations = [
+      {
+        allocationId: "a1",
+        printRequestItemId: "item-1",
+        status: "queued",
+        allocatedQuantity: 1,
+        printRequestId: "pr1",
+        sourceType: "staff_artwork",
+        staffArtworkId: "same",
+      },
+      {
+        allocationId: "a2",
+        printRequestItemId: "item-2",
+        status: "queued",
+        allocatedQuantity: 1,
+        printRequestId: "pr1",
+        sourceType: "catalog_design",
+        designId: "same",
+      },
+    ];
+
+    assert.equal(countPortalAdminDesignQty(allocations), 2);
+    assert.equal(resolvePortalAdminDesignIdentity(allocations[0]!), "staff-artwork:same");
+    assert.equal(resolvePortalAdminDesignIdentity(allocations[1]!), "design:same");
+  });
 });

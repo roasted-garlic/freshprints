@@ -1286,6 +1286,26 @@ export interface PrintRequestItem {
 }
 ```
 
+## Print Request count contract (2026-09-16)
+
+Display counts are derived from the current item documents, not from the persisted `itemCount`
+mirror. **Items** is the sum of each current item's finite, non-negative `quantity`. **Designs** is
+the count of distinct source-aware logical identities among those rows:
+
+* `design:<designId>` for catalog artwork
+* `upload:<customerUploadId>` for customer-upload artwork
+* `staff-artwork:<staffArtworkId>` for Staff Artwork
+* `item:<itemId>` as the deterministic malformed/legacy fallback
+
+`sourceType` takes precedence when it is present; the shared resolver also infers a source from the
+available identity fields for legacy rows. Repeated rows for one artwork (including same artwork at
+different sizes) contribute their quantities but count as one Design. `itemCount` remains a persisted
+compatibility/write-path mirror and is not authoritative for display.
+
+The shared implementation is `packages/shared/src/utils/printRequestItemSource.ts` plus
+`packages/shared/src/utils/printRequestItemSummaries.ts`. It is used by Studio, Portal, Staff Inbox,
+Portal Admin, and customer history surfaces.
+
 **Proposed (2026-08-30 amendment — not implemented):** Interactive upscale toggle per item:
 
 - `artworkEnhanceMode?: 'baseline' | 'enhanced'` — absent ≡ baseline OFF
@@ -2003,7 +2023,14 @@ export interface ShowAllocation {
   upcomingShowId: string;
   printRequestId: string;
   printRequestItemId: string;
-  designId: string;
+  /** Catalog design id. Required for catalog allocations; omitted for customer-upload/Staff Artwork. */
+  designId?: string;
+  /** Defaults to catalog_design when absent (legacy). */
+  sourceType?: "catalog_design" | "customer_upload" | "staff_artwork";
+  /** Required when sourceType is customer_upload. */
+  customerUploadId?: string;
+  /** Required when sourceType is staff_artwork. */
+  staffArtworkId?: string;
   customerId?: string;
   requestNameSnapshot: string;
   requestOriginSnapshot?: PrintRequestOrigin;
@@ -2040,6 +2067,23 @@ export interface ShowAllocation {
   updatedAt: Timestamp;
 }
 ```
+
+## Show Queue count contract (2026-09-16)
+
+Show Queue operational **Designs**, **Items**, size tiers, and price all use the same current
+allocation set: rows whose `status` is not `canceled`. Canceled rows remain in `showAllocations` as
+history, but a group containing only canceled rows has zero current Designs, zero current Items,
+zero tiers, and no current price. Items is the sum of finite, non-negative `allocatedQuantity` values;
+Designs uses the same source-aware identity namespaces as Print Request items. This keeps split,
+move, remove/re-add, and Did Not Print requeue history from inflating live counters.
+
+Portal customer unqueue and Studio staff remove-from-show both **soft-cancel** allocations (they do
+not delete the documents). Personal per-show customer caps and denormalized show `allocatedQuantity`
+also exclude canceled rows.
+
+The shared implementation is `packages/shared/src/utils/showAllocationSummaries.ts`. The existing
+`upcomingShows.allocatedQuantity` denormalized field remains a maintenance/capacity field and is not
+used as an alternate display-count definition.
 
 Capacity rule: a show's `maxTotalQuantity` is optional (undefined = no cap). Allocating a quantity that
 would exceed the show's remaining capacity (`maxTotalQuantity - allocatedQuantity`) is blocked by default.

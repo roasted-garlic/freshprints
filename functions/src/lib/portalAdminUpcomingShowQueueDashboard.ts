@@ -280,6 +280,7 @@ function toMetricAllocation(document: PortalAdminQueueDocument): PortalAdminMetr
     status: resolveAllocationStatus(document.data.status),
     allocatedQuantity: toQuantity(document.data.allocatedQuantity),
     printRequestId,
+    printRequestItemId: nonEmptyString(document.data.printRequestItemId),
     sourceType: nonEmptyString(document.data.sourceType),
     designId: nonEmptyString(document.data.designId),
     customerUploadId: nonEmptyString(document.data.customerUploadId),

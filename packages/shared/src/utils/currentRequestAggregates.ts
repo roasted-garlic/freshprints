@@ -4,8 +4,7 @@ import {
 } from "./printRequestItemSizing";
 import {
   isCatalogDesignPrintRequestItem,
-  isCustomerUploadPrintRequestItem,
-  isStaffArtworkPrintRequestItem,
+  resolvePrintRequestItemIdentity,
 } from "./printRequestItemSource";
 
 export type CurrentRequestAttentionReason =
@@ -49,16 +48,7 @@ export interface CurrentRequestAggregates {
 }
 
 function identityKey(item: CurrentRequestItemLike): string {
-  if (isCatalogDesignPrintRequestItem(item) && item.designId?.trim()) {
-    return `design:${item.designId.trim()}`;
-  }
-  if (isCustomerUploadPrintRequestItem(item) && item.customerUploadId?.trim()) {
-    return `upload:${item.customerUploadId.trim()}`;
-  }
-  if (isStaffArtworkPrintRequestItem(item) && item.staffArtworkId?.trim()) {
-    return `staff-artwork:${item.staffArtworkId.trim()}`;
-  }
-  return `item:${item.id}`;
+  return resolvePrintRequestItemIdentity(item);
 }
 
 /**

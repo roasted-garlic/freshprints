@@ -299,6 +299,21 @@ describe("buildShowContextForRequest", () => {
 });
 
 describe("buildPrintRequestHistoryCardSummary", () => {
+  it("uses the live source-aware request summary when provided", () => {
+    const summary = buildPrintRequestHistoryCardSummary({
+      request: buildRequest({ itemCount: 20 }),
+      customer: buildCustomer(),
+      allocations: [],
+      showsById: new Map(),
+      relatedRequestNamesById: new Map(),
+      itemSummary: { uniqueDesignCount: 19, totalQuantity: 25 },
+    });
+
+    assert.equal(summary.uniqueDesignCount, 19);
+    assert.equal(summary.totalQuantity, 25);
+    assert.equal(summary.itemCount, 20);
+  });
+
   it("builds conversion lineage and deep links", () => {
     const summary = buildPrintRequestHistoryCardSummary({
       request: buildRequest({

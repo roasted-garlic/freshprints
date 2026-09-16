@@ -39,11 +39,11 @@ test("groupPortalPrintRequestsByListTab mirrors studio Working/Editing/Queued/Pr
   const grouped = groupPortalPrintRequestsByListTab({
     requests,
     summariesByRequestId: {
-      "working-1": { totalQuantity: 5, uniqueDesignCount: 1 },
-      "editing-1": { totalQuantity: 3, uniqueDesignCount: 1 },
-      "queued-1": { totalQuantity: 5, uniqueDesignCount: 1 },
-      "printing-1": { totalQuantity: 5, uniqueDesignCount: 1 },
-      "printed-1": { totalQuantity: 5, uniqueDesignCount: 1 },
+      "working-1": { totalQuantity: 5, uniqueDesignCount: 1, sizeClassRows: [] },
+      "editing-1": { totalQuantity: 3, uniqueDesignCount: 1, sizeClassRows: [] },
+      "queued-1": { totalQuantity: 5, uniqueDesignCount: 1, sizeClassRows: [] },
+      "printing-1": { totalQuantity: 5, uniqueDesignCount: 1, sizeClassRows: [] },
+      "printed-1": { totalQuantity: 5, uniqueDesignCount: 1, sizeClassRows: [] },
     },
     allocationTotalsByRequestId: {
       "queued-1": { totalAllocatedQuantity: 5, totalInProgressQuantity: 0, totalPrintedQuantity: 0 },

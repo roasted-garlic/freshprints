@@ -6,6 +6,7 @@ import type { PrintRequest } from '@fresh-prints/shared/types/printRequest/print
 import type { Timestamp } from 'firebase/firestore';
 
 import { XIcon } from './PortalIcons';
+import { usePortalPrintRequests } from '../../print-requests/context/PortalPrintRequestContext';
 
 interface PortalPickContinuableRequestModalProps {
   continuableRequests: PrintRequest[];
@@ -43,6 +44,8 @@ export function PortalPickContinuableRequestModal({
   onClose,
   onSelectRequest,
 }: PortalPickContinuableRequestModalProps) {
+  const { summariesByRequestId } = usePortalPrintRequests();
+
   useEffect(() => {
     if (!isOpen) {
       return;
@@ -93,25 +96,32 @@ export function PortalPickContinuableRequestModal({
           </p>
 
           <ul className="portal-pick-request-list">
-            {continuableRequests.map((request) => (
-              <li key={request.id}>
-                <button
-                  className="portal-pick-request-option"
-                  disabled={isAdding}
-                  onClick={() => onSelectRequest(request.id)}
-                  type="button"
-                >
-                  <span className="portal-pick-request-option-copy">
-                    <span className="portal-pick-request-option-name">{request.name}</span>
-                    <span className="portal-muted portal-pick-request-option-meta">
-                      {getStatusLabel(request.status)} · {request.itemCount} design
-                      {request.itemCount === 1 ? '' : 's'} · Updated{' '}
-                      {formatUpdatedDate(request.updatedAt)}
+            {continuableRequests.map((request) => {
+              const summary = summariesByRequestId[request.id] ?? {
+                totalQuantity: 0,
+                uniqueDesignCount: 0,
+                sizeClassRows: [],
+              };
+              return (
+                <li key={request.id}>
+                  <button
+                    className="portal-pick-request-option"
+                    disabled={isAdding}
+                    onClick={() => onSelectRequest(request.id)}
+                    type="button"
+                  >
+                    <span className="portal-pick-request-option-copy">
+                      <span className="portal-pick-request-option-name">{request.name}</span>
+                      <span className="portal-muted portal-pick-request-option-meta">
+                        {getStatusLabel(request.status)} · {summary.uniqueDesignCount} design
+                        {summary.uniqueDesignCount === 1 ? '' : 's'} · Updated{' '}
+                        {formatUpdatedDate(request.updatedAt)}
+                      </span>
                     </span>
-                  </span>
-                </button>
-              </li>
-            ))}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </div>
         <footer className="modal-footer portal-pick-continuable-request-footer">

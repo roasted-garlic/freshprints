@@ -6,6 +6,24 @@ App Hosting publication applies to **production** (`myprintrequest.com`) only.
 
 ---
 
+## 2026-09-16 — `print-request-count-parity-across-show-queue-and-summary-surfaces` — READY FOR OWNER DEV QA / production promotion pending
+
+| Kind | Final production promotion requirement / actual scope |
+|------|-------------------------------------------------------|
+| Studio release | **Required for production**: source-aware full-request Designs/Items summaries, active-allocation Show Queue counters/tier/price parity, Staff Inbox glance parity, Add-to-Show summary parity, and customer history card labels. |
+| Portal App Hosting | **Required for production**: request list/detail card counts, queue-to-show remaining summary, and continuable-request picker counts. DEV remains localhost + `myprintrequest.dev` tunnel; no DEV App Hosting step. |
+| Functions | **Required for production**: existing `getPortalAdminUpcomingShowQueueDashboard` runtime changed to carry `printRequestItemId` into the shared active metric summary; callable/DTO shape unchanged. |
+| Firestore Rules | **NONE** |
+| Storage Rules | **NONE** |
+| Indexes | **NONE** |
+| Schema migration | **NONE** |
+| Backfill | **NONE** |
+| Production data mutation | **NONE** |
+| Minimal production smoke | Not authorized in this goal. If separately approved later: one request with duplicate artwork rows and canceled allocation history; verify full-request 19/25 and selected-show active 19/25 with matching tiers and `$56`, plus history-only behavior. |
+| Boundary | Owner DEV QA and repository Signoff are still pending. No production deploy, data write, release, commit, or push occurred. |
+
+---
+
 ## 2026-09-16 — `studio-pre-release-pr-item-download-and-intake-navigation` — CLOSED DEV / production promotion pending
 
 | Kind | Final production promotion requirement / actual scope |

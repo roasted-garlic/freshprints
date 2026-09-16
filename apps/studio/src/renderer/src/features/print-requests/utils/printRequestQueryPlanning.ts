@@ -1,6 +1,10 @@
 import type { PrintRequestItemStatus } from "@fresh-prints/shared/types/printRequest/printRequest.enums";
 import type { PrintRequest, PrintRequestItem } from "@fresh-prints/shared/types/printRequest/printRequest.types";
 import type { PrintRequestListTab } from "@fresh-prints/shared/utils/printRequestListGrouping";
+export {
+  buildPrintRequestItemSummaries,
+  type PrintRequestItemSummary,
+} from "@fresh-prints/shared/utils/printRequestItemSummaries";
 
 export type QueryFilterOperator = "==";
 export type QueryOrderDirection = "asc" | "desc";
@@ -10,7 +14,6 @@ export interface QueryFilterDescriptor {
   operator: QueryFilterOperator;
   value: string | boolean;
 }
-
 export interface QueryOrderDescriptor {
   field: string;
   direction: QueryOrderDirection;
@@ -48,19 +51,6 @@ export interface PrintRequestItemListQueryOptions {
 
 export interface CustomerListQueryOptions {
   isGuest?: boolean;
-}
-
-export interface PrintRequestItemSummary {
-  totalQuantity: number;
-  uniqueDesignCount: number;
-  /**
-   * Eligible printable rows for width-only four-tier size counts (valid width + qty; excludes canceled).
-   * Counts are derived from the canonical fixed width tiers — not stored as fixed totals.
-   */
-  sizeClassRows: Array<{
-    printWidthInches: number;
-    quantity: number;
-  }>;
 }
 
 function countDefinedRequestFilters(options: PrintRequestListQueryOptions): number {
@@ -203,68 +193,4 @@ export function buildCustomerListQueryPlan(options: CustomerListQueryOptions = {
     filters,
     orderBy: [{ field: "displayName", direction: "asc" }],
   };
-}
-
-export function buildPrintRequestItemSummaries(
-  items: PrintRequestItem[],
-): Record<string, PrintRequestItemSummary> {
-  const designIdsByRequestId = new Map<string, Set<string>>();
-  const totalQuantityByRequestId = new Map<string, number>();
-  const sizeClassRowsByRequestId = new Map<
-    string,
-    Array<{ printWidthInches: number; quantity: number }>
-  >();
-
-  for (const item of items) {
-    if (!designIdsByRequestId.has(item.printRequestId)) {
-      designIdsByRequestId.set(item.printRequestId, new Set<string>());
-    }
-
-    designIdsByRequestId
-      .get(item.printRequestId)
-      ?.add(getPrintRequestItemSummaryIdentity(item));
-
-    const quantity = Number.isFinite(item.quantity) ? item.quantity : 0;
-    totalQuantityByRequestId.set(
-      item.printRequestId,
-      (totalQuantityByRequestId.get(item.printRequestId) ?? 0) + quantity,
-    );
-
-    if (
-      item.status !== "canceled" &&
-      Number.isFinite(item.quantity) &&
-      item.quantity > 0 &&
-      typeof item.printWidthInches === "number" &&
-      Number.isFinite(item.printWidthInches) &&
-      item.printWidthInches > 0
-    ) {
-      const rows = sizeClassRowsByRequestId.get(item.printRequestId) ?? [];
-      rows.push({
-        printWidthInches: item.printWidthInches,
-        quantity: item.quantity,
-      });
-      sizeClassRowsByRequestId.set(item.printRequestId, rows);
-    }
-  }
-
-  return Object.fromEntries(
-    [...designIdsByRequestId.entries()].map(([printRequestId, designIds]) => [
-      printRequestId,
-      {
-        totalQuantity: totalQuantityByRequestId.get(printRequestId) ?? 0,
-        uniqueDesignCount: designIds.size,
-        sizeClassRows: sizeClassRowsByRequestId.get(printRequestId) ?? [],
-      },
-    ]),
-  );
-}
-
-export function getPrintRequestItemSummaryIdentity(item: PrintRequestItem): string {
-  if (item.sourceType === "customer_upload") {
-    const customerUploadId = item.customerUploadId?.trim();
-    return customerUploadId ? `upload:${customerUploadId}` : `item:${item.id}`;
-  }
-
-  const designId = item.designId?.trim();
-  return designId ? `design:${designId}` : `item:${item.id}`;
 }

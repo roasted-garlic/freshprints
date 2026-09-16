@@ -25,6 +25,7 @@ import {
   getDefaultShowPickerOptionId,
 } from '@fresh-prints/show-picker';
 import { formatPortalQueueCutoffMeta } from '@fresh-prints/shared/utils/showQueueCutoff';
+import { buildPrintRequestItemSummaries } from '@fresh-prints/shared/utils/printRequestItemSummaries';
 
 import { PortalBiddingAcknowledgmentModal } from '../../shared/components/PortalBiddingAcknowledgmentModal';
 import { PortalBusyOverlay } from '../../shared/components/PortalBusyOverlay';
@@ -140,6 +141,18 @@ export function PortalQueueToShowModal({
   const totalRemainingQuantity = useMemo(
     () => sumRemainingUnallocatedQuantity(items, allocatedByItemId),
     [allocatedByItemId, items],
+  );
+
+  const remainingRequestSummary = useMemo(
+    () =>
+      buildPrintRequestItemSummaries(
+        remainingEntries.map(({ item, remainingQuantity }) => ({ ...item, quantity: remainingQuantity })),
+      )[printRequest.id] ?? {
+        totalQuantity: 0,
+        uniqueDesignCount: 0,
+        sizeClassRows: [],
+      },
+    [printRequest.id, remainingEntries],
   );
 
   const isRequestOverLimitForQueue = Boolean(
@@ -510,7 +523,10 @@ export function PortalQueueToShowModal({
               </h2>
               {!isLoading && !isLoadingAllocations ? (
                 <p className="portal-muted portal-queue-to-show-summary">
-                  {formatPrintRequestAllocationSummary(remainingEntries.length, totalRemainingQuantity)}
+                  {formatPrintRequestAllocationSummary(
+                    remainingRequestSummary.uniqueDesignCount,
+                    remainingRequestSummary.totalQuantity,
+                  )}
                 </p>
               ) : null}
             </div>

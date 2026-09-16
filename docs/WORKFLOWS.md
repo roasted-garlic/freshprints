@@ -1082,6 +1082,10 @@ Adjust quantity and requested size in the request detail item UI; edits autosave
   thumbnails open an enlarged preview lightbox using `previewPath` when present, otherwise
   `thumbnailPath`. Missing or unavailable images keep the fallback thumbnail state and do not open a
   broken preview.
+* Request-facing Designs and Items labels are live summaries over current `printRequestItems`:
+  distinct source-aware artwork identities and the sum of finite, non-negative item quantities.
+  Persisted `itemCount` is not authoritative for display. Duplicate rows for the same artwork count
+  once as Designs and retain all row quantities as Items.
 * Catalog design print dimensions and image files are not mutated when a design is added to a
   Print Request or when a request item is resized.
 * Same-design items with different requested sizes persist as separate `printRequestItems`.
@@ -1253,14 +1257,25 @@ quantities are local component state until staff click its confirm button.
 
 Removing a Print Request from a show requires a two-step confirm (Remove, then Cancel/Confirm),
 matching the existing Print Request item removal pattern. Confirming calls
-`removeShowAllocationsForRequest()`, which deletes every allocation belonging to that request from
-that show in one operation and then recomputes the show's `allocatedQuantity` from what remains
-(`recalculateShowAllocatedQuantity()`) — it never subtracts a remembered total, so the show's capacity
-display cannot drift out of sync with its actual allocation records. If the show was only over capacity
-because of the removed request, the over-capacity state clears immediately. Removal (and any other
-allocation edit) is blocked once the show's `productionStatus` is `printing`, `fully_printed`,
-`completed`, or `archived` — see `shared/utils/showQueueEditability.ts`'s `canRemoveRequestFromShow()`;
-beyond that point an admin correction path is required.
+`removeShowAllocationsForRequest()` → staff callable `unqueueStudioCustomerPrintRequestFromShow`,
+which **cancels** every non-canceled allocation for that request on that show (retaining the rows as
+`status: "canceled"` with audit timestamps — same history trail as Portal customer unqueue) and then
+recomputes the show's `allocatedQuantity` from non-canceled allocations
+(`recalculateShowAllocatedQuantity()` / `computeShowAllocatedQuantityFromAllocations`) — it never
+subtracts a remembered total, so the show's capacity display cannot drift out of sync with its
+actual allocation records. Canceled rows remain visible on Show Queue as history-only when no
+active allocations remain for that request on the show; they never inflate Designs, Items, tiers,
+price, or personal/show capacity counters. If the show was only over capacity because of the removed
+request, the over-capacity state clears immediately. Removal (and any other allocation edit) is
+blocked once the show's `productionStatus` is `printing`, `fully_printed`, `completed`, or
+`archived` — see `shared/utils/showQueueEditability.ts`'s `canRemoveRequestFromShow()`; beyond that
+point an admin correction path is required.
+
+Show Queue glance counters follow the same non-canceled allocation scope as tier counts and pricing.
+Distinct Designs use the source-aware identity (`design:`, `upload:`, `staff-artwork:`, or the item
+fallback namespace), while Items sums finite, non-negative `allocatedQuantity` values. Canceled rows
+remain available for history and requeue/move lineage but never inflate current counters. A
+canceled-only request/show group is explicitly history-only for current counter and price display.
 
 ## Show Queue capacity defaults
 

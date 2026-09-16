@@ -44,6 +44,7 @@ import {
 import type { PrintRequest, PrintRequestItem } from "@fresh-prints/shared/types/printRequest/printRequest.types";
 import { canAllocateOriginToShowSource, formatStaffGangSheetTitle, isStaffGangSheetActiveProductionStatus } from "@fresh-prints/shared/utils/staffGangSheet";
 import { isStaffGangSheetShow } from "@fresh-prints/shared/types/upcomingShow/upcomingShow.types";
+import { buildPrintRequestItemSummaries } from "@fresh-prints/shared/utils/printRequestItemSummaries";
 
 interface AddToShowModalProps {
   printRequest: PrintRequest;
@@ -295,7 +296,15 @@ export function AddToShowModal({
 
   const fixedShowIsBlocked = fixedShowBlockReason !== null;
 
-  const totalRequestedQuantity = useMemo(() => items.reduce((sum, item) => sum + item.quantity, 0), [items]);
+  const requestSummary = useMemo(
+    () =>
+      buildPrintRequestItemSummaries(items)[printRequest.id] ?? {
+        totalQuantity: 0,
+        uniqueDesignCount: 0,
+        sizeClassRows: [],
+      },
+    [items, printRequest.id],
+  );
 
   const allocatedByItemId = useMemo(() => {
     const map = new Map<string, number>();
@@ -742,7 +751,10 @@ export function AddToShowModal({
             </div>
           ) : (
             <p className="print-requests-modal-hint">
-              {formatPrintRequestAllocationSummary(items.length, totalRequestedQuantity)}
+              {formatPrintRequestAllocationSummary(
+                requestSummary.uniqueDesignCount,
+                requestSummary.totalQuantity,
+              )}
             </p>
           )}
 

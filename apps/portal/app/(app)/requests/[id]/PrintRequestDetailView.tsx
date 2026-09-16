@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { PrintRequestItem } from '@fresh-prints/shared/types/printRequest/printRequest.types';
+import { buildPrintRequestItemSummaries } from '@fresh-prints/shared/utils/printRequestItemSummaries';
 import { derivePrintRequestListTab } from '@fresh-prints/shared/utils/printRequestListGrouping';
 import {
   resolvePortalPrintRequestProgressLabel,
@@ -788,8 +789,15 @@ export default function PrintRequestDetailView() {
     );
   }
 
-  const designCountLabel = `${printRequest.itemCount} design${printRequest.itemCount === 1 ? '' : 's'}`;
-  const printCountLabel = `${totalPrintCount} print${totalPrintCount === 1 ? '' : 's'}`;
+  const requestSummary =
+    summariesByRequestId[printRequest.id] ??
+    buildPrintRequestItemSummaries(items)[printRequest.id] ?? {
+      totalQuantity: totalPrintCount,
+      uniqueDesignCount: 0,
+      sizeClassRows: [],
+    };
+  const designCountLabel = `${requestSummary.uniqueDesignCount} design${requestSummary.uniqueDesignCount === 1 ? '' : 's'}`;
+  const printCountLabel = `${requestSummary.totalQuantity} print${requestSummary.totalQuantity === 1 ? '' : 's'}`;
   const canShowShowManagement = isPortalShowManagementEligiblePrintRequest(printRequest);
   const canShowQueueCta = canShowShowManagement && items.length > 0 && unallocatedQuantity > 0;
   const canQueueToShow =

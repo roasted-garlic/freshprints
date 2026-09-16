@@ -120,36 +120,46 @@ export const unqueueStudioCustomerPrintRequestFromShow = onCall(
           continuablesSnap = await transaction.get(continuablesQuery);
         }
 
-        const deletedAllocationIds: string[] = [];
+        // Portal customer unqueue soft-cancels; staff remove must retain the same history trail.
+        const canceledThisTx = new Set<string>();
         for (const allocationDoc of allocationsSnap.docs) {
           if (allocationDoc.data().status === "canceled") {
             continue;
           }
-          transaction.delete(allocationDoc.ref);
-          deletedAllocationIds.push(allocationDoc.id);
+          canceledThisTx.add(allocationDoc.id);
+          transaction.update(allocationDoc.ref, {
+            status: "canceled",
+            canceledAt: FieldValue.serverTimestamp(),
+            canceledBy: caller.id,
+            updatedBy: caller.id,
+            updatedAt: FieldValue.serverTimestamp(),
+          });
         }
 
         const hasActiveGlobally = allAllocationsSnap.docs.some((doc) => {
-          if (deletedAllocationIds.includes(doc.id)) {
+          if (canceledThisTx.has(doc.id)) {
             return false;
           }
           return doc.data().status !== "canceled";
         });
 
-        const remainingShowAllocations = showAllocationsSnap.docs
-          .filter((doc) => !deletedAllocationIds.includes(doc.id))
-          .map((doc) => {
-            const data = doc.data();
-            return {
-              id: doc.id,
-              status: typeof data.status === "string" ? data.status : "canceled",
-              allocatedQuantity:
-                typeof data.allocatedQuantity === "number" ? data.allocatedQuantity : 0,
-              upcomingShowId,
-              printRequestId:
-                typeof data.printRequestId === "string" ? data.printRequestId : undefined,
-            };
-          });
+        const remainingShowAllocations = showAllocationsSnap.docs.map((doc) => {
+          const data = doc.data();
+          const status = canceledThisTx.has(doc.id)
+            ? "canceled"
+            : typeof data.status === "string"
+              ? data.status
+              : "canceled";
+          return {
+            id: doc.id,
+            status,
+            allocatedQuantity:
+              typeof data.allocatedQuantity === "number" ? data.allocatedQuantity : 0,
+            upcomingShowId,
+            printRequestId:
+              typeof data.printRequestId === "string" ? data.printRequestId : undefined,
+          };
+        });
 
         transaction.update(showRef, {
           allocatedQuantity: computeShowAllocatedQuantityFromAllocations(
@@ -191,7 +201,7 @@ export const unqueueStudioCustomerPrintRequestFromShow = onCall(
           upcomingShowId,
           requestStatus: hasActiveGlobally ? ("active" as const) : ("editing" as const),
           parkedDraftId,
-          canceledAllocationIds: deletedAllocationIds,
+          canceledAllocationIds: [...canceledThisTx],
         };
       });
 

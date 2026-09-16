@@ -72,6 +72,7 @@ import {
   formatShowAllocationPriceUsd,
 } from "../utils/showAllocationDollarTotals";
 import { buildShowQueueGlanceStats } from "../utils/showQueueGlanceStats";
+import { buildShowAllocationOperationalSummary } from "@fresh-prints/shared/utils/showAllocationSummaries";
 import {
   formatShowAllocationBlockedMessage,
   getShowAllocationBlockReason,
@@ -102,7 +103,6 @@ import {
   getDerivedShowStatusDisplay,
   getShowCapacityPercent,
 } from "@fresh-prints/shared/utils/showCapacityDisplay";
-import { resolveShowDisplayAllocatedQuantity } from "@fresh-prints/shared/utils/showDisplayAllocatedQuantity";
 import { canRemoveRequestFromShow } from "@fresh-prints/shared/utils/showQueueEditability";
 import {
   formatPrintRequestShowTransferActionLabel,
@@ -290,6 +290,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
   const whatnotImport = useWhatnotShowImport(shows, handleShowsImported);
 
   const [confirmingRemoveRequestId, setConfirmingRemoveRequestId] = useState<string | null>(null);
+  const [removingRequestId, setRemovingRequestId] = useState<string | null>(null);
   const [transferRequestContext, setTransferRequestContext] = useState<{
     printRequestId: string;
     requestNameSnapshot: string;
@@ -314,6 +315,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
 
   useEffect(() => {
     setConfirmingRemoveRequestId(null);
+    setRemovingRequestId(null);
   }, [selectedShowId]);
 
   const applyShowQueueRoute = useCallback(
@@ -733,6 +735,18 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
     [scheduleNow, selectedShow],
   );
 
+  const { allocations, isLoading: isAllocationsLoading, reloadAllocations } =
+    useShowAllocations(selectedShowId);
+  const selectedShowAllocationSummary = useMemo(
+    () => buildShowAllocationOperationalSummary(allocations),
+    [allocations],
+  );
+  // The selected-show subscription is authoritative once settled. Preserve the existing show
+  // document value only for the initial loading frame so capacity/status do not flash to zero.
+  const selectedShowActiveAllocatedQuantity = isAllocationsLoading
+    ? Math.max(0, selectedShow?.allocatedQuantity ?? 0)
+    : selectedShowAllocationSummary.totalQuantity;
+
   const showDetailOverflowMenuItems = useMemo((): DangerOverflowMenuItem[] => {
     const items: DangerOverflowMenuItem[] = [];
 
@@ -757,7 +771,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
       isWhatnotQueueSurfaceShow(selectedShow) &&
       isShowQueueMoveSourceEligible(selectedShow) &&
       !isSelectedShowPast &&
-      (selectedShow.allocatedQuantity ?? 0) > 0
+      selectedShowActiveAllocatedQuantity > 0
     ) {
       items.push({
         id: "move-all-requests",
@@ -776,7 +790,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
     }
 
     return items;
-  }, [isSelectedShowPast, openEditShowModal, queueSurface, selectedShow, user]);
+  }, [isSelectedShowPast, openEditShowModal, queueSurface, selectedShow, selectedShowActiveAllocatedQuantity, user]);
 
   const selectedShowQueueTab = useMemo((): WhatnotShowQueueTab | null => {
     if (!selectedShow || isStaffGangSheetShow(selectedShow) || !isWhatnotQueueSurfaceShow(selectedShow)) {
@@ -793,11 +807,11 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
         scheduledStartAt: selectedShow.scheduledStartAt,
         productionStatus: selectedShow.productionStatus,
         maxTotalQuantity: selectedShow.maxTotalQuantity,
-        allocatedQuantity: selectedShow.allocatedQuantity,
+        allocatedQuantity: selectedShowActiveAllocatedQuantity,
       },
       scheduleNow,
     );
-  }, [scheduleNow, selectedShow]);
+  }, [scheduleNow, selectedShow, selectedShowActiveAllocatedQuantity]);
   const canAddPrintRequestToSelectedShow = selectedShowAllocationBlockReason === null;
   const canShowAddRequestAction = canEnableAddRequestAction({
     isStaffGangSheet: isSelectedStaffGangSheet,
@@ -805,7 +819,6 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
     canManageStaffGangSheet: canManageSelectedStaffGangSheet,
     allocationBlocked: !canAddPrintRequestToSelectedShow,
   });
-  const { allocations, reloadAllocations } = useShowAllocations(selectedShowId);
   const requestGroups = useMemo(() => groupAllocationsByRequest(allocations), [allocations]);
   const sectionPricing = gangSheetSettings.settings.sectionPricing;
   const requestGroupPriceById = useMemo(() => {
@@ -915,8 +928,8 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
     [allocations],
   );
   const hasActiveAllocationsForSelectedShow = useMemo(
-    () => (selectedShow?.allocatedQuantity ?? 0) > 0,
-    [selectedShow?.allocatedQuantity],
+    () => selectedShowActiveAllocatedQuantity > 0,
+    [selectedShowActiveAllocatedQuantity],
   );
   const hasFinishableAllocationsForSelectedShow = useMemo(
     () =>
@@ -932,13 +945,13 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
     () =>
       selectedShow
         ? hasShowExportableAllocations({
-            allocatedQuantity: selectedShow.allocatedQuantity ?? 0,
+            allocatedQuantity: selectedShowActiveAllocatedQuantity,
             allocations,
             show: selectedShow,
             now: scheduleNow,
           })
         : false,
-    [allocations, scheduleNow, selectedShow],
+    [allocations, scheduleNow, selectedShow, selectedShowActiveAllocatedQuantity],
   );
 
   const handleProductionTimerUpdated = useCallback(async () => {
@@ -1538,22 +1551,10 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
     setActionError(null);
   }, []);
 
-  const selectedShowDisplayAllocatedQuantity = useMemo(() => {
-    if (!selectedShow) {
-      return 0;
-    }
-
-    return resolveShowDisplayAllocatedQuantity({
-      show: selectedShow,
-      allocations,
-      now: scheduleNow,
-    });
-  }, [allocations, scheduleNow, selectedShow]);
-
   const capacity = selectedShow
     ? assessShowCapacity({
         maxTotalQuantity: selectedShow.maxTotalQuantity,
-        allocatedQuantity: selectedShowDisplayAllocatedQuantity,
+        allocatedQuantity: selectedShowActiveAllocatedQuantity,
       })
     : null;
   const selectedShowStatusDisplay = useMemo(() => {
@@ -1569,7 +1570,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
 
   const pendingMaxQuantity = maxQuantityInput.trim() ? Number(maxQuantityInput) : undefined;
   const maxQuantityNeedsOverride =
-    pendingMaxQuantity !== undefined && selectedShow !== null && pendingMaxQuantity < (selectedShow?.allocatedQuantity ?? 0);
+    pendingMaxQuantity !== undefined && selectedShow !== null && pendingMaxQuantity < selectedShowActiveAllocatedQuantity;
 
   async function handleSaveMaxQuantity(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1667,9 +1668,13 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
     if (!user || !selectedShow || !permissionService.canManageUpcomingShows(user)) {
       return;
     }
+    if (removingRequestId) {
+      return;
+    }
 
     try {
       setActionError(null);
+      setRemovingRequestId(printRequestId);
       await upcomingShowService.removeShowAllocationsForRequest(user, selectedShow.id, printRequestId);
       setConfirmingRemoveRequestId(null);
       // Print Requests list is query/`queueTab`-cached; clear so Queued→Working is fresh on return.
@@ -1677,15 +1682,18 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
       await Promise.all([reloadUpcomingShows(), reloadAllocations()]);
     } catch (error) {
       setActionError(formatWriteErrorMessage(error));
+    } finally {
+      setRemovingRequestId(null);
     }
   }
 
   const renderShowRailCard = useCallback(
     (show: UpcomingShow, isPastScheduled: boolean) => {
       const isSelected = show.id === selectedShowId;
+      const allocatedQuantity = isSelected ? selectedShowActiveAllocatedQuantity : show.allocatedQuantity;
       const showCapacity = assessShowCapacity({
         maxTotalQuantity: show.maxTotalQuantity,
-        allocatedQuantity: show.allocatedQuantity,
+        allocatedQuantity,
       });
       const showStatusDisplay = getDerivedShowStatusDisplay(show.productionStatus, showCapacity, {
         isPastScheduled,
@@ -1730,7 +1738,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
         </button>
       );
     },
-    [handleSelectShow, queueSurface, railDollarTotalsByShowId, selectedShowId],
+    [handleSelectShow, queueSurface, railDollarTotalsByShowId, selectedShowActiveAllocatedQuantity, selectedShowId],
   );
 
   const renderShowRailPane = useCallback(
@@ -2292,16 +2300,11 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                       const activeAllocations = group.allocations.filter(
                         (allocation) => allocation.status !== "canceled",
                       );
-                      const hasActiveAllocations = activeAllocations.length > 0;
-                      const totalAllocated = group.allocations.reduce(
-                        (sum, allocation) => sum + allocation.allocatedQuantity,
-                        0,
-                      );
-                      const activeAllocatedQuantity = activeAllocations.reduce(
-                        (sum, allocation) => sum + allocation.allocatedQuantity,
-                        0,
-                      );
+                      const allocationSummary = buildShowAllocationOperationalSummary(group.allocations);
+                      const hasActiveAllocations = allocationSummary.activeAllocationCount > 0;
+                      const activeAllocatedQuantity = allocationSummary.totalQuantity;
                       const isConfirmingRemove = confirmingRemoveRequestId === group.printRequestId;
+                      const isRemovingRequest = removingRequestId === group.printRequestId;
                       const canRemove =
                         hasActiveAllocations &&
                         !isSelectedShowPast &&
@@ -2314,6 +2317,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                       const requestSummary = summariesByRequestId[group.printRequestId] ?? {
                         totalQuantity: 0,
                         uniqueDesignCount: 0,
+                        sizeClassRows: [],
                       };
                       const requestAllocationTotals = allocationTotalsByRequestId[group.printRequestId] ?? {
                         totalAllocatedQuantity: 0,
@@ -2336,15 +2340,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                           : undefined,
                       });
                       const sizeClassLabel = formatPrintRequestSizeClassCountsLabel(
-                        resolvePrintRequestSizeClassCounts(
-                          group.allocations.map((allocation) => ({
-                            printWidthInches: allocation.printWidthInches,
-                            printHeightInches: allocation.printHeightInches,
-                            quantity: allocation.allocatedQuantity,
-                            // Fully canceled rows (e.g. moved away) still show historical size classes.
-                            status: hasActiveAllocations ? allocation.status : null,
-                          })),
-                        ),
+                        resolvePrintRequestSizeClassCounts(allocationSummary.sizeClassRows),
                       );
                       const groupPriceUsd = requestGroupPriceById.get(group.printRequestId) ?? null;
 
@@ -2361,9 +2357,11 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                             </Link>
                             <p className="show-allocation-row-meta">
                               <span>
-                                {group.allocations.length} Design{group.allocations.length === 1 ? "" : "s"} |{" "}
-                                {totalAllocated} Item{totalAllocated === 1 ? "" : "s"}
+                                {allocationSummary.uniqueDesignCount} Design
+                                {allocationSummary.uniqueDesignCount === 1 ? "" : "s"} | {allocationSummary.totalQuantity} Item
+                                {allocationSummary.totalQuantity === 1 ? "" : "s"}
                                 {sizeClassLabel ? ` | ${sizeClassLabel}` : ""}
+                                {!hasActiveAllocations ? " | History only" : ""}
                               </span>
                               {groupPriceUsd !== null ? (
                                 <span className="show-allocation-price-pill show-allocation-price-pill-emphasis">
@@ -2412,6 +2410,7 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                             {isConfirmingRemove ? (
                               <>
                                 <Button
+                                  disabled={isRemovingRequest}
                                   onClick={() => setConfirmingRemoveRequestId(null)}
                                   size="sm"
                                   variant="ghost"
@@ -2419,11 +2418,12 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                                   Cancel
                                 </Button>
                                 <Button
+                                  disabled={isRemovingRequest}
                                   onClick={() => void handleRemoveRequestFromShow(group.printRequestId)}
                                   size="sm"
                                   variant="danger"
                                 >
-                                  Confirm
+                                  {isRemovingRequest ? "Removing…" : "Confirm"}
                                 </Button>
                               </>
                             ) : canTransfer || canRemove ? (
@@ -2782,7 +2782,9 @@ export function UpcomingShowsPage({ lockedSurface = "shows" }: UpcomingShowsPage
                   type="number"
                   value={maxQuantityInput}
                 />
-                <p className="print-requests-modal-hint">Currently allocated: {selectedShow.allocatedQuantity}</p>
+                <p className="print-requests-modal-hint">
+                  Currently allocated: {selectedShowActiveAllocatedQuantity}
+                </p>
 
                 {maxQuantityNeedsOverride ? (
                   <label className="print-requests-modal-hint">

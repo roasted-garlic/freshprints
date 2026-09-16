@@ -1,5 +1,20 @@
 # Recent Completed Work
 
+## 2026-09-16 - Print Request count parity + unqueue cache/cancel parity — SIGNOFF COMPLETE (DEV)
+
+Goals `print-request-count-parity-across-show-queue-and-summary-surfaces` (**approved_with_notes**)
+and `portal-unqueue-capacity-cache-and-studio-cancel-parity` (**approved**) are **DONE**. Owner DEV
+QA PASS on the follow-up closes parent FAIL WITH FOLLOW-UPS. Delivered canonical Designs/Items
+across Show Queue and summary surfaces; Portal allocatable-shows cache invalidation on
+queue/unqueue; Studio staff remove soft-cancel (History only) parity with Portal; Show Queue remove
+Confirm **Removing…** busy feedback. Focused follow-up tests **6/6**; Show Queue UI contracts
+**15/15**. No production Functions/Portal/Studio release. Next planned:
+`selected-print-request-live-sync-studio-portal`.
+
+Signoffs:
+`docs/workflow/reviews/2026-09-16-print-request-count-parity-across-show-queue-and-summary-surfaces-signoff.md`,
+`docs/workflow/reviews/2026-09-16-portal-unqueue-capacity-cache-and-studio-cancel-parity-signoff.md`.
+
 ## 2026-09-16 - Studio pre-release Print Request download + intake navigation — SIGNOFF COMPLETE (DEV)
 
 Goal `studio-pre-release-pr-item-download-and-intake-navigation` is **DONE** with Signoff

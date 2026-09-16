@@ -8,6 +8,46 @@
 
 Fresh Prints is a **two-app monorepo**: Fresh Prints Studio (Electron + Vite + React) and Fresh Prints Portal (Next.js), with shared packages and Firebase Cloud Functions. Run applicable checks before signoff on code changes.
 
+### Print Request count parity focus (2026-09-16)
+
+Count-parity changes must cover the shared production-shaped fixture and every consumer that renders
+request or show totals:
+
+```bash
+npx tsx --test \
+  packages/shared/src/utils/printRequestItemSource.test.ts \
+  packages/shared/src/utils/printRequestItemSummaries.test.ts \
+  packages/shared/src/utils/showAllocationSummaries.test.ts \
+  packages/shared/src/utils/portalAdminShowQueueMetrics.test.ts \
+  packages/shared/src/staffInbox/staffInboxQueuedGlanceMetrics.test.ts \
+  apps/studio/src/renderer/src/features/upcoming-shows/utils/showAllocationDollarTotals.test.ts \
+  apps/studio/src/renderer/src/features/upcoming-shows/utils/showQueueGlanceStats.test.ts \
+  apps/studio/src/renderer/src/features/users/utils/buildPrintRequestHistoryCard.test.ts \
+  apps/portal/features/print-requests/hooks/useMyPrintRequests.test.ts \
+  apps/portal/features/print-requests/hooks/useQueuePrintRequestToShow.test.ts \
+  functions/src/lib/portalAdminUpcomingShowQueueDashboard.test.ts
+```
+
+The fixture is `packages/shared/src/utils/printRequestCountParity.fixture.ts`: 20 request rows,
+25 current prints, 19 logical Designs; 34 allocation-history rows, 25 current allocated prints,
+19 current logical Designs, 19 Regular Full, 6 Regular Oversize, and $56. Tests must also cover
+duplicate artwork rows, source-namespace collisions, malformed fallbacks, canceled-only groups,
+split/move/requeue history, and the invariant that current tiers/pricing use the same active set as
+current Designs/Items.
+
+### Portal unqueue cache + Studio cancel parity (2026-09-16)
+
+```bash
+npx tsx --test \
+  apps/portal/features/print-requests/services/portalAllocatableShowsReadCache.test.ts \
+  apps/portal/features/print-requests/services/portalShowSelectionService.cacheInvalidation.contract.test.ts \
+  apps/portal/features/print-requests/hooks/usePortalAllocatableShows.sessionCache.contract.test.ts \
+  functions/src/unqueueStudioCustomerPrintRequestFromShow.contract.test.ts
+```
+
+Covers allocatable-shows cache invalidation after queue/unqueue and Studio staff remove soft-cancel
+(not delete) parity with Portal customer unqueue.
+
 ---
 
 ## Required Checks Before Signoff

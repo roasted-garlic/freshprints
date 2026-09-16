@@ -2,28 +2,29 @@
 
 | Field | Value |
 |---|---|
-| Status | **IDLE — Signoff complete; reviewed commit/push completed** |
-| DONE | **yes** |
-| Signoff Status | **approved_with_notes** |
+| Status | **ACTIVE — Plan ready for Formal Review** |
+| DONE | **no** |
+| Signoff Status | **n/a (new goal)** |
 | Current Mode | managed-phase |
 | Parent program | Pre-production reliability / safety |
-| Current Goal | `studio-pre-release-pr-item-download-and-intake-navigation` |
-| Current Phase | **Signoff complete** |
-| Plan Status | **approved_with_changes** |
-| Review Status | **approved_with_changes — implementation conditions accepted; owner authorization received** |
-| Implementation Status | **complete — Workstreams A/B + in-scope QA correctives (dismissible PNG notice; list Up/Down selection)** |
-| Test Status | **passed_with_notes — focused 70/70; regressions 85/85; typecheck/lint/build/diff clean; Owner DEV QA PASS** |
-| Human Checkpoint Required | **no — Owner DEV QA PASS recorded 2026-09-16** |
-| Human Checkpoint Reason | Resolved — native PNG/save behavior and Uploaded/Donated list ArrowUp/ArrowDown selection accepted by Owner DEV QA PASS on 2026-09-16 |
+| Current Goal | `selected-print-request-live-sync-studio-portal` |
+| Prior Goals | `print-request-count-parity-across-show-queue-and-summary-surfaces` (**approved_with_notes**); `portal-unqueue-capacity-cache-and-studio-cancel-parity` (**approved**) |
+| Current Phase | **Plan complete → Formal Review required** |
+| Plan Status | **ready_for_review** |
+| Review Status | **pending** |
+| Implementation Status | **not started** |
+| Test Status | **not started** |
+| Human Checkpoint Required | **no** |
+| Human Checkpoint Reason | n/a |
 | Blocked | **no** |
-| Allowed Actions | Await owner direction for a new managed goal or a separately authorized production promotion. |
-| Forbidden Actions | Production IAM/deploy; Portal production App Hosting; Studio release; Functions/Rules/Storage deployment; migrations/data mutation; new external service/secrets; unrelated changes; scope expansion. |
-| Last Completed Step | Signoff — Owner DEV QA PASS recorded; required handoff/state/manifest artifacts reconciled; reviewed commit/push completed on `development`. |
-| Next Required Step | FreshForge IDLE — owner selects the next managed goal or separately authorizes a production promotion checkpoint. |
-| Decision Log | 2026-09-15 — New managed goal opened from FreshForge IDLE. Investigation answered all 20 owner questions. Combined Plan and Formal Review created. Approved conditions accepted; continuous Implement → Test → Owner DEV QA authorized. Implementation completed; automated tests passed; Owner DEV QA required. 2026-09-16 — Owner requested dismissible download success notice (X + timeout). Owner clarified Workstream B: ArrowUp/ArrowDown must move the active intake **list** selection (above/below), not lightbox navigation; lightbox vertical aliases removed and list keyboard selection implemented. Owner DEV QA replied **PASS** with no notes. Signoff approved_with_notes; production remains unauthorized. |
-| Artifacts | Plan, Formal Review, Test Report, Owner DEV QA checklist, Signoff, affected durable docs, cumulative Promotion Manifest, and updated handoff package |
-| Files Created | `apps/studio/electron/services/export/exportSingleImage.ts`; `apps/studio/src/renderer/src/features/print-requests/hooks/useDownloadPrintRequestItem.ts`; plan/review/test/Owner DEV QA artifacts |
-| Files Modified | Shared export types/filename/resolver tests; Studio export IPC/validation/preload; Print Request page/card/contracts; Studio intake list keyboard selection; DesignPreviewLightbox (removed mistaken vertical-nav prop); architecture/backend/workflow/testing docs; state |
-| Tests Run | Prior focused 70/70 and regressions 85/85; post-corrective contracts rerun this turn |
-| Signoff | **approved_with_notes** — Owner DEV QA PASS; commit/push completed on `development` |
-| Manifest | `docs/workflow/reviews/2026-09-pre-production-promotion-manifest.md` |
+| Allowed Actions | Formal Review of the live-sync plan; then Implement/Test only after review approval. |
+| Forbidden Actions | Implement before review approval; production IAM/deploy; Portal production App Hosting; Studio release; Functions/Rules/Storage production deployment; migrations; unrelated scope expansion. |
+| Last Completed Step | Owner PASS on unqueue-cache/cancel-parity QA; dual Signoff; ROADMAP/handoff updated; next-goal plan authored. |
+| Next Required Step | Formal Review of `docs/workflow/plans/2026-09-16-selected-print-request-live-sync-studio-portal-plan.md`. |
+| Decision Log | 2026-09-16 — Owner PASS on follow-up QA; authorize Signoff, commit/push, and start selected-PR live sync. Plan defaults: selected/open listeners only; dirty focused fields keep local value until blur/save; unselected Studio list rail live-update out of v1 scope. |
+| Artifacts | New live-sync plan; prior signoffs on disk |
+| Files Created | Live-sync plan; prior goal signoffs/QA updates |
+| Files Modified | ROADMAP; handoff CURRENT-STATE + 13-recent-completed-work; workflow state |
+| Tests Run | Prior goal suites as recorded in their test reports |
+| Signoff | Prior goals signed off; current goal not started |
+| Manifest | Unchanged this step (plan only) |
