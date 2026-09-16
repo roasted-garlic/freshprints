@@ -43,6 +43,7 @@ export { queuePortalPrintRequestToShow } from "./queuePortalPrintRequestToShow";
 export { allocateStudioPrintRequestToShow } from "./allocateStudioPrintRequestToShow";
 export { unqueuePortalPrintRequestFromShow } from "./unqueuePortalPrintRequestFromShow";
 export { unqueueStudioCustomerPrintRequestFromShow } from "./unqueueStudioCustomerPrintRequestFromShow";
+export { completeStaffGangSheetAndOpenNext } from "./completeStaffGangSheetAndOpenNext";
 export {
   previewInternalGangSheetHistoricalReconciliation,
   applyInternalGangSheetHistoricalReconciliationCallable as applyInternalGangSheetHistoricalReconciliation,
