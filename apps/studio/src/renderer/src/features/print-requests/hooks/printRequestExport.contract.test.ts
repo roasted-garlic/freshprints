@@ -28,6 +28,16 @@ test("per-item request download uses one saved item and the single PNG bridge", 
   assert.match(cardSource, /isDirty/);
   assert.match(cardSource, /isSaving/);
   assert.match(cardSource, /isFailed/);
+  // Dirty / unsaved checks must include standardSizePresetKey or preset items
+  // permanently look dirty and Download stays disabled.
+  assert.match(
+    cardSource,
+    /const isDirty =\s*buildItemSignature\(\s*parsedQuantity[\s\S]*?standardSizePresetKey,\s*\)/,
+  );
+  assert.match(
+    cardSource,
+    /hasUnsavedDraft = useCallback\(\(\) => \{[\s\S]*?standardSizePresetKey,[\s\S]*?\}, \[parsedPrintHeightInches, parsedPrintWidthInches, parsedQuantity, standardSizePresetKey\]\)/,
+  );
   assert.match(cardSource, /Downloading…/);
   assert.match(cardSource, /DismissibleSuccessAlert/);
   assert.match(cardSource, /onDismissDownloadState/);

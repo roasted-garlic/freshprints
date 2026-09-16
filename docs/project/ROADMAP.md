@@ -1,5 +1,13 @@
 # Fresh Prints Roadmap
 
+> 2026-09-16: **Studio Print Request item Download dirty-preset fix — CLOSED (DEV)** — Goal
+> `studio-print-request-item-download-dirty-preset-fix` is **DONE** with Signoff **approved**.
+> Items with a `standardSizePresetKey` no longer look permanently unsaved, so per-item Download
+> works again for clean/eligible designs. Export contracts **8/8**; Studio typecheck PASS. No
+> production / Studio release. Signoff:
+> `docs/workflow/reviews/2026-09-16-studio-print-request-item-download-dirty-preset-fix-signoff.md`.
+> FreshForge **IDLE**.
+
 > 2026-09-16: **Selected Print Request live sync (Studio ↔ Portal) — CLOSED (DEV)** — Goal
 > `selected-print-request-live-sync-studio-portal` is **DONE** with Signoff **approved** after Owner
 > DEV QA **PASS** (incl. header live counts + rapid +/- follow-up re-test). Request-scoped listeners

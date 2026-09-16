@@ -729,6 +729,7 @@ export function PrintRequestItemCard({
       parsedQuantity ?? Number.NaN,
       parsedPrintWidthInches ?? Number.NaN,
       parsedPrintHeightInches ?? Number.NaN,
+      standardSizePresetKey,
     ) !== lastSavedSignatureRef.current;
 
   const persistenceHealth = resolvePrintRequestItemPersistenceHealth({
@@ -801,10 +802,11 @@ export function PrintRequestItemCard({
       parsedQuantity ?? Number.NaN,
       parsedPrintWidthInches ?? Number.NaN,
       parsedPrintHeightInches ?? Number.NaN,
+      standardSizePresetKey,
     );
 
     return draftSignature !== lastSavedSignatureRef.current;
-  }, [parsedPrintHeightInches, parsedPrintWidthInches, parsedQuantity]);
+  }, [parsedPrintHeightInches, parsedPrintWidthInches, parsedQuantity, standardSizePresetKey]);
 
   const handleFieldBlur = useCallback(() => {
     if (readOnly || !canSave || !hasUnsavedDraft()) {
