@@ -16,6 +16,10 @@ import {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const sectionSource = readFileSync(path.join(__dirname, "CustomerUploadIntakeSection.tsx"), "utf8");
+const intakeHookSource = readFileSync(
+  path.join(__dirname, "../hooks/useCustomerUploadIntake.ts"),
+  "utf8",
+);
 
 test("autoSuggestsDark drives Dark mat while override stays Auto", () => {
   assert.equal(
@@ -89,8 +93,16 @@ test("intake section wires detector hint into preview controls", () => {
   assert.match(sectionSource, /autoSuggestsDark=\{row\.suggestDarkArtworkBackground === true\}/);
 });
 
-test("intake section wires halftone-on to default dark when background is Auto", () => {
-  assert.match(sectionSource, /defaultDarkBackgroundWhenAuto:/);
-  assert.match(sectionSource, /resolveCustomerUploadBackgroundOverride/);
+test("intake section synchronizes the paired background through the halftone handler", () => {
+  assert.match(sectionSource, /void intake\.setHalftoneDecision\(row\.id, value\)/);
   assert.match(sectionSource, /resolveCustomerUploadPreviewBackgroundHex/);
+  assert.match(
+    intakeHookSource,
+    /const artworkBackgroundHex = value \? ARTWORK_BACKGROUND_PRESET_LIGHT_BLACK : null;/,
+  );
+  assert.match(intakeHookSource, /clearArtworkBackground: !value/);
+  assert.match(
+    intakeHookSource,
+    /recordArtworkBackgroundStaffDecision\([\s\S]*?artworkBackgroundHex[\s\S]*?clearArtworkBackground: !value/,
+  );
 });

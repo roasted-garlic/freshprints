@@ -2,7 +2,44 @@
 
 **Last updated:** 2026-09-16
 
-## CURRENT AUTHORITATIVE PHASE — PRODUCTION ROLLOUT COMPLETE — OWNER PRODUCTION SMOKE PENDING
+## CURRENT AUTHORITATIVE PHASE — STUDIO HOTFIX — SIGNED OFF (DEVELOPMENT ONLY)
+
+The prior coordinated production rollout remains machine-complete with Owner
+Production Smoke pending. A new owner-requested Studio-only hotfix is now the
+active bounded goal: `studio-halftone-background-toggle-hotfix-2026-09-16`.
+
+The hotfix plan and bounded review are recorded at:
+
+- `docs/workflow/plans/2026-09-16-studio-halftone-background-toggle-hotfix-plan.md`
+- `docs/workflow/reviews/2026-09-16-studio-halftone-background-toggle-hotfix-review.md`
+
+The original hotfix implementation is complete and signed off with notes in
+development only. The existing Studio client controls and save paths now synchronize the toggle:
+Halftone ON seeds light black; Halftone OFF restores the default; subsequent
+Artwork Background changes remain independent. Focused hotfix/shared contracts
+pass 50/50; canonical release lint is `current=15`, `baseline=25`, `new=0`;
+Studio typecheck and package build pass. Broader unrelated contract drift is
+documented in the test report.
+
+The owner added and approved a bounded Print Request rail-selection addition.
+Clicking a second or later request could expose the new ID while retaining the
+previous detail object, allowing route canonicalization to bounce the URL and
+flicker. The fix enforces exact-ID detail readiness and clears stale detail state
+at the start of a new selection load, with focused regression coverage. The
+Print Requests rail remains mounted across the lifecycle tabs while the new detail
+hydrates.
+
+The combined hotfix is now signed off with notes in development only. Navigation
+contracts pass 19/19; canonical release lint remains `current=15`, `baseline=25`,
+`new=0`; Studio typecheck and package build pass. The broader Print Requests
+directory sweep is 194/198, with four unrelated pre-existing contract failures
+documented in the test report.
+
+Do not merge to production, publish, deploy, change backend/runtime surfaces,
+or perform data repair for either scope. A separate owner authorization and
+reviewed production promotion remain required.
+
+## PRIOR AUTHORITATIVE PHASE — PRODUCTION ROLLOUT COMPLETE — OWNER PRODUCTION SMOKE PENDING
 
 Owner release instruction lifted the previous production hold for managed goal
 `coordinated-production-promotion-2026-09-16` and authorized the reviewed
@@ -52,3 +89,10 @@ maintenance is OFF and the production DEV allowlist document is absent.
 
 The prior `selected-print-request-live-sync-studio-portal` DEV QA record remains
 included in the cumulative promotion manifest and its signoff evidence.
+
+Hotfix artifacts:
+
+- `docs/workflow/plans/2026-09-16-studio-halftone-background-toggle-hotfix-plan.md`
+- `docs/workflow/reviews/2026-09-16-studio-halftone-background-toggle-hotfix-review.md`
+- `docs/workflow/reviews/2026-09-16-studio-halftone-background-toggle-hotfix-test-report.md`
+- `docs/workflow/reviews/2026-09-16-studio-halftone-background-toggle-hotfix-signoff.md`

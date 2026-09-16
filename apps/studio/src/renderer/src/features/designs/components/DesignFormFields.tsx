@@ -89,7 +89,8 @@ export function DesignFormFields({
         <div className="design-form-halftone-copy">
           <p className="design-form-halftone-label">Halftone</p>
           <p className="design-form-hint">
-            Uses the explicit staff classification; this setting is independent of tags, Smart Profile fields, and artwork background color.
+            Uses the explicit staff classification. Turning it on or off seeds the default artwork
+            background; you can change the background independently afterward.
           </p>
         </div>
         <Toggle

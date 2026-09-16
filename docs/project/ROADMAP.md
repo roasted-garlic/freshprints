@@ -1,5 +1,16 @@
 # Fresh Prints Roadmap
 
+> 2026-09-16: **Studio Halftone/background toggle synchronization — IN PROGRESS (DEV)** —
+> Owner-requested hotfix `studio-halftone-background-toggle-hotfix-2026-09-16`: enabling Halftone
+> seeds the light-black artwork background and disabling it restores the default state across
+> Imports, Customer Upload Intake, AI Processing, and Design Edit. Artwork Background remains
+> independently selectable afterward. Existing Studio-only fields/save paths are used; no Functions,
+> Rules, indexes, Portal, migration, or production action is in scope. The bounded hotfix addition
+> also fixes Print Request rail selection across lifecycle tabs by preventing stale detail state from
+> bouncing a second click during route canonicalization. Plan/review:
+> `docs/workflow/plans/2026-09-16-studio-halftone-background-toggle-hotfix-plan.md` and
+> `docs/workflow/reviews/2026-09-16-studio-halftone-background-toggle-hotfix-review.md`.
+
 > 2026-09-16: **Coordinated production promotion — Studio v1.0.13 COMPLETE; owner smoke pending** —
 > The reviewed candidate and owner-authorized lint corrective are live at production SHA
 > `ccad1920bf382947dbc5d48d997f16fa037a0277`; Studio stable `v1.0.13` is published/latest and

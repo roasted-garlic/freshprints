@@ -165,7 +165,11 @@ export function useSinglePngImport(options: {
   }, []);
 
   const setItemHalftoneOverride = useCallback((itemHalftoneOverride: ImportItemHalftoneOverride) => {
-    setState((current) => ({ ...current, itemHalftoneOverride }));
+    setState((current) => ({
+      ...current,
+      itemHalftoneOverride,
+      itemBackgroundOverride: itemHalftoneOverride === "on" ? "dark" : "auto",
+    }));
   }, []);
 
   const uploadValidatedPng = useCallback(async () => {

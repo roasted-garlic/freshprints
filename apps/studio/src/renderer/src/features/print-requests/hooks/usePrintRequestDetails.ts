@@ -122,12 +122,20 @@ export function usePrintRequestDetails(printRequestId: string | null) {
       return;
     }
 
-    setState((current) => ({
-      ...current,
+    // A new route selection must not inherit the prior request's detail object, items, or asset
+    // summaries while the new pair of live listeners is hydrating. Keeping those values around
+    // made the page expose the new loadedRequestId alongside the old request object; the route
+    // canonicalizer could then classify the new selection from stale data and bounce the URL back
+    // to another row.
+    setState({
+      printRequest: null,
+      items: [],
+      uploadSummaries: new Map(),
+      staffArtworkSummaries: new Map(),
       error: null,
       isLoading: true,
       loadedRequestId: printRequestId,
-    }));
+    });
 
     const markSettledIfReady = () => {
       if (!hasRequestSnapshotRef.current || !hasItemsSnapshotRef.current) {

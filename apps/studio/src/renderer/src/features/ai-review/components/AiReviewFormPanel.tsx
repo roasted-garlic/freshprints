@@ -202,7 +202,8 @@ export function AiReviewFormPanel({
           </span>
         </div>
         <p className="ai-review-halftone-help">
-          Staff toggle is authoritative. AI suggestions never turn this on automatically. Approve
+          Staff toggle is authoritative. AI suggestions never turn this on automatically. Toggling
+          it seeds the default preview background, which can still be changed independently. Approve
           with toggle on adds the canonical halftone tag; off removes it.
         </p>
       </div>

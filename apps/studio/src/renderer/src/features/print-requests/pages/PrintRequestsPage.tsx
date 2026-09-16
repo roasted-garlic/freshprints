@@ -470,7 +470,12 @@ export function PrintRequestsPage() {
   const [isCustomerDirectoryLoading, setIsCustomerDirectoryLoading] = useState(false);
 
   const requestDetails = usePrintRequestDetails(selectedRequestId);
-  const isLoadedSelectedRequest = requestDetails.loadedRequestId === selectedRequestId;
+  // `usePrintRequestDetails` marks the listener target before its first snapshots arrive. Require
+  // the retained object to belong to the URL's exact request ID so an in-flight second click can
+  // never render or canonicalize from the previously selected request.
+  const isLoadedSelectedRequest =
+    requestDetails.loadedRequestId === selectedRequestId &&
+    (requestDetails.printRequest === null || requestDetails.printRequest.id === selectedRequestId);
   const selectedRequest = isLoadedSelectedRequest ? requestDetails.printRequest : null;
   const requestItems = useMemo(
     () => isLoadedSelectedRequest ? requestDetails.items : [],
@@ -1064,7 +1069,9 @@ export function PrintRequestsPage() {
       selectedRequest !== null &&
       printRequestListKindFromIsInternal(selectedRequest.isInternal) === activeListKind);
   const detailsPendingForSelection =
-    Boolean(selectedRequestId) && !isLoadedSelectedRequest && !requestDetails.error;
+    Boolean(selectedRequestId) &&
+    (requestDetails.isLoading || !isLoadedSelectedRequest) &&
+    !requestDetails.error;
 
   const routeTriageRequests = useMemo(() => {
     const toTriageRequest = (request: PrintRequest): PrintRequestRouteTriageRequest => {

@@ -399,6 +399,10 @@ export function useBatchImport(options: UseBatchImportOptions = {}): UseBatchImp
     (filePath: string, value: ImportItemHalftoneOverride) => {
       setState((current) => ({
         ...current,
+        itemBackgroundOverrides: {
+          ...current.itemBackgroundOverrides,
+          [filePath]: value === "on" ? "dark" : "auto",
+        },
         itemHalftoneOverrides: {
           ...current.itemHalftoneOverrides,
           [filePath]: value,

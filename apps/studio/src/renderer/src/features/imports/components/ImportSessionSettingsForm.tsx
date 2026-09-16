@@ -61,8 +61,9 @@ export function ImportSessionSettingsForm({
           Halftone
         </p>
         <p className="import-session-settings-help">
-          Production / filter property — not the same as preview background. Applies to single and
-          batch imports on this page visit.
+          Production / filter property — not the same as preview background. Selecting All halftones
+          seeds All dark; you can change the background independently. Applies to single and batch
+          imports on this page visit.
         </p>
         <div
           aria-labelledby="import-session-halftone-label"
