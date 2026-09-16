@@ -7,7 +7,7 @@
 | Plan | `docs/workflow/plans/2026-09-16-coordinated-production-promotion-plan.md` |
 | Candidate at review | `7c7c65d78d3b408526f28cd3501f9f79b8518d58` (pre-correction) |
 | Verdict | **approved_with_changes** |
-| Execution boundary | Candidate preparation only; no production merge or deployment in this turn. Latest owner instruction is authoritative. |
+| Execution boundary | Owner release instruction lifts the prior hold; protected promotion and reviewed rollout are authorized subject to the recorded hard stops. |
 
 ---
 
@@ -31,8 +31,9 @@ current exports / 186 production exports / 546 unique closure paths, with the
 live callable classified as UPDATE, and Studio is now version `1.0.13`. The
 full Rules suite is not clean (179/182); all three failures reproduce against
 the transition Rules baseline at the emulator's 1,000-expression ceiling.
-Accordingly, preparation remains approved with changes, but the candidate is
-not frozen and production execution remains NO-GO/held.
+Accordingly, preparation remains approved with changes. The owner’s later
+release disposition accepts the exact Rules baseline limitation and permits
+candidate freeze and production execution subject to the hard stops below.
 
 ## Adversarial findings
 
@@ -54,12 +55,12 @@ not frozen and production execution remains NO-GO/held.
 |------|---------|----------------------|
 | Scope and signoff reconciliation | pass | Current cumulative manifest plus source diff and linked DEV signoffs. |
 | Runtime closure | pass after correction | Regenerated audit reports 192/186 exports and classifies `completeStaffGangSheetAndOpenNext` as UPDATE; use only the regenerated allowlist. |
-| Rules and indexes | conditional / held | Firestore candidate hash differs intentionally for catalog-title authority; semantic indexes have zero delta. Rules are 179/182, with all three failures reproduced against the transition baseline's emulator expression ceiling. This is not a clean production gate. |
+| Rules and indexes | conditional / owner-accepted | Firestore candidate hash differs intentionally for catalog-title authority; semantic indexes have zero delta. Rules are 179/182, with exactly the same three failures reproduced against the transition baseline’s emulator expression ceiling. The owner accepts this known baseline limitation for this release. |
 | Portal | pass with sequencing | Production backend and current revision are known; exact final production SHA must be rolled out only after backend compatibility checks. |
 | Studio release | approved with required version correction | One stable `1.0.13` release from the final production SHA, `internal-unsigned`, Smart Filters ON; no pre-fix SHA may be packaged. |
 | Data safety | pass | No migration, backfill, Apply, repair, or production write. |
 | Rollback | pass to prepare / not yet live-verified for new candidate | Existing production SHA, Rules record, Portal revision, Function versions, and `v1.0.12` are anchors; refresh exact readbacks before execution. |
-| Current owner boundary | hold | Do not merge to `production`, deploy, mutate IAM, dispatch stable workflow, publish Studio, or run production smoke in this turn. |
+| Current owner boundary | released with constraints | Owner authorized freeze, protected merge, reviewed Firebase deployment, the exact IAM self-binding if preflight remains satisfied, Portal rollout, Studio v1.0.13 publication, and machine verification. |
 
 ## Required changes before candidate freeze
 
@@ -69,14 +70,24 @@ not frozen and production execution remains NO-GO/held.
 3. Re-run all closure, source, Rules/index, typecheck, contract, and release
    policy checks; record results in a Test Report.
 4. Freeze and record the resulting exact candidate SHA only after the tree is
-   clean, the Rules gate is clean or separately dispositioned by the owner, and
-   the new source manifest is reconciled.
+   clean, the exact owner-accepted Rules disposition is reconfirmed, and the
+   new source manifest is reconciled.
 
 ## Verdict rationale
 
 **Approved with changes** for deterministic candidate preparation and
-verification. The review does not override the latest owner instruction to
-withhold production merge and deployment. If either required correction fails,
-an unexplained live-only Function remains, the Rules gate is not clean without
-owner disposition, or a new secret/data/IAM/product decision appears, the
-candidate is NO-GO and must remain held.
+verification. The review does not authorize any scope beyond the owner release
+instruction. If either required correction fails, an unexplained live-only
+Function remains, the accepted Rules condition changes, a new
+secret/data/IAM/product decision appears, or any listed hard stop occurs, the
+candidate is NO-GO and rollout must stop or roll back.
+
+## Owner release disposition — 2026-09-16
+
+The owner accepted the exact `179/182` Rules result as
+`ACCEPTED KNOWN BASELINE TEST LIMITATION — NON-BLOCKING FOR THIS RELEASE`.
+All three failures reproduce against `firestore.transition.rules` at the
+emulator’s 1,000-expression ceiling; no Rules or test change is authorized to
+force `182/182`. This disposition releases the candidate-freeze and production
+boundary, but does not release data repair/backfill/Apply, secret/config
+changes, broad IAM, deletion, or any unreviewed runtime scope.

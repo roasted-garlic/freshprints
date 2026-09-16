@@ -4,11 +4,11 @@
 |-------|-------|
 | Date | 2026-09-16 |
 | Goal | `coordinated-production-promotion-2026-09-16` |
-| Status | `testing_with_hold` |
+| Status | `freeze_authorized` |
 | Workflow | FreshForge managed phase: Plan → Review → Implement → Test → Signoff |
 | Source inventory | `docs/workflow/reviews/2026-09-pre-production-promotion-manifest.md` |
 | Formal Review | `docs/workflow/reviews/2026-09-16-coordinated-production-promotion-formal-review.md` |
-| Current execution boundary | Candidate preparation and verification only. The latest owner instruction says do not merge to `production` or deploy. |
+| Current execution boundary | Owner release instruction lifts the hold and authorizes candidate freeze, protected promotion, reviewed production rollout, and machine verification. |
 
 ---
 
@@ -36,9 +36,10 @@ At plan creation:
 - The final candidate SHA is not frozen yet. It must be recorded after the
   reviewed export/version corrections, all tests, and final documentation are
   committed and pushed to `origin/development`.
-- The reviewed export/version corrections are now present in the working tree;
-  the candidate remains unfrozen because the full Rules suite is 179/182 rather
-  than a clean pass. See the [Test Report](../reviews/2026-09-16-coordinated-production-promotion-test-report.md).
+- The reviewed export/version corrections are present. The owner has accepted
+  the exact 179/182 Rules result as a non-blocking baseline emulator limitation;
+  the candidate may now freeze only if the same three failures, the same
+  1,000-expression signature, and no candidate-only regression are reconfirmed.
 
 The source candidate is the complete `origin/development` tree relative to
 `origin/production`, not a hand-selected subset of recent commits. The
@@ -70,11 +71,14 @@ request-scoped Print Request live sync. No entry is promoted solely because it i
 present in a signoff: the final closure is reconciled against the actual source,
 live Functions, Rules, indexes, App Hosting, and release metadata.
 
-The dirty-preset fix is client-only and has no ordering dependency on the other
-Studio candidates or on Functions, Rules, indexes, or Portal. It must be present
-in the exact SHA used for the single stable Studio build; a build from any SHA
-before `37655dcd` is incomplete. The other Studio candidates likewise coalesce
-into that same release rather than producing an intermediate package.
+The dirty-preset fix is client-only and has no runtime ordering dependency on
+the other Studio candidates or on Functions, Rules, indexes, or Portal. It must
+be present in the exact SHA used for the single stable Studio build; a build
+from any SHA before `37655dcd` is incomplete. The other Studio candidates
+likewise coalesce into that same release rather than producing an intermediate
+package. Operationally, Studio publication follows the healthy Portal rollout
+so the cumulative release is verified in the reviewed Firebase → Portal →
+Studio order; this is sequencing, not a client/runtime dependency.
 
 ## Reviewed deterministic corrections before candidate freeze
 
@@ -91,32 +95,31 @@ These are mechanical release-integrity corrections, not scope expansion:
 4. Re-run the Function closure audit, Rules/index semantic comparison, source
    manifest, typechecks, focused contracts, and release-policy tests after the
    corrections. Results are recorded in the [Test Report](../reviews/2026-09-16-coordinated-production-promotion-test-report.md).
-   The Rules suite is not clean, so the exact candidate SHA is not frozen.
+   The owner’s accepted Rules disposition permits freeze only at the exact
+   179/182 baseline result with no new failure or access broadening.
 
 No correction may remove an unexplained live Function, change a secret, enable
 AI settings, add a migration, or broaden IAM/access.
 
 ## Execution order when separately released
 
-The following is the prepared order; the current turn stops before the first
-production mutation:
+The following is the authorized order after the candidate is frozen:
 
-1. Review and implement the deterministic corrections above on `development`.
-2. Freeze the clean candidate and create a reviewed `development` → `production`
+1. Freeze the reviewed candidate and create a reviewed `development` → `production`
    PR. Do not bypass branch protection or force-push.
-3. After merge, fetch the exact production merge SHA and deploy only the final
+2. After merge, fetch the exact production merge SHA and deploy only the final
    Firestore Rules artifact if required, then the explicit Function allowlist.
    No Storage Rules or index command is expected from the current semantic delta.
-4. Verify the backend and runtime health, then roll out the Portal App Hosting
+3. Verify the backend and runtime health, then roll out the Portal App Hosting
    backend from the exact production source SHA.
-5. Dispatch `.github/workflows/studio-release.yml` from the exact production SHA
+4. Dispatch `.github/workflows/studio-release.yml` from the exact production SHA
    with `release_type=stable`, `distribution_mode=internal-unsigned`, and
    `smart_filters=on`. Verify the draft has the same SHA, version `1.0.13`,
    eight canonical assets, and both platform/architecture results.
-6. Only after the applicable release authorization and smoke gate, invoke the
+5. Only after the applicable release authorization and smoke gate, invoke the
    canonical stable publish helper. Never publish via a raw PATCH or an
    ambiguous tag upload.
-7. Run read-only machine verification, preserve the current AI settings, and
+6. Run read-only machine verification, preserve the current AI settings, and
    report `PRODUCTION ROLLOUT COMPLETE - OWNER PRODUCTION SMOKE PENDING` before
    handing off the bounded owner smoke checklist.
 
@@ -128,10 +131,9 @@ production mutation:
   enable Autonomous AI or Pass 2 as part of this goal.
 - Read-only IAM evidence currently shows no self-binding on the production
   Compute runtime service account. Before any future Staff Artwork signed-URL
-  smoke, confirm the actual deployed runtime service account and whether
-  `iam.serviceAccounts.signBlob` is required. Only the exact previously reviewed
-  self-binding may be applied; no broader IAM grant is permitted. Under the
-  current “do not deploy” instruction, no IAM mutation is performed.
+  smoke, the exact service account and signed-URL requirement have been
+  confirmed. The owner has authorized only the exact previously reviewed
+  self-binding; no broader IAM grant is permitted.
 - Do not invoke historical reconciliation Apply, backfills, catalog reprocess,
   repairs, or other production writes. If the release cannot be verified
   without one, stop and document the hard stop.
@@ -139,8 +141,9 @@ production mutation:
 ## Verification and rollback anchors
 
 Before candidate freeze, require a clean `git diff --check`, complete closure
-report, Functions build/tests, a clean Rules test result, Portal typecheck/build
-checks, Studio contracts/typecheck, and release workflow/publish-helper tests. Capture
+report, Functions build/tests, the owner-accepted Rules baseline disposition,
+Portal typecheck/build checks, Studio contracts/typecheck, and release
+workflow/publish-helper tests. Capture
 the exact production merge SHA, Functions changed-ID allowlist, Rules hashes and
 ruleset IDs, live index readiness, Portal previous/current revisions, and Studio
 draft release ID/assets.
@@ -152,10 +155,13 @@ rollback is App Hosting revision `fresh-prints-portal-build-2026-09-14-001`;
 Studio rollback is published `v1.0.12`. Do not claim rollback readiness until
 each anchor is read back from live state.
 
-## Current hold
+## Owner release disposition
 
-Plan/Review, candidate corrections, validation, and documentation may proceed.
-Production PR merge, Firebase deployment, Portal rollout, IAM mutation, Studio
-stable workflow dispatch/publication, and production smoke are held both by the
-latest owner instruction and by the non-clean Rules gate; they must not be
-performed in this continuation.
+The owner’s 2026-09-16 release instruction lifts the prior hold and accepts
+`179/182` Rules tests as `ACCEPTED KNOWN BASELINE TEST LIMITATION — NON-BLOCKING
+FOR THIS RELEASE`, because exactly the same three tests fail against the
+transition baseline at the emulator’s 1,000-expression ceiling. A fourth
+failure, any real allow/deny mismatch, candidate-only Rules regression, access
+broadening, unexplained runtime, deletion, data mutation, secret/config change,
+broader IAM grant, unhealthy Portal, failed Studio artifact, or impossible
+rollback remains an immediate hard stop.

@@ -6,7 +6,7 @@
 | Goal | `coordinated-production-promotion-2026-09-16` |
 | Plan | `docs/workflow/plans/2026-09-16-coordinated-production-promotion-plan.md` |
 | Review | `docs/workflow/reviews/2026-09-16-coordinated-production-promotion-formal-review.md` |
-| Candidate status | Not frozen; production merge and deployment remain on owner hold. |
+| Candidate status | Ready to freeze after final read-only anchor capture; owner hold lifted with accepted Rules baseline disposition. |
 
 ## Reviewed correction checks
 
@@ -29,10 +29,11 @@
 | Focused Function contracts | **15/15 pass** |
 | Studio release policy and publish-helper contracts | **40/40 pass** |
 | Closure audit summary | **pass** — 192 / 186 / 546; 6 ADD, 52 UPDATE, 115 RETAIN LIVE VERSION, 10 EXCLUDE, 9 NO ACTION |
+| Portal isolated production build | **pass** — Next 15.5.20 compiled, type validity passed, and 22/22 static pages generated; temporary output directory was removed and tracked config restored |
 
 ## Firestore Rules result
 
-The candidate command `npm run test:rules` completed against the local
+The final candidate command `npm run test:rules` completed against the local
 emulators with **179/182 tests passing and 3 failing**. The failures are:
 
 1. `print request completion — current-schema failing-before matrix` — denies
@@ -42,19 +43,20 @@ emulators with **179/182 tests passing and 3 failing**. The failures are:
 3. `Show Queue allocation — allocatePrintRequestItem sequence` — allows staff
    to set `needsStaffRequeue` fields on a print request.
 
-Each failure reports the emulator error that the maximum of 1,000 expressions
-was reached while evaluating an update. Baseline checks were run against
+Each failure reports only the emulator error that the maximum of 1,000
+expressions was reached while evaluating an update. Baseline checks were run against
 `firestore.transition.rules`: the Print Request completion suite reproduced
 the same two failures (12/14 pass), and the Show Queue suite reproduced the
 same failure (22/23 pass). This establishes that the three failures predate
-the current candidate Rules delta; it does not make the candidate Rules gate
-clean.
+the current candidate Rules delta. The owner accepted this exact result as a
+known non-blocking baseline limitation for this release; Rules source and tests
+were not changed to force 182/182. A fourth failure, a real allow/deny
+mismatch, or a candidate-only regression is a hard stop.
 
 ## Disposition
 
 The Studio fix and reviewed deterministic release corrections pass their
-focused checks. The full Rules gate is documented but non-clean, so the
-candidate is not frozen and no production merge, Firebase deploy, Portal
-rollout, Studio dispatch/publication, IAM mutation, or production smoke was
-performed. A future production execution requires an explicit owner release
-instruction and disposition of the non-clean Rules gate.
+focused checks. The candidate is eligible for exact-SHA freeze under the
+owner’s release instruction. Production execution must still use the protected
+PR path, the reviewed Rules/Function allowlists, no data operations, preserved
+AI settings, and the exact rollback packet.
