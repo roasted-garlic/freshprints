@@ -2,19 +2,18 @@
 
 **Last updated:** 2026-09-16
 
-## CURRENT AUTHORITATIVE PHASE — STUDIO HOTFIX — SIGNED OFF (DEVELOPMENT ONLY)
+## CURRENT AUTHORITATIVE PHASE — STUDIO HOTFIX — PUBLISHED AND MACHINE-VERIFIED
 
-The prior coordinated production rollout remains machine-complete with Owner
-Production Smoke pending. A new owner-requested Studio-only hotfix is now the
-active bounded goal: `studio-halftone-background-toggle-hotfix-2026-09-16`.
+The owner-authorized Studio-only hotfix `studio-halftone-background-toggle-hotfix-2026-09-16`
+has been promoted through the protected development → production path and released
+as stable Studio `v1.0.14`.
 
 The hotfix plan and bounded review are recorded at:
 
 - `docs/workflow/plans/2026-09-16-studio-halftone-background-toggle-hotfix-plan.md`
 - `docs/workflow/reviews/2026-09-16-studio-halftone-background-toggle-hotfix-review.md`
 
-The original hotfix implementation is complete and signed off with notes in
-development only. The existing Studio client controls and save paths now synchronize the toggle:
+The Studio client controls and save paths now synchronize the toggle:
 Halftone ON seeds light black; Halftone OFF restores the default; subsequent
 Artwork Background changes remain independent. Focused hotfix/shared contracts
 pass 50/50; canonical release lint is `current=15`, `baseline=25`, `new=0`;
@@ -29,15 +28,23 @@ at the start of a new selection load, with focused regression coverage. The
 Print Requests rail remains mounted across the lifecycle tabs while the new detail
 hydrates.
 
-The combined hotfix is now signed off with notes in development only. Navigation
+The combined hotfix was signed off with notes. Navigation
 contracts pass 19/19; canonical release lint remains `current=15`, `baseline=25`,
 `new=0`; Studio typecheck and package build pass. The broader Print Requests
-directory sweep is 194/198, with four unrelated pre-existing contract failures
-documented in the test report.
+directory sweep is 194/198: **PASS WITH 4 ACCEPTED PRE-EXISTING FAILURES**.
 
-Do not merge to production, publish, deploy, change backend/runtime surfaces,
-or perform data repair for either scope. A separate owner authorization and
-reviewed production promotion remain required.
+Release commit: `fd396ffed415d4cab680a743015008836a51f730`.
+Production merge SHA: `f20d5d65aa6e2e9b30032da61846355271904650` (PR #99).
+Studio workflow run: `35161665784`; stable release `v1.0.14` is published/latest
+with the eight canonical Windows/macOS installer and updater assets. The prior
+stable `v1.0.13` remains available for rollback.
+
+Machine verification passed: production Portal returned HTTP 200; App Hosting
+revision `fresh-prints-portal-build-2026-09-16-001` has 100% traffic; all 179
+production Functions are ACTIVE; and `settings/portalMaintenance.enabled` is
+`false`. No Functions, Rules, indexes, Storage Rules, Portal App Hosting, IAM,
+Firebase configuration, or data migration was redeployed for this Studio-only
+hotfix. No further release action is pending.
 
 ## PRIOR AUTHORITATIVE PHASE — PRODUCTION ROLLOUT COMPLETE — OWNER PRODUCTION SMOKE PENDING
 

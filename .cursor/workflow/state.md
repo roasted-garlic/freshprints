@@ -2,27 +2,27 @@
 
 | Field | Value |
 |---|---|
-| Status | **IN_PROGRESS — Studio hotfix signed off; production hold** |
-| DONE | **yes — development hotfix complete** |
-| Signoff Status | **approved_with_notes — development only** |
-| Current Mode | managed-phase |
+| Status | **DONE — Studio v1.0.14 released and machine-verified** |
+| DONE | **yes — hotfix and authorized production release complete** |
+| Signoff Status | **approved_with_notes — release complete** |
+| Current Mode | idle |
 | Parent program | Pre-production reliability / safety |
 | Current Goal | `studio-halftone-background-toggle-hotfix-2026-09-16` |
-| Current Phase | **SIGNOFF COMPLETE — Studio toggle and Print Request navigation hotfix** |
-| Plan Status | **updated — bounded navigation addition recorded** |
+| Current Phase | **MACHINE VERIFIED — Studio v1.0.14 stable release** |
+| Plan Status | **completed — bounded hotfix and release scope recorded** |
 | Review Status | **approved with bounded conditions** |
-| Implementation Status | **complete — bounded Studio client change and navigation addition** |
-| Test Status | **passed_with_notes — navigation contracts 19/19; release lint new=0; Studio typecheck/build pass** |
-| Human Checkpoint Required | **yes — Owner Production Smoke remains pending** |
-| Human Checkpoint Reason | Production promotion/deployment remains separately unauthorized for this hotfix; development implementation and verification are authorized by the current owner request. |
+| Implementation Status | **complete — Studio client hotfix and release bookkeeping** |
+| Test Status | **passed_with_notes — release-critical gates pass; 4 unrelated pre-existing broad-suite failures accepted** |
+| Human Checkpoint Required | **no — owner authorization covered protected merge and publication; machine verification passed** |
+| Human Checkpoint Reason | The authorized Studio-only production release is complete. Backend and Portal runtime surfaces were unchanged and were not redeployed. |
 | Blocked | **no** |
-| Allowed Actions | Implement and test the bounded Studio hotfix; update its workflow docs/state; read-only inspection of existing production evidence. |
-| Forbidden Actions | Production merge/deploy/release publication; force-push; Functions/Rules/Portal/IAM/index/Storage changes; Function deletion; production data Apply/backfill/repair/mass mutation; AI setting changes; secret changes; broader IAM changes; changing or auto-expanding the lint baseline. |
-| Last Completed Step | Bounded Print Request navigation addition implementation, focused verification, Studio release lint, typecheck, package build, and final signoff |
-| Next Required Step | No production action. If promotion is later requested, perform a separate reviewed Studio release/production reconciliation; prior parent Owner Production Smoke remains pending. |
-| Decision Log | 2026-09-16 — Prior coordinated rollout remains complete through machine verification with Owner Production Smoke pending. Owner-requested Studio hotfix `studio-halftone-background-toggle-hotfix-2026-09-16` now includes the signed-off Halftone/background synchronization and bounded Print Request rail-selection fix. Exact-ID detail readiness plus clearing stale detail state prevents route canonicalization from bouncing a second click across lifecycle tabs. Focused navigation contracts 19/19, canonical release lint new=0, Studio typecheck/build pass; broader pre-existing drift is documented. No production action authorized or performed. |
+| Allowed Actions | Read-only verification and routine follow-up monitoring for the released Studio hotfix. |
+| Forbidden Actions | Backend/Portal/Rules/Storage/index/IAM/Firebase redeploys or data mutation for this Studio-only hotfix; force-push; secret changes; broader IAM changes; changing or auto-expanding the lint baseline. |
+| Last Completed Step | Owner-authorized PR #99 merge, Studio v1.0.14 release workflow, publication, and read-only production verification |
+| Next Required Step | None for this hotfix. Keep v1.0.13 available for rollback and use the normal incident process for any post-release issue. |
+| Decision Log | 2026-09-16 — Owner fast-tracked the signed-off Studio hotfix. Release commit `fd396ffed415d4cab680a743015008836a51f730` was pushed on `development`; PR #99 merged to production at `f20d5d65aa6e2e9b30032da61846355271904650`. Stable Studio workflow `35161665784` passed Windows, macOS, and finalization; v1.0.14 was published with eight canonical assets. Machine verification confirmed v1.0.14 latest, v1.0.13 rollback availability, Portal HTTP 200 with 100% traffic on `fresh-prints-portal-build-2026-09-16-001`, 179/179 production Functions ACTIVE, and maintenance `enabled=false`. No backend or Portal deploy occurred. |
 | Artifacts | Hotfix Plan; Hotfix Review; Hotfix Test Report; Hotfix Signoff; prior parent Plan/Formal Review/cumulative manifest/child Signoffs |
 | Files Created | `docs/workflow/plans/2026-09-16-studio-halftone-background-toggle-hotfix-plan.md`; `docs/workflow/reviews/2026-09-16-studio-halftone-background-toggle-hotfix-review.md`; `docs/workflow/reviews/2026-09-16-studio-halftone-background-toggle-hotfix-test-report.md`; `docs/workflow/reviews/2026-09-16-studio-halftone-background-toggle-hotfix-signoff.md`; focused contract tests |
-| Tests Run | Focused hotfix/shared contracts 50/50; Print Request navigation contracts 19/19; Studio typecheck; targeted ESLint; canonical release lint current 15/baseline 25/new 0; Studio package build; `git diff --check`; broader unrelated failures documented in test report |
-| Signoff | Hotfix **approved_with_notes — DONE (development only)**; prior parent Owner Production Smoke remains pending |
+| Tests Run | Hotfix/shared contracts 50/50; Print Request navigation contracts 19/19; release-critical contracts 60/60; canonical release lint current 15/baseline 25/new 0; Studio typecheck; Studio package build; `git diff --check`; broad Print Request sweep **194/198 — PASS WITH 4 ACCEPTED PRE-EXISTING FAILURES** |
+| Signoff | Hotfix **approved_with_notes — DONE**; owner-authorized production publication and machine verification complete |
 | Manifest | `docs/workflow/reviews/2026-09-pre-production-promotion-manifest.md` — cumulative; exact Studio-only dirty-preset delta and coordinated rollout scope recorded |
