@@ -73,7 +73,7 @@ deletion or invocation of reconciliation Apply is permitted.
   service account, if applied before the bounded Staff Artwork smoke. No other
   IAM grant is allowed.
 
-## Post-mutation readback and current recovery position
+## Post-mutation readback and pre-corrective recovery position
 
 The frozen candidate merged through protected PR #97 as
 `3802ff8564efb0d24e6c783a23c4b4b65d7cef8f`. The rollout reached the following
@@ -93,8 +93,32 @@ read-back state before the Studio release gate hard-stopped:
 - Studio: no candidate release was created; published stable remains
   `v1.0.12` at the pre-rollout production SHA.
 
-No rollback mutation has been performed. The current state is intentionally
-partial: Rules, the reviewed Functions allowlist, IAM prerequisite, and Portal
-rollout are healthy, while Studio remains on v1.0.12. Do not retry Studio,
-change the lint baseline, or roll back the healthy runtime surfaces without a
-reviewed correction or explicit rollback direction.
+No rollback mutation had been performed at this pre-corrective checkpoint. The
+state was intentionally partial: Rules, the reviewed Functions allowlist, IAM
+prerequisite, and Portal rollout were healthy, while Studio remained on
+v1.0.12. The owner-authorized corrective resolution is recorded below.
+
+## Final post-corrective recovery position
+
+- Corrective commit: `2bf6c59c599ccd702eba4523a035e7d7954aab62`.
+- Protected production merge: `ccad1920bf382947dbc5d48d997f16fa037a0277`
+  via PR #98; prior production SHA `3802ff8564efb0d24e6c783a23c4b4b65d7cef8f`
+  remains its ancestor.
+- Studio workflow `35141319164` completed successfully for the exact
+  production SHA, and stable `v1.0.13` is published/latest with eight verified
+  assets. Stable `v1.0.12` remains the rollback release.
+- Ruleset `3ca899da-de8c-43bb-b651-7cdcc033601a`, the exact 58-function
+  ADD/UPDATE deployment, the sole reviewed IAM self-binding, and 94 READY
+  indexes remain verified. No rollback or additional backend mutation was
+  performed.
+- Portal remains on rollout `build-2026-09-16-001`, revision
+  `fresh-prints-portal-build-2026-09-16-001`, at 100% traffic. The corrective
+  did not trigger a Portal reroll.
+- AI settings remain shadow / Autonomous OFF / `gemini-2.5-flash-lite` with
+  Pass 2 absent/OFF; maintenance remains OFF and the production DEV allowlist
+  document remains absent.
+
+Current state: **PRODUCTION ROLLOUT COMPLETE — OWNER PRODUCTION SMOKE
+PENDING**. If rollback is later authorized, use the recorded pre-rollout
+anchors above; do not perform a rollback merely because the owner smoke gate is
+still pending.

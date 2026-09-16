@@ -6,12 +6,12 @@ App Hosting publication applies to **production** (`myprintrequest.com`) only.
 
 ---
 
-## 2026-09-16 — `studio-print-request-item-download-dirty-preset-fix` — CLOSED DEV / production promotion pending
+## 2026-09-16 — `studio-print-request-item-download-dirty-preset-fix` — CLOSED DEV / included in Studio v1.0.13 production release
 
 | Kind | Final production promotion requirement / actual scope |
 |------|-------------------------------------------------------|
 | Source commit | `37655dcd52760992cc2892e096bac30cbaa797ba` (`fix(studio): restore Print Request item Download for standard size presets`) |
-| Studio release | **REQUIRED**: include the Studio `PrintRequestItemCard` dirty-signature fix and strengthened `printRequestExport` contract in the next stable Studio build. The fix restores Download for clean Print Request items carrying `standardSizePresetKey`; existing size/source/permission/save-state gates remain unchanged. |
+| Studio release | **COMPLETED**: included in stable Studio `v1.0.13` (`v1.0.13` / production SHA `ccad1920bf382947dbc5d48d997f16fa037a0277`). The fix restores Download for clean Print Request items carrying `standardSizePresetKey`; existing size/source/permission/save-state gates remain unchanged. |
 | Portal App Hosting | **NONE from this goal** |
 | Functions | **NONE** |
 | Firestore Rules | **NONE** |
@@ -21,8 +21,8 @@ App Hosting publication applies to **production** (`myprintrequest.com`) only.
 | Backfill | **NONE** |
 | Production data mutation | **NONE** |
 | Dependency ordering | No runtime dependency on the already inventoried Functions, Rules, indexes, Portal, or other Studio candidates. Coalesce this commit into the same stable Studio release built from the final promoted production SHA; do not build a release from a SHA that predates `37655dcd`. It may be verified after the backend/Portal rollout, but neither backend nor Portal rollout is a prerequisite for this client-only behavior. |
-| Minimal production smoke | After separately authorized promotion: open a Print Request containing a saved standard-size preset item and confirm Download is enabled and succeeds; confirm genuinely dirty edits and existing missing-size/source/in-flight-save gates remain disabled. Verification only — no writes or repairs. |
-| Boundary | DEV Signoff **approved** with 8/8 export contracts and Studio typecheck passing. This commit alone authorizes no production merge, deployment, data operation, or Studio publication. |
+| Minimal production smoke | **OWNER PENDING**: open a Print Request containing a saved standard-size preset item and confirm Download is enabled and succeeds; confirm genuinely dirty edits and existing missing-size/source/in-flight-save gates remain disabled. Verification only — no writes or repairs. |
+| Boundary | DEV Signoff **approved** with 8/8 export contracts and Studio typecheck passing. The commit was promoted only through the separately authorized coordinated rollout; it required a Studio release/build and no Functions, Rules, indexes, Portal App Hosting, Storage, schema, or data operation from this goal. |
 
 ---
 
