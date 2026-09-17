@@ -47,7 +47,9 @@ were not reclassified or changed.
 - Portal App Hosting rollout `build-2026-09-17-001`: **SUCCEEDED**.
 - App Hosting build `build-2026-09-17-001`: **READY**; Cloud Build: **SUCCESS**.
 - Cloud Run revision `fresh-prints-portal-build-2026-09-17-001`: **100% traffic**.
-- `origin/production` contains the candidate commit and its tree matches `origin/development`.
+- `origin/production` contains the candidate commit. The App Hosting source archive was created
+  from that candidate tree; the later `development` tip adds documentation-only verification
+  closeout changes.
 - Hosted production root, `/catalog`, `/requests`, and `/robots.txt`: **HTTP 200** with no DEV
   marker or development-project string.
 - Production Functions: **179/179 ACTIVE**. Firestore indexes: **94/94 READY**.
