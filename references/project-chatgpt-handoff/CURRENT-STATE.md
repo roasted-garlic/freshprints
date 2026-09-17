@@ -2,7 +2,26 @@
 
 **Last updated:** 2026-09-16
 
-## CURRENT AUTHORITATIVE PHASE — STUDIO HOTFIX — PUBLISHED AND MACHINE-VERIFIED
+## CURRENT AUTHORITATIVE PHASE — PORTAL SHOW-RAIL HOTFIX — SIGNED OFF; PROMOTION IN PROGRESS
+
+Owner DEV QA passed the Portal show-rail description parity hotfix. The homepage `Next Show` and
+`Added to Shows This Week` rails hydrate compact selected cards through the existing ready-design-
+by-ID catalog path before opening the shared Design Details modal. Persisted descriptions are
+restored; public show-card DTO, ordering/membership, modal actions, explicit-content handling, and
+ordinary catalog behavior remain unchanged. Stale A→B responses are ignored and unavailable
+designs fail closed.
+
+Focused hydration/show-rail contracts are **17/17 PASS**; adjacent Portal contracts **24/24 PASS**;
+Portal typecheck, changed-source lint, production build (22/22 static pages), and diff check pass.
+The only intended runtime delta is Portal App Hosting. Functions, Rules, indexes, Storage Rules,
+IAM, Firebase configuration, migrations, backfills, data, and Studio are unchanged and must not be
+deployed for this hotfix.
+
+Signoff: `docs/workflow/reviews/2026-09-16-portal-show-rails-design-description-parity-signoff.md`.
+Owner DEV QA: **PASS**. Next: commit/push development, create/merge the protected production PR,
+roll out `fresh-prints-portal` on `fresh-prints-prod`, and machine-verify the hosted revision.
+
+## PRIOR AUTHORITATIVE PHASE — STUDIO HOTFIX — PUBLISHED AND MACHINE-VERIFIED
 
 The owner-authorized Studio-only hotfix `studio-halftone-background-toggle-hotfix-2026-09-16`
 has been promoted through the protected development → production path and released

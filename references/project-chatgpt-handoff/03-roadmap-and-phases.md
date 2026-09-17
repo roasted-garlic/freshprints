@@ -1,5 +1,20 @@
 # Roadmap and Phases
 
+## 2026-09-16 — Portal show-rail Design Details description parity — SIGNED OFF
+
+- Goal `portal-show-rails-design-description-parity` is **DONE** with Signoff **approved** after
+  Owner DEV QA **PASS**.
+- The two homepage show rails reuse the existing ready-design-by-ID hydration path before opening
+  the shared Design Details modal; the compact public show-card callable contract is unchanged.
+- Focused hydration/show-rail contracts **17/17 PASS**; adjacent Portal contracts **24/24 PASS**;
+  Portal typecheck, changed-source lint, production build, and diff check pass.
+- Production delta is Portal App Hosting only. Functions, Rules, indexes, Storage Rules, IAM,
+  Firebase configuration, migrations, backfills, data, and Studio are **NONE**.
+- Protected development → production promotion and Portal App Hosting rollout are authorized after
+  QA and are the immediate next release steps. FreshForge remains in release execution, not a new
+  managed implementation phase.
+- Signoff: `docs/workflow/reviews/2026-09-16-portal-show-rails-design-description-parity-signoff.md`.
+
 ## 2026-09-16 — Print Request count parity + unqueue cache/cancel parity — CLOSED (DEV)
 
 - Goals `print-request-count-parity-across-show-queue-and-summary-surfaces` and

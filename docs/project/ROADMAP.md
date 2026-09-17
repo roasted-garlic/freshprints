@@ -1,5 +1,19 @@
 # Fresh Prints Roadmap
 
+> 2026-09-16: **Portal show-rail Design Details description parity — SIGNOFF approved; production
+> rollout authorized** — Goal `portal-show-rails-design-description-parity` is complete after
+> Owner DEV QA **PASS**. Homepage `Next Show` and `Added to Shows This Week` now hydrate the
+> selected compact show card through the existing ready-design-by-ID path before opening the shared
+> Design Details modal, restoring the persisted description without expanding the public DTO or
+> changing rail ordering/membership. Focused contracts **17/17**, adjacent Portal contracts
+> **24/24**, Portal typecheck, changed-source lint, production build, and diff check passed. The
+> production delta is Portal App Hosting only; Functions, Rules, indexes, Storage Rules, IAM,
+> Firebase configuration, migrations, backfills, data, and Studio are **NONE**. Protected
+> development → production promotion and App Hosting rollout are authorized after this Signoff.
+> Plan/review/test/signoff:
+> `docs/workflow/plans/2026-09-16-portal-show-rails-design-description-parity-plan.md` and
+> `docs/workflow/reviews/2026-09-16-portal-show-rails-design-description-parity-signoff.md`.
+
 > 2026-09-16: **Studio halftone/background + Print Request navigation hotfix — COMPLETE (PROD)** —
 > Owner-requested hotfix `studio-halftone-background-toggle-hotfix-2026-09-16`: enabling Halftone
 > seeds the light-black artwork background and disabling it restores the default state across

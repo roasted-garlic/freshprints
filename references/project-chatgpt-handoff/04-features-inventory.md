@@ -1,5 +1,13 @@
 # Features Inventory
 
+> 2026-09-16: **Portal show-rail Design Details description parity — SIGNED OFF (DEV)** —
+> `Next Show` and `Added to Shows This Week` now hydrate the authoritative ready catalog design
+> by ID before opening the shared Design Details modal, restoring persisted descriptions while
+> preserving title/image/metadata, explicit-content masking, actions, ordering, membership, and
+> the compact public show-card contract. Owner DEV QA **PASS**; Portal App Hosting production
+> promotion is authorized and pending execution. No Functions, Rules, indexes, Storage Rules,
+> IAM, Firebase configuration, migration, backfill, data, or Studio change.
+
 > 2026-09-16: **Print Request count parity + unqueue cache/cancel parity — CLOSED (DEV)** —
 > Full-request Print Request counts use source-aware logical Designs plus live item quantity;
 > selected Show Queue/Staff Inbox/Portal Admin counts use active non-canceled allocation identity

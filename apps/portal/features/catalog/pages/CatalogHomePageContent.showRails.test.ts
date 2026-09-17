@@ -50,4 +50,38 @@ describe('CatalogHomePageContent show rails', () => {
     assert.match(page, /discoveryAfterShow\.map/);
     assert.match(page, /section\.discover === 'new'/);
   });
+
+  it('opens both homepage show rails through the shared details path with by-ID hydration', () => {
+    const page = readPage();
+    assert.match(page, /CatalogDesignDetailsModal/);
+    assert.match(page, /CatalogSelectionCard/);
+    assert.match(page, /hydratePortalShowDesignForDetails/);
+    assert.match(page, /showRailDesignIds/);
+    assert.match(page, /nextShow\.rail\?\.designs/);
+    assert.match(page, /thisWeek\.rail\?\.designs/);
+    assert.match(page, /catalogService\.getReadyDesignsByIds/);
+    assert.match(page, /openCatalogDesignDetails\(hydratedDesign\)/);
+    assert.match(page, /detailHydrationRequestRef/);
+    assert.match(page, /requestId !== detailHydrationRequestRef\.current/);
+  });
+
+  it('keeps the public show-card contract compact and does not add description to the callable DTO', () => {
+    const dto = readFileSync(
+      'packages/shared/src/types/portal/listPortalShowCatalogDesigns.types.ts',
+      'utf8',
+    );
+    const callable = readFileSync('functions/src/lib/portalShowCatalogDesigns.ts', 'utf8');
+    assert.doesNotMatch(dto, /description/);
+    assert.doesNotMatch(callable, /description:/);
+  });
+
+  it('preserves the existing modal action wiring and presentation-order helper', () => {
+    const page = readPage();
+    assert.match(page, /onAddToRequest=/);
+    assert.match(page, /onAddCompanionToRequest=/);
+    assert.match(page, /onQuantityChange=/);
+    assert.match(page, /onRemoveFromRequest=/);
+    assert.match(page, /designsForShowHomeRailPresentation/);
+    assert.doesNotMatch(page, /rail\.designs\.reverse\(/);
+  });
 });

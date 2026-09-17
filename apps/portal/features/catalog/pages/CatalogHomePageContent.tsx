@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { FormEvent, useMemo, useState, type ReactNode } from 'react';
+import { FormEvent, useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import {
   CATALOG_DISCOVERY_MODES,
@@ -27,7 +27,7 @@ import { CatalogCompanionSuggestionModal } from '../components/CatalogCompanionS
 import { CatalogDesignDetailsModal } from '../components/CatalogDesignDetailsModal';
 import { CatalogDiscoveryCarousel } from '../components/CatalogDiscoveryCarousel';
 import { CatalogSelectionCard } from '../components/CatalogSelectionCard';
-import { designHasMatchingDesignsHint } from '../services/catalogService';
+import { catalogService, designHasMatchingDesignsHint } from '../services/catalogService';
 import {
   buildDiscoverSearchPlaceholder,
   CATALOG_FIRST_VIEWPORT_EAGER_COUNT,
@@ -40,6 +40,7 @@ import {
   type PortalShowHomeRail,
 } from '../../show-designs/services/portalShowDiscoveryContent';
 import { useCatalogDesignDeepLink } from '../hooks/useCatalogDesignDeepLink';
+import { hydratePortalShowDesignForDetails } from '../../show-designs/utils/showDesignDetailsHydration';
 
 interface CatalogHomeRailSection {
   categoryId?: string;
@@ -99,6 +100,8 @@ export function CatalogHomePageContent() {
   const { isAuthenticated } = useAuth();
   const [landingSearch, setLandingSearch] = useState('');
   const [selectedDesign, setSelectedDesign] = useState<CatalogDesign | null>(null);
+  const detailHydrationRequestRef = useRef(0);
+  const [detailHydrationError, setDetailHydrationError] = useState<string | null>(null);
 
   const {
     actionError: creationActionError,
@@ -110,10 +113,65 @@ export function CatalogHomePageContent() {
     reloadWorkingItems,
   } = usePortalPrintRequests();
 
-  const { closeDesignDetails, deepLinkError, openDesignDetails } = useCatalogDesignDeepLink({
+  const { nextShow, thisWeek } = usePortalShowHomeRails();
+  const showRailDesignIds = useMemo(
+    () =>
+      new Set([
+        ...(nextShow.rail?.designs ?? []).map((design) => design.id),
+        ...(thisWeek.rail?.designs ?? []).map((design) => design.id),
+      ]),
+    [nextShow.rail?.designs, thisWeek.rail?.designs],
+  );
+
+  const {
+    closeDesignDetails: closeCatalogDesignDetails,
+    deepLinkError,
+    openDesignDetails: openCatalogDesignDetails,
+  } = useCatalogDesignDeepLink({
     selectedDesign,
     setSelectedDesign,
   });
+
+  const closeDesignDetails = useCallback(() => {
+    detailHydrationRequestRef.current += 1;
+    setDetailHydrationError(null);
+    closeCatalogDesignDetails();
+  }, [closeCatalogDesignDetails]);
+
+  const openDesignDetails = useCallback(
+    (design: CatalogDesign) => {
+      const requestId = detailHydrationRequestRef.current + 1;
+      detailHydrationRequestRef.current = requestId;
+      setDetailHydrationError(null);
+
+      void hydratePortalShowDesignForDetails(
+        design,
+        showRailDesignIds,
+        (designIds) => catalogService.getReadyDesignsByIds(designIds),
+      )
+        .then((hydratedDesign) => {
+          if (requestId !== detailHydrationRequestRef.current) {
+            return;
+          }
+          if (!hydratedDesign) {
+            setDetailHydrationError('That design is unavailable or no longer in the library.');
+            return;
+          }
+          openCatalogDesignDetails(hydratedDesign);
+        })
+        .catch((loadError: unknown) => {
+          if (requestId !== detailHydrationRequestRef.current) {
+            return;
+          }
+          setDetailHydrationError(
+            loadError instanceof Error
+              ? loadError.message
+              : 'Unable to load this design right now.',
+          );
+        });
+    },
+    [openCatalogDesignDetails, showRailDesignIds],
+  );
 
   const addDesignFlow = useAddDesignToRequestFlow({
     continuableRequests,
@@ -126,8 +184,6 @@ export function CatalogHomePageContent() {
   const { categories } = useCatalogCategories();
   const { designs, categoryRails: hydratedCategoryRails, error, isLoading, readyLibraryCount } =
     useCatalogHomeDesigns(categories);
-  const { nextShow, thisWeek } = usePortalShowHomeRails();
-
   const discoveryRails = useMemo(
     (): CatalogHomeRailSection[] =>
       CATALOG_DISCOVERY_MODES.map((mode) => {
@@ -310,7 +366,8 @@ export function CatalogHomePageContent() {
 
   const searchPlaceholder = buildDiscoverSearchPlaceholder(readyLibraryCount);
 
-  const displayedActionError = creationActionError ?? addDesignFlow.actionError ?? deepLinkError;
+  const displayedActionError =
+    creationActionError ?? addDesignFlow.actionError ?? detailHydrationError ?? deepLinkError;
 
   return (
     <main
