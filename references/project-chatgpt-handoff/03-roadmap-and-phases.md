@@ -10,9 +10,10 @@
   Portal typecheck, changed-source lint, production build, and diff check pass.
 - Production delta is Portal App Hosting only. Functions, Rules, indexes, Storage Rules, IAM,
   Firebase configuration, migrations, backfills, data, and Studio are **NONE**.
-- Protected development → production promotion and Portal App Hosting rollout are authorized after
-  QA and are the immediate next release steps. FreshForge remains in release execution, not a new
-  managed implementation phase.
+- Candidate `7be6fd49b8ce2ebaa068963b492db8e51b16c7c6` was promoted through protected PR #100 as
+  production merge `15676fcd010f572af0d4a2bc969b108d2777be0a`. Portal App Hosting rollout
+  `build-2026-09-17-001` succeeded with 100% traffic on the matching revision; machine verification
+  passed. FreshForge is **IDLE**.
 - Signoff: `docs/workflow/reviews/2026-09-16-portal-show-rails-design-description-parity-signoff.md`.
 
 ## 2026-09-16 — Print Request count parity + unqueue cache/cancel parity — CLOSED (DEV)

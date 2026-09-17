@@ -1,7 +1,7 @@
 # Fresh Prints Roadmap
 
-> 2026-09-16: **Portal show-rail Design Details description parity — SIGNOFF approved; production
-> rollout authorized** — Goal `portal-show-rails-design-description-parity` is complete after
+> 2026-09-16: **Portal show-rail Design Details description parity — COMPLETE (PROD)** — Goal
+> `portal-show-rails-design-description-parity` is complete after
 > Owner DEV QA **PASS**. Homepage `Next Show` and `Added to Shows This Week` now hydrate the
 > selected compact show card through the existing ready-design-by-ID path before opening the shared
 > Design Details modal, restoring the persisted description without expanding the public DTO or
@@ -9,7 +9,9 @@
 > **24/24**, Portal typecheck, changed-source lint, production build, and diff check passed. The
 > production delta is Portal App Hosting only; Functions, Rules, indexes, Storage Rules, IAM,
 > Firebase configuration, migrations, backfills, data, and Studio are **NONE**. Protected
-> development → production promotion and App Hosting rollout are authorized after this Signoff.
+> The candidate was committed as `7be6fd49b8ce2ebaa068963b492db8e51b16c7c6`, promoted through
+> protected PR #100 to production merge `15676fcd010f572af0d4a2bc969b108d2777be0a`, and rolled
+> out as App Hosting build `build-2026-09-17-001` with 100% traffic on the matching revision.
 > Plan/review/test/signoff:
 > `docs/workflow/plans/2026-09-16-portal-show-rails-design-description-parity-plan.md` and
 > `docs/workflow/reviews/2026-09-16-portal-show-rails-design-description-parity-signoff.md`.

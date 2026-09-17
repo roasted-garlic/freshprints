@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-09-16
 
-## CURRENT AUTHORITATIVE PHASE — PORTAL SHOW-RAIL HOTFIX — SIGNED OFF; PROMOTION IN PROGRESS
+## CURRENT AUTHORITATIVE PHASE — PORTAL SHOW-RAIL HOTFIX — PUBLISHED AND MACHINE-VERIFIED
 
 Owner DEV QA passed the Portal show-rail description parity hotfix. The homepage `Next Show` and
 `Added to Shows This Week` rails hydrate compact selected cards through the existing ready-design-
@@ -18,8 +18,12 @@ IAM, Firebase configuration, migrations, backfills, data, and Studio are unchang
 deployed for this hotfix.
 
 Signoff: `docs/workflow/reviews/2026-09-16-portal-show-rails-design-description-parity-signoff.md`.
-Owner DEV QA: **PASS**. Next: commit/push development, create/merge the protected production PR,
-roll out `fresh-prints-portal` on `fresh-prints-prod`, and machine-verify the hosted revision.
+Owner DEV QA: **PASS**. Candidate `7be6fd49b8ce2ebaa068963b492db8e51b16c7c6` was promoted through
+protected PR #100 as production merge `15676fcd010f572af0d4a2bc969b108d2777be0a`. App Hosting
+rollout `build-2026-09-17-001` succeeded; revision `fresh-prints-portal-build-2026-09-17-001`
+serves 100% traffic. Hosted smoke is HTTP 200 without DEV markers; 179 Functions are ACTIVE, 94
+indexes are READY, maintenance is OFF, and no backend/data/IAM/Studio deployment occurred.
+FreshForge is **IDLE**.
 
 ## PRIOR AUTHORITATIVE PHASE — STUDIO HOTFIX — PUBLISHED AND MACHINE-VERIFIED
 

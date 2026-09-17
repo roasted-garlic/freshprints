@@ -2,12 +2,11 @@
 
 **Updated:** 2026-09-16
 
-## FreshForge release execution — Portal hotfix promotion in progress
+## FreshForge IDLE — no active managed goal
 
 Last closed: `portal-show-rails-design-description-parity` (Signoff **approved**, Owner DEV QA
-**PASS**). The owner-authorized next steps are the protected development → production PR, Portal
-App Hosting rollout, and machine verification for this Portal-only hotfix. Do not start a new
-managed goal until release execution completes.
+**PASS**). Production promotion and Portal App Hosting rollout are complete and machine-verified.
+Await owner direction for the next managed Plan.
 
 ## Historical Internal reconciliation / Admin Staff Artwork / DEV access — CLOSED
 

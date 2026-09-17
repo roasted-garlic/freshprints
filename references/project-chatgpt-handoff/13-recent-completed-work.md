@@ -13,8 +13,11 @@ Focused hydration/show-rail contracts **17/17 PASS**; adjacent Portal contracts 
 Portal typecheck, changed-source lint, production build (22/22 static pages), and diff check pass.
 Owner DEV QA checklist passed. Production delta is Portal App Hosting only; no Functions, Rules,
 indexes, Storage Rules, IAM, Firebase configuration, migration, backfill, data, or Studio action.
-Protected development → production promotion and Portal App Hosting rollout are authorized and
-pending execution.
+Protected PR #100 promoted commit `7be6fd49b8ce2ebaa068963b492db8e51b16c7c6` to production
+merge `15676fcd010f572af0d4a2bc969b108d2777be0a`. Portal App Hosting rollout
+`build-2026-09-17-001` succeeded with 100% traffic on the matching revision. Machine verification
+passed: hosted Portal endpoints are HTTP 200 without DEV markers, 179 Functions are ACTIVE, 94
+indexes are READY, and maintenance is OFF. No backend, data, IAM, or Studio action occurred.
 
 Signoff: `docs/workflow/reviews/2026-09-16-portal-show-rails-design-description-parity-signoff.md`.
 
