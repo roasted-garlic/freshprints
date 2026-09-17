@@ -500,6 +500,7 @@ jobs:
           path: |
             apps/studio/release/**
             apps/studio/release-staging/**
+          compression-level: 0
           retention-days: 14
           if-no-files-found: error
 
@@ -710,33 +711,15 @@ jobs:
             exit 1
           fi
 
-          # Replace prior assets on this same-SHA draft only (never touch other drafts).
-          EXISTING_ASSETS="$(gh api "repos/${{ github.repository }}/releases/${RELEASE_ID}/assets")"
-          while read -r asset_id; do
-            if [ -n "$asset_id" ] && [ "$asset_id" != "null" ]; then
-              gh api --method DELETE "repos/${{ github.repository }}/releases/assets/${asset_id}" >/dev/null
-            fi
-          done < <(echo "$EXISTING_ASSETS" | jq -r '.[].id')
-
           # Upload by release ID / upload_url — NEVER by ambiguous shared tag_name (v1.0.4
           # collisions previously attached assets to the wrong draft).
           upload_release_asset() {
             local file="$1"
-            local name
-            name="$(basename "$file")"
-            echo "Uploading ${name} -> release_id=${RELEASE_ID}"
-            HTTP_CODE=$(curl -sS -o /tmp/gh-asset-upload.json -w "%{http_code}" \
-              -X POST \
-              -H "Accept: application/vnd.github+json" \
-              -H "Authorization: Bearer ${GH_TOKEN}" \
-              -H "Content-Type: application/octet-stream" \
-              --data-binary @"${file}" \
-              "${UPLOAD_URL}?name=${name}")
-            if [ "$HTTP_CODE" != "201" ] && [ "$HTTP_CODE" != "200" ]; then
-              echo "::error::Asset upload failed for ${name} http=${HTTP_CODE}"
-              cat /tmp/gh-asset-upload.json || true
-              exit 1
-            fi
+            GITHUB_REPOSITORY="${{ github.repository }}" \
+              RELEASE_ID="$RELEASE_ID" \
+              RELEASE_TARGET_SHA="$BUILD_SHA" \
+              UPLOAD_URL="$UPLOAD_URL" \
+              bash .github/scripts/upload-studio-release-asset.sh "$file"
           }
 
           upload_release_asset "$WIN_EXE"
