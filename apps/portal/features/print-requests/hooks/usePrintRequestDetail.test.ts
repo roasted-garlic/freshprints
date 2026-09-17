@@ -50,8 +50,13 @@ describe('usePrintRequestDetail — items 2/5/7 structural fix (source wiring)',
     assert.ok(beginIndex >= 0 && callableIndex >= 0 && beginIndex < callableIndex);
   });
 
-  it('removeItem patches the shared workingItems (context) in addition to local items while viewing the working request', () => {
+  it('removeItem patches local and working items optimistically before the callable', () => {
     const removeItemBody = sliceFunctionBody('removeItem');
+    const setItemsIndex = removeItemBody.indexOf(
+      'setItems((currentItems) => currentItems.filter((item) => item.id !== itemId))',
+    );
+    const callableIndex = removeItemBody.indexOf('removePrintRequestItem(');
+    assert.ok(setItemsIndex >= 0 && callableIndex >= 0 && setItemsIndex < callableIndex);
     assert.match(removeItemBody, /if \(isViewingWorkingRequest\) \{\s*patchWorkingItems/);
   });
 

@@ -9,8 +9,9 @@
 - Portal may reuse an unparked ordinary `studio_customer` Working request; parking/unqueue is
   origin-neutral while internal and lifecycle protections remain unchanged.
 - Owner accepted the unavailable interactive Studio/Portal/customer QA as a documented
-  `approved_with_notes` limitation. Production rollout is allowed only through the protected PR,
-  exact runtime manifest, and post-rollout smoke evidence.
+  `approved_with_notes` limitation. Protected PR #101, the exact runtime manifest, and production
+  smoke are complete for Rules/Functions/Portal; Studio `1.0.15` remains blocked by external GitHub
+  macOS packaging and Release upload failures, so the managed goal stays open until publication.
 
 ### Print Request count parity + unqueue cache/cancel parity (DEV closed 2026-09-16)
 

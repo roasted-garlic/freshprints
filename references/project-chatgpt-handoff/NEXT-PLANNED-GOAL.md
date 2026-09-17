@@ -2,13 +2,15 @@
 
 **Updated:** 2026-09-17
 
-## FreshForge managed goal — production rollout in progress
+## FreshForge managed goal — production rollout blocked on Studio release pipeline
 
 Current goal: `print-request-length-surcharge-and-customer-navigation` (Signoff
-**approved_with_notes**). Owner-authorized DEV QA closeout is complete. Complete the protected
-development → production PR, exact cumulative deployment manifest, Portal App Hosting rollout,
-Studio `1.0.15` stable release, production smoke, and final state/handoff update before returning
-FreshForge to **IDLE**.
+**approved_with_notes**). Protected PR #101, exact cumulative production Rules/Functions rollout,
+Portal App Hosting rollout, and production smoke are complete. Studio stable `1.0.15` remains
+unpublished because macOS packaging stalled on repeated GitHub runners and Release asset uploads
+returned HTTP 500/502; stable `1.0.14` remains current. Retry the exact release workflow after the
+external blocker clears, verify eight assets, publish `1.0.15`, run final Studio smoke, and then
+return FreshForge to **IDLE**.
 
 ## Historical Internal reconciliation / Admin Staff Artwork / DEV access — CLOSED
 

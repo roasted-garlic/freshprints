@@ -460,9 +460,9 @@ export default function PrintRequestDetailView() {
       setActionError(null);
 
       try {
-        // removeItem already synchronously filters both local items and workingItems on success
-        // (plus its own beginPendingItemRemovals/endPendingItemRemovals guard) — no follow-up
-        // reload needed; it was the actual source of the resurrection defect (Section 19.2).
+        // removeItem optimistically filters local items + workingItems before the callable
+        // (plus beginPendingItemRemovals) — no follow-up reload needed on success; failure
+        // restores via silent reload inside removeItem.
         await removeItem(item.id);
       } catch (removeError) {
         setActionError(removeError instanceof Error ? removeError.message : 'Unable to remove item.');

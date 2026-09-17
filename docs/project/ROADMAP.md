@@ -1,7 +1,8 @@
 # Fresh Prints Roadmap
 
-> 2026-09-17: **Shared length-based show pricing + customer navigation — SIGNED OFF; rollout in
-> progress** — Goal `print-request-length-surcharge-and-customer-navigation` is **DONE** with
+> 2026-09-17: **Shared length-based show pricing + customer navigation — SIGNED OFF; production
+> rollout blocked on Studio release** — Goal `print-request-length-surcharge-and-customer-navigation`
+> is implemented and infrastructure-rolled out with
 > Signoff **approved_with_notes** after owner-directed DEV QA closeout. Shared width-plus-length
 > pricing, immutable allocation snapshots, customer-safe Portal projection, origin-neutral Working
 > reuse/parking, Studio Add-to-Show/preview-cache corrections, Portal cart rebinding, and stable
@@ -12,7 +13,11 @@
 > `v1.0.14` is already published. Interactive QA was unavailable and is recorded as an
 > owner-accepted limitation. Production path is authorized through protected development →
 > production PR; no migrations, backfills, Storage Rules, indexes, IAM, secrets, or data rewrite.
-> Signoff: `docs/workflow/reviews/2026-09-17-print-request-length-surcharge-and-customer-navigation-signoff.md`.
+> Signoff: `docs/workflow/reviews/2026-09-17-print-request-length-surcharge-and-customer-navigation-signoff.md`. Protected PR #101
+> merged as `e6e7eaf7b47e714414572a986611afa124bb8a8b`; Rules, exact 25 Functions, and Portal build
+> `build-2026-09-17-002` are verified in production. Studio `v1.0.15` remains unpublished because
+> macOS packaging stalled repeatedly and Release uploads returned HTTP 500/502; stable `v1.0.14`
+> remains current. Retry the exact Studio workflow after the external blocker clears.
 
 > 2026-09-16: **Portal show-rail Design Details description parity — COMPLETE (PROD)** — Goal
 > `portal-show-rails-design-description-parity` is complete after

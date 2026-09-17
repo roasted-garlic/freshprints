@@ -74,7 +74,7 @@ class DetailHarness {
     this.isViewingWorkingRequest = isViewingWorkingRequest;
   }
 
-  /** Mirrors removeItem's synchronous filter on callable success. */
+  /** Mirrors removeItem's optimistic local filter (before the callable resolves). */
   removeItemSync(itemId: string): void {
     this.generationTracker.begin(itemId);
     this.items = this.items.filter((entry) => entry.id !== itemId);

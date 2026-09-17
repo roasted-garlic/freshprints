@@ -1,6 +1,6 @@
 # Roadmap and Phases
 
-## 2026-09-17 — Shared length-based show pricing + customer navigation — SIGNED OFF; ROLLOUT IN PROGRESS
+## 2026-09-17 — Shared length-based show pricing + customer navigation — SIGNED OFF; PROD INFRASTRUCTURE DEPLOYED; STUDIO BLOCKED
 
 - Goal `print-request-length-surcharge-and-customer-navigation` is signed off
   **approved_with_notes** after owner-authorized DEV QA closeout.
@@ -9,8 +9,11 @@
   stable customer navigation are implemented.
 - Affected contracts **145/145 PASS**; exact 25-function DEV set is ACTIVE at hash
   `9eff4e7503246487859ad354ce53d2f78360b9b5`; Studio release candidate is `1.0.15`.
-- Protected production rollout is authorized and remains the only active closeout step. No
-  migration, backfill, data rewrite, Storage Rules, index, IAM, or secret change is required.
+- Protected PR #101 merged as production `e6e7eaf7b47e714414572a986611afa124bb8a8b`; Rules, exact
+  25 Functions, and Portal build `build-2026-09-17-002` are verified. Studio `1.0.15` remains
+  unpublished after repeated macOS packaging stalls and Release upload HTTP 500/502 failures;
+  retry the exact release workflow after the external blocker clears. No migration, backfill,
+  data rewrite, Storage Rules, index, IAM, or secret change is required.
 
 
 ## 2026-09-16 — Portal show-rail Design Details description parity — SIGNED OFF

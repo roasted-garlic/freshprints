@@ -1,6 +1,6 @@
 # Fresh Prints — Current State Snapshot
 
-## CURRENT AUTHORITATIVE PHASE — SHARED PRICING + CROSS-ORIGIN CUSTOMER REQUEST CORRECTIVE — SIGNED OFF; PRODUCTION ROLLOUT IN PROGRESS
+## CURRENT AUTHORITATIVE PHASE — SHARED PRICING + CROSS-ORIGIN CUSTOMER REQUEST CORRECTIVE — PRODUCTION INFRASTRUCTURE DEPLOYED; STUDIO RELEASE BLOCKED
 
 **Last updated:** 2026-09-17
 
@@ -31,10 +31,15 @@ cleanup, and customer/request fixture mutation remain out of scope.
 The live `getPortalShowPricing` callable returned only the pricing DTO, verified all eight DEV
 tiers, and confirmed `5 × 21 = $4` per unit. The protected Studio creation, Studio allocation,
 and Portal queue callables rejected unauthenticated requests with HTTP 401 without mutation.
-Interactive Settings/Portal/Studio/customer-flow QA was not executed because this session had no
-connected browser and the Windows app-control bridge was unavailable; the owner accepted this
-limitation for closeout. **Next gate: protected production PR, exact deployment manifest, and
-production smoke.**
+Protected PR #101 merged as production `e6e7eaf7b47e714414572a986611afa124bb8a8b`. Production
+Firestore Rules, the exact 25 reviewed Functions, and Portal App Hosting build
+`build-2026-09-17-002` are deployed and smoke-checked; hosted `/` and `/requests` are HTTP 200
+without DEV markers. Studio stable `v1.0.15` is not published: macOS packaging stalled on
+multiple fresh GitHub runners and Release asset uploads returned HTTP 500/502. Existing stable
+`v1.0.14` remains current. Interactive Settings/Portal/Studio/customer-flow QA was not executed
+because this session had no connected browser and the Windows app-control bridge was unavailable;
+the owner accepted this limitation for closeout. **Next gate: retry the exact Studio release after
+the external GitHub blocker clears, then publish/verify `v1.0.15` and close the goal.**
 
 **Historical prior snapshot:** 2026-09-16
 

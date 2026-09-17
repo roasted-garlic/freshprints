@@ -7,7 +7,7 @@
 | Status | **approved_with_notes** |
 | Candidate | `061a0201495c37adbbb22362bcece7d0da7d3011` plus documented closeout artifacts |
 | DEV target | `fresh-prints-dev` |
-| Production rollout | Explicitly authorized by owner; pending protected PR and deployment execution |
+| Production rollout | Partially complete; protected PR and infrastructure deployed; Studio `v1.0.15` publication blocked by external GitHub failures |
 
 ## Delivered scope
 
@@ -67,12 +67,13 @@ deprecation and the known Firestore emulator expression limit remain documented 
 | Studio settings and allocation pricing UI | **PASS WITH NOTES** | Interactive execution unavailable; owner accepted limitation |
 | Portal pricing projection and cross-origin Working flow | **PASS WITH NOTES** | Interactive execution unavailable; automated/live boundary evidence passed |
 | Park/unpark, queue/unqueue, Add-to-Show, customer link | **PASS WITH NOTES** | Final owner-directed corrective set reviewed; no interactive session evidence |
-| Production smoke | **PENDING ROLLOUT** | Must be recorded in the production rollout artifact |
+| Production smoke | **PASS WITH NOTES** | Rules, exact 25 Functions, Portal revision/traffic, pricing DTO, and unauthenticated boundaries verified; Studio stable publication remains pending |
 
 ## Signoff decision
 
-The managed goal is signed off with notes and may proceed through the explicitly authorized
-protected production rollout. Rollout must record the exact cumulative production delta, Rules
-release, exact 25-function deployment, Portal App Hosting revision/traffic, Studio `v1.0.15`
-workflow and published release, and post-rollout smoke evidence before the workflow is marked
-complete.
+The managed goal is signed off with notes for the implemented behavior and owner-approved
+production infrastructure rollout, but the workflow is not complete. Production Rules, the exact
+25 Functions, and Portal App Hosting are live and smoke-checked. Studio stable `v1.0.15` remains
+blocked by repeated macOS packaging stalls and GitHub Release asset-upload HTTP 500/502 failures;
+the existing stable `v1.0.14` remains current. Completion still requires the eight verified
+`v1.0.15` assets, publication, and final Studio smoke evidence.
