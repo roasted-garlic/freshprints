@@ -5,7 +5,7 @@
 | Date | 2026-09-17 |
 | Reviewer | Codex / Independent Implementation Review |
 | Plan / Formal Review | `2026-09-17-print-request-length-surcharge-and-customer-navigation-*` |
-| Verdict | **Implementation review pass with documented test-environment limitations; ready for Signoff and authorized rollout** |
+| Verdict | **Implementation review pass with documented test-environment limitations; production infrastructure rollout verified; Studio stable publication blocked externally** |
 | Deployment | **DEV deployed; production rollout pending** |
 
 ## Reviewed implementation
@@ -71,3 +71,8 @@ native-app checks were unavailable, but the owner accepted that limitation again
 contracts, typechecks, release lint, packaged build, DEV deployment, live callable projection, and
 unauthenticated-boundary checks. The implementation is ready for Signoff and the explicitly
 authorized protected development-to-production rollout.
+Production PR #101 merged as `e6e7eaf7b47e714414572a986611afa124bb8a8b`; Firestore Rules, the exact
+25 reviewed Functions, and Portal App Hosting build `build-2026-09-17-002` were deployed and
+smoke-checked. The Studio `v1.0.15` workflow did not reach publish: macOS packaging stalled on
+multiple fresh runners and GitHub Release asset uploads returned HTTP 500/502. Keep the goal open
+and retry the exact release workflow after that external blocker clears.

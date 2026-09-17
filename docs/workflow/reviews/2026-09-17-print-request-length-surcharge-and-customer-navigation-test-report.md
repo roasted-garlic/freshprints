@@ -4,7 +4,7 @@
 |---|---|
 | Date | 2026-09-17 |
 | Goal | `print-request-length-surcharge-and-customer-navigation` |
-| Status | **Owner DEV QA closed — approved_with_notes; final rollout in progress** |
+| Status | **Owner DEV QA closed — approved_with_notes; production infrastructure verified; Studio stable publication blocked** |
 | Scope | Amended pricing, allocation snapshot, Portal projection, customer navigation, and cross-origin Customer Print Request corrective |
 
 ## Passing checks
@@ -109,3 +109,14 @@ The owner-authorized DEV Functions allowlist and Firestore Rules were deployed t
 fixture mutation was performed at the time of this report. Storage Rules and indexes were not
 deployed. Owner DEV QA is closed `approved_with_notes`; production rollout remains separately
 tracked by the Signoff and production rollout artifacts.
+
+## Production rollout closeout note
+
+Protected PR #101 merged as production `e6e7eaf7b47e714414572a986611afa124bb8a8b`.
+Production Firestore Rules, the exact reviewed 25 Functions, and Portal App Hosting rollout
+`build-2026-09-17-002` were deployed and smoke-checked successfully. Studio `v1.0.15` was not
+published: repeated production release attempts built Windows successfully, but macOS packaging
+stalled on fresh GitHub runners and GitHub Release asset uploads returned HTTP 500/502. Existing
+stable Studio `v1.0.14` remains current. The goal is blocked only on this external release
+pipeline; no data mutation, migration, backfill, cleanup, secret, IAM, Storage Rules, or index
+change occurred.

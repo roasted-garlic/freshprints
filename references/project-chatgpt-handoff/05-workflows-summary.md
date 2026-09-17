@@ -6,8 +6,10 @@ New Show Allocations snapshot the shared width-plus-length price/weight result. 
 pricing-only projection; ordinary active Working requests are origin-neutral across Portal and
 Studio, with transactional Studio creation, safe parking/unqueue, parked-draft restore, and
 post-queue Portal cart rebinding. The final owner-directed restore/Add-to-Show/cache corrections
-are covered by 145/145 affected contracts. Production rollout is authorized but not yet recorded
-complete; no migration, backfill, or data rewrite is part of the workflow.
+are covered by 145/145 affected contracts. Production PR #101, Rules, exact 25 Functions, and
+Portal App Hosting are deployed and smoke-checked. Studio stable `1.0.15` remains blocked by
+repeated macOS packaging stalls and Release upload HTTP 500/502 failures; no migration, backfill,
+or data rewrite is part of the workflow.
 
 > This is the primary “how the app works” guide for external AI. Prefer this file when explaining customer or staff request flows.
 

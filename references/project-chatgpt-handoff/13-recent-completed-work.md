@@ -1,6 +1,6 @@
 # Recent Completed Work
 
-## 2026-09-17 - Shared length-based show pricing + customer navigation — SIGNOFF COMPLETE (ROLLOUT IN PROGRESS)
+## 2026-09-17 - Shared length-based show pricing + customer navigation — SIGNOFF COMPLETE (PROD INFRASTRUCTURE; STUDIO BLOCKED)
 
 Goal `print-request-length-surcharge-and-customer-navigation` is signed off
 **approved_with_notes** after owner-authorized DEV QA closeout. Shared width-plus-length pricing,
@@ -10,9 +10,12 @@ stable `/users?customerId=...` navigation are delivered. Affected contracts **14
 pricing/regression **40/40**; snapshot totals **8/8**; typechecks and production builds pass.
 Exact 25-function DEV deployment is ACTIVE at hash `9eff4e7503246487859ad354ce53d2f78360b9b5`;
 Firestore Rules released. Interactive browser/native-app QA was unavailable and is explicitly
-accepted as a limitation. Studio version advances to `1.0.15` because `v1.0.14` is already
-published. Protected production rollout is authorized; no migration, backfill, data rewrite,
-secret, IAM, Storage Rules, or index action is in scope.
+accepted as a limitation. Protected PR #101 merged as production
+`e6e7eaf7b47e714414572a986611afa124bb8a8b`; Rules, exact 25 Functions, and Portal build
+`build-2026-09-17-002` are deployed and smoke-checked. Studio `1.0.15` is not published because
+macOS packaging stalled and Release uploads returned HTTP 500/502; stable `1.0.14` remains
+current. No migration, backfill, data rewrite, secret, IAM, Storage Rules, or index action is in
+scope. Retry the exact Studio release after the external blocker clears.
 
 Signoff: `docs/workflow/reviews/2026-09-17-print-request-length-surcharge-and-customer-navigation-signoff.md`.
 

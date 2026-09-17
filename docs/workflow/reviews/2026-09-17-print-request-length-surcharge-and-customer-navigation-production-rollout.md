@@ -3,9 +3,9 @@
 | Field | Value |
 |---|---|
 | Candidate branch | `development` |
-| Candidate SHA | `9bfddc774269930d3271de127f5e7fcf48c45563` |
+| Candidate SHA | Production merge `e6e7eaf7b47e714414572a986611afa124bb8a8b` via protected PR #101 |
 | Comparison | `git diff origin/production...development` after push |
-| Status | **Pre-promotion manifest; protected PR and rollout authorized** |
+| Status | **BLOCKED — production infrastructure rollout complete; Studio stable publication blocked by repeated external GitHub failures** |
 
 ## Exact cumulative production delta
 
@@ -40,7 +40,29 @@ corrections. It was reviewed by runtime surface:
 `unqueueStudioCustomerPrintRequestFromShow`, `updatePortalPrintRequestItemQuantity`,
 `updatePortalStaffArtworkPrintRequestItemSize`.
 
-DEV evidence: all 25 are `ACTIVE` at source hash `9eff4e7503246487859ad354ce53d2f78360b9b5`.
+DEV evidence: all 25 were `ACTIVE` at source hash `9eff4e7503246487859ad354ce53d2f78360b9b5`.
+
+## Execution record
+
+- Protected PR [#101](https://github.com/roasted-garlic/freshprints/pull/101) merged to production as
+  `e6e7eaf7b47e714414572a986611afa124bb8a8b`.
+- Firestore Rules deployed successfully as ruleset `0a4965b5-5996-463f-ad4a-4b06b1bc1830`;
+  Storage Rules and indexes were not changed.
+- The exact 25-function allowlist is deployed to `fresh-prints-prod`; all 25 are `ACTIVE` at
+  production source hash `57b0335ec58fb2cf4c4213101f7a955e65d26483`.
+- Portal App Hosting build `build-2026-09-17-002` is READY at revision
+  `fresh-prints-portal-build-2026-09-17-002` with 100% traffic. Hosted `/` and `/requests` returned
+  HTTP 200 without development markers; protected callable boundaries returned 401 unauthenticated.
+- Studio stable `v1.0.15` is **not published**. Windows builds repeatedly succeeded, but macOS
+  packaging stalled on multiple fresh runners and GitHub Release asset uploads returned HTTP 500/502
+  while saving assets. Existing stable `v1.0.14` remains the rollback/current release. No stable
+  publication is claimed without verified eight-asset draft evidence.
+- No migration, backfill, cleanup, merge, fixture mutation, secret, IAM, Storage Rules, or index
+  action occurred.
+
+The managed goal remains blocked on the external Studio release pipeline. Retry the exact production
+workflow after GitHub macOS packaging and release-asset service recover; then verify all eight assets,
+publish `v1.0.15`, run final production smoke, and update this manifest before closing the goal.
 
 ## Release and rollback references
 

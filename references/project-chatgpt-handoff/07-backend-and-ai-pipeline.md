@@ -7,9 +7,11 @@
   returns only normalized pricing DTO data.
 - Allocation, queue/move/recovery, parking/restore, Portal item mutation, and Studio customer
   creation paths preserve the shared snapshot and origin-neutral Working invariant.
-- Production rollout is authorized through protected PR; no secret/IAM, Storage Rules, indexes,
-  migration, backfill, or data mutation is required. Node.js 20 deprecation remains a documented
-  residual deployment risk.
+- Protected PR #101 merged as production `e6e7eaf7b47e714414572a986611afa124bb8a8b`; the exact
+  25-function set and Rules are deployed, with Portal build `build-2026-09-17-002` verified.
+  Studio `1.0.15` publication is blocked by external macOS packaging/Release upload failures. No
+  secret/IAM, Storage Rules, indexes, migration, backfill, or data mutation is required. Node.js
+  20 deprecation remains a documented residual deployment risk.
 
 ## Print Request count parity + unqueue cache/cancel parity (DEV closed 2026-09-16)
 
