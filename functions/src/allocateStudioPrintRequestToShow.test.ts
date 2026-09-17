@@ -22,6 +22,21 @@ describe("allocateStudioPrintRequestToShow contract", () => {
     assert.match(source, /status: "active"/);
   });
 
+  it("restores a parked Working draft the same way Portal queue does", () => {
+    const source = readFileSync(
+      path.join(path.dirname(fileURLToPath(import.meta.url)), "allocateStudioPrintRequestToShow.ts"),
+      "utf8",
+    );
+    assert.match(source, /readParkedDraftForRestoreInTransaction/);
+    assert.match(source, /applyRestoreParkedDraftWritesInTransaction/);
+    assert.match(source, /clearEditingParkingFields:\s*false/);
+    // Parking fields on the draft are cleared via restore — not wrongly on the editing request alone.
+    assert.doesNotMatch(
+      source,
+      /transaction\.update\(\s*requestRef,\s*\{[^}]*parkedByEditingRequestId:\s*FieldValue\.delete\(\)/s,
+    );
+  });
+
   it("accepts an atomic multi-show plan with positive item quantities", () => {
     const parsed = parseAllocateStudioPrintRequestToShowRequest({
       printRequestId: "request-1",

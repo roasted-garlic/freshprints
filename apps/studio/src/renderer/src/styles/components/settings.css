@@ -227,7 +227,8 @@
 }
 
 .gang-sheet-layout-fields .settings-number-input,
-.gang-sheet-pricing-fields .settings-number-input {
+.gang-sheet-pricing-fields .settings-number-input,
+.gang-sheet-length-surcharge-fields .settings-number-input {
   max-width: none;
   width: 100%;
 }
@@ -258,6 +259,20 @@
 .gang-sheet-pricing-fields label {
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
+}
+
+.gang-sheet-length-surcharge-fields {
+  display: grid;
+  gap: var(--space-2) var(--space-3);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.gang-sheet-length-surcharge-fields label {
+  color: var(--color-text-secondary);
+  display: grid;
+  gap: var(--space-1);
+  font-size: var(--font-size-sm);
+  min-width: 0;
 }
 
 .settings-section-actions {
@@ -2308,7 +2323,8 @@
 }
 @media (max-width: 40rem) {
   .gang-sheet-layout-fields,
-  .gang-sheet-pricing-fields {
+  .gang-sheet-pricing-fields,
+  .gang-sheet-length-surcharge-fields {
     grid-template-columns: 1fr;
   }
 

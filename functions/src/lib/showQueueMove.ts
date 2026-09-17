@@ -20,6 +20,7 @@ import { withoutUndefinedFields } from "./firestoreDocument";
 import { adminDb } from "./admin";
 import { recomputeAndPersistQueueTab } from "./printRequestQueueTab";
 import { failedPrecondition, invalidArgument } from "./errors";
+import type { ShowAllocationPricingSnapshot } from "../../../packages/shared/src/types/showAllocation/showAllocationPricing.types";
 
 const MOVE_APPLICATIONS_COLLECTION = "showQueueMoveApplications";
 
@@ -47,6 +48,7 @@ export interface MoveAllocationFull extends ShowQueueMoveAllocationSnapshot {
   printHeightInches?: number;
   sizeLabel?: string;
   notes?: string;
+  pricingSnapshot?: ShowAllocationPricingSnapshot;
 }
 
 function readOptionalString(value: unknown): string | undefined {
@@ -55,6 +57,20 @@ function readOptionalString(value: unknown): string | undefined {
 
 function readOptionalNumber(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function readPricingSnapshot(value: unknown): ShowAllocationPricingSnapshot | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const data = value as Record<string, unknown>;
+  if (
+    typeof data.policyVersion !== "string" ||
+    typeof data.widthTier !== "string" ||
+    typeof data.basePriceUsd !== "number" ||
+    typeof data.lengthTier !== "string" ||
+    typeof data.lengthSurchargeUsd !== "number" ||
+    typeof data.unitPriceUsd !== "number"
+  ) return undefined;
+  return data as unknown as ShowAllocationPricingSnapshot;
 }
 
 function toShowInput(show: LoadedMoveShow): ShowQueueMoveShowInput {
@@ -98,6 +114,7 @@ function mapAllocationDoc(
     printHeightInches: readOptionalNumber(data.printHeightInches),
     sizeLabel: readOptionalString(data.sizeLabel),
     notes: readOptionalString(data.notes),
+    pricingSnapshot: readPricingSnapshot(data.pricingSnapshot),
     status: typeof data.status === "string" ? data.status : "canceled",
   };
 }
@@ -226,6 +243,7 @@ function cloneAllocationForMove(input: {
     printHeightInches: input.sourceAllocation.printHeightInches,
     sizeLabel: input.sourceAllocation.sizeLabel,
     notes: input.sourceAllocation.notes,
+    pricingSnapshot: input.sourceAllocation.pricingSnapshot,
     status: "pending",
     movedFromAllocationId: input.sourceAllocation.id,
     addedBy: input.actorId,

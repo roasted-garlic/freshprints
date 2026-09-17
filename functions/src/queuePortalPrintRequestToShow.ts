@@ -53,6 +53,7 @@ import {
   readParkedDraftForRestoreInTransaction,
 } from "./lib/portalContinuableParking";
 import { getPortalQueueTransactionBlockReason } from "./lib/portalQueueTransactionEligibility";
+import { buildShowAllocationPricingSnapshot, loadGangSheetPricingForTransaction } from "./lib/gangSheetPricingSnapshot";
 
 function mapHttpsError(error: unknown): never {
   if (error instanceof Error && "code" in error) {
@@ -562,6 +563,7 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
           .collection("showAllocations")
           .where("printRequestId", "==", payload.printRequestId),
       );
+      const pricing = await loadGangSheetPricingForTransaction(transaction, adminDb);
       // Reads before writes: re-read customer uploads so successful queue can advance
       // catalogReviewStatus not_eligible → pending_staff_review in the same TX.
       const freshUploadSnaps = await Promise.all(
@@ -740,6 +742,11 @@ export const queuePortalPrintRequestToShow = onCall(async (request): Promise<Que
             printWidthInches: line.item.printWidthInches,
             printHeightInches: line.item.printHeightInches,
             sizeLabel: line.item.sizeLabel,
+            pricingSnapshot: buildShowAllocationPricingSnapshot({
+              printWidthInches: line.item.printWidthInches,
+              printHeightInches: line.item.printHeightInches,
+              pricing,
+            }),
             status: "pending",
             addedBy: userId,
             updatedBy: userId,

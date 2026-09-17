@@ -56,6 +56,33 @@ describe("showAllocationDollarTotals", () => {
     assert.equal(total, 2);
   });
 
+  it("prefers an immutable allocation pricing snapshot over current settings", () => {
+    const total = calculateShowAllocationGroupPriceUsd(
+      [
+        {
+          printWidthInches: 5,
+          printHeightInches: 21,
+          allocatedQuantity: 3,
+          status: "queued",
+          pricingSnapshot: {
+            policyVersion: "width-four-tier-length-surcharge-v1",
+            widthTier: "standard_full",
+            basePriceUsd: 2,
+            lengthTier: "extra_long",
+            lengthSurchargeUsd: 2,
+            unitPriceUsd: 4,
+          },
+        },
+      ],
+      {
+        ...DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG,
+        standardFullSize: { priceUsd: 99, weightOz: 0.75 },
+      },
+    );
+
+    assert.equal(total, 12);
+  });
+
   it("returns null when only canceled allocations exist", () => {
     assert.equal(
       calculateShowAllocationGroupPriceUsd(

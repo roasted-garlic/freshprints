@@ -25,6 +25,7 @@ import {
   filterPortalEditableContinuablePrintRequests,
 } from '@fresh-prints/shared/utils/portalPrintRequestEditability';
 import {
+  filterPortalActiveEditablePrintRequests,
   selectPortalActiveEditablePrintRequest,
   filterPortalParkedDrafts,
   isPortalParkedDraft,
@@ -39,6 +40,7 @@ import {
 import { usePrintRequestCreationFlow } from '../hooks/usePrintRequestCreationFlow';
 import { useWorkingCurrentRequestItems } from '../hooks/useWorkingCurrentRequestItems';
 import { portalPrintRequestService } from '../services/portalPrintRequestService';
+import { shouldTrustEnsuredWorkingRequestId } from '../utils/ensureWorkingRequestTrust';
 import type { PortalRequestDetailFrom } from '../utils/portalRequestDetailReturn';
 import type { CustomerUploadDocSummary } from '../../customer-uploads/services/customerUploadService';
 import type { PortalRequestDesignSummary } from '../hooks/useWorkingCurrentRequestItems';
@@ -268,8 +270,9 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
 
   const resetWorkingCart = useCallback(() => {
     clearEnsuredWorkingRequest();
+    setSelectedWorkingRequestId(null);
     resetWorkingCartItems();
-  }, [clearEnsuredWorkingRequest, resetWorkingCartItems]);
+  }, [clearEnsuredWorkingRequest, resetWorkingCartItems, setSelectedWorkingRequestId]);
 
   const ensureWorkingPrintRequestId = useCallback(async (): Promise<string> => {
     if (workingRequest?.id) {
@@ -277,8 +280,29 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
       return workingRequest.id;
     }
 
-    if (ensuredWorkingRequestIdRef.current) {
+    const activeEditableRequestIds = filterPortalActiveEditablePrintRequests(
+      portalEditableContinuableRequests,
+    ).map((request) => request.id);
+    const hasInFlightCreate =
+      Boolean(ensureWorkingPromiseRef.current) || isEnsuringWorkingRequest;
+    const canTrustEnsured = shouldTrustEnsuredWorkingRequestId({
+      ensuredId: ensuredWorkingRequestIdRef.current,
+      workingRequestId: workingRequest?.id ?? null,
+      pendingWorkingRequestId,
+      activeEditableRequestIds,
+      hasInFlightCreate,
+    });
+
+    if (canTrustEnsured && ensuredWorkingRequestIdRef.current) {
       return ensuredWorkingRequestIdRef.current;
+    }
+
+    // Drop a stale ensured id (queued/active, archived, etc.) so Add creates a fresh Working request.
+    if (ensuredWorkingRequestIdRef.current) {
+      ensuredWorkingRequestIdRef.current = null;
+    }
+    if (pendingWorkingRequestId) {
+      setPendingWorkingRequestId(null);
     }
 
     if (ensureWorkingPromiseRef.current) {
@@ -304,7 +328,13 @@ export function PortalPrintRequestProvider({ children }: { children: ReactNode }
 
     ensureWorkingPromiseRef.current = createPromise;
     return createPromise;
-  }, [createPrintRequest, workingRequest?.id]);
+  }, [
+    createPrintRequest,
+    isEnsuringWorkingRequest,
+    pendingWorkingRequestId,
+    portalEditableContinuableRequests,
+    workingRequest?.id,
+  ]);
 
   const {
     actionError,

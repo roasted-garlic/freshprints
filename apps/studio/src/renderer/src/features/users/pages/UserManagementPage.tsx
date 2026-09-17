@@ -1,5 +1,6 @@
 import { RefreshCw } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import { Button } from "../../../shared/components/Button";
 import { DismissibleSuccessAlert } from "../../../shared/components/DismissibleSuccessAlert";
@@ -37,6 +38,7 @@ import type { Customer } from "@fresh-prints/shared/types/customer/customer.type
 type UsersDirectoryTab = "staff" | "customers";
 
 export function UserManagementPage() {
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { error, isLoading, reloadUsers, users } = useTeamUsers();
   const {
@@ -78,6 +80,16 @@ export function UserManagementPage() {
     const visibleCustomers = filterCustomersByVisibilityTab(customers, customerVisibilityTab);
     return filterCustomers(visibleCustomers, customerSearchQuery);
   }, [customerSearchQuery, customerVisibilityTab, customers]);
+
+  useEffect(() => {
+    const customerId = searchParams.get("customerId")?.trim();
+    if (!customerId) return;
+    const customer = customers.find((candidate) => candidate.id === customerId);
+    if (!customer) return;
+    setDirectoryTab("customers");
+    setCustomerVisibilityTab(customer.isDeleted === true ? "closed" : "active");
+    setCustomerSearchQuery(customer.username?.trim() || customer.displayName);
+  }, [customers, searchParams]);
 
   const canManageUsers = permissionService.canManageUsers(user);
   const canTombstoneCustomer = permissionService.canTombstoneCustomerAccount(user);

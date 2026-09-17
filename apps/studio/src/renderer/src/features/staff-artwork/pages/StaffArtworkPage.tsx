@@ -54,6 +54,7 @@ import { SendStaffArtworkToAiReviewConfirmDialog } from "../components/SendStaff
 import { staffArtworkService } from "../services/staffArtworkService";
 import { generateStaffArtworkTitle } from "../utils/generateStaffArtworkTitle";
 import { suggestDarkArtworkBackgroundFromObjectUrl } from "../utils/suggestDarkArtworkBackgroundFromObjectUrl";
+import { designDerivativeUrlService } from "../../designs/services/designDerivativeUrlService";
 
 type UploadItemStatus = "queued" | "uploading" | "processing" | "done" | "error";
 type ArtworkBackgroundPreset = "grey" | "lightBlack";
@@ -1093,6 +1094,10 @@ export function StaffArtworkPage() {
     if (!user) return;
     if (removingIdsRef.current.has(artworkId)) return;
 
+    const artworkSnapshot =
+      artworks.find((entry) => entry.id === artworkId) ??
+      null;
+
     setConfirmingDeleteId(null);
     removingIdsRef.current.add(artworkId);
     setRemovingIds((previous) => {
@@ -1121,6 +1126,17 @@ export function StaffArtworkPage() {
       await animationDone;
       setLightboxArtworkId((current) => (current === artworkId ? null : current));
       setArtworks((current) => current.filter((entry) => entry.id !== artworkId));
+      setPreviewUrls((current) => {
+        const next = { ...current };
+        delete next[artworkId];
+        return next;
+      });
+      if (artworkSnapshot?.previewStoragePath) {
+        designDerivativeUrlService.clearCache(artworkSnapshot.previewStoragePath);
+      }
+      if (artworkSnapshot?.thumbnailStoragePath) {
+        designDerivativeUrlService.clearCache(artworkSnapshot.thumbnailStoragePath);
+      }
       setRemovingIds((previous) => {
         const next = new Set(previous);
         next.delete(artworkId);
@@ -1131,6 +1147,11 @@ export function StaffArtworkPage() {
       await deleteWork;
       const latest = await staffArtworkService.list(user, { fromServer: true });
       setArtworks(latest.filter((entry) => entry.id !== artworkId));
+      setPreviewUrls((current) => {
+        const next = { ...current };
+        delete next[artworkId];
+        return next;
+      });
     } catch (cause) {
       const message =
         cause && typeof cause === "object" && "message" in cause && typeof cause.message === "string"

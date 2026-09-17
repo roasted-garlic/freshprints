@@ -71,4 +71,15 @@ describe("DesignDerivativeUrlCache", () => {
     cache.clear();
     assert.equal(cache.getResolvedUrl("/thumbnails/design-2.webp"), undefined);
   });
+
+  it("clears path and versioned path@ keys together", () => {
+    const cache = new DesignDerivativeUrlCache();
+    cache.setResolvedUrl("/previews/design-1.webp", "url-a");
+    cache.setResolvedUrl("/previews/design-1.webp@123", "url-b");
+    cache.setResolvedUrl("/previews/other.webp", "url-c");
+    cache.clearPrefix("/previews/design-1.webp");
+    assert.equal(cache.getResolvedUrl("/previews/design-1.webp"), undefined);
+    assert.equal(cache.getResolvedUrl("/previews/design-1.webp@123"), undefined);
+    assert.equal(cache.getResolvedUrl("/previews/other.webp"), "url-c");
+  });
 });

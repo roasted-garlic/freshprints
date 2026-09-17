@@ -34,10 +34,10 @@ describe("portalPrintRequestEditability", () => {
     assert.equal(isPortalEditablePrintRequest(makeRequest({ status: "editing" })), true);
   });
 
-  it("allows only Editing Studio-created customer requests", () => {
+  it("allows Working and Editing Studio-created customer requests", () => {
     assert.equal(
       isPortalEditablePrintRequest(makeRequest({ requestOrigin: "studio_customer", status: "draft" })),
-      false,
+      true,
     );
     assert.equal(
       isPortalEditablePrintRequest(makeRequest({ requestOrigin: "studio_customer", status: "editing" })),
@@ -54,11 +54,11 @@ describe("portalPrintRequestEditability", () => {
 
     assert.deepEqual(
       filterPortalEditableContinuablePrintRequests(requests).map((request) => request.id),
-      ["portal"],
+      ["portal", "studio"],
     );
     assert.deepEqual(
       filterLegacyContinuablePrintRequests(requests).map((request) => request.id),
-      ["studio"],
+      [],
     );
   });
 
@@ -79,10 +79,10 @@ describe("portalPrintRequestEditability", () => {
     assert.equal(selectPortalWorkingPrintRequest([older, newer], null)?.id, "newer");
   });
 
-  it("explains that Studio-created requests require Editing before Portal edits", () => {
+  it("does not impose a provenance-only Studio draft restriction", () => {
     assert.match(
       explainPortalPrintRequestEditability(makeRequest({ requestOrigin: "studio_customer", status: "draft" })),
-      /Editing/,
+      /cannot be edited|temporarily parked/i,
     );
   });
 
@@ -99,7 +99,7 @@ describe("portalPrintRequestEditability", () => {
       makeRequest({ id: "portal" }),
       makeRequest({ id: "studio", requestOrigin: "studio_customer", status: "draft" }),
     ];
-    assert.equal(countPortalEditableContinuableRequests(requests), 1);
+    assert.equal(countPortalEditableContinuableRequests(requests), 2);
   });
 
   it("selectPortalWorkingPrintRequest excludes parked drafts", () => {

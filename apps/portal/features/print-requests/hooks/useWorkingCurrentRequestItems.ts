@@ -94,6 +94,13 @@ export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | nul
   const pendingRemovedItemIdsRef = useRef(new Set<string>());
   /** Monotonic epoch so a slower list response cannot overwrite a newer one. */
   const reloadEpochRef = useRef(0);
+  /**
+   * Bumped by `resetWorkingCart` so the ownership effect rebinds when React still has a
+   * working request. Queue-to-show can clear the cart after a live restore already selected
+   * the parked draft — without this token, `workingRequest.id` does not change and items
+   * stay empty with `hydratedWorkingRequestId === null` (Library Add disabled) until refresh.
+   */
+  const [cartResetGeneration, setCartResetGeneration] = useState(0);
 
   const filterPendingRemoved = useCallback((nextItems: PrintRequestItem[]) => {
     const pending = pendingRemovedItemIdsRef.current;
@@ -147,6 +154,7 @@ export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | nul
     setItemsError(null);
     setIsLoadingItems(false);
     setHydratedWorkingRequestId(null);
+    setCartResetGeneration((current) => current + 1);
   }, []);
 
   const reloadWorkingItems = useCallback(
@@ -254,9 +262,14 @@ export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | nul
       } catch (error) {
         if (epoch === reloadEpochRef.current) {
           setItemsError(error instanceof Error ? error.message : 'Unable to load Current Request items.');
+          // Terminal failure must mark the request hydrated so Library Add can show retry /
+          // exhausted messaging instead of staying disabled forever (`isReady` false).
+          setHydratedWorkingRequestId(linkedId);
         }
       } finally {
-        if (!options?.silent && epoch === reloadEpochRef.current) {
+        // Always clear loading for the latest epoch — a silent follow-up reload must not leave
+        // a prior non-silent load stuck with `isLoadingItems === true` (Add stays disabled).
+        if (epoch === reloadEpochRef.current) {
           setIsLoadingItems(false);
         }
       }
@@ -290,9 +303,16 @@ export function useWorkingCurrentRequestItems(workingRequest: PrintRequest | nul
       setIsLoadingItems(true);
     }
 
+    // External `resetWorkingCart()` (queue success) clears the ref while `workingRequest` may
+    // already be the restored parked draft. Treat that as a fresh bind and reload.
+    if (!previousId && nextId) {
+      setHydratedWorkingRequestId(undefined);
+      setIsLoadingItems(true);
+    }
+
     workingRequestIdRef.current = nextId;
     void reloadWorkingItems();
-  }, [reloadWorkingItems, resetWorkingCart, workingRequest?.id]);
+  }, [cartResetGeneration, reloadWorkingItems, resetWorkingCart, workingRequest?.id]);
 
   // Keep the active working request and its items current without polling. The one-shot reload
   // above remains the initial/fallback load; this bounded listener owns subsequent Studio edits.

@@ -63,6 +63,8 @@ import {
 } from "@fresh-prints/shared/utils/staffGangSheet";
 import type { ShowProductionResolutionKind } from "@fresh-prints/shared/types/showProductionRecovery/showProductionRecovery.types";
 import type { ShowAllocation } from "@fresh-prints/shared/types/showAllocation/showAllocation.types";
+import type { ShowAllocationPricingSnapshot } from "@fresh-prints/shared/types/showAllocation/showAllocationPricing.types";
+import { buildGangSheetPricingSnapshot } from "@fresh-prints/shared/utils/gangSheetPricingSnapshot";
 import type { ShowAllocationStatus } from "@fresh-prints/shared/types/showAllocation/showAllocation.enums";
 import { findMatchingUpcomingShow } from "../utils/upcomingShowUpsert";
 import { canStartShowPrinting, canAllocatePrintRequestToShow, PAST_SHOW_READ_ONLY_MESSAGE } from "../utils/groupShowsByUpcomingPast";
@@ -80,6 +82,7 @@ import {
   type ShowCompletionReconciliationResult,
 } from "../utils/showCompletionReconciliation";
 import { showQueueSettingsService } from "./showQueueSettingsService";
+import { gangSheetSettingsService } from "../../settings/services/gangSheetSettingsService";
 import { ProductionDiagnosticWarningDeduper } from "../utils/productionDiagnosticWarningDeduper";
 import { shouldTransitionActiveRequestToEditing } from "@fresh-prints/shared/utils/showProductionRecovery";
 import { parseWhatnotShowUrl } from "@fresh-prints/shared/utils/whatnotShowUrl";
@@ -308,6 +311,7 @@ export interface ShowAllocationDocumentData extends DocumentData {
   printWidthInches?: unknown;
   printHeightInches?: unknown;
   sizeLabel?: unknown;
+  pricingSnapshot?: unknown;
   notes?: unknown;
   status?: unknown;
   addedBy?: unknown;
@@ -390,6 +394,28 @@ function isShowProductionResolutionKind(value: unknown): value is ShowProduction
 
 function isShowAllocationStatus(value: unknown): value is ShowAllocationStatus {
   return typeof value === "string" && VALID_ALLOCATION_STATUSES.includes(value as ShowAllocationStatus);
+}
+
+function mapShowAllocationPricingSnapshot(value: unknown): ShowAllocationPricingSnapshot | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const data = value as Record<string, unknown>;
+  if (
+    typeof data.policyVersion !== "string" ||
+    (data.widthTier !== "pocket" &&
+      data.widthTier !== "standard_full_size" &&
+      data.widthTier !== "standard_oversized" &&
+      data.widthTier !== "extra_oversized") ||
+    typeof data.basePriceUsd !== "number" ||
+    (data.lengthTier !== "standard_length" &&
+      data.lengthTier !== "long" &&
+      data.lengthTier !== "extra_long" &&
+      data.lengthTier !== "extended") ||
+    typeof data.lengthSurchargeUsd !== "number" ||
+    typeof data.unitPriceUsd !== "number"
+  ) {
+    return undefined;
+  }
+  return data as unknown as ShowAllocationPricingSnapshot;
 }
 
 export interface ShowTimerActionResult {
@@ -591,6 +617,7 @@ export function mapShowAllocationData(allocationId: string, data: ShowAllocation
     printWidthInches: typeof data.printWidthInches === "number" ? data.printWidthInches : undefined,
     printHeightInches: typeof data.printHeightInches === "number" ? data.printHeightInches : undefined,
     sizeLabel: typeof data.sizeLabel === "string" ? data.sizeLabel : undefined,
+    pricingSnapshot: mapShowAllocationPricingSnapshot(data.pricingSnapshot),
     notes: typeof data.notes === "string" ? data.notes : undefined,
     status: data.status,
     addedBy: data.addedBy,
@@ -1560,6 +1587,7 @@ export const upcomingShowService = {
     }
 
     const allocationRef = doc(firestoreCollectionService.getShowAllocationsCollection());
+    const effectiveGangSheetSettings = await gangSheetSettingsService.getSettings();
     const sourceFields = buildShowAllocationSourceFields({
       item: {
         sourceType: requestItem.sourceType,
@@ -1585,6 +1613,11 @@ export const upcomingShowService = {
       printWidthInches: requestItem.printWidthInches,
       printHeightInches: requestItem.printHeightInches,
       sizeLabel: requestItem.sizeLabel,
+      pricingSnapshot: buildGangSheetPricingSnapshot({
+        printWidthInches: requestedSize.printWidthInches,
+        printHeightInches: requestedSize.printHeightInches,
+        pricing: effectiveGangSheetSettings.sectionPricing,
+      }),
       status: "pending" as const,
       addedBy: caller.id,
       updatedBy: caller.id,
@@ -2681,6 +2714,7 @@ export const upcomingShowService = {
         printWidthInches: allocation.printWidthInches,
         printHeightInches: allocation.printHeightInches,
         sizeLabel: allocation.sizeLabel,
+        pricingSnapshot: allocation.pricingSnapshot,
         notes: allocation.notes,
         status: "pending" as const,
         addedBy: caller.id,

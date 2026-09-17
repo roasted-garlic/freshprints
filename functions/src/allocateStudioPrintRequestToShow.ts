@@ -17,6 +17,11 @@ import { adminDb } from "./lib/admin";
 import { failedPrecondition, internal, invalidArgument, unauthenticated } from "./lib/errors";
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
 import { recomputeAndPersistQueueTab } from "./lib/printRequestQueueTab";
+import { buildShowAllocationPricingSnapshot, loadGangSheetPricingForTransaction } from "./lib/gangSheetPricingSnapshot";
+import {
+  applyRestoreParkedDraftWritesInTransaction,
+  readParkedDraftForRestoreInTransaction,
+} from "./lib/portalContinuableParking";
 
 export interface AllocateStudioPrintRequestToShowLeg {
   upcomingShowId: string;
@@ -242,10 +247,11 @@ export const allocateStudioPrintRequestToShow = onCall(
       const now = new Date();
 
       const result = await adminDb.runTransaction(async (transaction) => {
-        const [requestSnap, itemsSnap, requestAllocationsSnap] = await Promise.all([
+        const [requestSnap, itemsSnap, requestAllocationsSnap, pricing] = await Promise.all([
           transaction.get(requestRef),
           transaction.get(adminDb.collection("printRequestItems").where("printRequestId", "==", payload.printRequestId)),
           transaction.get(adminDb.collection("showAllocations").where("printRequestId", "==", payload.printRequestId)),
+          loadGangSheetPricingForTransaction(transaction, adminDb),
         ]);
 
         if (!requestSnap.exists) {
@@ -294,16 +300,32 @@ export const allocateStudioPrintRequestToShow = onCall(
         );
         const remainingTotal = [...remainingByItemId.values()].reduce((sum, quantity) => sum + quantity, 0);
 
+        // All reads before writes: restore the parked Working draft when this Editing request
+        // returns to a show (Portal queue already does this; Studio allocate must too).
+        const parksDraftPrintRequestId =
+          typeof requestData.parksDraftPrintRequestId === "string"
+            ? requestData.parksDraftPrintRequestId
+            : undefined;
+        const parkedRestoreRead = await readParkedDraftForRestoreInTransaction(
+          transaction,
+          requestRef,
+          parksDraftPrintRequestId,
+        );
+
         // A retry after a committed transaction, or a DEV row stranded by the former client loop,
         // is a safe repair: no new allocation is fabricated when every item is already covered.
         const repairedExistingAllocationState = status === "editing" && activeAllocations.length > 0;
         if (remainingTotal === 0) {
-          if (status !== "active" || repairedExistingAllocationState || requestData.parksDraftPrintRequestId) {
+          if (status !== "active" || repairedExistingAllocationState || parksDraftPrintRequestId) {
+            applyRestoreParkedDraftWritesInTransaction(transaction, {
+              editingRequestRef: requestRef,
+              restoreRead: parkedRestoreRead,
+              actorId: caller.id,
+              clearEditingParkingFields: false,
+            });
             transaction.update(requestRef, {
               status: "active",
               parksDraftPrintRequestId: FieldValue.delete(),
-              parkedByEditingRequestId: FieldValue.delete(),
-              parkedAt: FieldValue.delete(),
               needsStaffRequeueAt: FieldValue.delete(),
               needsStaffRequeueSourceShowId: FieldValue.delete(),
               needsStaffRequeueSourceShowTitleSnapshot: FieldValue.delete(),
@@ -315,7 +337,10 @@ export const allocateStudioPrintRequestToShow = onCall(
           return {
             printRequestId: payload.printRequestId,
             allocationIds: [],
-            totalAllocatedQuantity: 0,
+            totalAllocatedQuantity: activeAllocations.reduce(
+              (sum, allocation) => sum + allocation.allocatedQuantity,
+              0,
+            ),
             remainingUnallocatedQuantity: 0,
             isFullyQueued: true,
             repairedExistingAllocationState,
@@ -433,6 +458,11 @@ export const allocateStudioPrintRequestToShow = onCall(
                 printWidthInches: item.printWidthInches,
                 printHeightInches: item.printHeightInches,
                 sizeLabel: item.sizeLabel,
+                pricingSnapshot: buildShowAllocationPricingSnapshot({
+                  printWidthInches: item.printWidthInches,
+                  printHeightInches: item.printHeightInches,
+                  pricing,
+                }),
                 status: "pending",
                 ...(payload.overrideShowCapacity === true ? { showCapacityOverride: true } : {}),
                 addedBy: caller.id,
@@ -453,12 +483,18 @@ export const allocateStudioPrintRequestToShow = onCall(
           });
         }
 
+        // Restore parked draft (writes only — read completed above).
+        applyRestoreParkedDraftWritesInTransaction(transaction, {
+          editingRequestRef: requestRef,
+          restoreRead: parkedRestoreRead,
+          actorId: caller.id,
+          clearEditingParkingFields: false,
+        });
+
         transaction.update(requestRef, {
           status: "active",
           itemCount: items.length,
           parksDraftPrintRequestId: FieldValue.delete(),
-          parkedByEditingRequestId: FieldValue.delete(),
-          parkedAt: FieldValue.delete(),
           needsStaffRequeueAt: FieldValue.delete(),
           needsStaffRequeueSourceShowId: FieldValue.delete(),
           needsStaffRequeueSourceShowTitleSnapshot: FieldValue.delete(),

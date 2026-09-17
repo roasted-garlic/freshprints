@@ -11,7 +11,10 @@ import {
   computeGroupedSectionLabelBandHeightPx,
   resolveGroupedSectionLabelFontSizePx,
 } from "@fresh-prints/shared/utils/gangSheetLabelRendering";
-import { calculateGangSheetCustomerSectionSummary } from "@fresh-prints/shared/utils/gangSheetCustomerSectionSummary";
+import {
+  buildGangSheetCustomerSectionSummaryLines,
+  calculateGangSheetCustomerSectionSummary,
+} from "@fresh-prints/shared/utils/gangSheetCustomerSectionSummary";
 import {
   buildGroupedGangSheetSectionHeading,
   buildGroupedGangSheetSectionContinuedHeading,
@@ -87,6 +90,8 @@ interface PendingGroupedSheet {
   group: ProductionGroup;
   sectionHeading: string;
   sheet: NestedSheet;
+  summaryLines: string[];
+  sectionLabelBandHeightPx: number;
 }
 
 export async function composeGroupedGangSheetSheets(input: {
@@ -108,10 +113,6 @@ export async function composeGroupedGangSheetSheets(input: {
   const showLabelBandHeightPx = computeGangSheetLabelBandHeightPx(input.request.labelFontSizePx);
   const sectionHeadingFontSizePx = input.request.labelFontSizePx;
   const sectionSummaryFontSizePx = resolveGroupedSectionLabelFontSizePx(input.request.labelFontSizePx);
-  const sectionLabelBandHeightPx = computeGroupedSectionLabelBandHeightPx(
-    sectionHeadingFontSizePx,
-    sectionSummaryFontSizePx,
-  );
 
   const sharpApi = await loadSharpModule();
   const rotatedPngCache = new Map<string, Buffer>();
@@ -130,6 +131,20 @@ export async function composeGroupedGangSheetSheets(input: {
       input.spacingPx,
       input.maxSheetHeightPx,
     );
+    const sectionSummary = calculateGangSheetCustomerSectionSummary(
+      group.sourceImages.map((image) => ({
+        printWidthInches: image.printWidthInches ?? image.targetWidthPx / EXPORT_DPI,
+        printHeightInches: image.printHeightInches ?? image.targetHeightPx / EXPORT_DPI,
+        quantity: image.quantity,
+      })),
+      input.request.sectionPricing,
+    );
+    const summaryLines = buildGangSheetCustomerSectionSummaryLines(sectionSummary);
+    const sectionLabelBandHeightPx = computeGroupedSectionLabelBandHeightPx(
+      sectionHeadingFontSizePx,
+      sectionSummaryFontSizePx,
+      summaryLines.length,
+    );
 
     for (const [groupSheetOffset, sheet] of nestResult.sheets.entries()) {
       const sectionHeading =
@@ -137,7 +152,13 @@ export async function composeGroupedGangSheetSheets(input: {
           ? buildGroupedGangSheetSectionContinuedHeading(group.heading)
           : group.heading;
 
-      pendingSheets.push({ group, sectionHeading, sheet });
+      pendingSheets.push({
+        group,
+        sectionHeading,
+        sheet,
+        summaryLines,
+        sectionLabelBandHeightPx,
+      });
     }
   }
 
@@ -160,7 +181,7 @@ export async function composeGroupedGangSheetSheets(input: {
   const composedSheets: Array<{ fileName: string; lengthInches: number; heightPx: number; buffer: Buffer }> = [];
 
   for (const [sheetIndex, pending] of pendingSheets.entries()) {
-    const { group, sectionHeading, sheet } = pending;
+    const { group, sectionHeading, sheet, summaryLines, sectionLabelBandHeightPx } = pending;
     const sheetNumber = sheetIndex + 1;
     const sheetHeightPx = showLabelBandHeightPx + sectionLabelBandHeightPx + sheet.sheetHeightPx;
     const lengthInches = sheetHeightPx / EXPORT_DPI;
@@ -171,17 +192,9 @@ export async function composeGroupedGangSheetSheets(input: {
       bandHeightPx: showLabelBandHeightPx,
       labelFontSizePx: input.request.labelFontSizePx,
     });
-    const sectionSummary = calculateGangSheetCustomerSectionSummary(
-      group.sourceImages.map((image) => ({
-        printWidthInches: image.printWidthInches ?? image.targetWidthPx / EXPORT_DPI,
-        printHeightInches: image.printHeightInches ?? image.targetHeightPx / EXPORT_DPI,
-        quantity: image.quantity,
-      })),
-      input.request.sectionPricing,
-    );
     const sectionLabelSvg = buildGroupedSectionHeadingSvg({
       heading: sectionHeading,
-      summaryLines: [sectionSummary.priceLine, sectionSummary.weightLine],
+      summaryLines,
       sheetWidthPx: input.sheetWidthPx,
       bandHeightPx: sectionLabelBandHeightPx,
       headingFontSizePx: sectionHeadingFontSizePx,

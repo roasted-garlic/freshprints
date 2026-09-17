@@ -1297,6 +1297,30 @@ a.portal-sidebar-sign-out:hover {
   max-width: min(100%, 32rem);
 }
 
+.portal-show-size-tiers-modal > .modal-header,
+.portal-show-size-tiers-modal > .modal-footer {
+  padding: var(--space-3) var(--space-4);
+}
+
+.portal-show-size-tiers-modal > .modal-body {
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+}
+
+.portal-show-size-tiers-section {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.portal-show-size-tiers-section-heading {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.portal-show-size-tiers-section-heading .portal-eyebrow {
+  margin: 0;
+}
+
 .portal-show-size-tiers-table-wrap {
   -webkit-overflow-scrolling: touch;
   margin: 0 calc(var(--space-1) * -1);
@@ -1313,7 +1337,7 @@ a.portal-sidebar-sign-out:hover {
 .portal-show-size-tiers-table th,
 .portal-show-size-tiers-table td {
   border-bottom: 1px solid var(--color-border);
-  padding: var(--space-2) var(--space-2);
+  padding: var(--space-1) var(--space-2);
   text-align: left;
   vertical-align: middle;
   white-space: nowrap;
@@ -1338,7 +1362,7 @@ a.portal-sidebar-sign-out:hover {
   .portal-show-size-tiers-table th,
   .portal-show-size-tiers-table td {
     font-size: var(--font-size-sm);
-    padding: var(--space-2) var(--space-2);
+    padding: var(--space-1) var(--space-2);
   }
 }
 

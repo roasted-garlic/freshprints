@@ -1,4 +1,4 @@
-import { DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG } from '@fresh-prints/shared/constants/gangSheetSectionPricingSettings.constants';
+import { DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG, type GangSheetSectionPricingConfig } from '@fresh-prints/shared/constants/gangSheetSectionPricingSettings.constants';
 import type { PrintRequestItem } from '@fresh-prints/shared/types/printRequest/printRequest.types';
 import {
   calculateGangSheetCustomerSectionSummary,
@@ -12,6 +12,7 @@ import {
 export function buildPortalShowPriceCommitmentSummary(
   items: readonly PrintRequestItem[],
   quantityForItem?: (item: PrintRequestItem) => number,
+  pricing: GangSheetSectionPricingConfig = DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG,
 ): GangSheetCustomerSectionSummary | null {
   const units = items
     .map((item) => {
@@ -31,7 +32,7 @@ export function buildPortalShowPriceCommitmentSummary(
   try {
     return calculateGangSheetCustomerSectionSummary(
       units,
-      DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG,
+      pricing,
     );
   } catch {
     return null;

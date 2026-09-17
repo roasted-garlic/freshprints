@@ -90,11 +90,12 @@ test("request totals breakdown includes the canonical size ranges", () => {
     join(here, "../components/PrintRequestCostBreakdownModal.tsx"),
     "utf8",
   );
-  assert.match(source, /TIER_SIZE_RANGES/);
-  assert.match(source, /4" and under/);
-  assert.match(source, /over 4" through 11"/);
-  assert.match(source, /over 11" through 14"/);
-  assert.match(source, /over 14"/);
+  assert.match(source, /lengthLine/);
+  assert.match(source, /GANG_SHEET_PRICING_TIER_SIZE_RANGES/);
+  assert.match(source, /GANG_SHEET_LENGTH_TIER_SIZE_RANGES/);
+  assert.match(source, /By length/);
+  assert.match(source, /additional \$ for taller prints/);
+  assert.match(source, /lengthTierQuantities/);
   assert.match(source, /print-request-cost-breakdown-row-range/);
 });
 

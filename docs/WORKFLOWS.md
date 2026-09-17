@@ -1141,11 +1141,14 @@ filename and rendered sheet label. No `upcomingShows` gang-sheet telemetry or Fi
 written.
 
 All gang-sheet generation surfaces consume the normalized global Gang Sheet Settings resolver.
-The Settings page exposes six layout controls and four fixed-width price/weight tiers; Show Queue
-and Internal Gang Sheet local gang-sheet editors are retired in favor of a link to this page.
-Request Standard output renders exact request-quantity price and weight totals using saved print
-width. The canonical document is `settings/showQueue`, with non-destructive read-only fallback to
-legacy `settings/internalGangSheet` values.
+The Settings page exposes six layout controls, four fixed-width price/weight tiers, and four
+height-based length surcharges; Show Queue and Internal Gang Sheet local gang-sheet editors are
+retired in favor of a link to this page. Request Standard output renders exact request-quantity
+price and weight totals using saved print width and height. The canonical document is
+`settings/showQueue`, with non-destructive read-only fallback to legacy
+`settings/internalGangSheet` values. Pocket requires both dimensions to be at most 4 inches;
+length bands are Standard through 14, Long through 18, Extra Long through 24, and Extended above
+24 inches.
 
 Copy Request creates a new clean Working/draft request and pending items through the trusted
 `copyStudioPrintRequest` transaction. It supports all four Customer/Internal direction pairs,
@@ -1276,6 +1279,9 @@ Distinct Designs use the source-aware identity (`design:`, `upload:`, `staff-art
 fallback namespace), while Items sums finite, non-negative `allocatedQuantity` values. Canceled rows
 remain available for history and requeue/move lineage but never inflate current counters. A
 canceled-only request/show group is explicitly history-only for current counter and price display.
+Price totals prefer each allocation's immutable `pricingSnapshot`; legacy allocations without one
+use the current shared resolver as a compatibility display fallback. Portal's queue acknowledgment
+uses the normalized customer-safe pricing projection rather than raw staff settings.
 
 ## Selected Print Request live sync (Studio ↔ Portal)
 

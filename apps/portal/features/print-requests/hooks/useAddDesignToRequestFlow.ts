@@ -26,6 +26,9 @@ import { portalPrintRequestService } from '../services/portalPrintRequestService
 import { excludeDesignsInWorkingItems } from '../utils/companionSuggestionWorkingItemsFilter';
 import { mapPortalPrintRequestCallableError } from '../utils/mapPortalPrintRequestCallableError';
 import {
+  isPortalPrintRequestNotContinuableError,
+} from '../utils/ensureWorkingRequestTrust';
+import {
   filterPortalActiveEditablePrintRequests,
 } from '@fresh-prints/shared/utils/portalActiveEditablePrintRequest';
 import { resolvePortalWorkingRequestBranch } from '../utils/resolvePortalWorkingRequestBranch';
@@ -344,6 +347,32 @@ export function useAddDesignToRequestFlow({
     }
   }, [workingItems]);
 
+  // After Add-to-Show (or any Working ownership change), cancel coalesced flushes that still
+  // target the departed request id — otherwise an 80ms timer can hit "not in a continuable state".
+  const previousWorkingRequestIdForFlushRef = useRef<string | null>(workingRequest?.id ?? null);
+  useEffect(() => {
+    const nextId = workingRequest?.id ?? null;
+    const previousId = previousWorkingRequestIdForFlushRef.current;
+    previousWorkingRequestIdForFlushRef.current = nextId;
+    if (previousId === nextId) {
+      return;
+    }
+
+    for (const timer of flushTimersRef.current.values()) {
+      clearTimeout(timer);
+    }
+    flushTimersRef.current.clear();
+
+    for (const designId of desiredPrimaryQtyRef.current.keys()) {
+      qtyGenerationRef.current.set(
+        designId,
+        (qtyGenerationRef.current.get(designId) ?? 0) + 1,
+      );
+    }
+    desiredPrimaryQtyRef.current.clear();
+    quantityCallbacksRef.current.clear();
+  }, [workingRequest?.id]);
+
   const isBusy = busyDesignId !== null || isEnsuringWorkingRequest;
 
   const resolveBranch = useCallback(() => {
@@ -464,6 +493,7 @@ export function useAddDesignToRequestFlow({
       userId: string,
       generation: number,
       callbacks?: AddActionCallbacks,
+      options?: { allowContinuableRetry?: boolean },
     ) => {
       if (qtyGenerationRef.current.get(designId) !== generation) {
         return;
@@ -475,6 +505,7 @@ export function useAddDesignToRequestFlow({
 
       flushingDesignIdsRef.current.add(designId);
       const desired = desiredPrimaryQtyRef.current.get(designId);
+      const allowContinuableRetry = options?.allowContinuableRetry !== false;
 
       try {
         if (desired === undefined) {
@@ -535,6 +566,35 @@ export function useAddDesignToRequestFlow({
         // Skip silent reload while settled — optimistic state already matches the write.
         // Reloading here races with rapid follow-up taps and can flash old qty.
       } catch (error: unknown) {
+        if (
+          allowContinuableRetry &&
+          isPortalPrintRequestNotContinuableError(error) &&
+          qtyGenerationRef.current.get(designId) === generation &&
+          desired !== undefined
+        ) {
+          try {
+            const freshId = await ensureWorkingPrintRequestId();
+            if (
+              freshId !== printRequestId &&
+              qtyGenerationRef.current.get(designId) === generation
+            ) {
+              desiredPrimaryQtyRef.current.set(designId, desired);
+              flushingDesignIdsRef.current.delete(designId);
+              await flushDesiredQuantity(
+                designId,
+                freshId,
+                userId,
+                generation,
+                callbacks,
+                { allowContinuableRetry: false },
+              );
+              return;
+            }
+          } catch {
+            // Fall through to the normal failure path below.
+          }
+        }
+
         if (qtyGenerationRef.current.get(designId) === generation) {
           desiredPrimaryQtyRef.current.delete(designId);
           quantityCallbacksRef.current.delete(designId);
@@ -550,18 +610,26 @@ export function useAddDesignToRequestFlow({
           latestGeneration !== generation &&
           desiredPrimaryQtyRef.current.has(designId)
         ) {
-          void flushDesiredQuantity(
-            designId,
-            printRequestId,
-            userId,
-            latestGeneration,
-            quantityCallbacksRef.current.get(designId),
-          );
+          // Re-resolve Working id — the captured printRequestId may be the queued/active one.
+          void ensureWorkingPrintRequestId()
+            .then((freshId) =>
+              flushDesiredQuantity(
+                designId,
+                freshId,
+                userId,
+                latestGeneration,
+                quantityCallbacksRef.current.get(designId),
+              ),
+            )
+            .catch(() => {
+              // Leave desired qty for a later user-driven retry.
+            });
         }
       }
     },
     [
       ensureDesignSummaries,
+      ensureWorkingPrintRequestId,
       patchItemsAndSnapshot,
       syncWorkingItems,
     ],

@@ -469,6 +469,35 @@ export function usePrintRequests(activeTab: PrintRequestListTab, isInternal?: bo
     });
   }, []);
 
+  const patchAllocationTotalsLocally = useCallback(
+    (
+      printRequestId: string,
+      totals: {
+        totalAllocatedQuantity: number;
+        totalInProgressQuantity?: number;
+        totalPrintedQuantity?: number;
+      },
+    ) => {
+      setState((current) => {
+        const existing = current.allocationTotalsByRequestId[printRequestId];
+        return {
+          ...current,
+          allocationTotalsByRequestId: {
+            ...current.allocationTotalsByRequestId,
+            [printRequestId]: {
+              totalAllocatedQuantity: totals.totalAllocatedQuantity,
+              totalInProgressQuantity:
+                totals.totalInProgressQuantity ?? existing?.totalInProgressQuantity ?? 0,
+              totalPrintedQuantity:
+                totals.totalPrintedQuantity ?? existing?.totalPrintedQuantity ?? 0,
+            },
+          },
+        };
+      });
+    },
+    [],
+  );
+
   const patchSummaryLocally = useCallback(
     (printRequestId: string, summary: PrintRequestItemSummary) => {
       setState((current) => ({
@@ -506,6 +535,7 @@ export function usePrintRequests(activeTab: PrintRequestListTab, isInternal?: bo
     ensureRequestLoaded,
     reconcileDeletedOrArchivedRequest,
     patchRequestLocally,
+    patchAllocationTotalsLocally,
     patchSummaryLocally,
     insertCreatedRequestLocally,
   };

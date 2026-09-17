@@ -29,6 +29,10 @@ export interface GangSheetLayoutAndPricingSettingsInput {
   gangSheetStandardOversizedWeightOz?: number;
   gangSheetExtraOversizedPriceUsd?: number;
   gangSheetExtraOversizedWeightOz?: number;
+  lengthSurchargeStandardUsd?: number;
+  lengthSurchargeLongUsd?: number;
+  lengthSurchargeExtraLongUsd?: number;
+  lengthSurchargeExtendedUsd?: number;
   /** Legacy fields are read for fallback only and are no longer editable. */
   gangSheetSectionPriceCutoffInches?: number;
   gangSheetSmallTierPriceUsd?: number;
@@ -144,6 +148,18 @@ export function assertGangSheetLayoutAndPricingSettingsInput(
           ? `${field.label} must be a finite number between $0 and $999.99.`
           : `${field.label} must be a finite number greater than 0 and at most 99.99 oz.`,
       );
+    }
+  }
+
+  const lengthSurchargeFields: Array<{ value: number | undefined; label: string }> = [
+    { value: input.lengthSurchargeStandardUsd, label: "Standard Length surcharge" },
+    { value: input.lengthSurchargeLongUsd, label: "Long surcharge" },
+    { value: input.lengthSurchargeExtraLongUsd, label: "Extra Long surcharge" },
+    { value: input.lengthSurchargeExtendedUsd, label: "Extended surcharge" },
+  ];
+  for (const field of lengthSurchargeFields) {
+    if (field.value !== undefined && !isValidGangSheetTierPriceUsd(field.value)) {
+      throw new Error(`${field.label} must be a finite number between $0 and $999.99.`);
     }
   }
 }

@@ -2,6 +2,7 @@ import type { Timestamp } from "firebase/firestore";
 
 import type { PrintRequestOrigin } from "../printRequest/printRequest.types";
 import type { ShowAllocationStatus } from "./showAllocation.enums";
+import type { ShowAllocationPricingSnapshot } from "./showAllocationPricing.types";
 
 /**
  * Allocates some or all of a Print Request item's quantity to a show/print run. A single
@@ -35,6 +36,7 @@ export interface ShowAllocation {
   printWidthInches?: number;
   printHeightInches?: number;
   sizeLabel?: string;
+  pricingSnapshot?: ShowAllocationPricingSnapshot;
   notes?: string;
   status: ShowAllocationStatus;
   addedBy: string;

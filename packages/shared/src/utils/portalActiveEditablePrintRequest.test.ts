@@ -92,7 +92,7 @@ describe("portalActiveEditablePrintRequest", () => {
       })), false);
     });
 
-    it("allows an unparked Editing Studio-created request", () => {
+    it("allows unparked Working and Editing Studio-created requests", () => {
       assert.equal(isPortalActiveEditablePrintRequest(makeRequest({ 
         requestOrigin: "studio_customer",
         status: "editing",
@@ -100,7 +100,7 @@ describe("portalActiveEditablePrintRequest", () => {
       assert.equal(isPortalActiveEditablePrintRequest(makeRequest({
         requestOrigin: "studio_customer",
         status: "draft",
-      })), false);
+      })), true);
     });
 
     it("rejects internal requests", () => {
@@ -250,14 +250,14 @@ describe("portalActiveEditablePrintRequest", () => {
       assert.equal(countPortalActiveEditablePrintRequests(requests), 3);
     });
 
-    it("returns zero when all requests are parked or non-portal", () => {
+    it("counts an unparked Studio draft as active", () => {
       const requests = [
         makeRequest({ id: "parked", parkedByEditingRequestId: "pr-editing" }),
         makeRequest({ id: "studio", requestOrigin: "studio_customer", status: "draft" }),
         makeRequest({ id: "internal", isInternal: true }),
       ];
 
-      assert.equal(countPortalActiveEditablePrintRequests(requests), 0);
+      assert.equal(countPortalActiveEditablePrintRequests(requests), 1);
     });
   });
 });

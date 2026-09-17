@@ -14,6 +14,19 @@ test("printRequestService checks continuable requests before transaction", () =>
     source,
     /createCustomerPrintRequestInTransaction[\s\S]*?transaction\.get\(\s*query\(/,
   );
+  assert.match(source, /createStudioCustomerPrintRequest/);
+});
+
+test("Studio customer request creation uses the server callable as the race-safety boundary", () => {
+  const source = readFileSync(
+    path.resolve(here, "../../../../../../../../functions/src/createStudioCustomerPrintRequest.ts"),
+    "utf8",
+  );
+  assert.match(source, /adminDb\.runTransaction/);
+  assert.match(source, /where\("customerId", "==", input\.customerId\)/);
+  assert.match(source, /where\("status", "in", \["draft", "editing"\]\)/);
+  assert.match(source, /isPortalParkedDraft/);
+  assert.match(source, /requestOrigin: "studio_customer"/);
 });
 
 test("printRequestService maps customer identity fields for request-creation picker filtering", () => {
@@ -32,4 +45,8 @@ test("PrintRequestsPage filters inactive customers from new request picker", () 
   assert.match(source, /searchable/);
   assert.match(source, /Clear customer search/);
   assert.match(source, /No eligible customers match this search/);
+  assert.match(source, /User Account/);
+  assert.match(source, /print-requests-detail-user-account-link/);
+  assert.match(source, /\/users\?customerId=\$\{encodeURIComponent/);
+  assert.match(source, /ExternalLink/);
 });

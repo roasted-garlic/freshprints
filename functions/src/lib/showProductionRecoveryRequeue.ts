@@ -37,6 +37,7 @@ import {
 import { adminDb } from "./admin";
 import { recomputeAndPersistQueueTab } from "./printRequestQueueTab";
 import { failedPrecondition, invalidArgument } from "./errors";
+import type { ShowAllocationPricingSnapshot } from "../../../packages/shared/src/types/showAllocation/showAllocationPricing.types";
 
 export interface LoadedRecoveryShow {
   id: string;
@@ -63,6 +64,7 @@ export interface RequeueAllocationFull extends RequeueAllocationSnapshot {
   printHeightInches?: number;
   sizeLabel?: string;
   notes?: string;
+  pricingSnapshot?: ShowAllocationPricingSnapshot;
 }
 
 const RECOVERY_APPLICATIONS_COLLECTION = "showProductionRecoveryApplications";
@@ -97,6 +99,20 @@ function readOptionalString(value: unknown): string | undefined {
 
 function readOptionalNumber(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function readPricingSnapshot(value: unknown): ShowAllocationPricingSnapshot | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const data = value as Record<string, unknown>;
+  if (
+    typeof data.policyVersion !== "string" ||
+    typeof data.widthTier !== "string" ||
+    typeof data.basePriceUsd !== "number" ||
+    typeof data.lengthTier !== "string" ||
+    typeof data.lengthSurchargeUsd !== "number" ||
+    typeof data.unitPriceUsd !== "number"
+  ) return undefined;
+  return data as unknown as ShowAllocationPricingSnapshot;
 }
 
 export async function loadFullAllocationsForShow(
@@ -136,6 +152,7 @@ export async function loadFullAllocationsForShow(
       printHeightInches: readOptionalNumber(data.printHeightInches),
       sizeLabel: readOptionalString(data.sizeLabel),
       notes: readOptionalString(data.notes),
+      pricingSnapshot: readPricingSnapshot(data.pricingSnapshot),
       status: typeof data.status === "string" ? data.status : "canceled",
     };
   });
@@ -381,6 +398,7 @@ function cloneAllocationForRequeue(input: {
     printHeightInches: sourceAllocation.printHeightInches,
     sizeLabel: sourceAllocation.sizeLabel,
     notes: sourceAllocation.notes,
+    pricingSnapshot: sourceAllocation.pricingSnapshot,
     status: "pending",
     requeuedFromAllocationId: sourceAllocation.id,
     addedBy: actorId,

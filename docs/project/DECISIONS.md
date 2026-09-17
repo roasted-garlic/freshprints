@@ -235,34 +235,49 @@ widening shared Firestore/Storage Rules.
 
 ---
 
-### ADR-FP-185: Global Gang Sheet Settings and four-tier width pricing
+### ADR-FP-185: Global Gang Sheet Settings, four-tier width pricing, and length surcharges
 
 | Field | Value |
 |-------|-------|
 | Date | 2026-09-08 |
 | Status | accepted — owner-authorized implementation complete locally; **STOP before DEV deploy / Owner QA** |
-| Related | Goal `print-request-direct-export-gangsheet-and-copy`; ADR-FP-070; ADR-FP-143; ADR-FP-184 |
+| Related | Goal `print-request-direct-export-gangsheet-and-copy`; goal `print-request-length-surcharge-and-customer-navigation`; ADR-FP-070; ADR-FP-143; ADR-FP-184 |
 
 **Decision**
 
 1. Persist canonical global Gang Sheet Settings fields on the existing `settings/showQueue`
    document. The existing `settings/internalGangSheet` document is a read-only compatibility
    fallback when canonical values are absent; do not migrate or backfill it.
-2. Normalize six layout settings and four editable price/weight tiers through one resolver used
-   by Show Queue Standard, both grouped modes, Internal Gang Sheets, and Customer/Internal Print
-   Request Standard generation.
-3. Classify by saved print width only with fixed boundaries: Pocket `<=4`, Standard Full Size
-   `>4..<=11`, Standard Oversized `>11..<=14`, and Extra Oversized `>14`. Exact item quantity
-   drives price and weight totals.
+2. Normalize six layout settings, four editable width price/weight tiers, and four editable
+   length surcharge fields through one resolver used by Show Queue Standard, both grouped modes,
+   Internal Gang Sheets, Customer/Internal Print Request Standard generation, and Portal's
+   customer-safe pricing projection.
+3. Classify the base tier by saved print width with fixed boundaries: Pocket `<=4`, Standard Full
+   Size `>4..<=11`, Standard Oversized `>11..<=14`, and Extra Oversized `>14`. Pocket requires
+   both saved width and height to be `<=4`. Apply length bands from saved height: Standard `<=14`,
+   Long `>14..<=18`, Extra Long `>18..<=24`, and Extended `>24`. Exact item quantity drives
+   price and weight totals; default length surcharges are `$0/$1/$2/$3`.
 4. Put the editor under owner/admin `/settings?tab=gangSheetSettings`; local Show Queue/Internal
    editors are retired. Request Standard sheets render request name plus price/weight summary.
 5. Include material layout/pricing settings and request identity in local cache fingerprints. The
    only backend rule change is the narrow existing `settings/showQueue` field allowlist; no new
-   Function, Storage Rules, index, or migration is introduced.
+   Storage Rules, index, migration, or automatic backfill is introduced.
+
+**Amendment (2026-09-17 — shared length surcharge and immutable allocation commitment)**
+
+6. Every newly created Show Allocation captures an immutable `pricingSnapshot` containing the
+   policy version, width tier, base price, length tier, length surcharge, and committed unit price.
+   Trusted Functions and the legacy Studio allocation path write the snapshot at allocation time;
+   recovery, move, and transfer paths preserve it. Legacy allocations without a snapshot remain
+   readable through the current resolver for compatibility and are not backfilled.
+7. Portal queue acknowledgment and price breakdown UI use `getPortalShowPricing`, a normalized
+   customer-safe projection of the resolved settings. Portal never reads raw staff settings.
 
 **Consequences**
 
 - Existing grouped compositor semantics and request cache isolation remain intact.
+- Historical allocations retain their original committed price when a snapshot exists; only
+  legacy rows without one use current settings as a display fallback.
 - Owner DEV deployment and QA must validate canonical settings, fallback behavior, all six
   generation surfaces, and direct-action visibility before release/publish.
 
@@ -3466,7 +3481,7 @@ Customers need clear understanding that designs queued to a live show are held i
 **Decision**
 
 1. **Signup:** After registration form submit (email or Google complete-profile), show acknowledgment modal with required checkbox. Cancel creates nothing. Only after confirm: Auth create (email) and/or `registerCustomer` with `biddingAcknowledgmentAccepted` + version. Persist `users/{uid}.portalBiddingAcknowledgments.signup`.
-2. **Add to Show:** Always require confirmation modal (even if signup ack exists). Callable `queuePortalPrintRequestToShow` rejects without accepted flag + known version. Persist binding ack on `printRequests.showQueueBiddingAcknowledgment` and `users.portalBiddingAcknowledgments.lastQueueToShow`. Modal shows estimated show total + tier breakdown from **shared default** gang-sheet pricing (ADR-FP-185 defaults); Portal does not read staff-only `settings/showQueue`.
+2. **Add to Show:** Always require confirmation modal (even if signup ack exists). Callable `queuePortalPrintRequestToShow` rejects without accepted flag + known version. Persist binding ack on `printRequests.showQueueBiddingAcknowledgment` and `users.portalBiddingAcknowledgments.lastQueueToShow`. Modal shows estimated show total + tier breakdown from the normalized customer-safe `getPortalShowPricing` projection of ADR-FP-185 settings; Portal does not read raw staff-only `settings/showQueue`.
 3. Shared version id `portal-bidding-ack-v4` (bumped from v3 when auction/bidding copy was replaced with personal-bin pricing commitment). Signup and Add to Show use distinct titles/body/checkbox strings plus shared exclusive-order paragraph linking `funkyfreshprints.com`.
 
 **Consequences**
@@ -3474,7 +3489,9 @@ Customers need clear understanding that designs queued to a live show are held i
 - Signup ack is educational; queue ack is binding and re-required every queue.
 - No client writes to `users/{uid}` (Admin only).
 - Redeploy `registerCustomer` + `queuePortalPrintRequestToShow` to `fresh-prints-dev` when the version constant changes (server rejects unknown versions).
-- If Studio customizes gang-sheet prices away from defaults, Portal display may diverge until a customer-safe pricing read is added.
+- The customer-safe pricing projection keeps Portal aligned with current owner settings without
+  exposing the raw staff settings document; newly allocated rows retain their own immutable
+  pricing snapshots per ADR-FP-185.
 
 ---
 
@@ -4816,7 +4833,7 @@ The Portal catalog was a flat searchable grid. Customers needed curated discover
 | Field | Value |
 |-------|-------|
 | Date | 2026-07-11 |
-| Status | **accepted** (amended 2026-09-02 — active Continuable parking) |
+| Status | **accepted** (amended 2026-09-02 and 2026-09-17 — active Continuable parking and cross-origin invariant) |
 | Related | ADR-FP-158 (Portal Editing tab); goal `portal-editing-request-parks-current-draft` |
 
 **Context**
@@ -4844,6 +4861,23 @@ Lifecycle Continuable statuses remain `draft` | `editing`. Separately, a custome
 - UI and callable must stay aligned; deploy function + `customerId`+`status` index with the release.
 - Customers who already have multiple drafts can still open/pick among them but cannot create another until they are down to zero continuable.
 - Parking fields are Admin SDK / trusted-callable only (Firestore Rules `optionalFieldUnchanged`).
+
+**Amendment (2026-09-17 — cross-origin Customer Print Request invariant)**
+
+1. The canonical active customer Continuable is any non-internal `draft` or `editing` request
+   that is not parked, regardless of `requestOrigin`. An unparked `studio_customer` Working/draft
+   is therefore the same customer cart as a `portal_customer` request.
+2. Portal resolve-or-create reuses that single active request and all Portal content mutations
+   continue targeting its ID. Portal must not create a second request merely because the existing
+   request originated in Studio.
+3. Studio customer creation uses the authenticated `createStudioCustomerPrintRequest` callable,
+   which rechecks the customer and active Continuable set inside one Admin transaction. The
+   renderer preflight is UX only and is not the race-safety boundary.
+4. Parking is origin-neutral: an empty conflicting draft is archived safely; a meaningful draft
+   is parked and can later be restored; the Editing request owns the active slot. No duplicate
+   merge, provenance rewrite, cross-customer operation, lifecycle-protection change, migration,
+   or backfill is introduced. Parked drafts remain excluded from active uniqueness and mutation
+   eligibility.
 
 ---
 

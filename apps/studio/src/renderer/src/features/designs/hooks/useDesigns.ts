@@ -13,6 +13,7 @@ import {
 import { useAuth } from "../../auth/hooks/useAuth";
 import { permissionService } from "../../permissions/services/permissionService";
 import { designService } from "../services/designService";
+import { designDerivativeUrlService } from "../services/designDerivativeUrlService";
 import type { Design } from "../types/design.types";
 import type { DesignListCursor, DesignListQuery } from "../types/designQuery.types";
 import { serializeDesignListQueryKey } from "../utils/designListQueryIdentity";
@@ -270,6 +271,13 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
 
     const designsAtRemoveTime = designsMirrorRef.current;
     const willRemove = designsAtRemoveTime.some((design) => design.id === designId);
+    const removed = designsAtRemoveTime.find((design) => design.id === designId);
+    if (removed?.previewPath) {
+      designDerivativeUrlService.clearCache(removed.previewPath);
+    }
+    if (removed?.thumbnailPath) {
+      designDerivativeUrlService.clearCache(removed.thumbnailPath);
+    }
 
     if (!willRemove) {
       return false;

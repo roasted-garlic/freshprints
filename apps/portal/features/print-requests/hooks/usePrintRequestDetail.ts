@@ -268,9 +268,10 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
         return;
       }
 
-      // Avoid clobbering a loaded detail with empty cart while Stash is still fetching.
+      // Avoid clobbering a loaded detail with empty cart while Stash is still fetching
+      // or not yet hydrated for this working request (post-queue parked-draft restore).
       if (
-        isLoadingCurrentRequestItems &&
+        (isLoadingCurrentRequestItems || !workingRequestLimit.isReady) &&
         cartSignature === '' &&
         lastSyncedWorkingSignatureRef.current === null
       ) {
@@ -308,6 +309,7 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
     printRequestId,
     reload,
     workingItems,
+    workingRequestLimit.isReady,
   ]);
 
   const addDesign = useCallback(

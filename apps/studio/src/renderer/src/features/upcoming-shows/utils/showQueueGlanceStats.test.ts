@@ -106,7 +106,13 @@ describe("showQueueGlanceStats", () => {
   it("builds glance totals from active allocations including print time", () => {
     const stats = buildShowQueueGlanceStats({
       allocations: [
-        allocation({ id: "a1", printRequestId: "pr-1", allocatedQuantity: 2, printWidthInches: 3 }),
+        allocation({
+          id: "a1",
+          printRequestId: "pr-1",
+          allocatedQuantity: 2,
+          printWidthInches: 3,
+          printHeightInches: 3,
+        }),
         allocation({ id: "a2", printRequestId: "pr-2", allocatedQuantity: 1, printWidthInches: 11 }),
         allocation({
           id: "a3",

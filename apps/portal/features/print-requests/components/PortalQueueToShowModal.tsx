@@ -40,6 +40,7 @@ import {
   resolvePortalShowInspectionActivation,
 } from '../utils/portalHistoricalShowInspection';
 import { buildPortalShowPriceCommitmentSummary } from '../utils/buildPortalShowPriceCommitmentSummary';
+import { usePortalShowPricing } from '../hooks/usePortalShowPricing';
 
 function waitForCapacityBarAnimation(): Promise<void> {
   return new Promise((resolve) => {
@@ -78,6 +79,7 @@ export function PortalQueueToShowModal({
   printRequest,
 }: PortalQueueToShowModalProps) {
   const { workingRequestLimit } = usePortalPrintRequests();
+  const { pricing } = usePortalShowPricing();
   const {
     shows,
     portalQueueCutoffHoursBeforeStart,
@@ -168,13 +170,16 @@ export function PortalQueueToShowModal({
 
   const priceCommitmentSummary = useMemo(
     () =>
-      buildPortalShowPriceCommitmentSummary(items, (item) =>
-        remainingUnallocatedQuantityForItem(
-          item.quantity,
-          allocatedByItemId.get(item.id) ?? 0,
-        ),
+      buildPortalShowPriceCommitmentSummary(
+        items,
+        (item) =>
+          remainingUnallocatedQuantityForItem(
+            item.quantity,
+            allocatedByItemId.get(item.id) ?? 0,
+          ),
+        pricing,
       ),
-    [allocatedByItemId, items],
+    [allocatedByItemId, items, pricing],
   );
 
   const showPickerOptions = useMemo(
@@ -711,6 +716,7 @@ export function PortalQueueToShowModal({
           void handleConfirmAcknowledgment();
         }}
         priceCommitmentSummary={priceCommitmentSummary}
+        pricing={pricing}
         requestName={printRequest.name}
       />
 

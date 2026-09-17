@@ -118,7 +118,7 @@ request gang sheets, request cache isolation, atomic copy boundaries, and the ex
 validation. Existing Show Queue filename, resolver, planner, and compositor suites remain required
 regressions after this refactor.
 
-For the global Gang Sheet Settings amendment, also run:
+For the global Gang Sheet Settings and length surcharge amendment, also run:
 
 ```bash
 npx tsx --test \
@@ -130,11 +130,27 @@ npx tsx --test \
   apps/studio/src/renderer/src/features/print-requests/utils/printRequestPocketFullSizeCounts.contract.test.ts
 ```
 
-These cover fixed width boundaries, canonical/legacy/default pricing fallback, exact quantity,
-weight totals, request Standard summary inputs, grouped compositor compatibility, cache material
-settings, and the retired local-editor wiring. Because the amendment changes `firestore.rules`,
+These cover fixed width and height boundaries, canonical/legacy/default pricing fallback, exact
+quantity, weight totals, request Standard summary inputs, grouped compositor compatibility, cache
+material settings, allocation pricing snapshots, and the retired local-editor wiring. Because the
+amendment changes `firestore.rules`,
 the Rules emulator suite is required; if the local Firebase emulator cannot start, record the
 exact environment blocker rather than claiming a pass.
+
+For the cross-origin Customer Print Request corrective, also run:
+
+```bash
+npx tsx --test \
+  packages/shared/src/utils/portalPrintRequestEditability.test.ts \
+  packages/shared/src/utils/portalActiveEditablePrintRequest.test.ts \
+  apps/portal/features/print-requests/portalPrintRequestStudioCustomerEditability.contract.test.ts \
+  apps/studio/src/renderer/src/features/print-requests/services/printRequestService.customerIdentity.contract.test.ts
+```
+
+These cover the origin-neutral active request predicate, Portal reuse eligibility, the Studio
+transactional callable boundary, and stable customer navigation from Print Request detail to
+`/users?customerId=...`. Parking and unqueue paths must preserve the existing lifecycle and
+cross-customer protections.
 
 **Never claim tests passed unless they were actually run.**
 
