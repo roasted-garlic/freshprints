@@ -649,6 +649,23 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
         beginPendingItemRemovals([itemId]);
       }
 
+      // Optimistic: drop the card immediately so the editor grid reflows without waiting on
+      // the callable (matches CurrentRequestDrawer remove). Failure restores via silent reload.
+      setItems((currentItems) => currentItems.filter((item) => item.id !== itemId));
+      if (isViewingWorkingRequest) {
+        patchWorkingItems((currentItems) =>
+          currentItems.filter((item) => item.id !== itemId),
+        );
+      }
+      setPrintRequest((currentRequest) =>
+        currentRequest
+          ? {
+              ...currentRequest,
+              itemCount: Math.max(0, currentRequest.itemCount - 1),
+            }
+          : currentRequest,
+      );
+
       setIsSaving(true);
       try {
         await portalPrintRequestService.removePrintRequestItem({
@@ -656,26 +673,14 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
           printRequestId,
           userId: firebaseUser.uid,
         });
-        setItems((currentItems) => currentItems.filter((item) => item.id !== itemId));
-        if (isViewingWorkingRequest) {
-          patchWorkingItems((currentItems) =>
-            currentItems.filter((item) => item.id !== itemId),
-          );
-          // Keep the pending-remove mark until the live/list snapshot confirms absence —
-          // ending it here lets a stale onSnapshot resurrect the card ~1s later.
-        }
-        setPrintRequest((currentRequest) =>
-          currentRequest
-            ? {
-                ...currentRequest,
-                itemCount: Math.max(0, currentRequest.itemCount - 1),
-              }
-            : currentRequest,
-        );
+        // Keep the pending-remove mark until the live/list snapshot confirms absence —
+        // ending it here lets a stale onSnapshot resurrect the card ~1s later.
       } catch (error) {
         if (isViewingWorkingRequest) {
           endPendingItemRemovals([itemId]);
+          void reloadWorkingItems({ silent: true });
         }
+        void reload({ silent: true });
         throw error;
       } finally {
         setIsSaving(false);
@@ -689,6 +694,8 @@ export function usePrintRequestDetail(printRequestId: string | undefined) {
       isViewingWorkingRequest,
       patchWorkingItems,
       printRequestId,
+      reload,
+      reloadWorkingItems,
     ],
   );
 
