@@ -5,8 +5,8 @@
 | Date | 2026-09-17 |
 | Reviewer | Codex / Independent Implementation Review |
 | Plan / Formal Review | `2026-09-17-print-request-length-surcharge-and-customer-navigation-*` |
-| Verdict | **Implementation review pass with documented test-environment limitations; ready for Owner DEV QA** |
-| Deployment | **Not performed** |
+| Verdict | **Implementation review pass with documented test-environment limitations; ready for Signoff and authorized rollout** |
+| Deployment | **DEV deployed; production rollout pending** |
 
 ## Reviewed implementation
 
@@ -44,7 +44,7 @@
 | Ownership/internal boundaries | pass | Existing customer ownership, `isInternal`, lifecycle, quota, cutoff, and production guards preserved |
 | Rules scope | pass with limitation | Allowlist + immutable snapshot field; nested validation omitted to avoid existing expression-budget failure |
 | Navigation scope | pass | Stable ID query link; no request-name parsing or Users redesign |
-| Deployment/data safety | pass | No deploy, console action, migration, backfill, merge, cleanup, or data mutation |
+| Deployment/data safety | pass | Exact 25-Function DEV deploy and Rules release; no migration, backfill, merge, cleanup, or data mutation |
 
 ## Findings and residual risks
 
@@ -52,9 +52,8 @@
    failure. The goal-specific Rules delta was removed and re-tested to establish that baseline; it
    did not remove the failure. Owner DEV QA should still run the exact reviewed Rules matrix in the
    target environment.
-2. The Portal production build is blocked locally by the active Portal dev server holding
-   `.next/trace` open (`EPERM`). Portal typecheck and all affected focused tests pass; Owner DEV QA
-   should rerun the production build in an isolated/stopped-dev-server environment.
+2. The first Portal production build attempt encountered the active-dev-server `.next/trace`
+   `EPERM`; after the server was stopped, the canonical build passed and generated 22/22 pages.
 3. Repository-wide lint has unrelated baseline diagnostics. Targeted lint over all modified/new
    goal-scoped source files passes.
 4. The Rules file intentionally validates snapshot presence/immutability at the top-level field
@@ -67,5 +66,8 @@ The implementation stays within the amended Plan and Formal Review. The reported
 incident is addressed at the shared predicate, Portal reuse path, parking helper, and race-safe
 Studio creation boundary without merging, deleting meaningful drafts, rewriting provenance, or
 changing lifecycle protections. Pricing is shared, configurable, customer-safe, and preserved for
-new allocation commitments. The work is ready for the owner’s DEV QA checkpoint, not for Signoff or
-deployment by this agent.
+new allocation commitments. Owner DEV QA is closed `approved_with_notes`: interactive browser and
+native-app checks were unavailable, but the owner accepted that limitation against 145/145 affected
+contracts, typechecks, release lint, packaged build, DEV deployment, live callable projection, and
+unauthenticated-boundary checks. The implementation is ready for Signoff and the explicitly
+authorized protected development-to-production rollout.

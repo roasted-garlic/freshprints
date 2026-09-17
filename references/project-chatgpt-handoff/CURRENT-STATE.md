@@ -1,6 +1,6 @@
 # Fresh Prints — Current State Snapshot
 
-## CURRENT AUTHORITATIVE PHASE — SHARED PRICING + CROSS-ORIGIN CUSTOMER REQUEST CORRECTIVE — DEV DEPLOYMENT COMPLETE; OWNER DEV QA PENDING
+## CURRENT AUTHORITATIVE PHASE — SHARED PRICING + CROSS-ORIGIN CUSTOMER REQUEST CORRECTIVE — SIGNED OFF; PRODUCTION ROLLOUT IN PROGRESS
 
 **Last updated:** 2026-09-17
 
@@ -13,27 +13,28 @@ Customer Print Requests origin-neutral: Portal reuses unparked `studio_customer`
 requests, parking is origin-neutral, and Studio creation is guarded by a transactional callable.
 Studio customer Print Request detail links to `/users?customerId=...`.
 
-Focused application checks are green: 76/76 focused tests, 40/40 pricing/compositor/export tests,
-8/8 snapshot-first total tests, Functions build, Studio/Portal typechecks, Studio Vite build,
-targeted changed-source lint, and diff check. The canonical Portal production build was rerun
-with the dev server stopped and passed (22/22 static pages). The focused Rules matrix remains
-22/23 because of the reproducible existing 1,000-expression-limit failure; repository-wide lint
-has unrelated baseline diagnostics. See:
+Focused application checks are green: 145/145 affected contracts, 40/40 pricing/compositor/export
+tests, 8/8 snapshot-first total tests, Functions build, Studio/Portal typechecks, packaged Studio
+1.0.15 build, Portal production build (22/22 static pages), release lint, and diff check. The
+focused Rules matrix remains 22/23 because of the reproducible existing 1,000-expression-limit
+failure; repository-wide lint has unrelated baseline diagnostics. See:
 
 - `docs/workflow/reviews/2026-09-17-print-request-length-surcharge-and-customer-navigation-test-report.md`
 - `docs/workflow/reviews/2026-09-17-print-request-length-surcharge-and-customer-navigation-implementation-review.md`
 
 Owner-authorized DEV deployment is complete for exactly 25 Functions at source hash
-`a2940db7fb63e5cad6bea5e06600215308f31034`; all are ACTIVE in `fresh-prints-dev`. The reviewed
-Firestore Rules were released successfully. Storage Rules, indexes, Portal App Hosting, Studio
-publishing, production, migration, backfill, merge, cleanup, and customer/request fixture
-mutation were not performed.
+`9eff4e7503246487859ad354ce53d2f78360b9b5`; all are ACTIVE in `fresh-prints-dev`. The reviewed
+Firestore Rules were released successfully. The owner closed DEV QA as `approved_with_notes` and
+authorized the protected production rollout. Storage Rules, indexes, migration, backfill, merge,
+cleanup, and customer/request fixture mutation remain out of scope.
 
 The live `getPortalShowPricing` callable returned only the pricing DTO, verified all eight DEV
 tiers, and confirmed `5 × 21 = $4` per unit. The protected Studio creation, Studio allocation,
 and Portal queue callables rejected unauthenticated requests with HTTP 401 without mutation.
-Interactive Settings/Portal/Studio/customer-flow QA remains pending because this session had no
-connected browser and the Windows app-control bridge was unavailable. **Next gate: Owner DEV QA.**
+Interactive Settings/Portal/Studio/customer-flow QA was not executed because this session had no
+connected browser and the Windows app-control bridge was unavailable; the owner accepted this
+limitation for closeout. **Next gate: protected production PR, exact deployment manifest, and
+production smoke.**
 
 **Historical prior snapshot:** 2026-09-16
 

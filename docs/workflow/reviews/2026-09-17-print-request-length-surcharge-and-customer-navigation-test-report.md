@@ -4,20 +4,22 @@
 |---|---|
 | Date | 2026-09-17 |
 | Goal | `print-request-length-surcharge-and-customer-navigation` |
-| Status | **Owner DEV QA pending — no deployment or Signoff** |
+| Status | **Owner DEV QA closed — approved_with_notes; final rollout in progress** |
 | Scope | Amended pricing, allocation snapshot, Portal projection, customer navigation, and cross-origin Customer Print Request corrective |
 
 ## Passing checks
 
 | Check | Result |
 |---|---|
-| Focused pricing, cache, Portal, Studio, and cross-origin contract suite | **76/76 pass** |
+| Focused pricing, cache, Portal, Studio, and cross-origin contract suite | **145/145 pass** |
 | Global Gang Sheet Settings / compositor / export / size-count suite | **40/40 pass** |
 | Snapshot-first Show Queue dollar total regression | **8/8 pass** |
 | Functions build | **pass** — `npm --prefix functions run build` |
 | Studio typecheck | **pass** — `npx tsc --noEmit` from `apps/studio` |
 | Portal typecheck | **pass** — `npm run typecheck --workspace @fresh-prints/portal` |
-| Studio Vite build | **pass** — `npx vite build` from `apps/studio` |
+| Studio packaged release build | **pass** — `npm run build:studio`, version `1.0.15`; Windows installer generated |
+| Portal production build | **pass** — `npm run build:portal`; 22/22 static pages |
+| Studio release lint | **pass** — current 15, baseline 25, new 0 |
 | Changed-source ESLint | **pass** — modified goal-scoped files and new files |
 | Diff validation | **pass** — `git diff --check` |
 
@@ -42,7 +44,7 @@ allowlist contained 25 Functions: `addPortalCatalogDesignToPrintRequest`,
 `removePortalPrintRequestItem`, `unqueuePortalPrintRequestFromShow`,
 `unqueueStudioCustomerPrintRequestFromShow`, `updatePortalPrintRequestItemQuantity`, and
 `updatePortalStaffArtworkPrintRequestItemSize`. All 25 are `ACTIVE` at deployed source hash
-`a2940db7fb63e5cad6bea5e06600215308f31034`.
+`9eff4e7503246487859ad354ce53d2f78360b9b5`.
 
 Firestore Rules were released successfully to DEV. Storage Rules, indexes, Portal App Hosting,
 Studio publishing, production, and data mutation were not deployed.
@@ -56,7 +58,17 @@ requests with HTTP 401 / `UNAUTHENTICATED` and made no data mutation.
 
 The interactive Studio/Portal DEV scenarios were not executed because this session had no
 connected in-app browser and the Windows Computer Use bridge could not connect. They remain
-Owner DEV QA checks, not passing automated or live-runtime claims.
+Owner DEV QA checks, not passing automated or live-runtime claims. The owner accepted this
+limitation based on the reviewed code, 145/145 affected contracts, typechecks, release lint,
+packaged build, DEV deployment, and live non-interactive checks.
+
+### Final owner-directed corrective reconciliation
+
+Studio parked-draft allocation now restores the selected draft and reconciles Add-to-Show;
+preview/import/staff caches clear at the correct trust boundary; Portal Working identity is
+rebound after post-queue cart reset through `cartResetGeneration`; an empty cart does not mask a
+not-yet-ready item load; and silent reloads clear stale loading state. No new product decision,
+migration, backfill, data rewrite, secret, IAM, or external-service setup was introduced.
 
 ## Checks with documented limitations
 
@@ -93,7 +105,7 @@ ESLint; no new goal-scoped lint diagnostic was found.
 ## Deployment boundary
 
 The owner-authorized DEV Functions allowlist and Firestore Rules were deployed to
-`fresh-prints-dev`. No Firebase console action, production action, migration, backfill, merge,
-cleanup, or customer/request fixture mutation was performed. Signoff is not complete. The next
-gate is Owner DEV QA, including visual review of Settings/Portal pricing and the interactive
-cross-origin request, unqueue, allocation snapshot, and customer-link scenarios.
+`fresh-prints-dev`. No production action, migration, backfill, merge, cleanup, or customer/request
+fixture mutation was performed at the time of this report. Storage Rules and indexes were not
+deployed. Owner DEV QA is closed `approved_with_notes`; production rollout remains separately
+tracked by the Signoff and production rollout artifacts.

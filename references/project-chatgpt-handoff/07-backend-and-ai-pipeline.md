@@ -1,5 +1,16 @@
 # Backend and AI Pipeline
 
+## Shared length pricing + Customer Print Request corrective — signed off 2026-09-17
+
+- The reviewed backend closure is an exact 25-function allowlist, ACTIVE in DEV at source hash
+  `9eff4e7503246487859ad354ce53d2f78360b9b5`; the customer-safe `getPortalShowPricing` callable
+  returns only normalized pricing DTO data.
+- Allocation, queue/move/recovery, parking/restore, Portal item mutation, and Studio customer
+  creation paths preserve the shared snapshot and origin-neutral Working invariant.
+- Production rollout is authorized through protected PR; no secret/IAM, Storage Rules, indexes,
+  migration, backfill, or data mutation is required. Node.js 20 deprecation remains a documented
+  residual deployment risk.
+
 ## Print Request count parity + unqueue cache/cancel parity (DEV closed 2026-09-16)
 
 - Shared source-aware item/allocation summaries are used by existing Studio, Portal, Staff Inbox,

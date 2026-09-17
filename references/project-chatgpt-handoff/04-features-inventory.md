@@ -1,5 +1,12 @@
 # Features Inventory
 
+> 2026-09-17: **Shared length-based show pricing + customer navigation — SIGNED OFF; rollout in
+> progress** — Four width tiers now share four length bands and configurable surcharges; new
+> allocations preserve immutable pricing snapshots; Portal uses a customer-safe projection;
+> origin-neutral Working reuse/parking and Studio restore/Add-to-Show/cache corrections are in
+> place; customer requests link to `/users?customerId=...`. DEV exact 25-function set is ACTIVE;
+> Studio candidate `1.0.15`; interactive QA limitation accepted; no data rewrite or migration.
+
 > 2026-09-16: **Portal show-rail Design Details description parity — SIGNED OFF (DEV)** —
 > `Next Show` and `Added to Shows This Week` now hydrate the authoritative ready catalog design
 > by ID before opening the shared Design Details modal, restoring persisted descriptions while

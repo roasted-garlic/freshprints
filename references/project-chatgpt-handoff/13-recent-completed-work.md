@@ -1,5 +1,21 @@
 # Recent Completed Work
 
+## 2026-09-17 - Shared length-based show pricing + customer navigation — SIGNOFF COMPLETE (ROLLOUT IN PROGRESS)
+
+Goal `print-request-length-surcharge-and-customer-navigation` is signed off
+**approved_with_notes** after owner-authorized DEV QA closeout. Shared width-plus-length pricing,
+immutable allocation snapshots, customer-safe Portal pricing projection, origin-neutral Working
+reuse/parking, Studio parked-draft/Add-to-Show/cache corrections, Portal cart rebinding, and
+stable `/users?customerId=...` navigation are delivered. Affected contracts **145/145 PASS**;
+pricing/regression **40/40**; snapshot totals **8/8**; typechecks and production builds pass.
+Exact 25-function DEV deployment is ACTIVE at hash `9eff4e7503246487859ad354ce53d2f78360b9b5`;
+Firestore Rules released. Interactive browser/native-app QA was unavailable and is explicitly
+accepted as a limitation. Studio version advances to `1.0.15` because `v1.0.14` is already
+published. Protected production rollout is authorized; no migration, backfill, data rewrite,
+secret, IAM, Storage Rules, or index action is in scope.
+
+Signoff: `docs/workflow/reviews/2026-09-17-print-request-length-surcharge-and-customer-navigation-signoff.md`.
+
 ## 2026-09-16 - Portal show-rail Design Details description parity — SIGNOFF COMPLETE (DEV)
 
 Goal `portal-show-rails-design-description-parity` is **DONE** with Signoff **approved** after

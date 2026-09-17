@@ -1,12 +1,14 @@
 # Next Planned Goal
 
-**Updated:** 2026-09-16
+**Updated:** 2026-09-17
 
-## FreshForge IDLE — no active managed goal
+## FreshForge managed goal — production rollout in progress
 
-Last closed: `portal-show-rails-design-description-parity` (Signoff **approved**, Owner DEV QA
-**PASS**). Production promotion and Portal App Hosting rollout are complete and machine-verified.
-Await owner direction for the next managed Plan.
+Current goal: `print-request-length-surcharge-and-customer-navigation` (Signoff
+**approved_with_notes**). Owner-authorized DEV QA closeout is complete. Complete the protected
+development → production PR, exact cumulative deployment manifest, Portal App Hosting rollout,
+Studio `1.0.15` stable release, production smoke, and final state/handoff update before returning
+FreshForge to **IDLE**.
 
 ## Historical Internal reconciliation / Admin Staff Artwork / DEV access — CLOSED
 
