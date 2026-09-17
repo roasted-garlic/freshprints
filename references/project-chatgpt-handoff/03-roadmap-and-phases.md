@@ -1,5 +1,18 @@
 # Roadmap and Phases
 
+## 2026-09-17 — Shared length-based show pricing + customer navigation — SIGNED OFF; ROLLOUT IN PROGRESS
+
+- Goal `print-request-length-surcharge-and-customer-navigation` is signed off
+  **approved_with_notes** after owner-authorized DEV QA closeout.
+- Shared pricing, immutable allocation snapshots, customer-safe Portal projection, cross-origin
+  Working reuse/parking, Studio restore/Add-to-Show/cache corrections, Portal cart rebinding, and
+  stable customer navigation are implemented.
+- Affected contracts **145/145 PASS**; exact 25-function DEV set is ACTIVE at hash
+  `9eff4e7503246487859ad354ce53d2f78360b9b5`; Studio release candidate is `1.0.15`.
+- Protected production rollout is authorized and remains the only active closeout step. No
+  migration, backfill, data rewrite, Storage Rules, index, IAM, or secret change is required.
+
+
 ## 2026-09-16 — Portal show-rail Design Details description parity — SIGNED OFF
 
 - Goal `portal-show-rails-design-description-parity` is **DONE** with Signoff **approved** after
@@ -10,9 +23,10 @@
   Portal typecheck, changed-source lint, production build, and diff check pass.
 - Production delta is Portal App Hosting only. Functions, Rules, indexes, Storage Rules, IAM,
   Firebase configuration, migrations, backfills, data, and Studio are **NONE**.
-- Protected development → production promotion and Portal App Hosting rollout are authorized after
-  QA and are the immediate next release steps. FreshForge remains in release execution, not a new
-  managed implementation phase.
+- Candidate `7be6fd49b8ce2ebaa068963b492db8e51b16c7c6` was promoted through protected PR #100 as
+  production merge `15676fcd010f572af0d4a2bc969b108d2777be0a`. Portal App Hosting rollout
+  `build-2026-09-17-001` succeeded with 100% traffic on the matching revision; machine verification
+  passed. FreshForge is **IDLE**.
 - Signoff: `docs/workflow/reviews/2026-09-16-portal-show-rails-design-description-parity-signoff.md`.
 
 ## 2026-09-16 — Print Request count parity + unqueue cache/cancel parity — CLOSED (DEV)

@@ -4,6 +4,7 @@ import { useEffect, useId, useState } from 'react';
 import { X } from 'lucide-react';
 
 import type { GangSheetCustomerSectionSummary } from '@fresh-prints/shared/utils/gangSheetCustomerSectionSummary';
+import type { GangSheetSectionPricingConfig } from '@fresh-prints/shared/constants/gangSheetSectionPricingSettings.constants';
 
 import { PortalShowPriceCommitmentBreakdown } from './PortalShowPriceCommitmentBreakdown';
 import { PortalShowSizeTiersModal } from './PortalShowSizeTiersModal';
@@ -13,6 +14,7 @@ export interface PortalShowPriceCommitmentModalProps {
   onClose: () => void;
   requestName: string;
   summary: GangSheetCustomerSectionSummary;
+  pricing?: GangSheetSectionPricingConfig;
 }
 
 export function PortalShowPriceCommitmentModal({
@@ -20,6 +22,7 @@ export function PortalShowPriceCommitmentModal({
   onClose,
   requestName,
   summary,
+  pricing,
 }: PortalShowPriceCommitmentModalProps) {
   const titleId = useId();
   const [isSizeTiersOpen, setIsSizeTiersOpen] = useState(false);
@@ -72,7 +75,7 @@ export function PortalShowPriceCommitmentModal({
             </button>
           </header>
           <div className="modal-body">
-            <PortalShowPriceCommitmentBreakdown summary={summary} />
+            <PortalShowPriceCommitmentBreakdown pricing={pricing} summary={summary} />
           </div>
           <footer className="modal-footer portal-show-price-commitment-modal-footer">
             <button
@@ -92,6 +95,7 @@ export function PortalShowPriceCommitmentModal({
       <PortalShowSizeTiersModal
         isOpen={isSizeTiersOpen}
         onClose={() => setIsSizeTiersOpen(false)}
+        pricing={pricing}
       />
     </>
   );

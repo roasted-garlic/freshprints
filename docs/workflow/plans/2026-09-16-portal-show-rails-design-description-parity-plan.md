@@ -4,7 +4,7 @@
 |-------|-------|
 | Date | 2026-09-16 |
 | Author | Codex / Owner-requested hotfix |
-| Status | implemented — automated validation complete; awaiting Owner DEV QA |
+| Status | complete — Owner DEV QA passed; production promoted and machine-verified |
 | Workflow | managed-phase / hotfix |
 | Related | `docs/workflow/reviews/2026-09-16-portal-show-rails-design-description-parity-review.md` |
 
@@ -154,7 +154,7 @@ Investigation findings:
 
 ### Manual
 
-- [ ] Details: Owner DEV QA must use a known non-empty-description design to open Next Show, the
+- [x] Details: Owner DEV QA used a known non-empty-description design to open Next Show, the
   same design from Added to Shows This Week, the same design elsewhere, and switch among two or
   three rail designs to confirm no stale title/description/image.
 
@@ -163,12 +163,12 @@ Investigation findings:
 - [x] Manual UI/UX review
 - [ ] Design approval
 - [ ] Business logic decision
-- [x] Production deploy — only after explicit Owner DEV QA PASS, per the owner request
+- [x] Production deploy — completed only after explicit Owner DEV QA PASS, per the owner request
 - [ ] Database migration
 - [ ] Auth / external service setup
 - [ ] Secrets / env vars
-- [ ] Other: After Owner DEV QA PASS, owner pre-authorizes the Portal-only protected promotion and
-  App Hosting rollout; until then, stop.
+- [x] Other: Owner pre-authorized and production completed the Portal-only protected promotion and
+  App Hosting rollout after Owner DEV QA PASS.
 
 ## Risks & Mitigations
 

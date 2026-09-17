@@ -24,7 +24,10 @@ import {
   buildGangSheetLabelSvg,
   computeGangSheetLabelBandHeightPx,
 } from "@fresh-prints/shared/utils/gangSheetLabelRendering";
-import { calculateGangSheetCustomerSectionSummary } from "@fresh-prints/shared/utils/gangSheetCustomerSectionSummary";
+import {
+  buildGangSheetCustomerSectionSummaryLines,
+  calculateGangSheetCustomerSectionSummary,
+} from "@fresh-prints/shared/utils/gangSheetCustomerSectionSummary";
 import type {
   ClearGangSheetCacheRequest,
   DownloadCachedGangSheetRequest,
@@ -258,9 +261,10 @@ export async function generateGangSheetPng(
         request.sectionPricing,
       )
     : null;
+  const summaryLines = requestSummary ? buildGangSheetCustomerSectionSummaryLines(requestSummary) : null;
   const summaryFontSizePx = resolveGroupedSectionLabelFontSizePx(request.labelFontSizePx);
-  const labelBandHeightPx = requestSummary
-    ? computeGroupedSectionLabelBandHeightPx(request.labelFontSizePx, summaryFontSizePx)
+  const labelBandHeightPx = summaryLines
+    ? computeGroupedSectionLabelBandHeightPx(request.labelFontSizePx, summaryFontSizePx, summaryLines.length)
     : computeGangSheetLabelBandHeightPx(request.labelFontSizePx);
   const composedSheets: Array<{ fileName: string; lengthInches: number; heightPx: number; buffer: Buffer }> = [];
 
@@ -279,10 +283,10 @@ export async function generateGangSheetPng(
     const lengthInches = sheetHeightPx / EXPORT_DPI;
     const fileName = buildGangSheetFilename(request.baseFileName, sheetIndex, sheetTotal, lengthInches);
     const label = buildGangSheetSheetLabel(request.sheetLabel ?? request.baseFileName, sheetIndex, sheetTotal);
-    const labelSvg = requestSummary
+    const labelSvg = summaryLines
       ? buildGroupedSectionHeadingSvg({
           heading: label,
-          summaryLines: [requestSummary.priceLine, requestSummary.weightLine],
+          summaryLines,
           sheetWidthPx,
           bandHeightPx: labelBandHeightPx,
           headingFontSizePx: request.labelFontSizePx,

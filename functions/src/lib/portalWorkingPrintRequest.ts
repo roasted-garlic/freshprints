@@ -105,8 +105,9 @@ export async function createRemainderWorkingPrintRequestInTransaction(
 
 /**
  * Resolve the single active editable working request or create one when none exists.
- * Reuses only active (non-parked) requests; prefers editing over draft.
- * Fails closed if more than one active editable exists or if only parked exists.
+ * Reuses one active (non-parked) request regardless of whether it was created by
+ * Portal or Studio; prefers editing over draft. Fails closed if more than one
+ * active editable exists or if only parked requests exist.
  */
 export async function resolveOrCreateWorkingPrintRequestInTransaction(
   transaction: Transaction,
@@ -139,7 +140,8 @@ export async function resolveOrCreateWorkingPrintRequestInTransaction(
     throw failedPrecondition("Cannot create new request while parked requests exist. Please restore or clean up existing requests first.");
   }
 
-  // Legacy Studio drafts may still exist; Portal may create its own working request.
+  // No active eligible request exists; unparked Studio-created drafts are returned
+  // above, so this is the only path that creates a new Portal request.
   const created = await createPrintRequestDoc(transaction, customer);
   return { printRequestId: created.printRequestId, created: true, name: created.name };
 }

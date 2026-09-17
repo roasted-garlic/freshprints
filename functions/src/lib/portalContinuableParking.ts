@@ -91,7 +91,8 @@ export interface ParkOrCleanupResult {
  * 2. If already parked → throw conflict
  * 3. If draft with 0 items → archive
  * 4. If draft with >0 items → park (only one meaningful draft allowed)
- * 5. Ignore non-portal-editable or throw for studio_customer conflicts
+ * 5. Ignore Internal/unsupported-origin continuables; ordinary customer provenance is not a
+ *    parking blocker
  */
 export function applyParkOrCleanupOtherContinuablesInTransaction(
   transaction: Transaction,
@@ -122,17 +123,14 @@ export function applyParkOrCleanupOtherContinuablesInTransaction(
       throw failedPrecondition("Another request is already parked by a different editing request.");
     }
 
-    // Only process portal-editable continuables
+    // Process every ordinary customer continuable through the shared Portal editability contract.
+    // Provenance is preserved but no longer creates a parking exception.
     if (!isPortalEditablePrintRequest({
       status: doc.status as PrintRequestStatus,
       requestOrigin: doc.requestOrigin,
       isInternal: doc.isInternal,
     })) {
-      // Check for studio_customer conflicts that shouldn't be silently ignored
-      if (doc.requestOrigin === "studio_customer" && !doc.isInternal) {
-        throw failedPrecondition("Cannot park while studio customer requests exist.");
-      }
-      continue; // Ignore other non-portal-editable requests
+      continue; // Ignore Internal/unsupported-origin requests; never touch their contents.
     }
 
     if (doc.status === "draft") {

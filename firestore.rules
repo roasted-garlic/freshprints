@@ -1664,6 +1664,7 @@ service cloud.firestore {
           "printWidthInches",
           "printHeightInches",
           "sizeLabel",
+          "pricingSnapshot",
           "notes",
           "status",
           "addedBy",
@@ -2575,6 +2576,7 @@ service cloud.firestore {
           && request.resource.data.printRequestId == resource.data.printRequestId
           && request.resource.data.printRequestItemId == resource.data.printRequestItemId
           && showAllocationSourceIdentityUnchanged()
+          && optionalFieldUnchanged("pricingSnapshot")
           && request.resource.data.addedBy == resource.data.addedBy
           && request.resource.data.createdAt == resource.data.createdAt
           && request.resource.data.updatedBy == request.auth.uid
@@ -2633,6 +2635,10 @@ service cloud.firestore {
           "gangSheetStandardOversizedWeightOz",
           "gangSheetExtraOversizedPriceUsd",
           "gangSheetExtraOversizedWeightOz",
+          "lengthSurchargeStandardUsd",
+          "lengthSurchargeLongUsd",
+          "lengthSurchargeExtraLongUsd",
+          "lengthSurchargeExtendedUsd",
           "gangSheetSectionPriceCutoffInches",
           "gangSheetSmallTierPriceUsd",
           "gangSheetSmallTierWeightOz",
@@ -2662,6 +2668,10 @@ service cloud.firestore {
         && isOptionalNumber(data, "gangSheetStandardOversizedWeightOz")
         && isOptionalNumber(data, "gangSheetExtraOversizedPriceUsd")
         && isOptionalNumber(data, "gangSheetExtraOversizedWeightOz")
+        && isOptionalNumber(data, "lengthSurchargeStandardUsd")
+        && isOptionalNumber(data, "lengthSurchargeLongUsd")
+        && isOptionalNumber(data, "lengthSurchargeExtraLongUsd")
+        && isOptionalNumber(data, "lengthSurchargeExtendedUsd")
         && isOptionalNumber(data, "gangSheetSectionPriceCutoffInches")
         && isOptionalNumber(data, "gangSheetSmallTierPriceUsd")
         && isOptionalNumber(data, "gangSheetSmallTierWeightOz")

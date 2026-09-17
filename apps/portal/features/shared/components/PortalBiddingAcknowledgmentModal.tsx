@@ -5,6 +5,7 @@ import { Expand, X } from 'lucide-react';
 
 import type { PortalBiddingAcknowledgmentCopy } from '@fresh-prints/shared/utils/portalBiddingAcknowledgmentCopy';
 import type { GangSheetCustomerSectionSummary } from '@fresh-prints/shared/utils/gangSheetCustomerSectionSummary';
+import type { GangSheetSectionPricingConfig } from '@fresh-prints/shared/constants/gangSheetSectionPricingSettings.constants';
 
 import { PortalShowPriceCommitmentModal } from '../../print-requests/components/PortalShowPriceCommitmentModal';
 import { PortalShowSizeTiersModal } from '../../print-requests/components/PortalShowSizeTiersModal';
@@ -26,6 +27,7 @@ export interface PortalBiddingAcknowledgmentModalProps {
   priceCommitmentSummary?: GangSheetCustomerSectionSummary | null;
   /** Used as the breakdown modal title. */
   requestName?: string;
+  pricing?: GangSheetSectionPricingConfig;
 }
 
 function renderAckParagraph(paragraph: string) {
@@ -89,6 +91,7 @@ export function PortalBiddingAcknowledgmentModal({
   onConfirm,
   priceCommitmentSummary = null,
   requestName = 'this request',
+  pricing,
 }: PortalBiddingAcknowledgmentModalProps) {
   const checkboxId = useId();
   const titleId = useId();
@@ -223,6 +226,7 @@ export function PortalBiddingAcknowledgmentModal({
       <PortalShowSizeTiersModal
         isOpen={isSizeTiersModalOpen}
         onClose={() => setIsSizeTiersModalOpen(false)}
+        pricing={pricing}
       />
 
       {priceCommitmentSummary ? (
@@ -231,6 +235,7 @@ export function PortalBiddingAcknowledgmentModal({
           onClose={() => setIsPriceModalOpen(false)}
           requestName={requestName}
           summary={priceCommitmentSummary}
+          pricing={pricing}
         />
       ) : null}
     </>

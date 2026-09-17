@@ -2,6 +2,16 @@
 
 > Full log: `docs/project/DECISIONS.md` — newest ADRs first.
 
+### Shared length-based pricing + cross-origin Working invariant (signed off 2026-09-17)
+
+- Price and weight are derived from the shared width-plus-length resolver; allocation snapshots
+  are immutable and legacy rows use explicit fallback, so no backfill is required.
+- Portal may reuse an unparked ordinary `studio_customer` Working request; parking/unqueue is
+  origin-neutral while internal and lifecycle protections remain unchanged.
+- Owner accepted the unavailable interactive Studio/Portal/customer QA as a documented
+  `approved_with_notes` limitation. Production rollout is allowed only through the protected PR,
+  exact runtime manifest, and post-rollout smoke evidence.
+
 ### Print Request count parity + unqueue cache/cancel parity (DEV closed 2026-09-16)
 
 - Full-request **Designs** are distinct source-aware identities from current `printRequestItems`;

@@ -444,6 +444,7 @@ export function PrintRequestsPage() {
     isLoadingMore: isLoadingMoreRequests,
     loadMore: loadMoreRequests,
     patchRequestLocally,
+    patchAllocationTotalsLocally,
     patchSummaryLocally,
     reconcileDeletedOrArchivedRequest,
     refreshAllocationHydration,
@@ -813,25 +814,46 @@ export function PrintRequestsPage() {
     setActionError(null);
   }, [resetCreateRequestForm]);
 
-  /** After Add to Show / Internal Gangsheet, reload so queueTab Working→Queued is visible. */
-  const handleAddedToShow = useCallback(async () => {
-    const requestId = visibleSelectedRequest?.id;
+  /** After Add to Show / Internal Gangsheet: patch locally like remove-from-show, then hydrate. */
+  const handleAddedToShow = useCallback(
+    async (result?: {
+      totalAllocatedQuantity: number;
+      remainingUnallocatedQuantity: number;
+      isFullyQueued: boolean;
+    }) => {
+      const requestId = visibleSelectedRequest?.id;
+      if (!requestId) {
+        return;
+      }
 
-    clearPrintRequestsPageCache();
-    await Promise.all([
-      reloadAllAllocationData({ silent: true }),
-      reloadPrintRequests({ silent: true }),
-    ]);
-    if (requestId) {
-      commitPrintRequestsRoute({ requestId, kind: activeListKind, tab: "queued" });
-    }
-  }, [
-    activeListKind,
-    commitPrintRequestsRoute,
-    reloadAllAllocationData,
-    reloadPrintRequests,
-    visibleSelectedRequest?.id,
-  ]);
+      const allocatedQuantity = Math.max(0, Math.floor(result?.totalAllocatedQuantity ?? 0));
+
+      // Patch before route so badges/repair derive Queued immediately (avoids inverted Working banner).
+      patchRequestLocally(requestId, { queueTab: "queued", status: "active" });
+      if (allocatedQuantity > 0) {
+        patchAllocationTotalsLocally(requestId, { totalAllocatedQuantity: allocatedQuantity });
+      }
+
+      if (normalizePrintRequestListTabForKind(activeListTab, activeListKind) !== "queued") {
+        commitPrintRequestsRoute({ requestId, kind: activeListKind, tab: "queued" });
+      }
+
+      await Promise.all([
+        refreshAllocationHydration(),
+        reloadAllAllocationData({ silent: true }),
+      ]);
+    },
+    [
+      activeListKind,
+      activeListTab,
+      commitPrintRequestsRoute,
+      patchAllocationTotalsLocally,
+      patchRequestLocally,
+      refreshAllocationHydration,
+      reloadAllAllocationData,
+      visibleSelectedRequest?.id,
+    ],
+  );
 
   const reconcileAddToShowFailure = useCallback(async () => {
     await Promise.all([
@@ -2446,7 +2468,18 @@ export function PrintRequestsPage() {
                 <div className="print-requests-detail-header">
                   <div className="print-requests-detail-copy">
                     <p className="eyebrow">Request detail</p>
-                    <h2>{visibleSelectedRequest.name}</h2>
+                    <div className="print-requests-detail-title-block">
+                      <h2>{visibleSelectedRequest.name}</h2>
+                      {!visibleSelectedRequest.isInternal && visibleSelectedRequest.customerId ? (
+                        <Link
+                          className="print-requests-detail-user-account-link"
+                          to={`/users?customerId=${encodeURIComponent(visibleSelectedRequest.customerId)}`}
+                        >
+                          User Account
+                          <ExternalLink aria-hidden="true" size={12} strokeWidth={2.2} />
+                        </Link>
+                      ) : null}
+                    </div>
                     <p className="print-requests-detail-timestamps">
                       Created {formatTimestampLabel(visibleSelectedRequest.createdAt)}
                       {" | "}

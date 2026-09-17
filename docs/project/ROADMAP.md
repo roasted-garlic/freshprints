@@ -1,7 +1,21 @@
 # Fresh Prints Roadmap
 
-> 2026-09-16: **Portal show-rail Design Details description parity — SIGNOFF approved; production
-> rollout authorized** — Goal `portal-show-rails-design-description-parity` is complete after
+> 2026-09-17: **Shared length-based show pricing + customer navigation — SIGNED OFF; rollout in
+> progress** — Goal `print-request-length-surcharge-and-customer-navigation` is **DONE** with
+> Signoff **approved_with_notes** after owner-directed DEV QA closeout. Shared width-plus-length
+> pricing, immutable allocation snapshots, customer-safe Portal projection, origin-neutral Working
+> reuse/parking, Studio Add-to-Show/preview-cache corrections, Portal cart rebinding, and stable
+> customer navigation are delivered. Affected contracts **145/145 PASS**; pricing/regression
+> suites **40/40** and snapshot totals **8/8**; Functions build, Portal/Studio typechecks and
+> production builds pass; exact 25-function DEV deployment is ACTIVE at hash
+> `9eff4e7503246487859ad354ce53d2f78360b9b5`; Studio stable candidate is `1.0.15` because
+> `v1.0.14` is already published. Interactive QA was unavailable and is recorded as an
+> owner-accepted limitation. Production path is authorized through protected development →
+> production PR; no migrations, backfills, Storage Rules, indexes, IAM, secrets, or data rewrite.
+> Signoff: `docs/workflow/reviews/2026-09-17-print-request-length-surcharge-and-customer-navigation-signoff.md`.
+
+> 2026-09-16: **Portal show-rail Design Details description parity — COMPLETE (PROD)** — Goal
+> `portal-show-rails-design-description-parity` is complete after
 > Owner DEV QA **PASS**. Homepage `Next Show` and `Added to Shows This Week` now hydrate the
 > selected compact show card through the existing ready-design-by-ID path before opening the shared
 > Design Details modal, restoring the persisted description without expanding the public DTO or
@@ -9,7 +23,9 @@
 > **24/24**, Portal typecheck, changed-source lint, production build, and diff check passed. The
 > production delta is Portal App Hosting only; Functions, Rules, indexes, Storage Rules, IAM,
 > Firebase configuration, migrations, backfills, data, and Studio are **NONE**. Protected
-> development → production promotion and App Hosting rollout are authorized after this Signoff.
+> The candidate was committed as `7be6fd49b8ce2ebaa068963b492db8e51b16c7c6`, promoted through
+> protected PR #100 to production merge `15676fcd010f572af0d4a2bc969b108d2777be0a`, and rolled
+> out as App Hosting build `build-2026-09-17-001` with 100% traffic on the matching revision.
 > Plan/review/test/signoff:
 > `docs/workflow/plans/2026-09-16-portal-show-rails-design-description-parity-plan.md` and
 > `docs/workflow/reviews/2026-09-16-portal-show-rails-design-description-parity-signoff.md`.

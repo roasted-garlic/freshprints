@@ -1,11 +1,19 @@
 # Features Inventory
 
+> 2026-09-17: **Shared length-based show pricing + customer navigation — SIGNED OFF; rollout in
+> progress** — Four width tiers now share four length bands and configurable surcharges; new
+> allocations preserve immutable pricing snapshots; Portal uses a customer-safe projection;
+> origin-neutral Working reuse/parking and Studio restore/Add-to-Show/cache corrections are in
+> place; customer requests link to `/users?customerId=...`. DEV exact 25-function set is ACTIVE;
+> Studio candidate `1.0.15`; interactive QA limitation accepted; no data rewrite or migration.
+
 > 2026-09-16: **Portal show-rail Design Details description parity — SIGNED OFF (DEV)** —
 > `Next Show` and `Added to Shows This Week` now hydrate the authoritative ready catalog design
 > by ID before opening the shared Design Details modal, restoring persisted descriptions while
 > preserving title/image/metadata, explicit-content masking, actions, ordering, membership, and
-> the compact public show-card contract. Owner DEV QA **PASS**; Portal App Hosting production
-> promotion is authorized and pending execution. No Functions, Rules, indexes, Storage Rules,
+> the compact public show-card contract. Owner DEV QA **PASS**; production is live on App Hosting
+> build `build-2026-09-17-001` / revision `fresh-prints-portal-build-2026-09-17-001` at 100%
+> traffic. No Functions, Rules, indexes, Storage Rules,
 > IAM, Firebase configuration, migration, backfill, data, or Studio change.
 
 > 2026-09-16: **Print Request count parity + unqueue cache/cancel parity — CLOSED (DEV)** —

@@ -1,5 +1,21 @@
 # Recent Completed Work
 
+## 2026-09-17 - Shared length-based show pricing + customer navigation — SIGNOFF COMPLETE (ROLLOUT IN PROGRESS)
+
+Goal `print-request-length-surcharge-and-customer-navigation` is signed off
+**approved_with_notes** after owner-authorized DEV QA closeout. Shared width-plus-length pricing,
+immutable allocation snapshots, customer-safe Portal pricing projection, origin-neutral Working
+reuse/parking, Studio parked-draft/Add-to-Show/cache corrections, Portal cart rebinding, and
+stable `/users?customerId=...` navigation are delivered. Affected contracts **145/145 PASS**;
+pricing/regression **40/40**; snapshot totals **8/8**; typechecks and production builds pass.
+Exact 25-function DEV deployment is ACTIVE at hash `9eff4e7503246487859ad354ce53d2f78360b9b5`;
+Firestore Rules released. Interactive browser/native-app QA was unavailable and is explicitly
+accepted as a limitation. Studio version advances to `1.0.15` because `v1.0.14` is already
+published. Protected production rollout is authorized; no migration, backfill, data rewrite,
+secret, IAM, Storage Rules, or index action is in scope.
+
+Signoff: `docs/workflow/reviews/2026-09-17-print-request-length-surcharge-and-customer-navigation-signoff.md`.
+
 ## 2026-09-16 - Portal show-rail Design Details description parity — SIGNOFF COMPLETE (DEV)
 
 Goal `portal-show-rails-design-description-parity` is **DONE** with Signoff **approved** after
@@ -13,8 +29,11 @@ Focused hydration/show-rail contracts **17/17 PASS**; adjacent Portal contracts 
 Portal typecheck, changed-source lint, production build (22/22 static pages), and diff check pass.
 Owner DEV QA checklist passed. Production delta is Portal App Hosting only; no Functions, Rules,
 indexes, Storage Rules, IAM, Firebase configuration, migration, backfill, data, or Studio action.
-Protected development → production promotion and Portal App Hosting rollout are authorized and
-pending execution.
+Protected PR #100 promoted commit `7be6fd49b8ce2ebaa068963b492db8e51b16c7c6` to production
+merge `15676fcd010f572af0d4a2bc969b108d2777be0a`. Portal App Hosting rollout
+`build-2026-09-17-001` succeeded with 100% traffic on the matching revision. Machine verification
+passed: hosted Portal endpoints are HTTP 200 without DEV markers, 179 Functions are ACTIVE, 94
+indexes are READY, and maintenance is OFF. No backend, data, IAM, or Studio action occurred.
 
 Signoff: `docs/workflow/reviews/2026-09-16-portal-show-rails-design-description-parity-signoff.md`.
 

@@ -11,6 +11,7 @@ export interface ShowAllocationPriceUnitInput {
   printHeightInches?: number;
   allocatedQuantity: number;
   status: string;
+  pricingSnapshot?: ShowAllocation["pricingSnapshot"];
 }
 
 /**
@@ -41,10 +42,14 @@ export function calculateShowAllocationGroupPriceUsd(
     return null;
   }
 
-  const activeUnits = buildShowAllocationOperationalSummary(activeAllocations).pricingUnits;
-
   try {
-    return calculateGangSheetCustomerSectionSummary(activeUnits, pricing).totalPriceUsd;
+    return activeAllocations.reduce((total, allocation) => {
+      if (allocation.pricingSnapshot) {
+        return total + allocation.pricingSnapshot.unitPriceUsd * allocation.allocatedQuantity;
+      }
+      const units = buildShowAllocationOperationalSummary([allocation]).pricingUnits;
+      return total + calculateGangSheetCustomerSectionSummary(units, pricing).totalPriceUsd;
+    }, 0);
   } catch {
     return null;
   }

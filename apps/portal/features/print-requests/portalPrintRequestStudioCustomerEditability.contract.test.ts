@@ -14,9 +14,10 @@ const detailHook = readFileSync(
   "utf8",
 );
 
-test("staff-created customer requests are Portal-editable only in Editing", () => {
+test("staff-created customer requests are Portal-editable while unparked", () => {
   assert.match(sharedEditability, /isPortalCustomerOriginPrintRequest\(request\)/);
-  assert.match(sharedEditability, /request\.requestOrigin === "studio_customer" && request\.status === "editing"/);
+  assert.match(sharedEditability, /request\.requestOrigin === "studio_customer"/);
+  assert.doesNotMatch(sharedEditability, /request\.requestOrigin === "studio_customer" && request\.status === "editing"/);
   assert.match(sharedEditability, /request\.isInternal !== true/);
 });
 

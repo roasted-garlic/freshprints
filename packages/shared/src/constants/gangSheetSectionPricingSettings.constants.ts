@@ -6,14 +6,26 @@ export type GangSheetPricingTier =
   | "standard_oversized"
   | "extra_oversized";
 
-export const GANG_SHEET_PRICING_POLICY_VERSION = "width-four-tier-v1" as const;
+export type GangSheetLengthPricingTier = "standard_length" | "long" | "extra_long" | "extended";
+
+export const GANG_SHEET_PRICING_POLICY_VERSION = "width-four-tier-length-surcharge-v1" as const;
 export const GANG_SHEET_POCKET_MAX_WIDTH_INCHES = 4;
 export const GANG_SHEET_STANDARD_FULL_SIZE_MAX_WIDTH_INCHES = 11;
 export const GANG_SHEET_STANDARD_OVERSIZED_MAX_WIDTH_INCHES = 14;
+export const GANG_SHEET_STANDARD_LENGTH_MAX_HEIGHT_INCHES = 14;
+export const GANG_SHEET_LONG_MAX_HEIGHT_INCHES = 18;
+export const GANG_SHEET_EXTRA_LONG_MAX_HEIGHT_INCHES = 24;
 
 export interface GangSheetTierPricing {
   priceUsd: number;
   weightOz: number;
+}
+
+export interface GangSheetLengthSurchargeConfig {
+  standardLengthUsd: number;
+  longUsd: number;
+  extraLongUsd: number;
+  extendedUsd: number;
 }
 
 export interface GangSheetSectionPricingConfig {
@@ -24,6 +36,7 @@ export interface GangSheetSectionPricingConfig {
   standardFullSize: GangSheetTierPricing;
   standardOversized: GangSheetTierPricing;
   extraOversized: GangSheetTierPricing;
+  lengthSurcharges: GangSheetLengthSurchargeConfig;
 }
 
 /** Canonical persisted four-tier fields. Breakpoints are product policy, not persisted. */
@@ -36,6 +49,10 @@ export interface GangSheetPricingSettingsInput {
   gangSheetStandardOversizedWeightOz?: number;
   gangSheetExtraOversizedPriceUsd?: number;
   gangSheetExtraOversizedWeightOz?: number;
+  lengthSurchargeStandardUsd?: number;
+  lengthSurchargeLongUsd?: number;
+  lengthSurchargeExtraLongUsd?: number;
+  lengthSurchargeExtendedUsd?: number;
   /** Legacy fields retained only for backwards-compatible reads. */
   gangSheetSectionPriceCutoffInches?: number;
   gangSheetSmallTierPriceUsd?: number;
@@ -52,6 +69,10 @@ export const DEFAULT_GANG_SHEET_STANDARD_OVERSIZED_PRICE_USD = 3;
 export const DEFAULT_GANG_SHEET_STANDARD_OVERSIZED_WEIGHT_OZ = 0.75;
 export const DEFAULT_GANG_SHEET_EXTRA_OVERSIZED_PRICE_USD = 4;
 export const DEFAULT_GANG_SHEET_EXTRA_OVERSIZED_WEIGHT_OZ = 0.75;
+export const DEFAULT_GANG_SHEET_LENGTH_SURCHARGE_STANDARD_USD = 0;
+export const DEFAULT_GANG_SHEET_LENGTH_SURCHARGE_LONG_USD = 1;
+export const DEFAULT_GANG_SHEET_LENGTH_SURCHARGE_EXTRA_LONG_USD = 2;
+export const DEFAULT_GANG_SHEET_LENGTH_SURCHARGE_EXTENDED_USD = 3;
 
 /** Legacy names remain exported for old call sites and historical settings readers. */
 export const DEFAULT_GANG_SHEET_SECTION_PRICE_CUTOFF_INCHES = GANG_SHEET_POCKET_MAX_WIDTH_INCHES;
@@ -85,6 +106,12 @@ export const DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG: GangSheetSectionPricingC
   extraOversized: {
     priceUsd: DEFAULT_GANG_SHEET_EXTRA_OVERSIZED_PRICE_USD,
     weightOz: DEFAULT_GANG_SHEET_EXTRA_OVERSIZED_WEIGHT_OZ,
+  },
+  lengthSurcharges: {
+    standardLengthUsd: DEFAULT_GANG_SHEET_LENGTH_SURCHARGE_STANDARD_USD,
+    longUsd: DEFAULT_GANG_SHEET_LENGTH_SURCHARGE_LONG_USD,
+    extraLongUsd: DEFAULT_GANG_SHEET_LENGTH_SURCHARGE_EXTRA_LONG_USD,
+    extendedUsd: DEFAULT_GANG_SHEET_LENGTH_SURCHARGE_EXTENDED_USD,
   },
 };
 
@@ -146,6 +173,21 @@ export function resolveGangSheetSectionPricingFromSettings(
     extraOversized: {
       priceUsd: resolvePrice(input.gangSheetExtraOversizedPriceUsd, DEFAULT_GANG_SHEET_EXTRA_OVERSIZED_PRICE_USD),
       weightOz: resolveWeight(input.gangSheetExtraOversizedWeightOz, legacyLargeWeight),
+    },
+    lengthSurcharges: {
+      standardLengthUsd: resolvePrice(
+        input.lengthSurchargeStandardUsd,
+        DEFAULT_GANG_SHEET_LENGTH_SURCHARGE_STANDARD_USD,
+      ),
+      longUsd: resolvePrice(input.lengthSurchargeLongUsd, DEFAULT_GANG_SHEET_LENGTH_SURCHARGE_LONG_USD),
+      extraLongUsd: resolvePrice(
+        input.lengthSurchargeExtraLongUsd,
+        DEFAULT_GANG_SHEET_LENGTH_SURCHARGE_EXTRA_LONG_USD,
+      ),
+      extendedUsd: resolvePrice(
+        input.lengthSurchargeExtendedUsd,
+        DEFAULT_GANG_SHEET_LENGTH_SURCHARGE_EXTENDED_USD,
+      ),
     },
   };
 }

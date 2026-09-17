@@ -34,30 +34,51 @@ async function fetchDownloadUrlForCatalogPath(catalogPath: string): Promise<stri
 
 /**
  * Resolves canonical derivative catalog paths to Firebase Storage download URLs.
- * URLs are cached in memory per path for the session.
+ * URLs are cached in memory per path (+ optional content version) for the session.
  */
 export const designDerivativeUrlService = {
-  getDownloadUrlForCatalogPath(catalogPath: string | undefined): Promise<string | null> {
+  getDownloadUrlForCatalogPath(
+    catalogPath: string | undefined,
+    contentVersion?: number | string | null,
+  ): Promise<string | null> {
     const normalizedPath = normalizeCatalogPath(catalogPath);
 
     if (!normalizedPath) {
       return Promise.resolve(null);
     }
 
-    return urlCache.resolve(normalizedPath, () => fetchDownloadUrlForCatalogPath(normalizedPath));
+    const versionSuffix =
+      contentVersion === null || contentVersion === undefined || contentVersion === ""
+        ? ""
+        : `@${contentVersion}`;
+    const cacheKey = `${normalizedPath}${versionSuffix}`;
+
+    return urlCache.resolve(cacheKey, () => fetchDownloadUrlForCatalogPath(normalizedPath));
   },
 
-  getThumbnailUrl(design: Pick<Design, "thumbnailPath">): Promise<string | null> {
-    return this.getDownloadUrlForCatalogPath(design.thumbnailPath);
+  getThumbnailUrl(
+    design: Pick<Design, "thumbnailPath"> & { updatedAtMs?: number },
+  ): Promise<string | null> {
+    return this.getDownloadUrlForCatalogPath(design.thumbnailPath, design.updatedAtMs);
   },
 
-  getPreviewUrl(design: Pick<Design, "previewPath">): Promise<string | null> {
-    return this.getDownloadUrlForCatalogPath(design.previewPath);
+  getPreviewUrl(
+    design: Pick<Design, "previewPath"> & { updatedAtMs?: number },
+  ): Promise<string | null> {
+    return this.getDownloadUrlForCatalogPath(design.previewPath, design.updatedAtMs);
   },
 
-  /** Dev/test helper — clears cached URLs for one path or the entire cache. */
+  /** Dev/test helper — clears cached URLs for one path (all versions) or the entire cache. */
   clearCache(catalogPath?: string): void {
-    urlCache.clear(catalogPath);
+    if (!catalogPath) {
+      urlCache.clear();
+      return;
+    }
+    const normalizedPath = normalizeCatalogPath(catalogPath);
+    if (!normalizedPath) {
+      return;
+    }
+    urlCache.clearPrefix(normalizedPath);
   },
 
   /** @internal Exposed for unit tests */

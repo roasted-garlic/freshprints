@@ -16,8 +16,11 @@ export function isPortalCustomerOriginPrintRequest(
 }
 
 /**
- * Authoritative Portal editability contract — UI selection, qty controls, and callable
- * validation must agree on this predicate.
+ * Authoritative Portal editability contract — UI selection, item controls, and callable
+ * validation must agree on this predicate. Customer-request provenance is not an editability
+ * loophole: an ordinary non-internal Studio-created Working/Draft request is now the customer's
+ * Portal Working request too. Parking is handled by the active selector, which also receives
+ * `parkedByEditingRequestId` and excludes parked drafts.
  */
 export function isPortalEditablePrintRequest(
   request: PortalPrintRequestEditabilityFields,
@@ -25,8 +28,7 @@ export function isPortalEditablePrintRequest(
   return (
     isPortalContinuablePrintRequestStatus(request.status) &&
     request.isInternal !== true &&
-    (isPortalCustomerOriginPrintRequest(request) ||
-      (request.requestOrigin === "studio_customer" && request.status === "editing"))
+    (isPortalCustomerOriginPrintRequest(request) || request.requestOrigin === "studio_customer")
   );
 }
 
@@ -87,10 +89,6 @@ export function explainPortalPrintRequestEditability(
 
   if (request.isInternal === true) {
     return "Internal requests cannot be edited in the Portal.";
-  }
-
-  if (request.requestOrigin === "studio_customer" && request.status !== "editing") {
-    return "This Studio-created request can only be edited after it enters Editing.";
   }
 
   if (request.requestOrigin === "studio_internal") {

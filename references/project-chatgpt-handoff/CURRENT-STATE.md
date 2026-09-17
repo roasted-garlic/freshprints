@@ -1,8 +1,44 @@
 # Fresh Prints — Current State Snapshot
 
-**Last updated:** 2026-09-16
+## CURRENT AUTHORITATIVE PHASE — SHARED PRICING + CROSS-ORIGIN CUSTOMER REQUEST CORRECTIVE — SIGNED OFF; PRODUCTION ROLLOUT IN PROGRESS
 
-## CURRENT AUTHORITATIVE PHASE — PORTAL SHOW-RAIL HOTFIX — SIGNED OFF; PROMOTION IN PROGRESS
+**Last updated:** 2026-09-17
+
+The managed goal `print-request-length-surcharge-and-customer-navigation` is implemented locally
+under the amended Plan and approved Formal Review. Shared pricing now combines the existing four
+width base tiers with four fixed height bands and configurable surcharges; new Show Allocations
+capture immutable pricing snapshots, Portal reads a normalized customer-safe pricing projection,
+and legacy rows use an explicit no-backfill fallback. The urgent corrective makes active ordinary
+Customer Print Requests origin-neutral: Portal reuses unparked `studio_customer` Working/draft
+requests, parking is origin-neutral, and Studio creation is guarded by a transactional callable.
+Studio customer Print Request detail links to `/users?customerId=...`.
+
+Focused application checks are green: 145/145 affected contracts, 40/40 pricing/compositor/export
+tests, 8/8 snapshot-first total tests, Functions build, Studio/Portal typechecks, packaged Studio
+1.0.15 build, Portal production build (22/22 static pages), release lint, and diff check. The
+focused Rules matrix remains 22/23 because of the reproducible existing 1,000-expression-limit
+failure; repository-wide lint has unrelated baseline diagnostics. See:
+
+- `docs/workflow/reviews/2026-09-17-print-request-length-surcharge-and-customer-navigation-test-report.md`
+- `docs/workflow/reviews/2026-09-17-print-request-length-surcharge-and-customer-navigation-implementation-review.md`
+
+Owner-authorized DEV deployment is complete for exactly 25 Functions at source hash
+`9eff4e7503246487859ad354ce53d2f78360b9b5`; all are ACTIVE in `fresh-prints-dev`. The reviewed
+Firestore Rules were released successfully. The owner closed DEV QA as `approved_with_notes` and
+authorized the protected production rollout. Storage Rules, indexes, migration, backfill, merge,
+cleanup, and customer/request fixture mutation remain out of scope.
+
+The live `getPortalShowPricing` callable returned only the pricing DTO, verified all eight DEV
+tiers, and confirmed `5 × 21 = $4` per unit. The protected Studio creation, Studio allocation,
+and Portal queue callables rejected unauthenticated requests with HTTP 401 without mutation.
+Interactive Settings/Portal/Studio/customer-flow QA was not executed because this session had no
+connected browser and the Windows app-control bridge was unavailable; the owner accepted this
+limitation for closeout. **Next gate: protected production PR, exact deployment manifest, and
+production smoke.**
+
+**Historical prior snapshot:** 2026-09-16
+
+## CURRENT AUTHORITATIVE PHASE — PORTAL SHOW-RAIL HOTFIX — PUBLISHED AND MACHINE-VERIFIED
 
 Owner DEV QA passed the Portal show-rail description parity hotfix. The homepage `Next Show` and
 `Added to Shows This Week` rails hydrate compact selected cards through the existing ready-design-
@@ -18,8 +54,12 @@ IAM, Firebase configuration, migrations, backfills, data, and Studio are unchang
 deployed for this hotfix.
 
 Signoff: `docs/workflow/reviews/2026-09-16-portal-show-rails-design-description-parity-signoff.md`.
-Owner DEV QA: **PASS**. Next: commit/push development, create/merge the protected production PR,
-roll out `fresh-prints-portal` on `fresh-prints-prod`, and machine-verify the hosted revision.
+Owner DEV QA: **PASS**. Candidate `7be6fd49b8ce2ebaa068963b492db8e51b16c7c6` was promoted through
+protected PR #100 as production merge `15676fcd010f572af0d4a2bc969b108d2777be0a`. App Hosting
+rollout `build-2026-09-17-001` succeeded; revision `fresh-prints-portal-build-2026-09-17-001`
+serves 100% traffic. Hosted smoke is HTTP 200 without DEV markers; 179 Functions are ACTIVE, 94
+indexes are READY, maintenance is OFF, and no backend/data/IAM/Studio deployment occurred.
+FreshForge is **IDLE**.
 
 ## PRIOR AUTHORITATIVE PHASE — STUDIO HOTFIX — PUBLISHED AND MACHINE-VERIFIED
 

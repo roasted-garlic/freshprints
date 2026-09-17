@@ -27,6 +27,10 @@ import {
   DEFAULT_GANG_SHEET_STANDARD_FULL_SIZE_WEIGHT_OZ,
   DEFAULT_GANG_SHEET_STANDARD_OVERSIZED_PRICE_USD,
   DEFAULT_GANG_SHEET_STANDARD_OVERSIZED_WEIGHT_OZ,
+  DEFAULT_GANG_SHEET_LENGTH_SURCHARGE_STANDARD_USD,
+  DEFAULT_GANG_SHEET_LENGTH_SURCHARGE_LONG_USD,
+  DEFAULT_GANG_SHEET_LENGTH_SURCHARGE_EXTRA_LONG_USD,
+  DEFAULT_GANG_SHEET_LENGTH_SURCHARGE_EXTENDED_USD,
 } from "@fresh-prints/shared/constants/gangSheetSectionPricingSettings.constants";
 
 import { db } from "../../../config/firebase";
@@ -93,6 +97,10 @@ export interface ShowQueueSettings {
   gangSheetStandardOversizedWeightOz?: number;
   gangSheetExtraOversizedPriceUsd?: number;
   gangSheetExtraOversizedWeightOz?: number;
+  lengthSurchargeStandardUsd?: number;
+  lengthSurchargeLongUsd?: number;
+  lengthSurchargeExtraLongUsd?: number;
+  lengthSurchargeExtendedUsd?: number;
   /** Legacy two-tier cutoff retained for read-only fallback compatibility. */
   gangSheetSectionPriceCutoffInches?: number;
   gangSheetSmallTierPriceUsd?: number;
@@ -134,6 +142,10 @@ export {
   DEFAULT_GANG_SHEET_STANDARD_OVERSIZED_WEIGHT_OZ,
   DEFAULT_GANG_SHEET_EXTRA_OVERSIZED_PRICE_USD,
   DEFAULT_GANG_SHEET_EXTRA_OVERSIZED_WEIGHT_OZ,
+  DEFAULT_GANG_SHEET_LENGTH_SURCHARGE_STANDARD_USD,
+  DEFAULT_GANG_SHEET_LENGTH_SURCHARGE_LONG_USD,
+  DEFAULT_GANG_SHEET_LENGTH_SURCHARGE_EXTRA_LONG_USD,
+  DEFAULT_GANG_SHEET_LENGTH_SURCHARGE_EXTENDED_USD,
 };
 
 function mapWhatnotAssistedImportSummary(value: unknown): WhatnotAssistedImportSummary | undefined {
@@ -206,6 +218,14 @@ function mapShowQueueSettings(data: Record<string, unknown> | undefined): ShowQu
       typeof data?.gangSheetExtraOversizedPriceUsd === "number" ? data.gangSheetExtraOversizedPriceUsd : undefined,
     gangSheetExtraOversizedWeightOz:
       typeof data?.gangSheetExtraOversizedWeightOz === "number" ? data.gangSheetExtraOversizedWeightOz : undefined,
+    lengthSurchargeStandardUsd:
+      typeof data?.lengthSurchargeStandardUsd === "number" ? data.lengthSurchargeStandardUsd : undefined,
+    lengthSurchargeLongUsd:
+      typeof data?.lengthSurchargeLongUsd === "number" ? data.lengthSurchargeLongUsd : undefined,
+    lengthSurchargeExtraLongUsd:
+      typeof data?.lengthSurchargeExtraLongUsd === "number" ? data.lengthSurchargeExtraLongUsd : undefined,
+    lengthSurchargeExtendedUsd:
+      typeof data?.lengthSurchargeExtendedUsd === "number" ? data.lengthSurchargeExtendedUsd : undefined,
     gangSheetSectionPriceCutoffInches:
       typeof data?.gangSheetSectionPriceCutoffInches === "number"
         ? data.gangSheetSectionPriceCutoffInches
@@ -247,6 +267,10 @@ export const showQueueSettingsService = {
       gangSheetStandardOversizedWeightOz?: number;
       gangSheetExtraOversizedPriceUsd?: number;
       gangSheetExtraOversizedWeightOz?: number;
+      lengthSurchargeStandardUsd?: number;
+      lengthSurchargeLongUsd?: number;
+      lengthSurchargeExtraLongUsd?: number;
+      lengthSurchargeExtendedUsd?: number;
       gangSheetSectionPriceCutoffInches?: number;
       gangSheetSmallTierPriceUsd?: number;
       gangSheetSmallTierWeightOz?: number;
@@ -286,6 +310,10 @@ export const showQueueSettingsService = {
       gangSheetStandardOversizedWeightOz: input.gangSheetStandardOversizedWeightOz,
       gangSheetExtraOversizedPriceUsd: input.gangSheetExtraOversizedPriceUsd,
       gangSheetExtraOversizedWeightOz: input.gangSheetExtraOversizedWeightOz,
+      lengthSurchargeStandardUsd: input.lengthSurchargeStandardUsd,
+      lengthSurchargeLongUsd: input.lengthSurchargeLongUsd,
+      lengthSurchargeExtraLongUsd: input.lengthSurchargeExtraLongUsd,
+      lengthSurchargeExtendedUsd: input.lengthSurchargeExtendedUsd,
       gangSheetSectionPriceCutoffInches: input.gangSheetSectionPriceCutoffInches,
       gangSheetSmallTierPriceUsd: input.gangSheetSmallTierPriceUsd,
       gangSheetSmallTierWeightOz: input.gangSheetSmallTierWeightOz,

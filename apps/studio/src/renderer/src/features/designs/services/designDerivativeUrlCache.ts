@@ -29,6 +29,24 @@ export class DesignDerivativeUrlCache {
     this.inflightRequests.clear();
   }
 
+  /** Clears path and any `path@version` cache entries. */
+  clearPrefix(catalogPathPrefix: string): void {
+    const prefix = catalogPathPrefix.trim();
+    if (!prefix) {
+      return;
+    }
+    for (const key of [...this.resolvedUrls.keys()]) {
+      if (key === prefix || key.startsWith(`${prefix}@`)) {
+        this.resolvedUrls.delete(key);
+      }
+    }
+    for (const key of [...this.inflightRequests.keys()]) {
+      if (key === prefix || key.startsWith(`${prefix}@`)) {
+        this.inflightRequests.delete(key);
+      }
+    }
+  }
+
   async resolve(
     catalogPath: string,
     resolver: () => Promise<string | null>,

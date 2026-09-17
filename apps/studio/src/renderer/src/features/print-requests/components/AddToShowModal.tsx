@@ -58,7 +58,11 @@ interface AddToShowModalProps {
    */
   destinationMode?: StudioDestinationTab;
   onClose: () => void;
-  onAdded: () => void | Promise<void>;
+  onAdded: (result?: {
+    totalAllocatedQuantity: number;
+    remainingUnallocatedQuantity: number;
+    isFullyQueued: boolean;
+  }) => void | Promise<void>;
   /** Re-read request/allocation state after a failed server write before showing the error. */
   onReconcile?: () => void | Promise<void>;
 }
@@ -609,7 +613,7 @@ export function AddToShowModal({
         showLabel: finalLegs.map((leg) => getShowLabel(leg.showId)).join(", "),
         itemLabel: "request plan",
       });
-      await upcomingShowService.allocateStudioPrintRequestToShow(user, {
+      const allocateResult = await upcomingShowService.allocateStudioPrintRequestToShow(user, {
         printRequestId: printRequest.id,
         legs: finalLegs.map((leg) => ({
           upcomingShowId: leg.showId,
@@ -628,7 +632,11 @@ export function AddToShowModal({
 
       releaseAllStaffInboxQueuedAlertGroups(heldGroupKeys);
       onClose();
-      await onAdded();
+      await onAdded({
+        totalAllocatedQuantity: allocateResult.totalAllocatedQuantity,
+        remainingUnallocatedQuantity: allocateResult.remainingUnallocatedQuantity,
+        isFullyQueued: allocateResult.isFullyQueued,
+      });
     } catch (error) {
       releaseAllStaffInboxQueuedAlertGroups(heldGroupKeys);
       setSavePendingByShowId(undefined);

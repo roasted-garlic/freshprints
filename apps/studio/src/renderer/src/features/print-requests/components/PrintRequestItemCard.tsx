@@ -1,4 +1,4 @@
-import { Ban, CircleCheck, Download, Minus, Plus } from "lucide-react";
+import { Ban, CircleCheck, Minus, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
 
 import { Button } from "../../../shared/components/Button";
@@ -765,14 +765,12 @@ export function PrintRequestItemCard({
     <Button
       aria-busy={isDownloading || undefined}
       aria-label={`Download ${title}`}
-      className="button-leading-icon"
       disabled={downloadDisabled}
       onClick={onDownload}
       size="sm"
       type="button"
       variant="secondary"
     >
-      <Download aria-hidden="true" size={15} />
       {isDownloading ? "Downloading…" : "Download"}
     </Button>
   ) : null;

@@ -18,6 +18,10 @@ type Draft = {
   oversizedWeight: string;
   extraPrice: string;
   extraWeight: string;
+  standardLengthSurcharge: string;
+  longSurcharge: string;
+  extraLongSurcharge: string;
+  extendedSurcharge: string;
 };
 
 function toDraft(settings: ReturnType<typeof useGangSheetSettings>["settings"]): Draft {
@@ -36,6 +40,10 @@ function toDraft(settings: ReturnType<typeof useGangSheetSettings>["settings"]):
     oversizedWeight: String(settings.sectionPricing.standardOversized.weightOz),
     extraPrice: String(settings.sectionPricing.extraOversized.priceUsd),
     extraWeight: String(settings.sectionPricing.extraOversized.weightOz),
+    standardLengthSurcharge: String(settings.sectionPricing.lengthSurcharges.standardLengthUsd),
+    longSurcharge: String(settings.sectionPricing.lengthSurcharges.longUsd),
+    extraLongSurcharge: String(settings.sectionPricing.lengthSurcharges.extraLongUsd),
+    extendedSurcharge: String(settings.sectionPricing.lengthSurcharges.extendedUsd),
   };
 }
 
@@ -99,6 +107,10 @@ export function GangSheetSettingsSection() {
       ["oversizedWeight", "Standard Oversized weight"],
       ["extraPrice", "Extra Oversized price"],
       ["extraWeight", "Extra Oversized weight"],
+      ["standardLengthSurcharge", "Standard Length surcharge"],
+      ["longSurcharge", "Long surcharge"],
+      ["extraLongSurcharge", "Extra Long surcharge"],
+      ["extendedSurcharge", "Extended surcharge"],
     ];
     const parsed = new Map<keyof Draft, number>();
     for (const [field, label] of fields) {
@@ -125,6 +137,10 @@ export function GangSheetSettingsSection() {
       gangSheetStandardOversizedWeightOz: parsed.get("oversizedWeight"),
       gangSheetExtraOversizedPriceUsd: parsed.get("extraPrice"),
       gangSheetExtraOversizedWeightOz: parsed.get("extraWeight"),
+      lengthSurchargeStandardUsd: parsed.get("standardLengthSurcharge"),
+      lengthSurchargeLongUsd: parsed.get("longSurcharge"),
+      lengthSurchargeExtraLongUsd: parsed.get("extraLongSurcharge"),
+      lengthSurchargeExtendedUsd: parsed.get("extendedSurcharge"),
     });
   }
 
@@ -212,6 +228,32 @@ export function GangSheetSettingsSection() {
                 </div>
               </div>
             ))}
+            <div className="gang-sheet-pricing-row">
+              <strong>Length surcharge</strong>
+              <span className="settings-field-hint">Added once per print by saved height</span>
+              <div className="gang-sheet-length-surcharge-fields">
+                {([
+                  ["standardLengthSurcharge", "Standard Length (up to 14\")"],
+                  ["longSurcharge", "Long (over 14\" through 18\")"],
+                  ["extraLongSurcharge", "Extra Long (over 18\" through 24\")"],
+                  ["extendedSurcharge", "Extended (over 24\")"],
+                ] as Array<[keyof Draft, string]>).map(([field, label]) => (
+                  <label htmlFor={`gang-sheet-${field}`} key={field}>
+                    {label} ($)
+                    <input
+                      className="settings-number-input"
+                      id={`gang-sheet-${field}`}
+                      min={0}
+                      max={999.99}
+                      onChange={(event) => setField(field, event.target.value)}
+                      step={0.01}
+                      type="number"
+                      value={draft[field]}
+                    />
+                  </label>
+                ))}
+              </div>
+            </div>
           </fieldset>
         </div>
       ) : null}

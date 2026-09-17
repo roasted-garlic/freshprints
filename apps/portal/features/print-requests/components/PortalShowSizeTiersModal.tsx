@@ -4,25 +4,34 @@ import { useEffect, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
-import { DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG } from '@fresh-prints/shared/constants/gangSheetSectionPricingSettings.constants';
-import { GANG_SHEET_PRICING_TIER_ORDER } from '@fresh-prints/shared/utils/gangSheetCustomerSectionSummary';
-import { resolveGangSheetPricingForTier } from '@fresh-prints/shared/utils/gangSheetCustomerSectionSummary';
+import type { GangSheetSectionPricingConfig } from '@fresh-prints/shared/constants/gangSheetSectionPricingSettings.constants';
 import {
+  GANG_SHEET_LENGTH_TIER_ORDER,
+  GANG_SHEET_PRICING_TIER_ORDER,
+  resolveGangSheetLengthSurchargeUsd,
+  resolveGangSheetPricingForTier,
+} from '@fresh-prints/shared/utils/gangSheetCustomerSectionSummary';
+import {
+  GANG_SHEET_LENGTH_TIER_LABELS,
+  GANG_SHEET_LENGTH_TIER_SIZE_RANGES,
   GANG_SHEET_PRICING_TIER_LABELS,
   GANG_SHEET_PRICING_TIER_SIZE_RANGES,
 } from '@fresh-prints/shared/utils/gangSheetPricingTierDisplay';
 import { PORTAL_SHOW_PRICE_COMMITMENT_HINT } from '@fresh-prints/shared/utils/portalBiddingAcknowledgmentCopy';
 
 import { formatPortalShowPriceUsd } from '../utils/buildPortalShowPriceCommitmentSummary';
+import { usePortalShowPricing } from '../hooks/usePortalShowPricing';
 
 export interface PortalShowSizeTiersModalProps {
   isOpen: boolean;
   onClose: () => void;
+  pricing?: GangSheetSectionPricingConfig;
 }
 
-export function PortalShowSizeTiersModal({ isOpen, onClose }: PortalShowSizeTiersModalProps) {
+export function PortalShowSizeTiersModal({ isOpen, onClose, pricing: pricingOverride }: PortalShowSizeTiersModalProps) {
   const titleId = useId();
-  const pricing = DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG;
+  const { pricing: loadedPricing } = usePortalShowPricing();
+  const pricing = pricingOverride ?? loadedPricing;
   const [canPortal, setCanPortal] = useState(false);
 
   useEffect(() => {
@@ -100,6 +109,34 @@ export function PortalShowSizeTiersModal({ isOpen, onClose }: PortalShowSizeTier
                 })}
               </tbody>
             </table>
+          </div>
+          <div className="portal-show-size-tiers-section">
+            <div className="portal-show-size-tiers-section-heading">
+              <p className="portal-eyebrow">Length surcharges</p>
+              <p className="portal-muted portal-show-price-commitment-hint">
+                Extra charge for taller prints, added to the size price.
+              </p>
+            </div>
+            <div className="portal-show-size-tiers-table-wrap">
+              <table className="portal-show-size-tiers-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Tier</th>
+                    <th scope="col">Print height</th>
+                    <th scope="col">Per print</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {GANG_SHEET_LENGTH_TIER_ORDER.map((tier) => (
+                    <tr key={tier}>
+                      <th scope="row">{GANG_SHEET_LENGTH_TIER_LABELS[tier]}</th>
+                      <td>{GANG_SHEET_LENGTH_TIER_SIZE_RANGES[tier]}</td>
+                      <td>+{formatPortalShowPriceUsd(resolveGangSheetLengthSurchargeUsd(pricing, tier))}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
         <footer className="modal-footer">

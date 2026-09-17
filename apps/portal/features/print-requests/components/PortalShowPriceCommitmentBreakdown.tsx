@@ -1,12 +1,14 @@
 'use client';
 
-import { DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG } from '@fresh-prints/shared/constants/gangSheetSectionPricingSettings.constants';
+import { DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG, type GangSheetSectionPricingConfig } from '@fresh-prints/shared/constants/gangSheetSectionPricingSettings.constants';
 import type { GangSheetCustomerSectionSummary } from '@fresh-prints/shared/utils/gangSheetCustomerSectionSummary';
 import {
   orderGangSheetPricingTiersByPrice,
   resolveGangSheetPricingForTier,
 } from '@fresh-prints/shared/utils/gangSheetCustomerSectionSummary';
 import {
+  GANG_SHEET_LENGTH_TIER_LABELS,
+  GANG_SHEET_LENGTH_TIER_SIZE_RANGES,
   GANG_SHEET_PRICING_TIER_LABELS,
   GANG_SHEET_PRICING_TIER_SIZE_RANGES,
 } from '@fresh-prints/shared/utils/gangSheetPricingTierDisplay';
@@ -20,13 +22,15 @@ function formatPortalShowWeightOz(amount: number): string {
 
 export interface PortalShowPriceCommitmentBreakdownProps {
   summary: GangSheetCustomerSectionSummary;
+  pricing?: GangSheetSectionPricingConfig;
 }
 
 /** Shared body for detail modal and Add-to-Show acknowledgment (Studio-like totals + tiers). */
 export function PortalShowPriceCommitmentBreakdown({
   summary,
+  pricing: pricingOverride = DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG,
 }: PortalShowPriceCommitmentBreakdownProps) {
-  const pricing = DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG;
+  const pricing = pricingOverride;
   const tiers = orderGangSheetPricingTiersByPrice(pricing).filter(
     (tier) => summary.tierQuantities[tier] > 0,
   );
@@ -75,6 +79,44 @@ export function PortalShowPriceCommitmentBreakdown({
                   <span>
                     {formatPortalShowWeightOz(tierPricing.weightOz)} × {quantity} ={' '}
                     {formatPortalShowWeightOz(tierPricing.weightOz * quantity)}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+      <section className="portal-show-price-commitment-section">
+        <div className="portal-show-price-commitment-section-heading">
+          <p className="portal-eyebrow">By length</p>
+          <p className="portal-show-price-commitment-length-note">additional $ for taller prints</p>
+        </div>
+        <div className="portal-show-price-commitment-list">
+          {([
+            ['standard_length', pricing.lengthSurcharges.standardLengthUsd],
+            ['long', pricing.lengthSurcharges.longUsd],
+            ['extra_long', pricing.lengthSurcharges.extraLongUsd],
+            ['extended', pricing.lengthSurcharges.extendedUsd],
+          ] as const).map(([tier, surcharge]) => {
+            const quantity = summary.lengthTierQuantities[tier];
+            if (quantity <= 0) return null;
+            return (
+              <div className="portal-show-price-commitment-row" key={tier}>
+                <div>
+                  <strong>
+                    {GANG_SHEET_LENGTH_TIER_LABELS[tier]}{' '}
+                    <span className="portal-show-price-commitment-row-range">
+                      ({GANG_SHEET_LENGTH_TIER_SIZE_RANGES[tier]})
+                    </span>
+                  </strong>
+                  <span>
+                    {quantity} print{quantity === 1 ? '' : 's'}
+                  </span>
+                </div>
+                <div className="portal-show-price-commitment-row-values">
+                  <span>
+                    {formatPortalShowPriceUsd(surcharge)} × {quantity} ={' '}
+                    {formatPortalShowPriceUsd(surcharge * quantity)}
                   </span>
                 </div>
               </div>

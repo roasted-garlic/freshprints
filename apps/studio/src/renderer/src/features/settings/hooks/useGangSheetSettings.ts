@@ -15,12 +15,13 @@ const EMPTY_SETTINGS: ResolvedGangSheetSettings = {
   gangSheetMaxLengthInches: 300,
   gangSheetLabelFontSizePx: 120,
   sectionPricing: {
-    policyVersion: "width-four-tier-v1",
+    policyVersion: "width-four-tier-length-surcharge-v1",
     sizeCutoffInches: 4,
     pocket: { priceUsd: 1, weightOz: 0.4 },
     standardFullSize: { priceUsd: 2, weightOz: 0.75 },
     standardOversized: { priceUsd: 3, weightOz: 0.75 },
     extraOversized: { priceUsd: 4, weightOz: 0.75 },
+    lengthSurcharges: { standardLengthUsd: 0, longUsd: 1, extraLongUsd: 2, extendedUsd: 3 },
   },
 };
 

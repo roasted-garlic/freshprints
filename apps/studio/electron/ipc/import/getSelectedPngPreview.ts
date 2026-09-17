@@ -18,8 +18,23 @@ export interface SelectedPngPreviewResult {
   suggestDarkArtworkBackground?: boolean;
 }
 
+/**
+ * Build preview from file bytes so replace-in-place at the same filesystem path
+ * cannot reuse a stale OS/nativeImage thumbnail cache.
+ */
 export function getSelectedPngPreview(filePath: string): SelectedPngPreviewResult | null {
-  const image = nativeImage.createFromPath(filePath);
+  let pngBytes: Buffer;
+  try {
+    pngBytes = readFileSync(filePath);
+  } catch {
+    return null;
+  }
+
+  if (pngBytes.byteLength === 0) {
+    return null;
+  }
+
+  const image = nativeImage.createFromBuffer(pngBytes);
 
   if (image.isEmpty()) {
     return null;
@@ -56,13 +71,44 @@ export function getSelectedPngPreview(filePath: string): SelectedPngPreviewResul
 export async function getSelectedPngPreviewWithBackgroundHint(
   filePath: string,
 ): Promise<SelectedPngPreviewResult | null> {
-  const preview = getSelectedPngPreview(filePath);
-  if (!preview) {
+  let pngBytes: Buffer;
+  try {
+    pngBytes = readFileSync(filePath);
+  } catch {
     return null;
   }
 
+  if (pngBytes.byteLength === 0) {
+    return null;
+  }
+
+  const image = nativeImage.createFromBuffer(pngBytes);
+  if (image.isEmpty()) {
+    return null;
+  }
+
+  const { width, height } = image.getSize();
+  if (width <= 0 || height <= 0) {
+    return null;
+  }
+
+  const previewImage =
+    width > PNG_PREVIEW_MAX_WIDTH_PX
+      ? image.resize({ width: PNG_PREVIEW_MAX_WIDTH_PX })
+      : image;
+  const previewSize = previewImage.getSize();
+  const dataUrl = previewImage.toDataURL();
+  if (!dataUrl) {
+    return null;
+  }
+
+  const preview: SelectedPngPreviewResult = {
+    dataUrl,
+    previewWidth: previewSize.width,
+    previewHeight: previewSize.height,
+  };
+
   try {
-    const pngBytes = readFileSync(filePath);
     const sharp = await loadSharpModule();
     const suggestDark = await suggestDarkArtworkBackgroundFromPngBytes(sharp, pngBytes);
     if (suggestDark === true) {

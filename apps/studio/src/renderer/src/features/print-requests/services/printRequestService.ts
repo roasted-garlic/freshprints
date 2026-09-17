@@ -53,6 +53,10 @@ import type {
   PrintRequestOrigin,
 } from "@fresh-prints/shared/types/printRequest/printRequest.types";
 import type {
+  CreateStudioCustomerPrintRequestRequest,
+  CreateStudioCustomerPrintRequestResponse,
+} from "@fresh-prints/shared/types/printRequest/createStudioCustomerPrintRequest.types";
+import type {
   PrintRequestLifecycleEvent,
   PrintRequestLifecycleEventType,
 } from "@fresh-prints/shared/types/printRequest/printRequestLifecycle.types";
@@ -64,6 +68,7 @@ import { readCustomerIdentityDocumentFields } from "@fresh-prints/shared/utils/r
 import { requireValidCustomerUsername } from "@fresh-prints/shared/utils/customerUsername";
 import { isPrintRequestOrigin } from "@fresh-prints/shared/utils/printRequestOrigin";
 import { isPortalContinuablePrintRequestStatus } from "@fresh-prints/shared/utils/portalPrintRequestListTabs";
+import { isPortalParkedDraft } from "@fresh-prints/shared/utils/portalActiveEditablePrintRequest";
 import {
   formatCustomerPrintRequestName,
   formatInternalPrintRequestName,
@@ -741,13 +746,24 @@ function buildContinuableCustomerPrintRequestsQuery(customerId: string) {
     firestoreCollectionService.getPrintRequestsCollection(),
     where("customerId", "==", customerId),
     where("status", "in", ["draft", "editing"]),
-    limit(1),
+    limit(10),
   );
 }
 
 async function assertCustomerHasNoContinuablePrintRequest(customerId: string): Promise<void> {
   const snapshot = await getDocs(buildContinuableCustomerPrintRequestsQuery(customerId));
-  if (!snapshot.empty) {
+  const hasActiveCustomerRequest = snapshot.docs.some((requestDoc) => {
+    const data = requestDoc.data();
+    return (
+      data.isInternal !== true &&
+      !isPortalParkedDraft({
+        status: data.status as PrintRequest["status"],
+        parkedByEditingRequestId:
+          typeof data.parkedByEditingRequestId === "string" ? data.parkedByEditingRequestId : undefined,
+      })
+    );
+  });
+  if (hasActiveCustomerRequest) {
     throw new Error(
       "This customer already has an open print request. Finish or release that request before creating another.",
     );
@@ -785,49 +801,6 @@ async function createInternalPrintRequestInTransaction(
   assertNoUndefinedFirestoreFields(payload, "Internal print request payload");
   transaction.set(requestRef, payload);
   transaction.set(counterRef, counterPayload, { merge: true });
-
-  return requestRef;
-}
-
-async function createCustomerPrintRequestInTransaction(
-  transaction: Transaction,
-  callerId: string,
-  input: { customerId: string; notes?: string },
-) {
-  const customerRef = doc(firestoreCollectionService.getCustomersCollection(), input.customerId);
-  const requestRef = doc(firestoreCollectionService.getPrintRequestsCollection());
-  const customerSnapshot = await transaction.get(customerRef);
-
-  if (!customerSnapshot.exists()) {
-    throw new Error("Customer not found.");
-  }
-
-  const customer = mapCustomerData(customerSnapshot.id, customerSnapshot.data() as CustomerDocumentData);
-  const username = requireValidCustomerUsername(customer.username ?? "");
-
-  const sequence = resolveNextSequence(customer.nextPrintRequestSequence);
-  const payload = buildPrintRequestPayload(
-    {
-      name: formatCustomerPrintRequestName(username, sequence),
-      customerId: customer.id,
-      isInternal: false,
-      requestOrigin: "studio_customer",
-      requestSequenceNumber: sequence,
-      customerUsernameSnapshot: username,
-      customerDisplayNameSnapshot: customer.displayName,
-      nameFormatVersion: "cr-ir-v1",
-      notes: input.notes,
-    },
-    callerId,
-  );
-
-  assertNoUndefinedFirestoreFields(payload, "Customer print request payload");
-  transaction.set(requestRef, payload);
-  transaction.update(customerRef, {
-    nextPrintRequestSequence: sequence + 1,
-    totalPrintRequests: customer.totalPrintRequests + 1,
-    updatedAt: serverTimestamp(),
-  });
 
   return requestRef;
 }
@@ -1639,11 +1612,22 @@ export const printRequestService = {
 
     const customerIds = new Set<string>();
     for (const requestDoc of snapshot.docs) {
-      const data = requestDoc.data() as { customerId?: unknown; status?: unknown };
+      const data = requestDoc.data() as {
+        customerId?: unknown;
+        status?: unknown;
+        isInternal?: unknown;
+        parkedByEditingRequestId?: unknown;
+      };
       if (
         typeof data.customerId === "string" &&
         data.customerId.length > 0 &&
+        data.isInternal !== true &&
         isPortalContinuablePrintRequestStatus(data.status as PrintRequest["status"])
+        && !isPortalParkedDraft({
+          status: data.status as PrintRequest["status"],
+          parkedByEditingRequestId:
+            typeof data.parkedByEditingRequestId === "string" ? data.parkedByEditingRequestId : undefined,
+        })
       ) {
         customerIds.add(data.customerId);
       }
@@ -1756,21 +1740,20 @@ export const printRequestService = {
 
     await assertCustomerHasNoContinuablePrintRequest(input.customerId);
 
-    const requestRef = await runTracedWrite(
-      "runTransaction",
-      () =>
-        runTransaction(db, (transaction) =>
-          createCustomerPrintRequestInTransaction(transaction, caller.id, input),
-        ),
-      {
-        app: "studio",
-        collection: "printRequests",
-        documentPathPattern: "printRequests/{printRequestId}",
-        source: "printRequestService.createCustomerPrintRequest",
-      },
-      { writeCount: 2 },
-    );
+    const created = await callTracedFunction<
+      CreateStudioCustomerPrintRequestRequest,
+      CreateStudioCustomerPrintRequestResponse
+    >("createStudioCustomerPrintRequest", {
+      source: "printRequestService.createCustomerPrintRequest",
+    })({
+      customerId: input.customerId,
+      ...(input.notes ? { notes: input.notes } : {}),
+    });
+    const requestRef = doc(firestoreCollectionService.getPrintRequestsCollection(), created.printRequestId);
     const createdSnapshot = await getDoc(requestRef);
+    if (!createdSnapshot.exists()) {
+      throw new Error("The created print request could not be loaded.");
+    }
     return mapPrintRequestData(requestRef.id, createdSnapshot.data() as PrintRequestDocumentData);
   },
 

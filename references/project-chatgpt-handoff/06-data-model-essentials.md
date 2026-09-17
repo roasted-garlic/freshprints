@@ -1,5 +1,15 @@
 # Data Model Essentials
 
+## Shared length pricing snapshots — signed off 2026-09-17
+
+- New allocations carry an immutable canonical pricing snapshot covering width tier, base price,
+  length tier, surcharge, unit price, and weight; readers fall back to the current resolver for
+  legacy or malformed snapshots.
+- Rules allow the optional snapshot field and keep it immutable on client updates. Nested snapshot
+  validation remains intentionally outside the Rules expression budget; trusted Admin allocation
+  paths author the shape.
+- No backfill, migration, data rewrite, new index, or Storage Rules change is required.
+
 ## Portal Admin Staff Artwork + canonical Design AI lifecycle — DEV closed 2026-09-15
 
 - Portal `/admin/staff-artwork` creates the existing private `staffArtworks/{staffArtworkId}`

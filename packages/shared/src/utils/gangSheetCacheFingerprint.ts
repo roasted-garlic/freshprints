@@ -42,7 +42,7 @@ export function buildGangSheetCacheFingerprint(request: ExportGangSheetPngReques
       ? { layoutMode: request.layoutMode }
       : {}),
     ...(request.sectionPricing
-      ? { sectionSummaryVersion: 3, sectionPricing: request.sectionPricing }
+      ? { sectionSummaryVersion: 5, sectionPricing: request.sectionPricing }
       : {}),
     images,
   });

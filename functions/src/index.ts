@@ -10,6 +10,8 @@ export { confirmCustomerUploadsForDonation } from "./confirmCustomerUploadsForDo
 export { createCustomerWithPortalInvite } from "./createCustomerWithPortalInvite";
 export { createCustomerUploadBatch } from "./createCustomerUploadBatch";
 export { createPortalPrintRequest } from "./createPortalPrintRequest";
+export { createStudioCustomerPrintRequest } from "./createStudioCustomerPrintRequest";
+export { getPortalShowPricing } from "./getPortalShowPricing";
 export { duplicatePortalPrintRequestItem } from "./duplicatePortalPrintRequestItem";
 export { excludeCustomerUploadFromCatalog } from "./excludeCustomerUploadFromCatalog";
 export { finalizeCustomerUpload } from "./finalizeCustomerUpload";

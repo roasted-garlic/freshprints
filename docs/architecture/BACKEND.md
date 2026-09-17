@@ -77,10 +77,11 @@ See `DATA_MODEL.md` for entities.
 
 Global Gang Sheet Settings use the existing trusted Studio direct Firestore path for
 `settings/showQueue`, protected by the existing owner/admin settings permission and a narrow
-Rules allowlist extension for the eight canonical price/weight fields. A renderer resolver reads
-`settings/internalGangSheet` only as a legacy fallback when canonical values are missing. No
-settings Function, Storage Rules change, index, migration, or automatic backfill is part of this
-surface.
+Rules allowlist extension for the canonical width price/weight and length-surcharge fields. A
+renderer/server resolver reads `settings/internalGangSheet` only as a legacy fallback when
+canonical values are missing. `getPortalShowPricing` exposes only the normalized customer-safe
+pricing projection needed by Portal; it does not expose raw staff settings. No Storage Rules
+change, index, migration, or automatic backfill is part of this surface.
 
 ---
 
@@ -115,6 +116,11 @@ editing/requeue parking, and explicitly recomputes `queueTab`. Optional request 
 `overrideShowCapacity: true` (literal boolean only) permits exceeding `maxTotalQuantity` after
 explicit Studio confirmation; Past/terminal and unrelated guards still apply. It does not change the
 Portal callable.
+
+Both trusted allocation callables capture the resolved width/length pricing commitment on each new
+`showAllocations` row. Recovery, move, and transfer flows preserve that immutable snapshot so
+historical allocation totals do not change when settings are edited. Legacy rows without a
+snapshot use the shared resolver as a display fallback; no backfill is performed.
 
 Request-scoped image export and Standard gang-sheet generation remain Electron desktop operations:
 renderer → preload → validated IPC → Electron main → Firebase Storage download / Sharp / single PNG,

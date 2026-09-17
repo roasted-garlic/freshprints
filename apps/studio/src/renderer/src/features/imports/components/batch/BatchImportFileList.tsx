@@ -65,6 +65,10 @@ function getFileMeta(file: BatchImportFileManifestEntry): string | null {
   return null;
 }
 
+function buildBatchImportPreviewCacheKey(file: BatchImportFileManifestEntry): string {
+  return `${file.filePath}@${file.fileSizeBytes}`;
+}
+
 function BatchImportFilePreview({
   backgroundMode,
   file,
@@ -75,6 +79,7 @@ function BatchImportFilePreview({
   onOpenPreview,
   onPreviewLoaded,
   onSuggestDarkDetected,
+  previewCacheKey,
   previewDataUrl,
   suggestDark,
 }: {
@@ -85,8 +90,14 @@ function BatchImportFilePreview({
   itemHalftoneOverride: ImportItemHalftoneOverride;
   jobId: BatchImportJobId | undefined;
   onOpenPreview: (filePath: string) => void;
-  onPreviewLoaded: (filePath: string, dataUrl: string, suggestDark: boolean) => void;
+  onPreviewLoaded: (
+    cacheKey: string,
+    filePath: string,
+    dataUrl: string,
+    suggestDark: boolean,
+  ) => void;
   onSuggestDarkDetected?: (filePath: string, suggestDark: boolean) => void;
+  previewCacheKey: string;
   previewDataUrl: string | null;
   suggestDark: boolean;
 }) {
@@ -155,7 +166,7 @@ function BatchImportFilePreview({
 
         const detected = previewResult.data.suggestDarkArtworkBackground === true;
         setLocalSuggestDark(detected);
-        onPreviewLoaded(file.filePath, previewResult.data.dataUrl, detected);
+        onPreviewLoaded(previewCacheKey, file.filePath, previewResult.data.dataUrl, detected);
         onSuggestDarkDetected?.(file.filePath, detected);
       })
       .catch(() => {
@@ -171,6 +182,7 @@ function BatchImportFilePreview({
     jobId,
     onPreviewLoaded,
     onSuggestDarkDetected,
+    previewCacheKey,
     previewDataUrl,
   ]);
 
@@ -225,16 +237,22 @@ export function BatchImportFileList({
   variant = "default",
 }: BatchImportFileListProps) {
   const items = files;
-  const [previewDataUrlByPath, setPreviewDataUrlByPath] = useState<Record<string, string>>({});
+  const [previewDataUrlByKey, setPreviewDataUrlByKey] = useState<Record<string, string>>({});
   const [lightboxFilePath, setLightboxFilePath] = useState<string | null>(null);
 
+  // New job (or empty file set) must not keep previews from a prior import of the same path.
+  useEffect(() => {
+    setPreviewDataUrlByKey({});
+    setLightboxFilePath(null);
+  }, [jobId]);
+
   const handlePreviewLoaded = useCallback(
-    (filePath: string, dataUrl: string, suggestDarkDetected?: boolean) => {
-      setPreviewDataUrlByPath((current) => {
-        if (current[filePath] === dataUrl) {
+    (cacheKey: string, filePath: string, dataUrl: string, suggestDarkDetected?: boolean) => {
+      setPreviewDataUrlByKey((current) => {
+        if (current[cacheKey] === dataUrl) {
           return current;
         }
-        return { ...current, [filePath]: dataUrl };
+        return { ...current, [cacheKey]: dataUrl };
       });
       if (suggestDarkDetected === true) {
         onSuggestDarkDetected?.(filePath, true);
@@ -249,7 +267,8 @@ export function BatchImportFileList({
     }
 
     const navItems = files.flatMap((file) => {
-      const previewDataUrl = previewDataUrlByPath[file.filePath];
+      const previewCacheKey = buildBatchImportPreviewCacheKey(file);
+      const previewDataUrl = previewDataUrlByKey[previewCacheKey];
       if (!previewDataUrl) {
         return [];
       }
@@ -284,7 +303,7 @@ export function BatchImportFileList({
     halftoneMode,
     itemBackgroundOverrides,
     itemHalftoneOverrides,
-    previewDataUrlByPath,
+    previewDataUrlByKey,
     suggestDarkByPath,
     variant,
   ]);
@@ -293,8 +312,9 @@ export function BatchImportFileList({
     lightboxFilePath != null
       ? files.find((file) => file.filePath === lightboxFilePath)
       : undefined;
+  const activePreviewCacheKey = activeFile ? buildBatchImportPreviewCacheKey(activeFile) : null;
   const activePreviewDataUrl =
-    lightboxFilePath != null ? previewDataUrlByPath[lightboxFilePath] ?? null : null;
+    activePreviewCacheKey != null ? previewDataUrlByKey[activePreviewCacheKey] ?? null : null;
   const activeFileLabel = activeFile ? getFileLabel(activeFile) : "Preview";
   const activeBackgroundCssHex =
     activeFile && lightboxFilePath
@@ -350,6 +370,7 @@ export function BatchImportFileList({
           const showRowControls =
             variant === "validated" &&
             (Boolean(onItemBackgroundOverrideChange) || Boolean(onItemHalftoneOverrideChange));
+          const previewCacheKey = buildBatchImportPreviewCacheKey(file);
 
           return (
             <li
@@ -358,7 +379,7 @@ export function BatchImportFileList({
                   ? "batch-import-file-list-item-excluded"
                   : undefined
               }
-              key={file.filePath}
+              key={previewCacheKey}
             >
               {variant === "validated" ? (
                 <BatchImportFilePreview
@@ -371,7 +392,8 @@ export function BatchImportFileList({
                   onOpenPreview={setLightboxFilePath}
                   onPreviewLoaded={handlePreviewLoaded}
                   onSuggestDarkDetected={onSuggestDarkDetected}
-                  previewDataUrl={previewDataUrlByPath[file.filePath] ?? null}
+                  previewCacheKey={previewCacheKey}
+                  previewDataUrl={previewDataUrlByKey[previewCacheKey] ?? null}
                   suggestDark={suggestDark}
                 />
               ) : null}

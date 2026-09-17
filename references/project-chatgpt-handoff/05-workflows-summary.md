@@ -1,5 +1,14 @@
 # Workflows Summary
 
+## Shared length-based pricing + cross-origin Customer Print Request flow — signed off 2026-09-17
+
+New Show Allocations snapshot the shared width-plus-length price/weight result. Portal receives a
+pricing-only projection; ordinary active Working requests are origin-neutral across Portal and
+Studio, with transactional Studio creation, safe parking/unqueue, parked-draft restore, and
+post-queue Portal cart rebinding. The final owner-directed restore/Add-to-Show/cache corrections
+are covered by 145/145 affected contracts. Production rollout is authorized but not yet recorded
+complete; no migration, backfill, or data rewrite is part of the workflow.
+
 > This is the primary “how the app works” guide for external AI. Prefer this file when explaining customer or staff request flows.
 
 > 2026-09-12 cutover note: Portal request list, current-request drawer, detail, and queue reads

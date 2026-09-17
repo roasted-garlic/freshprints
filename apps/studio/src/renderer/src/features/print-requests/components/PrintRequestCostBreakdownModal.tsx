@@ -4,26 +4,20 @@ import type {
   GangSheetCustomerSectionSummary,
 } from "@fresh-prints/shared/utils/gangSheetCustomerSectionSummary";
 import {
+  GANG_SHEET_LENGTH_TIER_ORDER,
   orderGangSheetPricingTiersByPrice,
+  resolveGangSheetLengthSurchargeUsd,
   resolveGangSheetPricingForTier,
 } from "@fresh-prints/shared/utils/gangSheetCustomerSectionSummary";
-import type { GangSheetPricingTier, GangSheetSectionPricingConfig } from "@fresh-prints/shared/constants/gangSheetSectionPricingSettings.constants";
+import type { GangSheetSectionPricingConfig } from "@fresh-prints/shared/constants/gangSheetSectionPricingSettings.constants";
+import {
+  GANG_SHEET_LENGTH_TIER_LABELS,
+  GANG_SHEET_LENGTH_TIER_SIZE_RANGES,
+  GANG_SHEET_PRICING_TIER_LABELS,
+  GANG_SHEET_PRICING_TIER_SIZE_RANGES,
+} from "@fresh-prints/shared/utils/gangSheetPricingTierDisplay";
 import { Button } from "../../../shared/components/Button";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
-
-const TIER_LABELS: Record<GangSheetPricingTier, string> = {
-  pocket: "Pocket",
-  standard_full_size: "Standard Full Size",
-  standard_oversized: "Standard Oversized",
-  extra_oversized: "Extra Oversized",
-};
-
-const TIER_SIZE_RANGES: Record<GangSheetPricingTier, string> = {
-  pocket: '4" and under',
-  standard_full_size: 'over 4" through 11"',
-  standard_oversized: 'over 11" through 14"',
-  extra_oversized: 'over 14"',
-};
 
 function formatPrice(amount: number): string {
   return Number.isInteger(amount) ? `$${amount}` : `$${amount.toFixed(2)}`;
@@ -40,6 +34,9 @@ export function PrintRequestCostBreakdownModal(props: {
   onClose: () => void;
 }) {
   const { pricing, summary } = props;
+  const lengthRows = GANG_SHEET_LENGTH_TIER_ORDER.filter(
+    (tier) => summary.lengthTierQuantities[tier] > 0,
+  );
 
   return (
     <div className="modal-overlay modal-overlay-blur">
@@ -78,39 +75,91 @@ export function PrintRequestCostBreakdownModal(props: {
           <section className="print-request-cost-breakdown-section">
             <p className="eyebrow">Calculation</p>
             <p className="print-request-cost-breakdown-formula">{summary.priceLine}</p>
+            {summary.lengthLine ? (
+              <p className="print-request-cost-breakdown-formula">{summary.lengthLine}</p>
+            ) : null}
             <p className="print-request-cost-breakdown-formula">{summary.weightLine}</p>
           </section>
 
           <section className="print-request-cost-breakdown-section">
             <p className="eyebrow">By size tier</p>
             <div className="print-request-cost-breakdown-list">
-              {orderGangSheetPricingTiersByPrice(pricing).filter((tier) => summary.tierQuantities[tier] > 0).map((tier) => {
-                const quantity = summary.tierQuantities[tier];
-                const tierPricing = resolveGangSheetPricingForTier(pricing, tier);
-                return (
-                  <div className="print-request-cost-breakdown-row" key={tier}>
-                    <div>
-                      <strong>
-                        {TIER_LABELS[tier]}{" "}
-                        <span className="print-request-cost-breakdown-row-range">
-                          ({TIER_SIZE_RANGES[tier]})
+              {orderGangSheetPricingTiersByPrice(pricing)
+                .filter((tier) => summary.tierQuantities[tier] > 0)
+                .map((tier) => {
+                  const quantity = summary.tierQuantities[tier];
+                  const tierPricing = resolveGangSheetPricingForTier(pricing, tier);
+                  return (
+                    <div className="print-request-cost-breakdown-row" key={tier}>
+                      <div>
+                        <strong>
+                          {GANG_SHEET_PRICING_TIER_LABELS[tier]}{" "}
+                          <span className="print-request-cost-breakdown-row-range">
+                            ({GANG_SHEET_PRICING_TIER_SIZE_RANGES[tier]})
+                          </span>
+                        </strong>
+                        <span>
+                          {quantity} print{quantity === 1 ? "" : "s"}
                         </span>
-                      </strong>
-                      <span>{quantity} print{quantity === 1 ? "" : "s"}</span>
+                      </div>
+                      <div className="print-request-cost-breakdown-row-values">
+                        <span>
+                          {formatPrice(tierPricing.priceUsd)} × {quantity} ={" "}
+                          {formatPrice(tierPricing.priceUsd * quantity)}
+                        </span>
+                        <span>
+                          {formatWeight(tierPricing.weightOz)} × {quantity} ={" "}
+                          {formatWeight(tierPricing.weightOz * quantity)}
+                        </span>
+                      </div>
                     </div>
-                    <div className="print-request-cost-breakdown-row-values">
-                      <span>{formatPrice(tierPricing.priceUsd)} × {quantity} = {formatPrice(tierPricing.priceUsd * quantity)}</span>
-                      <span>{formatWeight(tierPricing.weightOz)} × {quantity} = {formatWeight(tierPricing.weightOz * quantity)}</span>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
           </section>
+
+          {lengthRows.length > 0 ? (
+            <section className="print-request-cost-breakdown-section">
+              <div className="print-request-cost-breakdown-section-heading">
+                <p className="eyebrow">By length</p>
+                <p className="print-request-cost-breakdown-length-note">
+                  additional $ for taller prints
+                </p>
+              </div>
+              <div className="print-request-cost-breakdown-list">
+                {lengthRows.map((tier) => {
+                  const quantity = summary.lengthTierQuantities[tier];
+                  const surcharge = resolveGangSheetLengthSurchargeUsd(pricing, tier);
+                  return (
+                    <div className="print-request-cost-breakdown-row" key={tier}>
+                      <div>
+                        <strong>
+                          {GANG_SHEET_LENGTH_TIER_LABELS[tier]}{" "}
+                          <span className="print-request-cost-breakdown-row-range">
+                            ({GANG_SHEET_LENGTH_TIER_SIZE_RANGES[tier]})
+                          </span>
+                        </strong>
+                        <span>
+                          {quantity} print{quantity === 1 ? "" : "s"}
+                        </span>
+                      </div>
+                      <div className="print-request-cost-breakdown-row-values">
+                        <span>
+                          {formatPrice(surcharge)} × {quantity} = {formatPrice(surcharge * quantity)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          ) : null}
         </ModalBody>
 
         <ModalFooter>
-          <Button onClick={props.onClose} size="sm" variant="secondary">Close</Button>
+          <Button onClick={props.onClose} size="sm" variant="secondary">
+            Close
+          </Button>
         </ModalFooter>
       </Modal>
     </div>

@@ -1,13 +1,14 @@
 # Next Planned Goal
 
-**Updated:** 2026-09-16
+**Updated:** 2026-09-17
 
-## FreshForge release execution — Portal hotfix promotion in progress
+## FreshForge managed goal — production rollout in progress
 
-Last closed: `portal-show-rails-design-description-parity` (Signoff **approved**, Owner DEV QA
-**PASS**). The owner-authorized next steps are the protected development → production PR, Portal
-App Hosting rollout, and machine verification for this Portal-only hotfix. Do not start a new
-managed goal until release execution completes.
+Current goal: `print-request-length-surcharge-and-customer-navigation` (Signoff
+**approved_with_notes**). Owner-authorized DEV QA closeout is complete. Complete the protected
+development → production PR, exact cumulative deployment manifest, Portal App Hosting rollout,
+Studio `1.0.15` stable release, production smoke, and final state/handoff update before returning
+FreshForge to **IDLE**.
 
 ## Historical Internal reconciliation / Admin Staff Artwork / DEV access — CLOSED
 

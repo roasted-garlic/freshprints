@@ -7,7 +7,7 @@
 | Plan | `docs/workflow/plans/2026-09-16-portal-show-rails-design-description-parity-plan.md` |
 | Review | `docs/workflow/reviews/2026-09-16-portal-show-rails-design-description-parity-review.md` |
 | Test report | `docs/workflow/reviews/2026-09-16-portal-show-rails-design-description-parity-test-report.md` |
-| Final status | **approved** |
+| Final status | **approved** — production promoted and machine-verified |
 
 ## Summary
 
@@ -68,7 +68,7 @@ behavior.
 | Approval | Status | Date | Notes |
 |----------|--------|------|-------|
 | Owner DEV QA | obtained | 2026-09-16 | Exact phrase: **Owner DEV QA: PASS** |
-| Production Portal promotion and App Hosting rollout | obtained | 2026-09-16 | Pre-authorized after DEV QA PASS in owner request |
+| Production Portal promotion and App Hosting rollout | obtained | 2026-09-16 | PR #100; merge `15676fcd010f572af0d4a2bc969b108d2777be0a`; rollout `build-2026-09-17-001` |
 | Database migration / backend deployment | not required | 2026-09-16 | No data or backend delta |
 | Secrets / environment changes | not required | 2026-09-16 | No configuration change |
 
@@ -90,9 +90,10 @@ behavior.
 
 ## Verdict
 
-**Approved.** Owner DEV QA passed and the owner-authorized protected production promotion and
-Portal App Hosting rollout may proceed. The exact production evidence will be appended after
-machine verification.
+**Approved and complete.** Owner DEV QA passed; protected PR #100 merged the candidate to
+production as `15676fcd010f572af0d4a2bc969b108d2777be0a`. Portal App Hosting rollout
+`build-2026-09-17-001` succeeded with the new revision at 100% traffic. Machine verification is
+recorded in the Test Report.
 
 ## Workflow Complete
 
@@ -102,4 +103,6 @@ machine verification.
 - [x] Owner DEV QA PASS recorded.
 - [x] `.cursor/workflow/state.md` and roadmap updated.
 - [x] Required project handoff updated.
-- [ ] Development commit/push and production machine verification — next release steps.
+- [x] Development commit/push completed.
+- [x] Protected production PR merged.
+- [x] Portal App Hosting rollout completed and machine-verified.

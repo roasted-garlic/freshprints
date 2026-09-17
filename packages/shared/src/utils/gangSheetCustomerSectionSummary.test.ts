@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import { DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG } from "../constants/gangSheetSectionPricingSettings.constants";
 import {
+  buildGangSheetLengthLine,
   buildGangSheetPriceLine,
   buildGangSheetWeightLine,
   calculateGangSheetCustomerSectionSummary,
@@ -43,25 +44,46 @@ describe("gangSheetCustomerSectionSummary calculations", () => {
       defaultPricing,
     );
     assert.deepEqual(summary.tierQuantities, {
-      pocket: 1,
-      standard_full_size: 2,
+      pocket: 0,
+      standard_full_size: 3,
       standard_oversized: 3,
       extra_oversized: 4,
     });
     assert.equal(summary.totalQuantity, 10);
-    assert.equal(summary.totalPriceUsd, 30);
-    assert.equal(summary.totalWeightOz, 7.15);
-    assert.equal(summary.priceLine, "Price: $1 x 1 + $2 x 2 + $3 x 3 + $4 x 4 = $30");
-    assert.equal(summary.weightLine, "Weight: 0.40oz x 1 + 0.75oz x 2 + 0.75oz x 3 + 0.75oz x 4 = 7.15 oz");
+    assert.equal(summary.totalPriceUsd, 31);
+    assert.equal(summary.totalWeightOz, 7.5);
+    assert.equal(summary.priceLine, "Price: $2 x 3 + $3 x 3 + $4 x 4 = $31");
+    assert.equal(summary.lengthLine, null);
+    assert.equal(summary.weightLine, "Weight: 0.75oz x 3 + 0.75oz x 3 + 0.75oz x 4 = 7.5 oz");
   });
 
-  it("ignores height for classification", () => {
+  it("uses height to disqualify Pocket and applies the shared length surcharge", () => {
     const summary = calculateGangSheetCustomerSectionSummary(
-      [{ printWidthInches: 4, printHeightInches: 30 }],
-      defaultPricing,
+      [{ printWidthInches: 4, printHeightInches: 20 }],
+      {
+        ...defaultPricing,
+        lengthSurcharges: { standardLengthUsd: 0, longUsd: 1, extraLongUsd: 2, extendedUsd: 3 },
+      },
     );
-    assert.equal(summary.tierQuantities.pocket, 1);
-    assert.equal(summary.totalPriceUsd, 1);
+    assert.equal(summary.tierQuantities.standard_full_size, 1);
+    assert.equal(summary.lengthTierQuantities.extra_long, 1);
+    assert.equal(summary.totalPriceUsd, 4);
+    assert.equal(summary.priceBreakdowns[0]?.unitPriceUsd, 4);
+    assert.equal(summary.priceLine, "Price: $2 x 1 = $2");
+    assert.equal(summary.lengthLine, "Length: $2 x 1 = $2");
+  });
+
+  it("omits length line when surcharges are zero", () => {
+    const pricing = {
+      ...defaultPricing,
+      lengthSurcharges: { standardLengthUsd: 0, longUsd: 0, extraLongUsd: 0, extendedUsd: 0 },
+    };
+    const summary = calculateGangSheetCustomerSectionSummary(
+      [{ printWidthInches: 10, printHeightInches: 20, quantity: 2 }],
+      pricing,
+    );
+    assert.equal(summary.lengthLine, null);
+    assert.equal(buildGangSheetLengthLine(summary.lengthTierQuantities, pricing), null);
   });
 
   it("calculates custom tier prices and weights", () => {
