@@ -12,7 +12,7 @@ Unblock the existing Studio `v1.0.15` GitHub Release workflow after transient Gi
 - Retry only transient HTTP `429/500/502/503/504` responses and curl/network failures with a bounded backoff. Fail closed on non-transient `4xx` responses and after retry exhaustion.
 - Verify the expected same-name asset exists on the exact release after a successful upload, and retain the final eight-asset verification.
 - Set Mac `actions/upload-artifact@v4` `compression-level: 0` for already-compressed release binaries. Do not change Windows compression without evidence.
-- Add/update narrowly related release workflow contract tests for retry classification, bounded exhaustion, exact-release cleanup, canonical verification, SHA/release-ID safety, and validation-only non-mutation.
+- Keep the hardened logic in the existing inline `upload_release_asset()` workflow function because the finalizer checks out the exact production build SHA; add/update narrowly related workflow contract tests for retry classification, bounded exhaustion, exact-release cleanup, canonical verification, SHA/release-ID safety, and validation-only non-mutation.
 
 ## Explicit non-goals
 
