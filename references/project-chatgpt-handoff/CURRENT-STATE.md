@@ -1,5 +1,21 @@
 # Fresh Prints — Current State Snapshot
 
+## CURRENT AUTHORITATIVE PHASE — STUDIO `v1.0.15` RELEASE UPLOAD CORRECTIVE — COMPLETE
+
+**Last updated:** 2026-09-17
+
+Studio `v1.0.15` is published and Latest from the verified production branch/SHA
+`5ab1f46977f9f6290351a8baf621fc14b7755f75`. Protected PR #103 promoted the bounded retry,
+exact-release same-name cleanup, post-upload verification, and Mac artifact compression correction.
+Final workflow run `35284913045` passed Windows, Mac, and finalization; release ID `391114948`
+is `draft=false`, `tag_name=v1.0.15`, `latest=true`, exact target SHA, and has the eight canonical
+assets. The earlier draft for the prior SHA remains separate and untouched. Focused release
+contracts are 35/35, release lint is current 15/baseline 25/new 0, and diff/Bash syntax checks
+pass. No Firebase, Portal, data, migration, or unrelated production deployment occurred.
+
+Signoff: `docs/workflow/reviews/2026-09-17-studio-release-upload-hardening-signoff.md`.
+FreshForge is **DONE / IDLE** for this goal; no further Studio `v1.0.15` release action is pending.
+
 ## CURRENT AUTHORITATIVE PHASE — SHARED PRICING + CROSS-ORIGIN CUSTOMER REQUEST CORRECTIVE — PRODUCTION INFRASTRUCTURE DEPLOYED; STUDIO RELEASE BLOCKED
 
 **Last updated:** 2026-09-17
