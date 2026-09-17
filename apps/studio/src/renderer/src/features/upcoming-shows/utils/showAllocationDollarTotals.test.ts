@@ -66,7 +66,7 @@ describe("showAllocationDollarTotals", () => {
           status: "queued",
           pricingSnapshot: {
             policyVersion: "width-four-tier-length-surcharge-v1",
-            widthTier: "standard_full",
+            widthTier: "standard_full_size",
             basePriceUsd: 2,
             lengthTier: "extra_long",
             lengthSurchargeUsd: 2,
