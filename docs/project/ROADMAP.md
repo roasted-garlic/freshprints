@@ -1,6 +1,20 @@
 # Fresh Prints Roadmap
 
-> 2026-09-16: **Studio Halftone/background toggle synchronization — IN PROGRESS (DEV)** —
+> 2026-09-16: **Portal show-rail Design Details description parity — SIGNOFF approved; production
+> rollout authorized** — Goal `portal-show-rails-design-description-parity` is complete after
+> Owner DEV QA **PASS**. Homepage `Next Show` and `Added to Shows This Week` now hydrate the
+> selected compact show card through the existing ready-design-by-ID path before opening the shared
+> Design Details modal, restoring the persisted description without expanding the public DTO or
+> changing rail ordering/membership. Focused contracts **17/17**, adjacent Portal contracts
+> **24/24**, Portal typecheck, changed-source lint, production build, and diff check passed. The
+> production delta is Portal App Hosting only; Functions, Rules, indexes, Storage Rules, IAM,
+> Firebase configuration, migrations, backfills, data, and Studio are **NONE**. Protected
+> development → production promotion and App Hosting rollout are authorized after this Signoff.
+> Plan/review/test/signoff:
+> `docs/workflow/plans/2026-09-16-portal-show-rails-design-description-parity-plan.md` and
+> `docs/workflow/reviews/2026-09-16-portal-show-rails-design-description-parity-signoff.md`.
+
+> 2026-09-16: **Studio halftone/background + Print Request navigation hotfix — COMPLETE (PROD)** —
 > Owner-requested hotfix `studio-halftone-background-toggle-hotfix-2026-09-16`: enabling Halftone
 > seeds the light-black artwork background and disabling it restores the default state across
 > Imports, Customer Upload Intake, AI Processing, and Design Edit. Artwork Background remains
@@ -9,7 +23,13 @@
 > also fixes Print Request rail selection across lifecycle tabs by preventing stale detail state from
 > bouncing a second click during route canonicalization. Plan/review:
 > `docs/workflow/plans/2026-09-16-studio-halftone-background-toggle-hotfix-plan.md` and
-> `docs/workflow/reviews/2026-09-16-studio-halftone-background-toggle-hotfix-review.md`.
+> `docs/workflow/reviews/2026-09-16-studio-halftone-background-toggle-hotfix-review.md`. The bounded
+> Studio client change was released through PR #99 at production SHA
+> `f20d5d65aa6e2e9b30032da61846355271904650`; stable Studio `v1.0.14` is published/latest from
+> workflow `35161665784` with eight canonical assets. Release-critical gates passed, and the broad
+> Print Request sweep is recorded as **PASS WITH 4 ACCEPTED PRE-EXISTING FAILURES**. No Functions,
+> Rules, indexes, Portal App Hosting, Storage Rules, IAM, Firebase configuration, or data migration
+> changed or was redeployed. `v1.0.13` remains available for rollback.
 
 > 2026-09-16: **Coordinated production promotion — Studio v1.0.13 COMPLETE; owner smoke pending** —
 > The reviewed candidate and owner-authorized lint corrective are live at production SHA

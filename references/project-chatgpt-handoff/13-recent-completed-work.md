@@ -1,5 +1,23 @@
 # Recent Completed Work
 
+## 2026-09-16 - Portal show-rail Design Details description parity — SIGNOFF COMPLETE (DEV)
+
+Goal `portal-show-rails-design-description-parity` is **DONE** with Signoff **approved** after
+Owner DEV QA **PASS**. Homepage `Next Show` and `Added to Shows This Week` now hydrate the
+selected compact show-card through the existing ready-design-by-ID catalog path before opening
+the shared Design Details modal, restoring persisted descriptions without expanding the public
+DTO, changing rail ordering/membership, or regenerating catalog text. Stale successive selections
+are ignored and unavailable designs fail closed.
+
+Focused hydration/show-rail contracts **17/17 PASS**; adjacent Portal contracts **24/24 PASS**;
+Portal typecheck, changed-source lint, production build (22/22 static pages), and diff check pass.
+Owner DEV QA checklist passed. Production delta is Portal App Hosting only; no Functions, Rules,
+indexes, Storage Rules, IAM, Firebase configuration, migration, backfill, data, or Studio action.
+Protected development → production promotion and Portal App Hosting rollout are authorized and
+pending execution.
+
+Signoff: `docs/workflow/reviews/2026-09-16-portal-show-rails-design-description-parity-signoff.md`.
+
 ## 2026-09-16 - Print Request count parity + unqueue cache/cancel parity — SIGNOFF COMPLETE (DEV)
 
 Goals `print-request-count-parity-across-show-queue-and-summary-surfaces` (**approved_with_notes**)

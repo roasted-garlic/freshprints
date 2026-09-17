@@ -123,6 +123,15 @@ Shared helper: `packages/shared/src/utils/portalPrintRequestEditability.ts` (`is
 
 Short explainer (collapsed by default): a print request is the customer’s list for Fresh Prints to print — Design Library designs, their own uploads, or both. Steps: add designs/uploads + sizes → review Current Request → choose a show. Drawer CTA is **Review & Add to Show**; reviewing is not the final action.
 
+### Portal Discover show rails — description parity (2026-09-16)
+
+The homepage `Next Show` and `Added to Shows This Week` rails intentionally use a compact public
+show-card payload. When a customer opens one of those cards, Portal resolves the selected ready
+catalog design by ID through the existing catalog service before opening the shared Design Details
+modal. This restores the persisted description while preserving the normal catalog modal, explicit
+content masking, actions, rail ordering, and show membership. Missing/non-ready designs fail closed;
+no description is generated or rewritten and no private fields are added to the rail payload.
+
 ### Rules customers feel
 
 - Uploaded artwork is for the **request** first — not auto-added to the shared Design Library (staff may later promote if customer allowed it).

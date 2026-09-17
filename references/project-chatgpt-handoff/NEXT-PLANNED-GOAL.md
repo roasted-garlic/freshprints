@@ -2,12 +2,12 @@
 
 **Updated:** 2026-09-16
 
-## FreshForge IDLE — no active managed goal
+## FreshForge release execution — Portal hotfix promotion in progress
 
-Last closed: `studio-pre-release-pr-item-download-and-intake-navigation`
-(Signoff **approved_with_notes**, Owner DEV QA **PASS**). Await owner direction for the next managed Plan
-or separately gated production promotion (see
-`docs/workflow/reviews/2026-09-pre-production-promotion-manifest.md`).
+Last closed: `portal-show-rails-design-description-parity` (Signoff **approved**, Owner DEV QA
+**PASS**). The owner-authorized next steps are the protected development → production PR, Portal
+App Hosting rollout, and machine verification for this Portal-only hotfix. Do not start a new
+managed goal until release execution completes.
 
 ## Historical Internal reconciliation / Admin Staff Artwork / DEV access — CLOSED
 
