@@ -14,12 +14,16 @@ import { Card } from "../../../shared/components/Card";
 import { DangerOverflowMenu } from "../../../shared/components/DangerOverflowMenu";
 import { GlobalSearchField } from "../../../shared/components/GlobalSearchField";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../../shared/components/Modal";
+import {
+  applyAiReviewMultiSelectRange,
+  resolveAiReviewQueueCardClick,
+  toggleAiReviewMultiSelectId,
+} from "../../ai-review/utils/aiReviewQueueMultiSelect";
 import { DesignPreviewLightbox } from "../../designs/components/DesignPreviewLightbox";
 import { buildPrintRequestDeepLinkPath } from "../../print-requests/constants/printRequestRoutes";
 import type { useCustomerUploadIntake } from "../hooks/useCustomerUploadIntake";
 import type { CustomerUploadIntakeRow } from "../services/customerUploadIntakeService";
 import { CustomerUploadDeletionDialog } from "./CustomerUploadDeletionDialog";
-import { CustomerUploadExclusionDialog } from "./CustomerUploadExclusionDialog";
 import { CustomerUploadPermissionActivityModal } from "./CustomerUploadPermissionActivityModal";
 import { CustomerUploadRestoreDialog } from "./CustomerUploadRestoreDialog";
 import { CustomerUploadIntakePreviewControls } from "./CustomerUploadIntakePreviewControls";
@@ -87,16 +91,19 @@ function IntakeDetail({
   intake,
   isDonation = false,
   onOpenPreview,
+  onEnterMultiSelect,
+  canEnterMultiSelect = false,
 }: {
   row: CustomerUploadIntakeRow;
   intake: IntakeApi;
   isDonation?: boolean;
   onOpenPreview?: () => void;
+  onEnterMultiSelect?: () => void;
+  canEnterMultiSelect?: boolean;
 }) {
   const navigate = useNavigate();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [isExcludeOpen, setIsExcludeOpen] = useState(false);
   const [isRestoreOpen, setIsRestoreOpen] = useState(false);
   const [isPermissionActivityOpen, setIsPermissionActivityOpen] = useState(false);
   const deleteTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -121,6 +128,31 @@ function IntakeDetail({
       catalogPermissionAskCount: row.catalogPermissionAskCount,
     });
   const showDeleteMenu = intake.canDeleteEligible && !row.promotedDesignId;
+  const overflowItems = [
+    ...(onEnterMultiSelect
+      ? [
+          {
+            id: "multiple-select",
+            label: "Multiple select",
+            danger: false as const,
+            disabled: busy || !canEnterMultiSelect,
+            onSelect: onEnterMultiSelect,
+          },
+        ]
+      : []),
+    ...(showDeleteMenu
+      ? [
+          {
+            id: "delete-upload",
+            label: "Delete Upload",
+            disabled: busy || pendingAction === "delete",
+            onSelect: () => {
+              setIsDeleteOpen(true);
+            },
+          },
+        ]
+      : []),
+  ];
   const halftoneOn = resolveIntakeHalftoneStaffToggle({
     staffDecision: row.halftoneStaffDecision,
     submitterResponse: row.halftoneSubmitterResponse,
@@ -138,30 +170,102 @@ function IntakeDetail({
 
   return (
     <div className="customer-upload-intake-detail">
-      <div className="customer-upload-intake-detail-header">
-        {row.previewUrl ? (
-          <button
-            aria-label={`Enlarge preview of ${row.originalFilename}`}
-            className="customer-upload-intake-preview-button"
-            onClick={() => onOpenPreview?.()}
-            style={previewStyle}
-            type="button"
-          >
-            <img
-              alt=""
-              className="customer-upload-intake-preview"
-              src={row.previewUrl}
-              style={previewStyle}
-            />
-          </button>
-        ) : (
-          <div
-            className="customer-upload-intake-preview customer-upload-intake-preview--empty"
-            style={previewStyle}
-          >
-            No preview
+      <section aria-label="Upload preview" className="customer-upload-intake-preview-section">
+        <div className="customer-upload-intake-preview-controls-row">
+          <div className="customer-upload-intake-preview-overflow-menu">
+            {overflowItems.length > 0 ? (
+              <DangerOverflowMenu
+                align="start"
+                ariaLabel={`More actions for ${row.originalFilename}`}
+                disabled={busy}
+                items={overflowItems}
+                placement="bottom"
+                triggerRef={deleteTriggerRef}
+              />
+            ) : null}
           </div>
-        )}
+          <CustomerUploadIntakePreviewControls
+            artworkBackgroundHex={row.artworkBackgroundHex}
+            artworkBackgroundSource={row.artworkBackgroundSource}
+            autoSuggestsDark={row.suggestDarkArtworkBackground === true}
+            disabled={busy || !intake.canPromote}
+            halftoneOn={halftoneOn}
+            onArtworkBackgroundChange={(hex, source) => {
+              void intake.setArtworkBackgroundDecision?.(row.id, hex, source);
+            }}
+            onHalftoneChange={(value) => {
+              void intake.setHalftoneDecision(row.id, value);
+            }}
+          />
+        </div>
+
+        <div className="customer-upload-intake-preview-frame">
+          <div aria-hidden="true" className="customer-upload-intake-preview-overflow" />
+
+          <div className="customer-upload-intake-preview-stage" style={previewStyle}>
+            {row.previewUrl ? (
+              <button
+                aria-label={`Enlarge preview of ${row.originalFilename}`}
+                className="customer-upload-intake-preview-button"
+                onClick={() => onOpenPreview?.()}
+                type="button"
+              >
+                <img
+                  alt=""
+                  className="customer-upload-intake-preview"
+                  src={row.previewUrl}
+                />
+              </button>
+            ) : (
+              <div className="customer-upload-intake-preview customer-upload-intake-preview--empty">
+                No preview
+              </div>
+            )}
+          </div>
+
+          <aside className="customer-upload-intake-preview-sidebar">
+            <div className="customer-upload-intake-detail-utility-actions">
+              {!isDonation && row.printRequestId ? (
+                <Button
+                  onClick={() => {
+                    if (!row.printRequestId) {
+                      return;
+                    }
+                    navigate(
+                      buildPrintRequestDeepLinkPath({
+                        id: row.printRequestId,
+                        isInternal: row.printRequestIsInternal ?? undefined,
+                        queueTab: row.printRequestQueueTab,
+                        itemCount: row.printRequestItemCount ?? undefined,
+                        updatedAtMillis: row.printRequestUpdatedAtMs ?? undefined,
+                      }),
+                    );
+                  }}
+                  size="sm"
+                  variant="secondary"
+                >
+                  Open linked request
+                </Button>
+              ) : null}
+              <Button onClick={() => setDetailsOpen(true)} size="sm" variant="secondary">
+                Technical details
+              </Button>
+            </div>
+            <div className="customer-upload-intake-primary-meta">
+              <div>
+                <span className="customer-upload-intake-kicker">Customer halftone</span>
+                <strong>{formatCustomerHalftone(row)}</strong>
+              </div>
+              <div>
+                <span className="customer-upload-intake-kicker">Design Library</span>
+                <strong>{formatLibraryConsent(row)}</strong>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <div className="customer-upload-intake-detail-body">
         <div className="customer-upload-intake-detail-summary">
           <h3 className="customer-upload-intake-detail-title">{row.originalFilename}</h3>
           <p className="customer-upload-intake-meta">
@@ -172,253 +276,180 @@ function IntakeDetail({
             Approved max {formatInches(row.approvedMaxPrintWidthInches, row.approvedMaxPrintHeightInches)}
           </p>
         </div>
-        <div className="customer-upload-intake-detail-header-actions">
-          {!isDonation && row.printRequestId ? (
-            <Button
-              onClick={() => {
-                if (!row.printRequestId) {
-                  return;
-                }
-                navigate(
-                  buildPrintRequestDeepLinkPath({
-                    id: row.printRequestId,
-                    isInternal: row.printRequestIsInternal ?? undefined,
-                    queueTab: row.printRequestQueueTab,
-                    itemCount: row.printRequestItemCount ?? undefined,
-                    updatedAtMillis: row.printRequestUpdatedAtMs ?? undefined,
-                  }),
-                );
-              }}
-              size="sm"
-              variant="secondary"
-            >
-              Open linked request
-            </Button>
-          ) : null}
-          <Button onClick={() => setDetailsOpen(true)} size="sm" variant="secondary">
-            Technical details
-          </Button>
-        </div>
-      </div>
 
-      <div className="customer-upload-intake-primary-meta">
-        <div>
-          <span className="customer-upload-intake-kicker">Customer halftone</span>
-          <strong>{formatCustomerHalftone(row)}</strong>
-        </div>
-        <div>
-          <span className="customer-upload-intake-kicker">Design Library</span>
-          <strong>{formatLibraryConsent(row)}</strong>
-        </div>
-      </div>
-
-      <div className="customer-upload-intake-preview-controls-row">
-        <CustomerUploadIntakePreviewControls
-          artworkBackgroundHex={row.artworkBackgroundHex}
-          artworkBackgroundSource={row.artworkBackgroundSource}
-          autoSuggestsDark={row.suggestDarkArtworkBackground === true}
-          disabled={busy || !intake.canPromote}
-          halftoneOn={halftoneOn}
-          onArtworkBackgroundChange={(hex, source) => {
-            void intake.setArtworkBackgroundDecision?.(row.id, hex, source);
-          }}
-          onHalftoneChange={(value) => {
-            void intake.setHalftoneDecision(row.id, value);
-          }}
-        />
-      </div>
-
-      <div className="customer-upload-intake-actions">
-        {intake.canRetry && row.technicalStatus === "failed" ? (
-          <Button
-            disabled={busy}
-            onClick={() => {
-              void intake.retry(row.id);
-            }}
-            size="sm"
-            variant="secondary"
-          >
-            {pendingAction === "retry" ? "Retrying…" : "Retry"}
-          </Button>
-        ) : null}
-
-        {metadataSaveFailed && intake.canPromote ? (
-          <Button
-            disabled={busy}
-            onClick={() => {
-              void intake.retryMetadataSave?.(row.id);
-            }}
-            size="sm"
-            variant="secondary"
-          >
-            {metadataSavePending ? "Retrying metadata…" : "Retry metadata save"}
-          </Button>
-        ) : null}
-
-        {intake.canPromote &&
-        catalogIntakeEligible &&
-        row.catalogReviewStatus === "pending_staff_review" &&
-        row.technicalStatus === "ready" ? (
-          <Button
-            disabled={busy || metadataBlocksPromote}
-            onClick={() => {
-              void intake.promote(row.id);
-            }}
-            size="sm"
-            variant="primary"
-            title={
-              metadataSaveFailed
-                ? "Metadata save failed — retry before sending to AI Review"
-                : metadataSavePending
-                  ? "Saving Halftone or Artwork Background decision..."
-                  : undefined
-            }
-          >
-            {pendingAction === "promote"
-              ? "Sending…"
-              : metadataSavePending
-                ? "Saving..."
-                : metadataSaveFailed
-                  ? "Fix metadata to send"
-                  : "Send to AI Review"}
-          </Button>
-        ) : null}
-
-        {intake.canExclude && catalogIntakeEligible && row.catalogReviewStatus === "pending_staff_review" ? (
-          <Button
-            disabled={busy}
-            onClick={() => {
-              setIsExcludeOpen(true);
-            }}
-            size="sm"
-            variant="danger"
-          >
-            {pendingAction === "exclude" ? "Excluding…" : "Do not add to catalog"}
-          </Button>
-        ) : null}
-
-        {intake.canExclude && row.catalogReviewStatus === "excluded_from_catalog" && permissionDenied ? (
-          <div className="customer-upload-intake-permission-follow-up">
-            <div className="customer-upload-intake-permission-pill-row">
-              <span className="customer-upload-intake-status-badge">
-                Customer declined Design Library permission
-              </span>
-              {showDeleteMenu ? (
-                <DangerOverflowMenu
-                  ariaLabel={`More actions for ${row.originalFilename}`}
-                  disabled={busy}
-                  items={[
-                    {
-                      id: "delete-upload",
-                      label: "Delete Upload",
-                      disabled: busy || pendingAction === "delete",
-                      onSelect: () => {
-                        setIsDeleteOpen(true);
-                      },
-                    },
-                  ]}
-                  placement="bottom"
-                  triggerRef={deleteTriggerRef}
-                />
-              ) : null}
-            </div>
-            <div className="customer-upload-intake-permission-actions">
-              <Button
-                disabled={busy}
-                onClick={() => setIsPermissionActivityOpen(true)}
-                size="sm"
-                variant="secondary"
-              >
-                Activity
-              </Button>
-              {canAskPermissionAgain ? (
+        <section
+          aria-label="Intake actions"
+          className="customer-upload-intake-actions-section"
+        >
+          <div className="customer-upload-intake-actions">
+            <div className="customer-upload-intake-actions-primary">
+              {intake.canRetry && row.technicalStatus === "failed" ? (
                 <Button
                   disabled={busy}
                   onClick={() => {
-                    void intake.requestPermissionFollowUp(row.id);
+                    void intake.retry(row.id);
                   }}
                   size="sm"
                   variant="secondary"
                 >
-                  {pendingAction === "request_permission"
-                    ? "Sending…"
-                    : row.catalogPermissionAskCount >= 1
-                      ? "Ask again (2 of 2)"
-                      : "Ask for permission again"}
+                  {pendingAction === "retry" ? "Retrying…" : "Retry"}
                 </Button>
-              ) : row.catalogPermissionFollowUpStatus === "requested" ? (
-                <p className="customer-upload-intake-meta" role="status">
-                  Waiting for the customer (ask {row.catalogPermissionAskCount || 1} of 2).
-                </p>
+              ) : null}
+
+              {metadataSaveFailed && intake.canPromote ? (
+                <Button
+                  disabled={busy}
+                  onClick={() => {
+                    void intake.retryMetadataSave?.(row.id);
+                  }}
+                  size="sm"
+                  variant="secondary"
+                >
+                  {metadataSavePending ? "Retrying metadata…" : "Retry metadata save"}
+                </Button>
+              ) : null}
+
+              {intake.canPromote &&
+              catalogIntakeEligible &&
+              row.catalogReviewStatus === "pending_staff_review" &&
+              row.technicalStatus === "ready" ? (
+                <Button
+                  disabled={busy || metadataBlocksPromote}
+                  onClick={() => {
+                    void intake.promote(row.id);
+                  }}
+                  size="sm"
+                  variant="primary"
+                  title={
+                    metadataSaveFailed
+                      ? "Metadata save failed — retry before sending to AI Review"
+                      : metadataSavePending
+                        ? "Saving Halftone or Artwork Background decision..."
+                        : undefined
+                  }
+                >
+                  {pendingAction === "promote"
+                    ? "Sending…"
+                    : metadataSavePending
+                      ? "Saving..."
+                      : metadataSaveFailed
+                        ? "Fix metadata to send"
+                        : "Send to AI Review"}
+                </Button>
+              ) : null}
+
+              {intake.canExclude &&
+              catalogIntakeEligible &&
+              row.catalogReviewStatus === "pending_staff_review" ? (
+                <Button
+                  disabled={busy}
+                  onClick={() => {
+                    void intake.exclude(row.id);
+                  }}
+                  size="sm"
+                  variant="danger"
+                >
+                  {pendingAction === "exclude" ? "Excluding…" : "Do not add to catalog"}
+                </Button>
+              ) : null}
+
+              {intake.canExclude &&
+              row.catalogReviewStatus === "excluded_from_catalog" &&
+              permissionDenied ? (
+                <div className="customer-upload-intake-permission-follow-up">
+                  <div className="customer-upload-intake-permission-pill-row">
+                    <span className="customer-upload-intake-status-badge">
+                      Customer declined Design Library permission
+                    </span>
+                  </div>
+                  <div className="customer-upload-intake-permission-actions">
+                    <Button
+                      disabled={busy}
+                      onClick={() => setIsPermissionActivityOpen(true)}
+                      size="sm"
+                      variant="secondary"
+                    >
+                      Activity
+                    </Button>
+                    {canAskPermissionAgain ? (
+                      <Button
+                        disabled={busy}
+                        onClick={() => {
+                          void intake.requestPermissionFollowUp(row.id);
+                        }}
+                        size="sm"
+                        variant="secondary"
+                      >
+                        {pendingAction === "request_permission"
+                          ? "Sending…"
+                          : row.catalogPermissionAskCount >= 1
+                            ? "Ask again (2 of 2)"
+                            : "Ask for permission again"}
+                      </Button>
+                    ) : row.catalogPermissionFollowUpStatus === "requested" ? (
+                      <p className="customer-upload-intake-meta" role="status">
+                        Waiting for the customer (ask {row.catalogPermissionAskCount || 1} of 2).
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+
+              {intake.canExclude &&
+              row.catalogReviewStatus === "excluded_from_catalog" &&
+              !permissionDenied ? (
+                <div>
+                  <button
+                    className="button button-secondary button-sm"
+                    disabled={busy || Boolean(row.fullSizePurgedAtMs)}
+                    onClick={() => setIsRestoreOpen(true)}
+                    ref={restoreTriggerRef}
+                    type="button"
+                  >
+                    Restore to Pending
+                  </button>
+                  {row.fullSizePurgedAtMs ? (
+                    <p className="customer-upload-intake-meta" role="status">
+                      This historical upload cannot be restored because its full-size artwork was
+                      previously removed.
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {row.catalogReviewStatus === "sent_to_ai_review" ? (
+                <Button
+                  onClick={() => {
+                    navigate("/ai-review");
+                  }}
+                  size="sm"
+                  variant="secondary"
+                >
+                  Open AI Processing
+                </Button>
               ) : null}
             </div>
           </div>
-        ) : null}
 
-        {intake.canExclude && row.catalogReviewStatus === "excluded_from_catalog" && !permissionDenied ? (
-          <div>
-            <button
-              className="button button-secondary button-sm"
-              disabled={busy || Boolean(row.fullSizePurgedAtMs)}
-              onClick={() => setIsRestoreOpen(true)}
-              ref={restoreTriggerRef}
-              type="button"
-            >
-              Restore to Pending
-            </button>
-            {row.fullSizePurgedAtMs ? (
-              <p className="customer-upload-intake-meta" role="status">
-                This historical upload cannot be restored because its full-size artwork was
-                previously removed.
+          {row.catalogReviewStatus === "pending_staff_review" ? (
+            <div className="customer-upload-intake-shortcuts-row">
+              <p className="customer-upload-intake-shortcuts-hint">
+                Shortcuts: A send to AI Review, R exclude
               </p>
-            ) : null}
-          </div>
-        ) : null}
-
-        {row.catalogReviewStatus === "sent_to_ai_review" ? (
-          <Button
-            onClick={() => {
-              navigate("/ai-review");
-            }}
-            size="sm"
-            variant="secondary"
-          >
-            Open AI Processing
-          </Button>
-        ) : null}
-
-        {showDeleteMenu && !(permissionDenied && row.catalogReviewStatus === "excluded_from_catalog") ? (
-          <DangerOverflowMenu
-            ariaLabel={`More actions for ${row.originalFilename}`}
-            disabled={busy}
-            items={[
-              {
-                id: "delete-upload",
-                label: "Delete Upload",
-                disabled: busy || pendingAction === "delete",
-                onSelect: () => {
-                  setIsDeleteOpen(true);
-                },
-              },
-            ]}
-            placement="bottom"
-            triggerRef={deleteTriggerRef}
-          />
-        ) : null}
+              <p className="customer-upload-intake-shortcuts-hint customer-upload-intake-shortcuts-hint--end">
+                Shortcuts: ↑ previous, ↓ next
+              </p>
+            </div>
+          ) : (
+            <div className="customer-upload-intake-shortcuts-row">
+              <span aria-hidden="true" className="customer-upload-intake-shortcuts-row-spacer" />
+              <p className="customer-upload-intake-shortcuts-hint customer-upload-intake-shortcuts-hint--end">
+                Shortcuts: ↑ previous, ↓ next
+              </p>
+            </div>
+          )}
+        </section>
       </div>
-
-      <CustomerUploadExclusionDialog
-        isOpen={isExcludeOpen}
-        onCancel={() => setIsExcludeOpen(false)}
-        onConfirm={async () => {
-          const succeeded = await intake.exclude(row.id);
-          if (succeeded) {
-            setIsExcludeOpen(false);
-          }
-          return succeeded;
-        }}
-        title={row.originalFilename}
-      />
 
       <CustomerUploadDeletionDialog
         isOpen={isDeleteOpen}
@@ -571,6 +602,85 @@ function IntakeDetail({
   );
 }
 
+function IntakeMultiSelectPanel({
+  selectedCount,
+  canPromote,
+  canExclude,
+  isBulkActionRunning,
+  onPromote,
+  onExclude,
+  onExit,
+}: {
+  selectedCount: number;
+  canPromote: boolean;
+  canExclude: boolean;
+  isBulkActionRunning: boolean;
+  onPromote: () => void;
+  onExclude: () => void;
+  onExit: () => void;
+}) {
+  return (
+    <div className="customer-upload-intake-detail">
+      <section aria-label="Multiple select" className="customer-upload-intake-preview-section">
+        <div className="customer-upload-intake-preview-controls-row">
+          <div className="customer-upload-intake-preview-overflow-menu">
+            <Button disabled={isBulkActionRunning} onClick={onExit} size="sm" variant="secondary">
+              Exit
+            </Button>
+          </div>
+        </div>
+        <div className="customer-upload-intake-preview-frame">
+          <div aria-hidden="true" className="customer-upload-intake-preview-overflow" />
+          <div className="customer-upload-intake-preview-stage customer-upload-intake-preview-stage--multi">
+            <div className="customer-upload-intake-preview customer-upload-intake-preview--empty">
+              Select uploads in the list
+            </div>
+          </div>
+          <aside className="customer-upload-intake-preview-sidebar" aria-hidden="true" />
+        </div>
+      </section>
+
+      <div className="customer-upload-intake-detail-body">
+        <div className="customer-upload-intake-detail-summary">
+          <h3 className="customer-upload-intake-detail-title">
+            {selectedCount} selected
+          </h3>
+          <p className="customer-upload-intake-meta">
+            Choose uploads in the list, then send them to AI Review or exclude them.
+          </p>
+        </div>
+
+        <section aria-label="Intake actions" className="customer-upload-intake-actions-section">
+          <div className="customer-upload-intake-actions">
+            <div className="customer-upload-intake-actions-primary">
+              {canPromote ? (
+                <Button
+                  disabled={isBulkActionRunning || selectedCount === 0}
+                  onClick={onPromote}
+                  size="sm"
+                  variant="primary"
+                >
+                  {isBulkActionRunning ? "Working…" : "Send Selected to AI Review"}
+                </Button>
+              ) : null}
+              {canExclude ? (
+                <Button
+                  disabled={isBulkActionRunning || selectedCount === 0}
+                  onClick={onExclude}
+                  size="sm"
+                  variant="danger"
+                >
+                  {isBulkActionRunning ? "Working…" : "Exclude Selected"}
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
 export function CustomerUploadIntakeSection({
   purposeScope = "print_request",
   intake,
@@ -580,6 +690,11 @@ export function CustomerUploadIntakeSection({
 }) {
   const isDonation = purposeScope === "catalog_donation";
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+  const [multiSelectedIds, setMultiSelectedIds] = useState<string[]>([]);
+  const [multiSelectAnchorId, setMultiSelectAnchorId] = useState<string | null>(null);
+  const [isBulkActionRunning, setIsBulkActionRunning] = useState(false);
+  const [bulkResult, setBulkResult] = useState<string | null>(null);
 
   const previewNavigationItems = intake.rows
     .filter((row): row is CustomerUploadIntakeRow & { previewUrl: string } =>
@@ -612,13 +727,122 @@ export function CustomerUploadIntakeSection({
 
   useEffect(() => {
     setIsLightboxOpen(false);
-  }, [intake.filter]);
+    setIsMultiSelectMode(false);
+    setMultiSelectedIds([]);
+    setMultiSelectAnchorId(null);
+    setBulkResult(null);
+  }, [intake.filter, intake.searchQuery, purposeScope]);
+
+  useEffect(() => {
+    const visibleIds = new Set(intake.rows.map((row) => row.id));
+    setMultiSelectedIds((current) => current.filter((id) => visibleIds.has(id)));
+    setMultiSelectAnchorId((current) => (current && visibleIds.has(current) ? current : null));
+  }, [intake.rows]);
 
   useEffect(() => {
     if (!selectedPreviewItem) {
       setIsLightboxOpen(false);
     }
-  }, [selectedPreviewItem]);
+  }, [selectedPreviewItem, isMultiSelectMode]);
+
+  useEffect(() => {
+    if (isMultiSelectMode) {
+      setIsLightboxOpen(false);
+    }
+  }, [isMultiSelectMode]);
+
+  useEffect(() => {
+    const selectedRow = intake.selected;
+    if (!selectedRow || isMultiSelectMode) {
+      return;
+    }
+    const selectedRowSnapshot = selectedRow;
+
+    function handleIntakeActionKeyDown(event: KeyboardEvent) {
+      if (isPreviewLightboxEditableKeyboardTarget(event.target)) {
+        return;
+      }
+      if (document.querySelector(".modal-overlay")) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+      const metadataSavePending =
+        intake.pendingByUploadId[selectedRowSnapshot.id] === "halftone" ||
+        intake.pendingByUploadId[selectedRowSnapshot.id] === "artwork_background";
+      const metadataSaveFailed = Boolean(
+        intake.metadataFailedByUploadId?.[selectedRowSnapshot.id],
+      );
+      const catalogIntakeEligible = isCustomerUploadEligibleForCatalogIntake({
+        catalogUseAcknowledged: selectedRowSnapshot.catalogUseAcknowledged,
+        catalogPermissionFollowUpStatus: selectedRowSnapshot.catalogPermissionFollowUpStatus,
+      });
+      const rowBusy = Boolean(intake.pendingByUploadId[selectedRowSnapshot.id]);
+
+      if (
+        key === "a" &&
+        intake.canPromote &&
+        catalogIntakeEligible &&
+        selectedRowSnapshot.catalogReviewStatus === "pending_staff_review" &&
+        selectedRowSnapshot.technicalStatus === "ready" &&
+        !rowBusy &&
+        !metadataSavePending &&
+        !metadataSaveFailed
+      ) {
+        event.preventDefault();
+        void intake.promote(selectedRowSnapshot.id);
+        return;
+      }
+
+      if (
+        key === "r" &&
+        intake.canExclude &&
+        catalogIntakeEligible &&
+        selectedRowSnapshot.catalogReviewStatus === "pending_staff_review" &&
+        !rowBusy
+      ) {
+        event.preventDefault();
+        void intake.exclude(selectedRowSnapshot.id);
+      }
+    }
+
+    window.addEventListener("keydown", handleIntakeActionKeyDown);
+    return () => window.removeEventListener("keydown", handleIntakeActionKeyDown);
+  }, [intake, isMultiSelectMode]);
+
+  async function runBulkAction(action: "promote" | "exclude") {
+    if (isBulkActionRunning || multiSelectedIds.length === 0) {
+      return;
+    }
+
+    setIsBulkActionRunning(true);
+    setBulkResult(null);
+    const selectedIdsAtStart = [...multiSelectedIds];
+    let succeeded = 0;
+    let failed = 0;
+
+    for (const uploadId of selectedIdsAtStart) {
+      const didSucceed =
+        action === "promote" ? await intake.promote(uploadId) : await intake.exclude(uploadId);
+      if (didSucceed) {
+        succeeded += 1;
+        setMultiSelectedIds((current) => current.filter((id) => id !== uploadId));
+      } else {
+        failed += 1;
+      }
+    }
+
+    setBulkResult(
+      action === "promote"
+        ? `Sent ${succeeded} selected upload${succeeded === 1 ? "" : "s"} to AI Review${
+            failed > 0 ? `; ${failed} failed or were skipped.` : "."
+          }`
+        : `Excluded ${succeeded} selected upload${succeeded === 1 ? "" : "s"}${
+            failed > 0 ? `; ${failed} failed or were skipped.` : "."
+          }`,
+    );
+    setIsBulkActionRunning(false);
+  }
 
   useEffect(() => {
     if (listItemIds.length === 0) {
@@ -675,6 +899,11 @@ export function CustomerUploadIntakeSection({
     >
       {intake.error ? <p className="auth-message">{intake.error}</p> : null}
       {intake.notice ? <p className="customer-upload-intake-notice">{intake.notice}</p> : null}
+      {bulkResult ? (
+        <p className="customer-upload-intake-notice" role="status">
+          {bulkResult}
+        </p>
+      ) : null}
 
       <div className="customer-upload-intake-panel">
         <div
@@ -763,10 +992,40 @@ export function CustomerUploadIntakeSection({
                         <button
                           className={`customer-upload-intake-list-item${
                             intake.selectedId === row.id ? " is-selected" : ""
+                          }${
+                            isMultiSelectMode && multiSelectedIds.includes(row.id)
+                              ? " is-multi-selected"
+                              : ""
                           }`}
+                          aria-pressed={
+                            isMultiSelectMode ? multiSelectedIds.includes(row.id) : undefined
+                          }
                           data-customer-upload-intake-id={row.id}
-                          onClick={() => {
-                            intake.setSelectedId(row.id);
+                          onClick={(event) => {
+                            if (!isMultiSelectMode) {
+                              intake.setSelectedId(row.id);
+                              return;
+                            }
+
+                            const clickBehavior = resolveAiReviewQueueCardClick({
+                              isMultiSelectMode: true,
+                              shiftKey: event.shiftKey,
+                            });
+                            if (clickBehavior === "range-multi") {
+                              const range = applyAiReviewMultiSelectRange({
+                                anchorId: multiSelectAnchorId,
+                                listIds: listItemIds,
+                                selectedIds: multiSelectedIds,
+                                targetId: row.id,
+                              });
+                              setMultiSelectedIds(range.selectedIds);
+                              setMultiSelectAnchorId(range.anchorId);
+                            } else {
+                              setMultiSelectedIds((current) =>
+                                toggleAiReviewMultiSelectId(current, row.id),
+                              );
+                              setMultiSelectAnchorId(row.id);
+                            }
                           }}
                           type="button"
                         >
@@ -800,11 +1059,35 @@ export function CustomerUploadIntakeSection({
                 </ul>
               )}
             </div>
-            {intake.selected ? (
+            {isMultiSelectMode ? (
+              <IntakeMultiSelectPanel
+                canExclude={intake.canExclude}
+                canPromote={intake.canPromote}
+                isBulkActionRunning={isBulkActionRunning}
+                onExclude={() => void runBulkAction("exclude")}
+                onExit={() => {
+                  setIsMultiSelectMode(false);
+                  const nextSelectedId = multiSelectedIds[0] ?? null;
+                  setMultiSelectedIds([]);
+                  setMultiSelectAnchorId(null);
+                  intake.setSelectedId(nextSelectedId);
+                }}
+                onPromote={() => void runBulkAction("promote")}
+                selectedCount={multiSelectedIds.length}
+              />
+            ) : intake.selected ? (
               <IntakeDetail
+                canEnterMultiSelect={intake.rows.length > 0}
                 intake={intake}
                 isDonation={isDonation}
                 key={`${intake.filter}:${intake.selected.id}`}
+                onEnterMultiSelect={() => {
+                  const currentId = intake.selected?.id ?? null;
+                  setIsMultiSelectMode(true);
+                  setMultiSelectedIds(currentId ? [currentId] : []);
+                  setMultiSelectAnchorId(currentId);
+                  intake.setSelectedId(null);
+                }}
                 onOpenPreview={
                   intake.selected.previewUrl?.trim()
                     ? () => setIsLightboxOpen(true)

@@ -14,6 +14,7 @@ import {
   getDangerOverflowMenuPanelClass,
   resolveDangerOverflowMenuPosition,
   transitionDangerOverflowMenu,
+  type DangerOverflowMenuAlign,
   type DangerOverflowMenuPosition,
   type DangerOverflowMenuPlacement,
 } from "./dangerOverflowMenuBehavior";
@@ -32,6 +33,8 @@ interface DangerOverflowMenuProps {
   disabled?: boolean;
   items: DangerOverflowMenuItem[];
   placement?: DangerOverflowMenuPlacement;
+  /** `start` opens to the right of the trigger; `end` opens to the left (default). */
+  align?: DangerOverflowMenuAlign;
   triggerRef?: MutableRefObject<HTMLButtonElement | null>;
 }
 
@@ -44,6 +47,7 @@ export function DangerOverflowMenu({
   disabled = false,
   items,
   placement = "bottom",
+  align = "end",
   triggerRef: externalTriggerRef,
 }: DangerOverflowMenuProps) {
   const [open, setOpen] = useState(false);
@@ -97,13 +101,14 @@ export function DangerOverflowMenu({
       resolveDangerOverflowMenuPosition({
         menuHeight: menu.offsetHeight,
         menuWidth: menu.offsetWidth,
+        preferredAlign: align,
         preferredPlacement: placement,
         trigger: rect,
         viewportHeight: window.innerHeight,
         viewportWidth: window.innerWidth,
       }),
     );
-  }, [placement]);
+  }, [align, placement]);
 
   useLayoutEffect(() => {
     if (!open) {

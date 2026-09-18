@@ -14,6 +14,7 @@ export { createStudioCustomerPrintRequest } from "./createStudioCustomerPrintReq
 export { getPortalShowPricing } from "./getPortalShowPricing";
 export { duplicatePortalPrintRequestItem } from "./duplicatePortalPrintRequestItem";
 export { excludeCustomerUploadFromCatalog } from "./excludeCustomerUploadFromCatalog";
+export { returnCustomerUploadToIntakeAndExclude } from "./returnCustomerUploadToIntakeAndExclude";
 export { finalizeCustomerUpload } from "./finalizeCustomerUpload";
 export {
   createStaffArtworkUpload,

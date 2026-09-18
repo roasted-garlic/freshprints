@@ -34,6 +34,7 @@ import {
 import { mapCustomerUploadPurgeTimestamp } from "../utils/customerUploadPurgeTimestamp";
 import { filterCustomersForIntakeSearch } from "../utils/customerUploadIntakeSearch";
 import { fetchIntakeDocsForMatchedCustomers } from "../utils/fetchIntakeDocsForMatchedCustomers";
+import { resolveIntakeSelectionAfterRemoval } from "../utils/customerUploadIntakeSelection";
 import {
   buildPurposeScopedIntakeQuery,
   buildPurposeScopedDeniedCountQuery,
@@ -223,6 +224,10 @@ export function useCustomerUploadIntake(options?: {
   const rowsRef = useRef<CustomerUploadIntakeRow[]>([]);
   rowsRef.current = rows;
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selectedIdRef = useRef<string | null>(null);
+  selectedIdRef.current = selectedId;
+  /** Prefer this id after a promote/exclude removal so live snapshots cannot jump to the top. */
+  const pendingSelectionAfterRemovalRef = useRef<string | null>(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [pendingByUploadId, setPendingByUploadId] = useState<
     Partial<Record<string, CustomerUploadIntakePendingAction>>
@@ -349,10 +354,28 @@ export function useCustomerUploadIntake(options?: {
       return override ? { ...base, ...override } : base;
     });
 
+    const previousIds = rowsRef.current.map((row) => row.id);
     setRows(shellRows);
     setSelectedId((current) => {
+      const pending = pendingSelectionAfterRemovalRef.current;
+      if (pending && shellRows.some((row) => row.id === pending)) {
+        pendingSelectionAfterRemovalRef.current = null;
+        return pending;
+      }
       if (current && shellRows.some((row) => row.id === current)) {
         return current;
+      }
+      // Live snapshot often removes the promoted/excluded row before onSuccess runs.
+      // Prefer the card above the departed selection instead of jumping to the top.
+      if (current && previousIds.includes(current)) {
+        const preferred = resolveIntakeSelectionAfterRemoval({
+          selectedId: current,
+          removedId: current,
+          rowIdsBeforeRemoval: previousIds,
+        });
+        if (preferred && shellRows.some((row) => row.id === preferred)) {
+          return preferred;
+        }
       }
       return shellRows[0]?.id ?? null;
     });
@@ -594,8 +617,32 @@ export function useCustomerUploadIntake(options?: {
 
   const removeRowLocally = useCallback((uploadId: string) => {
     enrichmentCacheRef.current.delete(uploadId);
-    setRows((current) => current.filter((row) => row.id !== uploadId));
-    setSelectedId((current) => (current === uploadId ? null : current));
+    const currentRows = rowsRef.current;
+    const rowIdsBeforeRemoval = currentRows.map((row) => row.id);
+    const preferred =
+      pendingSelectionAfterRemovalRef.current ??
+      resolveIntakeSelectionAfterRemoval({
+        selectedId: selectedIdRef.current,
+        removedId: uploadId,
+        rowIdsBeforeRemoval,
+      });
+    pendingSelectionAfterRemovalRef.current = null;
+    setRows(currentRows.filter((row) => row.id !== uploadId));
+    setSelectedId((current) => {
+      if (current !== uploadId && current && currentRows.some((row) => row.id === current)) {
+        // Snapshot may already have moved selection to the preferred neighbor.
+        return current;
+      }
+      return preferred;
+    });
+  }, []);
+
+  const rememberSelectionAfterRemoval = useCallback((uploadId: string) => {
+    pendingSelectionAfterRemovalRef.current = resolveIntakeSelectionAfterRemoval({
+      selectedId: selectedIdRef.current ?? uploadId,
+      removedId: uploadId,
+      rowIdsBeforeRemoval: rowsRef.current.map((row) => row.id),
+    });
   }, []);
 
   const patchRowLocally = useCallback(
@@ -701,7 +748,8 @@ export function useCustomerUploadIntake(options?: {
         return false;
       }
 
-      return await runMutation(
+      rememberSelectionAfterRemoval(uploadId);
+      const promoted = await runMutation(
         uploadId,
         "promote",
         async () => {
@@ -734,9 +782,14 @@ export function useCustomerUploadIntake(options?: {
           void refreshDeniedCount();
         },
       );
+      if (!promoted) {
+        pendingSelectionAfterRemovalRef.current = null;
+      }
+      return promoted;
     },
-    exclude: (uploadId: string) =>
-      runMutation(
+    exclude: async (uploadId: string) => {
+      rememberSelectionAfterRemoval(uploadId);
+      const excluded = await runMutation(
         uploadId,
         "exclude",
         async () => {
@@ -751,7 +804,12 @@ export function useCustomerUploadIntake(options?: {
           }
           void refreshDeniedCount();
         },
-      ),
+      );
+      if (!excluded) {
+        pendingSelectionAfterRemovalRef.current = null;
+      }
+      return excluded;
+    },
     requestPermissionFollowUp: (uploadId: string) =>
       runMutation(
         uploadId,

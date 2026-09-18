@@ -5,18 +5,17 @@ import type {
   DeleteEligibleUnapprovedDesignResponse,
 } from "../../packages/shared/src/types/admin/deleteEligibleUnapprovedDesign.types";
 import {
-  getOriginalStoragePath,
-  getPreviewStoragePath,
-  getThumbnailStoragePath,
-} from "../../packages/shared/src/constants/design/designStoragePaths";
-import {
   isActiveAiPipelineStage,
   isDeleteEligibleUnapprovedDesignStatus,
   validateDeleteEligibleUnapprovedDesignRequest,
 } from "../../packages/shared/src/utils/deleteEligibleUnapprovedDesignValidation";
 import type { DeletionCallableWarmupResponse } from "../../packages/shared/src/types/deletion/deletionWarmup.types";
-import { adminDb, adminStorage } from "./lib/admin";
+import { adminDb } from "./lib/admin";
 import { loadCallerProfile } from "./lib/caller";
+import {
+  collectDesignReferenceBlockers,
+  deleteDesignStorageAssets as deleteDesignStorageAssetsShared,
+} from "./lib/designLifecycle";
 import { deletionWarmupOk, isDeletionCallableWarmupRequest } from "./lib/deletionWarmup";
 import { invalidArgument, permissionDenied, unauthenticated } from "./lib/errors";
 
@@ -26,58 +25,9 @@ function assertOwnerCaller(caller: Awaited<ReturnType<typeof loadCallerProfile>>
   }
 }
 
-function toStorageObjectPath(canonicalPath: string): string {
-  return canonicalPath.replace(/^\//, "");
-}
-
-async function deleteStorageObject(objectPath: string): Promise<boolean> {
-  try {
-    await adminStorage.bucket().file(objectPath).delete({ ignoreNotFound: true });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 async function deleteDesignStorageAssets(designId: string): Promise<number> {
-  const candidates = [
-    toStorageObjectPath(getOriginalStoragePath(designId)),
-    toStorageObjectPath(getThumbnailStoragePath(designId)),
-    toStorageObjectPath(getPreviewStoragePath(designId)),
-  ];
-
-  let deleted = 0;
-  for (const objectPath of candidates) {
-    if (await deleteStorageObject(objectPath)) {
-      deleted += 1;
-    }
-  }
-
-  return deleted;
-}
-
-async function collectReferenceBlockers(designId: string): Promise<string[]> {
-  const blockers: string[] = [];
-
-  const [printItems, showAllocations, companionLinks] = await Promise.all([
-    adminDb.collection("printRequestItems").where("designId", "==", designId).limit(1).get(),
-    adminDb.collection("showAllocations").where("designId", "==", designId).limit(1).get(),
-    adminDb.collection("companionLinks").where("designIds", "array-contains", designId).limit(1).get(),
-  ]);
-
-  if (!printItems.empty) {
-    blockers.push("Referenced by one or more print request items.");
-  }
-
-  if (!showAllocations.empty) {
-    blockers.push("Referenced by one or more show allocations.");
-  }
-
-  if (!companionLinks.empty) {
-    blockers.push("Linked in a companion relationship.");
-  }
-
-  return blockers;
+  const result = await deleteDesignStorageAssetsShared(designId);
+  return result.deletedCount;
 }
 
 function validationErrorMessage(
@@ -132,7 +82,7 @@ async function deleteOneDesign(designId: string): Promise<DeleteEligibleUnapprov
     };
   }
 
-  const blockers = await collectReferenceBlockers(designId);
+  const blockers = await collectDesignReferenceBlockers(designId);
 
   if (typeof data.sourceCustomerUploadId === "string" && data.sourceCustomerUploadId.trim()) {
     blockers.push("Design was promoted from a customer upload (sourceCustomerUpload provenance).");

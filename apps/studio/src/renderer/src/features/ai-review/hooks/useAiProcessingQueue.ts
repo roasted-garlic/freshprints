@@ -85,6 +85,7 @@ export function useAiProcessingQueue({
   const isMountedRef = useRef(true);
   const runStateRef = useRef(runState);
   const stopRequestedRef = useRef(false);
+  const cancelledDesignIdsRef = useRef(new Set<string>());
   const selectedIndexRef = useRef(selectedIndex);
   /**
    * True only while runAutoQueueLoop's body is actually executing (set/cleared with the same
@@ -345,6 +346,11 @@ export function useAiProcessingQueue({
             break;
           }
 
+          if (cancelledDesignIdsRef.current.delete(design.id)) {
+            index += 1;
+            continue;
+          }
+
           requestSelectDesign(design.id);
           await enqueueDesign(design.id, settingsSnapshot);
 
@@ -452,6 +458,20 @@ export function useAiProcessingQueue({
       setRunState("pausing");
     }
   }, []);
+
+  const cancelDesign = useCallback(
+    (designId: string) => {
+      const normalizedId = designId.trim();
+      if (!normalizedId) {
+        return;
+      }
+      cancelledDesignIdsRef.current.add(normalizedId);
+      if (enqueueingDesignId === normalizedId) {
+        stopRequestedRef.current = true;
+      }
+    },
+    [enqueueingDesignId],
+  );
 
   const processSelectedDesign = useCallback(async () => {
     if (!canProcessSelected || !selectedDesignId) {
@@ -574,6 +594,7 @@ export function useAiProcessingQueue({
   return {
     autoAdvance,
     applySessionSettings,
+    cancelDesign,
     canProcessSelected,
     canStartAutoQueue,
     canStopAutoQueue,

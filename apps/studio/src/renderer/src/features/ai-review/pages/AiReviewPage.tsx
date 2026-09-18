@@ -66,6 +66,7 @@ function AiReviewPageContent() {
   const [needsReviewSearchQuery, setNeedsReviewSearchQuery] = useState("");
   const [autoProcess, setAutoProcess] = useState(readAiProcessingAutoProcessPreference);
   const [isProcessingSettingsOpen, setIsProcessingSettingsOpen] = useState(false);
+  const [isPromotionReversalConfirmOpen, setIsPromotionReversalConfirmOpen] = useState(false);
   const filters = useMemo(() => parseAiReviewInboxFilters(searchParams), [searchParams]);
   const inboxFilters = useMemo<AiReviewInboxFilters>(
     () => ({
@@ -651,6 +652,7 @@ function AiReviewPageContent() {
             canArchive={inbox.canArchive}
             canEnterMultiSelect={inbox.designs.length > 0}
             canPermanentlyDelete={canPermanentlyDeleteSelected}
+            canUndoPromotionAndExclude={inbox.canReverseCustomerUploadPromotion}
             canReopen={inbox.canReopen}
             canReject={inbox.canReject}
             canRerun={inbox.canRerun}
@@ -681,6 +683,7 @@ function AiReviewPageContent() {
             onArchive={() => void inbox.archiveSelected()}
             onEnterMultiSelect={handleEnterMultiSelect}
             onPermanentlyDelete={handleOpenPermanentDelete}
+            onUndoPromotionAndExclude={() => setIsPromotionReversalConfirmOpen(true)}
             onReject={() => void inbox.rejectSelected()}
             onReopen={() => void inbox.reopenSelected()}
             onRerun={() => void inbox.rerunSelected()}
@@ -719,6 +722,19 @@ function AiReviewPageContent() {
         onCancel={inbox.cancelPendingSelection}
         onConfirm={inbox.confirmPendingRerun}
         title="Send back to Processing?"
+      />
+
+      <ConfirmLeaveDialog
+        cancelLabel="Keep in AI Review"
+        confirmLabel="Undo Promotion & Exclude"
+        copy="The derived AI Review/catalog candidate will be retired. The customer's original upload and Print Request artwork/history remain intact. The upload returns to Excluded and starts the normal 14-day retention episode."
+        isOpen={isPromotionReversalConfirmOpen}
+        onCancel={() => setIsPromotionReversalConfirmOpen(false)}
+        onConfirm={() => {
+          setIsPromotionReversalConfirmOpen(false);
+          void inbox.reverseCustomerUploadPromotionSelected();
+        }}
+        title="Undo Promotion & Exclude?"
       />
 
       <DeleteEligibleUnapprovedDesignDialog
