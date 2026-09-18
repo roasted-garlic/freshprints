@@ -68,6 +68,20 @@ test("normal conditions prefer directly below the trigger", () => {
   });
 });
 
+test("start align grows the menu to the right of the trigger", () => {
+  assert.deepEqual(
+    resolveDangerOverflowMenuPosition({
+      ...baseGeometry,
+      preferredAlign: "start",
+    }),
+    {
+      left: 240,
+      placement: "bottom",
+      top: 138,
+    },
+  );
+});
+
 test("insufficient space below flips upward only when above has more room", () => {
   const position = resolveDangerOverflowMenuPosition({
     ...baseGeometry,

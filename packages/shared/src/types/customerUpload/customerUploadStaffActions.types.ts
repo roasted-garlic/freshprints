@@ -24,6 +24,14 @@ export interface ExcludeCustomerUploadFromCatalogResponse {
   catalogReviewStatus: "excluded_from_catalog";
 }
 
+export interface ReturnCustomerUploadToIntakeAndExcludeResponse {
+  uploadId: string;
+  designId: string;
+  catalogReviewStatus: "excluded_from_catalog";
+  alreadyReversed: boolean;
+  storageFilesDeleted: number;
+}
+
 export interface RestoreCustomerUploadCatalogEligibilityRequest {
   uploadId: string;
 }

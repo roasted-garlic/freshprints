@@ -7,6 +7,7 @@ import { assertStaffCaller, loadCallerProfile } from "./lib/caller";
 import { failedPrecondition, invalidArgument, unauthenticated } from "./lib/errors";
 import { geminiApiKeySecret, openAiApiKeySecret } from "./lib/secrets";
 import { adminDb } from "./lib/admin";
+import { CUSTOMER_UPLOAD_COLLECTIONS } from "../../packages/shared/src/constants/customerUpload/customerUploadCollections.constants";
 import { runAiEnrichmentPipeline } from "./ai/aiEnrichmentPipeline";
 import {
   AI_ENRICHMENT_ACTIVE_STAGES,
@@ -75,6 +76,19 @@ export const enqueueAiEnrichment = onCall(
 
     if (!design) {
       throw invalidArgument("Design not found.");
+    }
+
+    // A Customer Upload reversal keeps the backlink until derived Storage cleanup completes.
+    // Reject stale local queue work as soon as the authoritative upload leaves AI Review.
+    if (typeof design.sourceCustomerUploadId === "string" && design.sourceCustomerUploadId.trim()) {
+      const sourceUploadSnapshot = await adminDb
+        .collection(CUSTOMER_UPLOAD_COLLECTIONS.customerUploads)
+        .doc(design.sourceCustomerUploadId.trim())
+        .get();
+      const sourceUpload = sourceUploadSnapshot.data();
+      if (!sourceUpload || sourceUpload.catalogReviewStatus !== "sent_to_ai_review") {
+        throw failedPrecondition("This Customer Upload is no longer in AI Review.");
+      }
     }
 
     if (rerunFromReview) {

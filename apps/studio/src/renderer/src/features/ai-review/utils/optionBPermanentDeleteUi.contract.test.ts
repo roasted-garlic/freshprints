@@ -47,6 +47,31 @@ describe("Option B permanent delete UI surfaces", () => {
     );
   });
 
+  it("exposes only the dedicated single-item Customer Upload reversal action", () => {
+    const workspace = read(
+      "apps/studio/src/renderer/src/features/ai-review/components/AiReviewWorkspace.tsx",
+    );
+    const page = read("apps/studio/src/renderer/src/features/ai-review/pages/AiReviewPage.tsx");
+    const hook = read(
+      "apps/studio/src/renderer/src/features/ai-review/hooks/useAiReviewInbox.ts",
+    );
+    assert.match(workspace, /Undo Promotion & Exclude/);
+    assert.match(workspace, /canUndoPromotionAndExclude/);
+    assert.match(page, /Keep in AI Review/);
+    assert.match(page, /original upload and Print Request artwork\/history remain intact/);
+    assert.match(page, /normal 14-day retention episode/);
+    assert.match(hook, /reverseCustomerUploadPromotionSelected/);
+    assert.match(
+      hook,
+      /Leave the inbox immediately[\s\S]*returnCustomerUploadToIntakeAndExclude/,
+    );
+    assert.match(
+      hook,
+      /reconcileSuccessfulHardDelete\([\s\S]*await aiReviewInboxService\.returnCustomerUploadToIntakeAndExclude/,
+    );
+    assert.doesNotMatch(page, /bulk.*Undo Promotion|Undo Promotion.*bulk/i);
+  });
+
   it("lists every selected title in a wider scrolling delete dialog", () => {
     const dialog = read(
       "apps/studio/src/renderer/src/features/designs/components/DeleteEligibleUnapprovedDesignDialog.tsx",

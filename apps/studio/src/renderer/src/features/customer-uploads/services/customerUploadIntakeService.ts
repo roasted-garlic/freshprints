@@ -14,6 +14,7 @@ import type {
 import type {
   ExcludeCustomerUploadFromCatalogResponse,
   PromoteCustomerUploadToAiReviewResponse,
+  ReturnCustomerUploadToIntakeAndExcludeResponse,
   RestoreCustomerUploadCatalogEligibilityResponse,
   RetryCustomerUploadProcessingResponse,
 } from "@fresh-prints/shared/types/customerUpload/customerUploadStaffActions.types";
@@ -391,6 +392,17 @@ export const customerUploadIntakeService = {
       "excludeCustomerUploadFromCatalog",
       { source: "customerUploadIntakeService.exclude" },
     )({ uploadId });
+  },
+
+  async returnToIntakeAndExclude(
+    uploadId: string,
+  ): Promise<ReturnCustomerUploadToIntakeAndExcludeResponse> {
+    return callTracedFunction<
+      { uploadId: string },
+      ReturnCustomerUploadToIntakeAndExcludeResponse
+    >("returnCustomerUploadToIntakeAndExclude", {
+      source: "customerUploadIntakeService.returnToIntakeAndExclude",
+    })({ uploadId });
   },
 
   async requestPermissionFollowUp(

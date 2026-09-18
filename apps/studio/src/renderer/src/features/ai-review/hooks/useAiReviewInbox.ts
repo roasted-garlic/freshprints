@@ -29,6 +29,7 @@ import {
   isDesignRerunnableInInbox,
   isDesignRetryableInProcessing,
   isDesignStaleProcessingRetryable,
+  isCustomerUploadPromotionReversible,
 } from "../utils/aiReviewInboxEligibility";
 import { filterDesignsByAiReviewStatus } from "../../designs/utils/designLibrarySearch";
 import {
@@ -41,6 +42,7 @@ import {
 } from "../utils/aiReviewNeedsReviewSearch";
 import { traceAiQueueEvent } from "../../../config/aiQueueTraceClient";
 import {
+  cancelBackgroundAiWork,
   getActiveBackgroundAiDesignId,
   hasPendingBackgroundAiWork,
   subscribeToBackgroundAiQueue,
@@ -391,6 +393,12 @@ export function useAiReviewInbox(
       permissionService.canRerunAiSuggestions(user) &&
       selectedDesign &&
       isDesignRerunnableInInbox(selectedDesign, filters.tab),
+  );
+  const canReverseCustomerUploadPromotion = Boolean(
+    user &&
+      permissionService.canReturnCustomerUploadToIntake(user) &&
+      selectedDesign &&
+      isCustomerUploadPromotionReversible(selectedDesign),
   );
   const canRetryProcessingSelected = Boolean(
     user && selectedDesign && isDesignRetryableInProcessing(selectedDesign, filters.tab),
@@ -1589,6 +1597,87 @@ export function useAiReviewInbox(
     });
   }, [canArchiveSelected, runInboxAction, selectedDesign, user]);
 
+  const reverseCustomerUploadPromotionSelected = useCallback(async () => {
+    if (
+      !user ||
+      !selectedDesign ||
+      !canReverseCustomerUploadPromotion ||
+      !selectedDesign.sourceCustomerUploadId
+    ) {
+      return;
+    }
+
+    const designId = selectedDesign.id;
+    const uploadId = selectedDesign.sourceCustomerUploadId;
+    const listAtStart = designsRef.current;
+    const indexInList = listAtStart.findIndex((design) => design.id === designId);
+    const indexAtStart = indexInList >= 0 ? indexInList : selectedIndex;
+    const nextDesign =
+      (indexAtStart >= 0 ? listAtStart[indexAtStart + 1] : undefined) ??
+      (indexAtStart > 0 ? listAtStart[indexAtStart - 1] : undefined) ??
+      listAtStart.find((design) => design.id !== designId) ??
+      null;
+
+    processingQueue.cancelDesign(designId);
+    cancelBackgroundAiWork(designId);
+    setIsActionLoading(true);
+    setActionError(null);
+
+    // Leave the inbox immediately so the intentional cancellation boundary
+    // (`aiProcessingStage: "failed"`) never flashes as an AI failure while Storage cleanup runs.
+    reconcileSuccessfulHardDelete({
+      designId,
+      selectedIndex: indexAtStart,
+      sourceTab: filters.tab,
+      deps: {
+        clearLiveDesign: () => {
+          liveDesignRef.current = null;
+          setLiveDesign(null);
+          setDraftForm(null);
+          setBaselineForm(null);
+        },
+        removeDesignFromList,
+        setPendingAdvanceIndex: (index) => {
+          pendingAdvanceIndexRef.current = index;
+        },
+        onInboxCountsDelta: (deltas) => {
+          optionsRef.current?.onInboxCountsDelta?.(deltas);
+        },
+      },
+    });
+    // Switch selection now so the live subscription cannot re-pin a failed snapshot.
+    applySelection(nextDesign);
+    pendingAdvanceIndexRef.current = null;
+    setReviewScrollNonce((current) => current + 1);
+
+    try {
+      await aiReviewInboxService.returnCustomerUploadToIntakeAndExclude(user, uploadId);
+      optionsRef.current?.onQueueChanged?.();
+    } catch (reversalError) {
+      setActionError(
+        reversalError instanceof Error
+          ? reversalError.message
+          : "Unable to undo the Customer Upload promotion.",
+      );
+      pendingAdvanceIndexRef.current = null;
+      await reloadDesigns();
+      optionsRef.current?.onQueueChanged?.();
+      setSelectedDesignId(designId);
+    } finally {
+      setIsActionLoading(false);
+    }
+  }, [
+    applySelection,
+    canReverseCustomerUploadPromotion,
+    filters.tab,
+    processingQueue,
+    reloadDesigns,
+    removeDesignFromList,
+    selectedDesign,
+    selectedIndex,
+    user,
+  ]);
+
   const rerunSelected = useCallback(() => {
     requestRerunAiSuggestions();
   }, [requestRerunAiSuggestions]);
@@ -1699,6 +1788,7 @@ export function useAiReviewInbox(
     canApprove: canApproveSelected,
     canArchive: canArchiveSelected,
     canEdit: canEditSelected,
+    canReverseCustomerUploadPromotion,
     canSaveArtworkBackground,
     canReject: canRejectSelected,
     canReopen: canReopenSelected,
@@ -1738,6 +1828,7 @@ export function useAiReviewInbox(
     selectRelative,
     approveSelected,
     archiveSelected,
+    reverseCustomerUploadPromotionSelected,
     rejectSelected,
     reopenSelected,
     rerunSelected,

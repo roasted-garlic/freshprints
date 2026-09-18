@@ -19,11 +19,38 @@ test("both intake routes use one shared renderer with confirmed purpose scopes",
   assert.match(uploadPage, /<CustomerUploadIntakeSection/);
 });
 
-test("pending shared actions remain promote, exclude, and owner-admin delete", () => {
-  assert.match(intake, /Send to AI Review/);
-  assert.match(intake, /Do not add to catalog/);
-  assert.match(intake, /label: "Delete Upload"/);
-  assert.match(intake, /intake\.canDeleteEligible/);
+test("pending promote/exclude select the card above instead of jumping to the top", () => {
+  assert.match(hook, /resolveIntakeSelectionAfterRemoval/);
+  assert.match(hook, /pendingSelectionAfterRemovalRef/);
+  assert.match(hook, /rememberSelectionAfterRemoval/);
+  assert.match(hook, /removeRowLocally/);
+});
+
+test("intake shortcuts and serial multi-select actions are wired", () => {
+  assert.match(intake, /key === "a"/);
+  assert.match(intake, /key === "r"/);
+  assert.match(intake, /event\.key !== "ArrowUp"/);
+  assert.match(intake, /event\.key !== "ArrowDown"/);
+  assert.match(intake, /Shortcuts: A send to AI Review, R exclude/);
+  assert.match(intake, /Shortcuts: ↑ previous, ↓ next/);
+  assert.match(intake, /Multiple select/);
+  assert.match(intake, /Shift\+click|shiftKey/);
+  assert.match(intake, /Send Selected to AI Review/);
+  assert.match(intake, /Exclude Selected/);
+  assert.match(intake, /IntakeMultiSelectPanel/);
+  assert.match(intake, /for \(const uploadId of selectedIdsAtStart\)/);
+  assert.match(intake, /await intake\.promote\(uploadId\)/);
+  assert.match(intake, /await intake\.exclude\(uploadId\)/);
+});
+
+test("intake previews keep the existing derivative and use a centered square stage", () => {
+  assert.match(hook, /previewStoragePath/);
+  assert.match(intake, /row\.previewUrl/);
+  assert.match(intake, /customer-upload-intake-preview-stage/);
+  const layout = fs.readFileSync(path.join(root, "../../styles/layout.css"), "utf8");
+  assert.match(layout, /\.customer-upload-intake-preview-stage[\s\S]*?aspect-ratio: 1/);
+  assert.match(layout, /\.customer-upload-intake-preview-stage[\s\S]*?max-width: min\(100%, 28rem\)/);
+  assert.match(layout, /\.customer-upload-intake-preview[\s\S]*?object-fit: contain/);
 });
 
 test("excluded shared actions are visible restore plus owner-admin delete", () => {

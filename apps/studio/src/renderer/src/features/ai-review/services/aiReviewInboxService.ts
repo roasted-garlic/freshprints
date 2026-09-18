@@ -10,6 +10,8 @@ import {
 import { filterDesignsByAiReviewStatus } from "../../designs/utils/designLibrarySearch";
 import { permissionService } from "../../permissions/services/permissionService";
 import type { User } from "../../users/types/user.types";
+import { callTracedFunction } from "../../../config/tracedCallable";
+import type { ReturnCustomerUploadToIntakeAndExcludeResponse } from "@fresh-prints/shared/types/customerUpload/customerUploadStaffActions.types";
 import { buildAiReviewInboxListQuery } from "../constants/aiReviewInboxConstants";
 import { aiEnrichmentEnqueueService } from "./aiEnrichmentEnqueueService";
 import type { AiReviewDraftForm, AiReviewInboxFilters } from "../types/aiReviewInbox.types";
@@ -108,6 +110,22 @@ export const aiReviewInboxService = {
 
   async archiveFromInbox(caller: User, designId: string): Promise<Design> {
     return catalogApprovalService.archiveRejectedDesign(caller, designId);
+  },
+
+  async returnCustomerUploadToIntakeAndExclude(
+    caller: User,
+    uploadId: string,
+  ): Promise<ReturnCustomerUploadToIntakeAndExcludeResponse> {
+    if (!permissionService.canReturnCustomerUploadToIntake(caller)) {
+      throw new Error("You do not have permission to return Customer Uploads to intake.");
+    }
+
+    return callTracedFunction<
+      { uploadId: string },
+      ReturnCustomerUploadToIntakeAndExcludeResponse
+    >("returnCustomerUploadToIntakeAndExclude", {
+      source: "aiReviewInboxService.returnCustomerUploadToIntakeAndExclude",
+    })({ uploadId });
   },
 
   /**

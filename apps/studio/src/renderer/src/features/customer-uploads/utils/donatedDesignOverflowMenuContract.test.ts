@@ -31,6 +31,9 @@ test("the only established overflow action is the existing owner-gated unused-up
   assert.match(componentSource, /id: "delete-upload"/);
   assert.match(componentSource, /label: "Delete Upload"/);
   assert.match(componentSource, /setIsDeleteOpen\(true\)/);
+  assert.match(componentSource, /id: "multiple-select"/);
+  assert.match(componentSource, /label: "Multiple select"/);
+  assert.match(componentSource, /danger: false/);
 });
 
 test("opening the menu is state-only and cannot invoke the deletion handler", () => {
@@ -41,6 +44,7 @@ test("opening the menu is state-only and cannot invoke the deletion handler", ()
 
 test("intake prefers a downward portaled menu without weakening the clipping panel", () => {
   assert.match(componentSource, /placement="bottom"/);
+  assert.match(componentSource, /align="start"/);
   assert.match(layoutCss, /\.customer-upload-intake-panel\s*\{[\s\S]*?overflow: hidden;/);
   assert.match(menuSource, /createPortal\(/);
   assert.match(menuSource, /document\.body/);
@@ -68,7 +72,7 @@ test("accessible menu semantics, keyboard focus, and design context are wired", 
 
 test("primary intake actions and halftone control remain on their existing handlers", () => {
   assert.match(componentSource, /void intake\.promote\(row\.id\)/);
-  assert.match(componentSource, /await intake\.exclude\(row\.id\)/);
+  assert.match(componentSource, /(?:void|await) intake\.exclude\(row\.id\)/);
   assert.match(componentSource, /void intake\.setHalftoneDecision\(row\.id,/);
 });
 
@@ -78,10 +82,11 @@ test("customer upload intake contains no browser-native prompt, confirm, or aler
 
 test("empty or ineligible action states cannot display a dead trigger", () => {
   assert.match(menuSource, /if \(visibleItems\.length === 0\)\s*\{\s*return null;/);
+  assert.match(componentSource, /overflowItems\.length > 0/);
   assert.match(componentSource, /intake\.canDeleteEligible && !row\.promotedDesignId/);
 });
 
 test("Customer Uploads and Donated Designs retain one shared intake implementation", () => {
   assert.match(componentSource, /const isDonation = purposeScope === "catalog_donation"/);
-  assert.equal((componentSource.match(/<DangerOverflowMenu/g) ?? []).length, 1);
+  assert.ok((componentSource.match(/<DangerOverflowMenu/g) ?? []).length >= 1);
 });

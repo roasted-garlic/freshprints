@@ -58,6 +58,15 @@ export function isDesignStaleProcessingRetryable(design: Design, tab: AiReviewIn
   return tab === "processing" && isAiProcessingStaleForRecovery(design);
 }
 
+/** Customer Upload promotion reversal is limited to source-linked pre-ready designs. */
+export function isCustomerUploadPromotionReversible(design: Design): boolean {
+  return (
+    Boolean(design.sourceCustomerUploadId?.trim()) &&
+    (design.status === "imported" || design.status === "processing" || design.status === "rejected") &&
+    design.aiReviewStatus !== "approved"
+  );
+}
+
 /** Matches server isRerunFromReviewEligible + client output preconditions. */
 export function isDesignRerunnableFromNeedsReview(design: Design): boolean {
   const review = resolveDesignAiReviewDisplay(design);

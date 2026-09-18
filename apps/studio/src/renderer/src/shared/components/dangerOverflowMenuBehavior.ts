@@ -1,4 +1,5 @@
 export type DangerOverflowMenuPlacement = "bottom" | "top";
+export type DangerOverflowMenuAlign = "start" | "end";
 
 export type DangerOverflowMenuEvent =
   | "trigger"
@@ -18,6 +19,8 @@ export interface DangerOverflowMenuGeometry {
   viewportHeight: number;
   viewportWidth: number;
   preferredPlacement?: DangerOverflowMenuPlacement;
+  /** `start` grows to the right of the trigger; `end` grows to the left (default). */
+  preferredAlign?: DangerOverflowMenuAlign;
   gap?: number;
   viewportMargin?: number;
 }
@@ -35,6 +38,7 @@ export function resolveDangerOverflowMenuPosition({
   viewportHeight,
   viewportWidth,
   preferredPlacement = "bottom",
+  preferredAlign = "end",
   gap = 6,
   viewportMargin = 8,
 }: DangerOverflowMenuGeometry): DangerOverflowMenuPosition {
@@ -52,7 +56,8 @@ export function resolveDangerOverflowMenuPosition({
     placement === "bottom" ? trigger.bottom + gap : trigger.top - gap - menuHeight;
   const maxTop = Math.max(viewportMargin, viewportHeight - viewportMargin - menuHeight);
   const top = Math.min(Math.max(desiredTop, viewportMargin), maxTop);
-  const desiredLeft = trigger.right - menuWidth;
+  const desiredLeft =
+    preferredAlign === "start" ? trigger.left : trigger.right - menuWidth;
   const maxLeft = Math.max(viewportMargin, viewportWidth - viewportMargin - menuWidth);
   const left = Math.min(Math.max(desiredLeft, viewportMargin), maxLeft);
 

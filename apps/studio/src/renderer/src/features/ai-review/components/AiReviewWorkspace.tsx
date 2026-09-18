@@ -37,6 +37,7 @@ interface AiReviewWorkspaceProps {
   canArchive: boolean;
   canEnterMultiSelect: boolean;
   canPermanentlyDelete: boolean;
+  canUndoPromotionAndExclude: boolean;
   canReopen: boolean;
   canReject: boolean;
   canRerun: boolean;
@@ -62,6 +63,7 @@ interface AiReviewWorkspaceProps {
   onArchive: () => void;
   onEnterMultiSelect: () => void;
   onPermanentlyDelete: () => void;
+  onUndoPromotionAndExclude: () => void;
   onReject: () => void;
   onReopen: () => void;
   onRerun: () => void;
@@ -99,6 +101,7 @@ export function AiReviewWorkspace({
   canArchive,
   canEnterMultiSelect,
   canPermanentlyDelete,
+  canUndoPromotionAndExclude,
   canReopen,
   canReject,
   canRerun,
@@ -124,6 +127,7 @@ export function AiReviewWorkspace({
   onArchive,
   onEnterMultiSelect,
   onPermanentlyDelete,
+  onUndoPromotionAndExclude,
   onReject,
   onReopen,
   onRerun,
@@ -276,6 +280,16 @@ export function AiReviewWorkspace({
             id: "permanent-delete",
             label: "Delete",
             onSelect: onPermanentlyDelete,
+          },
+        ]
+      : []),
+    ...(canUndoPromotionAndExclude
+      ? [
+          {
+            id: "undo-promotion-exclude",
+            label: "Undo Promotion & Exclude",
+            danger: false,
+            onSelect: onUndoPromotionAndExclude,
           },
         ]
       : []),

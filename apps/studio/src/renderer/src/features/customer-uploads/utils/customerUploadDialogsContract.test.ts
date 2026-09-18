@@ -6,7 +6,6 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const deletion = fs.readFileSync(path.join(root, "components/CustomerUploadDeletionDialog.tsx"), "utf8");
-const exclusion = fs.readFileSync(path.join(root, "components/CustomerUploadExclusionDialog.tsx"), "utf8");
 const restoration = fs.readFileSync(path.join(root, "components/CustomerUploadRestoreDialog.tsx"), "utf8");
 const intake = fs.readFileSync(path.join(root, "components/CustomerUploadIntakeSection.tsx"), "utf8");
 const hook = fs.readFileSync(path.join(root, "hooks/useCustomerUploadIntake.ts"), "utf8");
@@ -54,12 +53,11 @@ test("dialog target and completion use the current selected row identity", () =>
   assert.match(intake, /key={`\$\{intake\.filter}:\$\{intake\.selected\.id}`}/);
 });
 
-test("exclusion uses an in-app reversible lifecycle confirmation", () => {
-  assert.match(intake, /<CustomerUploadExclusionDialog/);
-  assert.match(exclusion, /Do not add to catalog\?/);
-  assert.match(exclusion, /stored artwork, request items,[\s\S]*technical processing state remain unchanged/);
-  assert.match(intake, /await intake\.exclude\(row\.id\)/);
-  assert.doesNotMatch(exclusion, /deleteEligible|\.delete\(/);
+test("ordinary exclusion is immediate and remains callable-backed", () => {
+  assert.doesNotMatch(intake, /CustomerUploadExclusionDialog/);
+  assert.match(intake, /intake\.exclude\(row\.id\)/);
+  assert.match(hook, /customerUploadIntakeService\.exclude\(uploadId\)/);
+  assert.doesNotMatch(`${intake}\n${hook}`, /window\.(?:prompt|confirm|alert)\s*\(/);
 });
 
 test("excluded uploads use a visible Restore to Pending action and in-app confirmation", () => {

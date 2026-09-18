@@ -341,6 +341,10 @@ export const permissionService = {
     return this.canApproveDesignForCatalog(user);
   },
 
+  canReturnCustomerUploadToIntake(user: UserLike) {
+    return this.canExcludeCustomerUploadFromCatalog(user) && this.canManageAiReview(user);
+  },
+
   canRetryCustomerUploadProcessing(user: UserLike) {
     return this.canApproveDesignForCatalog(user);
   },

@@ -13,6 +13,7 @@ import { logDerivativeLocusDiag } from "../../../shared/utils/derivativeLocusDia
  */
 const pendingDesignIds: string[] = [];
 const seenDesignIds = new Set<string>();
+const cancelledDesignIds = new Set<string>();
 let isPumpRunning = false;
 /**
  * The design the pump is actively awaiting an enqueue call for, or null when idle. Diagnostic
@@ -130,6 +131,26 @@ export function enqueueImportedDesignsForBackgroundAi(
   void pumpBackgroundAiQueue();
 }
 
+/** Remove pending work for one design; an active provider call is invalidated server-side. */
+export function cancelBackgroundAiWork(designId: string): void {
+  const normalizedId = designId.trim();
+  if (!normalizedId) {
+    return;
+  }
+
+  cancelledDesignIds.add(normalizedId);
+  for (let index = pendingDesignIds.length - 1; index >= 0; index -= 1) {
+    if (pendingDesignIds[index] === normalizedId) {
+      pendingDesignIds.splice(index, 1);
+    }
+  }
+
+  if (activeQueueDesignId !== normalizedId) {
+    cancelledDesignIds.delete(normalizedId);
+    seenDesignIds.delete(normalizedId);
+  }
+}
+
 async function pumpBackgroundAiQueue(): Promise<void> {
   if (isPumpRunning) {
     traceAiQueueEvent({
@@ -153,6 +174,17 @@ async function pumpBackgroundAiQueue(): Promise<void> {
         continue;
       }
 
+      if (cancelledDesignIds.delete(designId)) {
+        seenDesignIds.delete(designId);
+        traceAiQueueEvent({
+          event: "pump.design_cancelled",
+          source: "backgroundQueue",
+          designId,
+          queueRemaining: pendingDesignIds.length,
+        });
+        continue;
+      }
+
       activeQueueDesignId = designId;
       traceAiQueueEvent({
         event: "pump.design_selected",
@@ -170,6 +202,16 @@ async function pumpBackgroundAiQueue(): Promise<void> {
           activeQueueDesignId: designId,
         });
         const result = await aiEnrichmentEnqueueService.enqueueForProcessing(designId);
+        if (cancelledDesignIds.delete(designId)) {
+          seenDesignIds.delete(designId);
+          traceAiQueueEvent({
+            event: "enqueue.completed_after_cancel",
+            source: "backgroundQueue",
+            designId,
+            queueRemaining: pendingDesignIds.length,
+          });
+          continue;
+        }
         logPipelineEvent("import.ai_background.enqueued", { designId });
         traceAiQueueEvent({
           event: "enqueue.resolved",
@@ -197,6 +239,16 @@ async function pumpBackgroundAiQueue(): Promise<void> {
           queueRemaining: pendingDesignIds.length,
         });
       } catch (error) {
+        if (cancelledDesignIds.delete(designId)) {
+          seenDesignIds.delete(designId);
+          traceAiQueueEvent({
+            event: "enqueue.failed_after_cancel",
+            source: "backgroundQueue",
+            designId,
+            queueRemaining: pendingDesignIds.length,
+          });
+          continue;
+        }
         logPipelineEvent("import.ai_background.enqueue_failed", {
           designId,
           message: error instanceof Error ? error.message : "Unknown error",
