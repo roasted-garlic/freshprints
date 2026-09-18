@@ -2,25 +2,27 @@
 
 | Field | Value |
 |---|---|
-| Status | **OWNER DEV QA PASS — Signoff and authorized rollout in progress** |
-| DONE | **no** |
-| Signoff Status | **approved for rollout; final evidence pending** |
+| Status | **DONE / IDLE — production rollout complete; Studio release published** |
+| DONE | **yes** |
+| Signoff Status | **complete** |
 | Current Mode | managed-phase |
 | Parent program | Studio intake and AI Review workflow |
 | Current Goal | `studio-intake-review-efficiency-and-customer-upload-promotion-reversal` |
-| Current Phase | **SIGNOFF / PRODUCTION ROLLOUT** |
+| Current Phase | **CLOSED** |
 | Plan Status | **complete** |
 | Review Status | **owner-accepted; final independent implementation re-review approved** |
-| Implementation Status | **complete within accepted scope** |
-| Test Status | **all focused checks, builds, release-policy checks, exact lint, and diff checks pass; repository lint has unrelated baseline failures** |
-| Human Checkpoint Required | **no additional checkpoint before the owner-authorized protected rollout and narrow production deployment** |
-| Human Checkpoint Reason | Owner DEV QA PASS and production/release authorization are recorded in the continuation instruction. |
+| Implementation Status | **complete** |
+| Test Status | **complete** — backend 27/27, Studio 115/115, release-policy 30/30, builds/typechecks/lints/diff checks pass; repository lint has unrelated baseline diagnostics |
+| Human Checkpoint Required | **no** |
+| Human Checkpoint Reason | Owner DEV QA PASS and production/release authorization were supplied and the bounded rollout is complete. |
 | Blocked | **no** |
-| Allowed Actions | Commit and push goal-scoped changes; open and merge the protected development-to-production PR; deploy the exact Functions allowlist; publish Studio `1.0.16`; perform bounded verification; update final evidence. |
-| Forbidden Actions | Firestore Rules; Storage Rules; indexes; Portal; IAM; secrets; Firebase configuration; migration/backfill/data rewrite; bulk AI Review reversal; Ready/downstream design reversal; production data mutation. |
-| Last Completed Step | Final candidate implementation review and Owner DEV QA PASS recorded after current-tree checks. |
-| Next Required Step | Commit/push development, merge protected PR, deploy exact backend Functions, publish Studio `1.0.16`, verify, then close FreshForge IDLE. |
-| Decision Log | 2026-09-18 — Owner accepted the reviewed conditions, authorized implementation/testing/DEV deployment, supplied Owner DEV QA PASS, and authorized the reviewed production rollout sequence. |
-| Artifacts | Plan, Formal Review, final Independent Implementation Review, DEV deployment record, final Signoff, and rollout evidence under `docs/workflow/`. |
-| Production Surface | Expected: Studio `1.0.16` and Functions `returnCustomerUploadToIntakeAndExclude`, `enqueueAiEnrichment`, `deleteEligibleUnapprovedDesign` only. No Rules, Storage Rules, indexes, Portal, IAM, secrets, migration, backfill, or data rewrite. |
-| Signoff | **approved for rollout; final production evidence not yet appended** |
+| Last Completed Step | Protected PR #104 merged as `e6e90cdd14ea6a0d468c54412c195fa7a689823e`; exact three Functions deployed; Studio `1.0.16` published Latest and verified. |
+| Next Required Step | None for this goal. FreshForge is IDLE. |
+| Decision Log | 2026-09-18 — Owner DEV QA PASS; PR #104 merged; Functions-only production deployment completed; release workflow `35372041018` completed; release `391652470` published Latest with eight assets; bounded verification passed. |
+| Artifacts | Plan, Formal Review, final Independent Implementation Review, DEV deployment, Owner DEV QA, final Signoff, and production rollout evidence under `docs/workflow/`. |
+| Final Implementation SHA | `f6df49882f80a7a8029610659178bc0bc1c56925` |
+| Production Merge SHA | `e6e90cdd14ea6a0d468c54412c195fa7a689823e` |
+| Exact Functions | `returnCustomerUploadToIntakeAndExclude`, `enqueueAiEnrichment`, `deleteEligibleUnapprovedDesign` — 3 deployed, 0 errors, 0 aborted |
+| Studio Release | `1.0.16`, workflow `35372041018`, release ID `391652470`, tag `v1.0.16`, Latest, 8 canonical assets |
+| Surface Disposition | No Firestore Rules, Storage Rules, indexes, Portal, IAM, secrets, Firebase config, migration, backfill, data rewrite, or production customer-data mutation. |
+| Signoff | **complete — Goal closed, production rollout complete, Studio release published.** |

@@ -64,19 +64,35 @@ designs are rejected server-side. No bulk AI Review reversal exists.
 
 ## Production rollout record
 
-To be completed in the same closeout pass with exact live identifiers:
-
-- Final development SHA: pending
-- Protected PR: pending
-- Production merge SHA: pending
-- Functions deployed: pending exact verification
-- Rules / Storage Rules / indexes / Portal / IAM / secrets / Firebase config / data: unchanged
+- Final development implementation SHA: `f6df49882f80a7a8029610659178bc0bc1c56925`
+- Protected PR: **#104**, merged successfully
+- Production merge SHA: `e6e90cdd14ea6a0d468c54412c195fa7a689823e`
+- Functions deployed exactly:
+  - `returnCustomerUploadToIntakeAndExclude`
+  - `enqueueAiEnrichment`
+  - `deleteEligibleUnapprovedDesign`
+- Functions deployment result: **3 deployed, 0 errors, 0 aborted** to `fresh-prints-prod`.
+- Rules / Storage Rules / indexes / Portal / IAM / secrets / Firebase config / data: unchanged;
+  the production diff and exact Functions-only deploy confirm no such surface was deployed.
 - Studio version: `1.0.16`
-- Release workflow run: pending
-- GitHub Release ID: pending
-- Canonical asset count: pending (expected 8)
-- Latest verification: pending
-- Production verification: pending
+- Release workflow run: **35372041018**, success, built from `e6e90cdd…`
+- GitHub Release ID: **391652470**, tag `v1.0.16`, `draft=false`, `latest=true`
+- Canonical asset count: **8**
+- Latest verification: **PASS** — GitHub Latest points to release `391652470`, target
+  `e6e90cdd14ea6a0d468c54412c195fa7a689823e`.
+- Production verification: **PASS** — exact Functions are present/ACTIVE; unauthenticated POST to
+  `returnCustomerUploadToIntakeAndExclude` returned HTTP 401 with no mutation.
+
+### Canonical Studio release assets
+
+- `Fresh-Prints-Windows-1.0.16-Setup.exe`
+- `Fresh-Prints-Windows-1.0.16-Setup.exe.blockmap`
+- `latest.yml`
+- `Fresh-Prints-Mac-arm64-1.0.16-Installer.dmg`
+- `Fresh-Prints-Mac-arm64-1.0.16-Installer.zip`
+- `Fresh-Prints-Mac-x64-1.0.16-Installer.dmg`
+- `Fresh-Prints-Mac-x64-1.0.16-Installer.zip`
+- `latest-mac.yml`
 
 ## Owner DEV QA checklist
 
@@ -88,4 +104,8 @@ Owner DEV QA PASS covered the implemented candidate. Post-rollout bounded verifi
 3. Stable Studio `1.0.16` is published, Latest, pinned to the production merge SHA, and has the
    eight canonical assets.
 4. The new callable rejects unauthenticated access without mutation.
-5. FreshForge state and the durable handoff are updated to **DONE / IDLE**.
+5. FreshForge state and the durable handoff are updated to **DONE / IDLE**. **Completed.**
+
+## Final disposition
+
+**Goal closed, production rollout complete, Studio release published.**

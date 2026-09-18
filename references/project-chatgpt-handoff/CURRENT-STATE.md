@@ -1,5 +1,48 @@
 # Fresh Prints — Current State Snapshot
 
+## CURRENT AUTHORITATIVE PHASE — STUDIO INTAKE PROMOTION REVERSAL — PRODUCTION ROLLOUT COMPLETE
+
+**Last updated:** 2026-09-18
+
+Managed goal `studio-intake-review-efficiency-and-customer-upload-promotion-reversal` is closed.
+Owner DEV QA is **PASS**. The final implementation candidate is
+`f6df49882f80a7a8029610659178bc0bc1c56925`; protected PR **#104** merged it to production as
+`e6e90cdd14ea6a0d468c54412c195fa7a689823e`.
+
+The reviewed server lifecycle is implemented exactly as:
+
+```text
+validate provenance/eligibility
+→ invalidate active AI attempt
+→ safely remove derived design assets
+→ final transaction recheck
+→ delete retired pre-ready design
+→ return Customer Upload to Excluded
+```
+
+The original Customer Upload, request artwork/history, request items, allocation history, consent,
+technical fields, `promotedAt`, and customer-upload assets are preserved. The generic
+`deleteEligibleUnapprovedDesign` Customer Upload provenance guard remains unchanged. Eligibility
+rejects Ready/approved/catalog-ready/archived/imported/Staff Artwork/mismatched/downstream-used
+designs, including print-request item, show-allocation, companion, and denormalized references.
+There is no bulk AI Review reversal and no provider-cancellation claim.
+
+Exact production Functions deployed to `fresh-prints-prod`: **3 deployed, 0 errors, 0 aborted** —
+`returnCustomerUploadToIntakeAndExclude`, `enqueueAiEnrichment`, and
+`deleteEligibleUnapprovedDesign`. Production readback shows the exact allowlist ACTIVE; an
+unauthenticated POST to the new callable returned HTTP 401 without mutation. No Firestore Rules,
+Storage Rules, indexes, Portal, IAM, secrets, Firebase configuration, migration, backfill, data
+rewrite, or production customer-data action was deployed.
+
+Studio stable `1.0.16` is published and Latest from production merge SHA
+`e6e90cdd14ea6a0d468c54412c195fa7a689823e`. Release workflow **35372041018** passed; GitHub
+Release ID **391652470**, tag `v1.0.16`, `draft=false`, `latest=true`, and the exact eight
+canonical Windows/macOS assets are present.
+
+Final signoff:
+`docs/workflow/reviews/2026-09-18-studio-intake-review-efficiency-and-customer-upload-promotion-reversal-signoff.md`.
+FreshForge is **DONE / IDLE** for this goal.
+
 ## CURRENT AUTHORITATIVE PHASE — STUDIO `v1.0.15` RELEASE UPLOAD CORRECTIVE — COMPLETE
 
 **Last updated:** 2026-09-17
