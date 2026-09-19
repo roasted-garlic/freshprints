@@ -125,7 +125,7 @@ export function describeStaffArtworkActiveShowBlockNotice(
     blockers.includes("print_request_item") ||
     blockers.includes("gang_sheet_item")
   ) {
-    return "Still on an active show or print request — remove it or wait until that show is completed before sending to AI Review.";
+    return "Still on an active show or print request — remove it or wait until that show is completed before sending to AI.";
   }
   const detailed = describeStaffArtworkDeletionBlockers(blockers);
   return detailed

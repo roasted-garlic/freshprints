@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   isImportPlaceholderTitle,
+  resolveStaffArtworkAiGeneratedTitle,
   resolveFinalCatalogCopy,
 } from "./finalCatalogCopy";
 
@@ -281,4 +282,129 @@ test("matches Windows source paths and extension-stripped numeric basenames", ()
     categories,
   });
   assert.equal(numeric.title, "AI Numbered Design");
+});
+
+test("persists AI titles for Staff Artwork import roots without changing normal imports", () => {
+  assert.deepEqual(
+    resolveStaffArtworkAiGeneratedTitle({
+      root: { title: "a1b2c3d4e5", catalogTitleSource: "import_filename", sourceStaffArtworkId: "staff-1" },
+      candidateTitle: "Hot Mess Highland Cow",
+      importSourceFileName: "cow.png",
+    }),
+    { title: "Hot Mess Highland Cow", catalogTitleSource: "ai_generated" },
+  );
+
+  assert.equal(
+    resolveStaffArtworkAiGeneratedTitle({
+      root: { title: "Staff Curated Cow", catalogTitleSource: "staff", sourceStaffArtworkId: "staff-2" },
+      candidateTitle: "AI Replacement",
+      importSourceFileName: "cow.png",
+    }),
+    undefined,
+  );
+  assert.equal(
+    resolveStaffArtworkAiGeneratedTitle({
+      root: { title: "Imported Cow", catalogTitleSource: "import_filename" },
+      candidateTitle: "AI Replacement",
+      importSourceFileName: "cow.png",
+    }),
+    undefined,
+  );
+  assert.equal(
+    resolveStaffArtworkAiGeneratedTitle({
+      root: { title: "Customer Upload", sourceCustomerUploadId: "upload-1" },
+      candidateTitle: "Customer AI Title",
+      importSourceFileName: "upload.png",
+    }),
+    undefined,
+  );
+});
+
+test("repairs an old Staff Artwork placeholder that was incorrectly stamped as staff authority", () => {
+  assert.deepEqual(
+    resolveStaffArtworkAiGeneratedTitle({
+      root: {
+        title: "a1b2c3d4e5",
+        catalogTitleSource: "staff",
+        sourceStaffArtworkId: "legacy-staff-1",
+      },
+      candidateTitle: "Highland Cow Hot Mess",
+    }),
+    { title: "Highland Cow Hot Mess", catalogTitleSource: "ai_generated" },
+  );
+});
+
+test("keeps human-looking old Staff Artwork titles protected when provenance is mis-stamped", () => {
+  assert.equal(
+    resolveStaffArtworkAiGeneratedTitle({
+      root: {
+        title: "Staff Curated Cow",
+        catalogTitleSource: "staff",
+        sourceStaffArtworkId: "legacy-staff-2",
+      },
+      candidateTitle: "AI Replacement",
+    }),
+    undefined,
+  );
+});
+
+test("repairs Staff Artwork placeholder roots stamped staff even when a source filename is present", () => {
+  assert.deepEqual(
+    resolveStaffArtworkAiGeneratedTitle({
+      root: {
+        title: "a1b2c3d4e5",
+        catalogTitleSource: "staff",
+        sourceStaffArtworkId: "current-staff-1",
+      },
+      candidateTitle: "AI Replacement",
+      importSourceFileName: "cow.png",
+    }),
+    { title: "AI Replacement", catalogTitleSource: "ai_generated" },
+  );
+});
+
+test("autonomous final catalog copy prefers AI title over a mis-stamped Staff Library hex root", () => {
+  const result = resolveFinalCatalogCopy({
+    root: {
+      title: "f70a4b2f0a",
+      description: "",
+      categoryId: undefined,
+      catalogTitleSource: "staff",
+      sourceStaffArtworkId: "Gy2Z6Ykp3u8qvjXQniac",
+    },
+    candidate: {
+      title: "Red Farmall Tractor Sunset Field Roots",
+      description: "A farm tractor parked in a sunset field.",
+      categoryId: "animals",
+    },
+    importSourceFileName: undefined,
+    sourceStaffArtworkId: "Gy2Z6Ykp3u8qvjXQniac",
+    categories,
+  });
+  assert.equal(result.title, "Red Farmall Tractor Sunset Field Roots");
+  assert.equal(result.catalogTitleSource, "ai_generated");
+  assert.equal(result.titleSource, "candidate");
+});
+
+test("autonomous final catalog copy still protects human-looking Staff Artwork titles", () => {
+  const result = resolveFinalCatalogCopy({
+    root: {
+      title: "Staff Curated Cow",
+      description: "An explicit staff description for the design.",
+      categoryId: "animals",
+      catalogTitleSource: "staff",
+      sourceStaffArtworkId: "staff-human-1",
+    },
+    candidate: {
+      title: "AI Replacement Title",
+      description: "A different AI description for the design.",
+      categoryId: "animals",
+    },
+    importSourceFileName: "cow.png",
+    sourceStaffArtworkId: "staff-human-1",
+    categories,
+  });
+  assert.equal(result.title, "Staff Curated Cow");
+  assert.equal(result.catalogTitleSource, "staff");
+  assert.equal(result.titleSource, "root");
 });

@@ -1,12 +1,15 @@
 import {
   collection,
-  getDocs,
   getDocsFromServer,
+  getDocs,
   limit,
   orderBy,
   query,
+  startAfter,
+  Timestamp,
   where,
   type DocumentData,
+  type QueryConstraint,
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
@@ -19,6 +22,25 @@ import { mapFirestoreTimestamp } from "../../firebase/utils/firestoreTimestamp";
 import { resolveStaffArtworkCallableErrorMessage } from "../utils/staffArtworkCallableErrorMessage";
 
 const COLLECTION = "staffArtworks";
+export const STAFF_ARTWORK_PAGE_SIZE = 24;
+
+export interface StaffArtworkListCursor {
+  staffArtworkId: string;
+  createdAtMillis: number;
+}
+
+export interface StaffArtworkListPage {
+  artworks: StaffArtworkSummary[];
+  hasMore: boolean;
+  nextCursor?: StaffArtworkListCursor;
+}
+
+export interface StaffArtworkListOptions {
+  customerId?: string;
+  fromServer?: boolean;
+  cursor?: StaffArtworkListCursor;
+  pageSize?: number;
+}
 
 function assertView(caller: User): void {
   if (!permissionService.canViewStaffArtwork(caller)) throw new Error("You do not have permission to view Staff Artwork.");
@@ -60,52 +82,58 @@ function isFirestoreIndexUnavailable(cause: unknown): boolean {
   return /requires an index|index.*building|failed-precondition/i.test(message);
 }
 
-async function listWithoutCompositeIndex(
-  options: { customerId?: string; fromServer?: boolean },
-): Promise<StaffArtworkSummary[]> {
-  const readDocs = options.fromServer ? getDocsFromServer : getDocs;
-  const statuses = ["ready", "processing", "failed", "archived"] as const;
-  const snapshots = await Promise.all(
-    statuses.map((status) => {
-      const constraints = [where("status", "==", status), limit(100)];
-      if (options.customerId) {
-        constraints.unshift(where("customerId", "==", options.customerId));
-      }
-      return readDocs(query(collection(db, COLLECTION), ...constraints));
-    }),
-  );
-  const byId = new Map<string, StaffArtwork>();
-  for (const snapshot of snapshots) {
-    for (const entry of snapshot.docs) {
-      byId.set(entry.id, mapArtwork(entry.id, entry.data()));
-    }
-  }
-  return [...byId.values()]
-    .sort((left, right) => right.createdAt.toMillis() - left.createdAt.toMillis())
-    .map(mapSummary);
-}
-
 export const staffArtworkService = {
-  async list(
+  async listPage(
     caller: User,
-    options: { customerId?: string; fromServer?: boolean } = {},
-  ): Promise<StaffArtworkSummary[]> {
+    options: StaffArtworkListOptions = {},
+  ): Promise<StaffArtworkListPage> {
     assertView(caller);
     const readDocs = options.fromServer ? getDocsFromServer : getDocs;
-    const constraints = [
+    const pageSize = Math.max(1, Math.min(100, Math.trunc(options.pageSize ?? STAFF_ARTWORK_PAGE_SIZE)));
+    const constraints: QueryConstraint[] = [
       where("status", "in", ["ready", "processing", "failed", "archived"]),
-      orderBy("createdAt", "desc"),
-      limit(100),
     ];
-    if (options.customerId) constraints.splice(1, 0, where("customerId", "==", options.customerId));
+    if (options.customerId) constraints.push(where("customerId", "==", options.customerId));
+    constraints.push(orderBy("createdAt", "desc"), orderBy("__name__", "desc"));
+    if (options.cursor) {
+      constraints.push(
+        startAfter(
+          Timestamp.fromMillis(options.cursor.createdAtMillis),
+          options.cursor.staffArtworkId,
+        ),
+      );
+    }
+    constraints.push(limit(pageSize + 1));
+
     try {
       const snapshot = await readDocs(query(collection(db, COLLECTION), ...constraints));
-      return snapshot.docs.map((entry) => mapSummary(mapArtwork(entry.id, entry.data())));
+      const hasMore = snapshot.docs.length > pageSize;
+      const pageDocs = hasMore ? snapshot.docs.slice(0, pageSize) : snapshot.docs;
+      const artworks = pageDocs.map((entry) => mapSummary(mapArtwork(entry.id, entry.data())));
+      const last = pageDocs.at(-1);
+      const lastCreatedAt = last ? mapFirestoreTimestamp(last.data().createdAt) : null;
+      return {
+        artworks,
+        hasMore,
+        nextCursor:
+          hasMore && last && lastCreatedAt
+            ? { staffArtworkId: last.id, createdAtMillis: lastCreatedAt.toMillis() }
+            : undefined,
+      };
     } catch (cause) {
-      if (!isFirestoreIndexUnavailable(cause)) throw cause;
-      // Composite indexes can take minutes after first deploy; keep the page usable.
-      return listWithoutCompositeIndex(options);
+      if (isFirestoreIndexUnavailable(cause)) {
+        throw new Error("Staff Artwork list indexing is still preparing. Refresh and try again shortly.");
+      }
+      throw cause;
     }
+  },
+
+  async list(
+    caller: User,
+    options: Omit<StaffArtworkListOptions, "cursor" | "pageSize"> = {},
+  ): Promise<StaffArtworkSummary[]> {
+    const page = await this.listPage(caller, options);
+    return page.artworks;
   },
 
   async getById(caller: User, staffArtworkId: string): Promise<StaffArtwork> {

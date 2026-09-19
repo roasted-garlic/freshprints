@@ -94,7 +94,7 @@ describe("resolveStaffArtworkDeletionBlockers", () => {
     );
     assert.match(
       describeStaffArtworkActiveShowBlockNotice(["print_request_item", "gang_sheet_item"]),
-      /sending to AI Review/,
+      /sending to AI/,
     );
   });
 });

@@ -2,25 +2,23 @@
 
 | Field | Value |
 |---|---|
-| Status | **OWNER DEV QA PASS — Signoff and authorized rollout in progress** |
+| Status | **ACTIVE — Signoff approved_with_notes; production closeout in progress** |
 | DONE | **no** |
-| Signoff Status | **approved for rollout; final evidence pending** |
+| Signoff Status | **approved_with_notes** — Owner DEV QA PASS recorded; production smoke pending after machine verification |
 | Current Mode | managed-phase |
 | Parent program | Studio intake and AI Review workflow |
-| Current Goal | `studio-intake-review-efficiency-and-customer-upload-promotion-reversal` |
-| Current Phase | **SIGNOFF / PRODUCTION ROLLOUT** |
+| Current Goal | `studio-staff-artwork-ai-review-corrective` |
+| Current Phase | **PRODUCTION CLOSEOUT** |
 | Plan Status | **complete** |
-| Review Status | **owner-accepted; final independent implementation re-review approved** |
-| Implementation Status | **complete within accepted scope** |
-| Test Status | **all focused checks, builds, release-policy checks, exact lint, and diff checks pass; repository lint has unrelated baseline failures** |
-| Human Checkpoint Required | **no additional checkpoint before the owner-authorized protected rollout and narrow production deployment** |
-| Human Checkpoint Reason | Owner DEV QA PASS and production/release authorization are recorded in the continuation instruction. |
+| Review Status | **approved_with_changes** |
+| Implementation Status | **complete** |
+| Test Status | **passed_with_notes** — automated + Owner DEV QA PASS; production smoke pending |
+| Human Checkpoint Required | **yes** |
+| Human Checkpoint Reason | After machine verification: owner production smoke (and Studio publish approval if draft not auto-publishable under policy). |
 | Blocked | **no** |
-| Allowed Actions | Commit and push goal-scoped changes; open and merge the protected development-to-production PR; deploy the exact Functions allowlist; publish Studio `1.0.16`; perform bounded verification; update final evidence. |
-| Forbidden Actions | Firestore Rules; Storage Rules; indexes; Portal; IAM; secrets; Firebase configuration; migration/backfill/data rewrite; bulk AI Review reversal; Ready/downstream design reversal; production data mutation. |
-| Last Completed Step | Final candidate implementation review and Owner DEV QA PASS recorded after current-tree checks. |
-| Next Required Step | Commit/push development, merge protected PR, deploy exact backend Functions, publish Studio `1.0.16`, verify, then close FreshForge IDLE. |
-| Decision Log | 2026-09-18 — Owner accepted the reviewed conditions, authorized implementation/testing/DEV deployment, supplied Owner DEV QA PASS, and authorized the reviewed production rollout sequence. |
-| Artifacts | Plan, Formal Review, final Independent Implementation Review, DEV deployment record, final Signoff, and rollout evidence under `docs/workflow/`. |
-| Production Surface | Expected: Studio `1.0.16` and Functions `returnCustomerUploadToIntakeAndExclude`, `enqueueAiEnrichment`, `deleteEligibleUnapprovedDesign` only. No Rules, Storage Rules, indexes, Portal, IAM, secrets, migration, backfill, or data rewrite. |
-| Signoff | **approved for rollout; final production evidence not yet appended** |
+| Last Completed Step | Signoff written with Owner DEV QA PASS; version bump to Studio 1.0.17 prepared; isolated commit allowlist prepared. |
+| Next Required Step | Commit/push development → protected PR merge → production Functions + staffArtworks indexes → Studio release draft → machine verify → owner smoke. |
+| Decision Log | 2026-09-19 — Owner DEV QA PASS after DEV Functions deploy. Root cause: mis-stamped staff hex + autonomous finalCatalogCopy + write order; undeployed Functions caused prior false local PASS. Production promotion and Studio release authorized for this corrective only. Reconciliation remains read-only. |
+| Artifacts | Plan; reviews; test reports; `docs/workflow/reviews/2026-09-19-studio-staff-artwork-ai-review-corrective-signoff.md` |
+| Surface Disposition | Prod Functions (6) + staffArtworks indexes + Studio 1.0.17. No Portal, Rules, Storage Rules, reconciliation apply, or unrelated indexes. |
+| Signoff | **approved_with_notes** — production closeout continues under owner authorization. |

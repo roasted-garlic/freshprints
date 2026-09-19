@@ -28,6 +28,7 @@ import { processCustomerUploadImageBytes, saveCustomerUploadProcessedOutputs } f
 import { storageObjectPath } from "./lib/storageObjectPath";
 import { failedPrecondition, invalidArgument, notFound, permissionDenied, unauthenticated } from "./lib/errors";
 import { withoutUndefinedFields } from "./lib/firestoreDocument";
+import { resolveStaffArtworkPromotionMetadata } from "./staffArtworkPromotion";
 
 const COLLECTION = "staffArtworks";
 const MAX_TITLE_LENGTH = 160;
@@ -35,6 +36,27 @@ const MAX_DESCRIPTION_LENGTH = 2_000;
 
 function generateDefaultStaffArtworkTitle(): string {
   return crypto.randomUUID().replace(/-/g, "").slice(0, 10);
+}
+
+function resolveStaffArtworkDerivativePath(
+  artwork: Record<string, unknown>,
+  field: "previewStoragePath" | "thumbnailStoragePath",
+  fallback: string,
+): string {
+  const candidate = artwork[field];
+  return typeof candidate === "string" && candidate.trim() ? candidate.trim() : fallback;
+}
+
+async function copyOptionalStaffArtworkDerivative(
+  bucket: ReturnType<typeof adminStorage.bucket>,
+  sourcePath: string,
+  targetPath: string,
+): Promise<boolean> {
+  const source = bucket.file(storageObjectPath(sourcePath));
+  const [sourceExists] = await source.exists();
+  if (!sourceExists) return false;
+  await source.copy(bucket.file(storageObjectPath(targetPath)));
+  return true;
 }
 
 /** Staff Artwork preview mats: grey (default/omitted) or dark only. */
@@ -105,7 +127,8 @@ export const createStaffArtworkUpload = onCall(async (request): Promise<CreateSt
       return { staffArtworkId: existingId, sourceStoragePath: getStaffArtworkSourceStoragePath(existingId), reusedExisting: true };
     }
   }
-  const title = text(data.title, "Title", MAX_TITLE_LENGTH) ?? generateDefaultStaffArtworkTitle();
+  const suppliedTitle = text(data.title, "Title", MAX_TITLE_LENGTH);
+  const title = suppliedTitle ?? generateDefaultStaffArtworkTitle();
   const description = text(data.description, "Description", MAX_DESCRIPTION_LENGTH);
   const sourceFileName = text(data.sourceFileName, "sourceFileName", 240) ?? "artwork";
   const contentType = text(data.contentType, "contentType", 100) ?? "image/png";
@@ -147,6 +170,7 @@ export const createStaffArtworkUpload = onCall(async (request): Promise<CreateSt
   await ref.set(withoutUndefinedFields({
     id,
     title,
+    catalogTitleSource: suppliedTitle ? "staff" : "import_filename",
     description,
     sourceFileName,
     contentType,
@@ -320,6 +344,7 @@ export const updateStaffArtwork = onCall(async (request) => {
   if (!existing.exists) throw notFound("Staff Artwork was not found.");
   await ref.update(withoutUndefinedFields({
     title,
+    catalogTitleSource: "staff",
     description: description ?? null,
     customerId,
     customerDisplayNameSnapshot: customerId ? String(customer.displayName ?? "") : null,
@@ -540,22 +565,45 @@ export const promoteStaffArtworkToAiReview = onCall(
         artworkSnapshot: artwork,
       };
     }
-    if (existing) {
-      tx.update(ref, { promotionStatus: "queued", promotionErrorMessage: null, updatedAt: FieldValue.serverTimestamp(), updatedBy: caller.id });
+    const linkedDesignSnapshot = existing
+      ? null
+      : await tx.get(
+          adminDb
+            .collection("designs")
+            .where("sourceStaffArtworkId", "==", id)
+            .limit(1),
+        );
+    const linkedDesignId = existing || linkedDesignSnapshot?.docs[0]?.id || null;
+    if (linkedDesignId) {
+      tx.update(ref, {
+        promotedDesignId: linkedDesignId,
+        promotionStatus: "queued",
+        promotionErrorMessage: null,
+        updatedAt: FieldValue.serverTimestamp(),
+        updatedBy: caller.id,
+      });
       return {
-        designId: existing,
+        designId: linkedDesignId,
         alreadyPromoted: false,
         productionStoragePath: String(artwork.productionStoragePath ?? ""),
-        previewStoragePath: typeof artwork.previewStoragePath === "string" ? artwork.previewStoragePath : "",
-        thumbnailStoragePath: typeof artwork.thumbnailStoragePath === "string" ? artwork.thumbnailStoragePath : "",
-        originalPath: getOriginalStoragePath(existing),
-        previewPath: getPreviewStoragePath(existing),
-        thumbnailPath: getThumbnailStoragePath(existing),
+        previewStoragePath: resolveStaffArtworkDerivativePath(
+          artwork,
+          "previewStoragePath",
+          getStaffArtworkPreviewStoragePath(id),
+        ),
+        thumbnailStoragePath: resolveStaffArtworkDerivativePath(
+          artwork,
+          "thumbnailStoragePath",
+          getStaffArtworkThumbnailStoragePath(id),
+        ),
+        originalPath: getOriginalStoragePath(linkedDesignId),
+        previewPath: getPreviewStoragePath(linkedDesignId),
+        thumbnailPath: getThumbnailStoragePath(linkedDesignId),
         artworkSnapshot: artwork,
       };
     }
     if (artwork.status !== "ready" || typeof artwork.productionStoragePath !== "string") {
-      const message = "Only ready Staff Artwork can be sent to AI Review.";
+      const message = "Only ready Staff Artwork can be sent to AI.";
       const details = {
         reason: "invalid_lifecycle",
         recordState: promotionRecordState(artwork),
@@ -569,15 +617,17 @@ export const promoteStaffArtworkToAiReview = onCall(
       throw failedPrecondition(message, details);
     }
     const designId = designRef.id;
+    const promotionMetadata = resolveStaffArtworkPromotionMetadata(artwork);
     const artworkBackgroundHex =
       typeof artwork.artworkBackgroundHex === "string" && artwork.artworkBackgroundHex.trim()
         ? artwork.artworkBackgroundHex.trim().toLowerCase()
         : null;
     tx.set(designRef, withoutUndefinedFields({
       id: designId,
-      title: typeof artwork.title === "string" ? artwork.title : "Staff Artwork",
-      catalogTitleSource: "staff",
+      title: promotionMetadata.title,
+      catalogTitleSource: promotionMetadata.catalogTitleSource,
       description: typeof artwork.description === "string" ? artwork.description : undefined,
+      importSourceFileName: promotionMetadata.importSourceFileName,
       tags: [],
       status: "imported",
       originalPath: getOriginalStoragePath(designId),
@@ -611,8 +661,16 @@ export const promoteStaffArtworkToAiReview = onCall(
       designId,
       alreadyPromoted: false,
       productionStoragePath: String(artwork.productionStoragePath),
-      previewStoragePath: typeof artwork.previewStoragePath === "string" ? artwork.previewStoragePath : "",
-      thumbnailStoragePath: typeof artwork.thumbnailStoragePath === "string" ? artwork.thumbnailStoragePath : "",
+      previewStoragePath: resolveStaffArtworkDerivativePath(
+        artwork,
+        "previewStoragePath",
+        getStaffArtworkPreviewStoragePath(id),
+      ),
+      thumbnailStoragePath: resolveStaffArtworkDerivativePath(
+        artwork,
+        "thumbnailStoragePath",
+        getStaffArtworkThumbnailStoragePath(id),
+      ),
       originalPath: getOriginalStoragePath(designId),
       previewPath: getPreviewStoragePath(designId),
       thumbnailPath: getThumbnailStoragePath(designId),
@@ -628,8 +686,20 @@ export const promoteStaffArtworkToAiReview = onCall(
         throw failedPrecondition("Staff Artwork production file was not found. Re-upload or finalize the artwork, then try again.");
       }
       await bucket.file(productionObject).copy(bucket.file(storageObjectPath(result.originalPath)));
-      if (result.previewStoragePath) await bucket.file(storageObjectPath(result.previewStoragePath)).copy(bucket.file(storageObjectPath(result.previewPath)));
-      if (result.thumbnailStoragePath) await bucket.file(storageObjectPath(result.thumbnailStoragePath)).copy(bucket.file(storageObjectPath(result.thumbnailPath)));
+      if (result.previewStoragePath) {
+        await copyOptionalStaffArtworkDerivative(
+          bucket,
+          result.previewStoragePath,
+          result.previewPath,
+        );
+      }
+      if (result.thumbnailStoragePath) {
+        await copyOptionalStaffArtworkDerivative(
+          bucket,
+          result.thumbnailStoragePath,
+          result.thumbnailPath,
+        );
+      }
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Unable to copy Staff Artwork into the Design Library.";

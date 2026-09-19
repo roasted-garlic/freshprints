@@ -1034,7 +1034,15 @@ processing record, upload only the canonical `source` object, and invoke `finali
 trusted pipeline reuses customer-upload normalization to write production and preview derivatives.
 Helpers can select existing ready/non-archived records through the Studio request-item service but cannot
 upload, edit, archive, delete, or promote them. `promoteStaffArtworkToAiReview` copies independent
-catalog assets and leaves Portal projections neutral. Portal customers do not read the `staffArtworks`
+catalog assets, carries recoverable source filename metadata, and leaves Portal projections neutral.
+Queued AI enrichment may persist a structurally valid AI title only for an import-derived
+Staff-Artwork-originated Design. A legacy promoted Design with the old incorrect `staff` stamp may
+yield only for a bounded generated/filename-like placeholder when `importSourceFileName` is absent;
+human-looking explicit staff title authority remains protected. Studio Staff
+Artwork listing uses a bounded
+`status in (...)` query ordered by `createdAt desc, __name__ desc`, with `limit(pageSize + 1)` and a
+timestamp/document-ID cursor; the customer-filtered variant has the same deterministic ordering. Portal
+customers do not read the `staffArtworks`
 Firestore collection; they may read only authenticated, already-attached
 `/staff-artwork/{staffArtworkId}/preview.webp` and `thumbnail.webp` objects. Production/source and
 interactive objects remain staff/Admin-only. The accepted known-ID residual risk is recorded in the

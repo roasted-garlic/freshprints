@@ -41,7 +41,7 @@ export function SendStaffArtworkToAiReviewConfirmDialog({
         <ModalHeader>
           <div>
             <p className="eyebrow">AI Review</p>
-            <h2 id="staff-artwork-send-ai-title">Send to AI Review?</h2>
+            <h2 id="staff-artwork-send-ai-title">Send to AI?</h2>
           </div>
           <button
             aria-label="Close"
@@ -75,7 +75,7 @@ export function SendStaffArtworkToAiReviewConfirmDialog({
             Cancel
           </Button>
           <Button disabled={isSubmitting} onClick={() => void onConfirm()}>
-            {isSubmitting ? "Sending…" : "Send to AI Review"}
+            {isSubmitting ? "Sending…" : "Send to AI"}
           </Button>
         </ModalFooter>
       </Modal>

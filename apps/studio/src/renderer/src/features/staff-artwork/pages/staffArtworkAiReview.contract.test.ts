@@ -20,7 +20,8 @@ describe("Studio Staff Artwork AI Review promotion contracts", () => {
     assert.match(source, /canBulkPromote = canManage && !selectionMode/);
     assert.match(source, /selectedAiArtworkIds/);
     assert.match(source, /Multiple Select/);
-    assert.match(source, /Send to AI Review/);
+    assert.match(source, /Send to AI/);
+    assert.doesNotMatch(source, /Send to AI Review/);
     assert.match(source, /try only the failures/);
   });
 
@@ -67,5 +68,40 @@ describe("Studio Staff Artwork AI Review promotion contracts", () => {
     assert.match(server, /reason: "deletion_blockers"/);
     assert.match(server, /recordState: promotionRecordState/);
     assert.match(server, /throw failedPrecondition\(message, details\)/);
+    assert.match(server, /where\("sourceStaffArtworkId", "==", id\)/);
+    assert.match(server, /const linkedDesignId = existing \|\| linkedDesignSnapshot/);
+    assert.match(server, /getStaffArtworkPreviewStoragePath\(id\)/);
+    assert.match(server, /getStaffArtworkThumbnailStoragePath\(id\)/);
+  });
+
+  it("uses bounded cursor pagination and resets through the list hook", () => {
+    const hook = read(
+      "apps/studio/src/renderer/src/features/staff-artwork/hooks/useStaffArtworkList.ts",
+    );
+    assert.match(service, /limit\(pageSize \+ 1\)/);
+    assert.match(service, /orderBy\("createdAt", "desc"\)/);
+    assert.match(service, /orderBy\("__name__", "desc"\)/);
+    assert.match(service, /startAfter\(/);
+    assert.doesNotMatch(service, /listWithoutCompositeIndex/);
+    assert.match(hook, /isLoadingMore/);
+    assert.match(hook, /loadMore/);
+    assert.match(hook, /nextCursorRef/);
+    assert.match(hook, /reload/);
+    assert.match(source, /useStaffArtworkList\(user, filterCustomerId\)/);
+    assert.match(source, /Load more/);
+  });
+
+  it("keeps AI Review on canonical Design derivative paths", () => {
+    assert.match(server, /getPreviewStoragePath\(designId\)/);
+    assert.match(server, /getThumbnailStoragePath\(designId\)/);
+    const workspace = read(
+      "apps/studio/src/renderer/src/features/ai-review/components/AiReviewWorkspace.tsx",
+    );
+    const queue = read(
+      "apps/studio/src/renderer/src/features/ai-review/components/AiReviewQueueList.tsx",
+    );
+    assert.match(workspace, /selectedDesign\?\.previewPath \?\? selectedDesign\?\.thumbnailPath/);
+    assert.match(queue, /catalogPath=\{design\.thumbnailPath\}/);
+    assert.doesNotMatch(`${workspace}\n${queue}`, /staff-artwork|staffArtworks/);
   });
 });

@@ -58,6 +58,10 @@ import {
   readAiProcessingAutoProcessPreference,
   writeAiProcessingAutoProcessPreference,
 } from "../utils/aiProcessingAutoProcessPreference";
+import {
+  readAiReviewInboxSortPreference,
+  writeAiReviewInboxSortPreference,
+} from "../utils/aiReviewInboxSortPreference";
 
 function AiReviewPageContent() {
   const { user } = useAuth();
@@ -65,9 +69,19 @@ function AiReviewPageContent() {
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [needsReviewSearchQuery, setNeedsReviewSearchQuery] = useState("");
   const [autoProcess, setAutoProcess] = useState(readAiProcessingAutoProcessPreference);
+  const [persistedSortOrder, setPersistedSortOrder] = useState(
+    readAiReviewInboxSortPreference,
+  );
   const [isProcessingSettingsOpen, setIsProcessingSettingsOpen] = useState(false);
   const [isPromotionReversalConfirmOpen, setIsPromotionReversalConfirmOpen] = useState(false);
-  const filters = useMemo(() => parseAiReviewInboxFilters(searchParams), [searchParams]);
+  const parsedFilters = useMemo(() => parseAiReviewInboxFilters(searchParams), [searchParams]);
+  const filters = useMemo(
+    () => ({
+      ...parsedFilters,
+      sortOrder: parsedFilters.sortOrder ?? persistedSortOrder,
+    }),
+    [parsedFilters, persistedSortOrder],
+  );
   const inboxFilters = useMemo<AiReviewInboxFilters>(
     () => ({
       ...filters,
@@ -426,6 +440,8 @@ function AiReviewPageContent() {
 
   function handleSortToggle() {
     const nextSortOrder = resolvedSortOrder === "newest" ? "oldest" : "newest";
+    writeAiReviewInboxSortPreference(nextSortOrder);
+    setPersistedSortOrder(nextSortOrder);
     setSearchParams(
       buildAiReviewInboxSearchParams({ tab: filters.tab, sortOrder: nextSortOrder }),
       { replace: true },
