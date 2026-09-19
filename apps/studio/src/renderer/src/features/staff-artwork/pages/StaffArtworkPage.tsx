@@ -30,6 +30,7 @@ import { DismissibleSuccessAlert } from "../../../shared/components/DismissibleS
 import { EmptyState } from "../../../shared/components/EmptyState";
 import { ErrorState } from "../../../shared/components/ErrorState";
 import { GlobalSearchField } from "../../../shared/components/GlobalSearchField";
+import { LoadingSpinner } from "../../../shared/components/LoadingSpinner";
 import {
   Modal,
   ModalBody,
@@ -51,8 +52,8 @@ import { permissionService } from "../../permissions/services/permissionService"
 import { getPrintRequestsPath } from "../../print-requests/constants/printRequestRoutes";
 import { printRequestService } from "../../print-requests/services/printRequestService";
 import { SendStaffArtworkToAiReviewConfirmDialog } from "../components/SendStaffArtworkToAiReviewConfirmDialog";
+import { useStaffArtworkList } from "../hooks/useStaffArtworkList";
 import { staffArtworkService } from "../services/staffArtworkService";
-import { generateStaffArtworkTitle } from "../utils/generateStaffArtworkTitle";
 import { suggestDarkArtworkBackgroundFromObjectUrl } from "../utils/suggestDarkArtworkBackgroundFromObjectUrl";
 import { designDerivativeUrlService } from "../../designs/services/designDerivativeUrlService";
 
@@ -185,10 +186,19 @@ export function StaffArtworkPage() {
   const requestId = searchParams.get("requestId");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [artworks, setArtworks] = useState<StaffArtworkSummary[]>([]);
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
   const [filterCustomerId, setFilterCustomerId] = useState<string | null>(null);
+  const {
+    artworks,
+    error: artworkListError,
+    hasMore,
+    isLoading: isLoadingArtworks,
+    isLoadingMore,
+    loadMore,
+    reload: reloadArtworks,
+    removeArtwork,
+  } = useStaffArtworkList(user, filterCustomerId);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectedQuantities, setSelectedQuantities] = useState<Record<string, number>>({});
   const [existingItemIdByStaffArtworkId, setExistingItemIdByStaffArtworkId] = useState<
@@ -233,6 +243,7 @@ export function StaffArtworkPage() {
   const canManage = permissionService.canManageStaffArtwork(user);
   const canSelect = permissionService.canSelectStaffArtwork(user);
   const canView = Boolean(user && permissionService.canViewStaffArtwork(user));
+  const pageError = error ?? artworkListError;
   const uploadInFlight = pendingUploads.some(
     (item) => item.status === "uploading" || item.status === "processing",
   );
@@ -284,21 +295,13 @@ export function StaffArtworkPage() {
         if (options.clearPreviews) {
           setPreviewUrls({});
         }
-        setArtworks(
-          await staffArtworkService.list(user, {
-            fromServer: options.fromServer,
-          }),
-        );
+        await reloadArtworks({ fromServer: options.fromServer });
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : "Unable to load Staff Artwork.");
       }
     },
-    [user],
+    [reloadArtworks, user],
   );
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
 
   useEffect(() => {
     if (!selectionMode || !requestId || !user) {
@@ -516,6 +519,8 @@ export function StaffArtworkPage() {
 
   const handleFilterCustomerChange = useCallback((event: ChangeEvent<HTMLSelectElement>) => {
     setFilterCustomerId(event.target.value || null);
+    setSelectedAiArtworkIds(new Set());
+    setBulkPromotionResult(null);
   }, []);
 
   const clearFilters = useCallback(() => {
@@ -524,6 +529,13 @@ export function StaffArtworkPage() {
   }, []);
 
   const hasActiveFilters = Boolean(search.trim() || filterCustomerId);
+  const loadMoreControl = hasMore ? (
+    <div className="staff-artwork-load-more">
+      <Button disabled={isLoadingMore} onClick={loadMore} size="sm" variant="secondary">
+        {isLoadingMore ? "Loading…" : "Load more"}
+      </Button>
+    </div>
+  ) : null;
 
   const handleBackToRequest = useCallback(() => {
     navigate(getPrintRequestsPath({ requestId: requestId ?? undefined }));
@@ -830,7 +842,7 @@ export function StaffArtworkPage() {
           user,
           item.file,
           {
-            title: singleTitle || generateStaffArtworkTitle(),
+            ...(singleTitle ? { title: singleTitle } : {}),
             description: description.trim() || undefined,
             customerId,
             artworkBackgroundChoice: item.backgroundChoice,
@@ -906,27 +918,6 @@ export function StaffArtworkPage() {
         customerId: editCustomerId,
         artworkBackgroundHex: nextBackgroundHex,
       });
-      const selectedCustomerLabel =
-        editCustomerId === editingArtwork.customerId
-          ? {
-              customerDisplayNameSnapshot: editingArtwork.customerDisplayNameSnapshot ?? null,
-              customerUsernameSnapshot: editingArtwork.customerUsernameSnapshot ?? null,
-            }
-          : {};
-      setArtworks((current) =>
-        current.map((entry) =>
-          entry.id === editingArtwork.id
-            ? {
-                ...entry,
-                title: editTitle.trim(),
-                description: editDescription.trim() || null,
-                customerId: editCustomerId,
-                artworkBackgroundHex: nextBackgroundHex,
-                ...selectedCustomerLabel,
-              }
-            : entry,
-        ),
-      );
       setEditingArtwork(null);
       setEditTitle("");
       setEditDescription("");
@@ -951,7 +942,12 @@ export function StaffArtworkPage() {
       const result = await staffArtworkService.promote(user, promotedId);
       const autoStart = readAiProcessingAutoProcessPreference();
       enqueueImportedDesignsForBackgroundAi([result.designId]);
-      setArtworks((current) => current.filter((entry) => entry.id !== promotedId));
+      removeArtwork(promotedId);
+      setSelectedAiArtworkIds((current) => {
+        const next = new Set(current);
+        next.delete(promotedId);
+        return next;
+      });
       setPreviewUrls((current) => {
         const next = { ...current };
         delete next[promotedId];
@@ -962,7 +958,7 @@ export function StaffArtworkPage() {
           ? `"${promotedTitle}" was already in AI Review. Removed from Staff Artwork.${
               autoStart ? " Processing continues in the background." : " Start AI when ready."
             }`
-          : `"${promotedTitle}" sent to AI Review and removed from this library.${
+          : `"${promotedTitle}" sent to AI and removed from this library.${
               autoStart ? " Processing starts in the background." : " Start AI when ready."
             }`,
       );
@@ -1032,7 +1028,7 @@ export function StaffArtworkPage() {
           try {
             const promoted = await staffArtworkService.promote(user, artworkId);
             enqueueImportedDesignsForBackgroundAi([promoted.designId]);
-            setArtworks((current) => current.filter((entry) => entry.id !== artworkId));
+            removeArtwork(artworkId);
             setPreviewUrls((current) => {
               const next = { ...current };
               delete next[artworkId];
@@ -1063,7 +1059,7 @@ export function StaffArtworkPage() {
       setBulkPromotionResult(result);
       if (result.failures.length === 0) {
         setSuccessNotice(
-          `${result.successfulIds.length} artwork${result.successfulIds.length === 1 ? "" : "s"} sent to AI Review.${
+          `${result.successfulIds.length} artwork${result.successfulIds.length === 1 ? "" : "s"} sent to AI.${
             autoStart ? " Processing starts in the background." : " Start AI when ready."
           }`,
         );
@@ -1086,6 +1082,7 @@ export function StaffArtworkPage() {
     isAiMultiSelectMode,
     isBulkPromoting,
     refresh,
+    removeArtwork,
     selectedAiArtworkIds,
     user,
   ]);
@@ -1125,7 +1122,12 @@ export function StaffArtworkPage() {
       // Collapse the grid when the poof finishes, even if the network is still in flight.
       await animationDone;
       setLightboxArtworkId((current) => (current === artworkId ? null : current));
-      setArtworks((current) => current.filter((entry) => entry.id !== artworkId));
+      removeArtwork(artworkId);
+      setSelectedAiArtworkIds((current) => {
+        const next = new Set(current);
+        next.delete(artworkId);
+        return next;
+      });
       setPreviewUrls((current) => {
         const next = { ...current };
         delete next[artworkId];
@@ -1145,8 +1147,7 @@ export function StaffArtworkPage() {
       removingIdsRef.current.delete(artworkId);
 
       await deleteWork;
-      const latest = await staffArtworkService.list(user, { fromServer: true });
-      setArtworks(latest.filter((entry) => entry.id !== artworkId));
+      await reloadArtworks({ fromServer: true });
       setPreviewUrls((current) => {
         const next = { ...current };
         delete next[artworkId];
@@ -1186,11 +1187,11 @@ export function StaffArtworkPage() {
 
   return (
     <main className="page-layout page-layout-shell staff-artwork-page">
-      {error ? (
+      {pageError ? (
         <ErrorState
           eyebrow="Action failed"
           title="Staff Artwork could not complete that step"
-          message={error}
+          message={pageError}
         />
       ) : null}
 
@@ -1225,7 +1226,7 @@ export function StaffArtworkPage() {
                     ? "Sending…"
                     : bulkPromotionResult
                       ? "Retry failed"
-                      : "Send to AI Review"}
+                      : "Send to AI"}
                 </Button>
               </div>
             </div>
@@ -1233,7 +1234,7 @@ export function StaffArtworkPage() {
               <summary>About artwork on an active show</summary>
               <p>
                 Still on an active show or print request — remove it or wait until that show is
-                completed before sending to AI Review.
+                completed before sending to AI.
               </p>
             </details>
           </>
@@ -1277,7 +1278,12 @@ export function StaffArtworkPage() {
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {isLoadingArtworks ? (
+        <div className="staff-artwork-loading">
+          <LoadingSpinner label="Loading Staff Artwork" />
+        </div>
+      ) : filtered.length === 0 ? (
+        <>
         <EmptyState
           title="No Staff Artwork found"
           message={
@@ -1286,8 +1292,11 @@ export function StaffArtworkPage() {
               : "Upload artwork or adjust the private search filters."
           }
         />
+          {loadMoreControl}
+        </>
       ) : (
-        <section className="design-grid staff-artwork-grid" aria-label="Staff Artwork results">
+        <>
+          <section className="design-grid staff-artwork-grid" aria-label="Staff Artwork results">
           {filtered.map((artwork) => {
             const selected = selectedIds.has(artwork.id);
             const selectable = canSelect && artwork.status === "ready";
@@ -1406,7 +1415,7 @@ export function StaffArtworkPage() {
                   ) : null}
                   {isAiMultiSelectMode && aiSelectable ? (
                     <button
-                      aria-label={`${selectedAiArtworkIds.has(artwork.id) ? "Deselect" : "Select"} ${artwork.title} for AI Review`}
+                      aria-label={`${selectedAiArtworkIds.has(artwork.id) ? "Deselect" : "Select"} ${artwork.title} for AI`}
                       className="staff-artwork-ai-select-overlay"
                       onClick={(event) => {
                         event.stopPropagation();
@@ -1560,7 +1569,7 @@ export function StaffArtworkPage() {
                           disabled={isRemoving || isPromoting || deleteBlocked}
                           title={promoteBlockedReason}
                         >
-                          Send to AI Review
+                          Send to AI
                         </Button>
                       )}
                       {isConfirmingDelete ? (
@@ -1594,7 +1603,9 @@ export function StaffArtworkPage() {
               </article>
             );
           })}
-        </section>
+          </section>
+          {loadMoreControl}
+        </>
       )}
 
       {selectionMode ? (

@@ -96,11 +96,11 @@ describe("aiProcessingQueueEligibility", () => {
 
 describe("aiProcessingQueuePreferences", () => {
   it("defaults auto advance ON when unset; respects explicit false/true", () => {
-    if (typeof window === "undefined" || !window.sessionStorage) {
+    if (typeof window === "undefined" || !window.localStorage) {
       return;
     }
 
-    window.sessionStorage.removeItem("fresh-prints.ai-processing.auto-advance");
+    window.localStorage.removeItem("fresh-prints.ai-processing.auto-advance");
     assert.equal(readAiProcessingAutoAdvancePreference(), true);
 
     writeAiProcessingAutoAdvancePreference(false);

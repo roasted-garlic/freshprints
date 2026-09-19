@@ -38,6 +38,11 @@ export interface FinalCatalogCopyRootInput {
   updatedBy?: unknown;
 }
 
+export interface AiGeneratedTitlePersistence {
+  title: string;
+  catalogTitleSource: "ai_generated";
+}
+
 const DEFAULT_IMPORT_TITLES = new Set([
   "imported design",
   "customer upload",
@@ -118,6 +123,63 @@ export function isImportPlaceholderTitle(
   return false;
 }
 
+/**
+ * Queue-mode title persistence for the private Staff Artwork import boundary.
+ *
+ * Normal Imports and Ready Design reprocessing deliberately do not use this helper. Staff
+ * Artwork without an explicit title is initially represented by an import-derived root title;
+ * once AI returns a structurally valid title, that title becomes the canonical AI-owned root.
+ * Explicit staff/trusted-import/previously AI-owned roots remain protected by the existing
+ * authority vocabulary.
+ */
+export function resolveStaffArtworkAiGeneratedTitle(
+  input: {
+    root: FinalCatalogCopyRootInput;
+    candidateTitle?: unknown;
+    importSourceFileName?: unknown;
+    sourceStaffArtworkId?: unknown;
+  },
+): AiGeneratedTitlePersistence | undefined {
+  if (!asTrimmedString(input.root.sourceStaffArtworkId ?? input.sourceStaffArtworkId)) {
+    return undefined;
+  }
+
+  const explicitTitleSource: CatalogTitleSource | undefined = isCatalogTitleSource(
+    input.root.catalogTitleSource,
+  )
+    ? input.root.catalogTitleSource
+    : undefined;
+  const rootTitleSource: CatalogTitleSource =
+    explicitTitleSource ??
+    (filenameStem(input.importSourceFileName) ? "import_filename" : "legacy_unknown");
+  const boundedLegacyPlaceholder = isImportPlaceholderTitle(input.root.title, input.importSourceFileName, {
+    legacyFallback: true,
+  });
+  // Old promotions stamped every Staff Library title as "staff", including generated hex IDs.
+  // Post-corrective promotion also copies sourceFileName → importSourceFileName, so the
+  // repairable signal is placeholder shape + Staff origin — not the absence of a filename.
+  const legacyMisstampedStaffArtworkRoot =
+    explicitTitleSource === "staff" && boundedLegacyPlaceholder;
+  const legacyUnknownPlaceholderRoot =
+    explicitTitleSource === undefined && boundedLegacyPlaceholder;
+
+  if (
+    (rootTitleSource === "staff" && !legacyMisstampedStaffArtworkRoot) ||
+    rootTitleSource === "trusted_import" ||
+    rootTitleSource === "ai_generated" ||
+    (rootTitleSource === "legacy_unknown" && !legacyUnknownPlaceholderRoot)
+  ) {
+    return undefined;
+  }
+
+  const title = asTrimmedString(input.candidateTitle);
+  if (!title || !isStructurallyValidCatalogCopy(title)) {
+    return undefined;
+  }
+
+  return { title, catalogTitleSource: "ai_generated" };
+}
+
 function isUsableCategory(
   categoryId: unknown,
   categoriesById: ReadonlyMap<string, FinalCatalogCategory>,
@@ -166,6 +228,9 @@ export function resolveFinalCatalogCopy(input: {
   const hasSourceCustomerUpload = Boolean(
     asTrimmedString(input.root.sourceCustomerUploadId ?? input.sourceCustomerUploadId),
   );
+  const hasSourceStaffArtwork = Boolean(
+    asTrimmedString(input.root.sourceStaffArtworkId ?? input.sourceStaffArtworkId),
+  );
   const titleSource: CatalogTitleSource =
     explicitTitleSource ??
     (filenameStem(input.importSourceFileName) || hasSourceCustomerUpload
@@ -176,8 +241,16 @@ export function resolveFinalCatalogCopy(input: {
   const legacyTitleFallback =
     titleSource === "legacy_unknown" ||
     (!filenameStem(input.importSourceFileName) && (!rootDescription || !rootCategoryId));
+  const staffArtworkPlaceholderRoot =
+    hasSourceStaffArtwork &&
+    isImportPlaceholderTitle(rootTitle, input.importSourceFileName, {
+      legacyFallback: true,
+    });
   const rootTitleIsExplicitlyTrusted =
-    titleSource === "staff" || titleSource === "trusted_import" || titleSource === "ai_generated";
+    (titleSource === "staff" || titleSource === "trusted_import" || titleSource === "ai_generated") &&
+    // Autonomous Ready writes finalCatalogFields from this resolver. A mis-stamped Staff Library
+    // hex/placeholder must not win over a valid AI candidate when catalog autonomy publishes.
+    !staffArtworkPlaceholderRoot;
   // Only explicit, durable authority may protect an existing root title. Import-derived and
   // source-less legacy roots remain untrusted even when the text happens to look human; a valid
   // AI candidate must replace them. This deliberately avoids linguistic title-quality heuristics.

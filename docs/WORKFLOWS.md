@@ -914,6 +914,7 @@ Design never appears in Design Library browse
 * AI suggests; staff approves. No automatic catalog publish.
 * **Process-as-imported AI auto-start** — as each Studio batch design finishes with derivatives ready, it joins a background AI queue (sequential, one at a time) while other files may still be uploading. Single PNG import enqueues on success. Opening the Processing tab is optional to watch progress. **Auto advance** on that tab only controls Start AI / Pause vs one-at-a-time stepping while reviewing the queue.
 * **Processing overrides** — the settings icon beside Auto advance lets staff choose a per-session Gemini model without changing Settings defaults.
+* **Auto advance preference** — the Processing-tab Auto advance choice is a Studio-local workspace preference. It defaults ON only when unset, persists across reload, navigation, remount, pagination, and Studio restart, and changes only when staff explicitly toggles it. It does not gate import background enqueue; the shell-header Auto process toggle remains a separate preference.
 * **Re-run AI Suggestions** from Needs Review or Rejected resets the design back to Processing. AI is not re-run in place on review tabs.
 
 ### Staff-controlled AI processing (2026-06-29)

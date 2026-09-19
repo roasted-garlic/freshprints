@@ -721,7 +721,7 @@ Service-layer normalization rules:
 * Reject empty strings
 * Maximum 20 tags per design (design-level catalog max; unchanged by AI D8-A)
 
-**AI enrichment (ADR-FP-123 / D8-A):** `SIMPLE_ENRICHMENT_MAX_TAGS = 8` means up to **8 additional** AI-resolved suggestions. Existing human/catalog `designs.tags` do **not** consume that allowance and are never removed merely to satisfy the AI ceiling. Pipeline writes `aiSuggestions` only — it does not mutate `designs.tags` on success. AI Review Final Catalog seeds with a human-first union of existing tags + new AI suggestions.
+**AI enrichment (ADR-FP-123 / D8-A):** `SIMPLE_ENRICHMENT_MAX_TAGS = 8` means up to **8 additional** AI-resolved suggestions. Existing human/catalog `designs.tags` do **not** consume that allowance and are never removed merely to satisfy the AI ceiling. Pipeline writes `aiSuggestions` only — it does not mutate `designs.tags` on success. AI Review Final Catalog seeds with a human-first union of existing tags + new AI suggestions. The bounded Staff Artwork exception also persists a structurally valid AI title to the canonical `designs.title` when `sourceStaffArtworkId` is present and the root title is import-derived/legacy-unknown. A legacy Design with the old incorrect `catalogTitleSource: "staff"` stamp may yield only when it has a bounded generated/filename-like placeholder and no carried `importSourceFileName`; explicit human staff, trusted-import, and existing AI-owned title authority remains protected. Normal Imports, Ready Design reprocessing, and customer-upload roots do not use this exception.
 * Maximum 40 characters per tag
 
 **AI suggestions (2026-06-29):** Cloud Function `normalizeAiTags` persists **single-word** tags only — filtered against merged tag exclusions and generic production/meta tags. Titles: `Black Text` / `White Text` suffix only when `aiAnalysis.textOnlyArtwork === true`. Provider prompt `catalog-enrich-openai-v16` reinforces observed-image-first extraction and stricter anti-invention OCR rules (deploy required for production). Staff may edit tags in Needs Review before approve.
@@ -1334,7 +1334,12 @@ Asset documents (`designs`, `customerUploads`) gain additive interactive-derivat
 
 Collection: `staffArtworks/{staffArtworkId}`. Statuses are `processing`, `ready`, `failed`, and `archived`.
 The document stores title/description, source and derivative paths, processing dimensions/quality metadata,
-optional customer ownership snapshots, and AI-review promotion linkage. Firestore client writes are denied;
+optional customer ownership snapshots, optional `catalogTitleSource` provenance, and AI-review promotion
+linkage. A backend-generated default title is stored with `catalogTitleSource: "import_filename"`; an
+explicit create/edit title is stored with `catalogTitleSource: "staff"`, so promotion can preserve the
+existing AI title-authority rules without guessing from title text. Legacy promoted Designs are
+handled at AI success only when the old mis-stamped root is a bounded placeholder; human-looking
+legacy titles remain protected. Firestore client writes are denied;
 the six owner/admin callables in `functions/src/staffArtwork.ts` are the write boundary. Deletion is preview-
 then-confirm and fails closed while the artwork is still on a print request that has **not** been allocated
 to a show or internal sheet with `productionStatus: "completed"`. Historical attachments on completed

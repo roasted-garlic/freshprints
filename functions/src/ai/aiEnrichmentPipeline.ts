@@ -47,6 +47,7 @@ import { logVcpRuntimeDiagnostic } from "./vcpRuntimeDiagnostics";
 import { writeAiEnrichmentTrace } from "./aiEnrichmentTraceStore";
 import {
   resolveFinalCatalogCopy,
+  resolveStaffArtworkAiGeneratedTitle,
   type FinalCatalogCopyResolution,
 } from "./finalCatalogCopy";
 import type { CatalogAutomationDecisionResult } from "./automationDecisionShadow";
@@ -253,6 +254,16 @@ async function markAiSuccess(
     }
 
     const importPresets = parseImportPresetSeed(priorData?.smartProfileImportPresets);
+    const staffArtworkTitleFields = resolveStaffArtworkAiGeneratedTitle({
+      root: {
+        title: priorData?.title,
+        catalogTitleSource: priorData?.catalogTitleSource,
+        sourceStaffArtworkId: priorData?.sourceStaffArtworkId,
+      },
+      candidateTitle: suggestions.title,
+      importSourceFileName: priorData?.importSourceFileName,
+      sourceStaffArtworkId: priorData?.sourceStaffArtworkId,
+    });
     const priorProfile =
       priorData?.smartProfile && typeof priorData.smartProfile === "object"
         ? (priorData.smartProfile as DesignSmartProfile)
@@ -503,7 +514,9 @@ async function markAiSuccess(
         aiAnalysis: firestoreAnalysis,
         ...currentProfileFields,
         ...currentSnapshotFields,
+        // Staff-origin AI title must win over any residual trusted-root final-catalog write.
         ...finalCatalogFields,
+        ...staffArtworkTitleFields,
         ...(explicitWrite ?? explicitClear ?? {}),
         updatedAt: FieldValue.serverTimestamp(),
       });
@@ -533,7 +546,9 @@ async function markAiSuccess(
         aiAnalysis: firestoreAnalysis,
         ...currentProfileFields,
         ...currentSnapshotFields,
+        // Staff-origin AI title must win over any residual trusted-root final-catalog write.
         ...finalCatalogFields,
+        ...staffArtworkTitleFields,
         ...(explicitWrite ?? explicitClear ?? {}),
         updatedAt: FieldValue.serverTimestamp(),
       });

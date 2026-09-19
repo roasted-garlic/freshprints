@@ -1,4 +1,5 @@
 import type { Timestamp } from "firebase/firestore";
+import type { CatalogTitleSource } from "../design/catalogTitleSource.types";
 
 export type StaffArtworkStatus = "processing" | "ready" | "failed" | "archived";
 
@@ -30,6 +31,8 @@ export interface StaffArtworkProcessingMetadata {
 export interface StaffArtwork {
   id: string;
   title: string;
+  /** Title authority captured at create/edit time so promotion cannot guess later. */
+  catalogTitleSource?: CatalogTitleSource;
   description?: string | null;
   sourceFileName: string;
   contentType: string;

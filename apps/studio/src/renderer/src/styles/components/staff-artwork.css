@@ -936,3 +936,9 @@
     flex-direction: column;
   }
 }
+
+.staff-artwork-load-more {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-3) 0;
+}
