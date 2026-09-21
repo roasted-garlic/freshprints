@@ -98,14 +98,16 @@ The staged candidate manifest and commit SHA are recorded before protected promo
 
 | Item | Intended value before promotion | Final value |
 |------|---------------------------------|-------------|
-| Development candidate commit | To be recorded after staging | pending |
-| Protected PR | `development` → `production` | pending |
-| Production merge SHA | exact promoted candidate | pending |
-| Production Firebase project | `fresh-prints-prod` | pending verification |
-| Functions | two exact targets listed above | pending deployment/readback |
-| Firestore indexes | four additive signatures listed above | pending READY verification |
-| Portal backend | `fresh-prints-portal` | pending rollout/readback |
-| Studio stable | `1.0.18`, Windows + macOS arm64/x64, eight assets | pending workflow/publish verification |
+| Development candidate commit | To be recorded after staging | `35b0ea80b8821726f8cf1a9c1c23abe3ba0b3bbe` |
+| Protected PR | `development` → `production` | [#106](https://github.com/roasted-garlic/freshprints/pull/106) |
+| Production merge SHA | exact promoted candidate | `f09dafc6a9566fa0ee021646e5b7d1318cc010a9` |
+| Production Firebase project | `fresh-prints-prod` | **verified** |
+| Functions | two exact targets listed above | **ACTIVE** `…-00003-meq` / `…-00004-qif` (hash `1610f772…`) |
+| Firestore indexes | four additive signatures listed above | **3 READY composites**; `upcomingShows(updatedAt+__name__)` covered by GCP single-field controls (composite create rejected as unnecessary); **0 removals** |
+| Portal backend | `fresh-prints-portal` | `fresh-prints-portal-build-2026-09-21-001` **100%** traffic; smoke HTTP 200 |
+| Studio stable | `1.0.18`, Windows + macOS arm64/x64, eight assets | **`v1.0.18` Latest**; workflow `35619359510`; rollback `v1.0.17` |
+
+Production evidence: `docs/workflow/reviews/2026-09-21-studio-portal-print-request-inbox-ai-queue-batch-production-rollout.md`.
 
 ## Human approvals obtained
 
@@ -127,10 +129,10 @@ The staged candidate manifest and commit SHA are recorded before protected promo
 
 ## Workflow Complete
 
-- [ ] `.cursor/workflow/state.md` updated with final rollout status
-- [ ] `docs/project/ROADMAP.md` updated
-- [ ] `references/project-chatgpt-handoff/CURRENT-STATE.md` updated
-- [ ] `references/project-chatgpt-handoff/13-recent-completed-work.md` updated
-- [ ] Final production reconciliation appended to this artifact
+- [x] `.cursor/workflow/state.md` updated with final rollout status
+- [x] `docs/project/ROADMAP.md` updated
+- [x] `references/project-chatgpt-handoff/CURRENT-STATE.md` updated
+- [x] `references/project-chatgpt-handoff/13-recent-completed-work.md` updated
+- [x] Final production reconciliation appended to this artifact / rollout record
 
-**Recommended next action:** Execute the release-critical candidate validation, then the protected promotion and exact rollout manifest.
+**Recommended next action:** None — goal closed. FreshForge IDLE.
