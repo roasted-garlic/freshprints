@@ -209,6 +209,8 @@
   min-height: 0;
   min-width: 0;
   padding-top: 2.5rem;
+  /* Keep the last queue card clear of the viewport edge when scrolled to the end. */
+  padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
 }
 
 .portal-admin-nav {
@@ -446,7 +448,7 @@
   max-width: none;
   min-width: 0;
   width: 100%;
-  padding: 1.25rem 0.75rem 2rem;
+  padding: 1.25rem 0.75rem 0;
 }
 
 .portal-admin-queue-heading {
@@ -1051,6 +1053,7 @@
 
   .portal-admin-body {
     padding-top: 3.5rem;
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
   }
 
   .portal-admin-nav {
@@ -1085,7 +1088,7 @@
     padding:
       1.75rem
       clamp(var(--space-4), 4vw, var(--space-8))
-      clamp(var(--space-5), 5vw, var(--space-8));
+      0;
   }
 
   .portal-admin-queue-heading {

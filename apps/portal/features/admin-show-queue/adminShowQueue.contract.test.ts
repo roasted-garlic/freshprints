@@ -26,7 +26,11 @@ describe('Portal admin Show Queue architecture contracts', () => {
 
   it('gates the page to the portal-admin session and uses dashboard callables', () => {
     assert.match(gateSource, /bootstrapStatus === 'portal-admin'/);
-    assert.match(gateSource, /buildPortalAuthHref\('\/login', '\/admin\/show-queue'\)/);
+    assert.match(gateSource, /buildPortalAuthHref\('\/login', returnTo\)/);
+    assert.match(gateSource, /'\/admin\/show-queue'/);
+    assert.match(gateSource, /'\/admin\/staff-artwork'/);
+    assert.match(gateSource, /window\.location\.replace/);
+    assert.doesNotMatch(gateSource, /router\.replace/);
     assert.match(serviceSource, /getPortalAdminUpcomingShowQueueDashboard/);
     assert.match(serviceSource, /getPortalAdminShowQueueRequestDesigns/);
     assert.doesNotMatch(serviceSource, /getPortalAdminDailyShowQueue/);
@@ -36,6 +40,10 @@ describe('Portal admin Show Queue architecture contracts', () => {
     assert.doesNotMatch(gateSource, /\{error\}/);
     assert.match(styleSource, /\.portal-admin-state-card/);
     assert.match(styleSource, /min-height: 100dvh/);
+    assert.match(
+      styleSource,
+      /\.portal-admin-body\s*\{[^}]*padding-bottom:\s*calc\(4rem \+ env\(safe-area-inset-bottom/s,
+    );
   });
 
   it('keeps the page read-only with show picker, stats, View Designs, and no inline item dumps', () => {
