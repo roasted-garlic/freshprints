@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
-import { ExternalLink, ImagePlus, Plus, RefreshCw, Search, X, Download, Copy, WandSparkles } from "lucide-react";
+import { ExternalLink, ImagePlus, Plus, RefreshCw, Search, X, Download, Copy, WandSparkles, ChevronDown, ChevronRight } from "lucide-react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 import { Button } from "../../../shared/components/Button";
@@ -426,6 +426,9 @@ export function PrintRequestsPage() {
 
   const [listSearchQuery, setListSearchQuery] = useState("");
   const [isolatedShowId, setIsolatedShowId] = useState<string | null>(null);
+  const [expandedCustomerGroupKeys, setExpandedCustomerGroupKeys] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
   const listSearchInputRef = useRef<HTMLInputElement | null>(null);
   const previousSelectedRequestIdRef = useRef<string | null | undefined>(undefined);
   const railListRef = useRef<HTMLDivElement | null>(null);
@@ -527,6 +530,7 @@ export function PrintRequestsPage() {
   const [isSavingRequestDetail, setIsSavingRequestDetail] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createRequestForm, setCreateRequestForm] = useState<PrintRequestFormState>(DEFAULT_REQUEST_FORM);
+  const [isCreatingRequest, setIsCreatingRequest] = useState(false);
   const [isRequestDetailExpanded, setIsRequestDetailExpanded] = useState(false);
   const [successAlertSeed, setSuccessAlertSeed] = useState(0);
   const [isRepairingQueueTab, setIsRepairingQueueTab] = useState(false);
@@ -809,10 +813,13 @@ export function PrintRequestsPage() {
   }, [customerDirectory.length, resetCreateRequestForm, user]);
 
   const closeCreateModal = useCallback(() => {
+    if (isCreatingRequest) {
+      return;
+    }
     setIsCreateModalOpen(false);
     resetCreateRequestForm();
     setActionError(null);
-  }, [resetCreateRequestForm]);
+  }, [isCreatingRequest, resetCreateRequestForm]);
 
   /** After Add to Show / Internal Gangsheet: patch locally like remove-from-show, then hydrate. */
   const handleAddedToShow = useCallback(
@@ -1052,6 +1059,10 @@ export function PrintRequestsPage() {
   const shouldGroupCustomerRequests =
     activeListKind === "customer" &&
     (activeListTab === "queued" || activeListTab === "printing" || activeListTab === "printed");
+
+  useEffect(() => {
+    setExpandedCustomerGroupKeys(new Set());
+  }, [activeListKind, activeListTab, listSearchQuery, isolatedShowId]);
 
   const customerGroupsBySectionKey = useMemo<Map<string, PrintRequestCustomerGroup[]>>(() => {
     if (!shouldGroupCustomerRequests) {
@@ -1478,12 +1489,13 @@ export function PrintRequestsPage() {
   async function handleCreateRequest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!user || !permissionService.canManagePrintRequests(user)) {
+    if (!user || !permissionService.canManagePrintRequests(user) || isCreatingRequest) {
       return;
     }
 
     try {
       setActionError(null);
+      setIsCreatingRequest(true);
       const result =
         createRequestForm.customerMode === "customer"
           ? await printRequestService.createCustomerPrintRequest(user, {
@@ -1497,7 +1509,8 @@ export function PrintRequestsPage() {
 
       setSuccessMessage(`Print request "${result.name}" created.`);
       setSuccessAlertSeed((current) => current + 1);
-      closeCreateModal();
+      setIsCreateModalOpen(false);
+      resetCreateRequestForm();
       // A brand-new request is always Working/Empty (no items, no allocations yet) — insert it
       // locally instead of reloading the list, and select it directly (Wave C hydration
       // remediation, 2026-07-25).
@@ -1515,6 +1528,8 @@ export function PrintRequestsPage() {
       });
     } catch (error) {
       setActionError(formatWriteErrorMessage(error));
+    } finally {
+      setIsCreatingRequest(false);
     }
   }
 
@@ -2345,27 +2360,64 @@ export function PrintRequestsPage() {
                   ) : null}
                   {customerGroups ? (
                     <div className="print-requests-customer-groups">
-                      {customerGroups.map((group) => (
-                        <div className="print-requests-customer-group" key={group.key}>
-                          <div className="print-requests-customer-group-header">
-                            <div>
-                              <strong>
-                                {getPrintRequestCustomerLabel(group.requests[0], customersByIdMap)}
-                              </strong>
-                              <span className="print-requests-customer-group-request-count">
-                                {group.requests.length} request{group.requests.length === 1 ? "" : "s"}
-                              </span>
-                            </div>
-                            <div className="print-requests-customer-group-total">
-                              <span>{formatTotalQuantityLabel(group.totalQuantity)}</span>
-                              {group.totalPriceUsd !== null ? (
-                                <strong>{formatRequestPrice(group.totalPriceUsd)}</strong>
-                              ) : null}
-                            </div>
+                      {customerGroups.map((group) => {
+                        const expandKey = `${section.sectionKey}::${group.key}`;
+                        const safeId = expandKey.replace(/[^a-zA-Z0-9_-]/g, "-");
+                        const headingId = `print-requests-customer-group-${safeId}`;
+                        const panelId = `print-requests-customer-group-panel-${safeId}`;
+                        const isExpanded = expandedCustomerGroupKeys.has(expandKey);
+                        return (
+                          <div
+                            className={`print-requests-customer-group${isExpanded ? " is-expanded" : ""}`}
+                            key={group.key}
+                          >
+                            <h3 className="print-requests-customer-group-heading" id={headingId}>
+                              <button
+                                aria-controls={panelId}
+                                aria-expanded={isExpanded}
+                                className="print-requests-customer-group-toggle"
+                                onClick={() => {
+                                  setExpandedCustomerGroupKeys((current) => {
+                                    const next = new Set(current);
+                                    if (next.has(expandKey)) {
+                                      next.delete(expandKey);
+                                    } else {
+                                      next.add(expandKey);
+                                    }
+                                    return next;
+                                  });
+                                }}
+                                type="button"
+                              >
+                                <span aria-hidden="true" className="print-requests-customer-group-chevron">
+                                  {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                </span>
+                                <span className="print-requests-customer-group-toggle-main">
+                                  <strong>
+                                    {getPrintRequestCustomerLabel(group.requests[0], customersByIdMap)}
+                                  </strong>
+                                  <span className="print-requests-customer-group-request-count">
+                                    {group.requests.length} request{group.requests.length === 1 ? "" : "s"}
+                                  </span>
+                                </span>
+                                <span className="print-requests-customer-group-total">
+                                  <span>{formatTotalQuantityLabel(group.totalQuantity)}</span>
+                                  {group.totalPriceUsd !== null ? (
+                                    <strong>{formatRequestPrice(group.totalPriceUsd)}</strong>
+                                  ) : null}
+                                </span>
+                              </button>
+                            </h3>
+                            {isExpanded ? (
+                              <div className="print-requests-customer-group-panel" id={panelId}>
+                                {group.requests.map((request) => renderRequestCard(request, section))}
+                              </div>
+                            ) : (
+                              <div hidden id={panelId} />
+                            )}
                           </div>
-                          {group.requests.map((request) => renderRequestCard(request, section))}
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     section.requests.map((request) => renderRequestCard(request, section))
@@ -3003,6 +3055,7 @@ export function PrintRequestsPage() {
               <button
                 aria-label="Close new print request"
                 className="icon-button icon-button-md icon-button-ghost"
+                disabled={isCreatingRequest}
                 onClick={closeCreateModal}
                 type="button"
               >
@@ -3022,6 +3075,7 @@ export function PrintRequestsPage() {
                         ? "print-requests-modal-grid-full"
                         : undefined
                     }
+                    disabled={isCreatingRequest}
                     label="Request type"
                     name="customerMode"
                     onChange={(event) =>
@@ -3039,7 +3093,11 @@ export function PrintRequestsPage() {
                   {createRequestForm.customerMode === "customer" ? (
                     <div className="print-requests-customer-picker">
                       <Select
-                        disabled={isCustomerDirectoryLoading || eligibleCustomerCount === 0}
+                        disabled={
+                          isCreatingRequest ||
+                          isCustomerDirectoryLoading ||
+                          eligibleCustomerCount === 0
+                        }
                         label={isCustomerDirectoryLoading ? "Customer (loading…)" : "Customer"}
                         name="customerId"
                         onChange={(event) =>
@@ -3061,6 +3119,7 @@ export function PrintRequestsPage() {
 
                 {createRequestForm.customerMode === "internal" ? (
                   <TextInput
+                    disabled={isCreatingRequest}
                     label="Internal base name"
                     name="internalBaseName"
                     onChange={(event) =>
@@ -3083,6 +3142,7 @@ export function PrintRequestsPage() {
                         {permissionService.canManageCustomers(user) ? (
                           <Button
                             className="print-requests-modal-helper-btn"
+                            disabled={isCreatingRequest}
                             onClick={openUsersForCustomerCreation}
                             size="sm"
                             variant="secondary"
@@ -3110,6 +3170,7 @@ export function PrintRequestsPage() {
                 )}
 
                 <AutoResizeTextarea
+                  disabled={isCreatingRequest}
                   label="Request notes"
                   name="notes"
                   onChange={(event) => setCreateRequestForm((current) => ({ ...current, notes: event.target.value }))}
@@ -3128,15 +3189,19 @@ export function PrintRequestsPage() {
               </form>
             </ModalBody>
             <ModalFooter>
-              <Button onClick={closeCreateModal} variant="ghost">
+              <Button disabled={isCreatingRequest} onClick={closeCreateModal} variant="ghost">
                 Cancel
               </Button>
               <Button
-                disabled={isCreateSubmitDisabled || (selectedCreateCustomer !== undefined && !selectedCreateCustomer.username)}
+                disabled={
+                  isCreatingRequest ||
+                  isCreateSubmitDisabled ||
+                  (selectedCreateCustomer !== undefined && !selectedCreateCustomer.username)
+                }
                 form="create-print-request-form"
                 type="submit"
               >
-                Create request
+                {isCreatingRequest ? "Creating…" : "Create request"}
               </Button>
             </ModalFooter>
           </Modal>
@@ -3188,11 +3253,13 @@ export function PrintRequestsPage() {
 
       {isRequestGangSheetModalOpen && visibleSelectedRequest ? (
         <GeneratePrintRequestGangSheetModal
+          designById={designById}
           error={printRequestGangSheetState.error}
           generated={printRequestGangSheetState.generated}
           isExporting={printRequestGangSheetState.isExporting}
           isGenerating={printRequestGangSheetState.isGenerating}
           lastSavedPaths={printRequestGangSheetState.lastSavedPaths}
+          items={requestItems}
           onClose={() => {
             if (!printRequestGangSheetState.isGenerating && !printRequestGangSheetState.isExporting) {
               setIsRequestGangSheetModalOpen(false);
@@ -3201,15 +3268,18 @@ export function PrintRequestsPage() {
           }}
           onDownload={(sheetIndex) => void printRequestGangSheetState.downloadSheet(sheetIndex)}
           onExport={() => void printRequestGangSheetState.exportCached()}
-          onGenerate={() => void printRequestGangSheetState.generate(
-            visibleSelectedRequest,
-            requestItems,
-            requestGangSheetSettings,
-          )}
+          onGenerate={(selectedItems) => void printRequestGangSheetState.generate(
+              visibleSelectedRequest,
+              selectedItems,
+              requestGangSheetSettings,
+            )}
           progress={printRequestGangSheetState.progress}
+          requestId={visibleSelectedRequest.id}
           requestName={visibleSelectedRequest.name}
           sheetWidthInches={requestGangSheetSettings.sheetWidthInches}
           sheets={printRequestGangSheetState.sheets}
+          staffArtworkById={staffArtworkById}
+          uploadSummariesById={uploadSummariesById}
           warnings={printRequestGangSheetState.warnings}
         />
       ) : null}

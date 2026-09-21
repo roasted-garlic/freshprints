@@ -103,7 +103,9 @@
 
 .portal-admin-header-title,
 .portal-admin-queue h2,
+.portal-admin-request-group h3,
 .portal-admin-request-card h3,
+.portal-admin-request-card h4,
 .portal-admin-modal-header h3,
 .portal-admin-request-card p,
 .portal-admin-request-status {
@@ -488,7 +490,7 @@
 .portal-admin-summary {
   display: grid;
   gap: 0.5rem;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-bottom: var(--space-4);
 }
 
@@ -557,6 +559,137 @@
   gap: var(--space-3);
 }
 
+.portal-admin-request-groups {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.portal-admin-request-group {
+  background: color-mix(in srgb, var(--color-bg-secondary) 88%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.portal-admin-request-group-heading {
+  margin: 0;
+}
+
+.portal-admin-request-group-toggle {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  display: flex;
+  flex-wrap: wrap;
+  font: inherit;
+  gap: var(--space-2) var(--space-3);
+  justify-content: space-between;
+  min-height: 2.75rem;
+  padding: 0.7rem 0.85rem;
+  text-align: left;
+  width: 100%;
+}
+
+.portal-admin-request-group-toggle:focus-visible {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: -2px;
+}
+
+.portal-admin-request-group-chevron {
+  color: var(--color-text-secondary);
+  flex: 0 0 auto;
+  font-size: 0.85rem;
+  line-height: 1;
+  width: 0.85rem;
+}
+
+.portal-admin-request-group-toggle-main {
+  align-items: baseline;
+  display: flex;
+  flex: 1 1 12rem;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.portal-admin-request-group-label {
+  color: var(--color-text-primary);
+  font-size: 0.95rem;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.portal-admin-request-group-request-count {
+  color: var(--color-text-secondary);
+  font-size: 0.85em;
+  font-weight: 400;
+}
+
+.portal-admin-request-group-total {
+  align-items: center;
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: var(--space-2);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.portal-admin-request-group-total strong {
+  color: var(--color-text-primary);
+}
+
+.portal-admin-request-group.is-expanded .portal-admin-request-list {
+  border-top: 1px solid var(--color-border);
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+
+.portal-admin-request-search {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: var(--space-4);
+  padding: var(--space-3);
+}
+
+.portal-admin-request-search label {
+  color: var(--color-text-primary);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.portal-admin-request-search input {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-sizing: border-box;
+  color: var(--color-text-primary);
+  font: inherit;
+  min-height: 2.75rem;
+  min-width: 0;
+  padding: 0.55rem 0.75rem;
+  width: 100%;
+}
+
+.portal-admin-request-search input:focus-visible {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 2px;
+}
+
+.portal-admin-request-search > p {
+  color: var(--color-text-secondary);
+  font-size: 0.78rem;
+  margin: 0;
+}
+
 .portal-admin-request-card {
   background: var(--color-bg-secondary);
   border: 1px solid var(--color-border);
@@ -575,6 +708,13 @@
 
 .portal-admin-request-card > header > div {
   min-width: 0;
+}
+
+.portal-admin-request-card h4 {
+  color: var(--color-text-primary);
+  font-size: 1rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
 .portal-admin-request-card > header p {
@@ -966,6 +1106,7 @@
 
   .portal-admin-summary {
     gap: var(--space-3);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .portal-admin-summary span {

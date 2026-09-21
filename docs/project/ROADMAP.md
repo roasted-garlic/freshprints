@@ -1,5 +1,8 @@
 # Fresh Prints Roadmap
 
+> 2026-09-21: **Studio / Portal Print Request, Inbox, and AI Queue Batch — SIGNOFF COMPLETE; coordinated production rollout in progress** — Goal `studio-portal-print-request-inbox-ai-queue-batch` is signed off **approved_with_notes** after Owner DEV QA **PASS**. Adaptive gang-sheet labels, Staff Inbox pagination, selected-show Portal Admin search/privacy-safe grouping/separate totals, export-only partial Print Request gang-sheet generation with thumbnails and quantity overrides, and Staff Artwork/AI Processing lifecycle + multi-page queue corrections are implemented and reviewed. Focused suites, typechecks, Functions build, targeted lint, Studio builds, index validation, and diff check passed; the earlier Portal `.next/trace` EPERM and unrelated repository-wide lint baseline are documented for release-critical recheck. Owner authorized the exact protected promotion and full coordinated rollout. Production manifest is limited to the reviewed A/B/C/D/E surfaces, exact Functions `getPortalAdminUpcomingShowQueueDashboard` and `promoteStaffArtworkToAiReview`, four additive Staff Inbox indexes, Portal App Hosting, and Studio stable `1.0.18`; no Rules, Storage Rules, schema/data migration, backfill, secret, IAM, or customer-data rewrite.
+> Signoff: `docs/workflow/reviews/2026-09-21-studio-portal-print-request-inbox-ai-queue-batch-signoff.md`.
+
 > 2026-09-17: **Shared length-based show pricing + customer navigation — SIGNED OFF; production
 > rollout blocked on Studio release** — Goal `print-request-length-surcharge-and-customer-navigation`
 > is implemented and infrastructure-rolled out with

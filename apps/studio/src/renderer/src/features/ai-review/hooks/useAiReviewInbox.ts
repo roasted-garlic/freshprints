@@ -118,6 +118,17 @@ export function useAiReviewInbox(
     loadAll: needsReviewSearchActive,
     maxLoadAll: NEEDS_REVIEW_SEARCH_HYDRATION_CAP,
   });
+
+  const loadMoreProcessingDesigns = useCallback(async () => {
+    const result = await loadMoreDesigns();
+    if (result) {
+      // useDesigns resolves immediately after accepting the page into React state. Yield once so
+      // the processing queue observes the appended page through its live designs ref before it
+      // selects the next item. The cursor itself remains owned by useDesigns.
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    }
+    return result;
+  }, [loadMoreDesigns]);
   // Legacy tag autocomplete and tag writes are retired from AI Review. Historical tag fields on
   // designs remain readable by the service mapper but are never seeded into or persisted from the
   // review form.
@@ -526,8 +537,13 @@ export function useAiReviewInbox(
     defaultVisionModelId: options?.defaultVisionModelId ?? "",
     designs,
     hasTerminalAiProcessingLedgerEntry,
+    hasMore,
+    isDesignsLoading: isLoading,
+    isDesignsLoadingMore: isLoadingMore,
     onActionError: setActionError,
     onQueueChanged: options?.onQueueChanged,
+    loadMoreDesigns: loadMoreProcessingDesigns,
+    queryKey: JSON.stringify(listQuery),
     reloadDesigns,
     requestSelectDesign: (designId) => {
       if (designId === selectedDesignId) {

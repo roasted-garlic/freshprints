@@ -1,4 +1,25 @@
 import type { ExportGangSheetPngRequest } from "../types/export/gangSheetExportIpc.types";
+import {
+  GANG_SHEET_LABEL_FONT_METRICS_VERSION,
+  GANG_SHEET_LABEL_LAYOUT_VERSION,
+} from "./gangSheetLabelRendering";
+
+function normalizeGroupedHeadingInput(value: string | undefined): string {
+  return value?.trim() ?? "";
+}
+
+function normalizeGroupedHeadingInputs(
+  grouping: NonNullable<ExportGangSheetPngRequest["images"][number]["grouping"]>,
+) {
+  return {
+    printRequestId: normalizeGroupedHeadingInput(grouping.printRequestId),
+    requestName: normalizeGroupedHeadingInput(grouping.requestName),
+    customerId: normalizeGroupedHeadingInput(grouping.customerId),
+    customerUsernameSnapshot: normalizeGroupedHeadingInput(grouping.customerUsernameSnapshot).toLowerCase(),
+    internalBaseName: normalizeGroupedHeadingInput(grouping.internalBaseName).toLowerCase(),
+    isInternal: grouping.isInternal,
+  };
+}
 
 /**
  * Builds a stable fingerprint for a gang sheet generate request so Studio can detect when the
@@ -25,10 +46,19 @@ export function buildGangSheetCacheFingerprint(request: ExportGangSheetPngReques
       ...(includePricingInputs && typeof image.printHeightInches === "number"
         ? { printHeightInches: image.printHeightInches }
         : {}),
+      ...(includeSectionSummaryInputs
+        ? {
+            groupedHeadingInputs: image.grouping
+              ? normalizeGroupedHeadingInputs(image.grouping)
+              : null,
+          }
+        : {}),
     }))
     .sort((left, right) => left.assetId.localeCompare(right.assetId));
 
   const payload = JSON.stringify({
+    gangSheetLabelLayoutVersion: GANG_SHEET_LABEL_LAYOUT_VERSION,
+    gangSheetLabelFontMetricsVersion: GANG_SHEET_LABEL_FONT_METRICS_VERSION,
     baseFileName: request.baseFileName,
     sheetWidthInches: request.sheetWidthInches,
     sideMarginInches: request.sideMarginInches,

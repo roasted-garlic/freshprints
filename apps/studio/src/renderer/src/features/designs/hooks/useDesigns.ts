@@ -46,6 +46,11 @@ interface UseDesignsOptions {
 
 const DEFAULT_MAX_LOAD_ALL = 2000;
 
+export interface DesignPageLoadResult {
+  appendedDesigns: Design[];
+  hasMore: boolean;
+}
+
 const initialState: DesignsState = {
   designs: [],
   error: null,
@@ -67,6 +72,7 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
   const designsMirrorRef = useRef<Design[]>(state.designs);
   designsMirrorRef.current = state.designs;
   const nextCursorRef = useRef<DesignListCursor | undefined>(undefined);
+  const loadMorePromiseRef = useRef<Promise<DesignPageLoadResult | null> | null>(null);
   const listQueryKey = useMemo(() => serializeDesignListQueryKey(listQuery), [listQuery]);
   const listQueryKeyRef = useRef(listQueryKey);
   const listQueryRef = useRef(listQuery);
@@ -113,7 +119,7 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
       if (!enabled || !user || !permissionService.canViewDesigns(user)) {
         nextCursorRef.current = undefined;
         setState({ ...initialState, isLoading: false, loadedQueryKey: requestQueryKey });
-        return;
+        return { appendedDesigns: [], hasMore: false };
       }
 
       const append = loadOptions?.append ?? false;
@@ -146,7 +152,7 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
           // Ignore late responses if the query changed while we were paging, or if a newer
           // load for this same query has since started (see generationRef's doc comment).
           if (listQueryKeyRef.current !== requestQueryKey || generationRef.current !== requestGeneration) {
-            return;
+            return null;
           }
 
           const sortField = requestListQuery.sortField ?? "updatedAt";
@@ -168,7 +174,7 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
             loadedQueryKey: requestQueryKey,
             nextCursor: cursor,
           });
-          return;
+          return { appendedDesigns: designs, hasMore: Boolean(cursor) && hasMore };
         }
 
         const page = await designService.listDesignsPage(user, {
@@ -192,7 +198,7 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
             outcome:
               listQueryKeyRef.current !== requestQueryKey ? "query-key-changed" : "generation-superseded",
           });
-          return;
+          return null;
         }
 
         nextCursorRef.current = page.nextCursor;
@@ -223,9 +229,10 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
           loadedQueryKey: requestQueryKey,
           nextCursor: page.nextCursor,
         }));
+        return { appendedDesigns: mergedPageDesigns, hasMore: page.hasMore };
       } catch (error) {
         if (listQueryKeyRef.current !== requestQueryKey || generationRef.current !== requestGeneration) {
-          return;
+          return null;
         }
 
         nextCursorRef.current = undefined;
@@ -238,22 +245,42 @@ export function useDesigns(listQuery: DesignListQuery, options?: UseDesignsOptio
           loadedQueryKey: requestQueryKey,
           nextCursor: undefined,
         });
+        return { appendedDesigns: [], hasMore: false };
       }
     },
     [enabled, loadAll, maxLoadAll, user],
   );
 
   useEffect(() => {
+    loadMorePromiseRef.current = null;
     nextCursorRef.current = undefined;
     void loadDesigns();
   }, [listQueryKey, loadDesigns]);
 
-  const loadMoreDesigns = useCallback(() => {
-    if (!state.hasMore || state.isLoadingMore || state.isLoading) {
-      return;
+  const loadMoreDesigns = useCallback((): Promise<DesignPageLoadResult | null> => {
+    if (loadMorePromiseRef.current) {
+      return loadMorePromiseRef.current;
     }
 
-    void loadDesigns({ append: true });
+    if (!state.hasMore || state.isLoadingMore || state.isLoading) {
+      return Promise.resolve(null);
+    }
+
+    const request = loadDesigns({ append: true });
+    loadMorePromiseRef.current = request;
+    void request.then(
+      () => {
+        if (loadMorePromiseRef.current === request) {
+          loadMorePromiseRef.current = null;
+        }
+      },
+      () => {
+        if (loadMorePromiseRef.current === request) {
+          loadMorePromiseRef.current = null;
+        }
+      },
+    );
+    return request;
   }, [loadDesigns, state.hasMore, state.isLoading, state.isLoadingMore]);
 
   const reloadDesigns = useCallback(async () => {

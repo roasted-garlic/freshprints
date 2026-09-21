@@ -158,33 +158,67 @@
 .print-requests-customer-groups {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
 
 .print-requests-customer-group {
-  border-left: 2px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-bg-secondary) 88%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  padding-left: var(--space-3);
+  gap: 0;
+  overflow: hidden;
 }
 
-.print-requests-customer-group-header {
+.print-requests-customer-group-heading {
+  margin: 0;
+}
+
+.print-requests-customer-group-toggle {
   align-items: center;
+  background: transparent;
+  border: 0;
   color: var(--color-text-secondary);
+  cursor: pointer;
   display: flex;
+  flex-wrap: wrap;
+  font: inherit;
   font-size: var(--font-size-sm);
-  gap: var(--space-3);
+  gap: var(--space-2) var(--space-3);
   justify-content: space-between;
-  padding: var(--space-1) 0;
+  min-height: 2.5rem;
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  width: 100%;
 }
 
-.print-requests-customer-group-header > div:first-child {
+.print-requests-customer-group-toggle:focus-visible {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: -2px;
+}
+
+.print-requests-customer-group-chevron {
+  align-items: center;
+  color: var(--color-text-muted);
+  display: inline-flex;
+  flex: 0 0 auto;
+  justify-content: center;
+  width: 0.9rem;
+}
+
+.print-requests-customer-group-toggle-main {
   align-items: baseline;
   display: flex;
+  flex: 1 1 12rem;
   flex-wrap: wrap;
   gap: var(--space-2);
   min-width: 0;
+}
+
+.print-requests-customer-group-toggle-main strong {
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
 }
 
 .print-requests-customer-group-request-count {
@@ -197,7 +231,16 @@
   display: inline-flex;
   flex-shrink: 0;
   gap: var(--space-2);
+  margin-left: auto;
   white-space: nowrap;
+}
+
+.print-requests-customer-group.is-expanded .print-requests-customer-group-panel {
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3) var(--space-3);
 }
 
 .print-requests-show-section + .print-requests-show-section {

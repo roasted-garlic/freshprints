@@ -2941,7 +2941,15 @@ remain part of the existing product model and are not deleted by this release.
 
 The Portal admin Show Queue is a derived response, not a persisted collection or read model. Its
 shared DTO contains operational-day metadata, lifecycle/totals for matching Whatnot/DEV-fixture
-shows, request groups, and allocation rows. It intentionally omits all document identifiers,
-customer/upload/design identifiers, private artwork metadata, filenames, URLs, paths, and lineage
-IDs. Customer-upload rows use the literal `Customer upload` label. Canceled allocation rows remain
-historical evidence while active-work totals exclude them.
+shows, request groups, and server-calculated request/selected-show pricing totals. `printRequestId`
+remains available only for the existing authorized View Designs action. Customer grouping uses a
+response-scoped, non-reversible `customerGroupKey`; raw customer IDs, email addresses, usernames,
+and stable cross-response customer identifiers are not returned. Requests without customer
+identity receive unique non-merging keys. Searchable fields are limited to request ID, request
+name, and the existing display-safe customer identity label.
+
+Request totals use saved `printRequestItems` dimensions and quantities with canonical width/length
+pricing. Selected-show totals use active, non-canceled allocations, prefer immutable pricing
+snapshots, and use canonical saved-size fallback pricing for legacy allocations. Any required
+unpriceable row returns `null`; canceled rows do not contribute. The response contains no artwork,
+private metadata, filenames, URLs, paths, or lineage IDs.

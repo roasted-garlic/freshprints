@@ -15,6 +15,13 @@ import { StaffInboxDesignEditHost } from "../components/StaffInboxDesignEditHost
 import { useResolvedDesignIssueReports } from "../hooks/useResolvedDesignIssueReports";
 import { StaffInboxItemRow } from "../components/StaffInboxItemRow";
 import { useStaffInboxContext } from "../context/staffInboxContext";
+import {
+  STAFF_INBOX_VISIBLE_PAGE_SIZE,
+  advanceVisibleCount,
+  canRevealMoreVisible,
+  clampVisibleCount,
+  initialVisibleCount,
+} from "../utils/staffInboxVisiblePagination";
 
 type InboxPageTab = "open" | "done";
 
@@ -47,7 +54,10 @@ export function StaffInboxPage() {
     completedItems,
     deleteCompletedAlerts,
     error,
+    hasMore,
     isItemHighlighted,
+    isLoadingMore,
+    loadMore,
     openItem,
     openItems,
     restoreItem,
@@ -58,6 +68,9 @@ export function StaffInboxPage() {
   const [editDesignId, setEditDesignId] = useState<string | null>(null);
   const [selectedCompletedIds, setSelectedCompletedIds] = useState<Set<string>>(() => new Set());
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[] | null>(null);
+  const [openVisibleCount, setOpenVisibleCount] = useState(initialVisibleCount);
+  const [doneReportsVisibleCount, setDoneReportsVisibleCount] = useState(initialVisibleCount);
+  const [doneCompletedVisibleCount, setDoneCompletedVisibleCount] = useState(initialVisibleCount);
 
   const openSettings = useCallback(() => {
     setIsSettingsOpen(true);
@@ -139,6 +152,64 @@ export function StaffInboxPage() {
     queueCompletedItems.length === 0 &&
     doneDesignReportItems.length === 0 &&
     !isLoadingResolvedReports;
+
+  useEffect(() => {
+    setOpenVisibleCount((current) => clampVisibleCount(current, openItems.length));
+  }, [openItems.length]);
+
+  useEffect(() => {
+    setDoneReportsVisibleCount((current) => clampVisibleCount(current, doneDesignReportItems.length));
+  }, [doneDesignReportItems.length]);
+
+  useEffect(() => {
+    setDoneCompletedVisibleCount((current) => clampVisibleCount(current, queueCompletedItems.length));
+  }, [queueCompletedItems.length]);
+
+  const visibleOpenItems = openItems.slice(0, openVisibleCount);
+  const visibleDoneDesignReportItems = doneDesignReportItems.slice(0, doneReportsVisibleCount);
+  const visibleQueueCompletedItems = queueCompletedItems.slice(0, doneCompletedVisibleCount);
+
+  const canRevealMoreOpen = canRevealMoreVisible(openVisibleCount, openItems.length);
+  const showOpenLoadMore = canRevealMoreOpen || hasMore;
+
+  const handleLoadMoreOpen = useCallback(() => {
+    if (canRevealMoreVisible(openVisibleCount, openItems.length)) {
+      setOpenVisibleCount((current) => advanceVisibleCount(current, openItems.length));
+      return;
+    }
+    if (!hasMore || isLoadingMore) {
+      return;
+    }
+    void loadMore().then(() => {
+      setOpenVisibleCount((current) => current + STAFF_INBOX_VISIBLE_PAGE_SIZE);
+    });
+  }, [hasMore, isLoadingMore, loadMore, openItems.length, openVisibleCount]);
+
+  const showDoneReportsLoadMore = canRevealMoreVisible(
+    doneReportsVisibleCount,
+    doneDesignReportItems.length,
+  );
+  const showDoneCompletedLoadMore = canRevealMoreVisible(
+    doneCompletedVisibleCount,
+    queueCompletedItems.length,
+  );
+
+  const loadMoreOpenAlertsControl = showOpenLoadMore ? (
+    <div className="staff-inbox-load-more" aria-live="polite">
+      <p className="staff-inbox-load-more-status" role="status">
+        Showing {visibleOpenItems.length} of {openItems.length}
+        {hasMore ? "+" : ""} loaded alerts.
+      </p>
+      <Button
+        aria-busy={isLoadingMore}
+        disabled={isLoadingMore && !canRevealMoreOpen}
+        onClick={handleLoadMoreOpen}
+        variant="secondary"
+      >
+        {isLoadingMore && !canRevealMoreOpen ? "Loading older alerts…" : "Load more alerts"}
+      </Button>
+    </div>
+  ) : null;
 
   const allQueueCompletedSelected =
     queueCompletedItems.length > 0 &&
@@ -229,7 +300,7 @@ export function StaffInboxPage() {
           onClick={() => setActiveTab("open")}
           type="button"
         >
-          Open ({openItems.length})
+          Open ({openItems.length}{hasMore ? "+" : ""})
         </button>
         <button
           className={`staff-inbox-page-tab${activeTab === "done" ? " is-active" : ""}`}
@@ -242,22 +313,32 @@ export function StaffInboxPage() {
 
       {activeTab === "open" ? (
         openItems.length === 0 ? (
-          <EmptyState
-            message="You will see alerts here when a portal print request is queued to a show, a show queue becomes full, or a customer reports a design issue."
-            title="Inbox clear"
-          />
+          <>
+            <EmptyState
+              message={
+                hasMore
+                  ? "No alerts are in the currently loaded page. Load more to check older inbox activity."
+                  : "You will see alerts here when a portal print request is queued to a show, a show queue becomes full, or a customer reports a design issue."
+              }
+              title={hasMore ? "No loaded alerts" : "Inbox clear"}
+            />
+            {loadMoreOpenAlertsControl}
+          </>
         ) : (
-          <ul className="staff-inbox-item-list staff-inbox-page-list">
-            {openItems.map((item) => (
-              <StaffInboxItemRow
-                isHighlighted={isItemHighlighted(item.id)}
-                item={item}
-                key={item.id}
-                onAcknowledge={acknowledgeItem}
-                onOpen={handleOpenItem}
-              />
-            ))}
-          </ul>
+          <>
+            <ul className="staff-inbox-item-list staff-inbox-page-list">
+              {visibleOpenItems.map((item) => (
+                <StaffInboxItemRow
+                  isHighlighted={isItemHighlighted(item.id)}
+                  item={item}
+                  key={item.id}
+                  onAcknowledge={acknowledgeItem}
+                  onOpen={handleOpenItem}
+                />
+              ))}
+            </ul>
+            {loadMoreOpenAlertsControl}
+          </>
         )
       ) : (
         <div className="staff-inbox-done-panel">
@@ -287,7 +368,7 @@ export function StaffInboxPage() {
                     <p>Reports marked resolved for staff review history.</p>
                   </header>
                   <ul className="staff-inbox-item-list staff-inbox-page-list">
-                    {doneDesignReportItems.map((item) => (
+                    {visibleDoneDesignReportItems.map((item) => (
                       <StaffInboxItemRow
                         isCompleted
                         item={item}
@@ -296,6 +377,24 @@ export function StaffInboxPage() {
                       />
                     ))}
                   </ul>
+                  {showDoneReportsLoadMore ? (
+                    <div className="staff-inbox-load-more" aria-live="polite">
+                      <p className="staff-inbox-load-more-status" role="status">
+                        Showing {visibleDoneDesignReportItems.length} of {doneDesignReportItems.length}{" "}
+                        resolved reports.
+                      </p>
+                      <Button
+                        onClick={() =>
+                          setDoneReportsVisibleCount((current) =>
+                            advanceVisibleCount(current, doneDesignReportItems.length),
+                          )
+                        }
+                        variant="secondary"
+                      >
+                        Load more reports
+                      </Button>
+                    </div>
+                  ) : null}
                 </section>
               ) : null}
 
@@ -328,7 +427,7 @@ export function StaffInboxPage() {
                         </Button>
                       </div>
                       <ul className="staff-inbox-item-list staff-inbox-page-list">
-                        {queueCompletedItems.map((item) => (
+                        {visibleQueueCompletedItems.map((item) => (
                           <StaffInboxItemRow
                             isCompleted
                             isSelectable={canDeleteCompletedAlerts}
@@ -345,7 +444,7 @@ export function StaffInboxPage() {
                     </div>
                   ) : (
                     <ul className="staff-inbox-item-list staff-inbox-page-list">
-                      {queueCompletedItems.map((item) => (
+                      {visibleQueueCompletedItems.map((item) => (
                         <StaffInboxItemRow
                           isCompleted
                           item={item}
@@ -356,6 +455,24 @@ export function StaffInboxPage() {
                       ))}
                     </ul>
                   )}
+                  {showDoneCompletedLoadMore ? (
+                    <div className="staff-inbox-load-more" aria-live="polite">
+                      <p className="staff-inbox-load-more-status" role="status">
+                        Showing {visibleQueueCompletedItems.length} of {queueCompletedItems.length}{" "}
+                        completed alerts.
+                      </p>
+                      <Button
+                        onClick={() =>
+                          setDoneCompletedVisibleCount((current) =>
+                            advanceVisibleCount(current, queueCompletedItems.length),
+                          )
+                        }
+                        variant="secondary"
+                      >
+                        Load more completed alerts
+                      </Button>
+                    </div>
+                  ) : null}
                 </section>
               ) : null}
             </>

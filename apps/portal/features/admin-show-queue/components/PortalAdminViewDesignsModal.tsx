@@ -173,14 +173,13 @@ export function PortalAdminViewDesignsModal({
               {data.items.map((item, index) => {
                 const itemId = designItemId(index);
                 const canPreview = Boolean(item.imageUrl);
-                const thumbStyle: CSSProperties | undefined =
-                  item.source === 'catalog_design' && item.artworkBackgroundHex
-                    ? ({
-                        ['--color-artwork-preview-bg' as string]: resolveArtworkBackgroundHex(
-                          item.artworkBackgroundHex,
-                        ),
-                      } as CSSProperties)
-                    : undefined;
+                const thumbStyle: CSSProperties | undefined = item.artworkBackgroundHex
+                  ? ({
+                      ['--color-artwork-preview-bg' as string]: resolveArtworkBackgroundHex(
+                        item.artworkBackgroundHex,
+                      ),
+                    } as CSSProperties)
+                  : undefined;
                 return (
                   <li className="portal-admin-design-card" key={itemId}>
                     <div className="portal-admin-design-thumb" style={thumbStyle}>

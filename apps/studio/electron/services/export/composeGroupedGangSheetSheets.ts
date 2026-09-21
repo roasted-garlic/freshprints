@@ -8,8 +8,9 @@ import {
   buildGangSheetLabelSvg,
   buildGroupedSectionHeadingSvg,
   computeGangSheetLabelBandHeightPx,
-  computeGroupedSectionLabelBandHeightPx,
   resolveGroupedSectionLabelFontSizePx,
+  resolveGroupedSectionLabelLayout,
+  type GangSheetGroupedSectionLabelLayout,
 } from "@fresh-prints/shared/utils/gangSheetLabelRendering";
 import {
   buildGangSheetCustomerSectionSummaryLines,
@@ -91,7 +92,7 @@ interface PendingGroupedSheet {
   sectionHeading: string;
   sheet: NestedSheet;
   summaryLines: string[];
-  sectionLabelBandHeightPx: number;
+  sectionLabelLayout: GangSheetGroupedSectionLabelLayout;
 }
 
 export async function composeGroupedGangSheetSheets(input: {
@@ -140,24 +141,26 @@ export async function composeGroupedGangSheetSheets(input: {
       input.request.sectionPricing,
     );
     const summaryLines = buildGangSheetCustomerSectionSummaryLines(sectionSummary);
-    const sectionLabelBandHeightPx = computeGroupedSectionLabelBandHeightPx(
-      sectionHeadingFontSizePx,
-      sectionSummaryFontSizePx,
-      summaryLines.length,
-    );
-
     for (const [groupSheetOffset, sheet] of nestResult.sheets.entries()) {
       const sectionHeading =
         nestResult.sheets.length > 1 && groupSheetOffset > 0
           ? buildGroupedGangSheetSectionContinuedHeading(group.heading)
           : group.heading;
+      const sectionLabelLayout = resolveGroupedSectionLabelLayout({
+        heading: sectionHeading,
+        summaryLines,
+        sheetWidthPx: input.sheetWidthPx,
+        sideMarginPx: input.spacingPx.sideMarginPx,
+        headingFontSizePx: sectionHeadingFontSizePx,
+        summaryFontSizePx: sectionSummaryFontSizePx,
+      });
 
       pendingSheets.push({
         group,
         sectionHeading,
         sheet,
         summaryLines,
-        sectionLabelBandHeightPx,
+        sectionLabelLayout,
       });
     }
   }
@@ -181,9 +184,9 @@ export async function composeGroupedGangSheetSheets(input: {
   const composedSheets: Array<{ fileName: string; lengthInches: number; heightPx: number; buffer: Buffer }> = [];
 
   for (const [sheetIndex, pending] of pendingSheets.entries()) {
-    const { group, sectionHeading, sheet, summaryLines, sectionLabelBandHeightPx } = pending;
+    const { group, sectionHeading, sheet, summaryLines, sectionLabelLayout } = pending;
     const sheetNumber = sheetIndex + 1;
-    const sheetHeightPx = showLabelBandHeightPx + sectionLabelBandHeightPx + sheet.sheetHeightPx;
+    const sheetHeightPx = showLabelBandHeightPx + sectionLabelLayout.bandHeightPx + sheet.sheetHeightPx;
     const lengthInches = sheetHeightPx / EXPORT_DPI;
     const showLabel = buildGangSheetSheetLabel(input.request.baseFileName, sheetNumber, sheetTotal);
     const showLabelSvg = buildGangSheetLabelSvg({
@@ -196,12 +199,13 @@ export async function composeGroupedGangSheetSheets(input: {
       heading: sectionHeading,
       summaryLines,
       sheetWidthPx: input.sheetWidthPx,
-      bandHeightPx: sectionLabelBandHeightPx,
+      bandHeightPx: sectionLabelLayout.bandHeightPx,
       headingFontSizePx: sectionHeadingFontSizePx,
       summaryFontSizePx: sectionSummaryFontSizePx,
+      layout: sectionLabelLayout,
     });
 
-    const artworkTopOffset = showLabelBandHeightPx + sectionLabelBandHeightPx;
+    const artworkTopOffset = showLabelBandHeightPx + sectionLabelLayout.bandHeightPx;
     const compositeInputs = await Promise.all(
       sheet.placements.map(async (placement) => {
         const image = group.images.find((entry) => entry.id === placement.id);

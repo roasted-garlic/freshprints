@@ -4,19 +4,22 @@ import { describe, it } from "node:test";
 import type { Design } from "../../designs/types/design.types";
 import {
   findNextAwaitingIndex,
+  mergeAppendedDesignsIntoList,
   resolveAdvanceIndexAfterProcessing,
+  resolveAutoQueueContinuationAfterLoadMore,
   shouldAutoQueueContinue,
-  shouldHaltAutoQueue,
+  shouldPrefetchNextAiProcessingPage,
 } from "./aiProcessingQueueSelection";
 
-function createDesign(id: string, overrides: Partial<Design> = {}): Design {
+function createDesign(overrides: Partial<Design> = {}): Design {
   return {
-    id,
-    title: `Design ${id}`,
+    id: "design-1",
+    title: "Sample Design",
     tags: [],
     status: "imported",
-    originalPath: `/originals/${id}.png`,
-    thumbnailPath: `/thumbnails/${id}.webp`,
+    originalPath: "/originals/design-1.png",
+    thumbnailPath: "/thumbnails/design-1.webp",
+    previewPath: "/previews/design-1.webp",
     uploadedBy: "user-1",
     queueCount: 0,
     aiProcessed: false,
@@ -39,36 +42,110 @@ describe("aiProcessingQueueSelection", () => {
 
   it("findNextAwaitingIndex returns the first awaiting design at or after start", () => {
     const designs = [
-      createDesign("a", { aiProcessingStage: "sending_to_ai" }),
-      createDesign("b"),
-      createDesign("c"),
+      createDesign({ id: "a", aiProcessingStage: "ready_for_review", aiReviewStatus: "needs_review" }),
+      createDesign({ id: "b" }),
+      createDesign({ id: "c" }),
     ];
-
     assert.equal(findNextAwaitingIndex(designs, 0), 1);
     assert.equal(findNextAwaitingIndex(designs, 1), 1);
   });
 
-  it("resolveAdvanceIndexAfterProcessing does not skip after success", () => {
-    const afterSuccess = [createDesign("b"), createDesign("c")];
-
-    assert.equal(resolveAdvanceIndexAfterProcessing(afterSuccess, 0, false), 0);
-    assert.equal(afterSuccess[0]?.id, "b");
-  });
-
-  it("resolveAdvanceIndexAfterProcessing advances past failed design", () => {
+  it("resolveAdvanceIndexAfterProcessing skips the current row unless it failed", () => {
     const designs = [
-      createDesign("a", {
-        aiProcessingStage: "failed",
-        aiSuggestions: { errorCode: "ai_failed" },
-      }),
-      createDesign("b"),
+      createDesign({ id: "a", aiProcessingStage: "ready_for_review", aiReviewStatus: "needs_review" }),
+      createDesign({ id: "b" }),
+      createDesign({ id: "c" }),
     ];
-
-    assert.equal(resolveAdvanceIndexAfterProcessing(designs, 0, true), 1);
+    assert.equal(resolveAdvanceIndexAfterProcessing(designs, 0, false), 1);
+    assert.equal(resolveAdvanceIndexAfterProcessing(designs, 1, true), 2);
   });
 
-  it("shouldHaltAutoQueue is true when stop was requested", () => {
-    assert.equal(shouldHaltAutoQueue(true), true);
-    assert.equal(shouldHaltAutoQueue(false), false);
+  it("continues after a final cursor page that still has awaiting designs", () => {
+    const next = createDesign({ id: "next" });
+    const designs = [
+      createDesign({
+        id: "done",
+        aiProcessingStage: "ready_for_review",
+        aiReviewStatus: "needs_review",
+      }),
+      next,
+    ];
+    const continuation = resolveAutoQueueContinuationAfterLoadMore({
+      designs,
+      searchFromIndex: 1,
+      page: { appendedDesigns: [next], hasMore: false },
+    });
+    assert.deepEqual(continuation, { action: "continue", nextIndex: 1 });
+  });
+
+  it("stops only when no awaiting designs remain and the cursor is exhausted", () => {
+    const designs = [
+      createDesign({
+        id: "done",
+        aiProcessingStage: "ready_for_review",
+        aiReviewStatus: "needs_review",
+      }),
+    ];
+    const continuation = resolveAutoQueueContinuationAfterLoadMore({
+      designs,
+      searchFromIndex: 0,
+      page: { appendedDesigns: [], hasMore: false },
+    });
+    assert.deepEqual(continuation, { action: "stop" });
+  });
+
+  it("keeps consuming empty client-filter pages while hasMore is true", () => {
+    const designs = [
+      createDesign({
+        id: "filtered",
+        aiProcessingStage: "ready_for_review",
+        aiReviewStatus: "needs_review",
+      }),
+    ];
+    const continuation = resolveAutoQueueContinuationAfterLoadMore({
+      designs,
+      searchFromIndex: 1,
+      page: { appendedDesigns: [], hasMore: true },
+    });
+    assert.deepEqual(continuation, { action: "continue", nextIndex: 1 });
+  });
+
+  it("merges appended designs without duplicating ids", () => {
+    const current = [createDesign({ id: "a" })];
+    const merged = mergeAppendedDesignsIntoList(current, [
+      createDesign({ id: "a" }),
+      createDesign({ id: "b" }),
+    ]);
+    assert.deepEqual(
+      merged.map((entry) => entry.id),
+      ["a", "b"],
+    );
+  });
+
+  it("prefetches when few awaiting designs remain and more pages exist", () => {
+    assert.equal(
+      shouldPrefetchNextAiProcessingPage({
+        hasMore: true,
+        isLoadingMore: false,
+        remainingAwaitingCount: 10,
+      }),
+      true,
+    );
+    assert.equal(
+      shouldPrefetchNextAiProcessingPage({
+        hasMore: true,
+        isLoadingMore: false,
+        remainingAwaitingCount: 11,
+      }),
+      false,
+    );
+    assert.equal(
+      shouldPrefetchNextAiProcessingPage({
+        hasMore: false,
+        isLoadingMore: false,
+        remainingAwaitingCount: 1,
+      }),
+      false,
+    );
   });
 });

@@ -17,6 +17,7 @@ export function StaffInboxPanel({ panelRef }: StaffInboxPanelProps) {
     acknowledgeItem,
     closePanel,
     error,
+    hasMore,
     openItem,
     openItems,
     warning,
@@ -67,7 +68,9 @@ export function StaffInboxPanel({ panelRef }: StaffInboxPanelProps) {
       <footer className="staff-inbox-panel-footer">
         <Link className="staff-inbox-panel-view-all" onClick={closePanel} to="/inbox">
           {openItems.length > DROPDOWN_PREVIEW_LIMIT
-            ? `View all ${openItems.length} items`
+            ? hasMore
+              ? `View loaded ${openItems.length} items (more available)`
+              : `View all ${openItems.length} items`
             : "Open full inbox"}
         </Link>
       </footer>
@@ -76,7 +79,7 @@ export function StaffInboxPanel({ panelRef }: StaffInboxPanelProps) {
 }
 
 export function StaffInboxBellButton() {
-  const { badgeCounts, closePanel, isEnabled, isPanelOpen, togglePanel } = useStaffInboxContext();
+  const { badgeCounts, closePanel, hasMore, isEnabled, isPanelOpen, togglePanel } = useStaffInboxContext();
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -105,7 +108,13 @@ export function StaffInboxBellButton() {
       <button
         aria-expanded={isPanelOpen}
         aria-haspopup="dialog"
-        aria-label={openCount > 0 ? `Inbox, ${openCount} open items` : "Inbox"}
+        aria-label={
+          openCount > 0
+            ? hasMore
+              ? `Inbox, at least ${openCount} loaded open items`
+              : `Inbox, ${openCount} open items`
+            : "Inbox"
+        }
         className="staff-inbox-bell-button"
         onClick={togglePanel}
         type="button"

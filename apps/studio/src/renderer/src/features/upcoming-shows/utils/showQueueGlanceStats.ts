@@ -52,6 +52,7 @@ export interface GangSheetLayoutGeometrySettings {
   gutterInches: number;
   maxSheetLengthInches: number;
   labelFontSizePx: number;
+  sectionPricing?: GangSheetSectionPricingConfig;
 }
 
 export interface GangSheetCountLayoutImage {
@@ -60,6 +61,8 @@ export interface GangSheetCountLayoutImage {
   widthPx: number;
   heightPx: number;
   grouping?: GangSheetExportImageGrouping;
+  printWidthInches?: number;
+  printHeightInches?: number;
 }
 
 /**
@@ -103,6 +106,8 @@ export function estimateGangSheetSheetCounts(
       quantity: image.quantity,
       widthPx: image.widthPx,
       heightPx: image.heightPx,
+      printWidthInches: image.printWidthInches,
+      printHeightInches: image.printHeightInches,
     }));
 
   const grouped = planSheetPerCustomerGangSheetLayout({
@@ -111,6 +116,7 @@ export function estimateGangSheetSheetCounts(
     spacingPx,
     maxSheetHeightPx,
     sheetLabelFontSizePx: layoutSettings.labelFontSizePx,
+    sectionPricing: layoutSettings.sectionPricing,
   });
 
   const continuousGrouped = planContinuousCustomerGroupedGangSheetLayout({
@@ -119,6 +125,7 @@ export function estimateGangSheetSheetCounts(
     spacingPx,
     maxSheetHeightPx,
     sheetLabelFontSizePx: layoutSettings.labelFontSizePx,
+    sectionPricing: layoutSettings.sectionPricing,
   });
 
   const labelBandHeightPx = computeGangSheetLabelBandHeightPx(layoutSettings.labelFontSizePx);
@@ -252,6 +259,8 @@ export function buildShowQueueGlanceStats(input: {
           quantity: allocation.allocatedQuantity,
           widthPx: targetWidthPx,
           heightPx: targetHeightPx,
+          printWidthInches,
+          printHeightInches,
           grouping: buildGroupingMetadata(
             allocation,
             input.requestsById.get(allocation.printRequestId),

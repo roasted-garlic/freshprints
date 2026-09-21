@@ -617,7 +617,13 @@ promotion boundaries while returning bounded diagnostic details for safe failure
 `getPortalAdminUpcomingShowQueueDashboard` is a read-only authenticated callable. It loads upcoming
 Whatnot-surface shows (plus DEV-only fixtures), selects the requested or default next upcoming show,
 loads that show’s `showAllocations`, and batch-loads required `printRequests` for kind/identity
-labels and PR summaries. It does not hydrate designs, uploads, or signed artwork URLs.
+labels and PR summaries. It also loads the selected requests’ `printRequestItems` in bounded
+`printRequestId in [...]` chunks to calculate separate request totals and active selected-show
+allocation totals. Allocation pricing uses immutable snapshots first and the canonical saved-size
+pricing fallback for legacy rows; malformed required data is represented as `null`, never as a
+partial total. The response includes only a response-scoped non-reversible customer grouping key;
+raw customer IDs, email addresses, usernames, and stable cross-response identifiers are omitted.
+It does not hydrate designs, uploads, or signed artwork URLs.
 
 `getPortalAdminShowQueueRequestDesigns` lazy-loads active allocations for a validated
 `showId` + `printRequestId` pair and returns 15-minute Admin SDK signed derivative thumbnail URLs

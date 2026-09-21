@@ -75,4 +75,23 @@ describe("portal admin dashboard contracts", () => {
     assert.match(dashboardCallable, /collection\("customers"\)/);
     assert.match(dashboardCallable, /customers: customerMap/);
   });
+
+  it("loads request items in bounded chunks and keeps totals/privacy server-owned", () => {
+    const dashboardLib = readFileSync(
+      resolve(import.meta.dirname, "lib/portalAdminUpcomingShowQueueDashboard.ts"),
+      "utf8",
+    );
+    const dashboardCallable = readFileSync(
+      resolve(import.meta.dirname, "getPortalAdminUpcomingShowQueueDashboard.ts"),
+      "utf8",
+    );
+    assert.match(dashboardCallable, /collection\("printRequestItems"\)/);
+    assert.match(dashboardCallable, /where\("printRequestId", "in", requestIdChunk\)/);
+    assert.match(dashboardCallable, /randomBytes\(16\)/);
+    assert.match(dashboardLib, /customerGroupKey/);
+    assert.match(dashboardLib, /requestTotalPriceUsd/);
+    assert.match(dashboardLib, /selectedShowAllocationTotalPriceUsd/);
+    assert.doesNotMatch(dashboardLib, /customerId:\s*customerId/);
+    assert.doesNotMatch(dashboardLib, /email:\s*customer/);
+  });
 });

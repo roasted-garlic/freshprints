@@ -2,7 +2,7 @@ import {
   nestBoxesIntoShelvesWithHeightCap,
   type NestingSpacingPx,
 } from "./gangSheetNesting";
-import { computeGangSheetLabelBandHeightPx } from "./gangSheetLabelRendering";
+import { resolveGroupedSectionLabelLayout } from "./gangSheetLabelRendering";
 import {
   buildGangSheetProductionGroups,
   countSheetPerCustomerPhysicalSheets,
@@ -28,9 +28,9 @@ export function planSheetPerCustomerGangSheetLayout(input: {
   spacingPx: NestingSpacingPx;
   maxSheetHeightPx: number;
   sheetLabelFontSizePx: number;
+  sectionPricing?: import("../constants/gangSheetSectionPricingSettings.constants").GangSheetSectionPricingConfig;
 }): GroupedGangSheetLayoutPlan {
-  const sectionLabelBandHeightPx = computeGangSheetLabelBandHeightPx(input.sheetLabelFontSizePx);
-  const productionGroups = buildGangSheetProductionGroups(input.images);
+  const productionGroups = buildGangSheetProductionGroups(input.images, input.sectionPricing);
 
   const sheetPlacementIds: string[][] = [];
   let currentSheetPlacements: string[] = [];
@@ -55,6 +55,14 @@ export function planSheetPerCustomerGangSheetLayout(input: {
       input.spacingPx,
       input.maxSheetHeightPx,
     );
+    const sectionLabelBandHeightPx = resolveGroupedSectionLabelLayout({
+      heading: group.heading,
+      summaryLines: group.summaryLines,
+      sheetWidthPx: input.sheetWidthPx,
+      sideMarginPx: input.spacingPx.sideMarginPx,
+      headingFontSizePx: input.sheetLabelFontSizePx,
+      summaryFontSizePx: Math.round(input.sheetLabelFontSizePx * 0.75),
+    }).bandHeightPx;
 
     for (const [sheetOffset, sheet] of nestResult.sheets.entries()) {
       commitSheetIfNeeded(true);

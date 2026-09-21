@@ -14,6 +14,7 @@ describe("Studio Staff Artwork AI Review promotion contracts", () => {
     "apps/studio/src/renderer/src/features/staff-artwork/services/staffArtworkService.ts",
   );
   const server = read("functions/src/staffArtwork.ts");
+  const lifecycle = read("functions/src/staffArtworkAiLifecycle.ts");
 
   it("keeps AI multiple selection separate from Print Request selection", () => {
     assert.match(source, /isAiMultiSelectMode/);
@@ -27,11 +28,27 @@ describe("Studio Staff Artwork AI Review promotion contracts", () => {
 
   it("uses the existing per-item promotion and non-forced Auto-process queue", () => {
     assert.match(source, /staffArtworkService\.promote\(user, artworkId\)/);
-    assert.match(source, /enqueueImportedDesignsForBackgroundAi\(\[promoted\.designId\]\)/);
+    assert.match(source, /enqueueImportedDesignsForBackgroundAi\(\[promotion\.designId\]\)/);
     assert.doesNotMatch(source, /enqueueImportedDesignsForBackgroundAi\(\[.*\],\s*\{\s*force:\s*true/);
     assert.match(source, /artwork\.status !== "ready"/);
     assert.match(source, /promoted\.alreadyPromoted/);
     assert.match(source, /runAiReviewBulkReprocess/);
+    assert.match(source, /routeStaffArtworkAiLifecycle/);
+    assert.match(source, /reprocessReadyDesignWithAi/);
+    assert.match(source, /resetForProcessing/);
+  });
+
+  it("keeps the server guard authoritative and returns an explicit lifecycle route", () => {
+    assert.match(server, /resolveStaffArtworkAiLifecycleRouting/);
+    assert.match(server, /aiLifecycle:/);
+    assert.match(lifecycle, /action: "plain_enqueue"/);
+    assert.match(lifecycle, /action: "reprocess_ready"/);
+    assert.match(lifecycle, /action: "reset_rejected"/);
+    assert.match(lifecycle, /action: "no_op"/);
+    assert.match(source, /case "plain_enqueue"/);
+    assert.match(source, /case "reprocess_ready"/);
+    assert.match(source, /case "reset_rejected"/);
+    assert.match(source, /case "no_op"/);
   });
 
   it("makes the whole eligible card the AI selection target and suppresses preview behavior", () => {

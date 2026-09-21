@@ -1105,11 +1105,11 @@
 .export-gang-sheet-modal.modal-panel {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  max-height: min(90vh, 48rem);
-  max-width: min(44rem, calc(100vw - 2 * var(--space-6)));
+  max-height: min(90vh, 52rem);
+  max-width: min(52rem, calc(100vw - 2 * var(--space-6)));
   min-height: 0;
   overflow: hidden;
-  width: min(44rem, calc(100vw - 2 * var(--space-6)));
+  width: min(52rem, calc(100vw - 2 * var(--space-6)));
 }
 
 .export-gang-sheet-modal.modal-panel .modal-body {
@@ -1117,6 +1117,158 @@
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
+}
+
+.print-request-gang-sheet-selection {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.print-request-gang-sheet-selection-header {
+  align-items: center;
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+}
+
+.print-request-gang-sheet-selection-list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0;
+  scrollbar-gutter: stable;
+}
+
+.print-request-gang-sheet-selection-row {
+  align-items: center;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: auto 6.5rem minmax(0, 1fr) minmax(8.5rem, 9.5rem);
+  padding: var(--space-3);
+}
+
+.print-request-gang-sheet-selection-row.is-selected {
+  border-color: color-mix(in srgb, var(--color-accent-primary) 45%, var(--color-border));
+}
+
+.print-request-gang-sheet-selection-checkbox {
+  accent-color: var(--color-accent-primary);
+  flex: 0 0 auto;
+  height: 1.1rem;
+  margin: 0;
+  width: 1.1rem;
+}
+
+.print-request-gang-sheet-selection-preview {
+  align-items: center;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: zoom-in;
+  display: flex;
+  height: 6.5rem;
+  justify-content: center;
+  overflow: hidden;
+  padding: 0;
+  width: 6.5rem;
+}
+
+.print-request-gang-sheet-selection-preview:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.print-request-gang-sheet-selection-preview:focus-visible {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 2px;
+}
+
+.print-request-gang-sheet-selection-preview .design-thumbnail-panel.print-request-gang-sheet-selection-thumb {
+  align-items: center;
+  aspect-ratio: 1 / 1;
+  border-radius: 0;
+  display: flex;
+  height: 100%;
+  justify-content: center;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+}
+
+.print-request-gang-sheet-selection-preview .design-thumbnail-panel-image {
+  display: block;
+  height: 100%;
+  max-height: 100%;
+  max-width: 100%;
+  object-fit: contain;
+  object-position: center;
+  width: 100%;
+}
+
+.print-request-gang-sheet-selection-preview .design-thumbnail-panel-state {
+  inset: 0;
+  position: absolute;
+}
+
+.print-request-gang-sheet-selection-copy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.print-request-gang-sheet-selection-copy strong {
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.print-request-gang-sheet-selection-row small {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.print-request-gang-sheet-selection-qty {
+  display: grid;
+  gap: 0.35rem;
+  justify-items: stretch;
+  min-width: 0;
+}
+
+.print-request-gang-sheet-selection-qty-label {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.print-request-gang-sheet-selection-qty .print-requests-item-stepper {
+  min-width: 7.5rem;
+}
+
+@media (max-width: 720px) {
+  .print-request-gang-sheet-selection-row {
+    grid-template-columns: auto 5.5rem minmax(0, 1fr);
+  }
+
+  .print-request-gang-sheet-selection-preview {
+    height: 5.5rem;
+    width: 5.5rem;
+  }
+
+  .print-request-gang-sheet-selection-qty {
+    grid-column: 2 / -1;
+  }
 }
 
 .export-gang-sheet-modal .export-show-result {

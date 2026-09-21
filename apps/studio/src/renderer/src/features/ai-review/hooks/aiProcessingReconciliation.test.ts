@@ -120,7 +120,7 @@ describe("AI Processing reconciliation — duplicate/stale enqueue is an idempot
  * neither of which the prior fix touched.
  */
 describe("AI Processing controller/count reconciliation — manual process and auto-queue paths", () => {
-  it("refreshDesignList (used by both processSelectedDesign and runAutoQueueLoop) calls onQueueChanged and gates list reload after terminal patch", () => {
+  it("refreshDesignList calls onQueueChanged while auto-processing preserves loaded cursor pages", () => {
     const source = read(
       "apps/studio/src/renderer/src/features/ai-review/hooks/useAiProcessingQueue.ts",
     );
@@ -144,7 +144,7 @@ describe("AI Processing controller/count reconciliation — manual process and a
     );
     assert.match(
       loopBlock,
-      /refreshDesignList\(\{\s*skipListReload: hasTerminalAiProcessingLedgerEntry\(design\.id\),\s*\}\)/,
+      /refreshDesignList\(\{[\s\S]*skipListReload: true,[\s\S]*\}\)/,
     );
   });
 
@@ -185,7 +185,7 @@ describe("AI Processing controller/count reconciliation — manual process and a
     );
   });
 
-  it("runAutoQueueLoop clears selection at both natural loop-exit points (index exhausted, no next awaiting design)", () => {
+  it("runAutoQueueLoop clears selection when load-more continuation stops", () => {
     const source = read(
       "apps/studio/src/renderer/src/features/ai-review/hooks/useAiProcessingQueue.ts",
     );
@@ -194,17 +194,11 @@ describe("AI Processing controller/count reconciliation — manual process and a
       source.indexOf("const startAutoQueue = useCallback("),
     );
 
-    const indexExhaustedBlock = loopBlock.slice(
-      loopBlock.indexOf("if (index >= currentDesigns.length) {"),
-      loopBlock.indexOf("const nextAwaitingIndex = findNextAwaitingIndex"),
-    );
-    assert.match(indexExhaustedBlock, /requestSelectDesign\(null\);/);
-
-    const noAwaitingBlock = loopBlock.slice(
-      loopBlock.indexOf("if (nextAwaitingIndex < 0) {"),
-      loopBlock.indexOf("index = nextAwaitingIndex;"),
-    );
-    assert.match(noAwaitingBlock, /requestSelectDesign\(null\);/);
+    assert.match(loopBlock, /resolveAutoQueueContinuationAfterLoadMore/);
+    assert.match(loopBlock, /mergeAppendedDesignsIntoList/);
+    assert.match(loopBlock, /shouldPrefetchNextAiProcessingPage/);
+    assert.match(loopBlock, /if \(continuation\.action === "stop"\) \{/);
+    assert.match(loopBlock, /requestSelectDesign\(null\);/);
   });
 
   it("requestSelectDesign is a real dependency of both processSelectedDesign and runAutoQueueLoop's useCallback", () => {

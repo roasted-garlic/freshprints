@@ -1,4 +1,16 @@
+import { createHash } from "node:crypto";
+
+import {
+  DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG,
+  type GangSheetSectionPricingConfig,
+} from "../../../packages/shared/src/constants/gangSheetSectionPricingSettings.constants";
 import { formatCustomerIdentityLabel } from "../../../packages/shared/src/utils/formatCustomerIdentityLabel";
+import {
+  calculatePrintRequestTotalPriceUsd,
+  calculateShowAllocationTotalPriceUsd,
+  type ShowQueueAllocationPricingInput,
+  type ShowQueuePrintRequestItemPricingInput,
+} from "../../../packages/shared/src/utils/showAllocationDollarTotals";
 import type {
   GetPortalAdminUpcomingShowQueueDashboardRequest,
   PortalAdminShowCapacityDto,
@@ -208,6 +220,29 @@ function resolveCustomerId(
   return firstNonEmptyString([requestData, allocationData], ["customerId"]);
 }
 
+function buildResponseScopedCustomerGroupKey(
+  salt: string,
+  printRequestId: string,
+  options: {
+    customerId?: string;
+    identityLabel?: string;
+    kind: PortalAdminShowQueueRequestKind;
+  },
+): string {
+  let scope: string;
+  if (options.kind === "internal") {
+    scope = "internal";
+  } else if (options.customerId) {
+    scope = `customer:${options.customerId}`;
+  } else if (options.identityLabel?.trim()) {
+    // Studio-like username/label fallback when customerId is absent in this response.
+    scope = `label:${options.identityLabel.trim().toLowerCase()}`;
+  } else {
+    scope = `request:${printRequestId}`;
+  }
+  return `cg_${createHash("sha256").update(`${salt}:${scope}`).digest("hex").slice(0, 24)}`;
+}
+
 function resolveRequestKind(data: Record<string, unknown> | undefined): PortalAdminShowQueueRequestKind {
   if (!data) {
     return "unknown";
@@ -331,6 +366,9 @@ function buildRequestSummaries(
   allocations: PortalAdminQueueDocument[],
   requests: Map<string, Record<string, unknown>>,
   customers: Map<string, Record<string, unknown>> = new Map(),
+  requestItems: Map<string, PortalAdminQueueDocument[]> = new Map(),
+  pricing: GangSheetSectionPricingConfig = DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG,
+  customerGroupKeySalt = "test-response-scope",
 ): PortalAdminShowRequestSummary[] {
   const grouped = new Map<string, PortalAdminQueueDocument[]>();
   for (const document of allocations) {
@@ -370,6 +408,21 @@ function buildRequestSummaries(
         allocationData,
         customerId ? customers.get(customerId) : undefined,
       );
+      const pricingItems = (requestItems.get(printRequestId) ?? []).map<ShowQueuePrintRequestItemPricingInput>(
+        (item) => ({
+          id: item.id,
+          quantity: item.data.quantity,
+          printWidthInches: item.data.printWidthInches,
+          printHeightInches: item.data.printHeightInches,
+        }),
+      );
+      const itemsById = new Map(pricingItems.map((item) => [item.id, item]));
+      const pricingAllocations = requestAllocations.map<ShowQueueAllocationPricingInput>((document) => ({
+        status: resolveAllocationStatus(document.data.status),
+        allocatedQuantity: document.data.allocatedQuantity,
+        printRequestItemId: document.data.printRequestItemId,
+        pricingSnapshot: document.data.pricingSnapshot,
+      }));
       return [
         {
           sortKey,
@@ -378,10 +431,25 @@ function buildRequestSummaries(
             printRequestId,
             name,
             kind,
+            customerGroupKey: buildResponseScopedCustomerGroupKey(
+              customerGroupKeySalt,
+              printRequestId,
+              {
+                customerId: kind === "internal" ? undefined : customerId,
+                identityLabel,
+                kind,
+              },
+            ),
             ...(kind === "customer" && identityLabel ? { customerIdentityLabel: identityLabel } : {}),
             designQty,
             printQty,
             statusSummary: buildStatusSummary(requestAllocations),
+            requestTotalPriceUsd: calculatePrintRequestTotalPriceUsd(pricingItems, pricing),
+            selectedShowAllocationTotalPriceUsd: calculateShowAllocationTotalPriceUsd(
+              pricingAllocations,
+              itemsById,
+              pricing,
+            ),
           } satisfies PortalAdminShowRequestSummary,
         },
       ];
@@ -395,6 +463,9 @@ function buildSelectedDashboard(
   allocations: PortalAdminQueueDocument[],
   requests: Map<string, Record<string, unknown>>,
   customers: Map<string, Record<string, unknown>> = new Map(),
+  requestItems: Map<string, PortalAdminQueueDocument[]> = new Map(),
+  pricing: GangSheetSectionPricingConfig = DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG,
+  customerGroupKeySalt = "test-response-scope",
 ): PortalAdminSelectedShowDashboard {
   const metrics = allocations
     .map((document) => toMetricAllocation(document))
@@ -411,7 +482,14 @@ function buildSelectedDashboard(
     printQty,
     prQty: countPortalAdminPrQty(metrics),
     capacity: buildCapacityDto(show.data.maxTotalQuantity, printQty),
-    requests: buildRequestSummaries(allocations, requests, customers),
+    requests: buildRequestSummaries(
+      allocations,
+      requests,
+      customers,
+      requestItems,
+      pricing,
+      customerGroupKeySalt,
+    ),
   };
 }
 
@@ -423,6 +501,9 @@ export interface BuildPortalAdminUpcomingDashboardInput {
   selectedShowAllocations: PortalAdminQueueDocument[];
   requests: Map<string, Record<string, unknown>>;
   customers?: Map<string, Record<string, unknown>>;
+  requestItems?: Map<string, PortalAdminQueueDocument[]>;
+  pricing?: GangSheetSectionPricingConfig;
+  customerGroupKeySalt: string;
 }
 
 export function buildPortalAdminUpcomingShowQueueDashboard(
@@ -461,6 +542,9 @@ export function buildPortalAdminUpcomingShowQueueDashboard(
           input.selectedShowAllocations,
           input.requests,
           input.customers ?? new Map(),
+          input.requestItems ?? new Map(),
+          input.pricing ?? DEFAULT_GANG_SHEET_SECTION_PRICING_CONFIG,
+          input.customerGroupKeySalt,
         )
       : null,
   };
