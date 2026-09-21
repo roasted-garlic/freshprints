@@ -8,12 +8,13 @@
 | Review | docs/workflow/reviews/2026-09-21-portal-admin-signout-redirect-and-queue-padding-review.md |
 | Test report | docs/workflow/reviews/2026-09-21-portal-admin-signout-redirect-and-queue-padding-test-report.md |
 | Final status | **approved_with_notes** |
+| Production | PR #107 → `6f705360`; App Hosting `fresh-prints-portal-build-2026-09-21-002` @ 100% |
 
 ---
 
 ## Summary
 
-Portal admin sign-out no longer sticks on “Redirecting to staff sign-in…” (hard navigation after logout + admin guest redirect). Admin Show Queue gets clear bottom padding via `.portal-admin-body` so the last card is not flush with the viewport.
+Portal admin sign-out no longer sticks on “Redirecting to staff sign-in…” (hard navigation after logout + admin guest redirect). Admin Show Queue gets clear bottom padding via `.portal-admin-body` so the last card is not flush with the viewport. Production App Hosting rollout complete (`build-2026-09-21-002`); guest redirect smoke PASS; authenticated sign-out + padding await owner visual confirm.
 
 ---
 
@@ -57,8 +58,9 @@ Portal admin sign-out no longer sticks on “Redirecting to staff sign-in…” 
 
 | Test | Result | Approved by |
 |------|--------|-------------|
-| Admin sign-out reaches Login (not stuck redirect) | PASS WITH NOTES (local DEV; prod smoke after rollout) | agent / owner rollout |
-| Show Queue bottom spacing | PASS WITH NOTES (local CSS; prod visual confirm) | agent / owner |
+| Admin guest `/admin/show-queue` → Login (hard-nav) | PASS (prod) | agent |
+| Staff Sign out (authenticated) | pending owner | owner |
+| Show Queue bottom spacing | pending owner | owner |
 
 ---
 
@@ -66,7 +68,7 @@ Portal admin sign-out no longer sticks on “Redirecting to staff sign-in…” 
 
 | Approval | Status | Date | Notes |
 |----------|--------|------|-------|
-| Production deploy | obtained | 2026-09-21 | Owner requested commit, push, merge, and rollout |
+| Production deploy | obtained | 2026-09-21 | PR #107 merged; owner created App Hosting rollout; live `build-2026-09-21-002` |
 | Database migration | N/A | | |
 | Design / UX | N/A | | Modest padding only |
 | Business / policy | N/A | | |
