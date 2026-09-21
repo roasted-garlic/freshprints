@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { User as FirebaseUser } from 'firebase/auth';
-import { useRouter } from 'next/navigation';
 
 import type { Customer } from '@fresh-prints/shared/types/customer/customer.types';
 import type { UserProfile } from '@fresh-prints/shared/types/user/user.types';
@@ -189,7 +188,6 @@ async function enforcePortalDevCustomerAccessIfNeeded(
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const router = useRouter();
   const [authState, setAuthState] = useState<PortalAuthState>(initialAuthState);
   const registrationInProgressRef = useRef(false);
   const pendingLoginErrorRef = useRef<string | null>(null);
@@ -738,9 +736,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     try {
       await portalAuthService.logout();
-      // Always land on login so signed-out customers (including former maintenance
-      // testers) do not remain on app-shell routes that flip to the maintenance wall.
-      router.replace('/login');
+      // Hard navigation always lands on login. Soft router.replace can race with
+      // PortalAdminAuthGate / AuthGate and leave a permanent “Redirecting…” screen
+      // (especially after admin sign-out from the (admin) layout).
+      window.location.assign('/login');
     } catch (error) {
       setAuthState((currentState) => ({
         ...currentState,
@@ -748,7 +747,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         isAuthActionLoading: false,
       }));
     }
-  }, [router]);
+  }, []);
 
   const refreshCustomer = useCallback(async () => {
     const firebaseUser = getPortalAuth().currentUser;

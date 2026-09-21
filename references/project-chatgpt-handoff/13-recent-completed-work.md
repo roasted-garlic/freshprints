@@ -1,22 +1,22 @@
 # Recent Completed Work
 
-## 2026-09-21 - Studio / Portal Print Request, Inbox, and AI Queue Batch — SIGNOFF COMPLETE; PRODUCTION ROLLOUT IN PROGRESS
+## 2026-09-21 - Studio / Portal Print Request, Inbox, and AI Queue Batch — PRODUCTION COMPLETE
 
-Goal `studio-portal-print-request-inbox-ai-queue-batch` has Owner DEV QA **PASS** and Signoff
-**approved_with_notes** under explicit owner authorization for the full coordinated rollout.
-Delivered adaptive gang-sheet labels, Staff Inbox pagination and live reconciliation, selected-show
-Portal Admin search/privacy-safe customer grouping/separate totals, export-only partial Print Request
-gang-sheet selection with thumbnails and quantity overrides, and Staff Artwork/AI Processing lifecycle
-and multi-page queue corrections. Focused suites/typechecks/builds/targeted lint/index validation
-passed; the Portal `.next/trace` EPERM and unrelated repository-wide lint baseline are documented.
+Goal `studio-portal-print-request-inbox-ai-queue-batch` is **CLOSED**. Owner DEV QA **PASS**;
+Signoff **approved_with_notes**; full coordinated production rollout reconciled.
 
-The exact rollout manifest is reviewed A/B/C/D/E application scope, Studio stable `1.0.18`,
-Functions `getPortalAdminUpcomingShowQueueDashboard` and `promoteStaffArtworkToAiReview`, and four
-additive Staff Inbox indexes. Rules, Storage Rules, schema/data changes, migrations, backfills,
-secrets, IAM, and unrelated working-tree changes remain excluded. Protected promotion and production
-verification are in progress.
+| Item | Value |
+|------|-------|
+| PR / production SHA | #106 / `f09dafc6a9566fa0ee021646e5b7d1318cc010a9` |
+| Studio | **v1.0.18** Latest (workflow `35619359510`, 8 assets); rollback `v1.0.17` |
+| Functions | `getPortalAdminUpcomingShowQueueDashboard`, `promoteStaffArtworkToAiReview` **ACTIVE** |
+| Portal | `fresh-prints-portal-build-2026-09-21-001` **100%**; HTTP smoke PASS |
+| Indexes | 3 READY Staff Inbox composites; `upcomingShows` single-field coverage (GCP rejects redundant composite) |
+| Excluded | Rules, Storage Rules, migrations/backfills, secrets/IAM |
 
+Rollout: `docs/workflow/reviews/2026-09-21-studio-portal-print-request-inbox-ai-queue-batch-production-rollout.md`.
 Signoff: `docs/workflow/reviews/2026-09-21-studio-portal-print-request-inbox-ai-queue-batch-signoff.md`.
+FreshForge **IDLE**.
 
 ## 2026-09-17 - Shared length-based show pricing + customer navigation — SIGNOFF COMPLETE (PROD INFRASTRUCTURE; STUDIO BLOCKED)
 

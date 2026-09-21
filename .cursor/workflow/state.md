@@ -2,24 +2,22 @@
 
 | Field | Value |
 |---|---|
-| Status | **PRODUCTION ROLLOUT IN PROGRESS** |
+| Status | **ACTIVE** |
 | DONE | **no** |
-| Signoff Status | **approved_with_notes** — Owner DEV QA PASS; coordinated rollout authorized |
+| Signoff Status | **approved_with_notes** |
 | Current Mode | managed-phase |
-| Parent program | Studio / Portal print-request, Staff Inbox, and AI queue improvements |
-| Current Goal | `studio-portal-print-request-inbox-ai-queue-batch` |
-| Current Phase | **PRODUCTION CLOSEOUT** |
-| Plan Status | **complete** — D amended for export-only qty + thumbnails (2026-09-21) |
-| Review Status | **approved_with_changes** — `docs/workflow/reviews/2026-09-21-print-request-gang-sheet-selection-amendment-review.md` |
-| Implementation Status | **complete** |
-| Test Status | **passed_with_notes** — Portal build PASS after clearing concurrent next-dev lock; Studio typecheck PASS after item-snapshot mat fix |
+| Current Goal | `portal-admin-signout-redirect-and-queue-padding` |
+| Last Closed Goal | `studio-portal-print-request-inbox-ai-queue-batch` |
+| Current Phase | signoff → production promotion |
+| Plan Status | complete |
+| Review Status | approved_with_changes |
+| Implementation Status | complete |
+| Test Status | passed_with_notes |
 | Human Checkpoint Required | **no** |
-| Human Checkpoint Reason | Owner explicitly authorized Signoff and the full coordinated production rollout. |
-| Last Completed Step | Candidate reconciliation: isolated 4 Staff Inbox indexes; fixed 1.0.18 policy assertions and gang-sheet typecheck; Portal production build PASS. |
-| Next Required Step | Commit/push goal-owned candidate on `development`, open/merge protected `development` → `production` PR, then indexes → Functions → Portal → Studio stable → reconcile/closeout. |
-| Decision Log | 2026-09-21 — Owner DEV QA PASS. Owner authorized complete signoff and coordinated production rollout. Pre-commit: exclude 18 unrelated indexes; Portal EPERM = concurrent next-dev lock (not code). |
-| Artifacts | Plan, formal/implementation/amendment reviews, test report, signoff |
-| Surface Disposition | Exact Functions `getPortalAdminUpcomingShowQueueDashboard` + `promoteStaffArtworkToAiReview`; four additive Staff Inbox indexes only; Portal App Hosting; Studio 1.0.18. No Rules/Storage/schema/data/secrets/IAM. |
-| Signoff | **approved_with_notes** |
-| Allowed Actions | Candidate validation; commit/push development; protected PR promotion; exact reviewed index/Function deployment; Portal rollout; Studio stable release; bounded production verification; final state closeout |
-| Forbidden Actions | Unrelated changes; bare Functions fleet deployment; Rules/Storage deployment; migrations/backfills/data rewrites; secret/IAM changes; destructive index changes; direct/force push to production |
+| Last Completed Step | Signoff approved_with_notes; owner authorized commit/push/merge/Portal rollout (2026-09-21). |
+| Next Required Step | Commit scoped files; push development; PR → production; App Hosting rollout |
+| Decision Log | 2026-09-21 — Owner authorized production promotion + Portal App Hosting rollout for admin sign-out hard-nav + Show Queue bottom padding. |
+| Artifacts | Plan/review/test/signoff `2026-09-21-portal-admin-signout-redirect-and-queue-padding-*` |
+| Production | Pending merge + App Hosting after this commit |
+| Allowed Actions | Commit scoped portal fix; push; PR merge to production; Portal App Hosting rollout only |
+| Forbidden Actions | Unrelated studio/indexes/firebase.json commits; Functions/Rules/indexes deploy; Studio publish |

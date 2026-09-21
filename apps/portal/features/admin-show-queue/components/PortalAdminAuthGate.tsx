@@ -1,6 +1,6 @@
 'use client';
 
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
 
 import { PORTAL_APP_NAME } from '../../brand/portalBrand';
@@ -8,7 +8,6 @@ import { useAuth } from '../../auth/context/AuthContext';
 import { buildPortalAuthHref } from '../../auth/utils/portalReturnUrl';
 
 export function PortalAdminAuthGate({ children }: { children: ReactNode }) {
-  const router = useRouter();
   const pathname = usePathname();
   const { bootstrapStatus, isInitialBootstrap, isAuthenticated, logout } = useAuth();
 
@@ -17,13 +16,12 @@ export function PortalAdminAuthGate({ children }: { children: ReactNode }) {
       return;
     }
     if (bootstrapStatus === 'unauthenticated' || bootstrapStatus === 'anonymous-guest') {
-      if (pathname === '/admin/staff-artwork') {
-        router.replace(buildPortalAuthHref('/login', '/admin/staff-artwork'));
-      } else {
-        router.replace(buildPortalAuthHref('/login', '/admin/show-queue'));
-      }
+      // Hard navigation escapes the (admin) client layout. Soft App Router navigation can leave
+      // this gate painted on “Redirecting to staff sign-in…” after sign-out.
+      const returnTo = pathname === '/admin/staff-artwork' ? '/admin/staff-artwork' : '/admin/show-queue';
+      window.location.replace(buildPortalAuthHref('/login', returnTo));
     }
-  }, [bootstrapStatus, isInitialBootstrap, pathname, router]);
+  }, [bootstrapStatus, isInitialBootstrap, pathname]);
 
   if (isInitialBootstrap || bootstrapStatus === 'initializing' || bootstrapStatus === 'loading-profile') {
     return <main className="portal-admin-state"><p className="portal-muted">Checking staff access…</p></main>;
